@@ -72,10 +72,10 @@ trace_getline(Prompt, Result, !IO) :-
 
 trace_getline(Prompt, Result, MdbIn, MdbOut, !IO) :-
     call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success, !IO),
-    ( Success \= 0 ->
-        Result = ok(Line)
-    ;
+    ( if Success = 0 then
         Result = eof
+    else
+        Result = ok(Line)
     ).
 
 :- pred call_trace_getline(input_stream::in, output_stream::in, string::in,
@@ -132,7 +132,7 @@ call_trace_getline(MdbIn, MdbOut, Prompt, Line, Success, !IO) :-
         Success = 0
     ;
         Result = error(Error),
-        error("call_trace_getline: " ++ io.error_message(Error))
+        unexpected($module, $pred, io.error_message(Error))
     ).
 
 trace_get_command(Prompt, Result, !IO) :-
@@ -186,25 +186,25 @@ trace_get_command_fallback(Prompt, String, MdbIn, MdbOut, !IO) :-
         String = "quit"
     ;
         Result = error(Error),
-        error("trace_get_command_fallback: " ++ io.error_message(Error))
+        unexpected($module, $pred, io.error_message(Error))
     ).
 
 zip_with(Pred, XXs, YYs, Zipped) :-
-    ( (XXs = [], YYs = []) ->
+    ( if XXs = [], YYs = [] then
         Zipped = []
-    ; (XXs = [X | Xs], YYs = [Y | Ys]) ->
-        Pred(X,Y,PXY),
-        Zipped = [PXY | Rest],
-        zip_with(Pred, Xs, Ys, Rest)
-    ;
-        error("zip_with: list arguments are of unequal length")
+    else if XXs = [X | Xs], YYs = [Y | Ys] then
+        Pred(X, Y, PXY),
+        zip_with(Pred, Xs, Ys, ZippedTail),
+        Zipped = [PXY | ZippedTail]
+    else
+        unexpected($module, $pred, "list arguments are of unequal length")
     ).
 
 limit(Pred, Xs, Ys) :-
     Pred(Xs, Zs),
-    ( Xs = Zs ->
+    ( if Xs = Zs then
         Ys = Zs
-    ;
+    else
         limit(Pred, Zs, Ys)
     ).
 

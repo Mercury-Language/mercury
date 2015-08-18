@@ -23,11 +23,10 @@
 
 %-----------------------------------------------------------------------------%
 
-    % The type of nodes in our implementation of EDTs.  The parameter
-    % is meant to be the type of references to trace nodes.  In
-    % particular, the references should be to trace nodes that could
-    % be considered nodes in the EDT, namely those for exit, fail
-    % and exception events.
+    % The type of nodes in our implementation of EDTs. The parameter is meant
+    % to be the type of references to trace nodes. In particular, the
+    % references should be to trace nodes that could be considered nodes
+    % in the EDT, namely those for exit, fail and exception events.
     %
 :- type edt_node(R)
     --->    dynamic(R).
@@ -108,9 +107,9 @@ exit_node_decl_atom(Store, ExitNode) = DeclAtom :-
     call_node_from_id(Store, CallId, Call),
     CallIoSeq = Call ^ call_io_seq_num,
     ExitIoSeq = ExitNode ^ exit_io_seq_num,
-    ( CallIoSeq = ExitIoSeq ->
+    ( if CallIoSeq = ExitIoSeq then
         DeclAtom = final_decl_atom(ExitAtom, no)
-    ;
+    else
         DeclAtom = final_decl_atom(ExitAtom,
             yes(io_action_range(CallIoSeq, ExitIoSeq)))
     ).
@@ -179,12 +178,14 @@ trace_question(wrap(Store), dynamic(Ref), Root) :-
     <= annotated_trace(S, R).
 
 get_answers(Store, RedoId, DeclAtoms0, DeclAtoms) :-
-    ( maybe_redo_node_from_id(Store, RedoId, node_redo(_, ExitId, _, _, _)) ->
+    ( if
+        maybe_redo_node_from_id(Store, RedoId, node_redo(_, ExitId, _, _, _))
+    then
         exit_node_from_id(Store, ExitId, ExitNode),
         NextId = ExitNode ^ exit_prev_redo,
         DeclAtom = exit_node_decl_atom(Store, ExitNode),
         get_answers(Store, NextId, [DeclAtom | DeclAtoms0], DeclAtoms)
-    ;
+    else
         DeclAtoms = DeclAtoms0
     ).
 
@@ -218,27 +219,23 @@ trace_get_i_bug(wrap(Store), dynamic(BugRef), dynamic(InadmissibleRef),
     get_edt_node_initial_atom(Store, InadmissibleRef, InadmissibleAtom),
     get_edt_node_event_number(Store, BugRef, Event).
 
-    % Finding the parent of a node in the EDT from an EXIT event is
-    % in actual fact not deterministic in the presence of backtracking,
-    % since one EXIT event could belong to multiple children if it is in
-    % a call which is backtracked over and each of these children could
-    % have different parents.  We return the last interface event of the
-    % parent CALL event as the parent.  This is okay since
-    % trace_last_parent is only used when an explicit subtree is generated
-    % which is above the previous subtree, so it doesn't really matter
-    % which parent we pick.
+    % Finding the parent of a node in the EDT from an EXIT event is in fact
+    % not deterministic in the presence of backtracking, since one EXIT event
+    % could belong to multiple children if it is in a call which is backtracked
+    % over and each of these children could have different parents. We return
+    % the last interface event of the parent CALL event as the parent. This is
+    % OK since trace_last_parent is only used when an explicit subtree
+    % is generated which is above the previous subtree, so it doesn't
+    % really matter which parent we pick.
     %
 :- pred trace_last_parent(wrap(S)::in, edt_node(R)::in, edt_node(R)::out)
     is semidet <= annotated_trace(S, R).
 
 trace_last_parent(wrap(Store), dynamic(Ref), dynamic(Parent)) :-
     det_edt_return_node_from_id(Store, Ref, Node),
-    (
-        Node = node_fail(_, CallId, _, _, _, _)
-    ;
-        Node = node_exit(_, CallId, _, _, _, _, _, _)
-    ;
-        Node = node_excp(_, CallId, _, _, _, _, _)
+    ( Node = node_fail(_, CallId, _, _, _, _)
+    ; Node = node_exit(_, CallId, _, _, _, _, _, _)
+    ; Node = node_excp(_, CallId, _, _, _, _, _)
     ),
     call_node_from_id(Store, CallId, Call),
     CallPrecId = Call ^ call_preceding,
@@ -267,12 +264,9 @@ trace_same_event_numbers(wrap(Store), dynamic(Ref1), dynamic(Ref2)) :-
 
 trace_topmost_node(wrap(Store), dynamic(Ref)) :-
     det_edt_return_node_from_id(Store, Ref, Node),
-    (
-        Node = node_exit(_, CallId, _, _, _, _, _, _)
-    ;
-        Node = node_fail(_, CallId, _, _, _, _)
-    ;
-        Node = node_excp(_, CallId, _, _, _, _, _)
+    ( Node = node_exit(_, CallId, _, _, _, _, _, _)
+    ; Node = node_fail(_, CallId, _, _, _, _)
+    ; Node = node_excp(_, CallId, _, _, _, _, _)
     ),
     % XXX This is buggy: see the io_read_bug test case.
     % The node is topmost if the call sequence number is 1.
@@ -291,9 +285,9 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
         Node = node_exit(PrecId, CallId, _, _, _, _, _, _),
         Atom = get_trace_exit_atom(Node),
         not_at_depth_limit(Store, CallId),
-        ( missing_answer_special_case(Atom) ->
+        ( if missing_answer_special_case(Atom) then
             stratum_children(Store, PrecId, CallId, [], Children)
-        ;
+        else
             contour_children(normal, Store, PrecId, CallId, [], Children)
         )
     ;
@@ -328,20 +322,21 @@ trace_subtree_suspicion(Store, NodeId, Suspicion, Excess) :-
     trace_weight(suspicion, Store, NodeId, 0, Suspicion, no, 0, 0, Excess).
 
     % trace_weight(Weighting, Store, Node, PrevWeight, Weight, RecordDups,
-    %   DupFactor, PrevDupWeight, Excess)
+    %   DupFactor, PrevDupWeight, Excess):
+    %
     % Calculate the difference between the value of a field in an EXIT,
     % FAIL or EXCP node and the same field in the corresponding CALL node
-    % (the field that is used depends on the value of Weighting).  If Node
-    % is a FAIL or EXCP, then sum the differences between the first
+    % (the field that is used depends on the value of Weighting).
+    % If Node is a FAIL or EXCP, then sum the differences between the first
     % CALL and the first EXIT, subsequent REDOs and EXITs and the final
-    % REDO and FAIL/EXCP.  If Node is a FAIL or EXCP then all the previous
-    % EXITS will be included in the EDT and the subtrees rooted at these
-    % EXITS will have common annotated trace nodes.  Excess is the total
-    % weight of all duplicated nodes.  PrevWeight and PrevDupWeight are
-    % accumulators which should initially be zero.  RecordDups keeps track
+    % REDO and FAIL/EXCP. If Node is a FAIL or EXCP then all the previous
+    % EXITs will be included in the EDT and the subtrees rooted at these
+    % EXITs will have common annotated trace nodes. Excess is the total
+    % weight of all duplicated nodes. PrevWeight and PrevDupWeight are
+    % accumulators which should initially be zero. RecordDups keeps track
     % of whether the final node was a FAIL or EXCP. This should be `no'
-    % initially.  DupFactor keeps track of how many times the nodes before
-    % the last REDO could have been duplicated and should initially be zero.
+    % initially. DupFactor keeps track of how many times the nodes before
+    % the last REDO could have been duplicated, and should initially be zero.
     %
 :- pred trace_weight(weighting_heuristic::in, wrap(S)::in, edt_node(R)::in,
     int::in, int::out, bool::in, int::in, int::in, int::out)
@@ -350,7 +345,7 @@ trace_subtree_suspicion(Store, NodeId, Suspicion, Excess) :-
 trace_weight(Weighting, wrap(Store), dynamic(Ref), PrevWeight, Weight,
         RecordDups, DupFactor, PrevDupWeight, Excess) :-
     det_trace_node_from_id(Store, Ref, Final),
-    (
+    ( if
         (
             Final = node_exit(_, CallId, RedoId, _, FinalEvent, _, _,
                 FinalSuspicion),
@@ -364,11 +359,11 @@ trace_weight(Weighting, wrap(Store), dynamic(Ref), PrevWeight, Weight,
                 FinalSuspicion),
             NewRecordDups = yes
         )
-    ->
-        (
+    then
+        ( if
             maybe_redo_node_from_id(Store, RedoId, Redo),
             Redo = node_redo(_, ExitId, RedoEvent, _, RedoSuspicion)
-        ->
+        then
             (
                 NewRecordDups = yes,
                 (
@@ -394,7 +389,7 @@ trace_weight(Weighting, wrap(Store), dynamic(Ref), PrevWeight, Weight,
             trace_weight(Weighting, wrap(Store), dynamic(ExitId),
                 NewPrevWeight, Weight, NewRecordDups,
                 DupFactor + 1, NewPrevDupWeight, Excess)
-        ;
+        else
             call_node_from_id(Store, CallId, Call),
             CallEvent = Call ^ call_event,
             CallSuspicion = Call ^ call_suspicion,
@@ -421,7 +416,7 @@ trace_weight(Weighting, wrap(Store), dynamic(Ref), PrevWeight, Weight,
                 Excess = 0
             )
         )
-    ;
+    else
         throw(internal_error($pred, "not a final event"))
     ).
 
@@ -482,12 +477,9 @@ not_at_depth_limit(Store, Ref) :-
 
 trace_node_proc_label(wrap(Store), dynamic(Ref)) = ProcLabel :-
     det_edt_return_node_from_id(Store, Ref, Node),
-    (
-        Node = node_fail(_, _, _, _, Label, _)
-    ;
-        Node = node_exit(_, _, _, _, _, Label, _, _)
-    ;
-        Node = node_excp(_, _, _, _, _, Label, _)
+    ( Node = node_fail(_, _, _, _, Label, _)
+    ; Node = node_exit(_, _, _, _, _, Label, _, _)
+    ; Node = node_excp(_, _, _, _, _, Label, _)
     ),
     ProcLayout = get_proc_layout_from_label_layout(Label),
     ProcLabel = get_proc_label_from_layout(ProcLayout).
@@ -504,9 +496,9 @@ trace_node_proc_label(wrap(Store), dynamic(Ref)) = ProcLabel :-
     <= annotated_trace(S, R).
 
 contour_children(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
-    ( NodeId = StartId ->
+    ( if NodeId = StartId then
         Ns = Ns0
-    ;
+    else
         contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns)
     ).
 
@@ -544,7 +536,7 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
     ;
         Node = node_neg_fail(Prec, NestedStartId, _),
 
-        % There is a nested context.  Neg_fail events can be reached here
+        % There is a nested context. Neg_fail events can be reached here
         % if there were events missing due to a parent being shallow traced.
         % In this case, we can't tell whether the call was in a negated context
         % or backtracked over, so we have to assume the former.
@@ -636,9 +628,9 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
     list(edt_node(R))::out) is det <= annotated_trace(S, R).
 
 stratum_children(Store, NodeId, StartId, Ns0, Ns) :-
-    ( NodeId = StartId ->
+    ( if NodeId = StartId then
         Ns = Ns0
-    ;
+    else
         stratum_children_2(Store, NodeId, StartId, Ns0, Ns)
     ).
 
@@ -669,15 +661,15 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
     ;
         Node = node_exit(_, CallId, _, _, _, _, _, _),
         % Only include an exit node as a missing answer child if it
-        % produces output. If the exit event doesn't produce output
+        % produces output. If the exit event doesn't produce output,
         % then the only way the call could have behaved differently
         % is by failing, which won't change the fail, negs or else event
         % anchoring the end of the current stratum, since the rest of the goal
         % failed anyway.
 
-        ( calls_arguments_are_all_ground(Store, CallId) ->
+        ( if calls_arguments_are_all_ground(Store, CallId) then
             Ns1 = Ns0
-        ;
+        else
             Ns1 = [dynamic(NodeId) | Ns0]
         )
     ;
@@ -711,8 +703,8 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
 % Tracking a subterm dependency.
 %
 % We are given an EDT node, an argument position, and a path to the selected
-% subterm.  We wish to find the origin of that subterm within the body of the
-% given node, or within the body of its parent.  We can figure out the mode of
+% subterm. We wish to find the origin of that subterm within the body of the
+% given node, or within the body of its parent. We can figure out the mode of
 % the top of the selected subterm.
 %
 % If the mode is `in', the origin could be:
@@ -826,12 +818,12 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
             Origin = origin_not_found
         ;
             MaybeProcDefnRep = yes(ProcDefnRep),
-            (
+            ( if
                 trace_dependency_special_case(Store, ProcDefnRep, Ref,
                     StartLoc, ArgNum, TermPath, NodeId, Origin0)
-            ->
+            then
                 Origin = Origin0
-            ;
+            else
                 trace_dependency_in_proc_defn_rep(Store, TermPath, StartLoc,
                     ArgNum, TotalArgs, NodeId, StartPath, ProcDefnRep, Origin)
             )
@@ -882,10 +874,10 @@ trace_dependency_special_case(Store, ProcDefnRep, Ref, StartLoc,
         rep_to_univ(TryResultRep, TryResultUniv),
         univ_value(TryResultUniv) = TryResult,
         deconstruct(TryResult, canonicalize, Functor, _, _),
-        ( Functor = "succeeded" ->
+        ( if Functor = "succeeded" then
             Origin = origin_output(dynamic(NodeId), any_head_var_from_back(1),
                 TermPath)
-        ;
+        else
             Origin = origin_primitive_op("exception.m", 0, primop_builtin_call)
         )
     ).
@@ -962,26 +954,26 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
         ExitAtom = get_trace_exit_atom(Node),
         call_node_from_id(Store, CallId, CallNode),
         CallAtom = get_trace_call_atom(CallNode),
-        ( trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) ->
+        ( if trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) then
             find_chain_start_inside(Store, CallId, CallNode,
                 ArgPos, ChainStart)
-        ; trace_atom_subterm_is_ground(ExitAtom, ArgPos, TermPath) ->
-            ( not_at_depth_limit(Store, CallId) ->
+        else if trace_atom_subterm_is_ground(ExitAtom, ArgPos, TermPath) then
+            ( if not_at_depth_limit(Store, CallId) then
                 find_chain_start_outside(CallNode, Node, ArgPos, ChainStart)
-            ;
+            else
                 ChainStart = require_explicit_subtree
             )
-        ;
+        else
             throw(internal_error($pred, "unbound wrong answer term"))
         )
     ;
         Node = node_fail(_, CallId, _, _, _, _),
         call_node_from_id(Store, CallId, CallNode),
         CallAtom = get_trace_call_atom(CallNode),
-        ( trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) ->
+        ( if trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) then
             find_chain_start_inside(Store, CallId, CallNode,
                 ArgPos, ChainStart)
-        ;
+        else
             throw(internal_error($pred, "unbound missing answer term"))
         )
     ;
@@ -991,10 +983,10 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
 
         % XXX We don't yet handle tracking of the exception value.
 
-        ( trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) ->
+        ( if trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) then
             find_chain_start_inside(Store, CallId, CallNode,
                 ArgPos, ChainStart)
-        ;
+        else
             throw(internal_error($pred, "unbound exception term"))
         )
     ).
@@ -1038,13 +1030,13 @@ find_chain_start_outside(CallNode, ExitNode, ArgPos, ChainStart) :-
 parent_proc_defn_rep(Store, CallId, ProcDefnRep) :-
     call_node_from_id(Store, CallId, Call),
     CallPrecId = Call ^ call_preceding,
-    ( step_left_to_call(Store, CallPrecId, ParentCallNode) ->
+    ( if step_left_to_call(Store, CallPrecId, ParentCallNode) then
         call_node_maybe_proc_defn_rep(ParentCallNode, ProcDefnRep)
-    ;
+    else
         ProcDefnRep = no
     ).
 
-    % Finds the call node of the parent of the given node.  Fails if
+    % Finds the call node of the parent of the given node. Fails if
     % the call node cannot be found because it was not included in the
     % annotated trace.
     %
@@ -1053,19 +1045,19 @@ parent_proc_defn_rep(Store, CallId, ProcDefnRep) :-
 
 step_left_to_call(Store, NodeId, ParentCallNode) :-
     trace_node_from_id(Store, NodeId, Node),
-    ( Node = node_call(_, _, _, _, _, _, _, _, _, _) ->
+    ( if Node = node_call(_, _, _, _, _, _, _, _, _, _) then
         ParentCallNode = Node
-    ;
+    else
         % We wish to step through negated contexts, so we handle NEGE
         % and COND events separately, since step_left_in_contour/2
         % will throw an exception if it reaches the boundary of a
         % negated context.
 
-        ( Node = node_neg(NegPrec, _, _) ->
+        ( if Node = node_neg(NegPrec, _, _) then
             PrevNodeId = NegPrec
-        ; Node = node_cond(CondPrec, _, _) ->
+        else if Node = node_cond(CondPrec, _, _) then
             PrevNodeId = CondPrec
-        ;
+        else
             PrevNodeId = step_left_in_contour(Store, Node)
         ),
         step_left_to_call(Store, PrevNodeId, ParentCallNode)
@@ -1076,26 +1068,26 @@ step_left_to_call(Store, NodeId, ParentCallNode) :-
     is det <= annotated_trace(S, R).
 
 materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
-    ( Node = node_call(_, _, _, _, _, _, _, _, _, _) ->
+    ( if Node = node_call(_, _, _, _, _, _, _, _, _, _) then
         Nodes = Nodes0
-    ;
+    else
         % We include NEGE and (possibly failed) COND events in the contour
         % so we can track input sub-terms through negated contexts.
 
-        ( Node = node_neg(NegPrec, _, _) ->
+        ( if Node = node_neg(NegPrec, _, _) then
             PrevNodeId = NegPrec
-        ; Node = node_cond(CondPrec, _, _) ->
+        else if Node = node_cond(CondPrec, _, _) then
             PrevNodeId = CondPrec
-        ;
+        else
             PrevNodeId = step_left_in_contour(Store, Node)
         ),
         det_trace_node_from_id(Store, PrevNodeId, PrevNode),
-        ( Node = node_then(_, _, _) ->
+        ( if Node = node_then(_, _, _) then
             % The cond node is enough to tell us which way the if-then-else
             % went; the then node would just complicate the job of
             % make_primitive_list.
             Nodes1 = Nodes0
-        ;
+        else
             Nodes1 = [NodeId - Node | Nodes0]
         ),
         materialize_contour(Store, PrevNodeId, PrevNode, Nodes1, Nodes)
@@ -1122,31 +1114,28 @@ get_exit_atom(Store, _ - Exit, FinalAtom) :-
     --->    primitive_list_and_var(
                 primitives  :: list(annotated_primitive(R)),
 
+                % The var_rep for the argument which holds the subterm
+                % we are trying to find the origin of. If the subterm
+                % is in one of the arguments that were passed to a closure
+                % when the closure was created, then this will be the var_rep
+                % for the variable containing the closure.
                 var         :: var_rep,
-                            % The var_rep for the argument which holds the
-                            % subterm we are trying to find the origin of.
-                            % If the subterm is in one of the arguments
-                            % that were passed to a closure when the
-                            % closure was created, then this will be the
-                            % var_rep for the variable containing the closure.
 
+                % Was the subterm inside a closure argument that was passed
+                % in when the closure was created?
                 closure     :: bool
-                            % Was the subterm inside a closure argument
-                            % that was passed in when the closure was
-                            % created?
             ).
 
     % Constructs a list of the primitive goals along the given contour if
-    % it can.  It might not be able to construct the list in the case where
+    % it can. It might not be able to construct the list in the case where
     % there are higher order calls and we're not sure if everything is
     % traced, then there might be extra/missing events on the contour and
     % we need to make sure the primitive atomic goals match up with the
     % contour events, but in the case of higher order calls this is not
     % easily done as the name/module of the higher order call is not
-    % available in the goal_rep.  If it cannot construct the primitive list
-    % reliably then `no' is returned.  MaybeEnd is the goal path of the
-    % call event that should be at the end of the contour for input
-    % subterms.
+    % available in the goal_rep. If it cannot construct the primitive list
+    % reliably then `no' is returned. MaybeEnd is the goal path of the
+    % call event that should be at the end of the contour for input subterms.
     %
 :- func make_primitive_list(S, goal_and_path_list,
     assoc_list(R, trace_node(R)), maybe(reverse_goal_path), int, int,
@@ -1155,23 +1144,22 @@ get_exit_atom(Store, _ - Exit, FinalAtom) :-
 
 make_primitive_list(Store, GoalPaths, Contour, MaybeEnd, ArgNum, TotalArgs,
         HeadVars, AllTraced, Primitives0) = MaybePrims :-
-    (
+    ( if
         AllTraced = no,
         (
             next_goal_generates_internal_event(GoalPaths)
         ;
             GoalPaths = []
         )
-    ->
-        % There may be extra exit and fail events in the
-        % contour if a call to an untraced module was made, but
-        % then something in the untraced module called
-        % something in a traced module.
+    then
+        % There may be extra exit and fail events in the contour if a call
+        % to an untraced module was made, but then something in the untraced
+        % module called something in a traced module.
         remove_leading_exit_fail_events(Contour, AdjustedContour)
-    ;
+    else
         AdjustedContour = Contour
     ),
-    (
+    ( if
         AllTraced = no,
         contour_at_end_path(AdjustedContour, MaybeEnd),
         (
@@ -1179,13 +1167,13 @@ make_primitive_list(Store, GoalPaths, Contour, MaybeEnd, ArgNum, TotalArgs,
         ;
             GoalPaths = []
         )
-    ->
-        % We were unable to identify the goal corresponding to this
-        % call (it might have been a higher order call) so we return no
-        % to indicate this. This is the safest thing to do when we're
-        % not sure what has/hasn't been traced.
+    then
+        % We were unable to identify the goal corresponding to this call
+        % (it might have been a higher order call) so we return no to indicate
+        % this. This is the safest thing to do when we're not sure
+        % what has/hasn't been traced.
         MaybePrims = no
-    ;
+    else
         (
             GoalPaths = [goal_and_path(Goal, Path) | Tail],
             MaybePrims = match_goal_to_contour_event(Store, Goal, Path, Tail,
@@ -1266,30 +1254,28 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
         )
     ;
         GoalExpr = disj_rep(Disjs),
-        (
+        ( if
             Contour = [_ - ContourHeadNode | ContourTail],
-            (
-                ContourHeadNode = node_first_disj(_, Label)
-            ;
-                ContourHeadNode = node_later_disj(_, Label, _)
+            ( ContourHeadNode = node_first_disj(_, Label)
+            ; ContourHeadNode = node_later_disj(_, Label, _)
             ),
             DisjPathStr = get_goal_path_from_label_layout(Label),
             rev_goal_path_from_string_det(DisjPathStr, DisjPath),
             rev_goal_path_remove_last(DisjPath, DisjInitialPath, DisjLastStep),
             DisjInitialPath = Path,
             DisjLastStep = step_disj(N)
-        ->
+        then
             list.det_index1(Disjs, N, Disj),
             DisjAndPath = goal_and_path(Disj, DisjPath),
             MaybePrims = make_primitive_list(Store, [DisjAndPath | GoalPaths],
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
                 Primitives0)
-        ;
+        else
             throw(internal_error($pred, "mismatch on disj"))
         )
     ;
         GoalExpr = switch_rep(_SwitchVar, _SwitchCanFail, Cases),
-        (
+        ( if
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_switch(_, Label),
             ArmPathStr = get_goal_path_from_label_layout(Label),
@@ -1297,19 +1283,19 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             rev_goal_path_remove_last(ArmPath, ArmInitialPath, ArmLastStep),
             ArmInitialPath = Path,
             ArmLastStep = step_switch(N, _)
-        ->
+        then
             list.det_index1(Cases, N, Case),
             Case = case_rep(_ConsId, _ConsIdArity, Arm),
             ArmAndPath = goal_and_path(Arm, ArmPath),
             MaybePrims = make_primitive_list(Store, [ArmAndPath | GoalPaths],
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
                 Primitives0)
-        ;
+        else
             throw(internal_error($pred, "mismatch on switch"))
         )
     ;
         GoalExpr = ite_rep(Cond, Then, Else),
-        (
+        ( if
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_cond(_, Label, _),
             CondPathStr = get_goal_path_from_label_layout(Label),
@@ -1317,14 +1303,14 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             rev_goal_path_remove_last(CondPath, CondInitialPath, CondLastStep),
             CondInitialPath = Path,
             CondLastStep = step_ite_cond
-        ->
+        then
             ThenPath = rev_goal_path_add_at_end(Path, step_ite_then),
             CondAndPath = goal_and_path(Cond, CondPath),
             ThenAndPath = goal_and_path(Then, ThenPath),
             MaybePrims = make_primitive_list(Store,
                 [CondAndPath, ThenAndPath | GoalPaths], ContourTail,
                 MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0)
-        ;
+        else if
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_else(_, ElseCondId, _),
             cond_node_from_id(Store, ElseCondId, CondNode),
@@ -1334,35 +1320,35 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
             rev_goal_path_remove_last(CondPath, CondInitialPath, CondLastStep),
             CondInitialPath = Path,
             CondLastStep = step_ite_cond
-        ->
+        then
             ElsePath = rev_goal_path_add_at_end(Path, step_ite_else),
             ElseAndPath = goal_and_path(Else, ElsePath),
             MaybePrims = make_primitive_list(Store, [ElseAndPath | GoalPaths],
                 ContourTail, MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
                 Primitives0)
-        ;
+        else
             throw(internal_error($pred, "mismatch on if-then-else"))
         )
     ;
         GoalExpr = negation_rep(NegGoal),
-        (
+        ( if
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_neg_succ(_, _, _)
-        ->
+        then
             % The negated goal cannot contribute any bindings.
             MaybePrims = make_primitive_list(Store, GoalPaths, ContourTail,
                 MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0)
-        ;
+        else if
             Contour = [_ - ContourHeadNode | ContourTail],
             ContourHeadNode = node_neg(_, _, _)
-        ->
+        then
             % The end of the primitive list is somewhere inside
             % NegGoal.
             NegPath = rev_goal_path_add_at_end(Path, step_neg),
             NegAndPath = goal_and_path(NegGoal, NegPath),
             MaybePrims = make_primitive_list(Store, [NegAndPath], ContourTail,
                 MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives0)
-        ;
+        else
             throw(internal_error($pred, "mismatch on negation"))
         )
     ).
@@ -1374,27 +1360,25 @@ match_goal_to_contour_event(Store, Goal, Path, GoalPaths, Contour, MaybeEnd,
 remove_leading_exit_fail_events([], []).
 remove_leading_exit_fail_events(Contour0, Contour) :-
     Contour0 = [_ - ContourHeadNode | ContourTail],
-    (
-        (
-            ContourHeadNode = node_exit(_, _, _, _, _, _, _, _)
-        ;
-            ContourHeadNode = node_fail(_, _, _, _, _, _)
+    ( if
+        ( ContourHeadNode = node_exit(_, _, _, _, _, _, _, _)
+        ; ContourHeadNode = node_fail(_, _, _, _, _, _)
         )
-    ->
+    then
         remove_leading_exit_fail_events(ContourTail, Contour)
-    ;
+    else
         Contour = Contour0
     ).
 
     % Trys to match an atomic goal to the first event on the contour.
-    % These should match if AllTraced = yes.  If AllTraced = no, then
+    % These should match if AllTraced = yes. If AllTraced = no, then
     % if the goal doesn't match the contour event (i.e. they are for
     % different predicates), then the goal will be treated as a primitive
-    % operation with no children.  The next atomic goal will then be tried
-    % as a match for the first event on the contour.  This will
+    % operation with no children. The next atomic goal will then be tried
+    % as a match for the first event on the contour. This will
     % continue until a non-atomic goal is reached, at which point all
     % events that could match atomic goals (exit and fail events) are
-    % removed from the top of the contour.  This strategy will work
+    % removed from the top of the contour. This strategy will work
     % best when untraced calls do not call traced modules (which seems
     % more likely for the majority of untraced calls).
     %
@@ -1407,35 +1391,37 @@ remove_leading_exit_fail_events(Contour0, Contour) :-
 match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
         AtomicGoalArgs, Path, GoalPaths, Contour, MaybeEnd, ArgNum,
         TotalArgs, HeadVars, AllTraced, Primitives0) = MaybePrims :-
-    (
+    ( if
         Contour = [_ - ContourHeadNode],
         MaybeEnd = yes(EndPath)
-    ->
-        (
+    then
+        ( if
             ContourHeadNode = node_call(_, _, _, _, _, _,
                 MaybeReturnLabel, _, _, _),
             Atom = get_trace_call_atom(ContourHeadNode),
             CallPathStr = get_goal_path_from_maybe_label( MaybeReturnLabel),
             rev_goal_path_from_string_det(CallPathStr, CallPath),
             CallPath = EndPath
-        ->
-            (
-                ( atomic_goal_identifiable(AtomicGoal) = yes(AtomicGoalId) ->
+        then
+            ( if
+                ( if
+                    atomic_goal_identifiable(AtomicGoal) = yes(AtomicGoalId)
+                then
                     atomic_goal_matches_atom(AtomicGoalId, Atom)
-                ;
+                else
                     AllTraced = yes
                 )
-            ->
-                (
+            then
+                ( if
                     % Test to see that the argument is not a closure argument
                     % (passed in when the closure was created).
                     ArgNum > TotalArgs - length(AtomicGoalArgs)
-                ->
+                then
                     find_variable_in_args(AtomicGoalArgs, ArgNum, TotalArgs,
                         Var),
                     MaybePrims = yes(
                         primitive_list_and_var(Primitives0, Var, no))
-                ;
+                else
                     % Perhaps this is a closure and the argument was passed in
                     % when the closure was created.
                     (
@@ -1461,7 +1447,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                             "argument number mismatch"))
                     )
                 )
-            ;
+            else
                 (
                     AllTraced = yes,
                     throw(internal_error($pred, "name mismatch on call"))
@@ -1475,26 +1461,26 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                         Primitives1)
                 )
             )
-        ;
+        else
             throw(internal_error($pred, "goalpath mismatch on call"))
         )
-    ;
+    else
         (
             Contour = [ContourHeadId - ContourHeadNode | ContourTail],
-            ( Atom = get_trace_exit_atom(ContourHeadNode) ->
-                (
-                    (
+            ( if Atom = get_trace_exit_atom(ContourHeadNode) then
+                ( if
+                    ( if
                         atomic_goal_identifiable(AtomicGoal) =
                             yes(AtomicGoalId)
-                    ->
+                    then
                         atomic_goal_matches_atom(AtomicGoalId, Atom)
-                    ;
+                    else
                         AllTraced = yes
                     )
-                ->
+                then
                     CallInfo = yes(ContourHeadId),
                     NewContour = ContourTail
-                ;
+                else
                     (
                         AllTraced = yes,
                         throw(internal_error($pred,
@@ -1505,7 +1491,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                         NewContour = Contour
                     )
                 )
-            ;
+            else
                 (
                     AllTraced = yes,
                     throw(internal_error($pred,
@@ -1524,17 +1510,17 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                 MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced, Primitives1)
         ;
             Contour = [],
-            (
+            ( if
                 MaybeEnd = no,
                 AllTraced = no
-            ->
+            then
                 Primitive = primitive(File, Line, BoundVars, AtomicGoal, Path,
                     no),
                 Primitives1 = [Primitive | Primitives0],
                 MaybePrims = make_primitive_list(Store, GoalPaths, [],
                     MaybeEnd, ArgNum, TotalArgs, HeadVars, AllTraced,
                     Primitives1)
-            ;
+            else
                 throw(internal_error($pred, "premature contour end"))
             )
         )
@@ -1558,9 +1544,9 @@ atomic_goal_matches_atom(AtomicGoalId, Atom) :-
 find_variable_in_args(Args, ArgNum, TotalArgs, Var) :-
     % We reverse the arg list in case this is an argument of a closure call
     % that is passed in at the time of the call.
-    ( index1(reverse(Args), TotalArgs - ArgNum + 1, FoundVar) ->
+    ( if list.index1(reverse(Args), TotalArgs - ArgNum + 1, FoundVar) then
         Var = FoundVar
-    ;
+    else
         throw(internal_error($pred, "arg not found"))
     ).
 
@@ -1578,7 +1564,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
         MaybeNodeId),
     (
         AtomicGoal = unify_construct_rep(_CellVar, _Cons, FieldVars),
-        ( list.member(Var0, BoundVars) ->
+        ( if list.member(Var0, BoundVars) then
             (
                 TermPath0 = [],
                 Origin = origin_primitive_op(File, Line, primop_unification)
@@ -1588,29 +1574,29 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
                 traverse_primitives(Prims, Var, TermPath, Store, ProcDefnRep,
                     Origin)
             )
-        ;
+        else
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
     ;
         AtomicGoal = unify_deconstruct_rep(CellVar, _Cons, FieldVars),
-        ( list.member(Var0, BoundVars) ->
-            ( list.index1_of_first_occurrence(FieldVars, Var0, Pos) ->
+        ( if list.member(Var0, BoundVars) then
+            ( if list.index1_of_first_occurrence(FieldVars, Var0, Pos) then
                 traverse_primitives(Prims, CellVar, [Pos | TermPath0],
                     Store, ProcDefnRep, Origin)
-            ;
+            else
                 throw(internal_error($pred, "bad deconstruct"))
             )
-        ;
+        else
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
     ;
         AtomicGoal = partial_deconstruct_rep(_, _, MaybeFieldVars),
-        (
+        ( if
             list.member(Var0, BoundVars),
             TermPath0 = [TermPathStep0 | TermPath]
-        ->
+        then
             list.det_index1(MaybeFieldVars, TermPathStep0, MaybeVar),
             (
                 MaybeVar = yes(Var),
@@ -1625,13 +1611,13 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
                 traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                     Origin)
             )
-        ;
+        else
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
     ;
         AtomicGoal = partial_construct_rep(_, _, MaybeFieldVars),
-        ( list.member(Var0, BoundVars) ->
+        ( if list.member(Var0, BoundVars) then
             (
                 TermPath0 = [],
                 Origin = origin_primitive_op(File, Line, primop_unification)
@@ -1653,46 +1639,46 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
                     throw(internal_error($pred, "input argument not found"))
                 )
             )
-        ;
+        else
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
     ;
         AtomicGoal = unify_assign_rep(ToVar, FromVar),
         % We handle assigns the same as we handle unsafe casts.
-        ( list.member(Var0, BoundVars) ->
+        ( if list.member(Var0, BoundVars) then
             decl_require(unify(Var0, ToVar), "traverse_primitives",
                 "bad assign"),
             traverse_primitives(Prims, FromVar, TermPath0, Store, ProcDefnRep,
                 Origin)
-        ;
+        else
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
     ;
         AtomicGoal = cast_rep(ToVar, FromVar),
         % We handle casts the same as we handle assigns.
-        ( list.member(Var0, BoundVars) ->
+        ( if list.member(Var0, BoundVars) then
             decl_require(unify(Var0, ToVar), $pred, "bad unsafe_cast"),
             traverse_primitives(Prims, FromVar, TermPath0, Store, ProcDefnRep,
                 Origin)
-        ;
+        else
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
     ;
         AtomicGoal = pragma_foreign_code_rep(_Args),
-        ( list.member(Var0, BoundVars) ->
+        ( if list.member(Var0, BoundVars) then
             Origin = origin_primitive_op(File, Line, primop_foreign_proc)
-        ;
+        else
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
     ;
         AtomicGoal = unify_simple_test_rep(_LVar, _RVar),
-        ( list.member(Var0, BoundVars) ->
+        ( if list.member(Var0, BoundVars) then
             throw(internal_error($pred, "bad test"))
-        ;
+        else
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
@@ -1706,29 +1692,29 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
             Var0, TermPath0, Store, ProcDefnRep, Origin)
     ;
         AtomicGoal = plain_call_rep(Module, Name, Args),
-        (
+        ( if
             list.member(Var0, BoundVars),
             plain_call_is_special_case(Module, Name, Args, NewVar)
-        ->
+        then
             traverse_primitives(Prims, NewVar, TermPath0, Store, ProcDefnRep,
                 Origin)
-        ;
+        else
             traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
                 Prims, Var0, TermPath0, Store, ProcDefnRep, Origin)
         )
     ;
         AtomicGoal = builtin_call_rep(_, _, _),
-        ( list.member(Var0, BoundVars) ->
+        ( if list.member(Var0, BoundVars) then
             Origin = origin_primitive_op(File, Line, primop_builtin_call)
-        ;
+        else
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
     ;
         AtomicGoal = event_call_rep(_, _),
-        ( list.member(Var0, BoundVars) ->
+        ( if list.member(Var0, BoundVars) then
             throw(internal_error($pred, "bad event"))
-        ;
+        else
             traverse_primitives(Prims, Var0, TermPath0, Store, ProcDefnRep,
                 Origin)
         )
@@ -1764,7 +1750,7 @@ plain_call_is_special_case(Module, Name, Args, NewVar) :-
 
 traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
         Prims, Var, TermPath, Store, ProcDefnRep, Origin) :-
-    ( list.member(Var, BoundVars) ->
+    ( if list.member(Var, BoundVars) then
         Pos = find_arg_pos(Args, Var),
         (
             MaybeNodeId = yes(NodeId),
@@ -1773,7 +1759,7 @@ traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
             MaybeNodeId = no,
             Origin = origin_primitive_op(File, Line, primop_untraced_call)
         )
-    ;
+    else
         traverse_primitives(Prims, Var, TermPath, Store, ProcDefnRep, Origin)
     ).
 
@@ -1823,9 +1809,9 @@ find_arg_pos(HeadVars, Var) = ArgPos :-
 find_arg_pos_from_back([], _, _, _) :-
     throw(internal_error($pred, "empty list")).
 find_arg_pos_from_back([HeadVar | HeadVars], Var, Pos, ArgPos) :-
-    ( HeadVar = Var ->
+    ( if HeadVar = Var then
         ArgPos = any_head_var_from_back(Pos)
-    ;
+    else
         find_arg_pos_from_back(HeadVars, Var, Pos - 1, ArgPos)
     ).
 
@@ -1833,12 +1819,9 @@ find_arg_pos_from_back([HeadVar | HeadVars], Var, Pos, ArgPos) :-
 
 edt_subtree_details(Store, dynamic(Ref), Event, SeqNo, CallPreceding) :-
     det_edt_return_node_from_id(Store, Ref, Node),
-    (
-        Node = node_exit(_, Call, _, _, Event, _, _, _)
-    ;
-        Node = node_fail(_, Call, _, Event, _, _)
-    ;
-        Node = node_excp(_, Call, _, _, Event, _, _)
+    ( Node = node_exit(_, Call, _, _, Event, _, _, _)
+    ; Node = node_fail(_, Call, _, Event, _, _)
+    ; Node = node_excp(_, Call, _, _, Event, _, _)
     ),
     call_node_from_id(Store, Call, CallNode),
     SeqNo = CallNode ^ call_seq,
@@ -1854,18 +1837,15 @@ edt_subtree_details(Store, dynamic(Ref), Event, SeqNo, CallPreceding) :-
     trace_node(R)::out(edt_return_node)) is det <= annotated_trace(S, R).
 
 det_edt_return_node_from_id(Store, Ref, Node) :-
-    (
+    ( if
         trace_node_from_id(Store, Ref, Node0),
-        (
-            Node0 = node_exit(_, _, _, _, _, _, _, _)
-        ;
-            Node0 = node_fail(_, _, _, _, _, _)
-        ;
-            Node0 = node_excp(_, _, _, _, _, _, _)
+        ( Node0 = node_exit(_, _, _, _, _, _, _, _)
+        ; Node0 = node_fail(_, _, _, _, _, _)
+        ; Node0 = node_excp(_, _, _, _, _, _, _)
         )
-    ->
+    then
         Node = Node0
-    ;
+    else
         throw(internal_error($pred, "not a return node"))
     ).
 
@@ -1873,18 +1853,15 @@ det_edt_return_node_from_id(Store, Ref, Node) :-
     <= annotated_trace(S, R).
 
 get_edt_call_node(Store, Ref, CallId) :-
-    (
+    ( if
         trace_node_from_id(Store, Ref, Node0),
-        (
-            Node0 = node_exit(_, CallId0, _, _, _, _, _, _)
-        ;
-            Node0 = node_fail(_, CallId0, _, _, _, _)
-        ;
-            Node0 = node_excp(_, CallId0, _, _, _, _, _)
+        ( Node0 = node_exit(_, CallId0, _, _, _, _, _, _)
+        ; Node0 = node_fail(_, CallId0, _, _, _, _)
+        ; Node0 = node_excp(_, CallId0, _, _, _, _, _)
         )
-    ->
+    then
         CallId = CallId0
-    ;
+    else
         throw(internal_error($pred, "not a return node"))
     ).
 
@@ -1924,8 +1901,8 @@ calls_arguments_are_all_ground(Store, CallId) :-
     is det.
 
 decl_require(Goal, Loc, Msg) :-
-    ( call(Goal) ->
+    ( if call(Goal) then
         true
-    ;
+    else
         throw(internal_error(Loc, Msg))
     ).

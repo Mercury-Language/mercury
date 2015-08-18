@@ -170,7 +170,7 @@
 :- type search_mode
     --->    analyser_top_down
             % Look for the first unknown suspect in a top-down fashion,
-            % starting at the root. If no unknown suspects are found then
+            % starting at the root. If no unknown suspects are found, then
             % choose a skipped suspect to requery.
 
     ;       analyser_follow_subterm_end(
@@ -407,9 +407,9 @@ start_or_resume_analysis(Store, Oracle, AnalysisType, Response, !Analyser) :-
         )
     ;
         AnalysisType = resume_previous,
-        ( reask_last_question(Store, !.Analyser, Response0) ->
+        ( if reask_last_question(Store, !.Analyser, Response0) then
             Response = Response0
-        ;
+        else
             decide_analyser_response(Store, Oracle, Response, !Analyser)
         )
     ).
@@ -534,7 +534,7 @@ process_answer(Store, Answer, SuspectId, !Analyser) :-
 
 revise_analysis(Store, Response, !Analyser) :-
     SearchSpace = !.Analyser ^ search_space,
-    ( root(SearchSpace, RootId) ->
+    ( if root(SearchSpace, RootId) then
         Node = get_edt_node(!.Analyser ^ search_space, RootId),
         edt_question(Store, Node, Question),
         Response = analyser_response_revise(Question),
@@ -544,7 +544,7 @@ revise_analysis(Store, Response, !Analyser) :-
             yes(suspect_and_reason(RootId, ques_reason_revise)),
         !Analyser ^ search_mode :=
             !.Analyser ^ fallback_search_mode
-    ;
+    else
         % There must be a root, since a bug was found (and is now
         % being revised).
         throw(internal_error("revise_analysis", "no root"))
@@ -579,23 +579,23 @@ handle_search_response(Store, SearchResponse, !Analyser, AnalyserResponse) :-
         SearchSpace = !.Analyser ^ search_space,
         Node = get_edt_node(SearchSpace, SuspectId),
         edt_question(Store, Node, OracleQuestion),
-        (
+        ( if
             (
                 suspect_unknown(SearchSpace, SuspectId)
             ;
                 suspect_skipped(SearchSpace, SuspectId)
             )
-        ->
+        then
             AnalyserResponse =
                 analyser_response_oracle_question(OracleQuestion)
-        ;
+        else if
             suspect_ignored(SearchSpace, SuspectId)
-        ->
+        then
             % Searches should not respond with questions about suspects we
             % already know to be trusted.
             throw(internal_error("handle_search_response",
                 "search responded with query about ignored suspect"))
-        ;
+        else
             % We already known something about this suspect, but the search
             % wants the oracle to be requeried. This may happen if the
             % search thinks the user might have answered the question
@@ -705,9 +705,9 @@ top_down_search(Store, Oracle, !SearchSpace, Response) :-
     % If there's no root yet (because the oracle hasn't asserted any nodes
     % are erroneous yet) then use the topmost suspect as a starting point.
 
-    ( root(!.SearchSpace, RootId) ->
+    ( if root(!.SearchSpace, RootId) then
         Start = RootId
-    ;
+    else
         topmost_det(!.SearchSpace, Start)
     ),
     first_unknown_descendant(Store, Oracle, Start, !SearchSpace,
@@ -717,12 +717,12 @@ top_down_search(Store, Oracle, !SearchSpace, Response) :-
         Response = search_response_question(Unknown, ques_reason_top_down)
     ;
         MaybeUnknownDescendant = not_found,
-        (
+        ( if
             choose_skipped_suspect(!.SearchSpace, SkippedSuspect)
-        ->
+        then
             Response = search_response_question(SkippedSuspect,
                 ques_reason_skipped)
-        ;
+        else if
             % Since the are no skipped suspects and no unknown suspects
             % in the search space, if there is a root (i.e. an erroneous
             % suspect), then it must be a bug. Note that only top down search
@@ -730,39 +730,39 @@ top_down_search(Store, Oracle, !SearchSpace, Response) :-
             % other search algorithms call top down search if they can't find
             % an unknown suspect.
             root(!.SearchSpace, BugId)
-        ->
-            (
+        then
+            ( if
                 children(Store, Oracle, BugId, !SearchSpace, BugChildren),
                 non_ignored_descendants(Store, Oracle, BugChildren,
                     !SearchSpace, NonIgnoredDescendants),
                 list.filter(suspect_correct_or_inadmissible(!.SearchSpace),
                     NonIgnoredDescendants, CorrectDescendants, [])
-            ->
+            then
                 list.filter(suspect_inadmissible(!.SearchSpace), BugChildren,
                     InadmissibleChildren),
                 Response = search_response_found_bug(BugId, CorrectDescendants,
                     InadmissibleChildren)
-            ;
+            else
                 throw(internal_error("top_down_search",
                     "bug has unexplored or unknown children"))
             )
-        ;
+        else
             % Try to extend the search space upwards. If this fails
             % and we're not at the topmost traced node, then request that
             % an explicit supertree be generated.
-            (
+            ( if
                 extend_search_space_upwards(Store, Oracle, !.SearchSpace,
                     ExtendedSearchSpace)
-            ->
+            then
                 top_down_search(Store, Oracle, ExtendedSearchSpace,
                     !:SearchSpace, Response)
-            ;
+            else
                 topmost_det(!.SearchSpace, TopMostId),
                 TopMostNode = get_edt_node(!.SearchSpace, TopMostId),
-                ( edt_topmost_node(Store, TopMostNode) ->
+                ( if edt_topmost_node(Store, TopMostNode) then
                     % We can't look any higher.
                     Response = search_response_no_suspects
-                ;
+                else
                     Response = search_response_require_explicit_supertree
                 )
             )
@@ -817,7 +817,7 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
             % outside the node).
             MaybePath = no
         ),
-        (
+        ( if
             % We ask about the binding node even if it was previously skipped,
             % since this behaviour is more predictable from the user's
             % perspective.
@@ -825,21 +825,21 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
             ( suspect_unknown(!.SearchSpace, BindingSuspectId)
             ; suspect_skipped(!.SearchSpace, BindingSuspectId)
             )
-        ->
+        then
             SearchResponse = search_response_question(BindingSuspectId,
                 ques_reason_binding_node(PrimOpType, FileName, LineNo,
                     MaybePath, ProcLabel, no)),
             NewMode = FallBackSearchMode
-        ;
-            (
+        else
+            ( if
                 LastUnknown = yes(Unknown),
                 suspect_still_unknown(!.SearchSpace, Unknown)
-            ->
+            then
                 Reason = ques_reason_binding_node(PrimOpType,
                     FileName, LineNo, MaybePath, ProcLabel, yes),
                 SearchResponse = search_response_question(Unknown, Reason),
                 NewMode = FallBackSearchMode
-            ;
+            else
                 search_for_question(Store, Oracle, !SearchSpace,
                     FallBackSearchMode, FallBackSearchMode, NewMode,
                     SearchResponse)
@@ -847,14 +847,14 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
         )
     ;
         FindOriginResponse = not_found,
-        (
+        ( if
             LastUnknown = yes(Unknown),
             suspect_still_unknown(!.SearchSpace, Unknown)
-        ->
+        then
             SearchResponse = search_response_question(Unknown,
                 ques_reason_subterm_no_proc_rep),
             NewMode = FallBackSearchMode
-        ;
+        else
             search_for_question(Store, Oracle, !SearchSpace,
                 FallBackSearchMode, FallBackSearchMode,
                 NewMode, SearchResponse)
@@ -875,14 +875,14 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
     ;
         FindOriginResponse = origin(OriginId, OriginArgPos,
             OriginTermPath, SubtermMode),
-        (
+        ( if
             suspect_unknown(!.SearchSpace, OriginId)
-        ->
+        then
             NewLastUnknown = yes(OriginId)
-        ;
+        else
             NewLastUnknown = LastUnknown
         ),
-        (
+        ( if
             % Check if it's worth continuing tracking the sub-term.
             % We want to stop if we enter a portion of the search space
             % known not to contain the bug from which we can't return
@@ -890,20 +890,20 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
             % the sub-term is an input).
 
             give_up_subterm_tracking(!.SearchSpace, OriginId, SubtermMode)
-        ->
-            (
+        then
+            ( if
                 LastUnknown = yes(Unknown),
                 suspect_still_unknown(!.SearchSpace, Unknown)
-            ->
+            then
                 SearchResponse = search_response_question(Unknown,
                     ques_reason_binding_node_eliminated),
                 NewMode = FallBackSearchMode
-            ;
+            else
                 search_for_question(Store, Oracle, !SearchSpace,
                     FallBackSearchMode, FallBackSearchMode,
                     NewMode, SearchResponse)
             )
-        ;
+        else
             % This recursive call will not lead to an infinite loop
             % because eventually either the sub-term will be bound
             % (and find_subterm_origin will respond with primitive_op/3)
@@ -928,18 +928,18 @@ follow_subterm_end_search_2(Store, Oracle, !SearchSpace, HowTrack,
     search_mode::out) is det.
 
 setup_binary_search(SearchSpace, SuspectId, SearchMode) :-
-    ( root(SearchSpace, RootId) ->
+    ( if root(SearchSpace, RootId) then
         TopId = RootId,
         BottomId = SuspectId
-    ;
+    else
         topmost_det(SearchSpace, TopId),
         BottomId = SuspectId
     ),
-    ( get_path(SearchSpace, BottomId, TopId, Path) ->
+    ( if get_path(SearchSpace, BottomId, TopId, Path) then
         PathArray = array.from_list(Path),
         array.bounds(PathArray, Top, Bottom),
         SearchMode = analyser_binary(PathArray, Top - Bottom, Bottom)
-    ;
+    else
         throw(internal_error("setup_binary_search",
             "TopId not an ancestor of BottomId"))
     ).
@@ -955,40 +955,40 @@ binary_search(Store, Oracle, PathArray, Top, Bottom, LastTested,
 
     % Check what the result of the query about LastTested was and adjust
     % the range appropriately.
-    (
+    ( if
         % The oracle answered `erroneous'.
         suspect_in_excluded_complement(!.SearchSpace, SuspectId)
-    ->
+    then
         NewTop = LastTested + 1,
         NewBottom = Bottom
-    ;
+    else if
         % The oracle answered `correct' or `inadmissible'
         suspect_in_excluded_subtree(!.SearchSpace, SuspectId)
-    ->
+    then
         NewTop = Top,
         NewBottom = LastTested - 1
-    ;
+    else
         % The suspect is trusted(ignored) or was skipped.
         NewTop = Top,
         NewBottom = Bottom
     ),
-    (
+    ( if
         NewTop > NewBottom
-    ->
+    then
         % Revert to the fallback search mode when binary search is over.
         search_for_question(Store, Oracle, !SearchSpace,
             FallBackSearchMode, FallBackSearchMode, NewMode, Response)
-    ;
-        (
+    else
+        ( if
             find_unknown_closest_to_middle(!.SearchSpace, PathArray,
                 NewTop, NewBottom, UnknownClosestToMiddle)
-        ->
+        then
             NewMode = analyser_binary(PathArray, NewTop - NewBottom,
                 UnknownClosestToMiddle),
             Response = search_response_question(
                 PathArray ^ elem(UnknownClosestToMiddle),
                 ques_reason_binary(NewBottom, NewTop, UnknownClosestToMiddle))
-        ;
+        else
             % No unknown suspects on the path, so revert to the fallback
             % search mode.
             search_for_question(Store, Oracle, !SearchSpace,
@@ -1030,17 +1030,17 @@ find_unknown_closest_to_range(SearchSpace, PathArray, OuterTop, OuterBottom,
         InnerTop, InnerBottom, Unknown) :-
     InnerTop =< InnerBottom,
     ( OuterTop =< InnerTop ; InnerBottom =< OuterBottom ),
-    (
+    ( if
         OuterTop =< InnerTop,
         suspect_unknown(SearchSpace, PathArray ^ elem(InnerTop))
-    ->
+    then
         Unknown = InnerTop
-    ;
+    else if
         InnerBottom =< OuterBottom,
         suspect_unknown(SearchSpace, PathArray ^ elem(InnerBottom))
-    ->
+    then
         Unknown = InnerBottom
-    ;
+    else
         find_unknown_closest_to_range(SearchSpace, PathArray,
             OuterTop, OuterBottom, InnerTop - 1, InnerBottom + 1, Unknown)
     ).
@@ -1053,14 +1053,14 @@ divide_and_query_search(Store, Oracle, Weighting, !SearchSpace,
         Response, analyser_divide_and_query(Weighting)) :-
     % If there's no root yet (because the oracle hasn't asserted any nodes
     % are erroneous yet), then use top-down search.
-    ( root(!.SearchSpace, RootId) ->
-        ( children(Store, Oracle, RootId, !SearchSpace, Children) ->
+    ( if root(!.SearchSpace, RootId) then
+        ( if children(Store, Oracle, RootId, !SearchSpace, Children) then
             find_middle_weight(Store, Oracle, Weighting, Children,
                 RootId, no, !SearchSpace, Response)
-        ;
+        else
             Response = search_response_require_explicit_subtree(RootId)
         )
-    ;
+    else
         top_down_search(Store, Oracle, !SearchSpace, Response)
     ).
 
@@ -1076,10 +1076,10 @@ divide_and_query_search(Store, Oracle, Weighting, !SearchSpace,
 
 find_middle_weight_if_children(Store, Oracle, Weighting, SuspectId, TopId,
         MaybeLastUnknown, !SearchSpace, Response) :-
-    ( children(Store, Oracle, SuspectId, !SearchSpace, Children) ->
+    ( if children(Store, Oracle, SuspectId, !SearchSpace, Children) then
         find_middle_weight(Store, Oracle, Weighting, Children, TopId,
             MaybeLastUnknown, !SearchSpace, Response)
-    ;
+    else
         Response = search_response_require_explicit_subtree(SuspectId)
     ).
 
@@ -1099,15 +1099,15 @@ find_middle_weight_if_children(Store, Oracle, Weighting, SuspectId, TopId,
 
 find_middle_weight(Store, Oracle, Weighting, [], TopId,
         MaybeLastUnknown, !SearchSpace, Response) :-
-    (
+    ( if
         MaybeLastUnknown = yes(LastUnknown),
         suspect_still_unknown(!.SearchSpace, LastUnknown)
-    ->
+    then
         Response = search_response_question(LastUnknown,
             ques_reason_divide_and_query(Weighting,
                 get_weight(!.SearchSpace, TopId),
                 get_weight(!.SearchSpace, LastUnknown)))
-    ;
+    else
         % This could happen when there were no unknown suspects encountered
         % during the search, in which case we revert to top-down search.
         top_down_search(Store, Oracle, !SearchSpace, Response)
@@ -1121,48 +1121,48 @@ find_middle_weight(Store, Oracle, Weighting, [SuspectId | SuspectIds], TopId,
     Weight = get_weight(!.SearchSpace, SuspectId),
     list.foldl2(max_weight(!.SearchSpace), SuspectIds,
         Weight, MaxWeight, SuspectId, Heaviest),
-    ( MaxWeight > Target ->
-        ( suspect_unknown(!.SearchSpace, Heaviest) ->
+    ( if MaxWeight > Target then
+        ( if suspect_unknown(!.SearchSpace, Heaviest) then
             NewMaybeLastUnknown = yes(Heaviest)
-        ;
+        else
             NewMaybeLastUnknown = MaybeLastUnknown
         ),
         find_middle_weight_if_children(Store, Oracle, Weighting, Heaviest,
             TopId, NewMaybeLastUnknown, !SearchSpace, Response)
-    ;
-        ( suspect_unknown(!.SearchSpace, Heaviest) ->
-            (
+    else
+        ( if suspect_unknown(!.SearchSpace, Heaviest) then
+            ( if
                 MaybeLastUnknown = yes(LastUnknown),
                 suspect_still_unknown(!.SearchSpace, LastUnknown)
-            ->
+            then
                 LastUnknownWeight = get_weight(!.SearchSpace, LastUnknown),
 
                 % If the last unknown suspect was closer to the target weight,
                 % then ask about it.
-                ( LastUnknownWeight - Target < Target - MaxWeight ->
+                ( if LastUnknownWeight - Target < Target - MaxWeight then
                     Response = search_response_question(LastUnknown,
                         ques_reason_divide_and_query(Weighting, TopWeight,
                             LastUnknownWeight))
-                ;
+                else
                     Response = search_response_question(Heaviest,
                         ques_reason_divide_and_query(Weighting, TopWeight,
                             MaxWeight))
                 )
-            ;
+            else
                 Response = search_response_question(Heaviest,
                     ques_reason_divide_and_query(Weighting, TopWeight,
                         MaxWeight))
             )
-        ;
-            (
+        else
+            ( if
                 MaybeLastUnknown = yes(LastUnknown),
                 suspect_still_unknown(!.SearchSpace, LastUnknown)
-            ->
+            then
                 LastUnknownWeight = get_weight(!.SearchSpace, LastUnknown),
                 Response = search_response_question(LastUnknown,
                     ques_reason_divide_and_query(Weighting, TopWeight,
                         LastUnknownWeight))
-            ;
+            else
                 % Look deeper until we find an unknown.
                 find_middle_weight_if_children(Store, Oracle, Weighting,
                     Heaviest, TopId, no, !SearchSpace, Response)
@@ -1176,10 +1176,10 @@ find_middle_weight(Store, Oracle, Weighting, [SuspectId | SuspectIds], TopId,
 max_weight(SearchSpace, SuspectId, PrevMax, NewMax,
         PrevSuspectId, NewSuspectId) :-
     Weight = get_weight(SearchSpace, SuspectId),
-    ( Weight > PrevMax ->
+    ( if Weight > PrevMax then
         NewMax = Weight,
         NewSuspectId = SuspectId
-    ;
+    else
         NewMax = PrevMax,
         NewSuspectId = PrevSuspectId
     ).
@@ -1285,10 +1285,10 @@ show_info(Store, OutStream, Analyser, !IO) :-
         (
             Analyser ^ last_search_question =
                 yes(suspect_and_reason(LastId, Reason)),
-            (
+            ( if
                 edt_context(Store, get_edt_node(SearchSpace,
                     LastId), FileName -  LineNo, MaybeReturnContext)
-            ->
+            then
                 (
                     MaybeReturnContext = yes(ReturnFileName - ReturnLineNo),
                     ContextStr = FileName ++ ":" ++ int_to_string(LineNo)
@@ -1301,7 +1301,7 @@ show_info(Store, OutStream, Analyser, !IO) :-
                 list.append(!.FieldNames, ["Context of current question"],
                     !:FieldNames),
                 list.append(!.Data, [ContextStr], !:Data)
-            ;
+            else
                 true
             )
         ;
@@ -1313,28 +1313,28 @@ show_info(Store, OutStream, Analyser, !IO) :-
         !:Data = !.Data ++ [search_mode_to_string(Analyser ^ search_mode)],
 
         MaybeWeighting = get_current_maybe_weighting(SearchSpace),
-        ( MaybeWeighting = yes(number_of_events) ->
-            ( root(SearchSpace, RootId) ->
+        ( if MaybeWeighting = yes(number_of_events) then
+            ( if root(SearchSpace, RootId) then
                 StartId = RootId
-            ;
+            else
                 topmost_det(SearchSpace, StartId)
             ),
                 Weight = get_weight(SearchSpace, StartId),
-            (
+            ( if
                 Analyser ^ search_mode =
                     analyser_divide_and_query(number_of_events)
-            ->
+            then
                 !:FieldNames = !.FieldNames ++
                     ["Estimated questions remaining"],
                 EstimatedQuestions = float.ceiling_to_int(
                     math.log2(float(Weight))),
                 !:Data = !.Data ++ [int_to_string(EstimatedQuestions)]
-            ;
+            else
                 true
             ),
             !:FieldNames = !.FieldNames ++ ["Number of suspect events"],
             !:Data = !.Data ++ [int_to_string_thousands(Weight)]
-        ;
+        else
             true
         ),
 

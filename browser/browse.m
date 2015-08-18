@@ -224,7 +224,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Saving terms to files
+% Saving terms to files.
 %
 
 save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
@@ -368,11 +368,9 @@ launch_xml_browser(OutStream, ErrStream, CommandStr, !IO) :-
         Result = ok(ExitStatus),
         (
             ExitStatus = exited(ExitCode),
-            (
-                ExitCode = 0
-            ->
+            ( if ExitCode = 0 then
                 true
-            ;
+            else
                 io.write_string(ErrStream,
                     "mdb: The command `" ++ CommandStr ++
                     "' terminated with a non-zero exit code.\n", !IO)
@@ -395,7 +393,7 @@ save_univ(Indent, Univ, !IO) :-
 :- pred save_term(int::in, T::in, io::di, io::uo) is cc_multi.
 
 save_term(Indent, Term, !IO) :-
-    ( dynamic_cast_to_list(Term, List) ->
+    ( if dynamic_cast_to_list(Term, List) then
         (
             List = [],
             write_indent(Indent, !IO),
@@ -413,7 +411,7 @@ save_term(Indent, Term, !IO) :-
             write_indent(Indent, !IO),
             io.write_string("]", !IO)
         )
-    ;
+    else
         deconstruct(Term, include_details_cc, Functor, _Arity, Args),
         write_indent(Indent, !IO),
         io.write_string(Functor, !IO),
@@ -453,16 +451,16 @@ save_args(Indent, [Univ | Univs], !IO) :-
 :- pred write_indent(int::in, io::di, io::uo) is det.
 
 write_indent(Indent, !IO) :-
-    ( Indent =< 0 ->
+    ( if Indent =< 0 then
         true
-    ;
+    else
         io.write_char(' ', !IO),
         write_indent(Indent - 1, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 %
-% Non-interactive display
+% Non-interactive display.
 %
 
 print_browser_term(Term, OutputStream, Caller, State, !IO) :-
@@ -483,12 +481,12 @@ print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State, !IO):-
     % For plain terms, we assume that the variable name has been printed
     % on the first part of the line. If the format is something other than
     % `flat', then we need to start on the next line.
-    (
+    ( if
         BrowserTerm = plain_term(_),
         Format \= flat
-    ->
+    then
         io.nl(!IO)
-    ;
+    else
         true
     ),
     portray(debugger_internal, Caller, no, Info, !IO),
@@ -496,7 +494,7 @@ print_common(BrowserTerm, OutputStream, Caller, MaybeFormat, State, !IO):-
 
 %---------------------------------------------------------------------------%
 %
-% Interactive display
+% Interactive display.
 %
 
 browse_browser_term_no_modes(Term, InputStream, OutputStream,
@@ -854,7 +852,7 @@ help(Debugger, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Various pretty-print routines
+% Various pretty-print routines.
 %
 
 :- pred portray_maybe_path(debugger::in, browse_caller_type::in,
@@ -922,9 +920,9 @@ portray_flat(Debugger, BrowserTerm, Params, !IO) :-
 
     browser_term_size_left_from_max(BrowserTerm, max_print_size,
         RemainingSize),
-    ( RemainingSize >= 0 ->
+    ( if RemainingSize >= 0 then
         portray_flat_write_browser_term(BrowserTerm, !IO)
-    ;
+    else
         io.get_stream_db(StreamDb, !IO),
         BrowserDb = browser_db(StreamDb),
         browser_term_to_string(BrowserDb, BrowserTerm, Params ^ size,
@@ -992,9 +990,9 @@ portray_raw_pretty(Debugger, BrowserTerm, Params, !IO) :-
 max_print_size = 60.
 
 term_size_left_from_max(Univ, MaxSize, RemainingSize) :-
-    ( MaxSize < 0 ->
+    ( if MaxSize < 0 then
         RemainingSize = MaxSize
-    ;
+    else
         deconstruct.limited_deconstruct_cc(univ_value(Univ), MaxSize,
             MaybeFunctorArityArgs),
         (
@@ -1038,9 +1036,9 @@ browser_term_size_left_from_max(BrowserTerm, MaxSize, RemainingSize) :-
     is cc_multi.
 
 write_univ_or_unbound(Stream, Univ, !IO) :-
-    ( univ_to_type(Univ, _ `with_type` unbound) ->
+    ( if univ_to_type(Univ, _ `with_type` unbound) then
         io.write_char(Stream, '_', !IO)
-    ;
+    else
         string_writer.write_univ(Stream, include_details_cc, Univ, !IO)
     ).
 
@@ -1084,14 +1082,14 @@ browser_term_to_string_2(BrowserDb, BrowserTerm, MaxSize, CurSize, NewSize,
         MaxDepth, CurDepth, Str) :-
     limited_deconstruct_browser_term_cc(BrowserDb, BrowserTerm, MaxSize,
         MaybeFunctorArityArgs, MaybeReturn),
-    (
+    ( if
         CurSize < MaxSize,
         CurDepth < MaxDepth,
         MaybeFunctorArityArgs = yes({Functor, _Arity, Args})
-    ->
+    then
         browser_term_to_string_3(BrowserDb, Functor, Args, MaybeReturn,
             MaxSize, CurSize, NewSize, MaxDepth, CurDepth, Str)
-    ;
+    else
         browser_term_compress(BrowserDb, BrowserTerm, Str),
         NewSize = CurSize
     ).
@@ -1102,11 +1100,11 @@ browser_term_to_string_2(BrowserDb, BrowserTerm, MaxSize, CurSize, NewSize,
 
 browser_term_to_string_3(BrowserDb, Functor, Args, MaybeReturn,
         MaxSize, Size0, Size, MaxDepth, Depth0, Str) :-
-    (
+    ( if
         Functor = "[|]",
         Args = [ListHead, ListTail],
         MaybeReturn = no
-    ->
+    then
         % For the purposes of size and depth, we treat lists as if they consist
         % of one functor plus an argument for each element of the list.
         Size1 = Size0 + 1,
@@ -1117,14 +1115,14 @@ browser_term_to_string_3(BrowserDb, Functor, Args, MaybeReturn,
             MaxSize, Size2, Size, MaxDepth, Depth1, TailStrs),
         list.append(TailStrs, ["]"], Strs),
         string.append_list(["[", HeadStr | Strs], Str)
-    ;
+    else if
         Functor = "[]",
         Args = [],
         MaybeReturn = no
-    ->
+    then
         Size = Size0 + 1,
         Str = "[]"
-    ;
+    else
         Size1 = Size0 + 1,
         Depth1 = Depth0 + 1,
         args_to_string_list(BrowserDb, Args, MaxSize, Size1, Size2,
@@ -1156,40 +1154,40 @@ list_tail_to_string_list(BrowserDb, TailUniv, MaxSize, Size0, Size,
         Limit, MaybeFunctorArityArgs, MaybeReturn),
     (
         MaybeFunctorArityArgs = yes({Functor, _Arity, Args}),
-        (
+        ( if
             Functor = "[]",
             Args = [],
             MaybeReturn = no
-        ->
+        then
             Size = Size0,
             TailStrs = []
-        ;
+        else if
             Functor = "[|]",
             Args = [ListHead, ListTail],
             MaybeReturn = no
-        ->
-            (
+        then
+            ( if
                 Size0 < MaxSize,
                 Depth0 < MaxDepth
-            ->
+            then
                 browser_term_to_string_2(BrowserDb, plain_term(ListHead),
                     MaxSize, Size0, Size1, MaxDepth, Depth0, HeadStr),
                 list_tail_to_string_list(BrowserDb, ListTail, MaxSize,
                     Size1, Size, MaxDepth, Depth0, TailStrs0),
                 TailStrs = [", ", HeadStr | TailStrs0]
-            ;
+            else
                 Size = Size0,
                 TailStrs = [", ..."]
             )
-        ;
-            (
+        else
+            ( if
                 Size0 < MaxSize,
                 Depth0 < MaxDepth
-            ->
+            then
                 browser_term_to_string_3(BrowserDb, Functor, Args, MaybeReturn,
                     MaxSize, Size0, Size, MaxDepth, Depth0, TailStr),
                 TailStrs = [" | ", TailStr]
-            ;
+            else
                 Size = Size0,
                 browser_term_compress(BrowserDb, plain_term(TailUniv),
                     TailCompressedStr),
@@ -1251,9 +1249,9 @@ comma_string_list(Args) = Str :-
 
 browser_term_compress(BrowserDb, BrowserTerm, Str) :-
     functor_browser_term_cc(BrowserDb, BrowserTerm, Functor, Arity, IsFunc),
-    ( Arity = 0 ->
+    ( if Arity = 0 then
         Str = Functor
-    ;
+    else
         int_to_string(Arity, ArityStr),
         (
             IsFunc = yes,
@@ -1267,10 +1265,9 @@ browser_term_compress(BrowserDb, BrowserTerm, Str) :-
 %---------------------------------------------------------------------------%
 
     % Print using the pretty printer from the standard library.
-    % XXX because the pretty printer doesn't support a combination
-    % of both size and depth, we use the depth except for when depth
-    % is 0 then we use the size.
-    %
+    % XXX Because the pretty printer doesn't support a combination
+    % of both size and depth, we use the depth, except when depth is 0,
+    % in which case we use the size.
     %
 :- pred browser_term_to_string_pretty(S::in,
     browser_term::in, int::in, int::in,
@@ -1287,9 +1284,9 @@ browser_term_to_string_pretty(S, Term, Width, Lines, Size, Depth, !IO) :-
     ),
     get_default_formatter_map(Formatters, !IO),
 
-    ( Depth > 0 ->
+    ( if Depth > 0 then
         Limit = triangular(Depth)
-    ;
+    else
         Limit = linear(Size)
     ),
 
@@ -1322,11 +1319,11 @@ browser_term_to_string_verbose_2(BrowserDb, BrowserTerm,
         MaxSize, CurSize, NewSize, MaxDepth, CurDepth, Frame) :-
     limited_deconstruct_browser_term_cc(BrowserDb, BrowserTerm, MaxSize,
         MaybeFunctorArityArgs, MaybeReturn),
-    (
+    ( if
         CurSize < MaxSize,
         CurDepth < MaxDepth,
         MaybeFunctorArityArgs = yes({Functor, _Arity, Args0})
-    ->
+    then
         % XXX We should consider formatting function terms differently.
         (
             MaybeReturn = yes(Return),
@@ -1341,7 +1338,7 @@ browser_term_to_string_verbose_2(BrowserDb, BrowserTerm,
         args_to_string_verbose_list(BrowserDb, Args, ArgNum,
             MaxSize, CurSize1, NewSize, MaxDepth, CurDepth1, ArgsFrame),
         Frame = frame.vglue([Functor], ArgsFrame)
-    ;
+    else
         browser_term_compress(BrowserDb, BrowserTerm, Line),
         Frame = [Line],
         NewSize = CurSize
@@ -1389,7 +1386,7 @@ unlines([Line | Lines], Str) :-
 
 %---------------------------------------------------------------------------%
 %
-% Miscellaneous path handling
+% Miscellaneous path handling.
 %
 
 :- type deref_result(T)
@@ -1416,15 +1413,15 @@ deref_subterm(BrowserTerm, Path, Result) :-
             Result = deref_result(SubBrowserTerm)
         ;
             SimplifiedPath = [Step | SimplifiedPathTail],
-            (
+            ( if
                 (
                     Step = child_num(N),
-                    (
+                    ( if
                         N = list.length(Args) + 1,
                         MaybeReturn = yes(ReturnValue)
-                    ->
+                    then
                         ArgUniv = ReturnValue
-                    ;
+                    else
                         % The first argument of a non-array
                         % is numbered argument 1.
                         list.index1(Args, N, ArgUniv)
@@ -1434,11 +1431,11 @@ deref_subterm(BrowserTerm, Path, Result) :-
                     string_is_return_value_alias(Name),
                     MaybeReturn = yes(ArgUniv)
                 )
-            ->
+            then
                 deref_subterm_2(ArgUniv, SimplifiedPathTail, [Step],
                     SubResult),
                 deref_result_univ_to_browser_term(SubResult, Result)
-            ;
+            else
                 Result = deref_error([], Step)
             )
         )
@@ -1475,14 +1472,14 @@ deref_subterm_2(Univ, Path, RevPath0, Result) :-
         Path = [Dir | Dirs],
         (
             Dir = child_num(N),
-            (
+            ( if
                 TypeCtor = type_ctor(univ_type(Univ)),
                 type_ctor_name(TypeCtor) = "array",
                 type_ctor_module_name(TypeCtor) = "array"
-            ->
+            then
                 % The first element of an array is at index zero.
                 arg_cc(univ_value(Univ), N, MaybeValue)
-            ;
+            else
                 % The first argument of a non-array is numbered argument 1
                 % by the user but argument 0 by deconstruct.argument.
                 arg_cc(univ_value(Univ), N - 1, MaybeValue)
@@ -1636,10 +1633,10 @@ string_to_path(Str, Path) :-
 :- pred chars_to_path(list(char)::in, path::out) is semidet.
 
 chars_to_path([C | Cs], Path) :-
-    ( C = ('/') ->
+    ( if C = ('/') then
         Path = root_rel(Dirs),
         chars_to_dirs(Cs, Dirs)
-    ;
+    else
         Path = dot_rel(Dirs),
         chars_to_dirs([C | Cs], Dirs)
     ).
@@ -1654,15 +1651,15 @@ chars_to_dirs(Cs, Dirs) :-
 
 names_to_dirs([], []).
 names_to_dirs([Name | Names], Dirs) :-
-    ( Name = ".." ->
+    ( if Name = ".." then
         Dirs = [parent | RestDirs],
         names_to_dirs(Names, RestDirs)
-    ; Name = "." ->
+    else if Name = "." then
         names_to_dirs(Names, Dirs)
-    ; string.to_int(Name, Num) ->
+    else if string.to_int(Name, Num) then
         Dirs = [child_num(Num) | RestDirs],
         names_to_dirs(Names, RestDirs)
-    ;
+    else
         Dirs = [child_name(Name) | RestDirs],
         names_to_dirs(Names, RestDirs)
     ).
@@ -1714,9 +1711,9 @@ simplify_rev_dirs([Dir | Dirs], N, SoFar, SimpleDirs) :-
         simplify_rev_dirs(Dirs, N+1, SoFar, SimpleDirs)
     ;
         ( Dir = child_num(_) ; Dir = child_name(_) ),
-        ( N > 0 ->
+        ( if N > 0 then
             simplify_rev_dirs(Dirs, N-1, SoFar, SimpleDirs)
-        ;
+        else
             simplify_rev_dirs(Dirs, N, [Dir | SoFar], SimpleDirs)
         )
     ).
@@ -1779,15 +1776,15 @@ browser_mode_to_string(unbound) = "Unbound".
 
 synthetic_term_to_doc(Functor0, Args, MaybeReturn) = Doc :-
     ( if
-        (   Functor0 = "!."
-        ;   Functor0 = "."
-        ;   Functor0 = ".."
-        ;   Functor0 = "=.."
-        ;   not string.contains_char(Functor0, ('.'))
+        ( Functor0 = "!."
+        ; Functor0 = "."
+        ; Functor0 = ".."
+        ; Functor0 = "=.."
+        ; not string.contains_char(Functor0, ('.'))
         )
-      then
+    then
         Doc0 = format_term(Functor0, Args)
-      else
+    else
         FunctorDoc =
             qualified_functor_to_doc(string.split_at_char(('.'), Functor0)),
         (

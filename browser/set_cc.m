@@ -8,7 +8,7 @@
 
 % set_cc is an implementation of sets which uses compare_representation
 % instead of builtin comparison, hence it is suitable for use with terms
-% that don't have a canonical representation.  It is implemented using
+% that don't have a canonical representation. It is implemented using
 % tree234_cc; see that module for further discussion about the implications
 % of using compare_representation.
 %

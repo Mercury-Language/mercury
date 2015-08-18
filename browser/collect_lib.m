@@ -113,29 +113,28 @@ link_collect(ObjectFile, Filter, Initialize, PostProcess, SendResult,
         Result = 'n'
     ;
         MaybeHandle = dl_ok(Handle),
-        %
+
         % Look up the address of the C functions corresponding to the
         % initialize/1 and filter/15 predicates in the collect module.
-        %
         dl.sym(Handle, "ML_COLLECT_initialize", MaybeInitialize, !IO),
         dl.sym(Handle, "ML_COLLECT_filter", MaybeFilter, !IO),
         dl.sym(Handle, "ML_COLLECT_post_process", MaybePostProcess, !IO),
         dl.sym(Handle, "ML_COLLECT_send_collect_result", MaybeSendResult, !IO),
         dl.sym(Handle, "ML_COLLECT_collected_variable_type", MaybeType, !IO),
-        (
+        ( if
             MaybeInitialize = dl_ok(Initialize0),
             MaybeFilter = dl_ok(Filter0),
             MaybePostProcess = dl_ok(PostProcess0),
             MaybeSendResult = dl_ok(SendResult0),
             MaybeType = dl_ok(Type0)
-        ->
+        then
             Result = 'y',
             Initialize = Initialize0,
             Filter = Filter0,
             PostProcess = PostProcess0,
             GetCollectType = Type0,
             SendResult = SendResult0
-        ;
+        else
             set_to_null_pointer(Initialize),
             set_to_null_pointer(Filter),
             set_to_null_pointer(PostProcess),

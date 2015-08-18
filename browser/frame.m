@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: frame.m.
 % Author: aet.
-% 
+%
 % frame - minimally implements ASCII graphics frames.
 % This module is used by the term browser for displaying terms.
 %
 % XXX: This implementation is:
 % - very inefficient.
 % - specific to our immediate needs, and could be made more general.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -83,22 +83,23 @@ hglue(LeftFrame, RightFrame) = GluedFrame :-
     % Glue frames horizontally (juxtapose). align to top.
     RVSize = vsize(RightFrame),
     LVSize = vsize(LeftFrame),
-    ( RVSize < LVSize ->
+    ( if RVSize < LVSize then
         PadLines = LVSize - RVSize,
         RightFrameNew = frame_lower_pad(RightFrame, PadLines),
         LeftFrameNew = LeftFrame
-    ; LVSize < RVSize  ->
+    else if LVSize < RVSize  then
         PadLines = RVSize - LVSize,
         LeftFrameNew = frame_lower_pad(LeftFrame, PadLines),
         RightFrameNew = RightFrame
-    ;
+    else
         LeftFrameNew = LeftFrame,
         RightFrameNew = RightFrame
     ),
     frame_right_pad(LeftFrameNew, PaddedLeftFrameNew),
-    util.zip_with((pred(S1::in, S2::in, S3::out) is det :-
-            string.append(S1, S2, S3)),
-        PaddedLeftFrameNew, RightFrameNew, GluedFrame).
+    util.zip_with(
+        (pred(S1::in, S2::in, S3::out) is det :-
+            string.append(S1, S2, S3)
+        ), PaddedLeftFrameNew, RightFrameNew, GluedFrame).
 
     % Add right padding. That is, add whitespace on right so that
     % lines are all equal length.

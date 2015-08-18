@@ -10,9 +10,9 @@
 % Author: Mark Brown.
 %
 % This module defines a Mercury representation of Mercury program execution,
-% the annotated trace.  This structure is described in papers/decl_debug.  The
-% declarative debugging infrastructure in the trace directory builds an
-% annotated trace, using predicates exported from this module.  Once built,
+% the annotated trace. This structure is described in papers/decl_debug.
+% The declarative debugging infrastructure in the trace directory builds an
+% annotated trace, using predicates exported from this module. Once built,
 % the structure is passed to the front end (in browser/declarative_debugger.m)
 % where it is analysed to produce a bug diagnosis.
 %
@@ -38,213 +38,199 @@
     % This type represents a port in the annotated trace.
     % The type R is the type of references to other nodes in the store.
     %
-    % If this type is modified, the procedures below which
-    % do destructive update on values of this type may also
-    % need to be modified.
+    % If this type is modified, the procedures below which do destructive
+    % update on values of this type may also need to be modified.
+    %
+    % Every kind of trace node starts with a field that is a reference
+    % to the previous event (if there was one).
     %
 :- type trace_node(R)
     --->    node_call(
                 call_preceding      :: R,
-                                    % Preceding event.
 
+                % Last EXIT, REDO, FAIL or EXCP event.
                 call_last_interface :: R,
-                                    % Last EXIT, REDO, FAIL or
-                                    % EXCP event.
 
+                % Atom that was called.
                 call_atom_args      :: list(trace_atom_arg),
-                                    % Atom that was called.
 
+                % Call sequence number.
                 call_seq            :: sequence_number,
-                                    % Call sequence number.
 
+                % Trace event number.
                 call_event          :: event_number,
-                                    % Trace event number.
 
+                % Yes if the node is the root of an implicitly represented
+                % tree.
                 call_at_max_depth   :: maybe(implicit_tree_info),
-                                    % Yes if the node is the root of an
-                                    % implicitly represented tree. Some
-                                    % information about the implicit tree
-                                    % is also stored.
 
+                % The return label, if there is one.
                 call_return_label   :: maybe(label_layout),
-                                    % The return label, if there is one.
 
                 call_label          :: label_layout,
 
+                % The I/O action sequence number at the time of the call.
                 call_io_seq_num     :: int,
-                                    % The I/O action sequence number at the
-                                    % time of the call.
 
+                % The value of the suspicion accumulator at the time of
+                % the call.
                 call_suspicion      :: suspicion_accumulator
-                                    % The value of the suspicion
-                                    % accumulator at the time of
-                                    % the call.
             )
 
     ;       node_exit(
                 exit_preceding      :: R,
-                                    % Preceding event.
 
+                % CALL event.
                 exit_call           :: R,
-                                    % CALL event.
 
+                % Previous REDO event, if any.
                 exit_prev_redo      :: R,
-                                    % Previous REDO event, if any.
 
+                % Atom in its final state.
                 exit_atom_args      :: list(trace_atom_arg),
-                                    % Atom in its final state.
 
+                % Trace event number.
                 exit_event          :: event_number,
-                                    % Trace event number.
 
                 exit_label          :: label_layout,
 
+                % The I/O action sequence number at the time of the exit.
                 exit_io_seq_num     :: int,
-                                    % The I/O action sequence number at the
-                                    % time of the exit.
 
+                % The value of the suspicion accumulator at the time of
+                % the exit.
                 exit_suspicion      :: suspicion_accumulator
-                                    % The value of the suspicion accumulator
-                                    % at the time of the exit.
             )
 
     ;       node_redo(
                 redo_preceding      :: R,
-                                    % Preceding event.
 
+                % EXIT event.
                 redo_exit           :: R,
-                                    % EXIT event.
 
+                % REDO event number.
                 redo_event          :: event_number,
-                                    % REDO event number.
 
                 redo_label          :: label_layout,
+
+                % The value of the suspicion accumulator at the time
+                % of the redo.
                 redo_suspicion      :: suspicion_accumulator
-                                    % The value of the suspicion accumulator
-                                    % at the time of the redo.
             )
 
     ;       node_fail(
                 fail_preceding      :: R,
-                                    % Preceding event.
 
+                % CALL event.
                 fail_call           :: R,
-                                    % CALL event.
 
+                % Previous REDO event, if any.
                 fail_redo           :: R,
-                                    % Previous REDO event, if any.
 
+                % Trace event number.
                 fail_event          :: event_number,
-                                    % Trace event number.
 
                 fail_label          :: label_layout,
+
+                % The value of the suspicion accumulator at the time
+                % of the fail.
                 fail_suspicion      :: suspicion_accumulator
-                                    % The value of the suspicion accumulator
-                                    % at the time of the fail.
             )
 
     ;       node_excp(
                 excp_preceding      :: R,
-                                    % Preceding event.
 
-                excp_call           :: R, % Call event.
+                % Call event.
+                excp_call           :: R,
 
+                % Previous redo, if any.
                 excp_redo           :: R,
-                                    % Previous redo, if any.
 
+                % Exception thrown.
                 excp_value          :: term_rep,
-                                    % Exception thrown.
 
+                % Trace event number.
                 excp_event          :: event_number,
-                                    % Trace event number.
 
                 excp_label          :: label_layout,
 
+                % The value of the suspicion accumulator at the time
+                % of the excp.
                 excp_suspicion      :: suspicion_accumulator
-                                    % The value of the suspicion accumulator
-                                    % at the time of the excp.
             )
 
     ;       node_switch(
                 switch_preceding    :: R,
-                                    % Preceding event.
 
                 switch_label        :: label_layout
             )
 
     ;       node_first_disj(
                 first_disj_preceding:: R,
-                                    % Preceding event.
 
                 first_disj_label    :: label_layout
             )
 
     ;       node_later_disj(
                 later_disj_preceding:: R,
-                                    % Preceding event.
 
                 later_disj_label    :: label_layout,
 
+                % Event of the first DISJ.
                 later_disj_first    :: R
-                                    % Event of the first DISJ.
             )
 
     ;       node_cond(
                 cond_preceding      :: R,
-                                    % Preceding event.
 
                 cond_label          :: label_layout,
 
+                % Whether we have reached a THEN or ELSE event.
                 cond_status         :: goal_status
-                                    % Whether we have reached a THEN or ELSE
-                                    % event.
             )
 
     ;       node_then(
                 then_preceding      :: R,
-                                    % Preceding event.
 
+                % COND event.
                 then_cond           :: R,
-                                    % COND event.
 
                 then_label          :: label_layout
             )
 
     ;       node_else(
                 else_preceding      :: R,
-                                    % Preceding event.
 
+                % COND event.
                 else_cond           :: R,
-                                    % COND event.
 
                 else_label          :: label_layout
             )
 
     ;       node_neg(
                 neg_preceding       :: R,
-                                    % Preceding event.
+
+                % Path for this event.
                 neg_label           :: label_layout,
-                                    % Path for this event.
+
+                % Whether we have reached a NEGS or NEGF event.
                 neg_status          :: goal_status
-                                    % Whether we have reached
-                                    % a NEGS or NEGF event.
             )
 
     ;       node_neg_succ(
                 neg_succ_preceding  :: R,
-                                    % Preceding event.
 
+                % NEGE event.
                 neg_succ_enter      :: R,
-                                    % NEGE event.
+
                 neg_succ_label      :: label_layout
             )
 
     ;       node_neg_fail(
                 neg_fail_preceding  :: R,
-                                    % Preceding event.
 
+                % NEGE event.
                 neg_fail_enter      :: R,
-                                    % NEGE event.
 
                 neg_fail_label      :: label_layout
             ).
@@ -252,27 +238,24 @@
 :- type trace_atom_arg
     --->    arg_info(
                 prog_visible            :: bool,
+
+                % N, if this is the Nth programmer visible headvar
+                % (as opposed to a variable created by the compiler).
                 prog_vis_headvar_num    :: int,
-                                        % N, if this is the Nth
-                                        % programmer visible headvar
-                                        % (as opposed to a variable
-                                        % created by the compiler).
+
                 arg_value               :: maybe(term_rep)
             ).
 
 :- type trace_atom
     --->    atom(
+                % Info about the procedure, like its name and module
+                % and whether it is a function or a predicate.
                 proc_layout         :: proc_layout,
-                                    % Info about the
-                                    % procedure like its name and module
-                                    % and whether it is a function or a
-                                    % predicate.
 
+                % The arguments, including the compiler-generated ones.
+                % XXX This representation can't handle partially instantiated
+                % data structures.
                 atom_args           :: list(trace_atom_arg)
-                                    % The arguments, including the
-                                    % compiler-generated ones.
-                                    % XXX This representation can't handle
-                                    % partially instantiated data structures.
             ).
 
 :- type implicit_tree_info
@@ -316,49 +299,46 @@
 
 :- type suspicion_accumulator == int.
 
-    % Members of this typeclass represent an entire annotated
-    % trace.  The second parameter is the type of references
-    % to trace nodes, and the first parameter is the type of
-    % a "store": an abstract mapping from references to the
-    % nodes they refer to.
+    % Members of this typeclass represent an entire annotated trace.
+    % The second parameter is the type of references to trace nodes,
+    % and the first parameter is the type of a "store": an abstract mapping
+    % from references to the nodes they refer to.
     %
     % By convention, we use the names S and R for type variables
-    % which are constrained by annotated_trace.  We also use
-    % these names in type declarations where it is *intended* that
-    % the type variables be constrained by annotated_trace.
+    % which are constrained by annotated_trace. We also use these names
+    % in type declarations where it is *intended* that the type variables
+    % be constrained by annotated_trace.
     %
     % (Compare with the similar conventions for mercury_edt/2.)
     %
 :- typeclass annotated_trace(S, R) where [
 
-        % Dereference the identifier.  This fails if the
-        % identifier does not refer to any trace_node (ie.
-        % it is a NULL pointer).
+        % Dereference the identifier. This fails if the identifier
+        % does not refer to any trace_node, i.e. it is a NULL pointer.
         %
     pred trace_node_from_id(S::in, R::in, trace_node(R)::out) is semidet
 ].
 
-    % Given any node in an annotated trace, find the most recent
-    % node in the same contour (ie. the last node which has not been
-    % backtracked over, skipping negations, failed conditions, the
-    % bodies of calls, and alternative disjuncts).  Throw an exception
-    % if there is no such node (ie. if we are at the start of a
-    % negation, call, or failed condition).
+    % Given any node in an annotated trace, find the most recent node
+    % in the same contour (ie. the last node which has not been backtracked
+    % over, skipping negations, failed conditions, the bodies of calls,
+    % and alternative disjuncts). Throw an exception if there is no such node
+    % (ie. if we are at the start of a negation, call, or failed condition).
     %
-    % In some cases the contour may reach a dead end.  This can
-    % happen if, for example, a DISJ node is not present because
-    % it is beyond the depth bound or in a module that is not traced;
-    % "stepping left" will arrive at a FAIL, REDO or NEGF node.  Since
-    % it is not possible to follow the original contour in these
-    % circumstances, we follow the previous contour instead.
+    % In some cases the contour may reach a dead end. This can happen if,
+    % for example, a DISJ node is not present because it is beyond the depth
+    % bound or in a module that is not traced; "stepping left" will arrive
+    % at a FAIL, REDO or NEGF node. Since it is not possible to follow
+    % the original contour in these circumstances, we follow the previous
+    % contour instead.
     %
 :- func step_left_in_contour(S, trace_node(R)) = R <= annotated_trace(S, R).
 
-    % Given any node in an annotated trace, find the most recent
-    % node in the same stratum (ie. the most recent node, skipping
-    % negations, failed conditions, and the bodies of calls).
-    % Throw an exception if there is no such node (ie. if we are at
-    % the start of a negation, call, or failed negation).
+    % Given any node in an annotated trace, find the most recent node
+    % in the same stratum (i.e. the most recent node, skipping negations,
+    % failed conditions, and the bodies of calls). Throw an exception
+    % if there is no such node (ie. if we are at the start of a negation,
+    % call, or failed negation).
     %
 :- func step_in_stratum(S, trace_node(R)) = R <= annotated_trace(S, R).
 
@@ -368,13 +348,16 @@
 :- pred det_trace_node_from_id(S::in, R::in, trace_node(R)::out) is det
     <= annotated_trace(S, R).
 
-:- inst trace_node_call ---> node_call(ground, ground, ground, ground, ground,
-    ground, ground, ground, ground, ground).
+:- inst trace_node_call
+    --->    node_call(ground, ground, ground, ground, ground,
+                ground, ground, ground, ground, ground
+            ).
 
 :- pred call_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_call))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_redo ---> node_redo(ground, ground, ground, ground, ground).
+:- inst trace_node_redo
+    --->    node_redo(ground, ground, ground, ground, ground).
 
     % maybe_redo_node_from_id/3 fails if the argument is a
     % NULL reference.
@@ -383,23 +366,28 @@
     trace_node(R)::out(trace_node_redo)) is semidet
     <= annotated_trace(S, R).
 
-:- inst trace_node_exit ---> node_exit(ground, ground, ground, ground,
-    ground, ground, ground, ground).
+:- inst trace_node_exit
+    --->    node_exit(ground, ground, ground, ground, ground,
+                ground, ground, ground
+            ).
 
 :- pred exit_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_exit))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_cond ---> node_cond(ground, ground, ground).
+:- inst trace_node_cond
+    --->    node_cond(ground, ground, ground).
 
 :- pred cond_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_cond))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_neg ---> node_neg(ground, ground, ground).
+:- inst trace_node_neg
+    --->    node_neg(ground, ground, ground).
 
 :- pred neg_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_neg))
     is det <= annotated_trace(S, R).
 
-:- inst trace_node_first_disj ---> node_first_disj(ground, ground).
+:- inst trace_node_first_disj
+    --->    node_first_disj(ground, ground).
 
 :- pred first_disj_node_from_id(S::in, R::in,
     trace_node(R)::out(trace_node_first_disj)) is det
@@ -412,32 +400,31 @@
 :- pred disj_node_from_id(S::in, R::in, trace_node(R)::out(trace_node_disj))
     is det <= annotated_trace(S, R).
 
-    % Load an execution tree which was previously saved by
-    % the back end.
+    % Load an execution tree which was previously saved by the back end.
     %
 :- pred load_trace_node_map(io.input_stream::in, trace_node_map::out,
     trace_node_key::out, io::di, io::uo) is det.
 
-    % Save an execution tree generated by the back end.  It is
-    % first converted into a trace_node_map/trace_node_key pair.
+    % Save an execution tree generated by the back end. It is first converted
+    % into a trace_node_map/trace_node_key pair.
     %
 :- pred save_trace_node_store(io.output_stream::in, trace_node_store::in,
     trace_node_id::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % This instance is used when the declarative debugger is in
-    % normal mode.  Values of this instance are produced by the
-    % back end and passed directly to the front end.
+    % This instance is used when the declarative debugger is in normal mode.
+    % Values of this instance are produced by the back end and passed directly
+    % to the front end.
     %
 :- type trace_node_store.
 :- type trace_node_id.
 :- instance annotated_trace(trace_node_store, trace_node_id).
 
-    % This instance is used when the declarative debugger is in
-    % test mode.  Values of this instance are produced by copying
-    % values of the previous instance.  Unlike the previous
-    % instance, values of this one can be fed through a stream.
+    % This instance is used when the declarative debugger is in test mode.
+    % Values of this instance are produced by copying values of the previous
+    % instance. Unlike the previous instance, values of this one can be
+    % fed through a stream.
     %
 :- type trace_node_map.
 :- type trace_node_key.
@@ -493,24 +480,26 @@ get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
 
 call_node_maybe_proc_defn_rep(CallNode, MaybeProcDefnRep) :-
     Label = CallNode ^ call_label,
-    ( call_node_bytecode_layout(Label, ProcLayout) ->
+    ( if call_node_bytecode_layout(Label, ProcLayout) then
         promise_pure (
-            ( semipure have_cached_proc_defn_rep(ProcLayout, ProcDefnRep) ->
+            ( if
+                semipure have_cached_proc_defn_rep(ProcLayout, ProcDefnRep)
+            then
                 MaybeProcDefnRep = yes(ProcDefnRep)
-            ;
+            else
                 ByteCodeBytes = proc_bytecode_bytes(ProcLayout),
-                (
+                ( if
                     trace_read_proc_defn_rep(ByteCodeBytes, Label, ProcDefnRep)
-                ->
+                then
                     impure cache_proc_defn_rep(ProcLayout, ProcDefnRep),
                     MaybeProcDefnRep = yes(ProcDefnRep)
-                ;
+                else
                     throw(internal_error("call_node_maybe_proc_defn_rep",
                         "cannot interpret proc bytecode"))
                 )
             )
         )
-    ;
+    else
         MaybeProcDefnRep = no
     ).
 
@@ -778,91 +767,91 @@ step_in_stratum(Store, Node) = Next :-
 :- func step_over_redo_or_call(S, R, R) = R <= annotated_trace(S, R).
 
 step_over_redo_or_call(Store, Call, MaybeRedo) = Next :-
-    ( maybe_redo_node_from_id(Store, MaybeRedo, Redo) ->
+    ( if maybe_redo_node_from_id(Store, MaybeRedo, Redo) then
         Redo = node_redo(Next, _, _, _, _)
-    ;
+    else
         call_node_from_id(Store, Call, CallNode),
         Next = CallNode ^ call_preceding
     ).
 
 det_trace_node_from_id(Store, NodeId, Node) :-
-    ( trace_node_from_id(Store, NodeId, Node0) ->
+    ( if trace_node_from_id(Store, NodeId, Node0) then
         Node = Node0
-    ;
+    else
         throw(internal_error("det_trace_node_from_id", "NULL node id"))
     ).
 
 call_node_from_id(Store, NodeId, Node) :-
-    (
+    ( if
         trace_node_from_id(Store, NodeId, Node0),
         Node0 = node_call(_, _, _, _, _, _, _, _, _, _)
-    ->
+    then
         Node = Node0
-    ;
+    else
         throw(internal_error("call_node_from_id", "not a CALL node"))
     ).
 
 maybe_redo_node_from_id(Store, NodeId, Node) :-
     trace_node_from_id(Store, NodeId, Node0),
-    (
+    ( if
         Node0 = node_redo(_, _, _, _, _)
-    ->
+    then
         Node = Node0
-    ;
+    else
         throw(internal_error("maybe_redo_node_from_id",
             "not a REDO node or NULL"))
     ).
 
 exit_node_from_id(Store, NodeId, Node) :-
-    (
+    ( if
         trace_node_from_id(Store, NodeId, Node0),
         Node0 = node_exit(_, _, _, _, _, _, _, _)
-    ->
+    then
         Node = Node0
-    ;
+    else
         throw(internal_error("exit_node_from_id", "not an EXIT node"))
     ).
 
 cond_node_from_id(Store, NodeId, Node) :-
-    (
+    ( if
         trace_node_from_id(Store, NodeId, Node0),
         Node0 = node_cond(_, _, _)
-    ->
+    then
         Node = Node0
-    ;
+    else
         throw(internal_error("cond_node_from_id", "not a COND node"))
     ).
 
 neg_node_from_id(Store, NodeId, Node) :-
-    (
+    ( if
         trace_node_from_id(Store, NodeId, Node0),
         Node0 = node_neg(_, _, _)
-    ->
+    then
         Node = Node0
-    ;
+    else
         throw(internal_error("neg_node_from_id", "not a NEG node"))
     ).
 
 first_disj_node_from_id(Store, NodeId, Node) :-
-    (
+    ( if
         trace_node_from_id(Store, NodeId, Node0),
         Node0 = node_first_disj(_, _)
-    ->
+    then
         Node = Node0
-    ;
+    else
         throw(internal_error("first_disj_node_from_id",
             "not a first DISJ node"))
     ).
 
 disj_node_from_id(Store, NodeId, Node) :-
-    (
+    ( if
         trace_node_from_id(Store, NodeId, Node0),
         ( Node0 = node_first_disj(_, _)
         ; Node0 = node_later_disj(_, _, _)
         )
-    ->
+    then
         Node = Node0
-    ;
+    else
         throw(internal_error("disj_node_from_id",
             "not a DISJ node"))
     ).
@@ -874,7 +863,7 @@ disj_node_from_id(Store, NodeId, Node) :-
 ].
 
     % The "map" is actually just an integer representing the version
-    % of the map.  The empty map should be given the value 0, and
+    % of the map. The empty map should be given the value 0, and
     % each time the map is destructively modified (by C code), the
     % value should be incremented.
     %
@@ -882,7 +871,7 @@ disj_node_from_id(Store, NodeId, Node) :-
     --->    store(int).
 
     % The implementation of the identifiers is the same as what
-    % is identified.  This fact is hidden, however, to force the
+    % is identified. This fact is hidden, however, to force the
     % abstract map to be explicitly used whenever a new node is
     % accessed.
     %
@@ -912,9 +901,9 @@ search_trace_node_store(_, _, _) :-
     "MR_DD_call_node_get_last_interface").
 
 call_node_get_last_interface(Call) = Last :-
-    ( Call = node_call(_, Last0, _, _, _, _, _, _, _, _) ->
+    ( if Call = node_call(_, Last0, _, _, _, _, _, _, _, _) then
         Last = Last0
-    ;
+    else
         throw(internal_error("call_node_get_last_interface",
             "not a CALL node"))
     ).
@@ -926,9 +915,9 @@ call_node_get_last_interface(Call) = Last :-
     "MR_DD_call_node_set_last_interface").
 
 call_node_set_last_interface(Call0, Last) = Call :-
-    ( Call0 = node_call(_, _, _, _, _, _, _, _, _, _) ->
+    ( if Call0 = node_call(_, _, _, _, _, _, _, _, _, _) then
         Call1 = Call0
-    ;
+    else
         throw(internal_error("call_node_set_last_interface",
             "not a CALL node"))
     ),
@@ -944,9 +933,9 @@ call_node_set_last_interface(Call0, Last) = Call :-
     "MR_DD_call_node_update_implicit_tree_info").
 
 call_node_update_implicit_tree_info(Call0, IdealDepth) = Call :-
-    ( Call0 = node_call(_, _, _, _, _, _, _, _, _, _) ->
+    ( if Call0 = node_call(_, _, _, _, _, _, _, _, _, _) then
         Call1 = Call0
-    ;
+    else
         throw(internal_error("call_node_update_implicit_tree_info",
             "not a CALL node"))
     ),
@@ -961,7 +950,7 @@ call_node_update_implicit_tree_info(Call0, IdealDepth) = Call :-
     "MR_DD_get_implicit_tree_ideal_depth").
 
 get_implicit_tree_ideal_depth(Call) = IdealDepth :-
-    ( MaybeImplicitTreeInfo = Call ^ call_at_max_depth ->
+    ( if MaybeImplicitTreeInfo = Call ^ call_at_max_depth then
         (
             MaybeImplicitTreeInfo = yes(implicit_tree_info(IdealDepth))
         ;
@@ -969,7 +958,7 @@ get_implicit_tree_ideal_depth(Call) = IdealDepth :-
             throw(internal_error("get_implicit_tree_max_depth",
                 "not at max depth"))
         )
-    ;
+    else
         throw(internal_error("get_implicit_tree_max_depth", "not a CALL node"))
     ).
 
@@ -980,9 +969,9 @@ get_implicit_tree_ideal_depth(Call) = IdealDepth :-
     "MR_DD_cond_node_set_status").
 
 cond_node_set_status(Cond0, Status) = Cond :-
-    ( Cond0 = node_cond(_, _, _) ->
+    ( if Cond0 = node_cond(_, _, _) then
         Cond1 = Cond0
-    ;
+    else
         throw(internal_error("cond_node_set_status", "not a COND node"))
     ),
     % The goal status is the third field, so we pass 2
@@ -996,9 +985,9 @@ cond_node_set_status(Cond0, Status) = Cond :-
     "MR_DD_neg_node_set_status").
 
 neg_node_set_status(Neg0, Status) = Neg :-
-    ( Neg0 = node_neg(_, _, _) ->
+    ( if Neg0 = node_neg(_, _, _) then
         Neg1 = Neg0
-    ;
+    else
         throw(internal_error("neg_node_set_status", "not a NEGE node"))
     ),
     % The goal status is the third field, so we pass 2
@@ -1066,9 +1055,9 @@ get_trace_node_label(node_neg_fail(_, _, Label)) = Label.
     "MR_DD_trace_node_seqno").
 
 trace_node_seqno(S, Node, SeqNo) :-
-    ( SeqNo0 = Node ^ call_seq ->
+    ( if SeqNo0 = Node ^ call_seq then
         SeqNo = SeqNo0
-    ;
+    else
         trace_node_call(S, Node, Call),
         call_node_from_id(S, Call, CallNode),
         SeqNo = CallNode ^ call_seq
@@ -1108,9 +1097,9 @@ trace_node_first_disj(node_later_disj(_, _, FirstDisj), FirstDisj).
 step_left_in_contour_store(Store, Node) = step_left_in_contour(Store, Node).
 
     % Export a version of this function to be called by C code
-    % in trace/declarative_debugger.c.  If called with a node
+    % in trace/declarative_debugger.c. If called with a node
     % that is already on a contour, this function returns the
-    % same node.  This saves the C code from having to perform
+    % same node. This saves the C code from having to perform
     % that check itself.
     %
 :- func find_prev_contour_store(trace_node_store, trace_node_id)
@@ -1120,9 +1109,9 @@ step_left_in_contour_store(Store, Node) = step_left_in_contour(Store, Node).
 
 find_prev_contour_store(Store, Id) = Prev :-
     det_trace_node_from_id(Store, Id, Node),
-    ( find_prev_contour(Store, Node, Prev0) ->
+    ( if find_prev_contour(Store, Node, Prev0) then
         Prev = Prev0
-    ;
+    else
         Prev = Id
     ).
 
@@ -1331,7 +1320,7 @@ init_trace_atom_args = [].
     % add_trace_atom_arg_value(HldsNum, ProgVis, Val, !AtomArgs):
     %
     % Add the argument with value Val and HLDS number HldsNum to the beginning
-    % of a list of arguments for an atom.  ProgVis is a C boolean, which is
+    % of a list of arguments for an atom. ProgVis is a C boolean, which is
     % true iff variable HldsNum is a user visible variable.
     %
 :- pred add_trace_atom_arg_value(int::in, int::in, univ::in,
@@ -1359,9 +1348,9 @@ add_trace_atom_arg_no_value(HldsNum, ProgVis, Args, [Arg | Args]) :-
 :- func c_bool_to_merc_bool(int) = bool.
 
 c_bool_to_merc_bool(ProgVis) =
-    ( ProgVis = 0 ->
+    ( if ProgVis = 0 then
         no
-    ;
+    else
         yes
     ).
 
@@ -1375,7 +1364,7 @@ dummy_arg_info = arg_info(no, -1, no).
 %-----------------------------------------------------------------------------%
 
     % The most important property of this instance is that it
-    % can be written to or read in from a stream easily.  It
+    % can be written to or read in from a stream easily. It
     % is not as efficient to use as the earlier instance, though.
     %
 :- instance annotated_trace(trace_node_map, trace_node_key) where [
@@ -1435,13 +1424,13 @@ save_trace_node_store(Stream, Store, NodeId, !IO) :-
     trace_node_map::out) is det.
 
 node_map(Store, NodeId, map(Map0), Map) :-
-    ( search_trace_node_store(Store, NodeId, Node1) ->
+    ( if search_trace_node_store(Store, NodeId, Node1) then
         node_id_to_key(NodeId, Key),
         convert_node(Node1, Node2),
         map.det_insert(Key, Node2, Map0, Map1),
         Next = preceding_node(Node1),
         node_map(Store, Next, map(Map1), Map)
-    ;
+    else
         Map = map(Map0)
     ).
 
@@ -1548,9 +1537,9 @@ head_var_num_to_arg_num([Arg | Args], SearchUserHeadVarNum, CurArgNum,
             CurArgNum + 1, ArgNum)
     ;
         UserVis = yes,
-        ( SearchUserHeadVarNum = 1 ->
+        ( if SearchUserHeadVarNum = 1 then
             ArgNum = CurArgNum
-        ;
+        else
             head_var_num_to_arg_num(Args, SearchUserHeadVarNum - 1,
                 CurArgNum + 1, ArgNum)
         )
@@ -1569,9 +1558,9 @@ arg_num_to_head_var_num([Arg | Args], ArgNum, CurArgNum, UserArgNum) :-
         arg_num_to_head_var_num(Args, ArgNum - 1, CurArgNum, UserArgNum)
     ;
         UserVis = yes,
-        ( ArgNum = 1 ->
+        ( if ArgNum = 1 then
             UserArgNum = CurArgNum
-        ;
+        else
             arg_num_to_head_var_num(Args, ArgNum - 1,
                 CurArgNum + 1, UserArgNum)
         )

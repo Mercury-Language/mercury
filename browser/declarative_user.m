@@ -10,7 +10,7 @@
 % Author: Mark Brown.
 %
 % This module performs all the user interaction of the front end of the
-% declarative debugger.  It is responsible for displaying questions and bugs
+% declarative debugger. It is responsible for displaying questions and bugs
 % in a human-readable format, and for getting responses to debugger queries
 % from the user.
 %
@@ -65,7 +65,7 @@
     user_state::out) is det.
 
     % This predicate handles the interactive part of the declarative
-    % debugging process.  The user is presented with a question,
+    % debugging process. The user is presented with a question,
     % possibly with a default answer, and is asked to respond about the
     % truth of it in the intended interpretation.
     %
@@ -144,7 +144,7 @@
             % The user has no answer.
 
     ;       user_cmd_browse_arg(maybe(int))
-            % Browse the nth argument before answering.  Or browse
+            % Browse the nth argument before answering. Or browse
             % the whole predicate/function if the maybe is no.
 
     ;       user_cmd_browse_xml_arg(maybe(int))
@@ -186,9 +186,9 @@
             % Abort this diagnosis session.
 
     ;       user_cmd_help(maybe(string))
-            % Request help before answering.  If the maybe argument
-            % is no then a general help message is displayed,
-            % otherwise help on the given command is displayed.
+            % Request help before answering. If the maybe argument is `no',
+            % then we display a general help message is displayed, otherwise
+            % we display help on the given command.
 
     ;       user_cmd_empty
             % User just pressed return.
@@ -241,9 +241,9 @@ query_user(UserQuestion, Response, !User, !IO) :-
         ),
         get_command(Prompt, Command, !User, !IO),
         handle_command(Command, UserQuestion, Response, !User, !IO),
-        ( Response \= user_response_show_info(_) ->
+        ( if Response \= user_response_show_info(_) then
             !User ^ display_question := yes
-        ;
+        else
             true
         )
     ).
@@ -310,9 +310,7 @@ handle_command(Cmd, UserQuestion, Response, !User, !IO) :-
                     HowTrack, ShouldAssertInvalid),
                 Response = user_response_answer(Question, Answer)
             ;
-                %
                 % Tracking the entire atom doesn't make sense.
-                %
                 MaybeTrack = track(_, _, []),
                 io.write_string(!.User ^ outstr,
                     "Cannot track the entire atom. " ++
@@ -545,15 +543,15 @@ browse_chosen_io_action(MaybeIoActions, ActionNum, MaybeTrack, !User, !IO) :-
 
 find_tabled_io_action(io_action_range(Cur, End), TabledActionNum,
         MaybeIoAction, !IO) :-
-    ( Cur = End ->
+    ( if Cur = End then
         MaybeIoAction = no
-    ;
+    else
         get_maybe_io_action(Cur, MaybeTabledIoAction, !IO),
         (
             MaybeTabledIoAction = tabled(IoAction),
-            ( TabledActionNum = 1 ->
+            ( if TabledActionNum = 1 then
                 MaybeIoAction = yes(IoAction)
-            ;
+            else
                 find_tabled_io_action(io_action_range(Cur + 1, End),
                     TabledActionNum - 1, MaybeIoAction, !IO)
             )
@@ -569,12 +567,12 @@ find_tabled_io_action(io_action_range(Cur, End), TabledActionNum,
 
 print_chosen_io_actions(MaybeIoActions, From, To, User0, !IO) :-
     print_chosen_io_action(MaybeIoActions, From, User0, OK, !IO),
-    (
+    ( if
         OK = yes,
         From + 1 =< To
-    ->
+    then
         print_chosen_io_actions(MaybeIoActions, From + 1, To, User0, !IO)
-    ;
+    else
         true
     ).
 
@@ -650,12 +648,12 @@ browse_xml_decl_bug(Bug, MaybeArgNum, User, !IO) :-
 browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack, !User, !IO) :-
     FinalAtom = atom(_, Args0),
     maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args),
-    (
+    ( if
         list.index1(Args, ArgNum, ArgInfo),
         ArgInfo = arg_info(_, _, MaybeArg),
         MaybeArg = yes(ArgRep),
         term_rep.rep_to_univ(ArgRep, Arg)
-    ->
+    then
         browse_browser_term(univ_to_browser_term(Arg),
             !.User ^ instr, !.User ^ outstr,
             yes(get_subterm_mode_from_atoms_for_arg(ArgNum,
@@ -664,7 +662,7 @@ browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack, !User, !IO) :-
         convert_maybe_track_dirs_to_term_path_from_arg(ArgRep,
             MaybeTrackDirs, MaybeTrack),
         !User ^ browser := Browser
-    ;
+    else
         io.write_string(!.User ^ outstr, "Invalid argument number\n", !IO),
         MaybeTrack = no_track
     ).
@@ -675,15 +673,15 @@ browse_atom_argument(InitAtom, FinalAtom, ArgNum, MaybeTrack, !User, !IO) :-
 browse_xml_atom_argument(Atom, ArgNum, User, !IO) :-
     Atom = atom(_, Args0),
     maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args),
-    (
+    ( if
         list.index1(Args, ArgNum, ArgInfo),
         ArgInfo = arg_info(_, _, MaybeArg),
         MaybeArg = yes(ArgRep),
         term_rep.rep_to_univ(ArgRep, Arg)
-    ->
+    then
         save_and_browse_browser_term_xml(univ_to_browser_term(Arg),
             User ^ outstr, User ^ outstr, User ^ browser, !IO)
-    ;
+    else
         io.write_string(User ^ outstr, "Invalid argument number\n", !IO)
     ).
 
@@ -742,11 +740,11 @@ get_subterm_mode_from_atoms(InitAtom, FinalAtom, Dirs) = Mode :-
 
 get_subterm_mode_from_atoms_and_term_path(InitAtom, FinalAtom, ArgPos,
         TermPath) = Mode :-
-    ( trace_atom_subterm_is_ground(InitAtom, ArgPos, TermPath) ->
+    ( if trace_atom_subterm_is_ground(InitAtom, ArgPos, TermPath) then
         Mode = input
-    ; trace_atom_subterm_is_ground(FinalAtom, ArgPos, TermPath) ->
+    else if trace_atom_subterm_is_ground(FinalAtom, ArgPos, TermPath) then
         Mode = output
-    ;
+    else
         Mode = unbound
     ).
 
@@ -786,12 +784,12 @@ get_user_arg_values([arg_info(UserVisible, _, MaybeValue) | Args], Values) :-
 
 print_atom_arguments(Atom, From, To, User, !IO) :-
     print_atom_argument(Atom, From, User, OK, !IO),
-    (
+    ( if
         OK = yes,
         From + 1 =< To
-    ->
+    then
         print_atom_arguments(Atom, From + 1, To, User, !IO)
-    ;
+    else
         true
     ).
 
@@ -801,16 +799,16 @@ print_atom_arguments(Atom, From, To, User, !IO) :-
 print_atom_argument(Atom, ArgNum, User, OK, !IO) :-
     Atom = atom(_, Args0),
     maybe_filter_headvars(chosen_head_vars_presentation, Args0, Args),
-    (
+    ( if
         list.index1(Args, ArgNum, ArgInfo),
         ArgInfo = arg_info(_, _, MaybeArg),
         MaybeArg = yes(ArgRep),
         term_rep.rep_to_univ(ArgRep, Arg)
-    ->
+    then
         print_browser_term(univ_to_browser_term(Arg), User ^ outstr,
             decl_caller_type, User ^ browser, !IO),
         OK = yes
-    ;
+    else
         io.write_string(User ^ outstr, "Invalid argument number\n", !IO),
         OK = no
     ).
@@ -872,12 +870,12 @@ get_command(Prompt, Command, User, User, !IO) :-
         Words = string.words_separator(char.is_whitespace, String),
         (
             Words = [CmdWord | CmdArgs],
-            (
+            ( if
                 cmd_handler(CmdWord, CmdHandler),
                 CmdHandler(CmdArgs, CommandPrime)
-            ->
+            then
                 Command = CommandPrime
-            ;
+            else
                 Command = user_cmd_illegal
             )
         ;
@@ -945,9 +943,9 @@ one_word_cmd(Cmd, [], Cmd).
 
 browse_arg_cmd([], user_cmd_browse_arg(no)).
 browse_arg_cmd([Arg], BrowseCmd) :-
-    ( string.to_int(Arg, ArgNum) ->
+    ( if string.to_int(Arg, ArgNum) then
         BrowseCmd = user_cmd_browse_arg(yes(ArgNum))
-    ;
+    else
         ( Arg = "-x" ; Arg = "--xml" ),
         BrowseCmd = user_cmd_browse_xml_arg(no)
     ).
@@ -979,10 +977,10 @@ format_arg_cmd(ArgWords, UserCommand) :-
     user_command::out) is semidet.
 
 format_param_arg_cmd(Cmd, ArgWords0, Command) :-
-    ( ArgWords0 = ["io" | ArgWords1] ->
+    ( if ArgWords0 = ["io" | ArgWords1] then
         ArgWords = ArgWords1,
         HasIOArg = yes : bool
-    ;
+    else
         ArgWords = ArgWords0,
         HasIOArg = no : bool
     ),
@@ -1054,17 +1052,17 @@ help_cmd([Cmd], user_cmd_help(yes(Cmd))).
 :- pred string_to_range(string::in, int::out, int::out) is semidet.
 
 string_to_range(Arg, From, To) :-
-    ( string.to_int(Arg, Num) ->
+    ( if string.to_int(Arg, Num) then
         From = Num,
         To = Num
-    ;
+    else
         [FirstStr, SecondStr] = string.words_separator(is_dash, Arg),
         string.to_int(FirstStr, First),
         string.to_int(SecondStr, Second),
-        ( First =< Second ->
+        ( if First =< Second then
             From = First,
             To = Second
-        ;
+        else
             From = Second,
             To = First
         )
@@ -1242,10 +1240,10 @@ write_maybe_tabled_io_actions(User, MaybeIoActions, !IO) :-
         MaybeIoActions = yes(IoActions),
         count_tabled_io_actions(IoActions, NumTabled, NumUntabled, !IO),
         write_io_actions(User, NumTabled, IoActions, !IO),
-        ( NumUntabled > 0 ->
+        ( if NumUntabled > 0 then
             io.write_string(User ^ outstr, "Warning: some IO " ++
                 "actions for this atom are not tabled.\n", !IO)
-        ;
+        else
             true
         )
     ;
@@ -1266,10 +1264,10 @@ count_tabled_io_actions(io_action_range(Start, End), NumTabled,
 
 count_tabled_io_actions_2(Cur, End, PrevTabled, Tabled,
         PrevUntabled, Untabled, !IO) :-
-    ( Cur = End ->
+    ( if Cur = End then
         Untabled = PrevUntabled,
         Tabled = PrevTabled
-    ;
+    else
         get_maybe_io_action(Cur, MaybeIoAction, !IO),
         (
             MaybeIoAction = tabled(_),
@@ -1300,20 +1298,20 @@ trace_atom_arg_to_univ(TraceAtomArg, Univ) :-
     io::di, io::uo) is cc_multi.
 
 write_io_actions(User, NumTabled, IoActions, !IO) :-
-    ( NumTabled = 0 ->
+    ( if NumTabled = 0 then
         true
-    ;
-        ( NumTabled = 1 ->
+    else
+        ( if NumTabled = 1 then
             io.write_string(User ^ outstr, "1 tabled IO action:", !IO)
-        ;
+        else
             io.write_int(User ^ outstr, NumTabled, !IO),
             io.write_string(User ^ outstr, " tabled IO actions:", !IO)
         ),
         NumPrinted = get_num_printed_io_actions(User ^ browser),
-        ( NumTabled =< NumPrinted ->
+        ( if NumTabled =< NumPrinted then
             io.nl(User ^ outstr, !IO),
             print_tabled_io_actions(User, IoActions, !IO)
-        ;
+        else
             io.write_string(User ^ outstr, " too many to show", !IO),
             io.nl(User ^ outstr, !IO)
         )
@@ -1330,9 +1328,9 @@ print_tabled_io_actions(User, IoActions, !IO) :-
     io_seq_num::in, io_seq_num::in, io::di, io::uo) is cc_multi.
 
 print_tabled_io_actions_2(User, Cur, End, !IO) :-
-    ( Cur = End ->
+    ( if Cur = End then
         true
-    ;
+    else
         get_maybe_io_action(Cur, MaybeIoAction, !IO),
         print_tabled_io_action(User, MaybeIoAction, !IO),
         print_tabled_io_actions_2(User, Cur + 1, End, !IO)
@@ -1373,15 +1371,15 @@ convert_dirs_to_term_path_from_atom(atom(_, Args), [Dir | Dirs], TermPath) :-
         Arg = arg_info(_, _, MaybeValue)
     ;
         Dir = child_name(Name),
-        ( string_is_return_value_alias(Name) ->
-            ( list.last(Args, LastArg) ->
+        ( if string_is_return_value_alias(Name) then
+            ( if list.last(Args, LastArg) then
                 LastArg = arg_info(_, _, MaybeValue),
                 Pos = list.length(Args)
-            ;
+            else
                 throw(internal_error("convert_dirs_to_term_path_from_atom",
                     "argument list empty"))
             )
-        ;
+        else
             throw(internal_error("convert_dirs_to_term_path_from_atom",
                 "argument of atom cannot be named"))
         )

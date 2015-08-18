@@ -50,14 +50,14 @@ main(!IO) :-
 
 process_arguments(MaybeFile, !IO) :-
     io.command_line_arguments(Args, !IO),
-    ( Args = [FileName] ->
+    ( if Args = [FileName] then
         io.open_input(FileName, Res, !IO),
-        ( Res = ok(File) ->
+        ( if Res = ok(File) then
             MaybeFile = yes(File)
-        ;
+        else
             MaybeFile = no
         )
-    ;
+    else
         MaybeFile = no
     ).
 

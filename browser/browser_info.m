@@ -32,38 +32,35 @@
 
 %---------------------------------------------------------------------------%
 
-    % The non-persistent browser information.  A new one of these is created
+    % The non-persistent browser information. A new one of these is created
     % every time the browser is called, based on the contents of the persistent
     % state, and lasts for the duration of the call.
     %
 :- type browser_info
     --->    browser_info(
+                % The term to browse.
                 term        :: browser_term,
-                            % Term to browse.
 
+                % The list of directories to take, starting from the root,
+                % to reach the current subterm.
                 dirs        :: list(dir),
-                            % The list of directories to take, starting from
-                            % the root, to reach the current subterm.
 
+                % What command called the browser?
                 caller_type :: browse_caller_type,
-                            % What command called the browser?
 
+                % Format specified as an option to the mdb command.
                 format      :: maybe(portray_format),
-                            % Format specified as an option to the
-                            % mdb command.
 
+                % Persistent settings.
                 state       :: browser_persistent_state,
-                            % Persistent settings.
 
+                % Location of subterm for which the `track' or `mark' command
+                % was given, or `no_track' if no `track' command was given.
                 maybe_track :: maybe_track_subterm(list(dir)),
-                            % Location of subterm for which the `track' or
-                            % `mark' command was given, or `no_track' if
-                            % the `track' command was not given.
 
+                % An optional function to determine the mode of a particular
+                % subterm should the user issue a `mode' query.
                 maybe_mode_func :: maybe(browser_mode_func)
-                            % An optional function to determine the mode
-                            % of a particular sub-term should the user issue
-                            % a `mode' query.
             ).
 
 :- type maybe_track_subterm(P)
@@ -83,27 +80,26 @@
     %
 :- type browser_mode_func == (func(list(dir)) = browser_term_mode).
 
-    % The possible modes of a sub-term in the browser.  Note these do
-    % not correspond directly with the declared Mercury modes.
+    % The possible modes of a sub-term in the browser. Note these do not
+    % correspond directly with the declared Mercury modes.
     %
 :- type browser_term_mode
     --->    input
-            % The sub-term is bound at the call.  For example the
-            % Mercury builtin modes `in', `di' and `ui'.
+            % The sub-term is bound at the call. For example the Mercury
+            % builtin modes `in', `di' and `ui'.
 
     ;       output
-            % The sub-term is unbound at the call.  The call
-            % succeeded and bound the sub-term.  For example the
-            % Mercury builtin modes `out' and `uo'.
+            % The sub-term is unbound at the call. The call succeeded
+            % and bound the sub-term. For example the Mercury builtin modes
+            % `out' and `uo'.
 
     ;       unbound
-            % The sub-term is unbound at the call and at the
-            % final EXIT, FAIL or EXCP event.
+            % The sub-term is unbound at the call and at the final EXIT, FAIL
+            % or EXCP event.
 
     ;       not_applicable.
-            % If the user asks about the mode of an atom, this
-            % value should be returned by the browser term mode
-            % function.
+            % If the user asks about the mode of an atom, this value should be
+            % returned by the browser term mode function.
 
 :- type dir
     --->    parent
@@ -116,18 +112,20 @@
 
 :- inst simplified_dirs == list_skel(dir_no_parent).
 
-    % The browser is required to behave differently for different
-    % caller circumstances.  The following type enumerates the
-    % various possibilities.
+    % The browser is required to behave differently for different caller
+    % circumstances. The following type enumerates the various possibilities.
     %
 :- type browse_caller_type
-    --->    print       % Non-interactively called via mdb's `print'
-                        % command, to print a single value.
+    --->    print
+            % Non-interactively called via mdb's `print' command,
+            % to print a single value.
 
-    ;       browse      % Interactively called via mdb's `browse' command.
+    ;       browse
+            % Interactively called via mdb's `browse' command.
 
-    ;       print_all.  % Non-interactively called via mdb's `print *' command,
-                        % to print one of a sequence of values.
+    ;       print_all.
+            % Non-interactively called via mdb's `print *' command,
+            % to print one of a sequence of values.
 
     % The various ways of representing terms by the browser.
     %
@@ -198,7 +196,7 @@
 :- pred init_persistent_state(browser_persistent_state).
 :- mode init_persistent_state(out) is det.
 
-    % Update a setting in the browser state.  The first argument should be
+    % Update a setting in the browser state. The first argument should be
     % true iff the set command is invoked from within the browser. The next
     % seven arguments indicate the presence of the `set' options
     % -P, -B, -A, -f, -r, -v and -p, in that order.
@@ -215,7 +213,7 @@
     setting::in, browser_persistent_state::in, browser_persistent_state::out)
     is det.
 
-    % Update a setting in the browser state.  The first argument should be
+    % Update a setting in the browser state. The first argument should be
     % true iff the set command is invoked from within the browser. The next
     % argument indicates the presence of at most one of the options
     % -P, -B, -A, while the next four indicate the presence of -f, -r, -v
@@ -228,8 +226,8 @@
 
     % set_param_from_option_table(CallerType, OptionTable, Setting, !State).
     %
-    % Same as set_param/11, but looks up the options in the
-    % supplied option table.
+    % Same as set_param/11, but looks up the options in the supplied
+    % option table.
     %
 :- pred set_browser_param_from_option_table(browse_caller_type::in,
     option_table(setting_option)::in, setting::in,
@@ -269,10 +267,10 @@
 :- type debugger
     --->    debugger_internal
     ;       debugger_external.
-%
+
 % If the term browser is called from the internal debugger, input is
 % done via a call to the readline library (if available), using streams
-% MR_mdb_in and MR_mdb_out.  If it is called from the external debugger,
+% MR_mdb_in and MR_mdb_out. If it is called from the external debugger,
 % Input/Output are done via MR_debugger_socket_in/MR_debugger_socket_out.
 % In the latter case we need to output terms; their type is
 % term_browser_response.
@@ -474,9 +472,9 @@ get_xml_browser_cmd_from_mdb(Browser, Command) :-
     "ML_BROWSE_set_xml_browser_cmd_from_mdb").
 
 set_xml_browser_cmd_from_mdb(Command, !Browser) :-
-    ( Command = "" ->
+    ( if Command = "" then
         !Browser ^ xml_browser_cmd := no
-    ;
+    else
         !Browser ^ xml_browser_cmd := yes(Command)
     ).
 
@@ -502,9 +500,9 @@ get_xml_tmp_filename_from_mdb(Browser, FileName) :-
     "ML_BROWSE_set_xml_tmp_filename_from_mdb").
 
 set_xml_tmp_filename_from_mdb(FileName, !Browser) :-
-    ( FileName = "" ->
+    ( if FileName = "" then
         !Browser ^ xml_tmp_filename := no
-    ;
+    else
         !Browser ^ xml_tmp_filename := yes(FileName)
     ).
 
@@ -559,13 +557,11 @@ get_format_params(Info, Caller, Format, Params) :-
                 print_all_params        :: caller_params,
                 num_printed_io_actions  :: int,
 
+                % The command to lauch the user's preferred XML browser.
                 xml_browser_cmd         :: maybe(string),
-                                        % The command to lauch the user's
-                                        % prefered XML browser.
 
+                % The file to save XML to before lauching the browser.
                 xml_tmp_filename        :: maybe(string)
-                                        % The file to save XML to before
-                                        % lauching the browser.
             ).
 
 :- type caller_params
@@ -577,23 +573,23 @@ get_format_params(Info, Caller, Format, Params) :-
                 pretty_params           :: format_params
             ).
 
-    % Initialise the persistent settings with default values.  The
-    % rationale for the default values is:
+    % Initialise the persistent settings with default values. The rationale
+    % for the default values is:
+    %
     %   Depth and Size:
-    %       For non-interactive display, these are 3 and 10 resp.,
-    %       so that terms will generally fit on one line.  For
-    %       interactive browsing these values are increased.
+    %       For non-interactive display, these are 3 and 10 respectively,
+    %       so that terms will generally fit on one line. For interactive
+    %       browsing, these values are increased.
     %
     %   Width:
     %       Defaults to 80 characters in any situation.
     %
     %   Lines:
     %       If one term is printed then it is limited to 25 lines.
-    %       If there can be more than one term (i.e., with
-    %       `print *') then a much lower limit is imposed.  For
-    %       verbose format, there is not much point setting this to
-    %       less than about 5 since otherwise very little of the
-    %       term will be shown.
+    %       If there can be more than one term (i.e., with `print *') then
+    %       a much lower limit is imposed. For verbose format, there is
+    %       not much point setting this to less than about 5, since otherwise
+    %       very little of the term will be shown.
     %
 init_persistent_state(State) :-
     Print = caller_type_print_defaults,
@@ -646,13 +642,13 @@ set_browser_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting,
         default_all_yes(P0, B0, A0, P, B, A)
     ;
         FromBrowser = yes,
-        (
+        ( if
             P0 = no,
             B0 = no,
             A0 = no
-        ->
+        then
             affected_caller_types(FromBrowser, no, P, B, A)
-        ;
+        else
             P = P0,
             B = B0,
             A = A0
@@ -671,16 +667,16 @@ set_browser_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting,
 
 set_browser_param_with_caller_type(CallerType, P0, B0, A0, F0, Pr0, V0, NPr0,
         Setting, !State) :-
-    (
+    ( if
         P0 = no,
         B0 = no,
         A0 = no
-    ->
+    then
         % The value of DummyInBrowser doesn't matter because the second
         % argument of the call to affected_caller_types/5 is yes/1.
         DummyInBrowser = yes,
         affected_caller_types(DummyInBrowser, yes(CallerType), P, B, A)
-    ;
+    else
         P = P0,
         B = B0,
         A = A0
@@ -717,9 +713,9 @@ set_browser_param_from_option_table(CallerType, OptionTable, Setting,
 :- pred affected_caller_types(bool::in, maybe(browse_caller_type)::in,
     bool::out, bool::out, bool::out) is det.
 
-    % If no caller type is specified, the set command by default
-    % applies to _all_ caller types if invoked from the mdb prompt,
-    % and to the browser only if invoked from the browser prompt.
+    % If no caller type is specified, the set command by default applies
+    % to *all* caller types if invoked from the mdb prompt, and to the browser
+    % only if invoked from the browser prompt.
 affected_caller_types(no, no,            yes, yes, yes).
 affected_caller_types(yes, no,           no, yes, no).
 affected_caller_types(_, yes(print),     yes, no, no).
@@ -730,19 +726,17 @@ affected_caller_types(_, yes(print_all), no, no, yes).
     bool::out, bool::out, bool::out) is det.
 
 default_all_yes(A0, B0, C0, A, B, C) :-
-    %
     % If none of the flags are set, the command by default
     % applies to _all_ caller types/formats.
-    %
-    (
+    ( if
         A0 = no,
         B0 = no,
         C0 = no
-    ->
+    then
         A = yes,
         B = yes,
         C = yes
-    ;
+    else
         A = A0,
         B = B0,
         C = C0
@@ -752,21 +746,19 @@ default_all_yes(A0, B0, C0, A, B, C) :-
     bool::out, bool::out, bool::out, bool::out) is det.
 
 default_all_yes(A0, B0, C0, D0, A, B, C, D) :-
-    %
     % If none of the format flags are set, the command by default
     % applies to _all_ formats.
-    %
-    (
+    ( if
         A0 = no,
         B0 = no,
         C0 = no,
         D0 = no
-    ->
+    then
         A = yes,
         B = yes,
         C = yes,
         D = yes
-    ;
+    else
         A = A0,
         B = B0,
         C = C0,
@@ -807,7 +799,7 @@ maybe_set_param_2(no, _, Params, Params).
 maybe_set_param_2(yes, setting_depth(D), Params, Params ^ depth := D).
 maybe_set_param_2(yes, setting_size(S), Params, Params ^ size := S).
 maybe_set_param_2(yes, setting_format(_), _, _) :-
-    error("maybe_set_param_2: cannot set format here").
+    unexpected($module, $pred, "cannot set format here").
 maybe_set_param_2(yes, setting_width(W), Params, Params ^ width := W).
 maybe_set_param_2(yes, setting_lines(L), Params, Params ^ lines := L).
 
@@ -1085,26 +1077,26 @@ browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
             caller_params_to_mdb_command("-A ", PrintAllParams),
         NumIOActionCmd =
             "max_io_actions " ++ int_to_string(NumIOActions) ++ "\n",
-        (
+        ( if
             MaybeXMLBrowserCmd = yes(XMLBrowserCmd),
             % XMLBrowserCmd shouldn't be "" if MaybeXMLBrowserCmd is yes,
             % but better safe than sorry.
             XMLBrowserCmd \= ""
-        ->
+        then
             XMLBrowserCmdCmd =
                 "xml_browser_cmd " ++ XMLBrowserCmd ++ "\n"
-        ;
+        else
             XMLBrowserCmdCmd = ""
         ),
-        (
+        ( if
             MaybeXMLTmpFileName = yes(XMLTmpFileName),
             % XMLTmpFileName shouldn't be "" if MaybeXMLTmpFileName is yes,
             % but better safe than sorry.
             XMLTmpFileName \= ""
-        ->
+        then
             XMLTmpFileNameCmd =
                 "xml_tmp_filename " ++ XMLTmpFileName ++ "\n"
-        ;
+        else
             XMLTmpFileNameCmd = ""
         ),
         Desc = ParamCmds ++ NumIOActionCmd ++
@@ -1247,23 +1239,23 @@ functor_browser_term_cc(BrowserDb, BrowserTerm, Functor, Arity, IsFunc) :-
 :- some [T] func pretty_value(browser_db, univ) = T.
 
 pretty_value(BrowserDb, Univ0) = Value :-
-    ( univ_to_type(Univ0, InputStream) ->
+    ( if univ_to_type(Univ0, InputStream) then
         io.input_stream_info(BrowserDb ^ browser_stream_db,
             InputStream) = InputStreamInfo,
         type_to_univ(InputStreamInfo, Univ)
-    ; univ_to_type(Univ0, OutputStream) ->
+    else if univ_to_type(Univ0, OutputStream) then
         io.output_stream_info(BrowserDb ^ browser_stream_db,
             OutputStream) = OutputStreamInfo,
         type_to_univ(OutputStreamInfo, Univ)
-    ; univ_to_type(Univ0, BinaryInputStream) ->
+    else if univ_to_type(Univ0, BinaryInputStream) then
         io.binary_input_stream_info(BrowserDb ^ browser_stream_db,
             BinaryInputStream) = BinaryInputStreamInfo,
         type_to_univ(BinaryInputStreamInfo, Univ)
-    ; univ_to_type(Univ0, BinaryOutputStream) ->
+    else if univ_to_type(Univ0, BinaryOutputStream) then
         io.binary_output_stream_info(BrowserDb ^ browser_stream_db,
             BinaryOutputStream) = BinaryOutputStreamInfo,
         type_to_univ(BinaryOutputStreamInfo, Univ)
-    ;
+    else
         Univ = Univ0
     ),
     Value = univ_value(Univ).
@@ -1272,22 +1264,22 @@ pretty_value(BrowserDb, Univ0) = Value :-
 
 convert_dirs_to_term_path(_, [], []).
 convert_dirs_to_term_path(Term, [child_num(N) | Dirs], [N | TermPath]) :-
-    (
+    ( if
         term_rep.argument(Term, N, Subterm)
-    ->
+    then
         convert_dirs_to_term_path(Subterm, Dirs, TermPath)
-    ;
-        error("convert_dirs_to_term_path: invalid argument")
+    else
+        unexpected($module, $pred, "invalid argument")
     ).
 convert_dirs_to_term_path(Term, [child_name(Name) | Dirs], [N | TermPath]) :-
-    (
+    ( if
         term_rep.field_pos(Name, Term, Pos),
         term_rep.argument(Term, Pos, Subterm)
-    ->
+    then
         convert_dirs_to_term_path(Subterm, Dirs, TermPath),
         N = Pos
-    ;
-        error("convert_dirs_to_term_path: invalid field name")
+    else
+        unexpected($module, $pred, "invalid field name")
     ).
 
 %---------------------------------------------------------------------------%

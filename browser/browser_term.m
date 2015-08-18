@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: browser_term.m.
-% 
+%
 % This module defines a type to represent both natural and synthetic terms
 % for use by the browser.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -26,17 +26,22 @@
 
 :- type browser_term
     --->    plain_term(
-                univ        % We are browsing a plain term.
+                % We are browsing a plain term.
+                univ
             )
     ;       synthetic_term(
-                string,     % We are browsing a synthetic term,
-                            % such as a predicate name applied to
-                            % a list of arguments. The string says
-                            % what we should print as the functor.
-                list(univ), % The arguments.
-                maybe(univ) % If yes, the synthetic term represents
-                            % a function call, and the argument
-                            % inside the yes() is the return value.
+                % We are browsing a synthetic term, such as a predicate name
+                % applied to a list of arguments.
+
+                string,
+                % What we should print as the functor.
+
+                list(univ),
+                % The arguments.
+
+                maybe(univ)
+                % If yes, the synthetic term represents a function call,
+                % and the argument inside the yes() is the return value.
             ).
 
     % This predicate converts a term represented as univ to a browser term.

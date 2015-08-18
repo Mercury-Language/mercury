@@ -58,7 +58,7 @@
     mdb.version(Version::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    MR_ConstString version_string = 
+    MR_ConstString version_string =
         MR_VERSION "", configured for "" MR_FULLARCH;
     /*
     ** Cast away const needed here, because Mercury declares Version

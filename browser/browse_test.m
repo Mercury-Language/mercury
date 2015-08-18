@@ -36,7 +36,7 @@ main(!IO) :-
     EXIT_FAILURE = 1,
     EXIT_SUCCESS = 0,
     io.open_input(Filename, Result, !IO),
-    ( Result = ok(WordsStream) ->
+    ( if Result = ok(WordsStream) then
         read_words(WordsStream, Words, !IO),
         io.close_input(WordsStream, !IO),
         assoc_list.from_corresponding_lists(Words, Words, AssocList),
@@ -54,7 +54,7 @@ main(!IO) :-
         io.nl(!IO),
         browse.browse(StdIn, StdIn, StdOut, _, State2, _, !IO),
         io.set_exit_status(EXIT_SUCCESS, !IO)
-    ;
+    else
         io.write_string("Can't open input file.\n", !IO),
         io.set_exit_status(EXIT_FAILURE, !IO)
     ).
@@ -64,11 +64,11 @@ main(!IO) :-
 
 read_words(Stream, Words, !IO) :-
     io.read_word(Stream, Result, !IO),
-    ( Result = ok(Chars) ->
+    ( if Result = ok(Chars) then
         string.from_char_list(Chars, Word),
         read_words(Stream, Rest, !IO),
         Words = [Word | Rest]
-    ;
+    else
         Words = []
     ).
 

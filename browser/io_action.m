@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: io_action.m.
 % Author: zs.
-% 
+%
 % This module defines the representation of I/O actions used by the
 % declarative debugger.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -21,7 +21,7 @@
 :- import_module mdb.browser_term.
 :- import_module mdbcomp.prim_data.
 
-:- import_module list. 
+:- import_module list.
 :- import_module io.
 :- import_module univ.
 
@@ -121,12 +121,12 @@ io_action_to_browser_term(IoAction) = Term :-
 make_no_io_action = no.
 
 :- func make_yes_io_action(string, bool, list(univ)) = maybe(io_action).
-:- pragma foreign_export("C", make_yes_io_action(in, in, in) = out, 
+:- pragma foreign_export("C", make_yes_io_action(in, in, in) = out,
     "MR_IO_ACTION_make_yes_io_action").
-    
-make_yes_io_action(ProcName, yes, Args) = 
+
+make_yes_io_action(ProcName, yes, Args) =
     yes(io_action(ProcName, pf_function, Args)).
-make_yes_io_action(ProcName, no, Args) = 
+make_yes_io_action(ProcName, no, Args) =
     yes(io_action(ProcName, pf_predicate, Args)).
 
 pickup_io_action(_, _, _, _) :-

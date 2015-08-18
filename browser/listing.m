@@ -14,7 +14,7 @@
 %
 % Unfortunately, scanning large files such as library/io.m byte-by-byte
 % in a debugging grade is likely to exhaust the stack, because debugging
-% grades do not support tail recursion.  Instead we have to handle this
+% grades do not support tail recursion. Instead we have to handle this
 % aspect using a bit of C code.
 %
 %-----------------------------------------------------------------------------%
@@ -65,22 +65,21 @@
     %   Path, !IO):
     %
     % Print, on OutStrm, the lines from FileName with numbers in the range
-    % FirstLine ..  LastLine (the first line is numbered 1).
-    % The line numbered MarkLine is marked with a chevron, all
-    % other lines are indented appropriately.
+    % FirstLine.. LastLine (the first line is numbered 1). We mark the line
+    % numbered MarkLine with a chevron; we indent all other lines
+    % appropriately.
     %
-    % A file matching FileName is searched for by first looking
-    % in the current working directory or, failing that, by
-    % prepending each Dir on the search path stack in
-    % turn until a match is found.  If no match is found then
-    % an error message is printed.
+    % We search for the file matching FileName by first looking in the current
+    % working directory or, failing that, by prepending each Dir on the
+    % search path stack in turn until a match is found. If no match is found,
+    % we print an error message.
     %
-    % Any errors are reported on ErrStrm.
+    % We report any errors on ErrStrm.
     %
 :- pred list_file(c_file_ptr::in, c_file_ptr::in, file_name::in, line_no::in,
     line_no::in, line_no::in, search_path::in, io::di, io::uo) is det.
 
-    % As above, but implemented without foreign code.  This is used by the
+    % As above, but implemented without foreign code. This is used by the
     % source-to-source debugger which does not enable debugging in standard
     % library so does not suffer the problem of excessive stack usage.
     %
@@ -156,7 +155,7 @@ pop_list_path([_ | Path], Path).
 
 list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
         !IO) :-
-    ( dir.path_name_is_absolute(FileName) ->
+    ( if dir.path_name_is_absolute(FileName) then
         io.open_input(FileName, Result0, !IO),
         (
             Result0 = ok(InStream),
@@ -173,7 +172,7 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
             write_to_c_file(ErrStrm, ErrorMsg, !IO),
             write_to_c_file(ErrStrm, "\n", !IO)
         )
-    ;
+    else
         find_and_open_file([dir.this_directory | Path], FileName, Result, !IO),
         (
             Result = yes(InStream),
@@ -200,9 +199,9 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
 
 %-----------------------------------------------------------------------------%
 
-list_file_portable(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
-        !IO) :-
-    ( dir.path_name_is_absolute(FileName) ->
+list_file_portable(OutStrm, ErrStrm, FileName, FirstLine, LastLine,
+        MarkLine, Path, !IO) :-
+    ( if dir.path_name_is_absolute(FileName) then
         io.open_input(FileName, Result0, !IO),
         (
             Result0 = ok(InStrm),
@@ -218,7 +217,7 @@ list_file_portable(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Pa
             io.write_string(ErrStrm, ErrorMsg, !IO),
             io.write_string(ErrStrm, "\n", !IO)
         )
-    ;
+    else
         find_and_open_file([dir.this_directory | Path], FileName, Result, !IO),
         (
             Result = yes(InStrm),
@@ -277,8 +276,8 @@ find_and_open_file([Dir | Path], FileName, Result, !IO) :-
     line_no::in, line_no::in, line_no::in, line_no::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    print_lines_in_range_c(InStrm::in, OutStrm::in, ThisLine::in, FirstLine::in,
-        LastLine::in, MarkLine::in, _IO0::di, _IO::uo),
+    print_lines_in_range_c(InStrm::in, OutStrm::in, ThisLine::in,
+        FirstLine::in, LastLine::in, MarkLine::in, _IO0::di, _IO::uo),
     [promise_pure, thread_safe, will_not_call_mercury],
 "
     if (FirstLine <= ThisLine && ThisLine <= LastLine) {
@@ -314,14 +313,14 @@ print_lines_in_range_m(InStrm, OutStrm, ThisLine, FirstLine, LastLine,
     io.read_line_as_string(InStrm, Res, !IO),
     (
         Res = ok(Line),
-        ( FirstLine =< ThisLine, ThisLine =< LastLine ->
-            ( ThisLine = MarkLine ->
+        ( if FirstLine =< ThisLine, ThisLine =< LastLine then
+            ( if ThisLine = MarkLine then
                 io.write_string(OutStrm, "> ", !IO)
-            ;
+            else
                 io.write_string(OutStrm, "  ", !IO)
             ),
             io.write_string(OutStrm, Line, !IO)
-        ;
+        else
             true
         ),
         print_lines_in_range_m(InStrm, OutStrm, ThisLine + 1, FirstLine,

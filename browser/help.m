@@ -137,32 +137,32 @@ add_help_node(Sys0, Path, Index, Name, Text, Res, Sys) :-
     string::in, node::in, help_res::out, system::out) is det.
 
 add_node(Nodes0, [Step | Steps], Index, Name, NewNode, Res, Nodes) :-
-    ( one_path_step(Nodes0, Step, Entry0) ->
+    ( if one_path_step(Nodes0, Step, Entry0) then
         Entry0 = entry(EntryIndex, EntryName, EntryNode0),
         EntryNode0 = node(Text, SubNodes0),
         add_node(SubNodes0, Steps, Index, Name, NewNode, Res, SubNodes),
         EntryNode = node(Text, SubNodes),
         Entry = entry(EntryIndex, EntryName, EntryNode),
         replace_entry(Nodes0, Entry, Nodes)
-    ;
+    else
         string.append("invalid path component ", Step, Msg),
         Res = help_error(Msg),
         Nodes = Nodes0
     ).
 add_node(Nodes0, [], Index, Name, Node, Res, Nodes) :-
-    (
+    ( if
         list.member(Entry1, Nodes0),
         Entry1 = entry(Index, _, _)
-    ->
+    then
         Res = help_error("entry with given index already exists"),
         Nodes = Nodes0
-    ;
+    else if
         list.member(Entry1, Nodes0),
         Entry1 = entry(_, Name, _)
-    ->
+    then
         Res = help_error("entry with given name already exists"),
         Nodes = Nodes0
-    ;
+    else
         Res = help_ok,
         insert_into_entry_list(Nodes0, Index, Name, Node, Nodes)
     ).
@@ -174,10 +174,10 @@ insert_into_entry_list([], Index, Name, Node, [Entry]) :-
     Entry = entry(Index, Name, Node).
 insert_into_entry_list([Head | Tail], Index, Name, Node, List) :-
     Head = entry(HeadIndex, _, _),
-    ( HeadIndex < Index ->
+    ( if HeadIndex < Index then
         insert_into_entry_list(Tail, Index, Name, Node, NewTail),
         List = [Head | NewTail]
-    ;
+    else
         Entry = entry(Index, Name, Node),
         List = [Entry, Head | Tail]
     ).
@@ -189,10 +189,10 @@ help(Sys, Stream, !IO) :-
 
 name(Sys, Name, Stream, !IO) :-
     search_entry_list(Sys, Name, 0, Count, Stream, !IO),
-    ( Count = 0 ->
+    ( if Count = 0 then
         io.write_string("There is no such help topic.\n", !IO),
         help(Sys, Stream, !IO)
-    ;
+    else
         true
     ).
 
@@ -202,11 +202,11 @@ name(Sys, Name, Stream, !IO) :-
 search_entry_list([], _, !C, _, !IO).
 search_entry_list([Entry | Tail], Name, !C, Stream, !IO) :-
     Entry = entry(_, EntryName, Node),
-    ( Name = EntryName ->
+    ( if Name = EntryName then
         % We print this node, but don't search its children.
         print_node(Node, Stream, !IO),
         !:C = !.C + 1
-    ;
+    else
         search_node(Node, Name, !C, Stream, !IO),
         search_entry_list(Tail, Name, !C, Stream, !IO)
     ).
@@ -220,7 +220,7 @@ search_node(node(_, SubNodes), Name, !C, Stream, !IO) :-
 path(Entries, Path, Stream, Result, !IO) :-
     (
         Path = [Step | Tail],
-        ( one_path_step(Entries, Step, Entry) ->
+        ( if one_path_step(Entries, Step, Entry) then
             Entry = entry(_, _, EntryNode),
             (
                 Tail = [],
@@ -232,7 +232,7 @@ path(Entries, Path, Stream, Result, !IO) :-
                 EntryNode = node(_, SubEntries),
                 path(SubEntries, Tail, Stream, Result, !IO)
             )
-        ;
+        else
             Msg = "error at path component """ ++ Step ++ """",
             Result = help_error(Msg)
         )
@@ -263,9 +263,9 @@ print_node(node(Text, _Nodes), Stream, !IO) :-
 
 one_path_step([Head | Tail], Name, Entry) :-
     Head = entry(_, HeadName, _),
-    ( HeadName = Name ->
+    ( if HeadName = Name then
         Entry = Head
-    ;
+    else
         one_path_step(Tail, Name, Entry)
     ).
 
@@ -276,9 +276,9 @@ replace_entry([], _, _) :-
 replace_entry([Head | Tail], Entry, List) :-
     Head = entry(HeadIndex, _, _),
     Entry = entry(EntryIndex, _, _),
-    ( HeadIndex = EntryIndex ->
+    ( if HeadIndex = EntryIndex then
         List = [Entry | Tail]
-    ;
+    else
         replace_entry(Tail, Entry, NewTail),
         List = [Head | NewTail]
     ).

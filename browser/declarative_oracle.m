@@ -10,19 +10,17 @@
 % Author: Mark Brown
 %
 % This module implements the oracle for a Mercury declarative debugger.
-% It is called by the front end of the declarative debugger to provide 
-% information about the intended interpretation of the program being
-% debugged.
+% It is called by the front end of the declarative debugger to provide
+% information about the intended interpretation of the program being debugged.
 %
-% The module has a knowledge base as a sub-component.  This is a cache
-% for all the assumptions that the oracle is currently making.  When
-% the oracle is queried, it first checks the KB to see if an answer
-% is available there.
+% The module has a knowledge base as a sub-component. This is a cache for
+% all the assumptions that the oracle is currently making. When the oracle
+% is queried, it first checks the KB to see if an answer is available there.
 %
-% If no answer is available in the KB, then the oracle uses the UI 
-% (in browser/declarative_user.m) to get the required answer from the
-% user.  If any new knowledge is obtained, it is added to the KB so
-% the user will not be asked the same question twice.
+% If no answer is available in the KB, then the oracle uses the UI (in
+% browser/declarative_user.m) to get the required answer from the user.
+% If any new knowledge is obtained, it is added to the KB so the user
+% will not be asked the same question twice.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -37,13 +35,13 @@
 :- import_module mdbcomp.rtti_access.
 :- import_module mdbcomp.sym_name.
 
-:- import_module bool. 
-:- import_module io. 
+:- import_module bool.
+:- import_module io.
 
 %-----------------------------------------------------------------------------%
 
-    % A response that the oracle gives to a query about the
-    % truth of an EDT node.
+    % A response that the oracle gives to a query about the truth
+    % of an EDT node.
     %
 :- type oracle_response(T)
     --->    oracle_response_answer(decl_answer(T))
@@ -59,61 +57,62 @@
 
 :- pred oracle_response_undoable(oracle_response(T)::in) is semidet.
 
-    % The oracle state.  This is threaded around the declarative
-    % debugger.
+    % The oracle state. This is threaded around the declarative debugger.
     %
 :- type oracle_state.
 
     % Produce a new oracle state.
     %
-:- pred oracle_state_init(io.input_stream::in, io.output_stream::in, 
-    browser_info.browser_persistent_state::in, help.system::in, 
+:- pred oracle_state_init(io.input_stream::in, io.output_stream::in,
+    browser_info.browser_persistent_state::in, help.system::in,
     oracle_state::out) is det.
 
     % Add a module to the set of modules trusted by the oracle
     %
-:- pred add_trusted_module(module_name::in, oracle_state::in, 
-    oracle_state::out) is det. 
+:- pred add_trusted_module(module_name::in, oracle_state::in,
+    oracle_state::out) is det.
 
-    % Add a predicate/function to the set of predicates/functions trusted 
+    % Add a predicate/function to the set of predicates/functions trusted
     % by the oracle.
     %
-:- pred add_trusted_pred_or_func(proc_layout::in, oracle_state::in, 
-    oracle_state::out) is det. 
+:- pred add_trusted_pred_or_func(proc_layout::in, oracle_state::in,
+    oracle_state::out) is det.
 
     % Trust all the modules in the Mercury standard library.
     %
 :- pred trust_standard_library(oracle_state::in, oracle_state::out) is det.
 
-    % remove_trusted(Id, !Oracle).
+    % remove_trusted(Id, !Oracle):
+    %
     % Removes the trusted object with the given Id from the set of trusted
     % objects.
     %
 :- pred remove_trusted(int::in, oracle_state::in, oracle_state::out)
     is semidet.
 
-    % get_trusted_list(Oracle, MDBCommandFormat, String).
+    % get_trusted_list(Oracle, MDBCommandFormat, String):
+    %
     % Return a string listing the trusted objects.
-    % If MDBCommandFormat is true then returns the list so that it can be
-    % run as a series of mdb `trust' commands.  Otherwise returns them
-    % in a format suitable for display only.
+    % If MDBCommandFormat is true then returns the list so that it can be run
+    % as a series of mdb `trust' commands. Otherwise returns them in a format
+    % suitable for display only.
     %
 :- pred get_trusted_list(oracle_state::in, bool::in, string::out) is det.
 
-    % query_oracle(Question, Response, AnswerFromUser, !Oracle, !IO).
-    % Query the oracle about the program being debugged.  The first
-    % argument is a node in the evaluation tree, the second argument is the
-    % oracle response.  The oracle state is threaded through so its
-    % contents can be updated after user responses.
-    % If the response came directly from the user then AnswerFromUser
-    % will be yes, otherwise it will be no.
+    % query_oracle(Question, Response, AnswerFromUser, !Oracle, !IO):
+    %
+    % Query the oracle about the program being debugged. Question is a node
+    % in the evaluation tree, Response is the oracle's response. The oracle
+    % state is threaded through so its contents can be updated after user
+    % responses. If the response came directly from the user, then
+    % AnswerFromUser will be yes, otherwise it will be no.
     %
 :- pred query_oracle(decl_question(T)::in, oracle_response(T)::out, bool::out,
     oracle_state::in, oracle_state::out, io::di, io::uo) is cc_multi.
 
-    % Confirm that the node found is indeed an e_bug or an i_bug.  If
-    % the bug is overruled, force the oracle to forget everything
-    % it knows about the evidence that led to that bug.
+    % Confirm that the node found is indeed an e_bug or an i_bug. If the bug
+    % is overruled, force the oracle to forget everything it knows about
+    % the evidence that led to that bug.
     %
 :- pred oracle_confirm_bug(decl_bug::in, decl_evidence(T)::in,
     decl_confirmation::out, oracle_state::in, oracle_state::out,
@@ -125,17 +124,17 @@
 :- pred revise_oracle(decl_question(T)::in, oracle_state::in, oracle_state::out)
     is det.
 
-    % update_revised_knowledge_base(Oracle1, Oracle2, Oracle3).
-    % Update the revised knowledge base in Oracle1 with the 
-    % current knowledge base from Oracle2 and return the resulting
-    % oracle in Oracle3.
+    % update_revised_knowledge_base(Oracle1, Oracle2, Oracle3):
+    %
+    % Update the revised knowledge base in Oracle1 with the current knowledge
+    % base from Oracle2 and return the resulting oracle in Oracle3.
     %
 :- pred update_revised_knowledge_base(oracle_state::in, oracle_state::in,
     oracle_state::out) is det.
 
     % Returns the state of the term browser.
     %
-:- func get_browser_state(oracle_state) 
+:- func get_browser_state(oracle_state)
     = browser_info.browser_persistent_state.
 
     % Sets the state of the term browser.
@@ -187,10 +186,10 @@
 %-----------------------------------------------------------------------------%
 
 query_oracle(Question, Response, FromUser, !Oracle, !IO) :-
-    ( answer_known(!.Oracle, Question, Answer) ->
+    ( if answer_known(!.Oracle, Question, Answer) then
         Response = oracle_response_answer(Answer),
         FromUser = no
-    ;
+    else
         make_user_question(!.Oracle ^ kb_revised, Question, UserQuestion),
         query_oracle_user(UserQuestion, Response, !Oracle, !IO),
         FromUser = yes
@@ -200,12 +199,12 @@ query_oracle(Question, Response, FromUser, !Oracle, !IO) :-
     user_question(T)::out) is det.
 
 make_user_question(Revised, DeclQuestion, UserQuestion) :-
-    (
+    ( if
         query_oracle_kb(Revised, DeclQuestion, Answer),
         Answer = truth_value(_, DeclTruth)
-    ->
+    then
         UserQuestion = question_with_default(DeclQuestion, DeclTruth)
-    ;
+    else
         UserQuestion = plain_question(DeclQuestion)
     ).
 
@@ -272,13 +271,13 @@ oracle_confirm_bug(Bug, Evidence, Confirmation, Oracle0, Oracle, !IO) :-
 
 revise_oracle(Question, !Oracle) :-
     Current0 = !.Oracle ^ kb_current,
-    ( query_oracle_kb(Current0, Question, Answer) ->
+    ( if query_oracle_kb(Current0, Question, Answer) then
         retract_oracle_kb(Question, Current0, Current),
         Revised0 = !.Oracle ^ kb_revised,
         assert_oracle_kb(Question, Answer, Revised0, Revised),
         !Oracle ^ kb_revised := Revised,
         !Oracle ^ kb_current := Current
-    ;
+    else
         true
     ).
 
@@ -301,13 +300,13 @@ update_revised_knowledge_base(Oracle1, Oracle2, Oracle3) :-
 
                 % User interface.
                 user_state          :: user_state,
-                    
+
                 % Modules and predicates/functions trusted by the oracle.
                 % The second argument is an id used to identify an object
                 % to remove.
                 trusted             :: bimap(trusted_object, int),
 
-                % Counter to allocate ids to trusted objects
+                % Counter to allocate ids to trusted objects.
                 trusted_id_counter  :: counter
             ).
 
@@ -319,7 +318,7 @@ oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle) :-
     bimap.set(trusted_standard_library, 0, bimap.init, Trusted),
     counter.init(1, Counter),
     Oracle = oracle(Current, Old, User, Trusted, Counter).
-    
+
 %-----------------------------------------------------------------------------%
 
 :- type trusted_object
@@ -341,19 +340,19 @@ oracle_state_init(InStr, OutStr, Browser, HelpSystem, Oracle) :-
     ;       trusted_standard_library.
 
 add_trusted_module(ModuleName, !Oracle) :-
-    counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
-    (
-        bimap.insert(trusted_module(ModuleName), Id,
-            !.Oracle ^ trusted, Trusted)
-    ->
+    Counter0 = !.Oracle ^ trusted_id_counter,
+    counter.allocate(Id, Counter0, Counter),
+    Trusted0 = !.Oracle ^ trusted,
+    ( if bimap.insert(trusted_module(ModuleName), Id, Trusted0, Trusted) then
         !Oracle ^ trusted := Trusted,
         !Oracle ^ trusted_id_counter := Counter
-    ;
+    else
         true
     ).
 
 add_trusted_pred_or_func(ProcLayout, !Oracle) :-
-    counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
+    Counter0 = !.Oracle ^ trusted_id_counter,
+    counter.allocate(Id, Counter0, Counter),
     ProcLabel = get_proc_label_from_layout(ProcLayout),
     (
         ProcLabel = ordinary_proc_label(ModuleName, PredOrFunc, _,
@@ -362,39 +361,40 @@ add_trusted_pred_or_func(ProcLayout, !Oracle) :-
         ProcLabel = special_proc_label(ModuleName, _, _, Name, Arity, _),
         PredOrFunc = pf_predicate
     ),
-    (
+    Trusted0 = !.Oracle ^ trusted,
+    ( if
         (
             PredOrFunc = pf_predicate,
-            bimap.insert(trusted_predicate(ModuleName, Name, Arity), Id, 
-                !.Oracle ^ trusted, Trusted)
+            bimap.insert(trusted_predicate(ModuleName, Name, Arity), Id,
+                Trusted0, Trusted)
         ;
             PredOrFunc = pf_function,
             bimap.insert(trusted_function(ModuleName, Name, Arity), Id,
-                !.Oracle ^ trusted, Trusted)
+                Trusted0, Trusted)
         )
-    ->
+    then
         !Oracle ^ trusted := Trusted,
         !Oracle ^ trusted_id_counter := Counter
-    ;
+    else
         true
     ).
 
 trust_standard_library(!Oracle) :-
-    counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
-    (
-        bimap.insert(trusted_standard_library, Id,
-            !.Oracle ^ trusted, Trusted)
-    ->
+    Counter0 = !.Oracle ^ trusted_id_counter,
+    counter.allocate(Id, Counter0, Counter),
+    Trusted0 = !.Oracle ^ trusted,
+    ( if bimap.insert(trusted_standard_library, Id, Trusted0, Trusted) then
         !Oracle ^ trusted_id_counter := Counter,
         !Oracle ^ trusted := Trusted
-    ;
+    else
         true
     ).
 
 remove_trusted(Id, !Oracle) :-
     bimap.search(!.Oracle ^ trusted, _, Id),
-    bimap.delete_value(Id, !.Oracle ^ trusted, Trusted),
-    !Oracle ^ trusted := Trusted. 
+    Trusted0 = !.Oracle ^ trusted,
+    bimap.delete_value(Id, Trusted0, Trusted),
+    !Oracle ^ trusted := Trusted.
 
 get_trusted_list(Oracle, yes, CommandsStr) :-
     TrustedObjects = bimap.ordinates(Oracle ^ trusted),
@@ -402,10 +402,10 @@ get_trusted_list(Oracle, yes, CommandsStr) :-
 get_trusted_list(Oracle, no, DisplayStr) :-
     IdToObjectMap = bimap.reverse_map(Oracle ^ trusted),
     map.foldl(format_trust_display, IdToObjectMap, "", DisplayStr0),
-    ( DisplayStr0 = "" ->
+    ( if DisplayStr0 = "" then
         DisplayStr =
             "There are no trusted modules, predicates or functions.\n"
-    ;
+    else
         DisplayStr = "Trusted Objects:\n" ++ DisplayStr0
     ).
 
@@ -429,7 +429,7 @@ format_trust_command(trusted_function(ModuleName, Name, Arity),
         ++ ArityStr ++ "\n".
 format_trust_command(trusted_standard_library, S, S ++ "trust std lib\n").
 
-:- pred format_trust_display(int::in, trusted_object::in, string::in, 
+:- pred format_trust_display(int::in, trusted_object::in, string::in,
     string::out) is det.
 
 format_trust_display(Id, trusted_module(ModuleName), S, S ++ Display) :-
@@ -438,7 +438,7 @@ format_trust_display(Id, trusted_module(ModuleName), S, S ++ Display) :-
 format_trust_display(Id, trusted_predicate(ModuleName, Name, Arity),
         S, S ++ Display) :-
     ModuleNameStr = sym_name_to_string(ModuleName),
-    Display = int_to_string(Id) ++ ": predicate " ++ ModuleNameStr ++ "." 
+    Display = int_to_string(Id) ++ ": predicate " ++ ModuleNameStr ++ "."
         ++ Name ++ "/" ++ int_to_string(Arity) ++ "\n".
 format_trust_display(Id, trusted_function(ModuleName, Name, Arity),
         S, S ++ Display) :-
@@ -447,7 +447,7 @@ format_trust_display(Id, trusted_function(ModuleName, Name, Arity),
         Name ++ "/" ++ int_to_string(Arity - 1) ++ "\n".
 format_trust_display(Id, trusted_standard_library, S, S ++ Display) :-
     Display = int_to_string(Id) ++ ": the Mercury standard library\n".
-        
+
 %-----------------------------------------------------------------------------%
 %
 % This section implements the oracle knowledge base, which stores anything
@@ -455,14 +455,14 @@ format_trust_display(Id, trusted_standard_library, S, S ++ Display) :-
 % to check the correctness of an EDT node.
 %
 
-    % The type of the knowledge base.  Other fields may be added in
+    % The type of the knowledge base. Other fields may be added in
     % the future, such as for assertions made on-the-fly by the user,
     % or assertions in the program text.
     %
 :- type oracle_kb
     ---> oracle_kb(
             % For ground atoms, the knowledge is represented directly with
-            % a map.  This is used, for example, in the common case that
+            % a map. This is used, for example, in the common case that
             % the user supplies a truth value for a "wrong answer" node.
             %
             kb_ground_map :: map(final_decl_atom, decl_truth),
@@ -480,14 +480,14 @@ format_trust_display(Id, trusted_standard_library, S, S ++ Display) :-
 
 :- type known_exceptions
     --->    known_excp(
+                % Possible exceptions.
                 possible        :: set(decl_exception),
-                                % Possible exceptions
 
+                % Impossible exceptions.
                 impossible      :: set(decl_exception),
-                                % Impossible exceptions
 
+                % Exceptions from inadmissible calls.
                 inadmissible    :: set(decl_exception)
-                                % Exceptions from inadmissible calls
             ).
 
 :- pred oracle_kb_init(oracle_kb::out) is det.
@@ -523,15 +523,15 @@ set_kb_exceptions_map(M, KB, KB ^ kb_exceptions_map := M).
 
 answer_known(Oracle, Question, Answer) :-
     Atom = get_decl_question_atom(Question),
-    ( trusted(Atom ^ proc_layout, Oracle) ->
-        % We tell the analyser that this node doesn't contain a bug,
-        % however its children may still contain bugs, since 
-        % trusted procs may call untrusted procs (for example
-        % when an untrusted closure is passed to a trusted predicate).
+    ( if trusted(Atom ^ proc_layout, Oracle) then
+        % We tell the analyser that this node doesn't contain a bug, however
+        % its children may still contain bugs, since trusted procs may call
+        % untrusted procs, for example when an untrusted closure is passed
+        % to a trusted predicate.
         Answer = ignore(get_decl_question_node(Question))
-    ;
+    else
         query_oracle_kb(Oracle ^ kb_current, Question, Answer)
-    ).  
+    ).
 
 :- pred trusted(proc_layout::in, oracle_state::in) is semidet.
 
@@ -581,19 +581,19 @@ query_oracle_kb(KB, Question, Answer) :-
     get_kb_exceptions_map(KB, XMap),
     map.search(XMap, Call, X),
     X = known_excp(Possible, Impossible, Inadmissible),
-    ( set.member(Exception, Possible) ->
+    ( if set.member(Exception, Possible) then
         Answer = truth_value(Node, truth_correct)
-    ; set.member(Exception, Impossible) ->
+    else if set.member(Exception, Impossible) then
         Answer = truth_value(Node, truth_erroneous)
-    ;
+    else
         set.member(Exception, Inadmissible),
         Answer = truth_value(Node, truth_inadmissible)
     ).
 
     % assert_oracle_kb/3 assumes that the asserted fact is consistent
-    % with the current knowledge base.  This will generally be the
-    % case, since the user will never be asked questions which
-    % the knowledge base knows anything about.
+    % with the current knowledge base. This will generally be the case,
+    % since the user will never be asked questions which the knowledge base
+    % knows anything about.
     %
 :- pred assert_oracle_kb(decl_question(T)::in, decl_answer(T)::in,
     oracle_kb::in, oracle_kb::out) is det.
@@ -606,10 +606,9 @@ assert_oracle_kb(wrong_answer(_, _, Atom), truth_value(_, Truth), !KB) :-
     ProcLayout = Atom ^ final_atom ^ proc_layout,
 
     % Insert all modes for the atom if the atom is correct and just the
-    % one mode if it's not correct.  In general we cannot insert all modes
-    % for erroneous or inadmissible atoms since the atom might be
-    % erroneous with respect to one mode, but inadmissible with respect to
-    % another mode.
+    % one mode if it's not correct. In general we cannot insert all modes
+    % for erroneous or inadmissible atoms since the atom might be erroneous
+    % with respect to one mode, but inadmissible with respect to another mode.
 
     (
         Truth = truth_correct,
@@ -631,9 +630,9 @@ assert_oracle_kb(missing_answer(_, Call, _), truth_value(_, Truth), !KB) :-
 assert_oracle_kb(unexpected_exception(_, Call, Exception),
         truth_value(_, Truth), !KB) :-
     get_kb_exceptions_map(!.KB, Map0),
-    ( map.search(Map0, Call, Found) ->
+    ( if map.search(Map0, Call, Found) then
         KnownExceptions0 = Found
-    ;
+    else
         set.init(Possible0),
         set.init(Impossible0),
         set.init(Inadmissible0),
@@ -660,7 +659,7 @@ assert_oracle_kb(unexpected_exception(_, Call, Exception),
 
 retract_oracle_kb(wrong_answer(_, _, Atom), !KB) :-
     Map0 = !.KB ^ kb_ground_map,
-    % delete all modes of the predicate/function
+    % Delete all modes of the predicate/function.
     foldl(remove_atom_from_ground_map(Atom),
         get_all_modes_for_layout(Atom ^ final_atom ^ proc_layout), Map0, Map),
     !KB ^ kb_ground_map := Map.
@@ -672,21 +671,21 @@ retract_oracle_kb(missing_answer(_, InitAtom, _), !KB) :-
 
 retract_oracle_kb(unexpected_exception(_, InitAtom, Exception), !KB) :-
     ExceptionsMap0 = !.KB ^ kb_exceptions_map,
-    (
+    ( if
         map.search(ExceptionsMap0, InitAtom, KnownExceptions0),
         KnownExceptions0 = known_excp(Possible0, Impossible0, Inadmissible0)
-    ->
+    then
         set.delete(Exception, Possible0, Possible),
         set.delete(Exception, Impossible0, Impossible),
         set.delete(Exception, Inadmissible0, Inadmissible),
         KnownExceptions = known_excp(Possible, Impossible, Inadmissible),
         map.set(InitAtom, KnownExceptions, ExceptionsMap0, ExceptionsMap)
-    ;
+    else
         ExceptionsMap = ExceptionsMap0
     ),
     !KB ^ kb_exceptions_map := ExceptionsMap.
 
-:- pred add_atom_to_ground_map(decl_truth::in, final_decl_atom::in, 
+:- pred add_atom_to_ground_map(decl_truth::in, final_decl_atom::in,
     proc_layout::in,
     map(final_decl_atom, decl_truth)::in,
     map(final_decl_atom, decl_truth)::out) is det.
@@ -701,13 +700,14 @@ add_atom_to_ground_map(Truth, FinalAtom, ProcLayout, !Map) :-
     map(final_decl_atom, decl_truth)::out) is det.
 
 remove_atom_from_ground_map(FinalAtom, ProcLayout, !Map) :-
-    map.delete(final_decl_atom(
+    FinalDeclAtom = final_decl_atom(
         atom(ProcLayout, FinalAtom ^ final_atom ^ atom_args),
-        FinalAtom ^ final_io_actions), !Map).
+        FinalAtom ^ final_io_actions),
+    map.delete(FinalDeclAtom, !Map).
 
 %-----------------------------------------------------------------------------%
 
-get_browser_state(Oracle) = 
+get_browser_state(Oracle) =
     mdb.declarative_user.get_browser_state(Oracle ^ user_state).
 
 set_browser_state(Browser, !Oracle) :-

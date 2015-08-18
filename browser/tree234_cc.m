@@ -6,33 +6,28 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
-% tree234_cc implements a map (dictionary) using 2-3-4 trees.  This is
+% tree234_cc implements a map (dictionary) using 2-3-4 trees. This is
 % a cut down version of the standard library module library/tree234.m,
 % with the additional change that it uses compare_representation instead
-% of the builtin unification and comparison predicates.  It is thus able
+% of the builtin unification and comparison predicates. It is thus able
 % to work with keys that contain non-canonical terms, such as higher order
 % terms.
 %
 % The drawback of using compare_representation is that sometimes entries
-% that have been inserted in the map will not later be found when looked
-% up.  This can happen when the lookup uses a different (but equivalent)
-% representation of the key than the insertion.  However, for some
+% that have been inserted in the map will not later be found when looked up.
+% This can happen when the lookup uses a different (but equivalent)
+% representation of the key than the insertion. However, for some
 % applications (for example, the declarative debugging oracle) this
 % behaviour may be acceptable.
 %
 % A flow on effect is that most of the det predicates are now cc_multi,
-% since this is the determinism of compare_representation.  Even
-% predicates that used to be semidet are now cc_multi, since they need
-% to be called just after calls to other committed choice procedures
-% which means that they are not allowed to fail.  They return all outputs
-% in a maybe type, which indicates success or failure.
+% since this is the determinism of compare_representation. Even predicates
+% that used to be semidet are now cc_multi, since they need to be called
+% just after calls to other committed choice procedures which means that
+% they are not allowed to fail. They return all outputs in a maybe type,
+% which indicates success or failure.
 %
-% main author: conway.
-% stability: medium.
-
-% Modified to use compare_representation by Mark Brown (dougl).
-
-% See library/map.m for documentation.
+% See library/map.m for documentation of the predicates.
 
 %---------------------------------------------------------------------------%
 
@@ -184,10 +179,10 @@ split_four(Tin, MidK, MidV, Sub0, Sub1) :-
 % set is implemented using the simple top-down approach
 % described in eg Sedgwick which splits 4 nodes into two 2 nodes on the
 % downward traversal of the tree as we search for the right place to
-% insert the new key-value pair.  We know we have the right place if the
+% insert the new key-value pair. We know we have the right place if the
 % subtrees of the node are empty (in which case we expand the node - which
 % will always work because we already split 4 nodes into 2 nodes), or if
-% the tree itself is empty.  This algorithm is O(lgN).
+% the tree itself is empty. This algorithm is O(lgN).
 
 set(Tin, K, V, Tout) :-
     (
@@ -224,10 +219,10 @@ set(Tin, K, V, Tout) :-
     is cc_multi.
 
 set2(two(K0, V0, T0, T1), K, V, Tout) :-
-    (
+    ( if
         T0 = empty
         % T1 = empty implied by T0 = empty
-    ->
+    then
         compare_representation(Result, K, K0),
         (
             Result = (<),
@@ -239,7 +234,7 @@ set2(two(K0, V0, T0, T1), K, V, Tout) :-
             Result = (>),
             Tout = three(K0, V0, K, V, empty, empty, empty)
         )
-    ;
+    else
         compare_representation(Result, K, K0),
         (
             Result = (<),
@@ -313,11 +308,11 @@ set2(two(K0, V0, T0, T1), K, V, Tout) :-
 :- mode set3(in_three, in, in, out) is cc_multi.
 
 set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
-    (
+    ( if
         T0 = empty
         % T1 = empty implied by T0 = empty
         % T2 = empty implied by T0 = empty
-    ->
+    then
         compare_representation(Result0, K, K0),
         (
             Result0 = (<),
@@ -339,7 +334,7 @@ set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                 Tout = four(K0, V0, K1, V1, K, V, empty, empty, empty, empty)
             )
         )
-    ;
+    else
         compare_representation(Result0, K, K0),
         (
             Result0 = (<),
@@ -479,9 +474,11 @@ delete_2(Tin, K, Tout, RH) :-
         (
             Result0 = (<),
             delete_2(T0, K, NewT0, RHT0),
-            ( RHT0 = yes ->
+            (
+                RHT0 = yes,
                 fix_2node_t0(K0, V0, NewT0, T1, Tout, RH)
             ;
+                RHT0 = no,
                 Tout = two(K0, V0, NewT0, T1),
                 RH = no
             )
@@ -490,9 +487,11 @@ delete_2(Tin, K, Tout, RH) :-
             remove_smallest(T1, Removed),
             (
                 Removed = yes({ST1K, ST1V, NewT1, RHT1}),
-                ( RHT1 = yes ->
+                (
+                    RHT1 = yes,
                     fix_2node_t1(ST1K, ST1V, T0, NewT1, Tout, RH)
                 ;
+                    RHT1 = no,
                     Tout = two(ST1K, ST1V, T0, NewT1),
                     RH = no
                 )
@@ -505,9 +504,11 @@ delete_2(Tin, K, Tout, RH) :-
         ;
             Result0 = (>),
             delete_2(T1, K, NewT1, RHT1),
-            ( RHT1 = yes ->
+            (
+                RHT1 = yes,
                 fix_2node_t1(K0, V0, T0, NewT1, Tout, RH)
             ;
+                RHT1 = no,
                 Tout = two(K0, V0, T0, NewT1),
                 RH = no
             )
@@ -518,9 +519,11 @@ delete_2(Tin, K, Tout, RH) :-
         (
             Result0 = (<),
             delete_2(T0, K, NewT0, RHT0),
-            ( RHT0 = yes ->
+            (
+                RHT0 = yes,
                 fix_3node_t0(K0, V0, K1, V1, NewT0, T1, T2, Tout, RH)
             ;
+                RHT0 = no,
                 Tout = three(K0, V0, K1, V1, NewT0, T1, T2),
                 RH = no
             )
@@ -529,9 +532,11 @@ delete_2(Tin, K, Tout, RH) :-
             remove_smallest(T1, Removed),
             (
                 Removed = yes({ST1K, ST1V, NewT1, RHT1}),
-                ( RHT1 = yes ->
+                (
+                    RHT1 = yes,
                     fix_3node_t1(ST1K, ST1V, K1, V1, T0, NewT1, T2, Tout, RH)
                 ;
+                    RHT1 = no,
                     Tout = three(ST1K, ST1V, K1, V1, T0, NewT1, T2),
                     RH = no
                 )
@@ -547,9 +552,11 @@ delete_2(Tin, K, Tout, RH) :-
             (
                 Result1 = (<),
                 delete_2(T1, K, NewT1, RHT1),
-                ( RHT1 = yes ->
+                (
+                    RHT1 = yes,
                     fix_3node_t1(K0, V0, K1, V1, T0, NewT1, T2, Tout, RH)
                 ;
+                    RHT1 = no,
                     Tout = three(K0, V0, K1, V1, T0, NewT1, T2),
                     RH = no
                 )
@@ -558,10 +565,12 @@ delete_2(Tin, K, Tout, RH) :-
                 remove_smallest(T2, Removed),
                 (
                     Removed = yes({ST2K, ST2V, NewT2, RHT2}),
-                    ( RHT2 = yes ->
+                    (
+                        RHT2 = yes,
                         fix_3node_t2(K0, V0, ST2K, ST2V,
                             T0, T1, NewT2, Tout, RH)
                     ;
+                        RHT2 = no,
                         Tout = three(K0, V0, ST2K, ST2V, T0, T1, NewT2),
                         RH = no
                     )
@@ -574,9 +583,11 @@ delete_2(Tin, K, Tout, RH) :-
             ;
                 Result1 = (>),
                 delete_2(T2, K, NewT2, RHT2),
-                ( RHT2 = yes ->
+                (
+                    RHT2 = yes,
                     fix_3node_t2(K0, V0, K1, V1, T0, T1, NewT2, Tout, RH)
                 ;
+                    RHT2 = no,
                     Tout = three(K0, V0, K1, V1, T0, T1, NewT2),
                     RH = no
                 )
@@ -591,10 +602,12 @@ delete_2(Tin, K, Tout, RH) :-
             (
                 Result0 = (<),
                 delete_2(T0, K, NewT0, RHT0),
-                ( RHT0 = yes ->
+                (
+                    RHT0 = yes,
                     fix_4node_t0(K0, V0, K1, V1, K2, V2,
                         NewT0, T1, T2, T3, Tout, RH)
                 ;
+                    RHT0 = no,
                     Tout = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3),
                     RH = no
                 )
@@ -603,10 +616,12 @@ delete_2(Tin, K, Tout, RH) :-
                 remove_smallest(T1, Removed),
                 (
                     Removed = yes({ST1K, ST1V, NewT1, RHT1}),
-                    ( RHT1 = yes ->
+                    (
+                        RHT1 = yes,
                         fix_4node_t1(ST1K, ST1V, K1, V1, K2, V2,
                             T0, NewT1, T2, T3, Tout, RH)
                     ;
+                        RHT1 = no,
                         Tout = four(ST1K, ST1V, K1, V1, K2, V2,
                             T0, NewT1, T2, T3),
                         RH = no
@@ -620,10 +635,12 @@ delete_2(Tin, K, Tout, RH) :-
             ;
                 Result0 = (>),
                 delete_2(T1, K, NewT1, RHT1),
-                ( RHT1 = yes ->
+                (
+                    RHT1 = yes,
                     fix_4node_t1(K0, V0, K1, V1, K2, V2,
                         T0, NewT1, T2, T3, Tout, RH)
                 ;
+                    RHT1 = no,
                     Tout = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3),
                     RH = no
                 )
@@ -633,10 +650,12 @@ delete_2(Tin, K, Tout, RH) :-
             remove_smallest(T2, Removed),
             (
                 Removed = yes({ST2K, ST2V, NewT2, RHT2}),
-                ( RHT2 = yes ->
+                (
+                    RHT2 = yes,
                     fix_4node_t2(K0, V0, ST2K, ST2V, K2, V2,
                         T0, T1, NewT2, T3, Tout, RH)
                 ;
+                    RHT2 = no,
                     Tout = four(K0, V0, ST2K, ST2V, K2, V2, T0, T1, NewT2, T3),
                     RH = no
                 )
@@ -652,10 +671,12 @@ delete_2(Tin, K, Tout, RH) :-
             (
                 Result2 = (<),
                 delete_2(T2, K, NewT2, RHT2),
-                ( RHT2 = yes ->
+                (
+                    RHT2 = yes,
                     fix_4node_t2(K0, V0, K1, V1, K2, V2,
                         T0, T1, NewT2, T3, Tout, RH)
                 ;
+                    RHT2 = no,
                     Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, NewT2, T3),
                     RH = no
                 )
@@ -665,10 +686,12 @@ delete_2(Tin, K, Tout, RH) :-
                 (
                     Removed = yes({ST3K, ST3V, NewT3,
                             RHT3}),
-                    ( RHT3 = yes ->
+                    (
+                        RHT3 = yes,
                         fix_4node_t3(K0, V0, K1, V1, ST3K, ST3V,
                             T0, T1, T2, NewT3, Tout, RH)
                     ;
+                        RHT3 = no,
                         Tout = four(K0, V0, K1, V1, ST3K, ST3V,
                             T0, T1, T2, NewT3),
                         RH = no
@@ -682,10 +705,12 @@ delete_2(Tin, K, Tout, RH) :-
             ;
                 Result2 = (>),
                 delete_2(T3, K, NewT3, RHT3),
-                ( RHT3 = yes ->
+                (
+                    RHT3 = yes,
                     fix_4node_t3(K0, V0, K1, V1, K2, V2,
                         T0, T1, T2, NewT3, Tout, RH)
                 ;
+                    RHT3 = no,
                     Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, NewT3),
                     RH = no
                 )
@@ -707,14 +732,14 @@ remove_smallest(Tin, Result) :-
         Result = no
     ;
         Tin = two(K0, V0, T0, T1),
-        (
+        ( if
             T0 = empty
-        ->
+        then
             K = K0,
             V = V0,
             Tout = T1,
             RH = yes
-        ;
+        else
             remove_smallest(T0, Removed),
             (
                 Removed = no,
@@ -722,9 +747,11 @@ remove_smallest(Tin, Result) :-
             ;
                 Removed = yes({K, V, NewT0, RHT0})
             ),
-            ( RHT0 = yes ->
+            (
+                RHT0 = yes,
                 fix_2node_t0(K0, V0, NewT0, T1, Tout, RH)
             ;
+                RHT0 = no,
                 Tout = two(K0, V0, NewT0, T1),
                 RH = no
             )
@@ -732,14 +759,14 @@ remove_smallest(Tin, Result) :-
         Result = yes({K, V, Tout, RH})
     ;
         Tin = three(K0, V0, K1, V1, T0, T1, T2),
-        (
+        ( if
             T0 = empty
-        ->
+        then
             K = K0,
             V = V0,
             Tout = two(K1, V1, T1, T2),
             RH = no
-        ;
+        else
             remove_smallest(T0, ThreeResult),
             (
                 ThreeResult = no,
@@ -747,9 +774,11 @@ remove_smallest(Tin, Result) :-
             ;
                 ThreeResult = yes({K, V, NewT0, RHT0})
             ),
-            ( RHT0 = yes ->
+            (
+                RHT0 = yes,
                 fix_3node_t0(K0, V0, K1, V1, NewT0, T1, T2, Tout, RH)
             ;
+                RHT0 = no,
                 Tout = three(K0, V0, K1, V1, NewT0, T1, T2),
                 RH = no
             )
@@ -757,14 +786,14 @@ remove_smallest(Tin, Result) :-
         Result = yes({K, V, Tout, RH})
     ;
         Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
-        (
+        ( if
             T0 = empty
-        ->
+        then
             K = K0,
             V = V0,
             Tout = three(K1, V1, K2, V2, T1, T2, T3),
             RH = no
-        ;
+        else
             remove_smallest(T0, FourResult),
             (
                 FourResult = no,
@@ -772,10 +801,12 @@ remove_smallest(Tin, Result) :-
             ;
                 FourResult = yes({K, V, NewT0, RHT0})
             ),
-            ( RHT0 = yes ->
+            (
+                RHT0 = yes,
                 fix_4node_t0(K0, V0, K1, V1, K2, V2,
                     NewT0, T1, T2, T3, Tout, RH)
             ;
+                RHT0 = no,
                 Tout = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3),
                 RH = no
             )

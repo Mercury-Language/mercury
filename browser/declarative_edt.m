@@ -9,7 +9,7 @@
 % File: declarative_edt.m
 % Authors: Ian MacLarty, Mark Brown
 %
-% This module defines Evaluation Dependency Trees (EDTs) which represent the
+% This module defines Evaluation Dependency Trees (EDTs), which represent the
 % dependencies between calls made during the execution of a buggy program.
 % Search spaces are also defined as a layer on top of EDTs.
 %
@@ -31,19 +31,19 @@
 % nodes are only added to the search space when they are needed by a
 % particular search algorithm.
 %
-% By convention nodes in the search space are referred to as `suspects', while
+% By convention, nodes in the search space are referred to as `suspects', while
 % nodes in the EDT are referred to as `EDT nodes', or just `nodes'.
 %
 % Also we use the term "root" to refer to the root of the smallest subtree in
 % the search space that must contain a bug based on the answers received so
-% far and the term "topmost" for the suspect in the search space with the
+% far, and the term "topmost" for the suspect in the search space with the
 % lowest depth.
 %
 % Each suspect in the search space can be assigned a weight to be used for
 % divide and query search. Any heuristic can be used, as long as the combined
 % weight of all the children of a suspect does not exceed the suspect's own
-% weight. Sometimes the weight may depend on the weights of unmaterialized
-% portions of the EDT resulting in the situation where the combined weight of
+% weight. Sometimes, the weight may depend on the weights of unmaterialized
+% portions of the EDT, resulting in the situation where the combined weight of
 % the children of a suspect exceeds the parent's weight. If this happens then
 % an "excess weight" may be specified along with the normal weight which will
 % be added to all the ancestor's of the overweight suspect. For example if the
@@ -86,7 +86,7 @@
     % before continuing.
     %
     % The first argument is intuitively a "store", which maps references
-    % to the things they reference.  The second argument is the type of trees
+    % to the things they reference. The second argument is the type of trees
     % themselves. By convention, we use the names S and T for type variables
     % which are constrained by mercury_edt.
     %
@@ -204,7 +204,7 @@
             % which part of which argument of the clause head is the origin.
 
     ;       origin_primitive_op(string, int, primitive_op_type)
-            % Subterm was constructed in the body.  We record the filename,
+            % Subterm was constructed in the body. We record the filename,
             % line number and type of the primitive operation that
             % constructed it.
 
@@ -347,13 +347,13 @@
     %   !TriedShortcutProcs, !SearchSpace, Response):
     %
     % Finds the origin of the subterm given by SuspectId, ArgPos and TermPath
-    % in its immediate neighbours.  If the children of a suspect are required
+    % in its immediate neighbours. If the children of a suspect are required
     % then they'll be added to the search space, unless an explicit subtree
     % is required in which case the appropriate response is returned
     % (see definition of find_origin_response type below).
     %
     % find_subterm_origin can use heuristics to avoid materialising subtrees
-    % unnecessarily.  If the subterm is being tracked through an output
+    % unnecessarily. If the subterm is being tracked through an output
     % argument, and there is an input argument with the same name as the
     % output argument, except for a numerical suffix, then find_subterm_origin
     % will check if the subterm appears in the same position in the input
@@ -482,7 +482,7 @@
     %   !SearchSpace, MaybeDescendant):
     %
     % Search the search space for a suspect with status = unknown in a top down
-    % fashion, starting with SuspectId.  If no unknown suspect is found then
+    % fashion, starting with SuspectId. If no unknown suspect is found then
     % MaybeDescendant will be no. If there are no unknown suspects in the
     % explicit part of the search space and a skipped, ignored or erroneous
     % suspect is the root of an implicit subtree, then the call will fail.
@@ -507,7 +507,7 @@
     % get_path(SearchSpace, BottomId, TopId, Path):
     %
     % Path is InitialPath appended to the list of suspect_id's between
-    % FromId and ToId (inclusive).  ToId should be an ancestor of FromId.
+    % FromId and ToId (inclusive). ToId should be an ancestor of FromId.
     % If it isn't then the call will fail.
     %
 :- pred get_path(search_space(T)::in, suspect_id::in, suspect_id::in,
@@ -849,17 +849,17 @@ assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
     % If the suspect was erroneous or excluded because of another erroneous
     % suspect, then we should update the complement of the subtree rooted
     % at the suspect to unknown.
-    ( excluded_complement(Suspect ^ status, yes) ->
+    ( if excluded_complement(Suspect ^ status, yes) then
         propagate_status_upwards(suspect_unknown, [suspect_erroneous],
             SuspectId, Lowest, !SearchSpace),
 
         % Update the root to the next lowest erroneous suspect.
-        ( suspect_erroneous(!.SearchSpace, Lowest) ->
+        ( if suspect_erroneous(!.SearchSpace, Lowest) then
             !SearchSpace ^ root := yes(Lowest)
-        ;
+        else
             !SearchSpace ^ root := no
         )
-    ;
+    else
         true
     ).
 
@@ -907,9 +907,9 @@ revise_root(Store, !SearchSpace) :-
         propagate_status_upwards(suspect_unknown,
             [suspect_erroneous, suspect_correct, suspect_inadmissible],
             RootId, Lowest, !SearchSpace),
-        ( suspect_erroneous(!.SearchSpace, Lowest) ->
+        ( if suspect_erroneous(!.SearchSpace, Lowest) then
             !SearchSpace ^ root := yes(Lowest)
-        ;
+        else
             !SearchSpace ^ root := no
         ),
 
@@ -937,13 +937,13 @@ suspect_depth(SearchSpace, SuspectId) = Suspect ^ depth :-
     lookup_suspect(SearchSpace, SuspectId, Suspect).
 
 travel_up(SearchSpace, StartId, Distance, FinishId) :-
-    (
+    ( if
         Distance > 0,
         lookup_suspect(SearchSpace, StartId, Suspect),
         Suspect ^ parent = yes(ParentId)
-    ->
+    then
         travel_up(SearchSpace, ParentId, Distance - 1, FinishId)
-    ;
+    else
         FinishId = StartId
     ).
 
@@ -955,17 +955,17 @@ lookup_subterm_node(Store, SuspectId, ArgPos, TermPath, SearchSpace, Suspect,
     edt_subterm_mode(Store, ExplicitNode, ArgPos, TermPath, Mode),
 
     % If the mode is input then the origin will be in a parent or a
-    % sibling.  In either case we need access to a parent EDT node, so
+    % sibling. In either case we need access to a parent EDT node, so
     % if the node is at the top of a generated explicit subtree we must use
     % the implicit root instead, so the dependency tracking algorithm
     % has access to the node's parent and siblings in the EDT.
-    (
+    ( if
         Mode = subterm_in,
         ImplicitToExplicit = SearchSpace ^ implicit_to_explicit_roots,
         bimap.search(ImplicitToExplicit, ImplicitNode, ExplicitNode)
-    ->
+    then
         Node = ImplicitNode
-    ;
+    else
         Node = ExplicitNode
     ).
 
@@ -981,11 +981,11 @@ find_subterm_origin(Store, Oracle, SuspectId, ArgPos, TermPath, HowTrack,
                 ParentId, no, !SearchSpace, Response)
         ;
             Suspect ^ parent = no,
-            ( extend_search_space_upwards(Store, Oracle, !SearchSpace) ->
+            ( if extend_search_space_upwards(Store, Oracle, !SearchSpace) then
                 topmost_det(!.SearchSpace, NewRootId),
                 resolve_origin(Store, Oracle, Node, ArgPos, TermPath,
                     NewRootId, no, !SearchSpace, Response)
-            ;
+            else
                 Response = require_explicit_supertree
             )
         )
@@ -1017,7 +1017,7 @@ find_subterm_origin(Store, Oracle, SuspectId, ArgPos, TermPath, HowTrack,
     % if the origin is a primitive op or an input and as the appropriate child
     % of SuspectId if the origin is an output. SuspectId should point to
     % a parent of Node if the mode of the sub-term is input and should point to
-    % Node itself if the mode of the sub-term is output.  Output should be yes
+    % Node itself if the mode of the sub-term is output. Output should be yes
     % if the sub-term is an output of SuspectId and no if it isn't.
     %
 :- pred resolve_origin(S::in, oracle_state::in, T::in,
@@ -1040,28 +1040,28 @@ resolve_origin(Store, Oracle, Node, ArgPos, TermPath, SuspectId,
         Response = origin(SuspectId, InputArgPos, InputTermPath, subterm_in)
     ;
         Origin = origin_output(OriginNode, OutputArgPos, OutputTermPath),
-        (
+        ( if
             bimap.search(!.SearchSpace ^ implicit_to_explicit_roots,
                 OriginNode, ExplicitNode)
-        ->
+        then
             ExplicitOrigin = ExplicitNode
-        ;
+        else
             ExplicitOrigin = OriginNode
         ),
-        (
+        ( if
             children(Store, Oracle, SuspectId, !SearchSpace, Children)
-        ->
-            (
+        then
+            ( if
                 find_edt_node_in_suspect_list(Children, ExplicitOrigin,
                     !.SearchSpace, OriginId)
-            ->
+            then
                 Response = origin(OriginId, OutputArgPos, OutputTermPath,
                     subterm_out)
-            ;
+            else
                 throw(internal_error("resolve_origin",
                     "output origin for input subterm not in siblings"))
             )
-        ;
+        else
             Response = require_explicit_subtree
         )
     ;
@@ -1076,14 +1076,14 @@ resolve_origin(Store, Oracle, Node, ArgPos, TermPath, SuspectId,
 subterm_is_in_input_with_same_prefix(Store, Node, OutputArgPos, TermPath,
         !TriedProcs, MaybeInitialVersionArgPos) :-
     edt_question(Store, Node, Question),
-    (
+    ( if
         Question = wrong_answer(_, _, FinalDeclAtom),
         FinalDeclAtom = final_decl_atom(FinalAtom, _),
         FinalAtom = atom(ProcLayout, FinalArgs),
         not map.search(!.TriedProcs, ProcLayout, _)
-    ->
+    then
         map.det_insert(ProcLayout, unit, !TriedProcs),
-        (
+        ( if
             absolute_arg_num(OutputArgPos, FinalAtom, OutputArgNum),
             select_arg_at_pos(OutputArgPos, FinalArgs, OutputArg),
             OutputArg = arg_info(_, _, yes(OutputTermRep)),
@@ -1097,12 +1097,12 @@ subterm_is_in_input_with_same_prefix(Store, Node, OutputArgPos, TermPath,
             deref_path(InitialVersionTermRep, TermPath,
                 InitialVersionSubtermRep),
             InitialVersionSubtermRep = OutputSubtermRep
-        ->
+        then
             MaybeInitialVersionArgPos = yes(InitialVersionArgPos)
-        ;
+        else
             MaybeInitialVersionArgPos = no
         )
-    ;
+    else
         MaybeInitialVersionArgPos = no
     ).
 
@@ -1114,12 +1114,12 @@ subterm_is_in_input_with_same_prefix(Store, Node, OutputArgPos, TermPath,
 
 find_edt_node_in_suspect_list([SuspectId | SuspectIds], Node, SearchSpace,
         FoundId) :-
-    (
+    ( if
         map.search(SearchSpace ^ store, SuspectId, Suspect),
         Node = Suspect ^ edt_node
-    ->
+    then
         FoundId = SuspectId
-    ;
+    else
         find_edt_node_in_suspect_list(SuspectIds, Node, SearchSpace, FoundId)
     ).
 
@@ -1130,9 +1130,9 @@ find_edt_node_in_suspect_list([SuspectId | SuspectIds], Node, SearchSpace,
     is det.
 
 lookup_suspect(SearchSpace, SuspectId, Suspect) :-
-    ( map.search(SearchSpace ^ store, SuspectId, FoundSuspect) ->
+    ( if map.search(SearchSpace ^ store, SuspectId, FoundSuspect) then
         Suspect = FoundSuspect
-    ;
+    else
         throw(internal_error("lookup_suspect", "couldn't find suspect"))
     ).
 
@@ -1144,7 +1144,7 @@ lookup_suspect(SearchSpace, SuspectId, Suspect) :-
 set_suspect(SuspectId, Suspect, !SearchSpace) :-
     Store0 = !.SearchSpace ^ store,
     map.set(SuspectId, Suspect, Store0, Store),
-    !SearchSpace ^ store := Store.    
+    !SearchSpace ^ store := Store.
 
     % propagate_status_downwards(Status, StopStatusSet, SuspectId,
     %   StopSuspects, !SearchSpace):
@@ -1184,7 +1184,9 @@ propagate_status_downwards(Status, StopStatusSet, SuspectId, !SearchSpace) :-
 propagate_status_downwards(Status, StopStatusSet, SuspectId, !StopSuspects,
         !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    ( \+ member(Suspect ^ status, StopStatusSet) ->
+    ( if list.member(Suspect ^ status, StopStatusSet) then
+        list.cons(SuspectId, !StopSuspects)
+    else
         set_suspect(SuspectId, Suspect ^ status := Status,
             !SearchSpace),
         (
@@ -1194,8 +1196,6 @@ propagate_status_downwards(Status, StopStatusSet, SuspectId, !StopSuspects,
         ;
             Suspect ^ children = no
         )
-    ;
-        list.cons(SuspectId, !StopSuspects)
     ).
 
     % force_propagate_status_downwards is like propagate_status_downwards,
@@ -1229,9 +1229,9 @@ force_propagate_status_downwards(Status, StopStatusSet, SuspectId,
     ).
 
 maybe_check_search_space_consistency(Store, SearchSpace, Context) :-
-    ( should_check_search_space_consistency ->
+    ( if should_check_search_space_consistency then
         check_search_space_consistency(Store, SearchSpace, Context)
-    ;
+    else
         true
     ).
 
@@ -1239,13 +1239,13 @@ maybe_check_search_space_consistency(Store, SearchSpace, Context) :-
     string::in) is det <= mercury_edt(S, T).
 
 check_search_space_consistency(Store, SearchSpace, Context) :-
-    (
+    ( if
         SearchSpace ^ maybe_weighting_heuristic = yes(_),
         find_inconsistency_in_weights(Store, SearchSpace, Message)
-    ->
+    then
         throw(internal_error("check_search_space_consistency",
             Message ++ "\n Context = " ++ Context))
-    ;
+    else
         true
     ).
 
@@ -1278,14 +1278,14 @@ calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
         ExcessWeight) :-
     (
         SearchSpace ^ maybe_weighting_heuristic = yes(Weighting),
-        (
+        ( if
             ( Status = suspect_correct
             ; Status = suspect_inadmissible
             )
-        ->
+        then
             Weight = 0,
             ExcessWeight = 0
-        ;
+        else
             calc_weight(Weighting, Store, Node, OriginalWeight, ExcessWeight),
             (
                 MaybeChildren = no,
@@ -1332,15 +1332,15 @@ calc_suspect_weight(Store, Node, MaybeChildren, Status, SearchSpace, Weight,
     search_space(T)::in, search_space(T)::out) is det.
 
 add_weight_to_ancestors(SuspectId, Weight, !SearchSpace) :-
-    (
+    ( if
         % Stop if the weight is 0, if the node is erroneous or
         % if there is no parent.
         Weight \= 0,
         lookup_suspect(!.SearchSpace, SuspectId, Suspect),
         Suspect ^ parent = yes(ParentId)
-    ->
+    then
         lookup_suspect(!.SearchSpace, ParentId, Parent),
-        set_suspect(ParentId, Parent ^ weight := Parent ^ weight + Weight, 
+        set_suspect(ParentId, Parent ^ weight := Parent ^ weight + Weight,
             !SearchSpace),
         excluded_complement(Parent ^ status, ExcludedComplement),
         (
@@ -1349,7 +1349,7 @@ add_weight_to_ancestors(SuspectId, Weight, !SearchSpace) :-
             ExcludedComplement = no,
             add_weight_to_ancestors(ParentId, Weight, !SearchSpace)
         )
-    ;
+    else
         true
     ).
 
@@ -1444,9 +1444,9 @@ calc_num_unexplored(SearchSpace) = NumUnexplored :-
     string::out) is semidet <= mercury_edt(S, T).
 
 find_inconsistency_in_weights(Store, SearchSpace, Message) :-
-    ( root(SearchSpace, RootId) ->
+    ( if root(SearchSpace, RootId) then
         find_inconsistency_in_weights_2(Store, SearchSpace, RootId, Message)
-    ;
+    else
         topmost_det(SearchSpace, TopMostId),
         find_inconsistency_in_weights_2(Store, SearchSpace, TopMostId, Message)
     ).
@@ -1460,16 +1460,16 @@ find_inconsistency_in_weights_2(Store, SearchSpace, SuspectId, Message) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
     calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children,
         Suspect ^ status, SearchSpace, Weight, _),
-    (
+    ( if
         Weight = Suspect ^ weight,
         Weight >= 0
-    ->
+    then
         Suspect ^ children = yes(Children),
         in_buggy_subtree(Suspect ^ status, yes),
         list.filter_map(find_inconsistency_in_weights_2(Store, SearchSpace),
             Children, Messages),
         Messages = [Message | _]
-    ;
+    else
         Message = "Weights not consistent for suspect id " ++
             int_to_string(SuspectId) ++ ", Suspect = " ++
             string(Suspect) ++ " Calculated weight = " ++ int_to_string(Weight)
@@ -1498,13 +1498,13 @@ propagate_status_upwards(Status, StopStatusSet, SuspectId, Lowest,
         list.foldl(propagate_status_downwards(Status, StopStatusSet),
             Siblings, !SearchSpace),
         lookup_suspect(!.SearchSpace, ParentId, Parent),
-        ( \+ list.member(Parent ^ status, StopStatusSet) ->
+        ( if list.member(Parent ^ status, StopStatusSet) then
+            Lowest = ParentId
+        else
             propagate_status_upwards(Status, StopStatusSet,
                 ParentId, Lowest, !SearchSpace),
             set_suspect(ParentId, Parent ^ status := Status,
                 !SearchSpace)
-        ;
-            Lowest = ParentId
         )
     ;
         Suspect ^ parent = no,
@@ -1542,7 +1542,7 @@ get_siblings(SearchSpace, SuspectId, Siblings) :-
     ).
 
     % Add the list of EDT nodes to the search space as children to the given
-    % suspect.  The suspect_ids for the new suspects will also be returned.
+    % suspect. The suspect_ids for the new suspects will also be returned.
     %
 :- pred add_children(S::in, oracle_state::in, list(T)::in,
     suspect_id::in, suspect_status::in, search_space(T)::in,
@@ -1564,18 +1564,18 @@ add_children(Store, Oracle, EDTChildren, SuspectId, Status, !SearchSpace,
     list.foldl(adjust_suspect_status_from_oracle(Store, Oracle), Children,
         !SearchSpace),
 
-    % Recalc the weight if the suspect is ignored.  This wouldn't have
+    % Recalc the weight if the suspect is ignored. This wouldn't have
     % been done by ignore_suspect/4 since the children wouldn't have been
     % available.
 
-    ( Suspect ^ status = suspect_ignored ->
+    ( if Suspect ^ status = suspect_ignored then
         calc_suspect_weight(Store, Suspect ^ edt_node, yes(Children),
             suspect_ignored, !.SearchSpace, Weight, _),
         set_suspect(SuspectId, SuspectWithChildren ^ weight := Weight,
             !SearchSpace),
         add_weight_to_ancestors(SuspectId, Weight - Suspect ^ weight,
             !SearchSpace)
-    ;
+    else
         true
     ).
 
@@ -1618,9 +1618,9 @@ add_child_to_parent(ChildId, !Parent) :-
 
 adjust_suspect_status_from_oracle(Store, Oracle, SuspectId, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    ( Suspect ^ status = suspect_unknown ->
+    ( if Suspect ^ status = suspect_unknown then
         edt_question(Store, Suspect ^ edt_node, Question),
-        ( answer_known(Oracle, Question, Answer) ->
+        ( if answer_known(Oracle, Question, Answer) then
             (
                 Answer = ignore(_),
                 ignore_suspect(Store, SuspectId, !SearchSpace)
@@ -1637,10 +1637,10 @@ adjust_suspect_status_from_oracle(Store, Oracle, SuspectId, !SearchSpace) :-
                     assert_suspect_is_inadmissible(SuspectId, !SearchSpace)
                 )
             )
-        ;
+        else
             true
         )
-    ;
+    else
         true
     ).
 
@@ -1660,13 +1660,13 @@ initialise_search_space(Store, MaybeWeighting, Node, SearchSpace) :-
 incorporate_explicit_subtree(SuspectId, Node, !SearchSpace) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     set_suspect(SuspectId, Suspect ^ edt_node := Node, !SearchSpace),
-    bimap.set(Suspect ^ edt_node, Node, 
+    bimap.set(Suspect ^ edt_node, Node,
         !.SearchSpace ^ implicit_to_explicit_roots, ImplicitToExplicit),
     !SearchSpace ^ implicit_to_explicit_roots := ImplicitToExplicit.
 
 incorporate_explicit_supertree(Store, Oracle, Node, !SearchSpace) :-
     topmost_det(!.SearchSpace, OldTopMostId),
-    ( edt_parent(Store, Node, Parent) ->
+    ( if edt_parent(Store, Node, Parent) then
         insert_new_topmost_node(Store, Oracle, Parent, !SearchSpace),
 
         % Node implicitly represents the root of the old search space,
@@ -1675,7 +1675,7 @@ incorporate_explicit_supertree(Store, Oracle, Node, !SearchSpace) :-
         bimap.set(Node, get_edt_node(!.SearchSpace, OldTopMostId),
             !.SearchSpace ^ implicit_to_explicit_roots, ImplicitToExplicit),
         !SearchSpace ^ implicit_to_explicit_roots := ImplicitToExplicit
-    ;
+    else
         throw(internal_error("incorporate_explicit_supertree", "no parent"))
     ).
 
@@ -1691,17 +1691,17 @@ extend_search_space_upwards(Store, Oracle, !SearchSpace) :-
     search_space(T)::in, search_space(T)::out) is det <= mercury_edt(S, T).
 
 insert_new_topmost_node(Store, Oracle, NewTopMostEDTNode, !SearchSpace) :-
-    ( edt_children(Store, NewTopMostEDTNode, EDTChildren) ->
+    ( if edt_children(Store, NewTopMostEDTNode, EDTChildren) then
         topmost_det(!.SearchSpace, OldTopMostId),
         lookup_suspect(!.SearchSpace, OldTopMostId, OldTopMost),
-        (
+        ( if
             % One of the children of the new topmost node will be the old
             % topmost node, so filter it out so it isn't added twice.
 
             find_node_in_list(Store, EDTChildren, OldTopMost ^ edt_node, Pos),
             list.split_list(Pos - 1, EDTChildren, LeftChildren,
                 [_ | RightChildren])
-        ->
+        then
             % Insert the new topmost node.
             NewTopMostStatus = new_parent_status( OldTopMost ^ status),
             NewTopMostDepth = OldTopMost ^ depth - 1,
@@ -1722,13 +1722,13 @@ insert_new_topmost_node(Store, Oracle, NewTopMostEDTNode, !SearchSpace) :-
                 NewTopMostId, SiblingStatus, !SearchSpace, ChildrenIds),
 
             % Now add the old topmost node as a child to the new topmost node.
-            (
+            ( if
                 list.split_list(Pos - 1, ChildrenIds,
                     LeftChildrenIds, RightChildrenIds)
-            ->
+            then
                 append(LeftChildrenIds, [OldTopMostId | RightChildrenIds],
                     NewTopMostChildrenIds)
-            ;
+            else
                 throw(internal_error("insert_new_topmost_node",
                     "invalid position"))
             ),
@@ -1751,11 +1751,11 @@ insert_new_topmost_node(Store, Oracle, NewTopMostEDTNode, !SearchSpace) :-
             !SearchSpace ^ topmost := yes(NewTopMostId),
             adjust_suspect_status_from_oracle(Store, Oracle, NewTopMostId,
                 !SearchSpace)
-        ;
+        else
             throw(internal_error("insert_new_topmost_node",
                 "couldn't find event number"))
         )
-    ;
+    else
         throw(internal_error("insert_new_topmost_node",
             "couldn't get new topmost node's children"))
     ).
@@ -1764,9 +1764,9 @@ insert_new_topmost_node(Store, Oracle, NewTopMostEDTNode, !SearchSpace) :-
     <= mercury_edt(S, T).
 
 find_node_in_list(Store, [Node | Nodes], NodeToMatch, Pos) :-
-    ( edt_same_nodes(Store, Node, NodeToMatch) ->
+    ( if edt_same_nodes(Store, Node, NodeToMatch) then
         Pos = 1
-    ;
+    else
         find_node_in_list(Store, Nodes, NodeToMatch, TailPos),
         Pos = TailPos + 1
     ).
@@ -1807,11 +1807,11 @@ non_ignored_descendants(_, _, [], !SearchSpace, []).
 non_ignored_descendants(Store, Oracle, [SuspectId | SuspectIds],
         !SearchSpace, Descendants) :-
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
-    ( Suspect ^ status = suspect_ignored ->
+    ( if Suspect ^ status = suspect_ignored then
         children(Store, Oracle, SuspectId, !SearchSpace, Children),
         non_ignored_descendants(Store, Oracle, Children, !SearchSpace,
             Descendants1)
-    ;
+    else
         Descendants1 = [SuspectId]
     ),
     non_ignored_descendants(Store, Oracle, SuspectIds, !SearchSpace,
@@ -1844,15 +1844,15 @@ choose_skipped_suspect(SearchSpace, Skipped) :-
 least_skipped(SearchSpace, SuspectId1, Suspect1, SuspectId2, LeastSkipped) :-
     Status1 = Suspect1 ^ status,
     Status2 = get_status(SearchSpace, SuspectId2),
-    ( Status1 = suspect_skipped(N), Status2 = suspect_skipped(M) ->
-        ( N > M ->
+    ( if Status1 = suspect_skipped(N), Status2 = suspect_skipped(M) then
+        ( if N > M then
             LeastSkipped = SuspectId2
-        ;
+        else
             LeastSkipped = SuspectId1
         )
-    ; Status1 = suspect_skipped(_) ->
+    else if Status1 = suspect_skipped(_) then
         LeastSkipped = SuspectId1
-    ;
+    else
         LeastSkipped = SuspectId2
     ).
 
@@ -1927,7 +1927,7 @@ first_unknown_descendant_list(Store, Oracle, SuspectList, !SearchSpace,
     % Children is the children of all the suspects in SuspectIds appended
     % together. If an explicit subtree is required to find the children
     % of at least one element of SuspectIds, then ExplicitRequired will be yes,
-    % otherwise it'll be no.  If an explicit subtree is required for a suspect
+    % otherwise it'll be no. If an explicit subtree is required for a suspect
     % then its children are not included in Children.
     %
 :- pred get_children_list(S::in, oracle_state::in,
@@ -1939,10 +1939,10 @@ get_children_list(Store, Oracle, [SuspectId | SuspectIds],
         !SearchSpace, ExplicitRequired, ChildrenList) :-
     get_children_list(Store, Oracle, SuspectIds, !SearchSpace,
         ExplicitRequired0, ChildrenList0),
-    ( children(Store, Oracle, SuspectId, !SearchSpace, Children) ->
+    ( if children(Store, Oracle, SuspectId, !SearchSpace, Children) then
         append(Children, ChildrenList0, ChildrenList),
         ExplicitRequired = ExplicitRequired0
-    ;
+    else
         ChildrenList = ChildrenList0,
         ExplicitRequired = yes(SuspectId)
     ).
@@ -1957,25 +1957,23 @@ find_first_implicit_root(Store, SearchSpace, [SuspectId | SuspectIds],
         ImplicitRoot) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
     Status = Suspect ^ status,
-    (
+    ( if
         % Check that it might be worth our while building an explicit
         % subtree here.
         in_buggy_subtree(Status, yes),
         edt_is_implicit_root(Store, Suspect ^ edt_node)
-    ->
+    then
         ImplicitRoot = SuspectId
-    ;
-        (
-            in_buggy_subtree(Status, yes),
-            Suspect ^ children = yes(Children),
-            find_first_implicit_root(Store, SearchSpace, Children,
-                ImplicitRootInChildren)
-        ->
-            ImplicitRoot = ImplicitRootInChildren
-        ;
-            find_first_implicit_root(Store, SearchSpace, SuspectIds,
-                ImplicitRoot)
-        )
+    else if
+        in_buggy_subtree(Status, yes),
+        Suspect ^ children = yes(Children),
+        find_first_implicit_root(Store, SearchSpace, Children,
+            ImplicitRootInChildren)
+    then
+        ImplicitRoot = ImplicitRootInChildren
+    else
+        find_first_implicit_root(Store, SearchSpace, SuspectIds,
+            ImplicitRoot)
     ).
 
 get_path(SearchSpace, BottomId, TopId, Path) :-
@@ -1985,16 +1983,16 @@ get_path(SearchSpace, BottomId, TopId, Path) :-
     %
     % Path = append(RemainingPath, PathSoFar) where RemainingPath is the
     % path in the search space between TopId and BottomId, starting at TopId
-    % and ending at BottomId (inclusive).  Fails if TopId is not an ancestor
+    % and ending at BottomId (inclusive). Fails if TopId is not an ancestor
     % of BottomId.
     %
 :- pred get_path(search_space(T)::in, suspect_id::in, suspect_id::in,
     list(suspect_id)::in, list(suspect_id)::out) is semidet.
 
 get_path(SearchSpace, BottomId, TopId, PathSoFar, Path) :-
-    ( BottomId = TopId ->
+    ( if BottomId = TopId then
         Path = [TopId | PathSoFar]
-    ;
+    else
         lookup_suspect(SearchSpace, BottomId, Bottom),
         Bottom ^ parent = yes(ParentId),
         get_path(SearchSpace, ParentId, TopId, [BottomId | PathSoFar], Path)
@@ -2010,16 +2008,16 @@ get_proc_label_for_suspect(Store, SearchSpace, SuspectId) =
 
 update_weighting_heuristic(Store, Weighting, !SearchSpace) :-
     MaybePrevWeighting = !.SearchSpace ^ maybe_weighting_heuristic,
-    (
+    ( if
         MaybePrevWeighting = yes(PrevWeighting),
         PrevWeighting = Weighting
-    ->
+    then
         true
-    ;
+    else
         !SearchSpace ^ maybe_weighting_heuristic := yes(Weighting),
-        ( map.is_empty(!.SearchSpace ^ store) ->
+        ( if map.is_empty(!.SearchSpace ^ store) then
             true
-        ;
+        else
             % Recompute the suspect weights from the bottom up.
             map.keys(!.SearchSpace ^ store, AllSuspects),
             list.filter(suspect_is_leaf(!.SearchSpace),

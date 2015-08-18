@@ -17,9 +17,9 @@
 %
 % The details of name mangling are implementation-dependent, so unfortunately
 % the values stored in the `mercury_proc' type might be subject to change
-% in different Mercury implementations.  Any code which creates or
-% examines values of that type should be carefully isolated so that
-% it can be easily changed if the representation of `mercury_proc' changes.
+% in different Mercury implementations. Any code which creates or examines
+% values of that type should be carefully isolated so that it can be
+% easily changed if the representation of `mercury_proc' changes.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -56,11 +56,12 @@
 
 :- type pred_name == string.
 
-:- type arity == int.       % note that for functions that arity here
-                            % does *not* include the function result
-                            % e.g. int:'*' has arity 2, not 3.
+    % Note that for functions, that arity here does *not* include
+    % the function result, e.g. int:'*' has arity 2, not 3.
+:- type arity == int.
 
-:- type mode_num == int.    % mode numbers start from zero
+    % Mode numbers start from zero.
+:- type mode_num == int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -73,15 +74,15 @@
 :- import_module string.
 
 % XXX most of the code below is very similar to the code in
-% compiler/llds_out.m.  Any changes there may require changes here
+% compiler/llds_out.m. Any changes there may require changes here
 % and vice versa.
 
 %-----------------------------------------------------------------------------%
 
 proc_name_mangle(MercuryProc) =
-    ( high_level_code ->
+    ( if high_level_code then
         mlds_proc_name_mangle(MercuryProc)
-    ;
+    else
         llds_proc_name_mangle(MercuryProc)
     ).
 
@@ -90,7 +91,7 @@ proc_name_mangle(MercuryProc) =
 llds_proc_name_mangle(MercuryProc) = LabelName :-
     MercuryProc = mercury_proc(PredOrFunc, Module, Name0, Arity, ModeNum),
     sym_name_mangle(Module, ModuleName),
-    (
+    ( if
         (
             Module = unqualified("builtin")
         ;
@@ -99,9 +100,9 @@ llds_proc_name_mangle(MercuryProc) = LabelName :-
         )
         % The conditions above define which labels are printed without
         % module qualification.
-    ->
+    then
         LabelName0 = Name0
-    ;
+    else
         qualify_name(ModuleName, Name0, LabelName0)
     ),
     name_mangle(LabelName0, LabelName1),
@@ -117,9 +118,9 @@ llds_proc_name_mangle(MercuryProc) = LabelName :-
         LabelName3 = LabelName2
     ),
     string.append("mercury__", LabelName3, LabelName4),
-    ( use_asm_labels ->
+    ( if use_asm_labels then
         string.append("_entry_", LabelName4, LabelName)
-    ;
+    else
         LabelName = LabelName4
     ).
 
@@ -128,15 +129,15 @@ llds_proc_name_mangle(MercuryProc) = LabelName :-
 mlds_proc_name_mangle(MercuryProc) = LabelName :-
     MercuryProc = mercury_proc(PredOrFunc, Module, Name0, Arity, ModeNum),
     sym_name_mangle(Module, ModuleName),
-    (
+    ( if
         PredOrFunc = predicate,
         Name0 = "main",
         Arity = 2
         % The conditions above define which labels are printed without
         % module qualification.
-    ->
+    then
         LabelName0 = Name0
-    ;
+    else
         qualify_name(ModuleName, Name0, LabelName0)
     ),
     name_mangle(LabelName0, LabelName1),
@@ -165,33 +166,33 @@ sym_name_mangle(qualified(ModuleName, PlainName), MangledName) :-
     qualify_name(MangledModuleName, MangledPlainName, MangledName).
 
     % Convert a Mercury predicate name into something that can form
-    % part of a C identifier.  This predicate is necessary because
+    % part of a C identifier. This predicate is necessary because
     % quoted names such as 'name with embedded spaces' are valid
     % predicate names in Mercury.
     %
 :- pred name_mangle(string::in, string::out) is det.
 
 name_mangle(Name, MangledName) :-
-    ( string.is_all_alnum_or_underscore(Name) ->
-        % any names that start with `f_' are changed so that
-        % they start with `f__', so that we can use names starting
-        % with `f_' (followed by anything except an underscore)
-        % without fear of name collisions
-        ( string.append("f_", Suffix, Name) ->
+    ( if string.is_all_alnum_or_underscore(Name) then
+        % Any names that start with `f_' are changed so that they start with
+        % `f__' instead, so that we can use names starting with `f_'
+        % (followed by anything except an underscore) without fear
+        % of name collisions.
+        ( if string.append("f_", Suffix, Name) then
             string.append("f__", Suffix, MangledName)
-        ;
+        else
             MangledName = Name
         )
-    ;
+    else
         convert_to_valid_c_identifier(Name, MangledName)
     ).
 
 :- pred convert_to_valid_c_identifier(string::in, string::out) is det.
 
 convert_to_valid_c_identifier(String, Name) :-
-    ( name_conversion_table(String, Name0) ->
+    ( if name_conversion_table(String, Name0) then
         Name = Name0
-    ;
+    else
         convert_to_valid_c_identifier_2(String, Name0),
         string.append("f", Name0, Name)
     ).
@@ -225,25 +226,24 @@ name_conversion_table(";", "f_semicolon").
 name_conversion_table("!", "f_cut").
 
     % This is the fall-back method.
-    % Given a string, produce a C identifier
-    % for that string by concatenating the decimal
-    % expansions of the character codes in the string,
-    % separated by underlines.
-    % The C identifier will start with "f_"; this predicate
-    % constructs everything except the initial "f".
+    %
+    % Given a string, produce a C identifier for that string by concatenating
+    % the decimal expansions of the character codes in the string,
+    % separated by underlines. The C identifier will start with "f_";
+    % this predicate constructs everything except the initial "f".
     %
     % For example, given the input "\n\t" we return "_10_8".
     %
 :- pred convert_to_valid_c_identifier_2(string::in, string::out) is det.
 
 convert_to_valid_c_identifier_2(String, Name) :-
-    ( string.first_char(String, Char, Rest) ->
+    ( if string.first_char(String, Char, Rest) then
         char.to_int(Char, Code),
         string.int_to_string(Code, CodeString),
         string.append("_", CodeString, ThisCharString),
         convert_to_valid_c_identifier_2(Rest, Name0),
         string.append(ThisCharString, Name0, Name)
-    ;
+    else
         % String is the empty string
         Name = String
     ).

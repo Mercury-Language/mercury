@@ -74,23 +74,18 @@
 match_with_cterm(Term, CTerm, Match) :-
     deconstruct(Term, include_details_cc, TermFunctor, _, TermArgs),
     cterm_deconstruct(CTerm, CTermFunctor, CTermArgs),
-    % impure unsafe_perform_io(io.write_string("comparing <")),
-    % impure unsafe_perform_io(io.write_string(TermFunctor)),
-    % impure unsafe_perform_io(io.write_string("> to <")),
-    % impure unsafe_perform_io(io.write_string(CTermFunctor)),
-    % impure unsafe_perform_io(io.write_string(">\n")),
-    ( TermFunctor = CTermFunctor ->
+    ( if CTermFunctor = TermFunctor then
         match_with_cterms(TermArgs, CTermArgs, Match)
-    ; CTermFunctor = "_" ->
+    else if CTermFunctor = "_" then
         Match = yes
-    ;
+    else
         Match = no
     ).
 
 :- pred match_with_cterms(list(univ)::in, cargs::in, bool::out) is cc_multi.
 
 match_with_cterms(UnivArgs, CArgs, Match) :-
-    ( cterm_head_tail(CArgs, CHead, CTail) ->
+    ( if cterm_head_tail(CArgs, CHead, CTail) then
         (
             UnivArgs = [],
             Match = no
@@ -106,7 +101,7 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
                 match_with_cterms(UnivTail, CTail, Match)
             )
         )
-    ;
+    else
         (
             UnivArgs = [],
             Match = yes
@@ -154,4 +149,3 @@ match_with_cterms(UnivArgs, CArgs, Match) :-
 "
     if (1 == 1) throw new Error(\"not supported in java grade\");
 ").
-

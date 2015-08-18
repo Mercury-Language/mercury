@@ -5,15 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: debugger_interface.m.
 % Authors: fjh, jahier.
-% 
+%
 % Purpose:
 %   This module provide support routines needed by
 %   runtime/mercury_trace_external.c for interfacing to an external
-%   (in a different process) debugger, in particular an Opium-style
-%   debugger.
+%   (in a different process) debugger, in particular an Opium-style debugger.
 %
 % This module corresponds to what is called the "Query Handler" in Opium.
 %
@@ -82,9 +81,10 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
             % match either user-defined or compiler-generated preds
 
 % This is known as "debugger_query" in the Opium documentation.
-% The debugger_request type is used for request sent
-% from the debugger process to the Mercury program being debugged.
-% This type would need to be extended to handle spypoints, etc.
+% The debugger_request type is used for request sent from the debugger process
+% to the Mercury program being debugged. This type would need to be extended
+% to handle spypoints, etc.
+
 :- type debugger_request
     --->    hello_reply     % yes, I'm here
 
@@ -429,10 +429,10 @@ output_current_live_var_names(LiveVarNameList, LiveVarTypeList, OutputStream,
 :- func get_var_number(debugger_request) = int.
 
 get_var_number(DebuggerRequest) = VarNumber :-
-    ( DebuggerRequest = current_nth_var(Var) ->
+    ( if DebuggerRequest = current_nth_var(Var) then
         Var = VarNumber
-    ;
-        error("get_var_number: not a current_nth_var request")
+    else
+        unexpected($module, $pred, "not a current_nth_var request")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -452,24 +452,24 @@ found_match_user(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
         DeclModuleName, DefModuleName, PredName, Arity, ModeNum,
         Determinism, Args, Path, DebuggerRequest) :-
     % XXX We could provide better ways of matching on arguments.
-    (
+    ( if
         DebuggerRequest = forward_move(MatchEventNumber,
             MatchCallNumber, MatchDepthNumber, MatchPort,
             UserPredMatch, MatchDefModuleName, MatchPredName,
             MatchArity, MatchModeNum, MatchDeterminism,
             MatchArgs, MatchPath)
-    ->
+    then
         match(MatchEventNumber, EventNumber),
         match(MatchCallNumber, CallNumber),
         match(MatchDepthNumber, DepthNumber),
         match(MatchPort, Port),
-        (
+        ( if
             UserPredMatch = match_user_pred(MatchPredOrFunc,
                 MatchDeclModuleName)
-        ->
+        then
             match(MatchPredOrFunc, PredOrFunc),
             match(MatchDeclModuleName, DeclModuleName)
-        ;
+        else
             UserPredMatch = match_any_pred
         ),
         match(MatchDefModuleName, DefModuleName),
@@ -479,8 +479,8 @@ found_match_user(EventNumber, CallNumber, DepthNumber, Port, PredOrFunc,
         match(MatchDeterminism, Determinism),
         match(MatchArgs, Args),
         match(MatchPath, Path)
-    ;
-        error("found_match: forward_move expected")
+    else
+        unexpected($module, $pred, "forward_move expected")
     ).
 
     % match(MatchPattern, Value) is true iff Value matches the specified
@@ -514,25 +514,25 @@ found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType,
         ModuleType, DefModuleName, PredName, Arity, ModeNum,
         Determinism, Args, Path, DebuggerRequest) :-
     % XXX We could provide better ways of matching on arguments.
-    (
+    ( if
         DebuggerRequest = forward_move(MatchEventNumber,
             MatchCallNumber, MatchDepthNumber, MatchPort,
             CompilerGeneratedPredMatch,
             MatchDefModuleName, MatchPredName, MatchArity,
             MatchModeNum, MatchDeterminism, MatchArgs, MatchPath)
-    ->
+    then
         match(MatchEventNumber, EventNumber),
         match(MatchCallNumber, CallNumber),
         match(MatchDepthNumber, DepthNumber),
         match(MatchPort, Port),
-        (
+        ( if
             CompilerGeneratedPredMatch =
                 match_compiler_generated_pred(MatchNameType,
             MatchModuleType)
-        ->
+        then
             match(MatchNameType, NameType),
             match(MatchModuleType, ModuleType)
-        ;
+        else
             CompilerGeneratedPredMatch = match_any_pred
         ),
         match(MatchDefModuleName, DefModuleName),
@@ -542,8 +542,8 @@ found_match_comp(EventNumber, CallNumber, DepthNumber, Port, NameType,
         match(MatchDeterminism, Determinism),
         match(MatchArgs, Args),
         match(MatchPath, Path)
-    ;
-        error("found_match: forward_move expected")
+    else
+        unexpected($module, $pred, "forward_move expected")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -586,14 +586,14 @@ read_request_from_socket(SocketStream, Request, RequestType, !IO) :-
     "ML_DI_get_list_modules_to_import").
 
 get_list_modules_to_import(DebuggerRequest, ListLength, ModulesList) :-
-    ( DebuggerRequest = query(List) ->
+    ( if DebuggerRequest = query(List) then
         ModulesList = List
-    ; DebuggerRequest = cc_query(List) ->
+    else if DebuggerRequest = cc_query(List) then
         ModulesList = List
-    ; DebuggerRequest = io_query(List) ->
+    else if DebuggerRequest = io_query(List) then
         ModulesList = List
-    ;
-        error("get_list_modules_to_import: not a query request")
+    else
+        unexpected($module, $pred, "not a query request")
     ),
     length(ModulesList, ListLength).
 
@@ -604,10 +604,10 @@ get_list_modules_to_import(DebuggerRequest, ListLength, ModulesList) :-
     "ML_DI_get_mmc_options").
 
 get_mmc_options(DebuggerRequest, Options) :-
-    ( DebuggerRequest = mmc_options(OptionsPrim) ->
+    ( if DebuggerRequest = mmc_options(OptionsPrim) then
         Options = OptionsPrim
-    ;
-        error("get_mmc_options: not a mmc_options request")
+    else
+        unexpected($module, $pred, "not a mmc_options request")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -621,10 +621,10 @@ get_mmc_options(DebuggerRequest, Options) :-
     "ML_DI_get_object_file_name").
 
 get_object_file_name(DebuggerRequest, ObjectFileName) :-
-    ( DebuggerRequest = link_collect(ObjectFileNamePrime) ->
+    ( if DebuggerRequest = link_collect(ObjectFileNamePrime) then
         ObjectFileName = ObjectFileNamePrime
-    ;
-        error("get_object_file_name: not a link_collect request")
+    else
+        unexpected($module, $pred, "not a link_collect request")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -645,10 +645,10 @@ init_mercury_string("").
     "ML_DI_get_variable_name").
 
 get_variable_name(DebuggerRequest, Options) :-
-    ( DebuggerRequest = browse(OptionsPrime) ->
+    ( if DebuggerRequest = browse(OptionsPrime) then
         Options = OptionsPrime
-    ;
-        error("get_variable_name: not a browse request")
+    else
+        unexpected($module, $pred, "not a browse request")
     ).
 
 %------------------------------------------------------------------------------%

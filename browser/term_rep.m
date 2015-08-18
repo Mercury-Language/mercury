@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: term_rep.m.
 % Author: Ian MacLarty.
-% 
+%
 % This module implements an abstract type, term_rep, values of which are the
-% representation of some other value.  Constructing a representation from a
+% representation of some other value. Constructing a representation from a
 % term is cc_multi, but then doing comparisons on the representation is
 % deterministic.
 %
 % This is useful when we only want to consider the representation of a term
 % and don't care about it's actual value.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -68,7 +68,7 @@
 %-----------------------------------------------------------------------------%
 
 :- type term_rep
-    ---> term_rep(univ)
+    --->    term_rep(univ)
     where
         equality is term_rep_equal,
         comparison is term_rep_compare.
@@ -108,15 +108,12 @@ deref_path(Term, Path, SubTerm):-
     ).
 
 argument(Term, N, Arg) :-
-    %
     % There is only one representation of a subterm, given
     % the representation of the containing term and a term path.
-    %
     promise_equivalent_solutions [MaybeArg] (
         rep_to_univ(Term, Univ),
-        % Argument indexes in the term path start from one, but
-        % the argument function wants argument indexes to
-        % start from zero.
+        % Argument indexes in the term path start from one, but the argument
+        % function wants argument indexes to start from zero.
         arg_cc(univ_value(Univ), N - 1, MaybeSubUniv),
         (
             MaybeSubUniv = arg(SubValue),
@@ -130,33 +127,34 @@ argument(Term, N, Arg) :-
     MaybeArg = yes(Arg).
 
 field_pos(FieldName, Term, Pos) :-
-    %
     % There is only one or zero positions of a field
     % given a representation of a term and the field name.
-    %
     promise_equivalent_solutions [MaybePos] (
         rep_to_univ(Term, Univ),
         Value = univ_value(Univ),
         deconstruct(Value, include_details_cc, Functor, Arity, _Args),
         Type = type_of(Value),
-        ( NumFunctors = num_functors(Type) ->
+        ( if NumFunctors = num_functors(Type) then
             find_functor(1, NumFunctors, Type, Functor, Arity,
                 MaybeFunctorNum)
-        ;
+        else
             MaybeFunctorNum = no
         ),
         (
             MaybeFunctorNum = yes(FunctorNum),
-            (
-                get_functor_with_names(Type, FunctorNum - 1, 
+            ( if
+                get_functor_with_names(Type, FunctorNum - 1,
                     _FunctorName, _Arity, _ArgTypes, ArgNames)
-            ->
-                ( index1_of_first_occurrence(ArgNames, yes(FieldName), Pos0) ->
+            then
+                ( if
+                    list.index1_of_first_occurrence(ArgNames, yes(FieldName),
+                        Pos0)
+                then
                     MaybePos = yes(Pos0)
-                ;
+                else
                     MaybePos = no
                 )
-            ;
+            else
                 throw(internal_error("field_pos",
                     "get_functor_with_names couldn't find functor"))
             )
@@ -173,13 +171,13 @@ field_pos(FieldName, Term, Pos) :-
 
 find_functor(Current, NumFunctors, Type, FunctorName, Arity,
         MaybeFunctorNum) :-
-    ( Current =< NumFunctors ->
-        ( get_functor(Type, Current - 1, FunctorName, Arity, _) ->
+    ( if Current =< NumFunctors then
+        ( if get_functor(Type, Current - 1, FunctorName, Arity, _) then
             MaybeFunctorNum = yes(Current)
-        ;
+        else
             find_functor(Current + 1, NumFunctors, Type,
                 FunctorName, Arity, MaybeFunctorNum)
         )
-    ;
+    else
         MaybeFunctorNum = no
     ).
