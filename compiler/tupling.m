@@ -565,10 +565,10 @@ make_tupling_proposal(ModuleInfo, CandidateHeadVars, MinArgsToTuple,
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
     FieldVarArgPos = list.filter_map(
-        (func(_ - Annotation) = (Var - Pos) is semidet :-
+        ( func(_ - Annotation) = (Var - Pos) is semidet :-
             map.search(Annotation, PredProcId, Var),
-            list.nth_member_search(HeadVars, Var, Pos)),
-        CandidateHeadVars),
+            list.index1_of_first_occurrence(HeadVars, Var, Pos)
+        ), CandidateHeadVars),
     ( list.length(FieldVarArgPos) < MinArgsToTuple ->
         TuplingProposal = no_tupling
     ;
@@ -654,7 +654,8 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
 
         % Get the argument positions of the parameters to be tupled.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
-        list.map(nth_member_lookup(HeadVars), FieldVars, ArgsToTuple),
+        ArgsToTuple =
+            list.map(det_index1_of_first_occurrence(HeadVars), FieldVars),
 
         % Build an insertion map of where the deconstruction
         % unifications are needed.
@@ -1229,7 +1230,7 @@ count_load_stores_in_call_to_tupled(GoalExpr, GoalInfo, CountInfo,
         => (
             set.member(Var, InputArgs0),
             assoc_list.search(FieldVarArgPos, Var, Pos),
-            list.nth_member_search(ArgVars, Var, Pos)
+            list.index1_of_first_occurrence(ArgVars, Var, Pos)
         ))
     ->
         % In this case, the cell var is not being used to access field

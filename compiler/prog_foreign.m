@@ -308,8 +308,8 @@ prefer_foreign_language(_Globals, target_il, Lang1, Lang2) = Comp :-
     PreferredList = [lang_il, lang_csharp],
 
     FindLangPriority = (func(L) = X :-
-        ( list.nth_member_search(PreferredList, L, X0) ->
-            X = X0
+        ( list.index1_of_first_occurrence(PreferredList, L, XPrime) ->
+            X = XPrime
         ;
             X = list.length(PreferredList) + 1
         )),

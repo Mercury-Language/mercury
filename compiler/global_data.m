@@ -900,7 +900,8 @@ merge_scalar_cell_groups_2(TypeNum, ArrayB, ArrayAB,
             % Look up what value this cell number referred to in the B array.
             % Find the cell number of the same value in the combined A+B array.
             CommonCellValue = list.det_index0(ArrayB, BCellNum),
-            CellNum = nth_member_lookup0(ArrayAB, CommonCellValue),
+            CellNum =
+                list.det_index0_of_first_occurrence(ArrayAB, CommonCellValue),
             % Add the new data name.
             DataId = scalar_common_data_id(TypeNum, CellNum),
             bimap.det_insert(Rvals, DataId, !GroupMembers),
@@ -934,11 +935,6 @@ merge_vector_cell_group_maps_2(TypeNumRemap, OldTypeNum, VectorCellGroup,
         !VectorCellGroupMap) :-
     map.lookup(TypeNumRemap, OldTypeNum, NewTypeNum),
     map.det_insert(NewTypeNum, VectorCellGroup, !VectorCellGroupMap).
-
-:- func nth_member_lookup0(list(T), T) = int.
-
-nth_member_lookup0(List, Elem) = Pos-1 :-
-    list.nth_member_lookup(List, Elem, Pos).
 
 %-----------------------------------------------------------------------------%
 

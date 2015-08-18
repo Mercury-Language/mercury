@@ -2014,7 +2014,7 @@ find_relevant_pushable_wait_goals([Goal | Goals], PredProcId, CallVars,
         find_relevant_pushable_wait_goals(Goals, PredProcId, CallVars,
             PushedWaitPairsTail, UnPushedWaitGoalsTail, RemainingGoals,
             !SpecInfo),
-        ( list.nth_member_search(CallVars, ConsumedVar, ArgPos) ->
+        ( list.index1_of_first_occurrence(CallVars, ConsumedVar, ArgPos) ->
             % This wait goal waits for one of the variables consumed by the
             % following call, so we must consider whether to push the wait
             % into the called procedure.
@@ -2066,7 +2066,7 @@ find_relevant_pushable_signal_goals([Goal | Goals], PredProcId, CallVars,
         find_relevant_pushable_signal_goals(Goals, PredProcId, CallVars,
             PushedSignalPairsTail, UnPushedSignalGoalsTail, RemainingGoals,
             !SpecInfo),
-        ( list.nth_member_search(CallVars, ProducedVar, ArgPos) ->
+        ( list.index1_of_first_occurrence(CallVars, ProducedVar, ArgPos) ->
             % This signal goal signals one of the variables produced by the
             % preceding call, so we must consider whether to push the signal
             % into the called procedure.

@@ -151,7 +151,7 @@ field_pos(FieldName, Term, Pos) :-
                 get_functor_with_names(Type, FunctorNum - 1, 
                     _FunctorName, _Arity, _ArgTypes, ArgNames)
             ->
-                ( nth_member_search(ArgNames, yes(FieldName), Pos0) ->
+                ( index1_of_first_occurrence(ArgNames, yes(FieldName), Pos0) ->
                     MaybePos = yes(Pos0)
                 ;
                     MaybePos = no

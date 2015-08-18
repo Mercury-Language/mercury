@@ -2517,8 +2517,11 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
         SubTypeSubst),
     apply_subst_to_prog_constraint_list(SubTypeSubst,
         SubClassDefn ^ class_supers, SuperClasses),
-    ( list.nth_member_search(SuperClasses, Constraint, SuperClassIndex0) ->
-        SuperClassIndex0 = SuperClassIndex
+    (
+        list.index1_of_first_occurrence(SuperClasses, Constraint,
+            SuperClassIndexPrime)
+    ->
+        SuperClassIndex = SuperClassIndexPrime
     ;
         % We shouldn't have got this far if the constraints were not satisfied.
         unexpected($module, $pred, "constraint not in constraint list")
@@ -4066,7 +4069,7 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
     % the class_method_call. That variable becomes the "dictionary" variable
     % for the class_method_call. (cf. the closure for a higher order call).
     (
-        list.nth_member_search(HeadVars0, TypeClassInfoVar, N),
+        list.index1_of_first_occurrence(HeadVars0, TypeClassInfoVar, N),
         delete_nth(HeadVars0, N, HeadVarsPrime),
         delete_nth(Modes0, N, ModesPrime)
     ->

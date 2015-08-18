@@ -1595,7 +1595,7 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcDefnRep,
     ;
         AtomicGoal = unify_deconstruct_rep(CellVar, _Cons, FieldVars),
         ( list.member(Var0, BoundVars) ->
-            ( list.nth_member_search(FieldVars, Var0, Pos) ->
+            ( list.index1_of_first_occurrence(FieldVars, Var0, Pos) ->
                 traverse_primitives(Prims, CellVar, [Pos | TermPath0],
                     Store, ProcDefnRep, Origin)
             ;

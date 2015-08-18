@@ -147,7 +147,7 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             VarInt = VarInt0
         ;
             % This is an existentially quantified variable.
-            ( list.nth_member_search(ExistQTvars, Var, ExistNum0) ->
+            ( list.index1_of_first_occurrence(ExistQTvars, Var, ExistNum0) ->
                 VarInt = ExistNum0 + pseudo_typeinfo_exist_var_base
             ;
                 unexpected($module, $pred, "not in list")
