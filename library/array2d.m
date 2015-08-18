@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: array2d.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>.
 % Stability: medium-low.
-% 
+%
 % Two-dimensional rectangular (i.e. not ragged) array ADT.
 %
 % XXX The same caveats re: uniqueness of arrays apply to array2ds.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -44,7 +44,7 @@
     %
 :- func init(int, int, T) = array2d(T).
 :- mode init(in, in, in) = array2d_uo is det.
-    
+
     % array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) constructs a array2d
     % of size M * N, with the special case that bounds(array2d([]), 0, 0).
     %
