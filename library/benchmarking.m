@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: benchmarking.m.
 % Main author: zs.
 % Stability: medium.
-% 
+%
 % This module contains predicates that deal with the CPU time requirements
 % of (various parts of) the program.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -358,15 +358,15 @@ ML_report_stats(void)
 #ifdef MR_USE_TRAIL
     #ifdef MR_THREAD_SAFE
         fprintf(stderr, "", Trail: %.3fk,"",
-            ((char *) MR_trail_ptr - 
+            ((char *) MR_trail_ptr -
             (char *) MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min) / 1024.0
         );
     #else
         fprintf(stderr, "" Trail: %.3fk,"",
-            ((char *) MR_trail_ptr - 
+            ((char *) MR_trail_ptr -
             (char *) MR_trail_zone->MR_zone_min) / 1024.0
         );
-   #endif /* !MR_THREAD_SAFE */     
+   #endif /* !MR_THREAD_SAFE */
 #endif /* !MR_USE_TRAIL */
 
     /*
@@ -861,7 +861,7 @@ ML_report_full_memory_stats()
 'ML_report_stats'() ->
     {Time, TimeSinceLastCall} = statistics(runtime),
     TimeSecs = Time / 1000.0,
-    TimeSinceLastCallSecs = TimeSinceLastCall / 1000.0, 
+    TimeSinceLastCallSecs = TimeSinceLastCall / 1000.0,
 
     Bytes = erlang:memory(total),
     KBytes = Bytes / 1024.0,
@@ -1225,7 +1225,7 @@ dump_trace_counts_to(_, 1, !IO).
 
 :- pragma foreign_proc("C",
     log_threadscope_message(Message::in, _IO0::di, _IO::uo),
-    [will_not_call_mercury, will_not_throw_exception, thread_safe, 
+    [will_not_call_mercury, will_not_throw_exception, thread_safe,
         promise_pure, tabled_for_io],
 "
 #if MR_THREADSCOPE

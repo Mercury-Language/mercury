@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: backjump.m
 % Author: Mark Brown <mark@csse.unimelb.edu.au>
 % Stability: medium
-% 
+%
 % This module defines the Mercury interface for backjumping.
 %
 % An application can use this module to add backjumping to their search
@@ -35,7 +35,7 @@
 % Note that the definition of "solution" in the above means solution with
 % respect to the search algorithm, and doesn't necessarily mean solution of
 % the immediate parent or any particular ancestor.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -199,7 +199,7 @@ void MR_CALL
 mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id)
 {
     MR_BackJumpHandler *backjump_handler;
-    
+
     backjump_handler = MR_GET_BACKJUMP_HANDLER();
 
     /*
@@ -349,7 +349,7 @@ MR_define_entry(mercury__backjump__builtin_backjump_1_0);
 {
     MR_BackJumpChoiceId id = MR_r1;
     MR_BackJumpHandler *backjump_handler;
-    
+
     backjump_handler = MR_GET_BACKJUMP_HANDLER();
 
     #if defined(MR_DEEP_PROFILING)
@@ -466,7 +466,7 @@ mercury_sys_init_backjumps_write_out_proc_statics(FILE *deep_fp,
 
     builtin_choice_id_1_p_0(_) ->
         throw(""builtin_choice_id/1 NYI for Erlang backend"").
-    
+
     builtin_backjump_1_p_0(_) ->
         throw(""builtin_backjump/1 NYI for Erlang backend"").
 ").

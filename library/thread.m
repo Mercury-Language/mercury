@@ -90,7 +90,7 @@
     %
     % NOTE: this is not yet implemented in the hl*.par.gc grades; currently
     % it is a no-op in those grades.
-    % 
+    %
 :- pred yield(io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%

@@ -8,13 +8,13 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: time.m.
 % Main authors: Tomas By <T.By@dcs.shef.ac.uk>, fjh.
 % Stability: medium.
-% 
+%
 % Time functions.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -369,7 +369,7 @@ time.times(Tms, Result, !IO) :-
     GetProcessTimes(hProcess, &ftCreation, &ftExit, &ftKernel, &ftUser);
 
     factor = 10000000U / MR_CLOCK_TICKS_PER_SECOND;
-    
+
     user.ft = ftUser;
     kernel.ft = ftKernel;
 

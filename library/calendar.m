@@ -338,7 +338,7 @@
     % Consequently, the time components of the dates in the range may
     % differ if the time components of the given start and end times
     % include leap seconds.
-    % 
+    %
 :- pred foldl_days(pred(date, A, A), date, date, A, A).
 :- mode foldl_days(pred(in, in, out) is det, in, in, in, out) is det.
 :- mode foldl_days(pred(in, mdi, muo) is det, in, in, mdi, muo) is det.
@@ -363,7 +363,7 @@
     mdi, muo) is semidet.
 :- mode foldl2_days(pred(in, in, out, di, uo) is semidet, in, in, in, out,
     di, uo) is semidet.
-    
+
     % foldl3_days(Pred, Start, End, !Acc1, !Acc2, !Acc3):
     % As above, but with three accumulators.
     %
