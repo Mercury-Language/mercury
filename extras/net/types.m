@@ -181,7 +181,7 @@
 :- some [A] pred sockaddr_get_addr(sockaddr::in, A::out) is semidet
     => addr(A).
 
-    % Retrive the port number from the socket address.  Not all socket
+    % Retrieve the port number from the socket address.  Not all socket
     % addresses have port numbers so this call may fail.
     %
 :- pred sockaddr_get_port(sockaddr::in, port::out) is semidet.
@@ -303,7 +303,7 @@
 to_string(Addr) = String :-
     to_string(Addr, String).
 
-    % This type allows code in this mdule to return the existentially
+    % This type allows code in this module to return the existentially
     % quantified address.
     %
 :- type univ_address
