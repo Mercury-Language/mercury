@@ -130,7 +130,7 @@
     %
 :- pred is_perfect_power(gmp_int::in) is semidet.
 
-    % is_perfect_quare(X) if there exists A with A * A = X
+    % is_perfect_square(X) if there exists A with A * A = X
     %
 :- pred is_perfect_square(gmp_int::in) is semidet.
 

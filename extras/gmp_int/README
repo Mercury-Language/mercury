@@ -26,7 +26,7 @@ $ mmc --link-object $FULL_PATH_TO_STATIC_GMP_LIB $OPTIONS $PROGRAM_NAME
 
 For heavy number crunching code on bignums, first benchmarks show that
 Mercury-GMP is 2.15 -- 2.4x faster than SWI and 1.2 -- 1.3x faster than YAP
-(both using GMP) and around 1.35x -- 1.15x slower than Haskell (depeding on
+(both using GMP) and around 1.35x -- 1.15x slower than Haskell (depending on
 dynamic or static linking).
 
 For a Miller-Rabin test, Mercury-GMP was more than two orders of magnitude
