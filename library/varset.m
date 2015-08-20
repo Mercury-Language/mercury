@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: varset.m.
 % Main author: fjh.
 % Stability: low.
-% 
+%
 % This file provides facilities for manipulating collections of
 % variables and terms.
 % It provides the 'varset' ADT. A varset is a set of variables.
@@ -24,7 +24,7 @@
 % will need to rethink the design;  we may end up modifying these modules
 % considerably, or we may end up making new single-threaded versions of these
 % modules.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -44,6 +44,8 @@
 
 :- type varset  ==  varset(generic).
 
+%---------------------%
+
     % Construct an empty varset.
     %
 :- func init = varset(T).
@@ -52,6 +54,8 @@
     % Check whether a varset is empty.
     %
 :- pred is_empty(varset(T)::in) is semidet.
+
+%---------------------%
 
     % Create a new variable.
     %
@@ -78,6 +82,8 @@
 :- pred new_vars(int::in, list(var(T))::out,
     varset(T)::in, varset(T)::out) is det.
 
+%---------------------%
+
     % Delete the name and value for a variable.
     %
 :- func delete_var(varset(T), var(T)) = varset(T).
@@ -97,10 +103,14 @@
 :- pred delete_sorted_vars(list(var(T))::in,
     varset(T)::in, varset(T)::out) is det.
 
+%---------------------%
+
     % Return a list of all the variables in a varset.
     %
 :- func vars(varset(T)) = list(var(T)).
 :- pred vars(varset(T)::in, list(var(T))::out) is det.
+
+%---------------------%
 
     % Set the name of a variable.
     %
@@ -109,22 +119,24 @@
     varset(T)::in, varset(T)::out) is det.
 
     % Lookup the name of a variable;
-    % create one if it doesn't have one using V_ as a prefix.
+    % If it doesn't have one, create on using V_ as a prefix.
     %
 :- func lookup_name(varset(T), var(T)) = string.
 :- pred lookup_name(varset(T)::in, var(T)::in, string::out) is det.
 
     % Lookup the name of a variable;
-    % create one if it doesn't have one using the specified prefix
+    % if it doesn't have one, create one using the specified prefix.
     %
 :- func lookup_name(varset(T), var(T), string) = string.
 :- pred lookup_name(varset(T)::in, var(T)::in, string::in, string::out)
     is det.
 
     % Lookup the name of a variable;
-    % fail if it doesn't have one
+    % fail if it doesn't have one.
     %
 :- pred search_name(varset(T)::in, var(T)::in, string::out) is semidet.
+
+%---------------------%
 
     % Bind a value to a variable.
     % This will overwrite any existing binding.
@@ -143,10 +155,28 @@
     %
 :- pred search_var(varset(T)::in, var(T)::in, term(T)::out) is semidet.
 
+%---------------------%
+
     % Get the bindings for all the bound variables.
     %
+    % NOTE_TO_IMPLEMENTORS Redundant; identical to get_bindings.
 :- func lookup_vars(varset(T)) = substitution(T).
 :- pred lookup_vars(varset(T)::in, substitution(T)::out) is det.
+
+    % Get the bindings for all the bound variables.
+    %
+:- func get_bindings(varset(T)) = substitution(T).
+:- pred get_bindings(varset(T)::in, substitution(T)::out) is det.
+
+    % Set the bindings for all the bound variables.
+    %
+    % NOTE_TO_IMPLEMENTORS The argument order is not conducive
+    % NOTE_TO_IMPLEMENTORS to the use of state variables.
+:- func set_bindings(varset(T), substitution(T)) = varset(T).
+:- pred set_bindings(varset(T)::in, substitution(T)::in,
+    varset(T)::out) is det.
+
+%---------------------%
 
     % Combine two different varsets, renaming apart:
     % merge_renaming(VarSet0, NewVarSet, VarSet, Subst) is true
@@ -158,6 +188,14 @@
 :- pred merge_renaming(varset(T)::in, varset(T)::in, varset(T)::out,
     renaming(T)::out) is det.
 
+    % Same as merge_renaming, except that the names of variables
+    % in NewVarSet are not included in the final varset.
+    % This is useful if create_name_var_map needs to be used
+    % on the resulting varset.
+    %
+:- pred merge_renaming_without_names(varset(T)::in,
+    varset(T)::in, varset(T)::out, renaming(T)::out) is det.
+
     % Does the same job as merge_renaming, but returns the renaming
     % as a general substitution in which all the terms in the range happen
     % to be variables.
@@ -167,22 +205,6 @@
 :- pred merge_subst(varset(T)::in, varset(T)::in, varset(T)::out,
     substitution(T)::out) is det.
 :- pragma obsolete(merge_subst/4).
-
-    % merge(VarSet0, NewVarSet, Terms0, VarSet, Terms):
-    %
-    % As merge_renaming, except instead of returning the renaming,
-    % this predicate applies it to the given list of terms.
-    %
-:- pred merge(varset(T)::in, varset(T)::in, list(term(T))::in,
-    varset(T)::out, list(term(T))::out) is det.
-
-    % Same as merge_renaming, except that the names of variables
-    % in NewVarSet are not included in the final varset.
-    % This is useful if create_name_var_map needs to be used
-    % on the resulting varset.
-    %
-:- pred merge_renaming_without_names(varset(T)::in,
-    varset(T)::in, varset(T)::out, renaming(T)::out) is det.
 
     % Same as merge_subst, except that the names of variables
     % in NewVarSet are not included in the final varset.
@@ -195,6 +217,14 @@
     varset(T)::in, varset(T)::out, substitution(T)::out) is det.
 :- pragma obsolete(merge_subst_without_names/4).
 
+    % merge(VarSet0, NewVarSet, Terms0, VarSet, Terms):
+    %
+    % As merge_renaming, except instead of returning the renaming,
+    % this predicate applies it to the given list of terms.
+    %
+:- pred merge(varset(T)::in, varset(T)::in, list(term(T))::in,
+    varset(T)::out, list(term(T))::out) is det.
+
     % Same as merge, except that the names of variables
     % in NewVarSet are not included in the final varset.
     % This is useful if create_name_var_map needs to be used
@@ -203,16 +233,7 @@
 :- pred merge_without_names(varset(T)::in, varset(T)::in,
     list(term(T))::in, varset(T)::out, list(term(T))::out) is det.
 
-    % Get the bindings for all the bound variables.
-    %
-:- func get_bindings(varset(T)) = substitution(T).
-:- pred get_bindings(varset(T)::in, substitution(T)::out) is det.
-
-    % Set the bindings for all the bound variables.
-    %
-:- func set_bindings(varset(T), substitution(T)) = varset(T).
-:- pred set_bindings(varset(T)::in, substitution(T)::in,
-    varset(T)::out) is det.
+%---------------------%
 
     % Create a map from names to variables.
     % Each name is mapped to only one variable, even if a name is
@@ -242,6 +263,8 @@
     = varset(T).
 :- pred ensure_unique_names(list(var(T))::in,
     string::in, varset(T)::in, varset(T)::out) is det.
+
+%---------------------%
 
     % Given a varset and a set of variables, remove the names
     % and values of any other variables stored in the varset.
@@ -298,13 +321,14 @@
 
 %---------------------------------------------------------------------------%
 
-varset.init = VS :-
-    varset.init(VS).
+varset.init = VarSet :-
+    varset.init(VarSet).
 
-varset.init(varset(VarSupply, Names, Values)) :-
+varset.init(VarSet) :-
     term.init_var_supply(VarSupply),
     map.init(Names),
-    map.init(Values).
+    map.init(Values),
+    VarSet = varset(VarSupply, Names, Values).
 
 %---------------------------------------------------------------------------%
 
@@ -318,47 +342,54 @@ varset.new_var(Var, !VarSet) :-
     term.create_var(Var, MaxId0, MaxId),
     !VarSet ^ var_supply := MaxId.
 
-varset.new_named_var(Name, Var,
-        varset(!.MaxId, !.Names, Values), varset(!:MaxId, !:Names, Values)) :-
-    term.create_var(Var, !MaxId),
-    map.set(Var, Name, !Names).
+varset.new_named_var(Name, Var, !VarSet) :-
+    !.VarSet = varset(MaxId0, Names0, Values),
+    term.create_var(Var, MaxId0, MaxId),
+    map.set(Var, Name, Names0, Names),
+    !:VarSet = varset(MaxId, Names, Values).
 
-varset.new_uniquely_named_var(Name, Var,
-        varset(!.MaxId, !.Names, Values), varset(!:MaxId, !:Names, Values)) :-
-    term.create_var(Var, !MaxId),
+varset.new_uniquely_named_var(Name, Var, !VarSet) :-
+    !.VarSet = varset(MaxId0, Names0, Values),
+    term.create_var(Var, MaxId0, MaxId),
     N = term.var_to_int(Var),
-    map.set(Var, string.format("%s_%d", [s(Name), i(N)]), !Names).
+    map.set(Var, string.format("%s_%d", [s(Name), i(N)]), Names0, Names),
+    !:VarSet = varset(MaxId, Names, Values).
 
-varset.new_maybe_named_var(MaybeName, Var,
-        varset(!.MaxId, !.Names, Values), varset(!:MaxId, !:Names, Values)) :-
-    term.create_var(Var, !MaxId),
+varset.new_maybe_named_var(MaybeName, Var, !VarSet) :-
+    !.VarSet = varset(MaxId0, Names0, Values),
+    term.create_var(Var, MaxId0, MaxId),
     (
-        MaybeName = no
+        MaybeName = no,
+        Names = Names0
     ;
         MaybeName = yes(Name),
-        map.set(Var, Name, !Names)
-    ).
+        map.set(Var, Name, Names0, Names)
+    ),
+    !:VarSet = varset(MaxId, Names, Values).
 
 varset.new_vars(NumVars, NewVars, !VarSet) :-
-    varset.new_vars_2(NumVars, [], RevNewVars, !VarSet),
+    varset.new_vars_loop(NumVars, [], RevNewVars, !VarSet),
     % Return the new variables in order.
     list.reverse(RevNewVars, NewVars).
 
-:- pred varset.new_vars_2(int::in, list(var(T))::in,
+:- pred varset.new_vars_loop(int::in, list(var(T))::in,
     list(var(T))::out, varset(T)::in, varset(T)::out) is det.
 
-varset.new_vars_2(NumVars, !RevNewVars, !VarSet) :-
-    ( NumVars > 0 ->
+varset.new_vars_loop(NumVars, !RevNewVars, !VarSet) :-
+    ( if NumVars > 0 then
         varset.new_var(Var, !VarSet),
         !:RevNewVars = [Var | !.RevNewVars],
-        varset.new_vars_2(NumVars - 1, !RevNewVars, !VarSet)
-    ; NumVars = 0 ->
+        varset.new_vars_loop(NumVars - 1, !RevNewVars, !VarSet)
+    else if NumVars = 0 then
         true
-    ;
-        error("varset.new_vars - invalid call")
+    else
+        unexpected($module, $pred, "invalid call")
     ).
 
 %---------------------------------------------------------------------------%
+
+varset.delete_var(!.VarSet, DeleteVar) = !:VarSet :-
+    varset.delete_var(DeleteVar, !VarSet).
 
 varset.delete_var(DeleteVar, !VarSet) :-
     !.VarSet = varset(MaxId, Names0, Values0),
@@ -368,11 +399,17 @@ varset.delete_var(DeleteVar, !VarSet) :-
 
 %---------------------------------------------------------------------------%
 
+varset.delete_vars(!.VarSet, DeleteVars) = !:VarSet :-
+    varset.delete_vars(DeleteVars, !VarSet).
+
 varset.delete_vars(DeleteVars, !VarSet) :-
     !.VarSet = varset(MaxId, Names0, Values0),
     map.delete_list(DeleteVars, Names0, Names),
     map.delete_list(DeleteVars, Values0, Values),
     !:VarSet = varset(MaxId, Names, Values).
+
+varset.delete_sorted_vars(!.VarSet, DeleteVars) = !:VarSet :-
+    varset.delete_sorted_vars(DeleteVars, !VarSet).
 
 varset.delete_sorted_vars(DeleteVars, !VarSet) :-
     !.VarSet = varset(MaxId, Names0, Values0),
@@ -382,140 +419,160 @@ varset.delete_sorted_vars(DeleteVars, !VarSet) :-
 
 %---------------------------------------------------------------------------%
 
-varset.vars(VarSet0, Vars) :-
-    MaxId0 = VarSet0 ^ var_supply,
+varset.vars(VarSet) = Vars :-
+    varset.vars(VarSet, Vars).
+
+varset.vars(VarSet, Vars) :-
+    MaxId = VarSet ^ var_supply,
     term.init_var_supply(N0),
-    RevVars = varset.vars_2(N0, MaxId0, []),
+    varset.vars_loop(N0, MaxId, [], RevVars),
     list.reverse(RevVars, Vars).
 
-:- func varset.vars_2(var_supply(T), var_supply(T), list(var(T)))
-    = list(var(T)).
+:- pred varset.vars_loop(var_supply(T)::in, var_supply(T)::in,
+    list(var(T))::in, list(var(T))::out) is det.
 
-varset.vars_2(N, Max, RevVars0) = RevVars :-
-    ( N = Max ->
-        RevVars = RevVars0
-    ;
-        term.create_var(Var, N, NPrime),
-        RevVars = varset.vars_2(NPrime, Max, [Var | RevVars0])
+varset.vars_loop(Cur, Max, !RevVars) :-
+    ( if Cur = Max then
+        true
+    else
+        term.create_var(Var, Cur, Next),
+        !:RevVars = [Var | !.RevVars],
+        varset.vars_loop(Next, Max, !RevVars)
     ).
 
 %---------------------------------------------------------------------------%
 
-varset.name_var(Id, Name, !VarSet) :-
+varset.name_var(!.VarSet, Var, Name) = !:VarSet :-
+    varset.name_var(Var, Name, !VarSet).
+
+varset.name_var(Var, Name, !VarSet) :-
     Names0 = !.VarSet ^ var_names,
-    map.set(Id, Name, Names0, Names),
+    map.set(Var, Name, Names0, Names),
     !VarSet ^ var_names := Names.
 
 %---------------------------------------------------------------------------%
 
-varset.lookup_name(VarSet, Id, Name) :-
-    ( varset.search_name(VarSet, Id, Name0) ->
-        Name = Name0
-    ;
-        term.var_to_int(Id, VarNum),
-        string.int_to_string(VarNum, NumStr),
-        string.append("V_", NumStr, Name)
+varset.lookup_name(VarSet, Var) = Name :-
+    varset.lookup_name(VarSet, Var, Name).
+
+varset.lookup_name(VarSet, Var, Name) :-
+    ( if varset.search_name(VarSet, Var, NamePrime) then
+        Name = NamePrime
+    else
+        term.var_to_int(Var, VarNum),
+        Name = "V_" ++ string.int_to_string(VarNum)
     ).
+
+varset.lookup_name(VarSet, Id, Prefix) = Name :-
+    varset.lookup_name(VarSet, Id, Prefix, Name).
 
 varset.lookup_name(VarSet, Id, Prefix, Name) :-
-    ( varset.search_name(VarSet, Id, Name0) ->
-        Name = Name0
-    ;
+    ( if varset.search_name(VarSet, Id, NamePrime) then
+        Name = NamePrime
+    else
         term.var_to_int(Id, VarNum),
-        string.int_to_string(VarNum, NumStr),
-        string.append(Prefix, NumStr, Name)
+        Name = Prefix ++ string.int_to_string(VarNum)
     ).
 
-varset.search_name(varset(_, Names, _), Id, Name) :-
-    map.search(Names, Id, Name).
+varset.search_name(VarSet, Var, Name) :-
+    VarSet = varset(_, Names, _),
+    map.search(Names, Var, Name).
 
 %---------------------------------------------------------------------------%
 
-varset.bind_var(Id, Val, !VarSet) :-
+varset.bind_var(!.VarSet, Var, Value) = !:VarSet :-
+    varset.bind_var(Var, Value, !VarSet).
+
+varset.bind_var(Var, Value, !VarSet) :-
     Values0 = !.VarSet ^ var_values,
-    map.set(Id, Val, Values0, Values),
+    map.set(Var, Value, Values0, Values),
     !VarSet ^ var_values := Values.
 
 %---------------------------------------------------------------------------%
 
-varset.bind_vars(Subst, !VarSet) :-
-    map.to_assoc_list(Subst, VarTermList),
-    varset.bind_vars_2(VarTermList, !VarSet).
+varset.bind_vars(!.VarSet, Subst) = !:VarSet :-
+    varset.bind_vars(Subst, !VarSet).
 
-:- pred varset.bind_vars_2(assoc_list(var(T), term(T))::in, varset(T)::in,
+varset.bind_vars(Subst, !VarSet) :-
+    map.to_assoc_list(Subst, VarsValues),
+    varset.bind_vars_loop(VarsValues, !VarSet).
+
+:- pred varset.bind_vars_loop(assoc_list(var(T), term(T))::in, varset(T)::in,
     varset(T)::out) is det.
 
-varset.bind_vars_2([], !VarSet).
-varset.bind_vars_2([V - T | Rest], !VarSet) :-
-    varset.bind_var(V, T, !VarSet),
-    varset.bind_vars_2(Rest, !VarSet).
+varset.bind_vars_loop([], !VarSet).
+varset.bind_vars_loop([Var - Value | VarsValues], !VarSet) :-
+    varset.bind_var(Var, Value, !VarSet),
+    varset.bind_vars_loop(VarsValues, !VarSet).
 
 %---------------------------------------------------------------------------%
 
-varset.search_var(VarSet, Id, Val) :-
+varset.search_var(VarSet, Var, Value) :-
     Values = VarSet ^ var_values,
-    map.search(Values, Id, Val).
+    map.search(Values, Var, Value).
 
 %---------------------------------------------------------------------------%
 
-varset.lookup_vars(VarSet, VarSet ^ var_values).
+varset.lookup_vars(VarSet) = Values :-
+    varset.lookup_vars(VarSet, Values).
+
+varset.lookup_vars(VarSet, Values) :-
+    Values = VarSet ^ var_values.
 
 %---------------------------------------------------------------------------%
 
-varset.get_bindings(VarSet, VarSet ^ var_values).
+varset.get_bindings(VarSet) = Values :-
+    varset.get_bindings(VarSet, Values).
 
-varset.set_bindings(VarSet, Values, VarSet ^ var_values := Values).
+varset.get_bindings(VarSet, Values) :-
+    Values = VarSet ^ var_values.
 
-%---------------------------------------------------------------------------%
+varset.set_bindings(!.VarSet, Values) = !:VarSet :-
+    varset.set_bindings(!.VarSet, Values, !:VarSet).
 
-    % We scan through the second varset, introducing a fresh variable
-    % into the first varset for each var in the second, and building up
-    % a renaming which maps the variables in the second varset into
-    % the corresponding fresh variable in the first varset. We then apply
-    % this renaming to the list of terms.
-
-varset.merge(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
-    varset.merge_renaming(VarSetA, VarSetB, VarSet, Renaming),
-    term.apply_renaming_in_terms(Renaming, TermList0, TermList).
-
-varset.merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
-    varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming),
-    term.apply_renaming_in_terms(Renaming, TermList0, TermList).
+varset.set_bindings(!.VarSet, Values, !:VarSet) :-
+    !VarSet ^ var_values := Values.
 
 %---------------------------------------------------------------------------%
 %
+% We scan through the second varset, introducing a fresh variable
+% into the first varset for each var in the second, and building up
+% a renaming which maps the variables in the second varset into
+% the corresponding fresh variable in the first varset.
+%
 % The structure of this code is identical to the structure of the code
 % in the next block.
+%
 
 varset.merge_renaming(VarSetA, VarSetB, VarSet, Renaming) :-
     VarSetB = varset(SupplyB, NamesB, _ValuesB),
     term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
     map.init(Renaming0),
-    varset.merge_renaming_2(SupplyB0, SupplyB, NamesB,
+    varset.merge_renaming_loop(SupplyB0, SupplyB, NamesB,
         SupplyA, Supply, NamesA, Names, Renaming0, Renaming),
     VarSet = varset(Supply, Names, ValuesA).
 
-:- pred varset.merge_renaming_2(var_supply(T)::in, var_supply(T)::in,
+:- pred varset.merge_renaming_loop(var_supply(T)::in, var_supply(T)::in,
     map(var(T), string)::in,
     var_supply(T)::in, var_supply(T)::out,
     map(var(T), string)::in, map(var(T), string)::out,
     renaming(T)::in, renaming(T)::out) is det.
 
-varset.merge_renaming_2(!.SupplyB, MaxSupplyB, NamesB,
+varset.merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
         !Supply, !Names, !Renaming) :-
-    ( !.SupplyB = MaxSupplyB ->
+    ( if !.SupplyB = MaxSupplyB then
         true
-    ;
+    else
         term.create_var(Var, !Supply),
         term.create_var(VarB, !SupplyB),
-        ( map.search(NamesB, VarB, NameB) ->
+        ( if map.search(NamesB, VarB, NameB) then
             map.det_insert(Var, NameB, !Names)
-        ;
+        else
             true
         ),
         map.det_insert(VarB, Var, !Renaming),
-        varset.merge_renaming_2(!.SupplyB, MaxSupplyB, NamesB,
+        varset.merge_renaming_loop(!.SupplyB, MaxSupplyB, NamesB,
             !Supply, !Names, !Renaming)
     ).
 
@@ -524,23 +581,23 @@ varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming) :-
     term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
     map.init(Renaming0),
-    varset.merge_renaming_without_names_2(SupplyB0, SupplyB,
+    varset.merge_renaming_without_names_loop(SupplyB0, SupplyB,
         SupplyA, Supply, Renaming0, Renaming),
     VarSet = varset(Supply, NamesA, ValuesA).
 
-:- pred varset.merge_renaming_without_names_2(var_supply(T)::in,
+:- pred varset.merge_renaming_without_names_loop(var_supply(T)::in,
     var_supply(T)::in, var_supply(T)::in, var_supply(T)::out,
     renaming(T)::in, renaming(T)::out) is det.
 
-varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB,
+varset.merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
         !Supply, !Renaming) :-
-    ( !.SupplyB = MaxSupplyB ->
+    ( if !.SupplyB = MaxSupplyB then
         true
-    ;
+    else
         term.create_var(Var, !Supply),
         term.create_var(VarB, !SupplyB),
         map.det_insert(VarB, Var, !Renaming),
-        varset.merge_renaming_without_names_2(!.SupplyB, MaxSupplyB,
+        varset.merge_renaming_without_names_loop(!.SupplyB, MaxSupplyB,
             !Supply, !Renaming)
     ).
 
@@ -554,31 +611,31 @@ varset.merge_subst(VarSetA, VarSetB, VarSet, Subst) :-
     term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
     map.init(Subst0),
-    varset.merge_subst_2(SupplyB0, SupplyB, NamesB,
+    varset.merge_subst_loop(SupplyB0, SupplyB, NamesB,
         SupplyA, Supply, NamesA, Names, Subst0, Subst),
     VarSet = varset(Supply, Names, ValuesA).
 
-:- pred varset.merge_subst_2(var_supply(T)::in, var_supply(T)::in,
+:- pred varset.merge_subst_loop(var_supply(T)::in, var_supply(T)::in,
     map(var(T), string)::in,
     var_supply(T)::in, var_supply(T)::out,
     map(var(T), string)::in, map(var(T), string)::out,
     substitution(T)::in, substitution(T)::out) is det.
 
-varset.merge_subst_2(!.SupplyB, MaxSupplyB, NamesB,
+varset.merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
         !Supply, !Names, !Subst) :-
-    ( !.SupplyB = MaxSupplyB ->
+    ( if !.SupplyB = MaxSupplyB then
         true
-    ;
+    else
         term.create_var(Var, !Supply),
         term.create_var(VarB, !SupplyB),
-        ( map.search(NamesB, VarB, NameB) ->
+        ( if map.search(NamesB, VarB, NameB) then
             map.det_insert(Var, NameB, !Names)
-        ;
+        else
             true
         ),
         Replacement = term.variable(Var, context_init),
         map.det_insert(VarB, Replacement, !Subst),
-        varset.merge_subst_2(!.SupplyB, MaxSupplyB, NamesB,
+        varset.merge_subst_loop(!.SupplyB, MaxSupplyB, NamesB,
             !Supply, !Names, !Subst)
     ).
 
@@ -587,27 +644,41 @@ varset.merge_subst_without_names(VarSetA, VarSetB, VarSet, Subst) :-
     term.init_var_supply(SupplyB0),
     VarSetA = varset(SupplyA, NamesA, ValuesA),
     map.init(Subst0),
-    varset.merge_subst_without_names_2(SupplyB0, SupplyB,
+    varset.merge_subst_without_names_loop(SupplyB0, SupplyB,
         SupplyA, Supply, Subst0, Subst),
     VarSet = varset(Supply, NamesA, ValuesA).
 
-:- pred varset.merge_subst_without_names_2( var_supply(T)::in,
+:- pred varset.merge_subst_without_names_loop( var_supply(T)::in,
     var_supply(T)::in, var_supply(T)::in, var_supply(T)::out,
     substitution(T)::in, substitution(T)::out) is det.
 
-varset.merge_subst_without_names_2(!.SupplyB, MaxSupplyB, !Supply, !Subst) :-
-    ( !.SupplyB = MaxSupplyB ->
+varset.merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
+        !Supply, !Subst) :-
+    ( if !.SupplyB = MaxSupplyB then
         true
-    ;
+    else
         term.create_var(Var, !Supply),
         term.create_var(VarB, !SupplyB),
         Replacement = term.variable(Var, context_init),
         map.det_insert(VarB, Replacement, !Subst),
-        varset.merge_subst_without_names_2(!.SupplyB, MaxSupplyB,
+        varset.merge_subst_without_names_loop(!.SupplyB, MaxSupplyB,
             !Supply, !Subst)
     ).
 
 %---------------------------------------------------------------------------%
+
+varset.merge(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
+    varset.merge_renaming(VarSetA, VarSetB, VarSet, Renaming),
+    term.apply_renaming_in_terms(Renaming, TermList0, TermList).
+
+varset.merge_without_names(VarSetA, VarSetB, TermList0, VarSet, TermList) :-
+    varset.merge_renaming_without_names(VarSetA, VarSetB, VarSet, Renaming),
+    term.apply_renaming_in_terms(Renaming, TermList0, TermList).
+
+%---------------------------------------------------------------------------%
+
+varset.create_name_var_map(VarSet) = NameVars :-
+    varset.create_name_var_map(VarSet, NameVars).
 
 varset.create_name_var_map(VarSet, NameVars) :-
     VarNames = VarSet ^ var_names,
@@ -617,63 +688,69 @@ varset.create_name_var_map(VarSet, NameVars) :-
 
 %---------------------------------------------------------------------------%
 
+varset.var_name_list(VarSet) = VarNameList :-
+    varset.var_name_list(VarSet, VarNameList).
+
 varset.var_name_list(VarSet, VarNameList) :-
     VarNames = VarSet ^ var_names,
     map.to_assoc_list(VarNames, VarNameList).
 
 %---------------------------------------------------------------------------%
 
+varset.ensure_unique_names(AllVars, Suffix, !.VarSet) = !:VarSet :-
+    varset.ensure_unique_names(AllVars, Suffix, !VarSet).
+
 varset.ensure_unique_names(AllVars, Suffix, !VarSet) :-
     VarNames0 = !.VarSet ^ var_names,
-    varset.ensure_unique_names_2(AllVars, Suffix, set.init, VarNames0,
+    varset.ensure_unique_names_loop(AllVars, Suffix, set.init, VarNames0,
         map.init, VarNames),
     !VarSet ^ var_names := VarNames.
 
-:- pred varset.ensure_unique_names_2(list(var(T))::in, string::in,
+:- pred varset.ensure_unique_names_loop(list(var(T))::in, string::in,
     set(string)::in, map(var(T), string)::in, map(var(T), string)::in,
     map(var(T), string)::out) is det.
 
-varset.ensure_unique_names_2([], _, _, _, !VarNames).
-varset.ensure_unique_names_2([Var | Vars], Suffix, !.UsedNames, OldVarNames,
-        !VarNames) :-
-    ( map.search(OldVarNames, Var, OldName) ->
-        ( set.member(OldName, !.UsedNames) ->
+varset.ensure_unique_names_loop([], _, _, _, !VarNames).
+varset.ensure_unique_names_loop([Var | Vars], Suffix, !.UsedNames,
+        OldVarNames, !VarNames) :-
+    ( if map.search(OldVarNames, Var, OldName) then
+        ( if set.member(OldName, !.UsedNames) then
             term.var_to_int(Var, VarNum),
-            string.int_to_string(VarNum, NumStr),
-            string.append("_", NumStr, NumSuffix),
-            string.append(OldName, NumSuffix, TrialName)
-        ;
+            TrialName = OldName ++ "_" ++ string.int_to_string(VarNum)
+        else
             TrialName = OldName
         )
-    ;
+    else
         term.var_to_int(Var, VarNum),
-        string.int_to_string(VarNum, NumStr),
-        string.append("Var_", NumStr, TrialName)
+        TrialName = "Var_" ++ string.int_to_string(VarNum)
     ),
     append_suffix_until_unique(TrialName, Suffix, !.UsedNames, FinalName),
     set.insert(FinalName, !UsedNames),
     map.det_insert(Var, FinalName, !VarNames),
-    varset.ensure_unique_names_2(Vars, Suffix, !.UsedNames, OldVarNames,
-        !VarNames).
+    varset.ensure_unique_names_loop(Vars, Suffix, !.UsedNames,
+        OldVarNames, !VarNames).
 
 :- pred append_suffix_until_unique(string::in, string::in, set(string)::in,
     string::out) is det.
 
 append_suffix_until_unique(Trial0, Suffix, UsedNames, Final) :-
-    ( set.member(Trial0, UsedNames) ->
+    ( if set.member(Trial0, UsedNames) then
         string.append(Trial0, Suffix, Trial1),
         append_suffix_until_unique(Trial1, Suffix, UsedNames, Final)
-    ;
+    else
         Final = Trial0
     ).
 
 %---------------------------------------------------------------------------%
 
-varset.select(Vars, VarSet0, VarSet) :-
-    VarSet0 = varset(Supply, VarNameMap0, Values0),
+varset.select(!.VarSet, Vars) = !:VarSet :-
+    varset.select(Vars, !VarSet).
+
+varset.select(Vars, !VarSet) :-
+    !.VarSet = varset(Supply, VarNameMap0, Values0),
     map.select(VarNameMap0, Vars, VarNameMap),
     map.select(Values0, Vars, Values),
-    VarSet = varset(Supply, VarNameMap, Values).
+    !:VarSet = varset(Supply, VarNameMap, Values).
 
 %---------------------------------------------------------------------------%
 
@@ -698,20 +775,23 @@ varset.squash(OldVarSet, KeptVars, NewVarSet, Subst) :-
 
 copy_var_names([], _Subst, !NewVarSet).
 copy_var_names([OldVar - Name | Rest], Subst, !NewVarSet) :-
-    ( map.search(Subst, OldVar, NewVar) ->
+    ( if map.search(Subst, OldVar, NewVar) then
         varset.name_var(NewVar, Name, !NewVarSet)
-    ;
+    else
         true
     ),
     copy_var_names(Rest, Subst, !NewVarSet).
 
 %---------------------------------------------------------------------------%
 
-varset.coerce(A, B) :-
+varset.coerce(!.VarSet) = !:VarSet :-
+    varset.coerce(!VarSet).
+
+varset.coerce(!VarSet) :-
     % Normally calls to this predicate should only be generated by the
     % compiler, but type coercion by copying was taking about 3% of the
     % compiler's runtime.
-    private_builtin.unsafe_type_cast(A, B).
+    private_builtin.unsafe_type_cast(!VarSet).
 
 %---------------------------------------------------------------------------%
 
@@ -719,61 +799,6 @@ varset.max_var(varset(VarSupply, _, _)) = term.var_supply_max_var(VarSupply).
 
 varset.num_allocated(varset(VarSupply, _, _)) =
     term.var_supply_num_allocated(VarSupply).
-
-%---------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
-%   Function forms added.
-
-varset.delete_var(!.VS, V) = !:VS :-
-    varset.delete_var(V, !VS).
-
-varset.delete_vars(!.VS, Vs) = !:VS :-
-    varset.delete_vars(Vs, !VS).
-
-varset.delete_sorted_vars(!.VS, Vs) = !:VS :-
-    varset.delete_sorted_vars(Vs, !VS).
-
-varset.vars(VS) = Vs :-
-    varset.vars(VS, Vs).
-
-varset.name_var(!.VS, V, S) = !:VS :-
-    varset.name_var(V, S, !VS).
-
-varset.lookup_name(VS, V) = S :-
-    varset.lookup_name(VS, V, S).
-
-varset.lookup_name(VS1, V, S) = S2 :-
-    varset.lookup_name(VS1, V, S, S2).
-
-varset.bind_var(!.VS, V, T) = !:VS :-
-    varset.bind_var(V, T, !VS).
-
-varset.bind_vars(!.VS, S) = !:VS :-
-    varset.bind_vars(S, !VS).
-
-varset.lookup_vars(VS) = S :-
-    varset.lookup_vars(VS, S).
-
-varset.get_bindings(VS) = S :-
-    varset.get_bindings(VS, S).
-
-varset.set_bindings(VS1, S) = VS2 :-
-    varset.set_bindings(VS1, S, VS2).
-
-varset.create_name_var_map(VS) = M :-
-    varset.create_name_var_map(VS, M).
-
-varset.var_name_list(VS) = AL :-
-    varset.var_name_list(VS, AL).
-
-varset.ensure_unique_names(Vs, S1, VS1) = VS2 :-
-    varset.ensure_unique_names(Vs, S1, VS1, VS2).
-
-varset.select(!.VS, S) = !:VS :-
-    varset.select(S, !VS).
-
-varset.coerce(!.VS) = !:VS :-
-    varset.coerce(!VS).
 
 %---------------------------------------------------------------------------%
 %:- end_module varset.
