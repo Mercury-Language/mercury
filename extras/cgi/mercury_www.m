@@ -9,6 +9,7 @@
 %
 
 :- module mercury_www.
+:- interface.
 
-:- import_module cgi, html.
-
+:- import_module cgi.
+:- import_module html.

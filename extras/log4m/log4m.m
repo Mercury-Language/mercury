@@ -27,7 +27,7 @@
  * NAME
  *    Type: id
  * DESCRIPTION
- *    An id for identifying a logger.  The id's are hierachical.
+ *    An id for identifying a logger.  The id's are hierarchical.
  *    The root logger is [].
  *    A child of the root logger is ["Performance"]
  *    A child of the previous logger is ["Child", "Performance"]
@@ -259,7 +259,7 @@
  *    unsafe_log_f
  * SYNOPSIS
  *    Gets a fake io__state and calls log_f.
- *    Unsafe because the compiler might decide to elimiate this call on you.
+ *    Unsafe because the compiler might decide to eliminate this call on you.
  * SOURCE
  */
 :- pred unsafe_log_f(id::in, level::in, ((func) = string)::in) is det.

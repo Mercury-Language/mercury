@@ -14,12 +14,16 @@
 %------------------------------------------------------------------------------%
 
 :- module mopenssl.
-
 :- interface.
 
 :- import_module stream.
-:- import_module tcp.
-:- import_module io, list.
+:- import_module net.
+:- import_module net.tcp.
+
+:- import_module io.
+:- import_module list.
+
+%------------------------------------------------------------------------------%
 
 :- typeclass password_cb(T) where [
     pred password_cb(T::in, string::out, io::di, io::uo) is det

@@ -317,7 +317,7 @@ insert_decimal_point(N, [C|Cs], P+1, L) :-
 
 %-----------------------------------------------------------------------------%
 
-to_int(F) = int(I) :- fixed(_, I) = precision(0, F).
+to_int(F) = det_to_int(I) :- fixed(_, I) = precision(0, F).
 
 to_float(fixed(P, N)) = float(N) / pow(10.0, P).
 
