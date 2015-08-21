@@ -182,9 +182,6 @@ to your Mercury.options or Mmakefile.
 Known bugs and unsupported features
 -----------------------------------
 
-The following feature is not supported on Mac OS X:
-	- interactive queries in mdb
-
 The 'asm_fast' grades will not work on *-apple-darwin machines, primarily
 because of a (long-standing) bug in gcc (GCC bug #10901).  By default, 
 the configure script will choose either 'reg' or 'none' as the default base

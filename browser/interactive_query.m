@@ -12,11 +12,11 @@
 % A module to invoke interactive queries using dynamic linking.
 %
 % This module reads in a query, writes out Mercury code for it to the file
-% `mdb_query.m', invokes the Mercury compiler mmc to compile that file
-% to `libmdb_query.so', dynamically loads in the object code for the module
-% `mdb_query' from the file `libmdb_query.so', looks up the address of the
-% procedure query/2 in that module, calls that procedure, and then
-% cleans up the generated files.
+% `mdb_query.m', invokes the Mercury compiler mmc to compile that file to
+% `libmdb_query.{so,dylib}', dynamically loads in the object code for the
+% module `mdb_query' from the file `libmdb_query.{so,dylib}', looks up the
+% address of the procedure query/2 in that module, calls that procedure, and
+% then cleans up the generated files.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -116,9 +116,8 @@ query_2(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, ReadTerm, !IO) :-
             Term = term.functor(term.atom("options"),
                 [term.functor(term.string(NewOptions), [], _)], _)
         then
-            io.write_string(MDB_Stdout, "Compilation options: ", !IO),
-            io.write_string(MDB_Stdout, NewOptions, !IO),
-            io.nl(MDB_Stdout, !IO),
+            io.format(MDB_Stdout, "Compilation options: %s\n",
+                [s(NewOptions)], !IO),
             query(QueryType, Imports, NewOptions, MDB_Stdin, MDB_Stdout, !IO)
         else if
             term_to_list(Term, ModuleList)
@@ -500,9 +499,10 @@ cleanup_query(_Options) -->
     io.remove_file("Mercury/cs/" ++ query_module_name ++ ".c", _),
     io.remove_file(query_module_name ++ ".c_date", _),
     io.remove_file("Mercury/c_dates/" ++ query_module_name ++ ".c_date", _),
+    % XXX on some systems the object file extension won't be .o.
     io.remove_file(query_module_name ++ ".o", _),
     io.remove_file("Mercury/os/" ++ query_module_name ++ ".o", _),
-    io.remove_file("lib" ++ query_module_name ++ ".so", _).
+    io.remove_file("lib" ++ query_module_name ++ shlib_extension, _).
 
     % `grade_option' returns MR_GRADE_OPT, which is defined in
     % runtime/mercury_grade.h. This is a string containing the grade
@@ -533,9 +533,7 @@ verbose = no.
 
 invoke_system_command(Command, Succeeded, !IO) :-
     ( if verbose = yes then
-        io.write_string("% Invoking system command `", !IO),
-        io.write_string(Command, !IO),
-        io.write_string("'...\n", !IO),
+        io.format("%% Invoking system command `%s'...\n", [s(Command)], !IO),
         io.flush_output(!IO)
     else
         true
@@ -572,14 +570,12 @@ query_module_name = "mdb_query".
 
 dynamically_load_and_run(!IO) :-
     % Load in the object code for the module `query' from
-    % the file `libquery.so'.
-    dl.open("./lib" ++ query_module_name ++ ".so", lazy, local, MaybeHandle,
-        !IO),
+    % the file `libmdb_query.{so,dylib}'.
+    dl.open("./lib" ++ query_module_name ++ shlib_extension, lazy, local,
+        MaybeHandle, !IO),
     (
         MaybeHandle = dl_error(Msg),
-        io.write_string("dlopen failed: ", !IO),
-        io.write_string(Msg, !IO),
-        io.nl(!IO)
+        io.format("dlopen failed: %s\n", [s(Msg)], !IO)
     ;
         MaybeHandle = dl_ok(Handle),
         % Look up the address of the first mode (mode number 0)
@@ -589,9 +585,7 @@ dynamically_load_and_run(!IO) :-
         dl.mercury_sym(Handle, QueryProc, MaybeQuery, !IO),
         (
             MaybeQuery = dl_error(Msg),
-            io.write_string("dlsym failed: ", !IO),
-            io.write_string(Msg, !IO),
-            io.nl(!IO)
+            io.format("dlsym failed: %s\n", [s(Msg)], !IO)
         ;
             MaybeQuery = dl_ok(QueryPred0),
             % Cast the higher-order term that we obtained to the correct
@@ -602,13 +596,11 @@ dynamically_load_and_run(!IO) :-
             QueryPred(!IO)
         ),
 
-        % Unload the object code in the libquery.so file.
+        % Unload the object code in the libmdb_query.{so,dylib} file.
         dl.close(Handle, Result, !IO),
         (
             Result = dl_error(CloseMsg),
-            io.write_string("dlclose failed: ", !IO),
-            io.write_string(CloseMsg, !IO),
-            io.nl(!IO)
+            io.format("dlclose failed: %s\n", [s(CloseMsg)], !IO)
         ;
             Result = dl_ok
         )
@@ -636,5 +628,24 @@ dynamically_load_and_run(!IO) :-
 
 inst_cast(_) = _ :-
     private_builtin.sorry("inst_cast").
+
+%-----------------------------------------------------------------------------%
+
+:- func shlib_extension = string.
+
+shlib_extension =
+   ( if system_is_darwin then ".dylib" else ".so" ).
+
+:- pred system_is_darwin is semidet.
+:- pragma foreign_proc("C",
+    system_is_darwin,
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+#if defined(MR_MAC_OSX)
+    SUCCESS_INDICATOR = MR_TRUE;
+#else
+    SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
 
 %-----------------------------------------------------------------------------%
