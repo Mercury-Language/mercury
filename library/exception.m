@@ -38,7 +38,8 @@
     --->    software_error(string).
 
     % throw(Exception):
-    %   Throw the specified exception.
+    %
+    % Throw the specified exception.
     %
 :- func throw(T) = _ is erroneous.
 :- pred throw(T::in) is erroneous.
@@ -57,17 +58,18 @@
     % try(Goal, Result):
     %
     % Operational semantics:
+    %
     %   Call Goal(R).
     %   If Goal(R) fails, succeed with Result = failed.
     %   If Goal(R) succeeds, succeed with Result = succeeded(R).
-    %   If Goal(R) throws an exception E, succeed with
-    %       Result = exception(E).
+    %   If Goal(R) throws an exception E, succeed with Result = exception(E).
     %
     % Declarative semantics:
-    %       try(Goal, Result) <=>
-    %               ( Goal(R), Result = succeeded(R)
-    %               ; not Goal(_), Result = failed
-    %               ; Result = exception(_)
+    %
+    %   try(Goal, Result) <=>
+    %       ( Goal(R), Result = succeeded(R)
+    %       ; not Goal(_), Result = failed
+    %       ; Result = exception(_)
     %       ).
     %
 :- pred try(pred(T),                exception_result(T)).
@@ -79,14 +81,15 @@
     % try_io(Goal, Result, IO_0, IO):
     %
     % Operational semantics:
+    %
     %   Call Goal(R, IO_0, IO_1).
-    %   If it succeeds, succeed with Result = succeeded(R)
-    %       and IO = IO_1.
+    %   If it succeeds, succeed with Result = succeeded(R) and IO = IO_1.
     %   If it throws an exception E, succeed with Result = exception(E)
-    %       and with the final IO state being whatever state
-    %       resulted from the partial computation from IO_0.
+    %   and with the final IO state being whatever state resulted from
+    %   the partial computation from IO_0.
     %
     % Declarative semantics:
+    %
     %   try_io(Goal, Result, IO_0, IO) <=>
     %       ( Goal(R, IO_0, IO), Result = succeeded(R)
     %       ; Result = exception(_)
@@ -112,13 +115,14 @@
     % try_all(Goal, MaybeException, Solutions):
     %
     % Operational semantics:
+    %
     %   Try to find all solutions to Goal(S), using backtracking.
-    %   Collect the solutions found in Solutions, until the goal
-    %   either throws an exception or fails.  If it throws an
-    %   exception E then MaybeException = yes(E), otherwise
-    %   MaybeException = no.
+    %   Collect the solutions found in Solutions, until the goal either
+    %   throws an exception or fails. If it throws an exception E,
+    %   then set MaybeException = yes(E), otherwise set MaybeException = no.
     %
     % Declaratively it is equivalent to:
+    %
     %   all [S] (list.member(S, Solutions) => Goal(S)),
     %   (
     %       MaybeException = yes(_)
@@ -135,12 +139,16 @@
 :- mode try_all(pred(out) is multi,   out, out) is cc_multi.
 :- mode try_all(pred(out) is nondet,  out, out) is cc_multi.
 
-:- inst [] ---> [].
-:- inst nil_or_singleton_list ---> [] ; [ground].
+:- inst []
+    --->    [].
+:- inst nil_or_singleton_list
+    --->    []
+    ;       [ground].
 
     % incremental_try_all(Goal, AccumulatorPred, Acc0, Acc):
     %
     % Declaratively it is equivalent to:
+    %
     %   try_all(Goal, MaybeException, Solutions),
     %   list.map(wrap_success, Solutions, Results),
     %   list.foldl(AccumulatorPred, Results, Acc0, Acc1),
@@ -165,6 +173,7 @@
     pred(in, in, out) is det, in, out) is cc_multi.
 
     % rethrow(ExceptionResult):
+    %
     % Rethrows the specified exception result (which should be
     % of the form `exception(_)', not `succeeded(_)' or `failed'.).
     %
@@ -174,7 +183,8 @@
 :- func rethrow(exception_result(T)) = _.
 :- mode rethrow(in(bound(exception(ground)))) = out is erroneous.
 
-    % finally(P, PRes, Cleanup, CleanupRes, IO0, IO).
+    % finally(P, PRes, Cleanup, CleanupRes, !IO).
+    %
     % Call P and ensure that Cleanup is called afterwards,
     % no matter whether P succeeds or throws an exception.
     % PRes is bound to the output of P.
@@ -197,9 +207,8 @@
     % This predicate works only in low level C grades; in other grades,
     % it never throws an exception.
     %
-    % The predicate is impure instead of semipure because its effect
-    % depends not only on the execution of other impure predicates,
-    % but all calls.
+    % The predicate is impure instead of semipure because its effect depends
+    % not only on the execution of other impure predicates, but all calls.
     %
 :- type near_stack_limits
     --->    near_stack_limits.
@@ -227,7 +236,7 @@
     out(cannot_fail), di, uo) is cc_multi.
 
     % This is the version is called by code introduced by the source-to-source
-    % transformation for atomic scopes.  This predicate should not be called
+    % transformation for atomic scopes. This predicate should not be called
     % by user code.
     %
     % It is unsafe in the sense that it does not guarantee that rollback
@@ -242,14 +251,14 @@
 
 %---------------------------------------------------------------------------%
 
-    % This is used in the implementation of `try' goals.  It should never be
-    % called.
+    % This is used in the implementation of `try' goals. It should never be
+    % called in any other context.
     %
 :- pred magic_exception_result(exception_result({})::out(cannot_fail))
     is cc_multi.
 
-    % This is used in the implementation of `try' goals.  It should never be
-    % called.
+    % This is used in the implementation of `try' goals. It should never be
+    % called in any other context.
     %
 :- pred unreachable is erroneous.
 
@@ -328,12 +337,12 @@ finally_2(P, Cleanup, PRes, CleanupRes, !IO) :-
         Cleanup(_, !IO),
         % The I/O state resulting from Cleanup cannot possibly be used, so we
         % have to trick the compiler into not removing the call.
-        (
+        ( if
             semidet_succeed,
             impure use(!.IO)
-        ->
+        then
             rethrow(ExcpResult)
-        ;
+        else
             throw(software_error("exception.finally_2"))
         )
     ).
@@ -480,8 +489,8 @@ try_all(Goal::pred(out) is nondet,
     maybe(univ)::in, maybe(univ)::out, list(T)::in, list(T)::out) is det.
 
 process_one_exception_result(exception(E), !MaybeException, !Solutions) :-
-    % Ignore all but the last exception that is in the list.  This is
-    % okay since there should never be more than one.
+    % Ignore all but the last exception that is in the list. This is okay
+    % since there should never be more than one.
     !.MaybeException = _,
     !:MaybeException = yes(E).
 process_one_exception_result(succeeded(S), !MaybeException, !Solutions) :-
@@ -570,13 +579,13 @@ try_stm(Goal, Result, !STM) :-
         % If the exception is an STM rollback exception rethrow it since
         % the handler at the beginning of the atomic scope should deal with
         % it; otherwise let the user deal with it.
-        (
+        ( if
             ( Exception = univ(stm_builtin.rollback_invalid_transaction)
             ; Exception = univ(stm_builtin.rollback_retry)
             )
-        ->
+        then
             rethrow(Result0)
-        ;
+        else
             Result = Result0
         )
     ).
@@ -643,15 +652,14 @@ exc_univ_value(Univ) = univ.univ_value(Univ).
 :- mode catch_impl(pred(out) is multi,     in(handler), out) is multi.
 :- mode catch_impl(pred(out) is nondet,    in(handler), out) is nondet.
 
-%
-% By default we call the external implementation, but specific backends
+% By default, we call the external implementation, but specific backends
 % can provide their own definition using foreign_proc.
-% NOTE: The subterm dependency tracking algorithm in the declarative
-%       debugger expects builtin_catch to only be called from catch_impl.
-%       If catch_impl is modified for a backend that supports debugging,
-%       or builtin_catch is called from somewhere else, then
-%       the code in browser/declarative_tree.m will need to be modified.
 %
+% NOTE: The subterm dependency tracking algorithm in the declarative debugger
+% expects builtin_catch to only be called from catch_impl. If catch_impl
+% is modified for a backend that supports debugging, or builtin_catch
+% is called from somewhere else, then the code in browser/declarative_tree.m
+% will need to be modified.
 
 throw_impl(Univ::in) :-
     builtin_throw(Univ).
@@ -661,7 +669,6 @@ catch_impl(Pred, Handler, T) :-
 
 % builtin_throw and builtin_catch are implemented below using
 % hand-coded low-level C code.
-%
 :- pragma terminates(builtin_throw/1).
 :- pred builtin_throw(univ::in) is erroneous.
 
@@ -674,20 +681,18 @@ catch_impl(Pred, Handler, T) :-
 :- mode builtin_catch(pred(out) is multi, in(handler), out) is multi.
 :- mode builtin_catch(pred(out) is nondet, in(handler), out) is nondet.
 
-%
 % IMPORTANT: any changes or additions to external predicates should be
 % reflected in the definition of pred_is_external in
-% mdbcomp/program_representation.m.  The debugger needs to know what predicates
+% mdbcomp/program_representation.m. The debugger needs to know what predicates
 % are defined externally, so that it knows not to expect events for those
 % predicates.
-%
 
-:- external(builtin_throw/1).
-:- external(builtin_catch/3).
+:- pragma external_pred(builtin_throw/1).
+:- pragma external_pred(builtin_catch/3).
 
 %---------------------------------------------------------------------------%
 %
-% The --high-level-code implementation
+% The --high-level-code implementation.
 %
 
 :- pragma foreign_decl("C",
@@ -788,7 +793,7 @@ catch_impl(Pred, Handler, T) :-
 
 /*
 ** We also need to provide definitions of these builtins
-** as functions rather than as macros.  This is needed
+** as functions rather than as macros. This is needed
 ** (a) in case we take their address, and (b) for the
 ** GCC back-end interface.
 */
@@ -1114,7 +1119,7 @@ mercury__exception__builtin_catch_model_non(MR_Mercury_Type_Info type_info,
         /*
         ** If we get here, it means that the continuation
         ** has failed, and so we are about to redo the
-        ** nondet goal.  Thus we need to re-establish
+        ** nondet goal. Thus we need to re-establish
         ** its exception handler.
         */
         ML_SET_EXCEPTION_HANDLER(&this_handler);
@@ -1439,14 +1444,13 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 :- pragma foreign_export("Java", call_goal(pred(out) is semidet, out),
     "ML_call_goal_semidet").
 
-% This causes problems because the LLDS back-end
-% does not let you export code with determinism `nondet'.
-% Instead for C backends we hand-code it... see below.
-% Hand-coding it also avoids the casting needed to use MR_Word
-% (which `pragma export' procedures use for polymorphically
-% typed arguments) rather than MR_Box.
+% This causes problems because the LLDS back-end does not let you export
+% code with determinism `nondet'. Instead for C backends we hand-code it...
+% see below. Hand-coding it also avoids the casting needed to use MR_Word
+% (which `pragma export' procedures use for polymorphically typed arguments)
+% rather than MR_Box.
 %
-% XXX for .NET backend we don't yet implement nondet exception handling.
+% XXX For the .NET backend we don't yet implement nondet exception handling.
 
 % :- pragma export(call_goal(pred(out) is nondet,  out), "ML_call_goal_nondet").
 
@@ -1626,18 +1630,18 @@ void mercury_sys_init_exceptions_write_out_proc_statics(FILE *deep_fp,
 /*
 ** MR_throw_walk_stack():
 ** Unwind the stack as far as possible, until we reach a frame
-** with an exception handler.  As we go, invoke either or both
+** with an exception handler. As we go, invoke either or both
 ** of two actions.
 **
 ** (1) If MR_debug_enabled is set, then invoke
 **     `MR_trace(..., MR_PORT_EXCEPTION, ...)' for each stack frame,
 **     to signal to the debugger that the procedure has exited via
-**     an exception.  This allows to user to use the `retry' command
+**     an exception. This allows to user to use the `retry' command
 **     to restart a goal which exited via an exception.
 **
 **     Note that if MR_STACK_TRACE is not defined, then we may not be
 **     able to traverse the stack all the way; in that case, we just
-**     print a warning and then continue.  It might be better to just
+**     print a warning and then continue. It might be better to just
 **     `#ifdef' out all this code (and the code in builtin_throw which
 **     calls it) if MR_STACK_TRACE is not defined.
 **
@@ -1965,7 +1969,7 @@ MR_proc_static_user_one_site(exception, builtin_catch, 3, 5,
 **
 ** Additionally, the compiler generated declaration for the proc_layout
 ** structure will be declared extern if the address is required in other
-** modules.  GCC 4 and above consider a static definition and a non-static
+** modules. GCC 4 and above consider a static definition and a non-static
 ** declaration to be an error.
 */
 MR_EXTERN_USER_PROC_STATIC_PROC_LAYOUT(
@@ -2304,7 +2308,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
     ** Search the nondet stack for an exception handler,
     ** i.e. a frame whose redoip is `MR_exception_handler_do_fail'
     ** (one created by `builtin_catch').
-    ** N.B.  We search down the `succfr' chain, not the `prevfr' chain;
+    ** N.B. We search down the `succfr' chain, not the `prevfr' chain;
     ** this ensures that we only find handlers installed by our callers,
     ** not handlers installed by procedures that we called but which
     ** are still on the nondet stack because they left choice points
@@ -2404,7 +2408,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 #endif
 #ifdef MR_RECLAIM_HP_ON_FAILURE
     /*
-    ** Reset the heap.  But we need to be careful to preserve the
+    ** Reset the heap. But we need to be careful to preserve the
     ** thrown exception object.
     **
     ** The following algorithm uses the `solutions heap', and will work
@@ -2484,7 +2488,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
 
     /*
     ** Pop the final exception handler frame off the nondet stack,
-    ** and reset the nondet stack top.  (This must be done last,
+    ** and reset the nondet stack top. (This must be done last,
     ** since it invalidates all the framevars.)
     */
     MR_maxfr_word = MR_prevfr_slot_word(MR_curfr);
@@ -2644,9 +2648,9 @@ report_uncaught_exception_2(Exception, unit, !IO) :-
     "ML_exception_to_string").
 
 exception_to_string(Exception) = Message :-
-    ( univ_to_type(Exception, software_error(MessagePrime)) ->
+    ( if univ_to_type(Exception, software_error(MessagePrime)) then
         Message = "Software Error: " ++ MessagePrime
-    ;
+    else
         Message = string(univ_value(Exception))
     ).
 
@@ -2675,9 +2679,9 @@ set_get_message_hook(!IO).
 :- pragma no_inline(throw_if_near_stack_limits/0).
 
 throw_if_near_stack_limits :-
-    ( impure now_near_stack_limits ->
+    ( if impure now_near_stack_limits then
         throw(near_stack_limits)
-    ;
+    else
         true
     ).
 
@@ -2714,7 +2718,7 @@ now_near_stack_limits :-
 
 %---------------------------------------------------------------------------%
 
-    % The Java runtime system sometimes wants to report exceptions.  Create
+    % The Java runtime system sometimes wants to report exceptions. Create
     % a reference that it can use to call library code to report exceptions.
     %
 :- pragma foreign_code("Java", "

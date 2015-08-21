@@ -18,18 +18,17 @@
 %   - At points in the search tree where you wish to backjump *to*, add a
 %     call to get_choice_id/1.
 %
-%   - When in the search tree you discover that there are no further
-%     solutions between the current execution point and the failure port
-%     of an earlier call to get_choice_id/1, call backjump/1 with the
-%     relevant choice_id.  This takes execution immediately to that failure
-%     port.
+%   - When in the search tree you discover that there are no further solutions
+%     between the current execution point and the failure port of an earlier
+%     call to get_choice_id/1, call backjump/1 with the relevant choice_id.
+%     This takes execution immediately to that failure port.
 %
 % It is important to avoid backjumping to a choicepoint that has already
-% been pruned away, either on failure or due to a commit.  In the former
-% case (which can occur if the choice_id is stored in a non-trailed mutable,
-% for example) the implementation throws an exception.  In the latter case
-% behaviour is undefined but most likely will be a seg fault.  This can
-% occur if multi/nondet code that returns a choice_id is called from a
+% been pruned away, either on failure or due to a commit. In the former case
+% (which can occur if the choice_id is stored in a non-trailed mutable, for
+% example) the implementation throws an exception. In the latter case,
+% behaviour is undefined but most likely will be a seg fault. This can occur
+% if multi/nondet code that returns a choice_id is called from a
 % cc_multi/cc_nondet context, for example.
 %
 % Note that the definition of "solution" in the above means solution with
@@ -49,18 +48,18 @@
     %
 :- type choice_id.
 
-    % Returns a single unused choice_id, then fails.  We make this nondet
+    % Returns a single unused choice_id, then fails. We make this nondet
     % rather than det, however, so that:
-    %    a) it leaves a nondet stack frame behind which can later be
-    %       used by backjump/1, and
+    %    a) it leaves a nondet stack frame behind which can later be used
+    %       by backjump/1, and
     %    b) the calling context is forced to deal with the case of no
-    %       solutions, which may occur even if later conjuncts can never
-    %       fail (since they may call backjump/1, which counts as an
-    %       exceptional rather than a logical answer).
+    %       solutions, which may occur even if later conjuncts can never fail
+    %       (since they may call backjump/1, which counts as an exceptional
+    %       rather than a logical answer).
     %
 :- impure pred get_choice_id(choice_id::out) is nondet.
 
-    % Backjump to the point where the choice_id was created.  That is,
+    % Backjump to the point where the choice_id was created. That is,
     % jump immediately to the FAIL event of the corresponding call to
     % get_choice_id.
     %
@@ -106,15 +105,14 @@ backjump(Id) :-
 :- pragma terminates(builtin_backjump/1).
 :- impure pred builtin_backjump(choice_id::in) is erroneous.
 
-%
 % IMPORTANT: any changes or additions to external predicates should be
 % reflected in the definition of pred_is_external in
-% mdbcomp/program_representation.m.  The debugger needs to know what predicates
+% mdbcomp/program_representation.m. The debugger needs to know what predicates
 % are defined externally, so that it knows not to expect events for those
 % predicates.
 
-:- external(builtin_choice_id/1).
-:- external(builtin_backjump/1).
+:- pragma external_pred(builtin_choice_id/1).
+:- pragma external_pred(builtin_backjump/1).
 
 %---------------------------------------------------------------------------%
 
@@ -204,19 +202,19 @@ mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id)
 
     /*
     ** XXX when we commit and prune away nondet stack frames, we leave the
-    ** backjump handlers on the stack.  If the caller tries to backjump to
+    ** backjump handlers on the stack. If the caller tries to backjump to
     ** a frame that has been pruned away, the handler may still be on the
     ** stack and we won't detect the problem.
     **
     ** We could avoid this problem by adding a trailing function which
     ** prunes back the handler stack on a commit, which would mean that in
     ** this case we will reach the bottom of the stack and call
-    ** ML_report_invalid_backjump rather than seg faulting.  But that would
-    ** require trailing to be always available.  Instead, we just rely on
+    ** ML_report_invalid_backjump rather than seg faulting. But that would
+    ** require trailing to be always available. Instead, we just rely on
     ** the caller only backjumping to frames that actually do exist.
     **
     ** (The same problem would occur if the caller tries to backjump to a
-    ** frame that has already failed.  In this case, though, the choice ID
+    ** frame that has already failed. In this case, though, the choice ID
     ** will also no longer be live since the call to get_choice_id would have
     ** been bactracked over, so this isn't as much of a problem as with
     ** commits.)

@@ -11,9 +11,9 @@
 % Stability: low.
 %
 % This file is automatically imported, as if via `use_module', into every
-% module in lowlevel parallel grades. It is intended to hold the builtin
-% procedures that the compiler generates implicit calls to when implementing
-% parallel conjunctions.
+% module in lowlevel parallel grades. It holds the builtin procedures
+% that the compiler generates implicit calls to when implementing parallel
+% conjunctions.
 %
 % This module is a private part of the Mercury implementation; user modules
 % should never explicitly import this module. The interface for this module
@@ -43,8 +43,8 @@
     % Wait until Future is signalled, blocking if necessary. Then set Var
     % to the value bound to the variable associated with the future.
     %
-    % wait_future/2 doesn't actually have a side effect.  However once it has
-    % returned get_future/2 is guaranteed to be safe.  Therefore it must be
+    % wait_future/2 doesn't actually have a side effect. However once it has
+    % returned get_future/2 is guaranteed to be safe. Therefore it must be
     % impure to prevent it from being optimized away, especially in (valid)
     % cases where its output occurs only once in a procedure.
     %
@@ -291,12 +291,12 @@ INIT mercury_sys_init_par_builtin_modules
 
 % IMPORTANT: any changes or additions to external predicates should be
 % reflected in the definition of pred_is_external in mdbcomp/
-% program_representation.m.  The debugger needs to know what predicates
+% program_representation.m. The debugger needs to know what predicates
 % are defined externally, so that it knows not to expect events for those
 % predicates.
 
-:- external(lc_finish/1).
-:- external(lc_wait_free_slot/2).
+:- pragma external_pred(lc_finish/1).
+:- pragma external_pred(lc_wait_free_slot/2).
 
 :- pragma foreign_code("C",
 "

@@ -15,7 +15,7 @@
 % This module defines the Mercury concurrency interface.
 %
 % The term `concurrency' refers to threads, not necessarily to parallel
-% execution of those threads.  (The latter is also possible if you are using
+% execution of those threads. (The latter is also possible if you are using
 % one of the .par grades or the Java or C# backends.)
 %
 %---------------------------------------------------------------------------%
@@ -109,15 +109,15 @@
     ** In calling thread.yield, semaphore.wait or semaphore.signal, the
     ** calling context may need to suspend and yield to another context.
     ** This is implemented by setting the resume address of the context to an
-    ** auxiliary function outside of the foreign_proc.  This breaks when
+    ** auxiliary function outside of the foreign_proc. This breaks when
     ** execution tracing or deep profiling are enabled as code inserted at the
-    ** end of the foreign_proc won't be executed.  In those cases we rely on
+    ** end of the foreign_proc won't be executed. In those cases we rely on
     ** the gcc extension that allows us to take the address of labels within
     ** the foreign_proc, so the context will resume back inside the
     ** foreign_proc.
     **
-    ** XXX implement those procedures as :- external procedures so that the
-    ** transforms won't be applied
+    ** XXX Implement those procedures as :- pragma external_preds so that the
+    ** transforms won't be applied.
     */
     #define ML_THREAD_AVOID_LABEL_ADDRS
   #endif
@@ -205,9 +205,9 @@ spawn(Goal0, !IO) :-
     ).
 
 spawn(Goal, Res, !IO) :-
-    ( can_spawn_context ->
+    ( if can_spawn_context then
         spawn_context(Goal, Res, !IO)
-    ;
+    else
         spawn_native(Goal, Res, !IO)
     ).
 
@@ -407,7 +407,7 @@ yield(!IO).
 
 %---------------------------------------------------------------------------%
 %
-% Low-level C implementation
+% Low-level C implementation.
 %
 
 :- pragma foreign_decl("C",
@@ -492,7 +492,7 @@ INIT mercury_sys_init_thread_modules
 
 %---------------------------------------------------------------------------%
 %
-% High-level C and low-level C exclusive threads
+% High-level C and low-level C exclusive threads.
 %
 
 :- pragma foreign_decl("C", "

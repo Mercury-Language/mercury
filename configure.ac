@@ -482,6 +482,9 @@ then
                 ),
                 U = "h or i"
             ).
+
+        :- pred ext(int::out) is det.
+        :- pragma external_pred(ext/1).
 EOF
 
     # When this script has been invoked with --prefix=..., these variables

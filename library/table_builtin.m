@@ -12,7 +12,7 @@
 %
 % This file is automatically imported, as if via `use_module', into every
 % module that contains a tabling pragma (`pragma loopcheck', `pragma memo',
-% or `pragma minimal_model').  It is intended for the builtin procedures
+% or `pragma minimal_model'). It is intended for the builtin procedures
 % that the compiler generates implicit calls to when implementing tabling.
 % This is separated from private_builtin.m, partly for modularity, but
 % mostly to improve compilation speed for programs that don't use tabling.
@@ -515,8 +515,8 @@ table_loop_mark_as_active_and_fail(_) :-
     MR_tbl_memo_non_return_all_shortcut(R);
 ").
 
-:- external(table_memo_return_all_answers_nondet/2).
-:- external(table_memo_return_all_answers_multi/2).
+:- pragma external_pred(table_memo_return_all_answers_nondet/2).
+:- pragma external_pred(table_memo_return_all_answers_multi/2).
 
 table_memo_det_setup(_, _) :-
     % This version is only used for back-ends for which there is no
@@ -895,10 +895,10 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
     % The definitions of these two predicates are in the runtime system,
     % in runtime/mercury_minimal_model.c.
     %
-:- external(table_mm_suspend_consumer/2).
-:- external(table_mm_completion/1).
-:- external(table_mm_return_all_nondet/2).
-:- external(table_mm_return_all_multi/2).
+:- pragma external_pred(table_mm_suspend_consumer/2).
+:- pragma external_pred(table_mm_completion/1).
+:- pragma external_pred(table_mm_return_all_nondet/2).
+:- pragma external_pred(table_mm_return_all_multi/2).
 
 :- pragma foreign_proc("C",
     table_mm_return_all_shortcut(AnswerBlock::in),
@@ -1137,8 +1137,8 @@ table_mm_fill_answer_block_shortcut(_) :-
     MR_fatal_error(""table_mmos_answer_is_not_duplicate_shortcut: direct call"");
 ").
 
-:- external(table_mmos_consume_next_answer_nondet/2).
-:- external(table_mmos_consume_next_answer_multi/2).
+:- pragma external_pred(table_mmos_consume_next_answer_nondet/2).
+:- pragma external_pred(table_mmos_consume_next_answer_multi/2).
 
 :- pragma foreign_proc("C",
     table_mmos_restore_answers(AnswerBlock::in),

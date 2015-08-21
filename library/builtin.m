@@ -23,7 +23,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Types
+% Types.
 %
 
 % The types `character', `int', `float', and `string',
@@ -31,7 +31,7 @@
 % and the types `pred', `pred(T)', `pred(T1, T2)', `pred(T1, T2, T3)', ...
 % and `func(T1) = T2', `func(T1, T2) = T3', `func(T1, T2, T3) = T4', ...
 % are builtin and are implemented using special code in the
-% type-checker.  (XXX TODO: report an error for attempts to redefine
+% type-checker. (XXX TODO: report an error for attempts to redefine
 % these types.)
 
     % The type c_pointer can be used by predicates that use the
@@ -64,7 +64,7 @@
 :- inst mostly_dead == mostly_clobbered.
 
     % The `any' inst used for the constraint solver interface is also
-    % builtin.  The insts `new' and `old' are allowed as synonyms for
+    % builtin. The insts `new' and `old' are allowed as synonyms for
     % `free' and `any', respectively, since some of the literature uses
     % this terminology.
     %
@@ -157,7 +157,7 @@
 
     % unsafe_promise_unique/2 is used to promise the compiler that you
     % have a `unique' copy of a data structure, so that you can use
-    % destructive update.  It is used to work around limitations in
+    % destructive update. It is used to work around limitations in
     % the current support for unique modes.
     % `unsafe_promise_unique(X, Y)' is the same as `Y = X' except that
     % the compiler will assume that `Y' is unique.
@@ -192,7 +192,7 @@
     % A call to the function `promise_only_solution(Pred)' constitutes a
     % promise on the part of the caller that `Pred' has at most one
     % solution, i.e. that `not some [X1, X2] (Pred(X1), Pred(X2), X1 \=
-    % X2)'.  `promise_only_solution(Pred)' presumes that this assumption is
+    % X2)'. `promise_only_solution(Pred)' presumes that this assumption is
     % satisfied, and returns the X for which Pred(X) is true, if there is
     % one.
     %
@@ -200,7 +200,7 @@
     % `cc_multi' or `cc_nondet' code inside a `det' or `semidet' procedure.
     %
     % Note that misuse of this function may lead to unsound results: if the
-    % assumption is not satisfied, the behaviour is undefined.  (If you lie
+    % assumption is not satisfied, the behaviour is undefined. (If you lie
     % to the compiler, the compiler will get its revenge!)
     %
     % NOTE: we recommend using the a `promise_equivalent_solutions' goal
@@ -223,7 +223,7 @@
     % IO0, IO)' is true.
     %
     % Note that misuse of this predicate may lead to unsound results: if
-    % the assumption is not satisfied, the behaviour is undefined.  (If you
+    % the assumption is not satisfied, the behaviour is undefined. (If you
     % lie to the compiler, the compiler will get its revenge!)
     %
     % NOTE: we recommend using a `promise_equivalent_solutions' goal
@@ -327,7 +327,7 @@
     % Comparison functions are expected to obey analogous laws.
     %
     % Note that binary relations <, > and = can be defined from a
-    % comparison predicate or function in an obvious way.  The following
+    % comparison predicate or function in an obvious way. The following
     % facts about these relations are entailed by the above constraints:
     % = is an equivalence relation (not necessarily the usual equality),
     % and the equivalence classes of this relation are totally ordered
@@ -364,7 +364,7 @@
 %---------------------------------------------------------------------------%
 
     % `semidet_succeed' is exactly the same as `true', except that
-    % the compiler thinks that it is semi-deterministic.  You can use
+    % the compiler thinks that it is semi-deterministic. You can use
     % calls to `semidet_succeed' to suppress warnings about determinism
     % declarations that could be stricter.
     %
@@ -419,7 +419,7 @@
     % `get_one_solution' and `get_one_solution_io' are impure alternatives
     % to `promise_one_solution' and `promise_one_solution_io', respectively.
     % They get a solution to the procedure, without requiring any promise
-    % that there is only one solution.  However, they can only be used in
+    % that there is only one solution. However, they can only be used in
     % impure code.
     %
 :- impure func get_one_solution(pred(T)) = T.
@@ -514,14 +514,14 @@ get_one_solution_io(Pred, X, !IO) :-
 %
 % IMPORTANT: any changes or additions to external predicates should be
 % reflected in the definition of pred_is_external in
-% mdbcomp/program_representation.m.  The debugger needs to know what predicates
+% mdbcomp/program_representation.m. The debugger needs to know what predicates
 % are defined externally, so that it knows not to expect events for those
 % predicates.
 %
 
-:- external(unify/2).
-:- external(compare/3).
-:- external(compare_representation/3).
+:- pragma external_pred(unify/2).
+:- pragma external_pred(compare/3).
+:- pragma external_pred(compare_representation/3).
 
 :- pragma foreign_export_enum("C#", comparison_result/0, [],
     [
@@ -561,7 +561,7 @@ X @>= Y :-
 
 %---------------------------------------------------------------------------%
 %
-% Unify/compare of tuples
+% Unify/compare of tuples.
 %
 
 % We implement these predicates in Mercury mainly to allow the compiler to
@@ -603,15 +603,15 @@ unify_tuple(TermA, TermB) :-
 :- pred unify_tuple_pos(T::in, T::in, int::in, int::in) is semidet.
 
 unify_tuple_pos(TermA, TermB, Index, Arity) :-
-    ( Index >= Arity ->
+    ( if Index >= Arity then
         true
-    ;
+    else
         tuple_arg(TermA, Index, SubTermA),
         tuple_arg(TermB, Index, SubTermB),
         private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
-        ( builtin.unify(SubTermA, CastSubTermB) ->
+        ( if builtin.unify(SubTermA, CastSubTermB) then
             unify_tuple_pos(TermA, TermB, Index + 1, Arity)
-        ;
+        else
             fail
         )
     ).
@@ -628,9 +628,9 @@ compare_tuple(Result, TermA, TermB) :-
     int::in, int::in) is det.
 
 compare_tuple_pos(Result, TermA, TermB, Index, Arity) :-
-    ( Index >= Arity ->
+    ( if Index >= Arity then
         Result = (=)
-    ;
+    else
         tuple_arg(TermA, Index, SubTermA),
         tuple_arg(TermB, Index, SubTermB),
         private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
@@ -659,9 +659,9 @@ compare_rep_tuple(Result, TermA, TermB) :-
     int::in, int::in) is cc_multi.
 
 compare_rep_tuple_pos(Result, TermA, TermB, Index, Arity) :-
-    ( Index >= Arity ->
+    ( if Index >= Arity then
         Result = (=)
-    ;
+    else
         tuple_arg(TermA, Index, SubTermA),
         tuple_arg(TermB, Index, SubTermB),
         private_builtin.unsafe_type_cast(SubTermB, CastSubTermB),
@@ -920,7 +920,7 @@ __Compare____tuple_0_0(object x, object y)
             return clone;
         }
 
-        // We'll only copy objects of Mercury-defined types.  We could copy
+        // We'll only copy objects of Mercury-defined types. We could copy
         // more but that's what we do for C backends and it's enough.
         // We don't copy enumeration instances.
         if (!(original instanceof jmercury.runtime.MercuryType)) {
@@ -1080,7 +1080,7 @@ __Compare____tuple_0_0(object x, object y)
 
 %
 % A definition of the Mercury type void/0 is needed because we can generate
-% references to it in code.  See tests/hard_coded/nullary_ho_func.m for an
+% references to it in code. See tests/hard_coded/nullary_ho_func.m for an
 % example of code which does.
 %
 :- pragma foreign_code("C#", "
