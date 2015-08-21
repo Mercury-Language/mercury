@@ -2602,7 +2602,7 @@ mlds_output_name(EntityName, !IO) :-
     ).
 
     % mlds_output_pred_label should be kept in sync with
-    % mlds_pred_label_to_string.
+    % mlds_pred_label_to_string and browser/name_mangle.m.
     %
 :- pred mlds_output_pred_label(mlds_pred_label::in, io::di, io::uo) is det.
 
@@ -2652,7 +2652,7 @@ mlds_output_pred_label(PredLabel, !IO) :-
     ).
 
     % mlds_pred_label_to_string should be kept in sync with
-    % mlds_output_pred_label.
+    % mlds_output_pred_label and browser/name_mangle.m.
     %
 :- func mlds_pred_label_to_string(mlds_pred_label) = string.
 

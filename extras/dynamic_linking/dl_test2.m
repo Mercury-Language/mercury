@@ -5,8 +5,8 @@
 % Example program using dynamic linking.
 % This example tests calling functions with floating point arguments.
 %
-% This module loads in the object code for the module `hello'
-% from the file `libhello.so', looks up the address of the
+% This module loads in the object code for the module `hello' from the file
+% `libhello.so' (or `libhello.dylib' on OS X), looks up the address of the
 % function add3/3 in that module, and then calls that procedure.
 %
 % This source file is hereby placed in the public domain.  -fjh (the author).
@@ -34,10 +34,11 @@
 main(!IO) :-
     %
     % Load in the object code for the module `hello' from
-    % the file `libhello.so'.
+    % the file `libhello.so' (`libhello.dylib' on OS X).
     %
-    dl.open("./libhello.so", lazy, local, MaybeHandle, !IO),
-    (   
+    HelloLib = "./libhello." ++ shared_library_extension,
+    dl.open(HelloLib, lazy, local, MaybeHandle, !IO),
+    (
         MaybeHandle = dl_error(OpenMsg),
         io.format("dlopen failed: %s\n", [s(OpenMsg)], !IO)
     ;
@@ -92,6 +93,25 @@ main(!IO) :-
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Y = X;
+").
+
+%-----------------------------------------------------------------------------%
+
+:- func shared_library_extension = string.
+
+shared_library_extension =
+   ( if system_is_darwin then "dylib" else "so" ).
+
+:- pred system_is_darwin is semidet.
+:- pragma foreign_proc("C",
+    system_is_darwin,
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+#if defined(MR_MAC_OSX)
+    SUCCESS_INDICATOR = MR_TRUE;
+#else
+    SUCCESS_INDICATOR = MR_FALSE;
+#endif
 ").
 
 %----------------------------------------------------------------------------%

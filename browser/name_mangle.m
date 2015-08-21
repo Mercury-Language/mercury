@@ -73,10 +73,6 @@
 :- import_module list.
 :- import_module string.
 
-% XXX most of the code below is very similar to the code in
-% compiler/llds_out.m. Any changes there may require changes here
-% and vice versa.
-
 %-----------------------------------------------------------------------------%
 
 proc_name_mangle(MercuryProc) =
@@ -85,6 +81,12 @@ proc_name_mangle(MercuryProc) =
     else
         llds_proc_name_mangle(MercuryProc)
     ).
+
+% NOTE:  most of the code below is very similar to the code in
+% compiler/llds_out.m. Any changes there may require changes here and vice
+% versa.
+
+%-----------------------------------------------------------------------------%
 
 :- func llds_proc_name_mangle(mercury_proc) = string.
 
@@ -124,6 +126,11 @@ llds_proc_name_mangle(MercuryProc) = LabelName :-
         LabelName = LabelName4
     ).
 
+%-----------------------------------------------------------------------------%
+
+% NOTE: the following code needs to be kept in sync with the predicates
+% mlds_pred_label_to_string and mlds_output_pred_label in compiler/mlds_to_c.m.
+
 :- func mlds_proc_name_mangle(mercury_proc) = string.
 
 mlds_proc_name_mangle(MercuryProc) = LabelName :-
@@ -143,18 +150,18 @@ mlds_proc_name_mangle(MercuryProc) = LabelName :-
     name_mangle(LabelName0, LabelName1),
     (
         PredOrFunc = predicate,
-        PredOrFuncString = "p",
-        ArityAsPred = Arity
+        PredOrFuncString = "p"
     ;
         PredOrFunc = function,
-        PredOrFuncString = "f",
-        ArityAsPred = Arity + 1
+        PredOrFuncString = "f"
     ),
-    string.int_to_string(ArityAsPred, ArityString),
+    string.int_to_string(Arity, ArityString),
     string.int_to_string(ModeNum, ModeNumString),
     string.append_list([LabelName1, "_", ArityString, "_",
         PredOrFuncString, "_", ModeNumString],
         LabelName).
+
+%-----------------------------------------------------------------------------%
 
 :- pred sym_name_mangle(sym_name::in, string::out) is det.
 
@@ -247,6 +254,8 @@ convert_to_valid_c_identifier_2(String, Name) :-
         % String is the empty string
         Name = String
     ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred use_asm_labels is semidet.
 

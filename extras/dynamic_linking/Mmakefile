@@ -39,11 +39,11 @@ ifeq "$(findstring hl,$(GRADE))" ""
 check: dl_test2.res
 endif
 
-dl_test.res: dl_test dl_test.exp libhello.so
+dl_test.res: dl_test dl_test.exp libhello.$(EXT_FOR_SHARED_LIB)
 	./dl_test > dl_test.out
 	diff -c dl_test.out dl_test.exp
 
-dl_test2.res: dl_test2 dl_test2.exp libhello.so
+dl_test2.res: dl_test2 dl_test2.exp libhello.$(EXT_FOR_SHARED_LIB)
 	./dl_test2 > dl_test2.out
 	diff -c dl_test2.out dl_test2.exp
 
