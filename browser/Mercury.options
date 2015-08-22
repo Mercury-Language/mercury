@@ -7,7 +7,6 @@
 #-----------------------------------------------------------------------------#
 
 MCFLAGS-mer_browser = --no-warn-nothing-exported --no-warn-unused-imports
-MCFLAGS-mdb.dice = --no-warn-nothing-exported
 
 MCFLAGS-mdb = --no-warn-unused-imports
 
