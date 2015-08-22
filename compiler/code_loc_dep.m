@@ -3869,7 +3869,7 @@ output_code_info(Components, CI, CLD, !IO) :-
         _VarLocnInfo, TempsInUse, _FailInfo, ParConjDepth),
     ( if list.member(cic_forward_live_vars, Components) then
         io.write_string("forward live vars: ", !IO),
-        mercury_output_vars(VarSet, yes,
+        mercury_output_vars(VarSet, print_name_and_num,
             set_of_var.to_sorted_list(ForwardLiveVars), !IO),
         io.nl(!IO)
     else
@@ -3877,7 +3877,7 @@ output_code_info(Components, CI, CLD, !IO) :-
     ),
     ( if list.member(cic_zombies, Components) then
         io.write_string("zombies: ", !IO),
-        mercury_output_vars(VarSet, yes,
+        mercury_output_vars(VarSet, print_name_and_num,
             set_of_var.to_sorted_list(Zombies), !IO),
         io.nl(!IO)
     else

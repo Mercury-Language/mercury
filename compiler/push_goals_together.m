@@ -91,7 +91,8 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
     OutInfo = init_hlds_out_info(Globals, output_debug),
     trace [compiletime(flag("debug_push_goals")), io(!IO)] (
         io.write_string("Goal before pushes:\n", !IO),
-        write_goal(OutInfo, Goal0, !.ModuleInfo, VarSet0, yes, 0, "", !IO),
+        write_goal(OutInfo, !.ModuleInfo, VarSet0, print_name_and_num,
+            0, "", Goal0, !IO),
         io.nl(!IO)
     ),
     do_push_list(PushGoals, PushInfo, OverallResult, Goal0, Goal1),
@@ -101,7 +102,8 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
         OverallResult = push_succeeded,
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
             io.write_string("Goal after pushes:\n", !IO),
-            write_goal(OutInfo, Goal1, !.ModuleInfo, VarSet0, yes, 0, "", !IO),
+            write_goal(OutInfo, !.ModuleInfo, VarSet0, print_name_and_num,
+                0, "", Goal1, !IO),
             io.nl(!IO)
         ),
 
@@ -135,7 +137,8 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         trace [compiletime(flag("debug_push_goals")), io(!IO)] (
             io.write_string("Goal after fixups:\n", !IO),
-            write_goal(OutInfo, Goal, !.ModuleInfo, VarSet, yes, 0, "", !IO),
+            write_goal(OutInfo, !.ModuleInfo, VarSet, print_name_and_num,
+                0, "", Goal, !IO),
             io.nl(!IO)
         )
     ).

@@ -309,17 +309,16 @@ construct_type_inference_message(PredInfo) = Spec :-
     pred_info_get_class_context(PredInfo, ClassContext),
     pred_info_get_purity(PredInfo, Purity),
     MaybeDet = no,
-    AppendVarNums = no,
+    VarNamePrint = print_name_only,
     (
         PredOrFunc = pf_predicate,
-        TypeStr = mercury_pred_type_to_string(VarSet, ExistQVars, Name, Types,
-            MaybeDet, Purity, ClassContext, Context, AppendVarNums)
+        TypeStr = mercury_pred_type_to_string(VarSet, VarNamePrint, ExistQVars,
+            Name, Types, MaybeDet, Purity, ClassContext, Context)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(Types, ArgTypes, RetType),
-        TypeStr = mercury_func_type_to_string(VarSet, ExistQVars, Name,
-            ArgTypes, RetType, MaybeDet, Purity, ClassContext, Context,
-            AppendVarNums)
+        TypeStr = mercury_func_type_to_string(VarSet, VarNamePrint, ExistQVars,
+            Name, ArgTypes, RetType, MaybeDet, Purity, ClassContext, Context)
     ),
     Pieces = [words("Inferred"), words(TypeStr), nl],
     Msg = simple_msg(Context,

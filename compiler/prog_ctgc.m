@@ -536,7 +536,7 @@ unit_selector_to_string(_, termsel(ConsId, Index)) =
 
 unit_selector_to_string(TVarSet, typesel(TypeSel)) =
     string.append_list(["typesel(",
-        mercury_type_to_string(TVarSet, bool.no, TypeSel),
+        mercury_type_to_string(TVarSet, print_name_only, TypeSel),
         ")"]).
 
 print_selector(TVarSet, Selector, !IO) :-

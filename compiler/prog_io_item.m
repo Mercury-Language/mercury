@@ -423,7 +423,7 @@ parse_attrs_and_decl(ModuleName, VarSet, Term, !.Attributes, SeqNum,
         ->
             MaybeItemPrime = MaybeItem
         ;
-            TermStr = mercury_term_to_string(VarSet, no, Term),
+            TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
             Pieces = [words("Error: unrecognized declaration:"), nl,
                 words(TermStr), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,

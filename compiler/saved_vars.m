@@ -100,14 +100,14 @@ saved_vars_proc(proc(PredId, ProcId), !ProcInfo, !ModuleInfo) :-
     trace [io(!IO), compile_time(flag("debug_saved_vars"))] (
         OutInfo = hlds_out_util.init_hlds_out_info(Globals, output_debug),
         io.write_string("initial version:\n", !IO),
-        hlds_out_goal.write_goal(OutInfo, Goal0, !.ModuleInfo, Varset0,
-            yes, 0, "\n", !IO),
+        hlds_out_goal.write_goal(OutInfo, !.ModuleInfo, Varset0,
+            print_name_and_num, 0, "\n", Goal0, !IO),
         io.write_string("after transformation:\n", !IO),
-        hlds_out_goal.write_goal(OutInfo, Goal1, !.ModuleInfo, Varset1,
-            yes, 0, "\n", !IO),
+        hlds_out_goal.write_goal(OutInfo, !.ModuleInfo, Varset1,
+            print_name_and_num, 0, "\n", Goal1, !IO),
         io.write_string("final version:\n", !IO),
-        hlds_out_goal.write_goal(OutInfo, Goal, !.ModuleInfo, Varset,
-            yes, 0, "\n", !IO)
+        hlds_out_goal.write_goal(OutInfo, !.ModuleInfo, Varset,
+            print_name_and_num, 0, "\n", Goal, !IO)
     ),
 
     proc_info_set_goal(Goal, !ProcInfo),

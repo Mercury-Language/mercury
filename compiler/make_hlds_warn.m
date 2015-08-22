@@ -101,11 +101,11 @@ quant_warning_to_spec(PredCallId, VarSet, Warning) = Spec :-
         [words("In clause for"), simple_call(PredCallId), suffix(":"), nl],
     ( Vars = [Var] ->
         Pieces2 = [words("warning: variable"),
-            quote(mercury_var_to_string(VarSet, no, Var)),
+            quote(mercury_var_to_name_only(VarSet, Var)),
             words("has overlapping scopes.")]
     ;
         Pieces2 = [words("warning: variables"),
-            quote(mercury_vars_to_string(VarSet, no, Vars)),
+            quote(mercury_vars_to_name_only(VarSet, Vars)),
             words("each have overlapping scopes.")]
     ),
     Msg = simple_msg(Context,
@@ -458,7 +458,7 @@ generate_variable_warning(SingleMulti, Context, CallId, VarSet, Vars, Spec) :-
         Count = "more than once"
     ),
     Preamble = [words("In clause for"), simple_call(CallId), suffix(":"), nl],
-    VarStrs0 = list.map(mercury_var_to_string(VarSet, no), Vars),
+    VarStrs0 = list.map(mercury_var_to_name_only(VarSet), Vars),
     list.sort_and_remove_dups(VarStrs0, VarStrs),
     VarsPiece = quote(string.join_list(", ", VarStrs)),
     ( VarStrs = [_] ->

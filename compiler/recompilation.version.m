@@ -1264,8 +1264,8 @@ write_item_type_and_versions(ItemType - ItemVersions, !IO) :-
 
 write_name_arity_version_number(NameArity - VersionNumber, !IO) :-
     NameArity = Name - Arity,
-    mercury_output_bracketed_sym_name_ngt(unqualified(Name),
-        next_to_graphic_token, !IO),
+    mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
+        unqualified(Name), !IO),
     io.write_string("/", !IO),
     io.write_int(Arity, !IO),
     io.write_string(" - ", !IO),
@@ -1276,7 +1276,7 @@ write_name_arity_version_number(NameArity - VersionNumber, !IO) :-
 
 write_symname_arity_version_number(ItemName - VersionNumber, !IO) :-
     ItemName = item_name(SymName, Arity),
-    mercury_output_bracketed_sym_name_ngt(SymName, next_to_graphic_token, !IO),
+    mercury_output_bracketed_sym_name_ngt(next_to_graphic_token, SymName, !IO),
     io.write_string("/", !IO),
     io.write_int(Arity, !IO),
     io.write_string(" - ", !IO),

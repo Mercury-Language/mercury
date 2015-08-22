@@ -1050,7 +1050,7 @@ write_verify_indirect_reuse_reason(Reason, VarSet, !IO) :-
     ;
         Reason = reuse_is_unsafe(Vars),
         io.write_string("reuse_is_unsafe(", !IO),
-        mercury_output_vars(VarSet, yes, Vars, !IO),
+        mercury_output_vars(VarSet, print_name_and_num, Vars, !IO),
         io.write_string(")", !IO)
     ).
 

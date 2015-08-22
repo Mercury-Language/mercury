@@ -386,7 +386,8 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
     OutInfo = init_hlds_out_info(Globals, output_debug),
     trace [io(!IO), compiletime(flag("debug_format_call"))] (
         io.write_string("\n\nBEFORE TRANSFORM:\n", !IO),
-        write_goal(OutInfo, Goal1, ModuleInfo, !.VarSet, yes, 0, "\n", !IO)
+        write_goal(OutInfo, ModuleInfo, !.VarSet, print_name_and_num,
+            0, "\n", Goal1, !IO)
     ),
 
     format_call_traverse_goal(ModuleInfo, Goal1, _, [], FormatCallSites,
@@ -427,7 +428,8 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
             ToDeleteGoals0, _ToDeleteGoals),
         trace [io(!IO), compiletime(flag("debug_format_call"))] (
             io.write_string("\n\nAFTER TRANSFORM:\n", !IO),
-            write_goal(OutInfo, Goal, ModuleInfo, !.VarSet, yes, 0, "\n", !IO)
+            write_goal(OutInfo, ModuleInfo, !.VarSet, print_name_and_num,
+                0, "\n", Goal, !IO)
         ),
         MaybeGoal = yes(Goal)
     ).

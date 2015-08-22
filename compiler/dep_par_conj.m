@@ -320,12 +320,12 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
                 OutInfo = init_hlds_out_info(Globals, output_debug),
                 io.format("Pred/Proc: %s/%s before dep-par-conj:\n",
                     [s(string(PredId)), s(string(ProcId))], !IO),
-                write_goal(OutInfo, GoalBeforeDepParConj, !.ModuleInfo,
-                    !.VarSet, yes, 0, "", !IO),
+                write_goal(OutInfo, !.ModuleInfo, !.VarSet, print_name_and_num,
+                    0, "", GoalBeforeDepParConj, !IO),
                 io.nl(!IO),
                 io.write_string("After dep-par-conj:\n", !IO),
-                write_goal(OutInfo, !.Goal, !.ModuleInfo, !.VarSet,
-                    yes, 0, "", !IO),
+                write_goal(OutInfo, !.ModuleInfo, !.VarSet, print_name_and_num,
+                    0, "", !.Goal, !IO),
                 io.nl(!IO)
             ;
                 true
@@ -1587,8 +1587,8 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
                 proc_info_get_varset(!.ProcInfo, VarSet),
                 format("About to search %d/%d for dependant par conjs:\n",
                     [i(PredIdInt), i(proc_id_to_int(ProcId))], !IO),
-                write_goal(OutInfo, !.Goal, !.ModuleInfo, VarSet,
-                    yes, 0, "", !IO),
+                write_goal(OutInfo, !.ModuleInfo, VarSet, print_name_and_num,
+                    0, "", !.Goal, !IO),
                 nl(!IO)
             ;
                 true

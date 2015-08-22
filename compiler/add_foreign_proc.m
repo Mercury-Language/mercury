@@ -508,12 +508,12 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
         (
             MultipleArgs = [MultipleArg],
             Pieces2 = [words("error: variable"),
-                quote(mercury_var_to_string(PVarSet, no, MultipleArg)),
+                quote(mercury_var_to_name_only(PVarSet, MultipleArg)),
                 words("occurs multiple times in the argument list."), nl]
         ;
             MultipleArgs = [_, _ | _],
             Pieces2 = [words("error: variables"),
-                quote(mercury_vars_to_string(PVarSet, no, MultipleArgs)),
+                quote(mercury_vars_to_name_only(PVarSet, MultipleArgs)),
                 words("occur multiple times in the argument list."), nl]
         ),
         Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),

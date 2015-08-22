@@ -347,10 +347,9 @@ unneeded_process_proc(!ProcInfo, !ModuleInfo, PredId, Pass, Successful) :-
                 ( list.member(PredName, DebugPredNames) ->
                     io.format("%% Starting unneededed code pass %d\n",
                         [i(Pass)], !IO),
-                    AppendVarNums = yes,
                     OutInfo = init_hlds_out_info(Globals, output_debug),
-                    write_goal(OutInfo, Goal0, !.ModuleInfo, VarSet0,
-                        AppendVarNums, 0, ".\n", !IO)
+                    write_goal(OutInfo, !.ModuleInfo, VarSet0,
+                        print_name_and_num, 0, ".\n", Goal0, !IO)
                 ;
                     true
                 )

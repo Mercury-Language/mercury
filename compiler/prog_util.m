@@ -564,7 +564,7 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
         SubstToString = (pred(SubstElem::in, SubstStr::out) is det :-
             SubstElem = Var - Type,
             varset.lookup_name(VarSet, Var, VarName),
-            TypeString = mercury_type_to_string(VarSet, no, Type),
+            TypeString = mercury_type_to_string(VarSet, print_name_only, Type),
             string.append_list([VarName, " = ", TypeString], SubstStr)
         ),
         list_to_string(SubstToString, TypeSubst, PredIdStr)

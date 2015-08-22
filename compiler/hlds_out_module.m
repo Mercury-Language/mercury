@@ -22,7 +22,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 
@@ -32,10 +31,10 @@
     %
 :- pred write_hlds(int::in, module_info::in, io::di, io::uo) is det.
 
-:- pred write_promise(hlds_out_info::in, promise_type::in, int::in,
-    module_info::in, pred_id::in, prog_varset::in, bool::in,
-    list(prog_var)::in, pred_or_func::in, clause::in, maybe_vartypes::in,
-    io::di, io::uo) is det.
+:- pred write_promise(hlds_out_info::in, module_info::in,
+    prog_varset::in, maybe_vartypes::in, var_name_print::in, int::in,
+    promise_type::in, pred_id::in, pred_or_func::in, list(prog_var)::in,
+    clause::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -55,6 +54,7 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -245,12 +245,12 @@ write_type_table_entries(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
 write_type_params(_TVarSet, [], !IO).
 write_type_params(TVarSet, [P], !IO) :-
     io.write_string("(", !IO),
-    mercury_output_var(TVarSet, no, P, !IO),
+    mercury_output_var(TVarSet, print_name_only, P, !IO),
     io.write_string(")", !IO).
 write_type_params(TVarSet, [P | Ps], !IO) :-
     Ps = [_ | _],
     io.write_string("(", !IO),
-    mercury_output_var(TVarSet, no, P, !IO),
+    mercury_output_var(TVarSet, print_name_only, P, !IO),
     write_type_params_loop(TVarSet, Ps, !IO),
     io.write_string(")", !IO).
 
@@ -260,7 +260,7 @@ write_type_params(TVarSet, [P | Ps], !IO) :-
 write_type_params_loop(_TVarSet, [], !IO).
 write_type_params_loop(TVarSet, [P | Ps], !IO) :-
     io.write_string(", ", !IO),
-    mercury_output_var(TVarSet, no, P, !IO),
+    mercury_output_var(TVarSet, print_name_only, P, !IO),
     write_type_params_loop(TVarSet, Ps, !IO).
 
 :- pred write_type_body(hlds_out_info::in, type_ctor::in, hlds_type_body::in,
@@ -308,7 +308,7 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
             io.write_string("/* KIND notag: ", !IO),
             write_sym_name(FunctorName, !IO),
             io.write_string(", ", !IO),
-            mercury_output_type(TVarSet, no, ArgType, !IO),
+            mercury_output_type(TVarSet, print_name_only, ArgType, !IO),
             io.write_string(", ", !IO),
             (
                 MaybeArgName = yes(ArgName),
@@ -337,7 +337,7 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         ;
             ReservedAddr = does_not_use_reserved_address
         ),
-        write_constructors(TypeCtor, Indent, TVarSet, Ctors, ConsTagMap, !IO),
+        write_constructors(TVarSet, TypeCtor, ConsTagMap, Indent, Ctors, !IO),
         MercInfo = Info ^ hoi_mercury_to_mercury,
         mercury_output_where_attributes(MercInfo, TVarSet, no, MaybeUserEqComp,
             MaybeDirectArgCtors, !IO),
@@ -352,7 +352,7 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
     ;
         TypeBody = hlds_eqv_type(Type),
         io.write_string(" == ", !IO),
-        mercury_output_type(TVarSet, no, Type, !IO),
+        mercury_output_type(TVarSet, print_name_only, Type, !IO),
         io.write_string(".\n", !IO)
     ;
         TypeBody = hlds_abstract_type(_IsSolverType),
@@ -369,47 +369,52 @@ write_type_body(Info, TypeCtor, TypeBody, Indent, TVarSet, !IO) :-
         io.write_string(".\n", !IO)
     ).
 
-:- pred write_constructors(type_ctor::in, int::in, tvarset::in,
-    list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.
+:- pred write_constructors(tvarset::in, type_ctor::in, cons_tag_values::in,
+    int::in, list(constructor)::in, io::di, io::uo) is det.
 
-write_constructors(_TypeCtor, _Indent, _TVarSet, [], _, !IO) :-
-    unexpected($module, $pred, "empty constructor list").
-write_constructors(TypeCtor, Indent, TVarSet, [Ctor], TagValues, !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("--->    ", !IO),
-    write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO).
-write_constructors(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
-        !IO) :-
-    Ctors = [_ | _],
-    write_indent(Indent, !IO),
-    io.write_string("--->    ", !IO),
-    write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO),
-    io.write_string("\n", !IO),
-    write_constructors_loop(TypeCtor, Indent, TVarSet, Ctors, TagValues, !IO).
+write_constructors(TVarSet, TagValues, TypeCtor, Indent, Ctors, !IO) :-
+    (
+        Ctors = [],
+        unexpected($module, $pred, "empty constructor list")
+    ;
+        Ctors = [HeadCtor | TailCtors],
+        write_indent(Indent, !IO),
+        io.write_string("--->    ", !IO),
+        write_ctor(TVarSet, TagValues, TypeCtor, HeadCtor, !IO),
+        (
+            TailCtors = []
+        ;
+            TailCtors = [_ | _],
+            io.write_string("\n", !IO),
+            write_constructors_loop(TVarSet, TagValues, TypeCtor, Indent,
+                TailCtors, !IO)
+        )
+    ).
 
-:- pred write_constructors_loop(type_ctor::in, int::in, tvarset::in,
-    list(constructor)::in, cons_tag_values::in, io::di, io::uo) is det.
+:- pred write_constructors_loop(tvarset::in, type_ctor::in,
+    cons_tag_values::in, int::in, list(constructor)::in,
+    io::di, io::uo) is det.
 
-write_constructors_loop(_TypeCtor, _Indent, _TVarSet, [], _, !IO).
-write_constructors_loop(TypeCtor, Indent, TVarSet, [Ctor | Ctors], TagValues,
+write_constructors_loop(_TVarSet, _TypeCtor, _TagValues, _Indent, [], !IO).
+write_constructors_loop(TVarSet, TypeCtor, TagValues, Indent, [Ctor | Ctors],
         !IO) :-
     write_indent(Indent, !IO),
     io.write_string(";       ", !IO),
-    write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO),
+    write_ctor(TVarSet, TypeCtor, TagValues, Ctor, !IO),
     (
         Ctors = []
     ;
         Ctors = [_ | _],
         io.write_string("\n", !IO),
-        write_constructors_loop(TypeCtor, Indent, TVarSet, Ctors, TagValues,
+        write_constructors_loop(TVarSet, TypeCtor, TagValues, Indent, Ctors,
             !IO)
     ).
 
-:- pred write_ctor(type_ctor::in, constructor::in, tvarset::in,
-    cons_tag_values::in, io::di, io::uo) is det.
+:- pred write_ctor(tvarset::in, type_ctor::in, cons_tag_values::in,
+    constructor::in, io::di, io::uo) is det.
 
-write_ctor(TypeCtor, Ctor, TVarSet, TagValues, !IO) :-
-    mercury_output_ctor(Ctor, TVarSet, !IO),
+write_ctor(TVarSet, TypeCtor, TagValues, Ctor, !IO) :-
+    mercury_output_ctor(TVarSet, Ctor, !IO),
     Ctor = ctor(_, _, Name, _Args, Arity, _),
     ConsId = cons(Name, Arity, TypeCtor),
     ( map.search(TagValues, ConsId, TagValue) ->
@@ -462,14 +467,14 @@ write_class_defn(Info, Indent, ClassId - ClassDefn, !IO) :-
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( string.contains_char(DumpOptions, 'v') ->
-        AppendVarNums = yes
+        VarNamePrint = print_name_and_num
     ;
-        AppendVarNums = no
+        VarNamePrint = print_name_only
     ),
 
     write_indent(Indent, !IO),
     io.write_string("% Vars: ", !IO),
-    mercury_output_vars(VarSet, AppendVarNums, Vars, !IO),
+    mercury_output_vars(VarSet, VarNamePrint, Vars, !IO),
     io.nl(!IO),
 
     write_indent(Indent, !IO),
@@ -480,7 +485,7 @@ write_class_defn(Info, Indent, ClassId - ClassDefn, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% Constraints: ", !IO),
     io.write_list(Constraints, ", ",
-        mercury_output_constraint(VarSet, AppendVarNums), !IO),
+        mercury_output_constraint(VarSet, VarNamePrint), !IO),
     io.nl(!IO),
 
     write_indent(Indent, !IO),
@@ -564,14 +569,14 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( string.contains_char(DumpOptions, 'v') ->
-        AppendVarNums = yes
+        VarNamePrint = print_name_and_num
     ;
-        AppendVarNums = no
+        VarNamePrint = print_name_only
     ),
 
     % Curry the varset for term_io.write_variable/4.
     PrintTerm = (pred(TypeName::in, IO0::di, IO::uo) is det :-
-        mercury_output_type(VarSet, AppendVarNums, TypeName, IO0, IO)
+        mercury_output_type(VarSet, VarNamePrint, TypeName, IO0, IO)
     ),
     write_indent(Indent, !IO),
     io.write_string("% Types: ", !IO),
@@ -585,7 +590,7 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("% Constraints: ", !IO),
     io.write_list(Constraints, ", ",
-        mercury_output_constraint(VarSet, AppendVarNums), !IO),
+        mercury_output_constraint(VarSet, VarNamePrint), !IO),
     io.nl(!IO),
 
     write_indent(Indent, !IO),
@@ -608,7 +613,7 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     ;
         MaybePredProcIds = no
     ),
-    write_constraint_proof_map(Indent, VarSet, ProofMap, AppendVarNums, !IO),
+    write_constraint_proof_map(VarSet, VarNamePrint, Indent, ProofMap, !IO),
     io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
@@ -860,14 +865,14 @@ write_uniq_live_real(Uniq, Live, Real, !IO) :-
 write_inst_name(Lang, InstName, !IO) :-
     InstNameTerm = inst_name_to_term(Lang, InstName),
     varset.init(VarSet),
-    mercury_output_term(VarSet, no, InstNameTerm, !IO).
+    mercury_output_term(VarSet, print_name_only, InstNameTerm, !IO).
 
 :- pred write_inst(output_lang::in, mer_inst::in, io::di, io::uo) is det.
 
 write_inst(Lang, Inst, !IO) :-
     InstTerm = inst_to_term(Lang, Inst),
     varset.init(VarSet),
-    mercury_output_term(VarSet, no, InstTerm, !IO).
+    mercury_output_term(VarSet, print_name_only, InstTerm, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -915,7 +920,7 @@ write_const_struct(N - ConstStruct, !IO) :-
         io.write_string(")\n", !IO)
     ),
     io.write_string("type: ", !IO),
-    mercury_output_type(varset.init, no, Type, !IO),
+    mercury_output_type(varset.init, print_name_only, Type, !IO),
     io.nl(!IO),
     io.write_string("inst: ", !IO),
     mercury_output_structured_inst(Inst, 0, output_debug, do_not_incl_addr,
@@ -933,7 +938,7 @@ write_const_struct_args(HeadConstArg, TailConstArgs, !IO) :-
         HeadConstArg = csa_constant(ConsId, Type),
         mercury_output_cons_id(does_not_need_brackets, ConsId, !IO),
         io.write_string("\n        with type ", !IO),
-        mercury_output_type(varset.init, no, Type, !IO)
+        mercury_output_type(varset.init, print_name_only, Type, !IO)
     ),
     (
         TailConstArgs = [],
@@ -1121,7 +1126,7 @@ maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredId - PredInfo, !IO) :-
                 list.member(PredName, DumpPredNames)
             )
         ->
-            write_pred(Info, Lang, Indent, ModuleInfo, PredId, PredInfo, !IO)
+            write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO)
         ;
             true
         )
@@ -1149,7 +1154,7 @@ maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredId - PredInfo, !IO) :-
         ->
             true
         ;
-            write_pred(Info, Lang, Indent, ModuleInfo, PredId, PredInfo, !IO)
+            write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO)
         )
     ).
 
@@ -1158,8 +1163,8 @@ maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredId - PredInfo, !IO) :-
 % Write out a promise.
 %
 
-write_promise(Info, PromiseType, Indent, ModuleInfo, _PredId, VarSet,
-        AppendVarNums, HeadVars, _PredOrFunc, Clause, TypeQual, !IO) :-
+write_promise(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint, Indent,
+        PromiseType, _PredId, _PredOrFunc, HeadVars, Clause, !IO) :-
     % Curry the varset for term_io.write_variable/4.
     PrintVar = (pred(VarName::in, IOState0::di, IOState::uo) is det :-
         term_io.write_variable(VarName, VarSet, IOState0, IOState)
@@ -1188,8 +1193,8 @@ write_promise(Info, PromiseType, Indent, ModuleInfo, _PredId, VarSet,
     ),
 
     Goal = Clause ^ clause_body,
-    do_write_goal(Info, Goal, ModuleInfo, VarSet, AppendVarNums,
-        Indent+1, ").\n", TypeQual, !IO).
+    do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
+        Indent+1, ").\n", Goal, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_module.

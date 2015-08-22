@@ -535,7 +535,7 @@ type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
 type_with_bindings_to_string(Type0, TypeVarSet, TypeBindings) = Str :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
     strip_builtin_qualifiers_from_type(Type1, Type),
-    Str = mercury_type_to_string(TypeVarSet, no, Type).
+    Str = mercury_type_to_string(TypeVarSet, print_name_only, Type).
 
 :- func type_assign_hlds_constraints_to_pieces(hlds_constraints,
     tsubst, tvarset) = list(format_component).
@@ -576,9 +576,9 @@ type_assign_constraints_to_pieces_list(Operator, [Constraint | Constraints],
 inc_maybe_seq(no) = no.
 inc_maybe_seq(yes(N)) = yes(N + 1).
 
-:- func varnums = bool.
+:- func varnums = var_name_print.
 
-varnums = yes.
+varnums = print_name_and_num.
 
 %-----------------------------------------------------------------------------%
 
@@ -648,24 +648,24 @@ write_type_assign(TypeAssign, VarSet, !IO) :-
         mercury_output_vars(TypeVarSet, varnums, HeadTypeParams, !IO),
         io.write_string("]\n\t", !IO)
     ),
-    write_type_assign_types(Vars, VarSet, VarTypes, TypeBindings, TypeVarSet,
-        no, !IO),
-    write_type_assign_hlds_constraints(Constraints, TypeBindings, TypeVarSet,
+    write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
+        no, Vars, !IO),
+    write_type_assign_hlds_constraints(TypeVarSet, TypeBindings, Constraints,
         !IO),
     io.write_string("\n", !IO).
 
-:- pred write_type_assign_types(list(prog_var)::in, prog_varset::in,
-    vartypes::in, tsubst::in, tvarset::in, bool::in, io::di, io::uo) is det.
+:- pred write_type_assign_types(prog_varset::in, tvarset::in, vartypes::in,
+    tsubst::in, bool::in, list(prog_var)::in, io::di, io::uo) is det.
 
-write_type_assign_types([], _, _, _, _, FoundOne, !IO) :-
+write_type_assign_types(_, _, _, _, FoundOne, [], !IO) :-
     (
         FoundOne = no,
         io.write_string("(No variables were assigned a type)", !IO)
     ;
         FoundOne = yes
     ).
-write_type_assign_types([Var | Vars], VarSet, VarTypes, TypeBindings,
-        TypeVarSet, FoundOne, !IO) :-
+write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
+        FoundOne, [Var | Vars], !IO) :-
     ( search_var_type(VarTypes, Var, Type) ->
         (
             FoundOne = yes,
@@ -675,43 +675,43 @@ write_type_assign_types([Var | Vars], VarSet, VarTypes, TypeBindings,
         ),
         mercury_output_var(VarSet, varnums, Var, !IO),
         io.write_string(": ", !IO),
-        write_type_with_bindings(Type, TypeVarSet, TypeBindings, !IO),
-        write_type_assign_types(Vars, VarSet, VarTypes, TypeBindings,
-            TypeVarSet, yes, !IO)
+        write_type_with_bindings(TypeVarSet, TypeBindings, Type, !IO),
+        write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
+            yes, Vars, !IO)
     ;
-        write_type_assign_types(Vars, VarSet, VarTypes, TypeBindings,
-            TypeVarSet, FoundOne, !IO)
+        write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
+            FoundOne, Vars, !IO)
     ).
 
     % write_type_with_bindings writes out a type after applying the
     % type bindings.
     %
-:- pred write_type_with_bindings(mer_type::in, tvarset::in, tsubst::in,
+:- pred write_type_with_bindings(tvarset::in, tsubst::in, mer_type::in, 
     io::di, io::uo) is det.
 
-write_type_with_bindings(Type0, TypeVarSet, TypeBindings, !IO) :-
+write_type_with_bindings(TypeVarSet, TypeBindings, Type0, !IO) :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
     strip_builtin_qualifiers_from_type(Type1, Type),
-    mercury_output_type(TypeVarSet, yes, Type, !IO).
+    mercury_output_type(TypeVarSet, print_name_and_num, Type, !IO).
 
-:- pred write_type_assign_hlds_constraints(hlds_constraints::in,
-    tsubst::in, tvarset::in, io::di, io::uo) is det.
+:- pred write_type_assign_hlds_constraints(tvarset::in, tsubst::in,
+    hlds_constraints::in, io::di, io::uo) is det.
 
-write_type_assign_hlds_constraints(Constraints, TypeBindings, TypeVarSet,
+write_type_assign_hlds_constraints(TypeVarSet, TypeBindings, Constraints,
         !IO) :-
     Constraints =
         hlds_constraints(ConstraintsToProve, AssumedConstraints, _, _),
-    write_type_assign_constraints("&", AssumedConstraints,
-        TypeBindings, TypeVarSet, no, !IO),
-    write_type_assign_constraints("<=", ConstraintsToProve,
-        TypeBindings, TypeVarSet, no, !IO).
+    write_type_assign_constraints(TypeVarSet, TypeBindings,
+        "&", AssumedConstraints, no, !IO),
+    write_type_assign_constraints(TypeVarSet, TypeBindings,
+        "<=", ConstraintsToProve, no, !IO).
 
-:- pred write_type_assign_constraints(string::in, list(hlds_constraint)::in,
-    tsubst::in, tvarset::in, bool::in, io::di, io::uo) is det.
+:- pred write_type_assign_constraints(tvarset::in, tsubst::in,
+    string::in, list(hlds_constraint)::in, bool::in, io::di, io::uo) is det.
 
-write_type_assign_constraints(_, [], _, _, _, !IO).
-write_type_assign_constraints(Operator, [Constraint | Constraints],
-        TypeBindings, TypeVarSet, FoundOne, !IO) :-
+write_type_assign_constraints(_, _, _, [], _, !IO).
+write_type_assign_constraints(TypeVarSet, TypeBindings, Operator,
+        [Constraint | Constraints], FoundOne, !IO) :-
     (
         FoundOne = no,
         io.write_strings(["\n\t", Operator, " "], !IO)
@@ -722,8 +722,8 @@ write_type_assign_constraints(Operator, [Constraint | Constraints],
     apply_rec_subst_to_constraint(TypeBindings, Constraint, BoundConstraint),
     retrieve_prog_constraint(BoundConstraint, ProgConstraint),
     mercury_output_constraint(TypeVarSet, varnums, ProgConstraint, !IO),
-    write_type_assign_constraints(Operator, Constraints, TypeBindings,
-        TypeVarSet, yes, !IO).
+    write_type_assign_constraints(TypeVarSet, TypeBindings, Operator,
+        Constraints, yes, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.type_assign.

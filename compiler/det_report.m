@@ -94,10 +94,6 @@
     %
 :- func promise_solutions_kind_str(promise_solutions_kind) = string.
 
-    % Return the name of the given variable in the given varset.
-    %
-:- func lookup_var_name_in_varset(prog_varset, prog_var) = string.
-
     % Describe the given list of failing contexts.
     %
 :- func failing_contexts_description(module_info, prog_varset,
@@ -1238,7 +1234,7 @@ generate_warning_for_switch_var_if_missing(RequiredVar, Goal, ScopeGoalInfo,
     else
         det_get_proc_info(!.DetInfo, ProcInfo),
         proc_info_get_varset(ProcInfo, VarSet),
-        VarStr = mercury_var_to_string(VarSet, no, RequiredVar),
+        VarStr = mercury_var_to_name_only(VarSet, RequiredVar),
         MissingRequiredPieces = [
             words("Warning: variable "), quote(VarStr),
             words("is the subject of a require_complete_switch scope"),
@@ -1302,7 +1298,7 @@ find_missing_cons_ids(DetInfo, InstMap0, Var, Cases, VarStr,
         MaybeMissingPieces) :-
     det_get_proc_info(DetInfo, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
-    VarStr = mercury_var_to_string(VarSet, no, Var),
+    VarStr = mercury_var_to_name_only(VarSet, Var),
     det_info_get_module_info(DetInfo, ModuleInfo),
     (
         (
@@ -1421,7 +1417,7 @@ det_diagnose_switch_context(DetInfo, [SwitchContext | SwitchContexts],
     MainMatchStr = switch_match_to_string(VarSet, MainMatch),
     OtherMatchStrs = list.map(switch_match_to_string(VarSet), OtherMatches),
     MatchsStr = string.join_list(", ", [MainMatchStr | OtherMatchStrs]),
-    VarStr = mercury_var_to_string(VarSet, no, Var),
+    VarStr = mercury_var_to_name_only(VarSet, Var),
     InnerPieces = [words("Inside the case"), words(MatchsStr),
         words("of the switch on"), fixed(VarStr), suffix(":"), nl],
     det_diagnose_switch_context(DetInfo, SwitchContexts, OuterPieces),
@@ -1433,7 +1429,7 @@ det_diagnose_switch_context(DetInfo, [SwitchContext | SwitchContexts],
 :- func switch_match_to_string(prog_varset, switch_match) = string.
 
 switch_match_to_string(VarSet, switch_match(ConsId, MaybeArgVars)) =
-    cons_id_and_vars_or_arity_to_string(do_not_qualify_cons_id, VarSet,
+    cons_id_and_vars_or_arity_to_string(VarSet, do_not_qualify_cons_id,
         ConsId, MaybeArgVars).
 
 %-----------------------------------------------------------------------------%
@@ -1529,23 +1525,25 @@ det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
         )
     ),
     ( varset.search_name(VarSet, LHS, _) ->
+        LHSVarName = mercury_var_to_name_only(VarSet, LHS),
         (
             RHS = rhs_var(RV),
             \+ varset.search_name(VarSet, RV, _)
         ->
             Pieces = [words(StartWords), words("with"),
-                words(add_quotes(mercury_var_to_string(VarSet, no, LHS)))]
+                words(add_quotes(LHSVarName))]
         ;
             Pieces = [words(StartWords), words("of"),
-                words(add_quotes(mercury_var_to_string(VarSet, no, LHS))),
-                words("and"),
+                words(add_quotes(LHSVarName)), words("and"),
                 words(add_quotes(
-                    unify_rhs_to_string(RHS, ModuleInfo, VarSet, no)))]
+                    unify_rhs_to_string(ModuleInfo, VarSet, print_name_only,
+                        RHS)))]
         )
     ;
         Pieces = [words(StartWords), words("with"),
             words(add_quotes(
-                unify_rhs_to_string(RHS, ModuleInfo, VarSet, no)))]
+                unify_rhs_to_string(ModuleInfo, VarSet, print_name_only,
+                    RHS)))]
     ),
     AllPieces = UnifyContextPieces ++ Pieces.
 
@@ -1558,9 +1556,6 @@ promise_solutions_kind_str(equivalent_solution_sets)
 promise_solutions_kind_str(equivalent_solution_sets_arbitrary)
     = "arbitrary".
 
-lookup_var_name_in_varset(VarSet, Var) =
-    mercury_var_to_string(VarSet, no, Var).
-
 failing_contexts_description(ModuleInfo, VarSet, FailingContexts) =
     list.map(failing_context_description(ModuleInfo, VarSet), FailingContexts).
 
@@ -1571,20 +1566,20 @@ failing_context_description(ModuleInfo, VarSet, FailingContext) = Msg :-
     FailingContext = failing_context(Context, FailingGoal),
     (
         FailingGoal = incomplete_switch(Var),
-        VarStr = mercury_var_to_string(VarSet, no, Var),
+        VarStr = mercury_var_to_name_only(VarSet, Var),
         Pieces = [words("Switch on"), fixed(VarStr), words("is incomplete.")]
     ;
         FailingGoal = fail_goal,
         Pieces = [words("Fail goal can fail.")]
     ;
         FailingGoal = test_goal(Var1, Var2),
-        Var1Str = mercury_var_to_string(VarSet, no, Var1),
-        Var2Str = mercury_var_to_string(VarSet, no, Var2),
+        Var1Str = mercury_var_to_name_only(VarSet, Var1),
+        Var2Str = mercury_var_to_name_only(VarSet, Var2),
         Pieces = [words("Unification of"), fixed(Var1Str),
             words("and"), fixed(Var2Str), words("can fail.")]
     ;
         FailingGoal = deconstruct_goal(Var, ConsId),
-        VarStr = mercury_var_to_string(VarSet, no, Var),
+        VarStr = mercury_var_to_name_only(VarSet, Var),
         Pieces = [words("Unification of"), fixed(VarStr), words("with"),
             cons_id_and_maybe_arity(ConsId), words("can fail.")]
     ;

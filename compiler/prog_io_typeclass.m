@@ -194,12 +194,12 @@ parse_constrained_class(ModuleName, Decl, ConstraintsTerm, VarSet, Context,
             ;
                 NotInParams = [_ | _],
                 ClassTVarSet = ItemTypeClass0 ^ tc_varset,
-                ConstraintNotInParamsStrs =
-                    list.map(mercury_var_to_string(ClassTVarSet, no),
-                        ConstraintNotInParams),
-                FunDepNotInParamsStrs =
-                    list.map(mercury_var_to_string(ClassTVarSet, no),
-                        FunDepNotInParams),
+                ConstraintNotInParamsStrs = list.map(
+                    mercury_var_to_name_only(ClassTVarSet),
+                    ConstraintNotInParams),
+                FunDepNotInParamsStrs = list.map(
+                    mercury_var_to_name_only(ClassTVarSet),
+                    FunDepNotInParams),
                 ConstraintNotInParamsPieces =
                     list_to_pieces(ConstraintNotInParamsStrs),
                 FunDepNotInParamsPieces =
@@ -795,8 +795,8 @@ check_tvars_in_instance_constraint(ok1(ItemInstance), InstanceTerm, Result) :-
         list.filter(is_in_list(TypesVars), TVars, _BoundTVars, UnboundTVars),
         UnboundTVars = [_ | _]
     then
-        UnboundTVarStrs =
-            list.map(mercury_var_to_string(TVarSet, no), UnboundTVars),
+        UnboundTVarStrs = list.map(mercury_var_to_name_only(TVarSet),
+            UnboundTVars),
         UnboundTVarPieces = list_to_pieces(UnboundTVarStrs),
         ( if list.length(UnboundTVars) = 1 then
             Prefix = [words("Error: unbound type variable")]

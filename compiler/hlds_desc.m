@@ -181,12 +181,13 @@ describe_args(VarSet, [HeadVar | TailVars]) =
     string.append_list(list.map(describe_comma_var(VarSet), TailVars)) ++
     ")".
 
-describe_var(VarSet, Var) = mercury_var_to_string(VarSet, yes, Var).
+describe_var(VarSet, Var) =
+    mercury_var_to_string(VarSet, print_name_and_num, Var).
 
 :- func describe_comma_var(prog_varset, prog_var) = string.
 
 describe_comma_var(VarSet, Var) =
-    ", " ++ mercury_var_to_string(VarSet, yes, Var).
+    ", " ++ mercury_var_to_string(VarSet, print_name_and_num, Var).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_desc.

@@ -306,8 +306,8 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
             io.write_string("atomic:\n", !IO),
             module_info_get_globals(!.ModuleInfo, Globals),
             OutInfo = init_hlds_out_info(Globals, output_debug),
-            write_goal(OutInfo, HLDSGoal, !.ModuleInfo, !.VarSet, yes, 0, "\n",
-                !IO),
+            write_goal(OutInfo, !.ModuleInfo, !.VarSet, print_name_and_num,
+                0, "\n", HLDSGoal, !IO),
             io.nl(!IO)
         )
     ;

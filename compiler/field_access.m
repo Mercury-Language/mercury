@@ -325,7 +325,7 @@ parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
     list(format_component)) = error_spec.
 
 make_field_list_error(VarSet, Context, Term, ContextPieces) = Spec :-
-    TermStr = mercury_term_to_string(VarSet, no, Term),
+    TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
     Pieces = ContextPieces ++ [lower_case_next_if_not_first,
         words("Error: expected field name at term"),
         quote(TermStr), suffix("."), nl],

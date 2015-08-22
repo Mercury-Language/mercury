@@ -21,17 +21,16 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_instmap(instmap::in, prog_varset::in, bool::in, int::in,
-    io::di, io::uo) is det.
+:- pred write_instmap(prog_varset::in, var_name_print::in, int::in,
+    instmap::in, io::di, io::uo) is det.
 
-:- pred write_var_inst_list(assoc_list(prog_var, mer_inst)::in,
-    prog_varset::in, bool::in, int::in, io::di, io::uo) is det.
+:- pred write_var_inst_list(prog_varset::in, var_name_print::in, int::in,
+    assoc_list(prog_var, mer_inst)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -113,6 +112,7 @@
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_util.
 
+:- import_module bool.
 :- import_module int.
 :- import_module pair.
 :- import_module require.
@@ -131,27 +131,28 @@ make_atom(Context, Name) =
 
 %-----------------------------------------------------------------------------%
 
-write_instmap(InstMap, VarSet, AppendVarNums, Indent, !IO) :-
+write_instmap(VarSet, AppendVarNums, Indent, InstMap, !IO) :-
     ( instmap_is_unreachable(InstMap) ->
         io.write_string("unreachable", !IO)
     ;
         instmap_to_assoc_list(InstMap, AssocList),
-        write_var_inst_list(AssocList, VarSet, AppendVarNums, Indent, !IO)
+        write_var_inst_list(VarSet, AppendVarNums, Indent, AssocList, !IO)
     ).
 
-write_var_inst_list([], _, _, _, !IO).
-write_var_inst_list([Var - Inst | Rest], VarSet, AppendVarNums, Indent, !IO) :-
+write_var_inst_list(_, _, _, [], !IO).
+write_var_inst_list(VarSet, AppendVarNums, Indent, [Var - Inst | VarsInsts],
+        !IO) :-
     mercury_output_var(VarSet, AppendVarNums, Var, !IO),
     io.write_string(" -> ", !IO),
     varset.init(InstVarSet),
     mercury_output_inst(output_debug, InstVarSet, Inst, !IO),
     (
-        Rest = []
+        VarsInsts = []
     ;
-        Rest = [_ | _],
+        VarsInsts = [_ | _],
         mercury_output_newline(Indent, !IO),
         io.write_string("%            ", !IO),
-        write_var_inst_list(Rest, VarSet, AppendVarNums, Indent, !IO)
+        write_var_inst_list(VarSet, AppendVarNums, Indent, VarsInsts, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -898,8 +899,8 @@ mercury_format_structured_inst(Inst, Indent, Lang, InclAddr, InstVarSet, !U) :-
             Lang = output_debug,
             InstResultsTerm =
                 inst_test_results_to_term(term.context_init, InstResults),
-            InstResultsStr =
-                mercury_term_to_string(varset.init, no, InstResultsTerm),
+            InstResultsStr = mercury_term_to_string(varset.init,
+                print_num_only, InstResultsTerm),
             mercury_format_tabs(Indent + 1, !U),
             add_string(InstResultsStr, !U),
             add_string(",\n", !U)
@@ -935,7 +936,7 @@ mercury_format_structured_inst(Inst, Indent, Lang, InclAddr, InstVarSet, !U) :-
         add_string("\n", !U)
     ;
         Inst = inst_var(Var),
-        mercury_format_var(InstVarSet, no, Var, !U),
+        mercury_format_var(InstVarSet, print_name_only, Var, !U),
         add_string("\n", !U)
     ;
         Inst = constrained_inst_vars(Vars, ConstrainedInst),
@@ -1089,13 +1090,13 @@ mercury_format_structured_inst_name(InstName, FirstIndentPrinted, Indent,
         mercury_format_uniqueness(Uniqueness, "shared", !U),
         add_string(", ", !U),
         varset.init(TypeVarSet),
-        mercury_format_type(TypeVarSet, no, Type, !U),
+        mercury_format_type(TypeVarSet, print_name_only, Type, !U),
         add_string(")\n", !U)
     ;
         InstName = typed_inst(Type, SubInstName),
         add_string("$typed_inst(", !U),
         varset.init(TypeVarSet),
-        mercury_format_type(TypeVarSet, no, Type, !U),
+        mercury_format_type(TypeVarSet, print_name_only, Type, !U),
         add_string(",\n", !U),
         mercury_format_structured_inst_name(SubInstName, no, Indent + 1,
             Lang, InclAddr, InstVarSet, !U),

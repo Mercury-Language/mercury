@@ -2619,9 +2619,9 @@ ints_to_string([N | Ns]) = "_" ++ int_to_string(N) ++ ints_to_string(Ns).
 
 :- func subst_to_name(pair(int, mer_type)) = string.
 
-subst_to_name(TVar - Type) =
-    string.format("%d/%s",
-        [i(TVar), s(mercury_type_to_string(varset.init, no, Type))]).
+subst_to_name(TVar - Type) = Str :-
+    TypeStr = mercury_type_to_string(varset.init, print_name_only, Type),
+    Str = string.format("%d/%s", [i(TVar), s(TypeStr)]).
 
 %-----------------------------------------------------------------------------%
 

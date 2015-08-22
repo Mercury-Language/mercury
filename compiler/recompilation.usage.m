@@ -338,8 +338,8 @@ write_simple_item_matches_2(ItemType, ItemSet, !IO) :-
     io::di, io::uo) is det.
 
 write_simple_item_matches_3((Name - Arity) - Matches, !IO) :-
-    mercury_output_bracketed_sym_name_ngt(unqualified(Name),
-        next_to_graphic_token, !IO),
+    mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
+        unqualified(Name), !IO),
     io.write_string("/", !IO),
     io.write_int(Arity, !IO),
     io.write_string(" - (", !IO),
@@ -472,8 +472,8 @@ write_resolved_functor(ResolvedFunctor, !IO) :-
         ResolvedFunctor = resolved_functor_constructor(ItemName),
         ItemName = item_name(TypeName, Arity),
         io.write_string("ctor(", !IO),
-        mercury_output_bracketed_sym_name_ngt(TypeName, next_to_graphic_token,
-            !IO),
+        mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
+            TypeName, !IO),
         io.write_string("/", !IO),
         io.write_int(Arity, !IO),
         io.write_string(")", !IO)
@@ -482,13 +482,13 @@ write_resolved_functor(ResolvedFunctor, !IO) :-
         TypeItemName = item_name(TypeName, TypeArity),
         ConsItemName = item_name(ConsName, ConsArity),
         io.write_string("field(", !IO),
-        mercury_output_bracketed_sym_name_ngt(TypeName, next_to_graphic_token,
-            !IO),
+        mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
+            TypeName, !IO),
         io.write_string("/", !IO),
         io.write_int(TypeArity, !IO),
         io.write_string(", ", !IO),
-        mercury_output_bracketed_sym_name_ngt(ConsName, next_to_graphic_token,
-            !IO),
+        mercury_output_bracketed_sym_name_ngt(next_to_graphic_token,
+            ConsName, !IO),
         io.write_string("/", !IO),
         io.write_int(ConsArity, !IO),
         io.write_string(")", !IO)

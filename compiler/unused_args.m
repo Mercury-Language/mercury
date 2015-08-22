@@ -2014,7 +2014,8 @@ write_var_usage(ModuleInfo, PredProcId - VarDepMap, !IO) :-
         NoDependVars = []
     ;
         NoDependVars = [_ | _],
-        NoDependVarsStr = mercury_vars_to_string(VarSet, yes, NoDependVars),
+        NoDependVarsStr =
+            mercury_vars_to_string(VarSet, print_name_and_num, NoDependVars),
         io.format("nodepend vars: %s\n", [s(NoDependVarsStr)], !IO)
     ).
 
@@ -2029,13 +2030,14 @@ write_usage_info(ModuleInfo, VarSet, Var - UsageInfo, !RevNoDependVars, !IO) :-
     ( VarList = [], ArgList = [] ->
         !:RevNoDependVars = [Var | !.RevNoDependVars]
     ;
-        VarStr = mercury_var_to_string(VarSet, yes, Var),
+        VarStr = mercury_var_to_string(VarSet, print_name_and_num, Var),
         io.format("dependencies of %s:\n", [s(VarStr)], !IO),
         (
             VarList = []
         ;
             VarList = [_ | _],
-            VarListStr = mercury_vars_to_string(VarSet, yes, VarList),
+            VarListStr =
+                mercury_vars_to_string(VarSet, print_name_and_num, VarList),
             io.format("on variables: %s\n", [s(VarListStr)], !IO)
         ),
         (
@@ -2055,7 +2057,7 @@ write_arg_var_in_proc(ModuleInfo, ArgVarInProc, !IO) :-
     PredProcIdStr = pred_proc_id_to_string(ModuleInfo, PredProcId),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
-    VarStr = mercury_var_to_string(VarSet, yes, Var),
+    VarStr = mercury_var_to_string(VarSet, print_name_and_num, Var),
     io.format("%s: %s\n", [s(PredProcIdStr), s(VarStr)], !IO).
 
 %-----------------------------------------------------------------------------%

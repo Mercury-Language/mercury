@@ -1567,7 +1567,7 @@ impure_parallel_conjunct_error(Context, Purity) = Spec :-
 
 bad_outer_var_type_error(Context, VarSet, Var) = Spec :-
     Pieces = [words("The type of outer variable"),
-        fixed(mercury_var_to_string(VarSet, no, Var)),
+        fixed(mercury_var_to_name_only(VarSet, Var)),
         words("must be either io.state or stm_builtin.stm.")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).

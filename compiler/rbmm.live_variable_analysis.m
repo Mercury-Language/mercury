@@ -372,8 +372,8 @@ collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar) :-
     ( map.search(!.ProcVoidVar, ProgPoint, _DeadVars) ->
         true
     ;
-        proc_info_get_varset(ProcInfo, Varset),
-        set.fold(void_var(Varset), ProducedSet, set.init, VoidVars),
+        proc_info_get_varset(ProcInfo, VarSet),
+        set.fold(void_var(VarSet), ProducedSet, set.init, VoidVars),
         map.set(ProgPoint, VoidVars, !ProcVoidVar)
     ).
 
@@ -383,8 +383,8 @@ collect_void_vars(ProgPoint, ProducedSet, ProcInfo, !ProcVoidVar) :-
 :- pred void_var(prog_varset::in, prog_var::in,
     variable_set::in, variable_set::out) is det.
 
-void_var(Varset, Var, !VoidVars) :-
-    mercury_var_to_string(Varset, no, Var) = VarName,
+void_var(VarSet, Var, !VoidVars) :-
+    VarName = mercury_var_to_name_only(VarSet, Var),
     ( string.index(VarName, 0, '_') ->
         set.insert(Var, !VoidVars)
     ;

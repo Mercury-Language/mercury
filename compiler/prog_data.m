@@ -1281,6 +1281,15 @@ pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
 :- type prog_term   == term(prog_var_type).
 :- type prog_vars   == list(prog_var).
 
+    % What to print when printing variable names.
+    % You can get the effect of printing variable numbers only
+    % by passing an empty varset, which effectively makes *all* variables
+    % unnamed., but having an explicit option for this is more readable.
+:- type var_name_print
+    --->    print_name_only
+    ;       print_name_and_num
+    ;       print_num_only.
+
     % A prog_context is just a term.context.
     %
 :- type prog_context == term.context.

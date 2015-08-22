@@ -261,7 +261,8 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
             list.member(Conflict2, CollectedMutAttrs)
         then
             % XXX Should generate more specific error message.
-            MutAttrsStr = mercury_term_to_string(VarSet, no, MutAttrsTerm),
+            MutAttrsStr = mercury_term_to_string(VarSet, print_name_only,
+                MutAttrsTerm),
             Pieces = [words("Error: conflicting attributes"),
                 words("in attribute list:"), nl,
                 words(MutAttrsStr), suffix("."), nl],
@@ -275,7 +276,8 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
             MaybeMutAttrs = ok1(Attributes)
         )
     else
-        MutAttrsStr = mercury_term_to_string(VarSet, no, MutAttrsTerm),
+        MutAttrsStr = mercury_term_to_string(VarSet, print_name_only,
+            MutAttrsTerm),
         Pieces = [words("Error: malformed attribute list"),
             words("in"), decl("mutable"), words("declaration:"),
             words(MutAttrsStr), suffix("."), nl],

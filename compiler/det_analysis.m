@@ -1622,7 +1622,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     true
                 ;
                     OverlapVarNames = list.map(
-                        lookup_var_name_in_varset(VarSet),
+                        mercury_var_to_name_only(VarSet),
                         set_of_var.to_sorted_list(OverlapVars)),
                     (
                         OverlapVarNames = [],
@@ -1677,7 +1677,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         ( set_of_var.is_empty(MissingVars) ->
             true
         ;
-            MissingVarNames = list.map(lookup_var_name_in_varset(VarSet),
+            MissingVarNames = list.map(mercury_var_to_name_only(VarSet),
                 set_of_var.to_sorted_list(MissingVars)),
             MissingKindStr = promise_solutions_kind_str(Kind),
             (
@@ -1718,7 +1718,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         ->
             true
         ;
-            ExtraVarNames = list.map(lookup_var_name_in_varset(VarSet),
+            ExtraVarNames = list.map(mercury_var_to_name_only(VarSet),
                 set_of_var.to_sorted_list(ExtraVars)),
             ExtraKindStr = promise_solutions_kind_str(Kind),
             (
@@ -1902,7 +1902,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
             proc_info_get_varset(ProcInfo, VarSet),
             (
                 GoalContext = ccuc_switch,
-                VarStr = mercury_var_to_string(VarSet, no, Var),
+                VarStr = mercury_var_to_name_only(VarSet, Var),
                 Pieces0 = [words("In switch on variable"), quote(VarStr),
                     suffix(":"), nl]
             ;
@@ -1945,7 +1945,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 proc_info_get_varset(ProcInfo, VarSet),
                 (
                     GoalContext = ccuc_switch,
-                    VarStr = mercury_var_to_string(VarSet, no, Var),
+                    VarStr = mercury_var_to_name_only(VarSet, Var),
                     Pieces0 = [words("In switch on variable"), quote(VarStr),
                         suffix(":"), nl]
                 ;

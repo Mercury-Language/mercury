@@ -360,7 +360,8 @@ maybe_debug_liveness(ModuleInfo, Message, DebugLiveness, PredIdInt, VarSet,
         io.write_string(":\n", !IO),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
-        write_goal(OutInfo, Goal, ModuleInfo, VarSet, yes, 0, "\n", !IO)
+        write_goal(OutInfo, ModuleInfo, VarSet, print_name_and_num, 0,
+            "\n", Goal, !IO)
     ;
         true
     ).
@@ -1727,8 +1728,10 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
         VarSet = LiveInfo ^ li_varset,
         FirstVars = set_of_var.to_sorted_list(LivenessFirst),
         RestVars  = set_of_var.to_sorted_list(LivenessRest),
-        FirstNames = mercury_vars_to_string(VarSet, yes, FirstVars),
-        RestNames = mercury_vars_to_string(VarSet, yes, RestVars),
+        FirstNames =
+            mercury_vars_to_string(VarSet, print_name_and_num, FirstVars),
+        RestNames =
+            mercury_vars_to_string(VarSet, print_name_and_num, RestVars),
         Msg = "branches of " ++ GoalType ++ " disagree on liveness\n" ++
             "First: " ++ FirstNames ++ "\n" ++ "Rest:  " ++ RestNames ++ "\n",
         unexpected($module, $pred, Msg)

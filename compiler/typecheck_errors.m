@@ -674,12 +674,12 @@ report_error_unif_var_var(ClauseContext, UnifyContext, Context,
 
     VarSet = ClauseContext ^ tecc_varset,
     MainPieces = [words("type error in unification of variable"),
-        quote(mercury_var_to_string(VarSet, no, X)), nl,
+        quote(mercury_var_to_name_only(VarSet, X)), nl,
         words("and variable"),
-        quote(mercury_var_to_string(VarSet, no, Y)), suffix("."), nl,
-        quote(mercury_var_to_string(VarSet, no, X))] ++
+        quote(mercury_var_to_name_only(VarSet, Y)), suffix("."), nl,
+        quote(mercury_var_to_name_only(VarSet, X))] ++
         type_of_var_to_pieces(TypeAssignSet, X) ++ [suffix(","), nl,
-        quote(mercury_var_to_string(VarSet, no, Y))] ++
+        quote(mercury_var_to_name_only(VarSet, Y))] ++
         type_of_var_to_pieces(TypeAssignSet, Y) ++ [suffix("."), nl],
     VerbosePieces = type_assign_set_msg_to_pieces(TypeAssignSet, VarSet),
     Msg = simple_msg(Context,
@@ -700,15 +700,15 @@ report_error_lambda_var(ClauseContext, UnifyContext, Context,
     (
         PredOrFunc = pf_predicate,
         Pieces2 = [words("and"), prefix("pred("),
-            words(mercury_vars_to_string(VarSet, no, ArgVars)),
+            words(mercury_vars_to_name_only(VarSet, ArgVars)),
             suffix(")"), words(":- ...':"), nl]
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgVars, FuncArgs, RetVar),
         Pieces2 = [words("and"), prefix("func("),
-            words(mercury_vars_to_string(VarSet, no, FuncArgs)),
+            words(mercury_vars_to_name_only(VarSet, FuncArgs)),
             suffix(")"), fixed("="),
-            words(mercury_var_to_string(VarSet, no, RetVar)),
+            words(mercury_var_to_name_only(VarSet, RetVar)),
             words(":- ...':"), nl]
     ),
 
@@ -791,8 +791,8 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
     ModuleInfo = ClauseContext ^ tecc_module_info,
     VarSet = ClauseContext ^ tecc_varset,
     strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
-    StrippedFunctorStr = functor_cons_id_to_string(StrippedFunctor, Args,
-        VarSet, ModuleInfo, no),
+    StrippedFunctorStr = functor_cons_id_to_string(ModuleInfo, VarSet,
+        print_name_only, StrippedFunctor, Args),
     list.length(Args, Arity),
 
     % If we have consistent information about the argument types,
@@ -1031,7 +1031,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
     ),
     ( varset.search_name(VarSet, Var, _) ->
         VarNamePieces = [prefix("("),
-            words(mercury_var_to_string(VarSet, no, Var)),
+            words(mercury_var_to_name_only(VarSet, Var)),
             suffix(")")]
     ;
         VarNamePieces = []
@@ -1249,7 +1249,7 @@ find_expecteds_matching_actual(VarSet, SearchActualPieces,
         ( varset.search_name(VarSet, Var, _) ->
             HeadMismatchPieces = [words("argument"), int_fixed(ArgNum),
                 suffix(","), words("which is variable"),
-                quote(mercury_var_to_string(VarSet, no, Var))]
+                quote(mercury_var_to_name_only(VarSet, Var))]
         ;
             HeadMismatchPieces = [words("argument"), int_fixed(ArgNum)]
         ),
@@ -1577,11 +1577,11 @@ report_cons_error(Context, ConsError) = Msgs :-
             unexpected($module, $pred, "no type variables")
         ;
             TVars = [TVar],
-            TVarsStr = mercury_var_to_string(TVarSet, no, TVar),
+            TVarsStr = mercury_var_to_name_only(TVarSet, TVar),
             Pieces2 = [words("variable"), quote(TVarsStr), words("occurs")]
         ;
             TVars = [_, _ | _],
-            TVarsStr = mercury_vars_to_string(TVarSet, no, TVars),
+            TVarsStr = mercury_vars_to_name_only(TVarSet, TVars),
             Pieces2 = [words("variables"), quote(TVarsStr), words("occur")]
         ),
         Pieces3 = [words("in the types of field"), sym_name(FieldName),
@@ -1667,7 +1667,7 @@ ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet,
         type_assign_get_typevarset(TypeAssign1, TVarSet1),
         type_assign_get_typevarset(TypeAssign2, TVarSet2),
         HeadPieces =
-            [words(mercury_var_to_string(VarSet, no, Var)), suffix(":")] ++
+            [words(mercury_var_to_name_only(VarSet, Var)), suffix(":")] ++
             type_to_pieces(add_quotes, T1, TVarSet1, HeadTypeParams1) ++
             [words("or")] ++
             type_to_pieces(add_quotes, T2, TVarSet2, HeadTypeParams2) ++ [nl]
@@ -1764,7 +1764,7 @@ types_of_vars_to_pieces([Var | Vars], VarSet, TypeAssignSet) =
 argument_name_to_pieces(VarSet, Var) = Pieces :-
     ( varset.search_name(VarSet, Var, _) ->
         Pieces = [words("variable"),
-            quote(mercury_var_to_string(VarSet, no, Var))]
+            quote(mercury_var_to_name_only(VarSet, Var))]
     ;
         Pieces = [words("argument")]
     ).
@@ -2292,7 +2292,7 @@ typestuff_to_typestr(TypeStuff) = TypeStr :-
     list.map(term.coerce_var, HeadTypeParams, ExistQVars),
     maybe_add_existential_quantifier(ExistQVars, Term0, Term),
     varset.coerce(TypeVarSet, VarSet),
-    TypeStr = mercury_term_to_string(VarSet, no, Term).
+    TypeStr = mercury_term_to_string(VarSet, print_name_only, Term).
 
 :- type arg_type_stuff
     --->    arg_type_stuff(
@@ -2376,7 +2376,7 @@ type_to_pieces(MaybeAddQuotes, Type0, TVarSet, HeadTypeParams) = Pieces :-
     list.map(term.coerce_var, HeadTypeParams, ExistQVars),
     maybe_add_existential_quantifier(ExistQVars, Term0, Term),
     varset.coerce(TVarSet, VarSet),
-    TermPiece = words(mercury_term_to_string(VarSet, no, Term)),
+    TermPiece = words(mercury_term_to_string(VarSet, print_name_only, Term)),
     (
         MaybeAddQuotes = do_not_add_quotes,
         Pieces = [TermPiece]

@@ -446,7 +446,7 @@ pragma_type_spec_to_pieces(PredInfo) = Pieces :-
 
 report_variables(SubExistQVars, VarSet) =
     [words(choose_number(SubExistQVars, "variable", "variables")),
-    quote(mercury_vars_to_string(VarSet, no, SubExistQVars))].
+    quote(mercury_vars_to_name_only(VarSet, SubExistQVars))].
 
     % Check that the mode list for a `:- pragma type_spec' declaration
     % specifies a known procedure.

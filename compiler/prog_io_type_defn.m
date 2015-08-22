@@ -397,7 +397,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         % There should be no duplicate names to remove.
         varset.coerce(VarSet, GenericVarSet),
         NotExistQOrParamVarsStr =
-            mercury_vars_to_string(GenericVarSet, no, NotExistQOrParamVars),
+            mercury_vars_to_name_only(GenericVarSet, NotExistQOrParamVars),
         Pieces = [words("Error: free type"),
             words(choose_number(NotExistQOrParamVars,
                 "parameter", "parameters")),
@@ -419,8 +419,8 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         % There should be no duplicate names to remove.
         set.to_sorted_list(ExistQParamsSet, ExistQParams),
         varset.coerce(VarSet, GenericVarSet),
-        ExistQParamVarsStrs = list.map(mercury_var_to_string(GenericVarSet, no),
-            ExistQParams),
+        ExistQParamVarsStrs =
+            list.map(mercury_var_to_name_only(GenericVarSet), ExistQParams),
         Pieces = [words("Error:"),
             words(choose_number(ExistQParams,
                 "type variable", "type variables"))] ++
@@ -446,7 +446,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         % There should be no duplicate names to remove.
         varset.coerce(VarSet, GenericVarSet),
         NotOccursExistQVarsStr =
-            mercury_vars_to_string(GenericVarSet, no, NotOccursExistQVars),
+            mercury_vars_to_name_only(GenericVarSet, NotOccursExistQVars),
         Pieces = [words("Error:"),
             words(choose_number(NotOccursExistQVars,
                 "type variable", "type variables")),
@@ -473,7 +473,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
     ->
         varset.coerce(VarSet, GenericVarSet),
         NotExistQArgTypesStr =
-            mercury_vars_to_string(GenericVarSet, no, NotExistQArgTypes),
+            mercury_vars_to_name_only(GenericVarSet, NotExistQArgTypes),
         Pieces = [words("Error:"),
             words(choose_number(NotExistQArgTypes,
                 "type variable", "type variables")),

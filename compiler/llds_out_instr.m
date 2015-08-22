@@ -1352,9 +1352,9 @@ output_live_value_type(live_value_var(Var, Name, Type, _LldsInst), !IO) :-
     io.write_string(", ", !IO),
     io.write_string(Name, !IO),
     io.write_string(", ", !IO),
-    % XXX Fake type varset
+    % XXX Fake type varset.
     varset.init(NewTVarset),
-    mercury_output_type(NewTVarset, no, Type, !IO),
+    mercury_output_type(NewTVarset, print_name_only, Type, !IO),
 %   io.write_string(", ", !IO),
 %   (
 %       LldsInst = llds_inst_ground,
