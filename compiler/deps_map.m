@@ -105,17 +105,17 @@
 
 get_submodule_kind(ModuleName, DepsMap) = Kind :-
     Ancestors = get_ancestors(ModuleName),
-    ( list.last(Ancestors, Parent) ->
+    ( if list.last(Ancestors, Parent) then
         map.lookup(DepsMap, ModuleName, deps(_, ModuleImports)),
         map.lookup(DepsMap, Parent, deps(_, ParentImports)),
         ModuleFileName = ModuleImports ^ mai_source_file_name,
         ParentFileName = ParentImports ^ mai_source_file_name,
-        ( ModuleFileName = ParentFileName ->
+        ( if ModuleFileName = ParentFileName then
             Kind = nested_submodule
-        ;
+        else
             Kind = separate_submodule
         )
-    ;
+    else
         Kind = toplevel
     ).
 
@@ -130,11 +130,11 @@ generate_deps_map(Globals, ModuleName, Search, !DepsMap, !IO) :-
     deps_map::in, deps_map::out, io::di, io::uo) is det.
 
 generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO) :-
-    ( set.remove_least(Module, !Modules) ->
+    ( if set.remove_least(Module, !Modules) then
         generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap,
             !IO),
         generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO)
-    ;
+    else
         % If we can't remove the smallest, then the set of modules to be
         % processed is empty.
         true
@@ -185,10 +185,12 @@ generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap, !IO) :-
 
 lookup_dependencies(Globals, Module, Search, Done, !DepsMap, ModuleImports,
         !IO) :-
-    ( map.search(!.DepsMap, Module, deps(DonePrime, ModuleImportsPrime)) ->
+    ( if
+        map.search(!.DepsMap, Module, deps(DonePrime, ModuleImportsPrime))
+    then
         Done = DonePrime,
         ModuleImports = ModuleImportsPrime
-    ;
+    else
         read_dependencies(Globals, Module, Search, ModuleImportsList, !IO),
         list.foldl(insert_into_deps_map, ModuleImportsList, !DepsMap),
         map.lookup(!.DepsMap, Module, deps(Done, ModuleImports))
@@ -212,11 +214,11 @@ read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
         always_read_module(dont_return_timestamp), _,
         ParseTreeSrc0, _SrcSpecs, Errors, !IO),
     ParseTreeSrc0 = parse_tree_src(_, _, ModuleComponentCord0),
-    (
+    ( if
         cord.is_empty(ModuleComponentCord0),
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
         set.is_non_empty(FatalErrors)
-    ->
+    then
         read_module_int(Globals, "Getting dependencies for module interface",
             ignore_errors, Search, ModuleName, ifk_int, FileName,
             always_read_module(dont_return_timestamp), _,
@@ -229,7 +231,7 @@ read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
             IntAvails, ImpAvails, IntItems, ImpItems, RawItemBlocks),
         RawCompUnits =
             [raw_compilation_unit(ModuleName, ModuleContext, RawItemBlocks)]
-    ;
+    else
         FileName = FileName0,
         split_into_compilation_units_perform_checks(ParseTreeSrc0,
             RawCompUnits, [], Specs),
