@@ -10,7 +10,7 @@
 % Main author: petdr.
 %
 % Responsible for building the static call graph. The dynamic call graph is
-% built during the processing of 'Prof.CallPair', if the appropiate option
+% built during the processing of 'Prof.CallPair', if the appropriate option
 % is set.
 %
 %-----------------------------------------------------------------------------%

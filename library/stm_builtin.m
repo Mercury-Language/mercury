@@ -75,7 +75,7 @@
 %
 
     % Abort the current transaction and restart it from the beginning.
-    % Operationally this casuses the calling thread to block until the value
+    % Operationally this causes the calling thread to block until the value
     % of at least one transaction variable read during the attempted
     % transaction is written by another thread.
     %
@@ -492,7 +492,7 @@ or_else(TransA, TransB, Result, OuterSTM0, OuterSTM) :-
     ;
         ResultA = exception(ExcpA),
 
-        % If transaction A retried, then we should attemp transaction B.
+        % If transaction A retried, then we should attempt transaction B.
         % Otherwise we just propagate the exception upwards.
 
         ( ExcpA = univ(rollback_retry) ->

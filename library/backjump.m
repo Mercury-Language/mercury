@@ -216,7 +216,7 @@ mercury__backjump__builtin_backjump_1_p_0(MR_BackJumpChoiceId id)
     ** (The same problem would occur if the caller tries to backjump to a
     ** frame that has already failed. In this case, though, the choice ID
     ** will also no longer be live since the call to get_choice_id would have
-    ** been bactracked over, so this isn't as much of a problem as with
+    ** been backtracked over, so this isn't as much of a problem as with
     ** commits.)
     */
     while (backjump_handler != NULL) {

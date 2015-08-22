@@ -35,8 +35,8 @@
 :- type path  ==  list(string).
 
 :- type help_res
-	--->    help_ok
-	;	    help_error(string).
+    --->    help_ok
+    ;       help_error(string).
 
 %-----------------------------------------------------------------------------%
 

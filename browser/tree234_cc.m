@@ -5,7 +5,7 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+%
 % tree234_cc implements a map (dictionary) using 2-3-4 trees. This is
 % a cut down version of the standard library module library/tree234.m,
 % with the additional change that it uses compare_representation instead
@@ -28,7 +28,7 @@
 % which indicates success or failure.
 %
 % See library/map.m for documentation of the predicates.
-
+%
 %---------------------------------------------------------------------------%
 
 :- module mdb.tree234_cc.

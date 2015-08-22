@@ -98,7 +98,7 @@ goal_annotate_with_instmap(Goal, SeenDuplicateInstantiation, ConsumedVars,
         % therefore the values of other variables, this includes variables
         % referenced from conditions in ITE goals, and variables switched-on.
         % We may get away with this as our new system for determining
-        % goal-dependance takes these into account.
+        % goal-dependence takes these into account.
         atomic_goal_get_vars(AtomicGoal, Vars),
         BoundVars = set.from_list(BoundVarsList),
         set.difference(Vars, BoundVars, ConsumedVars),

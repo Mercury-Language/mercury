@@ -728,7 +728,7 @@ demangle_class_args(Num, FormattedArgs) -->
     % they start with `f__' instead, and uses names starting with
     % `f_' for mangled names which are either descriptions (such
     % as `f_greater_than' for `>') or sequences of decimal
-    % reprententations of ASCII codes separated by underscores.
+    % representations of ASCII codes separated by underscores.
     % If the name starts with `f__', we must change it back to
     % start with `f_'.  Otherwise, if it starts with `f_' we must
     % convert the mnemonic or list of ASCII codes back into an

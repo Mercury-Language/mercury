@@ -5,7 +5,7 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+%
 % set_cc is an implementation of sets which uses compare_representation
 % instead of builtin comparison, hence it is suitable for use with terms
 % that don't have a canonical representation. It is implemented using
@@ -13,7 +13,7 @@
 % of using compare_representation.
 %
 % Author: Mark Brown (dougl)
-
+%
 %---------------------------------------------------------------------------%
 
 :- module mdb.set_cc.

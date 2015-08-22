@@ -47,7 +47,7 @@
 :- func init = injection(K, V).
 :- pred init(injection(K, V)::out) is det.
 
-    % Intialise an injection wit the given key-value pair.
+    % Initialize an injection with the given key-value pair.
     %
 :- func singleton(K, V) = injection(K, V).
 

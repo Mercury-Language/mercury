@@ -84,7 +84,7 @@
                 b_go            :: mvar(why_can_we_go)
             ).
 
-    % We use this type to say why execution may proceed after reaching tha
+    % We use this type to say why execution may proceed after reaching the
     % barrier.  If it is because the counter reached zero or because
     % release/3 was called.
     %

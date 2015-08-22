@@ -36,7 +36,7 @@
 
 :- pred rep_to_univ(term_rep::in, univ::out) is det.
 
-    % argumnet(Term, N, Subterm):
+    % argument(Term, N, Subterm):
     %
     % True iff Subterm is the Nth argument of Term.
     %

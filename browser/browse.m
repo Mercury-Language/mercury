@@ -1697,7 +1697,7 @@ simplify_dirs(Dirs, SimpleDirs) :-
     %
     % Assumes a reverse list of directories and removes redundant `..'
     % entries by scanning from the bottom most directory to the top,
-    % counting how many `..' occured (N) and removing entries accordingly.
+    % counting how many `..' occurred (N) and removing entries accordingly.
     % SoFar accumulates the simplified dirs processed so far so we can be
     % tail recursive.
     %

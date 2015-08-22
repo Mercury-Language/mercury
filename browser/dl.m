@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: dl.m.
 % Purpose: dynamic linking support.
 % Main author: fjh.
 % Stability: medium.
-
+%
 % This file provides an interface to the C functions dlopen(), dlsym(),
 % and dlclose(). For details about the behaviour of those procedures,
 % see the documentation for those procedures (i.e. `man dlopen').
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module mdb.dl.
@@ -54,7 +54,7 @@
     % High-level interface to the C function dlsym().
     %
     % This version returns a higher-order predicate or function term.
-    % The user must use an inst cast (implemented using c_code or foreign_proc)
+    % The user must use an inst cast (implemented using pragma foreign_proc)
     % to cast this term to the appropriate higher-order inst before calling it;
     % see dl_test.m for an example of this.
     %

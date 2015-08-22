@@ -189,7 +189,7 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
             [], RevExecution0, map.init, ConsumptionsMap),
 
         % Calculate the point at which this conjunct finishes execution
-        % and complete the RevExecutions structure..
+        % and complete the RevExecutions structure.
         list.reverse(RevExecution, Execution),
         CostBParElapsed = LastParConsumeTime + (CostB - LastSeqConsumeTime),
         RevExecution = [ (LastResumeTime - CostBParElapsed) | RevExecution0 ],
@@ -263,7 +263,7 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
     %   is used by our caller to calculate the production times of this
     %   conjunct for later ones.
     %
-    % * !ConsumptionsMap: Accumuates a map of variable consumptions.
+    % * !ConsumptionsMap: Accumulates a map of variable consumptions.
     %
 :- pred calculate_dependent_parallel_cost_2(implicit_parallelism_info::in,
     map(var_rep, float)::in, pair(var_rep, production_or_consumption)::in,

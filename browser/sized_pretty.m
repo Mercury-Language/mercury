@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: sized_pretty.m:
 % Author: sthur.
-% 
+%
 % When printing a term during debugging this module allows the user to put
 % a limit on the size of the term displayed. This limit is specified by
 % setting the number of lines you want and the width of these lines.
-% 
+%
 % How to use sized_pretty.m :
 % ---------------------------
 %
-% Call univ_to_string_line with the follwing variables:
+% Call univ_to_string_line with the following variables:
 % univ_to_string_line(Univ, LineWidth, Lines, String) where
 % Univ      : is the Term (in univ type) you want to convert
 % LineWidth : is the length of the lines
@@ -532,7 +532,7 @@ check_args(Params, [HeadArg | Rest], ArgLimit, Passed, !Used) :-
     % This predicate accepts a list of size annotated terms(paired with a flag)
     % and returns a list of the same type. This new list would consist of the
     % same number of terms as the other but the terms which do not obey the
-    % limit or not fully represented would be annoted again with a new limit
+    % limit or not fully represented would be annotated again with a new limit
     % (SplitLimit). The rest of the terms are left alone.
     %
 :- pred process_args(browser_db::in, MeasureParams::in,
@@ -849,7 +849,7 @@ add_size_count(line_count(A), line_count(B), _) = line_count(A + B).
     % But this requires you to determine which case likely to happen
     % before hand. For example if a term is to be on one line, you should
     % do subtract_size_count(character_count(LineLength),
-    % charater_count(arglength)) rather than subtract_size_count(line_count(1),
+    % character_count(arglength)) rather than subtract_size_count(line_count(1),
     % character_count(arglength)). The reason that this situation cannot
     % be detected in this code is: A term can be printed on a single line
     % only if all of its arguments can be printed on the same line. And you
