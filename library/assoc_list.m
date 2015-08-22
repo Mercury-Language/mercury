@@ -24,9 +24,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- type assoc_list(K, V) ==  list(pair(K, V)).
+:- type assoc_list(K, V) == list(pair(K, V)).
 
-:- type assoc_list(T)   ==  list(pair(T, T)).
+:- type assoc_list(T) == list(pair(T, T)).
 
     % Swap the two sides of the pairs in each member of the list.
     %
@@ -223,22 +223,22 @@ assoc_list.from_corresponding_lists(Ks, Vs) = AL :-
     assoc_list.from_corresponding_lists(Ks, Vs, AL).
 
 assoc_list.from_corresponding_lists(Ks, Vs, KVs) :-
-    ( assoc_list.from_corresponding_2(Ks, Vs, KVs0) ->
-        KVs = KVs0
-    ;
+    ( if assoc_list.from_corresponding_2(Ks, Vs, KVsPrime) then
+        KVs = KVsPrime
+    else
         KeyType = type_name(type_of(Ks)),
         list.length(Ks, KeyLength),
         string.int_to_string(KeyLength, KeyLengthString),
         ValueType = type_name(type_of(Vs)),
         list.length(Vs, ValueLength),
         string.int_to_string(ValueLength, ValueLengthString),
-        ErrorString = "assoc_list.from_corresponding_lists: "
-            ++ "lists have different lengths.\n"
+        ErrorString =
+            "Lists have different lengths.\n"
             ++ "\tKey list type: " ++ KeyType
             ++ "\n\tKey list length: " ++ KeyLengthString
             ++ "\n\tValue list type: " ++ ValueType
             ++ "\n\tValue list length: " ++ ValueLengthString,
-        error(ErrorString)
+        unexpected($module, $pred, ErrorString)
     ).
 
 :- pred assoc_list.from_corresponding_2(list(K)::in, list(V)::in,
@@ -267,9 +267,9 @@ assoc_list.keys_and_values([K - V | KVs], [K | Ks], [V | Vs]) :-
     assoc_list.keys_and_values(KVs, Ks, Vs).
 
 assoc_list.search([K - V | KVs], Key, Value) :-
-    ( K = Key ->
+    ( if K = Key then
         Value = V
-    ;
+    else
         assoc_list.search(KVs, Key, Value)
     ).
 
@@ -277,18 +277,19 @@ AL ^ elem(K) = V :-
     assoc_list.search(AL, K, V).
 
 AL ^ det_elem(K) = V :-
-    ( if   assoc_list.search(AL, K, V0)
-      then V = V0
-      else report_lookup_error("assoc_list.det_elem: key not found", K)
+    ( if assoc_list.search(AL, K, VPrime) then
+        V = VPrime
+    else
+        report_lookup_error("assoc_list.det_elem: key not found", K)
     ).
 
-assoc_list.remove([K - V | KVs], Key, Value, Rest) :-
-    ( K = Key ->
+assoc_list.remove([K - V | KVs], Key, Value, Filtered) :-
+    ( if K = Key then
         Value = V,
-        Rest = KVs
-    ;
-        assoc_list.remove(KVs, Key, Value, Rest1),
-        Rest = [K - V | Rest1]
+        Filtered = KVs
+    else
+        assoc_list.remove(KVs, Key, Value, FilteredTail),
+        Filtered = [K - V | FilteredTail]
     ).
 
 assoc_list.map_keys_only(_P, [], []).
@@ -323,10 +324,10 @@ assoc_list.map_values(F, [K - V0 | KVs0]) = [K - V | KVs] :-
 
 assoc_list.filter(_, [],  []).
 assoc_list.filter(P, [HK - HV | T], True) :-
-    ( P(HK) ->
+    ( if P(HK) then
         assoc_list.filter(P, T, TrueTail),
         True = [HK - HV | TrueTail]
-    ;
+    else
         assoc_list.filter(P, T, True)
     ).
 
@@ -335,9 +336,9 @@ assoc_list.filter(P, List) = Trues :-
 
 assoc_list.negated_filter(_, [],  []).
 assoc_list.negated_filter(P, [HK - HV | T], False) :-
-    ( P(HK) ->
+    ( if P(HK) then
         assoc_list.negated_filter(P, T, False)
-    ;
+    else
         assoc_list.negated_filter(P, T, FalseTail),
         False = [HK - HV | FalseTail]
     ).
@@ -347,10 +348,10 @@ assoc_list.negated_filter(P, List) = Falses :-
 
 assoc_list.filter(_, [],  [], []).
 assoc_list.filter(P, [HK - HV | T], True, False) :-
-    ( P(HK) ->
+    ( if P(HK) then
         assoc_list.filter(P, T, TrueTail, False),
         True = [HK - HV | TrueTail]
-    ;
+    else
         assoc_list.filter(P, T, True, FalseTail),
         False = [HK - HV | FalseTail]
     ).
@@ -362,14 +363,14 @@ assoc_list.merge([], [], []).
 assoc_list.merge([A | As], [], [A | As]).
 assoc_list.merge([], [B | Bs], [B | Bs]).
 assoc_list.merge([A | As], [B | Bs], Cs) :-
-    (
+    ( if
         A = AK - _AV,
         B = BK - _BV,
         compare(>, AK, BK)
-    ->
+    then
         assoc_list.merge([A | As], Bs, Cs0),
         Cs = [B | Cs0]
-    ;
+    else
         % If compare((=), AK, BK), take A first.
         assoc_list.merge(As, [B | Bs], Cs0),
         Cs = [A | Cs0]

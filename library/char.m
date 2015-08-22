@@ -154,13 +154,13 @@
     % ASCII range.
     %
 :- pred is_hex_digit(char::in) is semidet.
-    
+
     % is_base_digit(Base, Digit):
     % True iff Digit is a digit in the given Base (0-9, a-z, A-Z).
     % Throws an exception if Base < 2 or Base > 36.
     %
 :- pred is_base_digit(int::in, char::in) is semidet.
-    
+
     % Convert an integer in the range 0-1 to a binary digit (0 or 1) in the
     % ASCII range.
     %
@@ -178,7 +178,7 @@
     % the ASCII range.
     %
 :- pred int_to_hex_digit(int::in, char::out) is semidet.
-    
+
     % base_int_to_digit(Base, Int, Char):
     % True iff Char is a decimal digit (0-9) or an uppercase letter (A-Z)
     % representing the value Int (0-35) in the given base.
@@ -280,7 +280,7 @@
 %---------------------------------------------------------------------------%
 
 % The following have all been deprecated.
-    
+
     % Use hex_digit_to_int/2 instead.
     %
 :- pred is_hex_digit(char, int).
@@ -307,7 +307,7 @@
     %
     % Use whichever of int_to_binary_digit/2, int_to_octal_digit/2,
     % int_to_decimal_digit/2, int_to_hex_digit/2 or base_int_to_digit/3 is
-    % appropriate instead of the (in, out) mode 
+    % appropriate instead of the (in, out) mode
     %
     % Use whichever of binary_digit_to_int/2, octal_digit_to_int/2,
     % decimal_digit_to_int/2, hex_digit_to_int/2 or base_digit_to_int/3
@@ -354,27 +354,27 @@ is_whitespace('\f').
 is_whitespace('\v').
 
 is_alpha(Char) :-
-    ( is_lower(Char) ->
+    ( if is_lower(Char) then
         true
-    ; is_upper(Char) ->
+    else if is_upper(Char) then
         true
-    ;
+    else
         fail
     ).
 
 is_alnum(Char) :-
-    ( is_alpha(Char) ->
+    ( if is_alpha(Char) then
         true
-    ; is_digit(Char) ->
+    else if is_digit(Char) then
         true
-    ;
+    else
         fail
     ).
 
 is_alpha_or_underscore(Char) :-
-    ( Char = '_' ->
+    ( if Char = '_' then
         true
-    ;
+    else
         is_alpha(Char)
     ).
 
@@ -447,9 +447,9 @@ is_alnum_or_underscore(Char) :-
     ; Char = '_'
     ).
 % A more concise implementation is:
-%   ( is_digit(Char) ->
+%   ( if is_digit(Char) then
 %       true
-%   ;
+%   else
 %       is_alpha_or_underscore(Char)
 %   ).
 
@@ -457,9 +457,9 @@ is_lower(Lower) :-
     lower_upper(Lower, _).
 
 is_upper(Upper) :-
-    ( lower_upper(_, Upper) ->
+    ( if lower_upper(_, Upper) then
         true
-    ;
+    else
         fail
     ).
 
@@ -467,9 +467,9 @@ to_lower(C1) = C2 :-
     to_lower(C1, C2).
 
 to_lower(Char, Lower) :-
-    ( lower_upper(LowerChar, Char) ->
+    ( if lower_upper(LowerChar, Char) then
         Lower = LowerChar
-    ;
+    else
         Lower = Char
     ).
 
@@ -477,9 +477,9 @@ to_upper(C1) = C2 :-
     to_upper(C1, C2).
 
 to_upper(Char, Upper) :-
-    ( lower_upper(Char, UpperChar) ->
+    ( if lower_upper(Char, UpperChar) then
         Upper = UpperChar
-    ;
+    else
         Upper = Char
     ).
 
@@ -544,10 +544,10 @@ is_hex_digit('E').
 is_hex_digit('F').
 
 is_base_digit(Base, Digit) :-
-    ( 2 =< Base, Base =< 36 ->
+    ( if 2 =< Base, Base =< 36 then
         base_digit_to_int(Base, Digit, _Int)
-    ;
-        error("char.is_base_digit: invalid base")
+    else
+        unexpected($module, $pred, "char.is_base_digit: invalid base")
     ).
 
 %---------------------------------------------------------------------------%
@@ -559,11 +559,11 @@ binary_digit_to_int('0', 0).
 binary_digit_to_int('1', 1).
 
 det_binary_digit_to_int(Digit) = Int :-
-    ( binary_digit_to_int(Digit, Int0) ->
-        Int = Int0
-    ;
-        error("char.binary_digit_to_int failed")
-    ). 
+    ( if binary_digit_to_int(Digit, IntPrime) then
+        Int = IntPrime
+    else
+        unexpected($module, $pred, "char.binary_digit_to_int failed")
+    ).
 
 octal_digit_to_int('0', 0).
 octal_digit_to_int('1', 1).
@@ -575,10 +575,10 @@ octal_digit_to_int('6', 6).
 octal_digit_to_int('7', 7).
 
 det_octal_digit_to_int(Digit) = Int :-
-    ( octal_digit_to_int(Digit, Int0) ->
-        Int = Int0
-    ;
-        error("char.octal_digit_to_int failed")
+    ( if octal_digit_to_int(Digit, IntPrime) then
+        Int = IntPrime
+    else
+        unexpected($module, $pred, "char.octal_digit_to_int failed")
     ).
 
 decimal_digit_to_int('0', 0).
@@ -593,10 +593,10 @@ decimal_digit_to_int('8', 8).
 decimal_digit_to_int('9', 9).
 
 det_decimal_digit_to_int(Digit) = Int :-
-    ( decimal_digit_to_int(Digit, Int0) ->
-        Int = Int0
-    ;
-        error("char.decimal_digit_to_int failed")
+    ( if decimal_digit_to_int(Digit, IntPrime) then
+        Int = IntPrime
+    else
+        unexpected($module, $pred, "char.decimal_digit_to_int failed")
     ).
 
 is_hex_digit(Digit, Int) :-
@@ -626,29 +626,29 @@ hex_digit_to_int('E', 14).
 hex_digit_to_int('F', 15).
 
 det_hex_digit_to_int(Digit) = Int :-
-    ( hex_digit_to_int(Digit, Int0) ->
-        Int = Int0
-    ;
-        error("char.hex_digit_to_int failed")
+    ( if hex_digit_to_int(Digit, IntPrime) then
+        Int = IntPrime
+    else
+        unexpected($module, $pred, "char.hex_digit_to_int failed")
     ).
 
 base_digit_to_int(Base, Digit, Int) :-
-    ( Base > 1, Base < 37 ->
-        ( lower_upper(Digit, Upper) ->
+    ( if 1 < Base, Base < 37 then
+        ( if lower_upper(Digit, Upper) then
             int_to_extended_digit(Int, Upper)
-        ;
+        else
             int_to_extended_digit(Int, Digit)
         ),
         Int < Base
-    ;
-        error("char.base_digit_to_int: invalid base")
+    else
+        unexpected($module, $pred, "char.base_digit_to_int: invalid base")
     ).
 
 det_base_digit_to_int(Base, Digit) = Int :-
-    ( base_digit_to_int(Base, Digit, Int0) ->
-        Int = Int0
-    ;
-        error("char.base_digit_to_int failed")
+    ( if base_digit_to_int(Base, Digit, IntPrime) then
+        Int = IntPrime
+    else
+        unexpected($module, $pred, "char.base_digit_to_int failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -700,18 +700,18 @@ int_to_hex_char(Int, Char) :-
     int_to_hex_digit(Int, Char).
 
 base_int_to_digit(Base, Int, Digit) :-
-    ( Base > 1, Base < 37 ->
+    ( if 1 < Base, Base < 37 then
         Int < Base,
         int_to_extended_digit(Int, Digit)
-    ;
-        error("char.base_int_to_digit: invalid base")
+    else
+        unexpected($module, $pred, "char.base_int_to_digit: invalid base")
     ).
 
 det_base_int_to_digit(Base, Int) = Digit :-
-    ( base_int_to_digit(Base, Int, Digit0) ->
-        Digit = Digit0
-    ;
-        error("char.base_int_to_digit failed")
+    ( if base_int_to_digit(Base, Int, DigitPrime) then
+        Digit = DigitPrime
+    else
+        unexpected($module, $pred, "char.base_int_to_digit failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -720,10 +720,10 @@ det_int_to_digit(N) = C :-
     det_int_to_digit(N, C).
 
 det_int_to_digit(Int, Digit) :-
-    ( int_to_extended_digit(Int, Digit1) ->
-        Digit = Digit1
-    ;
-        error("char.int_to_digit failed")
+    ( if int_to_extended_digit(Int, DigitPrime) then
+        Digit = DigitPrime
+    else
+        unexpected($module, $pred, "char.int_to_digit failed")
     ).
 
 :- pred int_to_extended_digit(int, char).
@@ -771,9 +771,9 @@ int_to_digit(Int, Digit) :-
     int_to_extended_digit(Int, Digit).
 
 digit_to_int(Digit, Int) :-
-    ( lower_upper(Digit, Upper) ->
+    ( if lower_upper(Digit, Upper) then
         int_to_extended_digit(Int, Upper)
-    ;
+    else
         int_to_extended_digit(Int, Digit)
     ).
 
@@ -812,10 +812,10 @@ from_int(Int, Char) :-
     to_int(Char, Int).
 
 det_from_int(Int, Char) :-
-    ( from_int(Int, CharPrime) ->
+    ( if from_int(Int, CharPrime) then
         Char = CharPrime
-    ;
-        error("char.det_from_int: conversion failed")
+    else
+        unexpected($module, $pred, "char.det_from_int: conversion failed")
     ).
 
 det_from_int(Int) = Char :-
@@ -955,45 +955,45 @@ max_char_value = N :-
 
 to_utf8(Char, CodeUnits) :-
     Int = char.to_int(Char),
-    ( Int =< 0x7f ->
+    ( if Int =< 0x7f then
         CodeUnits = [Int]
-    ; Int =< 0x7ff ->
+    else if Int =< 0x7ff then
         A = 0xc0 \/ ((Int >> 6) /\ 0x1f),
         B = 0x80 \/  (Int       /\ 0x3f),
         CodeUnits = [A, B]
-    ; Int =< 0xffff ->
+    else if Int =< 0xffff then
         not is_surrogate(Char),
         A = 0xe0 \/ ((Int >> 12) /\ 0x0f),
         B = 0x80 \/ ((Int >>  6) /\ 0x3f),
         C = 0x80 \/  (Int        /\ 0x3f),
         CodeUnits = [A, B, C]
-    ; Int =< 0x10ffff ->
+    else if Int =< 0x10ffff then
         A = 0xf0 \/ ((Int >> 18) /\ 0x07),
         B = 0x80 \/ ((Int >> 12) /\ 0x3f),
         C = 0x80 \/ ((Int >>  6) /\ 0x3f),
         D = 0x80 \/  (Int        /\ 0x3f),
         CodeUnits = [A, B, C, D]
-    ;
+    else
         % Illegal code point.
         fail
     ).
 
 to_utf16(Char, CodeUnits) :-
     Int = char.to_int(Char),
-    ( Int < 0xd800 ->
+    ( if Int < 0xd800 then
         % Common case.
         CodeUnits = [Int]
-    ; Int =< 0xdfff ->
+    else if Int =< 0xdfff then
         % Surrogate.
         fail
-    ; Int =< 0xffff ->
+    else if Int =< 0xffff then
         CodeUnits = [Int]
-    ; Int =< 0x10ffff ->
+    else if Int =< 0x10ffff then
         U = Int - 0x10000,
         A = 0xd800 \/ (U >> 10),
         B = 0xdc00 \/ (U /\ 0x3ff),
         CodeUnits = [A, B]
-    ;
+    else
         % Illegal code point.
         fail
     ).

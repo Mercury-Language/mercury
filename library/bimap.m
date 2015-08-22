@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: bimap.m.
 % Main author: conway.
 % Stability: medium.
-% 
+%
 % This file provides a bijective map ADT.
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key, Data) pairs which allows you to look up any Data item given the
 % Key. A bimap also allows you to efficiently look up the Key given the Data.
 % This time efficiency comes at the expense of using twice as much space.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -453,24 +453,24 @@ bimap.set(!.BM, K, V) = !:BM :-
     bimap.set(K, V, !BM).
 
 bimap.set(K, V, bimap(!.Forward, !.Reverse), bimap(!:Forward, !:Reverse)) :-
-    ( map.search(!.Forward, K, KVal) ->
-        ( V \= KVal ->
+    ( if map.search(!.Forward, K, KVal) then
+        ( if V = KVal then
+            true
+        else
             map.det_update(K, V, !Forward),
             map.delete(KVal, !Reverse)
-        ;
-            true
         )
-    ;
+    else
         map.det_insert(K, V, !Forward)
     ),
-    ( map.search(!.Reverse, V, VKey) ->
-        ( K \= VKey ->
+    ( if map.search(!.Reverse, V, VKey) then
+        ( if K = VKey then
+            true
+        else
             map.det_update(V, K, !Reverse),
             map.delete(VKey, !Forward)
-        ;
-            true
         )
-    ;
+    else
         map.det_insert(V, K, !Reverse)
     ).
 
@@ -529,11 +529,11 @@ bimap.delete_key(!.BM, K) = !:BM :-
 
 bimap.delete_key(K, !BM) :-
     !.BM = bimap(Forward0, Reverse0),
-    ( map.search(Forward0, K, V) ->
+    ( if map.search(Forward0, K, V) then
         map.delete(K, Forward0, Forward),
         map.delete(V, Reverse0, Reverse),
         !:BM = bimap(Forward, Reverse)
-    ;
+    else
         true
     ).
 
@@ -542,11 +542,11 @@ bimap.delete_value(!.BM, V) = !:BM :-
 
 bimap.delete_value(V, !BM) :-
     !.BM = bimap(Forward0, Reverse0),
-    ( map.search(Reverse0, V, K) ->
+    ( if map.search(Reverse0, V, K) then
         map.delete(K, Forward0, Forward),
         map.delete(V, Reverse0, Reverse),
         !:BM = bimap(Forward, Reverse)
-    ;
+    else
         true
     ).
 

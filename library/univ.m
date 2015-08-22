@@ -98,9 +98,9 @@ univ_to_type(Univ, X) :- type_to_univ(X, Univ).
 univ(X) = Univ :- type_to_univ(X, Univ).
 
 det_univ_to_type(Univ, X) :-
-    ( type_to_univ(X0, Univ) ->
+    ( if type_to_univ(X0, Univ) then
         X = X0
-    ;
+    else
         UnivTypeName = type_name(univ_type(Univ)),
         ObjectTypeName = type_name(type_of(X)),
         string.append_list(["det_univ_to_type: conversion failed\n",

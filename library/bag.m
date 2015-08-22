@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: bag.m.
 % Main authors: conway, crs.
 % Stability: medium.
-% 
+%
 % An implementation of multisets.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -325,9 +325,9 @@ bag.insert(!.B, X) = !:B :-
     bag.insert(X, !B).
 
 bag.insert(Item, bag(!.Bag), bag(!:Bag)) :-
-    ( map.search(!.Bag, Item, Count0) ->
+    ( if map.search(!.Bag, Item, Count0) then
         Count = Count0 + 1
-    ;
+    else
         Count = 1
     ),
     map.set(Item, Count, !Bag).
@@ -395,9 +395,9 @@ bag.to_list(bag(Bag), List) :-
 
 bag.to_list_2([], []).
 bag.to_list_2([X - Int | Xs ], Out) :-
-    ( Int =< 0 ->
+    ( if Int =< 0 then
         bag.to_list_2(Xs, Out)
-    ;
+    else
         NewInt = Int - 1,
         bag.to_list_2([X - NewInt | Xs], Out0),
         Out = [X | Out0]
@@ -430,18 +430,18 @@ bag.delete(B1, X) = B2 :-
     bag.delete(X, B1, B2).
 
 bag.delete(Item, !Bag) :-
-    ( bag.remove(Item, !.Bag, NewBag) ->
-        !:Bag = NewBag 
-    ;
+    ( if bag.remove(Item, !.Bag, NewBag) then
+        !:Bag = NewBag
+    else
         true
     ).
 
 bag.remove(Item, bag(!.Bag), bag(!:Bag)) :-
     map.search(!.Bag, Item, Count0),
-    ( Count0 > 1 ->
+    ( if Count0 > 1 then
         Count = Count0 - 1,
         map.set(Item, Count, !Bag)
-    ;
+    else
         map.delete(Item, !Bag)
     ).
 
@@ -449,10 +449,10 @@ bag.det_remove(B1, X) = B2 :-
     bag.det_remove(X, B1, B2).
 
 bag.det_remove(Bag0, Item, Bag) :-
-    ( bag.remove(Bag0, Item, Bag1) ->
+    ( if bag.remove(Bag0, Item, Bag1) then
         Bag = Bag1
-    ;
-        error("bag.det_remove: Missing item in bag.")
+    else
+        unexpected($module, $pred, "item not in bag")
     ).
 
 bag.det_remove_list(B1, Xs) = B2 :-
@@ -464,15 +464,15 @@ bag.remove_list([X | Xs], !Bag) :-
     bag.remove_list(Xs, !Bag).
 
 bag.det_remove_list(List, !Bag) :-
-    ( bag.remove_list(List, !Bag) ->
+    ( if bag.remove_list(List, !Bag) then
         true
-    ;
-        error("bag.det_remove_list: Missing item in bag.")
+    else
+        unexpected($module, $pred, "item not in bag")
     ).
 
 bag.remove_set(Set, !Bag) :-
     set.to_sorted_list(Set, List),
-        % XXX We should exploit the sortedness of List.
+    % XXX We should exploit the sortedness of List.
     bag.remove_list(List, !Bag).
 
 bag.det_remove_set(B1, Xs) = B2 :-
@@ -480,7 +480,7 @@ bag.det_remove_set(B1, Xs) = B2 :-
 
 bag.det_remove_set(Set, !Bag) :-
     set.to_sorted_list(Set, List),
-        % XXX We should exploit the sortedness of List.
+    % XXX We should exploit the sortedness of List.
     bag.det_remove_list(List, !Bag).
 
 bag.remove_all(Item, bag(!.Bag), bag(!:Bag)) :- % semidet
@@ -503,9 +503,9 @@ bag.count_value(B, X) = N :-
     bag.count_value(B, X, N).
 
 bag.count_value(bag(Bag), Item, Count) :-
-    ( map.search(Bag, Item, Count0) ->
+    ( if map.search(Bag, Item, Count0) then
         Count = Count0
-    ;
+    else
         Count = 0
     ).
 
@@ -515,19 +515,19 @@ bag.subtract(B1, B2) = B3 :-
     bag.subtract(B1, B2, B3).
 
 bag.subtract(bag(Bag0), bag(SubBag), Bag) :-
-    ( map.remove_smallest(SubKey, SubVal, SubBag, SubBag0) ->
-        ( map.search(Bag0, SubKey, Val) ->
+    ( if map.remove_smallest(SubKey, SubVal, SubBag, SubBag0) then
+        ( if map.search(Bag0, SubKey, Val) then
             NewVal = Val - SubVal,
-            ( NewVal > 0 ->
+            ( if NewVal > 0 then
                 map.det_update(SubKey, NewVal, Bag0, Bag1)
-            ;
+            else
                 map.det_remove(SubKey, _Val, Bag0, Bag1)
             )
-        ;
+        else
             Bag1 = Bag0
         ),
         bag.subtract(bag(Bag1), bag(SubBag0), Bag)
-    ;
+    else
         Bag = bag(Bag0)
     ).
 
@@ -535,15 +535,15 @@ bag.union(B1, B2) = B3 :-
     bag.union(B1, B2, B3).
 
 bag.union(bag(A), bag(B), Out) :-
-    ( map.remove_smallest(Key, BVal, B, B0) ->
-        ( map.search(A, Key, AVal) ->
+    ( if map.remove_smallest(Key, BVal, B, B0) then
+        ( if map.search(A, Key, AVal) then
             NewVal = AVal + BVal,
             map.det_update(Key, NewVal, A, A0)
-        ;
+        else
             map.det_insert(Key, BVal, A, A0)
         ),
         bag.union(bag(A0), bag(B0), Out)
-    ;
+    else
         Out = bag(A)
     ).
 
@@ -558,23 +558,23 @@ bag.intersect(A, B, Out) :-
     is det.
 
 bag.intersect_2(bag(A), bag(B), bag(Out0), Out) :-
-    ( map.remove_smallest(Key, AVal, A, A0) ->
-        ( map.search(B, Key, BVal) ->
+    ( if map.remove_smallest(Key, AVal, A, A0) then
+        ( if map.search(B, Key, BVal) then
             int.min(AVal, BVal, Val),
             map.det_insert(Key, Val, Out0, Out1)
-        ;
+        else
             Out1 = Out0
         ),
         bag.intersect_2(bag(A0), bag(B), bag(Out1), Out)
-    ;
+    else
         Out = bag(Out0)
     ).
 
 bag.intersect(bag(A), bag(B)) :-
     map.remove_smallest(Key, _AVal, A, A0),
-    ( map.contains(B, Key) ->
+    ( if map.contains(B, Key) then
         true
-    ;
+    else
         bag.intersect(bag(A0), bag(B))
     ).
 
@@ -582,15 +582,15 @@ bag.least_upper_bound(B1, B2) = B3 :-
     bag.least_upper_bound(B1, B2, B3).
 
 bag.least_upper_bound(bag(A), bag(B), Out) :-
-    ( map.remove_smallest(Key, BVal, B, B0) ->
-        ( map.search(A, Key, AVal) ->
+    ( if map.remove_smallest(Key, BVal, B, B0) then
+        ( if map.search(A, Key, AVal) then
             int.max(AVal, BVal, NewVal),
             map.det_update(Key, NewVal, A, A0)
-        ;
+        else
             map.det_insert(Key, BVal, A, A0)
         ),
         bag.least_upper_bound(bag(A0), bag(B0), Out)
-    ;
+    else
         Out = bag(A)
     ).
 
@@ -609,10 +609,10 @@ bag.is_empty(bag(Bag)) :-
 
 bag.remove_smallest(Item, bag(!.Bag), bag(!:Bag)) :-
     map.remove_smallest(Item, Val, !Bag),
-    ( Val > 1 ->
+    ( if Val > 1 then
         NewVal = Val - 1,
         map.det_insert(Item, NewVal, !Bag)
-    ;
+    else
         true
     ).
 
@@ -626,8 +626,8 @@ bag.remove_smallest(Item, bag(!.Bag), bag(!:Bag)) :-
     % :- mode bag.subset_compare(out, in, in) is semidet.
     %
 bag.subset_compare(Res, bag(A), bag(B)) :-
-    ( map.remove_smallest(Key, AVal, A, A0) ->
-        ( map.remove(Key, BVal, B, B0) ->
+    ( if map.remove_smallest(Key, AVal, A, A0) then
+        ( if map.remove(Key, BVal, B, B0) then
             compare(ValRes, AVal, BVal),
             (
                 ValRes = (>),
@@ -641,15 +641,15 @@ bag.subset_compare(Res, bag(A), bag(B)) :-
                 bag.is_subbag(bag(A0), bag(B0)),
                 Res = (<)
             )
-        ;
+        else
             % B is empty, but A is not
             Res = (>)
         )
-    ;
-        % A is empty
-        ( map.is_empty(B) ->
+    else
+        % A is empty.
+        ( if map.is_empty(B) then
             Res = (=)
-        ;
+        else
             Res = (<)
         )
     ).

@@ -585,9 +585,9 @@ filter(P, nonempty_cord(N), Trues) :-
 filter_node(P, Node, Trues) :-
     (
         Node = unit_node(X),
-        ( P(X) ->
+        ( if P(X) then
             Trues = nonempty_cord(unit_node(X))
-        ;
+        else
             Trues = empty_cord
         )
     ;
@@ -619,10 +619,10 @@ filter(P, nonempty_cord(N), Trues, Falses) :-
 filter_node(P, Node, Trues, Falses) :-
     (
         Node = unit_node(X),
-        ( P(X) ->
+        ( if P(X) then
             Trues = nonempty_cord(unit_node(X)),
             Falses = empty_cord
-        ;
+        else
             Trues = empty_cord,
             Falses = nonempty_cord(unit_node(X))
         )
