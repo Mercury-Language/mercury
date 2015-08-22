@@ -147,8 +147,8 @@ generate_deps_map_loop(Globals, !.Modules, Search, !DepsMap, !IO) :-
 generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap, !IO) :-
     % Look up the module's dependencies, and determine whether
     % it has been processed yet.
-    lookup_dependencies(Globals, Module, Search, Done, !DepsMap,
-        ModuleImports, !IO),
+    lookup_dependencies(Globals, Module, Search, Done, ModuleImports,
+        !DepsMap, !IO),
 
     % If the module hadn't been processed yet, then add its imports, parents,
     % and public children to the list of dependencies we need to generate,
@@ -180,20 +180,20 @@ generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap, !IO) :-
     % save the dependencies in the dependency map.
     %
 :- pred lookup_dependencies(globals::in, module_name::in, maybe_search::in,
-    have_processed::out, deps_map::in, deps_map::out, module_and_imports::out,
-    io::di, io::uo) is det.
+    have_processed::out, module_and_imports::out,
+    deps_map::in, deps_map::out, io::di, io::uo) is det.
 
-lookup_dependencies(Globals, Module, Search, Done, !DepsMap, ModuleImports,
+lookup_dependencies(Globals, ModuleName, Search, Done, ModuleImports, !DepsMap,
         !IO) :-
     ( if
-        map.search(!.DepsMap, Module, deps(DonePrime, ModuleImportsPrime))
+        map.search(!.DepsMap, ModuleName, deps(DonePrime, ModuleImportsPrime))
     then
         Done = DonePrime,
         ModuleImports = ModuleImportsPrime
     else
-        read_dependencies(Globals, Module, Search, ModuleImportsList, !IO),
+        read_dependencies(Globals, ModuleName, Search, ModuleImportsList, !IO),
         list.foldl(insert_into_deps_map, ModuleImportsList, !DepsMap),
-        map.lookup(!.DepsMap, Module, deps(Done, ModuleImports))
+        map.lookup(!.DepsMap, ModuleName, deps(Done, ModuleImports))
     ).
 
 insert_into_deps_map(ModuleImports, !DepsMap) :-
@@ -201,7 +201,10 @@ insert_into_deps_map(ModuleImports, !DepsMap) :-
     map.set(ModuleName, deps(not_yet_processed, ModuleImports), !DepsMap).
 
     % Read a module to determine the (direct) dependencies of that module
-    % and any nested sub-modules it contains.
+    % and any nested sub-modules it contains. Return the module_and_imports
+    % structure for the named module, and each of its nested submodules.
+    % If we cannot do better, return a dummy module_and_imports structure
+    % for the named module.
     %
 :- pred read_dependencies(globals::in, module_name::in, maybe_search::in,
     list(module_and_imports)::out, io::di, io::uo) is det.
@@ -213,7 +216,8 @@ read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
         ignore_errors, Search, ModuleName, FileName0,
         always_read_module(dont_return_timestamp), _,
         ParseTreeSrc0, _SrcSpecs, Errors, !IO),
-    ParseTreeSrc0 = parse_tree_src(_, _, ModuleComponentCord0),
+    ParseTreeSrc0 = parse_tree_src(ModuleNameSrc0, ModuleNameContext0,
+        ModuleComponentCord0),
     ( if
         cord.is_empty(ModuleComponentCord0),
         set.intersect(Errors, fatal_read_module_errors, FatalErrors),
@@ -233,15 +237,32 @@ read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
             [raw_compilation_unit(ModuleName, ModuleContext, RawItemBlocks)]
     else
         FileName = FileName0,
-        split_into_compilation_units_perform_checks(ParseTreeSrc0,
-            RawCompUnits, [], Specs),
+        ( if ModuleName = ModuleNameSrc0 then
+            ParseTreeSrc = ParseTreeSrc0,
+            Specs0 = []
+        else
+            % The module name in the source file is NOT the module name
+            % we expect based on the file name. Override the parse tree's
+            % file name, and generate an error message.
+            ParseTreeSrc = ParseTreeSrc0 ^ pts_module_name := ModuleName,
+            Pieces = [words("Error: expected a module named"),
+                sym_name(ModuleName), suffix(","),
+                words("found a module named"),
+                sym_name(ModuleNameSrc0), suffix("."), nl],
+            Msg = simple_msg(ModuleNameContext0, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_term_to_parse_tree, [Msg]),
+            Specs0 = [Spec]
+        ),
+        split_into_compilation_units_perform_checks(ParseTreeSrc,
+            RawCompUnits, Specs0, Specs),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ),
-    NestedModuleNames = set.list_to_set(
-        list.map(raw_compilation_unit_project_name, RawCompUnits)),
+    RawCompUnitModuleNames =
+        list.map(raw_compilation_unit_project_name, RawCompUnits),
+    RawCompUnitModuleNamesSet = set.list_to_set(RawCompUnitModuleNames),
     list.map(
         init_module_and_imports(Globals, FileName, ModuleName,
-            NestedModuleNames, [], Errors),
+            RawCompUnitModuleNamesSet, [], Errors),
         RawCompUnits, ModuleAndImportsList).
 
 %-----------------------------------------------------------------------------%
