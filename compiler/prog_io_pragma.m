@@ -1844,9 +1844,8 @@ parse_pragma_foreign_proc_pragma(ModuleName, PragmaTerms,
         ( if
             RestTerms = [PredAndVarsTerm, FlagsTerm, CodeTerm],
             parse_pragma_ordinary_foreign_proc_pragma(ModuleName,
-                VarSet, PredAndVarsTerm, FlagsTerm, CodeTerm,
-                ForeignLanguage, InvalidDeclPrefix, Context, SeqNum,
-                MaybeRestItem)
+                VarSet, ForeignLanguage, PredAndVarsTerm, FlagsTerm, CodeTerm,
+                Context, SeqNum, MaybeRestItem)
         then
             (
                 MaybeRestItem = ok1(Item),
@@ -1870,7 +1869,6 @@ parse_pragma_foreign_proc_pragma(ModuleName, PragmaTerms,
         )
     ;
         PragmaTerms = [],
-        PragmaTerms = [],
         Pieces = InvalidDeclPrefix ++
             [words("wrong number of arguments."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -1879,67 +1877,79 @@ parse_pragma_foreign_proc_pragma(ModuleName, PragmaTerms,
     ).
 
 :- pred parse_pragma_ordinary_foreign_proc_pragma(module_name::in,
-    varset::in, term::in, term::in, term::in, foreign_language::in,
-    list(format_component)::in, prog_context::in, int::in, maybe1(item)::out)
-    is det.
+    varset::in, foreign_language::in, term::in, term::in, term::in,
+    prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet, SecondTerm,
-        ThirdTerm, CodeTerm, ForeignLanguage, InvalidDeclPrefix,
+parse_pragma_ordinary_foreign_proc_pragma(ModuleName, VarSet,
+        ForeignLanguage, PredAndVarsTerm, FlagsTerm, CodeTerm,
         Context, SeqNum, MaybeItem) :-
-    CodeContext = get_term_context(CodeTerm),
-    ( if CodeTerm = term.functor(term.string(CodePrime), [], _) then
-        Code = CodePrime,
-        CodeSpecs = []
-    else
-        Code = "", % Dummy
-        CodePieces = InvalidDeclPrefix ++
-            [words("invalid fourth argument,"),
-            words("expecting string containing foreign code."), nl],
-        CodeSpec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(CodeContext, [always(CodePieces)])]),
-        CodeSpecs = [CodeSpec]
-    ),
-    ThirdContextPieces =
-        InvalidDeclPrefix ++ [words("invalid third argument:")],
-    parse_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
-        ThirdTerm, ThirdContextPieces, MaybeFlagsThird),
+    PredAndVarsContextPieces = [words("Error in the second argument of"),
+        pragma_decl("foreign_proc"), words("declaration:")],
+    parse_pred_or_func_and_args_general(yes(ModuleName), PredAndVarsTerm,
+        VarSet, PredAndVarsContextPieces, MaybePredAndArgs),
     (
-        MaybeFlagsThird = ok1(Flags),
-        FlagsSpecs = [],
-        PredAndVarsTerm = SecondTerm
-    ;
-        MaybeFlagsThird = error1(_FlagsThirdSpecs),
-        % We report any errors as appropriate to the preferred syntax.
-        SecondContextPieces = InvalidDeclPrefix ++
-            [lower_case_next_if_not_first, words("Invalid second argument:")],
-        parse_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
-            SecondTerm, SecondContextPieces, MaybeFlagsSecond),
+        MaybePredAndArgs =
+            ok2(PredName0, NonFuncArgTerms - MaybeFuncResultTerm),
+        % Is this a function or a predicate?
         (
-            MaybeFlagsSecond = ok1(Flags),
-            PredAndVarsTerm = ThirdTerm,                % Dummy
-            FlagsPieces = InvalidDeclPrefix ++
-                [words("invalid second argument,"),
-                words("expecting predicate or function mode."), nl],
-            FlagsSpec = error_spec(severity_error,
-                phase_term_to_parse_tree,
-                [simple_msg(get_term_context(SecondTerm),
-                    [always(FlagsPieces)])]),
-            FlagsSpecs = [FlagsSpec]
+            MaybeFuncResultTerm = yes(FuncResultTerm),
+            PredOrFunc0 = pf_function,
+            ArgTerms = NonFuncArgTerms ++ [FuncResultTerm]
         ;
-            MaybeFlagsSecond = error1(FlagsSpecs),
-            Flags = default_attributes(ForeignLanguage),    % Dummy
-            PredAndVarsTerm = SecondTerm                    % Dummy
+            MaybeFuncResultTerm = no,
+            PredOrFunc0 = pf_predicate,
+            ArgTerms = NonFuncArgTerms
+        ),
+        parse_pragma_foreign_proc_varlist(VarSet, ArgTerms, MaybePragmaVars),
+        (
+            MaybePragmaVars = ok1(PragmaVars0),
+            MaybeNamePFPragmaVars = ok3(PredName0, PredOrFunc0, PragmaVars0)
+        ;
+            MaybePragmaVars = error1(PragmaVarsSpecs),
+            MaybeNamePFPragmaVars = error3(PragmaVarsSpecs)
         )
-    ),
-    Specs = CodeSpecs ++ FlagsSpecs,
-    (
-        Specs = [],
-        Impl = fp_impl_ordinary(Code, yes(CodeContext)),
-        parse_pragma_foreign_proc(ModuleName, Flags, PredAndVarsTerm,
-            Impl, VarSet, Context, SeqNum, MaybeItem)
     ;
-        Specs = [_ | _],
-        MaybeItem = error1(Specs)
+        MaybePredAndArgs = error2(PredAndArgsSpecs),
+        MaybeNamePFPragmaVars = error3(PredAndArgsSpecs)
+    ),
+
+    FlagsContextPieces = [words("Error in the third argument of"),
+        pragma_decl("foreign_proc"), words("declaration:")],
+    parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage,
+        VarSet, FlagsTerm, FlagsContextPieces, MaybeFlags),
+
+    CodeContext = get_term_context(CodeTerm),
+    ( if CodeTerm = term.functor(term.string(Code), [], _) then
+        Impl0 = fp_impl_ordinary(Code, yes(CodeContext)),
+        MaybeImpl = ok1(Impl0)
+    else
+        ImplPieces = [words("Error in the fourth argument of"),
+            pragma_decl("foreign_proc"), words("declaration:"),
+            words("expected a string containing foreign code."), nl],
+        ImplSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(CodeContext, [always(ImplPieces)])]),
+        MaybeImpl = error1([ImplSpec])
+    ),
+
+    ( if
+        MaybeNamePFPragmaVars = ok3(PredName, PredOrFunc, PragmaVars),
+        MaybeFlags = ok1(Flags),
+        MaybeImpl = ok1(Impl)
+    then
+        varset.coerce(VarSet, ProgVarSet),
+        varset.coerce(VarSet, InstVarSet),
+        FPInfo = pragma_info_foreign_proc(Flags, PredName, PredOrFunc,
+            PragmaVars, ProgVarSet, InstVarSet, Impl),
+        Pragma = pragma_foreign_proc(FPInfo),
+        ItemPragma = item_pragma_info(Pragma, item_origin_user,
+            Context, SeqNum),
+        Item = item_pragma(ItemPragma),
+        MaybeItem = ok1(Item)
+    else
+        AllSpecs = get_any_errors1(MaybeImpl) ++
+            get_any_errors3(MaybeNamePFPragmaVars) ++
+            get_any_errors1(MaybeFlags),
+        MaybeItem = error1(AllSpecs)
     ).
 
     % Parse the sole argument of a pragma that should contain
@@ -2031,11 +2041,11 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       coll_registers_roots(proc_registers_roots)
     ;       coll_may_duplicate(proc_may_duplicate).
 
-:- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
-    varset::in, term::in, list(format_component)::in,
+:- pred parse_and_check_pragma_foreign_proc_attributes_term(
+    foreign_language::in, varset::in, term::in, list(format_component)::in,
     maybe1(pragma_foreign_proc_attributes)::out) is det.
 
-parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Varset,
+parse_and_check_pragma_foreign_proc_attributes_term(ForeignLanguage, VarSet,
         Term, ContextPieces, MaybeAttributes) :-
     Attributes0 = default_attributes(ForeignLanguage),
     ConflictingAttributes = [
@@ -2086,9 +2096,10 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Varset,
         coll_may_duplicate(proc_may_duplicate) -
             coll_may_duplicate(proc_may_not_duplicate)
     ],
-    ( if
-        parse_pragma_foreign_proc_attributes_term0(Varset, Term, AttrList)
-    then
+    parse_pragma_foreign_proc_attributes_term(ContextPieces, VarSet, Term,
+        MaybeAttrList),
+    (
+        MaybeAttrList = ok1(AttrList),
         ( if
             some [Conflict1, Conflict2] (
                 list.member(Conflict1 - Conflict2, ConflictingAttributes),
@@ -2106,16 +2117,11 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Varset,
         else
             list.foldl(process_attribute, AttrList, Attributes0, Attributes),
             MaybeAttributes = check_required_attributes(ForeignLanguage,
-                Attributes, ContextPieces, Term)
+                Attributes, ContextPieces, get_term_context(Term))
         )
-    else
-        % XXX We should say we are expecting just a list.
-        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-            words("Expecting a foreign proc attribute"),
-            words("or list of attributes."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        MaybeAttributes = error1([Spec])
+    ;
+        MaybeAttrList = error1(Specs),
+        MaybeAttributes = error1(Specs)
     ).
 
     % Update the pragma_foreign_proc_attributes according to the given
@@ -2164,62 +2170,110 @@ process_attribute(coll_may_duplicate(MayDuplicate), !Attrs) :-
     % a particular language
     %
 :- func check_required_attributes(foreign_language,
-        pragma_foreign_proc_attributes, list(format_component), term)
+        pragma_foreign_proc_attributes, list(format_component), term.context)
     = maybe1(pragma_foreign_proc_attributes).
 
-check_required_attributes(lang_c, Attrs, _CP, _Term) = ok1(Attrs).
-check_required_attributes(lang_csharp, Attrs, _CP, _Term) = ok1(Attrs).
-check_required_attributes(lang_il, Attrs, ContextPieces, Term) =
-        MaybeAttributes :-
-    MaxStackAttrs = list.filter_map(
-        (func(X) = X is semidet :-
-            X = max_stack_size(_)),
-        get_extra_attributes(Attrs)),
+check_required_attributes(Lang, Attrs, ContextPieces, Context) = MaybeAttrs :-
     (
-        MaxStackAttrs = [],
-        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-            words("Error: expecting max_stack_size attribute for IL code."),
-            nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        MaybeAttributes = error1([Spec])
+        ( Lang = lang_c
+        ; Lang = lang_csharp
+        ; Lang = lang_java
+        ; Lang = lang_erlang
+        ),
+        MaybeAttrs = ok1(Attrs)
     ;
-        MaxStackAttrs = [_ | _],
-        MaybeAttributes = ok1(Attrs)
-    ).
-check_required_attributes(lang_java, Attrs, _CP, _Term) = ok1(Attrs).
-check_required_attributes(lang_erlang, Attrs, _CP, _Term) = ok1(Attrs).
-
-:- pred parse_pragma_foreign_proc_attributes_term0(varset::in, term::in,
-    list(collected_pragma_foreign_proc_attribute)::out) is semidet.
-
-parse_pragma_foreign_proc_attributes_term0(Varset, Term, Flags) :-
-    ( if parse_single_pragma_foreign_proc_attribute(Varset, Term, Flag) then
-        Flags = [Flag]
-    else
+        Lang = lang_il,
+        MaxStackAttrs = list.filter_map(
+            (func(X) = X is semidet :-
+                X = max_stack_size(_)),
+            get_extra_attributes(Attrs)),
         (
-            Term = term.functor(term.atom("[]"), [], _),
-            Flags = []
+            MaxStackAttrs = [],
+            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+                words("Error: expected a max_stack_size attribute"),
+                words("for IL code."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            MaybeAttrs = error1([Spec])
         ;
-            Term = term.functor(term.atom("[|]"), [Head, Tail], _),
-            parse_single_pragma_foreign_proc_attribute(Varset, Head, HeadFlag),
-            parse_pragma_foreign_proc_attributes_term0(Varset, Tail,
-                TailFlags),
-            Flags = [HeadFlag | TailFlags]
+            MaxStackAttrs = [_ | _],
+            MaybeAttrs = ok1(Attrs)
         )
+    ).
+
+:- pred parse_pragma_foreign_proc_attributes_term(list(format_component)::in,
+    varset::in, term::in,
+    maybe1(list(collected_pragma_foreign_proc_attribute))::out) is det.
+
+parse_pragma_foreign_proc_attributes_term(ContextPieces, VarSet, Term,
+        MaybeAttrs) :-
+    ( if parse_single_pragma_foreign_proc_attribute(VarSet, Term, Attr) then
+        MaybeAttrs = ok1([Attr])
+    else
+        parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
+            Term, 1, MaybeAttrs)
+    ).
+
+:- pred parse_pragma_foreign_proc_attributes_list(list(format_component)::in,
+    varset::in, term::in, int::in,
+    maybe1(list(collected_pragma_foreign_proc_attribute))::out) is det.
+
+parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
+        Term, HeadAttrNum, MaybeAttrs) :-
+    ( if
+        Term = term.functor(term.atom("[]"), [], _)
+    then
+        MaybeAttrs = ok1([])
+    else if
+        Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _)
+    then
+        parse_pragma_foreign_proc_attributes_list(ContextPieces, VarSet,
+            TailTerm, HeadAttrNum + 1, MaybeTailAttrs),
+        ( if
+            parse_single_pragma_foreign_proc_attribute(VarSet, HeadTerm,
+                HeadAttr)
+        then
+            (
+                MaybeTailAttrs = ok1(TailAttrs),
+                MaybeAttrs = ok1([HeadAttr | TailAttrs])
+            ;
+                MaybeTailAttrs = error1(TailSpecs),
+                MaybeAttrs = error1(TailSpecs)
+            )
+        else
+            HeadTermStr = mercury_limited_term_to_string(VarSet,
+                print_name_only, 80, HeadTerm),
+            HeadPieces = ContextPieces ++
+                [words("the"), nth_fixed(HeadAttrNum),
+                words("element of the attribute list,"),
+                quote(HeadTermStr), suffix(","),
+                words("is not a valid foreign_proc attribute."), nl],
+            HeadSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(HeadTerm),
+                    [always(HeadPieces)])]),
+            MaybeAttrs = error1([HeadSpec | get_any_errors1(MaybeTailAttrs)])
+        )
+    else
+        TermStr = mercury_limited_term_to_string(VarSet, print_name_only,
+            80, Term),
+        TermPieces = ContextPieces ++ [words("expected an attribute list,"),
+            words("found"), words(TermStr), suffix("."), nl],
+        TermSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(Term), [always(TermPieces)])]),
+        MaybeAttrs = error1([TermSpec])
     ).
 
 :- pred parse_single_pragma_foreign_proc_attribute(varset::in, term::in,
     collected_pragma_foreign_proc_attribute::out) is semidet.
 
-parse_single_pragma_foreign_proc_attribute(Varset, Term, Flag) :-
+parse_single_pragma_foreign_proc_attribute(VarSet, Term, Flag) :-
     ( if parse_may_call_mercury(Term, MayCallMercury) then
         Flag = coll_may_call_mercury(MayCallMercury)
     else if parse_threadsafe(Term, ThreadSafe) then
         Flag = coll_thread_safe(ThreadSafe)
     else if parse_tabled_for_io(Term, TabledForIo) then
         Flag = coll_tabled_for_io(TabledForIo)
-    else if parse_user_annotated_sharing(Varset, Term, UserSharing) then
+    else if parse_user_annotated_sharing(VarSet, Term, UserSharing) then
         Flag = coll_user_annotated_sharing(UserSharing)
     else if parse_max_stack_size(Term, Size) then
         Flag = coll_max_stack_size(Size)
@@ -2415,51 +2469,6 @@ parse_no_exception_promise(term.functor(
 
 parse_ordinary_despite_detism(
         term.functor(term.atom("ordinary_despite_detism"), [], _)).
-
-    % Parse a pragma foreign_proc declaration.
-    %
-:- pred parse_pragma_foreign_proc(module_name::in,
-    pragma_foreign_proc_attributes::in, term::in, pragma_foreign_proc_impl::in,
-    varset::in, prog_context::in, int::in, maybe1(item)::out) is det.
-
-parse_pragma_foreign_proc(ModuleName, Flags, PredAndVarsTerm0,
-        PragmaImpl, VarSet, Context, SeqNum, MaybeItem) :-
-    ContextPieces = [words("In"), pragma_decl("foreign_proc"),
-        words("declaration:")],
-    parse_pred_or_func_and_args_general(yes(ModuleName), PredAndVarsTerm0,
-        VarSet, ContextPieces, MaybePredAndArgs),
-    (
-        MaybePredAndArgs = ok2(PredName, VarList0 - MaybeRetTerm),
-        % Is this a function or a predicate?
-        (
-            MaybeRetTerm = yes(FuncResultTerm0),
-            PredOrFunc = pf_function,
-            VarList = VarList0 ++ [FuncResultTerm0]
-        ;
-            MaybeRetTerm = no,
-            PredOrFunc = pf_predicate,
-            VarList = VarList0
-        ),
-        parse_pragma_foreign_proc_varlist(VarSet, VarList, MaybePragmaVars),
-        (
-            MaybePragmaVars = ok1(PragmaVars),
-            varset.coerce(VarSet, ProgVarSet),
-            varset.coerce(VarSet, InstVarSet),
-            FPInfo = pragma_info_foreign_proc(Flags, PredName, PredOrFunc,
-                PragmaVars, ProgVarSet, InstVarSet, PragmaImpl),
-            Pragma = pragma_foreign_proc(FPInfo),
-            ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                Context, SeqNum),
-            Item = item_pragma(ItemPragma),
-            MaybeItem = ok1(Item)
-        ;
-            MaybePragmaVars = error1(Specs),
-            MaybeItem = error1(Specs)
-        )
-    ;
-        MaybePredAndArgs = error2(Specs),
-        MaybeItem = error1(Specs)
-    ).
 
     % Parse the variable list in the pragma foreign_proc declaration.
     % The final argument is 'no' for no error, or 'yes(ErrorMessage)'.

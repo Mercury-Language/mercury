@@ -311,7 +311,7 @@
 
     ;       nth_fixed(int)
             % Convert the integer to a string, such as "first", "second",
-            % "third", "4th", "5th" and then treat as fixed.
+            % "third", ... 49th, and then treat as fixed.
 
     ;       lower_case_next_if_not_first
             % If this is the first component, ignore it. If this is not
@@ -1277,15 +1277,39 @@ error_pieces_to_string_2(FirstInMsg, [Component | Components]) = Str :-
 
 :- func nth_fixed_str(int) = string.
 
-nth_fixed_str(N) =
+nth_fixed_str(N) = Str :-
     ( if N = 1 then
-        "first"
+        Str = "first"
     else if N = 2 then
-        "second"
+        Str = "second"
     else if N = 3 then
-        "third"
+        Str = "third"
+    else if N = 4 then
+        Str = "fourth"
+    else if N = 5 then
+        Str = "fifth"
+    else if N = 6 then
+        Str = "sixth"
+    else if N = 7 then
+        Str = "seventh"
+    else if N = 8 then
+        Str = "eighth"
+    else if N = 9 then
+        Str = "ninth"
+    else if N = 10 then
+        Str = "tenth"
     else
-        int_to_string(N) ++ "th"
+        % We want to print 12th and 13th, not 12nd and 13rd,
+        % but 42nd and 43rd instead of 42th and 43th.
+        NStr = int_to_string(N),
+        LastDigit = N mod 10,
+        ( if N > 20, LastDigit = 2 then
+            Str = NStr ++ "nd"
+        else if N > 20, LastDigit = 3 then
+            Str = NStr ++ "rd"
+        else
+            Str = NStr ++ "th"
+        )
     ).
 
 :- func join_string_and_tail(string, list(format_component), string) = string.
