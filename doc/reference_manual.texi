@@ -960,7 +960,8 @@ only in some but not all modes of the containing predicate.
 @itemx @code{require_switch_arms_cc_nondet [@var{Var}] @var{Goal}}
 @itemx @code{require_switch_arms_erroneous [@var{Var}] @var{Goal}}
 @itemx @code{require_switch_arms_failure [@var{Var}] @var{Goal}}
-A determinism check, typically used to enhance the robustness of code.
+@code{require_switch_arms_det} is a determinism check,
+typically used to enhance the robustness of code.
 @var{Goal} must be a valid goal.
 If @var{Goal} is a switch on @var{Var},
 and all arms of the switch would be allowable in a det context,
