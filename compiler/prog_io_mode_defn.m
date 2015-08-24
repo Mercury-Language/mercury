@@ -42,30 +42,33 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_sym_name.
 
+:- import_module bool.
 :- import_module list.
+:- import_module maybe.
+:- import_module set.
 
 parse_inst_defn(ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
     % XXX Some of the tests here could be factored out.
-    (
+    ( if
         Term = term.functor(term.atom("=="), [HeadTerm, BodyTerm], _)
-    ->
+    then
         parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm,
             Context, SeqNum, MaybeItem)
-    ;
+    else if
+        Term = term.functor(term.atom("--->"), [HeadTerm, BodyTerm], _)
+    then
+        BoundBodyTerm = term.functor(term.atom("bound"), [BodyTerm], Context),
+        parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BoundBodyTerm,
+            Context, SeqNum, MaybeItem)
+    else if
         % XXX This is for `abstract inst' declarations,
         % which are not really supported.
         Term = term.functor(term.atom("is"), Args, _),
         Args = [HeadTerm, term.functor(term.atom("private"), [], _)]
-    ->
+    then
         parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm,
             Context, SeqNum, MaybeItem)
-    ;
-        Term = term.functor(term.atom("--->"), [HeadTerm, BodyTerm], _)
-    ->
-        BoundBodyTerm = term.functor(term.atom("bound"), [BodyTerm], Context),
-        parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BoundBodyTerm,
-            Context, SeqNum, MaybeItem)
-    ;
+    else
         Pieces = [words("Error:"), quote("=="), words("expected in"),
             decl("inst"), words("definition."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -80,84 +83,47 @@ parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeItem) :-
     ContextPieces = [words("In inst definition:")],
     parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
-        VarSet, ContextPieces, MaybeNameAndArgs),
+        VarSet, ContextPieces, MaybeSymNameAndArgs),
     (
-        MaybeNameAndArgs = error2(Specs),
+        MaybeSymNameAndArgs = error2(Specs),
         MaybeItem = error1(Specs)
     ;
-        MaybeNameAndArgs = ok2(Name, ArgTerms),
-        (
-            % Check that all the head args are variables.
-            term.term_list_to_var_list(ArgTerms, Args)
-        ->
-            (
-                % Check that all the head arg variables are distinct.
-                list.member(Arg2, Args, [Arg2 | OtherArgs]),
-                list.member(Arg2, OtherArgs)
-            ->
-                % XXX Should improve the error message here.
-                Pieces = [words("Error: repeated inst parameters"),
-                    words("in LHS of inst definition."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(HeadTerm),
-                        [always(Pieces)])]),
-                MaybeItem = error1([Spec])
-            ;
-                % Check that all the variables in the body occur in the head.
-                term.contains_var(BodyTerm, Var2),
-                \+ list.member(Var2, Args)
-            ->
-                Pieces = [words("Error: free inst parameter"),
-                    words("in RHS of inst definition."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(BodyTerm),
-                        [always(Pieces)])]),
-                MaybeItem = error1([Spec])
-            ;
-                % Check that the inst is a valid user-defined inst, i.e.
-                % that it does not have the form of one of the builtin insts.
-                \+ (
-                    convert_inst(no_allow_constrained_inst_var, HeadTerm,
-                        UserInst),
-                    UserInst = defined_inst(user_inst(_, _))
-                )
-            ->
-                % XXX Name the builtin inst.
-                Pieces =
-                    [words("Error: attempt to redefine builtin inst."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(HeadTerm),
-                        [always(Pieces)])]),
-                MaybeItem = error1([Spec])
-            ;
-                % Should improve the error message here.
-                (
-                    convert_inst(no_allow_constrained_inst_var, BodyTerm, Inst)
-                ->
-                    varset.coerce(VarSet, InstVarSet),
-                    list.map(term.coerce_var, Args, InstArgs),
-                    InstDefn = eqv_inst(Inst),
-                    ItemInstDefn = item_inst_defn_info(Name, InstArgs,
-                        InstDefn, InstVarSet, Context, SeqNum),
-                    Item = item_inst_defn(ItemInstDefn),
-                    MaybeItem = ok1(Item)
-                ;
-                    BodyTermStr = describe_error_term(VarSet, BodyTerm),
-                    Pieces = [words("Error: syntax error in inst body at"),
-                        words(BodyTermStr), suffix("."), nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(BodyTerm),
-                            [always(Pieces)])]),
-                    MaybeItem = error1([Spec])
-                )
-            )
-        ;
-            % XXX If term_list_to_var_list returned the non-var's term
-            % or context, we could use it here.
-            Pieces = [words("Error: inst parameters must be variables."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
-            MaybeItem = error1([Spec])
+        MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
+
+        HeadTermContext = get_term_context(HeadTerm),
+        check_user_inst_name(SymName, HeadTermContext, NameSpecs),
+        check_inst_mode_defn_args("inst definition", VarSet, HeadTermContext,
+            ArgTerms, yes(BodyTerm), MaybeInstArgVars),
+
+        ( if convert_inst(no_allow_constrained_inst_var, BodyTerm, Inst0) then
+            MaybeInst = ok1(Inst0)
+        else
+            % XXX Should make the error message here more precise.
+            BodyTermStr = describe_error_term(VarSet, BodyTerm),
+            BodyPieces = [words("Error: syntax error in inst body at"),
+                words(BodyTermStr), suffix("."), nl],
+            BodySpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(BodyTerm),
+                    [always(BodyPieces)])]),
+            MaybeInst = error1([BodySpec])
+        ),
+
+        ( if
+            NameSpecs = [],
+            MaybeInstArgVars = ok1(InstArgVars),
+            MaybeInst = ok1(Inst)
+        then
+            varset.coerce(VarSet, InstVarSet),
+            InstDefn = eqv_inst(Inst),
+            ItemInstDefn = item_inst_defn_info(SymName, InstArgVars,
+                InstDefn, InstVarSet, Context, SeqNum),
+            Item = item_inst_defn(ItemInstDefn),
+            MaybeItem = ok1(Item)
+        else
+            Specs = NameSpecs ++
+                get_any_errors1(MaybeInstArgVars) ++
+                get_any_errors1(MaybeInst),
+            MaybeItem = error1(Specs)
         )
     ).
 
@@ -173,39 +139,27 @@ parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
         MaybeNameAndArgs = error2(Specs),
         MaybeItem = error1(Specs)
     ;
-        MaybeNameAndArgs = ok2(Name, ArgTerms),
-        (
-            % Check that all the head args are variables.
-            term.term_list_to_var_list(ArgTerms, Args)
-        ->
-            (
-                % Check that all the head arg variables are distinct.
-                list.member(Arg2, Args, [Arg2 | OtherArgs]),
-                list.member(Arg2, OtherArgs)
-            ->
-                % XXX We should we list the repeated parameters.
-                Pieces = [words("Error: repeated inst parameters"),
-                    words("in abstract inst definition."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(HeadTerm),
-                        [always(Pieces)])]),
-                MaybeItem = error1([Spec])
-            ;
-                varset.coerce(VarSet, InstVarSet),
-                list.map(term.coerce_var, Args, InstArgs),
-                InstDefn = abstract_inst,
-                ItemInstDefn = item_inst_defn_info(Name, InstArgs, InstDefn,
-                    InstVarSet, Context, SeqNum),
-                Item = item_inst_defn(ItemInstDefn),
-                MaybeItem = ok1(Item)
-            )
-        ;
-            % XXX If term_list_to_var_list returned the non-var's term
-            % or context, we could use it here.
-            Pieces = [words("Error: inst parameters must be variables."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
-            MaybeItem = error1([Spec])
+        MaybeNameAndArgs = ok2(SymName, ArgTerms),
+
+        HeadTermContext = get_term_context(HeadTerm),
+        check_user_inst_name(SymName, HeadTermContext, NameSpecs),
+        check_inst_mode_defn_args("inst definition", VarSet, HeadTermContext,
+            ArgTerms, no, MaybeInstArgVars),
+
+        ( if
+            NameSpecs = [],
+            MaybeInstArgVars = ok1(InstArgVars)
+        then
+            varset.coerce(VarSet, InstVarSet),
+            InstDefn = abstract_inst,
+            ItemInstDefn = item_inst_defn_info(SymName, InstArgVars,
+                InstDefn, InstVarSet, Context, SeqNum),
+            Item = item_inst_defn(ItemInstDefn),
+            MaybeItem = ok1(Item)
+        else
+            Specs = NameSpecs ++
+                get_any_errors1(MaybeInstArgVars),
+            MaybeItem = error1(Specs)
         )
     ).
 
@@ -222,69 +176,161 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeItem) :-
     ContextPieces = [words("In mode definition:")],
     parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
-        VarSet, ContextPieces, MaybeModeNameAndArgs),
+        VarSet, ContextPieces, MaybeSymNameAndArgs),
     (
-        MaybeModeNameAndArgs = error2(Specs),
+        MaybeSymNameAndArgs = error2(Specs),
         MaybeItem = error1(Specs)
     ;
-        MaybeModeNameAndArgs = ok2(Name, ArgTerms),
-        % Check that all the head args are variables.
-        ( term.term_list_to_var_list(ArgTerms, Args) ->
-            (
-                % Check that all the head arg variables are distinct.
-                list.member(Arg2, Args, [Arg2 | OtherArgs]),
-                list.member(Arg2, OtherArgs)
-            ->
-                % Check that all the head arg variables are distinct.
-                % XXX We should list the duplicated head arg variables.
-                Pieces = [words("Error: repeated parameters"),
-                    words("in LHS of mode definition."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(HeadTerm),
-                        [always(Pieces)])]),
-                MaybeItem = error1([Spec])
-            ;
-                % Check that all the variables in the body occur in the head.
-                term.contains_var(BodyTerm, Var2),
-                \+ list.member(Var2, Args)
-            ->
-                % XXX Shouldn't we be using the BodyTerm's context?
-                % XXX We should list the Var2s for which the condition holds.
-                Pieces = [words("Error: free inst parameter"),
-                    words("in RHS of mode definition."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(HeadTerm),
-                        [always(Pieces)])]),
-                MaybeItem = error1([Spec])
-            ;
-                (
-                    convert_mode(no_allow_constrained_inst_var, BodyTerm, Mode)
-                ->
-                    varset.coerce(VarSet, InstVarSet),
-                    list.map(term.coerce_var, Args, ModeArgs),
-                    ModeDefn = eqv_mode(Mode),
-                    ItemModeDefn = item_mode_defn_info(Name, ModeArgs,
-                        ModeDefn, InstVarSet, Context, SeqNum),
-                    Item = item_mode_defn(ItemModeDefn),
-                    MaybeItem = ok1(Item)
-                ;
-                    % XXX We should improve the error message here.
-                    Pieces = [words("Error: syntax error"),
-                        words("in mode definition body."), nl],
-                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                        [simple_msg(get_term_context(BodyTerm),
-                            [always(Pieces)])]),
-                    MaybeItem = error1([Spec])
-                )
-            )
-        ;
-            % XXX If term_list_to_var_list returned the non-var's term
-            % or context, we could use it here.
-            Pieces = [words("Error: mode parameters must be variables."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(HeadTerm), [always(Pieces)])]),
-            MaybeItem = error1([Spec])
+        MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
+
+        HeadTermContext = get_term_context(HeadTerm),
+        check_user_mode_name(SymName, HeadTermContext, NameSpecs),
+        check_inst_mode_defn_args("mode definition", VarSet, HeadTermContext,
+            ArgTerms, yes(BodyTerm), MaybeInstArgVars),
+
+        ( if convert_mode(no_allow_constrained_inst_var, BodyTerm, Mode0) then
+            MaybeMode = ok1(Mode0)
+        else
+            % XXX We should make the error message here more precise.
+            BodyPieces = [words("Error: syntax error"),
+                words("in mode definition body."), nl],
+            BodySpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(BodyTerm),
+                    [always(BodyPieces)])]),
+            MaybeMode = error1([BodySpec])
+        ),
+
+        ( if
+            NameSpecs = [],
+            MaybeInstArgVars = ok1(InstArgVars),
+            MaybeMode = ok1(Mode)
+        then
+            varset.coerce(VarSet, InstVarSet),
+            ModeDefn = eqv_mode(Mode),
+            ItemModeDefn = item_mode_defn_info(SymName, InstArgVars,
+                ModeDefn, InstVarSet, Context, SeqNum),
+            Item = item_mode_defn(ItemModeDefn),
+            MaybeItem = ok1(Item)
+        else
+            Specs = NameSpecs ++
+                get_any_errors1(MaybeInstArgVars) ++
+                get_any_errors1(MaybeMode),
+            MaybeItem = error1(Specs)
         )
+    ).
+
+%-----------------------------------------------------------------------------e
+
+    % Check that the inst name is available to users.
+    %
+:- pred check_user_inst_name(sym_name::in, term.context::in,
+    list(error_spec)::out) is det.
+
+check_user_inst_name(SymName, Context, NameSpecs) :-
+    Name = unqualify_name(SymName),
+    ( if is_known_inst_name(Name) then
+        NamePieces = [words("Error: the inst name"), quote(Name),
+            words("is reserved for the Mercury implementation."), nl],
+        NameSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(NamePieces)])]),
+        NameSpecs = [NameSpec]
+    else
+        NameSpecs = []
+    ).
+
+    % Check that the mode name is available to users.
+    %
+:- pred check_user_mode_name(sym_name::in, term.context::in,
+    list(error_spec)::out) is det.
+
+check_user_mode_name(SymName, Context, NameSpecs) :-
+    % Check that the mode name is available to users.
+    Name = unqualify_name(SymName),
+    ( if is_known_mode_name(Name) then
+        NamePieces = [words("Error: the mode name"), quote(Name),
+            words("is reserved for the Mercury implementation."), nl],
+        NameSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(NamePieces)])]),
+        NameSpecs = [NameSpec]
+    else
+        NameSpecs = []
+    ).
+
+:- pred check_inst_mode_defn_args(string::in, varset::in, term.context::in,
+    list(term)::in, maybe(term)::in, maybe1(list(inst_var))::out) is det.
+
+check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
+        ArgTerms, MaybeBodyTerm, MaybeArgVars) :-
+    % Check that all the head arguments are variables.
+    ( if term.term_list_to_var_list(ArgTerms, ArgVars) then
+        some [!Specs] (
+            !:Specs = [],
+
+            % Check that all the head variables are distinct.
+            % The common cases are zero variable and one variable;
+            % fail fast in those cases.
+            ( if
+                ArgVars = [_, _ | _], % Optimize the common case.
+                list.sort_and_remove_dups(ArgVars, SortedArgVars),
+                list.length(ArgVars, NumArgVars),
+                list.length(SortedArgVars, NumSortedArgVars),
+                NumArgVars \= NumSortedArgVars
+            then
+                % XXX Should improve the error message here.
+                RepeatPieces = [words("Error: repeated inst parameters"),
+                    words("in LHS of"), words(DefnKind), suffix("."), nl],
+                RepeatSpec = error_spec(severity_error,
+                    phase_term_to_parse_tree,
+                    [simple_msg(HeadTermContext, [always(RepeatPieces)])]),
+                !:Specs = [RepeatSpec | !.Specs]
+            else
+                true
+            ),
+
+            % Check that all the variables in the body occur in the head.
+            % The common case is BodyVars = []; fail fast in that case.
+            ( if
+                MaybeBodyTerm = yes(BodyTerm),
+                term.vars(BodyTerm, BodyVars),
+                BodyVars = [_ | _],
+                set.list_to_set(BodyVars, BodyVarsSet),
+                set.list_to_set(ArgVars, ArgVarsSet),
+                set.difference(BodyVarsSet, ArgVarsSet, FreeVarsSet),
+                set.to_sorted_list(FreeVarsSet, FreeVars),
+                FreeVars = [_ | _]
+            then
+                FreeVarNames =
+                    list.map(mercury_var_to_name_only(VarSet), FreeVars),
+                FreePieces = [words("Error: free inst"),
+                    words(choose_number(FreeVars,
+                        "parameter", "parameters"))] ++
+                    list_to_pieces(FreeVarNames) ++
+                    [words("in RHS of"), words(DefnKind), suffix("."), nl],
+                FreeSpec = error_spec(severity_error,
+                    phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(BodyTerm),
+                        [always(FreePieces)])]),
+                !:Specs = [FreeSpec | !.Specs]
+            else
+                true
+            ),
+            
+            (
+                !.Specs = [],
+                list.map(term.coerce_var, ArgVars, InstArgVars),
+                MaybeArgVars = ok1(InstArgVars)
+            ;
+                !.Specs = [_ | _],
+                MaybeArgVars = error1(!.Specs)
+            )
+        )
+    else
+        % XXX If term_list_to_var_list returned the non-var's term
+        % or context, we could use it here.
+        VarPieces = [words("Error: inst parameters must be variables."), nl],
+        VarSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(HeadTermContext, [always(VarPieces)])]),
+        MaybeArgVars = error1([VarSpec])
     ).
 
 %-----------------------------------------------------------------------------e

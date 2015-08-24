@@ -2580,7 +2580,9 @@ A more concise, alternative syntax exists for @code{bound} instantiatedness
 trees:
 
 @example
-:- inst maybeskel ---> no ; yes(ground).
+:- inst maybeskel
+    --->    no
+    ;       yes(ground).
 @end example
 
 @noindent
@@ -2648,7 +2650,9 @@ declarations such as
 For example, the following declaration 
 
 @example
-:- inst listskel(Inst) ---> [] ; [Inst | listskel(Inst)].
+:- inst listskel(Inst)
+    --->    []
+    ;       [Inst | listskel(Inst)].
 @end example
 
 @noindent
@@ -2674,6 +2678,40 @@ could have be defined as
 There must not be more than one inst definition with the same name
 and arity in the same module.  Similarly, there must not be more
 than one mode definition with the same name and arity in the same module.
+
+Note that user defined insts and modes may not have names
+that have meanings in Mercury.
+(Most of these are documented in later sections.)
+
+The list of reserved inst names is
+@example
+=<
+any
+bound
+bound_unique
+clobbered
+clobbered_any
+free
+ground
+is
+mostly_clobbered
+mostly_unique
+mostly_unique_any
+not_reached
+unique
+unique_any
+@end example
+
+The list of reserved mode names is
+@example
+=
+>>
+any_func
+any_pred
+func
+is
+pred
+@end example
 
 @node Predicate and function mode declarations
 @section Predicate and function mode declarations

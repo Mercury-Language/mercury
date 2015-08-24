@@ -150,6 +150,9 @@
 :- pred convert_inst(allow_constrained_inst_var::in, term::in, mer_inst::out)
     is semidet.
 
+:- pred is_known_mode_name(string::in) is semidet.
+:- pred is_known_inst_name(string::in) is semidet.
+
 :- pred standard_det(string::in, determinism::out) is semidet.
 
     % Convert a "disjunction" (bunch of terms separated by ';'s) to a list.
@@ -229,6 +232,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
+:- import_module bool.
 :- import_module require.
 :- import_module set.
 :- import_module term.
@@ -269,27 +273,27 @@ parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
     parse_name_and_arity(ModuleName, Arg, SymName, Arity).
 
 parse_pred_or_func_and_args(PredAndArgsTerm, PredOrFunc, SymName, ArgTerms) :-
-    (
+    ( if
         PredAndArgsTerm = term.functor(term.atom("="),
             [FuncAndArgsTerm, FuncResultTerm], _)
-    ->
+    then
         try_parse_sym_name_and_args(FuncAndArgsTerm, SymName, ArgTerms0),
         PredOrFunc = pf_function,
         ArgTerms = ArgTerms0 ++ [FuncResultTerm]
-    ;
+    else
         try_parse_sym_name_and_args(PredAndArgsTerm, SymName, ArgTerms),
         PredOrFunc = pf_predicate
     ).
 
 parse_pred_or_func_and_args_general(MaybeModuleName, PredAndArgsTerm,
         VarSet, ContextPieces, PredAndArgsResult) :-
-    (
+    ( if
         PredAndArgsTerm = term.functor(term.atom("="),
             [FuncAndArgsTerm, FuncResultTerm], _)
-    ->
+    then
         FunctorTerm = FuncAndArgsTerm,
         MaybeFuncResult = yes(FuncResultTerm)
-    ;
+    else
         FunctorTerm = PredAndArgsTerm,
         MaybeFuncResult = no
     ),
@@ -322,22 +326,22 @@ parse_type(Term, VarSet, ContextPieces, Result) :-
     % XXX kind inference: We currently give all types kind `star'.
     % This will be different when we have a kind system.
 
-    (
+    ( if
         Term = term.variable(Var0, _)
-    ->
+    then
         term.coerce_var(Var0, Var),
         Result = ok1(type_variable(Var, kind_star))
-    ;
+    else if
         parse_builtin_type(Term, BuiltinType)
-    ->
+    then
         Result = ok1(builtin_type(BuiltinType))
-    ;
+    else if
         parse_higher_order_type(Term, HOArgs, MaybeRet, Purity, EvalMethod)
-    ->
+    then
         Result = ok1(higher_order_type(HOArgs, MaybeRet, Purity, EvalMethod))
-    ;
+    else if
         Term = term.functor(term.atom("{}"), Args, _)
-    ->
+    then
         parse_types(Args, VarSet, ContextPieces, ArgsResult),
         (
             ArgsResult = ok1(ArgTypes),
@@ -346,18 +350,18 @@ parse_type(Term, VarSet, ContextPieces, Result) :-
             ArgsResult = error1(Specs),
             Result = error1(Specs)
         )
-    ;
+    else if
         % We don't support apply/N types yet, so we just detect them
         % and report an error message.
         Term = term.functor(term.atom(""), _, Context)
-    ->
+    then
         TermStr = describe_error_term(VarSet, Term),
         Pieces = ContextPieces ++ [lower_case_next_if_not_first,
             words("Error: ill-formed type"), words(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         Result = error1([Spec])
-    ;
+    else
         % We don't support kind annotations yet, and we don't report
         % an error either. Perhaps we should?
         parse_sym_name_and_args(Term, VarSet, ContextPieces, NameResult),
@@ -417,24 +421,24 @@ parse_builtin_type(Term, BuiltinType) :-
 
 parse_higher_order_type(Term0, ArgTypes, MaybeRet, Purity, lambda_normal) :-
     parse_purity_annotation(Term0, Purity, Term1),
-    ( Term1 = term.functor(term.atom("="), [FuncAndArgs, Ret], _) ->
+    ( if Term1 = term.functor(term.atom("="), [FuncAndArgs, Ret], _) then
         FuncAndArgs = term.functor(term.atom("func"), Args, _),
         maybe_parse_type(Ret, RetType),
         MaybeRet = yes(RetType)
-    ;
+    else
         Term1 = term.functor(term.atom("pred"), Args, _),
         MaybeRet = no
     ),
     maybe_parse_types(Args, ArgTypes).
 
 parse_purity_annotation(Term0, Purity, Term) :-
-    (
+    ( if
         Term0 = term.functor(term.atom(PurityName), [Term1], _),
         purity_name(Purity0, PurityName)
-    ->
+    then
         Purity = Purity0,
         Term = Term1
-    ;
+    else
         Purity = purity_pure,
         Term = Term0
     ).
@@ -514,100 +518,22 @@ convert_mode_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 
 convert_mode(AllowConstrainedInstVar, Term, Mode) :-
     Term = term.functor(TermFunctor, TermArgs, _),
-    (
-        TermFunctor = term.atom(">>"),
-        TermArgs = [InstTermA, InstTermB]
-    ->
+    % The is_known_mode_name predicate should succeed for exactly
+    % the set of functor atoms recognized here.
+    ( if
+        TermFunctor = term.atom(">>")
+    then
+        TermArgs = [InstTermA, InstTermB],
         convert_inst(AllowConstrainedInstVar, InstTermA, InstA),
         convert_inst(AllowConstrainedInstVar, InstTermB, InstB),
         Mode = (InstA -> InstB)
-    ;
-        % Handle higher-order predicate modes:
-        % a mode of the form
-        %   pred(<Mode1>, <Mode2>, ...) is <Det>
-        % is an abbreviation for the inst mapping
-        %   (  pred(<Mode1>, <Mode2>, ...) is <Det>
-        %   -> pred(<Mode1>, <Mode2>, ...) is <Det>
-        %   )
-
-        TermFunctor = term.atom("is"),
-        TermArgs = [PredTerm, DetTerm],
-        PredTerm = term.functor(term.atom("pred"), ArgModesTerms, _)
-    ->
-        DetTerm = term.functor(term.atom(DetString), [], _),
-        standard_det(DetString, Detism),
-        convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes),
-        PredInstInfo = pred_inst_info(pf_predicate, ArgModes,
-            arg_reg_types_unset, Detism),
-        Inst = ground(shared, higher_order(PredInstInfo)),
-        Mode = (Inst -> Inst)
-    ;
-        % Handle higher-order function modes:
-        % a mode of the form
-        %   func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-        % is an abbreviation for the inst mapping
-        %   (  func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-        %   -> func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-        %   )
-
-        TermFunctor = term.atom("is"),
-        TermArgs = [EqTerm, DetTerm],
-        EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
-        FuncTerm = term.functor(term.atom("func"), ArgModesTerms, _)
-    ->
-        DetTerm = term.functor(term.atom(DetString), [], _),
-        standard_det(DetString, Detism),
-        convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes0),
-        convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
-        list.append(ArgModes0, [RetMode], ArgModes),
-        FuncInstInfo = pred_inst_info(pf_function, ArgModes,
-            arg_reg_types_unset, Detism),
-        Inst = ground(shared, higher_order(FuncInstInfo)),
-        Mode = (Inst -> Inst)
-    ;
-        % Handle higher-order predicate modes:
-        % a mode of the form
-        %   any_pred(<Mode1>, <Mode2>, ...) is <Det>
-        % is an abbreviation for the inst mapping
-        %   (  any_pred(<Mode1>, <Mode2>, ...) is <Det>
-        %   -> any_pred(<Mode1>, <Mode2>, ...) is <Det>
-        %   )
-
-        TermFunctor = term.atom("is"),
-        TermArgs = [PredTerm, DetTerm],
-        PredTerm = term.functor(term.atom("any_pred"), ArgModesTerms, _)
-    ->
-        DetTerm = term.functor(term.atom(DetString), [], _),
-        standard_det(DetString, Detism),
-        convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes),
-        PredInstInfo = pred_inst_info(pf_predicate, ArgModes,
-            arg_reg_types_unset, Detism),
-        Inst = any(shared, higher_order(PredInstInfo)),
-        Mode = (Inst -> Inst)
-    ;
-        % Handle higher-order function modes:
-        % a mode of the form
-        %   any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-        % is an abbreviation for the inst mapping
-        %   (  any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-        %   -> any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-        %   )
-
-        TermFunctor = term.atom("is"),
-        TermArgs = [EqTerm, DetTerm],
-        EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
-        FuncTerm = term.functor(term.atom("any_func"), ArgModesTerms, _)
-    ->
-        DetTerm = term.functor(term.atom(DetString), [], _),
-        standard_det(DetString, Detism),
-        convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes0),
-        convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
-        list.append(ArgModes0, [RetMode], ArgModes),
-        FuncInstInfo = pred_inst_info(pf_function, ArgModes,
-            arg_reg_types_unset, Detism),
-        Inst = any(shared, higher_order(FuncInstInfo)),
-        Mode = (Inst -> Inst)
-    ;
+    else if
+        TermFunctor = term.atom("is")
+    then
+        TermArgs = [BeforeIsTerm, DetTerm],
+        convert_higher_order_mode(AllowConstrainedInstVar,
+            BeforeIsTerm, DetTerm, Mode)
+    else
         % If the sym_name_and_args fails, we should report the error
         % (we would need to call parse_qualified_term instead).
         try_parse_sym_name_and_args_from_f_args(TermFunctor, TermArgs,
@@ -616,190 +542,405 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         Mode = user_defined_mode(Name, ConvertedArgs)
     ).
 
-convert_inst_list(_, [], []).
-convert_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
-    convert_inst(AllowConstrainedInstVar, H0, H),
-    convert_inst_list(AllowConstrainedInstVar, T0, T).
+is_known_mode_name(">>").
+is_known_mode_name("is").
 
-convert_inst(_, term.variable(V0, _), inst_var(V)) :-
-    term.coerce_var(V0, V).
-convert_inst(AllowConstrainedInstVar, Term, Result) :-
+:- pred convert_higher_order_mode(allow_constrained_inst_var::in,
+    term::in, term::in, mer_mode::out) is semidet.
+
+convert_higher_order_mode(AllowConstrainedInstVar, BeforeIsTerm, DetTerm,
+        Mode) :-
+    BeforeIsTerm =
+        term.functor(term.atom(BeforeIsFunctor), BeforeIsArgTerms, _),
+    (
+        ( BeforeIsFunctor = "pred"
+        ; BeforeIsFunctor = "any_pred"
+        ),
+        % XXX We should improve switch detection to make this duplication
+        % unnecessary.
+        (
+            BeforeIsFunctor = "pred",
+            % Handle higher-order predicate modes:
+            % a mode of the form
+            %   pred(<Mode1>, <Mode2>, ...) is <Det>
+            % is an abbreviation for the inst mapping
+            %   (  pred(<Mode1>, <Mode2>, ...) is <Det>
+            %   -> pred(<Mode1>, <Mode2>, ...) is <Det>
+            %   )
+            IsAny = no
+        ;
+            BeforeIsFunctor = "any_pred",
+            % Handle higher-order predicate modes:
+            % a mode of the form
+            %   any_pred(<Mode1>, <Mode2>, ...) is <Det>
+            % is an abbreviation for the inst mapping
+            %   (  any_pred(<Mode1>, <Mode2>, ...) is <Det>
+            %   -> any_pred(<Mode1>, <Mode2>, ...) is <Det>
+            %   )
+            IsAny = yes
+        ),
+        convert_mode_list(AllowConstrainedInstVar, BeforeIsArgTerms, ArgModes),
+        DetTerm = term.functor(term.atom(DetString), [], _),
+        standard_det(DetString, Detism),
+        PredInstInfo = pred_inst_info(pf_predicate, ArgModes,
+            arg_reg_types_unset, Detism),
+        (
+            IsAny = no,
+            Inst = ground(shared, higher_order(PredInstInfo))
+        ;
+            IsAny = yes,
+            Inst = any(shared, higher_order(PredInstInfo))
+        ),
+        Mode = (Inst -> Inst)
+    ;
+        BeforeIsFunctor = "=",
+        BeforeIsArgTerms = [FuncTerm, RetModeTerm],
+        FuncTerm = term.functor(term.atom(FuncTermFunctor), ArgModesTerms, _),
+        (
+            FuncTermFunctor = "func",
+            % Handle higher-order function modes:
+            % a mode of the form
+            %   func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+            % is an abbreviation for the inst mapping
+            %   (  func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+            %   -> func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+            %   )
+            IsAny = no
+        ;
+            FuncTermFunctor = "any_func",
+            % Handle higher-order function modes:
+            % a mode of the form
+            %   any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+            % is an abbreviation for the inst mapping
+            %   (  any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+            %   -> any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
+            %   )
+            IsAny = yes
+        ),
+        DetTerm = term.functor(term.atom(DetString), [], _),
+        standard_det(DetString, Detism),
+        convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes0),
+        convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
+        list.append(ArgModes0, [RetMode], ArgModes),
+        FuncInstInfo = pred_inst_info(pf_function, ArgModes,
+            arg_reg_types_unset, Detism),
+        (
+            IsAny = no,
+            Inst = ground(shared, higher_order(FuncInstInfo))
+        ;
+            IsAny = yes,
+            Inst = any(shared, higher_order(FuncInstInfo))
+        ),
+        Mode = (Inst -> Inst)
+    ).
+
+convert_inst_list(_, [], []).
+convert_inst_list(AllowConstrainedInstVar, [Term | Terms], [Inst | Insts]) :-
+    convert_inst(AllowConstrainedInstVar, Term, Inst),
+    convert_inst_list(AllowConstrainedInstVar, Terms, Insts).
+
+convert_inst(_, Term, Inst) :-
+    Term = term.variable(V0, _),
+    term.coerce_var(V0, V),
+    Inst = inst_var(V).
+convert_inst(AllowConstrainedInstVar, Term, Inst) :-
     Term = term.functor(Functor, Args0, _Context),
     Functor = term.atom(Name),
-    (
-        convert_simple_builtin_inst(Name, Args0, Result0)
-    ->
-        Result = Result0
-    ;
-        % The syntax for a ground higher-order pred inst is
-        %
-        %   pred(<Mode1>, <Mode2>, ...) is <Detism>
-        %
-        % where <Mode1>, <Mode2>, ... are a list of modes,
-        % and <Detism> is a determinism.
-
-        Name = "is",
-        Args0 = [PredTerm, DetTerm],
-        PredTerm = term.functor(term.atom("pred"), ArgModesTerm, _)
-    ->
-        DetTerm = term.functor(term.atom(DetString), [], _),
-        standard_det(DetString, Detism),
-        convert_mode_list(AllowConstrainedInstVar, ArgModesTerm, ArgModes),
-        PredInst = pred_inst_info(pf_predicate, ArgModes,
-            arg_reg_types_unset, Detism),
-        Result = ground(shared, higher_order(PredInst))
-    ;
-        % The syntax for a ground higher-order func inst is
-        %
-        %   func(<Mode1>, <Mode2>, ...) = <RetMode> is <Detism>
-        %
-        % where <Mode1>, <Mode2>, ... are a list of modes,
-        % <RetMode> is a mode, and <Detism> is a determinism.
-
-        Name = "is",
-        Args0 = [EqTerm, DetTerm],
-        EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
-        FuncTerm = term.functor(term.atom("func"), ArgModesTerm, _)
-    ->
-        DetTerm = term.functor(term.atom(DetString), [], _),
-        standard_det(DetString, Detism),
-        convert_mode_list(AllowConstrainedInstVar, ArgModesTerm, ArgModes0),
-        convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
-        list.append(ArgModes0, [RetMode], ArgModes),
-        FuncInst = pred_inst_info(pf_function, ArgModes,
-            arg_reg_types_unset, Detism),
-        Result = ground(shared, higher_order(FuncInst))
-    ;
-        % The syntax for an `any' higher-order pred inst is
-        %
-        %   any_pred(<Mode1>, <Mode2>, ...) is <Detism>
-        %
-        % where <Mode1>, <Mode2>, ... are a list of modes,
-        % and <Detism> is a determinism.
-
-        Name = "is",
-        Args0 = [PredTerm, DetTerm],
-        PredTerm = term.functor(term.atom("any_pred"), ArgModesTerm, _)
-    ->
-        DetTerm = term.functor(term.atom(DetString), [], _),
-        standard_det(DetString, Detism),
-        convert_mode_list(AllowConstrainedInstVar, ArgModesTerm, ArgModes),
-        PredInst = pred_inst_info(pf_predicate, ArgModes,
-            arg_reg_types_unset, Detism),
-        Result = any(shared, higher_order(PredInst))
-    ;
-        % The syntax for an `any' higher-order func inst is
-        %
-        %   any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Detism>
-        %
-        % where <Mode1>, <Mode2>, ... are a list of modes,
-        % <RetMode> is a mode, and <Detism> is a determinism.
-
-        Name = "is",
-        Args0 = [EqTerm, DetTerm],
-        EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
-        FuncTerm = term.functor(term.atom("any_func"), ArgModesTerm, _)
-    ->
-        DetTerm = term.functor(term.atom(DetString), [], _),
-        standard_det(DetString, Detism),
-        convert_mode_list(AllowConstrainedInstVar, ArgModesTerm, ArgModes0),
-        convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
-        list.append(ArgModes0, [RetMode], ArgModes),
-        FuncInst = pred_inst_info(pf_function, ArgModes,
-            arg_reg_types_unset, Detism),
-        Result = any(shared, higher_order(FuncInst))
-
-    ;
-        Name = "bound",
-        Args0 = [Disj]
-    ->
-        % `bound' insts
-        parse_bound_inst_list(AllowConstrainedInstVar, Disj, shared, Result)
-    ;
-        Name = "bound_unique",
-        Args0 = [Disj]
-    ->
-        % `bound_unique' is for backwards compatibility - use `unique' instead.
-        parse_bound_inst_list(AllowConstrainedInstVar, Disj, unique, Result)
-    ;
-        Name = "unique",
-        Args0 = [Disj]
-    ->
-        parse_bound_inst_list(AllowConstrainedInstVar, Disj, unique, Result)
-    ;
-        Name = "mostly_unique",
-        Args0 = [Disj]
-    ->
-        parse_bound_inst_list(AllowConstrainedInstVar, Disj, mostly_unique,
-            Result)
-    ;
-        Name = "=<",
-        Args0 = [VarTerm, InstTerm]
-    ->
-        AllowConstrainedInstVar = allow_constrained_inst_var,
-        VarTerm = term.variable(Var, _),
-        % Do not allow nested constrained_inst_vars.
-        convert_inst(no_allow_constrained_inst_var, InstTerm, Inst),
-        Result = constrained_inst_vars(set.make_singleton_set(
-            term.coerce_var(Var)), Inst)
-    ;
+    % XXX It would be nice if we could merge the switch on Name inside
+    % is_simple_builtin_inst with the explicit switch below, *without*
+    % duplicating the code of is_simple_builtin_inst.
+    ( if is_known_inst_name_args(Name, Args0, KnownInstKind) then
+        (
+            KnownInstKind = known_inst_bad_arity,
+            fail
+        ;
+            KnownInstKind = known_inst_simple(Inst)
+        ;
+            KnownInstKind = known_inst_compound(CompoundInstKind),
+            (
+                CompoundInstKind = kcik_is(BeforeIsTerm, DetTerm),
+                convert_higher_order_inst(AllowConstrainedInstVar,
+                    BeforeIsTerm, DetTerm, Inst)
+            ;
+                CompoundInstKind = kcik_bound(DisjTerm),
+                parse_bound_inst_list(AllowConstrainedInstVar, DisjTerm,
+                    shared, Inst)
+            ;
+                CompoundInstKind = kcik_unique(DisjTerm),
+                parse_bound_inst_list(AllowConstrainedInstVar, DisjTerm,
+                    unique, Inst)
+            ;
+                CompoundInstKind = kcik_mostly_unique(DisjTerm),
+                parse_bound_inst_list(AllowConstrainedInstVar, DisjTerm,
+                    mostly_unique, Inst)
+            ;
+                CompoundInstKind = kcik_constrained(VarTerm, SubInstTerm),
+                AllowConstrainedInstVar = allow_constrained_inst_var,
+                VarTerm = term.variable(Var, _),
+                % Do not allow nested constrained_inst_vars.
+                convert_inst(no_allow_constrained_inst_var, SubInstTerm,
+                    SubInst),
+                Inst = constrained_inst_vars(set.make_singleton_set(
+                    term.coerce_var(Var)), SubInst)
+            )
+        )
+    else
         % Anything else must be a user-defined inst.
         try_parse_sym_name_and_args_from_f_args(Functor, Args0,
             QualifiedName, Args1),
-        (
+        ( if
             BuiltinModule = mercury_public_builtin_module,
             sym_name_get_module_name_default(QualifiedName, unqualified(""),
                 BuiltinModule),
-            % If the term is qualified with the `builtin' module
+            % If the term is qualified with the `builtin' module,
             % then it may be one of the simple builtin insts.
-            % We call convert_inst recursively to check for this.
             UnqualifiedName = unqualify_name(QualifiedName),
-            convert_simple_builtin_inst(UnqualifiedName, Args1, Result0),
+            is_known_inst_name_args(UnqualifiedName, Args1, KnownInstKind),
+            KnownInstKind = known_inst_simple(InstPrime),
 
             % However, if the inst is a user_inst defined inside
             % the `builtin' module then we need to make sure it is
             % properly module-qualified.
-            Result0 \= defined_inst(user_inst(_, _))
-        ->
-            Result = Result0
-        ;
+            InstPrime \= defined_inst(user_inst(_, _))
+        then
+            Inst = InstPrime
+        else
             convert_inst_list(AllowConstrainedInstVar, Args1, Args),
-            Result = defined_inst(user_inst(QualifiedName, Args))
+            Inst = defined_inst(user_inst(QualifiedName, Args))
         )
     ).
 
-    % A "simple" builtin inst is one that has no arguments and no special
-    % syntax.
+:- type known_compound_inst_kind(T)
+    --->    kcik_is(T, T)
+    ;       kcik_constrained(T, T)
+    ;       kcik_bound(T)
+    ;       kcik_unique(T)
+    ;       kcik_mostly_unique(T).
+
+:- type known_inst_kind(T)
+    --->    known_inst_simple(mer_inst)
+    ;       known_inst_compound(known_compound_inst_kind(T))
+    ;       known_inst_bad_arity.
+
+is_known_inst_name(Name) :-
+    is_known_inst_name_args(Name, [] : list(mer_inst), _).
+
+    % is_known_inst_name_args(InstName, InstArgs, KnownInstKind):
     %
-:- pred convert_simple_builtin_inst(string::in, list(term)::in, mer_inst::out)
-    is semidet.
+    % If Name is a known inst name and Name(InstArgs) is a valid inst
+    % structure, then return its kind in KnownInstKind.
+    %
+    % If Name is a known inst name but Name(InstArgs) is NOT a valid inst
+    % structure, then return known_inst_bad_arity in KnownInstKind.
+    %
+    % If Name is not a known inst name, fail.
+    %
+:- pred is_known_inst_name_args(string::in, list(T)::in,
+    known_inst_kind(T)::out) is semidet.
 
-convert_simple_builtin_inst(Name, [], Inst) :-
-    convert_simple_builtin_inst_2(Name, Inst).
+is_known_inst_name_args(Name, Args, KnownInst) :-
+    (
+        % Known insts which are always simple.
+        (
+            Name = "free",
+            SimpleInst = free
+        ;
+            Name = "ground",
+            SimpleInst = ground(shared, none)
+        ;
+            Name = "clobbered",
+            SimpleInst = ground(clobbered, none)
+        ;
+            Name = "mostly_clobbered",
+            SimpleInst = ground(mostly_clobbered, none)
+        ;
+            Name = "any",
+            SimpleInst = any(shared, none)
+        ;
+            Name = "unique_any",
+            SimpleInst = any(unique, none)
+        ;
+            Name = "mostly_unique_any",
+            SimpleInst = any(mostly_unique, none)
+        ;
+            Name = "clobbered_any",
+            SimpleInst = any(clobbered, none)
+        ;
+            Name = "mostly_clobbered_any",
+            SimpleInst = any(mostly_clobbered, none)
+        ;
+            Name = "not_reached",
+            SimpleInst = not_reached
+        ),
+        (
+            Args = [],
+            KnownInst = known_inst_simple(SimpleInst)
+        ;
+            Args = [_ | _],
+            KnownInst = known_inst_bad_arity
+        )
+    ;
+        Name = "unique",
+        (
+            Args = [],
+            KnownInst = known_inst_simple(ground(unique, none))
+        ;
+            Args = [Arg1],
+            KnownInst = known_inst_compound(kcik_unique(Arg1))
+        ;
+            Args = [_, _ | _],
+            KnownInst = known_inst_bad_arity
+        )
+    ;
+        Name = "mostly_unique",
+        (
+            Args = [],
+            KnownInst = known_inst_simple(ground(mostly_unique, none))
+        ;
+            Args = [Arg1],
+            KnownInst = known_inst_compound(kcik_mostly_unique(Arg1))
+        ;
+            Args = [_, _ | _],
+            KnownInst = known_inst_bad_arity
+        )
+    ;
+        Name = "is",
+        (
+            ( Args = []
+            ; Args = [_]
+            ),
+            KnownInst = known_inst_bad_arity
+        ;
+            Args = [Arg1, Arg2],
+            KnownInst = known_inst_compound(kcik_is(Arg1, Arg2))
+        ;
+            Args = [_, _, _ | _],
+            KnownInst = known_inst_bad_arity
+        )
+    ;
+        Name = "=<",
+        (
+            ( Args = []
+            ; Args = [_]
+            ),
+            KnownInst = known_inst_bad_arity
+        ;
+            Args = [Arg1, Arg2],
+            KnownInst = known_inst_compound(kcik_constrained(Arg1, Arg2))
+        ;
+            Args = [_, _, _ | _],
+            KnownInst = known_inst_bad_arity
+        )
+    ;
+        Name = "bound",
+        (
+            Args = [],
+            KnownInst = known_inst_bad_arity
+        ;
+            Args = [Arg1],
+            KnownInst = known_inst_compound(kcik_bound(Arg1))
+        ;
+            Args = [_, _ | _],
+            KnownInst = known_inst_bad_arity
+        )
+    ;
+        Name = "bound_unique",
+        % `bound_unique' is for backwards compatibility - use `unique'
+        % instead.
+        (
+            Args = [],
+            KnownInst = known_inst_bad_arity
+        ;
+            Args = [Arg1],
+            KnownInst = known_inst_compound(kcik_unique(Arg1))
+        ;
+            Args = [_, _ | _],
+            KnownInst = known_inst_bad_arity
+        )
+    ).
 
-:- pred convert_simple_builtin_inst_2(string::in, mer_inst::out) is semidet.
+:- pred convert_higher_order_inst(allow_constrained_inst_var::in,
+    term::in, term::in, mer_inst::out) is semidet.
 
-    % `free' insts
-convert_simple_builtin_inst_2("free", free).
+convert_higher_order_inst(AllowConstrainedInstVar, BeforeIsTerm, DetTerm,
+        Inst) :-
+    BeforeIsTerm =
+        term.functor(term.atom(BeforeIsFunctor), BeforeIsArgTerms, _),
+    (
+        ( BeforeIsFunctor = "pred"
+        ; BeforeIsFunctor = "any_pred"
+        ),
+        (
+            BeforeIsFunctor = "pred",
+            % The syntax for a ground higher-order pred inst is
+            %
+            %   pred(<Mode1>, <Mode2>, ...) is <Detism>
+            %
+            % where <Mode1>, <Mode2>, ... are a list of modes,
+            % and <Detism> is a determinism.
+            IsAny = no
+        ;
+            BeforeIsFunctor = "any_pred",
+            % The syntax for an `any' higher-order pred inst is
+            %
+            %   any_pred(<Mode1>, <Mode2>, ...) is <Detism>
+            %
+            % where <Mode1>, <Mode2>, ... are a list of modes,
+            % and <Detism> is a determinism.
+            IsAny = yes
+        ),
 
-    % `any' insts
-convert_simple_builtin_inst_2("any",                any(shared, none)).
-convert_simple_builtin_inst_2("unique_any",         any(unique, none)).
-convert_simple_builtin_inst_2("mostly_unique_any",  any(mostly_unique, none)).
-convert_simple_builtin_inst_2("clobbered_any",      any(clobbered, none)).
-convert_simple_builtin_inst_2("mostly_clobbered_any",
-    any(mostly_clobbered, none)).
+        convert_mode_list(AllowConstrainedInstVar, BeforeIsArgTerms, ArgModes),
+        DetTerm = term.functor(term.atom(DetString), [], _),
+        standard_det(DetString, Detism),
+        PredInst = pred_inst_info(pf_predicate, ArgModes,
+            arg_reg_types_unset, Detism),
+        (
+            IsAny = no,
+            Inst = ground(shared, higher_order(PredInst))
+        ;
+            IsAny = yes,
+            Inst = any(shared, higher_order(PredInst))
+        )
+    ;
+        BeforeIsFunctor = "=",
+        BeforeIsArgTerms = [FuncTerm, RetModeTerm],
+        FuncTerm = term.functor(term.atom(FuncTermFunctor), ArgModesTerms, _),
+        (
+            FuncTermFunctor = "func",
+            % The syntax for a ground higher-order func inst is
+            %
+            %   func(<Mode1>, <Mode2>, ...) = <RetMode> is <Detism>
+            %
+            % where <Mode1>, <Mode2>, ... are a list of modes,
+            % <RetMode> is a mode, and <Detism> is a determinism.
+            IsAny = no
+        ;
+            FuncTermFunctor = "any_func",
+            % The syntax for an `any' higher-order func inst is
+            %
+            %   any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Detism>
+            %
+            % where <Mode1>, <Mode2>, ... are a list of modes,
+            % <RetMode> is a mode, and <Detism> is a determinism.
+            IsAny = yes
+        ),
 
-    % `ground' insts
-convert_simple_builtin_inst_2("ground",         ground(shared, none)).
-convert_simple_builtin_inst_2("unique",         ground(unique, none)).
-convert_simple_builtin_inst_2("mostly_unique",  ground(mostly_unique, none)).
-convert_simple_builtin_inst_2("clobbered",      ground(clobbered, none)).
-convert_simple_builtin_inst_2("mostly_clobbered",
-    ground(mostly_clobbered, none)).
-
-    % `not_reached' inst
-convert_simple_builtin_inst_2("not_reached", not_reached).
+        DetTerm = term.functor(term.atom(DetString), [], _),
+        standard_det(DetString, Detism),
+        convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes0),
+        convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
+        list.append(ArgModes0, [RetMode], ArgModes),
+        FuncInst = pred_inst_info(pf_function, ArgModes,
+            arg_reg_types_unset, Detism),
+        (
+            IsAny = no,
+            Inst = ground(shared, higher_order(FuncInst))
+        ;
+            IsAny = yes,
+            Inst = any(shared, higher_order(FuncInst))
+        )
+    ).
 
 standard_det("det",       detism_det).
 standard_det("cc_nondet", detism_cc_non).
@@ -905,11 +1046,11 @@ binop_term_to_one_or_more(Op, Term, OneOrMore) :-
     list(term(T))::in, one_or_more(term(T))::out) is det.
 
 binop_term_to_one_or_more_loop(Op, Term, List0, OneOrMore) :-
-    ( Term = term.functor(term.atom(Op), [L, R], _Context) ->
+    ( if Term = term.functor(term.atom(Op), [L, R], _Context) then
         binop_term_to_one_or_more_loop(Op, R, List0,
             one_or_more(RHead, RTail)),
         binop_term_to_one_or_more_loop(Op, L, [RHead | RTail], OneOrMore)
-    ;
+    else
         OneOrMore = one_or_more(Term, List0)
     ).
 
@@ -988,19 +1129,19 @@ parse_list_of_vars(term.functor(term.atom("[|]"), [Head, Tail], _),
     parse_list_of_vars(Tail, Vars).
 
 parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
-    ( Term = functor(atom("[]"), [], _) ->
+    ( if Term = functor(atom("[]"), [], _) then
         MaybeVars = ok1([])
-    ; Term = functor(atom("[|]"), [HeadTerm, TailTerm], _) ->
+    else if Term = functor(atom("[|]"), [HeadTerm, TailTerm], _) then
         (
             HeadTerm = variable(HeadVar, _),
             parse_vars(TailTerm, VarSet, ContextPieces, MaybeVarsTail),
             (
                 MaybeVarsTail = ok1(TailVars),
-                ( list.member(HeadVar, TailVars) ->
+                ( if list.member(HeadVar, TailVars) then
                     generate_repeated_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
                     MaybeVars = error1([Spec])
-                ;
+                else
                     Vars = [HeadVar | TailVars],
                     MaybeVars = ok1(Vars)
                 )
@@ -1014,7 +1155,7 @@ parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 "variable", HeadTerm, Spec),
             MaybeVars = error1([Spec])
         )
-    ;
+    else
         generate_unexpected_term_message(ContextPieces, VarSet,
             "list of variables", Term, Spec),
         MaybeVars = error1([Spec])
@@ -1025,10 +1166,10 @@ parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
     ;       os_state_var(var(T)).
 
 parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
-    ( Term = functor(atom("[]"), [], _) ->
+    ( if Term = functor(atom("[]"), [], _) then
         MaybeVars = ok2([], [])
-    ; Term = functor(atom("[|]"), [HeadTerm, TailTerm], _) ->
-        (
+    else if Term = functor(atom("[|]"), [HeadTerm, TailTerm], _) then
+        ( if
             (
                 HeadTerm = variable(V0, _),
                 VarKind = os_ordinary_var(V0)
@@ -1036,28 +1177,28 @@ parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 HeadTerm = functor(atom("!"), [variable(SV0, _)], _),
                 VarKind = os_state_var(SV0)
             )
-        ->
+        then
             parse_quantifier_vars(TailTerm, VarSet, ContextPieces,
                 MaybeVarsTail),
             (
                 MaybeVarsTail = ok2(TailVars, TailStateVars),
                 (
                     VarKind = os_ordinary_var(V),
-                    ( list.member(V, TailVars) ->
+                    ( if list.member(V, TailVars) then
                         generate_repeated_var_msg(ContextPieces, VarSet,
                             HeadTerm, Spec),
                         MaybeVars = error2([Spec])
-                    ;
+                    else
                         Vars = [V | TailVars],
                         MaybeVars = ok2(Vars, TailStateVars)
                     )
                 ;
                     VarKind = os_state_var(SV),
-                    ( list.member(SV, TailStateVars) ->
+                    ( if list.member(SV, TailStateVars) then
                         generate_repeated_state_var_msg(ContextPieces, VarSet,
                             HeadTerm, Spec),
                         MaybeVars = error2([Spec])
-                    ;
+                    else
                         StateVars = [SV | TailStateVars],
                         MaybeVars = ok2(TailVars, StateVars)
                     )
@@ -1066,12 +1207,12 @@ parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 MaybeVarsTail = error2(_),
                 MaybeVars = MaybeVarsTail
             )
-        ;
+        else
             generate_unexpected_term_message(ContextPieces, VarSet,
                 "variable or state variable", HeadTerm, Spec),
             MaybeVars = error2([Spec])
         )
-    ;
+    else
         generate_unexpected_term_message(ContextPieces, VarSet,
             "list of variables and/or state variables", Term, Spec),
         MaybeVars = error2([Spec])
@@ -1084,10 +1225,10 @@ parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
     ;       osdc_colon_var(var(T)).
 
 parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
-    ( Term = functor(atom("[]"), [], _) ->
+    ( if Term = functor(atom("[]"), [], _) then
         MaybeVars = ok4([], [], [], [])
-    ; Term = functor(atom("[|]"), [HeadTerm, Tail], _) ->
-        (
+    else if Term = functor(atom("[|]"), [HeadTerm, Tail], _) then
+        ( if
             (
                 HeadTerm = variable(V0, _),
                 VarKind = osdc_ordinary_var(V0)
@@ -1101,7 +1242,7 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 HeadTerm = functor(atom("!:"), [variable(SV0, _)], _),
                 VarKind = osdc_colon_var(SV0)
             )
-        ->
+        then
             parse_vars_and_state_vars(Tail, VarSet, ContextPieces,
                 MaybeVarsTail),
             (
@@ -1109,59 +1250,59 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                     TailDotVars, TailColonVars),
                 (
                     VarKind = osdc_ordinary_var(V),
-                    ( list.member(V, TailVars) ->
+                    ( if list.member(V, TailVars) then
                         generate_repeated_var_msg(ContextPieces, VarSet,
                             HeadTerm, Spec),
                         MaybeVars = error4([Spec])
-                    ;
+                    else
                         Vars = [V | TailVars],
                         MaybeVars = ok4(Vars, TailStateVars,
                             TailDotVars, TailColonVars)
                     )
                 ;
                     VarKind = osdc_state_var(SV),
-                    (
+                    ( if
                         ( list.member(SV, TailStateVars )
                         ; list.member(SV, TailDotVars )
                         ; list.member(SV, TailColonVars )
                         )
-                    ->
+                    then
                         generate_repeated_var_msg(ContextPieces, VarSet,
                             HeadTerm, Spec),
                         MaybeVars = error4([Spec])
-                    ;
+                    else
                         StateVars = [SV | TailStateVars],
                         MaybeVars = ok4(TailVars, StateVars,
                             TailDotVars, TailColonVars)
                     )
                 ;
                     VarKind = osdc_dot_var(SV),
-                    (
+                    ( if
                         ( list.member(SV, TailStateVars )
                         ; list.member(SV, TailDotVars )
                         ; list.member(SV, TailColonVars )
                         )
-                    ->
+                    then
                         generate_repeated_var_msg(ContextPieces, VarSet,
                             HeadTerm, Spec),
                         MaybeVars = error4([Spec])
-                    ;
+                    else
                         DotVars = [SV | TailDotVars],
                         MaybeVars = ok4(TailVars, TailStateVars,
                             DotVars, TailColonVars)
                     )
                 ;
                     VarKind = osdc_colon_var(SV),
-                    (
+                    ( if
                         ( list.member(SV, TailStateVars )
                         ; list.member(SV, TailDotVars )
                         ; list.member(SV, TailColonVars )
                         )
-                    ->
+                    then
                         generate_repeated_var_msg(ContextPieces, VarSet,
                             HeadTerm, Spec),
                         MaybeVars = error4([Spec])
-                    ;
+                    else
                         ColonVars = [SV | TailColonVars],
                         MaybeVars = ok4(TailVars, TailStateVars,
                             TailDotVars, ColonVars)
@@ -1171,12 +1312,12 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 MaybeVarsTail = error4(_),
                 MaybeVars = MaybeVarsTail
             )
-        ;
+        else
             generate_unexpected_term_message(ContextPieces, VarSet,
                 "variable or state variable", HeadTerm, Spec),
             MaybeVars = error4([Spec])
         )
-    ;
+    else
         generate_unexpected_term_message(ContextPieces, VarSet,
             "list of variables and/or state variables", Term, Spec),
         MaybeVars = error4([Spec])
@@ -1262,17 +1403,17 @@ parse_decl_attribute(Functor, ArgTerms, Attribute, SubTerm) :-
     ).
 
 check_no_attributes(Result0, Attributes, Result) :-
-    (
+    ( if
         Result0 = ok1(_),
         Attributes = [Attr - Context | _]
-    ->
+    then
         % XXX Shouldn't we mention EVERY element of Attributes?
         Pieces = [words("Error:"), words(attribute_description(Attr)),
             words("not allowed here."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         Result = error1([Spec])
-    ;
+    else
         Result = Result0
     ).
 

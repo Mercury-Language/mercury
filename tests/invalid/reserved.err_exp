@@ -1,0 +1,4 @@
+reserved.m:014: Error: the inst name `unique' is reserved for the Mercury
+reserved.m:014:   implementation.
+reserved.m:024: Error: the mode name `is' is reserved for the Mercury
+reserved.m:024:   implementation.

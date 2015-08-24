@@ -136,10 +136,10 @@ SINGLEMODULE= \
 	instance_bug \
 	instance_no_type \
 	instance_var_bug \
-	invalid_int \
 	invalid_event \
 	invalid_export_detism \
 	invalid_instance_declarations \
+	invalid_int \
 	invalid_main \
 	invalid_mllibs \
 	invalid_new \
@@ -203,6 +203,7 @@ SINGLEMODULE= \
 	repeated_instance_vars_unsat \
 	require_det_in_lambda \
 	require_scopes \
+	reserved \
 	some \
 	specified \
 	spurious_mode_error \

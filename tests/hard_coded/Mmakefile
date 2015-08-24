@@ -29,7 +29,6 @@ ORDINARY_PROGS =	\
 	bug383 \
 	bug392 \
 	bug_pack_bits \
-	builtin_inst_rename \
 	c_write_string \
 	calendar_test \
 	cc_and_non_cc_test \
