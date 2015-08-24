@@ -146,7 +146,6 @@
 :- import_module list.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

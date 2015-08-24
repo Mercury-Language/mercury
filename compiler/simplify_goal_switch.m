@@ -50,7 +50,6 @@
 :- import_module transform_hlds.
 :- import_module transform_hlds.pd_cost.
 
-:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.

@@ -86,7 +86,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module unit.
 

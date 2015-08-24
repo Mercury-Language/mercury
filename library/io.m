@@ -1725,7 +1725,6 @@
 :- import_module enum.
 :- import_module exception.
 :- import_module int.
-:- import_module map.
 :- import_module parser.
 :- import_module require.
 :- import_module stream.string_writer.

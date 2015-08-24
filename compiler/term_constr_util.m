@@ -190,10 +190,8 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module hlds.hlds_pred.
 :- import_module libs.rat.
 :- import_module transform_hlds.term_constr_errors.
 :- import_module transform_hlds.term_norm.

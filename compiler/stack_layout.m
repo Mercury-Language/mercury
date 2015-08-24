@@ -96,20 +96,17 @@
 
 :- implementation.
 
-:- import_module backend_libs.bytecode_data.
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.
-:- import_module ll_backend.layout.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.ll_pseudo_type_info.
 :- import_module ll_backend.prog_rep_tables.
@@ -120,15 +117,12 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
-:- import_module char.
 :- import_module cord.
 :- import_module counter.
 :- import_module int.
-:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
 

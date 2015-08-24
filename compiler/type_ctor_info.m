@@ -66,9 +66,8 @@
 
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.pseudo_type_info.
-:- import_module backend_libs.rtti.
 :- import_module backend_libs.type_class_info.
-:- import_module check_hlds.        % needed for type_util, mode_util
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.

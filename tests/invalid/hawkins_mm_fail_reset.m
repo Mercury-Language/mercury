@@ -24,7 +24,6 @@
 :- pred entry(int::out) is nondet.
 
 :- implementation.
-:- import_module int.
 
 entry(0) :-
     pred1(_).

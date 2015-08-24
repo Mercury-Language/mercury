@@ -125,10 +125,8 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
@@ -138,7 +136,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 

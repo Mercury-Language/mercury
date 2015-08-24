@@ -94,7 +94,6 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
-:- import_module set.
 
 figure_out_output_vars(CI, CLD, GoalInfo, OutVars) :-
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),

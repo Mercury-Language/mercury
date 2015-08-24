@@ -40,7 +40,6 @@
 
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.vartypes.
 :- import_module libs.globals.

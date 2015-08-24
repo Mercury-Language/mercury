@@ -45,8 +45,6 @@
 
 :- implementation.
 
-:- import_module mdbcomp.goal_path.
-
 :- import_module list.
 
 %----------------------------------------------------------------------------%

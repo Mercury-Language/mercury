@@ -57,7 +57,6 @@
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_detism.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.

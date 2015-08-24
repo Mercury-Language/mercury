@@ -102,7 +102,6 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module libs.trace_params.
 :- import_module parse_tree.status.
 
 :- import_module bool.

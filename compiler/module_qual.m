@@ -58,6 +58,16 @@
 % cannot implement any equivalent of --warn-interface-imports that would
 % report unnecessary imports in the *implementation* section of a module.
 %
+% If the --warn-unused-imports option is set, then unused_imports.m
+% can generate all the warnings we would, but it can generate *better*
+% messages, since unlike the code here, it can report that an imported module
+% is unused *anywhere* in the module. However, even if --warn-unused-imports
+% *is* set, the code in unused_imports.m won't be invoked if we stop
+% compilation before its normal invocation time, due to e.g. type or more
+% errors. What we should do is generate warnings here; print them if we
+% stop before the unused_imports pass; throw them away if we *do* get to
+% that pass. We don't (yet) do this.
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.module_qual.
@@ -255,7 +265,6 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
     % imported module that exports a type class instance is used in
     % the interface of the importing module, except if the importing
     % module itself exports _no_ type class instances.
-    %
     mq_info_get_as_yet_unused_interface_modules(!.Info, UnusedImportsMap0),
     mq_info_get_exported_instances_flag(!.Info, ModuleExportsInstances),
     (

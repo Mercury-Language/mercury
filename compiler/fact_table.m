@@ -105,8 +105,6 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module ll_backend.code_util.
-:- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_data.
 :- import_module mdbcomp.prim_data.

@@ -149,21 +149,10 @@
 
 :- implementation.
 
-:- import_module hlds.code_model.
-:- import_module hlds.hlds_data.
-:- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module libs.
-:- import_module libs.globals.
-:- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module int.
-:- import_module list.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module term.

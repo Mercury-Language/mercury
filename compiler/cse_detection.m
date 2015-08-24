@@ -72,7 +72,6 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.switch_detection.
-:- import_module check_hlds.switch_detection.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
@@ -89,7 +88,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.

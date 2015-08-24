@@ -24,6 +24,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module require.

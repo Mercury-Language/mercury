@@ -1,17 +1,17 @@
-specified.m:142: Error in `:- pragma memo' declaration for predicate
-specified.m:142:   `specified.ap_lp_fib'/3:
-specified.m:142:   argument 3: argument tabling method `addr' is not compatible
-specified.m:142:   with output modes.
-specified.m:159: Error: expected argument tabling method, not `implied'.
-specified.m:174: Error in `:- pragma memo' declaration for predicate
-specified.m:174:   `specified.ap_li_fib'/3:
-specified.m:174:   not enough argument tabling methods specified.
-specified.m:214: Error in `:- pragma memo' declaration for predicate
-specified.m:214:   `specified.vp_ll_fib'/3:
-specified.m:214:   argument 1: argument tabling method `output' is not
-specified.m:214:   compatible with input modes.
-specified.m:234: Error in `:- pragma memo' declaration for predicate
-specified.m:234:   `specified.vv_ll_fib'/3:
-specified.m:234:   too many argument tabling methods specified.
-specified.m:278: Error: expected one or two arguments for `specified'.
-specified.m:286: Error: expected hidden argument tabling method, not `voodoo'.
+specified.m:141: Error in `:- pragma memo' declaration for predicate
+specified.m:141:   `specified.ap_lp_fib'/3:
+specified.m:141:   argument 3: argument tabling method `addr' is not compatible
+specified.m:141:   with output modes.
+specified.m:158: Error: expected argument tabling method, not `implied'.
+specified.m:173: Error in `:- pragma memo' declaration for predicate
+specified.m:173:   `specified.ap_li_fib'/3:
+specified.m:173:   not enough argument tabling methods specified.
+specified.m:213: Error in `:- pragma memo' declaration for predicate
+specified.m:213:   `specified.vp_ll_fib'/3:
+specified.m:213:   argument 1: argument tabling method `output' is not
+specified.m:213:   compatible with input modes.
+specified.m:233: Error in `:- pragma memo' declaration for predicate
+specified.m:233:   `specified.vv_ll_fib'/3:
+specified.m:233:   too many argument tabling methods specified.
+specified.m:277: Error: expected one or two arguments for `specified'.
+specified.m:285: Error: expected hidden argument tabling method, not `voodoo'.

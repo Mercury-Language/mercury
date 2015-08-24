@@ -31,7 +31,6 @@
 
 :- implementation.
 
-:- import_module int.
 :- import_module require.
 
 min_domsize_min_split([], _) :- error("empty list").

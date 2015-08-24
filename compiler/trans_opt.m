@@ -84,18 +84,15 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_pred.
 :- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.item_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.structure_reuse.
@@ -110,9 +107,7 @@
 :- import_module transform_hlds.trailing_analysis.
 
 :- import_module cord.
-:- import_module list.
 :- import_module set.
-:- import_module term.      % for term.context_init
 
 %-----------------------------------------------------------------------------%
 

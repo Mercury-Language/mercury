@@ -104,10 +104,8 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.make_goal.
-:- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.goal_expr_to_goal.
-:- import_module hlds.make_hlds.qual_info.
 :- import_module libs.globals.  % for get_maybe_from_ground_term_threshold
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.module_qual.
@@ -126,7 +124,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.

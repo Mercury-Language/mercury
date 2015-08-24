@@ -14,8 +14,6 @@
 
 :- implementation.
 
-:- import_module std_util.
-
 :- pred good_if_then_else(T::ia, int::out) is det.
 
 good_if_then_else(X, Y) :-

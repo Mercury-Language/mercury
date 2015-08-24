@@ -47,7 +47,6 @@
 :- import_module backend_libs.export.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.proc_label.
-:- import_module backend_libs.rtti.
 :- import_module backend_libs.type_class_info.
 :- import_module backend_libs.type_ctor_info.
 :- import_module check_hlds.simplify.
@@ -65,7 +64,6 @@
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.dupproc.
 :- import_module ll_backend.follow_code.
-:- import_module ll_backend.global_data.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_file.
@@ -91,7 +89,6 @@
 :- import_module assoc_list.
 :- import_module cord.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.

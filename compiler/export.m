@@ -99,7 +99,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.status.
 

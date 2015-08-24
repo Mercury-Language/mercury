@@ -247,7 +247,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module term.
 :- import_module varset.
 
 :- type clause_item_numbers

@@ -100,7 +100,6 @@
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
-:- import_module ml_backend.mlds.
 :- import_module ml_backend.rtti_to_mlds.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.    % for mercury_std_library_name.

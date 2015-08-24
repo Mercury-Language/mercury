@@ -70,7 +70,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module multi_map.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module term.

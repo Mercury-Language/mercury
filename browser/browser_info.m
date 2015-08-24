@@ -342,8 +342,6 @@
 
 :- implementation.
 
-:- import_module mdb.term_rep.
-
 :- import_module deconstruct.
 :- import_module require.
 :- import_module string.

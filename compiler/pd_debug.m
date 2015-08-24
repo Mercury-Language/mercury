@@ -65,12 +65,10 @@
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
-:- import_module hlds.instmap.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.set_of_var.
 
 :- import_module set.
 

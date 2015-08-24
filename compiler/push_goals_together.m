@@ -55,20 +55,15 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.quantification.
-:- import_module mdbcomp.feedback.
-:- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module int.
 :- import_module io.
-:- import_module list.
 :- import_module map.
 :- import_module pair.
 :- import_module require.

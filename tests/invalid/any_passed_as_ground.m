@@ -19,7 +19,6 @@
 
 :- implementation.
 
-:- import_module int.
 :- import_module list.
 :- import_module pair.
 

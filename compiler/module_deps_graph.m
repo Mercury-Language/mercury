@@ -40,20 +40,7 @@
 
 :- implementation.
 
-:- import_module libs.file_util.
-:- import_module libs.options.
-:- import_module parse_tree.deps_map.
-:- import_module parse_tree.file_names.
-:- import_module parse_tree.prog_io_error.
-:- import_module parse_tree.prog_out.
-
-:- import_module bool.
-:- import_module list.
-:- import_module map.
-:- import_module pair.
 :- import_module set.
-:- import_module sparse_bitset.
-:- import_module string.
 
 :- type deps_graph_key == digraph_key(module_name).
 

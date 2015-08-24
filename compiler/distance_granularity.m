@@ -166,7 +166,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
-:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%

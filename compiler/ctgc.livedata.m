@@ -89,11 +89,9 @@
 
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.datastruct.
-:- import_module transform_hlds.ctgc.structure_sharing.domain.
 
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 

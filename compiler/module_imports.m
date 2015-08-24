@@ -231,7 +231,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.get_dependencies.
-:- import_module parse_tree.modules.    % undesirable dependency
 
 :- import_module dir.
 :- import_module term.

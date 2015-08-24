@@ -112,7 +112,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 
@@ -122,7 +121,6 @@
 :- import_module pair.
 :- import_module solutions.
 :- import_module string.
-:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

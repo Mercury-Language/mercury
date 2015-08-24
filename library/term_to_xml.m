@@ -461,7 +461,6 @@
 :- import_module bool.
 :- import_module char.
 :- import_module construct.
-:- import_module exception.
 :- import_module int.
 :- import_module map.
 :- import_module require.

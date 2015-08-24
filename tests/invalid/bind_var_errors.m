@@ -5,8 +5,6 @@
 :- module bind_var_errors.
 :- interface.
 
-:- import_module int.
-
 :- pred bind_var_in_negation is semidet.
 
 :- pred bind_var_in_ite_cond(int :: in) is semidet.

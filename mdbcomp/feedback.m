@@ -220,7 +220,6 @@
 :- implementation.
 
 :- import_module exception.
-:- import_module map.
 :- import_module require.
 :- import_module string.
 :- import_module unit.

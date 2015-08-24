@@ -138,7 +138,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module set_tree234.
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
@@ -604,7 +603,7 @@ check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
 :- pred check_concrete_class_instance(class_id::in, list(tvar)::in,
     hlds_class_interface::in, class_interface::in,
     list(pred_id)::in, term.context::in,
-    instance_methods::in, hlds_instance_defn::in, hlds_instance_defn::out,
+    list(instance_method)::in, hlds_instance_defn::in, hlds_instance_defn::out,
     module_info::in, module_info::out,
     make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -661,7 +660,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
     % any of the methods from the class interface. If so, add an appropriate
     % error message to the list of error messages.
     %
-:- pred check_for_bogus_methods(instance_methods::in, class_id::in,
+:- pred check_for_bogus_methods(list(instance_method)::in, class_id::in,
     list(pred_id)::in, prog_context::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -698,9 +697,11 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
 :- type instance_check_info
     --->    instance_check_info(
                 hlds_instance_defn,
-                instance_methods,   % The instance methods in reverse
-                                    % order of the methods in the class
-                                    % declaration.
+
+                % The instance methods in reverse order of the methods
+                % in the class declaration.
+                list(instance_method),
+
                 module_info,
                 make_hlds_qual_info
             ).
@@ -825,7 +826,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 
 :- pred check_instance_pred_procs(class_id::in, list(tvar)::in, sym_name::in,
     pred_markers::in, hlds_instance_defn::in, hlds_instance_defn::out,
-    instance_methods::in, instance_methods::out,
+    list(instance_method)::in, list(instance_method)::out,
     instance_method_info::in, instance_method_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -881,7 +882,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
     % being combined into a single definition.
     %
 :- pred get_matching_instance_defns(instance_body::in, pred_or_func::in,
-    sym_name::in, arity::in, instance_methods::out) is det.
+    sym_name::in, arity::in, list(instance_method)::out) is det.
 
 get_matching_instance_defns(instance_body_abstract, _, _, _, []).
 get_matching_instance_defns(instance_body_concrete(InstanceMethods),
@@ -2103,7 +2104,7 @@ collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
     % Duplicate method definition error.
     %
 :- pred report_duplicate_method_defn(class_id::in, hlds_instance_defn::in,
-    pred_or_func::in, sym_name::in, arity::in, instance_methods::in,
+    pred_or_func::in, sym_name::in, arity::in, list(instance_method)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
@@ -2173,7 +2174,7 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
 
 %---------------------------------------------------------------------------%
 
-:- pred report_bogus_instance_methods(class_id::in, instance_methods::in,
+:- pred report_bogus_instance_methods(class_id::in, list(instance_method)::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 report_bogus_instance_methods(ClassId, BogusInstanceMethods, Context,

@@ -216,14 +216,11 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module term_io.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -94,8 +94,6 @@
 :- import_module hlds.vartypes.
 :- import_module transform_hlds.ctgc.selector.
 
-:- import_module map.
-
 %-----------------------------------------------------------------------------%
 
 datastruct_init(V) = datastruct_init_with_selector(V, []).

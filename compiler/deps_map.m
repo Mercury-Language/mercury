@@ -83,7 +83,6 @@
 
 :- implementation.
 
-:- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
@@ -94,11 +93,8 @@
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.status.
 
-:- import_module assoc_list.
 :- import_module cord.
 :- import_module list.
-:- import_module pair.
-:- import_module require.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%

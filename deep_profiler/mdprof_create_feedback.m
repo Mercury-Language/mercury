@@ -28,7 +28,6 @@
 
 :- implementation.
 
-:- import_module conf.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.feedback.automatic_parallelism.

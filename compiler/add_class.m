@@ -73,7 +73,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
-:- import_module string.
 :- import_module varset.
 
 module_add_class_defn(ItemTypeClassInfo, Status, !ModuleInfo, !Specs) :-

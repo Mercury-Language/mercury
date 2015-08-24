@@ -103,7 +103,6 @@
 
 :- implementation.
 
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.pickle.
 :- import_module parse_tree.
@@ -117,6 +116,7 @@
 :- import_module exception.
 :- import_module parser.
 :- import_module require.
+:- import_module string.
 :- import_module term.
 :- import_module term_io.
 :- import_module type_desc.

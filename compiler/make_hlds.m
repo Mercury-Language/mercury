@@ -10,12 +10,12 @@
 % Main author: fjh.
 %
 % This module converts from the parse tree structure which is read in by
-% prog_io.m, into the simplified high level data structure defined in
-% hlds.m.  In the parse tree, the program is represented as a list of
-% items; we insert each item into the appropriate symbol table, and report
-% any duplicate definition errors.  We also transform clause bodies from
-% (A,B,C) into conj([A,B,C]) form, convert all unifications into
-% super-homogenous form, and introduce implicit quantification.
+% prog_io.m, into the simplified high level data structure defined in hlds.m.
+% In the parse tree, the program is represented as a structure containing
+% several lists of items; we insert each item into the appropriate table,
+% and report any duplicate definition errors. We also transform clause bodies
+% from (A,B,C) into conj([A,B,C]) form, convert all unifications into
+% superhomogenous form, and introduce implicit quantification.
 %
 % WISHLIST - we should handle explicit module quantification.
 %
@@ -38,7 +38,6 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.status.
 
-:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 :- import_module term.

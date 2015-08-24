@@ -241,7 +241,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_info.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.

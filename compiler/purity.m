@@ -184,20 +184,15 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
-:- import_module bool.
-:- import_module list.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.

@@ -68,7 +68,6 @@
 
 :- import_module assoc_list.
 :- import_module int.
-:- import_module list.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

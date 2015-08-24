@@ -199,12 +199,10 @@
 :- implementation.
 
 :- import_module hlds.code_model.
-:- import_module hlds.hlds_goal.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.term_constr_main.
 
-:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.

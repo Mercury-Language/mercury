@@ -250,7 +250,6 @@
 :- import_module ll_backend.layout_out.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module cord.

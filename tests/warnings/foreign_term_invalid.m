@@ -8,8 +8,6 @@
 
 :- interface.
 
-:- import_module int.
-
 :- pred test1(int::out) is det.
 :- pred test2(int::out) is det.
 

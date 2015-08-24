@@ -1,30 +1,30 @@
-anys_in_negated_contexts.m:041: In clause for `bad_if_then_else1(ia, out)':
-anys_in_negated_contexts.m:041:   purity error: if-then-else should be inside a
-anys_in_negated_contexts.m:041:   promise_purity scope because non-local
-anys_in_negated_contexts.m:041:   variable `X' has inst `any' and appears in
-anys_in_negated_contexts.m:041:   the condition.
-anys_in_negated_contexts.m:059: In clause for `bad_negation1(ia)':
-anys_in_negated_contexts.m:059:   purity error: negation should be inside a
-anys_in_negated_contexts.m:059:   promise_purity scope because non-local
-anys_in_negated_contexts.m:059:   variable `X' has inst `any' and appears in
-anys_in_negated_contexts.m:059:   the body.
-anys_in_negated_contexts.m:082: In clause for `bad_lambda(in)':
-anys_in_negated_contexts.m:082:   mode error in conjunction. The next 2 error
-anys_in_negated_contexts.m:082:   messages indicate possible causes of this
-anys_in_negated_contexts.m:082:   error.
-anys_in_negated_contexts.m:081:   In clause for `bad_lambda(in)':
-anys_in_negated_contexts.m:081:   purity error: lambda is `ground' but contains
-anys_in_negated_contexts.m:081:   the following non-local variables whose insts
-anys_in_negated_contexts.m:081:   contain `any': Y.
-anys_in_negated_contexts.m:081:   Predicate expressions with inst `any' can be
-anys_in_negated_contexts.m:081:   written `any_pred(Args) is det :- ...'.
-anys_in_negated_contexts.m:081:   Function expressions with inst `any' can be
-anys_in_negated_contexts.m:081:   written
-anys_in_negated_contexts.m:081:   `any_func(Args) = Result is det :- ...'.
-anys_in_negated_contexts.m:082:   In clause for `bad_lambda(in)':
-anys_in_negated_contexts.m:082:   in argument 1 (i.e. the predicate term) of
-anys_in_negated_contexts.m:082:   higher-order predicate call:
-anys_in_negated_contexts.m:082:   mode error: variable `P' has instantiatedness
-anys_in_negated_contexts.m:082:   `free',
-anys_in_negated_contexts.m:082:   expecting higher-order pred inst (of arity
-anys_in_negated_contexts.m:082:   1).
+anys_in_negated_contexts.m:039: In clause for `bad_if_then_else1(ia, out)':
+anys_in_negated_contexts.m:039:   purity error: if-then-else should be inside a
+anys_in_negated_contexts.m:039:   promise_purity scope because non-local
+anys_in_negated_contexts.m:039:   variable `X' has inst `any' and appears in
+anys_in_negated_contexts.m:039:   the condition.
+anys_in_negated_contexts.m:057: In clause for `bad_negation1(ia)':
+anys_in_negated_contexts.m:057:   purity error: negation should be inside a
+anys_in_negated_contexts.m:057:   promise_purity scope because non-local
+anys_in_negated_contexts.m:057:   variable `X' has inst `any' and appears in
+anys_in_negated_contexts.m:057:   the body.
+anys_in_negated_contexts.m:080: In clause for `bad_lambda(in)':
+anys_in_negated_contexts.m:080:   mode error in conjunction. The next 2 error
+anys_in_negated_contexts.m:080:   messages indicate possible causes of this
+anys_in_negated_contexts.m:080:   error.
+anys_in_negated_contexts.m:079:   In clause for `bad_lambda(in)':
+anys_in_negated_contexts.m:079:   purity error: lambda is `ground' but contains
+anys_in_negated_contexts.m:079:   the following non-local variables whose insts
+anys_in_negated_contexts.m:079:   contain `any': Y.
+anys_in_negated_contexts.m:079:   Predicate expressions with inst `any' can be
+anys_in_negated_contexts.m:079:   written `any_pred(Args) is det :- ...'.
+anys_in_negated_contexts.m:079:   Function expressions with inst `any' can be
+anys_in_negated_contexts.m:079:   written
+anys_in_negated_contexts.m:079:   `any_func(Args) = Result is det :- ...'.
+anys_in_negated_contexts.m:080:   In clause for `bad_lambda(in)':
+anys_in_negated_contexts.m:080:   in argument 1 (i.e. the predicate term) of
+anys_in_negated_contexts.m:080:   higher-order predicate call:
+anys_in_negated_contexts.m:080:   mode error: variable `P' has instantiatedness
+anys_in_negated_contexts.m:080:   `free',
+anys_in_negated_contexts.m:080:   expecting higher-order pred inst (of arity
+anys_in_negated_contexts.m:080:   1).

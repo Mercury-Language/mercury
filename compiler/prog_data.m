@@ -50,7 +50,6 @@
 
 :- import_module libs.options.
 :- import_module require.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 %
@@ -862,9 +861,7 @@ default_export_enum_attributes =
 
 :- type instance_body
     --->    instance_body_abstract
-    ;       instance_body_concrete(instance_methods).
-
-:- type instance_methods == list(instance_method).
+    ;       instance_body_concrete(list(instance_method)).
 
 :- func prog_constraint_get_class(prog_constraint) = class_name.
 :- func prog_constraint_get_arg_types(prog_constraint) = list(mer_type).

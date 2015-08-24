@@ -1131,6 +1131,10 @@ check_imports_accessibility(AugCompUnit, ImportedModules,
     IntItemBlocks = DirectIntItemBlocks ++ IndirectIntItemBlocks,
     record_includes_imports_uses(SrcItemBlocks, IntItemBlocks, OptItemBlocks,
         IntForOptItemBlocks, InclMap, ImportUseMap),
+    % XXX ITEM_LIST We should either record in an updated AugCompUnit
+    % the set of imported modules that are inaccessible, or remove their
+    % imports from it, so that we don't generate "unused module" warnings
+    % for them when --warn-unused-imports is enabled.
     set.foldl(check_module_accessibility(ModuleName, InclMap, ImportUseMap),
         ImportedModules, !Specs).
 
@@ -1275,12 +1279,6 @@ record_avails_acc([Avail | Avails], !ImportUseMap) :-
     %
     % InclMap tells us what modules are accessible, and ImportUseMap tells
     % the location(s) where each imported module is imported (or used).
-    %
-    % XXX ITEM_LIST We should also be able to report duplicate imports,
-    % duplicate uses, and modules that are both imported and used.
-    % For generating good error messages about such problems, we would
-    % probably need to record, for each import or use, not just the context,
-    % but also the section in which that import or use occurred.
     %
 :- pred check_module_accessibility(module_name::in, module_inclusion_map::in,
     module_import_or_use_map::in, module_name::in,

@@ -381,10 +381,8 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module parse_tree.prog_data.
 
 :- import_module int.
 :- import_module require.

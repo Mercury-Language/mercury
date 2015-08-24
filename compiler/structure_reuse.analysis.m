@@ -120,7 +120,6 @@
 :- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.
-:- import_module transform_hlds.ctgc.structure_reuse.domain.
 :- import_module transform_hlds.ctgc.structure_reuse.indirect.
 :- import_module transform_hlds.ctgc.structure_reuse.lbu.
 :- import_module transform_hlds.ctgc.structure_reuse.lfu.
@@ -129,9 +128,7 @@
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bimap.
-:- import_module bool.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

@@ -382,7 +382,6 @@
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.from_ground_term_util.
 :- import_module hlds.const_struct.
@@ -420,7 +419,6 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
-:- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

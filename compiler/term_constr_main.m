@@ -24,24 +24,24 @@
 %
 % * Pass 0 - initial pass.
 %   Setup information for builtin predicates and process any information
-%   from user annotations like termination pragmas and foreign proc.
-%   attributes.  Also, set up information imported from `.opt' and
-%   `.trans_opt' files.  (See term_constr_initial.m.)
+%   from user annotations like termination pragmas and foreign proc attributes.
+%   Also, set up information imported from `.opt' and `.trans_opt' files.
+%   (See term_constr_initial.m.)
 %
 % Each of passes 1 and 2 are run consecutively on each SCC of the
-% program call-graph.  This is done in bottom-up order.
+% program call-graph. This is done in bottom-up order.
 %
 % * Pass 1 - interargument size relationship (IR) analysis.
 %
-%   (a) Build pass.  Convert HLDS to the abstract representation (AR)
-%       defined in term_constr_data.m.  (See term_constr_build.m.)
+%   (a) Build pass. Convert HLDS to the abstract representation (AR)
+%       defined in term_constr_data.m. (See term_constr_build.m.)
 %
 %   (b) Fixpoint pass. Perform fixpoint calculation to derive IR
-%       information.  ( See term_constr_fixpoint.m.)
+%       information. ( See term_constr_fixpoint.m.)
 %
 % * Pass 2 - termination.
 %   Use the information from pass 1 to attempt to find a proof that the
-%   procedures in a SCC terminate.  There is an example of such a proof
+%   procedures in a SCC terminate. There is an example of such a proof
 %   finder in term_constr_pass2.m, although we will probably end up with
 %   several such modules, each of which tries a different approach.
 %
@@ -85,7 +85,7 @@
 
 %----------------------------------------------------------------------------%
 %
-% Types that define termination information about procedures
+% Types that define termination information about procedures.
 %
 
     % This type is the interargument size relationships between
@@ -174,7 +174,7 @@
 
 %----------------------------------------------------------------------------%
 %
-% Termination analysis
+% Termination analysis.
 %
 
     % Perform termination analysis on a module.
@@ -202,20 +202,16 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_pred.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.lp_rational.
 :- import_module libs.options.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.status.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.term_constr_build.
-:- import_module transform_hlds.term_constr_data.
-:- import_module transform_hlds.term_constr_errors.
 :- import_module transform_hlds.term_constr_fixpoint.
 :- import_module transform_hlds.term_constr_initial.
 :- import_module transform_hlds.term_constr_pass2.
@@ -233,7 +229,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% The 'termination2_info' structure
+% The 'termination2_info' structure.
 %
 
 :- type termination2_info
@@ -313,8 +309,8 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     Pass2Options = pass2_options_init(MaxSize),
 
     % Setup termination information for builtins and compiler generated
-    % predicates.  Setup information from termination pragmas and
-    % foreign proc attributes.
+    % predicates. Setup information from termination pragmas and foreign_proc
+    % attributes.
     term_constr_initial.preprocess_module(!ModuleInfo, !IO),
 
     % Analyse the module per SCC in bottom-up fashion.
@@ -332,7 +328,7 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
 % Analyse a single SCC.
 %
 
-    % Analyse a single SCC of the call graph.  This will require results
+    % Analyse a single SCC of the call graph. This will require results
     % concerning SCCs lower down the call graph.
     %
     % The normal procedure for analysing a SCC is:
@@ -345,7 +341,7 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     %     (term_constr_fixpoint.m).
     %
     % (3) Use this information to try and find a proof that the procedures
-    %     in the SCC terminate.  (term_constr_pass2.m).
+    %     in the SCC terminate. (term_constr_pass2.m).
     %
     % Exactly which of the above steps gets carried out depends upon
     % what (if any) additional information the user has supplied.
@@ -386,7 +382,7 @@ analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
         BuildErrors, !ModuleInfo, !IO),
 
     % We only perform the fixpoint computation for those procedures where
-    % we can gain meaningful information from it.  We do not do it when:
+    % we can gain meaningful information from it. We do not do it when:
     % - the information is already known, or
     % - the argument size relationships depend upon higher-order calls.
     NeedsArgSize = list.filter(isnt(has_arg_size_info(!.ModuleInfo)), NeedsAR),
@@ -509,7 +505,7 @@ make_opt_int(PredIds, ModuleInfo, !IO) :-
 
 output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
     % Don't try to output termination2_info pragmas unless the analysis
-    % was actually run.  Doing otherwise won't work because the necessary
+    % was actually run. Doing otherwise won't work because the necessary
     % information will not have been set up.
 
     module_info_get_globals(ModuleInfo, Globals),

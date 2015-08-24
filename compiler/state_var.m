@@ -294,9 +294,8 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
-:- import_module char.
+:- import_module bool.
 :- import_module counter.
-:- import_module int.
 :- import_module io.
 :- import_module pair.
 :- import_module require.

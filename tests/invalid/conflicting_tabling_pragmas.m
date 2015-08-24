@@ -6,11 +6,11 @@
 
 :- interface.
 
-:- import_module int.
-
 :- func fac(int) = int.
 
 :- implementation.
+
+:- import_module int.
 
 :- pragma memo(fac/1).
 :- pragma loop_check(fac/1).

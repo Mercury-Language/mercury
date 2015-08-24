@@ -245,7 +245,6 @@
 :- import_module array.                 % For array_to_doc.
 :- import_module bool.
 :- import_module char.                  % For char_to_doc.
-:- import_module deconstruct.
 :- import_module float.                 % For float_to_doc.
 :- import_module int.
 :- import_module map.

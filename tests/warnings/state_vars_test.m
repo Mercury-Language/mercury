@@ -12,8 +12,6 @@
 
 :- implementation.
 
-:- import_module int.
-
 main(!IO).
 
 :- pred p(int::out) is det.

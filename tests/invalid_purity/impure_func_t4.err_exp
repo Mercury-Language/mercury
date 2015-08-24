@@ -1,4 +1,4 @@
-impure_func_t4.m:022: In call to semipure function
-impure_func_t4.m:022:   `impure_func_t4.get_counter'/0:
-impure_func_t4.m:022:   purity error: call must be in an explicit unification
-impure_func_t4.m:022:   which is preceded by `semipure' indicator.
+impure_func_t4.m:019: In call to semipure function
+impure_func_t4.m:019:   `impure_func_t4.get_counter'/0:
+impure_func_t4.m:019:   purity error: call must be in an explicit unification
+impure_func_t4.m:019:   which is preceded by `semipure' indicator.

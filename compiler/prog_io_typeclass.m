@@ -66,11 +66,8 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
-:- import_module bool.
 :- import_module map.
 :- import_module require.
-:- import_module term.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
@@ -814,7 +811,7 @@ check_tvars_in_instance_constraint(ok1(ItemInstance), InstanceTerm, Result) :-
     ).
 
 :- pred parse_instance_methods(module_name::in, term::in, varset::in,
-    maybe1(instance_methods)::out) is det.
+    maybe1(list(instance_method))::out) is det.
 
 parse_instance_methods(ModuleName, MethodsTerm, VarSet, Result) :-
     ( if list_term_to_term_list(MethodsTerm, MethodList) then

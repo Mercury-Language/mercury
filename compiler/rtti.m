@@ -963,7 +963,6 @@
 
 :- import_module backend_libs.name_mangle.
 :- import_module mdbcomp.builtin_modules.
-:- import_module hlds.hlds_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 

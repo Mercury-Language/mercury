@@ -1754,15 +1754,11 @@
 
 :- implementation.
 
-:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_detism.
-:- import_module parse_tree.prog_mode.
 
 :- import_module io.
-:- import_module map.
 :- import_module require.
 :- import_module string.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

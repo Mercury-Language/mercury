@@ -20,6 +20,26 @@ MCFLAGS-hlds.quantification = --optimize-unused-args
 # in the common case that the trace goals are not enabled.
 MCFLAGS-check_hlds.typecheck = --unneeded-code
 
+# In these files, some imports are needed only in some grades.
+# Until unused_imports.m can avoid generating messages about these,
+# disable the pass on these files.
+MCFLAGS-libs.md4 = --no-warn-unused-imports
+MCFLAGS-libs.process_util = --no-warn-unused-imports
+MCFLAGS-libs.timestamp = --no-warn-unused-imports
+
+# In these packages, some imports are needed only by some submodules.
+MCFLAGS-erl_backend = --no-warn-unused-imports
+MCFLAGS-hlds = --no-warn-unused-imports
+MCFLAGS-ll_backend = --no-warn-unused-imports
+MCFLAGS-make = --no-warn-unused-imports
+MCFLAGS-ml_backend = --no-warn-unused-imports
+MCFLAGS-parse_tree = --no-warn-unused-imports
+MCFLAGS-recompilation = --no-warn-unused-imports
+MCFLAGS-top_level = --no-warn-unused-imports
+MCFLAGS-transform_hlds = --no-warn-unused-imports
+MCFLAGS-transform_hlds.ctgc.structure_reuse = --no-warn-unused-imports
+MCFLAGS-transform_hlds.ctgc.structure_sharing = --no-warn-unused-imports
+
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.
 MGNUCFLAGS-libs.process_util = --no-ansi
@@ -36,23 +56,11 @@ MGNUCFLAGS-make.program_target = --no-ansi
 MCFLAGS-check_hlds.modes = --inline-vars-threshold 10000
 MCFLAGS-check_hlds.unique_modes = --inline-vars-threshold 10000
 
-MCFLAGS-libs.process_util = --no-ansi-c
+MCFLAGS-libs.process_util += --no-ansi-c
 MCFLAGS-make.module_dep_file = --no-ansi-c
 MCFLAGS-make.module_target = --no-ansi-c
 MCFLAGS-make.program_target = --no-ansi-c
 MCFLAGS-make.util = --no-ansi-c
-
-MCFLAGS-erl_backend = --no-warn-unused-imports
-MCFLAGS-hlds = --no-warn-unused-imports
-MCFLAGS-ll_backend = --no-warn-unused-imports
-MCFLAGS-make = --no-warn-unused-imports
-MCFLAGS-ml_backend = --no-warn-unused-imports
-MCFLAGS-parse_tree = --no-warn-unused-imports
-MCFLAGS-recompilation = --no-warn-unused-imports
-MCFLAGS-top_level = --no-warn-unused-imports
-MCFLAGS-transform_hlds = --no-warn-unused-imports
-MCFLAGS-transform_hlds.ctgc.structure_reuse = --no-warn-unused-imports
-MCFLAGS-transform_hlds.ctgc.structure_sharing = --no-warn-unused-imports
 
 # These modules provide general-purpose wrappers around string.format
 # in which the format strings are known only by their callers.

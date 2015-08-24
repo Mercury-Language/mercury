@@ -1,12 +1,12 @@
-zinc2mer_lib.m:039: In clause for `min_domsize_min_split(ia, oa)':
-zinc2mer_lib.m:039:   in the return value of call to function
-zinc2mer_lib.m:039:   `zinc2mer_lib.min_split_var'/1:
-zinc2mer_lib.m:039:   mode error: variable `BranchConstraints' has
-zinc2mer_lib.m:039:   instantiatedness `free',
-zinc2mer_lib.m:039:   expected instantiatedness was `any'.
-zinc2mer_lib.m:041: In `min_split_var'(in(any)) = in(any):
-zinc2mer_lib.m:041:   error: determinism declaration not satisfied.
-zinc2mer_lib.m:041:   Declared `det', inferred `semidet'.
-zinc2mer_lib.m:049:   Unification of `BranchConstraints' and `list.[]' can
-zinc2mer_lib.m:049:   fail.
+zinc2mer_lib.m:038: In clause for `min_domsize_min_split(ia, oa)':
+zinc2mer_lib.m:038:   in the return value of call to function
+zinc2mer_lib.m:038:   `zinc2mer_lib.min_split_var'/1:
+zinc2mer_lib.m:038:   mode error: variable `BranchConstraints' has
+zinc2mer_lib.m:038:   instantiatedness `free',
+zinc2mer_lib.m:038:   expected instantiatedness was `any'.
+zinc2mer_lib.m:040: In `min_split_var'(in(any)) = in(any):
+zinc2mer_lib.m:040:   error: determinism declaration not satisfied.
+zinc2mer_lib.m:040:   Declared `det', inferred `semidet'.
+zinc2mer_lib.m:048:   Unification of `BranchConstraints' and `list.[]' can
+zinc2mer_lib.m:048:   fail.
 For more information, recompile with `-E'.

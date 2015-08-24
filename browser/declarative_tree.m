@@ -58,7 +58,6 @@
 :- import_module mdb.term_rep.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.rtti_access.
 :- import_module mdbcomp.sym_name.
 

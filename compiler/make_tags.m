@@ -97,10 +97,6 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type.

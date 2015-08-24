@@ -96,7 +96,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.mode_errors.
 :- import_module parse_tree.set_of_var.
 
 :- import_module cord.

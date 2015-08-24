@@ -406,8 +406,6 @@
 
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.type_util.
-:- import_module libs.globals.
-:- import_module libs.options.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.
 :- import_module parse_tree.builtin_lib_types.

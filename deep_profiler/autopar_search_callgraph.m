@@ -51,10 +51,8 @@
 :- import_module measurement_units.
 :- import_module measurements.
 :- import_module program_representation_utils.
-:- import_module read_profile.
 :- import_module recursion_patterns.
 :- import_module report.
-:- import_module var_use_analysis.
 
 :- import_module array.
 :- import_module assoc_list.
@@ -63,7 +61,6 @@
 :- import_module float.
 :- import_module int.
 :- import_module io.
-:- import_module lazy.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

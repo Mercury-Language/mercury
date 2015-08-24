@@ -81,8 +81,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_llds.
 :- import_module ll_backend.lookup_util.
 :- import_module ll_backend.switch_case.
 :- import_module parse_tree.set_of_var.
@@ -95,7 +93,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module std_util.
 
 %-----------------------------------------------------------------------------%

@@ -10,8 +10,6 @@
 :- mode main(di, uo) is det.
 
 :- implementation.
-:- import_module list.
-:- import_module std_util.
 
 main(In, _Out) :-
     io__write("looking for", In, Int1),

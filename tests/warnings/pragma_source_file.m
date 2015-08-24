@@ -6,7 +6,6 @@
 
 :- interface.
 
-:- import_module int.
 :- import_module list.
 
 :- pred my_append(list(int), list(int), list(int)).

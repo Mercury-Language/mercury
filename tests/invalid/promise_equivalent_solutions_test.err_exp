@@ -1,7 +1,7 @@
-promise_equivalent_solutions_test.m:024: Error: the
-promise_equivalent_solutions_test.m:024:   `promise_equivalent_solutions' goal
-promise_equivalent_solutions_test.m:024:   binds a variable that is not listed:
-promise_equivalent_solutions_test.m:024:   A.
-promise_equivalent_solutions_test.m:039: Error: the
-promise_equivalent_solutions_test.m:039:   `promise_equivalent_solutions' goal
-promise_equivalent_solutions_test.m:039:   lists an extra variable: ASorted.
+promise_equivalent_solutions_test.m:023: Error: the
+promise_equivalent_solutions_test.m:023:   `promise_equivalent_solutions' goal
+promise_equivalent_solutions_test.m:023:   binds a variable that is not listed:
+promise_equivalent_solutions_test.m:023:   A.
+promise_equivalent_solutions_test.m:038: Error: the
+promise_equivalent_solutions_test.m:038:   `promise_equivalent_solutions' goal
+promise_equivalent_solutions_test.m:038:   lists an extra variable: ASorted.

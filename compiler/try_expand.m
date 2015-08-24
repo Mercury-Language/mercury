@@ -241,7 +241,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -249,10 +248,10 @@
 
 expand_try_goals_in_module(!ModuleInfo, !Specs) :-
     % The exception module is implicitly imported if any try goals were seen,
-    % so if the exception module is not imported then we know there are no try
-    % goals to be expanded.
-    module_info_get_imported_module_names(!.ModuleInfo, ImportedModules),
-    ( set.contains(ImportedModules, mercury_exception_module) ->
+    % so if the exception module is not imported, then we know there are
+    % no try goals to be expanded.
+    module_info_get_avail_module_map(!.ModuleInfo, AvailModuleMap),
+    ( map.search(AvailModuleMap, mercury_exception_module, _) ->
         some [!Globals] (
             module_info_get_globals(!.ModuleInfo, !:Globals),
             disable_det_warnings(OptionsToRestore, !Globals),

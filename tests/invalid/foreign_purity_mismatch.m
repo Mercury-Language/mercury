@@ -5,8 +5,6 @@
 :- module foreign_purity_mismatch.
 :- interface.
 
-:- import_module string.
-
 :- pred pure_with_impure(string::in) is det.
 :- pred pure_with_semipure(string::in) is det.
 

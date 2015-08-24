@@ -117,7 +117,6 @@
 :- import_module int.
 :- import_module io.
 :- import_module message.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 

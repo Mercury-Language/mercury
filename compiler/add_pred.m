@@ -78,7 +78,6 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.pred_table.
@@ -93,8 +92,8 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
+:- import_module bool.
 :- import_module map.
-:- import_module set.
 :- import_module require.
 :- import_module term.
 :- import_module varset.

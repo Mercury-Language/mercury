@@ -47,18 +47,13 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_goal.
 :- import_module hlds.make_goal.
-:- import_module hlds.instmap.
-:- import_module libs.globals.
 :- import_module libs.int_emu.
 :- import_module libs.options.
-:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module float.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.

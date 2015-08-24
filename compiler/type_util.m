@@ -395,11 +395,9 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module map.
 :- import_module require.

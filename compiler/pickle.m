@@ -101,7 +101,6 @@
 :- import_module deconstruct.
 :- import_module exception.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module require.

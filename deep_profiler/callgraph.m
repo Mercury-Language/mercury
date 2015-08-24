@@ -37,7 +37,6 @@
 
 :- import_module array_util.
 :- import_module cliques.
-:- import_module profile.
 
 :- import_module int.
 :- import_module io.

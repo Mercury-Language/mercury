@@ -350,14 +350,12 @@
 
 :- implementation.
 
-:- import_module check_hlds.delay_info.
-:- import_module check_hlds.mode_errors.
 :- import_module libs.
-:- import_module map.
 :- import_module libs.globals.
 :- import_module libs.options.
 
 :- import_module int.
+:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module term.

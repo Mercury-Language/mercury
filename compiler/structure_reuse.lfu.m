@@ -45,7 +45,6 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
 :- import_module parse_tree.prog_data.
 

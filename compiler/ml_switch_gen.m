@@ -136,7 +136,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.switch_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module libs.globals.
@@ -149,7 +148,6 @@
 :- import_module ml_backend.ml_tag_switch.
 :- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_unify_gen.
-:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.

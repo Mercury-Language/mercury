@@ -238,8 +238,6 @@
 
 :- implementation.
 
-:- import_module require.
-
 status_is_exported(status_imported(_)) =             no.
 status_is_exported(status_external(_)) =             no.
 status_is_exported(status_abstract_imported) =       no.

@@ -114,7 +114,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 
 introduce_region_instructions(ModuleInfo, RptaInfoTable, ExecPathTable,
         LRBeforeTable, LRAfterTable, VoidVarRegionTable, BornRTable,

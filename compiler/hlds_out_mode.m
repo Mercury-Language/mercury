@@ -106,7 +106,6 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
-:- import_module hlds.instmap.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_io_util.
@@ -119,7 +118,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

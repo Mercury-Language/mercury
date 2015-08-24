@@ -138,7 +138,6 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
-:- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.builtin_lib_types.

@@ -46,47 +46,32 @@
 
 :- implementation.
 
-:- import_module check_hlds.clause_to_proc.
-:- import_module check_hlds.mode_errors.
-:- import_module hlds.goal_util.
-:- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_pred.
-:- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.field_access.
-:- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.superhomogeneous.
-:- import_module hlds.pred_table.
-:- import_module hlds.quantification.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_rename.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
-:- import_module int.
 :- import_module io.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module varset.
 

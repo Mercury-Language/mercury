@@ -396,7 +396,7 @@
 :- func mercury_quantifier_to_string(tvarset, var_name_print, existq_tvars)
     = string.
 
-:- pred mercury_output_instance_methods(instance_methods::in,
+:- pred mercury_output_instance_methods(list(instance_method)::in,
     io::di, io::uo) is det.
 
 :- pred mercury_output_trace_expr(pred(T, io, io)::in(pred(in, di, uo) is det),
@@ -494,7 +494,6 @@
 
 :- implementation.
 
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.rat.
 :- import_module parse_tree.file_kind.
@@ -515,9 +514,7 @@
 :- import_module ops.
 :- import_module require.
 :- import_module string.
-:- import_module term.
 :- import_module term_io.
-:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 

@@ -60,7 +60,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 
     % Information used by the coverage profiling transformation.

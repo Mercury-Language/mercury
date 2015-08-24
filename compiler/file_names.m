@@ -146,10 +146,8 @@
 
 :- implementation.
 
-:- import_module libs.globals.
 :- import_module libs.handle_options.
 :- import_module libs.options.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.source_file_map.
 

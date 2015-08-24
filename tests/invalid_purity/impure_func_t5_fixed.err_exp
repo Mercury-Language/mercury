@@ -1,8 +1,8 @@
-impure_func_t5_fixed.m:030: In clause for `main(di, uo)':
-impure_func_t5_fixed.m:030:   in argument 2 (i.e. argument 1 of the called
-impure_func_t5_fixed.m:030:   function) of impure higher-order function call:
-impure_func_t5_fixed.m:030:   mode error: variable `V_12' has instantiatedness
-impure_func_t5_fixed.m:030:   `free',
-impure_func_t5_fixed.m:030:   expected instantiatedness was `ground'.
-impure_func_t5_fixed.m:030:   The goal could not be reordered, because it was
-impure_func_t5_fixed.m:030:   impure.
+impure_func_t5_fixed.m:026: In clause for `main(di, uo)':
+impure_func_t5_fixed.m:026:   in argument 2 (i.e. argument 1 of the called
+impure_func_t5_fixed.m:026:   function) of impure higher-order function call:
+impure_func_t5_fixed.m:026:   mode error: variable `V_12' has instantiatedness
+impure_func_t5_fixed.m:026:   `free',
+impure_func_t5_fixed.m:026:   expected instantiatedness was `ground'.
+impure_func_t5_fixed.m:026:   The goal could not be reordered, because it was
+impure_func_t5_fixed.m:026:   impure.

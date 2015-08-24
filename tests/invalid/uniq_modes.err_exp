@@ -1,5 +1,5 @@
-uniq_modes.m:017: In clause for `main(di, uo)':
-uniq_modes.m:017:   in argument 2 of call to predicate `io.write'/3:
-uniq_modes.m:017:   mode error: variable `In' has instantiatedness
-uniq_modes.m:017:   `mostly_unique',
-uniq_modes.m:017:   expected instantiatedness was `unique'.
+uniq_modes.m:015: In clause for `main(di, uo)':
+uniq_modes.m:015:   in argument 2 of call to predicate `io.write'/3:
+uniq_modes.m:015:   mode error: variable `In' has instantiatedness
+uniq_modes.m:015:   `mostly_unique',
+uniq_modes.m:015:   expected instantiatedness was `unique'.

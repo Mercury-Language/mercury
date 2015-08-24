@@ -202,7 +202,6 @@
 :- import_module ll_backend.trace_gen.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module bool.

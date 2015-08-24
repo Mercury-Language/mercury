@@ -44,10 +44,7 @@
 
 :- import_module array.
 :- import_module bitmap.
-:- import_module bool.
-:- import_module float.
 :- import_module int.
-:- import_module integer.
 :- import_module maybe.
 :- import_module pair.
 :- import_module std_util.

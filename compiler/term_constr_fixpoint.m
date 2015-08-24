@@ -61,7 +61,6 @@
 :- import_module libs.options.
 :- import_module libs.polyhedron.
 :- import_module parse_tree.prog_data.
-:- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_constr_util.
 

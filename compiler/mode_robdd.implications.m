@@ -72,7 +72,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module sparse_bitset.
-:- import_module term.
 
 % Uncomment these for debugging.
 % :- import_module unsafe, io.

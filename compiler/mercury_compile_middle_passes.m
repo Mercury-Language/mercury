@@ -45,7 +45,6 @@
 :- import_module backend_libs.type_ctor_info.
 :- import_module bytecode_backend.bytecode.
 :- import_module bytecode_backend.bytecode_gen.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.file_util.
 :- import_module libs.globals.

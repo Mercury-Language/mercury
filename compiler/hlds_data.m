@@ -37,12 +37,10 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 
-:- import_module cord.
 :- import_module int.
 :- import_module multi_map.
 :- import_module pair.
 :- import_module require.
-:- import_module solutions.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -1709,7 +1707,7 @@ mode_table_optimize(!ModeDefns) :-
 
 :- type instance_id == int.
 
-    % Information about a single `instance' declaration
+    % Information about a single `instance' declaration.
     %
 :- type hlds_instance_defn
     --->    hlds_instance_defn(
@@ -1717,6 +1715,8 @@ mode_table_optimize(!ModeDefns) :-
                 instance_module         :: module_name,
 
                 % Import status of the instance declaration.
+                % XXX This can be set to abstract_imported even if
+                % the instance is NOT imported.
                 instance_status         :: import_status,
 
                 % Context of declaration.

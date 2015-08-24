@@ -250,13 +250,11 @@
 :- implementation.
 
 :- import_module bool.
-:- import_module char.
 :- import_module int.
 :- import_module integer.
 :- import_module lexer.
 :- import_module list.
 :- import_module parser.
-:- import_module require.
 :- import_module string.
 :- import_module stream.string_writer.
 

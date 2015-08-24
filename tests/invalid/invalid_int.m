@@ -10,7 +10,6 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module list.
 
 main(!IO) :-
     X = {

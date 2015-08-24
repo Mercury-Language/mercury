@@ -65,7 +65,6 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

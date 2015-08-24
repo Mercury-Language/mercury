@@ -12,9 +12,6 @@
 
 :- implementation.
 
-:- import_module int.
-:- import_module require.
-
 :- pragma promise_pure(main/2).
 
 :- type blah

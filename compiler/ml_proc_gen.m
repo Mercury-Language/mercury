@@ -32,7 +32,6 @@
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
-:- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -52,7 +51,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.set_of_var.
 :- import_module parse_tree.status.
 
 :- import_module bool.

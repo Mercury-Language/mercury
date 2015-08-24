@@ -25,7 +25,7 @@
     is det.
 
 :- implementation.
-:- import_module int.
+% :- import_module int.
 
 my_append([], L, L) :-
     L = L2.

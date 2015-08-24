@@ -32,21 +32,21 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
-:- import_module io.
 :- import_module list.
 
     % This predicate issues a warning for each import_module
     % which is not directly used in this module, plus those
     % which are in the interface but should be in the implementation.
     %
-:- pred warn_about_unused_imports(module_info::in, list(error_spec)::out,
-    io::di, io::uo) is det.
+:- pred warn_about_unused_imports(module_info::in, list(error_spec)::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
+:- import_module hlds.const_struct.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -54,90 +54,244 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.status.
 
+:- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-warn_about_unused_imports(ModuleInfo, !:Specs, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
+warn_about_unused_imports(ModuleInfo, Specs) :-
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
-        FileName, !IO),
-
     find_all_non_warn_modules(ModuleInfo, UsedModules),
+
+    module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
+    map.to_assoc_list(AvailModuleMap, ModuleAvails),
+    get_avail_modules_anywhere_interface(ModuleAvails,
+        cord.init, AvailAnywhereCord,
+        cord.init, AvailInterfaceCord),
+    set.sorted_list_to_set(cord.list(AvailAnywhereCord),
+        AvailAnywhereModules),
+    set.sorted_list_to_set(cord.list(AvailInterfaceCord),
+        AvailInterfaceModules),
+
+    UsedInInterface = UsedModules ^ int_used_modules,
+    UsedInImplementation = UsedModules ^ impl_used_modules,
+    UsedAnywhere = set.union(UsedInInterface, UsedInImplementation),
 
     % The unused imports is simply the set of all imports minus all the
     % used modules.
-    module_info_get_imported_module_names(ModuleInfo, ImportedModules),
-    UsedInImplementation = UsedModules ^ impl_used_modules,
-    UnusedImports = ImportedModules `set.difference`
-        (UsedInInterface `set.union` UsedInImplementation),
-
-    ( set.is_non_empty(UnusedImports) ->
-        ImportSpec = generate_warning(ModuleName, FileName,
-            set.to_sorted_list(UnusedImports), ""),
-        !:Specs = [ImportSpec]
-    ;
-        !:Specs = []
-    ),
+    UnusedAnywhereImports = set.difference(AvailAnywhereModules, UsedAnywhere),
 
     % Determine the modules imported in the interface but not used in
     % the interface.
-    module_info_get_interface_module_names(ModuleInfo, InterfaceImports),
-    UsedInInterface = UsedModules ^ int_used_modules,
-    UnusedInterfaceImports = (InterfaceImports
-        `set.difference` UsedInInterface) `set.difference` UnusedImports,
+    UnusedInterfaceImports =
+        set.difference(AvailInterfaceModules, UsedInInterface),
 
-    ( set.is_non_empty(UnusedInterfaceImports) ->
-        InterfaceImportSpec = generate_warning(ModuleName, FileName,
-            set.to_sorted_list(UnusedInterfaceImports), " interface"),
-        !:Specs = [InterfaceImportSpec | !.Specs]
+    map.foldl(
+        maybe_warn_about_avail(ModuleName,
+            UnusedAnywhereImports, UnusedInterfaceImports),
+        AvailModuleMap, [], Specs).
+
+:- pred get_avail_modules_anywhere_interface(
+    assoc_list(module_name, avail_module_entry)::in,
+    cord(module_name)::in, cord(module_name)::out,
+    cord(module_name)::in, cord(module_name)::out) is det.
+
+get_avail_modules_anywhere_interface([],
+        !AvailAnywhereCord, !AvailInterfaceCord).
+get_avail_modules_anywhere_interface([ModuleEntry | ModuleEntries],
+        !AvailAnywhereCord, !AvailInterfaceCord) :-
+    ModuleEntry = ModuleName - Entry,
+    Entry = avail_module_entry(Section, _ImportOrUse, _Context),
+    !:AvailAnywhereCord = cord.snoc(!.AvailAnywhereCord, ModuleName),
+    (
+        Section = ms_interface,
+        !:AvailInterfaceCord = cord.snoc(!.AvailInterfaceCord, ModuleName)
     ;
-        true
+        Section = ms_implementation
+    ),
+    get_avail_modules_anywhere_interface(ModuleEntries,
+        !AvailAnywhereCord, !AvailInterfaceCord).
+
+:- pred maybe_warn_about_avail(module_name::in,
+    set(module_name)::in, set(module_name)::in,
+    module_name::in, avail_module_entry::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_warn_about_avail(TopModuleName,
+        UnusedAnywhereImports, UnusedInterfaceImports,
+        ModuleName, AvailEntry, !Specs) :-
+    AvailEntry = avail_module_entry(Section, ImportOrUse, Avails),
+    list.sort(compare_avails, Avails, SortedAvails),
+    (
+        SortedAvails = []
+    ;
+        SortedAvails = [HeadAvail | _],
+        HeadAvail = avail_module(_, _, HeadContext),
+        maybe_generate_redundant_avail_warnings(ModuleName, SortedAvails,
+            [], !Specs),
+        ( if
+            set.member(ModuleName, UnusedAnywhereImports)
+        then
+            AnywhereSpec = generate_unused_warning(TopModuleName,
+                ModuleName, ImportOrUse, HeadContext, aoi_anywhere),
+            !:Specs = [AnywhereSpec | !.Specs],
+            AnywhereWarning = yes
+        else
+            AnywhereWarning = no
+        ),
+        % Do not generate a report that a module is unused in the interface
+        % if we have generated a report that it is unused *anywhere*.
+        ( if
+            Section = ms_interface,
+            set.member(ModuleName, UnusedInterfaceImports),
+            AnywhereWarning = no
+        then
+            InterfaceSpec = generate_unused_warning(TopModuleName,
+                ModuleName, ImportOrUse, HeadContext, aoi_interface),
+            !:Specs = [InterfaceSpec | !.Specs]
+        else
+            true
+        )
     ).
 
-:- func generate_warning(module_name, string, list(module_name), string)
-    = error_spec.
+:- pred compare_avails(avail_module::in, avail_module::in,
+    comparison_result::out) is det.
 
-generate_warning(ModuleName, FileName, UnusedImports, Location) = Spec :-
-    term.context_init(FileName, 1, Context),
-    ModuleWord = choose_number(UnusedImports, "module", "modules"),
-    IsOrAre = is_or_are(UnusedImports),
-
-    ( Location = "" ->
-        InThe = "",
-        LocationOf = ""
+compare_avails(AvailA, AvailB, Result) :-
+    % Put interface before implementation, and import before use,
+    % so that less general entries (entries that grant fewer permissions)
+    % are always *after* more general entries.
+    AvailA = avail_module(SectionA, ImportOrUseA, ContextA),
+    AvailB = avail_module(SectionB, ImportOrUseB, ContextB),
+    (
+        SectionA = ms_interface,
+        SectionB = ms_implementation,
+        Result = (>)
     ;
-        InThe = " in the",
-        LocationOf = Location ++ " of"
-    ),
+        SectionA = ms_implementation,
+        SectionB = ms_interface,
+        Result = (>)
+    ;
+        ( SectionA = ms_interface, SectionB = ms_interface
+        ; SectionA = ms_implementation, SectionB = ms_implementation
+        ),
+        (
+            ImportOrUseA = import_decl,
+            ImportOrUseB = use_decl,
+            Result = (>)
+        ;
+            ImportOrUseA = use_decl,
+            ImportOrUseB = import_decl,
+            Result = (>)
+        ;
+            ( ImportOrUseA = import_decl, ImportOrUseB = import_decl
+            ; ImportOrUseA = use_decl, ImportOrUseB = use_decl
+            ),
+            compare(Result, ContextA, ContextB)
+        )
+    ).
 
-    UnusedSymNames = list.map(wrap_module_name, UnusedImports),
-    Pieces = [words("In " ++ LocationOf ++ " module" ), sym_name(ModuleName),
-        suffix(":"), nl,
-        words("warning:"), words(ModuleWord)] ++
-        component_list_to_pieces(UnusedSymNames) ++
-        [fixed(IsOrAre), words("imported, "),
-        words("but"), fixed(IsOrAre),
-        words("not used" ++ InThe ++ Location ++ ".")],
+:- pred maybe_generate_redundant_avail_warnings(module_name::in,
+    list(avail_module)::in, list(avail_module)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_generate_redundant_avail_warnings(_ModuleName, [], _, !Specs).
+maybe_generate_redundant_avail_warnings(ModuleName, [Avail | Avails],
+        !.PrevAvails, !Specs) :-
+    list.foldl(add_msg_if_avail_as_general(ModuleName, Avail), !.PrevAvails,
+        [], PrevMsgs),
+    (
+        PrevMsgs = [],
+        % O(n^2), but the usual value of n is *very* small.
+        !:PrevAvails = !.PrevAvails ++ [Avail]
+    ;
+        PrevMsgs = [_ | _],
+        Avail = avail_module(_Section, ImportOrUse, Context),
+        DeclName = import_or_use_decl_name(ImportOrUse),
+        MainPieces = [words("This"), decl(DeclName), words("declaration"),
+            words("for"), sym_name(ModuleName), words("is redundant."), nl],
+        MainMsg = simple_msg(Context, [always(MainPieces)]),
+        Spec = error_spec(severity_informational, phase_code_gen,
+            [MainMsg | PrevMsgs]),
+        !:Specs = [Spec | !.Specs]
+    ),
+    maybe_generate_redundant_avail_warnings(ModuleName, Avails,
+        !.PrevAvails, !Specs).
+
+    % add_msg_if_avail_as_general(ModuleName, ThisAvail, PrevAvail, !Msgs):
+    %
+    % If PrevEntry is at least as general as ThisEntry, add a message
+    % about PrevEntry being a previous import or use declaration
+    % for ModuleName to !Msgs.
+    %
+:- pred add_msg_if_avail_as_general(module_name::in,
+    avail_module::in, avail_module::in,
+    list(error_msg)::in, list(error_msg)::out) is det.
+
+add_msg_if_avail_as_general(ModuleName, ThisAvail, PrevAvail, !Msgs) :-
+    ThisAvail = avail_module(ThisSection, ThisImportOrUse, _ThisContext),
+    PrevAvail = avail_module(PrevSection, PrevImportOrUse, PrevContext),
+    ( if
+        (
+            % Does this entry grant extra permissions about where ModuleName
+            % may be used?
+            PrevSection = ms_implementation,
+            ThisSection = ms_interface
+        ;
+            % Does this entry grant extra permissions about the use of
+            % ModuleName without explicit qualification?
+            PrevImportOrUse = use_decl,
+            ThisImportOrUse = import_decl
+        )
+    then
+        true
+    else
+        DeclName = import_or_use_decl_name(PrevImportOrUse),
+        Pieces = [words("This is the location of the previous"),
+            decl(DeclName), words("declaration"),
+            words("for module"), sym_name(ModuleName),
+            words("that makes this one redundant."), nl],
+        Msg = simple_msg(PrevContext, [always(Pieces)]),
+        !:Msgs = [Msg | !.Msgs]
+    ).
+
+:- type anywhere_or_interface
+    --->    aoi_anywhere
+    ;       aoi_interface.
+
+:- func generate_unused_warning(module_name, module_name, import_or_use,
+    prog_context, anywhere_or_interface) = error_spec.
+
+generate_unused_warning(TopModuleName, UnusedModuleName, ImportOrUse,
+        Context, AnywhereOrInterface) = Spec :-
+    (
+        AnywhereOrInterface = aoi_anywhere,
+        DeclInTheLocn = "",
+        NotUsedInTheLocn = "anywhere in the module"
+    ;
+        AnywhereOrInterface = aoi_interface,
+        DeclInTheLocn = "in the interface",
+        NotUsedInTheLocn = "in the interface"
+    ),
+    ImportOrUseDeclName = import_or_use_decl_name(ImportOrUse),
+    Pieces = [words("In module" ), sym_name(TopModuleName), suffix(":"), nl,
+        words("warning: module"), sym_name(UnusedModuleName),
+        words("has a"), decl(ImportOrUseDeclName),
+        words("declaration"), words(DeclInTheLocn), suffix(","),
+        words("but is not used"), words(NotUsedInTheLocn), suffix("."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_warning, phase_code_gen, [Msg]).
-
-%-----------------------------------------------------------------------------%
-
-:- func wrap_module_name(module_name) = format_component.
-
-wrap_module_name(SymName) = sym_name(SymName).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -181,7 +335,11 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
     map.foldl(class_used_modules, ClassTable, !UsedModules),
 
     module_info_get_instance_table(ModuleInfo, InstanceTable),
-    map.foldl(instance_used_modules, InstanceTable, !UsedModules),
+    map.foldl(class_instances_used_modules, InstanceTable, !UsedModules),
+
+    module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+    const_struct_db_get_structs(ConstStructDb, ConstStructs),
+    list.foldl(const_struct_used_modules, ConstStructs, !UsedModules),
 
     module_info_get_preds(ModuleInfo, PredTable),
     map.foldl(pred_info_used_modules, PredTable, !UsedModules).
@@ -301,31 +459,75 @@ class_used_modules(class_id(Name, _Arity), ClassDefn, !UsedModules) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred instance_used_modules(class_id::in, list(hlds_instance_defn)::in,
+:- pred class_instances_used_modules(class_id::in,
+    list(hlds_instance_defn)::in, used_modules::in, used_modules::out) is det.
+
+class_instances_used_modules(ClassId, InstanceDefns, !UsedModules) :-
+    list.foldl(instance_used_modules(ClassId), InstanceDefns, !UsedModules).
+
+:- pred instance_used_modules(class_id::in, hlds_instance_defn::in,
     used_modules::in, used_modules::out) is det.
 
-instance_used_modules(ClassId, InstanceDefns, !UsedModules) :-
-    list.foldl(instance_used_modules_2(ClassId), InstanceDefns, !UsedModules).
+instance_used_modules(ClassId, InstanceDefn, !UsedModules) :-
+    ClassId = class_id(Name, _Arity), 
+    InstanceDefn = hlds_instance_defn(_InstanceModule, ImportStatus,
+        _Context, Constraints, Types, _OriginalTypes, _Body,
+        _MaybePredProcIds, _VarSet, _ProofMap),
 
-:- pred instance_used_modules_2(class_id::in, hlds_instance_defn::in,
-    used_modules::in, used_modules::out) is det.
+    Visibility = item_visibility(ImportStatus),
+    % XXX When it sees an abstract instance declaration, the code of
+    % add_pass_2_instance makes the status of the instance abstract,
+    % but it does so by effectively setting ImportStatus to abstract_imported,
+    % the second half of which is a lie.
+    %
+    % We should process Name and Types only if the instance is defined
+    % in this module, but we cannot trust the value of DefinedInThisModule
+    % in these cases. Since it is better to miss some warnings than to
+    % generate warnings for perfectly good code, we always process them.
+    %
+    % The Constraints will be empty for instances in which DefinedInThisModule
+    % is wrong, so it is OK to traverse them only if DefinedInThisModule = yes.
+    record_sym_name_module_as_used(Visibility, Name, !UsedModules),
+    list.foldl(mer_type_used_modules(Visibility), Types, !UsedModules),
 
-instance_used_modules_2(class_id(Name, _Arity), InstanceDefn, !UsedModules) :-
-    ImportStatus = InstanceDefn ^ instance_status,
     DefinedInThisModule = status_defined_in_this_module(ImportStatus),
     (
         DefinedInThisModule = yes,
         % The methods of the class are stored in the pred_table and hence
         % will be processed by pred_info_used_modules.
         % XXX is this true?
-        Visibility = item_visibility(ImportStatus),
-        record_sym_name_module_as_used(Visibility, Name, !UsedModules),
-        list.foldl(prog_constraint_used_module(Visibility),
-            InstanceDefn ^ instance_constraints, !UsedModules),
-        list.foldl(mer_type_used_modules(Visibility),
-            InstanceDefn ^ instance_types, !UsedModules)
+        list.foldl(prog_constraint_used_module(Visibility), Constraints,
+            !UsedModules)
     ;
         DefinedInThisModule = no
+    ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- pred const_struct_used_modules(pair(int, const_struct)::in,
+    used_modules::in, used_modules::out) is det.
+
+const_struct_used_modules(_ConstNum - ConstStruct, !UsedModules) :-
+    % Every const_struct in the const_struct_db was put there because
+    % it is used in module. None of the uses can be in the interface.
+
+    ConstStruct = const_struct(ConsId, ConstStructArgs, Type, Inst),
+    cons_id_used_modules(visibility_private, ConsId, !UsedModules),
+    list.foldl(const_struct_arg_used_modules, ConstStructArgs, !UsedModules),
+    mer_type_used_modules(visibility_private, Type, !UsedModules),
+    mer_inst_used_modules(visibility_private, Inst, !UsedModules).
+
+:- pred const_struct_arg_used_modules(const_struct_arg::in,
+    used_modules::in, used_modules::out) is det.
+
+const_struct_arg_used_modules(ConstStructArg, !UsedModules) :-
+    (
+        ConstStructArg = csa_const_struct(_ConstNum)
+    ;
+        ConstStructArg = csa_constant(ConsId, Type),
+        cons_id_used_modules(visibility_private, ConsId, !UsedModules),
+        mer_type_used_modules(visibility_private, Type, !UsedModules)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -395,15 +597,16 @@ clause_used_modules(Clause, !UsedModules) :-
 hlds_goal_used_modules(Goal, !UsedModules) :-
     Goal = hlds_goal(GoalExpr, _),
     (
-        GoalExpr = unify(_, Rhs, _, _, _),
-        unify_rhs_used_modules(Rhs, !UsedModules)
+        GoalExpr = unify(_, RHS, _, _, _),
+        unify_rhs_used_modules(RHS, !UsedModules)
     ;
         GoalExpr = plain_call(_, _, _, _, _, SymName),
-        record_sym_name_module_as_used(visibility_private, SymName, !UsedModules),
+        record_sym_name_module_as_used(visibility_private, SymName,
+            !UsedModules),
         Name = unqualify_name(SymName),
-        ( Name = "format" ->
+        ( if Name = "format" then
             record_format_modules_as_used(!UsedModules)
-        ;
+        else
             true
         )
     ;
@@ -473,12 +676,16 @@ case_used_modules(Case, !UsedModules) :-
 :- pred unify_rhs_used_modules(unify_rhs::in,
     used_modules::in, used_modules::out) is det.
 
-unify_rhs_used_modules(rhs_var(_), !UsedModules).
-unify_rhs_used_modules(rhs_functor(ConsId, _, _), !UsedModules) :-
-    cons_id_used_modules(visibility_private, ConsId, !UsedModules).
-unify_rhs_used_modules(rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
-        !UsedModules) :-
-    hlds_goal_used_modules(Goal, !UsedModules).
+unify_rhs_used_modules(RHS, !UsedModules) :-
+    (
+        RHS = rhs_var(_)
+    ;
+        RHS = rhs_functor(ConsId, _, _),
+        cons_id_used_modules(visibility_private, ConsId, !UsedModules)
+    ;
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
+        hlds_goal_used_modules(Goal, !UsedModules)
+    ).
 
 :- pred cons_id_used_modules(item_visibility::in, cons_id::in,
     used_modules::in, used_modules::out) is det.
@@ -519,32 +726,46 @@ cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 mer_type_used_modules(Visibility, Type, !UsedModules) :-
-    mer_type_used_modules_2(Visibility, Type, !UsedModules).
-
-:- pred mer_type_used_modules_2(item_visibility::in, mer_type::in,
-    used_modules::in, used_modules::out) is det.
-
-mer_type_used_modules_2(_Status, type_variable(_, _), !UsedModules).
-mer_type_used_modules_2(Visibility, defined_type(Name, Args, _),
-        !UsedModules) :-
-    record_sym_name_module_as_used(Visibility, Name, !UsedModules),
-    list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules).
-mer_type_used_modules_2(_Status, builtin_type(_), !UsedModules).
-mer_type_used_modules_2(Visibility,
-        higher_order_type(Args, MaybeReturn, _, _), !UsedModules) :-
-    list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules),
     (
-        MaybeReturn = yes(Return),
-        mer_type_used_modules(Visibility, Return, !UsedModules)
+        Type = type_variable(_, _)
     ;
-        MaybeReturn = no
+        Type = defined_type(Name, Args, _),
+        record_sym_name_module_as_used(Visibility, Name, !UsedModules),
+        list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules)
+    ;
+        Type = builtin_type(BuiltinType),
+        (
+            ( BuiltinType = builtin_type_int
+            ; BuiltinType = builtin_type_float
+            ; BuiltinType = builtin_type_string
+            )
+            % You don't need to import int.m, float.m or string.m to use these.
+        ;
+            BuiltinType = builtin_type_char,
+            % You *do* need to import char.m to use these.
+            CharModuleName = mercury_std_lib_module_name(unqualified("char")),
+            record_module_and_ancestors_as_used(Visibility, CharModuleName,
+                !UsedModules)
+        )
+    ;
+        Type = higher_order_type(Args, MaybeReturn, _, _),
+        list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules),
+        (
+            MaybeReturn = yes(Return),
+            mer_type_used_modules(Visibility, Return, !UsedModules)
+        ;
+            MaybeReturn = no
+        )
+    ;
+        Type = tuple_type(ArgTypes, _),
+        list.foldl(mer_type_used_modules(Visibility), ArgTypes, !UsedModules)
+    ;
+        Type = apply_n_type(_, ArgTypes, _),
+        list.foldl(mer_type_used_modules(Visibility), ArgTypes, !UsedModules)
+    ;
+        Type = kinded_type(ArgType, _),
+        mer_type_used_modules(Visibility, ArgType, !UsedModules)
     ).
-mer_type_used_modules_2(Visibility, tuple_type(Args, _), !UsedModules) :-
-    list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules).
-mer_type_used_modules_2(Visibility, apply_n_type(_, Args, _), !UsedModules) :-
-    list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules).
-mer_type_used_modules_2(Visibility, kinded_type(Arg, _), !UsedModules) :-
-    mer_type_used_modules(Visibility, Arg, !UsedModules).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -552,13 +773,16 @@ mer_type_used_modules_2(Visibility, kinded_type(Arg, _), !UsedModules) :-
 :- pred mer_mode_used_modules(item_visibility::in, mer_mode::in,
     used_modules::in, used_modules::out) is det.
 
-mer_mode_used_modules(Visibility, Inst0 -> Inst, !UsedModules) :-
-    mer_inst_used_modules(Visibility, Inst0, !UsedModules),
-    mer_inst_used_modules(Visibility, Inst, !UsedModules).
-mer_mode_used_modules(Visibility, user_defined_mode(Name, Insts),
-        !UsedModules) :-
-    record_sym_name_module_as_used(Visibility, Name, !UsedModules),
-    list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules).
+mer_mode_used_modules(Visibility, Mode, !UsedModules) :-
+    (
+        Mode = (Inst0 -> Inst),
+        mer_inst_used_modules(Visibility, Inst0, !UsedModules),
+        mer_inst_used_modules(Visibility, Inst, !UsedModules)
+    ;
+        Mode = user_defined_mode(Name, Insts),
+        record_sym_name_module_as_used(Visibility, Name, !UsedModules),
+        list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules)
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -602,18 +826,21 @@ mer_inst_used_modules(Visibility, Inst, !UsedModules) :-
 :- pred bound_inst_info_used_modules(item_visibility::in, bound_inst::in,
     used_modules::in, used_modules::out) is det.
 
-bound_inst_info_used_modules(Visibility, bound_functor(ConsId, Insts),
-        !UsedModules) :-
+bound_inst_info_used_modules(Visibility, BoundFunctor, !UsedModules) :-
+    BoundFunctor = bound_functor(ConsId, Insts),
     cons_id_used_modules(Visibility, ConsId, !UsedModules),
     list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules).
 
 :- pred ho_inst_info_used_modules(item_visibility::in,
     ho_inst_info::in, used_modules::in, used_modules::out) is det.
 
-ho_inst_info_used_modules(Visibility,
-        higher_order(pred_inst_info(_, Modes, _, _)), !UsedModules) :-
-    list.foldl(mer_mode_used_modules(Visibility), Modes, !UsedModules).
-ho_inst_info_used_modules(_, none, !UsedModules).
+ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules) :-
+    (
+        HOInstInfo = higher_order(pred_inst_info(_, Modes, _, _)),
+        list.foldl(mer_mode_used_modules(Visibility), Modes, !UsedModules)
+    ;
+        HOInstInfo = none
+    ).
 
 %-----------------------------------------------------------------------------%
 

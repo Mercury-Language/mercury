@@ -33,7 +33,7 @@ MCFLAGS-ii_parent = 		--no-intermodule-optimization
 MCFLAGS-ii_parent.ii_child =	--no-intermodule-optimization
 MCFLAGS-illtyped_compare =	--no-intermodule-optimization \
 				--verbose-error-messages
-MCFLAGS-import_in_parent =	--no-intermodule-optimization
+MCFLAGS-import_in_parent =	--no-intermodule-optimization --warn-unused-imports
 MCFLAGS-import_in_parent.sub =	--no-intermodule-optimization
 MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization
 MCFLAGS-impure_method_impl =	--no-intermodule-optimization \

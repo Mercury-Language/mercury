@@ -177,7 +177,6 @@
 :- implementation.
 
 :- import_module libs.options.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_item.
 :- import_module parse_tree.prog_io_sym_name.
@@ -193,7 +192,6 @@
 :- import_module parser.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.

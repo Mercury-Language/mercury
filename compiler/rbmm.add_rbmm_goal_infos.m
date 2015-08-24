@@ -66,7 +66,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.
-:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.rbmm.points_to_graph.
@@ -78,7 +77,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 
 %-----------------------------------------------------------------------------%
 %

@@ -509,7 +509,6 @@
 :- import_module char.
 :- import_module cord.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module pair.
 :- import_module require.

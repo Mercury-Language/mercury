@@ -520,6 +520,10 @@
     --->    import_decl
     ;       use_decl.
 
+    % Return "import_module" or "use_module", depending on the argument.
+    %
+:- func import_or_use_decl_name(import_or_use) = string.
+
     % The representation of an `:- import_module' or an `:- % use_module'
     % declaration is a list of one or more item_import_uses, each of which
     % makes available to the current module the entities in the interface
@@ -1192,7 +1196,6 @@
 
 :- import_module parse_tree.prog_foreign.
 
-:- import_module cord.
 :- import_module map.
 :- import_module require.
 
@@ -1344,6 +1347,9 @@ avail_import_info_module_name(AvailImportInfo) = ModuleName :-
 
 avail_use_info_module_name(AvailUseInfo) = ModuleName :-
     AvailUseInfo = avail_use_info(ModuleName, _, _).
+
+import_or_use_decl_name(import_decl) = "import_module".
+import_or_use_decl_name(use_decl) = "use_module".
 
 %-----------------------------------------------------------------------------%
 %

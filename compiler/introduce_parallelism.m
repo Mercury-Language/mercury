@@ -58,7 +58,6 @@
 :- import_module transform_hlds.implicit_parallelism.push_goals_together.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

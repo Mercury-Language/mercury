@@ -81,7 +81,6 @@
 :- import_module parse_tree.status.
 
 :- import_module bool.
-:- import_module list.
 :- import_module map.
 :- import_module require.
 

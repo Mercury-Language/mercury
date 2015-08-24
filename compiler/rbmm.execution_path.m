@@ -40,7 +40,6 @@
 
 :- import_module pair.
 :- import_module require.
-:- import_module string.
 :- import_module list.
 :- import_module map.
 

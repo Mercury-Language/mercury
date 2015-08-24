@@ -126,7 +126,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module term_io.
-:- import_module type_desc.
 
     % A type_info can be represented in one of three ways
     % For a type with arity 0

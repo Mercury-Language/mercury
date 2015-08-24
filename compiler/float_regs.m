@@ -160,7 +160,6 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.lambda.
 
 :- import_module assoc_list.

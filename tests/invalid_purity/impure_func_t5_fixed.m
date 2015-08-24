@@ -14,10 +14,6 @@
 
 :- implementation.
 
-:- import_module int.
-:- import_module list.
-:- import_module require.
-
 :- type foo
     --->    foo(impure func(int) = int).
 

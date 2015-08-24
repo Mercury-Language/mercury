@@ -143,7 +143,6 @@
 :- implementation.
 
 :- import_module mdb.browser_info.
-:- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_execution.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.

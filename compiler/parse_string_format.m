@@ -24,6 +24,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module string.parse_util.
+:- import_module char.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -103,9 +104,7 @@
 :- implementation.
 
 :- import_module bool.
-:- import_module float.
 :- import_module int.
-:- import_module integer.
 :- import_module maybe.
 :- import_module require.
 

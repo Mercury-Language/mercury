@@ -13,7 +13,6 @@
 :- module solv.
 :- interface.
 
-:- import_module int.
 :- import_module io.
 :- import_module list.
 

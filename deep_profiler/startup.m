@@ -50,7 +50,6 @@
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.shared_utilities.
 :- import_module measurements.
-:- import_module profile.
 :- import_module read_profile.
 
 :- import_module array.

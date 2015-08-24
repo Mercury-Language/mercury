@@ -29,7 +29,6 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_data.
-:- import_module mdbcomp.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.

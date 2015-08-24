@@ -115,14 +115,12 @@
 :- import_module hlds.special_pred.
 :- import_module hlds.vartypes.
 :- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
-:- import_module parse_tree.item_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
@@ -146,7 +144,6 @@
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
-:- import_module term_io.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -1296,14 +1293,11 @@ write_intermod_info_body(IntermodInfo, !IO) :-
     set.to_sorted_list(Preds0, Preds),
     set.to_sorted_list(PredDecls0, PredDecls),
 
-    module_info_get_imported_module_names(ModuleInfo, UsedModules),
-    % XXX UsedModules could and should be reduced to the set of modules
-    % that are actually needed by the items being written.
-    ( if set.is_empty(UsedModules) then
-        true
-    else
-        set.fold(intermod_write_use_module, UsedModules, !IO)
-    ),
+    module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
+    % XXX We could and should reduce AvailModules to the set of modules
+    % that are *actually needed* by the items being written.
+    map.keys(AvailModuleMap, AvailModuleNames),
+    list.foldl(intermod_write_use_module, AvailModuleNames, !IO),
 
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo0 = init_hlds_out_info(Globals, output_mercury),

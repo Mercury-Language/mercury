@@ -12,7 +12,6 @@
 
 :- implementation.
 
-:- import_module assoc_list.
 :- import_module benchmarking.
 :- import_module int.
 :- import_module list.

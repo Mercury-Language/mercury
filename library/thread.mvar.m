@@ -79,7 +79,6 @@
 
 :- implementation.
 
-:- import_module bool.
 :- import_module mutvar.
 :- import_module thread.semaphore.
 

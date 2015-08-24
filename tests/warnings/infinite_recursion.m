@@ -11,7 +11,6 @@
 
 :- implementation.
 :- import_module list.
-:- import_module std_util.
 
 main -->
     ( { funny_append([1, 2, 3], [4, 5, 6], [5, 6, 7]) } ->

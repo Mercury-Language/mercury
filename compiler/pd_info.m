@@ -118,17 +118,13 @@
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.modecheck_util.
-:- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.pd_debug.
 :- import_module transform_hlds.pd_util.
 
-:- import_module bool.
 :- import_module int.
 :- import_module require.
 :- import_module term.

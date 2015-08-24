@@ -53,6 +53,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module bag.
 :- import_module cord.
 :- import_module int.

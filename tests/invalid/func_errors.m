@@ -5,7 +5,6 @@
 :- module func_errors.
 
 :- interface.
-:- import_module int.
 
 % it is an error to only declare some of the modes
 
@@ -20,6 +19,7 @@
 :- pred q(int::in, int, int) is semidet.
 
 :- implementation.
+:- import_module int.
 
 % foo(X, Y) = X + Y :- X > 0.
 % bar(X, Y) = X + Y :- X > 0.

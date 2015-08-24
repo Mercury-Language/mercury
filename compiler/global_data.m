@@ -153,8 +153,6 @@
 
 :- implementation.
 
-:- import_module ll_backend.layout.
-
 :- import_module assoc_list.
 :- import_module bimap.
 :- import_module counter.

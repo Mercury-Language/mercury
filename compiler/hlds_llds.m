@@ -307,7 +307,6 @@
 :- implementation.
 
 :- import_module assoc_list.
-:- import_module list.
 :- import_module pair.
 :- import_module require.
 :- import_module string.

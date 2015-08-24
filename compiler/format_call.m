@@ -166,20 +166,15 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
-:- import_module char.
 :- import_module counter.
-:- import_module exception.
 :- import_module getopt_io.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module set_tree234.
 :- import_module string.
 :- import_module string.parse_util.
 :- import_module term.
-:- import_module univ.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%

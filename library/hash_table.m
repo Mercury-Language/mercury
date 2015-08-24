@@ -5,33 +5,31 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: hash_table.m.
 % Main author: rafe, wangp.
 % Stability: low.
-% 
+%
 % Hash table implementation.
 %
 % This implementation requires the user to supply a predicate that
-% will compute a hash value for any given key.
+% computes a hash value for any given key.
 %
-% Default hash functions are provided for ints, strings and generic
-% values.
+% Default hash functions are provided for ints, strings and generic values.
 %
 % The number of buckets in the hash table is always a power of 2.
 %
-% When a user set occupancy level is achieved, the number of buckets
-% in the table is doubled and the previous contents reinserted into
-% the new hash table.
+% When the occupancy reaches a level set by the user, we create automatically
+% a new hash table with double the number of buckets, insert the contents
+% of the old table into it, and use it to replace the old one.
 %
-% CAVEAT: the user is referred to the warning at the head of array.m
-% with regard to the current use of unique objects.  Briefly, the
-% problem is that the compiler does not yet properly understand
-% unique modes, hence we fake it using non-unique modes.
+% CAVEAT: The warning at the head of array.m about the use of unique objects
+% also applies here. Briefly, the problem is that the compiler does not yet
+% properly understand unique modes, hence we fake it using non-unique modes.
 % This means that care must be taken not to use an old version of a
 % destructively updated structure (such as a hash_table) since the
 % compiler will not currently detect such errors.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -56,17 +54,17 @@
 :- type hash_pred(K) == ( pred(K, int) ).
 :- inst hash_pred    == ( pred(in, out) is det ).
 
-    % init(HashPred, N, MaxOccupancy)
-    % constructs a new hash table with initial size 2 ^ N that is
-    % doubled whenever MaxOccupancy is achieved; elements are
+    % init(HashPred, N, MaxOccupancy):
+    %
+    % Constructs a new hash table whose initial size is 2 ^ N, and whose
+    % size is doubled whenever MaxOccupancy is achieved. Elements are
     % indexed using HashPred.
     %
     % HashPred must compute a hash for a given key.
     % N must be greater than 0.
     % MaxOccupancy must be in (0.0, 1.0).
     %
-    % XXX Values too close to the limits may cause bad things
-    % to happen.
+    % XXX Values too close to the limits may cause bad things to happen.
     %
 :- func init(hash_pred(K), int, float) = hash_table(K, V).
 :- mode init(in(hash_pred), in, in) = hash_table_uo is det.
@@ -106,13 +104,13 @@
     %
 :- func num_buckets(hash_table(K, V)) = int.
 :- mode num_buckets(hash_table_ui) = out is det.
-%:- mode num_buckets(in) = out is det.
+% :- mode num_buckets(in) = out is det.
 
     % Returns the number of occupants in a hash table.
     %
 :- func num_occupants(hash_table(K, V)) = int.
 :- mode num_occupants(hash_table_ui) = out is det.
-%:- mode num_occupants(in) = out is det.
+% :- mode num_occupants(in) = out is det.
 
     % Copy the hash table.
     %
@@ -122,9 +120,8 @@
 :- func copy(hash_table(K, V)) = hash_table(K, V).
 :- mode copy(hash_table_ui) = hash_table_uo is det.
 
-    % Insert key-value binding into a hash table; if one is
-    % already there then the previous value is overwritten.
-    % A predicate version is also provided.
+    % Insert key-value binding into a hash table; if one is already there,
+    % then overwrite the previous value.
     %
 :- func set(hash_table(K, V), K, V) = hash_table(K, V).
 :- mode set(hash_table_di, in, in) = hash_table_uo is det.
@@ -133,14 +130,13 @@
     hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo) is det.
 
     % Field update for hash tables.
-    % HT ^ elem(K) := V  is equivalent to  set(HT, K, V).
+    % HT ^ elem(K) := V is equivalent to set(HT, K, V).
     %
 :- func 'elem :='(K, hash_table(K, V), V) = hash_table(K, V).
 :- mode 'elem :='(in, hash_table_di, in) = hash_table_uo is det.
 
-    % Insert a key-value binding into a hash table.  An
-    % exception is thrown if a binding for the key is already
-    % present.  A predicate version is also provided.
+    % Insert a key-value binding into a hash table. Throw an exception
+    % if a binding for the key is already present.
     %
 :- func det_insert(hash_table(K, V), K, V) = hash_table(K, V).
 :- mode det_insert(hash_table_di, in, in) = hash_table_uo is det.
@@ -148,9 +144,8 @@
 :- pred det_insert(K::in, V::in,
     hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo) is det.
 
-    % Change a key-value binding in a hash table.  An
-    % exception is thrown if a binding for the key does not
-    % already exist.  A predicate version is also provided.
+    % Change a key-value binding in a hash table. Throw an exception
+    % if a binding for the key does not already exist.
     %
 :- func det_update(hash_table(K, V), K, V) = hash_table(K, V).
 :- mode det_update(hash_table_di, in, in) = hash_table_uo is det.
@@ -159,8 +154,7 @@
     hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo) is det.
 
     % Delete the entry for the given key, leaving the hash table
-    % unchanged if there is no such entry.  A predicate version is also
-    % provided.
+    % unchanged if there is no such entry.
     %
 :- func delete(hash_table(K, V), K) = hash_table(K, V).
 :- mode delete(hash_table_di, in) = hash_table_uo is det.
@@ -168,39 +162,39 @@
 :- pred delete(K::in,
     hash_table(K, V)::hash_table_di, hash_table(K, V)::hash_table_uo) is det.
 
-    % Lookup the value associated with the given key.  An exception
-    % is raised if there is no entry for the key.
+    % Lookup the value associated with the given key. Throw an exception
+    % if there is no entry for the key.
     %
 :- func lookup(hash_table(K, V), K) = V.
 :- mode lookup(hash_table_ui, in) = out is det.
-%:- mode lookup(in, in) = out is det.
+% :- mode lookup(in, in) = out is det.
 
     % Field access for hash tables.
-    % HT ^ elem(K)  is equivalent to  lookup(HT, K).
+    % HT ^ elem(K) is equivalent to lookup(HT, K).
     %
 :- func elem(K, hash_table(K, V)) = V.
 :- mode elem(in, hash_table_ui) = out is det.
-%:- mode elem(in, in) = out is det.
+% :- mode elem(in, in) = out is det.
 
     % Like lookup, but just fails if there is no entry for the key.
     %
 :- func search(hash_table(K, V), K) = V.
 :- mode search(hash_table_ui, in) = out is semidet.
-%:- mode search(in, in, out) is semidet.
+% :- mode search(in, in, out) is semidet.
 
 :- pred search(hash_table(K, V), K, V).
 :- mode search(hash_table_ui, in, out) is semidet.
-%:- mode search(in, in, out) is semidet.
+% :- mode search(in, in, out) is semidet.
 
     % Convert a hash table into an association list.
     %
 :- func to_assoc_list(hash_table(K, V)) = assoc_list(K, V).
 :- mode to_assoc_list(hash_table_ui) = out is det.
-%:- mode to_assoc_list(in) = out is det.
+% :- mode to_assoc_list(in) = out is det.
 
     % from_assoc_list(HashPred, N, MaxOccupancy, AssocList) = Table:
     %
-    % Convert an association list into a hash table.  The first three
+    % Convert an association list into a hash table. The first three
     % parameters are the same as for init/3 above.
     %
 :- func from_assoc_list(hash_pred(K), int, float, assoc_list(K, V)) =
@@ -248,7 +242,6 @@
 :- import_module list.
 :- import_module pair.
 :- import_module string.
-:- import_module type_desc.
 :- import_module univ.
 
 %---------------------------------------------------------------------------%
@@ -277,9 +270,9 @@
 
 :- type buckets(K, V) == array(hash_table_alist(K, V)).
 
-    % Assuming a decent hash function, there should be few collisions so each
-    % bucket will usually contain an empty list or a singleton.  Including a
-    % singleton constructor therefore reduces memory consumption.
+    % Assuming a decent hash function, there should be few collisions,
+    % so each bucket will usually contain an empty list or a singleton.
+    % Including a singleton constructor therefore reduces memory consumption.
     %
 :- type hash_table_alist(K, V)
     --->    ht_nil
@@ -289,19 +282,19 @@
 %---------------------------------------------------------------------------%
 
 init(HashPred, N, MaxOccupancy) = HT :-
-    (      if N =< 0 then
-            throw(software_error("hash_table.init: N =< 0"))
-      else if N >= int.bits_per_int then
-            throw(software_error(
-                "hash_table.init: N >= int.bits_per_int"))
-      else if MaxOccupancy =< 0.0 then
-            throw(software_error(
-                "hash_table.init: MaxOccupancy =< 0.0"))
-      else
-            NumBuckets = 1 << N,
-            MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
-            Buckets = init(NumBuckets, ht_nil),
-            HT = ht(0, MaxOccupants, HashPred, Buckets)
+    ( if N =< 0 then
+        throw(software_error("hash_table.init: N =< 0"))
+    else if N >= int.bits_per_int then
+        throw(software_error(
+            "hash_table.init: N >= int.bits_per_int"))
+    else if MaxOccupancy =< 0.0 then
+        throw(software_error(
+            "hash_table.init: MaxOccupancy =< 0.0"))
+    else
+        NumBuckets = 1 << N,
+        MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
+        Buckets = init(NumBuckets, ht_nil),
+        HT = ht(0, MaxOccupants, HashPred, Buckets)
     ).
 
 new(HashPred, N, MaxOccupancy) = init(HashPred, N, MaxOccupancy).
@@ -321,7 +314,7 @@ num_buckets(HT) = size(HT ^ buckets).
 
 :- func find_slot(hash_table(K, V), K) = int.
 :- mode find_slot(hash_table_ui, in) = out is det.
-%:- mode find_slot(in, in) = out is det.
+% :- mode find_slot(in, in) = out is det.
 :- pragma inline(find_slot/2).
 
 find_slot(HT, K) = H :-
@@ -696,42 +689,27 @@ char_hash(C, H) :-
 
 %---------------------------------------------------------------------------%
 
-    % This, again, is straight off the top of my head.
-    %
 generic_hash(T, H) :-
-    ( if      dynamic_cast(T, Int) then
-
+    % This, again, is straight off the top of [rafe's] head.
+    %
+    ( if dynamic_cast(T, Int) then
         int_hash(Int, H)
-
-      else if dynamic_cast(T, String) then
-
+    else if dynamic_cast(T, String) then
         string_hash(String, H)
-
-      else if dynamic_cast(T, Float) then
-
+    else if dynamic_cast(T, Float) then
         float_hash(Float, H)
-
-      else if dynamic_cast(T, Char) then
-
+    else if dynamic_cast(T, Char) then
         char_hash(Char, H)
-
-      else if dynamic_cast(T, Univ) then
-
+    else if dynamic_cast(T, Univ) then
         generic_hash(univ_value(Univ), H)
-
-      else if dynamic_cast_to_array(T, Array) then
-
+    else if dynamic_cast_to_array(T, Array) then
         H = array.foldl(
-                ( func(X, HA0) = HA :-
-                    generic_hash(X, HX),
-                    munge(HX, HA0) = HA
-                ),
-                Array,
-                0
-            )
-
-      else
-
+            ( func(X, HA0) = HA :-
+                generic_hash(X, HX),
+                munge(HX, HA0) = HA
+            ),
+            Array, 0)
+    else
         deconstruct(T, canonicalize, FunctorName, Arity, Args),
         string_hash(FunctorName, H0),
         munge(Arity, H0) = H1,
@@ -740,9 +718,7 @@ generic_hash(T, H) :-
                 generic_hash(U, HUA),
                 munge(HUA, HA0) = HA
             ),
-            Args,
-            H1, H
-        )
+            Args, H1, H)
     ).
 
 %---------------------------------------------------------------------------%

@@ -13,8 +13,6 @@
 
 :- interface.
 
-:- import_module int.
-
 :- pred p(int::out) is det.
 
 :- implementation.

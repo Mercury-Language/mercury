@@ -100,7 +100,6 @@
 
 :- import_module bool.
 :- import_module require.
-:- import_module string.
 
 :- pragma foreign_decl("C", "
 #ifndef MR_HIGHLEVEL_CODE

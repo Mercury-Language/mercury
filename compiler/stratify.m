@@ -54,7 +54,6 @@
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.globals.

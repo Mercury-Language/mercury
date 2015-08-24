@@ -86,7 +86,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.

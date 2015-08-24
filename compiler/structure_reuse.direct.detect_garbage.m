@@ -40,7 +40,6 @@
 :- import_module hlds.vartypes.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.livedata.
 

@@ -70,8 +70,6 @@
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_event.
-:- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
@@ -91,17 +89,14 @@
 :- import_module transform_hlds.intermod.
 :- import_module transform_hlds.trans_opt.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module cord.
 :- import_module dir.
 :- import_module gc.
 :- import_module getopt_io.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.

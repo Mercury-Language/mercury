@@ -76,7 +76,6 @@
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.term_constr_data.
-:- import_module transform_hlds.term_constr_errors.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_constr_util.
 

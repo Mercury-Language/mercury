@@ -1340,21 +1340,12 @@
 :- include_module parse_runtime.
 :- include_module to_string.
 
-:- import_module array.
-:- import_module bitmap.
-:- import_module bool.
-:- import_module float.
 :- import_module int.
-:- import_module integer.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module std_util.
 :- import_module string.format.
 :- import_module string.to_string.
-:- import_module type_desc.
-:- import_module univ.
-:- import_module version_array.
 
 % Many routines in this module are implemented using foreign language code.
 

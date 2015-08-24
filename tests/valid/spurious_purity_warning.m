@@ -10,7 +10,6 @@
 
 :- implementation.
 :- import_module require.
-:- import_module std_util.
 
 foo(X::out) :-
     ( semidet_succeed ->

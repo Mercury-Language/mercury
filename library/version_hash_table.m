@@ -220,7 +220,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module type_desc.
 :- import_module unit.
 :- import_module univ.
 :- import_module version_array.

@@ -14,7 +14,7 @@
 %   Nicholas Nethercote. The Analysis Framework of HAL,
 %   Chapter 7: Inter-module Analysis, Master's Thesis,
 %   University of Melbourne, September 2001, revised April 2002.
-%   <http://www.cl.cam.ac.uk/~njn25/pubs/masters2001.ps.gz>.
+%   <http://njn.valgrind.org/pubs/masters2001.ps>.
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -74,7 +74,7 @@
             ) => analysis(FuncInfo, Call, Answer).
 
     % An analysis is defined by a type describing call patterns and
-    % a type defining answer patterns.  If the analysis needs to store
+    % a type defining answer patterns. If the analysis needs to store
     % more information about the function being analysed (e.g. arity)
     % it should be stored as part of the type for call patterns.
     %
@@ -271,10 +271,10 @@
     %   LocalModuleNames, !Info, !IO)
     %
     % This predicate should be called before any pass begins to use the
-    % analysis framework.  It ensures that all the analysis files
-    % are loaded so that lookups can be satisfied.  ImportedModuleNames is the
+    % analysis framework. It ensures that all the analysis files
+    % are loaded so that lookups can be satisfied. ImportedModuleNames is the
     % set of all modules that are directly or indirectly imported by the
-    % module being analysed.  LocalModuleNames is the set of non-"library"
+    % module being analysed. LocalModuleNames is the set of non-"library"
     % modules.
     %
 :- pred prepare_intermodule_analysis(globals::in, set(module_name)::in,
@@ -319,13 +319,11 @@
 :- include_module analysis.file.
 
 :- import_module analysis.file.
-:- import_module libs.
 :- import_module parse_tree.                % XXX unwanted dependency
 :- import_module parse_tree.module_cmds.    % XXX unwanted dependency
 
 :- import_module map.
 :- import_module require.
-:- import_module string.
 :- import_module type_desc.
 :- import_module univ.
 

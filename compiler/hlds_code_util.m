@@ -71,7 +71,6 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.

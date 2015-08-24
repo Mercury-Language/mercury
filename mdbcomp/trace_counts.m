@@ -188,7 +188,6 @@
 
 :- import_module exception.
 :- import_module int.
-:- import_module io.
 :- import_module lexer.
 :- import_module require.
 :- import_module string.

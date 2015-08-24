@@ -129,7 +129,6 @@
 :- implementation.
 
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.status.
 

@@ -34,7 +34,6 @@
 
 :- import_module hlds.hlds_goal.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module require.

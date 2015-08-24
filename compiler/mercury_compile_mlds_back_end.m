@@ -60,7 +60,6 @@
 :- import_module backend_libs.type_ctor_info.
 :- import_module hlds.mark_static_terms.            % HLDS -> HLDS
 :- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.add_trail_ops.          % HLDS -> HLDS
 :- import_module ml_backend.add_heap_ops.           % HLDS -> HLDS
@@ -74,13 +73,11 @@
 :- import_module ml_backend.mlds_to_cs.             % MLDS -> C#
 :- import_module ml_backend.mlds_to_ilasm.          % MLDS -> IL assembler
 :- import_module ml_backend.ml_util.                % MLDS utility predicates
-:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 
-:- import_module bool.
 :- import_module getopt_io.
 :- import_module list.
 :- import_module pprint.

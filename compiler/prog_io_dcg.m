@@ -52,10 +52,8 @@
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.prog_out.
 
 :- import_module counter.
-:- import_module pair.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

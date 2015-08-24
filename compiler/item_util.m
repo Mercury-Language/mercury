@@ -66,10 +66,7 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 
-:- import_module cord.
-:- import_module int.
 :- import_module maybe.
-:- import_module term.
 
 %-----------------------------------------------------------------------------%
 

@@ -128,13 +128,11 @@
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.
-:- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
-:- import_module map.
 :- import_module maybe.
 :- import_module require.
 

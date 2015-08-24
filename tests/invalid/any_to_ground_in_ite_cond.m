@@ -19,10 +19,6 @@
 
 :- implementation.
 
-:- import_module int.
-:- import_module list.
-:- import_module std_util.
-
 :- solver type st where representation is int.
 
 main(!IO) :-

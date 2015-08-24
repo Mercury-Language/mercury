@@ -84,11 +84,8 @@
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
-:- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
-:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module enum.

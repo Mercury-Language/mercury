@@ -213,7 +213,6 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.trace_params.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -226,7 +225,6 @@
 :- import_module parse_tree.status.
 
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

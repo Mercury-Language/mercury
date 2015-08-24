@@ -46,7 +46,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.code_gen.
-:- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.lookup_util.

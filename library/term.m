@@ -714,14 +714,8 @@
 
 :- implementation.
 
-:- import_module array.
-:- import_module bitmap.
-:- import_module construct.
-:- import_module deconstruct.
 :- import_module int.
 :- import_module require.
-:- import_module string.
-:- import_module version_array.
 
 %---------------------------------------------------------------------------%
 

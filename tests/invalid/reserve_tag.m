@@ -7,7 +7,6 @@
 
 :- module reserve_tag.
 :- interface.
-:- import_module int.
 
 :- type exported_type ---> foo(int).
 :- type abstract_type.
@@ -18,7 +17,6 @@
 :- func mkfoo(int) = exported_type2.
 
 :- implementation.
-:- import_module list.
 
 mkfoo(X) = foo(X).
 

@@ -48,7 +48,6 @@
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
-:- import_module hlds.make_hlds.add_pragma.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -59,12 +58,11 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_mutable.
-:- import_module parse_tree.prog_util.
 
-:- import_module varset.
-:- import_module pair.
+:- import_module bool.
 :- import_module require.
 :- import_module string.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 

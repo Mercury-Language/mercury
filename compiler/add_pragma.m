@@ -45,8 +45,6 @@
 :- import_module hlds.make_hlds.add_pragma.add_pragma_type_spec.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.make_hlds_error.
-:- import_module hlds.make_hlds.make_hlds_warn.
-:- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_tags.
 :- import_module hlds.pred_table.
 :- import_module libs.globals.
@@ -61,15 +59,12 @@
 :- import_module transform_hlds.term_constr_util.
 :- import_module transform_hlds.term_util.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module io.
-:- import_module list.
 :- import_module map.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

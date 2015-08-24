@@ -94,7 +94,6 @@
 :- import_module pair.
 :- import_module queue.
 :- import_module require.
-:- import_module string.
 :- import_module term.
 
     % The stack optimization graph is a bipartite graph, whose two node types

@@ -9,12 +9,12 @@
 
 :- interface.
 
-:- import_module int.
 :- import_module maybe.
 
 :- pred not_a_switch(maybe(int)::in, int::out) is det.
 
 :- implementation.
+:- import_module int.
 
 not_a_switch(A, Int1 + Int2) :-
     Int1 = 1 + 1,

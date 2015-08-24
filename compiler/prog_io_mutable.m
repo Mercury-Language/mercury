@@ -45,7 +45,6 @@
 :- import_module parse_tree.prog_io_pragma.
 :- import_module parse_tree.prog_io_sym_name.
 
-:- import_module bool.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------e

@@ -75,7 +75,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.dependency_graph.

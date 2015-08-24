@@ -17,9 +17,9 @@
 % be suspended at until all the other threads (of N) reach the same
 % position.
 %
-% Barriers are represented by calls to barrier/3 (defined below).  Different
+% Barriers are represented by calls to barrier/3 (defined below). Different
 % code locations can belong to the same conceptual barrier using values of
-% type barrier.  The same code location can also be used by multiple
+% type barrier. The same code location can also be used by multiple
 % barriers by supplying different values.
 %
 %---------------------------------------------------------------------------%
@@ -40,7 +40,7 @@
 
     % wait(Barrier, !IO)
     %
-    % Indicate that the current thread has reached the barrier.  Throws a
+    % Indicate that the current thread has reached the barrier. Throws a
     % software_error/1 exception if this barrier has been used by more than
     % N threads.
     %
@@ -49,7 +49,7 @@
     % release_barrier(Barrier, !IO)
     %
     % Release all the threads waiting at the barrier regardless of whether
-    % or not N threads have arrived at the barrier.  This can be called by
+    % or not N threads have arrived at the barrier. This can be called by
     % any thread, it does not have to be a thread that would normally call
     % wait/3.
     %
@@ -69,9 +69,7 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module string.
 :- import_module thread.mvar.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -85,7 +83,7 @@
             ).
 
     % We use this type to say why execution may proceed after reaching the
-    % barrier.  If it is because the counter reached zero or because
+    % barrier. If it is because the counter reached zero or because
     % release/3 was called.
     %
 :- type why_can_we_go
@@ -143,7 +141,7 @@ release(barrier(WaitingOn, Go), !IO) :-
 
     % We must set WaitingOn to zero so that the StillWaitingFor = 0 branch
     % above is not executed more than once, if it is it will block when it
-    % tries to write a value to Go as Go already has a value.  Instead we
+    % tries to write a value to Go as Go already has a value. Instead we
     % set it to zero, which means that StillWaitingOn will be -1, we use a
     % special value of can_go_release_called for Go so that this branch does
     % not raise an error.

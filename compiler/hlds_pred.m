@@ -56,14 +56,11 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.inst_match.
-:- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
-:- import_module hlds.hlds_rtti.
-:- import_module hlds.special_pred.
 :- import_module libs.options.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_type.

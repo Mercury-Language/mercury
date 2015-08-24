@@ -51,6 +51,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 
 :- import_module assoc_list.
@@ -92,9 +93,8 @@ write_hlds(Indent, ModuleInfo, !IO) :-
         true
     ;
         ( string.contains_char(DumpOptions, 'I') ->
-            module_info_get_imported_module_names(ModuleInfo,
-                ImportedModuleNames),
-            write_imports(Indent, ImportedModuleNames, !IO)
+            module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
+            map.foldl(write_avail_entry(Indent), AvailModuleMap, !IO)
         ;
             true
         ),
@@ -163,17 +163,32 @@ write_footer(Indent, Module, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Write out the imports.
+% Write out the imports and uses.
 %
 
-:- pred write_imports(int::in, set(module_name)::in, io::di, io::uo)
-    is det.
+:- pred write_avail_entry(int::in, module_name::in, avail_module_entry::in,
+    io::di, io::uo) is det.
 
-write_imports(Indent, ImportSet, !IO) :-
+write_avail_entry(Indent, ModuleName, Entry, !IO) :-
+    Entry = avail_module_entry(Section, ImportOrUse, Avails),
+    (
+        ImportOrUse = import_decl,
+        ImportOrUseDecl = ":- import_module "
+    ;
+        ImportOrUse = use_decl,
+        ImportOrUseDecl = ":- use_module "
+    ),
     write_indent(Indent, !IO),
-    io.write_string(":- import_module ", !IO),
-    io.write_list(set.to_sorted_list(ImportSet), ", ", write_sym_name, !IO),
-    io.write_string(".\n\n", !IO).
+    io.write_string(ImportOrUseDecl, !IO),
+    write_module_name(ModuleName, !IO),
+    io.write_string(".\n", !IO),
+
+    write_indent(Indent, !IO),
+    io.write_string("% ", !IO),
+    io.write(Section, !IO),
+    io.write_string(", ", !IO),
+    io.write(Avails, !IO),
+    io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -539,32 +554,36 @@ write_instances(Info, Indent, InstanceTable, !IO) :-
     pair(class_id, list(hlds_instance_defn))::in, io::di, io::uo) is det.
 
 write_instance_defns(Info, Indent, ClassId - InstanceDefns, !IO) :-
+    io.nl(!IO),
     write_indent(Indent, !IO),
-    io.write_string("% ", !IO),
+    io.write_string("% Instances for class ", !IO),
     write_class_id(ClassId, !IO),
     io.write_string(":\n", !IO),
-    io.write_list(InstanceDefns, "\n", write_instance_defn(Info, Indent),
-        !IO).
+    io.write_list(InstanceDefns, "\n",
+        write_instance_defn(Info, Indent + 1), !IO).
 
 :- pred write_instance_defn(hlds_out_info::in, int::in, hlds_instance_defn::in,
     io::di, io::uo) is det.
 
 write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
-    InstanceDefn = hlds_instance_defn(_InstanceModule, _Status,
+    InstanceDefn = hlds_instance_defn(_InstanceModule, Status,
         Context, Constraints, Types, OriginalTypes, Body,
         MaybePredProcIds, VarSet, ProofMap),
 
+    % Separate this instance from any previous ones, or the class id.
+    io.nl(!IO),
+
     term.context_file(Context, FileName),
     term.context_line(Context, LineNumber),
-    ( FileName \= "" ->
+    ( FileName = "" ->
+        true
+    ;
         write_indent(Indent, !IO),
         io.write_string("% context: file `", !IO),
         io.write_string(FileName, !IO),
         io.write_string("', line ", !IO),
         io.write_int(LineNumber, !IO),
         io.write_string("\n", !IO)
-    ;
-        true
     ),
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
@@ -575,16 +594,19 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     ),
 
     % Curry the varset for term_io.write_variable/4.
-    PrintTerm = (pred(TypeName::in, IO0::di, IO::uo) is det :-
-        mercury_output_type(VarSet, VarNamePrint, TypeName, IO0, IO)
-    ),
+    PrintTerm = mercury_output_type(VarSet, VarNamePrint),
     write_indent(Indent, !IO),
     io.write_string("% Types: ", !IO),
-    io.write_list(Types, ", ", PrintTerm, !IO),
+    io.write_list(Types, ", ", mercury_output_type(VarSet, VarNamePrint), !IO),
     io.nl(!IO),
     write_indent(Indent, !IO),
     io.write_string("% Original types: ", !IO),
     io.write_list(OriginalTypes, ", ", PrintTerm, !IO),
+    io.nl(!IO),
+
+    write_indent(Indent, !IO),
+    io.write_string("% Status: ", !IO),
+    io.write_string(import_status_to_string(Status), !IO),
     io.nl(!IO),
 
     write_indent(Indent, !IO),
@@ -613,8 +635,7 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     ;
         MaybePredProcIds = no
     ),
-    write_constraint_proof_map(VarSet, VarNamePrint, Indent, ProofMap, !IO),
-    io.nl(!IO).
+    write_constraint_proof_map(VarSet, VarNamePrint, Indent, ProofMap, !IO).
 
 %-----------------------------------------------------------------------------%
 %

@@ -11,8 +11,6 @@
 :- implementation.
 
 :- import_module bool.
-:- import_module float.
-:- import_module int.
 :- import_module list.
 :- import_module stream.
 :- import_module stream.string_writer.

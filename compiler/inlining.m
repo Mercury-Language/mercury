@@ -158,17 +158,13 @@
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.complexity.
 :- import_module transform_hlds.dead_proc_elim.
 :- import_module transform_hlds.dependency_graph.
 
-:- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module pair.

@@ -102,7 +102,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
@@ -112,7 +111,6 @@
 :- import_module transform_hlds.intermod.
 
 :- import_module benchmarking.
-:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -638,7 +636,7 @@ maybe_warn_about_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO) :-
         WarnUnusedImports = yes,
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "% Checking for unused imports...", !IO),
-        warn_about_unused_imports(!.HLDS, UnusedImportSpecs, !IO),
+        warn_about_unused_imports(!.HLDS, UnusedImportSpecs),
         !:Specs = UnusedImportSpecs ++ !.Specs,
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),

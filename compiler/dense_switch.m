@@ -54,7 +54,6 @@
 :- import_module backend_libs.switch_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.

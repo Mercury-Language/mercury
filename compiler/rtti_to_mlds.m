@@ -70,7 +70,6 @@
 :- import_module counter.
 :- import_module digraph.
 :- import_module int.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.

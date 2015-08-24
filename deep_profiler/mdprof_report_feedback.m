@@ -30,7 +30,6 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
-:- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdprof_fb.
 :- import_module mdprof_fb.automatic_parallelism.
 :- import_module mdprof_fb.automatic_parallelism.autopar_reports.

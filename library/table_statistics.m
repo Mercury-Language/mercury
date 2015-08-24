@@ -149,7 +149,6 @@
 :- import_module bool.
 :- import_module float.
 :- import_module int.
-:- import_module io.
 :- import_module require.
 :- import_module string.
 :- import_module table_builtin.

@@ -38,7 +38,6 @@
 :- import_module backend_libs.base_typeclass_info.
 :- import_module backend_libs.type_class_info.
 :- import_module backend_libs.type_ctor_info.
-:- import_module erl_backend.elds.
 :- import_module erl_backend.elds_to_erlang.
 :- import_module erl_backend.erl_code_gen.
 :- import_module erl_backend.erl_rtti.

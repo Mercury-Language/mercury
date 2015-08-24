@@ -52,8 +52,6 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module measurement_units.
-:- import_module measurements.
-:- import_module report.
 
 :- import_module array.
 :- import_module assoc_list.

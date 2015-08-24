@@ -168,8 +168,6 @@
 :- import_module parse_tree.error_util.
 :- import_module transform_hlds.term_util.
 
-:- import_module bag.
-:- import_module bool.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.

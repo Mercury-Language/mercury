@@ -62,7 +62,6 @@
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.code_util.
-:- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
 
 :- import_module cord.

@@ -200,7 +200,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module robdd.
 :- import_module sparse_bitset.
 
 % T - true vars, F - False Vars, E - equivalent vars, N -

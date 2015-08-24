@@ -407,9 +407,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_match.
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
@@ -418,7 +416,6 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module solutions.
 :- import_module string.
 :- import_module term.
 :- import_module varset.

@@ -44,7 +44,6 @@
 :- implementation.
 
 :- import_module check_hlds.clause_to_proc.
-:- import_module check_hlds.mode_constraint_robdd.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.inst_graph.
 :- import_module mode_robdd.
@@ -61,7 +60,6 @@
 :- import_module digraph.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module solutions.
 :- import_module stack.
 

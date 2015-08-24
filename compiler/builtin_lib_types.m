@@ -106,7 +106,6 @@
 :- import_module mdbcomp.sym_name.
 
 :- import_module list.
-:- import_module map.
 
 %-----------------------------------------------------------------------------%
 

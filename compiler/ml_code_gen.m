@@ -520,17 +520,14 @@
 :- import_module ml_backend.ml_commit_gen.
 :- import_module ml_backend.ml_disj_gen.
 :- import_module ml_backend.ml_foreign_proc_gen.
-:- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_switch_gen.
 :- import_module ml_backend.ml_unify_gen.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module set.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

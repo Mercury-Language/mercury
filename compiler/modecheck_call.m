@@ -81,13 +81,10 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_errors.
-:- import_module check_hlds.mode_info.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.instmap.
 :- import_module hlds.vartypes.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.

@@ -85,7 +85,6 @@
 :- implementation.
 
 :- import_module hlds.hlds_data.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module libs.file_util.
@@ -96,7 +95,6 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -104,13 +102,11 @@
 :- import_module parse_tree.status.
 :- import_module recompilation.version.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module queue.
 :- import_module require.
-:- import_module solutions.
 :- import_module string.
 
 write_usage_file(ModuleInfo, NestedSubModules, MaybeTimestampMap, !IO) :-

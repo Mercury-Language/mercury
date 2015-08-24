@@ -66,7 +66,6 @@
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
 
-:- import_module bool.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -122,6 +121,7 @@
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
 
+:- import_module bool.
 :- import_module map.
 :- import_module require.
 :- import_module string.
@@ -145,21 +145,23 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         !:FoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode,
         !:Pass1Specs = [],
         add_block_decls_pass_1(SrcItemBlocks,
-            src_module_section_status, !FoundInvalidInstOrMode,
-            !ModuleInfo, !Pass1Specs),
+            src_module_section_status, return_yes_section,
+            !FoundInvalidInstOrMode, !ModuleInfo, !Pass1Specs),
         add_block_decls_pass_1(DirectIntItemBlocks,
-            int_module_section_status, !FoundInvalidInstOrMode,
-            !ModuleInfo, !Pass1Specs),
+            int_module_section_status, return_no_section,
+            !FoundInvalidInstOrMode, !ModuleInfo, !Pass1Specs),
         add_block_decls_pass_1(IndirectIntItemBlocks,
-            int_module_section_status, !FoundInvalidInstOrMode,
-            !ModuleInfo, !Pass1Specs),
+            int_module_section_status, return_no_section,
+            !FoundInvalidInstOrMode, !ModuleInfo, !Pass1Specs),
         add_block_decls_pass_1(IntForOptItemBlocks,
-            int_for_opt_module_section_status, !FoundInvalidInstOrMode,
-            !ModuleInfo, !Pass1Specs),
-        % XXX ITEM_LIST Can this pass do anything?
+            int_for_opt_module_section_status, return_no_section,
+            !FoundInvalidInstOrMode, !ModuleInfo, !Pass1Specs),
+        % This pass should not add any predicate declarations, but it
+        % sometimes does add the definitions of nominally local but
+        % nevertheless opt_exported insts and modes.
         add_block_decls_pass_1(OptItemBlocks,
-            opt_module_section_status, !FoundInvalidInstOrMode,
-            !ModuleInfo, !Pass1Specs),
+            opt_module_section_status, return_no_section,
+            !FoundInvalidInstOrMode, !ModuleInfo, !Pass1Specs),
         FoundInvalidInstOrMode1 = !.FoundInvalidInstOrMode,
         Pass1Specs = !.Pass1Specs
     ),
@@ -283,6 +285,24 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         FoundInvalidInstOrMode = found_invalid_inst_or_mode
     ).
 
+:- pred return_yes_section(src_module_section::in, maybe(module_section)::out)
+    is det.
+
+return_yes_section(SrcSection, yes(Section)) :-
+    (
+        SrcSection = sms_interface,
+        Section = ms_interface
+    ;
+        ( SrcSection = sms_implementation
+        ; SrcSection = sms_impl_but_exported_to_submodules
+        ),
+        Section = ms_implementation
+    ).
+
+:- pred return_no_section(T::in, maybe(module_section)::out) is det.
+
+return_no_section(_, no).
+
 %---------------------------------------------------------------------------%
 
 :- pred add_builtin_type_ctor_special_preds(type_ctor::in,
@@ -313,21 +333,30 @@ add_builtin_type_ctor_special_preds(TypeCtor, !ModuleInfo) :-
 
 :- pred add_block_decls_pass_1(list(item_block(MS))::in,
     pred(MS, item_status)::in(pred(in, out) is det),
+    pred(MS, maybe(module_section))::in(pred(in, out) is det),
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_block_decls_pass_1([], _MakeStatus,
+add_block_decls_pass_1([], _MakeStatus, _MakeMaybeSrc,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs).
-add_block_decls_pass_1([ItemBlock | ItemBlocks], MakeStatus,
+add_block_decls_pass_1([ItemBlock | ItemBlocks], MakeStatus, MakeMaybeSrc,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs) :-
     ItemBlock = item_block(Section, _, _Incls, Avails, Items),
-    MakeStatus(Section, Status),
-    Status = item_status(ImportStatus, _),
-    list.foldl(add_item_avail_pass_1(ImportStatus), Avails, !ModuleInfo),
-    add_item_decls_pass_1(Status, Items,
+    MakeStatus(Section, ItemStatus),
+    ItemStatus = item_status(ImportStatus, _),
+    MakeMaybeSrc(Section, MaybeSrcSection),
+    (
+        MaybeSrcSection = yes(SrcSection),
+        AvailLocn = avail_in_src(SrcSection)
+    ;
+        MaybeSrcSection = no,
+        AvailLocn = avail_elsewhere(ImportStatus)
+    ),
+    list.foldl(add_item_avail_pass_1(AvailLocn), Avails, !ModuleInfo),
+    add_item_decls_pass_1(ItemStatus, Items,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs),
-    add_block_decls_pass_1(ItemBlocks, MakeStatus,
+    add_block_decls_pass_1(ItemBlocks, MakeStatus, MakeMaybeSrc,
         !FoundInvalidInstOrMode, !ModuleInfo, !Specs).
 
 :- pred add_item_decls_pass_1(item_status::in, list(item)::in,
@@ -396,8 +425,6 @@ add_items_pass_3(Status, [Item | Items], !ModuleInfo, !QualInfo, !Specs) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % The bool records whether any cyclic insts or modes were detected.
-    %
 :- pred add_item_decl_pass_1(item_status::in, item::in,
     found_invalid_inst_or_mode::in, found_invalid_inst_or_mode::out,
     module_info::in, module_info::out,
@@ -456,22 +483,33 @@ add_item_decl_pass_1(Status, Item,
 
 %---------------------------------------------------------------------------%
 
-:- pred add_item_avail_pass_1(import_status::in, item_avail::in,
+:- type avail_locn
+    --->    avail_in_src(module_section)
+    ;       avail_elsewhere(import_status).
+
+:- pred add_item_avail_pass_1(avail_locn::in, item_avail::in,
     module_info::in, module_info::out) is det.
 
-add_item_avail_pass_1(Status, Avail, !ModuleInfo) :-
-    ModuleName = item_avail_module_name(Avail),
-    DefinedInThisModule = status_defined_in_this_module(Status),
+add_item_avail_pass_1(AvailLocn, Avail, !ModuleInfo) :-
     (
-        DefinedInThisModule = yes,
-        module_add_imported_module_name(Status, ModuleName, !ModuleInfo)
+        Avail = avail_import(avail_import_info(ModuleName, Context, _SeqNum)),
+        ImportOrUse = import_decl
     ;
-        DefinedInThisModule = no,
+        Avail = avail_use(avail_use_info(ModuleName, Context, _SeqNum)),
+        ImportOrUse = use_decl
+    ),
+    (
+        AvailLocn = avail_in_src(Section),
+        module_add_avail_module_name(ModuleName, Section, ImportOrUse,
+            yes(Context), !ModuleInfo)
+    ;
+        AvailLocn = avail_elsewhere(Status),
         ( if
             Status =
                 status_imported(import_locn_ancestor_private_interface_proper)
         then
-            module_add_imported_module_name(Status, ModuleName, !ModuleInfo),
+            module_add_avail_module_name(ModuleName, ms_implementation,
+                ImportOrUse, no, !ModuleInfo),
             % Any import_module which comes from a private interface
             % must by definition be a module used by the parent module.
             module_info_add_parent_to_used_modules(ModuleName, !ModuleInfo)
@@ -712,6 +750,10 @@ add_pass_2_instance(ItemInstance, Status, !ModuleInfo, !Specs) :-
     Status = item_status(ImportStatus, _),
     (
         Body = instance_body_abstract,
+        % XXX This can make the status abstract_imported even if the instance
+        % is NOT imported.
+        % When this is fixed, please undo the workaround for this bug
+        % in instance_used_modules in unused_imports.m.
         make_status_abstract(ImportStatus, BodyStatus)
     ;
         Body = instance_body_concrete(_),

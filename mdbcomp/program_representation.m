@@ -693,7 +693,6 @@
 :- import_module mdbcomp.builtin_modules.
 
 :- import_module int.
-:- import_module map.
 :- import_module require.
 :- import_module string.
 

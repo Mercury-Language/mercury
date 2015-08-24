@@ -44,6 +44,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.source_file_map.
 :- import_module parse_tree.status.
 
@@ -185,13 +186,13 @@ is_not_comment_char(C) :-
 :- func maybe_add_comment(comments, prog_context, xml) = xml.
 
 maybe_add_comment(Comments, Context, Xml) =
-    ( Xml = elem(N, As, Cs) ->
-        ( Comment = get_comment(Comments, Context), Comment \= "" ->
+    ( if Xml = elem(N, As, Cs) then
+        ( if Comment = get_comment(Comments, Context), Comment \= "" then
             elem(N, As, [elem("comment", [], [data(Comment)]) | Cs])
-        ;
+        else
             Xml
         )
-    ;
+    else
         unexpected($module, $pred, "not an element")
     ).
 
@@ -203,11 +204,11 @@ get_comment(Comments, context(_, Line)) =
     % XXX At a later date this hard-coded strategy should be made
     % more flexible. What I imagine is that the user would pass a string
     % saying in what order they wish to search for comments.
-    ( comment_on_current_line(Comments, Line, C) ->
+    ( if comment_on_current_line(Comments, Line, C) then
         C
-    ; comment_directly_above(Comments, Line, C) ->
+    else if comment_directly_above(Comments, Line, C) then
         C
-    ;
+    else
         ""
     ).
 
@@ -241,7 +242,7 @@ comment_directly_above(Comments, Line, Comment) :-
 :- func get_comment_forwards(comments, int) = string.
 
 get_comment_forwards(Comments, Line) = Comment :-
-    ( map.search(Comments ^ line_types, Line, LineType) ->
+    ( if map.search(Comments ^ line_types, Line, LineType) then
         (
             LineType = comment(CurrentComment),
             CommentBelow = get_comment_forwards(Comments, Line + 1),
@@ -253,7 +254,7 @@ get_comment_forwards(Comments, Line) = Comment :-
             ),
             Comment = ""
         )
-    ;
+    else
         Comment = ""
     ).
 
@@ -264,7 +265,7 @@ get_comment_forwards(Comments, Line) = Comment :-
 :- func get_comment_backwards(comments, int) = string.
 
 get_comment_backwards(Comments, Line) = Comment :-
-    ( map.search(Comments ^ line_types, Line, LineType) ->
+    ( if map.search(Comments ^ line_types, Line, LineType) then
         (
             LineType = comment(CurrentComment),
             CommentAbove = get_comment_backwards(Comments, Line - 1),
@@ -276,7 +277,7 @@ get_comment_backwards(Comments, Line) = Comment :-
             ),
             Comment = ""
         )
-    ;
+    else
         Comment = ""
     ).
 
@@ -290,14 +291,10 @@ get_comment_backwards(Comments, Line) = Comment :-
     (to_xml(module_info_xml_doc(Comments, ModuleComment, ModuleInfo)) = Xml :-
         CommentXml = elem("comment", [], [data(ModuleComment)]),
 
-        module_info_get_interface_module_names(ModuleInfo,
-            InterfaceImports),
-        module_info_get_imported_module_names(ModuleInfo,
-            ImportedModules0),
-        ImportedModules =
-            ImportedModules0 `difference` set(all_builtin_modules),
-        set.fold(import_documentation(InterfaceImports),
-            ImportedModules, [], ImportsXml),
+        module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
+        BuiltinModuleNames = set.list_to_set(all_builtin_modules),
+        map.foldl(maybe_add_import_documentation(BuiltinModuleNames),
+            AvailModuleMap, [], ImportsXml),
         ImportXml = elem("imports", [], ImportsXml),
 
         module_info_get_type_table(ModuleInfo, TypeTable),
@@ -322,20 +319,36 @@ get_comment_backwards(Comments, Line) = Comment :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % Output the documentation for one import
+    % Output the documentation for one import_module or use_module declaration.
     %
-:- pred import_documentation(set(module_name)::in, module_name::in,
-    list(xml)::in, list(xml)::out) is det.
+:- pred maybe_add_import_documentation(set(module_name)::in,
+    module_name::in, avail_module_entry::in, list(xml)::in, list(xml)::out)
+    is det.
 
-import_documentation(InterfaceImportedModules, ImportedModule, !Xmls) :-
-    XmlName = name_to_xml(ImportedModule),
-    ( ImportedModule `set.member` InterfaceImportedModules ->
-        XmlVisibility = visibility_to_xml(status_exported)
-    ;
-        XmlVisibility = visibility_to_xml(status_local)
-    ),
-    Xml = elem("import", [], [XmlName, XmlVisibility]),
-    !:Xmls = [Xml | !.Xmls].
+maybe_add_import_documentation(BuiltinModuleNames, ModuleName, AvailEntry,
+        !Xmls) :-
+    ( if set.member(ModuleName, BuiltinModuleNames) then
+        true
+    else
+        XmlName = name_to_xml(ModuleName),
+        AvailEntry = avail_module_entry(Section, ImportOrUse, _Avails),
+        (
+            Section = ms_interface,
+            XmlVisibility = visibility_to_xml(status_exported)
+        ;
+            Section = ms_implementation,
+            XmlVisibility = visibility_to_xml(status_local)
+        ),
+        (
+            ImportOrUse = import_decl,
+            ImportOrUseWord = "import"
+        ;
+            ImportOrUse = use_decl,
+            ImportOrUseWord = "use"
+        ),
+        Xml = elem(ImportOrUseWord, [], [XmlName, XmlVisibility]),
+        !:Xmls = [Xml | !.Xmls]
+    ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -477,14 +490,14 @@ pred_documentation(C, _PredId, PredInfo, !Xml) :-
     pred_info_get_origin(PredInfo, Origin),
     pred_info_get_markers(PredInfo, Markers),
 
-    (
+    ( if
         status_defined_in_this_module(ImportStatus) = yes,
         Origin = origin_user(_),
         not check_marker(Markers, marker_class_method)
-    ->
+    then
         Xml = predicate_documentation(C, PredInfo),
         !:Xml = [Xml | !.Xml]
-    ;
+    else
         true
     ).
 
@@ -542,9 +555,9 @@ get_orig_arg_types(PredInfo) = Types :-
 :- func keep_last_n(int, list(T)) = list(T).
 
 keep_last_n(N, L0) =
-    ( list.drop(list.length(L0) - N, L0, L) ->
+    ( if list.drop(list.length(L0) - N, L0, L) then
         L
-    ;
+    else
         func_error("keep_last_n")
     ).
 
@@ -807,13 +820,13 @@ prog_constraint_to_xml(TVarset, Constraint) = Xml :-
 :- func visibility_to_xml(import_status) = xml.
 
 visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
-    ( status_defined_in_impl_section(Status) = yes ->
-        ( Status = status_abstract_exported ->
+    ( if status_defined_in_impl_section(Status) = yes then
+        ( if Status = status_abstract_exported then
             Visibility = "abstract"
-        ;
+        else
             Visibility = "implementation"
         )
-    ;
+    else
         Visibility = "interface"
     ).
 

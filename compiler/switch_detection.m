@@ -71,7 +71,6 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
@@ -79,7 +78,6 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
@@ -92,9 +90,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module set_tree234.
-:- import_module string.
 :- import_module term.
 :- import_module unit.
 

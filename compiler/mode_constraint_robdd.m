@@ -159,16 +159,11 @@
 % :- import_module mode_robdd.check.
 
 :- import_module bimap.
-:- import_module bool.
 :- import_module list.
-:- import_module map.
 :- import_module require.
-:- import_module robdd.
 :- import_module solutions.
 :- import_module sparse_bitset.
-:- import_module stack.
 :- import_module std_util.
-:- import_module term.
 :- import_module varset.
 
 :- type mc_type

@@ -239,6 +239,31 @@
     %
 :- pred module_info_optimize(module_info::in, module_info::out) is det.
 
+:- type avail_module_map == map(module_name, avail_module_entry).
+:- type avail_module_entry
+    --->    avail_module_entry(
+                % ms_interface iff any avail_module has ms_interface.
+                module_section,
+
+                % import_decl iff any avail_module has import_decl.
+                import_or_use,
+
+                % The locations of the *explicit* import_module and
+                % use_import declarations, in the *source* of the modul.
+                % The implicit ones aren't in the list, and neither
+                % are the imports and uses read in from interface
+                % and optimization files, so it is possible for the list
+                % to be empty.
+                list(avail_module)
+            ).
+
+:- type avail_module
+    --->    avail_module(
+                module_section,
+                import_or_use,
+                prog_context
+            ).
+
     % The getter predicates. Please keep the order of declarations here
     % and the order of the clauses below in sync with the order of the
     % fields in the module_info and module_sub_info types.
@@ -309,11 +334,9 @@
     table_struct_map::out) is det.
 :- pred module_info_get_mm_tabling_info(module_info::in,
     mm_tabling_info::out) is det.
-:- pred module_info_get_imported_module_names(module_info::in,
-    set(module_name)::out) is det.
+:- pred module_info_get_avail_module_map(module_info::in,
+    avail_module_map::out) is det.
 :- pred module_info_get_indirectly_imported_module_names(module_info::in,
-    set(module_name)::out) is det.
-:- pred module_info_get_interface_module_names(module_info::in,
     set(module_name)::out) is det.
 :- pred module_info_get_used_modules(module_info::in,
     used_modules::out) is det.
@@ -542,11 +565,12 @@
 
 %---------------------%
 
-:- pred module_add_imported_module_name(import_status::in,
-    module_name::in, module_info::in, module_info::out) is det.
+:- pred module_add_avail_module_name(module_name::in,
+    module_section::in, import_or_use::in, maybe(prog_context)::in,
+    module_info::in, module_info::out) is det.
 
-:- pred module_add_indirectly_imported_module_name(
-    module_name::in, module_info::in, module_info::out) is det.
+:- pred module_add_indirectly_imported_module_name(module_name::in,
+    module_info::in, module_info::out) is det.
 
     % Return the set of the visible modules. These are
     %
@@ -600,7 +624,6 @@
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module counter.
 :- import_module int.
 :- import_module require.
@@ -750,16 +773,12 @@
 
                 % The names of all the directly imported modules
                 % (used during type checking, and by the MLDS back-end).
-                mri_imported_module_names       :: set(module_name),
+                mri_avail_module_map            :: avail_module_map,
 
                 % The names of all the indirectly imported modules
                 % (used by the MLDS back-end).
                 mri_indirectly_imported_module_names
                                                 :: set(module_name),
-
-                % The names of all the modules imported directly
-                % in the interface. (Used by unused_imports analysis).
-                mri_interface_module_names      :: set(module_name),
 
                 % The modules which have already been calculated as being used.
                 % Currently this is the module imports inherited from the
@@ -880,16 +899,30 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     % separately, or at least record for each import (and use) whether
     % it was explicit or implicit, and one (or more) context where either
     % the explicit imported was requested, or the implicit import was required.
-    ImportedModules = set.union_list([
+    ImportedAvailModules = set.union_list([
+        SrcImportDeps,
+        DirectIntImportDeps,
+        IndirectIntImportDeps,
+        OptImportDeps,
+        IntForOptImportDeps]),
+    UsedAvailModules = set.union_list([
         SrcImportDeps, SrcUseDeps,
         DirectIntImportDeps, DirectIntUseDeps,
         IndirectIntImportDeps, IndirectIntUseDeps,
         OptImportDeps, OptUseDeps,
         IntForOptImportDeps, IntForOptUseDeps]),
+    OnlyUsedAvailModules =
+        set.difference(UsedAvailModules, ImportedAvailModules),
+
+    map.init(AvailModuleMap0),
+    set.fold(add_implicit_avail_module(import_decl), ImportedAvailModules,
+        AvailModuleMap0, AvailModuleMap1),
+    set.fold(add_implicit_avail_module(use_decl), OnlyUsedAvailModules,
+        AvailModuleMap1, AvailModuleMap),
 
     set.init(IndirectlyImportedModules),
-    set.init(InterfaceModuleSpecs),
     UsedModules = used_modules_init,
+
     MaybeComplexityMap = no,
     ComplexityProcInfos = [],
 
@@ -916,8 +949,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         MustBeStratifiedPreds, StratPreds, UnusedArgInfo,
         TrailingInfo, TablingStructMap, MM_TablingInfo,
         LambdasPerContext, AtomicsPerContext,
-        ImportedModules, IndirectlyImportedModules,
-        InterfaceModuleSpecs, UsedModules,
+        AvailModuleMap, IndirectlyImportedModules, UsedModules,
         MaybeComplexityMap, ComplexityProcInfos,
         AnalysisInfo, UserInitPredCNames, UserFinalPredCNames,
         StructureReusePredIds,
@@ -936,6 +968,13 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     ModuleInfo = module_info(ModuleSubInfo, ModuleRareInfo, Globals,
         PredicateTable, TypeTable, NoTagTypes,
         InstTable, ModeTable, CtorTable, ClassTable, FieldNameTable).
+
+:- pred add_implicit_avail_module(import_or_use::in, module_name::in,
+    avail_module_map::in, avail_module_map::out) is det.
+
+add_implicit_avail_module(ImportOrUse, ModuleName, !AvailModuleMap) :-
+    Entry = avail_module_entry(ms_implementation, ImportOrUse, []),
+    map.det_insert(ModuleName, Entry, !AvailModuleMap).
 
 module_info_optimize(!ModuleInfo) :-
     % Currently, all the calls to *_table_optimize are no-ops.
@@ -1072,12 +1111,10 @@ module_info_get_lambdas_per_context(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_lambdas_per_context.
 module_info_get_atomics_per_context(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_atomics_per_context.
-module_info_get_imported_module_names(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_imported_module_names.
+module_info_get_avail_module_map(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_avail_module_map.
 module_info_get_indirectly_imported_module_names(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_indirectly_imported_module_names.
-module_info_get_interface_module_names(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_interface_module_names.
 module_info_get_used_modules(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_used_modules.
 module_info_get_maybe_complexity_proc_map(MI, X) :-
@@ -1473,22 +1510,52 @@ module_info_next_atomic_count(Context, Count, !MI) :-
 
 %---------------------%
 
-module_add_imported_module_name(IStat, AddedModuleSpecifier, !MI) :-
-    ImportSpecifiers0 = !.MI ^ mi_rare_info ^ mri_imported_module_names,
-    set.insert(AddedModuleSpecifier, ImportSpecifiers0, ImportSpecifiers),
-    !MI ^ mi_rare_info ^ mri_imported_module_names := ImportSpecifiers,
-
-    Exported = status_is_exported_to_non_submodules(IStat),
+module_add_avail_module_name(ModuleName, NewSection, NewImportOrUse,
+        MaybeContext, !MI) :-
     (
-        Exported = yes,
-        InterfaceSpecifiers0 =
-            !.MI ^ mi_rare_info ^ mri_interface_module_names,
-        set.insert(AddedModuleSpecifier,
-            InterfaceSpecifiers0, InterfaceSpecifiers),
-        !MI ^ mi_rare_info ^ mri_interface_module_names :=
-            InterfaceSpecifiers
+        MaybeContext = no,
+        NewAvails = []
     ;
-        Exported = no
+        MaybeContext = yes(Context),
+        NewAvails = [avail_module(NewSection, NewImportOrUse, Context)]
+    ),
+    AvailMap0 = !.MI ^ mi_rare_info ^ mri_avail_module_map,
+    ( if map.search(AvailMap0, ModuleName, OldEntry) then
+        OldEntry = avail_module_entry(OldSection, OldImportOrUse, OldAvails),
+        combine_old_new_avail_attrs(OldSection, NewSection,
+            OldImportOrUse, NewImportOrUse, Section, ImportOrUse),
+        Avails = NewAvails ++ OldAvails,
+        NewEntry = avail_module_entry(Section, ImportOrUse, Avails),
+        map.det_update(ModuleName, NewEntry, AvailMap0, AvailMap)
+    else
+        NewEntry = avail_module_entry(NewSection, NewImportOrUse, NewAvails),
+        map.det_insert(ModuleName, NewEntry, AvailMap0, AvailMap)
+    ),
+    !MI ^ mi_rare_info ^ mri_avail_module_map := AvailMap.
+
+:- pred combine_old_new_avail_attrs(module_section::in, module_section::in,
+    import_or_use::in, import_or_use::in,
+    module_section::out, import_or_use::out) is det.
+
+combine_old_new_avail_attrs(OldSection, NewSection,
+        OldImportOrUse, NewImportOrUse, Section, ImportOrUse) :-
+    ( if
+        ( OldSection = ms_interface
+        ; NewSection = ms_interface
+        )
+    then
+        Section = ms_interface
+    else
+        Section = ms_implementation
+    ),
+    ( if
+        ( OldImportOrUse = import_decl
+        ; NewImportOrUse = import_decl
+        )
+    then
+        ImportOrUse = import_decl
+    else
+        ImportOrUse = use_decl
     ).
 
 module_add_indirectly_imported_module_name(AddedModuleSpecifier, !MI) :-
@@ -1498,20 +1565,22 @@ module_add_indirectly_imported_module_name(AddedModuleSpecifier, !MI) :-
 
 module_info_get_visible_modules(ModuleInfo, !:VisibleModules) :-
     module_info_get_name(ModuleInfo, ThisModule),
-    module_info_get_imported_module_names(ModuleInfo, ImportedModules),
+    module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
 
-    !:VisibleModules = ImportedModules,
+    map.keys(AvailModuleMap, AvailModules),
+    set.list_to_set(AvailModules, !:VisibleModules),
     set.insert(ThisModule, !VisibleModules),
     set.insert_list(get_ancestors(ThisModule), !VisibleModules).
 
 module_info_get_all_deps(ModuleInfo, AllImports) :-
     module_info_get_name(ModuleInfo, ModuleName),
     Parents = get_ancestors(ModuleName),
-    module_info_get_imported_module_names(ModuleInfo, DirectImports),
+    module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
+    map.keys(AvailModuleMap, DirectImports),
     module_info_get_indirectly_imported_module_names(ModuleInfo,
         IndirectImports),
-    AllImports = set.union_list([IndirectImports, DirectImports,
-        set.list_to_set(Parents)]).
+    AllImports = set.union_list([IndirectImports,
+        set.list_to_set(DirectImports), set.list_to_set(Parents)]).
 
 module_info_add_parent_to_used_modules(ModuleSpecifier, !MI) :-
     module_info_get_used_modules(!.MI, UsedModules0),

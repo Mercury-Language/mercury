@@ -12,7 +12,6 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module int.
 :- import_module list.
 :- import_module string.
 
@@ -29,12 +28,12 @@ main(!IO) :-
         ; B = [33, 44]
         )
     ),
-    list__sort_and_remove_dups(A, ASorted),
-    list__sort_and_remove_dups(B, BSorted),
-    io__write(ASorted, !IO),
-    io__nl(!IO),
-    io__write(BSorted, !IO),
-    io__nl(!IO),
+    list.sort_and_remove_dups(A, ASorted),
+    list.sort_and_remove_dups(B, BSorted),
+    io.write(ASorted, !IO),
+    io.nl(!IO),
+    io.write(BSorted, !IO),
+    io.nl(!IO),
     (
         promise_equivalent_solutions [C, ASorted] (
             ASorted = [_ | ATail],
@@ -43,9 +42,9 @@ main(!IO) :-
             )
         )
     ->
-        list__sort_and_remove_dups(C, CSorted),
-        io__write(CSorted, !IO),
-        io__nl(!IO)
+        list.sort_and_remove_dups(C, CSorted),
+        io.write(CSorted, !IO),
+        io.nl(!IO)
     ;
-        io__write("cannot compute CSorted\n", !IO)
+        io.write("cannot compute CSorted\n", !IO)
     ).

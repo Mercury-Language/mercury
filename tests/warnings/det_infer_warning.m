@@ -21,8 +21,6 @@
 
 :- implementation.
 
-:- import_module require.
-
 test :-
     (
         cond(true)

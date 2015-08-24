@@ -79,7 +79,6 @@
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.status.
 
-:- import_module bool.
 :- import_module cord.
 :- import_module maybe.
 :- import_module set.

@@ -102,7 +102,6 @@
 
 :- implementation.
 
-:- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.pd_util.
 
