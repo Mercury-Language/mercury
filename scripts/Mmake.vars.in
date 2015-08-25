@@ -99,7 +99,7 @@ endif
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
 #
-# Stuff which is not specific to any back-end
+# Stuff which is not specific to any back-end.
 #
 
 ALL_GRADEFLAGS  = $(USUAL_GRADEFLAGS)
@@ -115,9 +115,8 @@ LIB_MCFLAGS	= $(patsubst %,--mld %,$(EXTRA_LIB_DIRS)) \
 			$(patsubst %,--ml %,$(EXTRA_LIBRARIES))
 
 # Flags for use with `mmc --make'.
-# Pass the options as a Mercury.options file on stdin rather
-# than on the command line. This avoids problems with quoting
-# and unwanted word splitting.
+# Pass the options as a Mercury.options file on stdin rather than on the
+# command line. This avoids problems with quoting and unwanted word splitting.
 ECHO_MERCURY_OPTIONS = { \
 	echo MCFLAGS += '$(ALL_GRADEFLAGS) $(ALL_MCFLAGS)'; \
 	echo MCFLAGS += '$(MC_MAKE_FLAGS) $(EXTRA_MC_MAKE_FLAGS)'; \
@@ -189,7 +188,7 @@ EXTRA_MCSFLAGS	= $(EXTRA_MCFLAGS)
 
 #-----------------------------------------------------------------------------#
 #
-# Stuff which is specific to the C back-ends
+# Stuff which is specific to the C back-ends.
 #
 
 # FIX_PATH_FOR_<foo> should be set to a script which converts path names
@@ -228,11 +227,11 @@ MERC_DLL_DIR    = $(MERCURY_STDLIB_DIR)/lib/$(GRADESTRING)
 # which has a different command-line interface. 
 # (Is there a Mono ILASM too?  What about Rotor?)
 ILASM		= @ILASM@
-ALL_ILASMFLAGS= $(ILASMFLAGS) $(EXTRA_ILASMFLAGS) \
+ALL_ILASMFLAGS  = $(ILASMFLAGS) $(EXTRA_ILASMFLAGS) \
 		$(TARGET_ILASMFLAGS) $(LIB_ILASMFLAGS) $(ILASM_KEYFLAG)
 ILASMFLAGS	=
 EXTRA_ILASMFLAGS =
-LIB_ILASMFLAGS= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
+LIB_ILASMFLAGS  = $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
 # MS_AL is the Microsoft assembly linker, which creates assemblies.
 MS_AL		= @MS_AL@ 
@@ -247,7 +246,7 @@ CSC		= @CSC@
 ALL_CSCFLAGS	= $(CSCFLAGS) $(EXTRA_CSCFLAGS) $(TARGET_CSCFLAGS) \
 		$(LIB_CSCFLAGS)
 CSCFLAGS	=
-EXTRA_CSCFLAGS =
+EXTRA_CSCFLAGS  =
 LIB_CSCFLAGS	=
 
 #-----------------------------------------------------------------------------#
@@ -671,15 +670,19 @@ INSTALL_MKDIR = mkdir -p
 # (e.g. in the shell scripts mmc, ml, mmake, etc) that will not be
 # updated simply by overriding INSTALL_PREFIX.
 
+ifeq ($(origin DESTDIR),undefined)
+DESTDIR =
+endif
+
 ifeq ($(DESTDIR),)
     # DESTDIR is the empty string, DESTDIR_AND_SLASH must therefore be empty.
     # Otherwise the slash can change a relative path into an absolute one; or
     # on Windows, it can create an invalid path name.
-    DESTDIR_AND_SLASH=
+    DESTDIR_AND_SLASH =
 else
     # We cannot append paths like this in Windows, but we don't think anyone
     # will use DESTDIR on Windows.
-    DESTDIR_AND_SLASH=$(DESTDIR)/
+    DESTDIR_AND_SLASH = $(DESTDIR)/
 endif
 
 INSTALL_PREFIX		= $(DESTDIR_AND_SLASH)@prefix@
@@ -733,8 +736,8 @@ LIBGRADES		= @LIBGRADES@
 
 #-----------------------------------------------------------------------------#
 
-# The command to use to make symlinks, `false' if we shouldn't use
-# symlinks (e.g. because Windows executables don't understand them).
+# The command to use to make symlinks, `false' if we shouldn't use symlinks
+# (e.g. because Windows executables don't understand them).
 LN_S			= @LN_S@
 
 #-----------------------------------------------------------------------------#
@@ -764,6 +767,8 @@ ERR_REDIRECT = > $(*F).err 2>&1
 
 # If this variable is set to no, then mmake doesn't automatically include
 # the ".d" files in the current directory in the Mmakefile.
-MMAKE_AUTO_INCLUDE_DS=yes
+MMAKE_AUTO_INCLUDE_DS = yes
 
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#

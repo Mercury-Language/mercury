@@ -40,7 +40,7 @@
 #   The test cases that only work in grades that support tabling.
 # PAR_CONJ_PROGS:
 #   The test cases that only work in grades that support parallel conjunction.
-# PAR_CONJ_PROGS:
+# CTGC_PROGS:
 #   The test cases that only work in grades that support compile-time
 #   garbage collection. Debugging is incompatible with ctgc.
 # RESERVE_TAG_PROGS::

@@ -50,6 +50,9 @@ endif
 ifeq ($(origin LINK_STDLIB_ONLY),undefined)
 LINK_STDLIB_ONLY = no
 endif
+ifeq ($(origin EXTRA_MTAGSFLAGS),undefined)
+EXTRA_MTAGSFLAGS =
+endif
 
 SCRIPTS_DIR = $(WORKSPACE)/scripts
 RUNTIME_DIR = $(WORKSPACE)/runtime
