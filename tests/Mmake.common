@@ -36,27 +36,25 @@ endif
 endif
 
 # Note: Mmake lets you override MCFLAGS for a particular file by setting
-# MCFLAGS-foo.  Similarly, you can override GRADEFLAGS for a particular
+# MCFLAGS-foo. Similarly, you can override GRADEFLAGS for a particular
 # file by setting both GRADEFLAGS-foo.
 
 ifndef DIFF_OPTS
 DIFF_OPTS=-c
 endif
 
-# Override this with `RUN_RECOMPILATION_TESTS=no'
-# if your compiler cannot run smart recompilation.
-# This is only necessary for compilers built in deep
-# profiling grades, because smart recompilation uses
-# exception handling, which does not yet work with
-# deep profiling.
+# Override this with `RUN_RECOMPILATION_TESTS=no' if your compiler
+# cannot run smart recompilation. This is only necessary for compilers
+# built in deep profiling grades, because smart recompilation uses
+# exception handling, which does not yet work with deep profiling.
 RUN_RECOMPILATION_TESTS=yes
 
 # The Java interpreter.
 JAVA=java
 
-# We avoid picking up parameter settings from $HOME/.mdbrc that could
-# cause spurious differences between the outputs of the debugger test
-# cases and their expected outputs.
+# We avoid picking up parameter settings from $HOME/.mdbrc that could cause
+# spurious differences between the outputs of the debugger test cases
+# and their expected outputs.
 
 # We suppress the printing of the banner, because different workspaces
 # may get different version numbers printed in it. This would otherwise be
@@ -94,8 +92,8 @@ $(TESTS_DIR)/Mmake.params: ;
 
 # If there is a `.inp' file, then we pipe that in as the command's input.
 # Then we run the command, with stdout and stderr both redirected to the
-# `.out' file.  Finally if the command fails (returns non-zero exit status),
-# we print out the contents of the `.out' file.  We use `grep . $@ /dev/null'
+# `.out' file. Finally if the command fails (returns non-zero exit status),
+# we print out the contents of the `.out' file. We use `grep . $@ /dev/null'
 # to print out the contents, because that precedes each line of output with
 # the filename, which is helpful when running a parallel make.
 %.out: %
@@ -103,10 +101,10 @@ $(TESTS_DIR)/Mmake.params: ;
 		{ grep . $@ /dev/null; exit 1; }
 
 # For some test cases, there is more than one valid output.
-# We try matching the output with the `.exp' file, and if that
-# doesn't succeed, and there are `.exp2', `.exp3', `.exp4' or `.exp5'
-# files, then we try matching against those too.  If none succeed,
-# the shortest of the diffs is put into the `.res' file.
+# We try matching the output with the `.exp' file, and if that doesn't succeed,
+# and there are `.exp2', `.exp3', `.exp4' or `.exp5' files, then we try
+# matching against those too. If none succeed, we putthe shortest of the diffs
+# into the `.res' file.
 
 %.res: %.exp %.out
 	@echo "Comparing $*.out with $*.exp*,"
@@ -142,8 +140,8 @@ $(TESTS_DIR)/Mmake.params: ;
 # For some test cases, there is more than one valid output.
 # We try matching the output with the `.err_exp' file, and if that doesn't
 # succeed, and there are `.err_exp2', `.err_exp3', `.err_exp4' or `.err_exp5'
-# files, then we try matching against those too.  If none succeed, the
-# shortest of the diffs is put into the `.err_res' file.
+# files, then we try matching against those too. If none succeed, we put
+# the shortest of the diffs into the `.err_res' file.
 
 %.err_res: %.err %.err_exp
 	@echo "Comparing $*.err with $*.err_exp*,"
@@ -217,10 +215,8 @@ clean_zip:
 	done
 endif
 
-#
 # The `foo' targets make recursively make `foo' in all subdirectories.
-# before making `foo_local' in the current directory
-#
+# before making `foo_local' in the current directory.
 
 .PHONY: runtests runtests_local runtests_subdirs
 .PHONY: check check_local check_subdirs
@@ -234,8 +230,8 @@ check:		runtests
 check_local:	runtests_local
 check_subdirs:	runtests_subdirs
 
-# We want to run all the tests, even if some fail, so
-# run the tests using `mmake -k'.
+# We want to run all the tests, even if some fail, so run the tests
+# using `mmake -k'.
 
 runtests:
 	+@if mmake -k runtests_local runtests_subdirs; then \
@@ -291,19 +287,15 @@ runtests_local: ;
 
 else
 
-# Run multiple rm commands at once to speed up
-# `mmake realclean' on slow NFS filesystems.
-# XXX We used to do this, but if the tests are being
-# run with parallel make it results a huge number of
-# processes being run because make's jobserver mechanism
-# is disabled if `-j' is specified on the command line
-# of a sub-make.
+# Run multiple rm commands at once to speed up `mmake realclean' on
+# slow NFS filesystems.
+# XXX We used to do this, but if the tests are being run with parallel make,
+# it results a huge number of processes being run because make's jobserver
+# mechanism is disabled if `-j' is specified on the command line of a sub-make.
 # RM_JFACTOR=-j10
 RM_JFACTOR=
 
-#
 # Clean up after any previous test run.
-#
 .PHONY: start_runtests_local
 start_runtests_local:
 	@echo STARTING tests in $(THIS_DIR) $(PARAMS_MSG) at `date`
