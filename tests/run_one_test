@@ -4,7 +4,7 @@
 exitstatus=0
 echo RUNNING TEST "${this_dir}/${test_full}" "${params_msg}" | \
     tee "${test_full}.log"
-echo "MERCURY_OPTIONS=${MERCURY_OPTIONS}"
+echo "MERCURY_OPTIONS=${MERCURY_OPTIONS}" >> tee "${test_full}.log"
 trace_count=false
 case "${MERCURY_OPTIONS}" in
     *trace-count*)
@@ -19,21 +19,22 @@ case ${test_full} in
         ;;
     *)
         ( mmake "${test}.depend" 2>&1 || touch "${test_full}.failed" ) \
-            | tee -a "${test_full}.log"
+            >> "${test_full}.log"
         ;;
 esac
 
 if test -f "${test_full}.failed"
 then
-    echo FAILED TEST "${this_dir}/${test_full}" "${params_msg}" | \
-        tee -a "${test_full}.log"
+    echo FAILED TEST "${this_dir}/${test_full}" "${params_msg}" \
+        >> "${test_full}.log"
+    cat "${test_full}.log"
     echo "${test_full}" >> FAILED_TESTS
     echo "${this_dir}/${test_full}" "${params_msg}" >> \
         "${tests_dir}/FAILED_TESTS_SUMMARY"
     exitstatus=1
 else
     ( mmake "${test}.runtest" 2>&1 || touch "${test_full}.failed" ) \
-        | tee -a "${test_full}.log"
+        >> "${test_full}.log"
     if test -f "${test_full}.failed"
     then
         rm -f "${test_full}.failed"
@@ -49,7 +50,8 @@ else
                 ;;
         esac
         echo FAILED TEST "${this_dir}/${test_full}" "${params_msg}" \
-            | tee -a "${test_full}.log"
+            >> "${test_full}.log"
+        cat "${test_full}.log"
         echo "${test_full}" >> FAILED_TESTS
         echo "${this_dir}/${test_full}" "${params_msg}" \
             >> "${tests_dir}/FAILED_TESTS_SUMMARY"
@@ -58,7 +60,8 @@ else
     else
         rm -f "${test_full}.log" ${test}.out* ${test}.*res*
         mmake "${test}.realclean" > /dev/null 2>&1
-        echo PASSED TEST "${this_dir}/${test_full}" "${params_msg}"
+        # The lack of a FAILED TEST is enough to tell you that the test passed.
+        # echo PASSED TEST "${this_dir}/${test_full}" "${params_msg}"
         tcdir=PASSED_TC_DIR
     fi
 
