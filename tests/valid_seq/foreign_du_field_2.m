@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module foreign_du_field2.
+:- module foreign_du_field_2.
 :- interface.
 
 :- type abstype.

@@ -1,0 +1,61 @@
+# vim: ts=8 sw=8 noexpandtab
+# some regression tests only failed with particular options enabled
+# (please keep these lists sorted)
+
+# The `agc*' tests currently aren't run in grades for which `.mih'
+# files are created, and no header files are generated in `il' grades,
+# so it's OK to set GRADEFLAGS for these tests.
+GRADEFLAGS-foreign_type_spec	= --grade il
+GRADEFLAGS-foreign_type_spec.foreign_type = --grade il
+
+MCFLAGS-ambig_confuse1		= --type-check-constraints
+MCFLAGS-ambig_confuse2		= --type-check-constraints
+MCFLAGS-ambig_confuse3		= --type-check-constraints
+MCFLAGS-ambig_high_level	= --type-check-constraints
+MCFLAGS-ambig_pred		= --type-check-constraints
+MCFLAGS-ambig_types		= --type-check-constraints
+
+MCFLAGS-bug100			= --halt-at-warn
+MCFLAGS-func_class		= --no-warn-nothing-exported
+MCFLAGS-foreign_type_spec	= --no-intermodule-optimization
+MCFLAGS-foreign_type_spec.foreign_type = --no-intermodule-optimization
+MCFLAGS-intermod_bug_nested	= --intermodule-optimization
+MCFLAGS-intermod_bug_nested.parser	= --intermodule-optimization
+MCFLAGS-intermod_char		= --intermodule-optimization
+MCFLAGS-intermod_char2		= --intermodule-optimization
+MCFLAGS-intermod_dcg_bug2	= --intermodule-optimization
+MCFLAGS-intermod_dcg_bug	= --intermodule-optimization
+MCFLAGS-intermod_impure2	= --intermodule-optimization
+MCFLAGS-intermod_impure		= --intermodule-optimization
+MCFLAGS-intermod_lambda2	= --intermodule-optimization
+MCFLAGS-intermod_lambda		= --intermodule-optimization
+MCFLAGS-intermod_nested2	= --intermodule-optimization
+MCFLAGS-intermod_nested		= --intermodule-optimization
+MCFLAGS-intermod_nested_module2	= --intermodule-optimization
+MCFLAGS-intermod_nested_module_bug2 = --intermodule-optimization
+MCFLAGS-intermod_nested_module_bug = --intermodule-optimization
+MCFLAGS-intermod_nested_module	= --intermodule-optimization
+MCFLAGS-intermod_nested_uniq2	= --intermodule-optimization
+MCFLAGS-intermod_nested_uniq	= --intermodule-optimization
+MCFLAGS-intermod_pragma_import2	= --intermodule-optimization
+MCFLAGS-intermod_pragma_import	= --intermodule-optimization
+MCFLAGS-intermod_quote2		= --intermodule-optimization
+MCFLAGS-intermod_quote		= --intermodule-optimization
+MCFLAGS-intermod_record2	= --intermodule-optimization
+MCFLAGS-intermod_record		= --intermodule-optimization
+MCFLAGS-intermod_test2		= --intermodule-optimization
+MCFLAGS-intermod_test		= --intermodule-optimization
+MCFLAGS-intermod_typeclass2	= --intermodule-optimization
+MCFLAGS-intermod_typeclass	= --intermodule-optimization
+MCFLAGS-intermod_typeclass_exist = --intermodule-optimization
+MCFLAGS-intermod_type_spec_2	= --intermodule-optimization
+MCFLAGS-intermod_type_spec	= --intermodule-optimization
+MCFLAGS-intermod_ua_type_spec	= --intermod-unused-args
+MCFLAGS-intermod_user_equality2	= --intermodule-optimization
+MCFLAGS-intermod_user_equality	= --intermodule-optimization
+MCFLAGS-intermod_user_equality_nested2	= --intermodule-optimization
+MCFLAGS-intermod_user_equality_nested	= --intermodule-optimization
+MCFLAGS-intermod_user_sharing	= --intermodule-optimization
+MCFLAGS-intermod_user_sharing_2	= --intermodule-optimization
+MCFLAGS-opt_det_warn		= --intermodule-optimization --halt-at-warn
+MCFLAGS-opt_det_warn2		= --intermodule-optimization --halt-at-warn --no-warn-inferred-erroneous

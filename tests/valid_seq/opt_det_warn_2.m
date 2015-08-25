@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module opt_det_warn2.
+:- module opt_det_warn_2.
 :- interface.
 :- import_module io.
 

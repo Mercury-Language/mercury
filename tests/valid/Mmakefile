@@ -1,13 +1,19 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = valid
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
-# please keep these lists sorted
-AGC_PROGS= \
+# Please keep these lists sorted.
+# The documentation of what tests each list should contain (what little
+# there is of it) is in $(TESTS_DIR)/valid/Mmake.valid.common.
+
+AGC_PROGS = \
 	agc_graph \
 	agc_ho_pred \
 	agc_ite \
@@ -15,11 +21,11 @@ AGC_PROGS= \
 	agc_unbound_typevars2 \
 	agc_unused_in
 
-TRAIL_PROGS= \
+TRAIL_PROGS = \
 	complex_failure \
 	semi_fail_in_non_ite
 
-TYPECLASS_PROGS= \
+TYPECLASS_PROGS = \
 	abstract_typeclass \
 	bug271 \
 	complex_constraint \
@@ -29,7 +35,6 @@ TYPECLASS_PROGS= \
 	exists_fundeps_2 \
 	exists_fundeps_3 \
 	flatten_conj_bug \
-	func_class \
 	func_method \
 	fundeps \
 	fundeps_poly_instance \
@@ -46,7 +51,6 @@ TYPECLASS_PROGS= \
 	string_format_in_instance \
 	superclass_bug \
 	superclass_improvement \
-	tc_map_lookup \
 	tci_spec_varmap \
 	time_yaowl \
 	typeclass_constraint_arity \
@@ -54,27 +58,21 @@ TYPECLASS_PROGS= \
 	typeclass_constraint_nonvar_bug \
 	typeclass_det_warning
 
-	# This test is compiled with --no-special-preds,
-	# which doesn't work in jump.* and fast.* grades.
-NO_SPECIAL_PREDS_PROGS= \
+NO_SPECIAL_PREDS_PROGS = \
 	unify_typeinfo_bug
 
-	# Tests for which we should only produce a `.il' file.
 IL_PROGS = \
-	csharp_hello \
-	foreign_type_spec
+	csharp_hello
 
-	# Tests for which we should only produce a `.c' file.
 C_PROGS = \
 	bug109
 
-OTHER_PROGS= \
+OTHER_PROGS = \
 	any_inst_merge \
 	any_matches_bound \
 	big_foreign_type \
 	bug51 \
 	bug85 \
-	bug100 \
 	bug128 \
 	bug134 \
 	bug142 \
@@ -119,15 +117,12 @@ OTHER_PROGS= \
 	existential_cons \
 	explicit_quant \
 	export_before_func \
-	exported_foreign_type \
 	fail_ite \
 	file_stream_instances \
 	followcode_det_problem \
-	foreign_du_field \
 	foreign_underscore_var \
 	func_default_modes \
 	func_in_head \
-	func_int_bug_main \
 	fz_conf \
 	hawkins_switch_bug \
 	headvar_not_found \
@@ -152,25 +147,6 @@ OTHER_PROGS= \
 	inst_perf_bug_1 \
 	instmap_generic_failure \
 	int64 \
-	intermod_bug_nested \
-	intermod_char \
-	intermod_dcg_bug \
-	intermod_impure \
-	intermod_lambda \
-	intermod_nested \
-	intermod_nested_module \
-	intermod_nested_module_bug \
-	intermod_nested_uniq \
-	intermod_quote \
-	intermod_record \
-	intermod_test \
-	intermod_type_spec \
-	intermod_typeclass \
-	intermod_typeclass_exist \
-	intermod_ua_type_spec \
-	intermod_user_equality \
-	intermod_user_equality_nested \
-	intermod_user_sharing \
 	lambda_inference\
 	lambda_instmap_bug \
 	lambda_instmap_bug2 \
@@ -200,11 +176,6 @@ OTHER_PROGS= \
 	middle_rec_labels \
 	mode_syntax \
 	modes_bug \
-	module_a \
-	module_b \
-	module_c \
-	module_d \
-	module_e \
 	mostly_uniq_bug \
 	mostly_uniq_mode_inf \
 	mostly_uniq_neg \
@@ -213,16 +184,12 @@ OTHER_PROGS= \
 	nasty_func_test \
 	neg_erroneous \
 	negation_in_dupl_for_switch \
-	nested_mod_type_bug \
-	nested_module_bug \
 	no_warn_format_imports \
 	no_warn_obsolete \
 	no_warn_unresolved_poly \
 	nondet_live \
-	opt_det_warn \
 	overloading \
 	param_mode_bug \
-	parsing_bug_main \
 	pred_with_no_modes \
 	promise_equiv_exists_non_local \
 	qualified_cons_id \
@@ -258,9 +225,7 @@ OTHER_PROGS= \
 	table_aux_preds_erlang \
 	tabled_for_io \
 	tabled_io \
-	testxmlreader \
 	trace_goal_reorder \
-	transitive_instance \
 	tricky_assert2 \
 	tricky_ite \
 	tuple_eqv \
@@ -281,8 +246,7 @@ OTHER_PROGS= \
 	zero_arity \
 	zf_erlang_bug
 
-C_INTERFACE_PROGS = \
-	intermod_pragma_import
+C_INTERFACE_PROGS =
 
 SOLVER_PROGS = \
 	ho_any_inst \
@@ -292,10 +256,7 @@ SOLVER_PROGS = \
 DEEP_PROF_CAPABLE_PROGS = \
 	impure_detism
 
-# These tests require debugging, which hasn't been implemented for
-# the MLDS backend.
-#
-LLDS_PROGS= \
+LLDS_PROGS = \
 	exists_cast_bug \
 	fzn_debug_abort \
 	liveness_ite \
@@ -303,21 +264,15 @@ LLDS_PROGS= \
 	livevars_shallow2 \
 	untuple_bug
 
-# These tests only work in grades that support tabling.
-#
-TABLE_PROGS=\
+TABLE_PROGS =\
 	table_wrong_func_arity \
 	mercury_java_parser_follow_code_bug
 
-# These tests only work in grades that support parallel conjunction.
-#
 PAR_CONJ_PROGS = \
 	par_dummy \
 	par_dupelim \
 	par_saved_const
 
-# Compile-time garbage collection is currently incompatible with debugging
-# grades.
 CTGC_PROGS = \
 	reuse_static \
 	reuse_static2 \
@@ -327,25 +282,13 @@ CTGC_PROGS = \
 	sharing_loop3 \
 	table_no_attr
 
-# The following programs require that num_tag_bits >= 1
 RESERVE_TAG_PROGS = \
 	reserve_tag
 
-# The following programs use constraint-based typechecking
 CONSTRAINT_TYPECHECK_PROGS = \
-	ambig \
-	ambig_functor \
-	ambig_high_level \
-	ambig_pred \
-	ambig_pred2 \
-	ambig_pred_3 \
+ 	ambig_functor \
  	ambiguity_stress_test
 
-# XXX The type checker can't handle the following test cases yet,
-# unless constraint-based typechecking is used:
-#
-#	ambiguity_stress_test
-#
 # XXX The mode system can't handle the following test cases yet:
 #	assoc_list_bug
 #	determinism
@@ -361,179 +304,12 @@ CONSTRAINT_TYPECHECK_PROGS = \
 # language rules:
 #
 #	field_detism
-#	constraint_proof_bug
 #
 # The following test case checked for a problem with the varsets attached
-# to mutables.  It only ever worked in the presence of automatic solver
+# to mutables. It only ever worked in the presence of automatic solver
 # type initialisation, but due to subsequent changes in the mode analyser
 # it cannot currently be compiled.
 #
 #       solver_type_mutable_bug
 
-# The agc.* tests don't work in --high-level-code grades,
-# except hl*.agc*, because they require grade-specific header
-# files to be installed.
-ifeq "$(findstring hl,$(GRADE))$(findstring .agc,$(GRADE))" "hl"
-	PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
-else
-	# The agc.* tests don't work in the il, java, csharp or erlang grades.
-	# The agc.* tests also don't work in minimal model grades,
-	# because the collector doesn't scan the copied areas of the stacks.
-	ifneq "$(filter java% csharp% il% erlang%,$(GRADE))$(findstring mm,$(GRADE))" ""
-		PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
-	else
-		PROGS0 = $(AGC_PROGS) $(TYPECLASS_PROGS) $(OTHER_PROGS)
-	endif
-endif
-
-# Base grades `jump' and `fast'
-# cannot be used with `--no-special-preds'
-
-ifneq "$(findstring asm_,$(GRADE))" ""
-	PROGS1=$(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
-else
-	ifneq "$(findstring jump,$(GRADE))" ""
-		PROGS1=$(PROGS0)
-	else
-		ifneq "$(findstring fast,$(GRADE))" ""
-			PROGS1=$(PROGS0)
-		else
-			PROGS1=$(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
-		endif
-	endif
-endif
-
-ifneq "$(findstring mm,$(GRADE))" ""
-	PROGS2=$(PROGS1)
-else
-	PROGS2=$(PROGS1) $(TRAIL_PROGS)
-endif
-
-ifneq "$(filter java% csharp% il% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
-	PROGS3 = $(PROGS2)
-else
-	PROGS3 = $(PROGS2) $(TABLE_PROGS)
-endif
-
-ifeq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
-	PROGS4 = $(PROGS3) $(C_INTERFACE_PROGS) $(SOLVER_PROGS) \
-		$(DEEP_PROF_CAPABLE_PROGS) $(LLDS_PROGS)
-else
-	PROGS4 = $(PROGS3)
-endif
-
-ifneq "$(findstring decldebug,$(GRADE))" ""
-	PROGS5 = $(PROGS4)
-else
-	PROGS5 = $(PROGS4) $(PAR_CONJ_PROGS)
-endif
-
-ifeq "$(findstring debug,$(GRADE))"  ""
-	PROGS6 = $(PROGS5) $(CTGC_PROGS)
-else
-	PROGS6 = $(PROGS5)
-endif
-
-ifeq "$(filter java% csharp% il% erlang%,$(GRADE))" ""
-	OBJ_PROGS = $(PROGS6) $(RESERVE_TAG_PROGS)
-else
-	OBJ_PROGS = $(PROGS6)
-endif
-
-ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
-	PROGS = $(OBJ_PROGS) $(C_PROGS)
-else
-	PROGS = $(OBJ_PROGS) $(C_PROGS) $(IL_PROGS)
-endif
-
-# `mmc --make' doesn't expect subdirectories to appear in targets.
-ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-OS_SUBDIR=
-ILS_SUBDIR=
-DLLS_SUBDIR=
-CLASSES_SUBDIR=
-else
-OS_SUBDIR=$(os_subdir)
-ILS_SUBDIR=$(ils_subdir)
-DLLS_SUBDIR=$(dlls_subdir)
-CLASSES_SUBDIR=$(classes_subdir)
-endif
-
-ifeq ($(findstring il,$(GRADE)),il)
-	TARGET_OBJ_EXT=dll
-	TARGET_OBJ_SUBDIR=$(DLLS_SUBDIR)
-else
-ifeq ($(findstring csharp,$(GRADE)),csharp)
-	# XXX we should produce DLLs but currently that invokes the IL backend
-	TARGET_OBJ_EXT=cs
-	TARGET_OBJ_SUBDIR=$(DLLS_SUBDIR)
-else
-ifeq ($(findstring erlang,$(GRADE)),erlang)
-	TARGET_OBJ_EXT=beam
-	# Erlang backend currently requires `mmc --make'.
-	TARGET_OBJ_SUBDIR=
-else
-ifeq ($(findstring java,$(GRADE)),java)
-	TARGET_OBJ_EXT=class
-	TARGET_OBJ_SUBDIR=$(CLASSES_SUBDIR)
-else
-	TARGET_OBJ_EXT=$(O)
-	TARGET_OBJ_SUBDIR=$(OS_SUBDIR)
-endif
-endif
-endif
-endif
-OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
-		$(IL_PROGS:%=$(ILS_SUBDIR)%.il)
-
-#-----------------------------------------------------------------------------#
-
-TESTS = $(sort $(PROGS))
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
-include $(TESTS_DIR)/Mmake.common
-
-# When compiling using the installed libraries, setting GRADEFLAGS
-# may cause mgnuc to look for the `.mih' files for a non-installed grade.
-# test_mercury runs the tests using the installed libraries, so GRADEFLAGS
-# won't be set, but test_mercury runs the tests in at least one `.tr' grade
-# on all machines, so it isn't a problem.
-ifneq ($(origin WORKSPACE),undefined)
-GRADEFLAGS_TRAIL = --use-trail
-else
-GRADEFLAGS_TRAIL =
-endif
-# Make sure GRADEFLAGS_TRAIL is passed to `mmc --make'.
-export GRADEFLAGS_TRAIL
-
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
-include Mercury.options
-
-$(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
-
-$(C_PROGS:%=%.runtest): %.runtest: %.c ;
-
-$(IL_PROGS:%=%.runtest): %.runtest: %.il ;
-
-#-----------------------------------------------------------------------------#
-
-# XXX mmake should automatically handle these two dependencies.
-$(dates_subdir)intermod_nested_module2.date: \
-	$(date0s_subdir)intermod_nested_module2.date0
-$(dates_subdir)intermod_user_equality_nested2.date: \
-	$(date0s_subdir)intermod_user_equality_nested2.date0
-
-objs:	$(OBJS)
-
-printtests:
-	@echo $(PROGS)
-
-printobjs:
-	@echo $(OBJS)
-
-clean_local:
-	rm -f *.err *.h
-
-#-----------------------------------------------------------------------------#
+include $(TESTS_DIR)/valid/Mmake.valid.common

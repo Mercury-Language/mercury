@@ -1,8 +1,20 @@
-
+MCFLAGS-direct_arg_cyclic1 =    --intermodule-optimization
+MCFLAGS-direct_arg_cyclic2 =    --intermodule-optimization
+MCFLAGS-direct_arg_cyclic3 =    --intermodule-optimization
+MCFLAGS-direct_arg_intermod1 =  --intermodule-optimization
+MCFLAGS-direct_arg_intermod2 =  --intermodule-optimization
+MCFLAGS-direct_arg_intermod3 =  --intermodule-optimization
 MCFLAGS-g12_fe_bug = 			--intermodule-optimization
 MCFLAGS-g12_fe_bug.generic_search = --no-warn-interface-imports --intermodule-optimization
 MCFLAGS-g12_fe_bug.solvers = 		--intermodule-optimization
 MCFLAGS-g12_fe_bug.solvers.bounds = 	--intermodule-optimization
+
+# --intermodule-optimization causes impl_def_literal to abort during
+# the STM transformation (bug #136).  Its use here is disabled until
+# that is fixed.
+MCFLAGS-impl_def_literal = --no-intermodule-optimization
+MCFLAGS-impl_def_literal.sub = --no-intermodule-optimization
+
 MCFLAGS-nested_intermod	=	--intermodule-optimization
 MCFLAGS-nested_intermod_main =	--intermodule-optimization
 MCFLAGS-non_word_mutable =	--intermodule-optimization --no-intermodule-analysis

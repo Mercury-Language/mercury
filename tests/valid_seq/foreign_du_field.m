@@ -9,7 +9,7 @@
 :- module foreign_du_field.
 :- interface.
 
-:- import_module foreign_du_field2.
+:- import_module foreign_du_field_2.
 
 :- type wrap
     --->    wrap(abstype).

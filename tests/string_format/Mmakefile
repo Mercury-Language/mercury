@@ -49,7 +49,7 @@ endif
 SUBDIRS =
 TESTS=$(PROGS)
 TESTS_DIR=..
-MAYBE_J1 =
+MAYBE_J1 = -j1
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

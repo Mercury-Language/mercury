@@ -39,6 +39,7 @@ SUBDIRS = \
 	trailing \
 	typeclasses \
 	valid \
+	valid_seq \
 	warnings
 
 NOT_YET_READY_SUBDIRS = \

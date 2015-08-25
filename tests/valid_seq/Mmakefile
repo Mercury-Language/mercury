@@ -1,0 +1,99 @@
+#-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = valid_seq
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 = -j1
+
+#-----------------------------------------------------------------------------#
+
+# Please keep these lists sorted.
+# The documentation of what tests each list should contain (what little
+# there is of it) is in $(TESTS_DIR)/valid/Mmake.valid.common.
+
+AGC_PROGS =
+
+TRAIL_PROGS =
+
+TYPECLASS_PROGS = \
+	func_class \
+	tc_map_lookup
+
+NO_SPECIAL_PREDS_PROGS =
+
+IL_PROGS = \
+	foreign_type_spec
+
+C_PROGS =
+
+C_INTERFACE_PROGS = \
+	intermod_pragma_import
+
+SOLVER_PROGS =
+
+DEEP_PROF_CAPABLE_PROGS =
+
+LLDS_PROGS =
+
+TABLE_PROGS =
+
+PAR_CONJ_PROGS =
+
+CTGC_PROGS =
+
+RESERVE_TAG_PROGS =
+
+CONSTRAINT_TYPECHECK_PROGS = \
+	ambig_high_level \
+	ambig_pred
+
+OTHER_PROGS = \
+	bug100 \
+	exported_foreign_type \
+	foreign_du_field \
+	func_int_bug_main \
+	intermod_bug_nested \
+	intermod_char \
+	intermod_dcg_bug \
+	intermod_impure \
+	intermod_lambda \
+	intermod_nested \
+	intermod_nested_module \
+	intermod_nested_module_bug \
+	intermod_nested_uniq \
+	intermod_quote \
+	intermod_record \
+	intermod_test \
+	intermod_type_spec \
+	intermod_typeclass \
+	intermod_typeclass_exist \
+	intermod_ua_type_spec \
+	intermod_user_equality \
+	intermod_user_equality_nested \
+	intermod_user_sharing \
+	module_a \
+	module_b \
+	module_c \
+	module_d \
+	module_e \
+	nested_mod_type_bug \
+	nested_module_bug \
+	opt_det_warn \
+	parsing_bug_main \
+	test_xmlreader \
+	transitive_instance
+
+# XXX The following tests are not valid under the current Mercury
+# language rules:
+#
+#	constraint_proof_bug
+
+# XXX mmake should automatically handle these two dependencies.
+$(dates_subdir)intermod_nested_module2.date: \
+	$(date0s_subdir)intermod_nested_module2.date0
+$(dates_subdir)intermod_user_equality_nested2.date: \
+	$(date0s_subdir)intermod_user_equality_nested2.date0
+
+include $(TESTS_DIR)/valid/Mmake.valid.common

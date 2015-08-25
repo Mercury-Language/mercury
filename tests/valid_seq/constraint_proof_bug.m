@@ -4,11 +4,11 @@
 
 :- module constraint_proof_bug.
 
-:-interface.
+:- interface.
 
-:-import_module io.
+:- import_module io.
 
-:-pred main(io.state::di, io.state::uo) is det.
+:- pred main(io.state::di, io.state::uo) is det.
 
 :- implementation.
 
@@ -17,11 +17,11 @@
 :- import_module require.
 :- import_module string.
 
-:-type service == string.
-:-type prestationid == int.
-:-type provider == int.
+:- type service == string.
+:- type prestationid == int.
+:- type provider == int.
 
-:-type bevent
+:- type bevent
     --->    prest(prestationid, date, code, provider)
     ;       day(int, date)
     ;       admit(date, service)
@@ -33,10 +33,10 @@
 :- mode get_field(in, in, out) is semidet.
 
 get_field(Ev, Field, R) :-
-    ( Field="date" ->
+    ( Field = "date" ->
         R = d(Dt),
         get_date_field(Ev, Dt)
-    ; Field="code" ->
+    ; Field = "code" ->
         R = c(Cd),
         get_code_field(Ev, Cd)
     ;

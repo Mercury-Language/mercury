@@ -2,9 +2,8 @@
 # vim: ts=4 sw=4 expandtab
 
 exitstatus=0
-echo RUNNING TEST "${this_dir}/${test_full}" "${params_msg}" | \
-    tee "${test_full}.log"
-echo "MERCURY_OPTIONS=${MERCURY_OPTIONS}" >> tee "${test_full}.log"
+echo RUNNING TEST "${this_dir}/${test_full}" "${params_msg}"
+echo "MERCURY_OPTIONS=${MERCURY_OPTIONS}" > "${test_full}.log"
 trace_count=false
 case "${MERCURY_OPTIONS}" in
     *trace-count*)
@@ -49,9 +48,10 @@ else
                 fi
                 ;;
         esac
-        echo FAILED TEST "${this_dir}/${test_full}" "${params_msg}" \
-            >> "${test_full}.log"
+        echo FAILED TEST "${this_dir}/${test_full}" "${params_msg}"
+        echo "LOG OF THE FAILED TEST"
         cat "${test_full}.log"
+        echo "END OF THE LOG OF THE FAILED TEST"
         echo "${test_full}" >> FAILED_TESTS
         echo "${this_dir}/${test_full}" "${params_msg}" \
             >> "${tests_dir}/FAILED_TESTS_SUMMARY"

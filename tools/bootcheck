@@ -53,9 +53,9 @@ Options:
     --gradedir <grade>
         Same as '--grade <grade>', except that it also causes
         the grade name to be included in the names of the stage 2
-        and stage 3 directories.  This can be useful if you have
+        and stage 3 directories. This can be useful if you have
         lots of disk space and want to run bootchecks in several
-        grades at once.  Note however that the name of the tests
+        grades at once. Note however that the name of the tests
         directory doesn't include the grade, so you might also
         need to use --no-test-suite (see below) for this to work.
     --test-grade <grade>
@@ -460,7 +460,7 @@ case $grade in
         copy_slice=true
         copy_profilers=true
         # The IL back-end generates native Windows executables,
-        # which do not understand symlinks.  So we need to use cp.
+        # which do not understand symlinks. So we need to use cp.
         use_cp=true
         ;;
 esac
@@ -505,7 +505,7 @@ fi
 
 echo "starting at `date`"
 
-set -x
+# set -x
 
 root=`/bin/pwd | sed '
 s:/mount/munkora/mercury:/home/mercury:
@@ -711,7 +711,7 @@ then
         mkdir mfilterjavac
         cd mfilterjavac
         $LN_S $root/mfilterjavac/*.m .
-        cp $root/mfilterjavac/Mmake* $root/mfilterjavac/Mercury.options .
+        cp $root/mfilterjavac/Mmake* .
         cp $root/mfilterjavac/*_FLAGS.in .
         cp $root/mfilterjavac/.mgnu* .
         cd $root/$stage2dir
@@ -901,7 +901,7 @@ then
         fi
         cd $root
 
-        set -x
+        # set -x
 
         MMAKE_VPATH=.
         export MMAKE_VPATH
@@ -1241,7 +1241,7 @@ then
     rm -f config*.log
     cp $root/$stage2dir/Mmake* $root/$stage2dir/Mercury.options .
     cd $root
-    set -x
+    # set -x
 
     MMAKE_VPATH=.
     export MMAKE_VPATH
@@ -1513,7 +1513,7 @@ fi
 
 #-----------------------------------------------------------------------------#
 
-# Run the tests in the tests/* directories
+# Run the tests in the tests/* directories.
 
 if test -s $HOME/.bootcheck_diff_opts
 then
@@ -1524,6 +1524,8 @@ fi
 test_status=0
 if $runtests
 then
+    echo "starting the test suite at `date`"
+
     # We need to give tests/debugger access to the mdbrc and mdb_doc
     # files in the doc and scripts directories, without hardcoding their
     # pathnames. We must also compensate for scripts/mdbrc having hardcoded
@@ -1631,6 +1633,7 @@ then
             trailing
             typeclasses
             valid
+            valid_seq
             warnings"
 
         for d in $all_test_dirs

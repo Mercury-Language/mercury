@@ -235,7 +235,6 @@ check_subdirs:	runtests_subdirs
 
 runtests:
 	+@if mmake -k runtests_local runtests_subdirs; then \
-		echo ALL TESTS SUCCEEDED; \
 		rm -f $(ERROR_OUTPUT_FILE); \
 	else \
 		for subdir in $(SUBDIRS) x; do \
@@ -342,13 +341,13 @@ start_runtests_local:
 
 TEST_LOGS = $(THIS_DIR_TESTS_TO_RUN:%=%.log)
 runtests_local:
-	@ \
+	+@ \
 	mmake -k $(MAYBE_J1) $(TEST_LOGS); \
 	touch DUMMY.log; \
 	cat *.log > $(ERROR_OUTPUT_FILE); \
 	rm -f DUMMY.log; \
 	if [ ! -s $(ERROR_OUTPUT_FILE) ]; then \
-		echo "PASSED tests in $(THIS_DIR) $(PARAMS_MSG)"; \
+		echo "PASSED ALL TESTS in $(THIS_DIR) $(PARAMS_MSG)"; \
 		echo cleaning up the directory after the tests; \
 		mmake $(RM_JFACTOR) realclean_local > /dev/null 2>&1; \
 		rm core > /dev/null 2>&1; \

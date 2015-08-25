@@ -14,10 +14,18 @@ THIS_DIR = submodules
 SUB_MODULE_PROGS = \
 	accessibility \
 	accessibility2 \
+	backquoted_qualified_ops \
 	class \
+	daf_bug \
 	deeply_nested \
+	direct_arg_cyclic1 \
+	direct_arg_intermod1 \
+	direct_arg_parent \
+	dot_separator \
+	external_unification_pred \
 	finalise_parent \
 	g12_fe_bug \
+	impl_def_literal \
 	initialise_parent \
 	mutable_parent \
 	nested \

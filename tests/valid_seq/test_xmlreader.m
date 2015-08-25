@@ -2,7 +2,7 @@
 %
 % This is a regression test for bug #28 in Mantis.
 
-:- module testxmlreader.
+:- module test_xmlreader.
 :- interface.
 
 :- import_module io.

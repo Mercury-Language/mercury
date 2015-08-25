@@ -15,7 +15,6 @@ ORDINARY_PROGS =	\
 	array_sort \
 	array_test \
 	array_test2 \
-	backquoted_qualified_ops \
 	bag_various \
 	bidirectional \
 	binary_stdin \
@@ -60,7 +59,6 @@ ORDINARY_PROGS =	\
 	cut_test \
 	cycles \
 	cycles2 \
-	daf_bug \
 	deconstruct_arg \
 	deep_copy \
 	deep_copy_bug \
@@ -74,16 +72,12 @@ ORDINARY_PROGS =	\
 	dense_lookup_switch_non \
 	det_in_semidet_cntxt \
 	dir_fold \
-	direct_arg_cyclic1 \
-	direct_arg_intermod1 \
-	direct_arg_parent \
 	direct_arg_partial_inst \
 	direct_arg_partial_inst2 \
 	direct_arg_tags \
 	disjs_in_switch \
 	division_test \
 	dos \
-	dot_separator \
 	dst_test \
 	dummy_no_tag \
 	dummy_type_construct \
@@ -109,7 +103,6 @@ ORDINARY_PROGS =	\
 	expand \
 	export_test \
 	exported_foreign_enum \
-	external_unification_pred \
 	failure_unify \
 	field_syntax \
 	finalise_decl \
@@ -159,7 +152,6 @@ ORDINARY_PROGS =	\
 	if_then_else_expr_state_var \
 	impl_def_lex \
 	impl_def_lex_string \
-	impl_def_literal \
 	impossible_unify \
 	impure_foreign \
 	impure_init_and_final \
