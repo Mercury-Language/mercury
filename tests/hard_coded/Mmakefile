@@ -28,6 +28,7 @@ ORDINARY_PROGS =	\
 	bug383 \
 	bug392 \
 	bug_pack_bits \
+	c89_neg_int \
 	c_write_string \
 	calendar_test \
 	cc_and_non_cc_test \

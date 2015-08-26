@@ -1169,10 +1169,7 @@ output_rval_const(Info, Const, !IO) :-
         io.write_string("MR_FALSE", !IO)
     ;
         Const = llconst_int(N),
-        % We need to cast to (MR_Integer) to ensure things like 1 << 32 work
-        % when `MR_Integer' is 64 bits but `int' is 32 bits.
-        output_llds_type_cast(lt_integer, !IO),
-        io.write_int(N, !IO)
+        c_util.output_int_expr(N, !IO)
     ;
         Const = llconst_foreign(Value, Type),
         io.write_char('(', !IO),

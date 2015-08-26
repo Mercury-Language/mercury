@@ -118,6 +118,15 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Integer literals.
+%
+
+    % Write out an int as a C expression.
+    %
+:- pred output_int_expr(int::in, io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%
 % Float literals.
 %
 
@@ -201,6 +210,8 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module integer.
+:- import_module list.
 :- import_module require.
 :- import_module string.
 
@@ -566,6 +577,60 @@ unicode_escape_any_char(Char, EscapeCodeChars) :-
     char.to_int(Char, Int),
     string.format("\\u%04x", [i(Int)], HexString),
     string.to_char_list(HexString, EscapeCodeChars).
+
+%-----------------------------------------------------------------------------%
+%
+% Integer literals.
+%
+
+output_int_expr(N, !IO) :-
+    % We need to cast to (MR_Integer) to ensure things like 1 << 32 work
+    % when `MR_Integer' is 64 bits but `int' is 32 bits.
+    %
+    % C does not have negative integer constants so "(MR_Integer) -nnnn"
+    % is the negation of a positive integer constant nnnn, converted to
+    % MR_Integer.
+    %
+    % In C89/C90 an unsuffixed decimal integer constant must be typed
+    % `int' or `long int' or `unsigned long int', whichever fits first.
+    % The negated result will have the same type. If nnnn > LONG_MAX then
+    % it will be typed `unsigned long int'. If MR_Integer is wider than
+    % `unsigned long int' then the conversion to MR_Integer yields a positive
+    % value, not negative.
+    %
+    % C99 has different integer constant type rules. The unsuffixed decimal
+    % integer constant must be typed `int' or `long int' or `long long int'
+    % but not `unsigned long int'. Therefore the same problem does not occur.
+
+    ( N >= -2147483647 ->
+        % Write integers in the most readable way as long as the absolute value
+        % does not exceed LONG_MAX, otherwise it may be typed `unsigned long'.
+        % This is the minimum magnitude of LONG_MAX in C.
+        io.write_string("(MR_Integer) ", !IO),
+        io.write_int(N, !IO)
+    ;
+        ( integer.to_string(integer(N)) = "-2147483648" ->
+            % Write -2^31 without using an integer constant that overflows a
+            % 32-bit signed `long' in two's complement representation.
+            io.write_string("(-(MR_Integer) 2147483647 - 1)", !IO)
+        ; integer.to_string(integer(N)) = "-9223372036854775808" ->
+            % Write -2^63 without using an integer constant that overflows a
+            % 64-bit signed `long' in two's complement representation.
+            io.write_string("(-(MR_Integer) 9223372036854775807 - 1)", !IO)
+        ; int.min_int(N) ->
+            % Avoid negating min_int as it would overflow in two's complement
+            % representation. In practice, one of the preceding two cases
+            % would have been taken.
+            io.write_string("(-(MR_Integer) ", !IO),
+            io.write_int(-(N + 1), !IO),
+            io.write_string("- 1)", !IO)
+        ;
+            % Write other negative values as negation of an MR_Integer value.
+            io.write_string("(-(MR_Integer) ", !IO),
+            io.write_int(-N, !IO),
+            io.write_string(")", !IO)
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 %

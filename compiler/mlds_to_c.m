@@ -4661,10 +4661,7 @@ mlds_output_rval_const(_Opts, Const, !IO) :-
         ( Const = mlconst_int(N)
         ; Const = mlconst_enum(N, _)
         ),
-        % We need to cast to (MR_Integer) to ensure things like 1 << 32 work
-        % when `Integer' is 64 bits but `int' is 32 bits.
-        io.write_string("(MR_Integer) ", !IO),
-        io.write_int(N, !IO)
+        c_util.output_int_expr(N, !IO)
     ;
         Const = mlconst_char(C),
         io.write_string("(MR_Char) ", !IO),
