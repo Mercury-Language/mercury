@@ -82,59 +82,59 @@ write_hlds(Indent, ModuleInfo, !IO) :-
     Info = init_hlds_out_info(Globals, output_debug),
     Lang = output_debug,
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    (
+    ( if
         % If the user specifically requested one or more predicates and/or
         % functions to be dumped, they won't be interested in the types,
         % insts etc.
         ( DumpPredIdStrs = [_ | _]
         ; DumpPredNames = [_ | _]
         )
-    ->
+    then
         true
-    ;
-        ( string.contains_char(DumpOptions, 'I') ->
+    else
+        ( if string.contains_char(DumpOptions, 'I') then
             module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
             map.foldl(write_avail_entry(Indent), AvailModuleMap, !IO)
-        ;
+        else
             true
         ),
-        ( string.contains_char(DumpOptions, 'T') ->
+        ( if string.contains_char(DumpOptions, 'T') then
             module_info_get_type_table(ModuleInfo, TypeTable),
             module_info_get_instance_table(ModuleInfo, InstanceTable),
             module_info_get_class_table(ModuleInfo, ClassTable),
             write_types(Info, Indent, TypeTable, !IO),
             write_classes(Info, Indent, ClassTable, !IO),
             write_instances(Info, Indent, InstanceTable, !IO)
-        ;
+        else
             true
         ),
-        ( string.contains_char(DumpOptions, 'M') ->
+        ( if string.contains_char(DumpOptions, 'M') then
             module_info_get_inst_table(ModuleInfo, InstTable),
             module_info_get_mode_table(ModuleInfo, ModeTable),
             globals.lookup_int_option(Globals, dump_hlds_inst_limit,
                 InstLimit),
             write_inst_table(Lang, Indent, InstLimit, InstTable, !IO),
             write_mode_table(Indent, ModeTable, !IO)
-        ;
+        else
             true
         ),
-        ( string.contains_char(DumpOptions, 'Z') ->
+        ( if string.contains_char(DumpOptions, 'Z') then
             module_info_get_table_struct_map(ModuleInfo, TableStructMap),
             write_table_structs(ModuleInfo, TableStructMap, !IO)
-        ;
+        else
             true
         )
     ),
-    ( string.contains_char(DumpOptions, 'X') ->
+    ( if string.contains_char(DumpOptions, 'X') then
         module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
         write_const_struct_db(ConstStructDb, !IO)
-    ;
+    else
         true
     ),
-    ( string.contains_char(DumpOptions, 'x') ->
+    ( if string.contains_char(DumpOptions, 'x') then
         module_info_get_preds(ModuleInfo, PredTable),
         write_preds(Info, Lang, Indent, ModuleInfo, PredTable, !IO)
-    ;
+    else
         true
     ),
     write_footer(Indent, ModuleInfo, !IO).
@@ -219,10 +219,12 @@ write_type_table_entries(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
     % Write the context.
     io.write_char('\n', !IO),
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( string.contains_char(DumpOptions, 'c') ->
+    ( if string.contains_char(DumpOptions, 'c') then
         term.context_file(Context, FileName),
         term.context_line(Context, LineNumber),
-        ( FileName \= "" ->
+        ( if FileName = "" then
+            true
+        else
             write_indent(Indent, !IO),
             io.write_string("% context: file `", !IO),
             io.write_string(FileName, !IO),
@@ -231,21 +233,19 @@ write_type_table_entries(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
             io.write_string(", status ", !IO),
             io.write_string(import_status_to_string(Status), !IO),
             io.write_char('\n', !IO)
-        ;
-            true
         )
-    ;
+    else
         true
     ),
 
     write_indent(Indent, !IO),
-    (
+    ( if
         ( TypeBody = hlds_solver_type(_, _)
         ; TypeBody = hlds_abstract_type(abstract_solver_type)
         )
-    ->
+    then
         io.write_string(":- solver type ", !IO)
-    ;
+    else
         io.write_string(":- type ", !IO)
     ),
     write_type_name(TypeCtor, !IO),
@@ -432,10 +432,10 @@ write_ctor(TVarSet, TypeCtor, TagValues, Ctor, !IO) :-
     mercury_output_ctor(TVarSet, Ctor, !IO),
     Ctor = ctor(_, _, Name, _Args, Arity, _),
     ConsId = cons(Name, Arity, TypeCtor),
-    ( map.search(TagValues, ConsId, TagValue) ->
+    ( if map.search(TagValues, ConsId, TagValue) then
         io.write_string("\t% tag: ", !IO),
         io.print(TagValue, !IO)
-    ;
+    else
         true
     ).
 
@@ -469,21 +469,21 @@ write_class_defn(Info, Indent, ClassId - ClassDefn, !IO) :-
 
     term.context_file(Context, FileName),
     term.context_line(Context, LineNumber),
-    ( FileName \= "" ->
+    ( if FileName = "" then
+        true
+    else
         write_indent(Indent, !IO),
         io.write_string("% context: file `", !IO),
         io.write_string(FileName, !IO),
         io.write_string("', line ", !IO),
         io.write_int(LineNumber, !IO),
         io.write_string("\n", !IO)
-    ;
-        true
     ),
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( string.contains_char(DumpOptions, 'v') ->
+    ( if string.contains_char(DumpOptions, 'v') then
         VarNamePrint = print_name_and_num
-    ;
+    else
         VarNamePrint = print_name_only
     ),
 
@@ -575,9 +575,9 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
 
     term.context_file(Context, FileName),
     term.context_line(Context, LineNumber),
-    ( FileName = "" ->
+    ( if FileName = "" then
         true
-    ;
+    else
         write_indent(Indent, !IO),
         io.write_string("% context: file `", !IO),
         io.write_string(FileName, !IO),
@@ -587,9 +587,9 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
     ),
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( string.contains_char(DumpOptions, 'v') ->
+    ( if string.contains_char(DumpOptions, 'v') then
         VarNamePrint = print_name_and_num
-    ;
+    else
         VarNamePrint = print_name_only
     ),
 
@@ -751,7 +751,7 @@ write_inst_params(InstVar, InstVars, InstVarSet, !IO) :-
 
 write_key_maybe_inst(Lang, Limit, WriteKey, Key - MaybeInst, !N, !IO) :-
     !:N = !.N + 1,
-    ( !.N =< Limit ->
+    ( if !.N =< Limit then
         io.nl(!IO),
         io.format("Entry %d key\n", [i(!.N)], !IO),
         WriteKey(Lang, Key, !IO),
@@ -764,7 +764,7 @@ write_key_maybe_inst(Lang, Limit, WriteKey, Key - MaybeInst, !N, !IO) :-
             write_inst(Lang, Inst, !IO),
             io.nl(!IO)
         )
-    ;
+    else
         true
     ).
 
@@ -775,7 +775,7 @@ write_key_maybe_inst(Lang, Limit, WriteKey, Key - MaybeInst, !N, !IO) :-
 
 write_key_maybe_inst_det(Lang, Limit, WriteKey, Key - MaybeInstDet, !N, !IO) :-
     !:N = !.N + 1,
-    ( !.N =< Limit ->
+    ( if !.N =< Limit then
         io.nl(!IO),
         io.format("Entry %d key\n", [i(!.N)], !IO),
         WriteKey(Lang, Key, !IO),
@@ -789,7 +789,7 @@ write_key_maybe_inst_det(Lang, Limit, WriteKey, Key - MaybeInstDet, !N, !IO) :-
             write_inst(Lang, Inst, !IO),
             io.nl(!IO)
         )
-    ;
+    else
         true
     ).
 
@@ -1127,15 +1127,15 @@ maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredId - PredInfo, !IO) :-
     DumpPredIdStrs = Info ^ hoi_dump_hlds_pred_ids,
     DumpPredNames = Info ^ hoi_dump_hlds_pred_names,
     pred_id_to_int(PredId, PredIdInt),
-    (
+    ( if
         % If the user requested one or more predicates/functions to be dumped,
         % we dump them even if the condition of the nested if-then-else below
         % would say they shouldn't be dumped, and we don't dump anything else.
         ( DumpPredIdStrs = [_ | _]
         ; DumpPredNames = [_ | _]
         )
-    ->
-        (
+    then
+        ( if
             (
                 some [DumpPredIdStr, DumpPredId] (
                     list.member(DumpPredIdStr, DumpPredIdStrs),
@@ -1146,20 +1146,20 @@ maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredId - PredInfo, !IO) :-
                 PredName = pred_info_name(PredInfo),
                 list.member(PredName, DumpPredNames)
             )
-        ->
+        then
             write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO)
-        ;
+        else
             true
         )
-    ;
-        (
+    else
+        ( if
             (
-                \+ string.contains_char(DumpOptions, 'I'),
+                not string.contains_char(DumpOptions, 'I'),
                 pred_info_is_imported(PredInfo)
             ;
                 % For pseudo-imported predicates (i.e. unification preds),
                 % only print them if we are using a local mode for them.
-                \+ string.contains_char(DumpOptions, 'I'),
+                not string.contains_char(DumpOptions, 'I'),
                 pred_info_is_pseudo_imported(PredInfo),
                 ProcIds = pred_info_procids(PredInfo),
                 hlds_pred.in_in_unification_proc_id(ProcId),
@@ -1169,12 +1169,12 @@ maybe_write_pred(Info, Lang, Indent, ModuleInfo, PredId - PredInfo, !IO) :-
                 % predicates if suboption 'U' is on. We don't need that
                 % information to understand how the program has been
                 % transformed.
-                \+ string.contains_char(DumpOptions, 'U'),
+                not string.contains_char(DumpOptions, 'U'),
                 is_unify_or_compare_pred(PredInfo)
             )
-        ->
+        then
             true
-        ;
+        else
             write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO)
         )
     ).

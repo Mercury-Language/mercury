@@ -65,13 +65,13 @@ write_proc_stats_for_module(OutStream, Msg, ModuleInfo, !IO) :-
 
 write_proc_stats_for_pred(OutStream, Msg, ModuleInfo, PredId - PredInfo,
         !IO) :-
-    (
+    ( if
         ( pred_info_is_imported(PredInfo)
         ; is_unify_or_compare_pred(PredInfo)
         )
-    ->
+    then
         true
-    ;
+    else
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.to_assoc_list(ProcTable, Procs),
         list.foldl(
@@ -433,10 +433,10 @@ do_write_proc_stats(OutStream, Msg, Name, PredId, ProcId,
 
 output_proc_stat_component(OutStream, _Msg, _Name, _PredId, _ProcId,
         ComponentName, ComponentCount, !IO) :-
-    ( ComponentCount > 0 ->
+    ( if ComponentCount > 0 then
         io.format(OutStream, "GOAL %s: %d\n",
             [s(ComponentName), i(ComponentCount)], !IO)
-    ;
+    else
         true
     ).
 

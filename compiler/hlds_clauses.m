@@ -333,21 +333,21 @@ add_clause_item_number_regions(ItemNum, Context, !Regions) :-
         !.Regions = [FirstRegion0 | LaterRegions0],
         FirstRegion0 = clause_item_number_region(
             LowerNum0, UpperNum0, LowerContext0, UpperContext0),
-        ( ItemNum < LowerNum0 - 1 ->
+        ( if ItemNum < LowerNum0 - 1 then
             NewRegion = clause_item_number_region(ItemNum, ItemNum,
                 Context, Context),
             !:Regions = [NewRegion, FirstRegion0 | LaterRegions0]
-        ; ItemNum = LowerNum0 - 1 ->
+        else if ItemNum = LowerNum0 - 1 then
             FirstRegion = clause_item_number_region(ItemNum, UpperNum0,
                 Context, UpperContext0),
             !:Regions = [FirstRegion | LaterRegions0]
-        ; ItemNum =< UpperNum0 ->
+        else if ItemNum =< UpperNum0 then
             unexpected($module, $pred, "duplicate item number")
-        ; ItemNum = UpperNum0 + 1 ->
+        else if ItemNum = UpperNum0 + 1 then
             FirstRegion = clause_item_number_region(LowerNum0, ItemNum,
                 LowerContext0, Context),
             !:Regions = [FirstRegion | LaterRegions0]
-        ;
+        else
             add_clause_item_number_regions(ItemNum, Context,
                 LaterRegions0, LaterRegions1),
             % See if need to merge FirstRegion0 with the first region
@@ -359,12 +359,12 @@ add_clause_item_number_regions(ItemNum, Context, !Regions) :-
                 LaterRegions1 = [FirstLaterRegion1 | LaterLaterRegions1],
                 FirstLaterRegion1 = clause_item_number_region(
                     LowerNum1, UpperNum1, _LowerContext1, UpperContext1),
-                ( UpperNum0 + 1 = LowerNum1 ->
+                ( if UpperNum0 + 1 = LowerNum1 then
                     FirstRegion =
                         clause_item_number_region(LowerNum0, UpperNum1,
                             LowerContext0, UpperContext1),
                     !:Regions = [FirstRegion | LaterLaterRegions1]
-                ;
+                else
                     !:Regions = [FirstRegion0, FirstLaterRegion1
                         | LaterLaterRegions1]
                 )

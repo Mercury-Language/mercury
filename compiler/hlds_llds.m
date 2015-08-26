@@ -430,63 +430,63 @@ explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
 
 goal_info_get_pre_births(GoalInfo, PreBirths) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
-    ( PreBirthsPrime = CodeGenInfo ^ llds_code_gen ^ pre_births ->
+    ( if PreBirthsPrime = CodeGenInfo ^ llds_code_gen ^ pre_births then
         PreBirths = PreBirthsPrime
-    ;
+    else
         unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_post_births(GoalInfo, PostBirths) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
-    ( PostBirthsPrime = CodeGenInfo ^ llds_code_gen ^ post_births ->
+    ( if PostBirthsPrime = CodeGenInfo ^ llds_code_gen ^ post_births then
         PostBirths = PostBirthsPrime
-    ;
+    else
         unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_pre_deaths(GoalInfo, PreDeaths) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
-    ( PreDeathsPrime = CodeGenInfo ^ llds_code_gen ^ pre_deaths ->
+    ( if PreDeathsPrime = CodeGenInfo ^ llds_code_gen ^ pre_deaths then
         PreDeaths = PreDeathsPrime
-    ;
+    else
         unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_post_deaths(GoalInfo, PostDeaths) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
-    ( PostDeathsPrime = CodeGenInfo ^ llds_code_gen ^ post_deaths ->
+    ( if PostDeathsPrime = CodeGenInfo ^ llds_code_gen ^ post_deaths then
         PostDeaths = PostDeathsPrime
-    ;
+    else
         unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_follow_vars(GoalInfo, FollowVars) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
-    ( FollowVarsPrime = CodeGenInfo ^ llds_code_gen ^ follow_vars ->
+    ( if FollowVarsPrime = CodeGenInfo ^ llds_code_gen ^ follow_vars then
         FollowVars = FollowVarsPrime
-    ;
+    else
         unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_store_map(GoalInfo, StoreMap) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
-    ( StoreMapPrime = CodeGenInfo ^ llds_code_gen ^ store_map ->
+    ( if StoreMapPrime = CodeGenInfo ^ llds_code_gen ^ store_map then
         StoreMap = StoreMapPrime
-    ;
+    else
         unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_resume_point(GoalInfo, ResumePoint) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
-    ( ResumePointPrime = CodeGenInfo ^ llds_code_gen ^ resume_point ->
+    ( if ResumePointPrime = CodeGenInfo ^ llds_code_gen ^ resume_point then
         ResumePoint = ResumePointPrime
-    ;
+    else
         unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
-    ( MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need ->
+    ( if MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need then
         (
             MaybeNeed = need_call(NeedAtCall),
             MaybeNeedAtCall = yes(NeedAtCall)
@@ -497,13 +497,13 @@ goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAtCall) :-
             ),
             MaybeNeedAtCall = no
         )
-    ;
+    else
         unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
-    ( MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need ->
+    ( if MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need then
         (
             MaybeNeed = need_resume(NeedInResume),
             MaybeNeedInResume = yes(NeedInResume)
@@ -514,13 +514,13 @@ goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume) :-
             ),
             MaybeNeedInResume = no
         )
-    ;
+    else
         unexpected($module, $pred, "no code_gen_info")
     ).
 
 goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
-    ( MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need ->
+    ( if MaybeNeed = CodeGenInfo ^ llds_code_gen ^ maybe_need then
         (
             MaybeNeed = need_par_conj(NeedInParConj),
             MaybeNeedInParConj = yes(NeedInParConj)
@@ -531,7 +531,7 @@ goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj) :-
             ),
             MaybeNeedInParConj = no
         )
-    ;
+    else
         unexpected($module, $pred, "no code_gen_info")
     ).
 

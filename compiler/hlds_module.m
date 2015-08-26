@@ -1174,33 +1174,33 @@ module_info_set_type_spec_info(X, !MI) :-
 module_info_set_exception_info(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_exception_info := X.
 module_info_set_const_struct_db(X, !MI) :-
-    (
+    ( if
         private_builtin.pointer_equal(X,
             !.MI ^ mi_sub_info ^ msi_const_struct_db)
-    ->
+    then
         true
-    ;
+    else
         !MI ^ mi_sub_info ^ msi_const_struct_db := X
     ).
 module_info_set_foreign_import_modules(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_foreign_import_modules := X.
 module_info_set_pragma_exported_procs(X, !MI) :-
-    (
+    ( if
         private_builtin.pointer_equal(X,
             !.MI ^ mi_sub_info ^ msi_pragma_exported_procs)
-    ->
+    then
         true
-    ;
+    else
         !MI ^ mi_sub_info ^ msi_pragma_exported_procs := X
     ).
 
 module_info_set_maybe_recompilation_info(X, !MI) :-
-    (
+    ( if
         private_builtin.pointer_equal(X,
             !.MI ^ mi_rare_info ^ mri_maybe_recompilation_info)
-    ->
+    then
         true
-    ;
+    else
         !MI ^ mi_rare_info ^ mri_maybe_recompilation_info := X
     ).
 module_info_set_proc_requests(X, !MI) :-
@@ -1222,9 +1222,9 @@ module_info_set_foreign_body_codes(X, !MI) :-
 module_info_set_maybe_dependency_info(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_maybe_dependency_info := X.
 module_info_set_num_errors(X, !MI) :-
-    ( X = !.MI ^ mi_rare_info ^ mri_num_errors ->
+    ( if X = !.MI ^ mi_rare_info ^ mri_num_errors then
         true
-    ;
+    else
         !MI ^ mi_rare_info ^ mri_num_errors := X
     ).
 module_info_set_type_ctor_gen_infos(X, !MI) :-
@@ -1344,9 +1344,9 @@ module_info_set_preds(Preds, !MI) :-
 
 module_info_pred_info(MI, PredId, PredInfo) :-
     module_info_get_preds(MI, Preds),
-    ( map.search(Preds, PredId, PredInfoPrime) ->
+    ( if map.search(Preds, PredId, PredInfoPrime) then
         PredInfo = PredInfoPrime
-    ;
+    else
         pred_id_to_int(PredId, PredInt),
         string.int_to_string(PredInt, PredStr),
         unexpected($module, $pred, "cannot find predicate number " ++ PredStr)
@@ -1480,13 +1480,13 @@ module_info_incr_num_errors(Incr, !MI) :-
 
 module_info_next_lambda_count(Context, Count, !MI) :-
     module_info_get_lambdas_per_context(!.MI, ContextCounter0),
-    (
+    ( if
         map.insert(Context, counter.init(2),
             ContextCounter0, FoundContextCounter)
-    ->
+    then
         Count = 1,
         ContextCounter = FoundContextCounter
-    ;
+    else
         map.lookup(ContextCounter0, Context, Counter0),
         counter.allocate(Count, Counter0, Counter),
         map.det_update(Context, Counter, ContextCounter0, ContextCounter)
@@ -1495,13 +1495,13 @@ module_info_next_lambda_count(Context, Count, !MI) :-
 
 module_info_next_atomic_count(Context, Count, !MI) :-
     module_info_get_atomics_per_context(!.MI, ContextCounter0),
-    (
+    ( if
         map.insert(Context, counter.init(2),
             ContextCounter0, FoundContextCounter)
-    ->
+    then
         Count = 1,
         ContextCounter = FoundContextCounter
-    ;
+    else
         map.lookup(ContextCounter0, Context, Counter0),
         counter.allocate(Count, Counter0, Counter),
         map.det_update(Context, Counter, ContextCounter0, ContextCounter)
@@ -1599,9 +1599,9 @@ module_info_new_user_init_pred(SymName, Arity, CName, !MI) :-
     module_info_get_user_init_pred_c_names(!.MI, InitPredCNames0),
     UserInitPredNo = list.length(InitPredCNames0),
     module_info_get_name(!.MI, ModuleSymName0),
-    ( mercury_std_library_module_name(ModuleSymName0) ->
+    ( if mercury_std_library_module_name(ModuleSymName0) then
         ModuleSymName = add_outermost_qualifier("mercury", ModuleSymName0)
-    ;
+    else
         ModuleSymName = ModuleSymName0
     ),
     ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
@@ -1614,9 +1614,9 @@ module_info_new_user_final_pred(SymName, Arity, CName, !MI) :-
     module_info_get_user_final_pred_c_names(!.MI, FinalPredCNames0),
     UserFinalPredNo = list.length(FinalPredCNames0),
     module_info_get_name(!.MI, ModuleSymName0),
-    ( mercury_std_library_module_name(ModuleSymName0) ->
+    ( if mercury_std_library_module_name(ModuleSymName0) then
         ModuleSymName = add_outermost_qualifier("mercury", ModuleSymName0)
-    ;
+    else
         ModuleSymName = ModuleSymName0
     ),
     ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
@@ -1653,10 +1653,10 @@ get_unique_pred_proc_id_for_symname_and_arity(MI, SymName / Arity,
     module_info_get_predicate_table(MI, PredTable),
     predicate_table_lookup_pred_sym_arity(PredTable,
         may_be_partially_qualified, SymName, Arity, PredIds),
-    ( PredIds = [PredId] ->
+    ( if PredIds = [PredId] then
         pred_table.get_proc_id(MI, PredId, ProcId),
         PredProcId = proc(PredId, ProcId)
-    ;
+    else
         unexpected($module, $pred, "lookup failed")
     ).
 

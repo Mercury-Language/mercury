@@ -126,12 +126,12 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
     pred_info_get_head_type_params(PredInfo, HeadTypeParams),
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( string.contains_char(DumpOptions, 'v') ->
+    ( if string.contains_char(DumpOptions, 'v') then
         VarNamePrint = print_name_and_num
-    ;
+    else
         VarNamePrint = print_name_only
     ),
-    ( string.contains_char(DumpOptions, 'C') ->
+    ( if string.contains_char(DumpOptions, 'C') then
         % Information about predicates is dumped if 'C' suboption is on.
         (
             PredOrFunc = pf_predicate,
@@ -145,12 +145,12 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
                 qualified(Module, PredName), FuncArgTypes, FuncRetType, no,
                 Purity, ClassContext, Context, !IO)
         )
-    ;
+    else
         true
     ),
     ClausesInfo = clauses_info(VarSet, _, _, VarTypes, HeadVars, ClausesRep,
         _ItemNumbers, RttiVarMaps, _HaveForeignClauses),
-    ( string.contains_char(DumpOptions, 'C') ->
+    ( if string.contains_char(DumpOptions, 'C') then
         write_indent(Indent, !IO),
         io.write_string("% pred id: ", !IO),
         pred_id_to_int(PredId, PredInt),
@@ -175,16 +175,16 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
         ),
         write_rtti_varmaps(VarSet, TVarSet, VarNamePrint, Indent, RttiVarMaps,
             !IO),
-        ( map.is_empty(ProofMap) ->
+        ( if map.is_empty(ProofMap) then
             true
-        ;
+        else
             write_constraint_proof_map(TVarSet, VarNamePrint, Indent, ProofMap,
                 !IO),
             io.write_string("\n", !IO)
         ),
-        ( map.is_empty(ConstraintMap) ->
+        ( if map.is_empty(ConstraintMap) then
             true
-        ;
+        else
             write_constraint_map(TVarSet, VarNamePrint, Indent, ConstraintMap,
                 !IO)
         ),
@@ -351,7 +351,7 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
             ; Origin = origin_user(_)
             )
         )
-    ;
+    else
         true
     ),
     pred_info_get_proc_table(PredInfo, ProcTable),
@@ -367,29 +367,29 @@ set_dump_opts_for_clauses(Info, ClausesInfo) :-
     OptionsStr = Info ^ hoi_dump_hlds_options,
     some [!DumpStr] (
         !:DumpStr = "",
-        ( string.contains_char(OptionsStr, 'c') ->
+        ( if string.contains_char(OptionsStr, 'c') then
             !:DumpStr = !.DumpStr ++ "c"
-        ;
+        else
             true
         ),
-        ( string.contains_char(OptionsStr, 'n') ->
+        ( if string.contains_char(OptionsStr, 'n') then
             !:DumpStr = !.DumpStr ++ "n"
-        ;
+        else
             true
         ),
-        ( string.contains_char(OptionsStr, 'v') ->
+        ( if string.contains_char(OptionsStr, 'v') then
             !:DumpStr = !.DumpStr ++ "v"
-        ;
+        else
             true
         ),
-        ( string.contains_char(OptionsStr, 'g') ->
+        ( if string.contains_char(OptionsStr, 'g') then
             !:DumpStr = !.DumpStr ++ "g"
-        ;
+        else
             true
         ),
-        ( string.contains_char(OptionsStr, 'P') ->
+        ( if string.contains_char(OptionsStr, 'P') then
             !:DumpStr = !.DumpStr ++ "P"
-        ;
+        else
             true
         ),
         DumpStr = !.DumpStr
@@ -445,13 +445,13 @@ write_clause(Info, Lang, ModuleInfo,PredId, PredOrFunc, VarSet, TypeQual,
         ApplicableModes = all_modes
     ;
         ApplicableModes = selected_modes(Modes),
-        ( string.contains_char(DumpOptions, 'm') ->
+        ( if string.contains_char(DumpOptions, 'm') then
             write_indent(Indent, !IO),
             io.write_string("% Modes for which this clause applies: ", !IO),
             ModeInts = list.map(proc_id_to_int, Modes),
             write_intlist(ModeInts, !IO),
             io.write_string("\n", !IO)
-        ;
+        else
             true
         )
     ),
@@ -465,10 +465,10 @@ write_clause(Info, Lang, ModuleInfo,PredId, PredOrFunc, VarSet, TypeQual,
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     AllProcIds = pred_info_procids(PredInfo),
-    (
+    ( if
         ApplicableModes = selected_modes(SelectedProcIds),
         SelectedProcIds \= AllProcIds
-    ->
+    then
         % If SelectedProcIds contains more than one mode, the output will have
         % multiple clause heads. This won't be pretty and it won't be
         % syntactically valid, but it is more useful for debugging
@@ -476,13 +476,13 @@ write_clause(Info, Lang, ModuleInfo,PredId, PredOrFunc, VarSet, TypeQual,
         write_annotated_clause_heads(ModuleInfo, Lang, VarSet, VarNamePrint,
             WriteWhichModes, PredId, PredOrFunc, SelectedProcIds,
             Context, HeadTerms, !IO)
-    ;
+    else
         write_clause_head(ModuleInfo, VarSet, VarNamePrint,
             PredId, PredOrFunc, HeadTerms, !IO)
     ),
-    ( Goal = hlds_goal(conj(plain_conj, []), _GoalInfo) ->
+    ( if Goal = hlds_goal(conj(plain_conj, []), _GoalInfo) then
         io.write_string(".\n", !IO)
-    ;
+    else
         io.write_string(" :-\n", !IO),
         do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
             Indent1, ".\n", Goal, !IO)
@@ -514,7 +514,7 @@ write_annotated_clause_head(ModuleInfo, Lang,VarSet, VarNamePrint,
         Context, HeadTerms, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, Procedures),
-    ( map.search(Procedures, ProcId, ProcInfo) ->
+    ( if map.search(Procedures, ProcId, ProcInfo) then
         % When writing `.opt' files, use the declared argument modes so that
         % the modes are guaranteed to be syntactically identical to those
         % in the original program. The test in add_clause.m to check whether
@@ -539,7 +539,7 @@ write_annotated_clause_head(ModuleInfo, Lang,VarSet, VarNamePrint,
             AnnotatedPairs),
         write_clause_head(ModuleInfo, VarSet, VarNamePrint, PredId,
             PredOrFunc, AnnotatedHeadTerms, !IO)
-    ;
+    else
         % This procedure, even though it existed in the past, has been
         % eliminated.
         true
@@ -829,7 +829,7 @@ write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
     Indent1 = Indent + 1,
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( string.contains_char(DumpOptions, 'x') ->
+    ( if string.contains_char(DumpOptions, 'x') then
         write_indent(Indent1, !IO),
         io.write_string("% pred id ", !IO),
         pred_id_to_int(PredId, PredInt),
@@ -845,7 +845,7 @@ write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
         io.write_string(determinism_to_string(InferredDeterminism), !IO),
         io.write_string("):\n", !IO),
 
-        ( string.contains_char(DumpOptions, 't') ->
+        ( if string.contains_char(DumpOptions, 't') then
             write_indent(Indent, !IO),
             io.write_string("% Arg size properties: ", !IO),
             write_maybe_arg_size_info(yes, MaybeArgSize, !IO),
@@ -854,12 +854,12 @@ write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
             io.write_string("% Termination properties: ", !IO),
             write_maybe_termination_info(yes, MaybeTermination, !IO),
             io.nl(!IO)
-        ;
+        else
             true
         ),
 
         % Dump structure sharing information.
-        ( string.contains_char(DumpOptions, 'S') ->
+        ( if string.contains_char(DumpOptions, 'S') then
             write_indent(Indent, !IO),
             io.write_string("% Structure sharing: \n", !IO),
             (
@@ -872,12 +872,12 @@ write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
                 MaybeStructureSharing = no,
                 dump_maybe_structure_sharing_domain(VarSet, TVarSet, no, !IO)
             )
-        ;
+        else
             true
         ),
 
         % Dump structure reuse information.
-        ( string.contains_char(DumpOptions, 'R') ->
+        ( if string.contains_char(DumpOptions, 'R') then
             write_indent(Indent, !IO),
             io.write_string("% Structure reuse: \n", !IO),
             (
@@ -890,7 +890,7 @@ write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
                 MaybeStructureReuse = no,
                 dump_maybe_structure_reuse_domain(VarSet, TVarSet, no, !IO)
             )
-        ;
+        else
             true
         ),
 
@@ -1041,32 +1041,32 @@ write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
         ;
             MaybeArgLives = no
         ),
-        ( set_of_var.is_non_empty(RegR_HeadVars) ->
+        ( if set_of_var.is_non_empty(RegR_HeadVars) then
             write_indent(Indent, !IO),
             io.write_string("% reg_r headvars: ", !IO),
             io.write_list(set_of_var.to_sorted_list(RegR_HeadVars),
                 ", ", mercury_output_var(VarSet, VarNamePrint), !IO),
             io.nl(!IO)
-        ;
+        else
             true
         ),
-        (
+        ( if
             string.contains_char(DumpOptions, 'A'),
             MaybeArgInfos = yes(ArgInfos)
-        ->
+        then
             write_indent(Indent, !IO),
             io.write_string("% arg_infos: ", !IO),
             io.print(ArgInfos, !IO),
             io.nl(!IO)
-        ;
+        else
             true
         ),
-        (
+        ( if
             ImportStatus = status_pseudo_imported,
             hlds_pred.in_in_unification_proc_id(ProcId)
-        ->
+        then
             true
-        ;
+        else
             proc_info_get_stack_slots(ProcInfo, StackSlots),
             write_indent(Indent, !IO),
             write_stack_slots(VarSet, VarNamePrint, Indent, StackSlots, !IO),
@@ -1078,7 +1078,7 @@ write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
             write_goal(Info, ModuleInfo, VarSet, VarNamePrint,
                 Indent1, ".\n", Goal, !IO)
         )
-    ;
+    else
         true
     ).
 

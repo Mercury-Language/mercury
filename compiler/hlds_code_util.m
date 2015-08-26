@@ -151,9 +151,9 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
             ( TargetLang = target_c
             ; TargetLang = target_erlang
             ),
-            ( Arity = 0 ->
+            ( if Arity = 0 then
                 Tag = int_tag(0)
-            ;
+            else
                 Tag = single_functor_tag
             )
         ;
@@ -277,9 +277,9 @@ get_procedure_matching_argmodes(Procs, Modes0, ModuleInfo, ProcId) :-
 get_procedure_matching_argmodes_2([P | Procs], Modes, ModuleInfo, OurProcId) :-
     P = ProcId - ProcInfo,
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    ( mode_list_matches(Modes, ArgModes, ModuleInfo) ->
+    ( if mode_list_matches(Modes, ArgModes, ModuleInfo) then
         OurProcId = ProcId
-    ;
+    else
         get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, OurProcId)
     ).
 
@@ -312,9 +312,9 @@ get_procedure_matching_declmodes_with_renaming_2([P | Procs], Modes,
         ModuleInfo, OurProcId) :-
     P = ProcId - ProcInfo,
     proc_info_declared_argmodes(ProcInfo, ArgModes),
-    ( mode_list_matches_with_renaming(Modes, ArgModes, ModuleInfo) ->
+    ( if mode_list_matches_with_renaming(Modes, ArgModes, ModuleInfo) then
         OurProcId = ProcId
-    ;
+    else
         get_procedure_matching_declmodes_with_renaming_2(Procs, Modes,
             ModuleInfo, OurProcId)
     ).
@@ -431,22 +431,22 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
         match_insts_with_renaming(ModuleInfo, SpecInstA, SpecInstB, Renaming0),
         ListVarA = set.to_sorted_list(InstVarSetA),
         ListVarB = set.to_sorted_list(InstVarSetB),
-        (
+        ( if
             ListVarA = [VarA0],
             ListVarB = [VarB0]
-        ->
+        then
             VarA = VarA0,
             VarB = VarB0
-        ;
+        else
             unexpected($module, $pred, "non-singleton sets")
         ),
-        ( map.search(Renaming0, VarA, SpecVarB) ->
+        ( if map.search(Renaming0, VarA, SpecVarB) then
             % If VarA was already in the renaming then check that it is
             % consistent with the renaming from the set of inst vars.
             VarB = SpecVarB,
             Renaming = Renaming0
-        ;
-            map.insert(VarA, VarB, Renaming0, Renaming)
+        else
+            map.det_insert(VarA, VarB, Renaming0, Renaming)
         )
     ;
         InstA = defined_inst(InstNameA),

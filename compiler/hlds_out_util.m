@@ -232,7 +232,7 @@ write_pred_id(ModuleInfo, PredId, !IO) :-
 
 pred_id_to_string(ModuleInfo, PredId) = Str :-
     module_info_get_preds(ModuleInfo, PredTable),
-    ( map.search(PredTable, PredId, PredInfo) ->
+    ( if map.search(PredTable, PredId, PredInfo) then
         Module = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),
         Arity = pred_info_orig_arity(PredInfo),
@@ -242,9 +242,9 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
             Origin = origin_special_pred(SpecialId - TypeCtor),
             special_pred_description(SpecialId, Descr),
             TypeCtor = type_ctor(_TypeSymName, TypeArity),
-            ( TypeArity = 0 ->
+            ( if TypeArity = 0 then
                 ForStr = " for type "
-            ;
+            else
                 ForStr = " for type constructor "
             ),
             Str = Descr ++ ForStr ++ type_name_to_string(TypeCtor)
@@ -263,11 +263,11 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
             ])
         ;
             Origin = origin_assertion(FileName, LineNumber),
-            ( pred_info_is_promise(PredInfo, PromiseType) ->
+            ( if pred_info_is_promise(PredInfo, PromiseType) then
                 Str = string.format("`%s' declaration (%s:%d)",
                     [s(prog_out.promise_to_string(PromiseType)),
                     s(FileName), i(LineNumber)])
-            ;
+            else
                 unexpected($module, $pred, "origin_assertion")
             )
         ;
@@ -308,7 +308,7 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
             SymName = qualified(Module, Name),
             Str = simple_call_id_to_string(PredOrFunc, SymName, Arity)
         )
-    ;
+    else
         % The predicate has been deleted, so we print what we can.
         pred_id_to_int(PredId, PredIdInt),
         Str = "deleted predicate " ++ int_to_string(PredIdInt)
@@ -390,14 +390,14 @@ unify_main_context_to_pieces(!First, MainContext, !Pieces) :-
 
 unify_sub_contexts_to_pieces(!First, [], !Pieces).
 unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts], !Pieces) :-
-    (
+    ( if
         contexts_describe_list_element([SubContext | SubContexts],
             0, ElementNum, AfterContexts)
-    ->
+    then
         in_element_to_pieces(!.First, ElementNum, !Pieces),
         !:First = is_not_first,
         unify_sub_contexts_to_pieces(!First, AfterContexts, !Pieces)
-    ;
+    else
         in_argument_to_pieces(!.First, SubContext, !Pieces),
         !:First = is_not_first,
         unify_sub_contexts_to_pieces(!First, SubContexts, !Pieces)
@@ -489,7 +489,7 @@ cast_type_to_string(equiv_type_cast) = "equiv_type_cast".
 cast_type_to_string(exists_cast) = "exists_cast".
 
 call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
-    ( ArgNum =< 0 ->
+    ( if ArgNum =< 0 then
         % Argument numbers that are less than or equal to zero
         % are used for the type_info and typeclass_info arguments
         % that are introduced by polymorphism.m.
@@ -499,17 +499,17 @@ call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
         % For both of these, we just say "in call to"
         % rather than "in argument N of call to".
         Str1 = ""
-    ;
+    else
         Str1 = arg_number_to_string(CallId, ArgNum) ++ " of "
     ),
-    (
+    ( if
         (
             % The text printed for generic calls other than
             % `class_method' does not need the "call to"
             % prefix ("in call to higher-order call" is redundant,
             % it's much better to just say "in higher-order call").
             CallId = generic_call_id(GenericCallId),
-            \+ GenericCallId = gcid_class_method(_, _)
+            not GenericCallId = gcid_class_method(_, _)
         ;
             % For calls from type class instance implementations
             % that were defined using the named syntax rather
@@ -518,9 +518,9 @@ call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
             % the user's source code.
             check_marker(PredMarkers, marker_named_class_instance_method)
         )
-    ->
+    then
         Str2 = Str1
-    ;
+    else
         Str2 = Str1 ++ "call to "
     ),
     Str = Str2 ++ call_id_to_string(CallId).
@@ -530,31 +530,31 @@ call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
 arg_number_to_string(CallId, ArgNum) = Str :-
     (
         CallId = plain_call_id(simple_call_id(PredOrFunc, _, Arity)),
-        (
+        ( if
             PredOrFunc = pf_function,
             Arity = ArgNum
-        ->
+        then
             Str = "the return value"
-        ;
+        else
             Str = "argument " ++ int_to_string(ArgNum)
         )
     ;
         CallId = generic_call_id(GenericCallId),
         (
             GenericCallId = gcid_higher_order(_Purity, PredOrFunc, Arity),
-            (
+            ( if
                 PredOrFunc = pf_function,
                 ArgNum = Arity
-            ->
+            then
                 Str = "the return value"
-            ;
+            else
                 % Make error messages for higher-order calls
                 % such as `P(A, B)' clearer.
                 Main = "argument " ++ int_to_string(ArgNum),
                 PredOrFuncStr = prog_out.pred_or_func_to_full_str(PredOrFunc),
-                ( ArgNum = 1 ->
+                ( if ArgNum = 1 then
                     Expl = "the " ++ PredOrFuncStr ++ " term"
-                ;
+                else
                     Expl = "argument " ++ int_to_string(ArgNum - 1)
                         ++ " of the called " ++ PredOrFuncStr
                 ),
@@ -753,18 +753,18 @@ cons_id_and_vars_or_arity_to_string(VarSet, Qual, ConsId, MaybeArgVars)
             SymName = unqualified(unqualify_name(SymName0))
         ),
         SymNameString0 = sym_name_to_string(SymName),
-        ( string.contains_char(SymNameString0, '*') ->
+        ( if string.contains_char(SymNameString0, '*') then
             % We need to protect against the * appearing next to a /
             Stuff = (pred(Char::in, Str0::in, Str::out) is det :-
-                ( Char = ('*') ->
+                ( if Char = ('*') then
                     string.append(Str0, "star", Str)
-                ;
+                else
                     string.char_to_string(Char, CharStr),
                     string.append(Str0, CharStr, Str)
                 )
             ),
             string.foldl(Stuff, SymNameString0, "", SymNameString1)
-        ;
+        else
             SymNameString1 = SymNameString0
         ),
         SymNameString = term_io.escaped_string(SymNameString1),
@@ -952,9 +952,9 @@ write_intlist_2(H, T, !IO) :-
 %
 
 write_indent(Indent, !IO) :-
-    ( Indent = 0 ->
+    ( if Indent = 0 then
         true
-    ;
+    else
         io.write_string("  ", !IO),
         write_indent(Indent - 1, !IO)
     ).

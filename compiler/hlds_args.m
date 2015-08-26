@@ -366,9 +366,9 @@ apply_renaming_to_proc_arg_vector(Renaming, ArgVec0, ArgVec) :-
     apply_partial_map_to_list(Renaming, OrigArgs0, OrigArgs),
     (
         MaybeRetValue0 = yes(Value0),
-        ( map.search(Renaming, Value0, Value) ->
+        ( if map.search(Renaming, Value0, Value) then
             MaybeRetValue = yes(Value)
-        ;
+        else
             MaybeRetValue = yes(Value0)
         )
     ;
@@ -480,17 +480,21 @@ proc_arg_vector_map_corresponding(P, A, B, C) :-
     list.map_corresponding(P, ArgsA, ArgsB, ArgsC),
     (
         MaybeRetValA = yes(RetValA),
-        MaybeRetValB = yes(RetValB)
-    ->
+        MaybeRetValB = yes(RetValB),
         P(RetValA, RetValB, RetValC),
         MaybeRetValC = yes(RetValC)
     ;
-        MaybeRetValA = no,
-        MaybeRetValB = no
-    ->
-        MaybeRetValC = no
-    ;
+        MaybeRetValA = yes(_),
+        MaybeRetValB = no,
         unexpected($module, $pred, "mismatched proc_arg_vectors")
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = yes(_),
+        unexpected($module, $pred, "mismatched proc_arg_vectors")
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = no,
+        MaybeRetValC = no
     ),
     C = proc_arg_vector(ITIC, ITCIC, UTIC, ETIC, UTCIC, ETCIC, ArgsC,
         MaybeRetValC).
@@ -525,17 +529,21 @@ proc_arg_vector_map_corresponding_foldl2(P, A, B, C, !Acc1, !Acc2) :-
     list.map_corresponding_foldl2(P, ArgsA, ArgsB, ArgsC, !Acc1, !Acc2),
     (
         MaybeRetValA = yes(RetValA),
-        MaybeRetValB = yes(RetValB)
-    ->
+        MaybeRetValB = yes(RetValB),
         P(RetValA, RetValB, RetValC, !Acc1, !Acc2),
         MaybeRetValC = yes(RetValC)
     ;
-        MaybeRetValA = no,
-        MaybeRetValB = no
-    ->
-        MaybeRetValC = no
-    ;
+        MaybeRetValA = yes(_),
+        MaybeRetValB = no,
         unexpected($module, $pred, "mismatched proc_arg_vectors")
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = yes(_),
+        unexpected($module, $pred, "mismatched proc_arg_vectors")
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = no,
+        MaybeRetValC = no
     ),
     C = proc_arg_vector(ITIC, ITCIC, UTIC, ETIC, UTCIC, ETCIC, ArgsC,
         MaybeRetValC).
@@ -554,16 +562,19 @@ proc_arg_vector_foldl3_corresponding(P, A, B, !Acc1, !Acc2, !Acc3) :-
     list.foldl3_corresponding(P, ArgsA, ArgsB, !Acc1, !Acc2, !Acc3),
     (
         MaybeRetValA = yes(RetValA),
-        MaybeRetValB = yes(RetValB)
-    ->
+        MaybeRetValB = yes(RetValB),
         P(RetValA, RetValB, !Acc1, !Acc2, !Acc3)
+    ;
+        MaybeRetValA = yes(_),
+        MaybeRetValB = no,
+        unexpected($module, $pred, "mismatched proc_arg_vectors")
+    ;
+        MaybeRetValA = no,
+        MaybeRetValB = yes(_),
+        unexpected($module, $pred, "mismatched proc_arg_vectors")
     ;
         MaybeRetValA = no,
         MaybeRetValB = no
-    ->
-        true
-    ;
-        unexpected($module, $pred, "mismatched proc_arg_vectors")
     ).
 
 proc_arg_vector_foldl2_corresponding3(P, A, B, C, !Acc1, !Acc2) :-
@@ -580,19 +591,19 @@ proc_arg_vector_foldl2_corresponding3(P, A, B, C, !Acc1, !Acc2) :-
     list.foldl2_corresponding3(P, UTCIA, UTCIB, UTCIC, !Acc1, !Acc2),
     list.foldl2_corresponding3(P, ETCIA, ETCIB, ETCIC, !Acc1, !Acc2),
     list.foldl2_corresponding3(P, ArgsA, ArgsB, ArgsC, !Acc1, !Acc2),
-    (
+    ( if
         MaybeRetValA = yes(RetValA),
         MaybeRetValB = yes(RetValB),
         MaybeRetValC = yes(RetValC)
-    ->
+    then
         P(RetValA, RetValB, RetValC, !Acc1, !Acc2)
-    ;
+    else if
         MaybeRetValA = no,
         MaybeRetValB = no,
         MaybeRetValC = no
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "mismatched proc_arg_vectors")
     ).
 
@@ -610,19 +621,19 @@ proc_arg_vector_foldl3_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3) :-
     list.foldl3_corresponding3(P, UTCIA, UTCIB, UTCIC, !Acc1, !Acc2, !Acc3),
     list.foldl3_corresponding3(P, ETCIA, ETCIB, ETCIC, !Acc1, !Acc2, !Acc3),
     list.foldl3_corresponding3(P, ArgsA, ArgsB, ArgsC, !Acc1, !Acc2, !Acc3),
-    (
+    ( if
         MaybeRetValA = yes(RetValA),
         MaybeRetValB = yes(RetValB),
         MaybeRetValC = yes(RetValC)
-    ->
+    then
         P(RetValA, RetValB, RetValC, !Acc1, !Acc2, !Acc3)
-    ;
+    else if
         MaybeRetValA = no,
         MaybeRetValB = no,
         MaybeRetValC = no
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "mismatched proc_arg_vectors")
     ).
 
@@ -648,19 +659,19 @@ proc_arg_vector_foldl4_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3,
         !Acc4),
     list.foldl4_corresponding3(P, ArgsA, ArgsB, ArgsC, !Acc1, !Acc2, !Acc3,
         !Acc4),
-    (
+    ( if
         MaybeRetValA = yes(RetValA),
         MaybeRetValB = yes(RetValB),
         MaybeRetValC = yes(RetValC)
-    ->
+    then
         P(RetValA, RetValB, RetValC, !Acc1, !Acc2, !Acc3, !Acc4)
-    ;
+    else if
         MaybeRetValA = no,
         MaybeRetValB = no,
         MaybeRetValC = no
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "mismatched proc_arg_vectors")
     ).
 

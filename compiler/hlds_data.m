@@ -141,17 +141,17 @@
 init_cons_table = map.init.
 
 insert_into_cons_table(MainConsId, OtherConsIds, ConsDefn, !ConsTable) :-
-    ( MainConsId = cons(MainSymName, _, _) ->
+    ( if MainConsId = cons(MainSymName, _, _) then
         MainName = unqualify_name(MainSymName),
         Entry = inner_cons_entry(MainConsId, OtherConsIds, ConsDefn),
-        ( map.search(!.ConsTable, MainName, InnerConsEntries0) ->
+        ( if map.search(!.ConsTable, MainName, InnerConsEntries0) then
             InnerConsEntries = [Entry | InnerConsEntries0],
             map.det_update(MainName, InnerConsEntries, !ConsTable)
-        ;
+        else
             InnerConsEntries = [Entry],
             map.det_insert(MainName, InnerConsEntries, !ConsTable)
         )
-    ;
+    else
         unexpected($module, $pred, "MainConsId is not cons")
     ).
 
@@ -168,9 +168,9 @@ search_cons_table(ConsTable, ConsId, ConsDefns) :-
     % I (zs) don't think replacing a list with a different structure would
     % help, since these lists should be very short.
 
-    ( search_inner_main_cons_ids(InnerConsTable, ConsId, MainConsDefn) ->
+    ( if search_inner_main_cons_ids(InnerConsTable, ConsId, MainConsDefn) then
         ConsDefns = [MainConsDefn]
-    ;
+    else
         % Before and during typecheck, we may need to look up constructors
         % using cons_ids that may not be even partially module qualified,
         % and which will contain a dummy type_ctor. That is why we search
@@ -199,9 +199,9 @@ search_cons_table(ConsTable, ConsId, ConsDefns) :-
     hlds_cons_defn::out) is semidet.
 
 search_inner_main_cons_ids([Entry | Entries], ConsId, ConsDefn) :-
-    ( ConsId = Entry ^ ice_fully_qual_cons_id ->
+    ( if ConsId = Entry ^ ice_fully_qual_cons_id then
         ConsDefn = Entry ^ ice_cons_defn
-    ;
+    else
         search_inner_main_cons_ids(Entries, ConsId, ConsDefn)
     ).
 
@@ -211,9 +211,9 @@ search_inner_main_cons_ids([Entry | Entries], ConsId, ConsDefn) :-
 search_inner_other_cons_ids([], _ConsId, []).
 search_inner_other_cons_ids([Entry | Entries], ConsId, !:ConsDefns) :-
     search_inner_other_cons_ids(Entries, ConsId, !:ConsDefns),
-    ( list.member(ConsId, Entry ^ ice_other_cons_ids) ->
+    ( if list.member(ConsId, Entry ^ ice_other_cons_ids) then
         !:ConsDefns = [Entry ^ ice_cons_defn | !.ConsDefns]
-    ;
+    else
         true
     ).
 
@@ -230,7 +230,7 @@ search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn) :-
 search_inner_cons_ids_type_ctor([Entry | Entries], TypeCtor, ConsId,
         ConsDefn) :-
     EntryConsDefn = Entry ^ ice_cons_defn,
-    (
+    ( if
         % If a type has two functors with the same name but different arities,
         % then it is possible for the TypeCtor test to succeed and the ConsId
         % tests to fail (due to the arity mismatch). In such cases, we need
@@ -240,19 +240,19 @@ search_inner_cons_ids_type_ctor([Entry | Entries], TypeCtor, ConsId,
         ( ConsId = Entry ^ ice_fully_qual_cons_id
         ; list.member(ConsId, Entry ^ ice_other_cons_ids)
         )
-    ->
+    then
         ConsDefn = EntryConsDefn
-    ;
+    else
         search_inner_cons_ids_type_ctor(Entries, TypeCtor, ConsId, ConsDefn)
     ).
 
 lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn) :-
-    (
+    ( if
         search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId,
             ConsDefnPrime)
-    ->
+    then
         ConsDefn = ConsDefnPrime
-    ;
+    else
         unexpected($module, $pred, "lookup failed")
     ).
 
@@ -276,11 +276,11 @@ project_inner_cons_entry(Entry, Pair) :-
 
 return_other_arities(ConsTable, SymName, Arity, OtherArities) :-
     Name = unqualify_name(SymName),
-    ( map.search(ConsTable, Name, InnerConsTable) ->
+    ( if map.search(ConsTable, Name, InnerConsTable) then
         return_other_arities_inner(InnerConsTable, SymName, Arity,
             [], OtherArities0),
         list.sort_and_remove_dups(OtherArities0, OtherArities)
-    ;
+    else
         OtherArities = []
     ).
 
@@ -301,16 +301,16 @@ return_other_arities_inner([Entry | Entries], SymName, Arity, !OtherArities) :-
 return_other_arities_inner_cons_ids([], _, _, !OtherArities).
 return_other_arities_inner_cons_ids([ConsId | ConsIds], SymName, Arity,
         !OtherArities) :-
-    ( ConsId = cons(ThisSymName, ThisArity, _) ->
-        (
+    ( if ConsId = cons(ThisSymName, ThisArity, _) then
+        ( if
             ThisSymName = SymName,
             ThisArity \= Arity
-        ->
+        then
             !:OtherArities = [ThisArity | !.OtherArities]
-        ;
+        else
             true
         )
-    ;
+    else
         unexpected($module, $pred, "ConsId is not cons")
     ),
     return_other_arities_inner_cons_ids(ConsIds, SymName, Arity,
@@ -865,10 +865,10 @@ init_type_table = map.init.
 add_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
     TypeCtor = type_ctor(SymName, _Arity),
     Name = unqualify_name(SymName),
-    ( map.search(!.TypeTable, Name, TypeCtorTable0) ->
+    ( if map.search(!.TypeTable, Name, TypeCtorTable0) then
         map.det_insert(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
         map.det_update(Name, TypeCtorTable, !TypeTable)
-    ;
+    else
         TypeCtorTable = map.singleton(TypeCtor, TypeDefn),
         map.det_insert(Name, TypeCtorTable, !TypeTable)
     ).
@@ -883,10 +883,10 @@ replace_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
 add_or_replace_type_ctor_defn(TypeCtor, TypeDefn, !TypeTable) :-
     TypeCtor = type_ctor(SymName, _Arity),
     Name = unqualify_name(SymName),
-    ( map.search(!.TypeTable, Name, TypeCtorTable0) ->
+    ( if map.search(!.TypeTable, Name, TypeCtorTable0) then
         map.set(TypeCtor, TypeDefn, TypeCtorTable0, TypeCtorTable),
         map.det_update(Name, TypeCtorTable, !TypeTable)
-    ;
+    else
         TypeCtorTable = map.singleton(TypeCtor, TypeDefn),
         map.det_insert(Name, TypeCtorTable, !TypeTable)
     ).
@@ -1765,12 +1765,12 @@ restrict_list_elements(Elements, List) = RestrictedList :-
 restrict_list_elements_2(_, _, [], []).
 restrict_list_elements_2([], _, [_ | _], []).
 restrict_list_elements_2([Posn | Posns], Index, [X | Xs], RestrictedXs) :-
-    ( Index = Posn ->
+    ( if Index = Posn then
         restrict_list_elements_2(Posns, Index + 1, Xs, TailRestrictedXs),
         RestrictedXs = [X | TailRestrictedXs]
-    ; Index < Posn ->
+    else if Index < Posn then
         restrict_list_elements_2([Posn | Posns], Index + 1, Xs, RestrictedXs)
-    ;
+    else
         restrict_list_elements_2(Posns, Index + 1, [X | Xs], RestrictedXs)
     ).
 
@@ -2037,9 +2037,9 @@ merge_hlds_constraints(ConstraintsA, ConstraintsB, Constraints) :-
 :- pred pick_shorter_list(list(T)::in, list(T)::in, list(T)::out) is det.
 
 pick_shorter_list(As, Bs, Cs) :-
-    ( is_shorter(As, Bs) ->
+    ( if is_shorter(As, Bs) then
         Cs = As
-    ;
+    else
         Cs = Bs
     ).
 
@@ -2136,21 +2136,21 @@ add_redundant_constraint(Constraint, !Redundant) :-
     Constraint = hlds_constraint(_Ids, ClassName, ArgTypes),
     list.length(ArgTypes, Arity),
     ClassId = class_id(ClassName, Arity),
-    ( map.search(!.Redundant, ClassId, Constraints0) ->
+    ( if map.search(!.Redundant, ClassId, Constraints0) then
         set.insert(Constraint, Constraints0, Constraints)
-    ;
+    else
         Constraints = set.make_singleton_set(Constraint)
     ),
     map.set(ClassId, Constraints, !Redundant).
 
 lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
         Constraints) :-
-    (
+    ( if
         search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId,
-            Count, [], Constraints0)
-    ->
-        Constraints = Constraints0
-    ;
+            Count, [], ConstraintsPrime)
+    then
+        Constraints = ConstraintsPrime
+    else
         unexpected($module, $pred, "not found")
     ).
 
@@ -2165,9 +2165,9 @@ search_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
 
 search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalId, Count,
         !Constraints) :-
-    ( Count = 0 ->
+    ( if Count = 0 then
         true
-    ;
+    else
         ConstraintId = constraint_id(ConstraintType, GoalId, Count),
         map.search(ConstraintMap, ConstraintId, Constraint),
         !:Constraints = [Constraint | !.Constraints],
@@ -2223,15 +2223,15 @@ update_ancestor_constraints_2(ClassTable, TVarSet, Descendants0, Constraint,
 
 update_ancestor_constraints_3(ClassTable, TVarSet, Descendants, Constraint,
         !Ancestors) :-
-    (
+    ( if
         map.search(!.Ancestors, Constraint, OldDescendants),
         is_shorter(OldDescendants, Descendants)
-    ->
+    then
         % We don't want to update the ancestors because we already have a
         % better path. The same will apply for all superclasses, so we
         % don't traverse any further.
         true
-    ;
+    else
         map.set(Constraint, Descendants, !Ancestors),
         update_ancestor_constraints_2(ClassTable, TVarSet, Descendants,
             Constraint, !Ancestors)

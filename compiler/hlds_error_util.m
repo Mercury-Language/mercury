@@ -143,7 +143,7 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, Origin),
-    ( Origin = origin_special_pred(SpecialId - TypeCtor) ->
+    ( if Origin = origin_special_pred(SpecialId - TypeCtor) then
         special_pred_description(SpecialId, Descr),
         TypeCtor = type_ctor(TypeSymName0, TypeArity),
         (
@@ -153,22 +153,22 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
             ShouldModuleQualify = should_not_module_qualify,
             TypeSymName = unqualified(unqualify_name(TypeSymName0))
         ),
-        ( TypeArity = 0 ->
+        ( if TypeArity = 0 then
             Pieces = [words(Descr), words("for type"),
                 sym_name(TypeSymName)]
-        ;
+        else
             Pieces = [words(Descr), words("for type constructor"),
                 sym_name(TypeSymName)]
         )
-    ; check_marker(Markers, marker_class_instance_method) ->
+    else if check_marker(Markers, marker_class_instance_method) then
         Pieces = [words("type class method implementation")]
-    ; pred_info_is_promise(PredInfo, PromiseType) ->
+    else if pred_info_is_promise(PredInfo, PromiseType) then
         Pieces = [words("`" ++ promise_to_string(PromiseType) ++ "'"),
             words("declaration")]
-    ;
-        ( check_marker(Markers, marker_class_method) ->
+    else
+        ( if check_marker(Markers, marker_class_method) then
             Prefix = [words("type class"), p_or_f(PredOrFunc), words("method")]
-        ;
+        else
             Prefix = [p_or_f(PredOrFunc)]
         ),
         (
@@ -191,9 +191,9 @@ describe_one_pred_name_mode(ModuleInfo, ShouldModuleQualify, PredId,
     list.length(ArgModes0, NumArgModes),
     % We need to strip off the extra type_info arguments inserted at the
     % front by polymorphism.m - we only want the last `Arity' of them.
-    ( list.drop(NumArgModes - Arity, ArgModes0, ArgModes) ->
+    ( if list.drop(NumArgModes - Arity, ArgModes0, ArgModes) then
         strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes)
-    ;
+    else
         unexpected($module, $pred, "bad argument list")
     ),
     (

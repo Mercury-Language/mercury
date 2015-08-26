@@ -1771,22 +1771,22 @@ foreign_arg_type(Arg) = Arg ^ arg_type.
 foreign_arg_box(Arg) = Arg ^ arg_box_policy.
 
 make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
-    (
+    ( if
         Vars = [Var | VarsTail],
         NamesModesBoxes = [NameModeBox | NamesModesBoxesTail],
         Types = [Type | TypesTail]
-    ->
+    then
         make_foreign_args(VarsTail, NamesModesBoxesTail, TypesTail, ArgsTail),
         NameModeBox = NameMode - Box,
         Arg = foreign_arg(Var, NameMode, Type, Box),
         Args = [Arg | ArgsTail]
-    ;
+    else if
         Vars = [],
         NamesModesBoxes = [],
         Types = []
-    ->
+    then
         Args = []
-    ;
+    else
         unexpected($module, $pred, "unmatched lists")
     ).
 
@@ -1983,11 +1983,15 @@ goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
     make_impure(!GoalInfo).
 
 make_impure(!GoalInfo) :-
-    ( goal_info_get_purity(!.GoalInfo) = purity_impure ->
+    Purity = goal_info_get_purity(!.GoalInfo),
+    (
+        Purity = purity_impure
         % We don't add not_impure_for_determinism, since we want to
         % keep the existing determinism.
-        true
     ;
+        ( Purity = purity_pure
+        ; Purity = purity_semipure
+        ),
         goal_info_set_purity(purity_impure, !GoalInfo),
         goal_info_add_feature(feature_not_impure_for_determinism, !GoalInfo)
     ).
@@ -2372,9 +2376,9 @@ goal_get_goal_purity(Goal, Purity, ContainsTraceGoal) :-
 
 goal_info_get_goal_purity(GoalInfo, Purity, ContainsTraceGoal) :-
     Purity = goal_info_get_purity(GoalInfo),
-    ( goal_info_has_feature(GoalInfo, feature_contains_trace) ->
+    ( if goal_info_has_feature(GoalInfo, feature_contains_trace) then
         ContainsTraceGoal = contains_trace_goal
-    ;
+    else
         ContainsTraceGoal = contains_no_trace_goal
     ).
 
@@ -2385,9 +2389,9 @@ goal_info_add_feature(Feature, !GoalInfo) :-
 
 goal_info_remove_feature(Feature, !GoalInfo) :-
     Features0 = goal_info_get_features(!.GoalInfo),
-    ( set.remove(Feature, Features0, Features) ->
+    ( if set.remove(Feature, Features0, Features) then
         goal_info_set_features(Features, !GoalInfo)
-    ;
+    else
         % !.GoalInfo did not have Feature, so there is no need to allocate
         % memory for a new !:GoalInfo.
         true
@@ -2634,7 +2638,7 @@ rename_unify_rhs(Must, Subn, RHS0, RHS) :-
 incremental_rename_vars_in_goal(Subn0, SubnUpdates, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     GoalId = goal_info_get_goal_id(GoalInfo0),
-    ( map.search(SubnUpdates, GoalId, GoalSubns) ->
+    ( if map.search(SubnUpdates, GoalId, GoalSubns) then
         trace [compiletime(flag("statevar-subn")), io(!IO)] (
             GoalId = goal_id(GoalIdNum),
             io.format("Goal id %d has substitutions\n", [i(GoalIdNum)], !IO),
@@ -2642,7 +2646,7 @@ incremental_rename_vars_in_goal(Subn0, SubnUpdates, Goal0, Goal) :-
             io.nl(!IO)
         ),
         list.foldl(follow_subn_until_fixpoint, GoalSubns, Subn0, Subn)
-    ;
+    else
         Subn = Subn0
     ),
     incremental_rename_vars_in_goal_expr(Subn, SubnUpdates,
@@ -2654,7 +2658,7 @@ incremental_rename_vars_in_goal(Subn0, SubnUpdates, Goal0, Goal) :-
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
 follow_subn_until_fixpoint(FromVar - ToVar, !Subn) :-
-    ( map.search(!.Subn, ToVar, SubstitutedToVar) ->
+    ( if map.search(!.Subn, ToVar, SubstitutedToVar) then
         trace [compiletime(flag("statevar-subn")), io(!IO)] (
             io.write_string("short circuiting ", !IO),
             io.write(FromVar, !IO),
@@ -2665,7 +2669,7 @@ follow_subn_until_fixpoint(FromVar - ToVar, !Subn) :-
             io.nl(!IO)
         ),
         follow_subn_until_fixpoint(FromVar - SubstitutedToVar, !Subn)
-    ;
+    else
         trace [compiletime(flag("statevar-subn")), io(!IO)] (
             io.write_string("applied substitution: ", !IO),
             io.write(FromVar, !IO),
@@ -3109,78 +3113,78 @@ rename_var_pair_list(Must, Subn,
 %
 
 goal_to_conj_list(Goal, ConjList) :-
-    ( Goal = hlds_goal(conj(plain_conj, List), _) ->
+    ( if Goal = hlds_goal(conj(plain_conj, List), _) then
         ConjList = List
-    ;
+    else
         ConjList = [Goal]
     ).
 
 goal_to_par_conj_list(Goal, ConjList) :-
-    ( Goal = hlds_goal(conj(parallel_conj, List), _) ->
+    ( if Goal = hlds_goal(conj(parallel_conj, List), _) then
         ConjList = List
-    ;
+    else
         ConjList = [Goal]
     ).
 
 goal_to_disj_list(Goal, DisjList) :-
-    ( Goal = hlds_goal(disj(List), _) ->
+    ( if Goal = hlds_goal(disj(List), _) then
         DisjList = List
-    ;
+    else
         DisjList = [Goal]
     ).
 
 conj_list_to_goal(ConjList, GoalInfo, Goal) :-
-    ( ConjList = [Goal0] ->
+    ( if ConjList = [Goal0] then
         Goal = Goal0
-    ;
+    else
         Goal = hlds_goal(conj(plain_conj, ConjList), GoalInfo)
     ).
 
 par_conj_list_to_goal(ConjList, GoalInfo, Goal) :-
-    ( ConjList = [Goal0] ->
+    ( if ConjList = [Goal0] then
         Goal = Goal0
-    ;
+    else
         Goal = hlds_goal(conj(parallel_conj, ConjList), GoalInfo)
     ).
 
 disj_list_to_goal(DisjList, GoalInfo, Goal) :-
-    ( DisjList = [Goal0] ->
+    ( if DisjList = [Goal0] then
         Goal = Goal0
-    ;
+    else
         Goal = hlds_goal(disj(DisjList), GoalInfo)
     ).
 
 conjoin_goal_and_goal_list(Goal0, Goals, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    ( GoalExpr0 = conj(plain_conj, GoalList0) ->
+    ( if GoalExpr0 = conj(plain_conj, GoalList0) then
         GoalList = GoalList0 ++ Goals,
         GoalExpr = conj(plain_conj, GoalList)
-    ;
+    else
         GoalExpr = conj(plain_conj, [Goal0 | Goals])
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo0).
 
 conjoin_goals(Goal1, Goal2, Goal) :-
-    ( Goal2 = hlds_goal(conj(plain_conj, Goals2), _) ->
+    ( if Goal2 = hlds_goal(conj(plain_conj, Goals2), _) then
         GoalList = Goals2
-    ;
+    else
         GoalList = [Goal2]
     ),
     conjoin_goal_and_goal_list(Goal1, GoalList, Goal).
 
 negate_goal(Goal, GoalInfo, NegatedGoal) :-
-    (
+    ( if
         % Eliminate double negations.
         Goal = hlds_goal(negation(Goal1), _)
-    ->
+    then
         NegatedGoal = Goal1
-    ;
+    else if
         % Convert negated conjunctions of negations into disjunctions.
         Goal = hlds_goal(conj(plain_conj, NegatedGoals), _),
         all_negated(NegatedGoals, UnnegatedGoals)
-    ->
+    then
         NegatedGoal = hlds_goal(disj(UnnegatedGoals), GoalInfo)
-    ;
+    else
         NegatedGoal = hlds_goal(negation(Goal), GoalInfo)
     ).
 
