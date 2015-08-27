@@ -3161,7 +3161,9 @@ case "$host" in
             *)
                 CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
                 ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
-                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+                # Disable parallel marking on Windows until next upgrade.
+                # It is broken on Windows 7+ (see bdwgc commit 57cc049).
+                # ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
                 ;;
         esac
         # avoid_sbrk?
@@ -3191,7 +3193,8 @@ case "$host" in
                     THREAD_LIBS=
                 fi
                 ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
-                ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+                # Disable parallel marking on Windows until next upgrade.
+                # ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
                 ;;
         esac
         ;;
@@ -3200,7 +3203,8 @@ case "$host" in
         CFLAGS_FOR_THREADS="$WIN32_GC_THREADLIB"
         THREAD_LIBS="-lpthread"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
-        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+        # Disable parallel marking on Windows until next upgrade.
+        # ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
     *apple*darwin*)
