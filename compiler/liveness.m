@@ -226,12 +226,12 @@ detect_liveness_preds_parallel(!HLDS) :-
     module_info::in, module_info::in, module_info::out) is det.
 
 detect_liveness_preds_parallel_2(PredIds, HLDS0, !HLDS) :-
-    ( list.split_list(1000, PredIds, HeadPredIds, TailPredIds) ->
+    ( if list.split_list(1000, PredIds, HeadPredIds, TailPredIds) then
         ( detect_liveness_preds_parallel_3(HeadPredIds, HLDS0, !HLDS)
         % XXX The following should be a parallel conjunction.
         , detect_liveness_preds_parallel_2(TailPredIds, HLDS0, !HLDS)
         )
-    ;
+    else
         detect_liveness_preds_parallel_3(PredIds, HLDS0, !HLDS)
     ).
 
@@ -303,7 +303,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
             DebugLiveness, PredIdInt, VarSet, Goal2, !IO)
     ),
 
-    (
+    ( if
         globals.get_trace_level(Globals, TraceLevel),
         AllowDelayDeath = trace_level_allows_delay_death(TraceLevel),
         AllowDelayDeath = yes,
@@ -321,23 +321,24 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         ),
         pred_info_get_origin(PredInfo, Origin),
         Origin \= origin_special_pred(_)
-    ->
+    then
         delay_death_proc_body(Goal2, Goal3, VarSet, Liveness0),
         trace [io(!IO)] (
             maybe_debug_liveness(ModuleInfo, "\nafter delay death",
                 DebugLiveness, PredIdInt, VarSet, Goal3, !IO)
         )
-    ;
+    else
         Goal3 = Goal2
     ),
 
     globals.get_trace_level(Globals, TraceLevel),
+    NeedsFailVars = eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo,
+        !.ProcInfo, TraceLevel),
     (
-        eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, !.ProcInfo,
-            TraceLevel) = yes
-    ->
+        NeedsFailVars = yes,
         trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
     ;
+        NeedsFailVars = no,
         ResumeVars0 = set_of_var.init
     ),
     detect_resume_points_in_goal(Goal3, Goal, Liveness0, _,
@@ -354,14 +355,14 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
 
 maybe_debug_liveness(ModuleInfo, Message, DebugLiveness, PredIdInt, VarSet,
         Goal, !IO) :-
-    ( DebugLiveness = PredIdInt ->
+    ( if DebugLiveness = PredIdInt then
         io.write_string(Message, !IO),
         io.write_string(":\n", !IO),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
         write_goal(OutInfo, ModuleInfo, VarSet, print_name_and_num, 0,
             "\n", Goal, !IO)
-    ;
+    else
         true
     ).
 
@@ -379,9 +380,9 @@ detect_liveness_in_goal(Goal0, Goal, Liveness0, FinalLiveness, LiveInfo) :-
     set_of_var.difference(CompletedNonLocals, Liveness0, NewVarsSet),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
     Empty = set_of_var.init,
-    ( instmap_delta_is_unreachable(InstMapDelta) ->
+    ( if instmap_delta_is_unreachable(InstMapDelta) then
         Births = Empty
-    ;
+    else
         NewVarsList = set_of_var.to_sorted_list(NewVarsSet),
         Births0 = set_of_var.init,
         find_value_giving_occurrences(NewVarsList, LiveInfo,
@@ -442,13 +443,13 @@ detect_liveness_in_goal(Goal0, Goal, Liveness0, FinalLiveness, LiveInfo) :-
             % sets should be empty.
             Cond = hlds_goal(_, CondInfo),
             CondDelta = goal_info_get_instmap_delta(CondInfo),
-            ( instmap_delta_is_unreachable(CondDelta) ->
+            ( if instmap_delta_is_unreachable(CondDelta) then
                 LivenessThen = LivenessCond,
                 % XXX Initialize liveness-related fields, since some other
                 % code in this module assumes that they are initialized.
                 detect_liveness_in_goal(Then0, Then1,
                     LivenessCond, _LivenessThen, LiveInfo)
-            ;
+            else
                 detect_liveness_in_goal(Then0, Then1,
                     LivenessCond, LivenessThen, LiveInfo)
             ),
@@ -476,10 +477,12 @@ detect_liveness_in_goal(Goal0, Goal, Liveness0, FinalLiveness, LiveInfo) :-
             GoalExpr = negation(SubGoal)
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
-            ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
-                detect_liveness_in_construct(SubGoal0, SubGoal,
+            ( if
+                Reason = from_ground_term(TermVar, from_ground_term_construct)
+            then
+                detect_liveness_in_fgt_construct(SubGoal0, SubGoal,
                     Liveness0, Liveness, LiveInfo, TermVar)
-            ;
+            else
                 % XXX We could treat from_ground_term_deconstruct specially
                 % as well.
                 detect_liveness_in_goal(SubGoal0, SubGoal, Liveness0, Liveness,
@@ -512,18 +515,18 @@ detect_liveness_in_conj([], [], !Liveness, _LiveInfo).
 detect_liveness_in_conj([Goal0 | Goals0], [Goal | Goals], !Liveness,
         LiveInfo) :-
     detect_liveness_in_goal(Goal0, Goal, !Liveness, LiveInfo),
-    (
+    ( if
         Goal0 = hlds_goal(_, GoalInfo),
         InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_is_unreachable(InstmapDelta)
-    ->
+    then
         % If we continued processing goals, the final value of Liveness
         % would not reflect reality. If we stopped processing goals but
         % included the original Goals0 in Goals, then the liveness
         % fields in Goals would remain uninitialized. Removing goals
         % following a goal that cannot succeed works.
         Goals = []
-    ;
+    else
         detect_liveness_in_conj(Goals0, Goals, !Liveness, LiveInfo)
     ).
 
@@ -565,17 +568,17 @@ detect_liveness_in_cases([Case0 | Cases0], [Case | Cases], Liveness0,
 
 %-----------------------------------------------------------------------------%
 
-:- pred detect_liveness_in_construct(hlds_goal::in, hlds_goal::out,
+:- pred detect_liveness_in_fgt_construct(hlds_goal::in, hlds_goal::out,
     set_of_progvar::in, set_of_progvar::out, live_info::in, prog_var::in)
     is det.
 
-detect_liveness_in_construct(Goal0, Goal, !Liveness, LiveInfo, TermVar) :-
+detect_liveness_in_fgt_construct(Goal0, Goal, !Liveness, LiveInfo, TermVar) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    ( GoalExpr0 = conj(plain_conj, Conjuncts0) ->
+    ( if GoalExpr0 = conj(plain_conj, Conjuncts0) then
         LocalLiveVars0 = set_of_var.init,
-        detect_liveness_in_construct_goal_loop(Conjuncts0, Conjuncts,
+        detect_liveness_in_fgt_construct_goal_loop(Conjuncts0, Conjuncts,
             LocalLiveVars0, LocalLiveVars),
-        ( set_of_var.is_singleton(LocalLiveVars, TermVar) ->
+        ( if set_of_var.is_singleton(LocalLiveVars, TermVar) then
             maybe_complete_with_typeinfos(LiveInfo,
                 set_of_var.make_singleton(TermVar), CompletedTermVars),
             set_of_var.union(CompletedTermVars, !Liveness),
@@ -587,27 +590,27 @@ detect_liveness_in_construct(Goal0, Goal, !Liveness, LiveInfo, TermVar) :-
             goal_info_initialize_liveness_info(PreBirths, PostBirths,
                 PreDeaths, PostDeaths, no_resume_point, GoalInfo0, GoalInfo),
             Goal = hlds_goal(GoalExpr, GoalInfo)
-        ;
+        else
             unexpected($module, $pred, "unexpected liveness")
         )
-    ;
+    else
         unexpected($module, $pred, "not conj")
     ).
 
-:- pred detect_liveness_in_construct_goal_loop(
+:- pred detect_liveness_in_fgt_construct_goal_loop(
     list(hlds_goal)::in, list(hlds_goal)::out,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-detect_liveness_in_construct_goal_loop([], [], !LocalLiveVars).
-detect_liveness_in_construct_goal_loop([Goal0 | Goals0], [Goal | Goals],
+detect_liveness_in_fgt_construct_goal_loop([], [], !LocalLiveVars).
+detect_liveness_in_fgt_construct_goal_loop([Goal0 | Goals0], [Goal | Goals],
         !LocalLiveVars) :-
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-    (
+    ( if
         GoalExpr = unify(_, _, _, Unification, _),
         Unification = construct(LHSVar, _ConsId, RHSVars, _ArgModes,
             construct_statically, cell_is_shared, no_construct_sub_info)
-    ->
-        ( set_of_var.remove_list(RHSVars, !LocalLiveVars) ->
+    then
+        ( if set_of_var.remove_list(RHSVars, !LocalLiveVars) then
             set_of_var.insert(LHSVar, !LocalLiveVars),
             PreBirths = set_of_var.make_singleton(LHSVar),
             PostBirths = set_of_var.init,
@@ -616,13 +619,13 @@ detect_liveness_in_construct_goal_loop([Goal0 | Goals0], [Goal | Goals],
             goal_info_initialize_liveness_info(PreBirths, PostBirths,
                 PreDeaths, PostDeaths, no_resume_point, GoalInfo0, GoalInfo),
             Goal = hlds_goal(GoalExpr, GoalInfo)
-        ;
+        else
             unexpected($module, $pred, "rhs var not live")
         )
-    ;
+    else
         unexpected($module, $pred, "unexpected conjunct")
     ),
-    detect_liveness_in_construct_goal_loop(Goals0, Goals, !LocalLiveVars).
+    detect_liveness_in_fgt_construct_goal_loop(Goals0, Goals, !LocalLiveVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -745,26 +748,26 @@ detect_deadness_in_goal(Goal0, Goal, !Deadness, !.Liveness, LiveInfo) :-
         get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
             _, CompletedNonLocals),
         InstmapDelta = goal_info_get_instmap_delta(GoalInfo0),
-        ( instmap_delta_is_reachable(InstmapDelta) ->
+        ( if instmap_delta_is_reachable(InstmapDelta) then
             Cond0 = hlds_goal(_, CondGoalInfo),
             CondInstmapDelta = goal_info_get_instmap_delta(CondGoalInfo),
             Then0 = hlds_goal(_, ThenGoalInfo),
             ThenInstmapDelta = goal_info_get_instmap_delta(ThenGoalInfo),
             Else0 = hlds_goal(_, ElseGoalInfo),
             ElseInstmapDelta = goal_info_get_instmap_delta(ElseGoalInfo),
-            (
+            ( if
                 instmap_delta_is_reachable(CondInstmapDelta),
                 instmap_delta_is_reachable(ThenInstmapDelta)
-            ->
+            then
                 CondThenInstmapReachable = yes
-            ;
+            else
                 CondThenInstmapReachable = no
             ),
-            (
+            ( if
                 instmap_delta_is_reachable(ElseInstmapDelta)
-            ->
+            then
                 ElseInstmapReachable = yes
-            ;
+            else
                 ElseInstmapReachable = no
             ),
             Union0 = set_of_var.init,
@@ -780,7 +783,7 @@ detect_deadness_in_goal(Goal0, Goal, !Deadness, !.Liveness, LiveInfo) :-
                 Cond1, Cond),
             add_branch_pre_deaths(DeadnessElse, Deadness0,
                 CompletedNonLocalDeadness, ElseInstmapReachable, Else1, Else)
-        ;
+        else
             set_of_var.union(DeadnessCond, DeadnessElse, Deadness),
             set_of_var.intersect(Deadness, CompletedNonLocals,
                 CompletedNonLocalDeadness),
@@ -801,14 +804,16 @@ detect_deadness_in_goal(Goal0, Goal, !Deadness, !.Liveness, LiveInfo) :-
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+        ( if
+            Reason = from_ground_term(TermVar, from_ground_term_construct)
+        then
             maybe_complete_with_typeinfos(LiveInfo,
                 set_of_var.make_singleton(TermVar), CompletedTermVars),
             set_of_var.difference(!.Deadness, CompletedTermVars, !:Deadness),
 
             % The job on SubGoal0 was done by detect_liveness_in_goal.
             SubGoal = SubGoal0
-        ;
+        else
             % XXX We could treat from_ground_term_deconstruct specially
             % as well.
             detect_deadness_in_goal(SubGoal0, SubGoal, !Deadness,
@@ -836,10 +841,10 @@ detect_deadness_in_conj([Goal0 | Goals0], [Goal | Goals], !Deadness,
         Liveness0, LiveInfo) :-
     Goal0 = hlds_goal(_, GoalInfo),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
-    ( instmap_delta_is_unreachable(InstmapDelta) ->
+    ( if instmap_delta_is_unreachable(InstmapDelta) then
         Goals = Goals0,
         detect_deadness_in_goal(Goal0, Goal, !Deadness, Liveness0, LiveInfo)
-    ;
+    else
         update_liveness_goal(Goal0, LiveInfo, Liveness0, LivenessGoal),
         detect_deadness_in_conj(Goals0, Goals, !Deadness,
             LivenessGoal, LiveInfo),
@@ -862,9 +867,9 @@ detect_deadness_in_disj([Goal0 | Goals0], [Goal | Goals], Deadness0, Liveness0,
         Liveness0, LiveInfo),
     Goal1 = hlds_goal(_, GoalInfo1),
     InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
-    ( instmap_delta_is_reachable(InstmapDelta1) ->
+    ( if instmap_delta_is_reachable(InstmapDelta1) then
         InstmapReachable = yes
-    ;
+    else
         InstmapReachable = no
     ),
     union_branch_deadness(DeadnessGoal, Deadness0, InstmapReachable, !Union),
@@ -895,9 +900,9 @@ detect_deadness_in_cases(SwitchVar, [Case0 | Cases0], [Case | Cases],
         Liveness0, LiveInfo),
     Goal1 = hlds_goal(_, GoalInfo1),
     InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
-    ( instmap_delta_is_reachable(InstmapDelta1) ->
+    ( if instmap_delta_is_reachable(InstmapDelta1) then
         InstmapReachable = yes
-    ;
+    else
         InstmapReachable = no
     ),
     union_branch_deadness(DeadnessGoal, Deadness0, InstmapReachable, !Union),
@@ -928,9 +933,9 @@ detect_deadness_in_par_conj([Goal0 | Goals0], [Goal | Goals], Deadness0,
         CompletedNonLocalUnion),
     Goal1 = hlds_goal(_, GoalInfo1),
     InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
-    ( instmap_delta_is_reachable(InstmapDelta1) ->
+    ( if instmap_delta_is_reachable(InstmapDelta1) then
         InstmapReachable = yes
-    ;
+    else
         unexpected($module, $pred, "unreachable instmap")
     ),
     add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
@@ -1036,16 +1041,16 @@ update_liveness_expr(GoalExpr, LiveInfo, !Liveness) :-
         update_liveness_conj(Goals, LiveInfo, !Liveness)
     ;
         GoalExpr = disj(Goals),
-        ( find_reachable_goal(Goals, Goal) ->
+        ( if find_reachable_goal(Goals, Goal) then
             update_liveness_goal(Goal, LiveInfo, !Liveness)
-        ;
+        else
             true
         )
     ;
         GoalExpr = switch(_, _, Cases),
-        ( find_reachable_case(Cases, Goal) ->
+        ( if find_reachable_case(Cases, Goal) then
             update_liveness_goal(Goal, LiveInfo, !Liveness)
-        ;
+        else
             true
         )
     ;
@@ -1056,17 +1061,17 @@ update_liveness_expr(GoalExpr, LiveInfo, !Liveness) :-
         CondInstmapDelta = goal_info_get_instmap_delta(CondGoalInfo),
         Then = hlds_goal(_, ThenGoalInfo),
         ThenInstmapDelta = goal_info_get_instmap_delta(ThenGoalInfo),
-        (
+        ( if
             instmap_delta_is_reachable(ElseInstmapDelta)
-        ->
+        then
             update_liveness_goal(Else, LiveInfo, !Liveness)
-        ;
+        else if
             instmap_delta_is_reachable(CondInstmapDelta),
             instmap_delta_is_reachable(ThenInstmapDelta)
-        ->
+        then
             update_liveness_goal(Cond, LiveInfo, !Liveness),
             update_liveness_goal(Then, LiveInfo, !Liveness)
-        ;
+        else
             true
         )
     ;
@@ -1074,11 +1079,11 @@ update_liveness_expr(GoalExpr, LiveInfo, !Liveness) :-
         update_liveness_goal(SubGoal, LiveInfo, !Liveness)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(TermVar, from_ground_term_construct) then
             maybe_complete_with_typeinfos(LiveInfo,
                 set_of_var.make_singleton(TermVar), CompletedTermVars),
             set_of_var.union(CompletedTermVars, !Liveness)
-        ;
+        else
             % XXX We could treat from_ground_term_deconstruct specially
             % as well.
             update_liveness_goal(SubGoal, LiveInfo, !Liveness)
@@ -1101,9 +1106,9 @@ update_liveness_conj([Goal | Goals], LiveInfo, !Liveness) :-
 find_reachable_goal([Goal | Goals], ReachableGoal) :-
     Goal = hlds_goal(_, GoalInfo),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
-    ( instmap_delta_is_reachable(InstmapDelta) ->
+    ( if instmap_delta_is_reachable(InstmapDelta) then
         ReachableGoal = Goal
-    ;
+    else
         find_reachable_goal(Goals, ReachableGoal)
     ).
 
@@ -1112,9 +1117,9 @@ find_reachable_goal([Goal | Goals], ReachableGoal) :-
 find_reachable_case([case(_, _, Goal) | Cases], ReachableGoal) :-
     Goal = hlds_goal(_, GoalInfo),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
-    ( instmap_delta_is_unreachable(InstmapDelta) ->
+    ( if instmap_delta_is_unreachable(InstmapDelta) then
         find_reachable_case(Cases, ReachableGoal)
-    ;
+    else
         ReachableGoal = Goal
     ).
 
@@ -1265,11 +1270,12 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
         !:GoalExpr = if_then_else(QuantVars, Cond, Then, Else)
     ;
         !.GoalExpr = scope(Reason, Goal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             % All the variables in the scope are anonymous, so there would
             % be no point in delaying their death.
+            % ZZZ
             Goal = Goal0
-        ;
+        else
             % XXX We could treat from_ground_term_deconstruct specially
             % as well.
             delay_death_goal(Goal0, Goal, !.BornVars, _, !DelayedDead, VarSet)
@@ -1451,25 +1457,25 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
         % Figure out which entry labels we need at the resumption point.
         % By minimizing the number of labels we use, we also minimize
         % the amount of data movement code we emit between such labels.
-        (
+        ( if
             cannot_stack_flush(Cond1),
             CodeModel = goal_info_get_code_model(GoalInfo0),
             CodeModel \= model_non
-        ->
+        then
             CondResumeLocs = resume_locs_orig_only
-        ;
+        else if
             set_of_var.is_empty(CondResumeVars)
-        ->
+        then
             % There is no difference between orig_only and stack_only when
             % there are no resume variables, but some parts of code_info
             % insist on a stack label if e.g. the condition contains
             % commits, which is why we choose to use stack_only here.
             CondResumeLocs = resume_locs_stack_only
-        ;
+        else if
             cannot_fail_before_stack_flush(Cond1)
-        ->
+        then
             CondResumeLocs = resume_locs_stack_only
-        ;
+        else
             CondResumeLocs = resume_locs_stack_and_orig
         ),
 
@@ -1497,11 +1503,11 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
         % Figure out which entry labels we need at the resumption point.
         % By minimizing the number of labels we use, we also minimize
         % the amount of data movement code we emit between such labels.
-        ( cannot_stack_flush(SubGoal1) ->
+        ( if cannot_stack_flush(SubGoal1) then
             ResumeLocs = resume_locs_orig_only
-        ; cannot_fail_before_stack_flush(SubGoal1) ->
+        else if cannot_fail_before_stack_flush(SubGoal1) then
             ResumeLocs = resume_locs_stack_only
-        ;
+        else
             ResumeLocs = resume_locs_stack_and_orig
         ),
 
@@ -1514,14 +1520,14 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(TermVar, from_ground_term_construct) then
             maybe_complete_with_typeinfos(LiveInfo,
                 set_of_var.make_singleton(TermVar), CompletedTermVars),
             set_of_var.union(CompletedTermVars, !Liveness),
 
             % There are no resume points in these scopes.
             SubGoal = SubGoal0
-        ;
+        else
             % XXX We could treat from_ground_term_deconstruct specially
             % as well.
             detect_resume_points_in_goal(SubGoal0, SubGoal, !Liveness,
@@ -1607,7 +1613,7 @@ detect_resume_points_in_pruned_disj([Goal0 | Goals0], [Goal | Goals],
     Goal0 = hlds_goal(_, GoalInfo0),
     Detism0 = goal_info_get_determinism(GoalInfo0),
     determinism_components(Detism0, CanFail0, _),
-    (
+    ( if
         % This disjunct establishes a resumption point only if
         % there are more disjuncts *and* this one can fail.
         % If there are more disjuncts but this one can't fail,
@@ -1615,13 +1621,13 @@ detect_resume_points_in_pruned_disj([Goal0 | Goals0], [Goal | Goals],
         % so this one will be effectively the last.
         CanFail0 = can_fail,
         Goals0 = [_ | _]
-    ->
+    then
         detect_resume_points_in_pruned_disj(Goals0, Goals,
             Liveness0, LivenessRest, LiveInfo, ResumeVars0, NeededRest),
         detect_resume_points_in_non_last_disjunct(Goal0, Goal, yes,
             Liveness0, LivenessRest, LiveInfo, ResumeVars0,
             Liveness, NeededRest, Needed)
-    ;
+    else
         detect_resume_points_in_last_disjunct(Goal0, Goal,
             Liveness0, Liveness, LiveInfo, ResumeVars0, Needed),
         Goals = Goals0
@@ -1644,16 +1650,16 @@ detect_resume_points_in_non_last_disjunct(Goal0, Goal, MayUseOrigOnly,
     % Figure out which entry labels we need at the resumption point.
     % By minimizing the number of labels we use, we also minimize
     % the amount of data movement code we emit between such labels.
-    (
+    ( if
         MayUseOrigOnly = yes,
         cannot_stack_flush(Goal1)
-    ->
+    then
         ResumeLocs = resume_locs_orig_only
-    ;
+    else if
         cannot_fail_before_stack_flush(Goal1)
-    ->
+    then
         ResumeLocs = resume_locs_stack_only
-    ;
+    else
         ResumeLocs = resume_locs_stack_and_orig
     ),
 
@@ -1721,9 +1727,9 @@ detect_resume_points_in_par_conj([Goal0 | Goals0], [Goal | Goals],
     live_info::in) is det.
 
 require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
-    ( set_of_var.equal(LivenessFirst, LivenessRest) ->
+    ( if set_of_var.equal(LivenessFirst, LivenessRest) then
         true
-    ;
+    else
         VarSet = LiveInfo ^ li_varset,
         FirstVars = set_of_var.to_sorted_list(LivenessFirst),
         RestVars  = set_of_var.to_sorted_list(LivenessRest),
@@ -1745,9 +1751,9 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     lookup_var_types(VarTypes, Vars, Types),
     !:Liveness = set_of_var.init,
-    ( initial_liveness_2(Vars, Modes, Types, ModuleInfo, !Liveness) ->
+    ( if initial_liveness_2(Vars, Modes, Types, ModuleInfo, !Liveness) then
         true
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ),
 
@@ -1773,9 +1779,9 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
 
 initial_liveness_2([], [], [], _ModuleInfo, !Liveness).
 initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo, !Liveness) :-
-    ( mode_to_arg_mode(ModuleInfo, M, T, top_in) ->
+    ( if mode_to_arg_mode(ModuleInfo, M, T, top_in) then
         set_of_var.insert(V, !Liveness)
-    ;
+    else
         true
     ),
     initial_liveness_2(Vs, Ms, Ts, ModuleInfo, !Liveness).
@@ -1841,13 +1847,13 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
         !ValueVars) :-
     VarTypes = LiveInfo ^ li_vartypes,
     lookup_var_type(VarTypes, Var, Type),
-    (
+    ( if
         instmap_delta_search_var(InstMapDelta, Var, Inst),
         ModuleInfo = LiveInfo ^ li_module_info,
         mode_to_arg_mode(ModuleInfo, (free -> Inst), Type, top_out)
-    ->
+    then
         set_of_var.insert(Var, !ValueVars)
-    ;
+    else
         true
     ),
     find_value_giving_occurrences(Vars, LiveInfo, InstMapDelta, !ValueVars).
