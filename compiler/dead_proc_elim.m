@@ -1147,7 +1147,7 @@ dead_pred_elim_analyze(!DeadInfo) :-
                 pred_info_get_clauses_info(PredInfo, ClausesInfo),
                 clauses_info_get_clauses_rep(ClausesInfo, ClausesRep,
                     _ItemNumbers),
-                get_clause_list_any_order(ClausesRep, Clauses),
+                get_clause_list_maybe_repeated(ClausesRep, Clauses),
                 list.foldl(dead_pred_elim_process_clause, Clauses, !DeadInfo)
             ),
             dead_pred_elim_analyze(!DeadInfo)

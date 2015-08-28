@@ -609,7 +609,7 @@ polymorphism_process_clause_info(ModuleInfo0, PredInfo0, !ClausesInfo, !:Info,
         ExtraArgModes, UnconstrainedTVars,
         ExtraTypeInfoHeadVars, ExistTypeClassInfoHeadVars, !Info),
 
-    get_clause_list(ClausesRep0, Clauses0),
+    get_clause_list_for_replacement(ClausesRep0, Clauses0),
     list.map_foldl(
         polymorphism_process_clause(PredInfo0, HeadVars0, HeadVars,
             UnconstrainedTVars, ExtraTypeInfoHeadVars,

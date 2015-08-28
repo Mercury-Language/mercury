@@ -95,14 +95,53 @@
     %
 :- pred add_clause(clause::in, clauses_rep::in, clauses_rep::out) is det.
 
-    % Get the list of clauses in the given clauses_rep in whatever order
-    % happens to be efficient.
-    %
-:- pred get_clause_list_any_order(clauses_rep::in, list(clause)::out) is det.
-
     % Get the list of clauses in the given clauses_rep in program order.
     %
-:- pred get_clause_list(clauses_rep::in, list(clause)::out) is det.
+    % There are three variants of this predicate. The reason why a simple
+    % getter predicate is not good enough is the combination of these
+    % circumstances.
+    %
+    % - We need to know the order of the clauses in the code.
+    % - When we add a new clause, we need to add it at the end.
+    %   This is best done by either keeping the clauses in reversed order
+    %   (which is what we used to do) or keeping them in a cord (which is
+    %   what we do now). Using a plain list in forward order would make
+    %   require O(N^2) operations to add N clauses to the list.
+    % - When users want to get the clause list, they want it in forward order.
+    %   With either the reversed list or cord representations, this requires
+    %   a representation change: re-reversing the list, or flattening the cord.
+    %   In both cases, the cost of this is O(N) for N clauses.
+    % - If the compiler generates a sequence of requests to get the clause
+    %   list, we would perform this representation change over and over again.
+    %
+    % The first variant, get_clause_list, avoids the need for this repetition
+    % by storing the result of the representation change back in the
+    % clause_rep. Flattening an already-flat cord is an O(1) operation,
+    % so repeatedly calling get_clause_list on the same clause_rep
+    % is not a performance problem.
+    %
+    % The second variant, get_clause_list_for_replacement, is for use
+    % in situations where the clause list is about to be replaced,
+    % usually by a modified version of itself. In such cases, the cost
+    % of future operations on *this* version of the clauses_rep is moot.
+    %
+    % The third variant is for places in the compiler that neither replace
+    % the clause list nor update the clauses_rep, or its containing
+    % clause_info. This is less than ideal from a performance viewpoint,
+    % but it is ok for experimental features whose performance doesn't (yet)
+    % matter. The name get_clause_list_maybe_repeated is there to remind
+    % programmers who call it about the performance problem with repeated
+    % representation changes, to act as incentive to switch to one of the
+    % previous two versions.
+    %
+:- pred get_clause_list(list(clause)::out,
+    clauses_rep::in, clauses_rep::out) is det.
+:- pred get_clause_list_for_replacement(clauses_rep::in, list(clause)::out)
+    is det.
+:- pred get_clause_list_maybe_repeated(clauses_rep::in, list(clause)::out)
+    is det.
+
+:- pred get_first_clause(clauses_rep::in, clause::out) is semidet.
 
     % Set the list of clauses to the one given.
     %
@@ -244,6 +283,7 @@
 
 :- import_module parse_tree.prog_util.
 
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module require.
@@ -423,110 +463,57 @@ clauses_info_set_clauses_rep(X, Y, !CI) :-
 clauses_info_set_rtti_varmaps(X, !CI) :-
     !CI ^ cli_rtti_varmaps := X.
 
-    % In each of the alternatives below, the num field gives the number of
-    % clauses. In the forw_list and both_forw fields, the clauses are in
-    % program order. In the rev_list and both_rev fields, the clauses are in
-    % reverse program order. It is an invariant that
-    %
-    %   list.reverse(Rep ^ both_rev, Rep ^ both_forw)
-    %
-    % holds.
 :- type clauses_rep
-    --->    cr_rev(
-                rev_num     :: int,
-                rev_list    :: list(clause)
-            )
-    ;       cr_forw(
-                forw_num    :: int,
-                forw_list   :: list(clause)
-            )
-    ;       cr_both(
-                both_num    :: int,
-                both_rev    :: list(clause),
-                both_forw   :: list(clause)
+    --->    clauses_rep(
+                cr_num_clauses      :: int,
+                cr_clauses_cord     :: cord(clause)
             ).
 
-init_clauses_rep = cr_forw(0, []).
+init_clauses_rep = clauses_rep(0, cord.init).
 
 clause_list_is_empty(ClausesRep) = IsEmpty :-
-    (
-        ClausesRep = cr_rev(_, List)
-    ;
-        ClausesRep = cr_forw(_, List)
-    ;
-        ClausesRep = cr_both(_, List, _)
-    ),
-    (
-        List = [],
+    ClausesRep = clauses_rep(_, ClausesCord),
+    ( if cord.is_empty(ClausesCord) then
         IsEmpty = yes
-    ;
-        List = [_ | _],
+    else
         IsEmpty = no
     ).
 
 num_clauses_in_clauses_rep(ClausesRep) = NumClauses :-
-    (
-        ClausesRep = cr_rev(NumClauses, _)
-    ;
-        ClausesRep = cr_forw(NumClauses, _)
-    ;
-        ClausesRep = cr_both(NumClauses, _, _)
-    ).
+    ClausesRep = clauses_rep(NumClauses, _).
 
-get_clause_list_any_order(ClausesRep, Clauses) :-
-    (
-        ClausesRep = cr_rev(_, Clauses)
-    ;
-        ClausesRep = cr_forw(_, Clauses)
-    ;
-        ClausesRep = cr_both(_, _, Clauses)
-    ).
+get_clause_list(Clauses, ClausesRep0, ClausesRep) :-
+    ClausesRep0 = clauses_rep(NumClauses, ClausesCord0),
+    Clauses = cord.list(ClausesCord0),
+    ClausesCord = cord.from_list(Clauses),
+    ClausesRep = clauses_rep(NumClauses, ClausesCord).
 
-get_clause_list(ClausesRep, Clauses) :-
-    (
-        ClausesRep = cr_rev(_, RevClauses),
-        list.reverse(RevClauses, Clauses)
-    ;
-        ClausesRep = cr_forw(_, Clauses)
-    ;
-        ClausesRep = cr_both(_, _, Clauses)
-    ).
+get_clause_list_for_replacement(ClausesRep, Clauses) :-
+    ClausesRep = clauses_rep(_NumClauses, ClausesCord),
+    Clauses = cord.list(ClausesCord).
 
-set_clause_list(Clauses, cr_forw(list.length(Clauses), Clauses)).
+get_clause_list_maybe_repeated(ClausesRep, Clauses) :-
+    ClausesRep = clauses_rep(_NumClauses, ClausesCord),
+    Clauses = cord.list(ClausesCord).
+
+get_first_clause(ClausesRep, FirstClause) :-
+    ClausesRep = clauses_rep(_NumClauses, ClausesCord),
+    cord.get_first(ClausesCord, FirstClause).
+
+set_clause_list(Clauses, ClausesRep) :-
+    ClausesRep = clauses_rep(list.length(Clauses), cord.from_list(Clauses)).
 
 clauses_info_clauses(Clauses, ItemNumbers, !CI) :-
-    ClausesRep = !.CI ^ cli_rep,
     ItemNumbers = !.CI ^ cli_item_numbers,
-    (
-        ClausesRep = cr_rev(NumClauses, RevClauses),
-        list.reverse(RevClauses, Clauses),
-        !CI ^ cli_rep := cr_both(NumClauses, RevClauses, Clauses)
-    ;
-        ClausesRep = cr_forw(_, Clauses)
-    ;
-        ClausesRep = cr_both(_, _, Clauses)
-    ).
+    ClausesRep0 = !.CI ^ cli_rep,
+    get_clause_list(Clauses, ClausesRep0, ClausesRep),
+    !CI ^ cli_rep := ClausesRep.
 
 add_clause(Clause, !ClausesRep) :-
-    % We keep the clause list in reverse order, to make it possible
-    % to add other clauses without quadratic behavior.
-    (
-        !.ClausesRep = cr_rev(NumClauses0, RevClauses0),
-        NumClauses = NumClauses0 + 1,
-        RevClauses = [Clause | RevClauses0],
-        !:ClausesRep = cr_rev(NumClauses, RevClauses)
-    ;
-        !.ClausesRep = cr_forw(NumClauses0, Clauses0),
-        NumClauses = NumClauses0 + 1,
-        list.reverse(Clauses0, RevClauses0),
-        RevClauses = [Clause | RevClauses0],
-        !:ClausesRep = cr_rev(NumClauses, RevClauses)
-    ;
-        !.ClausesRep = cr_both(NumClauses0, RevClauses0, _),
-        NumClauses = NumClauses0 + 1,
-        RevClauses = [Clause | RevClauses0],
-        !:ClausesRep = cr_rev(NumClauses, RevClauses)
-    ).
+    !.ClausesRep = clauses_rep(NumClauses0, ClausesCord0),
+    NumClauses = NumClauses0 + 1,
+    ClausesCord = cord.snoc(ClausesCord0, Clause),
+    !:ClausesRep = clauses_rep(NumClauses, ClausesCord).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_clauses.

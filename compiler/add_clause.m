@@ -554,9 +554,9 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0,
         % for modes *not* covered by the foreign clauses.
         (
             HasForeignClauses = yes,
-            get_clause_list_any_order(ClausesRep0, AnyOrderClauseList),
+            get_clause_list(Clauses0, ClausesRep0, ClausesRep1),
             ForeignModeIds = list.condense(list.filter_map(
-                (func(C) = ProcIds is semidet :-
+                ( func(C) = ProcIds is semidet :-
                     C ^ clause_lang = impl_lang_foreign(_),
                     ApplProcIds = C ^ clause_applicable_procs,
                     (
@@ -566,7 +566,7 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0,
                         ApplProcIds = selected_modes(ProcIds)
                     )
                 ),
-                AnyOrderClauseList)),
+                Clauses0)),
             (
                 ApplModeIds0 = all_modes,
                 ModeIds0 = AllModeIds
@@ -576,13 +576,13 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0,
             ModeIds = list.delete_elems(ModeIds0, ForeignModeIds),
             (
                 ModeIds = [],
-                ClausesRep = ClausesRep0
+                ClausesRep = ClausesRep1
             ;
                 ModeIds = [_ | _],
                 ApplicableModeIds = selected_modes(ModeIds),
                 Clause = clause(ApplicableModeIds, Goal, impl_lang_mercury,
                     Context, StateVarWarnings),
-                add_clause(Clause, ClausesRep0, ClausesRep)
+                add_clause(Clause, ClausesRep1, ClausesRep)
             )
         ;
             HasForeignClauses = no,

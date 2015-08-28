@@ -406,7 +406,7 @@ constraint_to_error_piece(TVarset, Constraint) =
 
     % A prog_constraint cannot contain context information (see the comment on
     % the type definition). However, a constraint_id happens to contain a
-    % goal_id so we can look up a constraint_id for a prog_constraint, then
+    % goal_id, so we can look up a constraint_id for a prog_constraint, then
     % use the goal_id to reach the goal.
     %
 :- func find_constrained_goals(pred_info, list(prog_constraint))
@@ -415,7 +415,7 @@ constraint_to_error_piece(TVarset, Constraint) =
 find_constrained_goals(PredInfo, Constraints) = Goals :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
-    get_clause_list_any_order(ClausesRep, Clauses),
+    get_clause_list_maybe_repeated(ClausesRep, Clauses),
 
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     ReverseConstraintMap = map.reverse_map(ConstraintMap),
@@ -670,7 +670,7 @@ promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
     module_info_pred_info(ModuleInfo, ExclusiveDeclPredId, PredInfo),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
-    get_clause_list(ClausesRep, Clauses),
+    get_clause_list_maybe_repeated(ClausesRep, Clauses),
     ( Clauses = [Clause] ->
         Goal0 = Clause ^ clause_body,
         assertion.normalise_goal(Goal0, Goal)

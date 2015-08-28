@@ -130,20 +130,20 @@ add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang, Name,
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, Procs),
     map.to_assoc_list(Procs, ExistingProcs),
-    (
+    ( if
         get_procedure_matching_declmodes_with_renaming(ExistingProcs,
             Modes, !.ModuleInfo, ProcId)
-    ->
+    then
         map.lookup(Procs, ProcId, ProcInfo0),
         proc_info_get_declared_determinism(ProcInfo0, MaybeDetism),
         % We cannot catch those multi or nondet procedures that don't have
         % a determinism declaration until after determinism analysis.
-        (
+        ( if
             MaybeDetism = yes(Detism),
             ( Detism = detism_non
             ; Detism = detism_multi
             )
-        ->
+        then
             Pieces = [words("Error:"),
                 pragma_decl("foreign_export"), words("declaration"),
                 words("for a procedure that has"),
@@ -153,13 +153,13 @@ add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang, Name,
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
                 [Msg]),
             !:Specs = [Spec | !.Specs]
-        ;
+        else
             % Only add the foreign export if the specified language matches
             % one of the foreign languages available for this backend.
             %
             module_info_get_globals(!.ModuleInfo, Globals),
             globals.get_backend_foreign_languages(Globals, ForeignLanguages),
-            ( list.member(Lang, ForeignLanguages) ->
+            ( if list.member(Lang, ForeignLanguages) then
                 module_info_get_pragma_exported_procs(!.ModuleInfo,
                     PragmaExportedProcs0),
                 NewExportedProc = pragma_exported_proc(Lang,
@@ -168,7 +168,7 @@ add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang, Name,
                     cord.snoc(PragmaExportedProcs0, NewExportedProc),
                 module_info_set_pragma_exported_procs(PragmaExportedProcs,
                     !ModuleInfo)
-            ;
+            else
                 true
             ),
 
@@ -184,7 +184,7 @@ add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang, Name,
             module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
                 !ModuleInfo)
         )
-    ;
+    else
         (
             MaybeAttrs = item_origin_user,
             undefined_mode_error(Name, Arity, Context,
@@ -291,9 +291,9 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
         % status_opt_imported preds are initially tagged as status_imported
         % and are tagged as status_opt_imported only if/when we see a clause
         % (including a `foreign_proc' clause) for them.
-        ( Status = status_opt_imported ->
+        ( if Status = status_opt_imported then
             pred_info_set_import_status(status_opt_imported, !PredInfo)
-        ;
+        else
             true
         ),
 
@@ -310,14 +310,14 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
 
         CurrentBackend = lookup_current_backend(Globals),
         ExtraAttrs = get_extra_attributes(Attributes),
-        (
+        ( if
             is_applicable_for_current_backend(CurrentBackend, ExtraAttrs) = no
-        ->
+        then
             % Ignore this foreign_proc.
             true
-        ;
+        else if
             pred_info_is_imported(!.PredInfo)
-        ->
+        then
             Pieces = [words("Error:"), pragma_decl("foreign_proc"),
                 words("declaration for imported"),
                 simple_call(simple_call_id(PredOrFunc, PredName, Arity)),
@@ -325,21 +325,21 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
-        ;
+        else if
             % Don't add clauses for foreign languages other than the ones
             % we can generate code for.
             not list.member(PragmaForeignLanguage, BackendForeignLangs)
-        ->
+        then
             pred_info_update_goal_type(goal_type_foreign,
                 PredInfo0, !:PredInfo),
             module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
-        ;
+        else
             % Add the pragma declaration to the proc_info for this procedure.
             pred_info_get_proc_table(!.PredInfo, Procs),
             map.to_assoc_list(Procs, ExistingProcs),
             pragma_get_modes(PVars, Modes),
             SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
-            (
+            ( if
                 % The inst variables for the foreign_proc declaration
                 % and predmode declarations are from different varsets.
                 % We cannot just unify the argument modes directly because
@@ -352,7 +352,7 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
                 % the renaming has the same name.
                 get_procedure_matching_declmodes_with_renaming(ExistingProcs,
                     Modes, !.ModuleInfo, ProcId)
-            ->
+            then
                 pred_info_get_arg_types(!.PredInfo, ArgTypes),
                 pred_info_get_purity(!.PredInfo, Purity),
                 pred_info_get_markers(!.PredInfo, Markers),
@@ -370,7 +370,7 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
                 warn_singletons_in_pragma_foreign_proc(!.ModuleInfo,
                     PragmaImpl, PragmaForeignLanguage, ArgInfo, Context,
                     SimpleCallId, PredId, ProcId, !Specs)
-            ;
+            else
                 Pieces = [words("Error:"),
                     pragma_decl("foreign_proc"), words("declaration"),
                     words("for undeclared mode of"),
@@ -396,9 +396,9 @@ is_applicable_for_current_backend(CurrentBackend, [Attr | Attrs]) = Result :-
         Result = is_applicable_for_current_backend(CurrentBackend, Attrs)
     ;
         Attr = backend(Backend),
-        ( Backend = CurrentBackend ->
+        ( if Backend = CurrentBackend then
             Result = is_applicable_for_current_backend(CurrentBackend, Attrs)
-        ;
+        else
             Result = no
         )
     ).
@@ -421,7 +421,7 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0,
         Context, PredOrFunc, PredName, Arity, Markers,
         !ClausesInfo, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ( pred_info_is_builtin(PredInfo) ->
+    ( if pred_info_is_builtin(PredInfo) then
         % When bootstrapping a change that defines a builtin using
         % normal Mercury code, we need to disable the generation
         % of the error message, and just ignore the definition.
@@ -437,7 +437,7 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0,
         ;
             AllowDefnOfBuiltin = yes
         )
-    ;
+    else
         AllProcIds = pred_info_all_procids(PredInfo),
         clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
             PredId, ProcId, AllProcIds, PVarSet, PVars, OrigArgTypes,
@@ -459,10 +459,10 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
         !ClausesInfo, !ModuleInfo, !Specs) :-
     % Our caller should have already added this foreign_proc to ItemNumbers.
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
-        InferredVarTypes, HeadVars, ClauseRep, ItemNumbers,
+        InferredVarTypes, HeadVars, ClausesRep0, ItemNumbers,
         RttiVarMaps, _HasForeignClauses),
 
-    get_clause_list(ClauseRep, Clauses),
+    get_clause_list_for_replacement(ClausesRep0, Clauses0),
 
     % Currently we can override Mercury clauses with a foreign_proc right here,
     % which means that semantic analysis never sees those Mercury clauses.
@@ -476,7 +476,7 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
     NewLang = get_foreign_language(Attributes0),
     add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
         Context, Globals, Target, NewLang, AllProcIds, ProcId,
-        Clauses, NewClauses0, Overridden, !Specs),
+        Clauses0, Clauses1, Overridden, !Specs),
 
     globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
     pragma_get_vars(PVars, Args0),
@@ -492,36 +492,37 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
     bag.init(ArgBag0),
     bag.insert_list(Args0, ArgBag0, ArgBag),
     bag.to_assoc_list(ArgBag, ArgBagAL0),
-    list.filter(
-        (pred(Arg::in) is semidet :-
-            Arg = _ - Occurrences,
+    list.filter_map(
+        ( pred(Arg::in, Var::out) is semidet :-
+            Arg = Var - Occurrences,
             Occurrences > 1
-        ), ArgBagAL0, ArgBagAL),
-    assoc_list.keys(ArgBagAL, MultipleArgs),
+        ), ArgBagAL0, MultiplyOccurringArgVars),
 
     (
-        MultipleArgs = [_ | _],
+        MultiplyOccurringArgVars = [_ | _],
         adjust_func_arity(PredOrFunc, OrigArity, Arity),
         SimpleCallId = simple_call_id(PredOrFunc, PredName, OrigArity),
         Pieces1 = [words("In"), pragma_decl("foreign_proc"),
             words("declaration for"), simple_call(SimpleCallId),
             suffix(":"), nl],
         (
-            MultipleArgs = [MultipleArg],
+            MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
             Pieces2 = [words("error: variable"),
-                quote(mercury_var_to_name_only(PVarSet, MultipleArg)),
+                quote(mercury_var_to_name_only(PVarSet,
+                    MultiplyOccurringArgVar)),
                 words("occurs multiple times in the argument list."), nl]
         ;
-            MultipleArgs = [_, _ | _],
+            MultiplyOccurringArgVars = [_, _ | _],
             Pieces2 = [words("error: variables"),
-                quote(mercury_vars_to_name_only(PVarSet, MultipleArgs)),
+                quote(mercury_vars_to_name_only(PVarSet,
+                    MultiplyOccurringArgVars)),
                 words("occur multiple times in the argument list."), nl]
         ),
         Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
     ;
-        MultipleArgs = [],
+        MultiplyOccurringArgVars = [],
         % Build the foreign_proc.
         goal_info_init(GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
@@ -530,17 +531,17 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
         % with the (promised) purity of the foreign proc. We do not perform
         % this check if there is a promise_{pure,semipure} pragma for the
         % predicate/function, since in that case they will differ anyway.
-        (
+        ( if
             ( check_marker(Markers, marker_promised_pure)
             ; check_marker(Markers, marker_promised_semipure)
             )
-        ->
+        then
             true
-        ;
+        else
             ForeignAttributePurity = get_purity(Attributes1),
-            ( ForeignAttributePurity = Purity ->
+            ( if ForeignAttributePurity = Purity then
                 true
-            ;
+            else
                 purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
                 purity_name(Purity, PurityStr),
                 Pieces = [words("Error: foreign clause for"),
@@ -581,13 +582,13 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
                 ordinary_nonlocals_maybe_lambda, HeadVarList, _Warnings,
                 HldsGoal0, HldsGoal, VarSet0, VarSet, EmptyVarTypes, _,
                 EmptyRttiVarmaps, _),
-            NewClause = clause(selected_modes([ProcId]), HldsGoal,
+            Clause = clause(selected_modes([ProcId]), HldsGoal,
                 impl_lang_foreign(NewLang), Context, []),
-            NewClauses = [NewClause | NewClauses0],
+            Clauses = [Clause | Clauses1],
             HasForeignClauses = yes,
-            set_clause_list(NewClauses, NewClauseRep),
+            set_clause_list(Clauses, ClausesRep),
             !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
-                InferredVarTypes, HeadVars, NewClauseRep, ItemNumbers,
+                InferredVarTypes, HeadVars, ClausesRep, ItemNumbers,
                 RttiVarMaps, HasForeignClauses)
         )
     ).
@@ -649,7 +650,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
             ;
                 ApplProcIds0 = selected_modes(ProcIds0)
             ),
-            ( list.delete_first(ProcIds0, NewClauseProcId, ProcIds) ->
+            ( if list.delete_first(ProcIds0, NewClauseProcId, ProcIds) then
                 (
                     ProcIds = [],
                     % This clause is totally overridden by the new
@@ -664,7 +665,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                         ClauseLang, ClauseContext, StateVarWarnings),
                     Clauses = [FirstClause | LaterClauses]
                 )
-            ;
+            else
                 % This clause is not applicable to the mode of the new
                 % foreign_proc, so leave it alone.
                 Clauses = [FirstClause0 | LaterClauses]
@@ -679,7 +680,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
             ;
                 ApplProcIds0 = selected_modes(ProcIds0)
             ),
-            ( list.delete_first(ProcIds0, NewClauseProcId, ProcIds) ->
+            ( if list.delete_first(ProcIds0, NewClauseProcId, ProcIds) then
                 PreferNewForeignLang = prefer_foreign_language(Globals, Target,
                     OldLang, NewLang),
                 (
@@ -725,7 +726,7 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                     % that are not supported by this backend, since we filter
                     % out foreign_procs in such languages way before we get
                     % here.
-                    ( OldLang = NewLang ->
+                    ( if OldLang = NewLang then
                         PiecesA = [words("Error: multiple clauses for"),
                             p_or_f(PredOrFunc),
                             sym_name_and_arity(PredName / Arity),
@@ -740,11 +741,11 @@ add_foreign_proc_update_existing_clauses(PredName, Arity, PredOrFunc,
                         Spec = error_spec(severity_error,
                             phase_parse_tree_to_hlds, [MsgA, MsgB]),
                         !:Specs = [Spec | !.Specs]
-                    ;
+                    else
                         true
                     )
                 )
-            ;
+            else
                 % This old foreign_proc is not overridden by the new one,
                 % so leave it alone.
                 Clauses = [FirstClause0 | LaterClauses],

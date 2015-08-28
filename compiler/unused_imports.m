@@ -579,7 +579,7 @@ proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
 
 clauses_info_used_modules(ClausesInfo, !UsedModules) :-
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
-    get_clause_list(ClausesRep, Clauses),
+    get_clause_list_maybe_repeated(ClausesRep, Clauses),
     list.foldl(clause_used_modules, Clauses, !UsedModules).
 
 :- pred clause_used_modules(clause::in,

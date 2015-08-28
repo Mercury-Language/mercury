@@ -67,7 +67,7 @@ subst_impl_defined_literals(!ModuleInfo) :-
 subst_literals_in_pred(ModuleInfo, PredId, PredInfo0, PredInfo) :-
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
-    get_clause_list(ClausesRep0, Clauses0),
+    get_clause_list_for_replacement(ClausesRep0, Clauses0),
     Info = subst_literals_info(ModuleInfo, PredInfo0, PredId),
     list.map(subst_literals_in_clause(Info), Clauses0, Clauses),
     set_clause_list(Clauses, ClausesRep),

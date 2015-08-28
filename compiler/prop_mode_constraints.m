@@ -239,7 +239,7 @@ ensure_unique_arguments(PredId, !ModuleInfo) :-
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
     SeenSoFar = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
-    get_clause_list(ClausesRep0, Clauses0),
+    get_clause_list_for_replacement(ClausesRep0, Clauses0),
     BodyGoals0 = list.map(func(X) = clause_body(X), Clauses0),
     list.map_foldl3(ensure_unique_arguments_in_goal, BodyGoals0, BodyGoals,
         SeenSoFar, _, VarSet0, VarSet, VarTypes0, VarTypes),

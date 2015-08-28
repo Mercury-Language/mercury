@@ -212,7 +212,7 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
             io.nl(!IO)
         ),
 
-        get_clause_list(ClausesRep, Clauses),
+        get_clause_list_maybe_repeated(ClausesRep, Clauses),
         (
             Clauses = [_ | _],
             set_dump_opts_for_clauses(Info, InfoForClauses),

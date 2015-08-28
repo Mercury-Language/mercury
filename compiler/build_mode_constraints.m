@@ -337,7 +337,7 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_headvars(ClausesInfo, HeadVars),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
-    get_clause_list(ClausesRep, Clauses),
+    get_clause_list_maybe_repeated(ClausesRep, Clauses),
     clauses_info_get_varset(ClausesInfo, ProgVarset),
 
     (

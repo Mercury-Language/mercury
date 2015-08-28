@@ -101,11 +101,11 @@ maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
 maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
     pred_info_get_proc_table(PredInfo0, Procs0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
-    (
+    ( if
         % Is this a function with no modes?
         PredOrFunc = pf_function,
         map.is_empty(Procs0)
-    ->
+    then
         % If so, add a default mode of
         %
         %   :- mode foo(in, in, ..., in) = out is det.
@@ -132,7 +132,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
             Context, address_is_not_taken, HasParallelConj,
             PredInfo0, PredInfo, ProcId),
         MaybeProcId = yes(ProcId)
-    ;
+    else
         PredInfo = PredInfo0,
         MaybeProcId = no
     ).
@@ -154,10 +154,10 @@ copy_module_clauses_to_procs(PredIds, !ModuleInfo) :-
 
 copy_pred_clauses_to_procs_if_needed(PredId, !PredTable) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
-    ( should_copy_clauses_to_procs(PredInfo0) ->
+    ( if should_copy_clauses_to_procs(PredInfo0) then
         copy_clauses_to_procs(PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, !PredTable)
-    ;
+    else
         true
     ).
 
@@ -167,7 +167,7 @@ should_copy_clauses_to_procs(PredInfo) :-
     % Don't process typeclass methods, because their proc_infos
     % are generated already mode-correct.
     pred_info_get_markers(PredInfo, PredMarkers),
-    \+ check_marker(PredMarkers, marker_class_method).
+    not check_marker(PredMarkers, marker_class_method).
 
 :- pred copy_clauses_to_procs(pred_info::in, pred_info::out) is det.
 
@@ -190,8 +190,10 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, !Procs) :-
 
 copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
     ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars,
-        ClausesRep, _ItemNumbers, RttiInfo, _HaveForeignClauses),
-    get_clause_list(ClausesRep, Clauses),
+        ClausesRep0, _ItemNumbers, RttiInfo, _HaveForeignClauses),
+    % The "replacement" is the replacement of the pred_info's clauses_rep
+    % with the goal in the proc_info; the clauses_rep won't be needed again.
+    get_clause_list_for_replacement(ClausesRep0, Clauses),
     select_matching_clauses(Clauses, ProcId, MatchingClauses),
     get_clause_disjuncts_and_warnings(MatchingClauses, ClausesDisjuncts,
         StateVarWarnings),
@@ -256,11 +258,11 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
 
         % The disjunction is impure/semipure if any of the disjuncts
         % is impure/semipure.
-        ( contains_nonpure_goal(ClausesDisjuncts) ->
+        ( if contains_nonpure_goal(ClausesDisjuncts) then
             PurityList = list.map(goal_get_purity, ClausesDisjuncts),
             Purity = list.foldl(worst_purity, PurityList, purity_pure),
             goal_info_set_purity(Purity, GoalInfo2, GoalInfo)
-        ;
+        else
             GoalInfo2 = GoalInfo
         ),
 
@@ -304,9 +306,9 @@ select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
         MatchingClauses = [Clause | MatchingClausesTail]
     ;
         ApplicableProcIds = selected_modes(ProcIds),
-        ( list.member(ProcId, ProcIds) ->
+        ( if list.member(ProcId, ProcIds) then
             MatchingClauses = [Clause | MatchingClausesTail]
-        ;
+        else
             MatchingClauses = MatchingClausesTail
         )
     ).
@@ -336,21 +338,21 @@ introduce_exists_casts(PredIds, !ModuleInfo) :-
 
 introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
-    (
+    ( if
         % Optimise the common case.
         pred_info_get_existq_tvar_binding(PredInfo0, Subn),
-        \+ map.is_empty(Subn),
+        not map.is_empty(Subn),
 
         % Only process preds for which we copied clauses to procs.
         should_copy_clauses_to_procs(PredInfo0)
-    ->
+    then
         pred_info_get_proc_table(PredInfo0, Procs0),
         ProcIds = pred_info_all_non_imported_procids(PredInfo0),
         introduce_exists_casts_procs(ModuleInfo, PredInfo0, ProcIds,
             Procs0, Procs),
         pred_info_set_proc_table(Procs, PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, !PredTable)
-    ;
+    else
         true
     ).
 
@@ -379,19 +381,19 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
 
-    (
+    ( if
         list.drop(NumExtraHeadVars, ArgTypes, OrigArgTypes0),
         list.split_list(NumExtraHeadVars, HeadVars0, ExtraHeadVars0,
             OrigHeadVars0),
         list.split_list(NumExtraHeadVars, ArgModes, ExtraArgModes0,
             OrigArgModes0)
-    ->
+    then
         OrigArgTypes = OrigArgTypes0,
         ExtraHeadVars1 = ExtraHeadVars0,
         OrigHeadVars1 = OrigHeadVars0,
         ExtraArgModes = ExtraArgModes0,
         OrigArgModes = OrigArgModes0
-    ;
+    else
         unexpected($module, $pred, "split_list failed")
     ),
 
@@ -430,24 +432,24 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
 
 introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypes, ArgModes,
         !HeadVars, !VarSet, !VarTypes, !ExtraGoals) :-
-    (
+    ( if
         ArgTypes = [],
         ArgModes = [],
         !.HeadVars = []
-    ->
+    then
         true
-    ;
+    else if
         ArgTypes = [ArgType | ArgTypesRest],
         ArgModes = [ArgMode | ArgModesRest],
         !.HeadVars = [HeadVar0 | HeadVarsRest0]
-    ->
+    then
         introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypesRest,
             ArgModesRest, HeadVarsRest0, HeadVarsRest, !VarSet, !VarTypes,
             !ExtraGoals),
         introduce_exists_casts_for_arg(ModuleInfo, Subn, ArgType, ArgMode,
             HeadVar0, HeadVar, !VarSet, !VarTypes, !ExtraGoals),
         !:HeadVars = [HeadVar | HeadVarsRest]
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -459,12 +461,11 @@ introduce_exists_casts_for_head(ModuleInfo, Subn, ArgTypes, ArgModes,
 introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
         HeadVar0, HeadVar, !VarSet, !VarTypes, !ExtraGoals) :-
     apply_rec_subst_to_type(Subn, ExternalType, InternalType),
-    (
-        % Add an exists_cast for the head variable if its type
-        % inside the procedure is different from its type at the
-        % interface.
-        InternalType \= ExternalType
-    ->
+    % Add an exists_cast for the head variable if its type
+    % inside the procedure is different from its type at the interface.
+    ( if InternalType = ExternalType then
+        HeadVar = HeadVar0
+    else
         term.context_init(Context),
         update_var_type(HeadVar0, InternalType, !VarTypes),
         make_new_exist_cast_var(HeadVar0, HeadVar, !VarSet),
@@ -473,8 +474,6 @@ introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
         generate_cast_with_insts(exists_cast, HeadVar0, HeadVar, Inst, Inst,
             Context, ExtraGoal),
         !:ExtraGoals = [ExtraGoal | !.ExtraGoals]
-    ;
-        HeadVar = HeadVar0
     ).
 
 :- pred introduce_exists_casts_extra(module_info::in, tsubst::in,
@@ -496,7 +495,7 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
         [ModeAndVar | ModesAndVars], [Var | Vars], !VarSet, !VarTypes,
         !RttiVarMaps, !ExtraGoals) :-
     ModeAndVar = ArgMode - Var0,
-    ( mode_is_output(ModuleInfo, ArgMode) ->
+    ( if mode_is_output(ModuleInfo, ArgMode) then
         % Create the exists_cast goal.
 
         term.context_init(Context),
@@ -544,7 +543,7 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
             VarInfo = non_rtti_var,
             unexpected($module, $pred, "rtti_varmaps info not found")
         )
-    ;
+    else
         Var = Var0,
         ExistConstraints = ExistConstraints0
     ),
@@ -556,13 +555,13 @@ introduce_exists_casts_extra(ModuleInfo, Subn, ExistConstraints0,
 
 maybe_add_type_info_locns([], _, _, !RttiVarMaps).
 maybe_add_type_info_locns([ArgType | ArgTypes], Var, Num, !RttiVarMaps) :-
-    (
+    ( if
         ArgType = type_variable(TVar, _),
-        \+ rtti_search_type_info_locn(!.RttiVarMaps, TVar, _)
-    ->
+        not rtti_search_type_info_locn(!.RttiVarMaps, TVar, _)
+    then
         Locn = typeclass_info(Var, Num),
         rtti_det_insert_type_info_locn(TVar, Locn, !RttiVarMaps)
-    ;
+    else
         true
     ),
     maybe_add_type_info_locns(ArgTypes, Var, Num + 1, !RttiVarMaps).

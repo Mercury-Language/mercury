@@ -589,7 +589,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
             Constraints, !:TypeAssignSet),
         typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
             ClauseVarSet, Status, PredMarkers, !.Specs, !:Info),
-        get_clause_list(ClausesRep0, Clauses0),
+        get_clause_list_for_replacement(ClausesRep0, Clauses0),
         typecheck_clause_list(HeadVars, ArgTypes0, Clauses0, Clauses,
             !TypeAssignSet, !Info),
         % We need to perform a final pass of context reduction at the end,

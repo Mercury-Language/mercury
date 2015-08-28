@@ -100,7 +100,7 @@ fill_goal_id_slots_in_proc_body(ModuleInfo, VarTypes, ContainingGoalMap,
 fill_goal_id_slots_in_clauses(ModuleInfo, ContainingGoalMap,
         ClausesInfo0, ClausesInfo) :-
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
-    get_clause_list(ClausesRep0, Clauses0),
+    get_clause_list_for_replacement(ClausesRep0, Clauses0),
     clauses_info_get_vartypes(ClausesInfo0, VarTypes),
     SlotInfo = slot_info(ModuleInfo, VarTypes),
     % If there is exactly one clause, we could theoretically start the counter

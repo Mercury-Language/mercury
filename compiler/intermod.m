@@ -254,7 +254,7 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
             pred_info_get_typevarset(PredInfo0, TVarSet),
             intermod_info_set_var_types(VarTypes, !Info),
             intermod_info_set_tvarset(TVarSet, !Info),
-            get_clause_list(ClausesRep0, Clauses0),
+            get_clause_list_for_replacement(ClausesRep0, Clauses0),
             intermod_traverse_clauses(Clauses0, Clauses, DoWrite, !Info),
             set_clause_list(Clauses, ClausesRep)
         ;
@@ -309,7 +309,7 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
     (
         pred_info_get_clauses_info(PredInfo, ClauseInfo),
         clauses_info_get_clauses_rep(ClauseInfo, ClausesRep, _ItemNumbers),
-        get_clause_list(ClausesRep, Clauses),
+        get_clause_list_maybe_repeated(ClausesRep, Clauses),
 
         [ProcId | _ProcIds] = pred_info_procids(PredInfo),
         pred_info_get_proc_table(PredInfo, Procs),
@@ -324,27 +324,27 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         % goals which cannot be written to `.opt' files (they cannot be read
         % back in). They will be recreated in the importing module.
         pred_info_get_markers(PredInfo, Markers),
-        \+ check_marker(Markers, marker_class_method),
-        \+ check_marker(Markers, marker_class_instance_method),
+        not check_marker(Markers, marker_class_method),
+        not check_marker(Markers, marker_class_instance_method),
 
         % Don't write stub clauses to `.opt' files.
-        \+ check_marker(Markers, marker_stub),
+        not check_marker(Markers, marker_stub),
 
         % Don't export builtins since they will be recreated in the
         % importing module anyway.
-        \+ is_unify_or_compare_pred(PredInfo),
-        \+ pred_info_is_builtin(PredInfo),
+        not is_unify_or_compare_pred(PredInfo),
+        not pred_info_is_builtin(PredInfo),
 
         % These will be recreated in the importing module.
-        \+ set.member(PredId, TypeSpecForcePreds),
+        not set.member(PredId, TypeSpecForcePreds),
 
         % Don't export non-inlinable predicates.
-        \+ check_marker(Markers, marker_user_marked_no_inline),
+        not check_marker(Markers, marker_user_marked_no_inline),
 
         % No point exporting code which isn't very inlinable.
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),
-        \+ clauses_contain_noninlinable_foreign_code(Target, Clauses),
+        not clauses_contain_noninlinable_foreign_code(Target, Clauses),
 
         % Don't export tabled predicates since they are not inlinable.
         proc_info_get_eval_method(ProcInfo, eval_normal),
@@ -1750,7 +1750,7 @@ intermod_write_preds(OutInfo, ModuleInfo, [PredId | PredIds], !IO) :-
     clauses_info_get_headvar_list(ClausesInfo, HeadVars),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     clauses_info_get_vartypes(ClausesInfo, VarTypes),
-    get_clause_list(ClausesRep, Clauses),
+    get_clause_list_maybe_repeated(ClausesRep, Clauses),
 
     pred_info_get_goal_type(PredInfo, GoalType),
     (

@@ -64,7 +64,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
         clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
         clauses_info_get_headvars(ClausesInfo0, HeadVars0),
         clauses_info_get_varset(ClausesInfo0, VarSet0),
-        get_clause_list(ClausesRep0, Clauses0),
+        get_clause_list_for_replacement(ClausesRep0, Clauses0),
         (
             Clauses0 = []
         ;

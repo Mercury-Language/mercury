@@ -390,15 +390,12 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
 
     % Find out the approriate context for the predicate's interface events.
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    get_clause_list(ClausesInfo ^ cli_rep, Clauses),
-    (
-        Clauses = [],
+    ( if get_first_clause(ClausesInfo ^ cli_rep, FirstClause) then
+        ProcContext = FirstClause ^ clause_context
+    else
         % This predicate must have been created by the compiler. In that case,
         % the context of the body goal is the best we can do.
         ProcContext = goal_info_get_context(GoalInfo)
-    ;
-        Clauses = [FirstClause | _],
-        ProcContext = FirstClause ^ clause_context
     ),
 
     % Generate code for the procedure.

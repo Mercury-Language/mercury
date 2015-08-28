@@ -289,11 +289,11 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                     % fixing all the warnings), then we prefer to go with
                     % the untransformed version of the errors, since these
                     % should be easier to relate to the code as written.
-                    ( AfterDPISeverity = WorstSeverity ->
+                    ( if AfterDPISeverity = WorstSeverity then
                         !:Specs = BeforeDPISpecs,
                         !:ModuleInfo = BeforeDPIModuleInfo,
                         SafeToContinue = BeforeDPISafeToContinue
-                    ;
+                    else
                         !:Specs = AfterDPISpecs,
                         !:ModuleInfo = AfterDPIModuleInfo,
                         SafeToContinue = AfterDPISafeToContinue
@@ -344,12 +344,12 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
             SafeToContinue = modes_unsafe_to_continue
         ;
             ErrorsSoFar = no,
-            ( MaxIterations =< 1 ->
+            ( if MaxIterations =< 1 then
                 % Stop if we have exceeded the iteration limit.
                 MaxIterSpec = report_max_iterations_exceeded(!.ModuleInfo),
                 !:Specs = [MaxIterSpec | !.Specs],
                 SafeToContinue = modes_unsafe_to_continue
-            ;
+            else
                 % Otherwise, continue iterating.
                 globals.lookup_bool_option(Globals, debug_modes, DebugModes),
                 (
@@ -436,15 +436,15 @@ copy_pred_bodies(OldPredTable, PredIds, !ModuleInfo) :-
 
 copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
     map.lookup(PredTable0, PredId, PredInfo0),
-    (
+    ( if
         % Don't copy type class methods, because their proc_infos are generated
         % already mode-correct, and because copying from the clauses_info
         % doesn't work for them.
         pred_info_get_markers(PredInfo0, Markers),
         check_marker(Markers, marker_class_method)
-    ->
+    then
         PredTable = PredTable0
-    ;
+    else
         pred_info_get_proc_table(PredInfo0, ProcTable0),
         map.lookup(OldPredTable, PredId, OldPredInfo),
         pred_info_get_proc_table(OldPredInfo, OldProcTable),
@@ -472,7 +472,7 @@ copy_proc_body(OldProcTable, ProcId, !ProcTable) :-
 :- func should_modecheck_pred(pred_info) = bool.
 
 should_modecheck_pred(PredInfo) = ShouldModeCheck :-
-    (
+    ( if
         (
             % Don't modecheck imported predicates.
             ( pred_info_is_imported(PredInfo)
@@ -484,9 +484,9 @@ should_modecheck_pred(PredInfo) = ShouldModeCheck :-
             pred_info_get_markers(PredInfo, PredMarkers),
             check_marker(PredMarkers, marker_class_method)
         )
-    ->
+    then
         ShouldModeCheck = no
-    ;
+    else
         ShouldModeCheck = yes
     ).
 
@@ -534,7 +534,7 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
 
 write_modes_progress_message(ModuleInfo, WhatToCheck, PredId, PredInfo, !IO) :-
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, marker_infer_modes) ->
+    ( if check_marker(Markers, marker_infer_modes) then
         (
             WhatToCheck = check_modes,
             Msg = "% Mode-analysing "
@@ -542,7 +542,7 @@ write_modes_progress_message(ModuleInfo, WhatToCheck, PredId, PredInfo, !IO) :-
             WhatToCheck = check_unique_modes,
             Msg = "% Unique-mode-analysing "
         )
-    ;
+    else
         (
             WhatToCheck = check_modes,
             Msg = "% Mode-checking "
@@ -565,15 +565,15 @@ do_modecheck_pred(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
     (
         WhatToCheck = check_modes,
         pred_info_get_proc_table(PredInfo0, ProcTable),
-        (
+        ( if
             some [ProcInfo] (
                 map.member(ProcTable, _ProcId, ProcInfo),
                 proc_info_get_maybe_declared_argmodes(ProcInfo, yes(_))
             )
-        ->
+        then
             % There was at least one declared mode for this procedure.
             DeclSpecs = []
-        ;
+        else
             % There were no declared modes for this procedure.
             DeclSpecs = maybe_report_error_no_modes(!.ModuleInfo, PredId,
                 PredInfo0)
@@ -610,8 +610,6 @@ modecheck_procs([ProcId | ProcIds], PredId, WhatToCheck, MayChangeCalledProc,
 
 %-----------------------------------------------------------------------------%
 
-    % Mode-check the code for predicate in a given mode.
-    %
 modecheck_proc(ProcId, PredId, !ModuleInfo, Specs, Changed) :-
     modecheck_proc_general(ProcId, PredId, check_modes, may_change_called_proc,
         !ModuleInfo, Specs, Changed).
@@ -628,7 +626,7 @@ modecheck_proc_general(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         !ModuleInfo, !Changed, Specs) :-
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
-        _PredInfo0, ProcInfo0),
+        PredInfo0, ProcInfo0),
     proc_info_get_can_process(ProcInfo0, CanProcess),
     (
         CanProcess = no,
@@ -636,23 +634,20 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
     ;
         CanProcess = yes,
         do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-            !ModuleInfo, ProcInfo0, ProcInfo, !Changed, Specs),
+            !ModuleInfo, PredInfo0, PredInfo, ProcInfo0, !Changed, Specs),
+
         module_info_get_preds(!.ModuleInfo, Preds1),
-        map.lookup(Preds1, PredId, PredInfo1),
-        pred_info_get_proc_table(PredInfo1, Procs1),
-        map.set(ProcId, ProcInfo, Procs1, Procs),
-        pred_info_set_proc_table(Procs, PredInfo1, PredInfo),
-        map.set(PredId, PredInfo, Preds1, Preds),
+        map.det_update(PredId, PredInfo, Preds1, Preds),
         module_info_set_preds(Preds, !ModuleInfo)
     ).
 
 :- pred do_modecheck_proc(proc_id::in, pred_id::in, how_to_check_goal::in,
     may_change_called_proc::in, module_info::in, module_info::out,
-    proc_info::in, proc_info::out, bool::in, bool::out,
-    list(error_spec)::out) is det.
+    pred_info::in, pred_info::out, proc_info::in,
+    bool::in, bool::out, list(error_spec)::out) is det.
 
 do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
-        !ModuleInfo, !ProcInfo, !Changed, ErrorAndWarningSpecs) :-
+        !ModuleInfo, !PredInfo, !.ProcInfo, !Changed, ErrorAndWarningSpecs) :-
     % Extract the useful fields in the proc_info.
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_argmodes(!.ProcInfo, ArgModes0),
@@ -661,10 +656,11 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 
     % We use the context of the first clause, unless there weren't any clauses
     % at all, in which case we use the context of the mode declaration.
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
-    get_clause_list(ClausesRep, Clauses),
+    % We update !PredInfo anyway (to put the updated ProcInfo into the
+    % procedure table), so we may as well flatten the clause list.
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+    clauses_info_clauses(Clauses, _ItemNumbers, ClausesInfo0, ClausesInfo),
+    pred_info_set_clauses_info(ClausesInfo, !PredInfo),
     (
         Clauses = [FirstClause | _],
         Context = FirstClause ^ clause_context
@@ -696,15 +692,15 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             !:ModeInfo),
         mode_info_set_changed_flag(!.Changed, !ModeInfo),
 
-        pred_info_get_markers(PredInfo, Markers),
-        ( check_marker(Markers, marker_infer_modes) ->
+        pred_info_get_markers(!.PredInfo, Markers),
+        ( if check_marker(Markers, marker_infer_modes) then
             InferModes = yes
-        ;
+        else
             InferModes = no
         ),
-        ( is_unify_pred(PredInfo) ->
+        ( if is_unify_pred(!.PredInfo) then
             IsUnifyPred = yes
-        ;
+        else
             IsUnifyPred = no
         ),
         mode_list_get_final_insts(!.ModuleInfo, ArgModes0, ArgFinalInsts0),
@@ -767,7 +763,11 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         ;
             NeedToRequantify = need_to_requantify,
             requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo)
-        )
+        ),
+
+        pred_info_get_proc_table(!.PredInfo, ProcMap1),
+        map.det_update(ProcId, !.ProcInfo, ProcMap1, ProcMap),
+        pred_info_set_proc_table(ProcMap, !PredInfo)
     ).
 
 :- pred modecheck_proc_body(module_info::in, how_to_check_goal::in,
@@ -831,7 +831,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
     string.format("procedure_%d_%d",
         [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))],
         CheckpointMsg),
-    (
+    ( if
         InferModes = no,
         check_marker(Markers, marker_mode_check_clauses),
         Body0 = hlds_goal(BodyGoalExpr0, BodyGoalInfo0),
@@ -850,12 +850,12 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
             var_is_or_may_contain_solver_type(ModuleInfo, VarTypes0),
             set_of_var.to_sorted_list(BodyNonLocals)),
         SolverNonLocals = []
-    ->
+    then
         BodyContext = goal_info_get_context(BodyGoalInfo0),
         term.context_init(EmptyContext),
-        ( BodyContext = EmptyContext ->
+        ( if BodyContext = EmptyContext then
             true
-        ;
+        else
             mode_info_set_context(BodyContext, !ModeInfo)
         ),
 
@@ -883,20 +883,29 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
             mode_info_get_nondet_live_vars(!.ModeInfo, NondetLiveVars0),
             Detism = goal_info_get_determinism(BodyGoalInfo0),
             NonLocals = goal_info_get_nonlocals(BodyGoalInfo0),
-            ( determinism_components(Detism, _, at_most_many) ->
-                true
+            determinism_components(Detism, _, SolnCount),
+            (
+                SolnCount = at_most_many
             ;
+                ( SolnCount = at_most_zero
+                ; SolnCount = at_most_one
+                ; SolnCount = at_most_many_cc
+                ),
                 mode_info_set_nondet_live_vars(bag.init, !ModeInfo)
             ),
             (
                 ClausesForm0 = clause_disj(Disjuncts1),
                 Disjuncts2 = flatten_disjs(Disjuncts1),
-                ( determinism_components(Detism, _, at_most_many) ->
+                (
+                    SolnCount = at_most_many,
                     mode_info_add_live_vars(NonLocals, !ModeInfo),
                     make_all_nondet_live_vars_mostly_uniq(!ModeInfo),
                     mode_info_remove_live_vars(NonLocals, !ModeInfo)
                 ;
-                    true
+                    ( SolnCount = at_most_zero
+                    ; SolnCount = at_most_one
+                    ; SolnCount = at_most_many_cc
+                    )
                 ),
                 list.map_foldl(
                     unique_modecheck_clause_disj(CheckpointMsg, HeadVars,
@@ -923,7 +932,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
         goal_info_set_instmap_delta(DeltaInstMap, BodyGoalInfo0, BodyGoalInfo),
         Body = hlds_goal(NewGoalExpr, BodyGoalInfo),
         ArgFinalInsts = ArgFinalInsts0
-    ;
+    else
         % Modecheck the procedure body as a single goal.
         mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
         (
@@ -964,7 +973,7 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
         Specs) :-
     module_info_get_proc_requests(!.ModuleInfo, Requests0),
     get_req_queue(Requests0, RequestQueue0),
-    ( queue.get(PredProcId, RequestQueue0, RequestQueue1) ->
+    ( if queue.get(PredProcId, RequestQueue0, RequestQueue1) then
         set_req_queue(RequestQueue1, Requests0, Requests1),
         module_info_set_proc_requests(Requests1, !ModuleInfo),
 
@@ -976,14 +985,14 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
 
         PredProcId = proc(PredId, _ProcId),
         module_info_get_valid_pred_id_set(!.ModuleInfo, ValidPredIds),
-        ( set_tree234.member(PredId, ValidPredIds) ->
+        ( if set_tree234.member(PredId, ValidPredIds) then
             trace [io(!IO)] (
                 queued_proc_progress_message(!.ModuleInfo, PredProcId,
                     HowToCheckGoal, !IO)
             ),
             modecheck_queued_proc(HowToCheckGoal, PredProcId,
                 !OldPredTable, !ModuleInfo, HeadChanged, HeadSpecs)
-        ;
+        else
             HeadSpecs = [],
             HeadChanged = no
         ),
@@ -991,7 +1000,7 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
             TailChanged, TailSpecs),
         bool.or(HeadChanged, TailChanged, Changed),
         Specs = HeadSpecs ++ TailSpecs
-    ;
+    else
         Changed = no,
         Specs = []
     ).
@@ -1136,10 +1145,10 @@ modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
 
     % Modecheck this case (if it is reachable).
     mode_info_get_instmap(!.ModeInfo, InstMap1),
-    ( instmap_is_reachable(InstMap1) ->
+    ( if instmap_is_reachable(InstMap1) then
         modecheck_goal(Goal0, Goal1, !ModeInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap)
-    ;
+    else
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
@@ -1189,9 +1198,9 @@ unique_modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0,
     modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap1),
-    ( instmap_is_reachable(InstMap1) ->
+    ( if instmap_is_reachable(InstMap1) then
         unique_modes_check_goal(Goal0, Goal1, !ModeInfo)
-    ;
+    else
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
@@ -1309,27 +1318,27 @@ maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
 
 check_final_insts(Vars, Insts, VarInsts, InferModes, GroundMatchesBound,
         ArgNum, ModuleInfo, !Goal, !Changed, !ModeInfo) :-
-    (
+    ( if
         Vars = [],
         Insts = [],
         VarInsts = []
-    ->
+    then
         true
-    ;
+    else if
         Vars = [Var | VarsTail],
         Insts = [Inst | InstsTail],
         VarInsts = [VarInst | VarInstsTail]
-    ->
+    then
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         lookup_var_type(VarTypes, Var, Type),
-        (
+        ( if
             inst_matches_final_gmb(VarInst, Inst, Type, ModuleInfo,
                 GroundMatchesBound)
-        ->
+        then
             true
-        ;
+        else
             !:Changed = yes,
-            (
+            ( if
                 % Insert a call to the appropriate solver type initialisation
                 % predicate if:
                 %
@@ -1345,10 +1354,10 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, GroundMatchesBound,
                 inst_match.inst_is_any(ModuleInfo, Inst),
                 type_is_solver_type_with_auto_init(ModuleInfo, Type),
                 mode_info_solver_init_is_supported(!.ModeInfo)
-            ->
+            then
                 prepend_initialisation_call(Var, Type, VarInst, !Goal,
                     !ModeInfo)
-            ;
+            else
                 (
                     % If we are inferring the mode, then don't report an error,
                     % just set changed to yes to make sure that we will do
@@ -1358,11 +1367,15 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, GroundMatchesBound,
                     InferModes = no,
                     % XXX This might need to be reconsidered now we have
                     % unique modes.
-                    ( inst_matches_initial(VarInst, Inst, Type, ModuleInfo) ->
+                    ( if
+                        inst_matches_initial(VarInst, Inst, Type, ModuleInfo)
+                    then
                         Reason = too_instantiated
-                    ; inst_matches_initial(Inst, VarInst, Type, ModuleInfo) ->
+                    else if
+                        inst_matches_initial(Inst, VarInst, Type, ModuleInfo)
+                    then
                         Reason = not_instantiated_enough
-                    ;
+                    else
                         % I don't think this can happen. But just in case...
                         Reason = wrongly_instantiated
                     ),
@@ -1376,7 +1389,7 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, GroundMatchesBound,
         check_final_insts(VarsTail, InstsTail, VarInstsTail,
             InferModes, GroundMatchesBound, ArgNum + 1, ModuleInfo,
             !Goal, !Changed, !ModeInfo)
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -1412,33 +1425,33 @@ proc_check_eval_methods(ModuleInfo, PredId, [ProcId | ProcIds], !Specs) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     proc_info_get_eval_method(ProcInfo, EvalMethod),
     proc_info_get_argmodes(ProcInfo, Modes),
-    (
+    ( if
         eval_method_requires_ground_args(EvalMethod) = yes,
         \+ only_fully_in_out_modes(Modes, ModuleInfo)
-    ->
+    then
         GroundArgsSpec = report_eval_method_requires_ground_args(ProcInfo),
         !:Specs = [GroundArgsSpec | !.Specs]
-    ;
+    else
         true
     ),
-    (
+    ( if
         eval_method_destroys_uniqueness(EvalMethod) = yes,
         \+ only_nonunique_modes(Modes, ModuleInfo)
-    ->
+    then
         UniquenessSpec = report_eval_method_destroys_uniqueness(ProcInfo),
         !:Specs = [UniquenessSpec | !.Specs]
-    ;
+    else
         true
     ),
-    (
+    ( if
         pred_info_name(PredInfo) = "main",
         pred_info_orig_arity(PredInfo) = 2,
         pred_info_is_exported(PredInfo),
         \+ check_mode_of_main(Modes, ModuleInfo)
-    ->
+    then
         MainSpec = report_wrong_mode_for_main(ProcInfo),
         !:Specs = [MainSpec | !.Specs]
-    ;
+    else
         true
     ),
     proc_check_eval_methods(ModuleInfo, PredId, ProcIds, !Specs).

@@ -162,17 +162,18 @@ is_commutativity_assertion(Module, AssertId, CallVars, CommutativeVars) :-
     %
     % Check that the two list of variables are identical except that
     % the position of two variables has been swapped.
-    % e.g [A,B,C] and [B,A,C] is true.
+    % For example, commutative_var_ordering is true for [A,B,C] and [B,A,C].
     % It also takes a list of variables, Vs, to a call and returns
-    % the two variables in that list that can be swapped, ie [A,B].
+    % the two variables in that list that can be swapped. In this case,
+    % that will be [A,B].
     %
 :- pred commutative_var_ordering(list(prog_var)::in, list(prog_var)::in,
     list(prog_var)::in, pair(prog_var)::out) is semidet.
 
 commutative_var_ordering([P | Ps], [Q | Qs], [V | Vs], CommutativeVars) :-
-    ( P = Q ->
+    ( if P = Q then
         commutative_var_ordering(Ps, Qs, Vs, CommutativeVars)
-    ;
+    else
         commutative_var_ordering_2(P, Q, Ps, Qs, Vs, CallVarB),
         CommutativeVars = V - CallVarB
     ).
@@ -183,9 +184,9 @@ commutative_var_ordering([P | Ps], [Q | Qs], [V | Vs], CommutativeVars) :-
 
 commutative_var_ordering_2(VarP, VarQ, [P | Ps], [Q | Qs], [V | Vs],
         CallVarB) :-
-    ( P = Q ->
+    ( if P = Q then
         commutative_var_ordering_2(VarP, VarQ, Ps, Qs, Vs, CallVarB)
-    ;
+    else
         CallVarB = V,
         P = VarQ,
         Q = VarP,
@@ -373,9 +374,9 @@ process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
 is_construction_equivalence_assertion(Module, AssertId, ConsId, PredId) :-
     assert_id_goal(Module, AssertId, Goal),
     goal_is_equivalence(Goal, P, Q),
-    ( single_construction(P, ConsId) ->
+    ( if single_construction(P, ConsId) then
         predicate_call(Q, PredId)
-    ;
+    else
         single_construction(Q, ConsId),
         predicate_call(P, PredId)
     ).
@@ -403,7 +404,7 @@ single_construction(Goal, ConsId) :-
 :- pred predicate_call(hlds_goal::in, pred_id::in) is semidet.
 
 predicate_call(Goal, PredId) :-
-    ( Goal = hlds_goal(conj(plain_conj, Goals), _) ->
+    ( if Goal = hlds_goal(conj(plain_conj, Goals), _) then
         list.member(Call, Goals),
         Call = hlds_goal(plain_call(PredId, _, _, _, _, _), _),
         list.delete(Goals, Call, Unifications),
@@ -414,7 +415,7 @@ predicate_call(Goal, PredId) :-
             )
         ),
         list.filter(P, Unifications, [])
-    ;
+    else
         Goal = hlds_goal(plain_call(PredId, _, _, _, _, _), _)
     ).
 
@@ -431,12 +432,12 @@ get_conj_goals(Goal0, ConjList) :-
 
 ignore_exist_quant_scope(Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, _Context),
-    (
+    ( if
         GoalExpr0 = scope(Reason, Goal1),
         Reason = exist_quant(_)
-    ->
+    then
         Goal = Goal1
-    ;
+    else
         Goal = Goal0
     ).
 
@@ -449,7 +450,7 @@ assert_id_goal(Module, AssertId, Goal) :-
     module_info_pred_info(Module, PredId, PredInfo),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
-    get_clause_list(ClausesRep, Clauses),
+    get_clause_list_maybe_repeated(ClausesRep, Clauses),
     (
         Clauses = [Clause],
         Goal0 = Clause ^ clause_body,
@@ -471,9 +472,9 @@ goal_is_implication(Goal, P, Q) :-
     % Goal = (P => Q)
     Goal = hlds_goal(negation(hlds_goal(conj(plain_conj, GoalList), _)), GI),
     list.reverse(GoalList) = [NotQ | Ps],
-    ( Ps = [P0] ->
+    ( if Ps = [P0] then
         P = P0
-    ;
+    else
         P = hlds_goal(conj(plain_conj, list.reverse(Ps)), GI)
     ),
     NotQ = hlds_goal(negation(Q), _).
@@ -596,9 +597,9 @@ equal_goals_shorthand(ShortHandA, ShortHandB, !Subst) :-
     is semidet.
 
 equal_var(VA, VB, !Subst) :-
-    ( map.search(!.Subst, VA, SubstVA) ->
+    ( if map.search(!.Subst, VA, SubstVA) then
         SubstVA = VB
-    ;
+    else
         map.insert(VA, VB, !Subst)
     ).
 
@@ -653,9 +654,9 @@ equal_goals_cases([CaseA | CaseAs], [CaseB | CaseBs], !Subst) :-
 record_preds_used_in(Goal, AssertId, !Module) :-
     predids_from_goal(Goal, PredIds),
     % Sanity check.
-    ( list.member(invalid_pred_id, PredIds) ->
+    ( if list.member(invalid_pred_id, PredIds) then
         unexpected($module, $pred, "invalid pred_id")
-    ;
+    else
         true
     ),
     list.foldl(update_pred_info(AssertId), PredIds, !Module).

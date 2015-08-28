@@ -307,7 +307,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         ForwardGoalPathMap =
             create_forward_goal_path_map(ContainingGoalMap),
         clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0, ItemNumbers),
-        get_clause_list(ClausesRep0, !:Clauses),
+        get_clause_list_for_replacement(ClausesRep0, !:Clauses),
         list.map(get_clause_body, !.Clauses, !:Goals),
         list.foldl(goal_to_constraint(!.Environment), !.Goals, !TCInfo),
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
