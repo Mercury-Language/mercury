@@ -199,9 +199,9 @@ is_lookup_switch(BranchStart, GetTag, TaggedCases, GoalInfo, StoreMap,
         !MaybeEnd, set_of_var.init, ResumeVars, no, GoalsMayModifyTrail, !CI),
     get_vartypes(!.CI, VarTypes),
     lookup_var_types(VarTypes, OutVars, OutTypes),
-    ( project_all_to_one_solution(CaseSolnMap, CaseValuePairsMap) ->
+    ( if project_all_to_one_solution(CaseSolnMap, CaseValuePairsMap) then
         CaseConsts = all_one_soln(CaseValuePairsMap)
-    ;
+    else
         CaseConsts = some_several_solns(CaseSolnMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail))
     ),
@@ -239,7 +239,7 @@ generate_constants_for_lookup_switch(BranchStart, GetTag,
     not set.member(feature_call_table_gen, Features),
     not set.member(feature_save_deep_excp_vars, Features),
 
-    ( GoalExpr = disj(Disjuncts) ->
+    ( if GoalExpr = disj(Disjuncts) then
         (
             Disjuncts = [],
             % Cases like this should have been filtered out by
@@ -277,7 +277,7 @@ generate_constants_for_lookup_switch(BranchStart, GetTag,
             % the result.
             SolnConsts = several_solns(FirstSoln, LaterSolns)
         )
-    ;
+    else
         goal_is_conj_of_unify(ArmNonLocals, Goal),
         % The pre- and post-goal updates for the goals themselves
         % are done as part of the call to generate_goal in
@@ -328,9 +328,9 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
 
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
-    ( StartVal = 0 ->
+    ( if StartVal = 0 then
         IndexRval = VarRval
-    ;
+    else
         IndexRval = binop(int_sub, VarRval, const(llconst_int(StartVal)))
     ),
 
@@ -349,7 +349,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
 
     (
         CaseConsts = all_one_soln(CaseValuesMap),
-        Comment = singleton(
+        Comment = cord.singleton(
             llds_instr(comment("simple lookup switch"), "")
         ),
         map.to_assoc_list(CaseValuesMap, CaseValues),
@@ -367,7 +367,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
             GoalsMayModifyTrail = no,
             AddTrailOps = do_not_add_trail_ops
         ),
-        Comment = singleton(
+        Comment = cord.singleton(
             llds_instr(comment("several soln lookup switch"), "")
         ),
         map.to_assoc_list(CaseSolnMap, CaseSolns),
@@ -425,13 +425,13 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
         % VarRval - StartVal). Most of the change is done by
         % generate_offset_assigns associating each var with the relevant field
         % in !CI.
-        ( NumOutVars = 1 ->
+        ( if NumOutVars = 1 then
             BaseRval = IndexRval
-        ;
+        else
             BaseRval = binop(int_mul,
                 IndexRval, const(llconst_int(NumOutVars)))
         ),
-        BaseRegInitCode = singleton(
+        BaseRegInitCode = cord.singleton(
             llds_instr(
                 assign(BaseReg,
                     mem_addr(heap_ref(VectorAddrRval, yes(0), BaseRval))),
@@ -456,12 +456,12 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
 construct_simple_int_lookup_vector([], _, _, !RevRows).
 construct_simple_int_lookup_vector([Index - Rvals | Rest], CurIndex, OutTypes,
         !RevRows) :-
-    ( CurIndex < Index ->
+    ( if CurIndex < Index then
         % If this argument (array element) is a place-holder and
         % will never be referenced, just fill it in with a dummy entry.
         Row = list.map(default_value_for_type, OutTypes),
         Remainder = [Index - Rvals | Rest]
-    ;
+    else
         Row = Rvals,
         Remainder = Rest
     ),
@@ -496,21 +496,21 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     list.length(OutTypes, NumOutTypes),
     InitLaterSolnRowNumber = 1,
     DummyLaterSolnRow = list.map(default_value_for_type, OutTypes),
-    LaterSolnArrayCord0 = singleton(DummyLaterSolnRow),
+    LaterSolnArrayCord0 = cord.singleton(DummyLaterSolnRow),
     construct_several_soln_int_lookup_vector(StartVal, EndVal,
         OutTypes, NumOutTypes, CaseSolns, MainRows,
         InitLaterSolnRowNumber, LaterSolnArrayCord0, LaterSolnArrayCord,
         0, FailCaseCount, 0, OneSolnCaseCount, 0, SeveralSolnCaseCount),
     LaterSolnArray = cord.list(LaterSolnArrayCord),
-    (
+    ( if
         (
             NeedBitVecCheck = need_bit_vec_check
         <=>
             FailCaseCount > 0
         )
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "bad FailCaseCount")
     ),
 
@@ -532,7 +532,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     % BaseReg.
     acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
     % IndexRval has already had Start subtracted from it.
-    BaseRegInitCode = singleton(
+    BaseRegInitCode = cord.singleton(
         llds_instr(
             assign(BaseReg,
                 mem_addr(heap_ref(MainVectorAddrRval, yes(0),
@@ -545,7 +545,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     generate_code_for_all_kinds(DescendingSortedKinds, 0, OutVars, ResumeVars,
         EndLabel, StoreMap, Liveness, AddTrailOps,
         BaseReg, LaterVectorAddrRval, !MaybeEnd, KindsCode, !CI, !.CLD),
-    EndLabelCode = singleton(
+    EndLabelCode = cord.singleton(
         llds_instr(label(EndLabel),
             "end of int several soln lookup switch")
     ),
@@ -609,7 +609,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
                 BranchEndCode, !.CI, !.CLD)
         ),
-        GotoEndCode = singleton(
+        GotoEndCode = cord.singleton(
             llds_instr(goto(code_label(EndLabel)),
                 "goto end of switch from one_soln")
         ),
@@ -624,11 +624,11 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             % The code below is modelled on the code in disj_gen, but is
             % specialized for the situation here.
 
-            produce_vars(to_sorted_list(ResumeVars), ResumeMap, FlushCode,
-                !.CI, !CLD),
+            produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
+                FlushCode, !.CI, !CLD),
             MinOffsetColumnRval = const(llconst_int(NumPrevColumns)),
             MaxOffsetColumnRval = const(llconst_int(NumPrevColumns + 1)),
-            SaveSlotsCode = from_list([
+            SaveSlotsCode = cord.from_list([
                 llds_instr(assign(CurSlot,
                     lval(field(yes(0), lval(BaseReg), MinOffsetColumnRval))),
                     "Setup current slot in the later solution array"),
@@ -667,7 +667,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
                 FirstBranchEndCode, !.CI, !.CLD)
         ),
 
-        GotoEndCode = singleton(
+        GotoEndCode = cord.singleton(
             llds_instr(goto(code_label(EndLabel)),
                 "goto end of switch from several_soln")
         ),
@@ -684,7 +684,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             get_next_label(UndoLabel, !CI),
             get_next_label(AfterUndoLabel, !CI),
             list.length(OutVars, NumOutVars),
-            TestMoreSolnsCode = from_list([
+            TestMoreSolnsCode = cord.from_list([
                 llds_instr(assign(LaterBaseReg, lval(CurSlot)),
                     "Init later base register"),
                 llds_instr(
@@ -703,7 +703,7 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
                     "Undo hijack code")
             ]),
             undo_disj_hijack(HijackInfo, UndoHijackCode, !CLD),
-            AfterUndoLabelCode = from_list([
+            AfterUndoLabelCode = cord.from_list([
                 llds_instr(label(AfterUndoLabel),
                     "Return later answer code"),
                 llds_instr(assign(LaterBaseReg,
@@ -752,13 +752,13 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
             lval(field(yes(0), lval(BaseReg),
                 const(llconst_int(NumPrevColumns)))),
             const(llconst_int(0))),
-        TestCode = from_list([
+        TestCode = cord.from_list([
             llds_instr(if_val(TestRval, code_label(NextKindLabel)),
                 "skip to next kind in several_soln lookup switch"),
             llds_instr(comment("This kind is " ++ case_kind_to_string(Kind)),
                 "")
         ]),
-        NextKindLabelCode = from_list([
+        NextKindLabelCode = cord.from_list([
             llds_instr(label(NextKindLabel),
                 "next kind in several_soln lookup switch"),
             llds_instr(comment("Next kind is "
@@ -785,9 +785,9 @@ construct_several_soln_int_lookup_vector(CurIndex, EndVal,
         OutTypes, NumOutTypes, [], MainRows,
         !.LaterNextRow, !LaterSolnArray,
         !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount) :-
-    ( CurIndex > EndVal ->
+    ( if CurIndex > EndVal then
         MainRows = []
-    ;
+    else
         construct_fail_row(OutTypes, MainRow, !FailCaseCount),
         construct_several_soln_int_lookup_vector(CurIndex + 1, EndVal,
             OutTypes, NumOutTypes, [], MoreMainRows,
@@ -799,10 +799,10 @@ construct_several_soln_int_lookup_vector(CurIndex, EndVal,
         OutTypes, NumOutTypes, [Index - Soln | Rest], [MainRow | MainRows],
         !.LaterNextRow, !LaterSolnArray,
         !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount) :-
-    ( CurIndex < Index ->
+    ( if CurIndex < Index then
         construct_fail_row(OutTypes, MainRow, !FailCaseCount),
         Remainder = [Index - Soln | Rest]
-    ;
+    else
         (
             Soln = one_soln(OutRvals),
             !:OneSolnCaseCount = !.OneSolnCaseCount + 1,
@@ -820,7 +820,7 @@ construct_several_soln_int_lookup_vector(CurIndex, EndVal,
             LastRowRval = const(llconst_int(LastRowOffset)),
             MainRow = [FirstRowRval, LastRowRval | FirstSolnRvals],
             !:LaterNextRow = !.LaterNextRow + NumLaterSolns,
-            !:LaterSolnArray = !.LaterSolnArray ++ from_list(LaterSolns)
+            !:LaterSolnArray = !.LaterSolnArray ++ cord.from_list(LaterSolns)
         ),
         Remainder = Rest
     ),
@@ -865,10 +865,10 @@ generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode,
     % then the word to use is always that word, and the index specifies which
     % bit. Otherwise, the high bits of the index specify which word to use
     % and the low bits specify which bit.
-    ( BitVecArgs = [SingleWord] ->
+    ( if BitVecArgs = [SingleWord] then
         Word = SingleWord,
         BitNum = IndexRval
-    ;
+    else
         % This is the same as
         % WordNum = binop(int_div, IndexRval, const(llconst_int(WordBits)))
         % except that it can generate more efficient code.
@@ -910,9 +910,9 @@ generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, !BitMap) :-
     Val = Tag - Start,
     Word = Val // WordBits,
     Offset = Val mod WordBits,
-    ( map.search(!.BitMap, Word, X0) ->
+    ( if map.search(!.BitMap, Word, X0) then
         X1 = X0 \/ (1 << Offset)
-    ;
+    else
         X1 = (1 << Offset)
     ),
     map.set(Word, X1, !BitMap),
@@ -923,10 +923,10 @@ generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, !BitMap) :-
 
 generate_bit_vec_args([], _, []).
 generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
-    ( Count < Word ->
+    ( if Count < Word then
         WordVal = 0,
         Remainder = [Word - Bits | Rest]
-    ;
+    else
         WordVal = Bits,
         Remainder = Rest
     ),

@@ -16,94 +16,115 @@
 :- import_module map.
 :- import_module type_desc.
 
-main -->
-    test1,
-    test2([] : list(io__state)),
-    test3,
-    test4,
-    test5(yes),
-    test5(no),
-    test6,
-    test7.
+main(!IO) :-
+    test1(!IO),
+    test2([] : list(io.state), !IO),
+    test3(!IO),
+    test4(!IO),
+    test5(yes, !IO),
+    test5(no, !IO),
+    test6(!IO),
+    test7(!IO).
 
-:- pred test1(io__state::di, io__state::uo) is det.
+:- pred test1(io.state::di, io.state::uo) is det.
 
-test1 -->
-    io__read(X : io__read_result(int)),
-    io__write(X),
-    nl.
+test1(!IO) :-
+    io.write_string("test1\n", !IO),
+    io.read(X : io.read_result(int), !IO),
+    io.write(X, !IO),
+    io.nl(!IO).
 
-:- pred test2(T::in, io__state::di, io__state::uo) is det.
+:- pred test2(T::in, io.state::di, io.state::uo) is det.
 
-test2(X) -->
-    io__write(type_of(X : T)),
-    nl,
-    io__write(type_of(_ : list(T))),
-    nl.
+test2(X, !IO) :-
+    io.write_string("test2\n", !IO),
+    io.write(type_of(X : T), !IO),
+    io.nl(!IO),
+    io.write(type_of(_ : list(T)), !IO),
+    io.nl(!IO).
 
-:- pred test3(io__state::di, io__state::uo) is det.
+:- pred test3(io.state::di, io.state::uo) is det.
 
-test3 -->
-    io__write(empty_list), nl,
-    io__write(type_of(empty_list)), nl,
-    { empty(X) },
-    io__write(X), nl,
-    io__write(type_of(X)), nl.
+test3(!IO) :-
+    io.write_string("test3\n", !IO),
+    io.write(empty_list, !IO),
+    io.nl(!IO),
+    io.write(type_of(empty_list), !IO),
+    io.nl(!IO),
+    empty(X),
+    io.write(X, !IO),
+    io.nl(!IO),
+    io.write(type_of(X), !IO),
+    io.nl(!IO).
 
-:- pred test4(io__state::di, io__state::uo) is det.
+:- pred test4(io.state::di, io.state::uo) is det.
 
-test4 -->
-    { List = build_list : TypeOfList },
-    io__write(type_of(List)), nl,
-    io__write(List), nl,
-    { EmptyList = [] : TypeOfList },
-    io__write(type_of(EmptyList)), nl,
-    io__write(EmptyList), nl.
-
-:- pred test5(bool::in, io__state::di, io__state::uo) is det.
+test4(!IO) :-
+    io.write_string("test4\n", !IO),
+    List = build_list : TypeOfList,
+    io.write(type_of(List), !IO),
+    io.nl(!IO),
+    io.write(List, !IO),
+    io.nl(!IO),
+    EmptyList = [] : TypeOfList,
+    io.write(type_of(EmptyList), !IO),
+    io.nl(!IO),
+    io.write(EmptyList, !IO),
+    io.nl(!IO).
 
     % Test use of same type variable in different clauses.
-test5(yes) -->
-    { _ = [1, 2, 3] : T },
-    { Y = [] : T },
-    io__write(type_of(Y)), nl,
-    io__write(Y), nl.
-test5(no) -->
-    { _ = ["1", "2", "3"] : T },
-    { Y = [] : T },
-    io__write(type_of(Y)), nl,
-    io__write(Y), nl.
+    %
+:- pred test5(bool::in, io.state::di, io.state::uo) is det.
 
-:- pred test6(io__state::di, io__state::uo) is det.
+test5(yes, !IO) :-
+    io.write_string("test5 yes\n", !IO),
+    _ = [1, 2, 3] : T,
+    Y = [] : T,
+    io.write(type_of(Y), !IO),
+    io.nl(!IO),
+    io.write(Y, !IO),
+    io.nl(!IO).
+test5(no, !IO) :-
+    io.write_string("test5 no\n", !IO),
+    _ = ["1", "2", "3"] : T,
+    Y = [] : T,
+    io.write(type_of(Y), !IO),
+    io.nl(!IO),
+    io.write(Y, !IO),
+    io.nl(!IO).
 
-test6 -->
-    (
-        {
+:- pred test6(io.state::di, io.state::uo) is det.
+
+test6(!IO) :-
+    io.write_string("test6\n", !IO),
+    ( if
+        (
             X = type_of([] : list(int))
         <=>
             X = type_of([1, 2, 3])
-        }
-    ->
-        io__write_string("bi-implication succeeded\n")
-    ;
-        io__write_string("bi-implication failed\n")
+        )
+    then
+        io.write_string("bi-implication succeeded\n", !IO)
+    else
+        io.write_string("bi-implication failed\n", !IO)
     ).
 
-:- pred test7(io__state::di, io__state::uo) is det.
+:- pred test7(io.state::di, io.state::uo) is det.
 
-test7 -->
+test7(!IO) :-
+    io.write_string("test7\n", !IO),
     % Test the bi-implication in both directions, since for efficiency,
     % quantification handles the LHS and RHS differently.
-    (
-        {
+    ( if
+        (
             X = type_of([1, 2, 3])
         <=>
             X = type_of([] : list(int))
-        }
-    ->
-        io__write_string("bi-implication succeeded\n")
-    ;
-        io__write_string("bi-implication failed\n")
+        )
+    then
+        io.write_string("bi-implication succeeded\n", !IO)
+    else
+        io.write_string("bi-implication failed\n", !IO)
     ).
 
 % inferred
@@ -121,4 +142,4 @@ build_list = ["a", "b", "c"].
 :- pred map_search(my_map(K, V)::in, int::in, V::out) is semidet.
 
 map_search(Map : map(int, V), Key : int, Value : V) :-
-    map__search(Map, Key, Value).
+    map.search(Map, Key, Value).

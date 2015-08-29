@@ -62,6 +62,7 @@ MCFLAGS-impure_detism		= -O5 --deep-profiling --no-intermodule-optimization
 MCFLAGS-inhibit_warn_test	= --inhibit-warnings --halt-at-warn
 MCFLAGS-instmap_generic_failure	= --local-constraint-propagation
 MCFLAGS-lambda_inference	= --infer-all
+MCFLAGS-liveness_disagree	= --grade asm_fast.gc.decldebug.stseg
 MCFLAGS-liveness_ite		= --no-intermodule-optimization --grade none --trace shallow
 MCFLAGS-livevals_seq		= -O5 --opt-space
 MCFLAGS-livevars_shallow	= --no-intermodule-optimization --grade none --trace shallow

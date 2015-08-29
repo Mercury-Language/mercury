@@ -123,8 +123,8 @@
 :- pred is_construction_equivalence_assertion(module_info::in, assert_id::in,
     cons_id::in, pred_id::in) is semidet.
 
-    % Place a hlds_goal into a standard form.  Currently all the
-    % code does is replace conj([G]) with G.
+    % Place a hlds_goal into a standard form. Currently all the code does
+    % is replace conj([G]) with G.
     %
 :- pred normalise_goal(hlds_goal::in, hlds_goal::out) is det.
 
@@ -342,7 +342,7 @@ update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
     %
     % is true iff the list of goals, Gs, with universally quantified
     % variables, UQVs, is two calls to the same predicate, PId, with
-    % one variable that links them, LV.  AL will be the assoc list
+    % one variable that links them, LV. AL will be the assoc list
     % that is the each variable from the first call with its
     % corresponding variable in the second call, and VAs are the
     % variables of the first call.
@@ -360,7 +360,9 @@ process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
 
     % Determine the linking variable, L. By definition it must be
     % existentially quantified and a member of both variable lists.
-    CommonVars = list_to_set(VarsA) `intersect` list_to_set(VarsB),
+    SetVarsA = set_of_var.list_to_set(VarsA),
+    SetVarsB = set_of_var.list_to_set(VarsB),
+    CommonVars = set_of_var.intersect(SetVarsA, SetVarsB),
     set_of_var.is_singleton(
         set_of_var.difference(CommonVars, UniversiallyQuantifiedVars),
         LinkingVar),

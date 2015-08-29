@@ -1,18 +1,18 @@
-      E1:     C1 CALL pred typed_unify.main/2-0 (det) typed_unify.m:13
+      E1:     C1 CALL pred typed_unify.main/2-0 (det) typed_unify.m:17
 mdb> mdb> echo on
 Command echo enabled.
 mdb> table_io start
 I/O tabling started.
 mdb> step
-      E2:     C2 CALL func univ.univ/1-1 (det) univ.m:98 (typed_unify.m:14)
+      E2:     C2 CALL func univ.univ/1-1 (det) univ.m:98 (typed_unify.m:18)
 mdb> finish
-      E3:     C2 EXIT func univ.univ/1-1 (det) univ.m:98 (typed_unify.m:14)
+      E3:     C2 EXIT func univ.univ/1-1 (det) univ.m:98 (typed_unify.m:18)
 mdb> step
-      E4:     C1 COND pred typed_unify.main/2-0 (det) c4;?; typed_unify.m:15
+      E4:     C1 COND pred typed_unify.main/2-0 (det) c4;?; typed_unify.m:19
 mdb> step
-      E5:     C3 CALL pred univ.type_to_univ/2-2 (semidet) univ.m:116 (typed_unify.m:15)
+      E5:     C3 CALL pred univ.type_to_univ/2-2 (semidet) univ.m:116 (typed_unify.m:19)
 mdb> finish
-      E6:     C3 EXIT pred univ.type_to_univ/2-2 (semidet) univ.m:116 (typed_unify.m:15)
+      E6:     C3 EXIT pred univ.type_to_univ/2-2 (semidet) univ.m:116 (typed_unify.m:19)
 mdb> untrust 0
 mdb> dd
 type_to_univ(1, univ_cons(1))
@@ -28,5 +28,5 @@ the untraced call inside the predicate univ.type_to_univ/2 (univ.m:118).
 The path to the subterm in the atom is 2/2.
 dd> quit
 Diagnosis aborted.
-      E6:     C3 EXIT pred univ.type_to_univ/2-2 (semidet) univ.m:116 (typed_unify.m:15)
+      E6:     C3 EXIT pred univ.type_to_univ/2-2 (semidet) univ.m:116 (typed_unify.m:19)
 mdb> quit -y

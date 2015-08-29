@@ -10,7 +10,7 @@
 % Main authors: conway, zs, trd.
 %
 % This module traverses the goal for each procedure, and adds liveness
-% annotations to the goal_info for each sub-goal.  These annotations are the
+% annotations to the goal_info for each sub-goal. These annotations are the
 % pre-birth set, the post-birth set, the pre-death set, the post-death set,
 % and the resume_point field.
 %
@@ -23,8 +23,8 @@
 % to by a variable, for the purpose of avoiding and/or keeping track of
 % aliasing and for structure re-use optimization, whereas here we are
 % concerned with the liveness of the variable itself, for the purposes of
-% optimizing stack slot and register usage.  Variables have a lifetime: each
-% variable is born, gets used, and then dies.  To minimize stack slot and
+% optimizing stack slot and register usage. Variables have a lifetime: each
+% variable is born, gets used, and then dies. To minimize stack slot and
 % register usage, the birth should be as late as possible (but before the
 % first possible use), and the death should be as early as possible (but after
 % the last possible use).
@@ -69,8 +69,8 @@
 % Typeinfo liveness calculation notes:
 %
 % When using accurate gc or execution tracing, liveness is computed slightly
-% differently.  The runtime system needs access to the typeinfo variables of
-% any variable that is live at a continuation or event.  (This includes
+% differently. The runtime system needs access to the typeinfo variables of
+% any variable that is live at a continuation or event. (This includes
 % typeclass info variables that hold typeinfos; in the following "typeinfo
 % variables" also includes typeclass info variables.)
 %
@@ -113,7 +113,7 @@
 % (partially) describe.) The special case solution we adopt for such
 % situations is that we consider the first appearance of a typeinfo variable
 % in the typeinfo-completed nonlocals set of a goal to be a value giving
-% occurrence, even if the typeinfo does not appear in the instmap delta.  This
+% occurrence, even if the typeinfo does not appear in the instmap delta. This
 % is safe, since with our current scheme for handling polymorphism, the first
 % appearance will in fact always ground the typeinfo.
 %
@@ -269,38 +269,48 @@ detect_liveness_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
     proc_info::in, proc_info::out) is det.
 
 detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_int_option(Globals, debug_liveness, DebugLiveness),
+    pred_id_to_int(PredId, PredIdInt),
+
+    proc_info_get_goal(!.ProcInfo, GoalBeforeQuant),
+    proc_info_get_varset(!.ProcInfo, VarSetBeforeQuant),
+
+    trace [io(!IO)] (
+        maybe_debug_liveness(ModuleInfo, "\nbefore requantify",
+            DebugLiveness, PredIdInt, VarSetBeforeQuant, GoalBeforeQuant, !IO)
+    ),
     requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
 
-    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_goal(!.ProcInfo, GoalAfterQuant),
     proc_info_get_varset(!.ProcInfo, VarSet),
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
-    module_info_get_globals(ModuleInfo, Globals),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
     live_info_init(ModuleInfo, TypeInfoLiveness, VarSet, VarTypes, RttiVarMaps,
         LiveInfo),
 
-    globals.lookup_int_option(Globals, debug_liveness, DebugLiveness),
-    pred_id_to_int(PredId, PredIdInt),
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nbefore liveness",
-            DebugLiveness, PredIdInt, VarSet, Goal0, !IO)
+            DebugLiveness, PredIdInt, VarSet, GoalAfterQuant, !IO)
     ),
 
     initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
-    detect_liveness_in_goal(Goal0, Goal1, Liveness0, _, LiveInfo),
+    detect_liveness_in_goal(GoalAfterQuant, GoalAfterLiveness,
+        Liveness0, _, LiveInfo),
 
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nafter liveness",
-            DebugLiveness, PredIdInt, VarSet, Goal1, !IO)
+            DebugLiveness, PredIdInt, VarSet, GoalAfterLiveness, !IO)
     ),
 
     initial_deadness(!.ProcInfo, LiveInfo, ModuleInfo, Deadness0),
-    detect_deadness_in_goal(Goal1, Goal2, Deadness0, _, Liveness0, LiveInfo),
+    detect_deadness_in_goal(GoalAfterLiveness, GoalAfterDeadness,
+        Deadness0, _, Liveness0, LiveInfo),
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nafter deadness",
-            DebugLiveness, PredIdInt, VarSet, Goal2, !IO)
+            DebugLiveness, PredIdInt, VarSet, GoalAfterDeadness, !IO)
     ),
 
     ( if
@@ -322,13 +332,14 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         pred_info_get_origin(PredInfo, Origin),
         Origin \= origin_special_pred(_)
     then
-        delay_death_proc_body(Goal2, Goal3, VarSet, Liveness0),
+        delay_death_proc_body(GoalAfterDeadness, GoalAfterDelayDeath,
+            VarSet, Liveness0),
         trace [io(!IO)] (
             maybe_debug_liveness(ModuleInfo, "\nafter delay death",
-                DebugLiveness, PredIdInt, VarSet, Goal3, !IO)
+                DebugLiveness, PredIdInt, VarSet, GoalAfterDelayDeath, !IO)
         )
     else
-        Goal3 = Goal2
+        GoalAfterDelayDeath = GoalAfterDeadness
     ),
 
     globals.get_trace_level(Globals, TraceLevel),
@@ -341,7 +352,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         NeedsFailVars = no,
         ResumeVars0 = set_of_var.init
     ),
-    detect_resume_points_in_goal(Goal3, Goal, Liveness0, _,
+    detect_resume_points_in_goal(GoalAfterDelayDeath, Goal, Liveness0, _,
         LiveInfo, ResumeVars0),
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nafter resume point",
@@ -379,9 +390,8 @@ detect_liveness_in_goal(Goal0, Goal, Liveness0, FinalLiveness, LiveInfo) :-
         BaseNonLocals, CompletedNonLocals),
     set_of_var.difference(CompletedNonLocals, Liveness0, NewVarsSet),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo0),
-    Empty = set_of_var.init,
     ( if instmap_delta_is_unreachable(InstMapDelta) then
-        Births = Empty
+        Births = set_of_var.init
     else
         NewVarsList = set_of_var.to_sorted_list(NewVarsSet),
         Births0 = set_of_var.init,
@@ -480,15 +490,25 @@ detect_liveness_in_goal(Goal0, Goal, Liveness0, FinalLiveness, LiveInfo) :-
             ( if
                 Reason = from_ground_term(TermVar, from_ground_term_construct)
             then
-                detect_liveness_in_fgt_construct(SubGoal0, SubGoal,
-                    Liveness0, Liveness, LiveInfo, TermVar)
+                ( if set_of_var.is_empty(CompletedNonLocals) then
+                    % Don't let the later passes in the module include TermVar
+                    % in the set of seen variables, since if this scope is
+                    % one arm of a branched structure, the other arms won't
+                    % mention TermVar.
+                    GoalExpr = conj(plain_conj, []),
+                    Liveness = Liveness0
+                else
+                    detect_liveness_in_fgt_construct(SubGoal0, SubGoal,
+                        Liveness0, Liveness, LiveInfo, TermVar),
+                    GoalExpr = scope(Reason, SubGoal)
+                )
             else
                 % XXX We could treat from_ground_term_deconstruct specially
                 % as well.
                 detect_liveness_in_goal(SubGoal0, SubGoal, Liveness0, Liveness,
-                    LiveInfo)
-            ),
-            GoalExpr = scope(Reason, SubGoal)
+                    LiveInfo),
+                GoalExpr = scope(Reason, SubGoal)
+            )
         ),
         PreDeaths = set_of_var.init,
         PreBirths = set_of_var.init,
@@ -1273,7 +1293,6 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
         ( if Reason = from_ground_term(_, from_ground_term_construct) then
             % All the variables in the scope are anonymous, so there would
             % be no point in delaying their death.
-            % ZZZ
             Goal = Goal0
         else
             % XXX We could treat from_ground_term_deconstruct specially
@@ -1759,7 +1778,7 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
 
     % If a variable is unused in the goal, it shouldn't be in the initial
     % liveness. (If we allowed it to start live, it wouldn't ever become dead,
-    % because it would have to be used to be killed).  So we intersect the
+    % because it would have to be used to be killed). So we intersect the
     % headvars with the non-locals and (if doing typeinfo liveness calculation)
     % their typeinfo vars.
 

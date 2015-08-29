@@ -516,7 +516,8 @@ solns.out: solns solns.$(DECLDEBUG_INP)
 	|| { grep . $@ /dev/null; exit 1; }
 
 sort.out: sort sort.inp
-	$(MDB_STD) ./sort sort.input < sort.inp \
+	$(MDB_STD) ./sort sort.input < sort.inp 2>&1 | \
+		sed -e 's/0x[0-9a-f]*/0xNNNN/g' \
 		> sort.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 

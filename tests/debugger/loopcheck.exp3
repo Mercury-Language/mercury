@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred loopcheck.main/2-0 (det) loopcheck.m:13
+       1:      1  1 CALL pred loopcheck.main/2-0 (det) loopcheck.m:17
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -10,15 +10,15 @@ mdb> break loopcheck.loop
  1: + stop  interface pred loopcheck.loop/1-0 (det)
 mdb> finish
        2:      2  2 CALL pred loopcheck.loop/1-0 (det)
-                         loopcheck.m:20 (from loopcheck.m:14)
+                         loopcheck.m:24 (from loopcheck.m:18)
        3:      3  3 CALL pred loopcheck.loop/1-0 (det)
-                         loopcheck.m:20 (from loopcheck.m:21)
+                         loopcheck.m:24 (from loopcheck.m:25)
       12:      3  3 EXCP pred loopcheck.loop/1-0 (det)
-                         loopcheck.m:21 (from loopcheck.m:21)
+                         loopcheck.m:25 (from loopcheck.m:25)
       13:      2  2 EXCP pred loopcheck.loop/1-0 (det)
-                         loopcheck.m:21 (from loopcheck.m:14)
+                         loopcheck.m:25 (from loopcheck.m:18)
       14:      1  1 EXCP pred loopcheck.main/2-0 (det)
-                         loopcheck.m:14
+                         loopcheck.m:18
 mdb> continue
 Uncaught Mercury exception:
 Software Error: detected infinite recursion in pred loopcheck.loop/1

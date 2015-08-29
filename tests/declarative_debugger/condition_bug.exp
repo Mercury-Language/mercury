@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred condition_bug.main/2-0 (det) condition_bug.m:14
+      E1:     C1 CALL pred condition_bug.main/2-0 (det) condition_bug.m:23
 mdb> mdb> echo on
 Command echo enabled.
 mdb> untrust 0
@@ -17,7 +17,7 @@ mdb> continue
 mdb> finish
 english      E3:     C2 EXIT pred stream.put/4-0 (det) (term_to_xml.m:NNNN)
 mdb> dd
-put(stream(1, output, preopen, stdout), "english", _, '<<foreign>>')
+put(stream(1, output, preopen, stdout), "english", _, <<foreign(state, 0x1)>>)
 1 tabled IO action:
 write_string_2(stream(1, output, preopen, stdout), "english")
 Valid? browse 2
@@ -33,11 +33,11 @@ browser> track
 
 translation_pairs_to_xml([-("critical", "kritiek"), -("mission", "missie")]) = [elem("word", [], [|]/2), elem("word", [], [|]/2)]
 Valid? info
-Context of current question : condition_bug.m:38 (condition_bug.m:34)
+Context of current question : condition_bug.m:48 (condition_bug.m:44)
 Search mode                 : top down                               
 The current question was chosen because the marked subterm was bound by
 the unification inside the function
-condition_bug.translation_pairs_to_xml/2 (condition_bug.m:41). The path
+condition_bug.translation_pairs_to_xml/2 (condition_bug.m:51). The path
 to the subterm in the atom is 2/1/3/1/1.
 dd> quit
 Diagnosis aborted.

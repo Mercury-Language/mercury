@@ -483,81 +483,57 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
         GoalExpr0 = unify(Var, UnifyRHS0, Mode, Unification0, UnifyContext),
         get_outside(!.Info, OutsideVars),
         get_lambda_outside(!.Info, LambdaOutsideVars),
-        TypeInfoVars = get_unify_typeinfos(Unification0),
-        (
-            Unification0 = construct(_, _, _, _, How, _, SubInfo),
+        some [!GoalVars] (
+            set_of_var.make_singleton(Var, !:GoalVars),
             (
-                How = reuse_cell(cell_to_reuse(ReuseVar0, _, SetArgs)),
-                MaybeSetArgs = yes(SetArgs),
-                MaybeReuseVar = yes(ReuseVar0),
-                MaybeRegionVar = no
-            ;
-                How = construct_in_region(RegionVar0),
-                MaybeSetArgs = no,
-                MaybeReuseVar = no,
-                MaybeRegionVar = yes(RegionVar0)
-            ;
-                ( How = construct_statically
-                ; How = construct_dynamically
+                Unification0 = construct(_, _, _, _, How, _, SubInfo),
+                (
+                    How = reuse_cell(cell_to_reuse(ReuseVar, _, SetArgs)),
+                    MaybeSetArgs = yes(SetArgs),
+                    set_of_var.insert(ReuseVar, !GoalVars)
+                ;
+                    How = construct_in_region(RegionVar),
+                    MaybeSetArgs = no,
+                    set_of_var.insert(RegionVar, !GoalVars)
+                ;
+                    ( How = construct_statically
+                    ; How = construct_dynamically
+                    ),
+                    MaybeSetArgs = no
                 ),
-                MaybeSetArgs = no,
-                MaybeReuseVar = no,
-                MaybeRegionVar = no
-            ),
-            (
-                SubInfo = construct_sub_info(_, MaybeSize),
-                MaybeSize = yes(dynamic_size(SizeVar0))
-            ->
-                MaybeSizeVar = yes(SizeVar0)
+                ( if
+                    SubInfo = construct_sub_info(_, MaybeSize),
+                    MaybeSize = yes(dynamic_size(SizeVar))
+                then
+                    set_of_var.insert(SizeVar, !GoalVars)
+                else
+                    true
+                )
             ;
-                MaybeSizeVar = no
-            )
-        ;
-            ( Unification0 = deconstruct(_, _, _, _, _, _)
-            ; Unification0 = assign(_, _)
-            ; Unification0 = simple_test(_, _)
-            ; Unification0 = complicated_unify(_, _, _)
+                ( Unification0 = deconstruct(_, _, _, _, _, _)
+                ; Unification0 = assign(_, _)
+                ; Unification0 = simple_test(_, _)
+                ),
+                MaybeSetArgs = no
+            ;
+                Unification0 = complicated_unify(_, _, TypeInfoVars),
+                set_of_var.insert_list(TypeInfoVars, !GoalVars),
+                MaybeSetArgs = no
             ),
-            MaybeSetArgs = no,
-            MaybeReuseVar = no,
-            MaybeSizeVar = no,
-            MaybeRegionVar = no
+            AllButRHSGoalVars = !.GoalVars
         ),
+
         implicitly_quantify_unify_rhs(MaybeSetArgs, GoalInfo0,
             UnifyRHS0, UnifyRHS, Unification0, Unification,
             NonLocalsToRecompute, RHSGoalVars, !Info),
         GoalExpr = unify(Var, UnifyRHS, Mode, Unification, UnifyContext),
+        set_of_var.union(AllButRHSGoalVars, RHSGoalVars, AllGoalVars),
 
-        some [!GoalVars] (
-            !:GoalVars = RHSGoalVars,
-            set_of_var.insert(Var, !GoalVars),
-            set_of_var.insert_list(TypeInfoVars, !GoalVars),
-            (
-                MaybeReuseVar = yes(ReuseVar),
-                set_of_var.insert(ReuseVar, !GoalVars)
-            ;
-                MaybeReuseVar = no
-            ),
-            (
-                MaybeSizeVar = yes(SizeVar),
-                set_of_var.insert(SizeVar, !GoalVars)
-            ;
-                MaybeSizeVar = no
-            ),
-            (
-                MaybeRegionVar = yes(RegionVar),
-                set_of_var.insert(RegionVar, !GoalVars)
-            ;
-                MaybeRegionVar = no
-            ),
-            update_seen_vars(!.GoalVars, !Info),
-            set_of_var.intersect(!.GoalVars, OutsideVars,
-                NonLocalVars1),
-            set_of_var.intersect(!.GoalVars, LambdaOutsideVars,
-                NonLocalVars2),
-            set_of_var.union(NonLocalVars1, NonLocalVars2, NonLocalVars),
-            set_nonlocals(NonLocalVars, !Info)
-        ),
+        update_seen_vars(AllGoalVars, !Info),
+        set_of_var.intersect(AllGoalVars, OutsideVars, ONonLocalVars),
+        set_of_var.intersect(AllGoalVars, LambdaOutsideVars, LONonLocalVars),
+        set_of_var.union(ONonLocalVars, LONonLocalVars, NonLocalVars),
+        set_nonlocals(NonLocalVars, !Info),
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
             PossiblyNonLocalGoalVars0)
     ;
@@ -693,6 +669,7 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
             PossiblyNonLocalGoalVars0),
         implicitly_quantify_goal_quant_info(SubGoal1, SubGoal,
             NonLocalsToRecompute, !Info),
+        GoalExpr = scope(Reason, SubGoal),
         get_nonlocals(!.Info, NonLocals0),
         set_of_var.delete_list(Vars, NonLocals0, NonLocals),
         set_nonlocals(NonLocals, !Info)
@@ -702,7 +679,6 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
             ( FGT = from_ground_term_initial
             ; FGT = from_ground_term_construct
             ),
-            Reason = Reason0,
             % Not quantifying the subgoal is a substantial speedup. It is ok
             % because superhomogeneous.m sets up the nonlocal sets of the
             % unifications, their conjunction, and the scope goal itself,
@@ -717,8 +693,24 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
                 ; set_of_var.contains(LambdaOutsideVars, TermVar)
                 )
             ->
+                GoalExpr = scope(Reason0, SubGoal),
                 NonLocals = set_of_var.make_singleton(TermVar)
             ;
+                (
+                    FGT = from_ground_term_initial,
+                    % We couldn't have invoked the modechecker yet, since
+                    % that replaces from_ground_term_initial with one of
+                    % the other fgt scope kinds. This means that we may not
+                    % have invoked the typechecker yet either. If we
+                    % replaced the scope with the empty conjunction,
+                    % we would lose type information about the variables
+                    % in the scope. This would lead to the failure of
+                    % the hard_coded/type_qual.m test case.
+                    GoalExpr = scope(Reason0, SubGoal)
+                ;
+                    FGT = from_ground_term_construct,
+                    GoalExpr = conj(plain_conj, [])
+                ),
                 NonLocals = set_of_var.init
             ),
             set_nonlocals(NonLocals, !Info),
@@ -727,11 +719,11 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
             ( FGT = from_ground_term_deconstruct
             ; FGT = from_ground_term_other
             ),
-            Reason = Reason0,
             goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
                 PossiblyNonLocalGoalVars0),
             implicitly_quantify_goal_quant_info(SubGoal0, SubGoal,
-                NonLocalsToRecompute, !Info)
+                NonLocalsToRecompute, !Info),
+            GoalExpr = scope(Reason0, SubGoal)
         )
     ;
         ( Reason0 = promise_purity(_)
@@ -743,11 +735,11 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
         ; Reason0 = barrier(_)
         ; Reason0 = loop_control(_, _, _)
         ),
-        Reason = Reason0,
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
             PossiblyNonLocalGoalVars0),
         implicitly_quantify_goal_quant_info(SubGoal0, SubGoal,
-            NonLocalsToRecompute, !Info)
+            NonLocalsToRecompute, !Info),
+        GoalExpr = scope(Reason0, SubGoal)
     ;
         Reason0 = trace_goal(_, _, _, _, Vars0),
         implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
@@ -757,12 +749,12 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
             PossiblyNonLocalGoalVars0),
         implicitly_quantify_goal_quant_info(SubGoal1, SubGoal,
             NonLocalsToRecompute, !Info),
+        GoalExpr = scope(Reason, SubGoal),
         get_nonlocals(!.Info, NonLocals0),
         set_of_var.delete_list(Vars, NonLocals0, NonLocals),
         set_nonlocals(NonLocals, !Info)
     ),
-    set_quant_vars(QuantVars, !Info),
-    GoalExpr = scope(Reason, SubGoal).
+    set_quant_vars(QuantVars, !Info).
 
 :- pred implicitly_quantify_goal_quant_info_scope_rename_vars(
     scope_reason, scope_reason, hlds_goal, hlds_goal,
@@ -2365,20 +2357,6 @@ get_updated_fields([SetArg | SetArgs], [Arg | Args], !ArgsToSet) :-
         !:ArgsToSet = !.ArgsToSet
     ),
     get_updated_fields(SetArgs, Args, !ArgsToSet).
-
-:- func get_unify_typeinfos(unification) = list(prog_var).
-
-get_unify_typeinfos(Unification) = TypeInfoVars :-
-    (
-        Unification = complicated_unify(_, _, TypeInfoVars)
-    ;
-        ( Unification = construct(_, _, _, _, _, _, _)
-        ; Unification = deconstruct(_, _, _, _, _, _)
-        ; Unification = assign(_, _)
-        ; Unification = simple_test(_, _)
-        ),
-        TypeInfoVars = []
-    ).
 
 %-----------------------------------------------------------------------------%
 

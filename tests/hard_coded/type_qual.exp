@@ -1,17 +1,25 @@
+test1
 ok(42)
+test2
 list.list(io.state)
 list.list(list.list(io.state))
+test3
 []
 list.list(int)
 []
 list.list(int)
+test4
 list.list(string)
 ["a", "b", "c"]
 list.list(string)
 []
+test5 yes
 list.list(int)
 []
+test5 no
 list.list(string)
 []
+test6
 bi-implication succeeded
+test7
 bi-implication succeeded
