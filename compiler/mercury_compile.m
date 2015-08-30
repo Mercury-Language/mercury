@@ -89,6 +89,7 @@
 :- import_module transform_hlds.intermod.
 :- import_module transform_hlds.trans_opt.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module cord.
@@ -97,6 +98,7 @@
 :- import_module getopt_io.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -356,71 +358,228 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
         Link, Globals, !IO) :-
     globals.lookup_bool_option(Globals, version, Version),
     globals.lookup_bool_option(Globals, help, Help),
-    globals.lookup_bool_option(Globals, generate_source_file_mapping,
-        GenerateMapping),
-    globals.lookup_bool_option(Globals, output_grade_string,
-        OutputGrade),
-    globals.lookup_bool_option(Globals, output_link_command,
-        OutputLinkCommand),
-    globals.lookup_bool_option(Globals, output_shared_lib_link_command,
-        OutputShLibLinkCommand),
-    globals.lookup_bool_option(Globals, filenames_from_stdin,
-        FileNamesFromStdin),
-    globals.lookup_bool_option(Globals, output_libgrades,
-        OutputLibGrades),
-    globals.lookup_bool_option(Globals, output_cc, OutputCC),
-    globals.lookup_bool_option(Globals, output_c_compiler_type, OutputCCType),
-    globals.lookup_bool_option(Globals, output_cflags, OutputCFlags),
-    globals.lookup_bool_option(Globals, output_csharp_compiler, OutputCSC),
-    globals.lookup_bool_option(Globals, output_csharp_compiler_type,
-        OutputCSCType),
-    globals.lookup_bool_option(Globals, output_library_link_flags,
-        OutputLibraryLinkFlags),
-    globals.lookup_bool_option(Globals, output_grade_defines,
-        OutputGradeDefines),
-    globals.lookup_bool_option(Globals, output_c_include_directory_flags,
-        OutputCInclDirFlags),
-    globals.lookup_bool_option(Globals, output_target_arch,
-        OutputTargetArch),
-    globals.lookup_bool_option(Globals, output_class_dir,
-        OutputClassDir),
-    globals.lookup_bool_option(Globals, make, Make),
-    globals.lookup_maybe_string_option(Globals,
-        generate_standalone_interface, GenerateStandaloneInt),
-    globals.lookup_bool_option(Globals,
-        report_cmd_line_args, ReportCmdLineArgs),
-    maybe_report_cmd_line(ReportCmdLineArgs, OptionArgs, Args, !IO),
-    ( Version = yes ->
-        io.stdout_stream(Stdout, !IO),
-        io.set_output_stream(Stdout, OldOutputStream, !IO),
-        display_compiler_version(!IO),
-        io.set_output_stream(OldOutputStream, _, !IO)
-    ; Help = yes ->
+
+    % NOTE: --help takes precedence over any other modes of operation as we do
+    % not wish to place unnecessary obstacles before users who want help.
+    % --version takes precedence over the remaining modes of operation since
+    % this behaviour is common in other compilers and command line tools and
+    % will be in line with the expectations of at least some users.
+    %
+    ( if Help = yes then
         io.stdout_stream(Stdout, !IO),
         io.set_output_stream(Stdout, OldOutputStream, !IO),
         long_usage(!IO),
         io.set_output_stream(OldOutputStream, _, !IO)
-    ; OutputGrade = yes ->
-        % When Mmake asks for the grade, it really wants
-        % the directory component to use. This is consistent
-        % with scripts/canonical_grade.
-        grade_directory_component(Globals, Grade),
+    else if Version = yes then
         io.stdout_stream(Stdout, !IO),
-        io.write_string(Stdout, Grade, !IO),
-        io.write_string(Stdout, "\n", !IO)
-    ; OutputLinkCommand = yes ->
+        io.set_output_stream(Stdout, OldOutputStream, !IO),
+        display_compiler_version(!IO),
+        io.set_output_stream(OldOutputStream, _, !IO)
+    else
+        OpModeSet = gather_modes_of_operation(Globals),
+        set.to_sorted_list(OpModeSet, OpModes),
+        (
+            OpModes = [_, _ | _],
+            report_conflicting_modes_of_operation(Globals, OpModes, !IO)
+        ;
+            OpModes = [OpMode],
+            do_mode_of_operation(DetectedGradeFlags, OptionVariables,
+                OptionArgs, Args, Globals, OpMode, !IO)
+        ;
+            OpModes = [],
+            do_default_mode_of_operation(DetectedGradeFlags, OptionVariables,
+                OptionArgs, Args, Link, Globals, !IO)
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Modes of operation.
+%
+
+    % This type enumerates the compiler's modes of operation, with the
+    % exception of the default mode which is implied by the absence of any
+    % of these.
+    % These modes of operation are mutually exclusive.
+    %
+:- type mode_of_operation
+    --->    opm_make
+    ;       opm_generate_source_file_mapping
+    ;       opm_generate_standalone_interface(string)
+
+    % Modes of operation for querying C compiler related properties.
+    ;       opm_output_cc
+    ;       opm_output_c_compiler_type
+    ;       opm_output_cflags
+    ;       opm_output_c_include_directory_flags
+    ;       opm_output_grade_defines
+
+    % Modes of operation for querying C# compiler related properties.
+    ;       opm_output_csharp_compiler
+    ;       opm_output_csharp_compiler_type
+
+    % Modes of operation for querying linker related properties.
+    ;       opm_output_link_command
+    ;       opm_output_shared_lib_link_command
+    ;       opm_output_library_link_flags
+
+    % Modes of operation for querying Java related properties.
+    ;       opm_output_class_dir
+
+    % Modes of operation for querying grade related information.
+    ;       opm_output_grade_string
+    ;       opm_output_libgrades
+
+    % Modes of operation for querying system related information.
+    ;       opm_output_target_arch.
+
+    % Return the set of modes of operation implied by the command line options.
+    %
+:- func gather_modes_of_operation(globals) = set(mode_of_operation).
+
+gather_modes_of_operation(Globals) = !:ModeOpSet :-
+    set.init(!:ModeOpSet),
+    list.foldl(gather_mode_of_operation(Globals), bool_op_modes, !ModeOpSet),
+    globals.lookup_maybe_string_option(Globals,
+        generate_standalone_interface, GenerateStandaloneInt),
+    (
+        GenerateStandaloneInt = no
+    ;
+        GenerateStandaloneInt = yes(IntBasename),
+        set.insert(opm_generate_standalone_interface(IntBasename), !ModeOpSet)
+    ).
+
+:- pred gather_mode_of_operation(globals::in,
+    pair(option, mode_of_operation)::in,
+    set(mode_of_operation)::in, set(mode_of_operation)::out) is det.
+
+gather_mode_of_operation(Globals, Option - OpMode, !OpModeSet) :-
+    globals.lookup_bool_option(Globals, Option, OptionValue),
+    (
+        OptionValue = yes,
+        set.insert(OpMode, !OpModeSet)
+    ;
+        OptionValue = no
+    ).
+
+:- func bool_op_modes = assoc_list(option, mode_of_operation).
+
+bool_op_modes = [
+    make                             - opm_make,
+    generate_source_file_mapping     - opm_generate_source_file_mapping,
+
+    output_cc                        - opm_output_cc,
+    output_c_compiler_type           - opm_output_c_compiler_type,
+    output_cflags                    - opm_output_cflags,
+    output_c_include_directory_flags - opm_output_c_include_directory_flags,
+    output_grade_defines             - opm_output_grade_defines,
+
+    output_csharp_compiler           - opm_output_csharp_compiler,
+    output_csharp_compiler_type      - opm_output_csharp_compiler_type,
+
+    output_link_command              - opm_output_link_command,
+    output_shared_lib_link_command   - opm_output_shared_lib_link_command,
+    output_library_link_flags        - opm_output_library_link_flags,
+
+    output_class_dir                 - opm_output_class_dir,
+
+    output_grade_string              - opm_output_grade_string,
+    output_libgrades                 - opm_output_libgrades,
+
+    output_target_arch               - opm_output_target_arch
+].
+
+%-----------------------------------------------------------------------------%
+%
+% Specified modes of operation.
+%
+
+    % If the compiler has been invoked with a specific mode of operation then
+    % perform the task implied by that mode of operation.
+    %
+:- pred do_mode_of_operation(list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in, globals::in,
+    mode_of_operation::in, io::di, io::uo) is det.
+
+do_mode_of_operation(DetectedGradeFlags, OptionVariables, OptionArgs,
+        Args, Globals, OpMode, !IO) :-
+    (
+        OpMode = opm_make,
+        make_process_args(Globals, DetectedGradeFlags, OptionVariables,
+            OptionArgs, Args, !IO)
+    ;
+        OpMode = opm_generate_source_file_mapping,
+        source_file_map.write_source_file_map(Globals, Args, !IO)
+    ;
+        OpMode = opm_generate_standalone_interface(StandaloneIntBasename),
+        do_mode_of_operation_standalone_interface(Globals,
+            StandaloneIntBasename, !IO)
+    ;
+        OpMode = opm_output_cc,
+        globals.lookup_string_option(Globals, cc, CC),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CC ++ "\n", !IO)
+    ;
+        OpMode = opm_output_c_compiler_type,
+        globals.lookup_string_option(Globals, c_compiler_type, CC_Type),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CC_Type ++ "\n", !IO)
+    ;
+        OpMode = opm_output_cflags,
+        io.stdout_stream(StdOut, !IO),
+        output_c_compiler_flags(Globals, StdOut, !IO),
+        io.nl(StdOut, !IO)
+    ;
+        OpMode = opm_output_c_include_directory_flags,
+        io.stdout_stream(StdOut, !IO),
+        output_c_include_directory_flags(Globals, StdOut, !IO)
+    ;
+        OpMode = opm_output_csharp_compiler,
+        globals.lookup_string_option(Globals, csharp_compiler, CSC),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CSC ++ "\n", !IO)
+    ;
+        OpMode = opm_output_csharp_compiler_type,
+        globals.lookup_string_option(Globals, csharp_compiler_type, CSC_Type),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CSC_Type ++ "\n", !IO)
+    ;
+        OpMode = opm_output_grade_defines,
+        io.stdout_stream(StdOut, !IO),
+        output_grade_defines(Globals, StdOut, !IO)
+    ;
+        OpMode = opm_output_link_command,
         globals.lookup_string_option(Globals, link_executable_command,
             LinkCommand),
         io.stdout_stream(Stdout, !IO),
         io.write_string(Stdout, LinkCommand, !IO),
-        io.write_string(Stdout, "\n", !IO)
-    ; OutputShLibLinkCommand = yes ->
+        io.nl(Stdout, !IO)
+    ;
+        OpMode = opm_output_shared_lib_link_command,
         globals.lookup_string_option(Globals, link_shared_lib_command,
             LinkCommand),
         io.stdout_stream(Stdout, !IO),
         io.write_string(Stdout, LinkCommand, !IO),
-        io.write_string(Stdout, "\n", !IO)
-    ; OutputLibGrades = yes ->
+        io.nl(Stdout, !IO)
+    ;
+        OpMode = opm_output_library_link_flags,
+        io.stdout_stream(StdOut, !IO),
+        output_library_link_flags(Globals, StdOut, !IO)
+    ;
+        OpMode = opm_output_class_dir,
+        io.stdout_stream(StdOut, !IO),
+        get_class_dir_name(Globals, ClassName),
+        io.write_string(StdOut, ClassName ++ "\n", !IO)
+    ;
+        OpMode = opm_output_grade_string,
+        % When Mmake asks for the grade, it really wants the directory
+        % component to use. This is consistent with scripts/canonical_grade.
+        grade_directory_component(Globals, Grade),
+        io.stdout_stream(Stdout, !IO),
+        io.write_string(Stdout, Grade, !IO),
+        io.nl(Stdout, !IO)
+    ;
+        OpMode = opm_output_libgrades,
         globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
         (
             LibGrades = []
@@ -430,92 +589,81 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
             io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO),
             io.nl(Stdout, !IO)
         )
-    ; OutputCC = yes ->
-        globals.lookup_string_option(Globals, cc, CC),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CC ++ "\n", !IO)
-    ; OutputCCType = yes ->
-        globals.lookup_string_option(Globals, c_compiler_type, CC_Type),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CC_Type ++ "\n", !IO)
-    ; OutputCFlags = yes ->
-        io.stdout_stream(StdOut, !IO),
-        output_c_compiler_flags(Globals, StdOut, !IO),
-        io.nl(StdOut, !IO)
-    ; OutputCSC = yes ->
-        globals.lookup_string_option(Globals, csharp_compiler, CSC),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CSC ++ "\n", !IO)
-    ; OutputCSCType = yes ->
-        globals.lookup_string_option(Globals, csharp_compiler_type, CSC_Type),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CSC_Type ++ "\n", !IO)
-    ; OutputLibraryLinkFlags = yes ->
-        io.stdout_stream(StdOut, !IO),
-        output_library_link_flags(Globals, StdOut, !IO)
-    ; OutputGradeDefines = yes ->
-        io.stdout_stream(StdOut, !IO),
-        output_grade_defines(Globals, StdOut, !IO)
-    ; OutputCInclDirFlags = yes ->
-        io.stdout_stream(StdOut, !IO),
-        output_c_include_directory_flags(Globals, StdOut, !IO)
-    ; OutputTargetArch = yes ->
+    ;
+        OpMode = opm_output_target_arch,
         io.stdout_stream(StdOut, !IO),
         globals.lookup_string_option(Globals, target_arch, TargetArch),
         io.write_string(StdOut, TargetArch ++ "\n", !IO)
-    ; OutputClassDir = yes ->
-        io.stdout_stream(StdOut, !IO),
-        get_class_dir_name(Globals, ClassName),
-        io.write_string(StdOut, ClassName ++ "\n", !IO)
-    ; GenerateMapping = yes ->
-        source_file_map.write_source_file_map(Globals, Args, !IO)
-    ; GenerateStandaloneInt = yes(StandaloneIntBasename) ->
-        globals.get_target(Globals, Target),
-        (
-            ( Target = target_il
-            ; Target = target_csharp
-            ; Target = target_java
-            ),
-            NotRequiredMsg = [
-                words("Error:"),
-                quote("--generate-standalone-interface"),
-                words("is not required for target language"),
-                words(compilation_target_string(Target)),
-                suffix(".")
-            ],
-            write_error_pieces_plain(Globals, NotRequiredMsg, !IO),
-            io.set_exit_status(1, !IO)
-        ;
-            Target = target_erlang,
-            NYIMsg = [
-                words("Sorry,"),
-                quote("--generate-standalone-interface"),
-                words("is not yet supported with target language"),
-                words(compilation_target_string(Target)),
-                suffix(".")
-            ],
-            write_error_pieces_plain(Globals, NYIMsg, !IO),
-            io.set_exit_status(1, !IO)
-        ;
-            Target = target_c,
-            make_standalone_interface(Globals, StandaloneIntBasename, !IO)
-        )
-    ; Make = yes ->
-        make_process_args(Globals, DetectedGradeFlags, OptionVariables,
-            OptionArgs, Args, !IO)
-    ; Args = [], FileNamesFromStdin = no ->
-        usage(!IO)
+    ).
+
+:- pred do_mode_of_operation_standalone_interface(globals::in, string::in,
+    io::di, io::uo) is det.
+
+do_mode_of_operation_standalone_interface(Globals, StandaloneIntBasename,
+        !IO) :-
+    globals.get_target(Globals, Target),
+    (
+        ( Target = target_il
+        ; Target = target_csharp
+        ; Target = target_java
+        ),
+        NotRequiredMsg = [
+            words("Error:"),
+            quote("--generate-standalone-interface"),
+            words("is not required for target language"),
+            words(compilation_target_string(Target)),
+            suffix(".")
+        ],
+        write_error_pieces_plain(Globals, NotRequiredMsg, !IO),
+        io.set_exit_status(1, !IO)
     ;
+        Target = target_erlang,
+        NYIMsg = [
+            words("Sorry,"),
+            quote("--generate-standalone-interface"),
+            words("is not yet supported with target language"),
+            words(compilation_target_string(Target)),
+            suffix(".")
+        ],
+        write_error_pieces_plain(Globals, NYIMsg, !IO),
+        io.set_exit_status(1, !IO)
+    ;
+        Target = target_c,
+        make_standalone_interface(Globals, StandaloneIntBasename, !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+%
+% Default mode of operation.
+%
+
+    % Carry out the compiler's default mode of operation, build the executable
+    % specified the file or module named on the command line (or read in from
+    % the standard input if --filenames-from-stdin is specified).
+    %
+:- pred do_default_mode_of_operation(list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in, bool::in, globals::in,
+    io::di, io::uo) is det.
+
+do_default_mode_of_operation(DetectedGradeFlags, OptionVariables, OptionArgs,
+        Args, Link, Globals, !IO) :-
+    globals.lookup_bool_option(Globals, filenames_from_stdin,
+        FileNamesFromStdin),
+    ( if
+        Args = [],
+        FileNamesFromStdin = no
+    then
+        usage(!IO)
+    else
         process_all_args(Globals, DetectedGradeFlags, OptionVariables,
             OptionArgs, Args, ModulesToLink, ExtraObjFiles, !IO),
         io.get_exit_status(ExitStatus, !IO),
-        ( ExitStatus = 0 ->
-            (
+        ( if ExitStatus = 0 then
+            ( if
                 Link = yes,
                 ModulesToLink = [FirstModule | _]
-            ->
-                file_name_to_module_name(FirstModule,
-                    MainModuleName),
+            then
+                file_name_to_module_name(FirstModule, MainModuleName),
                 globals.get_target(Globals, Target),
                 (
                     Target = target_java,
@@ -536,10 +684,10 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
                         Succeeded, !IO)
                 ),
                 maybe_set_exit_status(Succeeded, !IO)
-            ;
+            else
                 true
             )
-        ;
+        else
             % If we suppressed the printing of some errors, then tell the user
             % about this fact, because the absence of any errors being printed
             % during a failing compilation would otherwise be likely to be
@@ -583,19 +731,54 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
         )
     ).
 
-:- pred maybe_report_cmd_line(bool::in, list(string)::in, list(string)::in,
-    io::di, io::uo) is det.
+%-----------------------------------------------------------------------------%
 
-maybe_report_cmd_line(Report, OptionArgs, Args, !IO) :-
-    (
-        Report = no
-    ;
-        Report = yes,
-        io.format("%% Command line options start\n", [], !IO),
-        io.format("%% %s\n", [s(string.join_list("\n% ", OptionArgs ++ Args))],
-            !IO),
-        io.format("%% Command line options end\n", [], !IO)
-    ).
+:- pred report_conflicting_modes_of_operation(globals::in,
+    list(mode_of_operation)::in, io::di, io::uo) is det.
+
+report_conflicting_modes_of_operation(Globals, OpModes, !IO) :-
+    OpModeStrs = list.map(mode_of_operation_to_option_string, OpModes),
+    Msg = [
+        words("Error: only one of the following options may be given:")
+    ] ++ list_to_quoted_pieces(OpModeStrs) ++ [suffix(".")],
+    write_error_pieces_plain(Globals, Msg, !IO),
+    io.set_exit_status(1, !IO).
+
+:- func mode_of_operation_to_option_string(mode_of_operation) = string.
+
+mode_of_operation_to_option_string(opm_generate_source_file_mapping) =
+    "--generate-source-file-mapping".
+mode_of_operation_to_option_string(opm_output_grade_string) =
+    "--output-grade-string".
+mode_of_operation_to_option_string(opm_output_link_command) =
+    "--output-link-command".
+mode_of_operation_to_option_string(opm_output_shared_lib_link_command) =
+    "--output-shared-lib-link-command".
+mode_of_operation_to_option_string(opm_output_libgrades) =
+    "--output-libgrades".
+mode_of_operation_to_option_string(opm_output_cc) =
+    "--output-cc".
+mode_of_operation_to_option_string(opm_output_c_compiler_type) =
+    "--output-c-compiler-type".
+mode_of_operation_to_option_string(opm_output_cflags) =
+    "--output-cflags".
+mode_of_operation_to_option_string(opm_output_csharp_compiler) =
+    "--output-csharp-compiler".
+mode_of_operation_to_option_string(opm_output_csharp_compiler_type) =
+    "--output-csharp-compiler-type".
+mode_of_operation_to_option_string(opm_output_library_link_flags) =
+    "--output-library-link-flags".
+mode_of_operation_to_option_string(opm_output_grade_defines) =
+    "--output-grade-defines".
+mode_of_operation_to_option_string(opm_output_c_include_directory_flags) =
+    "--output-c-include-directory-flags".
+mode_of_operation_to_option_string(opm_output_target_arch) =
+    "--output-target-arch".
+mode_of_operation_to_option_string(opm_output_class_dir) =
+    "--output-class-dir".
+mode_of_operation_to_option_string(opm_make) = "--make".
+mode_of_operation_to_option_string(opm_generate_standalone_interface(_)) =
+    "--generate-standalone-interface".
 
 %-----------------------------------------------------------------------------%
 
@@ -1250,6 +1433,20 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
             MaybeTimestamp, NestedCompUnitNames, HaveReadModuleMaps,
             FindTimestampFiles, RawCompUnitsToCompile, Specs1,
             ModulesToLink, ExtraObjFiles, !IO)
+    ).
+
+:- pred maybe_report_cmd_line(bool::in, list(string)::in, list(string)::in,
+    io::di, io::uo) is det.
+
+maybe_report_cmd_line(Report, OptionArgs, Args, !IO) :-
+    (
+        Report = no
+    ;
+        Report = yes,
+        io.format("%% Command line options start\n", [], !IO),
+        io.format("%% %s\n", [s(string.join_list("\n% ", OptionArgs ++ Args))],
+            !IO),
+        io.format("%% Command line options end\n", [], !IO)
     ).
 
     % For the MLDS->C and LLDS->C back-ends, we currently
@@ -2200,7 +2397,7 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
         )
     ->
         maybe_write_string(Verbose,
-            "% Outputing profiling call graph...", !IO),
+            "% Outputting profiling call graph...", !IO),
         maybe_flush_output(Verbose, !IO),
         module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name(Globals, ModuleName, ".prof", do_create_dirs,
