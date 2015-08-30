@@ -56,7 +56,7 @@ columns = 78.
     %
 :- type int_stream
     --->    [int | int_stream]
-    ;   closure((func) = int_stream).
+    ;       closure((func) = int_stream).
 
 :- inst int_stream ==
     bound([ground | int_stream] ; closure((func) = is_out is det)).
@@ -67,13 +67,13 @@ columns = 78.
 %-----------------------------------------------------------------------------%
 
     % An infinite stream of ones.
-    % 
+    %
 :- func ones = (int_stream :: is_out) is det.
 
 ones = [1 | closure((func) = ones)].
 
     % All the digits of e in one stream.
-    % 
+    %
 :- func digits_of_e = (int_stream :: is_out) is det.
 
 digits_of_e = next_digit(ones).
@@ -90,7 +90,7 @@ scale(C, Digit, closure(Func), Stream) :-
 scale(C, Digit, [D | Ds], Stream) :-
     K = base * D,
     KdC = K // C,
-    ( KdC = (K + base - 1) // C ->
+    ( if KdC = (K + base - 1) // C then
         % We have the next digit.  Construct a closure to
         % generate the rest.
 
@@ -98,7 +98,7 @@ scale(C, Digit, [D | Ds], Stream) :-
         Stream = closure((func) = [K rem C + NextDigit | Stream0] :-
                 scale(C + 1, NextDigit, Ds, Stream0)
             )
-    ;
+    else
         % We have a carry to factor in, so calculate the next
         % digit eagerly then add it on.
 
@@ -112,12 +112,12 @@ scale(C, Digit, [D | Ds], Stream) :-
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
-    (
+    ( if
         Args = [Arg | _],
         string.to_int(Arg, Digits0)
-    ->
+    then
         Digits = Digits0
-    ;
+    else
         Digits = default_digits
     ),
     string.int_to_base_string(2, base, BaseString),
@@ -127,19 +127,19 @@ main(!IO) :-
     io.nl(!IO).
 
     % Print out digits until we don't have any more.
-    %   
+    %
 :- pred main_2(int::in, int::in, int_stream::is_in, io::di, io::uo) is det.
 
-main_2(Digits, Columns, closure(Func), !IO) :-  
+main_2(Digits, Columns, closure(Func), !IO) :-
     main_2(Digits, Columns, apply(Func), !IO).
 main_2(Digits, Columns, [I | Is], !IO) :-
-    ( Digits = 0 ->
+    ( if Digits = 0 then
         true
-    ; Columns = 0 ->
+    else if Columns = 0 then
         io.nl(!IO),
         main_2(Digits, columns, [I | Is], !IO)
-    ;
-        char.det_int_to_digit(I, Digit),
+    else
+        Digit = char.det_int_to_decimal_digit(I),
         io.write_char(Digit, !IO),
         main_2(Digits - 1, Columns - 1, Is, !IO)
     ).

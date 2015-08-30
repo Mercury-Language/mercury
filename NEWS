@@ -62,10 +62,10 @@ Changes to the Mercury standard library:
 
     - is_decimal_digit/1
     - is_base_digit/2
-    - int_to_binary_digit/2
-    - int_to_octal_digit/2
-    - int_to_decimal_digit/2
-    - int_to_hex_digit/2
+    - int_to_binary_digit/2, det_int_to_binary_digit/1
+    - int_to_octal_digit/2, det_int_to_octal_digit/1
+    - int_to_decimal_digit/2, det_int_to_decimal_digit/1
+    - int_to_hex_digit/2, det_int_to_hex_digit/1
     - base_int_to_digit/3, det_base_int_to_digit/2
     - binary_digit_to_int/2, det_binary_digit_to_int/1
     - octal_digit_to_int/2, det_octal_digit_to_int/1
