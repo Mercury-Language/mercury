@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = invalid
@@ -47,6 +47,7 @@ SINGLEMODULE= \
 	bad_finalise_decl \
 	bad_initialise_decl \
 	bad_instance \
+	bad_module_name \
 	bad_mutable \
 	bad_sv_unify_msg \
 	bigtest \
@@ -389,26 +390,25 @@ ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 else
 
 % XXX: with `mmake --use-mmc-make' the ".DEFAULT:" rule seems to take
-% 	precedence over "%.err: %.m" rules.
-% XXX: the reason we run the $(MCM) command twice is to avoid
-%	doubled up error messages, once while making interface files,
-%	then the module proper.  The second time the command is run
-%	only one set of error messages should appear.
+# precedence over "%.err: %.m" rules.
+% XXX: the reason we run the $(MCM) command twice is to avoid doubled up
+# error messages, once while making interface files, then the module proper.
+# The second time the command is run, only one set of error messages
+# should appear.
 $(addsuffix .err,$(PROGS)):
 	-$(MCM) $@
 	if $(MCM) -r $@ > /dev/null 2>&1 ; then false; else true; fi
 
 endif
 
-# For foreign_decl_line_number, the exact output is somewhat dependent
-# on the C compiler, etc.  So we just grep the output for "#error" to
-# make sure that it contains the lines that we expect.  That way we don't
-# fail this test if there is some additional output (e.g. spurious warnings
-# in system header files).  We also pipe the output through `sort -u'
-# to eliminate duplicates; this avoids spurious failures in cases where
-# the C foreign_proc code is inlined by the Mercury compiler.
-# We also pipe it through sed to remove "Mercury/cs/"; this
-# avoids spurious failures with --use-subdirs.
+# For foreign_decl_line_number, the exact output is somewhat dependent on
+# the C compiler, etc. So we just grep the output for "#error" to make sure
+# that it contains the lines that we expect. That way we don't fail this test
+# if there is some additional output (e.g. spurious warnings in system header
+# files). We also pipe the output through `sort -u' to eliminate duplicates;
+# this avoids spurious failures in cases where the C foreign_proc code
+# is inlined by the Mercury compiler. We also pipe it through sed to remove
+# "Mercury/cs/"; this avoids spurious failures with --use-subdirs.
 foreign_decl_line_number.err: foreign_decl_line_number.m
 	rm -f foreign_decl_line_number.err
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
@@ -420,9 +420,8 @@ foreign_decl_line_number.err: foreign_decl_line_number.m
 		sed 's@Mercury/cs/@@g' | sort -u \
 		> foreign_decl_line_number.err
 
-# Similarly for foreign_type_line_number, although in this case we
-# use "long short int" rather than #error, so we need to grep for that
-# instead.
+# Similarly for foreign_type_line_number, although in this case we use
+# "long short int" rather than #error, so we need to grep for that instead.
 foreign_type_line_number.err: foreign_type_line_number.m
 	rm -f foreign_type_line_number.err
 	if $(MC) --errorcheck-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
@@ -436,9 +435,8 @@ foreign_type_line_number.err: foreign_type_line_number.m
 
 # For duplicate_instance_{1,2}, the error is only caught at link time.
 # So we need to use a different rule for that.
-# The exact error message varies a lot from system to system,
-# so we don't check the error output, we just check the command
-# return status.
+# The exact error message varies a lot from system to system, so we don't check
+# the error output, we just check the command return status.
 duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m
 	if $(MCM) duplicate_instance_2 > /dev/null 2>&1; \
 	then	false; \
@@ -447,7 +445,7 @@ duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m
 
 # For these test cases, the bug is caught when generating dependencies,
 # so it is easiest just to do that step.
-nested_impl_in_int.err duplicate_module_test.err func_class.err: %.err: %.m
+bad_module_name.err duplicate_module_test.err func_class.err nested_impl_in_int.err: %.err: %.m
 	if $(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 			--generate-dependencies $* > $*.err 2>&1; \
 	then false; \
