@@ -959,7 +959,7 @@ parse_bound_inst_list(AllowConstrainedInstVar, Disj, Uniqueness, Inst) :-
     convert_bound_inst_list(AllowConstrainedInstVar, Disjuncts, Functors0),
     list.sort(Functors0, Functors),
     % Check that the list doesn't specify the same functor twice.
-    \+ (
+    not (
         list.append(_, SubList, Functors),
         SubList = [F1, F2 | _],
         F1 = bound_functor(ConsId, _),
@@ -1132,27 +1132,31 @@ parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         MaybeVars = ok1([])
     else if Term = functor(atom("[|]"), [HeadTerm, TailTerm], _) then
         (
-            HeadTerm = variable(HeadVar, _),
-            parse_vars(TailTerm, VarSet, ContextPieces, MaybeVarsTail),
-            (
-                MaybeVarsTail = ok1(TailVars),
-                ( if list.member(HeadVar, TailVars) then
-                    generate_repeated_var_msg(ContextPieces, VarSet,
-                        HeadTerm, Spec),
-                    MaybeVars = error1([Spec])
-                else
-                    Vars = [HeadVar | TailVars],
-                    MaybeVars = ok1(Vars)
-                )
-            ;
-                MaybeVarsTail = error1(_),
-                MaybeVars = MaybeVarsTail
-            )
+            HeadTerm = variable(HeadVar0, _),
+            MaybeHeadVar = ok1(HeadVar0)
         ;
             HeadTerm = functor(_, _, _),
             generate_unexpected_term_message(ContextPieces, VarSet,
-                "variable", HeadTerm, Spec),
-            MaybeVars = error1([Spec])
+                "variable", HeadTerm, HeadSpec),
+            MaybeHeadVar = error1([HeadSpec])
+        ),
+        parse_vars(TailTerm, VarSet, ContextPieces, MaybeTailVars),
+        ( if
+            MaybeHeadVar = ok1(HeadVar),
+            MaybeTailVars = ok1(TailVars)
+        then
+            ( if list.member(HeadVar, TailVars) then
+                generate_repeated_var_msg(ContextPieces, VarSet,
+                    HeadTerm, Spec),
+                MaybeVars = error1([Spec])
+            else
+                Vars = [HeadVar | TailVars],
+                MaybeVars = ok1(Vars)
+            )
+        else
+            HeadSpecs = get_any_errors1(MaybeHeadVar),
+            TailSpecs = get_any_errors1(MaybeTailVars),
+            MaybeVars = error1(HeadSpecs ++ TailSpecs)
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
@@ -1171,45 +1175,49 @@ parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         ( if
             (
                 HeadTerm = variable(V0, _),
-                VarKind = os_ordinary_var(V0)
+                VarKind0 = os_ordinary_var(V0)
             ;
                 HeadTerm = functor(atom("!"), [variable(SV0, _)], _),
-                VarKind = os_state_var(SV0)
+                VarKind0 = os_state_var(SV0)
             )
         then
-            parse_quantifier_vars(TailTerm, VarSet, ContextPieces,
-                MaybeVarsTail),
-            (
-                MaybeVarsTail = ok2(TailVars, TailStateVars),
-                (
-                    VarKind = os_ordinary_var(V),
-                    ( if list.member(V, TailVars) then
-                        generate_repeated_var_msg(ContextPieces, VarSet,
-                            HeadTerm, Spec),
-                        MaybeVars = error2([Spec])
-                    else
-                        Vars = [V | TailVars],
-                        MaybeVars = ok2(Vars, TailStateVars)
-                    )
-                ;
-                    VarKind = os_state_var(SV),
-                    ( if list.member(SV, TailStateVars) then
-                        generate_repeated_state_var_msg(ContextPieces, VarSet,
-                            HeadTerm, Spec),
-                        MaybeVars = error2([Spec])
-                    else
-                        StateVars = [SV | TailStateVars],
-                        MaybeVars = ok2(TailVars, StateVars)
-                    )
-                )
-            ;
-                MaybeVarsTail = error2(_),
-                MaybeVars = MaybeVarsTail
-            )
+            MaybeHeadVar = ok1(VarKind0)
         else
             generate_unexpected_term_message(ContextPieces, VarSet,
-                "variable or state variable", HeadTerm, Spec),
-            MaybeVars = error2([Spec])
+                "variable or state variable", HeadTerm, HeadSpec),
+            MaybeHeadVar = error1([HeadSpec])
+        ),
+        parse_quantifier_vars(TailTerm, VarSet, ContextPieces,
+            MaybeTailVars),
+        ( if
+            MaybeHeadVar = ok1(VarKind),
+            MaybeTailVars = ok2(TailVars, TailStateVars)
+        then
+            (
+                VarKind = os_ordinary_var(V),
+                ( if list.member(V, TailVars) then
+                    generate_repeated_var_msg(ContextPieces, VarSet,
+                        HeadTerm, Spec),
+                    MaybeVars = error2([Spec])
+                else
+                    Vars = [V | TailVars],
+                    MaybeVars = ok2(Vars, TailStateVars)
+                )
+            ;
+                VarKind = os_state_var(SV),
+                ( if list.member(SV, TailStateVars) then
+                    generate_repeated_state_var_msg(ContextPieces, VarSet,
+                        HeadTerm, Spec),
+                    MaybeVars = error2([Spec])
+                else
+                    StateVars = [SV | TailStateVars],
+                    MaybeVars = ok2(TailVars, StateVars)
+                )
+            )
+        else
+            HeadSpecs = get_any_errors1(MaybeHeadVar),
+            TailSpecs = get_any_errors2(MaybeTailVars),
+            MaybeVars = error2(HeadSpecs ++ TailSpecs)
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
@@ -1230,91 +1238,95 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         ( if
             (
                 HeadTerm = variable(V0, _),
-                VarKind = osdc_ordinary_var(V0)
+                VarKind0 = osdc_ordinary_var(V0)
             ;
                 HeadTerm = functor(atom("!"), [variable(SV0, _)], _),
-                VarKind = osdc_state_var(SV0)
+                VarKind0 = osdc_state_var(SV0)
             ;
                 HeadTerm = functor(atom("!."), [variable(SV0, _)], _),
-                VarKind = osdc_dot_var(SV0)
+                VarKind0 = osdc_dot_var(SV0)
             ;
                 HeadTerm = functor(atom("!:"), [variable(SV0, _)], _),
-                VarKind = osdc_colon_var(SV0)
+                VarKind0 = osdc_colon_var(SV0)
             )
         then
-            parse_vars_and_state_vars(Tail, VarSet, ContextPieces,
-                MaybeVarsTail),
-            (
-                MaybeVarsTail = ok4(TailVars, TailStateVars,
-                    TailDotVars, TailColonVars),
-                (
-                    VarKind = osdc_ordinary_var(V),
-                    ( if list.member(V, TailVars) then
-                        generate_repeated_var_msg(ContextPieces, VarSet,
-                            HeadTerm, Spec),
-                        MaybeVars = error4([Spec])
-                    else
-                        Vars = [V | TailVars],
-                        MaybeVars = ok4(Vars, TailStateVars,
-                            TailDotVars, TailColonVars)
-                    )
-                ;
-                    VarKind = osdc_state_var(SV),
-                    ( if
-                        ( list.member(SV, TailStateVars )
-                        ; list.member(SV, TailDotVars )
-                        ; list.member(SV, TailColonVars )
-                        )
-                    then
-                        generate_repeated_var_msg(ContextPieces, VarSet,
-                            HeadTerm, Spec),
-                        MaybeVars = error4([Spec])
-                    else
-                        StateVars = [SV | TailStateVars],
-                        MaybeVars = ok4(TailVars, StateVars,
-                            TailDotVars, TailColonVars)
-                    )
-                ;
-                    VarKind = osdc_dot_var(SV),
-                    ( if
-                        ( list.member(SV, TailStateVars )
-                        ; list.member(SV, TailDotVars )
-                        ; list.member(SV, TailColonVars )
-                        )
-                    then
-                        generate_repeated_var_msg(ContextPieces, VarSet,
-                            HeadTerm, Spec),
-                        MaybeVars = error4([Spec])
-                    else
-                        DotVars = [SV | TailDotVars],
-                        MaybeVars = ok4(TailVars, TailStateVars,
-                            DotVars, TailColonVars)
-                    )
-                ;
-                    VarKind = osdc_colon_var(SV),
-                    ( if
-                        ( list.member(SV, TailStateVars )
-                        ; list.member(SV, TailDotVars )
-                        ; list.member(SV, TailColonVars )
-                        )
-                    then
-                        generate_repeated_var_msg(ContextPieces, VarSet,
-                            HeadTerm, Spec),
-                        MaybeVars = error4([Spec])
-                    else
-                        ColonVars = [SV | TailColonVars],
-                        MaybeVars = ok4(TailVars, TailStateVars,
-                            TailDotVars, ColonVars)
-                    )
-                )
-            ;
-                MaybeVarsTail = error4(_),
-                MaybeVars = MaybeVarsTail
-            )
+            MaybeHeadVar = ok1(VarKind0)
         else
             generate_unexpected_term_message(ContextPieces, VarSet,
-                "variable or state variable", HeadTerm, Spec),
-            MaybeVars = error4([Spec])
+                "variable or state variable", HeadTerm, HeadSpec),
+            MaybeHeadVar = error1([HeadSpec])
+        ),
+        parse_vars_and_state_vars(Tail, VarSet, ContextPieces,
+            MaybeTailVars),
+        ( if
+            MaybeHeadVar = ok1(VarKind),
+            MaybeTailVars = ok4(TailVars, TailStateVars,
+                TailDotVars, TailColonVars)
+        then
+            (
+                VarKind = osdc_ordinary_var(V),
+                ( if list.member(V, TailVars) then
+                    generate_repeated_var_msg(ContextPieces, VarSet,
+                        HeadTerm, Spec),
+                    MaybeVars = error4([Spec])
+                else
+                    Vars = [V | TailVars],
+                    MaybeVars = ok4(Vars, TailStateVars,
+                        TailDotVars, TailColonVars)
+                )
+            ;
+                VarKind = osdc_state_var(SV),
+                ( if
+                    ( list.member(SV, TailStateVars )
+                    ; list.member(SV, TailDotVars )
+                    ; list.member(SV, TailColonVars )
+                    )
+                then
+                    generate_repeated_var_msg(ContextPieces, VarSet,
+                        HeadTerm, Spec),
+                    MaybeVars = error4([Spec])
+                else
+                    StateVars = [SV | TailStateVars],
+                    MaybeVars = ok4(TailVars, StateVars,
+                        TailDotVars, TailColonVars)
+                )
+            ;
+                VarKind = osdc_dot_var(SV),
+                ( if
+                    ( list.member(SV, TailStateVars )
+                    ; list.member(SV, TailDotVars )
+                    ; list.member(SV, TailColonVars )
+                    )
+                then
+                    generate_repeated_var_msg(ContextPieces, VarSet,
+                        HeadTerm, Spec),
+                    MaybeVars = error4([Spec])
+                else
+                    DotVars = [SV | TailDotVars],
+                    MaybeVars = ok4(TailVars, TailStateVars,
+                        DotVars, TailColonVars)
+                )
+            ;
+                VarKind = osdc_colon_var(SV),
+                ( if
+                    ( list.member(SV, TailStateVars )
+                    ; list.member(SV, TailDotVars )
+                    ; list.member(SV, TailColonVars )
+                    )
+                then
+                    generate_repeated_var_msg(ContextPieces, VarSet,
+                        HeadTerm, Spec),
+                    MaybeVars = error4([Spec])
+                else
+                    ColonVars = [SV | TailColonVars],
+                    MaybeVars = ok4(TailVars, TailStateVars,
+                        TailDotVars, ColonVars)
+                )
+            )
+        else
+            HeadSpecs = get_any_errors1(MaybeHeadVar),
+            TailSpecs = get_any_errors4(MaybeTailVars),
+            MaybeVars = error4(HeadSpecs ++ TailSpecs)
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
