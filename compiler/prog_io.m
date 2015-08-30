@@ -743,30 +743,10 @@ generate_missing_start_section_warning_int(CurModuleName,
             words("the missing declaration is an"),
             decl("interface"), words("declaration."), nl],
 
-        % XXX ITEM_LIST The generation of the error is disabled while
-        % bootstrapping the item list change. Prior to this change,
-        % the compiler would generate interface files that started like this
-        % (taken from io.int3):
-        %
-        % :- module io.
-        % :- pragma foreign_import_module("C", io).
-        % :- pragma foreign_import_module("C#", io).
-        % :- pragma foreign_import_module("Java", io).
-        % :- pragma foreign_import_module("IL", io).
-        % :- pragma foreign_import_module("Erlang", io).
-        % :- interface.
-        % :- import_module bitmap.
-        % :- import_module bool.
-        % ...
-        %
-        % This is because the code that generated the foreign_import_module
-        % pragmas put them in the wrong place, BEFORE and not AFTER the
-        % interface declaration.
-
-        _Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])])
-        % !:Specs = [Spec | !.Specs],
-        % set.insert(rme_no_section_decl_at_start, !Errors)
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        !:Specs = [Spec | !.Specs],
+        set.insert(rme_no_section_decl_at_start, !Errors)
     ;
         !.MissingStartSectionWarning =
             have_given_missing_section_start_warning
