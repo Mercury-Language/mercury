@@ -1,6 +1,6 @@
 This file documents the port of Mercury to Windows using either the MinGW
-or MinGW64 ports of GCC, i.e. the i686-pc-mingw32 or x86_64-w64-mingw32
-configurations.
+or MinGW-w64 ports of GCC, i.e. the i686-pc-mingw32, i686-w64-mingw32 or
+x86_64-w64-mingw32 configurations.
 
 NOTE: There are currently problems with 64-bit executables in the 'asm_fast*'
 grade.  The 'none*' and 'reg*' grades do appear to work correctly in our
@@ -15,25 +15,23 @@ executables that will run natively on Windows without the need for a support
 environment like Cygwin.  Using the standard MinGW version of GCC will result
 in a Mercury compiler that generates 32-bit executables.  To build a Mercury
 compiler that generates 64-bit executables for Windows you will need to use the
-MinGW64 port of GCC.
+MinGW-w64 port of GCC.
 
 NOTE: a Unix like environment is required to build and install the Mercury
-compiler.  MSYS or Cygwin can be used for this purpose.  A Unix like
+compiler.  MSYS, MSYS2 or Cygwin can be used for this purpose.  A Unix like
 environment is only required for installing Mercury, you do *not* require one
 to use Mercury once it is installed.
 
 -----------------------------------------------------------------------------
 
-BUILDING A MINGW OR MINGW64 COMPILER UNDER MSYS
+BUILDING A MINGW OR MINGW-W64 COMPILER UNDER MSYS
 
 To build the source distribution under MSYS follow these steps:
 
-1.  Download and install MinGW and MSYS
-    (available from <http://www.mingw.org>).
+1a. Download and install MinGW and MSYS from <http://www.mingw.org>
 
-    The simplest installation method for MinGW and MSYS is to download and
-    run the MinGW GUI installer.  In order to build and install Mercury you
-    will require at least the following components:
+    In order to build and install Mercury you will require at least the
+    following components:
 
     - MinGW Compiler Suite (C compiler)
     - MSYS Basic System
@@ -42,45 +40,57 @@ To build the source distribution under MSYS follow these steps:
     Details of alternative MinGW and MSYS installation methods may be found
     on the MinGW website.
 
-    To build a version of Mercury that generates 64-bit executables you will
-    require the MinGW64 version of GCC (available from
-    <http://mingw-w64.sourceforge.net>).
+    To build a verison of the Mercury compiler that generates 64-bit
+    exeutables using the MSYS shell, you will need to install the
+    MinGW-w64 version of GCC (available from <http://mingw-w64.org>) and
+    ensure that it occurs in your PATH before the MinGW GCC.
 
-    To build the Erlang grade with MinGW and MSYS you will require the Windows
-    version of the Erlang/OTP distribution to be installed on your system.
-    The Erlang compiler (erlc) and runtime (erl) needs to be in the MSYS
-    PATH, for example do the following in the MSYS shell (with the version
-    number modified if necessary):
+1b. Alternatively, download and install MSYS2 from <https://msys2.github.io>
 
-        export PATH=/c/Program\ Files/erl5.8.2/bin/:$PATH
+    You can use the MinGW-w64 version of GCC to build a copy of Mercury that
+    generates 32-bit or 64-bit executables.  Start the "MinGW-w64 Win32 Shell"
+    or "MinGW-w64 Win64 Shell".  First refresh the package database and install
+    a few necessary tools:
 
-    See README.Erlang for further details.
+	pacman -Sy tar make bison flex diffutils
 
-    To build the java grade with MinGW and MSYS you will require the Windows
-    version of the JDK to be installed on your system.
+    then install the desired version of gcc:
+
+        pacman -S mingw-w64-i686-gcc
+        pacman -S mingw-w64-x86_64-gcc
+
+2.  Optional: To build the java grade with MinGW and MSYS you will require
+    the Windows version of the JDK to be installed on your system.
     The Java compiler (javac), Java archive tool (jar), and Java runtime (java)
-    needs to be in the MSYS PATH, for example do the following in the MSYS
-    shell (with the version number modified if necessary):
+    needs to be in the MSYS PATH, for example do the following in the shell:
 
         export PATH=/c/Program\ Files/Java/jdk1.6.0_23/bin/:$PATH 
 
     See README.Java for further details.
 
-    To build the C# grade with MinGW, MSYS and .NET, you will need Visual C#
-    compiler installed on your system.
+    Optional: To build the C# grade with MinGW, MSYS and .NET, you will need
+    Visual C# compiler installed on your system.
     The C# compiler (csc.exe) needs to be in the MSYS PATH, for example do the
-    following in the MSYS shell (with the version number modified if
-    necessary):
+    following in the shell:
 
         export PATH=/c/WINDOWS/Microsoft.NET/Framework/v4.0.30319/:$PATH
     
     See README.CSharp for further details.
 
-2.  Unpack the source distribution with a command like:
+    Optional: To build the Erlang grade with MinGW and MSYS you will require
+    the Windows version of the Erlang/OTP distribution to be installed on
+    your system.  The Erlang compiler (erlc) and runtime (erl) needs to be in
+    the MSYS PATH, for example do the following in the shell:
+
+        export PATH=/c/Program\ Files/erl5.8.2/bin/:$PATH
+
+    See README.Erlang for further details.
+
+3.  Unpack the source distribution with a command like:
     
         tar -xvzf mercury-compiler-<VERSION>.tar.gz
 
-3.  cd into the new directory and run configure:
+4.  cd into the new directory and run configure:
 
         ./configure --prefix=c:/mercury
 
@@ -90,15 +100,15 @@ To build the source distribution under MSYS follow these steps:
     will be interpreted differently by the MSYS shell than by the generated
     executables, resulting in a broken installation.  
 
-    If you are building a Mercury compiler that targets MinGW64 then you
-    must also invoke configure with the following option:
+    If you are using the MSYS or MSYS2 shell with MinGW-w64 then you must also
+    invoke configure with the following option:
 
        --host=x86_64-w64-mingw32
 
-    This will cause mmake to use the MinGW64 tool chain.  Ensure that the
-    MinGW64 tools are in your PATH before running configure.
+    This will cause mmake to use the MinGW-w64 tool chain.  Ensure that the
+    MinGW-w64 tools are in your PATH before running configure.
 
-4.  run: `make' and then `make install'.
+5.  run: `make' and then `make install'.
 
 Add /c/mercury/bin (or whatever path you installed Mercury to) to the MSYS
 PATH (you cannot add `c:/mercury/bin' to the MSYS PATH because `:' is used to
