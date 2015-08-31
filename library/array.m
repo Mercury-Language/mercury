@@ -240,7 +240,7 @@
 :- mode semidet_set(in, in, array_di, array_uo) is semidet.
 
     % unsafe_set sets the nth element of an array, and returns the
-    % resulting array.  It is an error if the index is out of bounds.
+    % resulting array. It is an error if the index is out of bounds.
     %
 :- pred unsafe_set(int, T, array(T), array(T)).
 :- mode unsafe_set(in, in, array_di, array_uo) is det.
@@ -783,22 +783,22 @@
 :- pragma terminates(array_equal/2).
 
 array_equal(Array1, Array2) :-
-    (
+    ( if
         array.size(Array1, Size),
         array.size(Array2, Size)
-    ->
+    then
         array.equal_elements(0, Size, Array1, Array2)
-    ;
+    else
         fail
     ).
 
 :- pred array.equal_elements(int, int, array(T), array(T)).
 :- mode array.equal_elements(in, in, in, in) is semidet.
 
-array.equal_elements(N, Size, Array1, Array2) :-
-    ( N = Size ->
+equal_elements(N, Size, Array1, Array2) :-
+    ( if N = Size then
         true
-    ;
+    else
         array.lookup(Array1, N, Elem),
         array.lookup(Array2, N, Elem),
         N1 = N + 1,
@@ -830,13 +830,13 @@ array_compare(Result, Array1, Array2) :-
         Result = SizeResult
     ).
 
-:- pred array.compare_elements(int::in, int::in, array(T)::in, array(T)::in,
+:- pred compare_elements(int::in, int::in, array(T)::in, array(T)::in,
     comparison_result::uo) is det.
 
-array.compare_elements(N, Size, Array1, Array2, Result) :-
-    ( N = Size ->
+compare_elements(N, Size, Array1, Array2, Result) :-
+    ( if N = Size then
         Result = (=)
-    ;
+    else
         array.lookup(Array1, N, Elem1),
         array.lookup(Array2, N, Elem2),
         compare(ElemResult, Elem1, Elem2),
@@ -1202,20 +1202,20 @@ ML_array_resize(Object Array0, int Size, Object Item)
 }
 ").
 
-array.init(N, X) = A :-
+init(N, X) = A :-
     array.init(N, X, A).
 
-array.init(Size, Item, Array) :-
-    ( Size < 0 ->
+init(Size, Item, Array) :-
+    ( if Size < 0 then
         error("array.init: negative size")
-    ;
+    else
         array.init_2(Size, Item, Array)
     ).
 
-:- pred array.init_2(int::in, T::in, array(T)::array_uo) is det.
+:- pred init_2(int::in, T::in, array(T)::array_uo) is det.
 
 :- pragma foreign_proc("C",
-    array.init_2(Size::in, Item::in, Array::array_uo),
+    init_2(Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
         sharing(yes(int, T, array(T)), [
@@ -1227,11 +1227,11 @@ array.init(Size, Item, Array) :-
     ML_init_array(Array, Size, Item);
 ").
 
-array.make_empty_array = A :-
+make_empty_array = A :-
     array.make_empty_array(A).
 
 :- pragma foreign_proc("C",
-    array.make_empty_array(Array::array_uo),
+    make_empty_array(Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -1240,46 +1240,46 @@ array.make_empty_array = A :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.init_2(Size::in, Item::in, Array::array_uo),
+    init_2(Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = array.ML_new_array(Size, Item);
 ").
 :- pragma foreign_proc("C#",
-    array.make_empty_array(Array::array_uo),
+    make_empty_array(Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    // XXX A better solution then using the null pointer to represent
-    // the empty array would be to create an array of size 0.  However
+    // XXX A better solution than using the null pointer to represent
+    // the empty array would be to create an array of size 0. However,
     // we need to determine the element type of the array before we can
-    // do that.  This could be done by examining the RTTI of the array
+    // do that. This could be done by examining the RTTI of the array
     // type and then using System.Type.GetType(""<mercury type>"") to
-    // determine it.  However constructing the <mercury type> string is
+    // determine it. However constructing the <mercury type> string is
     // a non-trival amount of work.
     Array = null;
 ").
 
 :- pragma foreign_proc("Erlang",
-    array.init_2(Size::in, Item::in, Array::array_uo),
+    init_2(Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = erlang:make_tuple(Size, Item)
 ").
 :- pragma foreign_proc("Erlang",
-    array.make_empty_array(Array::array_uo),
+    make_empty_array(Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = {}
 ").
 
 :- pragma foreign_proc("Java",
-    array.init_2(Size::in, Item::in, Array::array_uo),
+    init_2(Size::in, Item::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = array.ML_new_array(Size, Item, true);
 ").
 :- pragma foreign_proc("Java",
-    array.make_empty_array(Array::array_uo),
+    make_empty_array(Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // XXX as per C#
@@ -1288,7 +1288,7 @@ array.make_empty_array = A :-
 
 %---------------------------------------------------------------------------%
 
-array.generate(Size, GenFunc) = Array :-
+generate(Size, GenFunc) = Array :-
     compare(Result, Size, 0),
     (
         Result = (<),
@@ -1351,11 +1351,11 @@ generate_2(Index, Size, GenFunc, !.Array) = !:Array :-
         Elem = GenFunc(Index),
         array.unsafe_set(Index, Elem, !Array),
         !:Array = generate_2(Index + 1, Size, GenFunc, !.Array)
-      else
+    else
         true
     ).
 
-array.generate_foldl(Size, GenPred, Array, !Acc) :-
+generate_foldl(Size, GenPred, Array, !Acc) :-
     compare(Result, Size, 0),
     (
         Result = (<),
@@ -1390,17 +1390,17 @@ generate_foldl_2(Index, Size, GenPred, !Array, !Acc) :-
         GenPred(Index, Elem, !Acc),
         array.unsafe_set(Index, Elem, !Array),
         generate_foldl_2(Index + 1, Size, GenPred, !Array, !Acc)
-      else
+    else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-array.min(A) = N :-
+min(A) = N :-
     array.min(A, N).
 
 :- pragma foreign_proc("C",
-    array.min(Array::in, Min::out),
+    min(Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -1409,7 +1409,7 @@ array.min(A) = N :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.min(_Array::in, Min::out),
+    min(_Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     /* Array not used */
@@ -1417,7 +1417,7 @@ array.min(A) = N :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    array.min(Array::in, Min::out),
+    min(Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     % Array not used
@@ -1425,25 +1425,25 @@ array.min(A) = N :-
 ").
 
 :- pragma foreign_proc("Java",
-    array.min(_Array::in, Min::out),
+    min(_Array::in, Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     /* Array not used */
     Min = 0;
 ").
 
-array.max(A) = N :-
+max(A) = N :-
     array.max(A, N).
 
 :- pragma foreign_proc("C",
-    array.max(Array::in, Max::out),
+    max(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
     Max = Array->size - 1;
 ").
 :- pragma foreign_proc("C#",
-    array.max(Array::in, Max::out),
+    max(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array != null) {
@@ -1453,14 +1453,14 @@ array.max(A) = N :-
     }
 ").
 :- pragma foreign_proc("Erlang",
-    array.max(Array::in, Max::out),
+    max(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = size(Array) - 1
 ").
 
 :- pragma foreign_proc("Java",
-    array.max(Array::in, Max::out),
+    max(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array != null) {
@@ -1470,17 +1470,17 @@ array.max(A) = N :-
     }
 ").
 
-array.bounds(Array, Min, Max) :-
+bounds(Array, Min, Max) :-
     array.min(Array, Min),
     array.max(Array, Max).
 
 %---------------------------------------------------------------------------%
 
-array.size(A) = N :-
+size(A) = N :-
     array.size(A, N).
 
 :- pragma foreign_proc("C",
-    array.size(Array::in, Max::out),
+    size(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "
@@ -1488,7 +1488,7 @@ array.size(A) = N :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.size(Array::in, Max::out),
+    size(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array != null) {
@@ -1499,14 +1499,14 @@ array.size(A) = N :-
 ").
 
 :- pragma foreign_proc("Erlang",
-    array.size(Array::in, Max::out),
+    size(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = size(Array)
 ").
 
 :- pragma foreign_proc("Java",
-    array.size(Array::in, Max::out),
+    size(Array::in, Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = jmercury.array.ML_array_size(Array);
@@ -1514,60 +1514,63 @@ array.size(A) = N :-
 
 %---------------------------------------------------------------------------%
 
-array.in_bounds(Array, Index) :-
+in_bounds(Array, Index) :-
     array.bounds(Array, Min, Max),
     Min =< Index, Index =< Max.
 
-array.is_empty(Array) :-
+is_empty(Array) :-
     array.size(Array, 0).
 
-array.semidet_set(Index, Item, !Array) :-
-    ( array.in_bounds(!.Array, Index) ->
+semidet_set(Index, Item, !Array) :-
+    ( if array.in_bounds(!.Array, Index) then
         array.unsafe_set(Index, Item, !Array)
-    ;
+    else
         fail
     ).
 
-array.semidet_slow_set(Index, Item, !Array) :-
-    ( array.in_bounds(!.Array, Index) ->
+semidet_slow_set(Index, Item, !Array) :-
+    ( if array.in_bounds(!.Array, Index) then
         array.slow_set(Index, Item, !Array)
-    ;
+    else
         fail
     ).
 
-array.slow_set(!.Array, N, X) = !:Array :-
+slow_set(!.Array, N, X) = !:Array :-
     array.slow_set(N, X, !Array).
 
-array.slow_set(Index, Item, !Array) :-
+slow_set(Index, Item, !Array) :-
     array.copy(!Array),
     array.set(Index, Item, !Array).
 
 %---------------------------------------------------------------------------%
 
-array.elem(Index, Array) = array.lookup(Array, Index).
+elem(Index, Array) = array.lookup(Array, Index).
 
-array.unsafe_elem(Index, Array) = Elem :-
+unsafe_elem(Index, Array) = Elem :-
     array.unsafe_lookup(Array, Index, Elem).
 
-array.lookup(Array, N) = X :-
+lookup(Array, N) = X :-
     array.lookup(Array, N, X).
 
-array.lookup(Array, Index, Item) :-
-    ( bounds_checks, \+ array.in_bounds(Array, Index) ->
+lookup(Array, Index, Item) :-
+    ( if
+        bounds_checks,
+        not array.in_bounds(Array, Index)
+    then
         out_of_bounds_error(Array, Index, "array.lookup")
-    ;
+    else
         array.unsafe_lookup(Array, Index, Item)
     ).
 
-array.semidet_lookup(Array, Index, Item) :-
-    ( array.in_bounds(Array, Index) ->
+semidet_lookup(Array, Index, Item) :-
+    ( if array.in_bounds(Array, Index) then
         array.unsafe_lookup(Array, Index, Item)
-    ;
+    else
         fail
     ).
 
 :- pragma foreign_proc("C",
-    array.unsafe_lookup(Array::in, Index::in, Item::out),
+    unsafe_lookup(Array::in, Index::in, Item::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
         sharing(yes(array(T), int, T), [
@@ -1579,21 +1582,21 @@ array.semidet_lookup(Array, Index, Item) :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.unsafe_lookup(Array::in, Index::in, Item::out),
+    unsafe_lookup(Array::in, Index::in, Item::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     Item = Array.GetValue(Index);
 }").
 
 :- pragma foreign_proc("Erlang",
-    array.unsafe_lookup(Array::in, Index::in, Item::out),
+    unsafe_lookup(Array::in, Index::in, Item::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Item = element(Index + 1, Array)
 ").
 
 :- pragma foreign_proc("Java",
-    array.unsafe_lookup(Array::in, Index::in, Item::out),
+    unsafe_lookup(Array::in, Index::in, Item::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array instanceof int[]) {
@@ -1613,13 +1616,16 @@ array.semidet_lookup(Array, Index, Item) :-
 
 'elem :='(Index, Array, Value) = array.set(Array, Index, Value).
 
-array.set(A1, N, X) = A2 :-
+set(A1, N, X) = A2 :-
     array.set(N, X, A1, A2).
 
-array.set(Index, Item, !Array) :-
-    ( bounds_checks, \+ array.in_bounds(!.Array, Index) ->
+set(Index, Item, !Array) :-
+    ( if
+        bounds_checks,
+        not array.in_bounds(!.Array, Index)
+    then
         out_of_bounds_error(!.Array, Index, "array.set")
-    ;
+    else
         array.unsafe_set(Index, Item, !Array)
     ).
 
@@ -1627,7 +1633,7 @@ array.set(Index, Item, !Array) :-
     array.unsafe_set(Index, Value, !Array).
 
 :- pragma foreign_proc("C",
-    array.unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
+    unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
         sharing(yes(int, T, array(T), array(T)), [
@@ -1641,7 +1647,7 @@ array.set(Index, Item, !Array) :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
+    unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
     Array0.SetValue(Item, Index);   /* destructive update! */
@@ -1649,14 +1655,14 @@ array.set(Index, Item, !Array) :-
 }").
 
 :- pragma foreign_proc("Erlang",
-    array.unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
+    unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = setelement(Index + 1, Array0, Item)
 ").
 
 :- pragma foreign_proc("Java",
-    array.unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
+    unsafe_set(Index::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array0 instanceof int[]) {
@@ -1725,11 +1731,11 @@ ML_resize_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 }
 ").
 
-array.resize(!.Array, N, X) = !:Array :-
+resize(!.Array, N, X) = !:Array :-
     array.resize(N, X, !Array).
 
 :- pragma foreign_proc("C",
-    array.resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
+    resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
         sharing(yes(int, T, array(T), array(T)), [
@@ -1747,14 +1753,14 @@ array.resize(!.Array, N, X) = !:Array :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
+    resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = array.ML_array_resize(Array0, Size, Item);
 ").
 
 :- pragma foreign_proc("Erlang",
-    array.resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
+    resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     InitialSize = size(Array0),
@@ -1771,7 +1777,7 @@ array.resize(!.Array, N, X) = !:Array :-
 ").
 
 :- pragma foreign_proc("Java",
-    array.resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
+    resize(Size::in, Item::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = jmercury.array.ML_array_resize(Array0, Size, Item);
@@ -1812,24 +1818,23 @@ ML_shrink_array(MR_ArrayPtr array, MR_ArrayPtr old_array,
 }
 ").
 
-array.shrink(!.Array, N) = !:Array :-
+shrink(!.Array, N) = !:Array :-
     array.shrink(N, !Array).
 
-array.shrink(Size, !Array) :-
+shrink(Size, !Array) :-
     OldSize = array.size(!.Array),
-    ( Size > OldSize ->
+    ( if Size > OldSize then
         error("array.shrink: can't shrink to a larger size")
-    ; Size = OldSize ->
+    else if Size = OldSize then
         true
-    ;
+    else
         array.shrink_2(Size, !Array)
     ).
 
-:- pred array.shrink_2(int::in, array(T)::array_di, array(T)::array_uo)
-    is det.
+:- pred shrink_2(int::in, array(T)::array_di, array(T)::array_uo) is det.
 
 :- pragma foreign_proc("C",
-    array.shrink_2(Size::in, Array0::array_di, Array::array_uo),
+    shrink_2(Size::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
         sharing(yes(int, array(T), array(T)), [
@@ -1842,21 +1847,21 @@ array.shrink(Size, !Array) :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.shrink_2(Size::in, Array0::array_di, Array::array_uo),
+    shrink_2(Size::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = array.ML_shrink_array(Array0, Size);
 ").
 
 :- pragma foreign_proc("Erlang",
-    array.shrink_2(Size::in, Array0::array_di, Array::array_uo),
+    shrink_2(Size::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = list_to_tuple(lists:sublist(tuple_to_list(Array0), Size))
 ").
 
 :- pragma foreign_proc("Java",
-    array.shrink_2(Size::in, Array0::array_di, Array::array_uo),
+    shrink_2(Size::in, Array0::array_di, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     if (Array0 == null) {
@@ -1910,11 +1915,11 @@ ML_copy_array(MR_ArrayPtr array, MR_ConstArrayPtr old_array)
 }
 ").
 
-array.copy(A1) = A2 :-
+copy(A1) = A2 :-
     array.copy(A1, A2).
 
 :- pragma foreign_proc("C",
-    array.copy(Array0::in, Array::array_uo),
+    copy(Array0::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
         sharing(yes(array(T), array(T)), [
@@ -1927,21 +1932,21 @@ array.copy(A1) = A2 :-
 ").
 
 :- pragma foreign_proc("C#",
-    array.copy(Array0::in, Array::array_uo),
+    copy(Array0::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = (System.Array) Array0.Clone();
 ").
 
 :- pragma foreign_proc("Erlang",
-    array.copy(Array0::in, Array::array_uo),
+    copy(Array0::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Array = Array0
 ").
 
 :- pragma foreign_proc("Java",
-    array.copy(Array0::in, Array::array_uo),
+    copy(Array0::in, Array::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     int Size;
@@ -1976,12 +1981,12 @@ array.copy(A1) = A2 :-
 array(List) = Array :-
     array.from_list(List, Array).
 
-array.from_list(List) = Array :-
+from_list(List) = Array :-
     array.from_list(List, Array).
 
-array.from_list([], Array) :-
+from_list([], Array) :-
     array.make_empty_array(Array).
-array.from_list(List, Array) :-
+from_list(List, Array) :-
     List = [Head | Tail],
     list.length(List, Len),
     Array0 = array.unsafe_init(Len, Head, 0),
@@ -1989,99 +1994,101 @@ array.from_list(List, Array) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred array.unsafe_insert_items(list(T)::in, int::in,
+:- pred unsafe_insert_items(list(T)::in, int::in,
     array(T)::array_di, array(T)::array_uo) is det.
 
-array.unsafe_insert_items([], _N, !Array).
-array.unsafe_insert_items([Head | Tail], N, !Array) :-
-    array.unsafe_set(N, Head, !Array),
-    array.unsafe_insert_items(Tail, N + 1, !Array).
+unsafe_insert_items([], _N, !Array).
+unsafe_insert_items([Head | Tail], N, !Array) :-
+    unsafe_set(N, Head, !Array),
+    unsafe_insert_items(Tail, N + 1, !Array).
 
 %---------------------------------------------------------------------------%
 
-array.from_reverse_list([]) = Array :-
+from_reverse_list([]) = Array :-
     array.make_empty_array(Array).
-array.from_reverse_list(RevList) = Array :-
+from_reverse_list(RevList) = Array :-
     RevList = [Head | Tail],
     list.length(RevList, Len),
     Array0 = array.unsafe_init(Len, Head, Len - 1),
-    array.unsafe_insert_items_reverse(Tail, Len - 2, Array0, Array).
+    unsafe_insert_items_reverse(Tail, Len - 2, Array0, Array).
 
-:- pred array.unsafe_insert_items_reverse(list(T)::in, int::in,
+:- pred unsafe_insert_items_reverse(list(T)::in, int::in,
     array(T)::array_di, array(T)::array_uo) is det.
 
-array.unsafe_insert_items_reverse([], _, !Array).
-array.unsafe_insert_items_reverse([Head | Tail], N, !Array) :-
-    array.unsafe_set(N, Head, !Array),
-    array.unsafe_insert_items_reverse(Tail, N - 1, !Array).
+unsafe_insert_items_reverse([], _, !Array).
+unsafe_insert_items_reverse([Head | Tail], N, !Array) :-
+    unsafe_set(N, Head, !Array),
+    unsafe_insert_items_reverse(Tail, N - 1, !Array).
 
 %---------------------------------------------------------------------------%
 
-array.to_list(Array) = List :-
-    array.to_list(Array, List).
+to_list(Array) = List :-
+    to_list(Array, List).
 
-array.to_list(Array, List) :-
-    array.bounds(Array, Low, High),
-    array.fetch_items(Array, Low, High, List).
+to_list(Array, List) :-
+    bounds(Array, Low, High),
+    fetch_items(Array, Low, High, List).
 
 %---------------------------------------------------------------------------%
 
-array.fetch_items(Array, Low, High) = List :-
-    array.fetch_items(Array, Low, High, List).
+fetch_items(Array, Low, High) = List :-
+    fetch_items(Array, Low, High, List).
 
-array.fetch_items(Array, Low, High, List) :-
-    ( High < Low ->
-        % If High is less than Low then there cannot be any array indexes
-        % within the range Low -> High (inclusive).  This can happen when
-        % calling to_list/2 on the empty array.  Testing for this condition
+fetch_items(Array, Low, High, List) :-
+    ( if
+        High < Low
+    then
+        % If High is less than Low, then there cannot be any array indexes
+        % within the range Low -> High (inclusive). This can happen when
+        % calling to_list/2 on the empty array. Testing for this condition
         % here rather than in to_list/2 is more general.
         List = []
-    ;
+    else if
         array.in_bounds(Array, Low),
         array.in_bounds(Array, High)
-    ->
+    then
         List = do_foldr_func(func(X, Xs) = [X | Xs], Array, [], Low, High)
-    ;
+    else
         error("array.fetch_items/4: One or more index is out of bounds")
     ).
 
 %---------------------------------------------------------------------------%
 
-array.bsearch(A, X, F) = MN :-
+bsearch(A, X, F) = MN :-
     P = (pred(X1::in, X2::in, C::out) is det :- C = F(X1, X2)),
     array.bsearch(A, X, P, MN).
 
-array.bsearch(A, SearchX, Compare, Result) :-
+bsearch(A, SearchX, Compare, Result) :-
     array.bounds(A, Lo, Hi),
     array.bsearch_2(A, Lo, Hi, SearchX, Compare, Result).
 
-:- pred array.bsearch_2(array(T)::in, int::in, int::in, T::in,
+:- pred bsearch_2(array(T)::in, int::in, int::in, T::in,
     pred(T, T, comparison_result)::in(pred(in, in, out) is det),
     maybe(int)::out) is det.
 
-array.bsearch_2(Array, Lo, Hi, SearchX, Compare, Result) :-
+bsearch_2(Array, Lo, Hi, SearchX, Compare, Result) :-
     Width = Hi - Lo,
 
     % If Width < 0, there is no range left.
-    ( Width < 0 ->
+    ( if Width < 0 then
         Result = no
-    ;
+    else
         % If Width == 0, we may just have found our element.
         % Do a Compare to check.
-        ( Width = 0 ->
+        ( if Width = 0 then
             array.lookup(Array, Lo, LoX),
-            ( Compare(SearchX, LoX, (=)) ->
+            ( if Compare(SearchX, LoX, (=)) then
                 Result = yes(Lo)
-            ;
+            else
                 Result = no
             )
-        ;
+        else
             % Otherwise find the middle element of the range
             % and check against that.
             % We calculate Mid this way to avoid overflow.
-            Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
             % The right shift by one bit is a fast implementation
             % of division by 2.
+            Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
             array.lookup(Array, Mid, MidX),
             Compare(MidX, SearchX, Comp),
             (
@@ -2099,63 +2106,63 @@ array.bsearch_2(Array, Lo, Hi, SearchX, Compare, Result) :-
 
 %---------------------------------------------------------------------------%
 
-array.map(F, A1) = A2 :-
+map(F, A1) = A2 :-
     P = (pred(X::in, Y::out) is det :- Y = F(X)),
     array.map(P, A1, A2).
 
-array.map(Closure, OldArray, NewArray) :-
-    ( array.semidet_lookup(OldArray, 0, Elem0) ->
+map(Closure, OldArray, NewArray) :-
+    ( if array.semidet_lookup(OldArray, 0, Elem0) then
         array.size(OldArray, Size),
         Closure(Elem0, Elem),
         NewArray0 = unsafe_init(Size, Elem, 0),
         array.map_2(1, Size, Closure, OldArray, NewArray0, NewArray)
-    ;
+    else
         array.make_empty_array(NewArray)
     ).
 
-:- pred array.map_2(int::in, int::in, pred(T1, T2)::in(pred(in, out) is det),
+:- pred map_2(int::in, int::in, pred(T1, T2)::in(pred(in, out) is det),
     array(T1)::in, array(T2)::array_di, array(T2)::array_uo) is det.
 
-array.map_2(N, Size, Closure, OldArray, !NewArray) :-
-    ( N >= Size ->
+map_2(N, Size, Closure, OldArray, !NewArray) :-
+    ( if N >= Size then
         true
-    ;
+    else
         array.unsafe_lookup(OldArray, N, OldElem),
         Closure(OldElem, NewElem),
         array.unsafe_set(N, NewElem, !NewArray),
-        array.map_2(N + 1, Size, Closure, OldArray, !NewArray)
+        map_2(N + 1, Size, Closure, OldArray, !NewArray)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.member(A, X) :-
-    nondet_int_in_range(array.min(A), array.max(A), I0),
-    X = A ^ unsafe_elem(I0).
+member(A, X) :-
+    nondet_int_in_range(array.min(A), array.max(A), N),
+    array.unsafe_lookup(A, N, X).
 
 %---------------------------------------------------------------------------%
 
-    % array.sort/1 has type specialised versions for arrays of
-    % ints and strings on the expectation that these constitute
-    % the common case and are hence worth providing a fast-path.
+    % array.sort/1 has type specialised versions for arrays of ints and strings
+    % on the expectation that these constitute the common case and are hence
+    % worth providing a fast-path.
     %
-    % Experiments indicate that type specialisation improves
-    % array.sort/1 by a factor of 30-40%.
+    % Experiments indicate that type specialisation improves the speed of
+    % array.sort/1 by about 30-40%.
     %
 :- pragma type_spec(array.sort/1, T = int).
 :- pragma type_spec(array.sort/1, T = string).
 
-array.sort(A) = samsort_subarray(A, array.min(A), array.max(A)).
+sort(A) = samsort_subarray(A, array.min(A), array.max(A)).
 
 :- pragma no_inline(array.sort_fix_2014/0).
 
-array.sort_fix_2014.
+sort_fix_2014.
 
 %---------------------------------------------------------------------------%
 
-array.binary_search(A, SearchX, I) :-
+binary_search(A, SearchX, I) :-
     array.binary_search(ordering, A, SearchX, I).
 
-array.binary_search(Cmp, A, SearchX, I) :-
+binary_search(Cmp, A, SearchX, I) :-
     Lo = 0,
     Hi = array.size(A) - 1,
     binary_search_loop(Cmp, A, SearchX, Lo, Hi, I).
@@ -2168,9 +2175,8 @@ binary_search_loop(Cmp, A, SearchX, Lo, Hi, I) :-
     % then it is in A[Lo] .. A[Hi].
     Lo =< Hi,
     % We calculate Mid this way to avoid overflow.
+    % The right shift by one bit is a fast implementation of division by 2.
     Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
-    % The right shift by one bit is a fast implementation
-    % of division by 2.
     array.unsafe_lookup(A, Mid, MidX),
     O = Cmp(MidX, SearchX),
     (
@@ -2186,10 +2192,10 @@ binary_search_loop(Cmp, A, SearchX, Lo, Hi, I) :-
 
 %---------------------------------------------------------------------------%
 
-array.approx_binary_search(A, SearchX, I) :-
-    array.approx_binary_search(ordering, A, SearchX, I).
+approx_binary_search(A, SearchX, I) :-
+    approx_binary_search(ordering, A, SearchX, I).
 
-array.approx_binary_search(Cmp, A, SearchX, I) :-
+approx_binary_search(Cmp, A, SearchX, I) :-
     Lo = 0,
     Hi = array.size(A) - 1,
     approx_binary_search_loop(Cmp, A, SearchX, Lo, Hi, I).
@@ -2202,9 +2208,8 @@ approx_binary_search_loop(Cmp, A, SearchX, Lo, Hi, I) :-
     % then it is in A[Lo] .. A[Hi].
     Lo =< Hi,
     % We calculate Mid this way to avoid overflow.
+    % The right shift by one bit is a fast implementation of division by 2.
     Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
-    % The right shift by one bit is a fast implementation
-    % of division by 2.
     array.unsafe_lookup(A, Mid, MidX),
     O = Cmp(MidX, SearchX),
     (
@@ -2233,28 +2238,28 @@ approx_binary_search_loop(Cmp, A, SearchX, Lo, Hi, I) :-
 
 %---------------------------------------------------------------------------%
 
-array.append(A, B) = C :-
+append(A, B) = C :-
     SizeA = array.size(A),
     SizeB = array.size(B),
     SizeC = SizeA + SizeB,
     ( if
         ( if SizeA > 0 then
-            InitElem = A ^ elem(0)
-          else if SizeB > 0 then
-            InitElem = B ^ elem(0)
-          else
+            array.lookup(A, 0, InitElem)
+        else if SizeB > 0 then
+            array.lookup(B, 0, InitElem)
+        else
             fail
         )
-      then
+    then
         C0 = array.init(SizeC, InitElem),
         copy_subarray(A, 0, SizeA - 1, 0, C0, C1),
         copy_subarray(B, 0, SizeB - 1, SizeA, C1, C)
-      else
+    else
         C = array.make_empty_array
     ).
 
 :- pragma foreign_proc("C",
-    array.append(ArrayA::in, ArrayB::in) = (ArrayC::array_uo),
+    append(ArrayA::in, ArrayB::in) = (ArrayC::array_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness,
         sharing(yes(array(T), array(T), array(T)), [
@@ -2283,7 +2288,7 @@ array.append(A, B) = C :-
 
 %---------------------------------------------------------------------------%
 
-array.random_permutation(A0, A, RS0, RS) :-
+random_permutation(A0, A, RS0, RS) :-
     Lo = array.min(A0),
     Hi = array.max(A0),
     Sz = array.size(A0),
@@ -2293,30 +2298,28 @@ array.random_permutation(A0, A, RS0, RS) :-
     array(T)::array_di, array(T)::array_uo,
     random.supply::mdi, random.supply::muo) is det.
 
-permutation_2(I, Lo, Hi, Sz, A0, A, RS0, RS) :-
-    ( I > Hi ->
-        A  = A0,
-        RS = RS0
-    ;
-        random.random(R, RS0, RS1),
+permutation_2(I, Lo, Hi, Sz, !A, !RS) :-
+    ( if I > Hi then
+        true
+    else
+        random.random(R, !RS),
         J  = Lo + (R `rem` Sz),
-        A1 = swap_elems(A0, I, J),
-        permutation_2(I + 1, Lo, Hi, Sz, A1, A, RS1, RS)
+        swap_elems(I, J, !A),
+        permutation_2(I + 1, Lo, Hi, Sz, !A, !RS)
     ).
 
+:- pred swap_elems(int::in, int::in, array(T)::array_di, array(T)::array_uo)
+    is det.
+
+swap_elems(I, J, !A) :-
+    array.lookup(!.A, I, XI),
+    array.lookup(!.A, J, XJ),
+    array.unsafe_set(I, XJ, !A),
+    array.unsafe_set(J, XI, !A).
+
 %---------------------------------------------------------------------------%
 
-:- func swap_elems(array(T), int, int) = array(T).
-:- mode swap_elems(array_di, in, in) = array_uo is det.
-
-swap_elems(A0, I, J) = A :-
-    XI = A0 ^ elem(I),
-    XJ = A0 ^ elem(J),
-    A  = ((A0 ^ elem(I) := XJ) ^ elem(J) := XI).
-
-%---------------------------------------------------------------------------%
-
-array.foldl(Fn, A, X) =
+foldl(Fn, A, X) =
     do_foldl_func(Fn, A, X, array.min(A), array.max(A)).
 
 :- func do_foldl_func(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
@@ -2328,15 +2331,15 @@ array.foldl(Fn, A, X) =
 :- mode do_foldl_func(func(in, di) = uo is det, in, di, in, in) = uo is det.
 
 do_foldl_func(Fn, A, X, I, Max) =
-    ( Max < I ->
+    ( if Max < I then
         X
-    ;
+    else
         do_foldl_func(Fn, A, Fn(A ^ unsafe_elem(I), X), I + 1, Max)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.foldl(P, A, !Acc) :-
+foldl(P, A, !Acc) :-
     do_foldl_pred(P, A, array.min(A), array.max(A), !Acc).
 
 :- pred do_foldl_pred(pred(T1, T2, T2), array(T1), int, int, T2, T2).
@@ -2351,16 +2354,16 @@ array.foldl(P, A, !Acc) :-
     is semidet.
 
 do_foldl_pred(P, A, I, Max, !Acc) :-
-    ( Max < I ->
+    ( if Max < I then
         true
-    ;
+    else
         P(A ^ unsafe_elem(I), !Acc),
         do_foldl_pred(P, A, I + 1, Max, !Acc)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.foldl2(P, A, !Acc1, !Acc2) :-
+foldl2(P, A, !Acc1, !Acc2) :-
     do_foldl2(P, array.min(A), array.max(A), A, !Acc1, !Acc2).
 
 :- pred do_foldl2(pred(T1, T2, T2, T3, T3), int, int, array(T1), T2, T2,
@@ -2379,16 +2382,16 @@ array.foldl2(P, A, !Acc1, !Acc2) :-
     di, uo) is semidet.
 
 do_foldl2(P, I, Max, A, !Acc1, !Acc2) :-
-    ( Max < I ->
+    ( if Max < I then
         true
-    ;
+    else
         P(A ^ unsafe_elem(I), !Acc1, !Acc2),
         do_foldl2(P, I + 1, Max, A, !Acc1, !Acc2)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.foldl3(P, A, !Acc1, !Acc2, !Acc3) :-
+foldl3(P, A, !Acc1, !Acc2, !Acc3) :-
     do_foldl3(P, array.min(A), array.max(A), A, !Acc1, !Acc2, !Acc3).
 
 :- pred do_foldl3(pred(T1, T2, T2, T3, T3, T4, T4), int, int, array(T1),
@@ -2407,16 +2410,16 @@ array.foldl3(P, A, !Acc1, !Acc2, !Acc3) :-
     in, out, in, out, di, uo) is semidet.
 
 do_foldl3(P, I, Max, A, !Acc1, !Acc2, !Acc3) :-
-    ( Max < I ->
+    ( if Max < I then
         true
-    ;
+    else
         P(A ^ unsafe_elem(I), !Acc1, !Acc2, !Acc3),
         do_foldl3(P, I + 1, Max, A, !Acc1, !Acc2, !Acc3)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.foldl4(P, A, !Acc1, !Acc2, !Acc3, !Acc4) :-
+foldl4(P, A, !Acc1, !Acc2, !Acc3, !Acc4) :-
     do_foldl4(P, array.min(A), array.max(A), A, !Acc1, !Acc2, !Acc3, !Acc4).
 
 :- pred do_foldl4(pred(T1, T2, T2, T3, T3, T4, T4, T5, T5), int, int,
@@ -2435,16 +2438,16 @@ array.foldl4(P, A, !Acc1, !Acc2, !Acc3, !Acc4) :-
     in, in, in, in, out, in, out, in, out, di, uo) is semidet.
 
 do_foldl4(P, I, Max, A, !Acc1, !Acc2, !Acc3, !Acc4) :-
-    ( Max < I ->
+    ( if Max < I then
         true
-    ;
+    else
         P(A ^ unsafe_elem(I), !Acc1, !Acc2, !Acc3, !Acc4),
         do_foldl4(P, I + 1, Max, A, !Acc1, !Acc2, !Acc3, !Acc4)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.foldl5(P, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5) :-
+foldl5(P, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5) :-
     do_foldl5(P, array.min(A), array.max(A), A, !Acc1, !Acc2, !Acc3, !Acc4,
         !Acc5).
 
@@ -2470,16 +2473,16 @@ array.foldl5(P, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5) :-
     in, in, in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 do_foldl5(P, I, Max, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5) :-
-    ( Max < I ->
+    ( if Max < I then
         true
-    ;
+    else
         P(A ^ unsafe_elem(I), !Acc1, !Acc2, !Acc3, !Acc4, !Acc5),
         do_foldl5(P, I + 1, Max, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.foldr(Fn, A, X) =
+foldr(Fn, A, X) =
     do_foldr_func(Fn, A, X, array.min(A), array.max(A)).
 
 :- func do_foldr_func(func(T1, T2) = T2, array(T1), T2, int, int) = T2.
@@ -2491,15 +2494,15 @@ array.foldr(Fn, A, X) =
 :- mode do_foldr_func(func(in, di) = uo is det, in, di, in, in) = uo is det.
 
 do_foldr_func(Fn, A, X, Min, I) =
-    ( I < Min ->
+    ( if I < Min then
         X
-    ;
+    else
         do_foldr_func(Fn, A, Fn(A ^ unsafe_elem(I), X), Min, I - 1)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.foldr(P, A, !Acc) :-
+foldr(P, A, !Acc) :-
     do_foldr_pred(P, array.min(A), array.max(A), A, !Acc).
 
 :- pred do_foldr_pred(pred(T1, T2, T2), int, int, array(T1), T2, T2).
@@ -2514,9 +2517,9 @@ array.foldr(P, A, !Acc) :-
     is semidet.
 
 do_foldr_pred(P, Min, I, A, !Acc) :-
-    ( I < Min ->
+    ( if I < Min then
         true
-    ;
+    else
         P(A ^ unsafe_elem(I), !Acc),
         do_foldr_pred(P, Min, I - 1, A, !Acc)
     ).
@@ -2542,9 +2545,9 @@ foldr2(P, A, !Acc1, !Acc2) :-
     di, uo) is semidet.
 
 do_foldr2(P, Min, I, A, !Acc1, !Acc2) :-
-    ( I < Min ->
+    ( if I < Min then
         true
-    ;
+    else
         P(A ^ unsafe_elem(I), !Acc1, !Acc2),
         do_foldr2(P, Min, I - 1, A, !Acc1, !Acc2)
     ).
@@ -2570,16 +2573,16 @@ foldr3(P, A, !Acc1, !Acc2, !Acc3) :-
     in, out, in, out, di, uo) is semidet.
 
 do_foldr3(P, Min, I, A, !Acc1, !Acc2, !Acc3) :-
-    ( I < Min ->
+    ( if I < Min then
         true
-    ;
+    else
         P(A ^ unsafe_elem(I), !Acc1, !Acc2, !Acc3),
         do_foldr3(P, Min, I - 1, A, !Acc1, !Acc2, !Acc3)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.foldr4(P, A, !Acc1, !Acc2, !Acc3, !Acc4) :-
+foldr4(P, A, !Acc1, !Acc2, !Acc3, !Acc4) :-
     do_foldr4(P, array.min(A), array.max(A), A, !Acc1, !Acc2, !Acc3, !Acc4).
 
 :- pred do_foldr4(pred(T1, T2, T2, T3, T3, T4, T4, T5, T5), int, int,
@@ -2598,16 +2601,16 @@ array.foldr4(P, A, !Acc1, !Acc2, !Acc3, !Acc4) :-
     in, in, in, in, out, in, out, in, out, di, uo) is semidet.
 
 do_foldr4(P, Min, I, A, !Acc1, !Acc2, !Acc3, !Acc4) :-
-    ( I < Min ->
+    ( if I < Min then
         true
-    ;
+    else
         P(A ^ unsafe_elem(I), !Acc1, !Acc2, !Acc3, !Acc4),
         do_foldr4(P, Min, I - 1, A, !Acc1, !Acc2, !Acc3, !Acc4)
     ).
 
 %---------------------------------------------------------------------------%
 
-array.foldr5(P, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5) :-
+foldr5(P, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5) :-
     do_foldr5(P, array.min(A), array.max(A), A, !Acc1, !Acc2, !Acc3, !Acc4,
         !Acc5).
 
@@ -2633,9 +2636,9 @@ array.foldr5(P, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5) :-
     in, in, in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 do_foldr5(P, Min, I, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5) :-
-    ( I < Min ->
+    ( if I < Min then
         true
-    ;
+    else
         P(A ^ unsafe_elem(I), !Acc1, !Acc2, !Acc3, !Acc4, !Acc5),
         do_foldr5(P, Min, I - 1, A, !Acc1, !Acc2, !Acc3, !Acc4, !Acc5)
     ).
@@ -2646,8 +2649,8 @@ map_foldl(P, A, B, !Acc) :-
     N = array.size(A),
     ( if N =< 0 then
         B = array.make_empty_array
-      else
-        X = A ^ unsafe_elem(0),
+    else
+        array.unsafe_lookup(A, 0, X),
         P(X, Y, !Acc),
         B1 = array.init(N, Y),
         map_foldl_2(P, 1, A, B1, B, !Acc)
@@ -2666,55 +2669,55 @@ map_foldl(P, A, B, !Acc) :-
 
 map_foldl_2(P, I, A, !B, !Acc) :-
     ( if I < array.size(A) then
-        X = A ^ unsafe_elem(I),
+        array.unsafe_lookup(A, I, X),
         P(X, Y, !Acc),
-        !B ^ unsafe_elem(I) := Y,
+        array.unsafe_set(I, Y, !B),
         map_foldl_2(P, I + 1, A, !B, !Acc)
-      else
+    else
         true
     ).
 
-array.map_corresponding_foldl(P, A, B, C, !Acc) :-
+map_corresponding_foldl(P, A, B, C, !Acc) :-
     N = array.size(A),
     ( if N =< 0 then
         C = array.make_empty_array
-      else
-        X = A ^ unsafe_elem(0),
-        Y = B ^ unsafe_elem(0),
+    else
+        array.unsafe_lookup(A, 0, X),
+        array.unsafe_lookup(B, 0, Y),
         P(X, Y, Z, !Acc),
         C1 = array.init(N, Z),
-        array.map_corresponding_foldl_2(P, 1, N, A, B, C1, C, !Acc)
+        map_corresponding_foldl_2(P, 1, N, A, B, C1, C, !Acc)
     ).
 
-:- pred array.map_corresponding_foldl_2(pred(T1, T2, T3, T4, T4),
+:- pred map_corresponding_foldl_2(pred(T1, T2, T3, T4, T4),
     int, int, array(T1), array(T2), array(T3), array(T3), T4, T4).
-:- mode array.map_corresponding_foldl_2(
+:- mode map_corresponding_foldl_2(
     in(pred(in, in, out, in, out) is det),
     in, in, in, in, array_di, array_uo, in, out) is det.
-:- mode array.map_corresponding_foldl_2(
+:- mode map_corresponding_foldl_2(
     in(pred(in, in, out, mdi, muo) is det),
     in, in, in, in, array_di, array_uo, mdi, muo) is det.
-:- mode array.map_corresponding_foldl_2(
+:- mode map_corresponding_foldl_2(
     in(pred(in, in, out, di, uo) is det),
     in, in, in, in, array_di, array_uo, di, uo) is det.
-:- mode array.map_corresponding_foldl_2(
+:- mode map_corresponding_foldl_2(
     in(pred(in, in, out, in, out) is semidet),
     in, in, in, in, array_di, array_uo, in, out) is semidet.
 
-array.map_corresponding_foldl_2(P, I, N, A, B, !C, !D) :-
+map_corresponding_foldl_2(P, I, N, A, B, !C, !Acc) :-
     ( if I < N then
-        X = A ^ unsafe_elem(I),
-        Y = B ^ unsafe_elem(I),
-        P(X, Y, Z, !D),
-        !C ^ unsafe_elem(I) := Z,
-        array.map_corresponding_foldl_2(P, I + 1, N, A, B, !C, !D)
-      else
+        array.unsafe_lookup(A, I, X),
+        array.unsafe_lookup(B, I, Y),
+        P(X, Y, Z, !Acc),
+        array.unsafe_set(I, Z, !C),
+        map_corresponding_foldl_2(P, I + 1, N, A, B, !C, !Acc)
+    else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-array.all_true(Pred, Array) :-
+all_true(Pred, Array) :-
     do_all_true(Pred, array.min(Array), array.max(Array), Array).
 
 :- pred do_all_true(pred(T), int, int, array(T)).
@@ -2723,14 +2726,14 @@ array.all_true(Pred, Array) :-
 
 do_all_true(Pred, I, UB, Array) :-
     ( if I =< UB then
-        Elem = Array ^ unsafe_elem(I),
+        array.unsafe_lookup(Array, I, Elem),
         Pred(Elem),
         do_all_true(Pred, I + 1, UB, Array)
     else
         true
     ).
 
-array.all_false(Pred, Array) :-
+all_false(Pred, Array) :-
     do_all_false(Pred, array.min(Array), array.max(Array), Array).
 
 :- pred do_all_false(pred(T), int, int, array(T)).
@@ -2739,7 +2742,7 @@ array.all_false(Pred, Array) :-
 
 do_all_false(Pred, I, UB, Array) :-
     ( if I =< UB then
-        Elem = Array ^ unsafe_elem(I),
+        array.unsafe_lookup(Array, I, Elem),
         not Pred(Elem),
         do_all_false(Pred, I + 1, UB, Array)
     else
@@ -2764,12 +2767,8 @@ do_all_false(Pred, I, UB, Array) :-
 samsort_subarray(A0, Lo, Hi) = A :-
     samsort_up(0, array.copy(A0), A, A0, _, Lo, Hi, Lo).
 
-:- pred samsort_up(int::in, array(T)::array_di, array(T)::array_uo,
-    array(T)::array_di, array(T)::array_uo, int::in, int::in, int::in) is det.
-
-:- pragma type_spec(samsort_up/8, T = int).
-:- pragma type_spec(samsort_up/8, T = string).
-
+    % samsort_up(N, A0, A, B0, B, Lo, Hi, I):
+    %
     % Precondition:
     %   We are N levels from the bottom (leaf nodes) of the tree.
     %   A0 is sorted from Lo .. I - 1.
@@ -2777,16 +2776,22 @@ samsort_subarray(A0, Lo, Hi) = A :-
     % Postcondition:
     %   A is sorted from Lo .. Hi.
     %
+:- pred samsort_up(int::in, array(T)::array_di, array(T)::array_uo,
+    array(T)::array_di, array(T)::array_uo, int::in, int::in, int::in) is det.
+
+:- pragma type_spec(samsort_up/8, T = int).
+:- pragma type_spec(samsort_up/8, T = string).
+
 samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
     trace [compile_time(flag("array_sort"))] (
         verify_sorted(A0, Lo, I - 1),
         verify_identical(A0, B0, I, Hi)
     ),
-    ( I > Hi ->
+    ( if I > Hi then
         A = A0,
         B = B0
         % A is sorted from Lo .. Hi.
-    ; N > 0 ->
+    else if N > 0 then
         % B0 and A0 are identical from I .. Hi.
         samsort_down(N - 1, B0, B1, A0, A1, I, Hi, J),
         % A1 is sorted from I .. J - 1.
@@ -2803,7 +2808,7 @@ samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
         A = B3,
         B = A3
         % A is sorted from Lo .. Hi.
-    ;
+    else
         % N = 0, I = Lo
         copy_run_ascending(A0, B0, B1, Lo, Hi, J),
 
@@ -2820,12 +2825,8 @@ samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
         verify_sorted(A, Lo, Hi)
     ).
 
-:- pred samsort_down(int::in, array(T)::array_di, array(T)::array_uo,
-    array(T)::array_di, array(T)::array_uo, int::in, int::in, int::out) is det.
-
-:- pragma type_spec(samsort_down/8, T = int).
-:- pragma type_spec(samsort_down/8, T = string).
-
+    % samsort_down(N, A0, A, B0, B, Lo, Hi, I):
+    %
     % Precondition:
     %   We are N levels from the bottom (leaf nodes) of the tree.
     %   A0 and B0 are identical from Lo .. Hi.
@@ -2833,16 +2834,22 @@ samsort_up(N, A0, A, B0, B, Lo, Hi, I) :-
     %   B is sorted from Lo .. I - 1.
     %   A and B are identical from I .. Hi.
     %
+:- pred samsort_down(int::in, array(T)::array_di, array(T)::array_uo,
+    array(T)::array_di, array(T)::array_uo, int::in, int::in, int::out) is det.
+
+:- pragma type_spec(samsort_down/8, T = int).
+:- pragma type_spec(samsort_down/8, T = string).
+
 samsort_down(N, A0, A, B0, B, Lo, Hi, I) :-
     trace [compile_time(flag("array_sort"))] (
         verify_identical(A0, B0, Lo, Hi)
     ),
-    ( Lo > Hi ->
+    ( if Lo > Hi then
         A = A0,
         B = B0,
         I = Lo
         % B is sorted from Lo .. I - 1.
-    ; N > 0 ->
+    else if N > 0 then
         samsort_down(N - 1, B0, B1, A0, A1, Lo, Hi, J),
         samsort_down(N - 1, B1, B2, A1, A2, J,  Hi, I),
         % A2 is sorted from Lo .. J - 1.
@@ -2850,7 +2857,7 @@ samsort_down(N, A0, A, B0, B, Lo, Hi, I) :-
         A = A2,
         merge_subarrays(A2, Lo, J - 1, J, I - 1, Lo, B2, B)
         % B is sorted from Lo .. I - 1.
-    ;
+    else
         A = A0,
         copy_run_ascending(A0, B0, B, Lo, Hi, I)
         % B is sorted from Lo .. I - 1.
@@ -2863,11 +2870,11 @@ samsort_down(N, A0, A, B0, B, Lo, Hi, I) :-
 :- pred verify_sorted(array(T)::array_ui, int::in, int::in) is det.
 
 verify_sorted(A, Lo, Hi) :-
-    ( Lo >= Hi ->
+    ( if Lo >= Hi then
         true
-    ; compare((<), A ^ elem(Lo + 1), A ^ elem(Lo)) ->
+    else if compare((<), A ^ elem(Lo + 1), A ^ elem(Lo)) then
         unexpected($module, $pred, "array range not sorted")
-    ;
+    else
         verify_sorted(A, Lo + 1, Hi)
     ).
 
@@ -2875,11 +2882,11 @@ verify_sorted(A, Lo, Hi) :-
     int::in, int::in) is det.
 
 verify_identical(A, B, Lo, Hi) :-
-    ( Lo > Hi ->
+    ( if Lo > Hi then
         true
-    ; A ^ elem(Lo) = B ^ elem(Lo) ->
+    else if A ^ elem(Lo) = B ^ elem(Lo) then
         verify_identical(A, B, Lo + 1, Hi)
-    ;
+    else
         unexpected($module, $pred, "array ranges not identical")
     ).
 
@@ -2892,13 +2899,13 @@ verify_identical(A, B, Lo, Hi) :-
 :- pragma type_spec(copy_run_ascending/6, T = string).
 
 copy_run_ascending(A, !B, Lo, Hi, I) :-
-    (
+    ( if
         Lo < Hi,
         compare((>), A ^ elem(Lo), A ^ elem(Lo + 1))
-    ->
+    then
         I = search_until((<), A, Lo, Hi),
         copy_subarray_reverse(A, Lo, I - 1, I - 1, !B)
-    ;
+    else
         I = search_until((>), A, Lo, Hi),
         copy_subarray(A, Lo, I - 1, Lo, !B)
     ).
@@ -2912,12 +2919,12 @@ copy_run_ascending(A, !B, Lo, Hi, I) :-
 :- pragma type_spec(search_until/4, T = string).
 
 search_until(R, A, Lo, Hi) =
-    (
+    ( if
         Lo < Hi,
         not compare(R, A ^ elem(Lo), A ^ elem(Lo + 1))
-    ->
+    then
         search_until(R, A, Lo + 1, Hi)
-    ;
+    else
         Lo + 1
     ).
 
@@ -2934,10 +2941,12 @@ search_until(R, A, Lo, Hi) =
 :- pragma type_spec(copy_subarray/6, T = string).
 
 copy_subarray(A, Lo, Hi, I, !B) :-
-    ( Lo =< Hi ->
-        !B ^ elem(I) := A ^ elem(Lo),
+    ( if Lo =< Hi then
+        array.lookup(A, Lo, X),
+        % XXX Would it be safe to replace this with array.unsafe_set?
+        array.set(I, X, !B),
         copy_subarray(A, Lo + 1, Hi, I + 1, !B)
-    ;
+    else
         true
     ).
 
@@ -2952,17 +2961,19 @@ copy_subarray(A, Lo, Hi, I, !B) :-
 :- pragma type_spec(copy_subarray_reverse/6, T = string).
 
 copy_subarray_reverse(A, Lo, Hi, I, !B) :-
-    ( Lo =< Hi ->
-        !B ^ elem(I) := A ^ elem(Lo),
+    ( if Lo =< Hi then
+        array.lookup(A, Lo, X),
+        % XXX Would it be safe to replace this with array.unsafe_set?
+        array.set(I, X, !B),
         copy_subarray_reverse(A, Lo + 1, Hi, I - 1, !B)
-    ;
+    else
         true
     ).
 
 %---------------------------------------------------------------------------%
 
-    % merges the two sorted consecutive subarrays Lo1 .. Hi1 and
-    % Lo2 .. Hi2 from A into the subarray starting at I in B.
+    % merges the two sorted consecutive subarrays Lo1 .. Hi1 and Lo2 .. Hi2
+    % from A into the subarray starting at I in B.
     %
 :- pred merge_subarrays(array(T)::array_ui,
     int::in, int::in, int::in, int::in, int::in,
@@ -2972,13 +2983,13 @@ copy_subarray_reverse(A, Lo, Hi, I, !B) :-
 :- pragma type_spec(merge_subarrays/8, T = string).
 
 merge_subarrays(A, Lo1, Hi1, Lo2, Hi2, I, !B) :-
-    ( Lo1 > Hi1 ->
+    ( if Lo1 > Hi1 then
         copy_subarray(A, Lo2, Hi2, I, !B)
-    ; Lo2 > Hi2 ->
+    else if Lo2 > Hi2 then
         copy_subarray(A, Lo1, Hi1, I, !B)
-    ;
-        X1 = A ^ elem(Lo1),
-        X2 = A ^ elem(Lo2),
+    else
+        array.lookup(A, Lo1, X1),
+        array.lookup(A, Lo2, X2),
         compare(R, X1, X2),
         (
             R = (<),
@@ -3018,13 +3029,13 @@ out_of_bounds_error(Array, Index, PredName) :-
 
 %---------------------------------------------------------------------------%
 
-array.least_index(A) = array.min(A).
+least_index(A) = array.min(A).
 
-array.greatest_index(A) = array.max(A).
+greatest_index(A) = array.max(A).
 
 %---------------------------------------------------------------------------%
 
-array.array_to_doc(A) =
+array_to_doc(A) =
     indent([str("array(["), array_to_doc_2(0, A), str("])")]).
 
 :- func array_to_doc_2(int, array(T)) = doc.
@@ -3032,7 +3043,7 @@ array.array_to_doc(A) =
 array_to_doc_2(I, A) =
     ( if I > array.max(A) then
         str("")
-      else
+    else
         docs([
             format_arg(format(A ^ elem(I))),
             ( if I = array.max(A) then str("") else group([str(", "), nl]) ),
@@ -3043,18 +3054,13 @@ array_to_doc_2(I, A) =
 %---------------------------------------------------------------------------%
 
 dynamic_cast_to_array(X, A) :-
-
-        % If X is an array then it has a type with one type argument.
-        %
+    % If X is an array then it has a type with one type argument.
     [ArgTypeDesc] = type_args(type_of(X)),
 
-        % Convert ArgTypeDesc to a type variable ArgType.
-        %
+    % Convert ArgTypeDesc to a type variable ArgType.
     (_ `with_type` ArgType) `has_type` ArgTypeDesc,
 
-        % Constrain the type of A to be array(ArgType) and do the
-        % cast.
-        %
+    % Constrain the type of A to be array(ArgType) and do the cast.
     dynamic_cast(X, A `with_type` array(ArgType)).
 
 %---------------------------------------------------------------------------%
