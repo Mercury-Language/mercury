@@ -8,7 +8,7 @@
 %
 % File: mercury_compile_llds_back_end.m.
 %
-%  This module implements the LLDS backend for the top level of the Mercury
+% This module implements the LLDS backend for the top level of the Mercury
 % compiler. It invokes the different passes of this backend as appropriate.
 %
 %-----------------------------------------------------------------------------%

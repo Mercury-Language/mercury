@@ -43,9 +43,9 @@
 % This pass is only run when we are generating code.
 %
 % TODO
-%   - improve handle higher-order constructs / type class method calls
-%   - handle user-defined equality and comparison correctly
-%       - the bits marked `XXX user-defined uc' need to be changed
+% - improve handle higher-order constructs / type class method calls
+% - handle user-defined equality and comparison correctly
+% - the bits marked `XXX user-defined uc' need to be changed
 %
 %----------------------------------------------------------------------------%
 
