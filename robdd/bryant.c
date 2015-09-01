@@ -1115,7 +1115,7 @@ MR_ROBDD_prev_nonelement(MR_ROBDD_bitset *set, MR_ROBDD_int *var,
             }
         } while ((bits=*--ptr) == ~0);
         vr = (wd<<MR_ROBDD_LOG_BITS_PER_WORD) + MR_ROBDD_BITS_PER_WORD-1;
-        msk = 1<<(MR_ROBDD_BITS_PER_WORD-1);
+        msk = ((MR_ROBDD_bitmask) 1)<<(MR_ROBDD_BITS_PER_WORD-1);
     }
     /* I know there's an earlier bit clear in bits, so this is safe */
     while ((bits&msk) != 0) {

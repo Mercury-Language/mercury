@@ -82,6 +82,10 @@ RSET=$(DEF)RESTRICT_SET
 
 # Main makefile
 
+ifeq ($(origin EXTRAOPTS),undefined)
+EXTRAOPTS =
+endif
+
 CFLAGS=$(CHOSENOPTIM) $(DEF)$(WHICH) $(OPTS) $(RSET) $(QOPT) $(MSGS) $(EXTRAOPTS)
 
 all: $(TESTS)
