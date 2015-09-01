@@ -610,11 +610,6 @@ CLOSURE_LAYOUT_PROGS = \
 #
 # XXX we fail some of the commented-out tests in write_binary
 
-# XXX minint_bug
-# Since r1.279 of library/string.m we no longer pass this test
-# since the smallest (decimal) integer literal string.int_to_string/2
-# recognises is int.min_int + 1.
-
 # The following tests are passed only in some grades.
 
 # The following tests do not work in the the .profdeep grades.
