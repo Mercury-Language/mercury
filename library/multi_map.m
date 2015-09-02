@@ -253,6 +253,7 @@
     % Convert the corresponding elements of a list of keys and a
     % list of values (which must be of the same length) to a multi_map.
     % A key may occur more than once in the list of keys.
+    % Abort if the two lists are not the same length.
     %
 :- func from_corresponding_lists(list(K), list(V))
     = multi_map(K, V).
@@ -260,9 +261,10 @@
     multi_map(K, V)::out) is det.
 
     % Convert the corresponding elements of a list of keys and a
-    % *list of lists* of values (which must be of the same length)
-    % to a multi_map.
+    % *list of lists* of values to a multi_map.
     % A key may *not* occur more than once in the list of keys.
+    % Abort if the two lists are not the same length, or if a key
+    % does occur more than once in the list of keys.
     %
 :- func from_corresponding_list_lists(list(K), list(list(V)))
     = multi_map(K, V).
