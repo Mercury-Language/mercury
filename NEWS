@@ -200,6 +200,10 @@ Changes to the Mercury compiler:
 * Class files generated for executables in the Java grade are now automatically
   packaged up into Java archives (JARs).
 
+Change to the Mercury debugger:
+
+* Interactive queries are now supported on OS X.
+
 Changes to the extras distribution:
 
 * We have added support for Unicode and other enhancements to the lex and

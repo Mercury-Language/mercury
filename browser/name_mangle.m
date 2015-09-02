@@ -120,7 +120,12 @@ llds_proc_name_mangle(MercuryProc) = LabelName :-
     ),
     string.append("mercury__", LabelName3, LabelName4),
     ( if use_asm_labels then
-        string.append("_entry_", LabelName4, LabelName)
+        % On OS X dlsym will insert the leading underscore for us.
+        % XXX this has been the behaviour of dlsym on OS X since at least
+        % version 10.6, but according to the man page some older versions
+        % didn't do that.
+        EntryPrefix = ( if system_is_osx then "entry_" else "_entry_" ),
+        string.append(EntryPrefix, LabelName4, LabelName)
     else
         LabelName = LabelName4
     ).
@@ -270,6 +275,19 @@ convert_to_valid_c_identifier_2(String, Name) :-
 ").
 use_asm_labels :-
     private_builtin.sorry("use_asm_labels").
+
+:- pred system_is_osx is semidet.
+
+:- pragma foreign_proc("C",
+    system_is_osx,
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+#if defined(MR_MAC_OSX)
+    SUCCESS_INDICATOR = MR_TRUE;
+#else
+    SUCCESS_INDICATOR = MR_FALSE;
+#endif
+").
 
 :- pred high_level_code is semidet.
 
