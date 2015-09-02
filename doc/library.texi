@@ -15,7 +15,7 @@
 This file documents the Mercury standard library, version <VERSION>.
 
 Copyright (C) 1995-1997,1999-2012 The University of Melbourne.
-Copyrigth (C) 2013-2015 The Mercury team.
+Copyright (C) 2013-2015 The Mercury team.
 
 Permission is granted to make and distribute verbatim copies of
 this manual provided the copyright notice and this permission notice
