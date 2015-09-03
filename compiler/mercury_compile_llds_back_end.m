@@ -770,7 +770,7 @@ llds_get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
     % foreign code in this module.
     %
     % XXX The frontend should really handle this but it is quite inconsistent
-    % in its treatement of self-imports. Both this backend (the LLDS)
+    % in its treatment of self-imports. Both this backend (the LLDS)
     % and the MLDS backend currently handle self foreign imports directly.
 
     foreign.filter_decls(UseForeignLanguage, ForeignDeclCodes,

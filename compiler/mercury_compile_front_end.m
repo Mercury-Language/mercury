@@ -51,7 +51,7 @@
             % implement them.
 
     ;       simplify_pass_pre_implicit_parallelism
-            % If implicit parallelism is anbled then perform simplification
+            % If implicit parallelism is enabled then perform simplification
             % before it is applied. This helps ensure that the HLDS matches
             % the feedback data.
 
@@ -254,7 +254,7 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
     % purity.m) and mode analysis would get internal errors. Also mode analysis
     % can loop if there are cyclic insts/modes.
     %
-    % We can't continue if the type inference iteration limit was exceeeded
+    % We can't continue if the type inference iteration limit was exceeded
     % because the code to resolve overloading in post_typecheck.m (called by
     % purity.m) could abort.
     ( FoundUndefModeError = yes ->

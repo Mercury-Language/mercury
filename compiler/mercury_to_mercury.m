@@ -5320,7 +5320,7 @@ mercury_unary_postfix_op(Op) :-
     % none              V_[0-9]*
     % .*'+              V_[0-9]*_.*
     % V_.*              V_V_.*
-    % anthing else          same as original name
+    % anything else     same as original name
 
 mercury_convert_var_name(Name, ConvertedName) :-
     ( if string.remove_suffix(Name, "'", _) then
