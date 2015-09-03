@@ -213,5 +213,12 @@ install_slicer: mslice mdice mtc_union mcov mtc_diff
 		$(INSTALL_MERC_BIN_DIR)/mcov$(EXT_FOR_EXE)
 	cp `vpath_find mtc_diff$(EXT_FOR_EXE)` \
 		$(INSTALL_MERC_BIN_DIR)/mtc_diff$(EXT_FOR_EXE)
+ifeq ($(findstring java,$(GRADE)),java)
+	cp `vpath_find mcov.jar` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mdice.jar` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mslice.jar` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mtc_diff.jar` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mtc_union.jar` $(INSTALL_MERC_BIN_DIR)
+endif
 
 #-----------------------------------------------------------------------------#

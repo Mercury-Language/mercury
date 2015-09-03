@@ -286,6 +286,14 @@ install_cgi_progs: mdprof_cgi mdprof_dump mdprof_test \
 		$(INSTALL_MERC_BIN_DIR)/mdprof_create_feedback
 	cp `vpath_find mdprof_report_feedback$(EXT_FOR_EXE)` \
 		$(INSTALL_MERC_BIN_DIR)/mdprof_report_feedback
+ifeq ($(findstring java,$(GRADE)),java)
+	cp `vpath_find mdprof_cgi.jar` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mdprof_create_feedback.jar` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mdprof_dump.jar` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mdprof_procrep.jar` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mdprof_report_feedback.jar` $(INSTALL_MERC_BIN_DIR)
+	cp `vpath_find mdprof_test.jar` $(INSTALL_MERC_BIN_DIR)
+endif
 
 uninstall:
 	# We try to uninstall mdprof_cgi, but failure to do so is not an
