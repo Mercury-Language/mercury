@@ -25,4 +25,6 @@ bigtest.m:010: Syntax error at token ':-': operator precedence error.
 bigtest.m:012: Error: unrecognized declaration:
 bigtest.m:012:   incorrect_declaration.
 bigtest.m:014: Error: no mode declaration for predicate `p'/1.
+bigtest.m:020: Error: the type name `=' is reserved for the Mercury
+bigtest.m:020:   implementation.
 bigtest.m:020: Error: type parameters must be variables: (t3 = (t1 + t2)).

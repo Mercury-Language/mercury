@@ -2120,6 +2120,26 @@ so overloading should not be over-used.
 @c write it manually.  At this time, the compiler does not have enough
 @c information when making interface files.
 
+Note that user defined types may not have names
+that have meanings in Mercury.
+(Most of these are documented in later sections.)
+
+The list of reserved type names is
+@example
+int
+float
+character
+string
+@{@}
+=
+pred
+func
+pure
+semipure
+impure
+''
+@end example
+
 @node Equivalence types
 @subsection Equivalence types
 

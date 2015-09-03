@@ -42,6 +42,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_io_sym_name.
 
+:- import_module bag.
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
@@ -271,14 +272,20 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
             % fail fast in those cases.
             ( if
                 ArgVars = [_, _ | _], % Optimize the common case.
-                list.sort_and_remove_dups(ArgVars, SortedArgVars),
-                list.length(ArgVars, NumArgVars),
-                list.length(SortedArgVars, NumSortedArgVars),
-                NumArgVars \= NumSortedArgVars
+                bag.from_list(ArgVars, ArgVarsBag),
+                bag.to_list_only_duplicates(ArgVarsBag, DupArgVars),
+                DupArgVars = [_ | _]
             then
-                % XXX Should improve the error message here.
-                RepeatPieces = [words("Error: repeated inst parameters"),
-                    words("in LHS of"), words(DefnKind), suffix("."), nl],
+                ParamWord = choose_number(DupArgVars,
+                    "parameter", "parameters"),
+                IsAreWord = choose_number(DupArgVars,
+                    "is", "are"),
+                DupVarNames =
+                    list.map(mercury_var_to_name_only(VarSet), DupArgVars),
+                RepeatPieces = [words("Error: inst"), words(ParamWord)] ++
+                    list_to_pieces(DupVarNames) ++
+                    [words(IsAreWord), words("in LHS of"), words(DefnKind),
+                    suffix("."), nl],
                 RepeatSpec = error_spec(severity_error,
                     phase_term_to_parse_tree,
                     [simple_msg(HeadTermContext, [always(RepeatPieces)])]),

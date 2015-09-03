@@ -191,6 +191,12 @@
 :- func to_list_without_duplicates(bag(T)) = list(T).
 :- pred to_list_without_duplicates(bag(T)::in, list(T)::out) is det.
 
+    % Given a bag, produce a sorted list containing one copy each
+    % of all the values that have *more* than one copy in the bag.
+    %
+:- func to_list_only_duplicates(bag(T)) = list(T).
+:- pred to_list_only_duplicates(bag(T)::in, list(T)::out) is det.
+
     % Given a bag, produce a set containing all the values in the bag.
     % NOTE_TO_IMPLEMENTORS The _without_duplicates suffix is redundant.
     %
@@ -577,6 +583,18 @@ bag.to_list_without_duplicates(Bag) = Xs :-
 
 bag.to_list_without_duplicates(bag(Map), Xs) :-
     map.keys(Map, Xs).
+
+bag.to_list_only_duplicates(Bag) = Xs :-
+    bag.to_list_only_duplicates(Bag, Xs).
+
+bag.to_list_only_duplicates(bag(Map), DupXs) :-
+    map.to_assoc_list(Map, XNs),
+    list.filter_map(is_duplicated, XNs, DupXs).
+
+:- pred is_duplicated(pair(T, int)::in, T::out) is semidet.
+
+is_duplicated(X - XN, X) :-
+    XN > 1.
 
 bag.to_set(Bag) = bag.to_set_without_duplicates(Bag).
 
