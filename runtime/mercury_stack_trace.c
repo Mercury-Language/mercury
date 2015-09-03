@@ -2426,7 +2426,7 @@ MR_find_first_call_less_eq_seq_or_event(
 
 /*
 ** The different Mercury determinisms are internally represented by integers.
-** This array gives the correspondance with the internal representation and
+** This array gives the correspondence with the internal representation and
 ** the names that are usually used to denote determinisms.
 */
 

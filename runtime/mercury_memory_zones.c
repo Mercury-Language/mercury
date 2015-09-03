@@ -931,7 +931,7 @@ MR_in_zone(const MR_Word *ptr, const MR_MemoryZone *zone)
 
 /****************************************************************************
 **
-** Cacheing of memory zones.
+** Caching of memory zones.
 */
 
 /* Define this macro to test the performance without caching */

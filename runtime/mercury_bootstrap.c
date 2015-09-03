@@ -6,7 +6,7 @@
 
 /*
 ** mercury_bootstrap.c -
-**	Defintions that may be used for bootstrapping purposes.
+**	Definitions that may be used for bootstrapping purposes.
 **
 **	Because the runtime is linked as a library, symbols can be
 **	safely defined here -- if there is a duplicate symbol

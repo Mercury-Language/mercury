@@ -1182,7 +1182,7 @@ MR_trace_print_histogram(FILE *fp, const char *which, int *histogram, int max)
 /**************************************************************************/
 /*
 ** This section of this file deals with statistics about which procedures
-** are respondible for what fraction of I/O table entries.
+** are responsible for what fraction of I/O table entries.
 */
 
 #define MR_IO_TABLE_STATS_HASH_TABLE_SIZE 1024

@@ -1312,7 +1312,7 @@ extern  void    MR_commit_success_destroy_marked_new_regions(
 ** in the disj frame causes changes at other places. From the snapshot
 ** information (as it is now) we can only compute the old value correctly if
 ** there is no wasteful space at the end of the region's pages. Therefore the
-** allocated_size sometimes is not realiable.
+** allocated_size sometimes is not reliable.
 */
 
 #ifdef      MR_RBMM_USE_MACROS

@@ -173,7 +173,7 @@
         MR_PseudoTypeInfo   MR_pti_fixed_arity_arg_pseudo_typeinfos[ARITY]; \
     }
 
-/* Tuple types also use the higher-order pseude-type-info structure. */
+/* Tuple types also use the higher-order pseudo-type-info structure. */
 #define MR_VAR_ARITY_PSEUDOTYPEINFO_STRUCT(NAME, ARITY)                 \
     struct NAME {                                                       \
         MR_TypeCtorInfo     MR_pti_type_ctor_info;                      \
@@ -1279,7 +1279,7 @@ struct MR_TypeCtorInfo_Struct {
 ** The reserve tag flag is set iff the type constructor has reserved the
 ** standard primary tag value for representing a variable.
 **
-** The variable arity flag is set for builting constructors whose arity is
+** The variable arity flag is set for builtin constructors whose arity is
 ** variable: at moment, this means functions, predicates and tuples.
 **
 ** The kind of du flag is set for all discriminated union types, even if

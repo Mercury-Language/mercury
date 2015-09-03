@@ -68,7 +68,7 @@ MR_untrail_to(MR_TrailEntry *old_trail_ptr, MR_untrail_reason reason)
             ** When we are using trail segments it is possible that
             ** `old_trail_ptr' is not a location on the current trail segment.
             ** We need to walk backwards through all the previous segments
-            ** (invoking function trail entires as we go) until we find it.
+            ** (invoking function trail entries as we go) until we find it.
             */
             #if defined(MR_TRAIL_SEGMENTS)
                 if (tr_ptr == tr_base

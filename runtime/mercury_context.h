@@ -16,7 +16,7 @@
 ** Each context is represented by a value of type MR_Context,
 ** which contains a detstack, a nondetstack, a trail (if needed), the various
 ** pointers that refer to them, a succip, and a thread-resumption continuation.
-** Contexts are initally stored in a free-list.
+** Contexts are initially stored in a free-list.
 ** When one is running, the POSIX thread that is executing it has a pointer
 ** to its context structure `this_context'. (WARNING: code that manipulates
 ** contexts must set this_context itself; it cannot rely on the generic
@@ -468,7 +468,7 @@ extern  MR_Context  *MR_create_context(const char *id,
 ** saves important book-keeping information, like the stack pointer and current
 ** stack segment.  If you do not call these then an old, and since freed (or
 ** re-used elsewhere) stack segment may still be referenced by the context.  If
-** that context is re-used later then it will clober another context's stack!
+** that context is re-used later then it will clobber another context's stack!
 */
 extern  void        MR_release_context(MR_Context *context);
 

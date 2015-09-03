@@ -763,7 +763,7 @@ MR_create3_func(MR_Word w1, MR_Word w2, MR_Word w3)
 #endif /* ! MR_HIGHLEVEL_CODE */
 
 /*
-** Indended for use in handwritten C code where the Mercury registers
+** Intended for use in handwritten C code where the Mercury registers
 ** may have been clobbered due to C function calls (eg, on the SPARC due
 ** to sliding register windows).
 ** Remember to MR_save_transient_hp() before calls to such code, and

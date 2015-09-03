@@ -68,7 +68,7 @@ existing RTTI data structures), on the documentation, etc.
 
 If there are no major objections, I will commit a version of this file,
 unused but enhanced with macros that will allow the runtime to distinguish
-the data structures used by the old RTI design from those used by the new,
+the data structures used by the old RTTI design from those used by the new,
 in the runtime. DJ can then update the compiler to generate the new RTTI
 structures and the runtime to handle the new RTTI structures as well as the old
 (for bootstrapping). After that, I will add the functionality required to

@@ -258,7 +258,7 @@ extern  void        MR_STM_unsafe_write_var(MR_STM_Var *var, MR_Word value);
 
 /*
 ** Blocks a thread from execution. This method is called by the thread
-** which is to be blocked. The STM lock MUST be aquired by the thread
+** which is to be blocked. The STM lock MUST be acquired by the thread
 ** before this method is called and acquires the lock when the thread
 ** is signalled.
 */

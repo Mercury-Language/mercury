@@ -251,7 +251,7 @@ resize_and_reset_gc_threshold(MR_MemoryZone *old_heap, MR_MemoryZone *new_heap)
 **      We do this by replacing the succip that is saved in
 **      the current procedure's stack frame with the address
 **      of the garbage collector.  When the current procedure
-**      returns, it will call the garbage collectior.
+**      returns, it will call the garbage collector.
 **
 **      (We go to this trouble because then the stacks will
 **      be in a known state -- each stack frame is described

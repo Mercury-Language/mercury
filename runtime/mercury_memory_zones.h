@@ -290,7 +290,7 @@ extern void             MR_debug_memory(FILE *fp);
 extern void             MR_debug_memory_zone(FILE *fp, MR_MemoryZone *zone);
 
 /*
-** MR_next_offset() returns sucessive offsets across the primary cache.
+** MR_next_offset() returns successive offsets across the primary cache.
 ** Useful when calling {create,construct}_zone().
 */
 

@@ -269,7 +269,7 @@ MR_do_cpu_feature_detection(void)
         family = basic_family;
     }
     /*
-    ** I'm not using the model value but I'll leave the code here incase we
+    ** I'm not using the model value but I'll leave the code here in case we
     ** have a reason to use it in the future.
     */
     /* bits 4-7 */

@@ -188,8 +188,8 @@ extern	void 	MR_ensure_big_enough_buffer(char **buffer_ptr,
 ** MR_weak_ptr_read(weak_ptr):
 **  Dereference a weak pointer.  Returns NULL of the pointed to object has
 **  been deallocated.  If weak_ptr is NULL then NULL is returned, so the
-**  programmer doesn't need to do an extra NULL check incase their pointer
-**  is deliberatly NULL;
+**  programmer doesn't need to do an extra NULL check in case their pointer
+**  is deliberately NULL;
 */
 
 extern	void	*MR_GC_malloc(size_t num_bytes);

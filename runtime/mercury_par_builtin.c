@@ -142,7 +142,7 @@ MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
 
     /*
     ** We have to determine if we're either the last of first workers to
-    ** finish.  To do this we cannot use atomic decrment since we need to do
+    ** finish.  To do this we cannot use atomic decrement since we need to do
     ** more than one comparison, Therefore we use a CAS.
     */
     last_worker =
@@ -150,7 +150,7 @@ MR_lc_join(MR_LoopControl *lc, MR_Unsigned lcs_idx)
 
     /*
     ** If this is the last worker to finish, then take the lock before checking
-    ** the master context feild, otherwise we might race and end up never
+    ** the master context field, otherwise we might race and end up never
     ** resuming the master.
     */
     if (last_worker) {

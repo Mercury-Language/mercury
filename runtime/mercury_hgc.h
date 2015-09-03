@@ -87,7 +87,7 @@ extern void
 MR_hgc_free(void *p);
 
 /*
-** Force a garbage collection.  This should be unneccessary in normal
+** Force a garbage collection.  This should be unnecessary in normal
 ** practice.
 */
 extern void

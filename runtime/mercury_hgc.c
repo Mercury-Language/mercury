@@ -1092,7 +1092,7 @@ mark_from_C_stack(void)
 }
 
 /*
-** Mark any cells referred to in registers.  This is currenty very Linux
+** Mark any cells referred to in registers.  This is currently very Linux
 ** centric.
 */
 static void

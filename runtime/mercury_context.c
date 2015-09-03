@@ -442,7 +442,7 @@ MR_reset_available_cpus(void)
     ** Set the available processors to the union of inherited_binding and the
     ** cpuset we're allowed to use as reported by libhwloc.  In my tests with
     ** libhwloc_1.0-1 (Debian) hwloc reported that all cpus on the system are
-    ** avaliable, it didn't exclude cpus not in the processor's cpuset(7).
+    ** available, it didn't exclude cpus not in the processor's cpuset(7).
     */
     if (MR_hw_available_pus == NULL) {
         MR_hw_available_pus = hwloc_bitmap_alloc();
@@ -2920,7 +2920,7 @@ MR_do_join_and_continue(MR_SyncTerm *jnc_st, MR_Code *join_label)
             ** indicate that it is ready.
             */
             while (jnc_st->MR_st_orig_context->MR_ctxt_resume != join_label) {
-                /* XXX: Need to configure using sched_yeild or spin waiting */
+                /* XXX: Need to configure using sched_yield or spin waiting */
                 MR_ATOMIC_PAUSE;
             }
             /*

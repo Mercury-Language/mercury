@@ -288,7 +288,7 @@ print_addr_pair_node(FILE *fptr, prof_call_node *node)
 /*
 ** prof_output_addr_decl:
 **
-** Ouputs an entry label name and its corresponding machine address to a file
+** Outputs an entry label name and its corresponding machine address to a file
 ** called "Prof.Decl". This is called from insert_entry() in mercury_label.c.
 */
 

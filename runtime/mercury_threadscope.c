@@ -539,7 +539,7 @@ static EventTypeDesc event_type_descs[] = {
         MR_TS_EVENT_GC_GLOBAL_SYNC,
         /*
         ** If using parallel marking this also means that marker threads are
-        ** ready.  This doesn't apply to Mercury as Boehm uses seperate
+        ** ready.  This doesn't apply to Mercury as Boehm uses separate
         ** threads
         */
         "The world has stopped and GC may begin",
@@ -640,7 +640,7 @@ static EventTypeDesc event_type_descs[] = {
     },
     {
         /*
-        ** The runtime system is re-useing a previous context and
+        ** The runtime system is re-using a previous context and
         ** re-assigning its ID.
         */
         MR_TS_MER_EVENT_REUSE_THREAD,
@@ -670,7 +670,7 @@ static char* MR_threadscope_output_filename;
 
 /*
 ** The TSC value recorded when the primordial thread called
-** MR_setup_threadscope(), this is used retroactivly to initialise the
+** MR_setup_threadscope(), this is used retroactively to initialise the
 ** MR_eng_cpu_clock_ticks_offset field in the engine structure once it is
 ** created.
 */
@@ -681,7 +681,7 @@ static Timedelta        MR_global_offset;
 static struct MR_threadscope_event_buffer global_buffer;
 
 /*
-** Alternativly we use gettimeofday for measuring time.
+** Alternatively, we use gettimeofday for measuring time.
 */
 MR_bool                 MR_threadscope_use_tsc = MR_FALSE;
 static Timedelta        MR_gettimeofday_offset;
@@ -700,7 +700,7 @@ static MR_EngSetId
 get_next_engset_id(void)
 {
     /*
-    ** This is a seperate function as I may have to add locking or atomic ops
+    ** This is a separate function as I may have to add locking or atomic ops
     ** later.
     */
     return next_engset_id++;
@@ -810,7 +810,7 @@ MR_STATIC_INLINE void put_raw_string(
 }
 
 /*
-** Put a string in the given buffer. The string will be preceeded
+** Put a string in the given buffer. The string will be preceded
 ** by a 16 bit integer giving the string's length.
 */
 MR_STATIC_INLINE void put_string_size16(
@@ -824,7 +824,7 @@ MR_STATIC_INLINE void put_string_size16(
 }
 
 /*
-** Put a string in the given buffer. The string will be preceeded
+** Put a string in the given buffer. The string will be preceded
 ** by a 32 bit integer giving the string's length.
 */
 MR_STATIC_INLINE void put_string_size32(
@@ -1487,7 +1487,7 @@ MR_threadscope_post_steal_spark(MR_SparkId spark_id)
 
     /*
     ** The engine that created the spark (which may not be whom it was stolen
-    ** from if different work-stealking algorithms are implemented) can be
+    ** from if different work-stealing algorithms are implemented) can be
     ** derived from the spark id.
     */
     engine_id = (spark_id & 0xFF000000) >> 24;
@@ -2130,7 +2130,7 @@ start_gc_callback(void)
         }
 
         /*
-        ** Idealy this event should be posted after the world has stopped.
+        ** Ideally this event should be posted after the world has stopped.
         ** Doing so means adding more instrumentation into Boehm.
         */
         put_event_header(buffer, MR_TS_EVENT_GC_GLOBAL_SYNC,

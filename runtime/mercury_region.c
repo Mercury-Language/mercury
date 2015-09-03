@@ -307,7 +307,7 @@ MR_region_destroy_region(MR_RegionHeader *region)
 **  before the ite, which means that it is not disj-protected before the ite
 **  - from the start of this ite to this point (i.e., during the condition) it
 **  cannot be disj-protected by any disjunctions. This is because this
-**  condition is semidet and cannot contain nondet disjuncitons. If it contains
+**  condition is semidet and cannot contain nondet disjunctions. If it contains
 **  semidet disjunctions, at this point they must succeed and therefore the
 **  region is not disj-protected for them.
 */

@@ -42,7 +42,7 @@
 
 /*
 ** This include must come before anything else that might include <signal.h>.
-** See the commments in mercury_signal.h.
+** See the comments in mercury_signal.h.
 */
 #include "mercury_signal.h"
 

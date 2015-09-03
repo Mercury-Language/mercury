@@ -511,7 +511,7 @@ extern MR_Bool MR_lc_try_get_free_slot(MR_LoopControl *lc,
         }                                                                   \
         /*                                                                  \
         ** Reset the stack pointer of the context, it may have been left    \
-        ** in an inconsitent state.                                         \
+        ** in an inconsistent state.                                        \
         */                                                                  \
         (lc)->MR_lc_slots[i].MR_lcs_context->MR_ctxt_sp =                   \
             (lc)->MR_lc_slots[i].MR_lcs_context->                           \
