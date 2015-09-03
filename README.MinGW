@@ -41,7 +41,7 @@ To build the source distribution under MSYS follow these steps:
     on the MinGW website.
 
     To build a verison of the Mercury compiler that generates 64-bit
-    exeutables using the MSYS shell, you will need to install the
+    executables using the MSYS shell, you will need to install the
     MinGW-w64 version of GCC (available from <http://mingw-w64.org>) and
     ensure that it occurs in your PATH before the MinGW GCC.
 
