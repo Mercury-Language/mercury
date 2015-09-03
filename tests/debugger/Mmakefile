@@ -346,12 +346,12 @@ dice.pass1: dice
 	MERCURY_OPTIONS=--trace-count ./dice 1 2 3 4 && \
 	mv .mercury_trace_counts.*dice.* dice.pass1
 
-dice.pass2: dice
+dice.pass2: dice dice.pass1
 	/bin/rm -f .mercury_trace_counts.*dice.*
 	MERCURY_OPTIONS=--trace-count ./dice 5 6 7 8 && \
 	mv .mercury_trace_counts.*dice.* dice.pass2
 
-dice.pass3: dice
+dice.pass3: dice dice.pass2
 	/bin/rm -f .mercury_trace_counts.*dice.*
 	MERCURY_OPTIONS=--trace-count ./dice 10 11 100 && \
 	mv .mercury_trace_counts.*dice.* dice.pass3
@@ -360,7 +360,7 @@ dice.passes: dice.pass1 dice.pass2 dice.pass3
 	MERCURY_OPTIONS= \
 	$(SLICE_DIR)mtc_union -o dice.passes dice.pass1 dice.pass2 dice.pass3
 
-dice.fail: dice
+dice.fail: dice dice.passes
 	/bin/rm -f .mercury_trace_counts.*dice.*
 	MERCURY_OPTIONS=--trace-count ./dice 4 1 2 3 && \
 	mv .mercury_trace_counts.*dice.* dice.fail
