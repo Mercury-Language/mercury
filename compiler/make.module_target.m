@@ -668,7 +668,17 @@ call_mercury_compile_main(Globals, Args, Succeeded, !IO) :-
 
 invoke_mmc(Globals, ErrorStream, MaybeArgFileName, Args, Succeeded, !IO) :-
     io.progname("", ProgName, !IO),
-    ( ProgName = "" ->
+    ( if
+        % NOTE: if the compiler is built in the Java grade then ProgName will
+        % be set to "top_level" (which was the name compiled into the module
+        % containing the predicate main/2).   We don't want to attempt to
+        % invoke an executable named "top_level" however, since the wrapper
+        % script will have been renamed to "mercury_compile" by the Mmakefile
+        % in the compiler directory.
+        ( ProgName = ""
+        ; target_is_java
+        )
+    then
         io.get_environment_var("MERCURY_COMPILER", MaybeMercuryCompiler, !IO),
         (
             MaybeMercuryCompiler = yes(MercuryCompiler)
@@ -676,7 +686,7 @@ invoke_mmc(Globals, ErrorStream, MaybeArgFileName, Args, Succeeded, !IO) :-
             MaybeMercuryCompiler = no,
             MercuryCompiler = "mmc"
         )
-    ;
+    else
         MercuryCompiler = ProgName
     ),
 
@@ -715,13 +725,23 @@ invoke_mmc(Globals, ErrorStream, MaybeArgFileName, Args, Succeeded, !IO) :-
     ;
         ArgFileOpenRes = error(Error),
         Succeeded = no,
-        io.write_string("Error opening `", !IO),
-        io.write_string(ArgFileName, !IO),
-        io.write_string("' for output: ", !IO),
-        io.write_string(io.error_message(Error), !IO),
-        io.nl(!IO)
+        io.error_message(Error, ErrorMsg),
+        io.format("Error opening `%s' for output: %s\n",
+            [s(ArgFileName), s(ErrorMsg)], !IO)
     ),
     io.remove_file(ArgFileName, _, !IO).
+
+:- pred target_is_java is semidet.
+
+:- pragma foreign_proc("Java",
+    target_is_java,
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    SUCCESS_INDICATOR = true;
+").
+
+target_is_java :-
+    semidet_fail.
 
 %-----------------------------------------------------------------------------%
 
