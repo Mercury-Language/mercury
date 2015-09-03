@@ -130,6 +130,7 @@ report_eval_error(unexpected_const(Const), !IO) :-
         io.write_string("""", !IO)
     ;
         ( Const = term.integer(_)
+        ; Const = term.big_integer(_, _)
         ; Const = term.atom(_)
         ; Const = term.implementation_defined(_)
         ),
@@ -161,10 +162,12 @@ eval_expr(CalcInfo, VarSet, term.functor(term.atom(Op), Args, _)) = Res :-
         throw(unknown_operator(Op, list.length(Args)))
     ).
 eval_expr(_, _, term.functor(term.integer(Int), _, _)) = Int.
+eval_expr(_, _, term.functor(term.big_integer(Base, BigInt), _, Context)) =
+    throw(unexpected_const(term.big_integer(Base, BigInt)) - Context).
 eval_expr(_, _, term.functor(term.float(Float), _, Context)) =
-        throw(unexpected_const(term.float(Float)) - Context).
+    throw(unexpected_const(term.float(Float)) - Context).
 eval_expr(_, _, term.functor(term.string(String), _, Context)) =
-        throw(unexpected_const(term.string(String)) - Context).
+    throw(unexpected_const(term.string(String)) - Context).
 eval_expr(_,  _, term.functor(ImplDefConst, _, Context)) = _ :-
     ImplDefConst = term.implementation_defined(_),
     throw(unexpected_const(ImplDefConst) - Context).
@@ -193,7 +196,7 @@ eval_binop("//", Num1, Num2) = Num1 // Num2.
 
 :- pred calculator2.ops_table(string::in, op_info::out, list(op_info)::out)
     is semidet.
-  
+
 calculator2.ops_table("//", op_info(infix(y, x), 400), []).
 calculator2.ops_table("*",  op_info(infix(y, x), 400), []).
 calculator2.ops_table("+",  op_info(infix(y, x), 500),
@@ -203,7 +206,7 @@ calculator2.ops_table("-",  op_info(infix(y, x), 500),
 calculator2.ops_table("=", op_info(infix(x, x), 700), []).
 
 :- instance ops.op_table(calculator_op_table) where [
-    
+
     ( ops.lookup_infix_op(_, Op, Priority, LeftAssoc, RightAssoc) :-
         calculator2.ops_table(Op, Info, _),
         Info = op_info(infix(LeftAssoc, RightAssoc), Priority)
@@ -224,7 +227,7 @@ calculator2.ops_table("=", op_info(infix(x, x), 700), []).
     ops.lookup_op(Table, Op) :-
         ops.lookup_binary_prefix_op(Table, Op, _, _, _),
     ops.lookup_op(Table, Op) :- ops.lookup_postfix_op(Table, Op, _, _),
-    
+
     ops.lookup_op_infos(_, Op, OpInfo, OtherInfos) :-
         calculator2.ops_table(Op, OpInfo, OtherInfos),
 
