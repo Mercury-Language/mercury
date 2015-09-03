@@ -1860,61 +1860,87 @@ then
     fi
 fi
 
+echo "-----------------------------------------------------------------------"
+
 if test "$diff_status" != 0
 then
-    echo "error exit: stages 2 and 3 differ"
+    echo "ERROR EXIT: stages 2 and 3 differ"
     exitstatus=1
 fi
 
 if test "$mdb_command_test_inp_status" != 0
 then
 
-    echo "error exit: unexpected change in" \
+    echo "ERROR EXIT: unexpected change in" \
         "${tests_prefix}tests/debugger/mdb_command_test.inp"
     exitstatus=1
 fi
 
 if test "$test_status" != 0
 then
-    echo "error exit: some tests failed"
+    echo "ERROR EXIT: some tests failed"
     exitstatus=1
 fi
 
 if test "$extras_status" != 0
 then
-    echo "error exit: some tests failed in extras"
+    echo "ERROR EXIT: some tests failed in extras"
     exitstatus=1
 fi
 
 if test "$check_namespace_status" != 0
 then
-    echo "error exit: some namespace isn't clean"
+    echo "ERROR EXIT: some namespace isn't clean"
     exitstatus=1
 fi
 
 if test -s $tests_dir/NOMAKE_DIRS
 then
-    echo "error exit: some test directories were left out"
+    echo "ERROR EXIT: some test directories were left out"
     cat $tests_dir/NOMAKE_DIRS
     exitstatus=1
 fi
 
 if test -s $tests_dir/FAILED_TESTS_SUMMARY
 then
-    if test -s $tests_dir/EXPECTED_FAILED_TESTS
-    then
-        echo expected test case failures:
-        cat $tests_dir/EXPECTED_FAILED_TESTS
-        wc -l $tests_dir/EXPECTED_FAILED_TESTS
-    fi
+    num_expected_failures=`cat $tests_dir/EXPECTED_FAILED_TESTS | wc -l`
+    case "${num_expected_failures}" in
+        0)
+            ;;
+        1)
+            echo "one expected test case failure:"
+            echo
+            cat $tests_dir/EXPECTED_FAILED_TESTS | sed -e 's/^/    /'
+            echo
+            ;;
+        *)
+            echo "${num_expected_failures} expected test case failures:"
+            echo
+            cat $tests_dir/EXPECTED_FAILED_TESTS | sed -e 's/^/    /'
+            echo
+            ;;
+    esac
 
-    if test -s $tests_dir/UNEXPECTED_FAILED_TESTS
-    then
-        echo unexpected test case failures:
-        cat $tests_dir/UNEXPECTED_FAILED_TESTS
-        wc -l $tests_dir/UNEXPECTED_FAILED_TESTS
-    fi
+    num_unexpected_failures=`cat $tests_dir/UNEXPECTED_FAILED_TESTS | wc -l`
+    case "${num_unexpected_failures}" in
+        0)
+            ;;
+        1)
+            echo "one unexpected test case failure:"
+            echo
+            cat $tests_dir/UNEXPECTED_FAILED_TESTS | sed -e 's/^/    /'
+            echo
+            ;;
+        *)
+            echo "${num_unexpected_failures} unexpected test case failures:"
+            echo
+            cat $tests_dir/UNEXPECTED_FAILED_TESTS | sed -e 's/^/    /'
+            echo
+            ;;
+    esac
 fi
+
+echo "-----------------------------------------------------------------------"
 
 echo "finishing at `date`"
 exit $exitstatus
