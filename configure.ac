@@ -381,6 +381,9 @@ then
             q(T, _),
             get_global_var(Global, !IO),
             (
+                % If you change the minimum RTTI version, you also
+                % need to update the Mercury clause for return_rtti_version
+                % below.
                 Version >= 8,
                 ac(2) ^ elem(3, 5) = 17,
                 (1 .. 2) = [[1, 2]],
@@ -457,6 +460,10 @@ then
         "
             Version = MR_RTTI_VERSION;
         ").
+
+        % XXX the non-C backends do not currently define an equivalent
+        % to MR_RTTI_VERSION.
+        return_rtti_version(8).
 
         % The code below is the hard_coded/disjs_in_switch test case.
         % The compiler now depends on the installed compiler handling
