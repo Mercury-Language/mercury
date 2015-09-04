@@ -58,6 +58,10 @@ DEBUGGER_SCRIPTS = $(CONF_DEBUG_SCRIPTS) 	\
 
 EMACS_SCRIPTS = gud.el
 
+JAVA_WRAPPER_SCRIPTS = \
+	mercury_compile	\
+	mfilterjavac
+
 #-----------------------------------------------------------------------------#
 
 # .SUFFIXES: .in
@@ -137,6 +141,11 @@ install_scripts: $(SCRIPTS) install_dirs
 	done
 	cp *.in *.sh-subr $(SCRIPTS) $(INSTALL_RECONF_DIR)/scripts
 	-rm -f $(INSTALL_BINDIR)/mmake.old
+ifeq ($(findstring java,$(GRADE)),java)
+	for file in $(JAVA_WRAPPER_SCRIPTS); do \
+		cp $$file.sh-java $(INSTALL_MERC_BIN_DIR)/$$file ;\
+	done
+endif
 
 .PHONY: install_config
 install_config: Mercury.config install_dirs

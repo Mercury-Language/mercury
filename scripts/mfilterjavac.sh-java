@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# This script invokes the _installed_ version of the mfilterjavac when it
+# is built in the Java grade.
+
+DIR=${0%/*}
+DIR=$( cd "${DIR}" && pwd -P )
+case $WINDIR in
+   '') SEP=':' ;;
+   *)  SEP=';' ;;
+esac
+JARDIR="$DIR/../lib/mercury/lib/java"
+CLASSPATH="$DIR/mfilterjavac.jar"${SEP}$CLASSPATH${SEP}$JARDIR/mer_rt.jar${SEP}$JARDIR/mer_std.jar${SEP}$JARDIR/mer_browser.jar${SEP}$JARDIR/mer_mdbcomp.jar
+export CLASSPATH
+JAVA=${JAVA:-java}
+exec "$JAVA" jmercury.mfilterjavac "$@"

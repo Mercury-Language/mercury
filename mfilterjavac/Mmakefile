@@ -135,13 +135,17 @@ realclean_local:
 
 # Installation target
 
-.PHONY: install
+# See the comment above the 'install_compiler' target in compiler/Mmakefile
+# for the reasons why we handle the java grade specially here.
+#
+ifeq ($(findstring java,$(GRADE)),java)
+INSTALL_PROGRAM=mfilterjavac.jar
+else
+INSTALL_PROGRAM=mfilterjavac$(EXT_FOR_EXE)
+endif
+
 install: mfilterjavac
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
-	cp `vpath_find mfilterjavac$(EXT_FOR_EXE)` \
-		$(INSTALL_MERC_BIN_DIR)/mfilterjavac$(EXT_FOR_EXE)
-ifeq ($(findstring java,$(GRADE)),java)
-	cp `vpath_find mfilterjavac.jar` $(INSTALL_MERC_BIN_DIR)
-endif
+	cp `vpath_find $(INSTALL_PROGRAM)` $(INSTALL_MERC_BIN_DIR)/$(INSTALL_PROGRAM)
 
 #-----------------------------------------------------------------------------#

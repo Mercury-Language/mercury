@@ -261,11 +261,22 @@ install_mercury: install_compiler
 install_dirs:
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
 
+# If the compiler is built in the Java grade then we need to install Java
+# archive containing its class files (currently called top_level.jar), but
+# *not* the generated wrapper script 'mercury_compile' from this directory.
+# The latter will set the CLASSPATH variable relative to this directory and
+# won't work when moved to the installation directory.  Instead we use the
+# version of the wrapper script from the scripts directory and leave the
+# one here alone.
+#
+ifeq ($(findstring java,$(GRADE)),java)
+INSTALL_PROGRAM=top_level.jar
+else
+INSTALL_PROGRAM=mercury_compile$(EXT_FOR_EXE)
+endif
+
 .PHONY: install_compiler
 install_compiler: mercury_compile install_dirs
-	cp `vpath_find mercury_compile$(EXT_FOR_EXE)` $(INSTALL_MERC_BIN_DIR)
-ifeq ($(findstring java,$(GRADE)),java)
-	cp `vpath_find top_level.jar` $(INSTALL_MERC_BIN_DIR)
-endif
+	cp `vpath_find $(INSTALL_PROGRAM)` $(INSTALL_MERC_BIN_DIR)
 
 #-----------------------------------------------------------------------------#
