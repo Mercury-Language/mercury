@@ -58,6 +58,12 @@
 
 #if defined(CAIRO_HAS_SVG_SURFACE)
   #include <cairo-svg.h>
+#else
+  /* These are unlikely to change. */
+  enum {
+    CAIRO_SVG_VERSION_1_1,
+    CAIRO_SVG_VERSION_1_2
+  };
 #endif
 
 ").

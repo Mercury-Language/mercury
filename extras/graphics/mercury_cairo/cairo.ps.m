@@ -96,6 +96,12 @@
 
 #if defined(CAIRO_HAS_PS_SURFACE)
   #include <cairo-ps.h>
+#else
+  /* These are unlikely to change. */
+  enum {
+    CAIRO_PS_LEVEL_2,
+    CAIRO_PS_LEVEL_3
+  };
 #endif
 
 ").
@@ -117,7 +123,7 @@
    [promise_pure, will_not_call_mercury],
 "
 #if defined(CAIRO_HAS_PS_SURFACE)
-   SUCCESS_INDICATOR = MR_TRUE;
+    SUCCESS_INDICATOR = MR_TRUE;
 #else
     SUCCESS_INDICATOR = MR_FALSE;
 #endif
@@ -203,47 +209,58 @@ create_surface(FileName, Width, Height, Surface, !IO) :-
     set_eps(Surface::in, EPS::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
+#if defined(CAIRO_HAS_PS_SURFACE)
     cairo_ps_surface_set_eps(Surface->mcairo_raw_surface,
         (EPS = MR_YES ? 1 : 0));
+#endif
 ").
 
 :- pragma foreign_proc("C",
     get_eps(Surface::in, EPS::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
-    if (cairo_ps_surface_get_eps(Surface->mcairo_raw_surface)) {
-        EPS = MR_YES;
-    } else {
-        EPS = MR_NO;
-    }
+#if defined(CAIRO_HAS_PS_SURFACE)
+    EPS = cairo_ps_surface_get_eps(Surface->mcairo_raw_surface)
+        ? MR_YES : MR_NO;
+#else
+    EPS = MR_NO;
+#endif
 ").
 
 :- pragma foreign_proc("C",
     set_size(Surface::in, W::in, H::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
+#if defined(CAIRO_HAS_PS_SURFACE)
     cairo_ps_surface_set_size(Surface->mcairo_raw_surface, W, H);
+#endif
 ").    
 
 :- pragma foreign_proc("C",
     dsc_begin_setup(Surface::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
+#if defined(CAIRO_HAS_PS_SURFACE)
     cairo_ps_surface_dsc_begin_setup(Surface->mcairo_raw_surface);
+#endif
 ").
 
 :- pragma foreign_proc("C",
     dsc_begin_page_setup(Surface::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
+#if defined(CAIRO_HAS_PS_SURFACE)
     cairo_ps_surface_dsc_begin_page_setup(Surface->mcairo_raw_surface);
+#endif
 ").
 
 :- pragma foreign_proc("C",
     dsc_comment(Surface::in, Comment::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
+#if defined(CAIRO_HAS_PS_SURFACE)
     cairo_ps_surface_dsc_comment(Surface->mcairo_raw_surface, Comment);
+#endif
 ").
 
 %---------------------------------------------------------------------------%
