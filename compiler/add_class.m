@@ -90,11 +90,11 @@ module_add_class_defn(ItemTypeClassInfo, Status, !ModuleInfo, !Specs) :-
         ImportStatus1 = ImportStatus0
     ),
     HLDSFunDeps = list.map(make_hlds_fundep(Vars), FunDeps),
-    (
+    ( if
         % The typeclass is exported if *any* occurrence is exported,
         % even a previous abstract occurrence.
         map.search(Classes0, ClassId, OldDefn)
-    ->
+    then
         OldDefn = hlds_class_defn(OldStatus, OldConstraints, OldFunDeps,
             _OldAncestors, OldVars, _OldKinds, OldInterface, OldMethods,
             OldVarSet, OldContext),
@@ -108,41 +108,41 @@ module_add_class_defn(ItemTypeClassInfo, Status, !ModuleInfo, !Specs) :-
             ClassMethods0 = [],
             ClassInterface = Interface
         ),
-        (
+        ( if
             % Check that the superclass constraints are identical
-            \+ constraints_are_identical(OldVars, OldVarSet,
+            not constraints_are_identical(OldVars, OldVarSet,
                 OldConstraints, Vars, VarSet, Constraints)
-        ->
+        then
             % Always report the error, even in `.opt' files.
             DummyStatus = status_local,
             Extras = [words("The superclass constraints do not match."), nl],
             multiple_def_error(DummyStatus, Name, ClassArity, "typeclass",
                 Context, OldContext, Extras, !Specs),
-            ErrorOrPrevDef = yes
-        ;
-            \+ class_fundeps_are_identical(OldFunDeps, HLDSFunDeps)
-        ->
+            ErrorOrPrevDef = yes : bool
+        else if
+            not class_fundeps_are_identical(OldFunDeps, HLDSFunDeps)
+        then
             % Always report the error, even in `.opt' files.
             DummyStatus = status_local,
             Extras = [words("The functional dependencies do not match."), nl],
             multiple_def_error(DummyStatus, Name, ClassArity, "typeclass",
                 Context, OldContext, Extras, !Specs),
-            ErrorOrPrevDef = yes
-        ;
+            ErrorOrPrevDef = yes : bool
+        else if
             Interface = class_interface_concrete(_),
             OldInterface = class_interface_concrete(_)
-        ->
+        then
             multiple_def_error(ImportStatus, Name, ClassArity,
                 "typeclass", Context, OldContext, [], !Specs),
-            ErrorOrPrevDef = yes
-        ;
-            ErrorOrPrevDef = no
+            ErrorOrPrevDef = yes : bool
+        else
+            ErrorOrPrevDef = no : bool
         ),
 
-        IsNewDefn = no
-    ;
-        IsNewDefn = yes `with_type` bool,
-        ErrorOrPrevDef = no `with_type` bool,
+        IsNewDefn = no : bool
+    else
+        IsNewDefn = yes : bool,
+        ErrorOrPrevDef = no : bool,
         ClassMethods0 = [],
         ClassInterface = Interface,
         ImportStatus = ImportStatus1
@@ -213,9 +213,9 @@ make_hlds_fundep_2(TVars, List) = list.foldl(Func, List, set.init) :-
 get_list_index([], _, _) = _ :-
     unexpected($module, $pred, "element not found").
 get_list_index([E | Es], N, X) =
-    ( X = E ->
+    ( if X = E then
         N
-    ;
+    else
         get_list_index(Es, N + 1, X)
     ).
 
@@ -313,11 +313,11 @@ add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
             PredId = HeadPredId,
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             pred_info_get_markers(PredInfo, PredMarkers),
-            ( check_marker(PredMarkers, marker_class_method) ->
+            ( if check_marker(PredMarkers, marker_class_method) then
                 module_add_class_method(Method, Name, Vars, Status,
                     PredProcId, !ModuleInfo, !Specs),
                 list.cons(PredProcId, !PredProcIds)
-            ;
+            else
                 % XXX It may also be worth reporting that although there
                 % wasn't a matching class method, there was a matching
                 % predicate/function.
@@ -422,7 +422,8 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
         module_info_get_predicate_table(!.ModuleInfo, PredTable),
         predicate_table_lookup_pf_m_n_a(PredTable, is_fully_qualified,
             PorF, ModuleName, Name, PredArity, PredIds),
-        ( PredIds = [PredId] ->
+        (
+            PredIds = [PredId],
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
             (
                 PorF = pf_function,
@@ -438,13 +439,16 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
             ;
                 PorF = pf_predicate,
                 pred_info_get_proc_table(PredInfo0, Procs),
-                ( map.is_empty(Procs) ->
+                ( if map.is_empty(Procs) then
                     pred_method_with_no_modes_error(PredInfo0, !Specs)
-                ;
+                else
                     true
                 )
             )
         ;
+            ( PredIds = []
+            ; PredIds = [_, _ | _]
+            ),
             unexpected($module, $pred, "number of preds != 1")
         )
     ;
@@ -460,7 +464,7 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
     list.length(Types, ClassArity),
     ClassId = class_id(ClassName, ClassArity),
     expand_bang_states_instance_body(Body0, Body),
-    ( map.search(Classes, ClassId, _) ->
+    ( if map.search(Classes, ClassId, _) then
         map.init(Empty),
         NewInstanceDefn = hlds_instance_defn(InstanceModuleName, Status,
             Context, Constraints, Types, OriginalTypes, Body, no,
@@ -475,7 +479,7 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
         map.det_update(ClassId, [NewInstanceDefn | InstanceDefns],
             Instances0, Instances),
         module_info_set_instance_table(Instances, !ModuleInfo)
-    ;
+    else
         undefined_type_class_error(ClassName, ClassArity, Context,
             "instance declaration", !Specs)
     ).
@@ -539,30 +543,30 @@ check_instance_compatibility(InstanceDefn, InstanceDefns, ClassId, !Specs) :-
 
 check_instance_constraints(InstanceDefnA, ClassId, InstanceDefnB, !Specs) :-
     type_vars_list(InstanceDefnA ^ instance_types, TVarsA),
-    TVarsetA = InstanceDefnA ^ instance_tvarset,
+    TVarSetA = InstanceDefnA ^ instance_tvarset,
     ConstraintsA = InstanceDefnA ^ instance_constraints,
 
     type_vars_list(InstanceDefnB ^ instance_types, TVarsB),
-    TVarsetB = InstanceDefnB ^ instance_tvarset,
+    TVarSetB = InstanceDefnB ^ instance_tvarset,
     ConstraintsB = InstanceDefnB ^ instance_constraints,
 
-    (
-        constraints_are_identical(TVarsA, TVarsetA, ConstraintsA,
-            TVarsB, TVarsetB, ConstraintsB)
-    ->
+    ( if
+        constraints_are_identical(TVarsA, TVarSetA, ConstraintsA,
+            TVarsB, TVarSetB, ConstraintsB)
+    then
         true
-    ;
+    else
         ClassId = class_id(Name, ClassArity),
         ContextA = InstanceDefnA ^ instance_context,
 
-        TxtA = [words("In instance declaration for class "),
+        PiecesA = [words("In instance declaration for class "),
             sym_name_and_arity(Name / ClassArity), nl,
             words("instance constraints are incompatible with")],
-        MsgA = simple_msg(ContextA, [always(TxtA)]),
+        MsgA = simple_msg(ContextA, [always(PiecesA)]),
 
         ContextB = InstanceDefnB ^ instance_context,
-        TxtB = [words("instance constraints here.")],
-        MsgB = simple_msg(ContextB, [always(TxtB)]),
+        PiecesB = [words("instance constraints here.")],
+        MsgB = simple_msg(ContextB, [always(PiecesB)]),
 
         Spec = error_spec(severity_error,
             phase_parse_tree_to_hlds, [MsgA, MsgB]),
@@ -613,11 +617,11 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
         set_of_var.list_to_set(HeadVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
-        ( check_marker(Markers, marker_is_impure) ->
+        ( if check_marker(Markers, marker_is_impure) then
             goal_info_set_purity(purity_impure, GoalInfo2, GoalInfo)
-        ; check_marker(Markers, marker_is_semipure) ->
+        else if check_marker(Markers, marker_is_semipure) then
             goal_info_set_purity(purity_semipure, GoalInfo2, GoalInfo)
-        ;
+        else
             GoalInfo = GoalInfo2
         ),
         % ... and then the goal itself.
@@ -662,10 +666,10 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
     % instead of aborting.
     expect(unify(PredOrFunc, ClausePredOrFunc), $module, $pred,
         "PredOrFunc mismatch"),
-    ( illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar) ->
+    ( if illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar) then
         TVarSet = TVarSet0,
         report_illegal_func_svar_result(Context, CVarSet, StateVar, !Specs)
-    ;
+    else
         expand_bang_states(HeadTerms0, HeadTerms),
         PredArity = list.length(HeadTerms),
         adjust_func_arity(PredOrFunc, Arity, PredArity),

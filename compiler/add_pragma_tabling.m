@@ -159,7 +159,7 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
         MaybePredOrFunc, MaybeModes, MaybeAttributes, Context, Status, PredId,
         !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
-    ( EvalMethod0 = eval_minimal(_) ->
+    ( if EvalMethod0 = eval_minimal(_) then
         globals.lookup_bool_option(Globals, use_minimal_model_own_stacks,
             OwnStacks),
         (
@@ -169,7 +169,7 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
             OwnStacks = no,
             EvalMethod = eval_minimal(stack_copy)
         )
-    ;
+    else
         EvalMethod = EvalMethod0
     ),
 
@@ -204,12 +204,12 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
     % declaration. Tabled procedures cannot be inlined.
     pred_info_get_markers(PredInfo0, Markers),
     SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
-    (
+    ( if
         check_marker(Markers, marker_user_marked_inline),
         globals.lookup_bool_option(Globals, warn_table_with_inline,
             WarnTableWithInline),
         WarnTableWithInline = yes
-    ->
+    then
         InlineWarningPieces = [words("Warning: "), simple_call(SimpleCallId),
             words("has a"), pragma_decl(EvalMethodStr),
             words("declaration but also has a"),
@@ -222,17 +222,17 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
         InlineWarningSpec = error_spec(severity_warning,
             phase_parse_tree_to_hlds, [InlineWarningMsg]),
         !:Specs = [InlineWarningSpec | !.Specs]
-    ;
+    else
         true
     ),
-    ( pred_info_is_imported(PredInfo0) ->
+    ( if pred_info_is_imported(PredInfo0) then
         Pieces = [words("Error: "), pragma_decl(EvalMethodStr),
             words("declaration for imported"), simple_call(SimpleCallId),
             suffix("."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
-    ;
+    else
         % Do we have to make sure the tabled preds are stratified?
         NeedsStrat = eval_method_needs_stratification(EvalMethod),
         (
@@ -250,17 +250,17 @@ module_add_pragma_tabled_for_pred(EvalMethod0, PredName, Arity0,
         map.to_assoc_list(ProcTable0, ExistingProcs),
         (
             MaybeModes = yes(Modes),
-            (
+            ( if
                 get_procedure_matching_argmodes(ExistingProcs, Modes,
                     !.ModuleInfo, ProcId)
-            ->
+            then
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context,
                     SimpleCallId, yes, EvalMethod, MaybeAttributes, Status,
                     ProcTable0, ProcTable, !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
-            ;
+            else
                 Pieces = [words("Error:"),
                     pragma_decl(EvalMethodStr),
                     words("declaration for undeclared mode of"),
@@ -333,26 +333,7 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
     proc_info_get_eval_method(ProcInfo0, OldEvalMethod),
     % NOTE: We don't bother detecting multiple tabling pragmas
     % of the same type here.
-    ( OldEvalMethod \= eval_normal ->
-        % We get here only if we have already processed a tabling pragma for
-        % this procedure.
-        EvalMethodStr = eval_method_to_string(EvalMethod),
-        ( OldEvalMethod = EvalMethod ->
-            Pieces = [words("Error:"), simple_call(SimpleCallId),
-                words("has duplicate"), fixed(EvalMethodStr),
-                words("pragmas specified."), nl]
-        ;
-            OldEvalMethodStr = eval_method_to_string(OldEvalMethod),
-            Pieces = [words("Error:"), simple_call(SimpleCallId),
-                words("has both"), fixed(OldEvalMethodStr), words("and"),
-                fixed(EvalMethodStr), words("pragmas specified."),
-                words("Only one kind of tabling pragma may be applied to it."),
-                nl]
-        ),
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
-    ;
+    ( if OldEvalMethod = eval_normal then
         proc_info_get_maybe_declared_argmodes(ProcInfo0,
             MaybeDeclaredArgModes),
         (
@@ -430,6 +411,25 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
                 AllowReset = table_dont_allow_reset
             )
         )
+    else
+        % We get here only if we have already processed a tabling pragma for
+        % this procedure.
+        EvalMethodStr = eval_method_to_string(EvalMethod),
+        ( if OldEvalMethod = EvalMethod then
+            Pieces = [words("Error:"), simple_call(SimpleCallId),
+                words("has duplicate"), fixed(EvalMethodStr),
+                words("pragmas specified."), nl]
+        else
+            OldEvalMethodStr = eval_method_to_string(OldEvalMethod),
+            Pieces = [words("Error:"), simple_call(SimpleCallId),
+                words("has both"), fixed(OldEvalMethodStr), words("and"),
+                fixed(EvalMethodStr), words("pragmas specified."),
+                words("Only one kind of tabling pragma may be applied to it."),
+                nl]
+        ),
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
     ).
 
 :- pred create_tabling_statistics_pred(proc_id::in, prog_context::in,
@@ -679,7 +679,7 @@ check_pred_args_against_tabling_methods([Mode | Modes],
         [MaybeArgMethod | MaybeArgMethods], ModuleInfo, ArgNum, MaybeError) :-
     % XXX We should check not just the boundedness of the argument, but also
     % whether it has any uniqueness annotation: tabling destroys uniqueness.
-    ( mode_is_fully_input(ModuleInfo, Mode) ->
+    ( if mode_is_fully_input(ModuleInfo, Mode) then
         (
             MaybeArgMethod = yes(_),
             check_pred_args_against_tabling_methods(Modes, MaybeArgMethods,
@@ -691,7 +691,7 @@ check_pred_args_against_tabling_methods([Mode | Modes],
                 maybe_arg_tabling_method_to_string(MaybeArgMethod) ++
                 "' is not compatible with input modes."))
         )
-    ; mode_is_fully_output(ModuleInfo, Mode) ->
+    else if mode_is_fully_output(ModuleInfo, Mode) then
         (
             MaybeArgMethod = yes(_),
             MaybeError = yes(("argument " ++ int_to_string(ArgNum) ++ ":") -
@@ -703,7 +703,7 @@ check_pred_args_against_tabling_methods([Mode | Modes],
             check_pred_args_against_tabling_methods(Modes, MaybeArgMethods,
                 ModuleInfo, ArgNum + 1, MaybeError)
         )
-    ;
+    else
         MaybeError = yes(("argument " ++ int_to_string(ArgNum) ++ ":") -
             "is neither input or output.")
     ).
@@ -714,13 +714,13 @@ check_pred_args_against_tabling_methods([Mode | Modes],
 check_pred_args_against_tabling([], _, _, no).
 check_pred_args_against_tabling([Mode | Modes], ModuleInfo, ArgNum,
         MaybeError) :-
-    ( mode_is_fully_input(ModuleInfo, Mode) ->
+    ( if mode_is_fully_input(ModuleInfo, Mode) then
         check_pred_args_against_tabling(Modes, ModuleInfo, ArgNum + 1,
             MaybeError)
-    ; mode_is_fully_output(ModuleInfo, Mode) ->
+    else if mode_is_fully_output(ModuleInfo, Mode) then
         check_pred_args_against_tabling(Modes, ModuleInfo, ArgNum + 1,
             MaybeError)
-    ;
+    else
         MaybeError = yes(("argument " ++ int_to_string(ArgNum)) -
             "is neither input or output.")
     ).

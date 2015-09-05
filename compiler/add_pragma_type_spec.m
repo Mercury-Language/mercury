@@ -102,7 +102,7 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             DoTypeSpec),
         globals.lookup_bool_option(Globals, smart_recompilation, Smart),
         % XXX Should check whether smart recompilation has been disabled?
-        (
+        ( if
             MaybeProcIds = yes(ProcIds),
             % Even if we aren't doing type specialization, we need to create
             % the interface procedures for local predicates to check the
@@ -114,10 +114,10 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             % in debugging grades.
 
             ( DoTypeSpec = yes
-            ; \+ pred_info_is_imported(PredInfo0)
+            ; not pred_info_is_imported(PredInfo0)
             ; Smart = yes
             )
-        ->
+        then
             % Build a clause to call the old predicate with the specified types
             % to force the specialization. For imported predicates this forces
             % the creation of the proper interface.
@@ -163,9 +163,9 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             map.init(Proofs),
             map.init(ConstraintMap),
 
-            ( pred_info_is_imported(PredInfo0) ->
+            ( if pred_info_is_imported(PredInfo0) then
                 Status = status_opt_imported
-            ;
+            else
                 pred_info_get_import_status(PredInfo0, Status)
             ),
 
@@ -195,12 +195,12 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             set.insert_list(PredProcIds, ProcsToSpec0, ProcsToSpec),
             set.insert(NewPredId, ForceVersions0, ForceVersions),
 
-            ( Status = status_opt_imported ->
+            ( if Status = status_opt_imported then
                 % For imported predicates dead_proc_elim.m needs to know that
                 % if the original predicate is used, the predicate to force
                 % the production of the specialised interface is also used.
                 multi_map.set(PredId, NewPredId, SpecMap0, SpecMap)
-            ;
+            else
                 SpecMap = SpecMap0
             ),
             TSInfo = pragma_info_type_spec(SymName, SpecName, Arity,
@@ -223,7 +223,7 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             ;
                 IsImported = no
             )
-        ;
+        else
             true
         )
     ;
@@ -272,10 +272,11 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
             MultiSubstVars0 = [],
             pred_info_get_typevarset(PredInfo0, CalledTVarSet),
             varset.create_name_var_map(CalledTVarSet, NameVarIndex0),
-            list.filter((pred(Var::in) is semidet :-
-                varset.lookup_name(TVarSet0, Var, VarName),
-                \+ map.contains(NameVarIndex0, VarName)
-            ), VarsToSub, UnknownVarsToSub),
+            list.filter(
+                ( pred(Var::in) is semidet :-
+                    varset.lookup_name(TVarSet0, Var, VarName),
+                    not map.contains(NameVarIndex0, VarName)
+                ), VarsToSub, UnknownVarsToSub),
             (
                 UnknownVarsToSub = [],
                 % Check that the substitution is not recursive.
@@ -364,9 +365,9 @@ map_set_from_pair(K - V, !Map) :-
 find_duplicate_list_elements([], []).
 find_duplicate_list_elements([H | T], DupVars) :-
     find_duplicate_list_elements(T, DupVars0),
-    ( list.member(H, T) ->
+    ( if list.member(H, T) then
         DupVars = [H | DupVars0]
-    ;
+    else
         DupVars = DupVars0
     ).
 
@@ -462,15 +463,15 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
     (
         MaybeModes = yes(Modes),
         map.to_assoc_list(!.Procs, ExistingProcs),
-        (
+        ( if
             get_procedure_matching_argmodes(ExistingProcs, Modes,
                 !.ModuleInfo, ProcId)
-        ->
+        then
             map.lookup(!.Procs, ProcId, ProcInfo),
             !:Procs = map.singleton(ProcId, ProcInfo),
             ProcIds = [ProcId],
             MaybeProcIds = yes(ProcIds)
-        ;
+        else
             module_info_incr_errors(!ModuleInfo),
             undefined_mode_error(SymName, Arity, Context,
                 [pragma_decl("type_spec"), words("declaration")], !Specs),

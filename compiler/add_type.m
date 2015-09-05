@@ -82,7 +82,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
     list.length(Args, Arity),
     TypeCtor = type_ctor(Name, Arity),
     convert_type_defn(TypeDefn, TypeCtor, Globals, Body0),
-    (
+    ( if
         (
             Body0 = hlds_abstract_type(_)
         ;
@@ -94,12 +94,12 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
             % XXX This is NOT a robust record of the source; the context
             % could be lost for any number of reasons.
         )
-    ->
+    then
         make_status_abstract(Status0, Status1)
-    ;
+    else
         Status1 = Status0
     ),
-    (
+    ( if
         % Discriminated unions whose definition consists of a single
         % zero-arity constructor are dummy types. Dummy types are not allowed
         % to have user-defined equality or comparison.
@@ -110,7 +110,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         MaybeUserUC = yes(_),
         % Only report errors for types defined in this module.
         status_defined_in_this_module(Status0) = yes
-    ->
+    then
         DummyMainPieces = [words("Error: the type"),
             sym_name_and_arity(Name / Arity),
             words("is not allowed to have user-defined equality"),
@@ -124,20 +124,20 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         DummySpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [DummyMsg]),
         !:Specs = [DummySpec | !.Specs]
-    ;
+    else
         true
     ),
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
-    (
+    ( if
         % The type is exported if *any* occurrence is exported,
         % even a previous abstract occurrence.
         search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn0)
-    ->
+    then
         hlds_data.get_type_defn_status(OldDefn0, OldStatus),
         combine_status(Status1, OldStatus, Status),
         hlds_data.get_type_defn_body(OldDefn0, OldBody0),
         combine_is_solver_type(OldBody0, OldBody, Body0, Body),
-        ( is_solver_type_is_inconsistent(OldBody, Body) ->
+        ( if is_solver_type_is_inconsistent(OldBody, Body) then
             % The existing definition has an is_solver_type annotation
             % which is different to the current definition.
             SolverPieces = [words("In definition of type"),
@@ -149,11 +149,11 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
                 [SolverMsg]),
             !:Specs = [SolverSpec | !.Specs],
             MaybeOldDefn = no
-        ;
+        else
             hlds_data.set_type_defn_body(OldBody, OldDefn0, OldDefn),
             MaybeOldDefn = yes(OldDefn)
         )
-    ;
+    else
         MaybeOldDefn = no,
         Status = Status1,
         Body = Body0
@@ -164,10 +164,10 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
     map.init(KindMap),
     hlds_data.set_type_defn(TVarSet, Args, KindMap, Body, Status,
         no, NeedQual, type_defn_no_prev_errors, Context, TypeDefn1),
-    (
+    ( if
         MaybeOldDefn = no,
         Body = hlds_foreign_type(_)
-    ->
+    then
         ForeignDeclPieces = [words("Error: type "),
             sym_name_and_arity(Name / Arity),
             words("defined as foreign_type without being declared.")],
@@ -175,7 +175,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         ForeignDeclSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [ForeignDeclMsg]),
         !:Specs = [ForeignDeclSpec | !.Specs]
-    ;
+    else if
         MaybeOldDefn = yes(OldDefn1),
         Body = hlds_foreign_type(_),
         hlds_data.get_type_defn_status(OldDefn1, OldStatus1),
@@ -183,7 +183,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         OldBody1 = hlds_abstract_type(_),
         status_is_exported_to_non_submodules(OldStatus1) = no,
         status_is_exported_to_non_submodules(Status0) = yes
-    ->
+    then
         ForeignVisPieces = [words("Error: pragma foreign_type "),
             sym_name_and_arity(Name / Arity),
             words("must have the same visibility as the type declaration.")],
@@ -198,7 +198,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         replace_type_ctor_defn(TypeCtor, ErrTypeDefn,
             TypeTable0, TypeTable),
         module_info_set_type_table(TypeTable, !ModuleInfo)
-    ;
+    else if
         % If there was an existing non-abstract definition for the type, ...
         MaybeOldDefn = yes(OldDefn2),
         hlds_data.get_type_defn_tvarset(OldDefn2, TVarSet2),
@@ -210,21 +210,21 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         hlds_data.get_type_defn_in_exported_eqv(OldDefn2, OrigInExportedEqv),
         hlds_data.get_type_defn_need_qualifier(OldDefn2, OrigNeedQual),
         Body2 \= hlds_abstract_type(_)
-    ->
+    then
         globals.get_target(Globals, Target),
         globals.lookup_bool_option(Globals, make_optimization_interface,
             MakeOptInt),
         % We used to record that we have seen a foreign type, using the call
         %   module_info_set_contains_foreign_type(!ModuleInfo)
         % but we deleted the code that used this information some time ago.
-        (
+        ( if
             % ... then if this definition was abstract, ignore it
             % (but update the status of the old defn if necessary).
             Body = hlds_abstract_type(_)
-        ->
-            ( Status = OrigStatus ->
+        then
+            ( if Status = OrigStatus then
                 true
-            ;
+            else
                 hlds_data.set_type_defn(TVarSet2, Params2, KindMap2,
                     Body2, Status, OrigInExportedEqv, OrigNeedQual,
                     type_defn_no_prev_errors, OrigContext, TypeDefn3),
@@ -232,18 +232,18 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
                     TypeTable0, TypeTable),
                 module_info_set_type_table(TypeTable, !ModuleInfo)
             )
-        ;
+        else if
             merge_foreign_type_bodies(Target, MakeOptInt, Body, Body2,
                 NewBody)
-        ->
-            ( check_foreign_type_visibility(OrigStatus, Status1) ->
+        then
+            ( if check_foreign_type_visibility(OrigStatus, Status1) then
                 hlds_data.set_type_defn(TVarSet2, Params2, KindMap2, NewBody,
                     Status, OrigInExportedEqv, NeedQual,
                     type_defn_no_prev_errors, Context, TypeDefn3),
                 replace_type_ctor_defn(TypeCtor, TypeDefn3,
                     TypeTable0, TypeTable),
                 module_info_set_type_table(TypeTable, !ModuleInfo)
-            ;
+            else
                 module_info_incr_errors(!ModuleInfo),
                 DiffVisPieces = [words("In definition of type"),
                     sym_name_and_arity(Name / Arity), suffix(":"), nl,
@@ -259,22 +259,22 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
                     TypeTable0, TypeTable),
                 module_info_set_type_table(TypeTable, !ModuleInfo)
             )
-        ;
+        else if
             % ..., otherwise issue an error message if the second
             % definition wasn't read while reading .opt files.
             Status = status_opt_imported
-        ->
+        then
             true
-        ;
+        else
             module_info_incr_errors(!ModuleInfo),
             multiple_def_error(Status, Name, Arity, "type", Context,
                 OrigContext, [], !Specs)
         )
-    ;
+    else
         add_or_replace_type_ctor_defn(TypeCtor, TypeDefn1,
             TypeTable0, TypeTable),
         module_info_set_type_table(TypeTable, !ModuleInfo),
-        (
+        ( if
             % XXX We can't handle abstract exported polymorphic equivalence
             % types with monomorphic bodies, because the compiler stuffs up
             % the type_info handling -- the caller passes type_infos,
@@ -282,8 +282,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
             Body = hlds_eqv_type(EqvType),
             Status = status_abstract_exported,
             list.member(Var, Args),
-            \+ type_contains_var(EqvType, Var)
-        ->
+            not type_contains_var(EqvType, Var)
+        then
             PolyEqvPieces = [words("Sorry, not implemented:"),
                 words("polymorphic equivalence type,"),
                 words("with monomorphic definition,"),
@@ -294,7 +294,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
             PolyEqvSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
                 [PolyEqvMsg]),
             !:Specs = [PolyEqvSpec | !.Specs]
-        ;
+        else
             true
         )
     ).
@@ -361,13 +361,13 @@ maybe_get_body_is_solver_type(hlds_abstract_type(Details), IsSolverType) :-
     is semidet.
 
 check_foreign_type_visibility(OldStatus, NewDefnStatus) :-
-    ( OldStatus = status_abstract_exported  ->
+    ( if OldStatus = status_abstract_exported  then
         % If OldStatus is abstract_exported, the previous definitions
         % were local.
         status_is_exported_to_non_submodules(NewDefnStatus) = no
-    ; OldStatus = status_exported ->
+    else if OldStatus = status_exported then
         NewDefnStatus = status_exported
-    ;
+    else
         status_is_exported_to_non_submodules(OldStatus) = no,
         status_is_exported_to_non_submodules(NewDefnStatus) = no
     ).
@@ -411,15 +411,15 @@ process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
 
         % Note that process_type_defn is invoked only *after* all the types
         % have been added into the HLDS.
-        (
+        ( if
             type_ctor_should_be_notag(Globals, TypeCtor,
                 ReservedTag, ConsList, UserEqCmp, CtorName, CtorArgType, _)
-        ->
+        then
             NoTagType = no_tag_type(Args, CtorName, CtorArgType),
             module_info_get_no_tag_types(!.ModuleInfo, NoTagTypes0),
             map.set(TypeCtor, NoTagType, NoTagTypes0, NoTagTypes),
             module_info_set_no_tag_types(NoTagTypes, !ModuleInfo)
-        ;
+        else
             true
         )
     ;
@@ -465,14 +465,14 @@ check_foreign_type(TypeCtor, ForeignTypeBody, PrevErrors, Context,
     TypeCtor = type_ctor(Name, Arity),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    ( have_foreign_type_for_backend(Target, ForeignTypeBody, yes) ->
+    ( if have_foreign_type_for_backend(Target, ForeignTypeBody, yes) then
         FoundInvalidType = did_not_find_invalid_type
-    ; PrevErrors = type_defn_prev_errors ->
+    else if PrevErrors = type_defn_prev_errors then
         % The error message being generated below may be misleading,
         % since the relevant foreign language definition of this type
         % may have been present, but in error.
         FoundInvalidType = found_invalid_type
-    ;
+    else
         ( Target = target_c, LangStr = "C"
         ; Target = target_il, LangStr = "IL"
         ; Target = target_csharp, LangStr = "C#"
@@ -513,12 +513,12 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
     ),
     merge_foreign_type_bodies_2(ForeignTypeBody0, ForeignTypeBody1,
         ForeignTypeBody),
-    (
+    ( if
         have_foreign_type_for_backend(Target, ForeignTypeBody, yes),
         MakeOptInterface = no
-    ->
+    then
         Body = hlds_foreign_type(ForeignTypeBody)
-    ;
+    else
         Body = Body1 ^ du_type_is_foreign_type := yes(ForeignTypeBody)
     ).
 merge_foreign_type_bodies(Target, MakeOptInterface,
@@ -552,18 +552,18 @@ merge_maybe(yes(T), no, yes(T)).
 merge_maybe(no, yes(T), yes(T)).
 
 make_status_abstract(Status, AbstractStatus) :-
-    ( Status = status_exported ->
+    ( if Status = status_exported then
         AbstractStatus = status_abstract_exported
-    ; Status = status_imported(_) ->
+    else if Status = status_imported(_) then
         AbstractStatus = status_abstract_imported
-    ;
+    else
         AbstractStatus = Status
     ).
 
 combine_status(StatusA, StatusB, Status) :-
-    ( combine_status_2(StatusA, StatusB, CombinedStatus) ->
+    ( if combine_status_2(StatusA, StatusB, CombinedStatus) then
         Status = CombinedStatus
-    ;
+    else
         unexpected($module, $pred, "unexpected status for type definition")
     ).
 
@@ -588,9 +588,9 @@ combine_status_2(status_local, Status2, Status) :-
 combine_status_2(status_exported, _Status2, status_exported).
 combine_status_2(status_exported_to_submodules, Status2, Status) :-
     combine_status_local(Status2, Status3),
-    ( Status3 = status_local ->
+    ( if Status3 = status_local then
         Status = status_exported_to_submodules
-    ;
+    else
         Status = Status3
     ).
 combine_status_2(status_opt_imported, _Status2, status_opt_imported).
@@ -638,9 +638,9 @@ combine_status_local(status_abstract_exported,      status_abstract_exported).
     is det.
 
 combine_status_abstract_exported(Status2, Status) :-
-    ( Status2 = status_exported ->
+    ( if Status2 = status_exported then
         Status = status_exported
-    ;
+    else
         Status = status_abstract_exported
     ).
 
@@ -648,9 +648,9 @@ combine_status_abstract_exported(Status2, Status) :-
     is det.
 
 combine_status_abstract_imported(Status2, Status) :-
-    ( Status2 = status_imported(Section) ->
+    ( if Status2 = status_imported(Section) then
         Status = status_imported(Section)
-    ;
+    else
         Status = status_abstract_imported
     ).
 
@@ -669,9 +669,9 @@ convert_type_defn(parse_tree_du_type(Body, MaybeUserEqComp,
     assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor, ReservedTagPragma,
         Globals, CtorTagMap, ReservedAddr, IsEnum),
     IsForeign = no,
-    ( ReservedAddr = does_not_use_reserved_address ->
+    ( if ReservedAddr = does_not_use_reserved_address then
         compute_cheaper_tag_test(CtorTagMap, CheaperTagTest)
-    ;
+    else
         CheaperTagTest = no_cheaper_tag_test
     ),
     HLDSBody = hlds_du_type(Body, CtorTagMap, CheaperTagTest, IsEnum,
@@ -755,13 +755,13 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
 
     % Check that there is at most one definition of a given cons_id
     % in each type.
-    (
+    ( if
         search_cons_table(!.ConsTable, QualifiedConsIdA, QualifiedConsDefnsA),
         some [OtherConsDefn] (
             list.member(OtherConsDefn, QualifiedConsDefnsA),
             OtherConsDefn ^ cons_type_ctor = TypeCtor
         )
-    ->
+    then
         QualifiedConsIdStr = cons_id_and_arity_to_string(QualifiedConsIdA),
         TypeCtorStr = type_ctor_to_string(TypeCtor),
         Pieces = [words("Error: constructor"), quote(QualifiedConsIdStr),
@@ -770,7 +770,7 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
-    ;
+    else
         some [!OtherConsIds] (
             % Schedule the addition of the fully-qualified cons_id
             % into the cons_table.
@@ -851,10 +851,10 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
     % because the function names for user-defined override functions
     % for the builtin field access functions must be unique within a
     % module.
-    ( map.search(!.FieldNameTable, FieldName, ConflictingDefns) ->
-        ( ConflictingDefns = [ConflictingDefn] ->
+    ( if map.search(!.FieldNameTable, FieldName, ConflictingDefns) then
+        ( if ConflictingDefns = [ConflictingDefn] then
             ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _)
-        ;
+        else
             unexpected($module, $pred, "multiple conflicting fields")
         ),
 
@@ -871,7 +871,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
             [HereMsg, PrevMsg]),
         !:Specs = [Spec | !.Specs]
-    ;
+    else
         UnqualFieldName = unqualify_name(FieldName),
 
         % Add an unqualified version of the field name to the table,

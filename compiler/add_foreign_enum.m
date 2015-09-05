@@ -50,7 +50,7 @@ add_pragma_foreign_export_enum(FEEInfo, _ImportStatus, Context,
     ContextPieces = [words("In"), pragma_decl("foreign_export_enum"),
         words("declaration for"),
         sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl],
-    (
+    ( if
         % Emit an error message for foreign_export_enum pragmas for the
         % builtin atomic types.
         TypeArity = 0,
@@ -59,13 +59,13 @@ add_pragma_foreign_export_enum(FEEInfo, _ImportStatus, Context,
         ; TypeName = unqualified("int")
         ; TypeName = unqualified("string")
         )
-    ->
+    then
         ErrorPieces = [words("error: "),
             sym_name_and_arity(TypeName / TypeArity),
             words("is an atomic type"), suffix("."), nl],
         MaybeError = yes({severity_error, ErrorPieces})
-    ;
-        ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) ->
+    else
+        ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
             get_type_defn_body(TypeDefn, TypeBody),
             (
                 ( TypeBody = hlds_eqv_type(_)
@@ -133,9 +133,9 @@ add_pragma_foreign_export_enum(FEEInfo, _ImportStatus, Context,
                     MaybeError = yes({severity_error, ErrorPieces})
                 )
             )
-        ;
+        else
             % This case corresponds to an undefined type. We do not issue
-            % an error message for it here since module qualification
+            % an error message for it here, since module qualification
             % will have already done so.
             MaybeError = no
         )
@@ -156,9 +156,10 @@ add_pragma_foreign_export_enum(FEEInfo, _ImportStatus, Context,
 
 build_export_enum_overrides_map(TypeName, Context, ContextPieces,
         OverridesList0, MaybeOverridesMap, !Specs) :-
-    ( sym_name_get_module_name(TypeName, ModuleName0) ->
-        ModuleName = ModuleName0
+    ( 
+        TypeName = qualified(ModuleName, _)
     ;
+        TypeName = unqualified(_),
         unexpected($module, $pred,
             "unqualified type name while building override map")
     ),
@@ -168,9 +169,9 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
     StripQualifiers = (func(Name0) = Name :-
         (
             Name0 = qualified(ModuleQualifier, UnqualName),
-            ( ModuleQualifier = ModuleName ->
+            ( if ModuleQualifier = ModuleName then
                 Name = unqualified(UnqualName)
-            ;
+            else
                 Name = Name0
             )
         ;
@@ -180,10 +181,10 @@ build_export_enum_overrides_map(TypeName, Context, ContextPieces,
     ),
     OverridesList = assoc_list.map_keys_only(StripQualifiers,
         OverridesList0),
-    ( bimap.from_assoc_list(OverridesList, OverridesMap0) ->
+    ( if bimap.from_assoc_list(OverridesList, OverridesMap0) then
         OverridesMap = bimap.forward_map(OverridesMap0),
         MaybeOverridesMap = yes(OverridesMap)
-    ;
+    else
         MaybeOverridesMap = no,
         % XXX we should report exactly why it is not a bijective.
         ErrorPieces = [words("error: "),
@@ -218,32 +219,7 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
     % Check for any remaining user-specified renamings that didn't match
     % the constructors of the type and report errors for them.
 
-    ( not map.is_empty(Overrides) ->
-       InvalidRenamingPieces = [words("user-specified foreign names"),
-            words("for constructors that do not match match"),
-            words("any of the constructors of"),
-            sym_name_and_arity(TypeName / TypeArity), suffix("."), nl],
-        InvalidRenamings = map.keys(Overrides),
-        InvalidRenamingComponents =
-            list.map((func(S) = [sym_name(S)]), InvalidRenamings),
-        InvalidRenamingList = component_list_to_line_pieces(
-            InvalidRenamingComponents, [nl]),
-        InvalidRenamingVerbosePieces = [words("The following"),
-            words(choose_number(InvalidRenamings,
-                "constructor does", "constructors do")),
-            words("not match"), suffix(":"), nl_indent_delta(2)]
-            ++ InvalidRenamingList,
-        InvalidRenamingMsg = simple_msg(Context,
-            [always(ContextPieces ++ InvalidRenamingPieces),
-            verbose_only(verbose_always, InvalidRenamingVerbosePieces)]),
-        InvalidRenamingSpec = error_spec(severity_error,
-            phase_parse_tree_to_hlds, [InvalidRenamingMsg]),
-        list.cons(InvalidRenamingSpec, !Specs),
-        MaybeMapping = no
-        % NOTE: in the presence of this error we do not report if
-        % constructors could not be converted to names in the foreign
-        % language.
-    ;
+    ( if map.is_empty(Overrides) then
         (
             BadCtors = [],
             check_name_map_for_conflicts(Context, ContextPieces, NameMap,
@@ -283,9 +259,28 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
                 verbose_only(verbose_always, BadCtorsVerboseErrorPieces)]),
             BadCtorsSpec = error_spec(severity_error,
                 phase_parse_tree_to_hlds, [BadCtorsMsg]),
-            list.cons(BadCtorsSpec, !Specs),
+            !:Specs = [BadCtorsSpec | !.Specs],
             MaybeMapping = no
         )
+    else
+        InvalidRenamings = map.keys(Overrides),
+        InvalidRenamingSymNamePieces =
+            list.map((func(S) = [sym_name(S)]), InvalidRenamings),
+        InvalidRenamingPieces = [words("the following"),
+            words(choose_number(InvalidRenamings,
+                "constructor does", "constructors do")),
+            words("not match any of the constructors of"),
+            sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl] ++
+            component_list_to_line_pieces(InvalidRenamingSymNamePieces,
+                [suffix("."), nl]),
+        InvalidRenamingMsg = simple_msg(Context,
+            [always(ContextPieces ++ InvalidRenamingPieces)]),
+        InvalidRenamingSpec = error_spec(severity_error,
+            phase_parse_tree_to_hlds, [InvalidRenamingMsg]),
+        !:Specs = [InvalidRenamingSpec | !.Specs],
+        MaybeMapping = no
+        % NOTE: in the presence of this error we do not report if constructors
+        % could not be converted to names in the foreign language.
     ).
 
     % Check that the mapping from foreign names to Mercury names is not
@@ -298,9 +293,9 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
 check_name_map_for_conflicts(Context, ContextPieces, NameMap, MaybeNameMap,
         !Specs) :-
     NamesAndForeignNames = map.to_assoc_list(NameMap),
-    ( bimap.from_assoc_list(NamesAndForeignNames, _) ->
+    ( if bimap.from_assoc_list(NamesAndForeignNames, _) then
         MaybeNameMap = yes(NameMap)
-    ;
+    else
         MaybeNameMap = no,
         % XXX We should report exactly why it is not bijective.
         ErrorPieces = [words("error:"),
@@ -334,9 +329,9 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
     ),
 
     % If the user specified a name for this constructor then use that.
-    ( map.remove(UnqualSymName, UserForeignName, !Overrides) ->
+    ( if map.remove(UnqualSymName, UserForeignName, !Overrides) then
         ForeignNameTail = UserForeignName
-    ;
+    else
         % Otherwise try to derive a name automatically from the
         % constructor name.
         (
@@ -377,7 +372,7 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
     ContextPieces = [words("In"), pragma_decl("foreign_enum"),
         words("declaration for"),
         sym_name_and_arity(TypeName / TypeArity), suffix(":"), nl],
-    (
+    ( if
         % Emit an error message for foreign_enum pragmas for the
         % builtin atomic types.
         TypeArity = 0,
@@ -386,14 +381,14 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
         ; TypeName = unqualified("int")
         ; TypeName = unqualified("string")
         )
-    ->
+    then
         ErrorPieces = [words("error: "),
             sym_name_and_arity(TypeName / TypeArity),
             words("is an atomic type"), suffix(".")],
         MaybeError = yes({severity_error, ErrorPieces})
-    ;
+    else if
         search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0)
-    ->
+    then
         get_type_defn_body(TypeDefn0, TypeBody0),
         (
             ( TypeBody0 = hlds_eqv_type(_)
@@ -424,7 +419,7 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
                 % module or they are both imported. Any other combination
                 % is illegal.
                 IsTypeLocal = status_defined_in_this_module(TypeStatus),
-                (
+                ( if
                     (
                         IsTypeLocal = yes,
                         ( ImportStatus = status_local
@@ -434,17 +429,17 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
                         IsTypeLocal = no,
                         status_is_imported(ImportStatus) = yes
                     )
-                ->
+                then
                     % XXX We should also check that this type is not
                     % the subject of a reserved tag pragma.
                     DuTypeKind = du_type_kind_foreign_enum(Lang),
                     build_foreign_enum_tag_map(Context, ContextPieces,
                         TypeName, ForeignTagValues, MaybeForeignTagMap,
                         !Specs),
-                    (
+                    ( if
                         LangForForeignEnums = Lang,
                         MaybeForeignTagMap = yes(ForeignTagMap)
-                    ->
+                    then
                         map.foldl2(make_foreign_tag(Lang, ForeignTagMap),
                             OldTagValues, map.init, TagValues, [],
                             UnmappedCtors),
@@ -463,19 +458,19 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
                             add_foreign_enum_unmapped_ctors_error(Context,
                                 ContextPieces, UnmappedCtors, !Specs)
                         )
-                    ;
+                    else
                         % If there are no matching foreign_enum pragmas for
                         % this target language, then don't do anything.
                         true
                     ),
                     MaybeError = no
-                ;
+                else if
                     ImportStatus = status_exported
-                ->
+                then
                     add_foreign_enum_pragma_in_interface_error(Context,
                         TypeName, TypeArity, !Specs),
                     MaybeError = no
-                ;
+                else
                     ErrorPieces = [words("error: "),
                         sym_name_and_arity(TypeName / TypeArity),
                         words("is not defined in this module.")],
@@ -483,13 +478,13 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
                 )
             ;
                 DuTypeKind0 = du_type_kind_foreign_enum(_),
-                (
+                ( if
                     ( LangForForeignEnums \= Lang
                     ; ImportStatus = status_opt_imported
                     )
-                ->
+                then
                     MaybeError = no
-                ;
+                else
                     ErrorPieces = [words("error: "),
                         sym_name_and_arity(TypeName / TypeArity),
                         words("has multiple foreign_enum pragmas.")],
@@ -505,9 +500,9 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
                 MaybeError = yes({severity_error, ErrorPieces})
             )
         )
-    ;
+    else
         % This else-branch corresponds to an undefined type. We do not
-        % issue an error message for it here since module qualification
+        % issue an error message for it here, since module qualification
         % will have already done so.
         MaybeError = no
     ),
@@ -527,9 +522,10 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
 
 build_foreign_enum_tag_map(Context, ContextPieces, TypeName, ForeignTagValues0,
         MaybeForeignTagMap, !Specs) :-
-    ( sym_name_get_module_name(TypeName, TypeModuleName0) ->
-        TypeModuleName = TypeModuleName0
+    (
+        TypeName = qualified(TypeModuleName, _)
     ;
+        TypeName = unqualified(_),
         unexpected($module, $pred,
             "unqualified type name while processing foreign tags.")
     ),
@@ -537,10 +533,10 @@ build_foreign_enum_tag_map(Context, ContextPieces, TypeName, ForeignTagValues0,
         ForeignTagValues0, ForeignTagValues1, [], BadCtors),
     (
         BadCtors = [],
-        ( bimap.from_assoc_list(ForeignTagValues1, ForeignTagValues) ->
+        ( if bimap.from_assoc_list(ForeignTagValues1, ForeignTagValues) then
             ForeignTagMap = ForeignTagValues ^ forward_map,
             MaybeForeignTagMap = yes(ForeignTagMap)
-        ;
+        else
             add_foreign_enum_bijection_error(Context, ContextPieces, !Specs),
             MaybeForeignTagMap = no
         )
@@ -566,9 +562,9 @@ fixup_foreign_tag_val_qualification(TypeModuleName, !NamesAndTags,
         CtorSymName = qualified(TypeModuleName, Name)
     ;
         CtorSymName0 = qualified(CtorModuleName, Name),
-        ( partial_sym_name_matches_full(CtorModuleName, TypeModuleName) ->
+        ( if partial_sym_name_matches_full(CtorModuleName, TypeModuleName) then
             CtorSymName = qualified(TypeModuleName, Name)
-        ;
+        else
             !:BadCtors = [CtorSymName0 | !.BadCtors],
             CtorSymName = CtorSymName0
         )
@@ -594,15 +590,15 @@ target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.
 
 make_foreign_tag(ForeignLanguage, ForeignTagMap, ConsId, _, !ConsTagValues,
         !UnmappedCtors) :-
-    ( ConsId = cons(ConsSymName0, 0, _) ->
+    ( if ConsId = cons(ConsSymName0, 0, _) then
         ConsSymName = ConsSymName0
-    ;
+    else
         unexpected($module, $pred, "non arity zero enumeration constant.")
     ),
-    ( map.search(ForeignTagMap, ConsSymName, ForeignTagValue) ->
+    ( if map.search(ForeignTagMap, ConsSymName, ForeignTagValue) then
         ForeignTag = foreign_tag(ForeignLanguage, ForeignTagValue),
         map.set(ConsId, ForeignTag, !ConsTagValues)
-    ;
+    else
         !:UnmappedCtors = [ConsSymName | !.UnmappedCtors]
     ).
 
@@ -613,9 +609,7 @@ make_foreign_tag(ForeignLanguage, ForeignTagMap, ConsId, _, !ConsTagValues,
 
 add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, UnmappedCtors0,
         !Specs) :-
-    ErrorPieces = [
-        words("error: not all constructors have a foreign value.")
-    ],
+    ErrorPieces = [words("error: not all constructors have a foreign value.")],
     list.sort(UnmappedCtors0, UnmappedCtors),
     CtorComponents = list.map((func(S) = [sym_name(S)]), UnmappedCtors),
     CtorList = component_list_to_line_pieces(CtorComponents, [nl]),

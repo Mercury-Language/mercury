@@ -80,9 +80,9 @@ insts_add(VarSet, Name, Args, eqv_inst(Body), Context, Status, !UserInstTable,
     InstId = inst_id(Name, Arity),
     InstDefn = hlds_inst_defn(VarSet, Args, eqv_inst(Body), no,
         Context, Status),
-    ( map.insert(InstId, InstDefn, !UserInstTable) ->
+    ( if map.insert(InstId, InstDefn, !UserInstTable) then
         true
-    ;
+    else
         % If abstract insts are implemented, this will need to change
         % to update the hlds_inst_defn to the non-abstract inst.
 
@@ -100,24 +100,24 @@ insts_add(VarSet, Name, Args, eqv_inst(Body), Context, Status, !UserInstTable,
 
 check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
         Context, InvalidMode, !Specs) :-
-    ( list.member(InstId0, Expansions0) ->
+    ( if list.member(InstId0, Expansions0) then
         report_circular_inst_equiv_error(OrigInstId, InstId0, Expansions0,
             Context, !Specs),
         InvalidMode = yes
-    ;
-        (
+    else
+        ( if
             map.search(UserInstTable, InstId0, InstDefn),
             InstDefn = hlds_inst_defn(_, Params, Body, _, _, _),
             Body = eqv_inst(EqvInst0),
             inst_substitute_arg_list(Params, Args0, EqvInst0, EqvInst),
             EqvInst = defined_inst(user_inst(Name, Args))
-        ->
+        then
             Arity = list.length(Args),
             InstId = inst_id(Name, Arity),
             Expansions = [InstId0 | Expansions0],
             check_for_cyclic_inst(UserInstTable, OrigInstId, InstId, Args,
                 Expansions, Context, InvalidMode, !Specs)
-        ;
+        else
             InvalidMode = no
         )
     ).
@@ -144,9 +144,9 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), Context, Status, InvalidMode,
     list.length(Args, Arity),
     ModeId = mode_id(Name, Arity),
     I = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Context, Status),
-    ( mode_table_insert(ModeId, I, !Modes) ->
+    ( if mode_table_insert(ModeId, I, !Modes) then
         true
-    ;
+    else
         mode_table_get_mode_defns(!.Modes, ModeDefns),
         map.lookup(ModeDefns, ModeId, OrigI),
         OrigI = hlds_mode_defn(_, _, _, OrigContext, _),
@@ -165,24 +165,24 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), Context, Status, InvalidMode,
 
 check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
         InvalidMode, !Specs) :-
-    ( list.member(ModeId0, Expansions0) ->
+    ( if list.member(ModeId0, Expansions0) then
         report_circular_mode_equiv_error(OrigModeId, ModeId0, Expansions0,
             Context, !Specs),
         InvalidMode = yes
-    ;
+    else
         mode_table_get_mode_defns(ModeTable, ModeDefns),
-        (
+        ( if
             map.search(ModeDefns, ModeId0, ModeDefn),
             ModeDefn = hlds_mode_defn(_, _, Body, _, _),
             Body = eqv_mode(EqvMode),
             EqvMode = user_defined_mode(Name, Args)
-        ->
+        then
             Arity = list.length(Args),
             ModeId = mode_id(Name, Arity),
             Expansions = [ModeId0 | Expansions0],
             check_for_cyclic_mode(ModeTable, OrigModeId, ModeId, Expansions,
                 Context, InvalidMode, !Specs)
-        ;
+        else
             InvalidMode = no
         )
     ).
@@ -224,7 +224,7 @@ mode_id_to_circ_id(mode_id(SymName, Arity)) = circ_id(SymName, Arity).
 
 report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
         !Specs) :-
-    ( Id = OrigId ->
+    ( if Id = OrigId then
         % Report an error message of the form
         %   Error: circular equivalence <kind> foo/0.
         % or
@@ -244,7 +244,7 @@ report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]
-    ;
+    else
         % We have an inst `OrigId' which is not itself circular,
         % but which is defined in terms of `Id' which is circular.
         % Don't bother reporting it now -- it should have already been

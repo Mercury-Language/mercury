@@ -106,7 +106,7 @@ module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
     add_new_pred(Origin, TypeVarSet, ExistQVars, PredName, Types, Purity,
         Constraints, Markers, Context, Status, NeedQual, PredOrFunc,
         !ModuleInfo, !Specs),
-    (
+    ( if
         PredOrFunc = pf_predicate,
         MaybeModes0 = yes(Modes0),
 
@@ -115,15 +115,15 @@ module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
         % mode declaration.
         Modes0 = [],
         MaybeDet = no
-    ->
+    then
         MaybeModes = no
-    ;
+    else if
         % Assume that a function with no modes but with a determinism
         % declared has the default modes.
         PredOrFunc = pf_function,
         MaybeModes0 = no,
         MaybeDet = yes(_)
-    ->
+    then
         list.length(Types, Arity),
         adjust_func_arity(pf_function, FuncArity, Arity),
         in_mode(InMode),
@@ -131,14 +131,14 @@ module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
         out_mode(OutMode),
         list.append(InModes, [OutMode], ArgModes),
         MaybeModes = yes(ArgModes)
-    ;
+    else
         MaybeModes = MaybeModes0
     ),
     (
         MaybeModes = yes(Modes),
-        ( check_marker(Markers, marker_class_method) ->
+        ( if check_marker(Markers, marker_class_method) then
             IsClassMethod = is_a_class_method
-        ;
+        else
             IsClassMethod = is_not_a_class_method
         ),
         module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, Context,
@@ -166,9 +166,9 @@ add_new_pred(Origin, TVarSet, ExistQVars, PredName, Types, Purity, Constraints,
     % Only preds with opt_imported clauses are tagged as opt_imported, so that
     % the compiler doesn't look for clauses for other preds read in from
     % optimization interfaces.
-    ( ItemStatus = status_opt_imported ->
+    ( if ItemStatus = status_opt_imported then
         Status = status_imported(import_locn_interface)
-    ;
+    else
         Status = ItemStatus
     ),
     module_info_get_name(!.ModuleInfo, ModuleName),
@@ -209,7 +209,7 @@ add_new_pred(Origin, TVarSet, ExistQVars, PredName, Types, Purity, Constraints,
             module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
             predicate_table_insert_qual(PredInfo0, NeedQual, PQInfo, PredId,
                 PredTable0, PredTable1),
-            ( pred_info_is_builtin(PredInfo0) ->
+            ( if pred_info_is_builtin(PredInfo0) then
                 module_info_get_globals(!.ModuleInfo, Globals),
                 globals.get_target(Globals, CompilationTarget),
                 add_builtin(PredId, Types, CompilationTarget,
@@ -217,7 +217,7 @@ add_new_pred(Origin, TVarSet, ExistQVars, PredName, Types, Purity, Constraints,
                 predicate_table_get_preds(PredTable1, Preds1),
                 map.det_update(PredId, PredInfo, Preds1, Preds),
                 predicate_table_set_preds(Preds, PredTable1, PredTable)
-            ;
+            else
                 PredTable = PredTable1
             ),
             module_info_set_predicate_table(PredTable, !ModuleInfo)
@@ -254,7 +254,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
     goal_info_init(Context, GoalInfo0),
     NonLocals = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
-    (
+    ( if
         Module = mercury_private_builtin_module,
         (
             ( Name = "builtin_compound_eq"
@@ -270,14 +270,14 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
             ; CompilationTarget = target_erlang
             )
         )
-    ->
+    then
         GoalExpr = conj(plain_conj, []),
         GoalInfo = GoalInfo1,
         ExtraVars = [],
         ExtraTypes = [],
         VarSet = VarSet0,
         Stub = yes
-    ;
+    else if
         (
             Module = mercury_private_builtin_module,
             Name = "trace_get_io_state"
@@ -285,7 +285,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
             Module = mercury_io_module,
             Name = "unsafe_get_io_state"
         )
-    ->
+    then
         varset.new_var(ZeroVar, VarSet0, VarSet),
         ExtraVars = [ZeroVar],
         ExtraTypes = [int_type],
@@ -320,7 +320,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         GoalExpr = scope(Reason, ConjGoal),
         GoalInfo = GoalInfo1,
         Stub = no
-    ;
+    else if
         (
             Module = mercury_private_builtin_module,
             Name = "trace_set_io_state"
@@ -328,7 +328,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
             Module = mercury_io_module,
             Name = "unsafe_set_io_state"
         )
-    ->
+    then
         ConjExpr = conj(plain_conj, []),
         ConjGoal = hlds_goal(ConjExpr, GoalInfo),
         Reason = promise_purity(purity_impure),
@@ -338,7 +338,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         ExtraTypes = [],
         VarSet = VarSet0,
         Stub = no
-    ;
+    else
         % Construct the pseudo-recursive call to Module.Name(HeadVars).
         SymName = qualified(Module, Name),
         % Mode checking will figure out the mode.
@@ -429,9 +429,9 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     predicate_table_lookup_pf_sym_arity(PredicateTable0,
         is_fully_qualified, PredOrFunc, PredName, Arity, PredIds),
-    ( PredIds = [PredIdPrime] ->
+    ( if PredIds = [PredIdPrime] then
         PredId = PredIdPrime
-    ;
+    else
         preds_add_implicit_report_error(!ModuleInfo, ModuleName,
             PredName, Arity, PredOrFunc, Status, IsClassMethod, MContext,
             origin_user(PredName), [decl("mode"), words("declaration")],
@@ -623,13 +623,13 @@ preds_do_add_implicit(ModuleInfo, ModuleName, PredName, Arity, PredOrFunc,
 
 maybe_check_field_access_function(ModuleInfo, FuncName, FuncArity, Status,
         Context, !Specs) :-
-    (
+    ( if
         is_field_access_function_name(ModuleInfo, FuncName, FuncArity,
             AccessType, FieldName)
-    ->
+    then
         check_field_access_function(ModuleInfo, AccessType, FieldName,
             FuncName, FuncArity, Status, Context, !Specs)
-    ;
+    else
         true
     ).
 
@@ -644,16 +644,16 @@ check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,
 
     % Check that a function applied to an exported type is also exported.
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
-    (
+    ( if
         % Abstract types have status `abstract_exported', so errors won't be
         % reported for local field access functions for them.
         map.search(CtorFieldTable, FieldName, [FieldDefn]),
         FieldDefn = hlds_ctor_field_defn(_, DefnStatus, _, _, _),
         DefnStatus = status_exported,
         FuncStatus \= status_exported
-    ->
+    then
         report_field_status_mismatch(Context, FuncCallId, !Specs)
-    ;
+    else
         true
     ).
 

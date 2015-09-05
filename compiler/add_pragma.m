@@ -166,50 +166,50 @@ add_pass_2_pragma(ItemPragma, Status, !ModuleInfo, !Specs) :-
         % Used for inter-module unused argument elimination.
         % This can only appear in .opt files.
         Pragma = pragma_unused_args(UnusedArgsInfo),
-        ( ImportStatus \= status_opt_imported ->
+        ( if ImportStatus = status_opt_imported then
+            add_pragma_unused_args(UnusedArgsInfo, Context,
+                !ModuleInfo, !Specs)
+        else
             Pieces = [words("Error: illegal use of pragma"),
                 quote("unused_args"), suffix(".")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
-        ;
-            add_pragma_unused_args(UnusedArgsInfo, Context,
-                !ModuleInfo, !Specs)
         )
     ;
         Pragma = pragma_exceptions(ExceptionsInfo),
-        ( ImportStatus \= status_opt_imported ->
+        ( if ImportStatus = status_opt_imported then
+            add_pragma_exceptions(ExceptionsInfo, Context, !ModuleInfo, !Specs)
+        else
             Pieces = [words("Error: illegal use of pragma"),
                 quote("exceptions"), suffix(".")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
-        ;
-            add_pragma_exceptions(ExceptionsInfo, Context, !ModuleInfo, !Specs)
         )
     ;
         Pragma = pragma_trailing_info(TrailingInfo),
-        ( ImportStatus \= status_opt_imported ->
+        ( if ImportStatus = status_opt_imported then
+            add_pragma_trailing_info(TrailingInfo, Context,
+                !ModuleInfo, !Specs)
+        else
             Pieces = [words("Error: illegal use of pragma"),
                 quote("trailing_info"), suffix(".")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
-        ;
-            add_pragma_trailing_info(TrailingInfo, Context,
-                !ModuleInfo, !Specs)
         )
     ;
         Pragma = pragma_mm_tabling_info(MMTablingInfo),
-        ( ImportStatus \= status_opt_imported ->
+        ( if ImportStatus = status_opt_imported then
+            add_pragma_mm_tabling_info(MMTablingInfo, Context,
+                !ModuleInfo, !Specs)
+        else
             Pieces = [words("Error: illegal use of pragma"),
-                    quote("mm_tabling_info"), suffix(".")],
+                quote("mm_tabling_info"), suffix(".")],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
-        ;
-            add_pragma_mm_tabling_info(MMTablingInfo, Context,
-                !ModuleInfo, !Specs)
         )
     ;
         Pragma = pragma_obsolete(PredNameArity),
@@ -471,9 +471,9 @@ add_pragma_mm_tabling_info(MMTablingInfo, _Context, !ModuleInfo, !Specs) :-
 
 add_pred_marker(PragmaName, Name, Arity, Status, Context, Marker,
         ConflictMarkers, !ModuleInfo, !Specs) :-
-    ( marker_must_be_exported(Marker) ->
+    ( if marker_must_be_exported(Marker) then
         MustBeExported = yes
-    ;
+    else
         MustBeExported = no
     ),
     do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported,
@@ -539,14 +539,14 @@ pragma_check_markers(_, [], _, no).
 pragma_check_markers(PredTable, [PredId | PredIds], ConflictList, Conflict) :-
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    (
+    ( if
         some [Marker] (
             list.member(Marker, ConflictList),
             check_marker(Markers, Marker)
         )
-    ->
+    then
         Conflict = yes
-    ;
+    else
         pragma_check_markers(PredTable, PredIds, ConflictList, Conflict)
     ).
 
@@ -562,13 +562,13 @@ pragma_add_marker([PredId | PredIds], UpdatePredInfo, Status, MustBeExported,
         !PredTable, WrongStatus) :-
     map.lookup(!.PredTable, PredId, PredInfo0),
     UpdatePredInfo(PredInfo0, PredInfo),
-    (
+    ( if
         pred_info_is_exported(PredInfo),
         MustBeExported = yes,
         Status \= status_exported
-    ->
+    then
         WrongStatus0 = yes
-    ;
+    else
         WrongStatus0 = no
     ),
     map.det_update(PredId, PredInfo, !PredTable),
@@ -743,13 +743,13 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         globals.lookup_bool_option(Globals, reorder_conj, ReorderConj),
         globals.lookup_bool_option(Globals, reorder_disj, ReorderDisj),
         globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
-        (
+        ( if
             ReorderConj = no,
             ReorderDisj = no,
             FullyStrict = yes
-        ->
+        then
             true
-        ;
+        else
             Pieces = [words("Error: this module must be compiled using"),
                 words("the strict sequential semantics."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
@@ -1001,9 +1001,9 @@ add_fact_table_proc(ProcId, PrimaryProcId, ProcTable, SymName,
         ProgVarSet, InstVarSet, fp_impl_ordinary(C_ProcCode, no)),
     add_pragma_foreign_proc(FCInfo, Status, Context, MaybeItemNumber,
         !ModuleInfo, !Specs),
-    ( C_ExtraCode = "" ->
+    ( if C_ExtraCode = "" then
         true
-    ;
+    else
         ForeignBodyCode = foreign_body_code(lang_c, literal(C_ExtraCode),
             Context),
         module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
@@ -1024,15 +1024,15 @@ add_fact_table_proc(ProcId, PrimaryProcId, ProcTable, SymName,
     prog_varset::in, list(pragma_var)::out) is det.
 
 fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
-    (
+    ( if
         Vars0 = [Var | VarsTail],
         Modes0 = [Mode | ModesTail]
-    ->
+    then
         varset.lookup_name(VarSet, Var, Name),
         PragmaVar = pragma_var(Var, Name, Mode, native_if_possible),
         fact_table_pragma_vars(VarsTail, ModesTail, VarSet, PragmaVarsTail),
         PragmaVars0 = [PragmaVar | PragmaVarsTail]
-    ;
+    else
         PragmaVars0 = []
     ).
 
@@ -1045,10 +1045,10 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
 add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
     TypeCtor = type_ctor(TypeName, TypeArity),
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
-    ( search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0) ->
+    ( if search_type_ctor_defn(TypeTable0, TypeCtor, TypeDefn0) then
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         hlds_data.get_type_defn_status(TypeDefn0, TypeStatus),
-        (
+        ( if
             not (
                 TypeStatus = PragmaStatus
             ;
@@ -1057,27 +1057,27 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                 ; PragmaStatus = status_exported_to_submodules
                 )
             )
-        ->
+        then
             ErrorPieces = [words("error:"), pragma_decl("reserve_tag"),
                 words("declaration must have"),
                 words("the same visibility as the type definition.")],
             MaybeError = yes({severity_error, ErrorPieces})
-        ;
+        else
             (
                 TypeBody0 = hlds_du_type(Body, _CtorTags0, _CheaperTagTest,
                     _DuTypeKind, MaybeUserEqComp, MaybeDirectArgCtors,
                     ReservedTag0, _ReservedAddr, IsForeign),
-                (
+                ( if
                     ReservedTag0 = uses_reserved_tag,
                     % Make doubly sure that we don't get any spurious warnings
                     % with intermodule optimization ...
                     TypeStatus \= status_opt_imported
-                ->
+                then
                     ErrorPieces = [words("warning: multiple"),
                         pragma_decl("reserved_tag"),
                         words("declarations for the same type."), nl],
                     MaybeError = yes({severity_warning, ErrorPieces})
-                ;
+                else
                     MaybeError = no
                 ),
 
@@ -1106,7 +1106,7 @@ add_pragma_reserve_tag(TypeCtor, PragmaStatus, Context, !ModuleInfo, !Specs) :-
                 MaybeError = yes({severity_error, ErrorPieces})
             )
         )
-    ;
+    else
         ErrorPieces = [words("error: undefined type"),
             sym_name_and_arity(TypeName / TypeArity), suffix("."), nl],
         MaybeError = yes({severity_error, ErrorPieces})
@@ -1152,11 +1152,11 @@ add_pragma_oisu(OISUInfo, Status, Context, !ModuleInfo, !Specs) :-
             ),
 
             module_info_get_type_table(!.ModuleInfo, TypeTable),
-            ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) ->
+            ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
                 hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
-                ( TypeStatus = status_abstract_exported ->
+                ( if TypeStatus = status_abstract_exported then
                     true
-                ;
+                else
                     TypePieces = [words("The type in a"), quote("pragma oisu"),
                         words("declaration must always be abstract exported."),
                         nl],
@@ -1165,7 +1165,7 @@ add_pragma_oisu(OISUInfo, Status, Context, !ModuleInfo, !Specs) :-
                         phase_parse_tree_to_hlds, [TypeMsg]),
                     !:OISUSpecs = [TypeSpec | !.OISUSpecs]
                 )
-            ;
+            else
 %               TypePieces = [words("The type in this"), quote("pragma oisu"),
 %                   words("declaration is undefined."), nl],
 %               TypeMsg = simple_msg(Context, [always(TypePieces)]),
@@ -1197,9 +1197,9 @@ add_pragma_oisu(OISUInfo, Status, Context, !ModuleInfo, !Specs) :-
             OISUPreds = oisu_preds(CreatorPredIds, MutatorPredIds,
                 DestructorPredIds),
             module_info_get_oisu_map(!.ModuleInfo, OISUMap0),
-            ( map.insert(TypeCtor, OISUPreds, OISUMap0, OISUMap) ->
+            ( if map.insert(TypeCtor, OISUPreds, OISUMap0, OISUMap) then
                 module_info_set_oisu_map(OISUMap, !ModuleInfo)
-            ;
+            else
                 TypeCtor = type_ctor(TypeName, TypeArity),
                 DupPieces = [words("Duplicate"), pragma_decl("oisu"),
                     words("declarations for"),
@@ -1328,10 +1328,10 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
         map.lookup(PredTable0, PredId, PredInfo0),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
         map.to_assoc_list(ProcTable0, ProcList),
-        (
+        ( if
             get_procedure_matching_declmodes_with_renaming(ProcList,
                 ModeList, !.ModuleInfo, ProcId)
-        ->
+        then
             add_context_to_arg_size_info(MaybePragmaArgSizeInfo,
                 Context, MaybeArgSizeInfo),
             add_context_to_termination_info(MaybePragmaTerminationInfo,
@@ -1345,7 +1345,7 @@ add_pragma_termination_info(TermInfo, Context, !ModuleInfo, !Specs) :-
             pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
             map.det_update(PredId, PredInfo, PredTable0, PredTable),
             module_info_set_preds(PredTable, !ModuleInfo)
-        ;
+        else
             module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error:"), pragma_decl("termination_info"),
                 words("declaration for undeclared mode of"),
@@ -1395,10 +1395,10 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
         map.lookup(PredTable0, PredId, PredInfo0),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
         map.to_assoc_list(ProcTable0, ProcList),
-        (
+        ( if
             get_procedure_matching_declmodes_with_renaming(ProcList,
                 ModeList, !.ModuleInfo, ProcId)
-        ->
+        then
             map.lookup(ProcTable0, ProcId, ProcInfo0),
             add_context_to_constr_termination_info(
                 MaybePragmaTerminationInfo, Context, MaybeTerminationInfo),
@@ -1417,7 +1417,7 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
             pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
             map.det_update(PredId, PredInfo, PredTable0, PredTable),
             module_info_set_preds(PredTable, !ModuleInfo)
-        ;
+        else
             Pieces = [words("Error:"), pragma_decl("termination2_info"),
                 words("declaration for undeclared mode of"),
                 simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
@@ -1468,10 +1468,10 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
             map.lookup(PredTable0, PredId, PredInfo0),
             pred_info_get_proc_table(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
-            (
+            ( if
                 get_procedure_matching_declmodes_with_renaming(ProcList,
                     ModeList, !.ModuleInfo, ProcId)
-            ->
+            then
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 proc_info_set_imported_structure_sharing(HeadVars, Types,
                     SharingDomain, ProcInfo0, ProcInfo),
@@ -1479,7 +1479,7 @@ add_pragma_structure_sharing(SharingInfo, Context, !ModuleInfo, !Specs):-
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 map.det_update(PredId, PredInfo, PredTable0, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
-            ;
+            else
                 Pieces = [words("Error:"), pragma_decl("structure_sharing"),
                     words("declaration for undeclared mode of"),
                     simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
@@ -1533,10 +1533,10 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
             map.lookup(PredTable0, PredId, PredInfo0),
             pred_info_get_proc_table(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
-            (
+            ( if
                 get_procedure_matching_declmodes_with_renaming(ProcList,
                     ModeList, !.ModuleInfo, ProcId)
-            ->
+            then
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                 proc_info_set_imported_structure_reuse(HeadVars, Types,
                     ReuseDomain, ProcInfo0, ProcInfo),
@@ -1544,7 +1544,7 @@ add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs):-
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 map.det_update(PredId, PredInfo, PredTable0, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
-            ;
+            else
                 Pieces = [words("Error:"), pragma_decl("structure_reuse"),
                     words("declaration for undeclared mode of"),
                     simple_call(simple_call_id(PredOrFunc, SymName, Arity)),
