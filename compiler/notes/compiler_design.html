@@ -673,6 +673,18 @@ that describe some parts of the HLDS (e.g. goals) with brief strings,
 suitable for use in progress messages used for debugging.
 
 <p>
+The module hlds_defns.m contains code to print the set of definitions
+in the HLDS to a file.
+When dividing a module into two or more submodules,
+one can use the information thus generated
+to check whether the new modules include
+every type, inst, mode, predicate and function definition
+in the original module exactly once.
+(The other sorts of definitions, e.g. typeclass definitions,
+are typically so few in number that
+one can keep track of them in one's head.)
+
+<p>
 The hlds.m package also contains some utility modules that contain
 various library routines which are used by other modules that manipulate
 the HLDS:

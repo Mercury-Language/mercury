@@ -43,6 +43,7 @@
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.export.
 :- import_module check_hlds.xml_documentation.
+:- import_module hlds.hlds_defns.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.
 :- import_module hlds.passes_aux.
@@ -1674,6 +1675,9 @@ mercury_compile(Globals, ModuleAndImports, NestedSubModules,
     pre_hlds_pass(Globals, ModuleAndImports, DontWriteDFile, HLDS1, QualInfo,
         MaybeTimestampMap, UndefTypes, UndefModes, Errors1, !DumpInfo,
         !Specs, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    maybe_write_definitions(Verbose, Stats, HLDS1, !IO),
     frontend_pass(QualInfo, UndefTypes, UndefModes, Errors1, Errors2,
         HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
     (
@@ -1681,8 +1685,6 @@ mercury_compile(Globals, ModuleAndImports, NestedSubModules,
         Errors2 = no,
         contains_errors(Globals, !.Specs) = no
     ->
-        globals.lookup_bool_option(Globals, verbose, Verbose),
-        globals.lookup_bool_option(Globals, statistics, Stats),
         maybe_write_dependency_graph(Verbose, Stats, HLDS20, HLDS21, !IO),
         globals.lookup_bool_option(Globals, make_optimization_interface,
             MakeOptInt),
@@ -2347,6 +2349,35 @@ make_hlds(Globals, AugCompUnit, EventSet, MQInfo, TypeEqvMap, UsedModules,
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
+:- pred maybe_write_definitions(bool::in, bool::in,
+    module_info::in, io::di, io::uo) is det.
+
+maybe_write_definitions(Verbose, Stats, HLDS, !IO) :-
+    module_info_get_globals(HLDS, Globals),
+    globals.lookup_bool_option(Globals, show_definitions, ShowDefns),
+    (
+        ShowDefns = yes,
+        maybe_write_string(Verbose, "% Writing definitions...", !IO),
+        module_info_get_name(HLDS, ModuleName),
+        module_name_to_file_name(Globals, ModuleName, ".defns",
+            do_create_dirs, FileName, !IO),
+        io.open_output(FileName, Res, !IO),
+        (
+            Res = ok(FileStream),
+            hlds.hlds_defns.write_hlds_defns(FileStream, HLDS, !IO),
+            io.close_output(FileStream, !IO),
+            maybe_write_string(Verbose, " done.\n", !IO)
+        ;
+            Res = error(IOError),
+            ErrorMsg = "unable to write definitions: " ++
+                io.error_message(IOError),
+            report_error(ErrorMsg, !IO)
+        ),
+        maybe_report_stats(Stats, !IO)
+    ;
+        ShowDefns = no
+    ).
 
 :- pred maybe_write_dependency_graph(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.

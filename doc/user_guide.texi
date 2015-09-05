@@ -7259,6 +7259,12 @@ Set the maximum width of an error message line to @var{N} characters
 Specifying --no-max-error-line-width removes the limit.
 
 @sp 1
+@item --show-definitions
+@findex --show-definitions
+Write out a list of the types, insts, modes, predicates and functions
+defined in the module to @var{module}.defns.
+
+@sp 1
 @item --show-dependency-graph
 @findex --show-dependency-graph
 Write out the dependency graph to @var{module}.dependency_graph.
