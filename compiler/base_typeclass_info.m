@@ -90,19 +90,19 @@ gen_infos_for_instances(ModuleInfo, ClassId,
     InstanceDefn = hlds_instance_defn(InstanceModule, ImportStatus,
         _TermContext, _InstanceConstraints, InstanceTypes, _OriginalTypes,
         Body, _MaybePredProcIds, _Varset, _SuperClassProofs),
-    (
+    ( if
         Body = instance_body_concrete(_),
         % Only make the base_typeclass_info if the instance declaration
         % originally came from _this_ module.
         status_defined_in_this_module(ImportStatus) = yes
-    ->
+    then
         make_instance_string(InstanceTypes, InstanceString),
         gen_body(ModuleInfo, ClassId, InstanceDefn, BaseTypeClassInfo),
         TCName = generate_class_name(ClassId),
         RttiData = rtti_data_base_typeclass_info(TCName, InstanceModule,
             InstanceString, BaseTypeClassInfo),
         !:RttiDatas = [RttiData | !.RttiDatas]
-    ;
+    else
         % The instance decl is from another module, or is abstract,
         % so we don't bother including it.
         true
@@ -127,11 +127,11 @@ gen_body(ModuleInfo, ClassId, InstanceDefn, BaseTypeClassInfo) :-
     ;
         MaybeInstancePredProcIds = yes(InstancePredProcIds)
     ),
-    ExtractPredProcId = (pred(HldsPredProc::in, PredProc::out) is det :-
-        (
+    ExtractPredProcId =
+        ( pred(HldsPredProc::in, PredProc::out) is det :-
             HldsPredProc = hlds_class_proc(PredId, ProcId),
             PredProc = proc(PredId, ProcId)
-        )),
+        ),
     list.map(ExtractPredProcId, InstancePredProcIds, PredProcIds),
     construct_proc_labels(ModuleInfo, PredProcIds, ProcLabels),
     gen_superclass_count(ClassId, ModuleInfo, SuperClassCount, ClassArity),
