@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: ops.m.
 % Main author: fjh.
 % Stability: low.
-% 
+%
 % This module exports a typeclass `ops.op_table' which is used to define
 % operator precedence tables for use by `parser.read_term_with_op_table'
 % and `term_io.write_term_with_op_table'.
@@ -18,7 +18,7 @@
 % Mercury operator table defined in the Mercury Language Reference Manual.
 %
 % See samples/calculator2.m for an example program.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -57,7 +57,7 @@
 :- type ops.op_info
     --->    op_info(
                 ops.class,
-                ops.priority  
+                ops.priority
             ).
 
 %---------------------------------------------------------------------------%
@@ -184,21 +184,21 @@ ops.init_mercury_op_table = ops.mercury_op_table.
 ops.lookup_mercury_infix_op(_OpTable, Name, Priority,
         LeftAssoc, RightAssoc) :-
     ops.op_table(Name, Info, MaybeOtherInfo),
-    (
+    ( if
         Info = op_info(Class, PriorityPrime),
         Class = infix(LeftAssocPrime, RightAssocPrime)
-    ->
+    then
         LeftAssoc = LeftAssocPrime,
         RightAssoc = RightAssocPrime,
         Priority = PriorityPrime
-    ;
+    else if
         MaybeOtherInfo = [op_info(Class, PriorityPrime)],
         Class = infix(LeftAssocPrime, RightAssocPrime)
-    ->
+    then
         LeftAssoc = LeftAssocPrime,
         RightAssoc = RightAssocPrime,
         Priority = PriorityPrime
-    ;
+    else
         fail
     ).
 
@@ -207,13 +207,17 @@ ops.lookup_mercury_infix_op(_OpTable, Name, Priority,
 
 ops.lookup_mercury_prefix_op(_OpTable, Name, Priority, LeftAssoc) :-
     ops.op_table(Name, Info, MaybeOtherInfo),
-    ( Info = op_info(prefix(LeftAssocPrime), PriorityPrime) ->
+    ( if
+        Info = op_info(prefix(LeftAssocPrime), PriorityPrime)
+    then
         LeftAssoc = LeftAssocPrime,
         Priority = PriorityPrime
-    ; MaybeOtherInfo = [op_info(prefix(LeftAssocPrime), PriorityPrime)] ->
+    else if
+        MaybeOtherInfo = [op_info(prefix(LeftAssocPrime), PriorityPrime)]
+    then
         LeftAssoc = LeftAssocPrime,
         Priority = PriorityPrime
-    ;
+    else
         fail
     ).
 
@@ -223,21 +227,21 @@ ops.lookup_mercury_prefix_op(_OpTable, Name, Priority, LeftAssoc) :-
 ops.lookup_mercury_binary_prefix_op(_OpTable, Name, Priority,
         LeftAssoc, RightAssoc) :-
     ops.op_table(Name, Info, MaybeOtherInfo),
-    (
+    ( if
         Info = op_info(Class, PriorityPrime),
         Class = binary_prefix(LeftAssocPrime, RightAssocPrime)
-    ->
+    then
         LeftAssoc = LeftAssocPrime,
         RightAssoc = RightAssocPrime,
         Priority = PriorityPrime
-    ;
+    else if
         MaybeOtherInfo = [op_info(Class, PriorityPrime)],
         Class = binary_prefix(LeftAssocPrime, RightAssocPrime)
-    ->
+    then
         LeftAssoc = LeftAssocPrime,
         RightAssoc = RightAssocPrime,
         Priority = PriorityPrime
-    ;
+    else
         fail
     ).
 
@@ -246,13 +250,17 @@ ops.lookup_mercury_binary_prefix_op(_OpTable, Name, Priority,
 
 ops.lookup_mercury_postfix_op(_OpTable, Name, Priority, LeftAssoc) :-
     ops.op_table(Name, Info, MaybeOtherInfo),
-    ( Info = op_info(postfix(LeftAssocPrime), PriorityPrime) ->
+    ( if
+        Info = op_info(postfix(LeftAssocPrime), PriorityPrime)
+    then
         LeftAssoc = LeftAssocPrime,
         Priority = PriorityPrime
-    ; MaybeOtherInfo = [op_info(postfix(LeftAssocPrime), PriorityPrime)] ->
+    else if
+        MaybeOtherInfo = [op_info(postfix(LeftAssocPrime), PriorityPrime)]
+    then
         LeftAssoc = LeftAssocPrime,
         Priority = PriorityPrime
-    ;
+    else
         fail
     ).
 
