@@ -2137,11 +2137,12 @@ add_redundant_constraint(Constraint, !Redundant) :-
     list.length(ArgTypes, Arity),
     ClassId = class_id(ClassName, Arity),
     ( if map.search(!.Redundant, ClassId, Constraints0) then
-        set.insert(Constraint, Constraints0, Constraints)
+        set.insert(Constraint, Constraints0, Constraints),
+        map.det_update(ClassId, Constraints, !Redundant)
     else
-        Constraints = set.make_singleton_set(Constraint)
-    ),
-    map.set(ClassId, Constraints, !Redundant).
+        Constraints = set.make_singleton_set(Constraint),
+        map.det_insert(ClassId, Constraints, !Redundant)
+    ).
 
 lookup_hlds_constraint_list(ConstraintMap, ConstraintType, GoalId, Count,
         Constraints) :-
