@@ -39,6 +39,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module list.
@@ -46,6 +47,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 
 :- type name_arity
     --->    name_arity(string, arity).
@@ -77,18 +79,32 @@ write_hlds_defns(Stream, ModuleInfo, !IO) :-
     gather_local_pred_names(ModuleName, PredDefns,
         set.init, FuncNameArities, set.init, PredNameArities),
 
+    module_info_get_class_table(ModuleInfo, ClassTable),
+    map.keys(ClassTable, ClassIds),
+    gather_local_typeclass_names(ModuleName, ClassIds,
+        set.init, ClassNameArities),
+
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
+    map.to_sorted_assoc_list(InstanceTable, InstanceDefns),
+    gather_local_instance_names(ModuleName, InstanceDefns,
+        set.init, InstanceDescs),
+
     % We print the output in this order to ensure that the resulting file
     % is sorted.
     output_prefixed_name_arities(Stream, "func ",
         set.to_sorted_list(FuncNameArities), !IO),
     output_prefixed_name_arities(Stream, "inst ",
         set.to_sorted_list(InstNameArities), !IO),
+    output_prefixed_strings(Stream, "instance ",
+        set.to_sorted_list(InstanceDescs), !IO),
     output_prefixed_name_arities(Stream, "mode ",
         set.to_sorted_list(ModeNameArities), !IO),
     output_prefixed_name_arities(Stream, "pred ",
         set.to_sorted_list(PredNameArities), !IO),
     output_prefixed_name_arities(Stream, "type ",
-        set.to_sorted_list(TypeNameArities), !IO).
+        set.to_sorted_list(TypeNameArities), !IO),
+    output_prefixed_name_arities(Stream, "typeclass ",
+        set.to_sorted_list(ClassNameArities), !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -124,7 +140,7 @@ gather_local_inst_names(ModuleName, [InstId | InstIds], !InstNameArities) :-
     InstId = inst_id(InstSymName, InstArity),
     (
         InstSymName = unqualified(_),
-        unexpected($module, $pred, "unqualified insts_id name")
+        unexpected($module, $pred, "unqualified inst_id name")
     ;
         InstSymName = qualified(InstModuleName, InstName),
         ( if InstModuleName = ModuleName then
@@ -146,7 +162,7 @@ gather_local_mode_names(ModuleName, [ModeId | ModeIds],
     ModeId = mode_id(ModeSymName, ModeArity),
     (
         ModeSymName = unqualified(_),
-        unexpected($module, $pred, "unqualified modes_id name")
+        unexpected($module, $pred, "unqualified mode_id name")
     ;
         ModeSymName = qualified(ModeModuleName, ModeName),
         ( if ModeModuleName = ModuleName then
@@ -193,18 +209,96 @@ gather_local_pred_names(ModuleName, [PredDefn | PredDefns],
 
 %-----------------------------------------------------------------------------%
 
+:- pred gather_local_typeclass_names(module_name::in, list(class_id)::in,
+    set(name_arity)::in, set(name_arity)::out) is det.
+
+gather_local_typeclass_names(_, [], !ClassNameArities).
+gather_local_typeclass_names(ModuleName, [ClassId | ClassIds],
+        !ClassNameArities) :-
+    ClassId = class_id(ClassSymName, ClassArity),
+    (
+        ClassSymName = unqualified(_),
+        unexpected($module, $pred, "unqualified class_id name")
+    ;
+        ClassSymName = qualified(ClassModuleName, ClassName),
+        ( if ClassModuleName = ModuleName then
+            set.insert(name_arity(ClassName, ClassArity), !ClassNameArities)
+        else
+            true
+        )
+    ),
+    gather_local_typeclass_names(ModuleName, ClassIds, !ClassNameArities).
+
+%-----------------------------------------------------------------------------%
+
+:- pred gather_local_instance_names(module_name::in,
+    assoc_list(class_id, list(hlds_instance_defn))::in,
+    set(string)::in, set(string)::out) is det.
+
+gather_local_instance_names(_, [], !InstanceDescs).
+gather_local_instance_names(ModuleName, [InstancePair | InstancePairs],
+        !InstanceDescs) :-
+    InstancePair = ClassId - InstanceDefns,
+    gather_local_instance_names_for_class(ModuleName, ClassId, InstanceDefns,
+        !InstanceDescs),
+    gather_local_instance_names(ModuleName, InstancePairs, !InstanceDescs).
+
+:- pred gather_local_instance_names_for_class(module_name::in, class_id::in,
+    list(hlds_instance_defn)::in, set(string)::in, set(string)::out) is det.
+
+gather_local_instance_names_for_class(_, _, [], !InstanceDescs).
+gather_local_instance_names_for_class(ModuleName, ClassId,
+        [InstanceDefn | InstanceDefns], !InstanceDescs) :-
+    InstanceDefn = hlds_instance_defn(InstanceModuleName, _Status, _Context,
+        _Constraints, _Types, OrigTypes, _Body, _Interface, _TVarSet, _Proofs),
+    ( if InstanceModuleName = ModuleName then
+        ClassId = class_id(ClassSymName, ClassArity),
+        ClassName = unqualify_name(ClassSymName),
+
+        list.map(instance_type_to_desc, OrigTypes, OrigTypeDescs),
+        TypeVectorDesc = string.join_list(", ", OrigTypeDescs),
+
+        string.format("%s/%d <%s>",
+            [s(ClassName), i(ClassArity), s(TypeVectorDesc)], InstanceDesc),
+        set.insert(InstanceDesc, !InstanceDescs)
+    else
+        true
+    ),
+    gather_local_instance_names_for_class(ModuleName, ClassId,
+        InstanceDefns, !InstanceDescs).
+
+:- pred instance_type_to_desc(mer_type::in, string::out) is det.
+
+instance_type_to_desc(Type, TypeDesc) :-
+    type_to_ctor_det(Type, TypeCtor),
+    TypeCtor = type_ctor(TypeSymName, TypeArity),
+    TypeName = unqualify_name(TypeSymName),
+    TypeDesc = TypeName ++ "/" ++ string.int_to_string(TypeArity).
+
+%-----------------------------------------------------------------------------%
+
 :- pred output_prefixed_name_arities(io.text_output_stream::in,
     string::in, list(name_arity)::in, io::di, io::uo) is det.
 
 output_prefixed_name_arities(_Stream, _Prefix, [], !IO).
-output_prefixed_name_arities(Stream, Prefix, [StrArity | StrArities], !IO) :-
-    StrArity = name_arity(Str, Arity),
+output_prefixed_name_arities(Stream, Prefix, [NameArity | NameArities], !IO) :-
+    NameArity = name_arity(Name, Arity),
     io.write_string(Stream, Prefix, !IO),
-    io.write_string(Stream, Str, !IO),
+    io.write_string(Stream, Name, !IO),
     io.write_string(Stream, "/", !IO),
     io.write_int(Stream, Arity, !IO),
     io.nl(Stream, !IO),
-    output_prefixed_name_arities(Stream, Prefix, StrArities, !IO).
+    output_prefixed_name_arities(Stream, Prefix, NameArities, !IO).
+
+:- pred output_prefixed_strings(io.text_output_stream::in,
+    string::in, list(string)::in, io::di, io::uo) is det.
+
+output_prefixed_strings(_Stream, _Prefix, [], !IO).
+output_prefixed_strings(Stream, Prefix, [Str | Strs], !IO) :-
+    io.write_string(Stream, Prefix, !IO),
+    io.write_string(Stream, Str, !IO),
+    io.nl(Stream, !IO),
+    output_prefixed_strings(Stream, Prefix, Strs, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_defns.
