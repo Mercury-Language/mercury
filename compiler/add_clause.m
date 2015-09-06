@@ -61,8 +61,9 @@
 :- import_module hlds.pred_table.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.

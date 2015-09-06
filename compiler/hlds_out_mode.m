@@ -17,7 +17,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -108,6 +108,9 @@
 :- import_module check_hlds.mode_util.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_inst.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_util.
 

@@ -46,7 +46,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_type.

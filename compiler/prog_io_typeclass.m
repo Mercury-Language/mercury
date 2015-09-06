@@ -60,7 +60,7 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_io_item.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_type.

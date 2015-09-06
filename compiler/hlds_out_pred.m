@@ -20,7 +20,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.status.
 
@@ -87,6 +87,10 @@
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_pragma.
+:- import_module parse_tree.parse_tree_out_pred_decl.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -1021,9 +1025,10 @@ write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
         varset.init(ModeVarSet),
         (
             PredOrFunc = pf_predicate,
+            MaybeWithInst = maybe.no,
             mercury_output_pred_mode_decl(output_debug, ModeVarSet,
                 unqualified(PredName), HeadModes,
-                DeclaredDeterminism, ModeContext, !IO)
+                MaybeWithInst, DeclaredDeterminism, ModeContext, !IO)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(HeadModes, FuncHeadModes, RetHeadMode),

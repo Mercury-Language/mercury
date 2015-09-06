@@ -58,7 +58,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.quantification.
 :- import_module mdbcomp.goal_path.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

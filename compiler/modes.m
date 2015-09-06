@@ -1023,11 +1023,6 @@ queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
         ),
         write_pred_proc_id(ModuleInfo, PredProcId, !IO),
         io.write_string("\n", !IO)
-%       mode_list_get_initial_insts(Modes, ModuleInfo1, InitialInsts),
-%       io.write_string("% Initial insts: `", !IO),
-%       varset.init(InstVarSet),
-%       mercury_output_inst_list(InitialInsts, InstVarSet, !IO),
-%       io.write_string("'\n", !IO)
     ;
         VeryVerbose = no
     ).
@@ -1219,9 +1214,9 @@ unique_modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0,
 
 %-----------------------------------------------------------------------------%
 
+modecheck_lambda_final_insts(HeadVars, ArgFinalInsts, !Goal, !ModeInfo) :-
     % This is modecheck_final_insts for a lambda expression.
     %
-modecheck_lambda_final_insts(HeadVars, ArgFinalInsts, !Goal, !ModeInfo) :-
     % For lambda expressions, modes must always be declared;
     % we never infer them.
     InferModes = no,

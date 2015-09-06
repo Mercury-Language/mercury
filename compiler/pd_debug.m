@@ -67,7 +67,8 @@
 :- import_module hlds.instmap.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_out.
 
 :- import_module set.

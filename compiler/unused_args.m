@@ -102,7 +102,8 @@
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_pragma.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.

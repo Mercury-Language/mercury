@@ -48,6 +48,13 @@
 
 % Pretty-printers.
 :- include_module mercury_to_mercury.
+:- include_module parse_tree_out.
+:- include_module parse_tree_out_clause.
+:- include_module parse_tree_out_inst.
+:- include_module parse_tree_out_pragma.
+:- include_module parse_tree_out_pred_decl.
+:- include_module parse_tree_out_term.
+:- include_module parse_tree_out_info.
 :- include_module prog_out.
 
 % Utility data structures.

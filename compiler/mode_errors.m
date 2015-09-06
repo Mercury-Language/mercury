@@ -252,6 +252,9 @@
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_pred_decl.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -1458,8 +1461,9 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
         strip_builtin_qualifiers_from_mode_list(!ArgModes),
         (
             PredOrFunc = pf_predicate,
+            MaybeWithInst = maybe.no,
             Detail = mercury_pred_mode_decl_to_string(output_debug, VarSet,
-                Name, !.ArgModes, !.MaybeDet, Context)
+                Name, !.ArgModes, MaybeWithInst, !.MaybeDet, Context)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(!.ArgModes, FuncArgModes, RetMode),

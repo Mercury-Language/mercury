@@ -65,7 +65,7 @@ MCFLAGS-make.util = --no-ansi-c
 # These modules provide general-purpose wrappers around string.format
 # in which the format strings are known only by their callers.
 MCFLAGS-transform_hlds.pd_debug = --no-warn-unknown-format-calls
-MCFLAGS-parse_tree.mercury_to_mercury  = --no-warn-unknown-format-calls
+MCFLAGS-parse_tree.parse_tree_out_info  = --no-warn-unknown-format-calls
 
 # Bug workarounds
 

@@ -137,7 +137,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.dependency_graph.

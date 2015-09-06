@@ -211,7 +211,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module integer.
-:- import_module list.
 :- import_module require.
 :- import_module string.
 

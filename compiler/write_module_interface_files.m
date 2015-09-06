@@ -96,17 +96,17 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module parse_tree.check_raw_comp_unit.% undesirable dependency
 :- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.item_util.
-:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.modules.            % undesirable dependency
-:- import_module parse_tree.check_raw_comp_unit.% undesirable dependency
+:- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_type.

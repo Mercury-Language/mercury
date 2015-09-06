@@ -123,6 +123,10 @@
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
+:- import_module parse_tree.parse_tree_out.
+:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_pragma.
+:- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_item.
@@ -1726,8 +1730,9 @@ intermod_write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds],
             FuncArgModes, FuncRetMode, yes(Detism), Context, !IO)
     ;
         PredOrFunc = pf_predicate,
+        MaybeWithInst = maybe.no,
         mercury_output_pred_mode_decl(output_mercury, Varset, SymName,
-            ArgModes, yes(Detism), Context, !IO)
+            ArgModes, MaybeWithInst, yes(Detism), Context, !IO)
     ),
     intermod_write_pred_modes(Procs, SymName, PredOrFunc, ProcIds, !IO).
 

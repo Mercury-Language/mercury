@@ -107,7 +107,7 @@
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.store_alloc.
 :- import_module mdbcomp.goal_path.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.

@@ -56,7 +56,7 @@
 
 :- import_module libs.globals.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_io_mutable.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_typeclass.

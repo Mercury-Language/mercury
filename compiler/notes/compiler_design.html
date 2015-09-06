@@ -345,13 +345,36 @@ such as pretty-printing.
 
     <p>
 
+    There are several modules whose collective job it is
+    to print (parts of) the parse tree.
+    <ul>
+    <li>
+    The top levels of parse trees are output by parse_tree_out.m.
+    This module also outputs most kinds of items.
+    <li>
+    Parse_tree_out_clause.m outputs clauses and goals.
+    <li>
+    Parse_tree_out_pragma.m outputs pragmas.
+    <li>
+    Parse_tree_out_pred_decl.m outputs (parts of) predicate, function
+    and mode declarations.
+    <li>
+    Parse_tree_out_inst.m outputs insts and modes.
+    <li>
+    Parse_tree_out_term.m outputs variables and terms.
+    <li>
+    Parse_tree_out_info.m provides a common infrastructure
+    for the above modules, and for mercury_to_mercury.m.
+    <li>
+    The modules prog_out.m and mercury_to_mercury.m output
+    the lowest level, and smallest, parts of the parse tree.
+    </ul>
+
     builtin_lib_types.m contains definitions about types, type constructors
     and function symbols that the Mercury implementation needs to know about.
 
     <p>
 
-    The modules prog_out.m and mercury_to_mercury.m contain predicates
-    for printing the parse tree.
     prog_util.m contains some utility predicates
     for manipulating the parse tree,
     prog_detism.m contains utility predicates

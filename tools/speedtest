@@ -6,10 +6,9 @@
 usage="Usage: speedtest [-dsmtz] [-l | -1] [-e dir] [-g grade] [-c cmd] [-o option]* [-nN] [-ON] [-fFILE] batchname"
 
 single_modulelist="typecheck.m"
-# As of 5 aug 2015, these are the ten largest modules of the compiler.
+# As of 6 sep 2015, these are the ten largest modules of the compiler.
 short_modulelist="
     options.m
-    mercury_to_mercury.m
     polymorphism.m
     mlds_to_java.m
     mlds_to_c.m
@@ -18,10 +17,10 @@ short_modulelist="
     code_loc_dep.m
     dep_par_conj.m
     typecheck.m
-"
-# As of 5 aug 2015, these are the ten next largest modules of the compiler.
-long_modulelist="$short_modulelist
     hlds_pred.m
+"
+# As of 6 sep 2015, these are the ten next largest modules of the compiler.
+long_modulelist="$short_modulelist
     higher_order.m
     prog_io_pragma.m
     mlds_to_cs.m
@@ -30,6 +29,7 @@ long_modulelist="$short_modulelist
     compile_target_code.m
     hlds_goal.m
     layout_out.m
+    module_qual.m
     fact_table.m
 "
 cmd=""

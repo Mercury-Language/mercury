@@ -73,7 +73,7 @@
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.trace_gen.
 :- import_module ll_backend.var_locn.
-:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_tree_out_term.
 
 :- import_module cord.
 :- import_module int.
