@@ -733,11 +733,18 @@ strip_unnecessary_impl_defns(!IntAvails, !ImpAvails, !IntItems, !ImpItems) :-
 
         map.foldl(add_type_defn_items_from_map, !.ImpTypesMap, !ImpItems),
 
-        % XXX ITEM_LIST Merge these traversals.
-        maybe_strip_import_decls(!ImpAvails, !ImpItems),
-        strip_unnecessary_impl_imports(NecessaryImpImports, !ImpAvails),
-        strip_unnecessary_impl_types(AllNecessaryTypeCtors, !ImpItems),
-        strip_local_foreign_enum_pragmas(!.IntTypesMap, !ImpItems),
+        find_need_imports(!.ImpItems, NeedImports, NeedForeignImports),
+        (
+            NeedImports = need_imports,
+            strip_unnecessary_impl_imports(NecessaryImpImports, !ImpAvails)
+        ;
+            NeedImports = dont_need_imports,
+            !:ImpAvails = []
+        ),
+        strip_unnecessary_impl_defns_in_items(!.ImpItems, NeedForeignImports,
+            !.IntTypesMap, AllNecessaryTypeCtors, cord.init, ItemsCord),
+        !:ImpItems = cord.list(ItemsCord),
+
         (
             !.ImpItems = []
         ;
@@ -1017,46 +1024,6 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
         ; Type = kinded_type(_, _)
         ),
         IsDummyType = no
-    ).
-
-    % strip_unnecessary_impl_imports(NecessaryModules, !Avails):
-    %
-    % Remove all import_module and use_module declarations for modules
-    % that are not in NecessaryModules.
-    %
-:- pred strip_unnecessary_impl_imports(set(module_name)::in,
-    list(item_avail)::in, list(item_avail)::out) is det.
-
-strip_unnecessary_impl_imports(NecessaryImports, !Avails) :-
-    list.filter(is_not_unnecessary_impl_import(NecessaryImports), !Avails).
-
-:- pred is_not_unnecessary_impl_import(set(module_name)::in, item_avail::in)
-    is semidet.
-
-is_not_unnecessary_impl_import(NecessaryImports, Avail) :-
-    ModuleName = item_avail_module_name(Avail),
-    set.member(ModuleName, NecessaryImports).
-
-    % strip_unnecessary_impl_types(NecessaryTypeCtors, !Items):
-    %
-    % Remove all type declarations for type constructors that are
-    % not in NecessaryTypeCtors.
-    %
-:- pred strip_unnecessary_impl_types(set(type_ctor)::in,
-    list(item)::in, list(item)::out) is det.
-
-strip_unnecessary_impl_types(NecessaryTypeCtors, !Items) :-
-    list.filter(is_not_unnecessary_impl_type(NecessaryTypeCtors), !Items).
-
-:- pred is_not_unnecessary_impl_type(set(type_ctor)::in, item::in) is semidet.
-
-is_not_unnecessary_impl_type(NecessaryTypeCtors, Item) :-
-    ( if Item = item_type_defn(ItemTypeDefn) then
-        ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
-        TypeCtor = type_ctor(SymName, list.length(Params)),
-        set.member(TypeCtor, NecessaryTypeCtors)
-    else
-        true
     ).
 
     % get_requirements_of_impl_exported_types(InterfaceTypeMap, ImplTypeMap,
@@ -1397,33 +1364,6 @@ accumulate_modules_from_constraint_arg_type(ArgType, !Modules) :-
         accumulate_modules_from_constraint_arg_types(Args, !Modules)
     ).
 
-    % Retain only those foreign_enum pragmas that correspond to types
-    % defined in the interface of a module.
-    %
-:- pred strip_local_foreign_enum_pragmas(type_defn_map::in,
-    list(item)::in, list(item)::out) is det.
-
-strip_local_foreign_enum_pragmas(IntTypeMap, !ImpItems) :-
-    list.filter(foreign_enum_is_local(IntTypeMap), !ImpItems).
-
-:- pred foreign_enum_is_local(type_defn_map::in, item::in) is semidet.
-
-foreign_enum_is_local(TypeDefnMap, Item) :-
-    ( if
-        Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, _, _),
-        Pragma = pragma_foreign_enum(FEInfo),
-        FEInfo = pragma_info_foreign_enum(_Lang, TypeCtor, _Values)
-    then
-        % We only add a pragma foreign_enum pragma to the interface file
-        % if it corresponds to a type _definition_ in the interface of the
-        % module.
-        map.search(TypeDefnMap, TypeCtor, Defns),
-        Defns \= [parse_tree_abstract_type(_) - _]
-    else
-        true
-    ).
-
 %-----------------------------------------------------------------------------%
 
     % XXX ITEM_LIST Integrate this traversal with other traversals.
@@ -1665,6 +1605,8 @@ get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
     ),
     get_short_interface_from_items_acc(Kind, Items, !ItemsCord).
 
+%-----------------------------------------------------------------------------%
+
 :- type maybe_need_imports
     --->    dont_need_imports
     ;       need_imports.
@@ -1677,9 +1619,7 @@ get_short_interface_from_items_acc(Kind, [Item | Items], !ItemsCord) :-
     list(item)::in, list(item)::out) is det.
 
 maybe_strip_import_decls(Avails0, Avails, Items0, Items) :-
-    find_need_imports(Items0,
-        dont_need_imports, NeedImports,
-        dont_need_foreign_imports, NeedForeignImports),
+    find_need_imports(Items0, NeedImports, NeedForeignImports),
     (
         NeedImports = need_imports,
         Avails = Avails0
@@ -1687,16 +1627,29 @@ maybe_strip_import_decls(Avails0, Avails, Items0, Items) :-
         NeedImports = dont_need_imports,
         Avails = []
     ),
-    filter_items_for_import_needs(Items0, NeedForeignImports,
-        cord.init, ItemsCord),
-    Items = cord.list(ItemsCord).
+    (
+        NeedForeignImports = need_foreign_imports,
+        Items = Items0
+    ;
+        NeedForeignImports = dont_need_foreign_imports,
+        strip_foreign_import_items(Items0, cord.init, ItemsCord),
+        Items = cord.list(ItemsCord)
+    ).
 
 :- pred find_need_imports(list(item)::in,
+    maybe_need_imports::out, maybe_need_foreign_imports::out) is det.
+
+find_need_imports(Items, NeedImports, NeedForeignImports) :-
+    find_need_imports_acc(Items,
+        dont_need_imports, NeedImports,
+        dont_need_foreign_imports, NeedForeignImports).
+
+:- pred find_need_imports_acc(list(item)::in,
     maybe_need_imports::in, maybe_need_imports::out,
     maybe_need_foreign_imports::in, maybe_need_foreign_imports::out) is det.
 
-find_need_imports([], !NeedImports, !NeedForeignImports).
-find_need_imports([Item | Items], !NeedImports, !NeedForeignImports) :-
+find_need_imports_acc([], !NeedImports, !NeedForeignImports).
+find_need_imports_acc([Item | Items], !NeedImports, !NeedForeignImports) :-
     % XXX ITEM_LIST Should do with one call and one switch.
     ItemNeedsImports = item_needs_imports(Item),
     ItemNeedsForeignImports = item_needs_foreign_imports(Item),
@@ -1712,15 +1665,50 @@ find_need_imports([Item | Items], !NeedImports, !NeedForeignImports) :-
     ;
         ItemNeedsForeignImports = []
     ),
-    find_need_imports(Items, !NeedImports, !NeedForeignImports).
+    find_need_imports_acc(Items, !NeedImports, !NeedForeignImports).
 
-:- pred filter_items_for_import_needs(list(item)::in,
-    maybe_need_foreign_imports::in,
+    % strip_unnecessary_impl_imports(NecessaryModules, !Avails):
+    %
+    % Remove all import_module and use_module declarations for modules
+    % that are not in NecessaryModules.
+    %
+:- pred strip_unnecessary_impl_imports(set(module_name)::in,
+    list(item_avail)::in, list(item_avail)::out) is det.
+
+strip_unnecessary_impl_imports(NecessaryImports, !Avails) :-
+    list.filter(is_not_unnecessary_impl_import(NecessaryImports), !Avails).
+
+:- pred is_not_unnecessary_impl_import(set(module_name)::in, item_avail::in)
+    is semidet.
+
+is_not_unnecessary_impl_import(NecessaryImports, Avail) :-
+    ModuleName = item_avail_module_name(Avail),
+    set.member(ModuleName, NecessaryImports).
+
+    % strip_unnecessary_impl_defns_in_items(Items,
+    %     NeedForeignImports, IntTypesMap, NecessaryTypeCtors, !ItemsCord):
+    %
+    % Put all Items into !ItemsCord, except those that are caught by one of
+    % these three criteria.
+    %
+    % 1. If NeedForeignImports is dont_need_foreign_imports, remove all
+    %    pragma_foreign_import_module items.
+    %
+    % 2. Retain only those foreign_enum pragmas that correspond to types
+    %    that are actually defined in the interface of the module. (IntTypesMap
+    %    maps the types defined in the interface to the information about them
+    %    that is visible in the interface.)
+    %
+    % 3. Remove all type declarations for type constructors that are
+    %    not in NecessaryTypeCtors.
+    %
+:- pred strip_unnecessary_impl_defns_in_items(list(item)::in,
+    maybe_need_foreign_imports::in, type_defn_map::in, set(type_ctor)::in,
     cord(item)::in, cord(item)::out) is det.
 
-filter_items_for_import_needs([], _, !ItemsCord).
-filter_items_for_import_needs([Item | Items], NeedForeignImports,
-        !ItemsCord) :-
+strip_unnecessary_impl_defns_in_items([], _, _, _, !ItemsCord).
+strip_unnecessary_impl_defns_in_items([Item | Items],
+        NeedForeignImports, IntTypesMap, NecessaryTypeCtors, !ItemsCord) :-
     (
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
@@ -1733,6 +1721,66 @@ filter_items_for_import_needs([Item | Items], NeedForeignImports,
             ;
                 NeedForeignImports = dont_need_foreign_imports
             )
+        else if Pragma = pragma_foreign_enum(FEInfo) then
+            FEInfo = pragma_info_foreign_enum(_Lang, TypeCtor, _Values),
+            ( if
+                map.search(IntTypesMap, TypeCtor, Defns),
+                Defns \= [parse_tree_abstract_type(_) - _]
+            then
+                !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+            else
+                true
+            )
+        else
+            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        )
+    ;
+        Item = item_type_defn(ItemTypeDefn),
+        % Remove all type declarations for type constructors that are
+        % not in NecessaryTypeCtors.
+        ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
+        TypeCtor = type_ctor(SymName, list.length(Params)),
+        ( if set.member(TypeCtor, NecessaryTypeCtors) then
+            !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+        else
+            true
+        )
+    ;
+        ( Item = item_clause(_)
+        ; Item = item_inst_defn(_)
+        ; Item = item_mode_defn(_)
+        ; Item = item_pred_decl(_)
+        ; Item = item_mode_decl(_)
+        ; Item = item_typeclass(_)
+        ; Item = item_instance(_)
+        ; Item = item_promise(_)
+        ; Item = item_initialise(_)
+        ; Item = item_finalise(_)
+        ; Item = item_mutable(_)
+        ; Item = item_nothing(_)
+        ),
+        !:ItemsCord = cord.snoc(!.ItemsCord, Item)
+    ),
+    strip_unnecessary_impl_defns_in_items(Items,
+        NeedForeignImports, IntTypesMap, NecessaryTypeCtors, !ItemsCord).
+
+    % strip_foreign_import_items(Items, !ItemsCord):
+    %
+    % Does only the first job of strip_unnecessary_impl_defns_in_items
+    % when given NeedForeignImports = dont_need_foreign_imports.
+    %
+:- pred strip_foreign_import_items(list(item)::in,
+    cord(item)::in, cord(item)::out) is det.
+
+strip_foreign_import_items([], !ItemsCord).
+strip_foreign_import_items([Item | Items], !ItemsCord) :-
+    (
+        Item = item_pragma(ItemPragma),
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        % XXX ITEM_LIST The foreign imports should be stored outside
+        % the item list.
+        ( if Pragma = pragma_foreign_import_module(_) then
+            true
         else
             !:ItemsCord = cord.snoc(!.ItemsCord, Item)
         )
@@ -1753,7 +1801,7 @@ filter_items_for_import_needs([Item | Items], NeedForeignImports,
         ),
         !:ItemsCord = cord.snoc(!.ItemsCord, Item)
     ),
-    filter_items_for_import_needs(Items, NeedForeignImports, !ItemsCord).
+    strip_foreign_import_items(Items, !ItemsCord).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
