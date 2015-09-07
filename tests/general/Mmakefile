@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = general
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
@@ -82,42 +85,35 @@ EXCEPTION_PROGS = \
 	map_corresponding 		\
 	unused_arg_determinism
 
-# XXX Java testing is disabled for this directory since most tests
-#     currently fail.  The reason for this is that they depend too
-#     heavily on the mercury library which cannot yet be compiled
-#     in grade java.
 ifneq "$(findstring profdeep,$(GRADE))" ""
 	PROGS0 = $(ORDINARY_PROGS)
 else
 	PROGS0 = $(ORDINARY_PROGS) $(EXCEPTION_PROGS)
 endif
 
-	# On Dec OSF 5.1 the floating point tests of
-	# string_format_special_floats fail because the OS throws an
-	# exception when calculating both Inf and Nan.
-OSF1_FAILURES=string_format_special_floats
+# On Dec OSF 5.1 the floating point tests of
+# string_format_special_floats fail because the OS throws an exception
+# when calculating both Inf and Nan.
+OSF1_FAILURES = string_format_special_floats
 
 UNAME:=$(shell uname -r -s)
 ifneq "$(findstring OSF1 V5.1,$(UNAME))" ""
-	PROGS=$(filter-out $(OSF1_FAILURES),$(PROGS0))
+	PROGS = $(filter-out $(OSF1_FAILURES),$(PROGS0))
 else
-	PROGS=$(PROGS0)
+	PROGS = $(PROGS0)
 endif
 
 # dnf.m does not work in non-gc grades, because it uses `pragma memo'
 # (i.e. tabling) and tabling is not yet implemented for non-gc grades.
 # The problem for state_var_trace is lack of needed reordering by the
 # unique mode system.
-NOT_WORKING =	dnf state_var_trace
+NOT_WORKING = dnf state_var_trace
 
-SUBDIRS =
 TESTS = $(sort $(PROGS))
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 %.runtest: %.res ;

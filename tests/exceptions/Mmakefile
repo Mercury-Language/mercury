@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1997-2000 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -10,6 +10,9 @@
 #
 
 THIS_DIR = exceptions
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
@@ -43,9 +46,6 @@ else
 endif
 
 TESTS = $(PROGS)
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

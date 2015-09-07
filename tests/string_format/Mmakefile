@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = string_format
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 = -j1
 
 #-----------------------------------------------------------------------------#
 
@@ -22,38 +25,35 @@ STRING_FORMAT_PROGS = \
 # The tests don't work in the *.agc grades, because I think they
 # take too long to finish and the CPU time limit is breached.
 ifneq "$(findstring .agc,$(GRADE))" ""
-	PROGS0=
+	PROGS0 =
 else
-	PROGS0=$(STRING_FORMAT_PROGS)
+	PROGS0 = $(STRING_FORMAT_PROGS)
 endif
 
 # On solaris 5.{7,8} string_format_o fails because of a buggy
 # sprintf implementation.
-SOLARIS_FAILURES=string_format_o
+SOLARIS_FAILURES = string_format_o
 
 # On Dec OSF 5.1 the floating point tests fail because
 # the denormal floats aren't being printed correctly.
-OSF1_FAILURES=string_format_e string_format_f string_format_g
+OSF1_FAILURES = string_format_e string_format_f string_format_g
 
-UNAME:=$(shell uname -r -s)
+UNAME := $(shell uname -r -s)
 ifeq "$(filter-out SunOS 5.7 5.8,$(UNAME))" ""
-	PROGS=$(filter-out $(SOLARIS_FAILURES),$(PROGS0))
+	PROGS = $(filter-out $(SOLARIS_FAILURES),$(PROGS0))
 else
   ifneq "$(findstring OSF1 V5.1,$(UNAME))" ""
-	PROGS=$(filter-out $(OSF1_FAILURES),$(PROGS0))
+	PROGS = $(filter-out $(OSF1_FAILURES),$(PROGS0))
   else
-	PROGS=$(PROGS0)
+	PROGS = $(PROGS0)
   endif
 endif
 
-SUBDIRS =
-TESTS=$(PROGS)
-TESTS_DIR=..
-MAYBE_J1 = -j1
+TESTS = $(sort $(PROGS))
 include $(TESTS_DIR)/Mmake.common
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 %.runtest: %.res ;

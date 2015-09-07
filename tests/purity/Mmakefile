@@ -1,12 +1,15 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = purity
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
-PURITY_PROGS= \
+PURITY_PROGS = \
 	impure_func_t1 \
 	impure_func_t5_fixed2 \
 	impure_func_t6 \
@@ -17,19 +20,16 @@ PURITY_PROGS= \
 
 # We currently don't do any testing in grade java on this directory.
 ifneq "$(findstring java,$(GRADE))" ""
-	PROGS=
+	PROGS =
 else
-	PROGS=$(PURITY_PROGS)
+	PROGS = $(PURITY_PROGS)
 endif
 
-TESTS = $(PROGS)
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
+TESTS = $(sort $(PROGS))
 include $(TESTS_DIR)/Mmake.common
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 %.runtest: %.res ;

@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = hard_coded
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
@@ -733,26 +736,34 @@ else
 endif
 
 # We currently test only a limited selection in grade java on this directory.
-PROGS = $(ORDINARY_PROGS) $(PROF_PROGS) $(BROKEN_FOR_LCC_PROGS) \
-	$(CLOSURE_LAYOUT_PROGS) $(NON_PROFDEEP_PROGS) \
+PROGS = \
+	$(ORDINARY_PROGS) \
+	$(PROF_PROGS) \
+	$(BROKEN_FOR_LCC_PROGS) \
+	$(CLOSURE_LAYOUT_PROGS) \
+	$(NON_PROFDEEP_PROGS) \
 	$(BACKEND_PROGS) \
-	$(C_AND_GC_ONLY_PROGS) $(STATIC_LINK_PROGS) \
+	$(C_AND_GC_ONLY_PROGS) \
+	$(STATIC_LINK_PROGS) \
 	$(C_ONLY_PROGS) \
-	$(DOTNET_PROGS) $(JAVA_PROGS) $(SOLVER_PROGS) \
-	$(TRAILED_PROGS) $(STACK_SEGMENT_PROGS) \
-	$(MUTABLE_PROGS) $(TRACE_GOAL_ENV_PROGS) \
-	$(CTGC_PROGS) $(BIG_DATA_PROGS) $(CONC_PROGS)
+	$(DOTNET_PROGS) \
+	$(JAVA_PROGS) \
+	$(SOLVER_PROGS) \
+	$(TRAILED_PROGS) \
+	$(STACK_SEGMENT_PROGS) \
+	$(MUTABLE_PROGS) \
+	$(TRACE_GOAL_ENV_PROGS) \
+	$(CTGC_PROGS) \
+	$(BIG_DATA_PROGS) \
+	$(CONC_PROGS)
 
 #-----------------------------------------------------------------------------#
 
 TESTS = $(sort $(PROGS))
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 %.runtest: %.res ;
@@ -950,11 +961,15 @@ dst_test.out: dst_test
 
 #-----------------------------------------------------------------------------#
 
-clean_local:
+clean_local: clean_hard_coded
+
+clean_hard_coded:
 	rm -f target_mlobjs_c.o
 	rm -f bitmap_test_output bitmap_test_output2 weak_ptr.discarded_output
 
-realclean_local:
+realclean_local: realclean_hard_coded
+
+realclean_hard_coded:
 	rm -f Mercury.modules
 
 #-----------------------------------------------------------------------------#

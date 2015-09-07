@@ -1,10 +1,13 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 #
 # The tests in this directory are always run with `--use-grade-subdirs'.
 
 THIS_DIR = grade_subdirs
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 ifndef WORKSPACE
 	PROGS = \
@@ -19,13 +22,10 @@ endif
 MMAKE_USE_MMC_MAKE=yes
 
 TESTS = $(sort $(PROGS))
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 MCFLAGS += --use-grade-subdirs

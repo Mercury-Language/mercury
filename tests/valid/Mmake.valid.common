@@ -69,23 +69,23 @@ endif
 
 # Base grades `jump' and `fast' cannot be used with `--no-special-preds'.
 ifneq "$(findstring asm_,$(GRADE))" ""
-	PROGS1=$(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
+	PROGS1 = $(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
 else
 	ifneq "$(findstring jump,$(GRADE))" ""
-		PROGS1=$(PROGS0)
+		PROGS1 = $(PROGS0)
 	else
 		ifneq "$(findstring fast,$(GRADE))" ""
-			PROGS1=$(PROGS0)
+			PROGS1 = $(PROGS0)
 		else
-			PROGS1=$(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
+			PROGS1 = $(NO_SPECIAL_PREDS_PROGS) $(PROGS0)
 		endif
 	endif
 endif
 
 ifneq "$(findstring mm,$(GRADE))" ""
-	PROGS2=$(PROGS1)
+	PROGS2 = $(PROGS1)
 else
-	PROGS2=$(PROGS1) $(TRAIL_PROGS)
+	PROGS2 = $(PROGS1) $(TRAIL_PROGS)
 endif
 
 ifneq "$(filter java% csharp% il% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
@@ -127,37 +127,37 @@ endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-OS_SUBDIR=
-ILS_SUBDIR=
-DLLS_SUBDIR=
-CLASSES_SUBDIR=
+OS_SUBDIR =
+ILS_SUBDIR =
+DLLS_SUBDIR =
+CLASSES_SUBDIR =
 else
-OS_SUBDIR=$(os_subdir)
-ILS_SUBDIR=$(ils_subdir)
-DLLS_SUBDIR=$(dlls_subdir)
-CLASSES_SUBDIR=$(classes_subdir)
+OS_SUBDIR = $(os_subdir)
+ILS_SUBDIR = $(ils_subdir)
+DLLS_SUBDIR = $(dlls_subdir)
+CLASSES_SUBDIR = $(classes_subdir)
 endif
 
 ifeq ($(findstring il,$(GRADE)),il)
-	TARGET_OBJ_EXT=dll
-	TARGET_OBJ_SUBDIR=$(DLLS_SUBDIR)
+	TARGET_OBJ_EXT = dll
+	TARGET_OBJ_SUBDIR = $(DLLS_SUBDIR)
 else
 ifeq ($(findstring csharp,$(GRADE)),csharp)
 	# XXX we should produce DLLs but currently that invokes the IL backend
-	TARGET_OBJ_EXT=cs
-	TARGET_OBJ_SUBDIR=$(DLLS_SUBDIR)
+	TARGET_OBJ_EXT = cs
+	TARGET_OBJ_SUBDIR = $(DLLS_SUBDIR)
 else
 ifeq ($(findstring erlang,$(GRADE)),erlang)
-	TARGET_OBJ_EXT=beam
+	TARGET_OBJ_EXT = beam
 	# Erlang backend currently requires `mmc --make'.
-	TARGET_OBJ_SUBDIR=
+	TARGET_OBJ_SUBDIR =
 else
 ifeq ($(findstring java,$(GRADE)),java)
-	TARGET_OBJ_EXT=class
-	TARGET_OBJ_SUBDIR=$(CLASSES_SUBDIR)
+	TARGET_OBJ_EXT = class
+	TARGET_OBJ_SUBDIR = $(CLASSES_SUBDIR)
 else
-	TARGET_OBJ_EXT=$(O)
-	TARGET_OBJ_SUBDIR=$(OS_SUBDIR)
+	TARGET_OBJ_EXT = $(O)
+	TARGET_OBJ_SUBDIR = $(OS_SUBDIR)
 endif
 endif
 endif
@@ -166,9 +166,6 @@ OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
 		$(IL_PROGS:%=$(ILS_SUBDIR)%.il)
 
 #-----------------------------------------------------------------------------#
-
-TESTS = $(sort $(PROGS))
-include $(TESTS_DIR)/Mmake.common
 
 # When compiling using the installed libraries, setting GRADEFLAGS
 # may cause mgnuc to look for the `.mih' files for a non-installed grade.
@@ -183,8 +180,11 @@ endif
 # Make sure GRADEFLAGS_TRAIL is passed to `mmc --make'.
 export GRADEFLAGS_TRAIL
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+TESTS = $(sort $(PROGS))
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
@@ -203,7 +203,9 @@ printtests:
 printobjs:
 	@echo $(OBJS)
 
-clean_local:
+clean_local: clean_valid
+
+clean_valid:
 	rm -f *.err *.h
 
 #-----------------------------------------------------------------------------#

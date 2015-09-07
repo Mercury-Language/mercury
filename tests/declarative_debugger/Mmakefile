@@ -1,8 +1,14 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = declarative_debugger
+SUBDIRS=
+TESTS_DIR=..
+MAYBE_J1 = -j1
+# Most test cases share library_forwarding.m. We could allow the tests
+# to be done in parallel if we made a separate copy of that module
+# for each test case that needs it.
 
 #-----------------------------------------------------------------------------#
 
@@ -105,7 +111,7 @@ NONWORKING_DECLARATIVE_PROGS=	\
 
 # Some of the test cases require a different input in debug or decldebug
 # grades, so we set DEBUG_INP and DECLDEBUG_INP to the appropriate extension to
-# use for those tests.  All other tests ignore these variables.
+# use for those tests. All other tests ignore these variables.
 # Test cases that require different input for each of the non-debug, debug and
 # decldebug grades should use the DECLDEBUG_INP variable and should have their
 # input extensions as .inp, .inp2 and .inp3 for the non-debug, debug and
@@ -116,24 +122,24 @@ NONWORKING_DECLARATIVE_PROGS=	\
 # and debug/decldebug input files respectively.
 #
 ifneq "$(findstring .debug,$(GRADE))" ""
-    PROGS_2=$(DECLARATIVE_PROGS) $(NONDECLDEBUG_DECLARATIVE_PROGS)
-    DEBUG_INP=inp2
-    DECLDEBUG_INP=inp2
+    PROGS_2 = $(DECLARATIVE_PROGS) $(NONDECLDEBUG_DECLARATIVE_PROGS)
+    DEBUG_INP = inp2
+    DECLDEBUG_INP = inp2
 else
     ifneq "$(findstring .decldebug,$(GRADE))" ""
-        PROGS_2=$(DECLARATIVE_PROGS) $(DECLDEBUG_DECLARATIVE_PROGS)
-        DEBUG_INP=inp2
-        DECLDEBUG_INP=inp3
+        PROGS_2 = $(DECLARATIVE_PROGS) $(DECLDEBUG_DECLARATIVE_PROGS)
+        DEBUG_INP = inp2
+        DECLDEBUG_INP = inp3
     else
         ifneq "$(findstring mm,$(GRADE))" ""
-            PROGS_2=$(DECLARATIVE_PROGS) $(NONDECLDEBUG_DECLARATIVE_PROGS)
-            DEBUG_INP=inp
-            DECLDEBUG_INP=inp
+            PROGS_2 = $(DECLARATIVE_PROGS) $(NONDECLDEBUG_DECLARATIVE_PROGS)
+            DEBUG_INP = inp
+            DECLDEBUG_INP = inp
         else
-            PROGS_2=$(DECLARATIVE_PROGS) $(NONDEBUG_DECLARATIVE_PROGS) \
+            PROGS_2 = $(DECLARATIVE_PROGS) $(NONDEBUG_DECLARATIVE_PROGS) \
 	    	$(NONDECLDEBUG_DECLARATIVE_PROGS)
-            DEBUG_INP=inp
-            DECLDEBUG_INP=inp
+            DEBUG_INP = inp
+            DECLDEBUG_INP = inp
         endif
     endif
 endif
@@ -147,32 +153,26 @@ endif
 ifeq "$(filter hl% il% csharp% java% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
     ifneq "$(findstring .gc,$(GRADE))" ""
        ifneq "$(findstring asm_,$(GRADE))" ""
-           PROGS=$(PROGS_2)
+           PROGS = $(PROGS_2)
        else
            ifneq "$(findstring jump,$(GRADE))" ""
-               PROGS=
+               PROGS =
            else
                ifneq "$(findstring fast,$(GRADE))" ""
-                   PROGS=
+                   PROGS =
                else
-                   PROGS=$(PROGS_2)
+                   PROGS = $(PROGS_2)
                endif
            endif
        endif
     else
-        PROGS=
+        PROGS =
     endif
 else
-    PROGS=
+    PROGS =
 endif
 
-SUBDIRS=
-TESTS=$(PROGS)
-TESTS_DIR=..
-# Most test cases share library_forwarding.m. We could allow the tests
-# to be done in parallel if we made a separate copy of that module
-# for each test case that needs it.
-MAYBE_J1 = -j1
+TESTS = $(sort $(PROGS))
 include $(TESTS_DIR)/Mmake.common
 
 MCFLAGS += --trace decl

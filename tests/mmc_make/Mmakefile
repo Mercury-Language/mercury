@@ -1,15 +1,17 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = mmc_make
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
-# Any program added here should also be added to the `.cvsignore' file.
-
 MMAKE_USE_MMC_MAKE=yes
 
+# Any program added here should also be added to the `.cvsignore' file.
 PROGS =	\
 	complex_test \
 	hello \
@@ -25,10 +27,7 @@ ifneq ($(origin WORKSPACE),undefined)
     endif
 endif
 
-SUBDIRS =
 TESTS = $(sort $(PROGS))
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 %.runtest: %.res ;
@@ -74,7 +73,9 @@ install_libs_linkage_test2: start_runtests_local
 TESTS_FLAGS: ../TESTS_FLAGS
 	ln -s $< $@ || cp $< $@
 
-realclean_local: TESTS_FLAGS
+realclean_local: realclean_mmc_make
+
+realclean_mmc_make: TESTS_FLAGS
 	rm -rf install include_file2.err rebuild.err2
 	# ./TESTS_FLAGS is expected by the following line.
 	cd lib; $(MCM) complex_numbers.realclean linkage_test2.realclean

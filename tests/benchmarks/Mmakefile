@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = benchmarks
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 # To test the performance of the benchmarks (with I/O suppressed),
 # uncomment one the following two lines.  The `.hlc' version should be
@@ -27,23 +30,20 @@ PROGS = \
 	tak
 
 TESTS = $(PROGS)
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 #-----------------------------------------------------------------------------#
 
 %.runtest: %.res ;
 
-SS=	$(PROGS:%=%.s)
-CS=	$(PROGS:%=%.c)
-ILS=	$(PROGS:%=%.il)
-TIMES=	$(PROGS:%=%.time)
+SS =	$(PROGS:%=%.s)
+CS =	$(PROGS:%=%.c)
+ILS =	$(PROGS:%=%.il)
+TIMES =	$(PROGS:%=%.time)
 
 cs:	$(CS)
 

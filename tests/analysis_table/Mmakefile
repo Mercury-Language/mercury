@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = analysis_table
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 # Delete options which are incompatible with --intermodule-analysis.
 # These are currently set for nightly tests.
@@ -17,15 +20,14 @@ else
 TESTS = 
 endif
 
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 table_m1.runtest:
 	MC=$(MC) ./table_runtest.sh
 
-realclean_local:
+realclean_local: realclean_analysis_table
+
+realclean_analysis_table:
 	$(RM) table_m1.m
 	$(RM) -r Mercury
 

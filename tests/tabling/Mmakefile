@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = tabling
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
@@ -125,25 +128,26 @@ MINIMAL_LOOP_PROGS =
 #	semidet_minimal.m
 #	tc_minimal_semidet.m
 
-ALL_SIMPLE_PROGS = $(SIMPLE_NONLOOP_PROGS) \
-			$(BROKEN_FOR_PROFDEEP_NONLOOP_PROGS) \
-			$(NONLOOP_SPECIFIED_PROGS) \
-			$(SIMPLE_LOOP_PROGS)
+ALL_SIMPLE_PROGS = \
+	$(SIMPLE_NONLOOP_PROGS) \
+	$(BROKEN_FOR_PROFDEEP_NONLOOP_PROGS) \
+	$(NONLOOP_SPECIFIED_PROGS) \
+	$(SIMPLE_LOOP_PROGS)
 
 ALL_MINIMAL_PROGS = $(MINIMAL_NONLOOP_PROGS)
 
 ifneq "$(findstring .gc,$(GRADE))" ""
 	# The substitution is there to avoid unwanted "mm" matches from "rbmm".
 	ifneq "$(findstring mm,$(subst rbmm,x,$(GRADE)))" ""
-		PROGS0=$(ALL_SIMPLE_PROGS) $(ALL_MINIMAL_PROGS)
-		NONLOOP_PROGS=$(SIMPLE_NONLOOP_PROGS) \
+		PROGS0 = $(ALL_SIMPLE_PROGS) $(ALL_MINIMAL_PROGS)
+		NONLOOP_PROGS = $(SIMPLE_NONLOOP_PROGS) \
 				$(MINIMAL_NONLOOP_PROGS)
 	else
-		PROGS0=$(ALL_SIMPLE_PROGS)
-		NONLOOP_PROGS=$(SIMPLE_NONLOOP_PROGS)
+		PROGS0 = $(ALL_SIMPLE_PROGS)
+		NONLOOP_PROGS = $(SIMPLE_NONLOOP_PROGS)
 	endif
 else
-	PROGS0=
+	PROGS0 =
 endif
 
 # Tabling is buggy in the lowlevel .par grades so it's disabled for now.
@@ -153,16 +157,13 @@ ifeq "$(findstring .par,$(GRADE))" ""
 	PROGS=$(PROGS0)
 else
 	ifeq "$(findstring hl,$(GRADE))" ""
-		PROGS=
+		PROGS =
 	else
-		PROGS=$(PROGS0)
+		PROGS = $(PROGS0)
 	endif
 endif
 
 TESTS = $(sort $(PROGS))
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they

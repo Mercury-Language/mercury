@@ -180,10 +180,14 @@ MERCURY_MAIN_MODULES = $(PROGS)
 
 ERROR_OUTPUT_FILE = runtests.errs
 
-realclean_local: clean_logs clean_errors
+realclean_local: clean_logs clean_errors clean_mdbrc
+
+clean_local: clean_out clean_res clean_zip clean_trace_counts clean_mdbrc_in
+
+clean_mdbrc:
 	-rm -f mdbrc
 
-clean_local: clean_out clean_res clean_zip clean_trace_counts
+clean_mdbrc_in:
 	-rm -f mdbrc.in
 
 # XXX what is this target for??

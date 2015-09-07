@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = accumulator
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
@@ -37,10 +40,7 @@ else
 	PROGS = $(ACCUMULATOR_PROGS)
 endif
 
-SUBDIRS =
 TESTS = $(PROGS)
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they
@@ -51,24 +51,26 @@ include Mercury.options
 
 #-----------------------------------------------------------------------------#
 
-ACC_FLAGS = -d accum --introduce-accumulators --optimize-constructor-last-call \
-		--intermodule-optimization
+ACC_FLAGS = \
+	-d accum \
+	--introduce-accumulators \
+	--optimize-constructor-last-call \
+	--intermodule-optimization
 
-	# Optimizations to turn off/on.
-	# Deforestation optimizes away the opportunities for accumulator
-	# introduction in many of the test cases, so turn it off.
-OPT_FLAGS = --trace-optimized --excess-assign --common-struct \
-		--no-deforestation
+# Optimizations to turn off/on.
+# Deforestation optimizes away the opportunities for accumulator introduction
+# in many of the test cases, so turn it off.
+OPT_FLAGS = \
+	--trace-optimized --excess-assign --common-struct --no-deforestation
 
-	# Ensure that the accumulator introduction flags are passed
-	# after EXTRA_MCFLAGS, so that we can override things set in
-	# EXTRA_MCFLAGS.
+# Ensure that the accumulator introduction flags are passed
+# after EXTRA_MCFLAGS, so that we can override things set in EXTRA_MCFLAGS.
 ALL_MCFLAGS += $(OPT_FLAGS) $(ACC_FLAGS)
 
     # programs which aren't working.
 NOT_WORKING =
 
-EXPS=	$(PROGS:%=%.exp)
+EXPS =	$(PROGS:%=%.exp)
 
 exp:	$(EXPS)
 

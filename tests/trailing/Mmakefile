@@ -1,35 +1,35 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = trailing
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
-ifeq "$(findstring tr,$(GRADE))" ""
-	TRAIL_PROGS =
-else
-	TRAIL_PROGS =			\
-		func_trail_test		\
-		func_trail_test_2	\
-		test_trail_reset	\
-		tr_reset_bug		\
-		tu_test1		\
-		tu_test2
-endif
+TRAIL_PROGS =			\
+	func_trail_test		\
+	func_trail_test_2	\
+	test_trail_reset	\
+	tr_reset_bug		\
+	tu_test1		\
+	tu_test2
 
-PROGS = $(TRAIL_PROGS)
+ifeq "$(findstring tr,$(GRADE))" ""
+	PROGS =
+else
+	PROGS = $(TRAIL_PROGS)
+endif
 
 #-----------------------------------------------------------------------------#
 
 TESTS = $(sort $(PROGS))
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 %.runtest: %.res ;

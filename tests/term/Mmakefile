@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = term
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
@@ -87,9 +90,6 @@ PROGS = $(TERM_PROGS)
 #-----------------------------------------------------------------------------#
 
 TESTS = $(sort $(PROGS))
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 %.runtest: %.trans_opt_res ;
@@ -132,8 +132,12 @@ ALL_MCTOIFLAGS+=$(MCTRANSOPTFLAGS)
 
 #-----------------------------------------------------------------------------#
 
-clean_local:
+clean_local: clean_term
+
+clean_term:
 	rm -f *.trans_opt_err
 
-realclean_local:
+realclean_local: realclean_term
+
+realclean_term:
 	rm -f *.trans_opt_res

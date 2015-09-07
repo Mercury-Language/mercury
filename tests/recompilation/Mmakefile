@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = recompilation
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 = -j1
 
 TESTS_SHOULD_SUCCEED = \
 	add_constructor_nr \
@@ -48,9 +51,6 @@ PROGS = $(TESTS_SHOULD_SUCCEED) $(NO_PARALLEL_MAKE_TESTS) \
 	$(TESTS_SHOULD_FAIL)
 
 TESTS = $(sort $(PROGS:%=%-nodepend))
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 = -j1
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they
@@ -83,9 +83,9 @@ $(TESTS_SHOULD_FAIL:%=%.runtest): %.runtest:
 
 #-----------------------------------------------------------------------------#
 
-clean_local:
+realclean_local: realclean_recompilation
 
-realclean_local:
+realclean_recompilation:
 	for module in $(PROGS) x; do \
 		rm -f $$module.m $${module}_2.m ;\
 	done
@@ -96,8 +96,10 @@ should_run_recompilation_tests:
 # Smart recompilation doesn't yet work with --intermodule-optimization.
 # The `override' is needed because otherwise make ignores the assignment if
 # EXTRA_MCFLAGS is set on the command line, as it is for the nightly tests.
-override EXTRA_MCFLAGS += --no-intermodule-optimization --smart-recompilation \
-			--find-all-recompilation-reasons
+override EXTRA_MCFLAGS += \
+	--no-intermodule-optimization \
+	--smart-recompilation \
+	--find-all-recompilation-reasons
 
 $(dates_subdir)nested_module_2_r_2.date: \
 				$(int0s_subdir)nested_module_2_r_2.int0

@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = analysis_ctgc
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 = -j1
 
 # Delete options which are incompatible with --intermodule-analysis.
 # These are currently set for nightly tests.
@@ -17,15 +20,14 @@ else
 TESTS =
 endif
 
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 = -j1
 include $(TESTS_DIR)/Mmake.common
 
 reuse_m1.runtest:
 	MC=$(MC) ./reuse_runtest.sh
 
-realclean_local:
+realclean_local: realclean_analysis_ctgc
+
+realclean_analysis_ctgc:
 	$(RM) reuse_m3.m
 	$(RM) -r Mercury
 

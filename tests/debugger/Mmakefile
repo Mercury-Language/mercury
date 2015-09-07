@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = debugger
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
@@ -144,11 +147,10 @@ ifneq "$(findstring tsc,$(GRADE))" ""
     SENSITIVE_PROGS :=
 endif
 
-# The no_inline_builtins test only works if the library is
-# built with execution tracing enabled. Adding a `.exp2' file
-# to allow it to be run in other grades would mean that we
-# wouldn't detect a regression which caused builtins not to
-# be traced with `--no-inline-builtins'.
+# The no_inline_builtins test only works if the library is built with
+# execution tracing enabled. Adding a `.exp2' file to allow it to be run
+# in other grades would mean that we wouldn't detect a regression which
+# caused builtins not to be traced with `--no-inline-builtins'.
 ifeq "$(findstring debug,$(GRADE))" "debug"
     DEBUG_GRADE_PROGS = no_inline_builtins
 else
@@ -156,7 +158,7 @@ else
 endif
 
 # The uci test matches its expected output only if the grade supports
-# enumerated types.  Currently all grades do support enumerated types.
+# enumerated types. Currently all grades do support enumerated types.
 ENUM_PROGS = uci
 
 # The tests term_size_words and term_size_cells are each meant to be used
@@ -178,10 +180,17 @@ else
     MMOS_PROGS =
 endif
 
-ALL_RETRY_PROGS = $(RETRY_PROGS) $(INTERACTIVE_PROGS)
-ALL_NONRETRY_PROGS = $(NONRETRY_PROGS) $(SENSITIVE_PROGS) \
-			$(SHALLOW_PROGS) $(DEBUG_GRADE_PROGS) $(ENUM_PROGS) \
-			$(TERM_SIZE_PROGS) $(MMOS_PROGS)
+ALL_RETRY_PROGS = \
+	$(RETRY_PROGS) \
+	$(INTERACTIVE_PROGS)
+ALL_NONRETRY_PROGS = \
+	$(NONRETRY_PROGS) \
+	$(SENSITIVE_PROGS) \
+	$(SHALLOW_PROGS) \
+	$(DEBUG_GRADE_PROGS) \
+	$(ENUM_PROGS) \
+	$(TERM_SIZE_PROGS) \
+	$(MMOS_PROGS)
 
 # Debugging doesn't yet don't work in MLDS grades (hl*, il*, csharp, java),
 # or the Erlang grade,
@@ -195,41 +204,38 @@ ifneq "$(findstring profdeep,$(GRADE))" ""
     # However, the code that is required to switch off the profiling
     # primitives in Mercury code invoked by the debugger (e.g. for
     # browsing) has not yet been implemented.
-    DEBUGGER_PROGS0=
+    DEBUGGER_PROGS0 =
 else
-    DEBUGGER_PROGS0=$(ALL_NONRETRY_PROGS) $(ALL_RETRY_PROGS)
+    DEBUGGER_PROGS0 = $(ALL_NONRETRY_PROGS) $(ALL_RETRY_PROGS)
 endif
 
 # The tail call optimisation isn't supported in decldebug grades,
 # so we don't run the tailrec1 test in those grades.
 ifneq "$(findstring decldebug,$(GRADE))" ""
-    DEBUGGER_PROGS=$(subst tailrec1,,$(DEBUGGER_PROGS0))
+    DEBUGGER_PROGS = $(subst tailrec1,,$(DEBUGGER_PROGS0))
 else
-    DEBUGGER_PROGS=$(DEBUGGER_PROGS0)
+    DEBUGGER_PROGS = $(DEBUGGER_PROGS0)
 endif
 
 ifneq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
-    PROGS=
+    PROGS =
 else
     ifneq "$(findstring asm_,$(GRADE))" ""
-        PROGS=$(DEBUGGER_PROGS)
+        PROGS = $(DEBUGGER_PROGS)
     else
         ifneq "$(findstring jump,$(GRADE))" ""
-            PROGS=
+            PROGS =
         else
             ifneq "$(findstring fast,$(GRADE))" ""
-                PROGS=
+                PROGS =
             else
-                PROGS=$(DEBUGGER_PROGS)
+                PROGS = $(DEBUGGER_PROGS)
             endif
         endif
     endif
 endif
 
-SUBDIRS =
 TESTS = $(sort $(PROGS))
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # The minimum trace level in .decldebug grades is --trace decl.
@@ -245,13 +251,13 @@ MLFLAGS += --trace
 # All other tests ignore this variable.
 #
 ifneq "$(findstring .decldebug,$(GRADE))" ""
-    INP=inp2
+    INP = inp2
 else
-    INP=inp
+    INP = inp
 endif
 
-# Module-specific options should go in Mercury.options so they
-# can be found by `mmc --make'.
+# Module-specific options should go in Mercury.options so they can be found
+# by `mmc --make'.
 include Mercury.options
 
 %.runtest: %.res ;
@@ -327,7 +333,7 @@ poly_io_retry2.out: poly_io_retry2 poly_io_retry2.inp
 # the exact goal paths are dependent on optimization level. The stripping
 # must be done outside the condition of the if-then-else.
 exception_cmd.out: exception_cmd exception_cmd.inp
-	if $(MDB_STD) ./exception_cmd < exception_cmd.inp		\
+	if $(MDB_STD) ./exception_cmd < exception_cmd.inp	\
 		> exception_cmd.tmp 2>&1;			\
 	then							\
 		sed -e '/EXCP/s/).*/)/' < exception_cmd.tmp	\
@@ -376,7 +382,7 @@ exception_value.out: exception_value exception_value.inp
 		sed -e '/EXCP/s/).*/)/' > exception_value.out 2>&1
 
 exception_vars.out: exception_vars exception_vars.inp
-	if $(MDB_STD) ./exception_vars < exception_vars.inp		\
+	if $(MDB_STD) ./exception_vars < exception_vars.inp	\
 		> exception_vars.tmp 2>&1;			\
 	then							\
 		sed -e '/EXCP/s/).*/)/' < exception_vars.tmp	\
@@ -715,7 +721,7 @@ interactive.out: interactive.out.orig
 	fi
 
 # We ignore the result of this action because
-# the exit status of grep is not useful in this case
+# the exit status of grep is not useful in this case.
 mdb_command_test.out: mdb_command_test mdb_command_test.inp
 	-$(MDB) ./mdb_command_test < mdb_command_test.inp 2>&1 \
 		| egrep "internal error in the trace help system" \

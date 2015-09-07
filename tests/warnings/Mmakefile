@@ -1,8 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 THIS_DIR = warnings
+SUBDIRS =
+TESTS_DIR = ..
+MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
@@ -55,12 +58,9 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 ERRORCHECK_PROGS += unused_args_analysis
 endif
 
-PROGS=$(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
+PROGS = $(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
 
 TESTS = $(sort $(PROGS))
-SUBDIRS =
-TESTS_DIR = ..
-MAYBE_J1 =
 include $(TESTS_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they
