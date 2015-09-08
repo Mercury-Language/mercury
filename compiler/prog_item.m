@@ -31,7 +31,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -218,6 +217,79 @@
                 list(item_avail),
                 list(item)
             ).
+
+%-----------------------------------------------------------------------------%
+
+:- type module_section
+    --->    ms_interface
+    ;       ms_implementation.
+
+:- type src_module_section
+    --->    sms_interface
+    ;       sms_implementation
+    ;       sms_impl_but_exported_to_submodules.
+            % This is used internally by the compiler, to identify items
+            % which originally came from an implementation section of a module
+            % that contains submodules; such items need to be exported
+            % to the submodules.
+
+:- type int_module_section
+    --->    ims_imported(module_name, int_file_kind, import_locn)
+    ;       ims_used(module_name, int_file_kind, import_locn)
+            % These are used internally by the compiler, to identify
+            % declarations which originally came from some other module
+            % imported with a `:- import_module' or `:- use_module'
+            % declaration. They record the name of the imported module,
+            % and in which section the module was imported or used.
+
+    ;       ims_abstract_imported(module_name, int_file_kind).
+            % This is used internally by the compiler, to identify items which
+            % originally came from the implementation section of an interface
+            % file; usually type declarations (especially equivalence types)
+            % which should be used in code generation but not in type checking.
+
+:- type opt_module_section
+    --->    oms_opt_imported(module_name, opt_file_kind).
+            % This is used internally by the compiler, to identify items which
+            % originally came from an optimization file.
+
+:- type int_for_opt_module_section
+    --->    ioms_opt_imported(module_name, int_file_kind).
+            % This is used internally by the compiler, to identify items which
+            % originally came from an interface file needed by an
+            % optimization file.
+
+%-----------------------------------------------------------------------------%
+
+    % An import_locn is used to describe the place where an item was
+    % imported from.
+:- type import_locn
+    --->    import_locn_implementation
+            % The item is from a module imported in the implementation.
+
+    ;       import_locn_interface
+            % The item is from a module imported in the interface.
+
+    ;       import_locn_ancestor
+            % The item is from a module imported by an ancestor.
+
+    ;       import_locn_ancestor_private_interface_proper.
+            % The item is from the _actual_ private interface of an ancestor
+            % module, i.e. the implementation section of a `.int0' file.
+
+%-----------------------------------------------------------------------------%
+
+:- func make_ims_imported(import_locn, module_name, int_file_kind) =
+    int_module_section.
+:- func make_ims_used(import_locn, module_name, int_file_kind) =
+    int_module_section.
+:- func make_ims_abstract_imported(module_name, int_file_kind) =
+    int_module_section.
+
+:- func make_oms_opt_imported(module_name, opt_file_kind) =
+    opt_module_section.
+:- func make_ioms_opt_imported(module_name, int_file_kind) =
+    int_for_opt_module_section.
 
 %-----------------------------------------------------------------------------%
 
@@ -1198,6 +1270,20 @@
 
 :- import_module map.
 :- import_module require.
+
+%-----------------------------------------------------------------------------%
+
+make_ims_imported(ImportLocn, ModuleName, IntFileKind) =
+    ims_imported(ModuleName, IntFileKind, ImportLocn).
+make_ims_used(ImportLocn, ModuleName, IntFileKind) =
+    ims_used(ModuleName, IntFileKind, ImportLocn).
+make_ims_abstract_imported(ModuleName, IntFileKind) =
+    ims_abstract_imported(ModuleName, IntFileKind).
+
+make_oms_opt_imported(ModuleName, OptFileKind) =
+    oms_opt_imported(ModuleName, OptFileKind).
+make_ioms_opt_imported(ModuleName, OptFileKind) =
+    ioms_opt_imported(ModuleName, OptFileKind).
 
 %-----------------------------------------------------------------------------%
 

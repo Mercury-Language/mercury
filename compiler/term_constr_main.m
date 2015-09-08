@@ -202,6 +202,7 @@
 
 :- implementation.
 
+:- import_module hlds.status.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.lp_rational.
@@ -210,7 +211,6 @@
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.status.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.term_constr_build.
 :- import_module transform_hlds.term_constr_fixpoint.

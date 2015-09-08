@@ -93,6 +93,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.pred_table.
+:- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -100,7 +101,6 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module bool.

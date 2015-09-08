@@ -181,7 +181,6 @@
 :- import_module parse_tree.prog_io_item.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_util.
-:- import_module parse_tree.status.
 :- import_module recompilation.
 
 :- import_module bool.

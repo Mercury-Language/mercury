@@ -130,6 +130,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.options.
@@ -144,7 +145,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -144,6 +144,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
+:- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
@@ -151,10 +152,10 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.prog_item.      % undesirable dependency
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.status.
 :- import_module recompilation.
 
 :- import_module bool.

@@ -309,7 +309,7 @@ such as pretty-printing.
     The result of this stage is a parse tree
     that has a close correspondence with the source code.
     The parse tree data structure definition is in prog_data.m, prog_item.m,
-    file_kind.m and status.m,
+    and file_kind.m,
     while the code to create it is in the prog_io*.m modules:
     <ul>
     <li>
@@ -683,6 +683,9 @@ The HLDS data structure itself is spread over the following modules:
 <li>
     hlds_module.m defines the top-level parts of the HLDS,
     including the type module_info.
+<li>
+    status.m defines the type that record the import/export status
+    of entities such as types, insts, modes, and predicates.
 <li>
     vartypes.m defines the data structure that maps variables to their types.
 </ol>

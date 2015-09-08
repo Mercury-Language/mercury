@@ -30,6 +30,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
+:- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.globals.
 :- import_module mdbcomp.goal_path.
@@ -39,7 +40,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.status.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_util.
 

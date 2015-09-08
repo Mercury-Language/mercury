@@ -2189,6 +2189,13 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 
 :- type arity == int.
 
+    % Describes whether an item can be used without an explicit module
+    % qualifier.
+    %
+:- type need_qualifier
+    --->    must_be_qualified
+    ;       may_be_unqualified.
+
     % Does a module contain the predicate main/2?
     %
 :- type has_main

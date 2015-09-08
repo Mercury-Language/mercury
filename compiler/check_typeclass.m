@@ -116,6 +116,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
+:- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -129,7 +130,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.status.
 
 :- import_module bool.
 :- import_module int.

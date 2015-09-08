@@ -74,6 +74,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
+:- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -84,7 +85,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module bool.

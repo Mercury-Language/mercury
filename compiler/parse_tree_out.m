@@ -119,7 +119,6 @@
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.status.
 :- import_module recompilation.
 :- import_module recompilation.version.
 

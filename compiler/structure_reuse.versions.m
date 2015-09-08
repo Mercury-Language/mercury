@@ -65,12 +65,12 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
+:- import_module hlds.status.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
 
 :- import_module bimap.

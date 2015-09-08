@@ -26,7 +26,6 @@
 :- include_module prog_item.
 :- include_module prog_data.
 :- include_module file_kind.
-:- include_module status.
 
 % The parser.
 :- include_module prog_io.

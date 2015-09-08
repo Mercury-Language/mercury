@@ -53,7 +53,6 @@
 :- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.status.
 
 :- import_module bool.
 :- import_module maybe.

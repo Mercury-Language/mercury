@@ -63,6 +63,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
+:- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -76,7 +77,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.status.
 :- import_module transform_hlds.inlining.
 
 :- import_module assoc_list.

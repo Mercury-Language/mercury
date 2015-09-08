@@ -88,11 +88,12 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
+:- import_module hlds.status.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.status.
+:- import_module parse_tree.prog_item.      % undesirable dependency
 
 :- import_module assoc_list.
 :- import_module bool.

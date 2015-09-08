@@ -25,7 +25,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.status.
 
 :- import_module list.
 :- import_module map.

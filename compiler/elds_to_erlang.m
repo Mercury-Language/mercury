@@ -49,6 +49,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
+:- import_module hlds.status.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.builtin_modules.
@@ -59,7 +60,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.status.
 
 :- import_module char.
 :- import_module int.

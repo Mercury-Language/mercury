@@ -93,7 +93,6 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
-:- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.structure_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.

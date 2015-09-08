@@ -102,6 +102,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
+:- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -118,7 +119,6 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.
 :- import_module transform_hlds.ctgc.structure_reuse.indirect.

@@ -73,6 +73,7 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.passes_aux.
+:- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -90,7 +91,6 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
-:- import_module parse_tree.status.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.selector.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.

@@ -139,6 +139,7 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_table.
+:- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -152,7 +153,6 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
-:- import_module parse_tree.status.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -54,7 +54,6 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.split_parse_tree_src.
-:- import_module parse_tree.status.
 :- import_module parse_tree.write_module_interface_files.
 
 :- import_module assoc_list.

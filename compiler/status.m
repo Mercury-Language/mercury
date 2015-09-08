@@ -27,12 +27,11 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module parse_tree.status.
+:- module hlds.status.
 :- interface.
 
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
-:- import_module parse_tree.file_kind.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module bool.
 
@@ -100,22 +99,6 @@
             % Defined in the implementation of this module, and the module
             % does not contain any sub-modules.
 
-    % An import_locn is used to describe the place where an item was
-    % imported from.
-:- type import_locn
-    --->    import_locn_implementation
-            % The item is from a module imported in the implementation.
-
-    ;       import_locn_interface
-            % The item is from a module imported in the interface.
-
-    ;       import_locn_ancestor
-            % The item is from a module imported by an ancestor.
-
-    ;       import_locn_ancestor_private_interface_proper.
-            % The item is from the _actual_ private interface of an ancestor
-            % module, i.e. the implementation section of a `.int0' file.
-
     % Returns yes if the status indicates that the item was in any way exported
     % -- that is, if it could be used by any other module, or by sub-modules
     % of this module.
@@ -155,13 +138,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Describes whether an item can be used without an explicit module
-    % qualifier.
-    %
-:- type need_qualifier
-    --->    must_be_qualified
-    ;       may_be_unqualified.
-
     % When adding an item to the HLDS, we need to know both its import_status
     % and whether uses of it must be module qualified.
     %
@@ -169,59 +145,6 @@
     --->    item_status(import_status, need_qualifier).
 
 %-----------------------------------------------------------------------------%
-
-:- type module_section
-    --->    ms_interface
-    ;       ms_implementation.
-
-:- type src_module_section
-    --->    sms_interface
-    ;       sms_implementation
-    ;       sms_impl_but_exported_to_submodules.
-            % This is used internally by the compiler, to identify items
-            % which originally came from an implementation section of a module
-            % that contains submodules; such items need to be exported
-            % to the submodules.
-
-:- type int_module_section
-    --->    ims_imported(module_name, int_file_kind, import_locn)
-    ;       ims_used(module_name, int_file_kind, import_locn)
-            % These are used internally by the compiler, to identify
-            % declarations which originally came from some other module
-            % imported with a `:- import_module' or `:- use_module'
-            % declaration. They record the name of the imported module,
-            % and in which section the module was imported or used.
-
-    ;       ims_abstract_imported(module_name, int_file_kind).
-            % This is used internally by the compiler, to identify items which
-            % originally came from the implementation section of an interface
-            % file; usually type declarations (especially equivalence types)
-            % which should be used in code generation but not in type checking.
-
-:- type opt_module_section
-    --->    oms_opt_imported(module_name, opt_file_kind).
-            % This is used internally by the compiler, to identify items which
-            % originally came from an optimization file.
-
-:- type int_for_opt_module_section
-    --->    ioms_opt_imported(module_name, int_file_kind).
-            % This is used internally by the compiler, to identify items which
-            % originally came from an interface file needed by an
-            % optimization file.
-
-%-----------------------------------------------------------------------------%
-
-:- func make_ims_imported(import_locn, module_name, int_file_kind) =
-    int_module_section.
-:- func make_ims_used(import_locn, module_name, int_file_kind) =
-    int_module_section.
-:- func make_ims_abstract_imported(module_name, int_file_kind) =
-    int_module_section.
-
-:- func make_oms_opt_imported(module_name, opt_file_kind) =
-    opt_module_section.
-:- func make_ioms_opt_imported(module_name, int_file_kind) =
-    int_for_opt_module_section.
 
     % Return the item_status appropriate for items in the given kind of block.
     %
@@ -299,20 +222,6 @@ import_locn_defined_in_impl_section(
 
 %-----------------------------------------------------------------------------%
 
-make_ims_imported(ImportLocn, ModuleName, IntFileKind) =
-    ims_imported(ModuleName, IntFileKind, ImportLocn).
-make_ims_used(ImportLocn, ModuleName, IntFileKind) =
-    ims_used(ModuleName, IntFileKind, ImportLocn).
-make_ims_abstract_imported(ModuleName, IntFileKind) =
-    ims_abstract_imported(ModuleName, IntFileKind).
-
-make_oms_opt_imported(ModuleName, OptFileKind) =
-    oms_opt_imported(ModuleName, OptFileKind).
-make_ioms_opt_imported(ModuleName, OptFileKind) =
-    ioms_opt_imported(ModuleName, OptFileKind).
-
-%-----------------------------------------------------------------------------%
-
 src_module_section_status(SrcSection, Status) :-
     (
         SrcSection = sms_interface,
@@ -351,5 +260,5 @@ int_for_opt_module_section_status(IntForOptSection, Status) :-
     ).
 
 %-----------------------------------------------------------------------------%
-:- end_module parse_tree.status.
+:- end_module hlds.status.
 %-----------------------------------------------------------------------------%

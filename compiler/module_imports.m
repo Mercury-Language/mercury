@@ -26,7 +26,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io_error.
-:- import_module parse_tree.status.
 :- import_module recompilation.
 
 :- import_module cord.

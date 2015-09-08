@@ -31,13 +31,13 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
+:- import_module hlds.status.
 :- import_module libs.globals.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.status.
 :- import_module recompilation.
 
 :- import_module cord.

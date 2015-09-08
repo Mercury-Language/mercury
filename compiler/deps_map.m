@@ -91,7 +91,6 @@
 :- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
-:- import_module parse_tree.status.
 
 :- import_module cord.
 :- import_module list.

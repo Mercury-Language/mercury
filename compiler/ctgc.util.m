@@ -75,10 +75,10 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
-:- import_module parse_tree.status.
 
 :- import_module bool.
 :- import_module map.

@@ -61,6 +61,7 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
+:- import_module hlds.status.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -72,7 +73,6 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.status.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.post_term_analysis.
 :- import_module transform_hlds.term_errors.

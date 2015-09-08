@@ -111,7 +111,6 @@
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.read_modules.
-:- import_module parse_tree.status.
 :- import_module recompilation.
 :- import_module recompilation.version.
 
