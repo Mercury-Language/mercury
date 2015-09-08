@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2002-2003, 2005, 2007, 2011 The University of Melbourne.
 # This file may only be copied under the terms of the GNU Library General
@@ -41,6 +41,7 @@ SUBDIRS = \
 	moose		\
 	posix		\
 	references	\
+	show_ops	\
 	windows_installer_generator \
 	xml
 
