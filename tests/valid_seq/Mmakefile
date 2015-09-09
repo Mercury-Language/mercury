@@ -97,3 +97,11 @@ $(dates_subdir)intermod_user_equality_nested2.date: \
 	$(date0s_subdir)intermod_user_equality_nested2.date0
 
 include $(TESTS_DIR)/valid/Mmake.valid.common
+
+clean_local: clean_valid_seq
+
+clean_valid_seq:
+	rm -f \
+		foreign_type_spec__csharp_code.cs \
+		foreign_type_spec.foreign_type__csharp_code.cs
+
