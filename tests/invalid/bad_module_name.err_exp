@@ -1,3 +1,4 @@
-bad_module_name_sub.m:008: Error: expected a module named
-bad_module_name_sub.m:008:   `bad_module_name.bad_module_name_sub', found a
-bad_module_name_sub.m:008:   module named `wrong_module_name'.
+bad_module_name_sub.m:008: Error: file `bad_module_name_sub.m' contains the
+bad_module_name_sub.m:008:   wrong module. Expected module
+bad_module_name_sub.m:008:   `bad_module_name.bad_module_name_sub', found
+bad_module_name_sub.m:008:   module `wrong_module_name'.

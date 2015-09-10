@@ -107,6 +107,7 @@
 
 :- type error_phase
     --->    phase_read_files
+    ;       phase_module_name
     ;       phase_term_to_parse_tree
     ;       phase_parse_tree_to_hlds
     ;       phase_expand_types
@@ -704,6 +705,7 @@ error_spec_accumulator_to_list(yes(AnyModeSpecSet - AllModeSpecSet)) =
     maybe(mode_report_control).
 
 get_maybe_mode_report_control(phase_read_files) = no.
+get_maybe_mode_report_control(phase_module_name) = no.
 get_maybe_mode_report_control(phase_term_to_parse_tree) = no.
 get_maybe_mode_report_control(phase_parse_tree_to_hlds) = no.
 get_maybe_mode_report_control(phase_expand_types) = no.
@@ -723,10 +725,113 @@ get_maybe_mode_report_control(phase_code_gen) = no.
 
 %-----------------------------------------------------------------------------%
 
-:- pred sort_error_specs(list(error_spec)::in, list(error_spec)::out) is det.
+:- pred sort_error_specs(globals::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-sort_error_specs(Specs0, Specs) :-
-    list.sort_and_remove_dups(compare_error_specs, Specs0, Specs).
+sort_error_specs(Globals, !Specs) :-
+    % The purpose of remove_conditionals_in_spec is to remove differences
+    % between error_specs that exist only in the structure of the error_specs
+    % themselves, as opposed to the the text that we output for them.
+    %
+    % For example, prog_io.m can generate two error specs for a bad module
+    % name that differ in two things.
+    %
+    % - The first difference is that one has "severity_error", while the other
+    %   has "severity_conditional(warn_wrong_module_name, yes, severity_error,
+    %   no)". However, since warn_wrong_module_name is yes by default,
+    %   this difference has no effect.
+    %
+    % - The second difference is that some error_msg_components consist of
+    %   "always(...)" in one, and "option_is_set(warn_wrong_module_name, yes,
+    %   always(...))" in the other. But if warn_wrong_module_name is yes,
+    %   this difference has no effect either.
+    %
+    list.filter_map(remove_conditionals_in_spec(Globals), !Specs),
+    list.sort_and_remove_dups(compare_error_specs, !Specs).
+
+:- pred remove_conditionals_in_spec(globals::in,
+    error_spec::in, error_spec::out) is semidet.
+
+remove_conditionals_in_spec(Globals, Spec0, Spec) :-
+    Spec0 = error_spec(Severity0, Phase, Msgs0),
+    MaybeActualSeverity = actual_error_severity(Globals, Severity0),
+    list.filter_map(remove_conditionals_in_msg(Globals), Msgs0, Msgs),
+    ( if
+        MaybeActualSeverity = yes(ActualSeverity),
+        Msgs = [_ | _]
+    then
+        (
+            ActualSeverity = actual_severity_error,
+            Severity = severity_error
+        ;
+            ActualSeverity = actual_severity_warning,
+            Severity = severity_warning
+        ;
+            ActualSeverity = actual_severity_informational,
+            Severity = severity_informational
+        ),
+        Spec = error_spec(Severity, Phase, Msgs)
+    else
+        % Spec0 would result in nothing being printed.
+        fail
+    ).
+
+:- pred remove_conditionals_in_msg(globals::in,
+    error_msg::in, error_msg::out) is semidet.
+
+remove_conditionals_in_msg(Globals, Msg0, Msg) :-
+    require_det (
+        (
+            Msg0 = simple_msg(Context, Components0),
+            MaybeContext = yes(Context),
+            TreatAsFirst = do_not_treat_as_first,
+            ExtraIndent = 0
+        ;
+            Msg0 = error_msg(MaybeContext, TreatAsFirst, ExtraIndent,
+                Components0)
+        ),
+        list.foldl(remove_conditionals_in_msg_component(Globals),
+            Components0, cord.init, ComponentCord),
+        Components = cord.list(ComponentCord),
+        Msg = error_msg(MaybeContext, TreatAsFirst, ExtraIndent, Components)
+    ),
+    % Don't include the Msg if Components is empty.
+    Components = [_ | _].
+
+:- pred remove_conditionals_in_msg_component(globals::in,
+    error_msg_component::in,
+    cord(error_msg_component)::in, cord(error_msg_component)::out) is det.
+
+remove_conditionals_in_msg_component(Globals, Component, !ComponentCord) :-
+    (
+        Component = option_is_set(Option, RequiredValue, EmbeddedComponents),
+        % We could recurse down into EmbeddedComponents, but we currently
+        % have any places in the compiler that can generate two error messages
+        % that differ only in nested option settings, so there would be
+        % no point.
+        globals.lookup_bool_option(Globals, Option, OptionValue),
+        ( if OptionValue = RequiredValue then
+            !:ComponentCord =
+                !.ComponentCord ++ cord.from_list(EmbeddedComponents)
+        else
+            true
+        )
+    ;
+        % We don't want to eliminate the verbose only part of a message
+        % even if verbose_errors isn't set. We want to keep them around
+        % until we print the component, so that we can record the presence
+        % of such verbose components, and generate a reminder of their
+        % existence at the end of the compilation.
+        %
+        % Besides, the compiler can't (yet) generate two error_msg_components
+        % that differ only in the presence of a verbose error.
+        ( Component = always(_)
+        ; Component = verbose_only(_, _)
+        ; Component = verbose_and_nonverbose(_, _)
+        ; Component = print_anything(_)
+        ),
+        !:ComponentCord = cord.snoc(!.ComponentCord, Component)
+    ).
 
 :- pred compare_error_specs(error_spec::in, error_spec::in,
     comparison_result::out) is det.
@@ -777,7 +882,7 @@ write_error_spec(Spec, Globals, !NumWarnings, !NumErrors, !IO) :-
         set.init, _, !IO).
 
 write_error_specs(Specs0, Globals, !NumWarnings, !NumErrors, !IO) :-
-    sort_error_specs(Specs0, Specs),
+    sort_error_specs(Globals, Specs0, Specs),
     list.foldl4(do_write_error_spec(Globals), Specs,
         !NumWarnings, !NumErrors, set.init, _, !IO).
 

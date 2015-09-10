@@ -88,12 +88,14 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.split_parse_tree_src. % undesirable dependency
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 
 :- import_module cord.
 :- import_module list.
+:- import_module maybe.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -210,8 +212,8 @@ read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
     read_module_src(Globals, "Getting dependencies for module",
         ignore_errors, Search, ModuleName, FileName0,
         always_read_module(dont_return_timestamp), _,
-        ParseTreeSrc0, _SrcSpecs, Errors, !IO),
-    ParseTreeSrc0 = parse_tree_src(ModuleNameSrc0, ModuleNameContext0,
+        ParseTreeSrc0, SrcSpecs, Errors, !IO),
+    ParseTreeSrc0 = parse_tree_src(ModuleNameSrc0, _ModuleNameContext0,
         ModuleComponentCord0),
     ( if
         cord.is_empty(ModuleComponentCord0),
@@ -233,23 +235,16 @@ read_dependencies(Globals, ModuleName, Search, ModuleAndImportsList, !IO) :-
     else
         FileName = FileName0,
         ( if ModuleName = ModuleNameSrc0 then
-            ParseTreeSrc = ParseTreeSrc0,
-            Specs0 = []
+            ParseTreeSrc = ParseTreeSrc0
         else
             % The module name in the source file is NOT the module name
             % we expect based on the file name. Override the parse tree's
-            % file name, and generate an error message.
-            ParseTreeSrc = ParseTreeSrc0 ^ pts_module_name := ModuleName,
-            Pieces = [words("Error: expected a module named"),
-                sym_name(ModuleName), suffix(","),
-                words("found a module named"),
-                sym_name(ModuleNameSrc0), suffix("."), nl],
-            Msg = simple_msg(ModuleNameContext0, [always(Pieces)]),
-            Spec = error_spec(severity_error, phase_term_to_parse_tree, [Msg]),
-            Specs0 = [Spec]
+            % file name. The error message should have already been generated
+            % by read_module_src.
+            ParseTreeSrc = ParseTreeSrc0 ^ pts_module_name := ModuleName
         ),
         split_into_compilation_units_perform_checks(ParseTreeSrc,
-            RawCompUnits, Specs0, Specs),
+            RawCompUnits, SrcSpecs, Specs),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
     ),
     RawCompUnitModuleNames =

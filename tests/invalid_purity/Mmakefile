@@ -7,7 +7,7 @@ SUBDIRS =
 TESTS_DIR = ..
 MAYBE_J1 =
 
-PROGS= \
+PROGS = \
 	impure_func_t2 \
 	impure_func_t3 \
 	impure_func_t4 \
@@ -20,7 +20,7 @@ PROGS= \
 	impure_pred_t2 \
 	purity \
 	purity_nonsense \
-	purity_nonsense2 \
+	purity_nonsense2-nodepend \
 	purity_type_error
 
 # XXX The pragma_c_and_mercury test is not enabled,

@@ -91,6 +91,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
+:- import_module term.
 
 %---------------------------------------------------------------------------%
 
@@ -152,11 +153,18 @@
     file_name::in, module_name::in, parse_tree_opt::out,
     list(error_spec)::out, read_module_errors::out, io::di, io::uo) is det.
 
-    % check_module_has_expected_name(FileName,
-    %     ExpectedModuleName, ActualModuleName, Specs):
+:- type maybe_require_module_decl
+    --->    dont_require_module_decl
+    ;       require_module_decl.
+
+    % check_module_has_expected_name(RequireModuleDecl, FileName,
+    %   ExpectedModuleName, ActualModuleName, MaybeActualModuleNameContext,
+    %   Specs):
     %
     % Check that ActualModuleName is equal to ExpectedModuleName. If it isn't,
     % generate an error message about FileName containing the wrong module.
+    % If RequireModuleDecl = dont_require_module_decl, make the error
+    % conditional on the setting of the warn_missing_module_name option.
     %
     % Note that while actually_read_opt_file always calls
     % check_module_has_expected_name, actually_read_module_src and
@@ -168,8 +176,9 @@
     % particularly since the information those callers use in this decision
     % is hidden by the polymorphism provided by the FileInfo type variable.
     %
-:- pred check_module_has_expected_name(file_name::in, module_name::in,
-    module_name::in, list(error_spec)::out) is det.
+:- pred check_module_has_expected_name(maybe_require_module_decl::in,
+    file_name::in, module_name::in, module_name::in, maybe(term.context)::in,
+    list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -191,7 +200,6 @@
 :- import_module parser.
 :- import_module require.
 :- import_module set.
-:- import_module term.
 :- import_module term_io.
 :- import_module varset.
 
@@ -250,22 +258,46 @@ actually_read_module_opt(OptFileKind, Globals, FileName, DefaultModuleName,
         read_parse_tree_opt(OptFileKind),
         ParseTreeOpt, ItemSpecs, Errors, !IO),
     ModuleName = ParseTreeOpt ^ pto_module_name,
-    check_module_has_expected_name(FileName, DefaultModuleName, ModuleName,
-        NameSpecs),
+    check_module_has_expected_name(require_module_decl, FileName,
+        DefaultModuleName, ModuleName, no, NameSpecs),
     Specs = ItemSpecs ++ NameSpecs.
 
 %---------------------%
 
-check_module_has_expected_name(FileName, ExpectedName, ActualName, Specs) :-
+check_module_has_expected_name(RequireModuleDecl, FileName,
+        ExpectedName, ActualName, MaybeActualContext, Specs) :-
     ( if ActualName = ExpectedName then
         Specs = []
     else
+        ( if
+            MaybeActualContext = yes(ActualContext),
+            ActualContext \= term.context_init
+        then
+            MaybeContext = MaybeActualContext
+        else
+            MaybeContext = no
+        ),
         Pieces = [words("Error: file"), quote(FileName),
-            words("contains the wrong module."), nl,
+            words("contains the wrong module."),
             words("Expected module"), sym_name(ExpectedName), suffix(","),
             words("found module"), sym_name(ActualName), suffix("."), nl],
-        Msg = error_msg(no, treat_as_first, 0, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_read_files, [Msg]),
+        (
+            RequireModuleDecl = require_module_decl,
+            Severity = severity_error,
+            Component = always(Pieces)
+        ;
+            RequireModuleDecl = dont_require_module_decl,
+            % Despite the option name having the "warn_" prefix,
+            % the severity is an error. The severity is deliberate.
+            % XXX The option should be renamed, but there is no obvious
+            % non-misleading name.
+            Severity = severity_conditional(warn_wrong_module_name,
+                yes, severity_error, no),
+            Component = option_is_set(warn_wrong_module_name, yes,
+                [always(Pieces)])
+        ),
+        Msg = error_msg(MaybeContext, treat_as_first, 0, [Component]),
+        Spec = error_spec(Severity, phase_module_name, [Msg]),
         Specs = [Spec]
     ).
 
@@ -1194,10 +1226,6 @@ handle_module_end_marker(CurModuleName, ContainingModules, IOMVarSet, IOMTerm,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- type maybe_require_module_decl
-    --->    dont_require_module_decl
-    ;       require_module_decl.
-
 :- type maybe_module_decl_present
     --->    no_module_decl_present(maybe_lookahead)
     ;       wrong_module_decl_present(module_name, prog_context)
@@ -1267,26 +1295,10 @@ read_first_module_decl(RequireModuleDecl, DefaultModuleName, ModuleDeclPresent,
                 ModuleDeclPresent =
                     right_module_decl_present(ModuleName, ModuleNameContext)
             else
-                Pieces = [words("Error: source file"), quote(!.SourceFileName),
-                    words("contains module named"), sym_name(StartModuleName),
-                    suffix("."), nl],
-                (
-                    RequireModuleDecl = dont_require_module_decl,
-                    % XXX I think this should be an error, not a warning. -zs
-                    % XXX ITEM_LIST Can we actually get given
-                    % dont_require_module_decl?
-                    Severity = severity_conditional(warn_wrong_module_name,
-                        yes, severity_error, no),
-                    Msg = option_is_set(warn_wrong_module_name, yes,
-                        [always(Pieces)])
-                ;
-                    RequireModuleDecl = require_module_decl,
-                    Severity = severity_error,
-                    Msg = always(Pieces)
-                ),
-                Spec = error_spec(Severity, phase_term_to_parse_tree,
-                    [simple_msg(ModuleNameContext, [Msg])]),
-                !:Specs = [Spec | !.Specs],
+                check_module_has_expected_name(RequireModuleDecl,
+                    !.SourceFileName, DefaultModuleName, StartModuleName,
+                    yes(ModuleNameContext), NameSpecs),
+                !:Specs = NameSpecs ++ !.Specs,
                 set.insert(rme_unexpected_module_name, !Errors),
 
                 % Which one should we use here? We used to use the default

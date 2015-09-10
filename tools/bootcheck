@@ -1940,6 +1940,11 @@ then
     esac
 fi
 
+if test "$exitstatus" = "0"
+then
+    echo "SUCCESSFUL EXIT"
+fi
+
 echo "-----------------------------------------------------------------------"
 
 echo "finishing at `date`"
