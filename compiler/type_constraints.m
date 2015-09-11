@@ -1827,7 +1827,7 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
         ClassId = class_id(Name, Arity),
         ( map.search(Environment ^ class_env, ClassId, ClassDefn) ->
             (
-                list.index0(ClassDefn ^ class_hlds_interface, MethodNum,
+                list.index0(ClassDefn ^ classdefn_hlds_interface, MethodNum,
                     Method)
             ->
                 Method = hlds_class_proc(PredId, _),

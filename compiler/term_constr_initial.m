@@ -282,7 +282,7 @@ process_builtin_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     pred_info::in, pred_info::out) is det.
 
 process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
-    pred_info_get_import_status(!.PredInfo, ImportStatus),
+    pred_info_get_status(!.PredInfo, PredStatus),
     pred_info_get_markers(!.PredInfo, Markers),
     pred_info_get_context(!.PredInfo, Context),
     some [!ProcTable] (
@@ -296,7 +296,7 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
         ;
             % Since we cannot see the definition we consider procedures
             % defined using `:- external' to be imported.
-            status_defined_in_this_module(ImportStatus) = yes
+            pred_status_defined_in_this_module(PredStatus) = yes
         ->
             % XXX At the moment if a procedure has a pragma terminates
             % declaration its argument size information is set to true.

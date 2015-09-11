@@ -32,7 +32,7 @@
     existq_tvars::in, pred_or_func::in, sym_name::in, list(type_and_mode)::in,
     maybe(determinism)::in, purity::in,
     prog_constraints::in, pred_markers::in, prog_context::in,
-    item_status::in, maybe(pair(pred_id, proc_id))::out,
+    pred_status::in, need_qualifier::in, maybe(pair(pred_id, proc_id))::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -45,7 +45,7 @@
     % Add a mode declaration for a predicate.
     %
 :- pred module_add_mode(inst_varset::in, sym_name::in, list(mer_mode)::in,
-    maybe(determinism)::in, import_status::in, prog_context::in,
+    maybe(determinism)::in, pred_status::in, prog_context::in,
     pred_or_func::in, maybe_class_method::in, pair(pred_id, proc_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -57,16 +57,16 @@
     %
 :- pred preds_add_implicit_report_error(module_info::in, module_info::out,
     module_name::in, sym_name::in, arity::in, pred_or_func::in,
-    import_status::in, maybe_class_method::in, prog_context::in,
+    pred_status::in, maybe_class_method::in, prog_context::in,
     pred_origin::in, list(format_component)::in, pred_id::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred preds_add_implicit_for_assertion(module_info::in, module_info::out,
     module_name::in, sym_name::in, arity::in, pred_or_func::in, prog_vars::in,
-    import_status::in, prog_context::in, pred_id::out) is det.
+    pred_status::in, prog_context::in, pred_id::out) is det.
 
 :- pred maybe_check_field_access_function(module_info::in,
-    sym_name::in, arity::in, import_status::in, prog_context::in,
+    sym_name::in, arity::in, pred_status::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -99,11 +99,11 @@
 
 module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
         PredOrFunc, PredName, TypesAndModes, MaybeDet, Purity,
-        Constraints, Markers, Context, item_status(Status, NeedQual),
-        MaybePredProcId, !ModuleInfo, !Specs) :-
+        Constraints, Markers, Context, PredStatus, NeedQual, MaybePredProcId,
+        !ModuleInfo, !Specs) :-
     split_types_and_modes(TypesAndModes, Types, MaybeModes0),
     add_new_pred(Origin, TypeVarSet, ExistQVars, PredName, Types, Purity,
-        Constraints, Markers, Context, Status, NeedQual, PredOrFunc,
+        Constraints, Markers, Context, PredStatus, NeedQual, PredOrFunc,
         !ModuleInfo, !Specs),
     ( if
         PredOrFunc = pf_predicate,
@@ -140,8 +140,9 @@ module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
         else
             IsClassMethod = is_not_a_class_method
         ),
-        module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, Context,
-            PredOrFunc, IsClassMethod, PredProcId, !ModuleInfo, !Specs),
+        module_add_mode(InstVarSet, PredName, Modes, MaybeDet, PredStatus,
+            Context, PredOrFunc, IsClassMethod, PredProcId,
+            !ModuleInfo, !Specs),
         MaybePredProcId = yes(PredProcId)
     ;
         MaybeModes = no,
@@ -150,13 +151,13 @@ module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
 
 :- pred add_new_pred(pred_origin::in, tvarset::in, existq_tvars::in,
     sym_name::in, list(mer_type)::in, purity::in, prog_constraints::in,
-    pred_markers::in, prog_context::in, import_status::in,
+    pred_markers::in, prog_context::in, pred_status::in,
     need_qualifier::in, pred_or_func::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_new_pred(Origin, TVarSet, ExistQVars, PredName, Types, Purity, Constraints,
-        Markers0, Context, ItemStatus, NeedQual, PredOrFunc, !ModuleInfo,
+        Markers0, Context, PredStatus0, NeedQual, PredOrFunc, !ModuleInfo,
         !Specs) :-
     % NB. Predicates are also added in lambda.m, which converts
     % lambda expressions into separate predicates, so any changes may need
@@ -165,10 +166,10 @@ add_new_pred(Origin, TVarSet, ExistQVars, PredName, Types, Purity, Constraints,
     % Only preds with opt_imported clauses are tagged as opt_imported, so that
     % the compiler doesn't look for clauses for other preds read in from
     % optimization interfaces.
-    ( if ItemStatus = status_opt_imported then
-        Status = status_imported(import_locn_interface)
+    ( if PredStatus0 = pred_status(status_opt_imported) then
+        PredStatus = pred_status(status_imported(import_locn_interface))
     else
-        Status = ItemStatus
+        PredStatus = PredStatus0
     ),
     module_info_get_name(!.ModuleInfo, ModuleName),
     list.length(Types, Arity),
@@ -190,7 +191,7 @@ add_new_pred(Origin, TVarSet, ExistQVars, PredName, Types, Purity, Constraints,
         list.foldl(add_marker, MarkersList, Markers0, Markers),
         map.init(VarNameRemap),
         pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
-            Origin, Status, goal_type_none, Markers, Types,
+            Origin, PredStatus, goal_type_none, Markers, Types,
             TVarSet, ExistQVars, Constraints, Proofs, ConstraintMap,
             ClausesInfo, VarNameRemap, PredInfo0),
         predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
@@ -201,8 +202,12 @@ add_new_pred(Origin, TVarSet, ExistQVars, PredName, Types, Purity, Constraints,
             pred_info_get_context(OrigPredInfo, OrigContext),
             DeclString = pred_or_func_to_str(PredOrFunc),
             adjust_func_arity(PredOrFunc, OrigArity, Arity),
-            multiple_def_error(ItemStatus, PredName, OrigArity, DeclString,
-                Context, OrigContext, [], !Specs)
+            ( if PredStatus0 = pred_status(status_opt_imported) then
+                true
+            else
+                multiple_def_error(is_not_opt_imported, PredName, OrigArity,
+                    DeclString, Context, OrigContext, [], !Specs)
+            )
         ;
             PredIds = [],
             module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
@@ -458,7 +463,7 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
     (
         MaybeDet = no,
         DetismDecl = detism_decl_none,
-        pred_info_get_import_status(!.PredInfo, ImportStatus),
+        pred_info_get_status(!.PredInfo, PredStatus),
         PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
         PredModule = pred_info_module(!.PredInfo),
         PredName = pred_info_name(!.PredInfo),
@@ -469,7 +474,7 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
                 MContext, !Specs)
         ;
             IsClassMethod = is_not_a_class_method,
-            IsExported = status_is_exported(ImportStatus),
+            IsExported = pred_status_is_exported(PredStatus),
             (
                 IsExported = yes,
                 unspecified_det_for_exported(PredSymName, Arity, PredOrFunc,
@@ -582,11 +587,11 @@ preds_add_implicit_for_assertion(!ModuleInfo, ModuleName, PredName,
 
 :- pred preds_do_add_implicit(module_info::in, module_name::in,
     sym_name::in, arity::in, pred_or_func::in,
-    import_status::in, prog_context::in, pred_origin::in, clauses_info::in,
+    pred_status::in, prog_context::in, pred_origin::in, clauses_info::in,
     pred_id::out, predicate_table::in, predicate_table::out) is det.
 
 preds_do_add_implicit(ModuleInfo, ModuleName, PredName, Arity, PredOrFunc,
-        Status, Context, Origin, ClausesInfo, PredId, !PredicateTable) :-
+        PredStatus, Context, Origin, ClausesInfo, PredId, !PredicateTable) :-
     varset.init(TVarSet0),
     make_n_fresh_vars("T", Arity, TypeVars, TVarSet0, TVarSet),
     prog_type.var_list_to_type_list(map.init, TypeVars, Types),
@@ -600,8 +605,8 @@ preds_do_add_implicit(ModuleInfo, ModuleName, PredName, Arity, PredOrFunc,
     ExistQVars = [],
     init_markers(Markers0),
     map.init(VarNameRemap),
-    pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
-        Origin, Status, goal_type_none, Markers0, Types, TVarSet, ExistQVars,
+    pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context, Origin,
+        PredStatus, goal_type_none, Markers0, Types, TVarSet, ExistQVars,
         Constraints, Proofs, ConstraintMap, ClausesInfo, VarNameRemap,
         PredInfo0),
     add_marker(marker_infer_type, Markers0, Markers),
@@ -620,20 +625,20 @@ preds_do_add_implicit(ModuleInfo, ModuleName, PredName, Arity, PredOrFunc,
 
 %-----------------------------------------------------------------------------%
 
-maybe_check_field_access_function(ModuleInfo, FuncName, FuncArity, Status,
+maybe_check_field_access_function(ModuleInfo, FuncName, FuncArity, FuncStatus,
         Context, !Specs) :-
     ( if
         is_field_access_function_name(ModuleInfo, FuncName, FuncArity,
             AccessType, FieldName)
     then
         check_field_access_function(ModuleInfo, AccessType, FieldName,
-            FuncName, FuncArity, Status, Context, !Specs)
+            FuncName, FuncArity, FuncStatus, Context, !Specs)
     else
         true
     ).
 
 :- pred check_field_access_function(module_info::in, field_access_type::in,
-    sym_name::in, sym_name::in, arity::in, import_status::in,
+    sym_name::in, sym_name::in, arity::in, pred_status::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,
@@ -648,8 +653,8 @@ check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,
         % reported for local field access functions for them.
         map.search(CtorFieldTable, FieldName, [FieldDefn]),
         FieldDefn = hlds_ctor_field_defn(_, DefnStatus, _, _, _),
-        DefnStatus = status_exported,
-        FuncStatus \= status_exported
+        DefnStatus = type_status(status_exported),
+        FuncStatus \= pred_status(status_exported)
     then
         report_field_status_mismatch(Context, FuncCallId, !Specs)
     else

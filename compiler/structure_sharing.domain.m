@@ -887,8 +887,8 @@ lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, SharingAs, Status,
     ;
         PPId = proc(PredId, _),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_import_status(PredInfo, ImportStatus),
-        ImportStatus = status_external(_)
+        pred_info_get_status(PredInfo, PredStatus),
+        PredStatus = pred_status(status_external(_))
     ->
         SharingAs = sharing_as_top_sharing(top_cannot_improve(
             "external predicate")),

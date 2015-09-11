@@ -217,7 +217,7 @@ write_type_table_entries(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
     hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    hlds_data.get_type_defn_status(TypeDefn, Status),
+    hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     hlds_data.get_type_defn_context(TypeDefn, Context),
 
     % Write the context.
@@ -235,7 +235,7 @@ write_type_table_entries(Info, Indent, [TypeCtor - TypeDefn | Types], !IO) :-
             io.write_string("', line ", !IO),
             io.write_int(LineNumber, !IO),
             io.write_string(", status ", !IO),
-            io.write_string(import_status_to_string(Status), !IO),
+            io.write_string(type_import_status_to_string(TypeStatus), !IO),
             io.write_char('\n', !IO)
         )
     else
@@ -570,7 +570,7 @@ write_instance_defns(Info, Indent, ClassId - InstanceDefns, !IO) :-
     io::di, io::uo) is det.
 
 write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
-    InstanceDefn = hlds_instance_defn(_InstanceModule, Status,
+    InstanceDefn = hlds_instance_defn(_InstanceModule, InstanceStatus,
         Context, Constraints, Types, OriginalTypes, Body,
         MaybePredProcIds, VarSet, ProofMap),
 
@@ -610,7 +610,7 @@ write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
 
     write_indent(Indent, !IO),
     io.write_string("% Status: ", !IO),
-    io.write_string(import_status_to_string(Status), !IO),
+    io.write_string(instance_import_status_to_string(InstanceStatus), !IO),
     io.nl(!IO),
 
     write_indent(Indent, !IO),

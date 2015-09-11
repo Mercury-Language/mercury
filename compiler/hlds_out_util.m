@@ -18,6 +18,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_data.
+:- import_module hlds.status.
 :- import_module libs.globals.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
@@ -181,6 +182,15 @@
 
 %-----------------------------------------------------------------------------%
 
+:- func type_import_status_to_string(type_status) = string.
+:- func inst_import_status_to_string(inst_status) = string.
+:- func mode_import_status_to_string(mode_status) = string.
+:- func typeclass_import_status_to_string(typeclass_status) = string.
+:- func instance_import_status_to_string(instance_status) = string.
+:- func pred_import_status_to_string(pred_status) = string.
+
+%-----------------------------------------------------------------------------%
+
     % Write out a list of integers as a Mercury list.
     %
 :- pred write_intlist(list(int)::in, io::di, io::uo) is det.
@@ -204,6 +214,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_item.  % undesirable dependency
 
 :- import_module assoc_list.
 :- import_module int.
@@ -919,6 +930,56 @@ write_var_mode(VarSet, InstVarSet, VarNamePrint, Var - Mode, !IO) :-
 var_mode_to_string(VarSet, InstVarSet, VarNamePrint, Var - Mode) =
     mercury_var_to_string(VarSet, VarNamePrint, Var)
         ++ "::" ++ mercury_mode_to_string(output_debug, InstVarSet, Mode).
+
+%-----------------------------------------------------------------------------%
+%
+% Write out statuses.
+%
+
+type_import_status_to_string(type_status(OldImportStatus)) =
+    old_import_status_to_string(OldImportStatus).
+inst_import_status_to_string(inst_status(OldImportStatus)) =
+    old_import_status_to_string(OldImportStatus).
+mode_import_status_to_string(mode_status(OldImportStatus)) =
+    old_import_status_to_string(OldImportStatus).
+typeclass_import_status_to_string(typeclass_status(OldImportStatus)) =
+    old_import_status_to_string(OldImportStatus).
+instance_import_status_to_string(instance_status(OldImportStatus)) =
+    old_import_status_to_string(OldImportStatus).
+pred_import_status_to_string(pred_status(OldImportStatus)) =
+    old_import_status_to_string(OldImportStatus).
+
+:- func old_import_status_to_string(old_import_status) = string.
+
+old_import_status_to_string(status_local) =
+    "local".
+old_import_status_to_string(status_exported) =
+    "exported".
+old_import_status_to_string(status_opt_exported) =
+    "opt_exported".
+old_import_status_to_string(status_abstract_exported) =
+    "abstract_exported".
+old_import_status_to_string(status_pseudo_exported) =
+    "pseudo_exported".
+old_import_status_to_string(status_imported(import_locn_interface)) =
+    "imported in the interface".
+old_import_status_to_string(status_imported(import_locn_implementation)) =
+    "imported in the implementation".
+old_import_status_to_string(status_imported(
+        import_locn_ancestor_private_interface_proper)) =
+    "imported from an ancestor's private interface".
+old_import_status_to_string(status_imported(import_locn_ancestor)) =
+    "imported by an ancestor".
+old_import_status_to_string(status_external(Status)) =
+    "external (and " ++ old_import_status_to_string(Status) ++ ")".
+old_import_status_to_string(status_abstract_imported) =
+    "abstract_imported".
+old_import_status_to_string(status_opt_imported) =
+    "opt_imported".
+old_import_status_to_string(status_pseudo_imported) =
+    "pseudo_imported".
+old_import_status_to_string(status_exported_to_submodules) =
+    "exported_to_submodules".
 
 %-----------------------------------------------------------------------------%
 %

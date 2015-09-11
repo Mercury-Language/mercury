@@ -304,8 +304,8 @@ add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo, IncludeImported,
         add_dependency_arcs_in_goal(Caller, Goal, !DepGraph)
     ;
         IncludeImported = include_imported,
-        pred_info_get_import_status(PredInfo0, ImportStatus),
-        Imported = status_is_imported(ImportStatus),
+        pred_info_get_status(PredInfo0, PredStatus),
+        Imported = pred_status_is_imported(PredStatus),
         (
             Imported = yes
         ;

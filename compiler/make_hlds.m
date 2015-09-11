@@ -89,7 +89,7 @@
     %
 :- pred add_special_pred_for_real(special_pred_id::in, tvarset::in,
     mer_type::in, type_ctor::in, hlds_type_body::in, prog_context::in,
-    import_status::in, module_info::in, module_info::out) is det.
+    type_status::in, module_info::in, module_info::out) is det.
 
     % add_special_pred_decl_for_real(SpecialPredId, TVarSet,
     %   Type, TypeCtor, TypeContext, TypeStatus, !ModuleInfo).
@@ -101,7 +101,7 @@
     %
 :- pred add_special_pred_decl_for_real(special_pred_id::in,
     tvarset::in, mer_type::in, type_ctor::in, prog_context::in,
-    import_status::in, module_info::in, module_info::out) is det.
+    type_status::in, module_info::in, module_info::out) is det.
 
     % Given the definition for a predicate or function from a
     % type class instance declaration, produce the clauses_info
@@ -109,7 +109,7 @@
     %
 :- pred produce_instance_method_clauses(instance_proc_def::in,
     pred_or_func::in, arity::in, list(mer_type)::in,
-    pred_markers::in, term.context::in, import_status::in, clauses_info::out,
+    pred_markers::in, term.context::in, instance_status::in, clauses_info::out,
     tvarset::in, tvarset::out, module_info::in, module_info::out,
     make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.

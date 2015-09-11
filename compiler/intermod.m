@@ -308,7 +308,7 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         )
     ;
         ProcessLocalPreds = yes,
-        pred_info_get_import_status(PredInfo, status_local)
+        pred_info_get_status(PredInfo, pred_status(status_local))
     ),
     (
         pred_info_get_clauses_info(PredInfo, ClauseInfo),
@@ -651,7 +651,7 @@ intermod_add_proc(PredId, DoWrite, !Info) :-
 intermod_do_add_proc(PredId, DoWrite, !Info) :-
     intermod_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, Status),
+    pred_info_get_status(PredInfo, PredStatus),
     ProcIds = pred_info_procids(PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( if
@@ -721,10 +721,10 @@ intermod_do_add_proc(PredId, DoWrite, !Info) :-
         % special.
 
         (
-            Status = status_exported
+            PredStatus = pred_status(status_exported)
         ;
-            Status = status_external(ExternalStatus),
-            status_is_exported(ExternalStatus) = yes
+            PredStatus = pred_status(status_external(OldExternalStatus)),
+            old_status_is_exported(OldExternalStatus) = yes
         )
     then
         DoWrite = yes
@@ -742,15 +742,15 @@ intermod_do_add_proc(PredId, DoWrite, !Info) :-
         % a predicate which is local to that module, then we need to put
         % the declaration for the called predicate in the `.opt' file.
 
-        import_status_to_write(Status)
+        pred_status_to_write(PredStatus) = yes
     then
         DoWrite = yes,
         intermod_info_get_pred_decls(!.Info, PredDecls0),
         set.insert(PredId, PredDecls0, PredDecls),
         intermod_info_set_pred_decls(PredDecls, !Info)
     else if
-        ( Status = status_imported(_)
-        ; Status = status_opt_imported
+        ( PredStatus = pred_status(status_imported(_))
+        ; PredStatus = pred_status(status_opt_imported)
         )
     then
         % Imported pred - add import for module.
@@ -827,10 +827,10 @@ gather_instances_2(ModuleInfo, ClassId, InstanceDefns, !Info) :-
     hlds_instance_defn::in, intermod_info::in, intermod_info::out) is det.
 
 gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
-    InstanceDefn = hlds_instance_defn(ModuleName, Status, Context,
+    InstanceDefn = hlds_instance_defn(ModuleName, InstanceStatus, Context,
         InstanceConstraints, Types, OriginalTypes, Interface0,
         MaybePredProcIds, TVarSet, Proofs),
-    DefinedThisModule = status_defined_in_this_module(Status),
+    DefinedThisModule = instance_status_defined_in_this_module(InstanceStatus),
     (
         DefinedThisModule = yes,
 
@@ -887,12 +887,13 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
             (
                 Interface = instance_body_abstract
             =>
-                status_is_exported(Status) = no
+                instance_status_is_exported(InstanceStatus) = no
             )
         then
-            InstanceDefnToWrite = hlds_instance_defn(ModuleName, Status,
-                Context, InstanceConstraints, Types, OriginalTypes,
-                Interface, MaybePredProcIds, TVarSet, Proofs),
+            InstanceDefnToWrite = hlds_instance_defn(ModuleName,
+                InstanceStatus, Context, InstanceConstraints,
+                Types, OriginalTypes, Interface, MaybePredProcIds,
+                TVarSet, Proofs),
             intermod_info_get_instances(!.Info, Instances0),
             Instances = [ClassId - InstanceDefnToWrite | Instances0],
             intermod_info_set_instances(Instances, !Info)
@@ -1246,10 +1247,10 @@ resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
     is semidet.
 
 should_write_type(ModuleName, TypeCtor, TypeDefn) :-
-    hlds_data.get_type_defn_status(TypeDefn, ImportStatus),
+    hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     TypeCtor = type_ctor(Name, _Arity),
     Name = qualified(ModuleName, _),
-    import_status_to_write(ImportStatus).
+    type_status_to_write(TypeStatus) = yes.
 
 %-----------------------------------------------------------------------------%
 
@@ -1278,9 +1279,9 @@ write_intermod_info(IntermodInfo, !IO) :-
         get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
         not (
             list.member(_TypeCtor - TypeDefn, TypeCtorsDefns),
-            hlds_data.get_type_defn_status(TypeDefn, Status),
-            ( Status = status_abstract_exported
-            ; Status = status_exported_to_submodules
+            hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+            ( TypeStatus = type_status(status_abstract_exported)
+            ; TypeStatus = type_status(status_exported_to_submodules)
             )
         )
     then
@@ -1522,10 +1523,10 @@ intermod_write_modes(OutInfo, ModuleInfo, !IO) :-
 intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !IO) :-
     ModeId = mode_id(SymName, _Arity),
     ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode), Context,
-        ImportStatus),
+        ModeStatus),
     ( if
         SymName = qualified(ModuleName, _),
-        import_status_to_write(ImportStatus)
+        mode_status_to_write(ModeStatus) = yes
     then
         ItemModeDefn = item_mode_defn_info(SymName, Args, eqv_mode(Mode),
             Varset, Context, -1),
@@ -1551,10 +1552,10 @@ intermod_write_insts(OutInfo, ModuleInfo, !IO) :-
 intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !IO) :-
     InstId = inst_id(SymName, _Arity),
     InstDefn = hlds_inst_defn(Varset, Args, Body, _MaybeMatchingTypeCtors,
-        Context, ImportStatus),
+        Context, InstStatus),
     ( if
         SymName = qualified(ModuleName, _),
-        import_status_to_write(ImportStatus)
+        inst_status_to_write(InstStatus) = yes
     then
         (
             Body = eqv_inst(Inst2),
@@ -1584,13 +1585,13 @@ intermod_write_classes(OutInfo, ModuleInfo, !IO) :-
     hlds_class_defn::in, io::di, io::uo) is det.
 
 intermod_write_class(OutInfo, ModuleName, ClassId, ClassDefn, !IO) :-
-    ClassDefn = hlds_class_defn(ImportStatus, Constraints, HLDSFunDeps,
+    ClassDefn = hlds_class_defn(TypeClassStatus, Constraints, HLDSFunDeps,
         _Ancestors, TVars, _Kinds, Interface, _HLDSClassInterface, TVarSet,
         Context),
     ClassId = class_id(QualifiedClassName, _),
     ( if
         QualifiedClassName = qualified(ModuleName, _),
-        import_status_to_write(ImportStatus)
+        typeclass_status_to_write(TypeClassStatus) = yes
     then
         FunDeps = list.map(unmake_hlds_class_fundep(TVars), HLDSFunDeps),
         ItemTypeClass = item_typeclass_info(QualifiedClassName, TVars,
@@ -2246,7 +2247,8 @@ adjust_type_status(!ModuleInfo) :-
 adjust_type_status_2(TypeCtor, TypeDefn0, TypeDefn, !ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ( if should_write_type(ModuleName, TypeCtor, TypeDefn0) then
-        hlds_data.set_type_defn_status(status_exported, TypeDefn0, TypeDefn),
+        hlds_data.set_type_defn_status(type_status(status_exported),
+            TypeDefn0, TypeDefn),
         fixup_special_preds(TypeCtor, !ModuleInfo)
     else
         TypeDefn = TypeDefn0
@@ -2258,7 +2260,8 @@ adjust_type_status_2(TypeCtor, TypeDefn0, TypeDefn, !ModuleInfo) :-
 fixup_special_preds(TypeCtor, ModuleInfo0, ModuleInfo) :-
     special_pred_list(SpecialPredList),
     module_info_get_special_pred_map(ModuleInfo0, SpecPredMap),
-    list.filter_map((pred(SpecPredId::in, PredId::out) is semidet :-
+    list.filter_map(
+        ( pred(SpecPredId::in, PredId::out) is semidet :-
             map.search(SpecPredMap, SpecPredId - TypeCtor, PredId)
         ), SpecialPredList, PredIds),
     set_list_of_preds_exported(PredIds, ModuleInfo0, ModuleInfo).
@@ -2278,11 +2281,15 @@ adjust_class_status(!ModuleInfo) :-
 
 adjust_class_status_2(ClassId - ClassDefn0, ClassId - ClassDefn,
         !ModuleInfo) :-
-    ( if import_status_to_write(ClassDefn0 ^ class_status) then
-        ClassDefn = ClassDefn0 ^ class_status := status_exported,
-        class_procs_to_pred_ids(ClassDefn ^ class_hlds_interface, PredIds),
+    ToWrite = typeclass_status_to_write(ClassDefn0 ^ classdefn_status),
+    (
+        ToWrite = yes,
+        ClassDefn = ClassDefn0 ^ classdefn_status :=
+            typeclass_status(status_exported),
+        class_procs_to_pred_ids(ClassDefn ^ classdefn_hlds_interface, PredIds),
         set_list_of_preds_exported(PredIds, !ModuleInfo)
-    else
+    ;
+        ToWrite = no,
         ClassDefn = ClassDefn0
     ).
 
@@ -2320,11 +2327,14 @@ adjust_instance_status_2(ClassId - InstanceList0, ClassId - InstanceList,
     hlds_instance_defn::out, module_info::in, module_info::out) is det.
 
 adjust_instance_status_3(Instance0, Instance, !ModuleInfo) :-
-    Instance0 = hlds_instance_defn(InstanceModule, Status0, Context,
+    Instance0 = hlds_instance_defn(InstanceModule, InstanceStatus0, Context,
         Constraints, Types, OriginalTypes, Body,
         HLDSClassInterface, TVarSet, ConstraintProofs),
-    ( if import_status_to_write(Status0) then
-        Instance = hlds_instance_defn(InstanceModule, status_exported,
+    ToWrite = instance_status_to_write(InstanceStatus0),
+    (
+        ToWrite = yes,
+        InstanceStatus = instance_status(status_exported),
+        Instance = hlds_instance_defn(InstanceModule, InstanceStatus,
             Context, Constraints, Types, OriginalTypes, Body,
             HLDSClassInterface, TVarSet, ConstraintProofs),
         (
@@ -2336,7 +2346,8 @@ adjust_instance_status_3(Instance0, Instance, !ModuleInfo) :-
             % declarations, one of which is abstract.
             HLDSClassInterface = no
         )
-    else
+    ;
+        ToWrite = no,
         Instance = Instance0
     ).
 
@@ -2354,50 +2365,65 @@ set_list_of_preds_exported(PredIds, !ModuleInfo) :-
 set_list_of_preds_exported_2([], !Preds).
 set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
     map.lookup(!.Preds, PredId, PredInfo0),
-    ( if
-        pred_info_get_import_status(PredInfo0, Status),
-        import_status_to_write(Status)
-    then
+    pred_info_get_status(PredInfo0, PredStatus0),
+    ToWrite = pred_status_to_write(PredStatus0),
+    (
+        ToWrite = yes,
         ( if
             pred_info_get_origin(PredInfo0, Origin),
             Origin = origin_special_pred(spec_pred_unify - _)
         then
-            NewStatus = status_pseudo_exported
+            PredStatus = pred_status(status_pseudo_exported)
         else if
-            Status = status_external(_)
+            PredStatus0 = pred_status(status_external(_))
         then
-            NewStatus = status_external(status_opt_exported)
+            PredStatus = pred_status(status_external(status_opt_exported))
         else
-            NewStatus = status_opt_exported
+            PredStatus = pred_status(status_opt_exported)
         ),
-        pred_info_set_import_status(NewStatus, PredInfo0, PredInfo),
+        pred_info_set_status(PredStatus, PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, !Preds)
-    else
-        true
+    ;
+        ToWrite = no
     ),
     set_list_of_preds_exported_2(PredIds, !Preds).
 
     % Should a declaration with the given status be written to the `.opt' file.
     %
-:- pred import_status_to_write(import_status::in) is semidet.
+:- func type_status_to_write(type_status) = bool.
+:- func inst_status_to_write(inst_status) = bool.
+:- func mode_status_to_write(mode_status) = bool.
+:- func typeclass_status_to_write(typeclass_status) = bool.
+:- func instance_status_to_write(instance_status) = bool.
+:- func pred_status_to_write(pred_status) = bool.
 
-import_status_to_write(Status) :-
-    import_status_to_write(Status) = yes.
+type_status_to_write(type_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+inst_status_to_write(inst_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+mode_status_to_write(mode_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+typeclass_status_to_write(typeclass_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+instance_status_to_write(instance_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+pred_status_to_write(pred_status(OldStatus)) =
+    old_status_to_write(OldStatus).
 
-:- func import_status_to_write(import_status) = bool.
+:- func old_status_to_write(old_import_status) = bool.
 
-import_status_to_write(status_imported(_)) = no.
-import_status_to_write(status_abstract_imported) = no.
-import_status_to_write(status_pseudo_imported) = no.
-import_status_to_write(status_opt_imported) = no.
-import_status_to_write(status_exported) = no.
-import_status_to_write(status_opt_exported) = yes.
-import_status_to_write(status_abstract_exported) = yes.
-import_status_to_write(status_pseudo_exported) = no.
-import_status_to_write(status_exported_to_submodules) = yes.
-import_status_to_write(status_local) = yes.
-import_status_to_write(status_external(Status)) =
-    bool.not(status_is_exported(Status)).
+old_status_to_write(status_imported(_)) = no.
+old_status_to_write(status_abstract_imported) = no.
+old_status_to_write(status_pseudo_imported) = no.
+old_status_to_write(status_opt_imported) = no.
+old_status_to_write(status_exported) = no.
+old_status_to_write(status_opt_exported) = yes.
+old_status_to_write(status_abstract_exported) = yes.
+old_status_to_write(status_pseudo_exported) = no.
+old_status_to_write(status_exported_to_submodules) = yes.
+old_status_to_write(status_local) = yes.
+old_status_to_write(status_external(Status)) =
+    bool.not(old_status_is_exported(Status)).
 
 %-----------------------------------------------------------------------------%
 

@@ -629,8 +629,8 @@ is_multi_var(NonLocals, VarSet, Var) :-
 pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, SimpleCallId,
         PredId, ProcId, BodyPieces, !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    IsImported = status_is_imported(ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
+    IsImported = pred_status_is_imported(PredStatus),
     (
         IsImported = yes
     ;

@@ -2269,8 +2269,8 @@ create_new_spec_parallel_pred(FutureArgs, OrigPPId, NewPPId,
         NewPredName, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, OrigPPId,
         OrigPredInfo, OrigProcInfo),
-    Status = status_local,
-    make_new_spec_parallel_pred_info(FutureArgs, Status, OrigPPId,
+    PredStatus = pred_status(status_local),
+    make_new_spec_parallel_pred_info(FutureArgs, PredStatus, OrigPPId,
         OrigPredInfo, NewPredInfo0),
     NewPredName = pred_info_name(NewPredInfo0),
 
@@ -2289,10 +2289,10 @@ create_new_spec_parallel_pred(FutureArgs, OrigPPId, NewPPId,
 
     % The comments in this predicate are from unused_args.m
     %
-:- pred make_new_spec_parallel_pred_info(list(arg_pos)::in, import_status::in,
+:- pred make_new_spec_parallel_pred_info(list(arg_pos)::in, pred_status::in,
     pred_proc_id::in, pred_info::in, pred_info::out) is det.
 
-make_new_spec_parallel_pred_info(FutureArgs, Status, PPId, !PredInfo) :-
+make_new_spec_parallel_pred_info(FutureArgs, PredStatus, PPId, !PredInfo) :-
     PPId = proc(PredId, ProcId),
     PredModule = pred_info_module(!.PredInfo),
     Name0 = pred_info_name(!.PredInfo),
@@ -2329,7 +2329,7 @@ make_new_spec_parallel_pred_info(FutureArgs, Status, PPId, !PredInfo) :-
     Origin = origin_transformed(transform_dependent_parallel_conjunction,
         OrigOrigin, PredId),
     pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
-        Status, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
+        PredStatus, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
         ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,
         VarNameRemap, !:PredInfo),
     pred_info_set_typevarset(TypeVars, !PredInfo).

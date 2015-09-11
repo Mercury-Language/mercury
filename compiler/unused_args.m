@@ -567,7 +567,7 @@ setup_output_args(ModuleInfo, ProcInfo, !VarDep) :-
 :- pred var_is_used(pred_proc_id::in, prog_var::in, var_usage::in) is semidet.
 
 var_is_used(PredProc, Var, VarUsage) :-
-    \+ (
+    not (
         map.search(VarUsage, PredProc, UsageInfos),
         map.contains(UsageInfos, Var)
     ).
@@ -575,7 +575,7 @@ var_is_used(PredProc, Var, VarUsage) :-
 :- pred local_var_is_used(var_dep::in, prog_var::in) is semidet.
 
 local_var_is_used(VarDep, Var) :-
-    \+ map.contains(VarDep, Var).
+    not map.contains(VarDep, Var).
 
     % Add a list of aliases for a variable.
     %
@@ -1036,9 +1036,9 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         UnusedArgs = []
     ;
         UnusedArgs = [_ | _],
-        pred_info_get_import_status(OrigPredInfo, Status0),
+        pred_info_get_status(OrigPredInfo, PredStatus0),
         (
-            Status0 = status_opt_imported,
+            PredStatus0 = pred_status(status_opt_imported),
             IntermodResultsTriples = [_ | _],
             IntermodOldArgLists = []
         ->
@@ -1046,17 +1046,17 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
             % have been removed than in the original module, then leave the
             % import status as opt_imported so that dead_proc_elim will remove
             % it if no other optimization is performed on it.
-            Status = status_opt_imported
+            PredStatus = pred_status(status_opt_imported)
         ;
-            status_is_exported(Status0) = yes
+            pred_status_is_exported(PredStatus0) = yes
         ->
             % This specialized version of the predicate will be declared
             % in the analysis file for this module so it must be exported.
-            Status = Status0
+            PredStatus = PredStatus0
         ;
-            Status = status_local
+            PredStatus = pred_status(status_local)
         ),
-        make_new_pred_info(!.ModuleInfo, UnusedArgs, Status,
+        make_new_pred_info(!.ModuleInfo, UnusedArgs, PredStatus,
             proc(PredId, ProcId), OrigPredInfo, NewPredInfo0),
         NewPredName = pred_info_name(NewPredInfo0),
         pred_info_get_proc_table(NewPredInfo0, NewProcs0),
@@ -1104,7 +1104,7 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
         OrigPredInfo, OrigProcInfo, UnusedArgs, UnusedArgs2, !ModuleInfo) :-
     % Add an exported predicate with the number of removed arguments promised
     % in the analysis file which just calls the new predicate.
-    make_new_pred_info(!.ModuleInfo, UnusedArgs2, status_exported,
+    make_new_pred_info(!.ModuleInfo, UnusedArgs2, pred_status(status_exported),
         proc(PredId, ProcId), OrigPredInfo, ExtraPredInfo0),
     PredModule = pred_info_module(OrigPredInfo),
     create_call_goal(UnusedArgs, NewPredId, ProcId,
@@ -1122,10 +1122,10 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
     predicate_table_insert(ExtraPredInfo, _, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, !ModuleInfo).
 
-:- pred make_new_pred_info(module_info::in, list(int)::in, import_status::in,
+:- pred make_new_pred_info(module_info::in, list(int)::in, pred_status::in,
     pred_proc_id::in, pred_info::in, pred_info::out) is det.
 
-make_new_pred_info(_ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
+make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
         !PredInfo) :-
     PredModule = pred_info_module(!.PredInfo),
     Name0 = pred_info_name(!.PredInfo),
@@ -1135,7 +1135,7 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
     % Create a unique new pred name using the old proc_id.
     (
         string.prefix(Name0, "__"),
-        \+ string.prefix(Name0, "__LambdaGoal__")
+        not string.prefix(Name0, "__LambdaGoal__")
     ->
         (
             % Fix up special pred names.
@@ -1182,7 +1182,7 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
     Transform = transform_unused_argument_elimination(UnusedArgs),
     Origin = origin_transformed(Transform, OrigOrigin, PredId),
     pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
-        Status, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
+        PredStatus, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
         ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,
         VarNameRemap, !:PredInfo),
     pred_info_set_typevarset(TypeVars, !PredInfo).
@@ -1239,7 +1239,7 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs, !ProcCallInfo,
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo0, ProcInfo0),
     make_new_pred_info(!.ModuleInfo, UnusedArgs,
-        status_imported(import_locn_interface), OptProc,
+        pred_status(status_imported(import_locn_interface)), OptProc,
         PredInfo0, NewPredInfo0),
     pred_info_get_proc_table(NewPredInfo0, NewProcs0),
 
@@ -1633,16 +1633,16 @@ need_unify(ModuleInfo, UnusedVars, Unify, Changed) :-
         % Target unused => we don't need the assignment
         % Source unused => Target unused
         Unify = assign(Target, _Source),
-        \+ list.member(Target, UnusedVars),
+        not list.member(Target, UnusedVars),
         Changed = no
     ;
         % LVar unused => we don't need the unification
         Unify = construct(LVar, _, _, _, _, _, _),
-        \+ list.member(LVar, UnusedVars),
+        not list.member(LVar, UnusedVars),
         Changed = no
     ;
         Unify = deconstruct(LVar, _, ArgVars, ArgModes, CanFail, _CanCGC),
-        \+ list.member(LVar, UnusedVars),
+        not list.member(LVar, UnusedVars),
         (
             % Are any of the args unused? If so, we need to to fix up the
             % goal_info.
@@ -1725,25 +1725,26 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas, DoWarn,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         (
             Name = pred_info_name(PredInfo),
-            \+ pred_info_is_imported(PredInfo),
-            \+ pred_info_get_import_status(PredInfo, status_opt_imported),
+            not pred_info_is_imported(PredInfo),
+            pred_info_get_status(PredInfo, PredStatus),
+            PredStatus \= pred_status(status_opt_imported),
 
             % Don't warn about builtins that have unused arguments.
-            \+ pred_info_is_builtin(PredInfo),
-            \+ is_unify_or_compare_pred(PredInfo),
+            not pred_info_is_builtin(PredInfo),
+            not is_unify_or_compare_pred(PredInfo),
 
             % Don't warn about stubs for procedures with no clauses --
             % in that case, we *expect* none of the arguments to be used.
             pred_info_get_markers(PredInfo, Markers),
-            \+ check_marker(Markers, marker_stub),
+            not check_marker(Markers, marker_stub),
 
             % Don't warn about lambda expressions not using arguments.
             % (The warning message for these doesn't contain context,
             % so it's useless).
-            \+ string.sub_string_search(Name, "__LambdaGoal__", _),
+            not string.sub_string_search(Name, "__LambdaGoal__", _),
 
             % Don't warn for a specialized version.
-            \+ (
+            not (
                 string.sub_string_search(Name, "__ho", Position),
                 string.length(Name, Length),
                 IdLen = Length - Position - 4,
@@ -1752,19 +1753,19 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas, DoWarn,
             ),
             module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
             TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-            \+ set.member(PredId, TypeSpecForcePreds),
+            not set.member(PredId, TypeSpecForcePreds),
 
             % Don't warn for a loop-invariant hoisting-generated procedure.
             pred_info_get_origin(PredInfo, Origin),
-            \+ (
+            not (
                 Origin = origin_transformed(transform_loop_invariant(_), _, _)
             ),
 
             % XXX We don't currently generate pragmas for the automatically
             % generated class instance methods because the compiler aborts
             % when trying to read them back in from the `.opt' files.
-            \+ check_marker(Markers, marker_class_instance_method),
-            \+ check_marker(Markers, marker_named_class_instance_method)
+            not check_marker(Markers, marker_class_instance_method),
+            not check_marker(Markers, marker_named_class_instance_method)
         ->
             write_unused_args_to_opt_file(WriteOptPragmas,
                 PredInfo, ProcId, UnusedArgs, !IO),

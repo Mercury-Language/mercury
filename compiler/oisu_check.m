@@ -115,16 +115,16 @@ add_pred_to_kind_map(TypeCtor, Kind, PredId, !KindMap) :-
     set(pred_proc_id)::in, set(pred_proc_id)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors,
-        Pair0, Pair, !OISUProcs, !Specs) :-
+check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors, Pair0, Pair,
+        !OISUProcs, !Specs) :-
     Pair0 = PredId - PredInfo0,
-    pred_info_get_import_status(PredInfo0, Status0),
-    ( Status0 = status_external(StatusPrime) ->
-        Status = StatusPrime
+    pred_info_get_status(PredInfo0, Status0),
+    ( Status0 = pred_status(status_external(StatusPrime)) ->
+        Status = pred_status(StatusPrime)
     ;
         Status = Status0
     ),
-    IsDefnInModule = status_defined_in_this_module(Status),
+    IsDefnInModule = pred_status_defined_in_this_module(Status),
     (
         IsDefnInModule = no,
         Pair = Pair0

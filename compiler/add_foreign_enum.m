@@ -16,11 +16,11 @@
 :- import_module list.
 
 :- pred add_pragma_foreign_export_enum(pragma_info_foreign_export_enum::in,
-    import_status::in, prog_context::in, module_info::in, module_info::out,
+    type_status::in, prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_foreign_enum(pragma_info_foreign_enum::in,
-    import_status::in, prog_context::in, module_info::in, module_info::out,
+    type_status::in, prog_context::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -41,7 +41,7 @@
 
 %-----------------------------------------------------------------------------%
 
-add_pragma_foreign_export_enum(FEEInfo, _ImportStatus, Context,
+add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
         !ModuleInfo, !Specs) :-
     FEEInfo = pragma_info_foreign_export_enum(Lang, TypeCtor,
         Attributes, Overrides),
@@ -365,7 +365,7 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
 
 %-----------------------------------------------------------------------------%
 
-add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
+add_pragma_foreign_enum(FEInfo, PragmaStatus, Context, !ModuleInfo, !Specs) :-
     FEInfo = pragma_info_foreign_enum(Lang, TypeCtor, ForeignTagValues),
     TypeCtor = type_ctor(TypeName, TypeArity),
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
@@ -418,16 +418,17 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
                 % Either both the type and the pragma are defined in this
                 % module or they are both imported. Any other combination
                 % is illegal.
-                IsTypeLocal = status_defined_in_this_module(TypeStatus),
+                IsTypeLocal = type_status_defined_in_this_module(TypeStatus),
                 ( if
                     (
                         IsTypeLocal = yes,
-                        ( ImportStatus = status_local
-                        ; ImportStatus = status_exported_to_submodules
+                        ( PragmaStatus = type_status(status_local)
+                        ; PragmaStatus =
+                            type_status(status_exported_to_submodules)
                         )
                     ;
                         IsTypeLocal = no,
-                        status_is_imported(ImportStatus) = yes
+                        type_status_is_imported(PragmaStatus) = yes
                     )
                 then
                     % XXX We should also check that this type is not
@@ -465,7 +466,7 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
                     ),
                     MaybeError = no
                 else if
-                    ImportStatus = status_exported
+                    PragmaStatus = type_status(status_exported)
                 then
                     add_foreign_enum_pragma_in_interface_error(Context,
                         TypeName, TypeArity, !Specs),
@@ -480,7 +481,7 @@ add_pragma_foreign_enum(FEInfo, ImportStatus, Context, !ModuleInfo, !Specs) :-
                 DuTypeKind0 = du_type_kind_foreign_enum(_),
                 ( if
                     ( LangForForeignEnums \= Lang
-                    ; ImportStatus = status_opt_imported
+                    ; PragmaStatus = type_status(status_opt_imported)
                     )
                 then
                     MaybeError = no

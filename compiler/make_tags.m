@@ -10,7 +10,7 @@
 % Main author: fjh.
 %
 % This module is where we determine the representation for discriminated union
-% types.  Each d.u. type is represented as a word.  In the case of functors
+% types. Each d.u. type is represented as a word. In the case of functors
 % with arguments, we allocate the arguments on the heap, and the word contains
 % a pointer to those arguments.
 %
@@ -21,30 +21,30 @@
 % the functor, and we just store the argument value directly; construction and
 % deconstruction unifications on these type are no-ops.
 %
-% For other types, we use a couple of bits of the word as a tag.  We split the
+% For other types, we use a couple of bits of the word as a tag. We split the
 % constructors into constants and functors, and assign tag zero to the
-% constants (if any).  If there is more than one constant, we distinguish
-% between the different constants by the value of the rest of the word.  Then
-% we assign one tag bit each to the first few functors.  The remaining functors
-% all get the last remaining two-bit tag.  These functors are distinguished by
+% constants (if any). If there is more than one constant, we distinguish
+% between the different constants by the value of the rest of the word. Then
+% we assign one tag bit each to the first few functors. The remaining functors
+% all get the last remaining two-bit tag. These functors are distinguished by
 % a secondary tag which is the first word of the argument vector for those
 % functors.
 %
 % If there are no tag bits available, then we try using reserved addresses
-% (e.g. NULL, (void *)1, (void *)2, etc.) instead.  We split the constructors
+% (e.g. NULL, (void *)1, (void *)2, etc.) instead. We split the constructors
 % into constants and functors, and assign numerical reserved addresses to the
-% first constants, up to the limit set by --num-reserved-addresses.  After
+% first constants, up to the limit set by --num-reserved-addresses. After
 % that, for the MLDS back-end, we assign symbolic reserved addresses to the
 % remaining constants, up to the limit set by --num-reserved-objects; these
 % symbolic reserved addresses are the addresses of global variables that we
-% generate specially for this purpose.  Finally, the functors and any remaining
+% generate specially for this purpose. Finally, the functors and any remaining
 % constants are distinguished by a secondary tag, if there are more than one of
 % them.
 %
 % If there is a `pragma reserve_tag' declaration for the type, or if the
 % `--reserve-tag' option is set, then we reserve the first primary tag (for
-% representing unbound variables).  This is used by HAL, for Herbrand
-% constraints (i.e. Prolog-style logic variables).  This also disables
+% representing unbound variables). This is used by HAL, for Herbrand
+% constraints (i.e. Prolog-style logic variables). This also disables
 % enumerations and no_tag types.
 %
 %-----------------------------------------------------------------------------%
@@ -571,7 +571,7 @@ convert_direct_arg_functors_if_suitable(ModuleName, DebugTypeRep, MaxTag,
         % Leave these types alone.
     ).
 
-:- pred is_direct_arg_ctor(type_table::in, module_name::in, import_status::in,
+:- pred is_direct_arg_ctor(type_table::in, module_name::in, type_status::in,
     list(sym_name_and_arity)::in, constructor::in) is semidet.
 
 is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
@@ -587,7 +587,7 @@ is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
 
     (
         % Trust the `direct_arg' attribute of an imported type.
-        status_is_imported(TypeStatus) = yes,
+        type_status_is_imported(TypeStatus) = yes,
         list.contains(AssertedDirectArgCtors, ConsName / Arity)
     ->
         ArgCond = direct_arg_asserted
@@ -626,7 +626,7 @@ is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
         ArgConsTagValue = _ConsId - single_functor_tag,
 
         (
-            status_defined_in_this_module(TypeStatus) = yes,
+            type_status_defined_in_this_module(TypeStatus) = yes,
             list.contains(AssertedDirectArgCtors, ConsName / Arity)
         ->
             ArgCond = direct_arg_asserted
@@ -652,7 +652,7 @@ is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
             % A `where direct_arg' attribute asserts that the direct arg
             % representation may be used for the constructor.
 
-    ;       direct_arg_same_module(import_status)
+    ;       direct_arg_same_module(type_status)
             % The argument type is defined in the same module as the outer
             % type, and has the given import status.
 
@@ -660,44 +660,47 @@ is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
             % The argument type is defined in a different module to the outer
             % type.
 
-:- pred check_direct_arg_cond(import_status::in, direct_arg_cond::in)
-    is semidet.
+:- pred check_direct_arg_cond(type_status::in, direct_arg_cond::in) is semidet.
 
 check_direct_arg_cond(TypeStatus, ArgCond) :-
-    require_complete_switch [TypeStatus]
+    % XXX STATUS
+    TypeStatus = type_status(OldImportStatus),
+    require_complete_switch [OldImportStatus]
     (
         % If the outer type _definition_ is not exported from this module then
-        % the direct arg representation may be used.  In the absence of
+        % the direct arg representation may be used. In the absence of
         % intermodule optimisation, only this module can [de]construct values
         % of this type.
-        ( TypeStatus = status_local
-        ; TypeStatus = status_abstract_exported
+        ( OldImportStatus = status_local
+        ; OldImportStatus = status_abstract_exported
         )
     ;
         % If the outer type is opt-exported, another module may opt-import this
-        % type, but abstract-import the argument type.  It could not then infer
+        % type, but abstract-import the argument type. It could not then infer
         % if the direct arg representation is required for any functors of the
-        % outer type.  The problem is overcome by adding `where direct_arg'
+        % outer type. The problem is overcome by adding `where direct_arg'
         % attributes to the opt-exported type definition in .opt files,
         % which state the functors that require the direct arg representation.
-        TypeStatus = status_opt_exported
+        OldImportStatus = status_opt_exported
     ;
         % If the outer type is exported from this module, then the direct arg
         % representation may be used, so long as any importing modules will
         % infer the same thing.
-        ( TypeStatus = status_exported
-        ; TypeStatus = status_exported_to_submodules
+        ( OldImportStatus = status_exported
+        ; OldImportStatus = status_exported_to_submodules
         ),
         ( ArgCond = direct_arg_builtin_type
         ; ArgCond = direct_arg_asserted
-        ; ArgCond = direct_arg_same_module(status_exported)
+        ; ArgCond = direct_arg_same_module(type_status(status_exported))
         )
     ;
         % If the outer type is exported to sub-modules only, the argument
         % type only needs to be exported to sub-modules as well.
-        TypeStatus = status_exported_to_submodules,
-        ( ArgCond = direct_arg_same_module(status_exported_to_submodules)
-        ; ArgCond = direct_arg_same_module(status_abstract_exported)
+        OldImportStatus = status_exported_to_submodules,
+        ( ArgCond =
+            direct_arg_same_module(type_status(status_exported_to_submodules))
+        ; ArgCond =
+            direct_arg_same_module(type_status(status_abstract_exported))
         )
     ;
         % The direct arg representation is required if the outer type is
@@ -705,13 +708,14 @@ check_direct_arg_cond(TypeStatus, ArgCond) :-
         % - if the argument type is an acceptable builtin type
         % - a `where direct_arg' attribute says so
         % - if the argument type is imported from the same module
-        TypeStatus = status_imported(TypeImportLocn),
+        OldImportStatus = status_imported(TypeImportLocn),
         (
             ArgCond = direct_arg_builtin_type
         ;
             ArgCond = direct_arg_asserted
         ;
-            ArgCond = direct_arg_same_module(status_imported(ArgImportLocn)),
+            ArgCond = direct_arg_same_module(
+                type_status(status_imported(ArgImportLocn))),
             % If the argument type is only exported by an ancestor to its
             % sub-modules (of which we are one), the outer type must also only
             % be exported to sub-modules. Otherwise sub-modules and
@@ -726,14 +730,14 @@ check_direct_arg_cond(TypeStatus, ArgCond) :-
         % If the outer type is opt-imported, there will always be a
         % `where direct_arg' attribute on the type definition which states
         % if the direct argument representation must be used.
-        ( TypeStatus = status_opt_imported
-        ; TypeStatus = status_abstract_imported
+        ( OldImportStatus = status_opt_imported
+        ; OldImportStatus = status_abstract_imported
         ),
         ArgCond = direct_arg_asserted
     ;
-        ( TypeStatus = status_external(_)
-        ; TypeStatus = status_pseudo_exported
-        ; TypeStatus = status_pseudo_imported
+        ( OldImportStatus = status_external(_)
+        ; OldImportStatus = status_pseudo_exported
+        ; OldImportStatus = status_pseudo_imported
         ),
         unexpected($module, $pred, "inappropriate status for type")
     ).

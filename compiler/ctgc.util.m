@@ -88,13 +88,13 @@
 
 pred_requires_no_analysis(ModuleInfo, PredId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, Status),
+    pred_info_get_status(PredInfo, PredStatus),
     % We handle `:- external' predicates later. In that sense,
     % they do *not* require that we don't analyse them.
-    Status = status_imported(_).
+    PredStatus = pred_status(status_imported(_)).
 
 pred_requires_analysis(ModuleInfo, PredId) :-
-    \+ pred_requires_no_analysis(ModuleInfo, PredId).
+    not pred_requires_no_analysis(ModuleInfo, PredId).
 
 some_preds_requiring_no_analysis(ModuleInfo, PPIds) :-
     list.member(proc(PredId, _), PPIds),
@@ -105,8 +105,8 @@ some_preds_requiring_no_analysis(ModuleInfo, PPIds) :-
 
 not_defined_in_this_module(ModuleInfo, proc(PredId, _)):-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, Status),
-    status_defined_in_this_module(Status) = no.
+    pred_info_get_status(PredInfo, PredStatus),
+    pred_status_defined_in_this_module(PredStatus) = no.
 
 get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :-
     module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),

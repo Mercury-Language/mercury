@@ -334,10 +334,10 @@ maybe_add_import_documentation(BuiltinModuleNames, ModuleName, AvailEntry,
         AvailEntry = avail_module_entry(Section, ImportOrUse, _Avails),
         (
             Section = ms_interface,
-            XmlVisibility = visibility_to_xml(status_exported)
+            XmlVisibility = tagged_string("visibility", "interface")
         ;
             Section = ms_implementation,
-            XmlVisibility = visibility_to_xml(status_local)
+            XmlVisibility = tagged_string("visibility", "implementation")
         ),
         (
             ImportOrUse = import_decl,
@@ -359,8 +359,8 @@ maybe_add_import_documentation(BuiltinModuleNames, ModuleName, AvailEntry,
     list(xml)::in, list(xml)::out) is det.
 
 type_documentation(C, type_ctor(TypeName, TypeArity), TypeDefn, !Xmls) :-
-    get_type_defn_status(TypeDefn, ImportStatus),
-    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    get_type_defn_status(TypeDefn, TypeStatus),
+    DefinedInThisModule = type_status_defined_in_this_module(TypeStatus),
     (
         DefinedInThisModule = yes,
         get_type_defn_body(TypeDefn, TypeBody),
@@ -371,7 +371,7 @@ type_documentation(C, type_ctor(TypeName, TypeArity), TypeDefn, !Xmls) :-
         XmlName = name_to_xml(TypeName),
         XmlTypeParams = xml_list("type_params", type_param_to_xml(TVarset),
             TParams),
-        XmlVisibility = visibility_to_xml(ImportStatus),
+        XmlVisibility = type_visibility_to_xml(TypeStatus),
 
         Tag = type_xml_tag(TypeBody),
         Id = attr("id", sym_name_and_arity_to_id("type", TypeName, TypeArity)),
@@ -486,12 +486,12 @@ mer_type_to_xml(_, kinded_type(_, _)) = nyi("kinded_type").
     list(xml)::in, list(xml)::out) is det.
 
 pred_documentation(C, _PredId, PredInfo, !Xml) :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
     pred_info_get_origin(PredInfo, Origin),
     pred_info_get_markers(PredInfo, Markers),
 
     ( if
-        status_defined_in_this_module(ImportStatus) = yes,
+        pred_status_defined_in_this_module(PredStatus) = yes,
         Origin = origin_user(_),
         not check_marker(Markers, marker_class_method)
     then
@@ -512,7 +512,7 @@ predicate_documentation(C, PredInfo) = Xml :-
     Name = pred_info_name(PredInfo),
     PredName = qualified(Module, Name),
     Arity = pred_info_orig_arity(PredInfo),
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
 
     Types = get_orig_arg_types(PredInfo),
     pred_info_get_class_context(PredInfo, Constraints),
@@ -532,7 +532,7 @@ predicate_documentation(C, PredInfo) = Xml :-
     XmlExistVars = xml_list("pred_exist_vars", type_param_to_xml(TVarset),
         Exists),
     XmlConstraints = prog_constraints_to_xml(TVarset, Constraints),
-    XmlVisibility = visibility_to_xml(ImportStatus),
+    XmlVisibility = pred_visibility_to_xml(PredStatus),
 
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.foldl(pred_mode_documentation(C), ProcTable, [], XmlProcs),
@@ -726,26 +726,27 @@ determinism_to_xml(detism_failure) = tagged_string("determinism", "failure").
     list(xml)::in, list(xml)::out) is det.
 
 class_documentation(C, PredTable, class_id(Name, Arity), ClassDefn, !Xml) :-
-    ImportStatus = ClassDefn ^ class_status,
-    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    TypeClassStatus = ClassDefn ^ classdefn_status,
+    DefinedInThisModule =
+        typeclass_status_defined_in_this_module(TypeClassStatus),
     (
         DefinedInThisModule = yes,
         Id = sym_name_and_arity_to_id("class", Name, Arity),
 
-        Context = ClassDefn ^ class_context,
-        TVarset = ClassDefn ^ class_tvarset,
-        Vars = ClassDefn ^ class_vars,
+        Context = ClassDefn ^ classdefn_context,
+        TVarset = ClassDefn ^ classdefn_tvarset,
+        Vars = ClassDefn ^ classdefn_vars,
 
         XmlName = name_to_xml(Name),
         XmlClassVars = xml_list("class_vars",
             type_param_to_xml(TVarset), Vars),
         XmlSupers = xml_list("superclasses",
-            prog_constraint_to_xml(TVarset), ClassDefn ^ class_supers),
+            prog_constraint_to_xml(TVarset), ClassDefn ^ classdefn_supers),
         XmlFundeps = xml_list("fundeps",
-            fundep_to_xml(TVarset, Vars), ClassDefn ^ class_fundeps),
+            fundep_to_xml(TVarset, Vars), ClassDefn ^ classdefn_fundeps),
         XmlMethods = class_methods_to_xml(C, PredTable,
-            ClassDefn ^ class_hlds_interface),
-        XmlVisibility = visibility_to_xml(ImportStatus),
+            ClassDefn ^ classdefn_hlds_interface),
+        XmlVisibility = typeclass_visibility_to_xml(TypeClassStatus),
         XmlContext = prog_context_to_xml(Context),
 
         Xml0 = elem("typeclass", [attr("id", Id)],
@@ -817,11 +818,76 @@ prog_constraint_to_xml(TVarset, Constraint) = Xml :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- func visibility_to_xml(import_status) = xml.
+:- func type_visibility_to_xml(type_status) = xml.
 
-visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
-    ( if status_defined_in_impl_section(Status) = yes then
-        ( if Status = status_abstract_exported then
+type_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
+    ( if type_status_defined_in_impl_section(Status) = yes then
+        ( if Status = type_status(status_abstract_exported) then
+            Visibility = "abstract"
+        else
+            Visibility = "implementation"
+        )
+    else
+        Visibility = "interface"
+    ).
+
+:- func inst_visibility_to_xml(inst_status) = xml.
+
+inst_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
+    ( if inst_status_defined_in_impl_section(Status) = yes then
+        ( if Status = inst_status(status_abstract_exported) then
+            Visibility = "abstract"
+        else
+            Visibility = "implementation"
+        )
+    else
+        Visibility = "interface"
+    ).
+
+:- func mode_visibility_to_xml(mode_status) = xml.
+
+mode_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
+    ( if mode_status_defined_in_impl_section(Status) = yes then
+        ( if Status = mode_status(status_abstract_exported) then
+            Visibility = "abstract"
+        else
+            Visibility = "implementation"
+        )
+    else
+        Visibility = "interface"
+    ).
+
+:- func typeclass_visibility_to_xml(typeclass_status) = xml.
+
+typeclass_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
+    ( if typeclass_status_defined_in_impl_section(Status) = yes then
+        ( if Status = typeclass_status(status_abstract_exported) then
+            Visibility = "abstract"
+        else
+            Visibility = "implementation"
+        )
+    else
+        Visibility = "interface"
+    ).
+
+:- func instance_visibility_to_xml(instance_status) = xml.
+
+instance_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
+    ( if instance_status_defined_in_impl_section(Status) = yes then
+        ( if Status = instance_status(status_abstract_exported) then
+            Visibility = "abstract"
+        else
+            Visibility = "implementation"
+        )
+    else
+        Visibility = "interface"
+    ).
+
+:- func pred_visibility_to_xml(pred_status) = xml.
+
+pred_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
+    ( if pred_status_defined_in_impl_section(Status) = yes then
+        ( if Status = pred_status(status_abstract_exported) then
             Visibility = "abstract"
         else
             Visibility = "implementation"

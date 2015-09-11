@@ -2434,7 +2434,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes,
     pred_info_get_assertions(PredInfo, PredAssertions),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_create(ModuleName, NewPredName, PredOrFunc, PredContext,
-        NewPredOrigin, status_local, Markers, PredArgTypes,
+        NewPredOrigin, pred_status(status_local), Markers, PredArgTypes,
         PredTypeVarSet, PredExistQVars, PredClassContext, PredAssertions,
         VarNameRemap, NewProcInfo, NewProcId, NewPredInfo),
 

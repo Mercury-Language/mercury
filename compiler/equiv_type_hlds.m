@@ -102,10 +102,10 @@ add_type_to_eqv_map(TypeCtor, Defn, !TypeEqvMap, !EqvExportTypes) :-
         Body = hlds_eqv_type(EqvType),
         hlds_data.get_type_defn_tvarset(Defn, TVarSet),
         hlds_data.get_type_defn_tparams(Defn, Params),
-        hlds_data.get_type_defn_status(Defn, Status),
+        hlds_data.get_type_defn_status(Defn, TypeStatus),
         map.det_insert(TypeCtor, eqv_type_body(TVarSet, Params, EqvType),
             !TypeEqvMap),
-        IsExported = status_is_exported(Status),
+        IsExported = type_status_is_exported(TypeStatus),
         (
             IsExported = yes,
             add_type_ctors_to_set(EqvType, !EqvExportTypes)

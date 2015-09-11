@@ -124,8 +124,8 @@ warn_non_term_user_special_pred(ModuleInfo, TypeTable,
         not list.member(TypeCtor, BuiltinTypeCtors)
     ->
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-        get_type_defn_status(TypeDefn, ImportStatus),
-        DefinedThisModule = status_defined_in_this_module(ImportStatus),
+        get_type_defn_status(TypeDefn, TypeStatus),
+        DefinedThisModule = type_status_defined_in_this_module(TypeStatus),
         (
             DefinedThisModule = yes,
             process_special_pred_for_type(ModuleInfo,

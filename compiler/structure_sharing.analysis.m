@@ -593,11 +593,11 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         % the results for that procedure.
         (
             IsPredicted = no,
-            pred_info_get_import_status(PredInfo, PredImportStatus),
-            status_defined_in_this_module(PredImportStatus) = yes,
+            pred_info_get_status(PredInfo, PredStatus),
+            pred_status_defined_in_this_module(PredStatus) = yes,
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_is_imported_not_external(CalleePredInfo),
-            \+ is_unify_or_compare_pred(CalleePredInfo)
+            not is_unify_or_compare_pred(CalleePredInfo)
         ->
             !:DepProcs = [CalleePPId | !.DepProcs]
         ;
@@ -1321,7 +1321,7 @@ should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
         ShouldWrite) :-
     (
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        \+ is_unify_or_compare_pred(PredInfo),
+        not is_unify_or_compare_pred(PredInfo),
 
         (
             WhatFor = for_analysis_framework
@@ -1333,7 +1333,7 @@ should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             % error.
             module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
             TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-            \+ set.member(PredId, TypeSpecForcePreds)
+            not set.member(PredId, TypeSpecForcePreds)
         )
     ->
         ShouldWrite = yes

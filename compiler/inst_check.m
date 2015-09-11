@@ -142,9 +142,10 @@ type_is_user_visible(Section, TypeDefn) :-
     % is user visible in a section of the current module.
     %
 :- func status_implies_type_defn_is_user_visible(module_section,
-    import_status) = bool.
+    type_status) = bool.
 
-status_implies_type_defn_is_user_visible(Section, Status) = Visible :-
+status_implies_type_defn_is_user_visible(Section, TypeStatus) = Visible :-
+    TypeStatus = type_status(Status),
     (
         ( Status = status_imported(_)
         ; Status = status_exported
@@ -435,7 +436,7 @@ find_matching_user_types(FunctorSymName,
 maybe_issue_inst_check_warning(InstId, InstDefn, BoundInsts, PossibleTypes,
         PossibleTypeSets, !Specs) :-
     InstImportStatus = InstDefn ^ inst_status,
-    DefinedInThisModule = status_defined_in_this_module(InstImportStatus),
+    DefinedInThisModule = inst_status_defined_in_this_module(InstImportStatus),
     (
         DefinedInThisModule = no
     ;
@@ -464,7 +465,7 @@ maybe_issue_inst_check_warning(InstId, InstDefn, BoundInsts, PossibleTypes,
         ;
             PossibleTypes = [_ | _],
             InstIsExported =
-                status_is_exported_to_non_submodules(InstImportStatus),
+                inst_status_is_exported_to_non_submodules(InstImportStatus),
             % If the inst is exported, then it must match a type
             % that is concrete outside of this module.
             ( if

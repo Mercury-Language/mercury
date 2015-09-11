@@ -1075,10 +1075,10 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
     CalleePPId = proc(CalleePredId, _),
     ModuleInfo = BaseInfo ^ module_info,
     module_info_pred_info(ModuleInfo, CalleePredId, PredInfo),
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
     (
-        ( status_defined_in_this_module(ImportStatus) = yes
-        ; ImportStatus = status_opt_imported
+        ( pred_status_defined_in_this_module(PredStatus) = yes
+        ; PredStatus = pred_status(status_opt_imported)
         )
     ->
         IntraModule = yes,

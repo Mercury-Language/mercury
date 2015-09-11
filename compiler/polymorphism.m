@@ -2511,10 +2511,10 @@ make_typeclass_info_from_subclass(Constraint, Seen, SubClassConstraint,
     map.lookup(ClassTable, SubClassId, SubClassDefn),
 
     % Work out which superclass typeclass_info to take.
-    map.from_corresponding_lists(SubClassDefn ^ class_vars, SubClassTypes,
+    map.from_corresponding_lists(SubClassDefn ^ classdefn_vars, SubClassTypes,
         SubTypeSubst),
     apply_subst_to_prog_constraint_list(SubTypeSubst,
-        SubClassDefn ^ class_supers, SuperClasses),
+        SubClassDefn ^ classdefn_supers, SuperClasses),
     (
         list.index1_of_first_occurrence(SuperClasses, Constraint,
             SuperClassIndexPrime)
@@ -3050,9 +3050,9 @@ get_arg_superclass_vars(ClassDefn, InstanceTypes, SuperClassProofMap,
     poly_info_get_proof_map(!.Info, ProofMap),
 
     poly_info_get_typevarset(!.Info, TVarSet0),
-    SuperClasses0 = ClassDefn ^ class_supers,
-    ClassVars0 = ClassDefn ^ class_vars,
-    ClassTVarSet = ClassDefn ^ class_tvarset,
+    SuperClasses0 = ClassDefn ^ classdefn_supers,
+    ClassVars0 = ClassDefn ^ classdefn_vars,
+    ClassTVarSet = ClassDefn ^ classdefn_tvarset,
     tvarset_merge_renaming(TVarSet0, ClassTVarSet, TVarSet1, Renaming),
     poly_info_set_typevarset(TVarSet1, !Info),
 
@@ -3862,7 +3862,7 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
     ClassId = class_id(ClassName, ClassArity),
     module_info_get_class_table(ModuleInfo, ClassTable),
     map.lookup(ClassTable, ClassId, ClassDefn),
-    SuperClasses = ClassDefn ^ class_supers,
+    SuperClasses = ClassDefn ^ classdefn_supers,
     list.length(SuperClasses, NumSuperClasses),
 
     % Find all the type variables in the constraint, and remember what
@@ -4020,7 +4020,7 @@ class_id_is_from_given_module(ModuleName, ClassId) :-
     module_info::in, module_info::out) is det.
 
 expand_class_method_bodies_2(ClassDefn, !ModuleInfo) :-
-    Interface = ClassDefn ^ class_hlds_interface,
+    Interface = ClassDefn ^ classdefn_hlds_interface,
     list.foldl2(expand_class_method_body, Interface, 1, _, !ModuleInfo).
 
 :- pred expand_class_method_body(hlds_class_proc::in, int::in, int::out,
@@ -4096,8 +4096,10 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
     proc_info_set_goal(BodyGoal, ProcInfo0, ProcInfo),
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
+    % XXX STATUS
     ( pred_info_is_imported(PredInfo1) ->
-        pred_info_set_import_status(status_opt_imported, PredInfo1, PredInfo)
+        pred_info_set_status(pred_status(status_opt_imported),
+            PredInfo1, PredInfo)
     ;
         PredInfo = PredInfo1
     ),

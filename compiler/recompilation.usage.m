@@ -954,8 +954,8 @@ find_items_used_by_item(typeclass_item, ClassItemId, !Info) :-
     ModuleInfo = !.Info ^ module_info,
     module_info_get_class_table(ModuleInfo, Classes),
     map.lookup(Classes, ClassId, ClassDefn),
-    Constraints = ClassDefn ^ class_supers,
-    ClassInterface = ClassDefn ^ class_interface,
+    Constraints = ClassDefn ^ classdefn_supers,
+    ClassInterface = ClassDefn ^ classdefn_interface,
     find_items_used_by_class_constraints(Constraints, !Info),
     (
         ClassInterface = class_interface_abstract

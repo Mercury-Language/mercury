@@ -231,8 +231,8 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 % Only warn about predicates that are defined in this module.
                 % This avoids warnings being emitted for opt_imported
                 % predicates.
-                pred_info_get_import_status(PredInfo, ImportStatus),
-                status_defined_in_this_module(ImportStatus) = yes
+                pred_info_get_status(PredInfo, Status),
+                pred_status_defined_in_this_module(Status) = yes
             ->
                 proc_info_get_detism_decl(ProcInfo, DetismDecl),
                 MessagePieces = [words("warning:"),

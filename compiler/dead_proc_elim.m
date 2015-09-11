@@ -315,7 +315,7 @@ get_instance_pred_procs(Instance, !Queue, !Needed) :-
     is det.
 
 get_class_pred_procs(Class, !Queue, !Needed) :-
-    Methods = Class ^ class_hlds_interface,
+    Methods = Class ^ classdefn_hlds_interface,
     list.foldl2(get_class_interface_pred_proc, Methods, !Queue, !Needed).
 
 :- pred get_class_interface_pred_proc(hlds_class_proc::in,
@@ -782,12 +782,12 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
     !.ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable0, Changed0,
         Specs0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_import_status(PredInfo0, Status),
+    pred_info_get_status(PredInfo0, PredStatus),
     (
         % Find out if the predicate is defined in this module.
         % If yes, find out also whether any of its procedures must be kept.
         (
-            Status = status_local,
+            PredStatus = pred_status(status_local),
             Keep = no,
             (
                 % Don't warn for unify or comparison preds,
@@ -812,11 +812,11 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
                 WarnForThisPred = yes
             )
         ;
-            Status = status_pseudo_imported,
+            PredStatus = pred_status(status_pseudo_imported),
             Keep = no,
             WarnForThisPred = no
         ;
-            Status = status_pseudo_exported,
+            PredStatus = pred_status(status_pseudo_exported),
             hlds_pred.in_in_unification_proc_id(InitProcId),
             Keep = yes(InitProcId),
             WarnForThisPred = no
@@ -838,7 +838,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         % called with `ElimOptImported = elim_opt_imported' only after inlining
         % and specialization is complete).
         ElimOptImported = elim_opt_imported,
-        Status = status_opt_imported
+        PredStatus = pred_status(status_opt_imported)
     ->
         Changed = yes,
         ProcIds = pred_info_procids(PredInfo0),
@@ -853,7 +853,8 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
             ),
         list.foldl(DestroyGoal, ProcIds, ProcTable0, ProcTable),
         pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
-        pred_info_set_import_status(status_imported(import_locn_interface),
+        pred_info_set_status(
+            pred_status(status_imported(import_locn_interface)),
             PredInfo1, PredInfo),
         map.det_update(PredId, PredInfo, PredTable0, PredTable),
 
@@ -1103,8 +1104,9 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
             ;
                 % Don't attempt to eliminate local preds here, since we want
                 % to do semantic checking on those even if they aren't used.
-                \+ pred_info_is_imported(PredInfo),
-                \+ pred_info_get_import_status(PredInfo, status_opt_imported)
+                not pred_info_is_imported(PredInfo),
+                pred_info_get_status(PredInfo, PredStatus),
+                PredStatus \= pred_status(status_opt_imported)
             ;
                 % Don't eliminate predicates declared in this module with a
                 % `:- external' declaration.

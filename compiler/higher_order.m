@@ -1077,7 +1077,7 @@ find_matching_instance_method([Instance | Instances], MethodNum, ClassTypes,
     ->
         Constraints = Constraints0,
         UnconstrainedTVarTypes = UnconstrainedTVarTypes0,
-        yes(ClassInterface) = Instance ^ instance_hlds_interface,
+        yes(ClassInterface) = Instance ^ instdefn_hlds_interface,
         list.det_index1(ClassInterface, MethodNum,
             hlds_class_proc(PredId, ProcId))
     ;
@@ -1409,7 +1409,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         CalleePredInfo, CalleeProcInfo, Args0, IsBuiltin,
         MaybeContext, GoalInfo, Result, !Info) :-
     ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
-    pred_info_get_import_status(CalleePredInfo, CalleeStatus),
+    pred_info_get_status(CalleePredInfo, CalleeStatus),
     proc_info_get_vartypes(CalleeProcInfo, CalleeVarTypes),
     proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
     lookup_var_types(CalleeVarTypes, CalleeHeadVars, CalleeArgTypes),
@@ -1497,7 +1497,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
     % Returns a list of the higher-order arguments in a call that have
     % a known value.
     %
-:- pred find_higher_order_args(module_info::in, import_status::in,
+:- pred find_higher_order_args(module_info::in, pred_status::in,
     list(prog_var)::in, list(mer_type)::in, vartypes::in,
     rtti_varmaps::in, known_var_map::in, int::in, list(higher_order_arg)::in,
     list(higher_order_arg)::out) is det.
@@ -1525,8 +1525,8 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
             % If we don't have clauses for the callee, we can't specialize
             % any higher-order arguments. We may be able to do user guided
             % type specialization.
-            CalleeStatus \= status_imported(_),
-            CalleeStatus \= status_external(_),
+            CalleeStatus \= pred_status(status_imported(_)),
+            CalleeStatus \= pred_status(status_external(_)),
             type_is_higher_order(CalleeArgType)
         ;
             true
@@ -2761,7 +2761,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         % be exported.
         % For opt_imported predicates we only want to keep this
         % version if we do some other useful specialization on it.
-        pred_info_get_import_status(PredInfo0, Status)
+        pred_info_get_status(PredInfo0, PredStatus)
     ;
         IsUserTypeSpec = no,
         NewProcId = hlds_pred.initial_proc_id,
@@ -2772,7 +2772,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         string.append_list([Name0, "__ho", IdStr], PredName),
         SymName = qualified(PredModule, PredName),
         Transform = transform_higher_order_specialization(Id),
-        Status = status_local
+        PredStatus = pred_status(status_local)
     ),
 
     list.length(Types, ActualArity),
@@ -2802,7 +2802,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         init_clause_item_numbers_comp_gen, EmptyRttiVarMaps, no),
     Origin = origin_transformed(Transform, OrigOrigin, CallerPredId),
     pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
-        Status, GoalType, MarkerList, Types, ArgTVarSet, ExistQVars,
+        PredStatus, GoalType, MarkerList, Types, ArgTVarSet, ExistQVars,
         ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,
         VarNameRemap, NewPredInfo0),
     pred_info_set_typevarset(TypeVarSet, NewPredInfo0, NewPredInfo1),

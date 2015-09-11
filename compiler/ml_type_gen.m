@@ -156,8 +156,8 @@ ml_gen_types(ModuleInfo, Defns) :-
     list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
 ml_gen_type_defn(ModuleInfo, TypeCtor - TypeDefn, !Defns) :-
-    hlds_data.get_type_defn_status(TypeDefn, Status),
-    DefinedThisModule = status_defined_in_this_module(Status),
+    hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+    DefinedThisModule = type_status_defined_in_this_module(TypeStatus),
     (
         DefinedThisModule = yes,
         ml_gen_type_defn_2(ModuleInfo, TypeCtor, TypeDefn, !Defns)

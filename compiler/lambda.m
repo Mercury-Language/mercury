@@ -654,9 +654,10 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         ),
         set.init(Assertions),
         pred_info_create(ModuleName, PredName, PredOrFunc, LambdaContext,
-            origin_lambda(OrigFile, OrigLine, LambdaCount), status_local,
-            LambdaMarkers, ArgTypes, TVarSet, ExistQVars, Constraints,
-            Assertions, VarNameRemap, ProcInfo, ProcId, PredInfo),
+            origin_lambda(OrigFile, OrigLine, LambdaCount),
+            pred_status(status_local), LambdaMarkers, ArgTypes, TVarSet,
+            ExistQVars, Constraints, Assertions, VarNameRemap,
+            ProcInfo, ProcId, PredInfo),
 
         % Save the new predicate in the predicate table.
         module_info_get_predicate_table(ModuleInfo1, PredicateTable0),

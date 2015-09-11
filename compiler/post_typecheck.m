@@ -693,8 +693,8 @@ in_interface_check(ModuleInfo, PredInfo, Goal, !Specs) :-
     (
         GoalExpr = plain_call(PredId, _, _, _, _,SymName),
         module_info_pred_info(ModuleInfo, PredId, CallPredInfo),
-        pred_info_get_import_status(CallPredInfo, ImportStatus),
-        ( status_defined_in_impl_section(ImportStatus) = yes ->
+        pred_info_get_status(CallPredInfo, PredStatus),
+        ( pred_status_defined_in_impl_section(PredStatus) = yes ->
             Context = goal_info_get_context(GoalInfo),
             PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
             Arity = pred_info_orig_arity(CallPredInfo),
@@ -715,8 +715,8 @@ in_interface_check(ModuleInfo, PredInfo, Goal, !Specs) :-
     ;
         GoalExpr = call_foreign_proc(_, PredId, _, _, _, _, _),
         module_info_pred_info(ModuleInfo, PredId, PragmaPredInfo),
-        pred_info_get_import_status(PragmaPredInfo, ImportStatus),
-        ( status_defined_in_impl_section(ImportStatus) = yes ->
+        pred_info_get_status(PragmaPredInfo, PredStatus),
+        ( pred_status_defined_in_impl_section(PredStatus) = yes ->
             Context = goal_info_get_context(GoalInfo),
             PredOrFunc = pred_info_is_pred_or_func(PragmaPredInfo),
             Name = pred_info_name(PragmaPredInfo),
@@ -784,7 +784,7 @@ in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
         module_info_get_type_table(ModuleInfo, TypeTable),
         lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_status(TypeDefn, TypeStatus),
-        DefinedInImpl = status_defined_in_impl_section(TypeStatus),
+        DefinedInImpl = type_status_defined_in_impl_section(TypeStatus),
         (
             DefinedInImpl = yes,
             IdPieces = [words("constructor"), cons_id_and_maybe_arity(ConsId)],
@@ -992,7 +992,7 @@ check_for_indistinguishable_mode(_, _, _, [], no, !PredInfo, !Specs).
 check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
         [ProcId | ProcIds], Removed, !PredInfo, !Specs) :-
     ( modes_are_indistinguishable(ProcId, ProcId1, !.PredInfo, ModuleInfo) ->
-        pred_info_get_import_status(!.PredInfo, Status),
+        pred_info_get_status(!.PredInfo, Status),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, intermodule_optimization,
             IntermodOpt),
@@ -1005,7 +1005,7 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
             % for a predicate from the `.int' and `.int0' files, so ignore
             % the error in those cases.
             (
-                status_defined_in_this_module(Status) = yes
+                pred_status_defined_in_this_module(Status) = yes
             ;
                 IntermodOpt = no,
                 IntermodAnalysis = no
@@ -1626,8 +1626,8 @@ check_for_missing_type_defns(ModuleInfo, Specs) :-
 
 check_for_missing_type_defns_2(TypeCtor, TypeDefn, !Specs) :-
     (
-        get_type_defn_status(TypeDefn, ImportStatus),
-        status_defined_in_this_module(ImportStatus) = yes,
+        get_type_defn_status(TypeDefn, TypeStatus),
+        type_status_defined_in_this_module(TypeStatus) = yes,
         get_type_defn_body(TypeDefn, TypeBody),
         TypeBody = hlds_abstract_type(_)
     ->

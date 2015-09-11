@@ -439,7 +439,7 @@ lookup_proxy_pred(PredId, MaybeNewPredId, !ProxyMap, !ModuleInfo) :-
 create_proxy_pred(PredId, NewPredId, !ModuleInfo) :-
     some [!PredInfo] (
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
-        pred_info_set_import_status(status_local, !PredInfo),
+        pred_info_set_status(pred_status(status_local), !PredInfo),
 
         ProcIds = pred_info_procids(!.PredInfo),
         list.foldl2(create_proxy_proc(PredId), ProcIds, !PredInfo,

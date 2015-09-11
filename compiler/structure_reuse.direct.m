@@ -94,7 +94,8 @@ direct_reuse_process_pred(SharingTable, PredId, !ModuleInfo, !ReuseTable) :-
         % We can't analyse compiler generated special predicates.
         true
     ;
-        pred_info_get_import_status(PredInfo0, status_external(_))
+        pred_info_get_status(PredInfo0, PredStatus),
+        PredStatus = pred_status(status_external(_))
     ->
         % We can't analyse `:- external' predicates but add an extry to the
         % reuse table so something will be written out to optimisation

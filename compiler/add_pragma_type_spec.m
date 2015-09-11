@@ -164,9 +164,9 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             map.init(ConstraintMap),
 
             ( if pred_info_is_imported(PredInfo0) then
-                Status = status_opt_imported
+                PredStatus = pred_status(status_opt_imported)
             else
-                pred_info_get_import_status(PredInfo0, Status)
+                pred_info_get_status(PredInfo0, PredStatus)
             ),
 
             ModuleName = pred_info_module(PredInfo0),
@@ -176,7 +176,7 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
                 transform_type_specialization(SubstDesc), OrigOrigin, PredId),
             pred_info_get_var_name_remap(PredInfo0, VarNameRemap),
             pred_info_init(ModuleName, SpecName, PredArity, PredOrFunc,
-                Context, Origin, Status, goal_type_none, Markers,
+                Context, Origin, PredStatus, goal_type_none, Markers,
                 Types, TVarSet, ExistQVars, ClassContext, Proofs,
                 ConstraintMap, Clauses, VarNameRemap, NewPredInfo0),
             pred_info_set_proc_table(Procs, NewPredInfo0, NewPredInfo),
@@ -195,7 +195,7 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
             set.insert_list(PredProcIds, ProcsToSpec0, ProcsToSpec),
             set.insert(NewPredId, ForceVersions0, ForceVersions),
 
-            ( if Status = status_opt_imported then
+            ( if PredStatus = pred_status(status_opt_imported) then
                 % For imported predicates dead_proc_elim.m needs to know that
                 % if the original predicate is used, the predicate to force
                 % the production of the specialised interface is also used.
@@ -211,7 +211,7 @@ add_pragma_type_spec_for_pred(TSInfo0, Context, PredId, !ModuleInfo, !QualInfo,
                 PragmaMap),
             module_info_set_type_spec_info(TypeSpecInfo, !ModuleInfo),
 
-            IsImported = status_is_imported(Status),
+            IsImported = pred_status_is_imported(PredStatus),
             (
                 IsImported = yes,
                 ItemType = pred_or_func_to_item_type(PredOrFunc),

@@ -351,13 +351,13 @@ find_all_non_warn_modules(ModuleInfo, !:UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 type_used_modules(_TypeCtor, TypeDefn, !UsedModules) :-
-    get_type_defn_status(TypeDefn, ImportStatus),
+    get_type_defn_status(TypeDefn, TypeStatus),
     get_type_defn_body(TypeDefn, TypeBody),
 
-    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    DefinedInThisModule = type_status_defined_in_this_module(TypeStatus),
     (
         DefinedInThisModule = yes,
-        Visibility = item_visibility(ImportStatus),
+        Visibility = type_visibility(TypeStatus),
         (
             TypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
             list.foldl(ctor_used_modules(Visibility), Ctors, !UsedModules)
@@ -401,11 +401,11 @@ prog_constraint_used_module(Visibility, Constraint, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 user_inst_used_modules(_InstId, InstDefn, !UsedModules) :-
-    ImportStatus = InstDefn ^ inst_status,
-    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    InstStatus = InstDefn ^ inst_status,
+    DefinedInThisModule = inst_status_defined_in_this_module(InstStatus),
     (
         DefinedInThisModule = yes,
-        Visibility = item_visibility(ImportStatus),
+        Visibility = inst_visibility(InstStatus),
         InstBody = InstDefn ^ inst_body,
         (
             InstBody = eqv_inst(Inst),
@@ -424,11 +424,11 @@ user_inst_used_modules(_InstId, InstDefn, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 mode_used_modules(mode_id(Name, _Arity), ModeDefn, !UsedModules) :-
-    ImportStatus = ModeDefn ^ mode_status,
-    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    ModeStatus = ModeDefn ^ mode_status,
+    DefinedInThisModule = mode_status_defined_in_this_module(ModeStatus),
     (
         DefinedInThisModule = yes,
-        Visibility = item_visibility(ImportStatus),
+        Visibility = mode_visibility(ModeStatus),
         record_sym_name_module_as_used(Visibility, Name, !UsedModules),
         ModeBody = ModeDefn ^ mody_body,
         ModeBody = eqv_mode(Mode),
@@ -444,14 +444,15 @@ mode_used_modules(mode_id(Name, _Arity), ModeDefn, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 class_used_modules(class_id(Name, _Arity), ClassDefn, !UsedModules) :-
-    ImportStatus = ClassDefn ^ class_status,
-    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    TypeClassStatus = ClassDefn ^ classdefn_status,
+    DefinedInThisModule =
+        typeclass_status_defined_in_this_module(TypeClassStatus),
     (
         DefinedInThisModule = yes,
-        Visibility = item_visibility(ImportStatus),
+        Visibility = typeclass_visibility(TypeClassStatus),
         record_sym_name_module_as_used(Visibility, Name, !UsedModules),
         list.foldl(prog_constraint_used_module(Visibility),
-            ClassDefn ^ class_supers, !UsedModules)
+            ClassDefn ^ classdefn_supers, !UsedModules)
     ;
         DefinedInThisModule = no
     ).
@@ -470,11 +471,11 @@ class_instances_used_modules(ClassId, InstanceDefns, !UsedModules) :-
 
 instance_used_modules(ClassId, InstanceDefn, !UsedModules) :-
     ClassId = class_id(Name, _Arity), 
-    InstanceDefn = hlds_instance_defn(_InstanceModule, ImportStatus,
+    InstanceDefn = hlds_instance_defn(_InstanceModule, InstanceStatus,
         _Context, Constraints, Types, _OriginalTypes, _Body,
         _MaybePredProcIds, _VarSet, _ProofMap),
 
-    Visibility = item_visibility(ImportStatus),
+    Visibility = instance_visibility(InstanceStatus),
     % XXX When it sees an abstract instance declaration, the code of
     % add_pass_2_instance makes the status of the instance abstract,
     % but it does so by effectively setting ImportStatus to abstract_imported,
@@ -490,7 +491,8 @@ instance_used_modules(ClassId, InstanceDefn, !UsedModules) :-
     record_sym_name_module_as_used(Visibility, Name, !UsedModules),
     list.foldl(mer_type_used_modules(Visibility), Types, !UsedModules),
 
-    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    DefinedInThisModule =
+        instance_status_defined_in_this_module(InstanceStatus),
     (
         DefinedInThisModule = yes,
         % The methods of the class are stored in the pred_table and hence
@@ -537,11 +539,11 @@ const_struct_arg_used_modules(ConstStructArg, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 pred_info_used_modules(_PredId, PredInfo, !UsedModules) :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    DefinedInThisModule = status_defined_in_this_module(ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
+    DefinedInThisModule = pred_status_defined_in_this_module(PredStatus),
     (
         DefinedInThisModule = yes,
-        Visibility = item_visibility(ImportStatus),
+        Visibility = pred_visibility(PredStatus),
 
         pred_info_get_arg_types(PredInfo, Args),
         list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules),
@@ -876,14 +878,50 @@ inst_name_used_modules(Visibility, InstName, !UsedModules) :-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+%
+% Determine if the given import_status implies item is visibility_public
+% (in the interface) or visibility_private (in the implementation).
+%
 
-    % Determine if the given import_status implies item is visibility_public
-    % (in the interface) or visibility_private (in the implementation).
-    %
-:- func item_visibility(import_status) = item_visibility.
+:- func type_visibility(type_status) = item_visibility.
 
-item_visibility(ImportStatus) = Visibility :-
-    Exported = status_is_exported_to_non_submodules(ImportStatus),
+type_visibility(TypeStatus) = Visibility :-
+    Exported = type_status_is_exported_to_non_submodules(TypeStatus),
+    Visibility = exported_to_visibility(Exported).
+
+:- func inst_visibility(inst_status) = item_visibility.
+
+inst_visibility(InstStatus) = Visibility :-
+    Exported = inst_status_is_exported_to_non_submodules(InstStatus),
+    Visibility = exported_to_visibility(Exported).
+
+:- func mode_visibility(mode_status) = item_visibility.
+
+mode_visibility(ModeStatus) = Visibility :-
+    Exported = mode_status_is_exported_to_non_submodules(ModeStatus),
+    Visibility = exported_to_visibility(Exported).
+
+:- func typeclass_visibility(typeclass_status) = item_visibility.
+
+typeclass_visibility(TypeClassStatus) = Visibility :-
+    Exported = typeclass_status_is_exported_to_non_submodules(TypeClassStatus),
+    Visibility = exported_to_visibility(Exported).
+
+:- func instance_visibility(instance_status) = item_visibility.
+
+instance_visibility(InstanceStatus) = Visibility :-
+    Exported = instance_status_is_exported_to_non_submodules(InstanceStatus),
+    Visibility = exported_to_visibility(Exported).
+
+:- func pred_visibility(pred_status) = item_visibility.
+
+pred_visibility(PredStatus) = Visibility :-
+    Exported = pred_status_is_exported_to_non_submodules(PredStatus),
+    Visibility = exported_to_visibility(Exported).
+
+:- func exported_to_visibility(bool) = item_visibility.
+
+exported_to_visibility(Exported) = Visibility :-
     (
         Exported = yes,
         Visibility = visibility_public

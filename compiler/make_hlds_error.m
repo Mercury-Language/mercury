@@ -26,7 +26,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred multiple_def_error(import_status::in, sym_name::in, int::in,
+:- pred multiple_def_error(maybe_opt_imported::in, sym_name::in, int::in,
     string::in, prog_context::in, prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -43,15 +43,9 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred maybe_undefined_pred_error(module_info::in, sym_name::in, int::in,
-    pred_or_func::in, import_status::in, maybe_class_method::in,
+    pred_or_func::in, pred_status::in, maybe_class_method::in,
     prog_context::in, list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
-
-    % Emit an error if something is exported. (Used to check for
-    % when things shouldn't be exported.)
-    %
-:- pred error_if_exported(import_status::in, prog_context::in,
-    format_components::in, list(error_spec)::in, list(error_spec)::out) is det.
 
     % Emit an error reporting that something should not have occurred in
     % a module interface.
@@ -82,14 +76,15 @@
 
 %-----------------------------------------------------------------------------%
 
-multiple_def_error(Status, Name, Arity, DefType, Context, OrigContext,
+multiple_def_error(IsOptImported, Name, Arity, DefType, Context, OrigContext,
         ExtraPieces, !Specs) :-
-    ( Status = status_opt_imported ->
+    (
+        IsOptImported = is_opt_imported
         % We don't take care not to read the same declaration from multiple
         % sources with inter-module optimization, so ignore multiple definition
         % errors in the items read for inter-module optimization.
-        true
     ;
+        IsOptImported = is_not_opt_imported,
         Pieces1 = [words("Error:"), fixed(DefType),
             sym_name_and_arity(Name / Arity), words("multiply defined."), nl],
         Pieces2 = [words("Here is the previous definition of"),
@@ -184,8 +179,8 @@ maybe_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
     % then we just add an implicit declaration for that predicate or
     % function, marking it as one whose type will be inferred.
 
-    DefinedInThisModule = status_defined_in_this_module(Status),
-    IsExported = status_is_exported(Status),
+    DefinedInThisModule = pred_status_defined_in_this_module(Status),
+    IsExported = pred_status_is_exported(Status),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, infer_types, InferTypes),
     (
@@ -275,13 +270,6 @@ error_is_exported(Context, ItemPieces, !Specs) :-
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
-
-error_if_exported(Status, Context, ItemPieces, !Specs) :-
-    ( Status = status_exported ->
-        error_is_exported(Context, ItemPieces, !Specs)
-    ;
-        true
-    ).
 
 %----------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.make_hlds_error.

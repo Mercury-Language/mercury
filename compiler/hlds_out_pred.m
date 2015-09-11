@@ -49,7 +49,7 @@
     %   ProcId, ProcInfo, !IO).
     %
 :- pred write_proc(hlds_out_info::in, module_info::in,
-    pred_id::in, import_status::in, var_name_print::in, int::in,
+    pred_id::in, pred_status::in, var_name_print::in, int::in,
     proc_id::in, proc_info::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -61,8 +61,6 @@
     table_step_desc::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
-
-:- func import_status_to_string(import_status) = string.
 
     % Print out the name of a marker.
     %
@@ -92,7 +90,6 @@
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_ctgc.
-:- import_module parse_tree.prog_item.      % undesirable dependency
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
@@ -122,7 +119,7 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     pred_info_get_context(PredInfo, Context),
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_class_context(PredInfo, ClassContext),
     pred_info_get_constraint_proof_map(PredInfo, ProofMap),
@@ -163,7 +160,7 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
         io.write_string(", category: ", !IO),
         write_pred_or_func(PredOrFunc, !IO),
         io.write_string(", status: ", !IO),
-        io.write_string(import_status_to_string(ImportStatus), !IO),
+        io.write_string(pred_import_status_to_string(PredStatus), !IO),
         io.write_string("\n", !IO),
         io.write_string("% goal_type: ", !IO),
         pred_info_get_goal_type(PredInfo, GoalType),
@@ -361,7 +358,7 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
     ),
     pred_info_get_proc_table(PredInfo, ProcTable),
     ProcIds = pred_info_procids(PredInfo),
-    write_procs_loop(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint,
+    write_procs_loop(Info, ModuleInfo, PredId, PredStatus, VarNamePrint,
         ProcTable, Indent, ProcIds, !IO),
     io.write_string("\n", !IO).
 
@@ -579,36 +576,6 @@ write_clause_head(ModuleInfo, VarSet, VarNamePrint, PredId, PredOrFunc,
             ModuleName, term.atom(PredName), HeadTerms, !IO)
     ).
 
-import_status_to_string(status_local) =
-    "local".
-import_status_to_string(status_exported) =
-    "exported".
-import_status_to_string(status_opt_exported) =
-    "opt_exported".
-import_status_to_string(status_abstract_exported) =
-    "abstract_exported".
-import_status_to_string(status_pseudo_exported) =
-    "pseudo_exported".
-import_status_to_string(status_imported(import_locn_interface)) =
-    "imported in the interface".
-import_status_to_string(status_imported(import_locn_implementation)) =
-    "imported in the implementation".
-import_status_to_string(status_imported(
-        import_locn_ancestor_private_interface_proper)) =
-    "imported from an ancestor's private interface".
-import_status_to_string(status_imported(import_locn_ancestor)) =
-    "imported by an ancestor".
-import_status_to_string(status_external(Status)) =
-    "external (and " ++ import_status_to_string(Status) ++ ")".
-import_status_to_string(status_abstract_imported) =
-    "abstract_imported".
-import_status_to_string(status_opt_imported) =
-    "opt_imported".
-import_status_to_string(status_pseudo_imported) =
-    "pseudo_imported".
-import_status_to_string(status_exported_to_submodules) =
-    "exported_to_submodules".
-
 :- pred write_var_types(prog_varset::in, tvarset::in, var_name_print::in,
     int::in, vartypes::in, io::di, io::uo) is det.
 
@@ -790,19 +757,19 @@ write_var_name_remap(VarSet, Head, Tail, !IO) :-
 %
 
 :- pred write_procs_loop(hlds_out_info::in, module_info::in,
-    pred_id::in, import_status::in, var_name_print::in, proc_table::in,
+    pred_id::in, pred_status::in, var_name_print::in, proc_table::in,
     int::in, list(proc_id)::in, io::di, io::uo) is det.
 
 write_procs_loop(_, _, _, _, _, _, _, [], !IO).
-write_procs_loop(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint,
+write_procs_loop(Info, ModuleInfo, PredId, PredStatus, VarNamePrint,
         ProcTable, Indent, [ProcId | ProcIds], !IO) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
-    write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint,
+    write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint,
         Indent, ProcId, ProcInfo, !IO),
-    write_procs_loop(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint,
+    write_procs_loop(Info, ModuleInfo, PredId, PredStatus, VarNamePrint,
         ProcTable, Indent, ProcIds, !IO).
 
-write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
+write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
         ProcId, ProcInfo, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_typevarset(PredInfo, TVarSet),
@@ -1068,7 +1035,7 @@ write_proc(Info, ModuleInfo, PredId, ImportStatus, VarNamePrint, Indent,
             true
         ),
         ( if
-            ImportStatus = status_pseudo_imported,
+            PredStatus = pred_status(status_pseudo_imported),
             hlds_pred.in_in_unification_proc_id(ProcId)
         then
             true

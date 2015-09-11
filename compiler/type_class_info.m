@@ -87,12 +87,12 @@ generate_type_class_info_rtti(ModuleInfo, GenerateAll, !:RttiDatas) :-
     list(rtti_data)::in, list(rtti_data)::out) is det.
 
 generate_class_decl(ModuleInfo, ClassId - ClassDefn, !RttiDatas) :-
-    ImportStatus = ClassDefn ^ class_status,
-    InThisModule = status_defined_in_this_module(ImportStatus),
+    ImportStatus = ClassDefn ^ classdefn_status,
+    InThisModule = typeclass_status_defined_in_this_module(ImportStatus),
     (
         InThisModule = yes,
         TCId = generate_class_id(ModuleInfo, ClassId, ClassDefn),
-        Supers = ClassDefn ^ class_supers,
+        Supers = ClassDefn ^ classdefn_supers,
         TCSupers = list.map(generate_class_constraint, Supers),
         TCVersion = type_class_info_rtti_version,
         RttiData = rtti_data_type_class_decl(
@@ -106,10 +106,10 @@ generate_class_decl(ModuleInfo, ClassId - ClassDefn, !RttiDatas) :-
 
 generate_class_id(ModuleInfo, ClassId, ClassDefn) = TCId :-
     TCName = generate_class_name(ClassId),
-    ClassVars = ClassDefn ^ class_vars,
-    ClassVarSet = ClassDefn ^ class_tvarset,
+    ClassVars = ClassDefn ^ classdefn_vars,
+    ClassVarSet = ClassDefn ^ classdefn_tvarset,
     list.map(varset.lookup_name(ClassVarSet), ClassVars, VarNames),
-    Interface = ClassDefn ^ class_hlds_interface,
+    Interface = ClassDefn ^ classdefn_hlds_interface,
     MethodIds = list.map(generate_method_id(ModuleInfo), Interface),
     TCId = tc_id(TCName, VarNames, MethodIds).
 
@@ -138,13 +138,13 @@ generate_instance_decls(ModuleInfo, ClassId - Instances, !RttiDatas) :-
     list(rtti_data)::in, list(rtti_data)::out) is det.
 
 generate_maybe_instance_decl(ModuleInfo, ClassId, InstanceDefn, !RttiDatas) :-
-    ImportStatus = InstanceDefn ^ instance_status,
-    Body = InstanceDefn ^ instance_body,
+    ImportStatus = InstanceDefn ^ instdefn_status,
+    Body = InstanceDefn ^ instdefn_body,
     (
         Body = instance_body_concrete(_),
         % Only make the RTTI structure for the type class instance if the
         % instance declaration originally came from _this_ module.
-        status_defined_in_this_module(ImportStatus) = yes
+        instance_status_defined_in_this_module(ImportStatus) = yes
     ->
         RttiData = generate_instance_decl(ModuleInfo, ClassId, InstanceDefn),
         !:RttiDatas = [RttiData | !.RttiDatas]
@@ -157,9 +157,9 @@ generate_maybe_instance_decl(ModuleInfo, ClassId, InstanceDefn, !RttiDatas) :-
 
 generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
     TCName = generate_class_name(ClassId),
-    InstanceTypes = Instance ^ instance_types,
+    InstanceTypes = Instance ^ instdefn_types,
     InstanceTCTypes = list.map(generate_tc_type, InstanceTypes),
-    TVarSet = Instance ^ instance_tvarset,
+    TVarSet = Instance ^ instdefn_tvarset,
     varset.vars(TVarSet, TVars),
     TVarNums = list.map(term.var_to_int, TVars),
     TVarLength = list.length(TVarNums),
@@ -170,9 +170,9 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
     ;
         NumTypeVars = 0
     ),
-    Constraints = Instance ^ instance_constraints,
+    Constraints = Instance ^ instdefn_constraints,
     TCConstraints = list.map(generate_class_constraint, Constraints),
-    MaybeInterface = Instance ^ instance_hlds_interface,
+    MaybeInterface = Instance ^ instdefn_hlds_interface,
     (
         MaybeInterface = yes(Interface),
         MethodProcLabels = list.map(generate_method_proc_label(ModuleInfo),

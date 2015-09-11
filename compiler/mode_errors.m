@@ -221,9 +221,9 @@
     ;       do_not_include_detism_on_modes.
 
     % Write out the inferred `mode' declarations for a list of pred_ids.
-    % The bool indicates whether or not to write out determinism
-    % annotations on the modes (it should only be set to `yes' _after_
-    % determinism analysis).
+    % The include_detism_on_modes argument indicates whether or not
+    % to write out determinism annotations on the modes. (It should only
+    % be set to `include_detism_on_modes' _after_ determinism analysis.)
     %
 :- func report_mode_inference_messages(module_info, include_detism_on_modes,
     list(pred_id)) = list(error_spec).
@@ -1322,9 +1322,10 @@ should_report_mode_warning_for_pred_origin(origin_user(_)) = yes.
 %-----------------------------------------------------------------------------%
 
 maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
     module_info_get_globals(ModuleInfo, Globals),
-    ( ImportStatus = status_local ->
+    % XXX STATUS
+    ( PredStatus = pred_status(status_local) ->
         globals.lookup_bool_option(Globals, infer_modes, InferModesOpt),
         (
             InferModesOpt = yes,
@@ -1357,8 +1358,6 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
 
 %-----------------------------------------------------------------------------%
 
-    % Write out the inferred `mode' declarations for a list of pred_ids.
-    %
 report_mode_inference_messages(_, _, []) = [].
 report_mode_inference_messages(ModuleInfo, OutputDetism, [PredId | PredIds]) =
         Specs :-

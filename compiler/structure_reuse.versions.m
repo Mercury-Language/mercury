@@ -210,13 +210,13 @@ create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_context(PredInfo, ProgContext),
     pred_info_get_origin(PredInfo, PredOrigin),
-    pred_info_get_import_status(PredInfo, ImportStatus0),
+    pred_info_get_status(PredInfo, PredStatus0),
     % If the predicate was opt_imported then the specialised copy should be
-    % local otherwise it will be eliminated by dead proc elimination.
-    ( ImportStatus0 = status_opt_imported ->
-        ImportStatus = status_local
+    % local, otherwise it will be eliminated by dead proc elimination.
+    ( PredStatus0 = pred_status(status_opt_imported) ->
+        PredStatus = pred_status(status_local)
     ;
-        ImportStatus = ImportStatus0
+        PredStatus = PredStatus0
     ),
     pred_info_get_markers(PredInfo, PredMarkers),
     pred_info_get_arg_types(PredInfo, MerTypes),
@@ -228,7 +228,7 @@ create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
     NewPredOrigin = origin_transformed(transform_structure_reuse, PredOrigin,
         PredId),
     pred_info_create(ModuleName, ReusePredName, PredOrFunc, ProgContext,
-        NewPredOrigin, ImportStatus, PredMarkers, MerTypes, TVarset,
+        NewPredOrigin, PredStatus, PredMarkers, MerTypes, TVarset,
         ExistQTVars, ProgConstraints, AssertIds, VarNameRemap,
         ProcInfo, ReuseProcId, ReusePredInfo).
 
@@ -298,8 +298,8 @@ process_proc(ConvertPotentialReuse, ReuseTable, PPId, !ModuleInfo) :-
     ),
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, !:ProcInfo),
-        pred_info_get_import_status(PredInfo0, ImportStatus),
-        ( ImportStatus = status_imported(_) ->
+        pred_info_get_status(PredInfo0, PredStatus),
+        ( PredStatus = pred_status(status_imported(_)) ->
             % The bodies may contain junk, so don't try to process.
             true
         ;

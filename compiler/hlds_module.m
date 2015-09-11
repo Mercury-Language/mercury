@@ -78,7 +78,7 @@
                 module_name,            % module name
                 string,                 % type name
                 int,                    % type arity
-                import_status,          % of the type
+                type_status,            % status of the type
                 hlds_type_defn,         % defn of type
                 pred_proc_id,           % unify procedure
                 pred_proc_id            % compare procedure

@@ -497,8 +497,8 @@ module_info_pred_status_is_imported(ModuleInfo, PredId) :-
 
     % The following used because pred_info_is_imported/2 is not
     % as comprehensive as status_is_imported/2.
-    pred_info_get_import_status(PredInfo, Status),
-    status_is_imported(Status) = yes.
+    pred_info_get_status(PredInfo, Status),
+    pred_status_is_imported(Status) = yes.
 
 %----------------------------------------------------------------------------%
 

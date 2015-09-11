@@ -43,13 +43,12 @@
 
 :- pred add_solver_type_aux_pred_decls(tvarset::in, sym_name::in,
     list(type_param)::in, solver_type_details::in, prog_context::in,
-    item_status::in, module_info::in, module_info::out,
+    pred_status::in, need_qualifier::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_solver_type_aux_pred_defns(sym_name::in, list(type_param)::in,
-    solver_type_details::in, prog_context::in,
-    import_status::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+    solver_type_details::in, prog_context::in, pred_status::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -71,7 +70,8 @@
 %-----------------------------------------------------------------------------%
 
 add_solver_type_aux_pred_decls(TVarSet, TypeSymName, TypeParams,
-        SolverTypeDetails, Context, Status, !ModuleInfo, !Specs) :-
+        SolverTypeDetails, Context, PredStatus, NeedQual,
+        !ModuleInfo, !Specs) :-
     % XXX kind inference:
     % We set the kinds to `star'.  This will be different when we have a
     % kind system.
@@ -107,7 +107,7 @@ add_solver_type_aux_pred_decls(TVarSet, TypeSymName, TypeParams,
     module_add_pred_or_func(ToGroundOrigin, TVarSet, InstVarSet, ExistQTVars,
         pf_function, ToGroundRepnSymName, ToGroundRepnArgTypes,
         yes(detism_det), purity_impure, constraints([], []), NoMarkers,
-        Context, Status, _, !ModuleInfo, !Specs),
+        Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs),
 
     % The `:- impure
     %   func 'representation of any st'(st::in(ai)) =
@@ -122,7 +122,7 @@ add_solver_type_aux_pred_decls(TVarSet, TypeSymName, TypeParams,
     module_add_pred_or_func(ToAnyOrigin, TVarSet, InstVarSet, ExistQTVars,
         pf_function, ToAnyRepnSymName, ToAnyRepnArgTypes,
         yes(detism_det), purity_impure, constraints([], []), NoMarkers,
-        Context, Status, _, !ModuleInfo, !Specs),
+        Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs),
 
     % The `:- impure
     %   func 'representation to ground st'(rt::in(gi)) =
@@ -137,7 +137,7 @@ add_solver_type_aux_pred_decls(TVarSet, TypeSymName, TypeParams,
     module_add_pred_or_func(FromGroundOrigin, TVarSet, InstVarSet, ExistQTVars,
         pf_function, FromGroundRepnSymName, FromGroundRepnArgTypes,
         yes(detism_det), purity_impure, constraints([], []), NoMarkers,
-        Context, Status, _, !ModuleInfo, !Specs),
+        Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs),
 
     % The `:- impure
     %   func 'representation to any st'(rt::in(ai)) =
@@ -152,12 +152,12 @@ add_solver_type_aux_pred_decls(TVarSet, TypeSymName, TypeParams,
     module_add_pred_or_func(FromAnyOrigin, TVarSet, InstVarSet, ExistQTVars,
         pf_function, FromAnyRepnSymName, FromAnyRepnArgTypes,
         yes(detism_det), purity_impure, constraints([], []), NoMarkers,
-        Context, Status, _, !ModuleInfo, !Specs).
+        Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 
 add_solver_type_aux_pred_defns(TypeSymName, TypeParams, SolverTypeDetails,
-        Context, Status, !ModuleInfo, !QualInfo, !Specs) :-
+        Context, PredStatus, !ModuleInfo, !QualInfo, !Specs) :-
     Arity = length(TypeParams),
 
     AnyInst = SolverTypeDetails ^ std_any_inst,
@@ -231,7 +231,7 @@ add_solver_type_aux_pred_defns(TypeSymName, TypeParams, SolverTypeDetails,
         InstVarSet,
         Impl
     ),
-    add_pragma_foreign_proc(ToGroundRepnFPInfo, Status, Context, no,
+    add_pragma_foreign_proc(ToGroundRepnFPInfo, PredStatus, Context, no,
         !ModuleInfo, !Specs),
 
     % The `func(in(any)) = out(<i_any>) is det' mode.
@@ -249,7 +249,7 @@ add_solver_type_aux_pred_defns(TypeSymName, TypeParams, SolverTypeDetails,
         InstVarSet,
         Impl
     ),
-    add_pragma_foreign_proc(ToAnyRepnFPInfo, Status, Context, no,
+    add_pragma_foreign_proc(ToAnyRepnFPInfo, PredStatus, Context, no,
         !ModuleInfo, !Specs),
 
     % The `func(in(<i_ground>)) = out is det' mode.
@@ -267,7 +267,7 @@ add_solver_type_aux_pred_defns(TypeSymName, TypeParams, SolverTypeDetails,
         InstVarSet,
         Impl
     ),
-    add_pragma_foreign_proc(FromGroundRepnFPInfo, Status, Context, no,
+    add_pragma_foreign_proc(FromGroundRepnFPInfo, PredStatus, Context, no,
         !ModuleInfo, !Specs),
 
     % The `func(in(<i_any>)) = out(any) is det' mode.
@@ -285,7 +285,7 @@ add_solver_type_aux_pred_defns(TypeSymName, TypeParams, SolverTypeDetails,
         InstVarSet,
         Impl
     ),
-    add_pragma_foreign_proc(FromAnyRepnFPInfo, Status, Context, no,
+    add_pragma_foreign_proc(FromAnyRepnFPInfo, PredStatus, Context, no,
         !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%

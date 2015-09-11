@@ -42,7 +42,7 @@
 :- type typecheck_info.
 
 :- pred typecheck_info_init(module_info::in, pred_id::in, bool::in,
-    prog_varset::in, import_status::in, pred_markers::in,
+    prog_varset::in, pred_status::in, pred_markers::in,
     list(error_spec)::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -146,7 +146,7 @@
 :- pred typecheck_info_get_calls_are_fully_qualified(typecheck_info::in,
     is_fully_qualified::out) is det.
 :- pred typecheck_info_get_is_field_access_function(typecheck_info::in,
-    maybe(import_status)::out) is det.
+    maybe(pred_status)::out) is det.
 :- pred typecheck_info_get_non_overload_errors(typecheck_info::in,
     list(error_spec)::out) is det.
 :- pred typecheck_info_get_overload_error(typecheck_info::in,
@@ -215,7 +215,7 @@ project_cons_type_info_source(CTI) = CTI ^ cti_source.
                 % applications, and we will need to know the predicate's
                 % import status, so we don't generate errors when the function
                 % is opt-imported into other modules.
-                tcsi_is_field_access_function   :: maybe(import_status),
+                tcsi_is_field_access_function   :: maybe(pred_status),
 
                 % The list of errors found so far (if any), with one exception:
                 % any errors about overloading are in the overload_error field.

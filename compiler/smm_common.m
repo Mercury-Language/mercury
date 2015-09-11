@@ -131,8 +131,8 @@ some_are_special_preds(PPIds, ModuleInfo) :-
 
 proc_not_defined_in_module(ModuleInfo, proc(PredId, _)):-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, Status),
-    status_defined_in_this_module(Status) = no.
+    pred_info_get_status(PredInfo, PredStatus),
+    pred_status_defined_in_this_module(PredStatus) = no.
 
     % Note: for a meaningful use of this predicate the goal needs to be
     % filled with goal id information, i.e. call to fill_goal_id_slots(...).

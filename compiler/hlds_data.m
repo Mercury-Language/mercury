@@ -351,7 +351,7 @@ cons_table_optimize(!ConsTable) :-
                 % The context of the field definition.
                 field_context   :: prog_context,
 
-                field_status    :: import_status,
+                field_status    :: type_status,
 
                 % The type containing the field.
                 field_type_ctor :: type_ctor,
@@ -442,16 +442,16 @@ cons_table_optimize(!ConsTable) :-
 :- type hlds_type_defn.
 
 :- pred set_type_defn(tvarset::in, list(type_param)::in,
-    tvar_kind_map::in, hlds_type_body::in, import_status::in, bool::in,
-    need_qualifier::in, type_defn_prev_errors::in, prog_context::in,
-    hlds_type_defn::out) is det.
+    tvar_kind_map::in, hlds_type_body::in, bool::in,
+    type_status::in, need_qualifier::in, type_defn_prev_errors::in,
+    prog_context::in, hlds_type_defn::out) is det.
 
 :- pred get_type_defn_tvarset(hlds_type_defn::in, tvarset::out) is det.
 :- pred get_type_defn_tparams(hlds_type_defn::in, list(type_param)::out)
     is det.
 :- pred get_type_defn_kind_map(hlds_type_defn::in, tvar_kind_map::out) is det.
 :- pred get_type_defn_body(hlds_type_defn::in, hlds_type_body::out) is det.
-:- pred get_type_defn_status(hlds_type_defn::in, import_status::out) is det.
+:- pred get_type_defn_status(hlds_type_defn::in, type_status::out) is det.
 :- pred get_type_defn_in_exported_eqv(hlds_type_defn::in, bool::out) is det.
 :- pred get_type_defn_need_qualifier(hlds_type_defn::in, need_qualifier::out)
     is det.
@@ -463,7 +463,7 @@ cons_table_optimize(!ConsTable) :-
     hlds_type_defn::in, hlds_type_defn::out) is det.
 :- pred set_type_defn_tvarset(tvarset::in,
     hlds_type_defn::in, hlds_type_defn::out) is det.
-:- pred set_type_defn_status(import_status::in,
+:- pred set_type_defn_status(type_status::in,
     hlds_type_defn::in, hlds_type_defn::out) is det.
 :- pred set_type_defn_in_exported_eqv(bool::in,
     hlds_type_defn::in, hlds_type_defn::out) is det.
@@ -982,10 +982,6 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 % The definition of the type.
                 type_defn_body              :: hlds_type_body,
 
-                % Is the type defined in this module, and if yes,
-                % is it exported.
-                type_defn_import_status     :: import_status,
-
                 % Does the type constructor appear on the right hand side
                 % of a type equivalence defining a type that is visible from
                 % outside this module? If yes, equiv_type_hlds may generate
@@ -996,6 +992,10 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 %
                 % Meaningful only after the equiv_type_hlds pass.
                 type_defn_in_exported_eqv   :: bool,
+
+                % Is the type defined in this module, and if yes,
+                % is it exported.
+                type_defn_status            :: type_status,
 
                 % Do uses of the type and its constructors need to be
                 % qualified.
@@ -1012,10 +1012,10 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 type_defn_context           :: prog_context
             ).
 
-set_type_defn(Tvarset, Params, Kinds, Body, Status, InExportedEqv,
-        NeedQual, PrevErrors, Context, Defn) :-
-    Defn = hlds_type_defn(Tvarset, Params, Kinds, Body, Status,
-        InExportedEqv, NeedQual, PrevErrors, Context).
+set_type_defn(Tvarset, Params, Kinds, TypeBody, InExportedEqv,
+        TypeStatus, NeedQual, PrevErrors, Context, Defn) :-
+    Defn = hlds_type_defn(Tvarset, Params, Kinds, TypeBody, InExportedEqv,
+        TypeStatus, NeedQual, PrevErrors, Context).
 
 get_type_defn_tvarset(Defn, X) :-
     X = Defn ^ type_defn_tvarset.
@@ -1026,7 +1026,7 @@ get_type_defn_kind_map(Defn, X) :-
 get_type_defn_body(Defn, X) :-
     X = Defn ^ type_defn_body.
 get_type_defn_status(Defn, X) :-
-    X = Defn ^ type_defn_import_status.
+    X = Defn ^ type_defn_status.
 get_type_defn_in_exported_eqv(Defn, X) :-
     X = Defn ^ type_defn_in_exported_eqv.
 get_type_defn_need_qualifier(Defn, X) :-
@@ -1041,7 +1041,7 @@ set_type_defn_body(X, !Defn) :-
 set_type_defn_tvarset(X, !Defn) :-
     !Defn ^ type_defn_tvarset := X.
 set_type_defn_status(X, !Defn) :-
-    !Defn ^ type_defn_import_status := X.
+    !Defn ^ type_defn_status := X.
 set_type_defn_in_exported_eqv(X, !Defn) :-
     !Defn ^ type_defn_in_exported_eqv := X.
 set_type_defn_prev_errors(X, !Defn) :-
@@ -1076,7 +1076,7 @@ set_type_defn_prev_errors(X, !Defn) :-
                 inst_context    :: prog_context,
 
                 % So intermod.m can tell whether to output this inst.
-                inst_status     :: import_status
+                inst_status     :: inst_status
             ).
 
 :- type hlds_inst_body
@@ -1591,7 +1591,7 @@ inst_table_set_mostly_uniq_insts(X, !InstTable) :-
                 mode_context    :: prog_context,
 
                 % So intermod.m can tell whether to output this mode.
-                mode_status     :: import_status
+                mode_status     :: mode_status
             ).
 
     % The only sort of mode definitions allowed are equivalence modes.
@@ -1640,36 +1640,36 @@ mode_table_optimize(!ModeDefns) :-
     %
 :- type hlds_class_defn
     --->    hlds_class_defn(
-                class_status            :: import_status,
+                classdefn_status            :: typeclass_status,
 
                 % SuperClasses.
-                class_supers            :: list(prog_constraint),
+                classdefn_supers            :: list(prog_constraint),
 
                 % Functional dependencies.
-                class_fundeps           :: hlds_class_fundeps,
+                classdefn_fundeps           :: hlds_class_fundeps,
 
                 % All ancestors which have fundeps on them.
-                class_fundep_ancestors  :: list(prog_constraint),
+                classdefn_fundep_ancestors  :: list(prog_constraint),
 
                 % ClassVars.
-                class_vars              :: list(tvar),
+                classdefn_vars              :: list(tvar),
 
                 % Kinds of class_vars.
-                class_kinds             :: tvar_kind_map,
+                classdefn_kinds             :: tvar_kind_map,
 
                 % The interface from the original declaration, used by
                 % intermod.m to % write out the interface for a local typeclass
                 % to the `.opt' file.
-                class_interface         :: class_interface,
+                classdefn_interface         :: class_interface,
 
                 % Methods.
-                class_hlds_interface    :: hlds_class_interface,
+                classdefn_hlds_interface    :: hlds_class_interface,
 
                 % VarNames.
-                class_tvarset           :: tvarset,
+                classdefn_tvarset           :: tvarset,
 
                 % Location of declaration.
-                class_context           :: prog_context
+                classdefn_context           :: prog_context
             ).
 
     % In the HLDS, functional dependencies are represented using
@@ -1712,38 +1712,38 @@ mode_table_optimize(!ModeDefns) :-
 :- type hlds_instance_defn
     --->    hlds_instance_defn(
                 % Module of the instance declaration.
-                instance_module         :: module_name,
+                instdefn_module         :: module_name,
 
                 % Import status of the instance declaration.
                 % XXX This can be set to abstract_imported even if
                 % the instance is NOT imported.
-                instance_status         :: import_status,
+                instdefn_status         :: instance_status,
 
                 % Context of declaration.
-                instance_context        :: prog_context,
+                instdefn_context        :: prog_context,
 
                 % Constraints on the instance declaration.
-                instance_constraints    :: list(prog_constraint),
+                instdefn_constraints    :: list(prog_constraint),
 
                 % The class types. The original types field is used only
                 % for error checking.
-                instance_types          :: list(mer_type),
-                instance_orig_types     :: list(mer_type),
+                instdefn_types          :: list(mer_type),
+                instdefn_orig_types     :: list(mer_type),
 
                 % Methods
-                instance_body           :: instance_body,
+                instdefn_body           :: instance_body,
 
                 % After check_typeclass, we will know the pred_ids and proc_ids
                 % of all the methods.
-                instance_hlds_interface :: maybe(hlds_class_interface),
+                instdefn_hlds_interface :: maybe(hlds_class_interface),
 
                 % VarNames
-                instance_tvarset        :: tvarset,
+                instdefn_tvarset        :: tvarset,
 
                 % "Proofs" of how to build the typeclass_infos for the
                 % superclasses of this class (that is, the constraints
                 % on the class declaration), for this instance.
-                instance_proofs         :: constraint_proof_map
+                instdefn_proofs         :: constraint_proof_map
             ).
 
     % Return the value of the MR_typeclass_info_num_extra_instance_args field
@@ -2104,15 +2104,15 @@ update_redundant_constraints_2(ClassTable, TVarSet, Constraint, !Redundant) :-
     list.length(ArgTypes, Arity),
     ClassId = class_id(ClassName, Arity),
     map.lookup(ClassTable, ClassId, ClassDefn),
-    ClassAncestors0 = ClassDefn ^ class_fundep_ancestors,
+    ClassAncestors0 = ClassDefn ^ classdefn_fundep_ancestors,
     list.map(init_hlds_constraint, ClassAncestors0, ClassAncestors),
     (
         % Optimize the simple case.
         ClassAncestors = []
     ;
         ClassAncestors = [_ | _],
-        ClassTVarSet = ClassDefn ^ class_tvarset,
-        ClassParams = ClassDefn ^ class_vars,
+        ClassTVarSet = ClassDefn ^ classdefn_tvarset,
+        ClassParams = ClassDefn ^ classdefn_vars,
 
         % We can ignore the resulting tvarset, since any new variables
         % will become bound when the arguments are bound. (This follows
@@ -2206,10 +2206,11 @@ update_ancestor_constraints_2(ClassTable, TVarSet, Descendants0, Constraint,
     % from the fact that constraints on class declarations can only use
     % variables that appear in the head of the declaration.)
 
-    tvarset_merge_renaming(TVarSet, ClassDefn ^ class_tvarset, _, Renaming),
+    tvarset_merge_renaming(TVarSet, ClassDefn ^ classdefn_tvarset, _,
+        Renaming),
     apply_variable_renaming_to_prog_constraint_list(Renaming,
-        ClassDefn ^ class_supers, RenamedSupers),
-    apply_variable_renaming_to_tvar_list(Renaming, ClassDefn ^ class_vars,
+        ClassDefn ^ classdefn_supers, RenamedSupers),
+    apply_variable_renaming_to_tvar_list(Renaming, ClassDefn ^ classdefn_vars,
         RenamedParams),
     map.from_corresponding_lists(RenamedParams, ArgTypes, Subst),
     apply_subst_to_prog_constraint_list(Subst, RenamedSupers, Supers),

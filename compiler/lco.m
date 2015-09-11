@@ -393,8 +393,8 @@ lco_proc(LowerSCCVariants, SCC, CurProc, !ModuleInfo, !CurSCCVariants,
         CurProc = proc(PredId, ProcId),
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo, ProcInfo0),
-        pred_info_get_import_status(PredInfo, Status),
-        DefInThisModule = status_defined_in_this_module(Status),
+        pred_info_get_status(PredInfo, PredStatus),
+        DefInThisModule = pred_status_defined_in_this_module(PredStatus),
         proc_info_get_inferred_determinism(ProcInfo0, Detism),
         (
             ( DefInThisModule = no

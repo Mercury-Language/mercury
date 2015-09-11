@@ -277,10 +277,10 @@ eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 
 usual_eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
         = EffTraceLevel :-
-    pred_info_get_import_status(PredInfo, Status),
+    pred_info_get_status(PredInfo, PredStatus),
     (
         TraceLevel = shallow,
-        status_is_exported(Status) = no,
+        pred_status_is_exported(PredStatus) = no,
         proc_info_get_is_address_taken(ProcInfo, address_is_not_taken)
     ->
         proc_info_get_has_user_event(ProcInfo, ProcHasUserEvent),
@@ -289,8 +289,7 @@ usual_eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
             EffTraceLevel = basic_user
         ;
             ProcHasUserEvent = has_no_user_event,
-            module_info_get_has_user_event(ModuleInfo,
-                ModuleHasUserEvent),
+            module_info_get_has_user_event(ModuleInfo, ModuleHasUserEvent),
             (
                 ModuleHasUserEvent = has_user_event,
                 EffTraceLevel = basic

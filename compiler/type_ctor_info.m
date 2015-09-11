@@ -222,12 +222,12 @@ builtin_type_defn = TypeDefn :-
     varset.init(TVarSet),
     Params = [],
     map.init(Kinds),
-    Body = hlds_abstract_type(abstract_type_general),
-    ImportStatus = status_local,
-    NeedQualifier = may_be_unqualified,
+    TypeBody = hlds_abstract_type(abstract_type_general),
+    TypeStatus = type_status(status_local),
+    NeedQual = may_be_unqualified,
     term.context_init(Context),
-    hlds_data.set_type_defn(TVarSet, Params, Kinds, Body, ImportStatus, no,
-        NeedQualifier, type_defn_no_prev_errors, Context, TypeDefn).
+    hlds_data.set_type_defn(TVarSet, Params, Kinds, TypeBody, no,
+        TypeStatus, NeedQual, type_defn_no_prev_errors, Context, TypeDefn).
 
 :- pred gen_type_ctor_gen_info( module_info::in, type_ctor::in,
     module_name::in, string::in, int::in, hlds_type_defn::in,
@@ -977,7 +977,7 @@ find_type_info_index(Constraints, ClassTable, StartSlot, TVar, !LocnMap) :-
     FirstConstraint = constraint(ClassName, ArgTypes),
     list.length(ArgTypes, ClassArity),
     map.lookup(ClassTable, class_id(ClassName, ClassArity), ClassDefn),
-    list.length(ClassDefn ^ class_supers, NumSuperClasses),
+    list.length(ClassDefn ^ classdefn_supers, NumSuperClasses),
     RealTypeInfoIndex = TypeInfoIndex + NumSuperClasses,
     Locn = typeinfo_in_tci(Slot, RealTypeInfoIndex),
     map.det_insert(TVar, Locn, !LocnMap).

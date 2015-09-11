@@ -22,12 +22,12 @@
 :- import_module bool.
 :- import_module list.
 
-:- pred module_add_inst_defn(item_inst_defn_info::in, bool::out,
-    item_status::in, module_info::in, module_info::out,
+:- pred module_add_inst_defn(item_inst_defn_info::in, inst_status::in,
+    bool::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred module_add_mode_defn(item_mode_defn_info::in, bool::out,
-    item_status::in, module_info::in, module_info::out,
+:- pred module_add_mode_defn(item_mode_defn_info::in, mode_status::in,
+    bool::out, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %----------------------------------------------------------------------------%
@@ -46,50 +46,54 @@
 
 %----------------------------------------------------------------------------%
 
-module_add_inst_defn(ItemInstDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
+module_add_inst_defn(ItemInstDefnInfo, InstStatus, InvalidInst, !ModuleInfo,
         !Specs) :-
-    ItemStatus = item_status(Status, _NeedQual),
     ItemInstDefnInfo = item_inst_defn_info(Name, Params, InstDefn, VarSet,
         Context, _SeqNum),
     % Add the definition of this inst to the HLDS inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
-    inst_table_get_user_insts(InstTable0, Insts0),
-    insts_add(VarSet, Name, Params, InstDefn, Context, Status,
-        Insts0, Insts, !Specs),
-    inst_table_set_user_insts(Insts, InstTable0, InstTable),
+    inst_table_get_user_insts(InstTable0, UserInstTable0),
+    insts_add(VarSet, Name, Params, InstDefn, Context, InstStatus,
+        UserInstTable0, UserInstTable, !Specs),
+    inst_table_set_user_insts(UserInstTable, InstTable0, InstTable),
     module_info_set_inst_table(InstTable, !ModuleInfo),
 
     % Check if the inst is infinitely recursive (at the top level).
     Arity = list.length(Params),
     InstId = inst_id(Name, Arity),
     TestArgs = list.duplicate(Arity, not_reached),
-    check_for_cyclic_inst(Insts, InstId, InstId, TestArgs, [], Context,
-        InvalidMode, !Specs).
+    check_for_cyclic_inst(UserInstTable, InstId, InstId, TestArgs, [], Context,
+        InvalidInst, !Specs).
 
 :- pred insts_add(inst_varset::in, sym_name::in,
     list(inst_var)::in, inst_defn::in, prog_context::in,
-    import_status::in, user_inst_table::in, user_inst_table::out,
+    inst_status::in, user_inst_table::in, user_inst_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 insts_add(_, _, _, abstract_inst, _, _, !UserInstTable, !Specs) :-
     % XXX handle abstract insts
     sorry($module, $pred, "abstract insts not implemented").
-insts_add(VarSet, Name, Args, eqv_inst(Body), Context, Status, !UserInstTable,
-        !Specs) :-
+insts_add(VarSet, Name, Args, eqv_inst(Body), Context, InstStatus,
+        !UserInstTable, !Specs) :-
     list.length(Args, Arity),
     InstId = inst_id(Name, Arity),
     InstDefn = hlds_inst_defn(VarSet, Args, eqv_inst(Body), no,
-        Context, Status),
+        Context, InstStatus),
     ( if map.insert(InstId, InstDefn, !UserInstTable) then
         true
     else
         % If abstract insts are implemented, this will need to change
         % to update the hlds_inst_defn to the non-abstract inst.
 
-        map.lookup(!.UserInstTable, InstId, OrigInstDefn),
-        OrigContext = OrigInstDefn ^ inst_context,
-        multiple_def_error(Status, Name, Arity, "inst", Context, OrigContext,
-            [], !Specs)
+        ( if InstStatus = inst_status(status_opt_imported) then
+            true
+        else
+            map.lookup(!.UserInstTable, InstId, OrigInstDefn),
+            OrigContext = OrigInstDefn ^ inst_context,
+            Extras = [],
+            multiple_def_error(is_not_opt_imported, Name, Arity,
+                "inst", Context, OrigContext, Extras, !Specs)
+        )
     ).
 
     % Check if the inst is infinitely recursive (at the top level).
@@ -124,38 +128,42 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
 
 %-----------------------------------------------------------------------------%
 
-module_add_mode_defn(ItemModeDefnInfo, InvalidMode, ItemStatus, !ModuleInfo,
+module_add_mode_defn(ItemModeDefnInfo, ModeStatus, InvalidMode, !ModuleInfo,
         !Specs) :-
     ItemModeDefnInfo = item_mode_defn_info(Name, Params, ModeDefn, VarSet,
         Context, _SeqNum),
-    ItemStatus = item_status(Status, _NeedQual),
-    module_info_get_mode_table(!.ModuleInfo, Modes0),
-    modes_add(VarSet, Name, Params, ModeDefn, Context, Status, InvalidMode,
-        Modes0, Modes, !Specs),
-    module_info_set_mode_table(Modes, !ModuleInfo).
+    module_info_get_mode_table(!.ModuleInfo, ModeTable0),
+    modes_add(VarSet, Name, Params, ModeDefn, Context, ModeStatus, InvalidMode,
+        ModeTable0, ModeTable, !Specs),
+    module_info_set_mode_table(ModeTable, !ModuleInfo).
 
 :- pred modes_add(inst_varset::in, sym_name::in, list(inst_var)::in,
-    mode_defn::in, prog_context::in, import_status::in, bool::out,
+    mode_defn::in, prog_context::in, mode_status::in, bool::out,
     mode_table::in, mode_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-modes_add(VarSet, Name, Args, eqv_mode(Body), Context, Status, InvalidMode,
-        !Modes, !Specs) :-
+modes_add(VarSet, Name, Args, eqv_mode(Body), Context, ModeStatus, InvalidMode,
+        !ModeTable, !Specs) :-
     list.length(Args, Arity),
     ModeId = mode_id(Name, Arity),
-    I = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Context, Status),
-    ( if mode_table_insert(ModeId, I, !Modes) then
+    ModeDefn = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Context,
+        ModeStatus),
+    ( if mode_table_insert(ModeId, ModeDefn, !ModeTable) then
         true
     else
-        mode_table_get_mode_defns(!.Modes, ModeDefns),
-        map.lookup(ModeDefns, ModeId, OrigI),
-        OrigI = hlds_mode_defn(_, _, _, OrigContext, _),
-        % XXX We should record each error using module_info_incr_errors.
-        multiple_def_error(Status, Name, Arity, "mode", Context, OrigContext,
-            [], !Specs)
+        ( if ModeStatus = mode_status(status_opt_imported) then
+            true
+        else
+            mode_table_get_mode_defns(!.ModeTable, ModeDefns),
+            map.lookup(ModeDefns, ModeId, OrigModeDefn),
+            OrigModeDefn = hlds_mode_defn(_, _, _, OrigContext, _),
+            Extras = [],
+            multiple_def_error(is_not_opt_imported, Name, Arity,
+                "mode", Context, OrigContext, Extras, !Specs)
+        )
     ),
-    check_for_cyclic_mode(!.Modes, ModeId, ModeId, [], Context, InvalidMode,
-        !Specs).
+    check_for_cyclic_mode(!.ModeTable, ModeId, ModeId, [],
+        Context, InvalidMode, !Specs).
 
     % Check if the mode is infinitely recursive at the top level.
     %

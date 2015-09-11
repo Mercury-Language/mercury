@@ -1568,8 +1568,9 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     Origin = origin_transformed(transform_accumulator(OutVarNums),
         OldOrigin, OrigPredId),
     pred_info_create(ModuleName, SymName, PredOrFunc, PredContext, Origin,
-        status_local, Markers, Types, TypeVarSet, ExistQVars, ClassContext,
-        Assertions, VarNameRemap, NewProcInfo, NewProcId, NewPredInfo).
+        pred_status(status_local), Markers, Types, TypeVarSet,
+        ExistQVars, ClassContext, Assertions, VarNameRemap,
+        NewProcInfo, NewProcId, NewPredInfo).
 
 %-----------------------------------------------------------------------------%
 

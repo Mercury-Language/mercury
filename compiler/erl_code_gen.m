@@ -147,41 +147,43 @@ erl_gen_preds_2(ModuleInfo, PredIds0, PredTable, !Defns, !IO) :-
     (
         PredIds0 = [PredId | PredIds],
         map.lookup(PredTable, PredId, PredInfo),
-        pred_info_get_import_status(PredInfo, ImportStatus),
+        pred_info_get_status(PredInfo, PredStatus),
         (
             (
-                ImportStatus = status_imported(_)
+                PredStatus = pred_status(status_imported(_))
             ;
                 % XXX comment was from ml_code_gen.m, don't know if it applies.
                 % We generate incorrect and unnecessary code for the external
                 % special preds which are pseudo_imported, so just ignore them.
                 is_unify_or_compare_pred(PredInfo),
-                ImportStatus = status_external(status_pseudo_imported)
+                PredStatus =
+                    pred_status(status_external(status_pseudo_imported))
             )
         ->
             true
         ;
-            erl_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus,
-                !Defns, !IO)
+            % Generate ELDS definitions for all the predicate's
+            % non-imported procedures.
+            ( PredStatus = pred_status(status_external(_)) ->
+                ProcIds = pred_info_procids(PredInfo)
+            ;
+                ProcIds = pred_info_non_imported_procids(PredInfo)
+            ),
+            erl_gen_pred(ModuleInfo, PredId, PredInfo, ProcIds, !Defns, !IO)
         ),
         erl_gen_preds_2(ModuleInfo, PredIds, PredTable, !Defns, !IO)
     ;
         PredIds0 = []
     ).
 
-    % Generate ELDS definitions for all the non-imported procedures
+    % Generate ELDS definitions for all the specified procedures
     % of a given predicate (or function).
     %
 :- pred erl_gen_pred(module_info::in, pred_id::in, pred_info::in,
-    import_status::in, list(elds_defn)::in, list(elds_defn)::out,
+    list(proc_id)::in, list(elds_defn)::in, list(elds_defn)::out,
     io::di, io::uo) is det.
 
-erl_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus, !Defns, !IO) :-
-    ( ImportStatus = status_external(_) ->
-        ProcIds = pred_info_procids(PredInfo)
-    ;
-        ProcIds = pred_info_non_imported_procids(PredInfo)
-    ),
+erl_gen_pred(ModuleInfo, PredId, PredInfo, ProcIds, !Defns, !IO) :-
     (
         ProcIds = []
     ;
@@ -337,7 +339,7 @@ erl_gen_proc(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, !Defns) :-
 
 erl_gen_proc_defn(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         ProcVarSet, ProcBody, EnvVarNames) :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
     CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
@@ -361,7 +363,7 @@ erl_gen_proc_defn(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     some [!Info] (
         !:Info = erl_gen_info_init(ModuleInfo, PredId, ProcId),
 
-        ( ImportStatus = status_external(_) ->
+        ( PredStatus = pred_status(status_external(_)) ->
             % This procedure is externally defined.
             pred_info_get_arg_types(PredInfo, ArgTypes),
             proc_info_get_argmodes(ProcInfo, ArgModes),

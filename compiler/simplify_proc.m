@@ -296,8 +296,8 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
     simplify_proc_maybe_warn_about_duplicates(!.ModuleInfo, PredId, !.ProcInfo,
         !Specs),
 
-    pred_info_get_import_status(PredInfo0, Status),
-    IsDefinedHere = status_defined_in_this_module(Status),
+    pred_info_get_status(PredInfo0, Status),
+    IsDefinedHere = pred_status_defined_in_this_module(Status),
     (
         IsDefinedHere = no,
         % Don't generate any warnings or even errors if the predicate isn't

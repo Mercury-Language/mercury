@@ -23,14 +23,14 @@
 %-----------------------------------------------------------------------------%
 
 :- pred module_add_clause(prog_varset::in, pred_or_func::in, sym_name::in,
-    list(prog_term)::in, goal::in, import_status::in, prog_context::in,
+    list(prog_term)::in, goal::in, pred_status::in, prog_context::in,
     maybe(int)::in, goal_type::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred clauses_info_add_clause(clause_applicable_modes::in, list(proc_id)::in,
     prog_varset::in, tvarset::in, list(prog_term)::in, goal::in,
-    prog_context::in, maybe(int)::in, import_status::in, pred_or_func::in,
+    prog_context::in, maybe(int)::in, pred_status::in, pred_or_func::in,
     arity::in, goal_type::in, hlds_goal::out, prog_varset::out, tvarset::out,
     clauses_info::in, clauses_info::out, list(quant_warning)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -151,14 +151,14 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 
 :- pred module_add_clause_2(prog_varset::in, pred_or_func::in, sym_name::in,
     pred_id::in, list(prog_term)::in, int::in, int::in, goal::in,
-    import_status::in, prog_context::in, maybe(int)::in, goal_type::in,
+    pred_status::in, prog_context::in, maybe(int)::in, goal_type::in,
     maybe(prog_var)::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args,
-        Arity, ArityAdjustment, Body, Status, Context, MaybeSeqNum, GoalType,
-        IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs) :-
+        Arity, ArityAdjustment, Body, PredStatus, Context, MaybeSeqNum,
+        GoalType, IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs) :-
     some [!PredInfo, !PredicateTable] (
         % Lookup the pred_info for this pred, add the clause to the
         % clauses_info in the pred_info, if there are no modes add an
@@ -193,8 +193,8 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args,
 
         % Opt_imported preds are initially tagged as imported, and are tagged
         % as opt_imported only if/when we see a clause for them.
-        ( if Status = status_opt_imported then
-            pred_info_set_import_status(status_opt_imported, !PredInfo),
+        ( if PredStatus = pred_status(status_opt_imported) then
+            pred_info_set_status(pred_status(status_opt_imported), !PredInfo),
             pred_info_get_markers(!.PredInfo, InitMarkers0),
             add_marker(marker_calls_are_fully_qualified,
                 InitMarkers0, InitMarkers),
@@ -219,7 +219,7 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args,
 
                 % Don't report errors for clauses for field access
                 % function clauses in `.opt' files.
-                Status \= status_opt_imported
+                PredStatus \= pred_status(status_opt_imported)
             then
                 CallId = simple_call_id(PredOrFunc, PredName, Arity),
                 MainPieces = [
@@ -263,12 +263,13 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args,
                 pred_info_get_clauses_info(!.PredInfo, Clauses0),
                 pred_info_get_typevarset(!.PredInfo, TVarSet0),
                 maybe_add_default_func_mode(!PredInfo, _),
-                select_applicable_modes(Args, ClauseVarSet, Status, Context,
-                    PredId, !.PredInfo, ArgTerms, ProcIdsForThisClause,
-                    AllProcIds, !ModuleInfo, !QualInfo, !Specs),
+                select_applicable_modes(Args, ClauseVarSet, PredStatus,
+                    Context, PredId, !.PredInfo, ArgTerms,
+                    ProcIdsForThisClause, AllProcIds,
+                    !ModuleInfo, !QualInfo, !Specs),
                 clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
                     ClauseVarSet, TVarSet0, ArgTerms, Body,
-                    Context, MaybeSeqNum, Status, PredOrFunc, Arity,
+                    Context, MaybeSeqNum, PredStatus, PredOrFunc, Arity,
                     GoalType, Goal, VarSet, TVarSet, Clauses0, Clauses,
                     Warnings, !ModuleInfo, !QualInfo, !Specs),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
@@ -302,7 +303,7 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args,
                 map.det_update(PredId, !.PredInfo, Preds0, Preds),
                 predicate_table_set_preds(Preds, !PredicateTable),
                 module_info_set_predicate_table(!.PredicateTable, !ModuleInfo),
-                ( if Status = status_opt_imported then
+                ( if PredStatus = pred_status(status_opt_imported) then
                     true
                 else
                     % Warn about singleton variables.
@@ -320,12 +321,12 @@ module_add_clause_2(ClauseVarSet, PredOrFunc, PredName, PredId, Args,
     % and determine which mode(s) this clause should apply to.
     %
 :- pred select_applicable_modes(list(prog_term)::in, prog_varset::in,
-    import_status::in, prog_context::in, pred_id::in, pred_info::in,
+    pred_status::in, prog_context::in, pred_id::in, pred_info::in,
     list(prog_term)::out, clause_applicable_modes::out, list(proc_id)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
+select_applicable_modes(Args0, VarSet, PredStatus, Context, PredId, PredInfo,
         Args, ApplProcIds, AllProcIds, !ModuleInfo, !QualInfo, !Specs) :-
     AllProcIds = pred_info_all_procids(PredInfo),
     get_mode_annotations(Args0, Args, empty, ModeAnnotations),
@@ -336,10 +337,10 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
         % First module-qualify the mode annotations. The annotations on
         % clauses from `.opt' files will already be fully module qualified.
 
-        ( if Status = status_opt_imported then
+        ( if PredStatus = pred_status(status_opt_imported) then
             ModeList = ModeList0
         else
-            Exported = status_is_exported_to_non_submodules(Status),
+            Exported = pred_status_is_exported_to_non_submodules(PredStatus),
             (
                 Exported = yes,
                 InInt = mq_used_in_interface
@@ -507,7 +508,7 @@ get_mode_annotation(Arg0, Arg, MaybeAnnotation) :-
     ).
 
 clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0,
-        Args, Body, Context, MaybeSeqNum, Status, PredOrFunc, Arity,
+        Args, Body, Context, MaybeSeqNum, PredStatus, PredOrFunc, Arity,
         GoalType, Goal, VarSet, TVarSet, !ClausesInfo, QuantWarnings,
         !ModuleInfo, !QualInfo, !Specs) :-
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes0,
@@ -527,8 +528,13 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, CVarSet, TVarSet0,
         IsEmpty = no,
         TVarNameMap = TVarNameMap0
     ),
-    update_qual_info(TVarNameMap, TVarSet0, ExplicitVarTypes0, Status,
-        !QualInfo),
+    ( if PredStatus = pred_status(status_opt_imported) then
+        MaybeOptImported = is_opt_imported
+    else
+        MaybeOptImported = is_not_opt_imported
+    ),
+    update_qual_info(TVarNameMap, TVarSet0, ExplicitVarTypes0,
+        MaybeOptImported, !QualInfo),
     varset.merge_renaming(VarSet0, CVarSet, VarSet1, Renaming),
     add_clause_transform(Renaming, HeadVars, Args, Body, Context, PredOrFunc,
         Arity, GoalType, Goal0, VarSet1, VarSet,

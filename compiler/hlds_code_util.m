@@ -213,7 +213,7 @@ base_typeclass_info_cons_id(InstanceTable, Constraint, InstanceNum,
     ClassId = class_id(ClassName, list.length(ConstraintArgTypes)),
     map.lookup(InstanceTable, ClassId, InstanceList),
     list.det_index1(InstanceList, InstanceNum, InstanceDefn),
-    InstanceModuleName = InstanceDefn ^ instance_module,
+    InstanceModuleName = InstanceDefn ^ instdefn_module,
     make_instance_string(InstanceTypes, InstanceString),
     ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
         InstanceNum, InstanceString).

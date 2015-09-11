@@ -600,9 +600,9 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         % Construct the pred info structure. We initially construct it with
         % the old proc info which will be replaced below.
         pred_info_create(ModuleName, PredSym, PredOrFunc, Context, Origin,
-            status_local, Markers, ArgTypes0, TypeVarSet, ExistQVars,
-            ClassConstraints, set.init, map.init, OldProcInfo, ProcId,
-            !:PredInfo),
+            pred_status(status_local), Markers, ArgTypes0, TypeVarSet,
+            ExistQVars, ClassConstraints, set.init, map.init, OldProcInfo,
+            ProcId, !:PredInfo),
 
         % Add the new predicate to the module.
         some [!PredTable] (

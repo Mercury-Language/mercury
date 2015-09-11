@@ -235,10 +235,10 @@ check_instance_declaration_types_for_class(ModuleInfo, ClassId,
 
 check_instance_declaration_types_for_instance(ModuleInfo,
         ClassId, InstanceDefn, !Specs) :-
-    OriginalTypes = InstanceDefn ^ instance_orig_types,
+    OriginalTypes = InstanceDefn ^ instdefn_orig_types,
     list.foldl2(is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn),
         OriginalTypes, 1, _, !Specs),
-    Types = InstanceDefn ^ instance_types,
+    Types = InstanceDefn ^ instdefn_types,
     list.foldl3(is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn),
         Types, 1, _, set.init, _, !Specs).
 
@@ -256,12 +256,12 @@ is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn, Type,
                 TypeBody = hlds_eqv_type(_),
                 get_type_defn_status(TypeDefn, TypeDefnStatus),
                 ( if
-                    TypeDefnStatus = status_abstract_exported,
+                    TypeDefnStatus = type_status(status_abstract_exported),
                     % If the instance definition is itself abstract exported,
                     % we want to generate only one error message, instead of
                     % two error messages, one for the abstract and one for the
                     % concrete instance definition.
-                    InstanceDefn ^ instance_body = instance_body_concrete(_)
+                    InstanceDefn ^ instdefn_body = instance_body_concrete(_)
                 then
                     Spec = abstract_eqv_instance_type_msg(ClassId,
                         InstanceDefn, N),
@@ -342,8 +342,8 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
             set.insert_list(Args, !SeenTypes),
             ( if type_to_type_defn(ModuleInfo, Type, TypeDefn) then
                 list.length(Args, TypeArity),
-                is_visible_instance_type(TypeName, TypeArity, TypeDefn,
-                    ClassId, InstanceDefn, !Specs),
+                is_visible_instance_type(ClassId, InstanceDefn,
+                    TypeName, TypeArity, TypeDefn, !Specs),
                 get_type_defn_body(TypeDefn, TypeBody),
                 (
                     TypeBody = hlds_eqv_type(EqvType),
@@ -373,36 +373,34 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
     % i.e. they are either exported by the module or imported in the
     % module interface.
     %
-:- pred is_visible_instance_type(sym_name::in, arity::in, hlds_type_defn::in,
-    class_id::in, hlds_instance_defn::in,
+:- pred is_visible_instance_type(class_id::in, hlds_instance_defn::in,
+    sym_name::in, arity::in, hlds_type_defn::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-is_visible_instance_type(TypeName, TypeArity, TypeDefn, ClassId,
-        InstanceDefn, !Specs) :-
-    InstanceBody = InstanceDefn ^ instance_body,
+is_visible_instance_type(ClassId, InstanceDefn, TypeName, TypeArity, TypeDefn,
+        !Specs) :-
+    InstanceBody = InstanceDefn ^ instdefn_body,
     (
         InstanceBody = instance_body_abstract,
-        InstanceImportStatus = InstanceDefn ^ instance_status,
+        InstanceStatus = InstanceDefn ^ instdefn_status,
         InstanceIsExported =
-            status_is_exported_to_non_submodules(InstanceImportStatus),
+            instance_status_is_exported_to_non_submodules(InstanceStatus),
         (
             InstanceIsExported = yes,
-            get_type_defn_status(TypeDefn, TypeDefnImportStatus),
+            get_type_defn_status(TypeDefn, TypeDefnStatus),
             ( if
-                status_is_imported(TypeDefnImportStatus) = no,
-                status_is_exported_to_non_submodules(TypeDefnImportStatus) = no
+                type_status_is_imported(TypeDefnStatus) = no,
+                type_status_is_exported_to_non_submodules(TypeDefnStatus) = no
             then
                 ClassId = class_id(ClassName, ClassArity),
-                Pieces = [
-                    words("Error: abstract instance declaration for"),
+                Pieces = [words("Error: abstract instance declaration for"),
                     words("type class"),
                     sym_name_and_arity(ClassName / ClassArity),
                     words("contains the type"),
                     sym_name_and_arity(TypeName / TypeArity),
                     words("but that type is not visible in the"),
-                    words("module interface.")
-                ],
-                Context = InstanceDefn ^ instance_context,
+                    words("module interface."), nl],
+                Context = InstanceDefn ^ instdefn_context,
                 Msg = simple_msg(Context, [always(Pieces)]),
                 Spec = error_spec(severity_error, phase_type_check, [Msg]),
                 !:Specs = [Spec | !.Specs]
@@ -439,6 +437,7 @@ each_arg_is_a_type_variable(SeenTypes, [Type | Types], N, Result) :-
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),
+        % XXX STATUS keep going, return other errors
         Result = arg_not_type_variable(N)
     ).
 
@@ -472,18 +471,18 @@ bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces, Kind) = Spec :-
     ClassId = class_id(ClassName, _),
     ClassNameString = sym_name_to_string(ClassName),
 
-    InstanceVarSet = InstanceDefn ^ instance_tvarset,
-    InstanceContext = InstanceDefn ^ instance_context,
+    InstanceVarSet = InstanceDefn ^ instdefn_tvarset,
+    InstanceContext = InstanceDefn ^ instdefn_context,
     (
         Kind = badly_formed,
         % We are generating the error message because the type is badly formed
         % as expanded. The unexpanded version may be correctly formed.
-        InstanceTypes = InstanceDefn ^ instance_types
+        InstanceTypes = InstanceDefn ^ instdefn_types
     ;
         Kind = abstract_exported_eqv,
         % Messages about the expanded type being an equivalence type
         % would not make sense.
-        InstanceTypes = InstanceDefn ^ instance_orig_types
+        InstanceTypes = InstanceDefn ^ instdefn_orig_types
     ),
     InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
         InstanceTypes),
@@ -517,14 +516,12 @@ bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces, Kind) = Spec :-
 check_instance_decls(!ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_class_table(!.ModuleInfo, ClassTable),
     module_info_get_instance_table(!.ModuleInfo, InstanceTable0),
-    map.to_assoc_list(InstanceTable0, InstanceList0),
-    list.map_foldl3(check_one_class(ClassTable), InstanceList0, InstanceList,
+    map.map_foldl3(check_one_class(ClassTable), InstanceTable0, InstanceTable,
         !ModuleInfo, !QualInfo, [], NewSpecs),
     module_info_get_globals(!.ModuleInfo, Globals),
     Errors = contains_errors(Globals, NewSpecs),
     (
         Errors = no,
-        map.from_assoc_list(InstanceList, InstanceTable),
         module_info_set_instance_table(InstanceTable, !ModuleInfo)
     ;
         Errors = yes
@@ -533,21 +530,20 @@ check_instance_decls(!ModuleInfo, !QualInfo, !Specs) :-
 
     % Check all the instances of one class.
     %
-:- pred check_one_class(class_table::in,
-    pair(class_id, list(hlds_instance_defn))::in,
-    pair(class_id, list(hlds_instance_defn))::out,
+:- pred check_one_class(class_table::in, class_id::in,
+    list(hlds_instance_defn)::in, list(hlds_instance_defn)::out,
     module_info::in, module_info::out,
     make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_one_class(ClassTable, ClassId - InstanceDefns0, ClassId - InstanceDefns,
+check_one_class(ClassTable, ClassId, InstanceDefns0, InstanceDefns,
         !ModuleInfo, !QualInfo, !Specs) :-
     map.lookup(ClassTable, ClassId, ClassDefn),
-    ClassDefn = hlds_class_defn(ImportStatus, SuperClasses, _FunDeps,
+    ClassDefn = hlds_class_defn(TypeClassStatus, SuperClasses, _FunDeps,
         _Ancestors, ClassVars, _Kinds, Interface, ClassInterface,
         ClassVarSet, TermContext),
     ( if
-        status_defined_in_this_module(ImportStatus) = yes,
+        typeclass_status_defined_in_this_module(TypeClassStatus) = yes,
         Interface = class_interface_abstract
     then
         ClassId = class_id(ClassName, ClassArity),
@@ -559,7 +555,7 @@ check_one_class(ClassTable, ClassId - InstanceDefns0, ClassId - InstanceDefns,
         InstanceDefns = InstanceDefns0
     else
         GetClassProcPredId =
-            (pred(ClassProc::in, ClassProcPredId::out) is det :-
+            ( pred(ClassProc::in, ClassProcPredId::out) is det :-
                 ClassProc = hlds_class_proc(ClassProcPredId, _ClassProcProcId)
             ),
         list.map(GetClassProcPredId, ClassInterface, ClassProcPredIds0),
@@ -582,7 +578,7 @@ check_one_class(ClassTable, ClassId - InstanceDefns0, ClassId - InstanceDefns,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
-        ClassInterface, ClassVarSet, PredIds, !InstanceDefn,
+        ClassInterface, ClassVarSet, ClassPredIds, !InstanceDefn,
         !ModuleInfo, !QualInfo, !Specs):-
     % Check conformance of the instance body.
     !.InstanceDefn = hlds_instance_defn(_, _, TermContext, _, _, _,
@@ -593,7 +589,7 @@ check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
         InstanceBody = instance_body_concrete(InstanceMethods),
         check_concrete_class_instance(ClassId, Vars,
             HLDSClassInterface, ClassInterface,
-            PredIds, TermContext, InstanceMethods,
+            ClassPredIds, TermContext, InstanceMethods,
             !InstanceDefn, !ModuleInfo, !QualInfo, !Specs)
     ),
     % Check that the superclass constraints are satisfied for the types
@@ -610,8 +606,8 @@ check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
-        ClassInterface, PredIds, TermContext, InstanceMethods, !InstanceDefn,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        ClassInterface, ClassPredIds, TermContext, InstanceMethods,
+        !InstanceDefn, !ModuleInfo, !QualInfo, !Specs) :-
     (
         ClassInterface = class_interface_abstract,
         ClassId = class_id(ClassName, ClassArity),
@@ -622,18 +618,15 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         !:Specs = [Spec | !.Specs]
     ;
         ClassInterface = class_interface_concrete(_),
-        InstanceCheckInfo0 = instance_check_info(!.InstanceDefn,
-            [], !.ModuleInfo, !.QualInfo),
-        list.foldl2(check_instance_pred(ClassId, Vars, HLDSClassInterface),
-            PredIds, InstanceCheckInfo0, InstanceCheckInfo, !Specs),
-        InstanceCheckInfo = instance_check_info(!:InstanceDefn,
-            RevInstanceMethods, !:ModuleInfo, !:QualInfo),
+        list.foldl5(check_instance_pred(ClassId, Vars, HLDSClassInterface),
+            ClassPredIds, !InstanceDefn, [], RevInstanceMethods, 
+            !ModuleInfo, !QualInfo, !Specs),
 
         % We need to make sure that the MaybePredProcs field is set to yes(_)
         % after this pass. Normally that will be handled by
         % check_instance_pred, but we also need to handle it below,
         % in case the class has no methods.
-        MaybePredProcs1 = !.InstanceDefn ^ instance_hlds_interface,
+        MaybePredProcs1 = !.InstanceDefn ^ instdefn_hlds_interface,
         (
             MaybePredProcs1 = yes(_),
             MaybePredProcs = MaybePredProcs1
@@ -646,14 +639,17 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         % as the methods in the class definition. intermod.m relies on this.
         OrderedInstanceMethods = list.reverse(RevInstanceMethods),
 
-        !InstanceDefn ^ instance_hlds_interface := MaybePredProcs,
-        !InstanceDefn ^ instance_body :=
+        !InstanceDefn ^ instdefn_hlds_interface := MaybePredProcs,
+        !InstanceDefn ^ instdefn_body :=
             instance_body_concrete(OrderedInstanceMethods),
 
         % Check if there are any instance methods left over, which did not
         % match any of the methods from the class interface.
-        Context = !.InstanceDefn ^ instance_context,
-        check_for_bogus_methods(InstanceMethods, ClassId, PredIds,
+        % XXX This is not a check for *left over* methods, since we don't
+        % subtract the methods we have successfully processed from any
+        % initial InstanceMethods.
+        Context = !.InstanceDefn ^ instdefn_context,
+        check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds,
             Context, !.ModuleInfo, !Specs)
     ).
 
@@ -668,23 +664,8 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
 check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
         ModuleInfo, !Specs) :-
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    DefnIsOK = (pred(Method::in) is semidet :-
-        % Find this method definition's p/f, name, arity
-        Method = instance_method(MethodPredOrFunc, MethodName, _MethodDefn,
-            MethodArity, _Context),
-        % Search for pred_ids matching that p/f, name, arity, and succeed
-        % if the method definition p/f, name, and arity matches at least one
-        % of the methods from the class interface.
-        adjust_func_arity(MethodPredOrFunc, MethodArity, MethodPredArity),
-        predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
-            MethodPredOrFunc, MethodName, MethodPredArity, MatchingPredIds),
-        some [PredId] (
-            list.member(PredId, MatchingPredIds),
-            list.member(PredId, ClassPredIds)
-        )
-    ),
-    list.filter(DefnIsOK, InstanceMethods, _OKInstanceMethods,
-        BogusInstanceMethods),
+    list.filter(method_is_ok(PredTable, ClassPredIds), InstanceMethods,
+        _OKInstanceMethods, BogusInstanceMethods),
     (
         BogusInstanceMethods = []
     ;
@@ -693,54 +674,23 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
             !Specs)
     ).
 
-%----------------------------------------------------------------------------%
+:- pred method_is_ok(predicate_table::in, list(pred_id)::in,
+    instance_method::in) is semidet.
 
-:- type instance_check_info
-    --->    instance_check_info(
-                hlds_instance_defn,
-
-                % The instance methods in reverse order of the methods
-                % in the class declaration.
-                list(instance_method),
-
-                module_info,
-                make_hlds_qual_info
-            ).
-
-    % This structure holds the information about a particular instance
-    % method.
-:- type instance_method_info
-    --->    instance_method_info(
-                im_module_info          :: module_info,
-                im_qual_info            :: make_hlds_qual_info,
-
-                % Name that the introduced pred should be given.
-                im_introduced_pred_name :: sym_name,
-
-                % Arity of the method. (For funcs, this is the original arity,
-                % not the arity as a predicate.)
-                im_method_arity         :: arity,
-
-                % Existentially quantified type variables.
-                im_existq_tvars         :: existq_tvars,
-
-                % Expected types of arguments.
-                im_expected_arg_types   :: list(mer_type),
-
-                % Constraints from class method.
-                im_method_constraints   :: prog_constraints,
-
-                % Modes and determinisms of the required procs.
-                im_modes_and_detism     :: list(modes_and_detism),
-
-                im_tvarset              :: tvarset,
-
-                % Import status of instance decl.
-                im_import_status        :: import_status,
-
-                % Is method pred or func?
-                im_pred_or_func         :: pred_or_func
-            ).
+method_is_ok(PredTable, ClassPredIds, Method) :-
+    % Find this method definition's p/f, name, arity
+    Method = instance_method(MethodPredOrFunc, MethodName, _MethodDefn,
+        MethodArity, _Context),
+    % Search for pred_ids matching that p/f, name, arity, and succeed
+    % if the method definition p/f, name, and arity matches at least one
+    % of the methods from the class interface.
+    adjust_func_arity(MethodPredOrFunc, MethodArity, MethodPredArity),
+    predicate_table_lookup_pf_sym_arity(PredTable, is_fully_qualified,
+        MethodPredOrFunc, MethodName, MethodPredArity, MatchingPredIds),
+    some [PredId] (
+        list.member(PredId, MatchingPredIds),
+        list.member(PredId, ClassPredIds)
+    ).
 
 %----------------------------------------------------------------------------%
 
@@ -748,20 +698,22 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
     %
 :- pred check_instance_pred(class_id::in, list(tvar)::in,
     hlds_class_interface::in, pred_id::in,
-    instance_check_info::in, instance_check_info::out,
+    hlds_instance_defn::in, hlds_instance_defn::out,
+    list(instance_method)::in, list(instance_method)::out,
+    module_info::in, module_info::out,
+    make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
-        !InstanceCheckInfo, !Specs) :-
-    !.InstanceCheckInfo = instance_check_info(InstanceDefn0,
-        OrderedMethods0, ModuleInfo0, QualInfo0),
+        InstanceDefn0, InstanceDefn, !RevOrderedMethods,
+        !ModuleInfo, !QualInfo, !Specs) :-
     GetClassProcProcId =
-        (pred(ClassProc::in, ClassProcProcId::out) is semidet :-
+        ( pred(ClassProc::in, ClassProcProcId::out) is semidet :-
             ClassProc = hlds_class_proc(PredId, ClassProcProcId)
         ),
     list.filter_map(GetClassProcProcId, ClassInterface, ClassProcProcIds0),
     list.sort_and_remove_dups(ClassProcProcIds0, ClassProcProcIds),
-    module_info_pred_info(ModuleInfo0, PredId, PredInfo),
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_arg_types(PredInfo, ArgTypeVars, ExistQVars, ArgTypes),
     pred_info_get_class_context(PredInfo, ClassContext0),
     pred_info_get_markers(PredInfo, Markers0),
@@ -795,28 +747,54 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
             ModesAndDetism = modes_and_detism(Modes, InstVarSet, MaybeDetism)
         ), ClassProcProcIds, ArgModes),
 
-    InstanceDefn0 = hlds_instance_defn(_, Status, _, _, InstanceTypes, _,
-        _, _, _, _),
+    InstanceDefn0 = hlds_instance_defn(_, InstanceStatus, _, _, InstanceTypes,
+        _, _, _, _, _),
 
     % Work out the name of the predicate that we will generate
     % to check this instance method.
     make_introduced_pred_name(ClassId, MethodName, Arity,
         InstanceTypes, PredName),
 
-    MethodInfo0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
-        Arity, ExistQVars, ArgTypes, ClassContext, ArgModes,
-        ArgTypeVars, Status, PredOrFunc),
-
+    CheckInfo0 = check_instance_method_info(PredOrFunc, PredName, Arity,
+        ExistQVars, ArgTypes, ClassContext, ArgModes, ArgTypeVars,
+        InstanceStatus),
     check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
-        InstanceDefn0, InstanceDefn, OrderedMethods0, OrderedMethods,
-        MethodInfo0, MethodInfo, !Specs),
+        CheckInfo0, InstanceDefn0, InstanceDefn, !RevOrderedMethods,
+        !ModuleInfo, !QualInfo, !Specs).
 
-    MethodInfo = instance_method_info(ModuleInfo, QualInfo, _PredName,
-        _Arity, _ExistQVars, _ArgTypes, _ClassContext, _ArgModes,
-        _ArgTypeVars, _Status, _PredOrFunc),
+%----------------------------------------------------------------------------%
 
-    !:InstanceCheckInfo = instance_check_info(InstanceDefn,
-        OrderedMethods, ModuleInfo, QualInfo).
+    % This structure holds the information we need to check
+    % a particular instance method.
+:- type check_instance_method_info
+    --->    check_instance_method_info(
+                % Is the method pred or func?
+                cimi_method_pred_or_func    :: pred_or_func,
+
+                % Name that the introduced pred should be given.
+                cimi_introduced_pred_name   :: sym_name,
+
+                % Arity of the method. (For funcs, this is the original arity,
+                % not the arity as a predicate.)
+                cimi_method_arity           :: arity,
+
+                % Existentially quantified type variables.
+                cimi_existq_tvars           :: existq_tvars,
+
+                % Expected types of arguments.
+                cimi_expected_arg_types     :: list(mer_type),
+
+                % Constraints from class method.
+                cimi_method_constraints     :: prog_constraints,
+
+                % Modes and determinisms of the required procs.
+                cimi_modes_and_detism       :: list(modes_and_detism),
+
+                cimi_tvarset                :: tvarset,
+
+                % Import status of instance decl.
+                cimi_import_status          :: instance_status
+            ).
 
 :- type modes_and_detism
     --->    modes_and_detism(
@@ -826,32 +804,35 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
             ).
 
 :- pred check_instance_pred_procs(class_id::in, list(tvar)::in, sym_name::in,
-    pred_markers::in, hlds_instance_defn::in, hlds_instance_defn::out,
+    pred_markers::in, check_instance_method_info::in,
+    hlds_instance_defn::in, hlds_instance_defn::out,
     list(instance_method)::in, list(instance_method)::out,
-    instance_method_info::in, instance_method_info::out,
+    module_info::in, module_info::out,
+    make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
-        InstanceDefn0, InstanceDefn, OrderedInstanceMethods0,
-        OrderedInstanceMethods, !Info, !Specs) :-
+        CheckInfo, InstanceDefn0, InstanceDefn,
+        !RevInstanceMethods, !ModuleInfo, !QualInfo, !Specs) :-
     InstanceDefn0 = hlds_instance_defn(InstanceModuleName, _InstanceStatus,
         _InstanceContext, InstanceConstraints, InstanceTypes, _OriginalTypes,
         InstanceBody, MaybeInstancePredProcs, InstanceVarSet, _InstanceProofs),
-    !.Info = instance_method_info(_ModuleInfo, _QualInfo, _PredName, Arity,
-        _ExistQVars, _ArgTypes, _ClassContext, _ArgModes, _ArgTypeVars,
-        _Status, PredOrFunc),
-    get_matching_instance_defns(InstanceBody, PredOrFunc, MethodName,
-        Arity, MatchingInstanceMethods),
+    PredOrFunc = CheckInfo ^ cimi_method_pred_or_func,
+    Arity = CheckInfo ^ cimi_method_arity,
+    get_matching_instance_defns(InstanceBody, PredOrFunc, MethodName, Arity,
+        MatchingInstanceMethods),
     (
         MatchingInstanceMethods = [InstanceMethod],
-        OrderedInstanceMethods = [InstanceMethod | OrderedInstanceMethods0],
+        !:RevInstanceMethods = [InstanceMethod | !.RevInstanceMethods],
         InstanceMethod = instance_method(_, _, InstancePredDefn, _, Context),
         produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers,
             InstanceTypes, InstanceConstraints,
             InstanceVarSet, InstanceModuleName,
             InstancePredDefn, Context,
-            InstancePredId, InstanceProcIds, !Info, !Specs),
-        MakeClassProc = (pred(TheProcId::in, PredProcId::out) is det :-
+            InstancePredId, InstanceProcIds,
+            CheckInfo, !ModuleInfo, !QualInfo, !Specs),
+        MakeClassProc =
+            ( pred(TheProcId::in, PredProcId::out) is det :-
                 PredProcId = hlds_class_proc(InstancePredId, TheProcId)
             ),
         list.map(MakeClassProc, InstanceProcIds, InstancePredProcs1),
@@ -863,16 +844,14 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
             InstancePredProcs = InstancePredProcs1
         ),
         InstanceDefn = InstanceDefn0
-            ^ instance_hlds_interface := yes(InstancePredProcs)
+            ^ instdefn_hlds_interface := yes(InstancePredProcs)
     ;
         MatchingInstanceMethods = [_, _ | _],
-        OrderedInstanceMethods = OrderedInstanceMethods0,
         InstanceDefn = InstanceDefn0,
         report_duplicate_method_defn(ClassId, InstanceDefn0, PredOrFunc,
             MethodName, Arity, MatchingInstanceMethods, !Specs)
     ;
         MatchingInstanceMethods = [],
-        OrderedInstanceMethods = OrderedInstanceMethods0,
         InstanceDefn = InstanceDefn0,
         report_undefined_method(ClassId, InstanceDefn0, PredOrFunc,
             MethodName, Arity, !Specs)
@@ -930,17 +909,17 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
     pred_markers::in, list(mer_type)::in, list(prog_constraint)::in,
     tvarset::in, module_name::in, instance_proc_def::in, prog_context::in,
     pred_id::out, list(proc_id)::out,
-    instance_method_info::in, instance_method_info::out,
+    check_instance_method_info::in, module_info::in, module_info::out,
+    make_hlds_qual_info::in, make_hlds_qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
         InstanceTypes0, InstanceConstraints0, InstanceVarSet,
-        InstanceModuleName, InstancePredDefn, Context, PredId,
-        InstanceProcIds, Info0, Info, !Specs) :-
-
-    Info0 = instance_method_info(ModuleInfo0, QualInfo0, PredName,
-        Arity, ExistQVars0, ArgTypes0, ClassMethodClassContext0,
-        ArgModes, TVarSet0, Status0, PredOrFunc),
+        InstanceModuleName, InstancePredDefn, Context, PredId, InstanceProcIds,
+        CheckInfo0, !ModuleInfo, !QualInfo, !Specs) :-
+    CheckInfo0 = check_instance_method_info(PredOrFunc, PredName, Arity,
+        ExistQVars0, ArgTypes0, ClassMethodClassContext0, ArgModes,
+        TVarSet0, InstanceStatus0),
     UnsubstArgTypes = ArgTypes0,
 
     % Rename the instance variables apart from the class variables.
@@ -1003,20 +982,19 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
         Markers = Markers1
     ),
 
-    IsImported = status_is_imported(Status0),
+    IsImported = instance_status_is_imported(InstanceStatus0),
     (
         IsImported = yes,
-        Status = status_opt_imported
+        InstanceStatus = instance_status(status_opt_imported)
     ;
         IsImported = no,
-        Status = Status0
+        InstanceStatus = InstanceStatus0
     ),
 
     adjust_func_arity(PredOrFunc, Arity, PredArity),
     produce_instance_method_clauses(InstancePredDefn, PredOrFunc,
-        PredArity, ArgTypes, Markers, Context, Status, ClausesInfo,
-        TVarSet2, TVarSet, ModuleInfo0, ModuleInfo1, QualInfo0, QualInfo,
-        !Specs),
+        PredArity, ArgTypes, Markers, Context, InstanceStatus, ClausesInfo,
+        TVarSet2, TVarSet, !ModuleInfo, !QualInfo, !Specs),
 
     % Fill in some information in the pred_info which is used by polymorphism
     % to make sure the type-infos and typeclass-infos are added in the correct
@@ -1025,10 +1003,13 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
         InstanceTypes, InstanceConstraints, ClassMethodClassContext),
     PredOrigin = origin_instance_method(MethodName, MethodConstraints),
     map.init(VarNameRemap),
+    % XXX STATUS
+    InstanceStatus = instance_status(OldImportStatus),
+    PredStatus = pred_status(OldImportStatus),
     pred_info_init(InstanceModuleName, PredName, PredArity, PredOrFunc,
-        Context, PredOrigin, Status,
-        goal_type_none, Markers, ArgTypes, TVarSet, ExistQVars, ClassContext,
-        Proofs, ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
+        Context, PredOrigin, PredStatus, goal_type_none, Markers,
+        ArgTypes, TVarSet, ExistQVars, ClassContext, Proofs, ConstraintMap,
+        ClausesInfo, VarNameRemap, PredInfo0),
     pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
     pred_info_set_instance_method_arg_types(UnsubstArgTypes,
         PredInfo1, PredInfo2),
@@ -1045,17 +1026,13 @@ produce_auxiliary_procs(ClassId, ClassVars, MethodName, Markers0,
     ),
     list.map_foldl(AddProc, ArgModes, InstanceProcIds, PredInfo2, PredInfo),
 
-    module_info_get_predicate_table(ModuleInfo1, PredicateTable1),
-    module_info_get_partial_qualifier_info(ModuleInfo1, PQInfo),
+    module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
+    module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
     % XXX Why do we need to pass may_be_unqualified here, rather than passing
     % must_be_qualified or calling the predicate_table_insert/4 version?
     predicate_table_insert_qual(PredInfo, may_be_unqualified, PQInfo, PredId,
         PredicateTable1, PredicateTable),
-    module_info_set_predicate_table(PredicateTable, ModuleInfo1, ModuleInfo),
-
-    Info = instance_method_info(ModuleInfo, QualInfo, PredName, Arity,
-        ExistQVars, ArgTypes, ClassContext, ArgModes, TVarSet, Status,
-        PredOrFunc).
+    module_info_set_predicate_table(PredicateTable, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -1236,11 +1213,11 @@ partition_instances_for_class(ClassId, Instances, !Abstracts, !Concretes) :-
 
 partition_instances_for_class_2(ClassId, InstanceDefn,
         !Abstracts, !Concretes) :-
-    ImportStatus = InstanceDefn ^ instance_status,
-    IsImported = status_is_imported(ImportStatus),
+    InstanceStatus = InstanceDefn ^ instdefn_status,
+    IsImported = instance_status_is_imported(InstanceStatus),
     (
         IsImported = no,
-        Body = InstanceDefn ^ instance_body,
+        Body = InstanceDefn ^ instdefn_body,
         (
             Body = instance_body_abstract,
             multi_map.add(ClassId, InstanceDefn, !Abstracts)
@@ -1266,11 +1243,11 @@ check_for_corresponding_instances(Concretes, ClassId, InstanceDefns, !Specs) :-
 
 check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
         !Specs) :-
-    AbstractTypes = AbstractInstance ^ instance_types,
+    AbstractTypes = AbstractInstance ^ instdefn_types,
     ( if multi_map.search(Concretes, ClassId, ConcreteInstances) then
         ( if
             list.member(ConcreteInstance, ConcreteInstances),
-            ConcreteTypes = ConcreteInstance ^ instance_types,
+            ConcreteTypes = ConcreteInstance ^ instdefn_types,
             ConcreteTypes = AbstractTypes
         then
             MissingConcreteError = no
@@ -1288,7 +1265,7 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
         ClassId = class_id(ClassName, _),
         ClassNameString = sym_name_to_string(ClassName),
         AbstractTypesString = mercury_type_list_to_string(
-            AbstractInstance ^ instance_tvarset, AbstractTypes),
+            AbstractInstance ^ instdefn_tvarset, AbstractTypes),
         AbstractInstanceName = ClassNameString ++
             "(" ++ AbstractTypesString ++ ")",
         % XXX Should we mention any constraints on the instance declaration?
@@ -1296,7 +1273,7 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
             words("for"), quote(AbstractInstanceName),
             words("has no corresponding concrete"),
             words("instance in the implementation."), nl],
-        AbstractInstanceContext = AbstractInstance ^ instance_context,
+        AbstractInstanceContext = AbstractInstance ^ instdefn_context,
         Msg = simple_msg(AbstractInstanceContext, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_type_check, [Msg]),
         !:Specs = [Spec | !.Specs]
@@ -1349,20 +1326,20 @@ find_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles) :-
 find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
         !Cycles) :-
     ClassDefn0 = map.lookup(!.ClassTable, ClassId),
-    Params = ClassDefn0 ^ class_vars,
-    Kinds = ClassDefn0 ^ class_kinds,
+    Params = ClassDefn0 ^ classdefn_vars,
+    Kinds = ClassDefn0 ^ classdefn_kinds,
     ( if set.member(ClassId, !.Visited) then
         ( if find_cycle(ClassId, Path, [ClassId], Cycle) then
             !:Cycles = [Cycle | !.Cycles]
         else
             true
         ),
-        Ancestors = ClassDefn0 ^ class_fundep_ancestors
+        Ancestors = ClassDefn0 ^ classdefn_fundep_ancestors
     else
         set.insert(ClassId, !Visited),
 
         % Make this class its own ancestor, but only if it has fundeps on it.
-        FunDeps = ClassDefn0 ^ class_fundeps,
+        FunDeps = ClassDefn0 ^ classdefn_fundeps,
         (
             FunDeps = [],
             Ancestors0 = []
@@ -1372,10 +1349,10 @@ find_cycles_2(Path, ClassId, Params, Ancestors, !ClassTable, !Visited,
             prog_type.var_list_to_type_list(Kinds, Params, Args),
             Ancestors0 = [constraint(ClassName, Args)]
         ),
-        Superclasses = ClassDefn0 ^ class_supers,
+        Superclasses = ClassDefn0 ^ classdefn_supers,
         list.foldl4(find_cycles_3([ClassId | Path]), Superclasses,
             !ClassTable, !Visited, !Cycles, Ancestors0, Ancestors),
-        ClassDefn = ClassDefn0 ^ class_fundep_ancestors := Ancestors,
+        ClassDefn = ClassDefn0 ^ classdefn_fundep_ancestors := Ancestors,
         map.det_update(ClassId, ClassDefn, !ClassTable)
     ).
 
@@ -1431,7 +1408,7 @@ report_cyclic_classes(ClassTable, ClassPath) = Spec :-
         unexpected($module, $pred, "empty cycle found.")
     ;
         ClassPath = [ClassId | Tail],
-        Context = map.lookup(ClassTable, ClassId) ^ class_context,
+        Context = map.lookup(ClassTable, ClassId) ^ classdefn_context,
         ClassId = class_id(Name, Arity),
         RevPieces0 = [sym_name_and_arity(Name/Arity),
             words("Error: cyclic superclass relation detected:")],
@@ -1478,7 +1455,7 @@ check_fundeps_for_class(ModuleInfo, ClassId, !Specs) :-
     map.lookup(ClassTable, ClassId, ClassDefn),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     map.lookup(InstanceTable, ClassId, InstanceDefns),
-    FunDeps = ClassDefn ^ class_fundeps,
+    FunDeps = ClassDefn ^ classdefn_fundeps,
     check_coverage_for_instance_defns(ModuleInfo, ClassId, InstanceDefns,
         FunDeps, !Specs),
     module_info_get_globals(ModuleInfo, Globals),
@@ -1505,7 +1482,7 @@ check_fundeps_for_class(ModuleInfo, ClassId, !Specs) :-
 :- pred is_concrete_instance_defn(hlds_instance_defn::in) is semidet.
 
 is_concrete_instance_defn(InstanceDefn) :-
-    InstanceDefn ^ instance_body = instance_body_concrete(_).
+    InstanceDefn ^ instdefn_body = instance_body_concrete(_).
 
 :- pred is_concrete_or_imported_instance_defn(hlds_instance_defn::in)
     is semidet.
@@ -1514,7 +1491,7 @@ is_concrete_or_imported_instance_defn(InstanceDefn) :-
     (
         is_concrete_instance_defn(InstanceDefn)
     ;
-        status_is_imported(InstanceDefn ^ instance_status) = yes
+        instance_status_is_imported(InstanceDefn ^ instdefn_status) = yes
     ).
 
 :- pred check_coverage_for_instance_defns(module_info::in, class_id::in,
@@ -1536,14 +1513,14 @@ check_coverage_for_instance_defns(ModuleInfo, ClassId,
 
 check_coverage_for_instance_defn(ModuleInfo, ClassId, InstanceDefn, FunDep,
         !Specs) :-
-    TVarSet = InstanceDefn ^ instance_tvarset,
-    Types = InstanceDefn ^ instance_types,
+    TVarSet = InstanceDefn ^ instdefn_tvarset,
+    Types = InstanceDefn ^ instdefn_types,
     FunDep = fundep(Domain, Range),
     DomainTypes = restrict_list_elements(Domain, Types),
     type_vars_list(DomainTypes, DomainVars),
     RangeTypes = restrict_list_elements(Range, Types),
     type_vars_list(RangeTypes, RangeVars),
-    Constraints = InstanceDefn ^ instance_constraints,
+    Constraints = InstanceDefn ^ instdefn_constraints,
     get_unbound_tvars(ModuleInfo, TVarSet, DomainVars, RangeVars,
         Constraints, UnboundVars),
     (
@@ -1578,8 +1555,8 @@ check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
     % to check the consistency, since this would have been checked when
     % compiling that module.
     ( if
-        InstanceA ^ instance_module = InstanceB ^ instance_module,
-        status_is_imported(InstanceA ^ instance_status) = yes
+        InstanceA ^ instdefn_module = InstanceB ^ instdefn_module,
+        instance_status_is_imported(InstanceA ^ instdefn_status) = yes
     then
         true
     else
@@ -1594,12 +1571,12 @@ check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
 
 check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
         !Specs) :-
-    TVarSetA = InstanceA ^ instance_tvarset,
-    TVarSetB = InstanceB ^ instance_tvarset,
+    TVarSetA = InstanceA ^ instdefn_tvarset,
+    TVarSetB = InstanceB ^ instdefn_tvarset,
     tvarset_merge_renaming(TVarSetA, TVarSetB, _, Renaming),
 
-    TypesA = InstanceA ^ instance_types,
-    TypesB0 = InstanceB ^ instance_types,
+    TypesA = InstanceA ^ instdefn_types,
+    TypesB0 = InstanceB ^ instdefn_types,
     apply_variable_renaming_to_type_list(Renaming, TypesB0, TypesB),
 
     FunDep = fundep(Domain, Range),
@@ -1635,8 +1612,8 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
 
 report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
     ClassId = class_id(SymName, Arity),
-    TVarSet = InstanceDefn ^ instance_tvarset,
-    Context = InstanceDefn ^ instance_context,
+    TVarSet = InstanceDefn ^ instdefn_tvarset,
+    Context = InstanceDefn ^ instdefn_context,
 
     VarsStrs = list.map(mercury_var_to_name_only(TVarSet), Vars),
     Pieces = [words("In instance for typeclass"),
@@ -1657,10 +1634,10 @@ report_coverage_error(ClassId, InstanceDefn, Vars) = Spec :-
 report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
         = Spec :-
     ClassId = class_id(SymName, Arity),
-    Params = ClassDefn ^ class_vars,
-    TVarSet = ClassDefn ^ class_tvarset,
-    ContextA = InstanceA ^ instance_context,
-    ContextB = InstanceB ^ instance_context,
+    Params = ClassDefn ^ classdefn_vars,
+    TVarSet = ClassDefn ^ classdefn_tvarset,
+    ContextA = InstanceA ^ instdefn_context,
+    ContextB = InstanceB ^ instdefn_context,
 
     FunDep = fundep(Domain, Range),
     DomainParams = restrict_list_elements(Domain, Params),
@@ -1704,8 +1681,8 @@ check_typeclass_constraints(ModuleInfo, !Specs) :-
 
 check_pred_constraints(ModuleInfo, PredId, !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    NeedsAmbiguityCheck = needs_ambiguity_check(ImportStatus),
+    pred_info_get_status(PredInfo, Status),
+    NeedsAmbiguityCheck = pred_needs_ambiguity_check(Status),
     (
         NeedsAmbiguityCheck = no
     ;
@@ -1718,19 +1695,19 @@ check_pred_constraints(ModuleInfo, PredId, !Specs) :-
         check_constraint_quant(PredInfo, !Specs)
     ).
 
-:- func needs_ambiguity_check(import_status) = bool.
+:- func pred_needs_ambiguity_check(pred_status) = bool.
 
-needs_ambiguity_check(status_imported(_)) =             no.
-needs_ambiguity_check(status_external(_)) =             yes.
-needs_ambiguity_check(status_abstract_imported) =       no.
-needs_ambiguity_check(status_pseudo_imported) =         no.
-needs_ambiguity_check(status_opt_imported) =            no.
-needs_ambiguity_check(status_exported) =                yes.
-needs_ambiguity_check(status_opt_exported) =            yes.
-needs_ambiguity_check(status_abstract_exported) =       yes.
-needs_ambiguity_check(status_pseudo_exported) =         yes.
-needs_ambiguity_check(status_exported_to_submodules) =  yes.
-needs_ambiguity_check(status_local) =                   yes.
+pred_needs_ambiguity_check(pred_status(status_imported(_))) =             no.
+pred_needs_ambiguity_check(pred_status(status_external(_))) =             yes.
+pred_needs_ambiguity_check(pred_status(status_abstract_imported)) =       no.
+pred_needs_ambiguity_check(pred_status(status_pseudo_imported)) =         no.
+pred_needs_ambiguity_check(pred_status(status_opt_imported)) =            no.
+pred_needs_ambiguity_check(pred_status(status_exported)) =                yes.
+pred_needs_ambiguity_check(pred_status(status_opt_exported)) =            yes.
+pred_needs_ambiguity_check(pred_status(status_abstract_exported)) =       yes.
+pred_needs_ambiguity_check(pred_status(status_pseudo_exported)) =         yes.
+pred_needs_ambiguity_check(pred_status(status_exported_to_submodules)) =  yes.
+pred_needs_ambiguity_check(pred_status(status_local)) =                   yes.
 
 :- pred check_pred_type_ambiguities(module_info::in, pred_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -2014,14 +1991,14 @@ induced_fundeps_2(ClassTable, TVarSet, Constraint, !FunDeps) :-
     ClassDefn = map.lookup(ClassTable, class_id(Name, Arity)),
     % The ancestors includes all superclasses of Constraint which have
     % functional dependencies on them (possibly including Constraint itself).
-    ClassAncestors = ClassDefn ^ class_fundep_ancestors,
+    ClassAncestors = ClassDefn ^ classdefn_fundep_ancestors,
     (
         % Optimize the common case.
         ClassAncestors = []
     ;
         ClassAncestors = [_ | _],
-        ClassTVarSet = ClassDefn ^ class_tvarset,
-        ClassParams = ClassDefn ^ class_vars,
+        ClassTVarSet = ClassDefn ^ classdefn_tvarset,
+        ClassParams = ClassDefn ^ classdefn_vars,
 
         % We can ignore the resulting tvarset, since any new variables
         % will become bound when the arguments are bound. (This follows
@@ -2046,7 +2023,7 @@ induced_fundeps_3(ClassTable, Constraint, !FunDeps) :-
     Constraint = constraint(Name, Args),
     Arity = length(Args),
     ClassDefn = map.lookup(ClassTable, class_id(Name, Arity)),
-    list.foldl(induced_fundep(Args), ClassDefn ^ class_fundeps, !FunDeps).
+    list.foldl(induced_fundep(Args), ClassDefn ^ classdefn_fundeps, !FunDeps).
 
 :- pred induced_fundep(list(mer_type)::in, hlds_class_fundep::in,
     induced_fundeps::in, induced_fundeps::out) is det.
@@ -2110,9 +2087,9 @@ collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
 
 report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
         Arity, MatchingInstanceMethods, !Specs) :-
-    InstanceVarSet = InstanceDefn ^ instance_tvarset,
-    InstanceTypes = InstanceDefn ^ instance_types,
-    InstanceContext = InstanceDefn ^ instance_context,
+    InstanceVarSet = InstanceDefn ^ instdefn_tvarset,
+    InstanceTypes = InstanceDefn ^ instdefn_types,
+    InstanceContext = InstanceDefn ^ instdefn_context,
     ClassId = class_id(ClassName, _ClassArity),
     ClassNameString = sym_name_to_string(ClassName),
     InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
@@ -2154,9 +2131,9 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
 
 report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
         !Specs) :-
-    InstanceVarSet = InstanceDefn ^ instance_tvarset,
-    InstanceTypes = InstanceDefn ^ instance_types,
-    InstanceContext = InstanceDefn ^ instance_context,
+    InstanceVarSet = InstanceDefn ^ instdefn_tvarset,
+    InstanceTypes = InstanceDefn ^ instdefn_types,
+    InstanceContext = InstanceDefn ^ instdefn_context,
     ClassId = class_id(ClassName, _ClassArity),
     ClassNameString = sym_name_to_string(ClassName),
     InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,

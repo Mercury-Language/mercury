@@ -77,7 +77,7 @@
     is semidet.
 
 :- pred special_pred_is_generated_lazily(module_info::in, type_ctor::in,
-    hlds_type_body::in, import_status::in) is semidet.
+    hlds_type_body::in, type_status::in) is semidet.
 
     % A compiler-generated predicate only needs type checking if
     % (a) it is a user-defined equality pred, or
@@ -226,11 +226,11 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
     ).
 
 :- pred special_pred_is_generated_lazily_2(module_info::in,
-    type_ctor::in, hlds_type_body::in, import_status::in) is semidet.
+    type_ctor::in, hlds_type_body::in, type_status::in) is semidet.
 
 special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
     (
-        status_defined_in_this_module(Status) = no
+        type_status_defined_in_this_module(Status) = no
     ;
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, special_preds, no)
@@ -247,7 +247,7 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
     % The special predicates for types with user-defined equality or
     % existentially typed constructors are always generated immediately
     % by make_hlds.m.
-    \+ special_pred_for_type_needs_typecheck(ModuleInfo, spec_pred_unify,
+    not special_pred_for_type_needs_typecheck(ModuleInfo, spec_pred_unify,
         Body).
 
 special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body) :-
@@ -279,8 +279,8 @@ can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
         compiler_generated_rtti_for_builtins(ModuleInfo),
         is_builtin_type_special_preds_defined_in_mercury(TypeCtor, _)
     ),
-    \+ type_ctor_has_hand_defined_rtti(TypeCtor, Body),
-    \+ type_body_has_user_defined_equality_pred(ModuleInfo, Body,
+    not type_ctor_has_hand_defined_rtti(TypeCtor, Body),
+    not type_body_has_user_defined_equality_pred(ModuleInfo, Body,
         abstract_noncanonical_type(_IsSolverType)).
 
 is_builtin_type_special_preds_defined_in_mercury(TypeCtor, TypeName) :-

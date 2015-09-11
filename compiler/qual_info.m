@@ -36,14 +36,14 @@
 
     % Update the qual_info when processing a new clause.
     %
-:- pred update_qual_info(tvar_name_map::in, tvarset::in,
-    vartypes::in, import_status::in,
-    qual_info::in, qual_info::out) is det.
+:- pred update_qual_info(tvar_name_map::in, tvarset::in, vartypes::in,
+    maybe_opt_imported::in, qual_info::in, qual_info::out) is det.
 
 :- pred qual_info_get_tvarset(qual_info::in, tvarset::out) is det.
 :- pred qual_info_get_var_types(qual_info::in, vartypes::out) is det.
 :- pred qual_info_get_mq_info(qual_info::in, mq_info::out) is det.
-:- pred qual_info_get_import_status(qual_info::in, import_status::out) is det.
+:- pred qual_info_get_maybe_opt_imported(qual_info::in,
+    maybe_opt_imported::out) is det.
 :- pred qual_info_get_found_syntax_error(qual_info::in, bool::out) is det.
 
 :- pred qual_info_set_mq_info(mq_info::in, qual_info::in, qual_info::out)
@@ -131,7 +131,7 @@
                 % Module qualification info.
                 qual_mq_info            :: mq_info,
 
-                qual_import_status      :: import_status,
+                qual_maybe_opt_imported :: maybe_opt_imported,
 
                 % Was there a syntax error in a field update?
                 qual_found_syntax_error :: bool
@@ -144,26 +144,29 @@ init_qual_info(MQInfo, TypeEqvMap, QualInfo) :-
     init_vartypes(VarTypes),
     FoundSyntaxError = no,
     QualInfo = qual_info(TypeEqvMap, TVarSet, Renaming, Index, VarTypes,
-        MQInfo, status_local, FoundSyntaxError).
+        MQInfo, is_not_opt_imported, FoundSyntaxError).
 
-update_qual_info(TVarNameMap, TVarSet, VarTypes, Status, !QualInfo) :-
+update_qual_info(TVarNameMap, TVarSet, VarTypes, MaybeOptImported,
+        !QualInfo) :-
     !.QualInfo = qual_info(TypeEqvMap, _TVarSet0, _Renaming0, _TVarNameMap0,
-        _VarTypes0, MQInfo, _Status, _FoundError),
+        _VarTypes0, MQInfo, _MaybeOptImported, _FoundError),
     % The renaming for one clause is useless in the others.
     map.init(Renaming),
     !:QualInfo = qual_info(TypeEqvMap, TVarSet, Renaming, TVarNameMap,
-        VarTypes, MQInfo, Status, no).
+        VarTypes, MQInfo, MaybeOptImported, no).
 
 qual_info_get_tvarset(Info, Info ^ qual_tvarset).
 qual_info_get_var_types(Info, Info ^ qual_vartypes).
 qual_info_get_mq_info(Info, Info ^ qual_mq_info).
-qual_info_get_import_status(Info, Info ^ qual_import_status).
+qual_info_get_maybe_opt_imported(Info, Info ^ qual_maybe_opt_imported).
 qual_info_get_found_syntax_error(Info, Info ^ qual_found_syntax_error).
 
-qual_info_set_mq_info(MQInfo, Info, Info ^ qual_mq_info := MQInfo).
-qual_info_set_var_types(VarTypes, Info, Info ^ qual_vartypes := VarTypes).
-qual_info_set_found_syntax_error(FoundError, Info,
-    Info ^ qual_found_syntax_error := FoundError).
+qual_info_set_mq_info(MQInfo, !Info) :-
+    !Info ^ qual_mq_info := MQInfo.
+qual_info_set_var_types(VarTypes, !Info) :-
+    !Info ^ qual_vartypes := VarTypes.
+qual_info_set_found_syntax_error(FoundError, !Info) :-
+    !Info ^ qual_found_syntax_error := FoundError.
 
 apply_to_recompilation_info(Pred, !QualInfo) :-
     MQInfo0 = !.QualInfo ^ qual_mq_info,
@@ -186,12 +189,14 @@ set_module_recompilation_info(QualInfo, !ModuleInfo) :-
 process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
         !QualInfo, !Specs) :-
     !.QualInfo = qual_info(TypeEqvMap, TVarSet0, TVarRenaming0,
-        TVarNameMap0, VarTypes0, MQInfo0, Status, FoundError),
-    ( Status = status_opt_imported ->
+        TVarNameMap0, VarTypes0, MQInfo0, MaybeOptImported, FoundError),
+    (
+        MaybeOptImported = is_opt_imported,
         % Types in `.opt' files should already be fully module qualified.
         Type1 = Type0,
         MQInfo = MQInfo0
     ;
+        MaybeOptImported = is_not_opt_imported,
         % Type qualifications cannot appear in the interface of a module.
         qualify_type_qualification(mq_not_used_in_interface, Context,
             Type0, Type1, MQInfo0, MQInfo, !Specs)
@@ -216,7 +221,7 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
         RecordExpanded, _),
     update_var_types(Var, Type, Context, VarTypes0, VarTypes, !Specs),
     !:QualInfo = qual_info(TypeEqvMap, TVarSet, TVarRenaming,
-        TVarNameMap, VarTypes, MQInfo, Status, FoundError).
+        TVarNameMap, VarTypes, MQInfo, MaybeOptImported, FoundError).
 
 :- pred update_var_types(prog_var::in, mer_type::in, prog_context::in,
     vartypes::in, vartypes::out,

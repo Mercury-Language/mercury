@@ -544,7 +544,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
         clauses_info_get_varset(!.ClausesInfo, ClauseVarSet),
         clauses_info_get_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes0),
-        pred_info_get_import_status(!.PredInfo, Status),
+        pred_info_get_status(!.PredInfo, PredStatus),
         pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
         pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0,
             ArgTypes0),
@@ -588,7 +588,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
         type_assign_set_init(TypeVarSet0, ExplicitVarTypes0, !.HeadTypeParams,
             Constraints, !:TypeAssignSet),
         typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
-            ClauseVarSet, Status, PredMarkers, !.Specs, !:Info),
+            ClauseVarSet, PredStatus, PredMarkers, !.Specs, !:Info),
         get_clause_list_for_replacement(ClausesRep0, Clauses0),
         typecheck_clause_list(HeadVars, ArgTypes0, Clauses0, Clauses,
             !TypeAssignSet, !Info),
@@ -1023,13 +1023,13 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
     pred_info::in, pred_info::out) is det.
 
 maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
-    pred_info_get_import_status(!.PredInfo, ImportStatus),
+    pred_info_get_status(!.PredInfo, PredStatus),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers0),
     ( if
         pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
         clause_list_is_empty(ClausesRep0) = yes,
-        status_defined_in_this_module(ImportStatus) = yes
+        pred_status_defined_in_this_module(PredStatus) = yes
     then
         clauses_info_get_headvars(ClausesInfo0, HeadVars),
         proc_arg_vector_to_func_args(HeadVars, FuncArgs, FuncRetVal),
@@ -3204,8 +3204,8 @@ typecheck_info_get_ctor_list(Info, Functor, Arity, GoalId, ConsInfos,
         % should only contain an application of the field access function,
         % not constructor applications or function calls. The clauses in
         % `.opt' files will already have been expanded into unifications.
-        IsFieldAccessFunc = yes(ImportStatus),
-        ImportStatus \= status_opt_imported
+        IsFieldAccessFunc = yes(PredStatus),
+        PredStatus \= pred_status(status_opt_imported)
     then
         ( if
             builtin_field_access_function_type(Info, GoalId,
@@ -3435,19 +3435,21 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     typecheck_info_get_pred_id(Info, PredId),
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_status(PredInfo, PredStatus),
     ( if
         Body ^ du_type_is_foreign_type = yes(_),
         not pred_info_get_goal_type(PredInfo, goal_type_clause_and_foreign),
         not is_unify_or_compare_pred(PredInfo),
-        not pred_info_get_import_status(PredInfo, status_opt_imported)
+        PredStatus \= pred_status(status_opt_imported)
     then
         ConsTypeInfo = error(foreign_type_constructor(TypeCtor, TypeDefn))
     else if
         % Do not allow constructors for abstract_imported types unless
         % the current predicate is opt_imported.
-        hlds_data.get_type_defn_status(TypeDefn, status_abstract_imported),
+        hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+        TypeStatus = type_status(status_abstract_imported),
         not is_unify_or_compare_pred(PredInfo),
-        not pred_info_get_import_status(PredInfo, status_opt_imported)
+        PredStatus \= pred_status(status_opt_imported)
     then
         ConsTypeInfo = error(abstract_imported_type)
     else if

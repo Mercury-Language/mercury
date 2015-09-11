@@ -454,10 +454,10 @@ maybe_create_forwarding_procedures_intermod_opt_2(FinalReuseTable, PPId,
         reuse_as_and_status(InitialReuseAs, _), !ModuleInfo) :-
     PPId = proc(PredId, _),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
     (
         reuse_as_conditional_reuses(InitialReuseAs),
-        status_defined_in_this_module(ImportStatus) = yes,
+        pred_status_defined_in_this_module(PredStatus) = yes,
         reuse_as_table_search(FinalReuseTable, PPId, FinalReuseAs_Status),
         FinalReuseAs_Status = reuse_as_and_status(FinalReuseAs, _),
         reuse_as_no_reuses(FinalReuseAs)
@@ -586,16 +586,16 @@ process_intermod_analysis_reuse(!ModuleInfo, ReuseTable, ExternalRequests,
 process_intermod_analysis_reuse_pred(PredId, !ModuleInfo, !ReuseTable,
         !ExternalRequests, !MustHaveReuseVersions) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
     ProcIds = pred_info_procids(PredInfo),
     (
-        ImportStatus = status_imported(_)
+        PredStatus = pred_status(status_imported(_))
     ->
         % Read in answers for imported procedures.
         list.foldl2(process_intermod_analysis_reuse_proc(PredId, PredInfo),
             ProcIds, !ModuleInfo, !ReuseTable)
     ;
-        status_defined_in_this_module(ImportStatus) = yes
+        pred_status_defined_in_this_module(PredStatus) = yes
     ->
         % For procedures defined in this module we need to read in the answers
         % from previous passes to know which versions of procedures other

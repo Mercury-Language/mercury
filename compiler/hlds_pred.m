@@ -213,6 +213,7 @@
     % Are calls from a predicate with the given import_status always fully
     % qualified. For calls occurring in `.opt' files this will return
     % `is_fully_qualified', otherwise `may_be_partially_qualified'.
+    % XXX Obsolete documentation.
     %
 :- func calls_are_fully_qualified(pred_markers) = is_fully_qualified.
 
@@ -514,7 +515,7 @@
     % (direct and indirect) in the arguments, and from defaults.
     %
 :- pred pred_info_init(module_name::in, sym_name::in, arity::in,
-    pred_or_func::in, prog_context::in, pred_origin::in, import_status::in,
+    pred_or_func::in, prog_context::in, pred_origin::in, pred_status::in,
     goal_type::in, pred_markers::in, list(mer_type)::in, tvarset::in,
     existq_tvars::in, prog_constraints::in, constraint_proof_map::in,
     constraint_map::in, clauses_info::in, map(prog_var, string)::in,
@@ -531,7 +532,7 @@
     % and its proc_id is returned as the second last argument.
     %
 :- pred pred_info_create(module_name::in, sym_name::in, pred_or_func::in,
-    prog_context::in, pred_origin::in, import_status::in, pred_markers::in,
+    prog_context::in, pred_origin::in, pred_status::in, pred_markers::in,
     list(mer_type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
     set(assert_id)::in, map(prog_var, string)::in, proc_info::in,
     proc_id::out, pred_info::out) is det.
@@ -589,8 +590,8 @@
     prog_context::out) is det.
 :- pred pred_info_get_origin(pred_info::in,
     pred_origin::out) is det.
-:- pred pred_info_get_import_status(pred_info::in,
-    import_status::out) is det.
+:- pred pred_info_get_status(pred_info::in,
+    pred_status::out) is det.
 :- pred pred_info_get_goal_type(pred_info::in,
     goal_type::out) is det.
 :- pred pred_info_get_markers(pred_info::in,
@@ -646,7 +647,7 @@
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_origin(pred_origin::in,
     pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_import_status(import_status::in,
+:- pred pred_info_set_status(pred_status::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_goal_type(goal_type::in,
     pred_info::in, pred_info::out) is det.
@@ -761,7 +762,7 @@
 :- pred procedure_is_exported(module_info::in, pred_info::in, proc_id::in)
     is semidet.
 
-    % Set the import_status of the predicate to `imported'.
+    % Set the pred_status of the predicate to `imported'.
     % This is used for `:- external(foo/2).' declarations.
     %
 :- pred pred_info_mark_as_external(pred_info::in, pred_info::out) is det.
@@ -998,7 +999,7 @@ calls_are_fully_qualified(Markers) =
                 % Where did the predicate come from.
 /*  5 */        pi_pred_origin          :: pred_origin,
 
-/*  6 */        pi_import_status        :: import_status,
+/*  6 */        pi_status               :: pred_status,
 
                 % Various boolean flags.
 /*  7 */        pi_markers              :: pred_markers,
@@ -1116,8 +1117,8 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     % Similarly if the address of a procedure of this predicate is taken,
     % so that we can copy the closure.
     module_info_get_globals(ModuleInfo0, Globals),
-    ExportStatus = status_local,
-    non_special_interface_should_use_typeinfo_liveness(ExportStatus,
+    PredStatus = pred_status(status_local),
+    non_special_interface_should_use_typeinfo_liveness(PredStatus,
         IsAddressTaken, Globals, TypeInfoLiveness),
     (
         TypeInfoLiveness = yes,
@@ -1166,7 +1167,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     set.init(Assertions),
 
     pred_info_create(SymNameModule, SymName, pf_predicate, Context, Origin,
-        ExportStatus, Markers, ArgTypes, TVarSet, ExistQVars,
+        PredStatus, Markers, ArgTypes, TVarSet, ExistQVars,
         ClassContext, Assertions, VarNameRemap, ProcInfo, ProcId, PredInfo),
 
     module_info_get_predicate_table(ModuleInfo0, PredTable0),
@@ -1216,8 +1217,8 @@ pred_info_get_context(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_context.
 pred_info_get_origin(!.PI, X) :-
     X = !.PI ^ pi_pred_origin.
-pred_info_get_import_status(!.PI, X) :-
-    X = !.PI ^ pi_import_status.
+pred_info_get_status(!.PI, X) :-
+    X = !.PI ^ pi_status.
 pred_info_get_goal_type(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_goal_type.
 pred_info_get_markers(!.PI, X) :-
@@ -1275,8 +1276,8 @@ pred_info_set_origin(X, !PI) :-
     else
         !PI ^ pi_pred_origin := X
     ).
-pred_info_set_import_status(X, !PI) :-
-    !PI ^ pi_import_status := X.
+pred_info_set_status(X, !PI) :-
+    !PI ^ pi_status := X.
 pred_info_set_goal_type(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_goal_type := X.
 pred_info_set_markers(X, !PI) :-
@@ -1367,7 +1368,7 @@ pred_info_set_proc_table(X, !PI) :-
 %  3  15356498       727        68  91.45%    is_pred_or_func
 %  4   1667832         0         0            context
 %  5  12075408    382680     89618  81.03%    origin
-%  6  72037616     96336   1082541   8.17%    import_status
+%  6  72037616     96336   1082541   8.17%    status
 %  7   6629313    100630   1054197   8.71%    goal_type
 %  8  24876447    905599   1098352  45.19%    markers
 %  9        10         0         0            attributes
@@ -1402,33 +1403,34 @@ pred_info_all_procids(PredInfo) = ProcIds :-
 pred_info_procids(PredInfo) = ValidProcIds :-
     AllProcIds = pred_info_all_procids(PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
-    IsValid = (pred(ProcId::in) is semidet :-
-        ProcInfo = map.lookup(ProcTable, ProcId),
-        proc_info_is_valid_mode(ProcInfo)
-    ),
+    IsValid =
+        ( pred(ProcId::in) is semidet :-
+            ProcInfo = map.lookup(ProcTable, ProcId),
+            proc_info_is_valid_mode(ProcInfo)
+        ),
     list.filter(IsValid, AllProcIds, ValidProcIds).
 
 pred_info_non_imported_procids(PredInfo) = ProcIds :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
     (
-        ( ImportStatus = status_imported(_)
-        ; ImportStatus = status_external(_)
+        ( OldImportStatus = status_imported(_)
+        ; OldImportStatus = status_external(_)
         ),
         ProcIds = []
     ;
-        ImportStatus = status_pseudo_imported,
+        OldImportStatus = status_pseudo_imported,
         ProcIds0 = pred_info_procids(PredInfo),
         % for pseudo_imported preds, procid 0 is imported
         list.delete_all(ProcIds0, 0, ProcIds)
     ;
-        ( ImportStatus = status_opt_imported
-        ; ImportStatus = status_abstract_imported
-        ; ImportStatus = status_exported
-        ; ImportStatus = status_opt_exported
-        ; ImportStatus = status_abstract_exported
-        ; ImportStatus = status_pseudo_exported
-        ; ImportStatus = status_exported_to_submodules
-        ; ImportStatus = status_local
+        ( OldImportStatus = status_opt_imported
+        ; OldImportStatus = status_abstract_imported
+        ; OldImportStatus = status_exported
+        ; OldImportStatus = status_opt_exported
+        ; OldImportStatus = status_abstract_exported
+        ; OldImportStatus = status_pseudo_exported
+        ; OldImportStatus = status_exported_to_submodules
+        ; OldImportStatus = status_local
         ),
         ProcIds = pred_info_procids(PredInfo)
     ).
@@ -1437,49 +1439,49 @@ pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
     % XXX The documentation of this predicate says that the job it does
     % is different from the job of pred_info_non_imported_procids, but
     % the code is identical.
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
     (
-        ( ImportStatus = status_imported(_)
-        ; ImportStatus = status_external(_)
+        ( OldImportStatus = status_imported(_)
+        ; OldImportStatus = status_external(_)
         ),
         ProcIds = []
     ;
-        ImportStatus = status_pseudo_imported,
+        OldImportStatus = status_pseudo_imported,
         ProcIds0 = pred_info_procids(PredInfo),
         % for pseudo_imported preds, procid 0 is imported
         list.delete_all(ProcIds0, 0, ProcIds)
     ;
-        ( ImportStatus = status_opt_imported
-        ; ImportStatus = status_abstract_imported
-        ; ImportStatus = status_exported
-        ; ImportStatus = status_opt_exported
-        ; ImportStatus = status_abstract_exported
-        ; ImportStatus = status_pseudo_exported
-        ; ImportStatus = status_exported_to_submodules
-        ; ImportStatus = status_local
+        ( OldImportStatus = status_opt_imported
+        ; OldImportStatus = status_abstract_imported
+        ; OldImportStatus = status_exported
+        ; OldImportStatus = status_opt_exported
+        ; OldImportStatus = status_abstract_exported
+        ; OldImportStatus = status_pseudo_exported
+        ; OldImportStatus = status_exported_to_submodules
+        ; OldImportStatus = status_local
         ),
         ProcIds = pred_info_procids(PredInfo)
     ).
 
 pred_info_exported_procids(PredInfo) = ProcIds :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, pred_status(OldImportStatus)),
     (
-        ( ImportStatus = status_exported
-        ; ImportStatus = status_opt_exported
-        ; ImportStatus = status_exported_to_submodules
+        ( OldImportStatus = status_exported
+        ; OldImportStatus = status_opt_exported
+        ; OldImportStatus = status_exported_to_submodules
         ),
         ProcIds = pred_info_procids(PredInfo)
     ;
-        ImportStatus = status_pseudo_exported,
+        OldImportStatus = status_pseudo_exported,
         ProcIds = [0]
     ;
-        ( ImportStatus = status_imported(_)
-        ; ImportStatus = status_opt_imported
-        ; ImportStatus = status_abstract_imported
-        ; ImportStatus = status_pseudo_imported
-        ; ImportStatus = status_abstract_exported
-        ; ImportStatus = status_local
-        ; ImportStatus = status_external(_)
+        ( OldImportStatus = status_imported(_)
+        ; OldImportStatus = status_opt_imported
+        ; OldImportStatus = status_abstract_imported
+        ; OldImportStatus = status_pseudo_imported
+        ; OldImportStatus = status_abstract_exported
+        ; OldImportStatus = status_local
+        ; OldImportStatus = status_external(_)
         ),
         ProcIds = []
     ).
@@ -1509,36 +1511,37 @@ pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo) :-
     pred_info_set_proc_table(Procedures, !PredInfo).
 
 pred_info_is_imported(PredInfo) :-
-    pred_info_get_import_status(PredInfo, Status),
-    ( Status = status_imported(_)
-    ; Status = status_external(_)
+    pred_info_get_status(PredInfo, PredStatus),
+    ( PredStatus = pred_status(status_imported(_))
+    ; PredStatus = pred_status(status_external(_))
     ).
 
 pred_info_is_imported_not_external(PredInfo) :-
-    pred_info_get_import_status(PredInfo, Status),
-    Status = status_imported(_).
+    pred_info_get_status(PredInfo, PredStatus),
+    PredStatus = pred_status(status_imported(_)).
 
 pred_info_is_pseudo_imported(PredInfo) :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    ImportStatus = status_pseudo_imported.
+    pred_info_get_status(PredInfo, PredStatus),
+    PredStatus = pred_status(status_pseudo_imported).
 
 pred_info_is_exported(PredInfo) :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    ImportStatus = status_exported.
+    pred_info_get_status(PredInfo, PredStatus),
+    PredStatus = pred_status(status_exported).
 
 pred_info_is_opt_exported(PredInfo) :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    ImportStatus = status_opt_exported.
+    pred_info_get_status(PredInfo, PredStatus),
+    PredStatus = pred_status(status_opt_exported).
 
 pred_info_is_exported_to_submodules(PredInfo) :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    ImportStatus = status_exported_to_submodules.
+    pred_info_get_status(PredInfo, PredStatus),
+    PredStatus = pred_status(status_exported_to_submodules).
 
 pred_info_is_pseudo_exported(PredInfo) :-
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    ImportStatus = status_pseudo_exported.
+    pred_info_get_status(PredInfo, PredStatus),
+    PredStatus = pred_status(status_pseudo_exported).
 
 procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
+    % XXX STATUS
     (
         pred_info_is_exported(PredInfo)
     ;
@@ -1549,9 +1552,9 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         pred_info_is_pseudo_exported(PredInfo),
         in_in_unification_proc_id(ProcId)
     ;
-        pred_info_get_import_status(PredInfo, ImportStatus),
-        ImportStatus = status_external(ExternalImportStatus),
-        status_is_exported(ExternalImportStatus) = yes
+        pred_info_get_status(PredInfo, PredStatus),
+        PredStatus = pred_status(status_external(ExternalImportStatus)),
+        pred_status_is_exported(pred_status(ExternalImportStatus)) = yes
     ;
         pred_info_get_origin(PredInfo, origin_special_pred(SpecialPred)),
         SpecialPred = SpecialId - TypeCtor,
@@ -1577,9 +1580,10 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
     ).
 
 pred_info_mark_as_external(!PredInfo) :-
-    pred_info_get_import_status(!.PredInfo, Status0),
-    Status = status_external(Status0),
-    pred_info_set_import_status(Status, !PredInfo).
+    pred_info_get_status(!.PredInfo, PredStatus0),
+    PredStatus0 = pred_status(OldImportStatus0),
+    PredStatus = pred_status(status_external(OldImportStatus0)),
+    pred_info_set_status(PredStatus, !PredInfo).
 
 pred_info_clause_goal_type(PredInfo) :-
     pred_info_get_goal_type(PredInfo, GoalType),
@@ -2296,7 +2300,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     % in this sense, and that compiler-generated predicates are never
     % special.
     %
-:- pred non_special_interface_should_use_typeinfo_liveness(import_status::in,
+:- pred non_special_interface_should_use_typeinfo_liveness(pred_status::in,
     is_address_taken::in, globals::in, bool::out) is det.
 
     % Return true if the body of a procedure from the given predicate
@@ -3126,7 +3130,7 @@ proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
     ( no_type_info_builtin(PredModule, PredName, PredArity) ->
         InterfaceTypeInfoLiveness = no
     ;
-        pred_info_get_import_status(PredInfo, Status),
+        pred_info_get_status(PredInfo, Status),
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_get_is_address_taken(ProcInfo, IsAddressTaken),
@@ -3134,7 +3138,7 @@ proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
             IsAddressTaken, Globals, InterfaceTypeInfoLiveness)
     ).
 
-non_special_interface_should_use_typeinfo_liveness(Status, IsAddressTaken,
+non_special_interface_should_use_typeinfo_liveness(PredStatus, IsAddressTaken,
         Globals, InterfaceTypeInfoLiveness) :-
     (
         (
@@ -3143,7 +3147,7 @@ non_special_interface_should_use_typeinfo_liveness(Status, IsAddressTaken,
             % If the predicate is exported, its address may have
             % been taken elsewhere. If it is imported, then it
             % follows that it must be exported somewhere.
-            Status \= status_local
+            PredStatus \= pred_status(status_local)
         ;
             % If term size profiling (of either form) is enabled,
             % then we may need to access the typeinfo of any

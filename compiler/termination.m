@@ -627,7 +627,7 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
         MakeOptInt),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_get_import_status(PredInfo0, ImportStatus),
+    pred_info_get_status(PredInfo0, PredStatus),
     pred_info_get_context(PredInfo0, Context),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     pred_info_get_markers(PredInfo0, Markers),
@@ -641,7 +641,7 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     then
         ProcTable2 = ProcTable1
     else if
-        status_defined_in_this_module(ImportStatus) = yes
+        pred_status_defined_in_this_module(PredStatus) = yes
     then
         % Since we cannot see the definition we consider procedures
         % defined using `:- external' to be imported.
@@ -926,15 +926,15 @@ make_termination_opt_int(PredIds, ModuleInfo, !IO) :-
 
 write_pred_termination_info(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
 
     ( if
         (
-            ImportStatus = status_exported
+            PredStatus = pred_status(status_exported)
         ;
-            ImportStatus = status_opt_exported
+            PredStatus = pred_status(status_opt_exported)
         ),
         not is_unify_or_compare_pred(PredInfo),
 

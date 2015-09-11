@@ -312,21 +312,29 @@ ml_gen_preds_acc(!ModuleInfo, ConstStructMap, PredIds0,
         PredIds0 = [PredId | PredIds],
         module_info_get_preds(!.ModuleInfo, PredTable),
         map.lookup(PredTable, PredId, PredInfo),
-        pred_info_get_import_status(PredInfo, ImportStatus),
+        pred_info_get_status(PredInfo, PredStatus),
         (
             (
-                ImportStatus = status_imported(_)
+                PredStatus = pred_status(status_imported(_))
             ;
                 % We generate incorrect and unnecessary code for the external
                 % special preds which are pseudo_imported, so just ignore them.
                 is_unify_or_compare_pred(PredInfo),
-                ImportStatus = status_external(status_pseudo_imported)
+                PredStatus =
+                    pred_status(status_external(status_pseudo_imported))
             )
         ->
             true
         ;
-            ml_gen_pred(!ModuleInfo, ConstStructMap, PredId, PredInfo,
-                ImportStatus, !Defns, !GlobalDefns)
+            % Generate MLDS definitions for all the non-imported procedures
+            % of a given predicate (or function).
+            ( PredStatus = pred_status(status_external(_)) ->
+                ProcIds = pred_info_procids(PredInfo)
+            ;
+                ProcIds = pred_info_non_imported_procids(PredInfo)
+            ),
+            ml_gen_pred(!ModuleInfo, ConstStructMap, PredId, ProcIds,
+                !Defns, !GlobalDefns)
         ),
         ml_gen_preds_acc(!ModuleInfo, ConstStructMap, PredIds,
             !Defns, !GlobalDefns)
@@ -334,21 +342,16 @@ ml_gen_preds_acc(!ModuleInfo, ConstStructMap, PredIds0,
         PredIds0 = []
     ).
 
-    % Generate MLDS definitions for all the non-imported procedures
+    % Generate MLDS definitions for all the specified procedures
     % of a given predicate (or function).
     %
 :- pred ml_gen_pred(module_info::in, module_info::out, ml_const_struct_map::in,
-    pred_id::in, pred_info::in, import_status::in,
+    pred_id::in, list(proc_id)::in,
     list(mlds_defn)::in, list(mlds_defn)::out,
     ml_global_data::in, ml_global_data::out) is det.
 
-ml_gen_pred(!ModuleInfo, ConstStructMap, PredId, PredInfo, ImportStatus,
+ml_gen_pred(!ModuleInfo, ConstStructMap, PredId, ProcIds,
         !Defns, !GlobalData) :-
-    ( ImportStatus = status_external(_) ->
-        ProcIds = pred_info_procids(PredInfo)
-    ;
-        ProcIds = pred_info_non_imported_procids(PredInfo)
-    ),
     (
         ProcIds = []
     ;
@@ -404,7 +407,7 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
         !ModuleInfo),
 
-    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_status(PredInfo, PredStatus),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -418,7 +421,7 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
         !:Info = ml_gen_info_init(!.ModuleInfo, ConstStructMap,
             PredId, ProcId, ProcInfo, !.GlobalData),
 
-        ( ImportStatus = status_external(_) ->
+        ( PredStatus = pred_status(status_external(_)) ->
             % For Mercury procedures declared `:- external', we generate an
             % MLDS definition for them with no function body. The MLDS ->
             % target code pass can treat this accordingly, e.g. for C

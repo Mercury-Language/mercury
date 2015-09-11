@@ -377,12 +377,12 @@ get_export_info_for_lang_c(ModuleInfo, Preds, PredId, ProcId,
         HowToDeclareLabel, C_RetType, MaybeDeclareRetval, MaybeFail,
         MaybeSucceed, ArgInfoTypes) :-
     map.lookup(Preds, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, Status),
+    pred_info_get_status(PredInfo, Status),
     (
         (
             procedure_is_exported(ModuleInfo, PredInfo, ProcId)
         ;
-            status_defined_in_this_module(Status) = no
+            pred_status_defined_in_this_module(Status) = no
         )
     ->
         HowToDeclareLabel = "MR_declare_entry"

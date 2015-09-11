@@ -94,7 +94,7 @@ gen_infos_for_instances(ModuleInfo, ClassId,
         Body = instance_body_concrete(_),
         % Only make the base_typeclass_info if the instance declaration
         % originally came from _this_ module.
-        status_defined_in_this_module(ImportStatus) = yes
+        instance_status_defined_in_this_module(ImportStatus) = yes
     then
         make_instance_string(InstanceTypes, InstanceString),
         gen_body(ModuleInfo, ClassId, InstanceDefn, BaseTypeClassInfo),
@@ -116,10 +116,10 @@ gen_infos_for_instances(ModuleInfo, ClassId,
 gen_body(ModuleInfo, ClassId, InstanceDefn, BaseTypeClassInfo) :-
     num_extra_instance_args(InstanceDefn, NumExtra),
 
-    Constraints = InstanceDefn ^ instance_constraints,
+    Constraints = InstanceDefn ^ instdefn_constraints,
     list.length(Constraints, NumConstraints),
 
-    MaybeInstancePredProcIds = InstanceDefn ^ instance_hlds_interface,
+    MaybeInstancePredProcIds = InstanceDefn ^ instdefn_hlds_interface,
     (
         MaybeInstancePredProcIds = no,
         unexpected($module, $pred,
@@ -156,8 +156,8 @@ construct_proc_labels(ModuleInfo, [proc(PredId, ProcId) | PredProcIds],
 gen_superclass_count(ClassId, ModuleInfo, NumSuperClasses, ClassArity) :-
     module_info_get_class_table(ModuleInfo, ClassTable),
     map.lookup(ClassTable, ClassId, ClassDefn),
-    list.length(ClassDefn ^ class_supers, NumSuperClasses),
-    list.length(ClassDefn ^ class_vars, ClassArity).
+    list.length(ClassDefn ^ classdefn_supers, NumSuperClasses),
+    list.length(ClassDefn ^ classdefn_vars, ClassArity).
 
 %----------------------------------------------------------------------------%
 :- end_module backend_libs.base_typeclass_info.

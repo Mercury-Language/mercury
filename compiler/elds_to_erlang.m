@@ -291,8 +291,8 @@ should_add_main_wrapper(ModuleInfo) = AddMainWrapper :-
     (
         list.member(PredId, PredIds),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_get_import_status(PredInfo, ImportStatus),
-        status_is_exported_to_non_submodules(ImportStatus) = yes
+        pred_info_get_status(PredInfo, PredStatus),
+        pred_status_is_exported_to_non_submodules(PredStatus) = yes
     ->
         AddMainWrapper = yes
     ;
@@ -1031,8 +1031,8 @@ erlang_proc_name(ModuleInfo, PredProcId, MaybeExtModule, ProcNameStr) :-
         Origin, _ProcIsExported, _ProcIsImported),
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_import_status(PredInfo, ImportStatus),
-    ( ImportStatus = status_external(_) ->
+    pred_info_get_status(PredInfo, PredStatus),
+    ( PredStatus = pred_status(status_external(_)) ->
         % pred_info_is_imported returns `yes' for :- external predicates.
         PredIsImported = no
     ;

@@ -21,7 +21,7 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_pragma_foreign_proc(pragma_info_foreign_proc::in,
-    import_status::in, prog_context::in, maybe(int)::in,
+    pred_status::in, prog_context::in, maybe(int)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -206,7 +206,7 @@ add_pragma_foreign_proc_export_2(Arity, PredTable, MaybeAttrs, Lang, Name,
 
 %-----------------------------------------------------------------------------%
 
-add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
+add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
         !ModuleInfo, !Specs) :-
     FPInfo = pragma_info_foreign_proc(Attributes0, PredName, PredOrFunc,
         PVars, ProgVarSet, _InstVarset, PragmaImpl),
@@ -259,7 +259,7 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
     (
         PredIds = [],
         preds_add_implicit_report_error(!ModuleInfo, ModuleName,
-            PredName, Arity, PredOrFunc, Status, is_not_a_class_method,
+            PredName, Arity, PredOrFunc, PredStatus, is_not_a_class_method,
             Context, origin_user(PredName),
             [pragma_decl("foreign_proc"), words("declaration")],
             PredId, !Specs)
@@ -290,8 +290,8 @@ add_pragma_foreign_proc(FPInfo, Status, Context, MaybeItemNumber,
         % status_opt_imported preds are initially tagged as status_imported
         % and are tagged as status_opt_imported only if/when we see a clause
         % (including a `foreign_proc' clause) for them.
-        ( if Status = status_opt_imported then
-            pred_info_set_import_status(status_opt_imported, !PredInfo)
+        ( if PredStatus = pred_status(status_opt_imported) then
+            pred_info_set_status(pred_status(status_opt_imported), !PredInfo)
         else
             true
         ),
