@@ -178,8 +178,6 @@
 :- func set_formatter(string, string, int, formatter, formatter_map) =
     formatter_map.
 
-
-
     % format(Stream, FMap, LineWidth, MaxLines, Limit, Doc, !State):
     %
     % Format Doc to fit on lines of LineWidth chars, truncating after
@@ -632,7 +630,6 @@ format_nl(Stream, LineWidth, Indents, RemainingWidth, !RemainingLines, !IO) :-
     stream.put(Stream, "\n", !IO),
     output_indentation(Stream, Indents, LineWidth, RemainingWidth, !IO),
     !:RemainingLines = !.RemainingLines - 1.
-
 
 :- pred output_indentation(Stream::in, indents::in, int::in, int::out,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
