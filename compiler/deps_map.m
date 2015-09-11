@@ -88,14 +88,12 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.split_parse_tree_src. % undesirable dependency
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 
 :- import_module cord.
 :- import_module list.
-:- import_module maybe.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
