@@ -714,14 +714,148 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 
 :- interface.
 
-:- type foreign_import_module_infos == cord(foreign_import_module_info).
+    % For each foreign language, we store the set of modules we need to import
+    % in that language.
+    %
+    % C++ is commented out while lang_cplusplus is commented out
+    % in the foreign_language type.
+:- type foreign_import_modules
+    --->    foreign_import_modules(
+                fim_c           :: set(module_name),
+                % fim_cplusplus :: set(module_name),
+                fim_csharp      :: set(module_name),
+                fim_java        :: set(module_name),
+                fim_il          :: set(module_name),
+                fim_erlang      :: set(module_name)
+            ).
 
 :- type foreign_import_module_info
     --->    foreign_import_module_info(
                 foreign_language,
-                module_name,
-                prog_context
+                module_name
             ).
+
+:- func init_foreign_import_modules = foreign_import_modules.
+
+:- pred add_foreign_import_module(foreign_language::in, module_name::in,
+    foreign_import_modules::in, foreign_import_modules::out) is det.
+
+:- pred add_foreign_import_module_info(foreign_import_module_info::in,
+    foreign_import_modules::in, foreign_import_modules::out) is det.
+
+:- func get_all_foreign_import_module_infos(foreign_import_modules) =
+    set(foreign_import_module_info).
+
+:- func get_all_foreign_import_modules(foreign_import_modules) =
+    set(module_name).
+
+:- func get_lang_foreign_import_module_infos(foreign_import_modules,
+    foreign_language) = set(foreign_import_module_info).
+
+:- func get_lang_foreign_import_modules(foreign_import_modules,
+    foreign_language) = set(module_name).
+
+:- implementation.
+
+init_foreign_import_modules =
+    foreign_import_modules(set.init, set.init, set.init, set.init, set.init).
+
+add_foreign_import_module(Lang, ModuleName, !FIM) :-
+    (
+        Lang = lang_c,
+        ModuleNames0 = !.FIM ^ fim_c,
+        ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
+            !FIM ^ fim_c := ModuleNames
+        else
+            true
+        )
+    ;
+        Lang = lang_csharp,
+        ModuleNames0 = !.FIM ^ fim_csharp,
+        ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
+            !FIM ^ fim_csharp := ModuleNames
+        else
+            true
+        )
+    ;
+        Lang = lang_java,
+        ModuleNames0 = !.FIM ^ fim_java,
+        ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
+            !FIM ^ fim_java := ModuleNames
+        else
+            true
+        )
+    ;
+        Lang = lang_il,
+        ModuleNames0 = !.FIM ^ fim_il,
+        ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
+            !FIM ^ fim_il := ModuleNames
+        else
+            true
+        )
+    ;
+        Lang = lang_erlang,
+        ModuleNames0 = !.FIM ^ fim_erlang,
+        ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
+            !FIM ^ fim_erlang := ModuleNames
+        else
+            true
+        )
+    ).
+
+add_foreign_import_module_info(FIMI, !FIM) :-
+    FIMI = foreign_import_module_info(Lang, ModuleName),
+    add_foreign_import_module(Lang, ModuleName, !FIM).
+
+get_all_foreign_import_module_infos(FIM) = ImportInfos :-
+    FIM = foreign_import_modules(ModuleNamesC, ModuleNamesCSharp,
+        ModuleNamesJava, ModuleNamesIL, ModuleNamesErlang),
+    ImportInfos = set.union_list([
+        set.map(make_foreign_import_module_info(lang_c),
+            ModuleNamesC),
+        set.map(make_foreign_import_module_info(lang_csharp),
+            ModuleNamesCSharp),
+        set.map(make_foreign_import_module_info(lang_java),
+            ModuleNamesJava),
+        set.map(make_foreign_import_module_info(lang_il),
+            ModuleNamesIL),
+        set.map(make_foreign_import_module_info(lang_erlang),
+            ModuleNamesErlang)
+        ]).
+
+get_all_foreign_import_modules(FIM) = ModuleNames :-
+    FIM = foreign_import_modules(ModuleNamesC, ModuleNamesCSharp,
+        ModuleNamesJava, ModuleNamesIL, ModuleNamesErlang),
+    ModuleNames = set.union_list([ModuleNamesC, ModuleNamesCSharp,
+        ModuleNamesJava, ModuleNamesIL, ModuleNamesErlang]).
+
+get_lang_foreign_import_module_infos(FIM, Lang) = ImportInfos :-
+    ModuleNames = get_lang_foreign_import_modules(FIM, Lang),
+    ImportInfos = set.map(make_foreign_import_module_info(Lang), ModuleNames).
+
+get_lang_foreign_import_modules(FIM, Lang) = ModuleNames :-
+    (
+        Lang = lang_c,
+        ModuleNames = FIM ^ fim_c
+    ;
+        Lang = lang_csharp,
+        ModuleNames = FIM ^ fim_csharp
+    ;
+        Lang = lang_java,
+        ModuleNames = FIM ^ fim_java
+    ;
+        Lang = lang_il,
+        ModuleNames = FIM ^ fim_il
+    ;
+        Lang = lang_erlang,
+        ModuleNames = FIM ^ fim_erlang
+    ).
+
+:- func make_foreign_import_module_info(foreign_language, module_name)
+    = foreign_import_module_info.
+
+make_foreign_import_module_info(Lang, ModuleName) =
+    foreign_import_module_info(Lang, ModuleName).
 
 %---------------------------------------------------------------------------%
 %

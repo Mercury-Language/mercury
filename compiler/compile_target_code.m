@@ -254,7 +254,6 @@
 :- import_module parse_tree.write_deps_file.
 :- import_module parse_tree.prog_foreign.
 
-:- import_module cord.
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module require.
@@ -373,16 +372,18 @@ compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
     else
         Prefix = "-r:"
     ),
+    ForeignImportModules = ModuleAndImports ^ mai_foreign_import_modules,
     ForeignDeps = list.map(
-        (func(M) = foreign_import_module_name_from_module(M, ModuleName)),
-        cord.list(ModuleAndImports ^ mai_foreign_import_modules)),
+        (func(FI) = foreign_import_module_name_from_module(FI, ModuleName)),
+        set.to_sorted_list(
+            get_all_foreign_import_module_infos(ForeignImportModules))),
     IntDeps = ModuleAndImports ^ mai_int_deps,
     ImpDeps = ModuleAndImports ^ mai_imp_deps,
     set.union(IntDeps, ImpDeps, IntImpDeps),
     set.insert_list(ForeignDeps, IntImpDeps, IntImpForeignDeps),
     ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),
     list.map_foldl(
-        (pred(Mod::in, Result::out, IO0::di, IO::uo) is det :-
+        ( pred(Mod::in, Result::out, IO0::di, IO::uo) is det :-
             module_name_to_file_name(Globals, Mod, ".dll",
                 do_not_create_dirs, FileName, IO0, IO),
             Result = [Prefix, FileName, " "]

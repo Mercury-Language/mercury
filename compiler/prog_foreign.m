@@ -205,7 +205,7 @@ foreign_body_code_is_for_lang(Lang, BodyCode) :-
     Lang = BodyCode ^ fbody_lang.
 
 foreign_import_module_name(ImportModule) = ModuleName :-
-    ImportModule = foreign_import_module_info(Lang, ForeignImportModule, _),
+    ImportModule = foreign_import_module_info(Lang, ForeignImportModule),
     (
         Lang = lang_c,
         ModuleName = ForeignImportModule
@@ -225,7 +225,7 @@ foreign_import_module_name(ImportModule) = ModuleName :-
 
 foreign_import_module_name_from_module(ModuleForeignImported, CurrentModule) =
         ImportedForeignCodeModuleName :-
-    ModuleForeignImported = foreign_import_module_info(Lang, _, _),
+    ModuleForeignImported = foreign_import_module_info(Lang, _),
     ImportedForeignCodeModuleName1 = ModuleForeignImported ^
         foreign_import_module_name,
     (

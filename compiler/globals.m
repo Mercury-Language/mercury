@@ -45,6 +45,8 @@
     ;       target_java     % Generate Java.
     ;       target_erlang.  % Generate Erlang.
 
+    % If you ever uncomment lang_cplusplus, you should also uncomment
+    % the corresponding field in the foreign_import_modules type.
 :- type foreign_language
     --->    lang_c
 %   ;       lang_cplusplus

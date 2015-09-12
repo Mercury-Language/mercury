@@ -151,17 +151,15 @@ generate_deps_map_step(Globals, Module, !Modules, Search, !DepsMap, !IO) :-
     (
         Done = not_yet_processed,
         map.set(Module, deps(already_processed, ModuleImports), !DepsMap),
-        ForeignImportedModules =
-            list.map(
-                (func(foreign_import_module_info(_, ImportedModule, _))
-                    = ImportedModule),
-                cord.list(ModuleImports ^ mai_foreign_import_modules)),
+        ForeignImportedModules = ModuleImports ^ mai_foreign_import_modules,
+        ForeignImportedModuleNames =
+            get_all_foreign_import_modules(ForeignImportedModules),
         ModulesToAdd = set.union_list(
             [ModuleImports ^ mai_parent_deps,
             ModuleImports ^ mai_int_deps,
             ModuleImports ^ mai_imp_deps,
             ModuleImports ^ mai_public_children, % a.k.a. incl_deps
-            set.list_to_set(ForeignImportedModules)]),
+            ForeignImportedModuleNames]),
         % We could keep a list of the modules we have already processed
         % and subtract it from ModulesToAddSet here, but doing that
         % actually leads to a small slowdown.

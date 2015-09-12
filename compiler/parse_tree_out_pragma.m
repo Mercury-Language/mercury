@@ -420,7 +420,8 @@ mercury_is_source_char(Char) :-
 %
 
 mercury_output_pragma_foreign_import_module(FIMinfo, !IO) :-
-    FIMinfo = pragma_info_foreign_import_module(Lang, ModuleName),
+    FIMinfo = pragma_info_foreign_import_module(FIM),
+    FIM = foreign_import_module_info(Lang, ModuleName),
     io.write_string(":- pragma foreign_import_module(", !IO),
     mercury_format_foreign_language_string(Lang, !IO),
     io.write_string(", ", !IO),

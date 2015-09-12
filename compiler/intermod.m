@@ -1278,17 +1278,27 @@ write_intermod_info(IntermodInfo, !IO) :-
         Instances = [],
         module_info_get_type_table(ModuleInfo, TypeTable),
         get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
-        not (
-            list.member(_TypeCtor - TypeDefn, TypeCtorsDefns),
-            hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
-            ( TypeStatus = type_status(status_abstract_exported)
-            ; TypeStatus = type_status(status_exported_to_submodules)
-            )
-        )
+        some_type_needs_to_be_written(TypeCtorsDefns, no)
     then
         true
     else
         write_intermod_info_body(IntermodInfo, !IO)
+    ).
+
+:- pred some_type_needs_to_be_written(
+    assoc_list(type_ctor, hlds_type_defn)::in, bool::out) is det.
+
+some_type_needs_to_be_written([], no).
+some_type_needs_to_be_written([_ - TypeDefn | TypeCtorDefns], NeedWrite) :-
+    hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+    ( if
+        ( TypeStatus = type_status(status_abstract_exported)
+        ; TypeStatus = type_status(status_exported_to_submodules)
+        )
+    then
+        NeedWrite = yes
+    else
+        some_type_needs_to_be_written(TypeCtorDefns, NeedWrite)
     ).
 
 :- pred write_intermod_info_body(intermod_info::in, io::di, io::uo) is det.
@@ -1321,24 +1331,22 @@ write_intermod_info_body(IntermodInfo, !IO) :-
     intermod_write_classes(OutInfo, ModuleInfo, !IO),
     intermod_write_instances(OutInfo, Instances, !IO),
 
-    % Disable verbose dumping of clauses.
-    OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
     (
         WriteHeader = yes,
-        module_info_get_foreign_import_modules(ModuleInfo, ForeignImportsCord),
-        ForeignImports = cord.list(ForeignImportsCord),
-
-        list.foldl(
-            ( pred(ForeignImport::in, IO0::di, IO::uo) is det :-
-                ForeignImport = foreign_import_module_info(Lang, Import, _),
-                FIMInfo = pragma_info_foreign_import_module(Lang, Import),
-                mercury_output_pragma_foreign_import_module(FIMInfo, IO0, IO)
-            ), ForeignImports, !IO)
+        module_info_get_foreign_import_modules(ModuleInfo,
+            ForeignImportModules),
+        ForeignImports =
+            get_all_foreign_import_module_infos(ForeignImportModules),
+        set.fold(intermod_write_foreign_import, ForeignImports, !IO)
     ;
         WriteHeader = no
     ),
     intermod_write_pred_decls(ModuleInfo, PredDecls, !IO),
+    % Disable verbose dumping of clauses.
+    OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
     intermod_write_preds(OutInfoForPreds, ModuleInfo, Preds, !IO).
+
+%-----------------------------------------------------------------------------%
 
 :- pred intermod_write_use_module(module_name::in, io::di, io::uo) is det.
 
@@ -1346,6 +1354,8 @@ intermod_write_use_module(ModuleName, !IO) :-
     io.write_string(":- use_module ", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO).
+
+%-----------------------------------------------------------------------------%
 
 :- pred intermod_write_types(hlds_out_info::in,
     assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
@@ -1509,34 +1519,7 @@ gather_foreign_enum_value_pair(ConsId, ConsTag, !Values) :-
     ),
     !:Values = [SymName - ForeignTag | !.Values].
 
-:- pred intermod_write_modes(hlds_out_info::in, module_info::in,
-    io::di, io::uo) is det.
-
-intermod_write_modes(OutInfo, ModuleInfo, !IO) :-
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_info_get_mode_table(ModuleInfo, Modes),
-    mode_table_get_mode_defns(Modes, ModeDefns),
-    map.foldl(intermod_write_mode(OutInfo, ModuleName), ModeDefns, !IO).
-
-:- pred intermod_write_mode(hlds_out_info::in, module_name::in, mode_id::in,
-    hlds_mode_defn::in, io::di, io::uo) is det.
-
-intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !IO) :-
-    ModeId = mode_id(SymName, _Arity),
-    ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode), Context,
-        ModeStatus),
-    ( if
-        SymName = qualified(ModuleName, _),
-        mode_status_to_write(ModeStatus) = yes
-    then
-        ItemModeDefn = item_mode_defn_info(SymName, Args, eqv_mode(Mode),
-            Varset, Context, -1),
-        Item = item_mode_defn(ItemModeDefn),
-        MercInfo = OutInfo ^ hoi_mercury_to_mercury,
-        mercury_output_item(MercInfo, Item, !IO)
-    else
-        true
-    ).
+%-----------------------------------------------------------------------------%
 
 :- pred intermod_write_insts(hlds_out_info::in, module_info::in,
     io::di, io::uo) is det.
@@ -1573,6 +1556,39 @@ intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !IO) :-
     else
         true
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred intermod_write_modes(hlds_out_info::in, module_info::in,
+    io::di, io::uo) is det.
+
+intermod_write_modes(OutInfo, ModuleInfo, !IO) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_info_get_mode_table(ModuleInfo, Modes),
+    mode_table_get_mode_defns(Modes, ModeDefns),
+    map.foldl(intermod_write_mode(OutInfo, ModuleName), ModeDefns, !IO).
+
+:- pred intermod_write_mode(hlds_out_info::in, module_name::in, mode_id::in,
+    hlds_mode_defn::in, io::di, io::uo) is det.
+
+intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !IO) :-
+    ModeId = mode_id(SymName, _Arity),
+    ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode), Context,
+        ModeStatus),
+    ( if
+        SymName = qualified(ModuleName, _),
+        mode_status_to_write(ModeStatus) = yes
+    then
+        ItemModeDefn = item_mode_defn_info(SymName, Args, eqv_mode(Mode),
+            Varset, Context, -1),
+        Item = item_mode_defn(ItemModeDefn),
+        MercInfo = OutInfo ^ hoi_mercury_to_mercury,
+        mercury_output_item(MercInfo, Item, !IO)
+    else
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred intermod_write_classes(hlds_out_info::in, module_info::in,
     io::di, io::uo) is det.
@@ -1620,6 +1636,8 @@ unmake_hlds_class_fundep_2(TVars, Set) = solutions.solutions(P) :-
         TVar = list.det_index1(TVars, N)
     ).
 
+%-----------------------------------------------------------------------------%
+
 :- pred intermod_write_instances(hlds_out_info::in,
     assoc_list(class_id, hlds_instance_defn)::in, io::di, io::uo) is det.
 
@@ -1639,6 +1657,17 @@ intermod_write_instance(OutInfo, ClassId - InstanceDefn, !IO) :-
     MercInfo = OutInfo ^ hoi_mercury_to_mercury,
     mercury_output_item(MercInfo, Item, !IO).
 
+%-----------------------------------------------------------------------------%
+
+:- pred intermod_write_foreign_import(foreign_import_module_info::in,
+    io::di, io::uo) is det.
+
+intermod_write_foreign_import(ForeignImport, !IO) :-
+    FIMInfo = pragma_info_foreign_import_module(ForeignImport),
+    mercury_output_pragma_foreign_import_module(FIMInfo, !IO).
+
+%-----------------------------------------------------------------------------%
+
     % We need to write all the declarations for local predicates so
     % the procedure labels for the C code are calculated correctly.
     %
@@ -1647,6 +1676,13 @@ intermod_write_instance(OutInfo, ClassId - InstanceDefn, !IO) :-
 
 intermod_write_pred_decls(_, [], !IO).
 intermod_write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
+    intermod_write_pred_decl(ModuleInfo, PredId, !IO),
+    intermod_write_pred_decls(ModuleInfo, PredIds, !IO).
+
+:- pred intermod_write_pred_decl(module_info::in, pred_id::in,
+    io::di, io::uo) is det.
+
+intermod_write_pred_decl(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
@@ -1687,7 +1723,7 @@ intermod_write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
             qualified(Module, Name), FuncArgTypes, FuncRetType, no, Purity,
             ClassContext, Context, !IO)
     ),
-    pred_info_get_proc_table(PredInfo, Procs),
+    pred_info_get_proc_table(PredInfo, ProcMap),
     ProcIds = pred_info_procids(PredInfo),
         % Make sure the mode declarations go out in the same order
         % they came in, so that the all the modes get the same proc_id
@@ -1699,19 +1735,18 @@ intermod_write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
             compare(Result, ProcInt1, ProcInt2)
         ),
     list.sort(CompareProcId, ProcIds, SortedProcIds),
-    intermod_write_pred_modes(Procs, qualified(Module, Name), PredOrFunc,
-        SortedProcIds, !IO),
-    intermod_write_pragmas(PredInfo, !IO),
-    intermod_write_type_spec_pragmas(ModuleInfo, PredId, !IO),
-    intermod_write_pred_decls(ModuleInfo, PredIds, !IO).
+    intermod_write_pred_modes(PredOrFunc, qualified(Module, Name),
+        ProcMap, SortedProcIds, !IO),
+    intermod_write_pred_marker_pragmas(PredInfo, !IO),
+    intermod_write_pred_type_spec_pragmas(ModuleInfo, PredId, !IO).
 
-:- pred intermod_write_pred_modes(map(proc_id, proc_info)::in, sym_name::in,
-    pred_or_func::in, list(proc_id)::in, io::di, io::uo) is det.
+:- pred intermod_write_pred_modes(pred_or_func::in, sym_name::in,
+    map(proc_id, proc_info)::in, list(proc_id)::in, io::di, io::uo) is det.
 
 intermod_write_pred_modes(_, _, _, [], !IO).
-intermod_write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds],
+intermod_write_pred_modes(PredOrFunc, SymName, ProcMap, [ProcId | ProcIds],
         !IO) :-
-    map.lookup(Procs, ProcId, ProcInfo),
+    map.lookup(ProcMap, ProcId, ProcInfo),
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     ( if
@@ -1736,7 +1771,94 @@ intermod_write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds],
         mercury_output_pred_mode_decl(output_mercury, Varset, SymName,
             ArgModes, MaybeWithInst, yes(Detism), Context, !IO)
     ),
-    intermod_write_pred_modes(Procs, SymName, PredOrFunc, ProcIds, !IO).
+    intermod_write_pred_modes(PredOrFunc, SymName, ProcMap, ProcIds, !IO).
+
+:- pred intermod_write_pred_marker_pragmas(pred_info::in,
+    io::di, io::uo) is det.
+
+intermod_write_pred_marker_pragmas(PredInfo, !IO) :-
+    ModuleName = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    PredArity = pred_info_orig_arity(PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    PredSymName = qualified(ModuleName, PredName),
+    pred_info_get_markers(PredInfo, Markers),
+    markers_to_marker_list(Markers, MarkerList),
+    intermod_write_pred_marker_pragmas(PredOrFunc, PredSymName, PredArity,
+        MarkerList, !IO).
+
+:- pred intermod_write_pred_marker_pragmas(pred_or_func::in,
+    sym_name::in, int::in, list(marker)::in, io::di, io::uo) is det.
+
+intermod_write_pred_marker_pragmas(_, _, _, [], !IO).
+intermod_write_pred_marker_pragmas(PredOrFunc, PredSymName, PredArity,
+        [Marker | Markers], !IO) :-
+    should_output_marker(Marker, ShouldOutput),
+    (
+        ShouldOutput = yes,
+        marker_name(Marker, MarkerName),
+        mercury_output_pragma_decl(PredSymName, PredArity, PredOrFunc,
+            MarkerName, no, !IO)
+    ;
+        ShouldOutput = no
+    ),
+    intermod_write_pred_marker_pragmas(PredOrFunc, PredSymName, PredArity,
+        Markers, !IO).
+
+:- pred intermod_write_pred_type_spec_pragmas(module_info::in, pred_id::in,
+    io::di, io::uo) is det.
+
+intermod_write_pred_type_spec_pragmas(ModuleInfo, PredId, !IO) :-
+    module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+    PragmaMap = TypeSpecInfo ^ pragma_map,
+    ( if multi_map.search(PragmaMap, PredId, TypeSpecPragmas) then
+        list.foldl(
+            mercury_output_pragma_type_spec(print_name_and_num,
+                output_mercury),
+            TypeSpecPragmas, !IO)
+    else
+        true
+    ).
+
+    % Is a pragma declaration required in the `.opt' file for
+    % a predicate with the given marker.
+    %
+:- pred should_output_marker(marker::in, bool::out) is det.
+
+should_output_marker(marker_stub, no).
+should_output_marker(marker_builtin_stub, no).
+    % Since the inferred declarations are output, these
+    % don't need to be done in the importing module.
+should_output_marker(marker_infer_type, no).
+should_output_marker(marker_infer_modes, no).
+    % Purity is output as part of the pred/func decl.
+should_output_marker(marker_is_impure, no).
+should_output_marker(marker_is_semipure, no).
+    % There is no pragma required for generated class methods.
+should_output_marker(marker_class_method, no).
+should_output_marker(marker_class_instance_method, no).
+should_output_marker(marker_named_class_instance_method, no).
+    % The warning for calls to local obsolete predicates should appear
+    % once in the defining module, not in importing modules.
+should_output_marker(marker_obsolete, no).
+should_output_marker(marker_no_detism_warning, no).
+should_output_marker(marker_user_marked_inline, yes).
+should_output_marker(marker_user_marked_no_inline, yes).
+should_output_marker(marker_heuristic_inline, no).
+should_output_marker(marker_promised_pure, yes).
+should_output_marker(marker_promised_semipure, yes).
+should_output_marker(marker_promised_equivalent_clauses, yes).
+should_output_marker(marker_terminates, yes).
+should_output_marker(marker_does_not_terminate, yes).
+    % Termination should only be checked in the defining module.
+should_output_marker(marker_check_termination, no).
+should_output_marker(marker_calls_are_fully_qualified, no).
+should_output_marker(marker_mode_check_clauses, yes).
+should_output_marker(marker_mutable_access_pred, no).
+should_output_marker(marker_has_require_scope, no).
+should_output_marker(marker_has_format_call, no).
+
+%-----------------------------------------------------------------------------%
 
 :- pred intermod_write_preds(hlds_out_info::in, module_info::in,
     list(pred_id)::in, io::di, io::uo) is det.
@@ -1748,7 +1870,7 @@ intermod_write_preds(OutInfo, ModuleInfo, [PredId | PredIds], !IO) :-
     Name = pred_info_name(PredInfo),
     SymName = qualified(Module, Name),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    intermod_write_pragmas(PredInfo, !IO),
+    intermod_write_pred_marker_pragmas(PredInfo, !IO),
     % The type specialization pragmas for exported preds should
     % already be in the interface file.
 
@@ -1854,28 +1976,6 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, SymName, PredOrFunc,
         )
     ).
 
-:- pred intermod_write_foreign_clause(proc_table::in, pred_or_func::in,
-    pragma_foreign_proc_impl::in, pragma_foreign_proc_attributes::in,
-    list(foreign_arg)::in, prog_varset::in, sym_name::in, proc_id::in,
-    io::di, io::uo) is det.
-
-intermod_write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
-        Attributes, Args, ProgVarset0, SymName, ProcId, !IO) :-
-    map.lookup(Procs, ProcId, ProcInfo),
-    proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
-    (
-        MaybeArgModes = yes(ArgModes),
-        get_pragma_foreign_code_vars(Args, ArgModes,
-            ProgVarset0, ProgVarset, PragmaVars),
-        proc_info_get_inst_varset(ProcInfo, InstVarset),
-        FPInfo = pragma_info_foreign_proc(Attributes, SymName,
-            PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl),
-        mercury_output_pragma_foreign_proc(output_mercury, FPInfo, !IO)
-    ;
-        MaybeArgModes = no,
-        unexpected($module, $pred, "no mode declaration")
-    ).
-
     % Strip the `Headvar.n = Term' unifications from each clause,
     % except if the `Term' is a lambda expression.
     %
@@ -1968,86 +2068,27 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
     strip_headvar_unifications_from_goal_list(Goals0, HeadVars,
         RevGoals1, Goals, !HeadVarMap).
 
-:- pred intermod_write_pragmas(pred_info::in, io::di, io::uo) is det.
-
-intermod_write_pragmas(PredInfo, !IO) :-
-    Module = pred_info_module(PredInfo),
-    Name = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    SymName = qualified(Module, Name),
-    pred_info_get_markers(PredInfo, Markers),
-    markers_to_marker_list(Markers, MarkerList),
-    intermod_write_pragma_markers(SymName, Arity, MarkerList, PredOrFunc, !IO).
-
-:- pred intermod_write_pragma_markers(sym_name::in, int::in, list(marker)::in,
-    pred_or_func::in, io::di, io::uo) is det.
-
-intermod_write_pragma_markers(_, _, [], _, !IO).
-intermod_write_pragma_markers(SymName, Arity, [Marker | Markers], PredOrFunc,
-        !IO) :-
-    should_output_marker(Marker, ShouldOutput),
-    (
-        ShouldOutput = yes,
-        marker_name(Marker, Name),
-        mercury_output_pragma_decl(SymName, Arity, PredOrFunc, Name, no, !IO)
-    ;
-        ShouldOutput = no
-    ),
-    intermod_write_pragma_markers(SymName, Arity, Markers, PredOrFunc, !IO).
-
-:- pred intermod_write_type_spec_pragmas(module_info::in, pred_id::in,
+:- pred intermod_write_foreign_clause(proc_table::in, pred_or_func::in,
+    pragma_foreign_proc_impl::in, pragma_foreign_proc_attributes::in,
+    list(foreign_arg)::in, prog_varset::in, sym_name::in, proc_id::in,
     io::di, io::uo) is det.
 
-intermod_write_type_spec_pragmas(ModuleInfo, PredId, !IO) :-
-    module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-    PragmaMap = TypeSpecInfo ^ pragma_map,
-    ( if multi_map.search(PragmaMap, PredId, TypeSpecPragmas) then
-        list.foldl(
-            mercury_output_pragma_type_spec(print_name_and_num,
-                output_mercury),
-            TypeSpecPragmas, !IO)
-    else
-        true
+intermod_write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
+        Attributes, Args, ProgVarset0, SymName, ProcId, !IO) :-
+    map.lookup(Procs, ProcId, ProcInfo),
+    proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
+    (
+        MaybeArgModes = yes(ArgModes),
+        get_pragma_foreign_code_vars(Args, ArgModes,
+            ProgVarset0, ProgVarset, PragmaVars),
+        proc_info_get_inst_varset(ProcInfo, InstVarset),
+        FPInfo = pragma_info_foreign_proc(Attributes, SymName,
+            PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl),
+        mercury_output_pragma_foreign_proc(output_mercury, FPInfo, !IO)
+    ;
+        MaybeArgModes = no,
+        unexpected($module, $pred, "no mode declaration")
     ).
-
-    % Is a pragma declaration required in the `.opt' file for
-    % a predicate with the given marker.
-    %
-:- pred should_output_marker(marker::in, bool::out) is det.
-
-should_output_marker(marker_stub, no).
-should_output_marker(marker_builtin_stub, no).
-    % Since the inferred declarations are output, these
-    % don't need to be done in the importing module.
-should_output_marker(marker_infer_type, no).
-should_output_marker(marker_infer_modes, no).
-    % Purity is output as part of the pred/func decl.
-should_output_marker(marker_is_impure, no).
-should_output_marker(marker_is_semipure, no).
-    % There is no pragma required for generated class methods.
-should_output_marker(marker_class_method, no).
-should_output_marker(marker_class_instance_method, no).
-should_output_marker(marker_named_class_instance_method, no).
-    % The warning for calls to local obsolete predicates should appear
-    % once in the defining module, not in importing modules.
-should_output_marker(marker_obsolete, no).
-should_output_marker(marker_no_detism_warning, no).
-should_output_marker(marker_user_marked_inline, yes).
-should_output_marker(marker_user_marked_no_inline, yes).
-should_output_marker(marker_heuristic_inline, no).
-should_output_marker(marker_promised_pure, yes).
-should_output_marker(marker_promised_semipure, yes).
-should_output_marker(marker_promised_equivalent_clauses, yes).
-should_output_marker(marker_terminates, yes).
-should_output_marker(marker_does_not_terminate, yes).
-    % Termination should only be checked in the defining module.
-should_output_marker(marker_check_termination, no).
-should_output_marker(marker_calls_are_fully_qualified, no).
-should_output_marker(marker_mode_check_clauses, yes).
-should_output_marker(marker_mutable_access_pred, no).
-should_output_marker(marker_has_require_scope, no).
-should_output_marker(marker_has_format_call, no).
 
 :- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mer_mode)::in,
     prog_varset::in, prog_varset::out, list(pragma_var)::out) is det.
@@ -2167,27 +2208,43 @@ init_intermod_info(ModuleInfo, IntermodInfo) :-
 :- pred intermod_info_set_tvarset(tvarset::in,
     intermod_info::in, intermod_info::out) is det.
 
-intermod_info_get_modules(Info, Info ^ im_modules).
-intermod_info_get_preds(Info, Info ^ im_preds).
-intermod_info_get_pred_decls(Info, Info ^ im_pred_decls).
-intermod_info_get_instances(Info, Info ^ im_instances).
-intermod_info_get_types(Info, Info ^ im_types).
-intermod_info_get_module_info(Info, Info ^ im_module_info).
-intermod_info_get_write_foreign_header(Info, Info ^ im_write_foreign_header).
-intermod_info_get_var_types(Info, Info ^ im_var_types).
-intermod_info_get_tvarset(Info, Info ^ im_tvarset).
+intermod_info_get_modules(Info, X) :-
+    X = Info ^ im_modules.
+intermod_info_get_preds(Info, X) :-
+    X = Info ^ im_preds.
+intermod_info_get_pred_decls(Info, X) :-
+    X = Info ^ im_pred_decls.
+intermod_info_get_instances(Info, X) :-
+    X = Info ^ im_instances.
+intermod_info_get_types(Info, X) :-
+    X = Info ^ im_types.
+intermod_info_get_module_info(Info, X) :-
+    X = Info ^ im_module_info.
+intermod_info_get_write_foreign_header(Info, X) :-
+    X = Info ^ im_write_foreign_header.
+intermod_info_get_var_types(Info, X) :-
+    X = Info ^ im_var_types.
+intermod_info_get_tvarset(Info, X) :-
+    X = Info ^ im_tvarset.
 
-intermod_info_set_modules(Modules, Info, Info ^ im_modules := Modules).
-intermod_info_set_preds(Procs, Info, Info ^ im_preds := Procs).
-intermod_info_set_pred_decls(ProcDecls, Info,
-        Info ^ im_pred_decls := ProcDecls).
-intermod_info_set_instances(Instances, Info, Info ^ im_instances := Instances).
-intermod_info_set_types(Types, Info, Info ^ im_types := Types).
-intermod_info_set_module_info(ModuleInfo, Info,
-        Info ^ im_module_info := ModuleInfo).
-intermod_info_set_write_header(Info, Info ^ im_write_foreign_header := yes).
-intermod_info_set_var_types(VarTypes, Info, Info ^ im_var_types := VarTypes).
-intermod_info_set_tvarset(TVarSet, Info, Info ^ im_tvarset := TVarSet).
+intermod_info_set_modules(Modules, !Info) :-
+    !Info ^ im_modules := Modules.
+intermod_info_set_preds(Procs, !Info) :-
+    !Info ^ im_preds := Procs.
+intermod_info_set_pred_decls(ProcDecls, !Info) :-
+    !Info ^ im_pred_decls := ProcDecls.
+intermod_info_set_instances(Instances, !Info) :-
+    !Info ^ im_instances := Instances.
+intermod_info_set_types(Types, !Info) :-
+    !Info ^ im_types := Types.
+intermod_info_set_module_info(ModuleInfo, !Info) :-
+    !Info ^ im_module_info := ModuleInfo.
+intermod_info_set_write_header(!Info) :-
+    !Info ^ im_write_foreign_header := yes.
+intermod_info_set_var_types(VarTypes, !Info) :-
+    !Info ^ im_var_types := VarTypes.
+intermod_info_set_tvarset(TVarSet, !Info) :-
+    !Info ^ im_tvarset := TVarSet.
 
 %-----------------------------------------------------------------------------%
 

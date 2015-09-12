@@ -977,7 +977,7 @@ mlds_output_c_defns(Opts, ModuleName, Indent, ForeignCode, !IO) :-
     foreign_import_module_info::in, io::di, io::uo) is det.
 
 mlds_output_c_foreign_import_module(Opts, Indent, ForeignImport, !IO) :-
-    ForeignImport = foreign_import_module_info(Lang, Import, _),
+    ForeignImport = foreign_import_module_info(Lang, Import),
     (
         Lang = lang_c,
         mlds_output_src_import(Opts, Indent,

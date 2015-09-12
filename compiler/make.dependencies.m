@@ -250,7 +250,8 @@ module_index_to_name(Info, Index, ModuleName) :-
     ModuleName = Info ^ module_index_map ^ mim_reverse_map ^ elem(I).
 
 module_names_to_index_set(ModuleNames, IndexSet, !Info) :-
-    module_names_to_index_set_2(ModuleNames, init, IndexSet, !Info).
+    module_names_to_index_set_2(ModuleNames, sparse_bitset.init,
+        IndexSet, !Info).
 
 :- pred module_names_to_index_set_2(list(module_name)::in,
     deps_set(module_index)::in, deps_set(module_index)::out,
@@ -259,7 +260,7 @@ module_names_to_index_set(ModuleNames, IndexSet, !Info) :-
 module_names_to_index_set_2([], !IndexSet, !Info).
 module_names_to_index_set_2([ModuleName | ModuleNames], !Set, !Info) :-
     module_name_to_index(ModuleName, ModuleIndex, !Info),
-    insert(ModuleIndex, !Set),
+    sparse_bitset.insert(ModuleIndex, !Set),
     module_names_to_index_set_2(ModuleNames, !Set, !Info).
 
 module_index_set_to_plain_set(Info, ModuleIndices, Modules) :-
@@ -973,48 +974,18 @@ find_module_foreign_imports_3(Languages, Globals, ModuleIndex,
     get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        ForeignModulesInfoCord = Imports ^ mai_foreign_import_modules,
-        ForeignModulesList = get_foreign_imported_modules_lang(Languages,
-            cord.list(ForeignModulesInfoCord)),
-        module_names_to_index_set(ForeignModulesList, ForeignModules, !Info),
+        ForeignModuleInfos = Imports ^ mai_foreign_import_modules,
+        LangForeignModuleNameSets =
+            set.map(get_lang_foreign_import_modules(ForeignModuleInfos),
+                Languages),
+        set.power_union(LangForeignModuleNameSets, ForeignModuleNameSet),
+        module_names_to_index_set(set.to_sorted_list(ForeignModuleNameSet),
+            ForeignModules, !Info),
         Success = yes
     ;
         MaybeImports = no,
         ForeignModules = init,
         Success = no
-    ).
-
-:- func get_foreign_imported_modules(list(foreign_import_module_info)) =
-    list(module_name).
-
-get_foreign_imported_modules(ForeignImportModules) =
-    get_foreign_imported_modules_2(no, ForeignImportModules).
-
-:- func get_foreign_imported_modules_lang(set(foreign_language),
-    list(foreign_import_module_info)) = list(module_name).
-
-get_foreign_imported_modules_lang(Languages, ForeignImportModules) =
-    get_foreign_imported_modules_2(yes(Languages), ForeignImportModules).
-
-:- func get_foreign_imported_modules_2(maybe(set(foreign_language)),
-    list(foreign_import_module_info)) = list(module_name).
-
-get_foreign_imported_modules_2(MaybeLanguages, ForeignImportModules) =
-    list.filter_map(get_foreign_imported_modules_3(MaybeLanguages),
-        ForeignImportModules).
-
-:- func get_foreign_imported_modules_3(maybe(set(foreign_language)),
-    foreign_import_module_info) = module_name is semidet.
-
-get_foreign_imported_modules_3(MaybeLanguages, ForeignImportModule)
-        = ForeignModule :-
-    ForeignImportModule = foreign_import_module_info(Language, ForeignModule,
-        _),
-    (
-        MaybeLanguages = yes(Languages),
-        set.member(Language, Languages)
-    ;
-        MaybeLanguages = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1035,12 +1006,11 @@ foreign_imports_lang(Lang, Globals, ModuleIndex, Success, Modules,
     get_module_dependencies(Globals, ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        ForeignModulesInfoCord = Imports ^ mai_foreign_import_modules,
-        list.filter_map(
-            (pred(FI::in, M::out) is semidet :-
-                FI = foreign_import_module_info(Lang, M, _)
-            ), cord.list(ForeignModulesInfoCord), ModulesList),
-        module_names_to_index_set(ModulesList, Modules, !Info),
+        ForeignModuleInfos = Imports ^ mai_foreign_import_modules,
+        LangModules =
+            get_lang_foreign_import_modules(ForeignModuleInfos, Lang),
+        module_names_to_index_set(set.to_sorted_list(LangModules), Modules,
+            !Info),
         Success = yes
     ;
         MaybeImports = no,
@@ -1269,8 +1239,8 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                         Imports ^ mai_imp_deps,
                         Imports ^ mai_parent_deps,
                         Imports ^ mai_children,
-                        set.list_to_set(get_foreign_imported_modules(
-                            cord.list(Imports ^ mai_foreign_import_modules)))
+                        get_all_foreign_import_modules(
+                            Imports ^ mai_foreign_import_modules)
                     ])
                 ;
                     DependenciesType = all_imports,
@@ -1278,8 +1248,8 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType, ModuleLocn,
                         Imports ^ mai_int_deps,
                         Imports ^ mai_imp_deps,
                         Imports ^ mai_parent_deps,
-                        set.list_to_set(get_foreign_imported_modules(
-                            cord.list(Imports ^ mai_foreign_import_modules)))
+                        get_all_foreign_import_modules(
+                            Imports ^ mai_foreign_import_modules)
                     ])
                 ),
                 module_names_to_index_set(set.to_sorted_list(ImportsToCheck),

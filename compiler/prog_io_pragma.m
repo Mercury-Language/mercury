@@ -773,7 +773,8 @@ parse_pragma_foreign_import_module(PragmaTerms, ErrorTerm, Context, SeqNum,
         try_parse_sym_name_and_no_args(ImportTerm, Import)
     then
         ( if parse_foreign_language(LangTerm, Language) then
-            FIMInfo = pragma_info_foreign_import_module(Language, Import),
+            FIM = foreign_import_module_info(Language, Import),
+            FIMInfo = pragma_info_foreign_import_module(FIM),
             Pragma = pragma_foreign_import_module(FIMInfo),
             ItemPragma = item_pragma_info(Pragma, item_origin_user,
                 Context, SeqNum),

@@ -85,19 +85,17 @@ ml_code_gen(!ModuleInfo, MLDS) :-
 ml_gen_foreign_code(ModuleInfo, AllForeignCodeMap) :-
     module_info_get_foreign_decl_codes(ModuleInfo, ForeignDeclCodeCord),
     module_info_get_foreign_body_codes(ModuleInfo, ForeignBodyCodeCord),
-    module_info_get_foreign_import_modules(ModuleInfo, ForeignImportCord),
+    module_info_get_foreign_import_modules(ModuleInfo, ForeignImportModules),
     module_info_get_pragma_exported_procs(ModuleInfo, ForeignExportsCord),
     ForeignDeclCodes = cord.list(ForeignDeclCodeCord),
     ForeignBodyCodes = cord.list(ForeignBodyCodeCord),
-    ForeignImports = cord.list(ForeignImportCord),
     ForeignExports = cord.list(ForeignExportsCord),
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_backend_foreign_languages(Globals, BackendForeignLanguages),
-    WantedForeignImports = list.condense(
-        list.map((func(L) = Imports :-
-            foreign.filter_imports(L, ForeignImports, Imports, _)
-        ), BackendForeignLanguages)),
+    WantedForeignImports = set.to_sorted_list(set.union_list(
+        list.map(get_lang_foreign_import_module_infos(ForeignImportModules),
+            BackendForeignLanguages))),
 
     list.foldl(
         ml_gen_foreign_code_lang(ModuleInfo,

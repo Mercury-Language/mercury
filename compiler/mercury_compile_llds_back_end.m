@@ -93,6 +93,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -753,17 +754,17 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
 :- pred llds_get_c_interface_info(module_info::in, foreign_language::in,
     foreign_interface_info::out) is det.
 
-llds_get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
+llds_get_c_interface_info(HLDS, UseForeignLanguage, ForeignInterfaceInfo) :-
     module_info_get_name(HLDS, ModuleName),
-    ForeignSelfImport = foreign_import_module_info(UseForeignLanguage,
-        ModuleName, term.context_init),
+    ForeignSelfImport =
+        foreign_import_module_info(UseForeignLanguage, ModuleName),
     module_info_get_foreign_decl_codes(HLDS, ForeignDeclCodeCord),
     module_info_get_foreign_body_codes(HLDS, ForeignBodyCodeCord),
-    module_info_get_foreign_import_modules(HLDS, ForeignImportsCord0),
+    module_info_get_foreign_import_modules(HLDS, ForeignImportsModules0),
     ForeignDeclCodes = cord.list(ForeignDeclCodeCord),
     ForeignBodyCodes = cord.list(ForeignBodyCodeCord),
-    ForeignImportsCord = cord.snoc(ForeignImportsCord0, ForeignSelfImport),
-    ForeignImports = cord.list(ForeignImportsCord),
+    add_foreign_import_module_info(ForeignSelfImport,
+        ForeignImportsModules0, ForeignImportsModules),
 
     % Always include the module we are compiling amongst the foreign import
     % modules so that pragma foreign_exported procedures are visible to
@@ -777,14 +778,15 @@ llds_get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
         WantedForeignDeclCodes, _OtherDeclCodes),
     foreign.filter_bodys(UseForeignLanguage, ForeignBodyCodes,
         WantedForeignBodyCodes, _OtherBodyCodes),
-    foreign.filter_imports(UseForeignLanguage, ForeignImports,
-        WantedForeignImports, _OtherImports),
-    export.get_foreign_export_decls(HLDS, Foreign_ExportDecls),
-    export.get_foreign_export_defns(HLDS, Foreign_ExportDefns),
+    WantedForeignImports = set.to_sorted_list(
+        get_lang_foreign_import_module_infos(ForeignImportsModules,
+            UseForeignLanguage)),
+    export.get_foreign_export_decls(HLDS, ForeignExportDecls),
+    export.get_foreign_export_defns(HLDS, ForeignExportDefns),
 
-    Foreign_InterfaceInfo = foreign_interface_info(ModuleName,
+    ForeignInterfaceInfo = foreign_interface_info(ModuleName,
         WantedForeignDeclCodes, WantedForeignBodyCodes,
-        WantedForeignImports, Foreign_ExportDecls, Foreign_ExportDefns).
+        WantedForeignImports, ForeignExportDecls, ForeignExportDefns).
 
 :- pred foreign_decl_code_is_local(foreign_decl_code::in) is semidet.
 
@@ -808,15 +810,14 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
     io::di, io::uo) is det.
 
 make_foreign_import_header_code(Globals, ForeignImportModule, Include, !IO) :-
-    ForeignImportModule = foreign_import_module_info(Lang, ModuleName,
-        Context),
+    ForeignImportModule = foreign_import_module_info(Lang, ModuleName),
     (
         Lang = lang_c,
         module_name_to_search_file_name(Globals, ModuleName, ".mh",
             HeaderFileName, !IO),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
-            literal(IncludeString), Context)
+            literal(IncludeString), term.context_init)
     ;
         Lang = lang_csharp,
         sorry($module, $pred, ":- import_module not yet implemented: " ++

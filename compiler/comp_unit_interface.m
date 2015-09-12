@@ -77,6 +77,7 @@
 :- implementation.
 
 :- import_module parse_tree.item_util.
+:- import_module parse_tree.prog_data.
 
 :- import_module cord.
 :- import_module maybe.
@@ -391,7 +392,8 @@ accumulate_foreign_import_langs_in_item(Item, !LangSet) :-
 make_foreign_import(ModuleName, Lang) = Item :-
     Attrs = item_compiler_attributes(do_not_allow_export, is_not_mutable),
     Origin = item_origin_compiler(Attrs),
-    Info = pragma_info_foreign_import_module(Lang, ModuleName),
+    FIM = foreign_import_module_info(Lang, ModuleName),
+    Info = pragma_info_foreign_import_module(FIM),
     Pragma = pragma_foreign_import_module(Info),
     ItemPragma = item_pragma_info(Pragma, Origin, term.context_init, -1),
     Item = item_pragma(ItemPragma).

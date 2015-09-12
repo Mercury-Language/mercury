@@ -106,8 +106,9 @@
                 % The list of filenames for fact tables in this module.
                 mai_fact_table_deps             :: list(string),
 
-                % The `:- pragma foreign_import_module' declarations.
-                mai_foreign_import_modules      :: foreign_import_module_infos,
+                % The information from `:- pragma foreign_import_module'
+                % declarations.
+                mai_foreign_import_modules      :: foreign_import_modules,
 
                 % The list of filenames referenced by `:- pragma foreign_decl'
                 % or `:- pragma foreign_code' declarations.
@@ -383,11 +384,10 @@ init_module_and_imports(Globals, FileName, SourceFileModuleName,
     % `:- pragma foreign_type' declarations, importing modules may need
     % to import its `.mh' file.
     get_foreign_self_imports_from_item_blocks(RawItemBlocks, SelfImportLangs),
-    ForeignSelfImports = list.map(
-        (func(Lang) = foreign_import_module_info(Lang, ModuleName,
-            term.context_init)),
-        SelfImportLangs),
-    ForeignImports = cord.from_list(ForeignSelfImports) ++ ForeignImports0,
+    list.foldl(
+        ( pred(Lang::in, FIM0::in, FIM::out) is det :-
+            add_foreign_import_module(Lang, ModuleName, FIM0, FIM)
+        ), SelfImportLangs, ForeignImports0, ForeignImports),
 
     % Work out whether the items contain main/2.
     look_for_main_pred_in_item_blocks(RawItemBlocks, no_main, HasMain),

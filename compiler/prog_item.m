@@ -845,8 +845,8 @@
                 % `:- pragma foreign_decl(Lang, "#include <module>.h").'
                 % except that the name of the header file is not hard-coded,
                 % and mmake can use the dependency information.
-                imp_lang                :: foreign_language,
-                imp_module              :: module_name
+                % The language and the module name is in the one argument.
+                imp_info                :: foreign_import_module_info
             ).
 
 :- type pragma_info_foreign_proc_export
@@ -1258,7 +1258,7 @@
 
 :- pred get_foreign_code_indicators_from_item_blocks(globals::in,
     list(item_block(MS))::in,
-    set(foreign_language)::out, foreign_import_module_infos::out,
+    set(foreign_language)::out, foreign_import_modules::out,
     foreign_include_file_infos::out, contains_foreign_export::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -1722,15 +1722,15 @@ goal_get_context(Goal) = Context :-
     --->    module_foreign_info(
                 used_foreign_languages      :: set(foreign_language),
                 foreign_proc_languages      :: map(sym_name, foreign_language),
-                all_foreign_import_modules  :: foreign_import_module_infos,
+                all_foreign_import_modules  :: foreign_import_modules,
                 all_foreign_include_files   :: foreign_include_file_infos,
                 module_has_foreign_export   :: contains_foreign_export
             ).
 
 get_foreign_code_indicators_from_item_blocks(Globals, ItemBlocks,
         LangSet, ForeignImports, ForeignIncludeFiles, ContainsForeignExport) :-
-    Info0 = module_foreign_info(set.init, map.init, cord.init, cord.init,
-        contains_no_foreign_export),
+    Info0 = module_foreign_info(set.init, map.init,
+        init_foreign_import_modules, cord.init, contains_no_foreign_export),
     list.foldl(get_foreign_code_indicators_from_item_block(Globals),
         ItemBlocks, Info0, Info),
     Info = module_foreign_info(LangSet0, LangMap, ForeignImports,
@@ -1752,8 +1752,8 @@ get_foreign_code_indicators_from_item_block(Globals, ItemBlock, !Info) :-
 get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
     (
         Item = item_pragma(ItemPragma),
-        ItemPragma = item_pragma_info(Pragma, _, Context, _),
-        get_pragma_foreign_code(Globals, Pragma, Context, !Info)
+        ItemPragma = item_pragma_info(Pragma, _, _, _),
+        get_pragma_foreign_code(Globals, Pragma, !Info)
     ;
         Item = item_mutable(_),
         % Mutables introduce foreign_procs, but mutable declarations
@@ -1790,10 +1790,10 @@ get_foreign_code_indicators_from_item(Globals, Item, !Info) :-
         )
     ).
 
-:- pred get_pragma_foreign_code(globals::in, pragma_type::in, prog_context::in,
+:- pred get_pragma_foreign_code(globals::in, pragma_type::in,
     module_foreign_info::in, module_foreign_info::out) is det.
 
-get_pragma_foreign_code(Globals, Pragma, Context, !Info) :-
+get_pragma_foreign_code(Globals, Pragma, !Info) :-
     globals.get_backend_foreign_languages(Globals, BackendLangs),
     globals.get_target(Globals, Target),
 
@@ -1802,11 +1802,11 @@ get_pragma_foreign_code(Globals, Pragma, Context, !Info) :-
     (
         Pragma = pragma_foreign_code(FCInfo),
         FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude),
-        ( list.member(Lang, BackendLangs) ->
+        ( if list.member(Lang, BackendLangs) then
             Langs0 = !.Info ^ used_foreign_languages,
             set.insert(Lang, Langs0, Langs),
             !Info ^ used_foreign_languages := Langs
-        ;
+        else
             true
         ),
         do_get_item_foreign_include_file(Lang, LiteralOrInclude, !Info)
@@ -1815,7 +1815,7 @@ get_pragma_foreign_code(Globals, Pragma, Context, !Info) :-
         FPInfo = pragma_info_foreign_proc(Attrs, Name, _, _, _, _, _),
         NewLang = get_foreign_language(Attrs),
         FPLangs0 = !.Info ^ foreign_proc_languages,
-        ( map.search(FPLangs0, Name, OldLang) ->
+        ( if map.search(FPLangs0, Name, OldLang) then
             % is it better than an existing one?
             PreferNew = prefer_foreign_language(Globals, Target,
                 OldLang, NewLang),
@@ -1826,12 +1826,12 @@ get_pragma_foreign_code(Globals, Pragma, Context, !Info) :-
             ;
                 PreferNew = no
             )
-        ;
+        else
             % is it one of the languages we support?
-            ( list.member(NewLang, BackendLangs) ->
+            ( if list.member(NewLang, BackendLangs) then
                 map.det_insert(Name, NewLang, FPLangs0, FPLangs),
                 !Info ^ foreign_proc_languages := FPLangs
-            ;
+            else
                 true
             )
         )
@@ -1843,25 +1843,24 @@ get_pragma_foreign_code(Globals, Pragma, Context, !Info) :-
         % like the other pragmas for foreign code.
         Pragma = pragma_foreign_proc_export(FPEInfo),
         FPEInfo = pragma_info_foreign_proc_export(Lang, _, _),
-        ( list.member(Lang, BackendLangs) ->
+        ( if list.member(Lang, BackendLangs) then
             !Info ^ used_foreign_languages :=
                 set.insert(!.Info ^ used_foreign_languages, Lang),
             !Info ^ module_has_foreign_export :=
                 contains_foreign_export
-        ;
+        else
             true
         )
     ;
         Pragma = pragma_foreign_import_module(FIMInfo),
-        FIMInfo = pragma_info_foreign_import_module(Lang, Import),
-        ( list.member(Lang, BackendLangs) ->
-            ForeignImportModule =
-                foreign_import_module_info(Lang, Import, Context),
-            ForeignImportModulesCord0 = !.Info ^ all_foreign_import_modules,
-            ForeignImportModulesCord =
-                cord.snoc(ForeignImportModulesCord0, ForeignImportModule),
-            !Info ^ all_foreign_import_modules := ForeignImportModulesCord
-        ;
+        FIMInfo = pragma_info_foreign_import_module(FIM),
+        FIM = foreign_import_module_info(Lang, ImportedModule),
+        ( if list.member(Lang, BackendLangs) then
+            ForeignImportModules0 = !.Info ^ all_foreign_import_modules,
+            add_foreign_import_module(Lang, ImportedModule, 
+                ForeignImportModules0, ForeignImportModules),
+            !Info ^ all_foreign_import_modules := ForeignImportModules
+        else
             true
         )
     ;
@@ -1869,12 +1868,15 @@ get_pragma_foreign_code(Globals, Pragma, Context, !Info) :-
         (
             % We generate some C code for fact tables, so we need to treat
             % modules containing fact tables as if they contain foreign code.
-            Target = target_c
-        ->
+            Target = target_c,
             !Info ^ used_foreign_languages :=
                 set.insert(!.Info ^ used_foreign_languages, lang_c)
         ;
-            true
+            ( Target = target_csharp
+            ; Target = target_java
+            ; Target = target_il
+            ; Target = target_erlang
+            )
         )
     ;
         % We do NOT count foreign_decls here. We only link in a foreign object

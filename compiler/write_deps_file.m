@@ -34,7 +34,7 @@
     % used or imported, directly or indirectly, into this module, including
     % via .opt or .trans_opt files, and including parent modules of nested
     % modules. MaybeTransOptDeps is a list of module names which the
-    % `.trans_opt' file may depend on.  This is set to `no' if the
+    % `.trans_opt' file may depend on. This is set to `no' if the
     % dependency list is not available.
     %
 :- pred write_dependency_file(globals::in, module_and_imports::in,
@@ -81,7 +81,7 @@
     % (including the module itself).
     %
     % If we are compiling a module within the standard library we should
-    % reference the runtime DLLs and all other library DLLs.  If we are
+    % reference the runtime DLLs and all other library DLLs. If we are
     % outside the library we should just reference mercury.dll (which will
     % contain all the DLLs).
     %
@@ -140,7 +140,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
     ModuleAndImports = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, _ModuleNameContext, ParentDeps, IntDeps, ImpDeps,
         IndirectDeps, _Children, InclDeps, NestedDeps, FactDeps0,
-        ForeignImportsCord0, ForeignIncludeFilesCord,
+        ForeignImportModules0, ForeignIncludeFilesCord,
         ContainsForeignCode, _ContainsForeignExport,
         SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
         OptItemBlocksCord, IntForOptItemBlocksCord, _ModuleVersionNumbersCord,
@@ -248,8 +248,8 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             do_not_create_dirs, ILDateFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".java_date",
             do_not_create_dirs, JavaDateFileName, !IO),
-        % XXX Why is the extension hardcoded to .pic_o here?  That looks
-        % wrong.  It should probably be .$(EXT_FOR_PIC_OBJECT) - juliensf.
+        % XXX Why is the extension hardcoded to .pic_o here?  That looks wrong.
+        % It should probably be .$(EXT_FOR_PIC_OBJECT) - juliensf.
         module_name_to_file_name(Globals, ModuleName, ".pic_o",
             do_not_create_dirs, PicObjFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".int0",
@@ -551,64 +551,90 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
 
         (
             ContainsForeignCode = contains_foreign_code(LangSet),
-            ForeignImportsCord = ForeignImportsCord0
+            ForeignImportModules = ForeignImportModules0
         ;
             ContainsForeignCode = contains_foreign_code_unknown,
             get_foreign_code_indicators_from_item_blocks(Globals,
                 SrcItemBlocks,
-                SrcLangSet, SrcForeignImportsCord, _, _),
+                SrcLangSet, SrcForeignImportModules, _, _),
             % XXX ITEM_LIST DirectIntItemBlocksCord should not be needed
             % XXX ITEM_LIST IndirectIntItemBlocksCord should not be needed
             IntItemBlocksCord =
                 DirectIntItemBlocksCord ++ IndirectIntItemBlocksCord,
             get_foreign_code_indicators_from_item_blocks(Globals,
                 cord.list(IntItemBlocksCord),
-                IntLangSet, IntForeignImportsCord, _, _),
+                IntLangSet, IntForeignImportModules, _, _),
             get_foreign_code_indicators_from_item_blocks(Globals,
                 cord.list(OptItemBlocksCord),
-                OptLangSet, OptForeignImportsCord, _, _),
+                OptLangSet, OptForeignImportModules, _, _),
             get_foreign_code_indicators_from_item_blocks(Globals,
                 cord.list(IntForOptItemBlocksCord),
-                IntForOptLangSet, IntForOptForeignImportsCord, _, _),
+                IntForOptLangSet, IntForOptForeignImportModules, _, _),
             LangSet = set.union_list([SrcLangSet, IntLangSet, OptLangSet,
                 IntForOptLangSet]),
-            % If we are generating the `.dep' file, ForeignImports0
+            % If we are generating the `.dep' file, ForeignImportModuless0
             % will contain a conservative approximation to the set of
             % foreign imports needed which will include imports
             % required by imported modules.
             % XXX ITEM_LIST What is the correctness argument that supports
             % the above assertion?
-            ( if cord.is_empty(ForeignImportsCord0) then
-                ForeignImportsCord = SrcForeignImportsCord ++
-                    IntForeignImportsCord ++ OptForeignImportsCord ++
-                    IntForOptForeignImportsCord
+            ( if
+                ForeignImportModules0 = foreign_import_modules(
+                    C0, CSharp0, Java0, IL0, Erlang0),
+                set.is_empty(C0),
+                set.is_empty(CSharp0),
+                set.is_empty(Java0),
+                set.is_empty(IL0),
+                set.is_empty(Erlang0)
+            then
+                SrcForeignImportModules = foreign_import_modules(
+                    SrcC, SrcCSharp, SrcJava, SrcIL, SrcErlang),
+                IntForeignImportModules = foreign_import_modules(
+                    IntC, IntCSharp, IntJava, IntIL, IntErlang),
+                OptForeignImportModules = foreign_import_modules(
+                    OptC, OptCSharp, OptJava, OptIL, OptErlang),
+                IntForOptForeignImportModules = foreign_import_modules(
+                    IntForOptC, IntForOptCSharp, IntForOptJava,
+                    IntForOptIL, IntForOptErlang),
+                C = set.union_list([
+                    SrcC, IntC, OptC, IntForOptC]),
+                CSharp = set.union_list([
+                    SrcCSharp, IntCSharp, OptCSharp, IntForOptCSharp]),
+                Java= set.union_list([
+                    SrcJava, IntJava, OptJava, IntForOptJava]),
+                IL = set.union_list([
+                    SrcIL, IntIL, OptIL, IntForOptIL]),
+                Erlang = set.union_list([
+                    SrcErlang, IntErlang, OptErlang, IntForOptErlang]),
+                ForeignImportModules = foreign_import_modules(
+                    C, CSharp, Java, IL, Erlang)
             else
-                ForeignImportsCord = ForeignImportsCord0
+                ForeignImportModules = ForeignImportModules0
             )
         ;
             ContainsForeignCode = contains_no_foreign_code,
             set.init(LangSet),
-            ForeignImportsCord = ForeignImportsCord0
+            ForeignImportModules = ForeignImportModules0
         ),
 
-        ForeignImports = cord.list(ForeignImportsCord),
+        ForeignImports =
+            get_all_foreign_import_module_infos(ForeignImportModules),
 
         % Handle dependencies introduced by
         % `:- pragma foreign_import_module' declarations.
 
-        list.filter_map(
-            (pred(ForeignImportMod::in, Import::out) is semidet :-
-                Import = foreign_import_module_name_from_module(
+        set.filter_map(
+            ( pred(ForeignImportMod::in, ImportModuleName::out) is semidet :-
+                ImportModuleName = foreign_import_module_name_from_module(
                     ForeignImportMod, SourceFileModuleName),
 
                 % XXX We can't include mercury.dll as mmake can't find it,
                 % but we know that it exists.
-                Import \= unqualified("mercury")
-            ), ForeignImports, ForeignImportedModules),
-        (
-            ForeignImportedModules = []
-        ;
-            ForeignImportedModules = [_ | _],
+                ImportModuleName \= unqualified("mercury")
+            ), ForeignImports, ForeignImportedModuleNames),
+        ( if set.is_empty(ForeignImportedModuleNames) then
+            true
+        else
             (
                 Target = target_il,
                 ForeignImportTargets = [DllFileName],
@@ -629,21 +655,22 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             ;
                 Target = target_c,
                 % NOTE: for C the possible targets might be a .o file _or_ a
-                % .pic_o file.  We need to include dependencies for the latter
+                % .pic_o file. We need to include dependencies for the latter
                 % otherwise invoking mmake with a <module>.pic_o target will
                 % break.
                 ForeignImportTargets = [ObjFileName, PicObjFileName],
                 ForeignImportExt = ".mh"
             ),
-            WriteForeignImportTarget = (pred(ForeignImportTarget::in,
-                    !.IO::di, !:IO::uo) is det :-
-                io.write_string(DepStream, "\n\n", !IO),
-                io.write_string(DepStream, ForeignImportTarget, !IO),
-                io.write_string(DepStream, " : ", !IO),
-                write_dependencies_list(Globals, DepStream, ForeignImportExt,
-                    ForeignImportedModules, !IO),
-                io.write_string(DepStream, "\n\n", !IO)
-            ),
+            WriteForeignImportTarget =
+                ( pred(ForeignImportTarget::in, !.IO::di, !:IO::uo) is det :-
+                    io.write_string(DepStream, "\n\n", !IO),
+                    io.write_string(DepStream, ForeignImportTarget, !IO),
+                    io.write_string(DepStream, " : ", !IO),
+                    write_dependencies_list(Globals, DepStream,
+                        ForeignImportExt,
+                        set.to_sorted_list(ForeignImportedModuleNames), !IO),
+                    io.write_string(DepStream, "\n\n", !IO)
+                ),
             list.foldl(WriteForeignImportTarget, ForeignImportTargets, !IO)
         ),
 
@@ -704,7 +731,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
         %
         % Be very careful about changing the following rules. The `@:' is a
         % silent do-nothing command. It is used to force GNU Make to recheck
-        % the timestamp on the target file.  (It is a pity that GNU Make
+        % the timestamp on the target file. (It is a pity that GNU Make
         % doesn't have a way of handling these sorts of rules in a
         % nicer manner.)
 
@@ -736,7 +763,9 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             UseSubdirs = no
         ),
 
-        ( if SourceFileName \= default_source_file(ModuleName) then
+        ( if SourceFileName = default_source_file(ModuleName) then
+            true
+        else
             % The pattern rules in Mmake.rules won't work, since the source
             % file name doesn't match the expected source file name for this
             % module name. This can occur due to just the use of different
@@ -782,8 +811,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                     "--java-only ", ModuleArg,
                     " $(ERR_REDIRECT)\n"
             ], !IO)
-        else
-            true
         ),
 
         io.close_output(DepStream, !IO),
@@ -792,7 +819,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
         (
             Result3 = error(_),
             % On some systems, we need to remove the existing file
-            % first, if any.  So try again that way.
+            % first, if any. So try again that way.
             io.remove_file(DependencyFileName, Result4, !IO),
             (
                 Result4 = error(Error4),
@@ -837,7 +864,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
 submodules(Module, Modules0) = Modules :-
     ( if
         Module = unqualified(Str),
-        \+ mercury_std_library_module_name(Module)
+        not mercury_std_library_module_name(Module)
     then
         P = (pred(M::in) is semidet :-
             Str = outermost_qualifier(M),
@@ -971,13 +998,12 @@ write_file_dependencies_list(DepStream, Suffix, [FileName | FileNames], !IO) :-
     io.write_string(DepStream, Suffix, !IO),
     write_file_dependencies_list(DepStream, Suffix, FileNames, !IO).
 
-    % Generate the following dependency.  This dependency is
-    % needed because module__cpp_code.dll might refer to
-    % high level data in any of the mercury modules it
-    % imports plus itself.
-    % We also generate a dependency on the .il file, so that mmake
-    % knows we need to generate the .il file to get the foreign language
-    % source file (e.g. .cpp file).
+    % Generate the following dependency. This dependency is needed because
+    % module__cpp_code.dll might refer to high level data in any of the
+    % mercury modules it imports plus itself.
+    % We also generate a dependency on the .il file, so that mmake knows
+    % we need to generate the .il file to get the foreign language source file
+    % (e.g. .cpp file).
     %
     % For example, for MC++ we generate:
     %
@@ -988,7 +1014,7 @@ write_file_dependencies_list(DepStream, Suffix, [FileName | FileNames], !IO) :-
     % scripts/Mmake.rules).
     %
 :- pred write_foreign_dependency_for_il(globals::in, io.output_stream::in,
-    sym_name::in, set(module_name)::in, list(foreign_import_module_info)::in,
+    sym_name::in, set(module_name)::in, set(foreign_import_module_info)::in,
     foreign_language::in, io::di, io::uo) is det.
 
 write_foreign_dependency_for_il(Globals, DepStream, ModuleName, AllDeps,
@@ -1031,11 +1057,11 @@ write_foreign_dependency_for_il(Globals, DepStream, ModuleName, AllDeps,
             else
                 Prefix = "/r:"
             ),
-            ForeignDeps = list.map(
+            ForeignDeps = set.map(
                 ( func(M) =
                     foreign_import_module_name_from_module(M, ModuleName)
                 ), ForeignImports),
-            set.insert_list(ForeignDeps, AllDeps, Deps),
+            set.union(ForeignDeps, AllDeps, Deps),
             write_dll_dependencies_list(Globals, DepStream, Prefix,
                 set.to_sorted_list(referenced_dlls(ModuleName, Deps)), !IO),
             io.nl(DepStream, !IO)
@@ -1105,22 +1131,32 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
                 IndirectDeps)
         ),
 
-        globals.get_target(Globals, Target),
-        ( Target = target_c,        Lang = lang_c
-        ; Target = target_java,     Lang = lang_java
-        ; Target = target_csharp,   Lang = lang_csharp
-        ; Target = target_il,       Lang = lang_il
-        ; Target = target_erlang,   Lang = lang_erlang
-        ),
         % Assume we need the `.mh' files for all imported modules
         % (we will if they define foreign types).
-        ForeignImports = set.map(
-            (func(ThisDep) =
-                foreign_import_module_info(Lang, ThisDep, term.context_init)
-            ), IndirectOptDeps),
-        % XXX ITEM_LIST mai_foreign_import_modules should be a set
-        !ModuleAndImports ^ mai_foreign_import_modules :=
-            cord.from_list(set.to_sorted_list(ForeignImports)),
+        ForeignImportModules0 = init_foreign_import_modules,
+        globals.get_target(Globals, Target),
+        (
+            Target = target_c,
+            ForeignImportModules =
+                ForeignImportModules0 ^ fim_c := IndirectOptDeps
+        ;
+            Target = target_csharp,
+            ForeignImportModules =
+                ForeignImportModules0 ^ fim_csharp := IndirectOptDeps
+        ;
+            Target = target_java,
+            ForeignImportModules =
+                ForeignImportModules0 ^ fim_java := IndirectOptDeps
+        ;
+            Target = target_il,
+            ForeignImportModules =
+                ForeignImportModules0 ^ fim_il := IndirectOptDeps
+        ;
+            Target = target_erlang,
+            ForeignImportModules =
+                ForeignImportModules0 ^ fim_erlang := IndirectOptDeps
+        ),
+        !ModuleAndImports ^ mai_foreign_import_modules := ForeignImportModules,
 
         module_and_imports_set_int_deps(IntDeps, !ModuleAndImports),
         module_and_imports_set_imp_deps(ImpDeps, !ModuleAndImports),
@@ -1424,10 +1460,9 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     write_compact_dependencies_list(Globals, DepStream,
         "$(classes_subdir)", ".class", Basis, Modules, !IO),
     io.write_string(DepStream, " ", !IO),
-    % The Java compiler creates a .class file for each class
-    % within the original .java file.  The filenames of all
-    % these can be matched with `module\$*.class', hence the
-    % "\\$$*.class" below.
+    % The Java compiler creates a .class file for each class within the
+    % original .java file. The filenames of all these can be matched with
+    % `module\$*.class', hence the "\\$$*.class" below.
     % If no such files exist, Make will use the pattern verbatim,
     % so we enclose the pattern in a `wildcard' function to prevent this.
     % XXX This relies on GNU Make.
@@ -1552,7 +1587,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
 
     % The `<module>.all_mihs' variable is like `<module>.mihs' except
     % that it contains header files for all the modules, regardless
-    % of the grade or --target option.  It is used by the rule for
+    % of the grade or --target option. It is used by the rule for
     % `mmake realclean', which should remove anything that could have
     % been automatically generated, even if the grade or --target option
     % has changed.
@@ -1581,7 +1616,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     io.write_string(DepStream, "\n", !IO),
 
     % `.int0' files are only generated for modules with sub-modules.
-    % XXX ... or at least they should be.  Currently we end up generating
+    % XXX ... or at least they should be. Currently we end up generating
     % .int0 files for nested submodules that don't have any children.
     % (We do the correct thing for separate sub-modules.)
 
@@ -1593,7 +1628,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
 
     % XXX The `<module>.all_int0s' variables is like `<module>.int0s' except
     % that it contains .int0 files for all modules, regardless of whether
-    % they should have been created or not.  It is used by the rule for
+    % they should have been created or not. It is used by the rule for
     % `mmake realclean' to ensure that we clean up all the .int0 files,
     % including the ones that were accidently created by the bug described
     % above.
@@ -2079,7 +2114,7 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
     % XXX  Note that we install the `.opt' and `.trans_opt' files
     % in two places: in the `lib/$(GRADE)/opts' directory, so
     % that mmc will find them, and also in the `ints' directory,
-    % so that Mmake will find them.  That's not ideal, but it works.
+    % so that Mmake will find them. That's not ideal, but it works.
 
     module_name_to_lib_file_name(Globals, "lib", ModuleName, ".install_ints",
         do_not_create_dirs, LibInstallIntsTargetName, !IO),
@@ -2198,7 +2233,7 @@ generate_dep_file_install_targets(Globals, DepStream, ModuleName, DepsMap,
     % XXX  Note that we install the header files in two places:
     % in the `lib/inc' or `lib/$(GRADE)/$(FULLARCH)/inc' directory,
     % so that the C compiler will find them, and also in the `ints' directory,
-    % so that Mmake will find them.  That's not ideal, but it works.
+    % so that Mmake will find them. That's not ideal, but it works.
     %
     % (A better fix would be to change the VPATH setting in
     % scripts/Mmake.vars.in so that Mmake also searches the

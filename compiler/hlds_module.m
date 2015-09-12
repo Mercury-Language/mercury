@@ -292,7 +292,7 @@
 :- pred module_info_get_const_struct_db(module_info::in,
     const_struct_db::out) is det.
 :- pred module_info_get_foreign_import_modules(module_info::in,
-    foreign_import_module_infos::out) is det.
+    foreign_import_modules::out) is det.
 :- pred module_info_get_pragma_exported_procs(module_info::in,
     cord(pragma_exported_proc)::out) is det.
 
@@ -390,7 +390,7 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_const_struct_db(const_struct_db::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_foreign_import_modules(foreign_import_module_infos::in,
+:- pred module_info_set_foreign_import_modules(foreign_import_modules::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_pragma_exported_procs(cord(pragma_exported_proc)::in,
     module_info::in, module_info::out) is det.
@@ -702,7 +702,7 @@
                 % of the program.
                 msi_const_struct_db             :: const_struct_db,
 
-                msi_foreign_import_modules      :: foreign_import_module_infos,
+                msi_foreign_import_modules      :: foreign_import_modules,
 
                 % List of the procs for which there is a
                 % pragma foreign_export(...) declaration.
@@ -857,7 +857,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
 
     map.init(ExceptionInfo),
     const_struct_db_init(Globals, ConstStructDb),
-    ForeignImportModules = cord.init,
+    ForeignImportModules = init_foreign_import_modules,
     PragmaExportedProcs = cord.init,
 
     ModuleSubInfo = module_sub_info(SpecialPredMaps, InstanceTable,
@@ -1441,8 +1441,9 @@ module_add_foreign_body_code(ForeignBodyCode, !Module) :-
 
 module_add_foreign_import_module(ForeignImportModule, !Module) :-
     module_info_get_foreign_import_modules(!.Module, ForeignImportModules0),
-    ForeignImportModules =
-        cord.snoc(ForeignImportModules0, ForeignImportModule),
+    ForeignImportModule = foreign_import_module_info(Lang, ModuleName),
+    add_foreign_import_module(Lang, ModuleName,
+        ForeignImportModules0, ForeignImportModules),
     module_info_set_foreign_import_modules(ForeignImportModules, !Module).
 
 module_add_fact_table_file(FileName, !Module) :-

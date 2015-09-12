@@ -110,9 +110,7 @@ add_pass_2_pragma(ItemPragma, ItemMercuryStatus, !ModuleInfo, !Specs) :-
         module_add_foreign_body_code(ForeignBodyCode, !ModuleInfo)
     ;
         Pragma = pragma_foreign_import_module(FIMInfo),
-        FIMInfo = pragma_info_foreign_import_module(Lang, Import),
-        ForeignImportModule =
-            foreign_import_module_info(Lang, Import, Context),
+        FIMInfo = pragma_info_foreign_import_module(ForeignImportModule),
         module_add_foreign_import_module(ForeignImportModule, !ModuleInfo)
     ;
         Pragma = pragma_external_proc(ExternalInfo),

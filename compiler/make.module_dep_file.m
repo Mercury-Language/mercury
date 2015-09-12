@@ -386,7 +386,10 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     io.write_list(ForeignLanguages,
         ", ", mercury_output_foreign_language_string, !IO),
     io.write_string("},\n\t{", !IO),
-    io.write_list(cord.list(ModuleAndImports ^ mai_foreign_import_modules),
+    ForeignImportModules = ModuleAndImports ^ mai_foreign_import_modules,
+    ForeignImportModuleInfos =
+        get_all_foreign_import_module_infos(ForeignImportModules),
+    io.write_list(set.to_sorted_list(ForeignImportModuleInfos),
         ", ", write_foreign_import_module_info, !IO),
     io.write_string("},\n\t", !IO),
     contains_foreign_export_to_string(
@@ -411,7 +414,7 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     io::di, io::uo) is det.
 
 write_foreign_import_module_info(ForeignImportModule, !IO) :-
-    ForeignImportModule = foreign_import_module_info(Lang, ForeignImport, _),
+    ForeignImportModule = foreign_import_module_info(Lang, ForeignImport),
     mercury_output_foreign_language_string(Lang, !IO),
     io.write_string(" - ", !IO),
     mercury_output_bracketed_sym_name(ForeignImport, !IO).
@@ -577,6 +580,8 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
         ContainsForeignCode = contains_foreign_code(ForeignLanguages),
         set.init(IndirectDeps),
         set.init(PublicChildren),
+        list.foldl(add_foreign_import_module_info,
+            ForeignImports, init_foreign_import_modules, ForeignImportModules),
         SrcItemBlocks = [],
         DirectIntItemBlocksCord = cord.empty,
         IndirectIntItemBlocksCord = cord.empty,
@@ -596,7 +601,7 @@ read_module_dependencies_3(Globals, SearchDirs, ModuleName, ModuleDir,
             PublicChildren,
             set.list_to_set(NestedChildren),
             FactDeps,
-            cord.from_list(ForeignImports), cord.from_list(ForeignIncludes),
+            ForeignImportModules, cord.from_list(ForeignIncludes),
             ContainsForeignCode, ContainsForeignExport,
             SrcItemBlocks, DirectIntItemBlocksCord, IndirectIntItemBlocksCord,
             OptItemBlocksCord, IntForOptItemBlocksCord,
@@ -692,8 +697,7 @@ foreign_import_term(Term, ForeignImport) :-
     atom_term(Term, "-", [LanguageTerm, ImportedModuleTerm]),
     foreign_language_term(LanguageTerm, Language),
     try_parse_sym_name_and_no_args(ImportedModuleTerm, ImportedModuleName),
-    ForeignImport = foreign_import_module_info(Language, ImportedModuleName,
-        term.context_init).
+    ForeignImport = foreign_import_module_info(Language, ImportedModuleName).
 
 :- pred foreign_include_term(term::in, foreign_include_file_info::out)
     is semidet.
