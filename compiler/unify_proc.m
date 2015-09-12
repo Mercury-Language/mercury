@@ -289,11 +289,10 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
     else
         % Lookup the pred_id for the unification procedure that we are
         % going to generate.
-        module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap),
-        ( if
-            map.search(SpecialPredMap, spec_pred_unify - TypeCtor, PredId0)
-        then
-            PredId = PredId0
+        module_info_get_special_pred_maps(!.ModuleInfo, SpecialPredMaps),
+        UnifyMap = SpecialPredMaps ^ spm_unify_map,
+        ( if map.search(UnifyMap, TypeCtor, PredIdPrime) then
+            PredId = PredIdPrime
         else
             % We generate unification predicates for most imported types
             % lazily, so add the declarations and clauses now.
@@ -469,8 +468,8 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
             Context, TypeStatus, !ModuleInfo)
     ),
 
-    module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap),
-    map.lookup(SpecialPredMap, SpecialId - TypeCtor, PredId),
+    module_info_get_special_pred_maps(!.ModuleInfo, SpecialPredMaps),
+    lookup_special_pred_maps(SpecialPredMaps, SpecialId, TypeCtor, PredId),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
 
     % The clauses are generated with all type information computed,

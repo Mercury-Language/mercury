@@ -77,7 +77,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module varset.
@@ -160,8 +159,11 @@ eagerly_add_special_preds(TVarSet, Type, TypeCtor, TypeBody, Context,
             ThisModule = no,
             % Never add clauses for comparison predicates
             % for imported types -- they will never be used.
-            module_info_get_special_pred_map(!.ModuleInfo, SpecialPreds),
-            ( if map.contains(SpecialPreds, spec_pred_compare - TypeCtor) then
+            module_info_get_special_pred_maps(!.ModuleInfo, SpecialPredMaps),
+            ( if
+                search_special_pred_maps(SpecialPredMaps, spec_pred_compare,
+                    TypeCtor, _)
+            then
                 true
             else
                 add_special_pred_decl(spec_pred_compare, TVarSet, Type,
@@ -262,8 +264,10 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
         TypeBody, Context, TypeStatus0, !ModuleInfo) :-
     Type = adjust_types_with_special_preds_in_private_builtin(Type0),
     adjust_special_pred_status(SpecialPredId, TypeStatus0, PredStatus),
-    module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap0),
-    ( if map.contains(SpecialPredMap0, SpecialPredId - TypeCtor) then
+    module_info_get_special_pred_maps(!.ModuleInfo, SpecialPredMaps0),
+    ( if
+        search_special_pred_maps(SpecialPredMaps0, SpecialPredId, TypeCtor, _)
+    then
         true
     else
         % XXX STATUS
@@ -272,8 +276,9 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
         do_add_special_pred_decl_for_real(SpecialPredId, TVarSet,
             Type, TypeCtor, Context, TypeStatus, !ModuleInfo)
     ),
-    module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap1),
-    map.lookup(SpecialPredMap1, SpecialPredId - TypeCtor, PredId),
+    module_info_get_special_pred_maps(!.ModuleInfo, SpecialPredMaps1),
+    lookup_special_pred_maps(SpecialPredMaps1, SpecialPredId, TypeCtor,
+        PredId),
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, PredInfo0),
     % If the type was imported, then the special preds for that
@@ -309,7 +314,7 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     pred_info_get_markers(PredInfo2, Markers2),
     add_marker(marker_calls_are_fully_qualified, Markers2, Markers),
     pred_info_set_markers(Markers, PredInfo2, PredInfo3),
-    pred_info_set_origin(origin_special_pred(SpecialPredId - TypeCtor),
+    pred_info_set_origin(origin_special_pred(SpecialPredId, TypeCtor),
         PredInfo3, PredInfo),
     map.det_update(PredId, PredInfo, Preds0, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
@@ -393,7 +398,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     % matter.
     clauses_info_init(pf_predicate, Arity, init_clause_item_numbers_comp_gen,
         ClausesInfo0),
-    Origin = origin_special_pred(SpecialPredId - TypeCtor),
+    Origin = origin_special_pred(SpecialPredId, TypeCtor),
     adjust_special_pred_status(SpecialPredId, TypeStatus, PredStatus),
     map.init(Proofs),
     map.init(ConstraintMap),
@@ -419,9 +424,29 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     predicate_table_insert(PredInfo, PredId, PredicateTable0, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
-    module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap0),
-    map.set(SpecialPredId - TypeCtor, PredId, SpecialPredMap0, SpecialPredMap),
-    module_info_set_special_pred_map(SpecialPredMap, !ModuleInfo).
+    module_info_get_special_pred_maps(!.ModuleInfo, SpecialPredMaps0),
+    (
+        SpecialPredId = spec_pred_unify,
+        UnifyMap0 = SpecialPredMaps0 ^ spm_unify_map,
+        map.det_insert(TypeCtor, PredId, UnifyMap0, UnifyMap),
+        SpecialPredMaps = SpecialPredMaps0 ^ spm_unify_map := UnifyMap
+    ;
+        SpecialPredId = spec_pred_index,
+        IndexMap0 = SpecialPredMaps0 ^ spm_index_map,
+        map.det_insert(TypeCtor, PredId, IndexMap0, IndexMap),
+        SpecialPredMaps = SpecialPredMaps0 ^ spm_index_map := IndexMap
+    ;
+        SpecialPredId = spec_pred_compare,
+        CompareMap0 = SpecialPredMaps0 ^ spm_compare_map,
+        map.det_insert(TypeCtor, PredId, CompareMap0, CompareMap),
+        SpecialPredMaps = SpecialPredMaps0 ^ spm_compare_map := CompareMap
+    ;
+        SpecialPredId = spec_pred_init,
+        InitMap0 = SpecialPredMaps0 ^ spm_init_map,
+        map.det_insert(TypeCtor, PredId, InitMap0, InitMap),
+        SpecialPredMaps = SpecialPredMaps0 ^ spm_init_map := InitMap
+    ),
+    module_info_set_special_pred_maps(SpecialPredMaps, !ModuleInfo).
 
 :- pred add_special_pred_unify_status(hlds_type_body::in,
     type_status::in, type_status::out) is det.

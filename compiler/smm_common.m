@@ -37,7 +37,10 @@
 :- pred check_type_of_node(module_info::in, mer_type::in, selector::in)
     is semidet.
 
-    % Succeeds if some (or all) of the procedures in the list are special.
+    % Succeeds if some (or all) of the procedures in the list are either
+    %
+    % - compiler generated unify, index, compare or init predicates, or
+    % - not defined in this module.
     %
 :- pred some_are_special_preds(list(pred_proc_id)::in, module_info::in)
     is semidet.
@@ -71,6 +74,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module hlds.special_pred.
 :- import_module hlds.status.
 :- import_module parse_tree.prog_out.
 
@@ -106,25 +110,34 @@ select_subtype(ModuleInfo, Type, ConsId, Choice, SubType) :-
     get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId, ArgTypes),
     list.index1(ArgTypes, Choice, SubType).
 
-    % Special predicates are either compiler-generated ones, such as
-    % __Unify__ and others or ones that are not defined in the module.
-    %
 some_are_special_preds(PPIds, ModuleInfo) :-
-    module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
-    map.values(SpecialPredMap, SpecialPredIds),
     (
-        list.filter(
-            pred(PPId::in) is semidet :- (
-                PPId = proc(PredId, _),
-                list.member(PredId, SpecialPredIds)
-            ),
-            PPIds, SpecialPPIds),
-        SpecialPPIds = [_ | _]
+        module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
+        SpecialPredMaps = special_pred_maps(UnifyMap, IndexMap, CompareMap,
+            InitMap),
+        ( some_special_preds_are_in_list(UnifyMap, PPIds)
+        ; some_special_preds_are_in_list(IndexMap, PPIds)
+        ; some_special_preds_are_in_list(CompareMap, PPIds)
+        ; some_special_preds_are_in_list(InitMap, PPIds)
+        )
     ;
         list.filter(proc_not_defined_in_module(ModuleInfo), PPIds,
             FilteredPPIds),
         FilteredPPIds = [_ | _]
     ).
+
+:- pred some_special_preds_are_in_list(map(type_ctor, pred_id)::in,
+    list(pred_proc_id)::in) is semidet.
+
+some_special_preds_are_in_list(SpecMap, PPIds) :-
+    map.values(SpecMap, SpecialPredIds),
+    list.filter(
+        ( pred(PPId::in) is semidet :-
+            PPId = proc(PredId, _),
+            list.member(PredId, SpecialPredIds)
+        ),
+        PPIds, SpecialPPIds),
+    SpecialPPIds = [_ | _].
 
 :- pred proc_not_defined_in_module(module_info::in, pred_proc_id::in)
     is semidet.

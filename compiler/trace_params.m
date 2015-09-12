@@ -134,7 +134,6 @@
 :- import_module char.
 :- import_module int.
 :- import_module list.
-:- import_module pair.
 :- import_module set.
 :- import_module string.
 
@@ -216,7 +215,7 @@ eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
     ;
         pred_info_get_origin(PredInfo, Origin),
         (
-            Origin = origin_special_pred(SpecialPred - _),
+            Origin = origin_special_pred(SpecialPred, _),
             % Unify and compare predicates can be called from the generic
             % unify and compare predicates in builtin.m, so they can be called
             % from outside this module even if they don't have their address

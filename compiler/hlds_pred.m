@@ -29,7 +29,6 @@
 :- import_module hlds.inst_graph.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
-:- import_module hlds.special_pred.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.globals.
@@ -430,7 +429,7 @@
             % to be I/O tabled must not be inlined.
 
 :- type pred_origin
-    --->    origin_special_pred(special_pred)
+    --->    origin_special_pred(special_pred_id, type_ctor)
             % If the predicate is a unify, compare, index or initialisation
             % predicate, specify which one, and for which type constructor.
 
@@ -1556,25 +1555,30 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         PredStatus = pred_status(status_external(ExternalImportStatus)),
         pred_status_is_exported(pred_status(ExternalImportStatus)) = yes
     ;
-        pred_info_get_origin(PredInfo, origin_special_pred(SpecialPred)),
-        SpecialPred = SpecialId - TypeCtor,
+        pred_info_get_origin(PredInfo, Origin),
+        Origin = origin_special_pred(SpecialPredId, TypeCtor),
         module_info_get_type_table(ModuleInfo, TypeTable),
         % If the search fails, then TypeCtor must be a builtin type
         % constructor, such as the tuple constructor.
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_in_exported_eqv(TypeDefn, yes),
+        require_complete_switch [SpecialPredId]
         (
-            SpecialId = spec_pred_unify,
+            SpecialPredId = spec_pred_unify,
             % The other proc_ids are module-specific.
             in_in_unification_proc_id(ProcId)
         ;
-            SpecialId = spec_pred_compare
+            SpecialPredId = spec_pred_compare
             % The declared modes are all global, and we don't
             % generate any modes for compare preds dynamically.
         ;
-            SpecialId = spec_pred_index,
+            SpecialPredId = spec_pred_index,
             % The index predicate is never called from anywhere
             % except the compare predicate.
+            fail
+        ;
+            SpecialPredId = spec_pred_init,
+            % XXX Julien, is this correct?
             fail
         )
     ).
@@ -3421,11 +3425,11 @@ pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
 :- implementation.
 
 is_unify_pred(PredInfo) :-
-    pred_info_get_origin(PredInfo, origin_special_pred(SpecialPred)),
-    SpecialPred = spec_pred_unify - _TypeCtor.
+    pred_info_get_origin(PredInfo, Origin),
+    Origin = origin_special_pred(spec_pred_unify, _TypeCtor).
 
 is_unify_or_compare_pred(PredInfo) :-
-    pred_info_get_origin(PredInfo, origin_special_pred(_)). % XXX bug
+    pred_info_get_origin(PredInfo, origin_special_pred(_, _)). % XXX bug
 
 pred_info_is_builtin(PredInfo) :-
     ModuleName = pred_info_module(PredInfo),

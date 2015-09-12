@@ -281,8 +281,8 @@
 :- pred module_info_get_ctor_field_table(module_info::in,
     ctor_field_table::out) is det.
 
-:- pred module_info_get_special_pred_map(module_info::in,
-    special_pred_map::out) is det.
+:- pred module_info_get_special_pred_maps(module_info::in,
+    special_pred_maps::out) is det.
 :- pred module_info_get_instance_table(module_info::in,
     instance_table::out) is det.
 :- pred module_info_get_type_spec_info(module_info::in,
@@ -380,7 +380,7 @@
 :- pred module_info_set_ctor_field_table(ctor_field_table::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_set_special_pred_map(special_pred_map::in,
+:- pred module_info_set_special_pred_maps(special_pred_maps::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_instance_table(instance_table::in,
     module_info::in, module_info::out) is det.
@@ -687,7 +687,7 @@
 
 :- type module_sub_info
     --->    module_sub_info(
-                msi_special_pred_map            :: special_pred_map,
+                msi_special_pred_maps           :: special_pred_maps,
                 msi_instance_table              :: instance_table,
 
                 % Data used for user-guided type specialization.
@@ -844,7 +844,8 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
 
-    map.init(SpecialPredMap),
+    SpecialPredMaps =
+        special_pred_maps(map.init, map.init, map.init, map.init),
     map.init(InstanceTable),
 
     set.init(TypeSpecPreds),
@@ -859,7 +860,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     ForeignImportModules = cord.init,
     PragmaExportedProcs = cord.init,
 
-    ModuleSubInfo = module_sub_info(SpecialPredMap, InstanceTable,
+    ModuleSubInfo = module_sub_info(SpecialPredMaps, InstanceTable,
         TypeSpecInfo, ExceptionInfo, ConstStructDb,
         ForeignImportModules, PragmaExportedProcs),
 
@@ -1052,8 +1053,8 @@ module_info_get_class_table(MI, X) :-
 module_info_get_ctor_field_table(MI, X) :-
     X = MI ^ mi_ctor_field_table.
 
-module_info_get_special_pred_map(MI, X) :-
-    X = MI ^ mi_sub_info ^ msi_special_pred_map.
+module_info_get_special_pred_maps(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_special_pred_maps.
 module_info_get_instance_table(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_instance_table.
 module_info_get_type_spec_info(MI, X) :-
@@ -1165,8 +1166,8 @@ module_info_set_class_table(X, !MI) :-
 module_info_set_ctor_field_table(X, !MI) :-
     !MI ^ mi_ctor_field_table := X.
 
-module_info_set_special_pred_map(X, !MI) :-
-    !MI ^ mi_sub_info ^ msi_special_pred_map := X.
+module_info_set_special_pred_maps(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_special_pred_maps := X.
 module_info_set_instance_table(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_instance_table := X.
 module_info_set_type_spec_info(X, !MI) :-
@@ -1276,7 +1277,7 @@ module_info_set_ts_rev_string_table(X, Y, !MI) :-
 %  i      read      same      diff   same%
 %  0 188233540        17  38369323   0.00%  predicate_table
 %  1      7933         0       480   0.00%  proc_requests
-%  2    261171         0    103230   0.00%  special_pred_map
+%  2    261171         0    103230   0.00%  special_pred_maps
 %  3   4576898         0         0          partial_qualifier_info
 %  4  21758620      2908   1589788   0.18%  type_table
 %  5  22754063         0   2360725   0.00%  inst_table

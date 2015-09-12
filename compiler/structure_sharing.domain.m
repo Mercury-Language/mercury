@@ -921,7 +921,7 @@ predict_called_pred_is_bottom(ModuleInfo, PPId) :-
         % 3. call to a compiler generate special predicate:
         % "unify", "index", "compare" or "initialise".
         pred_info_get_origin(PredInfo, Origin),
-        Origin = origin_special_pred(_)
+        Origin = origin_special_pred(_, _)
     ).
 
 :- func top_sharing_not_found(pred_proc_id) = sharing_as.
@@ -970,7 +970,7 @@ bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo, ProcInfo) :-
     (
         % Generated special predicates don't introduce sharing.
         pred_info_get_origin(PredInfo, Origin),
-        Origin = origin_special_pred(_)
+        Origin = origin_special_pred(_, _)
     ;
         proc_info_get_headvars(ProcInfo, HeadVars),
         proc_info_get_argmodes(ProcInfo, Modes),

@@ -236,7 +236,7 @@ indirect_reuse_analyse_pred_proc(SharingTable, ReuseTable, PPId,
     PPId = proc(PredId, _),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_origin(PredInfo, Origin),
-    ( Origin = origin_special_pred(_) ->
+    ( Origin = origin_special_pred(_, _) ->
         % We can't analyse compiler generated special predicates.
         true
     ;

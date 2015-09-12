@@ -1231,14 +1231,15 @@ resolve_unify_compare_overloading(ModuleInfo, TypeCtor,
 resolve_user_special_pred_overloading(_, _, _, no, no, !Info).
 resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
         TypeCtor, yes(Pred0), yes(Pred), !Info) :-
-    module_info_get_special_pred_map(ModuleInfo, SpecialPreds),
-    map.lookup(SpecialPreds, SpecialId - TypeCtor, UnifyPredId),
-    module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
-    pred_info_get_arg_types(UnifyPredInfo, TVarSet, ExistQVars, ArgTypes),
-    pred_info_get_head_type_params(UnifyPredInfo, HeadTypeParams),
+    module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
+    lookup_special_pred_maps(SpecialPredMaps, SpecialId, TypeCtor,
+        SpecialPredId),
+    module_info_pred_info(ModuleInfo, SpecialPredId, SpecialPredInfo),
+    pred_info_get_arg_types(SpecialPredInfo, TVarSet, ExistQVars, ArgTypes),
+    pred_info_get_head_type_params(SpecialPredInfo, HeadTypeParams),
     init_markers(Markers0),
     add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
-    pred_info_get_context(UnifyPredInfo, Context),
+    pred_info_get_context(SpecialPredInfo, Context),
     resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
         ArgTypes, HeadTypeParams, Context, Pred0, Pred, UserEqPredId),
     intermod_add_proc(UserEqPredId, _, !Info).
@@ -2259,10 +2260,11 @@ adjust_type_status_2(TypeCtor, TypeDefn0, TypeDefn, !ModuleInfo) :-
 
 fixup_special_preds(TypeCtor, ModuleInfo0, ModuleInfo) :-
     special_pred_list(SpecialPredList),
-    module_info_get_special_pred_map(ModuleInfo0, SpecPredMap),
+    module_info_get_special_pred_maps(ModuleInfo0, SpecPredMaps),
     list.filter_map(
         ( pred(SpecPredId::in, PredId::out) is semidet :-
-            map.search(SpecPredMap, SpecPredId - TypeCtor, PredId)
+            search_special_pred_maps(SpecPredMaps, SpecPredId, TypeCtor,
+                PredId)
         ), SpecialPredList, PredIds),
     set_list_of_preds_exported(PredIds, ModuleInfo0, ModuleInfo).
 
@@ -2371,7 +2373,7 @@ set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
         ToWrite = yes,
         ( if
             pred_info_get_origin(PredInfo0, Origin),
-            Origin = origin_special_pred(spec_pred_unify - _)
+            Origin = origin_special_pred(spec_pred_unify, _)
         then
             PredStatus = pred_status(status_pseudo_exported)
         else if

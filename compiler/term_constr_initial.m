@@ -382,7 +382,7 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
             SpecialPredId = SpecPredId0
         ;
             pred_info_get_origin(PredInfo, PredOrigin),
-            PredOrigin = origin_special_pred(SpecialPredId - _)
+            PredOrigin = origin_special_pred(SpecialPredId, _)
         )
     ->
         set_generated_terminates(ProcIds, SpecialPredId, ModuleInfo,

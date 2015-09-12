@@ -581,7 +581,7 @@ maybe_set_trace_level(PredInfo, !ModuleInfo) :-
         globals.set_trace_level_none(Globals0, Globals1),
         module_info_set_globals(Globals1, !ModuleInfo)
     ;
-        pred_info_get_origin(PredInfo, origin_special_pred(_)),
+        pred_info_get_origin(PredInfo, origin_special_pred(_, _)),
         globals.get_trace_level(Globals0, TraceLevel),
         UC_TraceLevel = trace_level_for_unify_compare(TraceLevel)
     ->
@@ -1358,7 +1358,7 @@ push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     pred_info_get_origin(PredInfo, Origin),
-    ( Origin = origin_special_pred(SpecialId - TypeCtor) ->
+    ( Origin = origin_special_pred(SpecialId, TypeCtor) ->
         find_arg_type_ctor_name(TypeCtor, TypeName),
         SpecialPredName = get_special_pred_id_generic_name(SpecialId),
         FullPredName = SpecialPredName ++ "_for_" ++ TypeName

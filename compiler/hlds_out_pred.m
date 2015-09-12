@@ -251,7 +251,7 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
                 mercury_output_constraint(TVarSet, VarNamePrint), !IO),
             io.nl(!IO)
         ;
-            Origin = origin_special_pred(_),
+            Origin = origin_special_pred(_, _),
             io.write_string("% special pred\n", !IO)
         ;
             Origin = origin_transformed(Transformation, _, OrigPredId),

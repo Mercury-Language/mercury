@@ -2541,7 +2541,7 @@ origin_name(Origin, Name0) = Name :-
             Name = Name0
         )
     ;
-        Origin = origin_special_pred(_SpecialPredId - _TypeCtor),
+        Origin = origin_special_pred(_SpecialPredId, _TypeCtor),
         Name = Name0
         % We can't use the following code until we have adapted the
         % code in the runtime and trace directories to handle the names

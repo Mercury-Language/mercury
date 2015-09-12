@@ -668,7 +668,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
         get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         Origin = RttiProcLabel ^ rpl_pred_info_origin,
-        ( Origin = origin_special_pred(_) ->
+        ( Origin = origin_special_pred(_, _) ->
             UserOrUCI = uci
         ;
             UserOrUCI = user

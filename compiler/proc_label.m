@@ -51,7 +51,6 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 
@@ -83,7 +82,7 @@ make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 
 do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredArity,
         ProcId, PredIsImported, Origin) = ProcLabel :-
-    ( Origin = origin_special_pred(SpecialPred - TypeCtor) ->
+    ( Origin = origin_special_pred(SpecialPred, TypeCtor) ->
         (
             % All type_ctors other than tuples here should be module qualified,
             % since builtin types are handled separately in polymorphism.m.

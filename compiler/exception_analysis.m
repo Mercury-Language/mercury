@@ -147,7 +147,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module term.
@@ -490,7 +489,7 @@ check_goal_for_exceptions_plain_call(SCC, VarTypes, CallPredId, CallProcId,
             special_pred_name_arity(SpecialPredId, Name, _, Arity)
         ;
             pred_info_get_origin(CallPredInfo, Origin),
-            Origin = origin_special_pred(SpecialPredId - _),
+            Origin = origin_special_pred(SpecialPredId, _),
             ( SpecialPredId = spec_pred_compare
             ; SpecialPredId = spec_pred_unify
             )

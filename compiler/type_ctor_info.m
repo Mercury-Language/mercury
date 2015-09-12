@@ -237,7 +237,7 @@ gen_type_ctor_gen_info(ModuleInfo, TypeCtor, ModuleName, TypeName, TypeArity,
         TypeDefn, TypeCtorGenInfo) :-
     hlds_data.get_type_defn_status(TypeDefn, Status),
     module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_special_pred_map(ModuleInfo, SpecMap),
+    module_info_get_special_pred_maps(ModuleInfo, SpecMaps),
     globals.lookup_bool_option(Globals, special_preds, SpecialPreds),
     (
         (
@@ -248,12 +248,14 @@ gen_type_ctor_gen_info(ModuleInfo, TypeCtor, ModuleName, TypeName, TypeArity,
             Body ^ du_type_usereq = yes(_UserDefinedEquality)
         )
     ->
-        map.lookup(SpecMap, spec_pred_unify - TypeCtor, UnifyPredId),
+        UnifyMap = SpecMaps ^ spm_unify_map,
+        map.lookup(UnifyMap, TypeCtor, UnifyPredId),
         special_pred_mode_num(spec_pred_unify, UnifyProcInt),
         proc_id_to_int(UnifyProcId, UnifyProcInt),
         Unify = proc(UnifyPredId, UnifyProcId),
 
-        map.lookup(SpecMap, spec_pred_compare - TypeCtor, ComparePredId),
+        CompareMap = SpecMaps ^ spm_compare_map,
+        map.lookup(CompareMap, TypeCtor, ComparePredId),
         special_pred_mode_num(spec_pred_compare, CompareProcInt),
         proc_id_to_int(CompareProcId, CompareProcInt),
         Compare = proc(ComparePredId, CompareProcId)

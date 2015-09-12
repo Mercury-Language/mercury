@@ -1407,7 +1407,8 @@ maybe_report_missing_pred_inst(PredInfo, VarSet, Var, Context,
         ; list.member(float_type, ArgTypesB)
         ),
         % Ignore special predicates.
-        not pred_info_get_origin(PredInfo, origin_special_pred(_))
+        pred_info_get_origin(PredInfo, Origin),
+        Origin \= origin_special_pred(_, _)
     ->
         Spec = report_missing_higher_order_inst(PredInfo, VarSet, Var,
             Context),

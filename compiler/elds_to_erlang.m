@@ -48,7 +48,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_table.
-:- import_module hlds.special_pred.
 :- import_module hlds.status.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -66,7 +65,6 @@
 :- import_module library.
 :- import_module list.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -209,14 +207,14 @@ output_export_ann(ModuleInfo, Defn, !NeedComma, !IO) :-
     Defn = elds_defn(PredProcId, _, Body, _),
     PredProcId = proc(PredId, ProcId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ( procedure_is_exported(ModuleInfo, PredInfo, ProcId) ->
+    ( if procedure_is_exported(ModuleInfo, PredInfo, ProcId) then
         maybe_write_comma(!.NeedComma, !IO),
         nl_indent_line(1, !IO),
         output_pred_proc_id(ModuleInfo, PredProcId, !IO),
         io.write_char('/', !IO),
         io.write_int(elds_body_arity(Body), !IO),
         !:NeedComma = yes
-    ;
+    else
         true
     ).
 
@@ -288,14 +286,14 @@ output_wrapper_init_fn_export_ann(AddMainWrapper, InitPreds, FinalPreds,
 should_add_main_wrapper(ModuleInfo) = AddMainWrapper :-
     module_info_get_predicate_table(ModuleInfo, PredTable),
     predicate_table_lookup_pred_name_arity(PredTable, "main", 2, PredIds),
-    (
+    ( if
         list.member(PredId, PredIds),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_get_status(PredInfo, PredStatus),
         pred_status_is_exported_to_non_submodules(PredStatus) = yes
-    ->
+    then
         AddMainWrapper = yes
-    ;
+    else
         AddMainWrapper = no
     ).
 
@@ -493,7 +491,7 @@ output_defn(ModuleInfo, Defn, !IO) :-
     (
         Body = body_defined_here(Clause),
         io.nl(!IO),
-        (
+        ( if
             % If the function definition is for a pragma foreign_proc then
             % output ``-file(File, Line).'' before and after the function
             % definition.
@@ -504,7 +502,7 @@ output_defn(ModuleInfo, Defn, !IO) :-
                 elds_foreign_code(_Code, Context),
                 _PlaceOutputs
             ])
-        ->
+        then
             % We need to subtract 3 lines so that the line numbers in the
             % foreign code block will match up with the line numbers in the
             % source file.
@@ -513,7 +511,7 @@ output_defn(ModuleInfo, Defn, !IO) :-
             output_pred_proc_id(ModuleInfo, PredProcId, !IO),
             output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO),
             reset_file_directive(!IO)
-        ;
+        else
             output_pred_proc_id(ModuleInfo, PredProcId, !IO),
             output_toplevel_clause(ModuleInfo, VarSet, Clause, !IO)
         )
@@ -590,9 +588,9 @@ output_exprs(ModuleInfo, VarSet, Indent, Exprs, !IO) :-
     elds_expr::in, io::di, io::uo) is det.
 
 output_block_expr(ModuleInfo, VarSet, Indent, Expr, !IO) :-
-    ( Expr = elds_block(Exprs) ->
+    ( if Expr = elds_block(Exprs) then
         output_exprs_with_nl(ModuleInfo, VarSet, Indent, Exprs, !IO)
-    ;
+    else
         output_expr(ModuleInfo, VarSet, Indent, Expr, !IO)
     ).
 
@@ -828,11 +826,11 @@ output_term(ModuleInfo, VarSet, Indent, Term, !IO) :-
 
 output_float(Float, !IO) :-
     S = string.from_float(Float),
-    ( digit_then_e(S, no, 0, Pos) ->
+    ( if digit_then_e(S, no, 0, Pos) then
         io.write_string(string.between(S, 0, Pos), !IO),
         io.write_string(".0", !IO),
         io.write_string(string.between(S, Pos, length(S)), !IO)
-    ;
+    else
         io.write_string(S, !IO)
     ).
 
@@ -841,12 +839,12 @@ output_float(Float, !IO) :-
 digit_then_e(String, PrevDigit, Pos0, Pos) :-
     string.unsafe_index_next(String, Pos0, Pos1, Char),
     Char \= ('.'),
-    ( is_e(Char) ->
+    ( if is_e(Char) then
         PrevDigit = yes,
         Pos = Pos0
-    ; is_digit(Char) ->
+    else if is_digit(Char) then
         digit_then_e(String, yes, Pos1, Pos)
-    ;
+    else
         digit_then_e(String, no, Pos1, Pos)
     ).
 
@@ -860,27 +858,27 @@ is_e('E').
 
 output_tuple(ModuleInfo, VarSet, Indent, Args, !IO) :-
     % Treat lists and tuples specially.
-    (
+    ( if
         Args = [elds_term(elds_atom(SymName))],
         unqualify_name(SymName) = "[]"
-    ->
+    then
         io.write_string("[] ", !IO)
-    ;
+    else if
         Args = [elds_term(elds_atom(SymName)), A, B],
         unqualify_name(SymName) = "[|]"
-    ->
+    then
         io.write_char('[', !IO),
         output_expr(ModuleInfo, VarSet, Indent, A, !IO),
         io.write_string("| ", !IO),
         output_expr(ModuleInfo, VarSet, Indent, B, !IO),
         io.write_string("] ", !IO)
-    ;
+    else if
         Args = [elds_tuple | Args1]
-    ->
+    then
         io.write_char('{', !IO),
         output_exprs(ModuleInfo, VarSet, Indent, Args1, !IO),
         io.write_string("} ", !IO)
-    ;
+    else
         io.write_char('{', !IO),
         output_exprs(ModuleInfo, VarSet, Indent, Args, !IO),
         io.write_string("} ", !IO)
@@ -939,9 +937,9 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
         RttiTypeCtor = rtti_type_ctor(ModuleName, _, _),
 
         % The only things with an empty module name should be the builtins.
-        ( ModuleName = unqualified("") ->
+        ( if ModuleName = unqualified("") then
             InstanceModule = mercury_public_builtin_module
-        ;
+        else
             InstanceModule = ModuleName
         ),
 
@@ -950,21 +948,21 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
     ;
         RttiId = elds_rtti_type_info_id(TypeInfo),
 
-            % TypeInfos are always local to the current module.
+        % TypeInfos are always local to the current module.
         InstanceModule = CurModuleName,
         Atom0 = "ti_" ++ type_info_to_string(TypeInfo),
 
-            % Erlang atoms have a maximum length, so shorten names
+        % Erlang atoms have a maximum length, so shorten names.
         Atom1 = string.replace_all(Atom0, "type_ctor_info", "tci")
     ;
         RttiId = elds_rtti_pseudo_type_info_id(PseudoTypeInfo),
-        ( PseudoTypeInfo = type_var(_) ->
+        ( if PseudoTypeInfo = type_var(_) then
             Prefix = "type_var_"
-        ;
+        else
             Prefix = "pti_"
         ),
 
-            % PseudoTypeInfos are always local to the current module.
+        % PseudoTypeInfos are always local to the current module.
         InstanceModule = CurModuleName,
         Atom0 = Prefix ++ pseudo_type_info_to_string(PseudoTypeInfo),
 
@@ -980,11 +978,11 @@ output_rtti_id(ModuleInfo, RttiId, !IO) :-
             "__arity", string.from_int(ClassArity), "__", InstanceStr])
     ),
     Atom = shorten_long_atom_name(Atom1),
-    ( if CurModuleName \= InstanceModule then
+    ( if CurModuleName = InstanceModule then
+        true
+    else
         output_atom(erlang_module_name_to_str(InstanceModule), !IO),
         io.write_char(':', !IO)
-    else
-        true
     ),
     output_atom(Atom, !IO).
 
@@ -1032,17 +1030,17 @@ erlang_proc_name(ModuleInfo, PredProcId, MaybeExtModule, ProcNameStr) :-
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
-    ( PredStatus = pred_status(status_external(_)) ->
+    ( if PredStatus = pred_status(status_external(_)) then
         % pred_info_is_imported returns `yes' for :- external predicates.
         PredIsImported = no
-    ;
+    else
         PredIsImported = PredIsImported0
     ),
 
-    ( Origin = origin_special_pred(SpecialPred) ->
-        erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPred,
-            MaybeExtModule, ProcNameStr)
-    ;
+    ( if Origin = origin_special_pred(SpecialPredId, TypeCtor) then
+        erlang_special_proc_name(ThisModule, PredName, ProcId,
+            SpecialPredId, TypeCtor, MaybeExtModule, ProcNameStr)
+    else
         erlang_nonspecial_proc_name(ThisModule, PredModule, PredName,
             PredOrFunc, PredArity, ProcId, PredIsImported,
             MaybeExtModule, ProcNameStr)
@@ -1075,15 +1073,15 @@ erlang_nonspecial_proc_name(ThisModule, PredModule, PredName, PredOrFunc,
 
     PredLabelStr0 = PredName ++ "_" ++ string.from_int(OrigArity) ++
         "_" ++ Suffix,
-    (
+    ( if
         % Work out which module supplies the code for the predicate.
         ThisModule \= PredModule,
         PredIsImported = no
-    ->
+    then
         % This predicate is a specialized version of a pred from a `.opt' file.
         PredLabelStr = PredLabelStr0 ++ "_in__" ++
             erlang_module_name_to_str(PredModule)
-    ;
+    else
         % The predicate was declared in the same module that it is defined in.
         PredLabelStr = PredLabelStr0
     ),
@@ -1092,11 +1090,12 @@ erlang_nonspecial_proc_name(ThisModule, PredModule, PredName, PredOrFunc,
     ProcNameStr = PredLabelStr ++ "_" ++ string.from_int(ModeNum).
 
 :- pred erlang_special_proc_name(sym_name::in, string::in, proc_id::in,
-    special_pred::in, maybe(string)::out, string::out) is det.
+    special_pred_id::in, type_ctor::in, maybe(string)::out, string::out)
+    is det.
 
-erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPred - TypeCtor,
+erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPredId, TypeCtor,
         MaybeExtModule, ProcNameStr) :-
-    (
+    ( if
         % All type_ctors other than tuples here should be module qualified,
         % since builtin types are handled separately in polymorphism.m.
         TypeCtor = type_ctor(TypeCtorSymName, TypeArity),
@@ -1107,32 +1106,32 @@ erlang_special_proc_name(ThisModule, PredName, ProcId, SpecialPred - TypeCtor,
         ;
             TypeCtorSymName = qualified(TypeModule, TypeName)
         )
-    ->
+    then
         ProcNameStr0 = PredName ++ "__",
         TypeModuleStr = erlang_module_name_to_str(TypeModule),
-        (
+        ( if
             ThisModule \= TypeModule,
-            SpecialPred = spec_pred_unify,
+            SpecialPredId = spec_pred_unify,
             \+ hlds_pred.in_in_unification_proc_id(ProcId)
-        ->
+        then
             % This is a locally-defined instance of a unification procedure
             % for a type defined in some other module.
             ProcNameStr1 = ProcNameStr0 ++ TypeModuleStr,
             MaybeExtModule = no
-        ;
+        else
             % The module declaring the type is the same as the module
             % defining this special pred.
             ProcNameStr1 = ProcNameStr0,
-            ( TypeModule \= ThisModule ->
+            ( if TypeModule \= ThisModule then
                 MaybeExtModule = yes(TypeModuleStr)
-            ;
+            else
                 MaybeExtModule = no
             )
         ),
         proc_id_to_int(ProcId, ModeNum),
         ProcNameStr = ProcNameStr1 ++ TypeName ++ "_" ++
             string.from_int(TypeArity) ++ "_" ++ string.from_int(ModeNum)
-    ;
+    else
         unexpected($module, $pred,
             "cannot make label for special pred " ++ PredName)
     ).
@@ -1246,7 +1245,7 @@ write_with_escaping(StringOrAtom, String, !IO) :-
 
 write_with_escaping_2(StringOrAtom, Char, !IO) :-
     char.to_int(Char, Int),
-    (
+    ( if
         32 =< Int,
         Char \= ('\\'),
         (
@@ -1256,13 +1255,13 @@ write_with_escaping_2(StringOrAtom, Char, !IO) :-
             StringOrAtom = in_atom,
             Char \= '\''
         )
-    ->
+    then
         io.write_char(Char, !IO)
-    ;
+    else if
         escape(Esc, Int)
-    ->
+    then
         io.write_string(Esc, !IO)
-    ;
+    else
         string.int_to_base_string(Int, 8, OctalString),
         io.write_char('\\', !IO),
         io.write_string(OctalString, !IO)
@@ -1359,9 +1358,9 @@ nl_indent_line(N, !IO) :-
 :- pred indent_line(indent::in, io::di, io::uo) is det.
 
 indent_line(N, !IO) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         true
-    ;
+    else
         io.write_string("  ", !IO),
         indent_line(N - 1, !IO)
     ).

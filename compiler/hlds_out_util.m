@@ -253,7 +253,7 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         pred_info_get_origin(PredInfo, Origin),
         (
-            Origin = origin_special_pred(SpecialId - TypeCtor),
+            Origin = origin_special_pred(SpecialId, TypeCtor),
             special_pred_description(SpecialId, Descr),
             TypeCtor = type_ctor(_TypeSymName, TypeArity),
             ( if TypeArity = 0 then

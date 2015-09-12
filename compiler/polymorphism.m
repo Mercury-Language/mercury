@@ -731,7 +731,7 @@ setup_headvars(PredInfo, !HeadVars, ExtraArgModes,
             ExistHeadTypeClassInfoVars,
             ExtraArgModes0, ExtraArgModes, !Info)
     ;
-        ( Origin = origin_special_pred(_)
+        ( Origin = origin_special_pred(_, _)
         ; Origin = origin_transformed(_, _, _)
         ; Origin = origin_created(_)
         ; Origin = origin_assertion(_, _)
@@ -3467,9 +3467,10 @@ get_special_proc(Type, SpecialPredId, ModuleInfo, PredName, PredId, ProcId) :-
     get_category_name(TypeCategory) = MaybeCategoryName,
     (
         MaybeCategoryName = no,
-        module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
+        module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
         type_to_ctor_det(Type, TypeCtor),
-        map.search(SpecialPredMap, SpecialPredId - TypeCtor, PredId),
+        search_special_pred_maps(SpecialPredMaps, SpecialPredId, TypeCtor,
+            PredId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Module = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),

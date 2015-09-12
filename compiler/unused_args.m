@@ -1139,7 +1139,7 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
     ->
         (
             % Fix up special pred names.
-            OrigOrigin = origin_special_pred(_SpecialId - TypeCtor)
+            OrigOrigin = origin_special_pred(_SpecialId, TypeCtor)
         ->
             type_ctor_module_name_arity(TypeCtor, TypeModule, TypeName,
                 TypeArity),

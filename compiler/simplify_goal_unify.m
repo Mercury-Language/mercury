@@ -62,7 +62,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module term.
 
@@ -265,8 +264,9 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
         Context, GoalInfo0, CallExpr, CallGoalInfo) :-
     % Create the new call goal.
     ArgVars = TypeInfoVars ++ [XVar, YVar],
-    module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
-    map.lookup(SpecialPredMap, spec_pred_unify - TypeCtor, PredId),
+    module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
+    UnifyMap = SpecialPredMaps ^ spm_unify_map,
+    map.lookup(UnifyMap, TypeCtor, PredId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),

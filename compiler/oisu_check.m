@@ -166,7 +166,7 @@ check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors, Pair0, Pair,
             )
         ;
             pred_info_get_origin(PredInfo0, Origin),
-            ( Origin = origin_special_pred(_) ->
+            ( Origin = origin_special_pred(_, _) ->
                 true
             ;
                 pred_info_get_arg_types(PredInfo0, ArgTypes),

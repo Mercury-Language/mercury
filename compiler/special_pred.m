@@ -27,16 +27,33 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module pair.
 
-:- type special_pred_map    ==  map(special_pred, pred_id).
+:- type special_pred_maps
+    --->    special_pred_maps(
+                spm_unify_map           :: map(type_ctor, pred_id),
+                spm_index_map           :: map(type_ctor, pred_id),
+                spm_compare_map         :: map(type_ctor, pred_id),
+                spm_init_map            :: map(type_ctor, pred_id)
+            ).
 
-:- type special_pred        ==  pair(special_pred_id, type_ctor).
+:- pred search_special_pred_maps(special_pred_maps::in,
+    special_pred_id::in, type_ctor::in, pred_id::out) is semidet.
+:- pred lookup_special_pred_maps(special_pred_maps::in,
+    special_pred_id::in, type_ctor::in, pred_id::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- pred special_pred_list(list(special_pred_id)::out) is det.
+
+:- pred special_pred_description(special_pred_id::in, string::out) is det.
+%-----------------------------------------------------------------------------%
 
     % Return the predicate name we should use for the given special_pred
     % for the given type constructor.
     %
 :- func special_pred_name(special_pred_id, type_ctor) = string.
+
+:- pred special_pred_mode_num(special_pred_id::in, int::out) is det.
 
     % This predicate always returns determinism `semidet' for unification
     % procedures. For types with only one value, the unification is actually
@@ -45,10 +62,6 @@
     %
 :- pred special_pred_interface(special_pred_id::in, mer_type::in,
     list(mer_type)::out, list(mer_mode)::out, determinism::out) is det.
-
-:- pred special_pred_mode_num(special_pred_id::in, int::out) is det.
-
-:- pred special_pred_list(list(special_pred_id)::out) is det.
 
     % Given a special pred id and the list of its arguments, work out which
     % argument specifies the type that this special predicate is for. Note that
@@ -66,7 +79,7 @@
 :- pred special_pred_get_type_det(special_pred_id::in, list(prog_var)::in,
     prog_var::out) is det.
 
-:- pred special_pred_description(special_pred_id::in, string::out) is det.
+%-----------------------------------------------------------------------------%
 
     % Succeeds if the declarations and clauses for the special predicates
     % for the given type generated only when required. This will succeed
@@ -76,6 +89,8 @@
 :- pred special_pred_is_generated_lazily(module_info::in, type_ctor::in)
     is semidet.
 
+    % XXX Document me, and the relationship to the /2 pred just above.
+    %
 :- pred special_pred_is_generated_lazily(module_info::in, type_ctor::in,
     hlds_type_body::in, type_status::in) is semidet.
 
@@ -101,8 +116,10 @@
 :- pred is_builtin_type_special_preds_defined_in_mercury(type_ctor::in,
     string::out) is semidet.
 
-    % Does the compiler generate the RTTI for the builtin types, or is
-    % it hand-coded?
+%-----------------------------------------------------------------------------%
+
+    % Does the compiler generate the RTTI for the builtin types, or is it
+    % hand-coded?
     %
 :- pred compiler_generated_rtti_for_builtins(module_info::in) is semidet.
 
@@ -127,10 +144,42 @@
 
 %-----------------------------------------------------------------------------%
 
+search_special_pred_maps(SpecMaps, SpecialPredId, TypeCtor, PredId) :-
+    select_special_pred_map(SpecMaps, SpecialPredId, SpecMap),
+    map.search(SpecMap, TypeCtor, PredId).
+
+lookup_special_pred_maps(SpecMaps, SpecialPredId, TypeCtor, PredId) :-
+    select_special_pred_map(SpecMaps, SpecialPredId, SpecMap),
+    map.lookup(SpecMap, TypeCtor, PredId).
+
+:- pred select_special_pred_map(special_pred_maps::in,
+    special_pred_id::in, map(type_ctor, pred_id)::out) is det.
+
+select_special_pred_map(SpecMaps, SpecialPredId, SpecMap) :-
+    (
+        SpecialPredId = spec_pred_unify,
+        SpecMap = SpecMaps ^ spm_unify_map
+    ;
+        SpecialPredId = spec_pred_index,
+        SpecMap = SpecMaps ^ spm_index_map
+    ;
+        SpecialPredId = spec_pred_compare,
+        SpecMap = SpecMaps ^ spm_compare_map
+    ;
+        SpecialPredId = spec_pred_init,
+        SpecMap = SpecMaps ^ spm_init_map
+    ).
+
+%-----------------------------------------------------------------------------%
+
 special_pred_list([spec_pred_unify, spec_pred_index, spec_pred_compare]).
 
-special_pred_mode_num(_, 0).
-    % mode num for special procs is always 0 (the first mode)
+special_pred_description(spec_pred_unify,   "unification predicate").
+special_pred_description(spec_pred_compare, "comparison predicate").
+special_pred_description(spec_pred_index,   "indexing predicate").
+special_pred_description(spec_pred_init,    "initialisation predicate").
+
+%-----------------------------------------------------------------------------%
 
 special_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
     BaseName = get_special_pred_id_target_name(SpecialPred),
@@ -154,19 +203,39 @@ special_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
 % the compiler.
 spec_pred_name_append_type_id = no.
 
-special_pred_interface(spec_pred_unify, Type, [Type, Type], [In, In],
-        detism_semi) :-
-    in_mode(In).
-special_pred_interface(spec_pred_index, Type, [Type, int_type], [In, Out],
-        detism_det) :-
-    in_mode(In),
-    out_mode(Out).
-special_pred_interface(spec_pred_compare, Type,
-        [comparison_result_type, Type, Type], [Uo, In, In], detism_det) :-
-    in_mode(In),
-    uo_mode(Uo).
-special_pred_interface(spec_pred_init, Type, [Type], [InAny], detism_det) :-
-    InAny = out_any_mode.
+special_pred_mode_num(_, 0).
+    % mode num for special procs is always 0 (the first mode)
+
+%-----------------------------------------------------------------------------%
+
+special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Detism) :-
+    (
+        SpecialPredId = spec_pred_unify,
+        ArgTypes = [Type, Type],
+        in_mode(In),
+        ArgModes = [In, In],
+        Detism = detism_semi
+    ;
+        SpecialPredId = spec_pred_index,
+        ArgTypes = [Type, int_type],
+        in_mode(In),
+        out_mode(Out),
+        ArgModes = [In, Out],
+        Detism = detism_det
+    ;
+        SpecialPredId = spec_pred_compare,
+        ArgTypes = [comparison_result_type, Type, Type],
+        in_mode(In),
+        uo_mode(Uo),
+        ArgModes = [Uo, In, In],
+        Detism = detism_det
+    ;
+        SpecialPredId = spec_pred_init,
+        ArgTypes = [Type],
+        InAny = out_any_mode,
+        ArgModes = [InAny],
+        Detism = detism_det
+    ).
 
 special_pred_get_type(spec_pred_unify, Types, T) :-
     list.reverse(Types, [T | _]).
@@ -178,16 +247,13 @@ special_pred_get_type(spec_pred_init, Types, T) :-
     list.reverse(Types, [T | _]).
 
 special_pred_get_type_det(SpecialId, ArgTypes, Type) :-
-    ( special_pred_get_type(SpecialId, ArgTypes, TypePrime) ->
+    ( if special_pred_get_type(SpecialId, ArgTypes, TypePrime) then
         Type = TypePrime
-    ;
+    else
         unexpected($module, $pred, "special_pred_get_type failed")
     ).
 
-special_pred_description(spec_pred_unify,   "unification predicate").
-special_pred_description(spec_pred_compare, "comparison predicate").
-special_pred_description(spec_pred_index,   "indexing predicate").
-special_pred_description(spec_pred_init,    "initialisation predicate").
+%-----------------------------------------------------------------------------%
 
 special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
     CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
@@ -200,19 +266,19 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
         ),
         module_info_get_type_table(ModuleInfo, TypeTable),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_body(TypeDefn, Body),
-        hlds_data.get_type_defn_status(TypeDefn, Status),
-        special_pred_is_generated_lazily_2(ModuleInfo, TypeCtor, Body, Status)
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+        special_pred_is_generated_lazily_2(ModuleInfo, TypeBody, TypeStatus)
     ).
 
-special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
+special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody, TypeStatus) :-
     % We don't want special preds for solver types to be generated lazily
     % because we have to insert calls to their initialisation preds during
     % mode analysis and we therefore require the appropriate names to
     % appear in the symbol table.
 
-    Body \= hlds_solver_type(_, _),
-    Body \= hlds_abstract_type(abstract_solver_type),
+    TypeBody \= hlds_solver_type(_, _),
+    TypeBody \= hlds_abstract_type(abstract_solver_type),
 
     CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
     (
@@ -222,15 +288,15 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
         ; CtorCat = ctor_cat_enum(_)
         ; is_introduced_type_info_type_category(CtorCat) = yes
         ),
-        special_pred_is_generated_lazily_2(ModuleInfo, TypeCtor, Body, Status)
+        special_pred_is_generated_lazily_2(ModuleInfo, TypeBody, TypeStatus)
     ).
 
 :- pred special_pred_is_generated_lazily_2(module_info::in,
-    type_ctor::in, hlds_type_body::in, type_status::in) is semidet.
+    hlds_type_body::in, type_status::in) is semidet.
 
-special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
+special_pred_is_generated_lazily_2(ModuleInfo, TypeBody, TypeStatus) :-
     (
-        type_status_defined_in_this_module(Status) = no
+        type_status_defined_in_this_module(TypeStatus) = no
     ;
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, special_preds, no)
@@ -242,45 +308,45 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
     % polymorphism.process_generated_pred can't handle calls to polymorphic
     % procedures after the initial polymorphism pass.
     %
-    Body \= hlds_foreign_type(_),
+    TypeBody \= hlds_foreign_type(_),
 
     % The special predicates for types with user-defined equality or
     % existentially typed constructors are always generated immediately
     % by make_hlds.m.
     not special_pred_for_type_needs_typecheck(ModuleInfo, spec_pred_unify,
-        Body).
+        TypeBody).
 
-special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body) :-
+special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, TypeBody) :-
     (
         SpecialPredId = spec_pred_unify,
-        type_body_has_user_defined_equality_pred(ModuleInfo, Body,
+        type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
             unify_compare(_, _))
     ;
         SpecialPredId = spec_pred_compare,
-        type_body_has_user_defined_equality_pred(ModuleInfo, Body,
+        type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
             unify_compare(_, UserCmp)), UserCmp = yes(_)
     ;
         SpecialPredId \= spec_pred_init,
-        Ctors = Body ^ du_type_ctors,
+        Ctors = TypeBody ^ du_type_ctors,
         list.member(Ctor, Ctors),
         Ctor = ctor(ExistQTVars, _, _, _, _, _),
         ExistQTVars = [_ | _]
     ;
         SpecialPredId = spec_pred_init,
-        type_body_is_solver_type(ModuleInfo, Body)
+        type_body_is_solver_type(ModuleInfo, TypeBody)
     ).
 
-can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
+can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, TypeBody) :-
     (
-        Body \= hlds_abstract_type(_)
+        TypeBody \= hlds_abstract_type(_)
     ;
         % The types which have their unification and comparison
         % predicates defined in private_builtin.m.
         compiler_generated_rtti_for_builtins(ModuleInfo),
         is_builtin_type_special_preds_defined_in_mercury(TypeCtor, _)
     ),
-    not type_ctor_has_hand_defined_rtti(TypeCtor, Body),
-    not type_body_has_user_defined_equality_pred(ModuleInfo, Body,
+    not type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody),
+    not type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
         abstract_noncanonical_type(_IsSolverType)).
 
 is_builtin_type_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
@@ -295,12 +361,12 @@ is_builtin_type_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
 
 %-----------------------------------------------------------------------------%
 
+compiler_generated_rtti_for_builtins(ModuleInfo) :-
     % The compiler generates the rtti for the builtins when we are on the
     % non-C backends. We don't generate the rtti on the C backends as the
-    % runtime contains references to this rtti so the rtti must be defined
-    % in the runtime not the library.
-    %
-compiler_generated_rtti_for_builtins(ModuleInfo) :-
+    % C runtime contains references to this rtti, so the rtti must be defined
+    % in the runtime, not the library.
+
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     ( Target = target_il
