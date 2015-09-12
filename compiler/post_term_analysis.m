@@ -22,10 +22,11 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.error_util.
 
-:- import_module io.
+:- import_module list.
 
-:- pred run_post_term_analysis(module_info::in, io::di, io::uo) is det.
+:- pred run_post_term_analysis(module_info::in, list(error_spec)::out) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
@@ -45,12 +46,10 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -58,8 +57,8 @@
 
 %----------------------------------------------------------------------------%
 
-run_post_term_analysis(ModuleInfo, !IO) :-
-    warn_non_term_user_special_preds(ModuleInfo, !IO).
+run_post_term_analysis(ModuleInfo, Specs) :-
+    warn_non_term_user_special_preds(ModuleInfo, Specs).
 
 %----------------------------------------------------------------------------%
 %
@@ -77,10 +76,10 @@ run_post_term_analysis(ModuleInfo, !IO) :-
     % defined types. The ones for imported types will be checked when
     % the relevant module is compiled and analysed.
     %
-:- pred warn_non_term_user_special_preds(module_info::in, io::di, io::uo)
-    is det.
+:- pred warn_non_term_user_special_preds(module_info::in,
+    list(error_spec)::out) is det.
 
-warn_non_term_user_special_preds(ModuleInfo, !IO) :-
+warn_non_term_user_special_preds(ModuleInfo, !:Specs) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, termination, Termination),
     globals.lookup_bool_option(Globals, warn_non_term_special_preds,
@@ -89,6 +88,7 @@ warn_non_term_user_special_preds(ModuleInfo, !IO) :-
         MakeOptInt),
     globals.lookup_bool_option(Globals, transitive_optimization,
         TransIntermodOpt),
+    !:Specs = [],
     ( if
         Termination = yes,
         WarnSpecialPreds = yes,
@@ -110,24 +110,25 @@ warn_non_term_user_special_preds(ModuleInfo, !IO) :-
         map.foldl(
             warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable,
                 spec_pred_unify),
-            UnifyMap, !IO),
+            UnifyMap, !Specs),
         map.foldl(
             warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable,
                 spec_pred_compare),
-            CompareMap, !IO),
+            CompareMap, !Specs),
         map.foldl(
             warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable,
                 spec_pred_init),
-            InitMap, !IO)
+            InitMap, !Specs)
     else
         true
     ).
 
 :- pred warn_non_term_user_special_pred_kind(module_info::in, type_table::in,
-    special_pred_id::in, type_ctor::in, pred_id::in, io::di, io::uo) is det.
+    special_pred_id::in, type_ctor::in, pred_id::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable, SpecialPredId,
-        TypeCtor, PredId, !IO) :-
+        TypeCtor, PredId, !Specs) :-
     % Do not perform this check for builtin types that don't have
     % hlds_type_defns.
     BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
@@ -139,8 +140,8 @@ warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable, SpecialPredId,
         DefinedThisModule = type_status_defined_in_this_module(TypeStatus),
         (
             DefinedThisModule = yes,
-            process_special_pred_for_type(ModuleInfo,
-                SpecialPredId, TypeCtor, PredId, TypeDefn, !IO)
+            process_special_pred_for_type(ModuleInfo, SpecialPredId,
+                TypeCtor, TypeDefn, PredId, !Specs)
         ;
             DefinedThisModule = no
         )
@@ -150,11 +151,11 @@ warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable, SpecialPredId,
     % then check that it terminates. Emit a warning if it does not.
     %
 :- pred process_special_pred_for_type(module_info::in,
-    special_pred_id::in, type_ctor::in, pred_id::in,
-    hlds_type_defn::in, io::di, io::uo) is det.
+    special_pred_id::in, type_ctor::in, hlds_type_defn::in, pred_id::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor,
-        PredId, TypeDefn, !IO) :-
+process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor, TypeDefn,
+        PredId, !Specs) :-
     ( if
         special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn)
     then
@@ -178,9 +179,8 @@ process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor,
             true
         else
             get_type_defn_context(TypeDefn, Context),
-            module_info_get_globals(ModuleInfo, Globals),
-            emit_non_term_user_special_warning(Globals, Context, SpecialPredId,
-                TypeCtor, !IO)
+            generate_non_term_user_special_warning(Context, SpecialPredId,
+                TypeCtor, !Specs)
         )
     else
         true
@@ -233,11 +233,12 @@ get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare) :-
         TypeBody = hlds_solver_type(_, yes(UnifyCompare))
     ).
 
-:- pred emit_non_term_user_special_warning(globals::in, prog_context::in,
-    special_pred_id::in, type_ctor::in, io::di, io::uo) is det.
+:- pred generate_non_term_user_special_warning(prog_context::in,
+    special_pred_id::in, type_ctor::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-emit_non_term_user_special_warning(Globals, Context, SpecialPred, TypeCtor,
-        !IO) :-
+generate_non_term_user_special_warning(Context, SpecialPred, TypeCtor,
+        !Specs) :-
     type_ctor_module_name_arity(TypeCtor, TypeModule, TypeName, TypeArity),
     (
         SpecialPred = spec_pred_unify,
@@ -256,7 +257,9 @@ emit_non_term_user_special_warning(Globals, Context, SpecialPred, TypeCtor,
         fixed(SpecialPredStr ++ " predicate"), words("for the type "),
         sym_name_and_arity(qualified(TypeModule, TypeName) / TypeArity),
         words("cannot be proven to terminate.")],
-    report_warning(Globals, Context, 0, Pieces, !IO).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_warning, phase_termination_analysis, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 %----------------------------------------------------------------------------%
 :- end_module transform_hlds.post_term_analysis.

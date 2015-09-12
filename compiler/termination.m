@@ -92,7 +92,7 @@
 
 %-----------------------------------------------------------------------------%
 
-analyse_termination_in_module(!ModuleInfo, Specs, !IO) :-
+analyse_termination_in_module(!ModuleInfo, !:Specs, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_termination_norm(Globals, TermNorm),
     FunctorInfo = set_functor_info(!.ModuleInfo, TermNorm),
@@ -112,11 +112,12 @@ analyse_termination_in_module(!ModuleInfo, Specs, !IO) :-
 
     % Set the termination status of foreign_procs based on the foreign code
     % attributes.
-    check_foreign_code_attributes(SCCs, !ModuleInfo, [], Specs1),
+    !:Specs = [],
+    check_foreign_code_attributes(SCCs, !ModuleInfo, !Specs),
 
     % Ensure that termination pragmas for a procedure do not conflict with
     % termination pragmas for other procedures in the SCC.
-    check_pragmas_are_consistent(SCCs, !ModuleInfo, Specs1, Specs),
+    check_pragmas_are_consistent(SCCs, !ModuleInfo, !Specs),
 
     list.foldl2(analyse_termination_in_scc(PassInfo), SCCs, !ModuleInfo, !IO),
 
@@ -129,7 +130,8 @@ analyse_termination_in_module(!ModuleInfo, Specs, !IO) :-
     ;
         MakeOptInt = no
     ),
-    run_post_term_analysis(!.ModuleInfo, !IO).
+    run_post_term_analysis(!.ModuleInfo, PostSpecs),
+    !:Specs = PostSpecs ++ !.Specs.
 
 %----------------------------------------------------------------------------%
 %
