@@ -74,6 +74,7 @@
         comparison is term_rep_compare.
 
 :- pred term_rep_equal(term_rep::in, term_rep::in) is semidet.
+:- pragma terminates(term_rep_equal/2).
 
 term_rep_equal(Rep1, Rep2) :-
     (=) = promise_only_solution(comp_rep_2(Rep1, Rep2)).
@@ -86,6 +87,7 @@ comp_rep_2(Rep1, Rep2, Result) :-
 
 :- pred term_rep_compare(builtin.comparison_result::uo, term_rep::in,
     term_rep::in) is det.
+:- pragma terminates(term_rep_compare/3).
 
 term_rep_compare(Result, Rep1, Rep2) :-
     Result = promise_only_solution(comp_rep_2(Rep1, Rep2)).
