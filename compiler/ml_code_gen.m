@@ -525,7 +525,6 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
-:- import_module map.
 :- import_module maybe.
 :- import_module require.
 

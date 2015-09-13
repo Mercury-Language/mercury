@@ -85,7 +85,6 @@
 :- import_module parse_tree.prog_mode.
 
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.

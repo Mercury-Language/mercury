@@ -209,7 +209,6 @@
 :- import_module io.
 :- import_module int.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.

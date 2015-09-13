@@ -49,7 +49,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module map.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%

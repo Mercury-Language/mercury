@@ -90,7 +90,6 @@
 :- import_module assoc_list.
 :- import_module enum.
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.

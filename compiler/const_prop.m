@@ -54,7 +54,6 @@
 :- import_module bool.
 :- import_module float.
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
