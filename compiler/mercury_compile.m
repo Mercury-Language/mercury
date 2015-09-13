@@ -87,8 +87,6 @@
 :- import_module top_level.mercury_compile_middle_passes.
 :- import_module top_level.mercury_compile_mlds_back_end.
 :- import_module transform_hlds.dependency_graph.
-:- import_module transform_hlds.intermod.
-:- import_module transform_hlds.trans_opt.
 
 :- import_module assoc_list.
 :- import_module bool.

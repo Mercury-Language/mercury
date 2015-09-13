@@ -44,8 +44,6 @@
 % needed for inlining or other optimizations; currently it is only used
 % for termination analysis, exception and trail usage analysis.
 %
-% This module also contains predicates to read in the .trans_opt files.
-%
 % See also intermod.m, which handles `.opt' files.
 %
 %-----------------------------------------------------------------------------%
@@ -55,13 +53,8 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module libs.globals.
-:- import_module mdbcomp.sym_name.
-:- import_module parse_tree.module_imports.
 
-:- import_module bool.
 :- import_module io.
-:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -70,42 +63,26 @@
     %
 :- pred write_trans_opt_file(module_info::in, io::di, io::uo) is det.
 
-    % grab_trans_optfiles(Globals, ModuleList, !ModuleAndImports, Error, !IO):
-    %
-    % Add the items from each of the modules in ModuleList.trans_opt to
-    % the items in ModuleAndImports.
-    %
-:- pred grab_trans_opt_files(globals::in, list(module_name)::in,
-    module_and_imports::in, module_and_imports::out, bool::out,
-    io::di, io::uo) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module libs.file_util.
-:- import_module libs.options.
-:- import_module parse_tree.error_util.
-:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_io.
 :- import_module transform_hlds.ctgc.
 :- import_module transform_hlds.ctgc.structure_reuse.
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.analysis.
 :- import_module transform_hlds.exception_analysis.
-:- import_module transform_hlds.intermod.
 :- import_module transform_hlds.tabling_analysis.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.termination.
 :- import_module transform_hlds.trailing_analysis.
 
-:- import_module cord.
+:- import_module list.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -183,65 +160,6 @@ write_trans_opt_file(ModuleInfo, !IO) :-
         update_interface(Globals, OptName, !IO),
         touch_interface_datestamp(Globals, ModuleName, ".trans_opt_date", !IO)
     ).
-
-%-----------------------------------------------------------------------------%
-%
-% Read and process the transitive optimization interfaces.
-%
-
-grab_trans_opt_files(Globals, TransOptDeps, !Module, FoundError, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Reading .trans_opt files..\n", !IO),
-    maybe_flush_output(Verbose, !IO),
-
-    read_trans_opt_files(Globals, TransOptDeps,
-        cord.empty, OptItemBlocksCord, [], OptSpecs, no, FoundError, !IO),
-
-    OptItemBlocks = cord.list(OptItemBlocksCord),
-    module_and_imports_add_opt_item_blocks(OptItemBlocks, !Module),
-    module_and_imports_add_specs(OptSpecs, !Module),
-    % XXX why ignore any existing errors?
-    module_and_imports_set_errors(set.init, !Module),
-
-    maybe_write_string(Verbose, "% Done.\n", !IO).
-
-:- pred read_trans_opt_files(globals::in, list(module_name)::in,
-    cord(opt_item_block)::in, cord(opt_item_block)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    bool::in, bool::out, io::di, io::uo) is det.
-
-read_trans_opt_files(_, [], !OptItemBlocks, !Specs, !Error, !IO).
-read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
-        !Specs, !Error, !IO) :-
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
-    maybe_write_string(VeryVerbose,
-        "% Reading transitive optimization interface for module", !IO),
-    maybe_write_string(VeryVerbose, " `", !IO),
-    ImportString = sym_name_to_string(Import),
-    maybe_write_string(VeryVerbose, ImportString, !IO),
-    maybe_write_string(VeryVerbose, "'... ", !IO),
-    maybe_flush_output(VeryVerbose, !IO),
-
-    module_name_to_search_file_name(Globals, Import, ".trans_opt", FileName,
-        !IO),
-    actually_read_module_opt(ofk_trans_opt, Globals, FileName, Import,
-        ParseTreeOpt, OptSpecs, OptError, !IO),
-    maybe_write_string(VeryVerbose, " done.\n", !IO),
-    !:Specs = OptSpecs ++ !.Specs,
-    intermod.update_error_status(Globals, trans_opt_file, FileName,
-        OptSpecs, !Specs, OptError, !Error),
-    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
-
-    ParseTreeOpt = parse_tree_opt(OptModuleName, _OptFileKind, OptContext,
-        OptUses, OptItems),
-    OptSection = oms_opt_imported(OptModuleName, ofk_trans_opt),
-    OptAvails = list.map(wrap_avail_use, OptUses),
-    OptItemBlock = item_block(OptSection, OptContext,
-        [], OptAvails, OptItems),
-    !:OptItemBlocks = cord.snoc(!.OptItemBlocks, OptItemBlock),
-    read_trans_opt_files(Globals, Imports, !OptItemBlocks,
-        !Specs, !Error, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.trans_opt.

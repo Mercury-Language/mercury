@@ -24,14 +24,13 @@
 %     preds are written.
 % All these items should be module qualified.
 %
-% This module also contains predicates to read in the .opt files and
-% to adjust the import status of local predicates which are exported for
-% intermodule optimization.
-%
 % Note that predicates which call predicates that do not have mode or
 % determinism declarations do not have clauses exported, since this would
 % require running mode analysis and determinism analysis before writing the
 % .opt file, significantly increasing compile time for a very small gain.
+%
+% This module also contains predicates to adjust the import status
+% of local predicates which are exported for intermodule optimization.
 %
 %-----------------------------------------------------------------------------%
 
@@ -39,14 +38,8 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module libs.globals.
-:- import_module parse_tree.error_util.
-:- import_module parse_tree.module_imports.
-:- import_module parse_tree.prog_io_error.
 
-:- import_module bool.
 :- import_module io.
-:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -64,38 +57,10 @@
 :- pred write_initial_opt_file(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-    % Add the items from the .opt files of imported modules to
-    % the items for this module.
-    %
-:- pred grab_opt_files(globals::in,
-    module_and_imports::in, module_and_imports::out, bool::out,
-    io::di, io::uo) is det.
-
     % Make sure that local preds which have been exported in the .opt
     % file get an exported(_) label.
     %
 :- pred adjust_pred_import_status(module_info::in, module_info::out) is det.
-
-:- type opt_file_type
-    --->    opt_file
-    ;       trans_opt_file.
-
-    % update_error_status(Globals, OptFileType, FileName,
-    %   ModuleSpecs, !Specs, ModuleErrors, !Error):
-    %
-    % Work out whether any fatal errors have occurred while reading
-    % `.opt' files, updating !Errors if there were fatal errors.
-    %
-    % A missing `.opt' file is only a fatal error if
-    % `--warn-missing-opt-files --halt-at-warn' was passed the compiler.
-    %
-    % Syntax errors in `.opt' files are always fatal.
-    %
-    % This is also used by trans_opt.m for reading `.trans_opt' files.
-    %
-:- pred update_error_status(globals::in, opt_file_type::in, string::in,
-    list(error_spec)::in, list(error_spec)::in, list(error_spec)::out,
-    read_module_errors::in, bool::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -121,29 +86,26 @@
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.file_util.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.modules.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.read_modules.
 :- import_module transform_hlds.inlining.
 
 :- import_module assoc_list.
-:- import_module cord.
+:- import_module bool.
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
@@ -2581,251 +2543,6 @@ old_status_to_write(status_exported_to_submodules) = yes.
 old_status_to_write(status_local) = yes.
 old_status_to_write(status_external(Status)) =
     bool.not(old_status_is_exported(Status)).
-
-%-----------------------------------------------------------------------------%
-
-grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
-    % Read in the .opt files for imported and ancestor modules.
-    ModuleName = !.ModuleAndImports ^ mai_module_name,
-    Ancestors0 = !.ModuleAndImports ^ mai_parent_deps,
-    IntDeps0 = !.ModuleAndImports ^ mai_int_deps,
-    ImpDeps0 = !.ModuleAndImports ^ mai_imp_deps,
-    OptFiles = set.union_list([Ancestors0, IntDeps0, ImpDeps0]),
-    globals.lookup_bool_option(Globals, read_opt_files_transitively,
-        Transitive),
-    set.insert(ModuleName, OptFiles, ModulesProcessed),
-    read_optimization_interfaces(Globals, Transitive,
-        set.to_sorted_list(OptFiles), ModulesProcessed,
-        cord.empty, OptItemBlocksCord, [], OptSpecs, no, OptError, !IO),
-    OptItemBlocks = cord.list(OptItemBlocksCord),
-
-    % Append the items to the current item list, using a `opt_imported'
-    % pseudo-declaration to let make_hlds know the opt_imported stuff
-    % is coming.
-    %
-    % XXX Using this mechanism to let make_hlds know this is a bad design.
-    module_and_imports_add_opt_item_blocks(OptItemBlocks, !ModuleAndImports),
-    module_and_imports_add_specs(OptSpecs, !ModuleAndImports),
-
-    % Get the :- pragma unused_args(...) declarations created when writing
-    % the .opt file for the current module. These are needed because we can
-    % probably remove more arguments with intermod_unused_args, but the
-    % interface for other modules must remain the same.
-    %
-    % Similarly for the  :- pragma structure_reuse(...) declarations. With more
-    % information available when making the target code than when writing the
-    % `.opt' file, it can turn out that procedure which seemed to have
-    % condition reuse actually has none. But we have to maintain the interface
-    % for modules that use the conditional reuse information from the `.opt'
-    % file.
-    globals.lookup_bool_option(Globals, intermod_unused_args, UnusedArgs),
-    globals.lookup_bool_option(Globals, structure_reuse_analysis,
-        StructureReuse),
-    ( if
-        ( UnusedArgs = yes
-        ; StructureReuse = yes
-        )
-    then
-        read_optimization_interfaces(Globals, no, [ModuleName], set.init,
-            cord.empty, LocalItemBlocksCord, [], LocalSpecs, no, UA_SR_Error,
-            !IO),
-        LocalItemBlocks = cord.list(LocalItemBlocksCord),
-        keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs,
-            StructureReuse, LocalItemBlocks, FilteredItemBlocks),
-        module_and_imports_add_opt_item_blocks(FilteredItemBlocks,
-            !ModuleAndImports),
-        module_and_imports_add_specs(LocalSpecs, !ModuleAndImports)
-    else
-        UA_SR_Error = no
-    ),
-
-    % Read .int0 files required by the `.opt' files.
-    HaveReadModuleMaps = have_read_module_maps(map.init, map.init, map.init),
-    OptFileAncestors = set.power_union(set.map(get_ancestors_set, OptFiles)),
-    Int0Files = set.delete(OptFileAncestors, ModuleName),
-    process_module_private_interfaces(Globals, HaveReadModuleMaps, Int0Files,
-        make_ioms_opt_imported, make_ioms_opt_imported,
-        module_and_imports_add_int_for_opt_item_blocks,
-        set.init, AncestorImports1, set.init, AncestorImports2,
-        !ModuleAndImports, !IO),
-
-    % Figure out which .int files are needed by the .opt files
-    get_dependencies_in_item_blocks(OptItemBlocks,
-        NewImportDeps0, NewUseDeps0),
-    get_implicit_dependencies_in_item_blocks(Globals, OptItemBlocks,
-        NewImplicitImportDeps0, NewImplicitUseDeps0),
-    NewDeps = set.union_list(
-        [NewImportDeps0, NewUseDeps0,
-        NewImplicitImportDeps0, NewImplicitUseDeps0,
-        AncestorImports1, AncestorImports2]),
-
-    % Read in the .int, and .int2 files needed by the .opt files.
-    process_module_long_interfaces(Globals, HaveReadModuleMaps,
-        must_be_qualified, NewDeps, ifk_int,
-        make_ioms_opt_imported, make_ioms_opt_imported,
-        module_and_imports_add_int_for_opt_item_blocks,
-        set.init, NewIndirectDeps, set.init, NewImplIndirectDeps,
-        !ModuleAndImports, !IO),
-    process_module_short_interfaces_and_impls_transitively(Globals,
-        HaveReadModuleMaps, set.union(NewIndirectDeps, NewImplIndirectDeps),
-        ifk_int2, make_ioms_opt_imported, make_ioms_opt_imported,
-        module_and_imports_add_int_for_opt_item_blocks,
-        !ModuleAndImports, !IO),
-
-    % Figure out whether anything went wrong.
-    % XXX We should try to put all the relevant error indications into
-    % !ModuleAndImports, and let our caller figure out what to do with them.
-    module_and_imports_get_errors(!.ModuleAndImports, ModuleErrors),
-    ( if
-        ( set.is_non_empty(ModuleErrors)
-        ; OptError = yes
-        ; UA_SR_Error = yes
-        )
-    then
-        FoundError = yes
-    else
-        FoundError = no
-    ).
-
-:- pred keep_only_unused_and_reuse_pragmas_in_blocks(bool::in, bool::in,
-    list(item_block(MS))::in, list(item_block(MS))::out) is det.
-
-keep_only_unused_and_reuse_pragmas_in_blocks(_, _, [], []).
-keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
-        [ItemBlock0 | ItemBlocks0], [ItemBlock | ItemBlocks]) :-
-    ItemBlock0 = item_block(Section, Context, _Incls0, _Imports0, Items0),
-    Incls = [],
-    Imports = [],
-    keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
-        Items0, cord.init, ItemCord),
-    Items = cord.list(ItemCord),
-    ItemBlock = item_block(Section, Context, Incls, Imports, Items),
-    keep_only_unused_and_reuse_pragmas_in_blocks(UnusedArgs, StructureReuse,
-        ItemBlocks0, ItemBlocks).
-
-:- pred keep_only_unused_and_reuse_pragmas_acc(bool::in, bool::in,
-    list(item)::in, cord(item)::in, cord(item)::out) is det.
-
-keep_only_unused_and_reuse_pragmas_acc(_, _, [], !ItemCord).
-keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse,
-        [Item0 | Items0], !ItemCord) :-
-    ( if
-        Item0 = item_pragma(ItemPragma0),
-        ItemPragma0 = item_pragma_info(Pragma0, _, _, _),
-        (
-            UnusedArgs = yes,
-            Pragma0 = pragma_unused_args(_)
-        ;
-            StructureReuse = yes,
-            Pragma0 = pragma_structure_reuse(_)
-        )
-    then
-        !:ItemCord = cord.snoc(!.ItemCord, Item0)
-    else
-        true
-    ),
-    keep_only_unused_and_reuse_pragmas_acc(UnusedArgs, StructureReuse, Items0,
-        !ItemCord).
-
-:- pred read_optimization_interfaces(globals::in, bool::in,
-    list(module_name)::in, set(module_name)::in,
-    cord(opt_item_block)::in, cord(opt_item_block)::out,
-    list(error_spec)::in, list(error_spec)::out,
-    bool::in, bool::out, io::di, io::uo) is det.
-
-read_optimization_interfaces(_, _, [], _, !ItemBlocksCord,
-        !Specs, !Error, !IO).
-read_optimization_interfaces(Globals, Transitive,
-        [ModuleToRead | ModulesToRead], ModulesProcessed0,
-        !OptItemBlocksCord, !Specs, !Error, !IO) :-
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
-    maybe_write_string(VeryVerbose,
-        "% Reading optimization interface for module", !IO),
-    maybe_write_string(VeryVerbose, " `", !IO),
-    ModuleToReadString = sym_name_to_string(ModuleToRead),
-    maybe_write_string(VeryVerbose, ModuleToReadString, !IO),
-    maybe_write_string(VeryVerbose, "'...\n", !IO),
-    maybe_flush_output(VeryVerbose, !IO),
-
-    module_name_to_search_file_name(Globals, ModuleToRead, ".opt", FileName,
-        !IO),
-    actually_read_module_opt(ofk_opt, Globals, FileName, ModuleToRead,
-        ParseTreeOpt, OptSpecs, OptError, !IO),
-    ParseTreeOpt = parse_tree_opt(OptModuleName, OptFileKind,
-        OptModuleContext, OptUses, OptItems),
-    OptSection = oms_opt_imported(OptModuleName, OptFileKind),
-    OptAvails = list.map(wrap_avail_use, OptUses),
-    OptItemBlock = item_block(OptSection, OptModuleContext,
-        [], OptAvails, OptItems),
-    !:OptItemBlocksCord = cord.snoc(!.OptItemBlocksCord, OptItemBlock),
-    update_error_status(Globals, opt_file, FileName,
-        OptSpecs, !Specs, OptError, !Error),
-    maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
-    maybe_write_string(VeryVerbose, "% done.\n", !IO),
-
-    (
-        Transitive = yes,
-        NewUseDeps0 = set.list_to_set(
-            list.map(avail_use_info_module_name, OptUses)),
-        get_implicit_dependencies_in_items(Globals, OptItems,
-            NewImplicitImportDeps0, NewImplicitUseDeps0),
-        NewDepsSet0 = set.union_list([NewUseDeps0,
-            NewImplicitImportDeps0, NewImplicitUseDeps0]),
-        set.difference(NewDepsSet0, ModulesProcessed0, NewDepsSet),
-        set.union(ModulesProcessed0, NewDepsSet, ModulesProcessed),
-        set.to_sorted_list(NewDepsSet, NewDeps)
-    ;
-        Transitive = no,
-        ModulesProcessed = ModulesProcessed0,
-        NewDeps = []
-    ),
-    read_optimization_interfaces(Globals, Transitive,
-        NewDeps ++ ModulesToRead, ModulesProcessed,
-        !OptItemBlocksCord, !Specs, !Error, !IO).
-
-update_error_status(_Globals, FileType, FileName,
-        ModuleSpecs, !Specs, ModuleErrors, !Error) :-
-    ( if set.is_empty(ModuleErrors) then
-        % OptSpecs contains no errors. I (zs) don't know whether it could
-        % contain any warnings or informational messages, but if it could,
-        % we should add those error_specs to !Specs. Not doing so preserves
-        % old behavior.
-        true
-    else if set.contains(ModuleErrors, rme_could_not_open_file) then
-        % We get here if we couldn't find and/or open the file.
-        % ModuleSpecs will already contain an error_severity error_spec
-        % about that, with more details than the message we generate below,
-        % but the test case hard_coded/intermod_unused_args insists on
-        % there being no error, only a warning, and on the text below.
-        % That is why we do not add ModuleSpecs to !Specs here.
-        %
-        % I (zs) don't know whether we should add a version of ModuleSpecs
-        % with downgraded severity to !Specs instead of the Spec we generate
-        % below.
-        (
-            FileType = opt_file,
-            WarningOption = warn_missing_opt_files
-        ;
-            FileType = trans_opt_file,
-            WarningOption = warn_missing_trans_opt_files
-        ),
-        Severity =
-            severity_conditional(WarningOption, yes, severity_warning, no),
-        Pieces = [option_is_set(WarningOption, yes,
-            [always([words("Warning: cannot open"), quote(FileName),
-                suffix("."), nl])])],
-        Msg = error_msg(no, treat_as_first, 0, Pieces),
-        Spec = error_spec(Severity, phase_read_files, [Msg]),
-        !:Specs = [Spec | !.Specs]
-        % NOTE: We do NOT update !Error, since a missing optimization
-        % interface file is not necessarily an error.
-    else
-        % ModuleErrors may or may not contain fatal errors other than
-        % rme_could_not_open_file, but we do not care.
-        !:Specs = ModuleSpecs ++ !.Specs,
-        !:Error = yes
-    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.intermod.
