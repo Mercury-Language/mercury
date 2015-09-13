@@ -1538,8 +1538,8 @@ read_optimization_interfaces(Globals, Transitive,
     OptItemBlock = item_block(OptSection, OptModuleContext,
         [], OptAvails, OptItems),
     !:OptItemBlocksCord = cord.snoc(!.OptItemBlocksCord, OptItemBlock),
-    update_opt_error_status(Globals, opt_file, FileName,
-        OptSpecs, !Specs, OptError, !Error),
+    update_opt_error_status(Globals, opt_file, FileName, OptSpecs, OptError,
+        !Specs, !Error),
     maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
     maybe_write_string(VeryVerbose, "% done.\n", !IO),
 
@@ -1606,7 +1606,7 @@ read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
     maybe_write_string(VeryVerbose, " done.\n", !IO),
     !:Specs = OptSpecs ++ !.Specs,
     update_opt_error_status(Globals, trans_opt_file, FileName,
-        OptSpecs, !Specs, OptError, !Error),
+        OptSpecs, OptError, !Specs, !Error),
     maybe_write_out_errors_no_module(VeryVerbose, Globals, !Specs, !IO),
 
     ParseTreeOpt = parse_tree_opt(OptModuleName, _OptFileKind, OptContext,
@@ -1629,21 +1629,22 @@ read_trans_opt_files(Globals, [Import | Imports], !OptItemBlocks,
     %   ModuleSpecs, !Specs, ModuleErrors, !Error):
     %
     % Work out whether any fatal errors have occurred while reading
-    % `.opt' files, updating !Errors if there were fatal errors.
+    % `.opt' or `.trans_opt' files, updating !Errors if there were
+    % fatal errors.
     %
-    % A missing `.opt' file is only a fatal error if
-    % `--warn-missing-opt-files --halt-at-warn' was passed the compiler.
+    % A missing `.opt' or `.trans_opt' file is only a fatal error if
+    % `--halt-at-warn' was passed the compiler together with
+    % `--warn-missing-opt-files' or `--warn-missing-trans-opt-files'
+    % respectively.
     %
-    % Syntax errors in `.opt' files are always fatal.
-    %
-    % This is also used by trans_opt.m for reading `.trans_opt' files.
+    % Syntax errors in these files are always fatal.
     %
 :- pred update_opt_error_status(globals::in, opt_file_type::in, string::in,
-    list(error_spec)::in, list(error_spec)::in, list(error_spec)::out,
-    read_module_errors::in, bool::in, bool::out) is det.
+    list(error_spec)::in, read_module_errors::in,
+    list(error_spec)::in, list(error_spec)::out, bool::in, bool::out) is det.
 
 update_opt_error_status(_Globals, FileType, FileName,
-        ModuleSpecs, !Specs, ModuleErrors, !Error) :-
+        ModuleSpecs, ModuleErrors, !Specs, !Error) :-
     ( if set.is_empty(ModuleErrors) then
         % OptSpecs contains no errors. I (zs) don't know whether it could
         % contain any warnings or informational messages, but if it could,
