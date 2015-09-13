@@ -570,9 +570,9 @@ write_instance_defns(Info, Indent, ClassId - InstanceDefns, !IO) :-
     io::di, io::uo) is det.
 
 write_instance_defn(Info, Indent, InstanceDefn, !IO) :-
-    InstanceDefn = hlds_instance_defn(_InstanceModule, InstanceStatus,
-        Context, Constraints, Types, OriginalTypes, Body,
-        MaybePredProcIds, VarSet, ProofMap),
+    InstanceDefn = hlds_instance_defn(_InstanceModule, Types, OriginalTypes,
+        InstanceStatus, Context, Constraints, Body, MaybePredProcIds,
+        VarSet, ProofMap),
 
     % Separate this instance from any previous ones, or the class id.
     io.nl(!IO),

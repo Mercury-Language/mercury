@@ -87,9 +87,10 @@ gen_infos_for_instances(ModuleInfo, ClassId,
     % order seems worthwhile on aesthetic grounds.
     gen_infos_for_instances(ModuleInfo, ClassId, InstanceDefns, !RttiDatas),
 
-    InstanceDefn = hlds_instance_defn(InstanceModule, ImportStatus,
-        _TermContext, _InstanceConstraints, InstanceTypes, _OriginalTypes,
-        Body, _MaybePredProcIds, _Varset, _SuperClassProofs),
+    InstanceDefn = hlds_instance_defn(InstanceModule,
+        InstanceTypes, _OriginalTypes, ImportStatus, _TermContext,
+        _InstanceConstraints, Body, _MaybePredProcIds,
+        _Varset, _SuperClassProofs),
     ( if
         Body = instance_body_concrete(_),
         % Only make the base_typeclass_info if the instance declaration

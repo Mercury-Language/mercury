@@ -336,8 +336,8 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
                     !.FoundError = no,
                     FoundUndefModeError = no
                 ->
-                    maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs,
-                        !IO)
+                    maybe_write_initial_optfile(MakeOptInt,
+                        !HLDS, !DumpInfo, !Specs, !IO)
                 ;
                     true
                 ),
@@ -358,11 +358,11 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_write_optfile(bool::in, module_info::in, module_info::out,
-    dump_info::in, dump_info::out,
+:- pred maybe_write_initial_optfile(bool::in,
+    module_info::in, module_info::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
+maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, intermodule_analysis,
@@ -386,7 +386,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, analyse_mm_tabling, TablingAnalysis),
     (
         MakeOptInt = yes,
-        write_opt_file(!HLDS, !IO),
+        write_initial_opt_file(!HLDS, !IO),
 
         % The following passes are only run with `--intermodule-optimisation'
         % to append their results to the `.opt.tmp' file. For
@@ -408,6 +408,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
             ; ReuseAnalysis = yes
             )
         ->
+            % XXX OPTFILE This should have been done by one of our ancestors.
             frontend_pass_by_phases(!HLDS, FoundModeError, !DumpInfo,
                 !Specs, !IO),
             (

@@ -56,8 +56,13 @@
     % they must be called after unused_args.m appends its information
     % to the .opt.tmp file.
     %
-:- pred write_opt_file(module_info::in, module_info::out, io::di, io::uo)
-    is det.
+    % Although this predicate creates the .opt.tmp file, it does not
+    % necessarily create it in its final form. Later compiler passes
+    % may append to this file.
+    % XXX This is not an elegant arrangement.
+    %
+:- pred write_initial_opt_file(module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
     % Add the items from the .opt files of imported modules to
     % the items for this module.
@@ -152,7 +157,7 @@
 
 %-----------------------------------------------------------------------------%
 
-write_opt_file(!ModuleInfo, !IO) :-
+write_initial_opt_file(!ModuleInfo, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     module_info_get_name(!.ModuleInfo, ModuleName),
     module_name_to_file_name(Globals, ModuleName, ".opt.tmp", do_create_dirs,
@@ -827,8 +832,8 @@ gather_instances_2(ModuleInfo, ClassId, InstanceDefns, !Info) :-
     hlds_instance_defn::in, intermod_info::in, intermod_info::out) is det.
 
 gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
-    InstanceDefn = hlds_instance_defn(ModuleName, InstanceStatus, Context,
-        InstanceConstraints, Types, OriginalTypes, Interface0,
+    InstanceDefn = hlds_instance_defn(ModuleName, Types, OriginalTypes,
+        InstanceStatus, Context, InstanceConstraints, Interface0,
         MaybePredProcIds, TVarSet, Proofs),
     DefinedThisModule = instance_status_defined_in_this_module(InstanceStatus),
     (
@@ -891,8 +896,8 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
             )
         then
             InstanceDefnToWrite = hlds_instance_defn(ModuleName,
-                InstanceStatus, Context, InstanceConstraints,
-                Types, OriginalTypes, Interface, MaybePredProcIds,
+                Types, OriginalTypes, InstanceStatus, Context,
+                InstanceConstraints, Interface, MaybePredProcIds,
                 TVarSet, Proofs),
             intermod_info_get_instances(!.Info, Instances0),
             Instances = [ClassId - InstanceDefnToWrite | Instances0],
@@ -1044,12 +1049,12 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
 gather_types(!Info) :-
     intermod_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_type_table(ModuleInfo, TypeTable),
-    foldl_over_type_ctor_defns(gather_types_2, TypeTable, !Info).
+    foldl_over_type_ctor_defns(gather_types_acc, TypeTable, !Info).
 
-:- pred gather_types_2(type_ctor::in, hlds_type_defn::in,
+:- pred gather_types_acc(type_ctor::in, hlds_type_defn::in,
     intermod_info::in, intermod_info::out) is det.
 
-gather_types_2(TypeCtor, TypeDefn0, !Info) :-
+gather_types_acc(TypeCtor, TypeDefn0, !Info) :-
     intermod_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_name(ModuleInfo, ModuleName),
     ( if should_write_type(ModuleName, TypeCtor, TypeDefn0) then
@@ -1304,10 +1309,10 @@ some_type_needs_to_be_written([_ - TypeDefn | TypeCtorDefns], NeedWrite) :-
 :- pred write_intermod_info_body(intermod_info::in, io::di, io::uo) is det.
 
 write_intermod_info_body(IntermodInfo, !IO) :-
-    IntermodInfo = intermod_info(_, Preds0, PredDecls0, Instances, Types,
-        ModuleInfo, WriteHeader, _, _),
-    set.to_sorted_list(Preds0, Preds),
-    set.to_sorted_list(PredDecls0, PredDecls),
+    IntermodInfo = intermod_info(_, WritePredPredIdSet, WriteDeclPredIdSet,
+        Instances, Types, ModuleInfo, WriteHeader, _, _),
+    set.to_sorted_list(WritePredPredIdSet, WritePredPredIds),
+    set.to_sorted_list(WriteDeclPredIdSet, WriteDeclPredIds),
 
     module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
     % XXX We could and should reduce AvailModules to the set of modules
@@ -1324,27 +1329,58 @@ write_intermod_info_body(IntermodInfo, !IO) :-
     MercInfo0 = OutInfo0 ^ hoi_mercury_to_mercury,
     MercInfo = merc_out_info_disable_line_numbers(MercInfo0),
     OutInfo = OutInfo0 ^ hoi_mercury_to_mercury := MercInfo,
+    % Disable verbose dumping of clauses.
+    OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
 
     intermod_write_types(OutInfo, Types, !IO),
     intermod_write_insts(OutInfo, ModuleInfo, !IO),
     intermod_write_modes(OutInfo, ModuleInfo, !IO),
     intermod_write_classes(OutInfo, ModuleInfo, !IO),
     intermod_write_instances(OutInfo, Instances, !IO),
-
     (
         WriteHeader = yes,
         module_info_get_foreign_import_modules(ModuleInfo,
             ForeignImportModules),
         ForeignImports =
             get_all_foreign_import_module_infos(ForeignImportModules),
-        set.fold(intermod_write_foreign_import, ForeignImports, !IO)
+        ( if set.is_empty(ForeignImports) then
+            true
+        else
+            io.nl(!IO),
+            set.fold(intermod_write_foreign_import, ForeignImports, !IO)
+        )
     ;
         WriteHeader = no
     ),
-    intermod_write_pred_decls(ModuleInfo, PredDecls, !IO),
-    % Disable verbose dumping of clauses.
-    OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
-    intermod_write_preds(OutInfoForPreds, ModuleInfo, Preds, !IO).
+    generate_order_pred_infos(ModuleInfo, WriteDeclPredIds,
+        DeclOrderPredInfos),
+    generate_order_pred_infos(ModuleInfo, WritePredPredIds,
+        PredOrderPredInfos),
+    (
+        DeclOrderPredInfos = []
+    ;
+        DeclOrderPredInfos = [_ | _],
+        io.nl(!IO),
+        intermod_write_pred_decls(ModuleInfo, DeclOrderPredInfos, !IO)
+    ),
+    % Each of these writes a newline at the start.
+    intermod_write_preds(OutInfoForPreds, ModuleInfo, PredOrderPredInfos, !IO).
+
+:- type maybe_first
+    --->    is_not_first
+    ;       is_first.
+
+:- pred maybe_write_nl(maybe_first::in, maybe_first::out, io::di, io::uo)
+    is det.
+
+maybe_write_nl(!First, !IO) :-
+    (
+        !.First = is_first,
+        io.nl(!IO),
+        !:First = is_not_first
+    ;
+        !.First = is_not_first
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1361,7 +1397,14 @@ intermod_write_use_module(ModuleName, !IO) :-
     assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
 
 intermod_write_types(OutInfo, Types, !IO) :-
-    list.foldl(intermod_write_type(OutInfo), Types, !IO).
+    (
+        Types = []
+    ;
+        Types = [_ | _],
+        io.nl(!IO),
+        list.sort(Types, SortedTypes),
+        list.foldl(intermod_write_type(OutInfo), SortedTypes, !IO)
+    ).
 
 :- pred intermod_write_type(hlds_out_info::in,
     pair(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
@@ -1527,13 +1570,15 @@ gather_foreign_enum_value_pair(ConsId, ConsTag, !Values) :-
 intermod_write_insts(OutInfo, ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_inst_table(ModuleInfo, Insts),
-    inst_table_get_user_insts(Insts, UserInstTable),
-    map.foldl(intermod_write_inst(OutInfo, ModuleName), UserInstTable, !IO).
+    inst_table_get_user_insts(Insts, UserInstMap),
+    map.foldl2(intermod_write_inst(OutInfo, ModuleName), UserInstMap,
+        is_first, _, !IO).
 
 :- pred intermod_write_inst(hlds_out_info::in, module_name::in, inst_id::in,
-    hlds_inst_defn::in, io::di, io::uo) is det.
+    hlds_inst_defn::in, maybe_first::in, maybe_first::out,
+    io::di, io::uo) is det.
 
-intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !IO) :-
+intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !First, !IO) :-
     InstId = inst_id(SymName, _Arity),
     InstDefn = hlds_inst_defn(Varset, Args, Body, _MaybeMatchingTypeCtors,
         Context, InstStatus),
@@ -1541,6 +1586,7 @@ intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !IO) :-
         SymName = qualified(ModuleName, _),
         inst_status_to_write(InstStatus) = yes
     then
+        maybe_write_nl(!First, !IO),
         (
             Body = eqv_inst(Inst2),
             InstBody = eqv_inst(Inst2)
@@ -1565,13 +1611,15 @@ intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !IO) :-
 intermod_write_modes(OutInfo, ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_info_get_mode_table(ModuleInfo, Modes),
-    mode_table_get_mode_defns(Modes, ModeDefns),
-    map.foldl(intermod_write_mode(OutInfo, ModuleName), ModeDefns, !IO).
+    mode_table_get_mode_defns(Modes, ModeDefnMap),
+    map.foldl2(intermod_write_mode(OutInfo, ModuleName), ModeDefnMap,
+        is_first, _, !IO).
 
 :- pred intermod_write_mode(hlds_out_info::in, module_name::in, mode_id::in,
-    hlds_mode_defn::in, io::di, io::uo) is det.
+    hlds_mode_defn::in, maybe_first::in, maybe_first::out,
+    io::di, io::uo) is det.
 
-intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !IO) :-
+intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !First, !IO) :-
     ModeId = mode_id(SymName, _Arity),
     ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode), Context,
         ModeStatus),
@@ -1579,6 +1627,7 @@ intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !IO) :-
         SymName = qualified(ModuleName, _),
         mode_status_to_write(ModeStatus) = yes
     then
+        maybe_write_nl(!First, !IO),
         ItemModeDefn = item_mode_defn_info(SymName, Args, eqv_mode(Mode),
             Varset, Context, -1),
         Item = item_mode_defn(ItemModeDefn),
@@ -1595,13 +1644,15 @@ intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !IO) :-
 
 intermod_write_classes(OutInfo, ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
-    module_info_get_class_table(ModuleInfo, Classes),
-    map.foldl(intermod_write_class(OutInfo, ModuleName), Classes, !IO).
+    module_info_get_class_table(ModuleInfo, ClassDefnMap),
+    map.foldl2(intermod_write_class(OutInfo, ModuleName), ClassDefnMap,
+        is_first, _, !IO).
 
 :- pred intermod_write_class(hlds_out_info::in, module_name::in, class_id::in,
-    hlds_class_defn::in, io::di, io::uo) is det.
+    hlds_class_defn::in, maybe_first::in, maybe_first::out,
+    io::di, io::uo) is det.
 
-intermod_write_class(OutInfo, ModuleName, ClassId, ClassDefn, !IO) :-
+intermod_write_class(OutInfo, ModuleName, ClassId, ClassDefn, !First, !IO) :-
     ClassDefn = hlds_class_defn(TypeClassStatus, Constraints, HLDSFunDeps,
         _Ancestors, TVars, _Kinds, Interface, _HLDSClassInterface, TVarSet,
         Context),
@@ -1610,6 +1661,7 @@ intermod_write_class(OutInfo, ModuleName, ClassId, ClassDefn, !IO) :-
         QualifiedClassName = qualified(ModuleName, _),
         typeclass_status_to_write(TypeClassStatus) = yes
     then
+        maybe_write_nl(!First, !IO),
         FunDeps = list.map(unmake_hlds_class_fundep(TVars), HLDSFunDeps),
         ItemTypeClass = item_typeclass_info(QualifiedClassName, TVars,
             Constraints, FunDeps, Interface, TVarSet, Context, -1),
@@ -1642,14 +1694,21 @@ unmake_hlds_class_fundep_2(TVars, Set) = solutions.solutions(P) :-
     assoc_list(class_id, hlds_instance_defn)::in, io::di, io::uo) is det.
 
 intermod_write_instances(OutInfo, Instances, !IO) :-
-    list.foldl(intermod_write_instance(OutInfo), Instances, !IO).
+    (
+        Instances = []
+    ;
+        Instances = [_ | _],
+        io.nl(!IO),
+        list.sort(Instances, SortedInstances),
+        list.foldl(intermod_write_instance(OutInfo), SortedInstances, !IO)
+    ).
 
 :- pred intermod_write_instance(hlds_out_info::in,
     pair(class_id, hlds_instance_defn)::in, io::di, io::uo) is det.
 
 intermod_write_instance(OutInfo, ClassId - InstanceDefn, !IO) :-
-    InstanceDefn = hlds_instance_defn(ModuleName, _, Context, Constraints,
-        Types, OriginalTypes, Body, _, TVarSet, _),
+    InstanceDefn = hlds_instance_defn(ModuleName, Types, OriginalTypes, _,
+        Context, Constraints, Body, _, TVarSet, _),
     ClassId = class_id(ClassName, _),
     ItemInstance = item_instance_info(ClassName, Types, OriginalTypes,
         Constraints, Body, TVarSet, ModuleName, Context, -1),
@@ -1668,25 +1727,52 @@ intermod_write_foreign_import(ForeignImport, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+:- type order_pred_info
+    --->    order_pred_info(string, arity, pred_or_func, pred_id, pred_info).
+
+:- pred generate_order_pred_infos(module_info::in, list(pred_id)::in,
+    list(order_pred_info)::out) is det.
+
+generate_order_pred_infos(ModuleInfo, PredIds, SortedOrderPredInfos) :-
+    generate_order_pred_infos_acc(ModuleInfo, PredIds, [], OrderPredInfos),
+    list.sort(OrderPredInfos, SortedOrderPredInfos).
+
+:- pred generate_order_pred_infos_acc(module_info::in, list(pred_id)::in,
+    list(order_pred_info)::in, list(order_pred_info)::out) is det.
+
+generate_order_pred_infos_acc(_, [], !OrderPredInfos).
+generate_order_pred_infos_acc(ModuleInfo, [PredId | PredIds],
+        !OrderPredInfos) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    PredName = pred_info_name(PredInfo),
+    PredArity = pred_info_orig_arity(PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    OrderPredInfo = order_pred_info(PredName, PredArity, PredOrFunc,
+        PredId, PredInfo),
+    !:OrderPredInfos = [OrderPredInfo | !.OrderPredInfos],
+    generate_order_pred_infos_acc(ModuleInfo, PredIds,
+        !OrderPredInfos).
+
+%-----------------------------------------------------------------------------%
+
     % We need to write all the declarations for local predicates so
     % the procedure labels for the C code are calculated correctly.
     %
-:- pred intermod_write_pred_decls(module_info::in, list(pred_id)::in,
+:- pred intermod_write_pred_decls(module_info::in, list(order_pred_info)::in,
     io::di, io::uo) is det.
 
 intermod_write_pred_decls(_, [], !IO).
-intermod_write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
-    intermod_write_pred_decl(ModuleInfo, PredId, !IO),
-    intermod_write_pred_decls(ModuleInfo, PredIds, !IO).
+intermod_write_pred_decls(ModuleInfo, [OrderPredInfo | OrderPredInfos], !IO) :-
+    intermod_write_pred_decl(ModuleInfo, OrderPredInfo, !IO),
+    intermod_write_pred_decls(ModuleInfo, OrderPredInfos, !IO).
 
-:- pred intermod_write_pred_decl(module_info::in, pred_id::in,
+:- pred intermod_write_pred_decl(module_info::in, order_pred_info::in,
     io::di, io::uo) is det.
 
-intermod_write_pred_decl(ModuleInfo, PredId, !IO) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    Module = pred_info_module(PredInfo),
-    Name = pred_info_name(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+intermod_write_pred_decl(ModuleInfo, OrderPredInfo, !IO) :-
+    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
+        PredId, PredInfo),
+    ModuleName = pred_info_module(PredInfo),
     pred_info_get_arg_types(PredInfo, TVarSet, ExistQVars, ArgTypes),
     pred_info_get_context(PredInfo, Context),
     pred_info_get_purity(PredInfo, Purity),
@@ -1711,50 +1797,56 @@ intermod_write_pred_decl(ModuleInfo, PredId, !IO) :-
         ),
         VarNamePrint = print_name_and_num
     ),
+    PredSymName = qualified(ModuleName, PredName),
     (
         PredOrFunc = pf_predicate,
         mercury_output_pred_type(TVarSet, VarNamePrint, ExistQVars,
-            qualified(Module, Name), ArgTypes, no, Purity,
+            PredSymName, ArgTypes, no, Purity,
             ClassContext, Context, !IO)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType),
         mercury_output_func_type(TVarSet, VarNamePrint, ExistQVars,
-            qualified(Module, Name), FuncArgTypes, FuncRetType, no, Purity,
+            PredSymName, FuncArgTypes, FuncRetType, no, Purity,
             ClassContext, Context, !IO)
     ),
     pred_info_get_proc_table(PredInfo, ProcMap),
-    ProcIds = pred_info_procids(PredInfo),
-        % Make sure the mode declarations go out in the same order
-        % they came in, so that the all the modes get the same proc_id
-        % in the importing modules.
-    CompareProcId =
-        (pred(ProcId1::in, ProcId2::in, Result::out) is det :-
-            proc_id_to_int(ProcId1, ProcInt1),
-            proc_id_to_int(ProcId2, ProcInt2),
-            compare(Result, ProcInt1, ProcInt2)
-        ),
-    list.sort(CompareProcId, ProcIds, SortedProcIds),
-    intermod_write_pred_modes(PredOrFunc, qualified(Module, Name),
-        ProcMap, SortedProcIds, !IO),
+    % Make sure the mode declarations go out in the same order they came in,
+    % so that the all the modes get the same proc_id in the importing modules.
+    % SortedProcPairs will sorted on proc_ids. (map.values is not *documented*
+    % to return a list sorted by keys.)
+    map.to_sorted_assoc_list(ProcMap, SortedProcPairs),
+    intermod_write_pred_valid_modes(PredOrFunc, PredSymName,
+        SortedProcPairs, !IO),
     intermod_write_pred_marker_pragmas(PredInfo, !IO),
     intermod_write_pred_type_spec_pragmas(ModuleInfo, PredId, !IO).
 
-:- pred intermod_write_pred_modes(pred_or_func::in, sym_name::in,
-    map(proc_id, proc_info)::in, list(proc_id)::in, io::di, io::uo) is det.
+:- pred intermod_write_pred_valid_modes(pred_or_func::in, sym_name::in,
+    assoc_list(proc_id, proc_info)::in, io::di, io::uo) is det.
 
-intermod_write_pred_modes(_, _, _, [], !IO).
-intermod_write_pred_modes(PredOrFunc, SymName, ProcMap, [ProcId | ProcIds],
-        !IO) :-
-    map.lookup(ProcMap, ProcId, ProcInfo),
+intermod_write_pred_valid_modes(_, _, [], !IO).
+intermod_write_pred_valid_modes(PredOrFunc, PredSymName,
+        [ProcIdInfo | ProcIdInfos], !IO) :-
+    ProcIdInfo = _ProcId - ProcInfo,
+    ( if proc_info_is_valid_mode(ProcInfo) then
+        intermod_write_pred_mode(PredOrFunc, PredSymName, ProcInfo, !IO)
+    else
+        true
+    ),
+    intermod_write_pred_valid_modes(PredOrFunc, PredSymName, ProcIdInfos, !IO).
+
+:- pred intermod_write_pred_mode(pred_or_func::in, sym_name::in,
+    proc_info::in, io::di, io::uo) is det.
+
+intermod_write_pred_mode(PredOrFunc, PredSymName, ProcInfo, !IO) :-
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     ( if
-        MaybeArgModes = yes(ArgModes0),
-        MaybeDetism = yes(Detism0)
+        MaybeArgModes = yes(ArgModesPrime),
+        MaybeDetism = yes(DetismPrime)
     then
-        ArgModes = ArgModes0,
-        Detism = Detism0
+        ArgModes = ArgModesPrime,
+        Detism = DetismPrime
     else
         unexpected($module, $pred, "attempt to write undeclared mode")
     ),
@@ -1763,15 +1855,14 @@ intermod_write_pred_modes(PredOrFunc, SymName, ProcMap, [ProcId | ProcIds],
     (
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgModes, FuncArgModes, FuncRetMode),
-        mercury_output_func_mode_decl(output_mercury, Varset, SymName,
+        mercury_output_func_mode_decl(output_mercury, Varset, PredSymName,
             FuncArgModes, FuncRetMode, yes(Detism), Context, !IO)
     ;
         PredOrFunc = pf_predicate,
         MaybeWithInst = maybe.no,
-        mercury_output_pred_mode_decl(output_mercury, Varset, SymName,
+        mercury_output_pred_mode_decl(output_mercury, Varset, PredSymName,
             ArgModes, MaybeWithInst, yes(Detism), Context, !IO)
-    ),
-    intermod_write_pred_modes(PredOrFunc, SymName, ProcMap, ProcIds, !IO).
+    ).
 
 :- pred intermod_write_pred_marker_pragmas(pred_info::in,
     io::di, io::uo) is det.
@@ -1861,15 +1952,23 @@ should_output_marker(marker_has_format_call, no).
 %-----------------------------------------------------------------------------%
 
 :- pred intermod_write_preds(hlds_out_info::in, module_info::in,
-    list(pred_id)::in, io::di, io::uo) is det.
+    list(order_pred_info)::in, io::di, io::uo) is det.
 
 intermod_write_preds(_, _, [], !IO).
-intermod_write_preds(OutInfo, ModuleInfo, [PredId | PredIds], !IO) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    Module = pred_info_module(PredInfo),
-    Name = pred_info_name(PredInfo),
-    SymName = qualified(Module, Name),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+intermod_write_preds(OutInfo, ModuleInfo, [OrderPredInfo | OrderPredInfos],
+        !IO) :-
+    intermod_write_pred(OutInfo, ModuleInfo, OrderPredInfo, !IO),
+    intermod_write_preds(OutInfo, ModuleInfo, OrderPredInfos, !IO).
+
+:- pred intermod_write_pred(hlds_out_info::in, module_info::in,
+    order_pred_info::in, io::di, io::uo) is det.
+
+intermod_write_pred(OutInfo, ModuleInfo, OrderPredInfo, !IO) :-
+    io.nl(!IO),
+    OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
+        PredId, PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    PredSymName = qualified(ModuleName, PredName),
     intermod_write_pred_marker_pragmas(PredInfo, !IO),
     % The type specialization pragmas for exported preds should
     % already be in the interface file.
@@ -1904,11 +2003,10 @@ intermod_write_preds(OutInfo, ModuleInfo, [PredId | PredIds], !IO) :-
         pred_info_get_typevarset(PredInfo, TypeVarset),
         TypeQual = varset_vartypes(TypeVarset, VarTypes),
         list.foldl(
-            intermod_write_clause(OutInfo, ModuleInfo, PredId, SymName,
+            intermod_write_clause(OutInfo, ModuleInfo, PredId, PredSymName,
                 PredOrFunc, VarSet, TypeQual, HeadVars),
             Clauses, !IO)
-    ),
-    intermod_write_preds(OutInfo, ModuleInfo, PredIds, !IO).
+    ).
 
 :- pred intermod_write_clause(hlds_out_info::in, module_info::in,
     pred_id::in, sym_name::in, pred_or_func::in,
@@ -2386,15 +2484,15 @@ adjust_instance_status_2(ClassId - InstanceList0, ClassId - InstanceList,
     hlds_instance_defn::out, module_info::in, module_info::out) is det.
 
 adjust_instance_status_3(Instance0, Instance, !ModuleInfo) :-
-    Instance0 = hlds_instance_defn(InstanceModule, InstanceStatus0, Context,
-        Constraints, Types, OriginalTypes, Body,
+    Instance0 = hlds_instance_defn(InstanceModule, Types, OriginalTypes,
+        InstanceStatus0, Context, Constraints, Body,
         HLDSClassInterface, TVarSet, ConstraintProofs),
     ToWrite = instance_status_to_write(InstanceStatus0),
     (
         ToWrite = yes,
         InstanceStatus = instance_status(status_exported),
-        Instance = hlds_instance_defn(InstanceModule, InstanceStatus,
-            Context, Constraints, Types, OriginalTypes, Body,
+        Instance = hlds_instance_defn(InstanceModule, Types, OriginalTypes,
+            InstanceStatus, Context, Constraints, Body,
             HLDSClassInterface, TVarSet, ConstraintProofs),
         (
             HLDSClassInterface = yes(ClassInterface),

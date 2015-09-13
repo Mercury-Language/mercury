@@ -471,8 +471,8 @@ class_instances_used_modules(ClassId, InstanceDefns, !UsedModules) :-
 
 instance_used_modules(ClassId, InstanceDefn, !UsedModules) :-
     ClassId = class_id(Name, _Arity), 
-    InstanceDefn = hlds_instance_defn(_InstanceModule, InstanceStatus,
-        _Context, Constraints, Types, _OriginalTypes, _Body,
+    InstanceDefn = hlds_instance_defn(_InstanceModule, Types, _OriginalTypes,
+        InstanceStatus, _Context, Constraints, _Body,
         _MaybePredProcIds, _VarSet, _ProofMap),
 
     Visibility = instance_visibility(InstanceStatus),

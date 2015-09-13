@@ -1708,11 +1708,21 @@ mode_table_optimize(!ModeDefns) :-
 :- type instance_id == int.
 
     % Information about a single `instance' declaration.
+    % The order of fields is intended to put the list of hlds_instance_defns
+    % of a class into a stable order when the hlds_instance_defns are sorted.
+    % ("Stable" meaning that changing *only* the order of the instance
+    % declarations in a source module should leave the contents of the
+    % .opt file unchanged.)
     %
 :- type hlds_instance_defn
     --->    hlds_instance_defn(
                 % Module of the instance declaration.
                 instdefn_module         :: module_name,
+
+                % The class types. The original types field is used only
+                % for error checking.
+                instdefn_types          :: list(mer_type),
+                instdefn_orig_types     :: list(mer_type),
 
                 % Import status of the instance declaration.
                 % XXX This can be set to abstract_imported even if
@@ -1724,11 +1734,6 @@ mode_table_optimize(!ModeDefns) :-
 
                 % Constraints on the instance declaration.
                 instdefn_constraints    :: list(prog_constraint),
-
-                % The class types. The original types field is used only
-                % for error checking.
-                instdefn_types          :: list(mer_type),
-                instdefn_orig_types     :: list(mer_type),
 
                 % Methods
                 instdefn_body           :: instance_body,
@@ -1775,9 +1780,9 @@ restrict_list_elements_2([Posn | Posns], Index, [X | Xs], RestrictedXs) :-
     ).
 
 num_extra_instance_args(InstanceDefn, NumExtra) :-
-    InstanceDefn = hlds_instance_defn(_InstanceModule, _ImportStatus,
-        _TermContext, InstanceConstraints, InstanceTypes, _OrigInstanceTypes,
-        _Body, _PredProcIds, _Varset, _SuperClassProofs),
+    InstanceDefn = hlds_instance_defn(_InstanceModule,
+        InstanceTypes, _OrigInstanceTypes, _ImportStatus, _TermContext,
+        InstanceConstraints, _Body, _PredProcIds, _Varset, _SuperClassProofs),
     type_vars_list(InstanceTypes, TypeVars),
     get_unconstrained_tvars(TypeVars, InstanceConstraints, Unconstrained),
     list.length(InstanceConstraints, NumConstraints),

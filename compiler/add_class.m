@@ -481,7 +481,7 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
         MaybeClassInterface = no,
         map.init(ProofMap),
         NewInstanceDefn = hlds_instance_defn(InstanceModuleName,
-            InstanceStatus, Context, Constraints, Types, OriginalTypes,
+            Types, OriginalTypes, InstanceStatus, Context, Constraints,
             InstanceBody, MaybeClassInterface, VarSet, ProofMap),
         map.lookup(InstanceTable0, ClassId, OldInstanceDefns),
         check_for_overlapping_instances(NewInstanceDefn, OldInstanceDefns,
@@ -502,8 +502,8 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
 
 check_for_overlapping_instances(NewInstanceDefn, OtherInstanceDefns,
         ClassId, !Specs) :-
-    NewInstanceDefn = hlds_instance_defn(_, _, NewContext,
-        _, NewTypes, _, NewInstanceBody, _, NewTVarSet, _),
+    NewInstanceDefn = hlds_instance_defn(_, NewTypes, _, _, NewContext,
+        _, NewInstanceBody, _, NewTVarSet, _),
     ( if
         NewInstanceBody = instance_body_concrete(_) % XXX
     then
@@ -522,8 +522,8 @@ report_any_overlapping_instance_declarations(_, _, _, _, [], !Specs).
 report_any_overlapping_instance_declarations(ClassId,
         NewTypes, NewTVarSet, NewContext,
         [OtherInstanceDefn | OtherInstanceDefns], !Specs) :-
-    OtherInstanceDefn = hlds_instance_defn(_, _, OtherContext,
-        _, OtherTypes, _, OtherInstanceBody, _, OtherTVarSet, _),
+    OtherInstanceDefn = hlds_instance_defn(_, OtherTypes, _, _, OtherContext,
+        _, OtherInstanceBody, _, OtherTVarSet, _),
     ( if
         OtherInstanceBody = instance_body_concrete(_), % XXX
         tvarset_merge_renaming(NewTVarSet, OtherTVarSet, _MergedTVarSet,

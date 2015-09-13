@@ -581,7 +581,7 @@ check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
         ClassInterface, ClassVarSet, ClassPredIds, !InstanceDefn,
         !ModuleInfo, !QualInfo, !Specs):-
     % Check conformance of the instance body.
-    !.InstanceDefn = hlds_instance_defn(_, _, TermContext, _, _, _,
+    !.InstanceDefn = hlds_instance_defn(_, _, _, _, TermContext, _,
         InstanceBody, _, _, _),
     (
         InstanceBody = instance_body_abstract
@@ -747,8 +747,8 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
             ModesAndDetism = modes_and_detism(Modes, InstVarSet, MaybeDetism)
         ), ClassProcProcIds, ArgModes),
 
-    InstanceDefn0 = hlds_instance_defn(_, InstanceStatus, _, _, InstanceTypes,
-        _, _, _, _, _),
+    InstanceDefn0 = hlds_instance_defn(_, InstanceTypes, _, InstanceStatus,
+        _, _, _, _, _, _),
 
     % Work out the name of the predicate that we will generate
     % to check this instance method.
@@ -814,9 +814,10 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
 check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         CheckInfo, InstanceDefn0, InstanceDefn,
         !RevInstanceMethods, !ModuleInfo, !QualInfo, !Specs) :-
-    InstanceDefn0 = hlds_instance_defn(InstanceModuleName, _InstanceStatus,
-        _InstanceContext, InstanceConstraints, InstanceTypes, _OriginalTypes,
-        InstanceBody, MaybeInstancePredProcs, InstanceVarSet, _InstanceProofs),
+    InstanceDefn0 = hlds_instance_defn(InstanceModuleName,
+        InstanceTypes, _OriginalTypes, _InstanceStatus, _InstanceContext,
+        InstanceConstraints, InstanceBody, MaybeInstancePredProcs,
+        InstanceVarSet, _InstanceProofs),
     PredOrFunc = CheckInfo ^ cimi_method_pred_or_func,
     Arity = CheckInfo ^ cimi_method_arity,
     get_matching_instance_defns(InstanceBody, PredOrFunc, MethodName, Arity,
@@ -1080,8 +1081,8 @@ introduced_pred_name_prefix = "ClassMethod_for_".
 
 check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
         ClassVarSet, ModuleInfo, InstanceDefn0, InstanceDefn, !Specs) :-
-    InstanceDefn0 = hlds_instance_defn(ModuleName, Status, Context,
-        InstanceProgConstraints, InstanceTypes, OriginalTypes,
+    InstanceDefn0 = hlds_instance_defn(ModuleName,
+        InstanceTypes, OriginalTypes, Status, Context, InstanceProgConstraints,
         Body, Interface, InstanceVarSet0, Proofs0),
     tvarset_merge_renaming(InstanceVarSet0, ClassVarSet, InstanceVarSet1,
         Renaming),
@@ -1123,9 +1124,9 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
 
     (
         UnprovenConstraints = [],
-        InstanceDefn = hlds_instance_defn(ModuleName, Status, Context,
-            InstanceProgConstraints, InstanceTypes, OriginalTypes,
-            Body, Interface, InstanceVarSet2, Proofs1)
+        InstanceDefn = hlds_instance_defn(ModuleName,
+            InstanceTypes, OriginalTypes, Status, Context,
+            InstanceProgConstraints, Body, Interface, InstanceVarSet2, Proofs1)
     ;
         UnprovenConstraints = [_ | UnprovenConstraintsTail],
         ClassId = class_id(ClassName, _ClassArity),
