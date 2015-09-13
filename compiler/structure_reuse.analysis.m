@@ -27,7 +27,7 @@
 %       H3 := H2
 %   ;
 %           % Cell H1 dies provided some condition about the
-%           % structure sharing of H1 is true.  A deconstruction
+%           % structure sharing of H1 is true. A deconstruction
 %           % generating a dead cell, followed by a
 %           % construction reusing that cell, is called a direct
 %           % reuse.
@@ -41,7 +41,7 @@
 %           % This is an indirect reuse.
 %       list.append(Xs, H2, Zs),
 %
-%           % Reuse the dead cell H1.  This is a direct reuse.
+%           % Reuse the dead cell H1. This is a direct reuse.
 %       H3 <= [X | Zs]
 %   ).
 %
@@ -154,7 +154,7 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
     (
         IntermodAnalysis = yes,
         % Load structure reuse answers from the analysis registry into a reuse
-        % table.  Add procedures to the module as necessary.  Look up the
+        % table. Add procedures to the module as necessary. Look up the
         % requests made for procedures in this module by other modules.
         process_intermod_analysis_reuse(!ModuleInfo, ReuseTable0,
             ExternalRequests, MustHaveReuseVersions)
@@ -194,7 +194,7 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
         ),
 
 
-        % Create copies of externally requested procedures.  This must be done
+        % Create copies of externally requested procedures. This must be done
         % after the in-use annotations have been added to the procedures being
         % copied.
         list.map_foldl2(make_intermediate_reuse_proc, ExternalRequests,
@@ -234,7 +234,7 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
             InternalRequests, !ReuseTable, !ModuleInfo, DepProcs0, DepProcs,
             IntermodRequests0, IntermodRequests),
 
-        % Create reuse versions of procedures.  Update goals to reuse cells
+        % Create reuse versions of procedures. Update goals to reuse cells
         % and call reuse versions of procedures.
         create_reuse_procedures(!ReuseTable, !ModuleInfo),
 
@@ -254,7 +254,7 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
         IntermodAnalysis = yes,
         % We may need to create forwarding procedures for procedures which had
         % conditional reuse in the `.analysis' file, but which have no reuse
-        % or unconditional reuse now.  We should only need to do this for
+        % or unconditional reuse now. We should only need to do this for
         % procedures with NoClobbers = [].
         list.foldl(
             maybe_create_forwarding_procedures_intermod_analysis(ReuseTable),
@@ -272,12 +272,12 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
     % `--intermodule-optimization' not `--intermodule-analysis'.
     globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
-    (
+    ( if
         MakeOptInt = yes,
         IntermodAnalysis = no
-    ->
-        make_opt_int(!.ModuleInfo, !IO)
-    ;
+    then
+        append_structure_reuse_pragmas_to_opt_file(!.ModuleInfo, !IO)
+    else
         true
     ),
 
@@ -317,10 +317,10 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
 %-----------------------------------------------------------------------------%
 
     % Create intermediate reuse versions of procedures according to the
-    % requests from indirect reuse analysis.  We perform direct reuse
+    % requests from indirect reuse analysis. We perform direct reuse
     % analyses on the newly created procedures, then repeat indirect reuse
     % analysis on all procedures in the module so that calls to the new
-    % procedures can be made.  This may create new requests.
+    % procedures can be made. This may create new requests.
     %
     % XXX this is temporary only; we shouldn't be redoing so much work.
     %
@@ -332,10 +332,10 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
 
 handle_structure_reuse_requests(Repeats, SharingTable, Requests,
         !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests) :-
-    ( Repeats > 0 ->
+    ( if Repeats > 0 then
         handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
             !ReuseTable, !ModuleInfo, !DepProcs, !IntermodRequests)
-    ;
+    else
         true
     ).
 
@@ -368,7 +368,7 @@ handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
     % Rerun indirect reuse analysis on all procedures.
     %
     % XXX goals which already have reuse annotations don't need to be
-    % reanalysed.  For old procedures (not the ones just created) we actually
+    % reanalysed. For old procedures (not the ones just created) we actually
     % only need to check that calls which previously had no reuse opportunity
     % might be able to call the new procedures.
     trace [io(!IO)] (
@@ -381,12 +381,12 @@ handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
         maybe_write_string(VeryVerbose, "% done.\n", !IO)
     ),
 
-    ( set.is_empty(NewRequests) ->
+    ( if set.is_empty(NewRequests) then
         trace [io(!IO)] (
             maybe_write_string(VeryVerbose,
                 "% No more structure reuse requests.\n", !IO)
         )
-    ;
+    else
         trace [io(!IO)] (
             maybe_write_string(VeryVerbose,
                 "% Outstanding structure reuse requests exist.\n", !IO)
@@ -399,7 +399,7 @@ handle_structure_reuse_requests_2(Repeats, SharingTable, Requests,
     % request, i.e. some of its arguments are prevented from being reused.
     %
     % The goal of the original procedure must already be annotated with in-use
-    % sets.  For the new procedure, we simply add the head variables at the
+    % sets. For the new procedure, we simply add the head variables at the
     % no-clobber argument positions to the forward-use set of each goal.
     % We also remove any existing reuse annotations on the goals.
     %
@@ -428,10 +428,10 @@ get_numbered_args(_, [], _, []).
 get_numbered_args(_, [_ | _], [], _) :-
     unexpected($module, $pred, "argument list too short").
 get_numbered_args(I, [N | Ns], [Var | Vars], Selected) :-
-    ( I = N ->
+    ( if I = N then
         get_numbered_args(I + 1, Ns, Vars, Selected0),
         Selected = [Var | Selected0]
-    ;
+    else
         get_numbered_args(I + 1, [N | Ns], Vars, Selected)
     ).
 
@@ -455,16 +455,16 @@ maybe_create_forwarding_procedures_intermod_opt_2(FinalReuseTable, PPId,
     PPId = proc(PredId, _),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
-    (
+    ( if
         reuse_as_conditional_reuses(InitialReuseAs),
         pred_status_defined_in_this_module(PredStatus) = yes,
         reuse_as_table_search(FinalReuseTable, PPId, FinalReuseAs_Status),
         FinalReuseAs_Status = reuse_as_and_status(FinalReuseAs, _),
         reuse_as_no_reuses(FinalReuseAs)
-    ->
+    then
         NoClobbers = [],
         create_fake_reuse_procedure(PPId, NoClobbers, !ModuleInfo)
-    ;
+    else
         true
     ).
 
@@ -475,17 +475,17 @@ maybe_create_forwarding_procedures_intermod_opt_2(FinalReuseTable, PPId,
 maybe_create_forwarding_procedures_intermod_analysis(ReuseTable, PredProcId,
         !ModuleInfo) :-
     % The procedure PredProcId would have been listed as having conditional
-    % reuse for call pattern NoClobbers = [] in the analysis registry.  If our
+    % reuse for call pattern NoClobbers = [] in the analysis registry. If our
     % analysis of the procedure didn't create a conditional reuse version,
     % then we need to produce a forwarding procedure to avoid linking
     % problems.
-    (
+    ( if
         reuse_as_table_search(ReuseTable, PredProcId, ReuseAs_Status),
         ReuseAs_Status = reuse_as_and_status(ReuseAs, _),
         reuse_as_conditional_reuses(ReuseAs)
-    ->
+    then
         true
-    ;
+    else
         NoClobbers = [],
         create_fake_reuse_procedure(PredProcId, NoClobbers, !ModuleInfo)
     ).
@@ -530,21 +530,21 @@ process_imported_reuse_in_procs(!PredInfo) :-
 process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
     some [!ProcInfo] (
         !:ProcInfo = !.ProcTable ^ det_elem(ProcId),
-        (
+        ( if
             proc_info_get_imported_structure_reuse(!.ProcInfo,
                 ImpHeadVars, ImpTypes, ImpReuse)
-        ->
+        then
             proc_info_get_headvars(!.ProcInfo, HeadVars),
             pred_info_get_arg_types(PredInfo, HeadVarTypes),
             map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming),
             some [!TypeSubst] (
                 !:TypeSubst = map.init,
-                (
+                ( if
                     type_unify_list(ImpTypes, HeadVarTypes, [], !.TypeSubst,
                         TypeSubstNew)
-                ->
+                then
                     !:TypeSubst = TypeSubstNew
-                ;
+                else
                     true
                 ),
                 rename_structure_reuse_domain(VarRenaming, !.TypeSubst,
@@ -556,7 +556,7 @@ process_imported_reuse_in_proc(PredInfo, ProcId, !ProcTable) :-
                 structure_reuse_domain_and_status(Reuse, optimal), !ProcInfo),
             proc_info_reset_imported_structure_reuse(!ProcInfo),
             map.det_update(ProcId, !.ProcInfo, !ProcTable)
-        ;
+        else
             true
         )
     ).
@@ -588,22 +588,22 @@ process_intermod_analysis_reuse_pred(PredId, !ModuleInfo, !ReuseTable,
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
     ProcIds = pred_info_procids(PredInfo),
-    (
+    ( if
         PredStatus = pred_status(status_imported(_))
-    ->
+    then
         % Read in answers for imported procedures.
         list.foldl2(process_intermod_analysis_reuse_proc(PredId, PredInfo),
             ProcIds, !ModuleInfo, !ReuseTable)
-    ;
+    else if
         pred_status_defined_in_this_module(PredStatus) = yes
-    ->
+    then
         % For procedures defined in this module we need to read in the answers
         % from previous passes to know which versions of procedures other
-        % modules will be expecting.  We also need to read in new requests.
+        % modules will be expecting. We also need to read in new requests.
         list.foldl2(
             process_intermod_analysis_defined_proc(!.ModuleInfo, PredId),
             ProcIds, !ExternalRequests, !MustHaveReuseVersions)
-    ;
+    else
         true
     ).
 
@@ -670,10 +670,12 @@ structure_reuse_answer_to_domain(HeadVarTypes, ProcInfo, Answer, Reuse) :-
             ImpReuseConditions),
         proc_info_get_headvars(ProcInfo, HeadVars),
         map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming),
-        ( type_unify_list(ImpTypes, HeadVarTypes, [], map.init, TypeSubst) ->
+        ( if
+            type_unify_list(ImpTypes, HeadVarTypes, [], map.init, TypeSubst)
+        then
             rename_structure_reuse_domain(VarRenaming, TypeSubst,
                 has_conditional_reuse(ImpReuseConditions), Reuse)
-        ;
+        else
             unexpected($module, $pred, "type_unify_list failed")
         )
     ).
@@ -690,7 +692,7 @@ process_intermod_analysis_defined_proc(ModuleInfo, PredId, ProcId,
 
     % Only add requests for procedures that *really* belong to this module.
     module_info_get_name(ModuleInfo, ThisModule),
-    ( ThisModule = ModuleName ->
+    ( if ThisModule = ModuleName then
         % Add requests corresponding to the call patterns of existing answers.
         lookup_existing_call_patterns(AnalysisInfo, analysis_name, ModuleName,
             FuncId, OldCalls),
@@ -722,7 +724,7 @@ process_intermod_analysis_defined_proc(ModuleInfo, PredId, ProcId,
         ;
             MaybeBestResult = no
         )
-    ;
+    else
         true
     ).
 
@@ -733,7 +735,7 @@ add_reuse_request(PPId, structure_reuse_call(NoClobbers), !Requests) :-
     (
         NoClobbers = []
         % We don't need to add these as explicit requests, and in fact it's
-        % better if we don't.  The analysis is already designed to analyse for
+        % better if we don't. The analysis is already designed to analyse for
         % this case by default and create the reuse procedures if necessary.
     ;
         NoClobbers = [_ | _],
@@ -767,9 +769,10 @@ annotate_in_use_information(ModuleInfo, !ProcInfo) :-
 % Code for writing out optimization interfaces
 %
 
-:- pred make_opt_int(module_info::in, io::di, io::uo) is det.
+:- pred append_structure_reuse_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
 
-make_opt_int(ModuleInfo, !IO) :-
+append_structure_reuse_pragmas_to_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
@@ -864,7 +867,7 @@ write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
                 srac_vars   :: prog_vars,
                 srac_types  :: list(mer_type),
                 srac_conds  :: structure_reuse_conditions
-                % We cannot keep this as a reuse_as.  When the analysis answers
+                % We cannot keep this as a reuse_as. When the analysis answers
                 % are loaded, we don't have enough information to rename the
                 % variables in the .analysis answer to the correct variables
                 % for the proc_info that the reuse_as will be used with.
@@ -929,9 +932,9 @@ analysis_name = "structure_reuse".
         where [
 
     % We deliberately have `conditional' reuse incomparable with
-    % `unconditional' reuse.  If they were comparable, a caller using an
+    % `unconditional' reuse. If they were comparable, a caller using an
     % `conditional' answer would would only be marked `suboptimal' if that
-    % answer changes to `unconditional'.  Since we don't honour the old
+    % answer changes to `unconditional'. Since we don't honour the old
     % `conditional' answer by generating that version of the procedure, there
     % would be a linking error if the caller is not updated to call the
     % unconditional version.
@@ -1038,12 +1041,12 @@ reuse_answer_from_term(Term, Answer) :-
 
 record_structure_reuse_results(ModuleInfo, CondReuseMap, PPId, ReuseAs_Status,
         !AnalysisInfo) :-
-    ( bimap.reverse_search(CondReuseMap, Key, PPId) ->
+    ( if bimap.reverse_search(CondReuseMap, Key, PPId) then
         % PPId is a conditional reuse procedure created from another procedure.
         % We need to record the result using the name of the original
         % procedure.
         Key = ppid_no_clobbers(RecordPPId, NoClobbers)
-    ;
+    else
         RecordPPId = PPId,
         NoClobbers = []
     ),
@@ -1127,9 +1130,9 @@ record_intermod_requests(ModuleInfo, sr_request(PPId, NoClobbers),
 
 should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
         ShouldWrite) :-
-    (
+    ( if
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        \+ is_unify_or_compare_pred(PredInfo),
+        not is_unify_or_compare_pred(PredInfo),
 
         % Don't write out info for reuse versions of procedures.
         pred_info_get_origin(PredInfo, PredOrigin),
@@ -1145,11 +1148,11 @@ should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             % error.
             module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
             TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-            \+ set.member(PredId, TypeSpecForcePreds)
+            not set.member(PredId, TypeSpecForcePreds)
         )
-    ->
+    then
         ShouldWrite = yes
-    ;
+    else
         ShouldWrite = no
     ).
 
@@ -1174,14 +1177,14 @@ structure_reuse_answer_harsher_than_in_analysis_registry(ModuleInfo,
     Call = structure_reuse_call(NoClobbers),
     analysis.lookup_best_result(AnalysisInfo, ModuleName, FuncId, FuncInfo,
         Call, MaybeOldResult),
-    (
+    ( if
         MaybeOldResult = yes(analysis_result(OldCall, OldAnswer, _)),
         equivalent(FuncInfo, Call, OldCall)
-    ->
+    then
         % Compare with the new result.
         lookup_new_structure_reuse_answer(ModuleInfo, ReuseTable, ReusePPId,
             NewAnswer),
-        ( more_precise_than(FuncInfo, NewAnswer, OldAnswer) ->
+        ( if more_precise_than(FuncInfo, NewAnswer, OldAnswer) then
             Harsher = yes,
             trace [
                 compile_time(flag("harsher_answer_check")),
@@ -1199,10 +1202,10 @@ structure_reuse_answer_harsher_than_in_analysis_registry(ModuleInfo,
                 io.write(NewAnswer, !IO),
                 io.nl(!IO)
             )
-        ;
+        else
             Harsher = no
         )
-    ;
+    else
         Harsher = no
     ).
 
@@ -1211,9 +1214,9 @@ structure_reuse_answer_harsher_than_in_analysis_registry(ModuleInfo,
 
 lookup_new_structure_reuse_answer(ModuleInfo, ReuseTable, ReusePPId,
         NewAnswer) :-
-    ( reuse_as_table_search(ReuseTable, ReusePPId, ReuseAs_Status) ->
+    ( if reuse_as_table_search(ReuseTable, ReusePPId, ReuseAs_Status) then
         ReuseAs_Status = reuse_as_and_status(NewReuseAs, _)
-    ;
+    else
         unexpected($module, $pred, "search failed")
     ),
     reuse_as_to_structure_reuse_answer(ModuleInfo, ReusePPId, NewReuseAs,
@@ -1233,7 +1236,7 @@ remove_useless_reuse_proc(ModuleInfo, VeryVerbose, ReuseAsMap, _, PPId,
     % XXX perhaps we can also remove reuse procedures with only unconditional
     % reuse?  Such a procedure should be the same as the "non-reuse" procedure
     % (which also implements any unconditional reuse).
-    ( reuse_as_no_reuses(ReuseAs) ->
+    ( if reuse_as_no_reuses(ReuseAs) then
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
@@ -1249,7 +1252,7 @@ remove_useless_reuse_proc(ModuleInfo, VeryVerbose, ReuseAsMap, _, PPId,
         % We can remove the whole predicate because we never generate
         % multi-moded reuse versions of predicates.
         predicate_table_remove_predicate(PredId, !PredTable)
-    ;
+    else
         true
     ).
 

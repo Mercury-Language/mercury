@@ -61,7 +61,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Instances used by mmc_analysis.m
+% Instances used by mmc_analysis.m.
 %
 
 :- type unused_args_func_info.
@@ -155,7 +155,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Types and instances used by mmc_analysis.m
+% Types and instances used by mmc_analysis.m.
 %
 
 :- type unused_args_func_info
@@ -251,10 +251,10 @@ unused_args_process_module(!ModuleInfo, !Specs, !IO) :-
         IntermodAnalysis),
     % Only write unused argument analysis pragmas to `.opt' files for
     % `--intermodule-optimization', not `--intermodule-analysis'.
-    (
+    ( if
         MakeOpt = yes,
         IntermodAnalysis = no
-    ->
+    then
         module_info_get_name(!.ModuleInfo, ModuleName),
         module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
             do_not_create_dirs, OptFileName, !IO),
@@ -270,19 +270,19 @@ unused_args_process_module(!ModuleInfo, !Specs, !IO) :-
             io.set_exit_status(1, !IO),
             MaybeOptFile = no
         )
-    ;
+    else
         MaybeOptFile = no
     ),
     globals.lookup_bool_option(Globals, warn_unused_args, DoWarn),
-    (
+    ( if
         ( DoWarn = yes
         ; MakeOpt = yes
         )
-    ->
+    then
         set.init(WarnedPredIds0),
         output_warnings_and_pragmas(!.ModuleInfo, UnusedArgInfo,
             MaybeOptFile, DoWarn, PredProcsToFix, WarnedPredIds0, !Specs, !IO)
-    ;
+    else
         true
     ),
     (
@@ -316,9 +316,9 @@ unused_args_process_module(!ModuleInfo, !Specs, !IO) :-
         unused_args_fixup_module(VarUsage, PredProcs, ProcCallInfo,
             !ModuleInfo, VeryVerbose, !IO),
         % maybe_write_string(VeryVerbose, "% Fixed up goals.\n", !IO),
-        ( map.is_empty(ProcCallInfo) ->
+        ( if map.is_empty(ProcCallInfo) then
             true
-        ;
+        else
             % The dependencies have changed, so the dependency graph is now
             % invalid.
             module_info_clobber_dependency_info(!ModuleInfo)
@@ -329,7 +329,7 @@ unused_args_process_module(!ModuleInfo, !Specs, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Initialisation section
+% Initialisation section.
 %
 
     % Set initial status of all args of local procs by examining the
@@ -371,7 +371,7 @@ setup_local_var_usage([PredId | PredIds], !VarUsage, !PredProcList, !OptProcs,
 maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
         !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    (
+    ( if
         % The builtins use all their arguments. We also want to treat stub
         % procedures (those which originally had no clauses) as if they use
         % all of their arguments, to avoid spurious warnings in their callers.
@@ -381,9 +381,9 @@ maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
             pred_info_get_markers(PredInfo, Markers),
             check_marker(Markers, marker_stub)
         )
-    ->
+    then
         true
-    ;
+    else
         ProcIds = pred_info_procids(PredInfo),
         setup_pred_args(PredId, ProcIds, !VarUsage, !PredProcList, !OptProcs,
             !ModuleInfo)
@@ -419,14 +419,14 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
     some [!VarDep] (
         map.init(!:VarDep),
         globals.lookup_bool_option(Globals, intermodule_analysis, Intermod),
-        (
+        ( if
             % Don't use the intermodule analysis info when we have the clauses
             % (opt_imported preds) since we may be able to do better with the
             % information in this module.
             Intermod = yes,
             pred_info_is_imported_not_external(PredInfo),
             not is_unify_or_compare_pred(PredInfo)
-        ->
+        then
             PredModule = pred_info_module(PredInfo),
             PredArity = pred_info_orig_arity(PredInfo),
             FuncInfo = unused_args_func_info(PredArity),
@@ -465,7 +465,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
                     unused_args_call, AnalysisInfo0, AnalysisInfo)
             ),
             module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
-        ;
+        else if
             (
                 pred_info_is_imported(PredInfo)
             ;
@@ -477,9 +477,9 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs,
                 proc_info_get_eval_method(ProcInfo, EvalMethod),
                 EvalMethod \= eval_normal
             )
-        ->
+        then
             true
-        ;
+        else
             proc_info_get_vartypes(ProcInfo, VarTypes),
             vartypes_vars(VarTypes, Vars),
             initialise_vardep(Vars, !VarDep),
@@ -517,7 +517,7 @@ initialise_vardep([Var | Vars], !VarDep) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Predicates for manipulating the var_usage and var_dep structures
+% Predicates for manipulating the var_usage and var_dep structures.
 %
 
     % For each variable, ensure the typeinfos describing the type parameters
@@ -583,12 +583,12 @@ local_var_is_used(VarDep, Var) :-
     var_dep::in, var_dep::out) is det.
 
 add_aliases(Var, Aliases, !VarDep) :-
-    ( map.search(!.VarDep, Var, VarInf0) ->
+    ( if map.search(!.VarDep, Var, VarInf0) then
         VarInf0 = unused(VarDep0, ArgDep),
         set.insert_list(Aliases, VarDep0, VarDep),
         VarInf = unused(VarDep, ArgDep),
         map.det_update(Var, VarInf, !VarDep)
-    ;
+    else
         true
     ).
 
@@ -603,15 +603,15 @@ set_list_vars_used(Vars, !VarDep) :-
 set_var_used(Var, !VarDep) :-
     map.delete(Var, !VarDep).
 
-:- pred lookup_local_var(var_dep::in, prog_var::in, usage_info::out)
+:- pred search_local_var(var_dep::in, prog_var::in, usage_info::out)
     is semidet.
 
-lookup_local_var(VarDep, Var, UsageInfo) :-
+search_local_var(VarDep, Var, UsageInfo) :-
     map.search(VarDep, Var, UsageInfo).
 
 %-----------------------------------------------------------------------------%
 %
-% Traversal of goal structure, building up dependencies for all variables
+% Traversal of goal structure, building up dependencies for all variables.
 %
 
 :- type unused_args_info
@@ -652,11 +652,13 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
         unused_args_traverse_goal(Info, SubGoal, !VarDep)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_TermVar, from_ground_term_construct) ->
+        ( if
+            Reason = from_ground_term(_TermVar, from_ground_term_construct)
+        then
             % What we do here is what we would do for a construction
             % unification that binds TermVar to a constant, i.e. nothing.
             true
-        ;
+        else
             % XXX We could treat from_ground_term_deconstruct specially
             % as well.
             unused_args_traverse_goal(Info, SubGoal, !VarDep)
@@ -686,11 +688,11 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
             set_var_used(Var2, !VarDep)
         ;
             Unify = assign(Target, Source),
-            ( local_var_is_used(!.VarDep, Target) ->
+            ( if local_var_is_used(!.VarDep, Target) then
                 % If Target is used to instantiate an output argument,
                 % Source is used.
                 set_var_used(Source, !VarDep)
-            ;
+            else
                 add_aliases(Source, [Target], !VarDep)
             )
         ;
@@ -714,9 +716,9 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
         ;
             Unify = construct(CellVar, _, Args, _, _, _, _),
             expect(unify(CellVar, LHS), $module, $pred, "LHS != CellVar"),
-            ( local_var_is_used(!.VarDep, CellVar) ->
+            ( if local_var_is_used(!.VarDep, CellVar) then
                 set_list_vars_used(Args, !VarDep)
-            ;
+            else
                 add_construction_aliases(CellVar, Args, !VarDep)
             )
         ;
@@ -748,18 +750,18 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
     list(prog_var)::in, var_dep::in, var_dep::out) is det.
 
 add_pred_call_arg_dep(PredProc, LocalArguments, HeadVarIds, !VarDep) :-
-    (
+    ( if
         LocalArguments = [Arg | Args],
         HeadVarIds = [HeadVar | HeadVars]
-    ->
+    then
         add_arg_dep(Arg, PredProc, HeadVar, !VarDep),
         add_pred_call_arg_dep(PredProc, Args, HeadVars, !VarDep)
-    ;
+    else if
         LocalArguments = [],
         HeadVarIds = []
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "invalid call")
     ).
 
@@ -767,12 +769,12 @@ add_pred_call_arg_dep(PredProc, LocalArguments, HeadVarIds, !VarDep) :-
     var_dep::in, var_dep::out) is det.
 
 add_arg_dep(Var, PredProc, Arg, !VarDep) :-
-    ( lookup_local_var(!.VarDep, Var, VarUsage0) ->
+    ( if search_local_var(!.VarDep, Var, VarUsage0) then
         VarUsage0 = unused(VarDep, ArgDep0),
         set.insert(arg_var_in_proc(PredProc, Arg), ArgDep0, ArgDep),
         VarUsage = unused(VarDep, ArgDep),
         map.det_update(Var, VarUsage, !VarDep)
-    ;
+    else
         true
     ).
 
@@ -790,9 +792,21 @@ add_rev_arg_dep(Var, PredProcId, Arg, !VarDep) :-
 
 partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
     (
+        ArgVars = [],
+        ArgModes = [],
+        InputVars = [],
+        OutputVars = []
+    ;
+        ArgVars = [],
+        ArgModes = [_ | _],
+        unexpected($module, $pred, "mismatched lists")
+    ;
+        ArgVars = [_ | _],
+        ArgModes = [],
+        unexpected($module, $pred, "mismatched lists")
+    ;
         ArgVars = [Var | Vars],
-        ArgModes = [Mode | Modes]
-    ->
+        ArgModes = [Mode | Modes],
         partition_deconstruct_args(Info, Vars, Modes, InputVars1, OutputVars1),
         Mode = ((InitialInst1 - InitialInst2) -> (FinalInst1 - FinalInst2)),
 
@@ -800,33 +814,25 @@ partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
 
         % If the inst of the argument of the LHS is changed,
         % the argument is input.
-        (
+        ( if
             inst_matches_binding(InitialInst1, FinalInst1,
                 Type, Info ^ unarg_module_info)
-        ->
+        then
             InputVars = InputVars1
-        ;
+        else
             InputVars = [Var | InputVars1]
         ),
 
         % If the inst of the argument of the RHS is changed,
         % the argument is output.
-        (
+        ( if
             inst_matches_binding(InitialInst2, FinalInst2, Type,
                 Info ^ unarg_module_info)
-        ->
+        then
             OutputVars = OutputVars1
-        ;
+        else
             OutputVars = [Var | OutputVars1]
         )
-    ;
-        ArgVars = [],
-        ArgModes = []
-    ->
-        InputVars = [],
-        OutputVars = []
-    ;
-        unexpected($module, $pred, "mismatched lists")
     ).
 
     % Add Alias as an alias for all of Vars.
@@ -836,12 +842,12 @@ partition_deconstruct_args(Info, ArgVars, ArgModes, InputVars, OutputVars) :-
 
 add_construction_aliases(_, [], !VarDep).
 add_construction_aliases(Alias, [Var | Vars], !VarDep) :-
-    ( lookup_local_var(!.VarDep, Var, VarInfo0) ->
+    ( if search_local_var(!.VarDep, Var, VarInfo0) then
         VarInfo0 = unused(VarDep0, ArgDep),
         set.insert(Alias, VarDep0, VarDep),
         VarInfo = unused(VarDep, ArgDep),
         map.set(Var, VarInfo, !VarDep)
-    ;
+    else
         true
     ),
     add_construction_aliases(Alias, Vars, !VarDep).
@@ -862,7 +868,7 @@ unused_args_traverse_goals(Info, [Goal | Goals], !VarDep) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Analysis section - do the fixpoint iteration
+% Analysis section - do the fixpoint iteration.
 %
 
     % Do a full iteration, check if anything changed, if so, repeat.
@@ -919,9 +925,9 @@ unused_args_check_proc(PredProcId, !Changed, !VarUsage) :-
 
 unused_args_check_all_vars(_, [], !Changed, !LocalVars).
 unused_args_check_all_vars(VarUsage, [Var | Vars], !Changed, !LocalVars) :-
-    ( lookup_local_var(!.LocalVars, Var, Usage) ->
+    ( if search_local_var(!.LocalVars, Var, Usage) then
         Usage = unused(VarDep0, ArgDep0),
-        (
+        ( if
             (
                 % Check whether any arguments that the current variable
                 % depends on are used.
@@ -938,7 +944,7 @@ unused_args_check_all_vars(VarUsage, [Var | Vars], !Changed, !LocalVars) :-
                     local_var_is_used(!.LocalVars, X)
                 )
             )
-        ->
+        then
             % Set the current variable to used. Note that we update the same
             % data structure (!LocalVars) as we test in the condition above.
             % This is OK because we use a fixpoint iteration to add variables
@@ -946,10 +952,10 @@ unused_args_check_all_vars(VarUsage, [Var | Vars], !Changed, !LocalVars) :-
             % any more.
             set_var_used(Var, !LocalVars),
             !:Changed = yes
-        ;
+        else
             true
         )
-    ;
+    else
         true
     ),
     unused_args_check_all_vars(VarUsage, Vars, !Changed, !LocalVars).
@@ -970,7 +976,7 @@ get_unused_arg_info(ModuleInfo, [PredProc | PredProcs], VarUsage,
 
 %-----------------------------------------------------------------------------%
 %
-% Fix up the module
+% Fix up the module.
 %
 
     % Information about predicates which have new predicates created for the
@@ -1037,23 +1043,23 @@ unused_args_create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
     ;
         UnusedArgs = [_ | _],
         pred_info_get_status(OrigPredInfo, PredStatus0),
-        (
+        ( if
             PredStatus0 = pred_status(status_opt_imported),
             IntermodResultsTriples = [_ | _],
             IntermodOldArgLists = []
-        ->
+        then
             % If this predicate is from a .opt file, and no more arguments
             % have been removed than in the original module, then leave the
             % import status as opt_imported so that dead_proc_elim will remove
             % it if no other optimization is performed on it.
             PredStatus = pred_status(status_opt_imported)
-        ;
+        else if
             pred_status_is_exported(PredStatus0) = yes
-        ->
+        then
             % This specialized version of the predicate will be declared
             % in the analysis file for this module so it must be exported.
             PredStatus = PredStatus0
-        ;
+        else
             PredStatus = pred_status(status_local)
         ),
         make_new_pred_info(!.ModuleInfo, UnusedArgs, PredStatus,
@@ -1133,25 +1139,25 @@ make_new_pred_info(_ModuleInfo, UnusedArgs, PredStatus, proc(PredId, ProcId),
     pred_info_get_arg_types(!.PredInfo, Tvars, ExistQVars, ArgTypes0),
     pred_info_get_origin(!.PredInfo, OrigOrigin),
     % Create a unique new pred name using the old proc_id.
-    (
+    ( if
         string.prefix(Name0, "__"),
         not string.prefix(Name0, "__LambdaGoal__")
-    ->
-        (
+    then
+        ( if
             % Fix up special pred names.
             OrigOrigin = origin_special_pred(_SpecialId, TypeCtor)
-        ->
+        then
             type_ctor_module_name_arity(TypeCtor, TypeModule, TypeName,
                 TypeArity),
             string.int_to_string(TypeArity, TypeArityStr),
             TypeModuleString = sym_name_to_string_sep(TypeModule, "__"),
             string.append_list([Name0, "_", TypeModuleString, "__", TypeName,
                 "_", TypeArityStr], Name1)
-        ;
+        else
             % The special predicate has already been specialised.
             Name1 = Name0
         )
-    ;
+    else
         Name1 = Name0
     ),
     make_pred_name(PredModule, "UnusedArgs", yes(PredOrFunc),
@@ -1276,9 +1282,9 @@ remove_listof_elements(ArgNo, ElemsToRemove, !List) :-
             !.List = [Head | Tail],
             NextArg = ArgNo + 1,
             remove_listof_elements(NextArg, ElemsToRemove, Tail, NewTail),
-            ( list.member(ArgNo, ElemsToRemove) ->
+            ( if list.member(ArgNo, ElemsToRemove) then
                 !:List = NewTail
-            ;
+            else
                 !:List = [Head | NewTail]
             )
         ;
@@ -1293,9 +1299,9 @@ get_unused_arg_nos(_, [], _, []).
 get_unused_arg_nos(LocalVars, [HeadVar | HeadVars], ArgNo, UnusedArgs) :-
     get_unused_arg_nos(LocalVars, HeadVars, NextArg, UnusedArgsTail),
     NextArg = ArgNo + 1,
-    ( map.contains(LocalVars, HeadVar) ->
+    ( if map.contains(LocalVars, HeadVar) then
         UnusedArgs = [ArgNo | UnusedArgsTail]
-    ;
+    else
         UnusedArgs = UnusedArgsTail
     ).
 
@@ -1341,15 +1347,15 @@ unused_args_fixup_proc(VeryVerbose, VarUsage, ProcCallInfo, PredProc,
 
 do_unused_args_fixup_proc(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
         ModuleInfo0, ModuleInfo) :-
-    (
+    ( if
         % Work out which proc we should be fixing up.
         map.search(ProcCallInfo, proc(OldPredId, OldProcId),
             call_info(NewPredId, NewProcId, _, UnusedArgs0))
-    ->
+    then
         UnusedArgs = UnusedArgs0,
         PredId = NewPredId,
         ProcId = NewProcId
-    ;
+    else
         UnusedArgs = [],
         PredId = OldPredId,
         ProcId = OldProcId
@@ -1466,17 +1472,17 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(TermVar, from_ground_term_construct) then
             UnusedVars = !.Info ^ fixup_unused_vars,
-            ( list.member(TermVar, UnusedVars) ->
+            ( if list.member(TermVar, UnusedVars) then
                 Goal = true_goal,
                 % We don't change the set of unneeded variables.
                 Changed = no
-            ;
+            else
                 Goal = Goal0,
                 Changed = no
             )
-        ;
+        else
             unused_args_fixup_goal(SubGoal0, SubGoal, !Info, Changed),
             GoalExpr = scope(Reason, SubGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -1485,14 +1491,14 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
         GoalExpr0 = plain_call(PredId, ProcId, ArgVars0, Builtin,
             UnifyC, _Name),
         ProcCallInfo = !.Info ^ fixup_proc_call_info,
-        ( map.search(ProcCallInfo, proc(PredId, ProcId), CallInfo) ->
+        ( if map.search(ProcCallInfo, proc(PredId, ProcId), CallInfo) then
             CallInfo = call_info(NewPredId, NewProcId, NewName, UnusedArgs),
             Changed = yes,
             remove_listof_elements(1, UnusedArgs, ArgVars0, ArgVars),
             GoalExpr = plain_call(NewPredId, NewProcId, ArgVars, Builtin,
                 UnifyC, NewName),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
-        ;
+        else
             Changed = no,
             Goal = hlds_goal(GoalExpr0, GoalInfo0)
         )
@@ -1500,10 +1506,10 @@ unused_args_fixup_goal_expr(Goal0, Goal, !Info, Changed) :-
         GoalExpr0 = unify(_Var, _RHS, _Mode, Unify, _Context),
         ModuleInfo = !.Info ^ fixup_module_info,
         UnusedVars = !.Info ^ fixup_unused_vars,
-        ( need_unify(ModuleInfo, UnusedVars, Unify, ChangedPrime) ->
+        ( if need_unify(ModuleInfo, UnusedVars, Unify, ChangedPrime) then
             GoalExpr = GoalExpr0,
             Changed = ChangedPrime
-        ;
+        else
             GoalExpr = true_goal_expr,
             Changed = yes
         ),
@@ -1546,9 +1552,9 @@ rename_apart_unused_foreign_arg(Arg0, Arg, !Subst, !Info, !Changed) :-
         MaybeName = no,
         VarSet0 = !.Info ^ fixup_varset,
         VarTypes0 = !.Info ^ fixup_vartypes,
-        ( varset.search_name(VarSet0, OldVar, Name) ->
+        ( if varset.search_name(VarSet0, OldVar, Name) then
             varset.new_named_var(Name, NewVar, VarSet0, VarSet)
-        ;
+        else
             varset.new_var(NewVar, VarSet0, VarSet)
         ),
         lookup_var_type(VarTypes0, OldVar, Type),
@@ -1578,9 +1584,9 @@ unused_args_fixup_conjuncts([Goal0 | Goals0], Goals, !Info, !Changed) :-
         LocalChanged = no
     ),
     % Replacing a goal with true signals that it is no longer needed.
-    ( Goal = hlds_goal(true_goal_expr, _) ->
+    ( if Goal = hlds_goal(true_goal_expr, _) then
         Goals = Goals1
-    ;
+    else
         Goals = [Goal | Goals1]
     ),
     unused_args_fixup_conjuncts(Goals0, Goals1, !Info, !Changed).
@@ -1670,30 +1676,34 @@ need_unify(ModuleInfo, UnusedVars, Unify, Changed) :-
 check_deconstruct_args(ModuleInfo, UnusedVars, Args, Modes, !.SomeUsed,
         Changed) :-
     (
+        Args = [],
+        Modes = [],
+        !.SomeUsed = yes,
+        Changed = no
+    ;
+        Args = [],
+        Modes = [_ | _],
+        unexpected($module, $pred, "mismatched lists")
+    ;
+        Args = [_ | _],
+        Modes = [],
+        unexpected($module, $pred, "mismatched lists")
+    ;
         Args = [ArgVar | ArgVars],
-        Modes = [ArgMode | ArgModes]
-    ->
-        (
+        Modes = [ArgMode | ArgModes],
+        ( if
             ArgMode = ((Inst1 - Inst2) -> _),
             mode_is_output(ModuleInfo, (Inst1 -> Inst2)),
             list.member(ArgVar, UnusedVars)
-        ->
+        then
             check_deconstruct_args(ModuleInfo, UnusedVars, ArgVars, ArgModes,
                 !.SomeUsed, _),
             Changed = yes
-        ;
+        else
             !:SomeUsed = yes,
             check_deconstruct_args(ModuleInfo, UnusedVars, ArgVars, ArgModes,
                 !.SomeUsed, Changed)
         )
-    ;
-        Args = [],
-        Modes = []
-    ->
-        !.SomeUsed = yes,
-        Changed = no
-    ;
-        unexpected($module, $pred, "mismatched lists")
     ).
 
     % Remove unused vars from the instmap_delta, quantification fixes up
@@ -1721,9 +1731,9 @@ unused_args_fixup_goal_info(UnusedVars, !GoalInfo) :-
 output_warnings_and_pragmas(_, _, _, _, [], _, !Specs, !IO).
 output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas, DoWarn,
         [proc(PredId, ProcId) | PredProcIds], !.WarnedPredIds, !Specs, !IO) :-
-    ( map.search(UnusedArgInfo, proc(PredId, ProcId), UnusedArgs) ->
+    ( if map.search(UnusedArgInfo, proc(PredId, ProcId), UnusedArgs) then
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        (
+        ( if
             Name = pred_info_name(PredInfo),
             not pred_info_is_imported(PredInfo),
             pred_info_get_status(PredInfo, PredStatus),
@@ -1766,15 +1776,15 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas, DoWarn,
             % when trying to read them back in from the `.opt' files.
             not check_marker(Markers, marker_class_instance_method),
             not check_marker(Markers, marker_named_class_instance_method)
-        ->
+        then
             write_unused_args_to_opt_file(WriteOptPragmas,
                 PredInfo, ProcId, UnusedArgs, !IO),
             maybe_warn_unused_args(DoWarn, ModuleInfo, PredInfo,
                 PredId, ProcId, UnusedArgs, !WarnedPredIds, !Specs)
-        ;
+        else
             true
         )
-    ;
+    else
         true
     ),
     output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
@@ -1786,13 +1796,13 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas, DoWarn,
 write_unused_args_to_opt_file(no, _, _, _, !IO).
 write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs,
         !IO) :-
-    (
+    ( if
         ( pred_info_is_exported(PredInfo)
         ; pred_info_is_opt_exported(PredInfo)
         ; pred_info_is_exported_to_submodules(PredInfo)
         ),
         UnusedArgs = [_ | _]
-    ->
+    then
         Module = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),
         Arity = pred_info_orig_arity(PredInfo),
@@ -1806,7 +1816,7 @@ write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs,
             UnusedArgs),
         mercury_output_pragma_unused_args(UnusedArgsInfo, !IO),
         io.set_output_stream(OldOutput, _, !IO)
-    ;
+    else
         true
     ).
 
@@ -1818,9 +1828,9 @@ write_unused_args_to_opt_file(yes(OptStream), PredInfo, ProcId, UnusedArgs,
 maybe_warn_unused_args(no, _, _, _, _, _, !WarnedPredIds, !Specs).
 maybe_warn_unused_args(yes, ModuleInfo, PredInfo, PredId, ProcId,
         UnusedArgs0, !WarnedPredIds, !Specs) :-
-    ( set.member(PredId, !.WarnedPredIds) ->
+    ( if set.member(PredId, !.WarnedPredIds) then
         true
-    ;
+    else
         set.insert(PredId, !WarnedPredIds),
         pred_info_get_proc_table(PredInfo, Procs),
         map.lookup(Procs, ProcId, Proc),
@@ -1847,9 +1857,9 @@ maybe_warn_unused_args(yes, ModuleInfo, PredInfo, PredId, ProcId,
 adjust_unused_args(_, [], []).
 adjust_unused_args(NumToDrop, [UnusedArgNo | UnusedArgNos0], AdjUnusedArgs) :-
     NewArg = UnusedArgNo - NumToDrop,
-    ( NewArg < 1 ->
+    ( if NewArg < 1 then
         AdjUnusedArgs = AdjUnusedArgs1
-    ;
+    else
         AdjUnusedArgs = [NewArg | AdjUnusedArgs1]
     ),
     adjust_unused_args(NumToDrop, UnusedArgNos0, AdjUnusedArgs1).
@@ -1870,10 +1880,10 @@ report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
     Pieces1 = [words("In"), fixed(pred_or_func_to_full_str(PredOrFunc)),
         sym_name_and_arity(qualified(ModuleName, PredName) / Arity),
         suffix(":"), nl, words("warning:")],
-    ( NumArgs = 1 ->
+    ( if NumArgs = 1 then
         Pieces2 = [words("argument") | format_arg_list(UnusedArgs)] ++
             [words("is unused."), nl]
-    ;
+    else
         Pieces2 = [words("arguments") | format_arg_list(UnusedArgs)] ++
             [words("are unused."), nl]
     ),
@@ -1926,20 +1936,20 @@ maybe_record_intermod_unused_args(ModuleInfo, UnusedArgInfo, PredId,
 
 maybe_record_intermod_unused_args_2(ModuleInfo, UnusedArgInfo,
         PredId, PredInfo, ProcId, !AnalysisInfo) :-
-    (
+    ( if
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
         not is_unify_or_compare_pred(PredInfo)
-    ->
+    then
         PPId = proc(PredId, ProcId),
-        ( map.search(UnusedArgInfo, PPId, UnusedArgs) ->
+        ( if map.search(UnusedArgInfo, PPId, UnusedArgs) then
             Answer = unused_args(UnusedArgs)
-        ;
+        else
             Answer = unused_args([])
         ),
         module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, unused_args_call, Answer, optimal,
             !AnalysisInfo)
-    ;
+    else
         true
     ).
 
@@ -1974,10 +1984,10 @@ record_intermod_dependencies(ModuleInfo, CallerPredProcId, !AnalysisInfo) :-
 record_intermod_dependencies_2(ModuleInfo, CalleePredProcId, !AnalysisInfo) :-
     CalleePredProcId = proc(CalleePredId, _),
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
-    (
+    ( if
         pred_info_is_imported_not_external(CalleePredInfo),
         not is_unify_or_compare_pred(CalleePredInfo)
-    ->
+    then
         module_name_func_id(ModuleInfo, CalleePredProcId, CalleeModule,
             CalleeFuncId),
         Call = unused_args_call,
@@ -1986,7 +1996,7 @@ record_intermod_dependencies_2(ModuleInfo, CalleePredProcId, !AnalysisInfo) :-
             FuncInfo),
         record_dependency(CalleeModule, CalleeFuncId, FuncInfo, Call, Answer,
             !AnalysisInfo)
-    ;
+    else
         true
     ).
 
@@ -2028,9 +2038,9 @@ write_usage_info(ModuleInfo, VarSet, Var - UsageInfo, !RevNoDependVars, !IO) :-
     UsageInfo = unused(Vars, Args),
     set.to_sorted_list(Vars, VarList),
     set.to_sorted_list(Args, ArgList),
-    ( VarList = [], ArgList = [] ->
+    ( if VarList = [], ArgList = [] then
         !:RevNoDependVars = [Var | !.RevNoDependVars]
-    ;
+    else
         VarStr = mercury_var_to_string(VarSet, print_name_and_num, Var),
         io.format("dependencies of %s:\n", [s(VarStr)], !IO),
         (

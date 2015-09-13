@@ -240,15 +240,15 @@
 
                 % These are the size variables that occur in argument
                 % size constraints. For procedures that are imported
-                % via a `.opt' or `.trans_opt' file we set these during
+                % via a `.opt' or `.trans_opt' file, we set these during
                 % the initial pass, for procedures in the module we are
                 % analysing, pass 1 sets it.
                 head_vars           :: size_vars,
 
                 % Arg size info. imported from another module via a
-                % `.opt' or `.trans_opt' file. Pass 0  needs to convert
-                % these to the proper form. These particular fields are
-                % of no use after that.
+                % `.opt' or `.trans_opt' file. Pass 0 needs to convert these
+                % to the proper form. These particular fields are of no use
+                % after that.
                 import_success      :: maybe(pragma_constr_arg_size_info),
                 import_failure      :: maybe(pragma_constr_arg_size_info),
 
@@ -321,8 +321,8 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     list.foldl2(analyse_scc(SCCs, BuildOptions, FixpointOptions, Pass2Options),
         SCCs, !ModuleInfo, !IO),
 
-    % Write termination2_info pragmas to `.opt' and `.trans_opt' files.
-    maybe_make_optimization_interface(!.ModuleInfo, !IO).
+    % Write termination2_info pragmas to `.opt' files.
+    maybe_append_termination2_pragmas_to_opt_file(!.ModuleInfo, !IO).
 
 %----------------------------------------------------------------------------%
 %
@@ -371,8 +371,8 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
 
 analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
         !IO) :-
-    % Since all of the passes are potentially optional we need to initialise
-    % the size_var_maps separately. If they are left uninitialised intermodule
+    % Since all of the passes are potentially optional, we need to initialise
+    % the size_var_maps separately. If they are left uninitialised, intermodule
     % optimization will not work.
     NeedsAR = list.filter(proc_needs_ar_built(!.ModuleInfo), SCC),
 
@@ -457,10 +457,10 @@ set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
 % Predicates for writing optimization interfaces.
 %
 
-:- pred maybe_make_optimization_interface(module_info::in, io::di, io::uo)
-    is det.
+:- pred maybe_append_termination2_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
 
-maybe_make_optimization_interface(ModuleInfo, !IO) :-
+maybe_append_termination2_pragmas_to_opt_file(ModuleInfo, !IO) :-
     % XXX update this once this analysis supports `--intermodule-analysis'
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, make_optimization_interface,
@@ -468,15 +468,15 @@ maybe_make_optimization_interface(ModuleInfo, !IO) :-
     (
         MakeOptInt = yes,
         module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        make_opt_int(PredIds, ModuleInfo, !IO)
+        append_termination2_pragmas_to_opt_file(PredIds, ModuleInfo, !IO)
     ;
         MakeOptInt = no
     ).
 
-:- pred make_opt_int(list(pred_id)::in, module_info::in, io::di, io::uo)
-    is det.
+:- pred append_termination2_pragmas_to_opt_file(list(pred_id)::in,
+    module_info::in, io::di, io::uo) is det.
 
-make_opt_int(PredIds, ModuleInfo, !IO) :-
+append_termination2_pragmas_to_opt_file(PredIds, ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
@@ -517,13 +517,13 @@ output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
         pred_info_get_status(PredInfo, PredStatus),
         module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-        (
+        ( if
             ( PredStatus = pred_status(status_exported)
             ; PredStatus = pred_status(status_opt_exported)
             ),
             not hlds_pred.is_unify_or_compare_pred(PredInfo),
             not set.member(PredId, TypeSpecForcePreds)
-        ->
+        then
             PredName   = pred_info_name(PredInfo),
             pred_info_get_proc_table(PredInfo, ProcTable),
             pred_info_get_context(PredInfo, Context),
@@ -533,7 +533,7 @@ output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
             SymName    = qualified(ModuleName, PredName),
             make_opt_int_procs(PredId, ProcIds, ProcTable, PredOrFunc,
                 SymName, Context, !IO)
-        ;
+        else
             true
         )
     ;

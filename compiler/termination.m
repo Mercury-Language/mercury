@@ -126,7 +126,7 @@ analyse_termination_in_module(!ModuleInfo, !:Specs, !IO) :-
         MakeOptInt),
     (
         MakeOptInt = yes,
-        make_termination_opt_int(PredIds, !.ModuleInfo, !IO)
+        append_termination_pragmas_to_opt_file(PredIds, !.ModuleInfo, !IO)
     ;
         MakeOptInt = no
     ),
@@ -894,10 +894,10 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
     % These predicates are used to add the termination_info pragmas to the
     % .opt and .trans_opt files.
     %
-:- pred make_termination_opt_int(list(pred_id)::in, module_info::in,
-    io::di, io::uo) is det.
+:- pred append_termination_pragmas_to_opt_file(list(pred_id)::in,
+    module_info::in, io::di, io::uo) is det.
 
-make_termination_opt_int(PredIds, ModuleInfo, !IO) :-
+append_termination_pragmas_to_opt_file(PredIds, ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
@@ -931,7 +931,6 @@ write_pred_termination_info(ModuleInfo, PredId, !IO) :-
     pred_info_get_status(PredInfo, PredStatus),
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-
     ( if
         (
             PredStatus = pred_status(status_exported)

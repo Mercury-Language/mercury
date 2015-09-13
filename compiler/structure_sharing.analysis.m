@@ -112,7 +112,7 @@
 %-----------------------------------------------------------------------------%
 
     % During analysis we accumulate a list of imported procedures whose
-    % answers this module depends on.  This doesn't include `opt_imported'
+    % answers this module depends on. This doesn't include `opt_imported'
     % procedures nor procedures that we can just predict the results for.
     %
 :- type dep_procs == list(pred_proc_id).
@@ -147,12 +147,12 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
     % `--intermodule-optimization' not `--intermodule-analysis'.
     globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
-    (
+    ( if
         MakeOptInt = yes,
         IntermodAnalysis = no
-    ->
-        make_opt_int(!.ModuleInfo, !IO)
-    ;
+    then
+        append_structure_sharing_pragmas_to_opt_file(!.ModuleInfo, !IO)
+    else
         true
     ),
 
@@ -201,21 +201,21 @@ process_imported_sharing_in_procs(!PredInfo) :-
 process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
     some [!ProcInfo] (
         !:ProcInfo = !.ProcTable ^ det_elem(ProcId),
-        (
+        ( if
             proc_info_get_imported_structure_sharing(!.ProcInfo,
                 ImpHeadVars, ImpTypes, ImpSharing)
-        ->
+        then
             proc_info_get_headvars(!.ProcInfo, HeadVars),
             pred_info_get_arg_types(PredInfo, HeadVarTypes),
             map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming),
             some [!TypeSubst] (
                 !:TypeSubst = map.init,
-                (
+                ( if
                     type_unify_list(ImpTypes, HeadVarTypes, [], !.TypeSubst,
                         TypeSubstNew)
-                ->
+                then
                     !:TypeSubst = TypeSubstNew
-                ;
+                else
                     true
                 ),
                 rename_structure_sharing_domain(VarRenaming, !.TypeSubst,
@@ -228,7 +228,7 @@ process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :-
                 !ProcInfo),
             proc_info_reset_imported_structure_sharing(!ProcInfo),
             map.det_update(ProcId, !.ProcInfo, !ProcTable)
-        ;
+        else
             true
         )
     ).
@@ -253,13 +253,13 @@ process_intermod_analysis_imported_sharing_in_pred(PredId, !ModuleInfo) :-
     some [!PredTable] (
         module_info_get_preds(!.ModuleInfo, !:PredTable),
         map.lookup(!.PredTable, PredId, PredInfo0),
-        ( pred_info_is_imported_not_external(PredInfo0) ->
+        ( if pred_info_is_imported_not_external(PredInfo0) then
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo),
             process_intermod_analysis_imported_sharing_in_procs(!.ModuleInfo,
                 AnalysisInfo, PredId, PredInfo0, PredInfo),
             map.det_update(PredId, PredInfo, !PredTable),
             module_info_set_preds(!.PredTable, !ModuleInfo)
-        ;
+        else
             true
         )
     ).
@@ -333,11 +333,13 @@ structure_sharing_answer_to_domain(MaybePPId, HeadVarTypes, ProcInfo, Answer,
             ImpSharingPairs),
         proc_info_get_headvars(ProcInfo, HeadVars),
         map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming),
-        ( type_unify_list(ImpTypes, HeadVarTypes, [], map.init, TypeSubst) ->
+        ( if
+            type_unify_list(ImpTypes, HeadVarTypes, [], map.init, TypeSubst)
+        then
             rename_structure_sharing(VarRenaming, TypeSubst, ImpSharingPairs,
                 SharingPairs),
             Sharing = structure_sharing_real(SharingPairs)
-        ;
+        else
             unexpected($module, $pred, "type_unify_list failed")
         )
     ).
@@ -428,7 +430,7 @@ save_sharing_in_module_info(PPId, SharingAs_Status, !ModuleInfo) :-
     dep_procs::in, dep_procs::out, io::di, io::uo) is det.
 
 analyse_scc(ModuleInfo, SCC, !SharingTable, !DepProcs, !IO) :-
-    ( some_preds_requiring_no_analysis(ModuleInfo, SCC) ->
+    ( if some_preds_requiring_no_analysis(ModuleInfo, SCC) then
         % At least one procedure in the SCC requires that we don't analyse it.
         % We update the sharing table otherwise procedures which call it will
         % not be able to find a result, and therefore conclude that the
@@ -443,7 +445,7 @@ analyse_scc(ModuleInfo, SCC, !SharingTable, !DepProcs, !IO) :-
                 sharing_as_table_set(PPId, SharingAndStatus, ST0, ST)
             ),
             SCC, !SharingTable)
-    ;
+    else
         FixpointTable0 = ss_fixpoint_table_init(SCC),
         analyse_scc_until_fixpoint(ModuleInfo, SCC, !.SharingTable,
             FixpointTable0, FixpointTable, !DepProcs, !IO),
@@ -456,20 +458,20 @@ analyse_scc(ModuleInfo, SCC, !SharingTable, !DepProcs, !IO) :-
 
 analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
         !FixpointTable, !DepProcs, !IO) :-
-    % Abort if the analysis is taking too long.  It's probably a bug.
+    % Abort if the analysis is taking too long. It is probably a bug.
     Run = ss_fixpoint_table_which_run(!.FixpointTable),
-    ( Run > max_runs ->
+    ( if Run > max_runs then
         unexpected($module, $pred, "fixpoint not reached after "
             ++ string.from_int(max_runs) ++ " runs")
-    ;
+    else
         true
     ),
 
     list.foldl3(analyse_pred_proc(ModuleInfo, SharingTable), SCC,
         !FixpointTable, !DepProcs, !IO),
-    ( ss_fixpoint_table_stable(!.FixpointTable) ->
+    ( if ss_fixpoint_table_stable(!.FixpointTable) then
         true
-    ;
+    else
         ss_fixpoint_table_new_run(!FixpointTable),
         analyse_scc_until_fixpoint(ModuleInfo, SCC, SharingTable,
             !FixpointTable, !DepProcs, !IO)
@@ -513,13 +515,13 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !DepProcs,
     %
     some [!Sharing] (
         !:Sharing = sharing_as_init,
-        (
+        ( if
             bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo,
                 ProcInfo)
-        ->
+        then
             maybe_write_string(Verbose, "\t\t: bottom predicted", !IO),
             Status = optimal
-        ;
+        else
             % Start analysis.
             proc_info_get_goal(ProcInfo, Goal),
             analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable,
@@ -591,16 +593,16 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         % If the called procedure was imported (not opt_imported) and its
         % result is not predictable, then remember that this module depends on
         % the results for that procedure.
-        (
+        ( if
             IsPredicted = no,
             pred_info_get_status(PredInfo, PredStatus),
             pred_status_defined_in_this_module(PredStatus) = yes,
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_is_imported_not_external(CalleePredInfo),
             not is_unify_or_compare_pred(CalleePredInfo)
-        ->
+        then
             !:DepProcs = [CalleePPId | !.DepProcs]
-        ;
+        else
             true
         ),
 
@@ -646,10 +648,10 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         % hence it also can not create additional sharing.
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             % Ground terms cannot introduce sharing.
             true
-        ;
+        else
             % XXX Check theory.
             analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose,
                 SubGoal, !FixpointTable, !DepProcs, !SharingAs, !Status)
@@ -752,13 +754,13 @@ analyse_case(ModuleInfo, PredInfo, ProcInfo, SharingTable, Sharing0,
 
 lookup_sharing(ModuleInfo, SharingTable, PPId, !FixpointTable, SharingAs,
         Status, IsPredicted) :-
-    (
+    ( if
         % Check fixpoint table.
         ss_fixpoint_table_get_as(PPId, SharingAs_Status, !FixpointTable)
-    ->
+    then
         SharingAs_Status = sharing_as_and_status(SharingAs, Status),
         IsPredicted = no
-    ;
+    else
         lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, SharingAs,
             Status, IsPredicted)
     ).
@@ -775,12 +777,12 @@ analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs, Modes,
         ),
         proc_info_get_vartypes(ProcInfo, CallerVarTypes),
         lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
-        (
+        ( if
             bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
                 ActualTypes)
-        ->
+        then
             SetToTop = no
-        ;
+        else
             SetToTop = yes
         )
     ;
@@ -842,7 +844,7 @@ update_sharing_in_table(FixpointTable, PPId, !SharingTable) :-
 :- func ss_fixpoint_table_description(ss_fixpoint_table) = string.
 
     % Enter the newly computed structure sharing description for a given
-    % procedure.  If the description is different from the one that was
+    % procedure. If the description is different from the one that was
     % already stored for that procedure, the stability of the fixpoint
     % table is set to "unstable".
     % Software error if the procedure is not in the fixpoint table.
@@ -906,10 +908,12 @@ ss_fixpoint_table_get_as(PPId, SharingAs, !Table) :-
     get_from_fixpoint_table(PPId, SharingAs, !Table).
 
 ss_fixpoint_table_get_short_description(PPId, Table) = Descr :-
-    ( ss_fixpoint_table_get_final_as_semidet(PPId, Table, SharingAs_Status) ->
+    ( if
+        ss_fixpoint_table_get_final_as_semidet(PPId, Table, SharingAs_Status)
+    then
         SharingAs_Status = sharing_as_and_status(As, _Status),
         Descr = sharing_as_short_description(As)
-    ;
+    else
         Descr = "-"
     ).
 
@@ -924,9 +928,10 @@ ss_fixpoint_table_get_final_as_semidet(PPId, T, SharingAs_Status) :-
 % Code for writing out optimization interfaces.
 %
 
-:- pred make_opt_int(module_info::in, io::di, io::uo) is det.
+:- pred append_structure_sharing_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
 
-make_opt_int(ModuleInfo, !IO) :-
+append_structure_sharing_pragmas_to_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
@@ -1023,7 +1028,7 @@ write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
                 ssar_vars       :: prog_vars,
                 ssar_types      :: list(mer_type),
                 ssar_sharing    :: structure_sharing
-                % We cannot keep this as a sharing_as.  When the analysis
+                % We cannot keep this as a sharing_as. When the analysis
                 % answers are loaded, we don't have enough information to
                 % rename the variables in the .analysis answer to the correct
                 % variables for the proc_info that the sharing_as will be used
@@ -1196,20 +1201,20 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
         ShouldWrite = yes,
         pred_info_proc_info(PredInfo, ProcId, ProcInfo),
         PPId = proc(PredId, ProcId),
-        (
+        ( if
             sharing_as_table_search(PPId, SharingAsTable,
                 sharing_as_and_status(SharingAsPrime, StatusPrime))
-        ->
+        then
             Sharing = to_structure_sharing_domain(SharingAsPrime),
             Status0 = StatusPrime
-        ;
+        else if
             % Probably an exported `:- external' procedure.
             bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo,
                 ProcInfo)
-        ->
+        then
             Sharing = structure_sharing_bottom,
             Status0 = optimal
-        ;
+        else
             Sharing = structure_sharing_top(set.init),
             Status0 = optimal
         ),
@@ -1223,12 +1228,12 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
             % If the procedure contains a generic or foreign foreign call, or
             % it calls a procedure in a non-local module for which we have no
             % results, we won't be able to do better upon reanalysis.
-            (
+            ( if
                 set.member(Reason, Reasons),
                 reason_implies_optimal(ModuleInfo, !.AnalysisInfo, Reason)
-            ->
+            then
                 Status = optimal
-            ;
+            else
                 Status = Status0
             ),
             trace [io(!IO),
@@ -1319,10 +1324,9 @@ write_top_feedback(ModuleInfo, Reason, !IO) :-
 
 should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
         ShouldWrite) :-
-    (
+    ( if
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
         not is_unify_or_compare_pred(PredInfo),
-
         (
             WhatFor = for_analysis_framework
         ;
@@ -1335,9 +1339,9 @@ should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
             not set.member(PredId, TypeSpecForcePreds)
         )
-    ->
+    then
         ShouldWrite = yes
-    ;
+    else
         ShouldWrite = no
     ).
 

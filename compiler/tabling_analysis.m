@@ -144,12 +144,12 @@ analyse_mm_tabling_in_module(!ModuleInfo, !IO) :-
 
         % Only write mm_tabling_info pragmas to `.opt' files for
         % `--intermodule-optimisation' not `--intermodule-analysis'.
-        (
+        ( if
             MakeOptInt = yes,
             IntermodAnalysis = no
-        ->
-            make_opt_int(!.ModuleInfo, !IO)
-        ;
+        then
+            append_mm_tabling_pragmas_to_opt_file(!.ModuleInfo, !IO)
+        else
             true
         ),
 
@@ -237,7 +237,7 @@ combine_individual_proc_results([], _, _) :-
     unexpected($module, $pred, "empty SCC").
 combine_individual_proc_results(ProcResults @ [_ | _], SCC_Result,
         MaybeAnalysisStatus) :-
-    (
+    ( if
         % If none of the procedures calls tabled procedures or is conditional
         % then the SCC cannot call tabled procedures.
         all [ProcResult] (
@@ -245,9 +245,9 @@ combine_individual_proc_results(ProcResults @ [_ | _], SCC_Result,
         =>
             ProcResult ^ status = mm_tabled_will_not_call
         )
-    ->
+    then
         SCC_Result = mm_tabled_will_not_call
-    ;
+    else if
         all [ProcResult] (
             list.member(ProcResult, ProcResults)
         =>
@@ -257,9 +257,9 @@ combine_individual_proc_results(ProcResults @ [_ | _], SCC_Result,
             list.member(ConditionalResult, ProcResults),
             ConditionalResult ^ status = mm_tabled_conditional
         )
-    ->
+    then
         SCC_Result = mm_tabled_conditional
-    ;
+    else
         % Otherwise the SCC might call tabled procedures.
         SCC_Result = mm_tabled_may_call
     ),
@@ -366,15 +366,15 @@ check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
             MaybeAnalysisStatus, !ModuleInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             Result = mm_tabled_will_not_call,
             MaybeAnalysisStatus = yes(optimal)
-        ;
+        else
             check_goal_for_mm_tabling(SCC, VarTypes, SubGoal, Result,
                 MaybeAnalysisStatus, !ModuleInfo)
         )
@@ -423,19 +423,19 @@ check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
         MaybeAnalysisStatus, !ModuleInfo) :-
     CalleePPId = proc(CalleePredId, _),
     module_info_pred_info(!.ModuleInfo, CalleePredId, CalleePredInfo),
-    (
+    ( if
         % Handle (mutually-)recursive calls.
         list.member(CalleePPId, SCC)
-    ->
+    then
         % XXX user-defined uc - need to handle polymorphic recursion here.
         Result = mm_tabled_will_not_call,
         MaybeAnalysisStatus = yes(optimal)
-    ;
+    else if
         pred_info_is_builtin(CalleePredInfo)
-    ->
+    then
         Result = mm_tabled_will_not_call,
         MaybeAnalysisStatus = yes(optimal)
-    ;
+    else if
         % Handle builtin unify and compare.
         %
         % NOTE: The type specific unify and compare predicates are just
@@ -451,19 +451,19 @@ check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
         special_pred_name_arity(SpecialPredId, GenericPredName,
             _TypeSpecificPredName, Arity),
         Name = GenericPredName
-    ->
+    then
         % XXX user-defined uc
         Result = mm_tabled_may_call,
         MaybeAnalysisStatus = yes(optimal)
-    ;
+    else
         % Handle normal calls.
         module_info_get_globals(!.ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, intermodule_analysis, Intermod),
-        (
+        ( if
             Intermod = yes,
             pred_info_is_imported_not_external(CalleePredInfo),
             not is_unify_or_compare_pred(CalleePredInfo)
-        ->
+        then
             % Use the intermodule analysis framework if this is an imported
             % procedure and `--intermodule-analysis' is enabled.
             %
@@ -480,7 +480,7 @@ check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
                 Result = Result0
             ),
             MaybeAnalysisStatus = yes(AnalysisStatus)
-        ;
+        else
             % Otherwise, the information (if we have any) will be in the
             % mm_tabling_info table.
             check_call_for_mm_tabling_calls(!.ModuleInfo, VarTypes,
@@ -514,16 +514,16 @@ check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
     = mm_tabling_status.
 
 get_mm_tabling_status_from_attributes(Attributes) =
-    (
+    ( if
         (
             get_may_call_mm_tabled(Attributes) = will_not_call_mm_tabled
         ;
             get_may_call_mm_tabled(Attributes) = default_calls_mm_tabled,
             get_may_call_mercury(Attributes) = proc_will_not_call_mercury
         )
-    ->
+    then
         mm_tabled_will_not_call
-    ;
+    else
         mm_tabled_may_call
     ).
 
@@ -538,10 +538,10 @@ get_mm_tabling_status_from_attributes(Attributes) =
 check_call_for_mm_tabling_calls(ModuleInfo, _VarTypes, PPId, _CallArgs,
         MaybeResult) :-
     module_info_get_mm_tabling_info(ModuleInfo, TablingInfo),
-    ( map.search(TablingInfo, PPId, CalleeTablingInfo) ->
+    ( if map.search(TablingInfo, PPId, CalleeTablingInfo) then
         MaybeResult = yes(CalleeTablingInfo)
         % XXX user-defined uc (and higher-order args too)
-    ;
+    else
         MaybeResult = no
     ).
 
@@ -563,12 +563,12 @@ combine_mm_tabling_status(mm_tabled_conditional, mm_tabled_may_call,
     maybe(analysis_status)::in, maybe(analysis_status)::out) is det.
 
 combine_maybe_analysis_status(MaybeStatusA, MaybeStatusB, MaybeStatus) :-
-    (
+    ( if
         MaybeStatusA = yes(StatusA),
         MaybeStatusB = yes(StatusB)
-    ->
+    then
         MaybeStatus = yes(analysis.lub(StatusA, StatusB))
-    ;
+    else
         MaybeStatus = no
     ).
 
@@ -671,13 +671,13 @@ annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         annotate_goal(VarTypes, Cond0, Cond, CondStatus, !ModuleInfo),
         annotate_goal(VarTypes, Then0, Then, ThenStatus, !ModuleInfo),
         annotate_goal(VarTypes, Else0, Else, ElseStatus, !ModuleInfo),
-        (
+        ( if
             CondStatus = mm_tabled_will_not_call,
             ThenStatus = mm_tabled_will_not_call,
             ElseStatus = mm_tabled_will_not_call
-        ->
+        then
             Status = mm_tabled_will_not_call
-        ;
+        else
             Status = mm_tabled_may_call
         ),
         !:GoalExpr = if_then_else(Vars, Cond, Then, Else)
@@ -687,14 +687,14 @@ annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         !:GoalExpr = negation(SubGoal)
     ;
         !.GoalExpr = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             Status = mm_tabled_will_not_call
-        ;
+        else
             annotate_goal(VarTypes, SubGoal0, SubGoal, Status, !ModuleInfo),
             !:GoalExpr = scope(Reason, SubGoal)
         )
@@ -734,11 +734,11 @@ annotate_case(VarTypes, !Case, Status, !ModuleInfo) :-
 annotate_call(CalleePPId, CallArgs, VarTypes, Status, !ModuleInfo) :-
     CalleePPId = proc(CalleePredId, _),
     module_info_pred_info(!.ModuleInfo, CalleePredId, CalleePredInfo),
-    (
+    ( if
         pred_info_is_builtin(CalleePredInfo)
-    ->
+    then
         Status = mm_tabled_will_not_call
-    ;
+    else if
         % Handle builtin unify and compare.
         ModuleName = pred_info_module(CalleePredInfo),
         any_mercury_builtin_module(ModuleName),
@@ -750,17 +750,17 @@ annotate_call(CalleePPId, CallArgs, VarTypes, Status, !ModuleInfo) :-
         special_pred_name_arity(SpecialPredId, GenericPredName,
             _TypeSpecPredName, Arity),
         Name = GenericPredName
-    ->
+    then
         % XXX user-defined uc
         Status = mm_tabled_may_call
-    ;
+    else
         module_info_get_globals(!.ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, intermodule_analysis,
             IntermodAnalysis),
-        (
+        ( if
             IntermodAnalysis = yes,
             pred_info_is_imported_not_external(CalleePredInfo)
-        ->
+        then
             search_analysis_status(CalleePPId, Result, AnalysisStatus,
                 !ModuleInfo),
             (
@@ -782,7 +782,7 @@ annotate_call(CalleePPId, CallArgs, VarTypes, Status, !ModuleInfo) :-
                     Status = Result
                 )
             )
-        ;
+        else
             check_call_for_mm_tabling_calls(!.ModuleInfo, VarTypes,
                 CalleePPId, CallArgs, MaybeResult),
             (
@@ -800,9 +800,10 @@ annotate_call(CalleePPId, CallArgs, VarTypes, Status, !ModuleInfo) :-
 % Stuff for intermodule optimization.
 %
 
-:- pred make_opt_int(module_info::in, io::di, io::uo) is det.
+:- pred append_mm_tabling_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
 
-make_opt_int(ModuleInfo, !IO) :-
+append_mm_tabling_pragmas_to_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
@@ -855,17 +856,17 @@ write_pragma_mm_tabling_info_2(ModuleInfo, TablingInfo, PredId, PredInfo,
         Arity        = pred_info_orig_arity(PredInfo),
         PredOrFunc   = pred_info_is_pred_or_func(PredInfo),
         proc_id_to_int(ProcId, ModeNum),
-        (
+        ( if
             map.search(TablingInfo, proc(PredId, ProcId), ProcTablingInfo),
             ProcTablingInfo = proc_mm_tabling_info(Status, _)
-        ->
+        then
             PredSymName = qualified(ModuleName, Name),
             PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, Arity,
                 PredOrFunc, ModeNum),
             MMTablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
                 Status),
             mercury_output_pragma_mm_tabling_info(MMTablingInfo, !IO)
-        ;
+        else
             true
         )
     ;
@@ -881,7 +882,7 @@ write_pragma_mm_tabling_info_2(ModuleInfo, TablingInfo, PredId, PredInfo,
 
 should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
         ShouldWrite) :-
-    (
+    ( if
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
         not is_unify_or_compare_pred(PredInfo),
         (
@@ -900,9 +901,9 @@ should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             not check_marker(Markers, marker_class_instance_method),
             not check_marker(Markers, marker_named_class_instance_method)
         )
-    ->
+    then
         ShouldWrite = yes
-    ;
+    else
         ShouldWrite = no
     ).
 
@@ -1049,7 +1050,7 @@ maybe_record_mm_tabling_result_2(ModuleInfo, PredId, PredInfo, ProcId,
     mm_tabling_status::out, analysis_status::out) is det.
 
 lookup_proc_mm_tabling_info(TablingInfo, PPId, Status, ResultStatus) :-
-    ( map.search(TablingInfo, PPId, ProcTablingInfo) ->
+    ( if map.search(TablingInfo, PPId, ProcTablingInfo) then
         ProcTablingInfo = proc_mm_tabling_info(Status, MaybeResultStatus),
         (
             MaybeResultStatus = yes(ResultStatus)
@@ -1057,7 +1058,7 @@ lookup_proc_mm_tabling_info(TablingInfo, PPId, Status, ResultStatus) :-
             MaybeResultStatus = no,
             unexpected($module, $pred, "no result status")
         )
-    ;
+    else
         % Probably an exported `:- external' procedure.
         Status = mm_tabled_may_call,
         ResultStatus = optimal
