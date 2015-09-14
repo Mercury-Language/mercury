@@ -675,7 +675,7 @@ The HLDS data structure itself is spread over the following modules:
 <li>
     const_struct.m defines the part of the HLDS concerning constant structures.
 <li>
-    hlds_pred.m defines the part of the HLDSconcerning
+    hlds_pred.m defines the part of the HLDS concerning
     predicates and procedures;
 <li>
     pred_table.m defines the tables that index predicates and functions
@@ -2036,9 +2036,9 @@ Thus we have a pass which transforms the HLDS to handle trailing:
 <p>
 There are currently four backends that generate code from MLDS:
 one generates C/C++ code,
-one generates assembler (by interfacing with the GCC back-end),
 one generates Microsoft's Intermediate Language (MSIL or IL),
-and one generates Java.
+one generates Java,
+and one generates C#.
 
 <ul>
 <li>
@@ -2077,6 +2077,15 @@ The MLDS-&gt;Java backend is broken into two submodules.
 
 After the Java code has been emitted, a Java compiler (normally javac)
 is invoked to turn the .java file into a .class file containing Java bytecodes.
+
+<p>
+
+<ul>
+<li>mlds_to_cs.m converts MLDS to C# code.
+</ul>
+
+After the C# code has been emitted, a C# compiler is invoked to turn the .cs
+file into a .dll or .exe.
 
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
