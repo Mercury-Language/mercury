@@ -219,7 +219,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -1744,19 +1743,18 @@ intermod_write_class(OutInfo, ModuleName, ClassId, ClassDefn, !First, !IO) :-
 
 :- func unmake_hlds_class_fundep(list(tvar), hlds_class_fundep) = prog_fundep.
 
-unmake_hlds_class_fundep(TVars, fundep(Domain0, Range0))
-        = fundep(Domain, Range) :-
-    Domain = unmake_hlds_class_fundep_2(TVars, Domain0),
-    Range = unmake_hlds_class_fundep_2(TVars, Range0).
+unmake_hlds_class_fundep(TVars, HLDSFunDep) = ParseTreeFunDep :-
+    HLDSFunDep = fundep(DomainArgPosns, RangeArgPosns),
+    DomainTVars = unmake_hlds_class_fundep_arg_posns(TVars, DomainArgPosns),
+    RangeTVars = unmake_hlds_class_fundep_arg_posns(TVars, RangeArgPosns),
+    ParseTreeFunDep = fundep(DomainTVars, RangeTVars).
 
-:- func unmake_hlds_class_fundep_2(list(tvar), set(hlds_class_argpos)) =
-    list(tvar).
+:- func unmake_hlds_class_fundep_arg_posns(list(tvar), set(hlds_class_argpos))
+    = list(tvar).
 
-unmake_hlds_class_fundep_2(TVars, Set) = solutions.solutions(P) :-
-    P = (pred(TVar::out) is nondet :-
-        set.member(N, Set),
-        TVar = list.det_index1(TVars, N)
-    ).
+unmake_hlds_class_fundep_arg_posns(TVars, ArgPosns) = ArgTVars :-
+    ArgTVarsSet = set.map(list.det_index1(TVars), ArgPosns),
+    set.to_sorted_list(ArgTVarsSet, ArgTVars).
 
 %-----------------------------------------------------------------------------%
 
