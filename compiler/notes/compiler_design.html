@@ -2292,15 +2292,26 @@ The following modules are part of the libs.m package.
     <dt> lp.m
     <dd>
         Implements the linear programming algorithm for optimizing
-        a set of linear constraints with respect to a linear
-        cost function. This is used by termination analyser.
+        a set of linear constraints on floats
+        with respect to a linear cost function.
+        This is used by the first termination analyser,
+        whose top level is in termination.m.
 
     <dt> lp_rational.m
     <dd>
         Implements the linear programming algorithm for optimizing
-        a set of linear constraints with respect to a linear
-        cost function, for rational numbers.
-        This is used by termination analyser.
+        a set of linear constraints on rational numbers
+        with respect to a linear cost function.
+        This is used by the second, convex-constraint-based
+        termination analyser,
+        whose top level is in term_constr_main.m.
+
+    <dt> polyhedron.m
+    <dd>
+        Implements operations on convex polyhedra.
+        This is used by the second, convex-constraint-based
+        termination analyser,
+        whose top level is in term_constr_main.m.
 
     <dt> rat.m
     <dd>
