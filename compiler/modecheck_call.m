@@ -188,7 +188,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
             choose_best_match(!.ModeInfo, MatchingProcIds, PredId, Procs,
                 ArgVars0, TheProcId, InstVarSub, ProcArgModes),
             map.lookup(Procs, TheProcId, ProcInfo),
-            CalleeModeErrors = ProcInfo ^ mode_errors,
+            proc_info_get_mode_errors(ProcInfo, CalleeModeErrors),
             (
                 CalleeModeErrors = [_ | _],
                 % mode error in callee for this mode

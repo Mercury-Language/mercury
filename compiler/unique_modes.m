@@ -769,7 +769,7 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
     proc_info_never_succeeds(ProcInfo, NeverSucceeds),
     unique_modes_check_call_modes(ArgVars, ProcArgModes0, ArgOffset,
         InterfaceDeterminism, NeverSucceeds, !ModeInfo),
-    ModeErrors = ProcInfo ^ mode_errors,
+    proc_info_get_mode_errors(ProcInfo, ModeErrors),
     (
         ModeErrors = [_ | _],
         % mode error in callee for this mode
@@ -778,7 +778,7 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
         instmap_lookup_vars(InstMap, ArgVars, ArgInsts),
         mode_info_error(WaitingVars,
             mode_error_in_callee(ArgVars, ArgInsts, PredId, ProcId0,
-                ProcInfo ^ mode_errors),
+                ModeErrors),
             !ModeInfo)
     ;
         ModeErrors = []

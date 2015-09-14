@@ -899,9 +899,9 @@ next_mode_id(Procs, ModeId) :-
     proc_id_to_int(ModeId, ModeInt).
 
 calls_are_fully_qualified(Markers) =
-    ( check_marker(Markers, marker_calls_are_fully_qualified) ->
+    ( if check_marker(Markers, marker_calls_are_fully_qualified) then
         is_fully_qualified
-    ;
+    else
         may_be_partially_qualified
     ).
 
@@ -1150,9 +1150,9 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos, InstMap0,
     varset.select(GoalVarsSet, VarSet0, VarSet),
 
     % Approximate the termination information for the new procedure.
-    ( goal_cannot_loop(ModuleInfo0, Goal0) ->
+    ( if goal_cannot_loop(ModuleInfo0, Goal0) then
         TermInfo = yes(cannot_loop(unit))
-    ;
+    else
         TermInfo = no
     ),
 
@@ -1614,16 +1614,16 @@ pred_info_update_goal_type(GoalType1, !PredInfo) :-
         GoalType = GoalType1
     ;
         GoalType0 = goal_type_foreign,
-        ( clause_goal_type(GoalType1) ->
+        ( if clause_goal_type(GoalType1) then
             GoalType = goal_type_clause_and_foreign
-        ;
+        else
             GoalType = goal_type_foreign
         )
     ;
         GoalType0 = goal_type_clause,
-        ( pragma_goal_type(GoalType1) ->
+        ( if pragma_goal_type(GoalType1) then
             GoalType = goal_type_clause_and_foreign
-        ;
+        else
             GoalType = goal_type_clause
         )
     ;
@@ -1633,10 +1633,10 @@ pred_info_update_goal_type(GoalType1, !PredInfo) :-
         GoalType0 = goal_type_promise(_),
         unexpected($module, $pred, "promise")
     ),
-    % ( GoalType = GoalType0 ->
+    % ( if GoalType = GoalType0 then
     %     % Avoid unnecessary memory allocation.
     %     true
-    % ;
+    % else
         pred_info_set_goal_type(GoalType, !PredInfo).
     % ).
 
@@ -1654,21 +1654,21 @@ pred_info_requested_no_inlining(PredInfo0) :-
 
 pred_info_get_purity(PredInfo0, Purity) :-
     pred_info_get_markers(PredInfo0, Markers),
-    ( check_marker(Markers, marker_is_impure) ->
+    ( if check_marker(Markers, marker_is_impure) then
         Purity = purity_impure
-    ; check_marker(Markers, marker_is_semipure) ->
+    else if check_marker(Markers, marker_is_semipure) then
         Purity = purity_semipure
-    ;
+    else
         Purity = purity_pure
     ).
 
 pred_info_get_promised_purity(PredInfo0, PromisedPurity) :-
     pred_info_get_markers(PredInfo0, Markers),
-    ( check_marker(Markers, marker_promised_pure) ->
+    ( if check_marker(Markers, marker_promised_pure) then
         PromisedPurity = purity_pure
-    ; check_marker(Markers, marker_promised_semipure) ->
+    else if check_marker(Markers, marker_promised_semipure) then
         PromisedPurity = purity_semipure
-    ;
+    else
         PromisedPurity = purity_impure
     ).
 
@@ -2039,6 +2039,10 @@ attribute_list_to_attributes(Attributes, Attributes).
     list(prog_var)::in, hlds_goal::in, rtti_varmaps::in,
     proc_info::in, proc_info::out) is det.
 
+:- type can_process
+    --->    can_process
+    ;       cannot_process.
+
 :- type needs_maxfr_slot
     --->    needs_maxfr_slot
     ;       does_not_need_maxfr_slot.
@@ -2069,9 +2073,11 @@ attribute_list_to_attributes(Attributes, Attributes).
     % Predicates to get fields of proc_infos.
 
 :- pred proc_info_get_context(proc_info::in, prog_context::out) is det.
+:- pred proc_info_get_headvars(proc_info::in, list(prog_var)::out) is det.
+:- pred proc_info_get_goal(proc_info::in, hlds_goal::out) is det.
 :- pred proc_info_get_varset(proc_info::in, prog_varset::out) is det.
 :- pred proc_info_get_vartypes(proc_info::in, vartypes::out) is det.
-:- pred proc_info_get_headvars(proc_info::in, list(prog_var)::out) is det.
+:- pred proc_info_get_rtti_varmaps(proc_info::in, rtti_varmaps::out) is det.
 :- pred proc_info_get_inst_varset(proc_info::in, inst_varset::out) is det.
 :- pred proc_info_get_maybe_declared_argmodes(proc_info::in,
     maybe(list(mer_mode))::out) is det.
@@ -2080,61 +2086,68 @@ attribute_list_to_attributes(Attributes, Attributes).
     maybe(list(is_live))::out) is det.
 :- pred proc_info_get_declared_determinism(proc_info::in,
     maybe(determinism)::out) is det.
-:- pred proc_info_get_inferred_determinism(proc_info::in, determinism::out)
-    is det.
-:- pred proc_info_get_detism_decl(proc_info::in, detism_decl::out) is det.
-:- pred proc_info_get_goal(proc_info::in, hlds_goal::out) is det.
-:- pred proc_info_get_can_process(proc_info::in, bool::out) is det.
-:- pred proc_info_get_rtti_varmaps(proc_info::in, rtti_varmaps::out) is det.
+:- pred proc_info_get_inferred_determinism(proc_info::in,
+    determinism::out) is det.
 :- pred proc_info_get_eval_method(proc_info::in, eval_method::out) is det.
-:- pred proc_info_get_maybe_arg_size_info(proc_info::in,
-    maybe(arg_size_info)::out) is det.
-:- pred proc_info_get_maybe_termination_info(proc_info::in,
-    maybe(termination_info)::out) is det.
+:- pred proc_info_get_can_process(proc_info::in, can_process::out) is det.
+:- pred proc_info_get_mode_errors(proc_info::in,
+    list(mode_error_info)::out) is det.
+
+:- pred proc_info_get_detism_decl(proc_info::in, detism_decl::out) is det.
+:- pred proc_info_get_maybe_untuple_info(proc_info::in,
+    maybe(untuple_proc_info)::out) is det.
+:- pred proc_info_get_var_name_remap(proc_info::in,
+    map(prog_var, string)::out) is det.
+:- pred proc_info_get_statevar_warnings(proc_info::in,
+    list(error_spec)::out) is det.
 :- pred proc_info_get_is_address_taken(proc_info::in,
     is_address_taken::out) is det.
-:- pred proc_info_get_stack_slots(proc_info::in, stack_slots::out) is det.
-:- pred proc_info_get_reg_r_headvars(proc_info::in, set_of_progvar::out)
-    is det.
-:- pred proc_info_maybe_arg_info(proc_info::in,
-    maybe(list(arg_info))::out) is det.
-:- pred proc_info_get_liveness_info(proc_info::in, liveness_info::out) is det.
-:- pred proc_info_get_needs_maxfr_slot(proc_info::in,
-    needs_maxfr_slot::out) is det.
+:- pred proc_info_get_has_any_foreign_exports(proc_info::in,
+    proc_foreign_exports::out) is det.
+:- pred proc_info_get_has_parallel_conj(proc_info::in,
+    has_parallel_conj::out) is det.
 :- pred proc_info_get_has_user_event(proc_info::in,
     has_user_event::out) is det.
 :- pred proc_info_get_has_tail_call_event(proc_info::in,
     has_tail_call_event::out) is det.
-:- pred proc_info_get_has_parallel_conj(proc_info::in,
-    has_parallel_conj::out) is det.
+:- pred proc_info_get_oisu_kind_fors(proc_info::in,
+    list(oisu_pred_kind_for)::out) is det.
+:- pred proc_info_get_reg_r_headvars(proc_info::in,
+    set_of_progvar::out) is det.
+:- pred proc_info_get_maybe_arg_info(proc_info::in,
+    maybe(list(arg_info))::out) is det.
+:- pred proc_info_get_maybe_special_return(proc_info::in,
+    maybe(special_proc_return)::out) is det.
+:- pred proc_info_get_liveness_info(proc_info::in, liveness_info::out) is det.
+:- pred proc_info_get_stack_slots(proc_info::in, stack_slots::out) is det.
+:- pred proc_info_get_needs_maxfr_slot(proc_info::in,
+    needs_maxfr_slot::out) is det.
 :- pred proc_info_get_call_table_tip(proc_info::in,
     maybe(prog_var)::out) is det.
 :- pred proc_info_get_maybe_proc_table_io_info(proc_info::in,
     maybe(proc_table_io_info)::out) is det.
 :- pred proc_info_get_table_attributes(proc_info::in,
     maybe(table_attributes)::out) is det.
-:- pred proc_info_get_maybe_special_return(proc_info::in,
-    maybe(special_proc_return)::out) is det.
 :- pred proc_info_get_maybe_deep_profile_info(proc_info::in,
     maybe(deep_profile_proc_info)::out) is det.
-:- pred proc_info_get_maybe_untuple_info(proc_info::in,
-    maybe(untuple_proc_info)::out) is det.
-:- pred proc_info_get_var_name_remap(proc_info::in,
-    map(prog_var, string)::out) is det.
-:- pred proc_info_get_statevar_warnings(proc_info::in, list(error_spec)::out)
-    is det.
-:- pred proc_info_get_oisu_kind_fors(proc_info::in,
-    list(oisu_pred_kind_for)::out) is det.
-:- pred proc_info_get_has_any_foreign_exports(proc_info::in,
-    proc_foreign_exports::out) is det.
+:- pred proc_info_get_maybe_arg_size_info(proc_info::in,
+    maybe(arg_size_info)::out) is det.
+:- pred proc_info_get_maybe_termination_info(proc_info::in,
+    maybe(termination_info)::out) is det.
+:- pred proc_info_get_termination2_info(proc_info::in,
+    termination2_info::out) is det.
 
     % Predicates to set fields of proc_infos.
 
+:- pred proc_info_set_headvars(list(prog_var)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_goal(hlds_goal::in,
+    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_varset(prog_varset::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_vartypes(vartypes::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_headvars(list(prog_var)::in,
+:- pred proc_info_set_rtti_varmaps(rtti_varmaps::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_inst_varset(inst_varset::in,
     proc_info::in, proc_info::out) is det.
@@ -2142,52 +2155,20 @@ attribute_list_to_attributes(Attributes, Attributes).
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_argmodes(list(mer_mode)::in,
     proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_head_modes_constraint(mode_constraint::in,
+    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_arglives(maybe(list(is_live))::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_inferred_determinism(determinism::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_detism_decl(detism_decl::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_goal(hlds_goal::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_can_process(bool::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_rtti_varmaps(rtti_varmaps::in,
-    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_eval_method(eval_method::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_maybe_arg_size_info(maybe(arg_size_info)::in,
+:- pred proc_info_set_can_process(can_process::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_maybe_termination_info(maybe(termination_info)::in,
+:- pred proc_info_set_mode_errors(list(mode_error_info)::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_address_taken(is_address_taken::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_stack_slots(stack_slots::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_reg_r_headvars(set_of_progvar::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_arg_info(list(arg_info)::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_liveness_info(liveness_info::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_needs_maxfr_slot(needs_maxfr_slot::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_has_user_event(has_user_event::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_has_tail_call_event(has_tail_call_event::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_has_parallel_conj(has_parallel_conj::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_call_table_tip(maybe(prog_var)::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_maybe_proc_table_io_info(maybe(proc_table_io_info)::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_table_attributes(maybe(table_attributes)::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_maybe_special_return(maybe(special_proc_return)::in,
-    proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_maybe_deep_profile_info(
-    maybe(deep_profile_proc_info)::in,
+
+:- pred proc_info_set_detism_decl(detism_decl::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_untuple_info(maybe(untuple_proc_info)::in,
     proc_info::in, proc_info::out) is det.
@@ -2195,14 +2176,43 @@ attribute_list_to_attributes(Attributes, Attributes).
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_statevar_warnings(list(error_spec)::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_oisu_kind_fors(list(oisu_pred_kind_for)::in,
+:- pred proc_info_set_address_taken(is_address_taken::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_has_any_foreign_exports(proc_foreign_exports::in,
     proc_info::in, proc_info::out) is det.
-
-:- pred proc_info_get_termination2_info(proc_info::in,
-    termination2_info::out) is det.
-
+:- pred proc_info_set_has_parallel_conj(has_parallel_conj::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_has_user_event(has_user_event::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_has_tail_call_event(has_tail_call_event::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_oisu_kind_fors(list(oisu_pred_kind_for)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_reg_r_headvars(set_of_progvar::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_arg_info(list(arg_info)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_maybe_special_return(maybe(special_proc_return)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_liveness_info(liveness_info::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_stack_slots(stack_slots::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_needs_maxfr_slot(needs_maxfr_slot::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_call_table_tip(maybe(prog_var)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_maybe_proc_table_io_info(maybe(proc_table_io_info)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_table_attributes(maybe(table_attributes)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_maybe_deep_profile_info(
+    maybe(deep_profile_proc_info)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_maybe_arg_size_info(maybe(arg_size_info)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_maybe_termination_info(maybe(termination_info)::in,
+    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_termination2_info(termination2_info::in,
     proc_info::in, proc_info::out) is det.
 
@@ -2243,9 +2253,6 @@ attribute_list_to_attributes(Attributes, Attributes).
 
 :- pred proc_info_head_modes_constraint(proc_info::in, mode_constraint::out)
     is det.
-
-:- pred proc_info_set_head_modes_constraint(mode_constraint::in,
-    proc_info::in, proc_info::out) is det.
 
     % See also proc_info_interface_code_model in code_model.m.
     %
@@ -2356,8 +2363,6 @@ attribute_list_to_attributes(Attributes, Attributes).
     % whether it is valid or not by keeping a list of error messages
     % in the proc_info. The mode is valid iff this list is empty.
     %
-:- func mode_errors(proc_info) = list(mode_error_info).
-:- func 'mode_errors :='(proc_info, list(mode_error_info)) = proc_info.
 :- pred proc_info_is_valid_mode(proc_info::in) is semidet.
 
     % Make sure that all headvars are named. This can be useful e.g.
@@ -2379,64 +2384,84 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    proc_info(
                 % The context of the `:- mode' decl (or the context of the
                 % first clause, if there was no mode declaration).
-/*  1 */        proc_context                :: prog_context,
+/*  1 */        proc_context                    :: prog_context,
 
-/*  2 */        prog_varset                 :: prog_varset,
-/*  3 */        var_types                   :: vartypes,
-/*  4 */        head_vars                   :: list(prog_var),
-/*  5 */        inst_varset                 :: inst_varset,
+/*  2 */        proc_head_vars                  :: list(prog_var),
+/*  3 */        proc_body                       :: hlds_goal,
+
+/*  4 */        proc_prog_varset                :: prog_varset,
+/*  5 */        proc_var_types                  :: vartypes,
+
+                % Information about type_infos and typeclass_infos.
+/*  6 */        proc_rtti_varmaps               :: rtti_varmaps,
+
+/*  7 */        proc_inst_varset                :: inst_varset,
 
                 % The declared modes of arguments.
-/*  6 */        maybe_declared_head_modes   :: maybe(list(mer_mode)),
+/*  8 */        proc_maybe_decl_head_modes      :: maybe(list(mer_mode)),
 
-/*  7 */        actual_head_modes           :: list(mer_mode),
-/*  8 */        maybe_head_modes_constraint :: maybe(mode_constraint),
+/*  9 */        proc_actual_head_modes          :: list(mer_mode),
+/* 10 */        proc_maybe_head_modes_constr    :: maybe(mode_constraint),
 
                 % Liveness (in the mode analysis sense) of the arguments
                 % in the caller; says whether each argument may be used
                 % after the call.
-/*  9 */        head_var_caller_liveness    :: maybe(list(is_live)),
+/* 11 */        proc_headvar_caller_liveness    :: maybe(list(is_live)),
 
                 % The _declared_ determinism of the procedure, or `no'
                 % if there was no detism declaration.
-/* 10 */        declared_detism             :: maybe(determinism),
+/* 12 */        proc_declared_detism            :: maybe(determinism),
+/* 13 */        proc_inferred_detism            :: determinism,
 
-/* 11 */        inferred_detism             :: determinism,
-/* 12 */        body                        :: hlds_goal,
+                % How should the proc be evaluated.
+/* 14 */        proc_eval_method                :: eval_method,
 
                 % No if we must not process this procedure yet (used to delay
                 % mode checking etc. for complicated modes of unification
                 % predicates until the end of the unique_modes pass.)
-/* 13 */        can_process                 :: bool,
+/* 15 */        proc_can_process                :: can_process,
+/* 16 */        proc_mode_errors                :: list(mode_error_info),
 
-/* 14 */        mode_errors                 :: list(mode_error_info),
-
-                % Information about type_infos and typeclass_infos.
-/* 15 */        proc_rtti_varmaps           :: rtti_varmaps,
-
-                % How should the proc be evaluated.
-/* 16 */        eval_method                 :: eval_method,
-
-/* 17 */        proc_sub_info               :: proc_sub_info
+/* 17 */        proc_sub_info                   :: proc_sub_info
             ).
 
 :- type proc_sub_info
     --->    proc_sub_info(
                 % Was the determinism declaration explicit, or was it implicit,
                 % as for functions?
-                detism_decl                 :: detism_decl,
+                psi_detism_decl                 :: detism_decl,
 
-                % Information about the relative sizes of the input and output
-                % args of the procedure. Set by termination analysis.
-                maybe_arg_sizes             :: maybe(arg_size_info),
+                % If set, it means this procedure was created from another
+                % procedure by the untupling transformation. This slot records
+                % which of the procedure's arguments were derived from which
+                % arguments in the original procedure.
+                %
+                % This is effectively a record of the *procedure*'s origin.
+                % (The pred_origin field records the *predicate*'s origin.)
+                psi_maybe_untuple_info          :: maybe(untuple_proc_info),
 
-                % The termination properties of the procedure.
-                % Set by termination analysis.
-                maybe_termination           :: maybe(termination_info),
+                % Remaps the compiler-created variables named HeadVar__N
+                % to the user-given variable names that actually occupied the
+                % corresponding argument slots in the procedure's clauses.
+                % Has an entry for a head variable only if *all* the clauses
+                % consistently give that argument that name, if they give it
+                % any name at all.
+                % This renaming is applied only after semantic analysis,
+                % although it is recorded earlier. The reason for this is
+                % to make any error messages about the goals that unify the
+                % original headvar (e.g. "X") with the introduced headvar
+                % (e.g. "HeadVar__1") give the goal as HeadVar__1 = X,
+                % not as X = X, since the latter would be very confusing.
+                psi_proc_var_name_remap         :: map(prog_var, string),
 
-                % Termination properties and argument size constraints for
-                % the procedure. Set by termination2 analysis.
-                termination2                :: termination2_info,
+                % Any warnings generated by the state variable transformation
+                % that we should print only if we find a mode error that could
+                % be caused by the problem being warned about.
+                psi_statevar_warnings           :: list(error_spec),
+
+                %-----------------------------------------------------------%
+                % Flags that record simple properties of the procedure.
+                %-----------------------------------------------------------%
 
                 % Is the address of this procedure taken? If yes, we will
                 % need to use typeinfo liveness for them, so that deep_copy
@@ -2445,39 +2470,12 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % Note that any non-local procedure must be considered
                 % as having its address taken, since it is possible that
                 % some other module may do so.
-                is_address_taken            :: is_address_taken,
+                psi_is_address_taken            :: is_address_taken,
 
-                % Allocation of variables to stack slots.
-                stack_slots                 :: stack_slots,
-
-                % The head variables which must be forced to use regular
-                % registers by the calling convention, despite having type
-                % float. This is only meaningful with float registers.
-                reg_r_headvars              :: set_of_progvar,
-
-                % The calling convention of each argument: information computed
-                % by arg_info.m (based on the modes etc.) and used by code
-                % generation to determine how each argument should be passed.
-                arg_pass_info               :: maybe(list(arg_info)),
-
-                % The initial liveness, for code generation.
-                initial_liveness            :: liveness_info,
-
-                % True iff tracing is enabled, this is a procedure that lives
-                % on the det stack, and the code of this procedure may create
-                % a frame on the det stack. (Only in these circumstances do we
-                % need to reserve a stack slot to hold the value of maxfr
-                % at the call, for use in implementing retry.) This slot
-                % is used only with the LLDS backend XXX. Its value is set
-                % during the live_vars pass; it is invalid before then.
-                needs_maxfr_slot            :: needs_maxfr_slot,
-
-                % Does this procedure contain a user event?
-                %
-                % This slot is set by the simplification pass.
-                proc_has_user_event         :: has_user_event,
-
-                proc_has_tail_call_event    :: has_tail_call_event,
+                % Is the procedure mentioned in any foreign_export pragma,
+                % regardless of what the current supported foreign languages
+                % are?
+                psi_has_any_foreign_exports     :: proc_foreign_exports,
 
                 % Does this procedure contain parallel conjunction?
                 % If yes, it should be run through the dependent parallel
@@ -2486,7 +2484,54 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % This slot is set by the simplification pass.
                 % Note that after some optimization passes, this flag
                 % may be a conservative approximation.
-                proc_has_parallel_conj      :: has_parallel_conj,
+                psi_proc_has_parallel_conj      :: has_parallel_conj,
+
+                % Does this procedure contain a user event?
+                %
+                % This slot is set by the simplification pass.
+                psi_proc_has_user_event         :: has_user_event,
+
+                psi_proc_has_tail_call_event    :: has_tail_call_event,
+
+                % Is the procedure mentioned in any order-independent-state-
+                % update pragmas? If yes, list the role of this procedure
+                % for the each of the types in those pragmas.
+                psi_oisu_kind_fors              :: list(oisu_pred_kind_for),
+
+                %-----------------------------------------------------------%
+                % Information needed by the LLDS code generator.
+                %-----------------------------------------------------------%
+
+                % The head variables which must be forced to use regular
+                % registers by the calling convention, despite having type
+                % float. This is only meaningful with float registers.
+                psi_reg_r_headvars              :: set_of_progvar,
+
+                % The calling convention of each argument: information computed
+                % by arg_info.m (based on the modes etc.) and used by code
+                % generation to determine how each argument should be passed.
+                psi_maybe_arg_info              :: maybe(list(arg_info)),
+
+                psi_maybe_special_return        :: maybe(special_proc_return),
+
+                % The initial liveness, for code generation.
+                psi_initial_liveness            :: liveness_info,
+
+                % Allocation of variables to stack slots.
+                psi_stack_slots                 :: stack_slots,
+
+                % True iff tracing is enabled, this is a procedure that lives
+                % on the det stack, and the code of this procedure may create
+                % a frame on the det stack. (Only in these circumstances do we
+                % need to reserve a stack slot to hold the value of maxfr
+                % at the call, for use in implementing retry.) This slot
+                % is used only with the LLDS backend XXX. Its value is set
+                % during the live_vars pass; it is invalid before then.
+                psi_needs_maxfr_slot            :: needs_maxfr_slot,
+
+                %-----------------------------------------------------------%
+                % Information needed for tabling.
+                %-----------------------------------------------------------%
 
                 % If the procedure's evaluation method is memo, loopcheck or
                 % minimal, this slot identifies the variable that holds the tip
@@ -2503,7 +2548,7 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % Therefore when binding this variable, the code generator
                 % of the relevant backend must record this fact in a place
                 % accessible to the debugger, if debugging is enabled.
-                call_table_tip              :: maybe(prog_var),
+                psi_call_table_tip              :: maybe(prog_var),
 
                 % If set, it means that procedure has been subject to the I/O
                 % tabling transformation. The argument will contain all the
@@ -2517,44 +2562,39 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % whose arguments are all either ints, floats or strings.
                 % However, this is still sufficient for debugging most problems
                 % in the tabling system.
-                maybe_table_io_info         :: maybe(proc_table_io_info),
+                psi_maybe_table_io_info         :: maybe(proc_table_io_info),
 
-                table_attributes            :: maybe(table_attributes),
+                psi_table_attributes            :: maybe(table_attributes),
 
-                maybe_special_return        :: maybe(special_proc_return),
+                %-----------------------------------------------------------%
+                % Information needed for deep profiling.
+                %-----------------------------------------------------------%
 
-                maybe_deep_profile_proc_info :: maybe(deep_profile_proc_info),
+                psi_maybe_deep_prof_info      :: maybe(deep_profile_proc_info),
 
-                % If set, it means this procedure was created from another
-                % procedure by the untupling transformation. This slot records
-                % which of the procedure's arguments were derived from which
-                % arguments in the original procedure.
-                maybe_untuple_info          :: maybe(untuple_proc_info),
+                %-----------------------------------------------------------%
+                % The results of program analyses.
+                %-----------------------------------------------------------%
 
-                proc_var_name_remap         :: map(prog_var, string),
+                % Information about the relative sizes of the input and output
+                % args of the procedure. Set by termination analysis.
+                psi_maybe_arg_sizes             :: maybe(arg_size_info),
 
-                % Any warnings generated by the state variable transformation
-                % that we should print only if we find a mode error that could
-                % be caused by the problem being warned about.
-                statevar_warnings           :: list(error_spec),
+                % The termination properties of the procedure.
+                % Set by termination analysis.
+                psi_maybe_termination           :: maybe(termination_info),
+
+                % Termination properties and argument size constraints for
+                % the procedure. Set by termination2 analysis.
+                psi_termination2                :: termination2_info,
 
                 % Structure sharing information as obtained by the structure
                 % sharing analysis.
-                structure_sharing           :: structure_sharing_info,
+                psi_structure_sharing           :: structure_sharing_info,
 
                 % Structure reuse conditions obtained by the structure reuse
                 % analysis (CTGC).
-                structure_reuse             :: structure_reuse_info,
-
-                % Is the procedure mentioned in any order-independent-state-
-                % update pragmas? If yes, list the role of this procedure
-                % for the each of the types in those pragmas.
-                psi_oisu_kind_fors          :: list(oisu_pred_kind_for),
-
-                % Is the procedure mentioned in any foreign_export pragma,
-                % regardless of what the current supported foreign languages
-                % are?
-                psi_has_any_foreign_exports :: proc_foreign_exports
+                psi_structure_reuse             :: structure_reuse_info
         ).
 
 :- type structure_sharing_info
@@ -2680,64 +2720,82 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     % as the fields themselves.
 
     % argument DetismDecl
-    MaybeArgSizes = no `with_type` maybe(arg_size_info),
-    MaybeTermInfo = no `with_type` maybe(termination_info),
-    Term2Info = term_constr_main_types.term2_info_init,
+    MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
+    % argument VarNameRemap
+    StateVarWarnings = [],
     % argument IsAddressTaken
-    map.init(StackSlots),
-    set_of_var.init(RegR_HeadVars),
-    MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
-    set_of_var.init(InitialLiveness),
-    NeedsMaxfrSlot = does_not_need_maxfr_slot,
+    HasForeignProcExports = no_foreign_exports,
+    % argument HasParallelConj
     HasUserEvent = has_no_user_event,
     HasTailCallEvent = has_no_tail_call_event,
-    % argument HasParallelConj
+    OisuKinds = [],
+    set_of_var.init(RegR_HeadVars),
+    MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
+    MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
+    set_of_var.init(InitialLiveness),
+    map.init(StackSlots),
+    NeedsMaxfrSlot = does_not_need_maxfr_slot,
     MaybeCallTableTip = no `with_type` maybe(prog_var),
     MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
     MaybeTableAttrs = no `with_type` maybe(table_attributes),
-    MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
     MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
-    MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
-    StateVarWarnings = [],
+    MaybeArgSizes = no `with_type` maybe(arg_size_info),
+    MaybeTermInfo = no `with_type` maybe(termination_info),
+    Term2Info = term_constr_main_types.term2_info_init,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
-    OisuKinds = [],
-    HasForeignProcExports = no_foreign_exports,
 
-    ProcSubInfo = proc_sub_info(DetismDecl, MaybeArgSizes,
-        MaybeTermInfo, Term2Info, IsAddressTaken,
-        StackSlots, RegR_HeadVars, MaybeArgPassInfo, InitialLiveness,
-        NeedsMaxfrSlot, HasUserEvent, HasTailCallEvent, HasParallelConj,
-        MaybeCallTableTip, MaybeTableIOInfo, MaybeTableAttrs,
-        MaybeSpecialReturn, MaybeDeepProfProcInfo,
-        MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
-        SharingInfo, ReuseInfo, OisuKinds, HasForeignProcExports),
+    ProcSubInfo = proc_sub_info(DetismDecl,
+        MaybeUntupleInfo,
+        VarNameRemap,
+        StateVarWarnings,
+        IsAddressTaken,
+        HasForeignProcExports,
+        HasParallelConj,
+        HasUserEvent,
+        HasTailCallEvent,
+        OisuKinds,
+        RegR_HeadVars,
+        MaybeArgPassInfo,
+        MaybeSpecialReturn,
+        InitialLiveness,
+        StackSlots,
+        NeedsMaxfrSlot,
+        MaybeCallTableTip,
+        MaybeTableIOInfo,
+        MaybeTableAttrs,
+        MaybeDeepProfProcInfo,
+        MaybeArgSizes,
+        MaybeTermInfo,
+        Term2Info,
+        SharingInfo,
+        ReuseInfo),
 
     % argument MContext
     make_n_fresh_vars("HeadVar__", Arity, HeadVars, varset.init, BodyVarSet),
+    goal_info_init(GoalInfo),
+    BodyGoal = hlds_goal(conj(plain_conj, []), GoalInfo),
     vartypes_from_corresponding_lists(HeadVars, Types, BodyTypes),
+    rtti_varmaps_init(RttiVarMaps),
     varset.init(InstVarSet),
     % argument DeclaredModes
     % argument Modes
-    MaybeHeadModesConstraint = no `with_type` maybe(mode_constraint),
+    MaybeHeadModesConstr = no `with_type` maybe(mode_constraint),
     % argument MaybeArgLives
     % argument MaybeDeclaredDetism
         % Inferred determinism gets initialized to `erroneous'.
         % This is what `det_analysis.m' wants. det_analysis.m
         % will later provide the correct inferred determinism for it.
     InferredDetism = detism_erroneous,
-    goal_info_init(GoalInfo),
-    ClauseBody = hlds_goal(conj(plain_conj, []), GoalInfo),
-    CanProcess = yes,
-    ModeErrors = [],
-    rtti_varmaps_init(RttiVarMaps),
     EvalMethod = eval_normal,
+    CanProcess = can_process,
+    ModeErrors = [],
 
-    ProcInfo = proc_info(MainContext, BodyVarSet, BodyTypes, HeadVars,
-        InstVarSet, DeclaredModes, Modes, MaybeHeadModesConstraint,
-        MaybeArgLives, MaybeDeclaredDetism, InferredDetism,
-        ClauseBody, CanProcess, ModeErrors, RttiVarMaps, EvalMethod,
-        ProcSubInfo).
+    ProcInfo = proc_info(MainContext, HeadVars, BodyGoal,
+        BodyVarSet, BodyTypes, RttiVarMaps,
+        InstVarSet, DeclaredModes, Modes, MaybeHeadModesConstr, MaybeArgLives,
+        MaybeDeclaredDetism, InferredDetism, EvalMethod,
+        CanProcess, ModeErrors, ProcSubInfo).
 
 proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
         DetismDecl, Detism, Goal, RttiVarMaps, IsAddressTaken, HasParallelConj,
@@ -2764,192 +2822,249 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     % as the fields themselves.
 
     % argument DetismDecl
-    MaybeArgSizes = no `with_type` maybe(arg_size_info),
-    MaybeTermInfo = no `with_type` maybe(termination_info),
-    Term2Info = term_constr_main_types.term2_info_init,
+    MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
+    % argument VarNameRemap
+    StateVarWarnings = [],
     % argument IsAddressTaken
-    map.init(StackSlots),
-    set_of_var.init(RegR_HeadVars),
-    MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
-    set_of_var.init(InitialLiveness),
-    NeedsMaxfrSlot = does_not_need_maxfr_slot,
+    HasForeignProcExports = no_foreign_exports,
+    % argument HasParallelConj
     HasUserEvent = has_no_user_event,
     HasTailCallEvent = has_no_tail_call_event,
-    % argument HasParallelConj
+    OisuKinds = [],
+    set_of_var.init(RegR_HeadVars),
+    MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
+    MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
+    set_of_var.init(InitialLiveness),
+    map.init(StackSlots),
+    NeedsMaxfrSlot = does_not_need_maxfr_slot,
     MaybeCallTableTip = no `with_type` maybe(prog_var),
     MaybeTableIOInfo = no `with_type` maybe(proc_table_io_info),
     MaybeTableAttrs = no `with_type` maybe(table_attributes),
-    MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
     MaybeDeepProfProcInfo = no `with_type` maybe(deep_profile_proc_info),
-    MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
-    StateVarWarnings = [],
+    MaybeArgSizes = no `with_type` maybe(arg_size_info),
+    MaybeTermInfo = no `with_type` maybe(termination_info),
+    Term2Info = term_constr_main_types.term2_info_init,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
-    OisuKinds = [],
-    HasForeignProcExports = no_foreign_exports,
 
-    ProcSubInfo = proc_sub_info(DetismDecl, MaybeArgSizes,
-        MaybeTermInfo, Term2Info, IsAddressTaken,
-        StackSlots, RegR_HeadVars, MaybeArgPassInfo, InitialLiveness,
-        NeedsMaxfrSlot, HasUserEvent, HasTailCallEvent, HasParallelConj,
-        MaybeCallTableTip, MaybeTableIOInfo, MaybeTableAttrs,
-        MaybeSpecialReturn, MaybeDeepProfProcInfo,
-        MaybeUntupleInfo, VarNameRemap, StateVarWarnings,
-        SharingInfo, ReuseInfo, OisuKinds, HasForeignProcExports),
+    ProcSubInfo = proc_sub_info(DetismDecl,
+        MaybeUntupleInfo,
+        VarNameRemap,
+        StateVarWarnings,
+        IsAddressTaken,
+        HasForeignProcExports,
+        HasParallelConj,
+        HasUserEvent,
+        HasTailCallEvent,
+        OisuKinds,
+        RegR_HeadVars,
+        MaybeArgPassInfo,
+        MaybeSpecialReturn,
+        InitialLiveness,
+        StackSlots,
+        NeedsMaxfrSlot,
+        MaybeCallTableTip,
+        MaybeTableIOInfo,
+        MaybeTableAttrs,
+        MaybeDeepProfProcInfo,
+        MaybeArgSizes,
+        MaybeTermInfo,
+        Term2Info,
+        SharingInfo,
+        ReuseInfo),
 
     % argument MainContext
+    % argument HeadVars
+    % argument Goal
     % argument VarSet
     % argument VarTypes
-    % argument HeadVars
+    % argument RttiVarMaps
     % argument InstVarSet
     DeclaredModes = no,
     % argument Modes
-    MaybeHeadModesConstraint = no `with_type` maybe(mode_constraint),
+    MaybeHeadModesConstr = no `with_type` maybe(mode_constraint),
     MaybeArgLives = no,
     % argument MaybeDeclaredDetism
     % argument Detism
-    % argument Goal
-    CanProcess = yes,
-    ModeErrors = [],
-    % argument RttiVarMaps
     EvalMethod = eval_normal,
+    CanProcess = can_process,
+    ModeErrors = [],
 
-    ProcInfo = proc_info(MainContext, VarSet, VarTypes, HeadVars,
-        InstVarSet, DeclaredModes, Modes, MaybeHeadModesConstraint,
-        MaybeArgLives, MaybeDeclaredDetism, Detism, Goal, CanProcess,
-        ModeErrors, RttiVarMaps, EvalMethod, ProcSubInfo).
+    ProcInfo = proc_info(MainContext, HeadVars, Goal,
+        VarSet, VarTypes, RttiVarMaps,
+        InstVarSet, DeclaredModes, Modes, MaybeHeadModesConstr,
+        MaybeArgLives, MaybeDeclaredDetism, Detism, EvalMethod,
+        CanProcess, ModeErrors, ProcSubInfo).
 
 proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
-    !ProcInfo ^ prog_varset := VarSet,
-    !ProcInfo ^ var_types := VarTypes,
-    !ProcInfo ^ head_vars := HeadVars,
-    !ProcInfo ^ body := Goal,
+    !ProcInfo ^ proc_prog_varset := VarSet,
+    !ProcInfo ^ proc_var_types := VarTypes,
+    !ProcInfo ^ proc_head_vars := HeadVars,
+    !ProcInfo ^ proc_body := Goal,
     !ProcInfo ^ proc_rtti_varmaps := RttiVarMaps.
 
-proc_info_get_context(PI, PI ^ proc_context).
-proc_info_get_varset(PI, PI ^ prog_varset).
-proc_info_get_vartypes(PI, PI ^ var_types).
-proc_info_get_headvars(PI, PI ^ head_vars).
-proc_info_get_inst_varset(PI, PI ^ inst_varset).
-proc_info_get_maybe_declared_argmodes(PI, PI ^ maybe_declared_head_modes).
-proc_info_get_argmodes(PI, PI ^ actual_head_modes).
-proc_info_get_maybe_arglives(PI, PI ^ head_var_caller_liveness).
-proc_info_get_declared_determinism(PI, PI ^ declared_detism).
-proc_info_get_inferred_determinism(PI, PI ^ inferred_detism).
-proc_info_get_detism_decl(PI, PI ^ proc_sub_info ^ detism_decl).
-proc_info_get_goal(PI, PI ^ body).
-proc_info_get_can_process(PI, PI ^ can_process).
-proc_info_get_rtti_varmaps(PI, PI ^ proc_rtti_varmaps).
-proc_info_get_eval_method(PI, PI ^ eval_method).
-proc_info_get_maybe_arg_size_info(PI, PI ^ proc_sub_info ^ maybe_arg_sizes).
-proc_info_get_maybe_termination_info(PI,
-    PI ^ proc_sub_info ^ maybe_termination).
-proc_info_get_is_address_taken(PI, PI ^ proc_sub_info ^ is_address_taken).
-proc_info_get_stack_slots(PI, PI ^ proc_sub_info ^ stack_slots).
-proc_info_get_reg_r_headvars(PI, PI ^ proc_sub_info ^ reg_r_headvars).
-proc_info_maybe_arg_info(PI, PI ^ proc_sub_info ^ arg_pass_info).
-proc_info_get_liveness_info(PI, PI ^ proc_sub_info ^ initial_liveness).
-proc_info_get_needs_maxfr_slot(PI, PI ^ proc_sub_info ^ needs_maxfr_slot).
-proc_info_get_has_user_event(PI, PI ^ proc_sub_info ^ proc_has_user_event).
-proc_info_get_has_tail_call_event(PI,
-    PI ^ proc_sub_info ^ proc_has_tail_call_event).
-proc_info_get_has_parallel_conj(PI,
-    PI ^ proc_sub_info ^ proc_has_parallel_conj).
-proc_info_get_call_table_tip(PI, PI ^ proc_sub_info ^ call_table_tip).
-proc_info_get_maybe_proc_table_io_info(PI,
-    PI ^ proc_sub_info ^ maybe_table_io_info).
-proc_info_get_table_attributes(PI, PI ^ proc_sub_info ^ table_attributes).
-proc_info_get_maybe_special_return(PI,
-    PI ^ proc_sub_info ^ maybe_special_return).
-proc_info_get_maybe_deep_profile_info(PI,
-    PI ^ proc_sub_info ^ maybe_deep_profile_proc_info).
-proc_info_get_maybe_untuple_info(PI, PI ^ proc_sub_info ^ maybe_untuple_info).
-proc_info_get_var_name_remap(PI, PI ^ proc_sub_info ^ proc_var_name_remap).
-proc_info_get_statevar_warnings(PI, PI ^ proc_sub_info ^ statevar_warnings).
-proc_info_get_oisu_kind_fors(PI, PI ^ proc_sub_info ^ psi_oisu_kind_fors).
-proc_info_get_has_any_foreign_exports(PI,
-    PI ^ proc_sub_info ^ psi_has_any_foreign_exports).
+proc_info_get_context(PI, X) :-
+    X = PI ^ proc_context.
+proc_info_get_headvars(PI, X) :-
+    X = PI ^ proc_head_vars.
+proc_info_get_goal(PI, X) :-
+    X = PI ^ proc_body.
+proc_info_get_varset(PI, X) :-
+    X = PI ^ proc_prog_varset.
+proc_info_get_vartypes(PI, X) :-
+    X = PI ^ proc_var_types.
+proc_info_get_rtti_varmaps(PI, X) :-
+    X = PI ^ proc_rtti_varmaps.
+proc_info_get_inst_varset(PI, X) :-
+    X = PI ^ proc_inst_varset.
+proc_info_get_maybe_declared_argmodes(PI, X) :-
+    X = PI ^ proc_maybe_decl_head_modes.
+proc_info_get_argmodes(PI, X) :-
+    X = PI ^ proc_actual_head_modes.
+proc_info_get_maybe_arglives(PI, X) :-
+    X = PI ^ proc_headvar_caller_liveness.
+proc_info_get_declared_determinism(PI, X) :-
+    X = PI ^ proc_declared_detism.
+proc_info_get_inferred_determinism(PI, X) :-
+    X = PI ^ proc_inferred_detism.
+proc_info_get_eval_method(PI, X) :-
+    X = PI ^ proc_eval_method.
+proc_info_get_can_process(PI, X) :-
+    X = PI ^ proc_can_process.
+proc_info_get_mode_errors(PI, X) :-
+    X = PI ^ proc_mode_errors.
 
-proc_info_set_varset(VS, !PI) :-
-    !PI ^ prog_varset := VS.
-proc_info_set_vartypes(VT, !PI) :-
-    !PI ^ var_types := VT.
-proc_info_set_headvars(HV, !PI) :-
-    !PI ^ head_vars := HV.
-proc_info_set_inst_varset(IV, !PI) :-
-    !PI ^ inst_varset := IV.
-proc_info_set_maybe_declared_argmodes(AM, !PI) :-
-    !PI ^ maybe_declared_head_modes := AM.
-proc_info_set_argmodes(AM, !PI) :-
-    !PI ^ actual_head_modes := AM.
-proc_info_set_maybe_arglives(CL, !PI) :-
-    !PI ^ head_var_caller_liveness := CL.
-proc_info_set_inferred_determinism(ID, !PI) :-
-    !PI ^ inferred_detism := ID.
-proc_info_set_detism_decl(ID, !PI) :-
-    !PI ^ proc_sub_info ^ detism_decl := ID.
-proc_info_set_goal(G, !PI) :-
-    !PI ^ body := G.
-proc_info_set_can_process(CP, !PI) :-
-    !PI ^ can_process := CP.
-proc_info_set_rtti_varmaps(RI, !PI) :-
-    !PI ^ proc_rtti_varmaps := RI.
-proc_info_set_eval_method(EM, !PI) :-
-    !PI ^ eval_method := EM.
-proc_info_set_maybe_arg_size_info(MAS, !PI) :-
-    !PI ^ proc_sub_info ^ maybe_arg_sizes := MAS.
-proc_info_set_maybe_termination_info(MT, !PI) :-
-    !PI ^ proc_sub_info ^ maybe_termination := MT.
-proc_info_set_address_taken(AT, !PI) :-
-    !PI ^ proc_sub_info ^ is_address_taken := AT.
-proc_info_set_stack_slots(SS, !PI) :-
-    !PI ^ proc_sub_info ^ stack_slots := SS.
-proc_info_set_reg_r_headvars(RHV, !PI) :-
-    !PI ^ proc_sub_info ^ reg_r_headvars := RHV.
-proc_info_set_arg_info(AP, !PI) :-
-    !PI ^ proc_sub_info ^ arg_pass_info := yes(AP).
-proc_info_set_liveness_info(IL, !PI) :-
-    !PI ^ proc_sub_info ^ initial_liveness := IL.
-proc_info_set_needs_maxfr_slot(NMS, !PI) :-
-    !PI ^ proc_sub_info ^ needs_maxfr_slot := NMS.
-proc_info_set_has_user_event(HUE, !PI) :-
-    !PI ^ proc_sub_info ^ proc_has_user_event := HUE.
-proc_info_set_has_tail_call_event(HTC, !PI) :-
-    !PI ^ proc_sub_info ^ proc_has_tail_call_event := HTC.
-proc_info_set_has_parallel_conj(HPC, !PI) :-
-    !PI ^ proc_sub_info ^ proc_has_parallel_conj := HPC.
-proc_info_set_call_table_tip(CTT, !PI) :-
-    !PI ^ proc_sub_info ^ call_table_tip := CTT.
-proc_info_set_maybe_proc_table_io_info(MTI, !PI) :-
-    !PI ^ proc_sub_info ^ maybe_table_io_info := MTI.
-proc_info_set_table_attributes(TA, !PI) :-
-    !PI ^ proc_sub_info ^ table_attributes := TA.
-proc_info_set_maybe_special_return(MSR, !PI) :-
-    !PI ^ proc_sub_info ^ maybe_special_return := MSR.
-proc_info_set_maybe_deep_profile_info(DPI, !PI) :-
-    !PI ^ proc_sub_info ^ maybe_deep_profile_proc_info := DPI.
-proc_info_set_maybe_untuple_info(MUI, !PI) :-
-    !PI ^ proc_sub_info ^ maybe_untuple_info := MUI.
-proc_info_set_var_name_remap(VNR, !PI) :-
-    !PI ^ proc_sub_info ^ proc_var_name_remap := VNR.
-proc_info_set_statevar_warnings(SVW, !PI) :-
-    !PI ^ proc_sub_info ^ statevar_warnings := SVW.
-proc_info_set_oisu_kind_fors(KFs, !PI) :-
-    !PI ^ proc_sub_info ^ psi_oisu_kind_fors := KFs.
-proc_info_set_has_any_foreign_exports(AFE, !PI) :-
-    !PI ^ proc_sub_info ^ psi_has_any_foreign_exports := AFE.
+proc_info_get_detism_decl(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_detism_decl.
+proc_info_get_maybe_untuple_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_untuple_info.
+proc_info_get_var_name_remap(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_proc_var_name_remap.
+proc_info_get_statevar_warnings(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_statevar_warnings.
+proc_info_get_is_address_taken(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_is_address_taken.
+proc_info_get_has_any_foreign_exports(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_has_any_foreign_exports.
+proc_info_get_has_parallel_conj(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_proc_has_parallel_conj.
+proc_info_get_has_user_event(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_proc_has_user_event.
+proc_info_get_has_tail_call_event(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_proc_has_tail_call_event.
+proc_info_get_oisu_kind_fors(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_oisu_kind_fors.
+proc_info_get_reg_r_headvars(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_reg_r_headvars.
+proc_info_get_maybe_arg_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_arg_info.
+proc_info_get_maybe_special_return(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_special_return.
+proc_info_get_liveness_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_initial_liveness.
+proc_info_get_stack_slots(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_stack_slots.
+proc_info_get_needs_maxfr_slot(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_needs_maxfr_slot.
+proc_info_get_call_table_tip(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_call_table_tip.
+proc_info_get_maybe_proc_table_io_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_table_io_info.
+proc_info_get_table_attributes(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_table_attributes.
+proc_info_get_maybe_deep_profile_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_deep_prof_info.
+proc_info_get_maybe_arg_size_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_arg_sizes.
+proc_info_get_maybe_termination_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_termination.
+proc_info_get_termination2_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_termination2.
+
+proc_info_set_headvars(X, !PI) :-
+    !PI ^ proc_head_vars := X.
+proc_info_set_goal(X, !PI) :-
+    !PI ^ proc_body := X.
+proc_info_set_varset(X, !PI) :-
+    !PI ^ proc_prog_varset := X.
+proc_info_set_vartypes(X, !PI) :-
+    !PI ^ proc_var_types := X.
+proc_info_set_rtti_varmaps(X, !PI) :-
+    !PI ^ proc_rtti_varmaps := X.
+proc_info_set_inst_varset(X, !PI) :-
+    !PI ^ proc_inst_varset := X.
+proc_info_set_maybe_declared_argmodes(X, !PI) :-
+    !PI ^ proc_maybe_decl_head_modes := X.
+proc_info_set_argmodes(X, !PI) :-
+    !PI ^ proc_actual_head_modes := X.
+proc_info_set_head_modes_constraint(X, !PI) :-
+    !PI ^ proc_maybe_head_modes_constr := yes(X).
+proc_info_set_maybe_arglives(X, !PI) :-
+    !PI ^ proc_headvar_caller_liveness := X.
+proc_info_set_inferred_determinism(X, !PI) :-
+    !PI ^ proc_inferred_detism := X.
+proc_info_set_eval_method(X, !PI) :-
+    !PI ^ proc_eval_method := X.
+proc_info_set_can_process(X, !PI) :-
+    !PI ^ proc_can_process := X.
+proc_info_set_mode_errors(X, !PI) :-
+    !PI ^ proc_mode_errors := X.
+
+proc_info_set_detism_decl(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_detism_decl := X.
+proc_info_set_maybe_untuple_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_untuple_info := X.
+proc_info_set_var_name_remap(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_proc_var_name_remap := X.
+proc_info_set_statevar_warnings(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_statevar_warnings := X.
+proc_info_set_address_taken(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_is_address_taken := X.
+proc_info_set_has_any_foreign_exports(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_has_any_foreign_exports := X.
+proc_info_set_has_parallel_conj(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_proc_has_parallel_conj := X.
+proc_info_set_has_user_event(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_proc_has_user_event := X.
+proc_info_set_has_tail_call_event(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_proc_has_tail_call_event := X.
+proc_info_set_oisu_kind_fors(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_oisu_kind_fors := X.
+proc_info_set_reg_r_headvars(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_reg_r_headvars := X.
+proc_info_set_arg_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_arg_info := yes(X).
+proc_info_set_maybe_special_return(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_special_return := X.
+proc_info_set_liveness_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_initial_liveness := X.
+proc_info_set_stack_slots(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_stack_slots := X.
+proc_info_set_needs_maxfr_slot(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_needs_maxfr_slot := X.
+proc_info_set_call_table_tip(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_call_table_tip := X.
+proc_info_set_maybe_proc_table_io_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_table_io_info := X.
+proc_info_set_table_attributes(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_table_attributes := X.
+proc_info_set_maybe_deep_profile_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_deep_prof_info := X.
+proc_info_set_maybe_arg_size_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_arg_sizes := X.
+proc_info_set_maybe_termination_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_termination := X.
+proc_info_set_termination2_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_termination2 := X.
 
 proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
-    MaybeHeadModesConstraint = ProcInfo ^ maybe_head_modes_constraint,
+    MaybeHeadModesConstraint = ProcInfo ^ proc_maybe_head_modes_constr,
     (
         MaybeHeadModesConstraint = yes(HeadModesConstraint)
     ;
         MaybeHeadModesConstraint = no,
         unexpected($module, $pred, "no constraint")
     ).
-
-proc_info_set_head_modes_constraint(HMC, ProcInfo,
-    ProcInfo ^ maybe_head_modes_constraint := yes(HMC)).
 
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
@@ -3011,33 +3126,28 @@ proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
     ).
 
 proc_info_is_valid_mode(ProcInfo) :-
-    ProcInfo ^ mode_errors = [].
+    proc_info_get_mode_errors(ProcInfo, ModeErrors),
+    ModeErrors = [].
 
 proc_info_arg_info(ProcInfo, ArgInfo) :-
-    proc_info_maybe_arg_info(ProcInfo, MaybeArgInfo0),
+    proc_info_get_maybe_arg_info(ProcInfo, MaybeArgInfo0),
     (
         MaybeArgInfo0 = yes(ArgInfo)
     ;
         MaybeArgInfo0 = no,
-        unexpected($module, $pred, "arg_pass_info not set")
+        unexpected($module, $pred, "arg_info not set")
     ).
 
-proc_info_get_termination2_info(ProcInfo, Termination2Info) :-
-    Termination2Info = ProcInfo ^ proc_sub_info ^ termination2.
-
-proc_info_set_termination2_info(Termination2Info, !ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ termination2 := Termination2Info.
-
 proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
-    MaybeSharing = ProcInfo ^ proc_sub_info ^ structure_sharing
+    MaybeSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
         ^ maybe_sharing.
 
 proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ structure_sharing ^ maybe_sharing :=
+    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing ^ maybe_sharing :=
         yes(Sharing).
 
 proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types, Sharing) :-
-    MaybeImportedSharing = ProcInfo ^ proc_sub_info ^ structure_sharing
+    MaybeImportedSharing = ProcInfo ^ proc_sub_info ^ psi_structure_sharing
         ^ maybe_imported_sharing,
     MaybeImportedSharing = yes(ImportedSharing),
     ImportedSharing = imported_sharing(HeadVars, Types, Sharing).
@@ -3046,34 +3156,34 @@ proc_info_set_imported_structure_sharing(HeadVars, Types, Sharing,
         !ProcInfo) :-
     ImportedSharing = imported_sharing(HeadVars, Types, Sharing),
     MaybeImportedSharing = yes(ImportedSharing),
-    !ProcInfo ^ proc_sub_info ^ structure_sharing ^ maybe_imported_sharing :=
-        MaybeImportedSharing.
+    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
+        ^ maybe_imported_sharing := MaybeImportedSharing.
 
 proc_info_reset_imported_structure_sharing(!ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ structure_sharing ^ maybe_imported_sharing :=
-        no.
+    !ProcInfo ^ proc_sub_info ^ psi_structure_sharing
+        ^ maybe_imported_sharing := no.
 
 proc_info_get_structure_reuse(ProcInfo, MaybeReuse) :-
-    MaybeReuse = ProcInfo ^ proc_sub_info ^ structure_reuse ^ maybe_reuse.
+    MaybeReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse.
 
 proc_info_set_structure_reuse(Reuse, !ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ structure_reuse ^ maybe_reuse := yes(Reuse).
+    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse := yes(Reuse).
 
 proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types, Reuse) :-
-    MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ structure_reuse
+    MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse
         ^ maybe_imported_reuse,
     MaybeImportedReuse = yes(ImportedReuse),
     ImportedReuse = imported_reuse(HeadVars, Types, Reuse).
 
-proc_info_set_imported_structure_reuse(HeadVars, Types, Reuse,
-        !ProcInfo) :-
+proc_info_set_imported_structure_reuse(HeadVars, Types, Reuse, !ProcInfo) :-
     ImportedReuse = imported_reuse(HeadVars, Types, Reuse),
     MaybeImportedReuse = yes(ImportedReuse),
-    !ProcInfo ^ proc_sub_info ^ structure_reuse ^ maybe_imported_reuse :=
+    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_imported_reuse :=
         MaybeImportedReuse.
 
 proc_info_reset_imported_structure_reuse(!ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ structure_reuse ^ maybe_imported_reuse := no.
+    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse
+        ^ maybe_imported_reuse := no.
 
 proc_info_ensure_unique_names(!ProcInfo) :-
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
@@ -3108,7 +3218,7 @@ proc_info_instantiated_head_vars(ModuleInfo, ProcInfo, ChangedInstHeadVars) :-
         VarMode = Var - Mode,
         lookup_var_type(VarTypes, Var, Type),
         mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
-        \+ inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
+        not inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
     ),
     list.filter_map(IsInstChanged, HeadVarModes, ChangedInstHeadVars).
 
@@ -3131,9 +3241,9 @@ proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredArity = pred_info_orig_arity(PredInfo),
-    ( no_type_info_builtin(PredModule, PredName, PredArity) ->
+    ( if no_type_info_builtin(PredModule, PredName, PredArity) then
         InterfaceTypeInfoLiveness = no
-    ;
+    else
         pred_info_get_status(PredInfo, Status),
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
@@ -3144,7 +3254,7 @@ proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
 
 non_special_interface_should_use_typeinfo_liveness(PredStatus, IsAddressTaken,
         Globals, InterfaceTypeInfoLiveness) :-
-    (
+    ( if
         (
             IsAddressTaken = address_is_taken
         ;
@@ -3166,9 +3276,9 @@ non_special_interface_should_use_typeinfo_liveness(PredStatus, IsAddressTaken,
         ;
             non_special_body_should_use_typeinfo_liveness(Globals, yes)
         )
-    ->
+    then
         InterfaceTypeInfoLiveness = yes
-    ;
+    else
         InterfaceTypeInfoLiveness = no
     ).
 
@@ -3176,9 +3286,9 @@ body_should_use_typeinfo_liveness(PredInfo, Globals, BodyTypeInfoLiveness) :-
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredArity = pred_info_orig_arity(PredInfo),
-    ( no_type_info_builtin(PredModule, PredName, PredArity) ->
+    ( if no_type_info_builtin(PredModule, PredName, PredArity) then
         BodyTypeInfoLiveness = no
-    ;
+    else
         non_special_body_should_use_typeinfo_liveness(Globals,
             BodyTypeInfoLiveness)
     ).
@@ -3199,13 +3309,13 @@ proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars, ArgModes,
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarsModes),
     proc_info_has_io_state_pair_2(HeadVarsModes, ModuleInfo, VarTypes,
         1, no, MaybeIn, no, MaybeOut),
-    (
+    ( if
         MaybeIn = yes(In),
         MaybeOut = yes(Out)
-    ->
+    then
         InArgNum = In,
         OutArgNum = Out
-    ;
+    else
         fail
     ).
 
@@ -3217,11 +3327,11 @@ proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars, ArgModes,
 proc_info_has_io_state_pair_2([], _, _, _, !MaybeIn, !MaybeOut).
 proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
         ArgNum, !MaybeIn, !MaybeOut) :-
-    (
+    ( if
         lookup_var_type(VarTypes, Var, VarType),
         type_is_io_state(VarType)
-    ->
-        ( mode_is_fully_input(ModuleInfo, Mode) ->
+    then
+        ( if mode_is_fully_input(ModuleInfo, Mode) then
             (
                 !.MaybeIn = no,
                 !:MaybeIn = yes(ArgNum)
@@ -3233,7 +3343,7 @@ proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
                 % one input/one output pattern we are looking for.
                 fail
             )
-        ; mode_is_fully_output(ModuleInfo, Mode) ->
+        else if mode_is_fully_output(ModuleInfo, Mode) then
             (
                 !.MaybeOut = no,
                 !:MaybeOut = yes(ArgNum)
@@ -3244,10 +3354,10 @@ proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
                 % looking for.
                 fail
             )
-        ;
+        else
             fail
         )
-    ;
+    else
         true
     ),
     proc_info_has_io_state_pair_2(VarModes, ModuleInfo, VarTypes,
@@ -3275,9 +3385,9 @@ find_lowest_unused_proc_id(ProcTable, CloneProcId) :-
     is det.
 
 find_lowest_unused_proc_id_2(TrialProcId, ProcTable, CloneProcId) :-
-    ( map.search(ProcTable, TrialProcId, _) ->
+    ( if map.search(ProcTable, TrialProcId, _) then
         find_lowest_unused_proc_id_2(TrialProcId + 1, ProcTable, CloneProcId)
-    ;
+    else
         CloneProcId = TrialProcId
     ).
 
@@ -3292,9 +3402,9 @@ ensure_all_headvars_are_named(!ProcInfo) :-
 
 ensure_all_headvars_are_named_2([], _, !VarSet).
 ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
-    ( varset.search_name(!.VarSet, Var, _Name) ->
+    ( if varset.search_name(!.VarSet, Var, _Name) then
         true
-    ;
+    else
         Name = "HeadVar__" ++ int_to_string(SeqNum),
         varset.name_var(Var, Name, !VarSet)
     ),
@@ -3348,17 +3458,17 @@ var_is_of_non_dummy_type(ModuleInfo, VarTypes, Var) :-
 :- implementation.
 
 field_extraction_function_args(Args, TermInputArg) :-
-    ( Args = [TermInputArg0] ->
+    ( if Args = [TermInputArg0] then
         TermInputArg = TermInputArg0
-    ;
+    else
         unexpected($module, $pred, "num_args != 1")
     ).
 
 field_update_function_args(Args, TermInputArg, FieldArg) :-
-    ( Args = [TermInputArg0, FieldArg0] ->
+    ( if Args = [TermInputArg0, FieldArg0] then
         FieldArg = FieldArg0,
         TermInputArg = TermInputArg0
-    ;
+    else
         unexpected($module, $pred, "num_args != 2")
     ).
 
@@ -3368,11 +3478,11 @@ field_access_function_name(set, FieldName, FuncName) :-
 
 is_field_access_function_name(ModuleInfo, FuncName, Arity,
         AccessType, FieldName) :-
-    ( remove_sym_name_suffix(FuncName, " :=", FieldName0) ->
+    ( if remove_sym_name_suffix(FuncName, " :=", FieldName0) then
         Arity = 2,
         AccessType = set,
         FieldName = FieldName0
-    ;
+    else
         Arity = 1,
         AccessType = get,
         FieldName = FuncName
@@ -3443,7 +3553,7 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    (
+    ( if
         % XXX This should ask: is this an inline builtin FOR THIS BACKEND?
         is_inline_builtin(ModuleName, PredName, ProcId, Arity),
         (
@@ -3461,9 +3571,9 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
             % form of the builtin would fall into an infinite loop.
             CallerPredId = PredId
         )
-    ->
+    then
         BuiltinState = inline_builtin
-    ;
+    else
         BuiltinState = not_builtin
     ).
 

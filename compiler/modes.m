@@ -629,10 +629,10 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         PredInfo0, ProcInfo0),
     proc_info_get_can_process(ProcInfo0, CanProcess),
     (
-        CanProcess = no,
+        CanProcess = cannot_process,
         Specs = []
     ;
-        CanProcess = yes,
+        CanProcess = can_process,
         do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             !ModuleInfo, PredInfo0, PredInfo, ProcInfo0, !Changed, Specs),
 
@@ -715,7 +715,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             % For inferred predicates, we don't report the error(s) here;
             % instead we just save them in the proc_info, thus marking that
             % procedure as invalid.
-            !ProcInfo ^ mode_errors := ModeErrors,
+            proc_info_set_mode_errors(ModeErrors, !ProcInfo),
             ErrorAndWarningSpecs = []
         ;
             InferModes = no,
@@ -1041,7 +1041,7 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
     pred_info_get_proc_table(PredInfo0, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
 
-    proc_info_set_can_process(yes, ProcInfo0, ProcInfo1),
+    proc_info_set_can_process(can_process, ProcInfo0, ProcInfo1),
 
     map.det_update(ProcId, ProcInfo1, Procs0, Procs1),
     pred_info_set_proc_table(Procs1, PredInfo0, PredInfo1),
