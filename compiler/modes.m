@@ -1422,7 +1422,7 @@ proc_check_eval_methods(ModuleInfo, PredId, [ProcId | ProcIds], !Specs) :-
     proc_info_get_argmodes(ProcInfo, Modes),
     ( if
         eval_method_requires_ground_args(EvalMethod) = yes,
-        \+ only_fully_in_out_modes(Modes, ModuleInfo)
+        not only_fully_in_out_modes(Modes, ModuleInfo)
     then
         GroundArgsSpec = report_eval_method_requires_ground_args(ProcInfo),
         !:Specs = [GroundArgsSpec | !.Specs]
@@ -1431,7 +1431,7 @@ proc_check_eval_methods(ModuleInfo, PredId, [ProcId | ProcIds], !Specs) :-
     ),
     ( if
         eval_method_destroys_uniqueness(EvalMethod) = yes,
-        \+ only_nonunique_modes(Modes, ModuleInfo)
+        not only_nonunique_modes(Modes, ModuleInfo)
     then
         UniquenessSpec = report_eval_method_destroys_uniqueness(ProcInfo),
         !:Specs = [UniquenessSpec | !.Specs]
@@ -1442,7 +1442,7 @@ proc_check_eval_methods(ModuleInfo, PredId, [ProcId | ProcIds], !Specs) :-
         pred_info_name(PredInfo) = "main",
         pred_info_orig_arity(PredInfo) = 2,
         pred_info_is_exported(PredInfo),
-        \+ check_mode_of_main(Modes, ModuleInfo)
+        not check_mode_of_main(Modes, ModuleInfo)
     then
         MainSpec = report_wrong_mode_for_main(ProcInfo),
         !:Specs = [MainSpec | !.Specs]
