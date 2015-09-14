@@ -19,7 +19,6 @@
 
 :- import_module analysis.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 
 :- import_module io.
 
@@ -29,12 +28,6 @@
     % current module.
     %
 :- pred structure_sharing_analysis(module_info::in, module_info::out,
-    io::di, io::uo) is det.
-
-    % Write all the sharing information concerning the specified predicate as
-    % reuse pragmas.
-    %
-:- pred write_pred_sharing_info(module_info::in, pred_id::in,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -72,6 +65,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
@@ -80,15 +74,9 @@
 :- import_module libs.options.
 :- import_module ll_backend.liveness.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
-:- import_module parse_tree.file_names.
-:- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.ctgc.fixpoint_table.
@@ -96,6 +84,7 @@
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.ctgc.util.
 :- import_module transform_hlds.dependency_graph.
+:- import_module transform_hlds.intermod.
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bool.
@@ -925,96 +914,6 @@ ss_fixpoint_table_get_final_as_semidet(PPId, T, SharingAs_Status) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for writing out optimization interfaces.
-%
-
-:- pred append_structure_sharing_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-append_structure_sharing_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Appending structure_sharing pragmas to ",
-        !IO),
-    maybe_write_string(Verbose, add_quotes(OptFileName), !IO),
-    maybe_write_string(Verbose, "...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        list.foldl(write_pred_sharing_info(ModuleInfo), PredIds, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% Code for writing out structure_sharing pragmas.
-%
-
-write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    PredName = pred_info_name(PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    ModuleName = pred_info_module(PredInfo),
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    pred_info_get_context(PredInfo, Context),
-    SymName = qualified(ModuleName, PredName),
-    pred_info_get_typevarset(PredInfo, TypeVarSet),
-    list.foldl(
-        write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable,
-            PredOrFunc, SymName, Context, TypeVarSet),
-        ProcIds, !IO).
-
-:- pred write_proc_sharing_info(module_info::in, pred_id::in, pred_info::in,
-    proc_table::in, pred_or_func::in, sym_name::in, prog_context::in,
-    tvarset::in, proc_id::in, io::di, io::uo) is det.
-
-write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
-        SymName, Context, TypeVarSet, ProcId, !IO) :-
-    should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
-        for_pragma, ShouldWrite),
-    (
-        ShouldWrite = yes,
-
-        map.lookup(ProcTable, ProcId, ProcInfo),
-        proc_info_get_structure_sharing(ProcInfo, MaybeSharingStatus),
-        proc_info_declared_argmodes(ProcInfo, Modes),
-        proc_info_get_varset(ProcInfo, VarSet),
-        proc_info_get_headvars(ProcInfo, HeadVars),
-        proc_info_get_vartypes(ProcInfo, VarTypes),
-        lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
-        (
-            MaybeSharingStatus = yes(
-                structure_sharing_domain_and_status(Sharing, _Status)),
-            PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
-            SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
-                HeadVars, HeadVarTypes, yes(Sharing)),
-            write_pragma_structure_sharing_info(output_debug,
-                yes(VarSet), yes(TypeVarSet), Context, SharingInfo, !IO)
-        ;
-            MaybeSharingStatus = no
-        )
-    ;
-        ShouldWrite = no
-    ).
-
-%-----------------------------------------------------------------------------%
-%
 % Types and instances for the intermodule analysis framework.
 %
 
@@ -1198,7 +1097,7 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
     should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
         for_analysis_framework, ShouldWrite),
     (
-        ShouldWrite = yes,
+        ShouldWrite = should_write,
         pred_info_proc_info(PredInfo, ProcId, ProcInfo),
         PPId = proc(PredId, ProcId),
         ( if
@@ -1262,7 +1161,7 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
         record_result(ModuleName, FuncId, structure_sharing_call, Answer,
             Status, !AnalysisInfo)
     ;
-        ShouldWrite = no
+        ShouldWrite = should_not_write
     ).
 
 :- pred reason_implies_optimal(module_info::in, analysis_info::in,
@@ -1311,38 +1210,6 @@ write_top_feedback(ModuleInfo, Reason, !IO) :-
         Reason = top_cannot_improve(String),
         io.write_string("cannot_improve: ", !IO),
         io.write_string(String, !IO)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- type should_write_for
-    --->    for_analysis_framework
-    ;       for_pragma.
-
-:- pred should_write_sharing_info(module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, should_write_for::in, bool::out) is det.
-
-should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
-        ShouldWrite) :-
-    ( if
-        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_or_compare_pred(PredInfo),
-        (
-            WhatFor = for_analysis_framework
-        ;
-            WhatFor = for_pragma,
-            % XXX These should be allowed, but the predicate declaration for
-            % the specialized predicate is not produced before the structure
-            % sharing pragmas are read in, resulting in an undefined predicate
-            % error.
-            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-            not set.member(PredId, TypeSpecForcePreds)
-        )
-    then
-        ShouldWrite = yes
-    else
-        ShouldWrite = no
     ).
 
 %-----------------------------------------------------------------------------%

@@ -201,7 +201,7 @@
 :- import_module hlds.code_model.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.exception_analysis.
-:- import_module transform_hlds.term_constr_main.
+:- import_module transform_hlds.term_constr_main_types.
 
 :- import_module int.
 :- import_module map.

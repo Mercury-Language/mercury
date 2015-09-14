@@ -71,16 +71,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_cmds.
-:- import_module transform_hlds.ctgc.
-:- import_module transform_hlds.ctgc.structure_reuse.
-:- import_module transform_hlds.ctgc.structure_reuse.analysis.
-:- import_module transform_hlds.ctgc.structure_sharing.
-:- import_module transform_hlds.ctgc.structure_sharing.analysis.
-:- import_module transform_hlds.exception_analysis.
-:- import_module transform_hlds.tabling_analysis.
-:- import_module transform_hlds.term_constr_main.
-:- import_module transform_hlds.termination.
-:- import_module transform_hlds.trailing_analysis.
+:- import_module transform_hlds.intermod.
 
 :- import_module list.
 :- import_module set.
@@ -125,21 +116,23 @@ write_trans_opt_file(ModuleInfo, !IO) :-
         PredIdsNoReusePredsSet = set.difference(PredIdsSet, ReusePredsSet),
         PredIdsNoReuseVersions = set.to_sorted_list(PredIdsNoReusePredsSet),
 
-        list.foldl(termination.write_pred_termination_info(ModuleInfo),
+        list.foldl(
+            write_pred_termination_info(ModuleInfo),
             PredIdsNoReuseVersions, !IO),
-        list.foldl(term_constr_main.output_pred_termination2_info(ModuleInfo),
+        list.foldl(
+            output_pragma_termination2_infos_for_pred(ModuleInfo),
             PredIdsNoReuseVersions, !IO),
 
         list.foldl(
-            structure_sharing.analysis.write_pred_sharing_info(ModuleInfo),
+            write_pred_sharing_info(ModuleInfo),
             PredIdsNoReuseVersions, !IO),
-        list.foldl(structure_reuse.analysis.write_pred_reuse_info(ModuleInfo),
+        list.foldl(
+            write_pred_reuse_info(ModuleInfo),
             PredIdsNoReuseVersions, !IO),
 
         module_info_get_exception_info(ModuleInfo, ExceptionInfo),
         list.foldl(
-            exception_analysis.write_pragma_exceptions(ModuleInfo,
-                ExceptionInfo),
+            write_pragma_exceptions(ModuleInfo, ExceptionInfo),
             PredIdsNoReuseVersions, !IO),
 
         module_info_get_trailing_info(ModuleInfo, TrailingInfo),

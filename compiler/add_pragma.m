@@ -55,7 +55,7 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
-:- import_module transform_hlds.term_constr_main.
+:- import_module transform_hlds.term_constr_main_types.
 :- import_module transform_hlds.term_constr_util.
 :- import_module transform_hlds.term_util.
 

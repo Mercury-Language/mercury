@@ -38,6 +38,7 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 
 :- import_module io.
 
@@ -51,16 +52,118 @@
     %
     % Although this predicate creates the .opt.tmp file, it does not
     % necessarily create it in its final form. Later compiler passes
-    % may append to this file.
+    % may append to this file. Most use the append_xxx_to_opt_file predicates
+    % below, though unused_args.m doesn't (at least not yet).
     % XXX This is not an elegant arrangement.
     %
 :- pred write_initial_opt_file(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-    % Make sure that local preds which have been exported in the .opt
-    % file get an exported(_) label.
+%-----------------------------------------------------------------------------%
+%
+% These predicates are used to add the termination_info pragmas to the
+% .opt and .trans_opt files.
+%
+
+:- pred append_exception_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
+
+:- pred append_trailing_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
+
+:- pred append_mm_tabling_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
+
+:- pred append_structure_reuse_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
+
+:- pred append_structure_sharing_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
+
+:- pred append_termination_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
+
+:- pred append_termination2_pragmas_to_opt_file(module_info::in,
+    io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+:- type should_write_for
+    --->    for_analysis_framework
+    ;       for_pragma.
+
+:- type maybe_should_write
+    --->    should_not_write
+    ;       should_write.
+
+:- pred should_write_exception_info(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, should_write_for::in, maybe_should_write::out) is det.
+
+:- pred should_write_trailing_info(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, should_write_for::in, maybe_should_write::out) is det.
+
+:- pred should_write_mm_tabling_info(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, should_write_for::in, maybe_should_write::out) is det.
+
+:- pred should_write_reuse_info(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, should_write_for::in, maybe_should_write::out) is det.
+
+:- pred should_write_sharing_info(module_info::in, pred_id::in, proc_id::in,
+    pred_info::in, should_write_for::in, maybe_should_write::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Write out the exception pragmas for this predicate.
     %
-:- pred adjust_pred_import_status(module_info::in, module_info::out) is det.
+:- pred write_pragma_exceptions(module_info::in, exception_info::in,
+    pred_id::in, io::di, io::uo) is det.
+
+    % Write out the trailing_info pragma for this module.
+    %
+:- pred write_pragma_trailing_info(module_info::in, trailing_info::in,
+    pred_id::in, io::di, io::uo) is det.
+
+    % Write out the mm_tabling_info pragma for this predicate.
+    %
+:- pred write_pragma_mm_tabling_info(module_info::in, mm_tabling_info::in,
+    pred_id::in, io::di, io::uo) is det.
+
+    % Write all the reuse information concerning the specified predicate as
+    % reuse pragmas.
+    %
+:- pred write_pred_reuse_info(module_info::in, pred_id::in,
+    io::di, io::uo) is det.
+
+    % Write all the sharing information concerning the specified predicate as
+    % reuse pragmas.
+    %
+:- pred write_pred_sharing_info(module_info::in, pred_id::in,
+    io::di, io::uo) is det.
+
+    % Write out a termination_info pragma for the predicate if it is exported,
+    % it is not a builtin and it is not a predicate used to force type
+    % specialization.
+    %
+:- pred write_pred_termination_info(module_info::in, pred_id::in,
+    io::di, io::uo) is det.
+
+    % Write out termination2_info pragma for the procedures of a predicate if:
+    %   - the predicate is exported.
+    %   - the predicate is not compiler generated.
+    %
+:- pred output_pragma_termination2_infos_for_pred(module_info::in, pred_id::in,
+    io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Make sure the labels of local preds needed by predicates in
+    % the .opt file are exported, and inhibit dead proc elimination
+    % on those preds.
+    % XXX This should be done at the same time as the predicates are
+    % being written to the .opt file.
+    %
+:- pred adjust_pred_status_for_opt_export(module_info::in, module_info::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -80,14 +183,15 @@
 :- import_module hlds.hlds_out.hlds_out_module.
 :- import_module hlds.hlds_out.hlds_out_pred.
 :- import_module hlds.hlds_out.hlds_out_util.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.lp_rational.
 :- import_module libs.options.
+:- import_module libs.polyhedron.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
@@ -101,6 +205,9 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.inlining.
+:- import_module transform_hlds.term_constr_data.
+:- import_module transform_hlds.term_constr_main_types.
+:- import_module transform_hlds.term_constr_util.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -113,6 +220,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
+:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -152,7 +260,7 @@ write_initial_opt_file(!ModuleInfo, !IO) :-
             intermod_info_get_module_info(!.IntermodInfo, !:ModuleInfo),
             io.set_output_stream(OutputStream, _, !IO),
             io.close_output(FileStream, !IO),
-            do_adjust_pred_import_status(!.IntermodInfo, !ModuleInfo)
+            do_adjust_pred_status_for_opt_export(!.IntermodInfo, !ModuleInfo)
         )
     ).
 
@@ -2184,6 +2292,800 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
     ).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+append_exception_pragmas_to_opt_file(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose, "% Appending exceptions pragmas to `", !IO),
+    maybe_write_string(Verbose, OptFileName, !IO),
+    maybe_write_string(Verbose, "'...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_append(OptFileName, OptFileRes, !IO),
+    (
+        OptFileRes = ok(OptFile),
+        io.set_output_stream(OptFile, OldStream, !IO),
+        module_info_get_exception_info(ModuleInfo, ExceptionInfo),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+        list.foldl(write_pragma_exceptions(ModuleInfo, ExceptionInfo),
+            PredIds, !IO),
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(OptFile, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        OptFileRes = error(IOError),
+        maybe_write_string(Verbose, " failed!\n", !IO),
+        io.error_message(IOError, IOErrorMessage),
+        io.write_strings(["Error opening file `",
+            OptFileName, "' for output: ", IOErrorMessage], !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+write_pragma_exceptions(ModuleInfo, ExceptionInfo, PredId, !IO) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
+    list.foldl(
+        write_pragma_exceptions_2(ModuleInfo, ExceptionInfo, PredId, PredInfo),
+        ProcIds, !IO).
+
+:- pred write_pragma_exceptions_2(module_info::in, exception_info::in,
+    pred_id::in, pred_info::in, proc_id::in, io::di, io::uo) is det.
+
+write_pragma_exceptions_2(ModuleInfo, ExceptionMap, PredId, PredInfo, ProcId,
+        !IO) :-
+    ( if
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+        not is_unify_or_compare_pred(PredInfo),
+
+        module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+        TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+        not set.member(PredId, TypeSpecForcePreds),
+
+        % XXX Writing out pragmas for the automatically generated class
+        % instance methods causes the compiler to abort when it reads them
+        % back in.
+        pred_info_get_markers(PredInfo, Markers),
+        not check_marker(Markers, marker_class_instance_method),
+        not check_marker(Markers, marker_named_class_instance_method)
+    then
+        ModuleName = pred_info_module(PredInfo),
+        PredName = pred_info_name(PredInfo),
+        PredArity = pred_info_orig_arity(PredInfo),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        proc_id_to_int(ProcId, ModeNum),
+        ( if
+            map.search(ExceptionMap, proc(PredId, ProcId), ProcExceptionInfo)
+        then
+            ProcExceptionInfo = proc_exception_info(Status, _),
+            PredSymName = qualified(ModuleName, PredName),
+            PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
+                PredOrFunc, ModeNum),
+            ExceptionInfo = pragma_info_exceptions(PredNameArityPFMn, Status),
+            mercury_output_pragma_exceptions(ExceptionInfo, !IO)
+        else
+            true
+        )
+    else
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+append_trailing_pragmas_to_opt_file(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose, "% Appending trailing_info pragmas to `", !IO),
+    maybe_write_string(Verbose, OptFileName, !IO),
+    maybe_write_string(Verbose, "'...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_append(OptFileName, OptFileRes, !IO),
+    (
+        OptFileRes = ok(OptFile),
+        io.set_output_stream(OptFile, OldStream, !IO),
+        module_info_get_trailing_info(ModuleInfo, TrailingInfo),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+        list.foldl(write_pragma_trailing_info(ModuleInfo, TrailingInfo),
+            PredIds, !IO),
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(OptFile, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        OptFileRes = error(IOError),
+        maybe_write_string(Verbose, " failed!\n", !IO),
+        io.error_message(IOError, IOErrorMessage),
+        io.write_strings(["Error opening file `",
+            OptFileName, "' for output: ", IOErrorMessage], !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+write_pragma_trailing_info(ModuleInfo, TrailingInfo, PredId, !IO) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
+    list.foldl(
+        write_pragma_trailing_info_2(ModuleInfo, TrailingInfo, PredId,
+            PredInfo),
+        ProcIds, !IO).
+
+:- pred write_pragma_trailing_info_2(module_info::in, trailing_info::in,
+    pred_id::in, pred_info::in, proc_id::in, io::di, io::uo) is det.
+
+write_pragma_trailing_info_2(ModuleInfo, TrailingMap, PredId, PredInfo,
+        ProcId, !IO) :-
+    should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo,
+        for_pragma, ShouldWrite),
+    (
+        ShouldWrite = should_write,
+        ModuleName = pred_info_module(PredInfo),
+        PredName = pred_info_name(PredInfo),
+        PredArity = pred_info_orig_arity(PredInfo),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        proc_id_to_int(ProcId, ModeNum),
+        ( if
+            map.search(TrailingMap, proc(PredId, ProcId), ProcTrailInfo),
+            ProcTrailInfo = proc_trailing_info(Status, _)
+        then
+            PredSymName = qualified(ModuleName, PredName),
+            PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
+                PredOrFunc, ModeNum),
+            TrailingInfo = pragma_info_trailing_info(PredNameArityPFMn,
+                Status),
+            mercury_output_pragma_trailing_info(TrailingInfo, !IO)
+        else
+            true
+        )
+    ;
+        ShouldWrite = should_not_write
+    ).
+
+%-----------------------------------------------------------------------------%
+
+append_mm_tabling_pragmas_to_opt_file(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose, "% Appending mm_tabling_info pragmas to `",
+        !IO),
+    maybe_write_string(Verbose, OptFileName, !IO),
+    maybe_write_string(Verbose, "'...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_append(OptFileName, OptFileRes, !IO),
+    (
+        OptFileRes = ok(OptFile),
+        io.set_output_stream(OptFile, OldStream, !IO),
+        module_info_get_mm_tabling_info(ModuleInfo, TablingInfo),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+        list.foldl(write_pragma_mm_tabling_info(ModuleInfo, TablingInfo),
+            PredIds, !IO),
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(OptFile, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        OptFileRes = error(IOError),
+        maybe_write_string(Verbose, " failed!\n", !IO),
+        io.error_message(IOError, IOErrorMessage),
+        io.write_strings(["Error opening file `",
+            OptFileName, "' for output: ", IOErrorMessage], !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+write_pragma_mm_tabling_info(ModuleInfo, TablingInfo, PredId, !IO) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
+    list.foldl(
+        write_pragma_mm_tabling_info_2(ModuleInfo, TablingInfo, PredId,
+            PredInfo),
+        ProcIds, !IO).
+
+:- pred write_pragma_mm_tabling_info_2(module_info::in, mm_tabling_info::in,
+    pred_id::in, pred_info::in, proc_id::in, io::di, io::uo) is det.
+
+write_pragma_mm_tabling_info_2(ModuleInfo, TablingInfo, PredId, PredInfo,
+        ProcId, !IO) :-
+    should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo,
+        for_pragma, ShouldWrite),
+    (
+        ShouldWrite = should_write,
+        ModuleName = pred_info_module(PredInfo),
+        PredName = pred_info_name(PredInfo),
+        PredArity = pred_info_orig_arity(PredInfo),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        proc_id_to_int(ProcId, ModeNum),
+        ( if
+            map.search(TablingInfo, proc(PredId, ProcId), ProcTablingInfo),
+            ProcTablingInfo = proc_mm_tabling_info(Status, _)
+        then
+            PredSymName = qualified(ModuleName, PredName),
+            PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
+                PredOrFunc, ModeNum),
+            MMTablingInfo = pragma_info_mm_tabling_info(PredNameArityPFMn,
+                Status),
+            mercury_output_pragma_mm_tabling_info(MMTablingInfo, !IO)
+        else
+            true
+        )
+    ;
+        ShouldWrite = should_not_write
+    ).
+
+%-----------------------------------------------------------------------------%
+
+append_structure_reuse_pragmas_to_opt_file(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose, "% Appending structure_reuse pragmas to `",
+        !IO),
+    maybe_write_string(Verbose, OptFileName, !IO),
+    maybe_write_string(Verbose, "'...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_append(OptFileName, OptFileRes, !IO),
+    (
+        OptFileRes = ok(OptFile),
+        io.set_output_stream(OptFile, OldStream, !IO),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+        list.foldl(write_pred_reuse_info(ModuleInfo), PredIds, !IO),
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(OptFile, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        OptFileRes = error(IOError),
+        maybe_write_string(Verbose, " failed!\n", !IO),
+        io.error_message(IOError, IOErrorMessage),
+        io.write_strings(["Error opening file `",
+            OptFileName, "' for output: ", IOErrorMessage], !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+write_pred_reuse_info(ModuleInfo, PredId, !IO) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    PredName = pred_info_name(PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    pred_info_get_context(PredInfo, Context),
+    SymName = qualified(ModuleName, PredName),
+    pred_info_get_typevarset(PredInfo, TypeVarSet),
+    list.foldl(write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable,
+        PredOrFunc, SymName, Context, TypeVarSet), ProcIds, !IO).
+
+:- pred write_proc_reuse_info(module_info::in, pred_id::in, pred_info::in,
+    proc_table::in, pred_or_func::in, sym_name::in, prog_context::in,
+    tvarset::in, proc_id::in, io::di, io::uo) is det.
+
+write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
+        SymName, Context, TypeVarSet, ProcId, !IO) :-
+    should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
+        for_pragma, ShouldWrite),
+    (
+        ShouldWrite = should_write,
+        map.lookup(ProcTable, ProcId, ProcInfo),
+        proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuseDomain),
+        (
+            MaybeStructureReuseDomain = yes(
+                structure_reuse_domain_and_status(Reuse, _Status)),
+            proc_info_declared_argmodes(ProcInfo, Modes),
+            proc_info_get_varset(ProcInfo, VarSet),
+            proc_info_get_headvars(ProcInfo, HeadVars),
+            proc_info_get_vartypes(ProcInfo, VarTypes),
+            lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+            MaybeReuse = yes(Reuse),
+            PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
+            ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
+                HeadVars, HeadVarTypes, MaybeReuse),
+            write_pragma_structure_reuse_info(output_debug,
+                yes(VarSet), yes(TypeVarSet), Context, ReuseInfo,!IO)
+        ;
+            MaybeStructureReuseDomain = no
+        )
+    ;
+        ShouldWrite = should_not_write
+    ).
+
+%-----------------------------------------------------------------------------%
+
+append_structure_sharing_pragmas_to_opt_file(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose, "% Appending structure_sharing pragmas to `",
+        !IO),
+    maybe_write_string(Verbose, OptFileName, !IO),
+    maybe_write_string(Verbose, "'...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_append(OptFileName, OptFileRes, !IO),
+    (
+        OptFileRes = ok(OptFile),
+        io.set_output_stream(OptFile, OldStream, !IO),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+        list.foldl(write_pred_sharing_info(ModuleInfo), PredIds, !IO),
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(OptFile, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        OptFileRes = error(IOError),
+        maybe_write_string(Verbose, " failed!\n", !IO),
+        io.error_message(IOError, IOErrorMessage),
+        io.write_strings(["Error opening file `",
+            OptFileName, "' for output: ", IOErrorMessage], !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    PredName = pred_info_name(PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    ModuleName = pred_info_module(PredInfo),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    pred_info_get_context(PredInfo, Context),
+    SymName = qualified(ModuleName, PredName),
+    pred_info_get_typevarset(PredInfo, TypeVarSet),
+    list.foldl(
+        write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable,
+            PredOrFunc, SymName, Context, TypeVarSet),
+        ProcIds, !IO).
+
+:- pred write_proc_sharing_info(module_info::in, pred_id::in, pred_info::in,
+    proc_table::in, pred_or_func::in, sym_name::in, prog_context::in,
+    tvarset::in, proc_id::in, io::di, io::uo) is det.
+
+write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
+        SymName, Context, TypeVarSet, ProcId, !IO) :-
+    should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo,
+        for_pragma, ShouldWrite),
+    (
+        ShouldWrite = should_write,
+
+        map.lookup(ProcTable, ProcId, ProcInfo),
+        proc_info_get_structure_sharing(ProcInfo, MaybeSharingStatus),
+        proc_info_declared_argmodes(ProcInfo, Modes),
+        proc_info_get_varset(ProcInfo, VarSet),
+        proc_info_get_headvars(ProcInfo, HeadVars),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
+        lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
+        (
+            MaybeSharingStatus = yes(
+                structure_sharing_domain_and_status(Sharing, _Status)),
+            PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
+            SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
+                HeadVars, HeadVarTypes, yes(Sharing)),
+            write_pragma_structure_sharing_info(output_debug,
+                yes(VarSet), yes(TypeVarSet), Context, SharingInfo, !IO)
+        ;
+            MaybeSharingStatus = no
+        )
+    ;
+        ShouldWrite = should_not_write
+    ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+append_termination_pragmas_to_opt_file(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose, "% Appending termination_info pragmas to `",
+        !IO),
+    maybe_write_string(Verbose, OptFileName, !IO),
+    maybe_write_string(Verbose, "'...", !IO),
+    maybe_flush_output(Verbose, !IO),
+
+    io.open_append(OptFileName, OptFileRes, !IO),
+    (
+        OptFileRes = ok(OptFile),
+        io.set_output_stream(OptFile, OldStream, !IO),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+        list.foldl(write_pred_termination_info(ModuleInfo), PredIds, !IO),
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(OptFile, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        OptFileRes = error(IOError),
+        maybe_write_string(Verbose, " failed!\n", !IO),
+        io.error_message(IOError, IOErrorMessage),
+        io.write_strings(["Error opening file `",
+            OptFileName, "' for output: ", IOErrorMessage], !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+write_pred_termination_info(ModuleInfo, PredId, !IO) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_status(PredInfo, PredStatus),
+    module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+    TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+    ( if
+        (
+            PredStatus = pred_status(status_exported)
+        ;
+            PredStatus = pred_status(status_opt_exported)
+        ),
+        not is_unify_or_compare_pred(PredInfo),
+
+        % XXX These should be allowed, but the predicate declaration for
+        % the specialized predicate is not produced before the termination
+        % pragmas are read in, resulting in an undefined predicate error.
+        not set.member(PredId, TypeSpecForcePreds)
+    then
+        PredName = pred_info_name(PredInfo),
+        ProcIds = pred_info_procids(PredInfo),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        ModuleName = pred_info_module(PredInfo),
+        pred_info_get_proc_table(PredInfo, ProcTable),
+        pred_info_get_context(PredInfo, Context),
+        SymName = qualified(ModuleName, PredName),
+        write_proc_termination_info(PredId, ProcIds, ProcTable,
+            PredOrFunc, SymName, Context, !IO)
+    else
+        true
+    ).
+
+:- pred write_proc_termination_info(pred_id::in, list(proc_id)::in,
+    proc_table::in, pred_or_func::in, sym_name::in, prog_context::in,
+    io::di, io::uo) is det.
+
+write_proc_termination_info(_, [], _, _, _, _, !IO).
+write_proc_termination_info(PredId, [ProcId | ProcIds], ProcTable,
+        PredOrFunc, SymName, Context, !IO) :-
+    map.lookup(ProcTable, ProcId, ProcInfo),
+    proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize),
+    proc_info_get_maybe_termination_info(ProcInfo, Termination),
+    proc_info_declared_argmodes(ProcInfo, ModeList),
+    write_pragma_termination_info_components(output_mercury, PredOrFunc,
+        SymName, ModeList, ArgSize, Termination, Context, !IO),
+    write_proc_termination_info(PredId, ProcIds, ProcTable, PredOrFunc,
+        SymName, Context, !IO).
+
+
+%-----------------------------------------------------------------------------%
+
+append_termination2_pragmas_to_opt_file(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose,
+        "% Appending termination2_info pragmas to `", !IO),
+    maybe_write_string(Verbose, OptFileName, !IO),
+    maybe_write_string(Verbose, "'...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_append(OptFileName, OptFileRes, !IO),
+    (
+        OptFileRes = ok(OptFile),
+        io.set_output_stream(OptFile, OldStream, !IO),
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+        list.foldl(output_pragma_termination2_infos_for_pred(ModuleInfo),
+            PredIds, !IO),
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(OptFile, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        OptFileRes = error(IOError),
+        maybe_write_string(Verbose, " failed!\n", !IO),
+        io.error_message(IOError, IOErrorMessage),
+        io.write_strings(["Error opening file `",
+            OptFileName, "' for output: ", IOErrorMessage], !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+output_pragma_termination2_infos_for_pred(ModuleInfo, PredId, !IO) :-
+    % Don't try to output termination2_info pragmas unless the analysis
+    % was actually run. Doing otherwise won't work because the necessary
+    % information will not have been set up.
+
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, termination2, RunningTerm2),
+    (
+        RunningTerm2 = yes,
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_status(PredInfo, PredStatus),
+        module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+        TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+        ( if
+            ( PredStatus = pred_status(status_exported)
+            ; PredStatus = pred_status(status_opt_exported)
+            ),
+            not hlds_pred.is_unify_or_compare_pred(PredInfo),
+            not set.member(PredId, TypeSpecForcePreds)
+        then
+            PredName   = pred_info_name(PredInfo),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            ModuleName = pred_info_module(PredInfo),
+            ProcIds    = pred_info_procids(PredInfo),
+            SymName    = qualified(ModuleName, PredName),
+            pred_info_get_proc_table(PredInfo, ProcTable),
+            pred_info_get_context(PredInfo, Context),
+            output_pragma_termination2_infos_for_procs(PredOrFunc, SymName,
+                Context, PredId, ProcIds, ProcTable, !IO)
+        else
+            true
+        )
+    ;
+        RunningTerm2 = no
+    ).
+
+:- pred output_pragma_termination2_infos_for_procs(pred_or_func::in,
+    sym_name::in, prog_context::in, pred_id::in, list(proc_id)::in,
+    proc_table::in, io::di, io::uo) is det.
+
+output_pragma_termination2_infos_for_procs(_, _, _, _, [], _, !IO).
+output_pragma_termination2_infos_for_procs(PredOrFunc, SymName, Context,
+        PredId, [ProcId | ProcIds], ProcTable, !IO) :-
+    map.lookup(ProcTable, ProcId, ProcInfo),
+    output_pragma_termination2_info_for_proc(PredOrFunc, SymName, Context,
+        ProcInfo, !IO),
+    output_pragma_termination2_infos_for_procs(PredOrFunc, SymName, Context,
+        PredId, ProcIds, ProcTable, !IO).
+
+    % Write out a termination2_info pragma for the procedure.
+    %
+:- pred output_pragma_termination2_info_for_proc(pred_or_func::in,
+    sym_name::in, prog_context::in, proc_info::in, io::di, io::uo) is det.
+
+output_pragma_termination2_info_for_proc(PredOrFunc, SymName, Context,
+        ProcInfo, !IO) :-
+    % NOTE: If this predicate is changed, then prog_io_pragma.m must also
+    % be changed, so that it can parse the resulting pragma termination2_info
+    % declarations.
+    % XXX Should construct a pragma, then call parse_tree_out_pragma.m.
+
+    proc_info_declared_argmodes(ProcInfo, ArgModes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_termination2_info(ProcInfo, TermInfo),
+    MaybeSuccess = TermInfo ^ success_constrs,
+    MaybeFailure = TermInfo ^ failure_constrs,
+    MaybeTermination = TermInfo ^ term_status,
+    SizeVarMap = TermInfo ^ size_var_map,
+    HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
+
+    io.write_string(":- pragma termination2_info(", !IO),
+    (
+        PredOrFunc = pf_predicate,
+        mercury_output_pred_mode_subdecl(output_mercury, varset.init, SymName,
+            ArgModes, no, Context, !IO)
+    ;
+        PredOrFunc = pf_function,
+        pred_args_to_func_args(ArgModes, FuncArgModes, ReturnMode),
+        mercury_output_func_mode_subdecl(output_mercury, varset.init, SymName,
+            FuncArgModes, ReturnMode, no, Context, !IO)
+    ),
+
+    list.length(HeadSizeVars, NumHeadSizeVars),
+    HeadSizeVarIds = 0 .. NumHeadSizeVars - 1,
+    map.det_insert_from_corresponding_lists(HeadSizeVars, HeadSizeVarIds,
+        map.init, VarToVarIdMap),
+
+    io.write_string(", ", !IO),
+    output_maybe_constr_arg_size_info(VarToVarIdMap, MaybeSuccess, !IO),
+    io.write_string(", ", !IO),
+    output_maybe_constr_arg_size_info(VarToVarIdMap, MaybeFailure, !IO),
+    io.write_string(", ", !IO),
+    output_maybe_termination2_info(MaybeTermination, !IO),
+    io.write_string(").\n", !IO).
+
+:- pred output_maybe_constr_arg_size_info(map(size_var, int)::in,
+    maybe(constr_arg_size_info)::in, io::di, io::uo) is det.
+
+output_maybe_constr_arg_size_info(VarToVarIdMap, MaybeArgSizeConstrs, !IO) :-
+    (
+        MaybeArgSizeConstrs = no,
+        io.write_string("not_set", !IO)
+    ;
+        MaybeArgSizeConstrs = yes(Polyhedron),
+        io.write_string("constraints(", !IO),
+        Constraints0 = polyhedron.non_false_constraints(Polyhedron),
+        Constraints1 = list.filter(isnt(nonneg_constr), Constraints0),
+        Constraints  = list.sort(Constraints1),
+        OutputVar = (func(Var) = int_to_string(VarToVarIdMap ^ det_elem(Var))),
+        lp_rational.output_constraints(OutputVar, Constraints, !IO),
+        io.write_char(')', !IO)
+    ).
+
+:- pred output_maybe_termination2_info(maybe(constr_termination_info)::in,
+    io::di, io::uo) is det.
+
+output_maybe_termination2_info(MaybeConstrTermInfo, !IO) :-
+    (
+        MaybeConstrTermInfo = no,
+        io.write_string("not_set", !IO)
+    ;
+        MaybeConstrTermInfo = yes(cannot_loop(_)),
+        io.write_string("cannot_loop", !IO)
+    ;
+        MaybeConstrTermInfo = yes(can_loop(_)),
+        io.write_string("can_loop", !IO)
+    ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
+        WhatFor, ShouldWrite) :-
+    ( if
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+        not is_unify_or_compare_pred(PredInfo),
+        (
+            WhatFor = for_analysis_framework
+        ;
+            WhatFor = for_pragma,
+            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            not set.member(PredId, TypeSpecForcePreds),
+
+            % XXX Writing out pragmas for the automatically generated class
+            % instance methods causes the compiler to abort when it reads them
+            % back in.
+            pred_info_get_markers(PredInfo, Markers),
+            not check_marker(Markers, marker_class_instance_method),
+            not check_marker(Markers, marker_named_class_instance_method)
+        )
+    then
+        ShouldWrite = should_write
+    else
+        ShouldWrite = should_not_write
+    ).
+
+should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
+        ShouldWrite) :-
+    ( if
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+        not is_unify_or_compare_pred(PredInfo),
+        (
+            WhatFor = for_analysis_framework
+        ;
+            WhatFor = for_pragma,
+            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            not set.member(PredId, TypeSpecForcePreds),
+            %
+            % XXX Writing out pragmas for the automatically generated class
+            % instance methods causes the compiler to abort when it reads them
+            % back in.
+            %
+            pred_info_get_markers(PredInfo, Markers),
+            not check_marker(Markers, marker_class_instance_method),
+            not check_marker(Markers, marker_named_class_instance_method)
+        )
+    then
+        ShouldWrite = should_write
+    else
+        ShouldWrite = should_not_write
+    ).
+
+should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
+        ShouldWrite) :-
+    ( if
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+        not is_unify_or_compare_pred(PredInfo),
+        (
+            WhatFor = for_analysis_framework
+        ;
+            WhatFor = for_pragma,
+            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            not set.member(PredId, TypeSpecForcePreds),
+
+            % XXX Writing out pragmas for the automatically generated class
+            % instance methods causes the compiler to abort when it reads them
+            % back in.
+            pred_info_get_markers(PredInfo, Markers),
+            not check_marker(Markers, marker_class_instance_method),
+            not check_marker(Markers, marker_named_class_instance_method)
+        )
+    then
+        ShouldWrite = should_write
+    else
+        ShouldWrite = should_not_write
+    ).
+
+should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
+        ShouldWrite) :-
+    ( if
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+        not is_unify_or_compare_pred(PredInfo),
+
+        % Don't write out info for reuse versions of procedures.
+        pred_info_get_origin(PredInfo, PredOrigin),
+        PredOrigin \= origin_transformed(transform_structure_reuse, _, _),
+
+        (
+            WhatFor = for_analysis_framework
+        ;
+            WhatFor = for_pragma,
+            % XXX These should be allowed, but the predicate declaration for
+            % the specialized predicate is not produced before the structure
+            % reuse pragmas are read in, resulting in an undefined predicate
+            % error.
+            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            not set.member(PredId, TypeSpecForcePreds)
+        )
+    then
+        ShouldWrite = should_write
+    else
+        ShouldWrite = should_not_write
+    ).
+
+should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
+        ShouldWrite) :-
+    ( if
+        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
+        not is_unify_or_compare_pred(PredInfo),
+        (
+            WhatFor = for_analysis_framework
+        ;
+            WhatFor = for_pragma,
+            % XXX These should be allowed, but the predicate declaration for
+            % the specialized predicate is not produced before the structure
+            % sharing pragmas are read in, resulting in an undefined predicate
+            % error.
+            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
+            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            not set.member(PredId, TypeSpecForcePreds)
+        )
+    then
+        ShouldWrite = should_write
+    else
+        ShouldWrite = should_not_write
+    ).
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+    % Should a declaration with the given status be written to the `.opt' file.
+    %
+:- func type_status_to_write(type_status) = bool.
+:- func inst_status_to_write(inst_status) = bool.
+:- func mode_status_to_write(mode_status) = bool.
+:- func typeclass_status_to_write(typeclass_status) = bool.
+:- func instance_status_to_write(instance_status) = bool.
+:- func pred_status_to_write(pred_status) = bool.
+
+type_status_to_write(type_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+inst_status_to_write(inst_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+mode_status_to_write(mode_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+typeclass_status_to_write(typeclass_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+instance_status_to_write(instance_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+pred_status_to_write(pred_status(OldStatus)) =
+    old_status_to_write(OldStatus).
+
+:- func old_status_to_write(old_import_status) = bool.
+
+old_status_to_write(status_imported(_)) = no.
+old_status_to_write(status_abstract_imported) = no.
+old_status_to_write(status_pseudo_imported) = no.
+old_status_to_write(status_opt_imported) = no.
+old_status_to_write(status_exported) = no.
+old_status_to_write(status_opt_exported) = yes.
+old_status_to_write(status_abstract_exported) = yes.
+old_status_to_write(status_pseudo_exported) = no.
+old_status_to_write(status_exported_to_submodules) = yes.
+old_status_to_write(status_local) = yes.
+old_status_to_write(status_external(Status)) =
+    bool.not(old_status_is_exported(Status)).
+
+%-----------------------------------------------------------------------------%
 
     % A collection of stuff to go in the .opt file.
     %
@@ -2308,11 +3210,7 @@ intermod_info_set_tvarset(TVarSet, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Make sure the labels of local preds needed by predicates in
-    % the .opt file are exported, and inhibit dead proc elimination
-    % on those preds.
-    %
-adjust_pred_import_status(!ModuleInfo) :-
+adjust_pred_status_for_opt_export(!ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     trace [io(!IO)] (
@@ -2333,16 +3231,16 @@ adjust_pred_import_status(!ModuleInfo) :-
             Deforestation, !Info),
         gather_instances(!Info),
         gather_types(!Info),
-        do_adjust_pred_import_status(!.Info, !ModuleInfo)
+        do_adjust_pred_status_for_opt_export(!.Info, !ModuleInfo)
     ),
     trace [io(!IO)] (
         maybe_write_string(VeryVerbose, " done\n", !IO)
     ).
 
-:- pred do_adjust_pred_import_status(intermod_info::in,
+:- pred do_adjust_pred_status_for_opt_export(intermod_info::in,
     module_info::in, module_info::out) is det.
 
-do_adjust_pred_import_status(Info, !ModuleInfo) :-
+do_adjust_pred_status_for_opt_export(Info, !ModuleInfo) :-
     intermod_info_get_pred_decls(Info, PredDecls0),
     set.to_sorted_list(PredDecls0, PredDecls),
     set_list_of_preds_exported(PredDecls, !ModuleInfo),
@@ -2506,43 +3404,6 @@ set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
         ToWrite = no
     ),
     set_list_of_preds_exported_2(PredIds, !Preds).
-
-    % Should a declaration with the given status be written to the `.opt' file.
-    %
-:- func type_status_to_write(type_status) = bool.
-:- func inst_status_to_write(inst_status) = bool.
-:- func mode_status_to_write(mode_status) = bool.
-:- func typeclass_status_to_write(typeclass_status) = bool.
-:- func instance_status_to_write(instance_status) = bool.
-:- func pred_status_to_write(pred_status) = bool.
-
-type_status_to_write(type_status(OldStatus)) =
-    old_status_to_write(OldStatus).
-inst_status_to_write(inst_status(OldStatus)) =
-    old_status_to_write(OldStatus).
-mode_status_to_write(mode_status(OldStatus)) =
-    old_status_to_write(OldStatus).
-typeclass_status_to_write(typeclass_status(OldStatus)) =
-    old_status_to_write(OldStatus).
-instance_status_to_write(instance_status(OldStatus)) =
-    old_status_to_write(OldStatus).
-pred_status_to_write(pred_status(OldStatus)) =
-    old_status_to_write(OldStatus).
-
-:- func old_status_to_write(old_import_status) = bool.
-
-old_status_to_write(status_imported(_)) = no.
-old_status_to_write(status_abstract_imported) = no.
-old_status_to_write(status_pseudo_imported) = no.
-old_status_to_write(status_opt_imported) = no.
-old_status_to_write(status_exported) = no.
-old_status_to_write(status_opt_exported) = yes.
-old_status_to_write(status_abstract_exported) = yes.
-old_status_to_write(status_pseudo_exported) = no.
-old_status_to_write(status_exported_to_submodules) = yes.
-old_status_to_write(status_local) = yes.
-old_status_to_write(status_external(Status)) =
-    bool.not(old_status_is_exported(Status)).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.intermod.

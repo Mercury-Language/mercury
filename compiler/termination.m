@@ -33,7 +33,6 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
 :- import_module parse_tree.error_util.
 
 :- import_module io.
@@ -46,13 +45,6 @@
 :- pred analyse_termination_in_module(module_info::in, module_info::out,
     list(error_spec)::out, io::di, io::uo) is det.
 
-    % Write out a termination_info pragma for the predicate if it is exported,
-    % it is not a builtin and it is not a predicate used to force type
-    % specialization.
-    %
-:- pred write_pred_termination_info(module_info::in, pred_id::in,
-    io::di, io::uo) is det.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -60,20 +52,17 @@
 
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module hlds.status.
-:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
-:- import_module parse_tree.file_names.
-:- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.dependency_graph.
+:- import_module transform_hlds.intermod.
 :- import_module transform_hlds.post_term_analysis.
 :- import_module transform_hlds.term_errors.
 :- import_module transform_hlds.term_norm.
@@ -86,7 +75,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module term.
 :- import_module unit.
 
@@ -126,7 +114,7 @@ analyse_termination_in_module(!ModuleInfo, !:Specs, !IO) :-
         MakeOptInt),
     (
         MakeOptInt = yes,
-        append_termination_pragmas_to_opt_file(PredIds, !.ModuleInfo, !IO)
+        append_termination_pragmas_to_opt_file(!.ModuleInfo, !IO)
     ;
         MakeOptInt = no
     ),
@@ -890,88 +878,6 @@ change_procs_termination_info([ProcId | ProcIds], Override, Termination,
     change_procs_termination_info(ProcIds, Override, Termination, !ProcTable).
 
 %-----------------------------------------------------------------------------%
-
-    % These predicates are used to add the termination_info pragmas to the
-    % .opt and .trans_opt files.
-    %
-:- pred append_termination_pragmas_to_opt_file(list(pred_id)::in,
-    module_info::in, io::di, io::uo) is det.
-
-append_termination_pragmas_to_opt_file(PredIds, ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Appending termination_info pragmas to `",
-        !IO),
-    maybe_write_string(Verbose, OptFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        list.foldl(write_pred_termination_info(ModuleInfo), PredIds, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
-write_pred_termination_info(ModuleInfo, PredId, !IO) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_status(PredInfo, PredStatus),
-    module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-    TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-    ( if
-        (
-            PredStatus = pred_status(status_exported)
-        ;
-            PredStatus = pred_status(status_opt_exported)
-        ),
-        not is_unify_or_compare_pred(PredInfo),
-
-        % XXX These should be allowed, but the predicate declaration for
-        % the specialized predicate is not produced before the termination
-        % pragmas are read in, resulting in an undefined predicate error.
-        not set.member(PredId, TypeSpecForcePreds)
-    then
-        PredName = pred_info_name(PredInfo),
-        ProcIds = pred_info_procids(PredInfo),
-        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        ModuleName = pred_info_module(PredInfo),
-        pred_info_get_proc_table(PredInfo, ProcTable),
-        pred_info_get_context(PredInfo, Context),
-        SymName = qualified(ModuleName, PredName),
-        write_proc_termination_info(PredId, ProcIds, ProcTable,
-            PredOrFunc, SymName, Context, !IO)
-    else
-        true
-    ).
-
-:- pred write_proc_termination_info(pred_id::in, list(proc_id)::in,
-    proc_table::in, pred_or_func::in, sym_name::in, prog_context::in,
-    io::di, io::uo) is det.
-
-write_proc_termination_info(_, [], _, _, _, _, !IO).
-write_proc_termination_info(PredId, [ProcId | ProcIds], ProcTable,
-        PredOrFunc, SymName, Context, !IO) :-
-    map.lookup(ProcTable, ProcId, ProcInfo),
-    proc_info_get_maybe_arg_size_info(ProcInfo, ArgSize),
-    proc_info_get_maybe_termination_info(ProcInfo, Termination),
-    proc_info_declared_argmodes(ProcInfo, ModeList),
-    write_pragma_termination_info_components(output_mercury, PredOrFunc,
-        SymName, ModeList, ArgSize, Termination, Context, !IO),
-    write_proc_termination_info(PredId, ProcIds, ProcTable, PredOrFunc,
-        SymName, Context, !IO).
 
 %----------------------------------------------------------------------------%
 :- end_module transform_hlds.termination.

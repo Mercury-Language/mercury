@@ -71,7 +71,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.
-:- import_module transform_hlds.term_constr_main.
+:- import_module transform_hlds.term_constr_main_types.
 :- import_module transform_hlds.term_constr_util.
 :- import_module transform_hlds.term_util.
 

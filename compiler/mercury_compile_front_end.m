@@ -452,7 +452,7 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         ),
         (
             UpdateStatus = yes,
-            intermod.adjust_pred_import_status(!HLDS)
+            intermod.adjust_pred_status_for_opt_export(!HLDS)
         ;
             UpdateStatus = no
         )

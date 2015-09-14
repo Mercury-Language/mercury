@@ -1314,7 +1314,11 @@ Exception analysis. (exception_analysis.m)
 
 <p>
 
-The next pass is termination analysis. The various modules involved are:
+The next pass is termination analysis.
+The compiler contains <em>two</em> separate termination analysis systems,
+which are based on different principles.
+
+The modules involved in the first system are:
 
 <ul>
 <li>
@@ -1339,6 +1343,33 @@ The next pass is termination analysis. The various modules involved are:
 <li>
     post_term_analysis.m contains error checking routines and optimizations
     that depend upon the information obtained by termination analysis.
+</ul>
+
+The modules involved in the second system are:
+
+<ul>
+<li>
+    term_constr_main.m is the control module; it invokes the others as needed.
+<li>
+    term_constr_initial.m sets up the initial state of the analysis,
+    based on things such as user-provided annotations.
+<li>
+    term_constr_build.m builds an abstract representation
+    of the procedures to be analyzed.
+<li>
+    term_constr_fixpoint.m uses that abstract representation
+    to derive information about the relationships
+    among the sizes of the arguments of each analyzed procedure.
+<li>
+    term_constr_pass2.m uses this information about argument size relationships
+    to attempt to prove whether the analyzed procedures terminate.
+<li>
+    term_constr_main_types.m defines the types that represent the result
+    of the analysis.
+<li>
+    term_constr_data.m defines types needed during the analysis.
+<li>
+    term_constr_errors.m generates error messages for termination problems.
 </ul>
 
 <p>

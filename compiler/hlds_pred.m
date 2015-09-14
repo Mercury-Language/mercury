@@ -39,7 +39,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
-:- import_module transform_hlds.term_constr_main.
+:- import_module transform_hlds.term_constr_main_types.
 :- import_module transform_hlds.term_util.
 
 :- import_module assoc_list.
@@ -2682,7 +2682,7 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     % argument DetismDecl
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),
-    Term2Info = term_constr_main.term2_info_init,
+    Term2Info = term_constr_main_types.term2_info_init,
     % argument IsAddressTaken
     map.init(StackSlots),
     set_of_var.init(RegR_HeadVars),
@@ -2766,7 +2766,7 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     % argument DetismDecl
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),
-    Term2Info = term_constr_main.term2_info_init,
+    Term2Info = term_constr_main_types.term2_info_init,
     % argument IsAddressTaken
     map.init(StackSlots),
     set_of_var.init(RegR_HeadVars),

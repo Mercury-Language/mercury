@@ -60,6 +60,7 @@
         % Pass 2.
     :- include_module term_constr_pass2.
         % Other bits.
+    :- include_module term_constr_main_types.
     :- include_module term_constr_util.
     :- include_module term_constr_data.
     :- include_module term_constr_errors.

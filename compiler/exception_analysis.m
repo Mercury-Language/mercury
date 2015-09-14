@@ -94,11 +94,6 @@
 :- pred analyse_exceptions_in_module(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-    % Write out the exception pragmas for this module.
-    %
-:- pred write_pragma_exceptions(module_info::in, exception_info::in,
-    pred_id::in, io::di, io::uo) is det.
-
     % Look the exception status of the given procedure. This predicate
     % is intended to be used by optimisations that use exception analysis
     % information, *not* for use within the exception analysis itself.
@@ -130,16 +125,13 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.vartypes.
-:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.file_names.
-:- import_module parse_tree.parse_tree_out_pragma.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
+:- import_module transform_hlds.intermod.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.mmc_analysis.
 
@@ -1143,7 +1135,7 @@ maybe_record_exception_result_2(ModuleInfo, PredId, PredInfo, ProcId,
     should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
         for_analysis_framework, ShouldWrite),
     (
-        ShouldWrite = yes,
+        ShouldWrite = should_write,
         PPId = proc(PredId, ProcId),
         module_info_get_exception_info(ModuleInfo, ExceptionInfo),
         lookup_proc_exception_info(ExceptionInfo, PPId, Status, ResultStatus),
@@ -1151,7 +1143,7 @@ maybe_record_exception_result_2(ModuleInfo, PredId, PredInfo, ProcId,
         record_result(ModuleName, FuncId, any_call,
             exception_analysis_answer(Status), ResultStatus, !AnalysisInfo)
     ;
-        ShouldWrite = no
+        ShouldWrite = should_not_write
     ).
 
 :- pred lookup_proc_exception_info(exception_info::in, pred_proc_id::in,
@@ -1172,118 +1164,10 @@ lookup_proc_exception_info(ExceptionInfo, PPId, Status, ResultStatus) :-
         ResultStatus = optimal
     ).
 
-:- type should_write_for
-    --->    for_analysis_framework
-    ;       for_pragma.
-
-:- pred should_write_exception_info(module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, should_write_for::in, bool::out) is det.
-
-should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
-        WhatFor, ShouldWrite) :-
-    ( if
-        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_or_compare_pred(PredInfo),
-        (
-            WhatFor = for_analysis_framework
-        ;
-            WhatFor = for_pragma,
-            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-            not set.member(PredId, TypeSpecForcePreds),
-
-            % XXX Writing out pragmas for the automatically generated class
-            % instance methods causes the compiler to abort when it reads them
-            % back in.
-            pred_info_get_markers(PredInfo, Markers),
-            not check_marker(Markers, marker_class_instance_method),
-            not check_marker(Markers, marker_named_class_instance_method)
-        )
-    then
-        ShouldWrite = yes
-    else
-        ShouldWrite = no
-    ).
-
 :- func maybe_optimal(bool) = maybe(analysis_status).
 
 maybe_optimal(no)  = no.
 maybe_optimal(yes) = yes(optimal).
-
-%----------------------------------------------------------------------------%
-%
-% Stuff for intermodule optimization.
-%
-
-:- pred append_exception_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-append_exception_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Appending exceptions pragmas to `", !IO),
-    maybe_write_string(Verbose, OptFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_exception_info(ModuleInfo, ExceptionInfo),
-        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        list.foldl(write_pragma_exceptions(ModuleInfo, ExceptionInfo),
-            PredIds, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
-write_pragma_exceptions(ModuleInfo, ExceptionInfo, PredId, !IO) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
-    list.foldl(
-        write_pragma_exceptions_2(ModuleInfo, ExceptionInfo, PredId, PredInfo),
-        ProcIds, !IO).
-
-:- pred write_pragma_exceptions_2(module_info::in, exception_info::in,
-    pred_id::in, pred_info::in, proc_id::in, io::di, io::uo) is det.
-
-write_pragma_exceptions_2(ModuleInfo, ExceptionMap, PredId, PredInfo, ProcId,
-        !IO) :-
-    should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
-        for_pragma, ShouldWrite),
-    (
-        ShouldWrite = yes,
-        ModuleName = pred_info_module(PredInfo),
-        PredName = pred_info_name(PredInfo),
-        PredArity = pred_info_orig_arity(PredInfo),
-        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-        proc_id_to_int(ProcId, ModeNum),
-        ( if
-            map.search(ExceptionMap, proc(PredId, ProcId), ProcExceptionInfo)
-        then
-            ProcExceptionInfo = proc_exception_info(Status, _),
-            PredSymName = qualified(ModuleName, PredName),
-            PredNameArityPFMn = pred_name_arity_pf_mn(PredSymName, PredArity,
-                PredOrFunc, ModeNum),
-            ExceptionInfo = pragma_info_exceptions(PredNameArityPFMn, Status),
-            mercury_output_pragma_exceptions(ExceptionInfo, !IO)
-        else
-            true
-        )
-    ;
-        ShouldWrite = no
-    ).
 
 %----------------------------------------------------------------------------%
 %

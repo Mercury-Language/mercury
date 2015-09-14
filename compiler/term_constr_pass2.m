@@ -23,7 +23,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module transform_hlds.term_constr_main.
+:- import_module transform_hlds.term_constr_main_types.
 
 :- import_module io.
 :- import_module list.

@@ -66,12 +66,6 @@
 :- pred perform_structure_reuse_analysis(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-    % Write all the reuse information concerning the specified predicate as
-    % reuse pragmas.
-    %
-:- pred write_pred_reuse_info(module_info::in, pred_id::in,
-    io::di, io::uo) is det.
-
 %-----------------------------------------------------------------------------%
 
 :- type structure_reuse_call.
@@ -108,15 +102,9 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
-:- import_module parse_tree.file_names.
-:- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.ctgc.selector.
@@ -126,6 +114,7 @@
 :- import_module transform_hlds.ctgc.structure_reuse.lfu.
 :- import_module transform_hlds.ctgc.structure_reuse.versions.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
+:- import_module transform_hlds.intermod.
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bimap.
@@ -766,94 +755,6 @@ annotate_in_use_information(ModuleInfo, !ProcInfo) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for writing out optimization interfaces
-%
-
-:- pred append_structure_reuse_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-append_structure_reuse_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Appending structure_reuse pragmas to ",
-        !IO),
-    maybe_write_string(Verbose, add_quotes(OptFileName), !IO),
-    maybe_write_string(Verbose, "...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        list.foldl(write_pred_reuse_info(ModuleInfo), PredIds, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% Code for writing out structure_reuse pragmas.
-%
-
-write_pred_reuse_info(ModuleInfo, PredId, !IO) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    PredName = pred_info_name(PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    ModuleName = pred_info_module(PredInfo),
-    pred_info_get_proc_table(PredInfo, ProcTable),
-    pred_info_get_context(PredInfo, Context),
-    SymName = qualified(ModuleName, PredName),
-    pred_info_get_typevarset(PredInfo, TypeVarSet),
-    list.foldl(write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable,
-        PredOrFunc, SymName, Context, TypeVarSet), ProcIds, !IO).
-
-:- pred write_proc_reuse_info(module_info::in, pred_id::in, pred_info::in,
-    proc_table::in, pred_or_func::in, sym_name::in, prog_context::in,
-    tvarset::in, proc_id::in, io::di, io::uo) is det.
-
-write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
-        SymName, Context, TypeVarSet, ProcId, !IO) :-
-    should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
-        for_pragma, ShouldWrite),
-    (
-        ShouldWrite = yes,
-        map.lookup(ProcTable, ProcId, ProcInfo),
-        proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuseDomain),
-        (
-            MaybeStructureReuseDomain = yes(
-                structure_reuse_domain_and_status(Reuse, _Status)),
-            proc_info_declared_argmodes(ProcInfo, Modes),
-            proc_info_get_varset(ProcInfo, VarSet),
-            proc_info_get_headvars(ProcInfo, HeadVars),
-            proc_info_get_vartypes(ProcInfo, VarTypes),
-            lookup_var_types(VarTypes, HeadVars, HeadVarTypes),
-            MaybeReuse = yes(Reuse),
-            PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
-            ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
-                HeadVars, HeadVarTypes, MaybeReuse),
-            write_pragma_structure_reuse_info(output_debug,
-                yes(VarSet), yes(TypeVarSet), Context, ReuseInfo,!IO)
-        ;
-            MaybeStructureReuseDomain = no
-        )
-    ;
-        ShouldWrite = no
-    ).
-
-%-----------------------------------------------------------------------------%
-%
 % Types and instances for the intermodule analysis framework.
 %
 
@@ -1032,7 +933,7 @@ reuse_answer_from_term(Term, Answer) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Additional predicates used for intermodule analysis
+% Additional predicates used for intermodule analysis.
 %
 
 :- pred record_structure_reuse_results(module_info::in,
@@ -1066,13 +967,13 @@ record_structure_reuse_results_2(ModuleInfo, PPId, NoClobbers, ReuseAs_Status,
     should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo,
         for_analysis_framework, ShouldWrite),
     (
-        ShouldWrite = yes,
+        ShouldWrite = should_write,
         reuse_as_to_structure_reuse_answer(ModuleInfo, PPId, ReuseAs, Answer),
         module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, structure_reuse_call(NoClobbers),
             Answer, Status, !AnalysisInfo)
     ;
-        ShouldWrite = no
+        ShouldWrite = should_not_write
     ).
 
 :- pred reuse_as_to_structure_reuse_answer(module_info::in, pred_proc_id::in,
@@ -1118,43 +1019,6 @@ record_intermod_requests(ModuleInfo, sr_request(PPId, NoClobbers),
     module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
     record_request(analysis_name, ModuleName, FuncId,
         structure_reuse_call(NoClobbers), !AnalysisInfo).
-
-%-----------------------------------------------------------------------------%
-
-:- type should_write_for
-    --->    for_analysis_framework
-    ;       for_pragma.
-
-:- pred should_write_reuse_info(module_info::in, pred_id::in, proc_id::in,
-    pred_info::in, should_write_for::in, bool::out) is det.
-
-should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
-        ShouldWrite) :-
-    ( if
-        procedure_is_exported(ModuleInfo, PredInfo, ProcId),
-        not is_unify_or_compare_pred(PredInfo),
-
-        % Don't write out info for reuse versions of procedures.
-        pred_info_get_origin(PredInfo, PredOrigin),
-        PredOrigin \= origin_transformed(transform_structure_reuse, _, _),
-
-        (
-            WhatFor = for_analysis_framework
-        ;
-            WhatFor = for_pragma,
-            % XXX These should be allowed, but the predicate declaration for
-            % the specialized predicate is not produced before the structure
-            % reuse pragmas are read in, resulting in an undefined predicate
-            % error.
-            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
-            not set.member(PredId, TypeSpecForcePreds)
-        )
-    then
-        ShouldWrite = yes
-    else
-        ShouldWrite = no
-    ).
 
 %-----------------------------------------------------------------------------%
 %
