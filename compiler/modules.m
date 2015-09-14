@@ -155,8 +155,8 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
         ),
 
         AncestorModules = set.list_to_set(get_ancestors(ModuleName)),
-        warn_if_import_self_or_ancestor(ModuleName, Context, AncestorModules,
-            ImportedModules0, UsedModules0, !Specs),
+        warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks0,
+            AncestorModules, ImportedModules0, UsedModules0, !Specs),
 
         warn_if_duplicate_use_import_decls(ModuleName, Context,
             IntImportedModules0, IntImportedModules1,
@@ -519,44 +519,118 @@ split_items_into_clauses_and_decls([Item | Items],
 
     % Warn if a module imports itself, or an ancestor.
     %
-:- pred warn_if_import_self_or_ancestor(module_name::in, prog_context::in,
-    set(module_name)::in, set(module_name)::in, set(module_name)::in,
+:- pred warn_if_import_for_self_or_ancestor(module_name::in,
+    list(raw_item_block)::in, set(module_name)::in,
+    set(module_name)::in, set(module_name)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_if_import_self_or_ancestor(ModuleName, Context, AncestorModules,
-        ImportedModules, UsedModules, !Specs) :-
+warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks,
+        AncestorModules, ImportedModules, UsedModules, !Specs) :-
     set.union(ImportedModules, UsedModules, ImportedOrUsedModules),
     set.intersect(AncestorModules, ImportedOrUsedModules,
         ImportedOrUsedAncestorModules),
-    set.fold(warn_imported_ancestor(ModuleName, Context),
+    set.fold(find_and_warn_import_for_ancestor(ModuleName, RawItemBlocks),
         ImportedOrUsedAncestorModules, !Specs),
     ( if set.member(ModuleName, ImportedOrUsedModules) then
-        SelfPieces = [words("Warning: module"), sym_name(ModuleName),
-            words("imports itself!"), nl],
-        SelfMsg = simple_msg(Context,
-            [option_is_set(warn_simple_code, yes, [always(SelfPieces)])]),
-        Severity = severity_conditional(warn_simple_code, yes,
-            severity_warning, no),
-        SelfSpec = error_spec(Severity, phase_parse_tree_to_hlds, [SelfMsg]),
-        !:Specs = [SelfSpec | !.Specs]
+        find_and_warn_import_for_self(ModuleName, RawItemBlocks, !Specs)
     else
         true
     ).
 
-:- pred warn_imported_ancestor(module_name::in, prog_context::in,
-    module_name::in, list(error_spec)::in, list(error_spec)::out) is det.
+%---------------------%
 
-warn_imported_ancestor(ModuleName, Context, AncestorName, !Specs) :-
+:- pred find_and_warn_import_for_self(module_name::in,
+    list(raw_item_block)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+find_and_warn_import_for_self(ModuleName, RawItemBlocks, !Specs) :-
+    find_avail_contexts_for_module_in_item_blocks(RawItemBlocks,
+        ModuleName, [], AvailContexts),
+    list.foldl(warn_import_for_self(ModuleName), AvailContexts, !Specs).
+
+:- pred find_and_warn_import_for_ancestor(module_name::in,
+    list(raw_item_block)::in, module_name::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+find_and_warn_import_for_ancestor(ModuleName, RawItemBlocks,
+        AncestorModuleName, !Specs) :-
+    find_avail_contexts_for_module_in_item_blocks(RawItemBlocks,
+        AncestorModuleName, [], AvailContexts),
+    list.foldl(warn_import_for_ancestor(ModuleName, AncestorModuleName),
+        AvailContexts, !Specs).
+
+%---------------------%
+
+    % Return the set of contexts in which the given item blocks import or use
+    % the named module.
+    %
+    % The order in which we return the contexts doesn't matter, because
+    % the error specs we generate for the returned contexts will be sorted,
+    % and any duplicates removed, before they are printed.
+    %
+:- pred find_avail_contexts_for_module_in_item_blocks(list(raw_item_block)::in,
+    module_name::in, list(prog_context)::in, list(prog_context)::out) is det.
+
+find_avail_contexts_for_module_in_item_blocks([], _, !AvailContexts).
+find_avail_contexts_for_module_in_item_blocks([ItemBlock | ItemBlocks],
+        ModuleName, !AvailContexts) :-
+    ItemBlock = item_block(_SectionKind, _SectionContext,
+        _Includes, Avails, _Items),
+    find_avail_contexts_for_module_in_avails(Avails,
+        ModuleName, !AvailContexts),
+    find_avail_contexts_for_module_in_item_blocks(ItemBlocks,
+        ModuleName, !AvailContexts).
+
+:- pred find_avail_contexts_for_module_in_avails(list(item_avail)::in,
+    module_name::in, list(prog_context)::in, list(prog_context)::out) is det.
+
+find_avail_contexts_for_module_in_avails([], _, !AvailContexts).
+find_avail_contexts_for_module_in_avails([Avail | Avails],
+        ModuleName, !AvailContexts) :-
+    (
+        Avail = avail_import(Import),
+        Import = avail_import_info(AvailModuleName, Context, _SeqNum)
+    ;
+        Avail = avail_use(Use),
+        Use = avail_use_info(AvailModuleName, Context, _SeqNum)
+    ),
+    ( if ModuleName = AvailModuleName then
+        !:AvailContexts = [Context | !.AvailContexts]
+    else
+        true
+    ),
+    find_avail_contexts_for_module_in_avails(Avails,
+        ModuleName, !AvailContexts).
+
+%---------------------%
+
+:- pred warn_import_for_self(module_name::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+warn_import_for_self(ModuleName, Context, !Specs) :-
+    Pieces = [words("Warning: module"), sym_name(ModuleName),
+        words("imports itself!"), nl],
+    Msg = simple_msg(Context,
+        [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
+    Severity = severity_conditional(warn_simple_code, yes,
+        severity_warning, no),
+    Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+:- pred warn_import_for_ancestor(module_name::in, module_name::in,
+    prog_context::in,list(error_spec)::in, list(error_spec)::out) is det.
+
+warn_import_for_ancestor(ModuleName, AncestorName, Context, !Specs) :-
     MainPieces = [words("Module"), sym_name(ModuleName),
         words("imports its own ancestor, module"),
         sym_name(AncestorName), words(".")],
-    VerbosePieces = [words("Every sub-module"),
+    VerbosePieces = [words("Every submodule"),
         words("implicitly imports its ancestors."),
         words("There is no need to explicitly import them.")],
     Msg = simple_msg(Context,
         [option_is_set(warn_simple_code, yes,
             [always(MainPieces),
-            verbose_only(verbose_always, VerbosePieces)])]),
+            verbose_only(verbose_once, VerbosePieces)])]),
     Severity = severity_conditional(warn_simple_code, yes,
         severity_warning, no),
     Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
@@ -1361,7 +1435,7 @@ report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     % Read in the .opt files for imported and ancestor modules.
@@ -1563,7 +1637,7 @@ read_optimization_interfaces(Globals, Transitive,
         NewDeps ++ ModulesToRead, ModulesProcessed,
         !OptItemBlocksCord, !Specs, !Error, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 grab_trans_opt_files(Globals, TransOptDeps, !Module, FoundError, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),

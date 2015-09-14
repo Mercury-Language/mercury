@@ -48,6 +48,7 @@ ERRORCHECK_PROGS = \
 	warn_non_contiguous_foreign \
 	warn_non_contiguous_foreign_group \
 	warn_return \
+	warn_self_import \
 	warn_succ_ind \
 	warn_stubs
 
