@@ -1,13 +1,14 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: intermod.m.
-% Main author: stayl.
+% Main author: stayl (the original intermod.m).
+% Main author: crs (the original trans_opt.m).
 %
 % This module writes out the interface for inter-module optimization.
 % The .opt file includes:
@@ -32,7 +33,45 @@
 % This module also contains predicates to adjust the import status
 % of local predicates which are exported for intermodule optimization.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Transitive intermodule optimization allows the compiler to do intermodule
+% optimization that depends on other .trans_opt files. In comparison to .opt
+% files, .trans_opt files allow much more accurate optimization to occur,
+% but at the cost of an increased number of compilations required. The fact
+% that a .trans_opt file may depend on other .trans_opt files introduces
+% the possibility of circular dependencies occuring. These circular
+% dependencies would occur if the data in A.trans_opt depended on the data
+% in B.trans_opt being correct, and vice versa.
+%
+% We use the following system to ensure that circular dependencies cannot
+% occur:
+%
+%   When mmake <module>.depend is run, mmc calculates a suitable ordering.
+%   This ordering is then used to create each of the .d files. This allows
+%   make to ensure that all necessary trans_opt files are up to date before
+%   creating any other trans_opt files. This same information is used by mmc
+%   to decide which trans_opt files may be imported when creating another
+%   .trans_opt file. By observing the ordering decided upon when mmake
+%   module.depend was run, any circularities which may have been created
+%   are avoided.
+%
+% This module writes out the interface for transitive intermodule optimization.
+% The .trans_opt file includes:
+%   :- pragma termination_info declarations for all exported preds
+%   :- pragma exceptions declartions for all exported preds
+%   :- pragma trailing_info declarations for all exported preds.
+%
+% All these items should be module qualified.
+% Constructors should be explicitly type qualified.
+%
+% Note that the .trans_opt file does not (yet) include clauses, `pragma
+% foreign_proc' declarations, or any of the other information that would be
+% needed for inlining or other optimizations. Currently it is used only for
+% recording the results of program analyses, such as termination analysis,
+% exception and trail usage analysis.
+%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.intermod.
 :- interface.
@@ -42,7 +81,7 @@
 
 :- import_module io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Open the file "<module-name>.opt.tmp", and write out the declarations
     % and clauses for intermodule optimization. Note that update_interface
@@ -59,10 +98,11 @@
 :- pred write_initial_opt_file(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % These predicates are used to add the termination_info pragmas to the
-% .opt and .trans_opt files.
+% .opt and .trans_opt files. They are called from the compiler modules
+% that generate the information they record.
 %
 
 :- pred append_exception_pragmas_to_opt_file(module_info::in,
@@ -86,7 +126,7 @@
 :- pred append_termination2_pragmas_to_opt_file(module_info::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
 :- type should_write_for
     --->    for_analysis_framework
@@ -111,50 +151,14 @@
 :- pred should_write_sharing_info(module_info::in, pred_id::in, proc_id::in,
     pred_info::in, should_write_for::in, maybe_should_write::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % Write out the exception pragmas for this predicate.
+    % Open the file "<module-name>.trans_opt.tmp", and write out the
+    % declarations.
     %
-:- pred write_pragma_exceptions(module_info::in, exception_info::in,
-    pred_id::in, io::di, io::uo) is det.
+:- pred write_trans_opt_file(module_info::in, io::di, io::uo) is det.
 
-    % Write out the trailing_info pragma for this module.
-    %
-:- pred write_pragma_trailing_info(module_info::in, trailing_info::in,
-    pred_id::in, io::di, io::uo) is det.
-
-    % Write out the mm_tabling_info pragma for this predicate.
-    %
-:- pred write_pragma_mm_tabling_info(module_info::in, mm_tabling_info::in,
-    pred_id::in, io::di, io::uo) is det.
-
-    % Write all the reuse information concerning the specified predicate as
-    % reuse pragmas.
-    %
-:- pred write_pred_reuse_info(module_info::in, pred_id::in,
-    io::di, io::uo) is det.
-
-    % Write all the sharing information concerning the specified predicate as
-    % reuse pragmas.
-    %
-:- pred write_pred_sharing_info(module_info::in, pred_id::in,
-    io::di, io::uo) is det.
-
-    % Write out a termination_info pragma for the predicate if it is exported,
-    % it is not a builtin and it is not a predicate used to force type
-    % specialization.
-    %
-:- pred write_pred_termination_info(module_info::in, pred_id::in,
-    io::di, io::uo) is det.
-
-    % Write out termination2_info pragma for the procedures of a predicate if:
-    %   - the predicate is exported.
-    %   - the predicate is not compiler generated.
-    %
-:- pred output_pragma_termination2_infos_for_pred(module_info::in, pred_id::in,
-    io::di, io::uo) is det.
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Make sure the labels of local preds needed by predicates in
     % the .opt file are exported, and inhibit dead proc elimination
@@ -165,8 +169,8 @@
 :- pred adjust_pred_status_for_opt_export(module_info::in, module_info::out)
     is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -196,6 +200,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_pragma.
@@ -224,7 +229,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 write_initial_opt_file(!ModuleInfo, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -263,7 +268,7 @@ write_initial_opt_file(!ModuleInfo, !IO) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates to gather items to output to .opt file.
 %
@@ -881,7 +886,7 @@ module_qualify_unify_rhs(RHS0, RHS, DoWrite, !Info) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred gather_instances(intermod_info::in, intermod_info::out) is det.
 
@@ -1111,7 +1116,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred gather_types(intermod_info::in, intermod_info::out) is det.
 
@@ -1327,7 +1332,7 @@ should_write_type(ModuleName, TypeCtor, TypeDefn) :-
     Name = qualified(ModuleName, _),
     type_status_to_write(TypeStatus) = yes.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Output module imports, types, modes, insts and predicates.
     %
@@ -1451,7 +1456,7 @@ maybe_write_nl(!First, !IO) :-
         !.First = is_not_first
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred intermod_write_use_module(module_name::in, io::di, io::uo) is det.
 
@@ -1460,7 +1465,7 @@ intermod_write_use_module(ModuleName, !IO) :-
     mercury_output_bracketed_sym_name(ModuleName, !IO),
     io.write_string(".\n", !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred intermod_write_types(hlds_out_info::in,
     assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
@@ -1631,7 +1636,7 @@ gather_foreign_enum_value_pair(ConsId, ConsTag, !Values) :-
     ),
     !:Values = [SymName - ForeignTag | !.Values].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred intermod_write_insts(hlds_out_info::in, module_info::in,
     io::di, io::uo) is det.
@@ -1672,7 +1677,7 @@ intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !First, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred intermod_write_modes(hlds_out_info::in, module_info::in,
     io::di, io::uo) is det.
@@ -1706,7 +1711,7 @@ intermod_write_mode(OutInfo, ModuleName, ModeId, ModeDefn, !First, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred intermod_write_classes(hlds_out_info::in, module_info::in,
     io::di, io::uo) is det.
@@ -1756,7 +1761,7 @@ unmake_hlds_class_fundep_arg_posns(TVars, ArgPosns) = ArgTVars :-
     ArgTVarsSet = set.map(list.det_index1(TVars), ArgPosns),
     set.to_sorted_list(ArgTVarsSet, ArgTVars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred intermod_write_instances(hlds_out_info::in,
     assoc_list(class_id, hlds_instance_defn)::in, io::di, io::uo) is det.
@@ -1784,7 +1789,7 @@ intermod_write_instance(OutInfo, ClassId - InstanceDefn, !IO) :-
     MercInfo = OutInfo ^ hoi_mercury_to_mercury,
     mercury_output_item(MercInfo, Item, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred intermod_write_foreign_import(foreign_import_module_info::in,
     io::di, io::uo) is det.
@@ -1793,7 +1798,7 @@ intermod_write_foreign_import(ForeignImport, !IO) :-
     FIMInfo = pragma_info_foreign_import_module(ForeignImport),
     mercury_output_pragma_foreign_import_module(FIMInfo, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type order_pred_info
     --->    order_pred_info(string, arity, pred_or_func, pred_id, pred_info).
@@ -1821,7 +1826,7 @@ generate_order_pred_infos_acc(ModuleInfo, [PredId | PredIds],
     generate_order_pred_infos_acc(ModuleInfo, PredIds,
         !OrderPredInfos).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We need to write all the declarations for local predicates so
     % the procedure labels for the C code are calculated correctly.
@@ -2017,7 +2022,7 @@ should_output_marker(marker_mutable_access_pred, no).
 should_output_marker(marker_has_require_scope, no).
 should_output_marker(marker_has_format_call, no).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred intermod_write_preds(hlds_out_info::in, module_info::in,
     list(order_pred_info)::in, io::di, io::uo) is det.
@@ -2289,8 +2294,8 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
         unexpected($module, $pred, "list length mismatch")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 append_exception_pragmas_to_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -2321,6 +2326,11 @@ append_exception_pragmas_to_opt_file(ModuleInfo, !IO) :-
             OptFileName, "' for output: ", IOErrorMessage], !IO),
         io.set_exit_status(1, !IO)
     ).
+
+    % Write out the exception pragmas for this predicate.
+    %
+:- pred write_pragma_exceptions(module_info::in, exception_info::in,
+    pred_id::in, io::di, io::uo) is det.
 
 write_pragma_exceptions(ModuleInfo, ExceptionInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -2370,7 +2380,7 @@ write_pragma_exceptions_2(ModuleInfo, ExceptionMap, PredId, PredInfo, ProcId,
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 append_trailing_pragmas_to_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -2401,6 +2411,11 @@ append_trailing_pragmas_to_opt_file(ModuleInfo, !IO) :-
             OptFileName, "' for output: ", IOErrorMessage], !IO),
         io.set_exit_status(1, !IO)
     ).
+
+    % Write out the trailing_info pragma for this module.
+    %
+:- pred write_pragma_trailing_info(module_info::in, trailing_info::in,
+    pred_id::in, io::di, io::uo) is det.
 
 write_pragma_trailing_info(ModuleInfo, TrailingInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -2441,7 +2456,7 @@ write_pragma_trailing_info_2(ModuleInfo, TrailingMap, PredId, PredInfo,
         ShouldWrite = should_not_write
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 append_mm_tabling_pragmas_to_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -2473,6 +2488,11 @@ append_mm_tabling_pragmas_to_opt_file(ModuleInfo, !IO) :-
             OptFileName, "' for output: ", IOErrorMessage], !IO),
         io.set_exit_status(1, !IO)
     ).
+
+    % Write out the mm_tabling_info pragma for this predicate.
+    %
+:- pred write_pragma_mm_tabling_info(module_info::in, mm_tabling_info::in,
+    pred_id::in, io::di, io::uo) is det.
 
 write_pragma_mm_tabling_info(ModuleInfo, TablingInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -2513,7 +2533,7 @@ write_pragma_mm_tabling_info_2(ModuleInfo, TablingInfo, PredId, PredInfo,
         ShouldWrite = should_not_write
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 append_structure_reuse_pragmas_to_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -2543,6 +2563,12 @@ append_structure_reuse_pragmas_to_opt_file(ModuleInfo, !IO) :-
             OptFileName, "' for output: ", IOErrorMessage], !IO),
         io.set_exit_status(1, !IO)
     ).
+
+    % Write all the reuse information concerning the specified predicate as
+    % reuse pragmas.
+    %
+:- pred write_pred_reuse_info(module_info::in, pred_id::in,
+    io::di, io::uo) is det.
 
 write_pred_reuse_info(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -2590,7 +2616,7 @@ write_proc_reuse_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
         ShouldWrite = should_not_write
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 append_structure_sharing_pragmas_to_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -2620,6 +2646,12 @@ append_structure_sharing_pragmas_to_opt_file(ModuleInfo, !IO) :-
             OptFileName, "' for output: ", IOErrorMessage], !IO),
         io.set_exit_status(1, !IO)
     ).
+
+    % Write all the sharing information concerning the specified predicate as
+    % reuse pragmas.
+    %
+:- pred write_pred_sharing_info(module_info::in, pred_id::in,
+    io::di, io::uo) is det.
 
 write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -2669,8 +2701,8 @@ write_proc_sharing_info(ModuleInfo, PredId, PredInfo, ProcTable, PredOrFunc,
         ShouldWrite = should_not_write
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 append_termination_pragmas_to_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -2701,6 +2733,13 @@ append_termination_pragmas_to_opt_file(ModuleInfo, !IO) :-
             OptFileName, "' for output: ", IOErrorMessage], !IO),
         io.set_exit_status(1, !IO)
     ).
+
+    % Write out a termination_info pragma for the predicate if it is exported,
+    % it is not a builtin and it is not a predicate used to force type
+    % specialization.
+    %
+:- pred write_pred_termination_info(module_info::in, pred_id::in,
+    io::di, io::uo) is det.
 
 write_pred_termination_info(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -2750,7 +2789,7 @@ write_proc_termination_info(PredId, [ProcId | ProcIds], ProcTable,
         SymName, Context, !IO).
 
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 append_termination2_pragmas_to_opt_file(ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -2781,6 +2820,13 @@ append_termination2_pragmas_to_opt_file(ModuleInfo, !IO) :-
             OptFileName, "' for output: ", IOErrorMessage], !IO),
         io.set_exit_status(1, !IO)
     ).
+
+    % Write out termination2_info pragma for the procedures of a predicate if:
+    %   - the predicate is exported.
+    %   - the predicate is not compiler generated.
+    %
+:- pred output_pragma_termination2_infos_for_pred(module_info::in, pred_id::in,
+    io::di, io::uo) is det.
 
 output_pragma_termination2_infos_for_pred(ModuleInfo, PredId, !IO) :-
     % Don't try to output termination2_info pragmas unless the analysis
@@ -2910,8 +2956,8 @@ output_maybe_termination2_info(MaybeConstrTermInfo, !IO) :-
         io.write_string("can_loop", !IO)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
         WhatFor, ShouldWrite) :-
@@ -3043,8 +3089,8 @@ should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
         ShouldWrite = should_not_write
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Should a declaration with the given status be written to the `.opt' file.
     %
@@ -3083,7 +3129,7 @@ old_status_to_write(status_local) = yes.
 old_status_to_write(status_external(Status)) =
     bool.not(old_status_is_exported(Status)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A collection of stuff to go in the .opt file.
     %
@@ -3206,7 +3252,85 @@ intermod_info_set_var_types(VarTypes, !Info) :-
 intermod_info_set_tvarset(TVarSet, !Info) :-
     !Info ^ im_tvarset := TVarSet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+write_trans_opt_file(ModuleInfo, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".trans_opt.tmp",
+        do_create_dirs, TmpOptName, !IO),
+    io.open_output(TmpOptName, Result, !IO),
+    (
+        Result = error(Error),
+        io.error_message(Error, Msg),
+        io.progname_base("trans_opt.m", ProgName, !IO),
+        io.write_string(ProgName, !IO),
+        io.write_string(": cannot open transitive optimisation file `", !IO),
+        io.write_string(TmpOptName, !IO),
+        io.write_string("' \n", !IO),
+        io.write_string(ProgName, !IO),
+        io.write_string(": for output: ", !IO),
+        io.write_string(Msg, !IO),
+        io.nl(!IO),
+        io.set_exit_status(1, !IO)
+    ;
+        Result = ok(Stream),
+        io.set_output_stream(Stream, OldStream, !IO),
+        io.write_string(":- module ", !IO),
+        mercury_output_bracketed_sym_name(ModuleName, !IO),
+        io.write_string(".\n", !IO),
+
+        % All predicates to write global items into the .trans_opt
+        % file should go here.
+
+        % Select all the predicates for which something should be written
+        % into the .trans_opt file.
+
+        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+        PredIdsSet = set.from_list(PredIds),
+        module_info_get_structure_reuse_preds(ModuleInfo, ReusePredsSet),
+        PredIdsNoReusePredsSet = set.difference(PredIdsSet, ReusePredsSet),
+        PredIdsNoReuseVersions = set.to_sorted_list(PredIdsNoReusePredsSet),
+
+        list.foldl(
+            write_pred_termination_info(ModuleInfo),
+            PredIdsNoReuseVersions, !IO),
+        list.foldl(
+            output_pragma_termination2_infos_for_pred(ModuleInfo),
+            PredIdsNoReuseVersions, !IO),
+
+        list.foldl(
+            write_pred_sharing_info(ModuleInfo),
+            PredIdsNoReuseVersions, !IO),
+        list.foldl(
+            write_pred_reuse_info(ModuleInfo),
+            PredIdsNoReuseVersions, !IO),
+
+        module_info_get_exception_info(ModuleInfo, ExceptionInfo),
+        list.foldl(
+            write_pragma_exceptions(ModuleInfo, ExceptionInfo),
+            PredIdsNoReuseVersions, !IO),
+
+        module_info_get_trailing_info(ModuleInfo, TrailingInfo),
+        list.foldl(
+            write_pragma_trailing_info(ModuleInfo, TrailingInfo),
+            PredIdsNoReuseVersions, !IO),
+
+        module_info_get_mm_tabling_info(ModuleInfo, TablingInfo),
+        list.foldl(
+            write_pragma_mm_tabling_info(ModuleInfo, TablingInfo),
+            PredIdsNoReuseVersions, !IO),
+
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(Stream, !IO),
+
+        module_name_to_file_name(Globals, ModuleName, ".trans_opt",
+            do_not_create_dirs, OptName, !IO),
+        update_interface(Globals, OptName, !IO),
+        touch_interface_datestamp(Globals, ModuleName, ".trans_opt_date", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
 
 adjust_pred_status_for_opt_export(!ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -3403,6 +3527,6 @@ set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
     ),
     set_list_of_preds_exported_2(PredIds, !Preds).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.intermod.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

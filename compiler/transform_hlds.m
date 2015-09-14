@@ -6,9 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% transform_hlds: High-level transformations
-%   that are independent of the choice of back-end
-%   (the "middle" HLDS pass).
+% transform_hlds: High-level transformations that are independent
+% of the choice of back-end (the "middle" HLDS pass).
 %
 
 :- module transform_hlds.
@@ -21,7 +20,6 @@
 %-----------------------------------------------------------------------------%
 
 :- include_module intermod.
-:- include_module trans_opt.
 
 :- include_module dependency_graph.
 
