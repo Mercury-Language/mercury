@@ -2072,7 +2072,6 @@ attribute_list_to_attributes(Attributes, Attributes).
 
     % Predicates to get fields of proc_infos.
 
-:- pred proc_info_get_context(proc_info::in, prog_context::out) is det.
 :- pred proc_info_get_headvars(proc_info::in, list(prog_var)::out) is det.
 :- pred proc_info_get_goal(proc_info::in, hlds_goal::out) is det.
 :- pred proc_info_get_varset(proc_info::in, prog_varset::out) is det.
@@ -2089,10 +2088,11 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_get_inferred_determinism(proc_info::in,
     determinism::out) is det.
 :- pred proc_info_get_eval_method(proc_info::in, eval_method::out) is det.
-:- pred proc_info_get_can_process(proc_info::in, can_process::out) is det.
 :- pred proc_info_get_mode_errors(proc_info::in,
     list(mode_error_info)::out) is det.
 
+:- pred proc_info_get_context(proc_info::in, prog_context::out) is det.
+:- pred proc_info_get_can_process(proc_info::in, can_process::out) is det.
 :- pred proc_info_get_detism_decl(proc_info::in, detism_decl::out) is det.
 :- pred proc_info_get_maybe_untuple_info(proc_info::in,
     maybe(untuple_proc_info)::out) is det.
@@ -2163,11 +2163,11 @@ attribute_list_to_attributes(Attributes, Attributes).
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_eval_method(eval_method::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_can_process(can_process::in,
-    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_mode_errors(list(mode_error_info)::in,
     proc_info::in, proc_info::out) is det.
 
+:- pred proc_info_set_can_process(can_process::in,
+    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_detism_decl(detism_decl::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_untuple_info(maybe(untuple_proc_info)::in,
@@ -2382,51 +2382,53 @@ attribute_list_to_attributes(Attributes, Attributes).
 
 :- type proc_info
     --->    proc_info(
-                % The context of the `:- mode' decl (or the context of the
-                % first clause, if there was no mode declaration).
-/*  1 */        proc_context                    :: prog_context,
+/*  1 */        proc_head_vars                  :: list(prog_var),
+/*  2 */        proc_body                       :: hlds_goal,
 
-/*  2 */        proc_head_vars                  :: list(prog_var),
-/*  3 */        proc_body                       :: hlds_goal,
-
-/*  4 */        proc_prog_varset                :: prog_varset,
-/*  5 */        proc_var_types                  :: vartypes,
+/*  3 */        proc_prog_varset                :: prog_varset,
+/*  4 */        proc_var_types                  :: vartypes,
 
                 % Information about type_infos and typeclass_infos.
-/*  6 */        proc_rtti_varmaps               :: rtti_varmaps,
+/*  5 */        proc_rtti_varmaps               :: rtti_varmaps,
 
-/*  7 */        proc_inst_varset                :: inst_varset,
+/*  6 */        proc_inst_varset                :: inst_varset,
 
                 % The declared modes of arguments.
-/*  8 */        proc_maybe_decl_head_modes      :: maybe(list(mer_mode)),
+/*  7 */        proc_maybe_decl_head_modes      :: maybe(list(mer_mode)),
 
-/*  9 */        proc_actual_head_modes          :: list(mer_mode),
-/* 10 */        proc_maybe_head_modes_constr    :: maybe(mode_constraint),
+/*  8 */        proc_actual_head_modes          :: list(mer_mode),
+/*  9 */        proc_maybe_head_modes_constr    :: maybe(mode_constraint),
 
                 % Liveness (in the mode analysis sense) of the arguments
                 % in the caller; says whether each argument may be used
                 % after the call.
-/* 11 */        proc_headvar_caller_liveness    :: maybe(list(is_live)),
+/* 10 */        proc_headvar_caller_liveness    :: maybe(list(is_live)),
 
                 % The _declared_ determinism of the procedure, or `no'
                 % if there was no detism declaration.
-/* 12 */        proc_declared_detism            :: maybe(determinism),
-/* 13 */        proc_inferred_detism            :: determinism,
+/* 11 */        proc_declared_detism            :: maybe(determinism),
+/* 12 */        proc_inferred_detism            :: determinism,
 
                 % How should the proc be evaluated.
-/* 14 */        proc_eval_method                :: eval_method,
+/* 13 */        proc_eval_method                :: eval_method,
 
-                % No if we must not process this procedure yet (used to delay
-                % mode checking etc. for complicated modes of unification
-                % predicates until the end of the unique_modes pass.)
-/* 15 */        proc_can_process                :: can_process,
-/* 16 */        proc_mode_errors                :: list(mode_error_info),
+/* 14 */        proc_mode_errors                :: list(mode_error_info),
 
-/* 17 */        proc_sub_info                   :: proc_sub_info
+/* 15 */        proc_sub_info                   :: proc_sub_info
             ).
 
 :- type proc_sub_info
     --->    proc_sub_info(
+                % The context of the `:- mode' decl, or the context of the
+                % first clause if there was no mode declaration.
+                psi_proc_context                :: prog_context,
+
+                % Set to cannot_proces if we must not process this procedure
+                % just yet. This is used to delay mode checking etc. for
+                % complicated modes of unification predicates until the end
+                % of the unique_modes pass.
+                psi_can_process                 :: can_process,
+
                 % Was the determinism declaration explicit, or was it implicit,
                 % as for functions?
                 psi_detism_decl                 :: detism_decl,
@@ -2719,6 +2721,8 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     % and please keep the definitions of those variables in the same order
     % as the fields themselves.
 
+    % argument MainContext
+    CanProcess = can_process,
     % argument DetismDecl
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap
@@ -2745,7 +2749,10 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
 
-    ProcSubInfo = proc_sub_info(DetismDecl,
+    ProcSubInfo = proc_sub_info(
+        MainContext,
+        CanProcess, 
+        DetismDecl,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
@@ -2771,7 +2778,6 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
         SharingInfo,
         ReuseInfo),
 
-    % argument MContext
     make_n_fresh_vars("HeadVar__", Arity, HeadVars, varset.init, BodyVarSet),
     goal_info_init(GoalInfo),
     BodyGoal = hlds_goal(conj(plain_conj, []), GoalInfo),
@@ -2783,19 +2789,29 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     MaybeHeadModesConstr = no `with_type` maybe(mode_constraint),
     % argument MaybeArgLives
     % argument MaybeDeclaredDetism
-        % Inferred determinism gets initialized to `erroneous'.
-        % This is what `det_analysis.m' wants. det_analysis.m
-        % will later provide the correct inferred determinism for it.
+    % Inferred determinism gets initialized to `erroneous'.
+    % This is what `det_analysis.m' wants. det_analysis.m
+    % will later provide the correct inferred determinism for it.
     InferredDetism = detism_erroneous,
     EvalMethod = eval_normal,
-    CanProcess = can_process,
     ModeErrors = [],
 
-    ProcInfo = proc_info(MainContext, HeadVars, BodyGoal,
-        BodyVarSet, BodyTypes, RttiVarMaps,
-        InstVarSet, DeclaredModes, Modes, MaybeHeadModesConstr, MaybeArgLives,
-        MaybeDeclaredDetism, InferredDetism, EvalMethod,
-        CanProcess, ModeErrors, ProcSubInfo).
+    ProcInfo = proc_info(
+        HeadVars,
+        BodyGoal,
+        BodyVarSet,
+        BodyTypes,
+        RttiVarMaps,
+        InstVarSet,
+        DeclaredModes,
+        Modes,
+        MaybeHeadModesConstr,
+        MaybeArgLives,
+        MaybeDeclaredDetism,
+        InferredDetism,
+        EvalMethod,
+        ModeErrors,
+        ProcSubInfo).
 
 proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
         DetismDecl, Detism, Goal, RttiVarMaps, IsAddressTaken, HasParallelConj,
@@ -2821,6 +2837,8 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     % and please keep the definitions of those variables in the same order
     % as the fields themselves.
 
+    % argument MainContext
+    CanProcess = can_process,
     % argument DetismDecl
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap
@@ -2847,7 +2865,10 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
 
-    ProcSubInfo = proc_sub_info(DetismDecl,
+    ProcSubInfo = proc_sub_info(
+        MainContext,
+        CanProcess,
+        DetismDecl,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
@@ -2873,7 +2894,6 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
         SharingInfo,
         ReuseInfo),
 
-    % argument MainContext
     % argument HeadVars
     % argument Goal
     % argument VarSet
@@ -2887,14 +2907,24 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     % argument MaybeDeclaredDetism
     % argument Detism
     EvalMethod = eval_normal,
-    CanProcess = can_process,
     ModeErrors = [],
 
-    ProcInfo = proc_info(MainContext, HeadVars, Goal,
-        VarSet, VarTypes, RttiVarMaps,
-        InstVarSet, DeclaredModes, Modes, MaybeHeadModesConstr,
-        MaybeArgLives, MaybeDeclaredDetism, Detism, EvalMethod,
-        CanProcess, ModeErrors, ProcSubInfo).
+    ProcInfo = proc_info(
+        HeadVars,
+        Goal,
+        VarSet,
+        VarTypes,
+        RttiVarMaps,
+        InstVarSet,
+        DeclaredModes,
+        Modes,
+        MaybeHeadModesConstr,
+        MaybeArgLives,
+        MaybeDeclaredDetism,
+        Detism,
+        EvalMethod,
+        ModeErrors,
+        ProcSubInfo).
 
 proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
     !ProcInfo ^ proc_prog_varset := VarSet,
@@ -2903,8 +2933,6 @@ proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiVarMaps, !ProcInfo) :-
     !ProcInfo ^ proc_body := Goal,
     !ProcInfo ^ proc_rtti_varmaps := RttiVarMaps.
 
-proc_info_get_context(PI, X) :-
-    X = PI ^ proc_context.
 proc_info_get_headvars(PI, X) :-
     X = PI ^ proc_head_vars.
 proc_info_get_goal(PI, X) :-
@@ -2929,11 +2957,13 @@ proc_info_get_inferred_determinism(PI, X) :-
     X = PI ^ proc_inferred_detism.
 proc_info_get_eval_method(PI, X) :-
     X = PI ^ proc_eval_method.
-proc_info_get_can_process(PI, X) :-
-    X = PI ^ proc_can_process.
 proc_info_get_mode_errors(PI, X) :-
     X = PI ^ proc_mode_errors.
 
+proc_info_get_context(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_proc_context.
+proc_info_get_can_process(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_can_process.
 proc_info_get_detism_decl(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_detism_decl.
 proc_info_get_maybe_untuple_info(PI, X) :-
@@ -3005,11 +3035,11 @@ proc_info_set_inferred_determinism(X, !PI) :-
     !PI ^ proc_inferred_detism := X.
 proc_info_set_eval_method(X, !PI) :-
     !PI ^ proc_eval_method := X.
-proc_info_set_can_process(X, !PI) :-
-    !PI ^ proc_can_process := X.
 proc_info_set_mode_errors(X, !PI) :-
     !PI ^ proc_mode_errors := X.
 
+proc_info_set_can_process(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_can_process := X.
 proc_info_set_detism_decl(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_detism_decl := X.
 proc_info_set_maybe_untuple_info(X, !PI) :-
