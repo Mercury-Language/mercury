@@ -113,53 +113,61 @@
     % polymorphism and getting an updated module_info back.
     %
 table_gen_process_module(!ModuleInfo, !Specs) :-
+    module_info_get_globals(!.ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, trace_table_io, TraceTableIO),
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.keys(Preds0, PredIds),
     map.init(GenMap0),
-    table_gen_process_preds(PredIds, !ModuleInfo, GenMap0, _, !Specs).
+    table_gen_process_preds(TraceTableIO, PredIds,
+        !ModuleInfo, GenMap0, _, !Specs).
 
-:- pred table_gen_process_preds(list(pred_id)::in,
+:- pred table_gen_process_preds(bool::in, list(pred_id)::in,
     module_info::in, module_info::out,
     generator_map::in, generator_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-table_gen_process_preds([], !ModuleInfo, !GenMap, !Specs).
-table_gen_process_preds([PredId | PredIds], !ModuleInfo, !GenMap, !Specs) :-
-    table_gen_process_pred(PredId, !ModuleInfo, !GenMap, !Specs),
-    table_gen_process_preds(PredIds, !ModuleInfo, !GenMap, !Specs).
+table_gen_process_preds(_, [], !ModuleInfo, !GenMap, !Specs).
+table_gen_process_preds(TraceTableIO, [PredId | PredIds],
+        !ModuleInfo, !GenMap, !Specs) :-
+    table_gen_process_pred(TraceTableIO, PredId,
+        !ModuleInfo, !GenMap, !Specs),
+    table_gen_process_preds(TraceTableIO, PredIds,
+        !ModuleInfo, !GenMap, !Specs).
 
-:- pred table_gen_process_pred(pred_id::in, module_info::in, module_info::out,
-    generator_map::in, generator_map::out,
+:- pred table_gen_process_pred(bool::in, pred_id::in,
+    module_info::in, module_info::out, generator_map::in, generator_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-table_gen_process_pred(PredId, !ModuleInfo, !GenMap, !Specs) :-
+table_gen_process_pred(TraceTableIO, PredId, !ModuleInfo, !GenMap, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_procids(PredInfo),
-    table_gen_process_procs(PredId, ProcIds, !ModuleInfo, !GenMap, !Specs).
+    table_gen_process_procs(TraceTableIO, PredId, ProcIds,
+        !ModuleInfo, !GenMap, !Specs).
 
-:- pred table_gen_process_procs(pred_id::in, list(proc_id)::in,
+:- pred table_gen_process_procs(bool::in, pred_id::in, list(proc_id)::in,
     module_info::in, module_info::out,
     generator_map::in, generator_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-table_gen_process_procs(_PredId, [], !ModuleInfo, !GenMap, !Specs).
-table_gen_process_procs(PredId, [ProcId | ProcIds], !ModuleInfo, !GenMap,
-        !Specs) :-
+table_gen_process_procs(_, _, [], !ModuleInfo, !GenMap, !Specs).
+table_gen_process_procs(TraceTableIO, PredId, [ProcId | ProcIds],
+        !ModuleInfo, !GenMap, !Specs) :-
     module_info_get_preds(!.ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo0),
-    table_gen_process_proc(PredId, ProcId, ProcInfo0, PredInfo,
+    table_gen_process_proc(TraceTableIO, PredId, ProcId, ProcInfo0, PredInfo,
         !ModuleInfo, !GenMap, !Specs),
-    table_gen_process_procs(PredId, ProcIds, !ModuleInfo, !GenMap, !Specs).
+    table_gen_process_procs(TraceTableIO, PredId, ProcIds,
+        !ModuleInfo, !GenMap, !Specs).
 
-:- pred table_gen_process_proc(pred_id::in, proc_id::in, proc_info::in,
-    pred_info::in, module_info::in, module_info::out,
-    generator_map::in, generator_map::out,
+:- pred table_gen_process_proc(bool::in,
+    pred_id::in, proc_id::in, proc_info::in, pred_info::in,
+    module_info::in, module_info::out, generator_map::in, generator_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-table_gen_process_proc(PredId, ProcId, ProcInfo0, PredInfo0, !ModuleInfo,
-        !GenMap, !Specs) :-
+table_gen_process_proc(TraceTableIO, PredId, ProcId, ProcInfo0, PredInfo0,
+        !ModuleInfo, !GenMap, !Specs) :-
     proc_info_get_eval_method(ProcInfo0, EvalMethod),
     RequiresTablingTransform =
         eval_method_requires_tabling_transform(EvalMethod),
@@ -169,15 +177,14 @@ table_gen_process_proc(PredId, ProcId, ProcInfo0, PredInfo0, !ModuleInfo,
             ProcId, ProcInfo0, _, PredInfo0, _, !ModuleInfo, !GenMap, !Specs)
     ;
         RequiresTablingTransform = no,
-        (
-            module_info_get_globals(!.ModuleInfo, Globals),
-            globals.lookup_bool_option(Globals, trace_table_io, yes),
+        ( if
+            TraceTableIO = yes,
             proc_info_has_io_state_pair(!.ModuleInfo, ProcInfo0,
                 _InArgNum, _OutArgNum)
-        ->
+        then
             table_gen_process_io_proc(PredId, ProcId, ProcInfo0, PredInfo0,
                 !ModuleInfo, !GenMap, !Specs)
-        ;
+        else
             true
         )
     ).
@@ -262,13 +269,13 @@ should_io_procedure_be_transformed(TransformAll, Require, BodyGoal,
         TabledForIoAttrs = [TabledForIoAttr],
         (
             TabledForIoAttr = proc_not_tabled_for_io,
-            (
+            ( if
                 Require = yes,
-                \+ any_mercury_builtin_module(PredModuleName)
-            ->
+                not any_mercury_builtin_module(PredModuleName)
+            then
                 AnnotationIsMissing = yes,
                 TransformInfo = no
-            ;
+            else
                 AnnotationIsMissing = no,
                 (
                     TransformAll = no,
@@ -276,9 +283,9 @@ should_io_procedure_be_transformed(TransformAll, Require, BodyGoal,
                 ;
                     TransformAll = yes,
                     may_call_mercury_attributes(BodyGoal, MayCallMercuryAttrs),
-                    ( MayCallMercuryAttrs = [proc_may_call_mercury] ->
+                    ( if MayCallMercuryAttrs = [proc_may_call_mercury] then
                         TransformInfo = no
-                    ;
+                    else
                         TransformInfo = yes(table_io_alone)
                     )
                 )
@@ -337,7 +344,7 @@ subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
         goal_contains_goal(Goal, SubGoal),
         SubGoal = hlds_goal(call_foreign_proc(Attrs, _, _, _, _, _, _), _),
         TabledForIoAttr = get_tabled_for_io(Attrs),
-        \+ TabledForIoAttr = proc_not_tabled_for_io
+        not TabledForIoAttr = proc_not_tabled_for_io
     ).
 
 :- func report_missing_tabled_for_io(pred_info, pred_id, proc_id, module_info)
@@ -644,7 +651,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 %   ;
 %       Status = loop_inactive,
 %       % status has been changed to active by the setup predicate
-%       (if
+%       ( if
 %           <original code>, with B replaced by C
 %       then
 %           B = C,
@@ -886,7 +893,7 @@ create_new_loop_goal(OrigGoal, Statistics, PredId, ProcId,
 %   ;
 %       Status = memo_semi_inactive,
 %       % status has been changed to active by the setup predicate
-%       (if
+%       ( if
 %           <original code>, with B replaced by C
 %       then
 %           B = C,
@@ -1201,7 +1208,7 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
 % The transformed code would be:
 %
 % p(A, B, S0, S) :-
-%   (if
+%   ( if
 %           % Get the global I/O table, the global I/O
 %           % counter, and the starting point for tabling
 %           % I/O actions, if we are in the tabled range.
@@ -1210,7 +1217,7 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
 %           % Look up the input arguments.
 %       impure table_lookup_insert_start_int(T0, Counter,
 %           Start, T),
-%       (if
+%       ( if
 %           semipure table_io_has_occurred(T)
 %       then
 %           semipure table_memo_get_answer_block(T, Block),
@@ -1270,7 +1277,7 @@ create_new_io_goal(OrigGoal, TableIoEntryKind, Unitize, TableIoStates,
     ModuleInfo0 = !.TableInfo ^ table_module_info,
     module_info_pred_info(ModuleInfo0, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, marker_user_marked_no_inline) ->
+    ( if check_marker(Markers, marker_user_marked_no_inline) then
         %
         % If the predicate should not be inlined, then we create a new
         % predicate with the same body as the original predicate, which is
@@ -1284,7 +1291,7 @@ create_new_io_goal(OrigGoal, TableIoEntryKind, Unitize, TableIoStates,
             ModuleInfo),
         NewGoal = hlds_goal(CallExpr, OrigGoalInfo),
         !TableInfo ^ table_module_info := ModuleInfo
-    ;
+    else
         NewGoal = OrigGoal,
         ModuleInfo = ModuleInfo0
     ),
@@ -1383,13 +1390,13 @@ create_new_io_goal(OrigGoal, TableIoEntryKind, Unitize, TableIoStates,
         RestoreAnswerGoal = RestoreAnswerGoal0
     ;
         TableIoStates = no,
-        (
+        ( if
             IoStateAssignFromVars = [IoStateAssignFromVarPrime],
             IoStateAssignToVars = [IoStateAssignToVarPrime]
-        ->
+        then
             IoStateAssignFromVar = project_var(IoStateAssignFromVarPrime),
             IoStateAssignToVar = project_var(IoStateAssignToVarPrime)
-        ;
+        else
             % The call to proc_info_has_io_state_pair in
             % table_gen_process_procs should ensure that we never get here.
             unexpected($module, $pred, "one in / one out violation")
@@ -1640,10 +1647,10 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
 % p(A, B) :-
 %   CT0 = <table pointer for p/2>,
 %   impure table_lookup_insert_int(CT0, A, CT1),
-%   ( CT1 = NULL ->
+%   ( if CT1 = NULL then
 %       table_mmos_save_inputs(0, A),   % into global var MR_mmos_input_arg
 %       Generator = table_mmos_setup_generator(CT1, 1, p2_gen, "p"),
-%   ;
+%   then
 %       Generator = trie_node_to_generator(CT1)
 %   ),
 %   impure table_mmos_setup_consumer(Generator, Consumer),
@@ -1664,9 +1671,9 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
         !VarSet, !VarTypes, !TableInfo, !GenMap, Goal,
         InputSteps, OutputSteps) :-
     PredName = pred_info_name(PredInfo0),
-    ( map.search(!.GenMap, PredId, GeneratorPredIdPrime) ->
+    ( if map.search(!.GenMap, PredId, GeneratorPredIdPrime) then
         GeneratorPredId = GeneratorPredIdPrime
-    ;
+    else
         clone_pred_info(PredId, PredInfo0, HeadVars, NumberedOutputVars,
             GeneratorPredId, !TableInfo),
         map.det_insert(PredId, GeneratorPredId, !GenMap)
@@ -1758,11 +1765,11 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
 
     generate_new_table_var("AnswerBlock", answer_block_type,
         !VarSet, !VarTypes, AnswerBlockVar),
-    ( Detism = detism_multi ->
+    ( if Detism = detism_multi then
         ConsumePredName = "table_mmos_consume_next_answer_multi"
-    ; Detism = detism_non ->
+    else if Detism = detism_non then
         ConsumePredName = "table_mmos_consume_next_answer_nondet"
-    ;
+    else
         unexpected($module, $pred, "invalid determinism")
     ),
     % XXX consider inlining the predicate being called
@@ -2025,10 +2032,10 @@ keep_only_output_arg_types([], _, []).
 keep_only_output_arg_types([_ | _], [], []).
 keep_only_output_arg_types([Var - Type | VarTypes], [Out | Outs], OutTypes) :-
     Out = var_mode_pos_method(OutVar, _, _, _),
-    ( Var = OutVar ->
+    ( if Var = OutVar then
         keep_only_output_arg_types(VarTypes, Outs, OutTypesTail),
         OutTypes = [Type | OutTypesTail]
-    ;
+    else
         keep_only_output_arg_types(VarTypes, [Out | Outs], OutTypes)
     ).
 
@@ -2447,9 +2454,9 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
         ; CtorCat = ctor_cat_void
         ),
         % Values in these type categories don't have an address.
-        ( ArgTablingMethod0 = arg_addr ->
+        ( if ArgTablingMethod0 = arg_addr then
             ArgTablingMethod = arg_value
-        ;
+        else
             ArgTablingMethod = ArgTablingMethod0
         )
     ;
@@ -2473,13 +2480,13 @@ gen_lookup_call_for_type(ArgTablingMethod0, CtorCat, Type, ArgVar, VarSeqNum,
             module_info_get_type_table(ModuleInfo, TypeTable),
             lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-            (
+            ( if
                 Ctors = TypeBody ^ du_type_ctors,
                 TypeBody ^ du_type_kind = du_type_kind_mercury_enum,
                 TypeBody ^ du_type_usereq  = no
-            ->
+            then
                 list.length(Ctors, EnumRange)
-            ;
+            else
                 unexpected($module, $pred, "enum type is not du_type?")
             ),
             LookupMacroName = "MR_tbl_lookup_insert_enum",
@@ -2692,7 +2699,7 @@ generate_memo_save_goal(NumberedSaveVars, TableTipVar, BlockSize,
     TipVarName = cur_table_node_name,
     TableArg = foreign_arg(TableTipVar, yes(TipVarName - in_mode),
         trie_node_type, native_if_possible),
-    ( BlockSize > 0 ->
+    ( if BlockSize > 0 then
         CreatePredName = "table_memo_fill_answer_block_shortcut",
         CreateMacroName = "MR_tbl_memo_create_answer_block",
         generate_all_save_goals(NumberedSaveVars, TipVarName,
@@ -2703,7 +2710,7 @@ generate_memo_save_goal(NumberedSaveVars, TableTipVar, BlockSize,
             SaveDeclCode ++ SaveCode, purity_impure, instmap_delta_bind_no_var,
             ModuleInfo, Context, SaveGoal),
         Goals = SavePrefixGoals ++ [SaveGoal]
-    ;
+    else
         DebugArgStr = get_debug_arg_string(!.TableInfo),
         MarkAsSucceededPredName = "table_memo_mark_as_succeeded",
         MarkAsSucceededMacroName = "MR_tbl_memo_mark_as_succeeded",
@@ -2944,14 +2951,14 @@ gen_save_call_for_type(CtorCat, Type, Var, Offset, DebugArgStr, Context,
     Name = arg_name(Offset),
     ForeignArg = foreign_arg(Var, yes(Name - in_mode), Type,
         native_if_possible),
-    ( type_is_io_state(Type) ->
+    ( if type_is_io_state(Type) then
         SaveMacroName = "MR_tbl_save_io_state_answer",
         Args = [ForeignArg],
         PrefixGoals = [],
         CodeStr = "\t" ++ SaveMacroName ++ "(" ++ DebugArgStr ++ ", " ++
             answer_block_name ++ ", " ++ int_to_string(Offset) ++ ", "
             ++ Name ++ ");\n"
-    ; builtin_type(CtorCat) = no ->
+    else if builtin_type(CtorCat) = no then
         % If we used ForeignArg instead of GenericForeignArg, then
         % Var would be unboxed when assigned to Name, which we don't want.
         GenericForeignArg = foreign_arg(Var, yes(Name - in_mode),
@@ -2967,7 +2974,7 @@ gen_save_call_for_type(CtorCat, Type, Var, Offset, DebugArgStr, Context,
         CodeStr = "\t" ++ SaveMacroName ++ "(" ++ DebugArgStr ++ ", " ++
             answer_block_name ++ ", " ++ int_to_string(Offset) ++ ", " ++
             TypeInfoName ++ ", " ++ Name ++ ");\n"
-    ;
+    else
         type_save_category(CtorCat, CatString),
         SaveMacroName = "MR_tbl_save_" ++ CatString ++ "_answer",
         Args = [ForeignArg],
@@ -3028,11 +3035,11 @@ generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
 
 generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
         RecordVar, Context, !VarSet, !VarTypes, TableInfo, Goal) :-
-    ( Detism = detism_multi ->
+    ( if Detism = detism_multi then
         ReturnAllAns = "table_memo_return_all_answers_multi"
-    ; Detism = detism_non ->
+    else if Detism = detism_non then
         ReturnAllAns = "table_memo_return_all_answers_nondet"
-    ;
+    else
         unexpected($module, $pred, "invalid determinism")
     ),
     generate_new_table_var("AnswerBlock", answer_block_type,
@@ -3071,11 +3078,11 @@ generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
 
 generate_mm_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
         SubgoalVar, Context, !VarSet, !VarTypes, TableInfo, Goal) :-
-    ( Detism = detism_multi ->
+    ( if Detism = detism_multi then
         ReturnAllAns = "table_mm_return_all_multi"
-    ; Detism = detism_non ->
+    else if Detism = detism_non then
         ReturnAllAns = "table_mm_return_all_nondet"
-    ;
+    else
         unexpected($module, $pred, "invalid determinism")
     ),
     generate_mm_restore_or_suspend_goal(ReturnAllAns, Detism, purity_semipure,
@@ -3164,20 +3171,20 @@ generate_restore_goals([NumberedVar | NumberedRest], OrigInstmapDelta,
 gen_restore_call_for_type(DebugArgStr, CtorCat, Type, OrigInstmapDelta, Var,
         Offset, Var - Inst, Arg, CodeStr) :-
     Name = "restore_arg" ++ int_to_string(Offset),
-    ( type_is_io_state(Type) ->
+    ( if type_is_io_state(Type) then
         RestoreMacroName = "MR_tbl_restore_io_state_answer",
         ArgType = Type
-    ; builtin_type(CtorCat) = no ->
+    else if builtin_type(CtorCat) = no then
         RestoreMacroName = "MR_tbl_restore_any_answer",
         ArgType = dummy_type_var
-    ;
+    else
         type_save_category(CtorCat, CatString),
         RestoreMacroName = "MR_tbl_restore_" ++ CatString ++ "_answer",
         ArgType = Type
     ),
-    ( instmap_delta_search_var(OrigInstmapDelta, Var, InstPrime) ->
+    ( if instmap_delta_search_var(OrigInstmapDelta, Var, InstPrime) then
         Inst = InstPrime
-    ;
+    else
         unexpected($module, $pred, "no inst")
     ),
     Arg = foreign_arg(Var, yes(Name - (free -> Inst)), ArgType,
@@ -3251,9 +3258,9 @@ table_generate_call(PredName, Detism, Args, Purity, InstMapDelta, ModuleInfo,
         ),
         Features0 = [feature_not_impure_for_determinism]
     ),
-    ( Detism = detism_failure ->
+    ( if Detism = detism_failure then
         Features = [feature_preserve_backtrack_into | Features0]
-    ;
+    else
         Features = Features0
     ),
     goal_util.generate_simple_call(BuiltinModule, PredName, pf_predicate,
@@ -3277,9 +3284,9 @@ table_generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
         ),
         Features0 = [feature_not_impure_for_determinism]
     ),
-    ( Detism = detism_failure ->
+    ( if Detism = detism_failure then
         Features = [feature_preserve_backtrack_into | Features0]
-    ;
+    else
         Features = Features0
     ),
     BuiltinModule = mercury_table_builtin_module,
@@ -3333,17 +3340,17 @@ get_input_output_vars([], [_ | _], _, !MaybeSpecMethod, _, _) :-
     unexpected($module, $pred, "lists not same length").
 get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
         !MaybeSpecMethod, InVarModes, OutVarModes) :-
-    ( mode_is_fully_input(ModuleInfo, Mode) ->
+    ( if mode_is_fully_input(ModuleInfo, Mode) then
         get_input_output_vars(Vars, Modes, ModuleInfo, !MaybeSpecMethod,
             InVarModes0, OutVarModes),
         (
             !.MaybeSpecMethod = all_same(ArgMethod)
         ;
             !.MaybeSpecMethod = specified(MaybeArgMethods0, HiddenArgMethod),
-            (
+            ( if
                 list.split_last(MaybeArgMethods0, MaybeArgMethods,
                     LastMaybeArgMethod)
-            ->
+            then
                 (
                     LastMaybeArgMethod = yes(ArgMethod)
                 ;
@@ -3352,7 +3359,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
                 ),
                 !:MaybeSpecMethod = specified(MaybeArgMethods,
                     HiddenArgMethod)
-            ;
+            else
                 % We have run out of specified arg_methods, which means the
                 % variable we are looking at right now is one that was added
                 % by the polymorphism transformation.
@@ -3367,7 +3374,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
             )
         ),
         InVarModes = [var_mode_method(Var, Mode, ArgMethod) | InVarModes0]
-    ; mode_is_fully_output(ModuleInfo, Mode) ->
+    else if mode_is_fully_output(ModuleInfo, Mode) then
         get_input_output_vars(Vars, Modes, ModuleInfo, !MaybeSpecMethod,
             InVarModes, OutVarModes0),
         (
@@ -3377,15 +3384,15 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
             % all_same refers only to the treatment of input arguments.
         ;
             !.MaybeSpecMethod = specified(MaybeArgMethods0, HiddenArgMethod),
-            (
+            ( if
                 list.split_last(MaybeArgMethods0, MaybeArgMethods,
                     LastMaybeArgMethod)
-            ->
+            then
                 expect(unify(LastMaybeArgMethod, no), $pred,
                     "bad method for output var"),
                 !:MaybeSpecMethod = specified(MaybeArgMethods,
                     HiddenArgMethod)
-            ;
+            else
                 % We have run out of specified arg_methods, which means the
                 % variable we are looking at right now is one that was added
                 % by the polymorphism transformation.
@@ -3400,7 +3407,7 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
             )
         ),
         OutVarModes = [var_mode_method(Var, Mode, arg_value) | OutVarModes0]
-    ;
+    else
         % We should have caught this when we added the tabling pragma
         % to the proc_info.
         unexpected($module, $pred, "bad var")
@@ -3726,9 +3733,9 @@ table_gen_make_type_info_var(Type, Context, !VarSet, !VarTypes, !TableInfo,
         TypeInfoVar, TypeInfoGoals) :-
     table_gen_make_type_info_vars([Type], Context, !VarSet, !VarTypes,
         !TableInfo, TypeInfoVars, TypeInfoGoals),
-    ( TypeInfoVars = [TypeInfoVar0] ->
+    ( if TypeInfoVars = [TypeInfoVar0] then
         TypeInfoVar = TypeInfoVar0
-    ;
+    else
         unexpected($module, $pred, "list length != 1")
     ).
 
