@@ -204,55 +204,54 @@
 % Creation of polyhedra.
 %
 
-polyhedron.empty = empty_poly.
+empty = empty_poly.
 
-polyhedron.universe = eqns([]).
+universe = eqns([]).
 
     % This does the following:
     %   - checks if the constraint is false.
     %   - simplifies the representation of the constraint.
     %    - calls intersection/3 (which does further simplifications).
     %
-polyhedron.from_constraints([]) = eqns([]).
-polyhedron.from_constraints([C | Cs]) = Polyhedron :-
-    ( lp_rational.is_false(C) ->
+from_constraints([]) = eqns([]).
+from_constraints([C | Cs]) = Polyhedron :-
+    ( if lp_rational.is_false(C) then
         Polyhedron = empty
-    ;
+    else
         Polyhedron0 = polyhedron.from_constraints(Cs),
         Polyhedron = polyhedron.intersection(eqns([C]), Polyhedron0)
     ).
 
-polyhedron.constraints(eqns(Constraints)) = Constraints.
-polyhedron.constraints(empty_poly) = [lp_rational.false_constraint].
+constraints(eqns(Constraints)) = Constraints.
+constraints(empty_poly) = [lp_rational.false_constraint].
 
-polyhedron.non_false_constraints(eqns(Constraints)) = Constraints.
-polyhedron.non_false_constraints(empty_poly) =
+non_false_constraints(eqns(Constraints)) = Constraints.
+non_false_constraints(empty_poly) =
     unexpected($module, $pred, "empty polyhedron").
 
-polyhedron.is_empty(empty_poly).
+is_empty(empty_poly).
 
-polyhedron.is_universe(eqns(Constraints)) :-
+is_universe(eqns(Constraints)) :-
     list.all_true(lp_rational.nonneg_constr, Constraints).
 
-polyhedron.optimize(_, empty_poly, empty_poly).
-polyhedron.optimize(Varset, eqns(Constraints0), Result) :-
+optimize(_, empty_poly, empty_poly).
+optimize(Varset, eqns(Constraints0), Result) :-
     Constraints = simplify_constraints(Constraints0),
-    ( inconsistent(Varset, Constraints) ->
-        Result = empty_poly
-    ;
-        Result = eqns(Constraints)
+    ( if inconsistent(Varset, Constraints)
+    then Result = empty_poly
+    else Result = eqns(Constraints)
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Intersection
+% Intersection.
 %
 
-polyhedron.intersection(PolyA, PolyB, polyhedron.intersection(PolyA, PolyB)).
+intersection(PolyA, PolyB, polyhedron.intersection(PolyA, PolyB)).
 
-polyhedron.intersection(empty_poly, _) = empty_poly.
-polyhedron.intersection(eqns(_), empty_poly) = empty_poly.
-polyhedron.intersection(eqns(MatrixA), eqns(MatrixB)) = eqns(Constraints) :-
+intersection(empty_poly, _) = empty_poly.
+intersection(eqns(_), empty_poly) = empty_poly.
+intersection(eqns(MatrixA), eqns(MatrixB)) = eqns(Constraints) :-
     Constraints0 = MatrixA ++ MatrixB,
     restore_equalities(Constraints0, Constraints1),
     Constraints = simplify_constraints(Constraints1).
@@ -267,23 +266,21 @@ polyhedron.intersection(eqns(MatrixA), eqns(MatrixB)) = eqns(Constraints) :-
 % bounding box approximation instead.
 %
 
-polyhedron.convex_union(Varset, PolyhedronA, PolyhedronB) = Polyhedron :-
+convex_union(Varset, PolyhedronA, PolyhedronB) = Polyhedron :-
     convex_union(Varset, no, PolyhedronA, PolyhedronB, Polyhedron).
 
-polyhedron.convex_union(Varset, PolyhedronA, PolyhedronB, Polyhedron) :-
+convex_union(Varset, PolyhedronA, PolyhedronB, Polyhedron) :-
     convex_union(Varset, no, PolyhedronA, PolyhedronB, Polyhedron).
 
-polyhedron.convex_union(Varset, MaxMatrixSize, PolyhedronA, PolyhedronB)
-        = Polyhedron :-
-    convex_union(Varset, MaxMatrixSize, PolyhedronA, PolyhedronB,
-        Polyhedron).
+convex_union(Varset, MaxMatrixSize, PolyhedronA, PolyhedronB) = Polyhedron :-
+    convex_union(Varset, MaxMatrixSize, PolyhedronA, PolyhedronB, Polyhedron).
 
-polyhedron.convex_union(_, _, empty_poly, empty_poly, empty_poly).
-polyhedron.convex_union(_, _, eqns(Constraints), empty_poly,
+convex_union(_, _, empty_poly, empty_poly, empty_poly).
+convex_union(_, _, eqns(Constraints), empty_poly,
     eqns(Constraints)).
-polyhedron.convex_union(_, _, empty_poly, eqns(Constraints),
+convex_union(_, _, empty_poly, eqns(Constraints),
     eqns(Constraints)).
-polyhedron.convex_union(Varset, MaybeMaxSize, eqns(ConstraintsA),
+convex_union(Varset, MaybeMaxSize, eqns(ConstraintsA),
         eqns(ConstraintsB), Hull) :-
     convex_hull([ConstraintsA, ConstraintsB], Hull, MaybeMaxSize, Varset).
 
@@ -390,10 +387,9 @@ convex_hull(Polys @ [_,_|_], ConvexHull, MaybeMaxSize, Varset0) :-
             % XXX We should try removing this call to simplify constraints.
             %     It seems unnecessary.
             !:Hull = simplify_constraints(!.Hull),
-            ( remove_some_entailed_constraints(Varset, !Hull) ->
-                ConvexHull = eqns(!.Hull)
-            ;
-                ConvexHull = empty_poly
+            ( if remove_some_entailed_constraints(Varset, !Hull)
+            then ConvexHull = eqns(!.Hull)
+            else ConvexHull = empty_poly
             )
         )
     ).
@@ -504,11 +500,11 @@ make_last_terms(OriginalVar, VarMap, !Terms) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Approximation of polyhedron by a bounding box
+% Approximation of a polyhedron by a bounding box.
 %
 
-polyhedron.bounding_box(empty_poly, _) = empty_poly.
-polyhedron.bounding_box(eqns(Constraints), Varset) =
+bounding_box(empty_poly, _) = empty_poly.
+bounding_box(eqns(Constraints), Varset) =
     eqns(lp_rational.bounding_box(Varset, Constraints)).
 
 %-----------------------------------------------------------------------------%
@@ -516,20 +512,20 @@ polyhedron.bounding_box(eqns(Constraints), Varset) =
 % Widening
 %
 
-polyhedron.widen(empty_poly, empty_poly, _) = empty_poly.
-polyhedron.widen(eqns(_), empty_poly, _) =
+widen(empty_poly, empty_poly, _) = empty_poly.
+widen(eqns(_), empty_poly, _) =
     unexpected($module, $pred, "empty polyhedron").
-polyhedron.widen(empty_poly, eqns(_), _) =
+widen(empty_poly, eqns(_), _) =
     unexpected($module, $pred, "empty polyhedron").
-polyhedron.widen(eqns(Poly1), eqns(Poly2), Varset) = eqns(WidenedEqns) :-
+widen(eqns(Poly1), eqns(Poly2), Varset) = eqns(WidenedEqns) :-
     WidenedEqns = list.filter(entailed(Varset, Poly2), Poly1).
 
 %-----------------------------------------------------------------------------%
 %
-% Projection
+% Projection.
 %
 
-polyhedron.project_all(Varset, Locals, Polyhedra) =
+project_all(Varset, Locals, Polyhedra) =
     list.map((func(Poly0) = Poly :-
         (
             Poly0 = eqns(Constraints0),
@@ -552,11 +548,11 @@ polyhedron.project_all(Varset, Locals, Polyhedra) =
         )
     ), Polyhedra).
 
-polyhedron.project(Vars, Varset, Polyhedron0) = Polyhedron :-
-    polyhedron.project(Vars, Varset, Polyhedron0, Polyhedron).
+project(Vars, Varset, Polyhedron0) = Polyhedron :-
+    project(Vars, Varset, Polyhedron0, Polyhedron).
 
-polyhedron.project(_, _, empty_poly, empty_poly).
-polyhedron.project(Vars, Varset, eqns(Constraints0), Result) :-
+project(_, _, empty_poly, empty_poly).
+project(Vars, Varset, eqns(Constraints0), Result) :-
     lp_rational.project(Vars, Varset, Constraints0, ProjectionResult),
     (
         ProjectionResult = pr_res_aborted,
@@ -569,40 +565,41 @@ polyhedron.project(Vars, Varset, eqns(Constraints0), Result) :-
         restore_equalities(Constraints1, Constraints),
         Result = eqns(Constraints)
     ).
+
 %-----------------------------------------------------------------------------%
 %
-% Variable substitution
+% Variable substitution.
 %
 
-polyhedron.substitute_vars(OldVars, NewVars, Polyhedron0) = Polyhedron :-
+substitute_vars(OldVars, NewVars, Polyhedron0) = Polyhedron :-
     Constraints0 = polyhedron.non_false_constraints(Polyhedron0),
     Constraints = lp_rational.substitute_vars(OldVars, NewVars, Constraints0),
     Polyhedron = polyhedron.from_constraints(Constraints).
 
-polyhedron.substitute_vars(SubstMap, Polyhedron0) = Polyhedron :-
+substitute_vars(SubstMap, Polyhedron0) = Polyhedron :-
     Constraints0 = polyhedron.non_false_constraints(Polyhedron0),
     Constraints = lp_rational.substitute_vars(SubstMap, Constraints0),
     Polyhedron = polyhedron.from_constraints(Constraints).
 
 %-----------------------------------------------------------------------------%
 %
-% Zeroing out variables
+% Zeroing out variables.
 %
 
-polyhedron.zero_vars(_, empty_poly) = empty_poly.
-polyhedron.zero_vars(Vars, eqns(Constraints0)) = eqns(Constraints) :-
+zero_vars(_, empty_poly) = empty_poly.
+zero_vars(Vars, eqns(Constraints0)) = eqns(Constraints) :-
     Constraints = lp_rational.set_vars_to_zero(Vars, Constraints0).
 
 %-----------------------------------------------------------------------------%
 %
-% Printing
+% Printing.
 %
 
-polyhedron.write_polyhedron(empty_poly, _, !IO) :-
+write_polyhedron(empty_poly, _, !IO) :-
     io.write_string("\tEmpty\n", !IO).
-polyhedron.write_polyhedron(eqns([]),   _, !IO) :-
+write_polyhedron(eqns([]),   _, !IO) :-
     io.write_string("\tUniverse\n", !IO).
-polyhedron.write_polyhedron(eqns(Constraints @ [_|_]), Varset, !IO) :-
+write_polyhedron(eqns(Constraints @ [_ | _]), Varset, !IO) :-
     lp_rational.write_constraints(Constraints, Varset, !IO).
 
 %-----------------------------------------------------------------------------%
