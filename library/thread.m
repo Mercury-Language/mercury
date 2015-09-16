@@ -263,8 +263,9 @@ spawn_context_2(_, Res, "", !IO) :-
     /*
     ** Store Goal and ThreadId on the top of the new context's stack.
     */
-    ctxt->MR_ctxt_sp[0] = Goal;
-    ctxt->MR_ctxt_sp[-1] = (MR_Word) ThreadId;
+    ctxt->MR_ctxt_sp += 2;
+    ctxt->MR_ctxt_sp[0] = Goal;                 /* MR_stackvar(1) */
+    ctxt->MR_ctxt_sp[-1] = (MR_Word) ThreadId;  /* MR_stackvar(2) */
 
     MR_schedule_context(ctxt);
 
@@ -439,6 +440,7 @@ INIT mercury_sys_init_thread_modules
         /* Call the closure placed the top of the stack. */
         MR_r1 = MR_stackvar(1); /* Goal */
         MR_r2 = MR_stackvar(2); /* ThreadId */
+        MR_decr_sp(2);
         MR_noprof_call(MR_ENTRY(mercury__do_call_closure_1),
             MR_LABEL(mercury__thread__spawn_end_thread));
     }
