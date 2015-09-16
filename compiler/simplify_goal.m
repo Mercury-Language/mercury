@@ -104,17 +104,17 @@
 :- import_module maybe.
 :- import_module require.
 
-simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common,!Info) :-
+simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
     Goal0 = hlds_goal(_, GoalInfo0),
-    ( goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) ->
+    ( if goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) then
         NestedContext = NestedContext0 ^ snc_inside_dupl_for_switch := yes
-    ;
+    else
         NestedContext = NestedContext0
     ),
-    ( goal_info_has_feature(GoalInfo0, feature_contains_trace) ->
+    ( if goal_info_has_feature(GoalInfo0, feature_contains_trace) then
         simplify_info_set_found_contains_trace(yes, !Info),
         Goal0ContainsTrace = contains_trace_goal
-    ;
+    else
         Goal0ContainsTrace = contains_no_trace_goal
     ),
     Detism = goal_info_get_determinism(GoalInfo0),
@@ -123,7 +123,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common,!Info) :-
         ModuleInfo0, ModuleInfo),
     simplify_info_set_module_info(ModuleInfo, !Info),
     Purity = goal_info_get_purity(GoalInfo0),
-    (
+    ( if
         % If --no-fully-strict, replace goals with determinism failure
         % with `fail'.
 
@@ -135,21 +135,21 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common,!Info) :-
         ( simplify_info_get_fully_strict(!.Info, no)
         ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
-    ->
+    then
         % Warn about this, unless the goal was an explicit `fail', call to
         % `builtin.false/0' or  some goal containing `fail' or a call to
         % `builtin.false/0'.
 
         Context = goal_info_get_context(GoalInfo0),
-        (
+        ( if
             simplify_do_warn_simple_code(!.Info),
-            \+ (
+            not (
                 goal_contains_goal(Goal0, SubGoal),
                 ( SubGoal = hlds_goal(disj([]), _)
                 ; goal_is_call_to_builtin_false(SubGoal)
                 )
             )
-        ->
+        then
             MainPieces = [words("Warning: this goal cannot succeed.")],
             VerbosePieces = [
                 words("The compiler will optimize away this goal,"),
@@ -164,21 +164,21 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common,!Info) :-
             Spec = error_spec(Severity,
                 phase_simplify(report_only_if_in_all_modes), [Msg]),
             simplify_info_add_simple_code_spec(Spec, !Info)
-        ;
+        else
             true
         ),
 
         % If the goal had any non-locals we should requantify.
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        ( set_of_var.is_empty(NonLocals0) ->
+        ( if set_of_var.is_empty(NonLocals0) then
             true
-        ;
+        else
             simplify_info_set_should_requantify(!Info)
         ),
         goal_cost(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
         Goal1 = fail_goal_with_context(Context)
-    ;
+    else if
         % If --no-fully-strict, replace goals which cannot fail and have
         % no output variables with `true'. However, we don't do this for
         % erroneous goals, since these may occur in conjunctions where there
@@ -200,7 +200,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common,!Info) :-
         ( simplify_info_get_fully_strict(!.Info, no)
         ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
-    ->
+    then
 % The following warning is disabled, because it often results in spurious
 % warnings.  Sometimes predicate calls are used just to constrain the types,
 % to avoid type ambiguities or unbound type variables, and in such cases,
@@ -220,47 +220,48 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common,!Info) :-
 %       % We also don't warn about conjunctions or existential
 %       % quantifications, because it seems that warnings in those
 %       % cases are usually spurious.
-%       (
+%       ( if
 %           simplify_do_warn_simple_code(!.Info),
 %           % Goal0 \= conj(plain_conj, []) - _,
-%           \+ (Goal0 = call(_, _, _, _, _, SymName) - _,
+%           not (Goal0 = call(_, _, _, _, _, SymName) - _,
 %               unqualify_name(SymName, "!")),
 %           Goal0 \= conj(plain_conj, _) - _,
 %           Goal0 \= some(_, _) - _,
-%           \+ (Goal0 = unify(_, _, _, Unification, _) - _,
+%           not (Goal0 = unify(_, _, _, Unification, _) - _,
 %               Unification = deconstruct(_, _, _, _, _))
-%       ->
+%       then
 %           Msg = det_goal_has_no_outputs,
 %           ContextMsg = context_det_msg(Context, Msg),
 %           simplify_info_add_simple_code_spec(ContextMsg, !Info)
-%       ;
+%       else
 %           true
 %       ),
 
         % If the goal had any non-locals we should requantify.
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-        ( set_of_var.is_empty(NonLocals0) ->
+        ( if set_of_var.is_empty(NonLocals0) then
             true
-        ;
+        else
             simplify_info_set_should_requantify(!Info)
         ),
         goal_cost(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
         Context = goal_info_get_context(GoalInfo0),
         Goal1 = true_goal_with_context(Context)
-    ;
+    else
         Goal1 = Goal0
     ),
 
     % Remove unnecessary explicit quantifications before working out
     % whether the goal can cause a stack flush.
 
-    ( Goal1 = hlds_goal(scope(Reason1, SomeGoal1), GoalInfo1) ->
+    Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
+    ( if GoalExpr1 = scope(Reason1, SomeGoal1) then
         try_to_merge_nested_scopes(Reason1, SomeGoal1, GoalInfo1, Goal2)
-    ;
+    else
         Goal2 = Goal1
     ),
-    (
+    ( if
         simplify_do_elim_removable_scopes(!.Info),
         Goal2 = hlds_goal(scope(Reason2, SomeGoal2), _GoalInfo2),
         (
@@ -269,9 +270,9 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common,!Info) :-
             Reason2 = from_ground_term(_, Kind),
             Kind = from_ground_term_other
         )
-    ->
+    then
         Goal3 = SomeGoal2
-    ;
+    else
         Goal3 = Goal2
     ),
     Goal3 = hlds_goal(GoalExpr3, GoalInfo3),
@@ -380,13 +381,13 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, NestedContext0,
     simplify_info::in, common_info::in, common_info::out) is det.
 
 maybe_clear_common_structs(BeforeAfter, GoalExpr, Info, !Common) :-
-    (
+    ( if
         simplify_do_common_struct(Info),
-        \+ simplify_do_extra_common_struct(Info),
+        not simplify_do_extra_common_struct(Info),
         will_flush(GoalExpr, BeforeAfter) = yes
-    ->
+    then
         common_info_clear_structs(!Common)
-    ;
+    else
         true
     ).
 
@@ -399,9 +400,9 @@ maybe_clear_common_structs(BeforeAfter, GoalExpr, Info, !Common) :-
 will_flush(GoalExpr, BeforeAfter) = WillFlush :-
     (
         GoalExpr = unify(_, _, _, Unify, _),
-        ( Unify = complicated_unify(_, _, _) ->
+        ( if Unify = complicated_unify(_, _, _) then
             WillFlush = yes
-        ;
+        else
             WillFlush = no
         )
     ;
@@ -516,22 +517,22 @@ enforce_unreachability_invariant(GoalInfo0, GoalInfo, !Info) :-
     Determinism0 = goal_info_get_determinism(GoalInfo0),
     InstmapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
     determinism_components(Determinism0, CanFail0, NumSolns0),
-    (
+    ( if
         NumSolns0 = at_most_zero,
         instmap_delta_is_reachable(InstmapDelta0)
-    ->
+    then
         instmap_delta_init_unreachable(UnreachableInstMapDelta),
         goal_info_set_instmap_delta(UnreachableInstMapDelta,
             GoalInfo0, GoalInfo),
         simplify_info_set_should_rerun_det(!Info)
-    ;
+    else if
         instmap_delta_is_unreachable(InstmapDelta0),
         NumSolns0 \= at_most_zero
-    ->
+    then
         determinism_components(Determinism, CanFail0, at_most_zero),
         goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
         simplify_info_set_should_rerun_det(!Info)
-    ;
+    else
         GoalInfo = GoalInfo0
     ).
 
@@ -539,14 +540,12 @@ enforce_unreachability_invariant(GoalInfo0, GoalInfo, !Info) :-
 
 simplify_maybe_wrap_goal(OuterGoalInfo, InnerGoalInfo, GoalExpr1,
         GoalExpr, GoalInfo, !Info) :-
-    (
-        InnerDet = goal_info_get_determinism(InnerGoalInfo),
-        OuterDet = goal_info_get_determinism(OuterGoalInfo),
-        InnerDet = OuterDet
-    ->
+    InnerDet = goal_info_get_determinism(InnerGoalInfo),
+    OuterDet = goal_info_get_determinism(OuterGoalInfo),
+    ( if InnerDet = OuterDet then
         GoalExpr = GoalExpr1,
         GoalInfo = InnerGoalInfo
-    ;
+    else
         GoalExpr = scope(commit(dont_force_pruning),
             hlds_goal(GoalExpr1, InnerGoalInfo)),
         GoalInfo = OuterGoalInfo,
