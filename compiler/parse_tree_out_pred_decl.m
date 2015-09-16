@@ -38,16 +38,15 @@
     inst_varset::in, pred_or_func::in, existq_tvars::in, sym_name::in,
     list(type_and_mode)::in, maybe(mer_type)::in, maybe(mer_inst)::in,
     maybe(determinism)::in, purity::in, prog_constraints::in,
-    prog_context::in, string::in, string::in,
-    string::in, U::di, U::uo) is det <= output(U).
+    string::in, string::in, string::in, U::di, U::uo) is det <= output(U).
 
     % XXX Document me.
     %
 :- pred mercury_format_func_decl(output_lang::in, tvarset::in, inst_varset::in,
     existq_tvars::in, sym_name::in, list(type_and_mode)::in,
     type_and_mode::in, maybe(determinism)::in, purity::in,
-    prog_constraints::in, prog_context::in, string::in, string::in,
-    string::in, U::di, U::uo) is det <= output(U).
+    prog_constraints::in, string::in, string::in, string::in, U::di, U::uo)
+    is det <= output(U).
 
 %---------------------------------------------------------------------------%
 
@@ -55,20 +54,20 @@
     %
 :- pred mercury_output_pred_type(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in, maybe(determinism)::in,
-    purity::in, prog_constraints::in, prog_context::in, io::di, io::uo) is det.
+    purity::in, prog_constraints::in, io::di, io::uo) is det.
 :- func mercury_pred_type_to_string(tvarset, var_name_print,
     existq_tvars, sym_name, list(mer_type), maybe(determinism),
-    purity, prog_constraints, prog_context) = string.
+    purity, prog_constraints) = string.
 
     % Output a `:- func' declaration.
     %
 :- pred mercury_output_func_type(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in, mer_type::in,
-    maybe(determinism)::in, purity::in, prog_constraints::in, prog_context::in,
+    maybe(determinism)::in, purity::in, prog_constraints::in,
     io::di, io::uo) is det.
 :- func mercury_func_type_to_string(tvarset, var_name_print,
     existq_tvars, sym_name, list(mer_type), mer_type, maybe(determinism),
-    purity, prog_constraints, prog_context) = string.
+    purity, prog_constraints) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -76,50 +75,49 @@
     %
 :- pred mercury_output_pred_mode_decl(output_lang::in, inst_varset::in,
     sym_name::in, list(mer_mode)::in, maybe(mer_inst)::in,
-    maybe(determinism)::in, prog_context::in, io::di, io::uo) is det.
+    maybe(determinism)::in, io::di, io::uo) is det.
 :- func mercury_pred_mode_decl_to_string(output_lang, inst_varset, sym_name,
-    list(mer_mode), maybe(mer_inst), maybe(determinism), prog_context)
-    = string.
+    list(mer_mode), maybe(mer_inst), maybe(determinism)) = string.
 :- pred mercury_format_pred_or_func_mode_decl(output_lang::in,
     inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(mer_inst)::in,
-    maybe(determinism)::in, prog_context::in, string::in, string::in,
+    maybe(determinism)::in, string::in, string::in,
     U::di, U::uo) is det <= output(U).
 
     % XXX Document me.
     %
 :- pred mercury_output_func_mode_decl(output_lang::in, inst_varset::in,
     sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
-    prog_context::in, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 :- func mercury_func_mode_decl_to_string(output_lang, inst_varset, sym_name,
-    list(mer_mode), mer_mode, maybe(determinism), prog_context) = string.
+    list(mer_mode), mer_mode, maybe(determinism)) = string.
 :- pred mercury_format_func_mode_decl(output_lang::in, inst_varset::in,
     sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
-    prog_context::in, string::in, string::in, U::di, U::uo) is det
+    string::in, string::in, U::di, U::uo) is det
     <= output(U).
 
     % XXX Document me.
     %
 :- pred mercury_output_mode_subdecl(output_lang::in, pred_or_func::in,
     inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(determinism)::in,
-    prog_context::in, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 :- func mercury_mode_subdecl_to_string(output_lang, pred_or_func, inst_varset,
-    sym_name, list(mer_mode), maybe(determinism), prog_context) = string.
+    sym_name, list(mer_mode), maybe(determinism)) = string.
 
     % XXX Document me.
     %
 :- pred mercury_output_pred_mode_subdecl(output_lang::in, inst_varset::in,
-    sym_name::in, list(mer_mode)::in, maybe(determinism)::in, prog_context::in,
+    sym_name::in, list(mer_mode)::in, maybe(determinism)::in,
     io::di, io::uo) is det.
 :- func mercury_pred_mode_subdecl_to_string(output_lang, inst_varset, sym_name,
-    list(mer_mode), maybe(determinism), prog_context) = string.
+    list(mer_mode), maybe(determinism)) = string.
 
     % XXX Document me.
     %
 :- pred mercury_output_func_mode_subdecl(output_lang::in, inst_varset::in,
     sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
-    prog_context::in, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 :- func mercury_func_mode_subdecl_to_string(output_lang, inst_varset, sym_name,
-    list(mer_mode), mer_mode, maybe(determinism), prog_context) = string.
+    list(mer_mode), mer_mode, maybe(determinism)) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -141,7 +139,7 @@
 
 mercury_format_pred_or_func_decl(Lang, TypeVarSet, InstVarSet,
         PredOrFunc, ExistQVars, PredName, TypesAndModes, WithType, WithInst,
-        MaybeDet, Purity, ClassContext, Context, StartString,
+        MaybeDet, Purity, ClassContext, StartString,
         Separator, Terminator, !IO) :-
     split_types_and_modes(TypesAndModes, Types, MaybeModes),
     ( if
@@ -152,20 +150,20 @@ mercury_format_pred_or_func_decl(Lang, TypeVarSet, InstVarSet,
     then
         mercury_format_pred_or_func_type_2(TypeVarSet, print_name_only,
             PredOrFunc, ExistQVars, PredName, Types, WithType, no,
-            Purity, ClassContext, Context, StartString, Separator, !IO),
+            Purity, ClassContext, StartString, Separator, !IO),
         mercury_format_pred_or_func_mode_decl(Lang, InstVarSet, PredName,
-            Modes, WithInst, MaybeDet, Context, StartString, Terminator, !IO)
+            Modes, WithInst, MaybeDet, StartString, Terminator, !IO)
     else
         mercury_format_pred_or_func_type_2(TypeVarSet, print_name_only,
             PredOrFunc, ExistQVars, PredName, Types, WithType, MaybeDet,
-            Purity, ClassContext, Context, StartString, Terminator, !IO)
+            Purity, ClassContext, StartString, Terminator, !IO)
     ).
 
 %---------------------%
 
 mercury_format_func_decl(Lang, TypeVarSet, InstVarSet, ExistQVars, FuncName,
         TypesAndModes, RetTypeAndMode, MaybeDet, Purity, ClassContext,
-        Context, StartString, Separator, Terminator, !U) :-
+        StartString, Separator, Terminator, !U) :-
     split_types_and_modes(TypesAndModes, Types, MaybeModes),
     split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode),
     ( if
@@ -174,63 +172,60 @@ mercury_format_func_decl(Lang, TypeVarSet, InstVarSet, ExistQVars, FuncName,
     then
         mercury_format_func_type_2(TypeVarSet, print_name_only,
             ExistQVars, FuncName, Types, RetType, no, Purity,
-            ClassContext, Context, StartString, Separator, !U),
+            ClassContext, StartString, Separator, !U),
         mercury_format_func_mode_decl(Lang, InstVarSet, FuncName, Modes,
-            RetMode, MaybeDet, Context, StartString, Terminator, !U)
+            RetMode, MaybeDet, StartString, Terminator, !U)
     else
         mercury_format_func_type_2(TypeVarSet, print_name_only,
             ExistQVars, FuncName, Types, RetType, MaybeDet, Purity,
-            ClassContext, Context, StartString, Terminator, !U)
+            ClassContext, StartString, Terminator, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
 mercury_output_pred_type(TypeVarSet, VarNamePrint, ExistQVars, PredName,
-        Types, MaybeDet, Purity, ClassContext, Context, !IO) :-
+        Types, MaybeDet, Purity, ClassContext, !IO) :-
     mercury_format_pred_type(TypeVarSet, VarNamePrint, ExistQVars, PredName,
-        Types, no, MaybeDet, Purity, ClassContext, Context, !IO).
+        Types, no, MaybeDet, Purity, ClassContext, !IO).
 
 mercury_pred_type_to_string(TypeVarSet, VarNamePrint, ExistQVars, PredName,
-        Types, MaybeDet, Purity, ClassContext, Context) = String :-
+        Types, MaybeDet, Purity, ClassContext) = String :-
     mercury_format_pred_type(TypeVarSet, VarNamePrint, ExistQVars, PredName,
-        Types, no, MaybeDet, Purity, ClassContext, Context,
-        "", String).
+        Types, no, MaybeDet, Purity, ClassContext, "", String).
 
 :- pred mercury_format_pred_type(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in, maybe(mer_type)::in,
     maybe(determinism)::in, purity::in, prog_constraints::in,
-    prog_context::in, U::di, U::uo) is det <= output(U).
+    U::di, U::uo) is det <= output(U).
 
 mercury_format_pred_type(TypeVarSet, VarNamePrint, ExistQVars, PredName,
-        Types, WithType, MaybeDet, Purity, ClassContext, Context, !U) :-
+        Types, WithType, MaybeDet, Purity, ClassContext, !U) :-
     mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint,
         pf_predicate, ExistQVars, PredName, Types, WithType, MaybeDet,
-        Purity, ClassContext, Context, ":- ", ".\n", !U).
+        Purity, ClassContext, ":- ", ".\n", !U).
 
 %---------------------%
 
 mercury_output_func_type(VarSet, ExistQVars, FuncName, Types, RetType,
-        MaybeDet, Purity, ClassContext, Context, VarNamePrint, !IO) :-
+        MaybeDet, Purity, ClassContext, VarNamePrint, !IO) :-
     mercury_format_func_type(VarSet, ExistQVars, FuncName, Types, RetType,
-        MaybeDet, Purity, ClassContext, Context, VarNamePrint, !IO).
+        MaybeDet, Purity, ClassContext, VarNamePrint, !IO).
 
 mercury_func_type_to_string(TypeVarSet, VarNamePrint, ExistQVars,
-        FuncName, Types, RetType, MaybeDet, Purity, ClassContext, Context)
-        = String :-
+        FuncName, Types, RetType, MaybeDet, Purity, ClassContext) = String :-
     mercury_format_func_type(TypeVarSet, VarNamePrint, ExistQVars,
-        FuncName, Types, RetType, MaybeDet, Purity, ClassContext, Context,
+        FuncName, Types, RetType, MaybeDet, Purity, ClassContext,
         "", String).
 
 :- pred mercury_format_func_type(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in, mer_type::in,
     maybe(determinism)::in, purity::in, prog_constraints::in,
-    prog_context::in, U::di, U::uo) is det <= output(U).
+    U::di, U::uo) is det <= output(U).
 
 mercury_format_func_type(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
-        Types, RetType, MaybeDet, Purity, ClassContext, Context, !U) :-
+        Types, RetType, MaybeDet, Purity, ClassContext, !U) :-
     mercury_format_func_type_2(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
-        Types, RetType, MaybeDet, Purity, ClassContext, Context,
-        ":- ", ".\n", !U).
+        Types, RetType, MaybeDet, Purity, ClassContext, ":- ", ".\n", !U).
 
 %---------------------------------------------------------------------------%
 %
@@ -243,12 +238,12 @@ mercury_format_func_type(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
 :- pred mercury_format_pred_or_func_type_2( tvarset::in, var_name_print::in,
     pred_or_func::in, existq_tvars::in, sym_name::in, list(mer_type)::in,
     maybe(mer_type)::in, maybe(determinism)::in, purity::in,
-    prog_constraints::in, prog_context::in, string::in, string::in,
+    prog_constraints::in, string::in, string::in,
     U::di, U::uo) is det <= output(U).
 
 mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
         ExistQVars, PredName, Types, MaybeWithType, MaybeDet, Purity,
-        ClassContext, _Context, StartString, Separator, !U) :-
+        ClassContext, StartString, Separator, !U) :-
     add_string(StartString, !U),
     mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars, !U),
     ( if
@@ -310,12 +305,11 @@ mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
 
 :- pred mercury_format_func_type_2(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in, mer_type::in,
-    maybe(determinism)::in, purity::in, prog_constraints::in, prog_context::in,
+    maybe(determinism)::in, purity::in, prog_constraints::in,
     string::in, string::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
-        RetType, MaybeDet, Purity, ClassContext, _Context,
-        StartString, Separator, !U) :-
+        RetType, MaybeDet, Purity, ClassContext, StartString, Separator, !U) :-
     add_string(StartString, !U),
     mercury_format_quantifier(VarSet, VarNamePrint, ExistQVars, !U),
     ( if
@@ -348,93 +342,92 @@ mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
 %---------------------------------------------------------------------------%
 
 mercury_output_pred_mode_decl(Lang, VarSet, PredName, Modes, WithInst,
-        MaybeDet, Context, !IO) :-
+        MaybeDet, !IO) :-
     mercury_format_pred_or_func_mode_decl(Lang, VarSet, PredName, Modes,
-        WithInst, MaybeDet, Context, ":- ", ".\n", !IO).
+        WithInst, MaybeDet, ":- ", ".\n", !IO).
 
 mercury_pred_mode_decl_to_string(Lang, VarSet, PredName, Modes, MaybeWithInst,
-        MaybeDet, Context) = String :-
+        MaybeDet) = String :-
     mercury_format_pred_or_func_mode_decl(Lang, VarSet, PredName, Modes,
-        MaybeWithInst, MaybeDet, Context, ":- ", ".\n", "", String).
+        MaybeWithInst, MaybeDet, ":- ", ".\n", "", String).
 
 mercury_format_pred_or_func_mode_decl(Lang, VarSet, PredName, Modes,
-        WithInst, MaybeDet, Context, StartString, Separator, !U) :-
+        WithInst, MaybeDet, StartString, Separator, !U) :-
     add_string(StartString, !U),
     add_string("mode ", !U),
     mercury_format_pred_or_func_mode_subdecl(Lang, VarSet, PredName, Modes,
-        WithInst, MaybeDet, Context, !U),
+        WithInst, MaybeDet, !U),
     add_string(Separator, !U).
 
 %---------------------%
 
 mercury_output_func_mode_decl(Lang, VarSet, FuncName, Modes, RetMode, MaybeDet,
-        Context, !IO) :-
+        !IO) :-
     mercury_format_func_mode_decl(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, Context, ":- ", ".\n", !IO).
+        MaybeDet, ":- ", ".\n", !IO).
 
 mercury_func_mode_decl_to_string(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, Context) = String :-
+        MaybeDet) = String :-
     mercury_format_func_mode_decl(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, Context, ":- ", ".\n", "", String).
+        MaybeDet, ":- ", ".\n", "", String).
 
 mercury_format_func_mode_decl(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, Context, StartString, Separator, !U) :-
+        MaybeDet, StartString, Separator, !U) :-
     add_string(StartString, !U),
     add_string("mode ", !U),
     mercury_format_func_mode_subdecl(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, Context, !U),
+        MaybeDet, !U),
     add_string(Separator, !U).
 
 %---------------------------------------------------------------------------%
 
 mercury_output_mode_subdecl(Lang, PredOrFunc, InstVarSet, Name, Modes,
-        MaybeDet, Context, !IO) :-
+        MaybeDet, !IO) :-
     mercury_format_mode_subdecl(Lang, PredOrFunc, InstVarSet, Name, Modes,
-        MaybeDet, Context, !IO).
+        MaybeDet, !IO).
 
 mercury_mode_subdecl_to_string(Lang, PredOrFunc, InstVarSet, Name, Modes,
-        MaybeDet, Context) = String :-
+        MaybeDet) = String :-
     mercury_format_mode_subdecl(Lang, PredOrFunc, InstVarSet, Name, Modes,
-        MaybeDet, Context, "", String).
+        MaybeDet, "", String).
 
 :- pred mercury_format_mode_subdecl(output_lang::in, pred_or_func::in,
     inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(determinism)::in,
-    prog_context::in, U::di, U::uo) is det <= output(U).
+    U::di, U::uo) is det <= output(U).
 
 mercury_format_mode_subdecl(Lang, PredOrFunc, InstVarSet, Name, Modes,
-        MaybeDet, Context, !U) :-
+        MaybeDet, !U) :-
     (
         PredOrFunc = pf_predicate,
         mercury_format_pred_or_func_mode_subdecl(Lang, InstVarSet, Name,
-            Modes, no, MaybeDet, Context, !U)
+            Modes, no, MaybeDet, !U)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(Modes, ArgModes, RetMode),
         mercury_format_func_mode_subdecl(Lang, InstVarSet, Name, ArgModes,
-            RetMode, MaybeDet, Context, !U)
+            RetMode, MaybeDet, !U)
     ).
 
 %---------------------%
 
 mercury_output_pred_mode_subdecl(Lang, VarSet, PredName, Modes, MaybeDet,
-        Context, !IO) :-
+        !IO) :-
     mercury_format_pred_or_func_mode_subdecl(Lang, VarSet, PredName,
-        Modes, no, MaybeDet, Context, !IO).
+        Modes, no, MaybeDet, !IO).
 
-mercury_pred_mode_subdecl_to_string(Lang, VarSet, PredName, Modes, MaybeDet,
-        Context) = String :-
+mercury_pred_mode_subdecl_to_string(Lang, VarSet, PredName, Modes, MaybeDet)
+        = String :-
     mercury_format_pred_or_func_mode_subdecl(Lang, VarSet, PredName,
-        Modes, no, MaybeDet, Context, "", String).
+        Modes, no, MaybeDet, "", String).
 
 :- pred mercury_format_pred_or_func_mode_subdecl(output_lang::in,
     inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(mer_inst)::in,
-    maybe(determinism)::in, prog_context::in, U::di, U::uo) is det
-    <= output(U).
+    maybe(determinism)::in, U::di, U::uo) is det <= output(U).
 
 mercury_format_pred_or_func_mode_subdecl(Lang, VarSet, PredName, Modes,
-        MaybeWithInst, MaybeDet, _Context, !U) :-
+        MaybeWithInst, MaybeDet, !U) :-
     (
-        Modes = [_|_],
+        Modes = [_ | _],
         mercury_format_sym_name(PredName, !U),
         add_string("(", !U),
         mercury_format_mode_list(Lang, simple_inst_info(VarSet), Modes, !U),
@@ -456,23 +449,23 @@ mercury_format_pred_or_func_mode_subdecl(Lang, VarSet, PredName, Modes,
 %---------------------%
 
 mercury_output_func_mode_subdecl(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, Context, !IO) :-
+        MaybeDet, !IO) :-
     mercury_format_func_mode_subdecl(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, Context, !IO).
+        MaybeDet, !IO).
 
 mercury_func_mode_subdecl_to_string(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, Context) = String :-
+        MaybeDet) = String :-
     mercury_format_func_mode_subdecl(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, Context, "", String).
+        MaybeDet, "", String).
 
 :- pred mercury_format_func_mode_subdecl(output_lang::in, inst_varset::in,
     sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
-    prog_context::in, U::di, U::uo) is det <= output(U).
+    U::di, U::uo) is det <= output(U).
 
 mercury_format_func_mode_subdecl(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, _Context, !U) :-
+        MaybeDet, !U) :-
     (
-        Modes = [_|_],
+        Modes = [_ | _],
         mercury_format_sym_name(FuncName, !U),
         add_string("(", !U),
         mercury_format_mode_list(Lang, simple_inst_info(VarSet), Modes, !U),

@@ -204,7 +204,6 @@
 :- import_module transform_hlds.term_constr_main_types.
 
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module require.
 
@@ -595,9 +594,11 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
         (
             MaybeModuleInfo = yes(ModuleInfo),
-            module_info_get_exception_info(ModuleInfo, ExceptionInfo),
-            map.search(ExceptionInfo, proc(PredId, ProcId), ProcExceptionInfo),
-            ProcExceptionInfo = proc_exception_info(will_not_throw, _)
+            module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+                _PredInfo, ProcInfo),
+            proc_info_get_exception_info(ProcInfo, MaybeExceptionInfo),
+            MaybeExceptionInfo = yes(ExceptionInfo),
+            ExceptionInfo = proc_exception_info(will_not_throw, _)
         ->
             CanThrow = no
         ;

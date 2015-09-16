@@ -411,13 +411,14 @@ add_pragma_exceptions(ExceptionsInfo, _Context, !ModuleInfo, !Specs) :-
         PredOrFunc, SymName, Arity, PredIds),
     (
         PredIds = [PredId],
-        module_info_get_exception_info(!.ModuleInfo, ExceptionInfo0),
-        % convert the mode number to a proc_id
         proc_id_to_int(ProcId, ModeNum),
+        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+            PredInfo0, ProcInfo0),
         ProcExceptionInfo = proc_exception_info(ThrowStatus, no),
-        map.set(proc(PredId, ProcId), ProcExceptionInfo,
-            ExceptionInfo0, ExceptionInfo),
-        module_info_set_exception_info(ExceptionInfo, !ModuleInfo)
+        proc_info_set_exception_info(yes(ProcExceptionInfo),
+            ProcInfo0, ProcInfo),
+        module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo,
+            !ModuleInfo)
     ;
         ( PredIds = []
         ; PredIds = [_, _ | _]
@@ -443,11 +444,14 @@ add_pragma_trailing_info(TrailingInfo, _Context, !ModuleInfo, !Specs) :-
         PredOrFunc, SymName, Arity, PredIds),
     (
         PredIds = [PredId],
-        module_info_get_trailing_info(!.ModuleInfo, TrailingMap0),
         proc_id_to_int(ProcId, ModeNum),
-        map.set(proc(PredId, ProcId), proc_trailing_info(TrailingStatus, no),
-            TrailingMap0, TrailingMap),
-        module_info_set_trailing_info(TrailingMap, !ModuleInfo)
+        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+            PredInfo0, ProcInfo0),
+        ProcTrailingInfo = proc_trailing_info(TrailingStatus, no),
+        proc_info_set_trailing_info(yes(ProcTrailingInfo),
+            ProcInfo0, ProcInfo),
+        module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo,
+            !ModuleInfo)
     ;
         ( PredIds = []
         ; PredIds = [_, _ | _]
@@ -473,11 +477,14 @@ add_pragma_mm_tabling_info(MMTablingInfo, _Context, !ModuleInfo, !Specs) :-
         PredOrFunc, SymName, Arity, PredIds),
     (
         PredIds = [PredId],
-        module_info_get_mm_tabling_info(!.ModuleInfo, TablingInfo0),
         proc_id_to_int(ProcId, ModeNum),
-        map.set(proc(PredId, ProcId), proc_mm_tabling_info(TablingStatus, no),
-            TablingInfo0, TablingInfo),
-        module_info_set_mm_tabling_info(TablingInfo, !ModuleInfo)
+        module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+            PredInfo0, ProcInfo0),
+        ProcMMTablingInfo = proc_mm_tabling_info(TablingStatus, no),
+        proc_info_set_mm_tabling_info(yes(ProcMMTablingInfo),
+            ProcInfo0, ProcInfo),
+        module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo,
+            !ModuleInfo)
     ;
         ( PredIds = []
         ; PredIds = [_, _ | _]

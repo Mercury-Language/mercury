@@ -74,15 +74,14 @@
 :- pred write_pragma_termination_info_components(output_lang::in,
     pred_or_func::in, sym_name::in, list(mer_mode)::in,
     maybe(generic_arg_size_info(T))::in,
-    maybe(generic_termination_info(S, T))::in, prog_context::in,
-    io::di, io::uo) is det.
+    maybe(generic_termination_info(S, T))::in, io::di, io::uo) is det.
 
 :- pred write_pragma_structure_sharing_info(output_lang::in,
-    maybe(prog_varset)::in, maybe(tvarset)::in, prog_context::in,
+    maybe(prog_varset)::in, maybe(tvarset)::in,
     pragma_info_structure_sharing::in, io::di, io::uo) is det.
 
 :- pred write_pragma_structure_reuse_info(output_lang::in,
-    maybe(prog_varset)::in, maybe(tvarset)::in, prog_context::in,
+    maybe(prog_varset)::in, maybe(tvarset)::in,
     pragma_info_structure_reuse::in, io::di, io::uo) is det.
 
     % Write the given arg size info. Verbose if the second arg is yes.
@@ -216,10 +215,10 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
             "promise_semipure", no, !IO)
     ;
         Pragma = pragma_termination_info(TermInfo),
-        write_pragma_termination_info(Lang, Context, TermInfo, !IO)
+        write_pragma_termination_info(Lang, TermInfo, !IO)
     ;
         Pragma = pragma_termination2_info(Term2Info),
-        write_pragma_termination2_info(Lang, Context, Term2Info, !IO)
+        write_pragma_termination2_info(Lang, Term2Info, !IO)
     ;
         Pragma = pragma_terminates(PredNameArity),
         PredNameArity = pred_name_arity(Pred, Arity),
@@ -242,12 +241,10 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
             "mode_check_clauses", no, !IO)
     ;
         Pragma = pragma_structure_sharing(SharingInfo),
-        write_pragma_structure_sharing_info(Lang, no, no, Context,
-            SharingInfo, !IO)
+        write_pragma_structure_sharing_info(Lang, no, no, SharingInfo, !IO)
     ;
         Pragma = pragma_structure_reuse(ReuseInfo),
-        write_pragma_structure_reuse_info(Lang, no, no, Context,
-            ReuseInfo, !IO)
+        write_pragma_structure_reuse_info(Lang, no, no, ReuseInfo, !IO)
     ;
         Pragma = pragma_require_feature_set(RFSInfo),
         mercury_output_pragma_require_feature_set(RFSInfo, !IO)
@@ -1328,29 +1325,29 @@ mercury_format_pred_name_arity(PredNameArity, !U) :-
 % Output a termination_info pragma.
 %
 
-:- pred write_pragma_termination_info(output_lang::in, prog_context::in,
+:- pred write_pragma_termination_info(output_lang::in,
     pragma_info_termination_info::in, io::di, io::uo) is det.
 
-write_pragma_termination_info(Lang, Context, TermInfo, !IO) :-
+write_pragma_termination_info(Lang, TermInfo, !IO) :-
     TermInfo = pragma_info_termination_info(PredNameModesPF,
         MaybeArgSize, MaybeTermination),
     PredNameModesPF = pred_name_modes_pf(SymName, ModeList, PredOrFunc),
     write_pragma_termination_info_components(Lang, PredOrFunc,
-        SymName, ModeList, MaybeArgSize, MaybeTermination, Context, !IO).
+        SymName, ModeList, MaybeArgSize, MaybeTermination, !IO).
 
 write_pragma_termination_info_components(Lang, PredOrFunc, SymName, ModeList,
-            MaybeArgSize, MaybeTermination, Context, !IO) :-
+        MaybeArgSize, MaybeTermination, !IO) :-
     io.write_string(":- pragma termination_info(", !IO),
     varset.init(InitVarSet),
     (
         PredOrFunc = pf_predicate,
         mercury_output_pred_mode_subdecl(Lang, InitVarSet, SymName,
-            ModeList, no, Context, !IO)
+            ModeList, no, !IO)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ModeList, FuncModeList, RetMode),
         mercury_output_func_mode_subdecl(Lang, InitVarSet, SymName,
-            FuncModeList, RetMode, no, Context, !IO)
+            FuncModeList, RetMode, no, !IO)
     ),
     io.write_string(", ", !IO),
     write_maybe_arg_size_info(no, MaybeArgSize, !IO),
@@ -1436,10 +1433,10 @@ write_maybe_termination_info(Verbose, MaybeTerminationInfo, !IO) :-
 % Output a termination2_info pragma.
 %
 
-:- pred write_pragma_termination2_info(output_lang::in, prog_context::in,
+:- pred write_pragma_termination2_info(output_lang::in,
     pragma_info_termination2_info::in, io::di, io::uo) is det.
 
-write_pragma_termination2_info(Lang, Context, Term2Info, !IO) :-
+write_pragma_termination2_info(Lang, Term2Info, !IO) :-
     Term2Info = pragma_info_termination2_info(PredModesPF,
         MaybeSuccess, MaybeFailure, MaybeTermination),
     PredModesPF = pred_name_modes_pf(PredName, ModeList, PredOrFunc),
@@ -1447,12 +1444,12 @@ write_pragma_termination2_info(Lang, Context, Term2Info, !IO) :-
     (
         PredOrFunc = pf_predicate,
         mercury_output_pred_mode_subdecl(Lang, varset.init, PredName,
-            ModeList, no, Context, !IO)
+            ModeList, no, !IO)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ModeList, FuncModeList, RetMode),
         mercury_output_func_mode_subdecl(Lang, varset.init, PredName,
-            FuncModeList, RetMode, no, Context, !IO)
+            FuncModeList, RetMode, no, !IO)
     ),
     io.write_string(", ", !IO),
     write_maybe_pragma_constr_arg_size_info(MaybeSuccess, !IO),
@@ -1525,7 +1522,7 @@ write_maybe_pragma_termination_info(MaybeTermination, !IO) :-
 %
 
 write_pragma_structure_sharing_info(Lang, MaybeVarSet, MaybeTVarSet,
-        Context, SharingInfo, !IO) :-
+        SharingInfo, !IO) :-
     SharingInfo = pragma_info_structure_sharing(PredNameModesPF,
         HeadVars, HeadVarTypes, MaybeSharingAs),
     PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
@@ -1546,12 +1543,12 @@ write_pragma_structure_sharing_info(Lang, MaybeVarSet, MaybeTVarSet,
     (
         PredOrFunc = pf_predicate,
         mercury_output_pred_mode_subdecl(Lang, InitVarSet, SymName,
-            Modes, no, Context, !IO)
+            Modes, no, !IO)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(Modes, FuncModeList, RetMode),
         mercury_output_func_mode_subdecl(Lang, InitVarSet, SymName,
-            FuncModeList, RetMode, no, Context, !IO)
+            FuncModeList, RetMode, no, !IO)
     ),
     % write headvars and types:
     io.write_string(", ", !IO),
@@ -1568,7 +1565,7 @@ write_pragma_structure_sharing_info(Lang, MaybeVarSet, MaybeTVarSet,
 %
 
 write_pragma_structure_reuse_info(Lang, MaybeVarSet, MaybeTVarSet,
-        Context, ReuseInfo, !IO) :-
+        ReuseInfo, !IO) :-
     ReuseInfo = pragma_info_structure_reuse(PredNameModesPF,
         HeadVars, HeadVarTypes, MaybeStructureReuseDomain),
     PredNameModesPF = pred_name_modes_pf(SymName, Modes, PredOrFunc),
@@ -1590,12 +1587,12 @@ write_pragma_structure_reuse_info(Lang, MaybeVarSet, MaybeTVarSet,
     (
         PredOrFunc = pf_predicate,
         mercury_output_pred_mode_subdecl(Lang, InitVarSet, SymName,
-            Modes, no, Context, !IO)
+            Modes, no, !IO)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(Modes, FuncModeList, RetMode),
         mercury_output_func_mode_subdecl(Lang, InitVarSet, SymName,
-            FuncModeList, RetMode, no, Context, !IO)
+            FuncModeList, RetMode, no, !IO)
     ),
     % write headvars and types:
     io.write_string(", ", !IO),

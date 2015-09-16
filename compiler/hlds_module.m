@@ -89,27 +89,6 @@
     %
 :- type unused_arg_info == map(pred_proc_id, list(int)).
 
-    % Map from proc to an indication of whether or not it might throw an
-    % exception.
-    %
-:- type exception_info == map(pred_proc_id, proc_exception_info).
-
-:- type proc_exception_info
-    --->    proc_exception_info(
-                proc_exception_status               :: exception_status,
-                proc_maybe_excep_analysis_status    :: maybe(analysis_status)
-            ).
-
-    % Map from proc to an indication of whether or not it modifies the trail.
-    %
-:- type trailing_info == map(pred_proc_id, proc_trailing_info).
-
-:- type proc_trailing_info
-    --->    proc_trailing_info(
-                proc_trailing_status                :: trailing_status,
-                proc_maybe_trail_analysis_status    :: maybe(analysis_status)
-            ).
-
     % For every procedure that requires its own tabling structure,
     % this field records the information needed to define that structure.
 :- type table_struct_map == map(pred_proc_id, table_struct_info).
@@ -118,23 +97,6 @@
     --->    table_struct_info(
                 table_struct_proc                   :: proc_table_struct_info,
                 table_struct_attrs                  :: table_attributes
-            ).
-
-    % Map from a proc to a indication of whether or not it (or one of its
-    % subgoals) calls a procedure that is tabled using minimal model tabling.
-:- type mm_tabling_info == map(pred_proc_id, proc_mm_tabling_info).
-
-:- type proc_mm_tabling_info
-    --->    proc_mm_tabling_info(
-                % The tabling status for this procedures as determined
-                % by tabling analysis.
-                proc_mm_status                      :: mm_tabling_status,
-
-                % The status of the tabling analysis results for this
-                % procedure. This is used by the intermodule analysis
-                % framework to determine if there is any benefit in
-                % re-analysing this procedure.
-                proc_mm_analysis_status             :: maybe(analysis_status)
             ).
 
     % List of procedures for which there are user-requested type
@@ -287,8 +249,6 @@
     instance_table::out) is det.
 :- pred module_info_get_type_spec_info(module_info::in,
     type_spec_info::out) is det.
-:- pred module_info_get_exception_info(module_info::in,
-    exception_info::out) is det.
 :- pred module_info_get_const_struct_db(module_info::in,
     const_struct_db::out) is det.
 :- pred module_info_get_foreign_import_modules(module_info::in,
@@ -328,12 +288,8 @@
     set(pred_id)::out) is det.
 :- pred module_info_get_unused_arg_info(module_info::in,
     unused_arg_info::out) is det.
-:- pred module_info_get_trailing_info(module_info::in,
-    trailing_info::out) is det.
 :- pred module_info_get_table_struct_map(module_info::in,
     table_struct_map::out) is det.
-:- pred module_info_get_mm_tabling_info(module_info::in,
-    mm_tabling_info::out) is det.
 :- pred module_info_get_avail_module_map(module_info::in,
     avail_module_map::out) is det.
 :- pred module_info_get_indirectly_imported_module_names(module_info::in,
@@ -386,8 +342,6 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_type_spec_info(type_spec_info::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_exception_info(exception_info::in,
-    module_info::in, module_info::out) is det.
 :- pred module_info_set_const_struct_db(const_struct_db::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_foreign_import_modules(foreign_import_modules::in,
@@ -417,11 +371,7 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_unused_arg_info(unused_arg_info::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_trailing_info(trailing_info::in,
-    module_info::in, module_info::out) is det.
 :- pred module_info_set_table_struct_map(table_struct_map::in,
-    module_info::in, module_info::out) is det.
-:- pred module_info_set_mm_tabling_info(mm_tabling_info::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_used_modules(used_modules::in,
     module_info::in, module_info::out) is det.
@@ -693,10 +643,6 @@
                 % Data used for user-guided type specialization.
                 msi_type_spec_info              :: type_spec_info,
 
-                % Exception information about procedures in the current module
-                % NOTE: this includes opt_imported procedures.
-                msi_exception_info              :: exception_info,
-
                 % The database of constant structures the code generator
                 % will generate independently, outside all the procedures
                 % of the program.
@@ -744,21 +690,10 @@
                 % which has been exported in .opt files.
                 mri_unused_arg_info             :: unused_arg_info,
 
-                % Information about whether procedures in the current module
-                % modify the trail or not.
-                % NOTE: this includes opt_imported procedures.
-                mri_trailing_info               :: trailing_info,
-
                 % For every procedure that requires its own tabling structure,
                 % this field records the information needed to define that
                 % structure.
                 mri_table_struct_map            :: table_struct_map,
-
-                % Information about if procedures in the current module make
-                % calls to procedures that are evaluted using minimal model
-                % tabling.
-                % NOTE: this includes opt_imported procedures.
-                mri_mm_tabling_info             :: mm_tabling_info,
 
                 % How many lambda expressions there are at different contexts
                 % in the module. This is used to uniquely identify lambda
@@ -855,14 +790,17 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     TypeSpecInfo = type_spec_info(TypeSpecPreds, TypeSpecForcePreds,
         SpecMap, PragmaMap),
 
-    map.init(ExceptionInfo),
     const_struct_db_init(Globals, ConstStructDb),
     ForeignImportModules = init_foreign_import_modules,
     PragmaExportedProcs = cord.init,
 
-    ModuleSubInfo = module_sub_info(SpecialPredMaps, InstanceTable,
-        TypeSpecInfo, ExceptionInfo, ConstStructDb,
-        ForeignImportModules, PragmaExportedProcs),
+    ModuleSubInfo = module_sub_info(
+        SpecialPredMaps,
+        InstanceTable,
+        TypeSpecInfo,
+        ConstStructDb,
+        ForeignImportModules,
+        PragmaExportedProcs),
 
     unify_proc.init_requests(ProcRequests),
     assertion_table_init(AssertionTable),
@@ -877,9 +815,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     MustBeStratifiedPreds = [],
     set.init(StratPreds),
     map.init(UnusedArgInfo),
-    map.init(TrailingInfo),
     map.init(TablingStructMap),
-    map.init(MM_TablingInfo),
     map.init(LambdasPerContext),
     map.init(AtomicsPerContext),
 
@@ -941,21 +877,42 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     TSStringTableSize = 0,
     TSRevStringTable = [],
 
-    ModuleRareInfo = module_rare_info(ModuleName, DumpBaseFileName,
-        QualifierInfo, MaybeRecompInfo,
-        ProcRequests, AssertionTable, ExclusiveTable,
-        HasParallelConj, HasUserEvent,
-        ForeignDeclInfo, ForeignBodyInfo,
-        FactTableFiles, MaybeDependencyInfo, NumErrors,
-        MustBeStratifiedPreds, StratPreds, UnusedArgInfo,
-        TrailingInfo, TablingStructMap, MM_TablingInfo,
-        LambdasPerContext, AtomicsPerContext,
-        AvailModuleMap, IndirectlyImportedModules, UsedModules,
-        MaybeComplexityMap, ComplexityProcInfos,
-        AnalysisInfo, UserInitPredCNames, UserFinalPredCNames,
+    ModuleRareInfo = module_rare_info(
+        ModuleName,
+        DumpBaseFileName,
+        QualifierInfo,
+        MaybeRecompInfo,
+        ProcRequests,
+        AssertionTable,
+        ExclusiveTable,
+        HasParallelConj,
+        HasUserEvent,
+        ForeignDeclInfo,
+        ForeignBodyInfo,
+        FactTableFiles,
+        MaybeDependencyInfo,
+        NumErrors,
+        MustBeStratifiedPreds,
+        StratPreds,
+        UnusedArgInfo,
+        TablingStructMap,
+        LambdasPerContext,
+        AtomicsPerContext,
+        AvailModuleMap,
+        IndirectlyImportedModules,
+        UsedModules,
+        MaybeComplexityMap,
+        ComplexityProcInfos,
+        AnalysisInfo,
+        UserInitPredCNames,
+        UserFinalPredCNames,
         StructureReusePredIds,
-        ExportedEnums, EventSet, OISUMap, OISUProcs,
-        TSStringTableSize, TSRevStringTable),
+        ExportedEnums,
+        EventSet,
+        OISUMap,
+        OISUProcs,
+        TSStringTableSize,
+        TSRevStringTable),
 
     predicate_table_init(PredicateTable),
     TypeTable = init_type_table,
@@ -966,9 +923,18 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     map.init(ClassTable),
     map.init(FieldNameTable),
 
-    ModuleInfo = module_info(ModuleSubInfo, ModuleRareInfo, Globals,
-        PredicateTable, TypeTable, NoTagTypes,
-        InstTable, ModeTable, CtorTable, ClassTable, FieldNameTable).
+    ModuleInfo = module_info(
+        ModuleSubInfo,
+        ModuleRareInfo,
+        Globals,
+        PredicateTable,
+        TypeTable,
+        NoTagTypes,
+        InstTable,
+        ModeTable,
+        CtorTable,
+        ClassTable,
+        FieldNameTable).
 
 :- pred add_implicit_avail_module(import_or_use::in, module_name::in,
     avail_module_map::in, avail_module_map::out) is det.
@@ -1059,8 +1025,6 @@ module_info_get_instance_table(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_instance_table.
 module_info_get_type_spec_info(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_type_spec_info.
-module_info_get_exception_info(MI, X) :-
-    X = MI ^ mi_sub_info ^ msi_exception_info.
 module_info_get_const_struct_db(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_const_struct_db.
 module_info_get_foreign_import_modules(MI, X) :-
@@ -1102,12 +1066,8 @@ module_info_get_must_be_stratified_preds(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_must_be_stratified_preds.
 module_info_get_unused_arg_info(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_unused_arg_info.
-module_info_get_trailing_info(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_trailing_info.
 module_info_get_table_struct_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_table_struct_map.
-module_info_get_mm_tabling_info(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_mm_tabling_info.
 module_info_get_lambdas_per_context(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_lambdas_per_context.
 module_info_get_atomics_per_context(MI, X) :-
@@ -1172,8 +1132,6 @@ module_info_set_instance_table(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_instance_table := X.
 module_info_set_type_spec_info(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_type_spec_info := X.
-module_info_set_exception_info(X, !MI) :-
-    !MI ^ mi_sub_info ^ msi_exception_info := X.
 module_info_set_const_struct_db(X, !MI) :-
     ( if
         private_builtin.pointer_equal(X,
@@ -1234,12 +1192,8 @@ module_info_set_must_be_stratified_preds(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_must_be_stratified_preds := X.
 module_info_set_unused_arg_info(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_unused_arg_info := X.
-module_info_set_trailing_info(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_trailing_info := X.
 module_info_set_table_struct_map(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_table_struct_map := X.
-module_info_set_mm_tabling_info(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_mm_tabling_info := X.
 module_info_set_lambdas_per_context(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_lambdas_per_context := X.
 module_info_set_atomics_per_context(X, !MI) :-

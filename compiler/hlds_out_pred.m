@@ -118,7 +118,6 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    pred_info_get_context(PredInfo, Context),
     pred_info_get_status(PredInfo, PredStatus),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_class_context(PredInfo, ClassContext),
@@ -139,13 +138,13 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
             PredOrFunc = pf_predicate,
             mercury_output_pred_type(TVarSet, VarNamePrint, ExistQVars,
                 qualified(Module, PredName), ArgTypes, no,
-                Purity, ClassContext, Context, !IO)
+                Purity, ClassContext, !IO)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType),
             mercury_output_func_type(TVarSet, VarNamePrint, ExistQVars,
                 qualified(Module, PredName), FuncArgTypes, FuncRetType, no,
-                Purity, ClassContext, Context, !IO)
+                Purity, ClassContext, !IO)
         )
     else
         true
@@ -783,7 +782,6 @@ write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
     proc_info_get_reg_r_headvars(ProcInfo, RegR_HeadVars),
     proc_info_get_maybe_arg_info(ProcInfo, MaybeArgInfos),
     proc_info_get_goal(ProcInfo, Goal),
-    proc_info_get_context(ProcInfo, ModeContext),
     proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize),
     proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination),
     proc_info_get_structure_sharing(ProcInfo, MaybeStructureSharing),
@@ -996,13 +994,13 @@ write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
             MaybeWithInst = maybe.no,
             mercury_output_pred_mode_decl(output_debug, ModeVarSet,
                 unqualified(PredName), HeadModes,
-                MaybeWithInst, DeclaredDeterminism, ModeContext, !IO)
+                MaybeWithInst, DeclaredDeterminism, !IO)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(HeadModes, FuncHeadModes, RetHeadMode),
             mercury_output_func_mode_decl(output_debug, ModeVarSet,
                 unqualified(PredName), FuncHeadModes, RetHeadMode,
-                DeclaredDeterminism, ModeContext, !IO)
+                DeclaredDeterminism, !IO)
         ),
 
         (

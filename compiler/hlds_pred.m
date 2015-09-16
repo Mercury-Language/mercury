@@ -2070,6 +2070,38 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    no_foreign_exports
     ;       has_foreign_exports.
 
+    % Gives an indication of whether or not the procedure
+    % might throw an exception.
+    %
+:- type proc_exception_info
+    --->    proc_exception_info(
+                proc_exception_status               :: exception_status,
+                proc_maybe_excep_analysis_status    :: maybe(analysis_status)
+            ).
+
+    % Gives an indication of whether or not the procedure modifies the trail.
+    %
+:- type proc_trailing_info
+    --->    proc_trailing_info(
+                proc_trailing_status                :: trailing_status,
+                proc_maybe_trail_analysis_status    :: maybe(analysis_status)
+            ).
+
+    % Gives an indication of whether or not the procedure, or one of its
+    % subgoals, calls a procedure that is tabled using minimal model tabling.
+:- type proc_mm_tabling_info
+    --->    proc_mm_tabling_info(
+                % The tabling status for this procedures as determined
+                % by tabling analysis.
+                proc_mm_status                      :: mm_tabling_status,
+
+                % The status of the tabling analysis results for this
+                % procedure. This is used by the intermodule analysis
+                % framework to determine if there is any benefit in
+                % re-analysing this procedure.
+                proc_mm_analysis_status             :: maybe(analysis_status)
+            ).
+
     % Predicates to get fields of proc_infos.
 
 :- pred proc_info_get_headvars(proc_info::in, list(prog_var)::out) is det.
@@ -2136,6 +2168,12 @@ attribute_list_to_attributes(Attributes, Attributes).
     maybe(termination_info)::out) is det.
 :- pred proc_info_get_termination2_info(proc_info::in,
     termination2_info::out) is det.
+:- pred proc_info_get_exception_info(proc_info::in,
+    maybe(proc_exception_info)::out) is det.
+:- pred proc_info_get_trailing_info(proc_info::in,
+    maybe(proc_trailing_info)::out) is det.
+:- pred proc_info_get_mm_tabling_info(proc_info::in,
+    maybe(proc_mm_tabling_info)::out) is det.
 
     % Predicates to set fields of proc_infos.
 
@@ -2214,6 +2252,12 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set_maybe_termination_info(maybe(termination_info)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_termination2_info(termination2_info::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_exception_info(maybe(proc_exception_info)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_trailing_info(maybe(proc_trailing_info)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_mm_tabling_info(maybe(proc_mm_tabling_info)::in,
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_get_structure_sharing(proc_info::in,
@@ -2590,6 +2634,12 @@ attribute_list_to_attributes(Attributes, Attributes).
                 % the procedure. Set by termination2 analysis.
                 psi_termination2                :: termination2_info,
 
+                % The results of the analyses in exception_analysis.m,
+                % trailing_analysis.m and tabling_analysis, if available.
+                psi_exception_info              :: maybe(proc_exception_info),
+                psi_trailing_info               :: maybe(proc_trailing_info),
+                psi_mm_tabling_info             :: maybe(proc_mm_tabling_info),
+
                 % Structure sharing information as obtained by the structure
                 % sharing analysis.
                 psi_structure_sharing           :: structure_sharing_info,
@@ -2746,6 +2796,9 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),
     Term2Info = term_constr_main_types.term2_info_init,
+    MaybeExceptionInfo = no `with_type` maybe(proc_exception_info),
+    MaybeTrailingInfo = no `with_type` maybe(proc_trailing_info),
+    MaybeMMTablingInfo = no `with_type` maybe(proc_mm_tabling_info),
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
 
@@ -2775,6 +2828,9 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
         MaybeArgSizes,
         MaybeTermInfo,
         Term2Info,
+        MaybeExceptionInfo,
+        MaybeTrailingInfo,
+        MaybeMMTablingInfo,
         SharingInfo,
         ReuseInfo),
 
@@ -2862,6 +2918,9 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     MaybeArgSizes = no `with_type` maybe(arg_size_info),
     MaybeTermInfo = no `with_type` maybe(termination_info),
     Term2Info = term_constr_main_types.term2_info_init,
+    MaybeExceptionInfo = no `with_type` maybe(proc_exception_info),
+    MaybeTrailingInfo = no `with_type` maybe(proc_trailing_info),
+    MaybeMMTablingInfo = no `with_type` maybe(proc_mm_tabling_info),
     SharingInfo = structure_sharing_info_init,
     ReuseInfo = structure_reuse_info_init,
 
@@ -2891,6 +2950,9 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
         MaybeArgSizes,
         MaybeTermInfo,
         Term2Info,
+        MaybeExceptionInfo,
+        MaybeTrailingInfo,
+        MaybeMMTablingInfo,
         SharingInfo,
         ReuseInfo),
 
@@ -3010,6 +3072,12 @@ proc_info_get_maybe_termination_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_maybe_termination.
 proc_info_get_termination2_info(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_termination2.
+proc_info_get_exception_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_exception_info.
+proc_info_get_trailing_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_trailing_info.
+proc_info_get_mm_tabling_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_mm_tabling_info.
 
 proc_info_set_headvars(X, !PI) :-
     !PI ^ proc_head_vars := X.
@@ -3086,6 +3154,12 @@ proc_info_set_maybe_termination_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_maybe_termination := X.
 proc_info_set_termination2_info(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_termination2 := X.
+proc_info_set_exception_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_exception_info := X.
+proc_info_set_trailing_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_trailing_info := X.
+proc_info_set_mm_tabling_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_mm_tabling_info := X.
 
 proc_info_head_modes_constraint(ProcInfo, HeadModesConstraint) :-
     MaybeHeadModesConstraint = ProcInfo ^ proc_maybe_head_modes_constr,

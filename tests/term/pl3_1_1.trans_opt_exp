@@ -1,4 +1,5 @@
 :- module pl3_1_1.
+
 :- pragma termination_info((pl3_1_1.a), finite(0, []), can_loop).
 :- pragma termination_info((pl3_1_1.b), finite(0, []), can_loop).
 :- pragma termination_info((pl3_1_1.c), finite(0, []), can_loop).
@@ -6,6 +7,7 @@
 :- pragma termination_info((pl3_1_1.e), finite(0, []), can_loop).
 :- pragma termination_info((pl3_1_1.f), finite(0, []), can_loop).
 :- pragma termination_info((pl3_1_1.g), finite(0, []), can_loop).
+
 :- pragma termination2_info((pl3_1_1.a), constraints([]), not_set, can_loop).
 :- pragma termination2_info((pl3_1_1.b), constraints([]), not_set, can_loop).
 :- pragma termination2_info((pl3_1_1.c), constraints([]), not_set, can_loop).

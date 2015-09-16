@@ -1298,6 +1298,9 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
     proc_info_set_varset(VarSet, !VariantProcInfo),
     proc_info_set_vartypes(VarTypes, !VariantProcInfo),
 
+    % XXX This is a workaround for a bug, which is soon to be fixed.
+    proc_info_set_exception_info(no, !VariantProcInfo),
+
     proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
     lco_transform_variant_goal(!.ModuleInfo, VariantMap, VarToAddr, InstMap0,

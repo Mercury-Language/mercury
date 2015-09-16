@@ -199,20 +199,22 @@ analyse_mm_tabling_in_scc(Debug, Pass1Only, SCC, !ModuleInfo) :-
         Debug = no
     ),
 
-    % Update the mm_tabling_info table with information about this SCC.
-    module_info_get_mm_tabling_info(!.ModuleInfo, TablingInfo0),
-    Update = (pred(PPId::in, Info0::in, Info::out) is det :-
-        Info = Info0 ^ elem(PPId) :=
-            proc_mm_tabling_info(TablingStatus, MaybeAnalysisStatus)
-    ),
-    list.foldl(Update, SCC, TablingInfo0, TablingInfo),
-    module_info_set_mm_tabling_info(TablingInfo, !ModuleInfo),
+    ProcTablingInfo = proc_mm_tabling_info(TablingStatus, MaybeAnalysisStatus),
+    list.foldl(set_mm_tabling_info(ProcTablingInfo), SCC, !ModuleInfo),
     (
         Pass1Only = no,
         list.foldl(annotate_proc, SCC, !ModuleInfo)
     ;
         Pass1Only = yes
     ).
+
+:- pred set_mm_tabling_info(proc_mm_tabling_info::in, pred_proc_id::in,
+    module_info::in, module_info::out) is det.
+
+set_mm_tabling_info(ProcTablingInfo, PPId, !ModuleInfo) :-
+    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
+    proc_info_set_mm_tabling_info(yes(ProcTablingInfo), ProcInfo0, ProcInfo),
+    module_info_set_pred_proc_info(PPId, PredInfo0, ProcInfo, !ModuleInfo).
 
     % Examine how procedures interact with other procedures that are
     % mutually-recursive to them.
@@ -516,14 +518,10 @@ get_mm_tabling_status_from_attributes(Attributes) =
     pred_proc_id::in, prog_vars::in, maybe(proc_mm_tabling_info)::out) is det.
 
 check_call_for_mm_tabling_calls(ModuleInfo, _VarTypes, PPId, _CallArgs,
-        MaybeResult) :-
-    module_info_get_mm_tabling_info(ModuleInfo, TablingInfo),
-    ( if map.search(TablingInfo, PPId, CalleeTablingInfo) then
-        MaybeResult = yes(CalleeTablingInfo)
-        % XXX user-defined uc (and higher-order args too)
-    else
-        MaybeResult = no
-    ).
+        MaybeProcTablingInfo) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
+    proc_info_get_mm_tabling_info(ProcInfo, MaybeProcTablingInfo).
+    % XXX user-defined uc (and higher-order args too)
 
 %----------------------------------------------------------------------------%
 
@@ -905,8 +903,7 @@ maybe_record_mm_tabling_result_2(ModuleInfo, PredId, PredInfo, ProcId,
     (
         ShouldWrite = should_write,
         PPId = proc(PredId, ProcId),
-        module_info_get_mm_tabling_info(ModuleInfo, TablingInfo),
-        lookup_proc_mm_tabling_info(TablingInfo, PPId, Status, ResultStatus),
+        lookup_proc_mm_tabling_info(ModuleInfo, PPId, Status, ResultStatus),
         module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, any_call,
             mm_tabling_analysis_answer(Status), ResultStatus, !AnalysisInfo)
@@ -914,11 +911,14 @@ maybe_record_mm_tabling_result_2(ModuleInfo, PredId, PredInfo, ProcId,
         ShouldWrite = should_not_write
     ).
 
-:- pred lookup_proc_mm_tabling_info(mm_tabling_info::in, pred_proc_id::in,
+:- pred lookup_proc_mm_tabling_info(module_info::in, pred_proc_id::in,
     mm_tabling_status::out, analysis_status::out) is det.
 
-lookup_proc_mm_tabling_info(TablingInfo, PPId, Status, ResultStatus) :-
-    ( if map.search(TablingInfo, PPId, ProcTablingInfo) then
+lookup_proc_mm_tabling_info(ModuleInfo, PPId, Status, ResultStatus) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
+    proc_info_get_mm_tabling_info(ProcInfo, MaybeProcTablingInfo),
+    (
+        MaybeProcTablingInfo = yes(ProcTablingInfo),
         ProcTablingInfo = proc_mm_tabling_info(Status, MaybeResultStatus),
         (
             MaybeResultStatus = yes(ResultStatus)
@@ -926,7 +926,8 @@ lookup_proc_mm_tabling_info(TablingInfo, PPId, Status, ResultStatus) :-
             MaybeResultStatus = no,
             unexpected($module, $pred, "no result status")
         )
-    else
+    ;
+        MaybeProcTablingInfo = no,
         % Probably an exported `:- external' procedure.
         Status = mm_tabled_may_call,
         ResultStatus = optimal

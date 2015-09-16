@@ -1180,7 +1180,6 @@ mode_warning_cannot_succeed_ground_occur_check(ModeInfo, X, ConsId) = Spec :-
 
 mode_info_context_preamble(ModeInfo) = Pieces :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    mode_info_get_context(ModeInfo, Context),
     mode_info_get_pred_id(ModeInfo, PredId),
     mode_info_get_proc_id(ModeInfo, ProcId),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
@@ -1195,7 +1194,7 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
     MaybeDet = no,
 
     ModeSubDeclStr = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
-        InstVarSet, Name, Modes, MaybeDet, Context),
+        InstVarSet, Name, Modes, MaybeDet),
     Pieces1 = [words("In clause for"), words_quote(ModeSubDeclStr),
         suffix(":"), nl],
     mode_info_get_mode_context(ModeInfo, ModeContext),
@@ -1462,12 +1461,12 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
             PredOrFunc = pf_predicate,
             MaybeWithInst = maybe.no,
             Detail = mercury_pred_mode_decl_to_string(output_debug, VarSet,
-                Name, !.ArgModes, MaybeWithInst, !.MaybeDet, Context)
+                Name, !.ArgModes, MaybeWithInst, !.MaybeDet)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(!.ArgModes, FuncArgModes, RetMode),
             Detail = mercury_func_mode_decl_to_string(output_debug, VarSet,
-                Name, FuncArgModes, RetMode, !.MaybeDet, Context)
+                Name, FuncArgModes, RetMode, !.MaybeDet)
         ),
         Pieces = [words(Verb), words(Detail), nl],
         Msg = simple_msg(Context,
@@ -1512,11 +1511,10 @@ mode_decl_to_string(ProcId, PredInfo) = String :-
     map.lookup(Procs, ProcId, ProcInfo),
     proc_info_declared_argmodes(ProcInfo, Modes0),
     proc_info_get_declared_determinism(ProcInfo, MaybeDet),
-    proc_info_get_context(ProcInfo, Context),
     varset.init(InstVarSet),
     strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
     String = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
-        InstVarSet, Name, Modes, MaybeDet, Context).
+        InstVarSet, Name, Modes, MaybeDet).
 
 :- func inst_to_string(mode_info, mer_inst) = string.
 

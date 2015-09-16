@@ -530,12 +530,11 @@ write_clique([proc(PredId, ProcId) | Rest], ModuleInfo, !IO) :-
     Name = pred_info_name(PredInfo),
     proc_info_get_declared_determinism(ProcInfo, Det),
     proc_info_get_argmodes(ProcInfo, Modes),
-    proc_info_get_context(ProcInfo, Context),
     varset.init(ModeVarSet),
 
     io.write_string("% ", !IO),
     mercury_output_pred_mode_subdecl(output_mercury,ModeVarSet,
-        unqualified(Name), Modes, Det, Context, !IO),
+        unqualified(Name), Modes, Det, !IO),
     io.write_string("\n", !IO),
     write_clique(Rest, ModuleInfo, !IO).
 
@@ -583,17 +582,15 @@ write_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
     PName = pred_info_name(PPredInfo),
     proc_info_get_declared_determinism(PProcInfo, PDet),
     proc_info_get_argmodes(PProcInfo, PModes),
-    proc_info_get_context(PProcInfo, PContext),
     CName = pred_info_name(CPredInfo),
     proc_info_get_declared_determinism(CProcInfo, CDet),
     proc_info_get_argmodes(CProcInfo, CModes),
-    proc_info_get_context(CProcInfo, CContext),
     varset.init(ModeVarSet),
     mercury_output_pred_mode_subdecl(output_mercury, ModeVarSet,
-        unqualified(PName), PModes, PDet, PContext, !IO),
+        unqualified(PName), PModes, PDet, !IO),
     io.write_string(" -> ", !IO),
     mercury_output_pred_mode_subdecl(output_mercury, ModeVarSet,
-        unqualified(CName), CModes, CDet, CContext, !IO),
+        unqualified(CName), CModes, CDet, !IO),
     io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%

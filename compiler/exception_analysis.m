@@ -222,21 +222,21 @@ analyse_exceptions_in_module(!ModuleInfo, !IO) :-
 
 check_scc_for_exceptions(SCC, !ModuleInfo) :-
     check_procs_for_exceptions(SCC, ProcResults, !ModuleInfo),
-    %
+
     % The `Results' above are the results of analysing each individual
     % procedure in the SCC - we now have to combine them in a meaningful way.
-    %
     combine_individual_proc_results(ProcResults, Status, MaybeAnalysisStatus),
-    %
-    % Update the exception_info table with information about this SCC.
-    %
-    module_info_get_exception_info(!.ModuleInfo, ExceptionInfo0),
-    Update = (pred(PPId::in, Info0::in, Info::out) is det :-
-        Info = Info0 ^ elem(PPId) :=
-            proc_exception_info(Status, MaybeAnalysisStatus)
-    ),
-    list.foldl(Update, SCC, ExceptionInfo0, ExceptionInfo),
-    module_info_set_exception_info(ExceptionInfo, !ModuleInfo).
+
+    ProcExceptionInfo = proc_exception_info(Status, MaybeAnalysisStatus),
+    list.foldl(set_exception_info(ProcExceptionInfo), SCC, !ModuleInfo).
+
+:- pred set_exception_info(proc_exception_info::in, pred_proc_id::in,
+    module_info::in, module_info::out) is det.
+
+set_exception_info(ProcExceptionInfo, PPId, !ModuleInfo) :-
+    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
+    proc_info_set_exception_info(yes(ProcExceptionInfo), ProcInfo0, ProcInfo),
+    module_info_set_pred_proc_info(PPId, PredInfo0, ProcInfo, !ModuleInfo).
 
     % Check each procedure in the SCC individually.
     %
@@ -625,22 +625,20 @@ check_goals_for_exceptions(SCC, VarTypes, [Goal | Goals], !Result,
 
 get_closures_exception_status(IntermodAnalysis, Closures,
         Conditionals, AnalysisStatus, !ModuleInfo) :-
-    module_info_get_exception_info(!.ModuleInfo, ExceptionInfo),
     AnalysisStatus0 = maybe_optimal(IntermodAnalysis),
     set.fold3(
-        get_closure_exception_status(IntermodAnalysis, ExceptionInfo),
+        get_closure_exception_status(IntermodAnalysis),
         Closures, maybe_will_not_throw([]), Conditionals,
         AnalysisStatus0, AnalysisStatus, !ModuleInfo).
 
-:- pred get_closure_exception_status(
-    bool::in, exception_info::in, pred_proc_id::in,
+:- pred get_closure_exception_status(bool::in, pred_proc_id::in,
     closures_exception_status::in, closures_exception_status::out,
     maybe(analysis_status)::in, maybe(analysis_status)::out,
     module_info::in, module_info::out) is det.
 
-get_closure_exception_status(IntermodAnalysis, ExceptionInfo, PPId,
+get_closure_exception_status(IntermodAnalysis, PPId,
         !MaybeWillNotThrow, !AS, !ModuleInfo) :-
-    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, _),
+    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo),
     ( if
         IntermodAnalysis = yes,
         pred_info_is_imported_not_external(PredInfo)
@@ -649,10 +647,13 @@ get_closure_exception_status(IntermodAnalysis, ExceptionInfo, PPId,
             !ModuleInfo),
         MaybeAnalysisStatus = yes(AnalysisStatus)
     else
-        ( if map.search(ExceptionInfo, PPId, ProcExceptionInfo) then
+        proc_info_get_exception_info(ProcInfo, MaybeExceptionInfo),
+        (
+            MaybeExceptionInfo = yes(ProcExceptionInfo),
             ProcExceptionInfo = proc_exception_info(ExceptionStatus,
                 MaybeAnalysisStatus)
-        else
+        ;
+            MaybeExceptionInfo = no,
             ExceptionStatus = may_throw(user_exception),
             MaybeAnalysisStatus = maybe_optimal(IntermodAnalysis)
         )
@@ -740,8 +741,11 @@ check_nonrecursive_call(VarTypes, PPId, Args, PredInfo, !Result,
         MaybeAnalysisStatus = yes(AnalysisStatus),
         update_proc_result(CalleeResult, MaybeAnalysisStatus, !Result)
     else
-        module_info_get_exception_info(!.ModuleInfo, ExceptionInfo),
-        ( if map.search(ExceptionInfo, PPId, CalleeExceptionInfo) then
+        PPId = proc(_, ProcId),
+        pred_info_proc_info(PredInfo, ProcId, ProcInfo),
+        proc_info_get_exception_info(ProcInfo, MaybeCalleeExceptionInfo),
+        (
+            MaybeCalleeExceptionInfo = yes(CalleeExceptionInfo),
             CalleeExceptionInfo = proc_exception_info(CalleeExceptionStatus,
                 MaybeAnalysisStatus),
             (
@@ -757,7 +761,8 @@ check_nonrecursive_call(VarTypes, PPId, Args, PredInfo, !Result,
                 check_vars(!.ModuleInfo, VarTypes, Args, MaybeAnalysisStatus,
                     !Result)
             )
-        else
+        ;
+            MaybeCalleeExceptionInfo = no,
             % If we do not have any information about the callee procedure
             % then assume that it might throw an exception.
             % Analysis statuses on individual results are meaningless now.
@@ -1137,8 +1142,7 @@ maybe_record_exception_result_2(ModuleInfo, PredId, PredInfo, ProcId,
     (
         ShouldWrite = should_write,
         PPId = proc(PredId, ProcId),
-        module_info_get_exception_info(ModuleInfo, ExceptionInfo),
-        lookup_proc_exception_info(ExceptionInfo, PPId, Status, ResultStatus),
+        lookup_proc_exception_info(ModuleInfo, PPId, Status, ResultStatus),
         module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, any_call,
             exception_analysis_answer(Status), ResultStatus, !AnalysisInfo)
@@ -1146,11 +1150,14 @@ maybe_record_exception_result_2(ModuleInfo, PredId, PredInfo, ProcId,
         ShouldWrite = should_not_write
     ).
 
-:- pred lookup_proc_exception_info(exception_info::in, pred_proc_id::in,
+:- pred lookup_proc_exception_info(module_info::in, pred_proc_id::in,
     exception_status::out, analysis_status::out) is det.
 
-lookup_proc_exception_info(ExceptionInfo, PPId, Status, ResultStatus) :-
-    ( if map.search(ExceptionInfo, PPId, ProcExceptionInfo) then
+lookup_proc_exception_info(ModuleName, PPId, Status, ResultStatus) :-
+    module_info_pred_proc_info(ModuleName, PPId, _PredInfo, ProcInfo),
+    proc_info_get_exception_info(ProcInfo, MaybeExceptionInfo),
+    (
+        MaybeExceptionInfo = yes(ProcExceptionInfo),
         ProcExceptionInfo = proc_exception_info(Status, MaybeResultStatus),
         (
             MaybeResultStatus = yes(ResultStatus)
@@ -1158,7 +1165,8 @@ lookup_proc_exception_info(ExceptionInfo, PPId, Status, ResultStatus) :-
             MaybeResultStatus = no,
             unexpected($module, $pred, "no result status")
         )
-    else
+    ;
+        MaybeExceptionInfo = no,
         % Probably an exported `:- external' procedure.
         Status = may_throw(user_exception),
         ResultStatus = optimal
@@ -1175,8 +1183,9 @@ maybe_optimal(yes) = yes(optimal).
 %
 
 lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
-    PPId = proc(PredId, _),
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+    PPId = proc(PredId, ProcId),
+    module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
+        PredInfo, ProcInfo),
     IsImported = pred_to_bool(pred_info_is_imported_not_external(PredInfo)),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
@@ -1192,13 +1201,15 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
     UseAnalysisRegistry = IsImported `bool.and` IntermodAnalysis
         `bool.and` ExceptionAnalysis,
     (
-        % If the procedure is not imported then it's exception_status
+        % If the procedure is not imported then its exception_status
         % will be in the exception_info table.
         UseAnalysisRegistry = no,
-        module_info_get_exception_info(!.ModuleInfo, ExceptionInfo),
-        ( if map.search(ExceptionInfo, PPId, ProcExceptionInfo) then
+        proc_info_get_exception_info(ProcInfo, MaybeProcExceptionInfo),
+        (
+            MaybeProcExceptionInfo = yes(ProcExceptionInfo),
             ProcExceptionInfo = proc_exception_info(ExceptionStatus, _)
-        else
+        ;
+            MaybeProcExceptionInfo = no,
             ExceptionStatus = may_throw(user_exception)
         )
     ;

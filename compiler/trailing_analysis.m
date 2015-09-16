@@ -208,14 +208,8 @@ process_scc(Debug, Pass1Only, SCC, !ModuleInfo) :-
         Debug = no
     ),
 
-    % Update the trailing_info with information about this SCC.
-    module_info_get_trailing_info(!.ModuleInfo, TrailingInfo0),
-    Update = (pred(PPId::in, Info0::in, Info::out) is det :-
-        Info = Info0 ^ elem(PPId) :=
-            proc_trailing_info(TrailingStatus, MaybeAnalysisStatus)
-    ),
-    list.foldl(Update, SCC, TrailingInfo0, TrailingInfo),
-    module_info_set_trailing_info(TrailingInfo, !ModuleInfo),
+    ProcTrailingInfo = proc_trailing_info(TrailingStatus, MaybeAnalysisStatus),
+    list.foldl(set_trailing_info(ProcTrailingInfo), SCC, !ModuleInfo),
 
     (
         Pass1Only = no,
@@ -224,10 +218,18 @@ process_scc(Debug, Pass1Only, SCC, !ModuleInfo) :-
         Pass1Only = yes
     ).
 
+:- pred set_trailing_info(proc_trailing_info::in, pred_proc_id::in,
+    module_info::in, module_info::out) is det.
+
+set_trailing_info(ProcTrailingInfo, PPId, !ModuleInfo) :-
+    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, ProcInfo0),
+    proc_info_set_trailing_info(yes(ProcTrailingInfo), ProcInfo0, ProcInfo),
+    module_info_set_pred_proc_info(PPId, PredInfo0, ProcInfo, !ModuleInfo).
+
     % Check each procedure in the SCC individually.
     %
 :- pred check_procs_for_trail_mods(scc::in, proc_results::out,
-        module_info::in, module_info::out) is det.
+    module_info::in, module_info::out) is det.
 
 check_procs_for_trail_mods(SCC, Result, !ModuleInfo) :-
     list.foldl2(check_proc_for_trail_mods(SCC), SCC, [], Result, !ModuleInfo).
@@ -612,15 +614,16 @@ known_procedure(_, "exception", "rethrow", 1, trail_will_not_modify).
     list(pred_proc_id)::out) is semidet.
 
 get_conditional_closures(ModuleInfo, Closures, Conditionals) :-
-    module_info_get_trailing_info(ModuleInfo, TrailingInfo),
-    set.fold(get_conditional_closure(TrailingInfo), Closures,
-        [], Conditionals).
+    set.fold(get_conditional_closure(ModuleInfo), Closures, [], Conditionals).
 
-:- pred get_conditional_closure(trailing_info::in, pred_proc_id::in,
+:- pred get_conditional_closure(module_info::in, pred_proc_id::in,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is semidet.
 
-get_conditional_closure(TrailingInfo, PPId, !Conditionals) :-
-    TrailingInfo ^ elem(PPId) = proc_trailing_info(Status, _),
+get_conditional_closure(ModuleInfo, PPId, !Conditionals) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
+    proc_info_get_trailing_info(ProcInfo, MaybeProcTrailingInfo),
+    MaybeProcTrailingInfo = yes(ProcTrailingInfo),
+    ProcTrailingInfo = proc_trailing_info(Status, _),
     (
         Status = trail_conditional,
         list.cons(PPId, !Conditionals)
@@ -679,8 +682,10 @@ check_call(ModuleInfo, VarTypes, PPId, Args, Result) :-
     pred_proc_id::in, prog_vars::in, maybe(proc_trailing_info)::out) is det.
 
 check_call_2(ModuleInfo, VarTypes, PPId, Args, MaybeResult) :-
-    module_info_get_trailing_info(ModuleInfo, TrailingInfo),
-    ( if map.search(TrailingInfo, PPId, CalleeTrailingInfo) then
+    module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
+    proc_info_get_trailing_info(ProcInfo, MaybeCalleeTrailingInfo),
+    (
+        MaybeCalleeTrailingInfo = yes(CalleeTrailingInfo),
         CalleeTrailingInfo = proc_trailing_info(CalleeTrailingStatus,
             AnalysisStatus),
         (
@@ -699,7 +704,8 @@ check_call_2(ModuleInfo, VarTypes, PPId, Args, MaybeResult) :-
                 AnalysisStatus)),
             TrailingStatus = check_vars(ModuleInfo, VarTypes, Args)
         )
-    else
+    ;
+        MaybeCalleeTrailingInfo = no,
         MaybeResult = no
     ).
 
@@ -1140,8 +1146,7 @@ maybe_record_trailing_result_2(ModuleInfo, PredId, PredInfo, ProcId,
     (
         ShouldWrite = should_write,
         PPId = proc(PredId, ProcId),
-        module_info_get_trailing_info(ModuleInfo, TrailingInfo),
-        lookup_proc_trailing_info(TrailingInfo, PPId, Status, ResultStatus),
+        lookup_proc_trailing_info(ModuleInfo, PPId, Status, ResultStatus),
         module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
         record_result(ModuleName, FuncId, any_call,
             trailing_analysis_answer(Status), ResultStatus, !AnalysisInfo)
@@ -1149,11 +1154,14 @@ maybe_record_trailing_result_2(ModuleInfo, PredId, PredInfo, ProcId,
         ShouldWrite = should_not_write
     ).
 
-:- pred lookup_proc_trailing_info(trailing_info::in, pred_proc_id::in,
+:- pred lookup_proc_trailing_info(module_info::in, pred_proc_id::in,
     trailing_status::out, analysis_status::out) is det.
 
-lookup_proc_trailing_info(TrailingInfo, PPId, Status, ResultStatus) :-
-    ( if map.search(TrailingInfo, PPId, ProcTrailingInfo) then
+lookup_proc_trailing_info(ModuleInfo, PPId, Status, ResultStatus) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
+    proc_info_get_trailing_info(ProcInfo, MaybeProcTrailingInfo),
+    (
+        MaybeProcTrailingInfo = yes(ProcTrailingInfo),
         ProcTrailingInfo = proc_trailing_info(Status, MaybeResultStatus),
         (
             MaybeResultStatus = yes(ResultStatus)
@@ -1161,7 +1169,8 @@ lookup_proc_trailing_info(TrailingInfo, PPId, Status, ResultStatus) :-
             MaybeResultStatus = no,
             unexpected($module, $pred, "no result status")
         )
-    else
+    ;
+        MaybeProcTrailingInfo = no,
         % Probably an exported `:- external' procedure wouldn't have been
         % analysed.
         Status = trail_may_modify,

@@ -136,8 +136,7 @@ undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo, Context)
     Name = pred_info_name(PredInfo),
     MaybeDet = no,
     SubDeclStr = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
-        varset.coerce(VarSet), unqualified(Name), StrippedModeList,
-        MaybeDet, Context),
+        varset.coerce(VarSet), unqualified(Name), StrippedModeList, MaybeDet),
 
     MainPieces = [words("In clause for")] ++ PredIdPieces ++ [suffix(":"), nl,
         words("error: mode annotation specifies undeclared mode"),
