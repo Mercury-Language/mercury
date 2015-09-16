@@ -464,7 +464,11 @@ lco_proc(LowerSCCVariants, SCC, CurProc, PredInfo, ProcInfo0,
             proc_info_set_varset(VarSet, !ProcInfo),
             proc_info_set_vartypes(VarTypes, !ProcInfo),
             proc_info_set_goal(Goal, !ProcInfo),
+            % See the comment in transform_call_and_unifies for why these
+            % are needed.
             requantify_proc_general(ordinary_nonlocals_no_lambda, !ProcInfo),
+            recompute_instmap_delta_proc(recompute_atomic_instmap_deltas,
+                !ProcInfo, !ModuleInfo),
             map.det_insert(CurProc, !.ProcInfo, !CurSCCUpdates)
         )
     else
@@ -888,10 +892,49 @@ transform_call_and_unifies(CallGoal, CallOutArgs, UnifyGoals, UnifyInputVars,
         VariantPredProcId = proc(VariantPredId, VariantProcId),
         UpdatedGoalExpr = plain_call(VariantPredId, VariantProcId,
             UpdatedArgs, Builtin, UnifyContext, VariantSymName),
-        UpdatedGoalInfo = CallGoalInfo,
+        OrigCallPurity = goal_info_get_purity(CallGoalInfo),
+        % If the original call was pure, then taking away its output
+        % allows the simplify pass to just delete it from the procedure.
+        % To prevent this, we mark the call as impure. However, we don't
+        % want this to make the whole procedure body impure, so we wrap
+        % a promise_purity scope around the pre-call unifications and the call
+        % that together do what the call and the post-call unifications
+        % originally did, and thus has the same purity. Since the unifications
+        % are always pure, this purity is the call's original purity.
+        goal_info_set_purity(purity_impure, CallGoalInfo, UpdatedGoalInfo),
         UpdatedGoal = hlds_goal(UpdatedGoalExpr, UpdatedGoalInfo),
         Goals = UpdatedUnifyGoals ++ [UpdatedGoal],
-        MaybeGoals = yes(Goals),
+        ( if OrigCallPurity = purity_impure then
+            % The promise_purity scope would be redundant.
+            MaybeGoals = yes(Goals)
+        else
+            % Copying the nonlocals and instmap delta fields of ConjGoal and
+            % PromiseGoal from the corresponding fields of CallGoal is
+            % definitely wrong, since the conjunction binds the variables
+            % that in the original code were bound by the post-call
+            % unifications. We *could* cobble together the right values
+            % of both fields from the corresponding fields of CallGoal and
+            % UnifyGoals, but letting quantification and mode analysis do
+            % the job lets us avoid duplicating their here.
+            %
+            % The other fields of goal_infos are either either ok to copy
+            % (such as determinism), or irrelevant (such as goal id).
+            % The most complex case is goal features. However, at the moment
+            % I (zs) believe that all the possible values of the goal_features
+            % type fall into one of four categories:
+            %
+            % - Those that are never attached to calls.
+            % - Those that are never attached to anything before the lco pass.
+            % - Those that are never looked at after the lco pass.
+            % - Those that are ok to copy to the conjunction and the scope.
+            %
+            % None need to be deleted from the conjunction or the scope.
+            ConjGoalExpr = conj(plain_conj, Goals),
+            ConjGoal = hlds_goal(ConjGoalExpr, UpdatedGoalInfo),
+            PromiseGoalExpr = scope(promise_purity(OrigCallPurity), ConjGoal), 
+            PromiseGoal = hlds_goal(PromiseGoalExpr, UpdatedGoalInfo),
+            MaybeGoals = yes([PromiseGoal])
+        ),
         !Info ^ lco_changed := proc_changed
     else
         % The reversed conjunction does not follow the pattern we are looking
@@ -1308,9 +1351,6 @@ lco_transform_variant_proc(VariantMap, AddrOutArgs, ProcInfo,
     proc_info_set_argmodes(ArgModes, !VariantProcInfo),
     proc_info_set_varset(VarSet, !VariantProcInfo),
     proc_info_set_vartypes(VarTypes, !VariantProcInfo),
-
-    % XXX This is a workaround for a bug, which is soon to be fixed.
-    proc_info_set_exception_info(no, !VariantProcInfo),
 
     proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
