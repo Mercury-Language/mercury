@@ -855,12 +855,6 @@ encode_cons_id_and_arity_rep(ConsIdArity, ConsIdBytes, !StringTable) :-
     encode_short_det(Arity, ArityBytes),
     ConsIdBytes = FunctorBytes ++ ArityBytes.
 
-:- pred encode_cons_id(cons_id::in, list(int)::out,
-    string_table_info::in, string_table_info::out) is det.
-
-encode_cons_id(SymName, Bytes, !StringTable) :-
-    encode_string_as_table_offset(cons_id_rep(SymName), Bytes, !StringTable).
-
 :- func cons_id_rep(cons_id) = string.
 
 cons_id_rep(cons(SymName, _, _)) =

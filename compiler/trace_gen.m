@@ -1267,12 +1267,6 @@ build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos], ModuleInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- func trace_code_model_to_string(code_model) = string.
-
-trace_code_model_to_string(model_det) =  "MR_MODEL_DET".
-trace_code_model_to_string(model_semi) = "MR_MODEL_SEMI".
-trace_code_model_to_string(model_non) =  "MR_MODEL_NON".
-
 :- pred stackref_to_string(lval::in, string::out) is det.
 
 stackref_to_string(Lval, LvalStr) :-

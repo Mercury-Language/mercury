@@ -153,10 +153,10 @@ dead_proc_elim(ElimOptImported, !ModuleInfo, Specs) :-
 :- pred do_dead_proc_analyze(module_info::in,
     analyze_what::in, needed_map::out) is det.
 
-do_dead_proc_analyze(ModuleInfo, AnalyeWhat, !:Needed) :-
+do_dead_proc_analyze(ModuleInfo, AnalyzeWhat, !:Needed) :-
     Examined0 = set_tree234.init,
     dead_proc_initialize(ModuleInfo, Queue0, !:Needed),
-    dead_proc_examine(Queue0, Examined0, AnalyeWhat, ModuleInfo, !Needed).
+    dead_proc_examine(Queue0, Examined0, AnalyzeWhat, ModuleInfo, !Needed).
 
     % Add all exported entities to the queue and map.
     % NOTE: changes here are likely to require changes to dead_pred_elim

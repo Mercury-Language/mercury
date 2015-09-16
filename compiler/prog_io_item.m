@@ -1616,25 +1616,6 @@ pred_or_func_decl_pieces(pf_predicate) =
 
 %-----------------------------------------------------------------------------%
 
-:- type maker(T1, T2) == pred(T1, T2).
-:- mode maker == (pred(in, out) is det).
-
-:- pred process_maybe1(maker(T1, T2)::maker, maybe1(T1)::in, maybe1(T2)::out)
-    is det.
-
-process_maybe1(Maker, ok1(X), ok1(Y)) :-
-    call(Maker, X, Y).
-process_maybe1(_, error1(Specs), error1(Specs)).
-
-:- pred process_maybe1_to_t(maker(T1, maybe1(T2))::maker,
-    maybe1(T1)::in, maybe1(T2)::out) is det.
-
-process_maybe1_to_t(Maker, ok1(X), Y) :-
-    call(Maker, X, Y).
-process_maybe1_to_t(_, error1(Specs), error1(Specs)).
-
-%-----------------------------------------------------------------------------%
-
     % Create a dummy term with the specified context.
     % Used for error messages that are associated with some specific context,
     % but for which we don't want to print out the term, or for which the term

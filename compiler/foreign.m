@@ -267,46 +267,6 @@ unimplemented_combination(Lang1, Lang2) :-
         ++ foreign_language_string(Lang2) ++ " foreign code from "
         ++ foreign_language_string(Lang1)).
 
-    % XXX We haven't implemented these functions yet.
-    % What is here is only a guide.
-    %
-:- func make_pred_name(foreign_language, sym_name) = string.
-
-make_pred_name(Lang, SymName) =
-    "mercury_" ++ simple_foreign_language_string(Lang) ++ "__" ++
-        make_pred_name_rest(Lang, SymName).
-
-:- func make_pred_name_rest(foreign_language, sym_name) = string.
-
-make_pred_name_rest(lang_c, _SymName) = "some_c_name".
-make_pred_name_rest(lang_csharp, _SymName) = "some_csharp_name".
-make_pred_name_rest(lang_il, _SymName) = "some_il_name".
-make_pred_name_rest(lang_java, _SymName) = "some_java_name".
-make_pred_name_rest(lang_erlang, _SymName) = "some_erlang_name".
-
-    % create_pragma_vars(Vars, Modes, ArgNum0, PragmaVars):
-    %
-    % Given list of vars and modes, and an initial argument number, allocate
-    % names to all the variables, and construct a single list containing the
-    % variables, names, and modes.
-    %
-:- pred create_pragma_vars(list(prog_var)::in, list(mer_mode)::in, int::in,
-    list(pragma_var)::out) is det.
-
-create_pragma_vars([], [], _Num, []).
-create_pragma_vars([Var | Vars], [Mode | Modes], ArgNum0,
-        [PragmaVar | PragmaVars]) :-
-    % Figure out a name for the C variable which will hold this argument.
-    ArgNum = ArgNum0 + 1,
-    string.int_to_string(ArgNum, ArgNumString),
-    string.append("Arg", ArgNumString, ArgName),
-    PragmaVar = pragma_var(Var, ArgName, Mode, native_if_possible),
-    create_pragma_vars(Vars, Modes, ArgNum, PragmaVars).
-create_pragma_vars([_ | _], [], _, _) :-
-    unexpected($module, $pred, "length mismatch").
-create_pragma_vars([], [_ | _], _, _) :-
-    unexpected($module, $pred, "length mismatch").
-
 %-----------------------------------------------------------------------------%
 
 have_foreign_type_for_backend(Target, ForeignTypeBody, Have) :-

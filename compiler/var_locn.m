@@ -2000,34 +2000,6 @@ get_var_set_roots(Lvals, NoDupRootLvals) :-
 
 %----------------------------------------------------------------------------%
 
-    % Select the cheapest way to refer to the value of the variable.
-    % From the given list of lvals, select the cheapest one to use.
-    %
-:- pred select_lval(list(lval)::in, lval::out) is det.
-
-select_lval(Lvals, Lval) :-
-    ( select_reg_lval(Lvals, Lval1) ->
-        Lval = Lval1
-    ; select_stack_lval(Lvals, Lval2) ->
-        Lval = Lval2
-    ; select_cheapest_lval(Lvals, Lval3) ->
-        Lval = Lval3
-    ;
-        unexpected($module, $pred, "nothing to select")
-    ).
-
-    % From the given list of lvals and maybe a constant rval, select the
-    % cheapest one to use.
-    %
-:- pred select_lval_or_rval(list(lval)::in, maybe(rval)::in, rval::out) is det.
-
-select_lval_or_rval(Lvals, MaybeConstRval, Rval) :-
-    ( maybe_select_lval_or_rval(Lvals, MaybeConstRval, Rval1) ->
-        Rval = Rval1
-    ;
-        unexpected($module, $pred, "nothing to select")
-    ).
-
 :- pred maybe_select_lval_or_rval(list(lval)::in, maybe(rval)::in,
     rval::out) is semidet.
 
@@ -2168,14 +2140,6 @@ select_preferred_reg_or_stack(VLI, Var, RegType, Lval) :-
         ;
             get_spare_reg(VLI, RegType, Lval)
         )
-    ).
-
-:- pred real_lval(lval::in) is semidet.
-
-real_lval(Lval) :-
-    \+ (
-        Lval = reg(_, N),
-        N < 1
     ).
 
 %----------------------------------------------------------------------------%

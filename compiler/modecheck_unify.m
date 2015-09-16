@@ -1784,18 +1784,5 @@ mode_set_args([Inst | Insts], FinalInst, [Mode | Modes]) :-
     mode_set_args(Insts, FinalInst, Modes).
 
 %-----------------------------------------------------------------------------%
-
-:- func init_instmap_may_have_subtype(mode_info) = bool.
-
-init_instmap_may_have_subtype(ModeInfo) = MayHaveSubtype :-
-    mode_info_get_initial_instmap(ModeInfo, InitialInstMap),
-    instmap_to_assoc_list(InitialInstMap, InitVarsInsts),
-    assoc_list.values(InitVarsInsts, InitInsts),
-    mode_info_get_module_info(ModeInfo, ModuleInfo),
-    MayRestrictList =
-        list.map(inst_may_restrict_cons_ids(ModuleInfo), InitInsts),
-    bool.or_list(MayRestrictList, MayHaveSubtype).
-
-%-----------------------------------------------------------------------------%
 :- end_module check_hlds.modecheck_unify.
 %-----------------------------------------------------------------------------%

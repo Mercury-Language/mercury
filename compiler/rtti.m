@@ -1020,14 +1020,6 @@ tcd_get_rtti_type_ctor(TypeCtorData) = RttiTypeCtor :-
     Arity = TypeCtorData ^ tcr_arity,
     RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, Arity).
 
-:- func maybe_pseudo_get_rtti_type_ctor(rtti_maybe_pseudo_type_info)
-    = rtti_type_ctor.
-
-maybe_pseudo_get_rtti_type_ctor(plain(TypeInfo)) =
-    ti_get_rtti_type_ctor(TypeInfo).
-maybe_pseudo_get_rtti_type_ctor(pseudo(PseudoTypeInfo)) =
-    pti_get_rtti_type_ctor(PseudoTypeInfo).
-
 :- func ti_get_rtti_type_ctor(rtti_type_info) = rtti_type_ctor.
 
 ti_get_rtti_type_ctor(plain_arity_zero_type_info(RttiTypeCtor))
@@ -1507,12 +1499,6 @@ var_arity_ctor_id_to_string(tuple_type_info) = "tuple".
 maybe_pseudo_type_info_list_to_string(MaybePseudoTypeInfoList) =
     string.append_list(
         list.map(maybe_pseudo_type_info_to_string, MaybePseudoTypeInfoList)).
-
-:- func pseudo_type_info_list_to_string(list(rtti_pseudo_type_info)) = string.
-
-pseudo_type_info_list_to_string(PseudoTypeInfoList) =
-    string.append_list(
-        list.map(pseudo_type_info_to_string, PseudoTypeInfoList)).
 
 :- func type_info_list_to_string(list(rtti_type_info)) = string.
 

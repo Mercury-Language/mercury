@@ -2979,15 +2979,6 @@ variable_locations(CLD, Lvals) :-
     get_var_locn_info(CLD, VarLocnInfo),
     var_locn_get_var_locations(VarLocnInfo, Lvals).
 
-:- func rval_map_to_lval_map(prog_var, set(rval)) = set(lval).
-
-rval_map_to_lval_map(_Var, Rvals) =
-    set.filter_map(rval_is_lval, Rvals).
-
-:- func rval_is_lval(rval) = lval is semidet.
-
-rval_is_lval(lval(Lval)) = Lval.
-
 set_var_location(Var, Lval, !CLD) :-
     get_var_locn_info(!.CLD, VarLocnInfo0),
     var_locn_check_and_set_magic_var_location(Var, Lval,

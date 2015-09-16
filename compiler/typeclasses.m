@@ -354,13 +354,6 @@ do_class_improvement_2(ClassTable, HeadTypeParams, RedundantConstraints,
     do_class_improvement_by_pairs(ConstraintList, FunDeps, HeadTypeParams,
         !Bindings, !Changed).
 
-:- pred has_class_id(class_id::in, hlds_constraint::in) is semidet.
-
-has_class_id(ClassId, Constraint) :-
-    ClassId = class_id(ClassName, Arity),
-    Constraint = hlds_constraint(_, ClassName, ArgTypes),
-    list.length(ArgTypes, Arity).
-
     % Try to find an opportunity for improvement for each (unordered)
     % pair of constraints from the list.
     %

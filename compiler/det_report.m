@@ -1614,35 +1614,6 @@ det_report_seen_call_id(ModuleInfo, SeenCall) = Pieces :-
 
 %-----------------------------------------------------------------------------%
 
-:- func det_report_context_lines(list(prog_context)) = string.
-
-det_report_context_lines(Contexts) =
-    det_report_context_lines_2(Contexts, is_first).
-
-:- func det_report_context_lines_2(list(prog_context), is_first) = string.
-
-det_report_context_lines_2([], _) = "".
-det_report_context_lines_2([Context | Contexts], First) = Str :-
-    term.context_line(Context, Line),
-    (
-        First = is_first,
-        Punct = ""
-    ;
-        First = is_not_first,
-        (
-            Contexts = [_ | _],
-            Punct = ", "
-        ;
-            Contexts = [],
-            Punct = " and "
-        )
-    ),
-    int_to_string(Line, This),
-    Later = det_report_context_lines_2(Contexts, is_not_first),
-    Str = Punct ++ This ++ Later.
-
-%-----------------------------------------------------------------------------%
-
 :- type options_to_restore == assoc_list(option, option_data).
 
 disable_det_warnings(OptionsToRestore, !Globals) :-

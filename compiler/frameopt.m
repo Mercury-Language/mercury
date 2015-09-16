@@ -2358,15 +2358,5 @@ search_exit_par_map(exit_par_map(ParMap), Label, ParallelLabel) :-
     map.search(ParMap, Label, ParallelLabel).
 
 %-----------------------------------------------------------------------------%
-
-:- pred is_yes(maybe(T)::in) is semidet.
-
-is_yes(yes(_)).
-
-:- pred pair_with(T::in, U::in, pair(T, U)::out) is det.
-
-pair_with(T, U, T - U).
-
-%-----------------------------------------------------------------------------%
 :- end_module ll_backend.frameopt.
 %-----------------------------------------------------------------------------%

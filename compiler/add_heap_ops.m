@@ -336,10 +336,6 @@ gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal, !Info) :-
         [SavedHeapPointerVar], instmap_delta_bind_no_var,
         !.Info ^ heap_module_info, Context, RestoreHeapPointerGoal).
 
-:- func ground_inst = mer_inst.
-
-ground_inst = ground(unique, none).
-
 %-----------------------------------------------------------------------------%
 
 :- pred new_saved_hp_var(prog_var::out,

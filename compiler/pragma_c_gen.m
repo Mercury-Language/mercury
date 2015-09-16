@@ -1119,65 +1119,6 @@ place_foreign_proc_output_args_in_regs([], [_ | _], _, _, _CI, !CLD) :-
 
 %---------------------------------------------------------------------------%
 
-    % input_descs_from_arg_info returns a list of foreign_proc_inputs, which
-    % are pairs of rvals and (C) variables which receive the input value.
-    %
-:- pred input_descs_from_arg_info(code_info::in, list(c_arg)::in,
-    bool::in, list(foreign_proc_input)::out) is det.
-
-input_descs_from_arg_info(_, [], _, []).
-input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
-    input_descs_from_arg_info(CI, Args, CanOptAwayUnnamedArgs, InputsTail),
-    Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, ArgInfo),
-    MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
-    (
-        MaybeName = yes(Name),
-        VarType = variable_type(CI, Var),
-        ArgInfo = arg_info(Loc, _),
-        arg_loc_to_register(Loc, Reg),
-        get_module_info(CI, ModuleInfo),
-        MaybeForeign = get_maybe_foreign_type_info(ModuleInfo, OrigType),
-        IsDummy = check_dummy_type(ModuleInfo, VarType),
-        Input = foreign_proc_input(Name, VarType, IsDummy, OrigType, lval(Reg),
-            MaybeForeign, BoxPolicy),
-        Inputs = [Input | InputsTail]
-    ;
-        MaybeName = no,
-        Inputs = InputsTail
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % output_descs_from_arg_info returns a list of foreign_proc_outputs, which
-    % are pairs of names of output registers and (C) variables which hold the
-    % output value.
-    %
-:- pred output_descs_from_arg_info(code_info::in, list(c_arg)::in,
-    bool::in, list(foreign_proc_output)::out) is det.
-
-output_descs_from_arg_info(_, [], _, []).
-output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
-    output_descs_from_arg_info(CI, Args, CanOptAwayUnnamedArgs, OutputsTail),
-    Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, ArgInfo),
-    MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeArgName),
-    (
-        MaybeName = yes(Name),
-        VarType = variable_type(CI, Var),
-        ArgInfo = arg_info(Loc, _),
-        arg_loc_to_register(Loc, Reg),
-        get_module_info(CI, ModuleInfo),
-        MaybeForeign = get_maybe_foreign_type_info(ModuleInfo, OrigType),
-        IsDummy = check_dummy_type(ModuleInfo, VarType),
-        Output = foreign_proc_output(Reg, VarType, IsDummy, OrigType, Name,
-            MaybeForeign, BoxPolicy),
-        Outputs = [Output | OutputsTail]
-    ;
-        MaybeName = no,
-        Outputs = OutputsTail
-    ).
-
-%---------------------------------------------------------------------------%
-
 foreign_proc_struct_name(ModuleName, PredName, Arity, ProcId) =
     "mercury_save__" ++ sym_name_mangle(ModuleName) ++ "__" ++
         name_mangle(PredName) ++ "__" ++ int_to_string(Arity) ++ "_" ++

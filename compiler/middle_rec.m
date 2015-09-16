@@ -703,19 +703,6 @@ find_used_registers_mem_ref(heap_ref(Rval1, _, Rval2), !Used) :-
     find_used_registers_rval(Rval1, !Used),
     find_used_registers_rval(Rval2, !Used).
 
-:- pred find_used_registers_maybe_rvals(list(maybe(rval))::in,
-    set(int)::in, set(int)::out) is det.
-
-find_used_registers_maybe_rvals([], !Used).
-find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
-    (
-        MaybeRval = no
-    ;
-        MaybeRval = yes(Rval),
-        find_used_registers_rval(Rval, !Used)
-    ),
-    find_used_registers_maybe_rvals(MaybeRvals, !Used).
-
 :- pred insert_foreign_proc_input_registers(list(foreign_proc_input)::in,
     set(int)::in, set(int)::out) is det.
 

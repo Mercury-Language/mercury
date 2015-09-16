@@ -353,17 +353,6 @@ add_needed_foreign_import_module_items_to_item_blocks(ModuleName, Section,
         ItemBlocks = [ImportItemBlock | ItemBlocks0]
     ).
 
-:- pred add_needed_foreign_import_module_items_to_items(module_name::in,
-    list(item)::in, list(item)::out) is det.
-
-add_needed_foreign_import_module_items_to_items(ModuleName,
-        Items0, Items) :-
-    list.foldl(accumulate_foreign_import_langs_in_item, Items0,
-        set.init, LangSet),
-    set.to_sorted_list(LangSet, Langs),
-    ImportItems = list.map(make_foreign_import(ModuleName), Langs),
-    Items = ImportItems ++ Items0.
-
 %---------------------%
 
 get_foreign_self_imports_from_item_blocks(ItemBlocks, Langs) :-

@@ -1056,22 +1056,6 @@ cons_prog_var_at_path(VarMap, PredId, GoalId, ProgVar, MCVars0, MCVars) :-
     MCVar = lookup_prog_var_at_path(VarMap, PredId, GoalId, ProgVar),
     MCVars = [MCVar | MCVars0].
 
-    % prog_var_at_paths(VarMap, GoalIds, ProgVar) = ConstraintVars
-    % consults the map to form a list of the constraint variable
-    % propositions that ProgVar is produced at each of the paths in
-    % GoalIds respectively.  The lookup function will report an
-    % error if the key (ProgVar `in` PredId) `at` GoalId does not
-    % exist in the map for any of the goal ids in GoalIds.
-    %
-:- func prog_var_at_paths(mc_var_map, pred_id, list(goal_id), prog_var) =
-    list(mc_var).
-
-prog_var_at_paths(VarMap, PredId, GoalIds, ProgVar) =
-    list.map(
-        func(GoalId) =
-            lookup_prog_var_at_path(VarMap, PredId, GoalId, ProgVar),
-        GoalIds).
-
     % nonlocals_at_path_and_subpaths(ProgVarset, GoalId, SubIds,
     %   Nonlocals, NonlocalsAtId, NonlocalsAtSubIds, !VarInfo)
     %

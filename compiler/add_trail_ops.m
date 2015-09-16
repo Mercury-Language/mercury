@@ -588,10 +588,6 @@ gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
             Context, Args, ForeignCode, PruneTicketsToGoal)
     ).
 
-:- func trail_ground_inst = mer_inst.
-
-trail_ground_inst = ground(unique, none).
-
 %-----------------------------------------------------------------------------%
 
 :- pred new_ticket_var(prog_var::out,

@@ -493,75 +493,10 @@ impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
 
 type_ctor_info_rtti_version = 15.
 
-    % Construct an rtti_data for a pseudo_type_info, and also construct
-    % rtti_data definitions for all of the pseudo_type_infos that it references
-    % and prepend them to the given list of rtti_data tables.
-    %
-:- pred make_pseudo_type_info_and_tables(mer_type::in, int::in,
-    existq_tvars::in, rtti_data::out,
-    list(rtti_data)::in, list(rtti_data)::out) is det.
-
-make_pseudo_type_info_and_tables(Type, UnivTvars, ExistTvars, RttiData,
-        !Tables) :-
-    pseudo_type_info.construct_pseudo_type_info(Type, UnivTvars, ExistTvars,
-        PseudoTypeInfo),
-    RttiData = rtti_data_pseudo_type_info(PseudoTypeInfo),
-    make_pseudo_type_info_tables(PseudoTypeInfo, !Tables).
-
-    % Construct rtti_data definitions for all of the non-atomic subterms
-    % of a pseudo_type_info, and prepend them to the given list of rtti_data
-    % tables.
-    %
-:- pred make_type_info_tables(rtti_type_info::in,
-    list(rtti_data)::in, list(rtti_data)::out) is det.
-
-make_type_info_tables(plain_arity_zero_type_info(_), !Tables).
-make_type_info_tables(PseudoTypeInfo, !Tables) :-
-    PseudoTypeInfo = plain_type_info(_, Args),
-    !:Tables = [rtti_data_type_info(PseudoTypeInfo) | !.Tables],
-    list.foldl(make_type_info_tables, Args, !Tables).
-make_type_info_tables(PseudoTypeInfo, !Tables) :-
-    PseudoTypeInfo = var_arity_type_info(_, Args),
-    !:Tables = [rtti_data_type_info(PseudoTypeInfo) | !.Tables],
-    list.foldl(make_type_info_tables, Args, !Tables).
-
-:- pred make_pseudo_type_info_tables(rtti_pseudo_type_info::in,
-    list(rtti_data)::in, list(rtti_data)::out) is det.
-
-make_pseudo_type_info_tables(plain_arity_zero_pseudo_type_info(_), !Tables).
-make_pseudo_type_info_tables(PseudoTypeInfo, !Tables) :-
-    PseudoTypeInfo = plain_pseudo_type_info(_, Args),
-    !:Tables = [rtti_data_pseudo_type_info(PseudoTypeInfo) | !.Tables],
-    list.foldl(make_maybe_pseudo_type_info_tables, Args,
-        !Tables).
-make_pseudo_type_info_tables(PseudoTypeInfo, !Tables) :-
-    PseudoTypeInfo = var_arity_pseudo_type_info(_, Args),
-    !:Tables = [rtti_data_pseudo_type_info(PseudoTypeInfo) | !.Tables],
-    list.foldl(make_maybe_pseudo_type_info_tables, Args, !Tables).
-make_pseudo_type_info_tables(type_var(_), !Tables).
-
-:- pred make_maybe_pseudo_type_info_tables(rtti_maybe_pseudo_type_info::in,
-    list(rtti_data)::in, list(rtti_data)::out) is det.
-
-make_maybe_pseudo_type_info_tables(pseudo(PseudoTypeInfo), !Tables) :-
-    make_pseudo_type_info_tables(PseudoTypeInfo, !Tables).
-make_maybe_pseudo_type_info_tables(plain(TypeInfo), !Tables) :-
-    make_type_info_tables(TypeInfo, !Tables).
-
-:- pred make_maybe_pseudo_type_info_or_self_tables(
-    rtti_maybe_pseudo_type_info_or_self::in,
-    list(rtti_data)::in, list(rtti_data)::out) is det.
-
-make_maybe_pseudo_type_info_or_self_tables(pseudo(PseudoTypeInfo), !Tables) :-
-    make_pseudo_type_info_tables(PseudoTypeInfo, !Tables).
-make_maybe_pseudo_type_info_or_self_tables(plain(TypeInfo), !Tables) :-
-    make_type_info_tables(TypeInfo, !Tables).
-make_maybe_pseudo_type_info_or_self_tables(self, !Tables).
-
 %---------------------------------------------------------------------------%
 
-% Make the functor and layout tables for a notag type.
-
+    % Make the functor and layout tables for a notag type.
+    %
 :- pred make_notag_details(int::in, sym_name::in, mer_type::in,
     maybe(string)::in, equality_axioms::in, type_ctor_details::out) is det.
 
