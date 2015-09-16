@@ -78,22 +78,25 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_item.
 
 :- import_module io.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
     % Open the file "<module-name>.opt.tmp", and write out the declarations
-    % and clauses for intermodule optimization. Note that update_interface
-    % and touch_interface_datestamp are called from mercury_compile.m since
-    % they must be called after unused_args.m appends its information
-    % to the .opt.tmp file.
+    % and clauses for intermodule optimization.
     %
     % Although this predicate creates the .opt.tmp file, it does not
     % necessarily create it in its final form. Later compiler passes
-    % may append to this file. Most use the append_xxx_to_opt_file predicates
-    % below, though unused_args.m doesn't (at least not yet).
+    % may append to this file using use the append_xxx_to_opt_file predicates
+    % below.
     % XXX This is not an elegant arrangement.
+    %
+    % Update_interface and touch_interface_datestamp are called from
+    % mercury_compile.m, since they must be called after the last time
+    % anything is appended to the .opt.tmp file.
     %
 :- pred write_initial_opt_file(module_info::in, module_info::out,
     io::di, io::uo) is det.
@@ -102,7 +105,25 @@
 %
 % These predicates are used to add the termination_info pragmas to the
 % .opt and .trans_opt files. They are called from the compiler modules
-% that generate the information they record.
+% that generate the information they record, or from
+% mercury_compile_middle_passes.m.
+%
+% All these predicates except one get the information for the pragmas
+% to be written out in the proc_infos of the procedures to which they apply.
+% The exception is the predicates that writes out unused args pragmas.
+% We detect unused arguments in procedures so we can optimize those arguments
+% away. This makes storing information about unused arguments in the proc_infos
+% of the procedures to which they apply somewhat tricky, since that procedure
+% may, immediately after the unused args are discovered, be transformed to
+% eliminate the unused arguments, in which case the recorded information
+% becomes dangling; it applies to a procedure that no longer exists.
+% this should *not* happen to exported procedures, which are the only
+% ones we want to write unused arg pragmas about to an optimization file,
+% since other modules compiled without the right flags would still call
+% the unoptimized original procedure. Nevertheless, we avoid storing
+% analysis results in proc_infos that may apply only to a no-longer-existing
+% version of the procedure, we pass the info in unused args pragmas
+% to append_unused_arg_pragmas_to_opt_file separately.
 %
 
 :- pred append_exception_pragmas_to_opt_file(module_info::in,
@@ -125,6 +146,9 @@
 
 :- pred append_termination2_pragmas_to_opt_file(module_info::in,
     io::di, io::uo) is det.
+
+:- pred append_unused_arg_pragmas_to_opt_file(module_info::in,
+    set(pragma_info_unused_args)::in, io::di, io::uo) is det.
 
 %---------------------%
 
@@ -206,7 +230,6 @@
 :- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.inlining.
@@ -223,7 +246,6 @@
 :- import_module multi_map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -2926,6 +2948,43 @@ output_maybe_termination2_info(MaybeConstrTermInfo, !IO) :-
         MaybeConstrTermInfo = yes(can_loop(_)),
         io.write_string("can_loop", !IO)
     ).
+
+%---------------------------------------------------------------------------%
+
+append_unused_arg_pragmas_to_opt_file(ModuleInfo, UnusedArgInfos, !IO) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+        do_not_create_dirs, OptFileName, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    maybe_write_string(Verbose,
+        "% Appending unused_args pragmas to `", !IO),
+    maybe_write_string(Verbose, OptFileName, !IO),
+    maybe_write_string(Verbose, "'...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    io.open_append(OptFileName, OptFileRes, !IO),
+    (
+        OptFileRes = ok(OptFile),
+        io.set_output_stream(OptFile, OldStream, !IO),
+        set.foldl2(write_pragma_unused_args, UnusedArgInfos, is_first, _, !IO),
+        io.set_output_stream(OldStream, _, !IO),
+        io.close_output(OptFile, !IO),
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        OptFileRes = error(IOError),
+        maybe_write_string(Verbose, " failed!\n", !IO),
+        io.error_message(IOError, IOErrorMessage),
+        io.write_strings(["Error opening file `",
+            OptFileName, "' for output: ", IOErrorMessage], !IO),
+        io.set_exit_status(1, !IO)
+    ).
+
+:- pred write_pragma_unused_args(pragma_info_unused_args::in,
+    maybe_first::in, maybe_first::out, io::di, io::uo) is det.
+
+write_pragma_unused_args(UnusedArgInfo, !First, !IO) :-
+    maybe_write_nl(!First, !IO),
+    mercury_output_pragma_unused_args(UnusedArgInfo, !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

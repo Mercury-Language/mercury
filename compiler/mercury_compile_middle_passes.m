@@ -1099,9 +1099,10 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
     ->
         maybe_write_string(Verbose, "% Finding unused arguments ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        unused_args_process_module(!HLDS, [], Specs, !IO),
+        unused_args_process_module(!HLDS, Specs, UnusedArgInfos),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS),
+        append_unused_arg_pragmas_to_opt_file(!.HLDS, UnusedArgInfos, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
