@@ -1322,7 +1322,7 @@
             % it is a copy of another, previous goal.
 
     ;       feature_tuple_opt
-            % This goal was create by the tupling optimization.
+            % This goal was created by the tupling optimization.
             % The comment for the stack slot optimization above
             % applies here.
 
