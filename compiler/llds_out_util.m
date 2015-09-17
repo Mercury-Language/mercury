@@ -110,6 +110,7 @@
 :- import_module parse_tree.prog_foreign.
 
 :- import_module int.
+:- import_module maybe.
 :- import_module set_tree234.
 :- import_module term.
 
@@ -160,7 +161,7 @@ output_reset_line_num(Info, !IO) :-
     LineNumbers = Info ^ lout_line_numbers,
     (
         LineNumbers = yes,
-        c_util.always_reset_line_num(!IO)
+        c_util.always_reset_line_num(no, !IO)
     ;
         LineNumbers= no
     ).

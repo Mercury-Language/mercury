@@ -97,6 +97,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
@@ -710,12 +711,11 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     % We always produce a .mh file because with intermodule optimization
     % enabled, the .o file depends on all the .mh files of the imported
     % modules. so we need to produce a .mh file even if it contains nothing.
-    ForeignExportDecls = foreign_export_decls(ForeignDeclCodes, CExportDecls),
-    module_info_get_exported_enums(ModuleInfo, ExportedEnums),
-    HeaderExt = ".mh",
     module_info_get_globals(ModuleInfo, Globals),
+    HeaderExt = ".mh",
     module_name_to_file_name(Globals, ModuleName, HeaderExt, do_create_dirs,
         FileName, !IO),
+    MaybeThisFileName = yes(FileName),
     io.open_output(FileName ++ ".tmp", Result, !IO),
     (
         Result = ok(FileStream),
@@ -754,9 +754,14 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
             "#endif\n",
             "\n"], !IO),
 
+        module_info_get_exported_enums(ModuleInfo, ExportedEnums),
         list.filter(exported_enum_is_for_c, ExportedEnums, CExportedEnums),
+
+        ForeignExportDecls =
+            foreign_export_decls(ForeignDeclCodes, CExportDecls),
         list.filter(foreign_decl_code_is_for_lang(lang_c),
             ForeignDeclCodes, CForeignDeclCodes),
+
         ( if
             CExportedEnums = [],
             CForeignDeclCodes = []
@@ -765,14 +770,19 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
             % There is no point in printing guards around nothing.
             true
         else
+            MaybeSetLineNumbers = lookup_line_numbers(Globals,
+                line_numbers_for_c_headers),
             io.write_strings([
                 "#ifndef ", decl_guard(ModuleName), "\n",
                 "#define ", decl_guard(ModuleName), "\n"], !IO),
-            list.foldl(output_exported_c_enum(ModuleInfo),
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            list.foldl(
+                output_exported_c_enum(MaybeSetLineNumbers, MaybeThisFileName,
+                    TypeTable),
                 CExportedEnums, !IO),
             list.foldl(
-                output_foreign_decl(Globals, SourceFileName,
-                    yes(foreign_decl_is_exported)),
+                output_foreign_decl(MaybeSetLineNumbers, MaybeThisFileName,
+                    SourceFileName, yes(foreign_decl_is_exported)),
                 CForeignDeclCodes, !IO),
             io.write_string("\n#endif\n", !IO)
         ),
@@ -825,12 +835,12 @@ write_export_decls([ExportDecl | ExportDecls], !IO) :-
     ),
     write_export_decls(ExportDecls, !IO).
 
-:- pred output_foreign_decl(globals::in, string::in,
-    maybe(foreign_decl_is_local)::in, foreign_decl_code::in, io::di, io::uo)
-    is det.
+:- pred output_foreign_decl(maybe_set_line_numbers::in, maybe(string)::in,
+    string::in, maybe(foreign_decl_is_local)::in, foreign_decl_code::in,
+    io::di, io::uo) is det.
 
-output_foreign_decl(Globals, SourceFileName, MaybeDesiredIsLocal, DeclCode,
-        !IO) :-
+output_foreign_decl(MaybeSetLineNumbers, MaybeThisFileName, SourceFileName,
+        MaybeDesiredIsLocal, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
     expect(unify(Lang, lang_c), $module, $pred, "Lang != lang_c"),
     ( if
@@ -841,31 +851,32 @@ output_foreign_decl(Globals, SourceFileName, MaybeDesiredIsLocal, DeclCode,
             DesiredIsLocal = IsLocal
         )
     then
-        output_foreign_literal_or_include(Globals, SourceFileName,
-            LiteralOrInclude, Context, !IO),
-        io.nl(!IO),
-        c_util.reset_line_num(Globals, !IO)
+        output_foreign_literal_or_include(MaybeSetLineNumbers,
+            MaybeThisFileName, SourceFileName, LiteralOrInclude, Context, !IO)
     else
         true
     ).
 
-:- pred output_foreign_literal_or_include(globals::in, string::in,
-    foreign_literal_or_include::in, prog_context::in, io::di, io::uo) is det.
+:- pred output_foreign_literal_or_include(maybe_set_line_numbers::in,
+    maybe(string)::in, string::in, foreign_literal_or_include::in,
+    prog_context::in, io::di, io::uo) is det.
 
-output_foreign_literal_or_include(Globals, SourceFileName, LiteralOrInclude,
-        Context, !IO) :-
+output_foreign_literal_or_include(MaybeSetLineNumbers, MaybeThisFileName,
+        SourceFileName, LiteralOrInclude, Context, !IO) :-
     (
         LiteralOrInclude = literal(Code),
         term.context_file(Context, File),
         term.context_line(Context, Line),
-        c_util.set_line_num(Globals, File, Line, !IO),
+        c_util.maybe_set_line_num(MaybeSetLineNumbers, File, Line, !IO),
         io.write_string(Code, !IO)
     ;
         LiteralOrInclude = include_file(IncludeFileName),
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-        c_util.set_line_num(Globals, IncludePath, 1, !IO),
+        c_util.maybe_set_line_num(MaybeSetLineNumbers, IncludePath, 1, !IO),
         write_include_file_contents(IncludePath, !IO)
-    ).
+    ),
+    io.nl(!IO),
+    c_util.maybe_reset_line_num(MaybeSetLineNumbers, MaybeThisFileName, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -881,14 +892,14 @@ exported_enum_is_for_c(ExportedEnumInfo) :-
     ExportedEnumInfo = exported_enum_info(Lang, _, _, _),
     Lang = lang_c.
 
-:- pred output_exported_c_enum(module_info::in, exported_enum_info::in,
-    io::di, io::uo) is det.
+:- pred output_exported_c_enum(maybe_set_line_numbers::in, maybe(string)::in,
+    type_table::in, exported_enum_info::in, io::di, io::uo) is det.
 
-output_exported_c_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
+output_exported_c_enum(MaybeSetLineNumbers, MaybeThisFileName,
+        TypeTable, ExportedEnumInfo, !IO) :-
     ExportedEnumInfo = exported_enum_info(Lang, Context, TypeCtor,
         NameMapping),
     expect(unify(Lang, lang_c), $module, $pred, "Lang != lang_c"),
-    module_info_get_type_table(ModuleInfo, TypeTable),
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, TypeBody),
     (
@@ -914,17 +925,16 @@ output_exported_c_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
             ),
             list.foldl(
                 foreign_const_name_and_tag(TypeCtor, NameMapping, TagValues),
-                Ctors, [], ForeignNamesAndTags0),
-            % We reverse the list so the constants are printed out in order.
-            list.reverse(ForeignNamesAndTags0, ForeignNamesAndTags),
-            module_info_get_globals(ModuleInfo, Globals),
+                Ctors, cord.init, ForeignNamesAndTagsCord),
+            ForeignNamesAndTags = cord.list(ForeignNamesAndTagsCord),
             term.context_file(Context, File),
             term.context_line(Context, Line),
-            c_util.set_line_num(Globals, File, Line, !IO),
+            c_util.maybe_set_line_num(MaybeSetLineNumbers, File, Line, !IO),
             io.write_list(ForeignNamesAndTags, "\n",
-                output_exported_enum_constname_tag(ModuleInfo), !IO),
+                output_exported_enum_constname_tag, !IO),
             io.nl(!IO),
-            c_util.reset_line_num(Globals, !IO)
+            c_util.maybe_reset_line_num(MaybeSetLineNumbers, MaybeThisFileName,
+                !IO)
         )
     ).
 
@@ -935,10 +945,10 @@ output_exported_c_enum(ModuleInfo, ExportedEnumInfo, !IO) :-
     --->    ee_tag_rep_int(int)
     ;       ee_tag_rep_string(string).
 
-:- pred output_exported_enum_constname_tag(module_info::in,
+:- pred output_exported_enum_constname_tag(
     pair(string, exported_enum_tag_rep)::in, io::di, io::uo) is det.
 
-output_exported_enum_constname_tag(_, ConstName - Tag, !IO) :-
+output_exported_enum_constname_tag(ConstName - Tag, !IO) :-
     (
         Tag = ee_tag_rep_int(RawIntTag),
         io.format("#define %s %d", [s(ConstName), i(RawIntTag)], !IO)
@@ -949,11 +959,11 @@ output_exported_enum_constname_tag(_, ConstName - Tag, !IO) :-
 
 :- pred foreign_const_name_and_tag(type_ctor::in, map(sym_name, string)::in,
     cons_tag_values::in, constructor::in,
-    assoc_list(string, exported_enum_tag_rep)::in,
-    assoc_list(string, exported_enum_tag_rep)::out) is det.
+    cord(pair(string, exported_enum_tag_rep))::in,
+    cord(pair(string, exported_enum_tag_rep))::out) is det.
 
 foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
-        !NamesAndTags) :-
+        !NamesAndTagsCord) :-
     Ctor = ctor(_, _, QualifiedCtorName, _Args, Arity, _),
     ConsId = cons(QualifiedCtorName, Arity, TypeCtor),
     map.lookup(TagValues, ConsId, TagVal),
@@ -990,7 +1000,7 @@ foreign_const_name_and_tag(TypeCtor, Mapping, TagValues, Ctor,
     expect(unify(Arity, 0), $module, $pred, "enum constant arity != 0"),
     UnqualifiedCtorName = unqualified(unqualify_name(QualifiedCtorName)),
     map.lookup(Mapping, UnqualifiedCtorName, ForeignName),
-    list.cons(ForeignName - Tag, !NamesAndTags).
+    !:NamesAndTagsCord = cord.snoc(!.NamesAndTagsCord, ForeignName - Tag).
 
 %-----------------------------------------------------------------------------%
 

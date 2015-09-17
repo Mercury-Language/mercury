@@ -23,41 +23,62 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.options.
 
 :- import_module char.
 :- import_module io.
 :- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 %
 % Line numbering.
 %
 
-    % set_line_num(Globals, FileName, LineNum, !IO):
-    %
-    % If the line_numbers option is set, emit a #line directive to set the
-    % specified filename and linenumber so that C compiler error messages
-    % will refer to the correct location in the original source file location.
-    %
-:- pred set_line_num(globals::in, string::in, int::in, io::di, io::uo) is det.
+:- func lookup_line_numbers(globals, option) = maybe_set_line_numbers.
 
-    % always_set_line_num(FileName, LineNum):
+:- type maybe_set_line_numbers
+    --->    dont_set_line_numbers
+    ;       set_line_numbers.
+
+    % maybe_set_line_num(MaybeSetLineNumbers, FileName, LineNum, !IO):
     %
-    % As set_line_num, but always generate a #line directive, regardless of
-    % the setting of the line_numbers option.
+    % If MaybeSetLineNumbers = set_line_numbers, emit a #line directive
+    % to set the specified filename and linenumber, so that C compiler
+    % error messages will refer to the correct location in the original
+    % source file location.
+    %
+:- pred maybe_set_line_num(maybe_set_line_numbers::in, string::in, int::in,
+    io::di, io::uo) is det.
+
+    % always_set_line_num(FileName, LineNum, !IO):
+    %
+    % As maybe_set_line_num, but always generate a #line directive.
     %
 :- pred always_set_line_num(string::in, int::in, io::di, io::uo) is det.
 
-    % If the line_numbers option is set, emit a #line directive to cancel
-    % the effect of any previous #line directives, so that C compiler error
-    % messages will refer to the appropriate location in the generated .c file.
+    % maybe_reset_line_num(MaybeSetLineNumbers, MaybeFileName, !IO):
     %
-:- pred reset_line_num(globals::in, io::di, io::uo) is det.
+    % If MaybeSetLineNumbers = set_line_numbers, emit a #line directive
+    % to cancel the effect of any previous #line directives, so that
+    % C compiler error messages will refer to the appropriate location
+    % in the generated .c file.
+    %
+    % If MaybeFileName = no, then use the actual name of the file we are
+    % writing and thus as the name of the file we are getting back to.
+    % If MaybeFileName = yes(FileName), then use FileName for this purpose,
+    % regardless of whether it is the name of the file we are writing to.
+    % When we write to modname.suffix.tmp with the intention of later
+    % moving it to modname.suffix, we want the #line directive to refer to
+    % modname.suffix, not modname.suffix.tmp. This can be done by passing
+    % yes("modname.suffix") as MaybeFileName.
+    %
+:- pred maybe_reset_line_num(maybe_set_line_numbers::in, maybe(string)::in,
+    io::di, io::uo) is det.
 
-    % As reset_line_num, but always generate a #line directive, regardless of
-    % the setting of the line_numbers option.
+    % As maybe_reset_line_num, but always generate a #line directive.
     %
-:- pred always_reset_line_num(io::di, io::uo) is det.
+:- pred always_reset_line_num(maybe(string)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -206,8 +227,6 @@
 
 :- implementation.
 
-:- import_module libs.options.
-
 :- import_module bool.
 :- import_module int.
 :- import_module integer.
@@ -219,13 +238,22 @@
 % Line numbering.
 %
 
-set_line_num(Globals, File, Line, !IO) :-
-    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
+lookup_line_numbers(Globals, Option) = MaybeSetLineNumbers :-
+    globals.lookup_bool_option(Globals, Option, OptionValue),
     (
-        LineNumbers = yes,
+        OptionValue = no,
+        MaybeSetLineNumbers = dont_set_line_numbers
+    ;
+        OptionValue = yes,
+        MaybeSetLineNumbers = set_line_numbers
+    ).
+
+maybe_set_line_num(MaybeSetLineNumbers, File, Line, !IO) :-
+    (
+        MaybeSetLineNumbers = set_line_numbers,
         always_set_line_num(File, Line, !IO)
     ;
-        LineNumbers = no
+        MaybeSetLineNumbers = dont_set_line_numbers
     ).
 
 always_set_line_num(File, Line, !IO) :-
@@ -246,37 +274,42 @@ always_set_line_num(File, Line, !IO) :-
         ),
         io.write_string("""\n", !IO)
     else
-        always_reset_line_num(!IO)
+        % XXX What is the point of this call?
+        always_reset_line_num(no, !IO)
     ).
 
-reset_line_num(Globals, !IO) :-
-    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
+maybe_reset_line_num(MaybeSetLineNumbers, MaybeFileName, !IO) :-
     (
-        LineNumbers = yes,
-        always_reset_line_num(!IO)
+        MaybeSetLineNumbers = set_line_numbers,
+        always_reset_line_num(MaybeFileName, !IO)
     ;
-        LineNumbers = no
+        MaybeSetLineNumbers = dont_set_line_numbers
     ).
 
-always_reset_line_num(!IO) :-
+always_reset_line_num(MaybeFileName, !IO) :-
     % We want to generate another #line directive to reset the C compiler's
     % idea of what it is processing back to the file we are generating.
     io.get_output_line_number(Line, !IO),
-    io.output_stream_name(File, !IO),
+    (
+        MaybeFileName = yes(FileName)
+    ;
+        MaybeFileName = no,
+        io.output_stream_name(FileName, !IO)
+    ),
     ( if
         Line > 0,
-        File \= ""
+        FileName \= ""
     then
         io.write_string("#line ", !IO),
         io.write_int(Line + 1, !IO),
         io.write_string(" """, !IO),
-        can_print_directly(File, CanPrint, !IO),
+        can_print_directly(FileName, CanPrint, !IO),
         (
             CanPrint = yes,
-            io.write_string(File, !IO)
+            io.write_string(FileName, !IO)
         ;
             CanPrint = no,
-            output_quoted_string(File, !IO)
+            output_quoted_string(FileName, !IO)
         ),
         io.write_string("""\n", !IO)
     else

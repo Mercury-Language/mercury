@@ -411,14 +411,16 @@ is_anonymous_variable(mlds_var_name(Name, _)) :-
 :- pred output_context(globals::in, prog_context::in, io::di, io::uo) is det.
 
 output_context(Globals, Context, !IO) :-
+    MaybeSetLineNumbers = lookup_line_numbers(Globals, line_numbers),
     term.context_file(Context, File),
     term.context_line(Context, Line),
-    c_util.set_line_num(Globals, File, Line, !IO).
+    c_util.maybe_set_line_num(MaybeSetLineNumbers, File, Line, !IO).
 
 :- pred output_reset_context(globals::in, io::di, io::uo) is det.
 
 output_reset_context(Globals, !IO) :-
-    c_util.reset_line_num(Globals, !IO).
+    MaybeSetLineNumbers = lookup_line_numbers(Globals, line_numbers),
+    c_util.maybe_reset_line_num(MaybeSetLineNumbers, no, !IO).
 
 :- pred write_rval(il_data_rep::in, mlds_rval::in, io::di, io::uo) is det.
 

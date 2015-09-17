@@ -4862,7 +4862,7 @@ reset_context_opts(Opts, !IO) :-
     LineNumbers = Opts ^ m2co_line_numbers,
     (
         LineNumbers = yes,
-        c_util.always_reset_line_num(!IO)
+        c_util.always_reset_line_num(no, !IO)
     ;
         LineNumbers = no
     ).
