@@ -206,9 +206,9 @@ type_category_is_object(CtorCat) = IsObject :-
 mlds_lval_type(ml_var(_, VarType)) = VarType.
 mlds_lval_type(ml_field(_, _, _, FieldType, _)) = FieldType.
 mlds_lval_type(ml_mem_ref(_, PtrType)) =
-    ( PtrType = mlds_ptr_type(Type) ->
+    ( if PtrType = mlds_ptr_type(Type) then
         Type
-    ;
+    else
         unexpected($module, $pred, "mem_ref of non-pointer")
     ).
 mlds_lval_type(ml_global_var_ref(_)) = _ :-
@@ -280,13 +280,13 @@ enforce_java_names(Name, JavaName) :-
     % If the Name contains one or more dots (`.'), then capitalize
     % the first letter after the last dot.
     reverse_string(Name, RevName),
-    ( string.sub_string_search(RevName, ".", Pos) ->
+    ( if string.sub_string_search(RevName, ".", Pos) then
         string.split(RevName, Pos, Head0, Tail0),
         reverse_string(Tail0, Tail),
         reverse_string(Head0, Head1),
         string.capitalize_first(Head1, Head),
         string.append(Tail, Head, JavaName)
-    ;
+    else
         JavaName = Name
     ).
 
@@ -502,9 +502,9 @@ output_java_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
     = mlds_foreign_code.
 
 mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
-    ( map.search(AllForeignCode, lang_java, ForeignCode0) ->
+    ( if map.search(AllForeignCode, lang_java, ForeignCode0) then
         ForeignCode = ForeignCode0
-    ;
+    else
         ForeignCode = mlds_foreign_code([], [], [], [])
     ).
 
@@ -556,10 +556,10 @@ output_export(Info0, Indent, Export, !IO) :-
         io.write_string("java.lang.Object []", !IO)
     ),
     io.write_string(" " ++ ExportName, !IO),
-    (
+    ( if
         list.member(Param, Parameters),
         has_ptr_type(Param)
-    ->
+    then
         (
             ( ReturnTypes = []
             ; ReturnTypes = [_]
@@ -569,7 +569,7 @@ output_export(Info0, Indent, Export, !IO) :-
             ReturnTypes = [_, _ | _],
             unexpected($module, $pred, "multiple return values")
         )
-    ;
+    else
         output_export_no_ref_out(Info, Indent, Export, !IO)
     ).
 
@@ -619,12 +619,12 @@ output_export_ref_out(Info, Indent, Export, !IO) :-
     io.write_string("java.lang.Object[] results = ", !IO),
     write_export_call(MLDS_Name, NonRefParams, !IO),
 
-    ( ReturnTypes = [] ->
+    ( if ReturnTypes = [] then
         FirstRefArg = 0
-    ; ReturnTypes = [mlds_native_bool_type] ->
+    else if ReturnTypes = [mlds_native_bool_type] then
         % Semidet procedure.
         FirstRefArg = 1
-    ;
+    else
         unexpected($module, $pred, "unexpected ReturnTypes")
     ),
     list.foldl2(assign_ref_output(Info, Indent + 1), RefParams,
@@ -661,10 +661,10 @@ output_export_params_ref_out(Info, Indent, Parameters, !IO) :-
 output_export_param_ref_out(Info, Indent, Argument, !IO) :-
     Argument = mlds_argument(Name, Type, _),
     indent_line(Indent, !IO),
-    ( Type = mlds_ptr_type(InnerType) ->
+    ( if Type = mlds_ptr_type(InnerType) then
         boxed_type_to_string(Info, InnerType, InnerTypeString),
         io.format("jmercury.runtime.Ref<%s> ", [s(InnerTypeString)], !IO)
-    ;
+    else
         output_type(Info, Type, !IO),
         io.write_string(" ", !IO)
     ),
@@ -692,9 +692,9 @@ assign_ref_output(Info, Indent, Arg, N, N + 1, !IO) :-
     Arg = mlds_argument(Name, Type, _),
     indent_line(Indent, !IO),
     output_name(Name, !IO),
-    ( Type = mlds_ptr_type(InnerType) ->
+    ( if Type = mlds_ptr_type(InnerType) then
         boxed_type_to_string(Info, InnerType, TypeString)
-    ;
+    else
         boxed_type_to_string(Info, Type, TypeString)
     ),
     io.format(".val = (%s) results[%d];\n", [s(TypeString), i(N)], !IO).
@@ -856,19 +856,21 @@ method_ptrs_in_stmt(CallStmt, !CodeAddrs) :-
     % standard call rather than a function pointer use.
     method_ptrs_in_rvals(Rvals, !CodeAddrs).
 method_ptrs_in_stmt(ml_stmt_atomic(AtomicStatement), !CodeAddrs) :-
-    (
+    ( if
         AtomicStatement = new_object(Lval, _MaybeTag, _Bool,
             _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic,
             _AllocId)
-    ->
+    then
         % We don't need to check "_MemRval" since this just stores
         % the amount of memory needed for the new object.
         method_ptrs_in_lval(Lval, !CodeAddrs),
         method_ptrs_in_rvals(Rvals, !CodeAddrs)
-    ; AtomicStatement = assign(Lval, Rval) ->
+    else if
+        AtomicStatement = assign(Lval, Rval)
+    then
         method_ptrs_in_lval(Lval, !CodeAddrs),
         method_ptrs_in_rval(Rval, !CodeAddrs)
-    ;
+    else
         true
     ).
 
@@ -1095,9 +1097,9 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
     % Create a method that calls the original predicates.
     generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn),
 
-    ( Arity =< max_specialised_method_ptr_arity ->
+    ( if Arity =< max_specialised_method_ptr_arity then
         InterfaceName = "MethodPtr" ++ string.from_int(Arity)
-    ;
+    else
         InterfaceName = "MethodPtrN"
     ),
     InterfaceModuleName = mercury_module_name_to_mlds(
@@ -1138,10 +1140,10 @@ generate_call_method(MLDS_ModuleName, Arity, CodeAddrs, MethodDefn) :-
     % Create the arguments to the call method.  For low arities the method
     % takes n arguments directly.  For higher arities the arguments are passed
     % in as an array.
-    ( Arity =< max_specialised_method_ptr_arity ->
+    ( if Arity =< max_specialised_method_ptr_arity then
         list.map2(create_generic_arg, 1 .. Arity, ArgNames, MethodArgs),
         InputArgs = cmi_separate(ArgNames)
-    ;
+    else
         ArgName = mlds_var_name("args", no),
         ArgDataName = entity_data(mlds_data_var(ArgName)),
         ArgType = mlds_array_type(mlds_generic_type),
@@ -1373,9 +1375,9 @@ add_to_address_map_2(FlippedClassName, [CodeAddr | CodeAddrs], I,
 shorten_long_class_names(ModuleName, Defns0, Defns) :-
     list.map_foldl(maybe_shorten_long_class_name, Defns0, Defns1,
         map.init, RenamingMap),
-    ( map.is_empty(RenamingMap) ->
+    ( if map.is_empty(RenamingMap) then
         Defns = Defns1
-    ;
+    else
         Renaming = class_name_renaming(ModuleName, RenamingMap),
         list.map(rename_class_names_defn(Renaming), Defns1, Defns)
     ).
@@ -1393,12 +1395,12 @@ maybe_shorten_long_class_name(!Defn, !Renaming) :-
         (
             EntityName0 = entity_type(ClassName0, Arity),
             ClassName = shorten_class_name(ClassName0),
-            ( ClassName \= ClassName0 ->
+            ( if ClassName = ClassName0 then
+                true
+            else
                 EntityName = entity_type(ClassName, Arity),
                 !Defn ^ md_entity_name := EntityName,
                 map.det_insert(ClassName0, ClassName, !Renaming)
-            ;
-                true
             )
         ;
             ( EntityName0 = entity_function(_, _, _, _)
@@ -1418,9 +1420,9 @@ maybe_shorten_long_class_name(!Defn, !Renaming) :-
 
 shorten_class_name(ClassName0) = ClassName :-
     MangledClassName0 = name_mangle_no_leading_digit(ClassName0),
-    ( string.length(MangledClassName0) < 100 ->
+    ( if string.length(MangledClassName0) < 100 then
         ClassName = ClassName0
-    ;
+    else
         % The new name must not require name mangling, as then the name may
         % again be too long.  We replace all non-alphanumeric or underscore
         % characters by underscores.  The s_ prefix avoids having f_ as the
@@ -1437,9 +1439,9 @@ shorten_class_name(ClassName0) = ClassName :-
 :- func replace_non_alphanum_underscore(char) = char.
 
 replace_non_alphanum_underscore(Char) =
-    ( char.is_alnum_or_underscore(Char) ->
+    ( if char.is_alnum_or_underscore(Char) then
         Char
-    ;
+    else
         '_'
     ).
 
@@ -1492,13 +1494,13 @@ rename_class_names_type(Renaming, !Type) :-
     ;
         !.Type = mlds_class_type(Name0, Arity, ClassKind),
         Name0 = qual(ModuleName, QualKind, UnqualName0),
-        (
+        ( if
             Renaming = class_name_renaming(ModuleName, RenamingMap),
             map.search(RenamingMap, UnqualName0, UnqualName)
-        ->
+        then
             Name = qual(ModuleName, QualKind, UnqualName),
             !:Type = mlds_class_type(Name, Arity, ClassKind)
-        ;
+        else
             true
         )
     ;
@@ -1886,14 +1888,14 @@ rename_class_names_target_code_component(Renaming, !Component) :-
         QualName0 = qual(ModuleName, Kind, EntityName0),
         (
             EntityName0 = entity_type(ClassName0, Arity),
-            (
+            ( if
                 Renaming = class_name_renaming(ModuleName, RenamingMap),
                 map.search(RenamingMap, ClassName0, ClassName)
-            ->
+            then
                 EntityName = entity_type(ClassName, Arity),
                 QualName = qual(ModuleName, Kind, EntityName),
                 !:Component = target_code_name(QualName)
-            ;
+            else
                 true
             )
         ;
@@ -2049,9 +2051,9 @@ output_src_start(Info, Indent, MercuryModuleName, Imports, ForeignDecls, Defns,
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting Java class that calls the `main'
     % predicate.
-    ( defns_contain_main(Defns) ->
+    ( if defns_contain_main(Defns) then
         write_main_driver(Indent + 1, ClassName, !IO)
-    ;
+    else
         true
     ).
 
@@ -2174,7 +2176,7 @@ output_defns(Info, Indent, OutputAux, Defns, !IO) :-
 output_defn(Info, Indent, OutputAux, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
     indent_line(Info, marker_comment, Context, Indent, !IO),
-    ( DefnBody = mlds_function(_, _, body_external, _, _) ->
+    ( if DefnBody = mlds_function(_, _, body_external, _, _) then
         % This is just a function declaration, with no body.
         % Java doesn't support separate declarations and definitions,
         % so just output the declaration as a comment.
@@ -2185,7 +2187,7 @@ output_defn(Info, Indent, OutputAux, Defn, !IO) :-
         output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
             !IO),
         io.write_string("*/\n", !IO)
-    ;
+    else
         output_decl_flags(Info, Flags, !IO),
         output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
             !IO)
@@ -2237,9 +2239,9 @@ output_class(!.Info, Indent, UnqualName, ClassDefn, !IO) :-
     !Info ^ joi_univ_tvars := TypeParams,
 
     % Use generics in the output if this class represents a Mercury type.
-    ( list.member(ml_java_mercury_type_interface, Implements) ->
+    ( if list.member(ml_java_mercury_type_interface, Implements) then
         !Info ^ joi_output_generics := do_output_generics
-    ;
+    else
         true
     ),
 
@@ -2336,10 +2338,10 @@ output_implements_list(Indent, InterfaceList, !IO)  :-
 :- pred output_interface(mlds_interface_id::in, io::di, io::uo) is det.
 
 output_interface(Interface, !IO) :-
-    (
+    ( if
         Interface = mlds_class_type(qual(ModuleQualifier, QualKind, Name),
             Arity, _)
-    ->
+    then
         SymName = mlds_module_name_to_sym_name(ModuleQualifier),
         mangle_sym_name_for_java(SymName, convert_qual_kind(QualKind),
             ".", ModuleName),
@@ -2347,12 +2349,12 @@ output_interface(Interface, !IO) :-
 
         % Check if the interface is one of the ones in the runtime system.
         % If it is, we don't need to output the arity.
-        ( interface_is_special(Name) ->
+        ( if interface_is_special(Name) then
             true
-        ;
+        else
             io.format("%d", [i(Arity)], !IO)
         )
-    ;
+    else
         unexpected($module, $pred, "interface was not a class")
     ).
 
@@ -2424,14 +2426,14 @@ output_enum_constants(Info, Indent, EnumName, EnumConsts, !IO) :-
 
 output_enum_constant(_Info, Indent, EnumName, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
-    ( DefnBody = mlds_data(_Type, Initializer, _GCStatement) ->
+    ( if DefnBody = mlds_data(_Type, Initializer, _GCStatement) then
         % Make a static instance of the constant. The MLDS doesn't retain enum
         % constructor names (that shouldn't be hard to change now) so it is
         % easier to derive the name of the constant later by naming them after
         % the integer values.
         (
             Initializer = init_obj(Rval),
-            ( Rval = ml_const(mlconst_enum(N, _)) ->
+            ( if Rval = ml_const(mlconst_enum(N, _)) then
                 indent_line(Indent, !IO),
                 io.write_string("public static final ", !IO),
                 output_name(EnumName, !IO),
@@ -2442,7 +2444,7 @@ output_enum_constant(_Info, Indent, EnumName, Defn, !IO) :-
                 io.write_string(" /* ", !IO),
                 output_name(Name, !IO),
                 io.write_string(" */", !IO)
-            ;
+            else
                 unexpected($module, $pred, "not mlconst_enum")
             )
         ;
@@ -2452,7 +2454,7 @@ output_enum_constant(_Info, Indent, EnumName, Defn, !IO) :-
             ),
             unexpected($module, $pred, "not mlconst_enum")
         )
-    ;
+    else
         unexpected($module, $pred, "definition body was not data")
     ).
 
@@ -2467,12 +2469,12 @@ output_enum_constant(_Info, Indent, EnumName, Defn, !IO) :-
 output_data_decls(_, _, [], !IO).
 output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, Flags, DefnBody),
-    ( DefnBody = mlds_data(Type, _Initializer, _GCStatement) ->
+    ( if DefnBody = mlds_data(Type, _Initializer, _GCStatement) then
         indent_line(Indent, !IO),
         output_decl_flags(Info, Flags, !IO),
         output_data_decl(Info, Name, Type, !IO),
         io.write_string(";\n", !IO)
-    ;
+    else
         unexpected($module, $pred, "not data")
     ),
     output_data_decls(Info, Indent, Defns, !IO).
@@ -2519,12 +2521,12 @@ output_init_data_method(Info, Indent, Defns, Chunk, Chunk + 1, !IO) :-
 output_init_data_statements(_, _, [], !IO).
 output_init_data_statements(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
-    ( DefnBody = mlds_data(Type, Initializer, _GCStatement) ->
+    ( if DefnBody = mlds_data(Type, Initializer, _GCStatement) then
         indent_line(Indent, !IO),
         output_name(Name, !IO),
         output_initializer(Info, none, Type, Initializer, !IO),
         io.write_string(";\n", !IO)
-    ;
+    else
         unexpected($module, $pred, "not mlds_data")
     ),
     output_init_data_statements(Info, Indent, Defns, !IO).
@@ -2561,7 +2563,7 @@ output_scalar_common_data(Info, Indent, ScalarCellGroupMap, !IO) :-
     map.foldl3(output_scalar_defns(Info, Indent), ScalarCellGroupMap,
         digraph.init, Graph, map.init, Map, !IO),
 
-    ( digraph.tsort(Graph, SortedScalars0) ->
+    ( if digraph.tsort(Graph, SortedScalars0) then
         % Divide into small methods to avoid running into the maximum method
         % size limit.
         list.reverse(SortedScalars0, SortedScalars),
@@ -2576,7 +2578,7 @@ output_scalar_common_data(Info, Indent, ScalarCellGroupMap, !IO) :-
             0, NumChunks - 1, !IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO)
-    ;
+    else
         unexpected($module, $pred, "digraph.tsort failed")
     ).
 
@@ -2893,13 +2895,13 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
     ;
         Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
-        (
+        ( if
             StructType = mercury_type(_Type, CtorCat, _),
             type_category_is_array(CtorCat) = is_array
-        ->
+        then
             Size = list.length(FieldInits),
             io.format("java.lang.Object[%d]", [i(Size)], !IO)
-        ;
+        else
             output_type(Info, StructType, !IO),
             io.write_string("()", !IO)
         )
@@ -2912,9 +2914,9 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
             type_to_string(Info, Type, String, ArrayDims),
             io.write_string(String, !IO),
             % Replace the innermost array dimension by the known size.
-            ( list.split_last(ArrayDims, Heads, 0) ->
+            ( if list.split_last(ArrayDims, Heads, 0) then
                 output_array_dimensions(Heads ++ [Size], !IO)
-            ;
+            else
                 unexpected($module, $pred, "missing array dimension")
             )
         ;
@@ -3107,12 +3109,12 @@ output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
 
 output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
     Signature = mlds_func_params(Parameters, RetTypes),
-    (
+    ( if
         OutputAux = cname(CtorName),
         Name = entity_export("<constructor>")
-    ->
+    then
         output_name(CtorName, !IO)
-    ;
+    else
         output_return_types(Info, RetTypes, !IO),
         io.write_char(' ', !IO),
         output_name(Name, !IO)
@@ -3176,9 +3178,9 @@ output_maybe_qualified_name(Info, QualifiedName, !IO) :-
     % of local variables and function parameters, which must not be qualified.
     QualifiedName = qual(ModuleName, _QualKind, Name),
     CurrentModuleName = Info ^ joi_module_name,
-    ( ModuleName = CurrentModuleName ->
+    ( if ModuleName = CurrentModuleName then
         output_name(Name, !IO)
-    ;
+    else
         output_fully_qualified_thing(QualifiedName, output_name, !IO)
     ).
 
@@ -3203,9 +3205,9 @@ qualifier_to_string(MLDS_ModuleName, QualKind, String) :-
     mangle_sym_name_for_java(OuterName, module_qual, "__", MangledOuterName),
 
     % The later parts of the qualifier correspond to nested Java classes.
-    ( OuterName = InnerName ->
+    ( if OuterName = InnerName then
         MangledSuffix = ""
-    ;
+    else
         remove_sym_name_prefixes(InnerName, OuterName, Suffix),
         mangle_sym_name_for_java(Suffix, convert_qual_kind(QualKind), ".",
             MangledSuffix0),
@@ -3220,9 +3222,9 @@ qualifier_to_string(MLDS_ModuleName, QualKind, String) :-
 remove_sym_name_prefixes(SymName0, Prefix, SymName) :-
     (
         SymName0 = qualified(Qual, Name),
-        ( Qual = Prefix ->
+        ( if Qual = Prefix then
             SymName = unqualified(Name)
-        ;
+        else
             remove_sym_name_prefixes(Qual, Prefix, SymName1),
             SymName = qualified(SymName1, Name)
         )
@@ -3262,13 +3264,13 @@ unqual_class_name_to_string(Name, Arity, String) :-
 
 qual_class_name_to_string(QualName, Arity, String) :-
     QualName = qual(MLDS_ModuleName, QualKind, ClassName),
-    (
+    ( if
         SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
         SymName = java_mercury_runtime_package_name
-    ->
+    then
         % Don't mangle runtime class names.
         String = "jmercury.runtime." ++ ClassName
-    ;
+    else
         qualifier_to_string(MLDS_ModuleName, QualKind, QualString),
         unqual_class_name_to_string(ClassName, Arity, UnqualString),
         String = QualString ++ "." ++ UnqualString
@@ -3402,42 +3404,42 @@ output_array_dimensions(ArrayDims, !IO) :-
 type_to_string(Info, MLDS_Type, String, ArrayDims) :-
     (
         MLDS_Type = mercury_type(Type, CtorCat, _),
-        (
+        ( if
             % We need to handle type_info (etc.) types specially --
             % they get mapped to types in the runtime rather than
             % in private_builtin.
             hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims0)
-        ->
+        then
             String = SubstituteName,
             ArrayDims = ArrayDims0
-        ;
+        else if
             % io.state and store.store
             CtorCat = ctor_cat_builtin_dummy
-        ->
+        then
             String = "/* builtin_dummy */ java.lang.Object",
             ArrayDims = []
-        ;
+        else if
             Type = c_pointer_type
-        ->
+        then
             % The c_pointer type is used in the c back-end as a generic way
             % to pass foreign types to automatically generated Compare and
             % Unify code. When compiling to Java we must instead use
             % java.lang.Object.
             String = "/* c_pointer */ java.lang.Object",
             ArrayDims = []
-        ;
+        else
             mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims)
         )
     ;
         MLDS_Type = mlds_mercury_array_type(ElementType),
-        ( ElementType = mercury_type(_, ctor_cat_variable, _) ->
+        ( if ElementType = mercury_type(_, ctor_cat_variable, _) then
             % We can't use `java.lang.Object []', since we want a generic type
             % that is capable of holding any kind of array, including e.g.
             % `int []'. Java doesn't have any equivalent of .NET's System.Array
             % class, so we just use the universal base `java.lang.Object'.
             String = "/* Array */ java.lang.Object",
             ArrayDims = []
-        ;
+        else
             % For primitive element types we use arrays of the primitive type.
             % For non-primitive element types, we just use
             % `java.lang.Object []'. We used to use more specific types,
@@ -3445,10 +3447,10 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
             % reflection to determine the class of a representative element.
             % That doesn't work if the representative element is of a foreign
             % type, and has the value null.
-            ( java_builtin_type(ElementType, _, _, _) ->
+            ( if java_builtin_type(ElementType, _, _, _) then
                 type_to_string(Info, ElementType, String, ArrayDims0),
                 ArrayDims = [0 | ArrayDims0]
-            ;
+            else
                 String = "java.lang.Object",
                 ArrayDims = [0]
             )
@@ -3588,13 +3590,13 @@ mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
         ArrayDims = []
     ;
         CtorCat = ctor_cat_variable,
-        (
+        ( if
             Info ^ joi_output_generics = do_output_generics,
             Type = type_variable(TVar, kind_star),
             list.member(TVar, Info ^ joi_univ_tvars)
-        ->
+        then
             generic_tvar_to_string(TVar, String)
-        ;
+        else
             String = "java.lang.Object"
         ),
         ArrayDims = []
@@ -3622,25 +3624,22 @@ mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
     type_ctor_category::in, string::out, list(int)::out) is det.
 
 mercury_user_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
-    ( type_to_ctor_and_args(Type, TypeCtor, ArgsTypes) ->
-        ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-        ( CtorCat = ctor_cat_enum(_) ->
-            MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
-        ;
-            MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
-        ),
-        type_to_string(Info, MLDS_Type, TypeString, ArrayDims),
-        OutputGenerics = Info ^ joi_output_generics,
-        (
-            OutputGenerics = do_output_generics,
-            generic_args_types_to_string(Info, ArgsTypes, GenericsString),
-            String = TypeString ++ GenericsString
-        ;
-            OutputGenerics = do_not_output_generics,
-            String = TypeString
-        )
+    type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
+    ml_gen_type_name(TypeCtor, ClassName, ClassArity),
+    ( if CtorCat = ctor_cat_enum(_) then
+        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
+    else
+        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
+    ),
+    type_to_string(Info, MLDS_Type, TypeString, ArrayDims),
+    OutputGenerics = Info ^ joi_output_generics,
+    (
+        OutputGenerics = do_output_generics,
+        generic_args_types_to_string(Info, ArgsTypes, GenericsString),
+        String = TypeString ++ GenericsString
     ;
-        unexpected($module, $pred, "not a user type")
+        OutputGenerics = do_not_output_generics,
+        String = TypeString
     ).
 
 :- pred generic_args_types_to_string(java_out_info::in, list(mer_type)::in,
@@ -3667,16 +3666,16 @@ generic_args_types_to_string(Info, ArgsTypes, String) :-
 :- func type_is_array(mlds_type) = is_array.
 
 type_is_array(Type) = IsArray :-
-    ( Type = mlds_array_type(_) ->
+    ( if Type = mlds_array_type(_) then
         IsArray = is_array
-    ; Type = mlds_mercury_array_type(_) ->
+    else if Type = mlds_mercury_array_type(_) then
         IsArray = is_array
-    ; Type = mercury_type(_, CtorCat, _) ->
+    else if Type = mercury_type(_, CtorCat, _) then
         IsArray = type_category_is_array(CtorCat)
-    ; Type = mlds_rtti_type(RttiIdMaybeElement) ->
+    else if Type = mlds_rtti_type(RttiIdMaybeElement) then
         rtti_id_maybe_element_java_type(RttiIdMaybeElement,
             _JavaTypeName, IsArray)
-    ;
+    else
         IsArray = not_array
     ).
 
@@ -3732,13 +3731,13 @@ hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims) :-
         ArrayDims = [0]
     ;
         CtorCat = ctor_cat_user(cat_user_general),
-        ( Type = type_desc_type ->
+        ( if Type = type_desc_type then
             SubstituteName = "jmercury.runtime.TypeInfo_Struct"
-        ; Type = pseudo_type_desc_type ->
+        else if Type = pseudo_type_desc_type then
             SubstituteName = "jmercury.runtime.PseudoTypeInfo"
-        ; Type = type_ctor_desc_type ->
+        else if Type = type_ctor_desc_type then
             SubstituteName = "jmercury.runtime.TypeCtorInfo_Struct"
-        ;
+        else
             fail
         ),
         ArrayDims = []
@@ -3748,9 +3747,9 @@ hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims) :-
     is det.
 
 boxed_type_to_string(Info, Type, String) :-
-    ( java_builtin_type(Type, _, JavaBoxedName, _) ->
+    ( if java_builtin_type(Type, _, JavaBoxedName, _) then
         String = JavaBoxedName
-    ;
+    else
         type_to_string(Info, Type, String0, ArrayDims),
         list.map(array_dimension_to_string, ArrayDims, RevBrackets),
         list.reverse(RevBrackets, Brackets),
@@ -3760,9 +3759,9 @@ boxed_type_to_string(Info, Type, String) :-
 :- pred array_dimension_to_string(int::in, string::out) is det.
 
 array_dimension_to_string(N, String) :-
-    ( N = 0 ->
+    ( if N = 0 then
         String = "[]"
-    ;
+    else
         String = string.format("[%d]", [i(N)])
     ).
 
@@ -3826,13 +3825,13 @@ output_virtuality(Info, Virtual, !IO) :-
     io::di, io::uo) is det.
 
 output_overridability_constness(Overridability, Constness, !IO) :-
-    (
+    ( if
         ( Overridability = sealed
         ; Constness = const
         )
-    ->
+    then
         io.write_string("final ", !IO)
-    ;
+    else
         true
     ).
 
@@ -3907,18 +3906,18 @@ output_statements(Info, Indent, FuncInfo, [Statement | Statements],
         ExitMethods, !IO) :-
     output_statement(Info, Indent, FuncInfo, Statement,
         StmtExitMethods, !IO),
-    ( set.member(can_fall_through, StmtExitMethods) ->
+    ( if set.member(can_fall_through, StmtExitMethods) then
         output_statements(Info, Indent, FuncInfo, Statements,
             StmtsExitMethods, !IO),
         ExitMethods0 = StmtExitMethods `set.union` StmtsExitMethods,
-        ( set.member(can_fall_through, StmtsExitMethods) ->
+        ( if set.member(can_fall_through, StmtsExitMethods) then
             ExitMethods = ExitMethods0
-        ;
+        else
             % If the last statement could not complete normally
             % the current block can no longer complete normally.
             ExitMethods = ExitMethods0 `set.delete` can_fall_through
         )
-    ;
+    else
         % Don't output any more statements from the current list since
         % the preceeding statement cannot complete.
         ExitMethods = StmtExitMethods
@@ -3963,11 +3962,11 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         % The contained statement is reachable iff the while statement is
         % reachable and the condition expression is not a constant expression
         % whose value is false.
-        ( Cond = ml_const(mlconst_false) ->
+        ( if Cond = ml_const(mlconst_false) then
             indent_line(Indent, !IO),
             io.write_string("{  /* Unreachable code */  }\n", !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
-        ;
+        else
             output_statement(Info, Indent + 1, FuncInfo, BodyStatement,
                 StmtExitMethods, !IO),
             ExitMethods = while_exit_methods(Cond, StmtExitMethods)
@@ -3988,7 +3987,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         Statement = ml_stmt_if_then_else(Cond, Then0, MaybeElse),
         % We need to take care to avoid problems caused by the dangling else
         % ambiguity.
-        (
+        ( if
             % For examples of the form
             %
             %   if (...)
@@ -4003,9 +4002,9 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
 
             MaybeElse = yes(_),
             Then0 = statement(ml_stmt_if_then_else(_, _, no), ThenContext)
-        ->
+        then
             Then = statement(ml_stmt_block([], [Then0]), ThenContext)
-        ;
+        else
             Then = Then0
         ),
 
@@ -4085,7 +4084,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             %
             io.write_string("java.lang.Object [] result = ", !IO)
         ),
-        ( FuncRval = ml_const(mlconst_code_addr(_)) ->
+        ( if FuncRval = ml_const(mlconst_code_addr(_)) then
             % This is a standard method call.
             (
                 MaybeObject = yes(Object),
@@ -4099,7 +4098,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             io.write_string("(", !IO),
             io.write_list(CallArgs, ", ", output_rval(Info), !IO),
             io.write_string(")", !IO)
-        ;
+        else
             % This is a call using a method pointer.
             %
             % Here we do downcasting, as a call will always return
@@ -4129,14 +4128,14 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             ),
 
             list.length(CallArgs, Arity),
-            ( Arity =< max_specialised_method_ptr_arity ->
+            ( if Arity =< max_specialised_method_ptr_arity then
                 io.write_string("((jmercury.runtime.MethodPtr", !IO),
                 io.write_int(Arity, !IO),
                 io.write_string(") ", !IO),
                 output_bracketed_rval(Info, FuncRval, !IO),
                 io.write_string(").call___0_0(", !IO),
                 output_boxed_args(Info, CallArgs, ArgTypes, !IO)
-            ;
+            else
                 io.write_string("((jmercury.runtime.MethodPtrN) ", !IO),
                 output_bracketed_rval(Info, FuncRval, !IO),
                 io.write_string(").call___0_0(", !IO),
@@ -4150,11 +4149,11 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
                 RetTypes = []
             ;
                 RetTypes = [RetType2],
-                ( java_builtin_type(RetType2, _, _, UnboxMethod) ->
+                ( if java_builtin_type(RetType2, _, _, UnboxMethod) then
                     io.write_string(").", !IO),
                     io.write_string(UnboxMethod, !IO),
                     io.write_string("()", !IO)
-                ;
+                else
                     io.write_string(")", !IO)
                 )
             ;
@@ -4164,21 +4163,21 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         ),
         io.write_string(";\n", !IO),
 
-        ( Results = [_, _ | _] ->
+        ( if Results = [_, _ | _] then
             % Copy the results from the "result" array into the Result
             % lvals (unboxing them as we go).
             output_assign_results(Info, Results, RetTypes, 0, Indent + 1,
                 Context, !IO)
-        ;
+        else
             true
         ),
         % XXX Is this needed? If present, it causes compiler errors for a
         %     couple of files in the benchmarks directory.  -mjwybrow
         %
-        % ( IsTailCall = tail_call, Results = [] ->
+        % ( if IsTailCall = tail_call, Results = [] then
         %   indent_line(Context, Indent + 1, !IO),
         %   io.write_string("return;\n", !IO)
-        % ;
+        % else
         %   true
         % ),
         %
@@ -4265,16 +4264,16 @@ while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
     % expression is a constant expression with value true, and it
     % doesn't contain a reachable break statement that exits the
     % while statement.
-    (
+    ( if
         % XXX This is not a sufficient way of testing for a Java
         % "constant expression", though determining these accurately
         % is a little difficult to do here.
         Cond = ml_const(mlconst_true),
         not set.member(can_break, BlockExitMethods)
-    ->
+    then
         % Cannot complete normally
         ExitMethods0 = BlockExitMethods `set.delete` can_fall_through
-    ;
+    else
         ExitMethods0 = BlockExitMethods `set.insert` can_fall_through
     ),
     ExitMethods = (ExitMethods0 `set.delete` can_continue)
@@ -4351,12 +4350,12 @@ output_assign_results(_, [], [_ | _], _, _, _, _, _) :-
     io::di, io::uo) is det.
 
 output_unboxed_result(Info, Type, ResultIndex, !IO) :-
-    ( java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) ->
+    ( if java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) then
         io.write_string("((", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string(") ", !IO),
         io.format("result[%d]).%s()", [i(ResultIndex), s(UnboxMethod)], !IO)
-    ;
+    else
         io.write_string("(", !IO),
         output_type(Info, Type, !IO),
         io.write_string(") ", !IO),
@@ -4382,10 +4381,10 @@ output_switch_cases(Info, Indent, FuncInfo, Context,
         CaseExitMethods0, !IO),
     output_switch_cases(Info, Indent, FuncInfo, Context, Cases, Default,
         CasesExitMethods, !IO),
-    ( set.member(can_break, CaseExitMethods0) ->
+    ( if set.member(can_break, CaseExitMethods0) then
         CaseExitMethods = (CaseExitMethods0 `set.delete` can_break)
             `set.insert` can_fall_through
-    ;
+    else
         CaseExitMethods = CaseExitMethods0
     ),
     ExitMethods = CaseExitMethods `set.union` CasesExitMethods.
@@ -4400,12 +4399,12 @@ output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
     list.foldl(output_case_cond(Info, Indent, Context), LaterConds, !IO),
     output_statement(Info, Indent + 1, FuncInfo, Statement,
         StmtExitMethods, !IO),
-    ( set.member(can_fall_through, StmtExitMethods) ->
+    ( if set.member(can_fall_through, StmtExitMethods) then
         indent_line(Info, marker_comment, Context, Indent + 1, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = (StmtExitMethods `set.insert` can_break)
             `set.delete` can_fall_through
-    ;
+    else
         % Don't output `break' since it would be unreachable.
         ExitMethods = StmtExitMethods
     ).
@@ -4418,9 +4417,9 @@ output_case_cond(Info, Indent, Context, Match, !IO) :-
         Match = match_value(Val),
         indent_line(Info, marker_comment, Context, Indent, !IO),
         io.write_string("case ", !IO),
-        ( Val = ml_const(mlconst_enum(N, _)) ->
+        ( if Val = ml_const(mlconst_enum(N, _)) then
             io.write_int(N, !IO)
-        ;
+        else
             output_rval(Info, Val, !IO)
         ),
         io.write_string(":\n", !IO)
@@ -4501,19 +4500,19 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
         output_lval(Info, Target, !IO),
         io.write_string(" = new ", !IO),
         % Generate class constructor name.
-        (
+        ( if
             MaybeCtorName = yes(QualifiedCtorId),
-            \+ (
+            not (
                 Type = mercury_type(MerType, CtorCat, _),
                 hand_defined_type(MerType, CtorCat, _, _)
             )
-        ->
+        then
             output_type(Info, Type, !IO),
             io.write_char('.', !IO),
             QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
             output_unqual_class_name(CtorName, CtorArity, !IO)
-        ;
+        else
             output_type(Info, Type, !IO)
         ),
         IsArray = type_is_array(Type),
@@ -4638,13 +4637,13 @@ output_lval(Info, Lval, !IO) :-
         Lval = ml_field(_MaybeTag, PtrRval, FieldId, FieldType, _),
         (
             FieldId = ml_field_offset(OffsetRval),
-            (
+            ( if
                 ( FieldType = mlds_generic_type
                 ; FieldType = mercury_type(type_variable(_, _), _, _)
                 )
-            ->
+            then
                 true
-            ;
+            else
                 % The field type for field(_, _, offset(_), _, _) lvals
                 % must be something that maps to MR_Box.
                 unexpected($module, $pred, "unexpected field type")
@@ -4658,23 +4657,23 @@ output_lval(Info, Lval, !IO) :-
             io.write_string("]", !IO)
         ;
             FieldId = ml_field_named(FieldName, CtorType),
-            (
+            ( if
                 FieldName = qual(_, _, UnqualFieldName),
                 UnqualFieldName = "data_tag"
-            ->
+            then
                 % If the field we are trying to access is just a `data_tag'
                 % then it is a member of the base class.
                 output_bracketed_rval(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
-            ;
+            else if
                 PtrRval = ml_self(_)
-            ->
+            then
                 % Suppress type cast on `this' keyword.  This makes a
                 % difference when assigning to `final' member variables in
                 % constructor functions.
                 output_rval(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
-            ;
+            else
                 % Otherwise the field we are trying to access may be
                 % in a derived class. Objects are manipulated as instances
                 % of their base class, so we need to downcast to the derived
@@ -4719,13 +4718,13 @@ output_valid_mangled_name(Name, !IO) :-
     is det.
 
 output_call_rval(Info, Rval, !IO) :-
-    (
+    ( if
         Rval = ml_const(Const),
         Const = mlconst_code_addr(CodeAddr)
-    ->
+    then
         IsCall = yes,
         mlds_output_code_addr(Info, CodeAddr, IsCall, !IO)
-    ;
+    else
         output_bracketed_rval(Info, Rval, !IO)
     ).
 
@@ -4733,14 +4732,14 @@ output_call_rval(Info, Rval, !IO) :-
     is det.
 
 output_bracketed_rval(Info, Rval, !IO) :-
-    (
+    ( if
         % If it's just a variable name, then we don't need parentheses.
         ( Rval = ml_lval(ml_var(_,_))
         ; Rval = ml_const(mlconst_code_addr(_))
         )
-    ->
+    then
         output_rval(Info, Rval, !IO)
-    ;
+    else
         io.write_char('(', !IO),
         output_rval(Info, Rval, !IO),
         io.write_char(')', !IO)
@@ -4805,24 +4804,24 @@ output_cast_rval(Info, Type, Expr, !IO) :-
     % jmercury.runtime.PseudoTypeInfo, but for Java
     % we need to treat these as constructions, not casts.
     % Similarly for conversions from TypeCtorInfo to TypeInfo.
-    (
+    ( if
         Type = mlds_pseudo_type_info_type,
         Expr = ml_const(mlconst_int(N))
-    ->
+    then
         maybe_output_comment(Info, "cast", !IO),
-        ( have_preallocated_pseudo_type_var(N) ->
+        ( if have_preallocated_pseudo_type_var(N) then
             io.write_string("jmercury.runtime.PseudoTypeInfo.K", !IO),
             io.write_int(N, !IO)
-        ;
+        else
             io.write_string("new jmercury.runtime.PseudoTypeInfo(", !IO),
             output_rval(Info, Expr, !IO),
             io.write_string(")", !IO)
         )
-    ;
+    else if
         ( Type = mercury_type(_, ctor_cat_system(cat_system_type_info), _)
         ; Type = mlds_type_info_type
         )
-    ->
+    then
         % XXX We really should be able to tell if we are casting a
         % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
         % be rather difficult as the compiler doesn't keep track of where
@@ -4832,12 +4831,12 @@ output_cast_rval(Info, Type, Expr, !IO) :-
             !IO),
         output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
-    ;
+    else if
         java_builtin_type(Type, "int", _, _)
-    ->
+    then
         io.write_string("(int) ", !IO),
         output_rval_maybe_with_enum(Info, Expr, !IO)
-    ;
+    else
         io.write_string("(", !IO),
         output_type(Info, Type, !IO),
         io.write_string(") ", !IO),
@@ -4855,13 +4854,13 @@ have_preallocated_pseudo_type_var(N) :-
      io::di, io::uo) is det.
 
 output_boxed_rval(Info, Type, Expr, !IO) :-
-    ( java_builtin_type(Type, _JavaName, JavaBoxedName, _) ->
+    ( if java_builtin_type(Type, _JavaName, JavaBoxedName, _) then
         % valueOf may return cached instances instead of creating new objects.
         io.write_string(JavaBoxedName, !IO),
         io.write_string(".valueOf(", !IO),
         output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
-    ;
+    else
         io.write_string("((java.lang.Object) (", !IO),
         output_rval(Info, Expr, !IO),
         io.write_string("))", !IO)
@@ -4871,7 +4870,7 @@ output_boxed_rval(Info, Type, Expr, !IO) :-
     io::di, io::uo) is det.
 
 output_unboxed_rval(Info, Type, Expr, !IO) :-
-    ( java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) ->
+    ( if java_builtin_type(Type, _, JavaBoxedName, UnboxMethod) then
         io.write_string("((", !IO),
         io.write_string(JavaBoxedName, !IO),
         io.write_string(") ", !IO),
@@ -4879,7 +4878,7 @@ output_unboxed_rval(Info, Type, Expr, !IO) :-
         io.write_string(").", !IO),
         io.write_string(UnboxMethod, !IO),
         io.write_string("()", !IO)
-    ;
+    else
         io.write_string("((", !IO),
         output_type(Info, Type, !IO),
         io.write_string(") ", !IO),
@@ -4933,9 +4932,9 @@ java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     % means there's no tag).
     %
 output_std_unop(Info, UnaryOp, Expr, !IO) :-
-    ( UnaryOp = tag ->
+    ( if UnaryOp = tag then
         io.write_string("/* tag */  0", !IO)
-    ;
+    else
         java_unary_prefix_op(UnaryOp, UnaryOpString),
         io.write_string(UnaryOpString, !IO),
         io.write_string("(", !IO),
@@ -4948,18 +4947,18 @@ output_std_unop(Info, UnaryOp, Expr, !IO) :-
 
 output_binop(Info, Op, X, Y, !IO) :-
     % XXX This should be a single complete switch on Op.
-    ( Op = array_index(_Type) ->
+    ( if Op = array_index(_Type) then
         output_bracketed_rval(Info, X, !IO),
         io.write_string("[", !IO),
         output_rval(Info, Y, !IO),
         io.write_string("]", !IO)
-    ; java_string_compare_op(Op, OpStr) ->
-        ( OpStr = "==" ->
+    else if java_string_compare_op(Op, OpStr) then
+        ( if OpStr = "==" then
             output_rval(Info, X, !IO),
             io.write_string(".equals(", !IO),
             output_rval(Info, Y, !IO),
             io.write_string(")", !IO)
-        ;
+        else
             io.write_string("(", !IO),
             output_rval(Info, X, !IO),
             io.write_string(".compareTo(", !IO),
@@ -4968,19 +4967,19 @@ output_binop(Info, Op, X, Y, !IO) :-
             io.write_string(OpStr, !IO),
             io.write_string(" 0)", !IO)
         )
-    ; Op = str_cmp ->
+    else if Op = str_cmp then
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(".compareTo(", !IO),
         output_rval(Info, Y, !IO),
         io.write_string(")) ", !IO)
-    ; Op = pointer_equal_conservative ->
+    else if Op = pointer_equal_conservative then
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(" == ", !IO),
         output_rval(Info, Y, !IO),
         io.write_string(") ", !IO)
-    ; rval_is_enum_object(X) ->
+    else if rval_is_enum_object(X) then
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(".MR_value ", !IO),
@@ -4988,7 +4987,7 @@ output_binop(Info, Op, X, Y, !IO) :-
         io.write_string(" ", !IO),
         output_rval(Info, Y, !IO),
         io.write_string(".MR_value)", !IO)
-    ;
+    else
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(" ", !IO),
@@ -5014,9 +5013,9 @@ output_binop(Info, Op, X, Y, !IO) :-
 
 output_rval_maybe_with_enum(Info, Rval, !IO) :-
     output_rval(Info, Rval, !IO),
-    ( rval_is_enum_object(Rval) ->
+    ( if rval_is_enum_object(Rval) then
         io.write_string(".MR_value", !IO)
-    ;
+    else
         true
     ).
 
@@ -5024,13 +5023,13 @@ output_rval_maybe_with_enum(Info, Rval, !IO) :-
 
 output_binary_op(Op, !IO) :-
     % XXX why are these separated into three predicates?
-    ( java_binary_infix_op(Op, OpStr) ->
+    ( if java_binary_infix_op(Op, OpStr) then
         io.write_string(OpStr, !IO)
-    ; java_float_compare_op(Op, OpStr) ->
+    else if java_float_compare_op(Op, OpStr) then
         io.write_string(OpStr, !IO)
-    ; java_float_op(Op, OpStr) ->
+    else if java_float_op(Op, OpStr) then
         io.write_string(OpStr, !IO)
-    ;
+    else
         unexpected($module, $pred, "invalid binary operator")
     ).
 
@@ -5101,16 +5100,16 @@ output_int_const(N, !IO) :-
     % Java compiler would rightly complain because the integer is too large to
     % fit in a 32-bit int.  However, it won't complain if the literal is
     % expressed in hexadecimal (nor as the negative decimal -1).
-    ( N < 0 ->
+    ( if N < 0 then
         io.write_int(N, !IO)
-    ;
+    else if
         N >> 32 = 0,
         N /\ 0x80000000 = 0x80000000
-    ->
+    then
         % The bit pattern fits in 32 bits, but is too large to write as a
         % positive decimal.  This branch is unreachable on a 32-bit compiler.
         io.format("0x%x", [i(N /\ 0xffffffff)], !IO)
-    ;
+    else
         io.write_int(N, !IO)
     ).
 
@@ -5208,17 +5207,19 @@ output_context(Info, Marker, ProgContext, !IO) :-
         get_last_context(LastContext, !IO),
         term.context_file(ProgContext, File),
         term.context_line(ProgContext, Line),
-        (
+        ( if
             % It is safe to ignore marker comments when the comment isn't
             % useful.  All other marker types must be emitted in all cases.
-            Marker = marker_comment
-            =>
             (
-                ProgContext \= LastContext,
-                Line > 0,
-                File \= ""
+                Marker = marker_comment
+            =>
+                (
+                    ProgContext \= LastContext,
+                    Line > 0,
+                    File \= ""
+                )
             )
-        ->
+        then
             % Java doesn't have an equivalent of #line directives.
             % We use the token MER_LINE to allow us to filter these lines out
             % of the file when mangling javac's output.
@@ -5229,7 +5230,7 @@ output_context(Info, Marker, ProgContext, !IO) :-
             io.format("// %s %s:%d\n",
                 [s(marker_string(Marker)), s(SafePath), i(Line)], !IO),
             set_last_context(ProgContext, !IO)
-        ;
+        else
             true
         )
     ;
@@ -5267,9 +5268,9 @@ indent_line(Info, Marker, Context, N, !IO) :-
 :- pred indent_line(indent::in, io::di, io::uo) is det.
 
 indent_line(N, !IO) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         true
-    ;
+    else
         io.write_string("  ", !IO),
         indent_line(N - 1, !IO)
     ).
@@ -5292,24 +5293,30 @@ write_string_with_context_block(Info, Indent, Code, Context, !IO) :-
 :- func num_lines(string) = int.
 
 num_lines(String) = Num :-
-    foldl2((pred(C::in, !.N::in, !:N::out, Prev::in, C::out) is det :-
+    % The initial "previous" character may be anything other than \r.
+    string.foldl2(count_new_lines, String, 1, Num, 'x', _).
+
+    % Increment the line count !N whenever we see CR or LF or CRLF,
+    % ensuring that the latter counts as only ONE newline.
+    %
+:- pred count_new_lines(char::in, int::in, int::out, char::in, char::out)
+    is det.
+
+count_new_lines(C, !N, Prev, C) :-
+    ( if
         (
-            % CR or LF or CRLF increment the line count, with care to ensure
-            % that CRLF is only counted once.
-            (
-                C = '\r'
-            ;
-                (
-                    C = '\n',
-                    Prev \= '\r'
-                )
-            )
-        ->
-            !:N = !.N + 1
+            C = '\r'
         ;
-            true
+            (
+                C = '\n',
+                Prev \= '\r'
+            )
         )
-        ), String, 1, Num, 'x', _).
+    then
+        !:N = !.N + 1
+    else
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 
