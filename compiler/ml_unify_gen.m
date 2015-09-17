@@ -9,11 +9,9 @@
 % File: ml_unify_gen.m
 % Main author: fjh
 %
-% This module is part of the MLDS code generator.
-% It handles MLDS code generation for unifications.
+% This module generates MLDS code generation for unifications.
 %
 % Code for deconstruction unifications
-%
 %
 %   det (cannot_fail) deconstruction:
 %       <succeeded = (X => f(A1, A2, ...))>
@@ -182,7 +180,7 @@ ml_gen_unification(Unification, CodeModel, Context, Statements, !Info) :-
                 Context),
             Statements = [Statement]
         ),
-        ( ml_gen_info_search_const_var(!.Info, SourceVar, GroundTerm) ->
+        ( if ml_gen_info_search_const_var(!.Info, SourceVar, GroundTerm) then
             % If the source variable is a constant, so is the target after
             % this assignment.
             %
@@ -193,7 +191,7 @@ ml_gen_unification(Unification, CodeModel, Context, Statements, !Info) :-
             % info here, the construction of the later constant could cause
             % a code generator abort.
             ml_gen_info_set_const_var(TargetVar, GroundTerm, !Info)
-        ;
+        else
             true
         )
     ;
@@ -201,11 +199,11 @@ ml_gen_unification(Unification, CodeModel, Context, Statements, !Info) :-
         expect(unify(CodeModel, model_semi), $module, $pred,
             "simple_test not semidet"),
         ml_variable_type(!.Info, VarA, Type),
-        ( Type = builtin_type(builtin_type_string) ->
+        ( if Type = builtin_type(builtin_type_string) then
             EqualityOp = str_eq
-        ; Type = builtin_type(builtin_type_float) ->
+        else if Type = builtin_type(builtin_type_float) then
             EqualityOp = float_eq
-        ;
+        else
             EqualityOp = eq
         ),
         ml_gen_var(!.Info, VarA, VarALval),
@@ -311,14 +309,16 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         ( Tag = no_tag
         ; Tag = direct_arg_tag(_)
         ),
-        (
+        ( if
             Args = [ArgVar],
             ArgModes = [ArgMode]
-        ->
+        then
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-            ( ml_gen_info_search_const_var(!.Info, ArgVar, ArgGroundTerm) ->
+            ( if
+                ml_gen_info_search_const_var(!.Info, ArgVar, ArgGroundTerm)
+            then
                 ArgGroundTerm = ml_ground_term(ArgRval, _ArgType,
                     MLDS_ArgType),
                 ml_gen_info_get_global_data(!.Info, GlobalData0),
@@ -331,7 +331,7 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
                 ml_gen_info_set_const_var(Var, GroundTerm, !Info),
                 Statement = ml_gen_assign(VarLval, Rval, Context),
                 Statements = [Statement]
-            ;
+            else
                 ml_gen_var(!.Info, ArgVar, ArgLval),
                 ml_variable_type(!.Info, ArgVar, ArgType),
                 (
@@ -349,7 +349,7 @@ ml_gen_construct_tag(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
                         Statements)
                 )
             )
-        ;
+        else
             (
                 Tag = no_tag,
                 unexpected($module, $pred, "no_tag: arity != 1")
@@ -440,11 +440,11 @@ ml_gen_info_lookup_const_var_rval(Info, Var, Rval) :-
 ml_gen_constant(Tag, VarType, MLDS_VarType, Rval, !Info) :-
     (
         Tag = int_tag(Int),
-        ( VarType = int_type ->
+        ( if VarType = int_type then
             Rval = ml_const(mlconst_int(Int))
-        ; VarType = char_type ->
+        else if VarType = char_type then
             Rval = ml_const(mlconst_char(Int))
-        ;
+        else
             Rval = ml_const(mlconst_enum(Int, MLDS_VarType))
         )
     ;
@@ -636,9 +636,9 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Tag, ExplicitSecTag, Var,
     ml_variable_type(!.Info, Var, VarType),
     ml_gen_type(!.Info, VarType, MLDS_Type),
     ml_gen_var(!.Info, Var, VarLval),
-    ( Tag = 0 ->
+    ( if Tag = 0 then
         MaybeTag = no
-    ;
+    else
         MaybeTag = yes(Tag)
     ),
     ml_variable_types(!.Info, ArgVars, ArgTypes),
@@ -815,9 +815,9 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, MaybeTag,
             unit, _, unit, _),
         AllArgRvals = ExtraArgRvals ++ ArgRvals,
         ArgInits = list.map(func(X) = init_obj(X), AllArgRvals),
-        ( ConstType = mlds_array_type(_) ->
+        ( if ConstType = mlds_array_type(_) then
             Initializer = init_array(ArgInits)
-        ;
+        else
             Initializer = init_struct(ConstType, ArgInits)
         ),
         module_info_get_name(ModuleInfo, ModuleName),
@@ -1000,16 +1000,16 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
         ConstType = mlds_array_type(mlds_generic_type)
     ;
         HighLevelData = yes,
-        (
+        ( if
             % Check for type_infos and typeclass_infos, since these
             % need to be handled specially; their Mercury type definitions
             % are lies on C backends.
             MLDS_Type = mercury_type(_, TypeCtorCategory, _),
             TypeCtorCategory = ctor_cat_system(_),
             Target = target_c
-        ->
+        then
             ConstType = mlds_array_type(mlds_generic_type)
-        ;
+        else if
             % Check if we are constructing a value for a discriminated union
             % where the specified cons_id which is represented as a derived
             % class that is derived from the base class for this discriminated
@@ -1024,7 +1024,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
                 type_to_ctor(MercuryType, TypeCtor),
                 ml_gen_type_name(TypeCtor, QualTypeName, TypeArity)
             )
-        ->
+        then
             % If so, append the name of the derived class to the name of the
             % base class for this type (since the derived class will also be
             % nested inside the base class).
@@ -1037,7 +1037,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             ConstType = mlds_class_type(
                 qual(ClassQualifier, type_qual, CtorName),
                 CtorArity, mlds_class)
-        ;
+        else if
             % Convert mercury_types for user-defined types to the corresponding
             % `mlds_class_type'. This is needed because these types get
             % mapped to `mlds_ptr_type(mlds_class_type(...))', but when
@@ -1045,24 +1045,24 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % not the pointer type.
             MLDS_Type = mercury_type(MercuryType, ctor_cat_user(_), _),
             type_to_ctor(MercuryType, TypeCtor)
-        ->
+        then
             ml_gen_type_name(TypeCtor, ClassName, ClassArity),
             ConstType = mlds_class_type(ClassName, ClassArity, mlds_class)
-        ;
+        else if
             % For tuples, a similar issue arises; we want tuple constants
             % to have array type, not the pointer type MR_Tuple.
             MLDS_Type = mercury_type(_, ctor_cat_tuple, _)
-        ->
+        then
             ConstType = mlds_array_type(mlds_generic_type)
-        ;
+        else if
             % Likewise for closures, we need to use an array type rather than
             % the pointer type MR_ClosurePtr. Note that we use a low-level
             % data representation for closures, even when --high-level-data
             % is enabled.
             MLDS_Type = mercury_type(_, ctor_cat_higher_order, _)
-        ->
+        then
             ConstType = mlds_array_type(mlds_generic_type)
-        ;
+        else
             ConstType = MLDS_Type
         )
     ).
@@ -1072,7 +1072,7 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
 
 ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
         BoxedFieldType) :-
-    (
+    ( if
         (
             HighLevelData = no,
             % With the low-level data representation, we store all fields
@@ -1090,7 +1090,7 @@ ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
             % floating point fields if they are wider than a word.
             ml_must_box_field_type(ModuleInfo, FieldType, FieldWidth)
         )
-    ->
+    then
         % XXX zs: I do not see any reason why TypeVar cannot be confused with
         % other type variables (whether constructed the same way or not),
         % nor do I see any reason why such confusion would not lead to errors.
@@ -1098,7 +1098,7 @@ ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
         varset.new_var(TypeVar, TypeVarSet0, _TypeVarSet),
         % The kind is `star' since there are values with this type.
         BoxedFieldType = type_variable(TypeVar, kind_star)
-    ;
+    else
         BoxedFieldType = FieldType
     ).
 
@@ -1125,15 +1125,15 @@ get_maybe_cons_id_arg_types(ModuleInfo, MaybeConsId, ArgTypes, Type,
 
 constructor_arg_types(ModuleInfo, ConsId, ArgTypes, Type,
         ConsArgTypes, ConsArgWidths) :-
-    (
+    ( if
         ConsId = cons(_, _, _),
         \+ is_introduced_type_info_type(Type)
-    ->
+    then
         % Determine the type_ctor, and then look up the data constructor.
         type_to_ctor_det(Type, TypeCtor),
-        (
+        ( if
             type_util.get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
-        ->
+        then
             ConsArgDefns = ConsDefn ^ cons_args,
             list.map2(
                 (pred(C::in, CType::out, CWidth::out) is det :-
@@ -1150,11 +1150,11 @@ constructor_arg_types(ModuleInfo, ConsId, ArgTypes, Type,
             ExtraArgWidths = list.duplicate(NumExtraArgs, full_word),
             ConsArgTypes = ExtraArgTypes ++ ConsArgTypes0,
             ConsArgWidths = ExtraArgWidths ++ ConsArgWidths0
-        ;
+        else if
             % If we did not find a constructor definition, maybe that is
             % because this type was a built-in tuple type.
             type_is_tuple(Type, _)
-        ->
+        then
             % In this case, the argument types are all fresh variables.
             % Note that we do not need to worry about using the right varset
             % here, since all we really care about at this point is whether
@@ -1163,11 +1163,11 @@ constructor_arg_types(ModuleInfo, ConsId, ArgTypes, Type,
             Length = list.length(ArgTypes),
             ConsArgTypes = ml_make_boxed_types(Length),
             ConsArgWidths = list.duplicate(Length, full_word)
-        ;
+        else
             % Type_util.get_cons_defn shouldn't have failed.
             unexpected($module, $pred, "get_cons_defn failed")
         )
-    ;
+    else
         % For cases when ConsId \= hlds_cons(_, _) and it is not a tuple,
         % as can happen e.g. for closures and type_infos, we assume that
         % the arguments all have the right type already.
@@ -1201,24 +1201,24 @@ ml_cast_cons_tag(Type, Tag, Rval) = CastRval :-
 
 ml_gen_box_or_unbox_const_rval_list_hld(ModuleInfo, ArgTypes, FieldTypes,
         ArgRvals, Context, FieldRvals, !GlobalData) :-
-    (
+    ( if
         ArgTypes = [],
         FieldTypes = [],
         ArgRvals = []
-    ->
+    then
         FieldRvals = []
-    ;
+    else if
         ArgTypes = [ArgType | ArgTypesTail],
         FieldTypes = [FieldType | FieldTypesTail],
         ArgRvals = [ArgRval | ArgRvalsTail]
-    ->
+    then
         ml_gen_box_or_unbox_const_rval_hld(ModuleInfo,
             ArgType, FieldType, ArgRval, Context, FieldRval, !GlobalData),
         ml_gen_box_or_unbox_const_rval_list_hld(ModuleInfo,
             ArgTypesTail, FieldTypesTail, ArgRvalsTail, Context,
             FieldRvalsTail, !GlobalData),
         FieldRvals = [FieldRval | FieldRvalsTail]
-    ;
+    else
         unexpected($module, $pred, "list length mismatch")
     ).
 
@@ -1289,15 +1289,15 @@ ml_gen_box_extra_const_rval_list_lld(_, _, [_ | _], [], _, !GlobalData) :-
     is det.
 
 ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
-    (
+    ( if
         HLDS_ConsId = cons(ConsSymName, ConsArity, TypeCtor),
         ConsSymName = qualified(SymModuleName, _)
-    ->
+    then
         ConsName = ml_gen_du_ctor_name(CompilationTarget, TypeCtor,
             ConsSymName, ConsArity),
         ConsId = ctor_id(ConsName, ConsArity),
         ModuleName = mercury_module_name_to_mlds(SymModuleName)
-    ;
+    else
         ConsName = cons_id_and_arity_to_string(HLDS_ConsId),
         ConsId = ctor_id(ConsName, 0),
         ModuleName = mercury_module_name_to_mlds(unqualified(""))
@@ -1332,13 +1332,13 @@ ml_cons_name(CompilationTarget, HLDS_ConsId, QualifiedConsId) :-
 ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
         UniModes, NumExtraArgs, TakeAddr, ModuleInfo, HighLevelData,
         !:Rvals, !:MLDS_Types, !:TakeAddrInfos, !MayUseAtomic) :-
-    (
+    ( if
         ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
             UniModes, NumExtraArgs, 1, TakeAddr, ModuleInfo, HighLevelData,
             !:Rvals, !:MLDS_Types, !:TakeAddrInfos, !MayUseAtomic)
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -1375,7 +1375,7 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
 
     % Compute the value of the field.
     UniMode = ((_LI - RI) -> (_LF - RF)),
-    ( !.TakeAddr = [CurArgNum | !:TakeAddr] ->
+    ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
         expect(unify(ConsArgWidth, full_word), $module, $pred,
             "taking address of non word-sized argument"),
         Rval = ml_const(mlconst_null(MLDS_Type)),
@@ -1387,15 +1387,15 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
         OrigMLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ConsArgType),
         TakeAddrInfo = take_addr_info(Var, Offset, OrigMLDS_Type, MLDS_Type),
         TakeAddrInfos = [TakeAddrInfo | TakeAddrInfosTail]
-    ;
-        (
+    else
+        ( if
             mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, top_in),
             check_dummy_type(ModuleInfo, ArgType) = is_not_dummy_type,
             check_dummy_type(ModuleInfo, ConsArgType) = is_not_dummy_type
-        ->
+        then
             ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, BoxedArgType,
                 native_if_possible, ml_lval(Lval), Rval)
-        ;
+        else
             Rval = ml_const(mlconst_null(MLDS_Type))
         ),
         ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, ConsArgWidths,
@@ -1407,10 +1407,10 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
 :- func ml_calc_field_offset(int, list(arg_width), int) = field_offset.
 
 ml_calc_field_offset(NumExtraArgs, ConsArgWidths, ArgNum) = Offset :-
-    ( list.take(ArgNum - 1, ConsArgWidths, WidthsBeforeArg) ->
+    ( if list.take(ArgNum - 1, ConsArgWidths, WidthsBeforeArg) then
         WordsBeforeArg = count_distinct_words(WidthsBeforeArg),
         Offset = offset(NumExtraArgs + WordsBeforeArg)
-    ;
+    else
         unexpected($module, $pred, "more fields than arg_widths")
     ).
 
@@ -1497,10 +1497,10 @@ ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
         unexpected($module, $pred, "unexpected tag")
     ;
         Tag = no_tag,
-        (
+        ( if
             Args = [Arg],
             Modes = [Mode]
-        ->
+        then
             ml_variable_type(!.Info, Arg, ArgType),
             ml_gen_var(!.Info, Arg, ArgLval),
             ml_gen_var(!.Info, Var, VarLval),
@@ -1508,22 +1508,22 @@ ml_gen_det_deconstruct_tag(Tag, Type, Var, ConsId, Args, Modes, Context,
             ml_gen_info_get_high_level_data(!.Info, HighLevelData),
             ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType,
                 VarLval, Type, full_word, Context, [], Statements)
-        ;
+        else
             unexpected($module, $pred, "no_tag: arity != 1")
         )
     ;
         Tag = direct_arg_tag(Ptag),
-        (
+        ( if
             Args = [Arg],
             Modes = [Mode]
-        ->
+        then
             ml_variable_type(!.Info, Arg, ArgType),
             ml_gen_var(!.Info, Arg, ArgLval),
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
                 ArgLval, ArgType, VarLval, Type, Context, Statements)
-        ;
+        else
             unexpected($module, $pred, "direct_arg_tag: arity != 1")
         )
     ;
@@ -1615,14 +1615,14 @@ ml_field_names_and_types(Info, Type, ConsId, ArgTypes, Fields) :-
         % Tuples and extra fields are word-sized.
         ctor_arg(no, FieldType, full_word, Context)
     ),
-    (
+    ( if
         type_is_tuple(Type, _),
         list.length(ArgTypes, TupleArity)
-    ->
+    then
         % The argument types for tuples are unbound type variables.
         FieldTypes = ml_make_boxed_types(TupleArity),
         Fields = list.map(MakeUnnamedField, FieldTypes)
-    ;
+    else
         ml_gen_info_get_module_info(Info, ModuleInfo),
         type_to_ctor_det(Type, TypeCtor),
         get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn),
@@ -1647,13 +1647,13 @@ ml_field_names_and_types(Info, Type, ConsId, ArgTypes, Fields) :-
 
 ml_gen_unify_args(ConsId, Args, Modes, ArgTypes, Fields, VarType, VarLval,
         Offset, ArgNum, Tag, Context, Statements, !Info) :-
-    (
+    ( if
         ml_gen_unify_args_2(ConsId, Args, Modes, ArgTypes, Fields,
             VarType, VarLval, Offset, ArgNum, Tag, Context,
             [], Statements0, !Info)
-    ->
+    then
         Statements = Statements0
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -1747,23 +1747,23 @@ ml_next_field_offset(CurArg, [NextArg | _], PrevOffset, NextOffset) :-
 ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, Fields, TakeAddr,
         VarType, VarLval, Offset, ArgNum, Tag, Context,
         Statements, TakeAddrInfos, !Info) :-
-    (
+    ( if
         Args = [],
         Modes = [],
         ArgTypes = [],
         Fields = []
-    ->
+    then
         Statements = [],
         TakeAddrInfos = []
-    ;
+    else if
         Args = [Arg | Args1],
         Modes = [Mode | Modes1],
         ArgTypes = [ArgType | ArgTypes1],
         Fields = [Field | Fields1]
-    ->
+    then
         ml_next_field_offset(Field, Fields1, Offset, Offset1),
         ArgNum1 = ArgNum + 1,
-        ( TakeAddr = [ArgNum | TakeAddr1] ->
+        ( if TakeAddr = [ArgNum | TakeAddr1] then
             ml_gen_unify_args_for_reuse(ConsId, Args1, Modes1, ArgTypes1,
                 Fields1, TakeAddr1, VarType, VarLval, Offset1, ArgNum1,
                 Tag, Context, Statements, TakeAddrInfos0, !Info),
@@ -1779,7 +1779,7 @@ ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, Fields, TakeAddr,
             TakeAddrInfo = take_addr_info(Arg, Offset, MLDS_FieldType,
                 MLDS_BoxedFieldType),
             TakeAddrInfos = [TakeAddrInfo | TakeAddrInfos0]
-        ;
+        else
             ml_gen_unify_args_for_reuse(ConsId, Args1, Modes1, ArgTypes1,
                 Fields1, TakeAddr, VarType, VarLval, Offset1, ArgNum1,
                 Tag, Context, Statements0, TakeAddrInfos, !Info),
@@ -1787,7 +1787,7 @@ ml_gen_unify_args_for_reuse(ConsId, Args, Modes, ArgTypes, Fields, TakeAddr,
                 VarType, VarLval, Offset, ArgNum, Tag, Context,
                 Statements0, Statements, !Info)
         )
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -1814,21 +1814,21 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
         % except for tuple types.
         HighLevelData = yes,
         ml_gen_info_get_target(!.Info, Target),
-        (
+        ( if
             ( type_is_tuple(VarType, _)
             ; type_needs_lowlevel_rep(Target, VarType)
             )
-        ->
+        then
             Offset = offset(OffsetInt),
             FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt)))
-        ;
+        else
             FieldName = ml_gen_field_name(MaybeFieldName, ArgNum),
-            ( ConsId = cons(ConsName, ConsArity, TypeCtor) ->
+            ( if ConsId = cons(ConsName, ConsArity, TypeCtor) then
                 UnqualConsName = ml_gen_du_ctor_name(Target, TypeCtor,
                     ConsName, ConsArity),
                 FieldId = ml_gen_field_id(Target, VarType, Tag, UnqualConsName,
                     ConsArity, FieldName)
-            ;
+            else
                 unexpected($module, $pred, "invalid cons_id")
             )
         )
@@ -1871,27 +1871,27 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
     Mode = ((LI - RI) -> (LF - RF)),
     mode_to_arg_mode(ModuleInfo, (LI -> LF), ArgType, LeftMode),
     mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode),
-    (
+    ( if
         % Skip dummy argument types, since they will not have been declared.
         ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
         ; check_dummy_type(ModuleInfo, FieldType) = is_dummy_type
         )
-    ->
+    then
         true
-    ;
+    else if
         % Both input: it is a test unification.
         LeftMode = top_in,
         RightMode = top_in
-    ->
+    then
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
         % unification.
         unexpected($module, $pred, "test in arg of [de]construction")
-    ;
+    else if
         % Input - output: it is an assignment to the RHS.
         LeftMode = top_in,
         RightMode = top_out
-    ->
+    then
         (
             ( FieldWidth = full_word
             ; FieldWidth = partial_word_first(_)
@@ -1913,21 +1913,21 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
             )
         ;
             FieldWidth = double_word,
-            ( ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) ->
+            ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
                 FieldRval = ml_binop(float_from_dword,
                     ml_lval(FieldLvalA), ml_lval(FieldLvalB))
-            ;
+            else
                 ml_gen_box_or_unbox_rval(ModuleInfo, FieldType, ArgType,
                     native_if_possible, ml_lval(FieldLval), FieldRval)
             ),
             Statement = ml_gen_assign(ArgLval, FieldRval, Context)
         ),
         !:Statements = [Statement | !.Statements]
-    ;
+    else if
         % Output - input: it is an assignment to the LHS.
         LeftMode = top_out,
         RightMode = top_in
-    ->
+    then
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, FieldType,
             native_if_possible, ml_lval(ArgLval), ArgRval),
         (
@@ -1949,7 +1949,7 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
             !:Statements = [Statement | !.Statements]
         ;
             FieldWidth = double_word,
-            ( ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) ->
+            ( if ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) then
                 FloatWordA = ml_binop(float_word_bits, ArgRval,
                     ml_const(mlconst_int(0))),
                 FloatWordB = ml_binop(float_word_bits, ArgRval,
@@ -1963,18 +1963,18 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
                 StatementA = ml_gen_assign(FieldLvalA, ArgRvalA, Context),
                 StatementB = ml_gen_assign(FieldLvalB, ArgRvalB, Context),
                 !:Statements = [StatementA, StatementB | !.Statements]
-            ;
+            else
                 Statement = ml_gen_assign(FieldLval, ArgRval, Context),
                 !:Statements = [Statement | !.Statements]
             )
         )
-    ;
+    else if
         % Unused - unused: the unification has no effect.
         LeftMode = top_unused,
         RightMode = top_unused
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "some strange unify")
     ).
 
@@ -1984,12 +1984,12 @@ ml_gen_sub_unify(ModuleInfo, HighLevelData, Mode, ArgLval, ArgType, FieldLval,
 ml_field_offset_pair(FieldLval, FieldLvalA, FieldLvalB) :-
     FieldLval = ml_field(Tag, Address, FieldIdA, _, PtrType),
     FieldIdA = ml_field_offset(FieldOffsetA),
-    ( FieldOffsetA = ml_const(mlconst_int(Offset)) ->
+    ( if FieldOffsetA = ml_const(mlconst_int(Offset)) then
         FieldIdB = ml_field_offset(ml_const(mlconst_int(Offset + 1))),
         SubstType = mlds_generic_type,
         FieldLvalA = ml_field(Tag, Address, FieldIdA, SubstType, PtrType),
         FieldLvalB = ml_field(Tag, Address, FieldIdB, SubstType, PtrType)
-    ;
+    else
         sorry($module, $pred, "unexpected field offset")
     ).
 
@@ -2002,45 +2002,45 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
     Mode = ((LI - RI) -> (LF - RF)),
     mode_to_arg_mode(ModuleInfo, (LI -> LF), ArgType, LeftMode),
     mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode),
-    (
+    ( if
         % Skip dummy argument types, since they will not have been declared.
         ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
         ; check_dummy_type(ModuleInfo, VarType) = is_dummy_type
         )
-    ->
+    then
         unexpected($module, $pred, "dummy unify")
-    ;
+    else if
         % Both input: it is a test unification.
         LeftMode = top_in,
         RightMode = top_in
-    ->
+    then
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
         % unification.
         unexpected($module, $pred, "test in arg of [de]construction")
-    ;
+    else if
         % Input - output: it is an assignment to the RHS.
         LeftMode = top_in,
         RightMode = top_out
-    ->
+    then
         unexpected($module, $pred, "left-to-right data flow in construction")
-    ;
+    else if
         % Output - input: it is an assignment to the LHS.
         LeftMode = top_out,
         RightMode = top_in
-    ->
+    then
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
             native_if_possible, ml_lval(ArgLval), ArgRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
         CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
         Statement = ml_gen_assign(VarLval, CastRval, Context),
         Statements = [Statement]
-    ;
+    else if
         % Unused - unused: it is a partial assignment to the LHS
         % where the tag is known but the argument isn't.
         LeftMode = top_unused,
         RightMode = top_unused
-    ->
+    then
         MLDS_ArgType = mercury_type_to_mlds_type(ModuleInfo, ArgType),
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
             native_if_possible, ml_const(mlconst_null(MLDS_ArgType)), ArgRval),
@@ -2048,7 +2048,7 @@ ml_gen_direct_arg_construct(ModuleInfo, Mode, Ptag,
         CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
         Statement = ml_gen_assign(VarLval, CastRval, Context),
         Statements = [Statement]
-    ;
+    else
         unexpected($module, $pred, "some strange unify")
     ).
 
@@ -2061,27 +2061,27 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
     Mode = ((LI - RI) -> (LF - RF)),
     mode_to_arg_mode(ModuleInfo, (LI -> LF), ArgType, LeftMode),
     mode_to_arg_mode(ModuleInfo, (RI -> RF), ArgType, RightMode),
-    (
+    ( if
         % Skip dummy argument types, since they will not have been declared.
         ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
         ; check_dummy_type(ModuleInfo, VarType) = is_dummy_type
         )
-    ->
+    then
         unexpected($module, $pred, "dummy unify")
-    ;
+    else if
         % Both input: it is a test unification.
         LeftMode = top_in,
         RightMode = top_in
-    ->
+    then
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
         % unification.
         unexpected($module, $pred, "test in arg of [de]construction")
-    ;
+    else if
         % Input - output: it is an assignment to the RHS.
         LeftMode = top_in,
         RightMode = top_out
-    ->
+    then
         ml_gen_box_or_unbox_rval(ModuleInfo, VarType, ArgType,
             native_if_possible, ml_lval(VarLval), VarRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, ArgType),
@@ -2089,24 +2089,24 @@ ml_gen_direct_arg_deconstruct(ModuleInfo, Mode, Ptag,
             ml_binop(body, VarRval, ml_const(mlconst_int(Ptag)))),
         Statement = ml_gen_assign(ArgLval, CastRval, Context),
         Statements = [Statement]
-    ;
+    else if
         % Output - input: it is an assignment to the LHS.
         LeftMode = top_out,
         RightMode = top_in
-    ->
+    then
         ml_gen_box_or_unbox_rval(ModuleInfo, ArgType, VarType,
             native_if_possible, ml_lval(ArgLval), ArgRval),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
         CastRval = ml_unop(cast(MLDS_Type), ml_mkword(Ptag, ArgRval)),
         Statement = ml_gen_assign(VarLval, CastRval, Context),
         Statements = [Statement]
-    ;
+    else if
         % Unused - unused: the unification has no effect.
         LeftMode = top_unused,
         RightMode = top_unused
-    ->
+    then
         Statements = []
-    ;
+    else
         unexpected($module, $pred, "some strange unify")
     ).
 
@@ -2191,11 +2191,11 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
         TagTestRval = ml_binop(float_eq, Rval, ml_const(mlconst_float(Float)))
     ;
         Tag = int_tag(Int),
-        ( Type = int_type ->
+        ( if Type = int_type then
             ConstRval = ml_const(mlconst_int(Int))
-        ; Type = char_type ->
+        else if Type = char_type then
             ConstRval = ml_const(mlconst_char(Int))
-        ;
+        else
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
             ConstRval = ml_const(mlconst_enum(Int, MLDS_Type))
         ),
@@ -2239,10 +2239,10 @@ ml_gen_tag_test_rval(Tag, Type, ModuleInfo, Rval) = TagTestRval :-
             ml_const(mlconst_int(SecondaryTagNum))),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
-        ( NumTagBits = 0 ->
+        ( if NumTagBits = 0 then
             % No need to test the primary tag.
             TagTestRval = SecondaryTagTestRval
-        ;
+        else
             RvalPTag = ml_unop(std_unop(tag), Rval),
             PrimaryTagRval = ml_unop(std_unop(mktag),
                 ml_const(mlconst_int(PrimaryTagNum))),
@@ -2283,11 +2283,11 @@ ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTagVal, VarType, Rval) =
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    (
+    ( if
         ( HighLevelData = no
         ; type_needs_lowlevel_rep(Target, VarType)
         )
-    ->
+    then
         % Note: with the low-level data representation, all fields -- even
         % the secondary tag -- are boxed, and so we need to unbox (i.e. cast)
         % it back to the right type here.
@@ -2296,7 +2296,7 @@ ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTagVal, VarType, Rval) =
                 ml_lval(ml_field(yes(PrimaryTagVal), Rval,
                     ml_field_offset(ml_const(mlconst_int(0))),
                     mlds_generic_type, MLDS_VarType)))
-    ;
+    else
         FieldId = ml_gen_hl_tag_field_id(ModuleInfo, VarType),
         SecondaryTagField = ml_lval(ml_field(yes(PrimaryTagVal), Rval,
             FieldId, mlds_native_int_type, MLDS_VarType))
@@ -2328,7 +2328,7 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
         TypeDefnBody =
             hlds_du_type(Ctors, TagValues, _, _, _, _, _ReservedTag, _, _),
         % XXX We probably shouldn't ignore ReservedTag here.
-        (
+        ( if
             some [Ctor] (
                 list.member(Ctor, Ctors),
                 ml_uses_secondary_tag(TypeCtor, TagValues, Ctor, _)
@@ -2337,13 +2337,13 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
                 list.member(Ctor, Ctors),
                 \+ ml_uses_secondary_tag(TypeCtor, TagValues, Ctor, _)
             )
-        ->
+        then
             ClassQualifier = mlds_append_class_qualifier(Target, MLDS_Module,
                 module_qual, TypeName, TypeArity),
             ClassQualKind = TypeQualKind,
             ClassName = "tag_type",
             ClassArity = 0
-        ;
+        else
             ClassQualifier = MLDS_Module,
             ClassQualKind = module_qual,
             ClassName = TypeName,
@@ -2411,8 +2411,8 @@ ml_gen_ground_term(TermVar, Goal, Statements, !Info) :-
         Statements = []
     ;
         NonLocalList = [NonLocal],
-        ( NonLocal = TermVar ->
-            ( GoalExpr = conj(plain_conj, Conjuncts) ->
+        ( if NonLocal = TermVar then
+            ( if GoalExpr = conj(plain_conj, Conjuncts) then
                 ml_gen_info_get_module_info(!.Info, ModuleInfo),
                 ml_gen_info_get_target(!.Info, Target),
                 ml_gen_info_get_high_level_data(!.Info, HighLevelData),
@@ -2432,10 +2432,10 @@ ml_gen_ground_term(TermVar, Goal, Statements, !Info) :-
                 Context = goal_info_get_context(GoalInfo),
                 Statement = ml_gen_assign(TermVarLval, TermVarRval, Context),
                 Statements = [Statement]
-            ;
+            else
                 unexpected($module, $pred, "malformed goal")
             )
-        ;
+        else
             unexpected($module, $pred, "unexpected nonlocal")
         )
     ;
@@ -2464,11 +2464,11 @@ ml_gen_ground_term_conjuncts(ModuleInfo, Target, HighLevelData, VarTypes,
 ml_gen_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         Goal, !GlobalData, !GroundTermMap) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    (
+    ( if
         GoalExpr = unify(_, _, _, Unify, _),
         Unify = construct(Var, ConsId, Args, _, _HowToConstruct, _, SubInfo),
         SubInfo = no_construct_sub_info
-    ->
+    then
         lookup_var_type(VarTypes, Var, VarType),
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, VarType),
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
@@ -2476,7 +2476,7 @@ ml_gen_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTypes,
         ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData,
             VarTypes, Var, VarType, MLDS_Type, ConsId, ConsTag, Args, Context,
             !GlobalData, !GroundTermMap)
-    ;
+    else
         unexpected($module, $pred, "malformed goal")
     ).
 
@@ -2494,11 +2494,11 @@ ml_gen_ground_term_conjunct_tag(ModuleInfo, Target, HighLevelData, VarTypes,
         % Constants.
         (
             ConsTag = int_tag(Int),
-            ( VarType = int_type ->
+            ( if VarType = int_type then
                 ConstRval = ml_const(mlconst_int(Int))
-            ; VarType = char_type ->
+            else if VarType = char_type then
                 ConstRval = ml_const(mlconst_char(Int))
-            ;
+            else
                 ConstRval = ml_const(mlconst_enum(Int, MLDS_Type))
             )
         ;
@@ -2619,15 +2619,15 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     % This part does a simplied version of the job of
     % get_maybe_cons_id_arg_types.
     lookup_var_types(VarTypes, Args, ArgTypes),
-    (
+    ( if
         ConsId = cons(_, _, _),
         \+ is_introduced_type_info_type(VarType)
-    ->
+    then
         % Determine the type_ctor, and then look up the data constructor.
         type_to_ctor_det(VarType, TypeCtor),
-        (
+        ( if
             type_util.get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
-        ->
+        then
             ConsArgDefns = ConsDefn ^ cons_args,
             % XXX the compiler crashes if you try to write this with list.map2
             ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgDefns),
@@ -2638,11 +2638,11 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
             % away from from_ground_term_construct.
             expect(unify(NumExtraArgs, 0), $module, $pred,
                 "extra args in from_ground_term_construct scope")
-        ;
+        else if
             % If we didn't find a constructor definition, maybe that is because
             % this type was a built-in tuple type.
             type_is_tuple(VarType, _)
-        ->
+        then
             % In this case, the argument types are all fresh variables.
             % Note that we do not need to worry about using the right varset
             % here, since all we really care about at this point is whether
@@ -2651,11 +2651,11 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
             Length = list.length(Args),
             ConsArgTypes = ml_make_boxed_types(Length),
             ConsArgWidths = list.duplicate(Length, full_word)
-        ;
+        else
             % Type_util.get_cons_defn shouldn't have failed.
             unexpected($module, $pred, "get_cons_defn failed")
         )
-    ;
+    else
         Length = list.length(ArgTypes),
         ConsArgTypes = ArgTypes,
         ConsArgWidths = list.duplicate(Length, full_word)
@@ -2686,9 +2686,9 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     % initializer should be wrapped in `init_struct([init_obj(X)])'
     % rather than just `init_obj(X)' -- the fact that we don't leads to
     % some warnings from GNU C about missing braces in initializers.
-    ( ConstType = mlds_array_type(_) ->
+    ( if ConstType = mlds_array_type(_) then
         Initializer = init_array(SubInitializers)
-    ;
+    else
         Initializer = init_struct(ConstType, SubInitializers)
     ),
     module_info_get_name(ModuleInfo, ModuleName),
@@ -2698,9 +2698,9 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
 
     % Assign the (possibly tagged) address of the local static constant
     % to the variable.
-    ( Ptag = 0 ->
+    ( if Ptag = 0 then
         TaggedRval = ConstDataAddrRval
-    ;
+    else
         TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
     ),
     Rval = ml_unop(cast(MLDS_Type), TaggedRval),
@@ -2717,17 +2717,17 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
 
 construct_ground_term_initializers_hld(ModuleInfo, Context, Args, ConsArgTypes,
         ConsArgWidths, ArgRvals, !GlobalData, !GroundTermMap) :-
-    (
+    ( if
         Args = [],
         ConsArgTypes = [],
         ConsArgWidths = []
-    ->
+    then
         ArgRvals = []
-    ;
+    else if
         Args = [Arg | Args1],
         ConsArgTypes = [ConsArgType | ConsArgTypes1],
         ConsArgWidths = [ConsArgWidth | ConsArgWidths1]
-    ->
+    then
         construct_ground_term_initializer_hld(ModuleInfo, Context,
             Arg, ConsArgType, ConsArgWidth, ArgRval,
             !GlobalData, !GroundTermMap),
@@ -2735,7 +2735,7 @@ construct_ground_term_initializers_hld(ModuleInfo, Context, Args, ConsArgTypes,
             Args1, ConsArgTypes1, ConsArgWidths1, ArgRvals1,
             !GlobalData, !GroundTermMap),
         ArgRvals = [ArgRval | ArgRvals1]
-    ;
+    else
         unexpected($module, $pred, "list length mismatch")
     ).
 
@@ -2929,15 +2929,15 @@ ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
 
     Target = Info ^ mcsi_target,
     ModuleInfo = Info ^ mcsi_module_info,
-    (
+    ( if
         ConsId = cons(_, _, _),
         \+ is_introduced_type_info_type(Type)
-    ->
+    then
         % Determine the type_ctor, and then look up the data constructor.
         type_to_ctor_det(Type, TypeCtor),
-        (
+        ( if
             type_util.get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
-        ->
+        then
             ConsArgDefns = ConsDefn ^ cons_args,
             % XXX the compiler crashes if you try to write this with list.map2
             % ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgDefns),
@@ -2948,11 +2948,11 @@ ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
             % away from from_ground_term_construct.
             expect(unify(NumExtraArgs, 0), $module, $pred,
                 "extra args in static const struct")
-        ;
+        else if
             % If we didn't find a constructor definition, maybe that is because
             % this type was a built-in tuple type.
             type_is_tuple(Type, _)
-        ->
+        then
             % In this case, the argument types are all fresh variables.
             % Note that we do not need to worry about using the right varset
             % here, since all we really care about at this point is whether
@@ -2961,29 +2961,29 @@ ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
             Length = list.length(Args),
             % ConsArgTypes = ml_make_boxed_types(Length),
             ConsArgWidths = list.duplicate(Length, full_word)
-        ;
+        else
             % Type_util.get_cons_defn shouldn't have failed.
             unexpected($module, $pred, "get_cons_defn failed")
         )
-    ;
+    else
         Length = list.length(Args),
         % ConsArgTypes = ArgTypes,
         ConsArgWidths = list.duplicate(Length, full_word)
     ),
     HighLevelData = Info ^ mcsi_high_level_data,
-    (
+    ( if
         (
             HighLevelData = no
         ;
             HighLevelData = yes,
             Target = target_java
         )
-    ->
+    then
         assoc_list.from_corresponding_lists(Args, ConsArgWidths,
             ArgConsArgWidths),
         ml_gen_const_struct_args(Info, !.ConstStructMap,
             ArgConsArgWidths, ArgRvals1, !GlobalData)
-    ;
+    else
         unexpected($file, $pred,
             "Constant structures are not supported for this grade")
     ),
@@ -3001,9 +3001,9 @@ ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
     % initializer should be wrapped in `init_struct([init_obj(X)])'
     % rather than just `init_obj(X)' -- the fact that we don't leads to
     % some warnings from GNU C about missing braces in initializers.
-    ( ConstType = mlds_array_type(_) ->
+    ( if ConstType = mlds_array_type(_) then
         Initializer = init_array(SubInitializers)
-    ;
+    else
         Initializer = init_struct(ConstType, SubInitializers)
     ),
     module_info_get_name(ModuleInfo, ModuleName),
@@ -3013,9 +3013,9 @@ ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
 
     % Assign the (possibly tagged) address of the local static constant
     % to the variable.
-    ( Ptag = 0 ->
+    ( if Ptag = 0 then
         TaggedRval = ConstDataAddrRval
-    ;
+    else
         TaggedRval = ml_mkword(Ptag, ConstDataAddrRval)
     ),
     Rval = ml_unop(cast(MLDS_Type), TaggedRval),
@@ -3064,11 +3064,11 @@ ml_gen_const_struct_arg_tag(ModuleInfo, ConsId, ConsTag, Type, MLDS_Type,
         Rval) :-
     (
         ConsTag = int_tag(Int),
-        ( Type = int_type ->
+        ( if Type = int_type then
             Rval = ml_const(mlconst_int(Int))
-        ; Type = char_type ->
+        else if Type = char_type then
             Rval = ml_const(mlconst_char(Int))
-        ;
+        else
             Rval = ml_const(mlconst_enum(Int, MLDS_Type))
         )
     ;
@@ -3164,11 +3164,11 @@ ml_expand_double_word_rvals([Width0 | Widths0], Widths,
         RvalsTypes = [Rval0 - Type0 | RvalsTypes1]
     ;
         Width0 = double_word,
-        ( Rval0 = ml_const(mlconst_null(_)) ->
+        ( if Rval0 = ml_const(mlconst_null(_)) then
             SubstType = mlds_generic_type,
             RvalA = ml_const(mlconst_null(SubstType)),
             RvalB = ml_const(mlconst_null(SubstType))
-        ;
+        else
             SubstType = mlds_native_int_type,
             RvalA = ml_binop(float_word_bits, Rval0, ml_const(mlconst_int(0))),
             RvalB = ml_binop(float_word_bits, Rval0, ml_const(mlconst_int(1)))
@@ -3216,15 +3216,15 @@ ml_shift_combine_rval_type(ArgA, Shift, MaybeArgB, ArgC, !Acc1, !Acc2) :-
 ml_lshift(Rval0, Shift) = Rval :-
     % We may get nulls from unfilled fields. Replace them with zeroes
     % so we don't get type errors from the C compiler.
-    ( Rval0 = ml_const(mlconst_null(_)) ->
+    ( if Rval0 = ml_const(mlconst_null(_)) then
         Rval = ml_const(mlconst_int(0))
-    ; Shift = 0 ->
+    else if Shift = 0 then
         Rval = Rval0
-    ; Rval0 = ml_unop(box(Type), Rval1) ->
+    else if Rval0 = ml_unop(box(Type), Rval1) then
         Rval2 = ml_binop(unchecked_left_shift, Rval1,
             ml_const(mlconst_int(Shift))),
         Rval = ml_unop(box(Type), Rval2)
-    ;
+    else
         Rval = ml_binop(unchecked_left_shift, Rval0,
             ml_const(mlconst_int(Shift)))
     ).
@@ -3232,9 +3232,9 @@ ml_lshift(Rval0, Shift) = Rval :-
 :- func ml_rshift(mlds_rval, int) = mlds_rval.
 
 ml_rshift(Rval, Shift) =
-    ( Shift = 0 ->
+    ( if Shift = 0 then
         Rval
-    ;
+    else
         ml_binop(unchecked_right_shift, Rval, ml_const(mlconst_int(Shift)))
     ).
 
@@ -3243,16 +3243,16 @@ ml_rshift(Rval, Shift) =
 ml_bitwise_or(RvalA, RvalB) = Rval :-
     some [!MaybeType] (
         !:MaybeType = no,
-        ( RvalA = ml_unop(box(TypeA), UnboxRvalA0) ->
+        ( if RvalA = ml_unop(box(TypeA), UnboxRvalA0) then
             UnboxRvalA = UnboxRvalA0,
             !:MaybeType = yes(TypeA)
-        ;
+        else
             UnboxRvalA = RvalA
         ),
-        ( RvalB = ml_unop(box(TypeB), UnboxRvalB0) ->
+        ( if RvalB = ml_unop(box(TypeB), UnboxRvalB0) then
             UnboxRvalB = UnboxRvalB0,
             !:MaybeType = yes(TypeB)
-        ;
+        else
             UnboxRvalB = RvalB
         ),
         UnboxRval = ml_binop(bitwise_or, UnboxRvalA, UnboxRvalB),

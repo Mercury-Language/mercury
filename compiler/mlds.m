@@ -20,7 +20,7 @@
 % languages such as Java, Java bytecode, high-level C, C++, or C--, etc.
 % This is as opposed to the LLDS, which is better suited for generating
 % assembler or the very low-level C or GNU C (lower level than C--) that
-% the original Mercury compiler backend generates.  In the LLDS, we are
+% the original Mercury compiler backend generates. In the LLDS, we are
 % doing all our own register allocation and stack manipulation, but with
 % MLDS, those tasks are the responsibility of the target.
 % The one really important simplification that we do make relative to the
@@ -34,7 +34,7 @@
 % of the intended target languages don't support all of those features.
 % Therefore the HLDS->MLDS compiler must ensure that the final MLDS code that
 % it eventually generates does not use features which the target does not
-% support.  This will (presumably) be accomplished by having handle_options.m
+% support. This will (presumably) be accomplished by having handle_options.m
 % set various flags according to the selected target, and having the
 % HLDS->MLDS compiler take account of those flags and either generate simpler
 % MLDS code in the first place or run some extra simplification passes over
@@ -63,7 +63,7 @@
 % [Rationale: the reason for keeping structured names rather than flattened
 % names at the MLDS level is that we don't want to do name mangling at
 % the HLDS -> MLDS stage, since we don't know what restrictions the target
-% language will impose.  For example, some target languages (e.g. C++, Java)
+% language will impose. For example, some target languages (e.g. C++, Java)
 % will support overloading, while others (e.g. C) will not.]
 %
 % 3. Procedure signatures
@@ -83,8 +83,8 @@
 % it fails, it must return.
 %
 % With the `--copy-out' option, arguments with top_out modes will be returned
-% by value.  This requires the target language to support multiple return
-% values.  The MLDS->target code generator can of course handle that by mapping
+% by value. This requires the target language to support multiple return
+% values. The MLDS->target code generator can of course handle that by mapping
 % functions with multiple return values into functions that return a struct,
 % array, or tuple.
 % With the `--nondet-copy-out' option, arguments for nondet procedures with
@@ -104,7 +104,7 @@
 % 4. Variables
 %
 % MLDS variable names are determined by the HLDS variable name and
-% (in some cases, to avoid ambiguity) variable number.  The MLDS
+% (in some cases, to avoid ambiguity) variable number. The MLDS
 % variable name is a structured term that keeps the original variable
 % name separate from the distinguishing variable number.
 % It is up to each individual backend to mangle the variable name
@@ -144,15 +144,15 @@
 % (that is, the corresponding MLDS type may be just `MR_Word' or its
 % equivalent).
 %
-% 7.  Data constructors.
+% 7. Data constructors.
 %
 % With --high-level-data, Mercury data constructors normally get mapped to
 % MLDS types nested within the MLDS type for the Mercury data type to which
-% the constructors belong.  There are some exceptions; see ml_type_gen.m
-% for full details.  The MLDS type name includes the constructor arity.
+% the constructors belong. There are some exceptions; see ml_type_gen.m
+% for full details. The MLDS type name includes the constructor arity.
 % [Rationale: Mercury allows data constructors to be overloaded on
 % their result type within a single module, and also allows them
-% to be overloaded on arity within a single type.  Nesting resolves
+% to be overloaded on arity within a single type. Nesting resolves
 % the first problem, and keeping the arity in the MLDS type name
 % resolves the second.]
 % XXX There is a problem in the Java back-end with Mercury types for which
@@ -163,7 +163,7 @@
 % XXX There are problems with the RTTI definitions for the Java back-end.
 % Under the current system, the definitions are output as static variables
 % with static initializers, ordered so that subdefinitions always appear before
-% the definition which uses them.  This is neccessary because in Java, static
+% the definition which uses them. This is neccessary because in Java, static
 % initializers are performed at runtime in textual order, and if a definition
 % relies on another static variable for its constructor but said variable has
 % not been initialized, then it is treated as `null' by the JVM with no
@@ -175,7 +175,7 @@
 % At some point this should be changed so that initialization is performed by 2
 % phases: first allocate all of the objects, then fill in the fields.
 %
-% 8.  Insts and modes
+% 8. Insts and modes
 %
 % Inst and mode definitions do not get translated into MLDS.
 %
@@ -196,14 +196,14 @@
 % Mercury type classes should map directly to MLDS interfaces.
 %
 % Mercury instance definitions should map to classes which implement the
-% corresponding interface.  Note that if there is an instance declaration
+% corresponding interface. Note that if there is an instance declaration
 % `:- instance foo(bar)', then the MLDS type for `bar' will *not* implement
 % the MLDS interface for `foo' -- instead, there will be a new MLDS type
 % for `instance foo(bar)' which implements that interface.
 %
 %-----------------------------------------------------------------------------%
 %
-% Mapping MLDS names to the target language
+% Mapping MLDS names to the target language.
 %
 %
 % Ultimately the exact choice of how MLDS names are mapped to
@@ -234,12 +234,12 @@
 %
 % If the target does not support overloading, then any Mercury names which
 % are overloaded within a single Mercury module must be qualified to avoid
-% ambiguity.  However, Mercury names which are not overloaded should not
-% be qualified.  If a name is overloaded but occurs only once in the module's
+% ambiguity. However, Mercury names which are not overloaded should not
+% be qualified. If a name is overloaded but occurs only once in the module's
 % interface then the version in the interface should not be qualified.
 % The arity-zero version of type should not be arity-qualified
 % unless this would cause ambiguity with an unqualified name generated by
-% the previous rule.  Likewise, the arity-zero version of function
+% the previous rule. Likewise, the arity-zero version of function
 % (i.e. a constant) should not be function-qualified or arity-qualified
 % unless this would cause ambiguity with an unqualified name generated
 % the aforementioned rule.
@@ -284,14 +284,14 @@
 %
 % "Liveness-accurate GC" is GC in which the collector does not trace local
 % variables which are definitely not live according to a straight-forward
-% static analysis of definite-deadness/possible-liveness.  Liveness-accurate
+% static analysis of definite-deadness/possible-liveness. Liveness-accurate
 % GC is desirable, in general, since tracing through variables which are
 % no longer live may lead to excessive memory retention for some programs.
 % However these programs are relatively rare, so liveness-accurate GC
 % is not always worth the extra complication.
 %
 % The MLDS is therefore designed to optionally support liveness-accurate
-% GC, if the target language supports it.  If liveness-accurate GC is
+% GC, if the target language supports it. If liveness-accurate GC is
 % supported and enabled, then it is the responsibility of the target
 % language implementation to do whatever is needed to avoid having the GC
 % trace variables which have gone out of scope.
@@ -299,11 +299,11 @@
 % That means that to support liveness-accurate the HLDS->MLDS code
 % generator just needs to cover the cases where a straight-forward liveness
 % calculation on the generated MLDS does not match up with the desired
-% result of a straight-forward liveness calculation on the HLDS.  That is,
+% result of a straight-forward liveness calculation on the HLDS. That is,
 % the HLDS->MLDS code generator must generate code to clobber variables
 % which are no longer live according to a straight-forward liveness
 % calculation on the HLDS but which have not gone out of scope in
-% the generated MLDS.  For example, with our current HLDS->MLDS code
+% the generated MLDS. For example, with our current HLDS->MLDS code
 % generation scheme, this is the case for variables in the `else' of a
 % nondet if-then-else once the `then' has been entered.
 % (XXX Currently ml_code_gen.m does _not_ clobber those variables, though.)
@@ -313,7 +313,7 @@
 % target language implementation's _cooperation_, since if the MLDS code
 % generator inserts statements to clobber variables that are no longer live,
 % then an uncooperative target language implementation could just optimize
-% them away, since they are assignments to dead variables.  Given this need
+% them away, since they are assignments to dead variables. Given this need
 % for the MLDS target back-end's cooperation, it makes sense to assign as
 % much of the responsibily for this task as is possible to the MLDS target
 % back-end, to keep the front-end simple and to keep the responsibility
@@ -355,23 +355,21 @@
 
 :- type mercury_module_name == sym_name.module_name.
 
-%
-% The type `mlds' is the actual MLDS.
-% XXX we ought to make this type abstract
-%
+    % The type `mlds' is the actual MLDS.
+    % XXX We ought to make this type abstract.
 :- type mlds
     --->    mlds(
                 % The original Mercury module name.
                 mlds_name               :: mercury_module_name,
 
-                % Code defined in some other language, e.g.  for
+                % Code defined in some other language, e.g. for
                 % `pragma foreign_decl', etc.
                 mlds_foreign_code_map   :: map(foreign_language,
                                             mlds_foreign_code),
 
                 % The MLDS code itself.
 
-                % Packages/classes to import
+                % Packages/classes to import.
                 mlds_toplevel_imports   :: mlds_imports,
 
                 mlds_global_defns       :: ml_global_data,
@@ -749,8 +747,8 @@
     ;       mlds_commit_type
             % mlds_commit_type is used for storing information about a
             % commit. This is an abstract type; the exact definition
-            % will depend on the back-end.  The only operations on this ADT
-            % are `try_commit' and `do_commit'.  This type holds
+            % will depend on the back-end. The only operations on this ADT
+            % are `try_commit' and `do_commit'. This type holds
             % information about the `try_commit' stack frame that is
             % needed to unwind the stack when a `do_commit' is executed.
             %
@@ -869,7 +867,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Declaration flags
+% Declaration flags.
 %
 
 :- type mlds_decl_flags.
@@ -896,14 +894,14 @@
             % (variable or nested function) is defined.
 
 :- type per_instance
-    --->    one_copy    % I.e. "static" storage duration (but not necessarily
-                        % static linkage) or static member function. Note that
-                        % `one_copy' variables *must* have an initializer
-                        % (the GCC back-end relies on this.)
+    --->    one_copy
+            % I.e. "static" storage duration (but not necessarily static
+            % linkage) or static member function. Note that `one_copy'
+            % variables *must* have an initializer.
 
     ;       per_instance.
-                        % I.e. "auto" local variable in function, or non-static
-                        % member of class.
+            % I.e. "auto" local variable in function, or non-static
+            % member of class.
 
 :- type virtuality
     --->    non_virtual
@@ -946,7 +944,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Foreign code interfacing
+% Foreign code interfacing.
 %
 
     % Foreign code required for the foreign language interface.
@@ -977,7 +975,8 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Attributes
+% Attributes.
+%
 
 :- type mlds_attribute
     --->    custom(
@@ -986,7 +985,8 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Contexts (i.e. source code locations)
+% Contexts (i.e. source code locations).
+%
 
     % mlds.context is probably == prog_context,
     % but might also contain goal_path or other information.
@@ -998,7 +998,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Statements
+% Statements.
 %
 
 :- type statement
@@ -1093,9 +1093,8 @@
     ;       ml_stmt_try_commit(mlds_lval, statement, statement)
     ;       ml_stmt_do_commit(mlds_rval)
             % try_commit(Ref, GoalToTry, CommitHandlerGoal):
-            %   Execute GoalToTry.  If GoalToTry exits via a
-            %   `commit(Ref)' instruction, then execute
-            %   CommitHandlerGoal.
+            %   Execute GoalToTry. If GoalToTry exits via a `commit(Ref)'
+            %   instruction, then execute CommitHandlerGoal.
             %
             % do_commit(Ref):
             %   Unwind the stack to the corresponding `try_commit'
@@ -1111,12 +1110,12 @@
             % in goals called from the GoalToTry goal in the try_commit
             % instruction with the same Ref.
             %
-            % The C and GCC back-ends require each try_commit to be put in
-            % its own nested function, to avoid problems with setjmp() and
-            % local vars not declared volatile. They also require each
-            % do_commit to be put in its own function -- this is needed when
-            % using __builtin_setjmp()/__builtin_longjmp() to ensure that
-            % the call to __builtin_longjmp() is not in the same function
+            % The C back-end requires each try_commit to be put in its own
+            % nested function, to avoid problems with setjmp() and local vars
+            % not declared volatile. They also require each do_commit to be
+            % put in its own function -- this is needed when using
+            % __builtin_setjmp()/__builtin_longjmp() to ensure that the
+            % call to __builtin_longjmp() is not in the same function
             % as the call to __builtin_setjmp().
 
     % Exception handling.
@@ -1150,8 +1149,9 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Extra info for switches
+% Extra info for switches.
 %
+
     % The range of possible values which the switch variable might take
     % (if known).
 :- type mlds_switch_range
@@ -1284,7 +1284,7 @@
             % assign_if_in_heap(Location, Value):
             % Assign the address specified by rval to the location specified
             % by lval if the address is in the bounds of the garbage collected
-            % heap.  Otherwise assign a null pointer to lval.
+            % heap. Otherwise assign a null pointer to lval.
 
     % Heap management.
 
@@ -1464,8 +1464,8 @@
     --->    max_stack_size(int).
             % max_stack_size(Size):
             % This attribute declares the maximum stack usage of a
-            % particular piece of code.  The unit that `Size' is measured
-            % in depends upon foreign language being used.  Currently this
+            % particular piece of code. The unit that `Size' is measured
+            % in depends upon foreign language being used. Currently this
             % attribute is only used (and is in fact required) by the
             % `IL' foreign language interface, and is measured in units
             % of stack items.
@@ -1594,7 +1594,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Expressions
+% Expressions.
 %
 
 :- type ml_scalar_common_type_num
@@ -1763,13 +1763,12 @@
 
 %-----------------------------------------------------------------------------%
 
-% Note: the types `tag' and `reset_trail_reason' here are all
-% defined exactly the same as the ones in llds.m.  The definitions are
-% duplicated here because we don't want mlds.m to depend on llds.m.
-% (Alternatively, we could move both these definitions into a new module
-% imported by both mlds.m and llds.m, but these definitions are small enough
-% and simple enough that I don't think it is worth creating a new module
-% just for them.)
+% Note: the types `tag' and `reset_trail_reason' here are all defined
+% exactly the same as the ones in llds.m. The definitions are duplicated here
+% because we don't want mlds.m to depend on llds.m. (Alternatively, we could
+% move both these definitions into a new module in the backend_libs.m package,
+% but these definitions are small enough and simple enough that it is probably
+% not worth creating a new module just for them.)
 
     % A tag should be a small non-negative integer.
     %
@@ -1868,8 +1867,7 @@ mlds_get_module_name(MLDS) = MLDS ^ mlds_name.
 
 %-----------------------------------------------------------------------------%
 
-% Currently mlds_contexts just contain a prog_context.
-
+    % Currently mlds_contexts just contain a prog_context.
 :- type mlds_context
     --->    mlds_context(prog_context).
 
@@ -1888,18 +1886,18 @@ mlds_get_prog_context(mlds_context(Context)) = Context.
 % and instead fully convert all Mercury types to MLDS types.
 
 mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
-    ( type_to_ctor_and_args(Type, TypeCtor, TypeArgs) ->
-        (
+    ( if type_to_ctor_and_args(Type, TypeCtor, TypeArgs) then
+        ( if
             TypeCtor = type_ctor(qualified(unqualified("array"), "array"), 1),
             TypeArgs = [ElemType]
-        ->
+        then
             MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
             MLDSType = mlds_mercury_array_type(MLDSElemType)
-        ;
+        else if
             TypeCtor = type_ctor(qualified(mercury_private_builtin_module,
                 "store_at_ref_type"), 1),
             TypeArgs = [RefType]
-        ->
+        then
             MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
@@ -1917,29 +1915,29 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                 ),
                 MLDSType = mlds_ptr_type(MLDSRefType)
             )
-        ;
+        else
             module_info_get_type_table(ModuleInfo, TypeTable),
-            ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) ->
+            ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
                 hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-                ( TypeBody = hlds_foreign_type(ForeignTypeBody) ->
+                ( if TypeBody = hlds_foreign_type(ForeignTypeBody) then
                     MLDSType = foreign_type_to_mlds_type(ModuleInfo,
                         ForeignTypeBody)
-                ; TypeBody = hlds_abstract_type(_) ->
+                else if TypeBody = hlds_abstract_type(_) then
                     Category = classify_type_ctor(ModuleInfo, TypeCtor),
                     ExportedType = non_foreign_type(Type),
                     MLDSType = mercury_type(Type, Category, ExportedType)
-                ;
+                else
                     Category = classify_type_defn_body(TypeBody),
                     ExportedType = non_foreign_type(Type),
                     MLDSType = mercury_type(Type, Category, ExportedType)
                 )
-            ;
+            else
                 Category = classify_type_ctor(ModuleInfo, TypeCtor),
                 ExportedType = non_foreign_type(Type),
                 MLDSType = mercury_type(Type, Category, ExportedType)
             )
         )
-    ;
+    else
         Category = ctor_cat_variable,
         ExportedType = non_foreign_type(Type),
         MLDSType = mercury_type(Type, Category, ExportedType)
@@ -2050,9 +2048,9 @@ mercury_module_and_package_name_to_mlds(MLDS_Package, MercuryModule)
     = mlds_module_name(MLDS_Package, MercuryModule).
 
 mercury_module_name_to_mlds(MercuryModule) = Name :-
-    ( mercury_std_library_module_name(MercuryModule) ->
+    ( if mercury_std_library_module_name(MercuryModule) then
         MLDS_Package = add_outermost_qualifier("mercury", MercuryModule)
-    ;
+    else
         MLDS_Package = MercuryModule
     ),
     Name = mlds_module_name(MLDS_Package, MLDS_Package).
@@ -2070,12 +2068,12 @@ mlds_append_class_qualifier(Target, mlds_module_name(Package, Module),
         QualKind, ClassName, ClassArity) = Name :-
     % For the Java back-end, we flip the initial case of an type qualifiers,
     % in order to match the usual Java conventions.
-    (
+    ( if
         Target = target_java,
         QualKind = type_qual
-    ->
+    then
         AdjustedModule = flip_initial_case_of_final_part(Module)
-    ;
+    else
         AdjustedModule = Module
     ),
     string.format("%s_%d", [s(ClassName), i(ClassArity)], ClassQualifier),
