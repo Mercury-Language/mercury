@@ -203,6 +203,8 @@
 :- func to_set(bag(T)) = set(T).
 :- func to_set_without_duplicates(bag(T)) = set(T).
 :- pred to_set_without_duplicates(bag(T)::in, set(T)::out) is det.
+:- pragma obsolete(to_set_without_duplicates/1).
+:- pragma obsolete(to_set_without_duplicates/2).
 
 %---------------------%
 
@@ -376,11 +378,6 @@
 
 :- type bag(T)
     --->    bag(map(T, int)).
-
-:- inst empty_list
-    --->    [].
-:- inst nonempty_list
-    --->    [ground | ground].
 
 %---------------------------------------------------------------------------%
 
@@ -596,14 +593,14 @@ bag.to_list_only_duplicates(bag(Map), DupXs) :-
 is_duplicated(X - XN, X) :-
     XN > 1.
 
-bag.to_set(Bag) = bag.to_set_without_duplicates(Bag).
-
-bag.to_set_without_duplicates(Bag) = Set :-
-    bag.to_set_without_duplicates(Bag, Set).
-
-bag.to_set_without_duplicates(bag(Map), Set) :-
+bag.to_set(bag(Map)) = Set :-
     map.keys(Map, Xs),
     set.sorted_list_to_set(Xs, Set).
+
+bag.to_set_without_duplicates(Bag) = bag.to_set(Bag).
+
+bag.to_set_without_duplicates(Bag, Set) :-
+    Set = bag.to_set(Bag).
 
 %---------------------------------------------------------------------------%
 

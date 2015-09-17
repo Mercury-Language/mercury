@@ -293,8 +293,15 @@ Changes to the Mercury standard library:
 * We have added the following predicates to the list module: foldr2/6,
   foldr3/8, det_take/3 and map_foldr/5.
 
-* We have added the following predicates to the bag module: foldl/4 and
-  foldl2/6.
+* We have added the following predicates to the bag module:
+  foldl/4, foldl2/6, and to_list_only_duplicates/2. The predicates
+  old union/3, intersect/3, least_upper_bound/3 and subtract/3 all had
+  complexities that depended strongly on the size of their second argument,
+  and much more weakly on the size of their first argument. We have renamed
+  these to union_small/3, intersect_small/3, least_upper_bound_small/3 and
+  subtract_small/3 respectively, and replaced them with new implementations
+  of the original four predicates whose complexity is proportional to
+  the total size of the two input arguments.
 
 * We have added the following predicates to the assoc_list module:
   foldl2_values/6 and foldl3_values/8.
