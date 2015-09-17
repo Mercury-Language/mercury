@@ -192,9 +192,9 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, marker_mutable_access_pred) ->
+    ( if check_marker(Markers, marker_mutable_access_pred) then
         MutableSpecial = mutable_special_case
-    ;
+    else
         MutableSpecial = not_mutable_special_case
     ),
 
@@ -347,11 +347,11 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
         BoxPolicy = always_boxed,
         MldsType = mlds_generic_type
     ),
-    (
+    ( if
         MaybeVarMode = yes(ArgName - Mode),
         check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
         not var_is_singleton(ArgName)
-    ->
+    then
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, ArgMode),
         (
             ArgMode = top_in,
@@ -363,7 +363,7 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
             ArgMode = top_unused,
             OutlineArg = ola_unused
         )
-    ;
+    else
         OutlineArg = ola_unused
     ).
 
@@ -510,16 +510,16 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
 
     % Dummy arguments are just mapped to integers, since they shouldn't be
     % used in any way that requires them to have a real value.
-    ( check_dummy_type(ModuleInfo, Type) = is_dummy_type ->
+    ( if check_dummy_type(ModuleInfo, Type) = is_dummy_type then
         Initializer = no_initializer,
         MLDSType = mlds_native_int_type
-    ; list.member(Var, ByRefOutputVars) ->
+    else if list.member(Var, ByRefOutputVars) then
         Initializer = no_initializer,
         MLDSType = MLDSType0
-    ; list.member(Var, CopiedOutputVars) ->
+    else if list.member(Var, CopiedOutputVars) then
         Initializer = no_initializer,
         MLDSType = MLDSType0
-    ;
+    else
         MLDSType = MLDSType0,
         QualVarName = qual(MLDSModuleName, module_qual, VarName),
         Initializer = init_obj(ml_lval(ml_var(QualVarName, MLDSType)))
@@ -718,10 +718,10 @@ ml_gen_obtain_release_global_lock(Info, ThreadSafe, PredId,
     ml_gen_info_get_module_info(Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, parallel, Parallel),
-    (
+    ( if
         Parallel = yes,
         ThreadSafe = proc_not_thread_safe
-    ->
+    then
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
         MangledName = c_util.quote_string(Name),
@@ -729,7 +729,7 @@ ml_gen_obtain_release_global_lock(Info, ThreadSafe, PredId,
             MangledName, """);\n"], ObtainLock),
         string.append_list(["\tMR_RELEASE_GLOBAL_LOCK(""",
             MangledName, """);\n"], ReleaseLock)
-    ;
+    else
         ObtainLock = "",
         ReleaseLock = ""
     ).
@@ -742,11 +742,11 @@ ml_gen_hash_define_mr_alloc_id(C_Codes, Context, HashDefine, HashUndef,
         !Info) :-
     ml_gen_info_get_globals(!.Info, Globals),
     globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
-    (
+    ( if
         ProfileMemory = yes,
         list.member(C_Code, C_Codes),
         string.sub_string_search(C_Code, "MR_ALLOC_ID", _)
-    ->
+    then
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         ml_gen_info_get_pred_id(!.Info, PredId),
         ml_gen_info_get_proc_id(!.Info, ProcId),
@@ -760,7 +760,7 @@ ml_gen_hash_define_mr_alloc_id(C_Codes, Context, HashDefine, HashUndef,
             target_code_alloc_id(AllocId),
             raw_target_code("\n", [])],
         HashUndef = [raw_target_code("#undef MR_ALLOC_ID\n", [])]
-    ;
+    else
         HashDefine = [],
         HashUndef = []
     ).
@@ -830,10 +830,10 @@ ml_gen_pragma_c_decls(Info, Lang, [Arg | Args], [Decl | Decls]) :-
 ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
     Arg = foreign_arg(_Var, MaybeNameAndMode, Type, BoxPolicy),
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    (
+    ( if
         MaybeNameAndMode = yes(ArgName - _Mode),
         not var_is_singleton(ArgName)
-    ->
+    then
         (
             BoxPolicy = always_boxed,
             TypeString = "MR_Word"
@@ -843,7 +843,7 @@ ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
                 Type)
         ),
         string.format("\t%s %s;\n", [s(TypeString), s(ArgName)], DeclString)
-    ;
+    else
         % If the variable doesn't occur in the ArgNames list,
         % it can't be used, so we just ignore it.
         DeclString = ""
@@ -882,19 +882,19 @@ ml_gen_pragma_csharp_java_decls(Info, MutableSpecial, [Arg | Args],
 ml_gen_pragma_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
     Arg = foreign_arg(_Var, MaybeNameAndMode, Type, _BoxPolicy),
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    (
+    ( if
         MaybeNameAndMode = yes(ArgName - _Mode),
         not var_is_singleton(ArgName)
-    ->
+    then
         (
             MutableSpecial = not_mutable_special_case,
             MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type)
         ;
             MutableSpecial = mutable_special_case,
             % The code for mutables is generated in the frontend.
-            ( Type = int_type ->
+            ( if Type = int_type then
                 MLDS_Type = mlds_native_int_type
-            ;
+            else
                 MLDS_Type = mlds_generic_type
             )
         ),
@@ -902,7 +902,7 @@ ml_gen_pragma_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
         string.format(" %s;\n", [s(ArgName)], VarDeclString),
         VarDecl = raw_target_code(VarDeclString, []),
         Decl = [TypeDecl, VarDecl]
-    ;
+    else
         % If the variable doesn't occur in the ArgNames list,
         % it can't be used, so we just ignore it.
         Decl = []
@@ -946,15 +946,15 @@ ml_gen_pragma_ccsj_input_arg_list(Lang, ArgList, AssignInputs, !Info) :-
 
 ml_gen_pragma_ccsj_input_arg(Lang, ForeignArg, AssignInput, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    (
+    ( if
         ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
         MaybeNameAndMode = yes(ArgName - Mode),
         not var_is_singleton(ArgName),
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_in)
-    ->
+    then
         ml_gen_pragma_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType,
             BoxPolicy, AssignInput, !Info)
-    ;
+    else
         % If the variable doesn't occur in the ArgNames list,
         % it can't be used, so we just ignore it.
         AssignInput = []
@@ -989,10 +989,10 @@ ml_gen_pragma_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     TypeString = exported_type_to_string(Lang, ExportedType),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    (
+    ( if
         input_arg_assignable_with_cast(Lang, HighLevelData, OrigType,
             ExportedType, TypeString, Cast)
-    ->
+    then
         % In the usual case, we can just use an assignment and perhaps a cast.
         string.format("\t%s = %s ", [s(ArgName), s(Cast)], AssignToArgName),
         AssignInput = [
@@ -1000,7 +1000,7 @@ ml_gen_pragma_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
             target_code_input(ArgRval),
             raw_target_code(";\n", [])
         ]
-    ;
+    else
         % For foreign types (without the `can_pass_as_mercury_type' assertion)
         % we need to call MR_MAYBE_UNBOX_FOREIGN_TYPE.
         AssignInput = [
@@ -1015,9 +1015,9 @@ ml_gen_pragma_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
 
 dummy_arg_rval(Lang, ModuleInfo, Type) = Rval :-
     MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type),
-    ( Lang = lang_java ->
+    ( if Lang = lang_java then
         Rval = ml_const(mlconst_null(MLDS_Type))
-    ;
+    else
         Rval = ml_const(mlconst_int(0))
     ).
 
@@ -1044,12 +1044,12 @@ input_arg_assignable_with_cast(Lang, HighLevelData, OrigType, ExportedType,
     ;
         Lang = lang_c,
         HighLevelData = no,
-        ( OrigType = type_variable(_, _) ->
+        ( if OrigType = type_variable(_, _) then
             % For --no-high-level-data, we only need to use a cast for
             % polymorphic types, which are `MR_Word' in the C interface but
             % `MR_Box' in the MLDS back-end.
             Cast = "(MR_Word)"
-        ;
+        else
             IsForeign = foreign.is_foreign_type(ExportedType),
             (
                 IsForeign = yes(Assertions),
@@ -1104,12 +1104,12 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
         AssignOutput, ConvDecls, ConvOutputStatements, !Info) :-
     ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    (
+    ( if
         MaybeNameAndMode = yes(ArgName - Mode),
         not var_is_singleton(ArgName),
         check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_out)
-    ->
+    then
         % Create a target lval with the right type for *internal* use in the
         % code generated by the Mercury compiler's MLDS back-end.
         ml_variable_type(!.Info, Var, VarType),
@@ -1131,14 +1131,14 @@ ml_gen_pragma_csharp_java_output_arg(MutableSpecial, ForeignArg, Context,
         ;
             MutableSpecial = mutable_special_case,
             % The code for mutables is generated in the frontend.
-            ( OrigType = int_type ->
+            ( if OrigType = int_type then
                 Rval = ml_lval(LocalVarLval)
-            ;
+            else
                 Rval = ml_unop(unbox(MLDSType), ml_lval(LocalVarLval))
             )
         ),
         AssignOutput = [ml_gen_assign(ArgLval, Rval, Context)]
-    ;
+    else
         % If the variable doesn't occur in the ArgNames list,
         % it can't be used, so we just ignore it.
         AssignOutput = [],
@@ -1174,15 +1174,15 @@ ml_gen_pragma_c_output_arg(Arg, Context, AssignOutput, ConvDecls,
         ConvOutputStatements, !Info) :-
     Arg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    (
+    ( if
         MaybeNameAndMode = yes(ArgName - Mode),
         not var_is_singleton(ArgName),
         check_dummy_type(ModuleInfo, OrigType) = is_not_dummy_type,
         mode_to_arg_mode(ModuleInfo, Mode, OrigType, top_out)
-    ->
+    then
         ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
             Context, AssignOutput, ConvDecls, ConvOutputStatements, !Info)
-    ;
+    else
         % If the variable doesn't occur in the ArgNames list,
         % it can't be used, so we just ignore it.
         AssignOutput = [],
@@ -1210,7 +1210,7 @@ ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
     ExportedType = foreign.to_exported_type(ModuleInfo, OrigType),
     TypeString = exported_type_to_string(lang_c, ExportedType),
     IsForeign = foreign.is_foreign_type(ExportedType),
-    (
+    ( if
         (
             IsForeign = no,
             Cast = no
@@ -1219,7 +1219,7 @@ ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
             list.member(foreign_type_can_pass_as_mercury_type, Assertions),
             Cast = yes
         )
-    ->
+    then
         % In the usual case, we can just use an assignment,
         % perhaps with a cast.
         ml_gen_info_get_high_level_data(!.Info, HighLevelData),
@@ -1238,13 +1238,13 @@ ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
             % For --no-high-level-data, we only need to use a cast is for
             % polymorphic types, which are `MR_Word' in the C interface but
             % `MR_Box' in the MLDS back-end.
-            (
+            ( if
                 ( OrigType = type_variable(_, _)
                 ; Cast = yes
                 )
-            ->
+            then
                 RHS_Cast = "(MR_Box) "
-            ;
+            else
                 RHS_Cast = ""
             ),
             LHS_Cast = ""
@@ -1257,7 +1257,7 @@ ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
             target_code_output(ArgLval),
             raw_target_code(AssignFromArgName, [])
         ]
-    ;
+    else
         % For foreign types, we need to call MR_MAYBE_BOX_FOREIGN_TYPE.
         AssignOutput = [
             raw_target_code("\tMR_MAYBE_BOX_FOREIGN_TYPE("

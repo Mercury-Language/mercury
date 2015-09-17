@@ -166,14 +166,14 @@ foreign_type_required_imports(Target, _TypeCtor - TypeDefn) = Imports :-
             TypeBody = hlds_foreign_type(ForeignTypeBody),
             ForeignTypeBody = foreign_type_body(MaybeIL,
                 _MaybeC, _MaybeJava, _MaybeCSharp, _MaybeErlang),
-            (
+            ( if
                 MaybeIL = yes(Data),
                 Data = foreign_type_lang_data(il_type(_, Location, _), _, _)
-            ->
+            then
                 Name = il_assembly_name(mercury_module_name_to_mlds(
                     unqualified(Location))),
                 Imports = [foreign_import(Name)]
-            ;
+            else
                 unexpected($module, $pred, "no IL type")
             )
         ;
@@ -254,7 +254,7 @@ ml_gen_pragma_export_proc(ModuleInfo, PragmaExportedProc, Defn) :-
 ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    (
+    ( if
         ( Target = target_java
         ; Target = target_csharp
         ),
@@ -271,9 +271,9 @@ ml_gen_export_proc_params(ModuleInfo, PredId, ProcId, FuncParams) :-
         ;
             ReturnTypes = [_ | _]
         )
-    ->
+    then
         FuncParams = FuncParamsByRef
-    ;
+    else
         FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId)
     ).
 
@@ -311,7 +311,7 @@ ml_gen_preds_acc(!ModuleInfo, ConstStructMap, PredIds0,
         module_info_get_preds(!.ModuleInfo, PredTable),
         map.lookup(PredTable, PredId, PredInfo),
         pred_info_get_status(PredInfo, PredStatus),
-        (
+        ( if
             (
                 PredStatus = pred_status(status_imported(_))
             ;
@@ -321,14 +321,14 @@ ml_gen_preds_acc(!ModuleInfo, ConstStructMap, PredIds0,
                 PredStatus =
                     pred_status(status_external(status_pseudo_imported))
             )
-        ->
+        then
             true
-        ;
+        else
             % Generate MLDS definitions for all the non-imported procedures
             % of a given predicate (or function).
-            ( PredStatus = pred_status(status_external(_)) ->
+            ( if PredStatus = pred_status(status_external(_)) then
                 ProcIds = pred_info_procids(PredInfo)
-            ;
+            else
                 ProcIds = pred_info_non_imported_procids(PredInfo)
             ),
             ml_gen_pred(!ModuleInfo, ConstStructMap, PredId, ProcIds,
@@ -419,7 +419,7 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
         !:Info = ml_gen_info_init(!.ModuleInfo, ConstStructMap,
             PredId, ProcId, ProcInfo, !.GlobalData),
 
-        ( PredStatus = pred_status(status_external(_)) ->
+        ( if PredStatus = pred_status(status_external(_)) then
             % For Mercury procedures declared `:- external', we generate an
             % MLDS definition for them with no function body. The MLDS ->
             % target code pass can treat this accordingly, e.g. for C
@@ -430,7 +430,7 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
             FunctionBody = body_external,
             ExtraDefns = [],
             ml_gen_proc_params(PredId, ProcId, MLDS_Params, !.Info, _Info)
-        ;
+        else
             % Set up the initial success continuation, if any.
             % Also figure out which output variables are returned by value
             % (rather than being passed by reference) and remove them from
@@ -511,9 +511,9 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
 
 ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ( procedure_is_exported(ModuleInfo, PredInfo, ProcId) ->
+    ( if procedure_is_exported(ModuleInfo, PredInfo, ProcId) then
         Access = acc_public
-    ;
+    else
         Access = acc_private
     ),
     PerInstance = one_copy,
@@ -545,17 +545,17 @@ ml_det_copy_out_vars(ModuleInfo, CopiedOutputVars, !Info) :-
             _, CopiedOutputVars)
     ;
         DetCopyOut = no,
-        (
+        ( if
             % For det functions, the function result variable is returned by
             % value, and any remaining output variables are passed by
             % reference.
             ml_gen_info_get_pred_id(!.Info, PredId),
             ml_gen_info_get_proc_id(!.Info, ProcId),
             ml_is_output_det_function(ModuleInfo, PredId, ProcId, ResultVar)
-        ->
+        then
             CopiedOutputVars = [ResultVar],
             list.delete_all(OutputVars, ResultVar, ByRefOutputVars)
-        ;
+        else
             % Otherwise, all output vars are passed by reference.
             CopiedOutputVars = [],
             ByRefOutputVars = OutputVars
@@ -617,14 +617,14 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
     ml_gen_var_list(!.Info, CopiedOutputVars, CopiedOutputVarOriginalLvals),
     ml_gen_convert_headvars(HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
         Context, ConvDecls, ConvInputStatements, ConvOutputStatements, !Info),
-    (
+    ( if
         ConvDecls = [],
         ConvInputStatements = [],
         ConvOutputStatements = []
-    ->
+    then
         % No boxing/unboxing/casting required.
         ml_gen_goal(CodeModel, Goal, Decls, Statements1, !Info)
-    ;
+    else
         DoGenGoal = ml_gen_goal(CodeModel, Goal),
 
         % Boxing/unboxing/casting required. We need to convert the input
@@ -659,38 +659,38 @@ ml_gen_proc_body(CodeModel, HeadVars, ArgTypes, ArgModes, CopiedOutputVars,
 
 ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
         Decls, InputStatements, OutputStatements, !Info) :-
-    (
+    ( if
         Vars = [],
         HeadTypes = [],
         ArgModes = []
-    ->
+    then
         Decls = [],
         InputStatements = [],
         OutputStatements = []
-    ;
+    else if
         Vars = [Var | VarsTail],
         HeadTypes = [HeadType | HeadTypesTail],
         ArgModes = [ArgMode | ArgModesTail]
-    ->
+    then
         ml_variable_type(!.Info, Var, BodyType),
-        (
+        ( if
             % Arguments with mode `top_unused' do not need to be converted.
             ArgMode = top_unused
-        ->
+        then
             ml_gen_convert_headvars(VarsTail, HeadTypesTail, ArgModesTail,
                 CopiedOutputVars, Context, Decls,
                 InputStatements, OutputStatements, !Info)
-        ;
+        else if
             % Check whether HeadType is the same as BodyType
             % (modulo the term.contexts). If so, no conversion is needed.
             map.init(Subst0),
             type_unify(HeadType, BodyType, [], Subst0, Subst),
             map.is_empty(Subst)
-        ->
+        then
             ml_gen_convert_headvars(VarsTail, HeadTypesTail, ArgModesTail,
                 CopiedOutputVars, Context, Decls,
                 InputStatements, OutputStatements, !Info)
-        ;
+        else
             % Generate the lval for the head variable.
             ml_gen_var_with_type(!.Info, Var, HeadType, HeadVarLval),
 
@@ -713,20 +713,20 @@ ml_gen_convert_headvars(Vars, HeadTypes, ArgModes, CopiedOutputVars, Context,
 
             % Add the code to convert this input or output.
             ml_gen_info_get_byref_output_vars(!.Info, ByRefOutputVars),
-            (
+            ( if
                 ( list.member(Var, ByRefOutputVars)
                 ; list.member(Var, CopiedOutputVars)
                 )
-            ->
+            then
                 InputStatements = InputStatementsTail,
                 OutputStatements = OutputStatementsTail ++ ConvOutputStatements
-            ;
+            else
                 InputStatements = ConvInputStatements ++ InputStatementsTail,
                 OutputStatements = OutputStatementsTail
             ),
             Decls = ConvDecls ++ DeclsTail
         )
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 

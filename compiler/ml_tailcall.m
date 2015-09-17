@@ -217,9 +217,9 @@ mark_tailcalls_in_statements(AtTail, Locals,
         FirstAtTail = AtTail
     ;
         Rest = [FirstRest | _],
-        ( FirstRest = statement(ml_stmt_return(ReturnVals), _) ->
+        ( if FirstRest = statement(ml_stmt_return(ReturnVals), _) then
             FirstAtTail = yes(ReturnVals)
-        ;
+        else
             FirstAtTail = no
         )
     ),
@@ -275,7 +275,7 @@ mark_tailcalls_in_stmt(AtTail, Locals, Stmt0, Stmt) :-
         Stmt0 = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
 
         % Check if we can mark this call as a tail call.
-        (
+        ( if
             CallKind0 = ordinary_call,
 
             % We must be in a tail position.
@@ -292,11 +292,11 @@ mark_tailcalls_in_stmt(AtTail, Locals, Stmt0, Stmt) :-
 
             % The call must not be to a function nested within this function.
             check_rval(Func, Locals) = will_not_yield_dangling_stack_ref
-        ->
+        then
             % Mark this call as a tail call.
             CallKind = tail_call,
             Stmt = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals, CallKind)
-        ;
+        else
             % Leave this call unchanged.
             Stmt = Stmt0
         )
@@ -387,9 +387,9 @@ lval_is_local(Lval) = IsLocal :-
     ;
         Lval = ml_field(_Tag, Rval, _Field, _, _),
         % A field of a local variable is local.
-        ( Rval = ml_mem_addr(BaseLval) ->
+        ( if Rval = ml_mem_addr(BaseLval) then
             IsLocal = lval_is_local(BaseLval)
-        ;
+        else
             IsLocal = is_not_local
         )
     ;
@@ -415,9 +415,9 @@ lval_is_local(Lval) = IsLocal :-
 
 check_rvals([], _) = will_not_yield_dangling_stack_ref.
 check_rvals([Rval | Rvals], Locals) = MayYieldDanglingStackRef :-
-    ( check_rval(Rval, Locals) = may_yield_dangling_stack_ref ->
+    ( if check_rval(Rval, Locals) = may_yield_dangling_stack_ref then
         MayYieldDanglingStackRef = may_yield_dangling_stack_ref
-    ;
+    else
         MayYieldDanglingStackRef = check_rvals(Rvals, Locals)
     ).
 
@@ -445,9 +445,9 @@ check_rval(Rval, Locals) = MayYieldDanglingStackRef :-
         MayYieldDanglingStackRef = check_rval(XRval, Locals)
     ;
         Rval = ml_binop(_Op, XRval, YRval),
-        ( check_rval(XRval, Locals) = may_yield_dangling_stack_ref ->
+        ( if check_rval(XRval, Locals) = may_yield_dangling_stack_ref then
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
-        ;
+        else
             MayYieldDanglingStackRef = check_rval(YRval, Locals)
         )
     ;
@@ -473,9 +473,9 @@ check_rval(Rval, Locals) = MayYieldDanglingStackRef :-
 check_lval(Lval, Locals) = MayYieldDanglingStackRef :-
     (
         Lval = ml_var(Var0, _),
-        ( var_is_local(Var0, Locals) ->
+        ( if var_is_local(Var0, Locals) then
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
-        ;
+        else
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
     ;
@@ -504,21 +504,23 @@ check_lval(Lval, Locals) = MayYieldDanglingStackRef :-
 check_const(Const, Locals) = MayYieldDanglingStackRef :-
     (
         Const = mlconst_code_addr(CodeAddr),
-        ( function_is_local(CodeAddr, Locals) ->
+        ( if function_is_local(CodeAddr, Locals) then
             MayYieldDanglingStackRef = may_yield_dangling_stack_ref
-        ;
+        else
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
     ;
         Const = mlconst_data_addr(DataAddr),
         DataAddr = data_addr(ModuleName, DataName),
-        ( DataName = mlds_data_var(VarName) ->
-            ( var_is_local(qual(ModuleName, module_qual, VarName), Locals) ->
+        ( if DataName = mlds_data_var(VarName) then
+            ( if
+                var_is_local(qual(ModuleName, module_qual, VarName), Locals)
+            then
                 MayYieldDanglingStackRef = may_yield_dangling_stack_ref
-            ;
+            else
                 MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
             )
-        ;
+        else
             MayYieldDanglingStackRef = will_not_yield_dangling_stack_ref
         )
     ;

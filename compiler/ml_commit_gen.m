@@ -197,10 +197,10 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
     GoalCodeModel = goal_info_get_code_model(GoalInfo),
     GoalContext = goal_info_get_context(GoalInfo),
 
-    (
+    ( if
         GoalCodeModel = model_non,
         CodeModel = model_semi
-    ->
+    then
 
         %   model_non in semi context: (using try_commit/do_commit)
         %       <succeeded = Goal>
@@ -277,10 +277,10 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
         Decls = LocalVarDecls ++ CommitFuncDecls,
 
         ml_gen_info_set_var_lvals(OrigVarLvalMap, !Info)
-    ;
+    else if
         GoalCodeModel = model_non,
         CodeModel = model_det
-    ->
+    then
         %   model_non in det context: (using try_commit/do_commit)
         %       <do Goal>
         %   ===>
@@ -345,7 +345,7 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
             [TryCommitStatement], Context, CommitFuncDecls, Statements, !Info),
         Decls = LocalVarDecls ++ CommitFuncDecls,
         ml_gen_info_set_var_lvals(OrigVarLvalMap, !Info)
-    ;
+    else
         % No commit required.
         ml_gen_goal(CodeModel, Goal, Decls, Statements, !Info)
     ).

@@ -608,23 +608,23 @@ ml_append_return_statement(Info, CodeModel, CopiedOutputVarLvals, Context,
     ).
 
 ml_gen_block(VarDecls, Statements, Context) = Block :-
-    (
+    ( if
         VarDecls = [],
         Statements = [SingleStatement]
-    ->
+    then
         Block = SingleStatement
-    ;
+    else
         Block = statement(ml_stmt_block(VarDecls, Statements),
             mlds_make_context(Context))
     ).
 
 ml_gen_block_mlds(VarDecls, Statements, Context) = Block :-
-    (
+    ( if
         VarDecls = [],
         Statements = [SingleStatement]
-    ->
+    then
         Block = SingleStatement
-    ;
+    else
         Block = statement(ml_stmt_block(VarDecls, Statements), Context)
     ).
 
@@ -763,11 +763,11 @@ ml_gen_label_func_decl_flags = DeclFlags :-
 %
 
 ml_gen_and(X, Y) =
-    ( X = ml_const(mlconst_true) ->
+    ( if X = ml_const(mlconst_true) then
         Y
-    ; Y = ml_const(mlconst_true) ->
+    else if Y = ml_const(mlconst_true) then
         X
-    ;
+    else
         ml_binop(logical_and, X, Y)
     ).
 
@@ -859,10 +859,10 @@ ml_gen_proc_params(PredId, ProcId, FuncParams, !Info) :-
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredArity = pred_info_orig_arity(PredInfo),
-    ( no_type_info_builtin(PredModule, PredName, PredArity) ->
+    ( if no_type_info_builtin(PredModule, PredName, PredArity) then
         FuncParams = ml_gen_params(ModuleInfo, HeadVarNames, HeadTypes,
             HeadModes, PredOrFunc, CodeModel)
-    ;
+    else
         ml_gen_params(HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
             CodeModel, FuncParams, !Info)
     ).
@@ -918,23 +918,23 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
         CodeModel = model_det,
         % For model_det Mercury functions whose result argument has an
         % output mode, make the result into the MLDS return type.
-        (
+        ( if
             RetTypes0 = [],
             PredOrFunc = pf_function,
             pred_args_to_func_args(HeadModes, _, ResultMode),
             ResultMode = top_out,
             pred_args_to_func_args(HeadTypes, _, ResultType),
             check_dummy_type(ModuleInfo, ResultType) = is_not_dummy_type
-        ->
+        then
             pred_args_to_func_args(FuncArgs0, FuncArgs, RetArg),
             RetArg = mlds_argument(_RetArgName, RetTypePtr, _GCStatement),
-            ( RetTypePtr = mlds_ptr_type(RetType) ->
+            ( if RetTypePtr = mlds_ptr_type(RetType) then
                 RetTypes = [RetType]
-            ;
+            else
                 unexpected($module, $pred,
                     "output mode function result doesn't have pointer type")
             )
-        ;
+        else
             FuncArgs = FuncArgs0,
             RetTypes = RetTypes0
         )
@@ -995,44 +995,44 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
 
 ml_gen_arg_decls(ModuleInfo, HeadVars, HeadTypes, HeadModes, CopyOut,
         FuncArgs, RetTypes, !MaybeInfo) :-
-    (
+    ( if
         HeadVars = [],
         HeadTypes = [],
         HeadModes = []
-    ->
+    then
         FuncArgs = [],
         RetTypes = []
-    ;
+    else if
         HeadVars = [Var | Vars],
         HeadTypes = [Type | Types],
         HeadModes = [Mode | Modes]
-    ->
+    then
         ml_gen_arg_decls(ModuleInfo, Vars, Types, Modes, CopyOut,
             FuncArgs0, RetTypes0, !MaybeInfo),
-        (
+        ( if
             % Exclude types such as io.state, etc.
             % Also exclude values with arg_mode `top_unused'.
             ( check_dummy_type(ModuleInfo, Type) = is_dummy_type
             ; Mode = top_unused
             )
-        ->
+        then
             FuncArgs = FuncArgs0,
             RetTypes = RetTypes0
-        ;
+        else if
             % For by-value outputs, generate a return type.
             Mode = top_out,
             CopyOut = yes
-        ->
+        then
             RetType = mercury_type_to_mlds_type(ModuleInfo, Type),
             RetTypes = [RetType | RetTypes0],
             FuncArgs = FuncArgs0
-        ;
+        else
             % For inputs and by-reference outputs, generate argument.
             ml_gen_arg_decl(ModuleInfo, Var, Type, Mode, FuncArg, !MaybeInfo),
             FuncArgs = [FuncArg | FuncArgs0],
             RetTypes = RetTypes0
         )
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -1159,8 +1159,8 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
         _HeadVarsWithNames, _ArgModes, Detism,
         PredIsImported, _PredIsPseudoImported,
         Origin, _ProcIsExported, _ProcIsImported),
-    ( Origin = origin_special_pred(SpecialPred, TypeCtor) ->
-        (
+    ( if Origin = origin_special_pred(SpecialPred, TypeCtor) then
+        ( if
             % All type_ctors other than tuples here should be module qualified,
             % since builtin types are handled separately in polymorphism.m.
             TypeCtor = type_ctor(TypeCtorSymName, TypeArity),
@@ -1171,17 +1171,17 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             ;
                 TypeCtorSymName = qualified(TypeModule, TypeName)
             )
-        ->
-            (
+        then
+            ( if
                 ThisModule \= TypeModule,
                 SpecialPred = spec_pred_unify,
-                \+ hlds_pred.in_in_unification_proc_id(ProcId)
-            ->
+                not hlds_pred.in_in_unification_proc_id(ProcId)
+            then
                 % This is a locally-defined instance of a unification procedure
                 % for a type defined in some other module.
                 DefiningModule = ThisModule,
                 MaybeDeclaringModule = yes(TypeModule)
-            ;
+            else
                 % The module declaring the type is the same as the module
                 % defining this special pred.
                 DefiningModule = TypeModule,
@@ -1189,32 +1189,32 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             ),
             MLDS_PredLabel = mlds_special_pred_label(PredName,
                 MaybeDeclaringModule, TypeName, TypeArity)
-        ;
+        else
             unexpected($module, $pred,
                 "cannot make label for special pred `" ++ PredName ++ "'")
         )
-    ;
-        (
+    else
+        ( if
             % Work out which module supplies the code for the predicate.
             ThisModule \= PredModule,
             PredIsImported = no
-        ->
+        then
             % This predicate is a specialized version of a pred from a
             % `.opt' file.
             DefiningModule = ThisModule,
             MaybeDeclaringModule = yes(PredModule)
-        ;
+        else
             % The predicate was declared in the same module that it is
             % defined in
             DefiningModule = PredModule,
             MaybeDeclaringModule = no
         ),
-        (
+        ( if
             PredOrFunc = pf_function,
-            \+ ml_is_output_det_function(ModuleInfo, PredId, ProcId, _)
-        ->
+            not ml_is_output_det_function(ModuleInfo, PredId, ProcId, _)
+        then
             NonOutputFunc = yes
-        ;
+        else
             NonOutputFunc = no
         ),
         determinism_to_code_model(Detism, CodeModel),
@@ -1238,13 +1238,13 @@ ml_gen_var_list(Info, [Var | Vars], [Lval | Lvals]) :-
     ml_gen_var_list(Info, Vars, Lvals).
 
 ml_gen_var(Info, Var, Lval) :-
-    % First check the var_lvals override mapping; if an lval has been set
+    % First check the var_lvals override mappingelse if an lval has been set
     % for this variable, use it.
 
     ml_gen_info_get_var_lvals(Info, VarLvals),
-    ( map.search(VarLvals, Var, VarLval) ->
+    ( if map.search(VarLvals, Var, VarLval) then
         Lval = VarLval
-    ;
+    else
         % Otherwise just look up the variable's type and generate an lval
         % for it using the ordinary algorithm.
 
@@ -1274,9 +1274,9 @@ ml_gen_var_with_type(Info, Var, Type, Lval) :-
 
         % Output variables may be passed by reference...
         ml_gen_info_get_byref_output_vars(Info, OutputVars),
-        ( list.member(Var, OutputVars) ->
+        ( if list.member(Var, OutputVars) then
             Lval = ml_mem_ref(ml_lval(VarLval), MLDS_Type)
-        ;
+        else
             Lval = VarLval
         )
     ).
@@ -1437,13 +1437,13 @@ ml_must_box_field_type_category(CtorCat, UnboxedFloat, Width) = MustBox :-
 
 ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
         BoxedRval, !GlobalData) :-
-    (
+    ( if
         ( MLDS_Type = mercury_type(type_variable(_, _), _, _)
         ; MLDS_Type = mlds_generic_type
         )
-    ->
+    then
         BoxedRval = Rval
-    ;
+    else if
         % For the MLDS->C back-end, we need to handle constant floats
         % specially. Boxed floats normally get heap allocated, whereas for
         % other types boxing is just a cast (casts are OK in static
@@ -1454,12 +1454,12 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),
         Target = target_c
-    ->
+    then
         HaveUnboxedFloats = ml_global_data_have_unboxed_floats(!.GlobalData),
-        (
+        ( if
             HaveUnboxedFloats = do_not_have_unboxed_floats,
             DoubleWidth = no
-        ->
+        then
             % Generate a local static constant for this float.
             module_info_get_name(ModuleInfo, ModuleName),
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
@@ -1470,12 +1470,12 @@ ml_gen_box_const_rval(ModuleInfo, Context, MLDS_Type, DoubleWidth, Rval,
             % Return as the boxed rval the address of that constant,
             % cast to mlds_generic_type.
             BoxedRval = ml_unop(cast(mlds_generic_type), ConstAddrRval)
-        ;
+        else
             % This is not a real box, but a cast. The "box" is required as it
             % may be further cast to pointer types.
             BoxedRval = ml_unop(box(MLDS_Type), Rval)
         )
-    ;
+    else
         BoxedRval = ml_unop(box(MLDS_Type), Rval)
     ).
 
@@ -1487,40 +1487,40 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
         ArgRval = VarRval
     ;
         BoxPolicy = native_if_possible,
-        (
+        ( if
             % If converting from polymorphic type to concrete type, then unbox.
             SourceType = type_variable(_, _),
             DestType \= type_variable(_, _)
-        ->
+        then
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
             ArgRval = ml_unop(unbox(MLDS_DestType), VarRval)
-        ;
+        else if
             % If converting from concrete type to polymorphic type, then box.
             SourceType \= type_variable(_, _),
             DestType = type_variable(_, _)
-        ->
+        then
             MLDS_SourceType =
                 mercury_type_to_mlds_type(ModuleInfo, SourceType),
             ArgRval = ml_unop(box(MLDS_SourceType), VarRval)
-        ;
+        else if
             % If converting to float, cast to mlds_generic_type and then unbox.
             DestType = builtin_type(builtin_type_float),
             SourceType \= builtin_type(builtin_type_float)
-        ->
+        then
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
             ArgRval = ml_unop(unbox(MLDS_DestType),
                 ml_unop(cast(mlds_generic_type), VarRval))
-        ;
+        else if
             % If converting from float, box and then cast the result.
             SourceType = builtin_type(builtin_type_float),
             DestType \= builtin_type(builtin_type_float)
-        ->
+        then
             MLDS_SourceType =
                 mercury_type_to_mlds_type(ModuleInfo, SourceType),
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
             ArgRval = ml_unop(cast(MLDS_DestType),
                 ml_unop(box(MLDS_SourceType), VarRval))
-        ;
+        else if
             % If converting from an array(T) to array(X) where X is a concrete
             % instance, we should insert a cast to the concrete instance.
             % Also when converting to array(T) from array(X) we should cast
@@ -1538,19 +1538,19 @@ ml_gen_box_or_unbox_rval(ModuleInfo, SourceType, DestType, BoxPolicy, VarRval,
             % the extra assignments introduced can inhibit tail call
             % optimisation.
             SourceType \= DestType
-        ->
+        then
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
             ArgRval = ml_unop(cast(MLDS_DestType), VarRval)
-        ;
+        else if
             % If converting from one concrete type to a different one, then
             % cast. This is needed to handle construction/deconstruction
             % unifications for no_tag types.
             %
-            \+ type_unify(SourceType, DestType, [], map.init, _)
-        ->
+            not type_unify(SourceType, DestType, [], map.init, _)
+        then
             MLDS_DestType = mercury_type_to_mlds_type(ModuleInfo, DestType),
             ArgRval = ml_unop(cast(MLDS_DestType), VarRval)
-        ;
+        else
             % Otherwise leave unchanged.
             ArgRval = VarRval
         )
@@ -1565,12 +1565,12 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_box_or_unbox_rval(ModuleInfo, CalleeType, CallerType, BoxPolicy,
         ml_lval(VarLval), BoxedRval),
-    ( BoxedRval = ml_lval(VarLval) ->
+    ( if BoxedRval = ml_lval(VarLval) then
         ArgLval = VarLval,
         ConvDecls = [],
         ConvInputStatements = [],
         ConvOutputStatements = []
-    ;
+    else
         % If that didn't work, then we need to declare a fresh variable
         % to use as the arg, and to generate statements to box/unbox
         % that fresh arg variable and assign it to/from the output
@@ -1599,10 +1599,10 @@ ml_gen_box_or_unbox_lval(CallerType, CalleeType, BoxPolicy, VarLval, VarName,
             % For closure wrappers, the argument type_infos are stored in
             % the `type_params' local, so we need to handle the GC tracing
             % code specially.
-            ( CallerType = type_variable(_, _) ->
+            ( if CallerType = type_variable(_, _) then
                 ml_gen_local_for_output_arg(ArgVarName, CalleeType, ArgNum,
                     Context, ArgVarDecl, !Info)
-            ;
+            else
                 unexpected($module, $pred,
                     "invalid CalleeType for closure wrapper")
             )
@@ -1933,10 +1933,10 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     InnerFuncParams0 = mlds_func_params(InnerArgs0, Rets),
     InnerArgRvals = list.map(
         (func(mlds_argument(Data, Type, _GC) ) = Lval :-
-            ( Data = entity_data(mlds_data_var(VarName)) ->
+            ( if Data = entity_data(mlds_data_var(VarName)) then
                 Lval = ml_lval(ml_var(qual(MLDS_Module, module_qual, VarName),
                     Type))
-            ;
+            else
                 unexpected($module, $pred,
                     "expected variable name in continuation parameters")
             )
@@ -1963,11 +1963,11 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     ProxySignature = mlds_func_signature([InnerFuncArgType | ArgTypes],
         RetTypes),
     ProxyArgRvals = [ContinuationFuncRval | ArgRvals],
-    (
+    ( if
         Defn = mlds_defn(EntityName, _, _, EntityDefn),
         EntityName = entity_function(PredLabel, ProcId, yes(SeqNum), _),
         EntityDefn = mlds_function(_, _, body_defined_here(_), _, _)
-    ->
+    then
         % We call the proxy function.
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
         QualProcLabel = qual(MLDS_Module, module_qual, ProcLabel),
@@ -1979,7 +1979,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
             ProxyArgRvals, RetLvals, CallKind),
         BlockStmt = ml_stmt_block([Defn], [statement(Stmt, MLDS_Context)]),
         Statement = statement(BlockStmt, MLDS_Context)
-    ;
+    else
         unexpected($module, $pred,
             "success continuation generated was not a function")
     ).
@@ -2087,17 +2087,17 @@ ml_generate_field_assign(OutVarLval, FieldType, FieldId, VectorCommon,
 
 ml_generate_field_assigns(OutVars, FieldTypes, FieldIds, VectorCommon,
         StructType, IndexRval, Context, Statements, !Info) :-
-    (
+    ( if
         OutVars = [],
         FieldTypes = [],
         FieldIds = []
-    ->
+    then
         Statements = []
-    ;
+    else if
         OutVars = [HeadOutVar | TailOutVars],
         FieldTypes = [HeadFieldType | TailFieldTypes],
         FieldIds = [HeadFieldId | TailFieldIds]
-    ->
+    then
         ml_gen_var(!.Info, HeadOutVar, HeadOutVarLval),
         ml_generate_field_assign(HeadOutVarLval, HeadFieldType, HeadFieldId,
             VectorCommon, StructType, IndexRval, Context, HeadStatement,
@@ -2106,7 +2106,7 @@ ml_generate_field_assigns(OutVars, FieldTypes, FieldIds, VectorCommon,
             VectorCommon, StructType, IndexRval, Context, TailStatements,
             !Info),
         Statements = [HeadStatement | TailStatements]
-    ;
+    else
         unexpected($module, $pred, "mismatched lists")
     ).
 
@@ -2127,9 +2127,9 @@ get_copy_out_option(Globals, CodeModel) = CopyOut :-
     ).
 
 fixup_builtin_module(ModuleName0) = ModuleName :-
-    ( ModuleName0 = unqualified("") ->
+    ( if ModuleName0 = unqualified("") then
         ModuleName = mercury_public_builtin_module
-    ;
+    else
         ModuleName = ModuleName0
     ).
 

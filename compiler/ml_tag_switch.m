@@ -126,13 +126,13 @@ gen_tagged_case_code(CodeModel, TaggedCase, CaseId, !CodeMap, !Unit,
     % Do not allow the generated code to be literally duplicated if it contains
     % labels. Rather, we will regenerate the code at every point it is required
     % so that the labels are unique.
-    (
+    ( if
         OtherTaggedConsIds = [_ | _],
         statement_contains_label(Statement)
-    ->
+    then
         MaybeCode = generate(Goal),
         Info = Info0
-    ;
+    else
         MaybeCode = immediate(Statement),
         Info = Info1
     ),
@@ -172,9 +172,9 @@ find_any_split_cases(CaseIdPtagsMap, IsAnyCaseSplit) :-
     is det.
 
 find_any_split_cases_2(_CaseId, Ptags, !IsAnyCaseSplit) :-
-    ( set.is_singleton(Ptags, _OnlyPtag) ->
+    ( if set.is_singleton(Ptags, _OnlyPtag) then
         true
-    ;
+    else
         !:IsAnyCaseSplit = some_case_is_split_between_ptags
     ).
 
@@ -233,27 +233,27 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
             CaseCanFail = cannot_fail
         ;
             CanFail = can_fail,
-            (
+            ( if
                 list.length(GoalList, GoalCount),
                 FullGoalCount = MaxSecondary + 1,
                 FullGoalCount = GoalCount
-            ->
+            then
                 CaseCanFail = cannot_fail
-            ;
+            else
                 CaseCanFail = can_fail
             )
         ),
         group_stag_cases(GoalList, GroupedGoalList),
-        (
+        ( if
             GroupedGoalList = [CaseId - _Stags],
             CaseCanFail = cannot_fail
-        ->
+        then
             % There is only one possible matching goal, so we don't need
             % to switch on it. This can happen if the other functor symbols
             % that share this primary tag are ruled out by the initial inst
             % of the switched-on variable.
             lookup_code_map(CodeMap, CaseId, CodeModel, Statement, !Info)
-        ;
+        else
             gen_stag_switch(GroupedGoalList, CodeMap, MainPtag, SecTagLocn,
                 Var, CodeModel, CaseCanFail, Context, Statement, !Info)
         )
@@ -292,11 +292,11 @@ group_stag_cases(Goals, GroupedGoals) :-
 build_stag_rev_map([], !RevMap).
 build_stag_rev_map([Entry | Entries], !RevMap) :-
     Entry = Stag - CaseId,
-    ( map.search(!.RevMap, CaseId, OldEntry) ->
+    ( if map.search(!.RevMap, CaseId, OldEntry) then
         OldEntry = stags(OldFirstStag, OldLaterStags),
         NewEntry = stags(OldFirstStag, [Stag | OldLaterStags]),
         map.det_update(CaseId, NewEntry, !RevMap)
-    ;
+    else
         NewEntry = stags(Stag, []),
         map.det_insert(CaseId, NewEntry, !RevMap)
     ),

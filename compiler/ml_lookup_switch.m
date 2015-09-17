@@ -148,20 +148,20 @@ ml_is_lookup_switch(SwitchVar, TaggedCases, GoalInfo, CodeModel,
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, static_ground_cells,
         StaticGroundCells),
-    (
+    ( if
         StaticGroundCells = yes,
         ml_generate_constants_for_lookup_switch(CodeModel, OutVars,
             OtherNonLocals, TaggedCases, map.init, CaseSolnMap, !Info)
-    ->
+    then
         % While the LLDS backend has to worry about about implementing trailing
         % for model_non lookup switches, we do not. The MLDS backend implements
         % trailing by a HLDS-to-HLDS transform (which is in add_trail_ops.m),
         % so we can get here only if trailing is not enabled, since otherwise
         % the calls or foreign_procs inserted into all non-first disjuncts
         % would cause ml_generate_constants_for_lookup_switch to fail.
-        ( project_all_to_one_solution(CaseSolnMap, CaseValuePairMap) ->
+        ( if project_all_to_one_solution(CaseSolnMap, CaseValuePairMap) then
             CaseConsts = all_one_soln(CaseValuePairMap)
-        ;
+        else
             CaseConsts = some_several_solns(CaseSolnMap, unit)
         ),
         ml_gen_info_get_var_types(!.Info, VarTypes),
@@ -170,7 +170,7 @@ ml_is_lookup_switch(SwitchVar, TaggedCases, GoalInfo, CodeModel,
         LookupSwitchInfo = ml_lookup_switch_info(CaseConsts, OutVars,
             FieldTypes),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
-    ;
+    else
         % We keep the original !.Info.
         MaybeLookupSwitchInfo = no
     ).
@@ -188,7 +188,7 @@ ml_generate_constants_for_lookup_switch(CodeModel, OutVars, ArmNonLocals,
     TaggedCase = tagged_case(_TaggedMainConsId, _TaggedOtherConsIds,
         CaseId, Goal),
     Goal = hlds_goal(GoalExpr, _GoalInfo),
-    ( GoalExpr = disj(Disjuncts) ->
+    ( if GoalExpr = disj(Disjuncts) then
         (
             Disjuncts = []
         ;
@@ -202,7 +202,7 @@ ml_generate_constants_for_lookup_switch(CodeModel, OutVars, ArmNonLocals,
             SolnConsts = several_solns(FirstSoln, LaterSolns),
             map.det_insert(CaseId, SolnConsts, !CaseIdMap)
         )
-    ;
+    else
         goal_is_conj_of_unify(ArmNonLocals, Goal),
         ml_generate_constants_for_arm(OutVars, Goal, Soln, !Info),
         SolnConsts = one_soln(Soln),
@@ -258,9 +258,9 @@ ml_gen_atomic_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
         ml_lookup_switch_info(CaseIdConstMap, OutVars, FieldTypes),
     ml_gen_var(!.Info, SwitchVar, SwitchVarLval),
     SwitchVarRval = ml_lval(SwitchVarLval),
-    ( StartVal = 0 ->
+    ( if StartVal = 0 then
         IndexRval = SwitchVarRval
-    ;
+    else
         StartRval = ml_const(mlconst_int(StartVal)),
         IndexRval = ml_binop(int_sub, SwitchVarRval, StartRval)
     ),
@@ -608,11 +608,11 @@ ml_generate_bitvec_test(MLDS_ModuleName, Context, IndexRval, CaseVals,
     % Optimize the single-word case: if all the cases fit into a single word,
     % then the word to use is always that word, and the index specifies which
     % bit; we don't need the array.
-    ( BitVecArgRvals = [SingleWordRval] ->
+    ( if BitVecArgRvals = [SingleWordRval] then
         % Do not save GlobalData back into !Info.
         WordRval = SingleWordRval,
         BitNumRval = IndexRval
-    ;
+    else
         % Otherwise, the high bits of the index specify which word in the array
         % to use and the low bits specify which bit in that word.
         ml_gen_info_set_global_data(GlobalData, !Info),
@@ -667,9 +667,9 @@ ml_generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, !BitMap) :-
     Val = Tag - Start,
     WordNum = Val // WordBits,
     Offset = Val mod WordBits,
-    ( map.search(!.BitMap, WordNum, X0) ->
+    ( if map.search(!.BitMap, WordNum, X0) then
         X1 = X0 \/ (1 << Offset)
-    ;
+    else
         X1 = (1 << Offset)
     ),
     map.set(WordNum, X1, !BitMap),
@@ -681,10 +681,10 @@ ml_generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, !BitMap) :-
 ml_generate_bit_vec_initializers([], _, [], []).
 ml_generate_bit_vec_initializers(All @ [WordNum - Bits | Rest], Count,
         [Rval | Rvals], [Initializer | Initializers]) :-
-    ( Count < WordNum ->
+    ( if Count < WordNum then
         WordVal = 0,
         Remainder = All
-    ;
+    else
         WordVal = Bits,
         Remainder = Rest
     ),
@@ -703,10 +703,10 @@ ml_construct_simple_switch_vector(_, _, _, _, [], []).
 ml_construct_simple_switch_vector(ModuleInfo, StructType, FieldTypes,
         CurIndex, [Pair | Pairs], [RowInitializer | RowInitializers]) :-
     Pair = Index - Rvals,
-    ( CurIndex < Index ->
+    ( if CurIndex < Index then
         FieldRvals = list.map(ml_default_value_for_type, FieldTypes),
         RemainingPairs = [Pair | Pairs]
-    ;
+    else
         FieldRvals = Rvals,
         RemainingPairs = Pairs
     ),
@@ -727,9 +727,9 @@ ml_construct_model_non_switch_vector(ModuleInfo, CurIndex, EndVal,
         FirstSolnStructType, LaterSolnStructType, FieldTypes,
         !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
         !HadDummyRows) :-
-    ( CurIndex > EndVal ->
+    ( if CurIndex > EndVal then
         true
-    ;
+    else
         make_dummy_first_soln_row(FirstSolnStructType, FieldTypes,
             !RevFirstSolnRowInitializers),
         !:HadDummyRows = yes,
@@ -745,12 +745,12 @@ ml_construct_model_non_switch_vector(ModuleInfo, CurIndex, EndVal,
         !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
         !HadDummyRows) :-
     Pair = Index - Soln,
-    ( CurIndex < Index ->
+    ( if CurIndex < Index then
         make_dummy_first_soln_row(FirstSolnStructType, FieldTypes,
             !RevFirstSolnRowInitializers),
         !:HadDummyRows = yes,
         NextPairs = [Pair | Pairs]
-    ;
+    else
         (
             Soln = one_soln(FieldRvals),
             FieldInitializers = list.map(wrap_init_obj, FieldRvals),

@@ -337,15 +337,15 @@ ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
         OutTypes, LaterSolnStructTypeNum, LaterSolnStructType,
         LaterSolnOutFieldIds, GlobalData1, GlobalData2),
-    (
+    ( if
         FirstSolnFieldIds =
             [NumLaterSolnsFieldIdPrime, FirstLaterSolnRowFieldIdPrime |
             FirstSolnOutFieldIdsPrime]
-    ->
+    then
         NumLaterSolnsFieldId = NumLaterSolnsFieldIdPrime,
         FirstLaterSolnRowFieldId = FirstLaterSolnRowFieldIdPrime,
         FirstSolnOutFieldIds = FirstSolnOutFieldIdsPrime
-    ;
+    else
         unexpected($module, $pred, "bad FieldIds")
     ),
 
@@ -768,10 +768,10 @@ ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
     MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
     MLDS_IntType = mlds_native_int_type,
 
-    ( NumCollisions = 0 ->
+    ( if NumCollisions = 0 then
         MLDS_ArgTypes = [MLDS_StringType],
         LoopPresent = no
-    ;
+    else
         MLDS_ArgTypes = [MLDS_StringType, MLDS_IntType],
         LoopPresent = yes
     ),
@@ -786,18 +786,25 @@ ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
         MLDS_ArgTypes, StructTypeNum, StructType, FieldIds,
         GlobalData0, GlobalData1),
-    ( NumCollisions = 0 ->
-        ( FieldIds = [StringFieldIdPrime] ->
-            StringFieldId = StringFieldIdPrime,
+    ( if NumCollisions = 0 then
+        (
+            FieldIds = [StringFieldId],
             MaybeNextSlotFieldId = no
         ;
+            ( FieldIds = []
+            ; FieldIds = [_, _ | _]
+            ),
             unexpected($module, $pred, "bad FieldIds")
         )
-    ;
-        ( FieldIds = [StringFieldIdPrime, NextSlotFieldIdPrime] ->
-            StringFieldId = StringFieldIdPrime,
-            MaybeNextSlotFieldId = yes(NextSlotFieldIdPrime)
+    else
+        (
+            FieldIds = [StringFieldId, NextSlotFieldId],
+            MaybeNextSlotFieldId = yes(NextSlotFieldId)
         ;
+            ( FieldIds = []
+            ; FieldIds = [_]
+            ; FieldIds = [_, _, _ | _]
+            ),
             unexpected($module, $pred, "bad FieldIds")
         )
     ),
@@ -854,9 +861,9 @@ build_str_case_id_assoc_list([TaggedCase | TaggedCases],
 
 add_to_strs_case_ids(CaseId, TaggedConsId, !RevStrsCaseIds) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
-    ( ConsTag = string_tag(String) ->
+    ( if ConsTag = string_tag(String) then
         !:RevStrsCaseIds = [String - CaseId | !.RevStrsCaseIds]
-    ;
+    else
         unexpected($module, $pred, "non-string tag")
     ).
 
@@ -921,9 +928,9 @@ gen_tagged_case_code_for_string_switch(CodeModel, TaggedCase,
 
 gen_string_switch_case_comment(TaggedConsId) = String :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
-    ( ConsTag = string_tag(ConsString) ->
+    ( if ConsTag = string_tag(ConsString) then
         String = """" ++ ConsString ++ """"
-    ;
+    else
         unexpected($module, $pred, "non-string tag")
     ).
 
@@ -948,9 +955,9 @@ gen_string_switch_case_comment(TaggedConsId) = String :-
 
 ml_gen_string_hash_jump_slots(Slot, TableSize, HashSlotMap, StructType,
         MaybeNextSlotId, !RevRowInitializers, !RevMap) :-
-    ( Slot = TableSize ->
+    ( if Slot = TableSize then
         true
-    ;
+    else
         ml_gen_string_hash_jump_slot(Slot, HashSlotMap,
             StructType, MaybeNextSlotId, RowInitializer, !RevMap),
         !:RevRowInitializers = [RowInitializer | !.RevRowInitializers],
@@ -965,19 +972,19 @@ ml_gen_string_hash_jump_slots(Slot, TableSize, HashSlotMap, StructType,
 
 ml_gen_string_hash_jump_slot(Slot, HashSlotMap, StructType,
         MaybeNextSlotId, RowInitializer, !RevMap) :-
-    ( map.search(HashSlotMap, Slot, HashSlotMapEntry) ->
+    ( if map.search(HashSlotMap, Slot, HashSlotMapEntry) then
         HashSlotMapEntry = string_hash_slot(String, Next, CaseId),
         StringRval = ml_const(mlconst_string(String)),
         NextSlotRval = ml_const(mlconst_int(Next)),
-        ( map.search(!.RevMap, CaseId, OldEntry) ->
+        ( if map.search(!.RevMap, CaseId, OldEntry) then
             OldEntry = hash_slots(OldFirstSlot, OldLaterSlots),
             NewEntry = hash_slots(OldFirstSlot, [Slot | OldLaterSlots]),
             map.det_update(CaseId, NewEntry, !RevMap)
-        ;
+        else
             NewEntry = hash_slots(Slot, []),
             map.det_insert(CaseId, NewEntry, !RevMap)
         )
-    ;
+    else
         StringRval = ml_const(mlconst_null(ml_string_type)),
         NextSlotRval = ml_const(mlconst_int(-2))
     ),
@@ -1066,10 +1073,10 @@ ml_generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
     MLDS_IntType = mlds_native_int_type,
 
-    ( NumCollisions = 0 ->
+    ( if NumCollisions = 0 then
         MLDS_ArgTypes = [MLDS_StringType | OutTypes],
         LoopPresent = no
-    ;
+    else
         MLDS_ArgTypes = [MLDS_StringType, MLDS_IntType | OutTypes],
         LoopPresent = yes
     ),
@@ -1085,23 +1092,22 @@ ml_generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
         MLDS_ArgTypes, StructTypeNum, StructType, FieldIds,
         GlobalData0, GlobalData1),
-    ( NumCollisions = 0 ->
-        ( FieldIds = [StringFieldIdPrime | OutFieldIdsPrime] ->
-            StringFieldId = StringFieldIdPrime,
-            OutFieldIds = OutFieldIdsPrime,
+    ( if NumCollisions = 0 then
+        (
+            FieldIds = [StringFieldId | OutFieldIds],
             MaybeNextSlotFieldId = no
         ;
+            FieldIds = [],
             unexpected($module, $pred, "bad FieldIds")
         )
-    ;
+    else
         (
-            FieldIds =
-                [StringFieldIdPrime, NextSlotFieldIdPrime | OutFieldIdsPrime]
-        ->
-            StringFieldId = StringFieldIdPrime,
-            OutFieldIds = OutFieldIdsPrime,
-            MaybeNextSlotFieldId = yes(NextSlotFieldIdPrime)
+            FieldIds = [StringFieldId, NextSlotFieldId | OutFieldIds],
+            MaybeNextSlotFieldId = yes(NextSlotFieldId)
         ;
+            ( FieldIds = []
+            ; FieldIds = [_]
+            ),
             unexpected($module, $pred, "bad FieldIds")
         )
     ),
@@ -1152,9 +1158,9 @@ ml_generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
 ml_gen_string_hash_simple_lookup_slots(Slot, TableSize, StructType,
         HashSlotMap, MaybeNextSlotId, DummyOutInitializers,
         !RevRowInitializers) :-
-    ( Slot = TableSize ->
+    ( if Slot = TableSize then
         true
-    ;
+    else
         ml_gen_string_hash_simple_lookup_slot(Slot, StructType, HashSlotMap,
             MaybeNextSlotId, DummyOutInitializers, RowInitializer),
         !:RevRowInitializers = [RowInitializer | !.RevRowInitializers],
@@ -1170,12 +1176,12 @@ ml_gen_string_hash_simple_lookup_slots(Slot, TableSize, StructType,
 
 ml_gen_string_hash_simple_lookup_slot(Slot, StructType, HashSlotMap,
         MaybeNextSlotId, DummyOutInitializers, RowInitializer) :-
-    ( map.search(HashSlotMap, Slot, HashSlotMapEntry) ->
+    ( if map.search(HashSlotMap, Slot, HashSlotMapEntry) then
         HashSlotMapEntry = string_hash_slot(String, Next, OutRvals),
         StringRval = ml_const(mlconst_string(String)),
         NextSlotRval = ml_const(mlconst_int(Next)),
         OutInitializers = list.map(wrap_init_obj, OutRvals)
-    ;
+    else
         StringRval = ml_const(mlconst_null(ml_string_type)),
         NextSlotRval = ml_const(mlconst_int(-2)),
         OutInitializers = DummyOutInitializers
@@ -1217,11 +1223,11 @@ ml_generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     MLDS_StringType = mercury_type_to_mlds_type(ModuleInfo, string_type),
     MLDS_IntType = mlds_native_int_type,
 
-    ( NumCollisions = 0 ->
+    ( if NumCollisions = 0 then
         FirstSolnFieldTypes = [MLDS_StringType,
             MLDS_IntType, MLDS_IntType | OutTypes],
         LoopPresent = no
-    ;
+    else
         FirstSolnFieldTypes = [MLDS_StringType, MLDS_IntType,
             MLDS_IntType, MLDS_IntType | OutTypes],
         LoopPresent = yes
@@ -1240,33 +1246,33 @@ ml_generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
         OutTypes, LaterSolnStructTypeNum, LaterSolnStructType,
         LaterSolnOutFieldIds, GlobalData1, GlobalData2),
-    ( NumCollisions = 0 ->
-        (
+    ( if NumCollisions = 0 then
+        ( if
             FirstSolnFieldIds = [StringFieldIdPrime,
                 NumLaterSolnsFieldIdPrime, FirstLaterSolnRowFieldIdPrime
                 | FirstSolnOutFieldIdsPrime]
-        ->
+        then
             StringFieldId = StringFieldIdPrime,
             NumLaterSolnsFieldId = NumLaterSolnsFieldIdPrime,
             FirstLaterSolnRowFieldId = FirstLaterSolnRowFieldIdPrime,
             FirstSolnOutFieldIds = FirstSolnOutFieldIdsPrime,
             MaybeNextSlotFieldId = no
-        ;
+        else
             unexpected($module, $pred, "bad FieldIds")
         )
-    ;
-        (
+    else
+        ( if
             FirstSolnFieldIds =
                 [StringFieldIdPrime, NextSlotFieldIdPrime,
                 NumLaterSolnsFieldIdPrime, FirstLaterSolnRowFieldIdPrime
                 | FirstSolnOutFieldIdsPrime]
-        ->
+        then
             StringFieldId = StringFieldIdPrime,
             NumLaterSolnsFieldId = NumLaterSolnsFieldIdPrime,
             FirstLaterSolnRowFieldId = FirstLaterSolnRowFieldIdPrime,
             FirstSolnOutFieldIds = FirstSolnOutFieldIdsPrime,
             MaybeNextSlotFieldId = yes(NextSlotFieldIdPrime)
-        ;
+        else
             unexpected($module, $pred, "bad FieldIds")
         )
     ),
@@ -1316,9 +1322,9 @@ ml_gen_string_hash_several_soln_lookup_slots(Slot, TableSize,
         MaybeNextSlotId, DummyOutInitializers,
         !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
         !.CurLaterSolnIndex) :-
-    ( Slot = TableSize ->
+    ( if Slot = TableSize then
         true
-    ;
+    else
         ml_gen_string_hash_several_soln_lookup_slot(Slot, HashSlotMap,
             FirstSolnStructType, LaterSolnStructType, MaybeNextSlotId,
             DummyOutInitializers, FirstSolnsRowInitializer,
@@ -1343,7 +1349,7 @@ ml_gen_string_hash_several_soln_lookup_slot(Slot, HashSlotMap,
         FirstSolnStructType, LaterSolnStructType, MaybeNextSlotId,
         DummyOutInitializers, FirstSolnsRowInitializer,
         !LaterSolnRowInitializersCord, !CurLaterSolnIndex) :-
-    ( map.search(HashSlotMap, Slot, HashSlotMapEntry) ->
+    ( if map.search(HashSlotMap, Slot, HashSlotMapEntry) then
         HashSlotMapEntry = string_hash_slot(String, Next, Solns),
         StringRval = ml_const(mlconst_string(String)),
         NextSlotRval = ml_const(mlconst_int(Next)),
@@ -1365,7 +1371,7 @@ ml_gen_string_hash_several_soln_lookup_slot(Slot, HashSlotMap,
                 from_list(LaterSolnRowInitializers),
             !:CurLaterSolnIndex = !.CurLaterSolnIndex + NumLaterSolns
         )
-    ;
+    else
         StringRval = ml_const(mlconst_null(ml_string_type)),
         NextSlotRval = ml_const(mlconst_int(-2)),
         NumLaterSolnsRval = ml_const(mlconst_int(-1)),
@@ -1608,10 +1614,13 @@ ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
         MLDS_ArgTypes, StructTypeNum, StructType, FieldIds,
         GlobalData0, GlobalData1),
     ml_gen_info_set_global_data(GlobalData1, !Info),
-    ( FieldIds = [StringFieldIdPrime, CaseNumFieldIdPrime] ->
-        StringFieldId = StringFieldIdPrime,
-        CaseNumFieldId = CaseNumFieldIdPrime
+    (
+        FieldIds = [StringFieldId, CaseNumFieldId]
     ;
+        ( FieldIds = []
+        ; FieldIds = [_]
+        ; FieldIds = [_, _, _ | _]
+        ),
         unexpected($module, $pred, "bad FieldIds")
     ),
     map.init(CaseLabelMap0),
@@ -1738,10 +1747,10 @@ ml_generate_string_binary_simple_lookup_switch(VarRval, CaseValues0,
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
         MLDS_ArgTypes, StructTypeNum, StructType, FieldIds,
         GlobalData0, GlobalData1),
-    ( FieldIds = [StringFieldIdPrime | OutFieldIdsPrime] ->
-        StringFieldId = StringFieldIdPrime,
-        OutFieldIds = OutFieldIdsPrime
+    (
+        FieldIds = [StringFieldId | OutFieldIds]
     ;
+        FieldIds = [],
         unexpected($module, $pred, "bad FieldIds")
     ),
     ml_gen_string_binary_simple_lookup_initializers(CaseValues, StructType,
@@ -1829,15 +1838,15 @@ ml_generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns0,
     ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target,
         LaterSolnFieldTypes, LaterSolnStructTypeNum, LaterSolnStructType,
         LaterSolnOutFieldIds, GlobalData1, GlobalData2),
-    (
+    ( if
         FirstSolnFieldIds = [StringFieldIdPrime, NumLaterSolnsFieldIdPrime,
             FirstLaterSolnRowFieldIdPrime | FirstSolnOutFieldIdsPrime]
-    ->
+    then
         StringFieldId = StringFieldIdPrime,
         NumLaterSolnsFieldId = NumLaterSolnsFieldIdPrime,
         FirstLaterSolnRowFieldId = FirstLaterSolnRowFieldIdPrime,
         FirstSolnOutFieldIds = FirstSolnOutFieldIdsPrime
-    ;
+    else
         unexpected($module, $pred, "bad FieldIds")
     ),
     ml_gen_string_binary_several_lookup_initializers(CaseSolns,
@@ -2126,9 +2135,9 @@ ml_should_use_stop_loop(MLDS_Context, LoopPresent,
         globals.lookup_string_option(Globals, experiment, Experiment),
         (
             SupportsGoto = yes,
-            ( Experiment = "use_stop_loop" ->
+            ( if Experiment = "use_stop_loop" then
                 UseStopLoop = yes
-            ;
+            else
                 UseStopLoop = no
             )
         ;
@@ -2237,25 +2246,25 @@ ml_wrap_loop_break(CodeModel, LoopPresent, MLDS_Context, MaybeStopLoopVarLval,
     ),
     (
         MaybeStopLoopVarLval = no,
-        (
+        ( if
             LoopPresent = no,
             OnlyFailAfterStatements = []
-        ->
+        then
             BodyStatement =
                 statement(ml_stmt_block(MatchDefns, MatchStatements),
                     MLDS_Context),
             AfterStatements = []
-        ;
+        else
             ml_gen_info_get_module_info(!.Info, ModuleInfo),
             module_info_get_globals(ModuleInfo, Globals),
             SupportsBreakContinue =
                 globals_target_supports_break_and_continue(Globals),
             globals.lookup_string_option(Globals, experiment, Experiment),
-            (
+            ( if
                 SupportsBreakContinue = yes,
                 OnlyFailAfterStatements = [],
                 Experiment \= "use_end_label"
-            ->
+            then
                 BreakCommentStatement = statement(ml_stmt_atomic(
                     comment("break out of search loop")), MLDS_Context),
                 BreakStatement =
@@ -2266,7 +2275,7 @@ ml_wrap_loop_break(CodeModel, LoopPresent, MLDS_Context, MaybeStopLoopVarLval,
                             [BreakCommentStatement, BreakStatement]),
                         MLDS_Context),
                 AfterStatements = []
-            ;
+            else
                 ml_gen_new_label(EndLabel, !Info),
                 GotoCommentStatement = statement(ml_stmt_atomic(
                     comment("jump out of search loop")), MLDS_Context),
@@ -2286,14 +2295,14 @@ ml_wrap_loop_break(CodeModel, LoopPresent, MLDS_Context, MaybeStopLoopVarLval,
         )
     ;
         MaybeStopLoopVarLval = yes(StopLoopVarLval),
-        (
+        ( if
             LoopPresent = no,
             OnlyFailAfterStatements = []
-        ->
+        then
             BodyStatement =
                 statement(ml_stmt_block(MatchDefns, MatchStatements),
                     MLDS_Context)
-        ;
+        else
             SetStopLoopStatement =
                 statement(ml_stmt_atomic(
                     assign(StopLoopVarLval, ml_const(mlconst_int(1)))),

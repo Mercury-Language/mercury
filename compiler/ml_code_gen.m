@@ -661,10 +661,12 @@ ml_gen_goal_expr(GoalExpr, CodeModel, Context, GoalInfo, Decls, Statements,
         ml_gen_negation(SubGoal, CodeModel, Context, Decls, Statements, !Info)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+        ( if
+            Reason = from_ground_term(TermVar, from_ground_term_construct)
+        then
             ml_gen_ground_term(TermVar, SubGoal, Statements, !Info),
             Decls = []
-        ;
+        else
             ml_gen_commit(SubGoal, CodeModel, Context, Decls, Statements,
                 !Info)
         )
@@ -1048,10 +1050,10 @@ ml_gen_conj(Conjuncts, CodeModel, Context, Decls, Statements, !Info) :-
         Rest = [_ | _],
         First = hlds_goal(_, FirstGoalInfo),
         FirstDeterminism = goal_info_get_determinism(FirstGoalInfo),
-        ( determinism_components(FirstDeterminism, _, at_most_zero) ->
+        ( if determinism_components(FirstDeterminism, _, at_most_zero) then
             % the `Rest' code is unreachable
             ml_gen_goal(CodeModel, First, Decls, Statements, !Info)
-        ;
+        else
             determinism_to_code_model(FirstDeterminism, FirstCodeModel),
             DoGenFirst = ml_gen_goal(FirstCodeModel, First),
             DoGenRest = ml_gen_conj(Rest, CodeModel, Context),

@@ -191,14 +191,14 @@ ml_gen_switch(SwitchVar, CanFail, Cases, CodeModel, Context, GoalInfo,
             SwitchCategory = tag_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
             globals.lookup_int_option(Globals, tag_switch_size, TagSize),
-            (
+            ( if
                 NumConsIds >= TagSize,
                 NumArms > 1,
                 globals_target_supports_int_switch(Globals) = yes
-            ->
+            then
                 ml_generate_tag_switch(TaggedCases, SwitchVar, CodeModel,
                     CanFail, Context, Statements, !Info)
-            ;
+            else
                 ml_switch_generate_if_then_else_chain(TaggedCases,
                     SwitchVar, CodeModel, CanFail, Context, Statements, !Info)
             ),
@@ -223,7 +223,7 @@ ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
     num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    (
+    ( if
         ml_gen_info_get_high_level_data(!.Info, no),
         MaybeIntSwitchInfo = int_switch(LowerLimit, UpperLimit, NumValues),
         globals.lookup_bool_option(Globals, static_ground_cells, yes),
@@ -242,17 +242,17 @@ ml_gen_smart_atomic_switch(SwitchVar, SwitchVarType, CanFail,
         ml_is_lookup_switch(SwitchVar, FilteredTaggedCases, GoalInfo,
             CodeModel, MaybeLookupSwitchInfo, !Info),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
-    ->
+    then
         ml_gen_atomic_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
             CodeModel, Context, FirstVal, LastVal,
             NeedBitVecCheck, NeedRangeCheck, LookupStatement, !Info),
         Statements = [LookupStatement]
-    ;
+    else if
         globals_target_supports_int_switch(Globals) = yes
-    ->
+    then
         ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
             CodeModel, CanFail, Context, Statements, !Info)
-    ;
+    else
         ml_switch_generate_if_then_else_chain(TaggedCases,
             SwitchVar, CodeModel, CanFail, Context, Statements, !Info)
     ),
@@ -270,17 +270,17 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
     num_cons_ids_in_tagged_cases(FilteredTaggedCases, NumConsIds, NumArms),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    (
+    ( if
         % If we don't have at least two arms, an if-then-else chain
         % (which will contain at most one if-then-else) will be faster than
         % any other method for implementing the "switch".
         NumArms < 2
-    ->
+    then
         ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
             SwitchVar, CodeModel, FilteredCanFail, Context,
             Statements, !Info),
         Decls = []
-    ;
+    else if
         globals_target_supports_string_switch(Globals) = yes,
         (
             % Even if we could use a trie, a hash switch or binary switch,
@@ -293,11 +293,11 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
             % be faster than a not-very-short if-then-else chain.
             ml_gen_info_get_high_level_data(!.Info, yes)
         )
-    ->
+    then
         ml_switch_generate_mlds_switch(FilteredTaggedCases, SwitchVar,
             CodeModel, FilteredCanFail, Context, Statements, !Info),
         Decls = []
-    ;
+    else if
         % If this condition succeeds, then we cannot use a trie,
         % a hash switch, or a binary switch, and since the tests above
         % have ruled out a native target language switch as well,
@@ -308,11 +308,11 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
             globals_target_supports_computed_goto(Globals) = no,
             globals_target_supports_int_switch(Globals) = no
         )
-    ->
+    then
         ml_switch_generate_if_then_else_chain(FilteredTaggedCases, SwitchVar,
             CodeModel, FilteredCanFail, Context, Statements, !Info),
         Decls = []
-    ;
+    else
         % We can use a trie, a hash switch or binary switch, and we prefer
         % them in that order.
         %
@@ -323,12 +323,12 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
             CodeModel, MaybeLookupSwitchInfo, !Info),
         ml_gen_var(!.Info, SwitchVar, SwitchVarLval),
         SwitchVarRval = ml_lval(SwitchVarLval),
-        (
+        ( if
             globals.lookup_int_option(Globals, string_trie_switch_size,
                 StringTrieSwitchSize),
             NumConsIds >= StringTrieSwitchSize,
             globals.get_target(Globals, target_c)
-        ->
+        then
             (
                 MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
                 ml_generate_string_trie_lookup_switch(SwitchVarRval,
@@ -340,11 +340,11 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
                     FilteredTaggedCases, CodeModel, FilteredCanFail, Context,
                     Decls, Statements, !Info)
             )
-        ;
+        else if
             globals.lookup_int_option(Globals, string_hash_switch_size,
                 StringHashSwitchSize),
             NumConsIds >= StringHashSwitchSize
-        ->
+        then
             (
                 MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
                 ml_generate_string_hash_lookup_switch(SwitchVarRval,
@@ -356,11 +356,11 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
                     FilteredTaggedCases, CodeModel, FilteredCanFail, Context,
                     Decls, Statements, !Info)
             )
-        ;
+        else if
             globals.lookup_int_option(Globals, string_binary_switch_size,
                 StringBinarySwitchSize),
             NumConsIds >= StringBinarySwitchSize
-        ->
+        then
             (
                 MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
                 ml_generate_string_binary_lookup_switch(SwitchVarRval,
@@ -372,7 +372,7 @@ ml_gen_smart_string_switch(SwitchVar, CanFail, TaggedCases, CodeModel, Context,
                     FilteredTaggedCases, CodeModel, FilteredCanFail, Context,
                     Decls, Statements, !Info)
             )
-        ;
+        else
             ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
                 SwitchVar, CodeModel, FilteredCanFail, Context,
                 Statements, !Info),
@@ -545,15 +545,15 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail, Context,
     mlds_switch_range::out) is det.
 
 ml_switch_gen_range(Info, MLDS_Type, Range) :-
-    (
+    ( if
         ml_gen_info_get_module_info(Info, ModuleInfo),
         ExportedType = to_exported_type(ModuleInfo, Type),
         MLDS_Type = mercury_type(Type, TypeCategory, ExportedType),
         switch_util.type_range(ModuleInfo, TypeCategory, Type,
             MinRange, MaxRange, _NumValuesInRange)
-    ->
+    then
         Range = mlds_switch_range(MinRange, MaxRange)
-    ;
+    else
         Range = mlds_switch_range_unknown
     ).
 
@@ -589,11 +589,11 @@ ml_tagged_cons_id_to_match_cond(MLDS_Type, TaggedConsId, MatchCond) :-
     TaggedConsId = tagged_cons_id(ConsId, Tag),
     (
         Tag = int_tag(Int),
-        ( ConsId = int_const(_) ->
+        ( if ConsId = int_const(_) then
             Rval = ml_const(mlconst_int(Int))
-        ; ConsId = char_const(_) ->
+        else if ConsId = char_const(_) then
             Rval = ml_const(mlconst_char(Int))
-        ;
+        else
             Rval = ml_const(mlconst_enum(Int, MLDS_Type))
         )
     ;
@@ -632,9 +632,9 @@ ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info) :-
     (
         CanFail = can_fail,
         ml_gen_failure(CodeModel, Context, FailStatements, !Info),
-        ( is_empty(FailStatements) ->
+        ( if is_empty(FailStatements) then
             Default = default_do_nothing
-        ;
+        else
             Fail = ml_gen_block([], FailStatements, Context),
             Default = default_case(Fail)
         )

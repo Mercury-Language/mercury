@@ -153,7 +153,7 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
             LaterDisjuncts = [_ | _],
             (
                 CodeModel = model_non,
-                (
+                ( if
                     ml_gen_info_get_target(!.Info, Target),
                     allow_lookup_disj(Target) = yes,
 
@@ -165,7 +165,7 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
 
                     DisjNonLocals = goal_info_get_nonlocals(GoalInfo),
                     all_disjuncts_are_conj_of_unify(DisjNonLocals, Disjuncts)
-                ->
+                then
                     % Since the MLDS backend implements trailing by a
                     % HLDS-to-HLDS transform (which is in add_trail_ops.m),
                     % if we get here, then trailing is not enabled, and we do
@@ -177,7 +177,7 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
                         Disjuncts, Solns, !Info),
                     ml_gen_lookup_disj(OutVars, Solns, Context,
                         Statements, !Info)
-                ;
+                else
                     ml_gen_ordinary_model_non_disj(FirstDisjunct,
                         LaterDisjuncts, Context, Statements, !Info)
                 )

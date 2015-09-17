@@ -418,15 +418,15 @@ ml_gen_scalar_static_defn(MLDS_ModuleName, ConstType, Initializer, Common,
     some [!CellGroup] (
         TypeNumMap0 = !.GlobalData ^ mgd_scalar_type_num_map,
         CellGroupMap0 = !.GlobalData ^ mgd_scalar_cell_group_map,
-        ( map.search(TypeNumMap0, CellType, OldTypeNum) ->
+        ( if map.search(TypeNumMap0, CellType, OldTypeNum) then
             TypeNum = OldTypeNum,
-            ( map.search(CellGroupMap0, TypeNum, !:CellGroup) ->
+            ( if map.search(CellGroupMap0, TypeNum, !:CellGroup) then
                 true
-            ;
+            else
                 !:CellGroup = ml_scalar_cell_group(ConstType,
                     InitArraySize, counter.init(0), bimap.init, cord.empty)
             )
-        ;
+        else
             TypeNumCounter0 = !.GlobalData ^ mgd_cell_type_counter,
             counter.allocate(TypeRawNum, TypeNumCounter0, TypeNumCounter),
             TypeNum = ml_scalar_common_type_num(TypeRawNum),
@@ -494,15 +494,15 @@ ml_gen_plain_static_defn(ConstBaseName, ConstType,
 
 ml_maybe_specialize_generic_array_type(ConstType0, ConstType,
         Initializer0, Initializer) :-
-    (
+    ( if
         ConstType0 = mlds_array_type(mlds_generic_type),
         Initializer0 = init_array(Inits0),
         list.map2(ml_specialize_generic_array_init, Inits0, Inits, Types),
         list.member(mlds_native_float_type, Types)
-    ->
+    then
         ConstType = mlds_mostly_generic_array_type(Types),
         Initializer = init_array(Inits)
-    ;
+    else
         ConstType = ConstType0,
         Initializer = Initializer0
     ).
@@ -511,13 +511,13 @@ ml_maybe_specialize_generic_array_type(ConstType0, ConstType,
     mlds_initializer::out, mlds_type::out) is det.
 
 ml_specialize_generic_array_init(Init0, Init, Type) :-
-    (
+    ( if
         Init0 = init_obj(Rval0),
         ml_specialize_generic_array_rval(Rval0, Rval)
-    ->
+    then
         Init = init_obj(Rval),
         Type = mlds_native_float_type
-    ;
+    else
         Init = Init0,
         Type = mlds_generic_type
     ).
@@ -616,13 +616,13 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
 ml_gen_static_vector_type(MLDS_ModuleName, MLDS_Context, Target, ArgTypes,
         TypeNum, StructType, FieldIds, !GlobalData) :-
     TypeNumMap0 = !.GlobalData ^ mgd_vector_type_num_map,
-    ( map.search(TypeNumMap0, ArgTypes, OldTypeNum) ->
+    ( if map.search(TypeNumMap0, ArgTypes, OldTypeNum) then
         TypeNum = OldTypeNum,
         CellGroupMap = !.GlobalData ^ mgd_vector_cell_group_map,
         map.lookup(CellGroupMap, TypeNum, CellGroup),
         CellGroup = ml_vector_cell_group(StructType, _TypeDefn, FieldIds,
             _, _)
-    ;
+    else
         TypeNumCounter0 = !.GlobalData ^ mgd_cell_type_counter,
         counter.allocate(TypeRawNum, TypeNumCounter0, TypeNumCounter),
         TypeRawNumStr = string.int_to_string(TypeRawNum),
@@ -751,9 +751,9 @@ ml_gen_alloc_site(ProcLabel, MaybeConsId, Size, Context, AllocId,
     ),
     AllocData = ml_alloc_site_data(ProcLabel, Context, TypeStr, Size),
     Map0 = !.GlobalData ^ mgd_alloc_id_map,
-    ( bimap.search(Map0, AllocId0, AllocData) ->
+    ( if bimap.search(Map0, AllocId0, AllocData) then
         AllocId = AllocId0
-    ;
+    else
         Counter0 = !.GlobalData ^ mgd_alloc_id_counter,
         counter.allocate(AllocIdNum, Counter0, Counter),
         AllocId = mlds_alloc_id(AllocIdNum),

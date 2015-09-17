@@ -336,9 +336,12 @@ default_contains_statement(default_case(Statement), SubStatement) :-
 
 statements_contains_var([], _DataName) = no.
 statements_contains_var([Statement | Statements], DataName) = ContainsVar :-
-    ( statement_contains_var(Statement, DataName) = yes ->
+    StatementContainsVar = statement_contains_var(Statement, DataName),
+    (
+        StatementContainsVar = yes,
         ContainsVar = yes
     ;
+        StatementContainsVar = no,
         ContainsVar = statements_contains_var(Statements, DataName)
     ).
 
@@ -357,35 +360,57 @@ statement_contains_var(Statement, DataName) = ContainsVar :-
 stmt_contains_var(Stmt, DataName) = ContainsVar :-
     (
         Stmt = ml_stmt_block(Defns, Statements),
-        ( defns_contains_var(Defns, DataName) = yes ->
+        DefnsContainVar = defns_contains_var(Defns, DataName),
+        (
+            DefnsContainVar = yes,
             ContainsVar = yes
         ;
+            DefnsContainVar = no,
             ContainsVar = statements_contains_var(Statements, DataName)
         )
     ;
         Stmt = ml_stmt_while(_Kind, Rval, Statement),
-        ( rval_contains_var(Rval, DataName) = yes ->
+        RvalContainsVar = rval_contains_var(Rval, DataName),
+        (
+            RvalContainsVar = yes,
             ContainsVar = yes
         ;
+            RvalContainsVar = no,
             ContainsVar = statement_contains_var(Statement, DataName)
         )
     ;
         Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse),
-        ( rval_contains_var(Cond, DataName) = yes ->
-            ContainsVar = yes
-        ; statement_contains_var(Then, DataName) = yes ->
+        CondContainsVar = rval_contains_var(Cond, DataName),
+        (
+            CondContainsVar = yes,
             ContainsVar = yes
         ;
-            ContainsVar = maybe_statement_contains_var(MaybeElse, DataName)
+            CondContainsVar = no,
+            ThenContainsVar = statement_contains_var(Then, DataName),
+            (
+                ThenContainsVar = yes,
+                ContainsVar = yes
+            ;
+                ThenContainsVar = no,
+                ContainsVar = maybe_statement_contains_var(MaybeElse, DataName)
+            )
         )
     ;
         Stmt = ml_stmt_switch(_Type, Val, _Range, Cases, Default),
-        ( rval_contains_var(Val, DataName) = yes ->
-            ContainsVar = yes
-        ; cases_contains_var(Cases, DataName) = yes ->
+        ValContainsVar = rval_contains_var(Val, DataName),
+        (
+            ValContainsVar = yes,
             ContainsVar = yes
         ;
-            ContainsVar = default_contains_var(Default, DataName)
+            ValContainsVar = no,
+            CasesContainsVar = cases_contains_var(Cases, DataName),
+            (
+                CasesContainsVar = yes,
+                ContainsVar = yes
+            ;
+                CasesContainsVar = no,
+                ContainsVar = default_contains_var(Default, DataName)
+            )
         )
     ;
         ( Stmt = ml_stmt_label(_Label)
@@ -397,14 +422,27 @@ stmt_contains_var(Stmt, DataName) = ContainsVar :-
         ContainsVar = rval_contains_var(Rval, DataName)
     ;
         Stmt = ml_stmt_call(_Sig, Func, Obj, Args, RetLvals, _TailCall),
-        ( rval_contains_var(Func, DataName) = yes ->
-            ContainsVar = yes
-        ; maybe_rval_contains_var(Obj, DataName) = yes ->
-            ContainsVar = yes
-        ; rvals_contains_var(Args, DataName) = yes ->
+        FuncContainsVar = rval_contains_var(Func, DataName),
+        (
+            FuncContainsVar = yes,
             ContainsVar = yes
         ;
-            ContainsVar = lvals_contains_var(RetLvals, DataName)
+            FuncContainsVar = no,
+            ObjContainsVar = maybe_rval_contains_var(Obj, DataName),
+            (
+                ObjContainsVar = yes,
+                ContainsVar = yes
+            ;
+                ObjContainsVar = no,
+                ArgsContainVar = rvals_contains_var(Args, DataName),
+                (
+                    ArgsContainVar = yes,
+                    ContainsVar = yes
+                ;
+                    ArgsContainVar = no,
+                    ContainsVar = lvals_contains_var(RetLvals, DataName)
+                )
+            )
         )
     ;
         Stmt = ml_stmt_return(Rvals),
@@ -414,12 +452,20 @@ stmt_contains_var(Stmt, DataName) = ContainsVar :-
         ContainsVar = rval_contains_var(Ref, DataName)
     ;
         Stmt = ml_stmt_try_commit(Ref, Statement, Handler),
-        ( lval_contains_var(Ref, DataName) = yes ->
-            ContainsVar = yes
-        ; statement_contains_var(Statement, DataName) = yes ->
+        RefContainsVar = lval_contains_var(Ref, DataName),
+        (
+            RefContainsVar = yes,
             ContainsVar = yes
         ;
-            ContainsVar = statement_contains_var(Handler, DataName)
+            RefContainsVar = no,
+            StatementContainsVar = statement_contains_var(Statement, DataName),
+            (
+                StatementContainsVar = yes,
+                ContainsVar = yes
+            ;
+                StatementContainsVar = no,
+                ContainsVar = statement_contains_var(Handler, DataName)
+            )
         )
     ;
         Stmt = ml_stmt_atomic(AtomicStmt),
@@ -431,9 +477,12 @@ stmt_contains_var(Stmt, DataName) = ContainsVar :-
 cases_contains_var([], _DataName) = no.
 cases_contains_var([Case | Cases], DataName) = ContainsVar :-
     Case = mlds_switch_case(_FirstCond, _LaterConds, Statement),
-    ( statement_contains_var(Statement, DataName) = yes ->
+    StatementContainsVar = statement_contains_var(Statement, DataName),
+    (
+        StatementContainsVar = yes,
         ContainsVar = yes
     ;
+        StatementContainsVar = no,
         ContainsVar = cases_contains_var(Cases, DataName)
     ).
 
@@ -460,9 +509,12 @@ atomic_stmt_contains_var(AtomicStmt, DataName) = ContainsVar :-
         ( AtomicStmt = assign(Lval, Rval)
         ; AtomicStmt = assign_if_in_heap(Lval, Rval)
         ),
-        ( lval_contains_var(Lval, DataName) = yes ->
+        LvalContainsVar = lval_contains_var(Lval, DataName),
+        (
+            LvalContainsVar = yes,
             ContainsVar = yes
         ;
+            LvalContainsVar = no,
             ContainsVar = rval_contains_var(Rval, DataName)
         )
     ;
@@ -472,9 +524,12 @@ atomic_stmt_contains_var(AtomicStmt, DataName) = ContainsVar :-
         AtomicStmt = new_object(Target, _MaybeTag, _ExplicitSecTag, _Type,
             _MaybeSize, _MaybeCtorName, Args, _ArgTypes, _MayUseAtomic,
             _AllocId),
-        ( lval_contains_var(Target, DataName) = yes ->
+        TargetContainsVar = lval_contains_var(Target, DataName),
+        (
+            TargetContainsVar = yes,
             ContainsVar = yes
         ;
+            TargetContainsVar = no,
             ContainsVar = rvals_contains_var(Args, DataName)
         )
     ;
@@ -495,9 +550,13 @@ atomic_stmt_contains_var(AtomicStmt, DataName) = ContainsVar :-
     ;
         AtomicStmt = outline_foreign_proc(_Lang, OutlineArgs, ReturnLvals,
             _Code),
-        ( outline_args_contains_var(OutlineArgs, DataName) = yes ->
+        OutlineArgsContainVar =
+            outline_args_contains_var(OutlineArgs, DataName),
+        (
+            OutlineArgsContainVar = yes,
             ContainsVar = yes
         ;
+            OutlineArgsContainVar = no,
             ContainsVar = lvals_contains_var(ReturnLvals, DataName)
         )
     ).
@@ -530,9 +589,13 @@ trail_op_contains_var(TrailOp, DataName) = ContainsVar :-
 target_code_components_contains_var([], _DataName) = no.
 target_code_components_contains_var([TargetCode | TargetCodes], DataName)
         = ContainsVar :-
-    ( target_code_component_contains_var(TargetCode, DataName) = yes ->
+    TargetCodeContainsVar =
+        target_code_component_contains_var(TargetCode, DataName),
+    (
+        TargetCodeContainsVar = yes,
         ContainsVar = yes
     ;
+        TargetCodeContainsVar = no,
         ContainsVar =
             target_code_components_contains_var(TargetCodes, DataName)
     ).
@@ -556,13 +619,13 @@ target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
         ContainsVar = lval_contains_var(Lval, DataName)
     ;
         TargetCode = target_code_name(EntityName),
-        (
+        ( if
             EntityName = qual(ModuleName, QualKind,
                 entity_data(UnqualDataName)),
             DataName = qual(ModuleName, QualKind, UnqualDataName)
-        ->
+        then
             ContainsVar = yes
-        ;
+        else
             ContainsVar = no
         )
     ).
@@ -572,9 +635,12 @@ target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
 outline_args_contains_var([], _DataName) = no.
 outline_args_contains_var([OutlineArg | OutlineArgs], DataName) =
         ContainsVar :-
-    ( outline_arg_contains_var(OutlineArg, DataName) = yes ->
+    OutlineArgContainsVar = outline_arg_contains_var(OutlineArg, DataName),
+    (
+        OutlineArgContainsVar = yes,
         ContainsVar = yes
     ;
+        OutlineArgContainsVar = no,
         ContainsVar = outline_args_contains_var(OutlineArgs, DataName)
     ).
 
@@ -662,9 +728,12 @@ defn_is_public(Defn) :-
 
 defns_contains_var([], _DataName) = no.
 defns_contains_var([Defn | Defns], DataName) = ContainsVar :-
-    ( defn_contains_var(Defn, DataName) = yes ->
+    DefnContainsVar = defn_contains_var(Defn, DataName),
+    (
+        DefnContainsVar = yes,
         ContainsVar = yes
     ;
+        DefnContainsVar = no,
         ContainsVar = defns_contains_var(Defns, DataName)
     ).
 
@@ -687,9 +756,12 @@ defn_body_contains_var(DefnBody, DataName) = ContainsVar :-
         DefnBody = mlds_class(ClassDefn),
         ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits, _Implements,
             _TypeParams, CtorDefns, FieldDefns),
-        ( defns_contains_var(FieldDefns, DataName) = yes ->
+        FieldDefnsContainVar = defns_contains_var(FieldDefns, DataName),
+        (
+            FieldDefnsContainVar = yes,
             ContainsVar = yes
         ;
+            FieldDefnsContainVar = no,
             ContainsVar = defns_contains_var(CtorDefns, DataName)
         )
     ).
@@ -741,17 +813,23 @@ initializer_contains_var(Initializer, DataName) = ContainsVar :-
 initializers_contains_var([], _DataName) = no.
 initializers_contains_var([Initializer | Initializers], DataName) =
         ContainsVar :-
-    ( initializer_contains_var(Initializer, DataName) = yes ->
+    InitializerContainsVar = initializer_contains_var(Initializer, DataName),
+    (
+        InitializerContainsVar = yes,
         ContainsVar = yes
     ;
+        InitializerContainsVar = no,
         ContainsVar = initializers_contains_var(Initializers, DataName)
     ).
 
 rvals_contains_var([], _DataName) = no.
 rvals_contains_var([Rval | Rvals], DataName) = ContainsVar :-
-    ( rval_contains_var(Rval, DataName) = yes ->
+    RvalContainsVar = rval_contains_var(Rval, DataName),
+    (
+        RvalContainsVar = yes,
         ContainsVar = yes
     ;
+        RvalContainsVar = no,
         ContainsVar = rvals_contains_var(Rvals, DataName)
     ).
 
@@ -771,10 +849,10 @@ rval_contains_var(Rval, DataName) = ContainsVar :-
         (
             Const = mlconst_data_addr(DataAddr),
             DataAddr = data_addr(ModuleName, RawDataName),
-            ( DataName = qual(ModuleName, _QualKind, RawDataName) ->
+            ( if DataName = qual(ModuleName, _QualKind, RawDataName) then
                 % This is a place where we can succeed.
                 ContainsVar = yes
-            ;
+            else
                 ContainsVar = no
             )
         ;
@@ -798,9 +876,12 @@ rval_contains_var(Rval, DataName) = ContainsVar :-
         ContainsVar = rval_contains_var(RvalA, DataName)
     ;
         Rval = ml_binop(_Op, RvalA, RvalB),
-        ( rval_contains_var(RvalA, DataName) = yes ->
+        RvalAContainsVar = rval_contains_var(RvalA, DataName),
+        (
+            RvalAContainsVar = yes,
             ContainsVar = yes
         ;
+            RvalAContainsVar = no,
             ContainsVar = rval_contains_var(RvalB, DataName)
         )
     ;
@@ -819,9 +900,12 @@ rval_contains_var(Rval, DataName) = ContainsVar :-
 
 lvals_contains_var([], _DataName) = no.
 lvals_contains_var([Lval | Lvals], DataName) = ContainsVar :-
-    ( lval_contains_var(Lval, DataName) = yes ->
+    LvalContainsVar = lval_contains_var(Lval, DataName),
+    (
+        LvalContainsVar = yes,
         ContainsVar = yes
     ;
+        LvalContainsVar = no,
         ContainsVar = lvals_contains_var(Lvals, DataName)
     ).
 
@@ -838,9 +922,9 @@ lval_contains_var(Lval, DataName) = ContainsVar :-
     ;
         Lval = ml_var(qual(ModuleName, QualKind, Name), _Type),
         % This is another place where we can succeed.
-        ( DataName = qual(ModuleName, QualKind, mlds_data_var(Name)) ->
+        ( if DataName = qual(ModuleName, QualKind, mlds_data_var(Name)) then
             ContainsVar = yes
-        ;
+        else
             ContainsVar =no
         )
     ).

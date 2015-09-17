@@ -342,9 +342,9 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !GlobalData) :-
 
             ml_global_data_get_pdup_rval_type_map(!.GlobalData,
                 PDupRvalTypeMap),
-            ( map.search(PDupRvalTypeMap,  RttiId, OldRvalType) ->
+            ( if map.search(PDupRvalTypeMap,  RttiId, OldRvalType) then
                 OldRvalType = ml_rval_and_type(Rval, Type)
-            ;
+            else
                 module_info_get_name(ModuleInfo, ModuleName),
                 MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
                 DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
@@ -390,9 +390,9 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !GlobalData) :-
         rtti_data_to_id(RttiData, RttiId),
 
         ml_global_data_get_pdup_rval_type_map(!.GlobalData, PDupRvalTypeMap),
-        ( map.search(PDupRvalTypeMap,  RttiId, OldRvalType) ->
+        ( if map.search(PDupRvalTypeMap,  RttiId, OldRvalType) then
             OldRvalType = ml_rval_and_type(Rval, Type)
-        ;
+        else
             module_info_get_name(ModuleInfo, ModuleName),
             MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
             DataAddr = data_addr(MLDS_ModuleName, mlds_rtti(RttiId)),
@@ -433,9 +433,9 @@ arg_type_infos(var_arity_type_info(_VarArityId, ArgTIs)) = ArgTIs.
 ml_stack_layout_construct_tvar_vector(ModuleInfo, TVarVectorNameStr, Context,
         TVarLocnMap, TVarVectorAddrRval, ArrayType, !GlobalData) :-
     ArrayType = mlds_array_type(mlds_native_int_type),
-    ( map.is_empty(TVarLocnMap) ->
+    ( if map.is_empty(TVarLocnMap) then
         TVarVectorAddrRval = ml_const(mlconst_null(ArrayType))
-    ;
+    else
         ml_stack_layout_construct_tvar_rvals(TVarLocnMap, Vector,
             _VectorTypes),
         Initializer = init_array(Vector),
@@ -471,10 +471,10 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
         CurSlot, Vector) :-
     term.var_to_int(TVar, TVarNum),
     NextSlot = CurSlot + 1,
-    ( TVarNum = CurSlot ->
-        ( set.remove_least(LeastLocn, Locns, _) ->
+    ( if TVarNum = CurSlot then
+        ( if set.remove_least(LeastLocn, Locns, _) then
             Locn = LeastLocn
-        ;
+        else
             unexpected($module, $pred, "tvar has empty set of locations")
         ),
         stack_layout.represent_locn_as_int(Locn, LocnAsInt),
@@ -482,12 +482,12 @@ ml_stack_layout_construct_type_param_locn_vector([TVar - Locns | TVarLocns],
         ml_stack_layout_construct_type_param_locn_vector(TVarLocns,
             NextSlot, VectorTail),
         Vector = [init_obj(Rval) | VectorTail]
-    ; TVarNum > CurSlot ->
+    else if TVarNum > CurSlot then
         % This slot will never be referred to.
         ml_stack_layout_construct_type_param_locn_vector(
             [TVar - Locns | TVarLocns], NextSlot, VectorTail),
         Vector = [init_obj(ml_const(mlconst_int(0))) | VectorTail]
-    ;
+    else
         unexpected($module, $pred, "unsorted tvars")
     ).
 
@@ -692,17 +692,17 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     %   MR_Box wrapper_argn)
 
     % First generate the declarations for the boxed arguments.
-    (
+    ( if
         list.drop(NumClosureArgs, ProcHeadVars, WrapperHeadVars0),
         list.drop(NumClosureArgs, ProcArgModes, WrapperArgModes0),
         list.drop(NumClosureArgs, ProcArgTypes, WrapperArgTypes0),
         list.drop(NumClosureArgs, ProcBoxedArgTypes, WrapperBoxedArgTypes0)
-    ->
+    then
         WrapperHeadVars = WrapperHeadVars0,
         WrapperArgModes = WrapperArgModes0,
         WrapperArgTypes = WrapperArgTypes0,
         WrapperBoxedArgTypes = WrapperBoxedArgTypes0
-    ;
+    else
         unexpected($module, $pred, "list.drop failed")
     ),
     WrapperHeadVarNames = ml_gen_wrapper_head_var_names(1,
@@ -887,13 +887,13 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     % Generate code to declare and initialize the local variables
     % needed for accurate GC.
     module_info_get_globals(ModuleInfo, Globals),
-    (
+    ( if
         MaybeClosureA = yes({ClosureArgType2, ClosureArgName2}),
         globals.get_gc_method(Globals, gc_accurate)
-    ->
+    then
         ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName2,
             ClosureArgType2, PredId, ProcId, Context, GC_Decls, !Info)
-    ;
+    else
         GC_Decls = []
     ),
 
@@ -975,9 +975,9 @@ ml_gen_wrapper_func(FuncLabel, FuncParams, Context, Statement, Func, !Info) :-
 :- func ml_gen_wrapper_head_var_names(int, int) = list(mlds_var_name).
 
 ml_gen_wrapper_head_var_names(Num, Max) = Names :-
-    ( Num > Max ->
+    ( if Num > Max then
         Names = []
-    ;
+    else
         Name = string.format("wrapper_arg_%d", [i(Num)]),
         Names1 = ml_gen_wrapper_head_var_names(Num + 1, Max),
         Names = [mlds_var_name(Name, no) | Names1]
@@ -997,19 +997,19 @@ ml_gen_wrapper_head_var_names(Num, Max) = Names :-
 
 ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
         ArgNum, Defns, Lvals, CopyOutLvals, !Info) :-
-    (
+    ( if
         Names = [],
         Types = [],
         Modes = []
-    ->
+    then
         Lvals = [],
         CopyOutLvals = [],
         Defns = []
-    ;
+    else if
         Names = [Name | NamesTail],
         Types = [Type | TypesTail],
         Modes = [Mode | ModesTail]
-    ->
+    then
         ml_gen_wrapper_arg_lvals(NamesTail, TypesTail, ModesTail, PredOrFunc,
             CodeModel, Context, ArgNum + 1, DefnsTail, LvalsTail,
             CopyOutLvalsTail, !Info),
@@ -1030,7 +1030,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
             ml_gen_info_get_globals(!.Info, Globals),
             CopyOut = get_copy_out_option(Globals, CodeModel),
             IsDummy = check_dummy_type(ModuleInfo, Type),
-            (
+            ( if
                 (
                     CopyOut = yes
                 ;
@@ -1042,7 +1042,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
                     TypesTail = [],
                     IsDummy = is_not_dummy_type
                 )
-            ->
+            then
                 % Output arguments are copied out, so we need to generate
                 % a local declaration for them here.
                 Lval = VarLval,
@@ -1057,7 +1057,7 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
                         ArgNum, Context, Defn, !Info),
                     Defns = [Defn | DefnsTail]
                 )
-            ;
+            else
                 % Output arguments are passed by reference, so we need to
                 % dereference them.
                 Lval = ml_mem_ref(ml_lval(VarLval), MLDS_Type),
@@ -1066,8 +1066,8 @@ ml_gen_wrapper_arg_lvals(Names, Types, Modes, PredOrFunc, CodeModel, Context,
             )
         ),
         Lvals = [Lval | LvalsTail]
-    ;
-        sorry($module, $pred, "length mismatch")
+    else
+        unexpected($module, $pred, "length mismatch")
     ).
 
     % This is used for accurate GC with the MLDS->C back-end.
@@ -1170,9 +1170,9 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
 
 ml_gen_closure_field_lvals(ClosureLval, Offset, ArgNum, NumClosureArgs,
         ClosureArgLvals, !Info) :-
-    ( ArgNum > NumClosureArgs ->
+    ( if ArgNum > NumClosureArgs then
         ClosureArgLvals = []
-    ;
+    else
         % Generate `MR_field(MR_mktag(0), closure, <N>)'.
         FieldId = ml_field_offset(ml_const(mlconst_int(ArgNum + Offset))),
         % XXX These types might not be right.

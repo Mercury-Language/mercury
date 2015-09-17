@@ -142,9 +142,9 @@ ml_gen_types(ModuleInfo, Defns) :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         get_all_type_ctor_defns(TypeTable, TypeCtorsDefns0),
         list.filter(
-            (pred(TypeCtorDefn::in) is semidet :-
+            ( pred(TypeCtorDefn::in) is semidet :-
                 TypeCtorDefn = TypeCtor - _TypeDefn,
-                \+ type_ctor_needs_lowlevel_rep(Target, TypeCtor)
+                not type_ctor_needs_lowlevel_rep(Target, TypeCtor)
             ), TypeCtorsDefns0, TypeCtorDefns),
         list.foldl(ml_gen_type_defn(ModuleInfo), TypeCtorDefns, [], Defns)
     ;
@@ -226,9 +226,9 @@ ml_gen_type_defn_2(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     %       int MR_value;
     %   };
     %
-    % It is marked as an mlds_enum so that the MLDS -> target code
-    % generator can treat it specially if need be (e.g. generating
-    % a C enum rather than a class).
+    % It is marked as an mlds_enum so that the MLDS -> target code generator
+    % can treat it specially if need be (e.g. generating a C enum rather than
+    % a class).
     %
     % Note that for Java the MR_value field is inherited from the
     % MercuryEnum class.
@@ -451,18 +451,18 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
     BaseClassQualifier = mlds_append_class_qualifier(Target,
         BaseClassModuleName, QualKind, BaseClassName, BaseClassArity),
 
-    (
+    ( if
         % If none of the constructors for this type need a secondary tag,
         % then we don't need the members for the secondary tag.
 
-        \+ (some [Ctor] (
+        not (some [Ctor] (
             list.member(Ctor, Ctors),
             ml_needs_secondary_tag(TypeCtor, TagValues, Ctor)
         ))
-    ->
+    then
         TagMembers = [],
         TagClassId = BaseClassId
-    ;
+    else
         % Generate the members for the secondary tag.
         TagDataMember = ml_gen_tag_member("data_tag", Context),
         TagConstMembers = [],
@@ -476,16 +476,16 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         % we put the secondary tag members directly in the base class,
         % otherwise we put it in a separate nested derived class.
 
-        (
+        ( if
             all [Ctor] (
                 list.member(Ctor, Ctors)
             =>
                 ml_needs_secondary_tag(TypeCtor, TagValues, Ctor)
             )
-        ->
+        then
             TagMembers = TagMembers0,
             TagClassId = BaseClassId
-        ;
+        else
             ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier,
                 BaseClassId, TagMembers0, Target, TagTypeDefn, TagClassId),
             TagMembers = [TagTypeDefn]
@@ -546,7 +546,9 @@ ml_gen_tag_member(Name, Context) =
 
 ml_gen_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
     % Check if this constructor uses a secondary tag.
-    ( ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag) ->
+    ( if
+        ml_uses_secondary_tag(TypeCtor, ConsTagValues, Ctor, SecondaryTag)
+    then
         % Generate an MLDS definition for this secondary tag constant.
         % We do this mainly for readability and interoperability. Note that
         % we don't do the same thing for primary tags, so this is most useful
@@ -561,7 +563,7 @@ ml_gen_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
             ml_gen_enum_constant_decl_flags,
             mlds_data(mlds_native_int_type, init_obj(ConstValue), gc_no_stmt)),
         Defns = [Defn]
-    ;
+    else
         Defns = []
     ).
 
@@ -626,9 +628,12 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId,
     % since it is empty, and we don't want to include empty base
     % classes when compiling to C.
     Imports = [],
-    ( target_uses_empty_base_classes(Target) = yes ->
+    EmptyBaseClasses = target_uses_empty_base_classes(Target),
+    (
+        EmptyBaseClasses = yes,
         Inherits = [BaseClassId]
     ;
+        EmptyBaseClasses = no,
         Inherits = []
     ),
     Implements = [],
@@ -677,8 +682,8 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
         CtorName, CtorArity),
 
     TagVal = get_tagval(TypeCtor, ConsTagValues, Ctor),
-    ( tagval_is_reserved_addr(TagVal, ReservedAddr) ->
-        ( ReservedAddr = reserved_object(_, _, _) ->
+    ( if tagval_is_reserved_addr(TagVal, ReservedAddr) then
+        ( if ReservedAddr = reserved_object(_, _, _) then
             % Generate a reserved object for this constructor.
             % Note that we use the SecondaryTagClassId for the type of this
             % reserved object; we can't use the BaseClassId because for some
@@ -701,13 +706,13 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             MLDS_ReservedObjDefn = mlds_defn(MLDS_ReservedObjEntityName,
                 MLDS_Context, DeclFlags, EntityDefn),
             MLDS_Members = [MLDS_ReservedObjDefn | MLDS_Members0]
-        ;
+        else
             % For reserved numeric addresses, we don't need to generate
             % any objects or types.
             MLDS_Members = MLDS_Members0
         ),
         MLDS_CtorMethods = MLDS_CtorMethods0
-    ;
+    else
         % Generate the members for this constructor.
 
         % Number any unnamed fields starting from 1.
@@ -773,7 +778,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             %
             % The implementation of deep copy in Java grades also depends on
             % zero-argument constructors.
-            (
+            ( if
                 (
                     Target = target_java
                 ;
@@ -785,12 +790,12 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
                     )
                 ),
                 Members = [_ | _]
-            ->
+            then
                 ZeroArgCtor = ml_gen_constructor_function(Target, BaseClassId,
                     CtorClassType, CtorClassQualifier, SecondaryTagClassId,
                     no, [], MLDS_Context),
                 Ctors = [ZeroArgCtor, CtorFunction]
-            ;
+            else
                 Ctors = [CtorFunction]
             )
         ;
@@ -948,9 +953,9 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
 :- func make_arg(mlds_defn) = mlds_argument is det.
 
 make_arg(mlds_defn(Name, _Context, _Flags, Defn)) = Arg :-
-    ( Defn = mlds_data(Type, _Init, GCStatement) ->
+    ( if Defn = mlds_data(Type, _Init, GCStatement) then
         Arg = mlds_argument(Name, Type, GCStatement)
-    ;
+    else
         unexpected($module, $pred, "non-data member")
     ).
 
@@ -971,21 +976,21 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         ),
         unexpected($module, $pred, "non-data member")
     ),
-    (
+    ( if
         EntityName = entity_data(mlds_data_var(VarName0)),
         VarName0 = mlds_var_name(Name0, no)
-    ->
+    then
         Name = Name0,
         VarName = VarName0
-    ;
+    else
         unexpected($module, $pred, "non-var member")
     ),
     RequiresQualifiedParams = target_requires_module_qualified_params(Target),
     (
         RequiresQualifiedParams = yes,
-        ( BaseClassId = mlds_class_type(qual(ModuleName, _, _), _, _) ->
+        ( if BaseClassId = mlds_class_type(qual(ModuleName, _, _), _, _) then
             QualVarName = qual(ModuleName, module_qual, VarName)
-        ;
+        else
             unexpected($module, $pred, "invalid BaseClassId")
         )
     ;
@@ -1009,11 +1014,11 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
 
 gen_init_tag(Target, ClassType, SecondaryTagClassId, TagVal, Context)
         = Statement :-
-    ( SecondaryTagClassId = mlds_class_type(TagClass, TagArity, _) ->
+    ( if SecondaryTagClassId = mlds_class_type(TagClass, TagArity, _) then
         TagClass = qual(BaseClassQualifier, QualKind, TagClassName),
         TagClassQualifier = mlds_append_class_qualifier(Target,
             BaseClassQualifier, QualKind, TagClassName, TagArity)
-    ;
+    else
         unexpected($module, $pred, "class_id should be a class")
     ),
     Name = "data_tag",
@@ -1057,9 +1062,9 @@ ml_gen_du_ctor_field(ModuleInfo, Context, Arg, Defn, !ArgNum) :-
 
 ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, Width, Defn,
         !ArgNum) :-
-    ( ml_must_box_field_type(ModuleInfo, Type, Width) ->
+    ( if ml_must_box_field_type(ModuleInfo, Type, Width) then
         MLDS_Type = mlds_generic_type
-    ;
+    else
         MLDS_Type = mercury_type_to_mlds_type(ModuleInfo, Type)
     ),
     FieldName = ml_gen_field_name(MaybeFieldName, !.ArgNum),
@@ -1104,19 +1109,19 @@ ml_gen_du_ctor_name(CompilationTarget, TypeCtor, Name, Arity) = CtorName :-
 ml_gen_du_ctor_name_unqual_type(CompilationTarget, UnqualTypeName, TypeArity,
         Name, Arity) = CtorName :-
     UnqualName = unqualify_name(Name),
-    (
+    ( if
         ( CompilationTarget = target_java
         ; CompilationTarget = target_csharp
         ),
         UnqualName = UnqualTypeName,
         Arity = TypeArity
-    ->
+    then
         % In Java and C# we must not generate a class with the same name as its
         % enclosing class.  We add the prefix to avoid that situation arising.
         % (A user may name another functor of the same type with "mr_" to
         % trigger the problem.)
         CtorName = "mr_" ++ UnqualName
-    ;
+    else
         CtorName = UnqualName
     ).
 
