@@ -38,7 +38,7 @@
 
     % output_c_mlds(MLDS, Globals, Suffix, Succeeded):
     %
-    % Output C code the the appropriate C file and C declarations to the
+    % Output C code to the appropriate C file and C declarations to the
     % appropriate header file. The file names are determined by the module
     % name, with the specified Suffix appended at the end. (The suffix is used
     % for debugging dumps. For normal output, the suffix should be the empty
@@ -174,10 +174,11 @@ init_mlds_to_c_opts(Globals, SourceFileName) = Opts :-
         Target, GCMethod, StdFuncDecls, Globals).
 
 output_c_mlds(MLDS, Globals, Suffix, Succeeded, !IO) :-
-    % We output the source file before outputting the header, since the Mmake
-    % dependencies say the header file depends on the source file, and so if
-    % we wrote them out in the other order, this might lead to unnecessary
-    % recompilation next time Mmake is run.
+    % We output the source file before we output the header.
+    % The reason why we need this order is that the mmake dependencies
+    % we generate say that the header file depends on the source file.
+    % If we wrote them out in the other order, we would get an unnecessary
+    % recompilation next time mmake is run.
     %
     % XXX At some point we should also handle output of any non-C
     % foreign code (Ada, Fortran, etc.) to appropriate files.
@@ -211,8 +212,8 @@ output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
 
 output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
     % We write the header file out to <module>.mih.tmp and then call
-    % `update_interface' to move the <module>.mih.tmp file to <module>.mih;
-    % this avoids updating the timestamp on the `.mih' file if it hasn't
+    % `update_interface' to move the <module>.mih.tmp file to <module>.mih.
+    % This avoids updating the timestamp on the `.mih' file if it hasn't
     % changed.
 
     ModuleName = mlds_get_module_name(MLDS),
@@ -249,7 +250,7 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
     mlds_output_hdr_imports(Indent, Imports, !IO),
     io.nl(!IO),
 
-    % Get the foreign code for C
+    % Get the foreign code for C.
     ForeignCode = mlds_get_c_foreign_code(AllForeignCode),
     mlds_output_c_hdr_decls(Opts, Indent, MLDS_ModuleName, ForeignCode, !IO),
     io.nl(!IO),
@@ -300,13 +301,14 @@ mlds_output_hdr_file(Opts, Indent, MLDS, !IO) :-
 mlds_output_hdr_imports(_Indent, _Imports, !IO).
 
 :- pred mlds_output_src_imports(mlds_to_c_opts::in, indent::in,
-    mlds_imports::in, io::di, io::uo) is det.
+    list(mlds_import)::in, io::di, io::uo) is det.
 
 mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
     Target = Opts ^ m2co_target,
     (
         Target = target_c,
-        list.foldl(mlds_output_src_import(Opts, Indent), Imports, !IO)
+        list.sort(Imports, SortedImports),
+        list.foldl(mlds_output_src_import(Opts, Indent), SortedImports, !IO)
     ;
         ( Target = target_java
         ; Target = target_csharp
