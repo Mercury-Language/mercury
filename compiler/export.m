@@ -286,12 +286,12 @@ export_procs_to_c(ModuleInfo, Preds,
     pragma_exported_proc::in, foreign_export_defn::out) is det.
 
 export_proc_to_c(ModuleInfo, Preds, ExportedProc, ExportDefn) :-
-    ExportedProc = pragma_exported_proc(Lang, PredId, ProcId, C_Function,
+    ExportedProc = pragma_exported_proc(Lang, PredId, ProcId, CFunction,
         _Context),
     expect(unify(Lang, lang_c), $module, $pred,
         "foreign language other than C"),
     get_export_info_for_lang_c(ModuleInfo, Preds, PredId, ProcId,
-        DeclareString, C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
+        DeclareString, CRetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
         ArgInfoTypes),
     get_argument_declarations_for_lang_c(ModuleInfo, yes, ArgInfoTypes,
         ArgDecls),
@@ -308,11 +308,11 @@ export_proc_to_c(ModuleInfo, Preds, ExportedProc, ExportDefn) :-
         "\n",
         DeclareString, "(", ProcLabelString, ");\n",
         "\n",
-        C_RetType, "\n",
-        C_Function, "(", ArgDecls, ");\n",
+        CRetType, "\n",
+        CFunction, "(", ArgDecls, ");\n",
         "\n",
-        C_RetType, "\n",
-        C_Function, "(", ArgDecls, ")\n{\n",
+        CRetType, "\n",
+        CFunction, "(", ArgDecls, ")\n{\n",
         "#if MR_NUM_REAL_REGS > 0\n",
         "\tMR_Word c_regs[MR_NUM_REAL_REGS];\n",
         "#endif\n",
@@ -358,7 +358,7 @@ export_proc_to_c(ModuleInfo, Preds, ExportedProc, ExportDefn) :-
     ExportDefn = foreign_export_defn(Code).
 
     % get_export_info_for_lang_c(Preds, PredId, ProcId, Globals,
-    %   DeclareString, C_RetType,
+    %   DeclareString, CRetType,
     %   MaybeDeclareRetval, MaybeFail, MaybeSuccess, ArgInfoTypes):
     %
     % For a given procedure, figure out the information about that procedure
@@ -374,19 +374,19 @@ export_proc_to_c(ModuleInfo, Preds, ExportedProc, ExportDefn) :-
     string::out, string::out, assoc_list(arg_info, mer_type)::out) is det.
 
 get_export_info_for_lang_c(ModuleInfo, Preds, PredId, ProcId,
-        HowToDeclareLabel, C_RetType, MaybeDeclareRetval, MaybeFail,
+        HowToDeclareLabel, CRetType, MaybeDeclareRetval, MaybeFail,
         MaybeSucceed, ArgInfoTypes) :-
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_status(PredInfo, Status),
-    (
+    ( if
         (
             procedure_is_exported(ModuleInfo, PredInfo, ProcId)
         ;
             pred_status_defined_in_this_module(Status) = no
         )
-    ->
+    then
         HowToDeclareLabel = "MR_declare_entry"
-    ;
+    else
         HowToDeclareLabel = "MR_declare_static"
     ),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -411,33 +411,36 @@ get_export_info_for_lang_c(ModuleInfo, Preds, PredId, ProcId,
     % instructions (if any).
     (
         CodeModel = model_det,
-        (
+        ( if
             PredOrFunc = pf_function,
             pred_args_to_func_args(ArgInfoTypes0, ArgInfoTypes1,
                 arg_info(RetArgLoc, RetArgMode) - RetType),
             RetArgMode = top_out,
             check_dummy_type(ModuleInfo, RetType) = is_not_dummy_type
-        ->
-            Export_RetType = foreign.to_exported_type(ModuleInfo, RetType),
-            C_RetType = exported_type_to_string(lang_c, Export_RetType),
+        then
+            ExportRetType = foreign.to_exported_type(ModuleInfo, RetType),
+            CRetType = exported_type_to_string(lang_c, ExportRetType),
             arg_loc_to_string(RetArgLoc, RetArgString0),
             convert_type_from_mercury(RetArgLoc, RetArgString0, RetType,
                 RetArgString),
-            MaybeDeclareRetval = "\t" ++ C_RetType ++ " return_value;\n",
+            MaybeDeclareRetval = "\t" ++ CRetType ++ " return_value;\n",
             % We need to unbox non-word-sized foreign types
             % before returning them to C code
-            ( foreign.is_foreign_type(Export_RetType) = yes(_) ->
+            ExportRetTypeIsForeign = foreign.is_foreign_type(ExportRetType),
+            (
+                ExportRetTypeIsForeign = yes(_),
                 SetReturnValue = "\tMR_MAYBE_UNBOX_FOREIGN_TYPE("
-                    ++ C_RetType ++ ", " ++ RetArgString
+                    ++ CRetType ++ ", " ++ RetArgString
                     ++ ", return_value);\n"
             ;
+                ExportRetTypeIsForeign = no,
                 SetReturnValue = "\treturn_value = " ++ RetArgString ++ ";\n"
             ),
             MaybeFail = SetReturnValue,
             MaybeSucceed = "\treturn return_value;\n",
             ArgInfoTypes2 = ArgInfoTypes1
-        ;
-            C_RetType = "void",
+        else
+            CRetType = "void",
             MaybeDeclareRetval = "",
             MaybeFail = "",
             MaybeSucceed = "",
@@ -449,7 +452,7 @@ get_export_info_for_lang_c(ModuleInfo, Preds, PredId, ProcId,
         % means that for Mercury functions the Mercury return value becomes
         % the last argument, and the C return value is a bool that is used
         % to indicate success or failure.
-        C_RetType = "MR_bool",
+        CRetType = "MR_bool",
         MaybeDeclareRetval = "",
         string.append_list([
             "\tif (!MR_r1) {\n",
@@ -549,14 +552,17 @@ pass_input_args(ModuleInfo, LastArgNum, [AT | ATs], PassInputArgs) :-
         ArgName0 = "Mercury__argument" ++ string.int_to_string(CurArgNum),
         arg_loc_to_string(ArgLoc, ArgLocString),
         convert_type_to_mercury(ArgName0, Type, ArgLoc, ArgName),
-        Export_Type = foreign.to_exported_type(ModuleInfo, Type),
+        ExportType = foreign.to_exported_type(ModuleInfo, Type),
         % We need to box non-word-sized foreign types
         % before passing them to Mercury code
-        ( foreign.is_foreign_type(Export_Type) = yes(_) ->
-            C_Type = exported_type_to_string(lang_c, Export_Type),
+        ExportTypeIsForeign = foreign.is_foreign_type(ExportType),
+        (
+            ExportTypeIsForeign = yes(_),
+            CType = exported_type_to_string(lang_c, ExportType),
             PassHeadInputArg = "\tMR_MAYBE_BOX_FOREIGN_TYPE(" ++
-                C_Type ++ ", " ++ ArgName ++ ", " ++ ArgLocString ++ ");\n"
+                CType ++ ", " ++ ArgName ++ ", " ++ ArgLocString ++ ");\n"
         ;
+            ExportTypeIsForeign = no,
             PassHeadInputArg =
                 "\t" ++ ArgLocString ++ " = " ++ ArgName ++ ";\n"
         )
@@ -586,14 +592,17 @@ retrieve_output_args(ModuleInfo, LastArgNum, [AT | ATs], RetrieveOutputArgs) :-
         ArgName = "Mercury__argument" ++ string.int_to_string(CurArgNum),
         arg_loc_to_string(ArgLoc, ArgLocString0),
         convert_type_from_mercury(ArgLoc, ArgLocString0, Type, ArgLocString),
-        Export_Type = foreign.to_exported_type(ModuleInfo, Type),
+        ExportType = foreign.to_exported_type(ModuleInfo, Type),
         % We need to unbox non-word-sized foreign types
         % before returning them to C code
-        ( foreign.is_foreign_type(Export_Type) = yes(_) ->
-            C_Type = exported_type_to_string(lang_c, Export_Type),
+        ExportTypeIsForeign = foreign.is_foreign_type(ExportType),
+        (
+            ExportTypeIsForeign = yes(_),
+            CType = exported_type_to_string(lang_c, ExportType),
             RetrieveHeadOutputArg = "\tMR_MAYBE_UNBOX_FOREIGN_TYPE(" ++
-                C_Type ++ ", " ++ ArgLocString ++ ", * " ++ ArgName ++ ");\n"
+                CType ++ ", " ++ ArgLocString ++ ", * " ++ ArgName ++ ");\n"
         ;
+            ExportTypeIsForeign = no,
             RetrieveHeadOutputArg =
                 "\t*" ++ ArgName ++ " = " ++ ArgLocString ++ ";\n"
         )
@@ -614,9 +623,9 @@ arg_loc_to_string(reg(RegType, RegNum), RegName) :-
     (
         RegType = reg_r,
         % XXX This magic number can't be good.
-        ( RegNum > 32 ->
+        ( if RegNum > 32 then
             RegName = "MR_r(" ++ int_to_string(RegNum) ++ ")"
-        ;
+        else
             RegName = "MR_r" ++ int_to_string(RegNum)
         )
     ;
@@ -699,9 +708,9 @@ convert_type_from_mercury(SourceArgLoc, Rval, Type, ConvertedRval) :-
 
 produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
     % We always produce a .mh file because with intermodule optimization
-    % enabled the .o file depends on all the .mh files of the imported modules
-    % so we always need to produce a .mh file even if it contains nothing.
-    ForeignExportDecls = foreign_export_decls(ForeignDeclCodes, C_ExportDecls),
+    % enabled, the .o file depends on all the .mh files of the imported
+    % modules. so we need to produce a .mh file even if it contains nothing.
+    ForeignExportDecls = foreign_export_decls(ForeignDeclCodes, CExportDecls),
     module_info_get_exported_enums(ModuleInfo, ExportedEnums),
     HeaderExt = ".mh",
     module_info_get_globals(ModuleInfo, Globals),
@@ -768,7 +777,7 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
             io.write_string("\n#endif\n", !IO)
         ),
 
-        produce_header_file_2(C_ExportDecls, !IO),
+        write_export_decls(CExportDecls, !IO),
         io.write_strings([
             "\n",
             "#ifdef __cplusplus\n",
@@ -791,18 +800,18 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred produce_header_file_2(list(foreign_export_decl)::in, io::di, io::uo)
+:- pred write_export_decls(list(foreign_export_decl)::in, io::di, io::uo)
     is det.
 
-produce_header_file_2([], !IO).
-produce_header_file_2([E | ExportedProcs], !IO) :-
-    E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls),
+write_export_decls([], !IO).
+write_export_decls([ExportDecl | ExportDecls], !IO) :-
+    ExportDecl = foreign_export_decl(Lang, CRetType, CFunction, ArgDecls),
     (
         Lang = lang_c,
         % Output the function header.
-        io.write_string(C_RetType, !IO),
+        io.write_string(CRetType, !IO),
         io.write_string(" ", !IO),
-        io.write_string(C_Function, !IO),
+        io.write_string(CFunction, !IO),
         io.write_string("(", !IO),
         io.write_string(ArgDecls, !IO),
         io.write_string(");\n", !IO)
@@ -814,7 +823,7 @@ produce_header_file_2([E | ExportedProcs], !IO) :-
         ),
         sorry($module, $pred, "foreign languages other than C unimplemented")
     ),
-    produce_header_file_2(ExportedProcs, !IO).
+    write_export_decls(ExportDecls, !IO).
 
 :- pred output_foreign_decl(globals::in, string::in,
     maybe(foreign_decl_is_local)::in, foreign_decl_code::in, io::di, io::uo)
@@ -824,19 +833,19 @@ output_foreign_decl(Globals, SourceFileName, MaybeDesiredIsLocal, DeclCode,
         !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, LiteralOrInclude, Context),
     expect(unify(Lang, lang_c), $module, $pred, "Lang != lang_c"),
-    (
+    ( if
         (
             MaybeDesiredIsLocal = no
         ;
             MaybeDesiredIsLocal = yes(DesiredIsLocal),
             DesiredIsLocal = IsLocal
         )
-    ->
+    then
         output_foreign_literal_or_include(Globals, SourceFileName,
             LiteralOrInclude, Context, !IO),
         io.nl(!IO),
         c_util.reset_line_num(Globals, !IO)
-    ;
+    else
         true
     ).
 

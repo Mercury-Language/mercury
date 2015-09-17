@@ -177,9 +177,9 @@ extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
 
     % If the foreign language is available as a target language,
     % we don't need to do anything.
-    ( list.member(ForeignLanguage, [TargetLang | TargetLangs]) ->
+    ( if list.member(ForeignLanguage, [TargetLang | TargetLangs]) then
         true
-    ;
+    else
         set_foreign_language(TargetLang, !Attributes),
         extrude_pragma_implementation_2(TargetLang, ForeignLanguage,
             !ModuleInfo, !Impl)
@@ -272,19 +272,19 @@ unimplemented_combination(Lang1, Lang2) :-
 have_foreign_type_for_backend(Target, ForeignTypeBody, Have) :-
     (
         Target = target_c,
-        Have = ( ForeignTypeBody ^ c = yes(_) -> yes ; no )
+        Have = ( if ForeignTypeBody ^ c = yes(_) then yes else no )
     ;
         Target = target_il,
-        Have = ( ForeignTypeBody ^ il = yes(_) -> yes ; no )
+        Have = ( if ForeignTypeBody ^ il = yes(_) then yes else no )
     ;
         Target = target_java,
-        Have = ( ForeignTypeBody ^ java = yes(_) -> yes ; no )
+        Have = ( if ForeignTypeBody ^ java = yes(_) then yes else no )
     ;
         Target = target_csharp,
-        Have = ( ForeignTypeBody ^ csharp = yes(_) -> yes ; no )
+        Have = ( if ForeignTypeBody ^ csharp = yes(_) then yes else no )
     ;
         Target = target_erlang,
-        Have = ( ForeignTypeBody ^ erlang = yes(_) -> yes ; no )
+        Have = ( if ForeignTypeBody ^ erlang = yes(_) then yes else no )
     ).
 
 :- type exported_type
@@ -299,10 +299,10 @@ non_foreign_type(Type) = exported_type_mercury(Type).
 
 to_exported_type(ModuleInfo, Type) = ExportType :-
     module_info_get_type_table(ModuleInfo, TypeTable),
-    (
+    ( if
         type_to_ctor(Type, TypeCtor),
         search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)
-    ->
+    then
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
             TypeBody = hlds_foreign_type(ForeignTypeBody),
@@ -317,7 +317,7 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
             ),
             ExportType = exported_type_mercury(Type)
         )
-    ;
+    else
         ExportType = exported_type_mercury(Type)
     ).
 
