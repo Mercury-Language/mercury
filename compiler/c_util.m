@@ -229,10 +229,10 @@ set_line_num(Globals, File, Line, !IO) :-
     ).
 
 always_set_line_num(File, Line, !IO) :-
-    (
+    ( if
         Line > 0,
         File \= ""
-    ->
+    then
         io.write_string("#line ", !IO),
         io.write_int(Line, !IO),
         io.write_string(" """, !IO),
@@ -245,7 +245,7 @@ always_set_line_num(File, Line, !IO) :-
             output_quoted_string(File, !IO)
         ),
         io.write_string("""\n", !IO)
-    ;
+    else
         always_reset_line_num(!IO)
     ).
 
@@ -263,10 +263,10 @@ always_reset_line_num(!IO) :-
     % idea of what it is processing back to the file we are generating.
     io.get_output_line_number(Line, !IO),
     io.output_stream_name(File, !IO),
-    (
+    ( if
         Line > 0,
         File \= ""
-    ->
+    then
         io.write_string("#line ", !IO),
         io.write_int(Line + 1, !IO),
         io.write_string(" """, !IO),
@@ -279,7 +279,7 @@ always_reset_line_num(!IO) :-
             output_quoted_string(File, !IO)
         ),
         io.write_string("""\n", !IO)
-    ;
+    else
         true
     ).
 
@@ -345,9 +345,9 @@ output_quoted_string_lang(Lang, S, !IO) :-
         % chars, go figure!
         string.split_by_codepoint(S, 160, Left, Right),
         do_output_quoted_string(Lang, Left, 0, !IO),
-        ( Right = "" ->
+        ( if Right = "" then
             true
-        ;
+        else
             io.write_string("\" \"", !IO),
             output_quoted_string_lang(Lang, Right, !IO)
         )
@@ -371,10 +371,10 @@ output_quoted_multi_string_lang(Lang, [S | Ss], !IO) :-
     int::in, io::di, io::uo) is det.
 
 do_output_quoted_string(Lang, S, Cur, !IO) :-
-    ( string.unsafe_index_next(S, Cur, Next, Char) ->
+    ( if string.unsafe_index_next(S, Cur, Next, Char) then
         output_quoted_char_lang(Lang, Char, !IO),
         do_output_quoted_string(Lang, S, Next, !IO)
-    ;
+    else
         true
     ).
 
@@ -415,40 +415,40 @@ quote_string(String) = QuotedString :-
 
 quote_one_char(Lang, Char, RevChars0, RevChars) :-
     % quote_one_char_c is a specialized version of this code.
-    (
+    ( if
         Lang = literal_java,
         java_escape_special_char(Char, RevEscapeChars)
-    ->
+    then
         list.append(RevEscapeChars, RevChars0, RevChars)
-    ;
+    else if
         escape_special_char(Char, EscapeChar)
-    ->
+    then
         RevChars = [EscapeChar, '\\' | RevChars0]
-    ;
+    else if
         Lang = literal_c,
         Char = '?'
-    ->
+    then
         % Avoid trigraphs by escaping the question marks.
         RevChars = ['?', '\\' | RevChars0]
-    ;
+    else if
         is_c_source_char(Char)
-    ->
+    then
         RevChars = [Char | RevChars0]
-    ;
+    else if
         char.to_int(Char, 0)
-    ->
+    then
         RevChars = ['0', '\\' | RevChars0]
-    ;
+    else if
         Int = char.to_int(Char),
         Int >= 0x80
-    ->
+    then
         (
             Lang = literal_c,
-            ( char.to_utf8(Char, CodeUnits) ->
+            ( if char.to_utf8(Char, CodeUnits) then
                 list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
                 list.condense(EscapeCharss, EscapeChars),
                 reverse_append(EscapeChars, RevChars0, RevChars)
-            ;
+            else
                 unexpected($module, $pred, "invalid Unicode code point")
             )
         ;
@@ -458,7 +458,7 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
             Lang = literal_csharp,
             RevChars = [Char | RevChars0]
         )
-    ;
+    else
         (
             Lang = literal_c,
             octal_escape_any_char(Char, EscapeChars)
@@ -476,35 +476,35 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
 
 quote_one_char_c(Char, RevChars0, RevChars) :-
     % This is a specialized version of quote_one_char.
-    (
+    ( if
         escape_special_char(Char, EscapeChar)
-    ->
+    then
         RevChars = [EscapeChar, '\\' | RevChars0]
-    ;
+    else if
         Char = '?'
-    ->
+    then
         % Avoid trigraphs by escaping the question marks.
         RevChars = ['?', '\\' | RevChars0]
-    ;
+    else if
         is_c_source_char(Char)
-    ->
+    then
         RevChars = [Char | RevChars0]
-    ;
+    else if
         char.to_int(Char, 0)
-    ->
+    then
         RevChars = ['0', '\\' | RevChars0]
-    ;
+    else if
         Int = char.to_int(Char),
         Int >= 0x80
-    ->
-        ( char.to_utf8(Char, CodeUnits) ->
+    then
+        ( if char.to_utf8(Char, CodeUnits) then
             list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
             list.condense(EscapeCharss, EscapeChars),
             reverse_append(EscapeChars, RevChars0, RevChars)
-        ;
+        else
             unexpected($module, $pred, "invalid Unicode code point")
         )
-    ;
+    else
         octal_escape_any_char(Char, EscapeChars),
         reverse_append(EscapeChars, RevChars0, RevChars)
     ).
@@ -601,29 +601,29 @@ output_int_expr(N, !IO) :-
     % integer constant must be typed `int' or `long int' or `long long int'
     % but not `unsigned long int'. Therefore the same problem does not occur.
 
-    ( N >= -2147483647 ->
+    ( if N >= -2147483647 then
         % Write integers in the most readable way as long as the absolute value
         % does not exceed LONG_MAX, otherwise it may be typed `unsigned long'.
         % This is the minimum magnitude of LONG_MAX in C.
         io.write_string("(MR_Integer) ", !IO),
         io.write_int(N, !IO)
-    ;
-        ( integer.to_string(integer(N)) = "-2147483648" ->
+    else
+        ( if integer.to_string(integer(N)) = "-2147483648" then
             % Write -2^31 without using an integer constant that overflows a
             % 32-bit signed `long' in two's complement representation.
             io.write_string("(-(MR_Integer) 2147483647 - 1)", !IO)
-        ; integer.to_string(integer(N)) = "-9223372036854775808" ->
+        else if integer.to_string(integer(N)) = "-9223372036854775808" then
             % Write -2^63 without using an integer constant that overflows a
             % 64-bit signed `long' in two's complement representation.
             io.write_string("(-(MR_Integer) 9223372036854775807 - 1)", !IO)
-        ; int.min_int(N) ->
+        else if int.min_int(N) then
             % Avoid negating min_int as it would overflow in two's complement
             % representation. In practice, one of the preceding two cases
             % would have been taken.
             io.write_string("(-(MR_Integer) ", !IO),
             io.write_int(-(N + 1), !IO),
             io.write_string("- 1)", !IO)
-        ;
+        else
             % Write other negative values as negation of an MR_Integer value.
             io.write_string("(-(MR_Integer) ", !IO),
             io.write_int(-N, !IO),
