@@ -381,7 +381,7 @@ annotate_c_procedure(Info, Proc, AnnotatedProc,
 gather_labels_from_instrs_acc([], !RevEntryLabels, !RevInternalLabels).
 gather_labels_from_instrs_acc([Instr | Instrs],
         !RevEntryLabels, !RevInternalLabels) :-
-    ( Instr = llds_instr(label(Label), _) ->
+    ( if Instr = llds_instr(label(Label), _) then
         (
             Label = entry_label(_, _),
             !:RevEntryLabels = [Label | !.RevEntryLabels]
@@ -389,7 +389,7 @@ gather_labels_from_instrs_acc([Instr | Instrs],
             Label = internal_label(_, _),
             !:RevInternalLabels = [Label | !.RevInternalLabels]
         )
-    ;
+    else
         true
     ),
     gather_labels_from_instrs_acc(Instrs,
@@ -759,7 +759,7 @@ output_debugger_init_list([Data | Datas], !IO) :-
 output_write_proc_static_list([], !IO).
 output_write_proc_static_list([ProcLayout | ProcLayouts], !IO) :-
     ProcLayout = proc_layout_data(RttiProcLabel, _, MaybeMore),
-    ( MaybeMore = proc_id_and_more(yes(_ProcStatic), _, _, _) ->
+    ( if MaybeMore = proc_id_and_more(yes(_ProcStatic), _, _, _) then
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
         UserOrUCI = proc_label_user_or_uci(ProcLabel),
         Kind = proc_layout_proc_id(UserOrUCI),
@@ -776,7 +776,7 @@ output_write_proc_static_list([ProcLayout | ProcLayouts], !IO) :-
         ),
         output_layout_name(proc_layout(RttiProcLabel, Kind), !IO),
         io.write_string(");\n", !IO)
-    ;
+    else
         true
     ),
     output_write_proc_static_list(ProcLayouts, !IO).
@@ -906,10 +906,10 @@ output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
     (
         Lang = lang_c,
         % This will not deduplicate the content of included files.
-        ( set.insert_new(LiteralOrInclude, !AlreadyDone) ->
+        ( if set.insert_new(LiteralOrInclude, !AlreadyDone) then
             output_foreign_decl_or_code(Info, "foreign_decl", Lang,
                 LiteralOrInclude, Context, !IO)
-        ;
+        else
             true
         )
     ;
@@ -930,10 +930,10 @@ output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
         !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     LineNumbers = Info ^ lout_line_numbers,
-    (
+    ( if
         AutoComments = yes,
         LineNumbers = yes
-    ->
+    then
         io.write_string("/* ", !IO),
         prog_out.write_context(Context, !IO),
         io.write_string(" pragma ", !IO),
@@ -941,7 +941,7 @@ output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
         io.write_string("(", !IO),
         io.write(Lang, !IO),
         io.write_string(") */\n", !IO)
-    ;
+    else
         true
     ),
     (
@@ -1098,9 +1098,9 @@ group_init_c_labels(InternalLabelToLayoutMap, [Label | Labels],
         !NoLayoutMap, !NoVarLayoutMap, !SVarLayoutMap, !LVarLayoutMap) :-
     (
         Label = internal_label(LabelNum, ProcLabel),
-        ( map.search(InternalLabelToLayoutMap, Label, Slot) ->
+        ( if map.search(InternalLabelToLayoutMap, Label, Slot) then
             Slot = layout_slot(ArrayName, SlotNum),
-            ( ArrayName = label_layout_array(Vars) ->
+            ( if ArrayName = label_layout_array(Vars) then
                 Pair = {LabelNum, SlotNum},
                 (
                     Vars = label_has_no_var_info,
@@ -1112,10 +1112,10 @@ group_init_c_labels(InternalLabelToLayoutMap, [Label | Labels],
                     Vars = label_has_long_var_info,
                     multi_map.set(ProcLabel, Pair, !LVarLayoutMap)
                 )
-            ;
+            else
                 unexpected($module, $pred, "bad slot type")
             )
-        ;
+        else
             multi_map.set(ProcLabel, LabelNum, !NoLayoutMap)
         )
     ;
@@ -1192,9 +1192,9 @@ write_int_pair({LabelNum, SlotNum}, !IO) :-
     io::di, io::uo) is det.
 
 output_c_entry_label_init(EntryLabelToLayoutMap, Label, !IO) :-
-    ( map.search(EntryLabelToLayoutMap, Label, _LayoutId) ->
+    ( if map.search(EntryLabelToLayoutMap, Label, _LayoutId) then
         SuffixOpen = "_sl("
-    ;
+    else
         SuffixOpen = "("
         % This label has no stack layout to initialize.
     ),
@@ -1240,9 +1240,9 @@ output_record_c_procedure_decls(Info, AnnotatedProc, !DeclSet, !IO) :-
 
 output_c_global_var_decl(VarName, !DeclSet, !IO) :-
     GlobalVar = env_var_ref(VarName),
-    ( decl_set_is_member(decl_c_global_var(GlobalVar), !.DeclSet) ->
+    ( if decl_set_is_member(decl_c_global_var(GlobalVar), !.DeclSet) then
         true
-    ;
+    else
         decl_set_insert(decl_c_global_var(GlobalVar), !DeclSet),
         io.write_string("extern MR_Word ", !IO),
         io.write_string(c_global_var_name(GlobalVar), !IO),
@@ -1307,7 +1307,7 @@ output_annotated_c_procedure(Info, AnnotatedProc, !IO) :-
 find_caller_label([], _) :-
     unexpected($module, $pred, "cannot find caller label").
 find_caller_label([llds_instr(Uinstr, _) | Instrs], CallerLabel) :-
-    ( Uinstr = label(Label) ->
+    ( if Uinstr = label(Label) then
         (
             Label = internal_label(_, _),
             unexpected($module, $pred, "caller label is internal label")
@@ -1315,7 +1315,7 @@ find_caller_label([llds_instr(Uinstr, _) | Instrs], CallerLabel) :-
             Label = entry_label(_, _),
             CallerLabel = Label
         )
-    ;
+    else
         find_caller_label(Instrs, CallerLabel)
     ).
 
@@ -1328,7 +1328,7 @@ find_caller_label([llds_instr(Uinstr, _) | Instrs], CallerLabel) :-
 find_cont_labels([], !ContLabels).
 find_cont_labels([Instr | Instrs], !ContLabels) :-
     Instr = llds_instr(Uinstr, _),
-    (
+    ( if
         (
             Uinstr = llcall(_, code_label(ContLabel), _, _, _, _)
         ;
@@ -1339,17 +1339,17 @@ find_cont_labels([Instr | Instrs], !ContLabels) :-
             Uinstr = assign(redoip_slot(_), const(Const)),
             Const = llconst_code_addr(code_label(ContLabel))
         )
-    ->
+    then
         set_tree234.insert(ContLabel, !ContLabels)
-    ;
+    else if
         Uinstr = fork_new_child(_, Label1)
-    ->
+    then
         set_tree234.insert(Label1, !ContLabels)
-    ;
+    else if
         Uinstr = block(_, _, Block)
-    ->
+    then
         find_cont_labels(Block, !ContLabels)
-    ;
+    else
         true
     ),
     find_cont_labels(Instrs, !ContLabels).
@@ -1377,14 +1377,14 @@ find_cont_labels([Instr | Instrs], !ContLabels) :-
 
 find_while_labels([], !WhileSet).
 find_while_labels([llds_instr(Uinstr0, _) | Instrs0], !WhileSet) :-
-    (
+    ( if
         Uinstr0 = label(Label),
         is_while_label(Label, Instrs0, Instrs1, 0, UseCount),
         UseCount > 0
-    ->
+    then
         set_tree234.insert(Label, !WhileSet),
         find_while_labels(Instrs1, !WhileSet)
-    ;
+    else
         find_while_labels(Instrs0, !WhileSet)
     ).
 
@@ -1394,16 +1394,16 @@ find_while_labels([llds_instr(Uinstr0, _) | Instrs0], !WhileSet) :-
 is_while_label(_, [], [], !Count).
 is_while_label(Label, [Instr0 | Instrs0], Instrs, !Count) :-
     Instr0 = llds_instr(Uinstr0, _),
-    ( Uinstr0 = label(_) ->
+    ( if Uinstr0 = label(_) then
         Instrs = [Instr0 | Instrs0]
-    ;
-        ( Uinstr0 = goto(code_label(Label)) ->
+    else
+        ( if Uinstr0 = goto(code_label(Label)) then
             !:Count = !.Count + 1
-        ; Uinstr0 = if_val(_, code_label(Label)) ->
+        else if Uinstr0 = if_val(_, code_label(Label)) then
             !:Count = !.Count + 1
-        ; Uinstr0 = block(_, _, BlockInstrs) ->
+        else if Uinstr0 = block(_, _, BlockInstrs) then
             count_while_label_in_block(Label, BlockInstrs, !Count)
-        ;
+        else
             true
         ),
         is_while_label(Label, Instrs0, Instrs, !Count)
@@ -1415,16 +1415,16 @@ is_while_label(Label, [Instr0 | Instrs0], Instrs, !Count) :-
 count_while_label_in_block(_, [], !Count).
 count_while_label_in_block(Label, [Instr0 | Instrs0], !Count) :-
     Instr0 = llds_instr(Uinstr0, _),
-    ( Uinstr0 = label(_) ->
+    ( if Uinstr0 = label(_) then
         unexpected($module, $pred, "label in block")
-    ;
-        ( Uinstr0 = goto(code_label(Label)) ->
+    else
+        ( if Uinstr0 = goto(code_label(Label)) then
             !:Count = !.Count + 1
-        ; Uinstr0 = if_val(_, code_label(Label)) ->
+        else if Uinstr0 = if_val(_, code_label(Label)) then
             !:Count = !.Count + 1
-        ; Uinstr0 = block(_, _, _) ->
+        else if Uinstr0 = block(_, _, _) then
             unexpected($module, $pred, "block in block")
-        ;
+        else
             true
         ),
         count_while_label_in_block(Label, Instrs0, !Count)
@@ -1453,31 +1453,31 @@ find_while_labels_to_define([Instr0 | Instrs0], MaybeCurWhileLabel0,
     Instr0 = llds_instr(Uinstr0, _) ,
     (
         Uinstr0 = label(Label),
-        ( set_tree234.contains(WhileLabels, Label) ->
+        ( if set_tree234.contains(WhileLabels, Label) then
             MaybeCurWhileLabel = yes(Label)
-        ;
+        else
             MaybeCurWhileLabel = no
         )
     ;
         Uinstr0 = if_val(Rval, Target),
         rval_addrs(Rval, RvalCodeAddrs, _),
         delete_any_labels(RvalCodeAddrs, !UndefWhileLabels),
-        ( Target = code_label(TargetLabel) ->
-            ( MaybeCurWhileLabel0 = yes(TargetLabel) ->
+        ( if Target = code_label(TargetLabel) then
+            ( if MaybeCurWhileLabel0 = yes(TargetLabel) then
                 % This reference will be turned into a continue statement.
                 true
-            ;
+            else
                 set_tree234.delete(TargetLabel, !UndefWhileLabels)
             )
-        ;
+        else
             true
         ),
         MaybeCurWhileLabel = no
     ;
         Uinstr0 = goto(Target),
-        ( Target = code_label(TargetLabel) ->
+        ( if Target = code_label(TargetLabel) then
             set_tree234.delete(TargetLabel, !UndefWhileLabels)
-        ;
+        else
             true
         ),
         MaybeCurWhileLabel = no
@@ -1624,9 +1624,9 @@ find_while_labels_to_define([Instr0 | Instrs0], MaybeCurWhileLabel0,
     set_tree234(label)::in, set_tree234(label)::out) is det.
 
 delete_any_label(CodeAddr, !UndefWhileLabels) :-
-    ( CodeAddr = code_label(Label) ->
+    ( if CodeAddr = code_label(Label) then
         set_tree234.delete(Label, !UndefWhileLabels)
-    ;
+    else
         true
     ).
 
@@ -1681,12 +1681,12 @@ c_data_linkage_string(DefaultLinkage, BeingDefined) = LinkageStr :-
     ).
 
 c_data_const_string(Globals, InclCodeAddr) =
-    (
+    ( if
         InclCodeAddr = yes,
         globals.lookup_bool_option(Globals, static_code_addresses, no)
-    ->
+    then
         ""
-    ;
+    else
         "const "
     ).
 

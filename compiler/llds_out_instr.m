@@ -282,28 +282,28 @@ output_instruction_list(_, [], _, _, !IO).
 output_instruction_list(Info, [Instr | Instrs], LabelOutputInfo,
         AfterLayoutLabel0, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
-    ( Uinstr = label(Label) ->
+    ( if Uinstr = label(Label) then
         InternalLabelToLayoutMap = Info ^ lout_internal_label_to_layout,
-        ( map.search(InternalLabelToLayoutMap, Label, _) ->
+        ( if map.search(InternalLabelToLayoutMap, Label, _) then
             AfterLayoutLabel = after_layout_label
-        ;
+        else
             AfterLayoutLabel = not_after_layout_label
         ),
-        (
+        ( if
             AfterLayoutLabel0 = after_layout_label,
             AfterLayoutLabel = after_layout_label
-        ->
+        then
             % Make sure that the addresses of the two labels are distinct.
             io.write_string("\tMR_dummy_function_call();\n", !IO)
-        ;
+        else
             true
         ),
         WhileLabels = LabelOutputInfo ^ loi_while_labels,
-        ( set_tree234.contains(WhileLabels, Label) ->
+        ( if set_tree234.contains(WhileLabels, Label) then
             UndefWhileLabels = LabelOutputInfo ^ loi_undef_while_labels,
-            ( set_tree234.contains(UndefWhileLabels, Label) ->
+            ( if set_tree234.contains(UndefWhileLabels, Label) then
                 true
-            ;
+            else
                 output_instruction_and_comment(Info, Uinstr, Comment,
                     LabelOutputInfo, !IO)
             ),
@@ -313,27 +313,27 @@ output_instruction_list(Info, [Instr | Instrs], LabelOutputInfo,
             io.write_string("\t} /* end while */\n", !IO),
             output_instruction_list(Info, AfterWhileInstrs, LabelOutputInfo,
                 not_after_layout_label, !IO)
-        ;
+        else
             output_instruction_and_comment(Info, Uinstr, Comment,
                 LabelOutputInfo, !IO),
             output_instruction_list(Info, Instrs, LabelOutputInfo,
                 AfterLayoutLabel, !IO)
         )
-    ;
+    else if
         Instrs = [Instr1 | Instrs1],
         Instr1 = llds_instr(Uinstr1, _),
         is_aligned_float_dword_assignment(Uinstr, Uinstr1, Lval, Rval)
-    ->
+    then
         output_float_dword_assignment(Info, Lval, Rval, !IO),
         AfterLayoutLabel = not_after_layout_label,
         output_instruction_list(Info, Instrs1, LabelOutputInfo,
             AfterLayoutLabel, !IO)
-    ;
+    else
         output_instruction_and_comment(Info, Uinstr, Comment,
             LabelOutputInfo, !IO),
-        ( Uinstr = comment(_) ->
+        ( if Uinstr = comment(_) then
             AfterLayoutLabel = AfterLayoutLabel0
-        ;
+        else
             AfterLayoutLabel = not_after_layout_label
         ),
         output_instruction_list(Info, Instrs, LabelOutputInfo,
@@ -349,37 +349,37 @@ output_instruction_list_while(_, _, [], [], _, !IO) :-
 output_instruction_list_while(Info, Label, [Instr | Instrs], AfterWhileInstrs,
         LabelOutputInfo, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
-    ( Uinstr = label(_) ->
+    ( if Uinstr = label(_) then
         io.write_string("\tbreak;\n", !IO),
         AfterWhileInstrs = [Instr | Instrs]
-    ; Uinstr = goto(code_label(Label)) ->
+    else if Uinstr = goto(code_label(Label)) then
         io.write_string("\t/* continue */\n", !IO),
         AfterWhileInstrs = Instrs
-    ; Uinstr = if_val(Rval, code_label(Label)) ->
+    else if Uinstr = if_val(Rval, code_label(Label)) then
         io.write_string("\tif (", !IO),
         output_test_rval(Info, Rval, !IO),
         io.write_string(")\n\t\tcontinue;\n", !IO),
         AutoComments = Info ^ lout_auto_comments,
-        (
+        ( if
             AutoComments = yes,
             Comment \= ""
-        ->
+        then
             io.write_string("\t\t/* ", !IO),
             io.write_string(Comment, !IO),
             io.write_string(" */\n", !IO)
-        ;
+        else
             true
         ),
         output_instruction_list_while(Info, Label, Instrs, AfterWhileInstrs,
             LabelOutputInfo, !IO)
-    ; Uinstr = block(TempR, TempF, BlockInstrs) ->
+    else if Uinstr = block(TempR, TempF, BlockInstrs) then
         output_block_start(TempR, TempF, !IO),
         output_instruction_list_while_block(Info, BlockInstrs, Label,
             LabelOutputInfo, !IO),
         output_block_end(!IO),
         output_instruction_list_while(Info, Label, Instrs, AfterWhileInstrs,
             LabelOutputInfo, !IO)
-    ;
+    else
         output_instruction_and_comment(Info, Uinstr, Comment,
             LabelOutputInfo, !IO),
         output_instruction_list_while(Info, Label, Instrs, AfterWhileInstrs,
@@ -394,31 +394,31 @@ output_instruction_list_while_block(_, [], _, _, !IO).
 output_instruction_list_while_block(Info, [Instr | Instrs], Label,
         LabelOutputInfo, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
-    ( Uinstr = label(_) ->
+    ( if Uinstr = label(_) then
         unexpected($module, $pred, "label in block")
-    ; Uinstr = goto(code_label(Label)) ->
+    else if Uinstr = goto(code_label(Label)) then
         io.write_string("\tcontinue;\n", !IO),
         expect(unify(Instrs, []), $module, $pred, "code after goto")
-    ; Uinstr = if_val(Rval, code_label(Label)) ->
+    else if Uinstr = if_val(Rval, code_label(Label)) then
         io.write_string("\tif (", !IO),
         output_test_rval(Info, Rval, !IO),
         io.write_string(")\n\t\tcontinue;\n", !IO),
         AutoComments = Info ^ lout_auto_comments,
-        (
+        ( if
             AutoComments = yes,
             Comment \= ""
-        ->
+        then
             io.write_string("\t\t/* ", !IO),
             io.write_string(Comment, !IO),
             io.write_string(" */\n", !IO)
-        ;
+        else
             true
         ),
         output_instruction_list_while_block(Info, Instrs, Label,
             LabelOutputInfo, !IO)
-    ; Uinstr = block(_, _, _) ->
+    else if Uinstr = block(_, _, _) then
         unexpected($module, $pred, "block in block")
-    ;
+    else
         output_instruction_and_comment(Info, Uinstr, Comment,
             LabelOutputInfo, !IO),
         output_instruction_list_while_block(Info, Instrs, Label,
@@ -511,21 +511,21 @@ output_instruction_and_comment(Info, Instr, Comment, LabelOutputInfo, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     (
         AutoComments = no,
-        (
+        ( if
             ( Instr = comment(_)
             ; Instr = livevals(_)
             )
-        ->
+        then
             true
-        ;
+        else
             output_instruction(Info, Instr, LabelOutputInfo, !IO)
         )
     ;
         AutoComments = yes,
         output_instruction(Info, Instr, LabelOutputInfo, !IO),
-        ( Comment = "" ->
+        ( if Comment = "" then
             true
-        ;
+        else
             io.write_string("\t\t/* ", !IO),
             io.write_string(Comment, !IO),
             io.write_string(" */\n", !IO)
@@ -895,9 +895,9 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
         ),
         (
             Kind = stack_incr_leaf,
-            ( N < max_leaf_stack_frame_size ->
+            ( if N < max_leaf_stack_frame_size then
                 io.write_string("\tMR_incr_sp_leaf(", !IO)
-            ;
+            else
                 io.write_string("\tMR_incr_sp(", !IO)
             )
         ;
@@ -1013,17 +1013,17 @@ output_instruction(Info, Instr, LabelOutputInfo, !IO) :-
 
 output_comment_chars(_PrevChar, [], !IO).
 output_comment_chars(PrevChar, [Char | Chars], !IO) :-
-    (
+    ( if
         PrevChar = ('/'),
         Char = ('*')
-    ->
+    then
         io.write_string(" *", !IO)
-    ;
+    else if
         PrevChar = ('*'),
         Char = ('/')
-    ->
+    then
         io.write_string(" /", !IO)
-    ;
+    else
         io.write_char(Char, !IO)
     ),
     output_comment_chars(Char, Chars, !IO).
@@ -1052,18 +1052,18 @@ output_livevals(Info, [Lval | Lvals], !IO) :-
 
 output_block_start(TempR, TempF, !IO) :-
     io.write_string("\t{\n", !IO),
-    ( TempR > 0 ->
+    ( if TempR > 0 then
         io.write_string("\tMR_Word ", !IO),
         output_temp_decls(TempR, "r", !IO),
         io.write_string(";\n", !IO)
-    ;
+    else
         true
     ),
-    ( TempF > 0 ->
+    ( if TempF > 0 then
         io.write_string("\tMR_Float ", !IO),
         output_temp_decls(TempF, "f", !IO),
         io.write_string(";\n", !IO)
-    ;
+    else
         true
     ).
 
@@ -1081,17 +1081,17 @@ output_temp_decls(N, Type, !IO) :-
     is det.
 
 output_temp_decls_2(Next, Max, Type, !IO) :-
-    ( Next =< Max ->
-        ( Next > 1 ->
+    ( if Next =< Max then
+        ( if Next > 1 then
             io.write_string(", ", !IO)
-        ;
+        else
             true
         ),
         io.write_string("MR_temp", !IO),
         io.write_string(Type, !IO),
         io.write_int(Next, !IO),
         output_temp_decls_2(Next + 1, Max, Type, !IO)
-    ;
+    else
         true
     ).
 
@@ -1121,23 +1121,23 @@ output_call(Info, Target, Continuation, CallerLabel, !IO) :-
     % do_call_class_method itself. But if we do use a noprof_call,
     % we need to set MR_prof_ho_caller_proc, so that the callee knows
     % which proc it has been called from.
-    (
+    ( if
         ( Target = do_call_closure(_)
         ; Target = do_call_class_method(_)
         )
-    ->
+    then
         ProfileCall = no,
         io.write_string("MR_set_prof_ho_caller_proc(", !IO),
         output_label_as_code_addr(CallerLabel, !IO),
         io.write_string(");\n\t", !IO)
-    ;
+    else
         ProfileCall = Info ^ lout_profile_calls
     ),
-    (
+    ( if
         Target = code_label(Label),
         % We really shouldn't be calling internal labels ...
         label_is_external_to_c_module(Label) = no
-    ->
+    then
         (
             ProfileCall = yes,
             io.write_string("MR_localcall(", !IO),
@@ -1180,10 +1180,10 @@ output_call(Info, Target, Continuation, CallerLabel, !IO) :-
                     NeedsPrefix, Wrapper, !IO)
             )
         )
-    ;
+    else if
         Continuation = code_label(ContLabel),
         label_is_external_to_c_module(ContLabel) = no
-    ->
+    then
         (
             ProfileCall = yes,
             io.write_string("MR_call_localret(", !IO),
@@ -1224,7 +1224,7 @@ output_call(Info, Target, Continuation, CallerLabel, !IO) :-
                 output_label_no_prefix(ContLabel, !IO)
             )
         )
-    ;
+    else
         (
             ProfileCall = yes,
             io.write_string("MR_call(", !IO)
@@ -1400,16 +1400,16 @@ maybe_output_update_prof_counter(Info, Label, LabelOutputInfo,
     % If ProfileTime is no, the definition of MR_update_prof_current_proc
     % is empty anyway.
     ProfileTime = Info ^ lout_profile_time,
-    (
+    ( if
         ProfileTime = yes,
         ContLabelSet = LabelOutputInfo ^ loi_cont_labels,
         set_tree234.contains(ContLabelSet, Label)
-    ->
+    then
         CallerLabel = LabelOutputInfo ^ loi_caller_label,
         io.write_string("\tMR_update_prof_current_proc(MR_LABEL_AP(", !IO),
         output_label_no_prefix(CallerLabel, !IO),
         io.write_string("));\n", !IO)
-    ;
+    else
         true
     ).
 
@@ -1824,11 +1824,11 @@ output_foreign_proc_component(Info, Component, !IO) :-
         output_foreign_proc_outputs(Info, Outputs, !IO)
     ;
         Component = foreign_proc_user_code(MaybeContext, _, C_Code),
-        ( C_Code = "" ->
+        ( if C_Code = "" then
             true
-        ;
-                % We should start the C_Code on a new line,
-                % just in case it starts with a proprocessor directive.
+        else
+            % We should start the C_Code on a new line,
+            % just in case it starts with a proprocessor directive.
             (
                 MaybeContext = yes(Context),
                 io.write_string("{\n", !IO),
@@ -1902,16 +1902,16 @@ output_foreign_proc_inputs(Info, [Input | Inputs], !IO) :-
         _MaybeForeignTypeInfo, _BoxPolicy),
     (
         IsDummy = is_dummy_type,
-        (
+        ( if
             % Avoid outputting an assignment for builtin dummy types.
             % For other dummy types we must output an assignment because
             % code in the foreign_proc body may examine the value.
             type_to_ctor_and_args(VarType, VarTypeCtor, []),
             check_builtin_dummy_type_ctor(VarTypeCtor) =
                 is_builtin_dummy_type_ctor
-        ->
+        then
             true
-        ;
+        else
             io.write_string("\t" ++ VarName ++ " = 0;\n", !IO)
         )
     ;
@@ -1945,21 +1945,21 @@ output_foreign_proc_input(Info, Input, !IO) :-
             % it also generates faster code than would be generated by
             % the then branch, because MR_MAYBE_UNBOX_FOREIGN_TYPE
             % invokes memcpy when given a word-sized type.
-            (
+            ( if
                 (
                     c_type_is_word_sized_int_or_ptr(ForeignType)
                 ;
                     list.member(foreign_type_can_pass_as_mercury_type,
                         Assertions)
                 )
-            ->
+            then
                 % Note that for this cast to be correct the foreign
                 % type must be a word sized integer or pointer type.
                 io.write_string(VarName, !IO),
                 io.write_string(" = ", !IO),
                 io.write_string("(" ++ ForeignType ++ ") ", !IO),
                 output_rval_as_type(Info, Rval, lt_word, !IO)
-            ;
+            else
                 io.write_string("MR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
                 io.write_string(ForeignType, !IO),
                 io.write_string(", ", !IO),
@@ -1972,12 +1972,12 @@ output_foreign_proc_input(Info, Input, !IO) :-
             MaybeForeignTypeInfo = no,
             io.write_string(VarName, !IO),
             io.write_string(" = ", !IO),
-            ( OrigType = builtin_type(builtin_type_string) ->
+            ( if OrigType = builtin_type(builtin_type_string) then
                 output_llds_type_cast(lt_string, !IO),
                 output_rval_as_type(Info, Rval, lt_word, !IO)
-            ; OrigType = builtin_type(builtin_type_float) ->
+            else if OrigType = builtin_type(builtin_type_float) then
                 output_rval_as_type(Info, Rval, lt_float, !IO)
-            ;
+            else
                 output_rval_as_type(Info, Rval, lt_word, !IO)
             )
         )
@@ -2037,14 +2037,14 @@ output_foreign_proc_output(Info, Output, !IO) :-
         (
             MaybeForeignType = yes(ForeignTypeInfo),
             ForeignTypeInfo = foreign_proc_type(ForeignType, Assertions),
-            (
+            ( if
                 list.member(foreign_type_can_pass_as_mercury_type, Assertions)
-            ->
+            then
                 output_lval_as_word(Info, Lval, !IO),
                 io.write_string(" = ", !IO),
                 output_llds_type_cast(lt_word, !IO),
                 io.write_string(VarName, !IO)
-            ;
+            else
                 io.write_string("MR_MAYBE_BOX_FOREIGN_TYPE(", !IO),
                 io.write_string(ForeignType, !IO),
                 io.write_string(", ", !IO),
@@ -2055,7 +2055,7 @@ output_foreign_proc_output(Info, Output, !IO) :-
             )
         ;
             MaybeForeignType = no,
-            ( OrigType = builtin_type(BuiltinType) ->
+            ( if OrigType = builtin_type(BuiltinType) then
                 (
                     BuiltinType = builtin_type_string,
                     output_lval_as_word(Info, Lval, !IO),
@@ -2065,11 +2065,11 @@ output_foreign_proc_output(Info, Output, !IO) :-
                 ;
                     BuiltinType = builtin_type_float,
                     llds.lval_type(Lval, ActualType),
-                    ( ActualType = lt_float ->
+                    ( if ActualType = lt_float then
                         output_lval(Info, Lval, !IO),
                         io.write_string(" = ", !IO),
                         io.write_string(VarName, !IO)
-                    ;
+                    else
                         output_lval_as_word(Info, Lval, !IO),
                         io.write_string(" = ", !IO),
                         io.write_string("MR_float_to_word(", !IO),
@@ -2090,7 +2090,7 @@ output_foreign_proc_output(Info, Output, !IO) :-
                     io.write_string(" = ", !IO),
                     io.write_string(VarName, !IO)
                 )
-            ;
+            else
                 output_lval_as_word(Info, Lval, !IO),
                 io.write_string(" = ", !IO),
                 io.write_string(VarName, !IO)

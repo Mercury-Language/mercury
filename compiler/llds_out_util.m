@@ -181,9 +181,9 @@ decl_set_is_member(DeclId, DeclSet) :-
 %----------------------------------------------------------------------------%
 
 output_indent(FirstIndent, LaterIndent, N0, !IO) :-
-    ( N0 > 0 ->
+    ( if N0 > 0 then
         io.write_string(LaterIndent, !IO)
-    ;
+    else
         io.write_string(FirstIndent, !IO)
     ).
 

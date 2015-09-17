@@ -94,9 +94,9 @@ output_record_code_addr_decls(Info, CodeAddress, !DeclSet, !IO) :-
 
 output_record_code_addr_decls_format(Info, CodeAddress,
         FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
-    ( decl_set_is_member(decl_code_addr(CodeAddress), !.DeclSet) ->
+    ( if decl_set_is_member(decl_code_addr(CodeAddress), !.DeclSet) then
         true
-    ;
+    else
         decl_set_insert(decl_code_addr(CodeAddress), !DeclSet),
         need_code_addr_decls(Info, CodeAddress, NeedDecl),
         (

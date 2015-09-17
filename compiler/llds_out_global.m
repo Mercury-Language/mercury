@@ -413,9 +413,9 @@ output_common_cell_type_name(type_num(TypeNum), !IO) :-
 
 output_common_type_defn(TypeNum, CellType, !DeclSet, !IO) :-
     TypeDeclId = decl_common_type(TypeNum),
-    ( decl_set_is_member(TypeDeclId, !.DeclSet) ->
+    ( if decl_set_is_member(TypeDeclId, !.DeclSet) then
         true
-    ;
+    else
         output_pragma_pack_push(!IO),
         io.write_string("struct ", !IO),
         output_common_cell_type_name(TypeNum, !IO),
@@ -518,10 +518,10 @@ common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
 output_cons_arg_types([], _, _, !IO).
 output_cons_arg_types([Type | Types], Indent, ArgNum, !IO) :-
     io.write_string(Indent, !IO),
-    ( Type = lt_float ->
+    ( if Type = lt_float then
         % Ensure float structure members are word-aligned.
         io.write_string("MR_Float_Aligned", !IO)
-    ;
+    else
         output_llds_type(Type, !IO)
     ),
     io.write_string(" f", !IO),
@@ -536,12 +536,12 @@ output_cons_arg_group_types([], _, _, !IO).
 output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
     io.write_string(Indent, !IO),
     Group = Type - ArraySize,
-    ( ArraySize = 1 ->
+    ( if ArraySize = 1 then
         output_llds_type(Type, !IO),
         io.write_string(" f", !IO),
         io.write_int(ArgNum, !IO),
         io.write_string(";\n", !IO)
-    ;
+    else
         output_llds_type(Type, !IO),
         io.write_string(" f", !IO),
         io.write_int(ArgNum, !IO),
@@ -574,12 +574,12 @@ output_common_cell_value(Info, CellValue, !IO) :-
 output_cons_args(_, [], !IO).
 output_cons_args(Info, [TypedRval | TypedRvals], !IO) :-
     TypedRval = typed_rval(Rval, Type),
-    (
+    ( if
         Rval = const(llconst_int(N)),
         direct_field_int_constant(Type) = yes
-    ->
+    then
         output_int_const(N, Type, !IO)
-    ;
+    else
         output_rval_as_type(Info, Rval, Type, !IO)
     ),
     (
@@ -599,10 +599,10 @@ output_cons_arg_groups(Info, [Group | Groups], !IO) :-
     (
         Group = common_cell_grouped_args(Type, _, Rvals),
         io.write_string("{\n", !IO),
-        (
+        ( if
             list.map(project_int_constant, Rvals, Ints),
             direct_field_int_constant(Type) = yes
-        ->
+        then
             Check = check_int_const_sizes,
             (
                 Check = no,
@@ -611,18 +611,18 @@ output_cons_arg_groups(Info, [Group | Groups], !IO) :-
                 Check = yes,
                 output_cons_arg_group_ints_check(Ints, Type, !IO)
             )
-        ;
+        else
             output_cons_arg_group_elements(Info, Type, Rvals, !IO)
         ),
         io.write_string("}", !IO)
     ;
         Group = common_cell_ungrouped_arg(Type, Rval),
-        (
+        ( if
             project_int_constant(Rval, Int),
             direct_field_int_constant(Type) = yes
-        ->
+        then
             output_int_const(Int, Type, !IO)
-        ;
+        else
             output_rval_as_type(Info, Rval, Type, !IO)
         )
     ),
@@ -698,9 +698,9 @@ output_int_const(N, Type, !IO) :-
     Check = check_int_const_sizes,
     (
         Check = yes,
-        ( ok_int_const(N, Type) ->
+        ( if ok_int_const(N, Type) then
             io.write_int(N, !IO)
-        ;
+        else
             unexpected($module, $pred, "constant does not fit in type")
         )
     ;
