@@ -548,7 +548,7 @@ report_any_overlapping_instance_declarations(ClassId,
     else
         true
     ),
-    % Maybe we shouldn't recursive if we generated an error above,
+    % Maybe we shouldn't recurse if we generated an error above,
     % but triply-defined instances are so rare that it doesn't much matter,
     % and in some even more rare cases, the extra info may be useful.
     report_any_overlapping_instance_declarations(ClassId,
