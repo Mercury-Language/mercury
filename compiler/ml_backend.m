@@ -16,11 +16,8 @@
 %   and a wrapper for the assembler back-end,
 %   each of which convert MLDS to their respective target language.
 %
-% The main part of the assembler back-end, which converts MLDS to GCC's
-% internal abstract syntax trees and then invokes the GCC back-end to convert
-% this to assembler, is in a package of its own, so that this package doesn't
-% depend on the GCC back-end.
-%
+%-----------------------------------------------------------------------------%
+
 :- module ml_backend.
 :- interface.
 
