@@ -428,6 +428,15 @@ MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
     return err;
 }
 
+void
+MR_sem_init(MercurySem *sem, unsigned int value)
+{
+    if (sem_init(sem, 0, value) == -1) {
+        MR_perror("cannot initialize semaphore");
+        exit(EXIT_FAILURE);
+    }
+}
+
 int
 MR_sem_wait(MercurySem *sem, const char *from)
 {

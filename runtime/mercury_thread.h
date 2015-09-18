@@ -43,6 +43,8 @@ extern int
 MR_cond_timed_wait(MercuryCond *cond, MercuryLock *lock,
     const struct timespec *abstime, const char *from);
 
+extern void
+MR_sem_init(MercurySem *sem, unsigned int);
 extern int
 MR_sem_wait(MercurySem *sem, const char *from);
 extern int

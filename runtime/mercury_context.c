@@ -138,7 +138,7 @@ MR_milliseconds_from_now(struct timespec *timeout, unsigned int msecs);
 #define ENGINE_STATE_ALL            0xFFFF
 
 struct engine_sleep_sync_i {
-    sem_t                                       es_sleep_semaphore;
+    MercurySem                                  es_sleep_semaphore;
     MercuryLock                                 es_wake_lock;
     volatile MR_Unsigned                        es_state;
     volatile unsigned                           es_action;
@@ -261,7 +261,7 @@ static MR_Context       *free_small_context_list = NULL;
 #ifdef  MR_LL_PARALLEL_CONJ
 MR_Integer volatile         MR_num_idle_ws_engines = 0;
 static MR_Integer volatile  MR_num_outstanding_contexts = 0;
-static sem_t                shutdown_ws_semaphore;
+static MercurySem           shutdown_ws_semaphore;
 
 static MercuryLock      MR_par_cond_stats_lock;
 
@@ -365,10 +365,7 @@ MR_init_context_stuff(void)
     #ifdef MR_DEBUG_RUNTIME_GRANULARITY_CONTROL
     pthread_mutex_init(&MR_par_cond_stats_lock, MR_MUTEX_ATTR);
     #endif
-    if (sem_init(&shutdown_ws_semaphore, 0, 0) == -1) {
-        MR_perror("cannot initialize semaphore");
-        exit(EXIT_FAILURE);
-    }
+    MR_sem_init(&shutdown_ws_semaphore, 0);
   #endif
     pthread_mutex_init(&MR_STM_lock, MR_MUTEX_ATTR);
 
@@ -401,11 +398,7 @@ MR_init_context_stuff(void)
         MR_max_engines, MR_ALLOC_SITE_RUNTIME);
     for (i = 0; i < MR_max_engines; i++) {
         engine_sleep_sync *esync = get_engine_sleep_sync(i);
-
-        if (sem_init(&esync->d.es_sleep_semaphore, 0, 0) == -1 ) {
-            MR_perror("cannot initialize semaphore");
-            exit(EXIT_FAILURE);
-        };
+        MR_sem_init(&esync->d.es_sleep_sempahore, 0);
         pthread_mutex_init(&esync->d.es_wake_lock, MR_MUTEX_ATTR);
         /*
         ** All engines are initially working (because telling them to wake up
