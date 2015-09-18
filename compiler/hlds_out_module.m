@@ -906,15 +906,36 @@ write_inst(Lang, Inst, !IO) :-
 
 :- pred write_mode_table(int::in, mode_table::in, io::di, io::uo) is det.
 
-write_mode_table(Indent, _ModeTable, !IO) :-
-    % XXX fix this up.
+write_mode_table(Indent, ModeTable, !IO) :-
+    mode_table_get_mode_defns(ModeTable, ModeDefns),
     write_indent(Indent, !IO),
     io.write_string("%-------- Modes --------\n", !IO),
     write_indent(Indent, !IO),
-    io.write_string("%%% Not yet implemented, sorry.\n", !IO),
-    % io.write_string("% ", !IO),
-    % io.print(ModeTable, !IO),
+    map.foldl(write_mode_table_entry(Indent), ModeDefns, !IO),
     io.nl(!IO).
+
+:- pred write_mode_table_entry(int::in, mode_id::in, hlds_mode_defn::in,
+    io::di, io::uo) is det.
+
+write_mode_table_entry(Indent, ModeId, ModeDefn, !IO) :-
+    ModeId = mode_id(ModeName, _ModeArity),
+    write_indent(Indent, !IO),
+    io.format("\n:- mode %s", [s(sym_name_to_string(ModeName))], !IO),
+    ModeDefn = hlds_mode_defn(InstVarSet, InstParams, ModeBody, _Context,
+        _ModeStatus),
+    (
+        InstParams = []
+    ;
+        InstParams = [HeadInstParam | TailInstParams],
+        io.write_string("(", !IO),
+        write_inst_params(HeadInstParam, TailInstParams, InstVarSet, !IO),
+        io.write_string(")", !IO)
+    ),
+    ModeBody = eqv_mode(EqvMode),
+    io.write_string(":\n", !IO),
+    write_indent(Indent, !IO),
+    mercury_output_mode(output_debug, InstVarSet, EqvMode, !IO),
+    io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%
 %
