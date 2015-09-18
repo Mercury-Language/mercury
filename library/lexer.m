@@ -1059,11 +1059,11 @@ string_get_comment_2(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred start_quoted_name(io.input_stream::in, char::in, list(char)::in,
     token::out, io::di, io::uo) is det.
 
-start_quoted_name(Stream, QuoteChar, Chars, Token, !IO) :-
-    get_quoted_name(Stream, QuoteChar, Chars, Token0, !IO),
+start_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO) :-
+    get_quoted_name(Stream, QuoteChar, !.RevChars, Token0, !IO),
     ( if Token0 = error(_) then
         % Skip to the end of the string or name.
-        start_quoted_name(Stream, QuoteChar, Chars, _, !IO),
+        start_quoted_name(Stream, QuoteChar, !.RevChars, _, !IO),
         Token = Token0
     else if Token0 = eof then
         Token = error("unterminated quote")
@@ -1075,13 +1075,13 @@ start_quoted_name(Stream, QuoteChar, Chars, Token, !IO) :-
     list(char)::in, posn::in, token::out, string_token_context::out,
     posn::in, posn::out) is det.
 
-string_start_quoted_name(String, Len, QuoteChar, Chars, Posn0,
+string_start_quoted_name(String, Len, QuoteChar, !.RevChars, Posn0,
         Token, Context, !Posn) :-
-    string_get_quoted_name(String, Len, QuoteChar, Chars, Posn0,
+    string_get_quoted_name(String, Len, QuoteChar, !.RevChars, Posn0,
         Token0, Context, !Posn),
     ( if Token0 = error(_) then
         % Skip to the end of the string or name.
-        string_start_quoted_name(String, Len, QuoteChar, Chars,
+        string_start_quoted_name(String, Len, QuoteChar, !.RevChars,
             Posn0, _, _, !Posn),
         Token = Token0
     else if Token0 = eof then
@@ -1093,7 +1093,7 @@ string_start_quoted_name(String, Len, QuoteChar, Chars, Posn0,
 :- pred get_quoted_name(io.input_stream::in, char::in, list(char)::in,
     token::out, io::di, io::uo) is det.
 
-get_quoted_name(Stream, QuoteChar, Chars, Token, !IO) :-
+get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -1104,11 +1104,12 @@ get_quoted_name(Stream, QuoteChar, Chars, Token, !IO) :-
     ;
         Result = ok,
         ( if Char = QuoteChar then
-            get_quoted_name_quote(Stream, QuoteChar, Chars, Token, !IO)
+            get_quoted_name_quote(Stream, QuoteChar, !.RevChars, Token, !IO)
         else if Char = ('\\') then
-            get_quoted_name_escape(Stream, QuoteChar, Chars, Token, !IO)
+            get_quoted_name_escape(Stream, QuoteChar, !.RevChars, Token, !IO)
         else
-            get_quoted_name(Stream, QuoteChar, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
         )
     ).
 
@@ -1116,17 +1117,18 @@ get_quoted_name(Stream, QuoteChar, Chars, Token, !IO) :-
     list(char)::in, posn::in, token::out, string_token_context::out,
     posn::in, posn::out) is det.
 
-string_get_quoted_name(String, Len, QuoteChar, Chars, Posn0, Token, Context,
-        !Posn) :-
+string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
+        Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = QuoteChar then
-            string_get_quoted_name_quote(String, Len, QuoteChar, Chars,
+            string_get_quoted_name_quote(String, Len, QuoteChar, !.RevChars,
                 Posn0, Token, Context, !Posn)
         else if Char = ('\\') then
-            string_get_quoted_name_escape(String, Len, QuoteChar, Chars,
+            string_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars,
                 Posn0, Token, Context, !Posn)
         else
-            string_get_quoted_name(String, Len, QuoteChar, [Char | Chars],
+            !:RevChars = [Char | !.RevChars],
+            string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
                 Posn0, Token, Context, !Posn)
         )
     else
@@ -1137,21 +1139,22 @@ string_get_quoted_name(String, Len, QuoteChar, Chars, Posn0, Token, Context,
 :- pred get_quoted_name_quote(io.input_stream::in, char::in, list(char)::in,
     token::out, io::di, io::uo) is det.
 
-get_quoted_name_quote(Stream, QuoteChar, Chars, Token, !IO) :-
+get_quoted_name_quote(Stream, QuoteChar, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        finish_quoted_name(QuoteChar, Chars, Token)
+        finish_quoted_name(QuoteChar, !.RevChars, Token)
     ;
         Result = ok,
         ( if Char = QuoteChar then
-            get_quoted_name(Stream, QuoteChar, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            finish_quoted_name(QuoteChar, Chars, Token)
+            finish_quoted_name(QuoteChar, !.RevChars, Token)
         )
     ).
 
@@ -1159,26 +1162,27 @@ get_quoted_name_quote(Stream, QuoteChar, Chars, Token, !IO) :-
     list(char)::in, posn::in, token::out, string_token_context::out,
     posn::in, posn::out) is det.
 
-string_get_quoted_name_quote(String, Len, QuoteChar, Chars, Posn0,
-        Token, Context, !Posn) :-
+string_get_quoted_name_quote(String, Len, QuoteChar, !.RevChars,
+        Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = QuoteChar then
-            string_get_quoted_name(String, Len, QuoteChar, [Char | Chars],
+            !:RevChars = [Char | !.RevChars],
+            string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
                 Posn0, Token, Context, !Posn)
         else
             string_ungetchar(String, !Posn),
             string_get_context(Posn0, Context, !Posn),
-            finish_quoted_name(QuoteChar, Chars, Token)
+            finish_quoted_name(QuoteChar, !.RevChars, Token)
         )
     else
         string_get_context(Posn0, Context, !Posn),
-        finish_quoted_name(QuoteChar, Chars, Token)
+        finish_quoted_name(QuoteChar, !.RevChars, Token)
     ).
 
 :- pred finish_quoted_name(char::in, list(char)::in, token::out) is det.
 
-finish_quoted_name(QuoteChar, Chars, Token) :-
-    ( if rev_char_list_to_string(Chars, String) then
+finish_quoted_name(QuoteChar, RevChars, Token) :-
+    ( if rev_char_list_to_string(RevChars, String) then
         ( if QuoteChar = '''' then
             Token = name(String)
         else if QuoteChar = '"' then
@@ -1193,7 +1197,7 @@ finish_quoted_name(QuoteChar, Chars, Token) :-
 :- pred get_quoted_name_escape(io.input_stream::in, char::in, list(char)::in,
     token::out, io::di, io::uo) is det.
 
-get_quoted_name_escape(Stream, QuoteChar, Chars, Token, !IO) :-
+get_quoted_name_escape(Stream, QuoteChar, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -1204,21 +1208,23 @@ get_quoted_name_escape(Stream, QuoteChar, Chars, Token, !IO) :-
     ;
         Result = ok,
         ( if Char = '\n' then
-            get_quoted_name(Stream, QuoteChar, Chars, Token, !IO)
+            get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
         else if Char = '\r' then
             % Files created on Windows may have an extra return character.
-            get_quoted_name_escape(Stream, QuoteChar, Chars, Token, !IO)
+            get_quoted_name_escape(Stream, QuoteChar, !.RevChars, Token, !IO)
         else if escape_char(Char, EscapedChar) then
-            Chars1 = [EscapedChar | Chars],
-            get_quoted_name(Stream, QuoteChar, Chars1, Token, !IO)
+            !:RevChars = [EscapedChar | !.RevChars],
+            get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
         else if Char = 'x' then
-            get_hex_escape(Stream, QuoteChar, Chars, [], Token, !IO)
+            get_hex_escape(Stream, QuoteChar, !.RevChars, [], Token, !IO)
         else if Char = 'u' then
-            get_unicode_escape(Stream, 4, QuoteChar, Chars, [], Token, !IO)
+            get_unicode_escape(Stream, 4, QuoteChar, !.RevChars, [],
+                Token, !IO)
         else if Char = 'U' then
-            get_unicode_escape(Stream, 8, QuoteChar, Chars, [], Token, !IO)
+            get_unicode_escape(Stream, 8, QuoteChar, !.RevChars, [],
+                Token, !IO)
         else if char.is_octal_digit(Char) then
-            get_octal_escape(Stream, QuoteChar, Chars, [Char], Token, !IO)
+            get_octal_escape(Stream, QuoteChar, !.RevChars, [Char], Token, !IO)
         else
             Token = error("invalid escape character")
         )
@@ -1228,32 +1234,32 @@ get_quoted_name_escape(Stream, QuoteChar, Chars, Token, !IO) :-
     list(char)::in, posn::in, token::out, string_token_context::out,
     posn::in, posn::out) is det.
 
-string_get_quoted_name_escape(String, Len, QuoteChar, Chars, Posn0,
+string_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars, Posn0,
         Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = '\n' then
-            string_get_quoted_name(String, Len, QuoteChar, Chars,
-                Posn0, Token, Context, !Posn)
+            string_get_quoted_name(String, Len, QuoteChar,
+                !.RevChars, Posn0, Token, Context, !Posn)
         else if Char = '\r' then
             % Files created on Windows may have an extra return character.
-            string_get_quoted_name_escape(String, Len, QuoteChar, Chars,
-                Posn0, Token, Context, !Posn)
+            string_get_quoted_name_escape(String, Len, QuoteChar,
+                !.RevChars, Posn0, Token, Context, !Posn)
         else if escape_char(Char, EscapedChar) then
-            Chars1 = [EscapedChar | Chars],
-            string_get_quoted_name(String, Len, QuoteChar, Chars1,
-                Posn0, Token, Context, !Posn)
+            !:RevChars = [EscapedChar | !.RevChars],
+            string_get_quoted_name(String, Len, QuoteChar,
+                !.RevChars, Posn0, Token, Context, !Posn)
         else if Char = 'x' then
-            string_get_hex_escape(String, Len, QuoteChar, Chars, [],
-                Posn0, Token, Context, !Posn)
+            string_get_hex_escape(String, Len, QuoteChar,
+                !.RevChars, [], Posn0, Token, Context, !Posn)
         else if Char = 'u' then
-            string_get_unicode_escape(4, String, Len, QuoteChar, Chars,
-                    [], Posn0, Token, Context, !Posn)
+            string_get_unicode_escape(4, String, Len, QuoteChar,
+                !.RevChars, [], Posn0, Token, Context, !Posn)
         else if Char = 'U' then
-            string_get_unicode_escape(8, String, Len, QuoteChar, Chars,
-                    [], Posn0, Token, Context, !Posn)
+            string_get_unicode_escape(8, String, Len, QuoteChar,
+                !.RevChars, [], Posn0, Token, Context, !Posn)
         else if char.is_octal_digit(Char) then
-            string_get_octal_escape(String, Len, QuoteChar, Chars, [Char],
-                Posn0, Token, Context, !Posn)
+            string_get_octal_escape(String, Len, QuoteChar,
+                !.RevChars, [Char], Posn0, Token, Context, !Posn)
         else
             string_get_context(!.Posn, Context, !Posn),
             Token = error("invalid escape character")
@@ -1280,11 +1286,11 @@ escape_char('`', '`').
 :- pred get_unicode_escape(io.input_stream::in, int::in, char::in,
     list(char)::in, list(char)::in, token::out, io::di, io::uo) is det.
 
-get_unicode_escape(Stream, NumHexChars, QuoteChar, Chars, HexChars, Token,
-        !IO) :-
-    ( if NumHexChars = list.length(HexChars) then
+get_unicode_escape(Stream, NumHexChars, QuoteChar, !.RevChars, !.RevHexChars,
+        Token, !IO) :-
+    ( if NumHexChars = list.length(!.RevHexChars) then
         ( if
-            rev_char_list_to_string(HexChars, HexString),
+            rev_char_list_to_string(!.RevHexChars, HexString),
             string.base_string_to_int(16, HexString, UnicodeCharCode),
             allowed_unicode_char_code(UnicodeCharCode),
             char.from_int(UnicodeCharCode, UnicodeChar)
@@ -1292,8 +1298,8 @@ get_unicode_escape(Stream, NumHexChars, QuoteChar, Chars, HexChars, Token,
             ( if UnicodeCharCode = 0 then
                 Token = null_character_error
             else
-                get_quoted_name(Stream, QuoteChar,
-                    [UnicodeChar | Chars], Token, !IO)
+                !:RevChars = [UnicodeChar | !.RevChars],
+                get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
             )
         else
             Token = error("invalid Unicode character code")
@@ -1309,8 +1315,9 @@ get_unicode_escape(Stream, NumHexChars, QuoteChar, Chars, HexChars, Token,
         ;
             Result = ok,
             ( if char.is_hex_digit(Char) then
-                get_unicode_escape(Stream, NumHexChars, QuoteChar, Chars,
-                    [Char | HexChars], Token, !IO)
+                !:RevHexChars = [Char | !.RevHexChars],
+                get_unicode_escape(Stream, NumHexChars, QuoteChar,
+                    !.RevChars, !.RevHexChars, Token, !IO)
             else
                 Token = error("invalid hex character in Unicode escape")
             )
@@ -1321,22 +1328,22 @@ get_unicode_escape(Stream, NumHexChars, QuoteChar, Chars, HexChars, Token,
     list(char)::in, list(char)::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_get_unicode_escape(NumHexChars, String, Len, QuoteChar, Chars,
-        HexChars, Posn0, Token, Context, !Posn) :-
-    ( if NumHexChars = list.length(HexChars) then
+string_get_unicode_escape(NumHexChars, String, Len, QuoteChar,
+        !.RevChars, !.RevHexChars, Posn0, Token, Context, !Posn) :-
+    ( if NumHexChars = list.length(!.RevHexChars) then
         ( if
-            rev_char_list_to_string(HexChars, HexString),
+            rev_char_list_to_string(!.RevHexChars, HexString),
             string.base_string_to_int(16, HexString, UnicodeCharCode),
             allowed_unicode_char_code(UnicodeCharCode),
             char.from_int(UnicodeCharCode, UnicodeChar)
         then
-            RevCharsWithUnicode = [UnicodeChar | Chars],
             ( if UnicodeCharCode = 0 then
                 string_get_context(Posn0, Context, !Posn),
                 Token = null_character_error
             else
-                string_get_quoted_name(String, Len, QuoteChar,
-                    RevCharsWithUnicode, Posn0, Token, Context, !Posn)
+                !:RevChars = [UnicodeChar | !.RevChars],
+                string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
+                    Posn0, Token, Context, !Posn)
             )
         else
             string_get_context(Posn0, Context, !Posn),
@@ -1345,8 +1352,9 @@ string_get_unicode_escape(NumHexChars, String, Len, QuoteChar, Chars,
     else
         ( if string_read_char(String, Len, Char, !Posn) then
             ( if char.is_hex_digit(Char) then
+                !:RevHexChars = [Char | !.RevHexChars],
                 string_get_unicode_escape(NumHexChars, String, Len, QuoteChar,
-                    Chars, [Char | HexChars], Posn0, Token, Context, !Posn)
+                    !.RevChars, !.RevHexChars, Posn0, Token, Context, !Posn)
             else
                 string_get_context(Posn0, Context, !Posn),
                 Token = error("invalid hex character in Unicode escape")
@@ -1373,7 +1381,7 @@ allowed_unicode_char_code(Code) :-
 :- pred get_hex_escape(io.input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
 
-get_hex_escape(Stream, QuoteChar, Chars, HexChars, Token, !IO) :-
+get_hex_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -1384,10 +1392,12 @@ get_hex_escape(Stream, QuoteChar, Chars, HexChars, Token, !IO) :-
     ;
         Result = ok,
         ( if char.is_hex_digit(Char) then
-            get_hex_escape(Stream, QuoteChar, Chars, [Char | HexChars], Token,
-                !IO)
+            !:RevHexChars = [Char | !.RevHexChars],
+            get_hex_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars,
+                Token, !IO)
         else if Char = ('\\') then
-            finish_hex_escape(Stream, QuoteChar, Chars, HexChars, Token, !IO)
+            finish_hex_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars,
+                Token, !IO)
         else
             Token = error("unterminated hex escape")
         )
@@ -1397,15 +1407,16 @@ get_hex_escape(Stream, QuoteChar, Chars, HexChars, Token, !IO) :-
     list(char)::in, list(char)::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_get_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
-        Token, Context, !Posn) :-
+string_get_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
+        Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_hex_digit(Char) then
-            string_get_hex_escape(String, Len, QuoteChar, Chars,
-                [Char | HexChars], Posn0, Token, Context, !Posn)
+            !:RevHexChars = [Char | !.RevHexChars],
+            string_get_hex_escape(String, Len, QuoteChar,
+                !.RevChars, !.RevHexChars, Posn0, Token, Context, !Posn)
         else if Char = ('\\') then
-            string_finish_hex_escape(String, Len, QuoteChar, Chars,
-                HexChars, Posn0, Token, Context, !Posn)
+            string_finish_hex_escape(String, Len, QuoteChar, !.RevChars,
+                !.RevHexChars, Posn0, Token, Context, !Posn)
         else
             string_get_context(Posn0, Context, !Posn),
             Token = error("unterminated hex escape")
@@ -1418,21 +1429,22 @@ string_get_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
 :- pred finish_hex_escape(io.input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
 
-finish_hex_escape(Stream, QuoteChar, Chars, HexChars, Token, !IO) :-
+finish_hex_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars, Token, !IO) :-
     (
-        HexChars = [],
+        !.RevHexChars = [],
         Token = error("empty hex escape")
     ;
-        HexChars = [_ | _],
+        !.RevHexChars = [_ | _],
         ( if
-            rev_char_list_to_string(HexChars, HexString),
+            rev_char_list_to_string(!.RevHexChars, HexString),
             string.base_string_to_int(16, HexString, Int),
             char.to_int(Char, Int)
         then
             ( if Int = 0 then
                 Token = null_character_error
             else
-                get_quoted_name(Stream, QuoteChar, [Char|Chars], Token, !IO)
+                !:RevChars = [Char | !.RevChars],
+                get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
             )
         else
             Token = error("invalid hex escape")
@@ -1443,16 +1455,16 @@ finish_hex_escape(Stream, QuoteChar, Chars, HexChars, Token, !IO) :-
     list(char)::in, list(char)::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_finish_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
-        Token, Context, !Posn) :-
+string_finish_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
+        Posn0, Token, Context, !Posn) :-
     (
-        HexChars = [],
+        !.RevHexChars = [],
         string_get_context(Posn0, Context, !Posn),
         Token = error("empty hex escape")
     ;
-        HexChars = [_ | _],
+        !.RevHexChars = [_ | _],
         ( if
-            rev_char_list_to_string(HexChars, HexString),
+            rev_char_list_to_string(!.RevHexChars, HexString),
             string.base_string_to_int(16, HexString, Int),
             char.to_int(Char, Int)
         then
@@ -1460,7 +1472,8 @@ string_finish_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
                 Token = null_character_error,
                 string_get_context(Posn0, Context, !Posn)
             else
-                string_get_quoted_name(String, Len, QuoteChar, [Char | Chars],
+                !:RevChars = [Char | !.RevChars],
+                string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
                     Posn0, Token, Context, !Posn)
             )
         else
@@ -1472,7 +1485,7 @@ string_finish_hex_escape(String, Len, QuoteChar, Chars, HexChars, Posn0,
 :- pred get_octal_escape(io.input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
 
-get_octal_escape(Stream, QuoteChar, Chars, OctalChars, Token, !IO) :-
+get_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -1483,11 +1496,12 @@ get_octal_escape(Stream, QuoteChar, Chars, OctalChars, Token, !IO) :-
     ;
         Result = ok,
         ( if char.is_octal_digit(Char) then
-            get_octal_escape(Stream, QuoteChar, Chars, [Char | OctalChars],
+            !:RevOctalChars = [Char | !.RevOctalChars],
+            get_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars,
                 Token, !IO)
         else if Char = ('\\') then
-            finish_octal_escape(Stream, QuoteChar, Chars,
-                OctalChars, Token, !IO)
+            finish_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars,
+                Token, !IO)
         else
             Token = error("unterminated octal escape")
         )
@@ -1497,15 +1511,16 @@ get_octal_escape(Stream, QuoteChar, Chars, OctalChars, Token, !IO) :-
     list(char)::in, list(char)::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_get_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
+string_get_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
         Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_octal_digit(Char) then
-            string_get_octal_escape(String, Len, QuoteChar, Chars,
-                [Char | OctalChars], Posn0, Token, Context, !Posn)
+            !:RevOctalChars = [Char | !.RevOctalChars],
+            string_get_octal_escape(String, Len, QuoteChar,
+                !.RevChars, !.RevOctalChars, Posn0, Token, Context, !Posn)
         else if Char = ('\\') then
-            string_finish_octal_escape(String, Len, QuoteChar, Chars,
-                OctalChars, Posn0, Token, Context, !Posn)
+            string_finish_octal_escape(String, Len, QuoteChar,
+                !.RevChars, !.RevOctalChars, Posn0, Token, Context, !Posn)
         else
             string_get_context(Posn0, Context, !Posn),
             Token = error("unterminated octal escape")
@@ -1518,21 +1533,23 @@ string_get_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
 :- pred finish_octal_escape(io.input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
 
-finish_octal_escape(Stream, QuoteChar, Chars, OctalChars, Token, !IO) :-
+finish_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars,
+        Token, !IO) :-
     (
-        OctalChars = [],
+        !.RevOctalChars = [],
         Token = error("empty octal escape")
     ;
-        OctalChars = [_ | _],
+        !.RevOctalChars = [_ | _],
         ( if
-            rev_char_list_to_string(OctalChars, OctalString),
+            rev_char_list_to_string(!.RevOctalChars, OctalString),
             string.base_string_to_int(8, OctalString, Int),
             char.to_int(Char, Int)
         then
             ( if Int = 0 then
                 Token = null_character_error
             else
-                get_quoted_name(Stream, QuoteChar, [Char | Chars], Token, !IO)
+                !:RevChars = [Char | !.RevChars],
+                get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
             )
         else
             Token = error("invalid octal escape")
@@ -1543,16 +1560,16 @@ finish_octal_escape(Stream, QuoteChar, Chars, OctalChars, Token, !IO) :-
     list(char)::in, list(char)::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_finish_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
+string_finish_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
         Posn0, Token, Context, !Posn) :-
     (
-        OctalChars = [],
+        !.RevOctalChars = [],
         Token = error("empty octal escape"),
         string_get_context(Posn0, Context, !Posn)
     ;
-        OctalChars = [_ | _],
+        !.RevOctalChars = [_ | _],
         ( if
-            rev_char_list_to_string(OctalChars, OctalString),
+            rev_char_list_to_string(!.RevOctalChars, OctalString),
             string.base_string_to_int(8, OctalString, Int),
             char.to_int(Char, Int)
         then
@@ -1560,7 +1577,8 @@ string_finish_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
                 Token = null_character_error,
                 string_get_context(Posn0, Context, !Posn)
             else
-                string_get_quoted_name(String, Len, QuoteChar, [Char | Chars],
+                !:RevChars = [Char | !.RevChars],
+                string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
                     Posn0, Token, Context, !Posn)
             )
         else
@@ -1577,14 +1595,14 @@ string_finish_octal_escape(String, Len, QuoteChar, Chars, OctalChars,
 :- pred get_name(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_name(Stream, Chars, Token, !IO) :-
+get_name(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        ( if rev_char_list_to_string(Chars, Name) then
+        ( if rev_char_list_to_string(!.RevChars, Name) then
             Token = name(Name)
         else
             Token = error("invalid character in name")
@@ -1592,10 +1610,11 @@ get_name(Stream, Chars, Token, !IO) :-
     ;
         Result = ok,
         ( if char.is_alnum_or_underscore(Char) then
-            get_name(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_name(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            ( if rev_char_list_to_string(Chars, Name) then
+            ( if rev_char_list_to_string(!.RevChars, Name) then
                 Token = name(Name)
             else
                 Token = error("invalid character in name")
@@ -1688,7 +1707,7 @@ string_get_implementation_defined_literal_rest(String, Len, Posn0,
 :- pred get_source_line_number(io.input_stream::in, list(char)::in, token::out,
     token_context::out, io::di, io::uo) is det.
 
-get_source_line_number(Stream, Chars, Token, Context, !IO) :-
+get_source_line_number(Stream, !.RevChars, Token, Context, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -1701,9 +1720,10 @@ get_source_line_number(Stream, Chars, Token, Context, !IO) :-
     ;
         Result = ok,
         ( if char.is_digit(Char) then
-            get_source_line_number(Stream, [Char | Chars], Token, Context, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_source_line_number(Stream, !.RevChars, Token, Context, !IO)
         else if Char = '\n' then
-            ( if rev_char_list_to_string(Chars, String) then
+            ( if rev_char_list_to_string(!.RevChars, String) then
                 ( if
                     string.base_string_to_int(10, String, Int),
                     Int > 0
@@ -1774,14 +1794,14 @@ string_get_source_line_number(String, Len, Posn1, Token, Context, !Posn) :-
 :- pred get_graphic(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_graphic(Stream, Chars, Token, !IO) :-
+get_graphic(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        ( if rev_char_list_to_string(Chars, Name) then
+        ( if rev_char_list_to_string(!.RevChars, Name) then
             Token = name(Name)
         else
             Token = error("invalid character in graphic token")
@@ -1789,10 +1809,11 @@ get_graphic(Stream, Chars, Token, !IO) :-
     ;
         Result = ok,
         ( if graphic_token_char(Char) then
-            get_graphic(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_graphic(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            ( if rev_char_list_to_string(Chars, Name) then
+            ( if rev_char_list_to_string(!.RevChars, Name) then
                 Token = name(Name)
             else
                 Token = error("invalid character in graphic token")
@@ -1822,14 +1843,14 @@ string_get_graphic(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred get_variable(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_variable(Stream, Chars, Token, !IO) :-
+get_variable(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        ( if rev_char_list_to_string(Chars, VariableName) then
+        ( if rev_char_list_to_string(!.RevChars, VariableName) then
             Token = variable(VariableName)
         else
             Token = error("invalid character in variable")
@@ -1837,10 +1858,11 @@ get_variable(Stream, Chars, Token, !IO) :-
     ;
         Result = ok,
         ( if char.is_alnum_or_underscore(Char) then
-            get_variable(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_variable(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            ( if rev_char_list_to_string(Chars, VariableName) then
+            ( if rev_char_list_to_string(!.RevChars, VariableName) then
                 Token = variable(VariableName)
             else
                 Token = error("invalid character in variable")
@@ -2004,21 +2026,22 @@ string_get_binary(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred get_binary_2(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_binary_2(Stream, Chars, Token, !IO) :-
+get_binary_2(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(Chars, base_2, Token)
+        rev_char_list_to_int(!.RevChars, base_2, Token)
     ;
         Result = ok,
         ( if char.is_binary_digit(Char) then
-            get_binary_2(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_binary_2(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(Chars, base_2, Token)
+            rev_char_list_to_int(!.RevChars, base_2, Token)
         )
     ).
 
@@ -2083,21 +2106,22 @@ string_get_octal(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred get_octal_2(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_octal_2(Stream, Chars, Token, !IO) :-
+get_octal_2(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(Chars, base_8, Token)
+        rev_char_list_to_int(!.RevChars, base_8, Token)
     ;
         Result = ok,
         ( if char.is_octal_digit(Char) then
-            get_octal_2(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_octal_2(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(Chars, base_8, Token)
+            rev_char_list_to_int(!.RevChars, base_8, Token)
         )
     ).
 
@@ -2162,21 +2186,22 @@ string_get_hex(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred get_hex_2(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_hex_2(Stream, Chars, Token, !IO) :-
+get_hex_2(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(Chars, base_16, Token)
+        rev_char_list_to_int(!.RevChars, base_16, Token)
     ;
         Result = ok,
         ( if char.is_hex_digit(Char) then
-            get_hex_2(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_hex_2(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(Chars, base_16, Token)
+            rev_char_list_to_int(!.RevChars, base_16, Token)
         )
     ).
 
@@ -2202,25 +2227,27 @@ string_get_hex_2(String, Len, Posn1, Token, Context, !Posn) :-
 :- pred get_number(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_number(Stream, Chars, Token, !IO) :-
+get_number(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_int(Chars, base_10, Token)
+        rev_char_list_to_int(!.RevChars, base_10, Token)
     ;
         Result = ok,
         ( if char.is_digit(Char) then
-            get_number(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_number(Stream, !.RevChars, Token, !IO)
         else if Char = ('.') then
-            get_int_dot(Stream, Chars, Token, !IO)
+            get_int_dot(Stream, !.RevChars, Token, !IO)
         else if ( Char = 'e' ; Char = 'E' ) then
-            get_float_exponent(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_float_exponent(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_int(Chars, base_10, Token)
+            rev_char_list_to_int(!.RevChars, base_10, Token)
         )
     ).
 
@@ -2251,7 +2278,7 @@ string_get_number(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred get_int_dot(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_int_dot(Stream, Chars, Token, !IO) :-
+get_int_dot(Stream, !.RevChars, Token, !IO) :-
     % XXX The float literal syntax doesn't match ISO Prolog.
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
@@ -2260,18 +2287,19 @@ get_int_dot(Stream, Chars, Token, !IO) :-
     ;
         Result = eof,
         io.putback_char(Stream, '.', !IO),
-        rev_char_list_to_int(Chars, base_10, Token)
+        rev_char_list_to_int(!.RevChars, base_10, Token)
     ;
         Result = ok,
         ( if char.is_digit(Char) then
-            get_float_decimals(Stream, [Char, '.' | Chars], Token, !IO)
+            !:RevChars = [Char, '.' | !.RevChars],
+            get_float_decimals(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             % We can't putback the ".", because io.putback_char only
             % guarantees one character of pushback. So instead, we return
             % an `integer_dot' token; the main loop of get_token_list_2 will
             % handle this appropriately.
-            rev_char_list_to_int(Chars, base_10, Token0),
+            rev_char_list_to_int(!.RevChars, base_10, Token0),
             ( if Token0 = integer(Int) then
                 Token = integer_dot(Int)
             else
@@ -2307,23 +2335,25 @@ string_get_int_dot(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred get_float_decimals(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_float_decimals(Stream, Chars, Token, !IO) :-
+get_float_decimals(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_float(Chars, Token)
+        rev_char_list_to_float(!.RevChars, Token)
     ;
         Result = ok,
         ( if char.is_digit(Char) then
-            get_float_decimals(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_float_decimals(Stream, !.RevChars, Token, !IO)
         else if ( Char = 'e' ; Char = 'E' ) then
-            get_float_exponent(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_float_exponent(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_float(Chars, Token)
+            rev_char_list_to_float(!.RevChars, Token)
         )
     ).
 
@@ -2353,20 +2383,22 @@ string_get_float_decimals(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred get_float_exponent(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_float_exponent(Stream, Chars, Token, !IO) :-
+get_float_exponent(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_float(Chars, Token)
+        rev_char_list_to_float(!.RevChars, Token)
     ;
         Result = ok,
         ( if ( Char = ('+') ; Char = ('-') ) then
-            get_float_exponent_2(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_float_exponent_2(Stream, !.RevChars, Token, !IO)
         else if char.is_digit(Char) then
-            get_float_exponent_3(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_float_exponent_3(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = error("unterminated exponent in float token")
@@ -2402,7 +2434,7 @@ string_get_float_exponent(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred get_float_exponent_2(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_float_exponent_2(Stream, Chars, Token, !IO) :-
+get_float_exponent_2(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -2413,7 +2445,8 @@ get_float_exponent_2(Stream, Chars, Token, !IO) :-
     ;
         Result = ok,
         ( if char.is_digit(Char) then
-            get_float_exponent_3(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_float_exponent_3(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
             Token = error("unterminated exponent in float token")
@@ -2448,21 +2481,22 @@ string_get_float_exponent_2(String, Len, Posn0, Token, Context, !Posn) :-
 :- pred get_float_exponent_3(io.input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
-get_float_exponent_3(Stream, Chars, Token, !IO) :-
+get_float_exponent_3(Stream, !.RevChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
         Token = io_error(Error)
     ;
         Result = eof,
-        rev_char_list_to_float(Chars, Token)
+        rev_char_list_to_float(!.RevChars, Token)
     ;
         Result = ok,
         ( if char.is_digit(Char) then
-            get_float_exponent_3(Stream, [Char | Chars], Token, !IO)
+            !:RevChars = [Char | !.RevChars],
+            get_float_exponent_3(Stream, !.RevChars, Token, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            rev_char_list_to_float(Chars, Token)
+            rev_char_list_to_float(!.RevChars, Token)
         )
     ).
 
