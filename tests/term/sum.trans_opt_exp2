@@ -1,3 +1,5 @@
 :- module sum.
+
 :- pragma termination_info(sum.sum((builtin.out), (builtin.out), (builtin.in)), finite(0, [no, no, yes]), cannot_loop).
+
 :- pragma termination2_info(sum.sum((builtin.out), (builtin.out), (builtin.in)), constraints([le([term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1)), eq([term(0, r(1, 1)), term(1, r(1, 1)), term(2, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).
