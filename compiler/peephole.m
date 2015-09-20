@@ -68,9 +68,9 @@ peephole_optimize_2(_, [], [], no).
 peephole_optimize_2(InvalidPatterns, [Instr0 | Instrs0], Instrs, Mod) :-
     peephole_optimize_2(InvalidPatterns, Instrs0, Instrs1, Mod0),
     peephole_opt_instr(Instr0, Instrs1, InvalidPatterns, Instrs, Mod1),
-    ( Mod0 = no, Mod1 = no ->
+    ( if Mod0 = no, Mod1 = no then
         Mod = no
-    ;
+    else
         Mod = yes
     ).
 
@@ -82,7 +82,9 @@ peephole_optimize_2(InvalidPatterns, [Instr0 | Instrs0], Instrs, Mod) :-
 
 peephole_opt_instr(Instr0, Instrs0, InvalidPatterns, Instrs, Mod) :-
     opt_util.skip_comments(Instrs0, Instrs1),
-    ( peephole_match(Instr0, Instrs1, InvalidPatterns, Instrs2) ->
+    ( if
+        peephole_match(Instr0, Instrs1, InvalidPatterns, Instrs2)
+    then
         (
             Instrs2 = [Instr2 | Instrs3],
             peephole_opt_instr(Instr2, Instrs3, InvalidPatterns, Instrs, _)
@@ -91,10 +93,12 @@ peephole_opt_instr(Instr0, Instrs0, InvalidPatterns, Instrs, Mod) :-
             Instrs = Instrs2
         ),
         Mod = yes
-    ; peephole_match_norepeat(Instr0, Instrs1, InvalidPatterns, Instrs2) ->
+    else if
+        peephole_match_norepeat(Instr0, Instrs1, InvalidPatterns, Instrs2)
+    then
         Instrs = Instrs2,
         Mod = yes
-    ;
+    else
         Instrs = [Instr0 | Instrs0],
         Mod = no
     ).
@@ -110,9 +114,9 @@ peephole_opt_instr(Instr0, Instrs0, InvalidPatterns, Instrs, Mod) :-
 build_peephole_jump_label_map([], _, !LabelMap).
 build_peephole_jump_label_map([MaybeLabel | MaybeLabels], Val, !LabelMap) :-
     MaybeLabel = yes(Label),
-    ( map.search(!.LabelMap, Label, Vals0) ->
+    ( if map.search(!.LabelMap, Label, Vals0) then
         map.det_update(Label, [Val | Vals0], !LabelMap)
-    ;
+    else
         map.det_insert(Label, [Val], !LabelMap)
     ),
     build_peephole_jump_label_map(MaybeLabels, Val + 1, !LabelMap).
@@ -128,15 +132,15 @@ peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
         OtherLabel) :-
     LabelVals1 = Label1 - Vals1,
     LabelVals2 = Label2 - Vals2,
-    ( Vals1 = [Val1] ->
+    ( if Vals1 = [Val1] then
         OneValLabel = Label1,
         Val = Val1,
         OtherLabel = Label2
-    ; Vals2 = [Val2] ->
+    else if Vals2 = [Val2] then
         OneValLabel = Label2,
         Val = Val2,
         OtherLabel = Label1
-    ;
+    else
         fail
     ).
 
@@ -164,23 +168,23 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
     Uinstr0 = computed_goto(SelectorRval, Labels),
     build_peephole_jump_label_map(Labels, 0, map.init, LabelMap),
     map.to_assoc_list(LabelMap, LabelValsList),
-    (
+    ( if
         LabelValsList = [Label - _]
-    ->
+    then
         GotoInstr = llds_instr(goto(code_label(Label)), Comment0),
         Instrs = [GotoInstr | Instrs0]
-    ;
+    else if
         LabelValsList = [LabelVals1, LabelVals2],
         peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel,
             Val, OtherLabel)
-    ->
+    then
         CondRval = binop(eq, SelectorRval, const(llconst_int(Val))),
         CommentInstr = llds_instr(comment(Comment0), ""),
         BranchInstr = llds_instr(if_val(CondRval, code_label(OneValLabel)),
             ""),
         GotoInstr = llds_instr(goto(code_label(OtherLabel)), Comment0),
         Instrs = [CommentInstr, BranchInstr, GotoInstr | Instrs0]
-    ;
+    else
         fail
     ).
 
@@ -196,9 +200,9 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
 peephole_match(Instr0, Instrs0, _, Instrs) :-
     Instr0 = llds_instr(Uinstr0, Comment0),
     Uinstr0 = if_val(Rval, CodeAddr),
-    (
+    ( if
         opt_util.is_const_condition(Rval, Taken)
-    ->
+    then
         (
             Taken = yes,
             Instrs = [llds_instr(goto(CodeAddr), Comment0) | Instrs0]
@@ -206,18 +210,18 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
             Taken = no,
             Instrs = Instrs0
         )
-    ;
+    else if
         opt_util.skip_comments(Instrs0, Instrs1),
         Instrs1 = [Instr1 | _],
         Instr1 = llds_instr(goto(CodeAddr), _)
-    ->
+    then
         Instrs = Instrs0
-    ;
+    else if
         CodeAddr = code_label(Label),
         opt_util.is_this_label_next(Label, Instrs0, _)
-    ->
+    then
         Instrs = Instrs0
-    ;
+    else
         fail
     ).
 
@@ -277,7 +281,7 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
 peephole_match(Instr0, Instrs0, _, Instrs) :-
     Instr0 = llds_instr(Uinstr0, Comment0),
     Uinstr0 = mkframe(NondetFrameInfo, yes(Redoip0)),
-    (
+    ( if
         % A mkframe sets curfr to point to the new frame
         % only for ordinary frames, not temp frames.
         (
@@ -290,76 +294,76 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
         opt_util.next_assign_to_redoip(Instrs0, AllowedBases, [], Redoip1,
             Skipped, Rest),
         opt_util.touches_nondet_ctrl(Skipped) = no
-    ->
+    then
         Instrs1 = Skipped ++ Rest,
         NewInstr = llds_instr(mkframe(NondetFrameInfo, yes(Redoip1)),
             Comment0),
         Instrs = [NewInstr | Instrs1]
-    ;
+    else if
         opt_util.skip_comments_livevals(Instrs0, Instrs1),
         Instrs1 = [Instr1 | Instrs2],
         Instr1 = llds_instr(if_val(Test, Target), Comment1),
-        (
+        ( if
             Redoip0 = do_fail,
             ( Target = do_redo ; Target = do_fail)
-        ->
+        then
             InstrsPrime = [
                 llds_instr(if_val(Test, do_redo), Comment1),
                 llds_instr(mkframe(NondetFrameInfo, yes(do_fail)), Comment0)
                 | Instrs2
             ]
-        ;
+        else if
             Redoip0 = code_label(_)
-        ->
-            (
+        then
+            ( if
                 Target = do_fail
-            ->
+            then
                 InstrsPrime = [
                     llds_instr(if_val(Test, do_redo), Comment1),
                     Instr0
                     | Instrs2
                 ]
-            ;
+            else if
                 Target = do_redo
-            ->
+            then
                 InstrsPrime = [
                     Instr0,
                     llds_instr(if_val(Test, Redoip0), Comment1)
                     | Instrs2
                 ]
-            ;
+            else
                 fail
             )
-        ;
+        else
             fail
         )
-    ->
+    then
         Instrs = InstrsPrime
-    ;
+    else if
         opt_util.skip_comments_livevals(Instrs0, Instrs1),
         Instrs1 = [Instr1 | Instrs2],
         Instr1 = llds_instr(goto(do_fail), Comment2)
-    ->
+    then
         Instrs = [llds_instr(goto(do_redo), Comment2) | Instrs2]
-    ;
+    else if
         Redoip0 = do_fail,
         no_stack_straight_line(Instrs0, Straight, Instrs1),
         Instrs1 = [Instr1 | Instrs2],
         Instr1 = llds_instr(goto(do_succeed(_)), _)
-    ->
+    then
         GotoSuccip = llds_instr(goto(code_succip),
             "return from optimized away mkframe"),
         Instrs = Straight ++ [GotoSuccip | Instrs2]
-    ;
+    else if
         Redoip0 = do_fail,
         may_replace_succeed_with_succeed_discard(Instrs0, UntilSucceed,
             SucceedComment, Instrs2)
-    ->
+    then
         DiscardUinstr = goto(do_succeed(no)),
         DiscardComment = SucceedComment ++ " (added discard)",
         DiscardInstr = llds_instr(DiscardUinstr, DiscardComment),
         Instrs = [Instr0 | UntilSucceed] ++ [DiscardInstr | Instrs2]
-    ;
+    else
         fail
     ).
 
@@ -397,25 +401,25 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
 peephole_match(Instr0, Instrs0, _, Instrs) :-
     Instr0 = llds_instr(Uinstr0, Comment0),
     Uinstr0 = assign(redoip_slot(lval(Base)), Redoip0),
-    (
+    ( if
         opt_util.next_assign_to_redoip(Instrs0, [Base], [], Redoip1,
             Skipped, Rest),
         opt_util.touches_nondet_ctrl(Skipped) = no
-    ->
+    then
         Instrs1 = Skipped ++ Rest,
         RedoipInstr = llds_instr(assign(redoip_slot(lval(Base)),
             const(llconst_code_addr(Redoip1))), Comment0),
         Instrs = [RedoipInstr | Instrs1]
-    ;
+    else if
         Base = curfr,
         Redoip0 = const(llconst_code_addr(do_fail)),
         opt_util.straight_alternative(Instrs0, Between, After),
         opt_util.touches_nondet_ctrl(Between) = no,
         string.sub_string_search(Comment0, "curfr==maxfr", _)
-    ->
+    then
         SucceedInstr = llds_instr(goto(do_succeed(yes)), "early discard"),
         Instrs = Between ++ [SucceedInstr] ++ After
-    ;
+    else
         fail
     ).
 
@@ -436,10 +440,10 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
 peephole_match(Instr0, Instrs0, InvalidPatterns, Instrs) :-
     Instr0 = llds_instr(Uinstr0, _Comment0),
     Uinstr0 = incr_sp(N, _, _),
-    \+ list.member(pattern_incr_sp, InvalidPatterns),
-    ( opt_util.no_stackvars_til_decr_sp(Instrs0, N, Between, Remain) ->
+    not list.member(pattern_incr_sp, InvalidPatterns),
+    ( if opt_util.no_stackvars_til_decr_sp(Instrs0, N, Between, Remain) then
         Instrs = Between ++ Remain
-    ;
+    else
         fail
     ).
 
@@ -464,7 +468,7 @@ peephole_match(Instr0, Instrs0, InvalidPatterns, Instrs) :-
 peephole_match_norepeat(Instr0, Instrs0, InvalidPatterns, Instrs) :-
     Instr0 = llds_instr(Uinstr0, _),
     Uinstr0 = assign(Lval, mkword(Tag, Base)),
-    \+ list.member(pattern_mkword, InvalidPatterns),
+    not list.member(pattern_mkword, InvalidPatterns),
     replace_tagged_ptr_components_in_instrs(Lval, Tag, Base, Instrs0, Instrs1),
     Instrs = [Instr0 | Instrs1].
 
@@ -496,11 +500,11 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
     Instr0 = llds_instr(Uinstr0, Comment),
     (
         Uinstr0 = assign(Lval, Rval0),
-        ( Lval = OldLval ->
+        ( if Lval = OldLval then
             MaybeInstr = no
-        ; Lval = mem_ref(_) ->
+        else if Lval = mem_ref(_) then
             MaybeInstr = no
-        ;
+        else
             replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
                 Rval0, Rval),
             Uinstr = assign(Lval, Rval),
@@ -509,11 +513,11 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         )
     ;
         Uinstr0 = keep_assign(Lval, Rval0),
-        ( Lval = OldLval ->
+        ( if Lval = OldLval then
             MaybeInstr = no
-        ; Lval = mem_ref(_) ->
+        else if Lval = mem_ref(_) then
             MaybeInstr = no
-        ;
+        else
             replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
                 Rval0, Rval),
             Uinstr = keep_assign(Lval, Rval),
@@ -537,11 +541,11 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
     ;
         Uinstr0 = incr_hp(Target, MaybeTag, MaybeOffset, SizeRval0,
             TypeMsg, MayUseAtomicAlloc, MaybeRegionId, MaybeReuse),
-        ( Target = OldLval ->
+        ( if Target = OldLval then
             MaybeInstr = no
-        ; Target = mem_ref(_) ->
+        else if Target = mem_ref(_) then
             MaybeInstr = no
-        ;
+        else
             replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
                 SizeRval0, SizeRval),
             Uinstr = incr_hp(Target, MaybeTag, MaybeOffset, SizeRval,
@@ -579,11 +583,11 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         MaybeInstr = yes(Instr)
     ;
         Uinstr0 = lc_wait_free_slot(Rval0, Lval0, Label),
-        ( Lval0 = OldLval ->
+        ( if Lval0 = OldLval then
             MaybeInstr = no
-        ; Lval0 = mem_ref(_) ->
+        else if Lval0 = mem_ref(_) then
             MaybeInstr = no
-        ;
+        else
             replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
                 Rval0, Rval),
             Uinstr = lc_wait_free_slot(Rval, Lval0, Label),
@@ -615,11 +619,11 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
         ; Uinstr0 = mark_ticket_stack(Lval0)
         ; Uinstr0 = lc_create_loop_control(_NumSlots, Lval0)
         ),
-        ( Lval0 = OldLval ->
+        ( if Lval0 = OldLval then
             MaybeInstr = no
-        ; Lval0 = mem_ref(_) ->
+        else if Lval0 = mem_ref(_) then
             MaybeInstr = no
-        ;
+        else
             MaybeInstr = yes(Instr0)
         )
     ;
@@ -658,26 +662,26 @@ replace_tagged_ptr_components_in_instr(OldLval, OldTag, OldBase,
 replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase, Rval0, Rval) :-
     (
         Rval0 = unop(UnOp, RvalA0),
-        (
+        ( if
             UnOp = tag,
             RvalA0 = lval(OldLval)
-        ->
+        then
             Rval = unop(mktag, const(llconst_int(OldTag)))
-        ;
+        else
             replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
                 RvalA0, RvalA),
             Rval = unop(UnOp, RvalA)
         )
     ;
         Rval0 = binop(BinOp, RvalA0, RvalB0),
-        (
+        ( if
             BinOp = body,
             RvalA0 = lval(OldLval),
             RvalB0 = unop(mktag, const(llconst_int(OldTag))),
             OldBase = const(_)
-        ->
+        then
             Rval = OldBase
-        ;
+        else
             replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
                 RvalA0, RvalA),
             replace_tagged_ptr_components_in_rval(OldLval, OldTag, OldBase,
@@ -732,7 +736,7 @@ invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns) :-
 combine_decr_sp([], []).
 combine_decr_sp([Instr0 | Instrs0], Instrs) :-
     combine_decr_sp(Instrs0, Instrs1),
-    (
+    ( if
         Instr0 = llds_instr(assign(succip, lval(stackvar(N))), _),
         opt_util.skip_comments_livevals(Instrs1, Instrs2),
         Instrs2 = [Instr2 | Instrs3],
@@ -740,10 +744,10 @@ combine_decr_sp([Instr0 | Instrs0], Instrs) :-
         opt_util.skip_comments_livevals(Instrs3, Instrs4),
         Instrs4 = [Instr4 | Instrs5],
         Instr4 = llds_instr(goto(code_succip), Comment)
-    ->
+    then
         NewInstr = llds_instr(decr_sp_and_return(N), Comment),
         Instrs = [NewInstr | Instrs5]
-    ;
+    else
         Instrs = [Instr0 | Instrs1]
     ).
 

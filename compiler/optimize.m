@@ -93,17 +93,17 @@ optimize_proc(Globals, GlobalData, CProc0, CProc) :-
                 FirstFileName, !.Instrs)
         ),
         Repeat = Info ^ lopt_opt_repeat,
-        (
+        ( if
             global_data_maybe_get_proc_layout(GlobalData,
                 PredProcId, ProcLayout)
-        ->
+        then
             LabelMap = ProcLayout ^ pli_internal_map,
             map.sorted_keys(LabelMap, LayoutLabelNums),
             LayoutLabels = list.map(
                 make_internal_label_for_proc_label(ProcLabel),
                 LayoutLabelNums),
             set_tree234.sorted_list_to_set(LayoutLabels, LayoutLabelSet)
-        ;
+        else
             LayoutLabelSet = set_tree234.init
         ),
         Statistics = Info ^ lopt_detailed_statistics,
@@ -159,7 +159,7 @@ need_opt_debug_info(Info, Name, Arity, PredProcId, MaybeBaseName) :-
     PredProcId = proc(PredId, ProcId),
     pred_id_to_int(PredId, PredIdInt),
     proc_id_to_int(ProcId, ProcIdInt),
-    (
+    ( if
         DebugOpt = yes,
         (
             DebugOptPredIdStrs = [_ | _],
@@ -189,13 +189,13 @@ need_opt_debug_info(Info, Name, Arity, PredProcId, MaybeBaseName) :-
             DebugOptPredIdStrs = [],
             DebugOptPredNames = []
         )
-    ->
+    then
         BaseName = opt_subdir_name ++ "/"
             ++ mangle_name_as_filename(Name) ++ "_" ++ int_to_string(Arity)
             ++ ".pred" ++ int_to_string(PredIdInt)
             ++ ".proc" ++ int_to_string(ProcIdInt),
         MaybeBaseName = yes(BaseName)
-    ;
+    else
         MaybeBaseName = no
     ).
 
@@ -204,7 +204,7 @@ need_opt_debug_info(Info, Name, Arity, PredProcId, MaybeBaseName) :-
 
 output_first_opt_debug(Info, FileName, ProcLabel, Instrs0, Counter, !IO) :-
     io.call_system("mkdir -p " ++ opt_subdir_name, MkdirRes, !IO),
-    ( MkdirRes = ok(0) ->
+    ( if MkdirRes = ok(0) then
         io.open_output(FileName, Res, !IO),
         (
             Res = ok(FileStream),
@@ -220,7 +220,7 @@ output_first_opt_debug(Info, FileName, ProcLabel, Instrs0, Counter, !IO) :-
             Res = error(_),
             unexpected($module, $pred, "cannot open " ++ FileName)
         )
-    ;
+    else
         unexpected($module, $pred, "cannot make " ++ opt_subdir_name)
     ).
 
@@ -231,9 +231,9 @@ opt_subdir_name = "OptSubdir".
 :- func num_to_str(int) = string.
 
 num_to_str(N) =
-    ( N < 10 ->
+    ( if N < 10 then
         "0" ++ string.int_to_string(N)
-    ;
+    else
         string.int_to_string(N)
     ).
 
@@ -251,11 +251,11 @@ maybe_opt_debug(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
             ++ "." ++ Suffix,
         DiffFileName = BaseName ++ ".diff" ++ num_to_str(OptNum)
             ++ "." ++ Suffix,
-        ( Instrs = PrevInstrs ->
+        ( if Instrs = PrevInstrs then
             Same = yes,
             !:OptDebugInfo = opt_debug_info(BaseName, OptNum, OptFileName,
                 PrevNum, PrevFileName, Instrs)
-        ;
+        else
             Same = no,
             !:OptDebugInfo = opt_debug_info(BaseName, OptNum, OptFileName,
                 OptNum, OptFileName, Instrs)
@@ -309,11 +309,11 @@ optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
         !C, !OptDebugInfo, !Instrs) :-
     LabelStr = opt_util.format_proc_label(ProcLabel),
     OptFrames = Info ^ lopt_opt_frames,
-    (
+    ( if
         OptFrames = yes,
         MayAlterRtti = may_alter_rtti,
         CodeModel = model_non
-    ->
+    then
         VeryVerbose = Info ^ lopt_very_verbose,
         (
             VeryVerbose = yes,
@@ -329,7 +329,7 @@ optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
             !C, !Instrs, _Mod),
         maybe_opt_debug(Info, !.Instrs, !.C, "ndframeopt",
             "after nondet frame opt", ProcLabel, !OptDebugInfo)
-    ;
+    else
         true
     ).
 
@@ -342,11 +342,11 @@ optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
 
 optimize_repeat(Info, CurIter, LayoutLabelSet, ProcLabel,
         MayAlterRtti, !C, !OptDebugInfo, !Instrs) :-
-    ( CurIter > 0 ->
+    ( if CurIter > 0 then
         NextIter = CurIter - 1,
-        ( NextIter = 0 ->
+        ( if NextIter = 0 then
             Final = yes
-        ;
+        else
             Final = no
         ),
         optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
@@ -358,7 +358,7 @@ optimize_repeat(Info, CurIter, LayoutLabelSet, ProcLabel,
         ;
             Mod = no
         )
-    ;
+    else
         true
     ).
 
@@ -461,9 +461,9 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
     ;
         DupElim = no
     ),
-    ( Mod1 = no, Mod2 = no, Mod3 = no, !.Instrs = InstrsAtStart ->
+    ( if Mod1 = no, Mod2 = no, Mod3 = no, !.Instrs = InstrsAtStart then
         Mod = no
-    ;
+    else
         Mod = yes
     ),
     trace [io(!IO)] (
@@ -516,11 +516,11 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
         OptFullJump = Info ^ lopt_opt_fulljumps,
         PessimizeTailCalls = Info ^ lopt_pes_tailcalls,
         CheckedNondetTailCalls = Info ^ lopt_checked_nondet_tailcalls,
-        (
+        ( if
             ( OptFullJump = yes
             ; Mod1 = yes
             )
-        ->
+        then
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
@@ -536,7 +536,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
                 !C, !Instrs, _Mod2),
             maybe_opt_debug(Info, !.Instrs, !.C, "jump", "after jumps",
                 ProcLabel, !OptDebugInfo)
-        ;
+        else
             true
         ),
         (
@@ -616,13 +616,13 @@ optimize_last(Info, LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs) :-
     DelaySlot = Info ^ lopt_opt_delay_slots,
     UseLocalVars = Info ^ lopt_use_local_vars,
     StdLabels = Info ^ lopt_std_labels,
-    (
+    ( if
         ( Reassign = yes
         ; DelaySlot = yes
         ; UseLocalVars = yes
         ; StdLabels = yes
         )
-    ->
+    then
         % We must get rid of any extra labels added by other passes,
         % since they can confuse reassign, wrap_blocks and delay_slot.
         (
@@ -638,7 +638,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs) :-
         labelopt_main(no, LayoutLabelSet, !Instrs, _Mod1),
         maybe_opt_debug(Info, !.Instrs, !.C, "label", "after label opt",
             ProcLabel, !OptDebugInfo)
-    ;
+    else
         true
     ),
     (
@@ -740,9 +740,9 @@ mangle_name_as_filename(Str0) = Str :-
 :- pred escape_dir_char(char::in, string::in, string::out) is det.
 
 escape_dir_char(Char, !Str) :-
-    ( dir.is_directory_separator(Char) ->
+    ( if dir.is_directory_separator(Char) then
         !:Str = !.Str ++ "_slash_"
-    ;
+    else
         !:Str = !.Str ++ char_to_string(Char)
     ).
 

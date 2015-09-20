@@ -172,7 +172,7 @@
 
 frameopt_main_det_stack(ProcLabel, !C, Instrs0, Instrs, AddComments, Mod) :-
     opt_util.get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
-    ( detect_det_entry(Instrs1, _, _, EntryInfo) ->
+    ( if detect_det_entry(Instrs1, _, _, EntryInfo) then
         some [!BlockMap] (
             map.init(!:BlockMap),
             divide_into_basic_blocks([LabelInstr | Instrs1], ProcLabel,
@@ -195,7 +195,7 @@ frameopt_main_det_stack(ProcLabel, !C, Instrs0, Instrs, AddComments, Mod) :-
                 Mod = yes
             ;
                 KeepFrame = no,
-                ( can_delay_frame(LabelSeq0, !.BlockMap) ->
+                ( if can_delay_frame(LabelSeq0, !.BlockMap) then
                     delay_frame_transform(LabelSeq0, LabelSeq, EntryInfo,
                         ProcLabel, PredMap, !C, !BlockMap, AddComments,
                         TransformComments, DescComments, CanTransform),
@@ -211,20 +211,20 @@ frameopt_main_det_stack(ProcLabel, !C, Instrs0, Instrs, AddComments, Mod) :-
                         maybe_add_comments(AddComments, DescComments,
                             Instrs0, Instrs, Mod)
                     )
-                ;
+                else
                     Instrs = Instrs0,
                     Mod = no
                 )
             )
         )
-    ;
+    else
         Instrs = Instrs0,
         Mod = no
     ).
 
 frameopt_main_nondet_stack(ProcLabel, !C, Instrs0, Instrs, AddComments, Mod) :-
     opt_util.get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
-    ( detect_nondet_entry(Instrs1, _, _, EntryInfo) ->
+    ( if detect_nondet_entry(Instrs1, _, _, EntryInfo) then
         some [!BlockMap] (
             map.init(!:BlockMap),
             divide_into_basic_blocks([LabelInstr | Instrs1], ProcLabel,
@@ -234,7 +234,7 @@ frameopt_main_nondet_stack(ProcLabel, !C, Instrs0, Instrs, AddComments, Mod) :-
                 map.init, PreExitDummyLabelMap),
             analyze_block_map(LabelSeq0, PreExitDummyLabelMap, !BlockMap,
                 _KeepFrame),
-            ( can_delay_frame(LabelSeq0, !.BlockMap) ->
+            ( if can_delay_frame(LabelSeq0, !.BlockMap) then
                 delay_frame_transform(LabelSeq0, LabelSeq, EntryInfo,
                     ProcLabel, PredMap, !C, !BlockMap, AddComments,
                     TransformComments, DescComments, CanTransform),
@@ -249,12 +249,12 @@ frameopt_main_nondet_stack(ProcLabel, !C, Instrs0, Instrs, AddComments, Mod) :-
                     maybe_add_comments(AddComments, DescComments,
                         Instrs0, Instrs, Mod)
                 )
-            ;
+            else
                 Instrs = Instrs0,
                 Mod = no
             )
         )
-    ;
+    else
         Instrs = Instrs0,
         Mod = no
     ).
@@ -280,7 +280,7 @@ maybe_add_comments(Comments, DescComments, Instrs0, Instrs, Mod) :-
 frameopt_keep_nondet_frame(ProcLabel, LayoutLabels, !C, Instrs0, Instrs,
         Mod) :-
     opt_util.get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
-    (
+    ( if
         nondetstack_setup(Instrs1, FrameInfo, Redoip, MkframeInstr, Remain),
         MkframeInstr = llds_instr(MkframeUinstr, MkframeComment),
         find_succeed_labels(Instrs1, map.init, SuccMap),
@@ -288,7 +288,7 @@ frameopt_keep_nondet_frame(ProcLabel, LayoutLabels, !C, Instrs0, Instrs,
         KeepFrameLabel = internal_label(KeepFrameLabelNum, ProcLabel),
         keep_nondet_frame(Remain, Instrs2, ProcLabel, KeepFrameLabel,
             MkframeUinstr, SuccMap, LayoutLabels, no, yes)
-    ->
+    then
         list.condense([[LabelInstr], Comments0,
             [llds_instr(mkframe(FrameInfo, no), MkframeComment),
             llds_instr(label(KeepFrameLabel),
@@ -297,7 +297,7 @@ frameopt_keep_nondet_frame(ProcLabel, LayoutLabels, !C, Instrs0, Instrs,
                 const(llconst_code_addr(Redoip))), "")],
             Instrs2], Instrs),
         Mod = yes
-    ;
+    else
         Instrs = Instrs0,
         Mod = no
     ).
@@ -316,13 +316,13 @@ nondetstack_setup(Instrs0, FrameInfo, Redoip, MkframeInstr, Remain) :-
 find_succeed_labels([], !SuccMap).
 find_succeed_labels([Instr | Instrs], !SuccMap) :-
     Instr = llds_instr(Uinstr, _),
-    (
+    ( if
         Uinstr = label(Label),
         opt_util.skip_comments(Instrs, TailInstrs),
         opt_util.is_succeed_next(TailInstrs, Between)
-    ->
+    then
         map.det_insert(Label, Between, !SuccMap)
-    ;
+    else
         true
     ),
     find_succeed_labels(Instrs, !SuccMap).
@@ -335,7 +335,7 @@ keep_nondet_frame([], [], _, _, _, _, _, !Changed).
 keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
         PrevInstr, SuccMap, LayoutLabels, !Changed) :-
     Instr0 = llds_instr(Uinstr0, Comment),
-    (
+    ( if
         % Look for nondet style tailcalls which do not need
         % a runtime check.
         Uinstr0 = llcall(code_label(entry_label(_, ProcLabel)),
@@ -345,7 +345,7 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
         BetweenIncl = [llds_instr(livevals(_), _), llds_instr(goto(_), _)],
         PrevInstr = livevals(Livevals),
         not set_tree234.member(RetLabel, LayoutLabels)
-    ->
+    then
         keep_nondet_frame(Instrs0, Instrs1, ProcLabel, KeepFrameLabel,
             Uinstr0, SuccMap, LayoutLabels, !.Changed, _),
         !:Changed = yes,
@@ -355,7 +355,7 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
             llds_instr(goto(code_label(KeepFrameLabel)), NewComment)
             | Instrs1
         ]
-    ;
+    else
         keep_nondet_frame(Instrs0, Instrs1, ProcLabel, KeepFrameLabel,
             Uinstr0, SuccMap, LayoutLabels, !Changed),
         Instrs = [Instr0 | Instrs1]
@@ -497,13 +497,15 @@ divide_into_basic_blocks([], _, [], !C).
     % This is the only situation in which the base case can be reached.
 divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, Instrs, !C) :-
     Instr0 = llds_instr(Uinstr0, _Comment),
-    ( opt_util.can_instr_branch_away(Uinstr0) = yes ->
+    CanBranchAway  = opt_util.can_instr_branch_away(Uinstr0),
+    (
+        CanBranchAway = yes,
         (
             Instrs0 = [Instr1 | _],
-            ( Instr1 = llds_instr(label(_), _) ->
+            ( if Instr1 = llds_instr(label(_), _) then
                 divide_into_basic_blocks(Instrs0, ProcLabel, Instrs1, !C),
                 Instrs = [Instr0 | Instrs1]
-            ;
+            else
                 counter.allocate(N, !C),
                 NewLabel = internal_label(N, ProcLabel),
                 NewInstr = llds_instr(label(NewLabel), ""),
@@ -515,6 +517,7 @@ divide_into_basic_blocks([Instr0 | Instrs0], ProcLabel, Instrs, !C) :-
             Instrs = [Instr0]
         )
     ;
+        CanBranchAway = no,
         divide_into_basic_blocks(Instrs0, ProcLabel, Instrs1, !C),
         Instrs = [Instr0 | Instrs1]
     ).
@@ -527,17 +530,17 @@ flatten_block_seq([Label | Labels], BlockMap, Instrs) :-
     flatten_block_seq(Labels, BlockMap, RestInstrs),
     map.lookup(BlockMap, Label, BlockInfo),
     BlockInstrs = BlockInfo ^ fb_instrs,
-    (
+    ( if
         list.split_last(BlockInstrs, MostInstrs, LastInstr),
         Labels = [NextLabel | _],
         LastInstr = llds_instr(goto(code_label(NextLabel)), _)
-    ->
+    then
         % Optimize away the redundant goto, which we probably introduced.
         % The next invocation of jumpopt would also do this, but doing it here
         % is cheaper and may let us reach a fixpoint in the optimization
         % sequence earlier.
         Instrs = MostInstrs ++ RestInstrs
-    ;
+    else
         Instrs = BlockInstrs ++ RestInstrs
     ).
 
@@ -579,16 +582,16 @@ build_frame_block_map([], _, [], _, _, _, !BlockMap, !PredMap, !C,
 build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
         MaybePrevLabel, FallInto, ProcLabel, !BlockMap, !PredMap, !C,
         !PreExitDummyLabelMap) :-
-    ( Instr0 = llds_instr(label(Label), _) ->
+    ( if Instr0 = llds_instr(label(Label), _) then
         (
             MaybePrevLabel = yes(PrevLabel),
             map.det_insert(Label, PrevLabel, !PredMap)
         ;
             MaybePrevLabel = no
         ),
-        (
+        ( if
             detect_entry(Instrs0, EntryInstrs, Instrs1, EntryInfo)
-        ->
+        then
             % Create a block with just the entry instructions in it,
             % followed by an empty block. The reason why we need the empty
             % block is that process_frame_delay below doesn't handle any
@@ -613,13 +616,13 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             % Ensure that the left over, non-entry part of the original block
             % starts with a label, and that the empty block ends with a goto
             % that falls through to this label.
-            (
+            ( if
                 Instrs1 = [Instr1 | _],
                 Instr1 = llds_instr(label(NextLabelPrime), _)
-            ->
+            then
                 NextLabel = NextLabelPrime,
                 Instrs2 = Instrs1
-            ;
+            else
                 counter.allocate(N, !C),
                 NextLabel = internal_label(N, ProcLabel),
                 NextLabelInstr = llds_instr(label(NextLabel), ""),
@@ -642,10 +645,10 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             map.det_insert(Label, BlockInfo, !BlockMap),
             map.det_insert(EmptyLabel, EmptyBlockInfo, !BlockMap),
             LabelSeq = [Label, EmptyLabel | LabelSeq0]
-        ;
+        else if
             detect_exit(Instrs0, EntryInfo, Extra, ExitInstrs,
                 Remain, ExitInfo)
-        ->
+        then
             % We always insert an ordinary block before the exit block,
             % because doing otherwise could lead to a violation of our
             % invariant that exit blocks never *need* a stack frame
@@ -706,14 +709,14 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             map.det_insert(ExitLabel, ExitBlockInfo, !BlockMap),
             map.det_insert(Label, ExtraInfo, !BlockMap),
             LabelSeq = [Label, ExitLabel | LabelSeq0]
-        ;
+        else
             opt_util.skip_to_next_label(Instrs0, Block, Instrs1),
             compute_block_needs_frame(Label, Block, NeedsFrame),
             BlockInstrs = [Instr0 | Block],
             % The fb_jump_dests and fb_fall_dest fields are only dummies.
             BlockInfo = frame_block_info(Label, BlockInstrs, FallInto,
                 [], no, ordinary_block(NeedsFrame, is_not_dummy)),
-            ( list.last(BlockInstrs, LastBlockInstr) ->
+            ( if list.last(BlockInstrs, LastBlockInstr) then
                 LastBlockInstr = llds_instr(LastBlockUinstr, _),
                 NextFallIntoBool =
                     opt_util.can_instr_fall_through(LastBlockUinstr),
@@ -724,7 +727,7 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
                     NextFallIntoBool = no,
                     NextFallInto = no
                 )
-            ;
+            else
                 NextFallInto = yes(Label)
             ),
             build_frame_block_map(Instrs1, EntryInfo, LabelSeq0, yes(Label),
@@ -733,7 +736,7 @@ build_frame_block_map([Instr0 | Instrs0], EntryInfo, LabelSeq,
             map.det_insert(Label, BlockInfo, !BlockMap),
             LabelSeq = [Label | LabelSeq0]
         )
-    ;
+    else
         unexpected($module, $pred, "block does not start with label")
     ).
 
@@ -763,26 +766,26 @@ detect_det_entry(Instrs0, Setup, Others ++ Remain, EntryInfo) :-
 
 detstack_setup([Instr0 | Instrs0], FrameSize, Setup, !Others, Remain) :-
     Instr0 = llds_instr(Uinstr0, _),
-    ( Uinstr0 = assign(Lval, Rval) ->
-        (
+    ( if Uinstr0 = assign(Lval, Rval) then
+        ( if
             Lval = stackvar(FrameSize),
             Rval = lval(succip)
-        ->
+        then
             Setup = Instr0,
             Remain = Instrs0
-        ;
+        else if
             Lval \= succip,
             Lval \= stackvar(FrameSize)
-        ->
+        then
             !:Others = !.Others ++ [Instr0],
             detstack_setup(Instrs0, FrameSize, Setup, !Others, Remain)
-        ;
+        else
             fail
         )
-    ; Uinstr0 = comment(_) ->
+    else if Uinstr0 = comment(_) then
         !:Others = !.Others ++ [Instr0],
         detstack_setup(Instrs0, FrameSize, Setup, !Others, Remain)
-    ;
+    else
         fail
     ).
 
@@ -836,22 +839,22 @@ detect_det_exit(Instrs0, EntryInfo, Extra, ExitInstrs, Remain, ExitInfo) :-
 
 detstack_teardown([Instr0 | Instrs0], FrameSize, Extra, SuccipRestore, Decrsp,
         Livevals, Goto, Remain) :-
-    (
+    ( if
         Instr0 = llds_instr(label(_), _)
-    ->
+    then
         fail
-    ;
+    else if
         detstack_teardown_2([Instr0 | Instrs0], FrameSize,
             [], ExtraPrime, [], SuccipRestorePrime, [], DecrspPrime,
             [], LivevalsPrime, GotoPrime, RemainPrime)
-    ->
+    then
         Extra = ExtraPrime,
         SuccipRestore = SuccipRestorePrime,
         Decrsp = DecrspPrime,
         Livevals = LivevalsPrime,
         Goto = GotoPrime,
         Remain = RemainPrime
-    ;
+    else
         detstack_teardown(Instrs0, FrameSize, Extra1, SuccipRestore, Decrsp,
             Livevals, Goto, Remain),
         Extra = [Instr0 | Extra1]
@@ -872,16 +875,16 @@ detstack_teardown_2(Instrs0, FrameSize, !Extra, !SuccipRestore, !Decrsp,
     % XXX allow other instruction types in Extras, e.g. incr_hp
     (
         Uinstr1 = assign(Lval, Rval),
-        (
+        ( if
             Lval = succip,
             Rval = lval(stackvar(FrameSize))
-        ->
+        then
             !.SuccipRestore = [],
             !.Decrsp = [],
             !:SuccipRestore = [Instr1],
             detstack_teardown_2(Instrs2, FrameSize, !Extra, !SuccipRestore,
                 !Decrsp, !Livevals, Goto, Remain)
-        ;
+        else
             opt_util.lval_refers_stackvars(Lval) = no,
             opt_util.rval_refers_stackvars(Rval) = no,
             !:Extra = !.Extra ++ [Instr1],
@@ -955,15 +958,15 @@ detect_nondet_exit(Instrs0, _EntryInfo, Extra, ExitInstrs, Remain, ExitInfo) :-
 
 nondetstack_teardown([Instr0 | Instrs0], Extra, SuccipRestore, Maxfr, Curfr,
         Livevals, Goto, GotoTarget, Remain) :-
-    (
+    ( if
         Instr0 = llds_instr(label(_), _)
-    ->
+    then
         fail
-    ;
+    else if
         nondetstack_teardown_2([Instr0 | Instrs0], [], ExtraPrime,
             [], SuccipRestorePrime, [], MaxfrPrime, [], CurfrPrime,
             [], LivevalsPrime, GotoPrime, GotoTargetPrime, RemainPrime)
-    ->
+    then
         Extra = ExtraPrime,
         SuccipRestore = SuccipRestorePrime,
         Maxfr = MaxfrPrime,
@@ -972,7 +975,7 @@ nondetstack_teardown([Instr0 | Instrs0], Extra, SuccipRestore, Maxfr, Curfr,
         Goto = GotoPrime,
         GotoTarget = GotoTargetPrime,
         Remain = RemainPrime
-    ;
+    else
         nondetstack_teardown(Instrs0, Extra1, SuccipRestore, Maxfr, Curfr,
             Livevals, Goto, GotoTarget, Remain),
         Extra = [Instr0 | Extra1]
@@ -994,36 +997,36 @@ nondetstack_teardown_2(Instrs0, !Extra, !SuccipRestore, !Maxfr, !Curfr,
     % XXX allow other instruction types in Extras, e.g. incr_hp
     (
         Uinstr1 = assign(Lval, Rval),
-        (
+        ( if
             Lval = succip,
             Rval = lval(succip_slot(lval(curfr))),
             !.SuccipRestore = [],
             % The restore instruction is valid only if curfr hasn't been
             % modified yet.
             !.Curfr = []
-        ->
+        then
             !:SuccipRestore = [Instr1]
-        ;
+        else if
             Lval = maxfr,
             Rval = lval(prevfr_slot(lval(curfr))),
             !.Maxfr = [],
             % The restore instruction is valid only if curfr hasn't been
             % modified yet.
             !.Curfr = []
-        ->
+        then
             !:Maxfr = [Instr1]
-        ;
+        else if
             Lval = curfr,
             Rval = lval(succfr_slot(lval(curfr))),
             !.Curfr = []
-        ->
+        then
             !:Curfr = [Instr1]
-        ;
+        else if
             opt_util.lval_refers_stackvars(Lval) = no,
             opt_util.rval_refers_stackvars(Rval) = no
-        ->
+        then
             !:Extra = !.Extra ++ [Instr1]
-        ;
+        else
             fail
         ),
         nondetstack_teardown_2(Instrs2, !Extra, !SuccipRestore, !Maxfr, !Curfr,
@@ -1054,7 +1057,7 @@ compute_block_needs_frame(_Label, Instrs, NeedsFrame) :-
         NeedsFrame = block_needs_frame
     ;
         ReferStackVars = no,
-        (
+        ( if
             list.member(Instr, Instrs),
             Instr = llds_instr(Uinstr, _),
             (
@@ -1083,9 +1086,9 @@ compute_block_needs_frame(_Label, Instrs, NeedsFrame) :-
                 % copy of the original return address in the stack frame.
                 Uinstr = assign(succip, _)
             )
-        ->
+        then
             NeedsFrame = block_needs_frame
-        ;
+        else
             NeedsFrame = block_doesnt_need_frame
         )
     ).
@@ -1114,12 +1117,12 @@ compute_block_needs_frame(_Label, Instrs, NeedsFrame) :-
     maybe(pair(label))::out) is det <= block_entry_exit(En, Ex).
 
 analyze_block_map(LabelSeq, PreExitDummyLabelMap, !BlockMap, KeepFrameData) :-
-    (
+    ( if
         LabelSeq = [FirstLabel, SecondLabel | _],
         map.search(!.BlockMap, FirstLabel, FirstBlockInfo),
         FirstBlockInfo = frame_block_info(FirstLabel, _, _, _, _, BlockType),
         BlockType = entry_block(_)
-    ->
+    then
         ProcLabel = get_proc_label(FirstLabel),
         analyze_block_map_2(LabelSeq, FirstLabel, ProcLabel,
             PreExitDummyLabelMap, !BlockMap, no, AnyBlockNeedsFrame,
@@ -1127,15 +1130,15 @@ analyze_block_map(LabelSeq, PreExitDummyLabelMap, !BlockMap, KeepFrameData) :-
         % We want to apply the transformation to keep the stack frame only if
         % (a) some block actually needs the stack frame, and (b) there is at
         % least one block that jumps back to the start of the procedure.
-        (
+        ( if
             AnyBlockNeedsFrame = yes,
             JumpToStart = yes
-        ->
+        then
             KeepFrameData = yes(FirstLabel - SecondLabel)
-        ;
+        else
             KeepFrameData = no
         )
-    ;
+    else
         unexpected($module, $pred, "bad data")
     ).
 
@@ -1173,39 +1176,39 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
         ; Type = exit_block(_)
         )
     ),
-    (
+    ( if
         Label = BlockLabel, % sanity check
         list.det_split_last(BlockInstrs0, AllButLastInstrs, LastInstr0)
-    ->
+    then
         LastInstr0 = llds_instr(LastUinstr0, Comment),
-        (
+        ( if
             LastUinstr0 = goto(GotoTarget0)
-        ->
+        then
             replace_labels_code_addr(GotoTarget0, GotoTarget,
                 PreExitDummyLabelMap),
             LastUinstr = goto(GotoTarget),
             LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
-        ;
+        else if
             LastUinstr0 = if_val(Rval, GotoTarget0)
-        ->
+        then
             replace_labels_code_addr(GotoTarget0, GotoTarget,
                 PreExitDummyLabelMap),
             LastUinstr = if_val(Rval, GotoTarget),
             LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
-        ;
+        else if
             LastUinstr0 = computed_goto(Rval, GotoTargets0)
-        ->
+        then
             replace_labels_maybe_label_list(GotoTargets0, GotoTargets,
                 PreExitDummyLabelMap),
             LastUinstr = computed_goto(Rval, GotoTargets),
             LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
-        ;
+        else if
             LastUinstr0 = foreign_proc_code(D, Comps0, MC, FNL, FL, FOL, NF0,
                 MDL, S, MD)
-        ->
+        then
             (
                 NF0 = no,
                 NF = no,
@@ -1220,29 +1223,29 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
                 MDL, S, MD),
             LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
-        ;
+        else
             LastUinstr = LastUinstr0,
             BlockInstrs = BlockInstrs0
         ),
         possible_targets(LastUinstr, SideLabels0, _SideCodeAddrs),
         list.filter(local_label(ProcLabel), SideLabels0, SideLabels),
-        (
+        ( if
             opt_util.can_instr_fall_through(LastUinstr) = yes,
             FollowingLabels = [NextLabel | _]
-        ->
+        then
             MaybeFallThrough = yes(NextLabel)
-        ;
+        else
             MaybeFallThrough = no
         ),
-        (
+        ( if
             LastUinstr = goto(code_label(GotoLabel)),
             matching_label_ref(FirstLabel, GotoLabel)
-        ->
+        then
             !:JumpToStart = yes
-        ;
+        else
             true
         )
-    ;
+    else
         unexpected($module, $pred, "mismatch or no last instr")
     ),
     BlockInfo = frame_block_info(BlockLabel, BlockInstrs, FallInto,
@@ -1289,13 +1292,13 @@ matching_entry_type(entry_label_c_local, entry_label_c_local).
 find_redoip_labels([], _, !RedoipLabels).
 find_redoip_labels([Instr | Instrs], ProcLabel, !RedoipLabels) :-
     Instr = llds_instr(Uinstr, _),
-    (
+    ( if
         Uinstr = assign(redoip_slot(_),
             const(llconst_code_addr(code_label(Label)))),
         get_proc_label(Label) = ProcLabel
-    ->
+    then
         !:RedoipLabels = [Label | !.RedoipLabels]
-    ;
+    else
         true
     ),
     find_redoip_labels(Instrs, ProcLabel, !RedoipLabels).
@@ -1328,7 +1331,7 @@ can_clobber_succip([], _BlockMap) = no.
 can_clobber_succip([Label | Labels], BlockMap) = CanClobberSuccip :-
     map.lookup(BlockMap, Label, BlockInfo),
     Instrs = BlockInfo ^ fb_instrs,
-    (
+    ( if
         list.member(Instr, Instrs),
         Instr = llds_instr(Uinstr, _),
         (
@@ -1338,9 +1341,9 @@ can_clobber_succip([Label | Labels], BlockMap) = CanClobberSuccip :-
             Uinstr = foreign_proc_code(_, _, proc_may_call_mercury,
                 _, _, _, _, _, _, _)
         )
-    ->
+    then
         CanClobberSuccip = yes
-    ;
+    else
         CanClobberSuccip = can_clobber_succip(Labels, BlockMap)
     ).
 
@@ -1360,18 +1363,18 @@ keep_frame_transform([], _, _, _, !BlockMap).
 keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
         CanClobberSuccip, !BlockMap) :-
     map.lookup(!.BlockMap, Label, BlockInfo0),
-    (
+    ( if
         BlockInfo0 = frame_block_info(Label, OrigInstrs, FallInto, [_], no,
             exit_block(det_exit(Succip, Livevals, Goto))),
         Goto = llds_instr(goto(code_label(GotoLabel)), Comment),
         matching_label_ref(FirstLabel, GotoLabel)
-    ->
-        (
+    then
+        ( if
             OrigInstrs = [OrigInstr0 | _],
             OrigInstr0 = llds_instr(label(_), _)
-        ->
+        then
             OrigLabelInstr = OrigInstr0
-        ;
+        else
             unexpected($module, $pred, "block does not begin with label")
         ),
         string.append(Comment, " (keeping frame)", NewComment),
@@ -1389,7 +1392,7 @@ keep_frame_transform([Label | Labels], FirstLabel, SecondLabel,
         BlockInfo = frame_block_info(Label, Instrs, FallInto, [SecondLabel],
             no, BlockType),
         map.det_update(Label, BlockInfo, !BlockMap)
-    ;
+    else
         true
     ),
     keep_frame_transform(Labels, FirstLabel, SecondLabel, CanClobberSuccip,
@@ -1628,10 +1631,10 @@ delay_frame_init([Label | Labels], BlockMap, !RevMap, !Queue,
 
 rev_map_side_labels([], _Label, !RevMap).
 rev_map_side_labels([Label | Labels], SourceLabel, !RevMap) :-
-    ( map.search(!.RevMap, Label, OtherSources0) ->
+    ( if map.search(!.RevMap, Label, OtherSources0) then
         OtherSources = [SourceLabel | OtherSources0],
         map.det_update(Label, OtherSources, !RevMap)
-    ;
+    else
         OtherSources = [SourceLabel],
         map.det_insert(Label, OtherSources, !RevMap)
     ),
@@ -1669,9 +1672,9 @@ propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
         !.CanTransform = cannot_transform
     ;
         !.CanTransform = can_transform,
-        ( !.PropagationStepsLeft < 0 ->
+        ( if !.PropagationStepsLeft < 0 then
             !:CanTransform = cannot_transform
-        ; queue.get(Label, !Queue) ->
+        else if queue.get(Label, !Queue) then
             !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
             set.insert(Label, !AlreadyProcessed),
             map.lookup(BlockMap, Label, BlockInfo),
@@ -1701,7 +1704,7 @@ propagate_frame_requirement_to_successors(!.Queue, BlockMap, !OrdNeedsFrame,
             propagate_frame_requirement_to_successors(!.Queue, BlockMap,
                 !OrdNeedsFrame, !.AlreadyProcessed, !PropagationStepsLeft,
                 !CanTransform)
-        ;
+        else
             true
         )
     ).
@@ -1720,13 +1723,13 @@ propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
         !.CanTransform = cannot_transform
     ;
         !.CanTransform = can_transform,
-        ( !.PropagationStepsLeft < 0 ->
+        ( if !.PropagationStepsLeft < 0 then
             !:CanTransform = cannot_transform
-        ; queue.get(Label, !Queue) ->
+        else if queue.get(Label, !Queue) then
             !:PropagationStepsLeft = !.PropagationStepsLeft - 1,
-            ( map.search(RevMap, Label, PredecessorsPrime) ->
+            ( if map.search(RevMap, Label, PredecessorsPrime) then
                 Predecessors = PredecessorsPrime
-            ;
+            else
                 % We get here if Label cannot be reached by a fallthrough or an
                 % explicit jump, but only by backtracking. In that case, the
                 % code that sets up the resumption point saves the address of
@@ -1744,7 +1747,7 @@ propagate_frame_requirement_to_predecessors(!.Queue, BlockMap, RevMap,
             queue.put_list(NowNeedFrameLabels, !Queue),
             propagate_frame_requirement_to_predecessors(!.Queue, BlockMap,
                 RevMap, !OrdNeedsFrame, !PropagationStepsLeft, !CanTransform)
-        ;
+        else
             true
         )
     ).
@@ -1780,9 +1783,9 @@ all_successors_need_frame(BlockMap, OrdNeedsFrame, Label) :-
 :- pred label_needs_frame(ord_needs_frame::in, label::in) is semidet.
 
 label_needs_frame(OrdNeedsFrame, Label) :-
-    ( map.search(OrdNeedsFrame, Label, NeedsFrame) ->
+    ( if map.search(OrdNeedsFrame, Label, NeedsFrame) then
         NeedsFrame = block_needs_frame
-    ;
+    else
         % If the map.search fails, Label is not an ordinary frame.
         % Entry blocks and exit blocks don't need frames.
         fail
@@ -1826,12 +1829,12 @@ process_frame_delay([Label0 | Labels0], OrdNeedsFrame, ProcLabel, !C,
         "label in frame_block_info is not copy"),
     (
         Type = entry_block(_),
-        (
+        ( if
             Instrs0 = [LabelInstrPrime | _],
             LabelInstrPrime = llds_instr(label(_), _)
-        ->
+        then
             LabelInstr = LabelInstrPrime
-        ;
+        else
             unexpected($module, $pred, "setup block does not begin with label")
         ),
         BlockInfo = frame_block_info(Label0, [LabelInstr], FallInto,
@@ -1908,9 +1911,9 @@ transform_nostack_ordinary_block(Label0, Labels0, BlockInfo0, OrdNeedsFrame,
             "disagreement"),
         AssocLabelMap = [FallThroughLabel0 - FallThroughLabel
             | SideAssocLabelMap],
-        ( FallThroughLabel = FallThroughLabel0 ->
+        ( if FallThroughLabel = FallThroughLabel0 then
             RedirectFallThrough = []
-        ;
+        else
             RedirectFallThrough =
                 [llds_instr(goto(code_label(FallThroughLabel)),
                     "redirect fallthrough")]
@@ -2027,7 +2030,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
         SideLabels, MaybeFallThrough, Type),
     expect(unify(Label0, Label0Copy), $module, $pred,
         "label in frame_block_info is not copy"),
-    ( search_exit_par_map(ExitParMap, Label0, ParallelLabel) ->
+    ( if search_exit_par_map(ExitParMap, Label0, ParallelLabel) then
         expect(unify(MaybeFallThrough, no), $module, $pred,
             "exit block with parallel has fall through"),
         (
@@ -2068,7 +2071,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
             ),
             unexpected($module, $pred, "block in exit_par_map is not exit")
         )
-    ; search_setup_par_map(SetupParMap, Label0, SetupLabel) ->
+    else if search_setup_par_map(SetupParMap, Label0, SetupLabel) then
         expect(is_ordinary_block(Type), $module, $pred,
             "block in setup map is not ordinary"),
         PrevNeedsFrame = prev_block_needs_frame(OrdNeedsFrame, BlockInfo0),
@@ -2103,7 +2106,7 @@ create_parallels([Label0 | Labels0], Labels, EntryInfo, ProcLabel, !C,
         SetupBlockInfo = frame_block_info(SetupLabel, SetupCode,
             SetupFallInto, [], yes(Label0), entry_block(EntryInfo)),
         map.det_insert(SetupLabel, SetupBlockInfo, !BlockMap)
-    ;
+    else
         Labels = [Label0 | Labels1]
     ).
 
@@ -2114,11 +2117,11 @@ prev_block_needs_frame(OrdNeedsFrame, BlockInfo) = PrevNeedsFrame :-
     MaybeFallIntoFrom = BlockInfo ^ fb_fallen_into,
     (
         MaybeFallIntoFrom = yes(FallIntoFrom),
-        ( map.search(OrdNeedsFrame, FallIntoFrom, NeedsFrame) ->
+        ( if map.search(OrdNeedsFrame, FallIntoFrom, NeedsFrame) then
             % FallIntoFrom is an ordinary block that can fall through
             % to this block.
             PrevNeedsFrame = NeedsFrame
-        ;
+        else
             % FallIntoFrom is a setup block; exit blocks cannot fall
             % through. Entry blocks don't need frames.
             PrevNeedsFrame = block_doesnt_need_frame
@@ -2169,9 +2172,9 @@ nondet_non_teardown_exit_code(nondet_teardown_exit(_, _, _, Livevals, Goto)) =
 
 ensure_setup_parallel(Label, ParallelLabel, ProcLabel, !C, !SetupParMap) :-
     !.SetupParMap = setup_par_map(ParMap0),
-    ( map.search(ParMap0, Label, OldParallel) ->
+    ( if map.search(ParMap0, Label, OldParallel) then
         ParallelLabel = OldParallel
-    ;
+    else
         counter.allocate(N, !C),
         NewParallel = internal_label(N, ProcLabel),
         ParallelLabel = NewParallel,
@@ -2187,9 +2190,9 @@ ensure_setup_parallel(Label, ParallelLabel, ProcLabel, !C, !SetupParMap) :-
 
 ensure_exit_parallel(Label, ParallelLabel, ProcLabel, !C, !ExitParMap) :-
     !.ExitParMap = exit_par_map(ParMap0),
-    ( map.search(ParMap0, Label, OldParallel) ->
+    ( if map.search(ParMap0, Label, OldParallel) then
         ParallelLabel = OldParallel
-    ;
+    else
         counter.allocate(N, !C),
         NewParallel = internal_label(N, ProcLabel),
         ParallelLabel = NewParallel,
@@ -2216,10 +2219,10 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
     LabelStr = dump_label(YesProcLabel, Label),
     BlockInstrsStr = dump_fullinstrs(YesProcLabel, yes, BlockInstrs),
     Heading = "\nBLOCK " ++ LabelStr ++ "\n\n",
-    ( map.search(PredMap, Label, PredLabel) ->
+    ( if map.search(PredMap, Label, PredLabel) then
         PredStr = "previous label " ++
             dump_label(YesProcLabel, PredLabel) ++ "\n"
-    ;
+    else
         PredStr = "no previous label\n"
     ),
     (
@@ -2268,7 +2271,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
             UsesFrame = block_doesnt_need_frame,
             TypeStr1 = TypeStr0 ++ "does not use frame\n"
         ),
-        ( map.search(OrdNeedsFrame, Label, NeedsFrame) ->
+        ( if map.search(OrdNeedsFrame, Label, NeedsFrame) then
             (
                 NeedsFrame = block_doesnt_need_frame,
                 expect(unify(UsesFrame, block_doesnt_need_frame),
@@ -2280,7 +2283,7 @@ describe_block(BlockMap, OrdNeedsFrame, PredMap, ProcLabel, Label, Instr) :-
                 NeedsFrame = block_needs_frame,
                 TypeStr = TypeStr1 ++ "does need frame\n"
             )
-        ;
+        else
             % We can get here if delay_frame_transform fails.
             TypeStr = TypeStr1 ++ "(unknown whether it does need frame)\n"
         )

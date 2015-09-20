@@ -61,16 +61,16 @@ wrap_instrs([], R, F, RevSofar, []) :-
         unexpected($module, $pred, "procedure ends with fallthrough")
     ;
         RevSofar = [],
-        ( ( R > 0 ; F > 0 ) ->
+        ( if ( R > 0 ; F > 0 ) then
             unexpected($module, $pred, "procedure ends without closing block")
-        ;
+        else
             true
         )
     ).
 wrap_instrs([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
     Instr0 = llds_instr(Uinstr0, _Comment0),
     opt_util.count_temps_instr(Uinstr0, R0, R1, F0, F1),
-    ( ( R1 > 0 ; F1 > 0) ->
+    ( if ( R1 > 0 ; F1 > 0) then
         % We must close the block before a label, since you can jump
         % to a label from other blocks.
         %
@@ -81,20 +81,20 @@ wrap_instrs([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
         % because including it in the block causes the test case
         % debugger/all_solutions to fail.
 
-        ( ( Uinstr0 = label(_) ; Uinstr0 = llcall(_, _, _, _, _, _) ) ->
+        ( if ( Uinstr0 = label(_) ; Uinstr0 = llcall(_, _, _, _, _, _) ) then
             list.reverse(RevSofar, BlockInstrs),
             wrap_instrs(Instrs0, 0, 0, [], Instrs1),
             BlockInstr = llds_instr(block(R1, F1, BlockInstrs), ""),
             Instrs = [BlockInstr, Instr0 | Instrs1]
-        ; opt_util.can_instr_fall_through(Uinstr0) = no ->
+        else if opt_util.can_instr_fall_through(Uinstr0) = no then
             list.reverse([Instr0 | RevSofar], BlockInstrs),
             wrap_instrs(Instrs0, 0, 0, [], Instrs1),
             BlockInstr = llds_instr(block(R1, F1, BlockInstrs), ""),
             Instrs = [BlockInstr | Instrs1]
-        ;
+        else
             wrap_instrs(Instrs0, R1, F1, [Instr0 | RevSofar], Instrs)
         )
-    ;
+    else
         wrap_instrs(Instrs0, 0, 0, [], Instrs1),
         Instrs = [Instr0 | Instrs1]
     ).

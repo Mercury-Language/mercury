@@ -499,9 +499,9 @@ process_continuation(WantReturnInfo, CallInfo, !Internals) :-
         ReturnLabel = entry_label(_, _),
         unexpected($module, $pred, "bad return")
     ),
-    ( map.search(!.Internals, ReturnLabelNum, Internal0) ->
+    ( if map.search(!.Internals, ReturnLabelNum, Internal0) then
         Internal0 = internal_layout_info(Port0, Resume0, Return0)
-    ;
+    else
         Port0 = no,
         Resume0 = no,
         Return0 = no
@@ -569,13 +569,13 @@ convert_return_data(LiveInfos, VarInfoSet, TypeInfoMap) :-
 filter_named_vars([], []).
 filter_named_vars([LiveInfo | LiveInfos], Filtered) :-
     filter_named_vars(LiveInfos, Filtered1),
-    (
+    ( if
         LiveInfo = live_lvalue(_, LiveType, _),
         LiveType = live_value_var(_, Name, _, _),
         Name \= ""
-    ->
+    then
         Filtered = [LiveInfo | Filtered1]
-    ;
+    else
         Filtered = Filtered1
     ).
 
@@ -583,18 +583,18 @@ filter_named_vars([LiveInfo | LiveInfos], Filtered) :-
 
 basic_stack_layout_for_proc(PredInfo, Globals, BasicLayout,
         ForceProcIdLayout) :-
-    (
+    ( if
         globals.lookup_bool_option(Globals, stack_trace_higher_order, yes),
         some_arg_is_higher_order(PredInfo)
-    ->
+    then
         BasicLayout = yes,
         ForceProcIdLayout = yes
-    ;
+    else if
         globals.lookup_bool_option(Globals, basic_stack_layout, yes)
-    ->
+    then
         BasicLayout = yes,
         ForceProcIdLayout = no
-    ;
+    else
         BasicLayout = no,
         ForceProcIdLayout = no
     ).
@@ -630,14 +630,14 @@ find_return_var_lvals([Var | Vars], StackSlots, OkToDeleteAny, OutputArgLocs,
         VarLvals) :-
     find_return_var_lvals(Vars, StackSlots,
         OkToDeleteAny, OutputArgLocs, TailVarLvals),
-    ( assoc_list.search(OutputArgLocs, Var, ArgLoc) ->
+    ( if assoc_list.search(OutputArgLocs, Var, ArgLoc) then
         % On return, output arguments are in their registers.
         code_util.arg_loc_to_register(ArgLoc, Lval),
         VarLvals = [Var - Lval | TailVarLvals]
-    ; map.search(StackSlots, Var, Slot) ->
+    else if map.search(StackSlots, Var, Slot) then
         % On return, other live variables are in their stack slots.
         VarLvals = [Var - stack_slot_to_lval(Slot) | TailVarLvals]
-    ;
+    else
         (
             OkToDeleteAny = yes,
             VarLvals = TailVarLvals
@@ -704,12 +704,12 @@ generate_resume_layout(ResumeMap, Temps, InstMap, ProcInfo, ModuleInfo,
 generate_resume_layout_for_vars([], _, _, _, _, !VarInfos, !TVars).
 generate_resume_layout_for_vars([Var - LvalSet | VarLvals], InstMap,
         VarTypes, ProcInfo, ModuleInfo, !VarInfos, !TVars) :-
-    (
+    ( if
         lookup_var_type(VarTypes, Var, Type),
         check_dummy_type(ModuleInfo, Type) = is_dummy_type
-    ->
+    then
         true
-    ;
+    else
         generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo,
             ModuleInfo, VarInfo, TypeVars),
         set.insert_list(TypeVars, !TVars),
@@ -725,19 +725,19 @@ generate_resume_layout_for_vars([Var - LvalSet | VarLvals], InstMap,
 generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo, ModuleInfo,
         VarInfo, TypeVars) :-
     set.to_sorted_list(LvalSet, LvalList),
-    ( LvalList = [LvalPrime] ->
+    ( if LvalList = [LvalPrime] then
         Lval = LvalPrime
-    ;
+    else
         unexpected($module, $pred,
             "var has more than one lval in stack resume map")
     ),
-    ( Lval = stackvar(N) ->
+    ( if Lval = stackvar(N) then
         expect(N > 0, $module, $pred, "bad stackvar")
-    ; Lval = stackvar(N) ->
+    else if Lval = stackvar(N) then
         expect(N > 0, $module, $pred, "bad framevar")
-    ; Lval = double_stackvar(_, N) ->
+    else if Lval = double_stackvar(_, N) then
         expect(N > 0, $module, $pred, "bad stackvar")
-    ;
+    else
         true
     ),
     generate_layout_for_var(ModuleInfo, ProcInfo, InstMap, Var, LiveValueType,
@@ -765,9 +765,9 @@ generate_layout_for_var(_ModuleInfo, ProcInfo, _InstMap, Var, LiveValueType,
         TypeVars) :-
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    ( varset.search_name(VarSet, Var, GivenName) ->
+    ( if varset.search_name(VarSet, Var, GivenName) then
         Name = GivenName
-    ;
+    else
         Name = ""
     ),
     lookup_var_type(VarTypes, Var, Type),
@@ -787,9 +787,9 @@ generate_layout_for_var(_ModuleInfo, ProcInfo, _InstMap, Var, LiveValueType,
 %   no point in incurring the expense of filling it in.
 %
 %   instmap_lookup_var(InstMap, Var, Inst),
-%   ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
+%   ( if inst_match.inst_is_ground(ModuleInfo, Inst) then
 %       LldsInst = llds_inst_ground
-%   ;
+%   else
 %       LldsInst = llds_inst_partial(Inst)
 %   ),
 
@@ -809,15 +809,15 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
     map.init(VarLocs0),
     set.init(TypeVars0),
-    (
+    ( if
         build_closure_info(HeadVars, ArgTypes, ArgInfos, ArgLayouts, InstMap,
             UseFloatRegs, VarLocs0, VarLocs, TypeVars0, TypeVars)
-    ->
+    then
         set.to_sorted_list(TypeVars, TypeVarsList),
         find_typeinfos_for_tvars(TypeVarsList, VarLocs, ProcInfo,
             TypeInfoDataMap),
         ClosureLayout = closure_layout_info(ArgLayouts, TypeInfoDataMap)
-    ;
+    else
         unexpected($module, $pred,
             "proc headvars and pred argtypes disagree on arity")
     ).
@@ -836,13 +836,13 @@ build_closure_info([Var | Vars], [Type0 | Types],
     % If the float argument is passed via a regular register then replace the
     % type_ctor_info in the closure layout so that we can distinguish those
     % arguments from float arguments passed via float registers.
-    (
+    ( if
         UseFloatRegs = yes,
         Type0 = float_type,
         ArgLoc = reg(reg_r, _)
-    ->
+    then
         Type = float_box_type
-    ;
+    else
         Type = Type0
     ),
     instmap_lookup_var(InstMap, Var, Inst),
@@ -864,7 +864,7 @@ find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
         TypeInfoLocns),
     FindLocn = (pred(TypeInfoLocn::in, Locns::out) is det :-
         type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-        ( map.search(VarLocs, TypeInfoVar, TypeInfoLvalSet) ->
+        ( if map.search(VarLocs, TypeInfoVar, TypeInfoLvalSet) then
             AddLocn = (pred(Lval::in, LocnSet0::in, LocnSet::out) is det :-
                 (
                     TypeInfoLocn = typeclass_info(_, FieldNum),
@@ -876,7 +876,7 @@ find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
                 set.insert(Locn, LocnSet0, LocnSet)
             ),
             set.fold(AddLocn, TypeInfoLvalSet, set.init, Locns)
-        ;
+        else
             varset.lookup_name(VarSet, TypeInfoVar, VarName),
             unexpected($module, $pred,
                 "can't find rval for type_info var " ++ VarName)
@@ -927,7 +927,7 @@ find_typeinfos_for_tvars_table(TypeVars, NumberedVars, ProcInfo,
     list.map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
         TypeInfoLocns),
     FindLocn = (pred(TypeInfoLocn::in, Locn::out) is det :-
-        (
+        ( if
             (
                 TypeInfoLocn = typeclass_info(TypeInfoVar, FieldNum),
                 assoc_list.search(NumberedVars, TypeInfoVar, Slot),
@@ -937,9 +937,9 @@ find_typeinfos_for_tvars_table(TypeVars, NumberedVars, ProcInfo,
                 assoc_list.search(NumberedVars, TypeInfoVar, Slot),
                 LocnPrime = table_locn_direct(Slot)
             )
-        ->
+        then
             Locn = LocnPrime
-        ;
+        else
             type_info_locn_var(TypeInfoLocn, TypeInfoVar),
             varset.lookup_name(VarSet, TypeInfoVar, VarName),
             unexpected($module, $pred,

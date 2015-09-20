@@ -51,15 +51,15 @@
 
 standardize_labels(Instrs0, Instrs, _, !:ProcCounter) :-
     opt_util.get_prologue(Instrs0, LabelInstr, Comments, Instrs1),
-    (
+    ( if
         LabelInstr = llds_instr(label(FirstLabel), _),
         FirstLabel = entry_label(_, ProcLabel)
-    ->
+    then
         build_std_map(Instrs1, ProcLabel, counter.init(1), !:ProcCounter,
             map.init, Map),
         replace_labels_instruction_list(Instrs1, Instrs2, Map, yes, yes),
         Instrs = [LabelInstr | Comments] ++ Instrs2
-    ;
+    else
         unexpected($module, $pred, "no proc_label")
     ).
 
@@ -71,11 +71,11 @@ standardize_labels(Instrs0, Instrs, _, !:ProcCounter) :-
 
 build_std_map([], _, !Counter, !Map).
 build_std_map([Instr | Instrs], ProcLabel, !Counter, !Map) :-
-    ( Instr = llds_instr(label(Label), _) ->
+    ( if Instr = llds_instr(label(Label), _) then
         counter.allocate(LabelNum, !Counter),
         StdLabel = internal_label(LabelNum, ProcLabel),
         map.det_insert(Label, StdLabel, !Map)
-    ;
+    else
         true
     ),
     build_std_map(Instrs, ProcLabel, !Counter, !Map).

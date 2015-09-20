@@ -71,17 +71,17 @@ eliminate_duplicate_procs(IdProcs, Procs, !DupProcMap) :-
 eliminate_dup_procs(_ModelStdProcs, [], [], !DupProcMap).
 eliminate_dup_procs(ModelStdProcs0, [Id - Proc0 | IdProcs0],
         [Id - Proc | IdProcs], !DupProcMap) :-
-    (
+    ( if
         Proc0 ^ cproc_may_alter_rtti = may_alter_rtti,
         find_matching_model_proc(ModelStdProcs0, Id, Proc0, !.DupProcMap,
             MatchingId),
         maybe_redirect_proc(Proc0, MatchingId, MaybeProc),
         MaybeProc = yes(ProcPrime)
-    ->
+    then
         Proc = ProcPrime,
         map.det_insert(Id, MatchingId, !DupProcMap),
         ModelStdProcs = ModelStdProcs0
-    ;
+    else
         Proc = Proc0,
         standardize_proc(Proc0, StdProc0, !.DupProcMap),
         % Since the number of procedures per predicate is tiny,
@@ -100,9 +100,9 @@ find_matching_model_proc([ModelId - ModelStdProc | ModelIdProcs], Id, Proc,
     standardize_proc(Proc, StdProc, AugDupProcMap),
     StdInstrs = StdProc ^ cproc_code,
     ModelStdInstrs = ModelStdProc ^ cproc_code,
-    ( StdInstrs = ModelStdInstrs ->
+    ( if StdInstrs = ModelStdInstrs then
         MatchingId = ModelId
-    ;
+    else
         find_matching_model_proc(ModelIdProcs, Id, Proc, DupProcMap,
             MatchingId)
     ).
@@ -126,14 +126,14 @@ maybe_redirect_proc(Proc0, TargetProcLabel, MaybeProc) :-
         "Redirect to procedure with identical body"),
     list.filter(disallowed_instr, LaterInstrs, DisallowedInstrs),
     list.length(LaterInstrs, NumLaterInstrs),
-    (
+    ( if
         DisallowedInstrs = [],
         % The threshold here is a guess. I don't think the precise value
         % has much effect, so I don't think it is worth making it configurable.
         NumLaterInstrs < 6
-    ->
+    then
         MaybeProc = no
-    ;
+    else
         Instrs = [LabelInstr, Redirect],
         Proc = Proc0 ^ cproc_code := Instrs,
         MaybeProc = yes(Proc)
@@ -286,9 +286,9 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
     map(proc_label, proc_label)::in) is det.
 
 standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap) :-
-    ( map.search(DupProcMap, ProcLabel, FoundProcLabel) ->
+    ( if map.search(DupProcMap, ProcLabel, FoundProcLabel) then
         StdProcLabel = FoundProcLabel
-    ;
+    else
         StdProcLabel = ProcLabel
     ).
 

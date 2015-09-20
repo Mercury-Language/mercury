@@ -146,25 +146,25 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         unexpected($module, $pred, "block")
     ;
         Uinstr0 = assign(Target, Source),
-        (
+        ( if
             map.search(!.KnownContentsMap, Target, KnownContents),
             KnownContents = Source
-        ->
+        then
             % By not including Instr0 in !:RevInstrs, we are deleting Instr0.
             true
-        ;
+        else
             !:RevInstrs = [Instr0 | !.RevInstrs],
             clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
-            (
+            ( if
                 % For Targets of the following form, the code generator ensures
                 % that the storage location referred to by Target can only be
                 % updated through the Target lval, and not through some other
                 % lval, unless one uses mem_addr to explicitly create an alias
                 % and mem_ref to access the memory location via that alias.
                 no_implicit_alias_target(Target)
-            ->
+            then
                 record_known(Target, Source, !KnownContentsMap, !DepLvalMap)
-            ;
+            else
                 true
             )
         )
@@ -321,13 +321,13 @@ update_embdedded_frame(EmbeddedFrame, !KnownContentsMap, !DepLvalMap) :-
 
 update_embdedded_frame_2(StackId, CurSlot, LastSlot,
         !KnownContentsMap, !DepLvalMap) :-
-    ( CurSlot =< LastSlot ->
+    ( if CurSlot =< LastSlot then
         StackVar = stack_slot_num_to_lval(StackId, CurSlot),
         clobber_dependents(StackVar, !KnownContentsMap, !DepLvalMap),
         map.delete(StackVar, !KnownContentsMap),
         update_embdedded_frame_2(StackId, CurSlot + 1, LastSlot,
             !KnownContentsMap, !DepLvalMap)
-    ;
+    else
         true
     ).
 
@@ -346,10 +346,10 @@ no_implicit_alias_target(framevar(_)).
     dependent_lval_map::in, dependent_lval_map::out) is det.
 
 clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
-    ( map.search(!.DepLvalMap, Target, DepLvals) ->
+    ( if map.search(!.DepLvalMap, Target, DepLvals) then
         set.fold(clobber_dependent, DepLvals, !KnownContentsMap),
         map.delete(Target, !DepLvalMap)
-    ;
+    else
         true
     ),
     % LLDS code can refer to arbitrary locations on the stack or in the heap
@@ -359,15 +359,15 @@ clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
     % desired behaviour, which would invalidate only the entries of lvals
     % that may be referred to via this mem_ref.
     SubLvals = lvals_in_rval(lval(Target)),
-    (
+    ( if
         some [SubLval] (
             list.member(SubLval, SubLvals),
             SubLval = mem_ref(_)
         )
-    ->
+    then
         !:KnownContentsMap = map.init,
         !:DepLvalMap = map.init
-    ;
+    else
         true
     ).
 
@@ -383,18 +383,18 @@ clobber_dependent(Dependent, !KnownContentsMap) :-
 
 record_known(TargetLval, SourceRval, !KnownContentsMap, !DepLvalMap) :-
     SourceSubLvals = lvals_in_rval(SourceRval),
-    ( list.member(TargetLval, SourceSubLvals) ->
+    ( if list.member(TargetLval, SourceSubLvals) then
         % The act of assigning to TargetLval has modified the value of
         % SourceRval, so we can't eliminate any copy of this assignment
         % or its converse.
         true
-    ;
+    else
         record_known_lval_rval(TargetLval, SourceRval,
             !KnownContentsMap, !DepLvalMap),
-        ( SourceRval = lval(SourceLval) ->
+        ( if SourceRval = lval(SourceLval) then
             record_known_lval_rval(SourceLval, lval(TargetLval),
                 !KnownContentsMap, !DepLvalMap)
-        ;
+        else
             true
         )
     ).
@@ -405,7 +405,7 @@ record_known(TargetLval, SourceRval, !KnownContentsMap, !DepLvalMap) :-
 
 record_known_lval_rval(TargetLval, SourceRval, !KnownContentsMap,
         !DepLvalMap) :-
-    ( map.search(!.KnownContentsMap, TargetLval, OldRval) ->
+    ( if map.search(!.KnownContentsMap, TargetLval, OldRval) then
         % TargetLval no longer depends on the lvals in OldRval;
         % it depends on the lvals in SourceRval instead. If any lvals
         % occur in both, we delete TargetLval from their entries here
@@ -414,7 +414,7 @@ record_known_lval_rval(TargetLval, SourceRval, !KnownContentsMap,
         % TargetLval still depends on the lvals inside it.
         OldSubLvals = lvals_in_rval(OldRval),
         list.foldl(make_not_dependent(TargetLval), OldSubLvals, !DepLvalMap)
-    ;
+    else
         true
     ),
     TargetSubLvals = lvals_in_lval(TargetLval),
@@ -427,10 +427,10 @@ record_known_lval_rval(TargetLval, SourceRval, !KnownContentsMap,
     dependent_lval_map::in, dependent_lval_map::out) is det.
 
 make_not_dependent(Target, SubLval, !DepLvalMap) :-
-    ( map.search(!.DepLvalMap, SubLval, DepLvals0) ->
+    ( if map.search(!.DepLvalMap, SubLval, DepLvals0) then
         set.delete(Target, DepLvals0, DepLvals),
         map.det_update(SubLval, DepLvals, !DepLvalMap)
-    ;
+    else
         true
     ).
 
@@ -438,10 +438,10 @@ make_not_dependent(Target, SubLval, !DepLvalMap) :-
     dependent_lval_map::in, dependent_lval_map::out) is det.
 
 make_dependent(Target, SubLval, !DepLvalMap) :-
-    ( map.search(!.DepLvalMap, SubLval, DepLvals0) ->
+    ( if map.search(!.DepLvalMap, SubLval, DepLvals0) then
         set.insert(Target, DepLvals0, DepLvals),
         map.det_update(SubLval, DepLvals, !DepLvalMap)
-    ;
+    else
         DepLvals = set.make_singleton_set(Target),
         map.det_insert(SubLval, DepLvals, !DepLvalMap)
     ).

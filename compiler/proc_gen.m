@@ -586,10 +586,10 @@ maybe_set_trace_level(PredInfo, !ModuleInfo) :-
         globals.set_trace_level_none(Globals0, Globals1),
         module_info_set_globals(Globals1, !ModuleInfo)
     else if
-        pred_info_get_origin(PredInfo, origin_special_pred(_, _)),
-        globals.get_trace_level(Globals0, TraceLevel),
-        UC_TraceLevel = trace_level_for_unify_compare(TraceLevel)
+        pred_info_get_origin(PredInfo, origin_special_pred(_, _))
     then
+        globals.get_trace_level(Globals0, TraceLevel),
+        UC_TraceLevel = trace_level_for_unify_compare(TraceLevel),
         globals.set_trace_level(UC_TraceLevel, Globals0, Globals1),
         module_info_set_globals(Globals1, !ModuleInfo)
     else

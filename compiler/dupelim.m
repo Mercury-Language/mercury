@@ -124,7 +124,7 @@ dupelim_build_maps([], _, !StdMap, !Fixed).
 dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
     map.lookup(BlockMap, Label, BlockInfo),
     BlockInfo = block_info(_, _, Instrs, NumInstrs, _, _, MaybeFallThrough),
-    ( NumInstrs < std_block_size_limit ->
+    ( if NumInstrs < std_block_size_limit then
         standardize_instr_block(Instrs, MaybeFallThrough, StdInstrs),
         map.search_insert(StdInstrs, [Label], MaybeOldCluster, !StdMap),
         (
@@ -133,7 +133,7 @@ dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
             MaybeOldCluster = yes(OldCluster),
             map.det_update(StdInstrs, [Label | OldCluster], !StdMap)
         )
-    ;
+    else
         true
     ),
     (
@@ -158,10 +158,10 @@ std_block_size_limit = 10.
 
 add_pragma_pref_labels(Instr, !FoldFixed) :-
     Instr = llds_instr(Uinstr, _),
-    (
+    ( if
         Uinstr = foreign_proc_code(_, _, _, MaybeFixedLabel,
             MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, MaybeDefLabel, _, _)
-    ->
+    then
         (
             MaybeFixedLabel = yes(FixedLabel),
             set.insert(FixedLabel, !FoldFixed)
@@ -186,7 +186,7 @@ add_pragma_pref_labels(Instr, !FoldFixed) :-
         ;
             MaybeDefLabel = no
         )
-    ;
+    else
         true
     ).
 
@@ -208,7 +208,7 @@ add_pragma_pref_labels(Instr, !FoldFixed) :-
 
 find_clusters([], _, !Clusters).
 find_clusters([Labels | LabelsList], Fixed, !Clusters) :-
-    (
+    ( if
         Labels = [_, _ | _],
         % The rest of the condition is relatively expensive, so don't do it
         % if there aren't at least two labels whose blocks have the same
@@ -218,7 +218,7 @@ find_clusters([Labels | LabelsList], Fixed, !Clusters) :-
         ),
         list.filter(IsFallenInto, Labels, FixedLabels, NonFixedLabels),
         NonFixedLabels = [FirstNonFixed | OtherNonFixed]
-    ->
+    then
         (
             FixedLabels = [ChosenLabel | _],
             Cluster = cluster(ChosenLabel, NonFixedLabels)
@@ -227,7 +227,7 @@ find_clusters([Labels | LabelsList], Fixed, !Clusters) :-
             Cluster = cluster(FirstNonFixed, OtherNonFixed)
         ),
         !:Clusters = [Cluster | !.Clusters]
-    ;
+    else
         true
     ),
     find_clusters(LabelsList, Fixed, !Clusters).
@@ -284,15 +284,15 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
         _, _, ElimMaybeFallThrough),
     expect(unify(ElimLabel, ElimLabel2), $module, $pred,
         "elim label mismatch"),
-    (
+    ( if
         most_specific_block(Instrs0, !.MaybeFallThrough, ElimInstrs,
             ElimMaybeFallThrough, Instrs1, !:MaybeFallThrough)
-    ->
+    then
         list.delete_all(!.LabelSeq, ElimLabel, !:LabelSeq),
         map.det_insert(ElimLabel, Exemplar, !ReplMap),
         process_elim_labels(ElimLabels, Instrs1, !LabelSeq, BlockMap,
             Exemplar, !ReplMap, Instrs, !MaybeFallThrough)
-    ;
+    else
         unexpected($module, $pred,
             "blocks with same standard form don't antiunify")
     ).
@@ -330,9 +330,9 @@ standardize_instrs([], []).
 standardize_instrs([llds_instr(Instr, _) | Instrs], StdInstrs) :-
     standardize_instrs(Instrs, StdInstrs1),
     standardize_instr(Instr, StdInstr),
-    ( StdInstr = comment(_) ->
+    ( if StdInstr = comment(_) then
         StdInstrs = StdInstrs1
-    ;
+    else
         StdInstrs = [StdInstr | StdInstrs1]
     ).
 
@@ -566,12 +566,12 @@ standardize_rval(Rval0, Rval) :-
 standardize_block(Instrs, MaybeFallThrough, StdInstrs) :-
     (
         MaybeFallThrough = yes(Label),
-        (
+        ( if
             list.last(Instrs, LastInstr),
             LastInstr = llds_instr(goto(code_label(Label)), _)
-        ->
+        then
             StdInstrs = Instrs
-        ;
+        else
             Goto = llds_instr(goto(code_label(Label)), ""),
             StdInstrs = Instrs ++ [Goto]
         )
@@ -595,9 +595,9 @@ most_specific_block(Instrs1, MaybeFallThrough1,
     % can delete comments from its input instruction sequences,
     % it cannot delete executable instructions.
     list.det_last(Instrs, LastInstr),
-    ( LastInstr = llds_instr(goto(code_label(Label)), _) ->
+    ( if LastInstr = llds_instr(goto(code_label(Label)), _) then
         MaybeFallThrough = yes(Label)
-    ;
+    else
         MaybeFallThrough = no
     ).
 
@@ -605,50 +605,50 @@ most_specific_block(Instrs1, MaybeFallThrough1,
     list(instruction)::out) is semidet.
 
 most_specific_instrs(InstrsA, InstrsB, Instrs) :-
-    (
+    ( if
         InstrsA = [InstrA | TailA],
         InstrsB = [InstrB | TailB]
-    ->
+    then
         InstrA = llds_instr(UinstrA, CommentA),
         InstrB = llds_instr(UinstrB, CommentB),
-        (
+        ( if
             most_specific_instr(UinstrA, UinstrB, yes(Uinstr))
-        ->
-            ( CommentA = CommentB ->
+        then
+            ( if CommentA = CommentB then
                 Comment = CommentA
-            ;
+            else
                 Comment = "unified intruction"
             ),
             Instr = llds_instr(Uinstr, Comment),
             most_specific_instrs(TailA, TailB, Tail),
             Instrs = [Instr | Tail]
-        ;
+        else if
             UinstrA = comment(_)
-        ->
+        then
             most_specific_instrs(TailA, InstrsB, Instrs)
-        ;
+        else if
             UinstrB = comment(_)
-        ->
+        then
             most_specific_instrs(InstrsA, TailB, Instrs)
-        ;
+        else
             fail
         )
-    ;
+    else if
         InstrsA = [],
         InstrsB = []
-    ->
+    then
         Instrs = []
-    ;
+    else if
         InstrsA = [InstrA | TailA],
         InstrA = llds_instr(comment(_), _)
-    ->
+    then
         most_specific_instrs(TailA, InstrsB, Instrs)
-    ;
+    else if
         InstrsB = [InstrB | TailB],
         InstrB = llds_instr(comment(_), _)
-    ->
+    then
         most_specific_instrs(InstrsA, TailB, Instrs)
-    ;
+    else
         fail
     ).
 
@@ -660,41 +660,41 @@ most_specific_instrs(InstrsA, InstrsB, Instrs) :-
 most_specific_instr(InstrA, InstrB, MaybeInstr) :-
     (
         InstrA = assign(LvalA, RvalA),
-        (
+        ( if
             InstrB = assign(LvalB, RvalB),
             most_specific_lval(LvalA, LvalB, Lval),
             most_specific_rval(RvalA, RvalB, Rval)
-        ->
+        then
             MaybeInstr = yes(assign(Lval, Rval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = keep_assign(LvalA, RvalA),
-        (
+        ( if
             InstrB = keep_assign(LvalB, RvalB),
             most_specific_lval(LvalA, LvalB, Lval),
             most_specific_rval(RvalA, RvalB, Rval)
-        ->
+        then
             MaybeInstr = yes(keep_assign(Lval, Rval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = if_val(RvalA, CodeAddrA),
-        (
+        ( if
             InstrB = if_val(RvalB, CodeAddrB),
             most_specific_rval(RvalA, RvalB, Rval),
             CodeAddrA = CodeAddrB
-        ->
+        then
             MaybeInstr = yes(if_val(Rval, CodeAddrA))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = incr_hp(LvalA, MaybeTag, MaybeOffset, RvalA, Msg,
             MayUseAtomic, MaybeRegionRvalA, MaybeReuseA),
-        (
+        ( if
             InstrB = incr_hp(LvalB, MaybeTag, MaybeOffset, RvalB, Msg,
                 MayUseAtomic, MaybeRegionRvalB, MaybeReuseB),
             most_specific_lval(LvalA, LvalB, Lval),
@@ -729,170 +729,170 @@ most_specific_instr(InstrA, InstrB, MaybeInstr) :-
                 MaybeReuseB = no_llds_reuse,
                 MaybeReuse = no_llds_reuse
             )
-        ->
+        then
             MaybeInstr = yes(incr_hp(Lval, MaybeTag, MaybeOffset, Rval,
                 Msg, MayUseAtomic, MaybeRegionRval, MaybeReuse))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = mark_hp(LvalA),
-        (
+        ( if
             InstrB = mark_hp(LvalB),
             most_specific_lval(LvalA, LvalB, Lval)
-        ->
+        then
             MaybeInstr = yes(mark_hp(Lval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = restore_hp(RvalA),
-        (
+        ( if
             InstrB = restore_hp(RvalB),
             most_specific_rval(RvalA, RvalB, Rval)
-        ->
+        then
             MaybeInstr = yes(restore_hp(Rval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = free_heap(RvalA),
-        (
+        ( if
             InstrB = free_heap(RvalB),
             most_specific_rval(RvalA, RvalB, Rval)
-        ->
+        then
             MaybeInstr = yes(free_heap(Rval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = push_region_frame(StackId, EmbeddedStackFrame),
-        (
+        ( if
             InstrB = push_region_frame(StackId, EmbeddedStackFrame)
-        ->
+        then
             MaybeInstr = yes(push_region_frame(StackId, EmbeddedStackFrame))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = region_fill_frame(FillOp, EmbeddedStackFrame,
             IdRvalA, NumLvalA, AddrLvalA),
-        (
+        ( if
             InstrB = region_fill_frame(FillOp, EmbeddedStackFrame,
                 IdRvalB, NumLvalB, AddrLvalB),
             most_specific_rval(IdRvalA, IdRvalB, IdRval),
             most_specific_lval(NumLvalA, NumLvalB, NumLval),
             most_specific_lval(AddrLvalA, AddrLvalB, AddrLval)
-        ->
+        then
             MaybeInstr = yes(region_fill_frame(FillOp, EmbeddedStackFrame,
                 IdRval, NumLval, AddrLval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = region_set_fixed_slot(SetOp, EmbeddedStackFrame,
             ValueRvalA),
-        (
+        ( if
             InstrB = region_set_fixed_slot(SetOp, EmbeddedStackFrame,
                 ValueRvalB),
             most_specific_rval(ValueRvalA, ValueRvalB, ValueRval)
-        ->
+        then
             MaybeInstr = yes(region_set_fixed_slot(SetOp, EmbeddedStackFrame,
                 ValueRval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame),
-        (
+        ( if
             InstrB = use_and_maybe_pop_region_frame(UseOp, EmbeddedStackFrame)
-        ->
+        then
             MaybeInstr = yes(use_and_maybe_pop_region_frame(UseOp,
                 EmbeddedStackFrame))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = store_ticket(LvalA),
-        (
+        ( if
             InstrB = store_ticket(LvalB),
             most_specific_lval(LvalA, LvalB, Lval)
-        ->
+        then
             MaybeInstr = yes(store_ticket(Lval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = reset_ticket(RvalA, Reason),
-        (
+        ( if
             InstrB = reset_ticket(RvalB, Reason),
             most_specific_rval(RvalA, RvalB, Rval)
-        ->
+        then
             MaybeInstr = yes(reset_ticket(Rval, Reason))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = mark_ticket_stack(LvalA),
-        (
+        ( if
             InstrB = mark_ticket_stack(LvalB),
             most_specific_lval(LvalA, LvalB, Lval)
-        ->
+        then
             MaybeInstr = yes(mark_ticket_stack(Lval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = prune_tickets_to(RvalA),
-        (
+        ( if
             InstrB = prune_tickets_to(RvalB),
             most_specific_rval(RvalA, RvalB, Rval)
-        ->
+        then
             MaybeInstr = yes(prune_tickets_to(Rval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = lc_create_loop_control(NumSlots, LvalA),
-        (
+        ( if
             InstrB = lc_create_loop_control(NumSlots, LvalB),
             most_specific_lval(LvalA, LvalB, Lval)
-        ->
+        then
             MaybeInstr = yes(lc_create_loop_control(NumSlots, Lval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = lc_wait_free_slot(RvalA, LvalA, Label),
-        (
+        ( if
             InstrB = lc_wait_free_slot(RvalB, LvalB, Label),
             most_specific_rval(RvalA, RvalB, Rval),
             most_specific_lval(LvalA, LvalB, Lval)
-        ->
+        then
             MaybeInstr = yes(lc_wait_free_slot(Rval, Lval, Label))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = lc_spawn_off(LCRvalA, LCSRvalA, Label),
-        (
+        ( if
             InstrB = lc_spawn_off(LCRvalB, LCSRvalB, Label),
             most_specific_rval(LCRvalA, LCRvalB, LCRval),
             most_specific_rval(LCSRvalA, LCSRvalB, LCSRval)
-        ->
+        then
             MaybeInstr = yes(lc_spawn_off(LCRval, LCSRval, Label))
-        ;
+        else
             MaybeInstr = no
         )
     ;
         InstrA = lc_join_and_terminate(LCRvalA, LCSRvalA),
-        (
+        ( if
             InstrB = lc_join_and_terminate(LCRvalB, LCSRvalB),
             most_specific_rval(LCRvalA, LCRvalB, LCRval),
             most_specific_rval(LCSRvalA, LCSRvalB, LCSRval)
-        ->
+        then
             MaybeInstr = yes(lc_join_and_terminate(LCRval, LCSRval))
-        ;
+        else
             MaybeInstr = no
         )
     ;
@@ -916,9 +916,9 @@ most_specific_instr(InstrA, InstrB, MaybeInstr) :-
         ; InstrA = init_sync_term(_, _, _)
         ; InstrA = join_and_continue(_, _)
         ),
-        ( InstrA = InstrB ->
+        ( if InstrA = InstrB then
             MaybeInstr = yes(InstrA)
-        ;
+        else
             MaybeInstr = no
         )
     ;
@@ -958,9 +958,9 @@ most_specific_lval(LvalA, LvalB, Lval) :-
     ;
         LvalA = field(MaybeTagA, Addr, FieldNum),
         LvalB = field(MaybeTagB, Addr, FieldNum),
-        ( MaybeTagA = MaybeTagB ->
+        ( if MaybeTagA = MaybeTagB then
             MaybeTag = MaybeTagA
-        ;
+        else
             MaybeTag = no
         ),
         Lval = field(MaybeTag, Addr, FieldNum)

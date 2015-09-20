@@ -333,101 +333,101 @@
 
 get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-
     gather_comments(Instrs0, Comments1, Instrs1),
-    (
+    ( if
         Instrs1 = [Instr1 | Instrs2],
         Instr1 = llds_instr(label(_), _)
-    ->
+    then
         LabelInstr = Instr1,
         gather_comments(Instrs2, Comments2, Instrs),
         list.append(Comments1, Comments2, Comments)
-    ;
+    else
         unexpected($module, $pred, "procedure does not begin with label")
     ).
 
 gather_comments(Instrs0, Comments, Instrs) :-
-    (
+    ( if
         Instrs0 = [Instr0 | Instrs1],
         Instr0 = llds_instr(comment(_), _)
-    ->
+    then
         gather_comments(Instrs1, Comments0, Instrs),
         Comments = [Instr0 | Comments0]
-    ;
+    else
         Instrs = Instrs0,
         Comments = []
     ).
 
 gather_comments_livevals(Instrs0, Comments, Instrs) :-
-    (
+    ( if
         Instrs0 = [Instr0 | Instrs1],
         Instr0 = llds_instr(Uinstr0, _),
         ( Uinstr0 = comment(_)
         ; Uinstr0 = livevals(_)
         )
-    ->
+    then
         gather_comments_livevals(Instrs1, Comments0, Instrs),
         Comments = [Instr0 | Comments0]
-    ;
+    else
         Instrs = Instrs0,
         Comments = []
     ).
 
 skip_comments(Instrs0, Instrs) :-
-    ( Instrs0 = [llds_instr(comment(_), _) | Instrs1] ->
+    ( if Instrs0 = [llds_instr(comment(_), _) | Instrs1] then
         skip_comments(Instrs1, Instrs)
-    ;
+    else
         Instrs = Instrs0
     ).
 
 skip_comments_livevals(Instrs0, Instrs) :-
-    ( Instrs0 = [llds_instr(comment(_), _) | Instrs1] ->
+    ( if Instrs0 = [llds_instr(comment(_), _) | Instrs1] then
         skip_comments(Instrs1, Instrs)
-    ; Instrs0 = [llds_instr(livevals(_), _) | Instrs1] ->
+    else if Instrs0 = [llds_instr(livevals(_), _) | Instrs1] then
         skip_comments_livevals(Instrs1, Instrs)
-    ;
+    else
         Instrs = Instrs0
     ).
 
 skip_comments_labels(Instrs0, Instrs) :-
-    ( Instrs0 = [llds_instr(comment(_), _) | Instrs1] ->
+    ( if Instrs0 = [llds_instr(comment(_), _) | Instrs1] then
         skip_comments_labels(Instrs1, Instrs)
-    ; Instrs0 = [llds_instr(label(_), _) | Instrs1] ->
+    else if Instrs0 = [llds_instr(label(_), _) | Instrs1] then
         skip_comments_labels(Instrs1, Instrs)
-    ;
+    else
         Instrs = Instrs0
     ).
 
 skip_comments_livevals_labels(Instrs0, Instrs) :-
-    ( Instrs0 = [llds_instr(comment(_), _) | Instrs1] ->
+    ( if Instrs0 = [llds_instr(comment(_), _) | Instrs1] then
         skip_comments_livevals_labels(Instrs1, Instrs)
-    ; Instrs0 = [llds_instr(livevals(_), _) | Instrs1] ->
+    else if Instrs0 = [llds_instr(livevals(_), _) | Instrs1] then
         skip_comments_livevals_labels(Instrs1, Instrs)
-    ; Instrs0 = [llds_instr(label(_), _) | Instrs1] ->
+    else if Instrs0 = [llds_instr(label(_), _) | Instrs1] then
         skip_comments_livevals_labels(Instrs1, Instrs)
-    ;
+    else
         Instrs = Instrs0
     ).
 
 next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
         Redoip, Skip, Rest) :-
     Instr = llds_instr(Uinstr, _Comment),
-    (
+    ( if
         Uinstr = assign(redoip_slot(lval(Fr)),
             const(llconst_code_addr(Redoip0))),
         list.member(Fr, AllowedBases)
-    ->
+    then
         Redoip = Redoip0,
         list.reverse(RevSkip, Skip),
         Rest = Instrs
-    ;
+    else if
         Uinstr = mkframe(_, _)
-    ->
+    then
         fail
 
-    ;
+    else if
         Uinstr = label(_)
-    ->
+    then
         fail
-    ;
+    else
         CanBranchAway = can_instr_branch_away(Uinstr),
         (
             CanBranchAway = no,
@@ -441,12 +441,12 @@ next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
 
 find_no_fallthrough([], []).
 find_no_fallthrough([Instr0 | Instrs0], Instrs) :-
-    (
+    ( if
         Instr0 = llds_instr(Uinstr0, _),
         can_instr_fall_through(Uinstr0) = no
-    ->
+    then
         Instrs = [Instr0]
-    ;
+    else
         find_no_fallthrough(Instrs0, Instrs1),
         Instrs = [Instr0 | Instrs1]
     ).
@@ -454,54 +454,54 @@ find_no_fallthrough([Instr0 | Instrs0], Instrs) :-
 find_first_label([], _) :-
     unexpected($module, $pred, "cannot find first label").
 find_first_label([Instr0 | Instrs0], Label) :-
-    ( Instr0 = llds_instr(label(LabelPrime), _) ->
+    ( if Instr0 = llds_instr(label(LabelPrime), _) then
         Label = LabelPrime
-    ;
+    else
         find_first_label(Instrs0, Label)
     ).
 
 skip_to_next_label([], [], []).
 skip_to_next_label([Instr0 | Instrs0], Before, Remain) :-
-    ( Instr0 = llds_instr(label(_), _) ->
+    ( if Instr0 = llds_instr(label(_), _) then
         Before = [],
         Remain = [Instr0 | Instrs0]
-    ;
+    else
         skip_to_next_label(Instrs0, Before1, Remain),
         Before = [Instr0 | Before1]
     ).
 
 is_this_label_next(Label, [Instr | Moreinstr], Remainder) :-
     Instr = llds_instr(Uinstr, _Comment),
-    ( Uinstr = comment(_) ->
+    ( if Uinstr = comment(_) then
         is_this_label_next(Label, Moreinstr, Remainder)
-    ; Uinstr = livevals(_) ->
-        % this is questionable
+    else if Uinstr = livevals(_) then
+        % XXX This is questionable.
         is_this_label_next(Label, Moreinstr, Remainder)
-    ; Uinstr = label(NextLabel) ->
-        ( Label = NextLabel ->
+    else if Uinstr = label(NextLabel) then
+        ( if Label = NextLabel then
             Remainder = Moreinstr
-        ;
+        else
             is_this_label_next(Label, Moreinstr, Remainder)
         )
-    ;
+    else
         fail
     ).
 
 is_proceed_next(Instrs0, InstrsBetween) :-
     skip_comments_labels(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
-    ( Instr1 = llds_instr(assign(succip, lval(stackvar(_))), _) ->
+    ( if Instr1 = llds_instr(assign(succip, lval(stackvar(_))), _) then
         Instr1use = Instr1,
         skip_comments_labels(Instrs2, Instrs3)
-    ;
+    else
         Instr1use = llds_instr(comment("no succip restoration"), ""),
         Instrs3 = Instrs1
     ),
     Instrs3 = [Instr3 | Instrs4],
-    ( Instr3 = llds_instr(decr_sp(_), _) ->
+    ( if Instr3 = llds_instr(decr_sp(_), _) then
         Instr3use = Instr3,
         skip_comments_labels(Instrs4, Instrs5)
-    ;
+    else
         Instr3use = llds_instr(comment("no sp restoration"), ""),
         Instrs5 = Instrs3
     ),
@@ -518,18 +518,18 @@ is_sdproceed_next(Instrs0, InstrsBetween) :-
 is_sdproceed_next_sf(Instrs0, InstrsBetween, Success) :-
     skip_comments_labels(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
-    ( Instr1 = llds_instr(assign(succip, lval(stackvar(_))), _) ->
+    ( if Instr1 = llds_instr(assign(succip, lval(stackvar(_))), _) then
         Instr1use = Instr1,
         skip_comments_labels(Instrs2, Instrs3)
-    ;
+    else
         Instr1use = llds_instr(comment("no succip restoration"), ""),
         Instrs3 = Instrs1
     ),
     Instrs3 = [Instr3 | Instrs4],
-    ( Instr3 = llds_instr(decr_sp(_), _) ->
+    ( if Instr3 = llds_instr(decr_sp(_), _) then
         Instr3use = Instr3,
         skip_comments_labels(Instrs4, Instrs5)
-    ;
+    else
         Instr3use = llds_instr(comment("no sp restoration"), ""),
         Instrs5 = Instrs3
     ),
@@ -563,36 +563,36 @@ is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
     skip_comments_labels(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
     Instr1 = llds_instr(Uinstr1, _),
-    (
+    ( if
         Uinstr1 = if_val(lval(reg(reg_r, 1)), code_label(JumpLabel))
-    ->
+    then
         map.search(Sdprocmap, JumpLabel, BetweenJump),
         is_sdproceed_next(Instrs2, BetweenFall),
         filter_out_r1(BetweenJump, yes(llconst_true), BetweenTrue0),
         filter_out_livevals(BetweenTrue0, Between),
         filter_out_r1(BetweenFall, yes(llconst_false), BetweenFalse0),
         filter_out_livevals(BetweenFalse0, Between)
-    ;
+    else if
         Uinstr1 = if_val(unop(logical_not, lval(reg(reg_r, 1))),
             code_label(JumpLabel))
-    ->
+    then
         map.search(Sdprocmap, JumpLabel, BetweenJump),
         is_sdproceed_next(Instrs2, BetweenFall),
         filter_out_r1(BetweenJump, yes(llconst_false), BetweenFalse0),
         filter_out_livevals(BetweenFalse0, Between),
         filter_out_r1(BetweenFall, yes(llconst_true), BetweenTrue0),
         filter_out_livevals(BetweenTrue0, Between)
-    ;
+    else
         fail
     ).
 
 filter_out_r1([], no, []).
 filter_out_r1([Instr0 | Instrs0], Success, Instrs) :-
     filter_out_r1(Instrs0, Success0, Instrs1),
-    ( Instr0 = llds_instr(assign(reg(reg_r, 1), const(Success1)), _) ->
+    ( if Instr0 = llds_instr(assign(reg(reg_r, 1), const(Success1)), _) then
         Instrs = Instrs1,
         Success = yes(Success1)
-    ;
+    else
         Instrs = [Instr0 | Instrs1],
         Success = Success0
     ).
@@ -606,15 +606,15 @@ straight_alternative(Instrs0, Between, After) :-
 
 straight_alternative_2([Instr0 | Instrs0], !Between, After) :-
     Instr0 = llds_instr(Uinstr0, _),
-    (
+    ( if
         Uinstr0 = label(_)
-    ->
+    then
         fail
-    ;
+    else if
         Uinstr0 = goto(do_succeed(no))
-    ->
+    then
         After = Instrs0
-    ;
+    else if
         (
             can_instr_branch_away(Uinstr0) = no,
             touches_nondet_ctrl_instr(Uinstr0) = no
@@ -622,10 +622,10 @@ straight_alternative_2([Instr0 | Instrs0], !Between, After) :-
             Uinstr0 = if_val(_, CodeAddr),
             ( CodeAddr = do_fail ; CodeAddr = do_redo )
         )
-    ->
+    then
         !:Between = [Instr0 | !.Between],
         straight_alternative_2(Instrs0, !Between, After)
-    ;
+    else
         fail
     ).
 
@@ -639,7 +639,7 @@ no_stack_straight_line(Instrs0, StraightLine, Instrs) :-
 no_stack_straight_line_2([], !RevStraightLine, []).
 no_stack_straight_line_2([Instr0 | Instrs0], !RevStraightLine, Instrs) :-
     Instr0 = llds_instr(Uinstr, _),
-    (
+    ( if
         (
             Uinstr = comment(_)
         ;
@@ -649,10 +649,10 @@ no_stack_straight_line_2([Instr0 | Instrs0], !RevStraightLine, Instrs) :-
             lval_refers_stackvars(Lval) = no,
             rval_refers_stackvars(Rval) = no
         )
-    ->
+    then
         !:RevStraightLine = [Instr0 | !.RevStraightLine],
         no_stack_straight_line_2(Instrs0, !RevStraightLine, Instrs)
-    ;
+    else
         Instrs = [Instr0 | Instrs0]
     ).
 
@@ -669,12 +669,12 @@ may_replace_succeed_with_succeed_discard(Instrs0, UntilSucceed, SucceedComment,
 may_replace_succeed_with_succeed_discard_2([Instr0 | Instrs0],
         !RevUntilSucceed, SucceedComment, Remain) :-
     Instr0 = llds_instr(Uinstr, Comment),
-    (
+    ( if
         Uinstr = goto(do_succeed(yes))
-    ->
+    then
         SucceedComment = Comment,
         Remain = Instrs0
-    ;
+    else if
         (
             Uinstr = assign(Lval, Rval),
             lval_refers_stackvars(Lval) = no,
@@ -696,11 +696,11 @@ may_replace_succeed_with_succeed_discard_2([Instr0 | Instrs0],
             ; Uinstr = prune_tickets_to(_)
             )
         )
-    ->
+    then
         !:RevUntilSucceed = [Instr0 | !.RevUntilSucceed],
         may_replace_succeed_with_succeed_discard_2(Instrs0, !RevUntilSucceed,
             SucceedComment, Remain)
-    ;
+    else
         fail
     ).
 
@@ -756,16 +756,16 @@ rval_refers_stackvars(mem_addr(MemRef)) =
 % XXX probably unused
 rvals_refer_stackvars([]) = no.
 rvals_refer_stackvars([MaybeRval | Tail]) =
-    (
+    ( if
         (
             MaybeRval = no
         ;
             MaybeRval = yes(Rval),
             rval_refers_stackvars(Rval) = no
         )
-    ->
+    then
         rvals_refer_stackvars(Tail)
-    ;
+    else
         yes
     ).
 
@@ -795,20 +795,20 @@ no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
         Between = [Instr0 | Between0]
     ;
         Uinstr0 = assign(Lval, Rval),
-        (
+        ( if
             Lval = stackvar(_),
             rval_refers_stackvars(Rval) = no
-        ->
+        then
             no_stackvars_til_decr_sp(Instrs0, FrameSize, Between, Remain)
-        ;
+        else if
             Lval = succip,
             Rval = lval(stackvar(FrameSize)),
             skip_comments(Instrs0, Instrs1),
             Instrs1 = [llds_instr(decr_sp(FrameSize), _) | Instrs2]
-        ->
+        then
             Between = [],
             Remain = Instrs2
-        ;
+        else
             lval_refers_stackvars(Lval) = no,
             rval_refers_stackvars(Rval) = no,
             no_stackvars_til_decr_sp(Instrs0, FrameSize, Between0, Remain),
@@ -1014,41 +1014,41 @@ foreign_proc_output_refers_stackvars(Input) = Refers :-
 filter_out_labels([], []).
 filter_out_labels([Instr0 | Instrs0], Instrs) :-
     filter_out_labels(Instrs0, Instrs1),
-    ( Instr0 = llds_instr(label(_), _) ->
+    ( if Instr0 = llds_instr(label(_), _) then
         Instrs = Instrs1
-    ;
+    else
         Instrs = [Instr0 | Instrs1]
     ).
 
 filter_out_bad_livevals([], []).
 filter_out_bad_livevals([Instr0 | Instrs0], Instrs) :-
     filter_out_bad_livevals(Instrs0, Instrs1),
-    (
+    ( if
         Instr0 = llds_instr(livevals(_), _),
         skip_comments(Instrs1, Instrs2),
         Instrs2 = [llds_instr(Uinstr2, _) | _],
         can_use_livevals(Uinstr2, no)
-    ->
+    then
         Instrs = Instrs1
-    ;
+    else
         Instrs = [Instr0 | Instrs1]
     ).
 
 filter_out_livevals([], []).
 filter_out_livevals([Instr0 | Instrs0], Instrs) :-
     filter_out_livevals(Instrs0, Instrs1),
-    ( Instr0 = llds_instr(livevals(_), _) ->
+    ( if Instr0 = llds_instr(livevals(_), _) then
         Instrs = Instrs1
-    ;
+    else
         Instrs = [Instr0 | Instrs1]
     ).
 
 filter_in_livevals([], []).
 filter_in_livevals([Instr0 | Instrs0], Instrs) :-
     filter_in_livevals(Instrs0, Instrs1),
-    ( Instr0 = llds_instr(livevals(_), _) ->
+    ( if Instr0 = llds_instr(livevals(_), _) then
         Instrs = [Instr0 | Instrs1]
-    ;
+    else
         Instrs = Instrs1
     ).
 
@@ -1056,11 +1056,11 @@ filter_in_livevals([Instr0 | Instrs0], Instrs) :-
     % The time to extend this predicate is when the rest of the compiler
     % generates more complicated constant conditions.
 is_const_condition(const(Const), Taken) :-
-    ( Const = llconst_true ->
+    ( if Const = llconst_true then
         Taken = yes
-    ; Const = llconst_false ->
+    else if Const = llconst_false then
         Taken = no
-    ;
+    else
         unexpected($module, $pred,
             "non-boolean constant as if-then-else condition")
     ).
@@ -1213,9 +1213,9 @@ can_instr_fall_through(lc_join_and_terminate(_, _)) = no.
 
 can_block_fall_through([], yes).
 can_block_fall_through([llds_instr(Uinstr, _) | Instrs], FallThrough) :-
-    ( can_instr_fall_through(Uinstr) = no ->
+    ( if can_instr_fall_through(Uinstr) = no then
         FallThrough = no
-    ;
+    else
         can_block_fall_through(Instrs, FallThrough)
     ).
 
@@ -1365,9 +1365,9 @@ instr_labels_2(Uinstr, Labels, CodeAddrs) :-
 
 find_label_code_addrs([], Labels, Labels).
 find_label_code_addrs([CodeAddr | Rest], Labels0, Labels) :-
-    ( CodeAddr = code_label(Label) ->
+    ( if CodeAddr = code_label(Label) then
         Labels1 = [Label | Labels0]
-    ;
+    else
         Labels1 = Labels0
     ),
     find_label_code_addrs(Rest, Labels1, Labels).
@@ -1411,10 +1411,10 @@ possible_targets(Uinstr, Labels, CodeAddrs) :-
         CodeAddrs = []
     ;
         Uinstr = llcall(_, Return, _, _, _, _),
-        ( Return = code_label(ReturnLabel) ->
+        ( if Return = code_label(ReturnLabel) then
             Labels = [ReturnLabel],
             CodeAddrs = []
-        ;
+        else
             Labels = [],
             CodeAddrs = [Return]
         )
@@ -1422,10 +1422,10 @@ possible_targets(Uinstr, Labels, CodeAddrs) :-
         ( Uinstr = goto(CodeAddr)
         ; Uinstr = if_val(_, CodeAddr)
         ),
-        ( CodeAddr = code_label(Label) ->
+        ( if CodeAddr = code_label(Label) then
             Labels = [Label],
             CodeAddrs = []
-        ;
+        else
             Labels = [],
             CodeAddrs = [CodeAddr]
         )
@@ -1796,14 +1796,14 @@ has_both_incr_decr_sp(Instrs) :-
 has_both_incr_decr_sp_2([], !HasIncr, !HasDecr).
 has_both_incr_decr_sp_2([llds_instr(Uinstr, _) | Instrs],
         !HasIncr, !HasDecr) :-
-    ( Uinstr = incr_sp(_, _, _) ->
+    ( if Uinstr = incr_sp(_, _, _) then
         !:HasIncr = yes
-    ;
+    else
         true
     ),
-    ( Uinstr = decr_sp(_) ->
+    ( if Uinstr = decr_sp(_) then
         !:HasDecr = yes
-    ;
+    else
         true
     ),
     has_both_incr_decr_sp_2(Instrs, !HasIncr, !HasDecr).
@@ -2055,9 +2055,9 @@ count_incr_hp(Instrs, N) :-
 
 count_incr_hp_2([], !N).
 count_incr_hp_2([llds_instr(Uinstr0, _) | Instrs], !N) :-
-    ( Uinstr0 = incr_hp(_, _, _, _, _, _, _, _) ->
+    ( if Uinstr0 = incr_hp(_, _, _, _, _, _, _, _) then
         !:N = !.N + 1
-    ;
+    else
         true
     ),
     count_incr_hp_2(Instrs, !N).
@@ -2077,16 +2077,16 @@ propagate_livevals_2([], _, []).
 propagate_livevals_2([Instr0 | Instrs0], Livevals0,
         [Instr | Instrs]) :-
     Instr0 = llds_instr(Uinstr0, Comment),
-    ( Uinstr0 = livevals(ThisLivevals) ->
+    ( if Uinstr0 = livevals(ThisLivevals) then
         set.union(Livevals0, ThisLivevals, Livevals),
         Instr = llds_instr(livevals(Livevals), Comment)
-    ;
+    else
         Instr = Instr0,
-        ( Uinstr0 = assign(Lval, _) ->
+        ( if Uinstr0 = assign(Lval, _) then
             set.delete(Lval, Livevals0, Livevals)
-        ; can_instr_fall_through(Uinstr0) = no ->
+        else if can_instr_fall_through(Uinstr0) = no then
             set.init(Livevals)
-        ;
+        else
             Livevals = Livevals0
         )
     ),
@@ -2100,13 +2100,13 @@ propagate_livevals_2([Instr0 | Instrs0], Livevals0,
 replace_labels_instruction_list([], [], _, _, _).
 replace_labels_instruction_list([Instr0 | Instrs0], [Instr | Instrs],
         ReplMap, ReplData, ReplLabel) :-
-    (
+    ( if
         Instr0 = llds_instr(label(InstrLabel), Comment),
         ReplLabel = yes
-    ->
+    then
         replace_labels_label(InstrLabel, ReplInstrLabel, ReplMap),
         Instr = llds_instr(label(ReplInstrLabel), Comment)
-    ;
+    else
         replace_labels_instruction(Instr0, Instr, ReplMap, ReplData)
     ),
     replace_labels_instruction_list(Instrs0, Instrs,
@@ -2181,12 +2181,12 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
         Uinstr = mkframe(NondetFrameInfo, MaybeRedoip)
     ;
         Uinstr0 = label(Label),
-        ( map.search(ReplMap, Label, _) ->
+        ( if map.search(ReplMap, Label, _) then
             % The reason why we are replacing references to this label is that
             % it is being eliminated, and in fact should have been already
             % eliminated by the time replace_labels_instr is called.
             unexpected($module, $pred, "eliminated label")
-        ;
+        else
             true
         ),
         Uinstr = label(Label)
@@ -2692,9 +2692,9 @@ replace_labels_maybe_label_list([MaybeLabel0 | MaybeLabels0],
     replace_labels_maybe_label_list(MaybeLabels0, MaybeLabels, ReplMap).
 
 replace_labels_label(Label0, Label, ReplMap) :-
-    ( map.search(ReplMap, Label0, NewLabel) ->
+    ( if map.search(ReplMap, Label0, NewLabel) then
         Label = NewLabel
-    ;
+    else
         Label = Label0
     ).
 

@@ -70,18 +70,18 @@
 
 fill_branch_delay_slot([], []).
 fill_branch_delay_slot([Instr0 | Instrs0], Instrs) :-
-    (
+    ( if
         Instr0 = llds_instr(label(_), _),
         Instrs0 = [Instr1, Instr2, Instr3 | Tail0],
         Instr1 = llds_instr(if_val(_, _), _),
         Instr2 = llds_instr(incr_sp(Size, _, _), _),
         Instr3 = llds_instr(assign(stackvar(Size), lval(succip)), C2)
-    ->
+    then
         fill_branch_delay_slot(Tail0, Tail1),
         string.append(C2, " (early save in delay slot)", NewC2),
         EarlySave = llds_instr(assign(stackvar(0), lval(succip)), NewC2),
         Instrs = [Instr0, EarlySave, Instr1, Instr2 | Tail1]
-    ;
+    else
         fill_branch_delay_slot(Instrs0, Instrs1),
         Instrs = [Instr0 | Instrs1]
     ).

@@ -165,10 +165,10 @@ msg(OptDebug, LabelNo, Msg, !IO) :-
         OptDebug = yes,
         io.write_string("\n", !IO),
         io.write_string(Msg, !IO),
-        ( LabelNo >= 0 ->
+        ( if LabelNo >= 0 then
             io.write_string(", next label no: ", !IO),
             io.write_int(LabelNo, !IO)
-        ;
+        else
             true
         ),
         io.write_string("\n", !IO)
@@ -187,21 +187,21 @@ maybe_write_instrs(OptDebug, AutoComments, MaybeProcLabel, Instrs, !IO) :-
 write_instrs([], _MaybeProcLabel, _AutoComments, !IO).
 write_instrs([Instr | Instrs], MaybeProcLabel, AutoComments, !IO) :-
     Instr = llds_instr(Uinstr, Comment),
-    ( Uinstr = label(_) ->
+    ( if Uinstr = label(_) then
         io.write_string(dump_instr(MaybeProcLabel, AutoComments, Uinstr), !IO)
-    ; Uinstr = comment(InstrComment) ->
+    else if Uinstr = comment(InstrComment) then
         io.write_string("\t% ", !IO),
         string.foldl(print_comment_char, InstrComment, !IO)
-    ;
+    else
         io.write_string("\t", !IO),
         io.write_string(dump_instr(MaybeProcLabel, AutoComments, Uinstr), !IO)
     ),
-    (
+    ( if
         AutoComments = yes,
         Comment \= ""
-    ->
+    then
         io.write_string("\n\t\t" ++ Comment, !IO)
-    ;
+    else
         true
     ),
     io.nl(!IO),
@@ -210,20 +210,20 @@ write_instrs([Instr | Instrs], MaybeProcLabel, AutoComments, !IO) :-
 dump_instrs(_MaybeProcLabel, _AutoComments, []) = "".
 dump_instrs(MaybeProcLabel, AutoComments, [Instr | Instrs]) = Str :-
     Instr = llds_instr(Uinstr, Comment),
-    ( Uinstr = label(_) ->
+    ( if Uinstr = label(_) then
         InstrStr0 = dump_instr(MaybeProcLabel, AutoComments, Uinstr)
-    ; Uinstr = comment(InstrComment) ->
+    else if Uinstr = comment(InstrComment) then
         string.foldl(dump_comment_char, InstrComment, "", InstrCommentStr),
         InstrStr0 = "\t% " ++ InstrCommentStr
-    ;
+    else
         InstrStr0 = "\t" ++ dump_instr(MaybeProcLabel, AutoComments, Uinstr)
     ),
-    (
+    ( if
         AutoComments = yes,
         Comment \= ""
-    ->
+    then
         InstrStr = InstrStr0 ++ "\n\t\t" ++ Comment ++ "\n"
-    ;
+    else
         InstrStr = InstrStr0 ++ "\n"
     ),
     InstrsStr = dump_instrs(MaybeProcLabel, AutoComments, Instrs),
@@ -232,18 +232,18 @@ dump_instrs(MaybeProcLabel, AutoComments, [Instr | Instrs]) = Str :-
 :- pred print_comment_char(char::in, io::di, io::uo) is det.
 
 print_comment_char(C, !IO) :-
-    ( C = '\n' ->
+    ( if C = '\n' then
         io.write_string("\n\t% ", !IO)
-    ;
+    else
         io.write_char(C, !IO)
     ).
 
 :- pred dump_comment_char(char::in, string::in, string::out) is det.
 
 dump_comment_char(C, !Str) :-
-    ( C = '\n' ->
+    ( if C = '\n' then
         !:Str = !.Str ++ "\n\t% "
-    ;
+    else
         !:Str = !.Str ++ string.char_to_string(C)
     ).
 
@@ -268,56 +268,86 @@ dump_reg(reg_r, N) =
 dump_reg(reg_f, N) =
     "f" ++ int_to_string(N).
 
-dump_lval(_, reg(Type, Num)) =
-    dump_reg(Type, Num).
-dump_lval(_, stackvar(N)) =
-    "sv" ++ int_to_string(N).
-dump_lval(_, parent_stackvar(N)) =
-    "parent_sv" ++ int_to_string(N).
-dump_lval(_, framevar(N)) =
-    "fv" ++ int_to_string(N).
-dump_lval(_, double_stackvar(Type, N)) = Str :-
+dump_lval(MaybeProcLabel, Lval) = Str :-
     (
-        Type = double_stackvar,
-        Macro = "sv"
+        Lval = reg(Type, Num),
+        Str = dump_reg(Type, Num)
     ;
-        Type = double_parent_stackvar,
-        Macro = "parent_sv"
-    ),
-    string.format("%s%d,%s%d", [s(Macro), i(N), s(Macro), i(N + 1)], Str).
-dump_lval(_, succip) = "succip".
-dump_lval(_, maxfr) = "maxfr".
-dump_lval(_, curfr) = "curfr".
-dump_lval(MaybeProcLabel, succfr_slot(R)) =
-    "succfr_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
-dump_lval(MaybeProcLabel, prevfr_slot(R)) =
-    "prevfr_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
-dump_lval(MaybeProcLabel, redofr_slot(R)) =
-    "redofr_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
-dump_lval(MaybeProcLabel, redoip_slot(R)) =
-    "redoip_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
-dump_lval(MaybeProcLabel, succip_slot(R)) =
-    "succip_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
-dump_lval(_, hp) = "hp".
-dump_lval(_, sp) = "sp".
-dump_lval(_, parent_sp) = "parent_sp".
-dump_lval(MaybeProcLabel, field(MT, N, F)) = Str :-
-    (
-        MT = yes(T),
-        string.int_to_string(T, T_str)
+        Lval = stackvar(N),
+        Str = "sv" ++ int_to_string(N)
     ;
-        MT = no,
-        T_str = "no"
-    ),
-    Str = "field(" ++ T_str ++ ", " ++ dump_rval(MaybeProcLabel, N) ++ ", "
-        ++ dump_rval(MaybeProcLabel, F) ++ ")".
-dump_lval(_, lvar(_)) = "lvar(_)".
-dump_lval(_, temp(Type, Num)) =
-    "temp_" ++ dump_reg(Type, Num).
-dump_lval(MaybeProcLabel, mem_ref(R)) =
-    "mem_ref(" ++ dump_rval(MaybeProcLabel, R) ++ ")".
-dump_lval(_, global_var_ref(env_var_ref(VarName))) =
-    "global_var_ref(env_var_ref(" ++ VarName ++ "))".
+        Lval = parent_stackvar(N),
+        Str = "parent_sv" ++ int_to_string(N)
+    ;
+        Lval = framevar(N),
+        Str = "fv" ++ int_to_string(N)
+    ;
+        Lval = double_stackvar(Type, N),
+        (
+            Type = double_stackvar,
+            Macro = "sv"
+        ;
+            Type = double_parent_stackvar,
+            Macro = "parent_sv"
+        ),
+        string.format("%s%d,%s%d", [s(Macro), i(N), s(Macro), i(N + 1)], Str)
+    ;
+        Lval = succip,
+        Str = "succip"
+    ;
+        Lval = maxfr,
+        Str = "maxfr"
+    ;
+        Lval = curfr,
+        Str = "curfr"
+    ;
+        Lval = succfr_slot(R),
+        Str = "succfr_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")"
+    ;
+        Lval = prevfr_slot(R),
+        Str = "prevfr_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")"
+    ;
+        Lval = redofr_slot(R),
+        Str = "redofr_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")"
+    ;
+        Lval = redoip_slot(R),
+        Str = "redoip_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")"
+    ;
+        Lval = succip_slot(R),
+        Str = "succip_slot(" ++ dump_rval(MaybeProcLabel, R) ++ ")"
+    ;
+        Lval = hp,
+        Str = "hp"
+    ;
+        Lval = sp,
+        Str = "sp"
+    ;
+        Lval = parent_sp,
+        Str = "parent_sp"
+    ;
+        Lval = field(MT, N, F),
+        (
+            MT = yes(T),
+            string.int_to_string(T, T_str)
+        ;
+            MT = no,
+            T_str = "no"
+        ),
+        Str = "field(" ++ T_str ++ ", " ++ dump_rval(MaybeProcLabel, N) ++ ", "
+            ++ dump_rval(MaybeProcLabel, F) ++ ")"
+    ;
+        Lval = lvar(_),
+        Str = "lvar(_)"
+    ;
+        Lval = temp(Type, Num),
+        Str = "temp_" ++ dump_reg(Type, Num)
+    ;
+        Lval = mem_ref(R),
+        Str = "mem_ref(" ++ dump_rval(MaybeProcLabel, R) ++ ")"
+    ;
+        Lval = global_var_ref(env_var_ref(VarName)),
+        Str = "global_var_ref(env_var_ref(" ++ VarName ++ "))"
+    ).
 
 dump_lvals(MaybeProcLabel, Lvals) =
     dump_lvals_2(MaybeProcLabel, Lvals, "").
@@ -329,98 +359,141 @@ dump_lvals_2(MaybeProcLabel, [Lval | Lvallist], Prefix) =
     Prefix ++ dump_lval(MaybeProcLabel, Lval) ++
         dump_lvals_2(MaybeProcLabel, Lvallist, " ").
 
-dump_rval(MaybeProcLabel, lval(Lval)) =
-    dump_lval(MaybeProcLabel, Lval).
-dump_rval(_, var(Var)) =
-    "var(" ++ int_to_string(term.var_to_int(Var)) ++ ")".
-dump_rval(MaybeProcLabel, mkword(T, N)) =
-    "mkword(" ++ int_to_string(T) ++ ", " ++
-        dump_rval(MaybeProcLabel, N) ++ ")".
-dump_rval(_, mkword_hole(T)) =
-    "mkword_hole(" ++ int_to_string(T) ++ ")".
-dump_rval(MaybeProcLabel, const(C)) =
-    dump_const(MaybeProcLabel, C).
-dump_rval(MaybeProcLabel, unop(O, N)) =
-    dump_unop(O) ++ "(" ++ dump_rval(MaybeProcLabel, N) ++ ")".
-dump_rval(MaybeProcLabel, binop(O, N1, N2)) =
+dump_rval(MaybeProcLabel, Rval) = Str :-
     (
-        ( N1 = binop(_, _, _)
-        ; N2 = binop(_, _, _)
-        )
-    ->
-        "(" ++ dump_rval(MaybeProcLabel, N1) ++ ")" ++
-        " " ++ dump_binop(O) ++ " " ++
-        "(" ++ dump_rval(MaybeProcLabel, N2) ++ ")"
+        Rval = lval(Lval),
+        Str = dump_lval(MaybeProcLabel, Lval)
     ;
-        dump_rval(MaybeProcLabel, N1) ++
-        " " ++ dump_binop(O) ++ " " ++
-        dump_rval(MaybeProcLabel, N2)
+        Rval = var(Var),
+        Str = "var(" ++ int_to_string(term.var_to_int(Var)) ++ ")"
+    ;
+        Rval = mkword(T, N),
+        Str = "mkword(" ++ int_to_string(T) ++ ", " ++
+            dump_rval(MaybeProcLabel, N) ++ ")"
+    ;
+        Rval = mkword_hole(T),
+        Str = "mkword_hole(" ++ int_to_string(T) ++ ")"
+    ;
+        Rval = const(C),
+        Str = dump_const(MaybeProcLabel, C)
+    ;
+        Rval = unop(O, N),
+        Str = dump_unop(O) ++ "(" ++ dump_rval(MaybeProcLabel, N) ++ ")"
+    ;
+        Rval = binop(O, N1, N2),
+        ( if
+            ( N1 = binop(_, _, _)
+            ; N2 = binop(_, _, _)
+            )
+        then
+            Str =
+                "(" ++ dump_rval(MaybeProcLabel, N1) ++ ")" ++
+                " " ++ dump_binop(O) ++ " " ++
+                "(" ++ dump_rval(MaybeProcLabel, N2) ++ ")"
+        else
+            Str =
+                dump_rval(MaybeProcLabel, N1) ++
+                " " ++ dump_binop(O) ++ " " ++
+                dump_rval(MaybeProcLabel, N2)
+        )
+    ;
+        Rval = mem_addr(M),
+        Str = "mem_addr(" ++ dump_mem_ref(MaybeProcLabel, M) ++ ")"
     ).
-dump_rval(MaybeProcLabel, mem_addr(M)) =
-    "mem_addr(" ++ dump_mem_ref(MaybeProcLabel, M) ++ ")".
 
 dump_rvals(_, []) = "".
 dump_rvals(MaybeProcLabel, [Rval | Rvals]) =
     dump_rval(MaybeProcLabel, Rval) ++ ", " ++
         dump_rvals(MaybeProcLabel, Rvals).
 
-dump_mem_ref(MaybeProcLabel, stackvar_ref(N)) =
-    "stackvar_ref(" ++ dump_rval(MaybeProcLabel, N) ++ ")".
-dump_mem_ref(MaybeProcLabel, framevar_ref(N)) =
-    "framevar_ref(" ++ dump_rval(MaybeProcLabel, N) ++ ")".
-dump_mem_ref(MaybeProcLabel, heap_ref(R, MaybeTag, N)) = String :-
+dump_mem_ref(MaybeProcLabel, MemRef) = Str :-
     (
-        MaybeTag = yes(Tag),
-        TagString = int_to_string(Tag)
+        MemRef = stackvar_ref(N),
+        Str = "stackvar_ref(" ++ dump_rval(MaybeProcLabel, N) ++ ")"
     ;
-        MaybeTag = no,
-        TagString = "unknown_tag"
-    ),
-    String = "heap_ref(" ++ dump_rval(MaybeProcLabel, R) ++ ", " ++ TagString
-        ++ ", " ++ dump_rval(MaybeProcLabel, N) ++ ")".
-
-dump_const(_, llconst_true) = "true".
-dump_const(_, llconst_false) = "false".
-dump_const(_, llconst_int(I)) =
-    int_to_string(I).
-dump_const(_, llconst_foreign(F, _)) = F.
-dump_const(_, llconst_float(F)) =
-    float_to_string(F).
-dump_const(_, llconst_string(S)) =
-    """" ++ quote_string(S) ++ """".
-dump_const(_, llconst_multi_string(_S)) =
-    "multi_string(...)".
-dump_const(MaybeProcLabel, llconst_code_addr(CodeAddr)) =
-    "code_addr_const(" ++ dump_code_addr(MaybeProcLabel, CodeAddr) ++ ")".
-dump_const(_, llconst_data_addr(DataId, MaybeOffset)) = Str :-
-    DataIdStr = dump_data_id(DataId),
-    (
-        MaybeOffset = no,
-        Str = "data_addr_const(" ++ DataIdStr ++ ")"
+        MemRef = framevar_ref(N),
+        Str = "framevar_ref(" ++ dump_rval(MaybeProcLabel, N) ++ ")"
     ;
-        MaybeOffset = yes(Offset),
-        Str = "data_addr_const(" ++ DataIdStr ++ ", "
-            ++ int_to_string(Offset) ++ ")"
+        MemRef = heap_ref(R, MaybeTag, N),
+        (
+            MaybeTag = yes(Tag),
+            TagString = int_to_string(Tag)
+        ;
+            MaybeTag = no,
+            TagString = "unknown_tag"
+        ),
+        Str =
+            "heap_ref(" ++ dump_rval(MaybeProcLabel, R) ++ ", " ++ TagString
+            ++ ", " ++ dump_rval(MaybeProcLabel, N) ++ ")"
     ).
 
-dump_data_id(rtti_data_id(ctor_rtti_id(RttiTypeCtor, DataName))) =
-    "rtti_id(" ++ dump_rtti_type_ctor(RttiTypeCtor) ++ ", "
-        ++ dump_rtti_name(DataName) ++ ")".
-dump_data_id(rtti_data_id(tc_rtti_id(TCName, TCDataName))) =
-    "tc_rtti_id(" ++ dump_rtti_type_class_name(TCName) ++ ", "
-        ++ dump_tc_rtti_name(TCDataName) ++ ")".
-dump_data_id(proc_tabling_data_id(ProcLabel, Id)) =
-    tabling_info_id_str(Id) ++ "(" ++ dump_proclabel(ProcLabel) ++ ")".
-dump_data_id(scalar_common_data_id(type_num(TypeNum), Offset)) =
-    "scalar_common_data_id(" ++ int_to_string(TypeNum) ++ ", "
-        ++ int_to_string(Offset) ++ ")".
-dump_data_id(vector_common_data_id(type_num(TypeNum), Offset)) =
-    "vector_common_data_id(" ++ int_to_string(TypeNum) ++ ", "
-        ++ int_to_string(Offset) ++ ")".
-dump_data_id(layout_id(LayoutName)) =
-    "layout_id(" ++ dump_layout_name(LayoutName) ++ ")".
-dump_data_id(layout_slot_id(table_io_entry_id, PredProcId)) =
-    "table_io_entry_id(" ++ dump_pred_proc_id(PredProcId) ++ ")".
+dump_const(MaybeProcLabel, Const) = Str :-
+    (
+        Const = llconst_true,
+        Str = "true"
+    ;
+        Const = llconst_false,
+        Str = "false"
+    ;
+        Const = llconst_int(I),
+        Str = int_to_string(I)
+    ;
+        Const = llconst_foreign(F, _),
+        Str = F
+    ;
+        Const = llconst_float(F),
+        Str = float_to_string(F)
+    ;
+        Const = llconst_string(S),
+        Str = """" ++ quote_string(S) ++ """"
+    ;
+        Const = llconst_multi_string(_S),
+        Str = "multi_string(...)"
+    ;
+        Const = llconst_code_addr(CodeAddr),
+        Str = "code_addr_const(" ++
+            dump_code_addr(MaybeProcLabel, CodeAddr) ++ ")"
+    ;
+        Const = llconst_data_addr(DataId, MaybeOffset),
+        DataIdStr = dump_data_id(DataId),
+        (
+            MaybeOffset = no,
+            Str = "data_addr_const(" ++ DataIdStr ++ ")"
+        ;
+            MaybeOffset = yes(Offset),
+            Str = "data_addr_const(" ++ DataIdStr ++ ", "
+                ++ int_to_string(Offset) ++ ")"
+        )
+    ).
+
+dump_data_id(DataId) = Str :-
+    (
+        DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor, DataName)),
+        Str = "rtti_id(" ++ dump_rtti_type_ctor(RttiTypeCtor) ++ ", "
+            ++ dump_rtti_name(DataName) ++ ")"
+    ;
+        DataId = rtti_data_id(tc_rtti_id(TCName, TCDataName)),
+        Str = "tc_rtti_id(" ++ dump_rtti_type_class_name(TCName) ++ ", "
+            ++ dump_tc_rtti_name(TCDataName) ++ ")"
+    ;
+        DataId = proc_tabling_data_id(ProcLabel, Id),
+        Str = tabling_info_id_str(Id) ++
+            "(" ++ dump_proclabel(ProcLabel) ++ ")"
+    ;
+        DataId = scalar_common_data_id(type_num(TypeNum), Offset),
+        Str = "scalar_common_data_id(" ++ int_to_string(TypeNum) ++ ", "
+            ++ int_to_string(Offset) ++ ")"
+    ;
+        DataId = vector_common_data_id(type_num(TypeNum), Offset),
+        Str = "vector_common_data_id(" ++ int_to_string(TypeNum) ++ ", "
+            ++ int_to_string(Offset) ++ ")"
+    ;
+        DataId = layout_id(LayoutName),
+        Str = "layout_id(" ++ dump_layout_name(LayoutName) ++ ")"
+    ;
+        DataId = layout_slot_id(table_io_entry_id, PredProcId),
+        Str = "table_io_entry_id(" ++ dump_pred_proc_id(PredProcId) ++ ")"
+    ).
 
 :- func dump_pred_proc_id(pred_proc_id) = string.
 
@@ -432,86 +505,155 @@ dump_rtti_type_ctor(rtti_type_ctor(ModuleName, TypeName, Arity)) =
     "rtti_type_ctor(" ++ sym_name_mangle(ModuleName) ++ ", "
         ++ name_mangle(TypeName) ++ int_to_string(Arity) ++ ")".
 
-dump_rtti_name(type_ctor_exist_locns(Ordinal)) =
-    "exist_locns_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_exist_locn) = "exist_loc".
-dump_rtti_name(type_ctor_exist_tc_constr(Ordinal, TCCNum, Arity)) =
-    "exist_tc_constr_" ++ int_to_string(Ordinal) ++ "_"
-        ++ int_to_string(TCCNum) ++ "_" ++ int_to_string(Arity).
-dump_rtti_name(type_ctor_exist_tc_constrs(Ordinal)) =
-    "exist_tc_constrs_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_exist_info(Ordinal)) =
-    "exist_info_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_field_names(Ordinal)) =
-    "field_names_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_field_types(Ordinal)) =
-    "field_types_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_field_locns(Ordinal)) =
-    "field_locns_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_res_addrs) = "res_addrs".
-dump_rtti_name(type_ctor_res_addr_functors) = "res_addr_functors".
-dump_rtti_name(type_ctor_enum_functor_desc(Ordinal)) =
-    "enum_functor_desc_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_foreign_enum_functor_desc(Ordinal)) =
-    "foreign_enum_functor_desc_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_notag_functor_desc) = "notag_functor_desc_".
-dump_rtti_name(type_ctor_du_functor_desc(Ordinal)) =
-    "du_functor_desc_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_res_functor_desc(Ordinal)) =
-    "res_functor_desc_" ++ int_to_string(Ordinal).
-dump_rtti_name(type_ctor_enum_name_ordered_table) = "enum_name_ordered_table".
-dump_rtti_name(type_ctor_enum_value_ordered_table) =
-    "enum_value_ordered_table".
-dump_rtti_name(type_ctor_foreign_enum_name_ordered_table) =
-    "foreign_enum_name_ordered_table".
-dump_rtti_name(type_ctor_foreign_enum_ordinal_ordered_table) =
-    "foreign_enum_ordinal_ordered_table".
-dump_rtti_name(type_ctor_du_name_ordered_table) = "du_name_ordered_table".
-dump_rtti_name(type_ctor_du_stag_ordered_table(Ptag)) =
-    "du_stag_ordered_table_" ++ int_to_string(Ptag).
-dump_rtti_name(type_ctor_du_ptag_ordered_table) = "du_ptag_ordered_table".
-dump_rtti_name(type_ctor_du_ptag_layout(Ptag)) =
-    "du_ptag_layout" ++ int_to_string(Ptag).
-dump_rtti_name(type_ctor_res_value_ordered_table) = "res_value_ordered_table".
-dump_rtti_name(type_ctor_res_name_ordered_table) = "res_name_ordered_table".
-dump_rtti_name(type_ctor_maybe_res_addr_functor_desc) =
-    "maybe_res_addr_functor_desc".
-dump_rtti_name(type_ctor_type_layout) = "type_layout".
-dump_rtti_name(type_ctor_type_functors) = "type_functors".
-dump_rtti_name(type_ctor_functor_number_map) = "functor_number_map".
-dump_rtti_name(type_ctor_type_ctor_info) = "type_ctor_info".
-dump_rtti_name(type_ctor_type_info(_TypeInfo)) = "type_info".
-    % XXX Should give more info than this for _TypeInfo.
-dump_rtti_name(type_ctor_pseudo_type_info(_PseudoTypeInfo)) =
-    "pseudo_type_info".
-    % XXX Should give more info than this for _PseudoTypeInfo.
-dump_rtti_name(type_ctor_type_hashcons_pointer) = "type_hashcons_pointer".
+dump_rtti_name(RttiName) = Str :-
+    (
+        RttiName = type_ctor_exist_locns(Ordinal),
+        Str = "exist_locns_" ++ int_to_string(Ordinal)
+    ;
+        RttiName = type_ctor_exist_locn,
+        Str = "exist_loc"
+    ;
+        RttiName = type_ctor_exist_tc_constr(Ordinal, TCCNum, Arity),
+        Str = "exist_tc_constr_" ++ int_to_string(Ordinal) ++ "_"
+            ++ int_to_string(TCCNum) ++ "_" ++ int_to_string(Arity)
+    ;
+        RttiName = type_ctor_exist_tc_constrs(Ordinal),
+        Str = "exist_tc_constrs_" ++ int_to_string(Ordinal)
+    ;
+        RttiName = type_ctor_exist_info(Ordinal),
+        Str = "exist_info_" ++ int_to_string(Ordinal)
+    ;
+        RttiName = type_ctor_field_names(Ordinal),
+        Str = "field_names_" ++ int_to_string(Ordinal)
+    ;
+        RttiName = type_ctor_field_types(Ordinal),
+        Str = "field_types_" ++ int_to_string(Ordinal)
+    ;
+        RttiName = type_ctor_field_locns(Ordinal),
+        Str = "field_locns_" ++ int_to_string(Ordinal)
+    ;
+        RttiName = type_ctor_res_addrs,
+        Str = "res_addrs"
+    ;
+        RttiName = type_ctor_res_addr_functors,
+        Str = "res_addr_functors"
+    ;
+        RttiName = type_ctor_enum_functor_desc(Ordinal),
+        Str = "enum_functor_desc_" ++ int_to_string(Ordinal)
+    ;
+        RttiName = type_ctor_foreign_enum_functor_desc(Ordinal),
+        Str = "foreign_enum_functor_desc_" ++ int_to_string(Ordinal)
+    ;
+        RttiName = type_ctor_notag_functor_desc,
+        Str = "notag_functor_desc_"
+    ;
+        RttiName = type_ctor_du_functor_desc(Ordinal),
+        Str = "du_functor_desc_" ++ int_to_string(Ordinal)
+    ;
+        RttiName = type_ctor_res_functor_desc(Ordinal),
+        Str = "res_functor_desc_" ++ int_to_string(Ordinal)
+    ;
+        RttiName = type_ctor_enum_name_ordered_table,
+        Str = "enum_name_ordered_table"
+    ;
+        RttiName = type_ctor_enum_value_ordered_table,
+        Str = "enum_value_ordered_table"
+    ;
+        RttiName = type_ctor_foreign_enum_name_ordered_table,
+        Str = "foreign_enum_name_ordered_table"
+    ;
+        RttiName = type_ctor_foreign_enum_ordinal_ordered_table,
+        Str = "foreign_enum_ordinal_ordered_table"
+    ;
+        RttiName = type_ctor_du_name_ordered_table,
+        Str = "du_name_ordered_table"
+    ;
+        RttiName = type_ctor_du_stag_ordered_table(Ptag),
+        Str = "du_stag_ordered_table_" ++ int_to_string(Ptag)
+    ;
+        RttiName = type_ctor_du_ptag_ordered_table,
+        Str = "du_ptag_ordered_table"
+    ;
+        RttiName = type_ctor_du_ptag_layout(Ptag),
+        Str = "du_ptag_layout" ++ int_to_string(Ptag)
+    ;
+        RttiName = type_ctor_res_value_ordered_table,
+        Str = "res_value_ordered_table"
+    ;
+        RttiName = type_ctor_res_name_ordered_table,
+        Str = "res_name_ordered_table"
+    ;
+        RttiName = type_ctor_maybe_res_addr_functor_desc,
+        Str = "maybe_res_addr_functor_desc"
+    ;
+        RttiName = type_ctor_type_layout,
+        Str = "type_layout"
+    ;
+        RttiName = type_ctor_type_functors,
+        Str = "type_functors"
+    ;
+        RttiName = type_ctor_functor_number_map,
+        Str = "functor_number_map"
+    ;
+        RttiName = type_ctor_type_ctor_info,
+        Str = "type_ctor_info"
+    ;
+        RttiName = type_ctor_type_info(_TypeInfo),
+        % XXX Should give more info than this for _TypeInfo.
+        Str = "type_info"
+    ;
+        RttiName = type_ctor_pseudo_type_info(_PseudoTypeInfo),
+        % XXX Should give more info than this for _PseudoTypeInfo.
+        Str = "pseudo_type_info"
+    ;
+        RttiName = type_ctor_type_hashcons_pointer,
+        Str = "type_hashcons_pointer"
+    ).
 
-dump_tc_rtti_name(type_class_base_typeclass_info(_ModuleName, InstanceStr)) =
-    "base_typeclass_info(" ++ InstanceStr ++ ")".
-dump_tc_rtti_name(type_class_id) = "type_class_id".
-dump_tc_rtti_name(type_class_decl) = "type_class_decl".
-dump_tc_rtti_name(type_class_decl_super(Ordinal, _)) =
-    "type_class_decl_super(" ++ int_to_string(Ordinal) ++ ")".
-dump_tc_rtti_name(type_class_decl_supers) = "type_class_decl_supers".
-dump_tc_rtti_name(type_class_id_method_ids) = "type_class_id_method_ids".
-dump_tc_rtti_name(type_class_id_var_names) = "type_class_id_var_names".
-dump_tc_rtti_name(type_class_instance(TCTypes)) =
-    "type_class_instance("
-        ++ dump_rtti_type_class_instance_types(TCTypes) ++ ")".
-dump_tc_rtti_name(type_class_instance_tc_type_vector(TCTypes)) =
-    "type_class_instance_tc_types_vector("
-    ++ dump_rtti_type_class_instance_types(TCTypes) ++ ")".
-dump_tc_rtti_name(type_class_instance_constraints(TCTypes)) =
-    "type_class_instance_constraints("
-        ++ dump_rtti_type_class_instance_types(TCTypes) ++ ")".
-dump_tc_rtti_name(type_class_instance_constraint(TCTypes, Ordinal, _)) =
-    "type_class_instance_constraint("
-        ++ dump_rtti_type_class_instance_types(TCTypes) ++ ", "
-        ++ int_to_string(Ordinal) ++ ")".
-dump_tc_rtti_name(type_class_instance_methods(TCTypes)) =
-    "type_class_instance_methods("
-        ++ dump_rtti_type_class_instance_types(TCTypes) ++ ")".
+dump_tc_rtti_name(TCRttiName) = Str :-
+    (
+        TCRttiName = type_class_base_typeclass_info(_ModuleName, InstanceStr),
+        Str = "base_typeclass_info(" ++ InstanceStr ++ ")"
+    ;
+        TCRttiName = type_class_id,
+        Str = "type_class_id"
+    ;
+        TCRttiName = type_class_decl,
+        Str = "type_class_decl"
+    ;
+        TCRttiName = type_class_decl_super(Ordinal, _),
+        Str = "type_class_decl_super(" ++ int_to_string(Ordinal) ++ ")"
+    ;
+        TCRttiName = type_class_decl_supers,
+        Str = "type_class_decl_supers"
+    ;
+        TCRttiName = type_class_id_method_ids,
+        Str = "type_class_id_method_ids"
+    ;
+        TCRttiName = type_class_id_var_names,
+        Str = "type_class_id_var_names"
+    ;
+        TCRttiName = type_class_instance(TCTypes),
+        Str = "type_class_instance("
+            ++ dump_rtti_type_class_instance_types(TCTypes) ++ ")"
+    ;
+        TCRttiName = type_class_instance_tc_type_vector(TCTypes),
+        Str = "type_class_instance_tc_types_vector("
+            ++ dump_rtti_type_class_instance_types(TCTypes) ++ ")"
+    ;
+        TCRttiName = type_class_instance_constraints(TCTypes),
+        Str = "type_class_instance_constraints("
+            ++ dump_rtti_type_class_instance_types(TCTypes) ++ ")"
+    ;
+        TCRttiName = type_class_instance_constraint(TCTypes, Ordinal, _),
+        Str = "type_class_instance_constraint("
+            ++ dump_rtti_type_class_instance_types(TCTypes) ++ ", "
+            ++ int_to_string(Ordinal) ++ ")"
+    ;
+        TCRttiName = type_class_instance_methods(TCTypes),
+        Str = "type_class_instance_methods("
+            ++ dump_rtti_type_class_instance_types(TCTypes) ++ ")"
+    ).
 
 dump_rtti_type_class_name(tc_name(ModuleName, ClassName, Arity)) = Str :-
     Str = "tc_name(" ++ sym_name_mangle(ModuleName) ++ ", "
@@ -596,58 +738,89 @@ dump_layout_array_name(ArrayName) = Str :-
         Str = "alloc_site_array"
     ).
 
-dump_layout_name(proc_layout(RttiProcLabel, _)) =
-    "proc_layout(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(closure_proc_id(ProcLabel, SeqNo, _)) =
-    "closure_proc_id(" ++ dump_proclabel(ProcLabel)
-        ++ int_to_string(SeqNo) ++ ")".
-dump_layout_name(file_layout(ModuleName, FileNum)) =
-    "file_layout(" ++ sym_name_mangle(ModuleName)
-        ++ int_to_string(FileNum) ++ ")".
-dump_layout_name(file_layout_line_number_vector(ModuleName, FileNum)) =
-    "file_layout_line_number_vector(" ++ sym_name_mangle(ModuleName)
-        ++ int_to_string(FileNum) ++ ")".
-dump_layout_name(file_layout_label_layout_vector(ModuleName, FileNum)) =
-    "file_layout_label_layout_vector(" ++ sym_name_mangle(ModuleName)
-        ++ int_to_string(FileNum) ++ ")".
-dump_layout_name(module_layout_string_table(ModuleName)) =
-    "module_layout_string_table(" ++ sym_name_mangle(ModuleName) ++ ")".
-dump_layout_name(module_layout_file_vector(ModuleName)) =
-    "module_layout_file_vector(" ++ sym_name_mangle(ModuleName) ++ ")".
-dump_layout_name(module_layout_proc_vector(ModuleName)) =
-    "module_layout_proc_vector(" ++ sym_name_mangle(ModuleName) ++ ")".
-dump_layout_name(module_layout_label_exec_count(ModuleName, NumLabels)) =
-    "module_layout_label_exec_count(" ++ sym_name_mangle(ModuleName)
-        ++ ", " ++ int_to_string(NumLabels) ++ ")".
-dump_layout_name(module_layout_event_set_desc(ModuleName)) =
-    "module_layout_event_set_desc(" ++ sym_name_mangle(ModuleName) ++ ")".
-dump_layout_name(module_layout_event_specs(ModuleName)) =
-    "module_layout_event_specs(" ++ sym_name_mangle(ModuleName) ++ ")".
-dump_layout_name(module_layout_event_arg_names(ModuleName, EventNum)) =
-    "module_layout_event_arg_names(" ++ sym_name_mangle(ModuleName) ++
-        ", " ++ int_to_string(EventNum) ++ ")".
-dump_layout_name(module_layout_event_synth_attrs(ModuleName, EventNum)) =
-    "module_layout_event_synth_attrs(" ++ sym_name_mangle(ModuleName) ++
-        ", " ++ int_to_string(EventNum) ++ ")".
-dump_layout_name(module_layout_event_synth_attr_args(ModuleName,
-        EventNum, ArgNum)) =
-    "module_layout_event_synth_attr_args(" ++ sym_name_mangle(ModuleName) ++
-        ", " ++ int_to_string(EventNum) ++
-        ", " ++ int_to_string(ArgNum) ++ ")".
-dump_layout_name(module_layout_event_synth_attr_order(ModuleName,
-        EventNum, ArgNum)) =
-    "module_layout_event_synth_attr_order(" ++ sym_name_mangle(ModuleName) ++
-        ", " ++ int_to_string(EventNum) ++
-        ", " ++ int_to_string(ArgNum) ++ ")".
-dump_layout_name(module_layout_event_synth_order(ModuleName, EventNum)) =
-    "module_layout_event_synth_order(" ++ sym_name_mangle(ModuleName) ++
-        ", " ++ int_to_string(EventNum) ++ ")".
-dump_layout_name(module_layout_oisu_bytes(ModuleName)) =
-    "module_layout_oisu_bytes(" ++ sym_name_mangle(ModuleName) ++ ")".
-dump_layout_name(module_layout_type_table_bytes(ModuleName)) =
-    "module_layout_type_table_bytes(" ++ sym_name_mangle(ModuleName) ++ ")".
-dump_layout_name(module_layout(ModuleName)) =
-    "module_layout(" ++ sym_name_mangle(ModuleName) ++ ")".
+dump_layout_name(LayoutName) = Str :-
+    (
+        LayoutName = proc_layout(RttiProcLabel, _),
+        Str = "proc_layout(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")"
+    ;
+        LayoutName = closure_proc_id(ProcLabel, SeqNo, _),
+        Str = "closure_proc_id(" ++ dump_proclabel(ProcLabel)
+            ++ int_to_string(SeqNo) ++ ")"
+    ;
+        LayoutName = file_layout(ModuleName, FileNum),
+        Str = "file_layout(" ++ sym_name_mangle(ModuleName)
+            ++ int_to_string(FileNum) ++ ")"
+    ;
+        LayoutName = file_layout_line_number_vector(ModuleName, FileNum),
+        Str = "file_layout_line_number_vector(" ++ sym_name_mangle(ModuleName)
+            ++ int_to_string(FileNum) ++ ")"
+    ;
+        LayoutName = file_layout_label_layout_vector(ModuleName, FileNum),
+        Str = "file_layout_label_layout_vector(" ++ sym_name_mangle(ModuleName)
+            ++ int_to_string(FileNum) ++ ")"
+    ;
+        LayoutName = module_layout_string_table(ModuleName),
+        Str = "module_layout_string_table(" ++ sym_name_mangle(ModuleName)
+            ++ ")"
+    ;
+        LayoutName = module_layout_file_vector(ModuleName),
+        Str = "module_layout_file_vector(" ++ sym_name_mangle(ModuleName)
+            ++ ")"
+    ;
+        LayoutName = module_layout_proc_vector(ModuleName),
+        Str = "module_layout_proc_vector(" ++ sym_name_mangle(ModuleName)
+            ++ ")"
+    ;
+        LayoutName = module_layout_label_exec_count(ModuleName, NumLabels),
+        Str = "module_layout_label_exec_count(" ++ sym_name_mangle(ModuleName)
+            ++ ", " ++ int_to_string(NumLabels) ++ ")"
+    ;
+        LayoutName = module_layout_event_set_desc(ModuleName),
+        Str = "module_layout_event_set_desc(" ++ sym_name_mangle(ModuleName)
+            ++ ")"
+    ;
+        LayoutName = module_layout_event_specs(ModuleName),
+        Str = "module_layout_event_specs(" ++ sym_name_mangle(ModuleName)
+            ++ ")"
+    ;
+        LayoutName = module_layout_event_arg_names(ModuleName, EventNum),
+        Str = "module_layout_event_arg_names(" ++ sym_name_mangle(ModuleName)
+            ++ ", " ++ int_to_string(EventNum) ++ ")"
+    ;
+        LayoutName = module_layout_event_synth_attrs(ModuleName, EventNum),
+        Str = "module_layout_event_synth_attrs(" ++ sym_name_mangle(ModuleName)
+            ++ ", " ++ int_to_string(EventNum) ++ ")"
+    ;
+        LayoutName = module_layout_event_synth_attr_args(ModuleName,
+        EventNum, ArgNum),
+        Str = "module_layout_event_synth_attr_args("
+            ++ sym_name_mangle(ModuleName) ++ ", "
+            ++ int_to_string(EventNum) ++ ", "
+            ++ int_to_string(ArgNum) ++ ")"
+    ;
+        LayoutName = module_layout_event_synth_attr_order(ModuleName,
+        EventNum, ArgNum),
+        Str = "module_layout_event_synth_attr_order("
+            ++ sym_name_mangle(ModuleName) ++
+            ", " ++ int_to_string(EventNum) ++
+            ", " ++ int_to_string(ArgNum) ++ ")"
+    ;
+        LayoutName = module_layout_event_synth_order(ModuleName, EventNum),
+        Str = "module_layout_event_synth_order("
+            ++ sym_name_mangle(ModuleName) ++ ", "
+            ++ int_to_string(EventNum) ++ ")"
+    ;
+        LayoutName = module_layout_oisu_bytes(ModuleName),
+        Str = "module_layout_oisu_bytes(" ++ sym_name_mangle(ModuleName)
+            ++ ")"
+    ;
+        LayoutName = module_layout_type_table_bytes(ModuleName),
+        Str = "module_layout_type_table_bytes("
+            ++ sym_name_mangle(ModuleName) ++ ")"
+    ;
+        LayoutName = module_layout(ModuleName),
+        Str = "module_layout(" ++ sym_name_mangle(ModuleName) ++ ")"
+    ).
 
 dump_unop(mktag) = "mktag".
 dump_unop(tag) = "tag".
@@ -712,7 +885,7 @@ dump_binop(pointer_equal_conservative) = "pointer_equal_conservative".
 
 dump_maybe_rvals(_, [], _) = "".
 dump_maybe_rvals(MaybeProcLabel, [MR | MRs], N) = Str :-
-    ( N > 0 ->
+    ( if N > 0 then
         (
             MR = yes(R),
             MR_str = dump_rval(MaybeProcLabel, R)
@@ -721,47 +894,82 @@ dump_maybe_rvals(MaybeProcLabel, [MR | MRs], N) = Str :-
             MR_str = "no"
         ),
         Str = MR_str ++ ", " ++ dump_maybe_rvals(MaybeProcLabel, MRs, N - 1)
-    ;
+    else
         Str = "truncated"
     ).
 
-dump_code_addr(MaybeProcLabel, code_label(Label)) =
-    dump_label(MaybeProcLabel, Label).
-dump_code_addr(_, code_imported_proc(ProcLabel)) = dump_proclabel(ProcLabel).
-dump_code_addr(_, code_succip) = "succip".
-dump_code_addr(_, do_succeed(no)) = "do_succeed".
-dump_code_addr(_, do_succeed(yes)) = "do_last_succeed".
-dump_code_addr(_, do_redo) = "do_redo".
-dump_code_addr(_, do_fail) = "do_fail".
-dump_code_addr(_, do_trace_redo_fail_shallow) = "do_trace_redo_fail_shallow".
-dump_code_addr(_, do_trace_redo_fail_deep) = "do_trace_redo_fail_deep".
-dump_code_addr(_, do_call_closure(Variant)) =
-    "do_call_closure_" ++ ho_call_variant_to_string(Variant).
-dump_code_addr(_, do_call_class_method(Variant)) =
-    "do_call_class_method_" ++ ho_call_variant_to_string(Variant).
-dump_code_addr(_, do_not_reached) = "do_not_reached".
+dump_code_addr(MaybeProcLabel, CodeAddr) = Str :-
+    (
+        CodeAddr = code_label(Label),
+        Str = dump_label(MaybeProcLabel, Label)
+    ;
+        CodeAddr = code_imported_proc(ProcLabel),
+        Str = dump_proclabel(ProcLabel)
+    ;
+        CodeAddr = code_succip,
+        Str = "succip"
+    ;
+        CodeAddr = do_succeed(no),
+        Str = "do_succeed"
+    ;
+        CodeAddr = do_succeed(yes),
+        Str = "do_last_succeed"
+    ;
+        CodeAddr = do_redo,
+        Str = "do_redo"
+    ;
+        CodeAddr = do_fail,
+        Str = "do_fail"
+    ;
+        CodeAddr = do_trace_redo_fail_shallow,
+        Str = "do_trace_redo_fail_shallow"
+    ;
+        CodeAddr = do_trace_redo_fail_deep,
+        Str = "do_trace_redo_fail_deep"
+    ;
+        CodeAddr = do_call_closure(Variant),
+        Str = "do_call_closure_" ++ ho_call_variant_to_string(Variant)
+    ;
+        CodeAddr = do_call_class_method(Variant),
+        Str = "do_call_class_method_" ++ ho_call_variant_to_string(Variant)
+    ;
+        CodeAddr = do_not_reached,
+        Str = "do_not_reached"
+    ).
 
 dump_code_addrs(_, []) = "".
 dump_code_addrs(MaybeProcLabel, [Addr | Addrs]) =
     " " ++ dump_code_addr(MaybeProcLabel, Addr) ++
         dump_code_addrs(MaybeProcLabel, Addrs).
 
-dump_label(no, internal_label(N, ProcLabel)) =
-    dump_proclabel(ProcLabel) ++ "_i" ++ int_to_string(N).
-dump_label(no, entry_label(_, ProcLabel)) =
-    dump_proclabel(ProcLabel).
-dump_label(yes(CurProcLabel), internal_label(N, ProcLabel)) = Str :-
-    string.int_to_string(N, N_str),
-    ( CurProcLabel = ProcLabel ->
-        Str = "local_" ++ N_str
+dump_label(MaybeProcLabel, Label) = Str :-
+    (
+        Label = internal_label(N, ProcLabel),
+        string.int_to_string(N, NStr),
+        (
+            MaybeProcLabel = no,
+            Str = dump_proclabel(ProcLabel) ++ "_i" ++ NStr
+        ;
+            MaybeProcLabel = yes(CurProcLabel),
+            ( if CurProcLabel = ProcLabel then
+                Str = "local_" ++ NStr
+            else
+                Str = dump_proclabel(ProcLabel) ++ "_" ++ NStr
+            )
+        )
     ;
-        Str = dump_proclabel(ProcLabel) ++ "_" ++ N_str
-    ).
-dump_label(yes(CurProcLabel), entry_label(_, ProcLabel)) = Str :-
-    ( CurProcLabel = ProcLabel ->
-        Str = "CUR_PROC_ENTRY"
-    ;
-        Str = dump_proclabel(ProcLabel)
+        Label = entry_label(_, ProcLabel),
+        (
+            MaybeProcLabel = no,
+            Str = dump_proclabel(ProcLabel)
+        ;
+            MaybeProcLabel = yes(CurProcLabel),
+            ( if CurProcLabel = ProcLabel then
+                Str = "CUR_PROC_ENTRY"
+            else
+                Str = dump_proclabel(ProcLabel)
+            )
+        )
     ).
 
 dump_labels_or_not_reached(_, []) = "".
@@ -796,9 +1004,9 @@ dump_proclabel(ProcLabel) = Str :-
     (
         ProcLabel = ordinary_proc_label(Module, _PredOrFunc, PredModule,
             PredName, Arity, Mode),
-        ( Module = PredModule ->
+        ( if Module = PredModule then
             ExtraModule = ""
-        ;
+        else
             PredModuleName = sym_name_mangle(PredModule),
             ExtraModule = PredModuleName ++ "_"
         ),
@@ -1207,15 +1415,15 @@ dump_component(MaybeProcLabel, foreign_proc_inputs(Inputs)) =
 dump_component(MaybeProcLabel, foreign_proc_outputs(Outputs)) =
     dump_output_components(MaybeProcLabel, Outputs).
 dump_component(_, foreign_proc_user_code(_, AL, Code)) =
-    ( Code = "" ->
+    ( if Code = "" then
         "empty user_code: " ++ dump_affects_liveness(AL) ++ "\n"
-    ;
+    else
         "user_code: " ++ dump_affects_liveness(AL) ++ "\n" ++ Code ++ "\n"
     ).
 dump_component(_, foreign_proc_raw_code(_, AL, _, Code)) =
-    ( Code = "" ->
+    ( if Code = "" then
         "empty raw_code: " ++ dump_affects_liveness(AL) ++ "\n"
-    ;
+    else
         "raw_code:\n" ++ dump_affects_liveness(AL) ++ "\n" ++ Code ++ "\n"
     ).
 dump_component(MaybeProcLabel, foreign_proc_fail_to(Label)) =
