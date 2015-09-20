@@ -139,15 +139,15 @@ generate_module_code(ModuleInfo, !GlobalData, Procedures, !IO) :-
         generate_const_structs(ModuleInfo, ConstStructMap, !GlobalData)
     ),
 
-    (
+    ( if
         ParallelCodeGen = yes,
         % Can't do parallel code generation if I/O is required.
         VeryVerbose = no,
         Statistics = no
-    ->
+    then
         generate_code_parallel(ModuleInfo, ConstStructMap, PredIds,
             !GlobalData, Procedures)
-    ;
+    else
         generate_code_sequential(ModuleInfo, VeryVerbose, Statistics,
             ConstStructMap, PredIds, !GlobalData, Procedures, !IO)
     ).
@@ -331,7 +331,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     globals.get_trace_level(Globals, TraceLevel),
     proc_info_get_has_parallel_conj(ProcInfo1, HasParConj),
     globals.lookup_bool_option(Globals, parallel, Parallel),
-    (
+    ( if
         % Make the containing goal map availble if we need it, it is needed
         % for tracing or for parallel conjunctions.
         (
@@ -339,7 +339,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         ;
             HasParConj = has_parallel_conj
         )
-    ->
+    then
         (
             HasParConj = has_parallel_conj,
             % In sequential grades, any parallel conjunctions should have been
@@ -352,7 +352,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap,
             ProcInfo1, ProcInfo),
         MaybeContainingGoalMap = yes(ContainingGoalMap)
-    ;
+    else
         MaybeContainingGoalMap = no,
         ProcInfo = ProcInfo1
     ),
@@ -416,11 +416,11 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     get_created_temp_frame(CodeInfo, CreatedTempFrame),
     get_proc_trace_events(CodeInfo, ProcTraceEvents),
     % You can have user trace events even if the effective trace level is none.
-    (
+    ( if
         ProcTraceEvents =  yes,
         CreatedTempFrame = yes,
         CodeModel \= model_non
-    ->
+    then
         % If tracing is enabled, the procedure lives on the det stack and the
         % code created any temporary nondet stack frames, then we must have
         % reserved a stack slot for storing the value of maxfr; if we didn't,
@@ -429,7 +429,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         proc_info_get_needs_maxfr_slot(ProcInfo, NeedsMaxfrSlot),
         expect(unify(NeedsMaxfrSlot, needs_maxfr_slot), $module, $pred,
             "should have reserved a slot for maxfr, but didn't")
-    ;
+    else
         true
     ),
 
@@ -447,11 +447,11 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     ),
 
     proc_info_get_maybe_proc_table_io_info(ProcInfo, MaybeTableIOInfo),
-    (
+    ( if
         ( BasicStackLayout = yes
         ; MaybeTableIOInfo = yes(_TableIODeclInfo)
         )
-    ->
+    then
         % Create the procedure layout structure.
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         get_layout_info(CodeInfo, InternalMap),
@@ -463,12 +463,13 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         proc_info_get_argmodes(ProcInfo, ArgModes),
         proc_info_get_vartypes(ProcInfo, VarTypes),
         globals.get_trace_suppress(Globals, TraceSuppress),
+        NeedBodyReps = eff_trace_needs_proc_body_reps(ModuleInfo,
+            PredInfo, ProcInfo, TraceLevel, TraceSuppress),
         (
-            eff_trace_needs_proc_body_reps(ModuleInfo, PredInfo, ProcInfo,
-                TraceLevel, TraceSuppress) = yes
-        ->
+            NeedBodyReps = yes,
             NeedGoalRep = trace_needs_body_rep
         ;
+            NeedBodyReps = no,
             NeedGoalRep = trace_does_not_need_body_rep
         ),
         NeedsAllNames = eff_trace_needs_all_var_names(ModuleInfo, PredInfo,
@@ -488,18 +489,18 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         PredProcId = proc(PredId, ProcId),
         (
             MaybeTableIOInfo = no,
-            ( map.search(TableStructMap, PredProcId, TableStructInfo) ->
+            ( if map.search(TableStructMap, PredProcId, TableStructInfo) then
                 TableStructInfo = table_struct_info(ProcTableStructInfo,
                     _Attributes),
                 MaybeTableInfo = yes(proc_table_struct(ProcTableStructInfo))
-            ;
+            else
                 MaybeTableInfo = no
             )
         ;
             MaybeTableIOInfo = yes(TableIOInfo),
-            ( map.search(TableStructMap, PredProcId, _TableStructInfo) ->
+            ( if map.search(TableStructMap, PredProcId, _TableStructInfo) then
                 unexpected($module, $pred, "conflicting kinds of tabling")
-            ;
+            else
                 MaybeTableInfo = yes(proc_table_io_entry(TableIOInfo))
             )
         ),
@@ -513,7 +514,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
             MaybeDeepProfInfo),
         global_data_add_new_proc_layout(proc(PredId, ProcId), ProcLayout,
             !GlobalData)
-    ;
+    else
         true
     ),
 
@@ -538,7 +539,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     ),
 
     globals.lookup_bool_option(Globals, generate_bytecode, GenBytecode),
-    (
+    ( if
         % XXX: There is a mass of calls above that the bytecode doesn't need;
         % work out which is and isn't needed and put inside the else case
         % below.
@@ -551,10 +552,10 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         \+ is_unify_or_compare_pred(PredInfo),
         % Don't generate bytecode for procs with foreign code.
         goal_has_foreign(Goal) = no
-    ->
+    then
         bytecode_stub(ModuleInfo, PredId, ProcId, ProcInstructions),
         ProcLabelCounter = counter.init(0)
-    ;
+    else
         ProcInstructions = Instructions,
         ProcLabelCounter = LabelCounter
     ),
@@ -568,26 +569,26 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
 
 maybe_set_trace_level(PredInfo, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals0),
-    (
+    ( if
         PredModule = pred_info_module(PredInfo),
         PredName = pred_info_name(PredInfo),
         PredArity = pred_info_orig_arity(PredInfo),
         no_type_info_builtin(PredModule, PredName, PredArity)
-    ->
+    then
         % These predicates should never be traced, since they do not obey
         % typeinfo_liveness. Since they may be opt_imported into other
         % modules, we must switch off the tracing of such preds on a
         % pred-by-pred basis.
         globals.set_trace_level_none(Globals0, Globals1),
         module_info_set_globals(Globals1, !ModuleInfo)
-    ;
+    else if
         pred_info_get_origin(PredInfo, origin_special_pred(_, _)),
         globals.get_trace_level(Globals0, TraceLevel),
         UC_TraceLevel = trace_level_for_unify_compare(TraceLevel)
-    ->
+    then
         globals.set_trace_level(UC_TraceLevel, Globals0, Globals1),
         module_info_set_globals(Globals1, !ModuleInfo)
-    ;
+    else
         true
     ).
 
@@ -603,7 +604,7 @@ maybe_generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = MaybeDeepProfInfo :-
         HLDSExcpVars = hlds_deep_excp_vars(TopCSDVar, MiddleCSDVar,
             MaybeOldOutermostVar),
         proc_info_get_stack_slots(ProcInfo, StackSlots),
-        ( map.search(StackSlots, TopCSDVar, TopCSDSlot) ->
+        ( if map.search(StackSlots, TopCSDVar, TopCSDSlot) then
             TopCSDSlotNum = stack_slot_num(TopCSDSlot),
             map.lookup(StackSlots, MiddleCSDVar, MiddleCSDSlot),
             MiddleCSDSlotNum = stack_slot_num(MiddleCSDSlot),
@@ -615,7 +616,7 @@ maybe_generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = MaybeDeepProfInfo :-
                 MaybeOldOutermostVar = no,
                 OldOutermostSlotNum = -1
             )
-        ;
+        else
             TopCSDSlotNum = -1,
             MiddleCSDSlotNum = -1,
             OldOutermostSlotNum = -1
@@ -688,14 +689,14 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
         % Generate the code for the body of the procedure.
         get_globals(!.CI, Globals),
         globals.lookup_bool_option(Globals, middle_rec, MiddleRec),
-        (
+        ( if
             MiddleRec = yes,
             middle_rec.match_and_generate(Goal, MiddleRecCode, !CI, !CLD)
-        ->
+        then
             Code = MiddleRecCode,
             MaybeTraceCallLabel = no,
             FrameInfo = frame(0, no, no)
-        ;
+        else
             get_maybe_trace_info(!.CI, MaybeTraceInfo),
             (
                 MaybeTraceInfo = yes(TraceInfo),
@@ -825,7 +826,9 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
                 MaybeFailExternalInfo = no,
                 TraceFailCode = empty
             ),
-            ( TraceSlotInfo ^ slot_trail = yes(_) ->
+            MaybeTrailSlot = TraceSlotInfo ^ slot_trail,
+            (
+                MaybeTrailSlot = yes(_),
                 MaybeFromFull = TraceSlotInfo ^ slot_from_full,
                 (
                     MaybeFromFull = yes(FromFullSlot),
@@ -850,6 +853,7 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
                     )
                 )
             ;
+                MaybeTrailSlot = no,
                 DiscardTraceTicketCode = empty
             ),
             FailCode = singleton(
@@ -933,12 +937,12 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         llds_instr(label(EntryLabel), "Procedure entry point")
     ),
     get_succip_used(CI, Used),
-    (
+    ( if
         % Do we need to save the succip across calls?
         Used = yes,
         % Do we need to use a general slot for storing succip?
         CodeModel \= model_non
-    ->
+    then
         SuccipSlot = maybe_round_frame_size(CI, CodeModel, MainSlots + 1),
         SaveSuccipCode = singleton(
             llds_instr(assign(stackvar(SuccipSlot), lval(succip)),
@@ -946,7 +950,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         ),
         TotalSlots = SuccipSlot,
         MaybeSuccipSlot = yes(SuccipSlot)
-    ;
+    else
         SaveSuccipCode = empty,
         TotalSlots = maybe_round_frame_size(CI, CodeModel, MainSlots),
         MaybeSuccipSlot = no
@@ -982,12 +986,12 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
             IsLeaf = is_leaf,
             StackIncrKind = stack_incr_leaf
         ),
-        ( TotalSlots > 0 ->
+        ( if TotalSlots > 0 then
             AllocCode = singleton(
                 llds_instr(incr_sp(TotalSlots, PushMsg, StackIncrKind),
                     "Allocate stack frame")
             )
-        ;
+        else
             AllocCode = empty
         ),
         NondetPragma = no
@@ -1075,10 +1079,10 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         ArgModes = get_arginfo(!.CI),
         HeadVars = get_headvars(!.CI),
         assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
-        ( instmap_is_unreachable(InstMap) ->
+        ( if instmap_is_unreachable(InstMap) then
             OutLvals = set.init,
             FlushCode = empty
-        ;
+        else
             setup_return(Args, OutLvals, FlushCode, !.CI, !CLD)
         ),
         (
@@ -1091,21 +1095,21 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             MaybeSuccipSlot = no,
             RestoreSuccipCode = empty
         ),
-        (
+        ( if
             ( TotalSlots = 0
             ; CodeModel = model_non
             )
-        ->
+        then
             DeallocCode = empty
-        ;
+        else
             DeallocCode = singleton(
                llds_instr(decr_sp(TotalSlots), "Deallocate stack frame")
             )
         ),
-        (
+        ( if
             TraceSlotInfo ^ slot_trail = yes(_),
             CodeModel \= model_non
-        ->
+        then
             MaybeFromFull = TraceSlotInfo ^ slot_from_full,
             (
                 MaybeFromFull = yes(FromFullSlot),
@@ -1143,7 +1147,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
                 ),
                 PruneTraceTicketCodeCopy = PruneTraceTicketCode
             )
-        ;
+        else
             PruneTraceTicketCode = empty,
             PruneTraceTicketCodeCopy = empty
         ),
@@ -1263,24 +1267,24 @@ project_layout_locn_lval(locn_indirect(Lval, _)) = Lval.
 add_saved_succip([], _StackLoc, []).
 add_saved_succip([Instr0 | Instrs0], StackLoc, [Instr | Instrs]) :-
     Instr0 = llds_instr(Uinstr0, Comment),
-    (
+    ( if
         Uinstr0 = livevals(LiveVals0),
         Instrs0 \= [llds_instr(goto(code_succip), _) | _]
         % XXX We should also test for tailcalls
         % once we start generating them directly.
-    ->
+    then
         set.insert(stackvar(StackLoc), LiveVals0, LiveVals1),
         Uinstr = livevals(LiveVals1),
         Instr = llds_instr(Uinstr, Comment)
-    ;
+    else if
         Uinstr0 = llcall(Target, ReturnLabel, LiveVals0, Context, GP, CM)
-    ->
+    then
         map.init(Empty),
         LiveVals = [live_lvalue(locn_direct(stackvar(StackLoc)),
             live_value_succip, Empty) | LiveVals0],
         Uinstr = llcall(Target, ReturnLabel, LiveVals, Context, GP, CM),
         Instr = llds_instr(Uinstr, Comment)
-    ;
+    else
         Instr = Instr0
     ),
     add_saved_succip(Instrs0, StackLoc, Instrs).
@@ -1307,18 +1311,25 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 
     CallStructName = "bytecode_call_info",
 
-    append_list([
+    (
+        PredOrFunc = pf_function,
+        IsFuncStr = "MR_TRUE"
+    ;
+        PredOrFunc = pf_predicate,
+        IsFuncStr = "MR_FALSE"
+    ),
+    string.append_list([
         "\t\tstatic MB_Call ", CallStructName, " = {\n",
         "\t\t\t(MB_Word)NULL,\n",
         "\t\t\t""", ModuleName, """,\n",
         "\t\t\t""", PredName, """,\n",
         "\t\t\t", ProcStr, ",\n",
         "\t\t\t", ArityStr, ",\n",
-        "\t\t\t", (PredOrFunc = pf_function -> "MR_TRUE" ; "MR_FALSE"), "\n",
+        "\t\t\t", IsFuncStr, "\n",
         "\t\t};\n"
         ], CallStruct),
 
-    append_list([
+    string.append_list([
         "\t\tMB_Native_Addr return_addr;\n",
         "\t\tMR_save_registers();\n",
         "\t\treturn_addr = MB_bytecode_call_entry(", "&",CallStructName,");\n",
@@ -1358,11 +1369,11 @@ push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     pred_info_get_origin(PredInfo, Origin),
-    ( Origin = origin_special_pred(SpecialId, TypeCtor) ->
+    ( if Origin = origin_special_pred(SpecialId, TypeCtor) then
         find_arg_type_ctor_name(TypeCtor, TypeName),
         SpecialPredName = get_special_pred_id_generic_name(SpecialId),
         FullPredName = SpecialPredName ++ "_for_" ++ TypeName
-    ;
+    else
         FullPredName = PredName
     ),
     % XXX if ModuleNameString ends with [0-9] and/or FullPredName starts with
