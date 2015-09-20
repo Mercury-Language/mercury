@@ -376,13 +376,14 @@ finally_2(P, Cleanup, PRes, CleanupRes, !IO) :-
 :- mode wrap_success(pred(out) is cc_multi, out(cannot_fail)) is cc_multi.
 :- mode wrap_success(pred(out) is cc_nondet, out(cannot_fail)) is cc_nondet.
 
-wrap_success(Goal, succeeded(R)) :- Goal(R).
+wrap_success(Goal, succeeded(R)) :-
+    Goal(R).
 
 :- pred wrap_success_or_failure(pred(T), exception_result(T)).
 :- mode wrap_success_or_failure(pred(out) is det, out) is det.
 :- mode wrap_success_or_failure(pred(out) is semidet, out) is det.
-%:- mode wrap_success_or_failure(pred(out) is multi, out) is multi. (unused)
-%:- mode wrap_success_or_failure(pred(out) is nondet, out) is multi. (unused)
+% :- mode wrap_success_or_failure(pred(out) is multi, out) is multi. (unused)
+% :- mode wrap_success_or_failure(pred(out) is nondet, out) is multi. (unused)
 :- mode wrap_success_or_failure(pred(out) is cc_multi, out) is cc_multi.
 :- mode wrap_success_or_failure(pred(out) is cc_nondet, out) is cc_multi.
 
@@ -1416,16 +1417,18 @@ public static SsdbHooks ssdb_hooks = new SsdbHooks();
 :- pred call_goal(pred(T), T).
 :- mode call_goal(pred(out) is det, out) is det.
 :- mode call_goal(pred(out) is semidet, out) is semidet.
-%:- mode call_goal(pred(out) is nondet, out) is nondet. % see comments below
+% :- mode call_goal(pred(out) is nondet, out) is nondet. % see comments below
 
-call_goal(Goal, Result) :- Goal(Result).
+call_goal(Goal, Result) :-
+    Goal(Result).
 
 :- pred call_handler(pred(univ, T), univ, T).
 :- mode call_handler(pred(in, out) is det, in, out) is det.
-%:- mode call_handler(pred(in, out) is semidet, in, out) is semidet. % unused
-%:- mode call_handler(pred(in, out) is nondet, in, out) is nondet. % unused
+% :- mode call_handler(pred(in, out) is semidet, in, out) is semidet. % unused
+% :- mode call_handler(pred(in, out) is nondet, in, out) is nondet.   % unused
 
-call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
+call_handler(Handler, Exception, Result) :-
+    Handler(Exception, Result).
 
 :- pragma foreign_export("C", call_goal(pred(out) is det, out),
     "ML_call_goal_det").
@@ -1452,7 +1455,8 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
 %
 % XXX For the .NET backend we don't yet implement nondet exception handling.
 
-% :- pragma export(call_goal(pred(out) is nondet,  out), "ML_call_goal_nondet").
+% :- pragma export(call_goal(pred(out) is nondet,  out),
+%   "ML_call_goal_nondet").
 
 :- pragma foreign_export("C", call_handler(pred(in, out) is det, in, out),
     "ML_call_handler_det").
