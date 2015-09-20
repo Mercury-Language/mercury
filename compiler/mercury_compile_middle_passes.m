@@ -139,9 +139,9 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     % check_unique_modes(Verbose, Stats, !HLDS,
     %   FoundUniqError, !IO),
-    % ( FoundUniqError = yes ->
+    % ( if FoundUniqError = yes then
     %   error("unique modes failed")
-    % ;
+    % else
     %   true
     % ),
 
@@ -306,7 +306,7 @@ middle_pass_for_opt_file(!HLDS, !IO) :-
         TablingAnalysis),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    (
+    ( if
         % Closure analysis assumes that lambda expressions have
         % been converted into separate predicates.
         % Structure sharing/reuse analysis results can be affected
@@ -314,11 +314,11 @@ middle_pass_for_opt_file(!HLDS, !IO) :-
         ( ClosureAnalysis = yes
         ; SharingAnalysis = yes
         )
-    ->
+    then
         process_lambdas(Verbose, Stats, !HLDS, !IO),
         process_stms(Verbose, Stats, !HLDS, !IO),
         maybe_closure_analysis(Verbose, Stats, !HLDS, !IO)
-    ;
+    else
         true
     ),
     (
@@ -383,13 +383,13 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
 
     % Closure analysis assumes that lambda expressions have
     % been converted into separate predicates.
-    (
+    ( if
         ( ClosureAnalysis = yes
         ; SharingAnalysis = yes
         )
-    ->
+    then
         process_lambdas(Verbose, Stats, !HLDS, !IO)
-    ;
+    else
         true
     ),
     maybe_dump_hlds(!.HLDS, 110, "lambda", !DumpInfo, !IO),
@@ -438,13 +438,13 @@ output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
 
     % Closure analysis assumes that lambda expressions have
     % been converted into separate predicates.
-    (
+    ( if
         ( ClosureAnalysis = yes
         ; SharingAnalysis = yes
         )
-    ->
+    then
         process_lambdas(Verbose, Stats, !HLDS, !IO)
-    ;
+    else
         true
     ),
     maybe_dump_hlds(!.HLDS, 110, "lambda", !DumpInfo, !IO),
@@ -507,7 +507,7 @@ maybe_read_experimental_complexity_file(!HLDS, !IO) :-
     globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
         RecordTermSizesAsCells),
     bool.or(RecordTermSizesAsWords, RecordTermSizesAsCells, RecordTermSizes),
-    ( FileName = "" ->
+    ( if FileName = "" then
 %       While we could include the following sanity check, it is overly
 %       strong. For example, a bootcheck in a term size profiling grade
 %       would have to supply an --experimental-complexity option for
@@ -524,7 +524,7 @@ maybe_read_experimental_complexity_file(!HLDS, !IO) :-
 %           RecordTermSizes = no
 %       )
             true
-    ;
+    else
         (
             RecordTermSizes = yes
         ;
@@ -640,18 +640,18 @@ maybe_termination(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, polymorphism, Polymorphism),
     globals.lookup_bool_option(Globals, termination, Termination),
     % Termination analysis requires polymorphism to be run,
-    % since it does not handle complex unification
-    (
+    % since it does not handle complex unification.
+    ( if
         Polymorphism = yes,
         Termination = yes
-    ->
+    then
         maybe_write_string(Verbose, "% Detecting termination...\n", !IO),
         analyse_termination_in_module(!HLDS, Specs, !IO),
         maybe_write_string(Verbose, "% Termination checking done.\n", !IO),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_report_stats(Stats, !IO)
-    ;
+    else
         true
     ).
 
@@ -666,15 +666,15 @@ maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, termination2, Termination2),
     % Termination analysis requires polymorphism to be run,
     % as termination analysis does not handle complex unification.
-    (
+    ( if
         Polymorphism = yes,
         Termination2 = yes
-    ->
+    then
         maybe_write_string(Verbose, "% Detecting termination 2...\n", !IO),
         term_constr_main.pass(!HLDS, !IO),
         maybe_write_string(Verbose, "% Termination 2 checking done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    ;
+    else
         true
     ).
 
@@ -728,9 +728,9 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
 %
 %       %%% globals.lookup_bool_option(Globals, optimize_dead_procs,
 %       %%%     OptimizeDead),
-%       %%% ( OptimizeDead = yes ->
+%       %%% ( if OptimizeDead = yes then
 %       %%%     !:HLDS = HLDS1
-%       %%% ;
+%       %%% else
 %       %%%     true
 %       %%% )
     ;
@@ -834,12 +834,12 @@ maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
     % importing modules might call them.
     module_info_get_type_spec_info(!.HLDS, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(TypeSpecPreds, _, _, _),
-    (
+    ( if
         ( HigherOrder = yes
         ; Types = yes
         ; set.is_non_empty(TypeSpecPreds)
         )
-    ->
+    then
         maybe_write_string(Verbose,
             "% Specializing higher-order and polymorphic predicates...\n",
             !IO),
@@ -848,7 +848,7 @@ maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
         specialize_higher_order(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    ;
+    else
         true
     ).
 
@@ -862,8 +862,7 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, force_disable_ssdebug,
         ForceDisableSSDB),
     (
-        ForceDisableSSDB = no
-    ->
+        ForceDisableSSDB = no,
         maybe_write_string(Verbose,
             "% Maybe apply source to source debugging transformation ...\n",
             !IO),
@@ -871,7 +870,7 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
-        true
+        ForceDisableSSDB = yes
     ).
 
 %-----------------------------------------------------------------------------%
@@ -912,12 +911,12 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
         type_to_univ([] : list(error_spec), Cookie0),
         Task0 = update_module_pred_cookie(accu_transform_proc, Cookie0),
         process_all_nonimported_procs_update(Task0, Task, !HLDS),
-        (
+        ( if
             Task = update_module_pred_cookie(_, Cookie),
             univ_to_type(Cookie, SpecsPrime)
-        ->
+        then
             Specs = SpecsPrime
-        ;
+        else
             unexpected($module, $pred, "bad task")
         ),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
@@ -939,19 +938,19 @@ maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, inline_simple, Simple),
     globals.lookup_bool_option(Globals, inline_single_use, SingleUse),
     globals.lookup_int_option(Globals, inline_compound_threshold, Threshold),
-    (
+    ( if
         Allow = yes,
         ( Simple = yes
         ; SingleUse = yes
         ; Threshold > 0
         )
-    ->
+    then
         maybe_write_string(Verbose, "% Inlining...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         inlining(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    ;
+    else
         true
     ).
 
@@ -993,11 +992,11 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
     % --constraint-propagation implies --local-constraint-propagation.
     globals.lookup_bool_option(Globals, local_constraint_propagation,
         Constraints),
-    (
+    ( if
         ( Deforest = yes
         ; Constraints = yes
         )
-    ->
+    then
         (
             Deforest = no,
             Constraints = no,
@@ -1020,7 +1019,7 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
         deforestation(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    ;
+    else
         true
     ).
 
@@ -1091,12 +1090,12 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, intermod_unused_args, Intermod),
     globals.lookup_bool_option(Globals, optimize_unused_args, Optimize),
     globals.lookup_bool_option(Globals, warn_unused_args, Warn),
-    (
+    ( if
         ( Optimize = yes
         ; Warn = yes
         ; Intermod = yes
         )
-    ->
+    then
         maybe_write_string(Verbose, "% Finding unused arguments ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         unused_args_process_module(!HLDS, Specs, UnusedArgInfos),
@@ -1105,7 +1104,7 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
         append_unused_arg_pragmas_to_opt_file(!.HLDS, UnusedArgInfos, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    ;
+    else
         true
     ).
 
@@ -1198,7 +1197,7 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.lookup_bool_option(Globals, control_granularity, Control),
     module_info_get_has_parallel_conj(!.HLDS, HasParallelConj),
-    (
+    ( if
         % If either of these is false, there is no parallelism to control.
         Parallel = yes,
         HasParallelConj = has_parallel_conj,
@@ -1209,7 +1208,7 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
 
         % If this is false, then the user hasn't asked for granularity control.
         Control = yes
-    ->
+    then
         globals.get_target(Globals, Target),
         (
             Target = target_c,
@@ -1228,7 +1227,7 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
             % Leave the HLDS alone. We cannot implement parallelism,
             % so there is not point in controlling its granularity.
         )
-    ;
+    else
         true
     ).
 
@@ -1243,7 +1242,7 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.lookup_int_option(Globals, distance_granularity, Distance),
     module_info_get_has_parallel_conj(!.HLDS, HasParallelConj),
-    (
+    ( if
         % If either of these is false, there is no parallelism to control.
         Parallel = yes,
         HasParallelConj = has_parallel_conj,
@@ -1255,7 +1254,7 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
         % Distance must be greater than 0 to apply the distance granularity
         % transformation.
         Distance > 0
-    ->
+    then
         globals.get_target(Globals, Target),
         (
             Target = target_c,
@@ -1274,7 +1273,7 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
             % Leave the HLDS alone. We cannot implement parallelism,
             % so there is not point in controlling its granularity.
         )
-    ;
+    else
         true
     ).
 

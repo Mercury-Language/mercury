@@ -87,12 +87,12 @@
 %-----------------------------------------------------------------------------%
 
 mlds_has_main(MLDS) =
-    (
+    ( if
         Defns = MLDS ^ mlds_defns,
         defns_contain_main(Defns)
-    ->
+    then
         has_main
-    ;
+    else
         no_main
     ).
 
@@ -160,15 +160,15 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     % Warning about non-tail calls must come after detection of tail calls.
     globals.lookup_bool_option(Globals, warn_non_tail_recursion,
         WarnTailCalls),
-    (
+    ( if
         OptimizeTailCalls = yes,
         WarnTailCalls = yes
-    ->
+    then
         maybe_write_string(Verbose,
             "% Warning about non-tail recursive calls...\n", !IO),
         ml_warn_tailcalls(Globals, !.MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
-    ;
+    else
         true
     ),
     maybe_report_stats(Stats, !IO),
@@ -324,27 +324,27 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
         SemidetReclaim),
     globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
         NondetReclaim),
-    (
+    ( if
         gc_is_conservative(GC) = yes
-    ->
+    then
         % We can't do heap reclamation with conservative GC.
         true
-    ;
+    else if
         SemidetReclaim = no,
         NondetReclaim = no
-    ->
+    then
         true
-    ;
+    else if
         SemidetReclaim = yes,
         NondetReclaim = yes
-    ->
+    then
         maybe_write_string(Verbose,
             "% Adding heap reclamation operations...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(update_proc(add_heap_ops), !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    ;
+    else
         Msg = "Sorry, not implemented: `--high-level-code' and just one of " ++
             "`--reclaim-heap-on-semidet-failure' and " ++
             "`--reclaim-heap-on-nondet-failure'. " ++
@@ -425,16 +425,18 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
     globals.lookup_accumulating_option(Globals, verbose_dump_mlds,
         VerboseDumpStages),
     StageNumStr = stage_num_str(StageNum),
-    ( should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) ->
+    ( if should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) then
         maybe_write_string(Verbose, "% Dumping out MLDS as C...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         DumpSuffix = "_dump." ++ StageNumStr ++ "-" ++ StageName,
         output_c_mlds(MLDS, Globals, DumpSuffix, _Succeeded, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
-    ;
+    else
         true
     ),
-    ( should_dump_stage(StageNum, StageNumStr, StageName, VerboseDumpStages) ->
+    ( if
+        should_dump_stage(StageNum, StageNumStr, StageName, VerboseDumpStages)
+    then
         maybe_write_string(Verbose, "% Dumping out raw MLDS...\n", !IO),
         ModuleName = mlds_get_module_name(MLDS),
         module_name_to_file_name(Globals, ModuleName, ".mlds_dump",
@@ -442,7 +444,7 @@ maybe_dump_mlds(Globals, MLDS, StageNum, StageName, !IO) :-
         DumpFile = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName,
         dump_mlds(Globals, DumpFile, MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
-    ;
+    else
         true
     ).
 

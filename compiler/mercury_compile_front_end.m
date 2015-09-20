@@ -184,13 +184,13 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
         MakeOptInt),
     globals.lookup_bool_option(Globals, type_check_constraints,
         TypeCheckConstraints),
-    (
+    ( if
         ( IntermodOpt = yes
         ; IntermodAnalysis = yes
         ; UseOptFiles = yes
         ),
         MakeOptInt = no
-    ->
+    then
         % Eliminate unnecessary clauses from `.opt' files,
         % to speed up compilation. This must be done after
         % typeclass instances have been checked, since that
@@ -201,7 +201,7 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "done.\n", !IO),
         maybe_dump_hlds(!.HLDS, 10, "dead_pred_elim", !DumpInfo, !IO)
-    ;
+    else
         true
     ),
 
@@ -257,19 +257,19 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
     % We can't continue if the type inference iteration limit was exceeded
     % because the code to resolve overloading in post_typecheck.m (called by
     % purity.m) could abort.
-    ( FoundUndefModeError = yes ->
+    ( if FoundUndefModeError = yes then
         !:FoundError = yes,
         maybe_write_string(Verbose,
             "% Program contains undefined inst " ++
             "or undefined mode error(s).\n", !IO),
         io.set_exit_status(1, !IO)
-    ; ExceededTypeCheckIterationLimit = yes ->
+    else if ExceededTypeCheckIterationLimit = yes then
         % FoundTypeError will always be true here, so if Verbose = yes,
         % we've already printed a message about the program containing
         % type errors.
         !:FoundError = yes,
         io.set_exit_status(1, !IO)
-    ;
+    else
         check_for_missing_type_defns(!.HLDS, MissingTypeDefnSpecs),
         !:Specs = !.Specs ++ MissingTypeDefnSpecs,
         SomeMissingTypeDefns = contains_errors(Globals, MissingTypeDefnSpecs),
@@ -291,13 +291,13 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
             FoundTypeError = yes,
             !:Specs = !.Specs ++ PostTypeCheckAlwaysSpecs
         ),
-        (
+        ( if
             ( SomeMissingTypeDefns = yes
             ; NumPostTypeCheckErrors > 0
             )
-        ->
+        then
             PostTypeCheckErrors = yes
-        ;
+        else
             PostTypeCheckErrors = no
         ),
         maybe_dump_hlds(!.HLDS, 19, "post_typecheck", !DumpInfo, !IO),
@@ -309,18 +309,18 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
             !:FoundError = bool.or(!.FoundError, PostTypeCheckErrors)
         ;
             TypecheckOnly = no,
-            (
+            ( if
                 ( FoundTypeError = yes
                 ; PostTypeCheckErrors = yes
                 )
-            ->
+            then
                 % XXX It would be nice if we could go on and mode-check the
                 % predicates which didn't have type errors, but we need to run
                 % polymorphism before running mode analysis, and currently
                 % polymorphism may get internal errors if any of the predicates
                 % are not type-correct.
                 !:FoundError = yes
-            ;
+            else
                 puritycheck(Verbose, Stats, !HLDS, !Specs, !IO),
                 maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
 
@@ -332,13 +332,13 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
                     !DumpInfo, !IO),
 
                 % Only write out the `.opt' file if there are no errors.
-                (
+                ( if
                     !.FoundError = no,
                     FoundUndefModeError = no
-                ->
+                then
                     maybe_write_initial_optfile(MakeOptInt,
                         !HLDS, !DumpInfo, !Specs, !IO)
-                ;
+                else
                     true
                 ),
                 % If our job was to write out the `.opt' file, then we're done.
@@ -395,7 +395,7 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         %
         % If intermod_unused_args is being performed, run polymorphism,
         % mode analysis and determinism analysis before unused_args.
-        (
+        ( if
             IntermodAnalysis = no,
             ( IntermodArgs = yes
             ; Termination = yes
@@ -407,7 +407,7 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
             ; SharingAnalysis = yes
             ; ReuseAnalysis = yes
             )
-        ->
+        then
             % XXX OPTFILE This should have been done by one of our ancestors.
             frontend_pass_by_phases(!HLDS, FoundModeError, !DumpInfo,
                 !Specs, !IO),
@@ -418,7 +418,7 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
                 FoundModeError = yes,
                 io.set_exit_status(1, !IO)
             )
-        ;
+        else
             true
         ),
         module_info_get_name(!.HLDS, ModuleName),
@@ -430,11 +430,11 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         MakeOptInt = no,
         % If there is a `.opt' file for this module the import
         % status of items in the `.opt' file needs to be updated.
-        ( IntermodOpt = yes ->
+        ( if IntermodOpt = yes then
             UpdateStatus = yes
-        ; IntermodAnalysis = yes ->
+        else if IntermodAnalysis = yes then
             UpdateStatus = yes
-        ; UseOptFiles = yes ->
+        else if UseOptFiles = yes then
             module_info_get_name(!.HLDS, ModuleName),
             module_name_to_search_file_name(Globals, ModuleName, ".opt",
                 OptName, !IO),
@@ -447,7 +447,7 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
                 Found = error(_),
                 UpdateStatus = no
             )
-        ;
+        else
             UpdateStatus = no
         ),
         (
@@ -521,7 +521,7 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
         % Work out whether we encountered any errors.
         module_info_get_num_errors(!.HLDS, NumErrors),
         io.get_exit_status(ExitStatus, !IO),
-        (
+        ( if
             FoundModeError = no,
             FoundUniqError = no,
             FoundStratError = no,
@@ -532,9 +532,9 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
             % But the values returned for FoundModeError etc. aren't always
             % correct.
             ExitStatus = 0
-        ->
+        then
             FoundError = no
-        ;
+        else
             FoundError = yes
         )
     ),
@@ -809,11 +809,11 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     module_info_get_must_be_stratified_preds(!.HLDS, MustBeStratifiedPreds),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
-    (
+    ( if
         ( set.is_non_empty(MustBeStratifiedPreds)
         ; Warn = yes
         )
-    ->
+    then
         maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
         maybe_write_string(Verbose, "% Checking stratification...\n", !IO),
         check_module_for_stratification(!HLDS, StratifySpecs),
@@ -829,7 +829,7 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
             maybe_write_string(Verbose, "% done.\n", !IO)
         ),
         maybe_report_stats(Stats, !IO)
-    ;
+    else
         FoundError = no
     ).
 
@@ -961,14 +961,14 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
                 TSWProf),
             globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
                 TSCProf),
-            (
+            ( if
                 ConstProp = yes,
                 DeepProf = no,
                 TSWProf = no,
                 TSCProf = no
-            ->
+            then
                 list.cons(simptask_constant_prop, !SimpList)
-            ;
+            else
                 !:SimpList = list.delete_all(!.SimpList, simptask_constant_prop)
             ),
             list.cons(simptask_mark_code_model_changes, !SimpList),
@@ -1015,9 +1015,9 @@ simplify_pred(SimplifyTasks0, PredId, !ModuleInfo, !PredInfo, !Specs) :-
     ),
     ProcIds = pred_info_non_imported_procids(!.PredInfo),
     % Don't warn for compiler-generated procedures.
-    ( is_unify_or_compare_pred(!.PredInfo) ->
+    ( if is_unify_or_compare_pred(!.PredInfo) then
         SimplifyTasks = SimplifyTasks0 ^ do_warn_simple_code := no
-    ;
+    else
         SimplifyTasks = SimplifyTasks0
     ),
     ErrorSpecs0 = init_error_spec_accumulator,
@@ -1040,10 +1040,10 @@ maybe_proc_statistics(Verbose, Stats, Msg, !HLDS, !Specs, !IO) :-
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
 
     globals.lookup_string_option(Globals, proc_size_statistics, StatsFileName),
-    ( StatsFileName = "" ->
+    ( if StatsFileName = "" then
         % The user has not asked us to print these statistics.
         true
-    ;
+    else
         io.open_append(StatsFileName, StatsFileNameResult, !IO),
         (
             StatsFileNameResult = ok(StatsFileStream),

@@ -240,12 +240,12 @@ llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
         ;
             Verbose = no
         ),
-        (
+        ( if
             PredModule = pred_info_module(PredInfo),
             PredName = pred_info_name(PredInfo),
             PredArity = pred_info_orig_arity(PredInfo),
             no_type_info_builtin(PredModule, PredName, PredArity)
-        ->
+        then
             % These predicates should never be traced, since they do not obey
             % typeinfo_liveness. Since they may be opt_imported into other
             % modules, we must switch off the tracing of such preds on a
@@ -258,7 +258,7 @@ llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
             module_info_get_globals(!.HLDS, Globals2),
             globals.set_trace_level(TraceLevel, Globals2, Globals),
             module_info_set_globals(Globals, !HLDS)
-        ;
+        else
             llds_backend_pass_for_pred(!HLDS, ConstStructMap,
                 PredId, PredInfo, ProcIds, IdProcList, !GlobalData, !IO)
         ),
@@ -343,12 +343,12 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
     % NOTE: Any changes here may also need to be made to
     % mercury_compile.simplify.
 
-    (
+    ( if
         ConstProp = yes,
         ProfTrans = no
-    ->
+    then
         list.cons(simptask_constant_prop, SimpList0, SimpList1)
-    ;
+    else
         SimpList1 = list.delete_all(SimpList0, simptask_constant_prop)
     ),
 
@@ -484,12 +484,12 @@ compute_liveness(Verbose, Stats, !HLDS, !IO) :-
     globals.lookup_int_option(Globals, debug_liveness, DebugLiveness),
     maybe_write_string(Verbose, "% Computing liveness...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    (
+    ( if
         ParallelLiveness = yes,
         DebugLiveness = -1
-    ->
+    then
         detect_liveness_preds_parallel(!HLDS)
-    ;
+    else
         process_all_nonimported_procs(update_proc_ids(detect_liveness_proc),
             !HLDS)
     ),
@@ -659,11 +659,11 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
     % Split the code up into bite-size chunks for the C compiler.
     %
     globals.lookup_int_option(Globals, procs_per_c_function, ProcsPerFunc),
-    ( ProcsPerFunc = 0 ->
+    ( if ProcsPerFunc = 0 then
         % ProcsPerFunc = 0 really means infinity -
         % we store all the procs in a single function.
         ChunkedModules = [comp_gen_c_module(CModuleName, Procs)]
-    ;
+    else
         list.chunk(Procs, ProcsPerFunc, ChunkedProcs),
         combine_chunks(ChunkedProcs, CModuleName, ChunkedModules)
     ),

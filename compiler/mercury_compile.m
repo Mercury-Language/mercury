@@ -138,7 +138,7 @@ real_main(!IO) :-
 
 expand_at_file_arguments([], ok([]), !IO).
 expand_at_file_arguments([Arg | Args], Result, !IO) :-
-    ( string.remove_prefix("@", Arg, File) ->
+    ( if string.remove_prefix("@", Arg, File) then
         io.open_input(File, OpenRes, !IO),
         (
             OpenRes = ok(S),
@@ -153,7 +153,7 @@ expand_at_file_arguments([Arg | Args], Result, !IO) :-
             Msg = "mercury_compile: cannot open '" ++ File ++ "'",
             Result = error(io.make_io_error(Msg))
         )
-    ;
+    else
         expand_at_file_arguments(Args, Result0, !IO),
         (
             Result0 = ok(ExpandedArgs),
@@ -183,9 +183,9 @@ expand_file_into_arg_list(S, Res, !IO) :-
         expand_file_into_arg_list(S, Res0, !IO),
         ( Res0 = ok(Lines),
             StrippedLine = strip(Line),
-            ( StrippedLine = "" ->
+            ( if StrippedLine = "" then
                 Res = ok(Lines)
-            ;
+            else
                 Res = ok([StrippedLine | Lines])
             )
         ; Res0 = error(_E),
@@ -206,7 +206,7 @@ expand_file_into_arg_list(S, Res, !IO) :-
 real_main_after_expansion(CmdLineArgs, !IO) :-
     % XXX Processing the options up to three times is not what you call
     % elegant.
-    ( CmdLineArgs = ["--arg-file", ArgFile | ExtraArgs] ->
+    ( if CmdLineArgs = ["--arg-file", ArgFile | ExtraArgs] then
         % All the configuration and options file options are passed in the
         % given file, which is created by the parent `mmc --make' process.
         % (make.module_target does this to overcome limits on the lengths
@@ -241,7 +241,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
         DetectedGradeFlags = [],
         Variables = options_variables_init,
         MaybeMCFlags = yes([])
-    ;
+    else
         % Find out which options files to read.
         % Don't report errors yet, as the errors may no longer exist
         % after we have read in options files.
@@ -896,9 +896,9 @@ process_args(Globals, DetectedGradeFlags, OptionVariables, OptionArgs, Args,
 
 process_stdin_arg_list(Globals, DetectedGradeFlags, OptionVariables,
         OptionArgs, !Modules, !ExtraObjFiles, !IO) :-
-    ( is_empty(!.Modules) ->
+    ( if is_empty(!.Modules) then
         true
-    ;
+    else
         garbage_collect(!IO)
     ),
     io.read_line_as_string(FileResult, !IO),
@@ -1036,10 +1036,10 @@ process_arg_2(Globals, OptionArgs, FileOrModule, ModulesToLink, ExtraObjFiles,
 :- func string_to_file_or_module(string) = file_or_module.
 
 string_to_file_or_module(String) = FileOrModule :-
-    ( string.remove_suffix(String, ".m", FileName) ->
+    ( if string.remove_suffix(String, ".m", FileName) then
         % If the argument name ends in `.m', then we assume it is a file name.
         FileOrModule = fm_file(FileName)
-    ;
+    else
         % If it doesn't end in `.m', then we assume it is a module name.
         % (Is it worth checking that the name doesn't contain directory
         % separators, and issuing a warning or error in that case?)
@@ -1071,13 +1071,13 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
         ModuleNameString = sym_name_to_string(ModuleName),
         maybe_write_string(Verbose, ModuleNameString, !IO),
         maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
-        (
+        ( if
             % Avoid rereading the module if it was already read
             % by recompilation_version.m.
             find_read_module_src(!.HaveReadModuleMaps ^ hrmm_src, ModuleName,
                 ReturnTimestamp, SourceFileNamePrime, MaybeTimestampPrime,
                 ParseTreeSrcPrime, SpecsPrime, ErrorsPrime)
-        ->
+        then
             Globals = Globals0,
             % XXX When we have read the module before, it *could* have had
             % problems that should cause smart recompilation to be disabled.
@@ -1090,7 +1090,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             ParseTreeSrc = ParseTreeSrcPrime,
             Specs = SpecsPrime,
             Errors = ErrorsPrime
-        ;
+        else
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
@@ -1119,13 +1119,13 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
         maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
 
         file_name_to_module_name(FileName, DefaultModuleName),
-        (
+        ( if
             % Avoid rereading the module if it was already read
             % by recompilation_version.m.
             find_read_module_src(!.HaveReadModuleMaps ^ hrmm_src,
                 DefaultModuleName, ReturnTimestamp, _, MaybeTimestampPrime,
                 ParseTreeSrcPrime, SpecsPrime, ErrorsPrime)
-        ->
+        then
             Globals = Globals0,
             % XXX When we have read the module before, it *could* have had
             % problems that should cause smart recompilation to be disabled.
@@ -1138,7 +1138,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
             ParseTreeSrc = ParseTreeSrcPrime,
             Specs = SpecsPrime,
             Errors = ErrorsPrime
-        ;
+        else
             % We don't search `--search-directories' for source files
             % because that can result in the generated interface files
             % being created in the wrong directory.
@@ -1164,12 +1164,12 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
 
             globals.lookup_bool_option(Globals, smart_recompilation, Smart),
             ParseTreeSrc = parse_tree_src(ModuleName, _, _),
-            (
+            ( if
                 Smart = yes,
                 ModuleName \= DefaultModuleName
                 % We want to give this warning even if smart recompilation
                 % was disabled before this.
-            ->
+            then
                 globals.lookup_bool_option(Globals, warn_smart_recompilation,
                     Warn),
                 (
@@ -1188,7 +1188,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
                     Warn = no
                 ),
                 io_set_disable_smart_recompilation(yes, !IO)
-            ;
+            else
                 true
             )
         ),
@@ -1217,31 +1217,31 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
         ConvertToMercury),
     globals.lookup_bool_option(Globals0, generate_item_version_numbers,
         GenerateVersionNumbers),
-    (
-        ( MakeInterface = yes ->
+    ( if
+        ( if MakeInterface = yes then
             ProcessModule = call_make_interface(Globals0),
             ReturnTimestamp =
                 version_numbers_return_timestamp(GenerateVersionNumbers)
-        ; MakeShortInterface = yes ->
+        else if MakeShortInterface = yes then
             ProcessModule = call_make_short_interface(Globals0),
             ReturnTimestamp = dont_return_timestamp
-        ; MakePrivateInterface = yes ->
+        else if MakePrivateInterface = yes then
             ProcessModule = call_make_private_interface(Globals0),
             ReturnTimestamp =
                 version_numbers_return_timestamp(GenerateVersionNumbers)
-        ;
+        else
             fail
         )
-    ->
+    then
         HaveReadModuleMaps0 =
             have_read_module_maps(map.init, map.init, map.init),
         read_module_or_file(Globals0, Globals, FileOrModule,
             ModuleName, FileName, ReturnTimestamp, MaybeTimestamp,
             ParseTreeSrc, Specs0, Errors,
             HaveReadModuleMaps0, _HaveReadModuleMaps, !IO),
-        ( halt_at_module_error(HaltSyntax, Errors) ->
+        ( if halt_at_module_error(HaltSyntax, Errors) then
             true
-        ;
+        else
             split_into_compilation_units_perform_checks(ParseTreeSrc,
                 RawCompUnits, Specs0, Specs),
             % XXX _NumErrors
@@ -1254,9 +1254,9 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
         ),
         ModulesToLink = [],
         ExtraObjFiles = []
-    ;
+    else if
         ConvertToMercury = yes
-    ->
+    then
         HaveReadModuleMaps0 =
             have_read_module_maps(map.init, map.init, map.init),
         read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, _,
@@ -1264,16 +1264,16 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
             HaveReadModuleMaps0, _HaveReadModuleMaps, !IO),
         % XXX _NumErrors
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
-        ( halt_at_module_error(HaltSyntax, Errors) ->
+        ( if halt_at_module_error(HaltSyntax, Errors) then
             true
-        ;
+        else
             module_name_to_file_name(Globals, ModuleName, ".ugly",
                 do_create_dirs, OutputFileName, !IO),
             convert_to_mercury_src(Globals, OutputFileName, ParseTreeSrc, !IO)
         ),
         ModulesToLink = [],
         ExtraObjFiles = []
-    ;
+    else
         globals.lookup_bool_option(Globals0, smart_recompilation, Smart0),
         io_get_disable_smart_recompilation(DisableSmart, !IO),
         (
@@ -1311,13 +1311,13 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
                 have_read_module_maps(map.init, map.init, map.init),
             ModulesToRecompile = all_modules
         ),
-        ( ModulesToRecompile = some_modules([]) ->
+        ( if ModulesToRecompile = some_modules([]) then
             % XXX Currently smart recompilation is disabled if mmc is linking
             % the executable because it doesn't know how to check whether
             % all the necessary intermediate files are present and up-to-date.
             ModulesToLink = [],
             ExtraObjFiles = []
-        ;
+        else
             process_module_2(Globals, OptionArgs, FileOrModule,
                 ModulesToRecompile, HaveReadModuleMaps, ModulesToLink,
                 ExtraObjFiles, !IO)
@@ -1379,13 +1379,13 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
         HaveReadModuleMap0, HaveReadModuleMaps, !IO),
 
     globals.lookup_bool_option(Globals, halt_at_syntax_errors, HaltSyntax),
-    ( halt_at_module_error(HaltSyntax, Errors) ->
+    ( if halt_at_module_error(HaltSyntax, Errors) then
         % XXX _NumErrors
         write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
             !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
-    ;
+    else
         split_into_compilation_units_perform_checks(ParseTreeSrc,
             RawCompUnits0, Specs0, Specs1),
         (
@@ -1408,13 +1408,13 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
 
         globals.lookup_bool_option(Globals, trace_prof, TraceProf),
 
-        (
+        ( if
             non_traced_mercury_builtin_module(ModuleName),
             not (
                 ModuleName = mercury_profiling_builtin_module,
                 TraceProf = yes
             )
-        ->
+        then
             % Some predicates in the builtin modules are missing typeinfo
             % arguments, which means that execution tracing will not work
             % on them. Predicates defined there should never be part of
@@ -1425,7 +1425,7 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
             globals.set_trace_level_none(
                 GlobalsNoTrace0, GlobalsNoTrace),
             GlobalsToUse = GlobalsNoTrace
-        ;
+        else
             GlobalsToUse = Globals
         ),
         compile_all_submodules(GlobalsToUse, FileName, ModuleName,
@@ -1678,11 +1678,11 @@ mercury_compile(Globals, ModuleAndImports, NestedSubModules,
     maybe_write_definitions(Verbose, Stats, HLDS1, !IO),
     frontend_pass(QualInfo, UndefTypes, UndefModes, Errors1, Errors2,
         HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
-    (
+    ( if
         Errors1 = no,
         Errors2 = no,
         contains_errors(Globals, !.Specs) = no
-    ->
+    then
         maybe_write_dependency_graph(Verbose, Stats, HLDS20, HLDS21, !IO),
         globals.lookup_bool_option(Globals, make_optimization_interface,
             MakeOptInt),
@@ -1692,9 +1692,9 @@ mercury_compile(Globals, ModuleAndImports, NestedSubModules,
             MakeAnalysisRegistry),
         globals.lookup_bool_option(Globals, make_xml_documentation,
             MakeXmlDocumentation),
-        ( TypeCheckOnly = yes ->
+        ( if TypeCheckOnly = yes then
             ExtraObjFiles = []
-        ; ErrorCheckOnly = yes ->
+        else if ErrorCheckOnly = yes then
             % We may still want to run `unused_args' so that we get
             % the appropriate warnings.
             globals.lookup_bool_option(Globals, warn_unused_args, UnusedArgs),
@@ -1709,34 +1709,34 @@ mercury_compile(Globals, ModuleAndImports, NestedSubModules,
                 UnusedArgs = no
             ),
             ExtraObjFiles = []
-        ; MakeOptInt = yes ->
+        else if MakeOptInt = yes then
             % Only run up to typechecking when making the .opt file.
             ExtraObjFiles = []
-        ; MakeTransOptInt = yes ->
+        else if MakeTransOptInt = yes then
             output_trans_opt_file(HLDS21, !DumpInfo, !IO),
             ExtraObjFiles = []
-        ; MakeAnalysisRegistry = yes ->
+        else if MakeAnalysisRegistry = yes then
             prepare_for_intermodule_analysis(Globals, Verbose, Stats,
                 HLDS21, HLDS22, !IO),
             output_analysis_file(HLDS22, !DumpInfo, !IO),
             ExtraObjFiles = []
-        ; MakeXmlDocumentation = yes ->
+        else if MakeXmlDocumentation = yes then
             xml_documentation(HLDS21, !IO),
             ExtraObjFiles = []
-        ;
+        else
             maybe_prepare_for_intermodule_analysis(Globals, Verbose, Stats,
                 HLDS21, HLDS22, !IO),
             mercury_compile_after_front_end(NestedSubModules,
                 FindTimestampFiles, MaybeTimestampMap, ModuleName, HLDS22,
                 !.Specs, ExtraObjFiles, !DumpInfo, !IO)
         )
-    ;
+    else
         % If the number of errors is > 0, make sure that the compiler
         % exits with a non-zero exit status.
         io.get_exit_status(ExitStatus, !IO),
-        ( ExitStatus = 0 ->
+        ( if ExitStatus = 0 then
             io.set_exit_status(1, !IO)
-        ;
+        else
             true
         ),
         ExtraObjFiles = []
@@ -1810,10 +1810,10 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
 
     FrontEndErrors = contains_errors(Globals, Specs),
     module_info_get_num_errors(!.HLDS, NumErrors),
-    (
+    ( if
         FrontEndErrors = no,
         NumErrors = 0
-    ->
+    then
         (
             Target = target_c,
             % Produce the grade independent header file <module>.mh
@@ -1832,16 +1832,16 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             Target = target_il,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             mlds_to_il_assembler(Globals, MLDS, TargetCodeSucceeded, !IO),
-            (
+            ( if
                 TargetCodeSucceeded = yes,
                 TargetCodeOnly = no
-            ->
+            then
                 HasMain = mlds_has_main(MLDS),
                 io.output_stream(OutputStream, !IO),
                 il_assemble(Globals, OutputStream, ModuleName, HasMain,
                     Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
-            ;
+            else
                 Succeeded = TargetCodeSucceeded
             ),
             ExtraObjFiles = []
@@ -1854,17 +1854,17 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             Target = target_java,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             mlds_to_java(!.HLDS, MLDS, TargetCodeSucceeded, !IO),
-            (
+            ( if
                 TargetCodeSucceeded = yes,
                 TargetCodeOnly = no
-            ->
+            then
                 io.output_stream(OutputStream, !IO),
                 module_name_to_file_name(Globals, ModuleName, ".java",
                     do_not_create_dirs, JavaFile, !IO),
                 compile_java_files(Globals, OutputStream, [JavaFile],
                     Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
-            ;
+            else
                 Succeeded = TargetCodeSucceeded
             ),
             ExtraObjFiles = []
@@ -1874,10 +1874,10 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 HighLevelCode = yes,
                 mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
                 mlds_to_high_level_c(Globals, MLDS, TargetCodeSucceeded, !IO),
-                (
+                ( if
                     TargetCodeSucceeded = yes,
                     TargetCodeOnly = no
-                ->
+                then
                     module_name_to_file_name(Globals, ModuleName, ".c",
                         do_not_create_dirs, C_File, !IO),
                     get_linked_target_type(Globals, TargetType),
@@ -1889,7 +1889,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                     do_compile_c_file(Globals, OutputStream, PIC,
                         C_File, O_File, Succeeded, !IO),
                     maybe_set_exit_status(Succeeded, !IO)
-                ;
+                else
                     Succeeded = TargetCodeSucceeded
                 ),
                 ExtraObjFiles = []
@@ -1915,13 +1915,13 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             Succeeded = no
             % An error should have been reported earlier.
         )
-    ;
+    else
         % If the number of errors is > 0, make sure that the compiler
         % exits with a non-zero exit status.
         io.get_exit_status(ExitStatus, !IO),
-        ( ExitStatus = 0 ->
+        ( if ExitStatus = 0 then
             io.set_exit_status(1, !IO)
-        ;
+        else
             true
         ),
         ExtraObjFiles = []
@@ -1975,11 +1975,11 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
 
     globals.lookup_string_option(Globals, event_set_file_name,
         EventSetFileName),
-    ( EventSetFileName = "" ->
+    ( if EventSetFileName = "" then
         EventSetName = "",
         EventSpecMap1 = map.init,
         EventSetErrors = no
-    ;
+    else
         read_event_set(EventSetFileName, EventSetName0, EventSpecMap0,
             EventSetSpecs, !IO),
         !:Specs = EventSetSpecs ++ !.Specs,
@@ -2011,22 +2011,22 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
         MakeHLDSFoundInvalidType, MakeHLDSFoundInvalidInstOrMode,
         FoundSemanticError, !Specs, !IO),
 
-    (
+    ( if
         MQUndefTypes = no,
         EventSetErrors = no,
         ExpandErrors = no,
         MakeHLDSFoundInvalidType = did_not_find_invalid_type
-    ->
+    then
         UndefTypes = no
-    ;
+    else
         UndefTypes = yes
     ),
-    (
+    ( if
         MQUndefModes = no,
         MakeHLDSFoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode
-    ->
+    then
         UndefModes = no
-    ;
+    else
         UndefModes = yes
     ),
 
@@ -2050,13 +2050,13 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
     ),
 
     % Only stop on syntax errors in .opt files.
-    (
+    ( if
         ( FoundSemanticError = yes
         ; IntermodError = yes
         )
-    ->
+    then
         module_info_incr_errors(HLDS0, HLDS1)
-    ;
+    else
         HLDS1 = HLDS0
     ).
 
@@ -2148,14 +2148,18 @@ maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO) :-
 
 read_dependency_file_find_start(SearchPattern, Success, !IO) :-
     io.read_line(Result, !IO),
-    ( Result = ok(CharList) ->
-        ( list.append(SearchPattern, _, CharList) ->
+    (
+        Result = ok(CharList),
+        ( if list.append(SearchPattern, _, CharList) then
             % Have found the start.
             Success = yes
-        ;
+        else
             read_dependency_file_find_start(SearchPattern, Success, !IO)
         )
     ;
+        ( Result = error(_)
+        ; Result = eof
+        ),
         Success = no
     ).
 
@@ -2169,27 +2173,27 @@ read_dependency_file_find_start(SearchPattern, Success, !IO) :-
 
 read_dependency_file_get_modules(TransOptDeps, !IO) :-
     io.read_line(Result, !IO),
-    (
+    ( if
         Result = ok(CharList0),
         % Remove any whitespace from the beginning of the line,
         % then take all characters until another whitespace occurs.
         list.takewhile(char.is_whitespace, CharList0, _, CharList1),
         NotIsWhitespace = (pred(Char::in) is semidet :-
-            \+ char.is_whitespace(Char)
+            not char.is_whitespace(Char)
         ),
         list.takewhile(NotIsWhitespace, CharList1, CharList, _),
         string.from_char_list(CharList, FileName0),
         string.remove_suffix(FileName0, ".trans_opt", FileName)
-    ->
-        ( string.append("Mercury/trans_opts/", BaseFileName, FileName) ->
+    then
+        ( if string.append("Mercury/trans_opts/", BaseFileName, FileName) then
             ModuleFileName = BaseFileName
-        ;
+        else
             ModuleFileName = FileName
         ),
         file_name_to_module_name(ModuleFileName, Module),
         read_dependency_file_get_modules(TransOptDeps0, !IO),
         TransOptDeps = [Module | TransOptDeps0]
-    ;
+    else
         TransOptDeps = []
     ).
 
@@ -2211,22 +2215,22 @@ maybe_grab_optfiles(Globals, Imports0, Verbose, MaybeTransOptDeps,
         MakeTransOptInt),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
-    (
+    ( if
         ( UseOptInt = yes
         ; IntermodOpt = yes
         ; IntermodAnalysis = yes
         ),
         MakeOptInt = no
-    ->
+    then
         maybe_write_string(Verbose, "% Reading .opt files...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         grab_opt_files(Globals, Imports0, Imports1, Error1, !IO),
         maybe_write_string(Verbose, "% Done.\n", !IO)
-    ;
+    else
         Imports1 = Imports0,
         Error1 = no
     ),
-    ( MakeTransOptInt = yes ->
+    ( if MakeTransOptInt = yes then
         (
             MaybeTransOptDeps = yes(TransOptDeps),
             % When creating the trans_opt file, only import the
@@ -2255,13 +2259,13 @@ maybe_grab_optfiles(Globals, Imports0, Verbose, MaybeTransOptDeps,
                 WarnNoTransOptDeps = no
             )
         )
-    ; MakeOptInt = yes ->
+    else if MakeOptInt = yes then
         % If we're making the `.opt' file, then we can't read any `.trans_opt'
         % files, since `.opt' files aren't allowed to depend on `.trans_opt'
         % files.
         Imports = Imports1,
         Error2 = no
-    ;
+    else
         (
             TransOpt = yes,
             % If transitive optimization is enabled, but we are not creating
@@ -2331,14 +2335,14 @@ make_hlds(Globals, AugCompUnit, EventSet, MQInfo, TypeEqvMap, UsedModules,
     module_info_set_event_set(EventSet, !HLDS),
     io.get_exit_status(Status, !IO),
     SpecsErrors = contains_errors(Globals, !.Specs),
-    (
+    ( if
         ( Status \= 0
         ; SpecsErrors = yes
         )
-    ->
+    then
         FoundSemanticError = yes,
         io.set_exit_status(1, !IO)
-    ;
+    else
         FoundSemanticError = no
     ),
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
@@ -2420,11 +2424,11 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
     globals.lookup_bool_option(Globals, profile_time, ProfileTime),
-    (
+    ( if
         ( ProfileCalls = yes
         ; ProfileTime = yes
         )
-    ->
+    then
         maybe_write_string(Verbose,
             "% Outputting profiling call graph...", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -2446,7 +2450,7 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
         ),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    ;
+    else
         true
     ).
 
@@ -2518,7 +2522,7 @@ do_detect_libgrade(VeryVerbose, DirName, FileName, FileType, Continue,
         !GradeOpts, !IO) :-
     (
         FileType = directory,
-        (
+        ( if
             % We do not generate .init files for the non-C grades so just
             % check for directories in StdLibDir / "modules" containing
             % the name of their base grade.
@@ -2527,10 +2531,10 @@ do_detect_libgrade(VeryVerbose, DirName, FileName, FileType, Continue,
             ; string.prefix(FileName, "erlang")
             ; string.prefix(FileName, "java")
             )
-        ->
+        then
             maybe_report_detected_libgrade(VeryVerbose, FileName, !IO),
             !:GradeOpts = ["--libgrade", FileName | !.GradeOpts]
-        ;
+        else
             % For C grades, we check for the presence of the .init file for
             % mer_std to test whether the grade is present or not.
             %
