@@ -130,19 +130,24 @@ llds_backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
     add_all_tabling_info_structs(!.HLDS, !GlobalData),
     (
         TradPasses = no,
-        llds_backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO)
+        llds_backend_pass_by_phases(!HLDS, LLDS, !GlobalData, [], Specs,
+            !DumpInfo, !IO)
     ;
         TradPasses = yes,
-        llds_backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO)
-    ).
+        llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, [], Specs)
+    ),
+    % XXX _NumErrors
+    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 %-----------------------------------------------------------------------------%
 
 :- pred llds_backend_pass_by_phases(module_info::in, module_info::out,
-    global_data::in, global_data::out, list(c_procedure)::out,
+    list(c_procedure)::out, global_data::in, global_data::out,
+    list(error_spec)::in, list(error_spec)::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
-llds_backend_pass_by_phases(!HLDS, !GlobalData, !:LLDS, !DumpInfo, !IO) :-
+llds_backend_pass_by_phases(!HLDS, !:LLDS, !GlobalData, !Specs,
+        !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -168,7 +173,7 @@ llds_backend_pass_by_phases(!HLDS, !GlobalData, !:LLDS, !DumpInfo, !IO) :-
     maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 332, "mark_debug_tailrec_calls", !DumpInfo, !IO),
 
-    maybe_warn_non_tail_recursion(Verbose, Stats, !.HLDS, !IO),
+    maybe_warn_non_tail_recursion(Verbose, Stats, !.HLDS, !Specs, !IO),
 
     compute_stack_vars(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 335, "stackvars", !DumpInfo, !IO),
@@ -186,10 +191,10 @@ llds_backend_pass_by_phases(!HLDS, !GlobalData, !:LLDS, !DumpInfo, !IO) :-
     maybe_optimize_llds(!.HLDS, !.GlobalData, Verbose, Stats, !LLDS, !IO).
 
 :- pred llds_backend_pass_by_preds(module_info::in, module_info::out,
-    global_data::in, global_data::out, list(c_procedure)::out,
-    io::di, io::uo) is det.
+    list(c_procedure)::out, global_data::in, global_data::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
+llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
     module_info_get_valid_pred_ids(!.HLDS, PredIds),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, optimize_proc_dups, ProcDups),
@@ -207,36 +212,54 @@ llds_backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
     ),
     generate_const_structs(!.HLDS, ConstStructMap, !GlobalData),
     llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
-        OrderedPredIds, MaybeDupProcMap, [], RevCodes, !GlobalData, !IO),
-    list.reverse(RevCodes, Codes),
-    list.condense(Codes, LLDS).
+        OrderedPredIds, MaybeDupProcMap, cord.init, CProcsCord,
+        !GlobalData, !Specs),
+    LLDS = cord.list(CProcsCord).
 
 :- pred llds_backend_pass_by_preds_loop_over_preds(
     module_info::in, module_info::out, const_struct_map::in, list(pred_id)::in,
     maybe(map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label))::in,
-    list(list(c_procedure))::in, list(list(c_procedure))::out,
-    global_data::in, global_data::out, io::di, io::uo) is det.
+    cord(c_procedure)::in, cord(c_procedure)::out,
+    global_data::in, global_data::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 llds_backend_pass_by_preds_loop_over_preds(!HLDS, _,
-        [], _, !RevCodes, !GlobalData, !IO).
+        [], _, !CProcsCord, !GlobalData, !Specs).
 llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
-        [PredId | PredIds], !.MaybeDupProcMap, !RevCodes, !GlobalData, !IO) :-
+        [PredId | PredIds], !.MaybeDupProcMap,
+        !CProcsCord, !GlobalData, !Specs) :-
+    llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, PredId,
+        !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs),
+    llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap, PredIds,
+        !.MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs).
+
+:- pred llds_backend_pass_by_preds_do_one_pred(
+    module_info::in, module_info::out, const_struct_map::in, pred_id::in,
+    maybe(map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label))::in,
+    maybe(map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label))::out,
+    cord(c_procedure)::in, cord(c_procedure)::out,
+    global_data::in, global_data::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+llds_backend_pass_by_preds_do_one_pred(!HLDS, ConstStructMap, PredId,
+        !MaybeDupProcMap, !CProcsCord, !GlobalData, !Specs) :-
     module_info_get_preds(!.HLDS, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     (
-        ProcIds = [],
-        ProcList = []
+        ProcIds = []
     ;
         ProcIds = [_ | _],
         module_info_get_globals(!.HLDS, Globals0),
         globals.lookup_bool_option(Globals0, verbose, Verbose),
         (
             Verbose = yes,
-            io.write_string("% Generating code for ", !IO),
-            write_pred_id(!.HLDS, PredId, !IO),
-            io.write_string("\n", !IO),
-            maybe_flush_output(Verbose, !IO)
+            trace [io(!IO)] (
+                io.write_string("% Generating code for ", !IO),
+                write_pred_id(!.HLDS, PredId, !IO),
+                io.write_string("\n", !IO),
+                maybe_flush_output(Verbose, !IO)
+            )
         ;
             Verbose = no
         ),
@@ -254,55 +277,57 @@ llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
             globals.set_trace_level_none(Globals0, Globals1),
             module_info_set_globals(Globals1, !HLDS),
             llds_backend_pass_for_pred(!HLDS, ConstStructMap, PredId, PredInfo,
-                ProcIds, IdProcList, !GlobalData, !IO),
+                ProcIds, IdCProcs, !GlobalData, !Specs),
             module_info_get_globals(!.HLDS, Globals2),
             globals.set_trace_level(TraceLevel, Globals2, Globals),
             module_info_set_globals(Globals, !HLDS)
         else
             llds_backend_pass_for_pred(!HLDS, ConstStructMap,
-                PredId, PredInfo, ProcIds, IdProcList, !GlobalData, !IO)
+                PredId, PredInfo, ProcIds, IdCProcs, !GlobalData, !Specs)
         ),
         (
             !.MaybeDupProcMap = no,
-            assoc_list.values(IdProcList, ProcList)
+            assoc_list.values(IdCProcs, CProcs)
         ;
             !.MaybeDupProcMap = yes(DupProcMap0),
-            eliminate_duplicate_procs(IdProcList, ProcList,
+            eliminate_duplicate_procs(IdCProcs, CProcs,
                 DupProcMap0, DupProcMap),
             !:MaybeDupProcMap = yes(DupProcMap)
         ),
-        maybe_write_string(Verbose, "% done.\n", !IO),
+        !:CProcsCord = !.CProcsCord ++ cord.from_list(CProcs),
         globals.lookup_bool_option(Globals0, statistics, Stats),
-        maybe_report_stats(Stats, !IO)
-    ),
-    !:RevCodes = [ProcList | !.RevCodes],
-    llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap, PredIds,
-        !.MaybeDupProcMap, !RevCodes, !GlobalData, !IO).
+        trace [io(!IO)] (
+            maybe_write_string(Verbose, "% done.\n", !IO),
+            maybe_report_stats(Stats, !IO)
+        )
+    ).
 
-:- pred llds_backend_pass_for_pred( module_info::in, module_info::out,
+:- pred llds_backend_pass_for_pred(module_info::in, module_info::out,
     const_struct_map::in, pred_id::in, pred_info::in, list(proc_id)::in,
     assoc_list(mdbcomp.prim_data.proc_label, c_procedure)::out,
-    global_data::in, global_data::out, io::di, io::uo) is det.
+    global_data::in, global_data::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-llds_backend_pass_for_pred(!HLDS, _, _, _, [], [], !GlobalData, !IO).
+llds_backend_pass_for_pred(!HLDS, _, _, _, [], [], !GlobalData, !Specs).
 llds_backend_pass_for_pred(!HLDS, ConstStructMap, PredId, PredInfo,
-        [ProcId | ProcIds], [ProcLabel - ProcCode | ProcCodes],
-        !GlobalData, !IO) :-
+        [ProcId | ProcIds], [ProcLabel - CProc | ProcLabelsCProcs],
+        !GlobalData, !Specs) :-
     ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
-        ProcId, ProcInfo, ProcCode, !GlobalData, !IO),
+        ProcId, ProcInfo, CProc, !GlobalData, !Specs),
     llds_backend_pass_for_pred(!HLDS, ConstStructMap, PredId, PredInfo,
-        ProcIds, ProcCodes, !GlobalData, !IO).
+        ProcIds, ProcLabelsCProcs, !GlobalData, !Specs).
 
 :- pred llds_backend_pass_for_proc( module_info::in, module_info::out,
     const_struct_map::in, pred_id::in, pred_info::in,
     proc_id::in, proc_info::in, c_procedure::out,
-    global_data::in, global_data::out, io::di, io::uo) is det.
+    global_data::in, global_data::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
-        ProcId, !.ProcInfo, ProcCode, !GlobalData, !IO) :-
+        ProcId, !.ProcInfo, CProc, !GlobalData, !Specs) :-
     PredProcId = proc(PredId, ProcId),
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, optimize_saved_vars_const,
@@ -355,11 +380,15 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
     SimpList = [simptask_mark_code_model_changes,
         simptask_elim_removable_scopes | SimpList1],
     SimplifyTasks = list_to_simplify_tasks(SimpList),
-    write_proc_progress_message("% Simplifying ", PredId, ProcId,
-        !.HLDS, !IO),
+    trace [io(!IO)] (
+        write_proc_progress_message("% Simplifying ", PredId, ProcId,
+            !.HLDS, !IO)
+    ),
     simplify_proc(SimplifyTasks, PredId, ProcId, !HLDS, !ProcInfo),
-    write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
-        !.HLDS, !IO),
+    trace [io(!IO)] (
+        write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
+            !.HLDS, !IO)
+    ),
     detect_liveness_proc(!.HLDS, PredProcId, !ProcInfo),
     globals.lookup_bool_option(Globals, exec_trace_tail_rec, ExecTraceTailRec),
     globals.lookup_bool_option(Globals, warn_non_tail_recursion,
@@ -367,9 +396,11 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
     MarkTailCalls = bool.or(ExecTraceTailRec, WarnTailCalls),
     (
         MarkTailCalls = yes,
-        write_proc_progress_message(
-            "% Marking directly tail recursive calls in ", PredId, ProcId,
-            !.HLDS, !IO),
+        trace [io(!IO)] (
+            write_proc_progress_message(
+                "% Marking directly tail recursive calls in ", PredId, ProcId,
+                !.HLDS, !IO)
+        ),
         mark_tail_calls(feature_debug_tail_rec_call, !.HLDS, PredProcId,
             PredInfo, !ProcInfo)
     ;
@@ -377,34 +408,42 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
     ),
     (
         WarnTailCalls = yes,
-        warn_non_tail_calls_in_proc(Globals, PredId, ProcId, PredInfo,
-            !.ProcInfo, !IO)
+        warn_non_tail_calls_in_proc(PredId, ProcId, PredInfo, !.ProcInfo,
+            !Specs)
     ;
         WarnTailCalls = no
     ),
-    write_proc_progress_message("% Allocating stack slots in ", PredId,
-        ProcId, !.HLDS, !IO),
+    trace [io(!IO)] (
+        write_proc_progress_message("% Allocating stack slots in ", PredId,
+            ProcId, !.HLDS, !IO)
+    ),
     allocate_stack_slots_in_proc(!.HLDS, PredProcId, !ProcInfo),
-    write_proc_progress_message(
-        "% Allocating storage locations for live vars in ",
-        PredId, ProcId, !.HLDS, !IO),
+    trace [io(!IO)] (
+        write_proc_progress_message(
+            "% Allocating storage locations for live vars in ",
+            PredId, ProcId, !.HLDS, !IO)
+    ),
     allocate_store_maps(final_allocation, !.HLDS, PredProcId, !ProcInfo),
-    write_proc_progress_message("% Generating low-level (LLDS) code for ",
-        PredId, ProcId, !.HLDS, !IO),
+    trace [io(!IO)] (
+        write_proc_progress_message("% Generating low-level (LLDS) code for ",
+            PredId, ProcId, !.HLDS, !IO)
+    ),
     generate_proc_code(!.HLDS, ConstStructMap, PredId, PredInfo,
-         ProcId, !.ProcInfo, !GlobalData, ProcCode0),
+         ProcId, !.ProcInfo, CProc0, !GlobalData),
     globals.lookup_bool_option(Globals, optimize, Optimize),
     (
         Optimize = yes,
-        optimize_proc(Globals, !.GlobalData, ProcCode0, ProcCode)
+        optimize_proc(Globals, !.GlobalData, CProc0, CProc)
     ;
         Optimize = no,
-        ProcCode = ProcCode0
+        CProc = CProc0
     ),
-    Instructions = ProcCode ^ cproc_code,
-    write_proc_progress_message(
-        "% Generating call continuation information for ",
-        PredId, ProcId, !.HLDS, !IO),
+    trace [io(!IO)] (
+        write_proc_progress_message(
+            "% Generating call continuation information for ",
+            PredId, ProcId, !.HLDS, !IO)
+    ),
+    Instructions = CProc ^ cproc_code,
     continuation_info.maybe_process_proc_llds(Instructions, PredProcId,
         !.HLDS, !GlobalData).
 
@@ -520,9 +559,10 @@ maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO) :-
     ).
 
 :- pred maybe_warn_non_tail_recursion(bool::in, bool::in,
-    module_info::in, io::di, io::uo) is det.
+    module_info::in, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-maybe_warn_non_tail_recursion(Verbose, Stats, HLDS, !IO) :-
+maybe_warn_non_tail_recursion(Verbose, Stats, HLDS, !Specs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_non_tail_recursion,
         WarnTailCalls),
@@ -530,7 +570,7 @@ maybe_warn_non_tail_recursion(Verbose, Stats, HLDS, !IO) :-
         WarnTailCalls = yes,
         maybe_write_string(Verbose,
             "% Warning about non-tail recursive calls...\n", !IO),
-        warn_non_tail_calls(HLDS, !IO),
+        warn_non_tail_calls(HLDS, !Specs),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -566,7 +606,7 @@ allocate_store_map(Verbose, Stats, !HLDS, !IO) :-
 generate_llds_code_for_module(HLDS, Verbose, Stats, !GlobalData, LLDS, !IO) :-
     maybe_write_string(Verbose, "% Generating code...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    generate_module_code(HLDS, !GlobalData, LLDS, !IO),
+    generate_module_code(HLDS, LLDS, !GlobalData),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

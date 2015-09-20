@@ -37,23 +37,21 @@
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 
-:- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
     % Translate a HLDS module to LLDS.
     %
-:- pred generate_module_code(module_info::in,
-    global_data::in, global_data::out,
-    list(c_procedure)::out, io::di, io::uo) is det.
+:- pred generate_module_code(module_info::in, list(c_procedure)::out,
+    global_data::in, global_data::out) is det.
 
     % Translate a HLDS procedure to LLDS, threading through the data structure
     % that records information about layout structures.
     %
 :- pred generate_proc_code(module_info::in, const_struct_map::in,
     pred_id::in, pred_info::in, proc_id::in, proc_info::in,
-    global_data::in, global_data::out, c_procedure::out) is det.
+    c_procedure::out, global_data::in, global_data::out) is det.
 
     % Return the message that identifies the procedure to pass to
     % the incr_sp_push_msg macro in the generated C code.
@@ -110,6 +108,7 @@
 :- import_module cord.
 :- import_module counter.
 :- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -120,7 +119,7 @@
 
 %---------------------------------------------------------------------------%
 
-generate_module_code(ModuleInfo, !GlobalData, Procedures, !IO) :-
+generate_module_code(ModuleInfo, CProcs, !GlobalData) :-
     % Get a list of all the predicate ids for which we will generate code.
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     % Check if we want to use parallel code generation.
@@ -131,9 +130,13 @@ generate_module_code(ModuleInfo, !GlobalData, Procedures, !IO) :-
 
     (
         VeryVerbose = yes,
-        io.write_string("% Generating constant structures\n", !IO),
+        trace [io(!IO)] (
+            io.write_string("% Generating constant structures\n", !IO)
+        ),
         generate_const_structs(ModuleInfo, ConstStructMap, !GlobalData),
-        maybe_report_stats(Statistics, !IO)
+        trace [io(!IO)] (
+            maybe_report_stats(Statistics, !IO)
+        )
     ;
         VeryVerbose = no,
         generate_const_structs(ModuleInfo, ConstStructMap, !GlobalData)
@@ -145,40 +148,40 @@ generate_module_code(ModuleInfo, !GlobalData, Procedures, !IO) :-
         VeryVerbose = no,
         Statistics = no
     then
-        generate_code_parallel(ModuleInfo, ConstStructMap, PredIds,
-            !GlobalData, Procedures)
+        generate_module_code_par(ModuleInfo, ConstStructMap, PredIds,
+            CProcsCord, !GlobalData)
     else
-        generate_code_sequential(ModuleInfo, VeryVerbose, Statistics,
-            ConstStructMap, PredIds, !GlobalData, Procedures, !IO)
-    ).
+        generate_module_code_seq(ModuleInfo, VeryVerbose, Statistics,
+            ConstStructMap, PredIds, CProcsCord, !GlobalData)
+    ),
+    CProcs = cord.list(CProcsCord).
 
-:- pred generate_code_sequential(module_info::in, bool::in, bool::in,
-    const_struct_map::in, list(pred_id)::in, global_data::in, global_data::out,
-    list(c_procedure)::out, io::di, io::uo) is det.
+:- pred generate_module_code_seq(module_info::in, bool::in, bool::in,
+    const_struct_map::in, list(pred_id)::in, cord(c_procedure)::out,
+    global_data::in, global_data::out) is det.
 
-generate_code_sequential(ModuleInfo, VeryVerbose, Statistics, ConstStructMap,
-        PredIds, !GlobalData, Procedures, !IO) :-
-    list.map_foldl2(
-        generate_maybe_pred_code(ModuleInfo, VeryVerbose, Statistics,
+generate_module_code_seq(ModuleInfo, VeryVerbose, Statistics, ConstStructMap,
+        PredIds, CProcsCord, !GlobalData) :-
+    list.foldl2(
+        generate_pred_code_seq(ModuleInfo, VeryVerbose, Statistics,
             ConstStructMap),
-        PredIds, PredProcedures, !GlobalData, !IO),
-    list.condense(PredProcedures, Procedures).
+        PredIds, cord.init, CProcsCord, !GlobalData).
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_code_parallel(module_info::in, const_struct_map::in,
-    list(pred_id)::in, global_data::in, global_data::out,
-    list(c_procedure)::out) is det.
+:- pred generate_module_code_par(module_info::in, const_struct_map::in,
+    list(pred_id)::in, cord(c_procedure)::out,
+    global_data::in, global_data::out) is det.
 
-generate_code_parallel(ModuleInfo, ConstStructMap, PredIds, !GlobalData,
-        Procedures) :-
+generate_module_code_par(ModuleInfo, ConstStructMap, PredIds, CProcsCord,
+        !GlobalData) :-
     % Split up the list of predicates into pieces for processing in parallel.
     % Splitting the list in the middle does not work well as the load will be
-    % unbalanced.  Splitting the list in any other way (as we do) does mean
+    % unbalanced. Splitting the list in any other way (as we do) does mean
     % that the generated code will be slightly different due to the static
     % data being reordered.
     %
-    % We only try to make use of two processors (threads) for now.  Using more
+    % We only try to make use of two processors (threads) for now. Using more
     % processors efficiently probably requires knowing how many processors are
     % available, so we can divide the pred list whilst minimise the time
     % merging global_datas and updating static cell references.
@@ -188,23 +191,19 @@ generate_code_parallel(ModuleInfo, ConstStructMap, PredIds, !GlobalData,
     GlobalData0 = !.GlobalData,
     (
         list.condense(ListsOfPredIdsA, PredIdsA),
-        list.map_foldl(generate_pred_code_par(ModuleInfo, ConstStructMap),
-            PredIdsA, PredProceduresA, GlobalData0, GlobalDataA),
-        list.condense(PredProceduresA, ProceduresA)
+        list.foldl2(generate_pred_code_par(ModuleInfo, ConstStructMap),
+            PredIdsA, cord.init, CProcsCordA, GlobalData0, GlobalDataA)
     % XXX the following should be a parallel conjunction
     ,
         list.condense(ListsOfPredIdsB, PredIdsB),
         bump_type_num_counter(type_num_skip, GlobalData0, GlobalData1),
-        list.map_foldl(generate_pred_code_par(ModuleInfo, ConstStructMap),
-            PredIdsB, PredProceduresB0, GlobalData1, GlobalDataB),
-        list.condense(PredProceduresB0, ProceduresB0)
+        list.foldl2(generate_pred_code_par(ModuleInfo, ConstStructMap),
+            PredIdsB, cord.init, CProcsCordB0, GlobalData1, GlobalDataB)
     ),
-    merge_global_datas(GlobalDataA, GlobalDataB, !:GlobalData,
-        Remap),
-    list.map(remap_references_to_global_data(Remap),
-        ProceduresB0, ProceduresB),
-
-    Procedures = ProceduresA ++ ProceduresB.
+    merge_global_datas(GlobalDataA, GlobalDataB, !:GlobalData, Remap),
+    cord.map_pred(remap_references_to_global_data(Remap),
+        CProcsCordB0, CProcsCordB),
+    CProcsCord = CProcsCordA ++ CProcsCordB.
 
     % These numbers are rather arbitrary.
     %
@@ -227,12 +226,13 @@ interleave_2([H|T], As0, As, Bs0, Bs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred generate_maybe_pred_code(module_info::in, bool::in, bool::in,
-    const_struct_map::in, pred_id::in, list(c_procedure)::out,
-    global_data::in, global_data::out, io::di, io::uo) is det.
+:- pred generate_pred_code_seq(module_info::in, bool::in, bool::in,
+    const_struct_map::in, pred_id::in,
+    cord(c_procedure)::in, cord(c_procedure)::out,
+    global_data::in, global_data::out) is det.
 
-generate_maybe_pred_code(ModuleInfo, VeryVerbose, Statistics, ConstStructMap,
-        PredId, Predicates, !GlobalData, !IO) :-
+generate_pred_code_seq(ModuleInfo, VeryVerbose, Statistics, ConstStructMap,
+        PredId, !CProcsCord, !GlobalData) :-
     % Note that some of the logic of generate_maybe_pred_code is duplicated
     % by mercury_compile.backend_pass_by_preds, so modifications here may
     % also need to be repeated there.
@@ -241,87 +241,91 @@ generate_maybe_pred_code(ModuleInfo, VeryVerbose, Statistics, ConstStructMap,
     map.lookup(PredInfos, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     (
-        ProcIds = [],
-        Predicates = []
+        ProcIds = []
     ;
         ProcIds = [_ | _],
         (
             VeryVerbose = yes,
-            io.write_string("% Generating code for ", !IO),
-            write_pred_id(ModuleInfo, PredId, !IO),
-            io.write_string("\n", !IO),
+            trace [io(!IO)] (
+                io.write_string("% Generating code for ", !IO),
+                write_pred_id(ModuleInfo, PredId, !IO),
+                io.write_string("\n", !IO)
+            ),
             generate_pred_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
-                ProcIds, Predicates, !GlobalData),
-            maybe_report_stats(Statistics, !IO)
+                ProcIds, !CProcsCord, !GlobalData),
+            trace [io(!IO)] (
+                maybe_report_stats(Statistics, !IO)
+            )
         ;
             VeryVerbose = no,
             generate_pred_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
-                ProcIds, Predicates, !GlobalData)
+                ProcIds, !CProcsCord, !GlobalData)
         )
     ).
 
 :- pred generate_pred_code_par(module_info::in, const_struct_map::in,
-    pred_id::in, list(c_procedure)::out,
+    pred_id::in, cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out) is det.
 
-generate_pred_code_par(ModuleInfo, ConstStructMap, PredId, CProcs,
-        !GlobalData) :-
+generate_pred_code_par(ModuleInfo, ConstStructMap, PredId,
+        !CProcsCord, !GlobalData) :-
     module_info_get_preds(ModuleInfo, PredInfos),
     map.lookup(PredInfos, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     generate_pred_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
-        ProcIds, CProcs, !GlobalData).
+        ProcIds, !CProcsCord, !GlobalData).
 
     % Translate a HLDS predicate to LLDS.
     %
 :- pred generate_pred_code(module_info::in, const_struct_map::in,
-    pred_id::in, pred_info::in, list(proc_id)::in, list(c_procedure)::out,
+    pred_id::in, pred_info::in, list(proc_id)::in,
+    cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out) is det.
 
 generate_pred_code(ModuleInfo, ConstStructMap, PredId, PredInfo, ProcIds,
-        Code, !GlobalData) :-
+        !CProcsCord, !GlobalData) :-
     generate_proc_list_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
-        ProcIds, !GlobalData, [], Code).
+        ProcIds, !CProcsCord, !GlobalData).
 
     % Translate all the procedures of a HLDS predicate to LLDS.
     %
 :- pred generate_proc_list_code(module_info::in, const_struct_map::in,
     pred_id::in, pred_info::in, list(proc_id)::in,
-    global_data::in, global_data::out,
-    list(c_procedure)::in, list(c_procedure)::out) is det.
+    cord(c_procedure)::in, cord(c_procedure)::out,
+    global_data::in, global_data::out) is det.
 
-generate_proc_list_code(_, _, _, _, [], !GlobalData, !Procs).
+generate_proc_list_code(_, _, _, _, [], !CProcsCord, !GlobalData).
 generate_proc_list_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
-        [ProcId | ProcIds], !GlobalData, !Procs) :-
+        [ProcId | ProcIds], !CProcsCord, !GlobalData) :-
     pred_info_get_proc_table(PredInfo, ProcInfos),
     map.lookup(ProcInfos, ProcId, ProcInfo),
     generate_proc_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
-        ProcId, ProcInfo, !GlobalData, Proc),
-    !:Procs = [Proc | !.Procs],
+        ProcId, ProcInfo, CProc, !GlobalData),
+    !:CProcsCord = cord.snoc(!.CProcsCord, CProc),
     generate_proc_list_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
-        ProcIds, !GlobalData, !Procs).
+        ProcIds, !CProcsCord, !GlobalData).
 
 %---------------------------------------------------------------------------%
 
-    % Values of this type hold information about stack frames that is
-    % generated when generating prologs and is used in generating epilogs
-    % and when massaging the code generated for the procedure.
+    % A value of this type holds information about a procedure's stack frame.
+    % It is generated when generating a procedure's prologue, and is used both
+    % when generating the procedure's epilogue, and when massaging its code
+    % to add the slot containining the succip to the sets of lvals live across
+    % calls.
+    %
+:- type proc_frame_slots
+    --->    proc_frame_slots(
+                % Number of slots in frame.
+                int,
 
-:- type frame_info
-    --->    frame(
-                int,        % Number of slots in frame.
-
-                maybe(int), % Slot number of succip if succip is
-                            % present in a general slot.
-
-                bool        % Is this the frame of a model_non
-                            % proc defined via pragma C code?
+                % Slot number of succip if succip is present in a general slot.
+                maybe(int)
             ).
 
 %---------------------------------------------------------------------------%
 
 generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
-        ProcId, ProcInfo0, !GlobalData, CProc) :-
+        ProcId, ProcInfo0, CProc, !GlobalData) :-
     % The modified module_info and proc_info are both discarded
     % on return from generate_proc_code.
     maybe_set_trace_level(PredInfo, ModuleInfo0, ModuleInfo),
@@ -357,6 +361,16 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         ProcInfo = ProcInfo1
     ),
 
+    % Find out the approriate context for the predicate's interface events.
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
+    ( if get_first_clause(ClausesInfo ^ cli_rep, FirstClause) then
+        ProcContext = FirstClause ^ clause_context
+    else
+        % This predicate must have been created by the compiler. In that case,
+        % the context of the body goal is the best we can do.
+        ProcContext = goal_info_get_context(GoalInfo)
+    ),
+
     proc_info_interface_determinism(ProcInfo, Detism),
     CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
@@ -388,19 +402,9 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     code_loc_dep_init(FollowVars, OutsideResumePoint,
         CodeInfo0, CodeInfo1, CodeLocDep0),
 
-    % Find out the approriate context for the predicate's interface events.
-    pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    ( if get_first_clause(ClausesInfo ^ cli_rep, FirstClause) then
-        ProcContext = FirstClause ^ clause_context
-    else
-        % This predicate must have been created by the compiler. In that case,
-        % the context of the body goal is the best we can do.
-        ProcContext = goal_info_get_context(GoalInfo)
-    ),
-
     % Generate code for the procedure.
     generate_category_code(CodeModel, ProcContext, Goal, OutsideResumePoint,
-        TraceSlotInfo, CodeTree0, MaybeTraceCallLabel, FrameInfo,
+        TraceSlotInfo, CodeTree0, MaybeTraceCallLabel, ProcFrameSlots,
         CodeInfo1, CodeInfo, CodeLocDep0),
     get_out_of_line_code(CodeInfo, OutOfLineCode),
     CodeTree = CodeTree0 ++ OutOfLineCode,
@@ -417,7 +421,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     get_proc_trace_events(CodeInfo, ProcTraceEvents),
     % You can have user trace events even if the effective trace level is none.
     ( if
-        ProcTraceEvents =  yes,
+        ProcTraceEvents = yes,
         CreatedTempFrame = yes,
         CodeModel \= model_non
     then
@@ -434,7 +438,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     ),
 
     Instructions0 = cord.list(CodeTree),
-    FrameInfo = frame(TotalSlots, MaybeSuccipSlot, _),
+    ProcFrameSlots = proc_frame_slots(TotalSlots, MaybeSuccipSlot),
     (
         MaybeSuccipSlot = yes(SuccipSlot),
         % The set of recorded live values at calls (for value numbering)
@@ -549,7 +553,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         % are correct by construction; for user-defined unify and
         % compare predicates, we *assume* their correctness for now
         % (perhaps not wisely).
-        \+ is_unify_or_compare_pred(PredInfo),
+        not is_unify_or_compare_pred(PredInfo),
         % Don't generate bytecode for procs with foreign code.
         goal_has_foreign(Goal) = no
     then
@@ -679,11 +683,12 @@ maybe_generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = MaybeDeepProfInfo :-
     %
 :- pred generate_category_code(code_model::in, prog_context::in, hlds_goal::in,
     resume_point_info::in, trace_slot_info::in, llds_code::out,
-    maybe(label)::out, frame_info::out,
+    maybe(label)::out, proc_frame_slots::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
-        TraceSlotInfo, Code, MaybeTraceCallLabel, FrameInfo, !CI, !.CLD) :-
+        TraceSlotInfo, Code, MaybeTraceCallLabel, ProcFrameSlots,
+        !CI, !.CLD) :-
     (
         CodeModel = model_det,
         % Generate the code for the body of the procedure.
@@ -695,7 +700,7 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
         then
             Code = MiddleRecCode,
             MaybeTraceCallLabel = no,
-            FrameInfo = frame(0, no, no)
+            ProcFrameSlots = proc_frame_slots(0, no)
         else
             get_maybe_trace_info(!.CI, MaybeTraceInfo),
             (
@@ -720,10 +725,10 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
                 TailRecLabelCode = empty
             ),
             generate_goal(model_det, Goal, BodyCode, !CI, !CLD),
-            generate_entry(!.CI, model_det, Goal, ResumePoint, FrameInfo,
+            generate_entry(!.CI, model_det, Goal, ResumePoint, ProcFrameSlots,
                 EntryCode),
-            generate_exit(model_det, FrameInfo, TraceSlotInfo, ProcContext,
-                _, ExitCode, !CI, !.CLD),
+            generate_exit(model_det, ProcFrameSlots, TraceSlotInfo,
+                ProcContext, _, ExitCode, !CI, !.CLD),
             Code = EntryCode ++ TraceCallCode ++ TailRecLabelCode ++
                 BodyCode ++ ExitCode
         )
@@ -753,8 +758,8 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
             ),
             generate_goal(model_semi, Goal, BodyCode, !CI, !CLD),
             generate_entry(!.CI, model_semi, Goal, ResumePoint,
-                FrameInfo, EntryCode),
-            generate_exit(model_semi, FrameInfo, TraceSlotInfo,
+                ProcFrameSlots, EntryCode),
+            generate_exit(model_semi, ProcFrameSlots, TraceSlotInfo,
                 ProcContext, RestoreDeallocCode, ExitCode, !CI, !.CLD),
 
             reset_to_position(BeforeBody, !.CI, !:CLD),
@@ -783,8 +788,8 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
             remember_position(!.CLD, BeforeBody),
             generate_goal(model_semi, Goal, BodyCode, !CI, !CLD),
             generate_entry(!.CI, model_semi, Goal, ResumePoint,
-                FrameInfo, EntryCode),
-            generate_exit(model_semi, FrameInfo, TraceSlotInfo,
+                ProcFrameSlots, EntryCode),
+            generate_exit(model_semi, ProcFrameSlots, TraceSlotInfo,
                 ProcContext, RestoreDeallocCode, ExitCode, !CI, !.CLD),
             reset_to_position(BeforeBody, !.CI, !:CLD),
             generate_resume_point(ResumePoint, ResumeCode,
@@ -805,8 +810,8 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
             remember_position(!.CLD, BeforeBody),
             generate_goal(model_non, Goal, BodyCode, !CI, !CLD),
             generate_entry(!.CI, model_non, Goal, ResumePoint,
-                FrameInfo, EntryCode),
-            generate_exit(model_non, FrameInfo, TraceSlotInfo,
+                ProcFrameSlots, EntryCode),
+            generate_exit(model_non, ProcFrameSlots, TraceSlotInfo,
                 ProcContext, _, ExitCode, !CI, !.CLD),
 
             reset_to_position(BeforeBody, !.CI, !:CLD),
@@ -867,8 +872,8 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
             MaybeTraceCallLabel = no,
             generate_goal(model_non, Goal, BodyCode, !CI, !CLD),
             generate_entry(!.CI, model_non, Goal, ResumePoint,
-                FrameInfo, EntryCode),
-            generate_exit(model_non, FrameInfo, TraceSlotInfo,
+                ProcFrameSlots, EntryCode),
+            generate_exit(model_non, ProcFrameSlots, TraceSlotInfo,
                 ProcContext, _, ExitCode, !CI, !.CLD),
             Code = EntryCode ++ BodyCode ++ ExitCode
         )
@@ -917,9 +922,9 @@ generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel, TraceCallCode,
     % to fill in the succip slot is subsumed by the mkframe.
 
 :- pred generate_entry(code_info::in, code_model::in, hlds_goal::in,
-    resume_point_info::in, frame_info::out, llds_code::out) is det.
+    resume_point_info::in, proc_frame_slots::out, llds_code::out) is det.
 
-generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
+generate_entry(CI, CodeModel, Goal, OutsideResumePoint, ProcFrameSlots,
         EntryCode) :-
     get_stack_slots(CI, StackSlots),
     get_varset(CI, VarSet),
@@ -972,8 +977,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         AllocCode = singleton(
             llds_instr(mkframe(NondetFrameInfo, yes(OutsideResumeAddress)),
                 "Allocate stack frame")
-        ),
-        NondetPragma = no
+        )
     ;
         ( CodeModel = model_det
         ; CodeModel = model_semi
@@ -993,10 +997,9 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
             )
         else
             AllocCode = empty
-        ),
-        NondetPragma = no
+        )
     ),
-    FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma),
+    ProcFrameSlots = proc_frame_slots(TotalSlots, MaybeSuccipSlot),
     EndComment = singleton(
         llds_instr(comment("End of procedure prologue"), "")
     ),
@@ -1047,11 +1050,11 @@ maybe_round_frame_size(CI, CodeModel, NumSlots0) = NumSlots :-
     % of the epilogue are handled when traversing the pragma C code goal;
     % we need only #undef a macro defined by the procedure prologue.
 
-:- pred generate_exit(code_model::in, frame_info::in,
+:- pred generate_exit(code_model::in, proc_frame_slots::in,
     trace_slot_info::in, prog_context::in, llds_code::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
+generate_exit(CodeModel, ProcFrameSlots, TraceSlotInfo, ProcContext,
         RestoreDeallocCode, ExitCode, !CI, !.CLD) :-
     StartComment = singleton(
         llds_instr(comment("Start of procedure epilogue"), "")
@@ -1059,189 +1062,169 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
     EndComment = singleton(
         llds_instr(comment("End of procedure epilogue"), "")
     ),
-    FrameInfo = frame(TotalSlots, MaybeSuccipSlot, NondetPragma),
+    ProcFrameSlots = proc_frame_slots(TotalSlots, MaybeSuccipSlot),
+    get_instmap(!.CLD, InstMap),
+    ArgModes = get_arginfo(!.CI),
+    HeadVars = get_headvars(!.CI),
+    assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
+    ( if instmap_is_unreachable(InstMap) then
+        OutLvals = set.init,
+        FlushCode = empty
+    else
+        setup_return(Args, OutLvals, FlushCode, !.CI, !CLD)
+    ),
     (
-        NondetPragma = yes,
-        UndefStr = "#undef\tMR_ORDINARY_SLOTS\n",
-        UndefComponents = [foreign_proc_raw_code(cannot_branch_away,
-            proc_does_not_affect_liveness, live_lvals_info(set.init),
-            UndefStr)],
-        MD = proc_may_not_duplicate,
-        UndefCode = singleton(
-            llds_instr(foreign_proc_code([], UndefComponents,
-                proc_will_not_call_mercury, no, no, no, no, no, no, MD), "")
-        ),
-        RestoreDeallocCode = empty, % always empty for nondet code
-        ExitCode = StartComment ++ UndefCode ++ EndComment
+        MaybeSuccipSlot = yes(SuccipSlot),
+        RestoreSuccipCode = singleton(
+            llds_instr(assign(succip, lval(stackvar(SuccipSlot))),
+                "restore the success ip")
+        )
     ;
-        NondetPragma = no,
-        get_instmap(!.CLD, InstMap),
-        ArgModes = get_arginfo(!.CI),
-        HeadVars = get_headvars(!.CI),
-        assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
-        ( if instmap_is_unreachable(InstMap) then
-            OutLvals = set.init,
-            FlushCode = empty
-        else
-            setup_return(Args, OutLvals, FlushCode, !.CI, !CLD)
-        ),
+        MaybeSuccipSlot = no,
+        RestoreSuccipCode = empty
+    ),
+    ( if
+        ( TotalSlots = 0
+        ; CodeModel = model_non
+        )
+    then
+        DeallocCode = empty
+    else
+        DeallocCode = singleton(
+           llds_instr(decr_sp(TotalSlots), "Deallocate stack frame")
+        )
+    ),
+    ( if
+        TraceSlotInfo ^ slot_trail = yes(_),
+        CodeModel \= model_non
+    then
+        MaybeFromFull = TraceSlotInfo ^ slot_from_full,
         (
-            MaybeSuccipSlot = yes(SuccipSlot),
-            RestoreSuccipCode = singleton(
-                llds_instr(assign(succip, lval(stackvar(SuccipSlot))),
-                    "restore the success ip")
-            )
+            MaybeFromFull = yes(FromFullSlot),
+            % Generate code which prunes the ticket only if it was allocated,
+            % i.e. only if MR_trace_from_full was true on entry.
+            %
+            % Note that to avoid duplicating label names, we need to generate
+            % two different copies of this with different labels; this is
+            % needed for semidet code, which will get one copy in the
+            % success epilogue and one copy in the failure epilogue.
+
+            StackId = code_model_to_main_stack(CodeModel),
+            FromFullSlotLval =
+                llds.stack_slot_num_to_lval(StackId, FromFullSlot),
+            get_next_label(SkipLabel, !CI),
+            get_next_label(SkipLabelCopy, !CI),
+            PruneTraceTicketCode = from_list([
+                llds_instr(
+                    if_val(unop(logical_not, lval(FromFullSlotLval)),
+                    code_label(SkipLabel)), ""),
+                llds_instr(prune_ticket, "prune retry ticket"),
+                llds_instr(label(SkipLabel), "")
+            ]),
+            PruneTraceTicketCodeCopy = from_list([
+                llds_instr(
+                    if_val(unop(logical_not, lval(FromFullSlotLval)),
+                    code_label(SkipLabelCopy)), ""),
+                llds_instr(prune_ticket, "prune retry ticket"),
+                llds_instr(label(SkipLabelCopy), "")
+            ])
         ;
-            MaybeSuccipSlot = no,
-            RestoreSuccipCode = empty
-        ),
-        ( if
-            ( TotalSlots = 0
-            ; CodeModel = model_non
-            )
-        then
-            DeallocCode = empty
-        else
-            DeallocCode = singleton(
-               llds_instr(decr_sp(TotalSlots), "Deallocate stack frame")
-            )
-        ),
-        ( if
-            TraceSlotInfo ^ slot_trail = yes(_),
-            CodeModel \= model_non
-        then
-            MaybeFromFull = TraceSlotInfo ^ slot_from_full,
-            (
-                MaybeFromFull = yes(FromFullSlot),
-                % Generate code which prunes the ticket only if it was
-                % allocated, i.e. only if MR_trace_from_full was true on entry.
-                %
-                % Note that to avoid duplicating label names, we need to
-                % generate two different copies of this with different labels;
-                % this is needed for semidet code, which will get one copy
-                % in the success epilogue and one copy in the failure epilogue.
+            MaybeFromFull = no,
+            PruneTraceTicketCode = singleton(
+                llds_instr(prune_ticket, "prune retry ticket")
+            ),
+            PruneTraceTicketCodeCopy = PruneTraceTicketCode
+        )
+    else
+        PruneTraceTicketCode = empty,
+        PruneTraceTicketCodeCopy = empty
+    ),
 
-                StackId = code_model_to_main_stack(CodeModel),
-                FromFullSlotLval =
-                    llds.stack_slot_num_to_lval(StackId, FromFullSlot),
-                get_next_label(SkipLabel, !CI),
-                get_next_label(SkipLabelCopy, !CI),
-                PruneTraceTicketCode = from_list([
-                    llds_instr(
-                        if_val(unop(logical_not, lval(FromFullSlotLval)),
-                        code_label(SkipLabel)), ""),
-                    llds_instr(prune_ticket, "prune retry ticket"),
-                    llds_instr(label(SkipLabel), "")
-                ]),
-                PruneTraceTicketCodeCopy = from_list([
-                    llds_instr(
-                        if_val(unop(logical_not, lval(FromFullSlotLval)),
-                        code_label(SkipLabelCopy)), ""),
-                    llds_instr(prune_ticket, "prune retry ticket"),
-                    llds_instr(label(SkipLabelCopy), "")
-                ])
-            ;
-                MaybeFromFull = no,
-                PruneTraceTicketCode = singleton(
-                    llds_instr(prune_ticket, "prune retry ticket")
-                ),
-                PruneTraceTicketCodeCopy = PruneTraceTicketCode
-            )
-        else
-            PruneTraceTicketCode = empty,
-            PruneTraceTicketCodeCopy = empty
-        ),
+    RestoreDeallocCode = RestoreSuccipCode ++
+        PruneTraceTicketCode ++ DeallocCode,
+    RestoreDeallocCodeCopy = RestoreSuccipCode ++
+        PruneTraceTicketCodeCopy ++ DeallocCode,
 
-        RestoreDeallocCode = RestoreSuccipCode ++
-            PruneTraceTicketCode ++ DeallocCode,
-        RestoreDeallocCodeCopy = RestoreSuccipCode ++
-            PruneTraceTicketCodeCopy ++ DeallocCode,
-
-        get_maybe_trace_info(!.CI, MaybeTraceInfo),
+    get_maybe_trace_info(!.CI, MaybeTraceInfo),
+    (
+        MaybeTraceInfo = yes(TraceInfo),
+        % XXX A context that gives the end of the procedure definition
+        % would be better than CallContext.
+        generate_external_event_code(external_port_exit, TraceInfo,
+            ProcContext, MaybeExitExternalInfo, !CI, !.CLD, _CLDAfterExit),
         (
-            MaybeTraceInfo = yes(TraceInfo),
-            % XXX A context that gives the end of the procedure definition
-            % would be better than CallContext.
-            generate_external_event_code(external_port_exit, TraceInfo,
-                ProcContext, MaybeExitExternalInfo, !CI, !.CLD, _CLDAfterExit),
-            (
-                MaybeExitExternalInfo = yes(ExitExternalInfo),
-                ExitExternalInfo = external_event_info(_, TypeInfoDatas,
-                    TraceExitCode),
-                map.foldl(add_type_info_lvals, TypeInfoDatas,
-                    OutLvals, LiveLvals)
-            ;
-                MaybeExitExternalInfo = no,
-                LiveLvals = OutLvals,
-                TraceExitCode = empty
-            )
+            MaybeExitExternalInfo = yes(ExitExternalInfo),
+            ExitExternalInfo = external_event_info(_, TypeInfoDatas,
+                TraceExitCode),
+            map.foldl(add_type_info_lvals, TypeInfoDatas, OutLvals, LiveLvals)
+        ;
+            MaybeExitExternalInfo = no,
+            LiveLvals = OutLvals,
+            TraceExitCode = empty
+        )
+    ;
+        MaybeTraceInfo = no,
+        TraceExitCode = empty,
+        LiveLvals = OutLvals
+    ),
+
+    get_proc_info(!.CI, ProcInfo),
+    proc_info_get_maybe_special_return(ProcInfo, MaybeSpecialReturn),
+    (
+        CodeModel = model_det,
+        expect(unify(MaybeSpecialReturn, no), $module, $pred,
+            "det special_return"),
+        SuccessCode = from_list([
+            llds_instr(livevals(LiveLvals), ""),
+            llds_instr(goto(code_succip), "Return from procedure call")
+        ]),
+        AllSuccessCode = TraceExitCode ++ RestoreDeallocCodeCopy ++ SuccessCode
+    ;
+        CodeModel = model_semi,
+        expect(unify(MaybeSpecialReturn, no), $module, $pred,
+            "semi special_return"),
+        set.insert(reg(reg_r, 1), LiveLvals, SuccessLiveRegs),
+        SuccessCode = from_list([
+            llds_instr(assign(reg(reg_r, 1), const(llconst_true)),
+                "Succeed"),
+            llds_instr(livevals(SuccessLiveRegs), ""),
+            llds_instr(goto(code_succip), "Return from procedure call")
+        ]),
+        AllSuccessCode = TraceExitCode ++ RestoreDeallocCodeCopy ++ SuccessCode
+    ;
+        CodeModel = model_non,
+        (
+            MaybeTraceInfo = yes(TraceInfo2),
+            maybe_setup_redo_event(TraceInfo2, SetupRedoCode)
         ;
             MaybeTraceInfo = no,
-            TraceExitCode = empty,
-            LiveLvals = OutLvals
+            SetupRedoCode = empty
         ),
-
-        get_proc_info(!.CI, ProcInfo),
-        proc_info_get_maybe_special_return(ProcInfo, MaybeSpecialReturn),
         (
-            CodeModel = model_det,
-            expect(unify(MaybeSpecialReturn, no), $module, $pred,
-                "det special_return"),
+            MaybeSpecialReturn = yes(SpecialReturn),
+            SpecialReturn = generator_return(GeneratorLocnStr, DebugStr),
+            ReturnMacroName = "MR_tbl_mmos_return_answer",
+            ReturnCodeStr = "\t" ++ ReturnMacroName ++ "(" ++
+                DebugStr ++ ", " ++ GeneratorLocnStr ++ ");\n",
+            Component = foreign_proc_user_code(no,
+                proc_does_not_affect_liveness, ReturnCodeStr),
+            MD = proc_may_not_duplicate,
             SuccessCode = from_list([
                 llds_instr(livevals(LiveLvals), ""),
-                llds_instr(goto(code_succip), "Return from procedure call")
-            ]),
-            AllSuccessCode = TraceExitCode ++ RestoreDeallocCodeCopy ++
-                SuccessCode
+                llds_instr(foreign_proc_code([], [Component],
+                    proc_may_call_mercury, no, no, no, no, no, no, MD), "")
+            ])
         ;
-            CodeModel = model_semi,
-            expect(unify(MaybeSpecialReturn, no), $module, $pred,
-                "semi special_return"),
-            set.insert(reg(reg_r, 1), LiveLvals, SuccessLiveRegs),
+            MaybeSpecialReturn = no,
             SuccessCode = from_list([
-                llds_instr(assign(reg(reg_r, 1), const(llconst_true)),
-                    "Succeed"),
-                llds_instr(livevals(SuccessLiveRegs), ""),
-                llds_instr(goto(code_succip), "Return from procedure call")
-            ]),
-            AllSuccessCode = TraceExitCode ++ RestoreDeallocCodeCopy ++
-                SuccessCode
-        ;
-            CodeModel = model_non,
-            (
-                MaybeTraceInfo = yes(TraceInfo2),
-                maybe_setup_redo_event(TraceInfo2, SetupRedoCode)
-            ;
-                MaybeTraceInfo = no,
-                SetupRedoCode = empty
-            ),
-            (
-                MaybeSpecialReturn = yes(SpecialReturn),
-                SpecialReturn = generator_return(GeneratorLocnStr, DebugStr),
-                ReturnMacroName = "MR_tbl_mmos_return_answer",
-                ReturnCodeStr = "\t" ++ ReturnMacroName ++ "(" ++
-                    DebugStr ++ ", " ++ GeneratorLocnStr ++ ");\n",
-                Component = foreign_proc_user_code(no,
-                    proc_does_not_affect_liveness, ReturnCodeStr),
-                MD = proc_may_not_duplicate,
-                SuccessCode = from_list([
-                    llds_instr(livevals(LiveLvals), ""),
-                    llds_instr(foreign_proc_code([], [Component],
-                        proc_may_call_mercury, no, no, no, no, no, no, MD), "")
-                ])
-            ;
-                MaybeSpecialReturn = no,
-                SuccessCode = from_list([
-                    llds_instr(livevals(LiveLvals), ""),
-                    llds_instr(goto(do_succeed(no)),
-                        "Return from procedure call")
-                ])
-            ),
-            AllSuccessCode = SetupRedoCode ++ TraceExitCode ++
-                SuccessCode
+                llds_instr(livevals(LiveLvals), ""),
+                llds_instr(goto(do_succeed(no)),
+                    "Return from procedure call")
+            ])
         ),
-        ExitCode = StartComment ++ FlushCode ++ AllSuccessCode ++ EndComment
-    ).
+        AllSuccessCode = SetupRedoCode ++ TraceExitCode ++ SuccessCode
+    ),
+    ExitCode = StartComment ++ FlushCode ++ AllSuccessCode ++ EndComment.
 
 :- pred add_type_info_lvals(tvar::in, set(layout_locn)::in,
     set(lval)::in, set(lval)::out) is det.
@@ -1378,7 +1361,6 @@ push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
     ),
     % XXX if ModuleNameString ends with [0-9] and/or FullPredName starts with
     % [0-9] then ideally we should use "'.'" rather than just ".".
-    %
     PushMsg = pred_or_func_to_str(PredOrFunc) ++ " " ++
         sym_name_to_string(ModuleName) ++ "." ++
         FullPredName ++ "/" ++ int_to_string(Arity) ++ "-" ++

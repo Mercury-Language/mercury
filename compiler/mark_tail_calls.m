@@ -27,17 +27,19 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module libs.globals.
+:- import_module parse_tree.error_util.
 
-:- import_module io.
+:- import_module list.
 
 :- pred mark_tail_calls(goal_feature::in, module_info::in, pred_proc_id::in,
     pred_info::in, proc_info::in, proc_info::out) is det.
 
-:- pred warn_non_tail_calls(module_info::in, io::di, io::uo) is det.
+:- pred warn_non_tail_calls(module_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred warn_non_tail_calls_in_proc(globals::in, pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, io::di, io::uo) is det.
+:- pred warn_non_tail_calls_in_proc(pred_id::in, proc_id::in,
+    pred_info::in, proc_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -50,11 +52,9 @@
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module int.
-:- import_module list.
 :- import_module maybe.
 :- import_module require.
 :- import_module solutions.
@@ -347,16 +347,14 @@ match_output_args([MaybeOutputVar | MaybeOutputVars], [ArgVar | ArgVars]) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-warn_non_tail_calls(ModuleInfo, !IO) :-
+warn_non_tail_calls(ModuleInfo, !Specs) :-
     solutions.solutions(nontailcall_in_hlds(ModuleInfo), Warnings),
-    module_info_get_globals(ModuleInfo, Globals),
-    list.foldl(report_nontailcall_warning(Globals), Warnings, !IO).
+    list.foldl(report_nontailcall_warning, Warnings, !Specs).
 
-warn_non_tail_calls_in_proc(Globals, PredId, ProcId, PredInfo, ProcInfo,
-        !IO) :-
+warn_non_tail_calls_in_proc(PredId, ProcId, PredInfo, ProcInfo, !Specs) :-
     solutions.solutions(
         nontailcall_in_proc(PredId, ProcId, PredInfo, ProcInfo), Warnings),
-    list.foldl(report_nontailcall_warning(Globals), Warnings, !IO).
+    list.foldl(report_nontailcall_warning, Warnings, !Specs).
 
 :- type tailcall_warning
     --->    tailcall_warning(
@@ -407,10 +405,10 @@ nontailcall_in_proc(PredId, ProcId, PredInfo, ProcInfo, Warning) :-
     Warning = tailcall_warning(PredOrFunc, SymName, Arity, CallProcId,
         Context).
 
-:- pred report_nontailcall_warning(globals::in, tailcall_warning::in,
-    io::di, io::uo) is det.
+:- pred report_nontailcall_warning(tailcall_warning::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_nontailcall_warning(Globals, Warning, !IO) :-
+report_nontailcall_warning(Warning, !Specs) :-
     Warning = tailcall_warning(PredOrFunc, SymName, Arity, ProcId, Context),
     Name = unqualify_name(SymName),
     SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),
@@ -422,7 +420,7 @@ report_nontailcall_warning(Globals, Warning, !IO) :-
         words("warning: recursive call is not tail recursive."), nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_warning, phase_code_gen, [Msg]),
-    write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.mark_tail_calls.
