@@ -835,11 +835,7 @@ type_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
 
 inst_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
     ( if inst_status_defined_in_impl_section(Status) = yes then
-        ( if Status = inst_status(status_abstract_exported) then
-            Visibility = "abstract"
-        else
-            Visibility = "implementation"
-        )
+        Visibility = "implementation"
     else
         Visibility = "interface"
     ).
@@ -848,11 +844,7 @@ inst_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
 
 mode_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
     ( if mode_status_defined_in_impl_section(Status) = yes then
-        ( if Status = mode_status(status_abstract_exported) then
-            Visibility = "abstract"
-        else
-            Visibility = "implementation"
-        )
+        Visibility = "implementation"
     else
         Visibility = "interface"
     ).

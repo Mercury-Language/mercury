@@ -587,7 +587,7 @@ maybe_add_import(MQSection, ModuleName, Context, !Info) :-
     ;
         ( MQSection = mq_section_imported(import_locn_interface)
         ; MQSection = mq_section_imported(import_locn_implementation)
-        ; MQSection = mq_section_imported(import_locn_ancestor)
+        ; MQSection = mq_section_imported(import_locn_import_by_ancestor)
         ; MQSection = mq_section_abstract_imported
         )
     ).

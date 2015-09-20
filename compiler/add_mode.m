@@ -85,9 +85,13 @@ insts_add(VarSet, Name, Args, eqv_inst(Body), Context, InstStatus,
         % If abstract insts are implemented, this will need to change
         % to update the hlds_inst_defn to the non-abstract inst.
 
-        ( if InstStatus = inst_status(status_opt_imported) then
-            true
-        else
+        InstStatus = inst_status(OldStatus, NewInstModeStatus),
+        ReportDup =
+            should_report_duplicate_inst_or_mode(OldStatus, NewInstModeStatus),
+        (
+            ReportDup = no
+        ;
+            ReportDup = yes,
             map.lookup(!.UserInstTable, InstId, OrigInstDefn),
             OrigContext = OrigInstDefn ^ inst_context,
             Extras = [],
@@ -126,6 +130,37 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
         )
     ).
 
+:- func should_report_duplicate_inst_or_mode(old_import_status,
+    new_instmode_status) = bool.
+
+should_report_duplicate_inst_or_mode(OldStatus, NewInstModeStatus)
+        = ReportDup :-
+    ( if OldStatus = status_opt_imported then
+        OldReportDup = no
+    else
+        OldReportDup = yes
+    ),
+    (
+        NewInstModeStatus = instmode_defined_in_this_module(_),
+        NewReportDup = yes
+    ;
+        NewInstModeStatus = instmode_defined_in_other_module(InstModeImport),
+        (
+            ( InstModeImport = instmode_import_plain(_)
+            ; InstModeImport = instmode_import_abstract
+            ),
+            NewReportDup = yes
+        ;
+            InstModeImport = instmode_import_opt,
+            NewReportDup = no
+        )
+    ),
+    ( if OldReportDup = NewReportDup then
+        ReportDup = NewReportDup
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
 %-----------------------------------------------------------------------------%
 
 module_add_mode_defn(ItemModeDefnInfo, ModeStatus, InvalidMode, !ModuleInfo,
@@ -151,9 +186,13 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), Context, ModeStatus, InvalidMode,
     ( if mode_table_insert(ModeId, ModeDefn, !ModeTable) then
         true
     else
-        ( if ModeStatus = mode_status(status_opt_imported) then
-            true
-        else
+        ModeStatus = mode_status(OldStatus, NewInstModeStatus),
+        ReportDup =
+            should_report_duplicate_inst_or_mode(OldStatus, NewInstModeStatus),
+        (
+            ReportDup = no
+        ;
+            ReportDup = yes,
             mode_table_get_mode_defns(!.ModeTable, ModeDefns),
             map.lookup(ModeDefns, ModeId, OrigModeDefn),
             OrigModeDefn = hlds_mode_defn(_, _, _, OrigContext, _),

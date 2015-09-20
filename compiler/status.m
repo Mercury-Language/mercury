@@ -42,10 +42,10 @@
     --->    type_status(old_import_status).
 
 :- type inst_status
-    --->    inst_status(old_import_status).
+    --->    inst_status(old_import_status, new_instmode_status).
 
 :- type mode_status
-    --->    mode_status(old_import_status).
+    --->    mode_status(old_import_status, new_instmode_status).
 
 :- type pred_status
     --->    pred_status(old_import_status).
@@ -55,6 +55,51 @@
 
 :- type instance_status
     --->    instance_status(old_import_status).
+
+%-----------------------------------------------------------------------------%
+
+    % The type that should represent the import/export status of both
+    % insts and modes, once we transition away from using old_import_status.
+:- type new_instmode_status
+    --->    instmode_defined_in_this_module(
+                instmode_export
+            )
+    ;       instmode_defined_in_other_module(
+                instmode_import
+            ).
+
+:- type instmode_export
+    --->    instmode_export_nowhere
+    ;       instmode_export_only_submodules
+    ;       instmode_export_anywhere.
+
+:- type instmode_import
+    --->    instmode_import_plain(instmode_import_plain_locn)
+            % This inst or mode is defined in a module that was imported
+            % by either the current module, or one of its ancestors.
+            % The argument gives the location of the import.
+    ;       instmode_import_abstract
+            % This inst or mode is defined in a module (say module C)
+            % that was imported in the implementation section of another
+            % module (say module B) that was imported by this module (say
+            % module A).
+            % XXX STATUS These should never be needed, but there is a test
+            % case (just one, valid_seq/tc_map_lookup), that does create
+            % insts with such a status, though it does not seem to use them.
+            % NOTE We never store insts or modes in abstract form:
+            % we either store the full definition, or nothing.
+    ;       instmode_import_opt.
+            % This inst or mode was read in from either
+            % (a) the .opt or .trans_opt file of another module, or
+            % (b) an interface file that was read to make sense
+            % of a .opt or .trans_opt file.
+
+:- type instmode_import_plain_locn
+    --->    instmode_import_plain_imp
+    ;       instmode_import_plain_int
+    ;       instmode_import_plain_ancestors_priv_int_file.
+
+%-----------------------------------------------------------------------------%
 
     % The type `old_import_status' describes whether an entity (a predicate,
     % type, inst, or mode) is local to the current module, exported from
@@ -188,8 +233,6 @@
 %-----------------------------------------------------------------------------%
 
 :- pred type_make_status_abstract(type_status::in, type_status::out) is det.
-:- pred inst_make_status_abstract(inst_status::in, inst_status::out) is det.
-:- pred mode_make_status_abstract(mode_status::in, mode_status::out) is det.
 :- pred pred_make_status_abstract(pred_status::in, pred_status::out) is det.
 :- pred typeclass_make_status_abstract(typeclass_status::in,
     typeclass_status::out) is det.
@@ -200,10 +243,6 @@
     %
 :- pred type_combine_status(type_status::in, type_status::in,
     type_status::out) is det.
-:- pred inst_combine_status(inst_status::in, inst_status::in,
-    inst_status::out) is det.
-:- pred mode_combine_status(mode_status::in, mode_status::in,
-    mode_status::out) is det.
 :- pred pred_combine_status(pred_status::in, pred_status::in,
     pred_status::out) is det.
 :- pred typeclass_combine_status(typeclass_status::in, typeclass_status::in,
@@ -252,18 +291,101 @@
 
 %-----------------------------------------------------------------------------%
 
+:- pred valid_old_status_for_inst_or_mode(old_import_status::in,
+    old_import_status::out) is det.
+
+valid_old_status_for_inst_or_mode(OldStatus0, OldStatus) :-
+    (
+        ( OldStatus0 = status_local
+        ; OldStatus0 = status_opt_imported
+        ; OldStatus0 = status_abstract_imported
+        ; OldStatus0 = status_exported
+        ; OldStatus0 = status_exported_to_submodules
+        ),
+        OldStatus = OldStatus0
+    ;
+        OldStatus0 = status_imported(Locn),
+        (
+            ( Locn = import_locn_interface
+            ; Locn = import_locn_implementation
+            ; Locn = import_locn_ancestor_private_interface_proper
+            ),
+            OldStatus = OldStatus0
+        ;
+            Locn = import_locn_import_by_ancestor,
+            unexpected($module, $pred, "import_locn_import_by_ancestor")
+        )
+    ;
+        OldStatus0 = status_pseudo_imported,
+        unexpected($module, $pred, "status_pseudo_imported")
+    ;
+        OldStatus0 = status_pseudo_exported,
+        unexpected($module, $pred, "status_pseudo_exported")
+    ;
+        OldStatus0 = status_opt_exported,
+        unexpected($module, $pred, "status_opt_exported")
+    ;
+        OldStatus0 = status_abstract_exported,
+        unexpected($module, $pred, "status_abstract_exported")
+    ;
+        OldStatus0 = status_external(_),
+        unexpected($module, $pred, "status_external")
+    ).
+
+%-----------------------------------------------------------------------------%
+
 type_status_is_exported(type_status(OldStatus)) =
     old_status_is_exported(OldStatus).
-inst_status_is_exported(inst_status(OldStatus)) =
-    old_status_is_exported(OldStatus).
-mode_status_is_exported(mode_status(OldStatus)) =
-    old_status_is_exported(OldStatus).
+
+inst_status_is_exported(InstStatus) = IsExported :-
+    InstStatus = inst_status(OldStatus0, NewInstModeStatus),
+    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
+    OldIsExported = old_status_is_exported(OldStatus),
+    NewIsExported = instmode_status_is_exported(NewInstModeStatus),
+    ( if OldIsExported = NewIsExported then
+        IsExported = NewIsExported
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
+mode_status_is_exported(ModeStatus) = IsExported :-
+    ModeStatus = mode_status(OldStatus0, NewInstModeStatus),
+    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
+    OldIsExported = old_status_is_exported(OldStatus),
+    NewIsExported = instmode_status_is_exported(NewInstModeStatus),
+    ( if OldIsExported = NewIsExported then
+        IsExported = NewIsExported
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
 pred_status_is_exported(pred_status(OldStatus)) =
     old_status_is_exported(OldStatus).
 typeclass_status_is_exported(typeclass_status(OldStatus)) =
     old_status_is_exported(OldStatus).
 instance_status_is_exported(instance_status(OldStatus)) =
     old_status_is_exported(OldStatus).
+
+:- func instmode_status_is_exported(new_instmode_status) = bool.
+
+instmode_status_is_exported(NewInstModeStatus) = NewIsExported :-
+    (
+        NewInstModeStatus = instmode_defined_in_this_module(InstModeExport),
+        (
+            ( InstModeExport = instmode_export_anywhere
+            ; InstModeExport = instmode_export_only_submodules
+            ),
+            NewIsExported = yes
+        ;
+            InstModeExport = instmode_export_nowhere,
+            NewIsExported = no
+        )
+    ;
+        NewInstModeStatus = instmode_defined_in_other_module(_InstModeImport),
+        NewIsExported = no
+    ).
+
+%-----------------------------------------------------------------------------%
 
 old_status_is_exported(status_imported(_)) =             no.
 old_status_is_exported(status_external(_)) =             no.
@@ -281,10 +403,31 @@ old_status_is_exported(status_local) =                   no.
 
 type_status_is_exported_to_non_submodules(type_status(Status)) =
     old_status_is_exported_to_non_submodules(Status).
-inst_status_is_exported_to_non_submodules(inst_status(Status)) =
-    old_status_is_exported_to_non_submodules(Status).
-mode_status_is_exported_to_non_submodules(mode_status(Status)) =
-    old_status_is_exported_to_non_submodules(Status).
+
+inst_status_is_exported_to_non_submodules(InstStatus) = IsExported :-
+    InstStatus = inst_status(OldStatus0, NewInstModeStatus),
+    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
+    OldIsExported = old_status_is_exported_to_non_submodules(OldStatus),
+    NewIsExported =
+        instmode_status_is_exported_to_non_submodules(NewInstModeStatus),
+    ( if OldIsExported = NewIsExported then
+        IsExported = NewIsExported
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
+mode_status_is_exported_to_non_submodules(ModeStatus) = IsExported :-
+    ModeStatus = mode_status(OldStatus0, NewInstModeStatus),
+    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
+    OldIsExported = old_status_is_exported_to_non_submodules(OldStatus),
+    NewIsExported =
+        instmode_status_is_exported_to_non_submodules(NewInstModeStatus),
+    ( if OldIsExported = NewIsExported then
+        IsExported = NewIsExported
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
 pred_status_is_exported_to_non_submodules(pred_status(Status)) =
     old_status_is_exported_to_non_submodules(Status).
 typeclass_status_is_exported_to_non_submodules(typeclass_status(Status)) =
@@ -304,14 +447,66 @@ old_status_is_exported_to_non_submodules(Status) =
         no
     ).
 
+:- func instmode_status_is_exported_to_non_submodules(new_instmode_status)
+    = bool.
+
+instmode_status_is_exported_to_non_submodules(NewInstModeStatus)
+        = NewIsExported :-
+    (
+        NewInstModeStatus = instmode_defined_in_this_module(InstModeExport),
+        (
+            InstModeExport = instmode_export_anywhere,
+            NewIsExported = yes
+        ;
+            ( InstModeExport = instmode_export_nowhere
+            ; InstModeExport = instmode_export_only_submodules
+            ),
+            NewIsExported = no
+        )
+    ;
+        NewInstModeStatus = instmode_defined_in_other_module(_InstModeImport),
+        NewIsExported = no
+    ).
+
 %-----------------------------------------------------------------------------%
 
 type_status_is_imported(type_status(OldStatus)) =
     old_status_is_imported(OldStatus).
-inst_status_is_imported(inst_status(OldStatus)) =
-    old_status_is_imported(OldStatus).
-mode_status_is_imported(mode_status(OldStatus)) =
-    old_status_is_imported(OldStatus).
+
+inst_status_is_imported(InstStatus) = IsImported :-
+    InstStatus = inst_status(OldStatus0, InstModeStatus),
+    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
+    OldIsImported = old_status_is_imported(OldStatus),
+    (
+        InstModeStatus = instmode_defined_in_this_module(_InstModeExport),
+        NewIsImported = no
+    ;
+        InstModeStatus = instmode_defined_in_other_module(_InstModeImport),
+        NewIsImported = yes
+    ),
+    ( if OldIsImported = NewIsImported then
+        IsImported = NewIsImported
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
+mode_status_is_imported(ModeStatus) = IsImported :-
+    ModeStatus = mode_status(OldStatus0, InstModeStatus),
+    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
+    OldIsImported = old_status_is_imported(OldStatus),
+    (
+        InstModeStatus = instmode_defined_in_this_module(_InstModeExport),
+        NewIsImported = no
+    ;
+        InstModeStatus = instmode_defined_in_other_module(_InstModeImport),
+        NewIsImported = yes
+    ),
+    ( if OldIsImported = NewIsImported then
+        IsImported = NewIsImported
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
 pred_status_is_imported(pred_status(OldStatus)) =
     old_status_is_imported(OldStatus).
 typeclass_status_is_imported(typeclass_status(OldStatus)) =
@@ -328,10 +523,41 @@ old_status_is_imported(Status) =
 
 type_status_defined_in_this_module(type_status(OldStatus)) =
     old_status_defined_in_this_module(OldStatus).
-inst_status_defined_in_this_module(inst_status(OldStatus)) =
-    old_status_defined_in_this_module(OldStatus).
-mode_status_defined_in_this_module(mode_status(OldStatus)) =
-    old_status_defined_in_this_module(OldStatus).
+
+inst_status_defined_in_this_module(InstStatus) = IsDefnThisModule :-
+    InstStatus = inst_status(OldStatus0, NewInstModeStatus),
+    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
+    OldIsDefnThisModule = old_status_defined_in_this_module(OldStatus),
+    (
+        NewInstModeStatus = instmode_defined_in_this_module(_InstExport),
+        NewIsDefnThisModule = yes
+    ;
+        NewInstModeStatus = instmode_defined_in_other_module(_InstImport),
+        NewIsDefnThisModule = no
+    ),
+    ( if OldIsDefnThisModule = NewIsDefnThisModule then
+        IsDefnThisModule = NewIsDefnThisModule
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
+mode_status_defined_in_this_module(ModeStatus) = IsDefnThisModule :-
+    ModeStatus = mode_status(OldStatus0, NewInstModeStatus),
+    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
+    OldIsDefnThisModule = old_status_defined_in_this_module(OldStatus),
+    (
+        NewInstModeStatus = instmode_defined_in_this_module(_InstExport),
+        NewIsDefnThisModule = yes
+    ;
+        NewInstModeStatus = instmode_defined_in_other_module(_InstImport),
+        NewIsDefnThisModule = no
+    ),
+    ( if OldIsDefnThisModule = NewIsDefnThisModule then
+        IsDefnThisModule = NewIsDefnThisModule
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
 pred_status_defined_in_this_module(pred_status(OldStatus)) =
     old_status_defined_in_this_module(OldStatus).
 typeclass_status_defined_in_this_module(typeclass_status(OldStatus)) =
@@ -357,10 +583,31 @@ old_status_defined_in_this_module(status_local) =                   yes.
 
 type_status_defined_in_impl_section(type_status(OldStatus)) =
     old_status_defined_in_impl_section(OldStatus).
-inst_status_defined_in_impl_section(inst_status(OldStatus)) =
-    old_status_defined_in_impl_section(OldStatus).
-mode_status_defined_in_impl_section(mode_status(OldStatus)) =
-    old_status_defined_in_impl_section(OldStatus).
+
+inst_status_defined_in_impl_section(InstStatus) = IsDefnImplSection :-
+    InstStatus = inst_status(OldStatus0, NewInstModeStatus),
+    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
+    OldIsDefnImplSection = old_status_defined_in_impl_section(OldStatus),
+    NewIsDefnImplSection =
+        instmode_status_defined_in_impl_section(NewInstModeStatus),
+    ( if OldIsDefnImplSection = NewIsDefnImplSection then
+        IsDefnImplSection = NewIsDefnImplSection
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
+mode_status_defined_in_impl_section(ModeStatus) = IsDefnImplSection :-
+    ModeStatus = mode_status(OldStatus0, NewInstModeStatus),
+    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
+    OldIsDefnImplSection = old_status_defined_in_impl_section(OldStatus),
+    NewIsDefnImplSection =
+        instmode_status_defined_in_impl_section(NewInstModeStatus),
+    ( if OldIsDefnImplSection = NewIsDefnImplSection then
+        IsDefnImplSection = NewIsDefnImplSection
+    else
+        unexpected($module, $pred, "mismatch")
+    ).
+
 pred_status_defined_in_impl_section(pred_status(OldStatus)) =
     old_status_defined_in_impl_section(OldStatus).
 typeclass_status_defined_in_impl_section(typeclass_status(OldStatus)) =
@@ -389,17 +636,33 @@ old_status_defined_in_impl_section(status_imported(ImportLocn)) =
 % XXX Returning "yes" for import_locn_interface seems wrong.
 import_locn_defined_in_impl_section(import_locn_implementation) = yes.
 import_locn_defined_in_impl_section(import_locn_interface) = yes.
-import_locn_defined_in_impl_section(import_locn_ancestor) = yes.
+import_locn_defined_in_impl_section(import_locn_import_by_ancestor) = yes.
 import_locn_defined_in_impl_section(
     import_locn_ancestor_private_interface_proper) = yes.
+
+:- func instmode_status_defined_in_impl_section(new_instmode_status) = bool.
+
+instmode_status_defined_in_impl_section(NewInstModeStatus)
+        = NewIsDefnImplSection :-
+    (
+        NewInstModeStatus = instmode_defined_in_this_module(InstModeExport),
+        (
+            ( InstModeExport = instmode_export_nowhere
+            ; InstModeExport = instmode_export_only_submodules
+            ),
+            NewIsDefnImplSection = yes
+        ;
+            InstModeExport = instmode_export_anywhere,
+            NewIsDefnImplSection = no
+        )
+    ;
+        NewInstModeStatus = instmode_defined_in_other_module(_InstModeImport),
+        NewIsDefnImplSection = no
+    ).
 
 %-----------------------------------------------------------------------------%
 
 type_make_status_abstract(type_status(Status), type_status(AbstractStatus)) :-
-    old_make_status_abstract(Status, AbstractStatus).
-inst_make_status_abstract(inst_status(Status), inst_status(AbstractStatus)) :-
-    old_make_status_abstract(Status, AbstractStatus).
-mode_make_status_abstract(mode_status(Status), mode_status(AbstractStatus)) :-
     old_make_status_abstract(Status, AbstractStatus).
 pred_make_status_abstract(pred_status(Status), pred_status(AbstractStatus)) :-
     old_make_status_abstract(Status, AbstractStatus).
@@ -426,12 +689,6 @@ old_make_status_abstract(Status, AbstractStatus) :-
 
 type_combine_status(type_status(StatusA), type_status(StatusB),
         type_status(Status)) :-
-    old_combine_status(StatusA, StatusB, Status).
-inst_combine_status(inst_status(StatusA), inst_status(StatusB),
-        inst_status(Status)) :-
-    old_combine_status(StatusA, StatusB, Status).
-mode_combine_status(mode_status(StatusA), mode_status(StatusB),
-        mode_status(Status)) :-
     old_combine_status(StatusA, StatusB, Status).
 pred_combine_status(pred_status(StatusA), pred_status(StatusB),
         pred_status(Status)) :-
@@ -461,7 +718,7 @@ combine_status_2(status_imported(ImportLocn), Status2, Status) :-
     (
         ( ImportLocn = import_locn_implementation
         ; ImportLocn = import_locn_interface
-        ; ImportLocn = import_locn_ancestor
+        ; ImportLocn = import_locn_import_by_ancestor
         ),
         combine_status_imported_non_private(Status2, Status)
     ;
@@ -548,30 +805,79 @@ item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus) :-
         OldImportStatus),
     TypeStatus = type_status(OldImportStatus).
 
-item_mercury_status_to_inst_status(ItemMercuryStatus, TypeStatus) :-
+item_mercury_status_to_inst_status(ItemMercuryStatus, InstStatus) :-
     item_mercury_status_to_old_import_status(ItemMercuryStatus,
-        OldImportStatus),
-    TypeStatus = inst_status(OldImportStatus).
+        OldImportStatus0),
+    valid_old_status_for_inst_or_mode(OldImportStatus0, OldImportStatus),
+    item_mercury_status_to_instmode_status(ItemMercuryStatus, InstModeStatus),
+    InstStatus = inst_status(OldImportStatus, InstModeStatus).
 
-item_mercury_status_to_mode_status(ItemMercuryStatus, TypeStatus) :-
+item_mercury_status_to_mode_status(ItemMercuryStatus, ModeStatus) :-
     item_mercury_status_to_old_import_status(ItemMercuryStatus,
-        OldImportStatus),
-    TypeStatus = mode_status(OldImportStatus).
+        OldImportStatus0),
+    valid_old_status_for_inst_or_mode(OldImportStatus0, OldImportStatus),
+    item_mercury_status_to_instmode_status(ItemMercuryStatus, InstModeStatus),
+    ModeStatus = mode_status(OldImportStatus, InstModeStatus).
 
-item_mercury_status_to_typeclass_status(ItemMercuryStatus, TypeStatus) :-
+item_mercury_status_to_typeclass_status(ItemMercuryStatus, TypeClassStatus) :-
     item_mercury_status_to_old_import_status(ItemMercuryStatus,
         OldImportStatus),
-    TypeStatus = typeclass_status(OldImportStatus).
+    TypeClassStatus = typeclass_status(OldImportStatus).
 
-item_mercury_status_to_instance_status(ItemMercuryStatus, TypeStatus) :-
+item_mercury_status_to_instance_status(ItemMercuryStatus, InstanceStatus) :-
     item_mercury_status_to_old_import_status(ItemMercuryStatus,
         OldImportStatus),
-    TypeStatus = instance_status(OldImportStatus).
+    InstanceStatus = instance_status(OldImportStatus).
 
-item_mercury_status_to_pred_status(ItemMercuryStatus, TypeStatus) :-
+item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus) :-
     item_mercury_status_to_old_import_status(ItemMercuryStatus,
         OldImportStatus),
-    TypeStatus = pred_status(OldImportStatus).
+    PredStatus = pred_status(OldImportStatus).
+
+:- pred item_mercury_status_to_instmode_status(item_mercury_status::in,
+    new_instmode_status::out) is det.
+
+item_mercury_status_to_instmode_status(ItemMercuryStatus, InstModeStatus) :-
+    (
+        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
+        (
+            ItemExport = item_export_nowhere,
+            InstExport = instmode_export_nowhere
+        ;
+            ItemExport = item_export_only_submodules,
+            InstExport = instmode_export_only_submodules
+        ;
+            ItemExport = item_export_anywhere,
+            InstExport = instmode_export_anywhere
+        ),
+        InstModeStatus = instmode_defined_in_this_module(InstExport)
+    ;
+        ItemMercuryStatus = item_defined_in_other_module(ItemImport),
+        (
+            ItemImport = item_import_int_concrete(ImportLocn),
+            (
+                ImportLocn = import_locn_implementation,
+                InstImportLocn = instmode_import_plain_imp
+            ;
+                ImportLocn = import_locn_interface,
+                InstImportLocn = instmode_import_plain_int
+            ;
+                ImportLocn = import_locn_import_by_ancestor,
+                unexpected($module, $pred, "import_locn_import_by_ancestor")
+            ;
+                ImportLocn = import_locn_ancestor_private_interface_proper,
+                InstImportLocn = instmode_import_plain_ancestors_priv_int_file
+            ),
+            InstImport = instmode_import_plain(InstImportLocn)
+        ;
+            ItemImport = item_import_int_abstract,
+            InstImport = instmode_import_abstract
+        ;
+            ItemImport = item_import_opt_int,
+            InstImport = instmode_import_opt
+        ),
+        InstModeStatus = instmode_defined_in_other_module(InstImport)
+    ).
 
 :- pred item_mercury_status_to_old_import_status(item_mercury_status::in,
     old_import_status::out) is det.

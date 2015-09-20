@@ -507,7 +507,7 @@ add_item_avail_pass_1(ItemMercuryStatus, Avail, !ModuleInfo) :-
             ;
                 ( ImportLocn = import_locn_interface
                 ; ImportLocn = import_locn_implementation
-                ; ImportLocn = import_locn_ancestor
+                ; ImportLocn = import_locn_import_by_ancestor
                 ),
                 module_add_indirectly_imported_module_name(ModuleName,
                     !ModuleInfo)

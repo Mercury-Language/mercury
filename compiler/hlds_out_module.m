@@ -715,7 +715,7 @@ write_user_inst(Indent, InstId - InstDefn, !IO) :-
     write_indent(Indent, !IO),
     io.format("\n:- inst %s", [s(sym_name_to_string(InstName))], !IO),
     InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
-        _MaybeMatchingTypeCtors, _Context, _Status),
+        _MaybeMatchingTypeCtors, _Context, Status),
     (
         InstParams = []
     ;
@@ -733,7 +733,10 @@ write_user_inst(Indent, InstId - InstDefn, !IO) :-
         write_indent(Indent, !IO),
         mercury_output_inst(output_debug, InstVarSet, EqvInst, !IO),
         io.write_string("\n", !IO)
-    ).
+    ),
+    write_indent(Indent, !IO),
+    StatusStr = inst_import_status_to_string(Status),
+    io.format("%% status %s\n", [s(StatusStr)], !IO).
 
 :- pred write_inst_params(inst_var::in, list(inst_var)::in, inst_varset::in,
     io::di, io::uo) is det.
@@ -922,7 +925,7 @@ write_mode_table_entry(Indent, ModeId, ModeDefn, !IO) :-
     write_indent(Indent, !IO),
     io.format("\n:- mode %s", [s(sym_name_to_string(ModeName))], !IO),
     ModeDefn = hlds_mode_defn(InstVarSet, InstParams, ModeBody, _Context,
-        _ModeStatus),
+        Status),
     (
         InstParams = []
     ;
@@ -935,7 +938,10 @@ write_mode_table_entry(Indent, ModeId, ModeDefn, !IO) :-
     io.write_string(":\n", !IO),
     write_indent(Indent, !IO),
     mercury_output_mode(output_debug, InstVarSet, EqvMode, !IO),
-    io.write_string("\n", !IO).
+    io.write_string("\n", !IO),
+    write_indent(Indent, !IO),
+    StatusStr = mode_import_status_to_string(Status),
+    io.format("%% status %s\n", [s(StatusStr)], !IO).
 
 %-----------------------------------------------------------------------------%
 %

@@ -270,7 +270,7 @@
     ;       import_locn_interface
             % The item is from a module imported in the interface.
 
-    ;       import_locn_ancestor
+    ;       import_locn_import_by_ancestor
             % The item is from a module imported by an ancestor.
 
     ;       import_locn_ancestor_private_interface_proper.

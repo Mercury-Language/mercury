@@ -938,16 +938,57 @@ var_mode_to_string(VarSet, InstVarSet, VarNamePrint, Var - Mode) =
 
 type_import_status_to_string(type_status(OldImportStatus)) =
     old_import_status_to_string(OldImportStatus).
-inst_import_status_to_string(inst_status(OldImportStatus)) =
-    old_import_status_to_string(OldImportStatus).
-mode_import_status_to_string(mode_status(OldImportStatus)) =
-    old_import_status_to_string(OldImportStatus).
+inst_import_status_to_string(inst_status(OldImportStatus, NewInstModeStatus)) =
+    instmode_status_to_string(NewInstModeStatus) ++
+        " (" ++ old_import_status_to_string(OldImportStatus) ++ ")".
+mode_import_status_to_string(mode_status(OldImportStatus, NewInstModeStatus)) =
+    instmode_status_to_string(NewInstModeStatus) ++
+        " (" ++ old_import_status_to_string(OldImportStatus) ++ ")".
 typeclass_import_status_to_string(typeclass_status(OldImportStatus)) =
     old_import_status_to_string(OldImportStatus).
 instance_import_status_to_string(instance_status(OldImportStatus)) =
     old_import_status_to_string(OldImportStatus).
 pred_import_status_to_string(pred_status(OldImportStatus)) =
     old_import_status_to_string(OldImportStatus).
+
+:- func instmode_status_to_string(new_instmode_status) = string.
+
+instmode_status_to_string(InstModeStatus) = Str :-
+    (
+        InstModeStatus = instmode_defined_in_this_module(InstModeExport),
+        (
+            InstModeExport = instmode_export_nowhere,
+            Str = "this_module(export_nowhere)"
+        ;
+            InstModeExport = instmode_export_only_submodules,
+            Str = "this_module(export_only_submodules)"
+        ;
+            InstModeExport = instmode_export_anywhere,
+            Str = "this_module(export_anywhere)"
+        )
+    ;
+        InstModeStatus = instmode_defined_in_other_module(InstModeImport),
+        (
+            InstModeImport = instmode_import_plain(InstModeImportLocn),
+            (
+                InstModeImportLocn = instmode_import_plain_imp,
+                Str = "other_module(import_plain(imp))"
+            ;
+                InstModeImportLocn = instmode_import_plain_int,
+                Str = "other_module(import_plain(int))"
+            ;
+                InstModeImportLocn =
+                    instmode_import_plain_ancestors_priv_int_file,
+                Str = "other_module(import_plain(ancestors_priv_int_file))"
+            )
+        ;
+            InstModeImport = instmode_import_abstract,
+            Str = "other_module(import_abstract)"
+        ;
+            InstModeImport = instmode_import_opt,
+            Str = "other_module(import_opt)"
+        )
+    ).
 
 :- func old_import_status_to_string(old_import_status) = string.
 
@@ -968,7 +1009,7 @@ old_import_status_to_string(status_imported(import_locn_implementation)) =
 old_import_status_to_string(status_imported(
         import_locn_ancestor_private_interface_proper)) =
     "imported from an ancestor's private interface".
-old_import_status_to_string(status_imported(import_locn_ancestor)) =
+old_import_status_to_string(status_imported(import_locn_import_by_ancestor)) =
     "imported by an ancestor".
 old_import_status_to_string(status_external(Status)) =
     "external (and " ++ old_import_status_to_string(Status) ++ ")".
