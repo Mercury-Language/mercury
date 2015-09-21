@@ -523,7 +523,6 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
             ( Target = target_c
-            ; Target = target_il
             ; Target = target_csharp
             ; Target = target_java
             ),

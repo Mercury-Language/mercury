@@ -144,7 +144,6 @@
     [can_pass_as_mercury_type]).
 
     % Placeholders only.
-:- pragma foreign_type(il, future(T), "class [mscorlib]System.Object").
 :- pragma foreign_type("Erlang", future(T), "").
 :- pragma foreign_type("C#", future(T), "object").
 :- pragma foreign_type("Java", future(T), "java.lang.Object").
@@ -272,7 +271,6 @@ INIT mercury_sys_init_par_builtin_modules
     [can_pass_as_mercury_type]).
 
     % Placeholders only.
-:- pragma foreign_type(il, loop_control, "class [mscorlib]System.Object").
 :- pragma foreign_type("Erlang", loop_control, "").
 :- pragma foreign_type("C#", loop_control, "object").
 :- pragma foreign_type("Java", loop_control, "java.lang.Object").

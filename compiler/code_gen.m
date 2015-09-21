@@ -306,7 +306,6 @@ generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
         ;
             ( Lang = lang_java
             ; Lang = lang_csharp
-            ; Lang = lang_il
             ; Lang = lang_erlang
             ),
             unexpected($module, $pred, "foreign code other than C")

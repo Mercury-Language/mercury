@@ -23,9 +23,6 @@ TYPECLASS_PROGS = \
 
 NO_SPECIAL_PREDS_PROGS =
 
-IL_PROGS = \
-	foreign_type_spec
-
 C_PROGS =
 
 C_INTERFACE_PROGS = \
@@ -98,10 +95,4 @@ $(dates_subdir)intermod_user_equality_nested2.date: \
 
 include $(TESTS_DIR)/valid/Mmake.valid.common
 
-clean_local: clean_valid_seq
-
-clean_valid_seq:
-	rm -f \
-		foreign_type_spec__csharp_code.cs \
-		foreign_type_spec.foreign_type__csharp_code.cs
-
+clean_local:

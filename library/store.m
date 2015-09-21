@@ -259,8 +259,6 @@
 :- type store(S).
 :- pragma foreign_type("C", store(S), "MR_Word", [can_pass_as_mercury_type])
     where equality is store_equal, comparison is store_compare.
-:- pragma foreign_type("IL", store(S), "int32", [can_pass_as_mercury_type])
-    where equality is store_equal, comparison is store_compare.
 :- pragma foreign_type("C#", store(S), "int", [can_pass_as_mercury_type])
     where equality is store_equal, comparison is store_compare.
 :- pragma foreign_type("Java", store(S), "int", [can_pass_as_mercury_type])

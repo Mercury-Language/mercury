@@ -1587,13 +1587,9 @@ no_clauses(PredName) :-
     imp,
     [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "").
-:- pragma foreign_proc("IL",
-    imp,
-    [will_not_call_mercury, thread_safe, max_stack_size(0)],
-"").
 :- pragma foreign_proc("C#",
     imp,
-    [will_not_call_mercury, thread_safe, max_stack_size(0)],
+    [will_not_call_mercury, thread_safe],
 "").
 :- pragma foreign_proc("Java",
     imp,
@@ -1608,10 +1604,6 @@ no_clauses(PredName) :-
     semip,
     [will_not_call_mercury, thread_safe, promise_semipure,
         will_not_modify_trail],
-"").
-:- pragma foreign_proc("IL",
-    semip,
-    [will_not_call_mercury, thread_safe, promise_semipure, max_stack_size(0)],
 "").
 :- pragma foreign_proc("C#",
     semip,

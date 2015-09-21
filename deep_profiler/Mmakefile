@@ -90,14 +90,14 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
 MLOBJS =
 endif
 
 #-----------------------------------------------------------------------------#
 
 # The deep profiler contains quite a lot of C code for which there are
-# currently not C#, IL, Java or Erlang implementations.  We need to pass
+# currently not C#, Java or Erlang implementations.  We need to pass
 # `--allow-stubs' in order to compile it.
 #
 ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")

@@ -61,9 +61,6 @@ TYPECLASS_PROGS = \
 NO_SPECIAL_PREDS_PROGS = \
 	unify_typeinfo_bug
 
-IL_PROGS = \
-	csharp_hello
-
 C_PROGS = \
 	bug109
 

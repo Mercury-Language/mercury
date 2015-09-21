@@ -912,7 +912,6 @@ lookup_mmc_maybe_module_options(Globals, Vars, MaybeModuleName, Result, !IO) :-
     ;       clang_flags
     ;       msvc_flags
     ;       java_flags
-    ;       ilasm_flags
     ;       csharp_flags
     ;       erlang_flags
     ;       ml_objs
@@ -941,7 +940,7 @@ options_variable_types =
     % should override settings of these in the environment.
     [grade_flags, linkage, mercury_linkage, lib_grades, lib_linkages,
     stdlib_dir, config_dir, mmc_flags, c_flags, gcc_flags, clang_flags,
-    msvc_flags, java_flags, ilasm_flags,
+    msvc_flags, java_flags,
     csharp_flags, erlang_flags,
     ml_objs, lib_dirs, ld_flags, ld_libflags,
     libraries, ml_libs, c2init_args, install_prefix].
@@ -955,7 +954,6 @@ options_variable_name(gcc_flags) = "GCC_FLAGS".
 options_variable_name(clang_flags) = "CLANG_FLAGS".
 options_variable_name(msvc_flags) = "MSVC_FLAGS".
 options_variable_name(java_flags) = "JAVACFLAGS".
-options_variable_name(ilasm_flags) = "ILASMFLAGS".
 options_variable_name(csharp_flags) = "CSCFLAGS".
 options_variable_name(erlang_flags) = "ERLANG_FLAGS".
 options_variable_name(ml_objs) = "MLOBJS".
@@ -982,7 +980,6 @@ options_variable_type_is_target_specific(gcc_flags) = yes.
 options_variable_type_is_target_specific(clang_flags) = yes.
 options_variable_type_is_target_specific(msvc_flags) = yes.
 options_variable_type_is_target_specific(java_flags) = yes.
-options_variable_type_is_target_specific(ilasm_flags) = yes.
 options_variable_type_is_target_specific(csharp_flags) = yes.
 options_variable_type_is_target_specific(erlang_flags) = yes.
 options_variable_type_is_target_specific(ml_objs) = yes.
@@ -1044,7 +1041,6 @@ mmc_option_type(gcc_flags) = option([], "--gcc-flag").
 mmc_option_type(clang_flags) = option([], "--clang-flag").
 mmc_option_type(msvc_flags) = option([], "--msvc-flag").
 mmc_option_type(java_flags) = option([], "--java-flag").
-mmc_option_type(ilasm_flags) = option([], "--ilasm-flag").
 mmc_option_type(csharp_flags) = option([], "--csharp-flag").
 mmc_option_type(erlang_flags) = option([], "--erlang-flag").
 mmc_option_type(ml_objs) = option([], "--link-object").

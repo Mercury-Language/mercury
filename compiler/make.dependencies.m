@@ -418,12 +418,6 @@ target_dependencies(Globals, module_target_c_header(_)) =
         target_dependencies(Globals, module_target_c_code).
 target_dependencies(Globals, module_target_c_code) =
         compiled_code_dependencies(Globals).
-target_dependencies(Globals, module_target_il_code) =
-        compiled_code_dependencies(Globals).
-target_dependencies(_, module_target_il_asm) =
-    combine_deps_list([
-        module_target_il_code `of` self
-    ]).
 target_dependencies(Globals, module_target_csharp_code) =
         compiled_code_dependencies(Globals).
 target_dependencies(Globals, module_target_java_code) =
@@ -483,18 +477,6 @@ target_dependencies(_, module_target_analysis_registry) =
         module_target_intermodule_interface `of` direct_imports,
         module_target_intermodule_interface `of` indirect_imports,
         module_target_intermodule_interface `of` intermod_imports
-    ]).
-target_dependencies(_, module_target_foreign_il_asm(_)) =
-    combine_deps_list([
-        module_target_il_asm `of` self,
-        module_target_il_asm `of`
-            filter_module_names(maybe_keep_std_lib_module, direct_imports),
-        module_target_il_asm `of`
-            filter_module_names(maybe_keep_std_lib_module,
-                foreign_imports_lang(lang_il)),
-        module_target_foreign_il_asm(lang_csharp) `of`
-            filter_module_names(maybe_keep_std_lib_module,
-                foreign_imports_lang(lang_csharp))
     ]).
 target_dependencies(Globals, module_target_foreign_object(PIC, _)) =
     get_foreign_deps(Globals, PIC).

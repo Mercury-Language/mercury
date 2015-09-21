@@ -151,8 +151,7 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
                 !:Changed = yes
             )
         ;
-            ( Target = target_il
-            ; Target = target_csharp
+            ( Target = target_csharp
             ; Target = target_java
             ; Target = target_erlang
             ),

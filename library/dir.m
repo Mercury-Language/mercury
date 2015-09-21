@@ -326,8 +326,6 @@ use_windows_paths :- dir.directory_separator = ('\\').
 
 :- pragma foreign_export("C", (dir.this_directory = out),
     "ML_dir_this_directory").
-:- pragma foreign_export("IL", (dir.this_directory = out),
-    "ML_dir_this_directory").
 :- pragma foreign_export("C#", (dir.this_directory = out),
     "ML_dir_this_directory").
 
@@ -783,8 +781,6 @@ dir.make_path_name(DirName, FileName) = DirName/FileName.
 
 :- pragma foreign_export("C", dir.make_path_name(in, in) = out,
     "ML_make_path_name").
-:- pragma foreign_export("IL", dir.make_path_name(in, in) = out,
-    "ML_make_path_name").
 :- pragma foreign_export("C#", dir.make_path_name(in, in) = out,
     "ML_make_path_name").
 
@@ -1220,8 +1216,6 @@ dir.make_single_directory(DirName, Result, !IO) :-
 :- func dir.make_mkdir_res_ok = io.res.
 :- pragma foreign_export("C", (dir.make_mkdir_res_ok = out),
     "ML_make_mkdir_res_ok").
-:- pragma foreign_export("IL", (dir.make_mkdir_res_ok = out),
-    "ML_make_mkdir_res_ok").
 :- pragma foreign_export("C#", (dir.make_mkdir_res_ok = out),
     "ML_make_mkdir_res_ok").
 :- pragma foreign_export("Java", (dir.make_mkdir_res_ok = out),
@@ -1234,8 +1228,6 @@ dir.make_mkdir_res_ok = ok.
 :- pred dir.make_mkdir_res_error(io.system_error::in, io.res::out,
     io::di, io::uo) is det.
 :- pragma foreign_export("C", dir.make_mkdir_res_error(in, out, di, uo),
-    "ML_make_mkdir_res_error").
-:- pragma foreign_export("IL", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
 :- pragma foreign_export("C#", dir.make_mkdir_res_error(in, out, di, uo),
     "ML_make_mkdir_res_error").
@@ -1251,9 +1243,6 @@ dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
 :- pred dir.make_mkdir_res_exists(io.system_error::in,
     string::in, io.res::out, io::di, io::uo) is det.
 :- pragma foreign_export("C",
-    dir.make_mkdir_res_exists(in, in, out, di, uo),
-    "ML_make_mkdir_res_exists").
-:- pragma foreign_export("IL",
     dir.make_mkdir_res_exists(in, in, out, di, uo),
     "ML_make_mkdir_res_exists").
 :- pragma foreign_export("C#",
@@ -1277,8 +1266,6 @@ dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
 :- pred dir.check_dir_accessibility(string::in, io.res::out, io::di, io::uo)
     is det.
 :- pragma foreign_export("C", dir.check_dir_accessibility(in, out, di, uo),
-    "ML_check_dir_accessibility").
-:- pragma foreign_export("IL", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
 :- pragma foreign_export("C#", dir.check_dir_accessibility(in, out, di, uo),
     "ML_check_dir_accessibility").
@@ -1577,8 +1564,6 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
     % dir.streams must be closed to avoid resource leaks.
 :- type dir.stream ---> dir.stream.
 :- pragma foreign_type("C", dir.stream, "ML_DIR_STREAM").
-:- pragma foreign_type("IL", dir.stream,
-    "class [mscorlib]System.Collections.IEnumerator").
 :- pragma foreign_type("C#", dir.stream, "System.Collections.IEnumerator").
 :- pragma foreign_type("Java", dir.stream, "java.util.Iterator").
 :- pragma foreign_type("Erlang", dir.stream, "").
@@ -1772,8 +1757,6 @@ dir.check_dir_readable(DirName, IsReadable, Result, !IO) :-
     io.result({dir.stream, string})::out, io::di, io::uo) is det.
 :- pragma foreign_export("C", dir.read_first_entry(in, out, di, uo),
     "ML_dir_read_first_entry").
-:- pragma foreign_export("IL", dir.read_first_entry(in, out, di, uo),
-    "ML_dir_read_first_entry").
 :- pragma foreign_export("C#", dir.read_first_entry(in, out, di, uo),
     "ML_dir_read_first_entry").
 :- pragma foreign_export("Java", dir.read_first_entry(in, out, di, uo),
@@ -1827,8 +1810,6 @@ make_win32_dir_open_result_ok(Dir, FirstFile0, Result, !IO) :-
 :- func make_dir_open_result_eof = io.result({dir.stream, string}).
 :- pragma foreign_export("C", (make_dir_open_result_eof = out),
     "ML_make_dir_open_result_eof").
-:- pragma foreign_export("IL", (make_dir_open_result_eof = out),
-    "ML_make_dir_open_result_eof").
 :- pragma foreign_export("C#", (make_dir_open_result_eof = out),
     "ML_make_dir_open_result_eof").
 :- pragma foreign_export("Java", (make_dir_open_result_eof = out),
@@ -1839,8 +1820,6 @@ make_dir_open_result_eof = eof.
 :- pred make_dir_open_result_error(io.system_error::in,
     io.result({dir.stream, string})::out, io::di, io::uo) is det.
 :- pragma foreign_export("C", make_dir_open_result_error(in, out, di, uo),
-    "ML_make_dir_open_result_error").
-:- pragma foreign_export("IL", make_dir_open_result_error(in, out, di, uo),
     "ML_make_dir_open_result_error").
 :- pragma foreign_export("C#", make_dir_open_result_error(in, out, di, uo),
     "ML_make_dir_open_result_error").

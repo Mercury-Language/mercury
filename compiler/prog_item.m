@@ -1857,7 +1857,7 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
         FIM = foreign_import_module_info(Lang, ImportedModule),
         ( if list.member(Lang, BackendLangs) then
             ForeignImportModules0 = !.Info ^ all_foreign_import_modules,
-            add_foreign_import_module(Lang, ImportedModule, 
+            add_foreign_import_module(Lang, ImportedModule,
                 ForeignImportModules0, ForeignImportModules),
             !Info ^ all_foreign_import_modules := ForeignImportModules
         else
@@ -1874,7 +1874,6 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
         ;
             ( Target = target_csharp
             ; Target = target_java
-            ; Target = target_il
             ; Target = target_erlang
             )
         )

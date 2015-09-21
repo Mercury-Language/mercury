@@ -647,9 +647,6 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
             Assertions),
         io.write_string(":- pragma foreign_type(", !IO),
         (
-            ForeignType = il(_),
-            io.write_string("il, ", !IO)
-        ;
             ForeignType = c(_),
             io.write_string("c, ", !IO)
         ;
@@ -665,19 +662,6 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
         mercury_output_term(TypeVarSet, print_name_only, TypeTerm, !IO),
         io.write_string(", \"", !IO),
         (
-            ForeignType = il(ILType),
-            ILType = il_type(RefOrVal, ForeignLocStr, ForeignTypeName),
-            (
-                RefOrVal = reference,
-                RefOrValStr = "class "
-            ;
-                RefOrVal = value,
-                RefOrValStr = "valuetype "
-            ),
-            NameStr = sym_name_to_string(ForeignTypeName),
-            ForeignTypeStr = RefOrValStr ++ "[" ++ ForeignLocStr ++ "]" ++
-                NameStr
-        ;
             ForeignType = c(c_type(ForeignTypeStr))
         ;
             ForeignType = java(java_type(ForeignTypeStr))

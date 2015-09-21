@@ -251,12 +251,6 @@
 :- pragma foreign_type("C", proc_dynamic,   "MR_ProcDynamic *").
 :- pragma foreign_type("C", call_site_dynamic,  "MR_CallSiteDynamic *").
 
-% The IL type definitions are dummies. They are needed to compile the library
-% in IL grades, but deep profiling is not (yet) supported in IL grades.
-:- pragma foreign_type(il, proc_layout,       "class [mscorlib]System.Object").
-:- pragma foreign_type(il, proc_dynamic,      "class [mscorlib]System.Object").
-:- pragma foreign_type(il, call_site_dynamic, "class [mscorlib]System.Object").
-
 :- pragma foreign_decl("C", "
 #ifndef MR_DEEP_PROFILING_GUARD
 #define MR_DEEP_PROFILING_GUARD

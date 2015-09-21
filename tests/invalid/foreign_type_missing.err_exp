@@ -1,3 +1,0 @@
-foreign_type_missing.m:014: Error: no IL `:- pragma foreign_type' declaration
-foreign_type_missing.m:014:   for `foreign_type_missing.foreign'/0.
-For more information, recompile with `-E'.

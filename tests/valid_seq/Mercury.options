@@ -2,12 +2,6 @@
 # some regression tests only failed with particular options enabled
 # (please keep these lists sorted)
 
-# The `agc*' tests currently aren't run in grades for which `.mih'
-# files are created, and no header files are generated in `il' grades,
-# so it's OK to set GRADEFLAGS for these tests.
-GRADEFLAGS-foreign_type_spec	= --grade il
-GRADEFLAGS-foreign_type_spec.foreign_type = --grade il
-
 MCFLAGS-ambig_confuse1		= --type-check-constraints
 MCFLAGS-ambig_confuse2		= --type-check-constraints
 MCFLAGS-ambig_confuse3		= --type-check-constraints

@@ -203,7 +203,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ForeignLanguage = lang_c
         ;
             ( ForeignLanguage = lang_csharp
-            ; ForeignLanguage = lang_il
             ; ForeignLanguage = lang_java
             ; ForeignLanguage = lang_erlang
             ),
@@ -215,19 +214,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
             ForeignLanguage = lang_csharp
         ;
             ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_il
-            ; ForeignLanguage = lang_java
-            ; ForeignLanguage = lang_erlang
-            ),
-            unimplemented_combination(TargetLanguage, ForeignLanguage)
-        )
-    ;
-        TargetLanguage = lang_il,
-        (
-            ForeignLanguage = lang_il
-        ;
-            ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_csharp
             ; ForeignLanguage = lang_java
             ; ForeignLanguage = lang_erlang
             ),
@@ -240,7 +226,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
         ;
             ( ForeignLanguage = lang_c
             ; ForeignLanguage = lang_csharp
-            ; ForeignLanguage = lang_il
             ; ForeignLanguage = lang_erlang
             ),
             unimplemented_combination(TargetLanguage, ForeignLanguage)
@@ -252,7 +237,6 @@ extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
         ;
             ( ForeignLanguage = lang_c
             ; ForeignLanguage = lang_csharp
-            ; ForeignLanguage = lang_il
             ; ForeignLanguage = lang_java
             ),
             unimplemented_combination(TargetLanguage, ForeignLanguage)
@@ -273,9 +257,6 @@ have_foreign_type_for_backend(Target, ForeignTypeBody, Have) :-
     (
         Target = target_c,
         Have = ( if ForeignTypeBody ^ c = yes(_) then yes else no )
-    ;
-        Target = target_il,
-        Have = ( if ForeignTypeBody ^ il = yes(_) then yes else no )
     ;
         Target = target_java,
         Have = ( if ForeignTypeBody ^ java = yes(_) then yes else no )
@@ -333,7 +314,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
     % foreign_type_to_mlds_type in mlds.m.
     % Any changes here may require changes there as well.
 
-    ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
+    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
         MaybeCSharp, MaybeErlang),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
@@ -347,16 +328,6 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         ;
             MaybeC = no,
             unexpected($module, $pred, "no C type")
-        )
-    ;
-        Target = target_il,
-        (
-            MaybeIL = yes(Data),
-            Data = foreign_type_lang_data(il_type(_, _, Name), MaybeUserEqComp,
-                Assertions)
-        ;
-            MaybeIL = no,
-            unexpected($module, $pred, "no IL type")
         )
     ;
         Target = target_csharp,
@@ -413,7 +384,6 @@ exported_type_to_string(Lang, ExportedType) = Result :-
             )
         ;
             ( Lang = lang_csharp
-            ; Lang = lang_il
             ; Lang = lang_java
             ; Lang = lang_erlang
             ),
@@ -522,9 +492,6 @@ exported_type_to_string(Lang, ExportedType) = Result :-
                 % backends.  This is not the correct type to use in general.
                 Result = "java.lang.Object"
             )
-        ;
-            Lang = lang_il,
-            sorry($module, $pred, "il")
         ;
             Lang = lang_erlang,
             sorry($module, $pred, "erlang")

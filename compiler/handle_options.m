@@ -148,14 +148,12 @@ handle_given_options(Args0, OptionArgs, Args, Link, Errors, !:Globals, !IO) :-
         globals.lookup_bool_option(!.Globals, errorcheck_only, ErrorcheckOnly),
         globals.lookup_bool_option(!.Globals, target_code_only,
             TargetCodeOnly),
-        globals.get_target(!.Globals, Target),
-        GenerateIL = (if Target = target_il then yes else no),
         globals.lookup_bool_option(!.Globals, compile_only, CompileOnly),
         bool.or_list([GenerateDependencies, GenerateDependencyFile,
             MakeInterface, MakePrivateInterface, MakeShortInterface,
             MakeOptimizationInt, MakeTransOptInt, MakeAnalysisRegistry,
             MakeXmlDocumentation, ConvertToMercury, TypecheckOnly,
-            ErrorcheckOnly, TargetCodeOnly, GenerateIL, CompileOnly],
+            ErrorcheckOnly, TargetCodeOnly, CompileOnly],
             NotLink),
         bool.not(NotLink, Link),
         globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
@@ -219,7 +217,7 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
     check_option_values(OptionTable0, OptionTable, Target, GC_Method,
         TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
-        ReuseStrategy, MaybeILVersion,
+        ReuseStrategy,
         MaybeFeedbackInfo, HostEnvType, SystemEnvType, TargetEnvType,
         LimitErrorContextsMap, cord.init, CheckErrorsCord, !IO),
     ( if cord.is_empty(CheckErrorsCord) then
@@ -227,7 +225,7 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
             TagsMethod, TermNorm, Term2Norm, TraceLevel,
             TraceSuppress, SSTraceLevel, MaybeThreadSafe, C_CompilerType,
             CSharp_CompilerType, ReuseStrategy,
-            MaybeILVersion, MaybeFeedbackInfo,
+            MaybeFeedbackInfo,
             HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
             CheckErrorsCord, ErrorsCord, Globals, !IO)
     else
@@ -241,7 +239,7 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
     termination_norm::out, termination_norm::out, trace_level::out,
     trace_suppress_items::out, ssdb_trace_level::out, may_be_thread_safe::out,
     c_compiler_type::out, csharp_compiler_type::out,
-    reuse_strategy::out, maybe(il_version_number)::out,
+    reuse_strategy::out,
     maybe(feedback_info)::out, env_type::out, env_type::out, env_type::out,
     limit_error_contexts_map::out,
     cord(string)::in, cord(string)::out, io::di, io::uo) is det.
@@ -249,7 +247,7 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
-        ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
+        ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
         !Errors, !IO) :-
     map.lookup(!.OptionTable, target, Target0),
@@ -261,7 +259,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     ;
         Target = target_c,     % dummy
         add_error("Invalid target option " ++
-            "(must be `c', `il', `java', 'csharp', or `erlang')",
+            "(must be `c', `java', 'csharp', or `erlang')",
             !Errors)
     ),
 
@@ -524,29 +522,6 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             !Errors)
     ),
 
-    map.lookup(!.OptionTable, dotnet_library_version, DotNetLibVersionOpt),
-    (
-        DotNetLibVersionOpt = string(DotNetLibVersionStr),
-        IsSep = (pred(('.')::in) is semidet),
-        string.words_separator(IsSep, DotNetLibVersionStr) = [Mj, Mn, Bu, Rv],
-        string.to_int(Mj, Major),
-        string.to_int(Mn, Minor),
-        string.to_int(Bu, Build),
-        string.to_int(Rv, Revision)
-    ->
-        ILVersion = il_version_number(Major, Minor, Build, Revision),
-        MaybeILVersion = yes(ILVersion)
-    ;
-        MaybeILVersion = no,
-        add_error("Invalid argument to " ++
-            "option `--dotnet-library-version'\n" ++
-            "\t(must be of the form " ++
-            "`MajorNum.MinorNum.BuildNum.RevisionNum').",
-            !Errors),
-        % The IL code generator cannot handle the IL version being unknown.
-        map.det_update(errorcheck_only, bool(yes), !OptionTable)
-    ),
-
     map.lookup(!.OptionTable, feedback_file, FeedbackFile0),
     (
         FeedbackFile0 = string(FeedbackFile),
@@ -663,7 +638,7 @@ add_error(Error, !Errors) :-
     termination_norm::in, termination_norm::in, trace_level::in,
     trace_suppress_items::in, ssdb_trace_level::in, may_be_thread_safe::in,
     c_compiler_type::in, csharp_compiler_type::in,
-    reuse_strategy::in, maybe(il_version_number)::in, maybe(feedback_info)::in,
+    reuse_strategy::in, maybe(feedback_info)::in,
     env_type::in, env_type::in, env_type::in, limit_error_contexts_map::in,
     cord(string)::in, cord(string)::out,
     globals::out, io::di, io::uo) is det.
@@ -671,7 +646,7 @@ add_error(Error, !Errors) :-
 convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
-        ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
+        ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
         !Errors, !:Globals, !IO) :-
 
@@ -688,7 +663,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     globals_init(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
-        ReuseStrategy, MaybeILVersion, MaybeFeedbackInfo,
+        ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, FileInstallCmd,
         LimitErrorContextsMap, !:Globals),
 
@@ -851,98 +826,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(par_loop_control, bool(no), !Globals)
     ),
 
-    % Generating IL implies:
-    %   - gc_method `automatic' and no heap reclamation on failure
-    %     Because GC is handled automatically by the .NET CLR
-    %     implementation.
-    %   - high-level code
-    %     Because only the MLDS back-end supports
-    %     compiling to IL, not the LLDS back-end.
-    %   - high-level data
-    %     Because it is more efficient,
-    %     and better for interoperability.
-    %     (In theory --low-level-data should work too,
-    %     but there's no reason to bother supporting it.)
-    %   - turning off nested functions
-    %     Because IL doesn't support nested functions.
-    %   - using copy-out for nondet output arguments
-    %     For reasons explained in the paper "Compiling Mercury
-    %     to the .NET Common Language Runtime"
-    %   - using no tags
-    %     Because IL doesn't provide any mechanism for tagging
-    %     pointers.
-    %   - boxing enums and disabling no_tag_types
-    %     These are both required to ensure that we have a uniform
-    %     representation (`object[]') for all data types,
-    %     which is required to avoid type errors for code using
-    %     abstract data types.
-    %     XXX It should not be needed now that we have a general
-    %     solution to the abstract equivalence type problem
-    %     (intermodule optimization).
-    %     But currently it is still needed, otherwise
-    %         RTTI (e.g. construct, deconstruct) doesn't work
-    %     for these types.
-    %   - XXX it should also imply num_reserved_addresses = 1
-    %     (we can use null pointers), but currently it doesn't,
-    %     again because this causes problems with RTTI
-    %   - no static ground terms
-    %         XXX Previously static ground terms used to not work with
-    %             --high-level-data. But this has been (mostly?) fixed now.
-    %             So we should investigate re-enabling static ground terms.
-    %         Currently mlds_to_il.m doesn't support them yet?
-    %   - no library grade installation check with `mmc --make'.
-
-    (
-        Target = target_il,
-        globals.set_gc_method(gc_automatic, !Globals),
-        globals.set_option(gc, string("automatic"), !Globals),
-        globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
-            !Globals),
-        globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
-            !Globals),
-        globals.set_option(highlevel_code, bool(yes), !Globals),
-        globals.set_option(highlevel_data, bool(yes), !Globals),
-        globals.set_option(gcc_nested_functions, bool(no), !Globals),
-        globals.set_option(nondet_copy_out, bool(yes), !Globals),
-        globals.set_option(num_tag_bits, int(0), !Globals),
-        globals.set_option(unboxed_enums, bool(no), !Globals),
-        globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
-        % globals.set_option(num_reserved_addresses, int(1), !Globals)
-        globals.set_option(static_ground_cells, bool(no), !Globals),
-        globals.set_option(libgrade_install_check, bool(no), !Globals),
-
-        % On the .NET backend we will be using a language independent
-        % debugger not mdb.  Thus --debug has to imply --target-debug.
-        ( given_trace_level_is_none(TraceLevel) = no ->
-            globals.set_option(target_debug, bool(yes), !Globals)
-        ;
-            true
-        )
-    ;
-        ( Target = target_c
-        ; Target = target_csharp
-        ; Target = target_java
-        ; Target = target_erlang
-        )
-    ),
-
-    % Set --put-nondet-env-on-heap if --verifiable-code is specified,
-    % unless both --il-funcptr-types and --il-refany-fields
-    % are specified.
-    globals.lookup_bool_option(!.Globals, il_funcptr_types,
-        ILFuncPtrTypes),
-    globals.lookup_bool_option(!.Globals, il_refany_fields,
-        ILRefAnyFields),
-    (
-        ILFuncPtrTypes = yes,
-        ILRefAnyFields = yes
-    ->
-        true
-    ;
-        option_implies(verifiable_code, put_nondet_env_on_heap, bool(yes),
-            !Globals)
-    ),
-
     % Generating Java implies
     %   - gc_method `automatic' and no heap reclamation on failure
     %     Because GC is handled automatically by the Java
@@ -1007,7 +890,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         )
     ;
         ( Target = target_c
-        ; Target = target_il
         ; Target = target_erlang
         )
     ),
@@ -1053,7 +935,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(highlevel_data, bool(no), !Globals)
     ;
         ( Target = target_c
-        ; Target = target_il
         ; Target = target_java
         ; Target = target_csharp
         )
@@ -1466,7 +1347,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         ( Target = target_csharp
         ; Target = target_java
-        ; Target = target_il
         ; Target = target_erlang
         ),
         globals.set_option(arg_pack_bits, int(0), !Globals),
@@ -1491,9 +1371,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ; Target = target_java
         )
     ;
-        ( Target = target_il
-        ; Target = target_erlang
-        ),
+        Target = target_erlang,
         globals.set_option(allow_multi_arm_switches, bool(no), !Globals)
     ),
 
@@ -1619,21 +1497,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
                 bool(no), !Globals),
             globals.set_option(loop_invariants, bool(no), !Globals),
             globals.set_option(untuple, bool(no), !Globals),
-            globals.set_option(tuple, bool(no), !Globals),
-
-            % For the IL backend we turn off optimize_peep
-            % so that we don't optimize away references to the
-            % local variables of a procedure.
-            (
-                Target = target_il,
-                globals.set_option(optimize_peep, bool(no), !Globals)
-            ;
-                ( Target = target_c
-                ; Target = target_csharp
-                ; Target = target_java
-                ; Target = target_erlang
-                )
-            )
+            globals.set_option(tuple, bool(no), !Globals)
         ;
             TraceOptimized = yes
         ),
@@ -1758,7 +1622,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     (
         ( given_trace_level_is_none(TraceLevel) = yes
         ; HighLevelCode = no, Target = target_c
-        ; Target = target_il
         )
     ->
         true
@@ -2302,10 +2165,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         Target = target_c,
         BackendForeignLanguages = ["c"]
     ;
-        Target = target_il,
-        BackendForeignLanguages = ["il", "csharp"],
-        set_option(optimize_constructor_last_call, bool(no), !Globals)
-    ;
         Target = target_csharp,
         BackendForeignLanguages = ["csharp"]
     ;
@@ -2586,7 +2445,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
     ;
         ( Target = target_csharp
         ; Target = target_erlang
-        ; Target = target_il
         ; Target = target_java
         ),
         (
@@ -2625,7 +2483,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
         ProfileTime = yes,
         (
             ( Target = target_java
-            ; Target = target_il
             ; Target = target_csharp
             ; Target = target_erlang
             ),
@@ -2645,7 +2502,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
         ProfileMemory = yes,
         (
             ( Target = target_java
-            ; Target = target_il
             ; Target = target_csharp
             ; Target = target_erlang
             ),
@@ -2675,7 +2531,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
     ->
         (
             ( Target = target_java
-            ; Target = target_il
             ; Target = target_csharp
             ; Target = target_erlang
             ),
@@ -2706,7 +2561,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
             )
         ;
             ( Target = target_java
-            ; Target = target_il
             ; Target = target_csharp
             ; Target = target_erlang
             ),
@@ -2724,7 +2578,6 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
         SinglePrecFloat = yes,
         (
             ( Target = target_java
-            ; Target = target_il
             ; Target = target_csharp
             ; Target = target_erlang
             ),
@@ -3177,22 +3030,6 @@ grade_component_table("hlc_nest", comp_gcc_ext, [
         gcc_nested_functions    - bool(yes),
         highlevel_data          - bool(no)],
         yes([string("c")]), yes).
-grade_component_table("il", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        highlevel_code          - bool(yes),
-        gcc_nested_functions    - bool(no),
-        highlevel_data          - bool(yes)],
-        yes([string("il")]), yes).
-grade_component_table("ilc", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        highlevel_code          - bool(yes),
-        gcc_nested_functions    - bool(no),
-        highlevel_data          - bool(no)],
-        yes([string("il")]), yes).
 grade_component_table("java", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),

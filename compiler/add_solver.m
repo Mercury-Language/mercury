@@ -189,10 +189,6 @@ add_solver_type_aux_pred_defns(TypeSymName, TypeParams, SolverTypeDetails,
     ;
         Target = target_erlang,
         Lang = lang_erlang
-    ;
-        Target = target_il,
-        WhatMsg = "solver type conversion functions for this backend",
-        sorry($module, WhatMsg)
     ),
 
     Attrs0 = default_attributes(Lang),

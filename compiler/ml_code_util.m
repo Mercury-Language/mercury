@@ -1381,7 +1381,6 @@ ml_must_box_field_type(ModuleInfo, Type, Width) :-
     (
         ( Target = target_c
         ; Target = target_csharp
-        ; Target = target_il
         ; Target = target_erlang
         ),
         classify_type(ModuleInfo, Type) = Category,
@@ -1698,22 +1697,22 @@ ml_gen_local_for_output_arg(VarName, Type, ArgNum, Context, LocalVarDefn,
             GCStatement0 = gc_initialiser(CallTraceFuncCode)
         ),
         MakeTypeInfoCode = ml_stmt_atomic(inline_target_code(ml_target_c, [
-            raw_target_code("{\n", []),
-            raw_target_code("MR_MemoryList allocated_mem = NULL;\n", []),
+            raw_target_code("{\n"),
+            raw_target_code("MR_MemoryList allocated_mem = NULL;\n"),
             target_code_output(TypeInfoLval),
             raw_target_code(" = (MR_C_Pointer) " ++
-                "MR_make_type_info_maybe_existq(\n\t", []),
+                "MR_make_type_info_maybe_existq(\n\t"),
             target_code_input(ml_lval(TypeParamsLval)),
-            raw_target_code(", ((MR_Closure_Layout *)\n\t", []),
+            raw_target_code(", ((MR_Closure_Layout *)\n\t"),
             target_code_input(ml_lval(ClosureLayoutPtrLval)),
             raw_target_code(string.format(")->" ++
                 "MR_closure_arg_pseudo_type_info[%d - 1],\n\t" ++
                 "NULL, NULL, &allocated_mem);\n",
-                [i(ArgNum)]), [])
+                [i(ArgNum)]))
         ])),
         DeallocateCode = ml_stmt_atomic(inline_target_code(ml_target_c, [
-            raw_target_code("MR_deallocate(allocated_mem);\n", []),
-            raw_target_code("}\n", [])
+            raw_target_code("MR_deallocate(allocated_mem);\n"),
+            raw_target_code("}\n")
         ])),
         GCTraceCode = ml_stmt_block([TypeInfoDecl], [
             statement(MakeTypeInfoCode, MLDS_Context),

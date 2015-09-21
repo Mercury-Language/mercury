@@ -1,34 +1,34 @@
-illtyped_compare.m:024: In clause for comparison predicate for type `bar_rep':
-illtyped_compare.m:024:   in call to predicate
-illtyped_compare.m:024:   `illtyped_compare.compare_bar'/3:
-illtyped_compare.m:024:   in argument 2:
-illtyped_compare.m:024:     variable `HeadVar__2' has type
-illtyped_compare.m:024:     `illtyped_compare.bar_rep',
-illtyped_compare.m:024:     expected type was `illtyped_compare.bar';
-illtyped_compare.m:024:   in argument 3:
-illtyped_compare.m:024:     variable `HeadVar__3' has type
-illtyped_compare.m:024:     `illtyped_compare.bar_rep',
-illtyped_compare.m:024:     expected type was `illtyped_compare.bar'.
-illtyped_compare.m:024:   The partial type assignment was:
-illtyped_compare.m:024:     HeadVar__1_1: comparison_result
-illtyped_compare.m:024:     HeadVar__2_2: illtyped_compare.bar_rep
-illtyped_compare.m:024:     HeadVar__3_3: illtyped_compare.bar_rep
-illtyped_compare.m:024:     CastX_4: int
-illtyped_compare.m:024:     CastY_5: int
-illtyped_compare.m:024: In clause for unification predicate for type `bar_rep':
-illtyped_compare.m:024:   in call to predicate
-illtyped_compare.m:024:   `illtyped_compare.compare_bar'/3:
-illtyped_compare.m:024:   in argument 2:
-illtyped_compare.m:024:     variable `HeadVar__1' has type
-illtyped_compare.m:024:     `illtyped_compare.bar_rep',
-illtyped_compare.m:024:     expected type was `illtyped_compare.bar';
-illtyped_compare.m:024:   in argument 3:
-illtyped_compare.m:024:     variable `HeadVar__2' has type
-illtyped_compare.m:024:     `illtyped_compare.bar_rep',
-illtyped_compare.m:024:     expected type was `illtyped_compare.bar'.
-illtyped_compare.m:024:   The partial type assignment was:
-illtyped_compare.m:024:     HeadVar__1_1: illtyped_compare.bar_rep
-illtyped_compare.m:024:     HeadVar__2_2: illtyped_compare.bar_rep
-illtyped_compare.m:024:     V_3: comparison_result
-illtyped_compare.m:024:     CastX_4: int
-illtyped_compare.m:024:     CastY_5: int
+illtyped_compare.m:022: In clause for comparison predicate for type `bar_rep':
+illtyped_compare.m:022:   in call to predicate
+illtyped_compare.m:022:   `illtyped_compare.compare_bar'/3:
+illtyped_compare.m:022:   in argument 2:
+illtyped_compare.m:022:     variable `HeadVar__2' has type
+illtyped_compare.m:022:     `illtyped_compare.bar_rep',
+illtyped_compare.m:022:     expected type was `illtyped_compare.bar';
+illtyped_compare.m:022:   in argument 3:
+illtyped_compare.m:022:     variable `HeadVar__3' has type
+illtyped_compare.m:022:     `illtyped_compare.bar_rep',
+illtyped_compare.m:022:     expected type was `illtyped_compare.bar'.
+illtyped_compare.m:022:   The partial type assignment was:
+illtyped_compare.m:022:     HeadVar__1_1: comparison_result
+illtyped_compare.m:022:     HeadVar__2_2: illtyped_compare.bar_rep
+illtyped_compare.m:022:     HeadVar__3_3: illtyped_compare.bar_rep
+illtyped_compare.m:022:     CastX_4: int
+illtyped_compare.m:022:     CastY_5: int
+illtyped_compare.m:022: In clause for unification predicate for type `bar_rep':
+illtyped_compare.m:022:   in call to predicate
+illtyped_compare.m:022:   `illtyped_compare.compare_bar'/3:
+illtyped_compare.m:022:   in argument 2:
+illtyped_compare.m:022:     variable `HeadVar__1' has type
+illtyped_compare.m:022:     `illtyped_compare.bar_rep',
+illtyped_compare.m:022:     expected type was `illtyped_compare.bar';
+illtyped_compare.m:022:   in argument 3:
+illtyped_compare.m:022:     variable `HeadVar__2' has type
+illtyped_compare.m:022:     `illtyped_compare.bar_rep',
+illtyped_compare.m:022:     expected type was `illtyped_compare.bar'.
+illtyped_compare.m:022:   The partial type assignment was:
+illtyped_compare.m:022:     HeadVar__1_1: illtyped_compare.bar_rep
+illtyped_compare.m:022:     HeadVar__2_2: illtyped_compare.bar_rep
+illtyped_compare.m:022:     V_3: comparison_result
+illtyped_compare.m:022:     CastX_4: int
+illtyped_compare.m:022:     CastY_5: int

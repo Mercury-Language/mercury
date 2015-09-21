@@ -483,21 +483,6 @@ install_init:
 install_lib:
 
 else
-ifeq ($(findstring il,$(GRADE)),il)
-
-.PHONY: install_headers
-install_headers:
-
-.PHONY: install_init
-install_init:
-
-.PHONY: install_lib
-install_lib: $(DOTNET_DLLS) install_headers install_dirs
-	cp `vpath_find $(DOTNET_DLLS)` $(INSTALL_MERC_LIB_DIR)
-
-#ILASMFLAGS=/debug
-
-else
 
 # mercury_conf.h needs to be in a separate directory so it can be
 # overridden by a different configuration.
@@ -524,7 +509,6 @@ install_lib: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 		$(INSTALL_MERC_LIB_DIR)
 	$(RANLIB) $(RANLIBFLAGS) $(INSTALL_MERC_LIB_DIR)/lib$(RT_LIB_NAME).$A
 
-endif
 endif
 
 #-----------------------------------------------------------------------------#

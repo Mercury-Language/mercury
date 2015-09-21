@@ -24,10 +24,10 @@ main_target: $(MAIN_TARGET)
 		.dep .depend .dv .doit .ugly \
 		.date0 .date .date3 .optdate .trans_opt_date \
 		.c .$O .pic_o \
-		.i .s .pic_s \
+		.s .pic_s \
 		.java .class \
-		.il .dll .exe .cpp .cs \
-		.c_date .il_date .java_date .s_date .pic_s_date
+		.dll .exe .cpp .cs \
+		.c_date .java_date .s_date .pic_s_date
 
 #-----------------------------------------------------------------------------#
 #
@@ -61,7 +61,6 @@ endif
 .PRECIOUS: $(optdates_subdir)%.optdate
 .PRECIOUS: $(trans_opt_dates_subdir)%.trans_opt_date
 .PRECIOUS: $(c_dates_subdir)%.c_date
-.PRECIOUS: $(il_dates_subdir)%.il_date
 .PRECIOUS: $(java_dates_subdir)%.java_date
 .PRECIOUS: $(s_dates_subdir)%.s_date
 .PRECIOUS: $(pic_s_dates_subdir)%.pic_s_date
@@ -92,13 +91,13 @@ ifeq ($(MMAKE_USE_SUBDIRS_EXPLICIT),yes)
 	-mkdir -p $(classes_subdir) \
 		Mercury/dates Mercury/date0s Mercury/date3s \
 		Mercury/optdates Mercury/trans_opt_dates \
-		Mercury/c_dates Mercury/il_dates \
+		Mercury/c_dates \
 		Mercury/s_dates Mercury/pic_s_dates
 else
 	@-mkdir -p $(classes_subdir) \
 		Mercury/dates Mercury/date0s Mercury/date3s \
 		Mercury/optdates Mercury/trans_opt_dates \
-		Mercury/c_dates Mercury/il_dates \
+		Mercury/c_dates \
 		Mercury/s_dates Mercury/pic_s_dates
 endif
 endif
@@ -116,13 +115,13 @@ ifeq ($(MMAKE_USE_SUBDIRS_EXPLICIT),yes)
 	-mkdir -p $(classes_subdir) \
 		Mercury/dates Mercury/date0s Mercury/date3s \
 		Mercury/optdates Mercury/trans_opt_dates \
-		Mercury/c_dates Mercury/il_dates \
+		Mercury/c_dates \
 		Mercury/s_dates Mercury/pic_s_dates
 else
 	@-mkdir -p $(classes_subdir) \
 		Mercury/dates Mercury/date0s Mercury/date3s \
 		Mercury/optdates Mercury/trans_opt_dates \
-		Mercury/c_dates Mercury/il_dates \
+		Mercury/c_dates \
 		Mercury/s_dates Mercury/pic_s_dates
 endif
 endif
@@ -221,33 +220,6 @@ $(java_dates_subdir)%.java_date : %.m
 	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) \
 		--java-only $(*F) $(ERR_REDIRECT)
 
-# .NET back-end
-
-# When smart recompilation finds that a module does not need to be
-# recompiled, it only touches the `.il_date' file.
-$(ils_subdir)%.il : $(il_dates_subdir)%.il_date
-	@:
-
-$(il_dates_subdir)%.il_date : %.m
-	$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) \
-		--il-only $(*F) $(ERR_REDIRECT)
-
-# These rules are only available in *il* backends, because we'd like to avoid
-# processing user code that is in a .cpp file, and we'd like to avoid going via
-# IL to generate a DLL if we are in a non-IL grade.
-ifeq ($(findstring il,$(GRADE)),il)
-
-$(os_subdir)%.dll : %.cs
-	$(CSC) /t:library /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` \
-		/out:$@ $(CSHARP_ASSEMBLY_REFS-$*) $(ALL_CSCFLAGS) $<
-
-$(os_subdir)%.dll : %.il
-	$(ILASM) $(ALL_ILASMFLAGS) /dll /quiet /OUT=$@ $<
-
-mercury.sn:
-	cp $(MERC_DLL_DIR)/mercury.sn .
-endif
-
 # The `touch' is necessary, since otherwise if
 # the old .err file was of size zero and
 # the new .err file is also of size zero,
@@ -322,36 +294,6 @@ $(os_subdir)%.pic_o : $(cs_subdir)%.c
 endif # $(cs_subdir) != ""
 
 endif # $(MMAKE_USE_MMC_MAKE) != yes
-
-#-----------------------------------------------------------------------------#
-#
-# Rules for compiling IL files in the user's source directory.
-# Note that we need both these rules and the ones above,
-# since even if the compiler generates all of its files in subdirectories,
-# the user may have some il or C# files of their own which need to be
-# compiled.
-#
-# To avoid possible problems with invoking these commands unintentionally,
-# we only activate these rules when in an IL grade.
-#
-
-ifeq ($(findstring il,$(GRADE)),il)
-
-.il.dll:
-	$(ILASM) $(ALL_ILASMFLAGS) /dll /quiet /OUT=$@ $<
-
-.il.exe:
-	$(ILASM) $(ALL_ILASMFLAGS) /quiet /OUT=$@ $<
-
-.cs.dll:
-	$(CSC) /t:library /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` \
-		/out:$@ $(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
-
-.cs.exe:
-	$(CSC) /lib:`$(FIX_PATH_FOR_CSC) $(MERC_DLL_DIR)` /out:$@ \
-		$(CSHARP_ASSEMBLY_REFS-$*) $(EXTRA_CSCFLAGS) $<
-
-endif # $(findstring il,$(GRADE)) != ""
 
 #-----------------------------------------------------------------------------#
 

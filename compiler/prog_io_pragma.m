@@ -1527,19 +1527,6 @@ parse_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
 parse_foreign_language_type(InputTerm, VarSet, Language,
         MaybeForeignLangType) :-
     (
-        Language = lang_il,
-        ( if InputTerm = term.functor(term.string(ILTypeName), [], _) then
-            parse_il_type_name(ILTypeName, InputTerm, VarSet,
-                MaybeForeignLangType)
-        else
-            InputTermStr = describe_error_term(VarSet, InputTerm),
-            Pieces = [words("Error: invalid backend specification"),
-                quote(InputTermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(InputTerm), [always(Pieces)])]),
-            MaybeForeignLangType = error1([Spec])
-        )
-    ;
         Language = lang_c,
         ( if InputTerm = term.functor(term.string(CTypeName), [], _) then
             MaybeForeignLangType = ok1(c(c_type(CTypeName)))
@@ -1589,87 +1576,6 @@ parse_foreign_language_type(InputTerm, VarSet, Language,
             MaybeForeignLangType = error1([Spec])
         )
     ).
-
-:- pred parse_il_type_name(string::in, term::in, varset::in,
-    maybe1(foreign_language_type)::out) is det.
-
-parse_il_type_name(String0, ErrorTerm, VarSet, ForeignType) :-
-    ( if
-        parse_special_il_type_name(String0, ForeignTypeResult)
-    then
-        ForeignType = ok1(il(ForeignTypeResult))
-    else if
-        string.append("class [", String1, String0),
-        string.sub_string_search(String1, "]", Index)
-    then
-        string.left(String1, Index, AssemblyName),
-        string.split(String1, Index + 1, _, TypeNameStr),
-        TypeSymName = string_to_sym_name(TypeNameStr),
-        ForeignType = ok1(il(il_type(reference, AssemblyName, TypeSymName)))
-    else if
-        string.append("valuetype [", String1, String0),
-        string.sub_string_search(String1, "]", Index)
-    then
-        string.left(String1, Index, AssemblyName),
-        string.split(String1, Index + 1, _, TypeNameStr),
-        TypeSymName = string_to_sym_name(TypeNameStr),
-        ForeignType = ok1(il(il_type(value, AssemblyName, TypeSymName)))
-    else
-        TermStr = describe_error_term(VarSet, ErrorTerm),
-        Pieces = [words("Error: invalid foreign language type description"),
-            quote(TermStr), suffix("."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(ErrorTerm), [always(Pieces)])]),
-        ForeignType = error1([Spec])
-    ).
-
-    % Parse all the special assembler names for all the builtin types.
-    % See Partition I 'Built-In Types' (Section 8.2.2) for the list
-    % of all builtin types.
-    %
-:- pred parse_special_il_type_name(string::in, il_foreign_type::out)
-    is semidet.
-
-parse_special_il_type_name("bool", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Boolean"))).
-parse_special_il_type_name("char", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Char"))).
-parse_special_il_type_name("object", il_type(reference, "mscorlib",
-        qualified(unqualified("System"), "Object"))).
-parse_special_il_type_name("string", il_type(reference, "mscorlib",
-        qualified(unqualified("System"), "String"))).
-parse_special_il_type_name("float32", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Single"))).
-parse_special_il_type_name("float64", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Double"))).
-parse_special_il_type_name("int8", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "SByte"))).
-parse_special_il_type_name("int16", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Int16"))).
-parse_special_il_type_name("int32", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Int32"))).
-parse_special_il_type_name("int64", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Int64"))).
-parse_special_il_type_name("natural int", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "IntPtr"))).
-parse_special_il_type_name("native int", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "IntPtr"))).
-parse_special_il_type_name("natural unsigned int", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "UIntPtr"))).
-parse_special_il_type_name("native unsigned int", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "UIntPtr"))).
-parse_special_il_type_name("refany", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "TypedReference"))).
-parse_special_il_type_name("typedref", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "TypedReference"))).
-parse_special_il_type_name("unsigned int8", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "Byte"))).
-parse_special_il_type_name("unsigned int16", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "UInt16"))).
-parse_special_il_type_name("unsigned int32", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "UInt32"))).
-parse_special_il_type_name("unsigned int64", il_type(value, "mscorlib",
-        qualified(unqualified("System"), "UInt64"))).
 
 :- pred parse_maybe_foreign_type_assertions(maybe(term)::in,
     list(foreign_type_assertion)::out) is semidet.
@@ -2028,7 +1934,6 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       coll_tabled_for_io(proc_tabled_for_io)
     ;       coll_purity(purity)
     ;       coll_user_annotated_sharing(user_annotated_sharing)
-    ;       coll_max_stack_size(int)
     ;       coll_backend(backend)
     ;       coll_terminates(proc_terminates)
     ;       coll_will_not_throw_exception
@@ -2145,8 +2050,6 @@ process_attribute(coll_user_annotated_sharing(UserSharing), !Attrs) :-
     set_user_annotated_sharing(UserSharing, !Attrs).
 process_attribute(coll_will_not_throw_exception, !Attrs) :-
     set_may_throw_exception(proc_will_not_throw_exception, !Attrs).
-process_attribute(coll_max_stack_size(Size), !Attrs) :-
-    add_extra_attribute(max_stack_size(Size), !Attrs).
 process_attribute(coll_backend(Backend), !Attrs) :-
     add_extra_attribute(backend(Backend), !Attrs).
 process_attribute(coll_ordinary_despite_detism, !Attrs) :-
@@ -2173,7 +2076,8 @@ process_attribute(coll_may_duplicate(MayDuplicate), !Attrs) :-
         pragma_foreign_proc_attributes, list(format_component), term.context)
     = maybe1(pragma_foreign_proc_attributes).
 
-check_required_attributes(Lang, Attrs, ContextPieces, Context) = MaybeAttrs :-
+check_required_attributes(Lang, Attrs, _ContextPieces, _Context)
+        = MaybeAttrs :-
     (
         ( Lang = lang_c
         ; Lang = lang_csharp
@@ -2181,24 +2085,6 @@ check_required_attributes(Lang, Attrs, ContextPieces, Context) = MaybeAttrs :-
         ; Lang = lang_erlang
         ),
         MaybeAttrs = ok1(Attrs)
-    ;
-        Lang = lang_il,
-        MaxStackAttrs = list.filter_map(
-            (func(X) = X is semidet :-
-                X = max_stack_size(_)),
-            get_extra_attributes(Attrs)),
-        (
-            MaxStackAttrs = [],
-            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-                words("Error: expected a max_stack_size attribute"),
-                words("for IL code."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(Context, [always(Pieces)])]),
-            MaybeAttrs = error1([Spec])
-        ;
-            MaxStackAttrs = [_ | _],
-            MaybeAttrs = ok1(Attrs)
-        )
     ).
 
 :- pred parse_pragma_foreign_proc_attributes_term(list(format_component)::in,
@@ -2275,8 +2161,6 @@ parse_single_pragma_foreign_proc_attribute(VarSet, Term, Flag) :-
         Flag = coll_tabled_for_io(TabledForIo)
     else if parse_user_annotated_sharing(VarSet, Term, UserSharing) then
         Flag = coll_user_annotated_sharing(UserSharing)
-    else if parse_max_stack_size(Term, Size) then
-        Flag = coll_max_stack_size(Size)
     else if parse_backend(Term, Backend) then
         Flag = coll_backend(Backend)
     else if parse_purity_promise(Term, Purity) then
@@ -2428,12 +2312,6 @@ parse_tabled_for_io(term.functor(term.atom(Str), [], _), TabledForIo) :-
         Str = "not_tabled_for_io",
         TabledForIo = proc_not_tabled_for_io
     ).
-
-:- pred parse_max_stack_size(term::in, int::out) is semidet.
-
-parse_max_stack_size(term.functor(
-        term.atom("max_stack_size"), [SizeTerm], _), Size) :-
-    SizeTerm = term.functor(term.integer(Size), [], _).
 
 :- pred parse_backend(term::in, backend::out) is semidet.
 

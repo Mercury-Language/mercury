@@ -759,10 +759,6 @@
     where equality is array.array_equal,
     comparison is array.array_compare.
 
-:- pragma foreign_type("IL",  array(T), "class [mscorlib]System.Array")
-    where equality is array.array_equal,
-    comparison is array.array_compare.
-
     % We can't use `java.lang.Object []', since we want a generic type
     % that is capable of holding any kind of array, including e.g. `int []'.
     % Java doesn't have any equivalent of .NET's System.Array class,
@@ -779,7 +775,6 @@
     %
 :- pred array_equal(array(T)::in, array(T)::in) is semidet.
 :- pragma foreign_export("C", array_equal(in, in), "ML_array_equal").
-:- pragma foreign_export("IL", array_equal(in, in), "ML_array_equal").
 :- pragma terminates(array_equal/2).
 
 array_equal(Array1, Array2) :-
@@ -813,7 +808,6 @@ array_compare(A1, A2) = C :-
 :- pred array_compare(comparison_result::uo, array(T)::in, array(T)::in)
     is det.
 :- pragma foreign_export("C", array_compare(uo, in, in), "ML_array_compare").
-:- pragma foreign_export("IL", array_compare(uo, in, in), "ML_array_compare").
 :- pragma terminates(array_compare/3).
 
 array_compare(Result, Array1, Array2) :-

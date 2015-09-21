@@ -41,7 +41,6 @@ case $highlevel_code,$highlevel_data,$GRADE,$target in
 	true,true,none,*)		
 		case $target in
 			c|asm)	GRADE="hl" ;;
-			il)	GRADE="il" ;;
 			csharp) GRADE="csharp" ;;
 			java)	GRADE="java" ;;
 			erlang) GRADE="erlang" ;;
@@ -55,7 +54,6 @@ case $highlevel_code,$highlevel_data,$GRADE,$target in
 	true,false,none,*)	
 		case $target in
 			c|asm)	GRADE="hlc" ;;
-			il)	GRADE="ilc" ;;
 			*)
 				progname=`basename $0`
 				echo "$progname: unsupported target: $target"

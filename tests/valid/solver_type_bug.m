@@ -12,7 +12,6 @@
 
 :- solver type foo1.
 :- pragma foreign_type("C", foo1, "int").
-:- pragma foreign_type("IL", foo1, "int32").
 :- pragma foreign_type("Java", foo1, "int").
 :- pragma foreign_type("Erlang", foo1, "").
 

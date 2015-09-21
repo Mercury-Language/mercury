@@ -19,10 +19,6 @@
 
 :- import_module std_util.
 
-% IL implementation
-:- pragma foreign_type(il, coord,
-    "class [intermod_foreign_type2__csharp_code]coord").
-
 :- pragma foreign_decl("C#", "
 public class coord {
     public int x;

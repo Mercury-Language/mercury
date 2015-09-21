@@ -157,8 +157,6 @@
     io::di, io::uo) is det.
 :- pragma foreign_export("C", get_tabling_stats(in, out, di, uo),
     "MR_get_tabling_stats").
-:- pragma foreign_export("IL", get_tabling_stats(in, out, di, uo),
-    "MR_get_tabling_stats").
 
 get_tabling_stats(Info, Statistics, !IO) :-
     get_proc_info_direct_fields(Info, HasAnswerTable, NumInputs, NumOutputs,
@@ -189,14 +187,10 @@ get_tabling_stats(Info, Statistics, !IO) :-
 :- type ml_table_step_desc_ptr --->   ml_table_step_desc_ptr(c_pointer).
 :- pragma foreign_type("C", ml_table_step_desc_ptr, "const MR_TableStepDesc *",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type(il,  ml_table_step_desc_ptr,
-    "class [mscorlib]System.Object").
 
 :- type ml_table_stats_ptr --->   ml_table_stats_ptr(c_pointer).
 :- pragma foreign_type("C", ml_table_stats_ptr, "MR_TableStats *",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type(il,  ml_table_stats_ptr,
-    "class [mscorlib]System.Object").
 
 :- pred get_proc_info_direct_fields(ml_proc_table_info::in,
     int::out, int::out, int::out,

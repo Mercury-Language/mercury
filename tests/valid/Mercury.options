@@ -19,7 +19,6 @@ GRADEFLAGS-agc_ite		= --gc accurate
 GRADEFLAGS-agc_unbound_typevars	= --gc accurate
 GRADEFLAGS-agc_unbound_typevars2 = --gc accurate
 GRADEFLAGS-agc_unused_in	= --gc accurate
-GRADEFLAGS-csharp_hello		= --grade il
 
 # The bug that this test looks for exists only in MLDS grades without any gc.
 GRADEFLAGS-bug109		= --grade hlc

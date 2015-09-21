@@ -1815,9 +1815,7 @@ ml_gen_unify_arg(ConsId, Arg, Mode, ArgType, Field, VarType, VarLval,
         HighLevelData = yes,
         ml_gen_info_get_target(!.Info, Target),
         ( if
-            ( type_is_tuple(VarType, _)
-            ; type_needs_lowlevel_rep(Target, VarType)
-            )
+            type_is_tuple(VarType, _)
         then
             Offset = offset(OffsetInt),
             FieldId = ml_field_offset(ml_const(mlconst_int(OffsetInt)))
@@ -2281,13 +2279,9 @@ ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTagVal, VarType, Rval) =
         SecondaryTagField :-
     MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    ( if
-        ( HighLevelData = no
-        ; type_needs_lowlevel_rep(Target, VarType)
-        )
-    then
+    (
+        HighLevelData = no,
         % Note: with the low-level data representation, all fields -- even
         % the secondary tag -- are boxed, and so we need to unbox (i.e. cast)
         % it back to the right type here.
@@ -2296,7 +2290,8 @@ ml_gen_secondary_tag_rval(ModuleInfo, PrimaryTagVal, VarType, Rval) =
                 ml_lval(ml_field(yes(PrimaryTagVal), Rval,
                     ml_field_offset(ml_const(mlconst_int(0))),
                     mlds_generic_type, MLDS_VarType)))
-    else
+    ;
+        HighLevelData = yes,
         FieldId = ml_gen_hl_tag_field_id(ModuleInfo, VarType),
         SecondaryTagField = ml_lval(ml_field(yes(PrimaryTagVal), Rval,
             FieldId, mlds_native_int_type, MLDS_VarType))

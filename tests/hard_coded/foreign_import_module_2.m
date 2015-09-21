@@ -13,7 +13,6 @@
 :- import_module int.
 
 :- pragma foreign_export("C", foo(in, out), "foo").
-:- pragma foreign_export("IL", foo(in, out), "foo").
 :- pragma foreign_export("C#", foo(in, out), "foo").
 :- pragma foreign_export("Java", foo(in, out), "foo").
 :- pragma foreign_export("Erlang", foo(in, out), "foo").

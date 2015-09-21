@@ -128,7 +128,6 @@
     --->   ml_trie_node(c_pointer).
 :- pragma foreign_type("C", ml_trie_node, "MR_TrieNode",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type(il,  ml_trie_node, "class [mscorlib]System.Object").
 
     % This type represents a block of memory that contains one word
     % for each output argument of a procedure.
@@ -136,13 +135,10 @@
 :- type ml_answer_block --->    ml_answer_block(c_pointer).
 :- pragma foreign_type("C", ml_answer_block, "MR_AnswerBlock",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type(il,  ml_answer_block, "class [mscorlib]System.Object").
 
 :- type ml_proc_table_info ---> ml_proc_table_info(c_pointer).
 :- pragma foreign_type("C", ml_proc_table_info, "MR_ProcTableInfoPtr",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type(il,  ml_proc_table_info,
-    "class [mscorlib]System.Object").
 
 %---------------------------------------------------------------------------%
 
@@ -876,14 +872,12 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 :- type ml_subgoal --->     ml_subgoal(c_pointer).
 :- pragma foreign_type("C", ml_subgoal, "MR_SubgoalPtr",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type(il,  ml_subgoal, "class [mscorlib]System.Object").
 
     % This type represents a list of answers of a model_non predicate.
     %
 :- type ml_answer_list ---> ml_answer_list(c_pointer).
 :- pragma foreign_type("C", ml_answer_list, "MR_AnswerList",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type(il,  ml_answer_list, "class [mscorlib]System.Object").
 
 :- pragma foreign_proc("C",
     table_mm_setup(T::in, Subgoal::out, Status::out),
@@ -1076,7 +1070,6 @@ table_mm_fill_answer_block_shortcut(_) :-
 :- type ml_consumer --->    ml_consumer(c_pointer).
 :- pragma foreign_type("C", ml_consumer, "MR_ConsumerPtr",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type(il,  ml_consumer, "class [mscorlib]System.Object").
 
     % This type represents the generators in the own stack implementation
     % of minimal model tabling.
@@ -1084,7 +1077,6 @@ table_mm_fill_answer_block_shortcut(_) :-
 :- type ml_generator --->   ml_generator(c_pointer).
 :- pragma foreign_type("C", ml_generator, "MR_GeneratorPtr",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type(il,  ml_generator, "class [mscorlib]System.Object").
 
 :- pragma foreign_proc("C",
     table_mmos_save_inputs,

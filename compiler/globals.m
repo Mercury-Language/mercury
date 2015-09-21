@@ -39,8 +39,6 @@
 
 :- type compilation_target
     --->    target_c        % Generate C code (including GNU C).
-    ;       target_il       % Generate IL assembler code.
-                            % IL is the Microsoft .NET Intermediate Language.
     ;       target_csharp   % Generate C#.
     ;       target_java     % Generate Java.
     ;       target_erlang.  % Generate Erlang.
@@ -52,7 +50,6 @@
 %   ;       lang_cplusplus
     ;       lang_csharp
     ;       lang_java
-    ;       lang_il
     ;       lang_erlang.
 
 :- func target_lang_to_foreign_export_lang(compilation_target)
@@ -249,20 +246,11 @@
 % Access predicates for the `globals' structure.
 %
 
-:- type il_version_number
-    --->    il_version_number(
-                ivn_major               :: int,
-                ivn_minor               :: int,
-                ivn_build               :: int,
-                ivn_revision            :: int
-            ).
-
 :- pred globals_init(option_table::in, compilation_target::in, gc_method::in,
     tags_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
-    reuse_strategy::in,
-    maybe(il_version_number)::in, maybe(feedback_info)::in, env_type::in,
+    reuse_strategy::in, maybe(feedback_info)::in, env_type::in,
     env_type::in, env_type::in, file_install_cmd::in,
     limit_error_contexts_map::in, globals::out) is det.
 
@@ -282,8 +270,6 @@
 :- pred get_csharp_compiler_type(globals::in, csharp_compiler_type::out)
     is det.
 :- pred get_reuse_strategy(globals::in, reuse_strategy::out) is det.
-:- pred get_maybe_il_version_number(globals::in, maybe(il_version_number)::out)
-    is det.
 :- pred get_maybe_feedback_info(globals::in, maybe(feedback_info)::out) is det.
 :- pred get_host_env_type(globals::in, env_type::out) is det.
 :- pred get_system_env_type(globals::in, env_type::out) is det.
@@ -405,7 +391,6 @@ convert_target(String, Target) :-
 
 convert_target_2("csharp", target_csharp).
 convert_target_2("java", target_java).
-convert_target_2("il", target_il).
 convert_target_2("c", target_c).
 convert_target_2("erlang", target_erlang).
 
@@ -419,7 +404,6 @@ convert_foreign_language_2("c", lang_c).
 convert_foreign_language_2("c#", lang_csharp).
 convert_foreign_language_2("csharp", lang_csharp).
 convert_foreign_language_2("c sharp", lang_csharp).
-convert_foreign_language_2("il", lang_il).
 convert_foreign_language_2("java", lang_java).
 convert_foreign_language_2("erlang", lang_erlang).
 
@@ -647,25 +631,21 @@ convert_reuse_strategy("within_n_cells_difference", NCells,
 
 target_lang_to_foreign_export_lang(target_c) = lang_c.
 target_lang_to_foreign_export_lang(target_erlang) = lang_erlang.
-target_lang_to_foreign_export_lang(target_il) = lang_il.
 target_lang_to_foreign_export_lang(target_csharp) = lang_csharp.
 target_lang_to_foreign_export_lang(target_java) = lang_java.
 
 compilation_target_string(target_c) = "C".
 compilation_target_string(target_csharp) = "C#".
-compilation_target_string(target_il) = "IL".
 compilation_target_string(target_java) = "Java".
 compilation_target_string(target_erlang) = "Erlang".
 
 foreign_language_string(lang_c) = "C".
 foreign_language_string(lang_csharp) = "C#".
-foreign_language_string(lang_il) = "IL".
 foreign_language_string(lang_java) = "Java".
 foreign_language_string(lang_erlang) = "Erlang".
 
 simple_foreign_language_string(lang_c) = "c".
 simple_foreign_language_string(lang_csharp) = "csharp".
-simple_foreign_language_string(lang_il) = "il".
 simple_foreign_language_string(lang_java) = "java".
 simple_foreign_language_string(lang_erlang) = "erlang".
 
@@ -693,7 +673,6 @@ gc_is_conservative(gc_automatic) = no.
                 g_c_compiler_type           :: c_compiler_type,
                 g_csharp_compiler_type      :: csharp_compiler_type,
                 g_reuse_strategy            :: reuse_strategy,
-                g_maybe_il_version_number   :: maybe(il_version_number),
                 g_maybe_feedback            :: maybe(feedback_info),
                 g_host_env_type             :: env_type,
                 g_system_env_type           :: env_type,
@@ -705,15 +684,13 @@ gc_is_conservative(gc_automatic) = no.
 globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
-        ReuseStrategy, MaybeILVersion,
-        MaybeFeedback, HostEnvType, SystemEnvType, TargetEnvType,
-        FileInstallCmd, LimitErrorContextsMap, Globals) :-
+        ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
+        TargetEnvType, FileInstallCmd, LimitErrorContextsMap, Globals) :-
     Globals = globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
-        ReuseStrategy, MaybeILVersion,
-        MaybeFeedback, HostEnvType, SystemEnvType, TargetEnvType,
-        FileInstallCmd, LimitErrorContextsMap).
+        ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
+        TargetEnvType, FileInstallCmd, LimitErrorContextsMap).
 
 get_options(Globals, Globals ^ g_options).
 get_target(Globals, Globals ^ g_target).
@@ -728,7 +705,6 @@ get_maybe_thread_safe(Globals, Globals ^ g_may_be_thread_safe).
 get_c_compiler_type(Globals, Globals ^ g_c_compiler_type).
 get_csharp_compiler_type(Globals, Globals ^ g_csharp_compiler_type).
 get_reuse_strategy(Globals, Globals ^ g_reuse_strategy).
-get_maybe_il_version_number(Globals, Globals ^ g_maybe_il_version_number).
 get_maybe_feedback_info(Globals, Globals ^ g_maybe_feedback).
 get_host_env_type(Globals, Globals ^ g_host_env_type).
 get_system_env_type(Globals, Globals ^ g_system_env_type).
@@ -896,7 +872,6 @@ current_grade_supports_concurrency(Globals, ThreadsSupported) :-
         )
     ;
         ( Target = target_erlang
-        ; Target = target_il
         ; Target = target_java
         ; Target = target_csharp
         ),

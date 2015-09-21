@@ -3330,7 +3330,6 @@ polymorphism_construct_type_info(Type, TypeCtor, TypeArgs, TypeCtorIsVarArity,
             PassArity = no
         ;
             ( Target = target_c
-            ; Target = target_il
             ; Target = target_csharp
             ; Target = target_erlang
             ),

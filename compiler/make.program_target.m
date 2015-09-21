@@ -165,10 +165,6 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
             IntermediateTargetType = module_target_c_code,
             ObjectTargetType = module_target_object_code(PIC)
         ;
-            CompilationTarget = target_il,
-            IntermediateTargetType = module_target_il_code,
-            ObjectTargetType = module_target_il_asm
-        ;
             CompilationTarget = target_csharp,
             IntermediateTargetType = module_target_csharp_code,
             ObjectTargetType = module_target_csharp_code
@@ -368,17 +364,9 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
         MaybeImports = no,
         unexpected($module, $pred, "unknown imports")
     ),
-    (
-        CompilationTarget = target_il,
-        Imports ^ mai_has_foreign_code = contains_foreign_code(Langs)
-    ->
-        ForeignObjectTargets = list.map(
-            (func(L) = dep_target(target_file(ModuleName,
-                module_target_foreign_il_asm(L)))
-            ), set.to_sorted_list(Langs))
-    ;
-        ForeignObjectTargets = []
-    ),
+
+    % XXX only used by the IL backend.
+    ForeignObjectTargets = [],
 
     % Find out if any externally compiled foreign code files for fact tables
     % exist.
@@ -394,7 +382,6 @@ get_foreign_object_targets(Globals, PIC, ModuleName, ObjectTargets,
     ;
         ( CompilationTarget = target_java
         ; CompilationTarget = target_csharp
-        ; CompilationTarget = target_il
         ; CompilationTarget = target_erlang
         ),
         ObjectTargets = ForeignObjectTargets
@@ -583,9 +570,6 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
             maybe_pic_object_file_extension(NoLinkObjsGlobals, PIC,
                 ObjExtToUse)
         ;
-            CompilationTarget = target_il,
-            ObjExtToUse = ".dll"
-        ;
             CompilationTarget = target_csharp,
             % There is no separate object code step.
             ObjExtToUse = ".cs"
@@ -619,9 +603,6 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
                 compile_target_code.link(NoLinkObjsGlobals, ErrorStream,
                     FileType, MainModuleName, AllObjects),
                 Succeeded, !IO)
-        ;
-            CompilationTarget = target_il,
-            Succeeded = yes
         ),
         !Info ^ command_line_targets :=
             set.delete(!.Info ^ command_line_targets,
@@ -1230,9 +1211,6 @@ build_library(MainModuleName, AllModules, Globals, Succeeded, !Info, !IO) :-
         build_c_library(Globals, MainModuleName, AllModules, Succeeded,
             !Info, !IO)
     ;
-        Target = target_il,
-        sorry($module, $pred, "target IL not supported yet")
-    ;
         Target = target_csharp,
         build_csharp_library(Globals, MainModuleName, Succeeded, !Info, !IO)
     ;
@@ -1418,7 +1396,6 @@ install_ints_and_headers(Globals, SubdirLinkSucceeded, ModuleName, Succeeded,
         ;
             ( Target = target_java
             ; Target = target_csharp
-            ; Target = target_il
             ),
             HeaderSucceeded = yes
         ),
@@ -2002,7 +1979,6 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         [module_target_errors,
         module_target_c_code,
         module_target_c_header(header_mih),
-        module_target_il_code,
         module_target_csharp_code,
         module_target_java_code,
         module_target_java_class_code,
@@ -2051,14 +2027,7 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
                         !Info, !IO)
                 ), FactTableFiles, !Info, !IO)
         ),
-        [pic, link_with_pic, non_pic], !Info, !IO),
-
-    % Remove IL foreign code files.
-    CSharpModule = foreign_language_module_name(ModuleName, lang_csharp),
-    make_remove_module_file(Globals, very_verbose, CSharpModule,
-        foreign_language_file_extension(lang_csharp), !Info, !IO),
-    make_remove_target_file_by_name(Globals, very_verbose, CSharpModule,
-        module_target_foreign_il_asm(lang_csharp), !Info, !IO).
+        [pic, link_with_pic, non_pic], !Info, !IO).
 
 :- pred make_module_realclean(globals::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.

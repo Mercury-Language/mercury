@@ -123,7 +123,6 @@ ECHO_MERCURY_OPTIONS = { \
 	echo CFLAGS += '$(ALL_CFLAGS)'; \
 	echo JAVACFLAGS += '$(ALL_JAVACFLAGS)'; \
 	echo CSCFLAGS += '$(ALL_CSCFLAGS)'; \
-	echo ILASMFLAGS += '$(ALL_ILASMFLAGS)'; \
 	echo C2INITARGS += '$(ALL_C2INITARGS)'; \
 	echo MLLIBS += '$(ALL_MLLIBS)'; \
 	echo MLOBJS += '$(ALL_MLOBJS)'; \
@@ -214,32 +213,6 @@ LIB_CFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 #
 # Stuff for the .NET back-end
 #
-MS_DOTNET_SDK_DIR=@MS_DOTNET_SDK_DIR@
-# The system libraries were once needed here, but are currently unnecessary.
-
-# MERCURY_STDLIB_DIR should be set by the `mmake' script.
-MERC_C_INCL_DIR = $(MERCURY_STDLIB_DIR)/inc
-MERC_DLL_DIR    = $(MERCURY_STDLIB_DIR)/lib/$(GRADESTRING)
-
-# ILASM is the Microsoft IL assembler, which turns IL assembly code
-# into bytecode.
-# XXX we should also support the Portable.NET version of ILASM,
-# which has a different command-line interface. 
-# (Is there a Mono ILASM too?  What about Rotor?)
-ILASM		= @ILASM@
-ALL_ILASMFLAGS  = $(ILASMFLAGS) $(EXTRA_ILASMFLAGS) \
-		$(TARGET_ILASMFLAGS) $(LIB_ILASMFLAGS) $(ILASM_KEYFLAG)
-ILASMFLAGS	=
-EXTRA_ILASMFLAGS =
-LIB_ILASMFLAGS  = $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
-
-# MS_AL is the Microsoft assembly linker, which creates assemblies.
-MS_AL		= @MS_AL@ 
-
-# CSC is the command line version of C# compiler
-# XXX we should also support the Portable.NET and Mono C# compilers,
-# which have a different command-line interface. 
-# (What about Rotor?)
 
 FIX_PATH_FOR_CSC = @CYGPATH@
 CSC		= @CSC@
@@ -512,16 +485,6 @@ TARGET_CSCFLAGS = \
 maybe-base-CSCFLAGS- = $(CSCFLAGS-$*)
 maybe-base-CSCFLAGS-undefined =
 
-TARGET_ILASMFLAGS = \
-   $(maybe-base-ILASMFLAGS-$(findstring undefined,$(origin ILASMFLAGS-$*)))
-maybe-base-ILASMFLAGS- = $(ILASMFLAGS-$*)
-maybe-base-ILASMFLAGS-undefined =
-
-ILASM_KEYFLAG = \
-  $(maybe-target-ILASM_KEYFLAG-$(findstring undefined,$(origin ILASM_KEYFLAG-$*)))
-maybe-target-ILASM_KEYFLAG- = $(ILASM_KEYFLAG-$*)
-maybe-target-ILASM_KEYFLAG-undefined =
-
 TARGET_JAVACFLAGS = \
    $(maybe-base-JAVACFLAGS-$(findstring undefined,$(origin JAVACFLAGS-$*)))
 maybe-base-JAVACFLAGS- = $(JAVACFLAGS-$*)
@@ -540,7 +503,7 @@ maybe-base-JAVACFLAGS-undefined =
 # for each of these extensions.
 GRADE_SUBDIR_EXTS = \
 	mih optdate trans_opt trans_opt_date c c_date java java_date \
-	class il il_date dll s s_date pic_s pic_s_date o pic_o
+	class dll s s_date pic_s pic_s_date o pic_o
 
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 
@@ -569,13 +532,11 @@ dlls_subdir=$(SUBDIR)dlls/
 ss_subdir=$(SUBDIR)ss/
 pic_ss_subdir=$(SUBDIR)pic_ss/
 os_subdir=$(SUBDIR)os/
-ils_subdir=$(SUBDIR)ils/
 javas_subdir=$(SUBDIR)javas/
 dirs_subdir=$(SUBDIR)dirs/
 c_dates_subdir=$(SUBDIR)c_dates/
 s_dates_subdir=$(SUBDIR)s_dates/
 pic_s_dates_subdir=$(SUBDIR)pic_s_dates/
-il_dates_subdir=$(SUBDIR)il_dates/
 java_dates_subdir=$(SUBDIR)java_dates/
 classes_subdir=$(SUBDIR)classs/
 err_dates_subdir=$(SUBDIR)err_dates/
@@ -607,14 +568,11 @@ dlls_subdir=
 ss_subdir=
 pic_ss_subdir=
 os_subdir=
-rlos_subdir=
-ils_subdir=
 javas_subdir=
 dirs_subdir=
 c_dates_subdir=
 s_dates_subdir=
 pic_s_dates_subdir=
-il_dates_subdir=
 java_dates_subdir=
 classes_subdir=
 err_dates_subdir=

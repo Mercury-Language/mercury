@@ -210,9 +210,6 @@ foreign_import_module_name(ImportModule) = ModuleName :-
         Lang = lang_c,
         ModuleName = ForeignImportModule
     ;
-        Lang = lang_il,
-        ModuleName = ForeignImportModule
-    ;
         Lang = lang_java,
         ModuleName = ForeignImportModule
     ;
@@ -231,10 +228,6 @@ foreign_import_module_name_from_module(ModuleForeignImported, CurrentModule) =
     (
         Lang = lang_c,
         ImportedForeignCodeModuleName = ImportedForeignCodeModuleName1
-    ;
-        Lang = lang_il,
-        ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
-            ImportedForeignCodeModuleName1)
     ;
         Lang = lang_csharp,
         ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
@@ -285,8 +278,6 @@ foreign_language_module_name(ModuleName, Lang) = FullyQualifiedModuleName :-
 foreign_language_file_extension(lang_c) = ".c".
 foreign_language_file_extension(lang_csharp) = ".cs".
 foreign_language_file_extension(lang_java) = ".java".
-foreign_language_file_extension(lang_il) = _ :-
-    fail.
 
 %-----------------------------------------------------------------------------%
 
@@ -300,25 +291,6 @@ prefer_foreign_language(_Globals, target_c, Lang1, Lang2) =
         yes
     ;
         no
-    ).
-
-prefer_foreign_language(_Globals, target_il, Lang1, Lang2) = Comp :-
-    % When compiling to il, first we prefer il, then csharp.
-    % After that we don't care.
-    PreferredList = [lang_il, lang_csharp],
-
-    FindLangPriority = (func(L) = X :-
-        ( list.index1_of_first_occurrence(PreferredList, L, XPrime) ->
-            X = XPrime
-        ;
-            X = list.length(PreferredList) + 1
-        )),
-    N1 = FindLangPriority(Lang1),
-    N2 = FindLangPriority(Lang2),
-    ( N2 < N1 ->
-        Comp = yes
-    ;
-        Comp = no
     ).
 
 prefer_foreign_language(_Globals, target_csharp, _Lang1, _Lang2) = no.
@@ -344,12 +316,10 @@ all_foreign_languages = Langs :-
 valid_foreign_language(lang_c).
 valid_foreign_language(lang_java).
 valid_foreign_language(lang_csharp).
-valid_foreign_language(lang_il).
 valid_foreign_language(lang_erlang).
 
 %-----------------------------------------------------------------------------%
 
-foreign_type_language(il(_)) = lang_il.
 foreign_type_language(c(_)) = lang_c.
 foreign_type_language(java(_)) = lang_java.
 foreign_type_language(csharp(_)) = lang_csharp.

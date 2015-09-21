@@ -234,7 +234,6 @@ output_csharp_decl(Info, Indent, DeclCode, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_java
-        ; Lang = lang_il
         ; Lang = lang_erlang
         ),
         sorry($module, $pred, "foreign decl other than C#")
@@ -253,7 +252,6 @@ output_csharp_body_code(Info, Indent, ForeignBodyCode, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_java
-        ; Lang = lang_il
         ; Lang = lang_erlang
         ),
         sorry($module, $pred, "foreign code other than C#")
@@ -418,7 +416,6 @@ output_exported_enum(Info, Indent, ExportedEnum, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_java
-        ; Lang = lang_il
         ; Lang = lang_erlang
         )
     ).
@@ -1544,8 +1541,7 @@ get_type_initializer(Info, Type) = Initializer :-
             ForeignType = csharp(csharp_type(CsharpType)),
             Initializer = "default(" ++ CsharpType ++ ")"
         ;
-            ( ForeignType = il(_)
-            ; ForeignType = c(_)
+            ( ForeignType = c(_)
             ; ForeignType = java(_)
             ; ForeignType = erlang(_)
             ),
@@ -2268,9 +2264,6 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
         ;
             ForeignType = c(_),
             unexpected($module, $pred, "c foreign_type")
-        ;
-            ForeignType = il(_),
-            unexpected($module, $pred, "il foreign_type")
         ;
             ForeignType = java(_),
             unexpected($module, $pred, "java foreign_type")
@@ -3178,7 +3171,6 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
         ;
             ( TargetLang = ml_target_c
             ; TargetLang = ml_target_gnu_c
-            ; TargetLang = ml_target_il
             ; TargetLang = ml_target_java
             ),
             unexpected($module, $pred,
@@ -3197,7 +3189,7 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
 
 output_target_code_component(Info, TargetCode, !IO) :-
     (
-        TargetCode = user_target_code(CodeString, MaybeUserContext, _Attrs),
+        TargetCode = user_target_code(CodeString, MaybeUserContext),
         io.write_string("{\n", !IO),
         (
             MaybeUserContext = yes(ProgContext),
@@ -3209,7 +3201,7 @@ output_target_code_component(Info, TargetCode, !IO) :-
         io.write_string("}\n", !IO),
         output_default_context(Info, !IO)
     ;
-        TargetCode = raw_target_code(CodeString, _Attrs),
+        TargetCode = raw_target_code(CodeString),
         io.write_string(CodeString, !IO)
     ;
         TargetCode = target_code_input(Rval),

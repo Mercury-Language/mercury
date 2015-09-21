@@ -425,7 +425,7 @@ JAVA_PASS_PROGS = \
 	value_enum
 
 # Solver types only work in C grades
-ifeq "$(filter il% csharp% java% erlang%,$(GRADE))" ""
+ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
 	SOLVER_PROGS = \
 		any_call_hoist_bug \
 		any_free_unify \
@@ -455,23 +455,13 @@ else
 		bug314
 endif
 
-# Mutables don't work in IL grades.
-ifeq "$(filter il%,$(GRADE))" ""
-	MUTABLE_PROGS = \
-		float_gv
-else
-	MUTABLE_PROGS =
-endif
+MUTABLE_PROGS = \
+	float_gv
 
-# Trace goal with runtime conditions don't work in IL grades.
-ifeq "$(filter il%,$(GRADE))" ""
-	TRACE_GOAL_ENV_PROGS = \
-		trace_goal_env_1 \
-		trace_goal_env_2 \
-		trace_goal_env_3
-else
-	TRACE_GOAL_ENV_PROGS =
-endif
+TRACE_GOAL_ENV_PROGS = \
+	trace_goal_env_1 \
+	trace_goal_env_2 \
+	trace_goal_env_3
 
 # Compile-time garbage collection is currently incompatible with debugging
 # grades.
@@ -505,15 +495,6 @@ ifeq "$(findstring debug,$(GRADE))$(findstring deep,$(GRADE))" ""
 		version_hash_table_test2
 else
 	BIG_DATA_PROGS =
-endif
-
-# Tests of the C#, MC++, and IL foreign language interfaces only
-# work in IL grades
-ifeq "$(filter il%,$(GRADE))" ""
-	DOTNET_PROGS =
-else
-	DOTNET_PROGS = \
-		csharp_test
 endif
 
 # Tests of the Java foreign language interface only
@@ -746,7 +727,6 @@ PROGS = \
 	$(C_AND_GC_ONLY_PROGS) \
 	$(STATIC_LINK_PROGS) \
 	$(C_ONLY_PROGS) \
-	$(DOTNET_PROGS) \
 	$(JAVA_PROGS) \
 	$(SOLVER_PROGS) \
 	$(TRAILED_PROGS) \

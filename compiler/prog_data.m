@@ -210,26 +210,12 @@ determinism_components(detism_failure,   can_fail,    at_most_zero).
     % A foreign_language_type represents a type that is defined in a
     % foreign language and accessed in Mercury (most likely through
     % pragma foreign_type).
-    % Currently we only support foreign_language_types for IL.
-    %
-    % It is important to distinguish between IL value types and reference
-    % types, the compiler may need to generate different code for each of
-    % these cases.
     %
 :- type foreign_language_type
-    --->    il(il_foreign_type)
-    ;       c(c_foreign_type)
+    --->    c(c_foreign_type)
     ;       java(java_foreign_type)
     ;       csharp(csharp_foreign_type)
     ;       erlang(erlang_foreign_type).
-
-:- type il_foreign_type
-    --->    il_type(
-                ref_or_val, % An indicator of whether the type is a
-                            % reference of value type.
-                string,     % The location of the .NET name (the assembly)
-                sym_name    % The .NET type name
-            ).
 
 :- type c_foreign_type
     --->    c_type(
@@ -725,7 +711,6 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
                 % fim_cplusplus :: set(module_name),
                 fim_csharp      :: set(module_name),
                 fim_java        :: set(module_name),
-                fim_il          :: set(module_name),
                 fim_erlang      :: set(module_name)
             ).
 
@@ -758,7 +743,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 :- implementation.
 
 init_foreign_import_modules =
-    foreign_import_modules(set.init, set.init, set.init, set.init, set.init).
+    foreign_import_modules(set.init, set.init, set.init, set.init).
 
 add_foreign_import_module(Lang, ModuleName, !FIM) :-
     (
@@ -786,14 +771,6 @@ add_foreign_import_module(Lang, ModuleName, !FIM) :-
             true
         )
     ;
-        Lang = lang_il,
-        ModuleNames0 = !.FIM ^ fim_il,
-        ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
-            !FIM ^ fim_il := ModuleNames
-        else
-            true
-        )
-    ;
         Lang = lang_erlang,
         ModuleNames0 = !.FIM ^ fim_erlang,
         ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
@@ -809,7 +786,7 @@ add_foreign_import_module_info(FIMI, !FIM) :-
 
 get_all_foreign_import_module_infos(FIM) = ImportInfos :-
     FIM = foreign_import_modules(ModuleNamesC, ModuleNamesCSharp,
-        ModuleNamesJava, ModuleNamesIL, ModuleNamesErlang),
+        ModuleNamesJava, ModuleNamesErlang),
     ImportInfos = set.union_list([
         set.map(make_foreign_import_module_info(lang_c),
             ModuleNamesC),
@@ -817,17 +794,15 @@ get_all_foreign_import_module_infos(FIM) = ImportInfos :-
             ModuleNamesCSharp),
         set.map(make_foreign_import_module_info(lang_java),
             ModuleNamesJava),
-        set.map(make_foreign_import_module_info(lang_il),
-            ModuleNamesIL),
         set.map(make_foreign_import_module_info(lang_erlang),
             ModuleNamesErlang)
         ]).
 
 get_all_foreign_import_modules(FIM) = ModuleNames :-
     FIM = foreign_import_modules(ModuleNamesC, ModuleNamesCSharp,
-        ModuleNamesJava, ModuleNamesIL, ModuleNamesErlang),
+        ModuleNamesJava, ModuleNamesErlang),
     ModuleNames = set.union_list([ModuleNamesC, ModuleNamesCSharp,
-        ModuleNamesJava, ModuleNamesIL, ModuleNamesErlang]).
+        ModuleNamesJava, ModuleNamesErlang]).
 
 get_lang_foreign_import_module_infos(FIM, Lang) = ImportInfos :-
     ModuleNames = get_lang_foreign_import_modules(FIM, Lang),
@@ -843,9 +818,6 @@ get_lang_foreign_import_modules(FIM, Lang) = ModuleNames :-
     ;
         Lang = lang_java,
         ModuleNames = FIM ^ fim_java
-    ;
-        Lang = lang_il,
-        ModuleNames = FIM ^ fim_il
     ;
         Lang = lang_erlang,
         ModuleNames = FIM ^ fim_erlang
@@ -1220,8 +1192,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
             % otherwise.
 
 :- type pragma_foreign_proc_extra_attribute
-    --->    max_stack_size(int)
-    ;       refers_to_llds_stack
+    --->    refers_to_llds_stack
     ;       backend(backend)
     ;       needs_call_standard_output_registers.
             % On the LLDS backend, this foreign_proc needs to put its outputs
@@ -1378,7 +1349,6 @@ pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
     ;       trace_grade_llds
     ;       trace_grade_mlds
     ;       trace_grade_c
-    ;       trace_grade_il
     ;       trace_grade_csharp
     ;       trace_grade_java
     ;       trace_grade_erlang.
@@ -1446,7 +1416,6 @@ parse_trace_grade_name("rbmm", trace_grade_rbmm).
 parse_trace_grade_name("llds", trace_grade_llds).
 parse_trace_grade_name("mlds", trace_grade_mlds).
 parse_trace_grade_name("c", trace_grade_c).
-parse_trace_grade_name("il", trace_grade_il).
 parse_trace_grade_name("csharp", trace_grade_csharp).
 parse_trace_grade_name("java", trace_grade_java).
 parse_trace_grade_name("erlang", trace_grade_erlang).

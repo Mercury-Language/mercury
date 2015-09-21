@@ -157,8 +157,6 @@ public class ML_Semaphore {
     % XXX the struct tag works around bug #19 in high-level C grades
 :- pragma foreign_type("C",  semaphore, "struct ML_SEMAPHORE_STRUCT *",
     [can_pass_as_mercury_type]).
-:- pragma foreign_type("IL", semaphore,
-    "class [mercury]mercury.thread.semaphore__csharp_code.mercury_code.ML_Semaphore").
 :- pragma foreign_type("C#", semaphore, "thread__semaphore.ML_Semaphore").
 :- pragma foreign_type("Erlang", semaphore, "").
 :- pragma foreign_type("Java", semaphore, "jmercury.runtime.Semaphore").

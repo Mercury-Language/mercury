@@ -452,8 +452,7 @@ post_process_type_defns(!HLDS, Specs) :-
             Specs = []
         )
     ;
-        ( Target = target_il
-        ; Target = target_csharp
+        ( Target = target_csharp
         ; Target = target_java
         ; Target = target_erlang
         ),

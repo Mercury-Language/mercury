@@ -172,7 +172,6 @@
     ;       debug_opt_pred_id
     ;       debug_opt_pred_name
     ;       debug_pd            % pd = partial deduction/deforestation
-    ;       debug_il_asm        % il_asm = IL generation via asm
     ;       debug_liveness
     ;       debug_stack_opt
     ;       debug_make
@@ -287,8 +286,6 @@
     ;       prop_mode_constraints
     ;       benchmark_modes
     ;       benchmark_modes_repeat
-    ;       il_sign_assembly
-    ;       separate_assemblies
 
     % Language semantics options
     ;       reorder_conj
@@ -309,8 +306,6 @@
 
     % Target selection options
     ;       target
-    ;       il                  % target il
-    ;       il_only             % target il + target_code_only
     ;       compile_to_c        % target c + target_code_only
     ;       java                % target java
     ;       java_only           % target java + target_code_only
@@ -449,17 +444,6 @@
     ;       nondet_copy_out
     ;       put_commit_in_own_func
     ;       put_nondet_env_on_heap
-
-    % IL back-end compilation model options
-    ;       verifiable_code
-    ;       il_refany_fields
-    ;       il_funcptr_types
-    ;       il_byref_tailcalls
-            % Currently this is not really a compilation model option, i.e.
-            % it doesn't affect the ABI. In future it might become one, though
-            % -- we should return multiple values in value types, rather than
-            % using byrefs. Also it's nicer to keep it with the other IL
-            % back-end options here.
 
     % Options for internal use only (the values of these options are implied
     % by the settings of other options)
@@ -862,14 +846,6 @@
     ;       java_classpath
     ;       java_object_file_extension
 
-    % IL
-    ;       il_assembler
-    ;       ilasm_flags
-    ;       quoted_ilasm_flag
-    ;       dotnet_library_version
-    ;       support_ms_clr
-    ;       support_rotor_clr
-
     % C#
     ;       csharp_compiler
     ;       csharp_flags
@@ -1182,7 +1158,6 @@ option_defaults_2(verbosity_option, [
     debug_opt_pred_id                   -   accumulating([]),
     debug_opt_pred_name                 -   accumulating([]),
     debug_pd                            -   bool(no),
-    debug_il_asm                        -   bool(no),
     debug_liveness                      -   int(-1),
     debug_stack_opt                     -   int(-1),
     debug_make                          -   bool(no),
@@ -1277,10 +1252,7 @@ option_defaults_2(aux_output_option, [
     simple_mode_constraints             -   bool(no),
     prop_mode_constraints               -   bool(no),
     benchmark_modes                     -   bool(no),
-    benchmark_modes_repeat              -   int(1),
-    il_sign_assembly                    -   bool(no),
-    % XXX should default to no but currently broken
-    separate_assemblies                 -   bool(yes)
+    benchmark_modes_repeat              -   int(1)
 ]).
 option_defaults_2(language_semantics_option, [
     strict_sequential                   -   special,
@@ -1304,8 +1276,6 @@ option_defaults_2(compilation_model_option, [
 
     % Target selection compilation model options
     target                              -   string("c"),
-    il                                  -   special,
-    il_only                             -   special,
     compile_to_c                        -   special,
     csharp                              -   special,
     csharp_only                         -   special,
@@ -1413,13 +1383,7 @@ option_defaults_2(compilation_model_option, [
     det_copy_out                        -   bool(no),
     nondet_copy_out                     -   bool(no),
     put_commit_in_own_func              -   bool(no),
-    put_nondet_env_on_heap              -   bool(no),
-
-    % IL back-end compilation model options
-    verifiable_code                     -   bool(no),
-    il_funcptr_types                    -   bool(no),
-    il_refany_fields                    -   bool(no),
-    il_byref_tailcalls                  -   bool(no)
+    put_nondet_env_on_heap              -   bool(no)
 ]).
 option_defaults_2(internal_use_option, [
     % Options for internal use only
@@ -1764,16 +1728,6 @@ option_defaults_2(target_code_compilation_option, [
     java_classpath                      -   accumulating([]),
     java_object_file_extension          -   string(".class"),
 
-    % IL
-    il_assembler                        -   string("ilasm"),
-    ilasm_flags                         -   accumulating([]),
-    quoted_ilasm_flag                   -   string_special,
-    dotnet_library_version              -   string("1.0.3300.0"),
-                                        % We default to the version of the
-                                        % library that came with Beta2.
-    support_ms_clr                      -   bool(yes),
-    support_rotor_clr                   -   bool(no),
-
     % C#
     csharp_compiler                     -   string("csc"),
     csharp_flags                        -   accumulating([]),
@@ -2079,11 +2033,6 @@ long_option("debug-opt",                debug_opt).
 long_option("debug-opt-pred-id",        debug_opt_pred_id).
 long_option("debug-opt-pred-name",      debug_opt_pred_name).
 long_option("debug-pd",                 debug_pd).
-    % debug-il-asm does very low-level printf style debugging of
-    % IL assembler.  Each instruction is written on stdout before it
-    % is executed.  It is a temporary measure until the IL debugging
-    % system built into .NET improves.
-long_option("debug-il-asm",             debug_il_asm).
 long_option("debug-liveness",           debug_liveness).
 long_option("debug-stack-opt",          debug_stack_opt).
 long_option("debug-make",               debug_make).
@@ -2198,8 +2147,6 @@ long_option("dump-mlds",                dump_mlds).
 long_option("mlds-dump",                dump_mlds).
 long_option("verbose-dump-mlds",        verbose_dump_mlds).
 long_option("verbose-mlds-dump",        verbose_dump_mlds).
-long_option("il-sign-assembly",         il_sign_assembly).
-long_option("separate-assemblies",      separate_assemblies).
 long_option("mode-constraints",         mode_constraints).
 long_option("simple-mode-constraints",  simple_mode_constraints).
 long_option("prop-mode-constraints",    prop_mode_constraints).
@@ -2226,9 +2173,6 @@ long_option("event-set-file-name",  event_set_file_name).
 long_option("grade",                grade).
 % target selection options
 long_option("target",               target).
-long_option("il",                   il).
-long_option("il-only",              il_only).
-long_option("IL-only",              il_only).
 long_option("compile-to-c",         compile_to_c).
 long_option("compile-to-C",         compile_to_c).
 long_option("java",                 java).
@@ -2349,15 +2293,6 @@ long_option("det-copy-out",         det_copy_out).
 long_option("nondet-copy-out",      nondet_copy_out).
 long_option("put-commit-in-own-func",   put_commit_in_own_func).
 long_option("put-nondet-env-on-heap",   put_nondet_env_on_heap).
-% IL back-end compilation model options
-long_option("verifiable-code",      verifiable_code).
-long_option("verifiable",           verifiable_code).
-long_option("il-funcptr-types",     il_funcptr_types).
-long_option("IL-funcptr-types",     il_funcptr_types).
-long_option("il-refany-fields",     il_refany_fields).
-long_option("IL-refany-fields",     il_refany_fields).
-long_option("il-byref-tailcalls",   il_byref_tailcalls).
-long_option("IL-byref-tailcalls",   il_byref_tailcalls).
 
 % internal use options
 long_option("backend-foreign-languages", backend_foreign_languages).
@@ -2757,13 +2692,6 @@ long_option("java-debug",           target_debug).
 long_option("java-classpath",       java_classpath).
 long_option("java-object-file-extension", java_object_file_extension).
 
-long_option("il-assembler",         il_assembler).
-long_option("ilasm-flags",          ilasm_flags).
-long_option("ilasm-flag",           quoted_ilasm_flag).
-long_option("dotnet-library-version",   dotnet_library_version).
-long_option("support-ms-clr",       support_ms_clr).
-long_option("support-rotor-clr",    support_rotor_clr).
-
 long_option("csharp-compiler",      csharp_compiler).
 long_option("csharp-flags",         csharp_flags).
 long_option("csharp-flag",          quoted_csharp_flag).
@@ -2979,11 +2907,6 @@ special_handler(grade, string(Grade), OptionTable0, Result) :-
     ;
         Result = error("invalid grade `" ++ Grade ++ "'")
     ).
-special_handler(il, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("il"), !OptionTable).
-special_handler(il_only, none, !.OptionTable, ok(!:OptionTable)) :-
-    map.set(target, string("il"), !OptionTable),
-    map.set(target_code_only, bool(yes), !OptionTable).
 special_handler(compile_to_c, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("c"), !OptionTable),
     map.set(target_code_only, bool(yes), !OptionTable).
@@ -3138,9 +3061,6 @@ special_handler(quoted_msvc_flag, string(Flag),
 special_handler(quoted_java_flag, string(Flag),
         OptionTable0, ok(OptionTable)) :-
     handle_quoted_flag(java_flags, Flag, OptionTable0, OptionTable).
-special_handler(quoted_ilasm_flag, string(Flag),
-        OptionTable0, ok(OptionTable)) :-
-    handle_quoted_flag(ilasm_flags, Flag, OptionTable0, OptionTable).
 special_handler(quoted_csharp_flag, string(Flag),
         OptionTable0, ok(OptionTable)) :-
     handle_quoted_flag(csharp_flags, Flag, OptionTable0, OptionTable).
@@ -4132,19 +4052,6 @@ options_help_aux_output -->
 %       "--prop-mode-constraints",
 %       "\tUse the new propagation solver for constraints based",
 %       "\tmode analysis.",
-% IL options are commented out to reduce confusion.
-%       "--il-sign-assembly",
-%       "\tSign the current assembly with the Mercury strong name.",
-%       "\tTo use assemblies created with this command all the Mercury",
-%       "\tmodules must be compiled with this option enabled.",
-%       "\tThis option is specific to the IL backend, and is likely",
-%       "\tto be deprecated at a later date."
-
-        /* XXX currently broken.
-        "--separate-assemblies",
-        "\tPlace sub-modules in separate assemblies.",
-        "\tThis option is specific to the IL backend."
-        */
     ]).
 
 :- pred options_help_semantics(io::di, io::uo) is det.
@@ -4349,7 +4256,6 @@ options_help_compilation_model -->
     write_tabbed_lines([
         %"--target c\t\t\t(grades: none, reg, jump, fast,",
         %"\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
-        %"--target il\t\t\t(grades: il)",
         "--target c\t\t\t(grades: none, reg, asm_fast, hlc)",
         "--target csharp\t\t\t(grades: csharp)",
         "--target java\t\t\t(grades: java)",
@@ -4357,25 +4263,6 @@ options_help_compilation_model -->
         "\tSpecify the target language: C, C#, Java or Erlang.",
         "\tThe default is C.",
         "\tTargets other than C imply `--high-level-code' (see below).",
-
-% IL options are commented out to reduce confusion.
-%       "--il",
-%       "\tAn abbreviation for `--target il'.",
-%       "--il-only",
-%       "\tAn abbreviation for `--target il --target-code-only'.",
-%       "\tGenerate IL code in `<module>.il', but do not generate",
-%       "\tobject code.",
-%
-%       "--dotnet-library-version <version-number>",
-%       "\tThe version number for the mscorlib assembly distributed",
-%       "\twith the Microsoft .NET SDK.",
-%
-%       "--no-support-ms-clr",
-%       "\tDon't use MS CLR specific workarounds in the generated code.",
-%
-%       "--support-rotor-clr",
-%       "\tUse specific workarounds for the ROTOR CLR in the generated",
-%       "\tcode.",
 
         "--csharp",
         "\tAn abbreviation for `--target csharp'.",
@@ -4499,7 +4386,7 @@ options_help_compilation_model -->
 %       "--no-profile-deep-coverage-branch-disj",
 %       "\tDisable coverage points at the beginning of disjunction branches.",
 
-%       I beleive these options are broken - pbone.
+%       I believe these options are broken - pbone.
 %       "Switches to tune the coverage profiling pass, useful for ",
 %       "debugging.",
 %
@@ -4537,7 +4424,7 @@ options_help_compilation_model -->
     write_tabbed_lines([
         "--gc {none, boehm, hgc, accurate, automatic}",
         "--garbage-collection {none, boehm, hgc, accurate, automatic}",
-        "\t\t\t\t(`java', `csharp', `il' and `erlang'",
+        "\t\t\t\t(`java', `csharp', and `erlang'",
         "\t\t\t\t\tgrades use `--gc automatic',",
         "\t\t\t\t`.gc' grades use `--gc boehm',",
         "\t\t\t\t`.hgc' grades use `--gc hgc',",
@@ -4671,7 +4558,7 @@ options_help_compilation_model -->
 %       "\tprocedures using return-by-value rather than pass-by-reference.",
 %       "\tThis option is ignored if the `--high-level-code' option is not enabled.",
 % The --nondet-copy-out option is not yet documented,
-% because it is probably not very useful except for IL and Java,
+% because it is probably not very useful except for Java,
 % where it is the default.
 %       "--nondet-copy-out\t\t(grades: il, ilc)",
 %       "\tSpecify whether to handle output arguments for nondet",
@@ -4697,36 +4584,6 @@ options_help_compilation_model -->
 %   ]),
 %   io.write_string("\n      IL back-end compilation model options:\n"),
 %   write_tabbed_lines([
-%
-% The --verifiable-code option is not yet documented because it is not yet fully
-% implemented.
-%       "--verifiable, --verifiable-code\t\t\t",
-%       "\tEnsure that the generated IL code is verifiable.",
-%
-% The --il-refany-fields option is not documented because currently there
-% are no IL implementations for which it is useful.
-%       "--il-refany-fields",
-%       "\tGenerate IL code that assumes that the CLI implementation",
-%       "\tsupports value types with fields of type `refany'.",
-%       "\tUsing this option could in theory allow more efficient",
-%       "\tverifiable IL code for nondeterministic Mercury procedures,",
-%       "\tif the CLI implementation supported it."
-%       "\tHowever, the current Microsoft CLR does not support it."
-%
-% The --il-byref-tailcalls option is not documented because currently there
-% are no IL implementations for which it is useful.
-%       "--il-byref-tailcalls",
-%       "\tGenerate IL code that assumes that the CLI verifier",
-%       "\tsupports tail calls with byref arguments."
-%
-% The --il-funcptr-types option is not documented because it is not yet
-% implemented.
-%       "--il-funcptr-types",
-%       "\tGenerate IL code that assumes that the IL assembler",
-%       "\tsupports function pointer types."
-%       "\tThe ECMA CLI specification allows function pointer types,"
-%       "\tbut some CLR implementations, e.g. the old Beta 2 version of"
-%       "\tthe Microsoft CLR implementation, do not support them."
     ]),
 
     io.write_string("\n    Developer compilation model options:\n"),
@@ -4996,8 +4853,7 @@ options_help_code_generation -->
 %       "\tThis makes the generated code less readable, but potentially",
 %       "\tslightly more efficient.",
 %       "\tThis option has no effect unless the `--high-level-code' option",
-%       "\tis enabled.  It also has no effect if the `--target' option is",
-%       "\tset to `il'.",
+%       "\tis enabled.",
 % This optimization is for implementors only. Turning this option on provides
 % the fairest possible test of --optimize-saved-vars-cell.
 %       "--no-opt-no-return-calls",
@@ -5604,14 +5460,6 @@ options_help_target_code_compilation -->
         "--java-object-file-extension <ext>",
         "\tSpecify an extension for Java object (bytecode) files",
         "\tBy default this is `.class'.",
-
-% IL options are commented out to reduce confusion.
-%       "--il-assembler <ilasm>",
-%       "\tSpecify the name of the .NET IL Assembler command.",
-%       "--ilasm-flags <options>, --ilasm-flag <options>",
-%       "\tSpecify options to be passed to the IL assembler.",
-%       "\t`--ilasm-flag' should be used for single words which need",
-%       "\tto be quoted when passed to the shell.",
 
         "--csharp-compiler <csc>",
         "\tSpecify the name of the C# Compiler.  The default is `csc'.",

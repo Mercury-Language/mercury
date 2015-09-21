@@ -343,10 +343,6 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
             ;
                 Target = target_csharp,
                 !:EvalAttributes = default_attributes(lang_csharp)
-            ;
-                Target = target_il,
-                sorry($module, $pred,
-                    "runtime trace conditions for this target language")
             ),
             set_may_call_mercury(proc_will_not_call_mercury, !EvalAttributes),
             set_thread_safe(proc_thread_safe, !EvalAttributes),
@@ -449,14 +445,6 @@ evaluate_compile_time_condition_comptime(CompTime, Info) = Result :-
             Grade = trace_grade_c,
             globals.get_target(Globals, Target),
             ( Target = target_c ->
-                Result = yes
-            ;
-                Result = no
-            )
-        ;
-            Grade = trace_grade_il,
-            globals.get_target(Globals, Target),
-            ( Target = target_il ->
                 Result = yes
             ;
                 Result = no

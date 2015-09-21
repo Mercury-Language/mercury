@@ -534,7 +534,6 @@ cons_table_optimize(!ConsTable) :-
 
 :- type foreign_type_body
     --->    foreign_type_body(
-                il      :: foreign_type_lang_body(il_foreign_type),
                 c       :: foreign_type_lang_body(c_foreign_type),
                 java    :: foreign_type_lang_body(java_foreign_type),
                 csharp  :: foreign_type_lang_body(csharp_foreign_type),

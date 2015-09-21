@@ -20,8 +20,6 @@
 :- type type_which_needs_boxing.
 :- pragma foreign_type(c, type_which_needs_boxing, "double")
         where equality is unify_ft.
-:- pragma foreign_type(il, type_which_needs_boxing,
-        "valuetype [mscorlib]System.Double") where equality is unify_ft.
 :- pragma foreign_type("C#", type_which_needs_boxing,
         "System.Double") where equality is unify_ft.
 :- pragma foreign_type(java, type_which_needs_boxing,
@@ -31,9 +29,6 @@
 
 :- type type_which_needs_boxing(T).
 :- pragma foreign_type(c, type_which_needs_boxing(T), "double")
-        where equality is unify_ft_T.
-:- pragma foreign_type(il, type_which_needs_boxing(T),
-        "valuetype [mscorlib]System.Double")
         where equality is unify_ft_T.
 :- pragma foreign_type("C#", type_which_needs_boxing(T),
         "System.Double")

@@ -234,7 +234,6 @@ build_export_enum_name_map(ContextPieces, Lang, TypeName, TypeArity, Context,
                 What = "Java identifiers."
             ;
                 ( Lang = lang_csharp
-                ; Lang = lang_il
                 ; Lang = lang_erlang
                 ),
                 sorry($module, $pred,
@@ -350,9 +349,7 @@ add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, _TypeModQual, Ctor,
         ),
         IsValidForeignName = pred_to_bool(is_valid_c_identifier(ForeignName))
     ;
-        ( Lang = lang_il
-        ; Lang = lang_erlang
-        ),
+        Lang = lang_erlang,
         sorry($module, $pred, "foreign_export_enum for target language")
     ),
     (
@@ -579,7 +576,6 @@ fixup_foreign_tag_val_qualification(TypeModuleName, !NamesAndTags,
     = foreign_language.
 
 target_lang_to_foreign_enum_lang(target_c) = lang_c.
-target_lang_to_foreign_enum_lang(target_il) = lang_il.
 target_lang_to_foreign_enum_lang(target_csharp) = lang_csharp.
 target_lang_to_foreign_enum_lang(target_java) = lang_java.
 target_lang_to_foreign_enum_lang(target_erlang) = lang_erlang.

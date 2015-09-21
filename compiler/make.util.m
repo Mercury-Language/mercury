@@ -1468,10 +1468,8 @@ target_extension(_, module_target_track_flags) = yes(".track_flags").
 target_extension(_, module_target_c_header(header_mih)) = yes(".mih").
 target_extension(_, module_target_c_header(header_mh)) = yes(".mh").
 target_extension(_, module_target_c_code) = yes(".c").
-target_extension(_, module_target_il_code) = yes(".il").
 
     % XXX ".exe" if the module contains main.
-target_extension(_, module_target_il_asm) = yes(".dll").
 target_extension(_, module_target_csharp_code) = yes(".cs").
 target_extension(_, module_target_java_code) = yes(".java").
 target_extension(_, module_target_java_class_code) = yes(".class").
@@ -1484,7 +1482,6 @@ target_extension(_, module_target_xml_doc) = yes(".xml").
 
     % These all need to be handled as special cases.
 target_extension(_, module_target_foreign_object(_, _)) = no.
-target_extension(_, module_target_foreign_il_asm(_)) = no.
 target_extension(_, module_target_fact_table_object(_, _)) = no.
 
     % Currently the .cs extension is still treated as the build-all target for
@@ -1584,18 +1581,6 @@ module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
                 unexpected($module, $pred, "object test failed")
             )
         ;
-            TargetType = module_target_foreign_il_asm(Lang),
-            (
-                ForeignModuleName =
-                    foreign_language_module_name(ModuleName, Lang)
-            ->
-                module_target_to_file_name_maybe_search(Globals,
-                    ForeignModuleName, module_target_il_asm, MkDir,
-                    Search, FileName, !IO)
-            ;
-                unexpected($module, $pred, "ilasm test failed")
-            )
-        ;
             TargetType = module_target_fact_table_object(PIC, FactFile),
             maybe_pic_object_file_extension(Globals, PIC, Ext),
             fact_table_file_name(Globals, ModuleName, FactFile, Ext, MkDir,
@@ -1608,8 +1593,6 @@ module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
             ; TargetType = module_target_erlang_code
             ; TargetType = module_target_erlang_header
             ; TargetType = module_target_errors
-            ; TargetType = make.module_target_il_asm
-            ; TargetType = module_target_il_code
             ; TargetType = module_target_intermodule_interface
             ; TargetType = module_target_csharp_code
             ; TargetType = module_target_java_code
@@ -1649,7 +1632,6 @@ timestamp_extension(_, module_target_analysis_registry) = ".analysis_date".
 timestamp_extension(_, module_target_c_code) = ".c_date".
 timestamp_extension(Globals, module_target_c_header(_)) = Ext :-
     Ext = timestamp_extension(Globals, module_target_c_code).
-timestamp_extension(_, module_target_il_code) = ".il_date".
 timestamp_extension(_, module_target_csharp_code) = ".cs_date".
 timestamp_extension(_, module_target_java_code) = ".java_date".
 timestamp_extension(_, module_target_erlang_code) = ".erl_date".
@@ -1674,8 +1656,6 @@ search_for_file_type(module_target_analysis_registry) =
 search_for_file_type(module_target_track_flags) = no.
 search_for_file_type(module_target_c_header(_)) = yes(c_include_directory).
 search_for_file_type(module_target_c_code) = no.
-search_for_file_type(module_target_il_code) = no.
-search_for_file_type(module_target_il_asm) = no.
 search_for_file_type(module_target_csharp_code) = no.
 search_for_file_type(module_target_java_code) = no.
 search_for_file_type(module_target_java_class_code) = no.
@@ -1685,7 +1665,6 @@ search_for_file_type(module_target_erlang_code) = no.
 search_for_file_type(module_target_erlang_beam_code) = no.
 search_for_file_type(module_target_object_code(_)) = no.
 search_for_file_type(module_target_foreign_object(_, _)) = no.
-search_for_file_type(module_target_foreign_il_asm(_)) = no.
 search_for_file_type(module_target_fact_table_object(_, _)) = no.
 search_for_file_type(module_target_xml_doc) = no.
 
@@ -1712,8 +1691,6 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_track_flags
         ; Target = module_target_c_header(header_mih)
         ; Target = module_target_c_code
-        ; Target = module_target_il_code
-        ; Target = module_target_il_asm
         ; Target = module_target_csharp_code
         ; Target = module_target_java_code
         ; Target = module_target_java_class_code
@@ -1722,7 +1699,6 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_erlang_header
         ; Target = module_target_object_code(_)
         ; Target = module_target_foreign_object(_, _)
-        ; Target = module_target_foreign_il_asm(_)
         ; Target = module_target_fact_table_object(_, _)
         ),
         IsDependent = yes
@@ -1966,47 +1942,38 @@ module_target_type_to_nonce(Type) = X :-
         Type = module_target_c_code,
         X = 11
     ;
-        Type = module_target_il_code,
+        Type = module_target_java_code,
         X = 12
     ;
-        Type = module_target_il_asm,
+        Type = module_target_erlang_header,
         X = 13
     ;
-        Type = module_target_java_code,
+        Type = module_target_erlang_code,
         X = 14
     ;
-        Type = module_target_erlang_header,
+        Type = module_target_erlang_beam_code,
         X = 15
     ;
-        Type = module_target_erlang_code,
-        X = 16
-    ;
-        Type = module_target_erlang_beam_code,
-        X = 17
-    ;
         Type = module_target_object_code(PIC),
-        X = 18 `mix` pic_to_nonce(PIC)
-    ;
-        Type = module_target_foreign_il_asm(_ForeignLang),
-        X = 19
+        X = 16 `mix` pic_to_nonce(PIC)
     ;
         Type = module_target_foreign_object(_PIC, _ForeignLang),
-        X = 20
+        X = 17
     ;
         Type = module_target_fact_table_object(_PIC, _FileName),
-        X = 21
+        X = 18
     ;
         Type = module_target_xml_doc,
-        X = 22
+        X = 19
     ;
         Type = module_target_track_flags,
-        X = 23
+        X = 20
     ;
         Type = module_target_java_class_code,
-        X = 24
+        X = 21
     ;
         Type = module_target_csharp_code,
-        X = 25
+        X = 22
     ).
 
 :- func pic_to_nonce(pic) = int.

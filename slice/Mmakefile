@@ -101,11 +101,11 @@ $(MDBCOMP_MODULES): %: $(MDBCOMP_DIR)/%
 
 #-----------------------------------------------------------------------------#
 
-# The C#, IL, Java and Erlang implementations of the mdbcomp library are not yet
+# The C#, Java and Erlang implementations of the mdbcomp library are not yet
 # complete, so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
-ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -114,7 +114,7 @@ endif
 # Add some additional dependencies, so that Mmake knows to remake the
 # slicer and dicer if one of the libraries changes.
 
-ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
 mslice: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mslice: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 mslice: $(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A
@@ -184,7 +184,6 @@ cs:	$(mslice.cs) $(mdice.cs) $(mtc_union.cs) \
 	$(cs_subdir)mslice_init.c $(cs_subdir)mdice_init.c \
 	$(cs_subdir)mtc_union.c $(cs_subdir)mcov.c \
 	$(cs_subdir)mtc_diff.c
-ils:	$(mslice.ils) $(mdice.ils) $(mtc_union.ils) $(mcov.ils) $(mtc_diff.ils)
 
 #-----------------------------------------------------------------------------#
 

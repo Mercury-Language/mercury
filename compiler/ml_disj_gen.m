@@ -198,7 +198,6 @@ ml_gen_disj(Disjuncts, GoalInfo, CodeModel, Context, Statements, !Info) :-
 :- func allow_lookup_disj(compilation_target) = bool.
 
 allow_lookup_disj(target_c) = yes.
-allow_lookup_disj(target_il) = no.
 allow_lookup_disj(target_csharp) = yes.
 allow_lookup_disj(target_java) = yes.
 allow_lookup_disj(target_erlang) = no.

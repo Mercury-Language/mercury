@@ -679,14 +679,6 @@ is_nan_or_inf(Float) :-
 "
     SUCCESS_INDICATOR = MR_is_nan(Flt);
 ").
-:- pragma foreign_proc("IL",
-    is_nan(Flt::in),
-    [will_not_call_mercury, promise_pure, thread_safe, max_stack_size(1)],
-"
-    ldloc 'Flt'
-    call bool [mscorlib]System.Double::IsNaN(float64)
-    stloc 'succeeded'
-").
 :- pragma foreign_proc("C#",
     is_nan(Flt::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -716,14 +708,6 @@ is_infinite(F) :-
         does_not_affect_liveness],
 "
     SUCCESS_INDICATOR = MR_is_infinite(Flt);
-").
-:- pragma foreign_proc("IL",
-    is_inf(Flt::in),
-    [will_not_call_mercury, promise_pure, thread_safe, max_stack_size(1)],
-"
-    ldloc 'Flt'
-    call bool [mscorlib]System.Double::IsInfinity(float64)
-    stloc 'succeeded'
 ").
 :- pragma foreign_proc("C#",
     is_inf(Flt::in),

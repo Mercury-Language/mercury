@@ -451,19 +451,6 @@ case $target in
         target_opt=
         ;;
 esac
-case $grade in
-    il|ilc)
-        target_ext=il
-        target_subdir=$ils_subdir
-        target_opt=
-        # See comment above
-        copy_slice=true
-        copy_profilers=true
-        # The IL back-end generates native Windows executables,
-        # which do not understand symlinks. So we need to use cp.
-        use_cp=true
-        ;;
-esac
 
 if test "$grade" != "" -o "$test_grade" != ""
 then

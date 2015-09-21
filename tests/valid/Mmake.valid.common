@@ -22,8 +22,6 @@
 #   The test cases testing the handling of typeclasses.
 # NO_SPECIAL_PREDS_PROGS:
 #   The test cases testing the handling of --no-special-preds.
-# IL_PROGS:
-#   The test cases for which we should only produce a `.il' file.
 # C_PROGS:
 #   The test cases for which we should only produce a `.c' file.
 # C_INTERFACE_PROGS:
@@ -57,10 +55,10 @@
 ifeq "$(findstring hl,$(GRADE))$(findstring .agc,$(GRADE))" "hl"
 	PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 else
-	# The agc.* tests don't work in the il, java, csharp or erlang grades.
+	# The agc.* tests don't work in the java, csharp or erlang grades.
 	# The agc.* tests also don't work in minimal model grades,
 	# because the collector doesn't scan the copied areas of the stacks.
-	ifneq "$(filter java% csharp% il% erlang%,$(GRADE))$(findstring mm,$(GRADE))" ""
+	ifneq "$(filter java% csharp% erlang%,$(GRADE))$(findstring mm,$(GRADE))" ""
 		PROGS0 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 	else
 		PROGS0 = $(AGC_PROGS) $(TYPECLASS_PROGS) $(OTHER_PROGS)
@@ -88,13 +86,13 @@ else
 	PROGS2 = $(PROGS1) $(TRAIL_PROGS)
 endif
 
-ifneq "$(filter java% csharp% il% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
+ifneq "$(filter java% csharp% erlang%,$(GRADE))$(findstring profdeep,$(GRADE))" ""
 	PROGS3 = $(PROGS2)
 else
 	PROGS3 = $(PROGS2) $(TABLE_PROGS)
 endif
 
-ifeq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp% erlang%,$(GRADE))" ""
 	PROGS4 = $(PROGS3) $(C_INTERFACE_PROGS) $(SOLVER_PROGS) \
 		$(DEEP_PROF_CAPABLE_PROGS) $(LLDS_PROGS)
 else
@@ -122,26 +120,20 @@ endif
 ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
 	PROGS = $(OBJ_PROGS) $(C_PROGS)
 else
-	PROGS = $(OBJ_PROGS) $(C_PROGS) $(IL_PROGS)
+	PROGS = $(OBJ_PROGS) $(C_PROGS)
 endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 OS_SUBDIR =
-ILS_SUBDIR =
 DLLS_SUBDIR =
 CLASSES_SUBDIR =
 else
 OS_SUBDIR = $(os_subdir)
-ILS_SUBDIR = $(ils_subdir)
 DLLS_SUBDIR = $(dlls_subdir)
 CLASSES_SUBDIR = $(classes_subdir)
 endif
 
-ifeq ($(findstring il,$(GRADE)),il)
-	TARGET_OBJ_EXT = dll
-	TARGET_OBJ_SUBDIR = $(DLLS_SUBDIR)
-else
 ifeq ($(findstring csharp,$(GRADE)),csharp)
 	# XXX we should produce DLLs but currently that invokes the IL backend
 	TARGET_OBJ_EXT = cs
@@ -161,9 +153,7 @@ else
 endif
 endif
 endif
-endif
-OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
-		$(IL_PROGS:%=$(ILS_SUBDIR)%.il)
+OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT))
 
 #-----------------------------------------------------------------------------#
 
@@ -190,8 +180,6 @@ include Mercury.options
 $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
 
 $(C_PROGS:%=%.runtest): %.runtest: %.c ;
-
-$(IL_PROGS:%=%.runtest): %.runtest: %.il ;
 
 #-----------------------------------------------------------------------------#
 

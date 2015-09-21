@@ -258,23 +258,8 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
         Succeeded = yes
     ;
         Status = deps_status_being_built,
-        (
-            TargetFile = target_file(_FileName, FileType),
-            FileType = module_target_foreign_il_asm(_Lang)
-        ->
-            io.write_string("Error: circular dependency detected " ++
-                "while building\n", !IO),
-            io.write_string("  `", !IO),
-            make_write_dependency_file(Globals, Dep, !IO),
-            io.write_string("'.\n", !IO),
-            io.write_string("  This is due to a forbidden " ++
-                "foreign_import_module cycle.\n", !IO),
-            io.set_exit_status(1, !IO)
-        ;
-            unexpected($module, $pred,
-                "target being built, circular dependencies?")
-        ),
-        Succeeded = no
+        unexpected($module, $pred,
+            "target being built, circular dependencies?")
     ;
         Status = deps_status_error,
         Succeeded = no
@@ -530,7 +515,7 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
     pic::in, io.output_stream::in, module_and_imports::in, bool::out,
     io::di, io::uo) is det.
 
-build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, Imports,
+build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, _Imports,
         Succeeded, !IO) :-
     (
         Target = target_c,
@@ -546,10 +531,6 @@ build_object_code(Globals, ModuleName, Target, PIC, ErrorStream, Imports,
             CsharpFile, !IO),
         compile_target_code.link(Globals, ErrorStream, csharp_library,
             ModuleName, [CsharpFile], Succeeded, !IO)
-    ;
-        Target = target_il,
-        il_assemble(Globals, ErrorStream, ModuleName, Imports ^ mai_has_main,
-            Succeeded, !IO)
     ;
         Target = target_erlang,
         module_name_to_file_name(Globals, ModuleName, ".erl", do_create_dirs,
@@ -567,10 +548,6 @@ compile_foreign_code_file(Globals, ErrorStream, PIC, Imports, ForeignCodeFile,
         ForeignCodeFile = foreign_code_file(lang_c, CFile, ObjFile),
         do_compile_c_file(Globals, ErrorStream, PIC, CFile, ObjFile, Succeeded,
             !IO)
-    ;
-        ForeignCodeFile = foreign_code_file(lang_il, ILFile, DLLFile),
-        do_il_assemble(Globals, ErrorStream, ILFile, DLLFile, no_main,
-            Succeeded, !IO)
     ;
         ForeignCodeFile = foreign_code_file(lang_java, JavaFile, _ClassFile),
         compile_java_files(Globals, ErrorStream, [JavaFile], Succeeded, !IO)
@@ -636,9 +613,6 @@ get_object_extension(Globals, PIC) = Ext :-
     (
         CompilationTarget = target_c,
         maybe_pic_object_file_extension(Globals, PIC, Ext)
-    ;
-        CompilationTarget = target_il,
-        Ext = ".dll"
     ;
         CompilationTarget = target_csharp,
         sorry($module, $pred, "object extension for csharp")
@@ -855,10 +829,6 @@ compilation_task(Globals, module_target_c_header(_)) =
         compilation_task(Globals, module_target_c_code).
 compilation_task(_, module_target_c_code) =
     process_module(task_compile_to_target_code) - ["--compile-to-c"].
-compilation_task(_, module_target_il_code) =
-    process_module(task_compile_to_target_code) - ["--il-only"].
-compilation_task(_, module_target_il_asm) =
-        target_code_to_object_code(non_pic) - [].
 compilation_task(_, module_target_csharp_code) =
     process_module(task_compile_to_target_code) - ["--csharp-only"].
 compilation_task(_, module_target_java_code) =
@@ -873,8 +843,6 @@ compilation_task(_, module_target_erlang_beam_code) =
         target_code_to_object_code(non_pic) - [].
 compilation_task(_, module_target_object_code(PIC)) =
     target_code_to_object_code(PIC) - get_pic_flags(PIC).
-compilation_task(_, module_target_foreign_il_asm(Lang)) =
-    foreign_code_to_object_code(non_pic, Lang) - [].
 compilation_task(_, module_target_foreign_object(PIC, Lang)) =
     foreign_code_to_object_code(PIC, Lang) - get_pic_flags(PIC).
 compilation_task(_, module_target_fact_table_object(PIC, FactTable)) =
@@ -990,8 +958,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
                 HeaderTargets0 = []
             )
         ;
-            ( CompilationTarget = target_il
-            ; CompilationTarget = target_csharp
+            ( CompilationTarget = target_csharp
             ; CompilationTarget = target_java
             ),
             HeaderTargets0 = []
@@ -1010,8 +977,7 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
                 make_target_file_list(Names, module_target_c_header(header_mh))
                 ++ HeaderTargets0
         ;
-            ( CompilationTarget = target_il
-            ; CompilationTarget = target_csharp
+            ( CompilationTarget = target_csharp
             ; CompilationTarget = target_java
             ; CompilationTarget = target_erlang
             ),
@@ -1065,16 +1031,10 @@ external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
     maybe_pic_object_file_extension(Globals, PIC, ObjExt),
     globals.get_target(Globals, CompilationTarget),
     ModuleName = Imports ^ mai_module_name,
-    (
-        CompilationTarget = target_il,
-        Imports ^ mai_has_foreign_code = contains_foreign_code(Langs)
-    ->
-        list.map_foldl(external_foreign_code_files_for_il(Globals, ModuleName),
-            set.to_sorted_list(Langs), ForeignFilesList, !IO),
-        list.condense(ForeignFilesList, ForeignFiles0)
-    ;
-        ForeignFiles0 = []
-    ),
+
+    % None of the current backends require estnerally compiled foreign
+    % code.
+    ForeignFiles0 = [],
 
     % Find externally compiled foreign code files for fact tables.
     (
@@ -1093,31 +1053,9 @@ external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
     ;
         ( CompilationTarget = target_java
         ; CompilationTarget = target_csharp
-        ; CompilationTarget = target_il
         ; CompilationTarget = target_erlang
         ),
         ForeignFiles = ForeignFiles0
-    ).
-
-:- pred external_foreign_code_files_for_il(globals::in, module_name::in,
-    foreign_language::in, list(foreign_code_file)::out,
-    io::di, io::uo) is det.
-
-external_foreign_code_files_for_il(Globals, ModuleName, Language, ForeignFiles,
-        !IO) :-
-    (
-        ForeignModuleName = foreign_language_module_name(ModuleName, Language),
-        ForeignExt = foreign_language_file_extension(Language)
-    ->
-        module_name_to_file_name(Globals, ForeignModuleName, ForeignExt,
-            do_create_dirs, ForeignFileName, !IO),
-        module_name_to_file_name(Globals, ForeignModuleName, ".dll",
-            do_create_dirs, ForeignDLLFileName, !IO),
-        ForeignFiles = [foreign_code_file(Language, ForeignFileName,
-            ForeignDLLFileName)]
-    ;
-        % No external file is generated for this foreign language.
-        ForeignFiles = []
     ).
 
 :- func target_type_to_pic(module_target_type) = pic.
@@ -1138,15 +1076,12 @@ target_type_to_pic(TargetType) = Result :-
         ; TargetType = module_target_track_flags
         ; TargetType = module_target_c_header(_)
         ; TargetType = module_target_c_code
-        ; TargetType = module_target_il_code
-        ; TargetType = module_target_il_asm
         ; TargetType = module_target_csharp_code
         ; TargetType = module_target_java_code
         ; TargetType = module_target_java_class_code
         ; TargetType = module_target_erlang_header
         ; TargetType = module_target_erlang_code
         ; TargetType = module_target_erlang_beam_code
-        ; TargetType = module_target_foreign_il_asm(_)
         ; TargetType = module_target_foreign_object(_, _)
         ; TargetType = module_target_fact_table_object(_, _)
         ; TargetType = module_target_xml_doc

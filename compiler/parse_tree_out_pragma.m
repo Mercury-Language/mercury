@@ -762,8 +762,6 @@ unit_selector_to_string(TypeVarSet, UnitSelector) = String :-
 extra_attribute_to_string(refers_to_llds_stack) = "refers_to_llds_stack".
 extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
 extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
-extra_attribute_to_string(max_stack_size(Size)) =
-    "max_stack_size(" ++ string.int_to_string(Size) ++ ")".
 extra_attribute_to_string(needs_call_standard_output_registers) =
     "needs_call_standard_output_registers".
 

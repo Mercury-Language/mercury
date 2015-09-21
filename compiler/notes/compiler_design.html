@@ -2038,26 +2038,6 @@ and one generates C#.
 
 <p>
 
-The MLDS-&gt;IL backend is broken into several submodules.
-
-<ul>
-<li>
-    mlds_to_ilasm.m converts MLDS to IL assembler and writes it to a .il file.
-<li>
-    mlds_to_il.m converts MLDS to IL
-<li>
-    ilds.m contains representations of IL
-<li>
-    ilasm.m contains output routines for writing IL to assembler.
-<li>
-    il_peephole.m performs peephole optimization on IL instructions.
-</ul>
-
-After IL assembler has been emitted, ILASM in invoked to turn the .il file
-into a .dll or .exe.
-
-<p>
-
 The MLDS-&gt;Java backend is broken into two submodules.
 <ul>
 <li>

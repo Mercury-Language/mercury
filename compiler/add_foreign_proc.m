@@ -388,8 +388,7 @@ add_pragma_foreign_proc(FPInfo, PredStatus, Context, MaybeItemNumber,
 is_applicable_for_current_backend(_CurrentBackend, []) = yes.
 is_applicable_for_current_backend(CurrentBackend, [Attr | Attrs]) = Result :-
     (
-        ( Attr = max_stack_size(_)
-        ; Attr = refers_to_llds_stack
+        ( Attr = refers_to_llds_stack
         ; Attr = needs_call_standard_output_registers
         ),
         Result = is_applicable_for_current_backend(CurrentBackend, Attrs)

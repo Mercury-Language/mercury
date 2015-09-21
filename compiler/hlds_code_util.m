@@ -159,8 +159,7 @@ cons_id_to_tag(ModuleInfo, ConsId) = Tag:-
         ;
             % For these target languages, converting arity-zero tuples into
             % dummy integer tags results in invalid code being generated.
-            ( TargetLang = target_il
-            ; TargetLang = target_csharp
+            ( TargetLang = target_csharp
             ; TargetLang = target_java
             ),
             Tag = single_functor_tag

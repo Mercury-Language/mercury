@@ -25,7 +25,6 @@ main -->
     io__nl.
 
 :- pragma foreign_import_module(c, foreign_import_module_2).
-:- pragma foreign_import_module(il, foreign_import_module_2).
 :- pragma foreign_import_module(java, foreign_import_module_2).
 % not actually necessary in Erlang
 % :- pragma foreign_import_module(erlang, foreign_import_module_2).

@@ -332,7 +332,7 @@ NON_PROFDEEP_MODULES = \
 
 # These tests test things which only work for back-ends which support
 # the C interface.
-ifneq "$(filter java% csharp% il% erlang%,$(GRADE))" ""
+ifneq "$(filter java% csharp% erlang%,$(GRADE))" ""
 	C_INTERFACE_PROGS=
 else
 	C_INTERFACE_PROGS=$(C_INTERFACE_MODULES)

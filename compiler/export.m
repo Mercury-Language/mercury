@@ -150,7 +150,6 @@ get_foreign_export_decls_loop(ModuleInfo, Preds,
     ;
         ( Lang = lang_csharp
         ; Lang = lang_java
-        ; Lang = lang_il
         ; Lang = lang_erlang
         ),
         sorry($module, $pred,  ":- pragma foreign_export for non-C backends.")
@@ -828,7 +827,6 @@ write_export_decls([ExportDecl | ExportDecls], !IO) :-
     ;
         ( Lang = lang_csharp
         ; Lang = lang_java
-        ; Lang = lang_il
         ; Lang = lang_erlang
         ),
         sorry($module, $pred, "foreign languages other than C unimplemented")

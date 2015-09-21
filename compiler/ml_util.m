@@ -20,7 +20,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
-:- import_module parse_tree.prog_data.
+%:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.
@@ -145,17 +145,6 @@
 :- func lvals_contains_var(list(mlds_lval), mlds_data) = bool.
 
 :- func lval_contains_var(mlds_lval, mlds_data) = bool.
-
-%-----------------------------------------------------------------------------%
-
-    % Does the type require the lowlevel representation on the indicated
-    % backend?
-    %
-:- pred type_needs_lowlevel_rep(compilation_target::in, mer_type::in)
-    is semidet.
-
-:- pred type_ctor_needs_lowlevel_rep(compilation_target::in,
-    type_ctor::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -605,8 +594,8 @@ target_code_components_contains_var([TargetCode | TargetCodes], DataName)
 
 target_code_component_contains_var(TargetCode, DataName) = ContainsVar :-
     (
-        ( TargetCode = user_target_code(_, _, _)
-        ; TargetCode = raw_target_code(_, _)
+        ( TargetCode = user_target_code(_, _)
+        ; TargetCode = raw_target_code(_)
         ; TargetCode = target_code_type(_)
         ; TargetCode = target_code_alloc_id(_)
         ),
@@ -927,47 +916,6 @@ lval_contains_var(Lval, DataName) = ContainsVar :-
         else
             ContainsVar =no
         )
-    ).
-
-%-----------------------------------------------------------------------------%
-
-type_needs_lowlevel_rep(Target, Type) :-
-    type_to_ctor(Type, TypeCtor),
-    type_ctor_needs_lowlevel_rep(Target, TypeCtor).
-
-    % XXX Do we need to do the same for the Java back-end?
-type_ctor_needs_lowlevel_rep(target_il, type_ctor(TypeName, _Arity)) :-
-    Builtin = mercury_public_builtin_module,
-    PrivateBuiltin = mercury_private_builtin_module,
-    RttiImplementation = unqualified("rtti_implementation"),
-    Univ = unqualified("univ"),
-    MutVar = unqualified("mutvar"),
-    TypeDesc = unqualified("type_desc"),
-    ( TypeName = qualified(PrivateBuiltin, "base_typeclass_info")
-    ; TypeName = qualified(PrivateBuiltin, "type_ctor_info")
-    ; TypeName = qualified(PrivateBuiltin, "typeclass_info")
-    ; TypeName = qualified(PrivateBuiltin, "type_info")
-
-        % Use lowlevel types for all types in rtti_implementation
-        % as this allows as to add new types needed to manipulate
-        % the RTTI type safely easily.
-    ; TypeName = qualified(RttiImplementation, _)
-
-    ; TypeName = qualified(TypeDesc, "type_desc")
-    ; TypeName = qualified(TypeDesc, "pseudo_type_desc")
-    ; TypeName = qualified(TypeDesc, "type_ctor_desc")
-
-        % Types which don't have a Mercury representation.
-    ; TypeName = qualified(PrivateBuiltin, "ref")
-    ; TypeName = qualified(PrivateBuiltin, "heap_pointer")
-    ; TypeName = qualified(Builtin, "c_pointer")
-
-        % XXX These types are referenced in IL and C# code,
-        % so it is easier to just keep their low level representation
-        % for the moment.
-    ; TypeName = qualified(Builtin, "comparison_result")
-    ; TypeName = qualified(Univ, "univ")
-    ; TypeName = qualified(MutVar, "mutvar")
     ).
 
 %-----------------------------------------------------------------------------%

@@ -1536,9 +1536,6 @@ import jmercury.runtime.MercuryBitmap;
     where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("C#", bitmap, "mercury.runtime.MercuryBitmap")
     where equality is bitmap_equal, comparison is bitmap_compare.
-:- pragma foreign_type("IL", bitmap,
-    "class [mercury]mercury.bitmap__csharp_code.mercury_code.MercuryBitmap")
-    where equality is bitmap_equal, comparison is bitmap_compare.
 :- pragma foreign_type("Erlang", bitmap, "")
     where equality is bitmap_equal, comparison is bitmap_compare.
 

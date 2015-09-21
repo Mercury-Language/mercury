@@ -26,14 +26,6 @@ intermod_impure(Int) :-
     printf(""Output from impure predicate\\n"");
     Int = 2;
 ").
-:- pragma foreign_proc(il, intermod_impure_2(Int::out),
-        [will_not_call_mercury, max_stack_size(1)],
-"
-    ldstr ""Output from impure predicate\\n""
-    call void class [mscorlib]System.Console.Write(string)
-    ldc.i4 2
-    stloc Int
-").
 :- pragma foreign_proc("Java",
     intermod_impure_2(Int::out),
     [will_not_call_mercury],

@@ -6700,14 +6700,6 @@ If omitted, the termination property of the procedure is determined by the
 value of the @samp{may_call_mercury}/@samp{will_not_call_mercury} attribute.
 See @ref{Termination analysis} for more details.
 
-@item @samp{max_stack_size(@var{Size})}
-This attribute declares the maximum stack usage of a particular piece of
-code.  The unit that @var{Size} is measured in depends upon foreign language
-being used.  
-Currently this attribute is only used (and is in fact required) by the 
-@samp{IL} foreign language interface, and is measured in units of stack
-items.
-
 @item @samp{will_not_throw_exception}
 This attribute promises that the given predicate or function will not 
 make calls back to Mercury that may result in an exception being thrown.
@@ -9424,8 +9416,6 @@ True if the module is compiled with @samp{--highlevel-code} disabled.
 True if the module is compiled with @samp{--highlevel-code} enabled.
 @item @samp{c}
 True if the target language of the compilation is C.
-@item @samp{il}
-True if the target language of the compilation is MS IL.
 @item @samp{csharp}
 True if the target language of the compilation is C#.
 @item @samp{java}

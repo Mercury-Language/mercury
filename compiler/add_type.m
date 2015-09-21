@@ -472,7 +472,6 @@ check_foreign_type(TypeCtor, ForeignTypeBody, PrevErrors, Context,
         FoundInvalidType = found_invalid_type
     else
         ( Target = target_c, LangStr = "C"
-        ; Target = target_il, LangStr = "IL"
         ; Target = target_csharp, LangStr = "C#"
         ; Target = target_java, LangStr = "Java"
         ; Target = target_erlang, LangStr = "Erlang"
@@ -507,7 +506,7 @@ merge_foreign_type_bodies(Target, MakeOptInterface,
         MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
     ;
         MaybeForeignTypeBody1 = no,
-        ForeignTypeBody1 = foreign_type_body(no, no, no, no, no)
+        ForeignTypeBody1 = foreign_type_body(no, no, no, no)
     ),
     merge_foreign_type_bodies_2(ForeignTypeBody0, ForeignTypeBody1,
         ForeignTypeBody),
@@ -531,16 +530,15 @@ merge_foreign_type_bodies(_, _, hlds_foreign_type(Body0),
     foreign_type_body::in, foreign_type_body::out) is semidet.
 
 merge_foreign_type_bodies_2(TypeBodyA, TypeBodyB, TypeBody) :-
-    TypeBodyA = foreign_type_body(MaybeILA, MaybeCA, MaybeJavaA, MaybeCSharpA,
+    TypeBodyA = foreign_type_body(MaybeCA, MaybeJavaA, MaybeCSharpA,
         MaybeErlangA),
-    TypeBodyB = foreign_type_body(MaybeILB, MaybeCB, MaybeJavaB, MaybeCSharpB,
+    TypeBodyB = foreign_type_body(MaybeCB, MaybeJavaB, MaybeCSharpB,
         MaybeErlangB),
-    merge_maybe(MaybeILA, MaybeILB, MaybeIL),
     merge_maybe(MaybeCA, MaybeCB, MaybeC),
     merge_maybe(MaybeJavaA, MaybeJavaB, MaybeJava),
     merge_maybe(MaybeCSharpA, MaybeCSharpB, MaybeCSharp),
     merge_maybe(MaybeErlangA, MaybeErlangB, MaybeErlang),
-    TypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava, MaybeCSharp,
+    TypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp,
         MaybeErlang).
 
 :- pred merge_maybe(maybe(T)::in, maybe(T)::in, maybe(T)::out) is semidet.
@@ -580,30 +578,25 @@ convert_type_defn(parse_tree_abstract_type(Details), _, _,
 convert_type_defn(parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
         Assertions), _, _, hlds_foreign_type(Body)) :-
     (
-        ForeignType = il(ILForeignType),
-        Data = foreign_type_lang_data(ILForeignType, MaybeUserEqComp,
-            Assertions),
-        Body = foreign_type_body(yes(Data), no, no, no, no)
-    ;
         ForeignType = c(CForeignType),
         Data = foreign_type_lang_data(CForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(no, yes(Data), no, no, no)
+        Body = foreign_type_body(yes(Data), no, no, no)
     ;
         ForeignType = java(JavaForeignType),
         Data = foreign_type_lang_data(JavaForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(no, no, yes(Data), no, no)
+        Body = foreign_type_body(no, yes(Data), no, no)
     ;
         ForeignType = csharp(CSharpForeignType),
         Data = foreign_type_lang_data(CSharpForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(no, no, no, yes(Data), no)
+        Body = foreign_type_body(no, no, yes(Data), no)
     ;
         ForeignType = erlang(ErlangForeignType),
         Data = foreign_type_lang_data(ErlangForeignType, MaybeUserEqComp,
             Assertions),
-        Body = foreign_type_body(no, no, no, no, yes(Data))
+        Body = foreign_type_body(no, no, no, yes(Data))
     ).
 
 :- pred add_type_defn_ctors(list(constructor)::in, type_ctor::in,

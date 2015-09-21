@@ -152,38 +152,13 @@ ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
 :- func foreign_type_required_imports(compilation_target,
     pair(type_ctor, hlds_type_defn)) = list(mlds_import).
 
-foreign_type_required_imports(Target, _TypeCtor - TypeDefn) = Imports :-
+foreign_type_required_imports(Target, _TypeCtor - _TypeDefn) = Imports :-
     (
         ( Target = target_c
         ; Target = target_java
         ; Target = target_csharp
         ),
         Imports = []
-    ;
-        Target = target_il,
-        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        (
-            TypeBody = hlds_foreign_type(ForeignTypeBody),
-            ForeignTypeBody = foreign_type_body(MaybeIL,
-                _MaybeC, _MaybeJava, _MaybeCSharp, _MaybeErlang),
-            ( if
-                MaybeIL = yes(Data),
-                Data = foreign_type_lang_data(il_type(_, Location, _), _, _)
-            then
-                Name = il_assembly_name(mercury_module_name_to_mlds(
-                    unqualified(Location))),
-                Imports = [foreign_import(Name)]
-            else
-                unexpected($module, $pred, "no IL type")
-            )
-        ;
-            ( TypeBody = hlds_du_type(_, _, _,_,  _, _, _, _, _)
-            ; TypeBody = hlds_eqv_type(_)
-            ; TypeBody = hlds_solver_type(_, _)
-            ; TypeBody = hlds_abstract_type(_)
-            ),
-            Imports = []
-        )
     ;
         Target = target_erlang,
         unexpected($module, $pred, "target erlang")
@@ -212,9 +187,7 @@ ml_gen_init_common_data(ModuleInfo, GlobalData) :-
         ),
         UseCommonCells = use_common_cells
     ;
-        ( Target = target_il
-        ; Target = target_erlang
-        ),
+        Target = target_erlang,
         UseCommonCells = do_not_use_common_cells
     ),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxedFloats),

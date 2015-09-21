@@ -63,23 +63,18 @@ class coord {
 
 :- type dir.
 :- pragma foreign_type(c, dir, "dirs").
-:- pragma foreign_type(il, dir,
-        "valuetype [foreign_type3__csharp_code]dirs").
 :- pragma foreign_type("C#", dir, "dirs").
 :- pragma foreign_type(java, dir, "dirs").
 :- pragma foreign_type(erlang, dir, "").
 
 :- type coord.
 :- pragma foreign_type(c, coord, "coord").
-:- pragma foreign_type(il, coord,
-        "valuetype [foreign_type3__csharp_code]coord").
 :- pragma foreign_type("C#", coord, "coord").
 :- pragma foreign_type(java, coord, "coord").
 :- pragma foreign_type(erlang, coord, "").
 
 :- type double.
 :- pragma foreign_type(c, double, "double").
-:- pragma foreign_type(il, double, "valuetype [mscorlib]System.Double").
 :- pragma foreign_type("C#", double, "double").
 :- pragma foreign_type(java, double, "Double").
 :- pragma foreign_type(erlang, double, "").

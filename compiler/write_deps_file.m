@@ -244,8 +244,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             do_not_create_dirs, PicAsmDateFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".$O",
             do_not_create_dirs, ObjFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".il_date",
-            do_not_create_dirs, ILDateFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".java_date",
             do_not_create_dirs, JavaDateFileName, !IO),
         % XXX Why is the extension hardcoded to .pic_o here?  That looks wrong.
@@ -261,7 +259,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             CDateFileName, " ",
             AsmDateFileName, " ",
             PicAsmDateFileName, " ",
-            ILDateFileName, " ",
             JavaDateFileName
         ], !IO),
         io.write_strings(DepStream, [" : ", SourceFileName], !IO),
@@ -283,7 +280,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             ".s_date",
             ".pic_s_date",
             ".dir/*.$O",
-            ".il_date",
             ".java_date"],
 
         % If a module contains nested-submodules then we need to build
@@ -350,7 +346,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                 CDateFileName, " ",
                 AsmDateFileName, " ",
                 PicAsmDateFileName, " ",
-                ILDateFileName, " ",
                 JavaDateFileName, " : "
             ], !IO),
 
@@ -391,7 +386,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                     CDateFileName, " ",
                     AsmDateFileName, " ",
                     PicAsmDateFileName, " ",
-                    ILDateFileName, " ",
                     JavaDateFileName, " : "
                 ], !IO),
                 write_dependencies_list(Globals, DepStream, ".trans_opt",
@@ -453,10 +447,8 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
         ], !IO),
 
         % The `.module_dep' file is made as a side effect of
-        % creating the `.c', `.s', `.il', or `.java'.
+        % creating the `.c', `.s', or `.java'.
 
-        module_name_to_file_name(Globals, ModuleName, ".il",
-            do_not_create_dirs, ILFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".java",
             do_not_create_dirs, JavaFileName, !IO),
         module_name_to_file_name(Globals, ModuleName,
@@ -464,14 +456,10 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             ModuleDepFileName, !IO),
         io.write_strings(DepStream, [
             "\n\n",
-            "ifeq ($(findstring il,$(GRADE)),il)\n",
-            ModuleDepFileName, " : ", ILFileName, "\n",
-            "else\n",
-            " ifeq ($(findstring java,$(GRADE)),java)\n",
+            "ifeq ($(findstring java,$(GRADE)),java)\n",
             ModuleDepFileName, " : ", JavaFileName, "\n",
-            " else\n",
+            "else\n",
             ModuleDepFileName, " : ", CFileName, "\n",
-            " endif\n",
             "endif\n"
         ], !IO),
 
@@ -522,56 +510,32 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
         ),
 
         globals.get_target(Globals, Target),
-        globals.lookup_bool_option(Globals, il_sign_assembly, SignAssembly),
-
-        % If we are on the IL backend, add the dependency that the
-        % top level dll of a nested module hierachy depends on all
-        % of it sub-modules dlls, as they are referenced from
-        % inside the top level dll.
-        % XXX Do we need to do the same for Java?
-
-        module_name_to_file_name(Globals, ModuleName, ".dll",
-            do_not_create_dirs, DllFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".class",
             do_not_create_dirs, ClassFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".beam",
             do_not_create_dirs, BeamFileName, !IO),
-        SubModules = submodules(ModuleName, AllDeps),
-        ( if
-            Target = target_il,
-            set.non_empty(SubModules)
-        then
-            io.write_strings(DepStream, [DllFileName, " : "], !IO),
-            write_dll_dependencies_list(Globals, DepStream, "",
-                set.to_sorted_list(SubModules), !IO),
-            io.nl(DepStream, !IO)
-        else
-            true
-        ),
 
         (
-            ContainsForeignCode = contains_foreign_code(LangSet),
+            ContainsForeignCode = contains_foreign_code(_LangSet),
             ForeignImportModules = ForeignImportModules0
         ;
             ContainsForeignCode = contains_foreign_code_unknown,
             get_foreign_code_indicators_from_item_blocks(Globals,
                 SrcItemBlocks,
-                SrcLangSet, SrcForeignImportModules, _, _),
+                _SrcLangSet, SrcForeignImportModules, _, _),
             % XXX ITEM_LIST DirectIntItemBlocksCord should not be needed
             % XXX ITEM_LIST IndirectIntItemBlocksCord should not be needed
             IntItemBlocksCord =
                 DirectIntItemBlocksCord ++ IndirectIntItemBlocksCord,
             get_foreign_code_indicators_from_item_blocks(Globals,
                 cord.list(IntItemBlocksCord),
-                IntLangSet, IntForeignImportModules, _, _),
+                _IntLangSet, IntForeignImportModules, _, _),
             get_foreign_code_indicators_from_item_blocks(Globals,
                 cord.list(OptItemBlocksCord),
-                OptLangSet, OptForeignImportModules, _, _),
+                _OptLangSet, OptForeignImportModules, _, _),
             get_foreign_code_indicators_from_item_blocks(Globals,
                 cord.list(IntForOptItemBlocksCord),
-                IntForOptLangSet, IntForOptForeignImportModules, _, _),
-            LangSet = set.union_list([SrcLangSet, IntLangSet, OptLangSet,
-                IntForOptLangSet]),
+                _IntForOptLangSet, IntForOptForeignImportModules, _, _),
             % If we are generating the `.dep' file, ForeignImportModuless0
             % will contain a conservative approximation to the set of
             % foreign imports needed which will include imports
@@ -580,40 +544,36 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             % the above assertion?
             ( if
                 ForeignImportModules0 = foreign_import_modules(
-                    C0, CSharp0, Java0, IL0, Erlang0),
+                    C0, CSharp0, Java0, Erlang0),
                 set.is_empty(C0),
                 set.is_empty(CSharp0),
                 set.is_empty(Java0),
-                set.is_empty(IL0),
                 set.is_empty(Erlang0)
             then
                 SrcForeignImportModules = foreign_import_modules(
-                    SrcC, SrcCSharp, SrcJava, SrcIL, SrcErlang),
+                    SrcC, SrcCSharp, SrcJava, SrcErlang),
                 IntForeignImportModules = foreign_import_modules(
-                    IntC, IntCSharp, IntJava, IntIL, IntErlang),
+                    IntC, IntCSharp, IntJava, IntErlang),
                 OptForeignImportModules = foreign_import_modules(
-                    OptC, OptCSharp, OptJava, OptIL, OptErlang),
+                    OptC, OptCSharp, OptJava, OptErlang),
                 IntForOptForeignImportModules = foreign_import_modules(
                     IntForOptC, IntForOptCSharp, IntForOptJava,
-                    IntForOptIL, IntForOptErlang),
+                    IntForOptErlang),
                 C = set.union_list([
                     SrcC, IntC, OptC, IntForOptC]),
                 CSharp = set.union_list([
                     SrcCSharp, IntCSharp, OptCSharp, IntForOptCSharp]),
                 Java= set.union_list([
                     SrcJava, IntJava, OptJava, IntForOptJava]),
-                IL = set.union_list([
-                    SrcIL, IntIL, OptIL, IntForOptIL]),
                 Erlang = set.union_list([
                     SrcErlang, IntErlang, OptErlang, IntForOptErlang]),
                 ForeignImportModules = foreign_import_modules(
-                    C, CSharp, Java, IL, Erlang)
+                    C, CSharp, Java, Erlang)
             else
                 ForeignImportModules = ForeignImportModules0
             )
         ;
             ContainsForeignCode = contains_no_foreign_code,
-            set.init(LangSet),
             ForeignImportModules = ForeignImportModules0
         ),
 
@@ -636,10 +596,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             true
         else
             (
-                Target = target_il,
-                ForeignImportTargets = [DllFileName],
-                ForeignImportExt = ".dll"
-            ;
                 Target = target_csharp,
                 % XXX don't know enough about C# yet
                 ForeignImportTargets = [],
@@ -672,38 +628,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                     io.write_string(DepStream, "\n\n", !IO)
                 ),
             list.foldl(WriteForeignImportTarget, ForeignImportTargets, !IO)
-        ),
-
-        ( if
-            Target = target_il,
-            set.is_non_empty(LangSet)
-        then
-            Langs = set.to_sorted_list(LangSet),
-            list.foldl(write_foreign_dependency_for_il(Globals, DepStream,
-                ModuleName, AllDeps, ForeignImports), Langs, !IO)
-        else
-            true
-        ),
-
-        % If we are signing the assembly, then we will need the strong key
-        % to sign the il file with so add a dependency that the il file
-        % requires the strong name file `mercury.sn'. Also add the variable
-        % ILASM_KEYFLAG-<module> which is used to build the command line
-        % for ilasm.
-        ( if
-            Target = target_il,
-            SignAssembly = yes
-        then
-            module_name_to_make_var_name(ModuleName, ModuleNameString),
-            module_name_to_file_name(Globals, ModuleName, ".il",
-                do_not_create_dirs, IlFileName, !IO),
-
-            io.write_strings(DepStream, [
-                "ILASM_KEYFLAG-", ModuleNameString,
-                    " = /keyf=mercury.sn\n",
-                IlFileName, " : mercury.sn\n"], !IO)
-        else
-            true
         ),
 
         module_name_to_file_name(Globals, ModuleName, ".int",
@@ -758,7 +682,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             list.foldl(
                 write_subdirs_shorthand_rule(Globals, DepStream, ModuleName),
                 [".c", ".$O", ".pic_o", ".s", ".pic_s",
-                ".java", ".class", ".il", ".dll"], !IO)
+                ".java", ".class", ".dll"], !IO)
         ;
             UseSubdirs = no
         ),
@@ -802,10 +726,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                 CDateFileName, " : ", SourceFileName, "\n",
                 "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
                     ModuleArg, " $(ERR_REDIRECT)\n",
-                ILDateFileName, " : ", SourceFileName, "\n",
-                "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
-                    "--il-only ", ModuleArg,
-                    " $(ERR_REDIRECT)\n",
                 JavaDateFileName, " : ", SourceFileName, "\n",
                 "\t$(MCG) $(ALL_GRADEFLAGS) $(ALL_MCGFLAGS) ",
                     "--java-only ", ModuleArg,
@@ -998,86 +918,6 @@ write_file_dependencies_list(DepStream, Suffix, [FileName | FileNames], !IO) :-
     io.write_string(DepStream, Suffix, !IO),
     write_file_dependencies_list(DepStream, Suffix, FileNames, !IO).
 
-    % Generate the following dependency. This dependency is needed because
-    % module__cpp_code.dll might refer to high level data in any of the
-    % mercury modules it imports plus itself.
-    % We also generate a dependency on the .il file, so that mmake knows
-    % we need to generate the .il file to get the foreign language source file
-    % (e.g. .cpp file).
-    %
-    % For example, for MC++ we generate:
-    %
-    %   <module>__cpp_code.dll : <module>.dll <imports>.dll
-    %   <module>__cpp_code.cpp : <module>.il
-    %
-    % (the rule to generate .dll from .cpp is a pattern rule in
-    % scripts/Mmake.rules).
-    %
-:- pred write_foreign_dependency_for_il(globals::in, io.output_stream::in,
-    sym_name::in, set(module_name)::in, set(foreign_import_module_info)::in,
-    foreign_language::in, io::di, io::uo) is det.
-
-write_foreign_dependency_for_il(Globals, DepStream, ModuleName, AllDeps,
-        ForeignImports, ForeignLang, !IO) :-
-    ( if
-        ForeignModuleName = foreign_language_module_name(ModuleName,
-            ForeignLang),
-        ForeignExt = foreign_language_file_extension(ForeignLang)
-    then
-        module_name_to_make_var_name(ForeignModuleName,
-            ForeignModuleNameString),
-        module_name_to_file_name(Globals, ForeignModuleName, ForeignExt,
-            do_not_create_dirs, ForeignFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".il",
-            do_not_create_dirs, IlFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".dll",
-            do_not_create_dirs, DllFileName, !IO),
-        module_name_to_file_name(Globals, ForeignModuleName, ".dll",
-            do_not_create_dirs, ForeignDllFileName, !IO),
-
-        io.write_strings(DepStream,
-            [ForeignDllFileName, " : ", DllFileName], !IO),
-        % XXX This change doesn't work correctly because mmake can't find
-        % the dlls which don't reside in the current directory.
-        % write_dll_dependencies_list(DepStream, ModuleName, AllDeps, !IO),
-        io.nl(DepStream, !IO),
-
-        io.write_strings(DepStream,
-            [ForeignFileName, " : ", IlFileName, "\n\n"], !IO),
-
-        (
-            ForeignLang = lang_csharp,
-            % Store in the variable CSHARP_ASSEMBLY_REFS-foreign_code_name
-            % the command line argument to reference all the dlls the
-            % foreign code module references.
-            io.write_strings(DepStream,
-                ["CSHARP_ASSEMBLY_REFS-", ForeignModuleNameString, "="], !IO),
-            ( if mercury_std_library_module_name(ModuleName) then
-                Prefix = "/addmodule:"
-            else
-                Prefix = "/r:"
-            ),
-            ForeignDeps = set.map(
-                ( func(M) =
-                    foreign_import_module_name_from_module(M, ModuleName)
-                ), ForeignImports),
-            set.union(ForeignDeps, AllDeps, Deps),
-            write_dll_dependencies_list(Globals, DepStream, Prefix,
-                set.to_sorted_list(referenced_dlls(ModuleName, Deps)), !IO),
-            io.nl(DepStream, !IO)
-        ;
-            ( ForeignLang = lang_c
-            ; ForeignLang = lang_java
-            ; ForeignLang = lang_il
-            ; ForeignLang = lang_erlang
-            )
-        )
-    else
-        % This foreign language doesn't generate an external file
-        % so there are no dependencies to generate.
-        true
-    ).
-
     % With `--use-subdirs', allow users to type `mmake module.c'
     % rather than `mmake Mercury/cs/module.c'.
     %
@@ -1147,10 +987,6 @@ generate_dependencies_write_d_files(Globals, [Dep | Deps],
             Target = target_java,
             ForeignImportModules =
                 ForeignImportModules0 ^ fim_java := IndirectOptDeps
-        ;
-            Target = target_il,
-            ForeignImportModules =
-                ForeignImportModules0 ^ fim_il := IndirectOptDeps
         ;
             Target = target_erlang,
             ForeignImportModules =
@@ -1322,9 +1158,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
 
     globals.get_target(Globals, Target),
     (
-        Target = target_il,
-        ForeignModulesAndExts = foreign_modules(Modules, DepsMap)
-    ;
         ( Target = target_c
         ; Target = target_csharp
         ; Target = target_java
@@ -1444,12 +1277,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".ils = ", !IO),
-    write_compact_dependencies_list(Globals, DepStream,
-        "$(ils_subdir)", ".il", Basis, Modules, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".javas = ", !IO),
     write_compact_dependencies_list(Globals, DepStream,
         "$(javas_subdir)", ".java", Basis, Modules, !IO),
@@ -1520,12 +1347,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
     io.write_string(DepStream, "\n", !IO),
 
     io.write_string(DepStream, MakeVarName, !IO),
-    io.write_string(DepStream, ".il_dates = ", !IO),
-    write_compact_dependencies_list(Globals, DepStream,
-        "$(il_dates_subdir)", ".il_date", Basis, Modules, !IO),
-    io.write_string(DepStream, "\n", !IO),
-
-    io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".java_dates = ", !IO),
     write_compact_dependencies_list(Globals, DepStream,
         "$(java_dates_subdir)", ".java_date", Basis, Modules, !IO),
@@ -1556,10 +1377,11 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
             write_compact_dependencies_list(Globals, DepStream,
                 "$(mihs_subdir)", ".mih", Basis, Modules, !IO)
         ;
-            % For the IL and Java targets, currently we don't generate
+            % For the Java target, currently we don't generate
             % `.mih' files at all; although perhaps we should...
-            ( Target = target_il
-            ; Target = target_csharp
+            % XXX Why?  What's that comment even supposed to mean?
+            % - juliensf
+            ( Target = target_csharp
             ; Target = target_java
             ; Target = target_erlang
             )
@@ -1577,8 +1399,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap, DepStream,
         write_compact_dependencies_list(Globals, DepStream, "", ".mh", Basis,
             Modules, !IO)
     ;
-        ( Target = target_il
-        ; Target = target_csharp
+        ( Target = target_csharp
         ; Target = target_java
         ; Target = target_erlang
         )
@@ -1914,9 +1735,6 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     ;
         Gmake = no,
         (
-            Target = target_il,
-            Rules = ILMainRule
-        ;
             Target = target_csharp,
             % XXX not yet
             Rules = []
@@ -2008,9 +1826,6 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     ;
         Gmake = no,
         (
-            Target = target_il,
-            LibRules = ILLibRule
-        ;
             Target = target_csharp,
             % XXX not done yet
             LibRules = []
@@ -2307,7 +2122,6 @@ generate_dep_file_collective_targets(Globals, DepStream, ModuleName,
             ".int3s" - ".date3s",
             ".opts" - ".optdates",
             ".trans_opts" - ".trans_opt_dates",
-            ".ils" - ".ils",
             ".javas" - ".javas",
             ".classes" - ".classes",
             ".all_ints" - ".dates",
@@ -2363,10 +2177,8 @@ generate_dep_file_clean_targets(Globals, DepStream, ModuleName, MakeVarName,
         "\t-echo $(", MakeVarName, ".all_pic_os) ",
             InitPicObjFileName, " | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".c_dates) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".il_dates) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".java_dates) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".useds) | xargs rm -f\n",
-        "\t-echo $(", MakeVarName, ".ils) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".javas) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".profs) | xargs rm -f\n",
         "\t-echo $(", MakeVarName, ".errs) | xargs rm -f\n",

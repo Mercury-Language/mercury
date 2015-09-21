@@ -1123,9 +1123,9 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         ClosureKind = higher_order_proc_closure,
         ClosureLayoutPtrGCInitFragments = [
             target_code_output(ClosureLayoutPtrLval),
-            raw_target_code(" = (MR_Box) ((MR_Closure *)\n", []),
+            raw_target_code(" = (MR_Box) ((MR_Closure *)\n"),
             target_code_input(ml_lval(ClosureArgLval)),
-            raw_target_code(")->MR_closure_layout;\n", [])
+            raw_target_code(")->MR_closure_layout;\n")
         ],
         ClosureLayoutPtrGCInit = statement(ml_stmt_atomic(
             inline_target_code(ml_target_c,
@@ -1133,9 +1133,9 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
         TypeParamsGCInitFragments = [
             target_code_output(TypeParamsLval),
             raw_target_code(" = (MR_Box) " ++
-              "MR_materialize_closure_type_params(\n", []),
+              "MR_materialize_closure_type_params(\n"),
             target_code_input(ml_lval(ClosureArgLval)),
-            raw_target_code(");\n", [])
+            raw_target_code(");\n")
         ]
     ;
         ClosureKind = typeclass_info_closure,
@@ -1150,11 +1150,11 @@ ml_gen_closure_wrapper_gc_decls(ClosureKind, ClosureArgName, ClosureArgType,
             target_code_output(TypeParamsLval),
             raw_target_code(" = (MR_Box) " ++
                 "MR_materialize_typeclass_info_type_params(\n"
-                ++ "(MR_Word) ", []),
+                ++ "(MR_Word) "),
             target_code_input(ml_lval(ClosureArgLval)),
-            raw_target_code(", (MR_Closure_Layout *) ", []),
+            raw_target_code(", (MR_Closure_Layout *) "),
             target_code_input(ml_lval(ClosureLayoutPtrLval)),
-            raw_target_code(");\n", [])
+            raw_target_code(");\n")
         ]
     ;
         ClosureKind = special_pred_closure,

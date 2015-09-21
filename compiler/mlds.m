@@ -478,7 +478,7 @@
     %
 :- func mlds_append_name(mlds_module_name, string) = mlds_module_name.
 
-    % When targetting languages such as IL, C#, and Java, which don't support
+    % When targetting languages such as C#, and Java, which don't support
     % global methods or global variables, we need to wrap all the generated
     % global functions and global data inside a wrapper class. This function
     % returns the name to use for the wrapper class.
@@ -1425,7 +1425,6 @@
     --->    ml_target_c
     ;       ml_target_gnu_c
 %   ;       ml_target_c_minus_minus
-    ;       ml_target_il
     ;       ml_target_csharp
     ;       ml_target_java.
 %   ;       ml_target_java_asm
@@ -1437,8 +1436,7 @@
                 % `pragma foreign_proc' declaration.
 
                 string,
-                maybe(prog_context),
-                target_code_attributes
+                maybe(prog_context)
             )
     ;       raw_target_code(
                 % Raw_target_code holds C code that the compiler has generated.
@@ -1448,8 +1446,7 @@
                 % target_code_component must be a `name(Name)' component,
                 % for which we do not output #line directives.
 
-                string,
-                target_code_attributes
+                string
             )
 
     ;       target_code_input(mlds_rval)
@@ -1457,18 +1454,6 @@
     ;       target_code_type(mlds_type)
     ;       target_code_name(mlds_qualified_entity_name)
     ;       target_code_alloc_id(mlds_alloc_id).
-
-:- type target_code_attributes == list(target_code_attribute).
-
-:- type target_code_attribute
-    --->    max_stack_size(int).
-            % max_stack_size(Size):
-            % This attribute declares the maximum stack usage of a
-            % particular piece of code. The unit that `Size' is measured
-            % in depends upon foreign language being used. Currently this
-            % attribute is only used (and is in fact required) by the
-            % `IL' foreign language interface, and is measured in units
-            % of stack items.
 
 :- type mlds_alloc_id
     --->    mlds_alloc_id(int).
@@ -1909,7 +1894,6 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                 MLDSType = MLDSRefType
             ;
                 ( Target = target_c
-                ; Target = target_il
                 ; Target = target_java
                 ; Target = target_erlang
                 ),
@@ -1950,7 +1934,7 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
     % foreign_type_body_to_exported_type in foreign.m.
     % Any changes here may require changes there as well.
 
-    ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
+    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
         MaybeCSharp, _MaybeErlang),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
@@ -1964,17 +1948,6 @@ foreign_type_to_mlds_type(ModuleInfo, ForeignTypeBody) = MLDSType :-
             MaybeC = no,
             % This is checked by check_foreign_type in make_hlds.
             unexpected($module, $pred, "no C foreign type")
-        )
-    ;
-        Target = target_il,
-        (
-            MaybeIL = yes(Data),
-            Data = foreign_type_lang_data(ILForeignType, _, _),
-            ForeignType = il(ILForeignType)
-        ;
-            MaybeIL = no,
-            % This is checked by check_foreign_type in make_hlds.
-            unexpected($module, $pred, "no IL foreign type")
         )
     ;
         Target = target_csharp,
@@ -2021,12 +1994,6 @@ mlds_get_arg_types(Parameters) = ArgTypes :-
 
 %-----------------------------------------------------------------------------%
 
-% For IL:
-% An MLDS module name consists of two parts. One part is the package
-% which the module name is defined in, and the other part is the actual
-% module name. For example the module name System.XML could be defined
-% in the package XML.
-%
 % For Java:
 % The "package_name" is really the name of the Mercury module, and the
 % "module_name" is the "package_name" plus additional qualifiers (if any).

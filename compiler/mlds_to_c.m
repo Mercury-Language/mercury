@@ -312,7 +312,6 @@ mlds_output_src_imports(Opts, Indent, Imports, !IO) :-
     ;
         ( Target = target_java
         ; Target = target_csharp
-        ; Target = target_il
         ; Target = target_erlang
         ),
         unexpected($module, $pred, "expected target c")
@@ -506,8 +505,7 @@ mlds_output_hdr_start(Opts, Indent, ModuleName, !IO) :-
         io.write_string("#endif\n", !IO),
         io.nl(!IO)
     ;
-        ( Target = target_il
-        ; Target = target_java
+        ( Target = target_java
         ; Target = target_csharp
         ; Target = target_erlang
         )
@@ -620,8 +618,7 @@ mlds_output_hdr_end(Opts, Indent, ModuleName, !IO) :-
         io.write_string("#endif\n", !IO),
         io.nl(!IO)
     ;
-        ( Target = target_il
-        ; Target = target_csharp
+        ( Target = target_csharp
         ; Target = target_java
         ; Target = target_erlang
         )
@@ -947,7 +944,6 @@ mlds_output_c_hdr_decl(Opts, _Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
     ;
         ( Lang = lang_java
         ; Lang = lang_csharp
-        ; Lang = lang_il
         ; Lang = lang_erlang
         ),
         sorry($module, $pred, "foreign code other than C")
@@ -986,8 +982,7 @@ mlds_output_c_foreign_import_module(Opts, Indent, ForeignImport, !IO) :-
             mercury_import(user_visible_interface,
                 mercury_module_name_to_mlds(Import)), !IO)
     ;
-        ( Lang = lang_il
-        ; Lang = lang_csharp
+        ( Lang = lang_csharp
         ; Lang = lang_java
         ; Lang = lang_erlang
         ),
@@ -1005,7 +1000,6 @@ mlds_output_c_defn(Opts, _Indent, ForeignBodyCode, !IO) :-
             !IO)
     ;
         ( Lang = lang_csharp
-        ; Lang = lang_il
         ; Lang = lang_java
         ; Lang = lang_erlang
         ),
@@ -1132,9 +1126,6 @@ mlds_output_pragma_export_type(PrefixSuffix, MLDS_Type, !IO) :-
             (
                 ForeignType = c(c_type(Name)),
                 io.write_string(Name, !IO)
-            ;
-                ForeignType = il(_),
-                unexpected($module, $pred, "il foreign_type")
             ;
                 ForeignType = java(_),
                 unexpected($module, $pred, "java foreign_type")
@@ -1419,7 +1410,6 @@ mlds_output_export_enum(Opts, _Indent, ExportedEnum, !IO) :-
     ;
         ( Lang = lang_csharp
         ; Lang = lang_java
-        ; Lang = lang_il
         ; Lang = lang_erlang
         )
     ).
@@ -3918,7 +3908,6 @@ mlds_output_atomic_stmt(Opts, Indent, _FuncInfo, Statement, Context, !IO) :-
                 Components, !IO)
         ;
             ( TargetLang = ml_target_gnu_c
-            ; TargetLang = ml_target_il
             ; TargetLang = ml_target_csharp
             ; TargetLang = ml_target_java
             ),
@@ -3948,7 +3937,7 @@ mlds_output_maybe_alloc_id(MaybeAllocId, !IO) :-
 
 mlds_output_target_code_component(Opts, Context, TargetCode, !IO) :-
     (
-        TargetCode = user_target_code(CodeString, MaybeUserContext, _Attrs),
+        TargetCode = user_target_code(CodeString, MaybeUserContext),
         (
             MaybeUserContext = yes(UserContext),
             output_context_opts(Opts, mlds_make_context(UserContext), !IO)
@@ -3960,7 +3949,7 @@ mlds_output_target_code_component(Opts, Context, TargetCode, !IO) :-
         io.write_string("\n", !IO),
         reset_context_opts(Opts, !IO)
     ;
-        TargetCode = raw_target_code(CodeString, _Attrs),
+        TargetCode = raw_target_code(CodeString),
         io.write_string(CodeString, !IO)
     ;
         TargetCode = target_code_input(Rval),

@@ -21,7 +21,6 @@
 :- import_module libs.file_util.
 :- import_module parse_tree.
 :- import_module parse_tree.module_imports.
-:- import_module parse_tree.prog_data.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
@@ -56,18 +55,6 @@
     %
 :- pred compile_java_files(globals::in, io.output_stream::in, list(string)::in,
     bool::out, io::di, io::uo) is det.
-
-    % il_assemble(Globals, ErrorStream, ModuleName, HasMain, Succeeded, !IO)
-    %
-:- pred il_assemble(globals::in, io.output_stream::in, module_name::in,
-    has_main::in, bool::out, io::di, io::uo) is det.
-
-    % do_il_assemble(Globals, ErrorStream, ILFile, DLLFile, HasMain, Succeeded,
-    %   !IO)
-    %
-:- pred do_il_assemble(globals::in, io.output_stream::in,
-    file_name::in, file_name::in, has_main::in, bool::out,
-    io::di, io::uo) is det.
 
     % compile_csharp_file(Globals, ErrorStream, C#File, DLLFile, Succeeded,
     %   !IO)
@@ -252,6 +239,7 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.write_deps_file.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module dir.
@@ -261,74 +249,6 @@
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
-
-il_assemble(Globals, ErrorStream, ModuleName, HasMain, Succeeded, !IO) :-
-    module_name_to_file_name(Globals, ModuleName, ".il",
-        do_not_create_dirs, IL_File, !IO),
-    module_name_to_file_name(Globals, ModuleName, ".dll",
-        do_create_dirs, DllFile, !IO),
-
-    % If the module contains main/2 then we it should be built as an
-    % executable. Unfortunately C# code may refer to the dll
-    % so we always need to build the dll.
-
-    do_il_assemble(Globals, ErrorStream, IL_File, DllFile, no_main,
-        DllSucceeded, !IO),
-    (
-        HasMain = has_main,
-        module_name_to_file_name(Globals, ModuleName, ".exe",
-            do_create_dirs, ExeFile, !IO),
-        do_il_assemble(Globals, ErrorStream, IL_File, ExeFile, HasMain,
-            ExeSucceeded, !IO),
-        Succeeded = DllSucceeded `and` ExeSucceeded
-    ;
-        HasMain = no_main,
-        Succeeded = DllSucceeded
-    ).
-
-do_il_assemble(Globals, ErrorStream, IL_File, TargetFile, HasMain, Succeeded,
-        !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    globals.lookup_bool_option(Globals, sign_assembly, SignAssembly),
-    maybe_write_string(Verbose, "% Assembling `", !IO),
-    maybe_write_string(Verbose, IL_File, !IO),
-    maybe_write_string(Verbose, "':\n", !IO),
-    globals.lookup_string_option(Globals, il_assembler, ILASM),
-    globals.lookup_accumulating_option(Globals, ilasm_flags, ILASMFlagsList),
-    join_string_list(ILASMFlagsList, "", "", " ", ILASMFlags),
-    (
-        SignAssembly = yes,
-        SignOpt = "/keyf=mercury.sn "
-    ;
-        SignAssembly = no,
-        SignOpt = ""
-    ),
-    (
-        Verbose = yes,
-        VerboseOpt = ""
-    ;
-        Verbose = no,
-        VerboseOpt = "/quiet "
-    ),
-    globals.lookup_bool_option(Globals, target_debug, Debug),
-    (
-        Debug = yes,
-        DebugOpt = "/debug "
-    ;
-        Debug = no,
-        DebugOpt = ""
-    ),
-    (
-        HasMain = has_main,
-        TargetOpt = ""
-    ;
-        HasMain = no_main,
-        TargetOpt = "/dll "
-    ),
-    string.append_list([ILASM, " ", SignOpt, VerboseOpt, DebugOpt,
-        TargetOpt, ILASMFlags, " /out=", TargetFile, " ", IL_File], Command),
-    invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Command,
-        Succeeded, !IO).
 
 compile_csharp_file(Globals, ErrorStream, ModuleAndImports,
         CSharpFileName0, DLLFileName, Succeeded, !IO) :-
@@ -2796,9 +2716,6 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt, !Succeeded,
         MercuryLinkage = "shared",
         LinkOpt = "-r:",
         LibSuffix = ".dll"
-    ;
-        Target = target_il,
-        unexpected($module, $pred, "target_java")
     ;
         Target = target_java,
         unexpected($module, $pred, "target_java")

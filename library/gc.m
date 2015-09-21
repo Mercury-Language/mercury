@@ -47,7 +47,6 @@ garbage_collect(!IO) :-
 :- pragma no_inline(garbage_collect/0).
 
 :- pragma foreign_export("C", garbage_collect, "ML_garbage_collect").
-:- pragma foreign_export("IL", garbage_collect, "ML_garbage_collect").
 
 :- pragma foreign_proc("C",
     garbage_collect,

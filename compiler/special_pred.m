@@ -369,8 +369,7 @@ compiler_generated_rtti_for_builtins(ModuleInfo) :-
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    ( Target = target_il
-    ; Target = target_csharp
+    ( Target = target_csharp
     ; Target = target_java
     ; Target = target_erlang
     ).

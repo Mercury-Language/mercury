@@ -1219,8 +1219,7 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
             maybe_write_string(Verbose, "% done.\n", !IO),
             maybe_report_stats(Stats, !IO)
         ;
-            ( Target = target_il
-            ; Target = target_csharp
+            ( Target = target_csharp
             ; Target = target_java
             ; Target = target_erlang
             )
@@ -1265,8 +1264,7 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
             maybe_write_string(Verbose, "% done.\n", !IO),
             maybe_report_stats(Stats, !IO)
         ;
-            ( Target = target_il
-            ; Target = target_csharp
+            ( Target = target_csharp
             ; Target = target_java
             ; Target = target_erlang
             )

@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: univ.m.
 % Main author: fjh.
 % Stability: medium.
-% 
+%
 % The universal type `univ'
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -86,7 +86,7 @@
 :- import_module string.
 
 %---------------------------------------------------------------------------%
-    
+
     % We call the constructor for univs `univ_cons' to avoid ambiguity
     % with the univ/1 function which returns a univ.
     %
@@ -126,7 +126,6 @@ univ_type(Univ) = type_of(univ_value(Univ)).
 
 :- pred construct_univ(T::in, univ::out) is det.
 :- pragma foreign_export("C", construct_univ(in, out), "ML_construct_univ").
-:- pragma foreign_export("IL", construct_univ(in, out), "ML_construct_univ").
 :- pragma foreign_export("C#", construct_univ(in, out), "ML_construct_univ").
 :- pragma foreign_export("Java", construct_univ(in, out), "ML_construct_univ").
 
@@ -135,7 +134,6 @@ construct_univ(X, Univ) :-
 
 :- some [T] pred unravel_univ(univ::in, T::out) is det.
 :- pragma foreign_export("C", unravel_univ(in, out), "ML_unravel_univ").
-:- pragma foreign_export("IL", unravel_univ(in, out), "ML_unravel_univ").
 :- pragma foreign_export("C#", unravel_univ(in, out), "ML_unravel_univ").
 :- pragma foreign_export("Java", unravel_univ(in, out), "ML_unravel_univ").
 

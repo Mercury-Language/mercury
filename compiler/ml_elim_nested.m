@@ -1167,15 +1167,8 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
 
 :- func ml_make_env_ptr_type(globals, mlds_type) = mlds_type.
 
-ml_make_env_ptr_type(Globals, EnvType) = EnvPtrType :-
-    globals.lookup_bool_option(Globals, put_nondet_env_on_heap, OnHeap),
-    globals.get_target(Globals, Target),
-    ( if Target = target_il, OnHeap = yes then
-        % For IL, a class type is already a pointer (object reference).
-        EnvPtrType = EnvType
-    else
-        EnvPtrType = mlds_ptr_type(EnvType)
-    ).
+ml_make_env_ptr_type(_Globals, EnvType) = EnvPtrType :-
+    EnvPtrType = mlds_ptr_type(EnvType).
 
     % Create the environment pointer and initialize it:
     %
@@ -1919,8 +1912,8 @@ fixup_target_code_components(Action, Info,
 
 fixup_target_code_component(Action, Info, Component0, Component) :-
     (
-        ( Component0 = raw_target_code(_Code, _Attrs)
-        ; Component0 = user_target_code(_Code, _Context, _Attrs)
+        ( Component0 = raw_target_code(_Code)
+        ; Component0 = user_target_code(_Code, _Context)
         ; Component0 = target_code_type(_Type)
         ; Component0 = target_code_name(_Name)
         ; Component0 = target_code_alloc_id(_AllocId)

@@ -451,7 +451,6 @@ output_java_decl(Info, Indent, DeclCode, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
-        ; Lang = lang_il
         ; Lang = lang_erlang
         ),
         sorry($module, $pred, "foreign decl other than Java")
@@ -470,7 +469,6 @@ output_java_body_code(Info, Indent, ForeignBodyCode, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
-        ; Lang = lang_il
         ; Lang = lang_erlang
         ),
         sorry($module, $pred, "foreign code other than Java")
@@ -730,7 +728,6 @@ output_exported_enum(Info, Indent, ExportedEnum, !IO) :-
     ;
         ( Lang = lang_c
         ; Lang = lang_csharp
-        ; Lang = lang_il
         ; Lang = lang_erlang
         )
     ).
@@ -1720,7 +1717,6 @@ rename_class_names_atomic(Renaming, !Statement) :-
         ;
             ( Lang = ml_target_c
             ; Lang = ml_target_gnu_c
-            ; Lang = ml_target_il
             ; Lang = ml_target_csharp
             )
         )
@@ -1866,9 +1862,9 @@ rename_class_names_unary_op(Renaming, !Op) :-
 
 rename_class_names_target_code_component(Renaming, !Component) :-
     (
-        !.Component = user_target_code(_, _, _)
+        !.Component = user_target_code(_, _)
     ;
-        !.Component = raw_target_code(_, _)
+        !.Component = raw_target_code(_)
     ;
         !.Component = target_code_alloc_id(_)
     ;
@@ -3482,9 +3478,6 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
             ForeignType = c(_),
             unexpected($module, $pred, "c foreign_type")
         ;
-            ForeignType = il(_),
-            unexpected($module, $pred, "il foreign_type")
-        ;
             ForeignType = csharp(_),
             unexpected($module, $pred, "csharp foreign_type")
         ;
@@ -4553,7 +4546,6 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
         ;
             ( TargetLang = ml_target_c
             ; TargetLang = ml_target_gnu_c
-            ; TargetLang = ml_target_il
             ; TargetLang = ml_target_csharp
             ),
             unexpected($module, $pred,
@@ -4572,7 +4564,7 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
 
 output_target_code_component(Info, TargetCode, !IO) :-
     (
-        TargetCode = user_target_code(CodeString, MaybeUserContext, _Attrs),
+        TargetCode = user_target_code(CodeString, MaybeUserContext),
         (
             MaybeUserContext = yes(ProgContext),
             write_string_with_context_block(Info, 0, CodeString,
@@ -4582,7 +4574,7 @@ output_target_code_component(Info, TargetCode, !IO) :-
             io.write_string(CodeString, !IO)
         )
     ;
-        TargetCode = raw_target_code(CodeString, _Attrs),
+        TargetCode = raw_target_code(CodeString),
         io.write_string(CodeString, !IO)
     ;
         TargetCode = target_code_input(Rval),

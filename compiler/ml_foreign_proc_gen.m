@@ -145,11 +145,6 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
                 OrdinaryKind, Attributes, PredId, ProcId, Args, ExtraArgs,
                 Foreign_Code, Context, Decls, Statements, !Info)
         ;
-            Target = target_il,
-            ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes,
-                PredId, ProcId, Args, ExtraArgs,
-                Foreign_Code, Context, Decls, Statements, !Info)
-        ;
             ( Target = target_c
             ; Target = target_java
             ; Target = target_erlang
@@ -157,12 +152,6 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
             unexpected($module, $pred,
                 "C# foreign code not supported for compilation target")
         )
-    ;
-        Lang = lang_il,
-        % XXX should pass OrdinaryKind
-        ml_gen_ordinary_pragma_il_proc(CodeModel, Attributes,
-            PredId, ProcId, Args, ExtraArgs,
-            Foreign_Code, Context, Decls, Statements, !Info)
     ;
         Lang = lang_java,
         ml_gen_ordinary_pragma_csharp_java_proc(ml_target_java, OrdinaryKind,
@@ -227,29 +216,29 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
             BoolType = "bool"
         ),
         SucceededDecl = [
-            raw_target_code("\t" ++ BoolType ++ " SUCCESS_INDICATOR;\n", [])],
+            raw_target_code("\t" ++ BoolType ++ " SUCCESS_INDICATOR;\n")],
         AssignSucceeded = [
-            raw_target_code("\t", []),
+            raw_target_code("\t"),
             target_code_output(SucceededLval),
-            raw_target_code(" = SUCCESS_INDICATOR;\n", [])
+            raw_target_code(" = SUCCESS_INDICATOR;\n")
         ]
     ;
         OrdinaryKind = kind_failure,
         ml_success_lval(!.Info, SucceededLval),
         SucceededDecl = [],
         AssignSucceeded = [
-            raw_target_code("\t", []),
+            raw_target_code("\t"),
             target_code_output(SucceededLval),
-            raw_target_code(" = false;\n", [])
+            raw_target_code(" = false;\n")
         ]
     ),
 
     Starting_Code = list.condense([
-        [raw_target_code("{\n", [])],
+        [raw_target_code("{\n")],
         ArgDeclsList,
         SucceededDecl,
         AssignInputsList,
-        [user_target_code(JavaCode, yes(Context), [])]
+        [user_target_code(JavaCode, yes(Context))]
     ]),
     Starting_Code_Stmt = inline_target_code(TargetLang, Starting_Code),
     Starting_Code_Statement = statement(ml_stmt_atomic(Starting_Code_Stmt),
@@ -257,7 +246,7 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
 
     Ending_Code = list.condense([
         AssignSucceeded,
-        [raw_target_code("\t}\n", [])]
+        [raw_target_code("\t}\n")]
     ]),
     Ending_Code_Stmt = inline_target_code(TargetLang, Ending_Code),
     Ending_Code_Statement = statement(ml_stmt_atomic(Ending_Code_Stmt),
@@ -367,170 +356,6 @@ ml_gen_outline_args([Arg | Args], [OutlineArg | OutlineArgs], !Info) :-
         OutlineArg = ola_unused
     ).
 
-:- pred ml_gen_ordinary_pragma_il_proc(code_model::in,
-    pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-    list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    prog_context::in, list(mlds_defn)::out, list(statement)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
-
-ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
-        Args, ExtraArgs, ForeignCode, Context, Decls, Statements, !Info) :-
-    expect(unify(ExtraArgs, []), $module, $pred, "extra args"),
-
-    % XXX FIXME need to handle model_semi code here,
-    % i.e. provide some equivalent to SUCCESS_INDICATOR.
-
-    % XXX FIXME do we handle top_unused mode correctly?
-
-    MLDSContext = mlds_make_context(Context),
-
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        _PredInfo, ProcInfo),
-    proc_info_get_varset(ProcInfo, VarSet),
-%   proc_info_get_vartypes(ProcInfo, VarTypes),
-    % note that for headvars we must use the types from
-    % the procedure interface, not from the procedure body
-    ml_gen_info_get_byref_output_vars(!.Info, ByRefOutputVars),
-    ml_gen_info_get_value_output_vars(!.Info, CopiedOutputVars),
-    module_info_get_name(ModuleInfo, ModuleName),
-    MLDSModuleName = mercury_module_name_to_mlds(ModuleName),
-
-    % XXX in the code to marshall parameters, fjh says:
-    % We need to handle the case where the types in the procedure interface
-    % are polymorphic, but the types of the vars in the `foreign_proc' HLDS
-    % goal are concrete instances of those types, which can happen when the
-    % procedure is inlined or specialized. The assignment that you
-    % generate here with ml_gen_assign won't be type-correct. In general
-    % you may need to box/unbox the arguments.
-
-    build_arg_map(Args, map.init, ArgMap),
-
-    % Generate statements to assign by-ref output arguments.
-    list.filter_map(ml_gen_pragma_il_proc_assign_output(ModuleInfo,
-            MLDSModuleName, ArgMap, VarSet, Context, yes),
-        ByRefOutputVars, ByRefAssignStatements),
-
-    % Generate statements to assign copied output arguments.
-    list.filter_map(ml_gen_pragma_il_proc_assign_output(ModuleInfo,
-            MLDSModuleName, ArgMap, VarSet, Context, no),
-        CopiedOutputVars, CopiedOutputStatements),
-
-    ArgVars = list.map(foreign_arg_var, Args),
-    % Generate declarations for all the variables, and initializers for
-    % input variables.
-    list.map(
-        ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName,
-            ArgMap, VarSet, MLDSContext, ByRefOutputVars, CopiedOutputVars),
-        ArgVars, VarLocals),
-
-    OutlineStmt = inline_target_code(ml_target_il, [
-        user_target_code(ForeignCode, yes(Context),
-            get_target_code_attributes(lang_il,
-                get_extra_attributes(Attributes)))
-        ]),
-
-    ILCodeFragment = statement(ml_stmt_atomic(OutlineStmt), MLDSContext),
-    BlockStatements = [ILCodeFragment | ByRefAssignStatements] ++
-        CopiedOutputStatements,
-    BlockStatement = statement(ml_stmt_block(VarLocals, BlockStatements),
-        mlds_make_context(Context)),
-    Statements = [BlockStatement],
-    Decls = [].
-
-:- pred build_arg_map(list(foreign_arg)::in, map(prog_var, foreign_arg)::in,
-    map(prog_var, foreign_arg)::out) is det.
-
-build_arg_map([], !ArgMap).
-build_arg_map([ForeignArg | ForeignArgs], !ArgMap) :-
-    ForeignArg = foreign_arg(Var, _, _, _),
-    map.det_insert(Var, ForeignArg, !ArgMap),
-    build_arg_map(ForeignArgs, !ArgMap).
-
-:- pred ml_gen_pragma_il_proc_assign_output(module_info::in,
-    mlds_module_name::in, map(prog_var, foreign_arg)::in, prog_varset::in,
-    prog_context::in, bool::in, prog_var::in, statement::out)
-    is semidet.
-
-ml_gen_pragma_il_proc_assign_output(ModuleInfo, MLDSModuleName, ArgMap,
-        VarSet, Context, IsByRef, Var, Statement) :-
-    map.lookup(ArgMap, Var, ForeignArg),
-    ForeignArg = foreign_arg(_, MaybeNameMode, Type, BoxPolicy),
-    check_dummy_type(ModuleInfo, Type) = is_not_dummy_type,
-    (
-        BoxPolicy = always_boxed,
-        MLDSType = mlds_generic_type
-    ;
-        BoxPolicy = native_if_possible,
-        MLDSType = mercury_type_to_mlds_type(ModuleInfo, Type)
-    ),
-
-    VarName = ml_gen_var_name(VarSet, Var),
-    QualVarName = qual(MLDSModuleName, module_qual, VarName),
-    (
-        IsByRef = yes,
-        OutputVarLval = ml_mem_ref(ml_lval(ml_var(QualVarName, MLDSType)),
-            MLDSType)
-    ;
-        IsByRef = no,
-        OutputVarLval = ml_var(QualVarName, MLDSType)
-    ),
-
-    MaybeNameMode = yes(UserVarNameString - _),
-    NonMangledVarName = mlds_var_name(UserVarNameString, no),
-    QualLocalVarName= qual(MLDSModuleName, module_qual, NonMangledVarName),
-    LocalVarLval = ml_var(QualLocalVarName, MLDSType),
-
-    Statement = ml_gen_assign(OutputVarLval, ml_lval(LocalVarLval), Context).
-
-:- pred ml_gen_pragma_il_proc_var_decl_defn(module_info::in,
-    mlds_module_name::in, map(prog_var, foreign_arg)::in, prog_varset::in,
-    mlds_context::in, list(prog_var)::in, list(prog_var)::in,
-    prog_var::in, mlds_defn::out) is det.
-
-ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
-        MLDSContext, ByRefOutputVars, CopiedOutputVars, Var, Defn) :-
-    map.lookup(ArgMap, Var, ForeignArg),
-    ForeignArg = foreign_arg(_, MaybeNameMode, Type, BoxPolicy),
-    VarName = ml_gen_var_name(VarSet, Var),
-    (
-        MaybeNameMode = yes(UserVarNameString - _),
-        NonMangledVarName = mlds_var_name(UserVarNameString, no)
-    ;
-        MaybeNameMode = no,
-        sorry($module, $pred, "no variable name for var")
-    ),
-    (
-        BoxPolicy = always_boxed,
-        MLDSType0 = mlds_generic_type
-    ;
-        BoxPolicy = native_if_possible,
-        MLDSType0 = mercury_type_to_mlds_type(ModuleInfo, Type)
-    ),
-
-    % Dummy arguments are just mapped to integers, since they shouldn't be
-    % used in any way that requires them to have a real value.
-    ( if check_dummy_type(ModuleInfo, Type) = is_dummy_type then
-        Initializer = no_initializer,
-        MLDSType = mlds_native_int_type
-    else if list.member(Var, ByRefOutputVars) then
-        Initializer = no_initializer,
-        MLDSType = MLDSType0
-    else if list.member(Var, CopiedOutputVars) then
-        Initializer = no_initializer,
-        MLDSType = MLDSType0
-    else
-        MLDSType = MLDSType0,
-        QualVarName = qual(MLDSModuleName, module_qual, VarName),
-        Initializer = init_obj(ml_lval(ml_var(QualVarName, MLDSType)))
-    ),
-    % XXX Accurate GC is not supported for IL foreign code;
-    % this would only be useful if interfacing to
-    % IL when compiling to C, which is not yet supported.
-    GCStatement = gc_no_stmt,
-    Defn = ml_gen_mlds_var_decl_init(mlds_data_var(NonMangledVarName),
-        MLDSType, Initializer, GCStatement, MLDSContext).
-
     % For ordinary (not model_non) pragma c_proc,
     % we generate code of the following form:
     %
@@ -626,22 +451,22 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     (
         OrdinaryKind = kind_det,
         Starting_C_Code = list.condense([
-            [raw_target_code("{\n", [])],
+            [raw_target_code("{\n")],
             HashDefineAllocId,
             HashDefineProcLabel,
             ArgDeclsList,
-            [raw_target_code("\n", [])],
+            [raw_target_code("\n")],
             AssignInputsList,
-            [raw_target_code(ObtainLock, []),
-            raw_target_code("\t\t{\n", []),
-            user_target_code(C_Code, yes(Context), []),
-            raw_target_code("\n\t\t;}\n", [])],
+            [raw_target_code(ObtainLock),
+            raw_target_code("\t\t{\n"),
+            user_target_code(C_Code, yes(Context)),
+            raw_target_code("\n\t\t;}\n")],
             HashUndefAllocId,
-            [raw_target_code("#undef MR_PROC_LABEL\n", []),
-            raw_target_code(ReleaseLock, [])],
+            [raw_target_code("#undef MR_PROC_LABEL\n"),
+            raw_target_code(ReleaseLock)],
             AssignOutputsList
         ]),
-        Ending_C_Code = [raw_target_code("}\n", [])]
+        Ending_C_Code = [raw_target_code("}\n")]
     ;
         OrdinaryKind = kind_failure,
         % We need to treat this case separately, because for these
@@ -650,51 +475,51 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         % would test an undefined value.
         ml_success_lval(!.Info, SucceededLval),
         Starting_C_Code = list.condense([
-            [raw_target_code("{\n", [])],
+            [raw_target_code("{\n")],
             HashDefineAllocId,
             HashDefineProcLabel,
             ArgDeclsList,
-            [raw_target_code("\n", [])],
+            [raw_target_code("\n")],
             AssignInputsList,
-            [raw_target_code(ObtainLock, []),
-            raw_target_code("\t\t{\n", []),
-            user_target_code(C_Code, yes(Context), []),
-            raw_target_code("\n\t\t;}\n", [])],
+            [raw_target_code(ObtainLock),
+            raw_target_code("\t\t{\n"),
+            user_target_code(C_Code, yes(Context)),
+            raw_target_code("\n\t\t;}\n")],
             HashUndefAllocId,
-            [raw_target_code("#undef MR_PROC_LABEL\n", []),
-            raw_target_code(ReleaseLock, [])]
+            [raw_target_code("#undef MR_PROC_LABEL\n"),
+            raw_target_code(ReleaseLock)]
         ]),
         Ending_C_Code = [
             target_code_output(SucceededLval),
-            raw_target_code(" = MR_FALSE;\n", []),
-            raw_target_code("}\n", [])
+            raw_target_code(" = MR_FALSE;\n"),
+            raw_target_code("}\n")
         ]
     ;
         OrdinaryKind = kind_semi,
         ml_success_lval(!.Info, SucceededLval),
         Starting_C_Code = list.condense([
-            [raw_target_code("{\n", [])],
+            [raw_target_code("{\n")],
             HashDefineAllocId,
             HashDefineProcLabel,
             ArgDeclsList,
-            [raw_target_code("\tMR_bool SUCCESS_INDICATOR;\n", []),
-            raw_target_code("\n", [])],
+            [raw_target_code("\tMR_bool SUCCESS_INDICATOR;\n"),
+            raw_target_code("\n")],
             AssignInputsList,
-            [raw_target_code(ObtainLock, []),
-            raw_target_code("\t\t{\n", []),
-            user_target_code(C_Code, yes(Context), []),
-            raw_target_code("\n\t\t;}\n", [])],
+            [raw_target_code(ObtainLock),
+            raw_target_code("\t\t{\n"),
+            user_target_code(C_Code, yes(Context)),
+            raw_target_code("\n\t\t;}\n")],
             HashUndefAllocId,
-            [raw_target_code("#undef MR_PROC_LABEL\n", []),
-            raw_target_code(ReleaseLock, []),
-            raw_target_code("\tif (SUCCESS_INDICATOR) {\n", [])],
+            [raw_target_code("#undef MR_PROC_LABEL\n"),
+            raw_target_code(ReleaseLock),
+            raw_target_code("\tif (SUCCESS_INDICATOR) {\n")],
             AssignOutputsList
         ]),
         Ending_C_Code = [
-            raw_target_code("\t}\n", []),
+            raw_target_code("\t}\n"),
             target_code_output(SucceededLval),
-            raw_target_code(" = SUCCESS_INDICATOR;\n", []),
-            raw_target_code("}\n", [])
+            raw_target_code(" = SUCCESS_INDICATOR;\n"),
+            raw_target_code("}\n")
         ]
     ),
     Starting_C_Code_Stmt = inline_target_code(ml_target_c, Starting_C_Code),
@@ -756,10 +581,10 @@ ml_gen_hash_define_mr_alloc_id(C_Codes, Context, HashDefine, HashUndef,
             GlobalData0, GlobalData),
         ml_gen_info_set_global_data(GlobalData, !Info),
         HashDefine = [
-            raw_target_code("#define MR_ALLOC_ID ", []),
+            raw_target_code("#define MR_ALLOC_ID "),
             target_code_alloc_id(AllocId),
-            raw_target_code("\n", [])],
-        HashUndef = [raw_target_code("#undef MR_ALLOC_ID\n", [])]
+            raw_target_code("\n")],
+        HashUndef = [raw_target_code("#undef MR_ALLOC_ID\n")]
     else
         HashDefine = [],
         HashUndef = []
@@ -777,36 +602,9 @@ ml_gen_hash_define_mr_proc_label(Info, HashDefine) :-
     ml_gen_info_get_pred_id(Info, PredId),
     ml_gen_info_get_proc_id(Info, ProcId),
     ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, Module),
-    HashDefine = [raw_target_code("#define MR_PROC_LABEL ", []),
+    HashDefine = [raw_target_code("#define MR_PROC_LABEL "),
         target_code_name(qual(Module, module_qual, Name)),
-        raw_target_code("\n", [])].
-
-:- func get_target_code_attributes(foreign_language,
-    pragma_foreign_proc_extra_attributes) = target_code_attributes.
-
-get_target_code_attributes(_Lang, []) = [].
-get_target_code_attributes(Lang, [ProcAttr | ProcAttrs]) = TargetAttrs :-
-    TargetAttrs1 = get_target_code_attributes(Lang, ProcAttrs),
-    (
-        ProcAttr = max_stack_size(N),
-        (
-            Lang = lang_il,
-            TargetAttrs = [max_stack_size(N) | TargetAttrs1]
-        ;
-            ( Lang = lang_c
-            ; Lang = lang_csharp
-            ; Lang = lang_java
-            ; Lang = lang_erlang
-            ),
-            TargetAttrs = TargetAttrs1
-        )
-    ;
-        ( ProcAttr = refers_to_llds_stack
-        ; ProcAttr = backend(_)
-        ; ProcAttr = needs_call_standard_output_registers
-        ),
-        TargetAttrs = TargetAttrs1
-    ).
+        raw_target_code("\n")].
 
 %---------------------------------------------------------------------------%
 
@@ -848,7 +646,7 @@ ml_gen_pragma_c_decl(Info, Lang, Arg, Decl) :-
         % it can't be used, so we just ignore it.
         DeclString = ""
     ),
-    Decl = raw_target_code(DeclString, []).
+    Decl = raw_target_code(DeclString).
 
 %-----------------------------------------------------------------------------%
 
@@ -900,7 +698,7 @@ ml_gen_pragma_csharp_java_decl(Info, MutableSpecial, Arg, Decl) :-
         ),
         TypeDecl = target_code_type(MLDS_Type),
         string.format(" %s;\n", [s(ArgName)], VarDeclString),
-        VarDecl = raw_target_code(VarDeclString, []),
+        VarDecl = raw_target_code(VarDeclString),
         Decl = [TypeDecl, VarDecl]
     else
         % If the variable doesn't occur in the ArgNames list,
@@ -996,18 +794,18 @@ ml_gen_pragma_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         % In the usual case, we can just use an assignment and perhaps a cast.
         string.format("\t%s = %s ", [s(ArgName), s(Cast)], AssignToArgName),
         AssignInput = [
-            raw_target_code(AssignToArgName, []),
+            raw_target_code(AssignToArgName),
             target_code_input(ArgRval),
-            raw_target_code(";\n", [])
+            raw_target_code(";\n")
         ]
     else
         % For foreign types (without the `can_pass_as_mercury_type' assertion)
         % we need to call MR_MAYBE_UNBOX_FOREIGN_TYPE.
         AssignInput = [
             raw_target_code("\tMR_MAYBE_UNBOX_FOREIGN_TYPE("
-                ++ TypeString ++ ", ", []),
+                ++ TypeString ++ ", "),
             target_code_input(ArgRval),
-            raw_target_code(", " ++ ArgName ++ ");\n", [])
+            raw_target_code(", " ++ ArgName ++ ");\n")
         ]
     ).
 
@@ -1069,9 +867,7 @@ input_arg_assignable_with_cast(Lang, HighLevelData, OrigType, ExportedType,
         Lang = lang_csharp,
         Cast = ""
     ;
-        ( Lang = lang_il
-        ; Lang = lang_erlang
-        ),
+        Lang = lang_erlang,
         unexpected($module, $pred, "unexpected language")
     ).
 
@@ -1253,17 +1049,17 @@ ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
             AssignFromArgName),
         string.format("\t%s ", [s(LHS_Cast)], AssignTo),
         AssignOutput = [
-            raw_target_code(AssignTo, []),
+            raw_target_code(AssignTo),
             target_code_output(ArgLval),
-            raw_target_code(AssignFromArgName, [])
+            raw_target_code(AssignFromArgName)
         ]
     else
         % For foreign types, we need to call MR_MAYBE_BOX_FOREIGN_TYPE.
         AssignOutput = [
             raw_target_code("\tMR_MAYBE_BOX_FOREIGN_TYPE("
-                ++ TypeString ++ ", " ++ ArgName ++ ", ", []),
+                ++ TypeString ++ ", " ++ ArgName ++ ", "),
             target_code_output(ArgLval),
-            raw_target_code(");\n", [])
+            raw_target_code(");\n")
         ]
     ).
 

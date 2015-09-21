@@ -226,8 +226,6 @@
     ;       module_target_track_flags
     ;       module_target_c_header(c_header_type)
     ;       module_target_c_code
-    ;       module_target_il_code
-    ;       module_target_il_asm
     ;       module_target_csharp_code
     ;       module_target_java_code
     ;       module_target_java_class_code
@@ -235,7 +233,6 @@
     ;       module_target_erlang_code
     ;       module_target_erlang_beam_code
     ;       module_target_object_code(pic)
-    ;       module_target_foreign_il_asm(foreign_language)
     ;       module_target_foreign_object(pic, foreign_language)
     ;       module_target_fact_table_object(pic, file_name)
     ;       module_target_xml_doc.
@@ -577,9 +574,7 @@ search_backwards_for_dot(String, Index, DotIndex) :-
 get_executable_type(Globals) = ExecutableType :-
     globals.get_target(Globals, CompilationTarget),
     (
-        ( CompilationTarget = target_c
-        ; CompilationTarget = target_il
-        ),
+        CompilationTarget = target_c,
         ExecutableType = executable
     ;
         CompilationTarget = target_csharp,

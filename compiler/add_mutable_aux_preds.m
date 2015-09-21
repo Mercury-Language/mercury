@@ -347,15 +347,6 @@ do_mutable_checks(ItemMutable, !ModuleInfo, !Specs) :-
                 ModuleName, Name, ForeignLanguage, ForeignNames,
                 _TargetMutableName, !Specs)
         )
-    ;
-        CompilationTarget = target_il,
-        Pieces = [words("Error: foreign_name mutable attribute"),
-            words("is not yet implemented for the"),
-            fixed(compilation_target_string(CompilationTarget)),
-            words("backend."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
-        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
-        !:Specs = [Spec | !.Specs]
     ),
 
     % If the mutable is to be trailed, then we need to be in a trailing grade.
@@ -1438,10 +1429,6 @@ get_mutable_target_params(ModuleInfo, MutAttrs, MaybeTargetParams) :-
         TargetParams = mutable_target_params(ImplLang, Lang, BoxPolicy,
             PreInit, LockUnlock, UnsafeAccess),
         MaybeTargetParams = yes(TargetParams)
-    ;
-        CompilationTarget = target_il,
-        % Mutables are not supported on the IL backend.
-        MaybeTargetParams = no
     ).
 
 %---------------------------------------------------------------------------%

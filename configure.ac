@@ -407,8 +407,6 @@ then
         :- type bear ---> brown ; black ; teddy.
         :- pragma foreign_export_enum("Java", bear/0).
 
-        :- pragma foreign_export("IL", p(out), "IL_EXPORT").
-
         :- pred p(t::out) is det.
 
         p(b).
@@ -3570,15 +3568,6 @@ AC_ARG_ENABLE(minimal-install,
         [install the minimal system required to bootstrap Mercury]),
     [enable_min_install="$enableval"],[enable_min_install="no"])
 
-# We don't enable the .NET grades by default because that may lead to
-# installation process breaking on Linux systems that have DotGNU or Mono
-# installed.
-# NOTE: we deliberately do not document this option since it's only useful
-# for developers working on the .NET backend.
-AC_ARG_ENABLE(dotnet-grades,
-    AC_HELP_STRING([]),
-    enable_dotnet_grades="$enableval",enable_dotnet_grades=no)
-
 AC_ARG_ENABLE(csharp-grade,
    AC_HELP_STRING([--disable-csharp-grade], [do not install the C# grade]),
    enable_csharp_grade="$enableval",enable_csharp_grade=yes)
@@ -3622,7 +3611,6 @@ if test "$enable_most_grades" = no; then
     enable_rbmm_grades=no
     enable_par_grades=no
     enable_stseg_grades=no
-    enable_dotnet_grades=no
     enable_csharp_grade=no
     enable_java_grade=no
     enable_erlang_grade=no
@@ -3836,12 +3824,6 @@ then
     then
         LIBGRADES="$LIBGRADES $BEST_LLDS_BASE_GRADE.gc.trseg.stseg"
     fi
-fi
-
-# Add .NET back-end grades.
-if test $mercury_cv_microsoft_dotnet = yes -a "$enable_dotnet_grades" = yes
-then
-    LIBGRADES="$LIBGRADES il"
 fi
 
 # Add C# back-end grade, if a C# compiler is installed.

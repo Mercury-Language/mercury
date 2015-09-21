@@ -882,7 +882,6 @@ output_foreign_body_code(Info, ForeignBodyCode, !IO) :-
     ;
         ( Lang = lang_java
         ; Lang = lang_csharp
-        ; Lang = lang_il
         ; Lang = lang_erlang
         ),
         unexpected($module, $pred,
@@ -915,7 +914,6 @@ output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
     ;
         ( Lang = lang_java
         ; Lang = lang_csharp
-        ; Lang = lang_il
         ; Lang = lang_erlang
         ),
         unexpected($module, $pred,

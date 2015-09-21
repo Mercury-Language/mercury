@@ -136,16 +136,10 @@
 ml_gen_types(ModuleInfo, Defns) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    globals.get_target(Globals, Target),
     (
         HighLevelData = yes,
         module_info_get_type_table(ModuleInfo, TypeTable),
-        get_all_type_ctor_defns(TypeTable, TypeCtorsDefns0),
-        list.filter(
-            ( pred(TypeCtorDefn::in) is semidet :-
-                TypeCtorDefn = TypeCtor - _TypeDefn,
-                not type_ctor_needs_lowlevel_rep(Target, TypeCtor)
-            ), TypeCtorsDefns0, TypeCtorDefns),
+        get_all_type_ctor_defns(TypeTable, TypeCtorDefns),
         list.foldl(ml_gen_type_defn(ModuleInfo), TypeCtorDefns, [], Defns)
     ;
         HighLevelData = no,
@@ -267,7 +261,6 @@ ml_gen_enum_type(Target, TypeCtor, TypeDefn, Ctors, TagValues,
         Inherits = [ml_java_mercury_enum_class]
     ;
         ( Target = target_c
-        ; Target = target_il
         ; Target = target_csharp
         ; Target = target_erlang
         ),
@@ -511,7 +504,6 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
         Implements = [ml_java_mercury_type_interface]
     ;
         ( Target = target_c
-        ; Target = target_il
         ; Target = target_csharp
         ; Target = target_erlang
         ),
@@ -885,7 +877,6 @@ ml_tag_uses_base_class(Tag) = UsesBaseClass :-
     ).
 
 ml_target_uses_constructors(target_c) = no.
-ml_target_uses_constructors(target_il) = yes.
 ml_target_uses_constructors(target_csharp) = yes.
 ml_target_uses_constructors(target_java) = yes.
 ml_target_uses_constructors(target_erlang) =
@@ -894,7 +885,6 @@ ml_target_uses_constructors(target_erlang) =
 :- func target_uses_empty_base_classes(compilation_target) = bool.
 
 target_uses_empty_base_classes(target_c) = no.
-target_uses_empty_base_classes(target_il) = yes.
 target_uses_empty_base_classes(target_csharp) = no.
 target_uses_empty_base_classes(target_java) = yes.
 target_uses_empty_base_classes(target_erlang) =
@@ -911,7 +901,6 @@ target_uses_empty_base_classes(target_erlang) =
 :- func target_requires_module_qualified_params(compilation_target) = bool.
 
 target_requires_module_qualified_params(target_c) = no.
-target_requires_module_qualified_params(target_il) = no.
 target_requires_module_qualified_params(target_csharp) = yes.
 target_requires_module_qualified_params(target_java) = yes.
 target_requires_module_qualified_params(target_erlang) =

@@ -239,8 +239,6 @@ to avoid conflicts with system header files.
 @file{.s} files and @file{.pic_s} files are assembly language.
 @file{.java}, @file{.class} and @file{.jar} files are Java source code,
 Java bytecode and Java archives respectively.
-@file{.il} files are Intermediate Language (IL) files
-for the .NET Common Language Runtime.
 @file{.cs} files are C# source code.
 @c XXX mention .dll and .exe?
 @file{.erl} and @file{.beam} files are Erlang source code and
@@ -7768,7 +7766,6 @@ and grade modifier; they are followed by descriptions of those options.
 @findex --high-level-code
 @findex --no-high-level-code
 @findex --target
-@findex --il
 @findex --csharp
 @findex --java
 @findex --erlang
@@ -7894,7 +7891,6 @@ and grade modifier; they are followed by descriptions of those options.
 @table @asis
 @c @item @code{--target c} (grades: none, reg, jump, fast, asm_jump, asm_fast, hl, hlc)
 @item @code{--target c} (grades: none, reg, asm_fast, hlc)
-@c @itemx @code{--il}, @code{--target il} (grades: il)
 @itemx @code{--csharp}, @code{--target csharp} (grades: csharp)
 @itemx @code{--java}, @code{--target java} (grades: java)
 @itemx @code{--erlang}, @code{--target erlang} (grades: erlang)
@@ -7902,29 +7898,6 @@ Specify the target language used for compilation: C, C#, Java
 or Erlang.
 C means ANSI/ISO C, optionally with GNU C extensions (see below).
 Targets other than C and Erlang imply @samp{--high-level-code}.
-
-@c @sp 1
-@c @item @code{--il-only}
-@c @findex --il-only
-@c An abbreviation for @samp{--target il --target-code-only}.
-@c Generate IL assembler code in @file{@var{module}.il}, but do not invoke
-@c ilasm to produce IL object code.
-@c
-@c @sp 1
-@c @item @code{--dotnet-library-version @var{version-number}}
-@c @findex --dotnet-library-version
-@c The version number for the mscorlib assembly distributed with the
-@c Microsoft .NET SDK.
-@c
-@c @sp 1
-@c @item @code{--no-support-ms-clr}
-@c @findex --no-support-ms-clr
-@c Don't use Microsoft CLR specific workarounds in the generated code.
-@c
-@c @sp 1
-@c @item @code{--support-rotor-clr}
-@c @findex --support-rotor-clr
-@c Use ROTOR CLR specific workarounds in the generated code.
 
 @sp 1
 @item @code{--compile-to-c}

@@ -602,8 +602,7 @@ do_mode_of_operation_standalone_interface(Globals, StandaloneIntBasename,
         !IO) :-
     globals.get_target(Globals, Target),
     (
-        ( Target = target_il
-        ; Target = target_csharp
+        ( Target = target_csharp
         ; Target = target_java
         ),
         NotRequiredMsg = [
@@ -674,7 +673,6 @@ do_default_mode_of_operation(DetectedGradeFlags, OptionVariables, OptionArgs,
                 ;
                     ( Target = target_c
                     ; Target = target_csharp
-                    ; Target = target_il
                     ; Target = target_erlang
                     ),
                     compile_with_module_options(Globals, MainModuleName,
@@ -1559,7 +1557,6 @@ compile_with_module_options(Globals, ModuleName, DetectedGradeFlags,
 find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
     globals.get_target(Globals, CompilationTarget),
     ( CompilationTarget = target_c, TargetSuffix = ".c"
-    ; CompilationTarget = target_il, TargetSuffix = ".il"
     ; CompilationTarget = target_csharp, TargetSuffix = ".cs"
     ; CompilationTarget = target_java, TargetSuffix = ".java"
     ; CompilationTarget = target_erlang, TargetSuffix = ".erl"
@@ -1585,9 +1582,6 @@ find_timestamp_files(Globals, FindTimestampFiles) :-
     (
         CompilationTarget = target_c,
         TimestampSuffix = ".c_date"
-    ;
-        CompilationTarget = target_il,
-        TimestampSuffix = ".il_date"
     ;
         CompilationTarget = target_csharp,
         TimestampSuffix = ".cs_date"
@@ -1824,28 +1818,10 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         ;
             ( Target = target_java
             ; Target = target_csharp
-            ; Target = target_il
             ; Target = target_erlang
             )
         ),
         (
-            Target = target_il,
-            mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
-            mlds_to_il_assembler(Globals, MLDS, TargetCodeSucceeded, !IO),
-            ( if
-                TargetCodeSucceeded = yes,
-                TargetCodeOnly = no
-            then
-                HasMain = mlds_has_main(MLDS),
-                io.output_stream(OutputStream, !IO),
-                il_assemble(Globals, OutputStream, ModuleName, HasMain,
-                    Succeeded, !IO),
-                maybe_set_exit_status(Succeeded, !IO)
-            else
-                Succeeded = TargetCodeSucceeded
-            ),
-            ExtraObjFiles = []
-        ;
             Target = target_csharp,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             mlds_to_csharp(!.HLDS, MLDS, Succeeded, !IO),

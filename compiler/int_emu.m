@@ -86,8 +86,7 @@ target_bits_per_int(Globals, bits_per_int(BitsPerInt)) :-
         Target = target_c,
         globals.lookup_int_option(Globals, bits_per_word, BitsPerInt)
     ;
-        ( Target = target_il
-        ; Target = target_csharp
+        ( Target = target_csharp
         ; Target = target_java
         ; Target = target_erlang
         ),

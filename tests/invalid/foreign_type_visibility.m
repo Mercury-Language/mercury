@@ -10,11 +10,11 @@
 
 :- interface.
 
-:- pragma foreign_type(il, foreign, "class [mscorlib]System.Object").
+:- pragma foreign_type(java, foreign, "java.lang.Object").
 
 :- type foreign2.
 
-:- pragma foreign_type(il, foreign2, "class [mscorlib]System.Object").
+:- pragma foreign_type(java, foreign2, "java.lang.Object").
 
 :- type foreign3
     --->    foreign3(c_pointer).

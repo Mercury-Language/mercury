@@ -861,10 +861,6 @@ make_foreign_import_header_code(Globals, ForeignImportModule, Include, !IO) :-
         sorry($module, $pred, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for C#")
     ;
-        Lang = lang_il,
-        sorry($module, $pred, ":- import_module not yet implemented: " ++
-            "`:- pragma foreign_import_module' for IL")
-    ;
         Lang = lang_java,
         sorry($module, $pred, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Java")

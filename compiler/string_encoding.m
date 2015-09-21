@@ -48,8 +48,7 @@ target_string_encoding(Target) = Encoding :-
         ),
         Encoding = utf8
     ;
-        ( Target = target_il
-        ; Target = target_java
+        ( Target = target_java
         ; Target = target_csharp
         ),
         Encoding = utf16

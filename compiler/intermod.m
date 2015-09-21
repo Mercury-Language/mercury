@@ -446,11 +446,6 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         % Don't export non-inlinable predicates.
         not check_marker(Markers, marker_user_marked_no_inline),
 
-        % No point exporting code which isn't very inlinable.
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.get_target(Globals, Target),
-        not clauses_contain_noninlinable_foreign_code(Target, Clauses),
-
         % Don't export tabled predicates since they are not inlinable.
         proc_info_get_eval_method(ProcInfo, eval_normal),
 
@@ -479,24 +474,6 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
     ;
         % Allow promises to be written.
         pred_info_is_promise(PredInfo, _)
-    ).
-
-    % If the clauses contains foreign code which requires an external
-    % definition, there is not much point in exporting it.
-    %
-:- pred clauses_contain_noninlinable_foreign_code(compilation_target::in,
-    list(clause)::in) is semidet.
-
-clauses_contain_noninlinable_foreign_code(Target, [Clause | Clauses]) :-
-    ( if
-        Target = target_il,
-        Lang = Clause ^ clause_lang,
-        Lang = impl_lang_foreign(ForeignLang),
-        ForeignLang = lang_csharp
-    then
-        true
-    else
-        clauses_contain_noninlinable_foreign_code(Target, Clauses)
     ).
 
 :- pred intermod_traverse_clauses(list(clause)::in, list(clause)::out,
@@ -1220,8 +1197,8 @@ gather_types_acc(TypeCtor, TypeDefn0, !Info) :-
 
 resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         ForeignTypeBody0, ForeignTypeBody, !Info) :-
-    ForeignTypeBody0 = foreign_type_body(MaybeIL0, MaybeC0, MaybeJava0,
-        MaybeCSharp0, MaybeErlang0),
+    ForeignTypeBody0 = foreign_type_body(MaybeC0, MaybeJava0, MaybeCSharp0,
+        MaybeErlang0),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
 
@@ -1239,23 +1216,10 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
         resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
             MaybeC0, MaybeC, !Info)
     ;
-        ( Target = target_il
-        ; Target = target_csharp
+        ( Target = target_csharp
         ; Target = target_java
         ),
         MaybeC = MaybeC0
-    ),
-    (
-        Target = target_il,
-        resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
-            MaybeIL0, MaybeIL, !Info)
-    ;
-        ( Target = target_c
-        ; Target = target_csharp
-        ; Target = target_java
-        ; Target = target_erlang
-        ),
-        MaybeIL = MaybeIL0
     ),
     (
         Target = target_csharp,
@@ -1263,7 +1227,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
             MaybeCSharp0, MaybeCSharp, !Info)
     ;
         ( Target = target_c
-        ; Target = target_il
         ; Target = target_java
         ; Target = target_erlang
         ),
@@ -1275,7 +1238,6 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
             MaybeJava0, MaybeJava, !Info)
     ;
         ( Target = target_c
-        ; Target = target_il
         ; Target = target_csharp
         ; Target = target_erlang
         ),
@@ -1287,14 +1249,13 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
             MaybeErlang0, MaybeErlang, !Info)
     ;
         ( Target = target_c
-        ; Target = target_il
         ; Target = target_csharp
         ; Target = target_java
         ),
         MaybeErlang = MaybeErlang0
     ),
-    ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
-        MaybeCSharp, MaybeErlang).
+    ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCSharp,
+        MaybeErlang).
 
 :- pred resolve_foreign_type_body_overloading_2(module_info::in, type_ctor::in,
     foreign_type_lang_body(T)::in, foreign_type_lang_body(T)::out,
@@ -1539,22 +1500,9 @@ intermod_write_type(OutInfo, TypeCtor - TypeDefn, !IO) :-
         ( Body = hlds_foreign_type(ForeignTypeBody)
         ; Body ^ du_type_is_foreign_type = yes(ForeignTypeBody)
         ),
-        ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava,
+        ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava,
             MaybeCSharp, MaybeErlang)
     then
-        (
-            MaybeIL = yes(DataIL),
-            DataIL = foreign_type_lang_data(ILForeignType, ILMaybeUserEqComp,
-                AssertionsIL),
-            ILItemTypeDefn = item_type_defn_info(Name, Args,
-                parse_tree_foreign_type(il(ILForeignType),
-                    ILMaybeUserEqComp, AssertionsIL),
-                VarSet, Context, -1),
-            ILItem = item_type_defn(ILItemTypeDefn),
-            mercury_output_item(MercInfo, ILItem, !IO)
-        ;
-            MaybeIL = no
-        ),
         (
             MaybeC = yes(DataC),
             DataC = foreign_type_lang_data(CForeignType,

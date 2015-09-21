@@ -715,8 +715,6 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, SimpleCallId,
                 ; Detism = detism_failure
                 )
             )
-        ;
-            Lang = lang_il
         )
     ;
         MaybeDeclDetism = no
@@ -742,30 +740,6 @@ check_fp_body_for_return(Lang, Context, SimpleCallId, BodyPieces, !Specs) :-
                 words("code for"), simple_call(SimpleCallId),
                 words("may contain a"), quote("return"),
                 words("statement."), nl
-            ],
-            Msg = simple_msg(Context,
-                [option_is_set(warn_suspicious_foreign_procs, yes,
-                    [always(Pieces)])]
-            ),
-            Severity = severity_conditional(
-                warn_suspicious_foreign_procs, yes, severity_warning, no),
-            Spec = error_spec(Severity, phase_parse_tree_to_hlds, [Msg]),
-            !:Specs = [Spec | !.Specs]
-        ;
-            true
-        )
-    ;
-        Lang = lang_il,
-        (
-            ( list.member("ret", BodyPieces)
-            ; list.member("jmp", BodyPieces)
-            )
-        ->
-            Pieces = [
-                words("Warning: the IL code for"), simple_call(SimpleCallId),
-                words("may contain a"), quote("ret"),
-                words("or"), quote("jmp"),
-                words("instruction."), nl
             ],
             Msg = simple_msg(Context,
                 [option_is_set(warn_suspicious_foreign_procs, yes,

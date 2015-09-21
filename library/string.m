@@ -5170,8 +5170,6 @@ accumulate_negative_int(Base, Char, N0, N) :-
 
 :- pragma foreign_export("C", string.to_float(in, out),
     "ML_string_to_float").
-:- pragma foreign_export("IL", string.to_float(in, out),
-    "ML_string_to_float").
 
 :- pragma foreign_proc("C",
     string.to_float(FloatString::in, FloatVal::out),

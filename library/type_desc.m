@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: type_desc.m.
 % Main author: fjh, zs.
 % Stability: low.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -320,8 +320,6 @@ type_info_desc_same_representation :-
 
 :- pragma foreign_export("C", call_rtti_compare_type_infos(out, in, in),
     "ML_call_rtti_compare_type_infos").
-:- pragma foreign_export("IL", call_rtti_compare_type_infos(out, in, in),
-    "ML_call_rtti_compare_type_infos").
 
 :- pred call_rtti_compare_type_infos(comparison_result::out,
     rtti_implementation.type_info::in, rtti_implementation.type_info::in)
@@ -530,7 +528,6 @@ same_type(_, _).
 
 % Export this function in order to use it in runtime/mercury_trace_external.c
 :- pragma foreign_export("C", type_name(in) = out, "ML_type_name").
-:- pragma foreign_export("IL", type_name(in) = out, "ML_type_name").
 
 type_name(Type) = TypeName :-
     type_ctor_and_args(Type, TypeCtor, ArgTypes),
@@ -1040,8 +1037,6 @@ type_ctor_name_and_arity(TypeCtorDesc, ModuleName, TypeCtorName,
 :- func get_type_info_for_type_info = type_desc.
 
 :- pragma foreign_export("C", get_type_info_for_type_info = out,
-    "ML_get_type_info_for_type_info").
-:- pragma foreign_export("IL", get_type_info_for_type_info = out,
     "ML_get_type_info_for_type_info").
 
 get_type_info_for_type_info = TypeDesc :-

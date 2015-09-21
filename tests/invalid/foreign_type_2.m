@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- pragma foreign_type(il, foreign, "class [mscorlib]System.Object").
+:- pragma foreign_type(java, foreign, "java.lang.Object").
 
 :- type foreign
     --->    foreign(int).
