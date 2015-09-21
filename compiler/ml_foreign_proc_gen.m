@@ -50,7 +50,6 @@
 :- import_module parse_tree.builtin_lib_types.
 
 :- import_module bool.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.

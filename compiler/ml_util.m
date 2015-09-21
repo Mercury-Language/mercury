@@ -184,9 +184,7 @@
 :- import_module backend_libs.rtti.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_unify_gen.
-:- import_module parse_tree.prog_type.
 
 :- import_module solutions.
 

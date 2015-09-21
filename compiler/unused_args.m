@@ -52,7 +52,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
-:- import_module io.
 :- import_module list.
 :- import_module set.
 
@@ -104,8 +103,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.file_names.
-:- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
@@ -117,6 +114,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.

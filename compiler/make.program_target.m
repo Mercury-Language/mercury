@@ -46,7 +46,6 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.

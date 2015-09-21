@@ -143,7 +143,6 @@
 :- import_module libs.
 :- import_module parse_tree.prog_type.
 
-:- import_module int.
 :- import_module require.
 :- import_module string.
 :- import_module term.

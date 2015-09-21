@@ -192,7 +192,6 @@
 :- import_module parse_tree.file_names.
 
 :- import_module char.
-:- import_module int.
 :- import_module solutions.
 :- import_module string.
 

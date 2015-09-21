@@ -139,7 +139,6 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_target_util.
 :- import_module ml_backend.ml_type_gen.
-:- import_module ml_backend.ml_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
