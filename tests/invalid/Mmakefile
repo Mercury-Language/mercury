@@ -112,7 +112,6 @@ SINGLEMODULE= \
 	foreign_purity_mismatch \
 	foreign_singleton \
 	foreign_type_2 \
-	foreign_type_missing \
 	foreign_type_visibility \
 	fp_dup_bug \
 	freefree \
