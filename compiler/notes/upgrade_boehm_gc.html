@@ -16,8 +16,8 @@
 
 <P>
 <B>WARNING:</B> This process is difficult and should not be undertaken lightly.
-Before attempting to upgrade one should definitely discuss it on the
-mercury-reviews mailing list first.
+Before attempting to upgrade Boehm GC one should definitely discuss it on
+the reviews mailing list first.
 </P>
 
 <h2>
@@ -25,16 +25,23 @@ The setup
 </h2>
 
 <p>
-I did this for version 7.4.2 of the collector and libatomic_ops.
+This is the first attempt to update Boehm since Mercury switched from CVS to
+Git.
+Therefore, I've taken the opportunity to setup this process in a more
+git-ish way (Boehm GC also uses git).
+I set this up for for version 7.4.2 of the collector and libatomic_ops.
+</p>
+
+<p>
 Over time we've made some changes to the collector, some of which have not
 been pushed upstream.
-To manage these changes we've forked the bdwgc and libatomic_opts
-repositories.
+The changes that have not been pushed upstream must be managed by us.
+I've forked the bdwgc and libatomic_opts repositories.
 Our forks are currently located here:
 </p>
 
 <p>
-XXX: Once this is convermed move these repositories to the MercuryLang
+XXX: Once this is confirmed move these repositories to the MercuryLang
 Github organisation.
 </p>
 
@@ -53,7 +60,7 @@ https://github.com/PaulBone/bdwgc
 <code>https://github.com/PaulBone/bdwgc.git</code>
 </td>
 <td>
-mercury7_4_2
+release-7_4-mercury
 </td>
 </tr>
 <tr>
@@ -69,7 +76,7 @@ https://github.com/PaulBone/libatomic_ops
 <code>https://github.com/PaulBone/libatomic_ops.git</code>
 </td>
 <td>
-release-7_4-mer
+release-7_4-mercury
 </td>
 </tr>
 </table>
@@ -85,9 +92,8 @@ $ git checkout upgrade_boehm
 </pre></code>
 
 <p>
-Then, on this branch I deleted the existing boehm_gc directory.  I have
-already saved the various changes that we've made to the GC and applied
-them to a branch on the bdwgc repository.
+Then, on this branch I deleted the existing boehm_gc directory from the
+repository.
 </p>
 
 <code><pre>
@@ -111,8 +117,8 @@ then we can have git look for the bdwgc repository at the relative path
 </p>
 
 <code><pre>
-$ git submodule add -b mercury7_4_2 ../bdwgc.git boehm_gc
-$ git submodule add -b release-7_4-mer ../libatomic_ops.git libatomic_ops
+$ git submodule add -b release-7_4-mercury ../bdwgc.git boehm_gc
+$ git submodule add -b release-7_4-mercury ../libatomic_ops.git libatomic_ops
 </pre></code>
 
 <p>
@@ -120,29 +126,22 @@ I've written a script named <code>prepare.sh</code> and committed it, it can
 be used to initialize and checkout the submodules.
 </p>
 
-<p>
-For now I will push this to a branch in my forked repository until I'm
-finished testing.
-</p>
-
 <h2>Mercury's customisations to the Boehm GC</h2>
 
 <p>
-I've created a branch named <code>mercury7_2</code> in the bdwgc
-repository that contains the Mercury customisations to boehm_gc.
-I started at the <code>gc7_2</code> tag.
-Then I copying our boehm_gc/ directory into the boehm_gc one, then
-identifing the seperate changes writing log messages and committing them.
-This way the mercury7_2 branch is our patches applied on top of the 7.2
-release, as if that's how we wrote them.
-Then to upgrade to 7.4.2 I created a new branch <code>mercury7_4_2</code>,
+I've created a branch named <code>mercury7_2</code>
+based on the <code>gc7_2</code> tag in the bdwgc repository.
+This branch contains the Mercury customisations to boehm_gc as a series of
+patches.
+Then to upgrade to 7.4.2 I created a new branch <code>release-7_4-mercury</code>
+(from <code>mercury7_2</code>),
 switched to it, and rebased it onto the point in the boehm_gc tree that
-represents the mercury7_4_2 release, that is the tag <code>gc7_4_2</code>:
+represents the BDWGC 7.4.2 release, that is the tag <code>gc7_4_2</code>:
 </p>
 
-<code<pre>
-$ git branch mercury7_4_2 mercury7_2
-$ git checkout mercury7_4_2
+<code><pre>
+$ git branch release-7_4-mercury mercury7_2
+$ git checkout release-7_4-mercury
 $ git rebase --onto gc7_4_2 gc7_2
 </pre></code>
 
@@ -157,17 +156,13 @@ The final step is how to update Mercury's copy of the collector when there
 are changes upstream.
 At the time of writing there are some important patches on the collector's
 <code>release-7_4</code> branch (The TSX bug).
-Additionally, there are some further patches related to this bug that have
-been committed to the master branch but have not yet been put on the
-<code>release-7_4</code> branch
-(<a href="https://github.com/ivmai/bdwgc/pull/59">Pull request 59</a>)
-these are on the <code>release-7_4_pbone</code> branch so we will upgrade to
-that point.
-This is done simply creating a new branch and rebasing the Mercury project's
+This is done simply creating a new branch and debasing the Mercury project's
 customisations onto that branch:
 </p>
 
-<code<pre>
+XXX
+
+<code><pre>
 $ git branch mercury7_4_pbone mercury7_4_2
 $ git checkout mercury7_4_pbone
 $ git rebase --onto release-7_4_pbone gc7_4
