@@ -346,34 +346,35 @@
 code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         SaveSuccip, StaticCellInfo, ConstStructMap, MaybeContainingGoalMap,
         TSRevStringTable, TSStringTableSize, TraceSlotInfo, CodeInfo) :-
+    % argument ModuleInfo
     module_info_get_globals(ModuleInfo, Globals),
+    ExprnOpts = init_exprn_opts(Globals),
+    % argument PredId
+    % argument ProcId
+    % argument PredInfo
+    % argument ProcInfo
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_stack_slots(ProcInfo, StackSlots),
-    ExprnOpts = init_exprn_opts(Globals),
-    globals.get_trace_level(Globals, TraceLevel),
-    map.init(TempContentMap),
-    set.init(PersistentTemps),
-    map.init(LayoutMap),
     max_var_slot(StackSlots, VarSlotMax),
     trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,
         FixedSlots, _),
     int.max(VarSlotMax, FixedSlots, SlotMax),
+    MaybeTraceInfo = no,
     globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     globals.lookup_bool_option(Globals, disable_trail_ops, DisableTrailOps),
-    (
+    ( if
         UseTrail = yes,
         DisableTrailOps = no
-    ->
+    then
         EmitTrailOps = add_trail_ops
-    ;
+    else
         EmitTrailOps = do_not_add_trail_ops
     ),
     globals.lookup_bool_option(Globals, optimize_trail_usage, OptTrailOps),
-    globals.lookup_bool_option(Globals, optimize_region_ops, OptRegionOps),
     globals.lookup_bool_option(Globals, region_analysis, UseRegions),
     (
         UseRegions = yes,
@@ -382,54 +383,76 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         UseRegions = no,
         EmitRegionOps = do_not_add_region_ops
     ),
+    globals.lookup_bool_option(Globals, optimize_region_ops, OptRegionOps),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     globals.lookup_bool_option(Globals, optimize_constructor_last_call_null,
         LCMCNull),
-    CodeInfo0 = code_info(
-        code_info_static(
-            ModuleInfo,
-            Globals,
-            ExprnOpts,
-            PredId,
-            ProcId,
-            PredInfo,
-            ProcInfo,
-            ProcLabel,
-            VarSet,
-            VarTypes,
-            SlotMax,
-            no,
-            OptNoReturnCalls,
-            EmitTrailOps,
-            OptTrailOps,
-            EmitRegionOps,
-            OptRegionOps,
-            AutoComments,
-            LCMCNull,
-            MaybeContainingGoalMap,
-            ConstStructMap
-        ),
-        code_info_persistent(
-            counter.init(1),
-            SaveSuccip,
-            LayoutMap,
-            no,
-            -1,
-            -1,
-            0,
-            TempContentMap,
-            PersistentTemps,
-            counter.init(1),
-            [],
-            no,
-            StaticCellInfo,
-            set_tree234.init,
-            set.init,
-            TSStringTableSize,
-            TSRevStringTable,
-            cord.empty
-        )
+    % argument MaybeContainingGoalMap
+    % argument ConstStructMap
+
+    CodeInfoStatic0 = code_info_static(
+        ModuleInfo,
+        Globals,
+        ExprnOpts,
+        PredId,
+        ProcId,
+        PredInfo,
+        ProcInfo,
+        ProcLabel,
+        VarSet,
+        VarTypes,
+        SlotMax,
+        MaybeTraceInfo,
+        OptNoReturnCalls,
+        EmitTrailOps,
+        OptTrailOps,
+        EmitRegionOps,
+        OptRegionOps,
+        AutoComments,
+        LCMCNull,
+        MaybeContainingGoalMap,
+        ConstStructMap
     ),
+
+    LabelNumCounter0 = counter.init(1),
+    % argument SaveSuccip
+    globals.get_trace_level(Globals, TraceLevel),
+    map.init(LayoutMap),
+    ProcTraceEvents = no,
+    MaxRegRUsed = -1,
+    MaxRegFUsed = -1,
+    MaxTempSlotCount = 0,
+    map.init(TempContentMap),
+    set.init(PersistentTemps),
+    ClosureLayoutSeqNumCounter0 = counter.init(1),
+    ClosureLayouts = [],
+    CreatedTempFrame = no,
+    % argument StaticCellInfo
+    AllocSitesMap0 = set_tree234.init,
+    set.init(UsedEnvVars),
+    OutOfLineCode = cord.init,
+
+    CodeInfoPersistent0 = code_info_persistent(
+        LabelNumCounter0,
+        SaveSuccip,
+        LayoutMap,
+        ProcTraceEvents,
+        MaxRegRUsed,
+        MaxRegFUsed,
+        MaxTempSlotCount,
+        TempContentMap,
+        PersistentTemps,
+        ClosureLayoutSeqNumCounter0,
+        ClosureLayouts,
+        CreatedTempFrame,
+        StaticCellInfo,
+        AllocSitesMap0,
+        UsedEnvVars,
+        TSStringTableSize,
+        TSRevStringTable,
+        OutOfLineCode
+    ),
+    CodeInfo0 = code_info(CodeInfoStatic0, CodeInfoPersistent0),
     init_maybe_trace_info(TraceLevel, Globals, ModuleInfo,
         PredInfo, ProcInfo, TraceSlotInfo, CodeInfo0, CodeInfo).
 
