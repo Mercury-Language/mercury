@@ -88,7 +88,7 @@ lookup_string_in_table(String, StringCode, !StringTable) :-
     % The encoding used here is decoded by MR_name_in_string_table
     % in runtime/mercury_stack_layout.c. The code here and there
     % must be kept in sync.
-    (
+    ( if
         is_var_name_in_special_form(String, KindCode, MaybeBaseName, N),
         N < int.unchecked_left_shift(1, 10),
         (
@@ -100,7 +100,7 @@ lookup_string_in_table(String, StringCode, !StringTable) :-
             MaybeBaseName = no,
             Offset = 0
         )
-    ->
+    then
         % | ... offset ... | ... N ... | Kind | 1 |
         % special form indication: 1 bit:   bit 0
         % kind indication:         5 bits:  bits 1-5
@@ -110,7 +110,7 @@ lookup_string_in_table(String, StringCode, !StringTable) :-
             int.unchecked_left_shift(KindCode, 1) \/
             int.unchecked_left_shift(N, 6) \/
             int.unchecked_left_shift(Offset, 16)
-    ;
+    else
         lookup_raw_string_in_table(String, MaybeOffset, !StringTable),
         (
             MaybeOffset = yes(Offset)
@@ -144,50 +144,52 @@ is_var_name_in_special_form(String, KindCode, MaybeBaseName, N) :-
     % already does a good enough job for these, the code for handling them
     % specially is commented out.
 
-    ( string.remove_prefix("STATE_VARIABLE_", String, NoPrefix) ->
+    ( if string.remove_prefix("STATE_VARIABLE_", String, NoPrefix) then
         KindCode = 0,
         string.to_char_list(NoPrefix, NoPrefixChars),
-        ( find_number_suffix(NoPrefixChars, BaseNameChars, Num) ->
+        ( if find_number_suffix(NoPrefixChars, BaseNameChars, Num) then
             string.from_char_list(BaseNameChars, BaseName),
             MaybeBaseName = yes(BaseName),
             N = Num + 1
-        ;
+        else
             MaybeBaseName = yes(NoPrefix),
             N = 0
         )
-    ; string.remove_prefix("TypeCtorInfo_", String, NoPrefix) ->
-        ( string.to_int(NoPrefix, Num) ->
+    else if string.remove_prefix("TypeCtorInfo_", String, NoPrefix) then
+        ( if string.to_int(NoPrefix, Num) then
             KindCode = 1,
             MaybeBaseName = no,
             N = Num
-        ;
+        else
             fail
         )
-    ; string.remove_prefix("TypeInfo_", String, NoPrefix) ->
-        ( string.to_int(NoPrefix, Num) ->
+    else if string.remove_prefix("TypeInfo_", String, NoPrefix) then
+        ( if string.to_int(NoPrefix, Num) then
             KindCode = 2,
             MaybeBaseName = no,
             N = Num
-        ;
+        else
             fail
         )
-%   ; string.remove_prefix("BaseTypeClassInfo_for_", String, NoPrefix) ->
+%   else if
+%       string.remove_prefix("BaseTypeClassInfo_for_", String, NoPrefix)
+%   then
 %       KindCode = 3,
 %       MaybeBaseName = yes(NoPrefix),
 %       N = 0
-%   ; string.remove_prefix("TypeClassInfo_for_", String, NoPrefix) ->
+%   else if string.remove_prefix("TypeClassInfo_for_", String, NoPrefix) then
 %       KindCode = 4,
 %       MaybeBaseName = yes(NoPrefix),
 %       N = 0
-    ; string.remove_prefix("PolyConst", String, NoPrefix) ->
-        ( string.to_int(NoPrefix, Num) ->
+    else if string.remove_prefix("PolyConst", String, NoPrefix) then
+        ( if string.to_int(NoPrefix, Num) then
             KindCode = 5,
             MaybeBaseName = no,
             N = Num
-        ;
+        else
             fail
         )
-    ;
+    else
         fail
     ).
 
@@ -207,13 +209,13 @@ find_number_suffix(String, BeforeNum, Num) :-
     int::in, int::out, list(char)::out) is semidet.
 
 rev_find_number_suffix([RevHead | RevTail], !Num, !Scale, RevRest) :-
-    ( char.decimal_digit_to_int(RevHead, Digit) ->
+    ( if char.decimal_digit_to_int(RevHead, Digit) then
         !:Num = !.Num + (!.Scale * Digit),
         !:Scale = !.Scale * 10,
         rev_find_number_suffix(RevTail, !Num, !Scale, RevRest)
-    ; RevHead = '_' ->
+    else if RevHead = '_' then
         RevRest = RevTail
-    ;
+    else
         fail
     ).
 
@@ -222,9 +224,11 @@ rev_find_number_suffix([RevHead | RevTail], !Num, !Scale, RevRest) :-
 
 lookup_raw_string_in_table(String, MaybeOffset, !StringTable) :-
     !.StringTable = string_table_info(TableMap0, TableList0, TableOffset0),
-    ( map.search(TableMap0, String, OldOffset) ->
+    ( if
+        map.search(TableMap0, String, OldOffset)
+    then
         MaybeOffset = yes(OldOffset)
-    ;
+    else if
         Length = string.count_utf8_code_units(String),
         TableOffset = TableOffset0 + Length + 1,
         % We use a 32 bit unsigned integer to represent the offset. Computing
@@ -236,12 +240,12 @@ lookup_raw_string_in_table(String, MaybeOffset, !StringTable) :-
         % (Compiling a module that has a 1 Gb string table will require
         % several tens of Gb of other compiler structures.)
         TableOffset < (1 << 30)
-    ->
+    then
         MaybeOffset = yes(TableOffset0),
         map.det_insert(String, TableOffset0, TableMap0, TableMap),
         TableList = [String | TableList0],
         !:StringTable = string_table_info(TableMap, TableList, TableOffset)
-    ;
+    else
         MaybeOffset = no
     ).
 
@@ -270,9 +274,9 @@ init_type_table_info = type_table_info(map.init, cord.init, 0).
 
 lookup_type_in_table(Type, TypeCode, !StringTable, !TypeTable) :-
     !.TypeTable = type_table_info(TypeMap0, _, _),
-    ( map.search(TypeMap0, Type, TypeCodePrime) ->
+    ( if map.search(TypeMap0, Type, TypeCodePrime) then
         TypeCode = TypeCodePrime
-    ;
+    else
         add_type_to_table(Type, TypeCode, !StringTable, !TypeTable)
     ).
 

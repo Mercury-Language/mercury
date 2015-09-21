@@ -296,27 +296,27 @@ trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
     proc_info_arg_info(ProcInfo, ArgInfos),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     mode_list_get_final_insts(ModuleInfo, Modes, Insts),
-    (
+    ( if
         build_fail_vars(HeadVars, Insts, ArgInfos,
             ModuleInfo, VarTypes, FailVarsList)
-    ->
+    then
         set_of_var.list_to_set(FailVarsList, FailVars)
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
 do_we_need_maxfr_slot(Globals, ModuleInfo, PredInfo0, !ProcInfo) :-
     globals.get_trace_level(Globals, TraceLevel),
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
-    (
+    ( if
         eff_trace_level_is_none(ModuleInfo, PredInfo0, !.ProcInfo, TraceLevel)
             = no,
         CodeModel \= model_non,
         proc_info_get_goal(!.ProcInfo, Goal),
         code_util.goal_may_alloc_temp_frame(Goal, yes)
-    ->
+    then
         NeedsMaxfrSlot = needs_maxfr_slot
-    ;
+    else
         NeedsMaxfrSlot = does_not_need_maxfr_slot
     ),
     proc_info_set_needs_maxfr_slot(NeedsMaxfrSlot, !ProcInfo).
@@ -421,22 +421,22 @@ trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         % Stage 1.
         Fixed = 3, % event#, call#, call depth
         % Stage 2.
-        (
+        ( if
             proc_info_interface_code_model(ProcInfo) = model_non,
             eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo, TraceLevel,
                 TraceSuppress, port_redo) = yes
-        ->
+        then
             RedoLayout = 1
-        ;
+        else
             RedoLayout = 0
         ),
         % Stage 3.
-        (
+        ( if
             eff_trace_level_needs_from_full_slot(ModuleInfo, PredInfo,
                 ProcInfo, TraceLevel) = yes
-        ->
+        then
             FromFull = 1
-        ;
+        else
             FromFull = 0
         ),
         % Stage 4.
@@ -499,16 +499,16 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
         TraceLevel, TraceSuppress, port_redo),
     some [!NextSlot] (
         % Stages 1 and 2.
-        (
+        ( if
             TraceRedo = yes,
             CodeModel = model_non
-        ->
+        then
             get_next_label(RedoLayoutLabel, !CI),
             MaybeRedoLayoutLabel = yes(RedoLayoutLabel),
             % We always reserve slots 1, 2 and 3, and we reserve slot 4
             % for the redo layout label.
             !:NextSlot = 5
-        ;
+        else
             MaybeRedoLayoutLabel = no,
             % We always reserve slots 1, 2 and 3.
             !:NextSlot = 4
@@ -586,12 +586,15 @@ trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, MaybeTailRecLabel,
             MaybeTailRecInfo = no
         ),
         % Stage 8.
-        ( proc_info_get_call_table_tip(ProcInfo, yes(_)) ->
+        proc_info_get_call_table_tip(ProcInfo, MaybeCallTableTip),
+        (
+            MaybeCallTableTip = yes(_),
             CallTableSlot = !.NextSlot,
             MaybeCallTableSlot = yes(CallTableSlot),
             CallTableLval = stack_slot_num_to_lval(StackId, CallTableSlot),
             MaybeCallTableLval = yes(CallTableLval)
         ;
+            MaybeCallTableTip = no,
             MaybeCallTableSlot = no,
             MaybeCallTableLval = no
         )
@@ -771,16 +774,16 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI, !CLD) :-
         GoalId = goal_info_get_goal_id(GoalInfo),
         get_containing_goal_map(!.CI, ContainingGoalMap),
         map.lookup(ContainingGoalMap, GoalId, ContainingGoal),
-        (
+        ( if
             ContainingGoal = containing_goal(_, LastStep),
             (
                 LastStep = step_switch(_, _),
                 PortPrime = port_switch
             ;
                 LastStep = step_disj(DisjunctNum),
-                ( DisjunctNum = 1 ->
+                ( if DisjunctNum = 1 then
                     PortPrime = port_disj_first
-                ;
+                else
                     PortPrime = port_disj_later
                 )
             ;
@@ -796,33 +799,33 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI, !CLD) :-
                 LastStep = step_neg,
                 PortPrime = port_neg_enter
             )
-        ->
+        then
             Port = PortPrime
-        ;
+        else
             unexpected($module, $pred, "bad path")
         ),
-        (
+        ( if
             get_module_info(!.CI, ModuleInfo),
             get_pred_info(!.CI, PredInfo),
             get_proc_info(!.CI, ProcInfo),
             eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
                 TraceInfo ^ ti_trace_level,
                 TraceInfo ^ ti_trace_suppress_items, Port) = yes
-        ->
+        then
             goal_info_get_pre_deaths(GoalInfo, PreDeaths),
             Context = goal_info_get_context(GoalInfo),
-            (
+            ( if
                 goal_info_has_feature(OutsideGoalInfo,
                     feature_hide_debug_event)
-            ->
+            then
                 HideEvent = yes
-            ;
+            else
                 HideEvent = no
             ),
             GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
             generate_event_code(Port, port_info_internal(GoalPath, PreDeaths),
                 yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI, !CLD)
-        ;
+        else
             Code = empty
         )
     ;
@@ -833,7 +836,7 @@ maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI, !CLD) :-
 maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code,
         !CI, !CLD) :-
     get_maybe_trace_info(!.CI, MaybeTraceInfo),
-    (
+    ( if
         MaybeTraceInfo = yes(TraceInfo),
         (
             NegPort = neg_failure,
@@ -848,20 +851,22 @@ maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code,
         eff_trace_needs_port(ModuleInfo, PredInfo, ProcInfo,
             TraceInfo ^ ti_trace_level,
             TraceInfo ^ ti_trace_suppress_items, Port) = yes
-    ->
+    then
         Goal = hlds_goal(_, GoalInfo),
         GoalId = goal_info_get_goal_id(GoalInfo),
         Context = goal_info_get_context(GoalInfo),
-        ( goal_info_has_feature(OutsideGoalInfo, feature_hide_debug_event) ->
+        ( if
+            goal_info_has_feature(OutsideGoalInfo, feature_hide_debug_event)
+        then
             HideEvent = yes
-        ;
+        else
             HideEvent = no
         ),
         get_containing_goal_map(!.CI, ContainingGoalMap),
         GoalPath = goal_id_to_forward_path(ContainingGoalMap, GoalId),
         generate_event_code(Port, port_info_negation_end(GoalPath),
             yes(TraceInfo), Context, HideEvent, no, _, _, Code, !CI, !CLD)
-    ;
+    else
         Code = empty
     ).
 
@@ -1064,12 +1069,12 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     get_max_regs_in_use_at_trace(!.CI, MaxTraceRegR0, MaxTraceRegF0),
     int.max(MaxRegR, MaxTraceRegR0, MaxTraceRegR),
     int.max(MaxRegF, MaxTraceRegF0, MaxTraceRegF),
-    (
+    ( if
         MaxTraceRegR0 = MaxTraceRegR,
         MaxTraceRegF0 = MaxTraceRegF
-    ->
+    then
         true
-    ;
+    else
         set_max_regs_in_use_at_trace(MaxTraceRegR, MaxTraceRegF, !CI)
     ),
     variable_locations(!.CLD, VarLocs),
@@ -1103,11 +1108,11 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
     add_trace_layout_for_label(Label, Context, Port, HideEvent,
         Path, MaybeUserInfo, LayoutLabelInfo, !CI),
     set_proc_trace_events(yes, !CI),
-    (
+    ( if
         Port = port_fail,
         MaybeTraceInfo = yes(TraceInfo),
         TraceInfo ^ ti_redo_label = yes(RedoLabel)
-    ->
+    then
         % The layout information for the redo event is the same as for the
         % fail event; all the non-clobbered inputs in their stack slots.
         % It is convenient to generate this common layout when the code
@@ -1119,7 +1124,7 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         % we get to the fail event.
         add_trace_layout_for_label(RedoLabel, Context, port_redo,
             HideEvent, Path, no, LayoutLabelInfo, !CI)
-    ;
+    else
         true
     ),
     TraceComponents = [foreign_proc_raw_code(cannot_branch_away,
@@ -1225,16 +1230,16 @@ trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
 trace_produce_var(Var, VarSet, _InstMap, !Tvars, VarInfo, VarCode, CI, !CLD) :-
     produce_variable_in_reg_or_stack(Var, VarCode, Lval, CI, !CLD),
     Type = variable_type(CI, Var),
-    ( varset.search_name(VarSet, Var, SearchName) ->
+    ( if varset.search_name(VarSet, Var, SearchName) then
         Name = SearchName
-    ;
+    else
         Name = ""
     ),
 %   get_module_info(!.CI, ModuleInfo),
 %   instmap_lookup_var(InstMap, Var, Inst),
-%   ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
+%   ( if inst_match.inst_is_ground(ModuleInfo, Inst) then
 %       LldsInst = llds_inst_ground
-%   ;
+%   else
 %       LldsInst = llds_inst_partial(Inst)
 %   ),
     LldsInst = llds_inst_better_be_ground,
@@ -1254,14 +1259,14 @@ build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos], ModuleInfo,
         VarTypes, FailVars) :-
     build_fail_vars(Vars, Insts, Infos, ModuleInfo, VarTypes, FailVars0),
     Info = arg_info(_Loc, ArgMode),
-    (
+    ( if
         ArgMode = top_in,
-        \+ inst_is_clobbered(ModuleInfo, Inst),
+        not inst_is_clobbered(ModuleInfo, Inst),
         lookup_var_type(VarTypes, Var, Type),
         check_dummy_type(ModuleInfo, Type) = is_not_dummy_type
-    ->
+    then
         FailVars = [Var | FailVars0]
-    ;
+    else
         FailVars = FailVars0
     ).
 
@@ -1270,16 +1275,16 @@ build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos], ModuleInfo,
 :- pred stackref_to_string(lval::in, string::out) is det.
 
 stackref_to_string(Lval, LvalStr) :-
-    ( Lval = stackvar(Slot) ->
+    ( if Lval = stackvar(Slot) then
         string.int_to_string(Slot, SlotString),
         LvalStr = "MR_sv(" ++ SlotString ++ ")"
-    ; Lval = framevar(Slot) ->
+    else if Lval = framevar(Slot) then
         string.int_to_string(Slot, SlotString),
         LvalStr = "MR_fv(" ++ SlotString ++ ")"
-    ; Lval = double_stackvar(_, _) ->
+    else if Lval = double_stackvar(_, _) then
         % XXX how do we get here?
         sorry($module, $pred, "double-width stack slot")
-    ;
+    else
         unexpected($module, $pred, "non-stack lval")
     ).
 

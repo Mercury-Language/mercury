@@ -84,9 +84,9 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
             code_info.get_varset(!.CI, VarSet),
             GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
 
-            ( should_trace_code_gen(!.CI) ->
+            ( if should_trace_code_gen(!.CI) then
                 io.format("\nGOAL START: %s\n", [s(GoalDesc)], !IO)
-            ;
+            else
                 true
             )
         )
@@ -98,7 +98,7 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
     HasSubGoals = goal_expr_has_subgoals(GoalExpr),
     pre_goal_update(GoalInfo, HasSubGoals, !CLD),
     get_instmap(!.CLD, InstMap),
-    ( instmap_is_reachable(InstMap) ->
+    ( if instmap_is_reachable(InstMap) then
         CodeModel = goal_info_get_code_model(GoalInfo),
         % Sanity check: code of some code models should occur
         % only in limited contexts.
@@ -141,16 +141,16 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
         %
         % If tracing is not enabled, then CallTableVar isn't guaranteed
         % to have a stack slot.
-        (
+        ( if
             set.member(feature_call_table_gen, Features),
             get_proc_info(!.CI, ProcInfo),
             proc_info_get_call_table_tip(ProcInfo, MaybeCallTableVar),
             MaybeCallTableVar = yes(CallTableVar),
             get_maybe_trace_info(!.CI, yes(_))
-        ->
+        then
             save_variables_on_stack([CallTableVar], TipSaveCode, !.CI, !CLD),
             CodeUptoTip = GoalCode ++ TipSaveCode
-        ;
+        else
             CodeUptoTip = GoalCode
         ),
         % After the goal that generates the variables needed at the exception
@@ -168,11 +168,11 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
         % slots, but they won't *need* stack slots either, since there is no
         % way for such a leaf procedure to throw an exception. (Throwing
         % requires calling exception.throw, directly or indirectly.)
-        ( set.member(feature_save_deep_excp_vars, Features) ->
+        ( if set.member(feature_save_deep_excp_vars, Features) then
             DeepSaveVars = compute_deep_save_excp_vars(ProcInfo),
             save_variables_on_stack(DeepSaveVars, DeepSaveCode, !.CI, !CLD),
             Code = CodeUptoTip ++ DeepSaveCode
-        ;
+        else
             Code = CodeUptoTip
         ),
 
@@ -180,7 +180,7 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
         % live, but were not generated.
         set_instmap(InstMap, !CLD),
         post_goal_update(GoalInfo, !.CI, !CLD)
-    ;
+    else
         Code = empty
     ),
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
@@ -189,11 +189,11 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
             code_info.get_varset(!.CI, VarSet),
             GoalDesc = describe_goal(ModuleInfo, VarSet, Goal),
 
-            ( should_trace_code_gen(!.CI) ->
+            ( if should_trace_code_gen(!.CI) then
                 io.format("\nGOAL FINISH: %s\n", [s(GoalDesc)], !IO),
                 Instrs = cord.list(Code),
                 write_instrs(Instrs, no, yes, !IO)
-            ;
+            else
                 true
             )
         )
@@ -203,16 +203,16 @@ generate_goal(ContextModel, Goal, Code, !CI, !CLD) :-
 
 compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
     proc_info_get_maybe_deep_profile_info(ProcInfo, MaybeDeepProfInfo),
-    (
+    ( if
         MaybeDeepProfInfo = yes(DeepProfInfo),
         MaybeDeepLayout = DeepProfInfo ^ deep_layout,
         MaybeDeepLayout = yes(DeepLayout)
-    ->
+    then
         ExcpVars = DeepLayout ^ deep_layout_excp,
         ExcpVars = hlds_deep_excp_vars(TopCSDVar, MiddleCSDVar,
             MaybeOldOutermostVar),
         proc_info_get_stack_slots(ProcInfo, StackSlots),
-        ( map.search(StackSlots, TopCSDVar, _) ->
+        ( if map.search(StackSlots, TopCSDVar, _) then
             % If one of these variables has a stack slot, the others must
             % have one too.
             (
@@ -222,10 +222,10 @@ compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
                 MaybeOldOutermostVar = no,
                 DeepSaveVars = [TopCSDVar, MiddleCSDVar]
             )
-        ;
+        else
             DeepSaveVars = []
         )
-    ;
+    else
         unexpected($module, $pred, "inconsistent proc_info")
     ).
 
@@ -267,13 +267,17 @@ generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
             Code, !CI, !CLD)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+        ( if
+            Reason = from_ground_term(TermVar, from_ground_term_construct)
+        then
             unify_gen.generate_ground_term(TermVar, SubGoal, !CI, !CLD),
             Code = empty
-        ; Reason = loop_control(LCVar, LCSVar, UseParentStack) ->
+        else if
+            Reason = loop_control(LCVar, LCSVar, UseParentStack)
+        then
             par_conj_gen.generate_lc_spawn_off(SubGoal, LCVar, LCSVar,
                 UseParentStack, Code, !CI, !CLD)
-        ;
+        else
             commit_gen.generate_scope(Reason, CodeModel, GoalInfo,
                 ForwardLiveVarsBeforeGoal, SubGoal, Code, !CI, !CLD)
         )
@@ -344,17 +348,17 @@ generate_conj(Goals @ [_ | _], CodeModel, !Code, !CI, !CLD) :-
 generate_conj_inner([], _, _, [], !Code, !CI, !CLD).
 generate_conj_inner([Goal | Goals], N, CodeModel, LeftOverGoals, !Code,
         !CI, !CLD) :-
-    ( N > 0 ->
+    ( if N > 0 then
         generate_goal(CodeModel, Goal, GoalCode, !CI, !CLD),
         !:Code = !.Code ++ GoalCode,
         get_instmap(!.CLD, Instmap),
-        ( instmap_is_unreachable(Instmap) ->
+        ( if instmap_is_unreachable(Instmap) then
             LeftOverGoals = []
-        ;
+        else
             generate_conj_inner(Goals, N - 1, CodeModel, LeftOverGoals, !Code,
                 !CI, !CLD)
         )
-    ;
+    else
         LeftOverGoals = [Goal | Goals]
     ).
 

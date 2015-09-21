@@ -152,7 +152,7 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
         (
             SwitchCategory = atomic_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
-            (
+            ( if
                 MaybeIntSwitchInfo =
                     int_switch(LowerLimit, UpperLimit, NumValues),
                 % Since lookup switches rely on static ground terms to work
@@ -184,7 +184,7 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
                 remember_position(!.CLD, BranchStart),
                 is_lookup_switch(BranchStart, get_int_tag, FilteredTaggedCases,
                     GoalInfo, StoreMap, no, MaybeEnd1, LookupSwitchInfo, !CI)
-            ->
+            then
                 % We update MaybeEnd1 to MaybeEnd to account for the possible
                 % reservation of temp slots for nondet switches.
                 reset_to_position(BranchStart, !.CI, !:CLD),
@@ -192,7 +192,7 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
                     EndLabel, StoreMap, FirstVal, LastVal,
                     NeedBitVecCheck, NeedRangeCheck,
                     MaybeEnd1, MaybeEnd, SwitchCode, !CI, !.CLD)
-            ;
+            else if
                 MaybeIntSwitchInfo =
                     int_switch(LowerLimit, UpperLimit, NumValues),
                 globals.lookup_int_option(Globals, dense_switch_size,
@@ -204,11 +204,11 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
                 tagged_case_list_is_dense_switch(!.CI, SwitchVarType,
                     TaggedCases, LowerLimit, UpperLimit, NumValues,
                     ReqDensity, CanFail, DenseSwitchInfo)
-            ->
+            then
                 generate_dense_switch(TaggedCases, SwitchVarRval,
                     SwitchVarName, CodeModel, GoalInfo, DenseSwitchInfo,
                     EndLabel, no, MaybeEnd, SwitchCode, !CI, !.CLD)
-            ;
+            else
                 order_and_generate_cases(TaggedCases, SwitchVarRval,
                     SwitchVarType, SwitchVarName, CodeModel, CanFail,
                     GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
@@ -219,18 +219,18 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
                 TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
             num_cons_ids_in_tagged_cases(FilteredTaggedCases,
                 NumConsIds, NumArms),
-            ( NumArms > 1 ->
+            ( if NumArms > 1 then
                 globals.lookup_int_option(Globals, string_hash_switch_size,
                     StringHashSwitchSize),
                 globals.lookup_int_option(Globals, string_binary_switch_size,
                     StringBinarySwitchSize),
-                ( NumConsIds >= StringHashSwitchSize ->
-                    (
+                ( if NumConsIds >= StringHashSwitchSize then
+                    ( if
                         remember_position(!.CLD, BranchStart),
                         is_lookup_switch(BranchStart, get_string_tag,
                             FilteredTaggedCases, GoalInfo, StoreMap,
                             no, MaybeEnd1, LookupSwitchInfo, !CI)
-                    ->
+                    then
                         % We update MaybeEnd1 to MaybeEnd to account for the
                         % possible reservation of temp slots for nondet
                         % switches.
@@ -239,19 +239,19 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
                             LookupSwitchInfo, FilteredCanFail, EndLabel,
                             StoreMap, MaybeEnd1, MaybeEnd, SwitchCode,
                             !CI, !.CLD)
-                    ;
+                    else
                         generate_string_hash_switch(TaggedCases, SwitchVarRval,
                             SwitchVarName, CodeModel, CanFail, GoalInfo,
                             EndLabel, MaybeEnd, SwitchCode,
                             !CI, !.CLD)
                     )
-                ; NumConsIds >= StringBinarySwitchSize ->
-                    (
+                else if NumConsIds >= StringBinarySwitchSize then
+                    ( if
                         remember_position(!.CLD, BranchStart),
                         is_lookup_switch(BranchStart, get_string_tag,
                             FilteredTaggedCases, GoalInfo, StoreMap,
                             no, MaybeEnd1, LookupSwitchInfo, !CI)
-                    ->
+                    then
                         % We update MaybeEnd1 to MaybeEnd to account for the
                         % possible reservation of temp slots for nondet
                         % switches.
@@ -260,18 +260,18 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
                             LookupSwitchInfo, FilteredCanFail, EndLabel,
                             StoreMap, MaybeEnd1, MaybeEnd, SwitchCode,
                             !CI, !.CLD)
-                    ;
+                    else
                         generate_string_binary_switch(TaggedCases,
                             SwitchVarRval, SwitchVarName, CodeModel, CanFail,
                             GoalInfo, EndLabel, MaybeEnd, SwitchCode,
                             !CI, !.CLD)
                     )
-                ;
+                else
                     order_and_generate_cases(TaggedCases, SwitchVarRval,
                         SwitchVarType, SwitchVarName, CodeModel, CanFail,
                         GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
                 )
-            ;
+            else
                 order_and_generate_cases(TaggedCases, SwitchVarRval,
                     SwitchVarType, SwitchVarName, CodeModel, CanFail,
                     GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
@@ -280,11 +280,11 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
             SwitchCategory = tag_switch,
             num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
             globals.lookup_int_option(Globals, tag_switch_size, TagSize),
-            ( NumConsIds >= TagSize, NumArms > 1 ->
+            ( if NumConsIds >= TagSize, NumArms > 1 then
                 generate_tag_switch(TaggedCases, SwitchVarRval, SwitchVarType,
                     SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel,
                     no, MaybeEnd, SwitchCode, !CI, !.CLD)
-            ;
+            else
                 order_and_generate_cases(TaggedCases, SwitchVarRval,
                     SwitchVarType, SwitchVarName, CodeModel, CanFail,
                     GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
@@ -338,10 +338,10 @@ order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
     type_to_ctor_det(VarType, TypeCtor),
     get_module_info(!.CI, ModuleInfo),
     module_info_get_type_table(ModuleInfo, TypeTable),
-    ( search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) ->
+    ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
         get_type_defn_body(TypeDefn, TypeBody),
         CheaperTagTest = get_maybe_cheaper_tag_test(TypeBody)
-    ;
+    else
         CheaperTagTest = no_cheaper_tag_test
     ),
     remember_position(!.CLD, BranchStart),
@@ -382,11 +382,11 @@ order_cases(Cases0, Cases, VarType, CodeModel, CanFail, CI) :-
     %
     % respectively.
 
-    (
+    ( if
         search_type_defn(CI, VarType, VarTypeDefn),
         get_type_defn_body(VarTypeDefn, VarTypeDefnBody),
         VarTypeDefnBody ^ du_type_reserved_addr = uses_reserved_address
-    ->
+    then
         separate_reserved_address_cases(Cases0,
             ReservedAddrCases0, NonReservedAddrCases0),
         order_can_and_cannot_succeed_cases(
@@ -396,7 +396,7 @@ order_cases(Cases0, Cases, VarType, CodeModel, CanFail, CI) :-
             NonReservedAddrCases0, NonReservedAddrCases,
             CodeModel, CanFail, CI),
         Cases = ReservedAddrCases ++ NonReservedAddrCases
-    ;
+    else
         % The type is either not a discriminated union type (e.g. in int or
         % string), or it is a discriminated union type that does not use
         % reserved addresses.
@@ -522,36 +522,36 @@ separate_cannot_succeed_cases([Case | Cases],
     code_model::in, can_fail::in, code_info::in) is det.
 
 order_recursive_cases(Cases0, Cases, CodeModel, CanFail, CI) :-
-    (
+    ( if
         CodeModel = model_det,
         CanFail = cannot_fail,
         Cases0 = [Case1, Case2],
         Case1 = tagged_case(_, _, _, Goal1),
         Case2 = tagged_case(_, _, _, Goal2)
-    ->
+    then
         get_module_info(CI, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
         get_pred_id(CI, PredId),
         get_proc_id(CI, ProcId),
         count_recursive_calls(Goal1, PredId, ProcId, Min1, Max1),
         count_recursive_calls(Goal2, PredId, ProcId, Min2, Max2),
-        (
-            (
+        ( if
+            ( if
                 Max1 = 0,   % Goal1 is a base case
                 Min2 = 1    % Goal2 is probably singly recursive
-            ->
+            then
                 BaseCase = Case1,
                 SingleRecCase = Case2
-            ;
+            else if
                 Max2 = 0,   % Goal2 is a base case
                 Min1 = 1    % Goal1 is probably singly recursive
-            ->
+            then
                 BaseCase = Case2,
                 SingleRecCase = Case1
-            ;
+            else
                 fail
             )
-        ->
+        then
             globals.lookup_bool_option(Globals, switch_single_rec_base_first,
                 SingleRecBaseFirst),
             (
@@ -561,23 +561,23 @@ order_recursive_cases(Cases0, Cases, CodeModel, CanFail, CI) :-
                 SingleRecBaseFirst = no,
                 Cases = [BaseCase, SingleRecCase]
             )
-        ;
-            (
+        else if
+            ( if
                 Max1 = 0,   % Goal1 is a base case
                 Min2 > 1    % Goal2 is at least doubly recursive
-            ->
+            then
                 BaseCase = Case1,
                 MultiRecCase = Case2
-            ;
+            else if
                 Max2 = 0,   % Goal2 is a base case
                 Min1 > 1    % Goal1 is at least doubly recursive
-            ->
+            then
                 BaseCase = Case2,
                 MultiRecCase = Case1
-            ;
+            else
                 fail
             )
-        ->
+        then
             globals.lookup_bool_option(Globals, switch_multi_rec_base_first,
                 MultiRecBaseFirst),
             (
@@ -587,10 +587,10 @@ order_recursive_cases(Cases0, Cases, CodeModel, CanFail, CI) :-
                 MultiRecBaseFirst = no,
                 Cases = [MultiRecCase, BaseCase]
             )
-        ;
+        else
             order_tag_test_cost(Cases0, Cases)
         )
-    ;
+    else
         order_tag_test_cost(Cases0, Cases)
     ).
 
@@ -629,11 +629,11 @@ generate_if_then_else_chain_cases(BranchStart, Cases, VarRval, VarType,
         Cases = [HeadCase | TailCases],
         HeadCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, Goal),
         goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-        (
+        ( if
             ( TailCases = [_ | _]
             ; CanFail = can_fail
             )
-        ->
+        then
             generate_raw_tag_test_case(VarRval, VarType, VarName,
                 MainTaggedConsId, OtherTaggedConsIds, CheaperTagTest,
                 branch_on_failure, NextLabel, TestCode, !CI),
@@ -642,7 +642,7 @@ generate_if_then_else_chain_cases(BranchStart, Cases, VarRval, VarType,
                     "skip to the end of the switch on " ++ VarName),
                 llds_instr(label(NextLabel), "next case")
             ])
-        ;
+        else
             % When debugging code generator output, we need a way to tell
             % which case's code is next. We normally hang this comment
             % on the test, but in this case there is no test.

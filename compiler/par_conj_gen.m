@@ -174,7 +174,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
     % of the sp register, and restore it when the parallel conjunction
     % finishes.
     get_par_conj_depth(!.CLD, Depth),
-    ( Depth = 0 ->
+    ( if Depth = 0 then
         acquire_temp_slot(slot_lval(parent_sp),
             non_persistent_temp_slot, ParentSpSlot, !CI, !CLD),
         MaybeSetParentSpCode = from_list([
@@ -188,7 +188,7 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
                 "restore old parent stack pointer")
         ),
         MaybeReleaseParentSpSlot = yes(ParentSpSlot)
-    ;
+    else
         MaybeSetParentSpCode = empty,
         MaybeRestoreParentSpCode = empty,
         MaybeReleaseParentSpSlot = no
@@ -209,16 +209,16 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
     Contents = list.duplicate(STSize, slot_sync_term),
     acquire_several_temp_slots(Contents, persistent_temp_slot, SyncTermSlots,
         StackId, _N, _M, !CI, !CLD),
-    (
+    ( if
         % The highest numbered slot has the lowest address.
         list.last(SyncTermSlots, SyncTermBaseSlotPrime),
         SyncTermBaseSlotPrime = stackvar(SlotNumPrime),
         StackId = det_stack
-    ->
+    then
         SlotNum = SlotNumPrime,
         SyncTermBaseSlot = SyncTermBaseSlotPrime,
         ParentSyncTermBaseSlot = parent_stackvar(SlotNum)
-    ;
+    else
         unexpected($module, $pred, "cannot find stack slot")
     ),
 
@@ -273,10 +273,10 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI, !CLD) :-
     % XXX release sync slots of nested parallel conjunctions
 
     reset_to_position(BeforeConjunctionPos, !.CI, !:CLD),
-    ( Depth = 0 ->
+    ( if Depth = 0 then
         release_several_temp_slots(SyncTermSlots, persistent_temp_slot,
             !CI, !CLD)
-    ;
+    else
         true
     ),
     (
@@ -454,13 +454,13 @@ generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI, !CLD) :-
 
 copy_slots_to_child_stack(FrameSize, LCVarLocn, LCSVarLocn, StackSlots,
         CodeStr) :-
-    (
+    ( if
         LCVarNamePrime = lval_to_string(LCVarLocn),
         LCSVarNamePrime = lval_to_string(LCSVarLocn)
-    ->
+    then
         LCVarName = LCVarNamePrime,
         LCSVarName = LCSVarNamePrime
-    ;
+    else
         unexpected($module, $pred, "cannot convert to string")
     ),
 
@@ -477,14 +477,14 @@ copy_slots_to_child_stack(FrameSize, LCVarLocn, LCSVarLocn, StackSlots,
     string::out) is det.
 
 copy_one_slot_to_child_stack(LCVarName, LCSVarName, StackSlot, CopyStr) :-
-    ( StackSlotName = lval_to_string(StackSlot) ->
-        ( StackSlot = stackvar(N) ->
+    ( if StackSlotName = lval_to_string(StackSlot) then
+        ( if StackSlot = stackvar(N) then
             CopyStr = string.format("\tMR_lc_worker_sv(%s, %s, %d) = %s;\n",
                 [s(LCVarName), s(LCSVarName), i(N), s(StackSlotName)])
-        ;
+        else
             unexpected($module, $pred, "not stack slot")
         )
-    ;
+    else
         unexpected($module, $pred, "cannot convert to string")
     ).
 
@@ -611,12 +611,12 @@ instr_list_max_stack_ref(Instrs, MaxRef) :-
 :- pred max_stack_ref_acc(lval::in, int::in, int::out) is det.
 
 max_stack_ref_acc(LVal, Max0, Max) :-
-    (
+    ( if
         LVal = stackvar(N),
         N > Max0
-    ->
+    then
         Max = N
-    ;
+    else
         Max = Max0
     ).
 
@@ -629,9 +629,9 @@ find_outputs([], _Initial, _Final, _ModuleInfo, !Outputs).
 find_outputs([Var | Vars],  Initial, Final, ModuleInfo, !Outputs) :-
     instmap_lookup_var(Initial, Var, InitialInst),
     instmap_lookup_var(Final, Var, FinalInst),
-    ( mode_is_output(ModuleInfo, (InitialInst -> FinalInst)) ->
+    ( if mode_is_output(ModuleInfo, (InitialInst -> FinalInst)) then
         !:Outputs = [Var | !.Outputs]
-    ;
+    else
         !:Outputs = !.Outputs
     ),
     find_outputs(Vars, Initial, Final, ModuleInfo, !Outputs).
@@ -643,12 +643,12 @@ place_all_outputs([], _CI, !CLD).
 place_all_outputs([Var | Vars], CI, !CLD) :-
     variable_locations(!.CLD, VarLocations),
     get_variable_slot(CI, Var, Slot),
-    (
+    ( if
         map.search(VarLocations, Var, Locations),
         set.member(Slot, Locations)
-    ->
+    then
         true
-    ;
+    else
         set_var_location(Var, Slot, !CLD)
     ),
     place_all_outputs(Vars, CI, !CLD).

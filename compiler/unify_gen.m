@@ -128,9 +128,9 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
     ),
     (
         Uni = assign(Left, Right),
-        ( variable_is_forward_live(!.CLD, Left) ->
+        ( if variable_is_forward_live(!.CLD, Left) then
             generate_assignment(Left, Right, Code, !CLD)
-        ;
+        else
             Code = empty
         )
     ;
@@ -142,11 +142,11 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
         ;
             SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize)
         ),
-        (
+        ( if
             ( variable_is_forward_live(!.CLD, Var)
             ; MaybeTakeAddr = yes(_)
             )
-        ->
+        then
             (
                 MaybeTakeAddr = yes(TakeAddr)
             ;
@@ -157,7 +157,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
             get_cons_arg_widths(ModuleInfo, ConsId, Args, ConsArgWidths),
             generate_construction(Var, ConsId, Args, Modes, ConsArgWidths,
                 HowToConstruct, TakeAddr, MaybeSize, GoalInfo, Code, !CI, !CLD)
-        ;
+        else
             Code = empty
         )
     ;
@@ -177,7 +177,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
             CanCGC = can_cgc,
             VarName = variable_name(!.CI, Var),
             produce_variable(Var, ProduceVar, VarRval, !.CI, !CLD),
-            ( VarRval = lval(VarLval) ->
+            ( if VarRval = lval(VarLval) then
                 save_reused_cell_fields(Var, VarLval, SaveArgs, Regs,
                     !.CI, !CLD),
                 % This seems to be fine.
@@ -188,7 +188,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
                         "Free " ++ VarName)
                 ),
                 Code = Code0 ++ ProduceVar ++ SaveArgs ++ FreeVar
-            ;
+            else
                 Code = Code0
             )
         ;
@@ -197,9 +197,11 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
         )
     ;
         Uni = simple_test(Var1, Var2),
-        ( CodeModel = model_det ->
+        (
+            CodeModel = model_det,
             unexpected($module, $pred, "det simple_test")
         ;
+            CodeModel = model_semi,
             generate_test(Var1, Var2, Code, !CI, !CLD)
         )
     ;
@@ -213,24 +215,24 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI, !CLD) :-
     list(T)::in, list(arg_width)::out) is det.
 
 get_cons_arg_widths(ModuleInfo, ConsId, Args, AllArgWidths) :-
-    (
+    ( if
         ConsId = cons(_, _, TypeCtor),
         get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn)
-    ->
+    then
         ConsArgs = ConsDefn ^ cons_args,
         ArgWidths = list.map((func(C) = C ^ arg_width), ConsArgs),
         list.length(Args, NumArgs),
         list.length(ConsArgs, NumConsArgs),
         NumExtraArgs = NumArgs - NumConsArgs,
-        ( NumExtraArgs = 0 ->
+        ( if NumExtraArgs = 0 then
             AllArgWidths = ArgWidths
-        ; NumExtraArgs > 0 ->
+        else if NumExtraArgs > 0 then
             ExtraArgWidths = list.duplicate(NumExtraArgs, full_word),
             AllArgWidths = ExtraArgWidths ++ ArgWidths
-        ;
+        else
             unexpected($module, $pred, "too few arguments")
         )
-    ;
+    else
         AllArgWidths = list.duplicate(length(Args), full_word)
     ).
 
@@ -244,9 +246,9 @@ get_cons_arg_widths(ModuleInfo, ConsId, Args, AllArgWidths) :-
     code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_assignment(VarA, VarB, empty, !CLD) :-
-    ( variable_is_forward_live(!.CLD, VarA) ->
+    ( if variable_is_forward_live(!.CLD, VarA) then
         assign_var_to_var(VarA, VarB, !CLD)
-    ;
+    else
         % For free-free unifications, the mode analysis reports them as
         % assignment to the dead variable. For such unifications we of course
         % do not generate any code.
@@ -273,11 +275,11 @@ generate_test(VarA, VarB, Code, !CI, !CLD) :-
         produce_variable(VarA, CodeA, ValA, !.CI, !CLD),
         produce_variable(VarB, CodeB, ValB, !.CI, !CLD),
         Type = variable_type(!.CI, VarA),
-        ( Type = builtin_type(builtin_type_string) ->
+        ( if Type = builtin_type(builtin_type_string) then
             Op = str_eq
-        ; Type = builtin_type(builtin_type_float) ->
+        else if Type = builtin_type(builtin_type_float) then
             Op = float_eq
-        ;
+        else
             Op = eq
         ),
         fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode, !CI, !CLD),
@@ -354,16 +356,16 @@ generate_raw_tag_test(VarRval, _VarType, VarName, ConsId, MaybeConsTag,
     % one of which is a constant, we make sure that we test against the
     % constant (negating the result of the test, if needed),
     % since a test against a constant is cheaper than a tag test.
-    (
+    ( if
         CheaperTagTest = cheaper_tag_test(ExpensiveConsId, _ExpensiveConsTag,
             _CheapConsId, CheapConsTag),
         ConsId = ExpensiveConsId
-    ->
+    then
         Comment = branch_sense_comment(Sense) ++ VarName ++
             " has functor " ++ ConsIdName ++ " (inverted test)",
         raw_tag_test(VarRval, CheapConsTag, NegTestRval),
         code_util.neg_rval(NegTestRval, TestRval)
-    ;
+    else
         Comment = branch_sense_comment(Sense) ++ VarName ++
             " has functor " ++ ConsIdName,
         (
@@ -553,10 +555,10 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
         Code = empty
     ;
         ConsTag = no_tag,
-        (
+        ( if
             Args = [Arg],
             Modes = [Mode]
-        ->
+        then
             (
                 TakeAddr = [],
                 Type = variable_type(!.CI, Arg),
@@ -566,7 +568,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
                 TakeAddr = [_ | _],
                 unexpected($module, $pred, "notag: take_addr")
             )
-        ;
+        else
             unexpected($module, $pred, "no_tag: arity != 1")
         )
     ;
@@ -588,10 +590,10 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
         Code = PackCode ++ ConstructCode
     ;
         ConsTag = direct_arg_tag(Ptag),
-        (
+        ( if
             Args = [Arg],
             Modes = [Mode]
-        ->
+        then
             (
                 TakeAddr = [],
                 Type = variable_type(!.CI, Arg),
@@ -601,7 +603,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
                 TakeAddr = [_ | _],
                 unexpected($module, $pred, "direct_arg_tag: take_addr")
             )
-        ;
+        else
             unexpected($module, $pred, "direct_arg_tag: arity != 1")
         )
     ;
@@ -668,9 +670,9 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
         get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         Origin = RttiProcLabel ^ rpl_pred_info_origin,
-        ( Origin = origin_special_pred(_, _) ->
+        ( if Origin = origin_special_pred(_, _) then
             UserOrUCI = uci
-        ;
+        else
             UserOrUCI = user
         ),
         ProcKind = proc_layout_proc_id(UserOrUCI),
@@ -751,7 +753,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
     proc_info_get_goal(ProcInfo, ProcInfoGoal),
     CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
-    (
+    ( if
         EvalMethod = lambda_normal,
         Args = [CallPred | CallArgs],
         ProcHeadVars = [ProcPred | ProcArgs],
@@ -778,7 +780,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
         % The code below does not handle that layout.
         globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
         UseFloatRegs = no
-    ->
+    then
         (
             CallArgs = [],
             % If there are no new arguments, we can just use the old closure.
@@ -860,7 +862,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code,
             Code = OldClosureCode ++ NewClosureCode ++ ExtraArgsCode ++
                  AssignCode
         )
-    ;
+    else
         CodeAddr = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId, no),
         ProcLabel = extract_proc_label_from_code_addr(CodeAddr),
         CodeAddrRval = const(llconst_code_addr(CodeAddr)),
@@ -995,13 +997,13 @@ generate_cons_args(Vars, Types, Modes, Widths, TakeAddr, CI, !:Args,
         !:MayUseAtomic) :-
     get_module_info(CI, ModuleInfo),
     !:MayUseAtomic = initial_may_use_atomic(ModuleInfo),
-    (
+    ( if
         FirstArgNum = 1,
         generate_cons_args_2(Vars, Types, Modes, Widths, FirstArgNum, TakeAddr,
             CI, !:Args, !MayUseAtomic)
-    ->
+    then
         true
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -1022,7 +1024,7 @@ generate_cons_args_2([Var | Vars], [Type | Types], [UniMode | UniModes],
         !MayUseAtomic) :-
     get_module_info(CI, ModuleInfo),
     update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
-    ( !.TakeAddr = [CurArgNum | !:TakeAddr] ->
+    ( if !.TakeAddr = [CurArgNum | !:TakeAddr] then
         get_lcmc_null(CI, LCMCNull),
         (
             LCMCNull = no,
@@ -1035,7 +1037,7 @@ generate_cons_args_2([Var | Vars], [Type | Types], [UniMode | UniModes],
         !:MayUseAtomic = may_not_use_atomic_alloc,
         generate_cons_args_2(Vars, Types, UniModes, Widths, CurArgNum + 1,
             !.TakeAddr, CI, CellArgs, !MayUseAtomic)
-    ;
+    else
         UniMode = ((_LI - RI) -> (_LF - RF)),
         mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, ArgMode),
         (
@@ -1105,9 +1107,9 @@ pack_how_to_construct(ArgWidths, !HowToConstruct) :-
 :- func condense_needs_updates(list(needs_update)) = needs_update.
 
 condense_needs_updates(NeedsUpdatess) =
-    ( list.member(needs_update, NeedsUpdatess) ->
+    ( if list.member(needs_update, NeedsUpdatess) then
         needs_update
-    ;
+    else
         does_not_need_update
     ).
 
@@ -1126,14 +1128,14 @@ construct_cell(Var, Ptag, CellArgs, HowToConstruct, MaybeSize, Context,
     % Normally we would just overwrite the first word of the object
     % in the "from" space, but this can't be done for objects which will be
     % referenced during the garbage collection process.
-    (
+    ( if
         get_globals(!.CI, Globals),
         globals.get_gc_method(Globals, GCMethod),
         GCMethod = gc_accurate,
         is_introduced_type_info_type(VarType)
-    ->
+    then
         ReserveWordAtStart = yes
-    ;
+    else
         ReserveWordAtStart = no
     ),
     Size = size_of_cell_args(CellArgs),
@@ -1310,11 +1312,11 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
         unexpected($module, $pred, "table_io_entry_tag")
     ;
         Tag = no_tag,
-        (
+        ( if
             Args = [Arg],
             Modes = [Mode],
             ArgWidths = [_ArgWidth]
-        ->
+        then
             VarType = variable_type(CI, Var),
             get_module_info(CI, ModuleInfo),
             IsDummy = check_dummy_type(ModuleInfo, VarType),
@@ -1327,9 +1329,9 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
                 % may not be a dummy type, it would actually use that location.
                 % This can happen in the unify/compare routines for e.g.
                 % io.state.
-                ( variable_is_forward_live(!.CLD, Arg) ->
+                ( if variable_is_forward_live(!.CLD, Arg) then
                     assign_const_to_var(Arg, const(llconst_int(0)), CI, !CLD)
-                ;
+                else
                     true
                 ),
                 Code = empty
@@ -1339,7 +1341,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
                 generate_sub_unify(ref(Var), ref(Arg), Mode, ArgType,
                     Code, CI, !CLD)
             )
-        ;
+        else
             unexpected($module, $pred, "no_tag: arity != 1")
         )
     ;
@@ -1356,15 +1358,15 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, ArgWidths, Tag,
         generate_unify_args(Fields, ArgVars, Modes, ArgTypes, Code, CI, !CLD)
     ;
         Tag = direct_arg_tag(Ptag),
-        (
+        ( if
             Args = [Arg],
             Modes = [Mode],
             ArgWidths = [_]
-        ->
+        then
             Type = variable_type(CI, Arg),
             generate_direct_arg_deconstruct(Var, Arg, Ptag, Mode, Type, Code,
                 CI, !CLD)
-        ;
+        else
             unexpected($module, $pred, "direct_arg_tag: arity != 1")
         )
     ;
@@ -1418,9 +1420,9 @@ generate_semi_deconstruction(Var, Tag, Args, Modes, ArgWidths, Code,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_unify_args(Ls, Rs, Ms, Ts, Code, CI, !CLD) :-
-    ( generate_unify_args_2(Ls, Rs, Ms, Ts, Code0, CI, !CLD) ->
+    ( if generate_unify_args_2(Ls, Rs, Ms, Ts, Code0, CI, !CLD) then
         Code = Code0
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -1448,35 +1450,35 @@ generate_sub_unify(L, R, Mode, Type, Code, CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
     mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode),
     mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode),
-    (
+    ( if
         % Input - input == test unification
         LeftMode = top_in,
         RightMode = top_in
-    ->
+    then
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
         % unification.
         unexpected($module, $pred, "test in arg of [de]construction")
-    ;
+    else if
         % Input - Output== assignment ->
         LeftMode = top_in,
         RightMode = top_out
-    ->
+    then
         generate_sub_assign(R, L, Code, CI, !CLD)
-    ;
+    else if
         % Output - Input== assignment <-
         LeftMode = top_out,
         RightMode = top_in
-    ->
+    then
         generate_sub_assign(L, R, Code, CI, !CLD)
-    ;
+    else if
         LeftMode = top_unused,
         RightMode = top_unused
-    ->
+    then
         Code = empty
         % free-free - ignore
         % XXX I think this will have to change if we start to support aliasing.
-    ;
+    else
         unexpected($module, $pred, "some strange unify")
     ).
 
@@ -1515,7 +1517,7 @@ generate_sub_assign(Left, Right, Code, CI, !CLD) :-
                 "Update part of word"))
         ;
             LeftWidth = double_word,
-            ( field_offset_pair(Lval, LvalA, LvalB) ->
+            ( if field_offset_pair(Lval, LvalA, LvalB) then
                 SrcA = binop(float_word_bits, Source, const(llconst_int(0))),
                 SrcB = binop(float_word_bits, Source, const(llconst_int(1))),
                 Comment = "Update double word",
@@ -1523,14 +1525,14 @@ generate_sub_assign(Left, Right, Code, CI, !CLD) :-
                     llds_instr(assign(LvalA, SrcA), Comment),
                     llds_instr(assign(LvalB, SrcB), Comment)
                 ])
-            ;
+            else
                 sorry($module, $pred, "double_word: non-field lval")
             )
         ),
         Code = SourceCode ++ MaterializeCode ++ AssignCode
     ;
         Left = ref(Lvar),
-        ( variable_is_forward_live(!.CLD, Lvar) ->
+        ( if variable_is_forward_live(!.CLD, Lvar) then
             (
                 Right = lval(Lval, RightWidth),
                 % Assignment of a value to a variable, generate now.
@@ -1550,12 +1552,12 @@ generate_sub_assign(Left, Right, Code, CI, !CLD) :-
                         !CLD)
                 ;
                     RightWidth = double_word,
-                    ( field_offset_pair(Lval, LvalA, LvalB) ->
+                    ( if field_offset_pair(Lval, LvalA, LvalB) then
                         Rval = binop(float_from_dword,
                             lval(LvalA), lval(LvalB)),
                         assign_field_lval_expr_to_var(Lvar, [LvalA, LvalB],
                             Rval, Code, !CLD)
-                    ;
+                    else
                         sorry($module, $pred, "double_word: non-field lval")
                     )
                 )
@@ -1565,7 +1567,7 @@ generate_sub_assign(Left, Right, Code, CI, !CLD) :-
                 assign_var_to_var(Lvar, Rvar, !CLD),
                 Code = empty
             )
-        ;
+        else
             Code = empty
         )
     ).
@@ -1591,36 +1593,36 @@ generate_direct_arg_construct(Var, Arg, Ptag, Mode, Type, Code, CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
     mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode),
     mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode),
-    (
+    ( if
         % Input - input == test unification
         LeftMode = top_in,
         RightMode = top_in
-    ->
+    then
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
         % unification.
         unexpected($module, $pred, "test in arg of [de]construction")
-    ;
+    else if
         % Input - Output == assignment ->
         LeftMode = top_in,
         RightMode = top_out
-    ->
+    then
         unexpected($module, $pred, "left-to-right data flow in construction")
-    ;
+    else if
         % Output - Input == assignment <-
         LeftMode = top_out,
         RightMode = top_in
-    ->
+    then
         assign_expr_to_var(Var, mkword(Ptag, var(Arg)), Code, !CLD)
-    ;
+    else if
         LeftMode = top_unused,
         RightMode = top_unused
-    ->
+    then
         % XXX I think this will have to change if we start to support aliasing.
         % Construct a tagged pointer to a pointer value which is unknown yet.
         assign_const_to_var(Var, mkword_hole(Ptag), CI, !CLD),
         Code = empty
-    ;
+    else
         unexpected($module, $pred, "some strange unify")
     ).
 
@@ -1638,40 +1640,40 @@ generate_direct_arg_deconstruct(Var, ArgVar, Ptag, Mode, Type, Code,
     get_module_info(CI, ModuleInfo),
     mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode),
     mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode),
-    (
+    ( if
         % Input - Output == assignment ->
         LeftMode = top_in,
         RightMode = top_out
-    ->
-        ( variable_is_forward_live(!.CLD, ArgVar) ->
+    then
+        ( if variable_is_forward_live(!.CLD, ArgVar) then
             BodyRval = binop(body, var(Var), const(llconst_int(Ptag))),
             assign_expr_to_var(ArgVar, BodyRval, Code, !CLD)
-        ;
+        else
             Code = empty
         )
-    ;
+    else if
         % Output - Input == assignment <-
         LeftMode = top_out,
         RightMode = top_in
-    ->
+    then
         reassign_mkword_hole_var(Var, Ptag, var(ArgVar), Code, !CLD)
-    ;
+    else if
         LeftMode = top_unused,
         RightMode = top_unused
-    ->
+    then
         Code = empty
         % free-free - ignore
         % XXX I think this will have to change if we start to support aliasing.
-    ;
+    else if
         % Input - input == test unification
         LeftMode = top_in,
         RightMode = top_in
-    ->
+    then
         % This shouldn't happen, since mode analysis should avoid creating
         % any tests in the arguments of a construction or deconstruction
         % unification.
         unexpected($module, $pred, "test in arg of [de]construction")
-    ;
+    else
         unexpected($module, $pred, "some strange unify")
     ).
 
@@ -1854,9 +1856,9 @@ generate_const_struct_arg_tag(ModuleInfo, UnboxedFloats, ConstStructMap,
                 UnboxedFloats = do_not_have_unboxed_floats,
                 % Though a standalone float might have needed to boxed, it may
                 % be stored in unboxed form as a constructor argument.
-                ( ArgWidth = double_word ->
+                ( if ArgWidth = double_word then
                     Type = lt_float
-                ;
+                else
                     Type = lt_data_ptr
                 )
             )
@@ -1932,8 +1934,8 @@ generate_ground_term(TermVar, Goal, !CI, !CLD) :-
         % nothing to do.
     ;
         NonLocalList = [NonLocal],
-        ( NonLocal = TermVar ->
-            ( GoalExpr = conj(plain_conj, Conjuncts) ->
+        ( if NonLocal = TermVar then
+            ( if GoalExpr = conj(plain_conj, Conjuncts) then
                 get_module_info(!.CI, ModuleInfo),
                 get_exprn_opts(!.CI, ExprnOpts),
                 UnboxedFloats = get_unboxed_floats(ExprnOpts),
@@ -1943,18 +1945,18 @@ generate_ground_term(TermVar, Goal, !CI, !CLD) :-
                     UnboxedFloats, StaticCellInfo0, StaticCellInfo,
                     ActiveMap0, ActiveMap),
                 map.to_assoc_list(ActiveMap, ActivePairs),
-                ( ActivePairs = [TermVar - GroundTerm] ->
+                ( if ActivePairs = [TermVar - GroundTerm] then
                     add_forward_live_vars(NonLocals, !CLD),
                     set_static_cell_info(StaticCellInfo, !CI),
                     GroundTerm = typed_rval(Rval, _),
                     assign_const_to_var(TermVar, Rval, !.CI, !CLD)
-                ;
+                else
                     unexpected($module, $pred, "no active pairs")
                 )
-            ;
+            else
                 unexpected($module, $pred, "malformed goal")
             )
-        ;
+        else
             unexpected($module, $pred, "unexpected nonlocal")
         )
     ;
@@ -1986,16 +1988,16 @@ generate_ground_term_conjuncts(ModuleInfo, [Goal | Goals],
 generate_ground_term_conjunct(ModuleInfo, Goal, UnboxedFloats,
         !StaticCellInfo, !ActiveMap) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
-    (
+    ( if
         GoalExpr = unify(_, _, _, Unify, _),
         Unify = construct(Var, ConsId, Args, _, _, _, SubInfo),
         SubInfo = no_construct_sub_info
-    ->
+    then
         ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
         get_cons_arg_widths(ModuleInfo, ConsId, Args, ConsArgWidths),
         generate_ground_term_conjunct_tag(Var, ConsTag, Args, ConsArgWidths,
             UnboxedFloats, !StaticCellInfo, !ActiveMap)
-    ;
+    else
         unexpected($module, $pred, "malformed goal")
     ).
 
@@ -2135,12 +2137,12 @@ generate_ground_term_arg(Var, ConsArgWidth, TypedRval, !ActiveMap) :-
     map.det_remove(Var, TypedRval0, !ActiveMap),
     % Though a standalone float might have needed to boxed, it may be stored in
     % unboxed form as a constructor argument.
-    (
+    ( if
         ConsArgWidth = double_word,
         TypedRval0 = typed_rval(Rval, lt_data_ptr)
-    ->
+    then
         TypedRval = typed_rval(Rval, lt_float)
-    ;
+    else
         TypedRval = TypedRval0
     ).
 
@@ -2158,15 +2160,15 @@ pack_ground_term_args(Widths, !TypedRvals) :-
 
 shift_combine_arg(CI, CellArgA, Shift, MaybeCellArgB, FinalCellArg, !Code,
         !CLD) :-
-    (
+    ( if
         Shift = 0,
         MaybeCellArgB = no
-    ->
+    then
         FinalCellArg = CellArgA
-    ;
+    else
         (
             CellArgA = cell_arg_full_word(RvalA, Completeness),
-            ( RvalA = var(Var) ->
+            ( if RvalA = var(Var) then
                 IsDummy = variable_is_of_dummy_type(CI, Var),
                 (
                     IsDummy = is_dummy_type,
@@ -2179,24 +2181,24 @@ shift_combine_arg(CI, CellArgA, Shift, MaybeCellArgB, FinalCellArg, !Code,
                         Completeness),
                     !:Code = !.Code ++ VarCode
                 )
-            ; RvalA = const(llconst_int(Int)) ->
+            else if RvalA = const(llconst_int(Int)) then
                 NewInt = maybe_left_shift_int(Int, Shift),
                 ShiftCellArgA = cell_arg_full_word(const(llconst_int(NewInt)),
                     Completeness)
-            ;
+            else
                 unexpected($module, $pred, "non-var or int argument")
             )
         ;
             CellArgA = cell_arg_double_word(RvalA),
             expect(unify(Shift, 0), $module, $pred,
                 "double word rval cannot be shifted"),
-            ( RvalA = var(Var) ->
+            ( if RvalA = var(Var) then
                 produce_variable(Var, VarCode, VarRval, CI, !CLD),
                 ShiftCellArgA = cell_arg_double_word(VarRval),
                 !:Code = !.Code ++ VarCode
-            ; RvalA = const(llconst_float(_)) ->
+            else if RvalA = const(llconst_float(_)) then
                 ShiftCellArgA = CellArgA
-            ;
+            else
                 unexpected($module, $pred, "non-var or float argument")
             )
         ;
@@ -2224,9 +2226,9 @@ shift_combine_rval_type(ArgA, Shift, MaybeArgB, FinalArg, !Acc1, !Acc2) :-
     ShiftRvalA = maybe_left_shift_rval(RvalA, Shift),
     (
         MaybeArgB = yes(typed_rval(RvalB, TypeB)),
-        ( TypeA = TypeB ->
+        ( if TypeA = TypeB then
             FinalRval = binop(bitwise_or, ShiftRvalA, RvalB)
-        ;
+        else
             unexpected($module, $pred, "mismatched llds_types")
         )
     ;
@@ -2238,18 +2240,18 @@ shift_combine_rval_type(ArgA, Shift, MaybeArgB, FinalArg, !Acc1, !Acc2) :-
 :- func maybe_left_shift_rval(rval, int) = rval.
 
 maybe_left_shift_rval(Rval, Shift) =
-    ( Shift = 0 ->
+    ( if Shift = 0 then
         Rval
-    ;
+    else
         binop(unchecked_left_shift, Rval, const(llconst_int(Shift)))
     ).
 
 :- func maybe_left_shift_int(int, int) = int.
 
 maybe_left_shift_int(X, Shift) =
-    ( Shift = 0 ->
+    ( if Shift = 0 then
         X
-    ;
+    else
         X << Shift
     ).
 
@@ -2261,9 +2263,9 @@ right_shift_rval(Rval, Shift) =
 :- func bitwise_or_cell_arg(cell_arg, cell_arg) = cell_arg.
 
 bitwise_or_cell_arg(CellArgA, CellArgB) = CellArg :-
-    ( bitwise_or_cell_arg(CellArgA, CellArgB, CellArgPrime) ->
+    ( if bitwise_or_cell_arg(CellArgA, CellArgB, CellArgPrime) then
         CellArg = CellArgPrime
-    ;
+    else
         unexpected($module, $pred, "invalid combination")
     ).
 

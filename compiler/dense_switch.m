@@ -95,16 +95,16 @@ tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
         % large enough to hold all of the values for the type.
         get_module_info(CI, ModuleInfo),
         classify_type(ModuleInfo, VarType) = TypeCategory,
-        (
+        ( if
             type_range(ModuleInfo, TypeCategory, VarType, _Min, _Max,
                 TypeRange),
             DetDensity = switch_density(NumValues, TypeRange),
             DetDensity > ReqDensity
-        ->
+        then
             CanFail = cannot_fail,
             FirstVal = 0,
             LastVal = TypeRange - 1
-        ;
+        else
             CanFail = CanFail0,
             FirstVal = LowerLimit,
             LastVal = UpperLimit
@@ -125,9 +125,9 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
     DenseSwitchInfo = dense_switch_info(FirstVal, LastVal, CanFail),
-    ( FirstVal = 0 ->
+    ( if FirstVal = 0 then
         IndexRval = VarRval
-    ;
+    else
         IndexRval = binop(int_sub, VarRval, const(llconst_int(FirstVal)))
     ),
     % If the switch is not locally deterministic, we need to check that
@@ -227,9 +227,9 @@ generate_dense_case(BranchStart, VarName, CodeModel, SwitchGoalInfo, EndLabel,
     map(int, label)::in, map(int, label)::out) is det.
 
 record_dense_label_for_cons_tag(Label, ConsTag, !IndexMap) :-
-    ( ConsTag = int_tag(Index) ->
+    ( if ConsTag = int_tag(Index) then
         map.det_insert(Index, Label, !IndexMap)
-    ;
+    else
         unexpected($module, $pred, "not int_tag")
     ).
 
@@ -242,11 +242,11 @@ record_dense_label_for_cons_tag(Label, ConsTag, !IndexMap) :-
 
 generate_dense_jump_table(CurVal, LastVal, IndexPairs, Targets,
         !MaybeFailLabel, !CI) :-
-    ( CurVal > LastVal ->
+    ( if CurVal > LastVal then
         expect(unify(IndexPairs, []), $module, $pred,
             "NextVal > LastVal, IndexList not []"),
         Targets = []
-    ;
+    else
         NextVal = CurVal + 1,
         (
             IndexPairs = [],
@@ -257,11 +257,11 @@ generate_dense_jump_table(CurVal, LastVal, IndexPairs, Targets,
         ;
             IndexPairs = [FirstIndexPair | LaterIndexPairs],
             FirstIndexPair = FirstIndex - FirstLabel,
-            ( FirstIndex = CurVal ->
+            ( if FirstIndex = CurVal then
                 generate_dense_jump_table(NextVal, LastVal, LaterIndexPairs,
                     LaterTargets, !MaybeFailLabel, !CI),
                 Targets = [yes(FirstLabel) | LaterTargets]
-            ;
+            else
                 get_dense_fail_label(FailLabel, !MaybeFailLabel, !CI),
                 generate_dense_jump_table(NextVal, LastVal, IndexPairs,
                     LaterTargets, !MaybeFailLabel, !CI),

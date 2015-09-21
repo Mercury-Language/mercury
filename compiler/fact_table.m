@@ -356,7 +356,7 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
         Result0 = term(_VarSet, Term),
         module_info_get_globals(ModuleInfo, Globals),
         fact_table_size(Globals, FactTableSize),
-        ( 0 = !.NumFacts mod FactTableSize ->
+        ( if 0 = !.NumFacts mod FactTableSize then
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             (
                 VeryVerbose = yes,
@@ -364,7 +364,7 @@ compile_facts(PredName, Arity, PredInfo, ModuleInfo, FactArgInfos, ProcStreams,
             ;
                 VeryVerbose = no
             )
-        ;
+        else
             true
         ),
 
@@ -401,8 +401,8 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
         ProcStreams, MaybeOutput, FactNum, Result, !Errors, !IO) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredString = unqualify_name(PredName),
-    ( Const = term.atom(TopLevel) ->
-        (
+    ( if Const = term.atom(TopLevel) then
+        ( if
             (
                 PredOrFunc = pf_predicate,
                 TopLevel = PredString,
@@ -416,18 +416,18 @@ check_fact_term(PredName, Arity0, PredInfo, ModuleInfo,
                 list.append(Terms1, [FuncResultTerm], Terms),
                 Arity = Arity0 + 1
             )
-        ->
+        then
             check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms,
                 Context, FactArgInfos, ProcStreams, MaybeOutput, FactNum,
                 Result, !Errors, !IO)
-        ;
+        else
             PFStr = pred_or_func_to_full_str(PredOrFunc),
             string.format("Error: invalid clause for %s `%s/%d'.",
                 [s(PFStr), s(PredString), i(Arity0)], Msg),
             add_error_report(Context, [words(Msg)], !Errors),
             Result = error
         )
-    ;
+    else
         add_error_report(Context,
             [words("Error: term is not a fact.")], !Errors),
         Result = error
@@ -444,7 +444,7 @@ check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms, Context,
         !Errors, !IO) :-
     % Check that arity of the fact is correct.
     list.length(Terms, Len),
-    ( Len = Arity ->
+    ( if Len = Arity then
         pred_info_get_arg_types(PredInfo, Types),
         check_fact_type_and_mode(Types, Terms, 0, PredOrFunc, Context,
             Result, !Errors),
@@ -456,25 +456,25 @@ check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms, Context,
         % If there are no in_out modes to the predicate, we need to write out
         % the facts at this point. If there are input modes, the facts are
         % written out later on after being sorted on the first input mode.
-        (
+        ( if
             MaybeOutput = yes(OutputStream - StructName),
             TermToArg =
                 (pred(Term::in, FactArg::out) is semidet :-
                     Term = term.functor(FactArg, _, _)
             ),
             list.map(TermToArg, Terms, FactArgs)
-        ->
+        then
             module_info_get_globals(ModuleInfo, Globals),
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             fact_table_size(Globals, FactTableSize),
             write_fact_data(VeryVerbose, FactNum, FactTableSize, FactArgs,
                 StructName, OutputStream, !IO)
-        ;
+        else
             % If list.map above fails, don't do anything here. The error will
             % have already been reported in check_fact_type_and_mode.
             true
         )
-    ;
+    else
         Msg1 = "Error: fact has wrong number of arguments.",
         string.format("Expecting %d arguments, but fact has %d arguments.",
             [i(Arity), i(Len)], Msg2),
@@ -537,13 +537,13 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
             Result = error
         ;
             RequiredType = yes(BuiltinType),
-            (
+            ( if
                 Types0 = [Type | Types],
                 Type = builtin_type(BuiltinType)
-            ->
+            then
                 check_fact_type_and_mode(Types, Terms, ArgNum,
                     PredOrFunc, Context0, Result, !Errors)
-            ;
+            else
                 report_type_error(Context, ArgNum, Terms, PredOrFunc, !Errors),
                 Result = error
             )
@@ -554,13 +554,13 @@ check_fact_type_and_mode(Types0, [Term | Terms], ArgNum0, PredOrFunc,
     pred_or_func::in, error_reports::in, error_reports::out) is det.
 
 report_type_error(Context, ArgNum, RemainingTerms, PredOrFunc, !Errors) :-
-    (
+    ( if
         % Report a different error message for the return value of a function.
         PredOrFunc = pf_function,
         RemainingTerms = []
-    ->
+    then
         Msg = "Type error in return value of function."
-    ;
+    else
         string.format("Type error in argument %d.", [i(ArgNum)], Msg)
     ),
     add_error_report(Context, [words(Msg)], !Errors).
@@ -596,9 +596,9 @@ create_fact_table_header(PredName, PredInfo, FactArgInfos,
     pred_info_get_context(PredInfo, Context),  % location of :- pred decl
     create_fact_table_struct(FactArgInfos, 1, Context, StructContents,
         !Errors),
-    ( StructContents = "" ->
+    ( if StructContents = "" then
         StructDef = ""
-    ;
+    else
         StructDef = "struct " ++ StructName ++ "_struct {\n"
             ++ StructContents ++ "};\n\n"
     ),
@@ -701,7 +701,7 @@ create_fact_table_struct([Info | Infos], I, Context, StructContents,
     create_fact_table_struct(Infos, I + 1, Context, StructContentsTail,
         !Errors),
     Info = fact_arg_info(Type, _IsInput, IsOutput),
-    (
+    ( if
         (
             Type = builtin_type(builtin_type_string),
             TypeStr = "MR_ConstString"
@@ -712,7 +712,7 @@ create_fact_table_struct([Info | Infos], I, Context, StructContents,
             Type = builtin_type(builtin_type_float),
             TypeStr = "MR_Float"
         )
-    ->
+    then
         (
             IsOutput = yes,
             string.format("\t%s V_%d;\n", [s(TypeStr), i(I)], StructField),
@@ -721,7 +721,7 @@ create_fact_table_struct([Info | Infos], I, Context, StructContents,
             IsOutput = no,
             StructContents = StructContentsTail
         )
-    ;
+    else
         % Report an error for types other than string, int and float.
         % Context is the `:- pred' or `:- func' declaration where the
         % types are declared.
@@ -757,7 +757,7 @@ fill_in_fact_arg_infos([], _, [_ | _], _) :-
 fill_in_fact_arg_infos([Mode | Modes], ModuleInfo, [Info0 | Infos0],
         [Info | Infos]) :-
     Info0 = fact_arg_info(Type, IsInput, _IsOutput),
-    ( mode_is_fully_input(ModuleInfo, Mode) ->
+    ( if mode_is_fully_input(ModuleInfo, Mode) then
         % XXX Info = fact_arg_info(Type, yes, IsOutput)
 
         % XXX currently the first input mode requires _all_ arguments to be
@@ -765,10 +765,9 @@ fill_in_fact_arg_infos([Mode | Modes], ModuleInfo, [Info0 | Infos0],
         % This may change if it is found to be less efficient than doing these
         % lookups via the hash table.
         Info = fact_arg_info(Type, yes, yes)
-
-    ; mode_is_fully_output(ModuleInfo, Mode) ->
+    else if mode_is_fully_output(ModuleInfo, Mode) then
         Info = fact_arg_info(Type, IsInput, yes)
-    ;
+    else
         % This is a mode error that will be reported by
         % infer_proc_determinism_pass_1.
         Info = Info0
@@ -793,12 +792,12 @@ infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
         !FactArgInfos, !Errors) :-
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
     ProcIDs = pred_info_procids(!.PredInfo),
-    ( ProcIDs = [] ->
-        % There are no declared modes so report an error.
+    (
+        ProcIDs = [],
+        % There are no declared modes, so report an error.
         PredString = pred_info_name(!.PredInfo),
         Arity = pred_info_orig_arity(!.PredInfo),
-        string.format(
-            "Error: no modes declared for fact table `%s/%d'.\n",
+        string.format("Error: no modes declared for fact table `%s/%d'.\n",
             [s(PredString), i(Arity)], Msg),
         add_error_report(Context, [words(Msg)], !Errors),
         CheckProcs = [],
@@ -806,6 +805,7 @@ infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
         WriteHashTables = no,
         WriteDataTable = no
     ;
+        ProcIDs = [_ | _],
         infer_proc_determinism_pass_1(ProcIDs, ModuleInfo,
             ProcTable0, ProcTable, [], CheckProcs0, !FactArgInfos,
             MaybeAllInProc, WriteHashTables, WriteDataTable, !Errors),
@@ -853,15 +853,15 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
     ;
         ModeType = all_out,
         proc_info_get_declared_determinism(ProcInfo0, MaybeDet),
-        (
+        ( if
             (
                 MaybeDet = yes(detism_cc_multi)
             ;
                 MaybeDet = yes(detism_cc_non)
             )
-        ->
+        then
             InferredDetism = inferred(detism_cc_multi)
-        ;
+        else
             InferredDetism = inferred(detism_multi)
         ),
         WriteHashTables0 = no,
@@ -925,24 +925,24 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
 
 fact_table_mode_type([], _, unknown).
 fact_table_mode_type([Mode | Modes], ModuleInfo, ModeType) :-
-    ( mode_is_fully_input(ModuleInfo, Mode) ->
+    ( if mode_is_fully_input(ModuleInfo, Mode) then
         ModeType0 = all_in
-    ; mode_is_fully_output(ModuleInfo, Mode) ->
+    else if mode_is_fully_output(ModuleInfo, Mode) then
         ModeType0 = all_out
-    ;
+    else
         ModeType0 = other
     ),
     ( ModeType0 = other ->
         ModeType = other
     ;
         fact_table_mode_type(Modes, ModuleInfo, ModeType1),
-        ( ModeType1 = unknown ->
+        ( if ModeType1 = unknown then
             ModeType = ModeType0
-        ; ModeType1 = other ->
+        else if ModeType1 = other then
             ModeType = other
-        ; ModeType1 = ModeType0 ->
+        else if ModeType1 = ModeType0 then
             ModeType = ModeType0
-        ;
+        else
             ModeType = in_out
         )
     ).
@@ -1038,15 +1038,15 @@ write_sort_file_lines([proc_stream(ProcID, Stream) | ProcStreams], ProcTable,
 
 make_sort_file_key([], _, "").
 make_sort_file_key([(Mode - Term) | ModeTerms], ModuleInfo, Key) :-
-    (
+    ( if
         mode_is_fully_input(ModuleInfo, Mode),
         Term = term.functor(Const, [], _Context)
-    ->
+    then
         KeyPart = make_key_part(Const),
         make_sort_file_key(ModeTerms, ModuleInfo, Key0),
         string.append(":", Key0, Key1), % field separator
         string.append(KeyPart, Key1, Key)
-    ;
+    else
         make_sort_file_key(ModeTerms, ModuleInfo, Key)
     ).
 
@@ -1057,14 +1057,14 @@ make_sort_file_key([(Mode - Term) | ModeTerms], ModuleInfo, Key) :-
 make_fact_data_string([]) = "".
 make_fact_data_string([fact_arg_info(_, _, IsOutput) - Term | InfoTerms]) =
         String :-
-    (
+    ( if
         IsOutput = yes,
         Term = term.functor(Const, [], _)
-    ->
+    then
         KeyPart = make_key_part(Const),
         String0 = make_fact_data_string(InfoTerms),
         string.append_list([KeyPart, ":", String0], String)
-    ;
+    else
         String = make_fact_data_string(InfoTerms)
     ).
 
@@ -1076,10 +1076,10 @@ make_key_part(term.integer(I)) =
     % convert int to base 36 to reduce the size of the I/O.
     string.int_to_base_string(I, 36).
 make_key_part(term.big_integer(Base, Integer)) = String :-
-    ( source_integer_to_int(Base, Integer, I) ->
+    ( if source_integer_to_int(Base, Integer, I) then
         % convert int to base 36 to reduce the size of the I/O.
         String = string.int_to_base_string(I, 36)
-    ;
+    else
         unexpected($module, $pred, "integer too big")
     ).
 make_key_part(term.float(F)) =
@@ -1105,15 +1105,15 @@ key_from_chars(Cs) = ECs :-
 
 key_from_chars_2([], ECs, ECs).
 key_from_chars_2([C | Cs], ECs0, ECs) :-
-    ( C = ('\\') ->
+    ( if C = ('\\') then
         ECs1 = ['\\', '\\' | ECs0]
-    ; C = (':') ->
+    else if C = (':') then
         ECs1 = ['c', '\\' | ECs0]
-    ; C = ('~') ->
+    else if C = ('~') then
         ECs1 = ['t', '\\' | ECs0]
-    ; C = ('\n') ->
+    else if C = ('\n') then
         ECs1 = ['n', '\\' | ECs0]
-    ;
+    else
         ECs1 = [C | ECs0]
     ),
     key_from_chars_2(Cs, ECs1, ECs).
@@ -1149,7 +1149,7 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], Globals,
 
         % sort -cu returns 0 if file is sorted and contains no duplicate keys,
         % >=1 if duplicate keys exist.
-        (
+        ( if
             (
                 ExitStatus = 0
             ;
@@ -1157,26 +1157,26 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], Globals,
                 ExistsAllInMode = yes,
                 ProcFiles = []
             )
-        ->
+        then
             % No duplicate keys => procedure is semidet.
             Determinism = detism_semi
-        ;
+        else if
             ExitStatus >= 1
-        ->
+        then
             % Duplicate keys => procedure is nondet.
             proc_info_get_declared_determinism(ProcInfo0, MaybeDet),
-            (
+            ( if
                 (
                     MaybeDet = yes(detism_cc_multi)
                 ;
                     MaybeDet = yes(detism_cc_non)
                 )
-            ->
+            then
                 Determinism = detism_cc_non
-            ;
+            else
                 Determinism = detism_non
             )
-        ;
+        else
             io.progname_base("mercury_compile", ProgName, !IO),
             string.format(
                 "%s: an error occurred in the `sort' program "
@@ -1272,10 +1272,10 @@ write_fact_table_data(VeryVerbose, FactNum, FactTableSize, [Fact | Facts],
 
 write_fact_data(VeryVerbose, FactNum, FactTableSize, Args,
         StructName, OutputStream, !IO) :-
-    ( 0 = FactNum mod FactTableSize ->
-        ( FactNum = 0 ->
+    ( if 0 = FactNum mod FactTableSize then
+        ( if FactNum = 0 then
             true
-        ;
+        else
             write_closing_brace(OutputStream, !IO),
             write_new_data_array(OutputStream, StructName, FactNum, !IO)
         ),
@@ -1285,7 +1285,7 @@ write_fact_data(VeryVerbose, FactNum, FactTableSize, Args,
         ;
             VeryVerbose = no
         )
-    ;
+    else
         true
     ),
     io.write_string(OutputStream, "\t{", !IO),
@@ -1326,10 +1326,10 @@ write_fact_args([Arg | Args], OutputStream, !IO) :-
         io.write_string(OutputStream, ", ", !IO)
     ;
         Arg = term.big_integer(Base, Integer),
-        ( source_integer_to_int(Base, Integer, Int) ->
+        ( if source_integer_to_int(Base, Integer, Int) then
             io.write_int(OutputStream, Int, !IO),
             io.write_string(OutputStream, ", ", !IO)
-        ;
+        else
             unexpected($module, $pred, "integer too big")
         )
     ;
@@ -1363,9 +1363,9 @@ maybe_append_data_table(Globals, yes, OutputFileName, DataFileName, !IO) :-
     maybe_write_string(Verbose, "done.\n", !IO),
     (
         Result = ok(ExitStatus),
-        ( ExitStatus = 0 ->
+        ( if ExitStatus = 0 then
             true
-        ;
+        else
             Msg = "An error occurred while concatenating" ++
                 "fact table output files.",
             write_error_pieces_plain(Globals, [words(Msg)], !IO),
@@ -1671,19 +1671,19 @@ do_build_hash_table(Globals, FactNum, InputArgNum, HashTableName, !TableNum,
             IsPrimaryTable = no,
             map.lookup(FactMap, Index, HashIndex)
         ),
-        (
+        ( if
             Facts1 = []
-        ->
+        then
             % If only one matching index, insert a pointer to the fact table
             % entry into the current hash table.
             !:HashList = [hash_entry(Arg, fact(HashIndex), -1) | !.HashList]
-        ;
+        else if
             % See if there are any more input arguments.
             NextInputArgNum = InputArgNum + 1,
             Fact = sort_file_line(InputArgs, _, _),
             N = NextInputArgNum + 1,
             list.drop(N, InputArgs, _)
-        ->
+        then
             !:TableNum = !.TableNum + 1,
             ThisTableNum = !.TableNum,
             build_hash_table_lower_levels(Globals, FactNum, NextInputArgNum,
@@ -1691,13 +1691,13 @@ do_build_hash_table(Globals, FactNum, InputArgNum, HashTableName, !TableNum,
                 Facts, FactMap, !IO),
             !:HashList = [hash_entry(Arg,
                 hash_table(ThisTableNum, HashTableName), -1) | !.HashList]
-        ;
+        else if
             IsPrimaryTable = no
-        ->
+        then
             % Insert all matching indexes into the hash table.
             hash_list_insert_many(Facts, IsPrimaryTable, FactMap,
                 FactNum, InputArgNum, !HashList)
-        ;
+        else
             % Insert only the first matching index into the hash table.
             !:HashList = [hash_entry(Arg, fact(HashIndex), -1) | !.HashList]
         )
@@ -1730,18 +1730,18 @@ top_level_collect_matching_facts_2(Fact, !MatchingFacts, MaybeNextFact,
     read_sort_file_line(Infos, ArgModes, ModuleInfo, MaybeSortFileLine, !IO),
     (
         MaybeSortFileLine = yes(Fact1),
-        (
+        ( if
             Fact1 = sort_file_line([Arg1 | _], _, _),
             Fact  = sort_file_line([Arg  | _], _, _)
-        ->
-            ( Arg = Arg1 ->
+        then
+            ( if Arg = Arg1 then
                 top_level_collect_matching_facts_2(Fact,
                     [Fact1 | !.MatchingFacts], !:MatchingFacts, MaybeNextFact,
                     Infos, ArgModes, ModuleInfo, !IO)
-            ;
+            else
                 MaybeNextFact = yes(Fact1)
             )
-        ;
+        else
             unexpected($module, $pred, "no input args")
         )
     ;
@@ -1771,18 +1771,18 @@ lower_level_collect_matching_facts_2(Fact, [Fact0 | Facts0], Matching0,
         Matching, Remaining, InputArgNum) :-
     Fact0 = sort_file_line(InputArgs0, _, _),
     Fact  = sort_file_line(InputArgs,  _, _),
-    (
+    ( if
         list.drop(InputArgNum, InputArgs0, [Arg0 | _]),
         list.drop(InputArgNum, InputArgs,  [Arg  | _])
-    ->
-        ( Arg = Arg0 ->
+    then
+        ( if Arg = Arg0 then
             lower_level_collect_matching_facts_2(Fact, Facts0,
                 [Fact0 | Matching0], Matching, Remaining, InputArgNum)
-        ;
+        else
             Matching = Matching0,
             Remaining = [Fact0 | Facts0]
         )
-    ;
+    else
         unexpected($module, $pred, "not enough input args")
     ).
 
@@ -1804,7 +1804,7 @@ update_fact_map(FactNum, [Fact | Facts], !FactMap) :-
 
 split_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, Line0,
         SortFileLine) :-
-    (
+    ( if
         string.sub_string_search(Line0, "~", Pos0),
         string.split(Line0, Pos0, InputArgsString, Line1),
         string.first_char(Line1, _, Line2),
@@ -1813,7 +1813,7 @@ split_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, Line0,
         string.first_char(Line3, _, Line4),
         string.remove_suffix(Line4, "\n", OutputArgsString),
         string.to_int(IndexString, Index0)
-    ->
+    then
         split_key_to_arg_strings(InputArgsString, InputArgStrings),
         get_input_args_list(FactArgInfos, ArgModes, ModuleInfo,
             InputArgStrings, InputArgs),
@@ -1828,7 +1828,7 @@ split_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, Line0,
             OutputArgs = []
         ),
         SortFileLine = sort_file_line(InputArgs, Index0, OutputArgs)
-    ;
+    else
         unexpected($module, $pred, "sort file format incorrect")
     ).
 
@@ -1839,17 +1839,17 @@ split_sort_file_line(FactArgInfos, ArgModes, ModuleInfo, Line0,
 :- pred split_key_to_arg_strings(string::in, list(string)::out) is det.
 
 split_key_to_arg_strings(Key0, ArgStrings) :-
-    ( Key0 = "" ->
+    ( if Key0 = "" then
         ArgStrings = []
-    ;
-        (
+    else
+        ( if
             string.sub_string_search(Key0, ":", Pos),
             string.split(Key0, Pos, ArgString, Key1),
             string.first_char(Key1, _, Key2)
-        ->
+        then
             split_key_to_arg_strings(Key2, ArgStrings0),
             ArgStrings = [ArgString | ArgStrings0]
-        ;
+        else
             unexpected($module, $pred, "sort file key format is incorrect")
         )
     ).
@@ -1864,7 +1864,7 @@ get_input_args_list([], [_ | _], _, _, _) :-
     unexpected($module, $pred, "too many argmodes").
 get_input_args_list([Info | Infos], [Mode | Modes], ModuleInfo, ArgStrings0,
         Args) :-
-    ( mode_is_fully_input(ModuleInfo, Mode) ->
+    ( if mode_is_fully_input(ModuleInfo, Mode) then
         (
             ArgStrings0 = [ArgString | ArgStrings],
             Info = fact_arg_info(Type, _, _),
@@ -1875,7 +1875,7 @@ get_input_args_list([Info | Infos], [Mode | Modes], ModuleInfo, ArgStrings0,
             ArgStrings0 = [],
             unexpected($module, $pred, "not enough ArgStrings")
         )
-    ;
+    else
         % This argument is not input so skip it and try the next one.
         get_input_args_list(Infos, Modes, ModuleInfo, ArgStrings0, Args)
     ).
@@ -1885,7 +1885,9 @@ get_input_args_list([Info | Infos], [Mode | Modes], ModuleInfo, ArgStrings0,
 
 get_output_args_list([], _, []).
 get_output_args_list([Info | Infos], ArgStrings0, Args) :-
-    ( Info = fact_arg_info(Type, _, yes) ->
+    Info = fact_arg_info(Type, _, IsOutput),
+    (
+        IsOutput = yes,
         % This is an output argument (for some mode of the predicate).
         (
             ArgStrings0 = [ArgString | ArgStrings],
@@ -1897,7 +1899,8 @@ get_output_args_list([Info | Infos], ArgStrings0, Args) :-
             unexpected($module, $pred, "not enough ArgStrings")
         )
     ;
-        % Not an output argument.
+        IsOutput = no,
+        % Not an output argument for any mode of the predicate.
         get_output_args_list(Infos, ArgStrings0, Args)
     ).
 
@@ -1905,25 +1908,25 @@ get_output_args_list([Info | Infos], ArgStrings0, Args) :-
     is det.
 
 convert_key_string_to_arg(ArgString, Type, Arg) :-
-    ( Type = builtin_type(builtin_type_int) ->
-        ( string.base_string_to_int(36, ArgString, I) ->
+    ( if Type = builtin_type(builtin_type_int) then
+        ( if string.base_string_to_int(36, ArgString, I) then
             Arg = term.integer(I)
-        ;
+        else
             unexpected($module, $pred, "could not convert string to int")
         )
-    ; Type = builtin_type(builtin_type_string) ->
+    else if Type = builtin_type(builtin_type_string) then
         string.to_char_list(ArgString, Cs0),
         remove_sort_file_escapes(Cs0, [], Cs1),
         list.reverse(Cs1, Cs),
         string.from_char_list(Cs, S),
         Arg = term.string(S)
-    ; Type = builtin_type(builtin_type_float) ->
-        ( string.to_float(ArgString, F) ->
+    else if Type = builtin_type(builtin_type_float) then
+        ( if string.to_float(ArgString, F) then
             Arg = term.float(F)
-        ;
+        else
             unexpected($module, $pred, "could not convert string to float")
         )
-    ;
+    else
         unexpected($module, $pred, "unsupported type")
     ).
 
@@ -1934,18 +1937,18 @@ convert_key_string_to_arg(ArgString, Type, Arg) :-
 
 remove_sort_file_escapes([], Cs, Cs).
 remove_sort_file_escapes([C0 | Cs0], In, Out) :-
-    ( C0 = ('\\') ->
+    ( if C0 = ('\\') then
         (
             Cs0 = [C1 | Cs1],
-            ( C1 = ('\\') ->
+            ( if C1 = ('\\') then
                 C = ('\\')
-            ; C1 = ('c') ->
+            else if C1 = ('c') then
                 C = (':')
-            ; C1 = ('t') ->
+            else if C1 = ('t') then
                 C = ('~')
-            ; C1 = ('n') ->
+            else if C1 = ('n') then
                 C = ('\n')
-            ;
+            else
                 unexpected($module, $pred, "something went wrong")
             ),
             remove_sort_file_escapes(Cs1, [C | In], Out)
@@ -1953,7 +1956,7 @@ remove_sort_file_escapes([C0 | Cs0], In, Out) :-
             Cs0 = [],
             unexpected($module, $pred, "something went wrong")
         )
-    ;
+    else
         remove_sort_file_escapes(Cs0, [C0 | In], Out)
     ).
 
@@ -1962,9 +1965,9 @@ remove_sort_file_escapes([C0 | Cs0], In, Out) :-
 
 fact_get_arg_and_index(Fact, InputArgNum, Arg, Index) :-
     Fact = sort_file_line(InputArgs, Index, _),
-    ( list.drop(InputArgNum, InputArgs, [Arg0 | _]) ->
-        Arg = Arg0
-    ;
+    ( if list.drop(InputArgNum, InputArgs, [ArgPrime | _]) then
+        Arg = ArgPrime
+    else
         unexpected($module, $pred, "not enough input args")
     ).
 
@@ -1991,9 +1994,9 @@ calculate_hash_table_size(Globals, NumEntries, HashTableSize) :-
 calculate_hash_table_size_2(_, [], _) :-
     unexpected($module, $pred, "hash table too large (max size 2147483647)").
 calculate_hash_table_size_2(N, [P | Ps], H) :-
-    ( P > N ->
+    ( if P > N then
         H = P
-    ;
+    else
         calculate_hash_table_size_2(N, Ps, H)
     ).
 
@@ -2007,9 +2010,9 @@ calculate_hash_table_size_2(N, [P | Ps], H) :-
 hash_table_insert(Entry, HashSize, !HashTable) :-
     Entry = hash_entry(Key, Index, _),
     fact_table_hash(HashSize, Key, HashVal),
-    ( hash_table_search(!.HashTable, HashVal, _) ->
+    ( if hash_table_search(!.HashTable, HashVal, _) then
         hash_table_insert_2(HashVal, _, Index, Key, !HashTable)
-    ;
+    else
         hash_table_set(HashVal, hash_entry(Key, Index, -1), !HashTable)
     ).
 
@@ -2017,19 +2020,19 @@ hash_table_insert(Entry, HashSize, !HashTable) :-
     hash_table::in, hash_table::out) is det.
 
 hash_table_insert_2(HashVal, FreeVal, Index0, Key0, !HashTable) :-
-    (
+    ( if
         hash_table_search(!.HashTable, HashVal, hash_entry(Key1, Index1, Next))
-    ->
-        ( Next = -1 ->
+    then
+        ( if Next = -1 then
             get_free_hash_slot(!.HashTable, HashVal, FreeVal),
             hash_table_set(FreeVal,
                 hash_entry(Key0, Index0, -1), !HashTable),
             hash_table_set(HashVal,
                 hash_entry(Key1, Index1, FreeVal), !HashTable)
-        ;
+        else
             hash_table_insert_2(Next, FreeVal, Index0, Key0, !HashTable)
         )
-    ;
+    else
         unexpected($module, $pred, "hash table entry empty")
     ).
 
@@ -2049,9 +2052,9 @@ get_free_hash_slot(HashTable, Start, Free) :-
 
 get_free_hash_slot_2(HashTable, Start, Max, Free) :-
     Next = (Start + 1) mod Max,
-    ( hash_table_search(HashTable, Next, _) ->
+    ( if hash_table_search(HashTable, Next, _) then
         get_free_hash_slot_2(HashTable, Next, Max, Free)
-    ;
+    else
         Free = Next
     ).
 
@@ -2063,21 +2066,21 @@ get_free_hash_slot_2(HashTable, Start, Max, Free) :-
 :- pred fact_table_hash(int::in, fact_arg::in, int::out) is det.
 
 fact_table_hash(HashSize, Key, HashVal) :-
-    ( Key = term.string(String) ->
+    ( if Key = term.string(String) then
         % XXX This method of hashing strings may not work if cross-compiling
         % between systems that have different character representations.
         string.to_char_list(String, Cs),
         list.map((pred(C::in, I::out) is det :- char.to_int(C, I)), Cs, Ns)
-    ; Key = term.integer(Int) ->
+    else if Key = term.integer(Int) then
         int.abs(Int, N),
         Ns = [N]
-    ; Key = term.float(Float) ->
+    else if Key = term.float(Float) then
         % XXX This method of hashing floats may not work cross-compiling
         % between architectures that have different floating-point
         % representations.
         int.abs(float.hash(Float), N),
         Ns = [N]
-    ;
+    else
         unexpected($module, $pred, "unsupported type in key")
     ),
     fact_table_hash_2(HashSize, Ns, 0, HashVal).
@@ -2167,23 +2170,21 @@ struct MR_fact_table_hash_table_%c %s%d = {
     is det.
 
 write_hash_table_2(HashTable, CurrIndex, MaxIndex, !IO) :-
-    ( CurrIndex > MaxIndex ->
+    ( if CurrIndex > MaxIndex then
         true
-    ;
+    else
         io.write_string("\t{ ", !IO),
-        (
-            hash_table_search(HashTable, CurrIndex,
-                hash_entry(Key, Index, Next))
-        ->
-            ( Key = term.string(String) ->
+        ( if hash_table_search(HashTable, CurrIndex, HashEntry) then
+            HashEntry = hash_entry(Key, Index, Next),
+            ( if Key = term.string(String) then
                 io.write_string("""", !IO),
                 c_util.output_quoted_string(String, !IO),
                 io.write_string("""", !IO)
-            ; Key = term.integer(Int) ->
+            else if Key = term.integer(Int) then
                 io.write_int(Int, !IO)
-            ; Key = term.float(Float) ->
+            else if Key = term.float(Float) then
                 io.write_float(Float, !IO)
-            ;
+            else
                 unexpected($module, $pred, "unsupported type")
             ),
             (
@@ -2196,7 +2197,7 @@ write_hash_table_2(HashTable, CurrIndex, MaxIndex, !IO) :-
                     [s(H), i(I)], !IO)
             ),
             io.write_int(Next, !IO)
-        ;
+        else
             io.write_string(
                 "0, MR_FACT_TABLE_MAKE_TAGGED_POINTER(NULL, 0), -1 ", !IO)
         ),
@@ -2211,9 +2212,9 @@ write_hash_table_2(HashTable, CurrIndex, MaxIndex, !IO) :-
 
 get_hash_table_type(HashTable, TableType) :-
     HashTable = hash_table(_Size, Map),
-    ( map.is_empty(Map) ->
+    ( if map.is_empty(Map) then
         unexpected($module, $pred, "empty hash table")
-    ;
+    else
         get_hash_table_type_2(Map, 0, TableType)
     ).
 
@@ -2221,20 +2222,20 @@ get_hash_table_type(HashTable, TableType) :-
     is det.
 
 get_hash_table_type_2(Map, Index, TableType) :-
-    ( map.search(Map, Index, Entry) ->
+    ( if map.search(Map, Index, Entry) then
         Entry = hash_entry(Key, _, _),
-        ( Key = term.string(_) ->
+        ( if Key = term.string(_) then
             TableType = 's'
-        ; Key = term.integer(_) ->
+        else if Key = term.integer(_) then
             TableType = 'i'
-        ; Key = term.float(_) ->
+        else if Key = term.float(_) then
             TableType = 'f'
-        ; Key = term.atom(_) ->
+        else if Key = term.atom(_) then
             TableType = 'a'
-        ;
+        else
             unexpected($module, $pred, "invalid term")
         )
-    ;
+    else
         get_hash_table_type_2(Map, Index + 1, TableType)
     ).
 
@@ -2260,9 +2261,9 @@ write_fact_table_pointer_array(NumFacts, FactTableSize,
 
 write_fact_table_pointer_array_2(CurrFact, NumFacts, FactTableSize,
         StructName, OutputStream, !IO) :-
-    ( CurrFact >= NumFacts ->
+    ( if CurrFact >= NumFacts then
         true
-    ;
+    else
         io.format(OutputStream, "\t%s%d,\n",
             [s(StructName), i(CurrFact)], !IO),
         NextFact = CurrFact + FactTableSize,
@@ -2305,49 +2306,49 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
     proc_info_interface_determinism(ProcInfo, Determinism),
     fact_table_mode_type(ArgModes, ModuleInfo, ModeType),
     make_fact_table_identifier(PredName, Identifier),
-    (
+    ( if
         ModeType = all_out,
         Determinism = detism_multi
-    ->
+    then
         generate_multidet_code(Identifier, PragmaVars, ProcID, ArgTypes,
             ModuleInfo, FactTableSize, ProcCode, ExtraCode)
-    ;
+    else if
         ModeType = all_out,
         Determinism = detism_cc_multi
-    ->
+    then
         generate_cc_multi_code(Identifier, PragmaVars, ProcCode),
         ExtraCode = ""
-    ;
+    else if
         ModeType = all_in,
         Determinism = detism_semi
-    ->
+    then
         generate_all_in_code(Identifier, PragmaVars, ProcID, ArgTypes,
             ModuleInfo, FactTableSize, ProcCode),
         ExtraCode = ""
-    ;
+    else if
         ModeType = in_out,
         ( Determinism = detism_semi
         ; Determinism = detism_cc_non
         )
-    ->
+    then
         generate_semidet_in_out_code(Identifier, PragmaVars, ProcID, ArgTypes,
             ModuleInfo, FactTableSize, ProcCode),
         ExtraCode = ""
-    ;
+    else if
         ModeType = in_out,
         Determinism = detism_non,
         ProcID = PrimaryProcID
-    ->
+    then
         generate_primary_nondet_code(Identifier, PragmaVars, ProcID, ArgTypes,
             ModuleInfo, FactTableSize, ProcCode, ExtraCode)
-    ;
+    else if
         ModeType = in_out,
         Determinism = detism_non,
         ProcID \= PrimaryProcID
-    ->
+    then
         generate_secondary_nondet_code(Identifier, PragmaVars, ProcID,
             ArgTypes, ModuleInfo, FactTableSize, ProcCode, ExtraCode)
-    ;
+    else
         % There is a determinism error in this procedure which will be
         % reported later on when the inferred determinism is compared
         % to the declared determinism.  So all we need to do here is
@@ -2615,28 +2616,28 @@ generate_hash_code([pragma_var(_, Name, Mode, _) | PragmaVars], [Type | Types],
         ModuleInfo, LabelName, LabelNum, PredName, ArgNum,
         FactTableSize, C_Code) :-
     NextArgNum = ArgNum + 1,
-    ( mode_is_fully_input(ModuleInfo, Mode) ->
-        ( Type = builtin_type(builtin_type_int) ->
+    ( if mode_is_fully_input(ModuleInfo, Mode) then
+        ( if Type = builtin_type(builtin_type_int) then
             generate_hash_int_code(Name, LabelName, LabelNum,
                 PredName, PragmaVars, Types, ModuleInfo,
                 NextArgNum, FactTableSize, C_Code0)
-        ; Type = builtin_type(builtin_type_float) ->
+        else if Type = builtin_type(builtin_type_float) then
             generate_hash_float_code(Name, LabelName, LabelNum,
                 PredName, PragmaVars, Types, ModuleInfo,
                 NextArgNum, FactTableSize, C_Code0)
-        ; Type = builtin_type(builtin_type_string) ->
+        else if Type = builtin_type(builtin_type_string) then
             generate_hash_string_code(Name, LabelName, LabelNum,
                 PredName, PragmaVars, Types, ModuleInfo,
                 NextArgNum, FactTableSize, C_Code0)
-        ;
+        else
             unexpected($module, $pred, "unsupported type")
         ),
         generate_hash_code(PragmaVars, Types, ModuleInfo, LabelName,
             LabelNum + 1, PredName, NextArgNum, FactTableSize,
             C_Code1),
         string.append(C_Code0, C_Code1, C_Code)
-    ;
-        % skip non-input arguments
+    else
+        % Skip non-input arguments.
         generate_hash_code(PragmaVars, Types, ModuleInfo, LabelName,
             LabelNum, PredName, NextArgNum, FactTableSize, C_Code)
     ).
@@ -2790,12 +2791,12 @@ generate_hash_lookup_code(VarName, LabelName, LabelNum, ComparisonKind,
         FactTableName = "mercury__" ++ PredName ++ "_fact_table",
         generate_test_condition_code(FactTableName, PragmaVars, Types,
             ModuleInfo, ArgNum, yes, FactTableSize, CondCode),
-        ( CondCode \= "" ->
+        ( if CondCode = "" then
+            TestCode = ""
+        else
             TestCodeTemplate = "if (%s\t\t\t) goto failure_code_%s;\n",
             string.format(TestCodeTemplate, [s(CondCode), s(LabelName)],
                 TestCode)
-        ;
-            TestCode = ""
         )
     ;
         CheckKeys = no,
@@ -2823,20 +2824,20 @@ generate_fact_lookup_code(PredName,
         [pragma_var(_, VarName, Mode, _) | PragmaVars],
         [Type | Types], ModuleInfo, ArgNum, FactTableSize, C_Code) :-
     NextArgNum = ArgNum + 1,
-    ( mode_is_fully_output(ModuleInfo, Mode) ->
+    ( if mode_is_fully_output(ModuleInfo, Mode) then
         TableEntryTemplate = "mercury__%s_fact_table[ind/%d][ind%%%d].V_%d",
         string.format(TableEntryTemplate,
             [s(PredName), i(FactTableSize), i(FactTableSize), i(ArgNum)],
             TableEntry),
-        ( Type = builtin_type(builtin_type_string) ->
+        ( if Type = builtin_type(builtin_type_string) then
             mode_get_insts(ModuleInfo, Mode, _, FinalInst),
-            ( inst_is_not_partly_unique(ModuleInfo, FinalInst) ->
+            ( if inst_is_not_partly_unique(ModuleInfo, FinalInst) then
                 % Cast MR_ConstString -> MR_Word -> MR_String to avoid gcc
                 % warning "assignment discards `const'".
                 Template = "\t\tMR_make_aligned_string(%s, " ++
                     "(MR_String) (MR_Word) %s);\n",
                 string.format(Template, [s(VarName), s(TableEntry)], C_Code0)
-            ;
+            else
                 % Unique modes need to allow destructive
                 % update so we need to make a copy of the
                 % string on the heap.
@@ -2851,14 +2852,14 @@ generate_fact_lookup_code(PredName,
                     [s(TableEntry), s(VarName), s(VarName), s(TableEntry)],
                     C_Code0)
             )
-            ;
+        else
             Template = "\t\t%s = %s;\n",
             string.format(Template, [s(VarName), s(TableEntry)], C_Code0)
         ),
         generate_fact_lookup_code(PredName, PragmaVars, Types,
             ModuleInfo, NextArgNum, FactTableSize, C_Code1),
         string.append(C_Code0, C_Code1, C_Code)
-    ;
+    else
         % Skip non-output arguments.
         generate_fact_lookup_code(PredName, PragmaVars, Types,
             ModuleInfo, NextArgNum, FactTableSize, C_Code)
@@ -3018,33 +3019,33 @@ generate_argument_vars_code(PragmaVars, Types, ModuleInfo, DeclCode, InputCode,
 
 generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, Module, DeclCode,
         InputCode, OutputCode, SaveRegsCode, GetRegsCode, !NumInputArgs) :-
-    (
+    ( if
         PragmaVars0 = [],
         ArgInfos0 = [],
         Types0 = []
-    ->
+    then
         DeclCode = "",
         InputCode = "",
         OutputCode = "",
         SaveRegsCode = "",
         GetRegsCode = ""
-    ;
+    else if
         PragmaVars0 = [pragma_var(_, VarName, _, _) | PragmaVars],
         ArgInfos0 = [arg_info(Loc, ArgMode) | ArgInfos],
         Types0 = [Type | Types]
-    ->
+    then
         generate_arg_decl_code(VarName, Type, Module, DeclCode0),
-        ( ArgMode = top_in ->
+        ( if ArgMode = top_in then
             !:NumInputArgs = !.NumInputArgs + 1,
             generate_arg_input_code(VarName, Type, Loc, !.NumInputArgs,
                 InputCode0, SaveRegsCode0, GetRegsCode0),
             OutputCode0 = ""
-        ; ArgMode = top_out ->
+        else if ArgMode = top_out then
             generate_arg_output_code(VarName, Type, Loc, OutputCode0),
             InputCode0 = "",
             SaveRegsCode0 = "",
             GetRegsCode0 = ""
-        ;
+        else
             unexpected($module, $pred, "invalid mode")
         ),
         generate_argument_vars_code_2(PragmaVars, ArgInfos, Types, Module,
@@ -3055,7 +3056,7 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, Module, DeclCode,
         OutputCode = OutputCode0 ++ OutputCode1,
         SaveRegsCode = SaveRegsCode0 ++ SaveRegsCode1,
         GetRegsCode = GetRegsCode0 ++ GetRegsCode1
-    ;
+    else
         unexpected($module, $pred, "list length mismatch")
     ).
 
@@ -3127,12 +3128,12 @@ generate_test_condition_code(FactTableName, [PragmaVar | PragmaVars],
         [Type | Types], ModuleInfo, ArgNum, !.IsFirstInputArg,
         FactTableSize, CondCode) :-
     PragmaVar = pragma_var(_, Name, Mode, _),
-    ( mode_is_fully_input(ModuleInfo, Mode) ->
-        ( Type = builtin_type(builtin_type_string) ->
+    ( if mode_is_fully_input(ModuleInfo, Mode) then
+        ( if Type = builtin_type(builtin_type_string) then
             Template = "strcmp(%s[ind/%d][ind%%%d].V_%d, %s) != 0\n",
             string.format(Template, [s(FactTableName), i(FactTableSize),
                 i(FactTableSize), i(ArgNum), s(Name)], CondCode0)
-        ;
+        else
             Template = "%s[ind/%d][ind%%%d].V_%d != %s\n",
             string.format(Template, [s(FactTableName), i(FactTableSize),
                 i(FactTableSize), i(ArgNum), s(Name)], CondCode0)
@@ -3145,7 +3146,7 @@ generate_test_condition_code(FactTableName, [PragmaVar | PragmaVars],
             CondCode1 = CondCode0
         ),
         !:IsFirstInputArg = no
-    ;
+    else
         CondCode1 = ""
     ),
     generate_test_condition_code(FactTableName, PragmaVars, Types, ModuleInfo,

@@ -91,14 +91,14 @@ generate_disj(CodeModel, Goals, DisjGoalInfo, Code, !CI, !CLD) :-
         ),
         AddTrailOps = should_add_trail_ops(!.CI, GoalInfo),
         AddRegionOps = should_add_region_ops(!.CI, GoalInfo),
-        (
+        ( if
             CodeModel = model_non,
             is_lookup_disj(AddTrailOps, AddRegionOps, ResumeVars, Goals,
                 DisjGoalInfo, LookupDisjInfo, !CI, !.CLD, AfterPrepPos)
-        ->
+        then
             reset_to_position(AfterPrepPos, !.CI, !:CLD),
             generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD)
-        ;
+        else
             generate_real_disj(AddTrailOps, AddRegionOps, CodeModel,
                 ResumeVars, Goals, DisjGoalInfo, Code, !CI, !CLD)
         )
@@ -416,17 +416,17 @@ generate_real_disj(AddTrailOps, AddRegionOps, CodeModel, ResumeVars, Goals,
             RbmmInfo = rbmm_goal_info(DisjCreatedRegionVars,
                 DisjRemovedRegionVars, _DisjCarriedRegionVars,
                 DisjAllocRegionVars, _DisjUsedRegionVars),
-            (
+            ( if
                 set.is_empty(DisjCreatedRegionVars),
                 set.is_empty(DisjRemovedRegionVars),
                 set.is_empty(DisjAllocRegionVars)
-            ->
+            then
                 BeforeEnterRegionCode = empty,
                 LaterRegionCode = empty,
                 LastRegionCode = empty,
                 RegionStackVarsToRelease = [],
                 RegionCommitDisjCleanup = no_commit_disj_region_cleanup
-            ;
+            else
                 % We only need region support for backtracking if some disjunct
                 % performs some region operations (allocation or removal).
                 maybe_create_disj_region_frame_semi(AddRegionOps,
@@ -528,11 +528,11 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
             Goal = hlds_goal(GoalExpr0, GoalInfo),
 
             % Save hp if it needs to be saved and hasn't been saved previously.
-            (
+            ( if
                 ReclaimHeap = yes,
                 goal_may_allocate_heap(Goal),
                 MaybeHpSlot0 = no
-            ->
+            then
                 save_hp(SaveHpCode, HpSlot, !CI, !CLD),
                 MaybeHpSlot = yes(HpSlot),
 
@@ -551,7 +551,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
                     "cannot use same code for saving hp"),
                 expect(unify(HpSlot, BranchHpSlot), $module, $pred,
                     "cannot allocate same slot for saved hp")
-            ;
+            else
                 SaveHpCode = empty,
                 MaybeHpSlot = MaybeHpSlot0,
                 BranchStart = BranchStart0

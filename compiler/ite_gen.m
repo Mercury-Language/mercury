@@ -10,8 +10,8 @@
 % Main authors: conway, fjh, zs.
 %
 % The predicates of this module generate code for if-then-elses, and for
-% negations (which are cut-down versions of if-then-elses, since not(G)
-% is equivalent to (G -> fail ; true)).
+% negations (which are cut-down versions of if-then-elses, since "not(G)"
+% is equivalent to "if G then fail else true").
 %
 %---------------------------------------------------------------------------%
 
@@ -77,12 +77,12 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         !CI, !CLD) :-
     CondGoal0 = hlds_goal(CondExpr, CondInfo0),
     CondCodeModel = goal_info_get_code_model(CondInfo0),
-    (
+    ( if
         CodeModel = model_non,
         CondCodeModel \= model_non
-    ->
+    then
         EffCodeModel = model_semi
-    ;
+    else
         EffCodeModel = CodeModel
     ),
 
@@ -102,12 +102,12 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
         ReclaimOption),
-    (
+    ( if
         ReclaimOption = yes,
         goal_may_allocate_heap(CondGoal)
-    ->
+    then
         ReclaimHeap = yes
-    ;
+    else
         ReclaimHeap = no
     ),
     maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI, !CLD),
@@ -122,13 +122,13 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     ;
         AddTrailOps = add_trail_ops,
         get_opt_trail_ops(!.CI, OptTrailOps),
-        (
+        ( if
             OptTrailOps = yes,
             goal_cannot_modify_trail(CondInfo0) = yes,
             CondCodeModel \= model_non
-        ->
+        then
             IteTrailOps = do_not_add_trail_ops
-        ;
+        else
             IteTrailOps = add_trail_ops
         )
     ),
@@ -191,13 +191,13 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
 
     goal_info_get_store_map(IteGoalInfo, StoreMap),
     get_instmap(!.CLD, EndCondInstMap),
-    ( instmap_is_unreachable(EndCondInstMap) ->
+    ( if instmap_is_unreachable(EndCondInstMap) then
         % If the instmap indicates we cannot reach the then part,
         % do not attempt to generate it (may cause aborts).
         ThenTraceCode = empty,
         ThenCode = empty,
         map.init(BranchEndStoreMap)
-    ;
+    else
         % Generate the then branch.
         maybe_generate_internal_event_code(ThenGoal, IteGoalInfo,
             ThenTraceCode, !CI, !CLD),
@@ -212,11 +212,11 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     generate_resume_point(ResumePoint, ResumeCode, !CI, !CLD),
 
     trace [compiletime(flag("codegen_goal")), io(!S)] (
-        ( should_trace_code_gen(!.CI) ->
+        ( if should_trace_code_gen(!.CI) then
             ResumeInstrs = cord.list(ResumeCode),
             io.write_string("\nRESUME INSTRS:\n", !S),
             write_instrs(ResumeInstrs, no, yes, !S)
-        ;
+        else
             true
         )
     ),
@@ -234,11 +234,11 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
         !.CI, !.CLD),
 
     trace [compiletime(flag("codegen_goal")), io(!S)] (
-        ( should_trace_code_gen(!.CI) ->
+        ( if should_trace_code_gen(!.CI) then
             ElseSaveInstrs = cord.list(ElseSaveCode),
             io.write_string("\nBRANCH END INSTRS:\n", !S),
             write_instrs(ElseSaveInstrs, no, yes, !S)
-        ;
+        else
             true
         )
     ),
@@ -303,13 +303,13 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI, !CLD) :-
 
     % For a negated simple test, we can generate better code than the general
     % mechanism, because we don't have to flush the cache.
-    (
+    ( if
         CodeModel = model_semi,
         GoalExpr = unify(_, _, _, simple_test(L, R), _),
         failure_is_direct_branch(!.CLD, CodeAddr),
         get_globals(!.CI, Globals),
         globals.lookup_bool_option(Globals, simple_neg, yes)
-    ->
+    then
         % Because we are generating the negated goal ourselves, we need to
         % apply the pre- and post-goal updates that would normally be applied
         % by code_gen.generate_goal.
@@ -319,11 +319,11 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI, !CLD) :-
         produce_variable(L, CodeL, ValL, !.CI, !CLD),
         produce_variable(R, CodeR, ValR, !.CI, !CLD),
         Type = variable_type(!.CI, L),
-        ( Type = builtin_type(builtin_type_string) ->
+        ( if Type = builtin_type(builtin_type_string) then
             Op = str_eq
-        ; Type = builtin_type(builtin_type_float) ->
+        else if Type = builtin_type(builtin_type_float) then
             Op = float_eq
-        ;
+        else
             Op = eq
         ),
         TestCode = singleton(
@@ -332,7 +332,7 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI, !CLD) :-
         ),
         leave_simple_neg(GoalInfo, SimpleNeg, !.CI, !CLD),
         Code = CodeL ++ CodeR ++ TestCode
-    ;
+    else
         generate_negation_general(CodeModel, Goal, NotGoalInfo,
             ResumeVars, ResumeLocs, Code, !CI, !CLD)
     ).
@@ -357,12 +357,12 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
     get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
         ReclaimHeapOnFailure),
-    (
+    ( if
         ReclaimHeapOnFailure = yes,
         goal_may_allocate_heap(Goal)
-    ->
+    then
         ReclaimHeap = yes
-    ;
+    else
         ReclaimHeap = no
     ),
     maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI, !CLD),
@@ -514,19 +514,19 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         PNegElseCode) :-
     globals.lookup_bool_option(Globals, use_minimal_model_stack_copy_pneg,
         UseMinimalModelStackCopyPNeg),
-    (
+    ( if
         UseMinimalModelStackCopyPNeg = yes,
         not goal_info_has_feature(GoalInfo, feature_will_not_call_mm_tabled)
-    ->
+    then
         Context = goal_info_get_context(GoalInfo),
         term.context_file(Context, File),
         term.context_line(Context, Line),
-        (
+        ( if
             File \= "",
             Line > 0
-        ->
+        then
             CtxtStr = "\"" ++ File ++ ":" ++ int_to_string(Line) ++ "\""
-        ;
+        else
             CtxtStr = "NULL"
         ),
 
@@ -558,7 +558,7 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
             llds_instr(foreign_proc_code([], PNegElseComponents,
                 proc_will_not_call_mercury, no, no, no, no, no, yes, MD), "")
         )
-    ;
+    else
         PNegCondCode = empty,
         PNegThenCode = empty,
         PNegElseCode = empty
@@ -614,11 +614,11 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                 ModuleInfo, set.init, RemovedAtEndOfThen),
             set.difference(CondRemovedRegionVars, RemovedAtEndOfThen,
                 NeedToBeProtectedRegionVars),
-            (
+            ( if
                 set.is_empty(CondCreatedRegionVars),
                 set.is_empty(NeedToBeProtectedRegionVars),
                 set.is_empty(CondAllocRegionVars)
-            ->
+            then
                 % When no region-related operations occur in the condition,
                 % we do not need the backtracking support code.
                 CondCode = empty,
@@ -626,7 +626,7 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
                 ElseCode = empty,
                 StackVars = [],
                 MaybeEmbeddedStackFrameId = no
-            ;
+            else
                 find_regions_removed_at_start_of_goals(ElseGoals, ModuleInfo,
                     set.init, RemovedAtStartOfElse),
 
@@ -765,16 +765,16 @@ maybe_create_ite_region_frame(IteRegionOps, CondGoalInfo, CondGoals, ElseGoals,
 find_regions_removed_at_start_of_goals([], _, !Removed).
 find_regions_removed_at_start_of_goals([Goal | Goals], ModuleInfo, !Removed) :-
     Goal = hlds_goal(GoalExpr, _),
-    (
+    ( if
         GoalExpr = plain_call(PredId, _ProcId, Args, _Builtin, _UC, _SymName),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_module(PredInfo) = mercury_region_builtin_module,
         pred_info_name(PredInfo) = remove_region_pred_name,
         Args = [RegionVar]
-    ->
+    then
         set.insert(RegionVar, !Removed),
         find_regions_removed_at_start_of_goals(Goals, ModuleInfo, !Removed)
-    ;
+    else
         true
     ).
 
@@ -805,9 +805,9 @@ ite_alloc_snapshot_regions(_, _, _, _, [], empty, _CI, !CLD).
 ite_alloc_snapshot_regions(NumLval, AddrLval, EmbeddedStackFrameId,
         RemovedVars, [RegionVar | RegionVars], Code ++ Codes, CI, !CLD) :-
     produce_variable(RegionVar, ProduceVarCode, RegionVarRval, CI, !CLD),
-    ( set.member(RegionVar, RemovedVars) ->
+    ( if set.member(RegionVar, RemovedVars) then
         RemovedAtStartOfElse = removed_at_start_of_else
-    ;
+    else
         RemovedAtStartOfElse = not_removed_at_start_of_else
     ),
     SaveCode = singleton(

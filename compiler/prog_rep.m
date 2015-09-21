@@ -123,7 +123,7 @@ encode_oisu_type_procs(ModuleInfo, [Pair | Pairs], NumOISUTypes, Bytes) :-
         TypeCtorSymName = unqualified(_),
         unexpected($module, $pred, "unqualified type_ctor name")
     ),
-    ( TypeCtorModuleName = ModuleName ->
+    ( if TypeCtorModuleName = ModuleName then
         encode_len_string(TypeCtorName, TypeCtorNameBytes),
         Preds = oisu_preds(CreatorPreds, MutatorPreds, DestructorPreds),
 
@@ -150,7 +150,7 @@ encode_oisu_type_procs(ModuleInfo, [Pair | Pairs], NumOISUTypes, Bytes) :-
 
         NumOISUTypes = 1 + TailNumOISUTypes,
         Bytes = HeadBytes ++ TailBytes
-    ;
+    else
         NumOISUTypes = TailNumOISUTypes,
         Bytes = TailBytes
     ).
@@ -161,10 +161,10 @@ encode_oisu_proc(ModuleInfo, PredId, BytesCord) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, Procs),
-    ( Procs = [ProcId - _ProcInfo] ->
+    ( if Procs = [ProcId - _ProcInfo] then
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
         encode_string_proc_label(ProcLabel, BytesCord)
-    ;
+    else
         unexpected($module, $pred, "OISU pred should have exactly one proc")
     ).
 
@@ -271,11 +271,11 @@ represent_proc_as_bytecodes(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
 represent_var_table_as_bytecode(IncludeVarNameTable, IncludeVarTypes,
         VarTypes, VarNumMap, VarNumRep, Bytes, !StringTable, !TypeTable) :-
     map.foldl(max_var_num, VarNumMap, 0) = MaxVarNum,
-    ( MaxVarNum =< 127 ->
+    ( if MaxVarNum =< 127 then
         VarNumRep = var_num_1_byte
-    ; MaxVarNum =< 32767 ->
+    else if MaxVarNum =< 32767 then
         VarNumRep = var_num_2_bytes
-    ;
+    else
         VarNumRep = var_num_4_bytes
     ),
     var_flag_byte(VarNumRep, IncludeVarNameTable, IncludeVarTypes, FlagByte),
@@ -335,9 +335,9 @@ max_var_num(_, VarNum1 - _, VarNum2) = Max :-
 
 encode_var_name_table_entry_1_byte(_ProgVar, VarNum - VarName,
         !NumVars, !VarNameTableBytes, !StringTable) :-
-    ( compiler_introduced_varname(VarName) ->
+    ( if compiler_introduced_varname(VarName) then
         true
-    ;
+    else
         !:NumVars = !.NumVars + 1,
         VarBytes = [VarNum],
         encode_string_as_table_offset(VarName, VarNameBytes, !StringTable),
@@ -350,9 +350,9 @@ encode_var_name_table_entry_1_byte(_ProgVar, VarNum - VarName,
 
 encode_var_name_table_entry_2_byte(_ProgVar, VarNum - VarName,
         !NumVars, !VarNameTableBytes, !StringTable) :-
-    ( compiler_introduced_varname(VarName) ->
+    ( if compiler_introduced_varname(VarName) then
         true
-    ;
+    else
         !:NumVars = !.NumVars + 1,
         encode_short_det(VarNum, VarBytes),
         encode_string_as_table_offset(VarName, VarNameBytes, !StringTable),
@@ -365,9 +365,9 @@ encode_var_name_table_entry_2_byte(_ProgVar, VarNum - VarName,
 
 encode_var_name_table_entry_4_byte(_ProgVar, VarNum - VarName,
         !NumVars, !VarNameTableBytes, !StringTable) :-
-    ( compiler_introduced_varname(VarName) ->
+    ( if compiler_introduced_varname(VarName) then
         true
-    ;
+    else
         !:NumVars = !.NumVars + 1,
         encode_int32_det(VarNum, VarBytes),
         encode_string_as_table_offset(VarName, VarNameBytes, !StringTable),
@@ -486,9 +486,9 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
         goal_to_goal_rep(Info, Instmap0, SubGoal, SubGoalRep),
         OuterDetism = goal_info_get_determinism(GoalInfo),
         InnerDetism = goal_info_get_determinism(SubGoalInfo),
-        ( InnerDetism = OuterDetism ->
+        ( if InnerDetism = OuterDetism then
             MaybeCut = scope_is_no_cut
-        ;
+        else
             MaybeCut = scope_is_cut
         ),
         GoalExprRep = scope_rep(SubGoalRep, MaybeCut)
@@ -519,19 +519,21 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 MaybeArgsRep = map(map_maybe(var_to_var_rep(Info)), MaybeArgs),
                 (
                     Uni = construct(_, _, _, _, _, _, _),
-                    ( list.all_true(lhs_final_is_ground(Info), ArgModes) ->
+                    ( if
+                        list.all_true(lhs_final_is_ground(Info), ArgModes)
+                    then
                         AtomicGoalRep = unify_construct_rep(VarRep, ConsIdRep,
                             ArgsRep)
-                    ;
+                    else
                         AtomicGoalRep = partial_construct_rep(VarRep,
                             ConsIdRep, MaybeArgsRep)
                     )
                 ;
                     Uni = deconstruct(_, _, _, _, _, _),
-                    ( list.member(Var, BoundVars) ->
+                    ( if list.member(Var, BoundVars) then
                         AtomicGoalRep = partial_deconstruct_rep(VarRep,
                             ConsIdRep, MaybeArgsRep)
-                    ;
+                    else
                         AtomicGoalRep = unify_deconstruct_rep(VarRep,
                             ConsIdRep, ArgsRep)
                     )
@@ -561,9 +563,9 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 AtomicGoalRep = event_call_rep(EventName, ArgsRep)
             ;
                 GenericCall = cast(_),
-                ( ArgsRep = [InputArgRep, OutputArgRep] ->
+                ( if ArgsRep = [InputArgRep, OutputArgRep] then
                     AtomicGoalRep = cast_rep(OutputArgRep, InputArgRep)
-                ;
+                else
                     unexpected($module, $pred, "cast arity != 2")
                 )
             )
@@ -813,9 +815,9 @@ rhs_is_input(Info, (_ - RHSInitialInst) -> (_ - RHSFinalInst)) :-
 filter_input_args(_, [], [], []).
 filter_input_args(Info, [Mode | Modes], [Var | Vars],
         [MaybeVar | MaybeVars]) :-
-    ( rhs_is_input(Info, Mode) ->
+    ( if rhs_is_input(Info, Mode) then
         MaybeVar = yes(Var)
-    ;
+    else
         MaybeVar = no
     ),
     filter_input_args(Info, Modes, Vars, MaybeVars).
@@ -833,9 +835,9 @@ goal_info_to_atomic_goal_rep_fields(GoalInfo, Instmap0, Info, FileName, LineNo,
         BoundVars) :-
     Context = goal_info_get_context(GoalInfo),
     term.context_file(Context, FileName0),
-    ( FileName0 = Info ^ pri_filename ->
+    ( if FileName0 = Info ^ pri_filename then
         FileName = ""
-    ;
+    else
         FileName = FileName0
     ),
     term.context_line(Context, LineNo),
@@ -973,9 +975,9 @@ encode_head_var_func(Info, InitialInstmap, InstmapDelta, Var) = Bytes :-
     encode_var_rep_func(Info, var_to_var_rep(Info, Var)) = VarBytes,
     ModuleInfo = Info ^ pri_module_info,
     instmap_lookup_var(InitialInstmap, Var, InitialInst),
-    ( instmap_delta_search_var(InstmapDelta, Var, FinalInstPrime) ->
+    ( if instmap_delta_search_var(InstmapDelta, Var, FinalInstPrime) then
         FinalInst = FinalInstPrime
-    ;
+    else
         % If the variable is not in the instmap delta, then its instantiation
         % cannot possibly change.
         FinalInst = InitialInst
@@ -986,17 +988,17 @@ encode_head_var_func(Info, InitialInstmap, InstmapDelta, Var) = Bytes :-
 :- func inst_to_byte(module_info, mer_inst) = int.
 
 inst_to_byte(ModuleInfo, MerInst) = Byte :-
-    (
+    ( if
         ( MerInst = free
         ; MerInst = free(_)
         )
-    ->
+    then
         InstRep = ir_free_rep
-    ;
+    else if
         inst_is_ground(ModuleInfo, MerInst)
-    ->
+    then
         InstRep = ir_ground_rep
-    ;
+    else
         InstRep = ir_other_rep
     ),
     inst_representation(InstRep, Byte).

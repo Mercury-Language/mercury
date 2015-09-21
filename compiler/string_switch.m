@@ -126,11 +126,11 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     list.reverse(RevTargets, Targets),
 
     % Generate the code for the hash table lookup.
-    ( NumCollisions = 0 ->
+    ( if NumCollisions = 0 then
         NumColumns = 1,
         RowElemTypes = [lt_string],
         ArrayElemTypes = [scalar_elem_string]
-    ;
+    else
         NumColumns = 2,
         RowElemTypes = [lt_string, lt_integer],
         ArrayElemTypes = [scalar_elem_string, scalar_elem_int]
@@ -165,22 +165,22 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
 
 construct_string_hash_jump_vectors(Slot, TableSize, HashSlotMap, FailLabel,
         NumCollisions, !RevTableRows, !RevMaybeTargets) :-
-    ( Slot = TableSize ->
+    ( if Slot = TableSize then
         true
-    ;
-        ( map.search(HashSlotMap, Slot, SlotInfo) ->
+    else
+        ( if map.search(HashSlotMap, Slot, SlotInfo) then
             SlotInfo = string_hash_slot(String, Next, CaseLabel),
             NextSlotRval = const(llconst_int(Next)),
             StringRval = const(llconst_string(String)),
             Target = CaseLabel
-        ;
+        else
             StringRval = const(llconst_int(0)),
             NextSlotRval = const(llconst_int(-2)),
             Target = FailLabel
         ),
-        ( NumCollisions = 0 ->
+        ( if NumCollisions = 0 then
             TableRow = [StringRval]
-        ;
+        else
             TableRow = [StringRval, NextSlotRval]
         ),
         !:RevTableRows = [TableRow | !.RevTableRows],
@@ -211,9 +211,9 @@ represent_tagged_cases_in_string_switch(Params, [Case | Cases], !:StrsLabels,
 
 add_to_strs_labels(Label, TaggedConsId, !StrsLabels) :-
     TaggedConsId = tagged_cons_id(_ConsId, Tag),
-    ( Tag = string_tag(String) ->
+    ( if Tag = string_tag(String) then
         !:StrsLabels = [String - Label | !.StrsLabels]
-    ;
+    else
         unexpected($module, $pred, "non-string tag")
     ).
 
@@ -271,12 +271,12 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     % types, so it is ok to lie for OutElemTypes.
     list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
     DummyOutRvals = list.map(default_value_for_type, OutTypes),
-    ( NumCollisions = 0 ->
+    ( if NumCollisions = 0 then
         NumPrevColumns = 1,
         NumColumns = 1 + NumOutVars,
         ArrayElemTypes = [scalar_elem_string | OutElemTypes],
         RowElemTypes = [lt_string | OutTypes]
-    ;
+    else
         NumPrevColumns = 2,
         NumColumns = 2 + NumOutVars,
         ArrayElemTypes = [scalar_elem_string, scalar_elem_int | OutElemTypes],
@@ -342,21 +342,21 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
 
 construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
         NumCollisions, DummyOutRvals, !RevRows) :-
-    ( Slot = TableSize ->
+    ( if Slot = TableSize then
         true
-    ;
-        ( map.search(HashSlotMap, Slot, SlotInfo) ->
+    else
+        ( if map.search(HashSlotMap, Slot, SlotInfo) then
             SlotInfo = string_hash_slot(String, Next, OutVarRvals),
             NextSlotRval = const(llconst_int(Next)),
             StringRval = const(llconst_string(String))
-        ;
+        else
             StringRval = const(llconst_int(0)),
             NextSlotRval = const(llconst_int(-2)),
             OutVarRvals = DummyOutRvals
         ),
-        ( NumCollisions = 0 ->
+        ( if NumCollisions = 0 then
             Row = [StringRval | OutVarRvals]
-        ;
+        else
             Row = [StringRval, NextSlotRval | OutVarRvals]
         ),
         !:RevRows = [Row | !.RevRows],
@@ -395,13 +395,13 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     % For the LLDS backend, array indexing ops don't need the element
     % types, so it is ok to lie for OutElemTypes.
     list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
-    ( NumCollisions = 0 ->
+    ( if NumCollisions = 0 then
         NumColumns = 3 + NumOutVars,
         NumPrevColumns = 1,
         ArrayElemTypes = [scalar_elem_string,
             scalar_elem_int, scalar_elem_int | OutElemTypes],
         MainRowTypes = [lt_string, lt_integer, lt_integer | OutTypes]
-    ;
+    else
         NumColumns = 4 + NumOutVars,
         NumPrevColumns = 2,
         ArrayElemTypes = [scalar_elem_string, scalar_elem_int,
@@ -486,10 +486,10 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
         DummyOutRvals, NumOutVars, NumCollisions,
         !RevMainRows, !.LaterNextRow, !LaterSolnArray,
         !OneSolnCaseCount, !SeveralSolnsCaseCount) :-
-    ( Slot = TableSize ->
+    ( if Slot = TableSize then
         true
-    ;
-        ( map.search(HashSlotMap, Slot, SlotInfo) ->
+    else
+        ( if map.search(HashSlotMap, Slot, SlotInfo) then
             SlotInfo = string_hash_slot(String, Next, Soln),
             StringRval = const(llconst_string(String)),
             NextSlotRval = const(llconst_int(Next)),
@@ -501,9 +501,9 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
                 % this case; the second ZeroRval is a dummy that won't be
                 % referenced.
                 MainRowTail = [ZeroRval, ZeroRval | OutVarRvals],
-                ( NumCollisions = 0 ->
+                ( if NumCollisions = 0 then
                     MainRow = [StringRval | MainRowTail]
-                ;
+                else
                     MainRow = [StringRval, NextSlotRval | MainRowTail]
                 )
             ;
@@ -516,23 +516,23 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
                 FirstRowRval = const(llconst_int(FirstRowOffset)),
                 LastRowRval = const(llconst_int(LastRowOffset)),
                 MainRowTail = [FirstRowRval, LastRowRval | FirstSolnRvals],
-                ( NumCollisions = 0 ->
+                ( if NumCollisions = 0 then
                     MainRow = [StringRval | MainRowTail]
-                ;
+                else
                     MainRow = [StringRval, NextSlotRval | MainRowTail]
                 ),
                 !:LaterNextRow = !.LaterNextRow + NumLaterSolns,
                 !:LaterSolnArray = !.LaterSolnArray ++ from_list(LaterSolns)
             )
-        ;
+        else
             % The zero in the StringRval slot means that this bucket is empty.
             StringRval = const(llconst_int(0)),
             NextSlotRval = const(llconst_int(-2)),
             ZeroRval = const(llconst_int(0)),
             MainRowTail = [ZeroRval, ZeroRval | DummyOutRvals],
-            ( NumCollisions = 0 ->
+            ( if NumCollisions = 0 then
                 MainRow = [StringRval | MainRowTail]
-            ;
+            else
                 MainRow = [StringRval, NextSlotRval | MainRowTail]
             )
         ),
@@ -608,11 +608,11 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
     FailLabel = Info ^ shsi_fail_label,
     FailCode = Info ^ shsi_fail_code,
 
-    ( NumCollisions = 0 ->
-        ( NumColumns = 1 ->
+    ( if NumCollisions = 0 then
+        ( if NumColumns = 1 then
             BaseReg = SlotReg,
             MultiplyInstrs = []
-        ;
+        else
             BaseReg = RowStartReg,
             MultiplyInstrs = [
                 llds_instr(assign(RowStartReg,
@@ -642,7 +642,7 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
             llds_instr(label(FailLabel),
                 "handle the failure of the table search")
         ]) ++ FailCode
-    ;
+    else
         Code = from_list([
             llds_instr(assign(SlotReg,
                 binop(bitwise_and, unop(HashOp, VarRval),

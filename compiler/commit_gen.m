@@ -46,14 +46,14 @@
 
 generate_scope(Reason, OuterCodeModel, OuterGoalInfo,
         ForwardLiveVarsBeforeGoal, Goal, Code, !CI, !CLD) :-
-    (
+    ( if
         Reason = trace_goal(_, MaybeTraceRuntimeCond, _, _, _),
         MaybeTraceRuntimeCond = yes(_)
-    ->
+    then
         % These goals should have been transformed into other forms of goals
         % by simplify.m at the end of semantic analysis.
         unexpected($module, $pred, "trace_goal")
-    ;
+    else
         generate_commit(OuterCodeModel, OuterGoalInfo,
             ForwardLiveVarsBeforeGoal, Goal, Code, !CI, !CLD)
     ).

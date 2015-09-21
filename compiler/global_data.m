@@ -390,14 +390,14 @@ do_add_scalar_static_cell(TypedArgs, CellType, CellValue, DataId, !Info) :-
         CellGroupMap0 = !.Info ^ sci_scalar_cell_group_map,
         % We do not want to use bimap.search_insert here, since this search
         % usually succeeds.
-        ( bimap.search(TypeNumMap0, CellType, OldTypeNum) ->
+        ( if bimap.search(TypeNumMap0, CellType, OldTypeNum) then
             TypeNum = OldTypeNum,
-            ( map.search(CellGroupMap0, TypeNum, !:CellGroup) ->
+            ( if map.search(CellGroupMap0, TypeNum, !:CellGroup) then
                 true
-            ;
+            else
                 !:CellGroup = init_scalar_cell_group
             )
-        ;
+        else
             TypeNumCounter0 = !.Info ^ sci_type_counter,
             counter.allocate(TypeRawNum, TypeNumCounter0, TypeNumCounter),
             TypeNum = type_num(TypeRawNum),
@@ -438,9 +438,9 @@ do_add_scalar_static_cell(TypedArgs, CellType, CellValue, DataId, !Info) :-
         ;
             InsertCommonData = no,
             MembersMap0 = !.CellGroup ^ scalar_cell_group_members,
-            ( bimap.search(MembersMap0, Args, DataIdPrime) ->
+            ( if bimap.search(MembersMap0, Args, DataIdPrime) then
                 DataId = DataIdPrime
-            ;
+            else
                 CellNumCounter0 = !.CellGroup ^ scalar_cell_counter,
                 counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
                 !CellGroup ^ scalar_cell_counter := CellNumCounter,
@@ -505,21 +505,21 @@ find_general_llds_types_in_cell(UnboxFloat, [_Type | Types], [Rval | Rvals],
     %
     % If there are any other similar cases, they should be added here.
     % The value of Type may be useful in such code.
-    (
+    ( if
         NaturalType = LLDSType0
-    ->
+    then
         LLDSType = LLDSType0
-    ;
+    else if
         NaturalType = lt_integer,
         LLDSType0 = lt_data_ptr
-    ->
+    then
         LLDSType = lt_data_ptr
-    ;
+    else if
         NaturalType = lt_data_ptr,
         LLDSType0 = lt_integer
-    ->
+    then
         LLDSType = lt_data_ptr
-    ;
+    else
         fail
     ),
     find_general_llds_types_in_cell(UnboxFloat, Types, Rvals,
@@ -541,14 +541,14 @@ add_vector_static_cell(LLDSTypes, VectorData, DataId, !Info) :-
     some [!CellGroup] (
         TypeNumMap0 = !.Info ^ sci_cell_type_num_map,
         CellGroupMap0 = !.Info ^ sci_vector_cell_group_map,
-        ( bimap.search(TypeNumMap0, CellType, TypeNumPrime) ->
+        ( if bimap.search(TypeNumMap0, CellType, TypeNumPrime) then
             TypeNum = TypeNumPrime,
-            ( map.search(CellGroupMap0, TypeNum, !:CellGroup) ->
+            ( if map.search(CellGroupMap0, TypeNum, !:CellGroup) then
                 true
-            ;
+            else
                 !:CellGroup = init_vector_cell_group
             )
-        ;
+        else
             TypeNumCounter0 = !.Info ^ sci_type_counter,
             counter.allocate(TypeNum0, TypeNumCounter0, TypeNumCounter),
             TypeNum = type_num(TypeNum0),
@@ -631,17 +631,17 @@ add_one_vector_static_cell(TypeNum, CellType, CellNum,
     common_cell_type::out, common_cell_value::out) is det.
 
 compute_cell_type(TypedArgs, CellType, CellValue) :-
-    (
+    ( if
         TypedArgs = [typed_rval(FirstArg, FirstArgType) | LaterTypedArgs],
         threshold_group_types(FirstArgType, [FirstArg], LaterTypedArgs,
             TypeGroups, TypeAndArgGroups),
         OldLength = list.length(TypedArgs),
         NewLength = list.length(TypeAndArgGroups),
         OldLength >= NewLength * 2
-    ->
+    then
         CellType = grouped_args_type(TypeGroups),
         CellValue = grouped_args_value(TypeAndArgGroups)
-    ;
+    else
         CellType = plain_type(typed_rvals_project_types(TypedArgs)),
         CellValue = plain_value(TypedArgs)
     ).
@@ -659,10 +659,10 @@ threshold_group_types(CurType, RevArgsSoFar, LaterArgsTypes, TypeGroups,
         TypeAndArgGroups = [TypeAndArgGroup]
     ;
         LaterArgsTypes = [typed_rval(NextArg, NextType) | MoreArgsTypes],
-        ( CurType = NextType ->
+        ( if CurType = NextType then
             threshold_group_types(CurType, [NextArg | RevArgsSoFar],
                 MoreArgsTypes, TypeGroups, TypeAndArgGroups)
-        ;
+        else
             threshold_group_types(NextType, [NextArg], MoreArgsTypes,
                 TypeGroupsTail, TypeAndArgGroupsTail),
             make_arg_groups(CurType, RevArgsSoFar, TypeGroup, TypeAndArgGroup),
@@ -675,10 +675,10 @@ threshold_group_types(CurType, RevArgsSoFar, LaterArgsTypes, TypeGroups,
     pair(llds_type, int)::out, common_cell_arg_group::out) is det.
 
 make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
-    ( RevArgs = [Arg] ->
+    ( if RevArgs = [Arg] then
         TypeGroup = Type - 1,
         TypeAndArgGroup = common_cell_ungrouped_arg(Type, Arg)
-    ;
+    else
         list.length(RevArgs, NumArgs),
         list.reverse(RevArgs, Args),
         TypeGroup = Type - NumArgs,
@@ -695,13 +695,13 @@ rval_type_as_arg(UnboxedFloat, ArgWidth, Rval) = Type :-
 
 natural_type(UnboxFloat, ArgWidth, Rval, Type) :-
     llds.rval_type(Rval, Type0),
-    (
+    ( if
         Type0 = lt_float,
         UnboxFloat = do_not_have_unboxed_floats,
         ArgWidth \= double_word
-    ->
+    then
         Type = lt_data_ptr
-    ;
+    else
         Type = Type0
     ).
 
@@ -815,10 +815,10 @@ merge_static_cell_infos(SCIa, SCIb, SCI, Remap) :-
 
 merge_cell_type_num_maps(CellType, BTypeNum,
         !TypeCounter, !CellTypeNumMap, !TypeNumRemap) :-
-    ( bimap.search(!.CellTypeNumMap, CellType, ATypeNum) ->
+    ( if bimap.search(!.CellTypeNumMap, CellType, ATypeNum) then
         % A type also in GlobalDataA.
         map.det_insert(BTypeNum, ATypeNum, !TypeNumRemap)
-    ;
+    else
         % A type not in GlobalDataA.
         counter.allocate(N, !TypeCounter),
         NewTypeNum = type_num(N),
@@ -849,9 +849,9 @@ merge_scalar_cell_group_maps(TypeNumRemap,
 merge_scalar_cell_group_maps_2(TypeNumRemap, BTypeNum, BScalarCellGroup,
         !ScalarCellGroupMap, !Remap) :-
     map.lookup(TypeNumRemap, BTypeNum, TypeNum),
-    ( map.search(!.ScalarCellGroupMap, TypeNum, ScalarCellGroupPrime) ->
+    ( if map.search(!.ScalarCellGroupMap, TypeNum, ScalarCellGroupPrime) then
         ScalarCellGroup0 = ScalarCellGroupPrime
-    ;
+    else
         % Could do this more efficiently.
         ScalarCellGroup0 = scalar_cell_group(counter.init(0), bimap.init, [])
     ),
@@ -888,10 +888,10 @@ merge_scalar_cell_groups(TypeNum, GroupA, GroupB, GroupAB, GroupRemap) :-
 
 merge_scalar_cell_groups_2(TypeNum, ArrayB, ArrayAB,
         Rvals, BDataId, !GroupMembers, !GroupRemap) :-
-    ( bimap.search(!.GroupMembers, Rvals, DataId) ->
+    ( if bimap.search(!.GroupMembers, Rvals, DataId) then
         % Seen this list of rvals before in the group.
         map.det_insert(BDataId, DataId, !GroupRemap)
-    ;
+    else
         % Not seen this list of rvals before in the group.
         (
             BDataId = scalar_common_data_id(_, BCellNum),
@@ -1316,18 +1316,18 @@ remap_rval_const(Remap, Const0, Const) :-
         (
             DataId0 = scalar_common_data_id(TypeNum0, _CellNum),
             Remap = static_cell_remap_info(TypeNumRemap, ScalarCellGroupRemap),
-            ( map.contains(TypeNumRemap, TypeNum0) ->
+            ( if map.contains(TypeNumRemap, TypeNum0) then
                 map.lookup(ScalarCellGroupRemap, TypeNum0, ScalarCellGroup),
                 map.lookup(ScalarCellGroup, DataId0, DataId)
-            ;
+            else
                 DataId = DataId0
             )
         ;
             DataId0 = vector_common_data_id(TypeNum0, CellNum),
             Remap = static_cell_remap_info(TypeNumRemap, _),
-            ( map.search(TypeNumRemap, TypeNum0, TypeNum) ->
+            ( if map.search(TypeNumRemap, TypeNum0, TypeNum) then
                 DataId = vector_common_data_id(TypeNum, CellNum)
-            ;
+            else
                 DataId = DataId0
             )
         ;

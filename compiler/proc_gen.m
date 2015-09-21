@@ -221,8 +221,8 @@ interleave(L, reverse(As), reverse(Bs)) :-
     interleave_2(L, [], As, [], Bs).
 
 interleave_2([], !As, !Bs).
-interleave_2([H|T], As0, As, Bs0, Bs) :-
-    interleave_2(T, Bs0, Bs, [H|As0], As).
+interleave_2([H | T], As0, As, Bs0, Bs) :-
+    interleave_2(T, Bs0, Bs, [H | As0], As).
 
 %-----------------------------------------------------------------------------%
 
@@ -336,12 +336,10 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
     proc_info_get_has_parallel_conj(ProcInfo1, HasParConj),
     globals.lookup_bool_option(Globals, parallel, Parallel),
     ( if
-        % Make the containing goal map availble if we need it, it is needed
-        % for tracing or for parallel conjunctions.
-        (
-            given_trace_level_is_none(TraceLevel) = no
-        ;
-            HasParConj = has_parallel_conj
+        % Make the containing goal map available if we need it.
+        % It is needed for execution tracing, and for parallel conjunctions.
+        ( given_trace_level_is_none(TraceLevel) = no
+        ; HasParConj = has_parallel_conj
         )
     then
         (

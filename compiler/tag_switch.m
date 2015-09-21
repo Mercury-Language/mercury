@@ -228,36 +228,36 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     globals.lookup_int_option(Globals, dense_switch_size, DenseSwitchSize),
     globals.lookup_int_option(Globals, try_switch_size, TrySwitchSize),
     globals.lookup_int_option(Globals, binary_switch_size, BinarySwitchSize),
-    ( PtagsUsed >= DenseSwitchSize ->
+    ( if PtagsUsed >= DenseSwitchSize then
         PrimaryMethod = jump_table
-    ; PtagsUsed >= BinarySwitchSize ->
+    else if PtagsUsed >= BinarySwitchSize then
         PrimaryMethod = binary_search
-    ; PtagsUsed >= TrySwitchSize ->
+    else if PtagsUsed >= TrySwitchSize then
         PrimaryMethod = try_chain
-    ;
+    else
         PrimaryMethod = try_me_else_chain
     ),
 
-    (
+    ( if
         PrimaryMethod \= jump_table,
         PtagsUsed >= 2,
         globals.lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
         (
             NumRealRegs = 0
         ;
-            ( PtagReg = reg(reg_r, PtagRegNo) ->
+            ( if PtagReg = reg(reg_r, PtagRegNo) then
                 PtagRegNo =< NumRealRegs
-            ;
+            else
                 unexpected($module, $pred, "improper reg in tag switch")
             )
         )
-    ->
+    then
         PtagCode = singleton(
             llds_instr(assign(PtagReg, unop(tag, VarRval)),
                 "compute tag to switch on")
         ),
         PtagRval = lval(PtagReg)
-    ;
+    else
         PtagCode = empty,
         PtagRval = unop(tag, VarRval)
     ),
@@ -307,12 +307,12 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     ;
         PrimaryMethod = try_chain,
         order_ptags_by_count(PtagCountMap, PtagCaseMap, PtagCaseList0),
-        (
+        ( if
             CanFail = cannot_fail,
             PtagCaseList0 = [MostFreqCase | OtherCases]
-        ->
+        then
             PtagCaseList = OtherCases ++ [MostFreqCase]
-        ;
+        else
             PtagCaseList = PtagCaseList0
         ),
         generate_primary_try_chain(PtagCaseList, PtagRval, StagReg, VarRval,
@@ -535,17 +535,17 @@ generate_primary_try_chain_other_ptags([OtherPtag | OtherPtags],
 generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
         VarRval, MaybeFailLabel, PtagCountMap, Targets, Code,
         !CaseLabelMap, !CI) :-
-    ( CurPrimary > MaxPrimary ->
+    ( if CurPrimary > MaxPrimary then
         expect(unify(PtagGroups, []), $module, $pred,
             "PtagGroups != [] when Cur > Max"),
         Targets = [],
         Code = empty
-    ;
+    else
         NextPrimary = CurPrimary + 1,
-        (
+        ( if
             PtagGroups = [PtagCaseEntry | PtagGroupsTail],
             PtagCaseEntry = ptag_case_entry(CurPrimary, PrimaryInfo)
-        ->
+        then
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
             map.lookup(PtagCountMap, CurPrimary, CountInfo),
             CountInfo = StagLocPrime - MaxSecondary,
@@ -563,7 +563,7 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
                 TailTargets, TailCode, !CaseLabelMap, !CI),
             Targets = [yes(NewLabel) | TailTargets],
             Code = LabelCode ++ ThisTagCode ++ TailCode
-        ;
+        else
             generate_primary_jump_table(PtagGroups, NextPrimary, MaxPrimary,
                 StagReg, VarRval, MaybeFailLabel, PtagCountMap,
                 TailTargets, TailCode, !CaseLabelMap, !CI),
@@ -586,7 +586,7 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
 
 generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
         VarRval, MaybeFailLabel, PtagCountMap, Code, !CaseLabelMap, !CI) :-
-    ( MinPtag = MaxPtag ->
+    ( if MinPtag = MaxPtag then
         CurPrimary = MinPtag,
         (
             PtagGroups = [],
@@ -621,7 +621,7 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
             unexpected($module, $pred,
                 "caselist not singleton or empty when binary search ends")
         )
-    ;
+    else
         LowRangeEnd = (MinPtag + MaxPtag) // 2,
         HighRangeStart = LowRangeEnd + 1,
         InLowGroup = (pred(PtagGroup::in) is semidet :-
@@ -681,9 +681,9 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
             unexpected($module, $pred, "no goal for non-shared tag")
         ;
             StagGoalList = [StagGoal],
-            ( StagGoal = -1 - CaseLabel ->
+            ( if StagGoal = -1 - CaseLabel then
                 generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
-            ;
+            else
                 unexpected($module, $pred,
                     "badly formed goal for non-shared tag")
             )
@@ -705,13 +705,13 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
         globals.lookup_int_option(Globals, binary_switch_size,
             BinarySwitchSize),
         globals.lookup_int_option(Globals, try_switch_size, TrySwitchSize),
-        ( MaxSecondary >= DenseSwitchSize ->
+        ( if MaxSecondary >= DenseSwitchSize then
             SecondaryMethod = jump_table
-        ; MaxSecondary >= BinarySwitchSize ->
+        else if MaxSecondary >= BinarySwitchSize then
             SecondaryMethod = binary_search
-        ; MaxSecondary >= TrySwitchSize ->
+        else if MaxSecondary >= TrySwitchSize then
             SecondaryMethod = try_chain
-        ;
+        else
             SecondaryMethod = try_me_else_chain
         ),
 
@@ -726,37 +726,37 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
             Comment = "compute local sec tag to switch on"
         ),
 
-        (
+        ( if
             SecondaryMethod \= jump_table,
             MaxSecondary >= 2,
             globals.lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
             (
                 NumRealRegs = 0
             ;
-                ( StagReg = reg(reg_r, StagRegNo) ->
+                ( if StagReg = reg(reg_r, StagRegNo) then
                     StagRegNo =< NumRealRegs
-                ;
+                else
                     unexpected($module, $pred, "improper reg in tag switch")
                 )
             )
-        ->
+        then
             StagCode = singleton(
                 llds_instr(assign(StagReg, OrigStagRval), Comment)
             ),
             StagRval = lval(StagReg)
-        ;
+        else
             StagCode = empty,
             StagRval = OrigStagRval
         ),
         (
             MaybeFailLabel = yes(FailLabel),
-            (
+            ( if
                 list.length(StagGoalList, StagGoalCount),
                 FullGoalCount = MaxSecondary + 1,
                 FullGoalCount = StagGoalCount
-            ->
+            then
                 MaybeSecFailLabel = no
-            ;
+            else
                 MaybeSecFailLabel = yes(FailLabel)
             )
         ;
@@ -909,17 +909,17 @@ generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
 
 generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
         MaybeFailLabel, Targets) :-
-    ( CurSecondary > MaxSecondary ->
+    ( if CurSecondary > MaxSecondary then
         expect(unify(CaseList, []), $module, $pred,
             "caselist not empty when reaching limiting secondary tag"),
         Targets = []
-    ;
+    else
         NextSecondary = CurSecondary + 1,
-        ( CaseList = [CurSecondary - CaseLabel | CaseListTail] ->
+        ( if CaseList = [CurSecondary - CaseLabel | CaseListTail] then
             generate_secondary_jump_table(CaseListTail, NextSecondary,
                 MaxSecondary, MaybeFailLabel, OtherTargets),
             Targets = [yes(CaseLabel) | OtherTargets]
-        ;
+        else
             generate_secondary_jump_table(CaseList, NextSecondary,
                 MaxSecondary, MaybeFailLabel, OtherTargets),
             Targets = [MaybeFailLabel | OtherTargets]
@@ -939,7 +939,7 @@ generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
 
 generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
         MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
-    ( MinStag = MaxStag ->
+    ( if MinStag = MaxStag then
         CurSec = MinStag,
         (
             StagGoals = [],
@@ -965,7 +965,7 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             unexpected($module, $pred,
                 "goallist not singleton or empty when binary search ends")
         )
-    ;
+    else
         LowRangeEnd = (MinStag + MaxStag) // 2,
         HighRangeStart = LowRangeEnd + 1,
         InLowGroup = (pred(StagGoal::in) is semidet :-
