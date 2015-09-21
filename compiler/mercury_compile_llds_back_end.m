@@ -443,9 +443,7 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
             "% Generating call continuation information for ",
             PredId, ProcId, !.HLDS, !IO)
     ),
-    Instructions = CProc ^ cproc_code,
-    continuation_info.maybe_process_proc_llds(Instructions, PredProcId,
-        !.HLDS, !GlobalData).
+    maybe_collect_call_continuations_in_cproc(!.HLDS, CProc, !GlobalData).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -636,7 +634,7 @@ maybe_generate_stack_layouts(HLDS, LLDS, Verbose, Stats, !GlobalData, !IO) :-
     maybe_write_string(Verbose,
         "% Generating call continuation information...", !IO),
     maybe_flush_output(Verbose, !IO),
-    continuation_info.maybe_process_llds(LLDS, HLDS, !GlobalData),
+    maybe_collect_call_continuations_in_cprocs(HLDS, LLDS, !GlobalData),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 

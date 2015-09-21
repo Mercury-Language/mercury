@@ -194,10 +194,11 @@
 
 :- type comp_gen_c_module
     --->    comp_gen_c_module(
+                % The name of this C module.
                 cgcm_name               :: string,
-                                        % The name of this C module.
+
+                % The code.
                 cgcm_procs              :: list(c_procedure)
-                                        % The code.
             ).
 
 :- type c_procedure
@@ -211,14 +212,14 @@
                 % The pred_proc_id of this code.
                 cproc_id                :: pred_proc_id,
 
+                % Proc_label of this procedure.
+                cproc_proc_label        :: proc_label,
+
                 % The code model of the procedure.
                 cproc_code_model        :: code_model,
 
                 % The code for this procedure.
                 cproc_code              :: list(instruction),
-
-                % Proc_label of this procedure.
-                cproc_proc_label        :: proc_label,
 
                 % Source for new label numbers.
                 cproc_label_nums        :: counter,

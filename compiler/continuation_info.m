@@ -353,10 +353,11 @@
                                     % has ever succeeded.
     ;       slot_lval(lval).
 
-    % Call maybe_process_proc_llds on the code of every procedure in the list.
+    % Call maybe_collect_call_continuations_in_cproc on every procedure
+    % in the list.
     %
-:- pred maybe_process_llds(list(c_procedure)::in, module_info::in,
-    global_data::in, global_data::out) is det.
+:- pred maybe_collect_call_continuations_in_cprocs(module_info::in,
+    list(c_procedure)::in, global_data::in, global_data::out) is det.
 
     % Check whether this procedure ought to have any layout structures
     % generated for it. If yes, then update the global_data to
@@ -364,8 +365,8 @@
     % the information about a continuation label includes the variables
     % live at that label depends on the values of options.
     %
-:- pred maybe_process_proc_llds(list(instruction)::in, pred_proc_id::in,
-    module_info::in, global_data::in, global_data::out) is det.
+:- pred maybe_collect_call_continuations_in_cproc(module_info::in,
+    c_procedure::in, global_data::in, global_data::out) is det.
 
     % Check whether the given procedure should have at least (a) a basic
     % stack layout, and (b) a procedure id layout generated for it.
@@ -422,23 +423,24 @@
 
 %-----------------------------------------------------------------------------%
 
-maybe_process_llds([], _, !GlobalData).
-maybe_process_llds([Proc | Procs], ModuleInfo, !GlobalData) :-
-    PredProcId = Proc ^ cproc_id,
-    Instrs = Proc ^ cproc_code,
-    maybe_process_proc_llds(Instrs, PredProcId, ModuleInfo, !GlobalData),
-    maybe_process_llds(Procs, ModuleInfo, !GlobalData).
+maybe_collect_call_continuations_in_cprocs(_, [], !GlobalData).
+maybe_collect_call_continuations_in_cprocs(ModuleInfo, [CProc | CProcs],
+        !GlobalData) :-
+    maybe_collect_call_continuations_in_cproc(ModuleInfo, CProc,
+        !GlobalData),
+    maybe_collect_call_continuations_in_cprocs(ModuleInfo, CProcs,
+        !GlobalData).
 
-maybe_process_proc_llds(Instructions, PredProcId, ModuleInfo, !ContInfo) :-
-    PredProcId = proc(PredId, _),
+maybe_collect_call_continuations_in_cproc(ModuleInfo, CProc, !GlobalData) :-
+    CProc ^ cproc_id = proc(PredId, _),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     module_info_get_globals(ModuleInfo, Globals),
     basic_stack_layout_for_proc(PredInfo, Globals, Layout, _),
     (
         Layout = yes,
         globals.want_return_var_layouts(Globals, WantReturnLayout),
-        process_proc_llds(PredProcId, Instructions, WantReturnLayout,
-            !ContInfo)
+        collect_call_continuations_in_cproc(WantReturnLayout, CProc,
+            !GlobalData)
     ;
         Layout = no
     ).
@@ -457,37 +459,37 @@ maybe_process_proc_llds(Instructions, PredProcId, ModuleInfo, !ContInfo) :-
     % Process the list of instructions for this proc, adding
     % all internal label information to global_data.
     %
-:- pred process_proc_llds(pred_proc_id::in, list(instruction)::in, bool::in,
+:- pred collect_call_continuations_in_cproc(bool::in, c_procedure::in,
     global_data::in, global_data::out) is det.
 
-process_proc_llds(PredProcId, Instructions, WantReturnInfo, !GlobalData) :-
-    % Get all the continuation info from the call instructions.
+collect_call_continuations_in_cproc(WantReturnInfo, CProc, !GlobalData) :-
+    PredProcId = CProc ^ cproc_id,
     global_data_get_proc_layout(!.GlobalData, PredProcId, ProcLayoutInfo0),
+    Instrs = CProc ^ cproc_code,
     Internals0 = ProcLayoutInfo0 ^ pli_internal_map,
-    list.filter_map(get_call_info, Instructions, Calls),
-    % Process the continuation label info.
-    list.foldl(process_continuation(WantReturnInfo), Calls,
+    list.filter_map(get_call_info, Instrs, CallInfos),
+    list.foldl(collect_continuation(WantReturnInfo), CallInfos,
         Internals0, Internals),
     ProcLayoutInfo = ProcLayoutInfo0 ^ pli_internal_map := Internals,
     global_data_update_proc_layout(PredProcId, ProcLayoutInfo, !GlobalData).
 
 :- pred get_call_info(instruction::in, call_info::out) is semidet.
 
-get_call_info(Instr, Call) :-
+get_call_info(Instr, CallInfo) :-
     Instr = llds_instr(Uinstr, _Comment),
     Uinstr = llcall(Target, Return, LiveInfo, Context, GoalPath, _),
     Return = code_label(ReturnLabel),
-    Call = call_info(ReturnLabel, Target, LiveInfo, Context, GoalPath).
+    CallInfo = call_info(ReturnLabel, Target, LiveInfo, Context, GoalPath).
 
 %-----------------------------------------------------------------------------%
 
     % Collect the liveness information from a single return label
     % and add it to the internals.
     %
-:- pred process_continuation(bool::in, call_info::in,
+:- pred collect_continuation(bool::in, call_info::in,
     proc_label_layout_info::in, proc_label_layout_info::out) is det.
 
-process_continuation(WantReturnInfo, CallInfo, !Internals) :-
+collect_continuation(WantReturnInfo, CallInfo, !Internals) :-
     CallInfo = call_info(ReturnLabel, Target, LiveInfoList, Context,
         MaybeGoalPath),
     % We could check not only that the return label is an internal label,

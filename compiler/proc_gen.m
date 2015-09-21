@@ -564,8 +564,8 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         ProcLabelCounter = LabelCounter
     ),
     get_used_env_vars(CodeInfo, UsedEnvVars),
-    CProc = c_procedure(Name, Arity, proc(PredId, ProcId), CodeModel,
-        ProcInstructions, ProcLabel, ProcLabelCounter, MayAlterRtti,
+    CProc = c_procedure(Name, Arity, proc(PredId, ProcId), ProcLabel,
+        CodeModel, ProcInstructions, ProcLabelCounter, MayAlterRtti,
         UsedEnvVars).
 
 :- pred maybe_set_trace_level(pred_info::in,

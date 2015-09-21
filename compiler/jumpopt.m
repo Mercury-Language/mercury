@@ -28,7 +28,7 @@
 
     % optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel,
     %   Fulljumpopt, Recjump, PessimizeTailCalls, CheckedNondetTailCall,
-    %   !LabelCounter, !Instrs, Mod):
+    %   !LabelNumCounter, !Instrs, Mod):
     %
     % Take an instruction list and optimize jumps. This includes the jumps
     % implicit in procedure returns.
@@ -71,7 +71,6 @@
 
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 
@@ -102,8 +101,8 @@
 % been applied.
 
 optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
-        Recjump, PessimizeTailCalls, CheckedNondetTailCall, !C, !Instrs,
-        Mod) :-
+        Recjump, PessimizeTailCalls, CheckedNondetTailCall, !LabelNumCounter,
+        !Instrs, Mod) :-
     some [!InstrMap, !BlockMap, !LvalMap, !ProcMap, !SdprocMap, !SuccMap,
         !ForkMap]
     (
@@ -131,19 +130,21 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
             Fulljumpopt, MayAlterRtti),
         (
             CheckedNondetTailCall = yes,
-            CheckedNondetTailCallInfo0 = yes(ProcLabel - !.C),
+            CheckedNondetTailCallInfo0 =
+                check_nondet_tailcalls(ProcLabel, !.LabelNumCounter),
             jump_opt_instr_list(!.Instrs, comment(""), JumpOptInfo,
                 CheckedNondetTailCallInfo0, CheckedNondetTailCallInfo,
                 [], RevInstrs),
             (
-                CheckedNondetTailCallInfo = yes(_ - !:C)
+                CheckedNondetTailCallInfo =
+                    check_nondet_tailcalls(_, !:LabelNumCounter)
             ;
-                CheckedNondetTailCallInfo = no,
+                CheckedNondetTailCallInfo = dont_check_nondet_tailcalls,
                 unexpected($module, $pred, "lost the next label number")
             )
         ;
             CheckedNondetTailCall = no,
-            CheckedNondetTailCallInfo0 = no,
+            CheckedNondetTailCallInfo0 = dont_check_nondet_tailcalls,
             jump_opt_instr_list(!.Instrs, comment(""), JumpOptInfo,
                 CheckedNondetTailCallInfo0, _, [], RevInstrs)
         ),
@@ -266,6 +267,10 @@ jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], SdprocMap,
             % the list of remaining instructions, on which to recurse,
             % Instrs0.
 
+:- type maybe_check_nondet_tailcalls
+    --->    dont_check_nondet_tailcalls
+    ;       check_nondet_tailcalls(proc_label, counter).
+
     % Optimize the given instruction list by eliminating unnecessary jumps.
     %
     % We handle calls by attempting to turn them into tailcalls. If this fails,
@@ -293,8 +298,7 @@ jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], SdprocMap,
     %
 :- pred jump_opt_instr_list(list(instruction)::in, instr::in,
     jump_opt_info::in,
-    maybe(pair(proc_label, counter))::in,
-    maybe(pair(proc_label, counter))::out,
+    maybe_check_nondet_tailcalls::in, maybe_check_nondet_tailcalls::out,
     list(instruction)::in, list(instruction)::out) is det.
 
 jump_opt_instr_list([], _PrevInstr, _, !CheckedNondetTailCallInfo, !RevInstrs).
@@ -488,8 +492,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
 
 :- pred jump_opt_llcall(instr::in(instr_llcall), string::in,
     list(instruction)::in, instr::in, jump_opt_info::in,
-    maybe(pair(proc_label, counter))::in,
-    maybe(pair(proc_label, counter))::out,
+    maybe_check_nondet_tailcalls::in, maybe_check_nondet_tailcalls::out,
     new_remain::out) is det.
 
 jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
@@ -558,13 +561,14 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             % Look for nondet style tailcalls which do need
             % a runtime check.
             CallModel = call_model_nondet(checked_tail_call),
-            !.CheckedNondetTailCallInfo = yes(ProcLabel - Counter0),
+            !.CheckedNondetTailCallInfo =
+                check_nondet_tailcalls(ProcLabel, LabelNumCounter0),
             SuccMap = JumpOptInfo ^ joi_succ_map,
             map.search(SuccMap, RetLabel, BetweenIncl),
             BetweenIncl = [llds_instr(livevals(_), _), llds_instr(goto(_), _)],
             PrevInstr = livevals(Livevals)
         then
-            counter.allocate(LabelNum, Counter0, Counter1),
+            counter.allocate(LabelNum, LabelNumCounter0, LabelNumCounter1),
             NewLabel = internal_label(LabelNum, ProcLabel),
             NewInstrs = [
                 llds_instr(if_val(binop(ne, lval(curfr), lval(maxfr)),
@@ -583,7 +587,8 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
                 llds_instr(Uinstr0, Comment0)
             ],
             NewRemain = specified(NewInstrs, Instrs0),
-            !:CheckedNondetTailCallInfo = yes(ProcLabel - Counter1)
+            !:CheckedNondetTailCallInfo =
+                check_nondet_tailcalls(ProcLabel, LabelNumCounter1)
         else if
             % Short circuit the return label if possible.
             InstrMap = JumpOptInfo ^ joi_instr_map,
@@ -607,8 +612,7 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
 
 :- pred jump_opt_goto(instr::in(instr_goto), string::in,
     list(instruction)::in, instr::in, jump_opt_info::in,
-    maybe(pair(proc_label, counter))::in,
-    maybe(pair(proc_label, counter))::out,
+    maybe_check_nondet_tailcalls::in, maybe_check_nondet_tailcalls::out,
     new_remain::out) is det.
 
 jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
@@ -729,8 +733,7 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
 
 :- pred jump_opt_if_val(instr::in(instr_if_val), string::in,
     list(instruction)::in, instr::in, jump_opt_info::in,
-    maybe(pair(proc_label, counter))::in,
-    maybe(pair(proc_label, counter))::out,
+    maybe_check_nondet_tailcalls::in, maybe_check_nondet_tailcalls::out,
     new_remain::out) is det.
 
 jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
@@ -891,8 +894,7 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
 
 :- pred jump_opt_foreign_proc_code(instr::in(instr_foreign_proc_code),
     string::in, list(instruction)::in, instr::in, jump_opt_info::in,
-    maybe(pair(proc_label, counter))::in,
-    maybe(pair(proc_label, counter))::out,
+    maybe_check_nondet_tailcalls::in, maybe_check_nondet_tailcalls::out,
     new_remain::out) is det.
 
 jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, _PrevInstr,
