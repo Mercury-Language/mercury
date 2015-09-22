@@ -184,11 +184,11 @@ llds_backend_pass_by_phases(!HLDS, !:LLDS, !GlobalData, !Specs,
     generate_llds_code_for_module(!.HLDS, Verbose, Stats, !GlobalData, !:LLDS,
         !IO),
 
-    maybe_generate_stack_layouts(!.HLDS, !.LLDS, Verbose, Stats, !GlobalData,
-        !IO),
-    % maybe_dump_global_data(!.GlobalData, !IO),
+    maybe_optimize_llds(!.HLDS, !.GlobalData, Verbose, Stats, !LLDS, !IO),
 
-    maybe_optimize_llds(!.HLDS, !.GlobalData, Verbose, Stats, !LLDS, !IO).
+    maybe_generate_stack_layouts(!.HLDS, !.LLDS, Verbose, Stats, !GlobalData,
+        !IO).
+    % maybe_dump_global_data(!.GlobalData, !IO).
 
 :- pred llds_backend_pass_by_preds(module_info::in, module_info::out,
     list(c_procedure)::out, global_data::in, global_data::out,
