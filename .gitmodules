@@ -1,7 +1,7 @@
 [submodule "boehm_gc"]
 	path = boehm_gc
 	url = ../bdwgc.git
-	branch = release-7_4-mercury-pbone
+	branch = release-7_4-mercury
 [submodule "libatomic_ops"]
 	path = libatomic_ops
 	url = ../libatomic_ops.git

@@ -156,43 +156,91 @@ The final step is how to update Mercury's copy of the collector when there
 are changes upstream.
 At the time of writing there are some important patches on the collector's
 <code>release-7_4</code> branch (The TSX bug).
-This is done simply creating a new branch and debasing the Mercury project's
-customisations onto that branch:
-</p>
-
-XXX
-
-<code><pre>
-$ git branch mercury7_4_pbone mercury7_4_2
-$ git checkout mercury7_4_pbone
-$ git rebase --onto release-7_4_pbone gc7_4
-</pre></code>
-
-<p>
-These changes applied cleanly and I didn't need to resolve any merge
-conflicts.
-I sometimes find it useful to use vimdiff to help me merge changes, git can
-call vimdiff for you.
-git can launch a number of different tools depending on your tastes.
+Note that I did this before I'd mirrored the bdwgc repository in
+MercuryLanguage on github, so it uses the github-paul and origin remotes as
+follows.
+When reproducing this you will need to make charges occordingly.
 </p>
 
 <code><pre>
-$ git mergetool --tool=vimdiff
+$ git remote -v
+github  https://github.com/ivmai/bdwgc.git (fetch)
+github  https://github.com/ivmai/bdwgc.git (push)
+github-paul https://github.com/PaulBone/bdwgc.git (fetch)
+github-paul git@github.com:PaulBone/bdwgc.git (push)
+origin  /srv/scratch/dev/mercury_new/bdwgc.git (fetch)
+origin  /srv/scratch/dev/mercury_new/bdwgc.git (push)
 </pre></code>
 
 <p>
-You may also need to update the libatomic_ops directory.
+Starting with libatomic_ops I update the <code>release-7_4</code> branch to
+the latest changes and then rebase Mercury's customisations (in the
+<code>release-7_4-mer</code> branch) on top of those.
 </p>
 
+<code><pre>
+$ git checkout release-7_4
+$ git pull github-ivan release-7_4
+$ git push github-paul release-7_4          # Optional
+$ git checkout release-7_4-mer
+$ git pull github-paul release-7_4-mer
+$ git rebase release-7_4
+</code></pre>
+
 <p>
-Now go back to the mercury repository and update the submodule to point to
-the new branch
+There is only one Mercury-specific change so this went smoothly.
+Now, publish this change with <code>--force</code> because we are changing
+history.
+</p>
+
+<code><Pre>
+$ git push --force github-paul release-7_4-mer
+$ git push --force origin release-7_4-mer
+</pre></code>
+
+<p>
+Now do the same for boehm_gc
+</p>
+
+<code><pre>
+$ git checkout release-7_4
+$ git pull github-ivan release-7_4
+$ git push github-paul release-7_4          # Optional
+$ git checkout mercury-7_4_2
+$ git pull github-paul mercury-7_4_2
+$ git rebase release-7_4
+</pre></code>
+
+<p>
+This rebase hard two merge conflicts however they were simple.
+</p>
+
+<code><Pre>
+$ git push --force github-paul release-7_4-mer
+$ git push --force origin release-7_4-mer
+</pre></code>
+
+<p>
+Back in the mercury repository I needed to point the boehm_gc submodule to a
+different branch,
+it was pointing to <code>mercury-7_4_pbone</code> but now that the TSX bug
+has been worked around it should point to the <code>mercury-7_4_2</code>
+branch.
+The branch is adjusted by editing .gitmodules
 </p>
 
 <code><pre>
 $ vim .gitmodules
-$ git submodule update --remote
-$ git add .gitmodules boehm_gc
+</pre></code>
+
+<p>
+In any case you will need to tell git that the branches have been updated,
+and these submodules should now refer to different <i>git IDs</i>.
+</p>
+
+<code><pre>
+$ git submodule update --remote --checkout
+$ git add .gitmodules boehm_gc libatomic_ops
 $ git commit
 </pre></code>
 

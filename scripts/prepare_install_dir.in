@@ -42,7 +42,6 @@ mkdir ${installdir}/boehm_gc/Mac_files
 mkdir ${installdir}/boehm_gc/cord
 mkdir ${installdir}/boehm_gc/include
 mkdir ${installdir}/boehm_gc/include/private
-mkdir ${installdir}/boehm_gc/src
 mkdir ${installdir}/boehm_gc/tools
 cp boehm_gc/NT_MAKEFILE ${installdir}/boehm_gc
 cp boehm_gc/*.[Mm]ak ${installdir}/boehm_gc
@@ -54,8 +53,9 @@ cp boehm_gc/*.[chsS] ${installdir}/boehm_gc
 cp boehm_gc/cord/*.[ch] ${installdir}/boehm_gc/cord
 cp boehm_gc/include/*.[ch] ${installdir}/boehm_gc/include
 cp boehm_gc/include/private/*.[ch] ${installdir}/boehm_gc/include/private
-cp boehm_gc/src/*.[chsS] ${installdir}/boehm_gc/src
+cp boehm_gc/*.[chsS] ${installdir}/boehm_gc/
 cp boehm_gc/tools/*.[ch] ${installdir}/boehm_gc/tools
+cp boehm_gc/tools/*.sh ${installdir}/boehm_gc/tools
 cp boehm_gc/build_atomic_ops.sh* ${installdir}/boehm_gc
 cp -Rp libatomic_ops ${installdir}
 ln -s ${installdir}/libatomic_ops ${installdir}/boehm_gc
