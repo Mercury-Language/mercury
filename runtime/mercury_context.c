@@ -398,7 +398,7 @@ MR_init_context_stuff(void)
         MR_max_engines, MR_ALLOC_SITE_RUNTIME);
     for (i = 0; i < MR_max_engines; i++) {
         engine_sleep_sync *esync = get_engine_sleep_sync(i);
-        MR_sem_init(&esync->d.es_sleep_sempahore, 0);
+        MR_sem_init(&esync->d.es_sleep_semaphore, 0);
         pthread_mutex_init(&esync->d.es_wake_lock, MR_MUTEX_ATTR);
         /*
         ** All engines are initially working (because telling them to wake up
