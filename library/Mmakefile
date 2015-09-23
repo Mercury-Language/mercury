@@ -466,6 +466,12 @@ install_ints: lib$(STD_LIB_NAME).install_ints
 .PHONY: install_hdrs
 install_hdrs: lib$(STD_LIB_NAME).install_hdrs
 
+# We depend on lib$(STD_LIB_NAME) because lib$(STD_LIB_NAME).install_library
+# doesn't make library.int3, but some modules in the browser directory need it.
+
+.PHONY: install_library
+install_library: lib$(STD_LIB_NAME) lib$(STD_LIB_NAME).install_library
+
 else	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
 .PHONY: install_mercury
