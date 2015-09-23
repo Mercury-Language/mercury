@@ -133,11 +133,6 @@ mercury_compile$(EXT_FOR_EXE): $(MC_PROG)$(EXT_FOR_EXE)
 	rm -f mercury_compile$(EXT_FOR_EXE)
 	$(LN) $(MC_PROG)$(EXT_FOR_EXE) mercury_compile$(EXT_FOR_EXE) || \
 		cp $(MC_PROG)$(EXT_FOR_EXE) mercury_compile$(EXT_FOR_EXE)
-ifeq ($(findstring il,$(GRADE)),il)
-	# set the stack size to 100M -- the default of 1M is too low
-	-editbin /nologo /stack:100000000 mercury_compile$(EXT_FOR_EXE)
-	cp ../browser/*.dll .
-endif
 
 #-----------------------------------------------------------------------------#
 
@@ -212,7 +207,7 @@ dates:
 #-----------------------------------------------------------------------------#
 
 # Note that the cs and os targets don't build top_level_init.{c,o}
-.PHONY: os cs ils
+.PHONY: os cs opts
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(MC_PROG).os)
 cs: $($(MC_PROG).cs)

@@ -104,7 +104,7 @@ MCFLAGS += $(LIBRARY_TRACE_LEVEL) $(INTER_FLAGS)
 # yet complete, so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
-ifneq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+ifneq ("$(filter csharp% java% erlang%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
@@ -248,16 +248,14 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs ils javas
+.PHONY: os cs javas
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(STD_LIB_NAME).os)
 cs: $($(STD_LIB_NAME).cs)
-ils: $($(STD_LIB_NAME).ils)
 javas: $($(STD_LIB_NAME).javas)
 else
 os: $(STD_LIB_NAME).os
 cs: $(STD_LIB_NAME).cs
-ils: $(STD_LIB_NAME).ils
 javas: $(STD_LIB_NAME).javas
 endif
 
@@ -306,75 +304,6 @@ NATIVE_SO = Native.$(EXT_FOR_SHARED_LIB)
 
 .PHONY: lib_std
 
-# The ilc and il grades target Microsoft's .NET frameworks.
-ifeq ($(findstring il,$(GRADE)),il)
-
-lib_std: mercury.dll lib$(STD_LIB_NAME)
-
-# We have to hardcode the names of the runtime DLL files.
-RUNTIME_DLLS=mercury_dotnet.dll mercury_il.dll
-
-CSCFLAGS=/t:module
-
-# If you do generate a new strong name, you had better update
-# compiler/mlds_to_il.m to generate references to it. It is also hard-coded
-# in runtime/mercury_il.il.
-# This is hard-coding is sub-optimal -- the compiler should automatically find
-# out what the strong name is.
-library_strong_name.sn:
-	sn -k library_strong_name.sn
-
-mercury.dll: $($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
-		$(RUNTIME_DLLS) library_strong_name.sn
-	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury.dll \
-		$($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
-		$(RUNTIME_DLLS)
-
-# This is useful for running PEverify on the library.
-# For multi-file assemblies, PEverify only works on executables,
-# not on libraries.
-mercury_exe.exe: $($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
-		$(RUNTIME_DLLS) library_strong_name.sn
-	$(MS_AL) -v:0.0.0.0 -keyf:library_strong_name.sn -out:mercury_exe.exe \
-		$($(STD_LIB_NAME).dlls) $($(STD_LIB_NAME).foreign_dlls) \
-		$(RUNTIME_DLLS)
-
-# The runtime DLLs must be copied into this directory from the runtime
-# directory so they can be installed properly.
-.PHONY: copy_runtime_dlls
-copy_runtime_dlls: $(RUNTIME_DLLS)
-
-mercury_il.dll: ../runtime/mercury_il.dll
-	cp ../runtime/mercury_il.dll .
-
-mercury_dotnet.dll: ../runtime/mercury_dotnet.dll
-	cp ../runtime/mercury_dotnet.dll .
-
-CSHARP_MODULES = \
-	array \
-	builtin \
-	char \
-	construct \
-	dir \
-	exception \
-	float \
-	int \
-	io \
-	library \
-	math \
-	private_builtin \
-	rtti_implementation \
-	std_util \
-	string \
-	time \
-	type_desc
-
-CSHARP_DLLS = $(CSHARP_MODULES:%=%__csharp_code.dll)
-
-$(CSHARP_DLLS) : $(RUNTIME_DLLS)
-
-endif
-
 #-----------------------------------------------------------------------------#
 
 # For C# we include the runtime module directly into mer_std.dll.
@@ -402,7 +331,7 @@ endif
 #
 # Some extra rules that we need for the C and asm back-ends
 #
-ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
 
 # The following dependency is just there to improve compilation speed;
 # making tree234.$O first improves effective parallelism with parallel makes.
@@ -423,7 +352,7 @@ MCFLAGS += --extra-init-command ./print_extra_inits
 
 endif
 
-endif	# GRADE != il && GRADE != csharp && GRADE != java && GRADE != erlang
+endif	# GRADE != csharp && GRADE != java && GRADE != erlang
 
 #-----------------------------------------------------------------------------#
 
@@ -495,6 +424,7 @@ $(os_subdir)robdd.pic_o \
 
 # In the past we generated liblibrary.* and then linked
 # libmer_std.* to the files.
+# XXX IL We should remove the code cleaning up IL files soon.
 realclean_local:
 	rm -f mercury_dotnet.dll mercury_il.dll
 	rm -f liblibrary.$A liblibrary.so library.init
@@ -535,56 +465,6 @@ install_ints: lib$(STD_LIB_NAME).install_ints
 
 .PHONY: install_hdrs
 install_hdrs: lib$(STD_LIB_NAME).install_hdrs
-
-ifneq (,$(findstring il,$(GRADE)))
-
-# XXX some modules in the browser directory need library.int3
-
-.PHONY: install_library
-install_library: mercury.dll install_grade_dirs install_gac \
-		install_strong_name lib$(STD_LIB_NAME).install_grade_hdrs \
-		lib$(STD_LIB_NAME).install_opts
-	cp `vpath_find $($(STD_LIB_NAME).foreign_dlls) $($(STD_LIB_NAME).dlls) \
-		mercury.dll` $(INSTALL_MERC_LIB_DIR)
-
-# To build the .NET library with debugging information, add
-# the following to ../Mmake.params:
-#
-#	EXTRA_ILASMFLAGS=/debug
-#	EXTRA_CSCFLAGS=/debug+ /debug:full
-#
-# XXX Unfortunately, however, this is a problem with AL, which prohibits
-# linking debuggable C# code with IL code. The following horrible hack
-# avoids that problem.  After modifying Mmake.params as described above,
-# invoke `mmake install_debug_library'.
-
-.PHONY: install_debug_library
-install_debug_library:
-	-$(MMAKE) $(MMAKEFLAGS)
-	$(MMAKE) $(MMAKEFLAGS) munge_dll_debug_info
-	$(MMAKE) $(MMAKEFLAGS) install_library
-
-# The GAC is the global assembly cache, which is the system managed
-# place to put .NET assemblies.
-# gacutil installs (and uninstalls) DLLs from the GAC.
-.PHONY: install_gac
-install_gac: mercury.dll
-	gacutil -i mercury.dll
-
-.PHONY: install_strong_name
-install_strong_name: library_strong_name.sn
-	cp `vpath_find library_strong_name.sn` \
-		$(INSTALL_MERC_LIB_DIR)/mercury.sn
-
-else
-
-# we depend on lib$(STD_LIB_NAME) because lib$(STD_LIB_NAME).install_library
-# doesn't make library.int3, but some modules in the browser directory need it.
-
-.PHONY: install_library
-install_library: lib$(STD_LIB_NAME) lib$(STD_LIB_NAME).install_library
-
-endif	#ifneq (,$(findstring il,$(GRADE)))
 
 else	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
@@ -629,14 +509,5 @@ install_library:
 	exit 1
 
 endif
-
-.PHONY: munge_dll_debug_info
-munge_dll_debug_info:
-	for file in *csharp_code.dll; do \
-		ildasm /out:$$file.ild $$file; \
-		sed 's/01 00 00 01/01 00 01 01/' $$file.ild \
-			> $$file.ild.munged; \
-		ilasm /quiet /dll /debug /out:$$file $$file.ild.munged; \
-	done
 
 #-----------------------------------------------------------------------------#

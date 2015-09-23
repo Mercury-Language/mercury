@@ -183,7 +183,7 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-.PHONY: os cs ils
+.PHONY: os cs
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(MDBCOMP_LIB_NAME).os)
 cs: $($(MDBCOMP_LIB_NAME).cs)
