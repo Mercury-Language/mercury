@@ -85,7 +85,7 @@ pass2_options_init(MaxSize) = pass2_options(MaxSize).
 
 %-----------------------------------------------------------------------------%
 
-:- type scc == list(abstract_ppid).
+:- type abstract_ppids == list(abstract_ppid).
 
     % Each edge in the call-graph represents a single call site.
     %
@@ -426,7 +426,7 @@ search_for_cycles_3(Start, SoFar, Map, Visited, Edge, !Cycles) :-
 % Partitioning sets of cycles.
 %
 
-:- func partition_cycles(scc, cycles) = list(cycle_set).
+:- func partition_cycles(abstract_ppids, cycles) = list(cycle_set).
 
 partition_cycles([], _) = [].
 partition_cycles([Proc | Procs], Cycles0) = CycleSets :-
