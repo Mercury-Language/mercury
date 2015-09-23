@@ -4560,7 +4560,7 @@ options_help_compilation_model -->
 % The --nondet-copy-out option is not yet documented,
 % because it is probably not very useful except for Java,
 % where it is the default.
-%       "--nondet-copy-out\t\t(grades: il, ilc)",
+%       "--nondet-copy-out",
 %       "\tSpecify whether to handle output arguments for nondet",
 %       "\tprocedures using pass-by-value rather than pass-by-reference.",
 %       "\tThis option is ignored if the `--high-level-code' option is not enabled.",
@@ -4581,9 +4581,7 @@ options_help_compilation_model -->
 %       "\tAllocate the environment structures used for",
 %       "\tnondeterministic Mercury procedures on the heap,",
 %       "\trather than on the stack."
-%   ]),
-%   io.write_string("\n      IL back-end compilation model options:\n"),
-%   write_tabbed_lines([
+%   ])
     ]),
 
     io.write_string("\n    Developer compilation model options:\n"),

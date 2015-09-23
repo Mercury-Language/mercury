@@ -151,7 +151,7 @@
 % Float literals.
 %
 
-    % Convert a float to a string suitable for use as a C (or Java, or IL)
+    % Convert a float to a string suitable for use as a C (or Java, or C#)
     % floating point literal.
     %
 :- func make_float_literal(float) = string.
@@ -671,7 +671,7 @@ output_int_expr(N, !IO) :-
 % XXX These routines do not yet handle infinities and NaNs properly.
 
 make_float_literal(Float) = string.format("%#.17g", [f(Float)]).
-    % This is used by the C, Java, and IL back-ends,
+    % This is used by the C, Java, and C# back-ends,
     % so the output must be valid syntax in all three languages.
     %
     % We output literals using 17 digits of precision. This is the minimum
