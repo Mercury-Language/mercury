@@ -61,8 +61,7 @@
 
     % Analyse minimal model tabling in a module.
     %
-:- pred analyse_mm_tabling_in_module(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred analyse_mm_tabling_in_module(module_info::in, module_info::out) is det.
 
 %----------------------------------------------------------------------------%
 %
@@ -101,6 +100,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -109,7 +109,7 @@
 % Perform minimal model tabling analysis on a module
 %
 
-analyse_mm_tabling_in_module(!ModuleInfo, !IO) :-
+analyse_mm_tabling_in_module(!ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_minimal_model_stack_copy,
         UseMinimalModel),
@@ -120,8 +120,6 @@ analyse_mm_tabling_in_module(!ModuleInfo, !IO) :-
             MakeOptInt),
         globals.lookup_bool_option(Globals, make_transitive_opt_interface,
             MakeTransOptInt),
-        globals.lookup_bool_option(Globals, intermodule_analysis,
-            IntermodAnalysis),
         globals.lookup_bool_option(Globals, make_analysis_registry,
             MakeAnalysisReg),
         Pass1Only = MakeOptInt `bool.or` MakeTransOptInt
@@ -133,16 +131,9 @@ analyse_mm_tabling_in_module(!ModuleInfo, !IO) :-
         list.foldl(analyse_mm_tabling_in_scc(Debug, Pass1Only), SCCs,
             !ModuleInfo),
 
-        % Only write mm_tabling_info pragmas to `.opt' files for
-        % `--intermodule-optimisation' not `--intermodule-analysis'.
-        ( if
-            MakeOptInt = yes,
-            IntermodAnalysis = no
-        then
-            append_mm_tabling_pragmas_to_opt_file(!.ModuleInfo, !IO)
-        else
-            true
-        ),
+        module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
+        set.insert(pak_mm_tabling, ProcAnalysisKinds0, ProcAnalysisKinds),
+        module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo),
 
         % Record results if making the analysis registry.  We do this in a
         % separate pass so that we record results for exported `:- external'

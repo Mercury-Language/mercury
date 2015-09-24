@@ -91,8 +91,7 @@
 
     % Perform the exception analysis on a module.
     %
-:- pred analyse_exceptions_in_module(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred analyse_exceptions_in_module(module_info::in, module_info::out) is det.
 
     % Look the exception status of the given procedure. This predicate
     % is intended to be used by optimisations that use exception analysis
@@ -148,30 +147,19 @@
 % Perform exception analysis on a module.
 %
 
-analyse_exceptions_in_module(!ModuleInfo, !IO) :-
+analyse_exceptions_in_module(!ModuleInfo) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
     list.foldl(check_scc_for_exceptions, SCCs, !ModuleInfo),
 
+    module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
+    set.insert(pak_exception, ProcAnalysisKinds0, ProcAnalysisKinds),
+    module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo),
+
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
-    globals.lookup_bool_option(Globals, intermodule_analysis,
-        IntermodAnalysis),
     globals.lookup_bool_option(Globals, make_analysis_registry,
         MakeAnalysisReg),
-
-    % Only write exception analysis pragmas to `.opt' files for
-    % `--intermodule-optimization', not `--intermodule-analysis'.
-    ( if
-        MakeOptInt = yes,
-        IntermodAnalysis = no
-    then
-        append_exception_pragmas_to_opt_file(!.ModuleInfo, !IO)
-    else
-        true
-    ),
 
     % Record results if making the analysis registry. We do this in a
     % separate pass so that we record results for exported `:- external'

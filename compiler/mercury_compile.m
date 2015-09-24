@@ -1698,7 +1698,8 @@ mercury_compile(Globals, ModuleAndImports, NestedSubModules,
                     Globals, NoOptUnusedArgsGlobals),
                 module_info_set_globals(NoOptUnusedArgsGlobals,
                     HLDS21, HLDS21a),
-                maybe_unused_args(Verbose, Stats, HLDS21a, _HLDS22, !IO)
+                maybe_unused_args(Verbose, Stats, _UnusedArgsInfos,
+                    HLDS21a, _HLDS22, !IO)
             ;
                 UnusedArgs = no
             ),

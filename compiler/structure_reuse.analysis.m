@@ -256,19 +256,9 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
     % This is mainly to show the reuse information in HLDS dumps as no later
     % passes need the information.
     map.foldl(save_reuse_in_module_info, ReuseInfoMap, !ModuleInfo),
-
-    % Only write structure reuse pragmas to `.opt' files for
-    % `--intermodule-optimization' not `--intermodule-analysis'.
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
-    ( if
-        MakeOptInt = yes,
-        IntermodAnalysis = no
-    then
-        append_structure_reuse_pragmas_to_opt_file(!.ModuleInfo, !IO)
-    else
-        true
-    ),
+    module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
+    set.insert(pak_structure_reuse, ProcAnalysisKinds0, ProcAnalysisKinds),
+    module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo),
 
     % If making a `.analysis' file, record structure reuse results, analysis
     % dependencies, assumed answers and requests in the analysis framework.

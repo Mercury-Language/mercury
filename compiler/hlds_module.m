@@ -162,6 +162,15 @@
                 map(sym_name, string)
             ).
 
+:- type proc_analysis_kind
+    --->    pak_exception
+    ;       pak_trailing
+    ;       pak_mm_tabling
+    ;       pak_termination
+    ;       pak_termination2
+    ;       pak_structure_sharing
+    ;       pak_structure_reuse.
+
     % Types for order-independent state update (oisu).
     %
 :- type oisu_map == map(type_ctor, oisu_preds).
@@ -300,6 +309,8 @@
     maybe(pair(int, complexity_proc_map))::out) is det.
 :- pred module_info_get_complexity_proc_infos(module_info::in,
     list(complexity_proc_info)::out) is det.
+:- pred module_info_get_proc_analysis_kinds(module_info::in,
+    set(proc_analysis_kind)::out) is det.
 :- pred module_info_get_analysis_info(module_info::in,
     analysis_info::out) is det.
 :- pred module_info_get_structure_reuse_preds(module_info::in,
@@ -379,6 +390,8 @@
     maybe(pair(int, complexity_proc_map))::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_complexity_proc_infos(list(complexity_proc_info)::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_proc_analysis_kinds(set(proc_analysis_kind)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_analysis_info(analysis_info::in,
     module_info::in, module_info::out) is det.
@@ -704,7 +717,7 @@
                 % contexts in the module. This is used to uniquely identify
                 % STM atomic expressions that appear on the same line of
                 % the same file.
-                mri_atomics_per_context          :: map(prog_context, counter),
+                mri_atomics_per_context         :: map(prog_context, counter),
 
                 % The names of all the directly imported modules
                 % (used during type checking, and by the MLDS back-end).
@@ -726,6 +739,11 @@
                 mri_maybe_complexity_proc_map   :: maybe(pair(int,
                                                 complexity_proc_map)),
                 mri_complexity_proc_infos       :: list(complexity_proc_info),
+
+                % Records the set of analyses whose results are now available
+                % in the proc_infos. As each analysis puts its results
+                % in the proc_infos, it should add its id to this set.
+                mri_proc_analysis_kinds         :: set(proc_analysis_kind),
 
                 % Information for the inter-module analysis framework.
                 mri_analysis_info               :: analysis_info,
@@ -862,6 +880,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
 
     MaybeComplexityMap = no,
     ComplexityProcInfos = [],
+    set.init(ProcAnalysisKinds),
 
     globals.lookup_bool_option(Globals, make_analysis_registry,
         MakeAnalysisReg),
@@ -903,6 +922,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         UsedModules,
         MaybeComplexityMap,
         ComplexityProcInfos,
+        ProcAnalysisKinds,
         AnalysisInfo,
         UserInitPredCNames,
         UserFinalPredCNames,
@@ -1082,6 +1102,8 @@ module_info_get_maybe_complexity_proc_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_maybe_complexity_proc_map.
 module_info_get_complexity_proc_infos(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_complexity_proc_infos.
+module_info_get_proc_analysis_kinds(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_proc_analysis_kinds.
 module_info_get_analysis_info(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_analysis_info.
 module_info_get_user_init_pred_c_names(MI, X) :-
@@ -1204,6 +1226,8 @@ module_info_set_maybe_complexity_proc_map(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_maybe_complexity_proc_map := X.
 module_info_set_complexity_proc_infos(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_complexity_proc_infos := X.
+module_info_set_proc_analysis_kinds(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_proc_analysis_kinds := X.
 module_info_set_analysis_info(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_analysis_info := X.
 module_info_set_user_init_pred_c_names(X, !MI) :-

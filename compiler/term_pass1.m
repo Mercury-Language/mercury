@@ -305,8 +305,7 @@ check_proc_non_term_calls(PPId, !Errors, !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo,
-        !IO).
+    check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo, !IO).
 
 :- pred check_goal_non_term_calls(
     pred_proc_id::in, vartypes::in, hlds_goal::in,

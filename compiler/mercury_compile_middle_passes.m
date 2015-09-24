@@ -18,9 +18,11 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_item.
 
 :- import_module bool.
 :- import_module io.
+:- import_module set.
 
 :- pred middle_pass(module_name::in, module_info::in, module_info::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
@@ -35,7 +37,8 @@
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 :- pred maybe_unused_args(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    set(pragma_info_unused_args)::out, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -102,7 +105,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module univ.
 
@@ -206,7 +208,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 163, "structure_reuse", !DumpInfo, !IO),
 
-    maybe_unused_args(Verbose, Stats, !HLDS, !IO),
+    maybe_unused_args(Verbose, Stats, _UnusedArgsInfos, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 165, "unused_args", !DumpInfo, !IO),
 
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
@@ -329,9 +331,10 @@ middle_pass_for_opt_file(!HLDS, !IO) :-
     ),
     (
         IntermodArgs = yes,
-        maybe_unused_args(Verbose, Stats, !HLDS, !IO)
+        maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !IO)
     ;
-        IntermodArgs = no
+        IntermodArgs = no,
+        set.init(UnusedArgsInfos)
     ),
     (
         Termination = yes,
@@ -369,7 +372,8 @@ middle_pass_for_opt_file(!HLDS, !IO) :-
         maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO)
     ;
         TablingAnalysis = no
-    ).
+    ),
+    append_analysis_pragmas_to_opt_file(!.HLDS, UnusedArgsInfos, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -475,7 +479,7 @@ output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 162, "structure_sharing", !DumpInfo, !IO),
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 163, "structure_reuse", !DumpInfo, !IO),
-    maybe_unused_args(Verbose, Stats, !HLDS, !IO),
+    maybe_unused_args(Verbose, Stats, _UnusedArgsInfos, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 165, "unused_args", !DumpInfo, !IO),
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
@@ -623,7 +627,7 @@ maybe_exception_analysis(Verbose, Stats, !HLDS, !IO) :-
     (
         ExceptionAnalysis = yes,
         maybe_write_string(Verbose, "% Analysing exceptions...\n", !IO),
-        analyse_exceptions_in_module(!HLDS, !IO),
+        analyse_exceptions_in_module(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1085,7 +1089,7 @@ maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
+maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, intermod_unused_args, Intermod),
     globals.lookup_bool_option(Globals, optimize_unused_args, Optimize),
@@ -1098,14 +1102,13 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
     then
         maybe_write_string(Verbose, "% Finding unused arguments ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        unused_args_process_module(!HLDS, Specs, UnusedArgInfos),
+        unused_args_process_module(!HLDS, Specs, UnusedArgsInfos),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS),
-        append_unused_arg_pragmas_to_opt_file(!.HLDS, UnusedArgInfos, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     else
-        true
+        set.init(UnusedArgsInfos)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1119,7 +1122,7 @@ maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO) :-
     (
         AnalyseTrail = yes,
         maybe_write_string(Verbose, "% Analysing trail usage...\n", !IO),
-        analyse_trail_usage(!HLDS, !IO),
+        analyse_trail_usage(!HLDS),
         maybe_write_string(Verbose, "% Trail usage analysis done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -1179,7 +1182,7 @@ maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO) :-
         TablingAnalysis = yes,
         maybe_write_string(Verbose, "% Analysing minimal model tabling...\n",
             !IO),
-        analyse_mm_tabling_in_module(!HLDS, !IO),
+        analyse_mm_tabling_in_module(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

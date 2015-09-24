@@ -62,8 +62,7 @@
 
     % Perform trail usage analysis on a module.
     %
-:- pred analyse_trail_usage(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred analyse_trail_usage(module_info::in, module_info::out) is det.
 
     % Types and instances for the intermodule analysis framework.
     %
@@ -121,7 +120,7 @@
 % that is if we are generating code as opposed to building the optimization
 % interfaces.
 
-analyse_trail_usage(!ModuleInfo, !IO) :-
+analyse_trail_usage(!ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
@@ -131,8 +130,6 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
             MakeOptInt),
         globals.lookup_bool_option(Globals, make_transitive_opt_interface,
             MakeTransOptInt),
-        globals.lookup_bool_option(Globals, intermodule_analysis,
-            IntermodAnalysis),
         globals.lookup_bool_option(Globals, make_analysis_registry,
             MakeAnalysisReg),
         Pass1Only = MakeOptInt `bool.or` MakeTransOptInt
@@ -143,16 +140,9 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
         globals.lookup_bool_option(Globals, debug_trail_usage, Debug),
         list.foldl(trail_analyse_scc(Debug, Pass1Only), SCCs, !ModuleInfo),
 
-        % Only write trailing analysis pragmas to `.opt' files for
-        % `--intermodule-optimization', not `--intermodule-analysis'.
-        ( if
-            MakeOptInt = yes,
-            IntermodAnalysis = no
-        then
-            append_trailing_pragmas_to_opt_file(!.ModuleInfo, !IO)
-        else
-            true
-        ),
+        module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
+        set.insert(pak_trailing, ProcAnalysisKinds0, ProcAnalysisKinds),
+        module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo),
 
         % Record results if making the analysis registry.  We do this in a
         % separate pass so that we record results for exported `:- external'

@@ -132,18 +132,9 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
     % Analyse structure sharing for the module.
     sharing_analysis(!ModuleInfo, LoadedSharingTable, !IO),
 
-    % Only write structure sharing pragmas to `.opt' files for
-    % `--intermodule-optimization' not `--intermodule-analysis'.
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
-    ( if
-        MakeOptInt = yes,
-        IntermodAnalysis = no
-    then
-        append_structure_sharing_pragmas_to_opt_file(!.ModuleInfo, !IO)
-    else
-        true
-    ),
+    module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
+    set.insert(pak_structure_sharing, ProcAnalysisKinds0, ProcAnalysisKinds),
+    module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo),
 
     selector.reset_tables(!IO).
 

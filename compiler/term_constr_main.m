@@ -105,6 +105,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module std_util.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -154,7 +155,9 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
         SCCs, !ModuleInfo, !IO),
 
     % Write termination2_info pragmas to `.opt' files.
-    maybe_append_termination2_pragmas_to_opt_file(!.ModuleInfo, !IO).
+    module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
+    set.insert(pak_termination2, ProcAnalysisKinds0, ProcAnalysisKinds),
+    module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo).
 
 %----------------------------------------------------------------------------%
 %
@@ -283,26 +286,6 @@ set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
     TermInfo = TermInfo0 ^ term_status := yes(TerminationInfo),
     proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
-
-%-----------------------------------------------------------------------------%
-%
-% Predicates for writing optimization interfaces.
-%
-
-:- pred maybe_append_termination2_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-maybe_append_termination2_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    % XXX update this once this analysis supports `--intermodule-analysis'
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
-    (
-        MakeOptInt = yes,
-        append_termination2_pragmas_to_opt_file(ModuleInfo, !IO)
-    ;
-        MakeOptInt = no
-    ).
 
 %----------------------------------------------------------------------------%
 %

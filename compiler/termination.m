@@ -75,6 +75,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module term.
 :- import_module unit.
 
@@ -108,18 +109,12 @@ analyse_termination_in_module(!ModuleInfo, !:Specs, !IO) :-
     check_pragmas_are_consistent(SCCs, !ModuleInfo, !Specs),
 
     list.foldl2(analyse_termination_in_scc(PassInfo), SCCs, !ModuleInfo, !IO),
-
-    % XXX Update this once this analysis supports `--intermodule-analysis'.
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
-    (
-        MakeOptInt = yes,
-        append_termination_pragmas_to_opt_file(!.ModuleInfo, !IO)
-    ;
-        MakeOptInt = no
-    ),
     run_post_term_analysis(!.ModuleInfo, PostSpecs),
-    !:Specs = PostSpecs ++ !.Specs.
+    !:Specs = PostSpecs ++ !.Specs,
+
+    module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
+    set.insert(pak_termination, ProcAnalysisKinds0, ProcAnalysisKinds),
+    module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo).
 
 %----------------------------------------------------------------------------%
 %

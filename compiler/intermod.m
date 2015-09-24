@@ -90,8 +90,8 @@
     %
     % Although this predicate creates the .opt.tmp file, it does not
     % necessarily create it in its final form. Later compiler passes
-    % may append to this file using use the append_xxx_to_opt_file predicates
-    % below.
+    % may append to this file using the append_analysis_pragmas_to_opt_file
+    % predicate below.
     % XXX This is not an elegant arrangement.
     %
     % Update_interface and touch_interface_datestamp are called from
@@ -126,28 +126,7 @@
 % to append_unused_arg_pragmas_to_opt_file separately.
 %
 
-:- pred append_exception_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-:- pred append_trailing_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-:- pred append_mm_tabling_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-:- pred append_structure_reuse_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-:- pred append_structure_sharing_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-:- pred append_termination_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-:- pred append_termination2_pragmas_to_opt_file(module_info::in,
-    io::di, io::uo) is det.
-
-:- pred append_unused_arg_pragmas_to_opt_file(module_info::in,
+:- pred append_analysis_pragmas_to_opt_file(module_info::in,
     set(pragma_info_unused_args)::in, io::di, io::uo) is det.
 
 %---------------------%
@@ -2265,35 +2244,89 @@ get_pragma_foreign_code_vars(Args, Modes, !VarSet, PragmaVars) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-append_exception_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Appending exceptions pragmas to `", !IO),
-    maybe_write_string(Verbose, OptFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
-        list.foldl2(write_pragma_exceptions_for_pred(ModuleInfo),
-            OrderPredInfos, is_first, _, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
+append_analysis_pragmas_to_opt_file(ModuleInfo, UnusedArgsInfos, !IO) :-
+    module_info_get_proc_analysis_kinds(ModuleInfo, ProcAnalysisKinds),
+    ( if
+        set.is_empty(ProcAnalysisKinds),
+        set.is_empty(UnusedArgsInfos)
+    then
+        % We have nothing to append to the .opt file.
+        true
+    else
+        module_info_get_globals(ModuleInfo, Globals),
+        module_info_get_name(ModuleInfo, ModuleName),
+        module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
+            do_not_create_dirs, OptFileName, !IO),
+        io.open_append(OptFileName, OptFileRes, !IO),
+        (
+            OptFileRes = ok(OptFile),
+            io.set_output_stream(OptFile, OldStream, !IO),
+
+            module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+            generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
+
+            ( if set.contains(ProcAnalysisKinds, pak_exception) then
+                list.foldl2(write_pragma_exceptions_for_pred(ModuleInfo),
+                    OrderPredInfos, is_first, _, !IO)
+            else
+                true
+            ),
+            ( if set.contains(ProcAnalysisKinds, pak_trailing) then
+                list.foldl2(write_pragma_trailing_info_for_pred(ModuleInfo),
+                    OrderPredInfos, is_first, _, !IO)
+            else
+                true
+            ),
+            ( if set.contains(ProcAnalysisKinds, pak_mm_tabling) then
+                list.foldl2(write_pragma_mm_tabling_info_for_pred(ModuleInfo),
+                    OrderPredInfos, is_first, _, !IO)
+            else
+                true
+            ),
+            ( if set.is_non_empty(UnusedArgsInfos) then
+                set.foldl2(write_pragma_unused_args, UnusedArgsInfos,
+                    is_first, _, !IO)
+            else
+                true
+            ),
+            ( if set.contains(ProcAnalysisKinds, pak_termination) then
+                list.foldl2(write_pragma_termination_for_pred(ModuleInfo),
+                    OrderPredInfos, is_first, _, !IO)
+            else
+                true
+            ),
+            ( if set.contains(ProcAnalysisKinds, pak_termination2) then
+                list.foldl2(write_pragma_termination2_for_pred(ModuleInfo),
+                    OrderPredInfos, is_first, _, !IO)
+            else
+                true
+            ),
+            ( if set.contains(ProcAnalysisKinds, pak_structure_sharing) then
+                list.foldl2(write_pragma_structure_sharing_for_pred(ModuleInfo),
+                    OrderPredInfos, is_first, _, !IO)
+            else
+                true
+            ),
+            ( if set.contains(ProcAnalysisKinds, pak_structure_reuse) then
+                list.foldl2(write_pragma_structure_reuse_for_pred(ModuleInfo),
+                    OrderPredInfos, is_first, _, !IO)
+            else
+                true
+            ),
+
+            io.set_output_stream(OldStream, _, !IO),
+            io.close_output(OptFile, !IO)
+        ;
+            OptFileRes = error(IOError),
+            io.error_message(IOError, IOErrorMessage),
+            io.write_strings(["Error opening file `",
+                OptFileName, "' for output: ", IOErrorMessage], !IO),
+            io.set_exit_status(1, !IO)
+        )
     ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Write out the exception pragmas for this predicate.
     %
@@ -2349,36 +2382,6 @@ maybe_write_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
 
 %---------------------------------------------------------------------------%
 
-append_trailing_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Appending trailing_info pragmas to `", !IO),
-    maybe_write_string(Verbose, OptFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
-        list.foldl2(write_pragma_trailing_info_for_pred(ModuleInfo),
-            OrderPredInfos, is_first, _, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
     % Write out the trailing_info pragma for this module.
     %
 :- pred write_pragma_trailing_info_for_pred(module_info::in,
@@ -2422,37 +2425,6 @@ maybe_write_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
     ).
 
 %---------------------------------------------------------------------------%
-
-append_mm_tabling_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Appending mm_tabling_info pragmas to `",
-        !IO),
-    maybe_write_string(Verbose, OptFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
-        list.foldl2(write_pragma_mm_tabling_info_for_pred(ModuleInfo),
-            OrderPredInfos, is_first, _, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
 
     % Write out the mm_tabling_info pragma for this predicate.
     %
@@ -2498,37 +2470,6 @@ maybe_write_pragma_mm_tabling_info_for_proc(ModuleInfo, OrderPredInfo,
     ).
 
 %---------------------------------------------------------------------------%
-
-append_structure_reuse_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Appending structure_reuse pragmas to `",
-        !IO),
-    maybe_write_string(Verbose, OptFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
-        list.foldl2(write_pragma_structure_reuse_for_pred(ModuleInfo),
-            OrderPredInfos, is_first, _, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
 
 :- pred write_pragma_structure_reuse_for_pred(module_info::in,
     order_pred_info::in, maybe_first::in, maybe_first::out,
@@ -2581,37 +2522,6 @@ maybe_write_pragma_structure_reuse_for_proc(ModuleInfo, OrderPredInfo,
 
 %---------------------------------------------------------------------------%
 
-append_structure_sharing_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Appending structure_sharing pragmas to `",
-        !IO),
-    maybe_write_string(Verbose, OptFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
-        list.foldl2(write_pragma_structure_sharing_for_pred(ModuleInfo),
-            OrderPredInfos, is_first, _, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
 :- pred write_pragma_structure_sharing_for_pred(module_info::in,
     order_pred_info::in, maybe_first::in, maybe_first::out,
     io::di, io::uo) is det.
@@ -2663,38 +2573,6 @@ maybe_write_pragma_structure_sharing_for_proc(ModuleInfo, OrderPredInfo,
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
-append_termination_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose, "% Appending termination_info pragmas to `",
-        !IO),
-    maybe_write_string(Verbose, OptFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
-        list.foldl2(write_pragma_termination_for_pred(ModuleInfo),
-            OrderPredInfos, is_first, _, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
 
     % Write out a termination_info pragma for the predicate if it is exported,
     % it is not a builtin and it is not a predicate used to force type
@@ -2749,37 +2627,6 @@ maybe_write_pragma_termination_for_proc(OrderPredInfo, _ProcId, ProcInfo,
     ).
 
 %---------------------------------------------------------------------------%
-
-append_termination2_pragmas_to_opt_file(ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose,
-        "% Appending termination2_info pragmas to `", !IO),
-    maybe_write_string(Verbose, OptFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-        generate_order_pred_infos(ModuleInfo, PredIds, OrderPredInfos),
-        list.foldl2(write_pragma_termination2_for_pred(ModuleInfo),
-            OrderPredInfos, is_first, _, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
 
     % Write out termination2_info pragma for the procedures of a predicate if:
     %   - the predicate is exported.
@@ -2898,34 +2745,6 @@ output_maybe_termination2_info(MaybeConstrTermInfo, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-append_unused_arg_pragmas_to_opt_file(ModuleInfo, UnusedArgInfos, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name(Globals, ModuleName, ".opt.tmp",
-        do_not_create_dirs, OptFileName, !IO),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    maybe_write_string(Verbose,
-        "% Appending unused_args pragmas to `", !IO),
-    maybe_write_string(Verbose, OptFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.open_append(OptFileName, OptFileRes, !IO),
-    (
-        OptFileRes = ok(OptFile),
-        io.set_output_stream(OptFile, OldStream, !IO),
-        set.foldl2(write_pragma_unused_args, UnusedArgInfos, is_first, _, !IO),
-        io.set_output_stream(OldStream, _, !IO),
-        io.close_output(OptFile, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO)
-    ;
-        OptFileRes = error(IOError),
-        maybe_write_string(Verbose, " failed!\n", !IO),
-        io.error_message(IOError, IOErrorMessage),
-        io.write_strings(["Error opening file `",
-            OptFileName, "' for output: ", IOErrorMessage], !IO),
-        io.set_exit_status(1, !IO)
-    ).
 
 :- pred write_pragma_unused_args(pragma_info_unused_args::in,
     maybe_first::in, maybe_first::out, io::di, io::uo) is det.
@@ -3308,39 +3127,65 @@ write_trans_opt_file(ModuleInfo, !IO) :-
         generate_order_pred_infos(ModuleInfo, PredIdsNoReuseVersions,
             NoReuseOrderPredInfos),
 
-        list.foldl2(
-            write_pragma_termination_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, is_first, _, !IO),
+        % Don't try to output pragmas for an analysis unless that analysis
+        % was actually run.
+        module_info_get_proc_analysis_kinds(ModuleInfo, ProcAnalysisKinds),
 
-        globals.lookup_bool_option(Globals, termination2, RunningTerm2),
-        (
-            RunningTerm2 = no
-            % Don't try to output termination2_info pragmas unless
-            % the analysis was actually run. Doing otherwise won't work
-            % because the necessary information will not have been set up.
-        ;
-            RunningTerm2 = yes,
+        ( if set.contains(ProcAnalysisKinds, pak_termination) then
+            list.foldl2(
+                write_pragma_termination_for_pred(ModuleInfo),
+                NoReuseOrderPredInfos, is_first, _, !IO)
+        else
+            true
+        ),
+
+        ( if set.contains(ProcAnalysisKinds, pak_termination2) then
             list.foldl2(
                 write_pragma_termination2_for_pred(ModuleInfo),
                 NoReuseOrderPredInfos, is_first, _, !IO)
+        else
+            true
         ),
 
-        list.foldl2(
-            write_pragma_structure_sharing_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, is_first, _, !IO),
-        list.foldl2(
-            write_pragma_structure_reuse_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, is_first, _, !IO),
+        ( if set.contains(ProcAnalysisKinds, pak_structure_sharing) then
+            list.foldl2(
+                write_pragma_structure_sharing_for_pred(ModuleInfo),
+                NoReuseOrderPredInfos, is_first, _, !IO)
+        else
+            true
+        ),
 
-        list.foldl2(
-            write_pragma_exceptions_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, is_first, _, !IO),
-        list.foldl2(
-            write_pragma_trailing_info_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, is_first, _, !IO),
-        list.foldl2(
-            write_pragma_mm_tabling_info_for_pred(ModuleInfo),
-            NoReuseOrderPredInfos, is_first, _, !IO),
+        ( if set.contains(ProcAnalysisKinds, pak_structure_reuse) then
+            list.foldl2(
+                write_pragma_structure_reuse_for_pred(ModuleInfo),
+                NoReuseOrderPredInfos, is_first, _, !IO)
+        else
+            true
+        ),
+
+        ( if set.contains(ProcAnalysisKinds, pak_exception) then
+            list.foldl2(
+                write_pragma_exceptions_for_pred(ModuleInfo),
+                NoReuseOrderPredInfos, is_first, _, !IO)
+        else
+            true
+        ),
+
+        ( if set.contains(ProcAnalysisKinds, pak_trailing) then
+            list.foldl2(
+                write_pragma_trailing_info_for_pred(ModuleInfo),
+                NoReuseOrderPredInfos, is_first, _, !IO)
+        else
+            true
+        ),
+
+        ( if set.contains(ProcAnalysisKinds, pak_mm_tabling) then
+            list.foldl2(
+                write_pragma_mm_tabling_info_for_pred(ModuleInfo),
+                NoReuseOrderPredInfos, is_first, _, !IO)
+        else
+            true
+        ),
 
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(Stream, !IO),
