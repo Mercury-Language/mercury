@@ -2218,9 +2218,11 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType,
         % has been imported.
 
         Id = mq_id(qualified(ModuleName, _), _Arity),
-        mq_info_get_imported_modules(Info, ImportedModules),
-        \+ set.member(ModuleName, ImportedModules),
-        \+ ModuleName = Info ^ mqi_this_module
+        ThisModuleName = Info ^ mqi_this_module,
+        mq_info_get_imported_modules(Info, ImportedModuleNames),
+        AvailModuleNames =
+            [ThisModuleName | set.to_sorted_list(ImportedModuleNames)],
+        module_name_matches_some(ModuleName, AvailModuleNames) = no
     then
         Pieces2 = [words("(The module"), sym_name(ModuleName),
             words("has not been imported.)"), nl]
@@ -2269,6 +2271,17 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType,
     Msg = simple_msg(Context, [always(Pieces1 ++ Pieces2 ++ Pieces3)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+:- func module_name_matches_some(module_name, list(module_name)) = bool.
+
+module_name_matches_some(_SearchModuleName, []) = no.
+module_name_matches_some(SearchModuleName, [ModuleName | ModuleNames]) =
+        Matches :-
+    ( if partial_sym_name_matches_full(SearchModuleName, ModuleName) then
+        Matches = yes
+    else
+        Matches = module_name_matches_some(SearchModuleName, ModuleNames)
+    ).
 
     % Report an error where a type, inst, mode or typeclass had
     % multiple possible matches.
