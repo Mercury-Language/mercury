@@ -30,7 +30,6 @@
 :- import_module transform_hlds.term_util.
 
 :- import_module bag.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -99,7 +98,7 @@
 
 :- pred term_traverse_goal(hlds_goal::in, term_traversal_params::in,
     term_traversal_info::in, term_traversal_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 :- pred upper_bound_active_vars(list(term_path_info)::in, bag(prog_var)::out)
     is det.
@@ -118,7 +117,7 @@
 
 %-----------------------------------------------------------------------------%
 
-term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
+term_traverse_goal(Goal, Params, !Info, !ModuleInfo) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         Detism = goal_info_get_determinism(GoalInfo),
@@ -308,18 +307,18 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
     ;
         GoalExpr = conj(_, Goals),
         list.reverse(Goals, RevGoals),
-        term_traverse_conj(RevGoals, Params, !Info, !ModuleInfo, !IO)
+        term_traverse_conj(RevGoals, Params, !Info, !ModuleInfo)
     ;
         GoalExpr = disj(Goals),
-        term_traverse_disj(Goals, Params, !Info, !ModuleInfo, !IO)
+        term_traverse_disj(Goals, Params, !Info, !ModuleInfo)
     ;
         GoalExpr = switch(_, _, Cases),
-        term_traverse_switch(Cases, Params, !Info, !ModuleInfo, !IO)
+        term_traverse_switch(Cases, Params, !Info, !ModuleInfo)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
         term_traverse_conj([Then, Cond], Params, !.Info, CondThenInfo,
-            !ModuleInfo, !IO),
-        term_traverse_goal(Else, Params, !.Info, ElseInfo, !ModuleInfo, !IO),
+            !ModuleInfo),
+        term_traverse_goal(Else, Params, !.Info, ElseInfo, !ModuleInfo),
         combine_paths(CondThenInfo, ElseInfo, Params, !:Info)
     ;
         GoalExpr = negation(SubGoal),
@@ -327,12 +326,12 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
         % it cannot bind any active variables. However, we must traverse it
         % during pass 1 to ensure that it does not call any non-terminating
         % procedures. Pass 2 relies on pass 1 having done this.
-        term_traverse_goal(SubGoal, Params, !Info, !ModuleInfo, !IO)
+        term_traverse_goal(SubGoal, Params, !Info, !ModuleInfo)
     ;
         GoalExpr = scope(_, SubGoal),
         % XXX We should special-case the handling of from_ground_term_construct
         % scopes.
-        term_traverse_goal(SubGoal, Params, !Info, !ModuleInfo, !IO)
+        term_traverse_goal(SubGoal, Params, !Info, !ModuleInfo)
     ;
         GoalExpr = shorthand(_),
         % These should have been expanded out by now.
@@ -346,35 +345,35 @@ term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO) :-
     %
 :- pred term_traverse_conj(hlds_goals::in, term_traversal_params::in,
     term_traversal_info::in, term_traversal_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-term_traverse_conj([], _, !Info, !ModuleInfo, !IO).
-term_traverse_conj([Goal | Goals], Params, !Info, !ModuleInfo, !IO) :-
-    term_traverse_goal(Goal, Params, !Info, !ModuleInfo, !IO),
-    term_traverse_conj(Goals, Params, !Info, !ModuleInfo, !IO).
+term_traverse_conj([], _, !Info, !ModuleInfo).
+term_traverse_conj([Goal | Goals], Params, !Info, !ModuleInfo) :-
+    term_traverse_goal(Goal, Params, !Info, !ModuleInfo),
+    term_traverse_conj(Goals, Params, !Info, !ModuleInfo).
 
 :- pred term_traverse_disj(hlds_goals::in, term_traversal_params::in,
     term_traversal_info::in, term_traversal_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
-term_traverse_disj([], _, _, term_traversal_ok(Empty, []), !ModuleInfo, !IO) :-
+term_traverse_disj([], _, _, term_traversal_ok(Empty, []), !ModuleInfo) :-
     set.init(Empty).
-term_traverse_disj([Goal | Goals], Params, !Info, !ModuleInfo, !IO) :-
-    term_traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo, !IO),
-    term_traverse_disj(Goals, Params, !.Info, GoalsInfo, !ModuleInfo, !IO),
+term_traverse_disj([Goal | Goals], Params, !Info, !ModuleInfo) :-
+    term_traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo),
+    term_traverse_disj(Goals, Params, !.Info, GoalsInfo, !ModuleInfo),
     combine_paths(GoalInfo, GoalsInfo, Params, !:Info).
 
 :- pred term_traverse_switch(list(case)::in, term_traversal_params::in,
     term_traversal_info::in, term_traversal_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 term_traverse_switch([], _, _, term_traversal_ok(Empty, []),
-        !ModuleInfo, !IO) :-
+        !ModuleInfo) :-
     set.init(Empty).
 term_traverse_switch([case(_, _, Goal) | Cases], Params, !Info,
-        !ModuleInfo, !IO) :-
-    term_traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo, !IO),
-    term_traverse_switch(Cases, Params, !.Info, CasesInfo, !ModuleInfo, !IO),
+        !ModuleInfo) :-
+    term_traverse_goal(Goal, Params, !.Info, GoalInfo, !ModuleInfo),
+    term_traverse_switch(Cases, Params, !.Info, CasesInfo, !ModuleInfo),
     combine_paths(GoalInfo, CasesInfo, Params, !:Info).
 
 %-----------------------------------------------------------------------------%

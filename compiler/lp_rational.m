@@ -700,7 +700,10 @@ substitute_vars_2(_, gte(_, _)) =
 
 :- func substitute_term(map(lp_var, lp_var), lp_term) = lp_term.
 
-substitute_term(SubstMap, Var - Coeff) = SubstMap ^ det_elem(Var) - Coeff.
+substitute_term(SubstMap, Term0) = Term :-
+    Term0 = Var0 - Coeff,
+    map.lookup(SubstMap, Var0, Var),
+    Term = Var - Coeff.
 
 set_vars_to_zero(Vars, Constraints) =
     list.map(set_vars_to_zero_2(Vars), Constraints).
@@ -990,7 +993,7 @@ insert_constraints([C | Cs], Row, ConstCol, VarNums, !Tableau) :-
 
 insert_terms([], _,  _, !Tableau).
 insert_terms([Var - Const | Coeffs], Row, VarNums, !Tableau) :-
-    Col = VarNums ^ det_elem(Var),
+    map.lookup(VarNums, Var, Col),
     set_cell(Row, Col, Const, !Tableau),
     insert_terms(Coeffs, Row, VarNums, !Tableau).
 
@@ -1021,7 +1024,7 @@ extract_objective(ObjVars, Tableau) = Objective :-
 
 extract_obj_var(Tableau, Var, Map0) = Map :-
     extract_obj_var2(Tableau, Var, Val),
-    Map = Map0 ^ elem(Var) := Val.
+    map.set(Var, Val, Map0, Map).
 
 :- pred extract_obj_var2(tableau::in, lp_var::in, rat::out) is det.
 
@@ -1957,7 +1960,7 @@ label_subsumed(VectorA, VectorB) :-
     lp_vars::out) is semidet.
 
 duffin_heuristic([Var], _, Var, []).
-duffin_heuristic(Vars0 @ [_,_|_], Matrix, TargetVar, Vars) :-
+duffin_heuristic(Vars0 @ [_, _ | _], Matrix, TargetVar, Vars) :-
     VarsAndNums0 = generate_expansion_nums(Vars0, Matrix),
     VarsAndNums1 = list.filter(relevant, VarsAndNums0),
     VarsAndNums1 \= [],
@@ -2027,7 +2030,7 @@ count_coeffs_in_vector(Vector, Map0) = Map :-
 :- pred count_coeff(lp_term::in, cc_map::in, cc_map::out) is det.
 
 count_coeff(Var - Coeff, !Map) :-
-    ( if !.Map ^ elem(Var) = coeff_info(Pos0, Neg0) then
+    ( if map.search(!.Map, Var, coeff_info(Pos0, Neg0)) then
         ( if Coeff > zero then
             Pos = Pos0 + 1,
             Neg = Neg0
@@ -2066,10 +2069,11 @@ init_cc_map(Vars) = list.foldl(InitMap, Vars, map.init) :-
     constant::in, map(lp_var, coefficient)::out, constant::out) is det.
 
 normalize_vector(Var, !.Terms, !.Constant, !:Terms, !:Constant) :-
-    ( if Coefficient = !.Terms ^ elem(Var) then
-        ( if Coefficient = zero
-        then unexpected($module, $pred, "zero coefficient in vector")
-        else true
+    ( if map.search(!.Terms, Var, Coefficient) then
+        ( if Coefficient = zero then
+            unexpected($module, $pred, "zero coefficient in vector")
+        else
+            true
         ),
         DivVal = rat.abs(Coefficient),
         !:Terms = map.map_values_only((func(C) = C / DivVal), !.Terms),
@@ -2118,8 +2122,8 @@ add_vectors(TermsA, ConstA, TermsB, ConstB, Terms, ConstA + ConstB) :-
         map.member(TermsA, Var, _)
     ),
     AddVal = (pred(Var::in, Coeffs0::in, Coeffs::out) is det :-
-        NumA = TermsA ^ det_elem(Var),
-        ( if Coeffs0 ^ elem(Var) = Num1 then
+        map.lookup(TermsA, Var, NumA),
+        ( if map.search(Coeffs0, Var, Num1) then
             ( if NumA + Num1 = zero then
                 Coeffs = map.delete(Coeffs0, Var)
             else

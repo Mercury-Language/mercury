@@ -22,18 +22,17 @@
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.term_util.
 
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
     % NOTE: This code assumes that the SCC does not call any nonterminating
-    % procedures.  If it does then that fact should have been detected
+    % procedures. If it does then, that fact should have been detected
     % during pass 1.
     %
 :- pred prove_termination_in_scc(list(pred_proc_id)::in,
     pass_info::in, int::in, termination_info::out, module_info::in,
-    module_info::out, io::di, io::uo) is det.
+    module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -85,10 +84,10 @@
 %-----------------------------------------------------------------------------%
 
 prove_termination_in_scc(SCC, PassInfo, SingleArgs, Termination,
-        !ModuleInfo, !IO) :-
+        !ModuleInfo) :-
     init_rec_input_suppliers(SCC, !.ModuleInfo, InitRecSuppliers),
     prove_termination_in_scc_trial(SCC, InitRecSuppliers, down, PassInfo,
-        Termination0, !ModuleInfo, !IO),
+        Termination0, !ModuleInfo),
     (
         Termination0 = can_loop(Errors),
         (
@@ -106,7 +105,7 @@ prove_termination_in_scc(SCC, PassInfo, SingleArgs, Termination,
             )
         ->
             prove_termination_in_scc_single_arg(SCC, PassInfo,
-                SingleArgTerminates, !ModuleInfo, !IO),
+                SingleArgTerminates, !ModuleInfo),
             (
                 SingleArgTerminates = yes,
                 Termination = cannot_loop(unit)
@@ -164,18 +163,16 @@ init_rec_input_suppliers([PPId | PPIds], ModuleInfo, RecSupplierMap) :-
     % sets cannot decrease.
     %
 :- pred prove_termination_in_scc_single_arg(list(pred_proc_id)::in,
-    pass_info::in, bool::out, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+    pass_info::in, bool::out, module_info::in, module_info::out) is det.
 
-prove_termination_in_scc_single_arg(SCC, PassInfo, Terminates, !ModuleInfo,
-        !IO) :-
+prove_termination_in_scc_single_arg(SCC, PassInfo, Terminates, !ModuleInfo) :-
     (
         SCC = [FirstPPId | LaterPPIds],
         FirstArity = lookup_proc_arity(FirstPPId, !.ModuleInfo),
         find_min_arity_proc(LaterPPIds, FirstPPId, FirstArity, !.ModuleInfo,
             TrialPPId, RestSCC),
         prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, 1,
-            PassInfo, Terminates, !ModuleInfo, !IO)
+            PassInfo, Terminates, !ModuleInfo)
     ;
         SCC = [],
         unexpected($module, $pred, "empty SCC")
@@ -206,16 +203,16 @@ find_min_arity_proc([PPId | PPIds], BestSofarPPId, BestSofarArity, ModuleInfo,
     %
 :- pred prove_termination_in_scc_single_arg_2(pred_proc_id::in,
     list(pred_proc_id)::in, int::in, pass_info::in, bool::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, ArgNum0,
-        PassInfo, Terminates, !ModuleInfo, !IO) :-
+        PassInfo, Terminates, !ModuleInfo) :-
     (
         init_rec_input_suppliers_single_arg(TrialPPId, RestSCC,
             ArgNum0, !.ModuleInfo, InitRecSuppliers)
     ->
         prove_termination_in_scc_trial([TrialPPId | RestSCC], InitRecSuppliers,
-            up, PassInfo, Termination, !ModuleInfo, !IO),
+            up, PassInfo, Termination, !ModuleInfo),
         (
             Termination = cannot_loop(unit),
             Terminates = yes
@@ -223,7 +220,7 @@ prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, ArgNum0,
             Termination = can_loop(_),
             ArgNum1 = ArgNum0 + 1,
             prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC,
-                ArgNum1, PassInfo, Terminates, !ModuleInfo, !IO)
+                ArgNum1, PassInfo, Terminates, !ModuleInfo)
         )
     ;
         Terminates = no
@@ -299,12 +296,12 @@ lookup_proc_arity(PPId, ModuleInfo) = Arity :-
 
 :- pred prove_termination_in_scc_trial(list(pred_proc_id)::in, used_args::in,
     fixpoint_dir::in, pass_info::in, termination_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir,
-        PassInfo, Termination, !ModuleInfo, !IO) :-
+        PassInfo, Termination, !ModuleInfo) :-
     prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
-        InitRecSuppliers, Result, !ModuleInfo, !IO),
+        InitRecSuppliers, Result, !ModuleInfo),
     (
         Result = term_pass2_ok(CallInfo, _),
         CallInfo = call_weight_info(InfCalls, CallWeights),
@@ -336,16 +333,15 @@ prove_termination_in_scc_trial(SCC, InitRecSuppliers, FixDir,
 
 :- pred prove_termination_in_scc_fixpoint(list(pred_proc_id)::in,
     fixpoint_dir::in, pass_info::in, used_args::in, term_pass2_result::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
-        RecSupplierMap0, Result, !ModuleInfo, !IO) :-
+        RecSupplierMap0, Result, !ModuleInfo) :-
     map.init(NewRecSupplierMap0),
     map.init(CallWeightGraph0),
     CallInfo0 = call_weight_info([], CallWeightGraph0),
     prove_termination_in_scc_pass(SCC, FixDir, PassInfo,
-        RecSupplierMap0, NewRecSupplierMap0, CallInfo0, Result1, !ModuleInfo,
-        !IO),
+        RecSupplierMap0, NewRecSupplierMap0, CallInfo0, Result1, !ModuleInfo),
     (
         Result1 = term_pass2_ok(_, RecSupplierMap1),
         ( RecSupplierMap1 = RecSupplierMap0 ->
@@ -354,7 +350,7 @@ prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
             Result = Result1
         ;
             prove_termination_in_scc_fixpoint(SCC, FixDir,
-                PassInfo, RecSupplierMap1, Result, !ModuleInfo, !IO)
+                PassInfo, RecSupplierMap1, Result, !ModuleInfo)
         )
     ;
         Result1 = term_pass2_error(_),
@@ -369,13 +365,13 @@ prove_termination_in_scc_fixpoint(SCC, FixDir, PassInfo,
 :- pred prove_termination_in_scc_pass(list(pred_proc_id)::in, fixpoint_dir::in,
     pass_info::in, used_args::in, used_args::in,
     call_weight_info::in, term_pass2_result::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 prove_termination_in_scc_pass([], _, _, _, NewRecSupplierMap, CallInfo,
-        term_pass2_ok(CallInfo, NewRecSupplierMap), !ModuleInfo, !IO).
+        term_pass2_ok(CallInfo, NewRecSupplierMap), !ModuleInfo).
 prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
         RecSupplierMap, NewRecSupplierMap0, CallInfo0, Result,
-        !ModuleInfo, !IO) :-
+        !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo),
     pred_info_get_context(PredInfo, Context),
     proc_info_get_goal(ProcInfo, Goal0),
@@ -391,7 +387,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
         EmptyMap, RecSupplierMap, MaxErrors, MaxPaths, Params),
     set.init(PathSet0),
     Info0 = term_traversal_ok(PathSet0, []),
-    term_traverse_goal(Goal, Params, Info0, Info, !ModuleInfo, !IO),
+    term_traverse_goal(Goal, Params, Info0, Info, !ModuleInfo),
     (
         Info = term_traversal_ok(Paths, CanLoop),
         expect(unify(CanLoop, []), $module, $pred,
@@ -409,7 +405,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
         add_call_arcs(PathList, RecSuppliers0Bag, CallInfo0, CallInfo1),
         prove_termination_in_scc_pass(PPIds, FixDir,
             PassInfo, RecSupplierMap, NewRecSupplierMap1, CallInfo1, Result,
-            !ModuleInfo, !IO)
+            !ModuleInfo)
     ;
         Info = term_traversal_error(Errors, CanLoop),
         expect(unify(CanLoop, []), $module, $pred,

@@ -34,7 +34,6 @@
 :- module libs.lp.
 :- interface.
 
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module pair.
@@ -67,21 +66,20 @@
 
 %-----------------------------------------------------------------------------%
 
-    % lp_solve(Inequations, MaxOrMin, Objective, Varset, URSVars,
-    %       Result, IO0, IO)
-    % maximize (or minimize - depending on `MaxOrMin') `Objective'
-    % subject to the constraints `Inequations'. The variables in
-    % the objective and inequations are from `Varset' which is passed
-    % so that the solver can allocate fresh variables as required.
-    % URSVars is the list of variable that are unrestricted in sign.
-    % lp_solve binds Result either to `unsatisfiable' if the there
-    % was no optimum value of the objective function (ie the
-    % constraints were inconsistent, or the objective function
-    % is unbounded by the constraints), or `satisfiable(ObjVal,
-    % MapFromObjVarsToVals)'.
+    % lp_solve(Inequations, MaxOrMin, Objective, VarSet, URSVars, Result):
+    %
+    % Maximize (or minimize - depending on `MaxOrMin') `Objective' subject
+    % to the constraints `Inequations'. The variables in the objective
+    % and inequations are from `VarSet' which is passed in so that the solver
+    % can allocate fresh variables as required. URSVars is the list of
+    % variables that are unrestricted in sign. lp_solve binds Result
+    % either to `unsatisfiable' if the there was no optimum value of the
+    % objective function (i.e. the constraints were inconsistent, or the
+    % objective function is unbounded by the constraints), or
+    % `satisfiable(ObjVal, MapFromObjVarsToVals)'.
     %
 :- pred lp_solve(equations::in, direction::in, objective::in, varset::in,
-    list(var)::in, lp.result::out, io::di, io::uo) is det.
+    list(var)::in, lp.result::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -91,6 +89,7 @@
 :- import_module bool.
 :- import_module float.
 :- import_module int.
+:- import_module io.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
@@ -114,72 +113,62 @@
 
 %-----------------------------------------------------------------------------%
 
-lp_solve(Eqns, Dir, Obj, Varset0, URSVars, Result, !IO) :-
-    lp_info_init(Varset0, URSVars, Info0),
-    lp_solve_2(Eqns, Dir, Obj, Result, Info0, _, !IO).
+lp_solve(Eqns0, Dir, Obj0, VarSet0, URSVars, Result) :-
+    some [!Info] (
+        lp_info_init(VarSet0, URSVars, !:Info),
 
-    % lp_solve2(Eqns, Dir, Obj, Res, IO0, IO, LPInfo0, LPInfo) takes
-    % a list of inequations `Eqns', a direction for optimization
-    % `Dir', an objective function `Obj', an I/O state `IO0' and an
-    % lp_info structure `LPInfo0'. See inline comments for details
-    % on the algorithm.
-    %
-:- pred lp_solve_2(equations::in, direction::in, objective::in,
-    lp.result::out, lp_info::in, lp_info::out, io::di, io::uo)
-    is det.
+        % Simplify the inequations and convert them to standard form by
+        % introducing slack/excess/artificial variables. We also expand
+        % URS variables by replacing them with the difference of two
+        % fresh variables.
+        standardize_equations(Eqns0, Eqns, !Info),
 
-lp_solve_2(Eqns0, Dir, Obj0, Result, !Info, !IO) :-
-    % Simplify the inequations and convert them to standard form by
-    % introducing slack/excess/artificial variables. We also expand
-    % URS variables by replacing them with the difference of two
-    % fresh variables.
-    standardize_equations(Eqns0, Eqns, !Info),
-
-    % If we are maximizing the objective function, then we need to negate
-    % all the coefficients in the objective.
-    (
-        Dir = max,
-        negate_equation(eqn(Obj0, (=), 0.0), eqn(Obj1, _, _))
-    ;
-        Dir = min,
-        Obj1 = Obj0
-    ),
-    simplify_coeffs(Obj1, Obj2),
-
-    get_urs_vars(!.Info, URS),
-    expand_urs_vars(Obj2, URS, Obj),
-    list.length(Eqns, Rows),
-    collect_vars(Eqns, Obj, Vars),
-    set.to_sorted_list(Vars, VarList),
-    list.length(VarList, Cols),
-    map.init(VarNums0),
-    number_vars(VarList, 0, VarNums0, VarNums),
-    get_art_vars(!.Info, ArtVars),
-    some [!Tableau] (
-        init_tableau(Rows, Cols, VarNums, URS, !:Tableau),
-        insert_equations(Eqns, 1, Cols, VarNums, !Tableau),
+        % If we are maximizing the objective function, then we need to negate
+        % all the coefficients in the objective.
         (
-            ArtVars = [_|_],
-            % There are one or more artificial variables, so we use
-            % the two-phase method for solving the system.
-            two_phase(Obj0, Obj, ArtVars, VarNums, !.Tableau, Result0)
+            Dir = max,
+            negate_equation(eqn(Obj0, (=), 0.0), eqn(Obj1, _, _))
         ;
-            ArtVars = [],
-            one_phase(Obj0, Obj, VarNums, !.Tableau, Result0)
-        )
-    ),
-    (
-        Dir = max,
-        Result = Result0
-    ;
-        Dir = min,
+            Dir = min,
+            Obj1 = Obj0
+        ),
+        simplify_coeffs(Obj1, Obj2),
+
+        get_urs_vars(!.Info, URS),
+        expand_urs_vars(Obj2, URS, Obj),
+        list.length(Eqns, Rows),
+        collect_vars(Eqns, Obj, Vars),
+        set.to_sorted_list(Vars, VarList),
+        list.length(VarList, Cols),
+        map.init(VarNums0),
+        number_vars(VarList, 0, VarNums0, VarNums),
+        get_art_vars(!.Info, ArtVars),
+        some [!Tableau] (
+            init_tableau(Rows, Cols, VarNums, URS, !:Tableau),
+            insert_equations(Eqns, 1, Cols, VarNums, !Tableau),
+            (
+                ArtVars = [_ | _],
+                % There are one or more artificial variables, so we use
+                % the two-phase method for solving the system.
+                two_phase(Obj0, Obj, ArtVars, VarNums, !.Tableau, Result0)
+            ;
+                ArtVars = [],
+                one_phase(Obj0, Obj, VarNums, !.Tableau, Result0)
+            )
+        ),
         (
-            Result0 = unsatisfiable,
+            Dir = max,
             Result = Result0
         ;
-            Result0 = satisfiable(NOptVal, OptCoffs),
-            OptVal = -NOptVal,
-            Result = satisfiable(OptVal, OptCoffs)
+            Dir = min,
+            (
+                Result0 = unsatisfiable,
+                Result = Result0
+            ;
+                Result0 = satisfiable(NOptVal, OptCoffs),
+                OptVal = -NOptVal,
+                Result = satisfiable(OptVal, OptCoffs)
+            )
         )
     ).
 
@@ -259,7 +248,7 @@ construct_art_objective([V | Vs], [V - (1.0) | Rest]) :-
 standardize_equations(!Eqns, !Info) :-
     list.map_foldl(standardize_equation, !Eqns, !Info).
 
-    % standardize_equation peforms the following operations on an equation:
+    % standardize_equation performs the following operations on an equation:
     %   - ensures the constant is >= 0 (multiplying by -1 if necessary)
     %   - introduces slack, excess and artificial variables
     %   - replace the URS variables with their corresponding difference pair.
@@ -415,7 +404,7 @@ insert_equations([Eqn | Eqns], Row, ConstCol, VarNums, !Tableau) :-
     tableau::in, tableau::out) is det.
 
 insert_coeffs([], _Row, _VarNums, !Tableau).
-insert_coeffs([Coeff|Coeffs], Row, VarNums, !Tableau) :-
+insert_coeffs([Coeff | Coeffs], Row, VarNums, !Tableau) :-
     Coeff = Var - Const,
     map.lookup(VarNums, Var, Col),
     set_index(Row, Col, Const, !Tableau),
@@ -567,7 +556,7 @@ ensure_zero_obj_coeffs([V | Vs], !Tableau) :-
         ),
         solutions.solutions(FindOne, Ones),
         (
-            Ones = [Row - Fac0|_],
+            Ones = [Row - Fac0 | _],
             Fac = -Val/Fac0,
             row_op(Fac, Row, 0, !Tableau),
             ensure_zero_obj_coeffs(Vs, !Tableau)
@@ -588,7 +577,7 @@ fix_basis_and_rem_cols([V | Vs], !Tableau) :-
         ( if Val = 0.0 then
             Ones = Ones0
         else
-            Ones = [Val - R|Ones0]
+            Ones = [Val - R | Ones0]
         )
     ),
     solutions.aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
@@ -605,7 +594,7 @@ fix_basis_and_rem_cols([V | Vs], !Tableau) :-
             remove_col(Col, !Tableau),
             remove_row(Row, !Tableau)
         ;
-            PivSolns = [Col2|_],
+            PivSolns = [Col2 | _],
             pivot(Row, Col2, !Tableau),
             remove_col(Col, !Tableau)
         )
@@ -778,13 +767,13 @@ urs_vars(Tableau, Tableau ^ urs_vars).
 
 remove_row(R, Tableau0, Tableau) :-
     Tableau0 = tableau(Rows, Cols, VarNums, URS, SR, SC, Cells),
-    Tableau = tableau(Rows, Cols, VarNums, URS, [R|SR], SC, Cells).
+    Tableau = tableau(Rows, Cols, VarNums, URS, [R | SR], SC, Cells).
 
 :- pred remove_col(int::in, tableau::in, tableau::out) is det.
 
 remove_col(C, Tableau0, Tableau) :-
     Tableau0 = tableau(Rows, Cols, VarNums, URS, SR, SC, Cells),
-    Tableau = tableau(Rows, Cols, VarNums, URS, SR, [C|SC], Cells).
+    Tableau = tableau(Rows, Cols, VarNums, URS, SR, [C | SC], Cells).
 
 :- pred get_basis_vars(tableau::in, list(var)::out) is det.
 
@@ -812,7 +801,7 @@ get_basis_vars(Tab, Vars) :-
 
 :- pred lp_info_init(varset::in, list(var)::in, lp_info::out) is det.
 
-lp_info_init(Varset0, URSVars, LPInfo) :-
+lp_info_init(VarSet0, URSVars, LPInfo) :-
     Introduce = (pred(Orig::in, VP0::in, VP::out) is det :-
         VP0 = VS0 - VM0,
         varset.new_var(V1, VS0, VS1),
@@ -821,16 +810,16 @@ lp_info_init(Varset0, URSVars, LPInfo) :-
         VP = VS - VM
     ),
     map.init(URSMap0),
-    list.foldl(Introduce, URSVars, Varset0 - URSMap0, Varset - URSMap),
-    LPInfo = lp_info(Varset, URSMap, [], []).
+    list.foldl(Introduce, URSVars, VarSet0 - URSMap0, VarSet - URSMap),
+    LPInfo = lp_info(VarSet, URSMap, [], []).
 
 :- pred new_slack_var(var::out, lp_info::in, lp_info::out) is det.
 
 new_slack_var(Var, !Info) :-
-    some [!Varset] (
-        get_varset(!.Info, !:Varset),
-        varset.new_var(Var, !Varset),
-        set_varset(!.Varset, !Info)
+    some [!VarSet] (
+        get_varset(!.Info, !:VarSet),
+        varset.new_var(Var, !VarSet),
+        set_varset(!.VarSet, !Info)
     ),
     get_slack_vars(!.Info, Vars),
     set_slack_vars([Var | Vars], !Info).
@@ -838,10 +827,10 @@ new_slack_var(Var, !Info) :-
 :- pred new_art_var(var::out, lp_info::in, lp_info::out) is det.
 
 new_art_var(Var, !Info) :-
-    some [!Varset] (
-        get_varset(!.Info, !:Varset),
-        varset.new_var(Var, !Varset),
-        set_varset(!.Varset, !Info)
+    some [!VarSet] (
+        get_varset(!.Info, !:VarSet),
+        varset.new_var(Var, !VarSet),
+        set_varset(!.VarSet, !Info)
     ),
     get_art_vars(!.Info, Vars),
     set_art_vars([Var | Vars], !Info).
@@ -862,8 +851,8 @@ get_art_vars(Info, Info ^ lpi_art_vars).
 :- pred set_slack_vars(list(var)::in, lp_info::in, lp_info::out) is det.
 :- pred set_art_vars(list(var)::in, lp_info::in, lp_info::out) is det.
 
-set_varset(Varset, !Info) :-
-    !Info ^ lpi_varset := Varset.
+set_varset(VarSet, !Info) :-
+    !Info ^ lpi_varset := VarSet.
 set_urs_vars(URSVars, !Info) :-
     !Info ^ lpi_urs_map := URSVars.
 set_slack_vars(Slack, !Info) :-

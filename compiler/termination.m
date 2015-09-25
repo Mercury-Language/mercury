@@ -92,7 +92,7 @@ analyse_termination_in_module(!ModuleInfo, !:Specs, !IO) :-
     % Process builtin and compiler-generated predicates, and user-supplied
     % pragmas.
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-    check_preds(PredIds, !ModuleInfo, !IO),
+    check_preds(PredIds, !ModuleInfo),
 
     % Process all the SCCs of the call graph in a bottom-up order.
     module_info_ensure_dependency_info(!ModuleInfo),
@@ -372,7 +372,7 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
     ;
         SCCArgSizeUnknown = [_ | _],
         find_arg_sizes_in_scc(SCCArgSizeUnknown, PassInfo, ArgSizeResult,
-            TermErrors, !ModuleInfo, !IO),
+            TermErrors, !ModuleInfo),
         (
             ArgSizeResult = arg_size_ok(Solutions, OutputSupplierMap),
             set_finite_arg_size_infos(Solutions, OutputSupplierMap,
@@ -413,7 +413,7 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
             globals.lookup_int_option(Globals, termination_single_args,
                 SingleArgs),
             prove_termination_in_scc(SCCTerminationUnknown,
-                PassInfo, SingleArgs, TerminationResult, !ModuleInfo, !IO)
+                PassInfo, SingleArgs, TerminationResult, !ModuleInfo)
         ),
         set_termination_infos(SCCTerminationUnknown, TerminationResult,
             !ModuleInfo),
@@ -600,13 +600,15 @@ is_solver_init_wrapper_pred(ModuleInfo, proc(PredId, _)) :-
     %   information about it (termination_info pragmas, terminates pragmas,
     %   check_termination pragmas, builtin/compiler generated).
     %
-:- pred check_preds(list(pred_id)::in, module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred check_preds(list(pred_id)::in, module_info::in, module_info::out)
+    is det.
 
-check_preds([], !ModuleInfo, !IO).
-check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
-    write_pred_progress_message("% Checking termination of ", PredId,
-        !.ModuleInfo, !IO),
+check_preds([], !ModuleInfo).
+check_preds([PredId | PredIds], !ModuleInfo) :-
+    trace [io(!IO)] (
+        write_pred_progress_message("% Checking termination of ", PredId,
+            !.ModuleInfo, !IO)
+    ),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
@@ -680,7 +682,7 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.set(PredId, PredInfo, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
-    check_preds(PredIds, !ModuleInfo, !IO).
+    check_preds(PredIds, !ModuleInfo).
 
 %----------------------------------------------------------------------------%
 
