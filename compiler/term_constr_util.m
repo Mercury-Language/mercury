@@ -159,7 +159,7 @@
 :- pred update_arg_size_info(pred_proc_id::in, polyhedron::in, module_info::in,
     module_info::out) is det.
 
-    % change_procs_constr_termination_info(SCC, Override, TermInfo,
+    % change_procs_constr_termination_info(SCC, Override, Term2Info,
     %   !ProcTable).
     %
     % If Override is yes, then this predicate overrides any existing
@@ -213,9 +213,9 @@ set_pred_proc_ids_constr_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
-    proc_info_get_termination2_info(ProcInfo0, TermInfo0),
-    TermInfo = TermInfo0 ^ success_constrs := yes(ArgSize),
-    proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
+    proc_info_get_termination2_info(ProcInfo0, Term2Info0),
+    term2_info_set_success_constrs(yes(ArgSize), Term2Info0, Term2Info),
+    proc_info_set_termination2_info(Term2Info, ProcInfo0, ProcInfo),
     map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.det_update(PredId, PredInfo, PredTable0, PredTable),
@@ -225,8 +225,8 @@ set_pred_proc_ids_constr_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
 lookup_proc_constr_arg_size_info(ModuleInfo, PredProcId) = MaybeArgSizeInfo :-
     PredProcId = proc(PredId, ProcId),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    proc_info_get_termination2_info(ProcInfo, TermInfo),
-    MaybeArgSizeInfo = TermInfo ^ success_constrs.
+    proc_info_get_termination2_info(ProcInfo, Term2Info),
+    MaybeArgSizeInfo = term2_info_get_success_constrs(Term2Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -280,7 +280,7 @@ add_context_to_constr_termination_info(no, _, no).
 add_context_to_constr_termination_info(yes(cannot_loop(_)), _,
         yes(cannot_loop(term_reason_import_supplied))).
 add_context_to_constr_termination_info(yes(can_loop(_)), Context,
-        yes(can_loop([Context - imported_pred]))).
+        yes(can_loop([term2_error(Context, imported_pred)]))).
 
 %-----------------------------------------------------------------------------%
 
@@ -418,15 +418,15 @@ update_arg_size_info(PPID, Polyhedron, !ModuleInfo) :-
 change_procs_constr_termination_info([], _, _, !ProcTable).
 change_procs_constr_termination_info([ProcId | ProcIds], Override, Termination,
         !ProcTable) :-
-    ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
-    proc_info_get_termination2_info(ProcInfo0, TermInfo0),
+    map.lookup(!.ProcTable, ProcId, ProcInfo0),
+    proc_info_get_termination2_info(ProcInfo0, Term2Info0),
     (
         ( Override = yes
-        ; TermInfo0 ^ term_status = no
+        ; term2_info_get_term_status(Term2Info0) = no
         )
     ->
-        TermInfo = TermInfo0 ^ term_status := yes(Termination),
-        proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
+        term2_info_set_term_status(yes(Termination), Term2Info0, Term2Info),
+        proc_info_set_termination2_info(Term2Info, ProcInfo0, ProcInfo),
         map.det_update(ProcId, ProcInfo, !ProcTable)
     ;
         true
@@ -437,15 +437,15 @@ change_procs_constr_termination_info([ProcId | ProcIds], Override, Termination,
 change_procs_constr_arg_size_info([], _, _, !ProcTable).
 change_procs_constr_arg_size_info([ProcId | ProcIds], Override, ArgSize,
         !ProcTable) :-
-    ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
-    proc_info_get_termination2_info(ProcInfo0, TermInfo0),
+    map.lookup(!.ProcTable, ProcId, ProcInfo0),
+    proc_info_get_termination2_info(ProcInfo0, Term2Info0),
     (
         ( Override = yes
-        ; TermInfo0 ^ success_constrs = no
+        ; term2_info_get_success_constrs(Term2Info0) = no
         )
     ->
-        TermInfo = TermInfo0 ^ success_constrs := yes(ArgSize),
-        proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
+        term2_info_set_success_constrs(yes(ArgSize), Term2Info0, Term2Info),
+        proc_info_set_termination2_info(Term2Info, ProcInfo0, ProcInfo),
         map.det_update(ProcId, ProcInfo, !ProcTable)
     ;
         true
@@ -459,8 +459,8 @@ get_abstract_scc(ModuleInfo, SCC) =
 
 get_abstract_proc(ModuleInfo, PPId) = AbstractProc :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
-    proc_info_get_termination2_info(ProcInfo, TermInfo),
-    MaybeAbstractProc = TermInfo ^ abstract_rep,
+    proc_info_get_termination2_info(ProcInfo, Term2Info),
+    MaybeAbstractProc = term2_info_get_abstract_rep(Term2Info),
     (
         MaybeAbstractProc = yes(AbstractProc)
     ;

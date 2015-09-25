@@ -2671,11 +2671,11 @@ maybe_write_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
 
         proc_info_declared_argmodes(ProcInfo, ArgModes),
         proc_info_get_headvars(ProcInfo, HeadVars),
-        proc_info_get_termination2_info(ProcInfo, TermInfo),
-        MaybeSuccess = TermInfo ^ success_constrs,
-        MaybeFailure = TermInfo ^ failure_constrs,
-        MaybeTermination = TermInfo ^ term_status,
-        SizeVarMap = TermInfo ^ size_var_map,
+        proc_info_get_termination2_info(ProcInfo, Term2Info),
+        MaybeSuccess = term2_info_get_success_constrs(Term2Info),
+        MaybeFailure = term2_info_get_failure_constrs(Term2Info),
+        MaybeTermination = term2_info_get_term_status(Term2Info),
+        SizeVarMap = term2_info_get_size_var_map(Term2Info),
         HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
 
         % NOTE: If this predicate is changed, then prog_io_pragma.m must also

@@ -33,7 +33,7 @@
     % Derive the argument size constraints for the procedures in this SCC.
     %
 :- pred do_fixpoint_calculation(fixpoint_options::in, list(pred_proc_id)::in,
-    int::in, term2_errors::out, module_info::in, module_info::out) is det.
+    int::in, list(term2_error)::out, module_info::in, module_info::out) is det.
 
     % This structure holds the values of options used to control
     % the fixpoint calculation.
@@ -128,17 +128,17 @@ do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo) :-
         % in the SCC to `true'.
         % XXX Should this be happening?
         %
-        (
+        ( if
             list.member(OneInfo, IterationInfos),
             polyhedron.is_empty(OneInfo ^ ii_arg_size_poly)
-        ->
+        then
             ChangePoly = (func(Info0) = Info :-
                 Identity = polyhedron.universe,
                 Info = Info0 ^ ii_arg_size_poly := Identity
             ),
             list.foldl(update_size_info, list.map(ChangePoly, IterationInfos),
                 !ModuleInfo)
-        ;
+        else
             list.foldl(update_size_info, IterationInfos, !ModuleInfo)
         )
     ).
@@ -240,21 +240,21 @@ term_iterate_over_abstract_proc(Iteration, Options, ModuleInfo, Proc,
             ArgSizeInfo = yes(SizeInfo),
             OldPolyhedron = SizeInfo
         ),
-        ( polyhedron.is_empty(!.Polyhedron) ->
-            ( polyhedron.is_empty(OldPolyhedron) ->
+        ( if polyhedron.is_empty(!.Polyhedron) then
+            ( if polyhedron.is_empty(OldPolyhedron) then
                 ChangeFlag = no
-            ;
+            else
                 unexpected($module, $pred, "old polyhedron is empty")
             )
-        ;
+        else
             % If the procedure is not recursive then we need only perform one
             % pass over the AR - subsequent iterations will yield the same
             % result.
-            ( Proc ^ ap_recursion = none ->
+            ( if Proc ^ ap_recursion = none then
                 ChangeFlag = no
-            ; polyhedron.is_empty(OldPolyhedron) ->
+            else if polyhedron.is_empty(OldPolyhedron) then
                 ChangeFlag = yes
-            ;
+            else
                 test_fixpoint_and_perhaps_widen(WideningInfo, SizeVarSet,
                    Iteration, OldPolyhedron, !Polyhedron, ChangeFlag)
             )
@@ -321,31 +321,29 @@ term_traverse_abstract_goal(Info, Goal, !Polyhedron) :-
         module_info_pred_proc_info(Info ^ tcfi_module_info, CallPPId, _,
             CallProcInfo),
         proc_info_get_termination2_info(CallProcInfo, CallTerm2Info),
-        CallArgSizeInfo = CallTerm2Info ^ success_constrs,
+        CallArgSizeInfo = term2_info_get_success_constrs(CallTerm2Info),
         (
             CallArgSizeInfo = no,
             !:Polyhedron = polyhedron.empty
         ;
             CallArgSizeInfo = yes(SizeInfo),
-            ( polyhedron.is_empty(SizeInfo) ->
+            ( if polyhedron.is_empty(SizeInfo) then
                 !:Polyhedron = polyhedron.empty
-            ;
-                ( polyhedron.is_universe(SizeInfo) ->
-                    true
-                    % Constraint store += true
-                ;
-                    HeadVars = CallTerm2Info ^ head_vars,
-                    SubstMap = create_var_substitution(CallVars, HeadVars),
-                    Polyhedron0 = polyhedron.substitute_vars(SubstMap,
-                        SizeInfo),
-                    Polyhedron1 = intersection(Polyhedron0, CallArgsPoly),
-                    % Set any zero_vars in the constraints to zero
-                    % (i.e. delete the terms). We need to do this
-                    % when polymorphic arguments are zero sized.
-                    Polyhedron2 = polyhedron.zero_vars(CallZeros, Polyhedron1),
-                    post_process_abstract_goal(Locals, Info,
-                        Polyhedron2, !Polyhedron)
-                )
+            else if polyhedron.is_universe(SizeInfo) then
+                % Constraint store += true
+                true
+            else
+                HeadVars = term2_info_get_head_vars(CallTerm2Info),
+                SubstMap = create_var_substitution(CallVars, HeadVars),
+                Polyhedron0 = polyhedron.substitute_vars(SubstMap,
+                    SizeInfo),
+                Polyhedron1 = intersection(Polyhedron0, CallArgsPoly),
+                % Set any zero_vars in the constraints to zero
+                % (i.e. delete the terms). We need to do this
+                % when polymorphic arguments are zero sized.
+                Polyhedron2 = polyhedron.zero_vars(CallZeros, Polyhedron1),
+                post_process_abstract_goal(Locals, Info,
+                    Polyhedron2, !Polyhedron)
             )
         )
     ;
@@ -359,9 +357,9 @@ term_traverse_abstract_goal(Info, Goal, !Polyhedron) :-
     polyhedron::in, polyhedron::in, polyhedron::out) is det.
 
 post_process_abstract_goal(Locals, Info, GoalPolyhedron0, !Polyhedron) :-
-    ( polyhedron.is_empty(GoalPolyhedron0) ->
+    ( if polyhedron.is_empty(GoalPolyhedron0) then
         GoalPolyhedron = polyhedron.empty
-    ;
+    else
         GoalPolyhedron = polyhedron.project(Locals, Info ^ tcfi_varset,
             GoalPolyhedron0)
     ),
@@ -454,9 +452,9 @@ pairwise_map_2(Op, [X, Y | Rest], !Acc) :-
 
 test_fixpoint_and_perhaps_widen(after_fixed_cutoff(Threshold), SizeVarSet,
         Iteration, OldPoly, NewPoly, ResultPoly, ChangeFlag) :-
-    ( Iteration > Threshold ->
+    ( if Iteration > Threshold then
         ResultPoly = widen(OldPoly, NewPoly, SizeVarSet)
-    ;
+    else
         ResultPoly = NewPoly
     ),
     ChangeFlag = test_fixpoint(NewPoly, OldPoly, SizeVarSet).
@@ -468,14 +466,14 @@ test_fixpoint(NewPoly, OldPoly, SizeVarSet) = ChangeFlag :-
     NewConstraints = polyhedron.non_false_constraints(NewPoly),
     % Constraints from previous iteration.
     OldConstraints = polyhedron.non_false_constraints(OldPoly),
-    (
+    ( if
         some [OldConstraint] (
             list.member(OldConstraint, OldConstraints),
             not entailed(SizeVarSet, NewConstraints, OldConstraint)
         )
-    ->
+    then
         ChangeFlag = yes
-    ;
+    else
         ChangeFlag = no
     ).
 

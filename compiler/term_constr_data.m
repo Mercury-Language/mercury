@@ -158,7 +158,7 @@
     %
 :- type arg_size_result
     --->    arg_size_ok
-    ;       arg_size_error(term2_errors).
+    ;       arg_size_error(list(term2_error)).
 
 %-----------------------------------------------------------------------------%
 %

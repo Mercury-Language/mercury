@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2007, 2010-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: term_util.m.
 % Main author: crs.
@@ -14,7 +14,7 @@
 % - defines the types used by termination analysis
 % - defines some utility predicates
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module transform_hlds.term_util.
 :- interface.
@@ -34,31 +34,31 @@
 :- import_module maybe.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The `arg_size_info' and `termination_info' structures.
 %
 
 % The types `arg_size_info' and `termination_info' hold information about
-% procedures which is used for termination analysis.  These types are stored
-% as fields in the HLDS proc_info.  For intermodule analysis, the information
+% procedures which is used for termination analysis. These types are stored
+% as fields in the HLDS proc_info. For intermodule analysis, the information
 % is written out as `pragma termination_info(...)' declarations in the `.opt'
-% and `.trans_opt' files.  The module prog_data.m defines types similar to
-% these two (but without the `list(termination_error_context)') which are used
-% when parsing `termination_info' pragmas.
+% and `.trans_opt' files. The module prog_data.m defines types similar to
+% these two (but without the `list(term_error)') which are used when parsing
+% `termination_info' pragmas.
 
     % The arg size info defines an upper bound on the difference between the
     % sizes of the output arguments of a procedure and the sizes of the input
     % arguments:
     %
-    % | input arguments | + constant >= | output arguments |
+    % |input arguments| + constant >= |output arguments|
     %
     % where | | represents a semilinear norm.
     %
-:- type arg_size_info == generic_arg_size_info(termination_error_contexts).
+:- type arg_size_info == generic_arg_size_info(list(term_error)).
 
 :- type termination_info ==
-    generic_termination_info(unit, termination_error_contexts).
+    generic_termination_info(unit, list(term_error)).
 
     % The type `used_args' holds a mapping which specifies for each procedure
     % which of its arguments are used.
@@ -72,7 +72,7 @@
                 int         % Max number of paths to analyze.
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate partitions the arguments of a call into a list of input
     % variables and a list of output variables.
@@ -87,10 +87,12 @@
     list(prog_var)::in, list(uni_mode)::in,
     bag(prog_var)::out, bag(prog_var)::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % Used to create lists of boolean values, which are used for used_args.
     % make_bool_list(HeadVars, BoolIn, BoolOut) creates a bool list which is
-    % (length(HeadVars) - length(BoolIn)) `no' followed by BoolIn.  This is
-    % used to set the used args for compiler generated predicates.  The no's
+    % (length(HeadVars) - length(BoolIn)) `no' followed by BoolIn. This is
+    % used to set the used args for compiler generated predicates. The no's
     % at the start are because the Type infos are not used. length(BoolIn)
     % should equal the arity of the predicate, and the difference in length
     % between the arity of the procedure and the arity of the predicate is
@@ -98,14 +100,58 @@
     %
 :- pred make_bool_list(list(_T)::in, list(bool)::in, list(bool)::out) is det.
 
+%---------------------%
+
     % Removes variables from the InVarBag that are not used in the call.
     % remove_unused_args(InVarBag0, VarList, BoolList, InVarBag) VarList and
-    % BoolList are corresponding lists.  Any variable in VarList that has a
+    % BoolList are corresponding lists. Any variable in VarList that has a
     % `no' in the corresponding place in the BoolList is removed from
     % InVarBag.
     %
 :- pred remove_unused_args(bag(prog_var)::in, list(prog_var)::in,
     list(bool)::in, bag(prog_var)::out) is det.
+
+%---------------------%
+
+    % Succeeds if one or more variables in the list are higher order.
+    %
+:- pred horder_vars(list(prog_var)::in, vartypes::in) is semidet.
+
+%---------------------------------------------------------------------------%
+
+:- pred lookup_proc_termination_info(module_info::in, pred_proc_id::in,
+    maybe(termination_info)::out) is det.
+
+:- pred lookup_proc_arg_size_info(module_info::in, pred_proc_id::in,
+    maybe(arg_size_info)::out) is det.
+
+%---------------------%
+
+    % Succeeds if the termination status of a procedure is known.
+    %
+:- pred is_termination_known(module_info::in, pred_proc_id::in) is semidet.
+
+    % pred_proc_id_terminates(ModuleInfo, PPId):
+    %
+    % Succeeds iff the procedure given by 'PPId' has been proven to terminate.
+    %
+:- pred pred_proc_id_terminates(module_info::in, pred_proc_id::in) is semidet.
+
+%---------------------%
+
+    % Succeed if all arguments of the given procedure of the given predicate
+    % are either input or zero size.
+    %
+:- pred all_args_input_or_zero_size(module_info::in, pred_info::in,
+    proc_info::in) is semidet.
+
+    % Succeeds iff the given PPId is a compiler generated wrapper
+    % predicate for a solver type initialisation predicate.
+    %
+:- pred is_solver_init_wrapper_pred(module_info::in, pred_proc_id::in)
+    is semidet.
+
+%---------------------%
 
     % This predicate sets the argument size info of a given a list of
     % procedures.
@@ -119,42 +165,7 @@
 :- pred set_pred_proc_ids_termination_info(list(pred_proc_id)::in,
     termination_info::in, module_info::in, module_info::out) is det.
 
-:- pred lookup_proc_termination_info(module_info::in, pred_proc_id::in,
-    maybe(termination_info)::out) is det.
-
-:- pred lookup_proc_arg_size_info(module_info::in, pred_proc_id::in,
-    maybe(arg_size_info)::out) is det.
-
-    % Succeeds if one or more variables in the list are higher order.
-    %
-:- pred horder_vars(list(prog_var)::in, vartypes::in) is semidet.
-
-:- pred get_context_from_scc(list(pred_proc_id)::in, module_info::in,
-    prog_context::out) is det.
-
-    % Succeeds if the termination status of a procedure is known.
-    %
-:- pred is_termination_known(module_info::in, pred_proc_id::in) is semidet.
-
-    % Succeeds if the foreign proc attributes imply that a procedure is
-    % terminating.
-    %
-:- pred attributes_imply_termination(pragma_foreign_proc_attributes::in)
-    is semidet.
-
-    % pred_proc_id_terminates(ModuleInfo, PPId):
-    %
-    % Succeeds iff the procedure given by 'PPId' has been proven to terminate.
-    %
-:- pred pred_proc_id_terminates(module_info::in, pred_proc_id::in) is semidet.
-
-    % Succeed if all arguments of the given procedure of the given predicate
-    % are either input or zero size.
-    %
-:- pred all_args_input_or_zero_size(module_info::in, pred_info::in,
-    proc_info::in) is semidet.
-
-%-----------------------------------------------------------------------------%
+%---------------------%
 
     % Convert a pragma_termination_info into a termination_info, by adding the
     % appropriate context.
@@ -168,20 +179,35 @@
 :- pred add_context_to_arg_size_info(maybe(pragma_arg_size_info)::in,
     prog_context::in, maybe(arg_size_info)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred get_context_from_scc(module_info::in, list(pred_proc_id)::in,
+    prog_context::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % Succeeds if the foreign proc attributes imply that a procedure is
+    % terminating.
+    %
+:- pred attributes_imply_termination(pragma_foreign_proc_attributes::in)
+    is semidet.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_type.
 
 :- import_module pair.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 partition_call_args(ModuleInfo, ArgModes, Args, InVarsBag, OutVarsBag) :-
     partition_call_args_2(ModuleInfo, ArgModes, Args, InVars, OutVars),
@@ -213,19 +239,19 @@ partition_call_args_2(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
 
     % For these next two predicates (split_unification_vars and
     % partition_call_args) there is a problem of what needs to be done for
-    % partially instantiated data structures.  The correct answer is that the
+    % partially instantiated data structures. The correct answer is that the
     % system shoud use a norm such that the size of the uninstantiated parts
     % of a partially instantiated structure have no effect on the size of the
-    % data structure according to the norm.  For example when finding the size
-    % of a list-skeleton, list-length norm should be used.  Therefore, the
+    % data structure according to the norm. For example when finding the size
+    % of a list-skeleton, list-length norm should be used. Therefore, the
     % size of any term must be given by:
     %
     % sizeof(term) = constant + sum of the size of each
     %           (possibly partly) instantiated subterm.
     %
-    % It is probably easiest to implement this by modifying term_weights.  The
-    % current implementation does not correctly handle partially instantiated
-    % data structures.
+    % It is probably easiest to implement this by modifying term_weights.
+    % The current implementation does not correctly handle partially
+    % instantiated data structures.
     %
 split_unification_vars(_, [], [], Vars, Vars) :-
     bag.init(Vars).
@@ -237,31 +263,31 @@ split_unification_vars(ModuleInfo, [Arg | Args], [UniMode | UniModes],
         InVars, OutVars):-
     split_unification_vars(ModuleInfo, Args, UniModes, InVars0, OutVars0),
     UniMode = ((_VarInit - ArgInit) -> (_VarFinal - ArgFinal)),
-    (
+    ( if
         inst_is_bound(ModuleInfo, ArgInit)
-    ->
+    then
         % Variable is an input variable
         bag.insert(Arg, InVars0, InVars),
         OutVars = OutVars0
-    ;
+    else if
         inst_is_free(ModuleInfo, ArgInit),
         inst_is_bound(ModuleInfo, ArgFinal)
-    ->
+    then
         % Variable is an output variable
         InVars = InVars0,
         bag.insert(Arg, OutVars0, OutVars)
-    ;
+    else
         InVars = InVars0,
         OutVars = OutVars0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_bool_list(HeadVars0, Bools, Out) :-
     list.length(Bools, Arity),
-    ( list.drop(Arity, HeadVars0, HeadVars1) ->
+    ( if list.drop(Arity, HeadVars0, HeadVars1) then
         HeadVars = HeadVars1
-    ;
+    else
         unexpected($module, $pred, "unmatched variables")
     ),
     make_bool_list_2(HeadVars, Bools, Out).
@@ -271,6 +297,8 @@ make_bool_list(HeadVars0, Bools, Out) :-
 make_bool_list_2([], Bools, Bools).
 make_bool_list_2([ _ | Vars ], Bools, [no | Out]) :-
     make_bool_list_2(Vars, Bools, Out).
+
+%---------------------------------------------------------------------------%
 
 remove_unused_args(Vars, [], [], Vars).
 remove_unused_args(Vars, [], [_X | _Xs], Vars) :-
@@ -290,7 +318,68 @@ remove_unused_args(Vars0, [ Arg | Args ], [ UsedVar | UsedVars ], Vars) :-
         remove_unused_args(Vars1, Args, UsedVars, Vars)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+horder_vars([Arg | Args], VarType) :-
+    (
+        lookup_var_type(VarType, Arg, Type),
+        type_is_higher_order(Type)
+    ;
+        horder_vars(Args, VarType)
+    ).
+
+%---------------------------------------------------------------------------%
+
+lookup_proc_termination_info(ModuleInfo, PPId, MaybeTermination) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
+    proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination).
+
+lookup_proc_arg_size_info(ModuleInfo, PPId, MaybeArgSize) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
+    proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize).
+
+is_termination_known(ModuleInfo, PPId) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
+    proc_info_get_maybe_termination_info(ProcInfo, yes(_)).
+
+pred_proc_id_terminates(ModuleInfo, PPId) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
+    proc_info_get_maybe_termination_info(ProcInfo, TerminationInfo),
+    TerminationInfo = yes(cannot_loop(_)).
+
+%---------------------------------------------------------------------------%
+
+all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo) :-
+    pred_info_get_arg_types(PredInfo, TypeList),
+    proc_info_get_argmodes(ProcInfo, ModeList),
+    all_args_input_or_zero_size_2(TypeList, ModeList, ModuleInfo).
+
+:- pred all_args_input_or_zero_size_2(list(mer_type)::in, list(mer_mode)::in,
+    module_info::in) is semidet.
+
+all_args_input_or_zero_size_2([], [], _).
+all_args_input_or_zero_size_2([], [_|_], _) :-
+    unexpected($module, $pred, "unmatched lists").
+all_args_input_or_zero_size_2([_|_], [], _) :-
+    unexpected($module, $pred, "unmatched lists").
+all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], ModuleInfo) :-
+    ( if mode_is_input(ModuleInfo, Mode) then
+        % The variable is an input variables, so its size is irrelevant.
+        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
+    else
+        term_norm.zero_size_type(ModuleInfo, Type),
+        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
+    ).
+
+%---------------------------------------------------------------------------%
+
+is_solver_init_wrapper_pred(ModuleInfo, proc(PredId, _)) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_origin(PredInfo, PredOrigin),
+    PredOrigin = origin_special_pred(SpecialPredId, _),
+    SpecialPredId = spec_pred_init.
+
+%---------------------------------------------------------------------------%
 
 set_pred_proc_ids_arg_size_info([], _ArgSize, !ModuleInfo).
 set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
@@ -325,25 +414,22 @@ set_pred_proc_ids_termination_info([PPId | PPIds], Termination, !ModuleInfo) :-
     module_info_set_preds(PredTable, !ModuleInfo),
     set_pred_proc_ids_termination_info(PPIds, Termination, !ModuleInfo).
 
-lookup_proc_termination_info(ModuleInfo, PPId, MaybeTermination) :-
-    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
-    proc_info_get_maybe_termination_info(ProcInfo, MaybeTermination).
+%---------------------------------------------------------------------------%
 
-lookup_proc_arg_size_info(ModuleInfo, PPId, MaybeArgSize) :-
-    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
-    proc_info_get_maybe_arg_size_info(ProcInfo, MaybeArgSize).
+add_context_to_termination_info(no, _, no).
+add_context_to_termination_info(yes(cannot_loop(_)), _,
+    yes(cannot_loop(unit))).
+add_context_to_termination_info(yes(can_loop(_)), Context,
+    yes(can_loop([term_error(Context, imported_pred)]))).
 
-horder_vars([Arg | Args], VarType) :-
-    (
-        lookup_var_type(VarType, Arg, Type),
-        type_is_higher_order(Type)
-    ;
-        horder_vars(Args, VarType)
-    ).
+add_context_to_arg_size_info(no, _, no).
+add_context_to_arg_size_info(yes(finite(A, B)), _, yes(finite(A, B))).
+add_context_to_arg_size_info(yes(infinite(_)), Context,
+    yes(infinite([term_error(Context, imported_pred)]))).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-get_context_from_scc(SCC, ModuleInfo, Context) :-
+get_context_from_scc(ModuleInfo, SCC, Context) :-
     (
         SCC = [proc(PredId, _) | _],
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -353,24 +439,7 @@ get_context_from_scc(SCC, ModuleInfo, Context) :-
         unexpected($module, $pred, "empty SCC")
     ).
 
-%-----------------------------------------------------------------------------%
-
-add_context_to_termination_info(no, _, no).
-add_context_to_termination_info(yes(cannot_loop(_)), _,
-    yes(cannot_loop(unit))).
-add_context_to_termination_info(yes(can_loop(_)), Context,
-    yes(can_loop([termination_error_context(imported_pred, Context)]))).
-
-add_context_to_arg_size_info(no, _, no).
-add_context_to_arg_size_info(yes(finite(A, B)), _, yes(finite(A, B))).
-add_context_to_arg_size_info(yes(infinite(_)), Context,
-    yes(infinite([termination_error_context(imported_pred, Context)]))).
-
-%-----------------------------------------------------------------------------%
-
-is_termination_known(ModuleInfo, PPId) :-
-    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
-    proc_info_get_maybe_termination_info(ProcInfo, yes(_)).
+%---------------------------------------------------------------------------%
 
 attributes_imply_termination(Attributes) :-
     (
@@ -380,37 +449,6 @@ attributes_imply_termination(Attributes) :-
         get_may_call_mercury(Attributes) = proc_will_not_call_mercury
     ).
 
-%-----------------------------------------------------------------------------%
-
-pred_proc_id_terminates(ModuleInfo, PPId) :-
-    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
-    proc_info_get_maybe_termination_info(ProcInfo, TerminationInfo),
-    TerminationInfo = yes(cannot_loop(_)).
-
-%-----------------------------------------------------------------------------%
-
-all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo) :-
-    pred_info_get_arg_types(PredInfo, TypeList),
-    proc_info_get_argmodes(ProcInfo, ModeList),
-    all_args_input_or_zero_size_2(TypeList, ModeList, ModuleInfo).
-
-:- pred all_args_input_or_zero_size_2(list(mer_type)::in, list(mer_mode)::in,
-    module_info::in) is semidet.
-
-all_args_input_or_zero_size_2([], [], _).
-all_args_input_or_zero_size_2([], [_|_], _) :-
-    unexpected($module, $pred, "unmatched lists").
-all_args_input_or_zero_size_2([_|_], [], _) :-
-    unexpected($module, $pred, "unmatched lists").
-all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], ModuleInfo) :-
-    ( mode_is_input(ModuleInfo, Mode) ->
-        % The variable is an input variables, so its size is irrelevant.
-        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
-    ;
-        term_norm.zero_size_type(ModuleInfo, Type),
-        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
-    ).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module transform_hlds.term_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

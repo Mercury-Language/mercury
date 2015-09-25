@@ -19,17 +19,17 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bag.
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
-:- type termination_error
+:- type term_error_kind
     --->    pragma_foreign_code
             % The analysis result depends on the change constant
             % of a piece of pragma foreign code, (which cannot be
@@ -138,13 +138,11 @@
             % make calls back to Mercury.  By default such
             % code is assumed to be non-terminating.
 
-:- type termination_error_contexts == list(termination_error_context).
-:- type termination_error_context
-    --->    termination_error_context(termination_error, prog_context).
+:- type term_error
+    --->    term_error(prog_context, term_error_kind).
 
-:- pred report_term_errors(list(pred_proc_id)::in,
-    list(termination_error_context)::in, module_info::in, io::di, io::uo)
-    is det.
+:- pred report_term_errors(module_info::in, list(pred_proc_id)::in,
+    list(term_error)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
     % An error is considered an indirect error if it is due either to a
     % language feature we cannot analyze or due to an error in another part
@@ -153,11 +151,11 @@
     % and in the second case, the piece of code that the programmer *can* do
     % something about is not this piece.
     %
-:- func is_indirect_error(termination_error) = bool.
+:- func term_error_kind_is_direct_error(term_error_kind) = bool.
 
     % A fatal error is one that prevents pass 2 from proving termination.
     %
-:- func is_fatal_error(termination_error) = bool.
+:- func term_error_kind_is_fatal_error(term_error_kind) = bool.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -165,9 +163,9 @@
 :- implementation.
 
 :- import_module hlds.hlds_error_util.
-:- import_module parse_tree.error_util.
 :- import_module transform_hlds.term_util.
 
+:- import_module cord.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
@@ -178,60 +176,17 @@
 
 %-----------------------------------------------------------------------------%
 
-% XXX Some of the following (and in is_fatal_error/1 as well) look wrong.
-% Some of them should probably be calling unexpected/2 - juliensf.
-
-is_indirect_error(horder_call) = yes.
-is_indirect_error(method_call) = yes.
-is_indirect_error(pragma_foreign_code) = yes.
-is_indirect_error(imported_pred) = yes.
-is_indirect_error(can_loop_proc_called(_, _)) = yes.
-is_indirect_error(horder_args(_, _)) = yes.
-is_indirect_error(does_not_term_pragma(_)) = yes.
-is_indirect_error(cycle(_, _)) = no.
-is_indirect_error(does_not_term_foreign(_)) = no.
-is_indirect_error(ho_inf_termination_const(_, _)) = no.
-is_indirect_error(inf_call(_, _)) = no.
-is_indirect_error(inf_termination_const(_, _)) = no.
-is_indirect_error(is_builtin(_)) = no.
-is_indirect_error(no_eqns) = no.
-is_indirect_error(not_subset(_, _, _)) = no.
-is_indirect_error(solver_failed) = no.
-is_indirect_error(too_many_paths) = no.
-is_indirect_error(inconsistent_annotations) = no.
-
-is_fatal_error(horder_call) = yes.
-is_fatal_error(horder_args(_, _)) = yes.
-is_fatal_error(imported_pred) = yes.
-is_fatal_error(method_call) = yes.
-is_fatal_error(pragma_foreign_code) = no.
-is_fatal_error(can_loop_proc_called(_, _)) = no.
-is_fatal_error(does_not_term_pragma(_)) = no.
-is_fatal_error(cycle(_, _)) = no.
-is_fatal_error(does_not_term_foreign(_)) = no.
-is_fatal_error(ho_inf_termination_const(_, _)) = no.
-is_fatal_error(inf_call(_, _)) = no.
-is_fatal_error(inf_termination_const(_, _)) = no.
-is_fatal_error(is_builtin(_)) = no.
-is_fatal_error(no_eqns) = no.
-is_fatal_error(not_subset(_, _, _)) = no.
-is_fatal_error(solver_failed) = no.
-is_fatal_error(too_many_paths) = no.
-is_fatal_error(inconsistent_annotations) = no.
-
-%-----------------------------------------------------------------------------%
-
-report_term_errors(SCC, Errors, Module, !IO) :-
-    module_info_get_globals(Module, Globals),
-    get_context_from_scc(SCC, Module, Context),
-    ( SCC = [PPId] ->
+report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
+    get_context_from_scc(ModuleInfo, SCC, Context),
+    ( if SCC = [PPId] then
         Pieces1 = [words("Termination of")] ++
-            describe_one_proc_name(Module, should_module_qualify, PPId),
+            describe_one_proc_name(ModuleInfo, should_module_qualify, PPId),
         Single = yes(PPId)
-    ;
+    else
         Pieces1 = [words("Termination of the "),
             words("mutually recursive procedures")] ++
-            describe_several_proc_names(Module, should_module_qualify, SCC),
+            describe_several_proc_names(ModuleInfo,
+                should_module_qualify, SCC),
         Single = no
     ),
     (
@@ -239,37 +194,40 @@ report_term_errors(SCC, Errors, Module, !IO) :-
         % XXX This should never happen but for some reason, it often does.
         % error("empty list of errors")
         Pieces2 = [words("not proven, for unknown reason(s).")],
-        list.append(Pieces1, Pieces2, Pieces),
-        write_error_pieces(Globals, Context, 0, Pieces, !IO)
+        Pieces = Pieces1 ++ Pieces2,
+        ReasonMsgsCord = cord.init
     ;
         Errors = [Error],
         Pieces2 = [words("not proven for the following reason:")],
-        list.append(Pieces1, Pieces2, Pieces),
-        write_error_pieces(Globals, Context, 0, Pieces, !IO),
-        output_term_error(Error, Single, no, 0, Module, !IO)
+        Pieces = Pieces1 ++ Pieces2,
+        describe_term_error(ModuleInfo, Single, Error, no,
+            cord.init, ReasonMsgsCord, !Specs)
     ;
         Errors = [_, _ | _],
         Pieces2 = [words("not proven for the following reasons:")],
-        list.append(Pieces1, Pieces2, Pieces),
-        write_error_pieces(Globals, Context, 0, Pieces, !IO),
-        output_term_errors(Errors, Single, 1, 0, Module, !IO)
-    ).
+        Pieces = Pieces1 ++ Pieces2,
+        describe_term_errors(ModuleInfo, Single, Errors, 1,
+            cord.init, ReasonMsgsCord, !Specs)
+    ),
+    ReasonMsgs = cord.list(ReasonMsgsCord),
+    Msgs = [simple_msg(Context, [always(Pieces)]) | ReasonMsgs],
+    Spec = error_spec(severity_warning, phase_termination_analysis, Msgs),
+    !:Specs = [Spec | !.Specs].
 
-:- pred report_arg_size_errors(list(pred_proc_id)::in,
-    list(termination_error_context)::in, module_info::in,
-    io::di, io::uo) is det.
+:- pred report_arg_size_errors(module_info::in, list(pred_proc_id)::in,
+    list(term_error)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_arg_size_errors(SCC, Errors, Module, !IO) :-
-    module_info_get_globals(Module, Globals),
-    get_context_from_scc(SCC, Module, Context),
-    ( SCC = [PPId] ->
+report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
+    get_context_from_scc(ModuleInfo, SCC, Context),
+    ( if SCC = [PPId] then
         Pieces1 = [words("Termination constant of")] ++
-            describe_one_proc_name(Module, should_module_qualify, PPId),
+            describe_one_proc_name(ModuleInfo, should_module_qualify, PPId),
         Single = yes(PPId)
-    ;
+    else
         Pieces1 = [words("Termination constants"),
             words("of the mutually recursive procedures")] ++
-            describe_several_proc_names(Module, should_module_qualify, SCC),
+            describe_several_proc_names(ModuleInfo,
+                should_module_qualify, SCC),
         Single = no
     ),
     Piece2 = words("set to infinity for the following"),
@@ -279,52 +237,64 @@ report_arg_size_errors(SCC, Errors, Module, !IO) :-
     ;
         Errors = [Error],
         Piece3 = words("reason:"),
-        list.append(Pieces1, [Piece2, Piece3], Pieces),
-        write_error_pieces(Globals, Context, 0, Pieces, !IO),
-        output_term_error(Error, Single, no, 0, Module, !IO)
+        Pieces = Pieces1 ++ [Piece2, Piece3],
+        describe_term_error(ModuleInfo, Single, Error, no,
+            cord.init, ReasonMsgsCord, !Specs)
     ;
         Errors = [_, _ | _],
         Piece3 = words("reasons:"),
-        list.append(Pieces1, [Piece2, Piece3], Pieces),
-        write_error_pieces(Globals, Context, 0, Pieces, !IO),
-        output_term_errors(Errors, Single, 1, 0, Module, !IO)
-    ).
+        Pieces = Pieces1 ++ [Piece2, Piece3],
+        describe_term_errors(ModuleInfo, Single, Errors, 1,
+            cord.init, ReasonMsgsCord, !Specs)
+    ),
+    ReasonMsgs = cord.list(ReasonMsgsCord),
+    Msgs = [simple_msg(Context, [always(Pieces)]) | ReasonMsgs],
+    Spec = error_spec(severity_warning, phase_termination_analysis, Msgs),
+    !:Specs = [Spec | !.Specs].
 
-:- pred output_term_errors(list(termination_error_context)::in,
-    maybe(pred_proc_id)::in, int::in, int::in, module_info::in,
-    io::di, io::uo) is det.
+:- pred describe_term_errors(module_info::in, maybe(pred_proc_id)::in,
+    list(term_error)::in, int::in, cord(error_msg)::in, cord(error_msg)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-output_term_errors([], _, _, _, _, !IO).
-output_term_errors([Error | Errors], Single, ErrNum0, Indent, Module, !IO) :-
-    output_term_error(Error, Single, yes(ErrNum0), Indent, Module, !IO),
-    output_term_errors(Errors, Single, ErrNum0 + 1, Indent, Module, !IO).
+describe_term_errors(_, _, [], _, !Msgs, !Specs).
+describe_term_errors(ModuleInfo, Single, [Error | Errors], ErrNum0,
+        !Msgs, !Specs) :-
+    describe_term_error(ModuleInfo, Single, Error, yes(ErrNum0),
+        !Msgs, !Specs),
+    describe_term_errors(ModuleInfo, Single, Errors, ErrNum0 + 1,
+        !Msgs, !Specs). 
 
-:- pred output_term_error(termination_error_context::in,
-    maybe(pred_proc_id)::in, maybe(int)::in, int::in, module_info::in,
-    io::di, io::uo) is det.
+:- pred describe_term_error(module_info::in, maybe(pred_proc_id)::in,
+    term_error::in, maybe(int)::in, cord(error_msg)::in, cord(error_msg)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-output_term_error(TermErrorContext, Single, ErrorNum, Indent, Module, !IO) :-
-    TermErrorContext = termination_error_context(Error, Context),
-    description(Error, Single, Module, Pieces0, Reason),
+describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
+        !ReasonMsgs, !Specs) :-
+    TermErrorContext = term_error(Context, ErrorKind),
+    term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces0,
+        Reason),
     (
         ErrorNum = yes(N),
         string.int_to_string(N, Nstr),
-        string.append_list(["Reason ", Nstr, ":"], Preamble),
+        Preamble = "Reason " ++ Nstr ++ ":",
         Pieces = [fixed(Preamble) | Pieces0]
     ;
         ErrorNum = no,
         Pieces = Pieces0
     ),
-    module_info_get_globals(Module, Globals),
-    write_error_pieces(Globals, Context, Indent, Pieces, !IO),
+    ReasonMsg = error_msg(yes(Context), treat_as_first, 0, [always(Pieces)]),
+    !:ReasonMsgs = cord.snoc(!.ReasonMsgs, ReasonMsg),
     (
         Reason = yes(InfArgSizePPId),
-        lookup_proc_arg_size_info(Module, InfArgSizePPId, ArgSize),
-        ( ArgSize = yes(infinite(ArgSizeErrors)) ->
+        lookup_proc_arg_size_info(ModuleInfo, InfArgSizePPId, ArgSize),
+        ( if ArgSize = yes(infinite(ArgSizeErrors)) then
+            % XXX Should we add a Msg about the relevance of the spec
+            % added by the folliwng call?
             % XXX the next line is cheating
             ArgSizePPIdSCC = [InfArgSizePPId],
-            report_arg_size_errors(ArgSizePPIdSCC, ArgSizeErrors, Module, !IO)
-        ;
+            report_arg_size_errors(ModuleInfo, ArgSizePPIdSCC, ArgSizeErrors,
+                !Specs)
+        else
             unexpected($module, $pred,
                 "inf arg size procedure does not have inf arg size")
         )
@@ -332,228 +302,221 @@ output_term_error(TermErrorContext, Single, ErrorNum, Indent, Module, !IO) :-
         Reason = no
     ).
 
-:- pred description(termination_error::in,
-    maybe(pred_proc_id)::in, module_info::in, list(format_component)::out,
+:- pred term_error_kind_description(module_info::in, maybe(pred_proc_id)::in,
+    term_error_kind::in, list(format_component)::out,
     maybe(pred_proc_id)::out) is det.
 
-description(horder_call, _, _, Pieces, no) :-
-    Pieces = [words("It contains a higher order call.")].
-
-description(method_call, _, _, Pieces, no) :-
-    Pieces = [words("It contains a typeclass method call.")].
-
-description(pragma_foreign_code, _, _, Pieces, no) :-
-    Pieces = [
-        words("It depends on the properties of"),
-        words("foreign language code included via a"),
-        pragma_decl("foreign_proc"),
-        words("declaration.")
-    ].
-
-description(TermError, Single, Module, Pieces, no) :-
-    TermError = inf_call(CallerPPId, CalleePPId),
+term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
     (
-        Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), $module, $pred,
-            "inf_call: caller outside this SCC"),
-        Pieces1 = [words("It")]
+        ErrorKind = horder_call,
+        Pieces = [words("It contains a higher order call."), nl],
+        Reason = no
     ;
-        Single = no,
-        Pieces1 = describe_one_proc_name(Module, should_module_qualify,
-            CallerPPId)
-    ),
-    Piece2 = words("calls"),
-    CalleePieces = describe_one_proc_name(Module, should_module_qualify,
-        CalleePPId),
-    Pieces3 = [words("with an unbounded increase"),
-        words("in the size of the input arguments.")],
-    Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ Pieces3.
-
-description(TermError, Single, Module, Pieces, no) :-
-    TermError = can_loop_proc_called(CallerPPId, CalleePPId),
-    (
-        Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), $module, $pred,
-            "can_loop_proc_called: caller outside this SCC"),
-        Pieces1 = [words("It")]
+        ErrorKind = method_call,
+        Pieces = [words("It contains a typeclass method call."), nl],
+        Reason = no
     ;
-        Single = no,
-        Pieces1 = describe_one_proc_name(Module, should_module_qualify,
-            CallerPPId)
-    ),
-    Piece2 = words("calls"),
-    CalleePieces = describe_one_proc_name(Module, should_module_qualify,
-        CalleePPId),
-    Piece3 = words("which could not be proven to terminate."),
-    Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
-
-description(imported_pred, _, _, Pieces, no) :-
-    Pieces = [
-        words("It contains one or more"),
-        words("predicates and/or functions"),
-        words("imported from another module.")
-    ].
-
-description(TermError, Single, Module, Pieces, no) :-
-    TermError = horder_args(CallerPPId, CalleePPId),
-    (
-        Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), $module, $pred,
-            "horder_args: caller outside this SCC"),
-        Pieces1 = [words("It")]
+        ErrorKind = pragma_foreign_code,
+        Pieces = [words("It depends on the properties of"),
+            words("foreign language code included via a"),
+            pragma_decl("foreign_proc"), words("declaration."), nl],
+        Reason = no
     ;
-        Single = no,
-        Pieces1 = describe_one_proc_name(Module, should_module_qualify,
-            CallerPPId)
-    ),
-    Piece2 = words("calls"),
-    CalleePieces = describe_one_proc_name(Module, should_module_qualify,
-        CalleePPId),
-    Piece3 = words("with one or more higher order arguments."),
-    Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
-
-description(TermError, Single, Module, Pieces, yes(CalleePPId)) :-
-    TermError = inf_termination_const(CallerPPId, CalleePPId),
-    (
-        Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), $module, $pred,
-            "inf_termination_const: caller outside this SCC"),
-        Pieces1 = [words("It")]
-    ;
-        Single = no,
-        Pieces1 = describe_one_proc_name(Module, should_module_qualify,
-            CallerPPId)
-    ),
-    Piece2 = words("calls"),
-    CalleePieces = describe_one_proc_name(Module, should_module_qualify,
-        CalleePPId),
-    Piece3 = words("which has a termination constant of infinity."),
-    Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3].
-
-description(TermError, Single, Module, Pieces, no) :-
-    %
-    % XXX We should print out the names of the non-terminating closures.
-    %
-    TermError = ho_inf_termination_const(CallerPPId, _ClosurePPIds),
-    (
-        Single = yes(PPId),
-        expect(unify(PPId, CallerPPId), $module, $pred,
-            "ho_info_termination_const: caller outside this SCC"),
-        Pieces1 = [words("It")]
-    ;
-        Single = no,
-        Pieces1 = describe_one_proc_name(Module, should_module_qualify,
-            CallerPPId)
-    ),
-    Piece2 = words("makes one or more higher-order calls."),
-    Piece3 = words("Each of these higher-order calls has a"),
-    Piece4 = words("termination constant of infinity."),
-    Pieces = Pieces1 ++ [Piece2, Piece3, Piece4].
-
-description(not_subset(ProcPPId, OutputSuppliers, HeadVars),
-        Single, Module, Pieces, no) :-
-    (
-        Single = yes(PPId),
-        ( PPId = ProcPPId ->
-            Pieces1 = [words("The set of"),
-                words("its output supplier variables")]
+        ErrorKind = inf_call(CallerPPId, CalleePPId),
+        (
+            Single = yes(PPId),
+            expect(unify(PPId, CallerPPId), $module, $pred,
+                "inf_call: caller outside this SCC"),
+            Pieces1 = [words("It")]
         ;
-            % XXX this should never happen (but it does)
-            % error("not_subset outside this SCC"),
-            PPIdPieces = describe_one_proc_name(Module,
+            Single = no,
+            Pieces1 = describe_one_proc_name(ModuleInfo,
+                should_module_qualify, CallerPPId)
+        ),
+        Piece2 = words("calls"),
+        CalleePieces = describe_one_proc_name(ModuleInfo,
+            should_module_qualify, CalleePPId),
+        Pieces3 = [words("with an unbounded increase"),
+            words("in the size of the input arguments."), nl],
+        Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ Pieces3,
+        Reason = no
+    ;
+        ErrorKind = can_loop_proc_called(CallerPPId, CalleePPId),
+        (
+            Single = yes(PPId),
+            expect(unify(PPId, CallerPPId), $module, $pred,
+                "can_loop_proc_called: caller outside this SCC"),
+            Pieces1 = [words("It")]
+        ;
+            Single = no,
+            Pieces1 = describe_one_proc_name(ModuleInfo,
+                should_module_qualify, CallerPPId)
+        ),
+        Piece2 = words("calls"),
+        CalleePieces = describe_one_proc_name(ModuleInfo,
+            should_module_qualify, CalleePPId),
+        Piece3 = words("which could not be proven to terminate."),
+        Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3, nl],
+        Reason = no
+    ;
+        ErrorKind = imported_pred,
+        Pieces = [words("It contains one or more"),
+            words("predicates and/or functions"),
+            words("imported from another module."), nl],
+        Reason = no
+    ;
+        ErrorKind = horder_args(CallerPPId, CalleePPId),
+        (
+            Single = yes(PPId),
+            expect(unify(PPId, CallerPPId), $module, $pred,
+                "horder_args: caller outside this SCC"),
+            Pieces1 = [words("It")]
+        ;
+            Single = no,
+            Pieces1 = describe_one_proc_name(ModuleInfo,
+                should_module_qualify, CallerPPId)
+        ),
+        Piece2 = words("calls"),
+        CalleePieces = describe_one_proc_name(ModuleInfo,
+            should_module_qualify, CalleePPId),
+        Piece3 = words("with one or more higher order arguments."),
+        Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3, nl],
+        Reason = no
+    ;
+        ErrorKind = inf_termination_const(CallerPPId, CalleePPId),
+        (
+            Single = yes(PPId),
+            expect(unify(PPId, CallerPPId), $module, $pred,
+                "inf_termination_const: caller outside this SCC"),
+            Pieces1 = [words("It")]
+        ;
+            Single = no,
+            Pieces1 = describe_one_proc_name(ModuleInfo,
+                should_module_qualify, CallerPPId)
+        ),
+        Piece2 = words("calls"),
+        CalleePieces = describe_one_proc_name(ModuleInfo,
+            should_module_qualify, CalleePPId),
+        Piece3 = words("which has a termination constant of infinity."),
+        Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3, nl],
+        Reason = yes(CalleePPId)
+    ;
+        ErrorKind = ho_inf_termination_const(CallerPPId, _ClosurePPIds),
+        % XXX We should print out the names of the non-terminating closures.
+        (
+            Single = yes(PPId),
+            expect(unify(PPId, CallerPPId), $module, $pred,
+                "ho_info_termination_const: caller outside this SCC"),
+            Pieces1 = [words("It")]
+        ;
+            Single = no,
+            Pieces1 = describe_one_proc_name(ModuleInfo,
+                should_module_qualify, CallerPPId)
+        ),
+        Pieces2 = [words("makes one or more higher-order calls."),
+            words("Each of these higher-order calls has a"),
+            words("termination constant of infinity."), nl],
+        Pieces = Pieces1 ++ Pieces2,
+        Reason = no
+    ;
+        ErrorKind = not_subset(ProcPPId, OutputSuppliers, HeadVars),
+        (
+            Single = yes(PPId),
+            ( if PPId = ProcPPId then
+                Pieces1 = [words("The set of its output supplier variables")]
+            else
+                % XXX this should never happen (but it does)
+                % error("not_subset outside this SCC"),
+                PPIdPieces = describe_one_proc_name(ModuleInfo,
+                    should_module_qualify, ProcPPId),
+                Pieces1 = [words("The set of output supplier variables of")
+                    | PPIdPieces]
+            )
+        ;
+            Single = no,
+            PPIdPieces = describe_one_proc_name(ModuleInfo,
                 should_module_qualify, ProcPPId),
-            Pieces1 = [words("The set of"),
-                words("output supplier variables of") | PPIdPieces]
-        )
+            Pieces1 = [words("The set of output supplier variables of") |
+                PPIdPieces]
+        ),
+        ProcPPId = proc(PredId, ProcId),
+        module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+        proc_info_get_varset(ProcInfo, Varset),
+        term_errors_var_bag_description(OutputSuppliers, Varset,
+            OutputSuppliersNames),
+        list.map((pred(OS::in, FOS::out) is det :- FOS = fixed(OS)),
+            OutputSuppliersNames, OutputSuppliersPieces),
+        Pieces3 = [words("is not a subset of the head variables")],
+        term_errors_var_bag_description(HeadVars, Varset, HeadVarsNames),
+        list.map((pred(HV::in, FHV::out) is det :- FHV = fixed(HV)),
+            HeadVarsNames, HeadVarsPieces),
+        Pieces = Pieces1 ++ OutputSuppliersPieces ++ Pieces3 ++
+            HeadVarsPieces ++ [suffix("."), nl],
+        Reason = no
     ;
-        Single = no,
-        PPIdPieces = describe_one_proc_name(Module,
-            should_module_qualify, ProcPPId),
-        Pieces1 = [words("The set of output supplier variables of") |
-            PPIdPieces]
-    ),
-    ProcPPId = proc(PredId, ProcId),
-    module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
-    proc_info_get_varset(ProcInfo, Varset),
-    term_errors_var_bag_description(OutputSuppliers, Varset,
-        OutputSuppliersNames),
-    list.map((pred(OS::in, FOS::out) is det :- FOS = fixed(OS)),
-        OutputSuppliersNames, OutputSuppliersPieces),
-    Pieces3 = [words("is not a subset of the head variables")],
-    term_errors_var_bag_description(HeadVars, Varset, HeadVarsNames),
-    list.map((pred(HV::in, FHV::out) is det :- FHV = fixed(HV)),
-        HeadVarsNames, HeadVarsPieces),
-    list.condense([Pieces1, OutputSuppliersPieces, Pieces3,
-        HeadVarsPieces], Pieces).
-
-description(cycle(_StartPPId, CallSites), _, Module, Pieces, no) :-
-    ( CallSites = [DirectCall] ->
-        SitePieces = describe_one_call_site(Module,
-            should_module_qualify, DirectCall),
-        Pieces = [words("At the recursive call to") | SitePieces] ++
-            [
-                words("the arguments are"),
-                words("not guaranteed to decrease in size.")
-            ]
+        ErrorKind = cycle(_StartPPId, CallSites),
+        ( if CallSites = [DirectCall] then
+            SitePieces = describe_one_call_site(ModuleInfo,
+                should_module_qualify, DirectCall),
+            Pieces = [words("At the recursive call to") | SitePieces] ++
+                [words("the arguments are not guaranteed"),
+                words("to decrease in size."), nl]
+        else
+            Pieces = [words("In the recursive cycle through the calls to")] ++
+                describe_several_call_sites(ModuleInfo,
+                    should_module_qualify, CallSites) ++
+                [words("the arguments are"),
+                    words("not guaranteed to decrease in size."), nl]
+        ),
+        Reason = no
     ;
-        Pieces1 = [words("In the recursive cycle"),
-            words("through the calls to")],
-        SitePieces = describe_several_call_sites(Module,
-            should_module_qualify, CallSites),
-        Pieces2 = [words("the arguments are"),
-            words("not guaranteed to decrease in size.")],
-        list.condense([Pieces1, SitePieces, Pieces2], Pieces)
+        ErrorKind = too_many_paths,
+        Pieces = [words("There are too many execution paths"),
+            words("for the analysis to process."), nl],
+        Reason = no
+    ;
+        ErrorKind = no_eqns,
+        Pieces = [words("The analysis was unable to form any constraints"),
+            words("between the arguments of this group of procedures."), nl],
+        Reason = no
+    ;
+        ErrorKind = solver_failed,
+        Pieces = [words("The solver found the constraints produced"),
+            words("by the analysis to be infeasible."), nl],
+        Reason = no
+    ;
+        ErrorKind = is_builtin(_PredId),
+        % XXX expect(unify(Single, yes(_)), $module, $pred,
+        %       "builtin not alone in SCC"),
+        Pieces = [words("It is a builtin predicate."), nl],
+        Reason = no
+    ;
+        ErrorKind = does_not_term_pragma(PredId),
+        Pieces1 = [words("There is a"), pragma_decl("does_not_terminate"),
+            words("declaration for")],
+        (
+            Single = yes(PPId),
+            PPId = proc(SCCPredId, _),
+            expect(unify(PredId, SCCPredId), $module, $pred,
+                "does not terminate pragma outside this SCC"),
+            Pieces2 = [words("it."), nl]
+        ;
+            Single = no,
+            Pieces2 = describe_one_pred_name(ModuleInfo,
+                should_module_qualify, PredId) ++ [suffix("."), nl]
+        ),
+        Pieces = Pieces1 ++ Pieces2,
+        Reason = no
+    ;
+        ErrorKind = inconsistent_annotations,
+        Pieces = [words("The termination pragmas are inconsistent."), nl],
+        Reason = no
+    ;
+        ErrorKind = does_not_term_foreign(_),
+        Pieces = [words("It contains foreign code that"),
+            words("may make one or more calls back to Mercury."), nl],
+        Reason = no
     ).
-
-description(too_many_paths, _, _, Pieces, no) :-
-    Pieces = [
-        words("There are too many execution paths"),
-        words("for the analysis to process.")
-    ].
-
-description(no_eqns, _, _, Pieces, no) :-
-    Pieces = [
-        words("The analysis was unable to form any constraints"),
-        words("between the arguments of this group of procedures.")
-    ].
-
-description(solver_failed, _, _, Pieces, no)  :-
-    Pieces = [
-        words("The solver found the constraints produced"),
-        words("by the analysis to be infeasible.")
-    ].
-
-description(is_builtin(_PredId), _Single, _, Pieces, no) :-
-    % XXX expect(unify(Single, yes(_)), $module, $pred,
-    %       "builtin not alone in SCC"),
-    Pieces = [words("It is a builtin predicate.")].
-
-description(does_not_term_pragma(PredId), Single, Module,
-        Pieces, no) :-
-    Pieces1 = [
-        words("There is a"), pragma_decl("does_not_terminate"),
-        words("declaration for")],
-    (
-        Single = yes(PPId),
-        PPId = proc(SCCPredId, _),
-        expect(unify(PredId, SCCPredId), $module, $pred,
-            "does not terminate pragma outside this SCC"),
-        Pieces2 = [words("it.")]
-    ;
-        Single = no,
-        Pieces2 = describe_one_pred_name(Module, should_module_qualify,
-            PredId) ++ [suffix(".")]
-    ),
-    list.append(Pieces1, Pieces2, Pieces).
-
-description(inconsistent_annotations, _, _, Pieces, no) :-
-    Pieces = [words("The termination pragmas are inconsistent.")].
-
-description(does_not_term_foreign(_), _, _, Pieces, no) :-
-    Pieces = [
-        words("It contains foreign code that"),
-        words("may make one or more calls back to Mercury.")
-    ].
 
 %----------------------------------------------------------------------------%
 
@@ -562,8 +525,7 @@ description(does_not_term_foreign(_), _, _, Pieces, no) :-
 
 term_errors_var_bag_description(HeadVars, Varset, Pieces) :-
     bag.to_assoc_list(HeadVars, HeadVarCountList),
-    term_errors_var_bag_description_2(HeadVarCountList, Varset, yes,
-        Pieces).
+    term_errors_var_bag_description_2(HeadVarCountList, Varset, yes, Pieces).
 
 :- pred term_errors_var_bag_description_2(assoc_list(prog_var, int)::in,
     prog_varset::in, bool::in, list(string)::out) is det.
@@ -572,11 +534,11 @@ term_errors_var_bag_description_2([], _, _, ["{}"]).
 term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,
         [Piece | Pieces]) :-
     varset.lookup_name(Varset, Var, VarName),
-    ( Count > 1 ->
+    ( if Count > 1 then
         string.append(VarName, "*", VarCountPiece0),
         string.int_to_string(Count, CountStr),
         string.append(VarCountPiece0, CountStr, VarCountPiece)
-    ;
+    else
         VarCountPiece = VarName
     ),
     (
@@ -591,9 +553,68 @@ term_errors_var_bag_description_2([Var - Count | VarCounts], Varset, First,
         string.append(Piece0, "}.", Piece),
         Pieces = []
     ;
-        VarCounts = [_|_],
+        VarCounts = [_ | _],
         Piece = Piece0,
         term_errors_var_bag_description_2(VarCounts, Varset, First, Pieces)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+% XXX Some of the following (and in is_fatal_error/1 as well) look wrong.
+% Some of them should probably be calling unexpected/2 - juliensf.
+
+term_error_kind_is_direct_error(ErrorKind) = IsDirect :-
+    (
+        ( ErrorKind = horder_call
+        ; ErrorKind = method_call
+        ; ErrorKind = pragma_foreign_code
+        ; ErrorKind = imported_pred
+        ; ErrorKind = can_loop_proc_called(_, _)
+        ; ErrorKind = horder_args(_, _)
+        ; ErrorKind = does_not_term_pragma(_)
+        ),
+        IsDirect = no
+    ;
+        ( ErrorKind = cycle(_, _)
+        ; ErrorKind = does_not_term_foreign(_)
+        ; ErrorKind = ho_inf_termination_const(_, _)
+        ; ErrorKind = inf_call(_, _)
+        ; ErrorKind = inf_termination_const(_, _)
+        ; ErrorKind = is_builtin(_)
+        ; ErrorKind = no_eqns
+        ; ErrorKind = not_subset(_, _, _)
+        ; ErrorKind = solver_failed
+        ; ErrorKind = too_many_paths
+        ; ErrorKind = inconsistent_annotations
+        ),
+        IsDirect = yes
+    ).
+
+term_error_kind_is_fatal_error(ErrorKind) = IsFatal :-
+    (
+        ( ErrorKind = horder_call
+        ; ErrorKind = horder_args(_, _)
+        ; ErrorKind = imported_pred
+        ; ErrorKind = method_call
+        ),
+        IsFatal = yes
+    ;
+        ( ErrorKind = pragma_foreign_code
+        ; ErrorKind = can_loop_proc_called(_, _)
+        ; ErrorKind = does_not_term_pragma(_)
+        ; ErrorKind = cycle(_, _)
+        ; ErrorKind = does_not_term_foreign(_)
+        ; ErrorKind = ho_inf_termination_const(_, _)
+        ; ErrorKind = inf_call(_, _)
+        ; ErrorKind = inf_termination_const(_, _)
+        ; ErrorKind = is_builtin(_)
+        ; ErrorKind = no_eqns
+        ; ErrorKind = not_subset(_, _, _)
+        ; ErrorKind = solver_failed
+        ; ErrorKind = too_many_paths
+        ; ErrorKind = inconsistent_annotations
+        ),
+        IsFatal = no
     ).
 
 %----------------------------------------------------------------------------%

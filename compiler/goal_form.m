@@ -455,7 +455,7 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
                 MaybeTermInfo = yes(cannot_loop(_))
             ;
                 proc_info_get_termination2_info(ProcInfo, Term2Info),
-                Term2Info ^ term_status = yes(cannot_loop(_))
+                term2_info_get_term_status(Term2Info) = yes(cannot_loop(_))
             )
         ->
             CanLoop = no

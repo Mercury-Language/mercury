@@ -71,15 +71,16 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.error_util.
 
-:- import_module io.
+:- import_module list.
 
 %----------------------------------------------------------------------------%
 
     % Perform termination analysis on a module.
     %
-:- pred term_constr_main.pass(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred term2_analyse_module(module_info::in, module_info::out,
+    list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -102,7 +103,6 @@
 :- import_module transform_hlds.term_norm.
 
 :- import_module bool.
-:- import_module list.
 :- import_module maybe.
 :- import_module std_util.
 :- import_module set.
@@ -114,7 +114,7 @@
 % Main pass.
 %
 
-term_constr_main.pass(!ModuleInfo, !IO) :-
+term2_analyse_module(!ModuleInfo, Specs) :-
     % Get options required by the build pass.
     % These are:
     %   - which norm we are using.
@@ -145,14 +145,15 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     % Setup termination information for builtins and compiler generated
     % predicates. Setup information from termination pragmas and foreign_proc
     % attributes.
-    term_constr_initial.preprocess_module(!ModuleInfo, !IO),
+    term2_preprocess_module(!ModuleInfo),
 
     % Analyse the module per SCC in bottom-up fashion.
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
-    list.foldl2(analyse_scc(SCCs, BuildOptions, FixpointOptions, Pass2Options),
-        SCCs, !ModuleInfo, !IO),
+    list.foldl2(
+        term2_analyse_scc(SCCs, BuildOptions, FixpointOptions, Pass2Options),
+        SCCs, !ModuleInfo, [], Specs),
 
     % Write termination2_info pragmas to `.opt' files.
     module_info_get_proc_analysis_kinds(!.ModuleInfo, ProcAnalysisKinds0),
@@ -199,13 +200,13 @@ term_constr_main.pass(!ModuleInfo, !IO) :-
     % If no argument size constraint is supplied then non-zero arguments
     % are assumed to have unbounded size.
     %
-:- pred analyse_scc(dependency_ordering::in, term_build_options::in,
+:- pred term2_analyse_scc(dependency_ordering::in, term_build_options::in,
     fixpoint_options::in, pass2_options::in,
-    list(pred_proc_id)::in, module_info::in, module_info::out, io::di,
-    io::uo) is det.
+    list(pred_proc_id)::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
-        !IO) :-
+term2_analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC,
+        !ModuleInfo, !Specs) :-
     % Since all of the passes are potentially optional, we need to initialise
     % the size_var_maps separately. If they are left uninitialised, intermodule
     % optimization will not work.
@@ -215,7 +216,7 @@ analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
     % The procedures that require it are those that do not already have
     % both argument size information and termination information.
     term_constr_build_abstract_scc(DepOrder, NeedsAR, BuildOpts,
-        BuildErrors, !ModuleInfo, !IO),
+        BuildErrors, !ModuleInfo),
 
     % We only perform the fixpoint computation for those procedures where
     % we can gain meaningful information from it. We do not do it when:
@@ -249,15 +250,15 @@ analyse_scc(DepOrder, BuildOpts, FixpointOpts, Pass2Opts, SCC, !ModuleInfo,
         ;
             MaybeEarlyPass2Result = no,
             term_constr_pass2.prove_termination_in_scc(Pass2Opts,
-                NeedsTerm, !.ModuleInfo, Pass2Result, !IO)
+                NeedsTerm, !.ModuleInfo, Pass2Result)
         ),
 
-        % Set the termination property for this procedure and
-        % report any errors that we found during pass 2.
+        % Set the termination property for this procedure, and report
+        % any errors that we found during pass 2.
         set_termination_info_for_procs(NeedsTerm, Pass2Result, !ModuleInfo),
         (
             Pass2Result = can_loop(Errors),
-            report_termination2_errors(NeedsTerm, Errors, !ModuleInfo, !IO)
+            maybe_report_term2_errors(!.ModuleInfo, NeedsTerm, Errors, !Specs)
         ;
             Pass2Result = cannot_loop(_)
         )
@@ -282,9 +283,9 @@ set_termination_info_for_procs(PPIds, TerminationInfo, !ModuleInfo) :-
 
 set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
-    proc_info_get_termination2_info(ProcInfo0, TermInfo0),
-    TermInfo = TermInfo0 ^ term_status := yes(TerminationInfo),
-    proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
+    proc_info_get_termination2_info(ProcInfo0, Term2Info0),
+    term2_info_set_term_status(yes(TerminationInfo), Term2Info0, Term2Info),
+    proc_info_set_termination2_info(Term2Info, ProcInfo0, ProcInfo),
     module_info_set_pred_proc_info(PPId, PredInfo, ProcInfo, !ModuleInfo).
 
 %----------------------------------------------------------------------------%
@@ -303,7 +304,7 @@ set_termination_info_for_proc(TerminationInfo, PPId, !ModuleInfo) :-
 has_arg_size_info(ModuleInfo, PPId) :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_termination2_info(ProcInfo, TermInfo),
-    TermInfo ^ success_constrs = yes(_).
+    term2_info_get_success_constrs(TermInfo) = yes(_).
 
     % Succeeds iff the termination status of the given procedure has been set.
     %
@@ -312,7 +313,7 @@ has_arg_size_info(ModuleInfo, PPId) :-
 has_term_info(ModuleInfo, PPId) :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_termination2_info(ProcInfo, TermInfo),
-    TermInfo ^ term_status = yes(_).
+    term2_info_get_term_status(TermInfo) = yes(_).
 
 :- pred proc_needs_ar_built(module_info::in, pred_proc_id::in) is semidet.
 
@@ -320,9 +321,9 @@ proc_needs_ar_built(ModuleInfo, PPId) :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_termination2_info(ProcInfo, TermInfo),
     (
-        TermInfo ^ success_constrs = no
+        term2_info_get_success_constrs(TermInfo) = no
     ;
-        TermInfo ^ term_status = no
+        term2_info_get_term_status(TermInfo) = no
     ).
 
 %-----------------------------------------------------------------------------%

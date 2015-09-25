@@ -650,7 +650,7 @@ maybe_termination(Verbose, Stats, !HLDS, !IO) :-
         Termination = yes
     then
         maybe_write_string(Verbose, "% Detecting termination...\n", !IO),
-        analyse_termination_in_module(!HLDS, Specs, !IO),
+        analyse_termination_in_module(!HLDS, Specs),
         maybe_write_string(Verbose, "% Termination checking done.\n", !IO),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS),
@@ -675,7 +675,9 @@ maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
         Termination2 = yes
     then
         maybe_write_string(Verbose, "% Detecting termination 2...\n", !IO),
-        term_constr_main.pass(!HLDS, !IO),
+        term2_analyse_module(!HLDS, Specs),
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
+        module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_write_string(Verbose, "% Termination 2 checking done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     else

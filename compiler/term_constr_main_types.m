@@ -39,7 +39,7 @@
     % this is or is not the case.
     %
 :- type constr_termination_info ==
-    generic_termination_info(term_reason, term2_errors).
+    generic_termination_info(term_reason, list(term2_error)).
 
     % Why does the termination analyser think that a procedure is terminating?
     % This is useful for debugging purposes.
@@ -84,35 +84,43 @@
 
 :- func term2_info_init = termination2_info.
 
-:- func termination2_info ^ size_var_map = size_var_map.
-:- func termination2_info ^ import_success =
-    maybe(pragma_constr_arg_size_info).
-:- func termination2_info ^ import_failure =
-    maybe(pragma_constr_arg_size_info).
-:- func termination2_info ^ success_constrs = maybe(constr_arg_size_info).
-:- func termination2_info ^ failure_constrs = maybe(constr_arg_size_info).
-:- func termination2_info ^ term_status = maybe(constr_termination_info).
-:- func termination2_info ^ abstract_rep = maybe(abstract_proc).
-:- func termination2_info ^ intermod_status = maybe(intermod_status).
-:- func termination2_info ^ head_vars = list(size_var).
+:- func term2_info_get_size_var_map(termination2_info)
+    = size_var_map.
+:- func term2_info_get_import_success(termination2_info)
+    = maybe(pragma_constr_arg_size_info).
+:- func term2_info_get_import_failure(termination2_info)
+    = maybe(pragma_constr_arg_size_info).
+:- func term2_info_get_success_constrs(termination2_info)
+    = maybe(constr_arg_size_info).
+:- func term2_info_get_failure_constrs(termination2_info)
+    = maybe(constr_arg_size_info).
+:- func term2_info_get_abstract_rep(termination2_info)
+    = maybe(abstract_proc).
+:- func term2_info_get_term_status(termination2_info)
+    = maybe(constr_termination_info).
+:- func term2_info_get_intermod_status(termination2_info)
+    = maybe(intermod_status).
+:- func term2_info_get_head_vars(termination2_info)
+    = list(size_var).
 
-:- func termination2_info ^ size_var_map := size_var_map = termination2_info.
-:- func termination2_info ^ import_success :=
-    maybe(pragma_constr_arg_size_info) = termination2_info.
-:- func termination2_info ^ import_failure :=
-    maybe(pragma_constr_arg_size_info) = termination2_info.
-:- func termination2_info ^ success_constrs := maybe(constr_arg_size_info)
-    = termination2_info.
-:- func termination2_info ^ failure_constrs := maybe(constr_arg_size_info)
-    = termination2_info.
-:- func termination2_info ^ term_status := maybe(constr_termination_info)
-    = termination2_info.
-:- func termination2_info ^ intermod_status := maybe(intermod_status)
-    = termination2_info.
-:- func termination2_info ^ abstract_rep := maybe(abstract_proc)
-    = termination2_info.
-:- func termination2_info ^ head_vars := list(size_var)
-    = termination2_info.
+:- pred term2_info_set_size_var_map(size_var_map::in,
+    termination2_info::in, termination2_info::out) is det.
+:- pred term2_info_set_import_success(maybe(pragma_constr_arg_size_info)::in,
+    termination2_info::in, termination2_info::out) is det.
+:- pred term2_info_set_import_failure(maybe(pragma_constr_arg_size_info)::in,
+    termination2_info::in, termination2_info::out) is det.
+:- pred term2_info_set_success_constrs(maybe(constr_arg_size_info)::in,
+    termination2_info::in, termination2_info::out) is det.
+:- pred term2_info_set_failure_constrs(maybe(constr_arg_size_info)::in,
+    termination2_info::in, termination2_info::out) is det.
+:- pred term2_info_set_term_status(maybe(constr_termination_info)::in,
+    termination2_info::in, termination2_info::out) is det.
+:- pred term2_info_set_intermod_status(maybe(intermod_status)::in,
+    termination2_info::in, termination2_info::out) is det.
+:- pred term2_info_set_abstract_rep(maybe(abstract_proc)::in,
+    termination2_info::in, termination2_info::out) is det.
+:- pred term2_info_set_head_vars(list(size_var)::in,
+    termination2_info::in, termination2_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -134,45 +142,83 @@
 :- type termination2_info
     --->    term2_info(
                 % Map between prog_vars and size_vars for this procedure.
-                size_var_map        :: size_var_map,
+                t2i_size_var_map        :: size_var_map,
 
                 % These are the size variables that occur in argument
                 % size constraints. For procedures that are imported
                 % via a `.opt' or `.trans_opt' file, we set these during
                 % the initial pass, for procedures in the module we are
                 % analysing, pass 1 sets it.
-                head_vars           :: size_vars,
+                t2i_head_vars           :: size_vars,
 
                 % Arg size info. imported from another module via a
                 % `.opt' or `.trans_opt' file. Pass 0 needs to convert these
                 % to the proper form. These particular fields are of no use
                 % after that.
-                import_success      :: maybe(pragma_constr_arg_size_info),
-                import_failure      :: maybe(pragma_constr_arg_size_info),
+                t2i_import_success      :: maybe(pragma_constr_arg_size_info),
+                t2i_import_failure      :: maybe(pragma_constr_arg_size_info),
 
                 % The interargument size relationships
                 % (expressed as convex constraints)
                 % obtained during pass 1.
-                success_constrs     :: maybe(constr_arg_size_info),
+                t2i_success_constrs     :: maybe(constr_arg_size_info),
 
                 % Failure constraints for predicates that can fail
                 % (set by pass 1).
-                failure_constrs     :: maybe(constr_arg_size_info),
+                t2i_failure_constrs     :: maybe(constr_arg_size_info),
 
                 % The termination status of the procedure as determined
                 % by pass 2.
-                term_status         :: maybe(constr_termination_info),
+                t2i_term_status         :: maybe(constr_termination_info),
 
                 % Is this procedure (possibly) involved in mutual recursion
                 % across module boundaries? Set by pass 1.
-                intermod_status     :: maybe(intermod_status),
+                t2i_intermod_status     :: maybe(intermod_status),
 
                 % The abstract representation of this proc.
                 % Set by term_constr_build.m.
-                abstract_rep        :: maybe(abstract_proc)
+                t2i_abstract_rep        :: maybe(abstract_proc)
             ).
 
 term2_info_init = term2_info(map.init, [], no, no, no, no, no, no, no).
+
+term2_info_get_size_var_map(Term2Info) = X :-
+    X = Term2Info ^ t2i_size_var_map.
+term2_info_get_import_success(Term2Info) = X :-
+    X = Term2Info ^ t2i_import_success.
+term2_info_get_import_failure(Term2Info) = X :-
+    X = Term2Info ^ t2i_import_failure.
+term2_info_get_success_constrs(Term2Info) = X :-
+    X = Term2Info ^ t2i_success_constrs.
+term2_info_get_failure_constrs(Term2Info) = X :-
+    X = Term2Info ^ t2i_failure_constrs.
+term2_info_get_abstract_rep(Term2Info) = X :-
+    X = Term2Info ^ t2i_abstract_rep.
+term2_info_get_term_status(Term2Info) = X :-
+    X = Term2Info ^ t2i_term_status.
+term2_info_get_intermod_status(Term2Info) = X :-
+    X = Term2Info ^ t2i_intermod_status.
+term2_info_get_head_vars(Term2Info) = X :-
+    X = Term2Info ^ t2i_head_vars.
+
+term2_info_set_size_var_map(X, !Term2Info) :-
+    !Term2Info ^ t2i_size_var_map := X.
+term2_info_set_import_success(X, !Term2Info) :-
+    !Term2Info ^ t2i_import_success := X.
+term2_info_set_import_failure(X, !Term2Info) :-
+    !Term2Info ^ t2i_import_failure := X.
+term2_info_set_success_constrs(X, !Term2Info) :-
+    !Term2Info ^ t2i_success_constrs := X.
+term2_info_set_failure_constrs(X, !Term2Info) :-
+    !Term2Info ^ t2i_failure_constrs := X.
+term2_info_set_term_status(X, !Term2Info) :-
+    !Term2Info ^ t2i_term_status := X.
+term2_info_set_intermod_status(X, !Term2Info) :-
+    !Term2Info ^ t2i_intermod_status := X.
+term2_info_set_abstract_rep(X, !Term2Info) :-
+    !Term2Info ^ t2i_abstract_rep := X.
+term2_info_set_head_vars(X, !Term2Info) :-
+    !Term2Info ^ t2i_head_vars := X.
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.term_constr_main_types.

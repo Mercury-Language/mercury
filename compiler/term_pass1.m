@@ -42,12 +42,12 @@
                 used_args
             )
     ;       arg_size_error(
-                list(termination_error_context)
+                list(term_error)
             ).
 
-:- pred find_arg_sizes_in_scc(list(pred_proc_id)::in,
-    pass_info::in, arg_size_result::out, list(termination_error_context)::out,
-    module_info::in, module_info::out) is det.
+:- pred find_arg_sizes_in_scc(module_info::in, pass_info::in,
+    list(pred_proc_id)::in, arg_size_result::out, list(term_error)::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -84,16 +84,16 @@
                 % There is an entry in this list for each procedure in the SCC
                 % in which the set of active vars is not a subset of the
                 % input arguments.
-                list(termination_error_context)
+                list(term_error)
             )
     ;       term_pass1_error(
-                list(termination_error_context)
+                list(term_error)
             ).
 
-find_arg_sizes_in_scc(SCC, PassInfo, ArgSize, TermErrors, !ModuleInfo) :-
-    init_output_suppliers(SCC, !.ModuleInfo, InitOutputSupplierMap),
-    find_arg_sizes_in_scc_fixpoint(SCC, PassInfo,
-        InitOutputSupplierMap, Result, TermErrors, !ModuleInfo),
+find_arg_sizes_in_scc(ModuleInfo, PassInfo, SCC, ArgSize, TermErrors) :-
+    init_output_suppliers(ModuleInfo, SCC, InitOutputSupplierMap),
+    find_arg_sizes_in_scc_fixpoint(ModuleInfo, PassInfo, SCC,
+        InitOutputSupplierMap, Result, TermErrors),
     (
         Result = term_pass1_ok(Paths, OutputSupplierMap, SubsetErrors),
         (
@@ -103,8 +103,8 @@ find_arg_sizes_in_scc(SCC, PassInfo, ArgSize, TermErrors, !ModuleInfo) :-
             SubsetErrors = [],
             (
                 Paths = [],
-                get_context_from_scc(SCC, !.ModuleInfo, Context),
-                ArgSizeError = termination_error_context(no_eqns, Context),
+                get_context_from_scc(ModuleInfo, SCC, Context),
+                ArgSizeError = term_error(Context, no_eqns),
                 ArgSize = arg_size_error([ArgSizeError])
             ;
                 Paths = [_ | _],
@@ -114,9 +114,8 @@ find_arg_sizes_in_scc(SCC, PassInfo, ArgSize, TermErrors, !ModuleInfo) :-
                     ArgSize = arg_size_ok(Solution, OutputSupplierMap)
                 ;
                     MaybeSolution = no,
-                    get_context_from_scc(SCC, !.ModuleInfo, Context),
-                    ArgSizeError = termination_error_context(solver_failed,
-                        Context),
+                    get_context_from_scc(ModuleInfo, SCC, Context),
+                    ArgSizeError = term_error(Context, solver_failed),
                     ArgSize = arg_size_error([ArgSizeError])
                 )
             )
@@ -132,30 +131,29 @@ find_arg_sizes_in_scc(SCC, PassInfo, ArgSize, TermErrors, !ModuleInfo) :-
     % Initially, we consider that no input arguments contribute their size
     % to the output arguments.
     %
-:- pred init_output_suppliers(list(pred_proc_id)::in, module_info::in,
+:- pred init_output_suppliers(module_info::in, list(pred_proc_id)::in,
     used_args::out) is det.
 
-init_output_suppliers([], _, InitMap) :-
+init_output_suppliers(_, [], InitMap) :-
     map.init(InitMap).
-init_output_suppliers([PPId | PPIds], ModuleInfo, OutputSupplierMap) :-
-    init_output_suppliers(PPIds, ModuleInfo, OutputSupplierMap0),
+init_output_suppliers(ModuleInfo, [PPId | PPIds], OutputSupplierMap) :-
+    init_output_suppliers(ModuleInfo, PPIds, OutputSupplierMap0),
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_headvars(ProcInfo, HeadVars),
     MapToNo = (pred(_HeadVar::in, Bool::out) is det :- Bool = no),
     list.map(MapToNo, HeadVars, BoolList),
-    map.det_insert( PPId, BoolList, OutputSupplierMap0, OutputSupplierMap).
+    map.det_insert(PPId, BoolList, OutputSupplierMap0, OutputSupplierMap).
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_arg_sizes_in_scc_fixpoint(list(pred_proc_id)::in,
-    pass_info::in, used_args::in, pass1_result::out,
-    list(termination_error_context)::out, module_info::in, module_info::out)
-    is det.
+:- pred find_arg_sizes_in_scc_fixpoint(module_info::in, pass_info::in,
+    list(pred_proc_id)::in, used_args::in,
+    pass1_result::out, list(term_error)::out) is det.
 
-find_arg_sizes_in_scc_fixpoint(SCC, PassInfo, OutputSupplierMap0,
-        Result, TermErrors, !ModuleInfo) :-
-    find_arg_sizes_in_scc_pass(SCC, PassInfo, OutputSupplierMap0, [], [],
-        Result0, [], TermErrors0, !ModuleInfo),
+find_arg_sizes_in_scc_fixpoint(ModuleInfo, PassInfo, SCC, OutputSupplierMap0,
+        Result, TermErrors) :-
+    find_arg_sizes_in_scc_pass(ModuleInfo, PassInfo, SCC, OutputSupplierMap0,
+        [], [], Result0, [], TermErrors0),
     (
         Result0 = term_pass1_error(_),
         Result = Result0,
@@ -166,25 +164,23 @@ find_arg_sizes_in_scc_fixpoint(SCC, PassInfo, OutputSupplierMap0,
             Result = Result0,
             TermErrors = TermErrors0
         else
-            find_arg_sizes_in_scc_fixpoint(SCC, PassInfo,
-                OutputSupplierMap1, Result, TermErrors, !ModuleInfo)
+            find_arg_sizes_in_scc_fixpoint(ModuleInfo, PassInfo, SCC,
+                OutputSupplierMap1, Result, TermErrors)
         )
     ).
 
-:- pred find_arg_sizes_in_scc_pass(list(pred_proc_id)::in,
-    pass_info::in, used_args::in, list(term_path_info)::in,
-    termination_error_contexts::in, pass1_result::out,
-    termination_error_contexts::in, termination_error_contexts::out,
-    module_info::in, module_info::out) is det.
+:- pred find_arg_sizes_in_scc_pass(module_info::in, pass_info::in,
+    list(pred_proc_id)::in, used_args::in, list(term_path_info)::in,
+    list(term_error)::in, pass1_result::out,
+    list(term_error)::in, list(term_error)::out) is det.
 
-find_arg_sizes_in_scc_pass([], _, OutputSupplierMap, Paths, SubsetErrors,
-        Result, !TermErrors, !ModuleInfo) :-
+find_arg_sizes_in_scc_pass(_, _, [], OutputSupplierMap, Paths, SubsetErrors,
+        Result, !TermErrors) :-
     Result = term_pass1_ok(Paths, OutputSupplierMap, SubsetErrors).
-find_arg_sizes_in_scc_pass([PPId | PPIds], PassInfo,
-        OutputSupplierMap0, Paths0, SubsetErrors0, Result,
-        !TermErrors, !ModuleInfo) :-
-    find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0,
-        Result1, ProcTermErrors, !ModuleInfo),
+find_arg_sizes_in_scc_pass(ModuleInfo, PassInfo, [PPId | PPIds],
+        OutputSupplierMap0, Paths0, SubsetErrors0, Result, !TermErrors) :-
+    find_arg_sizes_pred(ModuleInfo, PassInfo, PPId, OutputSupplierMap0,
+        Result1, ProcTermErrors),
     !:TermErrors = !.TermErrors ++ ProcTermErrors,
     PassInfo = pass_info(_, MaxErrors, _),
     list.take_upto(MaxErrors, !TermErrors),
@@ -198,27 +194,25 @@ find_arg_sizes_in_scc_pass([PPId | PPIds], PassInfo,
         % pass 2.
         % (See below for details).
 
-        list.foldl2(check_proc_non_term_calls, PPIds, [],
-            OtherTermErrors, !ModuleInfo),
+        list.foldl(check_proc_non_term_calls(ModuleInfo), PPIds,
+            [], OtherTermErrors),
         list.append(OtherTermErrors, !TermErrors)
     ;
         Result1 = term_pass1_ok(Paths1, OutputSupplierMap1, SubsetErrors1),
         Paths = Paths0 ++ Paths1,
         SubsetErrors = SubsetErrors0 ++ SubsetErrors1,
-        find_arg_sizes_in_scc_pass(PPIds, PassInfo,
-            OutputSupplierMap1, Paths, SubsetErrors, Result,
-            !TermErrors, !ModuleInfo)
+        find_arg_sizes_in_scc_pass(ModuleInfo, PassInfo, PPIds,
+            OutputSupplierMap1, Paths, SubsetErrors, Result, !TermErrors)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred find_arg_sizes_pred(pred_proc_id::in, pass_info::in, used_args::in,
-    pass1_result::out, termination_error_contexts::out,
-    module_info::in, module_info::out) is det.
+:- pred find_arg_sizes_pred(module_info::in, pass_info::in, pred_proc_id::in,
+    used_args::in, pass1_result::out, list(term_error)::out) is det.
 
-find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
-        TermErrors, !ModuleInfo) :-
-    module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo),
+find_arg_sizes_pred(ModuleInfo, PassInfo, PPId, OutputSupplierMap0, Result,
+        TermErrors) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
     pred_info_get_context(PredInfo, Context),
     proc_info_get_headvars(ProcInfo, Args),
     proc_info_get_argmodes(ProcInfo, ArgModes),
@@ -234,11 +228,11 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
     init_term_traversal_params(FunctorInfo, PPId, Context, VarTypes,
         OutputSupplierMap0, EmptyMap, MaxErrors, MaxPaths, Params),
 
-    partition_call_args(!.ModuleInfo, ArgModes, Args, InVars, OutVars),
+    partition_call_args(ModuleInfo, ArgModes, Args, InVars, OutVars),
     Path0 = term_path_info(PPId, no, 0, [], OutVars),
     PathSet0 = set.make_singleton_set(Path0),
     Info0 = term_traversal_ok(PathSet0, []),
-    term_traverse_goal(Goal, Params, Info0, Info, !ModuleInfo),
+    term_traverse_goal(ModuleInfo, Params, Goal, Info0, Info),
 
     (
         Info = term_traversal_ok(Paths, TermErrors),
@@ -252,10 +246,9 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
         ( if bag.is_subbag(AllActiveVars, InVars) then
             SubsetErrors = []
         else
-            SubsetError = not_subset(PPId, AllActiveVars, InVars),
-            SubsetErrorContext = termination_error_context(SubsetError,
-                Context),
-            SubsetErrors = [SubsetErrorContext]
+            SubsetErrorKind = not_subset(PPId, AllActiveVars, InVars),
+            SubsetError = term_error(Context, SubsetErrorKind),
+            SubsetErrors = [SubsetError]
         ),
         Result = term_pass1_ok(PathList, OutputSupplierMap, SubsetErrors)
     ;
@@ -296,22 +289,20 @@ update_output_suppliers([Arg | Args], ActiveVars,
 % run pass 2 if the procedure contains any calls to nonterminating procedures
 % lower down the call-graph (see term_pass2.m for details).
 
-:- pred check_proc_non_term_calls(pred_proc_id::in,
-    termination_error_contexts::in, termination_error_contexts::out,
-    module_info::in, module_info::out) is det.
+:- pred check_proc_non_term_calls(module_info::in, pred_proc_id::in,
+    list(term_error)::in, list(term_error)::out) is det.
 
-check_proc_non_term_calls(PPId, !Errors, !ModuleInfo) :-
-    module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
+check_proc_non_term_calls(ModuleInfo, PPId, !Errors) :-
+    module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo).
+    check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors).
 
-:- pred check_goal_non_term_calls(
-    pred_proc_id::in, vartypes::in, hlds_goal::in,
-    termination_error_contexts::in, termination_error_contexts::out,
-    module_info::in, module_info::out) is det.
+:- pred check_goal_non_term_calls(module_info::in, pred_proc_id::in,
+    vartypes::in, hlds_goal::in,
+    list(term_error)::in, list(term_error)::out) is det.
 
-check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo) :-
+check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = unify(_, _, _, _, _)
@@ -319,25 +310,23 @@ check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo) :-
     ;
         GoalExpr = plain_call(CallPredId, CallProcId, Args, _, _, _),
         CallPPId = proc(CallPredId, CallProcId),
-        module_info_pred_proc_info(!.ModuleInfo, CallPPId, _, ProcInfo),
+        module_info_pred_proc_info(ModuleInfo, CallPPId, _, ProcInfo),
         proc_info_get_maybe_termination_info(ProcInfo, TerminationInfo),
         Context = goal_info_get_context(GoalInfo),
         (
             TerminationInfo = yes(can_loop(_)),
-            CanLoopError = can_loop_proc_called(PPId, CallPPId),
-            CanLoopErrorContext =
-                termination_error_context(CanLoopError, Context),
-            list.cons(CanLoopErrorContext, !Errors)
+            CanLoopErrorKind = can_loop_proc_called(PPId, CallPPId),
+            CanLoopError = term_error(Context, CanLoopErrorKind),
+            list.cons(CanLoopError, !Errors)
         ;
             ( TerminationInfo = yes(cannot_loop(_))
             ; TerminationInfo = no
             )
         ),
         ( if horder_vars(Args, VarTypes) then
-            HigherOrderError = horder_args(PPId, CallPPId),
-            HigherOrderErrorContext =
-                termination_error_context(HigherOrderError, Context),
-            list.cons(HigherOrderErrorContext, !Errors)
+            HigherOrderErrorKind = horder_args(PPId, CallPPId),
+            HigherOrderError = term_error(Context, HigherOrderErrorKind),
+            list.cons(HigherOrderError, !Errors)
         else
             true
         )
@@ -348,27 +337,26 @@ check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo) :-
         GoalExpr = generic_call(_, _, _, _, _),
         % XXX We should use any results from closure analysis here.
         Context = goal_info_get_context(GoalInfo),
-        Error = termination_error_context(horder_call, Context),
+        Error = term_error(Context, horder_call),
         list.cons(Error, !Errors)
     ;
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        list.foldl2(check_goal_non_term_calls(PPId, VarTypes), Goals,
-            !Errors, !ModuleInfo)
+        list.foldl(check_goal_non_term_calls(ModuleInfo, PPId, VarTypes),
+            Goals, !Errors)
     ;
         GoalExpr = switch(_, _, Cases),
-        list.foldl2(check_cases_non_term_calls(PPId, VarTypes), Cases,
-            !Errors, !ModuleInfo)
+        list.foldl(check_cases_non_term_calls(ModuleInfo, PPId, VarTypes),
+            Cases, !Errors)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
         Goals = [Cond, Then, Else],
-        list.foldl2(check_goal_non_term_calls(PPId, VarTypes), Goals,
-            !Errors, !ModuleInfo)
+        list.foldl(check_goal_non_term_calls(ModuleInfo, PPId, VarTypes),
+            Goals, !Errors)
     ;
         GoalExpr = negation(SubGoal),
-        check_goal_non_term_calls(PPId, VarTypes, SubGoal,
-            !Errors, !ModuleInfo)
+        check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, SubGoal, !Errors)
     ;
         GoalExpr = scope(Reason, SubGoal),
         ( if
@@ -380,22 +368,21 @@ check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo) :-
             % The scope has no calls, let alone nonterminating calls.
             true
         else
-            check_goal_non_term_calls(PPId, VarTypes, SubGoal,
-                !Errors, !ModuleInfo)
+            check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, SubGoal,
+                !Errors)
         )
     ;
         GoalExpr = shorthand(_),
         unexpected($module, $pred, "shorthand")
     ).
 
-:- pred check_cases_non_term_calls(
+:- pred check_cases_non_term_calls(module_info::in,
     pred_proc_id::in, vartypes::in, case::in,
-    termination_error_contexts::in, termination_error_contexts::out,
-    module_info::in, module_info::out) is det.
+    list(term_error)::in, list(term_error)::out) is det.
 
-check_cases_non_term_calls(PPId, VarTypes, Case, !Errors, !ModuleInfo) :-
+check_cases_non_term_calls(ModuleInfo, PPId, VarTypes, Case, !Errors) :-
     Case = case(_, _, Goal),
-    check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo).
+    check_goal_non_term_calls(ModuleInfo, PPId, VarTypes, Goal, !Errors).
 
 %-----------------------------------------------------------------------------%
 %

@@ -1452,11 +1452,12 @@ add_pragma_termination2_info(Term2Info, Context, !ModuleInfo, !Specs) :-
 
             some [!TermInfo] (
                 proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
-
-                !TermInfo ^ import_success := MaybePragmaSuccessArgSizeInfo,
-                !TermInfo ^ import_failure := MaybePragmaFailureArgSizeInfo,
-                !TermInfo ^ term_status := MaybeTerminationInfo,
-
+                term2_info_set_import_success(MaybePragmaSuccessArgSizeInfo,
+                    !TermInfo),
+                term2_info_set_import_failure(MaybePragmaFailureArgSizeInfo,
+                    !TermInfo),
+                term2_info_set_term_status(MaybeTerminationInfo,
+                    !TermInfo),
                 proc_info_set_termination2_info(!.TermInfo,
                     ProcInfo0, ProcInfo)
             ),
