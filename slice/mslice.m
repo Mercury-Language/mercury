@@ -50,27 +50,27 @@ main(!IO) :-
             lookup_int_option(OptionTable, max_path_column, MaxPathColumn),
             lookup_int_option(OptionTable, max_file_column, MaxFileColumn),
             lookup_string_option(OptionTable, modulename, Module),
-            ( MaxPredColumn = 0 ->
+            ( if MaxPredColumn = 0 then
                 MaybeMaxPredColumn = no
-            ;
+            else
                 MaybeMaxPredColumn = yes(MaxPredColumn)
             ),
-            ( MaxPathColumn = 0 ->
+            ( if MaxPathColumn = 0 then
                 MaybeMaxPathColumn = no
-            ;
+            else
                 MaybeMaxPathColumn = yes(MaxPathColumn)
             ),
-            ( MaxFileColumn = 0 ->
+            ( if MaxFileColumn = 0 then
                 MaybeMaxFileColumn = no
-            ;
+            else
                 MaybeMaxFileColumn = yes(MaxFileColumn)
             ),
             read_slice_to_string(FileName, SortStr, MaxRow,
                 MaybeMaxPredColumn, MaybeMaxPathColumn, MaybeMaxFileColumn,
                 Module, SliceStr, Problem, !IO),
-            ( Problem = "" ->
+            ( if Problem = "" then
                 io.write_string(SliceStr, !IO)
-            ;
+            else
                 io.write_string(Problem, !IO),
                 io.nl(!IO),
                 io.set_exit_status(1, !IO)

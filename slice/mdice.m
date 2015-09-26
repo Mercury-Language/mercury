@@ -57,27 +57,27 @@ main(!IO) :-
             lookup_int_option(OptionTable, max_pred_column, MaxPredColumn),
             lookup_int_option(OptionTable, max_path_column, MaxPathColumn),
             lookup_int_option(OptionTable, max_file_column, MaxFileColumn),
-            ( MaxPredColumn = 0 ->
+            ( if MaxPredColumn = 0 then
                 MaybeMaxPredColumn = no
-            ;
+            else
                 MaybeMaxPredColumn = yes(MaxPredColumn)
             ),
-            ( MaxPathColumn = 0 ->
+            ( if MaxPathColumn = 0 then
                 MaybeMaxPathColumn = no
-            ;
+            else
                 MaybeMaxPathColumn = yes(MaxPathColumn)
             ),
-            ( MaxFileColumn = 0 ->
+            ( if MaxFileColumn = 0 then
                 MaybeMaxFileColumn = no
-            ;
+            else
                 MaybeMaxFileColumn = yes(MaxFileColumn)
             ),
             read_dice_to_string(PassFileName, FailFileName, SortStr, MaxRow,
                 MaybeMaxPredColumn, MaybeMaxPathColumn, MaybeMaxFileColumn,
                 Module, DiceStr, Problem, !IO),
-            ( Problem = "" ->
+            ( if Problem = "" then
                 io.write_string(DiceStr, !IO)
-            ;
+            else
                 io.write_string(Problem, !IO),
                 io.nl(!IO),
                 io.set_exit_status(1, !IO)

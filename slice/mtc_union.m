@@ -47,10 +47,10 @@ main(!IO) :-
     (
         GetoptResult = ok(OptionTable),
         lookup_string_option(OptionTable, output_filename, OutputFile),
-        (
+        ( if
             Args = [_ | _],
             OutputFile \= ""
-        ->
+        then
             lookup_bool_option(OptionTable, verbose, Verbose),
             read_and_union_trace_counts(Verbose, Args, NumTests, Kinds,
                 TraceCounts, MaybeReadError, !IO),
@@ -74,7 +74,7 @@ main(!IO) :-
                     io.nl(StdErr, !IO)
                 )
             )
-        ;
+        else
             usage(!IO)
         )
     ;

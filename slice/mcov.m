@@ -84,7 +84,7 @@ do_coverage_testing(OptionTable, Args, !IO) :-
         ;
             MaybeReadError = no,
             set.to_sorted_list(FileTypes, FileTypeList),
-            ( FileTypeList = [single_file(BaseType)] ->
+            ( if FileTypeList = [single_file(BaseType)] then
                 BaseType = base_count_file_type(Kind, _Program),
                 (
                     Kind = user_nonzero,
@@ -92,7 +92,7 @@ do_coverage_testing(OptionTable, Args, !IO) :-
                 ;
                     Kind = user_all
                 )
-            ;
+            else
                 io.write_string(StdErr, consistency_warning, !IO)
             ),
             lookup_bool_option(OptionTable, detailed, Detailed),
@@ -110,13 +110,14 @@ do_coverage_testing(OptionTable, Args, !IO) :-
             ;
                 Modules = [_ | _],
                 ModuleSyms = list.map(string_to_sym_name, Modules),
-                RestrictToModules = module_restriction_user(set.list_to_set(ModuleSyms))
+                RestrictToModules =
+                    module_restriction_user(set.list_to_set(ModuleSyms))
             ),
             lookup_string_option(OptionTable, output_filename, OutputFile),
-            ( OutputFile = "" ->
+            ( if OutputFile = "" then
                 write_coverage_test(Detailed, RestrictToModules,
                     TraceCounts, !IO)
-            ;
+            else
                 io.tell(OutputFile, OpenRes, !IO),
                 (
                     OpenRes = ok,
@@ -241,9 +242,9 @@ collect_proc_infos_counts([Assoc | Assocs], !ProcInfoMap, !CountMap) :-
     LabelFilename = proc_label_in_context(_ModuleNameSym, FileName, ProcLabel),
     map.foldl2(proc_process_path_port_count, PathPortCountMap,
         no, MaybeCallInfo, 0, CurCount),
-    ( map.search(!.CountMap, ProcLabel, OldCount) ->
+    ( if map.search(!.CountMap, ProcLabel, OldCount) then
         map.det_update(ProcLabel, OldCount + CurCount, !CountMap)
-    ;
+    else
         map.det_insert(ProcLabel, CurCount, !CountMap)
     ),
     (
@@ -262,11 +263,11 @@ proc_process_path_port_count(PathPort, LineNumberAndCount, !MaybeCallInfo,
         !Count) :-
     LineNumberAndCount = line_no_and_count(LineNumber, CurCount, _NumTests),
     !:Count = !.Count + CurCount,
-    ( PathPort = port_only(port_call) ->
+    ( if PathPort = port_only(port_call) then
         require(unify(!.MaybeCallInfo, no),
             "proc_process_path_port_count: duplicate call port:"),
         !:MaybeCallInfo = yes(LineNumber)
-    ;
+    else
         true
     ).
 
@@ -298,13 +299,13 @@ collect_zero_count_local_labels([Assoc | Assocs], !ZeroLabelInfos) :-
 label_process_path_port_count(ProcLabel, FileName,
         PathPort, LineNumberAndCount, !ZeroLabelInfos) :-
     LineNumberAndCount = line_no_and_count(LineNumber, Count, _NumTests),
-    (
+    ( if
         Count = 0,
         is_local_proc(ProcLabel)
-    ->
+    then
         LabelInfo = label_info(FileName, LineNumber, ProcLabel, PathPort),
         !:ZeroLabelInfos = [LabelInfo | !.ZeroLabelInfos]
-    ;
+    else
         true
     ).
 
@@ -391,7 +392,8 @@ short_usage(!IO) :-
     io.progname_base("mcov", ProgName, !IO),
     library.version(Version, FullArch),
     io.write_strings([
-        "Mercury Coverage Testing Tool, version ", Version, ", on ", FullArch, ".\n",
+        "Mercury Coverage Testing Tool, version ", Version,
+            ", on ", FullArch, ".\n",
         "Copyright (C) 2006-2007, 2010-2012 The University of Melbourne\n",
         "Copyright (C) 2015 The Mercury team\n",
         "Usage: ", ProgName, " [<options>] [<files>]\n",
@@ -411,12 +413,13 @@ long_usage(!IO) :-
         "The Mercury team\n", !IO),
     io.write_string("Usage: mcov [<options>] <arguments>\n", !IO),
     io.write_string("Arguments:\n", !IO),
-    io.write_string("\tArguments are assumed to Mercury trace count files.\n", !IO),
+    io.write_string("\tArguments are assumed to Mercury trace count files.\n",
+        !IO),
     io.write_string("Options:\n", !IO),
     write_tabbed_lines([
         "-?, -h, --help",
-        "\tPrint help about using mcov (on the standard output) and exit without",
-        "\tdoing any further processing",
+        "\tPrint help about using mcov (on the standard output) and exit",
+        "\twithout doing any further processing",
         "-v, --verbose",
         "\tPrint the name of each trace count file as it is added to the union",
         "-d, --detailed",
