@@ -88,6 +88,7 @@ BYTES_PER_WORD=4
 UNBOXED_FLOATS=no
 
 # git checkout -- VERSION
+git submodule deinit -f .
 git clean -d -f -x
 if [ -n "$RELEASE_VERSION" ]; then
     sed "s/VERSION=.*/VERSION=$RELEASE_VERSION/" VERSION > VERSION.new
