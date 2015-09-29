@@ -351,7 +351,28 @@ sub output_single_tag() {
             printf OUT "%s\177%s\001%d,%d\n", $_, $name, $., $.;
         } else {
             # Output basic tag line for vi/vim/elvis.
-            printf OUT "%s\t%s\t/^%s\$/", $name, $file, $match_line;
+            # If the match line for a pred or func contains a left parenthesis,
+            # then print it only up to and including that parenthesis, so that
+            # we can find the tag even if the part of the line after the
+            # parenthesis changes. This allows us to use the tag to find
+            # the predicate or function definition even after changes
+            # in the types of the arguments.
+            # We include the parenthesis so that the search pattern for
+            # e.g. the predicate tag "p" will find the declaration that starts
+            # with ":- pred p(" but not with ":- pred prepare_for_xxx(".
+            if (($kind eq "pred" || $kind eq "func") && $match_line =~ /\(/) {
+                # Delete everything after the *last* parenthesis.
+                # In some cases, such as the declarations of field access
+                # functions, there will be more than one parenthesis on the
+                # line. Since the name of the function itself can be between
+                # the first and the second parenthesis, we don't want to
+                # delete everything after the *first* parenthesis.
+                $match_line_start = $match_line;
+                $match_line_start =~ s|\([^\(]*$|\(|;
+                printf OUT "%s\t%s\t/^%s/", $name, $file, $match_line_start;
+            } else {
+                printf OUT "%s\t%s\t/^%s\$/", $name, $file, $match_line;
+            }
 
             # Output commands to alter the search buffer.
             if ($search_definitions) {
