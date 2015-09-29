@@ -104,24 +104,13 @@ endif
 # `mmc --make' doesn't expect subdirectories to appear in targets.
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 OS_SUBDIR=
-ILS_SUBDIR=
-DLLS_SUBDIR=
 else
 OS_SUBDIR=$(os_subdir)
-ILS_SUBDIR=$(ils_subdir)
-DLLS_SUBDIR=$(dlls_subdir)
 endif
 
-
-ifeq ($(findstring il,$(GRADE)),il)
-	TARGET_OBJ_EXT=dll
-	TARGET_OBJ_SUBDIR=$(DLLS_SUBDIR)
-else
-	TARGET_OBJ_EXT=$(O)
-	TARGET_OBJ_SUBDIR=$(OS_SUBDIR)
-endif
-OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
-		$(IL_PROGS:%=$(ILS_SUBDIR)%.il)
+TARGET_OBJ_EXT=$(O)
+TARGET_OBJ_SUBDIR=$(OS_SUBDIR)
+OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT))
 
 #-----------------------------------------------------------------------------#
 

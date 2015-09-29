@@ -434,13 +434,9 @@ fi
 case $use_subdirs in
    yes)
         cs_subdir=Mercury/cs/
-        ss_subdir=Mercury/ss/
-        ils_subdir=Mercury/ils/
         ;;
     no)
         cs_subdir=
-        ss_subdir=
-        ils_subdir=
         ;;
 esac
 
