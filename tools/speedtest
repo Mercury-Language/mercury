@@ -6,31 +6,37 @@
 usage="Usage: speedtest [-dsmtz] [-l | -1] [-e dir] [-g grade] [-c cmd] [-o option]* [-nN] [-ON] [-fFILE] batchname"
 
 single_modulelist="typecheck.m"
-# As of 6 sep 2015, these are the ten largest modules of the compiler.
+
+# I (pbone) generated these module lists using
+# for name in *.m; do echo -n "$name "; cat $name | grep -v '^%' | wc -l;
+# done | sed -e 's/\(.*\) \(.*\)/\2 \1/' | sort -nr | head -n 20
+# This sorts them by the number of lines of code excluding comment lines.
+
+# As of 29 Sep 2015, these are the ten largest modules of the compiler.
 short_modulelist="
     options.m
-    polymorphism.m
     mlds_to_java.m
     mlds_to_c.m
-    table_gen.m
-    mlds_to_il.m
+    polymorphism.m
+    mlds_to_cs.m
     code_loc_dep.m
-    dep_par_conj.m
-    typecheck.m
     hlds_pred.m
+    compile_target_code.m
+    table_gen.m
+    typecheck.m
 "
-# As of 6 sep 2015, these are the ten next largest modules of the compiler.
+# As of 29 Sep 2015, these are the ten next largest modules of the compiler.
 long_modulelist="$short_modulelist
     higher_order.m
-    prog_io_pragma.m
-    mlds_to_cs.m
-    ml_unify_gen.m
-    handle_options.m
-    compile_target_code.m
-    hlds_goal.m
+    dep_par_conj.m
     layout_out.m
-    module_qual.m
+    ml_unify_gen.m
     fact_table.m
+    handle_options.m
+    prog_io_pragma.m
+    intermod.m
+    module_qual.m
+    hlds_goal.m
 "
 cmd=""
 debug=false
