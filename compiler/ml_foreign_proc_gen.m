@@ -42,6 +42,7 @@
 :- import_module backend_libs.foreign. % XXX needed for pragma foreign code
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -829,7 +830,7 @@ input_arg_assignable_with_cast(Lang, HighLevelData, OrigType, ExportedType,
         IsForeign = foreign.is_foreign_type(ExportedType),
         (
             IsForeign = yes(Assertions),
-            list.member(foreign_type_can_pass_as_mercury_type, Assertions)
+            asserted_can_pass_as_mercury_type(Assertions)
         ;
             IsForeign = no
         ),
@@ -850,7 +851,7 @@ input_arg_assignable_with_cast(Lang, HighLevelData, OrigType, ExportedType,
             IsForeign = foreign.is_foreign_type(ExportedType),
             (
                 IsForeign = yes(Assertions),
-                list.member(foreign_type_can_pass_as_mercury_type, Assertions),
+                asserted_can_pass_as_mercury_type(Assertions),
                 Cast = "(" ++ TypeString ++ ")"
             ;
                 IsForeign = no,
@@ -1011,7 +1012,7 @@ ml_gen_pragma_c_gen_output_arg(Var, ArgName, OrigType, BoxPolicy,
             Cast = no
         ;
             IsForeign = yes(Assertions),
-            list.member(foreign_type_can_pass_as_mercury_type, Assertions),
+            asserted_can_pass_as_mercury_type(Assertions),
             Cast = yes
         )
     then

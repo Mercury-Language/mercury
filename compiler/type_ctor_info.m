@@ -356,10 +356,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             TypeBody = hlds_foreign_type(ForeignBody),
             foreign_type_body_to_exported_type(ModuleInfo, ForeignBody, _, _,
                 Assertions),
-            (
-                list.member(foreign_type_can_pass_as_mercury_type, Assertions),
-                list.member(foreign_type_stable, Assertions)
-            ->
+            ( asserted_stable(Assertions) ->
                 IsStable = is_stable
             ;
                 IsStable = is_not_stable

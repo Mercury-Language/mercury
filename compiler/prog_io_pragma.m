@@ -1578,11 +1578,18 @@ parse_foreign_language_type(InputTerm, VarSet, Language,
     ).
 
 :- pred parse_maybe_foreign_type_assertions(maybe(term)::in,
-    list(foreign_type_assertion)::out) is semidet.
+    foreign_type_assertions::out) is semidet.
 
-parse_maybe_foreign_type_assertions(no, []).
-parse_maybe_foreign_type_assertions(yes(Term), Assertions) :-
-    parse_foreign_type_assertions(Term, Assertions).
+parse_maybe_foreign_type_assertions(MaybeTerm, Assertions) :-
+    (
+        MaybeTerm = no,
+        set.init(Set)
+    ;
+        MaybeTerm = yes(Term),
+        parse_foreign_type_assertions(Term, List),
+        set.list_to_set(List, Set)
+    ),
+    Assertions = foreign_type_assertions(Set).
 
 :- pred parse_foreign_type_assertions(term::in,
     list(foreign_type_assertion)::out) is semidet.
@@ -1602,12 +1609,16 @@ parse_foreign_type_assertions(Term, Assertions) :-
 
 parse_foreign_type_assertion(Term, Assertion) :-
     Term = term.functor(term.atom(Constant), [], _),
-    Constant = "can_pass_as_mercury_type",
-    Assertion = foreign_type_can_pass_as_mercury_type.
-parse_foreign_type_assertion(Term, Assertion) :-
-    Term = term.functor(term.atom(Constant), [], _),
-    Constant = "stable",
-    Assertion = foreign_type_stable.
+    (
+        Constant = "can_pass_as_mercury_type",
+        Assertion = foreign_type_can_pass_as_mercury_type
+    ;
+        Constant = "stable",
+        Assertion = foreign_type_stable
+    ;
+        Constant = "word_aligned_pointer",
+        Assertion = foreign_type_word_aligned_pointer
+    ).
 
     % This predicate parses foreign_decl pragmas.
     %

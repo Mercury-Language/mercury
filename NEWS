@@ -23,6 +23,11 @@ Changes to the Mercury language:
 * We have added an extension to include external files
   in pragma foreign_decl and pragma foreign_code declarations.
 
+* We have added a foreign type assertion `word_aligned_pointer' that.
+  Used carefully, it allows the Mercury implementation to avoid boxing values
+  of the foreign type when the type appears as the sole argument of a data
+  constructor.
+
 Changes to the Mercury standard library:
 
 * We have added variants of the process_options predicates to the getopt

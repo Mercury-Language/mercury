@@ -128,6 +128,7 @@
 :- import_module map.
 :- import_module ops.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -644,7 +645,7 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
         io.write_string(".\n", !IO)
     ;
         TypeDefn = parse_tree_foreign_type(ForeignType, MaybeUserEqComp,
-            Assertions),
+            foreign_type_assertions(Assertions)),
         io.write_string(":- pragma foreign_type(", !IO),
         (
             ForeignType = c(_),
@@ -673,12 +674,13 @@ mercury_output_item_type_defn(Info, ItemTypeDefn, !IO) :-
         ),
         io.write_string(ForeignTypeStr, !IO),
         io.write_string("\"", !IO),
+        set.to_sorted_list(Assertions, AssertionsList),
         (
-            Assertions = []
+            AssertionsList = []
         ;
-            Assertions = [_ | _],
+            AssertionsList = [_ | _],
             io.write_string(", [", !IO),
-            io.write_list(Assertions, ", ",
+            io.write_list(AssertionsList, ", ",
                 mercury_output_foreign_type_assertion, !IO),
             io.write_string("]", !IO)
         ),
@@ -953,6 +955,9 @@ mercury_output_foreign_type_assertion(Assertion, !IO) :-
     ;
         Assertion = foreign_type_stable,
         io.write_string("stable", !IO)
+    ;
+        Assertion = foreign_type_word_aligned_pointer,
+        io.write_string("word_aligned_pointer", !IO)
     ).
 
 %---------------------------------------------------------------------------%

@@ -72,13 +72,13 @@
     %
 :- pred foreign_type_body_to_exported_type(module_info::in,
     foreign_type_body::in, sym_name::out, maybe(unify_compare)::out,
-    list(foreign_type_assertion)::out) is det.
+    foreign_type_assertions::out) is det.
 
     % Given the exported_type representation for a type, determine
     % whether or not it is a foreign type, and if yes, return the foreign
     % type's assertions.
     %
-:- func is_foreign_type(exported_type) = maybe(list(foreign_type_assertion)).
+:- func is_foreign_type(exported_type) = maybe(foreign_type_assertions).
 
     % Given a representation of a type, determine the string which
     % corresponds to that type in the specified foreign language,
@@ -268,7 +268,7 @@ have_foreign_type_for_backend(Target, ForeignTypeBody, Have) :-
     ).
 
 :- type exported_type
-    --->    exported_type_foreign(sym_name, list(foreign_type_assertion))
+    --->    exported_type_foreign(sym_name, foreign_type_assertions)
             % A type defined by a pragma foreign_type, and the assertions
             % on that foreign_type.
 

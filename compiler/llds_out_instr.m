@@ -1949,8 +1949,7 @@ output_foreign_proc_input(Info, Input, !IO) :-
                 (
                     c_type_is_word_sized_int_or_ptr(ForeignType)
                 ;
-                    list.member(foreign_type_can_pass_as_mercury_type,
-                        Assertions)
+                    asserted_can_pass_as_mercury_type(Assertions)
                 )
             then
                 % Note that for this cast to be correct the foreign
@@ -2037,9 +2036,7 @@ output_foreign_proc_output(Info, Output, !IO) :-
         (
             MaybeForeignType = yes(ForeignTypeInfo),
             ForeignTypeInfo = foreign_proc_type(ForeignType, Assertions),
-            ( if
-                list.member(foreign_type_can_pass_as_mercury_type, Assertions)
-            then
+            ( if asserted_can_pass_as_mercury_type(Assertions) then
                 output_lval_as_word(Info, Lval, !IO),
                 io.write_string(" = ", !IO),
                 output_llds_type_cast(lt_word, !IO),

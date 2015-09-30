@@ -444,8 +444,8 @@ post_process_type_defns(!HLDS, Specs) :-
             globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
             globals.lookup_bool_option(Globals, debug_type_rep, DebugTypeRep),
             MaxTag = max_num_tags(NumTagBits) - 1,
-            convert_direct_arg_functors(ModuleName, DebugTypeRep, MaxTag,
-                TypeCtorsDefns, TypeTable0, TypeTable, [], Specs),
+            convert_direct_arg_functors(Target, ModuleName, DebugTypeRep,
+                MaxTag, TypeCtorsDefns, TypeTable0, TypeTable, [], Specs),
             module_info_set_type_table(TypeTable, !HLDS)
         ;
             % We cannot use direct arg functors in term size grades.
@@ -460,26 +460,27 @@ post_process_type_defns(!HLDS, Specs) :-
         Specs = []
     ).
 
-:- pred convert_direct_arg_functors(module_name::in, bool::in, int::in,
-    assoc_list(type_ctor, hlds_type_defn)::in, type_table::in, type_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-convert_direct_arg_functors(_, _, _, [], !TypeTable, !Specs).
-convert_direct_arg_functors(ModuleName, DebugTypeRep, MaxTag,
-        [TypeCtorDefn | TypeCtorsDefns], !TypeTable, !Specs) :-
-    TypeCtorDefn = TypeCtor - TypeDefn,
-    convert_direct_arg_functors_if_suitable(ModuleName, DebugTypeRep, MaxTag,
-        TypeCtor, TypeDefn, !TypeTable, !Specs),
-    convert_direct_arg_functors(ModuleName, DebugTypeRep, MaxTag,
-        TypeCtorsDefns, !TypeTable, !Specs).
-
-:- pred convert_direct_arg_functors_if_suitable(module_name::in, bool::in,
-    int::in, type_ctor::in, hlds_type_defn::in,
+:- pred convert_direct_arg_functors(compilation_target::in, module_name::in,
+    bool::in, int::in, assoc_list(type_ctor, hlds_type_defn)::in,
     type_table::in, type_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-convert_direct_arg_functors_if_suitable(ModuleName, DebugTypeRep, MaxTag,
-        TypeCtor, TypeDefn, !TypeTable, !Specs) :-
+convert_direct_arg_functors(_, _, _, _, [], !TypeTable, !Specs).
+convert_direct_arg_functors(Target, ModuleName, DebugTypeRep, MaxTag,
+        [TypeCtorDefn | TypeCtorsDefns], !TypeTable, !Specs) :-
+    TypeCtorDefn = TypeCtor - TypeDefn,
+    convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
+        MaxTag, TypeCtor, TypeDefn, !TypeTable, !Specs),
+    convert_direct_arg_functors(Target, ModuleName, DebugTypeRep, MaxTag,
+        TypeCtorsDefns, !TypeTable, !Specs).
+
+:- pred convert_direct_arg_functors_if_suitable(compilation_target::in,
+    module_name::in, bool::in, int::in, type_ctor::in, hlds_type_defn::in,
+    type_table::in, type_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
+        MaxTag, TypeCtor, TypeDefn, !TypeTable, !Specs) :-
     get_type_defn_body(TypeDefn, Body),
     (
         Body = hlds_du_type(Ctors, _ConsTagValues, _MaybeCheaperTagTest,
@@ -502,7 +503,7 @@ convert_direct_arg_functors_if_suitable(ModuleName, DebugTypeRep, MaxTag,
                 AssertedDirectArgFunctors = []
             ),
             separate_out_constants(Ctors, Constants, Functors),
-            list.filter(is_direct_arg_ctor(!.TypeTable, TypeCtorModule,
+            list.filter(is_direct_arg_ctor(!.TypeTable, Target, TypeCtorModule,
                     TypeStatus, AssertedDirectArgFunctors),
                 Functors, DirectArgFunctors, NonDirectArgFunctors),
             (
@@ -570,10 +571,11 @@ convert_direct_arg_functors_if_suitable(ModuleName, DebugTypeRep, MaxTag,
         % Leave these types alone.
     ).
 
-:- pred is_direct_arg_ctor(type_table::in, module_name::in, type_status::in,
-    list(sym_name_and_arity)::in, constructor::in) is semidet.
+:- pred is_direct_arg_ctor(type_table::in, compilation_target::in,
+    module_name::in, type_status::in, list(sym_name_and_arity)::in,
+    constructor::in) is semidet.
 
-is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
+is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
         AssertedDirectArgCtors, Ctor) :-
     Ctor = ctor(ExistQTVars, ExistConstraints, ConsName, ConsArgs, Arity,
         _CtorContext),
@@ -596,72 +598,98 @@ is_direct_arg_ctor(TypeTable, TypeCtorModule, TypeStatus,
         % Strings are *not* always word-aligned (yet) so are not acceptable.
         type_ctor_is_tuple(ArgTypeCtor)
     ->
-        ArgCond = direct_arg_builtin_type
+        ArgCond = arg_type_is_word_aligned_pointer
     ;
-        ArgTypeCtorArgTypes = [],
-        % XXX We could let this be a subset of the type params, but that would
-        % require the runtime system to be able to handle variables in the
-        % argument type, during unification and comparison
-        % (mercury_unify_compare_body.h) during deconstruction
-        % (mercury_ml_expand_body.h), during deep copying
-        % (mercury_deep_copy_body.h), and maybe during some other operations.
-
         search_type_ctor_defn(TypeTable, ArgTypeCtor, ArgTypeDefn),
         get_type_defn_body(ArgTypeDefn, ArgBody),
-        ArgBody = hlds_du_type(ArgCtors, ArgConsTagValues,
-            ArgMaybeCheaperTagTest, ArgDuKind, _ArgMaybeUserEqComp,
-            ArgDirectArgCtors, ArgReservedTag, ArgReservedAddr,
-            ArgMaybeForeign),
-        ArgCtors = [_],
-        ArgMaybeCheaperTagTest = no_cheaper_tag_test,
-        ArgDuKind = du_type_kind_general,
-        ArgDirectArgCtors = no,
-        ArgReservedTag = does_not_use_reserved_tag,
-        ArgReservedAddr = does_not_use_reserved_address,
-        ArgMaybeForeign = no,
-
-        map.to_assoc_list(ArgConsTagValues, ArgConsTagValueList),
-        ArgConsTagValueList = [ArgConsTagValue],
-        ArgConsTagValue = _ConsId - single_functor_tag,
-
-        (
-            type_status_defined_in_this_module(TypeStatus) = yes,
-            list.contains(AssertedDirectArgCtors, ConsName / Arity)
-        ->
-            ArgCond = direct_arg_asserted
+        ( is_foreign_type_for_target(ArgBody, Target, Assertions) ->
+            % Foreign types are acceptable arguments if asserted that their
+            % values are word-aligned pointers.
+            asserted_word_aligned_pointer(Assertions),
+            ArgCond = arg_type_is_word_aligned_pointer
         ;
-            ArgTypeCtor = type_ctor(ArgTypeCtorSymName, _ArgTypeCtorArity),
-            sym_name_get_module_name(ArgTypeCtorSymName, ArgTypeCtorModule),
-            ( TypeCtorModule = ArgTypeCtorModule ->
-                get_type_defn_status(ArgTypeDefn, ArgTypeStatus),
-                ArgCond = direct_arg_same_module(ArgTypeStatus)
+            % The argument type is not a foreign type.
+
+            ArgTypeCtorArgTypes = [],
+            % XXX We could let this be a subset of the type params, but that
+            % would require the runtime system to be able to handle variables
+            % in the argument type, during unification and comparison
+            % (mercury_unify_compare_body.h) during deconstruction
+            % (mercury_ml_expand_body.h), during deep copying
+            % (mercury_deep_copy_body.h), and maybe during some other
+            % operations.
+
+            ArgBody = hlds_du_type(ArgCtors, ArgConsTagValues,
+                ArgMaybeCheaperTagTest, ArgDuKind, _ArgMaybeUserEqComp,
+                ArgDirectArgCtors, ArgReservedTag, ArgReservedAddr,
+                ArgMaybeForeign),
+            ArgCtors = [_],
+            ArgMaybeCheaperTagTest = no_cheaper_tag_test,
+            ArgDuKind = du_type_kind_general,
+            ArgDirectArgCtors = no,
+            ArgReservedTag = does_not_use_reserved_tag,
+            ArgReservedAddr = does_not_use_reserved_address,
+            ArgMaybeForeign = no,
+
+            map.to_assoc_list(ArgConsTagValues, ArgConsTagValueList),
+            ArgConsTagValueList = [ArgConsTagValue],
+            ArgConsTagValue = _ConsId - single_functor_tag,
+
+            (
+                type_status_defined_in_this_module(TypeStatus) = yes,
+                list.contains(AssertedDirectArgCtors, ConsName / Arity)
+            ->
+                ArgCond = direct_arg_asserted
             ;
-                ArgCond = direct_arg_different_module
+                ArgTypeCtor = type_ctor(ArgTypeCtorSymName, _ArgTypeCtorArity),
+                sym_name_get_module_name(ArgTypeCtorSymName, ArgTypeCtorModule),
+                ( TypeCtorModule = ArgTypeCtorModule ->
+                    get_type_defn_status(ArgTypeDefn, ArgTypeStatus),
+                    ArgCond = arg_type_defined_in_same_module(ArgTypeStatus)
+                ;
+                    ArgCond = arg_type_defined_in_different_module
+                )
             )
         )
     ),
-    check_direct_arg_cond(TypeStatus, ArgCond).
+    check_direct_arg_module_conditions(TypeStatus, ArgCond).
 
 :- type direct_arg_cond
-    --->    direct_arg_builtin_type
-            % The argument is of a builtin type that is represented with an
-            % untagged pointer.
-
-    ;       direct_arg_asserted
-            % A `where direct_arg' attribute asserts that the direct arg
+    --->    direct_arg_asserted
+            % The constructor being checked has a single argument, and a
+            % `where direct_arg' attribute asserts that the direct arg
             % representation may be used for the constructor.
 
-    ;       direct_arg_same_module(type_status)
-            % The argument type is defined in the same module as the outer
-            % type, and has the given import status.
+    ;       arg_type_is_word_aligned_pointer
+            % The constructor being checked has a single argument, and either
+            % the argument has a builtin type that is represented with a
+            % word-aligned pointer, or the argument has a foreign type with the
+            % `word_aligned_pointer' assertion.
 
-    ;       direct_arg_different_module.
-            % The argument type is defined in a different module to the outer
-            % type.
+    ;       arg_type_defined_in_same_module(type_status)
+            % The constructor being checked has a single argument, and the
+            % argument type is defined in the same module as the constructor.
+            % The argument type has the given import status.
 
-:- pred check_direct_arg_cond(type_status::in, direct_arg_cond::in) is semidet.
+    ;       arg_type_defined_in_different_module.
+            % The constructor being checked has a single argument, and the
+            % argument type is defined in a different module from the
+            % constructor.
 
-check_direct_arg_cond(TypeStatus, ArgCond) :-
+    % When this predicate is called we should have checked that the constructor
+    % has a single argument, and the argument has a suitable type such that the
+    % direct arg functor representation may apply to the constructor. We still
+    % need to check that other modules would infer the same type representation
+    % for the same constructor, given that they may not have the same knowledge
+    % of the constructor's type or the argument type.
+    %
+    % TypeStatus is the import status of the type of the constructor being
+    % checked.
+    %
+:- pred check_direct_arg_module_conditions(type_status::in,
+    direct_arg_cond::in) is semidet.
+
+check_direct_arg_module_conditions(TypeStatus, ArgCond) :-
     % XXX STATUS
     TypeStatus = type_status(OldImportStatus),
     require_complete_switch [OldImportStatus]
@@ -688,32 +716,32 @@ check_direct_arg_cond(TypeStatus, ArgCond) :-
         ( OldImportStatus = status_exported
         ; OldImportStatus = status_exported_to_submodules
         ),
-        ( ArgCond = direct_arg_builtin_type
-        ; ArgCond = direct_arg_asserted
-        ; ArgCond = direct_arg_same_module(type_status(status_exported))
+        ( ArgCond = direct_arg_asserted
+        ; ArgCond = arg_type_is_word_aligned_pointer
+        ; ArgCond =
+            arg_type_defined_in_same_module(type_status(status_exported))
         )
     ;
         % If the outer type is exported to sub-modules only, the argument
         % type only needs to be exported to sub-modules as well.
         OldImportStatus = status_exported_to_submodules,
-        ( ArgCond =
-            direct_arg_same_module(type_status(status_exported_to_submodules))
-        ; ArgCond =
-            direct_arg_same_module(type_status(status_abstract_exported))
+        ArgCond = arg_type_defined_in_same_module(ArgTypeStatus),
+        ( ArgTypeStatus = type_status(status_exported_to_submodules)
+        ; ArgTypeStatus = type_status(status_abstract_exported)
         )
     ;
-        % The direct arg representation is required if the outer type is
-        % imported, and:
-        % - if the argument type is an acceptable builtin type
-        % - a `where direct_arg' attribute says so
+        % The direct arg representation is required if the type of the
+        % constructor being checked is imported, and:
+        % - if a `where direct_arg' attribute says so
+        % - if the argument value is a word-aligned pointer
         % - if the argument type is imported from the same module
         OldImportStatus = status_imported(TypeImportLocn),
         (
-            ArgCond = direct_arg_builtin_type
-        ;
             ArgCond = direct_arg_asserted
         ;
-            ArgCond = direct_arg_same_module(
+            ArgCond = arg_type_is_word_aligned_pointer
+        ;
+            ArgCond = arg_type_defined_in_same_module(
                 type_status(status_imported(ArgImportLocn))),
             % If the argument type is only exported by an ancestor to its
             % sub-modules (of which we are one), the outer type must also only
@@ -739,6 +767,30 @@ check_direct_arg_cond(TypeStatus, ArgCond) :-
         ; OldImportStatus = status_pseudo_imported
         ),
         unexpected($module, $pred, "inappropriate status for type")
+    ).
+
+:- pred is_foreign_type_for_target(hlds_type_body::in, compilation_target::in,
+    foreign_type_assertions::out) is semidet.
+
+is_foreign_type_for_target(TypeBody, Target, Assertions) :-
+    (
+        TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, MaybeForeignType),
+        MaybeForeignType = yes(ForeignType)
+    ;
+        TypeBody = hlds_foreign_type(ForeignType)
+    ),
+    (
+        Target = target_c,
+        ForeignType ^ c = yes(foreign_type_lang_data(_, _, Assertions))
+    ;
+        Target = target_java,
+        ForeignType ^ java = yes(foreign_type_lang_data(_, _, Assertions))
+    ;
+        Target = target_csharp,
+        ForeignType ^ csharp = yes(foreign_type_lang_data(_, _, Assertions))
+    ;
+        Target = target_erlang,
+        ForeignType ^ erlang = yes(foreign_type_lang_data(_, _, Assertions))
     ).
 
 :- pred assign_direct_arg_tags(type_ctor::in, list(constructor)::in,

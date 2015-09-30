@@ -549,7 +549,7 @@ cons_table_optimize(!ConsTable) :-
     --->    foreign_type_lang_data(
                 T,
                 maybe(unify_compare),
-                list(foreign_type_assertion)
+                foreign_type_assertions
             ).
 
     % The `cons_tag_values' type stores the information on how a discriminated
@@ -763,6 +763,13 @@ cons_table_optimize(!ConsTable) :-
     --->    may_use_atomic_alloc
     ;       may_not_use_atomic_alloc.
 
+    % Check asserted properties of a foreign type.
+    %
+:- pred asserted_can_pass_as_mercury_type(foreign_type_assertions::in)
+    is semidet.
+:- pred asserted_stable(foreign_type_assertions::in) is semidet.
+:- pred asserted_word_aligned_pointer(foreign_type_assertions::in) is semidet.
+
 :- implementation.
 
 project_tagged_cons_id_tag(TaggedConsId) = Tag :-
@@ -852,6 +859,21 @@ get_maybe_cheaper_tag_test(TypeBody) = CheaperTagTest :-
         ),
         CheaperTagTest = no_cheaper_tag_test
     ).
+
+asserted_can_pass_as_mercury_type(foreign_type_assertions(Set)) :-
+    (
+        set.contains(Set, foreign_type_can_pass_as_mercury_type)
+    ;
+        set.contains(Set, foreign_type_word_aligned_pointer)
+    ).
+
+asserted_stable(Assertions) :-
+    Assertions = foreign_type_assertions(Set),
+    set.contains(Set, foreign_type_stable),
+    asserted_can_pass_as_mercury_type(Assertions).
+
+asserted_word_aligned_pointer(foreign_type_assertions(Set)) :-
+    set.contains(Set, foreign_type_word_aligned_pointer).
 
 %---------------------------------------------------------------------------%
 

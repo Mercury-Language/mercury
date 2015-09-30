@@ -829,7 +829,7 @@
 :- type foreign_proc_type
     --->    foreign_proc_type(
                 string,         % The C type name.
-                list(foreign_type_assertion)
+                foreign_type_assertions
                                 % The assertions on the foreign_type
                                 % declarations that the C type name came from.
             ).

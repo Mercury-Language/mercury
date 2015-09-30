@@ -1650,7 +1650,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       parse_tree_foreign_type(
                 foreign_lang_type   :: foreign_language_type,
                 foreign_user_uc     :: maybe(unify_compare),
-                foreign_assertions  :: list(foreign_type_assertion)
+                foreign_assertions  :: foreign_type_assertions
             ).
 
 :- type abstract_type_details
@@ -1674,9 +1674,13 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % (i.e. the type was declared with
             % `:- solver type ...').
 
+:- type foreign_type_assertions
+    --->    foreign_type_assertions(set(foreign_type_assertion)).
+
 :- type foreign_type_assertion
     --->    foreign_type_can_pass_as_mercury_type
-    ;       foreign_type_stable.
+    ;       foreign_type_stable
+    ;       foreign_type_word_aligned_pointer.
 
 :- type constructor
     --->    ctor(

@@ -359,6 +359,7 @@ ORDINARY_PROGS =	\
 	user_defined_equality2 \
 	utf8_io \
 	value_enum \
+	word_aligned_pointer \
 	words_separator \
 	write \
 	write_float_special \
