@@ -311,7 +311,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
     (
         MaybeMCFlags = yes(MCFlags),
         %
-        % NOTE: the order of the flags here is important.  It must be:
+        % NOTE: the order of the flags here is important. It must be:
         %
         %   (1) flags for detected library grades
         %   (2) flags from Mercury.config and any Mercury.options files
@@ -321,7 +321,7 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
         %
         % XXX the relationship between --no-libgrade or --libgrade options set
         % via the DEFAULT_MCFLAGS variable and detected library grades is
-        % currently not defined.  It does not  matter at the moment, since
+        % currently not defined. It does not  matter at the moment, since
         % Mercury.config does not contain either of those two flags.
         %
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
@@ -605,24 +605,18 @@ do_mode_of_operation_standalone_interface(Globals, StandaloneIntBasename,
         ( Target = target_csharp
         ; Target = target_java
         ),
-        NotRequiredMsg = [
-            words("Error:"),
+        NotRequiredMsg = [words("Error:"),
             quote("--generate-standalone-interface"),
             words("is not required for target language"),
-            words(compilation_target_string(Target)),
-            suffix(".")
-        ],
+            words(compilation_target_string(Target)), suffix("."), nl],
         write_error_pieces_plain(Globals, NotRequiredMsg, !IO),
         io.set_exit_status(1, !IO)
     ;
         Target = target_erlang,
-        NYIMsg = [
-            words("Sorry,"),
+        NYIMsg = [words("Sorry,"),
             quote("--generate-standalone-interface"),
             words("is not yet supported with target language"),
-            words(compilation_target_string(Target)),
-            suffix(".")
-        ],
+            words(compilation_target_string(Target)), suffix("."), nl],
         write_error_pieces_plain(Globals, NYIMsg, !IO),
         io.set_exit_status(1, !IO)
     ;
@@ -653,7 +647,7 @@ do_default_mode_of_operation(DetectedGradeFlags, OptionVariables, OptionArgs,
     then
         usage(!IO)
     else
-        process_all_args(Globals, DetectedGradeFlags, OptionVariables,
+        process_args(Globals, DetectedGradeFlags, OptionVariables,
             OptionArgs, Args, ModulesToLink, ExtraObjFiles, !IO),
         io.get_exit_status(ExitStatus, !IO),
         ( if ExitStatus = 0 then
@@ -779,82 +773,6 @@ mode_of_operation_to_option_string(opm_generate_standalone_interface(_)) =
 
 %-----------------------------------------------------------------------------%
 
-:- pred process_all_args(globals::in, list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in, list(string)::out, list(string)::out,
-    io::di, io::uo) is det.
-
-process_all_args(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
-        Args, ModulesToLink, ExtraObjFiles, !IO) :-
-    process_args(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
-        Args, ModulesToLink, ExtraObjFiles, !IO).
-
-:- pred do_rename_file(globals::in, string::in, string::in, io.res::out,
-    io::di, io::uo) is det.
-
-do_rename_file(Globals, OldFileName, NewFileName, Result, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    maybe_write_string(Verbose, "% Renaming `", !IO),
-    maybe_write_string(Verbose, OldFileName, !IO),
-    maybe_write_string(Verbose, "' as `", !IO),
-    maybe_write_string(Verbose, NewFileName, !IO),
-    maybe_write_string(Verbose, "'...", !IO),
-    maybe_flush_output(Verbose, !IO),
-    io.rename_file(OldFileName, NewFileName, Result0, !IO),
-    (
-        Result0 = error(Error0),
-        maybe_write_string(VeryVerbose, " failed.\n", !IO),
-        maybe_flush_output(VeryVerbose, !IO),
-        io.error_message(Error0, ErrorMsg0),
-        % On some systems, we need to remove any existing target file first.
-        % So try again that way.
-        maybe_write_string(VeryVerbose, "% Removing `", !IO),
-        maybe_write_string(VeryVerbose, OldFileName, !IO),
-        maybe_write_string(VeryVerbose, "'...", !IO),
-        maybe_flush_output(VeryVerbose, !IO),
-        io.remove_file(NewFileName, Result1, !IO),
-        (
-            Result1 = error(Error1),
-            maybe_write_string(Verbose, " failed.\n", !IO),
-            maybe_flush_output(Verbose, !IO),
-            io.error_message(Error1, ErrorMsg1),
-            string.append_list(["can't rename file `", OldFileName,
-                "' as `", NewFileName, "': ", ErrorMsg0,
-                "; and can't remove file `", NewFileName, "': ", ErrorMsg1],
-                Message),
-            report_error(Message, !IO),
-            Result = Result1
-        ;
-            Result1 = ok,
-            maybe_write_string(VeryVerbose, " done.\n", !IO),
-            maybe_write_string(VeryVerbose, "% Renaming `", !IO),
-            maybe_write_string(VeryVerbose, OldFileName, !IO),
-            maybe_write_string(VeryVerbose, "' as `", !IO),
-            maybe_write_string(VeryVerbose, NewFileName, !IO),
-            maybe_write_string(VeryVerbose, "' again...", !IO),
-            maybe_flush_output(VeryVerbose, !IO),
-            io.rename_file(OldFileName, NewFileName, Result2, !IO),
-            (
-                Result2 = error(Error2),
-                maybe_write_string(Verbose, " failed.\n", !IO),
-                maybe_flush_output(Verbose, !IO),
-                io.error_message(Error2, ErrorMsg),
-                string.append_list(
-                    ["can't rename file `", OldFileName, "' as `", NewFileName,
-                    "': ", ErrorMsg], Message),
-                report_error(Message, !IO)
-            ;
-                Result2 = ok,
-                maybe_write_string(Verbose, " done.\n", !IO)
-            ),
-            Result = Result2
-        )
-    ;
-        Result0 = ok,
-        maybe_write_string(Verbose, " done.\n", !IO),
-        Result = Result0
-    ).
-
 :- pred process_args_callback(list(string)::in, options_variables::in,
     list(string)::in, list(string)::in, globals::in,
     {list(string), list(string)}::out, io::di, io::uo) is det.
@@ -905,8 +823,8 @@ process_stdin_arg_list(Globals, DetectedGradeFlags, OptionVariables,
         Arg = string.rstrip(Line),
         process_arg(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
             Arg, ArgModules, ArgExtraObjFiles, !IO),
-        !:Modules = !.Modules ++ from_list(ArgModules),
-        !:ExtraObjFiles = !.ExtraObjFiles ++ from_list(ArgExtraObjFiles),
+        !:Modules = !.Modules ++ cord.from_list(ArgModules),
+        !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
         process_stdin_arg_list(Globals, DetectedGradeFlags, OptionVariables,
             OptionArgs, !Modules, !ExtraObjFiles, !IO)
     ;
@@ -936,8 +854,8 @@ process_arg_list(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
     ;
         Args = []
     ),
-    !:Modules = !.Modules ++ from_list(ArgModules),
-    !:ExtraObjFiles = !.ExtraObjFiles ++ from_list(ArgExtraObjFiles),
+    !:Modules = !.Modules ++ cord.from_list(ArgModules),
+    !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
     process_arg_list(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
         Args, !Modules, !ExtraObjFiles, !IO).
 
@@ -946,7 +864,7 @@ process_arg_list(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
     % Return the list of modules (including sub-modules,
     % if they were compiled to separate object files)
     % that should be linked into the final executable.
-
+    %
 :- pred process_arg(globals::in, list(string)::in, options_variables::in,
     list(string)::in, string::in, list(string)::out, list(string)::out,
     io::di, io::uo) is det.
@@ -1022,10 +940,12 @@ process_arg_2(Globals, OptionArgs, FileOrModule, ModulesToLink, ExtraObjFiles,
             )
         ;
             GenerateDepFile = no,
-            process_module(Globals, OptionArgs, FileOrModule, ModulesToLink,
-                ExtraObjFiles, !IO)
+            read_and_process_module(Globals, OptionArgs, FileOrModule,
+                ModulesToLink, ExtraObjFiles, !IO)
         )
     ).
+
+%-----------------------------------------------------------------------------%
 
 :- type file_or_module
     --->    fm_file(file_name)
@@ -1172,8 +1092,7 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
                     Warn),
                 (
                     Warn = yes,
-                    Pieces =
-                        [words("Warning:"),
+                    Pieces = [words("Warning:"),
                         words("module name does not match file name: "), nl,
                         fixed(FileName), words("contains module"),
                         sym_name(ModuleName), suffix("."), nl,
@@ -1195,15 +1114,18 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
         SourceFileName = FileName ++ ".m"
     ).
 
+%-----------------------------------------------------------------------------%
+
 :- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
 
 version_numbers_return_timestamp(no) = dont_return_timestamp.
 version_numbers_return_timestamp(yes) = do_return_timestamp.
 
-:- pred process_module(globals::in, list(string)::in, file_or_module::in,
-    list(string)::out, list(string)::out, io::di, io::uo) is det.
+:- pred read_and_process_module(globals::in, list(string)::in,
+    file_or_module::in, list(string)::out, list(string)::out,
+    io::di, io::uo) is det.
 
-process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
+read_and_process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
         ExtraObjFiles, !IO) :-
     globals.lookup_bool_option(Globals0, halt_at_syntax_errors, HaltSyntax),
     globals.lookup_bool_option(Globals0, make_interface, MakeInterface),
@@ -1316,7 +1238,7 @@ process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
             ModulesToLink = [],
             ExtraObjFiles = []
         else
-            process_module_2(Globals, OptionArgs, FileOrModule,
+            read_augment_and_process_module(Globals, OptionArgs, FileOrModule,
                 ModulesToRecompile, HaveReadModuleMaps, ModulesToLink,
                 ExtraObjFiles, !IO)
         )
@@ -1332,23 +1254,13 @@ apply_process_module(ProcessModule, FileName, ModuleName, MaybeTimestamp,
         RawCompUnit, !IO) :-
     ProcessModule(FileName, ModuleName, MaybeTimestamp, RawCompUnit, !IO).
 
-:- pred process_module_2_callback(list(string)::in, file_or_module::in,
-    modules_to_recompile::in, have_read_module_maps::in, globals::in,
-    {list(string), list(string)}::out, io::di, io::uo) is det.
-
-process_module_2_callback(OptionArgs, FileOrModule, MaybeModulesToRecompile,
-        HaveReadModuleMap0, Globals, Result, !IO) :-
-    process_module_2(Globals, OptionArgs, FileOrModule,
-        MaybeModulesToRecompile, HaveReadModuleMap0, ModulesToLink,
-        ExtraObjFiles, !IO),
-    Result = {ModulesToLink, ExtraObjFiles}.
-
-:- pred process_module_2(globals::in, list(string)::in, file_or_module::in,
-    modules_to_recompile::in, have_read_module_maps::in,
+:- pred read_augment_and_process_module(globals::in, list(string)::in,
+    file_or_module::in, modules_to_recompile::in, have_read_module_maps::in,
     list(string)::out, list(string)::out, io::di, io::uo) is det.
 
-process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
-        HaveReadModuleMap0, ModulesToLink, ExtraObjFiles, !IO) :-
+read_augment_and_process_module(Globals0, OptionArgs, FileOrModule,
+        MaybeModulesToRecompile, HaveReadModuleMap0,
+        ModulesToLink, ExtraObjFiles, !IO) :-
     globals.lookup_bool_option(Globals0, make_short_interface,
         MakeShortInt),
     globals.lookup_bool_option(Globals0, make_interface,
@@ -1426,7 +1338,7 @@ process_module_2(Globals0, OptionArgs, FileOrModule, MaybeModulesToRecompile,
         else
             GlobalsToUse = Globals
         ),
-        compile_all_submodules(GlobalsToUse, FileName, ModuleName,
+        augment_and_process_all_submodules(GlobalsToUse, FileName, ModuleName,
             MaybeTimestamp, NestedCompUnitNames, HaveReadModuleMaps,
             FindTimestampFiles, RawCompUnitsToCompile, Specs1,
             ModulesToLink, ExtraObjFiles, !IO)
@@ -1446,30 +1358,31 @@ maybe_report_cmd_line(Report, OptionArgs, Args, !IO) :-
         io.format("%% Command line options end\n", [], !IO)
     ).
 
-    % For the MLDS->C and LLDS->C back-ends, we currently
-    % compile each sub-module to its own C file.
-    % XXX it would be better to do something like
+    % For the MLDS->C and LLDS->C back-ends, we currently compile
+    % each submodule to its own C file.
+    % XXX Maybe it would be better to compile nested modules
+    % to a single C file, with code like this:
     %
     %   list.map2_foldl(compile_to_llds, SubModuleList,
     %       LLDS_FragmentList),
     %   merge_llds_fragments(LLDS_FragmentList, LLDS),
     %   output_pass(LLDS_FragmentList)
     %
-    % i.e. compile nested modules to a single C file.
-
-:- pred compile_all_submodules(globals::in, string::in, module_name::in,
-    maybe(timestamp)::in, set(module_name)::in, have_read_module_maps::in,
+:- pred augment_and_process_all_submodules(globals::in, string::in,
+    module_name::in, maybe(timestamp)::in, set(module_name)::in,
+    have_read_module_maps::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(raw_compilation_unit)::in, list(error_spec)::in,
     list(string)::out, list(string)::out, io::di, io::uo) is det.
 
-compile_all_submodules(Globals, FileName, SourceFileModuleName,
+augment_and_process_all_submodules(Globals, FileName, SourceFileModuleName,
         MaybeTimestamp, NestedSubModules, HaveReadModuleMaps,
         FindTimestampFiles, RawCompUnits, !.Specs,
         ModulesToLink, ExtraObjFiles, !IO) :-
     list.map_foldl2(
-        compile(Globals, FileName, SourceFileModuleName, MaybeTimestamp,
-            NestedSubModules, HaveReadModuleMaps, FindTimestampFiles),
+        augment_and_process_module(Globals, FileName, SourceFileModuleName,
+            MaybeTimestamp, NestedSubModules, HaveReadModuleMaps,
+            FindTimestampFiles),
         RawCompUnits, ExtraObjFileLists, !Specs, !IO),
     % XXX _NumErrors
     write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
@@ -1543,12 +1456,12 @@ compile_with_module_options(Globals, ModuleName, DetectedGradeFlags,
 %-----------------------------------------------------------------------------%
 
     % Return a closure which will work out what the target files are for
-    % a module, so recompilation_check.m can check that they are
-    % up-to-date which deciding whether compilation is necessary.
+    % a module, so recompilation_check.m can check that they are up-to-date
+    % when deciding whether compilation is necessary.
     % Note that `--smart-recompilation' only works with
     % `--target-code-only', which is always set when the compiler is
-    % invoked by mmake. Using smart recompilation without using mmake is
-    % not a sensible thing to do.  handle_options.m will disable smart
+    % invoked by mmake. Using smart recompilation without using mmake
+    % is not a sensible thing to do. handle_options.m will disable smart
     % recompilation if `--target-code-only' is not set.
     %
 :- pred find_smart_recompilation_target_files(globals::in,
@@ -1605,9 +1518,9 @@ find_timestamp_files_2(Globals, TimestampSuffix, ModuleName, TimestampFiles,
 
 %-----------------------------------------------------------------------------%
 
-    % Given a fully expanded module (i.e. a module name and a list of all
-    % the items in the module and any of its imports), compile it.
-
+    % Given the parse tree of a module, read in the interface and optimization
+    % files it needs, and compile it.
+    %
     % Stage number assignments:
     %
     %     1 to  99  front end pass
@@ -1616,19 +1529,19 @@ find_timestamp_files_2(Globals, TimestampSuffix, ModuleName, TimestampFiles,
     %   400 to 499  MLDS back end pass
     %   500 to 599  bytecode back end pass
     %
-    % The initial arrangement has the stage numbers increasing by five
+    % The initial arrangement had the stage numbers increasing by five
     % so that new stages can be slotted in without too much trouble.
-
-:- pred compile(globals::in, file_name::in, module_name::in,
+    %
+:- pred augment_and_process_module(globals::in, file_name::in, module_name::in,
     maybe(timestamp)::in, set(module_name)::in, have_read_module_maps::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     raw_compilation_unit::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-compile(Globals, SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        NestedSubModules0, HaveReadModuleMaps, FindTimestampFiles,
-        RawCompUnit, ExtraObjFiles, !Specs, !IO) :-
+augment_and_process_module(Globals, SourceFileName, SourceFileModuleName,
+        MaybeTimestamp, NestedSubModules0, HaveReadModuleMaps,
+        FindTimestampFiles, RawCompUnit, ExtraObjFiles, !Specs, !IO) :-
     check_for_no_exports(Globals, RawCompUnit, !Specs, !IO),
     RawCompUnit = raw_compilation_unit(ModuleName, _, _),
     ( if ModuleName = SourceFileModuleName then
@@ -1644,19 +1557,19 @@ compile(Globals, SourceFileName, SourceFileModuleName, MaybeTimestamp,
     !:Specs = ImportedSpecs ++ !.Specs,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
-        mercury_compile(Globals, ModuleAndImports, NestedSubModules,
+        process_augmented_module(Globals, ModuleAndImports, NestedSubModules,
             FindTimestampFiles, ExtraObjFiles, no_prev_dump, _, !Specs, !IO)
     else
         ExtraObjFiles = []
     ).
 
-:- pred mercury_compile(globals::in, module_and_imports::in,
+:- pred process_augmented_module(globals::in, module_and_imports::in,
     set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(string)::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-mercury_compile(Globals, ModuleAndImports, NestedSubModules,
+process_augmented_module(Globals, ModuleAndImports, NestedSubModules,
         FindTimestampFiles, ExtraObjFiles, !DumpInfo, !Specs, !IO) :-
     module_and_imports_get_module_name(ModuleAndImports, ModuleName),
     % If we are only typechecking or error checking, then we should not
