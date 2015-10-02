@@ -155,7 +155,7 @@ read_args_file(Globals, OptionsFile, MaybeMCFlags, !IO) :-
 read_options_file(Globals, OptionsFile, Variables0, MaybeVariables, !IO) :-
     promise_equivalent_solutions [OptionsFileResult, !:IO] (
         try_io(
-            (pred((Variables1)::out, !.IO::di, !:IO::uo) is det :-
+            ( pred((Variables1)::out, !.IO::di, !:IO::uo) is det :-
                 read_options_file_params(Globals, error, no_search, no,
                     OptionsFile, Variables0, Variables1, !IO)
             ),
@@ -166,9 +166,9 @@ read_options_file(Globals, OptionsFile, Variables0, MaybeVariables, !IO) :-
         MaybeVariables = yes(Variables)
     ;
         OptionsFileResult = exception(Exception),
-        ( Exception = univ(found_options_file_error) ->
+        ( if Exception = univ(found_options_file_error) then
             MaybeVariables = no
-        ;
+        else
             rethrow(OptionsFileResult)
         )
     ).
@@ -183,9 +183,9 @@ read_options_files(Globals, Variables0, MaybeVariables, !IO) :-
         MaybeVariables = yes(Variables)
     ;
         OptionsFileResult = exception(Exception),
-        ( Exception = univ(found_options_file_error) ->
+        ( if Exception = univ(found_options_file_error) then
             MaybeVariables = no
-        ;
+        else
             rethrow(OptionsFileResult)
         )
     ).
@@ -202,10 +202,10 @@ read_options_file_lookup_params(Globals, !Variables, !IO) :-
     options_variables::in, options_variables::out, io::di, io::uo) is det.
 
 read_options_file_set_params(Globals, OptionsFile, !Vars, !IO) :-
-    ( OptionsFile = "Mercury.options" ->
+    ( if OptionsFile = "Mercury.options" then
         ErrorIfNotExist = no_error,
         Search = no_search
-    ;
+    else
         ErrorIfNotExist = error,
         Search = search
     ),
@@ -226,12 +226,12 @@ read_options_file_set_params(Globals, OptionsFile, !Vars, !IO) :-
 
 read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
         OptionsFile0, !Variables, !IO) :-
-    ( OptionsFile0 = "-" ->
+    ( if OptionsFile0 = "-" then
         % Read from standard input.
         debug_msg(Globals, write_reading_options_file_stdin, !IO),
         read_options_lines(Globals, dir.this_directory, !Variables, !IO),
         debug_msg(Globals, write_done, !IO)
-    ;
+    else
         debug_msg(Globals, write_reading_options_file(OptionsFile0), !IO),
         (
             Search = search,
@@ -241,11 +241,11 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
             Search = no_search,
             SearchDirs = [dir.this_directory]
         ),
-        ( dir.split_name(OptionsFile0, OptionsDir, OptionsFile) ->
-            ( dir.path_name_is_absolute(OptionsDir) ->
+        ( if dir.split_name(OptionsFile0, OptionsDir, OptionsFile) then
+            ( if dir.path_name_is_absolute(OptionsDir) then
                 FileToFind = OptionsFile,
                 Dirs = [OptionsDir]
-            ;
+            else
                 (
                     MaybeDirName = yes(DirName),
                     FileToFind = OptionsFile,
@@ -256,7 +256,7 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
                     FileToFind = OptionsFile0
                 )
             )
-        ;
+        else
             Dirs = SearchDirs,
             FileToFind = OptionsFile0
         ),
@@ -275,9 +275,9 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
             MaybeDir = error(_),
             (
                 ErrorIfNotExist = error,
-                ( Dirs = [SingleDir] ->
+                ( if Dirs = [SingleDir] then
                     ErrorFile = maybe_add_path_name(SingleDir, FileToFind)
-                ;
+                else
                     ErrorFile = FileToFind
                 ),
                 ErrorSpec = error_spec(severity_error, phase_read_files,
@@ -312,9 +312,9 @@ write_done(!IO) :-
 :- func maybe_add_path_name(dir_name, file_name) = file_name.
 
 maybe_add_path_name(Dir, File) =
-    ( Dir = dir.this_directory ->
+    ( if Dir = dir.this_directory then
         File
-    ;
+    else
         dir.make_path_name(Dir, File)
     ).
 
@@ -336,7 +336,7 @@ read_options_lines(Globals, Dir, !Variables, !IO) :-
         )
     ;
         LineResult = exception(Exception),
-        ( Exception = univ(options_file_error(Error)) ->
+        ( if Exception = univ(options_file_error(Error)) then
             io.input_stream_name(FileName, !IO),
             Context = term.context_init(FileName, LineNumber),
             write_error_pieces(Globals, Context, 0, [words(Error)], !IO),
@@ -345,7 +345,7 @@ read_options_lines(Globals, Dir, !Variables, !IO) :-
             % files aren't closed on the way up, but we will be exiting
             % straight away, so that doesn't matter.
             throw(found_options_file_error)
-        ;
+        else
             rethrow(LineResult)
         )
     ;
@@ -409,15 +409,15 @@ read_options_line_2(FoundEOF, !Chars, !IO) :-
     read_item_or_eof(io.read_char, MaybeChar, !IO),
     (
         MaybeChar = yes(Char),
-        ( Char = '#' ->
+        ( if Char = '#' then
             skip_comment_line(FoundEOF, !IO)
-        ; Char = ('\\') ->
+        else if Char = ('\\') then
             read_item_or_eof(io.read_char, MaybeChar2, !IO),
             (
                 MaybeChar2 = yes(Char2),
-                ( Char2 = '\n' ->
+                ( if Char2 = '\n' then
                     !:Chars = [' ' | !.Chars]
-                ;
+                else
                     !:Chars = [Char2, Char | !.Chars]
                 ),
                 read_options_line_2(FoundEOF, !Chars, !IO)
@@ -426,9 +426,9 @@ read_options_line_2(FoundEOF, !Chars, !IO) :-
                 FoundEOF = yes,
                 !:Chars = [Char | !.Chars]
             )
-        ; Char = '\n' ->
+        else if Char = '\n' then
             FoundEOF = no
-        ;
+        else
             !:Chars = [Char | !.Chars],
             read_options_line_2(FoundEOF, !Chars, !IO)
         )
@@ -455,10 +455,10 @@ update_variable(Globals, VarName, AddToValue, NewValue0, !Variables, !IO) :-
         map.set(VarName, OptVarValue, !Variables)
     ;
         MaybeEnvValue = no,
-        (
+        ( if
             map.search(!.Variables, VarName,
                 options_variable_value(OldValue, OldWords, Source))
-        ->
+        then
             (
                 Source = environment
             ;
@@ -478,7 +478,7 @@ update_variable(Globals, VarName, AddToValue, NewValue0, !Variables, !IO) :-
                     options_file),
                 map.set(VarName, OptVarValue, !Variables)
             )
-        ;
+        else
             OptVarValue = options_variable_value(NewValue1, Words1,
                 options_file),
             map.set(VarName, OptVarValue, !Variables)
@@ -499,18 +499,18 @@ expand_variables(Variables, Chars0, Chars, UndefVars, !IO) :-
 
 expand_variables_2(_, [], !RevChars, !RevUndef, !IO).
 expand_variables_2(Variables, [Char | Chars], !RevChars, !RevUndef, !IO) :-
-    ( Char = '$' ->
+    ( if Char = '$' then
         (
             Chars = [],
             throw(options_file_error("unterminated variable reference"))
         ;
             Chars = [Char2 | Chars1],
-            ( Char2 = '$' ->
+            ( if Char2 = '$' then
                 !:RevChars = ['$' | !.RevChars],
                 expand_variables_2(Variables, Chars1, !RevChars, !RevUndef,
                     !IO)
-            ;
-                (
+            else
+                ( if
                     (
                         Char2 = '(',
                         EndChar = ')'
@@ -518,16 +518,16 @@ expand_variables_2(Variables, [Char | Chars], !RevChars, !RevUndef, !IO) :-
                         Char2 = '{',
                         EndChar = '}'
                     )
-                ->
+                then
                     parse_variable(VarName0, Chars1, Chars2),
-                    ( Chars2 = [EndChar | Chars3] ->
+                    ( if Chars2 = [EndChar | Chars3] then
                         Chars4 = Chars3,
                         VarName = VarName0
-                    ;
+                    else
                         throw(options_file_error(
                             "unterminated variable reference"))
                     )
-                ;
+                else
                     Chars4 = Chars1,
                     VarName = string.char_to_string(Char2)
                 ),
@@ -538,7 +538,7 @@ expand_variables_2(Variables, [Char | Chars], !RevChars, !RevUndef, !IO) :-
                     !IO)
             )
         )
-    ;
+    else
         !:RevChars = [Char | !.RevChars],
         expand_variables_2(Variables, Chars, !RevChars, !RevUndef, !IO)
     ).
@@ -599,31 +599,31 @@ report_undefined_variables_2(Globals, [_ | Rest] @ UndefVars, !IO) :-
 :- pred parse_options_line(list(char)::in, options_file_line::out) is det.
 
 parse_options_line(Line0, OptionsFileLine) :-
-    (
-        ( Line0 = [('-') | Line1] ->
+    ( if
+        ( if Line0 = [('-') | Line1] then
             ErrorIfNotExist = no_error,
             Line2 = Line1
-        ;
+        else
             ErrorIfNotExist = error,
             Line2 = Line0
         ),
         list.append(string.to_char_list("include"), Line3, Line2)
-    ->
+    then
         list.takewhile(char.is_whitespace, Line3, _, Line4),
         OptionsFileLine = include_options_files(ErrorIfNotExist, Line4)
-    ;
+    else
         parse_variable(VarName, Line0, Line1),
         list.takewhile(char.is_whitespace, Line1, _, Line2),
-        ( Line2 = [('=') | Line3] ->
+        ( if Line2 = [('=') | Line3] then
             Add = no,
             Line4 = Line3
-        ; Line2 = [('+'), ('=') | Line3] ->
+        else if Line2 = [('+'), ('=') | Line3] then
             Add = yes,
             Line4 = Line3
-        ; Line2 = [(':'), ('=') | Line3] ->
+        else if Line2 = [(':'), ('=') | Line3] then
             Add = no,
             Line4 = Line3
-        ;
+        else
             throw(options_file_error(
                 "expected `=', `:=' or `+=' after `" ++ VarName ++ "'"))
         ),
@@ -635,11 +635,10 @@ parse_options_line(Line0, OptionsFileLine) :-
     list(char)::in, list(char)::out) is det.
 
 parse_file_name(FileName, Chars0, Chars) :-
-    ( Chars0 = ['"' | Chars1] ->
+    ( if Chars0 = ['"' | Chars1] then
         parse_string(FileName, Chars1, Chars)
-    ;
-        list.takewhile(isnt(char.is_whitespace), Chars0,
-            FileNameChars, Chars),
+    else
+        list.takewhile(isnt(char.is_whitespace), Chars0, FileNameChars, Chars),
         FileName = string.from_char_list(FileNameChars)
     ).
 
@@ -649,11 +648,11 @@ parse_file_name(FileName, Chars0, Chars) :-
 parse_variable(VarName, Chars0, Chars) :-
     parse_variable_2(yes, [], VarList, Chars0, Chars),
     string.from_rev_char_list(VarList, VarName),
-    ( VarName = "" ->
+    ( if VarName = "" then
         list.takewhile(isnt(char.is_whitespace), Chars, FirstWord, _),
         throw(options_file_error("expected variable at `" ++
             string.from_char_list(FirstWord) ++ "'"))
-    ;
+    else
         true
     ).
 
@@ -662,8 +661,8 @@ parse_variable(VarName, Chars0, Chars) :-
 
 parse_variable_2(_, Var, Var, [], []).
 parse_variable_2(IsFirst, Var0, Var, [Char | Chars0], Chars) :-
-    (
-        \+ char.is_whitespace(Char),
+    ( if
+        not char.is_whitespace(Char),
         (
             IsFirst = yes,
             char.is_alpha(Char)
@@ -674,9 +673,9 @@ parse_variable_2(IsFirst, Var0, Var, [Char | Chars0], Chars) :-
             ; Char = ('.')
             )
         )
-    ->
+    then
         parse_variable_2(no, [Char | Var0], Var, Chars0, Chars)
-    ;
+    else
         Var = Var0,
         Chars = [Char | Chars0]
     ).
@@ -693,15 +692,15 @@ parse_string(String, Chars0, Chars) :-
 parse_string_chars(_, _, [], _) :-
     throw(options_file_error("unterminated string")).
 parse_string_chars(String0, String, [Char | Chars0], Chars) :-
-    ( Char = '"' ->
+    ( if Char = '"' then
         Chars = Chars0,
         String = String0
-    ; Char = ('\\') ->
+    else if Char = ('\\') then
         (
             Chars0 = [Char2 | Chars1],
-            ( Char2 = '"' ->
+            ( if Char2 = '"' then
                 String1 = [Char2 | String0]
-            ;
+            else
                 String1 = [Char2, Char | String0]
             ),
             parse_string_chars(String1, String, Chars1, Chars)
@@ -709,7 +708,7 @@ parse_string_chars(String0, String, [Char | Chars0], Chars) :-
             Chars0 = [],
             throw(options_file_error("unterminated string"))
         )
-    ;
+    else
         parse_string_chars([Char | String0], String, Chars0, Chars)
     ).
 
@@ -719,9 +718,9 @@ skip_comment_line(FoundEOF, !IO) :-
     read_item_or_eof(io.read_char, MaybeChar, !IO),
     (
         MaybeChar = yes(Char),
-        ( Char = '\n' ->
+        ( if Char = '\n' then
             FoundEOF = no
-        ;
+        else
             skip_comment_line(FoundEOF, !IO)
         )
     ;
@@ -753,7 +752,7 @@ read_item_or_eof(Pred, MaybeItem, !IO) :-
 checked_split_into_words(Chars) = Result :-
     promise_equivalent_solutions [TryResult] (
         try(
-            (pred(Words0::out) is det :-
+            ( pred(Words0::out) is det :-
                 Words0 = split_into_words(Chars)
             ), TryResult)
     ),
@@ -762,9 +761,9 @@ checked_split_into_words(Chars) = Result :-
         Result = ok(Words)
     ;
         TryResult = exception(Exception),
-        ( Exception = univ(options_file_error(Msg)) ->
+        ( if Exception = univ(options_file_error(Msg)) then
             Result = error(Msg)
-        ;
+        else
             rethrow(TryResult)
         )
     ).
@@ -797,30 +796,30 @@ get_word(Word, Chars0, Chars) :-
 
 get_word_2(RevWord, RevWord, [], []).
 get_word_2(RevWord0, RevWord, [Char | Chars0], Chars) :-
-    ( char.is_whitespace(Char) ->
+    ( if char.is_whitespace(Char) then
         Chars = Chars0,
         RevWord = RevWord0
-    ; Char = '"' ->
+    else if Char = '"' then
         parse_string_chars([], RevStringChars, Chars0, Chars1),
         get_word_2(RevStringChars ++ RevWord0, RevWord, Chars1, Chars)
-    ; Char = ('\\') ->
+    else if Char = ('\\') then
         (
             Chars0 = [],
             RevWord = [Char | RevWord0],
             Chars = []
         ;
             Chars0 = [Char2 | Chars1],
-            (
+            ( if
                 ( Char2 = '"'
                 ; Char2 = ('\\')
                 )
-            ->
+            then
                 get_word_2([Char2 | RevWord0], RevWord, Chars1, Chars)
-            ;
+            else
                 get_word_2([Char2, Char | RevWord0], RevWord, Chars1, Chars)
             )
         )
-    ;
+    else
         get_word_2([Char | RevWord0], RevWord, Chars0, Chars)
     ).
 
@@ -877,9 +876,9 @@ lookup_mmc_maybe_module_options(Globals, Vars, MaybeModuleName, Result, !IO) :-
     VariableTypes = options_variable_types,
     list.map_foldl(lookup_options_variable(Globals, Vars, MaybeModuleName),
         VariableTypes, Results, !IO),
-    (
+    ( if
         list.map(
-            (pred(VarResult::in, MaybeValue::out) is semidet :-
+            ( pred(VarResult::in, MaybeValue::out) is semidet :-
                 (
                     VarResult = var_result_set(Value),
                     MaybeValue = yes(Value)
@@ -888,14 +887,14 @@ lookup_mmc_maybe_module_options(Globals, Vars, MaybeModuleName, Result, !IO) :-
                     MaybeValue = no
                 )
             ), Results, Values)
-    ->
+    then
         assoc_list.from_corresponding_lists(VariableTypes,
             Values, VariableValues),
         % Default to `-O2', even when mercury_compile is called directly,
         % not by the mmc script.
         Result = yes(["-O2" | list.condense(
             list.map(convert_to_mmc_options, VariableValues))])
-    ;
+    else
         Result = no
     ).
 
@@ -1088,15 +1087,15 @@ lookup_options_variable(Globals, Vars, OptionsVariableClass, FlagsVar, Result,
         lookup_variable_words_report_error(Globals, Vars, "EXTRA_" ++ VarName,
             ExtraFlagsResult, !IO)
     ),
-    (
+    ( if
         OptionsVariableClass = module_specific(ModuleName),
         options_variable_type_is_target_specific(FlagsVar) = yes
-    ->
+    then
         ModuleFileNameBase = sym_name_to_string(ModuleName),
         ModuleVarName = VarName ++ "-" ++ ModuleFileNameBase,
         lookup_variable_words_report_error(Globals, Vars, ModuleVarName,
             ModuleFlagsResult, !IO)
-    ;
+    else
         ModuleFlagsResult = var_result_unset
     ),
 
@@ -1122,10 +1121,10 @@ lookup_options_variable(Globals, Vars, OptionsVariableClass, FlagsVar, Result,
         Result = var_result_error(E)
     ;
         Result0 = var_result_set(V),
-        ( FlagsVar = ml_libs ->
+        ( if FlagsVar = ml_libs then
             NotLibLPrefix =
-                (pred(LibFlag::in) is semidet :-
-                        \+ string.prefix(LibFlag, "-l")
+                ( pred(LibFlag::in) is semidet :-
+                    not string.prefix(LibFlag, "-l")
                 ),
             BadLibs = list.filter(NotLibLPrefix, V),
             (
@@ -1144,7 +1143,7 @@ lookup_options_variable(Globals, Vars, OptionsVariableClass, FlagsVar, Result,
                 write_error_spec(ErrorSpec, Globals, 0, _, 0, _, !IO),
                 Result = var_result_error(ErrorSpec)
             )
-        ;
+        else
             Result = Result0
         )
     ).
@@ -1213,10 +1212,10 @@ lookup_variable_words_maybe_env(LookupEnv, Vars, VarName, Result, !IO) :-
         )
     ;
         MaybeEnvValue = no,
-        ( map.search(Vars, VarName, MapValue) ->
+        ( if map.search(Vars, VarName, MapValue) then
             MapValue = options_variable_value(_, Words, _),
             Result = var_result_set(Words)
-        ;
+        else
             Result = var_result_unset
         )
     ).
@@ -1232,9 +1231,11 @@ lookup_variable_chars(Variables, Var, Value, !Undef, !IO) :-
         Value = string.to_char_list(ValueString)
     ;
         MaybeValue = no,
-        ( map.search(Variables, Var, options_variable_value(Value0, _, _)) ->
+        ( if
+            map.search(Variables, Var, options_variable_value(Value0, _, _))
+        then
             Value = Value0
-        ;
+        else
             Value = [],
             !:Undef = [Var | !.Undef]
         )
