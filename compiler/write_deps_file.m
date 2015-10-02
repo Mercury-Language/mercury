@@ -238,10 +238,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             do_not_create_dirs, OptDateFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".c_date",
             do_not_create_dirs, CDateFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".s_date",
-            do_not_create_dirs, AsmDateFileName, !IO),
-        module_name_to_file_name(Globals, ModuleName, ".pic_s_date",
-            do_not_create_dirs, PicAsmDateFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".$O",
             do_not_create_dirs, ObjFileName, !IO),
         module_name_to_file_name(Globals, ModuleName, ".java_date",
@@ -257,8 +253,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             TransOptDateFileName, " ",
             ErrFileName, " ",
             CDateFileName, " ",
-            AsmDateFileName, " ",
-            PicAsmDateFileName, " ",
             JavaDateFileName
         ], !IO),
         io.write_strings(DepStream, [" : ", SourceFileName], !IO),
@@ -277,8 +271,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             ".optdate",
             ".trans_opt_date",
             ".c_date",
-            ".s_date",
-            ".pic_s_date",
             ".dir/*.$O",
             ".java_date"],
 
@@ -344,8 +336,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                 TransOptDateFileName, " ",
                 ErrFileName, " ",
                 CDateFileName, " ",
-                AsmDateFileName, " ",
-                PicAsmDateFileName, " ",
                 JavaDateFileName, " : "
             ], !IO),
 
@@ -384,8 +374,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
                     "\n\n",
                     ErrFileName, " ",
                     CDateFileName, " ",
-                    AsmDateFileName, " ",
-                    PicAsmDateFileName, " ",
                     JavaDateFileName, " : "
                 ], !IO),
                 write_dependencies_list(Globals, DepStream, ".trans_opt",
@@ -681,8 +669,7 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
             io.nl(DepStream, !IO),
             list.foldl(
                 write_subdirs_shorthand_rule(Globals, DepStream, ModuleName),
-                [".c", ".$O", ".pic_o", ".s", ".pic_s",
-                ".java", ".class", ".dll"], !IO)
+                [".c", ".$O", ".pic_o", ".java", ".class", ".dll"], !IO)
         ;
             UseSubdirs = no
         ),
@@ -1697,17 +1684,10 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     module_name_to_file_name(Globals, ModuleName, "",
         do_not_create_dirs, ExeFileName, !IO),
 
-    IfIL = ["ifeq ($(findstring il,$(GRADE)),il)\n"],
-    ILMainRule = [ExeFileName, " : ", ExeFileName, ".exe\n",
-        ExeFileName, ".exe : ", "$(", MakeVarName, ".dlls) ",
-        "$(", MakeVarName, ".foreign_dlls)\n"],
-    IfJava2 = [" ifeq ($(findstring java,$(GRADE)),java)\n"],
+    IfJava = ["ifeq ($(findstring java,$(GRADE)),java)\n"],
     JavaMainRule = [ExeFileName, " : $(", MakeVarName, ".classes)\n"],
-
     Else = ["else\n"],
-    Else2 = [" else\n"],
     EndIf = ["endif\n"],
-    EndIf2 = [" endif\n"],
 
     % XXX The output here is GNU Make-specific.
     io.write_strings(DepStream, [
@@ -1729,9 +1709,7 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     globals.get_target(Globals, Target),
     (
         Gmake = yes,
-        Rules = IfIL ++ ILMainRule ++ Else ++
-            IfJava2 ++ JavaMainRule ++ Else2 ++
-            MainRule ++ EndIf2 ++ EndIf
+        Rules = IfJava ++ JavaMainRule ++ Else ++ MainRule ++ EndIf
     ;
         Gmake = no,
         (
@@ -1804,11 +1782,6 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
         MaybeOptsVar, MaybeTransOptsVar,
         InitFileName, "\n\n"
     ],
-    ILLibRule = [
-        LibTargetName, " : ", "$(", MakeVarName, ".dlls) ",
-            "$(", MakeVarName, ".foreign_dlls) \\\n\t\t"
-        | AllInts
-    ],
     JavaLibRule = [
         LibTargetName, " : ", JarFileName, " \\\n\t\t"
         | AllInts
@@ -1820,9 +1793,8 @@ generate_dep_file_exec_library_targets(Globals, DepStream, ModuleName,
     ],
     (
         Gmake = yes,
-        LibRules = IfIL ++ ILLibRule ++ Else ++
-            IfJava2 ++ JavaLibRule ++ Else2 ++
-            LibRule ++ EndIf2 ++ EndIf
+        LibRules = IfJava ++ JavaLibRule ++ Else ++
+            LibRule ++ EndIf
     ;
         Gmake = no,
         (
