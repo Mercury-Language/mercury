@@ -717,7 +717,6 @@ then
             # copies).
             rm -f mercury_conf*.h
             $LN $root/runtime/mercury_conf*.h .
-            $LN $root/runtime/mercury_il.il .
             $LN_S $root/runtime/*.in .
             cp $root/runtime/Mmake* .
             cp $root/runtime/.mgnu* .
@@ -767,7 +766,6 @@ then
             cp $root/boehm_gc/build_atomic_ops.sh* .
             cp -r $root/boehm_gc/cord .
             cp -r $root/boehm_gc/extra .
-            cp -r $root/boehm_gc/src .
             cp -r $root/boehm_gc/tools .
             ln -s ../libatomic_ops .
             cd $root/$stage2dir
