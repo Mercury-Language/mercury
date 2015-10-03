@@ -351,20 +351,20 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason0, SubGoal0),
-        ( Reason0 = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason0 = from_ground_term(_, from_ground_term_construct) then
             % There are no deconstructions at all inside these scopes.
             GoalExpr = GoalExpr0,
             Redo = no
-        ;
+        else
             detect_cse_in_goal(SubGoal0, SubGoal, !CseInfo, InstMap0, Redo),
-            (
+            ( if
                 Redo = yes,
                 Reason0 = from_ground_term(_, from_ground_term_deconstruct)
-            ->
+            then
                 % If we remove a goal from such a scope, what is left
                 % may no longer satisfy the invariants we expect it to satisfy.
                 SubGoal = hlds_goal(GoalExpr, _)
-            ;
+            else
                 GoalExpr = scope(Reason0, SubGoal)
             )
         )
@@ -434,12 +434,12 @@ detect_cse_in_conj([Goal0 | Goals0], Goals, !CseInfo, ConjType, !.InstMap,
     detect_cse_in_conj(Goals0, TailGoals, !CseInfo, ConjType, !.InstMap,
         Redo2),
     % Flatten any non-flat conjunctions we create.
-    (
+    ( if
         Goal = hlds_goal(conj(InnerConjType, ConjGoals), _),
         ConjType = InnerConjType
-    ->
+    then
         Goals = ConjGoals ++ TailGoals
-    ;
+    else
         Goals = [Goal | TailGoals]
     ),
     bool.or(Redo1, Redo2, Redo).
@@ -459,21 +459,21 @@ detect_cse_in_disj([], Goals0, _, InstMap, !CseInfo, Redo, disj(Goals)) :-
     detect_cse_in_independent_goals(Goals0, Goals, !CseInfo, InstMap, Redo).
 detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap0,
         !CseInfo, Redo, GoalExpr) :-
-    (
-        instmap_lookup_var(InstMap0, Var, VarInst0),
-        ModuleInfo = !.CseInfo ^ csei_module_info,
+    ModuleInfo = !.CseInfo ^ csei_module_info,
+    instmap_lookup_var(InstMap0, Var, VarInst0),
+    ( if
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
         inst_is_ground_or_any(ModuleInfo, VarInst0),
         common_deconstruct(Goals0, Var, !CseInfo, Unify,
             FirstOldNew, LaterOldNew, Goals)
-    ->
+    then
         maybe_update_existential_data_structures(Unify,
             FirstOldNew, LaterOldNew, !CseInfo),
         GoalExpr = conj(plain_conj,
             [Unify, hlds_goal(disj(Goals), GoalInfo0)]),
         Redo = yes
-    ;
+    else
         detect_cse_in_disj(Vars, Goals0, GoalInfo0, InstMap0,
             !CseInfo, Redo, GoalExpr)
     ).
@@ -498,22 +498,22 @@ detect_cse_in_cases([], SwitchVar, CanFail, Cases0, _GoalInfo, InstMap0,
     detect_cse_in_cases_arms(Cases0, Cases, !CseInfo, InstMap0, Redo).
 detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
         InstMap0, !CseInfo, Redo, GoalExpr) :-
-    (
+    ( if
         Var \= SwitchVar,
-        instmap_lookup_var(InstMap0, Var, VarInst0),
         ModuleInfo = !.CseInfo ^ csei_module_info,
+        instmap_lookup_var(InstMap0, Var, VarInst0),
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
         inst_is_ground_or_any(ModuleInfo, VarInst0),
         common_deconstruct_cases(Cases0, Var, !CseInfo,
             Unify, FirstOldNew, LaterOldNew, Cases)
-    ->
+    then
         maybe_update_existential_data_structures(Unify,
             FirstOldNew, LaterOldNew, !CseInfo),
         GoalExpr = conj(plain_conj,
             [Unify, hlds_goal(switch(SwitchVar, CanFail, Cases), GoalInfo)]),
         Redo = yes
-    ;
+    else
         detect_cse_in_cases(Vars, SwitchVar, CanFail, Cases0, GoalInfo,
             InstMap0, !CseInfo, Redo, GoalExpr)
     ).
@@ -541,22 +541,22 @@ detect_cse_in_ite([], IfVars, Cond0, Then0, Else0, _, InstMap, !CseInfo,
         InstMap, Redo).
 detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
         InstMap, !CseInfo, Redo, GoalExpr) :-
-    (
-        ModuleInfo = !.CseInfo ^ csei_module_info,
-        instmap_lookup_var(InstMap, Var, VarInst0),
+    ModuleInfo = !.CseInfo ^ csei_module_info,
+    instmap_lookup_var(InstMap, Var, VarInst0),
+    ( if
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
         inst_is_ground_or_any(ModuleInfo, VarInst0),
         common_deconstruct([Then0, Else0], Var, !CseInfo,
             Unify, FirstOldNew, LaterOldNew, Goals),
         Goals = [Then, Else]
-    ->
+    then
         maybe_update_existential_data_structures(Unify,
             FirstOldNew, LaterOldNew, !CseInfo),
         IfGoal = hlds_goal(if_then_else(IfVars, Cond0, Then, Else), GoalInfo),
         GoalExpr = conj(plain_conj, [Unify, IfGoal]),
         Redo = yes
-    ;
+    else
         detect_cse_in_ite(Vars, IfVars, Cond0, Then0, Else0, GoalInfo,
             InstMap, !CseInfo, Redo, GoalExpr)
     ).
@@ -682,15 +682,15 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
             FirstOldNewVars, LaterOldNewVars0),
         Goal0 = hlds_goal(_, GoalInfo),
         Context = goal_info_get_context(GoalInfo),
-        (
+        ( if
             find_similar_deconstruct(HoistedGoal,
                 Goal0, Context, OldNewVars, Goals0)
-        ->
+        then
             Goals = Goals0,
             LaterOldNewVars = [OldNewVars | LaterOldNewVars0],
             !:CseState = have_candidate(HoistedGoal,
                 FirstOldNewVars, LaterOldNewVars)
-        ;
+        else
             Goals = [Goal0],
             !:CseState = multiple_candidates
         )
@@ -706,10 +706,10 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
 
 construct_common_unify(Var, hlds_goal(GoalExpr0, GoalInfo), !CseInfo,
         OldNewVars, HoistedGoal, Replacements) :-
-    (
+    ( if
         GoalExpr0 = unify(_, RHS, Umode, Unif0, Ucontext),
         Unif0 = deconstruct(_, Consid, Args, Submodes, CanFail, CanCGC)
-    ->
+    then
         Unif = deconstruct(Var, Consid, Args, Submodes, CanFail, CanCGC),
         (
             RHS = rhs_functor(_, _, _),
@@ -726,7 +726,7 @@ construct_common_unify(Var, hlds_goal(GoalExpr0, GoalInfo), !CseInfo,
         map.from_assoc_list(OldNewVars, Sub),
         rename_some_vars_in_goal(Sub, hlds_goal(GoalExpr1, GoalInfo),
             HoistedGoal)
-    ;
+    else
         unexpected($module, $pred, "non-unify goal")
     ).
 
@@ -774,13 +774,13 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
 
 find_similar_deconstruct(HoistedUnifyGoal, OldUnifyGoal, Context,
         OldHoistedVars, Replacements) :-
-    (
+    ( if
         HoistedUnifyGoal = hlds_goal(unify(_, _, _, HoistedUnifyInfo, OC), _),
         HoistedUnifyInfo = deconstruct(_, HoistedFunctor,
             HoistedVars, _, _, _),
         OldUnifyGoal = hlds_goal(unify(_, _, _, OldUnifyInfo, _NC), _),
         OldUnifyInfo = deconstruct(_, OldFunctor, OldVars, _, _, _)
-    ->
+    then
         HoistedFunctor = OldFunctor,
         list.length(HoistedVars, HoistedVarsCount),
         list.length(OldVars, OldVarsCount),
@@ -788,7 +788,7 @@ find_similar_deconstruct(HoistedUnifyGoal, OldUnifyGoal, Context,
         assoc_list.from_corresponding_lists(OldVars, HoistedVars,
             OldHoistedVars),
         pair_subterms(OldHoistedVars, Context, OC, Replacements)
-    ;
+    else
         unexpected($module, $pred, "non-deconstruct unify")
     ).
 
@@ -799,9 +799,9 @@ pair_subterms([], _Context, _UnifyContext, []).
 pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
         Replacements) :-
     pair_subterms(OldHoistedVars, Context, UnifyContext, Replacements1),
-    ( OldVar = HoistedVar ->
+    ( if OldVar = HoistedVar then
         Replacements = Replacements1
-    ;
+    else
         UnifyContext = unify_context(MainCtxt, SubCtxt),
         % It is ok to create complicated unifications here, because we rerun
         % mode analysis on the resulting goal. It would be nicer to generate
@@ -882,16 +882,16 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
 
 maybe_update_existential_data_structures(Unify, FirstOldNew, LaterOldNew,
         !CseInfo) :-
-    (
+    ( if
         Unify = hlds_goal(unify(_, _, _, UnifyInfo, _), _),
         UnifyInfo = deconstruct(Var, ConsId, _, _, _, _),
         ModuleInfo = !.CseInfo ^ csei_module_info,
         VarTypes = !.CseInfo ^ csei_vartypes,
         lookup_var_type(VarTypes, Var, Type),
         cons_id_is_existq_cons(ModuleInfo, Type, ConsId)
-    ->
+    then
         update_existential_data_structures(FirstOldNew, LaterOldNew, !CseInfo)
-    ;
+    else
         true
     ).
 
@@ -940,10 +940,10 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
 find_type_info_locn_tvar_map(RttiVarMaps, FirstOldNewMap, Tvar, !NewTvarMap) :-
     rtti_lookup_type_info_locn(RttiVarMaps, Tvar, TypeInfoLocn0),
     type_info_locn_var(TypeInfoLocn0, Old),
-    ( map.search(FirstOldNewMap, Old, New) ->
+    ( if map.search(FirstOldNewMap, Old, New) then
         type_info_locn_set_var(New, TypeInfoLocn0, TypeInfoLocn),
         map.det_insert(TypeInfoLocn, Tvar, !NewTvarMap)
-    ;
+    else
         true
     ).
 
@@ -954,15 +954,15 @@ find_type_info_locn_tvar_map(RttiVarMaps, FirstOldNewMap, Tvar, !NewTvarMap) :-
 find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !Renaming) :-
     rtti_lookup_type_info_locn(RttiVarMaps, Tvar, TypeInfoLocn0),
     type_info_locn_var(TypeInfoLocn0, Old),
-    ( map.search(LaterOldNewMap, Old, New) ->
+    ( if map.search(LaterOldNewMap, Old, New) then
         type_info_locn_set_var(New, TypeInfoLocn0, TypeInfoLocn),
         map.lookup(NewTvarMap, TypeInfoLocn, NewTvar),
-        ( NewTvar = Tvar ->
+        ( if NewTvar = Tvar then
             true
-        ;
+        else
             map.det_insert(Tvar, NewTvar, !Renaming)
         )
-    ;
+    else
         true
     ).
 

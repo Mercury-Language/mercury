@@ -149,10 +149,10 @@ detect_switches_in_preds(_, _, [], []).
 detect_switches_in_preds(Info, ValidPredIdSet,
         [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
     PredIdInfo0 = PredId - PredInfo0,
-    ( set_tree234.contains(ValidPredIdSet, PredId) ->
+    ( if set_tree234.contains(ValidPredIdSet, PredId) then
         detect_switches_in_pred(Info, PredId, PredInfo0, PredInfo),
         PredIdInfo = PredId - PredInfo
-    ;
+    else
         PredIdInfo = PredIdInfo0
     ),
     detect_switches_in_preds(Info, ValidPredIdSet,
@@ -191,10 +191,10 @@ detect_switches_in_procs(_Info, _NonImportedProcIds, [], []).
 detect_switches_in_procs(Info, NonImportedProcIds,
         [ProcIdInfo0 | ProcIdsInfos0], [ProcIdInfo | ProcIdsInfos]) :-
     ProcIdInfo0 = ProcId - ProcInfo0,
-    ( list.member(ProcId, NonImportedProcIds) ->
+    ( if list.member(ProcId, NonImportedProcIds) then
         detect_switches_in_proc(Info, ProcInfo0, ProcInfo),
         ProcIdInfo = ProcId - ProcInfo
-    ;
+    else
         ProcIdInfo = ProcIdInfo0
     ),
     detect_switches_in_procs(Info, NonImportedProcIds,
@@ -298,11 +298,11 @@ detect_switches_in_goal_expr(InstMap0, GoalInfo, GoalExpr0, GoalExpr,
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             % There are neither disjunctions nor deconstruction unifications
             % inside these scopes.
             SubGoal = SubGoal0
-        ;
+        else
             % XXX We could treat from_ground_term_deconstruct specially
             % as well, since the only variable whose deconstruction could be of
             % interest here is the one named in Reason.
@@ -443,11 +443,11 @@ convert_cases_table(GoalInfo, CasesTable) = SortedCases :-
 
 convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
         !AlreadyHandledConsIds) :-
-    ( set_tree234.contains(!.AlreadyHandledConsIds, ConsId) ->
+    ( if set_tree234.contains(!.AlreadyHandledConsIds, ConsId) then
         Entry = cons_id_entry(State, _ArmCord),
         expect(unify(State, cons_id_has_one_multi), $module, $pred,
             "already handled but not cons_id_has_one_multi")
-    ;
+    else
         Entry = cons_id_entry(State, ArmsCord),
         Arms = cord.list(ArmsCord),
         (
@@ -470,7 +470,10 @@ convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
             !:Cases = [Case | !.Cases]
         ;
             State = cons_id_has_one_multi,
-            ( Arms = [multi_cons_id_arm(MainConsId0, OtherConsIds0, Goal)] ->
+            ( if
+                Arms = [Arm],
+                Arm = multi_cons_id_arm(MainConsId0, OtherConsIds0, Goal)
+            then
                 % The code that creates multi_cons_id_arms should ensure
                 % that [MainConsId | OtherConsIds0] is sorted, and
                 % convert_cases_table should call convert_case for ConsIds
@@ -499,7 +502,7 @@ convert_case(GoalInfo, ConflictConsIds, ConsId - Entry, !Cases,
                     unexpected($module, $pred,
                         "cons_id_has_one_multi: AllConsIds = []")
                 )
-            ;
+            else
                 unexpected($module, $pred, "misleading cons_id_has_one_multi")
             )
         )
@@ -526,7 +529,7 @@ num_cases_in_table(cases_table(CasesMap, _)) = map.count(CasesMap).
 add_single_entry(ConsId, Goal, CasesTable0, CasesTable) :-
     CasesTable0 = cases_table(CasesMap0, ConflictConsIds0),
     Arm = single_cons_id_arm(ConsId, Goal),
-    ( map.search(CasesMap0, ConsId, Entry0) ->
+    ( if map.search(CasesMap0, ConsId, Entry0) then
         Entry0 = cons_id_entry(State0, Arms0),
         (
             State0 = cons_id_has_all_singles,
@@ -544,7 +547,7 @@ add_single_entry(ConsId, Goal, CasesTable0, CasesTable) :-
         Arms = snoc(Arms0, Arm),
         Entry = cons_id_entry(State, Arms),
         map.det_update(ConsId, Entry, CasesMap0, CasesMap)
-    ;
+    else
         State = cons_id_has_all_singles,
         Arms = cord.singleton(Arm),
         Entry = cons_id_entry(State, Arms),
@@ -566,7 +569,7 @@ add_multi_entry(MainConsId, OtherConsIds, Goal, CasesTable0, CasesTable) :-
 
 add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
     CasesTable0 = cases_table(CasesMap0, ConflictConsIds0),
-    ( map.search(CasesMap0, ConsId, Entry0) ->
+    ( if map.search(CasesMap0, ConsId, Entry0) then
         Entry0 = cons_id_entry(State0, Arms0),
         (
             ( State0 = cons_id_has_all_singles
@@ -581,7 +584,7 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
         Arms = snoc(Arms0, Arm),
         Entry = cons_id_entry(State, Arms),
         map.det_update(ConsId, Entry, CasesMap0, CasesMap)
-    ;
+    else
         State = cons_id_has_one_multi,
         Arms = cord.singleton(Arm),
         Entry = cons_id_entry(State, Arms),
@@ -607,12 +610,12 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
 detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
         [Var | Vars], InstMap, AgainList0, GoalExpr, !LocalInfo) :-
     % Can we do at least a partial switch on this variable?
-    (
-        instmap_lookup_var(InstMap, Var, VarInst0),
-        ModuleInfo = !.LocalInfo ^ lsdi_module_info,
+    ModuleInfo = !.LocalInfo ^ lsdi_module_info,
+    instmap_lookup_var(InstMap, Var, VarInst0),
+    ( if
         inst_is_bound(ModuleInfo, VarInst0),
         partition_disj(Disjuncts0, Var, GoalInfo, Left, CasesList, !LocalInfo)
-    ->
+    then
         % A switch needs to have at least two cases.
         %
         % But, if there is a complete one-case switch for a goal, we must leave
@@ -623,9 +626,13 @@ detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
         (
             % Are there any disjuncts that are not part of the switch? No.
             Left = [],
-            ( CasesList = [_, _ | _] ->
+            (
+                CasesList = [_, _ | _],
                 cases_to_switch(Var, CasesList, InstMap, GoalExpr, !LocalInfo)
             ;
+                ( CasesList = []
+                ; CasesList = [_]
+                ),
                 detect_sub_switches_in_disj(InstMap, Disjuncts0, Disjuncts,
                     !LocalInfo),
                 GoalExpr = disj(Disjuncts)
@@ -635,16 +642,20 @@ detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
             Left = [_ | _],
             % Insert this switch into the list of incomplete switches
             % only if it has at least two cases.
-            ( CasesList = [_, _ | _] ->
+            (
+                CasesList = [_, _ | _],
                 AgainList1 = [again(Var, Left, CasesList) | AgainList0]
             ;
+                ( CasesList = []
+                ; CasesList = [_]
+                ),
                 AgainList1 = AgainList0
             ),
             % Try to find a switch.
             detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
                 Vars, InstMap, AgainList1, GoalExpr, !LocalInfo)
         )
-    ;
+    else
         detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
             Vars, InstMap, AgainList0, GoalExpr, !LocalInfo)
     ).
@@ -668,15 +679,15 @@ detect_switches_in_disj(GoalInfo, AllVars, Disjuncts0,
 
 select_best_switch([], BestAgain, BestAgain).
 select_best_switch([Again | AgainList], BestAgain0, BestAgain) :-
-    (
+    ( if
         Again = again(_, _, CasesList),
         BestAgain0 = again(_, _, BestCasesList),
         list.length(CasesList, Length),
         list.length(BestCasesList, BestLength),
         Length < BestLength
-    ->
+    then
         BestAgain1 = BestAgain0
-    ;
+    else
         BestAgain1 = Again
     ),
     select_best_switch(AgainList, BestAgain1, BestAgain).
@@ -715,12 +726,14 @@ partition_disj(Disjuncts0, Var, GoalInfo, Left, Cases, !LocalInfo) :-
         % to allow for switches in which *all* cases contain subsidiary
         % disjunctions.
         AllowMulti = !.LocalInfo ^ lsdi_allow_multi_arm,
-        ( expand_sub_disjs(AllowMulti, Var, Left1, CasesTable1, CasesTable) ->
+        ( if
+            expand_sub_disjs(AllowMulti, Var, Left1, CasesTable1, CasesTable)
+        then
             Left = [],
             num_cases_in_table(CasesTable) >= 1,
             Cases = convert_cases_table(GoalInfo, CasesTable),
             !LocalInfo ^ lsdi_requant := need_to_requantify
-        ;
+        else
             Left = Left1,
             Cases = convert_cases_table(GoalInfo, CasesTable1)
         )
@@ -742,13 +755,13 @@ expand_sub_disjs(AllowMulti, Var, [LeftGoal | LeftGoals], !CasesTable) :-
 expand_sub_disj(AllowMulti, Var, Goal, !CasesTable) :-
     Goal = hlds_goal(GoalExpr, GoalInfo0),
     goal_info_add_feature(feature_duplicated_for_switch, GoalInfo0, GoalInfo),
-    ( GoalExpr = conj(plain_conj, SubGoals) ->
+    ( if GoalExpr = conj(plain_conj, SubGoals) then
         expand_sub_disj_process_conj(AllowMulti, Var, SubGoals, [], GoalInfo,
             !CasesTable)
-    ; GoalExpr = disj(_) ->
+    else if GoalExpr = disj(_) then
         expand_sub_disj_process_conj(AllowMulti, Var, [Goal], [], GoalInfo,
             !CasesTable)
-    ;
+    else
         fail
     ).
 
@@ -772,7 +785,7 @@ expand_sub_disj_process_conj(AllowMulti, Var, ConjGoals, !.RevUnifies,
         ;
             FirstGoalExpr = disj(Disjuncts),
             Disjuncts = [_ | _],
-            (
+            ( if
                 AllowMulti = allow_multi_arm,
                 !.RevUnifies = [],
 
@@ -790,11 +803,11 @@ expand_sub_disj_process_conj(AllowMulti, Var, ConjGoals, !.RevUnifies,
                     DisjConsIds),
                 list.sort(DisjConsIds, SortedDisjConsIds),
                 SortedDisjConsIds = [MainConsId | OtherConsIds]
-            ->
+            then
                 SharedGoal = hlds_goal(conj(plain_conj, LaterGoals), GoalInfo),
                 add_multi_entry(MainConsId, OtherConsIds, SharedGoal,
                     !CasesTable)
-            ;
+            else
                 list.reverse(!.RevUnifies, Unifies),
                 list.map(
                     create_expanded_conjunction(Unifies, LaterGoals, GoalInfo),
@@ -821,9 +834,9 @@ all_disjuncts_are_switch_var_unifies(Var, [Goal | Goals],
     hlds_goal_info::in, hlds_goal::in, hlds_goal::out) is det.
 
 create_expanded_conjunction(Unifies, LaterGoals, GoalInfo, Disjunct, Goal) :-
-    ( Disjunct = hlds_goal(conj(plain_conj, DisjunctGoals), _) ->
+    ( if Disjunct = hlds_goal(conj(plain_conj, DisjunctGoals), _) then
         Conjuncts = Unifies ++ DisjunctGoals ++ LaterGoals
-    ;
+    else
         Conjuncts = Unifies ++ [Disjunct] ++ LaterGoals
     ),
     Goal = hlds_goal(conj(plain_conj, Conjuncts), GoalInfo).
@@ -853,23 +866,23 @@ partition_disj_trial([Disjunct0 | Disjuncts0], Var, !Left, !CasesTable) :-
 
 find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
         _Result0, Result, _, unit) :-
-    (
+    ( if
         Goal0 = hlds_goal(GoalExpr0, GoalInfo),
         UnifyInfo0 = GoalExpr0 ^ unify_kind,
         UnifyInfo0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _)
-    ->
+    then
         Result = yes(Functor),
-        (
+        ( if
             ArgVars = [],
             SwitchVar = UnifyVar
-        ->
+        then
             % The test will get carried out in the switch, there are no
             % argument values to pick up, and the test was on the switch
             % variable (not on one of its aliases), so the unification
             % serve no further purpose. We delete it here, so simplify
             % doesn't have to.
             Goals = []
-        ;
+        else
             % The deconstruction unification now becomes deterministic, since
             % the test will get carried out in the switch.
             UnifyInfo = UnifyInfo0 ^ deconstruct_can_fail := cannot_fail,
@@ -877,7 +890,7 @@ find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
             Goal = hlds_goal(GoalExpr, GoalInfo),
             Goals = [Goal]
         )
-    ;
+    else
         unexpected($module, $pred, "condition failed")
     ).
 
@@ -914,7 +927,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         GoalExpr0 = scope(Reason0, SubGoal0),
-        ( Reason0 = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason0 = from_ground_term(_, from_ground_term_construct) then
             % There are no deconstruction unifications inside these scopes.
             Goal = Goal0,
             % Whether we want to keep looking at the code that follows them
@@ -922,17 +935,17 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
             % construction unifications (whose behavior this scope resembles),
             % we keep going.
             FoundDeconstruct = before_deconstruct
-        ;
+        else
             find_bind_var_2(Var, ProcessUnify, SubGoal0, SubGoal, !Subst,
                 !Result, !Info, FoundDeconstruct),
-            (
+            ( if
                 FoundDeconstruct = found_deconstruct,
                 Reason0 = from_ground_term(_, from_ground_term_deconstruct)
-            ->
+            then
                 % If we remove a goal from such a scope, what is left
                 % may no longer satisfy the invariants we expect it to satisfy.
                 Goal = SubGoal
-            ;
+            else
                 Goal = hlds_goal(scope(Reason0, SubGoal), GoalInfo)
             )
         )
@@ -957,7 +970,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
         )
     ;
         GoalExpr0 = unify(LHS, RHS, _, UnifyInfo0, _),
-        (
+        ( if
             % Check whether the unification is a deconstruction unification
             % on either Var or on a variable aliased to Var.
             UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _, _),
@@ -968,17 +981,17 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
                 term.variable(UnifyVar, context_init),
                 term.variable(SubstUnifyVar, context_init)),
             SubstVar = SubstUnifyVar
-        ->
+        then
             call(ProcessUnify, Var, Goal0, Goals, !Result, !Info),
             conj_list_to_goal(Goals, GoalInfo, Goal),
             FoundDeconstruct = found_deconstruct
-        ;
+        else
             Goal = Goal0,
             FoundDeconstruct = before_deconstruct,
             % Otherwise abstractly interpret the unification.
-            ( interpret_unify(LHS, RHS, !.Subst, NewSubst) ->
+            ( if interpret_unify(LHS, RHS, !.Subst, NewSubst) then
                 !:Subst = NewSubst
-            ;
+            else
                 % The unification must fail - just ignore it.
                 true
             )
@@ -993,9 +1006,9 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
         ; GoalExpr0 = if_then_else(_, _, _, _)
         ),
         Goal = Goal0,
-        ( goal_info_has_feature(GoalInfo, feature_from_head) ->
+        ( if goal_info_has_feature(GoalInfo, feature_from_head) then
             FoundDeconstruct = before_deconstruct
-        ;
+        else
             FoundDeconstruct = given_up_search
         )
     ;
@@ -1049,21 +1062,21 @@ cases_to_switch(Var, Cases0, InstMap, GoalExpr, !LocalInfo) :-
     VarTypes = !.LocalInfo ^ lsdi_vartypes,
     instmap_lookup_var(InstMap, Var, VarInst),
     lookup_var_type(VarTypes, Var, Type),
-    ( inst_is_bound_to_functors(ModuleInfo, VarInst, Functors) ->
+    ( if inst_is_bound_to_functors(ModuleInfo, VarInst, Functors) then
         type_to_ctor_det(Type, TypeCtor),
         bound_insts_to_cons_ids(TypeCtor, Functors, ConsIds),
         delete_unreachable_cases(Cases0, ConsIds, Cases1),
         CanFail = compute_can_fail(ConsIds, Cases1)
-    ;
+    else
         Cases1 = Cases0,
-        ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
+        ( if switch_type_num_functors(ModuleInfo, Type, NumFunctors) then
             % We could check for each cons_id of the type whether a case covers
             % it, but given that type checking ensures that the set of covered
             % cons_ids is a subset of the set of cons_ids of the type, checking
             % whether the cardinalities of the two sets match is *equivalent*
             % to checking whether they are the same set.
             CanFail = switch_covers_n_cases(NumFunctors, Cases1)
-        ;
+        else
             % switch_type_num_functors fails only for types on which
             % you cannot have a complete switch, e.g. integers and strings.
             CanFail = can_fail
@@ -1090,9 +1103,9 @@ cases_to_switch(Var, Cases0, InstMap, GoalExpr, !LocalInfo) :-
 compute_can_fail(Functors, Cases) = SwitchCanFail :-
     UncoveredFunctors0 = set_tree234.list_to_set(Functors),
     delete_covered_functors(Cases, UncoveredFunctors0, UncoveredFunctors),
-    ( set_tree234.empty(UncoveredFunctors) ->
+    ( if set_tree234.empty(UncoveredFunctors) then
         SwitchCanFail = cannot_fail
-    ;
+    else
         SwitchCanFail = can_fail
     ).
 
@@ -1114,9 +1127,9 @@ delete_covered_functors([Case | Cases], !UncoveredConsIds) :-
 
 switch_covers_n_cases(NumFunctors, Cases) = SwitchCanFail :-
     NumCoveredConsIds = count_covered_cons_ids(Cases),
-    ( NumCoveredConsIds = NumFunctors ->
+    ( if NumCoveredConsIds = NumFunctors then
         SwitchCanFail = cannot_fail
-    ;
+    else
         SwitchCanFail = can_fail
     ).
 
