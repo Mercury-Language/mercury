@@ -481,6 +481,7 @@ Operator                        Specifier         Priority
 div                             yfx               400
 mod                             xfx               400
 rem                             xfx               400
+for                             xfx               500
 +                               fx                500
 +                               yfx               500
 ++                              xfy               500

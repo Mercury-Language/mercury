@@ -1089,7 +1089,7 @@ find_items_used_by_mode_defn(Defn, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_inst_defn(Defn, !Info) :-
-    Defn = hlds_inst_defn(_, _, InstBody, MaybeMatchingTypeCtors, _, _),
+    Defn = hlds_inst_defn(_, _, InstBody, IFTC, _, _),
     (
         InstBody = eqv_inst(Inst),
         find_items_used_by_inst(Inst, !Info)
@@ -1097,11 +1097,16 @@ find_items_used_by_inst_defn(Defn, !Info) :-
         InstBody = abstract_inst
     ),
     (
-        MaybeMatchingTypeCtors = no
+        IFTC = iftc_applicable_declared(ForTypeCtor),
+        find_items_used_by_type_ctor(ForTypeCtor, !Info)
     ;
-        MaybeMatchingTypeCtors = yes(MatchingTypeCtors),
-        list.foldl(find_items_used_by_type_ctor, MatchingTypeCtors,
-            !Info)
+        IFTC = iftc_applicable_known(MatchingTypeCtors),
+        list.foldl(find_items_used_by_type_ctor, MatchingTypeCtors, !Info)
+    ;
+        ( IFTC = iftc_applicable_not_known
+        ; IFTC = iftc_applicable_error
+        ; IFTC = iftc_not_applicable
+        )
     ).
 
 :- pred find_items_used_by_preds(pred_or_func::in, pred_or_func_set::in,

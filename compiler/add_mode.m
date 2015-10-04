@@ -48,36 +48,74 @@
 
 module_add_inst_defn(ItemInstDefnInfo, InstStatus, InvalidInst, !ModuleInfo,
         !Specs) :-
-    ItemInstDefnInfo = item_inst_defn_info(Name, Params, InstDefn, VarSet,
-        Context, _SeqNum),
+    ItemInstDefnInfo = item_inst_defn_info(InstName, InstParams, MaybeForType,
+        InstDefn, VarSet, Context, _SeqNum),
     % Add the definition of this inst to the HLDS inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_user_insts(InstTable0, UserInstTable0),
-    insts_add(VarSet, Name, Params, InstDefn, Context, InstStatus,
-        UserInstTable0, UserInstTable, !Specs),
+    insts_add(VarSet, InstName, InstParams, MaybeForType, InstDefn, Context,
+        InstStatus, UserInstTable0, UserInstTable, !Specs),
     inst_table_set_user_insts(UserInstTable, InstTable0, InstTable),
     module_info_set_inst_table(InstTable, !ModuleInfo),
 
     % Check if the inst is infinitely recursive (at the top level).
-    Arity = list.length(Params),
-    InstId = inst_id(Name, Arity),
-    TestArgs = list.duplicate(Arity, not_reached),
+    InstArity = list.length(InstParams),
+    InstId = inst_id(InstName, InstArity),
+    TestArgs = list.duplicate(InstArity, not_reached),
     check_for_cyclic_inst(UserInstTable, InstId, InstId, TestArgs, [], Context,
         InvalidInst, !Specs).
 
-:- pred insts_add(inst_varset::in, sym_name::in,
-    list(inst_var)::in, inst_defn::in, prog_context::in,
+:- pred insts_add(inst_varset::in, sym_name::in, list(inst_var)::in,
+    maybe(type_ctor)::in, inst_defn::in, prog_context::in,
     inst_status::in, user_inst_table::in, user_inst_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-insts_add(_, _, _, abstract_inst, _, _, !UserInstTable, !Specs) :-
+insts_add(_, _, _, _, abstract_inst, _, _, !UserInstTable, !Specs) :-
     % XXX handle abstract insts
     sorry($module, $pred, "abstract insts not implemented").
-insts_add(VarSet, Name, Args, eqv_inst(Body), Context, InstStatus,
-        !UserInstTable, !Specs) :-
-    list.length(Args, Arity),
-    InstId = inst_id(Name, Arity),
-    InstDefn = hlds_inst_defn(VarSet, Args, eqv_inst(Body), no,
+insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
+        Context, InstStatus, !UserInstTable, !Specs) :-
+    list.length(InstParams, InstArity),
+    InstId = inst_id(InstSymName, InstArity),
+    (
+        EqvInst = bound(_, _, _),
+        (
+            MaybeForType = no,
+            IFTC = iftc_applicable_not_known
+        ;
+            MaybeForType = yes(ForType),
+            IFTC = iftc_applicable_declared(ForType)
+        )
+    ;
+        ( EqvInst = any(_, _)
+        ; EqvInst = free
+        ; EqvInst = free(_)
+        ; EqvInst = ground(_, _)
+        ; EqvInst = not_reached
+        ; EqvInst = inst_var(_)
+        ; EqvInst = constrained_inst_vars(_, _)
+        ; EqvInst = defined_inst(_)
+        ; EqvInst = abstract_inst(_, _)
+        ),
+        IFTC = iftc_not_applicable,
+        ( if
+            MaybeForType = yes(_ForType),
+            inst_status_defined_in_this_module(InstStatus) = yes
+        then
+            ShortInstSymName = unqualified(unqualify_name(InstSymName)),
+            Pieces = [words("Error: inst"),
+                sym_name_and_arity(ShortInstSymName / InstArity), suffix(","),
+                words("is specified to be for a given type constructor,"),
+                words("but it is not defined to be equivalent to a"),
+                quote("bound"), words("inst."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+            !:Specs = [Spec | !.Specs]
+        else
+            true
+        )
+    ),
+    InstDefn = hlds_inst_defn(VarSet, InstParams, eqv_inst(EqvInst), IFTC,
         Context, InstStatus),
     ( if map.insert(InstId, InstDefn, !UserInstTable) then
         true
@@ -95,7 +133,7 @@ insts_add(VarSet, Name, Args, eqv_inst(Body), Context, InstStatus,
             map.lookup(!.UserInstTable, InstId, OrigInstDefn),
             OrigContext = OrigInstDefn ^ inst_context,
             Extras = [],
-            multiple_def_error(is_not_opt_imported, Name, Arity,
+            multiple_def_error(is_not_opt_imported, InstSymName, InstArity,
                 "inst", Context, OrigContext, Extras, !Specs)
         )
     ).
@@ -287,7 +325,7 @@ report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
                 sym_name_and_arity(SymName / Arity)),
             Expansions),
         Pieces = [words("Error: circular equivalence"), fixed(Kinds)]
-            ++ component_list_to_pieces(ExpansionPieces) ++ [suffix(".")],
+            ++ component_list_to_pieces(ExpansionPieces) ++ [suffix("."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
         !:Specs = [Spec | !.Specs]

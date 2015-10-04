@@ -28,6 +28,8 @@ Changes to the Mercury language:
   of the foreign type when the type appears as the sole argument of a data
   constructor.
 
+* `for' is now an operator.
+
 Changes to the Mercury standard library:
 
 * We have added variants of the process_options predicates to the getopt

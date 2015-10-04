@@ -1991,7 +1991,7 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
         add_to_sym_name_items_map(SymName / Arity, Item, !TypeDefnMap)
     ;
         Item = item_inst_defn(ItemInstDefnInfo),
-        ItemInstDefnInfo = item_inst_defn_info(SymName, Params, _, _, _, _),
+        ItemInstDefnInfo = item_inst_defn_info(SymName, Params, _, _, _, _, _),
         list.length(Params, Arity),
         add_to_sym_name_items_map(SymName / Arity, Item, !InstDefnMap)
     ;

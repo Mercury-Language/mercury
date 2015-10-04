@@ -929,52 +929,59 @@ check_item_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers, Item,
         unexpected($module, $pred, "clause")
     ;
         Item = item_type_defn(ItemTypeDefn),
-        ItemTypeDefn = item_type_defn_info(Name, Params, Body, _, _, _),
-        Arity = list.length(Params),
+        ItemTypeDefn = item_type_defn_info(TypeSymName, TypeParams, TypeBody,
+            _, _, _),
+        list.length(TypeParams, TypeArity),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-            VersionNumbers, type_abstract_item, Name, Arity, NeedsCheck,
-            !Info),
+            VersionNumbers, type_abstract_item, TypeSymName, TypeArity,
+            NeedsCheck, !Info),
         (
             NeedsCheck = yes,
             check_type_defn_ambiguity_with_functor(NeedQualifier,
-                type_ctor(Name, Arity), Body, !Info)
+                type_ctor(TypeSymName, TypeArity), TypeBody, !Info)
         ;
             NeedsCheck = no
         )
     ;
         Item = item_inst_defn(ItemInstDefn),
-        ItemInstDefn = item_inst_defn_info(Name, Params, _, _, _, _),
+        % XXX IFTC Do we need to check _MaybeForTypeCtor?
+        ItemInstDefn = item_inst_defn_info(InstSymName, InstParams,
+            _MaybeForTypeCtor, _, _, _, _),
+        list.length(InstParams, InstArity),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-            VersionNumbers, inst_item, Name, list.length(Params), _, !Info)
+            VersionNumbers, inst_item, InstSymName, InstArity, _, !Info)
     ;
         Item = item_mode_defn(ItemModeDefn),
-        ItemModeDefn = item_mode_defn_info(Name, Params, _, _, _, _),
+        ItemModeDefn = item_mode_defn_info(ModeSymName, ModeParams,
+            _, _, _, _),
+        list.length(ModeParams, ModeArity),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-            VersionNumbers, mode_item, Name, list.length(Params), _, !Info)
+            VersionNumbers, mode_item, ModeSymName, ModeArity, _, !Info)
     ;
         Item = item_typeclass(ItemTypeClass),
-        ItemTypeClass = item_typeclass_info(Name, Params, _, _, Interface,
-            _, _, _),
+        ItemTypeClass = item_typeclass_info(TypeClassSymName, TypeClassParams,
+            _, _, Interface, _, _, _),
+        list.length(TypeClassParams, TypeClassArity),
         check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-            VersionNumbers, typeclass_item, Name, list.length(Params),
+            VersionNumbers, typeclass_item, TypeClassSymName, TypeClassArity,
             NeedsCheck, !Info),
-        (
+        ( if
             NeedsCheck = yes,
             Interface = class_interface_concrete(Methods)
-        ->
+        then
             list.foldl(
                 check_class_method_for_ambiguities(NeedQualifier,
                     OldTimestamp, VersionNumbers),
                 Methods, !Info)
-        ;
+        else
             true
         )
     ;
         Item = item_pred_decl(ItemPredDecl),
-        ItemPredDecl = item_pred_decl_info(Name, PredOrFunc, Args, WithType,
-            _, _, _, _, _, _, _, _, _, _),
+        ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, Args,
+            WithType, _, _, _, _, _, _, _, _, _, _),
         check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
-            VersionNumbers, PredOrFunc, Name, Args, WithType, !Info)
+            VersionNumbers, PredOrFunc, PredSymName, Args, WithType, !Info)
     ;
         ( Item = item_mode_decl(_)
         ; Item = item_pragma(_)

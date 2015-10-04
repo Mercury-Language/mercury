@@ -439,7 +439,7 @@ collect_mq_info_in_item(MQSection, NeedQual, Item, !Info) :-
         )
     ;
         Item = item_inst_defn(ItemInstDefn),
-        ItemInstDefn = item_inst_defn_info(SymName, Params, _, _, _, _),
+        ItemInstDefn = item_inst_defn_info(SymName, Params, _, _, _, _, _),
         ( if MQSection = mq_section_abstract_imported then
             % This item is not visible in the current module.
             true
@@ -849,14 +849,23 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
         Item = item_type_defn(ItemTypeDefn)
     ;
         Item0 = item_inst_defn(ItemInstDefn0),
-        ItemInstDefn0 = item_inst_defn_info(SymName, Params, InstDefn0,
-            InstVarSet, Context, SeqNum),
+        ItemInstDefn0 = item_inst_defn_info(SymName, Params, MaybeForTypeCtor0,
+            InstDefn0, InstVarSet, Context, SeqNum),
         list.length(Params, Arity),
         ErrorContext = mqec_inst(Context, mq_id(SymName, Arity)),
         qualify_inst_defn(InInt, ErrorContext, InstDefn0, InstDefn,
             !Info, !Specs),
-        ItemInstDefn = item_inst_defn_info(SymName, Params, InstDefn,
-            InstVarSet, Context, SeqNum),
+        (
+            MaybeForTypeCtor0 = yes(ForTypeCtor0),
+            qualify_type_ctor(InInt, ErrorContext, ForTypeCtor0, ForTypeCtor,
+                !Info, !Specs),
+            MaybeForTypeCtor = yes(ForTypeCtor)
+        ;
+            MaybeForTypeCtor0 = no,
+            MaybeForTypeCtor = no
+        ),
+        ItemInstDefn = item_inst_defn_info(SymName, Params, MaybeForTypeCtor,
+            InstDefn, InstVarSet, Context, SeqNum),
         Item = item_inst_defn(ItemInstDefn)
     ;
         Item0 = item_mode_defn(ItemModeDefn0),

@@ -412,6 +412,7 @@ ops.op_table(Op, Info, OtherInfos) :-
         ; Op = "==>",               Info = op_info(infix(x, x), 1175)
         ; Op = "=^",                Info = op_info(infix(x, x), 650)
         ; Op = "@",                 Info = op_info(infix(x, x), 90)
+        ; Op = "for",               Info = op_info(infix(x, x), 500)
         ; Op = "or_else",           Info = op_info(infix(x, y), 1100)
         ; Op = "end_module",        Info = op_info(prefix(x), 1199)
         ; Op = "event",             Info = op_info(prefix(x), 100)

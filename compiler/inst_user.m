@@ -109,7 +109,7 @@ pretest_user_inst_defns(ModuleInfo, [InstDefnPair | InstDefnPairs],
 pretest_user_inst_defn(ModuleInfo, InstId, InstDefn0, UserInstTable0,
         !MaybeInstDefnsMap) :-
     InstDefn0 = hlds_inst_defn(InstVarSet, InstParams, InstBody0,
-        MaybeMatchingTypeCtors, Context, Status),
+        IFTC, Context, Status),
     (
         InstBody0 = abstract_inst,
         map.det_insert(InstId, processed_user_inst(InstDefn0),
@@ -128,8 +128,10 @@ pretest_user_inst_defn(ModuleInfo, InstId, InstDefn0, UserInstTable0,
                 !MaybeInstDefnsMap),
             ( if
                 Inst1 = bound(_, _, _),
-                MaybeMatchingTypeCtors = yes([MatchingTypeCtor]),
-                MatchingTypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+                ( IFTC = iftc_applicable_declared(InstTypeCtor)
+                ; IFTC = iftc_applicable_known([InstTypeCtor])
+                ),
+                InstTypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
                 TypeCtorArity = 0
             then
                 Type = defined_type(TypeCtorSymName, [], kind_star),
@@ -140,7 +142,7 @@ pretest_user_inst_defn(ModuleInfo, InstId, InstDefn0, UserInstTable0,
             ),
             InstBody = eqv_inst(Inst),
             InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
-                MaybeMatchingTypeCtors, Context, Status),
+                IFTC, Context, Status),
             map.det_update(InstId, processed_user_inst(InstDefn),
                 !MaybeInstDefnsMap)
         )

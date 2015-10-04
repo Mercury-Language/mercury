@@ -1603,8 +1603,7 @@ intermod_write_insts(OutInfo, ModuleInfo, !IO) :-
 
 intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !First, !IO) :-
     InstId = inst_id(SymName, _Arity),
-    InstDefn = hlds_inst_defn(Varset, Args, Body, _MaybeMatchingTypeCtors,
-        Context, InstStatus),
+    InstDefn = hlds_inst_defn(Varset, Args, Body, IFTC, Context, InstStatus),
     ( if
         SymName = qualified(ModuleName, _),
         inst_status_to_write(InstStatus) = yes
@@ -1617,8 +1616,19 @@ intermod_write_inst(OutInfo, ModuleName, InstId, InstDefn, !First, !IO) :-
             Body = abstract_inst,
             InstBody = abstract_inst
         ),
-        ItemInstDefn = item_inst_defn_info(SymName, Args, InstBody,
-            Varset, Context, -1),
+        (
+            IFTC = iftc_applicable_declared(ForTypeCtor),
+            MaybeForTypeCtor = yes(ForTypeCtor)
+        ;
+            ( IFTC = iftc_applicable_known(_)
+            ; IFTC = iftc_applicable_not_known
+            ; IFTC = iftc_applicable_error
+            ; IFTC = iftc_not_applicable
+            ),
+            MaybeForTypeCtor = no
+        ),
+        ItemInstDefn = item_inst_defn_info(SymName, Args, MaybeForTypeCtor,
+            InstBody, Varset, Context, -1),
         Item = item_inst_defn(ItemInstDefn),
         MercInfo = OutInfo ^ hoi_mercury_to_mercury,
         mercury_output_item(MercInfo, Item, !IO)

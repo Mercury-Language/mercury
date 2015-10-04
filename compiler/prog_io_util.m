@@ -261,8 +261,7 @@ parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
     ArityTerm = term.functor(term.integer(Arity), [], _).
 
 parse_name_and_arity_unqualified(PredAndArityTerm, SymName, Arity) :-
-    parse_name_and_arity(unqualified(""),
-        PredAndArityTerm, SymName, Arity).
+    parse_name_and_arity(unqualified(""), PredAndArityTerm, SymName, Arity).
 
 parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
         PredOrFunc, SymName, Arity) :-

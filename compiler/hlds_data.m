@@ -1073,6 +1073,36 @@ set_type_defn_prev_errors(X, !Defn) :-
 
 :- interface.
 
+    % An inst that is defined to be equivalent to a bound inst may be
+    % declared by the programmer to be for a particular type constructor.
+:- type inst_for_type_ctor
+    --->    iftc_not_applicable
+            % The inst is not defined to be equivalent to a bound inst.
+
+    ;       iftc_applicable_declared(type_ctor)
+            % The inst is defined to be equivalent to a bound inst,
+            % and it is declared to be for this type constructor.
+            % This requires that all the top level cons_ids in the bound inst
+            % be function symbols of the given type constructor. Later,
+            % it will also require that this inst be applied only to values
+            % of this type.
+
+    ;       iftc_applicable_not_known
+            % The inst is defined to be equivalent to a bound inst.
+            % It is not declared to be for a specific type constructor,
+            % and the list of type constructors that its cons_ids match
+            % is not (yet) known.
+
+    ;       iftc_applicable_known(list(type_ctor))
+            % The inst is defined to be equivalent to a bound inst.
+            % It is not declared to be for a specific type constructor,
+            % but the list of type constructors that its cons_ids match
+            % is known to be the given list of type constructors.
+
+    ;       iftc_applicable_error.
+            % The inst is defined to be equivalent to a bound inst.
+            % It is not declared to be for a specific type constructor,
+
     % An `hlds_inst_defn' holds the information we need to store
     % about inst definitions such as
     %   :- inst list_skel(I) = bound([] ; [I | list_skel(I)].
@@ -1080,24 +1110,27 @@ set_type_defn_prev_errors(X, !Defn) :-
 :- type hlds_inst_defn
     --->    hlds_inst_defn(
                 % The names of the inst parameters (if any).
-                inst_varset     :: inst_varset,
+                inst_varset             :: inst_varset,
 
                 % The inst parameters (if any). ([I] in the above example.)
-                inst_params     :: list(inst_var),
+                inst_params             :: list(inst_var),
 
                 % The definition of this inst.
-                inst_body       :: hlds_inst_body,
+                inst_body               :: hlds_inst_body,
 
-                % If the inst_body is a bound(..., BoundInsts) inst, then
-                % this field lists the type constructors that BoundInsts
-                % matches.
-                inst_maybe_matching_type_ctors :: maybe(list(type_ctor)),
+                % If this inst is equivalent to a bound inst, is it
+                % specified to be applicable only to a specific
+                % type constructor? If not, is it known to be compatible
+                % with a known set of type constructors? (This means
+                % having top level function symbols that all come from
+                % the type constructor.)
+                inst_for_type           :: inst_for_type_ctor,
 
                 % The location in the source code of this inst definition.
-                inst_context    :: prog_context,
+                inst_context            :: prog_context,
 
                 % So intermod.m can tell whether to output this inst.
-                inst_status     :: inst_status
+                inst_status             :: inst_status
             ).
 
 :- type hlds_inst_body

@@ -53,13 +53,13 @@ parse_inst_defn(ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
     ( if
         Term = term.functor(term.atom("=="), [HeadTerm, BodyTerm], _)
     then
-        parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm,
+        parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm,
             Context, SeqNum, MaybeItem)
     else if
         Term = term.functor(term.atom("--->"), [HeadTerm, BodyTerm], _)
     then
         BoundBodyTerm = term.functor(term.atom("bound"), [BodyTerm], Context),
-        parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BoundBodyTerm,
+        parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BoundBodyTerm,
             Context, SeqNum, MaybeItem)
     else if
         % XXX This is for `abstract inst' declarations,
@@ -77,16 +77,44 @@ parse_inst_defn(ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
         MaybeItem = error1([Spec])
     ).
 
-:- pred parse_inst_defn_base(module_name::in, varset::in, term::in, term::in,
+:- pred parse_inst_defn_eqv(module_name::in, varset::in, term::in, term::in,
     prog_context::in, int::in, maybe1(item)::out) is det.
 
-parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
+parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeItem) :-
     ContextPieces = [words("In inst definition:")],
-    parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
+    ( if
+        HeadTerm = term.functor(term.atom("for"),
+            [NameTermPrime, ForTypeTerm], _)
+    then
+        NameTerm = NameTermPrime,
+        ( if
+            parse_name_and_arity_unqualified(ForTypeTerm,
+                TypeSymName, TypeArity)
+        then
+            MaybeForType = yes(type_ctor(TypeSymName, TypeArity)),
+            ForTypeSpecs = []
+        else
+            MaybeForType = no,
+            ForTypeTermStr = describe_error_term(VarSet, ForTypeTerm),
+            ForTypePieces = [words("Error: expected"),
+                words("type constructor name/arity, not"),
+                quote(ForTypeTermStr), suffix("."), nl],
+            ForTypeSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(ForTypeTerm),
+                    [always(ForTypePieces)])]),
+            ForTypeSpecs = [ForTypeSpec]
+        )
+    else
+        NameTerm = HeadTerm,
+        MaybeForType = no,
+        ForTypeSpecs = []
+    ),
+    parse_implicitly_qualified_sym_name_and_args(ModuleName, NameTerm,
         VarSet, ContextPieces, MaybeSymNameAndArgs),
     (
-        MaybeSymNameAndArgs = error2(Specs),
+        MaybeSymNameAndArgs = error2(SymNameAndArgSpecs),
+        Specs = SymNameAndArgSpecs ++ ForTypeSpecs,
         MaybeItem = error1(Specs)
     ;
         MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
@@ -111,13 +139,14 @@ parse_inst_defn_base(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
 
         ( if
             NameSpecs = [],
+            ForTypeSpecs = [],
             MaybeInstArgVars = ok1(InstArgVars),
             MaybeInst = ok1(Inst)
         then
             varset.coerce(VarSet, InstVarSet),
             InstDefn = eqv_inst(Inst),
             ItemInstDefn = item_inst_defn_info(SymName, InstArgVars,
-                InstDefn, InstVarSet, Context, SeqNum),
+                MaybeForType, InstDefn, InstVarSet, Context, SeqNum),
             Item = item_inst_defn(ItemInstDefn),
             MaybeItem = ok1(Item)
         else
@@ -152,9 +181,10 @@ parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
             MaybeInstArgVars = ok1(InstArgVars)
         then
             varset.coerce(VarSet, InstVarSet),
+            MaybeForType = no,
             InstDefn = abstract_inst,
             ItemInstDefn = item_inst_defn_info(SymName, InstArgVars,
-                InstDefn, InstVarSet, Context, SeqNum),
+                MaybeForType, InstDefn, InstVarSet, Context, SeqNum),
             Item = item_inst_defn(ItemInstDefn),
             MaybeItem = ok1(Item)
         else

@@ -335,7 +335,7 @@ gather_in_item(Section, Item, !Info) :-
     ;
         (
             Item = item_inst_defn(ItemInstDefn),
-            ItemInstDefn = item_inst_defn_info(Name, Params, _, _, _, _),
+            ItemInstDefn = item_inst_defn_info(Name, Params, _, _, _, _, _),
             list.length(Params, Arity),
             ItemId = item_id(inst_item, item_name(Name, Arity))
         ;
@@ -817,10 +817,12 @@ is_item_changed(Item1, Item2, Changed) :-
         )
     ;
         Item1 = item_inst_defn(ItemInstDefn1),
-        ItemInstDefn1 = item_inst_defn_info(_, Name, Args, Defn, _, _),
+        ItemInstDefn1 = item_inst_defn_info(_, Name, Args,
+            MaybeForTypeCtor, Defn, _, _),
         (
             Item2 = item_inst_defn(ItemInstDefn2),
-            ItemInstDefn2 = item_inst_defn_info(_, Name, Args, Defn, _, _)
+            ItemInstDefn2 = item_inst_defn_info(_, Name, Args,
+                MaybeForTypeCtor, Defn, _, _)
         ->
             Changed = unchanged
         ;

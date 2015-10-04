@@ -966,8 +966,8 @@ mercury_output_foreign_type_assertion(Assertion, !IO) :-
     item_inst_defn_info::in, io::di, io::uo) is det.
 
 mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
-    ItemInstDefn = item_inst_defn_info(SymName0, InstParams, InstDefn,
-        InstVarSet, Context, _SeqNum),
+    ItemInstDefn = item_inst_defn_info(SymName0, InstParams, MaybeForTypeCtor,
+        InstDefn, InstVarSet, Context, _SeqNum),
     % If the unqualified name is a builtin inst, then output the qualified
     % name. This prevents the compiler giving an error about redefining
     % builtin insts when an interface file is read back in.
@@ -994,7 +994,19 @@ mercury_output_item_inst_defn(Info, ItemInstDefn, !IO) :-
         construct_qualified_term_with_context(SymName, ArgTerms, Context,
             InstTerm),
         mercury_output_term(InstVarSet, print_name_only, InstTerm, !IO),
-        io.write_string(") == ", !IO),
+        io.write_string(") ", !IO),
+        (
+            MaybeForTypeCtor = no
+        ;
+            MaybeForTypeCtor = yes(ForTypeCtor),
+            ForTypeCtor = type_ctor(ForTypeCtorSymName, ForTypeCtorArity),
+            io.write_string("for ", !IO),
+            mercury_output_sym_name(ForTypeCtorSymName, !IO),
+            io.write_string("/", !IO),
+            io.write_int(ForTypeCtorArity, !IO),
+            io.write_string(" ", !IO)
+        ),
+        io.write_string("== ", !IO),
         mercury_output_inst(Lang, InstVarSet, Body, !IO),
         io.write_string(".\n", !IO)
     ).

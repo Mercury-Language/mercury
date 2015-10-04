@@ -219,15 +219,15 @@ build_eqv_maps_in_item(Item, !TypeEqvMap, !InstEqvMap) :-
     ( if
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(Name, Args,
-            parse_tree_eqv_type(Body), VarSet, _, _SeqNum)
+            parse_tree_eqv_type(Body), VarSet, _Context, _SeqNum)
    then
         list.length(Args, Arity),
         TypeCtor = type_ctor(Name, Arity),
         map.set(TypeCtor, eqv_type_body(VarSet, Args, Body), !TypeEqvMap)
     else if
         Item = item_inst_defn(ItemInstDefn),
-        ItemInstDefn = item_inst_defn_info(Name, Args,
-            eqv_inst(Body), VarSet, _, _SeqNum)
+        ItemInstDefn = item_inst_defn_info(Name, Args, _IFTC,
+            eqv_inst(Body), VarSet, _Context, _SeqNum)
     then
         list.length(Args, Arity),
         InstId = inst_id(Name, Arity),
@@ -335,6 +335,27 @@ replace_in_item(ModuleName, TypeEqvMap, InstEqvMap, MaybeRecord,
             ItemTypeDefn0, ItemTypeDefn, !RecompInfo, !UsedModules, Specs),
         Item = item_type_defn(ItemTypeDefn)
     ;
+        Item0 = item_inst_defn(_ItemInstDefn0),
+        % XXX IFTC
+        % We *should* do two kinds of replacements on _ItemInstDefn0.
+        %
+        % (1) If inst i1's body contains inst i2, and i2 has been defined
+        % to be equivalent to some other inst i3, then we should replace
+        % i2 with i3 in i1's body. We haven't ever done this, and it is
+        % a bit surprising that it has never been a problem so far.
+        %
+        % (2) If inst i1 is for type t2, and t2 has been defined to be
+        % equivalent to type t3, then we should record that i1 is really
+        % for t3. However, while t2 is required to be just a type_ctor
+        % and arity, t3 may be more complex. The obvious thing to do would be
+        % to record that i1 is for t3's top type_ctor and its arity. Whether
+        % that is good enough depends on what *exactly* we will do with the
+        % "inst for type ctor" information. We don't yet know the answer
+        % to that question.
+        % XXX This should allow us to fix Mantis bug #89.
+        Item = Item0,
+        Specs = []
+    ;
         Item0 = item_pred_decl(ItemPredDecl0),
         replace_in_pred_decl_info(ModuleName, MaybeRecord,
             TypeEqvMap, InstEqvMap,
@@ -378,7 +399,6 @@ replace_in_item(ModuleName, TypeEqvMap, InstEqvMap, MaybeRecord,
         Specs = []
     ;
         ( Item0 = item_clause(_)
-        ; Item0 = item_inst_defn(_)
         ; Item0 = item_promise(_)
         ; Item0 = item_initialise(_)
         ; Item0 = item_finalise(_)
@@ -406,14 +426,14 @@ replace_in_type_defn_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         VarSet0, VarSet, UsedTypeCtors0, UsedTypeCtors, !UsedModules),
     (
         ContainsCirc = yes,
-        ( TypeDefn0 = parse_tree_eqv_type(_) ->
+        ( if TypeDefn0 = parse_tree_eqv_type(_) then
             Pieces = [words("Error: circular equivalence type"),
                 sym_name_and_arity(SymName / length(ArgTypeVars)),
                 suffix("."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_expand_types, [Msg]),
             Specs = [Spec]
-        ;
+        else
             unexpected($module, $pred, "invalid item")
         )
     ;
@@ -536,13 +556,13 @@ replace_in_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
     InstanceInfo0 = item_instance_info(ClassName, Types0, OriginalTypes,
         Constraints0, InstanceBody, VarSet0, ContainingModuleName,
         Context, SeqNum),
-    (
+    ( if
         ( !.RecompInfo = no
         ; ContainingModuleName = ModuleName
         )
-    ->
+    then
         UsedTypeCtors0 = no
-    ;
+    else
         UsedTypeCtors0 = yes(eqv_expanded_item_set(ModuleName, set.init))
     ),
     replace_in_prog_constraint_list(MaybeRecord, TypeEqvMap,

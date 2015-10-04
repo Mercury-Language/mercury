@@ -400,6 +400,7 @@
                 % a definition of an inst.
                 id_inst_name                    :: sym_name,
                 id_inst_args                    :: list(inst_var),
+                id_maybe_for_type               :: maybe(type_ctor),
                 id_inst_defn                    :: inst_defn,
                 id_varset                       :: inst_varset,
                 id_context                      :: prog_context,

@@ -17,7 +17,7 @@
     ;       arg
     ;       res
     ;       forall
-    ;       for
+    ;       (for)
     ;       (all)
     ;       such
     ;       that
