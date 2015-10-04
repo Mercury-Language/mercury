@@ -7,6 +7,8 @@ This is a bug-fix release.
   reference array.sort_fix_2014 to ensure that you using the fixed version.
 * Fix the handling of nondet code by the auto-parallelisation analysis in
   mdprof_create_feedback.  (Bug #364)
+* Fix string.between_codepoints so that the clamping of start/end points
+  works as documented.
 
 NEWS for Mercury 14.01.1
 ------------------------

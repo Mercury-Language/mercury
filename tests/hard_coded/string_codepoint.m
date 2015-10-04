@@ -12,6 +12,7 @@
 
 :- implementation.
 
+:- import_module int.
 :- import_module list.
 :- import_module string.
 
@@ -100,8 +101,8 @@ main(!IO) :-
     io.nl(!IO),
 
     io.write_string("\nbetween_codepoints:\n", !IO),
-    string.between_codepoints(Str, 2, 4, Sub),
-    io.write_string(Sub, !IO),
+    Range = -1 .. (NumCodePoints + 1),
+    foldl(test_between_codepoints(Str, Range), Range, !IO),
     io.nl(!IO).
 
 :- pred test_codepoint_offset(string::in, int::in, io::di, io::uo) is det.
@@ -168,6 +169,46 @@ test_split_by_codepoint(Str, Pos, !IO) :-
     string.split_by_codepoint(Str, Pos, L, R),
     io.format("split_by_codepoint(Str, %d, ""%s"", ""%s"")\n",
         [i(Pos), s(L), s(R)], !IO).
+
+:- pred test_between_codepoints(string::in, list(int)::in, int::in,
+    io::di, io::uo) is det.
+
+test_between_codepoints(Str, EndRange, Start, !IO) :-
+    foldl(test_between_codepoints_2(Str, Start), EndRange, !IO).
+
+:- pred test_between_codepoints_2(string::in, int::in, int::in,
+    io::di, io::uo) is det.
+
+test_between_codepoints_2(Str, Start, End, !IO) :-
+    string.between_codepoints(Str, Start, End, SubString),
+    io.format("between_codepoints(Str, %d, %d, ""%s"")\n",
+        [i(Start), i(End), s(SubString)], !IO),
+
+    slow_between_codepoints(Str, Start, End, SlowSubString),
+    ( SubString = SlowSubString ->
+        true
+    ;
+        io.write_string("slow_between_codepoints returned: ", !IO),
+        io.write_string(SlowSubString, !IO),
+        io.nl(!IO)
+    ).
+
+:- pred slow_between_codepoints(string::in, int::in, int::in, string::out)
+    is det.
+
+slow_between_codepoints(Str, Start, End, SubString) :-
+    Chars = to_char_list(Str),
+    NumCodePoints = length(Chars),
+    ClampStart = clamp(0, Start, NumCodePoints),
+    ClampEnd = clamp(ClampStart, End, NumCodePoints),
+    ClampLen = ClampEnd - ClampStart,
+    det_split_list(ClampStart, Chars, _, CharsRight),
+    det_split_list(ClampLen, CharsRight, CharsMid, _),
+    SubString = from_char_list(CharsMid).
+
+:- func clamp(int, int, int) = int.
+
+clamp(Min, X, Max) = max(Min, min(X, Max)).
 
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=8 sts=4 sw=4 et
