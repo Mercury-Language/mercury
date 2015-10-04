@@ -4256,12 +4256,16 @@ string.between_codepoints(Str, Start, End) = SubString :-
     string.between_codepoints(Str, Start, End, SubString).
 
 string.between_codepoints(Str, Start, End, SubString) :-
-    ( string.codepoint_offset(Str, Start, StartOffset0) ->
+    ( Start < 0 ->
+        StartOffset = 0
+    ; string.codepoint_offset(Str, Start, StartOffset0) ->
         StartOffset = StartOffset0
     ;
-        StartOffset = 0
+        StartOffset = string.length(Str)
     ),
-    ( string.codepoint_offset(Str, End, EndOffset0) ->
+    ( End =< Start ->
+        EndOffset = StartOffset
+    ; string.codepoint_offset(Str, End, EndOffset0) ->
         EndOffset = EndOffset0
     ;
         EndOffset = string.length(Str)
