@@ -176,18 +176,18 @@ find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
 
 find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
     Ctor = ctor(_ExistQVars, _Constraints, SymName, Args, Arity, _),
-    ( Arity > 0 ->
+    ( if Arity > 0 then
         find_and_count_nonrec_args(Args, TypeCtor, Params,
             NumNonRec, ArgInfos0),
-        ( NumNonRec = 0 ->
+        ( if NumNonRec = 0 then
             Weight = 1,
             list.duplicate(Arity, yes, ArgInfos)
-        ;
+        else
             Weight = NumNonRec,
             ArgInfos = ArgInfos0
         ),
         WeightInfo = weight(Weight, ArgInfos)
-    ;
+    else
         WeightInfo = weight(0, [])
     ),
     ConsId = cons(SymName, Arity, TypeCtor),
@@ -207,10 +207,10 @@ find_weights_for_tuple(Arity, weight(Weight, ArgInfos)) :-
 find_and_count_nonrec_args([], _, _, 0, []).
 find_and_count_nonrec_args([Arg | Args], Id, Params, NonRecArgs, ArgInfo) :-
     find_and_count_nonrec_args(Args, Id, Params, NonRecArgs0, ArgInfo0),
-    ( is_arg_recursive(Arg, Id, Params) ->
+    ( if is_arg_recursive(Arg, Id, Params) then
         NonRecArgs = NonRecArgs0,
         ArgInfo = [yes | ArgInfo0]
-    ;
+    else
         NonRecArgs = NonRecArgs0 + 1,
         ArgInfo = [no | ArgInfo0]
     ).
@@ -229,12 +229,12 @@ is_arg_recursive(Arg, TypeCtor, Params) :-
     weight_info::out) is semidet.
 
 search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) :-
-    ( map.search(WeightMap, TypeCtor - ConsId, WeightInfo0) ->
+    ( if map.search(WeightMap, TypeCtor - ConsId, WeightInfo0) then
         WeightInfo = WeightInfo0
-    ; type_ctor_is_tuple(TypeCtor) ->
+    else if type_ctor_is_tuple(TypeCtor) then
         TypeCtor = type_ctor(_, Arity),
         find_weights_for_tuple(Arity, WeightInfo)
-    ;
+    else
         fail
     ).
 
@@ -255,50 +255,50 @@ functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
         !Args, !Modes) :-
     (
         FunctorInfo = simple,
-        (
+        ( if
             ConsId = cons(_, Arity, _),
             Arity \= 0
-        ->
+        then
             Gamma = 1
-        ;
+        else if
             ConsId = ground_term_const(ConstNum, _)
-        ->
+        then
             module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
             const_struct_count_cells(ConstStructDb, ConstNum, 0, Gamma)
-        ;
+        else
             Gamma = 0
         )
     ;
         FunctorInfo = total,
-        ( ConsId = cons(_, Arity, _) ->
+        ( if ConsId = cons(_, Arity, _) then
             Gamma = Arity
-        ; ConsId = ground_term_const(ConstNum, _) ->
+        else if ConsId = ground_term_const(ConstNum, _) then
             module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
             const_struct_count_cell_arities(ConstStructDb, ConstNum, 0, Gamma)
-        ;
+        else
             Gamma = 0
         )
     ;
         FunctorInfo = use_map(WeightMap),
-        ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+        ( if search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) then
             WeightInfo = weight(Gamma, _)
-        ; ConsId = ground_term_const(ConstNum, _) ->
+        else if ConsId = ground_term_const(ConstNum, _) then
             module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
             const_struct_count_cell_weights(ConstStructDb, WeightMap,
                 ConstNum, 0, Gamma)
-        ;
+        else
             Gamma = 0
         )
     ;
         FunctorInfo = use_map_and_args(WeightMap),
-        ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+        ( if search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) then
             WeightInfo = weight(Gamma, UseArgList),
-            ( functor_norm_filter_args(UseArgList, !Args, !Modes) ->
+            ( if functor_norm_filter_args(UseArgList, !Args, !Modes) then
                 true
-            ;
+            else
                 unexpected($module, $pred, "unmatched lists")
             )
-        ; ConsId = ground_term_const(ConstNum, _) ->
+        else if ConsId = ground_term_const(ConstNum, _) then
             % XXX Since ground_term_consts have no argument variables,
             % we cannot filter those argument variables. I (zs) *think* that
             % returning the !.Args and !.Modes (which should both be empty
@@ -306,7 +306,7 @@ functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
             module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
             const_struct_count_cell_filtered_weights(ConstStructDb, WeightMap,
                 ConstNum, 0, Gamma)
-        ;
+        else
             Gamma = 0
         )
     ).
@@ -379,12 +379,12 @@ const_struct_count_cell_weights(ConstStructDb, WeightMap, ConstNum, !Gamma) :-
     lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
     ConstStruct = const_struct(ConsId, Args, Type, _),
     type_to_ctor_det(Type, TypeCtor),
-    ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+    ( if search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) then
         WeightInfo = weight(ConsIdGamma, _),
         !:Gamma = !.Gamma + ConsIdGamma,
         const_struct_count_cell_weights_args(ConstStructDb, WeightMap,
             Args, !Gamma)
-    ;
+    else
         true
     ).
 
@@ -397,10 +397,10 @@ const_struct_count_cell_weights_args(ConstStructDb, WeightMap,
     (
         Arg = csa_constant(ConsId, Type),
         type_to_ctor_det(Type, TypeCtor),
-        ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+        ( if search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) then
             WeightInfo = weight(ConsIdGamma, _),
             !:Gamma = !.Gamma + ConsIdGamma
-        ;
+        else
             true
         )
     ;
@@ -419,12 +419,12 @@ const_struct_count_cell_filtered_weights(ConstStructDb, WeightMap,
     lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
     ConstStruct = const_struct(ConsId, Args, Type, _),
     type_to_ctor_det(Type, TypeCtor),
-    ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+    ( if search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) then
         WeightInfo = weight(ConsIdGamma, UseArgs),
         !:Gamma = !.Gamma + ConsIdGamma,
         const_struct_count_cell_filtered_weights_args(ConstStructDb, WeightMap,
             Args, UseArgs, !Gamma)
-    ;
+    else
         true
     ).
 
@@ -449,10 +449,12 @@ const_struct_count_cell_filtered_weights_args(ConstStructDb, WeightMap,
         (
             Arg = csa_constant(ConsId, Type),
             type_to_ctor_det(Type, TypeCtor),
-            ( search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) ->
+            ( if
+                search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo)
+            then
                 WeightInfo = weight(ConsIdGamma, _),
                 !:Gamma = !.Gamma + ConsIdGamma
-            ;
+            else
                 true
             )
         ;
@@ -475,15 +477,17 @@ functor_lower_bound(_ModuleInfo, FunctorInfo, TypeCtor, ConsId) = Weight :-
         Weight = ( if ConsId = cons(_, Arity, _) then Arity else 0 )
     ;
         FunctorInfo = use_map(WeightMap),
-        ( if    search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo)
-          then  WeightInfo = weight(Weight, _)
-          else  Weight = 0
+        ( if search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) then
+            WeightInfo = weight(Weight, _)
+        else
+            Weight = 0
         )
     ;
         FunctorInfo = use_map_and_args(WeightMap),
-        ( if    search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo)
-          then  WeightInfo = weight(Weight, _)
-          else  Weight = 0
+        ( if search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) then
+            WeightInfo = weight(Weight, _)
+        else
+            Weight = 0
         )
     ).
 

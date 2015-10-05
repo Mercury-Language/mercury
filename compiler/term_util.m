@@ -226,13 +226,13 @@ partition_call_args_2(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
         InputArgs, OutputArgs) :-
     partition_call_args_2(ModuleInfo, ArgModes, Args,
         InputArgs1, OutputArgs1),
-    ( mode_is_input(ModuleInfo, ArgMode) ->
+    ( if mode_is_input(ModuleInfo, ArgMode) then
         InputArgs = [Arg | InputArgs1],
         OutputArgs = OutputArgs1
-    ; mode_is_output(ModuleInfo, ArgMode) ->
+    else if mode_is_output(ModuleInfo, ArgMode) then
         InputArgs = InputArgs1,
         OutputArgs = [Arg | OutputArgs1]
-    ;
+    else
         InputArgs = InputArgs1,
         OutputArgs = OutputArgs1
     ).
@@ -240,7 +240,7 @@ partition_call_args_2(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
     % For these next two predicates (split_unification_vars and
     % partition_call_args) there is a problem of what needs to be done for
     % partially instantiated data structures. The correct answer is that the
-    % system shoud use a norm such that the size of the uninstantiated parts
+    % system should use a norm such that the size of the uninstantiated parts
     % of a partially instantiated structure have no effect on the size of the
     % data structure according to the norm. For example when finding the size
     % of a list-skeleton, list-length norm should be used. Therefore, the
@@ -307,7 +307,7 @@ remove_unused_args(Vars, [_X | _Xs], [], Vars) :-
     unexpected($module, $pred, "unmatched variables").
 remove_unused_args(Vars0, [ Arg | Args ], [ UsedVar | UsedVars ], Vars) :-
     (
-        % The variable is used, so leave it
+        % The variable is used, so leave it.
         UsedVar = yes,
         remove_unused_args(Vars0, Args, UsedVars, Vars)
     ;

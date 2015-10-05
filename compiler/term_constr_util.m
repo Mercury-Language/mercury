@@ -64,8 +64,8 @@
     size_var_map::out) is det.
 
     % Given a list of prog_vars, allocate one size_var per prog_var.
-    % Allocate the size_vars from the provided size_varset.  Return
-    % a map between prog_vars and size_vars.
+    % Allocate the size_vars from the provided size_varset.
+    % Return a map between prog_vars and size_vars.
     %
 :- pred make_size_var_map(list(prog_var)::in,
     size_varset::in, size_varset::out, size_var_map::out) is det.
@@ -93,7 +93,7 @@
 
     % create_var_substition(FromVars, ToVars) = Substitution.
     % Create a mapping that maps elements of `FromVars' to their
-    % corresponding elements in `ToVars'.  This mapping is many-one.
+    % corresponding elements in `ToVars'. This mapping is many-one.
     % An exception is thrown if `FromVars' contains any duplicate elements.
     %
 :- func create_var_substitution(size_vars, size_vars) = var_substitution.
@@ -119,7 +119,7 @@
 %-----------------------------------------------------------------------------%
 
     % substitute_size_vars: Takes a list of constraints and a
-    % var_substitution.  Returns the constraints with the specified
+    % var_substitution. Returns the constraints with the specified
     % substitutions made.
     %
 :- func substitute_size_vars(constraints, map(size_var, size_var))
@@ -175,7 +175,7 @@
     %   !ProcTable).
     %
     % This predicate sets the arg_size_info property of the given
-    % list of procedures.  If Override is yes, then this predicate
+    % list of procedures. If Override is yes, then this predicate
     % overrides any existing arg_size information. If Override is
     % no, then it leaves the proc_info of a procedure unchanged
     % unless the proc_info had no arg_size information (i.e. the
@@ -329,14 +329,15 @@ create_var_substitution_2([Arg | Args], [HeadVar | HeadVars],  !Subst) :-
 make_arg_constraints([], _) = [].
 make_arg_constraints([Var | Vars], Zeros) = Constraints :-
     Constraints0 = make_arg_constraints(Vars, Zeros),
-    ( set.member(Var, Zeros) ->
+    ( if set.member(Var, Zeros) then
         Constraints = Constraints0
-    ;
+    else
         NewConstraint = construct_constraint([Var - one], lp_gt_eq, zero),
         Constraints = [NewConstraint | Constraints0]
     ).
 
-is_zero_size_var(Zeros, SizeVar) :- set.member(SizeVar, Zeros).
+is_zero_size_var(Zeros, SizeVar) :-
+    set.member(SizeVar, Zeros).
 
 %-----------------------------------------------------------------------------%
 %
@@ -420,15 +421,15 @@ change_procs_constr_termination_info([ProcId | ProcIds], Override, Termination,
         !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_get_termination2_info(ProcInfo0, Term2Info0),
-    (
+    ( if
         ( Override = yes
         ; term2_info_get_term_status(Term2Info0) = no
         )
-    ->
+    then
         term2_info_set_term_status(yes(Termination), Term2Info0, Term2Info),
         proc_info_set_termination2_info(Term2Info, ProcInfo0, ProcInfo),
         map.det_update(ProcId, ProcInfo, !ProcTable)
-    ;
+    else
         true
     ),
     change_procs_constr_termination_info(ProcIds, Override, Termination,
@@ -439,15 +440,15 @@ change_procs_constr_arg_size_info([ProcId | ProcIds], Override, ArgSize,
         !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_get_termination2_info(ProcInfo0, Term2Info0),
-    (
+    ( if
         ( Override = yes
         ; term2_info_get_success_constrs(Term2Info0) = no
         )
-    ->
+    then
         term2_info_set_success_constrs(yes(ArgSize), Term2Info0, Term2Info),
         proc_info_set_termination2_info(Term2Info, ProcInfo0, ProcInfo),
         map.det_update(ProcId, ProcInfo, !ProcTable)
-    ;
+    else
         true
     ),
     change_procs_constr_arg_size_info(ProcIds, Override, ArgSize, !ProcTable).

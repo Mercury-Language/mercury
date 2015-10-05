@@ -158,12 +158,12 @@ saved_vars_in_goal(Goal0, Goal, !SlotInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             % Moving unifications around inside these scopes is
             % (a) counterproductive, and (b) incorrect, since it would
             % invalidate the invariants required of such scopes.
             SubGoal = SubGoal0
-        ;
+        else
             saved_vars_in_goal(SubGoal0, SubGoal, !SlotInfo)
         ),
         GoalExpr = scope(Reason, SubGoal),
@@ -198,7 +198,7 @@ saved_vars_in_goal(Goal0, Goal, !SlotInfo) :-
 
 saved_vars_in_conj([], [], _, !SlotInfo).
 saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
-    (
+    ( if
         Goal0 = hlds_goal(unify(_, _, _, Unif, _), GoalInfo),
         Unif = construct(Var, _, [], _, _, _, _),
         Features = goal_info_get_features(GoalInfo),
@@ -209,17 +209,17 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
                 ok_to_duplicate(Feature) = yes
             )
         ),
-        \+ slot_info_do_not_duplicate_var(!.SlotInfo, Var),
+        not slot_info_do_not_duplicate_var(!.SlotInfo, Var),
         skip_constant_constructs(Goals0, Constants, OtherGoals),
         OtherGoals = [First | _Rest],
         can_push(Var, First) = yes
-    ->
+    then
         set_of_var.is_member(NonLocals, Var, IsNonLocal),
         saved_vars_delay_goal(OtherGoals, Goals1, Goal0, Var, IsNonLocal,
             !SlotInfo),
         list.append(Constants, Goals1, Goals2),
         saved_vars_in_conj(Goals2, Goals, NonLocals, !SlotInfo)
-    ;
+    else
         saved_vars_in_goal(Goal0, Goal1, !SlotInfo),
         saved_vars_in_conj(Goals0, Goals1, NonLocals, !SlotInfo),
         Goals = [Goal1 | Goals1]
@@ -263,13 +263,13 @@ ok_to_duplicate(feature_do_not_tailcall) = no.
 
 skip_constant_constructs([], [], []).
 skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
-    (
+    ( if
         Goal0 = hlds_goal(unify(_, _, _, Unif, _), _),
         Unif = construct(_, _, [], _, _, _, _)
-    ->
+    then
         skip_constant_constructs(Goals0, Constants1, Others),
         Constants = [Goal0 | Constants1]
-    ;
+    else
         Constants = [],
         Others = [Goal0 | Goals0]
     ).
@@ -288,7 +288,7 @@ skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
 can_push(Var, Goal) = CanPush :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    ( set_of_var.member(NonLocals, Var) ->
+    ( if set_of_var.member(NonLocals, Var) then
         (
             ( GoalExpr = if_then_else(_, _, _, _)
             ; GoalExpr = negation(_)
@@ -333,9 +333,9 @@ can_push(Var, Goal) = CanPush :-
             )
         ;
             GoalExpr = switch(SwitchVar, _, _),
-            ( Var = SwitchVar ->
+            ( if Var = SwitchVar then
                 CanPush = no
-            ;
+            else
                 CanPush = yes
             )
         ;
@@ -343,7 +343,7 @@ can_push(Var, Goal) = CanPush :-
             % These should have been expanded out by now.
             unexpected($module, $pred, "shorthand")
         )
-    ;
+    else
         CanPush = yes
     ).
 
@@ -377,7 +377,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         !SlotInfo) :-
     Goal0 = hlds_goal(Goal0Expr, Goal0Info),
     Goal0NonLocals = goal_info_get_nonlocals(Goal0Info),
-    ( set_of_var.member(Goal0NonLocals, Var) ->
+    ( if set_of_var.member(Goal0NonLocals, Var) then
         (
             Goal0Expr = unify(_, _, _, _, _),
             saved_vars_rename_var(Var, _NewVar, Subst, !SlotInfo),
@@ -458,11 +458,11 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             Goals = [Goal1 | Goals1]
         ;
             Goal0Expr = switch(SwitchVar, CF, Cases0),
-            ( SwitchVar = Var ->
+            ( if SwitchVar = Var then
                 saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                     IsNonLocal, !SlotInfo),
                 Goals = [Construct, Goal0 | Goals1]
-            ;
+            else
                 push_into_cases_rename(Cases0, Cases, Construct, Var,
                     !SlotInfo),
                 Goal1 = hlds_goal(switch(SwitchVar, CF, Cases), Goal0Info),
@@ -484,7 +484,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
             % These should have been expanded out by now.
             unexpected($module, $pred, "shorthand")
         )
-    ;
+    else
         saved_vars_delay_goal(Goals0, Goals1, Construct, Var, IsNonLocal,
             !SlotInfo),
         Goals = [Goal0 | Goals1]
@@ -514,12 +514,12 @@ push_into_goal(Goal0, Goal, Construct, Var, !SlotInfo) :-
 push_into_goal_rename(Goal0, Goal, Construct, Var, !SlotInfo) :-
     Goal0 = hlds_goal(_, GoalInfo0),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
-    ( set_of_var.member(NonLocals, Var) ->
+    ( if set_of_var.member(NonLocals, Var) then
         saved_vars_rename_var(Var, NewVar, Subst, !SlotInfo),
         rename_some_vars_in_goal(Subst, Construct, NewConstruct),
         rename_some_vars_in_goal(Subst, Goal0, Goal1),
         push_into_goal(Goal1, Goal, NewConstruct, NewVar, !SlotInfo)
-    ;
+    else
         saved_vars_in_goal(Goal0, Goal, !SlotInfo)
     ).
 

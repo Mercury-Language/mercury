@@ -210,9 +210,9 @@ convert_trace_level("default", yes, no,  yes(deep)).
 convert_trace_level("default", _,   yes, yes(decl_rep)).
 
 eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
-    ( TraceLevel = none ->
+    ( if TraceLevel = none then
         EffTraceLevel = none
-    ;
+    else
         pred_info_get_origin(PredInfo, Origin),
         (
             Origin = origin_special_pred(SpecialPred, _),
@@ -277,11 +277,11 @@ eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
 usual_eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
         = EffTraceLevel :-
     pred_info_get_status(PredInfo, PredStatus),
-    (
+    ( if
         TraceLevel = shallow,
         pred_status_is_exported(PredStatus) = no,
         proc_info_get_is_address_taken(ProcInfo, address_is_not_taken)
-    ->
+    then
         proc_info_get_has_user_event(ProcInfo, ProcHasUserEvent),
         (
             ProcHasUserEvent = has_user_event,
@@ -297,7 +297,7 @@ usual_eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel)
                 EffTraceLevel = none
             )
         )
-    ;
+    else
         EffTraceLevel = TraceLevel
     ).
 
@@ -401,32 +401,32 @@ trace_level_allows_tail_rec(deep) = yes.
 trace_level_allows_tail_rec(decl_rep) = no.
 
 trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
-    (
+    ( if
         trace_level_has_return_info(TraceLevel) = yes,
-        \+ set.member(suppress_return_info, TraceSuppressItems)
-    ->
+        not set.member(suppress_return_info, TraceSuppressItems)
+    then
         Need = yes
-    ;
+    else
         Need = no
     ).
 
 trace_needs_all_var_names(TraceLevel, TraceSuppressItems) = Need :-
-    (
+    ( if
         trace_level_has_all_var_names(TraceLevel) = yes,
-        \+ set.member(suppress_all_var_names, TraceSuppressItems)
-    ->
+        not set.member(suppress_all_var_names, TraceSuppressItems)
+    then
         Need = yes
-    ;
+    else
         Need = no
     ).
 
 trace_needs_proc_body_reps(TraceLevel, TraceSuppressItems) = Need :-
-    (
+    ( if
         trace_level_has_proc_body_reps(TraceLevel) = yes,
-        \+ set.member(suppress_proc_body_reps, TraceSuppressItems)
-    ->
+        not set.member(suppress_proc_body_reps, TraceSuppressItems)
+    then
         Need = yes
-    ;
+    else
         Need = no
     ).
 
@@ -523,13 +523,13 @@ convert_other_name("proc_body_reps") = suppress_proc_body_reps.
     is semidet.
 
 convert_item_name(String, Names) :-
-    ( convert_port_name(String) = PortName ->
+    ( if convert_port_name(String) = PortName then
         Names = [suppress_port(PortName)]
-    ; convert_port_class_name(String) = PortNames ->
+    else if convert_port_class_name(String) = PortNames then
         list.map(wrap_port, PortNames, Names)
-    ; convert_other_name(String) = OtherName ->
+    else if convert_other_name(String) = OtherName then
         Names = [OtherName]
-    ;
+    else
         fail
     ).
 
@@ -605,16 +605,16 @@ trace_level_allows_port_suppression(deep) = yes.
 trace_level_allows_port_suppression(decl_rep) = no.
 
 trace_needs_port(TraceLevel, TraceSuppressItems, Port) = NeedsPort :-
-    (
+    ( if
         trace_port_category(Port) = Category,
         list.member(Category, trace_level_port_categories(TraceLevel)),
-        \+ (
+        not (
             trace_level_allows_port_suppression(TraceLevel) = yes,
             set.member(suppress_port(Port), TraceSuppressItems)
         )
-    ->
+    then
         NeedsPort = yes
-    ;
+    else
         NeedsPort = no
     ).
 

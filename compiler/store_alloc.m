@@ -96,12 +96,13 @@ allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
     initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
     globals.get_trace_level(Globals, TraceLevel),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    NeedFailVars = eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo,
+        !.ProcInfo, TraceLevel),
     (
-        eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo, !.ProcInfo,
-            TraceLevel) = yes
-    ->
+        NeedFailVars = yes,
         trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars)
     ;
+        NeedFailVars = no,
         ResumeVars = set_of_var.init
     ),
     build_input_arg_list(!.ProcInfo, InputArgLvals),
@@ -171,9 +172,9 @@ store_alloc_in_goal(Goal0, Goal, Liveness0, Liveness, !LastLocns, ResumeVars0,
         % That is why we use Liveness4 instead of Liveness here.
         set_of_var.union(Liveness4, ResumeVars0, MappedSet),
         MappedVars = set_of_var.to_sorted_list(MappedSet),
-        ( goal_info_maybe_get_store_map(GoalInfo0, StoreMapPrime) ->
+        ( if goal_info_maybe_get_store_map(GoalInfo0, StoreMapPrime) then
             AdvisoryStoreMap = StoreMapPrime
-        ;
+        else
             AdvisoryStoreMap = map.init
         ),
         store_alloc_allocate_storage(MappedVars, StoreAllocInfo,
@@ -258,10 +259,12 @@ store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
         BranchedGoal = is_not_branched_goal
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+        ( if
+            Reason = from_ground_term(TermVar, from_ground_term_construct)
+        then
             GoalExpr = GoalExpr0,
             set_of_var.insert(TermVar, !Liveness)
-        ;
+        else
             store_alloc_in_goal(SubGoal0, SubGoal, !Liveness, !LastLocns,
                 ResumeVars0, StoreAllocInfo),
             GoalExpr = scope(Reason, SubGoal)
@@ -290,16 +293,16 @@ store_alloc_in_goal_2(GoalExpr0, GoalExpr, !Liveness, !LastLocns,
 store_alloc_in_conj([], [], !Liveness, !LastLocns, _, _).
 store_alloc_in_conj([Goal0 | Goals0], [Goal | Goals], !Liveness, !LastLocns,
         ResumeVars0, StoreAllocInfo) :-
-    (
+    ( if
         % XXX should be threading the instmap.
         Goal0 = hlds_goal(_, GoalInfo),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_is_unreachable(InstMapDelta)
-    ->
+    then
         store_alloc_in_goal(Goal0, Goal, !Liveness, !LastLocns,
             ResumeVars0, StoreAllocInfo),
         Goals = Goals0
-    ;
+    else
         store_alloc_in_goal(Goal0, Goal, !Liveness, !LastLocns,
             ResumeVars0, StoreAllocInfo),
         store_alloc_in_conj(Goals0, Goals, !Liveness, !LastLocns,
@@ -416,9 +419,9 @@ store_alloc_allocate_storage(LiveVars, StoreAllocInfo, FollowVars,
 
 store_alloc_remove_nonlive([], _LiveVars, !StoreMap).
 store_alloc_remove_nonlive([Var | Vars], LiveVars, !StoreMap) :-
-    ( list.member(Var, LiveVars) ->
+    ( if list.member(Var, LiveVars) then
         true
-    ;
+    else
         map.delete(Var, !StoreMap)
     ),
     store_alloc_remove_nonlive(Vars, LiveVars, !StoreMap).
@@ -433,20 +436,20 @@ store_alloc_handle_conflicts_and_nonreal(_, [],
 store_alloc_handle_conflicts_and_nonreal(StoreAllocInfo, [Var | Vars],
         !N, !SeenLocns, !StoreMap) :-
     map.lookup(!.StoreMap, Var, Locn),
-    (
+    ( if
         ( Locn = any_reg
         ; set.member(Locn, !.SeenLocns)
         )
-    ->
-        ( Locn = abs_reg(RegTypePrime, _) ->
+    then
+        ( if Locn = abs_reg(RegTypePrime, _) then
             RegType = RegTypePrime
-        ;
+        else
             reg_type_for_var(StoreAllocInfo, Var, RegType)
         ),
         next_free_reg(RegType, !.SeenLocns, !N),
         FinalLocn = abs_reg(RegType, !.N),
         map.det_update(Var, FinalLocn, !StoreMap)
-    ;
+    else
         FinalLocn = Locn
     ),
     set.insert(FinalLocn, !SeenLocns),
@@ -459,23 +462,23 @@ store_alloc_handle_conflicts_and_nonreal(StoreAllocInfo, [Var | Vars],
 store_alloc_allocate_extras(_, [], _, _, !StoreMap).
 store_alloc_allocate_extras(StoreAllocInfo, [Var | Vars], !.N, !.SeenLocns,
         !StoreMap) :-
-    ( map.contains(!.StoreMap, Var) ->
+    ( if map.contains(!.StoreMap, Var) then
         % We have already allocated a slot for this variable.
         true
-    ;
+    else
         % We have not yet allocated a slot for this variable,
         % which means it is not in the follow vars (if any).
         StoreAllocInfo = store_alloc_info(StackSlots, _, _),
-        (
+        ( if
             map.search(StackSlots, Var, StackSlot),
             StackSlotLocn = stack_slot_to_abs_locn(StackSlot),
-            \+ set.member(StackSlotLocn, !.SeenLocns)
+            not set.member(StackSlotLocn, !.SeenLocns)
             % Follow_vars was run, so the only reason why a var would not be
             % in the follow_vars set is if it was supposed to be in its stack
             % slot.
-        ->
+        then
             Locn = StackSlotLocn
-        ;
+        else
             reg_type_for_var(StoreAllocInfo, Var, RegType),
             next_free_reg(RegType, !.SeenLocns, !N),
             Locn = abs_reg(RegType, !.N)
@@ -497,9 +500,9 @@ reg_type_for_var(StoreAllocInfo, Var, RegType) :-
     ;
         FloatRegType = reg_f,
         lookup_var_type(VarTypes, Var, VarType),
-        ( VarType = float_type ->
+        ( if VarType = float_type then
             RegType = reg_f
-        ;
+        else
             RegType = reg_r
         )
     ).
@@ -510,10 +513,10 @@ reg_type_for_var(StoreAllocInfo, Var, RegType) :-
     is det.
 
 next_free_reg(RegType, Values, N0, N) :-
-    ( set.member(abs_reg(RegType, N0), Values) ->
+    ( if set.member(abs_reg(RegType, N0), Values) then
         N1 = N0 + 1,
         next_free_reg(RegType, Values, N1, N)
-    ;
+    else
         N = N0
     ).
 

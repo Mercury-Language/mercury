@@ -137,7 +137,7 @@
 :- type opt_stack_alloc
     --->    opt_stack_alloc(
                 % XXX: this is an over-simplification, it gives stack slots to
-                % variables that may not need them.  For example, vars local to
+                % variables that may not need them. For example, vars local to
                 % loop control scopes and parallel conjunctions, And vars used
                 % after a loop control scope but before a recursive call don't
                 % need to be placed here.
@@ -308,18 +308,18 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     StackOptInfo0 = stack_opt_info(StackOptParams, InsertMap0, []),
     build_interval_info_in_goal(Goal0, IntervalInfo0, IntervalInfo,
         StackOptInfo0, StackOptInfo),
-    ( DebugStackOpt = PredIdInt ->
+    ( if DebugStackOpt = PredIdInt then
         trace [io(!IO)] (
             dump_interval_info(IntervalInfo, !IO),
             dump_stack_opt_info(StackOptInfo, !IO)
         )
-    ;
+    else
         true
     ),
     InsertMap = StackOptInfo ^ soi_left_anchor_inserts,
-    ( map.is_empty(InsertMap) ->
+    ( if map.is_empty(InsertMap) then
         Changed = no
-    ;
+    else
         record_decisions_in_goal(Goal0, Goal1, VarSet0, VarSet,
             VarTypes0, VarTypes, map.init, RenameMap,
             InsertMap, yes(feature_stack_opt)),
@@ -420,37 +420,37 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
     set_of_var.intersect(FieldVars, FlushedLater, FlushedLaterFieldVars),
     set_of_var.difference(FlushedLaterFieldVars, NonCandidateVars,
         CandidateArgVars0),
-    (
+    ( if
         set_of_var.is_empty(CandidateArgVars0)
-    ->
+    then
         true
-    ;
+    else if
         ConsId = cons(_Name, _Arity, _TypeCtor),
         IntParams = !.IntervalInfo ^ ii_interval_params,
         VarTypes = IntParams ^ ip_var_types,
         lookup_var_type(VarTypes, CellVar, Type),
-        (
+        ( if
             type_is_tuple(Type, _)
-        ->
+        then
             FreeOfCost = no
-        ;
+        else if
             type_to_ctor(Type, TypeCtor),
             ModuleInfo = IntParams ^ ip_module_info,
             module_info_get_type_table(ModuleInfo, TypeTable),
             lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             ConsTable = TypeBody ^ du_type_cons_tag_values
-        ->
+        then
             map.lookup(ConsTable, ConsId, ConsTag),
-            ( ConsTag = no_tag ->
+            ( if ConsTag = no_tag then
                 FreeOfCost = yes
-            ;
+            else
                 FreeOfCost = no
             )
-        ;
+        else
             fail
         )
-    ->
+    then
         set_of_var.insert(CellVar, FieldVars, RelevantVars),
         find_all_branches_from_cur_interval(RelevantVars, MatchInfo,
             !.IntervalInfo, !.StackOptInfo),
@@ -472,21 +472,21 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
                     CandidateArgVars),
                 (
                     OnStack = yes,
-                    ( set_of_var.member(FlushedLater, CellVar) ->
+                    ( if set_of_var.member(FlushedLater, CellVar) then
                         CellVarFlushedLater = yes
-                    ;
+                    else
                         CellVarFlushedLater = no
                     )
                 ;
                     OnStack = no,
-                    (
+                    ( if
                         list.member(PathInfo, PathsInfo),
                         PathInfo = match_path_info(_, Segments),
                         list.member(Segment, Segments),
                         set_of_var.member(Segment, CellVar)
-                    ->
+                    then
                         CellVarFlushedLater = yes
-                    ;
+                    else
                         CellVarFlushedLater = no
                     )
                 ),
@@ -499,7 +499,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
                 AfterModelNon = yes
             )
         )
-    ;
+    else
         true
     ).
 
@@ -517,9 +517,9 @@ apply_matching(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
     set.count(BenefitNodes, NumBenefitNodes),
     set.count(CostNodes, NumCostNodes),
     AllPathNodeRatio = StackOptParams ^ sop_all_path_node_ratio,
-    ( NumBenefitNodes * 100 >= NumCostNodes * AllPathNodeRatio ->
+    ( if NumBenefitNodes * 100 >= NumCostNodes * AllPathNodeRatio then
         ViaCellVars = ViaCellVars0
-    ;
+    else
         ViaCellVars = set_of_var.init
     ).
 
@@ -534,7 +534,7 @@ apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
     list.map3(apply_matching_for_path(CellVar, CellVarFlushedLater,
         StackOptParams, CandidateArgVars0), PathInfos,
         BenefitNodeSets0, CostNodeSets0, PathViaCellVars),
-    ( list.all_same(PathViaCellVars) ->
+    ( if list.all_same(PathViaCellVars) then
         BenefitNodeSets = BenefitNodeSets0,
         CostNodeSets = CostNodeSets0,
         (
@@ -543,7 +543,7 @@ apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
             PathViaCellVars = [],
             ViaCellVars = set_of_var.init
         )
-    ;
+    else
         CandidateArgVars1 = set_of_var.intersect_list(PathViaCellVars),
         FixpointLoop = StackOptParams ^ sop_fixpoint_loop,
         (
@@ -565,11 +565,11 @@ apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
 
 apply_matching_for_path(CellVar, CellVarFlushedLater, StackOptParams,
         CandidateArgVars, PathInfo, BenefitNodes, CostNodes, ViaCellVars) :-
-    ( set_of_var.is_empty(CandidateArgVars) ->
+    ( if set_of_var.is_empty(CandidateArgVars) then
         BenefitNodes = set.init,
         CostNodes = set.init,
         ViaCellVars = set_of_var.init
-    ;
+    else
         PathInfo = match_path_info(FirstSegment, LaterSegments),
         MatchingParams = StackOptParams ^ sop_matching_params,
         find_via_cell_vars(CellVar, CandidateArgVars, CellVarFlushedLater,
@@ -584,9 +584,9 @@ apply_matching_for_path(CellVar, CellVarFlushedLater, StackOptParams,
 
 record_matching_result(CellVar, ConsId, ArgVars, ViaCellVars, Goal,
         PotentialAnchors, PotentialIntervals, !IntervalInfo, !StackOptInfo) :-
-    ( set_of_var.is_empty(ViaCellVars) ->
+    ( if set_of_var.is_empty(ViaCellVars) then
         true
-    ;
+    else
         set.to_sorted_list(PotentialIntervals, PotentialIntervalList),
         set.to_sorted_list(PotentialAnchors, PotentialAnchorList),
         list.foldl3(record_cell_var_for_interval(CellVar, ViaCellVars),
@@ -615,9 +615,9 @@ record_cell_var_for_interval(CellVar, ViaCellVars, IntervalId,
         !IntervalInfo, !StackOptInfo, !InsertIntervals) :-
     record_interval_vars(IntervalId, [CellVar], !IntervalInfo),
     delete_interval_vars(IntervalId, ViaCellVars, DeletedVars, !IntervalInfo),
-    ( set_of_var.is_non_empty(DeletedVars) ->
+    ( if set_of_var.is_non_empty(DeletedVars) then
         set.insert(IntervalId, !InsertIntervals)
-    ;
+    else
         true
     ).
 
@@ -632,19 +632,19 @@ add_anchor_inserts(Goal, ArgVarsViaCellVar, InsertIntervals, Anchor,
     AnchorFollow = anchor_follow_info(_, AnchorIntervals),
     set.intersect(AnchorIntervals, InsertIntervals,
         AnchorInsertIntervals),
-    ( set.is_non_empty(AnchorInsertIntervals) ->
+    ( if set.is_non_empty(AnchorInsertIntervals) then
         Insert = insert_spec(Goal, ArgVarsViaCellVar),
         InsertMap0 = !.StackOptInfo ^ soi_left_anchor_inserts,
-        ( map.search(InsertMap0, Anchor, Inserts0) ->
+        ( if map.search(InsertMap0, Anchor, Inserts0) then
             Inserts = [Insert | Inserts0],
             map.det_update(Anchor, Inserts, InsertMap0, InsertMap)
-        ;
+        else
             Inserts = [Insert],
             map.det_insert(Anchor, Inserts, InsertMap0, InsertMap)
         ),
         !StackOptInfo ^ soi_left_anchor_inserts := InsertMap,
         set.insert(Anchor, !InsertAnchors)
-    ;
+    else
         true
     ).
 
@@ -702,10 +702,10 @@ close_path(Path0) = Path :-
         OtherSegments = OtherSegments0
     ;
         FlushState = current_is_after_first_flush,
-        ( set_of_var.is_empty(CurSegment) ->
+        ( if set_of_var.is_empty(CurSegment) then
             FirstSegment = FirstSegment0,
             OtherSegments = OtherSegments0
-        ;
+        else
             FirstSegment = FirstSegment0,
             OtherSegments = [CurSegment | OtherSegments0]
         )
@@ -716,9 +716,9 @@ close_path(Path0) = Path :-
 :- func add_interval_to_path(interval_id, set_of_progvar, path) = path.
 
 add_interval_to_path(IntervalId, Vars, !.Path) = !:Path :-
-    ( set_of_var.is_empty(Vars) ->
+    ( if set_of_var.is_empty(Vars) then
         true
-    ;
+    else
         CurSegment0 = !.Path ^ current_segment,
         CurSegment = set_of_var.union(Vars, CurSegment0),
         OccurringIntervals0 = !.Path ^ occurring_intervals,
@@ -850,12 +850,12 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
             expect(unify(may_have_more_successors(End), yes), $module, $pred,
                 "unexpected more successors")
         ),
-        (
+        ( if
             MaybeSearchAnchor0 = yes(SearchAnchor0),
             End = SearchAnchor0
-        ->
+        then
             !AllPaths ^ used_after_scope := set_of_var.init
-        ;
+        else if
             End = anchor_branch_end(_, EndGoalId),
             map.lookup(IntervalInfo ^ ii_branch_end_map, EndGoalId,
                 BranchEndInfo),
@@ -866,9 +866,9 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
             RelevantAfter = set_of_var.intersect(RelevantVars,
                 NeededAfterBranch),
             set_of_var.is_non_empty(RelevantAfter)
-        ->
+        then
             !AllPaths ^ used_after_scope := RelevantAfter
-        ;
+        else
             find_all_branches_from(End, RelevantVars,
                 MaybeSearchAnchor0, IntervalInfo, StackOptInfo,
                 [SuccessorId | MoreSuccessorIds], !AllPaths)
@@ -892,10 +892,10 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
     ),
     StackOptParams = StackOptInfo ^ soi_stack_opt_params,
     FullPath = StackOptParams ^ sop_full_path,
-    (
+    ( if
         FullPath = yes,
         End = anchor_branch_start(branch_disj, EndGoalId)
-    ->
+    then
         MaybeSearchAnchor1 = yes(anchor_branch_end(branch_disj, EndGoalId)),
         one_after_another(RelevantVars, MaybeSearchAnchor1,
             IntervalInfo, StackOptInfo, SuccessorIds, !AllPaths),
@@ -904,14 +904,14 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
         ContinueId = BranchEndInfo ^ interval_after_branch,
         apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
             IntervalInfo, StackOptInfo, ContinueId, !AllPaths)
-    ;
+    else if
         FullPath = yes,
         End = anchor_branch_start(branch_ite, EndGoalId)
-    ->
-        ( SuccessorIds = [ElseStartIdPrime, CondStartIdPrime] ->
+    then
+        ( if SuccessorIds = [ElseStartIdPrime, CondStartIdPrime] then
             ElseStartId = ElseStartIdPrime,
             CondStartId = CondStartIdPrime
-        ;
+        else
             unexpected($module, $pred, "ite not else, cond")
         ),
         MaybeSearchAnchorCond = yes(anchor_cond_then(EndGoalId)),
@@ -928,9 +928,9 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
         ContinueId = BranchEndInfo ^ interval_after_branch,
         apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
             IntervalInfo, StackOptInfo, ContinueId, !AllPaths)
-    ;
+    else if
         End = anchor_branch_start(BranchType, EndGoalId)
-    ->
+    then
         MaybeSearchAnchor1 = yes(anchor_branch_end(BranchType, EndGoalId)),
         list.map(apply_interval_find_all_branches_map(RelevantVars,
             MaybeSearchAnchor1, IntervalInfo, StackOptInfo, !.AllPaths),
@@ -941,12 +941,12 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
         ContinueId = BranchEndInfo ^ interval_after_branch,
         apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
             IntervalInfo, StackOptInfo, ContinueId, !AllPaths)
-    ;
-        ( SuccessorIds = [SuccessorId] ->
+    else
+        ( if SuccessorIds = [SuccessorId] then
             apply_interval_find_all_branches(RelevantVars,
                 MaybeSearchAnchor0, IntervalInfo,
                 StackOptInfo, SuccessorId, !AllPaths)
-        ;
+        else
             unexpected($module, $pred, "more successor ids")
         )
     ).
@@ -987,7 +987,7 @@ apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
     Paths1 = set.map(add_interval_to_path(IntervalId, RelevantIntervalVars),
         Paths0),
     map.lookup(IntervalInfo ^ ii_interval_start, IntervalId, Start),
-    (
+    ( if
         % Check if intervals starting at Start use any RelevantVars.
         ( Start = anchor_call_site(_)
         ; Start = anchor_branch_end(_, _)
@@ -997,14 +997,14 @@ apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
         StartInfo = anchor_follow_info(AnchorFollowVars, _),
         set_of_var.intersect(RelevantVars, AnchorFollowVars, NeededVars),
         set_of_var.is_non_empty(NeededVars)
-    ->
+    then
         Paths2 = set.map(add_anchor_to_path(Start), Paths1)
-    ;
+    else
         Paths2 = Paths1
     ),
-    ( set.member(Start, IntervalInfo ^ ii_model_non_anchors) ->
+    ( if set.member(Start, IntervalInfo ^ ii_model_non_anchors) then
         AfterModelNon = yes
-    ;
+    else
         AfterModelNon = AfterModelNon0
     ),
     !:AllPaths = all_paths(Paths2, AfterModelNon, RelevantAfter),
@@ -1048,7 +1048,7 @@ compress_paths(Paths) = Paths.
 
 maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
         ModuleInfo, !IO) :-
-    ( DebugStackOpt = PredIdInt ->
+    ( if DebugStackOpt = PredIdInt then
         io.write_string(Message, !IO),
         io.write_string(":\n", !IO),
         proc_info_get_goal(ProcInfo, Goal),
@@ -1058,7 +1058,7 @@ maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
         write_goal(OutInfo, ModuleInfo, VarSet, print_name_and_num, 0, "\n",
             Goal, !IO),
         io.write_string("\n", !IO)
-    ;
+    else
         true
     ).
 
@@ -1094,10 +1094,10 @@ dump_insert(insert_spec(Goal, Vars), !IO) :-
     io.write_string("vars [", !IO),
     write_int_list(VarNums, !IO),
     io.write_string("]: ", !IO),
-    (
+    ( if
         Goal = hlds_goal(unify(_, _, _, Unification, _), _),
         Unification = deconstruct(CellVar, ConsId, ArgVars, _,_,_)
-    ->
+    then
         term.var_to_int(CellVar, CellVarNum),
         io.write_int(CellVarNum, !IO),
         io.write_string(" => ", !IO),
@@ -1106,7 +1106,7 @@ dump_insert(insert_spec(Goal, Vars), !IO) :-
         list.map(term.var_to_int, ArgVars, ArgVarNums),
         write_int_list(ArgVarNums, !IO),
         io.write_string(")\n", !IO)
-    ;
+    else
         io.write_string("BAD INSERT GOAL\n", !IO)
     ).
 
