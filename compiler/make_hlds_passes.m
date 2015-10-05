@@ -606,7 +606,7 @@ add_pass_1_mode_defn(ItemModeDefnInfo, ItemMercuryStatus, FoundError,
 
 add_pass_1_pred_decl(ItemPredDecl, ItemMercuryStatus, NeedQual,
         !ModuleInfo, !Specs) :-
-    ItemPredDecl = item_pred_decl_info(PredName, PredOrFunc, TypesAndModes,
+    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
         WithType, WithInst, MaybeDetism, Origin, TypeVarSet, InstVarSet,
         ExistQVars, Purity, ClassContext, Context, _SeqNum),
     % Any WithType and WithInst annotations should have been expanded
@@ -614,30 +614,41 @@ add_pass_1_pred_decl(ItemPredDecl, ItemMercuryStatus, NeedQual,
     expect(unify(WithType, no), $module, $pred, "WithType != no"),
     expect(unify(WithInst, no), $module, $pred, "WithInst != no"),
 
-    % If this predicate was added as a result of the mutable transformation
-    % then mark this predicate as a mutable access pred. We do this so that
-    % we can tell optimizations, like inlining, to treat it specially.
-    init_markers(Markers0),
-    (
-        Origin = item_origin_compiler(CompilerAttrs),
-        CompilerAttrs = item_compiler_attributes(_AllowExport, IsMutable),
+    PredName = unqualify_name(PredSymName),
+    ( if PredName = "" then
+        Pieces = [words("Error: you cannot declare a"), 
+            words(pred_or_func_to_full_str(PredOrFunc)),
+            words("whose name is a variable."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    else
+        % If this predicate was added as a result of the mutable transformation
+        % then mark this predicate as a mutable access pred. We do this so that
+        % we can tell optimizations, like inlining, to treat it specially.
+        init_markers(Markers0),
         (
-            IsMutable = is_mutable,
-            add_marker(marker_mutable_access_pred, Markers0, Markers)
+            Origin = item_origin_compiler(CompilerAttrs),
+            CompilerAttrs = item_compiler_attributes(_AllowExport, IsMutable),
+            (
+                IsMutable = is_mutable,
+                add_marker(marker_mutable_access_pred, Markers0, Markers)
+            ;
+                IsMutable = is_not_mutable,
+                Markers = Markers0
+            )
         ;
-            IsMutable = is_not_mutable,
+            Origin = item_origin_user,
             Markers = Markers0
-        )
-    ;
-        Origin = item_origin_user,
-        Markers = Markers0
-    ),
-    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    % XXX ITEM_LIST Fix this lie.
-    PredOrigin = origin_user(PredName),
-    module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
-        PredOrFunc, PredName, TypesAndModes, MaybeDetism, Purity, ClassContext,
-        Markers, Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs).
+        ),
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        % XXX ITEM_LIST Fix this lie.
+        PredOrigin = origin_user(PredSymName),
+        module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
+            PredOrFunc, PredSymName, TypesAndModes, MaybeDetism, Purity,
+            ClassContext, Markers, Context, PredStatus, NeedQual, _,
+            !ModuleInfo, !Specs)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -646,18 +657,29 @@ add_pass_1_pred_decl(ItemPredDecl, ItemMercuryStatus, NeedQual,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_1_mode_decl(ItemModeDecl, ItemMercuryStatus, !ModuleInfo, !Specs) :-
-    ItemModeDecl = item_mode_decl_info(PredName, MaybePredOrFunc, Modes,
+    ItemModeDecl = item_mode_decl_info(PredSymName, MaybePredOrFunc, Modes,
         _WithInst, MaybeDet, VarSet, Context, _SeqNum),
-    (
-        MaybePredOrFunc = yes(PredOrFunc),
-        item_mercury_status_to_pred_status(ItemMercuryStatus, ModeStatus),
-        module_add_mode(VarSet, PredName, Modes, MaybeDet, ModeStatus,
-            Context, PredOrFunc, is_not_a_class_method, _, !ModuleInfo, !Specs)
-    ;
-        MaybePredOrFunc = no,
-        % equiv_type.m should have either set the pred_or_func
-        % or removed the item from the list.
-        unexpected($module, $pred, "no pred_or_func on mode declaration")
+
+    PredName = unqualify_name(PredSymName),
+    ( if PredName = "" then
+        Pieces = [words("Error: you cannot declare a mode"), 
+            words("for a predicate whose name is a variable."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    else
+        (
+            MaybePredOrFunc = yes(PredOrFunc),
+            item_mercury_status_to_pred_status(ItemMercuryStatus, ModeStatus),
+            module_add_mode(VarSet, PredSymName, Modes, MaybeDet, ModeStatus,
+                Context, PredOrFunc, is_not_a_class_method, _,
+                !ModuleInfo, !Specs)
+        ;
+            MaybePredOrFunc = no,
+            % equiv_type.m should have either set the pred_or_func
+            % or removed the item from the list.
+            unexpected($module, $pred, "no pred_or_func on mode declaration")
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -783,28 +805,36 @@ add_solver_type_mutable_items_pass_2([MutableInfo | MutableInfos], Status,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_pass_2_pred_decl(ItemPredDecl, _Status, !ModuleInfo, !Specs) :-
-    ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndModes,
+    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
         _Origin, _TypeVarSet, _InstVarSet, _ExistQVars, _WithType, _WithInst,
         _MaybeDet, _Purity, _ClassContext, _Context, _SeqNum),
+
     % Add default modes for function declarations, if necessary.
-    (
-        PredOrFunc = pf_predicate
-    ;
-        PredOrFunc = pf_function,
-        list.length(TypesAndModes, Arity),
-        adjust_func_arity(pf_function, FuncArity, Arity),
-        module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-        predicate_table_lookup_func_sym_arity(PredTable0,
-            is_fully_qualified, SymName, FuncArity, PredIds),
+    PredName = unqualify_name(PredSymName),
+    ( if PredName = "" then
+        % We didn't add the predicate declaration itself above,
+        % so we cannot possibly add anything to it now.
+        true
+    else
         (
-            PredIds = [_ | _],
-            predicate_table_get_preds(PredTable0, Preds0),
-            maybe_add_default_func_modes(PredIds, Preds0, Preds),
-            predicate_table_set_preds(Preds, PredTable0, PredTable),
-            module_info_set_predicate_table(PredTable, !ModuleInfo)
+            PredOrFunc = pf_predicate
         ;
-            PredIds = [],
-            unexpected($module, $pred, "can't find func declaration")
+            PredOrFunc = pf_function,
+            list.length(TypesAndModes, Arity),
+            adjust_func_arity(pf_function, FuncArity, Arity),
+            module_info_get_predicate_table(!.ModuleInfo, PredTable0),
+            predicate_table_lookup_func_sym_arity(PredTable0,
+                is_fully_qualified, PredSymName, FuncArity, PredIds),
+            (
+                PredIds = [_ | _],
+                predicate_table_get_preds(PredTable0, Preds0),
+                maybe_add_default_func_modes(PredIds, Preds0, Preds),
+                predicate_table_set_preds(Preds, PredTable0, PredTable),
+                module_info_set_predicate_table(PredTable, !ModuleInfo)
+            ;
+                PredIds = [],
+                unexpected($module, $pred, "can't find func declaration")
+            )
         )
     ).
 
@@ -999,48 +1029,59 @@ add_item_pass_3(ItemMercuryStatus, Item, !ModuleInfo, !QualInfo, !Specs) :-
 
 add_pass_3_clause(ItemClause, ItemMercuryStatus, !ModuleInfo,
         !QualInfo, !Specs) :-
-    ItemClause = item_clause_info(PredName, PredOrFunc, Args, Origin, VarSet,
-        Body, Context, SeqNum),
-    (
-        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
-        (
-            ItemExport = item_export_anywhere,
-            (
-                Origin = item_origin_user,
-                list.length(Args, Arity),
+    ItemClause = item_clause_info(PredSymName, PredOrFunc, Args, Origin,
+        VarSet, Body, Context, SeqNum),
 
-                % There is no point printing out the qualified name since that
-                % information is already in the context.
-                UnqualifiedPredName = unqualify_name(PredName),
-                ClauseId = simple_call_id_to_string(PredOrFunc,
-                    unqualified(UnqualifiedPredName) / Arity),
-                error_is_exported(Context, [words("clause for " ++ ClauseId)],
-                    !Specs)
-            ;
-                Origin = item_origin_compiler(CompilerAttrs),
-                CompilerAttrs = item_compiler_attributes(AllowExport,
-                    _IsMutable),
+    PredName = unqualify_name(PredSymName),
+    ( if PredName = "" then
+        Pieces = [words("Error: you cannot define a clause for a"), 
+            words(pred_or_func_to_full_str(PredOrFunc)),
+            words("whose name is a variable."), nl],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    else
+        (
+            ItemMercuryStatus = item_defined_in_this_module(ItemExport),
+            (
+                ItemExport = item_export_anywhere,
                 (
-                    AllowExport = do_allow_export
+                    Origin = item_origin_user,
+                    list.length(Args, Arity),
+
+                    % There is no point printing out the qualified name
+                    % since that information is already in the context.
+                    ClauseId = simple_call_id_to_string(PredOrFunc,
+                        unqualified(PredName) / Arity),
+                    error_is_exported(Context,
+                        [words("clause for " ++ ClauseId)], !Specs)
                 ;
-                    AllowExport = do_not_allow_export,
-                    unexpected($module, $pred, "bad introduced clause")
+                    Origin = item_origin_compiler(CompilerAttrs),
+                    CompilerAttrs = item_compiler_attributes(AllowExport,
+                        _IsMutable),
+                    (
+                        AllowExport = do_allow_export
+                    ;
+                        AllowExport = do_not_allow_export,
+                        unexpected($module, $pred, "bad introduced clause")
+                    )
+                )
+            ;
+                ( ItemExport = item_export_nowhere
+                ; ItemExport = item_export_only_submodules
                 )
             )
         ;
-            ( ItemExport = item_export_nowhere
-            ; ItemExport = item_export_only_submodules
-            )
-        )
-    ;
-        ItemMercuryStatus = item_defined_in_other_module(_)
-        % Clauses defined in other modules are NOT an error; they can be
-        % imported from optimization files.
-    ),
-    % At this stage we only need know that it is not a promise declaration.
-    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    module_add_clause(VarSet, PredOrFunc, PredName, Args, Body, PredStatus,
-        Context, yes(SeqNum), goal_type_none, !ModuleInfo, !QualInfo, !Specs).
+            ItemMercuryStatus = item_defined_in_other_module(_)
+            % Clauses defined in other modules are NOT an error; they can be
+            % imported from optimization files.
+        ),
+        % At this stage we only need know that it is not a promise declaration.
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        module_add_clause(VarSet, PredOrFunc, PredSymName, Args, Body,
+            PredStatus, Context, yes(SeqNum), goal_type_none,
+            !ModuleInfo, !QualInfo, !Specs)
+    ).
 
 %---------------------------------------------------------------------------%
 

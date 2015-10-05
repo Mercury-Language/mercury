@@ -1111,37 +1111,55 @@ parse_mode_decl(ModuleName, VarSet, Term, Attributes, Context, SeqNum,
 
 parse_mode_decl_base(ModuleName, VarSet, Term, Attributes, WithInst,
         MaybeDet, Context, SeqNum, MaybeItem) :-
-    (
+    ( if
         WithInst = no,
         Term = term.functor(term.atom("="),
             [MaybeSugaredFuncTerm, ReturnTypeTerm], _)
-    ->
-        FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
-        ContextPieces = [words("In function"), decl("mode"),
-            words("declaration")],
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
-            VarSet, ContextPieces, MaybeFunctorArgs),
-        (
-            MaybeFunctorArgs = error2(Specs),
-            MaybeItem = error1(Specs)
-        ;
-            MaybeFunctorArgs = ok2(Functor, ArgTerms),
-            parse_func_mode_decl(Functor, ArgTerms, ModuleName,
-                FuncTerm, ReturnTypeTerm, Term, VarSet, MaybeDet,
-                Attributes, Context, SeqNum, MaybeItem)
+    then
+        ( if MaybeSugaredFuncTerm = term.functor(term.atom(""), _, _) then
+            % The term parser turns "X(a, b)" into "`'(X, a, b)".
+            Pieces = [words("Error: you cannot declare a mode"),
+                words("for a function whose name is a variable."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(MaybeSugaredFuncTerm),
+                    [always(Pieces)])]),
+            MaybeItem = error1([Spec])
+        else
+            FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
+            ContextPieces = [words("In function"), decl("mode"),
+                words("declaration")],
+            parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
+                VarSet, ContextPieces, MaybeFunctorArgs),
+            (
+                MaybeFunctorArgs = error2(Specs),
+                MaybeItem = error1(Specs)
+            ;
+                MaybeFunctorArgs = ok2(Functor, ArgTerms),
+                parse_func_mode_decl(Functor, ArgTerms, ModuleName,
+                    FuncTerm, ReturnTypeTerm, Term, VarSet, MaybeDet,
+                    Attributes, Context, SeqNum, MaybeItem)
+            )
         )
-    ;
-        ContextPieces = [words("In"), decl("mode"), words("declaration")],
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, Term,
-            VarSet, ContextPieces, MaybeFunctorArgs),
-        (
-            MaybeFunctorArgs = error2(Specs),
-            MaybeItem = error1(Specs)
-        ;
-            MaybeFunctorArgs = ok2(Functor, ArgTerms),
-            parse_pred_mode_decl(Functor, ArgTerms, ModuleName, Term,
-                VarSet, WithInst, MaybeDet,
-                Attributes, Context, SeqNum, MaybeItem)
+    else
+        ( if Term = term.functor(term.atom(""), _, _) then
+            Pieces = [words("Error: you cannot declare a mode"),
+                words("for a predicate whose name is a variable."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(Term), [always(Pieces)])]),
+            MaybeItem = error1([Spec])
+        else
+            ContextPieces = [words("In"), decl("mode"), words("declaration")],
+            parse_implicitly_qualified_sym_name_and_args(ModuleName, Term,
+                VarSet, ContextPieces, MaybeFunctorArgs),
+            (
+                MaybeFunctorArgs = error2(Specs),
+                MaybeItem = error1(Specs)
+            ;
+                MaybeFunctorArgs = ok2(Functor, ArgTerms),
+                parse_pred_mode_decl(Functor, ArgTerms, ModuleName, Term,
+                    VarSet, WithInst, MaybeDet,
+                    Attributes, Context, SeqNum, MaybeItem)
+            )
         )
     ).
 

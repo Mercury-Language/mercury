@@ -1,0 +1,10 @@
+var_as_pred_name.m:012: Error: you cannot declare a function whose name is a
+var_as_pred_name.m:012:   variable.
+var_as_pred_name.m:014: Error: you cannot declare a predicate whose name is a
+var_as_pred_name.m:014:   variable.
+var_as_pred_name.m:015: Error: you cannot declare a mode for a predicate whose
+var_as_pred_name.m:015:   name is a variable.
+var_as_pred_name.m:021: Error: you cannot define a clause for a function whose
+var_as_pred_name.m:021:   name is a variable.
+var_as_pred_name.m:024: Error: you cannot define a clause for a predicate whose
+var_as_pred_name.m:024:   name is a variable.
