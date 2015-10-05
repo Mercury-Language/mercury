@@ -116,7 +116,7 @@ modecheck_unification(LHSVar, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
         RHS = rhs_lambda_goal(Purity, HOGroundness, _PredOrFunc,
             _LambdaEvalMethod, LambdaNonLocals, _LambdaQuantVars, _ArgModes,
             _Detism, _LambdaGoal),
-        (
+        ( if
             Purity \= purity_impure,
             HOGroundness = ho_ground,
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
@@ -124,20 +124,20 @@ modecheck_unification(LHSVar, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
             AnyVars = list.filter(var_inst_contains_any(ModuleInfo, InstMap),
                 LambdaNonLocals),
             AnyVars = [_ | _]
-        ->
+        then
             set_of_var.init(WaitingVars),
             mode_info_error(WaitingVars,
                 purity_error_lambda_should_be_any(AnyVars), !ModeInfo),
             Goal = conj(plain_conj, [])
-        ;
-            (
+        else
+            ( if
                 goal_info_has_feature(UnifyGoalInfo0,
                     feature_lambda_undetermined_mode)
-            ->
+            then
                 modecheck_unification_rhs_undetermined_mode_lambda(LHSVar,
                     RHS, Unification0, UnifyContext, UnifyGoalInfo0, Goal,
                     !ModeInfo)
-            ;
+            else
                 modecheck_unification_rhs_lambda(LHSVar,
                     RHS, Unification0, UnifyContext, UnifyGoalInfo0, Goal,
                     !ModeInfo)
@@ -161,21 +161,21 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
     % If X and Y are free and have a solver type and we are allowed to
     % insert initialisation calls at this point, then do so to allow
     % scheduling of the unification.
-    (
+    ( if
         mode_info_solver_init_is_supported(!.ModeInfo),
         mode_info_may_init_solver_vars(!.ModeInfo),
         InstOfX0   = free,
         InstOfY0   = free,
         search_var_type(VarTypes, X, VarType),
         type_is_solver_type_with_auto_init(ModuleInfo0, VarType)
-    ->
+    then
         construct_initialisation_call(X, VarType, any_inst,
             context_init, no, InitXGoal, !ModeInfo),
         MaybeInitX = yes(InitXGoal),
         instmap_set_var(X, any_inst, InstMap0, InstMap),
         InstOfX    = any_inst,
         InstOfY    = InstOfY0
-    ;
+    else
         MaybeInitX = no,
         InstMap    = InstMap0,
         InstOfX    = InstOfX0,
@@ -183,10 +183,10 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
     ),
     mode_info_var_is_live(!.ModeInfo, X, LiveX),
     mode_info_var_is_live(!.ModeInfo, Y, LiveY),
-    (
-        ( LiveX = is_live, LiveY = is_live ->
+    ( if
+        ( if LiveX = is_live, LiveY = is_live then
             BothLive = is_live
-        ;
+        else
             BothLive = is_dead
         ),
         abstractly_unify_inst(BothLive, InstOfX, InstOfY, real_unify,
@@ -196,7 +196,7 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
         % modecheck_set_var_inst, which is called below, but that won't catch
         % this case, because the inst of the variable will remain `free'.
         % XXX are there other cases like this one?)
-        \+ (
+        not (
             UnifyInst = free,
             mode_info_var_is_locked(!.ModeInfo, X, _XLockedReason),
             mode_info_var_is_locked(!.ModeInfo, Y, _YLockedReason),
@@ -204,7 +204,7 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
             % and thus should be allowed even if X is locked
             X \= Y
         )
-    ->
+    then
         Inst = UnifyInst,
         Det = Det1,
         mode_info_set_module_info(ModuleInfo1, !ModeInfo),
@@ -225,7 +225,7 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
             UnifySubGoal = hlds_goal(UnifyGoalExpr0, UnifyGoalInfo),
             UnifyGoalExpr = conj(plain_conj, [InitGoal, UnifySubGoal])
         )
-    ;
+    else
         set_of_var.list_to_set([X, Y], WaitingVars),
         ModeError = mode_error_unify_var_var(X, Y, InstOfX, InstOfY),
         mode_info_error(WaitingVars, ModeError, !ModeInfo),
@@ -255,7 +255,7 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
     lookup_var_type(VarTypes0, X, TypeOfX),
 
-    (
+    ( if
         % We replace any unifications with higher-order pred constants
         % by lambda expressions. For example, we replace
         %
@@ -274,7 +274,7 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
         type_is_higher_order_details(TypeOfX, Purity, _, EvalMethod,
             PredArgTypes),
         ConsId = closure_cons(ShroudedPredProcId, _)
-    ->
+    then
         % Convert the pred term to a lambda expression.
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
         mode_info_get_varset(!.ModeInfo, VarSet0),
@@ -289,18 +289,18 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
         % Modecheck this unification in its new form.
         modecheck_unification(X, Functor0, Unification0, UnifyContext,
             GoalInfo0, GoalExpr, !ModeInfo)
-    ;
+    else if
         % Right hand sides that represent constant structures need to be
         % handled specially, because the term is inherently shared.
         cons_id_is_const_struct(ConsId, ConstNum)
-    ->
+    then
         expect(unify(IsExistConstruction, is_not_exist_constr), $module, $pred,
             "const struct construction is existential"),
         expect(unify(ArgVars0, []), $module, $pred,
             "const struct construction has args"),
         modecheck_unify_const_struct(X, ConsId, ConstNum, UnifyContext,
             GoalExpr, !ModeInfo)
-    ;
+    else
         % It is not a higher-order pred unification or a unification with a
         % constant structure, so just call modecheck_unify_functor to do
         % the ordinary thing.
@@ -399,17 +399,18 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
     ;
         Groundness = ho_any,
         mode_info_get_var_types(!.ModeInfo, NonLocalTypes),
-        NonLocals = set_of_var.filter((pred(NonLocal::in) is semidet :-
+        NonLocals = set_of_var.filter(
+            ( pred(NonLocal::in) is semidet :-
                 lookup_var_type(NonLocalTypes, NonLocal, NonLocalType),
                 instmap_lookup_var(InstMap1, NonLocal, NonLocalInst),
-                \+ inst_matches_initial(NonLocalInst, any(shared, none),
+                not inst_matches_initial(NonLocalInst, any(shared, none),
                     NonLocalType, ModuleInfo0)
             ), NonLocals1)
     ),
     set_of_var.to_sorted_list(NonLocals, NonLocalsList),
     instmap_lookup_vars(InstMap1, NonLocalsList, NonLocalInsts),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo2),
-    (
+    ( if
         % XXX This test is too conservative.
         %
         % We should allow non-local variables to be non-ground sometimes,
@@ -424,15 +425,15 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
         % we've mode-checked the lambda body. (See the above comment on
         % merging the initial and final instmaps.)
 
-        (
+        ( if
             Groundness = ho_ground,
             Purity \= purity_impure
-        ->
+        then
             inst_list_is_ground(NonLocalInsts, ModuleInfo2)
-        ;
+        else
             inst_list_is_ground_or_any(NonLocalInsts, ModuleInfo2)
         )
-    ->
+    then
         make_shared_inst_list(NonLocalInsts, SharedNonLocalInsts,
             ModuleInfo2, ModuleInfo3),
         instmap_set_vars_corresponding(NonLocalsList, SharedNonLocalInsts,
@@ -473,11 +474,11 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
             ArgVars, Vars, Modes, Det, Goal),
         modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes, Det,
             RHS0, RHS, Unification0, Unification, Mode, !ModeInfo)
-    ;
+    else
         list.filter(
             (pred(Var :: in) is semidet :-
                 instmap_lookup_var(InstMap1, Var, Inst),
-                \+ inst_is_ground(ModuleInfo2, Inst)
+                not inst_is_ground(ModuleInfo2, Inst)
             ), NonLocalsList, NonGroundNonLocals),
         (
             NonGroundNonLocals = [BadVar | _],
@@ -509,10 +510,10 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
     InstOfY = ground(unique, higher_order(LambdaPredInfo)),
     LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes,
         arg_reg_types_unset, LambdaDet),
-    (
+    ( if
         abstractly_unify_inst(is_dead, InstOfX, InstOfY, real_unify,
             UnifyInst, _Det, ModuleInfo0, ModuleInfo1)
-    ->
+    then
         Inst = UnifyInst,
         mode_info_set_module_info(ModuleInfo1, !ModeInfo),
         ModeOfX = (InstOfX -> Inst),
@@ -525,7 +526,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDet,
         categorize_unify_var_lambda(ModeOfX, ArgModes, X, ArgVars, PredOrFunc,
             RHS0, RHS, Unification0, Unification, !ModeInfo),
         modecheck_set_var_inst(X, Inst, no, !ModeInfo)
-    ;
+    else
         set_of_var.list_to_set([X], WaitingVars),
         ModeError = mode_error_unify_var_lambda(X, InstOfX, InstOfY),
         mode_info_error(WaitingVars, ModeError, !ModeInfo),
@@ -552,7 +553,7 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
         UnifyContext, GoalInfo0, Goal, !ModeInfo) :-
     RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal0),
     % Find out the predicate called in the lambda goal.
-    ( predids_with_args_from_goal(Goal0, [{PredId, ArgVars}]) ->
+    ( if predids_with_args_from_goal(Goal0, [{PredId, ArgVars}]) then
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
@@ -570,7 +571,7 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
             Goal = true_goal_expr
         ;
             MatchResult = possible_modes([ProcId]),
-            fix_undetermined_mode_lambda_goal(ProcId, RHS0, RHS, ModuleInfo),
+            fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, RHS),
             goal_info_remove_feature(feature_lambda_undetermined_mode,
                 GoalInfo0, GoalInfo),
             % Modecheck this unification in its new form.
@@ -585,7 +586,7 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
             % Return any old garbage.
             Goal = true_goal_expr
         )
-    ;
+    else
         unexpected($module, $pred, "expecting single call")
     ).
 
@@ -603,7 +604,7 @@ modecheck_unify_const_struct(X, ConsId, ConstNum, UnifyContext,
     module_info_get_const_struct_db(ModuleInfo0, ConstStructDb),
     lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
     ConstStruct = const_struct(_, _, _, InstOfY),
-    ( inst_is_free(ModuleInfo0, InstOfX) ->
+    ( if inst_is_free(ModuleInfo0, InstOfX) then
         Inst = InstOfY,
         modecheck_set_var_inst(X, Inst, yes(InstOfY), !ModeInfo),
         Unification = construct(X, ConsId, [], [], construct_statically,
@@ -613,10 +614,10 @@ modecheck_unify_const_struct(X, ConsId, ConstNum, UnifyContext,
         Modes = ModeOfX - ModeOfY,
         UnifyGoalExpr = unify(X, rhs_functor(ConsId, is_not_exist_constr, []),
             Modes, Unification, UnifyContext)
-    ;
+%   else if
 %       abstractly_unify_inst(LiveX, InstOfX, InstOfY, real_unify,
 %           UnifyInst, Det1, ModuleInfo0, ModuleInfo1)
-%   ->
+%   then
 %       Inst = UnifyInst,
 %       Det = Det1,
 %       mode_info_set_module_info(ModuleInfo1, !ModeInfo),
@@ -626,7 +627,7 @@ modecheck_unify_const_struct(X, ConsId, ConstNum, UnifyContext,
 %       categorize_unify_var_const_struct(ModeOfX, ModeOfY, LiveX, X, ConsId,
 %           Det, UnifyContext, UnifyGoalInfo0, VarTypes, Unification0,
 %           UnifyGoalExpr0, !ModeInfo),
-%   ;
+    else
         set_of_var.list_to_set([X], WaitingVars),
         ModeError = mode_error_unify_var_functor(X, ConsId, [], InstOfX, []),
         mode_info_error(WaitingVars, ModeError, !ModeInfo),
@@ -669,11 +670,11 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
     qualify_cons_id(ArgVars0, ConsId0, ConsId, InstConsId),
     InstOfY = bound(unique, inst_test_no_results,
         [bound_functor(InstConsId, InstArgs)]),
-    (
+    ( if
         % The occur check: is the unification of the form X = f(..., X, ...)?
         list.member(X, ArgVars0)
-    ->
-        ( inst_is_ground(ModuleInfo0, InstOfX) ->
+    then
+        ( if inst_is_ground(ModuleInfo0, InstOfX) then
             % If X is ground, then we don't consider X = f(..., X, ...)
             % to be a mode error, but it is a unification that can never
             % succeed, and thus it is very unlikely to be what the programmer
@@ -689,12 +690,12 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             mode_info_warning(Warning, !ModeInfo),
             modecheck_set_var_inst(X, not_reached, no, !ModeInfo),
             GoalExpr = disj([])
-        ;
+        else
             % If X is not ground, then X = f(..., X, ...) is a mode error.
             handle_var_functor_mode_error(X, InstConsId, ArgVars0,
                 InstOfX, InstArgs, [X], GoalExpr, !ModeInfo)
         )
-    ;
+    else if
         % XXX We forbid the construction of partially instantiated structures
         % involving solver types. We'd like to forbid all such constructions
         % here, but that causes trouble with the current implementation of
@@ -712,7 +713,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         abstractly_unify_inst_functor(LiveX, InstOfX, InstConsId,
             InstArgs, LiveArgs, real_unify, TypeOfX,
             Inst, Det, ModuleInfo0, ModuleInfo1)
-    ->
+    then
         mode_info_set_module_info(ModuleInfo1, !ModeInfo),
         ModeOfX = (InstOfX -> Inst),
         ModeOfY = (InstOfY -> Inst),
@@ -732,22 +733,22 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         bind_args_if_needed(InstOfX, Inst, ArgVars, InstOfXArgs, !ModeInfo),
 
         % Construct the final goal expression.
-        (
+        ( if
             Unification = construct(_, _, _, _, _, _, _),
             LiveX = is_dead
-        ->
+        then
             % Optimize away construction of unused terms by replacing
             % the unification with `true'.
             GoalExpr = conj(plain_conj, [])
-        ;
+        else if
             Det = detism_failure
-        ->
+        then
             % Optimize away unifications which always fail by replacing
             % them with `fail'.
             GoalExpr = disj([]),
             maybe_generate_cannot_succeed_warning(X, InstOfX, ConsId,
                 !ModeInfo)
-        ;
+        else
             Functor = rhs_functor(ConsId, IsExistConstruction, ArgVars),
             UnifyExpr = unify(X, Functor, Mode, Unification, UnifyContext),
 
@@ -760,21 +761,21 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 
             append_extra_goals(ExtraGoals0, ExtraGoals1, ExtraGoals01),
             append_extra_goals(ExtraGoals01, ExtraGoals2, ExtraGoals),
-            (
+            ( if
                 HowToCheckGoal = check_unique_modes,
                 ExtraGoals = extra_goals(_, _),
                 instmap_is_reachable(InstMap1)
-            ->
+            then
                 unexpected($module, $pred,
                     "re-modecheck of unification " ++
                     "encountered complicated sub-unifies")
-            ;
+            else
                 true
             ),
             handle_extra_goals(UnifyExpr, ExtraGoals, GoalInfo0,
                 [X0 | ArgVars0], [X | ArgVars], InstMap0, GoalExpr, !ModeInfo)
         )
-    ;
+    else
         % Including all ArgVars0 in the waiting_vars is a conservative
         % approximation.
         handle_var_functor_mode_error(X, InstConsId, ArgVars0,
@@ -798,15 +799,15 @@ ensure_exist_constr_is_construction(IsExistConstruction, X0, X, InstOfX, LiveX,
         ExtraGoals, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     instmap_lookup_var(InstMap0, X0, InstOfX0),
-    (
+    ( if
         IsExistConstruction = is_exist_constr,
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-        \+ inst_is_free(ModuleInfo0, InstOfX0)
-    ->
+        not inst_is_free(ModuleInfo0, InstOfX0)
+    then
         make_complicated_sub_unify(X0, X, ExtraGoals, !ModeInfo),
         InstOfX = free,
         LiveX = is_live
-    ;
+    else
         X = X0,
         InstOfX = InstOfX0,
         mode_info_var_is_live(!.ModeInfo, X, LiveX),
@@ -821,7 +822,7 @@ add_solver_init_calls_if_needed(InstOfX, ArgVars0, ExtraGoals, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
-    (
+    ( if
         % If we are allowed to insert solver type initialisation calls
         % and InstOfX is free and all ArgVars0 are either non-free or have
         % solver types, then we know that this is going to be a construction,
@@ -834,7 +835,7 @@ add_solver_init_calls_if_needed(InstOfX, ArgVars0, ExtraGoals, !ModeInfo) :-
         instmap_lookup_vars(InstMap0, ArgVars0, InstArgs0),
         all_arg_vars_are_non_free_or_solver_vars(ArgVars0, InstArgs0,
             VarTypes, ModuleInfo0, ArgVarsToInit)
-    ->
+    then
         construct_initialisation_calls(ArgVarsToInit, InitGoals, !ModeInfo),
         (
             InitGoals = [],
@@ -843,7 +844,7 @@ add_solver_init_calls_if_needed(InstOfX, ArgVars0, ExtraGoals, !ModeInfo) :-
             InitGoals = [_ | _],
             ExtraGoals = extra_goals(InitGoals, [])
         )
-    ;
+    else
         ExtraGoals = no_extra_goals
     ).
 
@@ -858,13 +859,13 @@ all_arg_vars_are_non_free_or_solver_vars([_ | _], [], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
 all_arg_vars_are_non_free_or_solver_vars([ArgVar | ArgVars], [Inst | Insts],
         VarTypes, ModuleInfo, ArgVarsToInit) :-
-    ( inst_match.inst_is_free(ModuleInfo, Inst) ->
+    ( if inst_match.inst_is_free(ModuleInfo, Inst) then
         lookup_var_type(VarTypes, ArgVar, ArgType),
         type_is_or_may_contain_solver_type(ModuleInfo, ArgType),
         all_arg_vars_are_non_free_or_solver_vars(ArgVars, Insts,
             VarTypes, ModuleInfo, ArgVarsToInitTail),
         ArgVarsToInit = [ArgVar | ArgVarsToInitTail]
-    ;
+    else
         all_arg_vars_are_non_free_or_solver_vars(ArgVars, Insts,
             VarTypes, ModuleInfo, ArgVarsToInit)
     ).
@@ -940,21 +941,21 @@ maybe_generate_cannot_succeed_warning(X, InstOfX, ConsId, !ModeInfo) :-
 
 split_complicated_subunifies(Unification0, Unification, ArgVars0, ArgVars,
         ExtraGoals, !ModeInfo) :-
-    (
+    ( if
         Unification0 = deconstruct(X, ConsId, ArgVars0, ArgModes0, Det, CanCGC)
-    ->
-        (
+    then
+        ( if
             split_complicated_subunifies_2(ArgVars0, ArgModes0,
                 ArgVars1, ExtraGoals1, !ModeInfo)
-        ->
+        then
             ExtraGoals = ExtraGoals1,
             ArgVars = ArgVars1,
             Unification = deconstruct(X, ConsId, ArgVars, ArgModes0, Det,
                 CanCGC)
-        ;
+        else
             unexpected($module, $pred, "split_complicated_subunifies_2 failed")
         )
-    ;
+    else
         Unification = Unification0,
         ArgVars = ArgVars0,
         ExtraGoals = no_extra_goals
@@ -973,10 +974,10 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
     ModeY = (InitialInstY -> FinalInstY),
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
     lookup_var_type(VarTypes0, Var0, VarType),
-    (
+    ( if
         mode_to_arg_mode(ModuleInfo, ModeX, VarType, top_in),
         mode_to_arg_mode(ModuleInfo, ModeY, VarType, top_in)
-    ->
+    then
         make_complicated_sub_unify(Var0, Var, ExtraGoals0, !ModeInfo),
 
         % Recursive call to handle the remaining variables...
@@ -984,7 +985,7 @@ split_complicated_subunifies_2([Var0 | Vars0], [UniMode0 | UniModes0],
             Vars1, ExtraGoals1, !ModeInfo),
         Vars = [Var | Vars1],
         append_extra_goals(ExtraGoals0, ExtraGoals1, ExtraGoals)
-    ;
+    else
         split_complicated_subunifies_2(Vars0, UniModes0, Vars1,
             ExtraGoals, !ModeInfo),
         Vars = [Var0 | Vars1]
@@ -1041,11 +1042,11 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
     % type-info and type-class-info variables to the nonlocals
     % and to the unification.
 
-    ( GoalExpr0 = unify(X, Y, Mode, Unification0, FinalUnifyContext) ->
+    ( if GoalExpr0 = unify(X, Y, Mode, Unification0, FinalUnifyContext) then
         unification_typeinfos_rtti_varmaps(Type, RttiVarMaps,
             Unification0, Unification, GoalInfo2, GoalInfo),
         GoalExpr = unify(X, Y, Mode, Unification, FinalUnifyContext)
-    ;
+    else
         unexpected($module, $pred, "unexpected GoalExpr0")
     ).
 
@@ -1064,18 +1065,18 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
 categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         UnifyContext, GoalInfo, VarTypes, Unification0, Unify, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    (
+    ( if
         mode_is_output(ModuleInfo0, ModeOfX)
-    ->
+    then
         Unification = assign(X, Y)
-    ;
+    else if
         mode_is_output(ModuleInfo0, ModeOfY)
-    ->
+    then
         Unification = assign(Y, X)
-    ;
+    else if
         mode_is_unused(ModuleInfo0, ModeOfX),
         mode_is_unused(ModuleInfo0, ModeOfY)
-    ->
+    then
         % For free-free unifications, we pretend for a moment that they are
         % an assignment to the dead variable - they will then be optimized
         % away.
@@ -1092,32 +1093,32 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
                 unexpected($module, $pred, "free-free unify!")
             )
         )
-    ;
+    else if
         % Check for unreachable unifications.
         ( mode_get_insts(ModuleInfo0, ModeOfX, not_reached, _)
         ; mode_get_insts(ModuleInfo0, ModeOfY, not_reached, _)
         )
-    ->
+    then
         % For these, we can generate any old junk here --
         % we just need to avoid calling modecheck_complicated_unify,
         % since that might abort.
 
         Unification = simple_test(X, Y)
-    ;
+    else
         lookup_var_type(VarTypes, X, Type),
-        (
+        ( if
             type_is_atomic(ModuleInfo0, Type),
             not type_has_user_defined_equality_pred(ModuleInfo0, Type, _)
-        ->
+        then
             Unification = simple_test(X, Y)
-        ;
+        else if
             % Unification of c_pointers is a runtime error unless introduced by
             % the compiler.
             Type = c_pointer_type,
             goal_info_has_feature(GoalInfo, feature_pretest_equality_condition)
-        ->
+        then
             Unification = simple_test(X, Y)
-        ;
+        else
             modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det,
                 UnifyContext, Unification0, Unification, !ModeInfo)
         )
@@ -1131,21 +1132,21 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
     %
     % Optimize away unifications which always fail by replacing them with
     % `fail'.
-    (
+    ( if
         Unification = assign(AssignTarget, AssignSource),
         mode_info_var_is_live(!.ModeInfo, AssignTarget, is_dead)
-    ->
+    then
         Unify = conj(plain_conj, []),
         record_optimize_away(GoalInfo, AssignTarget, AssignSource, !ModeInfo)
-    ;
+    else if
         Unification = simple_test(TestVar1, TestVar2),
         Det = detism_det
-    ->
+    then
         Unify = conj(plain_conj, []),
         record_optimize_away(GoalInfo, TestVar1, TestVar2, !ModeInfo)
-    ;
+    else if
         Det = detism_failure
-    ->
+    then
         % This optimisation is safe because the only way that we can analyse
         % a unification as having no solutions is that the unification
         % always fails.
@@ -1175,7 +1176,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         ;
             WarnCannotSucceed = no
         )
-    ;
+    else
         Unify = unify(X, rhs_var(Y), ModeOfX - ModeOfY,
             Unification, UnifyContext)
     ).
@@ -1193,12 +1194,12 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
 
 record_optimize_away(GoalInfo, Var1, Var2, !ModeInfo) :-
     NonLocals = goal_info_get_nonlocals(GoalInfo),
-    (
+    ( if
         set_of_var.member(NonLocals, Var1),
         set_of_var.member(NonLocals, Var2)
-    ->
+    then
         true
-    ;
+    else
         mode_info_need_to_requantify(!ModeInfo)
     ).
 
@@ -1218,9 +1219,9 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
     mode_get_insts(ModuleInfo0, ModeOfY, InitialInstY, FinalInstY),
     UniMode = ((InitialInstX - InitialInstY) -> (FinalInstX - FinalInstY)),
     determinism_components(Det, CanFail, _),
-    ( Unification0 = complicated_unify(_, _, UnifyTypeInfoVars0) ->
+    ( if Unification0 = complicated_unify(_, _, UnifyTypeInfoVars0) then
         UnifyTypeInfoVars = UnifyTypeInfoVars0
-    ;
+    else
         unexpected($module, $pred, "non-complicated unify")
     ),
     Unification = complicated_unify(UniMode, CanFail, UnifyTypeInfoVars),
@@ -1244,34 +1245,34 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
         mode_info_unset_call_context(!ModeInfo)
     ),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo3),
-    (
+    ( if
         mode_info_get_errors(!.ModeInfo, Errors),
         Errors = [_ | _]
-    ->
+    then
         true
-    ;
+    else if
         % Check that we're not trying to do a polymorphic unification
         % in a mode other than (in, in).
         % [Actually we also allow `any' insts, since the (in, in)
         % mode of unification for types which have `any' insts must
         % also be able to handle (in(any), in(any)) unifications.]
         Type = type_variable(_, _),
-        \+ inst_is_ground_or_any(ModuleInfo3, InitialInstX)
-    ->
+        not inst_is_ground_or_any(ModuleInfo3, InitialInstX)
+    then
         WaitingVars = set_of_var.make_singleton(X),
         ModeError = mode_error_poly_unify(X, InitialInstX),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
-    ;
+    else if
         Type = type_variable(_, _),
-        \+ inst_is_ground_or_any(ModuleInfo3, InitialInstY)
-    ->
+        not inst_is_ground_or_any(ModuleInfo3, InitialInstY)
+    then
         WaitingVars = set_of_var.make_singleton(Y),
         ModeError = mode_error_poly_unify(Y, InitialInstY),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
-    ;
+    else if
         % Check that we're not trying to do a higher-order unification.
         type_is_higher_order_details(Type, _, PredOrFunc, _, _)
-    ->
+    then
         % We do not want to report this as an error if it occurs in a
         % compiler-generated predicate - instead, we delay the error
         % until runtime so that it only occurs if the compiler-generated
@@ -1280,30 +1281,30 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
         mode_info_get_pred_id(!.ModeInfo, PredId),
         module_info_pred_info(ModuleInfo3, PredId, PredInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap0),
-        (
+        ( if
             ( is_unify_or_compare_pred(PredInfo)
             ; instmap_is_unreachable(InstMap0)
             )
-        ->
+        then
             true
-        ;
+        else
             set_of_var.init(WaitingVars),
             ModeError =
                 mode_error_unify_pred(X, error_at_var(Y), Type, PredOrFunc),
             mode_info_error(WaitingVars, ModeError, !ModeInfo)
         )
-    ;
+    else if
         % Ensure that we will generate code for the unification procedure
         % that will be used to implement this complicated unification.
         type_to_ctor(Type, TypeCtor)
-    ->
+    then
         mode_info_get_context(!.ModeInfo, Context),
         mode_info_get_instvarset(!.ModeInfo, InstVarSet),
         UnifyProcId = unify_proc_id(TypeCtor, UniMode),
         unify_proc.request_unify(UnifyProcId, InstVarSet,
             Det, Context, ModuleInfo3, ModuleInfo),
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
-    ;
+    else
         true
     ).
 
@@ -1346,8 +1347,8 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     modes_to_uni_modes(ModuleInfo, ArgModes0, ArgModes0, ArgModes),
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    ( mode_is_output(ModuleInfo, ModeOfX) ->
-        (
+    ( if mode_is_output(ModuleInfo, ModeOfX) then
+        ( if
             % If pred_consts are present, lambda expansion has already been
             % done. Rerunning mode analysis should not produce a lambda_goal
             % which cannot be directly converted back into a higher-order
@@ -1358,18 +1359,18 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
             % matter since the code will be pruned away later by simplify.m.
             ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
             instmap_is_reachable(InstMap)
-        ->
+        then
             proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-            (
+            ( if
                 RHS0 = rhs_lambda_goal(_, _, _, EvalMethod, _, _, _, _, Goal),
                 Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)
-            ->
+            then
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 PredModule = pred_info_module(PredInfo),
                 PredName = pred_info_name(PredInfo),
                 mode_info_get_var_types(!.ModeInfo, VarTypes),
                 lookup_var_type(VarTypes, X, Type),
-                ( Type = higher_order_type(_, MaybeReturnType, _, _) ->
+                ( if Type = higher_order_type(_, MaybeReturnType, _, _) then
                     (
                         MaybeReturnType = no,
                         RHSTypeCtor = type_ctor(unqualified("pred"), 0)
@@ -1377,21 +1378,21 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
                         MaybeReturnType = yes(_),
                         RHSTypeCtor = type_ctor(unqualified("func"), 0)
                     )
-                ;
+                else
                     unexpected($module, $pred, "bad HO type")
                 ),
                 RHSConsId = cons(qualified(PredModule, PredName), Arity,
                     RHSTypeCtor),
                 RHS = rhs_functor(RHSConsId, is_not_exist_constr, ArgVars)
-            ;
+            else
                 unexpected($module, $pred, "reintroduced lambda goal")
             )
-        ;
+        else
             RHS = RHS0
         ),
         Unification = construct(X, ConsId, ArgVars, ArgModes,
             construct_dynamically, cell_is_unique, SubInfo)
-    ; instmap_is_reachable(InstMap) ->
+    else if instmap_is_reachable(InstMap) then
         % If it is a deconstruction, it is a mode error.
         % The error message would be incorrect in unreachable code,
         % since not_reached is considered bound.
@@ -1404,7 +1405,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
         % Return any old garbage.
         Unification = Unification0,
         RHS = RHS0
-    ;
+    else
         Unification = Unification0,
         RHS = RHS0
     ).
@@ -1449,7 +1450,7 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
     ),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     modes_to_uni_modes(ModuleInfo, ModeOfXArgs, ArgModes0, ArgModes),
-    ( mode_is_output(ModuleInfo, ModeOfX) ->
+    ( if mode_is_output(ModuleInfo, ModeOfX) then
         % It is a construction.
         Unification = construct(X, ConsId, ArgVars, ArgModes,
             construct_dynamically, cell_is_unique, SubInfo),
@@ -1461,9 +1462,9 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
         check_type_info_args_are_ground(ArgVars, VarTypes, UnifyContext,
             !ModeInfo),
         mode_info_unset_call_context(!ModeInfo)
-    ;
+    else
         % It is a deconstruction.
-        (
+        ( if
             % If the variable was already known to be bound to a single
             % particular functor, then the unification either always succeeds
             % or always fails. In the latter case, the final inst will be
@@ -1475,28 +1476,28 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
             inst_expand(ModuleInfo, FinalInst0, FinalInst),
             InitialInst = bound(_, _, [_]),
             FinalInst = bound(_, _, [_])
-        ->
+        then
             CanFail = cannot_fail
-        ;
+        else if
             % If the type has only one constructor, then the unification
             % cannot fail.
             type_constructors(ModuleInfo, TypeOfX, Constructors),
             Constructors = [_]
-        ->
+        then
             CanFail = cannot_fail
-        ;
+        else
             % Otherwise, it can fail.
             CanFail = can_fail,
             mode_info_get_instmap(!.ModeInfo, InstMap0),
-            (
+            ( if
                 type_is_higher_order_details(TypeOfX, _, PredOrFunc, _, _),
                 instmap_is_reachable(InstMap0)
-            ->
+            then
                 set_of_var.init(WaitingVars),
                 ModeError = mode_error_unify_pred(X,
                     error_at_functor(ConsId, ArgVars), TypeOfX, PredOrFunc),
                 mode_info_error(WaitingVars, ModeError, !ModeInfo)
-            ;
+            else
                 true
             )
         ),
@@ -1513,16 +1514,16 @@ categorize_unify_var_functor(ModeOfX, ModeOfXArgs, ArgModes0,
 check_type_info_args_are_ground([], _VarTypes, _UnifyContext, !ModeInfo).
 check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
         !ModeInfo) :-
-    (
+    ( if
         lookup_var_type(VarTypes, ArgVar, ArgType),
         is_introduced_type_info_type(ArgType)
-    ->
+    then
         mode_info_set_call_arg_context(1, !ModeInfo),
         modecheck_introduced_type_info_var_has_inst_no_exact_match(ArgVar,
             ArgType, ground(shared, none), !ModeInfo),
         check_type_info_args_are_ground(ArgVars, VarTypes, UnifyContext,
             !ModeInfo)
-    ;
+    else
         true
     ).
 
@@ -1593,18 +1594,18 @@ match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
     % that position has a matching inst. If the variable is free then we need
     % to delay the goal.
     Initial = mode_get_initial_inst(ModuleInfo, ArgMode),
-    ( Initial = ground(_, higher_order(_)) ->
+    ( if Initial = ground(_, higher_order(_)) then
         instmap_lookup_var(InstMap, Arg, ArgInst),
         lookup_var_type(VarTypes, Arg, ArgType),
-        ( inst_matches_initial(ArgInst, Initial, ArgType, ModuleInfo) ->
+        ( if inst_matches_initial(ArgInst, Initial, ArgType, ModuleInfo) then
             match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
                 Args, ArgModes, Result)
-        ; not inst_is_ground(ModuleInfo, ArgInst) ->
-            Result = ho_arg_not_ground
-        ;
+        else if inst_is_ground(ModuleInfo, ArgInst) then
             Result = ho_insts_do_not_match
+        else
+            Result = ho_arg_not_ground
         )
-    ;
+    else
         match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes, Args,
             ArgModes, Result)
     ).
@@ -1650,9 +1651,9 @@ match_mode_by_higher_order_insts(ModuleInfo, InstMap, VarTypes,
 
 bind_args_if_needed(InstOfX, Inst, ArgVars, InstOfXArgs, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    ( inst_is_free(ModuleInfo, InstOfX) ->
+    ( if inst_is_free(ModuleInfo, InstOfX) then
         true
-    ;
+    else
         mode_info_get_in_from_ground_term(!.ModeInfo, InFromGroundTerm),
         (
             InFromGroundTerm = in_from_ground_term_scope
@@ -1667,9 +1668,9 @@ bind_args_if_needed(InstOfX, Inst, ArgVars, InstOfXArgs, !ModeInfo) :-
     mode_info::in, mode_info::out) is det.
 
 bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) :-
-    ( try_bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) ->
+    ( if try_bind_args(Inst, Args, UnifyArgInsts, !ModeInfo) then
         true
-    ;
+    else
         unexpected($module, $pred, "try_bind_args failed")
     ).
 
@@ -1729,9 +1730,9 @@ ground_args(Uniq, [Arg | Args], [UnifyArgInst | UnifyArgInsts], !ModeInfo) :-
     list(mer_mode)::out) is det.
 
 get_mode_of_args(Inst, ArgInsts, ArgModes) :-
-    ( try_get_mode_of_args(Inst, ArgInsts, ArgModesPrime) ->
+    ( if try_get_mode_of_args(Inst, ArgInsts, ArgModesPrime) then
         ArgModes = ArgModesPrime
-    ;
+    else
         unexpected($module, $pred, "try_get_mode_of_args failed")
     ).
 

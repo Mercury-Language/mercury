@@ -314,15 +314,14 @@
     module_info::in, unify_rhs::out, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out) is det.
 
-    % fix_undetermined_mode_lambda_goal(ProcId, Functor0, Functor, ModuleInfo)
+    % fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, Functor0, Functor)
     %
     % This is called by mode checking when it figures out which mode that a
     % lambda goal converted from a higher order pred term should call.
     % Functor0 must have been produced by `convert_pred_to_lambda_goal'.
     %
-:- pred fix_undetermined_mode_lambda_goal(proc_id::in,
-    unify_rhs::in(rhs_lambda_goal), unify_rhs::out(rhs_lambda_goal),
-    module_info::in) is det.
+:- pred fix_undetermined_mode_lambda_goal(module_info::in, proc_id::in,
+    unify_rhs::in(rhs_lambda_goal), unify_rhs::out(rhs_lambda_goal)) is det.
 
     % init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
     %   !VarSet, !VarTypes) :-
@@ -1682,7 +1681,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     Functor = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
         ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
 
-fix_undetermined_mode_lambda_goal(ProcId, Functor0, Functor, ModuleInfo) :-
+fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, Functor0, Functor) :-
     Functor0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
         ArgVars0, LambdaVars, _LambdaModes0, _LambdaDet0, LambdaGoal0),
     LambdaGoal0 = hlds_goal(_, LambdaGoalInfo),
@@ -1693,27 +1692,21 @@ fix_undetermined_mode_lambda_goal(ProcId, Functor0, Functor, ModuleInfo) :-
         LastGoalExpr0 = plain_call(PredId0, _DummyProcId, Args0, not_builtin,
             MaybeCallUnifyContext0, QualifiedPName0)
     then
-        LambdaGoalButLast = LambdaGoalButLast0,
-        LastGoalInfo = LastGoalInfo0,
         PredId = PredId0,
-        Args = Args0,
-        MaybeCallUnifyContext = MaybeCallUnifyContext0,
-        QualifiedPName = QualifiedPName0
+        % Build up LambdaGoal. It is the same as LambdaGoal0, but with the
+        % given ProcId.
+        LastGoalExpr = plain_call(PredId0, ProcId, Args0, not_builtin,
+            MaybeCallUnifyContext0, QualifiedPName0),
+        LastGoal = hlds_goal(LastGoalExpr, LastGoalInfo0),
+        conj_list_to_goal(LambdaGoalButLast0 ++ [LastGoal], LambdaGoalInfo,
+            LambdaGoal)
     else
         unexpected($module, $pred, "unmatched lambda goal")
     ),
 
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-
-    % Build up the lambda goal.
-    LastGoalExpr = plain_call(PredId, ProcId, Args, not_builtin,
-        MaybeCallUnifyContext, QualifiedPName),
-    LastGoal = hlds_goal(LastGoalExpr, LastGoalInfo),
-    conj_list_to_goal(LambdaGoalButLast ++ [LastGoal], LambdaGoalInfo,
-        LambdaGoal),
-
     % Work out the modes of the introduced lambda variables and the determinism
     % of the lambda goal.
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet),
 
     % Construct the lambda expression.

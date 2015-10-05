@@ -143,14 +143,14 @@ modecheck_conj_list_flatten_and_schedule(_ConjType, [], [],
         !ImpurityErrors, !ModeInfo).
 modecheck_conj_list_flatten_and_schedule(ConjType, [Goal0 | Goals0], Goals,
         !ImpurityErrors, !ModeInfo) :-
-    (
+    ( if
         Goal0 = hlds_goal(conj(plain_conj, ConjGoals), _),
         ConjType = plain_conj
-    ->
+    then
         Goals1 = ConjGoals ++ Goals0,
         modecheck_conj_list_flatten_and_schedule(ConjType, Goals1, Goals,
             !ImpurityErrors, !ModeInfo)
-    ;
+    else
         % We attempt to schedule the first goal in the conjunction.
         % If successful, we try to wake up pending goals (if any), and if not,
         % we delay the goal. Then we continue attempting to schedule
@@ -226,13 +226,13 @@ modecheck_conj_list_flatten_and_schedule(ConjType, [Goal0 | Goals0], Goals,
         ),
         mode_info_set_delay_info(DelayInfo, !ModeInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap),
-        ( instmap_is_unreachable(InstMap) ->
+        ( if instmap_is_unreachable(InstMap) then
             % We should not mode-analyse the remaining goals, since they are
             % unreachable. Instead we optimize them away, so that later passes
             % won't complain about them not having mode information.
             mode_info_remove_goals_live_vars(Goals1, !ModeInfo),
             Goals2  = []
-        ;
+        else
             % The remaining goals may still need to be flattened.
             modecheck_conj_list_flatten_and_schedule(ConjType, Goals1, Goals2,
                 !ImpurityErrors, !ModeInfo)
@@ -247,9 +247,9 @@ modecheck_conj_list_flatten_and_schedule(ConjType, [Goal0 | Goals0], Goals,
             % in the list of successfully scheduled goals.
             % We flatten out conjunctions if we can. They can arise
             % when Goal0 was a scope(from_ground_term, _) goal.
-            ( Goal = hlds_goal(conj(ConjType, SubGoals), _) ->
+            ( if Goal = hlds_goal(conj(ConjType, SubGoals), _) then
                 Goals = ScheduledSolverGoals ++ SubGoals ++ Goals2
-            ;
+            else
                 Goals = ScheduledSolverGoals ++ [Goal | Goals2]
             )
         )
@@ -327,7 +327,7 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
         % initialisation calls (for a single goal) makes a difference.
 
         DelayedGoals0 = [_ | _],
-        (
+        ( if
             % Extract the HLDS goals from the delayed goals.
             Goals0 = list.map(hlds_goal_from_delayed_goal, DelayedGoals0),
 
@@ -358,7 +358,7 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
                 )
             ),
             mode_info_solver_init_is_supported(!.ModeInfo)
-        ->
+        then
             % Construct the inferred initialisation goals
             % and try scheduling again.
             CandidateInitVarList =
@@ -379,7 +379,7 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
             mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
             delay_info_leave_conj(DelayInfo2, DelayedGoals, DelayInfo3),
             mode_info_set_delay_info(DelayInfo3, !ModeInfo)
-        ;
+        else
             % We couldn't identify a deterministic solution.
             DelayedGoals = DelayedGoals0,
             Goals        = []
@@ -395,13 +395,13 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
 
 non_free_vars_in_assoc_list([]) = [].
 non_free_vars_in_assoc_list([Var - Inst | AssocList]) =
-    (
+    ( if
         ( Inst = free
         ; Inst = free(_)
         )
-    ->
+    then
         non_free_vars_in_assoc_list(AssocList)
-    ;
+    else
         [Var | non_free_vars_in_assoc_list(AssocList)]
     ).
 
@@ -441,14 +441,14 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         % A var/var unification.
         GoalExpr = unify(X, RHS, _, _, _),
         RHS  = rhs_var(Y),
-        ( set_of_var.member(!.NonFree, X) ->
+        ( if set_of_var.member(!.NonFree, X) then
             not set_of_var.member(!.NonFree, Y),
             % It is an assignment from X to Y.
             set_of_var.insert(Y, !NonFree)
-        ; set_of_var.member(!.NonFree, Y) ->
+        else if set_of_var.member(!.NonFree, Y) then
             % It is an assignment from Y to X.
             set_of_var.insert(X, !NonFree)
-        ;
+        else
             % It is an assignment one way or the other.
             (
                 set_of_var.insert(X, !NonFree),
@@ -572,26 +572,26 @@ candidate_init_vars_call(ModeInfo, [Arg | Args], [Mode | Modes],
         !NonFree, !CandidateVars) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_get_insts_semidet(ModuleInfo, Mode, InitialInst, FinalInst),
-    (
+    ( if
         InitialInst \= free,
         InitialInst \= free(_)
-    ->
+    then
         % This arg is an input that needs instantiation.
         set_of_var.insert(Arg, !CandidateVars)
-    ;
+    else if
         % Otherwise this arg could be an output...
         FinalInst \= free,
         FinalInst \= free(_)
-    ->
+    then
         % And it is.
-        ( set_of_var.contains(!.NonFree, Arg) ->
+        ( if set_of_var.contains(!.NonFree, Arg) then
             % This arg appears in an implied mode.
             fail
-        ;
+        else
             % This arg is instantiated on output.
             set_of_var.insert(Arg, !NonFree)
         )
-    ;
+    else
         % This arg is unused.
         true
     ),
@@ -641,14 +641,14 @@ modecheck_delayed_goals_eager(ConjType, DelayedGoals0, DelayedGoals, Goals,
         mode_info_set_delay_info(DelayInfo3, !ModeInfo),
 
         % See if we scheduled any goals.
-        ( length(DelayedGoals1) < length(DelayedGoals0) ->
+        ( if list.length(DelayedGoals1) < list.length(DelayedGoals0) then
             % We scheduled some goals. Keep going until we either
             % flounder or succeed.
             modecheck_delayed_goals_eager(ConjType,
                 DelayedGoals1, DelayedGoals, Goals2,
                 !ImpurityErrors, !ModeInfo),
             Goals = Goals1 ++ Goals2
-        ;
+        else
             DelayedGoals = DelayedGoals1,
             Goals = Goals1
         )
