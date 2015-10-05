@@ -132,7 +132,7 @@ MR_init_signal_action(MR_signal_action *act, MR_Code *handler,
     act->MR_SIGACTION_FIELD = handler;
 #else /* not MR_HAVE_SIGACTION */
 
-    act = handler;
+    *act = handler;
 
 #endif /* not MR_HAVE_SIGACTION */
 }
