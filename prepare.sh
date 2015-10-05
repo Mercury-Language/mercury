@@ -2,7 +2,7 @@
 # This script should be run in a fresh git checkout in order to initialise
 # the necessary git submodules and produce the configure script.
 
-if [ ! -e boehm_gc/libatomic_ops ]; then
+if [ ! -e boehm_gc/.git ]; then
     echo "Setting up submodules"
     if git submodule --quiet init; then
         git submodule update --remote --checkout
