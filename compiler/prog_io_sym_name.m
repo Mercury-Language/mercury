@@ -234,7 +234,7 @@ parse_implicitly_qualified_sym_name_and_args(DefaultModuleName, Term,
             MaybeSymNameAndArgs = MaybeSymNameAndArgs0
         else if
             SymName = qualified(ModuleName, _),
-            \+ partial_sym_name_matches_full(ModuleName, DefaultModuleName)
+            not partial_sym_name_matches_full(ModuleName, DefaultModuleName)
         then
             Pieces = [words("Error: module qualifier in definition"),
                 words("does not match preceding"), decl("module"),
@@ -261,7 +261,7 @@ try_parse_implicitly_qualified_sym_name_and_args(DefaultModuleName, Term,
         SymName = SymName0
     else if
         SymName0 = qualified(ModuleName, _),
-        \+ partial_sym_name_matches_full(ModuleName, DefaultModuleName)
+        not partial_sym_name_matches_full(ModuleName, DefaultModuleName)
     then
         fail
     else
@@ -278,7 +278,7 @@ try_parse_implicitly_qualified_sym_name_and_no_args(DefaultModuleName, Term,
         SymName = SymName0
     else if
         SymName0 = qualified(ModuleName, _),
-        \+ partial_sym_name_matches_full(ModuleName, DefaultModuleName)
+        not partial_sym_name_matches_full(ModuleName, DefaultModuleName)
     then
         fail
     else
@@ -362,7 +362,7 @@ parse_implicitly_qualified_symbol_name(DefaultModuleName, VarSet, Term,
             MaybeSymName = MaybeSymName0
         else if
             SymName = qualified(ModuleName, _),
-            \+ partial_sym_name_matches_full(ModuleName, DefaultModuleName)
+            not partial_sym_name_matches_full(ModuleName, DefaultModuleName)
         then
             Pieces = [words("Error: module qualifier in definition"),
                 words("does not match preceding"), decl("module"),

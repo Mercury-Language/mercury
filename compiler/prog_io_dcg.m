@@ -520,18 +520,22 @@ parse_some_vars_dcg_goal(Term, ContextPieces, MaybeVarsGoal,
     % Parse the "if" and the "then" part of an if-then or an if-then-else.
     % If the condition is a DCG goal, but then "then" part is not,
     % then we need to translate
-    %   ( a -> { b } ; c )
+    %   ( if a then
+    %       { b }
+    %   else
+    %       c
+    %   )
     % as
-    %   ( a(DCG_1, DCG_2) ->
+    %   ( if a(DCG_1, DCG_2) then
     %       b,
     %       DCG_3 = DCG_2
-    %   ;
+    %   else
     %       c(DCG_1, DCG_3)
     %   )
     % rather than
-    %   ( a(DCG_1, DCG_2) ->
+    %   ( if a(DCG_1, DCG_2) then
     %       b
-    %   ;
+    %   else
     %       c(DCG_1, DCG_2)
     %   )
     % so that the implicit quantification of DCG_2 is correct.

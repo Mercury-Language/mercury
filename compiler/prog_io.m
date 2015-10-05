@@ -374,10 +374,10 @@ do_actually_read_module(Globals, DefaultModuleName, OpenFile, MaybeFileData,
                 always_read_module(dont_return_timestamp),
             MaybeModuleTimestampRes = no
         ),
-        (
+        ( if
             ReadModuleAndTimestamps = dont_read_module_if_match(OldTimestamp),
             MaybeModuleTimestampRes = yes(ok(OldTimestamp))
-        ->
+        then
             % XXX Currently smart recompilation won't work
             % if ModuleName \= DefaultModuleName.
             % In that case, smart recompilation will be disabled
@@ -386,7 +386,7 @@ do_actually_read_module(Globals, DefaultModuleName, OpenFile, MaybeFileData,
             MakeDummyParseTree(DefaultModuleName, ParseTree),
             Specs = [],
             set.init(Errors)
-        ;
+        else
             ReadParseTree(Globals, DefaultModuleName, ParseTree,
                 Specs, Errors, !IO)
         ),

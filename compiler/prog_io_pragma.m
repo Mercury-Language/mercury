@@ -961,7 +961,7 @@ parse_pragma_type_spec(ModuleName, PragmaTerms, ErrorTerm, VarSet, Context,
 
             % This form of the pragma should not appear in source files.
             term.context_file(SpecContext, FileName),
-            \+ string.remove_suffix(FileName, ".m", _),
+            not string.remove_suffix(FileName, ".m", _),
 
             try_parse_implicitly_qualified_sym_name_and_no_args(ModuleName,
                 SpecNameTerm, SpecName),

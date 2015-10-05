@@ -298,11 +298,11 @@ parse_source_file_marker(Functor, ArgTerms, MaybeIOM) :-
     ArgTerms = [PragmaTerm],
     PragmaTerm = term.functor(term.atom("source_file"), PragmaArgTerms,
         PragmaContext),
-    ( PragmaArgTerms = [SourceFileTerm] ->
-        ( SourceFileTerm = term.functor(term.string(SourceFile), [], _) ->
+    ( if PragmaArgTerms = [SourceFileTerm] then
+        ( if SourceFileTerm = term.functor(term.string(SourceFile), [], _) then
             Marker = iom_marker_src_file(SourceFile),
             MaybeIOM = ok1(Marker)
-        ;
+        else
             Pieces = [words("Error: the argument of a"),
                 pragma_decl("source_file"),
                 words("declaration should be a string."), nl],
@@ -310,7 +310,7 @@ parse_source_file_marker(Functor, ArgTerms, MaybeIOM) :-
                 [simple_msg(PragmaContext, [always(Pieces)])]),
             MaybeIOM = error1([Spec])
         )
-    ;
+    else
         Pieces = [words("Error: wrong number of arguments in"),
             pragma_decl("source_file"), words("declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -345,11 +345,11 @@ parse_clause(ModuleName, HeadTerm, BodyTerm0, ProgVarSet0, Context,
     (
         MaybeBodyGoal = ok1(BodyGoal),
         varset.coerce(ProgVarSet, VarSet),
-        (
+        ( if
             HeadTerm = term.functor(term.atom("="),
                 [FuncHeadTerm0, FuncResultTerm], _),
             FuncHeadTerm = desugar_field_access(FuncHeadTerm0)
-        ->
+        then
             HeadContextPieces = [words("In equation head:")],
             parse_implicitly_qualified_sym_name_and_args(ModuleName,
                 FuncHeadTerm, VarSet, HeadContextPieces, MaybeFunctor),
@@ -365,7 +365,7 @@ parse_clause(ModuleName, HeadTerm, BodyTerm0, ProgVarSet0, Context,
                 MaybeFunctor = error2(Specs),
                 MaybeItem = error1(Specs)
             )
-        ;
+        else
             HeadContextPieces = [words("In clause head:")],
             parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
                 VarSet, HeadContextPieces, MaybeFunctor),
@@ -406,19 +406,19 @@ parse_decl(ModuleName, VarSet, Term, SeqNum, MaybeItem) :-
 
 parse_attrs_and_decl(ModuleName, VarSet, Term, !.Attributes, SeqNum,
         MaybeItem) :-
-    ( Term = term.functor(term.atom(Functor), Args, Context) ->
-        (
+    ( if Term = term.functor(term.atom(Functor), Args, Context) then
+        ( if
             parse_decl_attribute(Functor, Args, Attribute, SubTerm)
-        ->
+        then
             !:Attributes = [Attribute - Context | !.Attributes],
             parse_attrs_and_decl(ModuleName, VarSet, SubTerm, !.Attributes,
                 SeqNum, MaybeItem)
-        ;
+        else if
             parse_attributed_decl(ModuleName, VarSet, Functor, Args,
                 !.Attributes, Context, SeqNum, MaybeItemPrime)
-        ->
+        then
             MaybeItemPrime = MaybeItem
-        ;
+        else
             TermStr = mercury_term_to_string(VarSet, print_name_only, Term),
             Pieces = [words("Error: unrecognized declaration:"), nl,
                 words(TermStr), suffix("."), nl],
@@ -426,7 +426,7 @@ parse_attrs_and_decl(ModuleName, VarSet, Term, !.Attributes, SeqNum,
                 [simple_msg(Context, [always(Pieces)])]),
             MaybeItem = error1([Spec])
         )
-    ;
+    else
         Context = get_term_context(Term),
         Pieces = [words("Error: atom expected after"), quote(":-"),
             suffix("."), nl],
@@ -462,11 +462,13 @@ parse_attributed_decl(ModuleName, VarSet, Functor, ArgTerms, Attributes,
     ;
         Functor = "mode",
         ArgTerms = [SubTerm],
-        ( SubTerm = term.functor(term.atom("=="), [HeadTerm, BodyTerm], _) ->
+        ( if
+            SubTerm = term.functor(term.atom("=="), [HeadTerm, BodyTerm], _)
+        then
             % This is the definition of a mode.
             parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
                 Context, SeqNum, MaybeItem)
-        ;
+        else
             % This is the declaration of one mode of a predicate or function.
             parse_mode_decl(ModuleName, VarSet, SubTerm, Attributes,
                 Context, SeqNum, MaybeItem)
@@ -604,11 +606,11 @@ parse_version_numbers_marker(ModuleName, _VarSet, Functor, ArgTerms,
         Context, SeqNum, MaybeItemOrMarker) :-
     Functor = "version_numbers",
     ArgTerms = [VersionNumberTerm, ModuleNameTerm, VersionNumbersTerm],
-    (
+    ( if
         VersionNumberTerm = term.functor(term.integer(VersionNumber), [], _),
         VersionNumber = version_numbers_version_number
-    ->
-        ( try_parse_symbol_name(ModuleNameTerm, ModuleName) ->
+    then
+        ( if try_parse_symbol_name(ModuleNameTerm, ModuleName) then
             recompilation.version.parse_version_numbers(VersionNumbersTerm,
                 MaybeVersionNumbers),
             (
@@ -619,7 +621,7 @@ parse_version_numbers_marker(ModuleName, _VarSet, Functor, ArgTerms,
                 MaybeVersionNumbers = error1(Specs),
                 MaybeItemOrMarker = error1(Specs)
             )
-        ;
+        else
             Pieces = [words("Error: invalid module name in"),
                 quote(":- version_numbers"), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -627,7 +629,7 @@ parse_version_numbers_marker(ModuleName, _VarSet, Functor, ArgTerms,
                     [always(Pieces)])]),
             MaybeItemOrMarker = error1([Spec])
         )
-    ;
+    else
         (
             VersionNumberTerm = term.functor(_, _, _VersionNumberContext),
             Msg = "interface file needs to be recreated, " ++
@@ -669,45 +671,45 @@ parse_pred_or_func_decl(PredOrFunc, ModuleName, VarSet, Term, Attributes,
     parse_with_type_suffix(VarSet, BeforeWithInstTerm, BeforeWithTypeTerm,
         MaybeWithType),
     BaseTerm = BeforeWithTypeTerm,
-    (
+    ( if
         MaybeMaybeDetism = ok1(MaybeDetism),
         MaybeWithInst = ok1(WithInst),
         MaybeWithType = ok1(WithType)
-    ->
-        (
-            MaybeDetism = yes(_),
-            WithInst = yes(_)
-        ->
+    then
+        ( if
+            WithInst = yes(_),
+            MaybeDetism = yes(_)
+        then
             Pieces = [words("Error:"), quote("with_inst"),
                 words("and determinism both specified."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(BaseTerm), [always(Pieces)])]),
             MaybeItem = error1([Spec])
-        ;
+        else if
             WithInst = yes(_),
             WithType = no
-        ->
+        then
             Pieces = [words("Error:"), quote("with_inst"), words("specified"),
                 words("without"), quote("with_type"), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(BaseTerm), [always(Pieces)])]),
             MaybeItem = error1([Spec])
-        ;
-            (
+        else
+            ( if
                 % Function declarations with `with_type` annotations
                 % have the same form as predicate declarations.
                 PredOrFunc = pf_function,
                 WithType = no
-            ->
+            then
                 parse_func_decl_base(ModuleName, VarSet, BaseTerm,
                     MaybeDetism, Attributes, Context, SeqNum, MaybeItem)
-            ;
+            else
                 parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, BaseTerm,
                     WithType, WithInst, MaybeDetism,
                     Attributes, Context, SeqNum, MaybeItem)
             )
         )
-    ;
+    else
         Specs = get_any_errors1(MaybeMaybeDetism)
             ++ get_any_errors1(MaybeWithInst)
             ++ get_any_errors1(MaybeWithType),
@@ -742,7 +744,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
             MaybeItem = error1(Specs)
         ;
             MaybePredNameAndArgs = ok2(Functor, ArgTerms),
-            ( parse_type_and_mode_list(InstConstraints, ArgTerms, Args) ->
+            ( if parse_type_and_mode_list(InstConstraints, ArgTerms, Args) then
                 check_type_and_mode_list_is_consistent(Args, PredTypeTerm,
                     MaybeInconsistentArgsSpec),
                 (
@@ -750,10 +752,10 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                     MaybeItem = error1([InconsistentArgsSpec])
                 ;
                     MaybeInconsistentArgsSpec = no,
-                    (
+                    ( if
                         WithInst = yes(_),
                         Args = [type_only(_) | _]
-                    ->
+                    then
                         Pieces = [words("Error:"), quote("with_inst"),
                             words("specified without argument modes."), nl],
                         Spec = error_spec(severity_error,
@@ -761,11 +763,11 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                             [simple_msg(get_term_context(PredTypeTerm),
                                 [always(Pieces)])]),
                         MaybeItem = error1([Spec])
-                    ;
+                    else if
                         WithInst = no,
                         WithType = yes(_),
                         Args = [type_and_mode(_, _) | _]
-                    ->
+                    then
                         Pieces = [words("Error: arguments have modes but"),
                             quote("with_inst"), words("not specified."), nl],
                         Spec = error_spec(severity_error,
@@ -773,9 +775,9 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                             [simple_msg(get_term_context(PredTypeTerm),
                                 [always(Pieces)])]),
                         MaybeItem = error1([Spec])
-                    ;
+                    else if
                         inst_var_constraints_types_modes_self_consistent(Args)
-                    ->
+                    then
                         get_purity(Purity, Attributes1, Attributes),
                         varset.coerce(VarSet, TVarSet),
                         varset.coerce(VarSet, IVarSet),
@@ -787,7 +789,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                         Item = item_pred_decl(ItemPredDecl),
                         MaybeItem0 = ok1(Item),
                         check_no_attributes(MaybeItem0, Attributes, MaybeItem)
-                    ;
+                    else
                         PredTypeTermStr =
                             describe_error_term(VarSet, PredTypeTerm),
                         Pieces = [words("Error: inconsistent constraints on"),
@@ -802,7 +804,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                         MaybeItem = error1([Spec])
                     )
                 )
-            ;
+            else
                 PredTypeTermStr = describe_error_term(VarSet, PredTypeTerm),
                 Pieces = [words("Error: syntax error in")] ++
                     pred_or_func_decl_pieces(PredOrFunc) ++
@@ -830,10 +832,10 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Attributes0, Context,
         MaybeItem = error1(Specs)
     ;
         MaybeContext = ok3(ExistQVars, Constraints, InstConstraints),
-        (
+        ( if
             Term = term.functor(term.atom("="),
                 [MaybeSugaredFuncTerm, ReturnTerm], _)
-        ->
+        then
             FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
             ContextPieces = [words("In"), decl("func"),
                 words("declaration")],
@@ -844,12 +846,12 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Attributes0, Context,
                 MaybeItem = error1(Specs)
             ;
                 MaybeFuncNameAndArgs = ok2(FuncName, ArgTerms),
-                (
+                ( if
                     parse_type_and_mode_list(InstConstraints, ArgTerms,
                         ArgsPrime)
-                ->
+                then
                     MaybeArgs = ok1(ArgsPrime)
-                ;
+                else
                     FuncTermStr = describe_error_term(VarSet, FuncTerm),
                     ArgsPieces = [words("Error: syntax error in arguments of"),
                         decl("func"), words("declaration at"),
@@ -860,12 +862,12 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Attributes0, Context,
                             [always(ArgsPieces)])]),
                     MaybeArgs = error1([ArgsSpec])
                 ),
-                (
+                ( if
                     parse_type_and_mode(InstConstraints, ReturnTerm,
                         ReturnArgPrime)
-                ->
+                then
                     MaybeReturnArg = ok1(ReturnArgPrime)
-                ;
+                else
                     ReturnPieces = [words("Error: syntax error"),
                         words("in return type of"), decl("func"),
                         words("declaration."), nl],
@@ -875,23 +877,23 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Attributes0, Context,
                             [always(ReturnPieces)])]),
                     MaybeReturnArg = error1([ReturnSpec])
                 ),
-                (
+                ( if
                     MaybeArgs = ok1(Args),
                     MaybeReturnArg = ok1(ReturnArg)
-                ->
+                then
                     % We use an auxiliary predicate because the code is just
                     % too deeply indented here.
                     parse_func_decl_base_2(FuncName, Args, ReturnArg,
                         FuncTerm, Term, VarSet, MaybeDet,
                         ExistQVars, Constraints, Attributes,
                         Context, SeqNum, MaybeItem)
-                ;
+                else
                     Specs = get_any_errors1(MaybeArgs) ++
                         get_any_errors1(MaybeReturnArg),
                     MaybeItem = error1(Specs)
                 )
             )
-        ;
+        else
             Pieces = [words("Error:"), quote("="), words("expected in"),
                 decl("func"), words("declaration."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -917,30 +919,30 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
         MaybeInconsistentArgsSpec = yes(InconsistentArgsSpec),
         InconsistentArgsSpecs = [InconsistentArgsSpec]
     ),
-    (
+    ( if
         Args = [type_and_mode(_, _) | _],
         ReturnArg = type_only(_)
-    ->
+    then
         ArgsOnlyPieces = [words("Error: function arguments have modes,"),
             words("but function result does not."), nl],
         ArgsOnlySpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(FuncTerm),
                 [always(ArgsOnlyPieces)])]),
         ArgsOnlySpecs = [ArgsOnlySpec]
-    ;
+    else
         ArgsOnlySpecs = []
     ),
-    (
+    ( if
         Args = [type_only(_) | _],
         ReturnArg = type_and_mode(_, _)
-    ->
+    then
         ReturnOnlyPieces = [words("Error: function result has mode,"),
             words("but function arguments do not."), nl],
         ReturnOnlySpec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(FuncTerm),
                 [always(ReturnOnlyPieces)])]),
         ReturnOnlySpecs = [ReturnOnlySpec]
-    ;
+    else
         ReturnOnlySpecs = []
     ),
     ConsistencySpecs =
@@ -954,7 +956,7 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
         varset.coerce(VarSet, TVarSet),
         varset.coerce(VarSet, IVarSet),
         AllArgs = Args ++ [ReturnArg],
-        ( inst_var_constraints_types_modes_self_consistent(AllArgs) ->
+        ( if inst_var_constraints_types_modes_self_consistent(AllArgs) then
             Origin = item_origin_user,
             ItemPredDecl = item_pred_decl_info(FuncName, pf_function, AllArgs,
                 no, no, MaybeDetism, Origin, TVarSet, IVarSet, ExistQVars,
@@ -962,7 +964,7 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
             Item = item_pred_decl(ItemPredDecl),
             MaybeItem0 = ok1(Item),
             check_no_attributes(MaybeItem0, Attributes, MaybeItem)
-        ;
+        else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: inconsistent constraints"),
                 words("on inst variables in function declaration:"), nl,
@@ -985,12 +987,14 @@ parse_type_and_mode_list(InstConstraints, [H0 | T0], [H | T]) :-
     is semidet.
 
 parse_type_and_mode(InstConstraints, Term, MaybeTypeAndMode) :-
-    ( Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _Context) ->
+    ( if
+        Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _Context)
+    then
         maybe_parse_type(TypeTerm, Type),
         convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
         constrain_inst_vars_in_mode_sub(InstConstraints, Mode0, Mode),
         MaybeTypeAndMode = type_and_mode(Type, Mode)
-    ;
+    else
         maybe_parse_type(Term, Type),
         MaybeTypeAndMode = type_only(Type)
     ).
@@ -1082,24 +1086,24 @@ parse_mode_decl(ModuleName, VarSet, Term, Attributes, Context, SeqNum,
     parse_with_inst_suffix(BeforeDetismTerm, BeforeWithInstTerm,
         MaybeWithInst),
     BaseTerm = BeforeWithInstTerm,
-    (
+    ( if
         MaybeMaybeDetism = ok1(MaybeDetism),
         MaybeWithInst = ok1(WithInst)
-    ->
-        (
+    then
+        ( if
             MaybeDetism = yes(_),
             WithInst = yes(_)
-        ->
+        then
             Pieces = [words("Error:"), quote("with_inst"),
                 words("and determinism both specified."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),
             MaybeItem = error1([Spec])
-        ;
+        else
             parse_mode_decl_base(ModuleName, VarSet, BaseTerm, Attributes,
                 WithInst, MaybeDetism, Context, SeqNum, MaybeItem)
         )
-    ;
+    else
         Specs = get_any_errors1(MaybeMaybeDetism)
             ++ get_any_errors1(MaybeWithInst),
         MaybeItem = error1(Specs)
@@ -1169,7 +1173,9 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Attributes, WithInst,
 
 parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
         WithInst, MaybeDet, Attributes0, Context, SeqNum, MaybeItem) :-
-    ( convert_mode_list(allow_constrained_inst_var, ArgTerms, ArgModes0) ->
+    ( if
+        convert_mode_list(allow_constrained_inst_var, ArgTerms, ArgModes0)
+    then
         get_class_context_and_inst_constraints(ModuleName, VarSet,
             Attributes0, Attributes, MaybeConstraints),
         (
@@ -1177,7 +1183,9 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
             list.map(constrain_inst_vars_in_mode_sub(InstConstraints),
                 ArgModes0, ArgModes),
             varset.coerce(VarSet, InstVarSet),
-            ( inst_var_constraints_are_self_consistent_in_modes(ArgModes) ->
+            ( if
+                inst_var_constraints_are_self_consistent_in_modes(ArgModes)
+            then
                 (
                     WithInst = no,
                     MaybePredOrFunc = yes(pf_predicate)
@@ -1193,7 +1201,7 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
                 Item = item_mode_decl(ItemModeDecl),
                 MaybeItem0 = ok1(Item),
                 check_no_attributes(MaybeItem0, Attributes, MaybeItem)
-            ;
+            else
                 PredModeTermStr = describe_error_term(VarSet, PredModeTerm),
                 Pieces = [words("Error: inconsistent constraints"),
                     words("on inst variables"),
@@ -1208,7 +1216,7 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
             MaybeConstraints = error3(Specs),
             MaybeItem = error1(Specs)
         )
-    ;
+    else
         PredModeTermStr = describe_error_term(VarSet, PredModeTerm),
         Pieces = [words("Error: syntax error in"), decl("mode"),
             words("declaration at"), words(PredModeTermStr), suffix("."), nl],
@@ -1224,31 +1232,33 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
 parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
         FullTerm, VarSet, MaybeDetism, Attributes0, Context, SeqNum,
         MaybeItem) :-
-    ( convert_mode_list(allow_constrained_inst_var, ArgTerms, ArgModes0) ->
+    ( if
+        convert_mode_list(allow_constrained_inst_var, ArgTerms, ArgModes0)
+    then
         get_class_context_and_inst_constraints(ModuleName, VarSet,
             Attributes0, Attributes, MaybeConstraints),
         (
             MaybeConstraints = ok3(_, _, InstConstraints),
             list.map(constrain_inst_vars_in_mode_sub(InstConstraints),
                 ArgModes0, ArgModes),
-            (
+            ( if
                 convert_mode(allow_constrained_inst_var, RetModeTerm, RetMode0)
-            ->
+            then
                 constrain_inst_vars_in_mode_sub(InstConstraints,
                     RetMode0, RetMode),
                 varset.coerce(VarSet, InstVarSet),
                 ArgReturnModes = ArgModes ++ [RetMode],
-                (
+                ( if
                     inst_var_constraints_are_self_consistent_in_modes(
                         ArgReturnModes)
-                ->
+                then
                     ItemModeDecl = item_mode_decl_info(Functor,
                         yes(pf_function), ArgReturnModes, no, MaybeDetism,
                         InstVarSet, Context, SeqNum),
                     Item = item_mode_decl(ItemModeDecl),
                     MaybeItem0 = ok1(Item),
                     check_no_attributes(MaybeItem0, Attributes, MaybeItem)
-                ;
+                else
                     FullTermStr = describe_error_term(VarSet, FullTerm),
                     Pieces = [words("Error: inconsistent constraints"),
                         words("on inst variables"),
@@ -1259,7 +1269,7 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
                             [always(Pieces)])]),
                     MaybeItem = error1([Spec])
                 )
-            ;
+            else
                 Pieces = [words("Error: syntax error in return mode"),
                     words("of function mode declaration."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -1271,7 +1281,7 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
             MaybeConstraints = error3(Specs),
             MaybeItem = error1(Specs)
         )
-    ;
+    else
         % XXX Should say which argument.
         FuncModeStr = describe_error_term(VarSet, FuncMode),
         Pieces = [words("Error: syntax error in arguments of"),
@@ -1350,16 +1360,16 @@ get_class_context_and_inst_constraints(ModuleName, VarSet, RevAttributes0,
         Attributes, MaybeExistConstraints),
     list.reverse(Attributes, RevAttributes),
 
-    (
+    ( if
         MaybeUnivConstraints = ok2(UnivConstraints, UnivInstConstraints),
         MaybeExistConstraints = ok2(ExistConstraints, ExistInstConstraints)
-    ->
+    then
         ClassConstraints = constraints(UnivConstraints, ExistConstraints),
         InstConstraints =
             map.old_merge(UnivInstConstraints, ExistInstConstraints),
         MaybeExistClassInstContext = ok3(ExistQVars, ClassConstraints,
             InstConstraints)
-    ;
+    else
         Specs = get_any_errors2(MaybeUnivConstraints) ++
             get_any_errors2(MaybeExistConstraints),
         MaybeExistClassInstContext = error3(Specs)
@@ -1371,33 +1381,33 @@ get_class_context_and_inst_constraints(ModuleName, VarSet, RevAttributes0,
 
 get_constraints(QuantType, ModuleName, VarSet, !Attributes,
         MaybeClassInstConstraints) :-
-    (
+    ( if
         !.Attributes = [
             decl_attr_constraints(QuantType, ConstraintsTerm) - _Term
             | !:Attributes]
-    ->
+    then
         parse_class_and_inst_constraints(ModuleName, VarSet, ConstraintsTerm,
             MaybeHeadConstraints),
         % There may be more constraints of the same type;
         % collect them all and combine them.
         get_constraints(QuantType, ModuleName, VarSet, !Attributes,
             MaybeTailConstraints),
-        (
+        ( if
             MaybeHeadConstraints =
                 ok2(HeadClassConstraints, HeadInstConstraint),
             MaybeTailConstraints =
                 ok2(TailClassConstraints, TailInstConstraint)
-        ->
+        then
             ClassConstraints = HeadClassConstraints ++ TailClassConstraints,
             InstConstraints =
                 map.old_merge(HeadInstConstraint, TailInstConstraint),
             MaybeClassInstConstraints = ok2(ClassConstraints, InstConstraints)
-        ;
+        else
             Specs = get_any_errors2(MaybeHeadConstraints) ++
                 get_any_errors2(MaybeTailConstraints),
             MaybeClassInstConstraints = error2(Specs)
         )
-    ;
+    else
         MaybeClassInstConstraints = ok2([], map.init)
     ).
 
@@ -1417,10 +1427,10 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Context,
         % Get universally quantified variables.
         (
             PromiseType = promise_type_true,
-            ( Goal0 = all_expr(_, UnivVars0, AllGoal) ->
+            ( if Goal0 = all_expr(_, UnivVars0, AllGoal) then
                 UnivVars0 = UnivVars,
                 Goal = AllGoal
-            ;
+            else
                 UnivVars = [],
                 Goal = Goal0
             )
@@ -1457,17 +1467,17 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Context,
     maybe1(maybe(determinism))::out) is det.
 
 parse_determinism_suffix(VarSet, Term, BeforeDetismTerm, MaybeMaybeDetism) :-
-    (
+    ( if
         Term = term.functor(term.atom("is"), Args, _),
         Args = [BeforeDetismTermPrime, DetismTerm]
-    ->
+    then
         BeforeDetismTerm = BeforeDetismTermPrime,
-        (
+        ( if
             DetismTerm = term.functor(term.atom(DetismFunctor), [], _),
             standard_det(DetismFunctor, Detism)
-        ->
+        then
             MaybeMaybeDetism = ok1(yes(Detism))
-        ;
+        else
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: invalid determinism category"),
                 words(TermStr), suffix("."), nl],
@@ -1475,7 +1485,7 @@ parse_determinism_suffix(VarSet, Term, BeforeDetismTerm, MaybeMaybeDetism) :-
                 [simple_msg(get_term_context(DetismTerm), [always(Pieces)])]),
             MaybeMaybeDetism = error1([Spec])
         )
-    ;
+    else
         BeforeDetismTerm = Term,
         MaybeMaybeDetism = ok1(no)
     ).
@@ -1486,15 +1496,13 @@ parse_determinism_suffix(VarSet, Term, BeforeDetismTerm, MaybeMaybeDetism) :-
     maybe1(maybe(mer_type))::out) is det.
 
 parse_with_type_suffix(VarSet, Term, BeforeWithTypeTerm, MaybeWithType) :-
-    (
+    ( if
         Term = term.functor(TypeQualifier,
             [BeforeWithTypeTermPrime, TypeTerm], _),
-        (
-            TypeQualifier = term.atom("with_type")
-        ;
-            TypeQualifier = term.atom(":")
+        ( TypeQualifier = term.atom("with_type")
+        ; TypeQualifier = term.atom(":")
         )
-    ->
+    then
         BeforeWithTypeTerm = BeforeWithTypeTermPrime,
         % XXX Should supply more correct ContextPieces.
         ContextPieces = [],
@@ -1506,7 +1514,7 @@ parse_with_type_suffix(VarSet, Term, BeforeWithTypeTerm, MaybeWithType) :-
             MaybeType = error1(Specs),
             MaybeWithType = error1(Specs)
         )
-    ;
+    else
         BeforeWithTypeTerm = Term,
         MaybeWithType = ok1(no)
     ).
@@ -1517,21 +1525,21 @@ parse_with_type_suffix(VarSet, Term, BeforeWithTypeTerm, MaybeWithType) :-
     maybe1(maybe(mer_inst))::out) is det.
 
 parse_with_inst_suffix(Term, BeforeWithInstTerm, MaybeWithInst) :-
-    (
+    ( if
         Term = term.functor(term.atom("with_inst"),
             [BeforeWithInstTermPrime, InstTerm], _)
-    ->
+    then
         BeforeWithInstTerm = BeforeWithInstTermPrime,
-        ( convert_inst(allow_constrained_inst_var, InstTerm, Inst) ->
+        ( if convert_inst(allow_constrained_inst_var, InstTerm, Inst) then
             MaybeWithInst = ok1(yes(Inst))
-        ;
+        else
             Pieces = [words("Error: invalid inst in"), quote("with_inst"),
                 suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(InstTerm), [always(Pieces)])]),
             MaybeWithInst = error1([Spec])
         )
-    ;
+    else
         BeforeWithInstTerm = Term,
         MaybeWithInst = ok1(no)
     ).
@@ -1542,13 +1550,13 @@ parse_with_inst_suffix(Term, BeforeWithInstTerm, MaybeWithInst) :-
     decl_attrs::in, decl_attrs::out, list(var)::in, list(var)::out) is det.
 
 get_quant_vars(QuantType, ModuleName, !Attributes, !Vars) :-
-    (
+    ( if
         !.Attributes = [decl_attr_quantifier(QuantType, QuantVars) - _
             | !:Attributes]
-    ->
+    then
         !:Vars = !.Vars ++ QuantVars,
         get_quant_vars(QuantType, ModuleName, !Attributes, !Vars)
-    ;
+    else
         true
     ).
 
@@ -1562,19 +1570,19 @@ get_quant_vars(QuantType, ModuleName, !Attributes, !Vars) :-
 :- func desugar_field_access(term) = term.
 
 desugar_field_access(Term) = DesugaredTerm :-
-    (
+    ( if
         Term = functor(atom("^"), [A, RHS], Context),
         RHS  = functor(atom(FieldName), Bs, _)
-    ->
+    then
         DesugaredTerm = functor(atom(FieldName), Bs ++ [A], Context)
-    ;
+    else if
         Term = functor(atom(":="), [LHS, X], _),
         LHS  = functor(atom("^"), [A, RHS], Context),
         RHS  = functor(atom(FieldName), Bs, _)
-    ->
+    then
         FunctionName = FieldName ++ " :=",
         DesugaredTerm = functor(atom(FunctionName), Bs ++ [A, X], Context)
-    ;
+    else
         DesugaredTerm = Term
     ).
 
@@ -1617,9 +1625,9 @@ parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
 :- pred get_purity(purity::out, decl_attrs::in, decl_attrs::out) is det.
 
 get_purity(Purity, !Attributes) :-
-    ( !.Attributes = [decl_attr_purity(Purity0) - _ | !:Attributes] ->
+    ( if !.Attributes = [decl_attr_purity(Purity0) - _ | !:Attributes] then
         Purity = Purity0
-    ;
+    else
         Purity = purity_pure
     ).
 

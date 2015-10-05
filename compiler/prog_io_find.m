@@ -62,12 +62,12 @@ search_for_module_source(Globals, Dirs, InterfaceDirs, ModuleName,
         InitialPartialModuleName, MaybeFileName0, !IO),
     (
         MaybeFileName0 = ok(SourceFileName),
-        (
+        ( if
             string.remove_suffix(dir.basename(SourceFileName),
                 ".m", SourceFileBaseName),
             file_name_to_module_name(SourceFileBaseName, SourceFileModuleName),
             ModuleName \= SourceFileModuleName
-        ->
+        then
             % The module name doesn't match the file name. Return an error
             % if there is a more qualified matching `.m' or `.int' file in
             % the interface search path. This avoids having a file `read.m'
@@ -83,7 +83,7 @@ search_for_module_source(Globals, Dirs, InterfaceDirs, ModuleName,
             ;
                 MaybeFileName2 = error(_)
             ),
-            (
+            ( if
                 MaybeFileName2 = ok(SourceFileName2),
                 SourceFileName2 \= SourceFileName,
                 string.remove_suffix(dir.basename(SourceFileName2), ".m",
@@ -92,28 +92,28 @@ search_for_module_source(Globals, Dirs, InterfaceDirs, ModuleName,
                     SourceFileModuleName2),
                 partial_sym_name_matches_full(SourceFileModuleName,
                     SourceFileModuleName2)
-            ->
+            then
                 io.close_input(SourceStream, !IO),
                 MaybeFileName = error(find_source_error(ModuleName,
                     Dirs, yes(SourceFileName2)))
-            ;
+            else
                 module_name_to_file_name(Globals, ModuleName, ".int",
                     do_not_create_dirs, IntFile, !IO),
                 search_for_file_returning_dir(do_not_open_file, InterfaceDirs,
                     IntFile, MaybeIntDir, !IO),
-                (
+                ( if
                     MaybeIntDir = ok(IntDir),
                     IntDir \= dir.this_directory
-                ->
+                then
                     io.close_input(SourceStream, !IO),
                     MaybeFileName = error(find_source_error(ModuleName,
                         Dirs, yes(IntDir/IntFile)))
-                ;
+                else
                     io.set_input_stream(SourceStream, _, !IO),
                     MaybeFileName = MaybeFileName0
                 )
             )
-        ;
+        else
             MaybeFileName = MaybeFileName0
         )
     ;
@@ -135,10 +135,10 @@ search_for_module_source_qualifier_loop(Globals, Dirs, ModuleName,
         MaybeFileName = MaybeFileName0
     ;
         MaybeFileName0 = error(_),
-        ( PartialModuleName1 = drop_one_qualifier(PartialModuleName) ->
+        ( if PartialModuleName1 = drop_one_qualifier(PartialModuleName) then
             search_for_module_source_qualifier_loop(Globals, Dirs, ModuleName,
                 PartialModuleName1, MaybeFileName, !IO)
-        ;
+        else
             MaybeFileName = error(find_source_error(ModuleName, Dirs, no))
         )
     ).
@@ -188,14 +188,14 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
     (
         OpenRes = ok(InputStream),
         io.set_input_stream(InputStream, OldInputStream, !IO),
-        ( string.remove_suffix(FileName, ".m", PartialFileName0) ->
+        ( if string.remove_suffix(FileName, ".m", PartialFileName0) then
             PartialFileName = PartialFileName0
-        ;
+        else
             PartialFileName = FileName
         ),
-        ( dir.basename(PartialFileName, BaseName0) ->
+        ( if dir.basename(PartialFileName, BaseName0) then
             BaseName = BaseName0
-        ;
+        else
             BaseName = ""
         ),
         file_name_to_module_name(BaseName, DefaultModuleName),
