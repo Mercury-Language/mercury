@@ -241,7 +241,7 @@ deforest_proc_deltas(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo) :-
                 % If the determinism of some sub-goals has changed,
                 % then we re-run determinism analysis. As with inlining.m,
                 % this avoids problems with inlining erroneous procedures.
-                det_infer_proc(PredId, ProcId, !ModuleInfo, _, _, [], _)
+                det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo)
             ;
                 RerunDet = no
             ),

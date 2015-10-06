@@ -70,6 +70,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
@@ -282,13 +283,21 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         convert_pred_to_lambda_goal(Purity, EvalMethod, X, PredId, ProcId,
             ArgVars0, PredArgTypes, UnifyContext, GoalInfo0, Context,
-            ModuleInfo0, Functor0, VarSet0, VarSet, VarTypes0, VarTypes),
+            ModuleInfo0, MaybeRHS0, VarSet0, VarSet, VarTypes0, VarTypes),
         mode_info_set_varset(VarSet, !ModeInfo),
         mode_info_set_var_types(VarTypes, !ModeInfo),
 
-        % Modecheck this unification in its new form.
-        modecheck_unification(X, Functor0, Unification0, UnifyContext,
-            GoalInfo0, GoalExpr, !ModeInfo)
+        (
+            MaybeRHS0 = ok1(RHS0),
+            % Modecheck this unification in its new form.
+            modecheck_unification(X, RHS0, Unification0, UnifyContext,
+                GoalInfo0, GoalExpr, !ModeInfo)
+        ;
+            MaybeRHS0 = error1(_),
+            unexpected($module, $pred,
+                "could not convert pred to lambda goal; " ++
+                "polymorphism.m should have stopped us getting here")
+        )
     else if
         % Right hand sides that represent constant structures need to be
         % handled specially, because the term is inherently shared.
@@ -571,12 +580,21 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
             Goal = true_goal_expr
         ;
             MatchResult = possible_modes([ProcId]),
-            fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, RHS),
-            goal_info_remove_feature(feature_lambda_undetermined_mode,
-                GoalInfo0, GoalInfo),
-            % Modecheck this unification in its new form.
-            modecheck_unification_rhs_lambda(X, RHS, Unification, UnifyContext,
-                GoalInfo, Goal, !ModeInfo)
+            fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0,
+                MaybeRHS),
+            (
+                MaybeRHS = ok1(RHS),
+                goal_info_remove_feature(feature_lambda_undetermined_mode,
+                    GoalInfo0, GoalInfo),
+                % Modecheck this unification in its new form.
+                modecheck_unification_rhs_lambda(X, RHS, Unification,
+                    UnifyContext, GoalInfo, Goal, !ModeInfo)
+            ;
+                MaybeRHS = error1(_),
+                unexpected($module, $pred,
+                    "could not fix up lambda goal; " ++
+                    "polymorphism.m should have stopped us getting here")
+            )
         ;
             MatchResult = possible_modes([_, _ | _]),
             WaitingVars = set_of_var.make_singleton(X),

@@ -1909,7 +1909,7 @@ intermod_write_pred_marker_pragmas(PredInfo, !IO) :-
         MarkerList, !IO).
 
 :- pred intermod_write_pred_marker_pragmas(pred_or_func::in,
-    sym_name::in, int::in, list(marker)::in, io::di, io::uo) is det.
+    sym_name::in, int::in, list(pred_marker)::in, io::di, io::uo) is det.
 
 intermod_write_pred_marker_pragmas(_, _, _, [], !IO).
 intermod_write_pred_marker_pragmas(PredOrFunc, PredSymName, PredArity,
@@ -1944,7 +1944,7 @@ intermod_write_pred_type_spec_pragmas(ModuleInfo, PredId, !IO) :-
     % Is a pragma declaration required in the `.opt' file for
     % a predicate with the given marker.
     %
-:- pred should_output_marker(marker::in, bool::out) is det.
+:- pred should_output_marker(pred_marker::in, bool::out) is det.
 
 should_output_marker(marker_stub, no).
 should_output_marker(marker_builtin_stub, no).

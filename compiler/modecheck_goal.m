@@ -1031,8 +1031,10 @@ modecheck_make_type_info_var_for_type(Type, Context, TypeInfoVar,
         PolyInfo0, PolyInfo),
 
     % Update the information in the predicate table.
-    polymorphism.poly_info_extract(PolyInfo, PredInfo0, PredInfo,
+    polymorphism.poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
         ProcInfo2, ProcInfo, ModuleInfo1),
+    expect(unify(PolySpecs, []), $module, $pred,
+        "got errors while making type_info_var"),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
 

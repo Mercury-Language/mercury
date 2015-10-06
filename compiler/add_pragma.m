@@ -504,7 +504,7 @@ add_pragma_mm_tabling_info(MMTablingInfo, _Context, !ModuleInfo, !Specs) :-
     % already has a marker in ConflictMarkers, report an error.
     %
 :- pred add_pred_marker(string::in, sym_name::in, arity::in, pred_status::in,
-    prog_context::in, marker::in, list(marker)::in,
+    prog_context::in, pred_marker::in, list(pred_marker)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -528,7 +528,7 @@ add_pred_marker(PragmaName, Name, Arity, Status, Context, Marker,
 
     % Succeed if a marker for an exported procedure must also be exported.
     %
-:- pred marker_must_be_exported(marker::in) is semidet.
+:- pred marker_must_be_exported(pred_marker::in) is semidet.
 
 marker_must_be_exported(_) :-
     semidet_fail.
@@ -572,7 +572,7 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
     % The bool indicates whether there was a conflicting marker present.
     %
 :- pred pragma_check_markers(pred_table::in, list(pred_id)::in,
-    list(marker)::in, bool::out) is det.
+    list(pred_marker)::in, bool::out) is det.
 
 pragma_check_markers(_, [], _, no).
 pragma_check_markers(PredTable, [PredId | PredIds], ConflictList, Conflict) :-
@@ -615,7 +615,8 @@ pragma_add_marker([PredId | PredIds], UpdatePredInfo, Status, MustBeExported,
         !PredTable, WrongStatus1),
     bool.or(WrongStatus0, WrongStatus1, WrongStatus).
 
-:- pred add_marker_pred_info(marker::in, pred_info::in, pred_info::out) is det.
+:- pred add_marker_pred_info(pred_marker::in, pred_info::in, pred_info::out)
+    is det.
 
 add_marker_pred_info(Marker, !PredInfo) :-
     pred_info_get_markers(!.PredInfo, Markers0),

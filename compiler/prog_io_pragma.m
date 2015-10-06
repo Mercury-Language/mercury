@@ -18,8 +18,8 @@
 
 :- import_module libs.globals.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -53,6 +53,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.prog_io_util.
 
 :- import_module assoc_list.
 :- import_module bool.

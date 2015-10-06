@@ -69,6 +69,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -76,15 +77,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type modes_safe_to_continue
-    --->    modes_safe_to_continue
-    ;       modes_unsafe_to_continue.
-
     % modecheck_module(!.HLDS, {!:HLDS, SafeToContinue, Specs}):
     %
     % Perform mode inference and checking for a whole module.
     %
-    % SafeToContinue = modes_unsafe_to_continue means that mode inference
+    % SafeToContinue = unsafe_to_continue means that mode inference
     % was halted prematurely due to an error, and that we should therefore
     % not perform determinism-checking, because we might get internal errors.
     %
@@ -93,13 +90,13 @@
     % one output argument.
     %
 :- pred modecheck_module(module_info::in,
-    {module_info, modes_safe_to_continue, list(error_spec)}::out) is det.
+    {module_info, maybe_safe_to_continue, list(error_spec)}::out) is det.
 
     % Mode-check or unique-mode-check the code of all the predicates
     % in a module.
     %
 :- pred check_pred_modes(how_to_check_goal::in, may_change_called_proc::in,
-    module_info::in, module_info::out, modes_safe_to_continue::out,
+    module_info::in, module_info::out, maybe_safe_to_continue::out,
     list(error_spec)::out) is det.
 
     % Mode-check the code for the given predicate in a given mode.
@@ -210,13 +207,13 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
     ;
         WhatToCheck = check_modes,
         (
-            SafeToContinue0 = modes_unsafe_to_continue,
+            SafeToContinue0 = unsafe_to_continue,
             InferenceSpecs = report_mode_inference_messages(!.ModuleInfo,
                 do_not_include_detism_on_modes, PredIds),
             !:Specs = InferenceSpecs ++ !.Specs,
-            SafeToContinue = modes_unsafe_to_continue
+            SafeToContinue = unsafe_to_continue
         ;
-            SafeToContinue0 = modes_safe_to_continue,
+            SafeToContinue0 = safe_to_continue,
             globals.lookup_bool_option(Globals, delay_partial_instantiations,
                 DelayPartialInstantiations),
             (
@@ -301,7 +298,7 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
                 )
             ;
                 DelayPartialInstantiations = no,
-                SafeToContinue = modes_safe_to_continue
+                SafeToContinue = safe_to_continue
             )
         )
     ).
@@ -310,7 +307,7 @@ check_pred_modes(WhatToCheck, MayChangeCalledProc, !ModuleInfo,
     %
 :- pred modecheck_to_fixpoint(list(pred_id)::in, int::in,
     how_to_check_goal::in, may_change_called_proc::in,
-    module_info::in, module_info::out, modes_safe_to_continue::out,
+    module_info::in, module_info::out, maybe_safe_to_continue::out,
     list(error_spec)::out) is det.
 
 modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
@@ -319,11 +316,12 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
     % next pass.
     module_info_get_preds(!.ModuleInfo, OldPredTable0),
 
-    % Analyze everything which has the "can-process" flag set to `yes'.
+    % Analyze every procedure that has its "CanProcess" flag
+    % set to `can_process_now'.
     list.foldl3(maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc),
         PredIds, !ModuleInfo, no, Changed1, [], !:Specs),
 
-    % Analyze the procedures whose "can-process" flag was no;
+    % Analyze the procedures whose "CanProcess" flag was cannot_process_yet;
     % those procedures were inserted into the unify requests queue.
     modecheck_queued_procs(WhatToCheck, OldPredTable0, OldPredTable,
         !ModuleInfo, Changed2, QueuedSpecs),
@@ -335,20 +333,20 @@ modecheck_to_fixpoint(PredIds, MaxIterations, WhatToCheck, MayChangeCalledProc,
     (
         Changed = no,
         % Stop if we have reached a fixpoint.
-        SafeToContinue = modes_safe_to_continue
+        SafeToContinue = safe_to_continue
     ;
         Changed = yes,
         (
             ErrorsSoFar = yes,
             % Stop if we have found any errors.
-            SafeToContinue = modes_unsafe_to_continue
+            SafeToContinue = unsafe_to_continue
         ;
             ErrorsSoFar = no,
             ( if MaxIterations =< 1 then
                 % Stop if we have exceeded the iteration limit.
                 MaxIterSpec = report_max_iterations_exceeded(!.ModuleInfo),
                 !:Specs = [MaxIterSpec | !.Specs],
-                SafeToContinue = modes_unsafe_to_continue
+                SafeToContinue = unsafe_to_continue
             else
                 % Otherwise, continue iterating.
                 globals.lookup_bool_option(Globals, debug_modes, DebugModes),
@@ -629,10 +627,10 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         PredInfo0, ProcInfo0),
     proc_info_get_can_process(ProcInfo0, CanProcess),
     (
-        CanProcess = cannot_process,
+        CanProcess = cannot_process_yet,
         Specs = []
     ;
-        CanProcess = can_process,
+        CanProcess = can_process_now,
         do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             !ModuleInfo, PredInfo0, PredInfo, ProcInfo0, !Changed, Specs),
 
@@ -1033,7 +1031,6 @@ queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
 
 modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
         !:Changed, Specs) :-
-    % Mark the procedure as ready to be processed.
     PredProcId = proc(PredId, ProcId),
 
     module_info_get_preds(!.ModuleInfo, Preds0),
@@ -1041,7 +1038,8 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
     pred_info_get_proc_table(PredInfo0, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
 
-    proc_info_set_can_process(can_process, ProcInfo0, ProcInfo1),
+    % Mark the procedure as ready to be processed.
+    proc_info_set_can_process(can_process_now, ProcInfo0, ProcInfo1),
 
     map.det_update(ProcId, ProcInfo1, Procs0, Procs1),
     pred_info_set_proc_table(Procs1, PredInfo0, PredInfo1),

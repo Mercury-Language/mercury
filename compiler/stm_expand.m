@@ -2355,8 +2355,10 @@ make_type_info(Type, Var, Goals, NewPredInfo0, NewPredInfo) :-
     create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0),
     polymorphism_make_type_info_var(Type, Context, Var, Goals,
         PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PredInfo0, PredInfo, ProcInfo0, ProcInfo,
-        ModuleInfo),
+    poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
+        ProcInfo0, ProcInfo, ModuleInfo),
+    expect(unify(PolySpecs, []), $module, $pred,
+        "got errors while making type_info_var"),
     NewPredInfo = stm_new_pred_info(ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo, Context, VarCnt).
 

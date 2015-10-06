@@ -16,9 +16,9 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_io_util.
 :- import_module recompilation.
 
 :- import_module list.
@@ -104,6 +104,7 @@
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_type_defn.
 :- import_module parse_tree.prog_io_typeclass.
+:- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_mode.
 :- import_module recompilation.version.
 

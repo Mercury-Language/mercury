@@ -342,7 +342,7 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         pred_info_get_proc_table(!.PredInfo, !:ProcMap),
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo),
         map.lookup(!.ProcMap, ProcId, !:ProcInfo),
-        proc_info_set_can_process(cannot_process, !ProcInfo),
+        proc_info_set_can_process(cannot_process_yet, !ProcInfo),
 
         copy_clauses_to_proc(ProcId, ClausesInfo, !ProcInfo),
 

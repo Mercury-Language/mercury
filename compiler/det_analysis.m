@@ -79,9 +79,8 @@
 
     % Infer the determinism of a procedure.
     %
-:- pred det_infer_proc(pred_id::in, proc_id::in,
-    module_info::in, module_info::out, determinism::out, determinism::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred det_infer_proc_ignore_msgs(pred_id::in, proc_id::in,
+    module_info::in, module_info::out) is det.
 
 :- type pess_info
     --->    pess_info(prog_vars, prog_context).
@@ -256,6 +255,14 @@ global_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
         !Specs).
 
 %-----------------------------------------------------------------------------%
+
+det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo) :-
+    det_infer_proc(PredId, ProcId, !ModuleInfo, _OldDetism, _NewDetism,
+        [], _Specs).
+
+:- pred det_infer_proc(pred_id::in, proc_id::in,
+    module_info::in, module_info::out, determinism::out, determinism::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % Get the proc_info structure for this procedure.

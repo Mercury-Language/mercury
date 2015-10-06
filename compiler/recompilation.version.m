@@ -17,8 +17,8 @@
 :- interface.
 
 :- import_module libs.timestamp.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_io_util.
 
 :- import_module io.
 :- import_module maybe.
@@ -53,6 +53,7 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_io_sym_name.
+:- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 

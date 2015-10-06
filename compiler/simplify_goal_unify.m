@@ -326,7 +326,10 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
         term.context_init(Context),
         polymorphism_make_type_info_vars(Types, Context,
             TypeInfoVars, TypeInfoGoals, !PolyInfo),
-        poly_info_extract(!.PolyInfo, !PredInfo, !ProcInfo, ModuleInfo1),
+        poly_info_extract(!.PolyInfo, PolySpecs, !PredInfo, !ProcInfo,
+            ModuleInfo1),
+        expect(unify(PolySpecs, []), $module, $pred,
+            "got errors while making type_info_var"),
 
         proc_info_get_vartypes(!.ProcInfo, VarTypes),
         proc_info_get_varset(!.ProcInfo, VarSet),

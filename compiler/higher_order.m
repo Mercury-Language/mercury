@@ -1779,13 +1779,17 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
     higher_order_info::in, higher_order_info::out) is det.
 
 construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
-    create_poly_info(!.Info ^ hoi_global_info ^ hogi_module_info,
-        !.Info ^ hoi_pred_info, !.Info ^ hoi_proc_info, PolyInfo0),
+    ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
+    PredInfo0 = !.Info ^ hoi_pred_info,
+    ProcInfo0 = !.Info ^ hoi_proc_info,
+    create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0),
     term.context_init(Context),
     polymorphism_make_type_info_vars(Types, Context,
         TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, !.Info ^ hoi_pred_info, PredInfo,
-        !.Info ^ hoi_proc_info, ProcInfo, ModuleInfo),
+    poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
+        ProcInfo0, ProcInfo, ModuleInfo),
+    expect(unify(PolySpecs, []), $module, $pred,
+        "got errors while making type_info_vars"),
     !Info ^ hoi_pred_info := PredInfo,
     !Info ^ hoi_proc_info := ProcInfo,
     !Info ^ hoi_global_info ^ hogi_module_info := ModuleInfo.

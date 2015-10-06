@@ -960,13 +960,13 @@ tabling_data_decl_flags(Constness) = MLDS_DeclFlags :-
 % Code for handling attributes.
 %
 
-:- func attributes_to_mlds_attributes(module_info, list(hlds_pred.attribute))
+:- func attributes_to_mlds_attributes(module_info, list(pred_attribute))
     = list(mlds_attribute).
 
 attributes_to_mlds_attributes(ModuleInfo, Attrs) =
     list.map(attribute_to_mlds_attribute(ModuleInfo), Attrs).
 
-:- func attribute_to_mlds_attribute(module_info, hlds_pred.attribute)
+:- func attribute_to_mlds_attribute(module_info, pred_attribute)
     = mlds_attribute.
 
 attribute_to_mlds_attribute(ModuleInfo, custom(Type)) =

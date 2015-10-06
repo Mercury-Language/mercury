@@ -8409,12 +8409,6 @@ before going on the next phase on all predicates.
 @c and requires the compiler to be built in a
 @c low-level parallel grade and running with multiple engines.
 
-@c @sp 1
-@c @item --no-polymorphism
-@c Don't handle polymorphic types.
-@c (Generates slightly more efficient code, but stops
-@c polymorphism from working except in special cases.)
-
 @sp 1
 @item --no-reclaim-heap-on-nondet-failure
 @findex --no-reclaim-heap-on-nondet-failure

@@ -576,8 +576,10 @@ make_type_info_var(Type, Context, PredId, !ProcInfo, !ModuleInfo,
     create_poly_info(!.ModuleInfo, PredInfo0, !.ProcInfo, PolyInfo0),
     polymorphism_make_type_info_var(Type, Context, TypeInfoVar,
         TypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PredInfo0, PredInfo,
+    poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
         !ProcInfo, !:ModuleInfo),
+    expect(unify(PolySpecs, []), $module, $pred,
+        "got errors while making type_info_var"),
     expect(unify(PredInfo0, PredInfo), $module, $pred, "modified pred_info").
 
 %-----------------------------------------------------------------------------%

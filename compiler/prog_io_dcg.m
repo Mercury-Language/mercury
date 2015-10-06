@@ -24,9 +24,9 @@
 
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_io_util.
 
 :- import_module list.
 :- import_module term.
@@ -52,6 +52,7 @@
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_util.
+:- import_module parse_tree.prog_io_util.
 
 :- import_module counter.
 :- import_module string.

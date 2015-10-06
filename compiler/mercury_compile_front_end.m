@@ -104,6 +104,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.
 :- import_module top_level.mercury_compile_middle_passes.
@@ -469,73 +470,83 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    maybe_polymorphism(Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_polymorphism(Verbose, Stats, PolySafeToContinue, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 30, "polymorphism", !DumpInfo, !IO),
 
-    maybe_warn_about_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO),
-    maybe_dump_hlds(!.HLDS, 31, "unused_imports", !DumpInfo, !IO),
-
-    % XXX Convert the mode constraints pass to use error_specs.
-    maybe_mode_constraints(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 33, "mode_constraints", !DumpInfo, !IO),
-
-    modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue,
-        !Specs, !IO),
-    maybe_dump_hlds(!.HLDS, 35, "modecheck", !DumpInfo, !IO),
-
     (
-        SafeToContinue = modes_unsafe_to_continue,
+        PolySafeToContinue = unsafe_to_continue,
         FoundError = yes
     ;
-        SafeToContinue = modes_safe_to_continue,
-        detect_switches(Verbose, Stats, !HLDS, !IO),
-        maybe_dump_hlds(!.HLDS, 40, "switch_detect", !DumpInfo, !IO),
+        PolySafeToContinue = safe_to_continue,
 
-        detect_cse(Verbose, Stats, !HLDS, !IO),
-        maybe_dump_hlds(!.HLDS, 45, "cse", !DumpInfo, !IO),
+        maybe_warn_about_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO),
+        maybe_dump_hlds(!.HLDS, 31, "unused_imports", !DumpInfo, !IO),
 
-        check_determinism(Verbose, Stats, !HLDS, !Specs, !IO),
-        maybe_dump_hlds(!.HLDS, 50, "determinism", !DumpInfo, !IO),
+        % XXX Convert the mode constraints pass to use error_specs.
+        maybe_mode_constraints(Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(!.HLDS, 33, "mode_constraints", !DumpInfo, !IO),
 
-        check_unique_modes(Verbose, Stats, !HLDS, FoundUniqError, !Specs, !IO),
-        maybe_dump_hlds(!.HLDS, 55, "unique_modes", !DumpInfo, !IO),
-
-        check_stratification(Verbose, Stats, !HLDS, FoundStratError,
+        modecheck(Verbose, Stats, !HLDS, FoundModeError, ModesSafeToContinue,
             !Specs, !IO),
-        maybe_dump_hlds(!.HLDS, 60, "stratification", !DumpInfo, !IO),
+        maybe_dump_hlds(!.HLDS, 35, "modecheck", !DumpInfo, !IO),
 
-        check_oisu_pragmas(Verbose, Stats, !HLDS, FoundOISUError,
-            !Specs, !IO),
-        maybe_dump_hlds(!.HLDS, 61, "oisu", !DumpInfo, !IO),
-
-        process_try_goals(Verbose, Stats, !HLDS, FoundTryError, !Specs, !IO),
-        maybe_dump_hlds(!.HLDS, 62, "try", !DumpInfo, !IO),
-
-        maybe_simplify(yes, simplify_pass_frontend, Verbose, Stats,
-            !HLDS, !Specs, !IO),
-        maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !DumpInfo, !IO),
-
-        maybe_proc_statistics(Verbose, Stats, "AfterFrontEnd", !HLDS,
-            !Specs, !IO),
-
-        % Work out whether we encountered any errors.
-        module_info_get_num_errors(!.HLDS, NumErrors),
-        io.get_exit_status(ExitStatus, !IO),
-        ( if
-            FoundModeError = no,
-            FoundUniqError = no,
-            FoundStratError = no,
-            FoundOISUError = no,
-            FoundTryError = no,
-            NumErrors = 0,
-            % Strictly speaking, we shouldn't need to check the exit status.
-            % But the values returned for FoundModeError etc. aren't always
-            % correct.
-            ExitStatus = 0
-        then
-            FoundError = no
-        else
+        (
+            ModesSafeToContinue = unsafe_to_continue,
             FoundError = yes
+        ;
+            ModesSafeToContinue = safe_to_continue,
+
+            detect_switches(Verbose, Stats, !HLDS, !IO),
+            maybe_dump_hlds(!.HLDS, 40, "switch_detect", !DumpInfo, !IO),
+
+            detect_cse(Verbose, Stats, !HLDS, !IO),
+            maybe_dump_hlds(!.HLDS, 45, "cse", !DumpInfo, !IO),
+
+            check_determinism(Verbose, Stats, !HLDS, !Specs, !IO),
+            maybe_dump_hlds(!.HLDS, 50, "determinism", !DumpInfo, !IO),
+
+            check_unique_modes(Verbose, Stats, !HLDS, FoundUniqError,
+                !Specs, !IO),
+            maybe_dump_hlds(!.HLDS, 55, "unique_modes", !DumpInfo, !IO),
+
+            check_stratification(Verbose, Stats, !HLDS, FoundStratError,
+                !Specs, !IO),
+            maybe_dump_hlds(!.HLDS, 60, "stratification", !DumpInfo, !IO),
+
+            check_oisu_pragmas(Verbose, Stats, !HLDS, FoundOISUError,
+                !Specs, !IO),
+            maybe_dump_hlds(!.HLDS, 61, "oisu", !DumpInfo, !IO),
+
+            process_try_goals(Verbose, Stats, !HLDS, FoundTryError,
+                !Specs, !IO),
+            maybe_dump_hlds(!.HLDS, 62, "try", !DumpInfo, !IO),
+
+            maybe_simplify(yes, simplify_pass_frontend, Verbose, Stats,
+                !HLDS, !Specs, !IO),
+            maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !DumpInfo, !IO),
+
+            maybe_proc_statistics(Verbose, Stats, "AfterFrontEnd",
+                !HLDS, !Specs, !IO),
+
+            % Work out whether we encountered any errors.
+            module_info_get_num_errors(!.HLDS, NumErrors),
+            io.get_exit_status(ExitStatus, !IO),
+            ( if
+                FoundModeError = no,
+                FoundUniqError = no,
+                FoundStratError = no,
+                FoundOISUError = no,
+                FoundTryError = no,
+                NumErrors = 0,
+                % Strictly speaking, we shouldn't need to check the exit status.
+                % But the values returned for FoundModeError etc. aren't always
+                % correct.
+                ExitStatus = 0
+            then
+                FoundError = no
+            else
+                FoundError = yes
+            )
         )
     ),
     maybe_dump_hlds(!.HLDS, 99, "front_end", !DumpInfo, !IO).
@@ -583,45 +594,36 @@ subst_implementation_defined_literals(Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_polymorphism(bool::in, bool::in,
+:- pred maybe_polymorphism(bool::in, bool::in, maybe_safe_to_continue::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_polymorphism(Verbose, Stats, !HLDS, !Specs, !IO) :-
+maybe_polymorphism(Verbose, Stats, SafeToContinue, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
-    globals.lookup_bool_option(Globals, polymorphism, Polymorphism),
+
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
-        Polymorphism = yes,
-        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-        (
-            VeryVerbose = no,
-            maybe_write_string(Verbose,
-                "% Transforming polymorphic unifications...", !IO)
-        ;
-            VeryVerbose = yes,
-            maybe_write_string(Verbose,
-                "% Transforming polymorphic unifications...\n", !IO)
-        ),
-        maybe_flush_output(Verbose, !IO),
-        polymorphism_process_module(!HLDS),
-        (
-            VeryVerbose = no,
-            maybe_write_string(Verbose, " done.\n", !IO)
-        ;
-            VeryVerbose = yes,
-            maybe_write_string(Verbose, "% done.\n", !IO)
-        ),
-        maybe_report_stats(Stats, !IO)
+        VeryVerbose = no,
+        maybe_write_string(Verbose,
+            "% Transforming polymorphic unifications...", !IO)
     ;
-        Polymorphism = no,
-        % The --no-polymorphism option really doesn't make much
-        % sense anymore, because the polymorphism pass is necessary
-        % for the proper mode analysis of code using existential
-        % types.
-        unexpected($module, $pred,
-            "sorry, `--no-polymorphism' is no longer supported")
-    ).
+        VeryVerbose = yes,
+        maybe_write_string(Verbose,
+            "% Transforming polymorphic unifications...\n", !IO)
+    ),
+    maybe_flush_output(Verbose, !IO),
+    polymorphism_process_module(!HLDS, SafeToContinue, PolySpecs),
+    !:Specs = PolySpecs ++ !.Specs,
+    (
+        VeryVerbose = no,
+        maybe_write_string(Verbose, " done.\n", !IO)
+    ;
+        VeryVerbose = yes,
+        maybe_write_string(Verbose, "% done.\n", !IO)
+    ),
+    maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
+    maybe_report_stats(Stats, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -667,7 +669,7 @@ maybe_mode_constraints(Verbose, Stats, !HLDS, !IO) :-
     ).
 
 :- pred modecheck(bool::in, bool::in, module_info::in, module_info::out,
-    bool::out, modes_safe_to_continue::out,
+    bool::out, maybe_safe_to_continue::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 modecheck(Verbose, Stats, !HLDS, FoundModeError, SafeToContinue,
@@ -770,7 +772,8 @@ check_determinism(Verbose, Stats, !HLDS, !Specs, !IO) :-
             "% Program contains determinism error(s).\n", !IO)
     ;
         FoundError = no,
-        maybe_write_string(Verbose, "% Program is determinism-correct.\n", !IO)
+        maybe_write_string(Verbose,
+            "% Program is determinism-correct.\n", !IO)
     ),
     maybe_report_stats(Stats, !IO).
 

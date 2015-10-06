@@ -589,7 +589,6 @@
     ;       trad_passes
     ;       parallel_liveness
     ;       parallel_code_gen
-    ;       polymorphism
     ;       reclaim_heap_on_failure
     ;       reclaim_heap_on_semidet_failure
     ;       reclaim_heap_on_nondet_failure
@@ -1435,7 +1434,6 @@ option_defaults_2(code_gen_option, [
     trad_passes                         -   bool(yes),
     parallel_liveness                   -   bool(no),
     parallel_code_gen                   -   bool(no),
-    polymorphism                        -   bool(yes),
     reclaim_heap_on_failure             -   bool_special,
     reclaim_heap_on_semidet_failure     -   bool(yes),
     reclaim_heap_on_nondet_failure      -   bool(yes),
@@ -2332,7 +2330,6 @@ long_option("type-check-constraints",   type_check_constraints).
 % code generation options
 long_option("low-level-debug",      low_level_debug).
 long_option("table-debug",          table_debug).
-long_option("polymorphism",         polymorphism).
 long_option("trad-passes",          trad_passes).
 long_option("parallel-liveness",    parallel_liveness).
 long_option("parallel-code-gen",    parallel_code_gen).
@@ -4795,10 +4792,6 @@ options_help_code_generation -->
     %   "At the moment this option implies `--no-trad-passes',",
     %   "and requires the compiler to be built in a",
     %   "low-level parallel grade and running with multiple engines.",
-    %   "\t--no-polymorphism",
-    %   "\t\tDon't handle polymorphic types.",
-    %   "\t\t(Generates slightly more efficient code, but stops",
-    %   "\t\tpolymorphism from working except in special cases.)",
         "--no-reclaim-heap-on-nondet-failure",
         "\tDon't reclaim heap on backtracking in nondet code.",
         "--no-reclaim-heap-on-semidet-failure",

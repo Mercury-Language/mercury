@@ -108,6 +108,7 @@
 :- import_module hlds.make_hlds.goal_expr_to_goal.
 :- import_module libs.globals.  % for get_maybe_from_ground_term_threshold
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_dcg.

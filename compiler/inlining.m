@@ -544,7 +544,7 @@ inline_in_proc(PredProcId, InlinedProcs, Params, !ModuleInfo) :-
         % through the procedure may lead to more efficient code.
         (
             DetChanged = yes,
-            det_infer_proc(PredId, ProcId, !ModuleInfo, _, _, [], _)
+            det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo)
         ;
             DetChanged = no
         )

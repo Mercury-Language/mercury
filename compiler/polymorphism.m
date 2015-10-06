@@ -186,6 +186,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -196,7 +198,10 @@
 
     % Run the polymorphism pass over the whole HLDS.
     %
-:- pred polymorphism_process_module(module_info::in, module_info::out) is det.
+:- pred polymorphism_process_module(module_info::in, module_info::out,
+    maybe_safe_to_continue::out, list(error_spec)::out) is det.
+
+%-----------------------------------------------------------------------------%
 
     % Run the polymorphism pass over a single pred. This is used to transform
     % clauses introduced by unify_proc.m for complicated unification predicates
@@ -211,6 +216,8 @@
     %
 :- pred polymorphism_process_generated_pred(pred_id::in,
     module_info::in, module_info::out) is det.
+
+%-----------------------------------------------------------------------------%
 
     % Add the type_info variables for a complicated unification to
     % the appropriate fields in the unification and the goal_info.
@@ -231,6 +238,8 @@
     maybe(call_unify_context)::in, sym_name::in, hlds_goal_info::in,
     hlds_goal::out, poly_info::in, poly_info::out) is det.
 
+%-----------------------------------------------------------------------------%
+
     % Given a list of types, create a list of variables to hold the type_info
     % for those types, and create a list of goals to initialize those type_info
     % variables to the appropriate type_info structures for the types.
@@ -244,6 +253,8 @@
     %
 :- pred polymorphism_make_type_info_var(mer_type::in, term.context::in,
     prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
+
+%-----------------------------------------------------------------------------%
 
 :- type int_or_var
     --->    iov_int(int)
@@ -277,8 +288,9 @@
     % Update the fields in a pred_info and proc_info with
     % the values in a poly_info.
     %
-:- pred poly_info_extract(poly_info::in, pred_info::in, pred_info::out,
-    proc_info::in, proc_info::out, module_info::out) is det.
+:- pred poly_info_extract(poly_info::in, list(error_spec)::out,
+    pred_info::in, pred_info::out, proc_info::in, proc_info::out,
+    module_info::out) is det.
 
     % Build the type describing the typeclass_info for the
     % given prog_constraint.
@@ -311,8 +323,8 @@
 :- pred convert_pred_to_lambda_goal(purity::in, lambda_eval_method::in,
     prog_var::in, pred_id::in, proc_id::in, list(prog_var)::in,
     list(mer_type)::in, unify_context::in, hlds_goal_info::in, context::in,
-    module_info::in, unify_rhs::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    module_info::in, maybe1(unify_rhs)::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
     % fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, Functor0, Functor)
     %
@@ -321,7 +333,8 @@
     % Functor0 must have been produced by `convert_pred_to_lambda_goal'.
     %
 :- pred fix_undetermined_mode_lambda_goal(module_info::in, proc_id::in,
-    unify_rhs::in(rhs_lambda_goal), unify_rhs::out(rhs_lambda_goal)) is det.
+    unify_rhs::in(rhs_lambda_goal),
+    maybe1(unify_rhs)::out(maybe1(rhs_lambda_goal))) is det.
 
     % init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
     %   !VarSet, !VarTypes) :-
@@ -382,8 +395,8 @@
 
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.type_util.
-:- import_module hlds.from_ground_term_util.
 :- import_module hlds.const_struct.
+:- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
@@ -404,6 +417,7 @@
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.set_of_var.
@@ -429,19 +443,23 @@
 % looks at the argtypes of the called predicates, and so we need to make
 % sure we don't muck them up before we've finished the first pass.
 
-polymorphism_process_module(!ModuleInfo) :-
+polymorphism_process_module(!ModuleInfo, SafeToContinue, Specs) :-
     module_info_get_preds(!.ModuleInfo, Preds0),
     map.keys(Preds0, PredIds0),
-    list.foldl(maybe_polymorphism_process_pred, PredIds0, !ModuleInfo),
+    list.foldl3(maybe_polymorphism_process_pred, PredIds0,
+        safe_to_continue, SafeToContinue, [], Specs, !ModuleInfo),
     module_info_get_preds(!.ModuleInfo, Preds1),
     map.keys(Preds1, PredIds1),
     list.foldl(fixup_pred_polymorphism, PredIds1, !ModuleInfo),
     expand_class_method_bodies(!ModuleInfo).
 
 :- pred maybe_polymorphism_process_pred(pred_id::in,
+    maybe_safe_to_continue::in, maybe_safe_to_continue::out,
+    list(error_spec)::in, list(error_spec)::out,
     module_info::in, module_info::out) is det.
 
-maybe_polymorphism_process_pred(PredId, !ModuleInfo) :-
+maybe_polymorphism_process_pred(PredId, !SafeToContinue,
+        !Specs, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ( if
         PredModule = pred_info_module(PredInfo),
@@ -452,7 +470,8 @@ maybe_polymorphism_process_pred(PredId, !ModuleInfo) :-
         % Just copy the clauses to the proc_infos.
         copy_module_clauses_to_procs([PredId], !ModuleInfo)
     else
-        polymorphism_process_pred_msg(PredId, !ModuleInfo)
+        polymorphism_process_pred_msg(PredId, !SafeToContinue,
+            !Specs, !ModuleInfo)
     ).
 
 %---------------------------------------------------------------------------%
@@ -521,9 +540,11 @@ polymorphism_introduce_exists_casts_pred(ModuleInfo, !PredInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred polymorphism_process_pred_msg(pred_id::in,
+    maybe_safe_to_continue::in, maybe_safe_to_continue::out,
+    list(error_spec)::in, list(error_spec)::out,
     module_info::in, module_info::out) is det.
 
-polymorphism_process_pred_msg(PredId, !ModuleInfo) :-
+polymorphism_process_pred_msg(PredId, !SafeToContinue, !Specs, !ModuleInfo) :-
     % Since polymorphism transforms not just the procedures defined
     % in the module being compiled, but also all the procedures in
     % all the imported modules, this message can be printed A LOT,
@@ -534,19 +555,30 @@ polymorphism_process_pred_msg(PredId, !ModuleInfo) :-
         write_pred_progress_message("% Transforming polymorphism for ",
             PredId, !.ModuleInfo, !IO)
     ),
-    polymorphism_process_pred(PredId, !ModuleInfo).
+    polymorphism_process_pred(PredId, PredSafeToContinue, !Specs, !ModuleInfo),
+    (
+        PredSafeToContinue = safe_to_continue
+    ;
+        PredSafeToContinue = unsafe_to_continue,
+        !:SafeToContinue = unsafe_to_continue
+    ).
 
 polymorphism_process_generated_pred(PredId, !ModuleInfo) :-
-    polymorphism_process_pred(PredId, !ModuleInfo),
+    polymorphism_process_pred(PredId, SafeToContinue, [], Specs, !ModuleInfo),
+    expect(unify(Specs, []), $module, $pred,
+        "generated pred has errors"),
+    expect(unify(SafeToContinue, safe_to_continue), $module, $pred,
+        "generated pred has errors"),
     fixup_pred_polymorphism(PredId, !ModuleInfo).
 
 :- mutable(selected_pred, bool, no, ground, [untrailed]).
 :- mutable(level, int, 0, ground, [untrailed]).
 
-:- pred polymorphism_process_pred(pred_id::in,
+:- pred polymorphism_process_pred(pred_id::in, maybe_safe_to_continue::out,
+    list(error_spec)::in, list(error_spec)::out,
     module_info::in, module_info::out) is det.
 
-polymorphism_process_pred(PredId, !ModuleInfo) :-
+polymorphism_process_pred(PredId, SafeToContinue, !Specs, !ModuleInfo) :-
     trace [compiletime(flag("debug_poly_caches"))] (
         promise_pure (
             % Replace 99999 with the id of the predicate you want to debug.
@@ -566,24 +598,34 @@ polymorphism_process_pred(PredId, !ModuleInfo) :-
 
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     polymorphism_process_clause_info(!.ModuleInfo, PredInfo0,
-        ClausesInfo0, ClausesInfo, Info, ExtraArgModes),
-    poly_info_get_module_info(Info, !:ModuleInfo),
-    poly_info_get_const_struct_db(Info, ConstStructDb),
+        ClausesInfo0, ClausesInfo, PolyInfo, ExtraArgModes),
+    poly_info_get_module_info(PolyInfo, !:ModuleInfo),
+    poly_info_get_const_struct_db(PolyInfo, ConstStructDb),
     module_info_set_const_struct_db(ConstStructDb, !ModuleInfo),
 
-    poly_info_get_typevarset(Info, TypeVarSet),
+    poly_info_get_typevarset(PolyInfo, TypeVarSet),
     pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo1),
     pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo2),
+
+    poly_info_get_errors(PolyInfo, PredSpecs),
+    (
+        PredSpecs = [],
+        SafeToContinue = safe_to_continue
+    ;
+        PredSpecs = [_ | _],
+        SafeToContinue = unsafe_to_continue,
+        !:Specs = PredSpecs ++ !.Specs
+    ),
 
     % Do a pass over the proc_infos, copying the relevant information
     % from the clauses_info and the poly_info, and updating all the argmodes
     % with modes for the extra arguments.
 
-    ProcIds = pred_info_procids(PredInfo2),
-    pred_info_get_proc_table(PredInfo2, Procs0),
-    list.foldl(polymorphism_process_proc_in_table(PredInfo2, ClausesInfo,
-        ExtraArgModes), ProcIds, Procs0, Procs),
-    pred_info_set_proc_table(Procs, PredInfo2, PredInfo),
+    pred_info_get_proc_table(PredInfo2, ProcMap0),
+    map.map_values(
+        polymorphism_process_valid_proc(PredInfo2, ClausesInfo, ExtraArgModes),
+        ProcMap0, ProcMap),
+    pred_info_set_proc_table(ProcMap, PredInfo2, PredInfo),
 
     trace [compiletime(flag("debug_poly_caches"))] (
         promise_pure (
@@ -654,57 +696,50 @@ polymorphism_process_clause(PredInfo0, OldHeadVars, NewHeadVars,
         !Clause ^ clause_body := Goal
     ).
 
-:- pred polymorphism_process_proc_in_table(pred_info::in, clauses_info::in,
+:- pred polymorphism_process_valid_proc(pred_info::in, clauses_info::in,
     poly_arg_vector(mer_mode)::in, proc_id::in,
-    proc_table::in, proc_table::out) is det.
+    proc_info::in, proc_info::out) is det.
 
-polymorphism_process_proc_in_table(PredInfo, ClausesInfo, ExtraArgModes,
-        ProcId, !ProcTable) :-
-    map.lookup(!.ProcTable, ProcId, ProcInfo0),
-    polymorphism_process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
-        ProcInfo0, ProcInfo),
-    map.det_update(ProcId, ProcInfo, !ProcTable).
+polymorphism_process_valid_proc(PredInfo, ClausesInfo, ExtraArgModes,
+        ProcId, !ProcInfo) :-
+    ( if proc_info_is_valid_mode(!.ProcInfo) then
+        % Copy all the information from the clauses_info into the proc_info.
+        ( if
+            (
+                pred_info_is_imported(PredInfo)
+            ;
+                pred_info_is_pseudo_imported(PredInfo),
+                hlds_pred.in_in_unification_proc_id(ProcId)
+            )
+        then
+            % We need to set these fields in the proc_info here, because
+            % some parts of the compiler (e.g. unused_args.m) depend on
+            % these fields being valid even for imported procedures.
 
-:- pred polymorphism_process_proc(pred_info::in, clauses_info::in,
-    poly_arg_vector(mer_mode)::in, proc_id::in, proc_info::in, proc_info::out)
-    is det.
+            % XXX ARGVEC - when the proc_info uses the proc_arg_vector just
+            % pass the headvar vector directly to the proc_info.
+            clauses_info_get_headvars(ClausesInfo, HeadVars),
+            HeadVarList = proc_arg_vector_to_list(HeadVars),
+            clauses_info_get_rtti_varmaps(ClausesInfo, RttiVarMaps),
+            clauses_info_get_varset(ClausesInfo, VarSet),
+            clauses_info_get_vartypes(ClausesInfo, VarTypes),
+            proc_info_set_headvars(HeadVarList, !ProcInfo),
+            proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
+            proc_info_set_varset(VarSet, !ProcInfo),
+            proc_info_set_vartypes(VarTypes, !ProcInfo)
+        else
+            copy_clauses_to_proc(ProcId, ClausesInfo, !ProcInfo)
+        ),
 
-polymorphism_process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
-        !ProcInfo) :-
-    % Copy all the information from the clauses_info into the proc_info.
-    ( if
-        (
-            pred_info_is_imported(PredInfo)
-        ;
-            pred_info_is_pseudo_imported(PredInfo),
-            hlds_pred.in_in_unification_proc_id(ProcId)
-        )
-    then
-        % We need to set these fields in the proc_info here, because some parts
-        % of the compiler (e.g. unused_args.m) depend on these fields being
-        % valid even for imported procedures.
-
-        % XXX ARGVEC - when the proc_info uses the proc_arg_vector just
-        % pass the headvar vector directly to the proc_info.
-        clauses_info_get_headvars(ClausesInfo, HeadVars),
-        HeadVarList = proc_arg_vector_to_list(HeadVars),
-        clauses_info_get_rtti_varmaps(ClausesInfo, RttiVarMaps),
-        clauses_info_get_varset(ClausesInfo, VarSet),
-        clauses_info_get_vartypes(ClausesInfo, VarTypes),
-        proc_info_set_headvars(HeadVarList, !ProcInfo),
-        proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
-        proc_info_set_varset(VarSet, !ProcInfo),
-        proc_info_set_vartypes(VarTypes, !ProcInfo)
+        % Add the ExtraArgModes to the proc_info argmodes.
+        % XXX ARGVEC - revisit this when the proc_info uses proc_arg_vectors.
+        proc_info_get_argmodes(!.ProcInfo, ArgModes1),
+        ExtraArgModesList = poly_arg_vector_to_list(ExtraArgModes),
+        ArgModes = ExtraArgModesList ++ ArgModes1,
+        proc_info_set_argmodes(ArgModes, !ProcInfo)
     else
-        copy_clauses_to_proc(ProcId, ClausesInfo, !ProcInfo)
-    ),
-
-    % Add the ExtraArgModes to the proc_info argmodes.
-    % XXX ARGVEC - revisit this when the proc_info uses proc_arg_vectors.
-    proc_info_get_argmodes(!.ProcInfo, ArgModes1),
-    ExtraArgModesList = poly_arg_vector_to_list(ExtraArgModes),
-    ArgModes = ExtraArgModesList ++ ArgModes1,
-    proc_info_set_argmodes(ArgModes, !ProcInfo).
+        true
+    ).
 
     % XXX document me
     %
@@ -1567,11 +1602,22 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         Context = goal_info_get_context(GoalInfo0),
         convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
             ArgVars0, CalleeArgTypes, UnifyContext, GoalInfo1, Context,
-            ModuleInfo0, Functor0, VarSet0, VarSet, VarTypes0, VarTypes),
+            ModuleInfo0, MaybeRHS0, VarSet0, VarSet, VarTypes0, VarTypes),
         poly_info_set_varset_types(VarSet, VarTypes, !Info),
-        % Process the unification in its new form.
-        polymorphism_process_unify(X0, Functor0, Mode0, Unification0,
-            UnifyContext, GoalInfo1, Goal, !Info),
+        (
+            MaybeRHS0 = ok1(RHS0),
+            % Process the unification in its new form.
+            polymorphism_process_unify(X0, RHS0, Mode0, Unification0,
+                UnifyContext, GoalInfo1, Goal, !Info)
+        ;
+            MaybeRHS0 = error1(Specs),
+            poly_info_get_errors(!.Info, Specs0),
+            poly_info_set_errors(Specs ++ Specs0, !Info),
+            % It doesn't matter what Goal we return, since it won't be used.
+            RHS = rhs_functor(int_const(42), is_not_exist_constr, []),
+            polymorphism_process_unify(X0, RHS, Mode0, Unification0,
+                UnifyContext, GoalInfo1, Goal, !Info)
+        ),
         Changed = yes
     else if
         % Is this a construction or deconstruction of an existentially
@@ -1632,7 +1678,7 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
 
 convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
         ArgVars0, PredArgTypes, UnifyContext, GoalInfo0, Context,
-        ModuleInfo0, Functor, !VarSet, !VarTypes) :-
+        ModuleInfo0, MaybeRHS, !VarSet, !VarTypes) :-
     % Create the new lambda-quantified variables.
     create_fresh_vars(PredArgTypes, LambdaVars, !VarSet, !VarTypes),
     Args = ArgVars0 ++ LambdaVars,
@@ -1648,8 +1694,8 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % The ConsId's type_ctor shouldn't matter in a call_unify_context.
     ConsId = cons(QualifiedPName, list.length(ArgVars0),
         cons_id_dummy_type_ctor),
-    RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
-    CallUnifyContext = call_unify_context(X0, RHS, UnifyContext),
+    RHS0 = rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
+    CallUnifyContext = call_unify_context(X0, RHS0, UnifyContext),
     LambdaGoalExpr = plain_call(PredId, ProcId, Args, not_builtin,
         yes(CallUnifyContext), QualifiedPName),
 
@@ -1671,18 +1717,24 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
 
     % Work out the modes of the introduced lambda variables and the determinism
     % of the lambda goal.
-    lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet),
+    lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars,
+        MaybeLambdaModesDet),
+    
+    (
+        MaybeLambdaModesDet = ok2(LambdaModes, LambdaDet),
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+        % Higher-order values created in this fashion are always ground.
+        Groundness = ho_ground,
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal),
+        MaybeRHS = ok1(RHS)
+    ;
+        MaybeLambdaModesDet = error2(Specs),
+        MaybeRHS = error1(Specs)
+    ).
 
-    % Construct the lambda expression.
-
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    % Higher-order values created in this fashion are always ground.
-    Groundness = ho_ground,
-    Functor = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-        ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
-
-fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, Functor0, Functor) :-
-    Functor0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, MaybeRHS) :-
+    RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
         ArgVars0, LambdaVars, _LambdaModes0, _LambdaDet0, LambdaGoal0),
     LambdaGoal0 = hlds_goal(_, LambdaGoalInfo),
     goal_to_conj_list(LambdaGoal0, LambdaGoalList0),
@@ -1699,42 +1751,55 @@ fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, Functor0, Functor) :-
             MaybeCallUnifyContext0, QualifiedPName0),
         LastGoal = hlds_goal(LastGoalExpr, LastGoalInfo0),
         conj_list_to_goal(LambdaGoalButLast0 ++ [LastGoal], LambdaGoalInfo,
-            LambdaGoal)
+            LambdaGoal),
+        Context = goal_info_get_context(LastGoalInfo0)
     else
         unexpected($module, $pred, "unmatched lambda goal")
     ),
 
     % Work out the modes of the introduced lambda variables and the determinism
     % of the lambda goal.
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
+    lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars,
+        MaybeLambdaModesDet),
+    (
+        MaybeLambdaModesDet = ok2(LambdaModes, LambdaDet),
 
-    % Construct the lambda expression.
-    Functor = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-        ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
+        % Construct the lambda expression.
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            ArgVars0, LambdaVars, LambdaModes, LambdaDet, LambdaGoal),
+        MaybeRHS = ok1(RHS)
+    ;
+        MaybeLambdaModesDet = error2(Specs),
+        MaybeRHS = error1(Specs)
+    ).
 
-:- pred lambda_modes_and_det(proc_info::in, prog_vars::in, list(mer_mode)::out,
-    determinism::out) is det.
+:- pred lambda_modes_and_det(pred_info::in, proc_info::in, prog_context::in,
+    list(prog_var)::in, maybe2(list(mer_mode), determinism)::out) is det.
 
-lambda_modes_and_det(ProcInfo, LambdaVars, LambdaModes, LambdaDet) :-
+lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars, MaybeResult) :-
     proc_info_get_argmodes(ProcInfo, ArgModes),
     list.length(ArgModes, NumArgModes),
     list.length(LambdaVars, NumLambdaVars),
-    ( if
-        list.drop(NumArgModes - NumLambdaVars, ArgModes, LambdaModesPrime)
-    then
-        LambdaModes = LambdaModesPrime
-    else
-        unexpected($module, $pred, "list.drop failed")
-    ),
+    list.det_drop(NumArgModes - NumLambdaVars, ArgModes, LambdaModes),
     proc_info_get_declared_determinism(ProcInfo, MaybeDet),
     (
         MaybeDet = yes(Det),
-        LambdaDet = Det
+        MaybeResult = ok2(LambdaModes, Det)
     ;
         MaybeDet = no,
-        sorry($module, $pred,
-            "determinism inference for higher order predicate terms.")
+        pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+        PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+        pred_info_get_module_name(PredInfo, PredModuleName),
+        pred_info_get_name(PredInfo, PredName),
+        PredSymName = qualified(PredModuleName, PredName),
+        Pieces = [words("Error: the"), words(PredOrFuncStr),
+            sym_name(PredSymName), words("has no declared determinism,"),
+            words("so a curried call to it"),
+            words("may not be used as a lambda expression."), nl],
+        Spec = error_spec(severity_error, phase_polymorphism,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeResult = error2([Spec])
     ).
 
 :- pred create_fresh_vars(list(mer_type)::in, list(prog_var)::out,
@@ -4325,7 +4390,11 @@ make_const_or_var_arg(Var - MCA, ConstOrVarArg) :-
                 % The database of constant structures of the module.
                 % If a type_info or typeclass_info we construct is a constant
                 % term, we allocate it in this database.
-                poly_const_struct_db        :: const_struct_db
+                poly_const_struct_db        :: const_struct_db,
+
+                % The list of errors we have discovered during the polymorphism
+                % pass.
+                poly_errors                 :: list(error_spec)
             ).
 
 %---------------------------------------------------------------------------%
@@ -4351,14 +4420,12 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     NumReuses = 0,
     SnapshotNum = 0,
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+    Specs = [],
     PolyInfo = poly_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
         TypeVarSet, TypeVarKinds, ProofMap, ConstraintMap,
         TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
-        NumReuses, SnapshotNum, ConstStructDb).
+        NumReuses, SnapshotNum, ConstStructDb, Specs).
 
-    % Create_poly_info creates a poly_info for an existing procedure.
-    % (See also init_poly_info.)
-    %
 create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     pred_info_get_typevarset(PredInfo, TypeVarSet),
     pred_info_get_tvar_kind_map(PredInfo, TypeVarKinds),
@@ -4374,16 +4441,17 @@ create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
     NumReuses = 0,
     SnapshotNum = 0,
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
+    Specs = [],
     PolyInfo = poly_info(ModuleInfo, VarSet, VarTypes, RttiVarMaps,
         TypeVarSet, TypeVarKinds, ProofMap, ConstraintMap,
         TypeInfoVarMap, TypeClassInfoMap, IntConstMap, ConstStructVarMap,
-        NumReuses, SnapshotNum, ConstStructDb).
+        NumReuses, SnapshotNum, ConstStructDb, Specs).
 
-poly_info_extract(Info, !PredInfo, !ProcInfo, !:ModuleInfo) :-
+poly_info_extract(Info, Specs, !PredInfo, !ProcInfo, !:ModuleInfo) :-
     Info = poly_info(!:ModuleInfo, VarSet, VarTypes, RttiVarMaps,
         TypeVarSet, TypeVarKinds, _ProofMap, _ConstraintMap,
         _TypeInfoVarMap, _TypeClassInfoMap, _IntConstMap, _ConstStructVarMap,
-        _NumReuses, _SnapshotNum, ConstStructDb),
+        _NumReuses, _SnapshotNum, ConstStructDb, Specs),
 
     module_info_set_const_struct_db(ConstStructDb, !ModuleInfo),
 
@@ -4418,12 +4486,14 @@ poly_info_extract(Info, !PredInfo, !ProcInfo, !:ModuleInfo) :-
     typeclass_info_map::out) is det.
 :- pred poly_info_get_int_const_map(poly_info::in,
     int_const_map::out) is det.
+:- pred poly_info_get_const_struct_var_map(poly_info::in,
+    const_struct_var_map::out) is det.
 :- pred poly_info_get_num_reuses(poly_info::in,
     int::out) is det.
 :- pred poly_info_get_const_struct_db(poly_info::in,
     const_struct_db::out) is det.
-:- pred poly_info_get_const_struct_var_map(poly_info::in,
-    const_struct_var_map::out) is det.
+:- pred poly_info_get_errors(poly_info::in,
+    list(error_spec)::out) is det.
 
 :- pragma inline(poly_info_get_module_info/2).
 :- pragma inline(poly_info_get_varset/2).
@@ -4435,11 +4505,14 @@ poly_info_extract(Info, !PredInfo, !ProcInfo, !:ModuleInfo) :-
 :- pragma inline(poly_info_get_constraint_map/2).
 :- pragma inline(poly_info_get_type_info_var_map/2).
 :- pragma inline(poly_info_get_typeclass_info_map/2).
+:- pragma inline(poly_info_get_const_struct_var_map/2).
 :- pragma inline(poly_info_get_int_const_map/2).
 :- pragma inline(poly_info_get_num_reuses/2).
 :- pragma inline(poly_info_get_const_struct_db/2).
-:- pragma inline(poly_info_get_const_struct_var_map/2).
+:- pragma inline(poly_info_get_errors/2).
 
+poly_info_get_module_info(!.PI, X) :-
+    X = !.PI ^ poly_module_info.
 poly_info_get_varset(!.PI, X) :-
     X = !.PI ^ poly_varset.
 poly_info_get_var_types(!.PI, X) :-
@@ -4460,14 +4533,14 @@ poly_info_get_typeclass_info_map(!.PI, X) :-
     X = !.PI ^ poly_typeclass_info_map.
 poly_info_get_int_const_map(!.PI, X) :-
     X = !.PI ^ poly_int_const_map.
+poly_info_get_const_struct_var_map(!.PI, X) :-
+    X = !.PI ^ poly_const_struct_var_map.
 poly_info_get_num_reuses(!.PI, X) :-
     X = !.PI ^ poly_num_reuses.
 poly_info_get_const_struct_db(!.PI, X) :-
     X = !.PI ^ poly_const_struct_db.
-poly_info_get_const_struct_var_map(!.PI, X) :-
-    X = !.PI ^ poly_const_struct_var_map.
-poly_info_get_module_info(!.PI, X) :-
-    X = !.PI ^ poly_module_info.
+poly_info_get_errors(!.PI, X) :-
+    X = !.PI ^ poly_errors.
 
 :- pred poly_info_set_varset(prog_varset::in,
     poly_info::in, poly_info::out) is det.
@@ -4488,11 +4561,13 @@ poly_info_get_module_info(!.PI, X) :-
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_int_const_map(int_const_map::in,
     poly_info::in, poly_info::out) is det.
+:- pred poly_info_set_const_struct_var_map(const_struct_var_map::in,
+    poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_num_reuses(int::in,
     poly_info::in, poly_info::out) is det.
 :- pred poly_info_set_const_struct_db(const_struct_db::in,
     poly_info::in, poly_info::out) is det.
-:- pred poly_info_set_const_struct_var_map(const_struct_var_map::in,
+:- pred poly_info_set_errors(list(error_spec)::in,
     poly_info::in, poly_info::out) is det.
 
 :- pragma inline(poly_info_set_varset/3).
@@ -4504,9 +4579,10 @@ poly_info_get_module_info(!.PI, X) :-
 :- pragma inline(poly_info_set_type_info_var_map/3).
 :- pragma inline(poly_info_set_typeclass_info_map/3).
 :- pragma inline(poly_info_set_int_const_map/3).
+:- pragma inline(poly_info_set_const_struct_var_map/3).
 :- pragma inline(poly_info_set_num_reuses/3).
 :- pragma inline(poly_info_set_const_struct_db/3).
-:- pragma inline(poly_info_set_const_struct_var_map/3).
+:- pragma inline(poly_info_set_errors/3).
 
 poly_info_set_varset(X, !PI) :-
     !PI ^ poly_varset := X.
@@ -4551,6 +4627,14 @@ poly_info_set_int_const_map(X, !PI) :-
     else
         !PI ^ poly_int_const_map := X
     ).
+poly_info_set_const_struct_var_map(X, !PI) :-
+    ( if
+        private_builtin.pointer_equal(X, !.PI ^ poly_const_struct_var_map)
+    then
+        true
+    else
+        !PI ^ poly_const_struct_var_map := X
+    ).
 poly_info_set_num_reuses(X, !PI) :-
     ( if X = !.PI ^ poly_num_reuses then
         true
@@ -4563,14 +4647,8 @@ poly_info_set_const_struct_db(X, !PI) :-
     else
         !PI ^ poly_const_struct_db := X
     ).
-poly_info_set_const_struct_var_map(X, !PI) :-
-    ( if
-        private_builtin.pointer_equal(X, !.PI ^ poly_const_struct_var_map)
-    then
-        true
-    else
-        !PI ^ poly_const_struct_var_map := X
-    ).
+poly_info_set_errors(X, !PI) :-
+    !PI ^ poly_errors := X.
 
 %  i      read      same      diff   same%
 %  0   6245285         0   1560789   0.000% varset

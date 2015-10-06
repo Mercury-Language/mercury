@@ -101,6 +101,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module maybe.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 %
@@ -407,8 +408,10 @@ ml_gen_make_type_info_var(Type, Context, TypeInfoVar, TypeInfoGoals, !Info) :-
     create_poly_info(ModuleInfo0, PredInfo0, ProcInfo0, PolyInfo0),
     polymorphism_make_type_info_var(Type, Context,
         TypeInfoVar, TypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PredInfo0, PredInfo,
+    poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
         ProcInfo0, ProcInfo, ModuleInfo1),
+    expect(unify(PolySpecs, []), $module, $pred,
+        "got errors while making type_info_var"),
 
     % Save the new information back in the ml_gen_info.
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,

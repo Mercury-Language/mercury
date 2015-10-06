@@ -64,11 +64,11 @@
 
     % Print out the name of a marker.
     %
-:- pred write_marker(marker::in, io::di, io::uo) is det.
+:- pred write_marker(pred_marker::in, io::di, io::uo) is det.
 
     % Find the name of a marker.
     %
-:- pred marker_name(marker::in, string::out) is det.
+:- pred marker_name(pred_marker::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -772,10 +772,11 @@ write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
         ProcId, ProcInfo, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_typevarset(PredInfo, TVarSet),
+    proc_info_get_can_process(ProcInfo, CanProcess),
+    proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_get_declared_determinism(ProcInfo, DeclaredDeterminism),
     proc_info_get_inferred_determinism(ProcInfo, InferredDeterminism),
-    proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, HeadModes),
     proc_info_get_maybe_arglives(ProcInfo, MaybeArgLives),
@@ -814,6 +815,14 @@ write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
         io.write_string(" (", !IO),
         io.write_string(determinism_to_string(InferredDeterminism), !IO),
         io.write_string("):\n", !IO),
+        (
+            CanProcess = can_process_now
+        ;
+            CanProcess = cannot_process_yet,
+            write_indent(Indent, !IO),
+            io.write_string("% cannot_process_yet", !IO),
+            io.nl(!IO)
+        ),
 
         ( if string.contains_char(DumpOptions, 't') then
             write_indent(Indent, !IO),
@@ -1299,7 +1308,7 @@ write_constraint_id(ConstraintId, !IO) :-
 % Write out predicate markers.
 %
 
-:- pred write_marker_list(list(marker)::in, io::di, io::uo) is det.
+:- pred write_marker_list(list(pred_marker)::in, io::di, io::uo) is det.
 
 write_marker_list(Markers, !IO) :-
     io.write_list(Markers, ", ", write_marker, !IO).

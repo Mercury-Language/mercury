@@ -2039,12 +2039,12 @@ keep_only_output_arg_types([Var - Type | VarTypes], [Out | Outs], OutTypes) :-
         keep_only_output_arg_types(VarTypes, [Out | Outs], OutTypes)
     ).
 
-:- pred filter_marker(marker::in) is semidet.
+:- pred filter_marker(pred_marker::in) is semidet.
 
 filter_marker(Marker) :-
     keep_marker(Marker) = yes.
 
-:- func keep_marker(marker) = bool.
+:- func keep_marker(pred_marker) = bool.
 
 keep_marker(marker_stub) = no.
 keep_marker(marker_builtin_stub) = no.
@@ -3758,8 +3758,10 @@ table_gen_make_type_info_vars(Types, Context, !VarSet, !VarTypes,
     create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2, PolyInfo0),
     polymorphism_make_type_info_vars(Types, Context,
         TypeInfoVars, TypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, PredInfo0, PredInfo,
+    poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
         ProcInfo0, ProcInfo, ModuleInfo),
+    expect(unify(PolySpecs, []), $module, $pred,
+        "got errors while making type_info_vars"),
 
     % Get the new varset and vartypes from the proc_info.
     proc_info_get_vartypes(ProcInfo, !:VarTypes),

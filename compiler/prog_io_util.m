@@ -30,6 +30,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -41,27 +42,6 @@
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
-
-:- type maybe1(T1)
-    --->    error1(list(error_spec))
-    ;       ok1(T1).
-
-:- type maybe2(T1, T2)
-    --->    error2(list(error_spec))
-    ;       ok2(T1, T2).
-
-:- type maybe3(T1, T2, T3)
-    --->    error3(list(error_spec))
-    ;       ok3(T1, T2, T3).
-
-:- type maybe4(T1, T2, T3, T4)
-    --->    error4(list(error_spec))
-    ;       ok4(T1, T2, T3, T4).
-
-:- func get_any_errors1(maybe1(T1)) = list(error_spec).
-:- func get_any_errors2(maybe2(T1, T2)) = list(error_spec).
-:- func get_any_errors3(maybe3(T1, T2, T3)) = list(error_spec).
-:- func get_any_errors4(maybe4(T1, T2, T3, T4)) = list(error_spec).
 
 :- type maybe_functor    ==  maybe_functor(generic).
 :- type maybe_functor(T) ==  maybe2(sym_name, list(term(T))).
@@ -240,18 +220,6 @@
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
-
-get_any_errors1(ok1(_)) = [].
-get_any_errors1(error1(Specs)) = Specs.
-
-get_any_errors2(ok2(_, _)) = [].
-get_any_errors2(error2(Specs)) = Specs.
-
-get_any_errors3(ok3(_, _, _)) = [].
-get_any_errors3(error3(Specs)) = Specs.
-
-get_any_errors4(ok4(_, _, _, _)) = [].
-get_any_errors4(error4(Specs)) = Specs.
 
 parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
     PredAndArityTerm = term.functor(term.atom("/"),

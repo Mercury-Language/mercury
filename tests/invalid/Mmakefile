@@ -123,6 +123,7 @@ SINGLEMODULE= \
 	fundeps_unbound_in_ctor \
 	fundeps_vars \
 	hawkins_mm_fail_reset \
+	higher_order_no_detism \
 	ho_any_inst \
 	ho_default_func_1 \
 	ho_default_func_3 \

@@ -641,22 +641,17 @@ maybe_exception_analysis(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_termination(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, polymorphism, Polymorphism),
     globals.lookup_bool_option(Globals, termination, Termination),
-    % Termination analysis requires polymorphism to be run,
-    % since it does not handle complex unification.
-    ( if
-        Polymorphism = yes,
-        Termination = yes
-    then
+    (
+        Termination = yes,
         maybe_write_string(Verbose, "% Detecting termination...\n", !IO),
         analyse_termination_in_module(!HLDS, Specs),
         maybe_write_string(Verbose, "% Termination checking done.\n", !IO),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_report_stats(Stats, !IO)
-    else
-        true
+    ;
+        Termination = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -666,22 +661,17 @@ maybe_termination(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, polymorphism, Polymorphism),
     globals.lookup_bool_option(Globals, termination2, Termination2),
-    % Termination analysis requires polymorphism to be run,
-    % as termination analysis does not handle complex unification.
-    ( if
-        Polymorphism = yes,
-        Termination2 = yes
-    then
+    (
+        Termination2 = yes,
         maybe_write_string(Verbose, "% Detecting termination 2...\n", !IO),
         term2_analyse_module(!HLDS, Specs),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS),
         maybe_write_string(Verbose, "% Termination 2 checking done.\n", !IO),
         maybe_report_stats(Stats, !IO)
-    else
-        true
+    ;
+        Termination2 = no
     ).
 
 %-----------------------------------------------------------------------------%

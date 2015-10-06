@@ -613,7 +613,9 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         list.foldl_corresponding(check_lambda_arg_type_and_mode(ModuleInfo1),
             ArgTypes, AllArgModes, 0, _),
 
-        purity_to_markers(Purity, LambdaMarkers),
+        purity_to_markers(Purity, PurityMarkers),
+        init_markers(LambdaMarkers0),
+        add_markers(PurityMarkers, LambdaMarkers0, LambdaMarkers),
 
         % Now construct the proc_info and pred_info for the new single-mode
         % predicate, using the information computed above.

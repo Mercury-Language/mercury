@@ -224,10 +224,10 @@
 
     % Predicates can be marked with various boolean flags, called "markers".
 
-    % An abstract set of markers.
+    % An abstract set of pred_markers.
 :- type pred_markers.
 
-:- type marker
+:- type pred_marker
     --->    marker_stub
             % The predicate has no clauses. typecheck.m will generate a body
             % for the predicate which just throws an exception. This marker
@@ -368,7 +368,7 @@
     % An abstract set of attributes.
 :- type pred_attributes.
 
-:- type attribute
+:- type pred_attribute
     --->    custom(mer_type).
             % A custom attribute, indended to be associated
             % with this predicate in the underlying implementation.
@@ -803,9 +803,7 @@
 
 :- pred pred_info_infer_modes(pred_info::in) is semidet.
 
-:- pred purity_to_markers(purity::in, pred_markers::out) is det.
-
-:- pred terminates_to_markers(proc_terminates::in, pred_markers::out) is det.
+:- pred purity_to_markers(purity::in, list(pred_marker)::out) is det.
 
 :- pred pred_info_get_call_id(pred_info::in, simple_call_id::out) is det.
 
@@ -817,21 +815,26 @@
 
     % Check if a particular is in the set.
     %
-:- pred check_marker(pred_markers::in, marker::in) is semidet.
+:- pred check_marker(pred_markers::in, pred_marker::in) is semidet.
 
-    % Add a marker to the set.
+    % Add some markers to the set.
     %
-:- pred add_marker(marker::in, pred_markers::in, pred_markers::out) is det.
+:- pred add_marker(pred_marker::in,
+    pred_markers::in, pred_markers::out) is det.
+:- pred add_markers(list(pred_marker)::in,
+    pred_markers::in, pred_markers::out) is det.
 
     % Remove a marker from the set.
     %
-:- pred remove_marker(marker::in, pred_markers::in, pred_markers::out) is det.
+:- pred remove_marker(pred_marker::in,
+    pred_markers::in, pred_markers::out) is det.
 
-    % Convert the set to a list.
+    % Convert the set to and from a list.
     %
-:- pred markers_to_marker_list(pred_markers::in, list(marker)::out) is det.
-
-:- pred marker_list_to_markers(list(marker)::in, pred_markers::out) is det.
+:- pred markers_to_marker_list(pred_markers::in, list(pred_marker)::out)
+    is det.
+:- pred marker_list_to_markers(list(pred_marker)::in, pred_markers::out)
+    is det.
 
     % Create an empty set of attributes.
     %
@@ -839,24 +842,23 @@
 
     % Check if a particular is in the set.
     %
-:- pred check_attribute(pred_attributes::in, attribute::in) is semidet.
+:- pred check_attribute(pred_attributes::in, pred_attribute::in) is semidet.
 
     % Add a attribute to the set.
     %
-:- pred add_attribute(attribute::in, pred_attributes::in, pred_attributes::out)
-    is det.
+:- pred add_attribute(pred_attribute::in,
+    pred_attributes::in, pred_attributes::out) is det.
 
     % Remove a attribute from the set.
     %
-:- pred remove_attribute(attribute::in,
+:- pred remove_attribute(pred_attribute::in,
     pred_attributes::in, pred_attributes::out) is det.
 
-    % Convert the set to a list.
+    % Convert the set to and from a list.
     %
 :- pred attributes_to_attribute_list(pred_attributes::in,
-    list(attribute)::out) is det.
-
-:- pred attribute_list_to_attributes(list(attribute)::in,
+    list(pred_attribute)::out) is det.
+:- pred attribute_list_to_attributes(list(pred_attribute)::in,
     pred_attributes::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -1040,67 +1042,102 @@ calls_are_fully_qualified(Markers) =
                 % sizes).
             ).
 
-pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin, Status,
-        GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
-        ClassProofs, ClassConstraintMap, ClausesInfo, VarNameRemap,
-        PredInfo) :-
-    PredName = unqualify_name(SymName),
-    sym_name_get_module_name_default(SymName, ModuleName, PredModuleName),
-    type_vars_list(ArgTypes, TVars),
-    list.delete_elems(TVars, ExistQVars, HeadTypeParams),
-    Attributes = [],
+pred_info_init(ModuleName, PredSymName, Arity, PredOrFunc, Context,
+        Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars,
+        ClassContext, ClassProofs, ClassConstraintMap, ClausesInfo,
+        VarNameRemap, PredInfo) :-
+    % argument Context
+    % argument GoalType
+    init_attributes(Attributes),
+    map.init(Kinds),
     % XXX kind inference:
     % we assume all tvars have kind `star'.
-    map.init(Kinds),
     map.init(ExistQVarBindings),
+    type_vars_list(ArgTypes, TVars),
+    list.delete_elems(TVars, ExistQVars, HeadTypeParams),
+    % argument ClassProofs
+    % argument ClassConstraintMap
     UnprovenBodyConstraints = [],
+    InstGraphInfo = inst_graph_info_init,
+    ArgModesMaps = [],
+    % argument VarNameRemap
     set.init(Assertions),
-    map.init(Procs),
+    InstanceMethodArgTypes = [],
     PredSubInfo = pred_sub_info(Context, GoalType, Attributes, Kinds,
         ExistQVarBindings, HeadTypeParams, ClassProofs, ClassConstraintMap,
-        UnprovenBodyConstraints, inst_graph_info_init, [],
-        VarNameRemap, Assertions, []),
+        UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
+        VarNameRemap, Assertions, InstanceMethodArgTypes),
+
+    sym_name_get_module_name_default(PredSymName, ModuleName, PredModuleName),
+    PredName = unqualify_name(PredSymName),
+    % argument Arity
+    % argument PredOrFunc
+    % argument Origin
+    % argument Status
+    % argument Markers
+    % argument ArgTypes
+    % argument TypeVarSet
+    % argument ExistQVars
+    % argument ClassContext
+    % argument ClausesInfo
+    map.init(Procs),
     PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, Procs, PredSubInfo).
 
-pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
+pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
         Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
         Assertions, VarNameRemap, ProcInfo, ProcId, PredInfo) :-
-    list.length(ArgTypes, Arity),
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    proc_info_get_headvars(ProcInfo, HeadVars),
-    PredName = unqualify_name(SymName),
-    Attributes = [],
-    map.init(ClassProofs),
-    map.init(ClassConstraintMap),
-    type_vars_list(ArgTypes, TVars),
-    list.delete_elems(TVars, ExistQVars, HeadTypeParams),
+    % argument Context
+    GoalType = goal_type_clause,
+    init_attributes(Attributes),
+    map.init(Kinds),
     % XXX kind inference:
     % we assume all tvars have kind `star'.
-    map.init(Kinds),
     map.init(ExistQVarBindings),
+    type_vars_list(ArgTypes, TVars),
+    list.delete_elems(TVars, ExistQVars, HeadTypeParams),
+    map.init(ClassProofs),
+    map.init(ClassConstraintMap),
     UnprovenBodyConstraints = [],
+    InstGraphInfo = inst_graph_info_init,
+    ArgModesMaps = [],
+    % argument VarNameRemap
+    % argument Assertions
+    InstanceMethodArgTypes = [],
 
+    PredSubInfo = pred_sub_info(Context, GoalType, Attributes, Kinds,
+        ExistQVarBindings, HeadTypeParams, ClassProofs, ClassConstraintMap,
+        UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
+        VarNameRemap, Assertions, InstanceMethodArgTypes),
+
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    map.init(TVarNameMap),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
     % The empty list of clauses is a little white lie.
     ClausesRep = init_clauses_rep,
-    map.init(TVarNameMap),
+    ItemNumbers = init_clause_item_numbers_user,
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     HasForeignClauses = no,
-    HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVarVec, ClausesRep, init_clause_item_numbers_user,
-        RttiVarMaps, HasForeignClauses),
+        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps, HasForeignClauses),
 
+    % argument ModuleName
+    PredName = unqualify_name(PredSymName),
+    list.length(ArgTypes, Arity),
+    % argument PredOrFunc
+    % argument Origin
+    % argument Status
+    % argument Markers
+    % argument ArgTypes
+    % argument TypeVarSet
+    % argument ExistQVars
+    % argument ClassContext
     map.init(Procs0),
     next_mode_id(Procs0, ProcId),
     map.det_insert(ProcId, ProcInfo, Procs0, Procs),
-
-    PredSubInfo = pred_sub_info(Context, goal_type_clause, Attributes, Kinds,
-        ExistQVarBindings, HeadTypeParams, ClassProofs, ClassConstraintMap,
-        UnprovenBodyConstraints, inst_graph_info_init, [],
-        VarNameRemap, Assertions, []),
     PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, Procs, PredSubInfo).
@@ -1686,10 +1723,6 @@ purity_to_markers(purity_pure, []).
 purity_to_markers(purity_semipure, [marker_is_semipure]).
 purity_to_markers(purity_impure, [marker_is_impure]).
 
-terminates_to_markers(proc_terminates, [marker_terminates]).
-terminates_to_markers(proc_does_not_terminate, [marker_does_not_terminate]).
-terminates_to_markers(depends_on_mercury_calls, []).
-
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
     pred_info_get_arg_types(PredInfo, ArgTypes),
     type_vars_list(ArgTypes, ArgTypeVars0),
@@ -1712,37 +1745,46 @@ pred_info_get_sym_name(PredInfo, SymName) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type pred_markers == list(marker).
+:- type pred_markers == set(pred_marker).
 
-init_markers([]).
+init_markers(set.init).
 
-check_marker(Markers, Marker) :-
-    list.member(Marker, Markers).
+check_marker(MarkerSet, Marker) :-
+    set.member(Marker, MarkerSet).
 
-add_marker(Marker, Markers, [Marker | Markers]).
+add_marker(Marker, !MarkerSet) :-
+    set.insert(Marker, !MarkerSet).
 
-remove_marker(Marker, Markers0, Markers) :-
-    list.delete_all(Markers0, Marker, Markers).
+add_markers(Markers, !MarkerSet) :-
+    set.insert_list(Markers, !MarkerSet).
 
-markers_to_marker_list(Markers, Markers).
+remove_marker(Marker, !MarkerSet) :-
+    set.delete(Marker, !MarkerSet).
 
-marker_list_to_markers(Markers, Markers).
+markers_to_marker_list(MarkerSet, Markers) :-
+    set.to_sorted_list(MarkerSet, Markers).
 
-:- type pred_attributes == list(attribute).
+marker_list_to_markers(Markers, MarkerSet) :-
+    set.list_to_set(Markers, MarkerSet).
 
-init_attributes([]).
+:- type pred_attributes == set(pred_attribute).
 
-check_attribute(Attributes, Attribute) :-
-    list.member(Attribute, Attributes).
+init_attributes(set.init).
 
-add_attribute(Attribute, Attributes, [Attribute | Attributes]).
+check_attribute(AttributeSet, Attribute) :-
+    set.member(Attribute, AttributeSet).
 
-remove_attribute(Attribute, Attributes0, Attributes) :-
-    list.delete_all(Attributes0, Attribute, Attributes).
+add_attribute(Attribute, !AttributeSet) :-
+    set.insert(Attribute, !AttributeSet).
 
-attributes_to_attribute_list(Attributes, Attributes).
+remove_attribute(Attribute, !AttributeSet) :-
+    set.delete(Attribute, !AttributeSet).
 
-attribute_list_to_attributes(Attributes, Attributes).
+attributes_to_attribute_list(AttributeSet, Attributes) :-
+    set.to_sorted_list(AttributeSet, Attributes).
+
+attribute_list_to_attributes(Attributes, AttributeSet) :-
+    set.list_to_set(Attributes, AttributeSet).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -2046,8 +2088,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     proc_info::in, proc_info::out) is det.
 
 :- type can_process
-    --->    can_process
-    ;       cannot_process.
+    --->    cannot_process_yet
+    ;       can_process_now.
 
 :- type needs_maxfr_slot
     --->    needs_maxfr_slot
@@ -2778,7 +2820,7 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     % as the fields themselves.
 
     % argument MainContext
-    CanProcess = can_process,
+    CanProcess = can_process_now,
     % argument DetismDecl
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap
@@ -2900,7 +2942,7 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     % as the fields themselves.
 
     % argument MainContext
-    CanProcess = can_process,
+    CanProcess = can_process_now,
     % argument DetismDecl
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap

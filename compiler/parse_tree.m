@@ -63,6 +63,7 @@
 :- include_module builtin_lib_types.
 :- include_module error_util.
 :- include_module item_util.
+:- include_module maybe_error.
 :- include_module prog_detism.
 :- include_module prog_event.
 :- include_module prog_foreign.

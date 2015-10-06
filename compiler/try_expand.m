@@ -885,7 +885,9 @@ make_try_call(PredName, LambdaVar, ResultVar, ExtraArgs, OutputTupleType,
     create_poly_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, PolyInfo0),
     polymorphism_make_type_info_var(OutputTupleType, Context,
         TypeInfoVar, MakeTypeInfoGoals, PolyInfo0, PolyInfo),
-    poly_info_extract(PolyInfo, !PredInfo, !ProcInfo, !:ModuleInfo),
+    poly_info_extract(PolyInfo, PolySpecs, !PredInfo, !ProcInfo, !:ModuleInfo),
+    expect(unify(PolySpecs, []), $module, $pred,
+        "got errors while making type_info_var"),
 
     % The mode will be fixed up by a later analysis.
     Mode = mode_no(0),

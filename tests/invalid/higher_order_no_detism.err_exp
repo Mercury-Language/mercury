@@ -1,0 +1,12 @@
+higher_order_no_detism.m:024: Error: the predicate
+higher_order_no_detism.m:024:   `higher_order_no_detism.short' has no declared
+higher_order_no_detism.m:024:   determinism, so a curried call to it may not be
+higher_order_no_detism.m:024:   used as a lambda expression.
+higher_order_no_detism.m:025: Error: the predicate
+higher_order_no_detism.m:025:   `higher_order_no_detism.long' has no declared
+higher_order_no_detism.m:025:   determinism, so a curried call to it may not be
+higher_order_no_detism.m:025:   used as a lambda expression.
+higher_order_no_detism.m:026: Error: the predicate
+higher_order_no_detism.m:026:   `higher_order_no_detism.defaults' has no
+higher_order_no_detism.m:026:   declared determinism, so a curried call to it
+higher_order_no_detism.m:026:   may not be used as a lambda expression.
