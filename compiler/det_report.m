@@ -195,28 +195,28 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
             globals.lookup_bool_option(Globals, warn_inferred_erroneous,
                 WarnAboutInferredErroneous),
             pred_info_get_markers(PredInfo, Markers),
-            (
+            ( if
                 ShouldIssueWarning = yes,
 
                 % Don't report warnings for class method implementations --
                 % the determinism in the `:- typeclass' declaration will be
                 % the loosest of all possible instances. This is similar to
                 % the reason we don't report warnings for lambda expressions.
-                \+ check_marker(Markers, marker_class_instance_method),
+                not check_marker(Markers, marker_class_instance_method),
 
                 % Don't report warnings for procedures with no clauses.
-                \+ check_marker(Markers, marker_stub),
+                not check_marker(Markers, marker_stub),
 
                 % Don't report warnings for predicates for which the user
                 % has written a pragma requesting no warnings.
-                \+ check_marker(Markers, marker_no_detism_warning),
+                not check_marker(Markers, marker_no_detism_warning),
 
                 % Don't report warnings for compiler-generated Unify, Compare
                 % or Index procedures, since the user has no way to shut
                 % these up. These can happen for the Unify pred for the unit
                 % type, if such types are not boxed (as they are not
                 % boxed for the IL backend).
-                \+ is_unify_or_compare_pred(PredInfo),
+                not is_unify_or_compare_pred(PredInfo),
 
                 % Don't warn about predicates which are inferred erroneous
                 % when the appropriate option is set. This is to avoid warnings
@@ -233,18 +233,17 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
                 % predicates.
                 pred_info_get_status(PredInfo, Status),
                 pred_status_defined_in_this_module(Status) = yes
-            ->
+            then
                 proc_info_get_detism_decl(ProcInfo, DetismDecl),
                 MessagePieces = [words("warning:"),
                     words(detism_decl_name(DetismDecl)),
-                    words("could be tighter."), nl
-                ],
+                    words("could be tighter."), nl],
                 report_determinism_problem(PredId, ProcId, !.ModuleInfo,
                     MessagePieces, DeclaredDetism, InferredDetism, ReportMsgs),
                 ReportSpec = error_spec(severity_warning, phase_detism_check,
                     ReportMsgs),
                 !:Specs = [ReportSpec | !.Specs]
-            ;
+            else
                 true
             )
         ;
@@ -287,7 +286,7 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
             pragma_decl(eval_method_to_pragma_name(EvalMethod)),
             words("declaration not allowed for procedure"),
             words("with determinism"),
-            quote(determinism_to_string(InferredDetism)), suffix(".")],
+            quote(determinism_to_string(InferredDetism)), suffix("."), nl],
 
         solutions.solutions(get_valid_dets(EvalMethod), Detisms),
         DetismStrs = list.map(determinism_to_string, Detisms),
@@ -313,7 +312,7 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
 make_reqscope_checks_if_needed(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         !Specs) :-
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, marker_has_require_scope) ->
+    ( if check_marker(Markers, marker_has_require_scope) then
         proc_info_get_goal(ProcInfo, Goal),
         proc_info_get_vartypes(ProcInfo, VarTypes),
         proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
@@ -322,7 +321,7 @@ make_reqscope_checks_if_needed(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
         reqscope_check_goal(Goal, InstMap0, DetInfo0, DetInfo),
         det_info_get_error_specs(DetInfo, RCSSpecs),
         !:Specs = RCSSpecs ++ !.Specs
-    ;
+    else
         true
     ).
 
@@ -373,25 +372,25 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo, !Specs) :-
     % Check that `main/2' has determinism `det' or `cc_multi',
     % as required by the language reference manual.
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
-    (
+    ( if
         pred_info_name(PredInfo) = "main",
         pred_info_orig_arity(PredInfo) = 2,
         pred_info_is_exported(PredInfo),
         MaybeDetism = yes(DeclaredDetism),
-        \+ (
+        not (
             DeclaredDetism = detism_det
         ;
             DeclaredDetism = detism_cc_multi
         )
-    ->
+    then
         proc_info_get_context(ProcInfo, ProcContext),
         Pieces = [words("Error:"), sym_name_and_arity(unqualified("main") / 2),
             words("must be"), quote("det"), words("or"), quote("cc_multi"),
-            suffix(".")],
+            suffix("."), nl],
         Spec = error_spec(severity_error, phase_detism_check,
             [simple_msg(ProcContext, [always(Pieces)])]),
         !:Specs = [Spec | !.Specs]
-    ;
+    else
         true
     ).
 
@@ -407,7 +406,7 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo, ModuleInfo,
     % mode. Otherwise, they would not be referentially transparent.
     % (Nondeterministic "functions" like C's `rand()' function are not
     % allowed.)
-    (
+    ( if
         % If it is a mode for a function...
         pred_info_is_pred_or_func(PredInfo) = pf_function,
         % ... that can succeed more than once ...
@@ -422,7 +421,7 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo, ModuleInfo,
         =>
             mode_is_fully_input(ModuleInfo, FuncArgMode)
         )
-    ->
+    then
         % ... then it is an error.
         proc_info_get_context(ProcInfo, FuncContext),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
@@ -431,27 +430,27 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo, ModuleInfo,
         MainPieces = [words("Error: invalid determinism for")]
             ++ PredModePieces ++ [suffix(":"), nl,
             words("the primary mode of a function cannot be"),
-            quote(mercury_det_to_string(InferredDetism)), suffix(".")],
+            quote(mercury_det_to_string(InferredDetism)), suffix("."), nl],
         VerbosePieces = func_primary_mode_det_msg,
         Spec = error_spec(severity_error, phase_detism_check,
             [simple_msg(FuncContext,
                 [always(MainPieces),
                 verbose_only(verbose_once, VerbosePieces)])]),
         !:Specs = [Spec | !.Specs]
-    ;
+    else
         true
     ).
 
 :- func func_primary_mode_det_msg = format_components.
 
-func_primary_mode_det_msg = [
-    words("In Mercury, a function is supposed to be a true mathematical"),
-    words("function of its arguments; that is, the value of the function's"),
-    words("result should be determined only by the values of its arguments."),
+func_primary_mode_det_msg = [words("In Mercury,"),
+    words("a function is supposed to be a true mathematical function"),
+    words("of its arguments; that is, the value of the function's result"),
+    words("should be determined only by the values of its arguments."),
     words("(Allowing functions to have more than one result for the same"),
     words("arguments would break referential transparency.)"),
-    words("Most likely, this procedure should be a predicate, not a function.")
-    ].
+    words("Most likely, this procedure should be a predicate,"),
+    words("not a function."), nl].
 
 det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         !DetInfo) :-
@@ -466,13 +465,12 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         det_info_get_module_info(!.DetInfo, ModuleInfo),
         PredPieces = describe_one_proc_name_mode(ModuleInfo,
             should_not_module_qualify, proc(PredId, ProcId)),
-        Pieces =
-            [words("In")] ++ PredPieces ++ [suffix(":"), nl,
+        Pieces = [words("In")] ++ PredPieces ++ [suffix(":"), nl,
             words("Determinism error in lambda expression."), nl,
             words("Declared"),
             quote(determinism_to_string(DeclaredDetism)), suffix(","),
             words("inferred"),
-            quote(determinism_to_string(InferredDetism)), suffix("'.")],
+            quote(determinism_to_string(InferredDetism)), suffix("'."), nl],
         det_diagnose_goal(Goal, InstMap0, DeclaredDetism, [], !DetInfo,
             GoalMsgs),
         sort_error_msgs(GoalMsgs, SortedGoalMsgs),
@@ -498,14 +496,11 @@ report_determinism_problem(PredId, ProcId, ModuleInfo, MessagePieces,
     ProcPieces = describe_one_proc_name_mode(ModuleInfo,
         should_not_module_qualify, proc(PredId, ProcId)),
     Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl] ++
-        MessagePieces ++
-        [
-            nl,
-            words("Declared"),
-            quote(determinism_to_string(DeclaredDetism)), suffix(","),
-            words("inferred"),
-            quote(determinism_to_string(InferredDetism)), suffix(".")
-        ],
+        MessagePieces ++ [nl] ++
+        [words("Declared"),
+        quote(determinism_to_string(DeclaredDetism)), suffix(","),
+        words("inferred"),
+        quote(determinism_to_string(InferredDetism)), suffix("."), nl],
     Msgs = [simple_msg(Context, [always(Pieces)])].
 
 %-----------------------------------------------------------------------------%
@@ -551,21 +546,22 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         det_diagnose_disj(Goals, InstMap0, Desired, Actual, SwitchContexts,
             !DetInfo, 0, DisjunctsWithSoln, Msgs1),
         determinism_components(Desired, _, DesSolns),
-        (
+        ( if
             DesSolns \= at_most_many,
             DesSolns \= at_most_many_cc,
             DisjunctsWithSoln > 1
-        ->
+        then
             Context = goal_info_get_context(GoalInfo),
             det_diagnose_switch_context(!.DetInfo, SwitchContexts,
                 NestingPieces),
             DisjPieces =
-                [words("Disjunction has multiple clauses with solutions.")],
+                [words("Disjunction has multiple clauses with solutions."),
+                nl],
             Pieces = NestingPieces ++ [lower_case_next_if_not_first]
                 ++ DisjPieces,
             Msg = simple_msg(Context, [always(Pieces)]),
             Msgs = [Msg] ++ Msgs1
-        ;
+        else
             Msgs = Msgs1
         )
     ;
@@ -574,10 +570,10 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         % of the cases. Also, if only a subset of the constructors are handled,
         % then it is semideterministic or worse - this is determined
         % in switch_detection.m and handled via the CanFail field.
-        (
+        ( if
             SwitchCanFail = can_fail,
             determinism_components(Desired, cannot_fail, _)
-        ->
+        then
             Context = goal_info_get_context(GoalInfo),
             det_diagnose_switch_context(!.DetInfo, SwitchContexts,
                 NestingPieces),
@@ -586,14 +582,14 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
             (
                 MaybeMissingPieces = yes(MissingPieces),
                 Pieces = [words("The switch on"), fixed(VarStr),
-                    words("does not cover") | MissingPieces]
+                    words("does not cover") | MissingPieces] ++ [nl]
             ;
                 MaybeMissingPieces = no,
                 Pieces = [words("The switch on"), fixed(VarStr),
-                    words("can fail.")]
+                    words("can fail."), nl]
             ),
             Msgs1 = [simple_msg(Context, [always(NestingPieces ++ Pieces)])]
-        ;
+        else
             Msgs1 = []
         ),
         det_info_get_vartypes(!.DetInfo, VarTypes),
@@ -628,7 +624,8 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         Context = goal_info_get_context(GoalInfo),
         DesiredStr = determinism_to_string(Desired),
         Pieces = [words("Determinism declaration not satisfied."),
-            words("Desired determinism is " ++ DesiredStr ++ ".")],
+            words("Desired determinism is"), words(DesiredStr),
+            suffix("."), nl],
         Msgs = [simple_msg(Context, [always(Pieces)])]
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
@@ -636,14 +633,14 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         Cond = hlds_goal(_CondGoal, CondInfo),
         CondDetism = goal_info_get_determinism(CondInfo),
         determinism_components(CondDetism, _CondCanFail, CondSolns),
-        (
+        ( if
             CondSolns = at_most_many,
             DesiredSolns \= at_most_many
-        ->
+        then
             determinism_components(DesiredCond, can_fail, DesiredSolns),
             det_diagnose_goal(Cond, InstMap0, DesiredCond, SwitchContexts,
                 !DetInfo, MsgsCond)
-        ;
+        else
             MsgsCond = []
         ),
         update_instmap(Cond, InstMap0, InstMap1),
@@ -656,30 +653,30 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         GoalExpr = negation(_),
         determinism_components(Desired, DesiredCanFail, DesiredSolns),
         determinism_components(Actual, ActualCanFail, ActualSolns),
-        (
+        ( if
             DesiredCanFail = cannot_fail,
             ActualCanFail = can_fail
-        ->
+        then
             Context = goal_info_get_context(GoalInfo),
-            Pieces = [words("Negated goal can succeed.")],
+            Pieces = [words("Negated goal can succeed."), nl],
             Msgs = [simple_msg(Context, [always(Pieces)])]
-        ;
+        else if
             DesiredSolns = at_most_zero,
             ActualSolns \= at_most_zero
-        ->
+        then
             Context = goal_info_get_context(GoalInfo),
-            Pieces = [words("Negated goal can fail.")],
+            Pieces = [words("Negated goal can fail."), nl],
             Msgs = [simple_msg(Context, [always(Pieces)])]
-        ;
+        else
             Msgs = []
         )
     ;
         GoalExpr = scope(_, SubGoal),
         SubGoal = hlds_goal(_, SubGoalInfo),
         Internal = goal_info_get_determinism(SubGoalInfo),
-        ( Actual = Internal ->
+        ( if Actual = Internal then
             InternalDesired = Desired
-        ;
+        else
             determinism_components(Desired, CanFail, _),
             determinism_components(InternalDesired, CanFail, at_most_many)
         ),
@@ -785,15 +782,15 @@ det_diagnose_disj([Goal | Goals], InstMap0, Desired, Actual, SwitchContexts,
         !DetInfo, !DisjunctsWithSoln, Msgs) :-
     determinism_components(Actual, ActualCanFail, _),
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
-    (
+    ( if
         DesiredCanFail = cannot_fail,
         ActualCanFail = can_fail
-    ->
+    then
         % If the disjunction was declared to never fail, but we inferred that
         % it might fail, then we want to print an error message for every
         % disjunct that might fail.
         ClauseCanFail = cannot_fail
-    ;
+    else
         % Otherwise, either the disjunction is allowed to fail, or there is
         % at least one disjunct that we inferred won't fail, so we don't want
         % any error messages for the disjuncts that might fail.
@@ -802,13 +799,13 @@ det_diagnose_disj([Goal | Goals], InstMap0, Desired, Actual, SwitchContexts,
     determinism_components(ClauseDesired, ClauseCanFail, DesiredSolns),
     det_diagnose_goal(Goal, InstMap0, ClauseDesired, SwitchContexts, !DetInfo,
         Msgs1),
-    (
+    ( if
         Goal = hlds_goal(_, GoalInfo),
         GoalDetism = goal_info_get_determinism(GoalInfo),
         determinism_components(GoalDetism, _, at_most_zero)
-    ->
+    then
         true
-    ;
+    else
         !:DisjunctsWithSoln = !.DisjunctsWithSoln + 1
     ),
     det_diagnose_disj(Goals, InstMap0, Desired, Actual, SwitchContexts,
@@ -860,39 +857,39 @@ find_switch_var_matches([], _, MainConsId, OtherConsIds,
 find_switch_var_matches([Conjunct | Conjuncts], !.SwitchVarSynonyms,
         MainConsId, OtherConsIds, MainMatch, OtherMatches) :-
     Conjunct = hlds_goal(GoalExpr, GoalInfo),
-    (
+    ( if
         GoalExpr = unify(_, _, _, Unification, _),
         Unification = deconstruct(Var, MainConsId, ArgVars, _, _, _),
         list.member(Var, !.SwitchVarSynonyms),
         OtherConsIds = []
-    ->
+    then
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         ArgVarsSet = set_of_var.list_to_set(ArgVars),
-        (
+        ( if
             set_of_var.intersect(NonLocals, ArgVarsSet, NonLocalArgVarsSet),
             set_of_var.is_non_empty(NonLocalArgVarsSet)
-        ->
+        then
             MaybeArgVars = yes(ArgVars)
-        ;
+        else
             MaybeArgVars = no
         ),
         MainMatch = switch_match(MainConsId, MaybeArgVars),
         OtherMatches = []
-    ;
+    else if
         GoalExpr = disj(Disjuncts),
         find_switch_var_submatches(Disjuncts, !.SwitchVarSynonyms,
             yes(MainConsId), OtherConsIds, yes(MainMatch0), OtherMatches0)
-    ->
+    then
         MainMatch = MainMatch0,
         OtherMatches = OtherMatches0
-    ;
-        (
+    else
+        ( if
             GoalExpr = unify(_, _, _, Unification, _),
             Unification = assign(ToVar, FromVar),
             list.member(FromVar, !.SwitchVarSynonyms)
-        ->
+        then
             !:SwitchVarSynonyms = [ToVar | !.SwitchVarSynonyms]
-        ;
+        else
             true
         ),
         find_switch_var_matches(Conjuncts, !.SwitchVarSynonyms,
@@ -921,30 +918,30 @@ find_switch_var_submatches([Disjunct | Disjuncts], SwitchVarSynonyms,
     GoalExpr = unify(_, _, _, Unification, _),
     Unification = deconstruct(Var, ConsId, ArgVars, _, _, _),
     list.member(Var, SwitchVarSynonyms),
-    (
+    ( if
         MaybeMainConsId = yes(MainConsId),
         ConsId = MainConsId
-    ->
+    then
         find_switch_var_submatches(Disjuncts, SwitchVarSynonyms,
             no, OtherConsIds, no, OtherMatches),
         MaybeMainMatch = yes(switch_match(ConsId, yes(ArgVars)))
-    ;
+    else if
         list.delete_first(OtherConsIds, ConsId, LeftOverConsIds)
-    ->
+    then
         find_switch_var_submatches(Disjuncts, SwitchVarSynonyms,
             MaybeMainConsId, LeftOverConsIds, MaybeMainMatch, LeftOverMatches),
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         set_of_var.list_to_set(ArgVars, ArgVarsSet),
-        (
+        ( if
             set_of_var.intersect(NonLocals, ArgVarsSet, NonLocalArgVarsSet),
             set_of_var.is_non_empty(NonLocalArgVarsSet)
-        ->
+        then
             MaybeArgVars = yes(ArgVars)
-        ;
+        else
             MaybeArgVars = no
         ),
         OtherMatches = [switch_match(ConsId, MaybeArgVars) | LeftOverMatches]
-    ;
+    else
         fail
     ).
 
@@ -1053,10 +1050,10 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
         % into an incomplete switch by deleting an arm that contains
         % only `fail'.
         SubGoal = hlds_goal(SubGoalExpr, _),
-        (
+        ( if
             SubGoalExpr = switch(SwitchVar, CanFail, Cases),
             SwitchVar = RequiredVar
-        ->
+        then
             (
                 CanFail = cannot_fail
             ;
@@ -1068,13 +1065,13 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
                     SwitchPieces = [words("Error: the switch on"),
                         quote(VarStr),
                         words("is required to be complete,"),
-                        words("but it does not cover") | MissingPieces]
+                        words("but it does not cover") | MissingPieces] ++ [nl]
                 ;
                     MaybeMissingPieces = no,
                     SwitchPieces = [words("Error: the switch on"),
                         quote(VarStr),
                         words("is required to be complete,"),
-                        words("but it is not.")]
+                        words("but it is not."), nl]
                 ),
                 Context = goal_info_get_context(ScopeGoalInfo),
                 SwitchMsg = simple_msg(Context,
@@ -1083,23 +1080,23 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
                     [SwitchMsg]),
                 det_info_add_error_spec(SwitchSpec, !DetInfo)
             )
-        ;
+        else
             generate_warning_for_switch_var_if_missing(RequiredVar, SubGoal,
                 ScopeGoalInfo, !DetInfo)
         )
     ;
         Reason = require_switch_arms_detism(RequiredVar, RequiredDetism),
         SubGoal = hlds_goal(SubGoalExpr, _),
-        (
+        ( if
             SubGoalExpr = switch(SwitchVar, _CanFail, Cases),
             SwitchVar = RequiredVar
-        ->
+        then
             det_info_get_vartypes(!.DetInfo, VarTypes),
             lookup_var_type(VarTypes, SwitchVar, SwitchVarType),
             reqscope_check_goal_detism_for_cases(RequiredDetism,
                 SwitchVar, SwitchVarType, Cases,
                 check_require_switch_arms_detism, InstMap0, !DetInfo)
-        ;
+        else
             generate_warning_for_switch_var_if_missing(RequiredVar, SubGoal,
                 ScopeGoalInfo, !DetInfo)
         )
@@ -1153,7 +1150,7 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
     Goal = hlds_goal(_, GoalInfo),
     ActualDetism = goal_info_get_determinism(GoalInfo),
     compare_determinisms(ActualDetism, RequiredDetism, CompareResult),
-    (
+    ( if
         (
             CheckKind = check_require_detism(_),
             % For require_detism scopes, the programmer requires an exact
@@ -1169,9 +1166,9 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
             ; CompareResult = first_detism_same_as
             )
         )
-    ->
+    then
         true
-    ;
+    else
         (
             CheckKind = check_require_detism(ScopeGoalInfo),
             % For require_detism scopes, the context of the require_detism
@@ -1236,11 +1233,9 @@ generate_warning_for_switch_var_if_missing(RequiredVar, Goal, ScopeGoalInfo,
         det_get_proc_info(!.DetInfo, ProcInfo),
         proc_info_get_varset(ProcInfo, VarSet),
         VarStr = mercury_var_to_name_only(VarSet, RequiredVar),
-        MissingRequiredPieces = [
-            words("Warning: variable "), quote(VarStr),
-            words("is the subject of a require_complete_switch scope"),
-            words("but it does not occur in the sub-goal.")
-        ],
+        MissingRequiredPieces = [words("Warning: variable "), quote(VarStr),
+            words("is the subject of a require_complete_switch scope,"),
+            words("but it does not occur in the subgoal."), nl],
         Context = goal_info_get_context(ScopeGoalInfo),
         MissingRequiredMsg = simple_msg(Context,
             [always(MissingRequiredPieces)]),
@@ -1301,27 +1296,27 @@ find_missing_cons_ids(DetInfo, InstMap0, Var, Cases, VarStr,
     proc_info_get_varset(ProcInfo, VarSet),
     VarStr = mercury_var_to_name_only(VarSet, Var),
     det_info_get_module_info(DetInfo, ModuleInfo),
-    (
-        (
+    ( if
+        ( if
             instmap_lookup_var(InstMap0, Var, VarInst),
             inst_is_bound_to_functors(ModuleInfo, VarInst, BoundInsts)
-        ->
+        then
             det_info_get_vartypes(DetInfo, VarTypes),
             lookup_var_type(VarTypes, Var, VarType),
             type_to_ctor_det(VarType, VarTypeCtor),
             list.map(bound_inst_to_cons_id(VarTypeCtor),
                 BoundInsts, ConsIds)
-        ;
+        else
             det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             ConsTable = TypeBody ^ du_type_cons_tag_values,
             map.keys(ConsTable, ConsIds)
         )
-    ->
+    then
         det_diagnose_missing_consids(ConsIds, Cases, MissingConsIds),
         cons_id_list_to_pieces(MissingConsIds, MissingPieces),
         MaybeMissingPieces = yes(MissingPieces)
-    ;
+    else
         MaybeMissingPieces = no
     ).
 
@@ -1339,9 +1334,9 @@ det_diagnose_missing_consids(ConsIds, Cases, MissingConsIds) :-
 find_uncovered_consids([], _, !RevMissingConsIds).
 find_uncovered_consids([ConsId | ConsIds], CoveredConsIds,
         !RevMissingConsIds) :-
-    ( set_tree234.contains(CoveredConsIds, ConsId) ->
+    ( if set_tree234.contains(CoveredConsIds, ConsId) then
         true
-    ;
+    else
         !:RevMissingConsIds = [ConsId | !.RevMissingConsIds]
     ),
     find_uncovered_consids(ConsIds, CoveredConsIds, !RevMissingConsIds).
@@ -1451,7 +1446,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
     % both out. (The latter can happen if there is a determinism error
     % in a function call inside some unification.)
 
-    ( Origin = origin_special_pred(spec_pred_unify, _) ->
+    ( if Origin = origin_special_pred(spec_pred_unify, _) then
         InitMsgs = [],
         (
             CallUnifyContext = yes(call_unify_context(LHS, RHS, UC)),
@@ -1464,7 +1459,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
             StartingPieces = [words("Some weird unification"
                 ++ "(or explicit call to a type-specific unify predicate?)")]
         )
-    ;
+    else
         (
             CallUnifyContext = yes(call_unify_context(LHS, RHS, UC)),
             det_report_unify_context(is_first, is_not_last, Context, UC,
@@ -1525,22 +1520,22 @@ det_report_unify_context(!.First, Last, _Context, UnifyContext, DetInfo,
             StartWords = "in unification"
         )
     ),
-    ( varset.search_name(VarSet, LHS, _) ->
+    ( if varset.search_name(VarSet, LHS, _) then
         LHSVarName = mercury_var_to_name_only(VarSet, LHS),
-        (
+        ( if
             RHS = rhs_var(RV),
-            \+ varset.search_name(VarSet, RV, _)
-        ->
+            not varset.search_name(VarSet, RV, _)
+        then
             Pieces = [words(StartWords), words("with"),
                 words(add_quotes(LHSVarName))]
-        ;
+        else
             Pieces = [words(StartWords), words("of"),
                 words(add_quotes(LHSVarName)), words("and"),
                 words(add_quotes(
                     unify_rhs_to_string(ModuleInfo, VarSet, print_name_only,
                         RHS)))]
         )
-    ;
+    else
         Pieces = [words(StartWords), words("with"),
             words(add_quotes(
                 unify_rhs_to_string(ModuleInfo, VarSet, print_name_only,

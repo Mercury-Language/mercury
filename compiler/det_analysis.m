@@ -23,7 +23,7 @@
 %
 % If we are to avoid global inference for predicates with declarations, then
 % it must be an error, not just a warning, if the determinism checking step
-% detects that the determinism annotation was wrong.  If we were to issue just
+% detects that the determinism annotation was wrong. If we were to issue just
 % a warning, then we would have to override the determinism annotation, and
 % that would force us to re-check the inferred determinism for all calling
 % predicates.
@@ -221,9 +221,9 @@ global_inference_single_pass([], _, !ModuleInfo, !Specs, !Changed).
 global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
         !ModuleInfo, !Specs, !Changed) :-
     det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs),
-    ( NewDetism = OldDetism ->
+    ( if NewDetism = OldDetism then
         ChangeStr = "old"
-    ;
+    else
         ChangeStr = "new",
         !:Changed = changed
     ),
@@ -279,13 +279,13 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
         MaybeDeclaredDetism = no,
         DeclaredSolnContext = all_solns
     ),
-    (
+    ( if
         ( DeclaredSolnContext = first_soln
         ; OldInferredSolnContext = first_soln
         )
-    ->
+    then
         SolnContext = first_soln
-    ;
+    else
         SolnContext = all_solns
     ),
 
@@ -324,7 +324,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % Now see if the evaluation model can change the detism.
     proc_info_get_eval_method(ProcInfo0, EvalMethod),
     NewDetism = eval_method_change_determinism(EvalMethod, TentativeDetism),
-    (
+    ( if
         proc_info_has_io_state_pair(!.ModuleInfo, ProcInfo0, _InArg, _OutArg),
         (
             MaybeDeclaredDetism = yes(ToBeCheckedDetism)
@@ -334,7 +334,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
         ),
         determinism_to_code_model(ToBeCheckedDetism, ToBeCheckedCodeModel),
         ToBeCheckedCodeModel \= model_det
-    ->
+    then
         proc_info_get_context(ProcInfo0, ProcContext),
         IOStateProcPieces = describe_one_proc_name_mode(!.ModuleInfo,
             should_not_module_qualify, proc(PredId, ProcId)),
@@ -348,7 +348,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
                 [always(IOStatePieces),
                 verbose_only(verbose_always, IOStateVerbosePieces)])]),
         !:Specs = [IOStateSpec | !.Specs]
-    ;
+    else
         true
     ),
 
@@ -363,17 +363,17 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % So that any later conversion from cord to list will do nothing
     % except take off the cord wrapper.
     module_info_set_pragma_exported_procs(ExportedProcsCord, !ModuleInfo),
-    (
+    ( if
         list.member(pragma_exported_proc(_, PredId, ProcId, _, _),
             ExportedProcs),
         ( NewDetism = detism_multi
         ; NewDetism = detism_non
         )
-    ->
-        (
+    then
+        ( if
             get_exported_proc_context(ExportedProcs, PredId, ProcId,
                 PragmaContext)
-        ->
+        then
             ExportPieces = [words("Error:"),
                 pragma_decl("foreign_export"), words("declaration"),
                 words("for a procedure that has a determinism of"),
@@ -381,11 +381,11 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
             ExportSpec = error_spec(severity_error, phase_detism_check,
                 [simple_msg(PragmaContext, [always(ExportPieces)])]),
             !:Specs = [ExportSpec | !.Specs]
-        ;
+        else
             unexpected($module, $pred,
                 "Cannot find proc in table of pragma foreign_exported procs")
         )
-    ;
+    else
         true
     ),
 
@@ -421,9 +421,9 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     pred_id::in, proc_id::in, prog_context::out) is semidet.
 
 get_exported_proc_context([Proc | Procs], PredId, ProcId, Context) :-
-    ( Proc = pragma_exported_proc(_, PredId, ProcId, _, Context0) ->
+    ( if Proc = pragma_exported_proc(_, PredId, ProcId, _, Context0) then
         Context = Context0
-    ;
+    else
         get_exported_proc_context(Procs, PredId, ProcId, Context)
     ).
 
@@ -437,7 +437,7 @@ det_infer_goal(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
 
     % If a pure or semipure goal has no output variables, then the goal
     % is in a single-solution context.
-    (
+    ( if
         det_no_output_vars(!.DetInfo, InstMap0, InstmapDelta, NonLocalVars),
         Purity = goal_info_get_purity(GoalInfo0),
         (
@@ -446,10 +446,10 @@ det_infer_goal(Goal0, Goal, InstMap0, !.SolnContext, RightFailingContexts,
             goal_info_has_feature(GoalInfo0,
                 feature_not_impure_for_determinism)
         )
-    ->
+    then
         AddPruning = yes,
         !:SolnContext = first_soln
-    ;
+    else
         AddPruning = no
     ),
     det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
@@ -467,7 +467,7 @@ det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     InstmapDelta = goal_info_get_instmap_delta(GoalInfo0),
 
-    (
+    ( if
         GoalExpr0 = scope(ScopeReason, _),
         (
             % Some other part of the compiler has determined that we need
@@ -486,9 +486,9 @@ det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
             ScopeReason = promise_solutions(_, PromiseEqvSolnsKind),
             promise_eqv_solutions_kind_prunes(PromiseEqvSolnsKind) = yes
         )
-    ->
+    then
         Prune = yes
-    ;
+    else
         Prune = AddPruning
     ),
 
@@ -497,32 +497,32 @@ det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
         InternalDetism0, GoalFailingContexts, !DetInfo),
 
     determinism_components(InternalDetism0, InternalCanFail, InternalSolns0),
-    (
+    ( if
         % If mode analysis notices that a goal cannot succeed,
         % then determinism analysis should notice this too.
 
         instmap_delta_is_unreachable(InstmapDelta)
-    ->
+    then
         InternalSolns = at_most_zero
-    ;
+    else
         InternalSolns = InternalSolns0
     ),
-    (
+    ( if
         ( InternalSolns = at_most_many
         ; InternalSolns = at_most_many_cc
         ),
         Prune = yes
-    ->
+    then
         Solns = at_most_one
-    ;
+    else if
         % If a goal with multiple solutions occurs in a single-solution
         % context, then we will need to do pruning.
 
         InternalSolns = at_most_many,
         !.SolnContext = first_soln
-    ->
+    then
         Solns = at_most_many_cc
-    ;
+    else
         Solns = InternalSolns
     ),
     determinism_components(Detism, InternalCanFail, Solns),
@@ -535,7 +535,7 @@ det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
     % simplification, and without this code here the invariants would not hold
     % after determinism analysis (the number of solutions of the inner goal
     % would be changed back from at_most_many to at_most_one or at_most_zero).
-    (
+    ( if
         % If-then-elses that are det or semidet may nevertheless contain nondet
         % or multidet conditions. If this happens, the if-then-else must be put
         % inside a `scope' to appease the code generator. (Both the MLDS and
@@ -545,9 +545,9 @@ det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
         CondDetism = goal_info_get_determinism(CondInfo),
         determinism_components(CondDetism, _, at_most_many),
         Solns \= at_most_many
-    ->
+    then
         FinalInternalSolns = at_most_many
-    ;
+    else if
         % Conjunctions that cannot produce solutions may nevertheless contain
         % nondet and multidet goals. If this happens, the conjunction is put
         % inside a scope goal to appease the code generator.
@@ -559,16 +559,16 @@ det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
             ConjGoalDetism = goal_info_get_determinism(ConjGoalInfo),
             determinism_components(ConjGoalDetism, _, at_most_many)
         )
-    ->
+    then
         FinalInternalSolns = at_most_many
-    ;
+    else
         FinalInternalSolns = InternalSolns
     ),
     determinism_components(FinalInternalDetism, InternalCanFail,
         FinalInternalSolns),
 
     % See how we should introduce the commit operator, if one is needed.
-    (
+    ( if
         % Do we need a commit?
         Detism \= FinalInternalDetism,
 
@@ -580,13 +580,13 @@ det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
 
         % Do we already have a commit?
         GoalExpr1 \= scope(_, _)
-    ->
+    then
         % A commit is needed - we must introduce an explicit `commit' so that
         % the code generator knows to insert the appropriate code for pruning.
         goal_info_set_determinism(FinalInternalDetism, GoalInfo0, InnerInfo),
         GoalExpr = scope(commit(dont_force_pruning),
             hlds_goal(GoalExpr1, InnerInfo))
-    ;
+    else
         % Either no commit is needed, or a `scope' is already present.
         GoalExpr = GoalExpr1
     ),
@@ -753,12 +753,12 @@ det_infer_conj([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
     % of the conjunction. However, even if we need only the first solution
     % of the conjunction, we may need to generate more than one solution
     % of the first conjunct if the later conjuncts may possibly fail.
-    (
+    ( if
         TailCanFail = cannot_fail,
         SolnContext = first_soln
-    ->
+    then
         HeadSolnContext = first_soln
-    ;
+    else
         HeadSolnContext = all_solns
     ),
     % Process the first conjunct.
@@ -783,13 +783,13 @@ det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
     det_infer_par_conj_goals(Goals0, Goals, InstMap0, SolnContext,
         RightFailingContexts, MaybePromiseEqvSolutionSets,
         Detism, [], GoalFailingContexts, !DetInfo),
-    (
+    ( if
         determinism_components(Detism, CanFail, Solns),
         CanFail = cannot_fail,
         Solns \= at_most_many
-    ->
+    then
         true
-    ;
+    else
         Context = goal_info_get_context(GoalInfo),
         determinism_components(Detism, CanFail, MaxSoln),
         (
@@ -898,24 +898,24 @@ det_infer_disj_goals([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
     % the disjunction. This is useful for program transformation that want
     % to get control on exits to and redos into model_non procedures.
     % Deep profiling is one such transformation.
-    (
+    ( if
         !.MaxSolns \= at_most_zero,
         FirstMaxSolns = at_most_zero,
         goal_info_has_feature(GoalInfo, feature_preserve_backtrack_into)
-    ->
+    then
         AdjFirstMaxSolns = at_most_one
-    ;
+    else
         AdjFirstMaxSolns = FirstMaxSolns
     ),
     det_disjunction_canfail(!.CanFail, FirstCanFail, !:CanFail),
     det_disjunction_maxsoln(!.MaxSolns, AdjFirstMaxSolns, !:MaxSolns),
     % In single-solution contexts, convert at_most_many to at_most_many_cc.
-    (
+    ( if
         SolnContext = first_soln,
         !.MaxSolns = at_most_many
-    ->
+    then
         !:MaxSolns = at_most_many_cc
-    ;
+    else
         true
     ),
     det_infer_disj_goals(Goals0, Goals, InstMap0, SolnContext,
@@ -948,12 +948,12 @@ det_infer_switch(Var, SwitchCanFail, Cases0, Cases, GoalInfo, InstMap0,
     % The switch variable tests are in a first_soln context if and only
     % if the switch goal as a whole was in a first_soln context and the
     % cases cannot fail.
-    (
+    ( if
         CasesCanFail = cannot_fail,
         SolnContext = first_soln
-    ->
+    then
         SwitchSolnContext = first_soln
-    ;
+    else
         SwitchSolnContext = all_solns
     ),
     ExaminesRep = yes,
@@ -1039,26 +1039,26 @@ det_infer_call(PredId, ProcId0, ProcId, Args, GoalInfo, SolnContext,
     det_info_get_module_info(!.DetInfo, ModuleInfo),
     CalleeModuleName = pred_info_module(CalleePredInfo),
     CalleeName = pred_info_name(CalleePredInfo),
-    ( is_format_call(CalleeModuleName, CalleeName, Args) ->
+    ( if is_format_call(CalleeModuleName, CalleeName, Args) then
         det_info_set_has_format_call(!DetInfo)
-    ;
+    else
         true
     ),
 
     % Make sure we don't try to call a committed-choice pred
     % from a non-committed-choice context.
     determinism_components(Detism0, CanFail, NumSolns),
-    (
+    ( if
         NumSolns = at_most_many_cc,
         SolnContext = all_solns
-    ->
-        (
+    then
+        ( if
             det_find_matching_non_cc_mode(!.DetInfo, PredId, ProcId0,
                 ProcIdPrime)
-        ->
+        then
             ProcId = ProcIdPrime,
             determinism_components(Detism, CanFail, at_most_many)
-        ;
+        else
             GoalContext = goal_info_get_context(GoalInfo),
             det_get_proc_info(!.DetInfo, ProcInfo),
             proc_info_get_varset(ProcInfo, VarSet),
@@ -1082,7 +1082,7 @@ det_infer_call(PredId, ProcId0, ProcId, Args, GoalInfo, SolnContext,
             % so we need to enforce that here.
             determinism_components(Detism, CanFail, at_most_many)
         )
-    ;
+    else
         ProcId = ProcId0,
         Detism = Detism0
     ),
@@ -1106,10 +1106,10 @@ det_infer_generic_call(GenericCall, CallDetism, GoalInfo,
         !DetInfo) :-
     determinism_components(CallDetism, CanFail, NumSolns),
     Context = goal_info_get_context(GoalInfo),
-    (
+    ( if
         NumSolns = at_most_many_cc,
         SolnContext = all_solns
-    ->
+    then
         % This error can only occur for higher-order calls.
         % Class method calls are only introduced by polymorphism.
         det_get_proc_info(!.DetInfo, ProcInfo),
@@ -1128,7 +1128,7 @@ det_infer_generic_call(GenericCall, CallDetism, GoalInfo,
         % SolnContext = all_soln => NumSolns \= at_most_many_cc,
         % so we need to enforce that here.
         determinism_components(Detism, CanFail, at_most_many)
-    ;
+    else
         Detism = CallDetism
     ),
     (
@@ -1158,11 +1158,11 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
     (
         MaybeDetism = yes(Detism0),
         determinism_components(Detism0, CanFail, NumSolns0),
-        (
+        ( if
             get_may_throw_exception(Attributes) =
                 proc_will_not_throw_exception,
             Detism0 = detism_erroneous
-        ->
+        then
             proc_info_get_context(ProcInfo, ProcContext),
             WillNotThrowProcPieces = describe_one_proc_name_mode(ModuleInfo,
                 should_not_module_qualify, proc(PredId, ProcId)),
@@ -1175,13 +1175,13 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             WillNotThrowSpec = error_spec(severity_error, phase_detism_check,
                 [simple_msg(ProcContext, [always(WillNotThrowPieces)])]),
             det_info_add_error_spec(WillNotThrowSpec, !DetInfo)
-        ;
+        else
             true
         ),
-        (
+        ( if
             NumSolns0 = at_most_many_cc,
             SolnContext = all_solns
-        ->
+        then
             GoalContext = goal_info_get_context(GoalInfo),
             proc_info_get_varset(ProcInfo, VarSet),
             WrongContextPredPieces = describe_one_pred_name(ModuleInfo,
@@ -1199,7 +1199,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
                 ContextMsgs),
             det_info_add_error_spec(Spec, !DetInfo),
             NumSolns = at_most_many
-        ;
+        else
             NumSolns = NumSolns0
         ),
         determinism_components(Detism, CanFail, NumSolns),
@@ -1252,9 +1252,9 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
     (
         RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
             NonLocalVars, Vars, Modes, LambdaDeclaredDet, Goal0),
-        ( determinism_components(LambdaDeclaredDet, _, at_most_many_cc) ->
+        ( if determinism_components(LambdaDeclaredDet, _, at_most_many_cc) then
             LambdaSolnContext = first_soln
-        ;
+        else
             LambdaSolnContext = all_solns
         ),
         det_info_get_module_info(!.DetInfo, ModuleInfo),
@@ -1345,12 +1345,12 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
     % Next, work out the right soln_context to use for the condition.
     % The condition is in a first_soln context if and only if the goal as
     % a whole was in a first_soln context and the `then' part cannot fail.
-    (
+    ( if
         ThenCanFail = cannot_fail,
         SolnContext = first_soln
-    ->
+    then
         CondSolnContext = first_soln
-    ;
+    else
         CondSolnContext = all_solns
     ),
     % Process the `condition' part,
@@ -1375,13 +1375,14 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
     % Finally combine the results from the three parts.
     (
         CondCanFail = cannot_fail,
-        % A -> B ; C is equivalent to A, B if A cannot fail
+        % "if A then B else C" is equivalent to "A, B" if A cannot fail.
         det_conjunction_detism(CondDetism, ThenDetism, Detism)
     ;
         CondCanFail = can_fail,
         (
             CondMaxSoln = at_most_zero,
-            % A -> B ; C is equivalent to ~A, C if A cannot succeed
+            % "if A then B else C" is equivalent to "not A, C"
+            % if A cannot succeed.
             det_negation_det(CondDetism, MaybeNegDetism),
             (
                 MaybeNegDetism = no,
@@ -1616,9 +1617,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 OverlapVars = set_of_var.intersect(
                     set_of_var.list_to_set(OldVars),
                     set_of_var.list_to_set(Vars)),
-                ( set_of_var.is_empty(OverlapVars) ->
+                ( if set_of_var.is_empty(OverlapVars) then
                     true
-                ;
+                else
                     OverlapVarNames = list.map(
                         mercury_var_to_name_only(VarSet),
                         set_of_var.to_sorted_list(OverlapVars)),
@@ -1672,9 +1673,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         % in the promise_equivalent_solution{s,_sets} or arbitrary scope?
         set_of_var.difference(BoundVars, set_of_var.list_to_set(Vars),
             MissingVars),
-        ( set_of_var.is_empty(MissingVars) ->
+        ( if set_of_var.is_empty(MissingVars) then
             true
-        ;
+        else
             MissingVarNames = list.map(mercury_var_to_name_only(VarSet),
                 set_of_var.to_sorted_list(MissingVars)),
             MissingKindStr = promise_solutions_kind_str(Kind),
@@ -1689,12 +1690,12 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 MissingVarNames = [_, _ | _],
                 MissingListStr = "some variables that are not listed:"
             ),
-            (
+            ( if
                 set_of_var.member(MissingVars, MissingVar),
                 set_of_var.member(AnyBoundVars, MissingVar)
-            ->
+            then
                 BindsWords = "goal may constrain"
-            ;
+            else
                 BindsWords = "goal binds"
             ),
             MissingPieces = [words("Error: the"), quote(MissingKindStr),
@@ -1709,13 +1710,13 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         set_of_var.difference(set_of_var.list_to_set(Vars),
             BoundVars, ExtraVars),
         det_info_get_pess_extra_vars(!.DetInfo, IgnoreExtraVars),
-        (
+        ( if
             ( set_of_var.is_empty(ExtraVars)
             ; IgnoreExtraVars = pess_extra_vars_ignore
             )
-        ->
+        then
             true
-        ;
+        else
             ExtraVarNames = list.map(mercury_var_to_name_only(VarSet),
                 set_of_var.to_sorted_list(ExtraVars)),
             ExtraKindStr = promise_solutions_kind_str(Kind),
@@ -1745,7 +1746,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
             RightFailingContexts, MaybePromiseEqvSolutionSets0,
             Detism0, GoalFailingContexts, !DetInfo),
-        (
+        ( if
             % Since the trace goal may not be enabled, it would be incorrect
             % to say that it ALWAYS aborts. That is why we convert a detism
             % of detism_erroneous inside the scope to detism_det outside the
@@ -1760,9 +1761,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 Detism0 = detism_erroneous,
                 Detism1 = detism_det
             )
-        ->
+        then
             Detism = Detism1
-        ;
+        else
             Detism = Detism0,
             Context = goal_info_get_context(GoalInfo),
             DetismStr = determinism_to_string(Detism),
@@ -1860,15 +1861,15 @@ det_find_matching_non_cc_mode(DetInfo, PredId, !ProcId) :-
 
 det_find_matching_non_cc_mode_procs([TestProcId - ProcInfo | Rest],
         ModuleInfo, PredInfo, !ProcId) :-
-    (
+    ( if
         TestProcId \= !.ProcId,
         proc_info_interface_determinism(ProcInfo, Detism),
         determinism_components(Detism, _CanFail, MaxSoln),
         MaxSoln = at_most_many,
         modes_are_identical_bar_cc(!.ProcId, TestProcId, PredInfo, ModuleInfo)
-    ->
+    then
         !:ProcId = TestProcId
-    ;
+    else
         det_find_matching_non_cc_mode_procs(Rest, ModuleInfo, PredInfo,
             !ProcId)
     ).
@@ -1883,7 +1884,7 @@ det_find_matching_non_cc_mode_procs([TestProcId - ProcInfo | Rest],
 det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
         SolnContext, FailingContextsA, FailingContextsB, GoalInfo, GoalContext,
         NumSolns, !DetInfo) :-
-    (
+    ( if
         % Check for unifications that attempt to examine the representation
         % of a type that does not have a single representation for each
         % abstract value.
@@ -1893,7 +1894,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
         proc_info_get_vartypes(ProcInfo, VarTypes),
         lookup_var_type(VarTypes, Var, Type),
         det_type_has_user_defined_equality_pred(!.DetInfo, Type)
-    ->
+    then
         (
             CanFail = can_fail,
             Context = goal_info_get_context(GoalInfo),
@@ -1995,7 +1996,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
             SolnContext = all_solns,
             NumSolns = at_most_many
         )
-    ;
+    else
         NumSolns = at_most_one
     ).
 
@@ -2044,9 +2045,9 @@ det_infer_unify_canfail(complicated_unify(_, CanFail, _), CanFail).
 %-----------------------------------------------------------------------------%
 
 det_get_soln_context(DeclaredDetism, SolnContext) :-
-    ( determinism_components(DeclaredDetism, _, at_most_many_cc) ->
+    ( if determinism_components(DeclaredDetism, _, at_most_many_cc) then
         SolnContext = first_soln
-    ;
+    else
         SolnContext = all_solns
     ).
 
@@ -2100,7 +2101,7 @@ determinism_declarations_procs(_PredId, _PredInfo, [],
 determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
     PredProcId = proc(PredId, ProcId),
-    (
+    ( if
         % Imported predicates need to be checked, but that will happen
         % when their defining module is compiled.
         % Since we generate the code of <in,in> unifications and class methods
@@ -2114,9 +2115,9 @@ determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
             pred_info_get_markers(PredInfo, Markers),
             check_marker(Markers, marker_class_method)
         )
-    ->
+    then
         !:NoInferProcs = [PredProcId | !.NoInferProcs]
-    ;
+    else
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
