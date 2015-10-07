@@ -468,6 +468,7 @@ Operator                        Specifier         Priority
 @@                               xfx               90
 ^                               xfy               99
 ^                               fx                100
+event                           fx                100
 :                               yfx               120
 `@var{op}`                      yfx               120       @footnote{Operator term (@pxref{Terms}).}
 **                              xfy               200
@@ -524,6 +525,7 @@ when                            xfx               900
 =>                              xfy               920
 all                             fxy               950
 arbitrary                       fxy               950
+atomic                          fxy               950
 promise_equivalent_solutions    fxy               950
 promise_equivalent_solution_sets fxy              950
 promise_exclusive               fy                950
@@ -549,11 +551,14 @@ require_cc_multi                fx                950
 require_cc_nondet               fx                950
 require_erroneous               fx                950
 require_failure                 fx                950
+trace                           fxy               950
+try                             fxy               950
 some                            fxy               950
 ,                               xfy               1000
 &                               xfy               1025
 ->                              xfy               1050
 ;                               xfy               1100
+or_else                         xfy               1100
 then                            xfx               1150
 if                              fx                1160
 else                            xfy               1170
@@ -561,8 +566,10 @@ else                            xfy               1170
 ==>                             xfx               1175
 where                           xfx               1175
 --->                            xfy               1179
+catch                           xfy               1180
 type                            fx                1180
 solver                          fy                1181
+catch_any                       xfy               1190
 end_module                      fx                1199
 import_module                   fx                1199
 include_module                  fx                1199
