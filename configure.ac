@@ -2879,9 +2879,9 @@ CC="$save_CC"
 AC_MSG_CHECKING(whether we can support time profiling on this system)
 AC_CACHE_VAL(mercury_cv_profiling,
 AC_TRY_CPP([
-/* The following code comes from runtime/mercury_prof.c */
-#include    <unistd.h>
+/* The following code comes from runtime/mercury_timing.h */
 #include    <errno.h>
+#include    <limits.h>
 #include    <string.h>
 #include    <signal.h>
 
@@ -2889,18 +2889,27 @@ AC_TRY_CPP([
 #include    <sys/param.h>
 #endif
 
+#ifdef MR_HAVE_UNISTD_H
+  #include  <unistd.h>
+#endif
+
 #ifdef MR_HAVE_SYS_TIME_H
 #include    <sys/time.h>
 #endif
 
-/*
-** If HZ is not defined, we may be able to use sysconf(_SC_CLK_TCK) instead.
-*/
-#if !defined(HZ) && defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
-#define HZ ((int)sysconf(_SC_CLK_TCK))
+#ifdef HZ
+  #define MR_CLOCK_TICKS_PER_SECOND	HZ
+#elif defined(MR_HAVE_SYSCONF) && defined(_SC_CLK_TCK)
+  #define MR_CLOCK_TICKS_PER_SECOND	((int) sysconf(_SC_CLK_TCK))
+#elif defined(CLOCKS_PER_SEC)
+  #define MR_CLOCK_TICKS_PER_SECOND	CLOCKS_PER_SEC
+#elif defined(CLK_TCK)
+  #define MR_CLOCK_TICKS_PER_SECOND	CLK_TCK
+#else
+  /* just leave it undefined */
 #endif
 
-#if !defined(HZ) || !defined(SIGPROF) || !defined(MR_HAVE_SETITIMER)
+#if !defined(MR_CLOCK_TICKS_PER_SECOND) || !defined(SIGPROF) || !defined(MR_HAVE_SETITIMER)
 #error "Time profiling not supported on this system"
 #endif
 ], [mercury_cv_profiling=yes], [mercury_cv_profiling=no]))

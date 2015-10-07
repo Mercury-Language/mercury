@@ -354,7 +354,7 @@ time.times(Tms, Result, !IO) :-
     CUt = (MR_Integer) t.tms_cutime;
     CSt = (MR_Integer) t.tms_cstime;
 #else
-  #ifdef MR_WIN32
+  #if defined(MR_WIN32) && defined(MR_CLOCK_TICKS_PER_SECOND)
     HANDLE hProcess;
     FILETIME ftCreation, ftExit, ftKernel, ftUser;
     timeKernel user, kernel;
