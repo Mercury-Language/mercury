@@ -161,6 +161,7 @@ ORDINARY_PROGS =	\
 	impure_init_and_final \
 	impure_prune \
 	initialise_decl \
+	inst_alias \
 	int_fold_up_down \
 	int_range_ops \
 	integer_test \

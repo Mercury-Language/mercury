@@ -336,16 +336,22 @@ replace_in_item(ModuleName, TypeEqvMap, InstEqvMap, MaybeRecord,
         Item = item_type_defn(ItemTypeDefn)
     ;
         Item0 = item_inst_defn(_ItemInstDefn0),
+        % If inst i1's body contains inst i2, and i2 has been defined
+        % to be equivalent to some other inst i3, then we *could* replace
+        % i2 with i3 in i1's body. Instead of doing this once for this
+        % user-defined inst, we do it on every use of this inst. This is
+        % significantly less efficient, but if there is any error that
+        % involves this inst, the error message we generate will refer to
+        % the inst by the name the user gave it. If the user e.g. wrote
+        % an inst i1 in a mode declaration, but an error message about
+        % that mode declaration referred to the expanded form of i1,
+        % this would be confusing to many programmers. Most likely,
+        % it would also be harder to read, since inst names are almost always
+        % shorter than the insts they are defined to be equivalent to.
+        %
         % XXX IFTC
-        % We *should* do two kinds of replacements on _ItemInstDefn0.
-        %
-        % (1) If inst i1's body contains inst i2, and i2 has been defined
-        % to be equivalent to some other inst i3, then we should replace
-        % i2 with i3 in i1's body. We haven't ever done this, and it is
-        % a bit surprising that it has never been a problem so far.
-        %
-        % (2) If inst i1 is for type t2, and t2 has been defined to be
-        % equivalent to type t3, then we should record that i1 is really
+        % If inst i1 is for type t2, and t2 has been defined to be
+        % equivalent to type t3, then we SHOULD record that i1 is really
         % for t3. However, while t2 is required to be just a type_ctor
         % and arity, t3 may be more complex. The obvious thing to do would be
         % to record that i1 is for t3's top type_ctor and its arity. Whether
