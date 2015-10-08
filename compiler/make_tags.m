@@ -136,36 +136,36 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
 
     % Now assign them.
     map.init(!:CtorTags),
-    (
+    ( if
         % Try representing the type as an enumeration: all the constructors
         % must be constant, and we must be allowed to make unboxed enums.
         globals.lookup_bool_option(Globals, unboxed_enums, yes),
         ctors_are_all_constants(Ctors),
         ReservedTagPragma = does_not_use_reserved_tag
-    ->
-        ( Ctors = [_] ->
+    then
+        ( if Ctors = [_] then
             DuTypeKind = du_type_kind_direct_dummy
-        ;
+        else
             DuTypeKind = du_type_kind_mercury_enum
         ),
         assign_enum_constants(TypeCtor, Ctors, InitTag, !CtorTags),
         ReservedAddr = does_not_use_reserved_address
-    ;
-        (
+    else
+        ( if
             % Try representing it as a no-tag type.
             type_ctor_should_be_notag(Globals, TypeCtor, ReservedTagPragma,
                 Ctors, UserEqCmp, SingleFunctorName, SingleArgType,
                 MaybeSingleArgName)
-        ->
+        then
             SingleConsId = cons(SingleFunctorName, 1, TypeCtor),
             map.det_insert(SingleConsId, no_tag, !CtorTags),
             % XXX What if SingleArgType uses reserved addresses?
             ReservedAddr = does_not_use_reserved_address,
             DuTypeKind = du_type_kind_notag(SingleFunctorName, SingleArgType,
                 MaybeSingleArgName)
-        ;
+        else
             DuTypeKind = du_type_kind_general,
-            ( NumTagBits = 0 ->
+            ( if NumTagBits = 0 then
                 (
                     ReservedTagPragma = uses_reserved_tag,
                     % XXX Need to fix this.
@@ -200,7 +200,7 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
                     map.values(!.CtorTags)),
                 assign_unshared_tags(TypeCtor, RemainingCtors, 0, 0,
                     ReservedAddresses, !CtorTags)
-            ;
+            else
                 MaxTag = max_num_tags(NumTagBits) - 1,
                 separate_out_constants(Ctors, Constants, Functors),
                 assign_constant_tags(TypeCtor, Constants, InitTag, NextTag,
@@ -238,14 +238,14 @@ assign_enum_constants(TypeCtor, [Ctor | Ctors], Val, !CtorTags) :-
 assign_reserved_numeric_addresses(_, [], [], !CtorTags, _, _, !ReservedAddr).
 assign_reserved_numeric_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
         !CtorTags, Address, NumReservedAddresses, !ReservedAddr) :-
-    ( Address >= NumReservedAddresses ->
+    ( if Address >= NumReservedAddresses then
         LeftOverConstants = [Ctor | Ctors]
-    ;
+    else
         Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
         ConsId = cons(Name, Arity, TypeCtor),
-        ( Address = 0 ->
+        ( if Address = 0 then
             Tag = reserved_address_tag(null_pointer)
-        ;
+        else
             Tag = reserved_address_tag(small_pointer(Address))
         ),
         % We call set instead of det_insert because we don't want types
@@ -268,9 +268,9 @@ assign_reserved_numeric_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
 assign_reserved_symbolic_addresses(_, [], [], !CtorTags, _, _, !ReservedAddr).
 assign_reserved_symbolic_addresses(TypeCtor, [Ctor | Ctors], LeftOverConstants,
         !CtorTags, Num, Max, !ReservedAddr) :-
-    ( Num >= Max ->
+    ( if Num >= Max then
         LeftOverConstants = [Ctor | Ctors]
-    ;
+    else
         Ctor = ctor(_ExistQVars, _Constraints, Name, Args, Arity, _Ctxt),
         Tag = reserved_address_tag(reserved_object(TypeCtor, Name, Arity)),
         ConsId = cons(Name, list.length(Args), TypeCtor),
@@ -315,27 +315,27 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
     ConsId = cons(Name, Arity, TypeCtor),
     % If there's only one functor, give it the "single_functor" (untagged)
     % representation, rather than giving it unshared_tag(0).
-    (
+    ( if
         Val = 0,
         Ctors = []
-    ->
+    then
         Tag = maybe_add_reserved_addresses(ReservedAddresses,
             single_functor_tag),
         % We call set instead of det_insert because we don't want types
         % that erroneously contain more than one copy of a cons_id to crash
         % the compiler.
         map.set(ConsId, Tag, !CtorTags)
-    ;
+    else if
         % If we're about to run out of unshared tags, start assigning
         % shared remote tags instead.
         Val = MaxTag,
         Ctors = [_ | _]
-    ->
+    then
         assign_shared_remote_tags(TypeCtor, [Ctor | Ctors], MaxTag, 0,
             ReservedAddresses, !CtorTags)
-    ;
+    else if
         Val =< MaxTag
-    ->
+    then
         Tag = maybe_add_reserved_addresses(ReservedAddresses,
             unshared_tag(Val)),
         % We call set instead of det_insert because we don't want types
@@ -344,7 +344,7 @@ assign_unshared_tags(TypeCtor, [Ctor | Ctors], Val, MaxTag, ReservedAddresses,
         map.set(ConsId, Tag, !CtorTags),
         assign_unshared_tags(TypeCtor, Ctors, Val + 1, MaxTag,
             ReservedAddresses, !CtorTags)
-    ;
+    else
         unexpected($module, $pred, "exceeded max tag")
     ).
 
@@ -398,28 +398,28 @@ maybe_add_reserved_addresses(ReservedAddresses, Tag0) = Tag :-
 %-----------------------------------------------------------------------------%
 
 compute_cheaper_tag_test(CtorTagMap, CheaperTagTest) :-
-    (
+    ( if
         map.to_assoc_list(CtorTagMap, CtorTagList),
         CtorTagList = [ConsIdA - ConsTagA, ConsIdB - ConsTagB],
         ConsIdA = cons(_, ArityA, _),
         ConsIdB = cons(_, ArityB, _)
-    ->
-        (
+    then
+        ( if
             ArityB = 0,
             ArityA > 0
-        ->
+        then
             CheaperTagTest = cheaper_tag_test(ConsIdA, ConsTagA,
                 ConsIdB, ConsTagB)
-        ;
+        else if
             ArityA = 0,
             ArityB > 0
-        ->
+        then
             CheaperTagTest = cheaper_tag_test(ConsIdB, ConsTagB,
                 ConsIdA, ConsTagA)
-        ;
+        else
             CheaperTagTest = no_cheaper_tag_test
         )
-    ;
+    else
         CheaperTagTest = no_cheaper_tag_test
     ).
 
@@ -434,10 +434,10 @@ post_process_type_defns(!HLDS, Specs) :-
             TermSizeWords),
         globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
             TermSizeCells),
-        (
+        ( if
             TermSizeWords = no,
             TermSizeCells = no
-        ->
+        then
             module_info_get_type_table(!.HLDS, TypeTable0),
             module_info_get_name(!.HLDS, ModuleName),
             get_all_type_ctor_defns(TypeTable0, TypeCtorsDefns),
@@ -447,7 +447,7 @@ post_process_type_defns(!HLDS, Specs) :-
             convert_direct_arg_functors(Target, ModuleName, DebugTypeRep,
                 MaxTag, TypeCtorsDefns, TypeTable0, TypeTable, [], Specs),
             module_info_set_type_table(TypeTable, !HLDS)
-        ;
+        else
             % We cannot use direct arg functors in term size grades.
             Specs = []
         )
@@ -486,7 +486,7 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
         Body = hlds_du_type(Ctors, _ConsTagValues, _MaybeCheaperTagTest,
             DuKind, MaybeUserEqComp, MaybeAssertedDirectArgCtors,
             ReservedTag, ReservedAddr, MaybeForeign),
-        (
+        ( if
             Ctors = [_, _ | _],
             DuKind = du_type_kind_general,
             ReservedTag = does_not_use_reserved_tag,
@@ -494,7 +494,7 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
             MaybeForeign = no,
             TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
             sym_name_get_module_name(TypeCtorSymName, TypeCtorModule)
-        ->
+        then
             get_type_defn_status(TypeDefn, TypeStatus),
             (
                 MaybeAssertedDirectArgCtors = yes(AssertedDirectArgFunctors)
@@ -503,7 +503,8 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
                 AssertedDirectArgFunctors = []
             ),
             separate_out_constants(Ctors, Constants, Functors),
-            list.filter(is_direct_arg_ctor(!.TypeTable, Target, TypeCtorModule,
+            list.filter(
+                is_direct_arg_ctor(!.TypeTable, Target, TypeCtorModule,
                     TypeStatus, AssertedDirectArgFunctors),
                 Functors, DirectArgFunctors, NonDirectArgFunctors),
             (
@@ -557,7 +558,7 @@ convert_direct_arg_functors_if_suitable(Target, ModuleName, DebugTypeRep,
             ),
             check_incorrect_direct_arg_assertions(AssertedDirectArgFunctors,
                 NonDirectArgFunctors, !Specs)
-        ;
+        else
             % We cannot use the direct argument representation for any
             % functors.
             true
@@ -586,28 +587,28 @@ is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
     ConsArg = ctor_arg(_MaybeFieldName, ArgType, _ArgWidth, _ArgContext),
     type_to_ctor_and_args(ArgType, ArgTypeCtor, ArgTypeCtorArgTypes),
 
-    (
+    ( if
         % Trust the `direct_arg' attribute of an imported type.
         type_status_is_imported(TypeStatus) = yes,
         list.contains(AssertedDirectArgCtors, ConsName / Arity)
-    ->
+    then
         ArgCond = direct_arg_asserted
-    ;
+    else if
         % Tuples are always acceptable argument types as they are represented
         % by word-aligned vector pointers.
         % Strings are *not* always word-aligned (yet) so are not acceptable.
         type_ctor_is_tuple(ArgTypeCtor)
-    ->
+    then
         ArgCond = arg_type_is_word_aligned_pointer
-    ;
+    else
         search_type_ctor_defn(TypeTable, ArgTypeCtor, ArgTypeDefn),
         get_type_defn_body(ArgTypeDefn, ArgBody),
-        ( is_foreign_type_for_target(ArgBody, Target, Assertions) ->
+        ( if is_foreign_type_for_target(ArgBody, Target, Assertions) then
             % Foreign types are acceptable arguments if asserted that their
             % values are word-aligned pointers.
             asserted_word_aligned_pointer(Assertions),
             ArgCond = arg_type_is_word_aligned_pointer
-        ;
+        else
             % The argument type is not a foreign type.
 
             ArgTypeCtorArgTypes = [],
@@ -635,24 +636,24 @@ is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
             ArgConsTagValueList = [ArgConsTagValue],
             ArgConsTagValue = _ConsId - single_functor_tag,
 
-            (
+            ( if
                 type_status_defined_in_this_module(TypeStatus) = yes,
                 list.contains(AssertedDirectArgCtors, ConsName / Arity)
-            ->
+            then
                 ArgCond = direct_arg_asserted
-            ;
+            else
                 ArgTypeCtor = type_ctor(ArgTypeCtorSymName, _ArgTypeCtorArity),
                 sym_name_get_module_name(ArgTypeCtorSymName, ArgTypeCtorModule),
-                ( TypeCtorModule = ArgTypeCtorModule ->
+                ( if TypeCtorModule = ArgTypeCtorModule then
                     get_type_defn_status(ArgTypeDefn, ArgTypeStatus),
                     ArgCond = arg_type_defined_in_same_module(ArgTypeStatus)
-                ;
+                else
                     ArgCond = arg_type_defined_in_different_module
                 )
             )
         )
     ),
-    check_direct_arg_module_conditions(TypeStatus, ArgCond).
+    module_visibilities_allow_direct_arg(TypeStatus, ArgCond) = yes.
 
 :- type direct_arg_cond
     --->    direct_arg_asserted
@@ -676,31 +677,31 @@ is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
             % argument type is defined in a different module from the
             % constructor.
 
-    % When this predicate is called we should have checked that the constructor
-    % has a single argument, and the argument has a suitable type such that the
-    % direct arg functor representation may apply to the constructor. We still
-    % need to check that other modules would infer the same type representation
-    % for the same constructor, given that they may not have the same knowledge
-    % of the constructor's type or the argument type.
+    % When this predicate is called, we should have checked that
+    % the constructor has a single argument, and the argument has a type
+    % such that the direct arg functor representation may apply
+    % to the constructor. We still need to check that other modules
+    % would infer the same type representation for the same constructor,
+    % given that they may not have the same knowledge of the constructor's type
+    % or the argument type.
     %
-    % TypeStatus is the import status of the type of the constructor being
-    % checked.
+    % TypeStatus is import status of the type of the constructor being checked.
     %
-:- pred check_direct_arg_module_conditions(type_status::in,
-    direct_arg_cond::in) is semidet.
+:- func module_visibilities_allow_direct_arg(type_status, direct_arg_cond)
+    = bool.
 
-check_direct_arg_module_conditions(TypeStatus, ArgCond) :-
+module_visibilities_allow_direct_arg(TypeStatus, ArgCond) = AllowDirectArg :-
     % XXX STATUS
     TypeStatus = type_status(OldImportStatus),
-    require_complete_switch [OldImportStatus]
     (
-        % If the outer type _definition_ is not exported from this module then
-        % the direct arg representation may be used. In the absence of
+        % If the outer type _definition_ is not exported from this module,
+        % then the direct arg representation may be used. In the absence of
         % intermodule optimisation, only this module can [de]construct values
         % of this type.
         ( OldImportStatus = status_local
         ; OldImportStatus = status_abstract_exported
-        )
+        ),
+        AllowDirectArg = yes
     ;
         % If the outer type is opt-exported, another module may opt-import this
         % type, but abstract-import the argument type. It could not then infer
@@ -708,7 +709,8 @@ check_direct_arg_module_conditions(TypeStatus, ArgCond) :-
         % outer type. The problem is overcome by adding `where direct_arg'
         % attributes to the opt-exported type definition in .opt files,
         % which state the functors that require the direct arg representation.
-        OldImportStatus = status_opt_exported
+        OldImportStatus = status_opt_exported,
+        AllowDirectArg = yes
     ;
         % If the outer type is exported from this module, then the direct arg
         % representation may be used, so long as any importing modules will
@@ -716,18 +718,42 @@ check_direct_arg_module_conditions(TypeStatus, ArgCond) :-
         ( OldImportStatus = status_exported
         ; OldImportStatus = status_exported_to_submodules
         ),
-        ( ArgCond = direct_arg_asserted
-        ; ArgCond = arg_type_is_word_aligned_pointer
-        ; ArgCond =
-            arg_type_defined_in_same_module(type_status(status_exported))
-        )
-    ;
-        % If the outer type is exported to sub-modules only, the argument
-        % type only needs to be exported to sub-modules as well.
-        OldImportStatus = status_exported_to_submodules,
-        ArgCond = arg_type_defined_in_same_module(ArgTypeStatus),
-        ( ArgTypeStatus = type_status(status_exported_to_submodules)
-        ; ArgTypeStatus = type_status(status_abstract_exported)
+        (
+            ( ArgCond = direct_arg_asserted
+            ; ArgCond = arg_type_is_word_aligned_pointer
+            ),
+            AllowDirectArg = yes
+        ;
+            ArgCond = arg_type_defined_in_same_module(ArgTypeStatus),
+            ArgTypeStatus = type_status(ArgOldTypeStatus),
+            ( if
+                (
+                    OldImportStatus = status_exported,
+                    ArgOldTypeStatus = status_exported
+                ;
+                    % If the wrapper type is exported to submodules only, then
+                    % the only modules whose access to the argument type
+                    % matters is those submodules. Each of these
+                    % ArgOldTypeStatus values allows these submodules access
+                    % to the argument type's definition. The fact that some
+                    % of them also allow other modules access doesn't matter,
+                    % because (due to their lack of visibility to the wrapper
+                    % type) the question of the wrapper's type representation
+                    % won't come up in them.
+                    OldImportStatus = status_exported_to_submodules,
+                    ( ArgOldTypeStatus = status_exported
+                    ; ArgOldTypeStatus = status_exported_to_submodules
+                    ; ArgOldTypeStatus = status_abstract_exported
+                    )
+                )
+            then
+                AllowDirectArg = yes
+            else
+                AllowDirectArg = no
+            )
+        ;
+            ArgCond = arg_type_defined_in_different_module,
+            AllowDirectArg = no
         )
     ;
         % The direct arg representation is required if the type of the
@@ -737,21 +763,33 @@ check_direct_arg_module_conditions(TypeStatus, ArgCond) :-
         % - if the argument type is imported from the same module
         OldImportStatus = status_imported(TypeImportLocn),
         (
-            ArgCond = direct_arg_asserted
+            ( ArgCond = direct_arg_asserted
+            ; ArgCond = arg_type_is_word_aligned_pointer
+            ),
+            AllowDirectArg = yes
         ;
-            ArgCond = arg_type_is_word_aligned_pointer
-        ;
-            ArgCond = arg_type_defined_in_same_module(
-                type_status(status_imported(ArgImportLocn))),
-            % If the argument type is only exported by an ancestor to its
-            % sub-modules (of which we are one), the outer type must also only
-            % be exported to sub-modules. Otherwise sub-modules and
-            % non-sub-modules would infer different things.
-            (
-                ArgImportLocn = import_locn_ancestor_private_interface_proper
-            =>
-                TypeImportLocn = import_locn_ancestor_private_interface_proper
+            ArgCond = arg_type_defined_in_same_module(ArgTypeStatus),
+            ( if
+                ArgTypeStatus = type_status(status_imported(ArgImportLocn)),
+                % If the argument type is only exported by an ancestor to its
+                % submodules (of which we are one), the outer type must also
+                % only be exported to submodules. Otherwise submodules and
+                % non-submodules would infer different things.
+                (
+                    ArgImportLocn =
+                        import_locn_ancestor_private_interface_proper
+                =>
+                    TypeImportLocn =
+                        import_locn_ancestor_private_interface_proper
+                )
+            then
+                AllowDirectArg = yes
+            else
+                AllowDirectArg = no
             )
+        ;
+            ArgCond = arg_type_defined_in_different_module,
+            AllowDirectArg = no
         )
     ;
         % If the outer type is opt-imported, there will always be a
@@ -760,7 +798,16 @@ check_direct_arg_module_conditions(TypeStatus, ArgCond) :-
         ( OldImportStatus = status_opt_imported
         ; OldImportStatus = status_abstract_imported
         ),
-        ArgCond = direct_arg_asserted
+        (
+            ArgCond = direct_arg_asserted,
+            AllowDirectArg = yes
+        ;
+            ( ArgCond = arg_type_is_word_aligned_pointer
+            ; ArgCond = arg_type_defined_in_same_module(_)
+            ; ArgCond = arg_type_defined_in_different_module
+            ),
+            AllowDirectArg = no
+        )
     ;
         ( OldImportStatus = status_external(_)
         ; OldImportStatus = status_pseudo_exported
@@ -802,14 +849,14 @@ assign_direct_arg_tags(TypeCtor, [Ctor | Ctors], !Val, MaxTag, LeftOverCtors,
         !CtorTags) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, _Args, Arity, _Ctxt),
     ConsId = cons(Name, Arity, TypeCtor),
-    (
+    ( if
         % If we are about to run out of unshared tags, stop, and return
         % the leftovers.
         !.Val = MaxTag,
         Ctors = [_ | _]
-    ->
+    then
         LeftOverCtors = [Ctor | Ctors]
-    ;
+    else
         Tag = direct_arg_tag(!.Val),
         % We call set instead of det_insert because we don't want types
         % that erroneously contain more than one copy of a cons_id to crash
@@ -826,17 +873,17 @@ assign_direct_arg_tags(TypeCtor, [Ctor | Ctors], !Val, MaxTag, LeftOverCtors,
 check_incorrect_direct_arg_assertions(_AssertedDirectArgCtors, [], !Specs).
 check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors],
         !Specs) :-
-    (
+    ( if
         Ctor = ctor(_, _, SymName, _Args, Arity, Context),
         list.contains(AssertedDirectArgCtors, SymName / Arity)
-    ->
+    then
         Pieces = [words("Error:"), sym_name_and_arity(SymName / Arity),
             words("cannot be represented as a direct pointer to its"),
             words("sole argument."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_type_check, [Msg]),
         !:Specs = [Spec | !.Specs]
-    ;
+    else
         true
     ),
     check_incorrect_direct_arg_assertions(AssertedDirectArgCtors, Ctors,

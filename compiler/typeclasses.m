@@ -27,12 +27,11 @@
 
 %-----------------------------------------------------------------------------%
 
-    % perform_context_reduction(..., !Info) is true
-    % iff either
+    % perform_context_reduction(..., !Info) is true iff either
     % (a) !:Info is the typecheck_info that results from performing
     % context reduction on the type_assigns in !.Info, or
     % (b) if there is no valid context reduction, then an appropriate
-    % error message is given.  To avoid reporting the same error at
+    % error message is given. To avoid reporting the same error at
     % subsequent calls, !:Info is !.Info with all unproven constraints
     % removed from the type assign set.
     %
@@ -56,10 +55,10 @@
     %
     % During context reduction we also try to "improve" the type binding
     % in the given type_assign (that is, binding the type variables in
-    % such a way that the satisfiability of the constraints is not
-    % changed).  This is done by applying improvement rules inside the
-    % fixpoint loop.  The improvement rules are those which are induced
-    % by functional dependencies attached to typeclass declarations.
+    % such a way that the satisfiability of the constraints is not changed).
+    % This is done by applying improvement rules inside the fixpoint loop.
+    % The improvement rules are those which are induced by functional
+    % dependencies attached to typeclass declarations.
     %
     % If context reduction fails on a type_assign, that type_assign is
     % removed from the type_assign_set. Context reduction fails if there is
@@ -114,12 +113,12 @@ perform_context_reduction(Context, TypeAssignSet0, TypeAssignSet, !Info) :-
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     list.foldl2(reduce_type_assign_context(ClassTable, InstanceTable),
         TypeAssignSet0, [], TypeAssignSet1, [], UnsatTypeAssignSet),
-    (
+    ( if
         % Check that this context reduction hasn't eliminated
         % all the type assignments.
         TypeAssignSet0 = [_ | _],
         TypeAssignSet1 = []
-    ->
+    then
         Spec = report_unsatisfiable_constraints(ClauseContext, Context,
             UnsatTypeAssignSet),
         typecheck_info_add_error(Spec, !Info),
@@ -134,7 +133,7 @@ perform_context_reduction(Context, TypeAssignSet0, TypeAssignSet, !Info) :-
             type_assign_set_typeclass_constraints(Constraints, TA0, TA)
         ),
         list.map(DeleteConstraints, TypeAssignSet0, TypeAssignSet)
-    ;
+    else
         TypeAssignSet = TypeAssignSet1
     ).
 
@@ -145,7 +144,7 @@ perform_context_reduction(Context, TypeAssignSet0, TypeAssignSet, !Info) :-
 reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
         !TypeAssignSet, !UnsatTypeAssignSet) :-
     type_assign_get_typeclass_constraints(!.TypeAssign, Constraints0),
-    (
+    ( if
         % Optimize the common case of no typeclass constraints at all.
         Constraints0 =
             hlds_constraints(Unproven0, Assumed0, Redundant0, Ancestors0),
@@ -153,9 +152,9 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
         Assumed0 = [],
         map.is_empty(Redundant0),
         map.is_empty(Ancestors0)
-    ->
+    then
         !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
-    ;
+    else
         type_assign_get_head_type_params(!.TypeAssign, HeadTypeParams),
         type_assign_get_typevarset(!.TypeAssign, TVarSet0),
         type_assign_get_type_bindings(!.TypeAssign, Bindings0),
@@ -171,9 +170,9 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
             ProofMap, ConstraintMap, !TypeAssign),
 
         Unproven = Constraints ^ hcs_unproven,
-        ( all_constraints_are_satisfiable(Unproven, HeadTypeParams) ->
+        ( if all_constraints_are_satisfiable(Unproven, HeadTypeParams) then
             !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
-        ;
+        else
             % Remember the unsatisfiable type_assign_set so we can produce more
             % specific error messages.
             !:UnsatTypeAssignSet = [!.TypeAssign | !.UnsatTypeAssignSet]
@@ -234,8 +233,9 @@ reduce_context_by_rule_application(ClassTable, InstanceTable, HeadTypeParams,
     hlds_constraints::in, hlds_constraints::out,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
-reduce_context_by_rule_application_2(ClassTable, InstanceTable, HeadTypeParams,
-        !Bindings, !TVarSet, !ProofMap, !ConstraintMap, !Constraints, !Seen) :-
+reduce_context_by_rule_application_2(ClassTable, InstanceTable,
+        HeadTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
+        !Constraints, !Seen) :-
     apply_rec_subst_to_constraints(!.Bindings, !Constraints),
     apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams,
         !.Constraints, !TVarSet, !Bindings, AppliedImprovementRule),
@@ -258,15 +258,15 @@ reduce_context_by_rule_application_2(ClassTable, InstanceTable, HeadTypeParams,
         !ConstraintMap, !Seen, !Constraints, AppliedInstanceRule),
     apply_class_rules(!ProofMap, !ConstraintMap, !Constraints,
         AppliedClassRule),
-    (
+    ( if
         AppliedImprovementRule = no,
         EliminatedAssumed = no,
         AppliedInstanceRule = no,
         AppliedClassRule = no
-    ->
+    then
         % We have reached fixpoint.
         sort_and_merge_dups(!Constraints)
-    ;
+    else
         reduce_context_by_rule_application_2(ClassTable, InstanceTable,
             HeadTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
             !Constraints, !Seen)
@@ -294,9 +294,9 @@ merge_adjacent_constraints([C | Cs], Constraints) :-
 
 merge_adjacent_constraints_2(C0, [], [C0]).
 merge_adjacent_constraints_2(C0, [C1 | Cs], Constraints) :-
-    ( merge_constraints(C0, C1, C) ->
+    ( if merge_constraints(C0, C1, C) then
         merge_adjacent_constraints_2(C, Cs, Constraints)
-    ;
+    else
         merge_adjacent_constraints_2(C1, Cs, Constraints0),
         Constraints = [C0 | Constraints0]
     ).
@@ -405,20 +405,20 @@ do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep, HeadTypeParams,
     ConstraintA = hlds_constraint(_IdsA, _ClassNameA, TypesA),
     ConstraintB = hlds_constraint(_IdsB, _ClassNameB, TypesB),
     FunDep = fundep(Domain, Range),
-    (
+    ( if
         % We already know that the name/arity of the constraints match,
         % since we have partitioned them already.
         lists_match_on_elements(Domain, TypesA, TypesB),
-        \+ lists_match_on_elements(Range, TypesA, TypesB),
+        not lists_match_on_elements(Range, TypesA, TypesB),
 
         % The unification can fail if type parameters in the declaration
         % would be bound by the improvement rule. This means that the
         % declaration is not as specific as it could be, but that is not
         % a problem for us.
         unify_on_elements(Range, TypesA, TypesB, HeadTypeParams, !Bindings)
-    ->
+    then
         !:Changed = yes
-    ;
+    else
         true
     ).
 
@@ -493,16 +493,16 @@ do_instance_improvement_fundep(Constraint, InstanceTypes0, HeadTypeParams,
         FunDep, !Bindings, !Changed) :-
     Constraint = hlds_constraint(_Ids, _ClassName, ConstraintTypes),
     FunDep = fundep(Domain, Range),
-    (
+    ( if
         % We already know that the name/arity of the constraints match,
         % since we have partitioned them already.
         subsumes_on_elements(Domain, InstanceTypes0, ConstraintTypes, Subst),
         apply_rec_subst_to_type_list(Subst, InstanceTypes0, InstanceTypes),
 
         % Improvement occurs iff the instance range types are not more
-        % general than the constraint range types.  If they *are* more
+        % general than the constraint range types. If they *are* more
         % general, we stop here.
-        \+ subsumes_on_elements(Range, InstanceTypes, ConstraintTypes, _),
+        not subsumes_on_elements(Range, InstanceTypes, ConstraintTypes, _),
 
         % The unification can fail if type parameters in the declaration
         % would be bound by the improvement rule. This means that the
@@ -510,9 +510,9 @@ do_instance_improvement_fundep(Constraint, InstanceTypes0, HeadTypeParams,
         % a problem for us.
         unify_on_elements(Range, InstanceTypes, ConstraintTypes,
             HeadTypeParams, !Bindings)
-    ->
+    then
         !:Changed = yes
-    ;
+    else
         true
     ).
 
@@ -571,16 +571,16 @@ eliminate_assumed_constraints_2(AssumedCs, !ConstraintMap, [C | Cs], NewCs,
         Changed) :-
     eliminate_assumed_constraints_2(AssumedCs, !ConstraintMap, Cs, NewCs0,
         Changed0),
-    (
+    ( if
         some [A] (
             list.member(A, AssumedCs),
             matching_constraints(A, C)
         )
-    ->
+    then
         update_constraint_map(C, !ConstraintMap),
         NewCs = NewCs0,
         Changed = yes
-    ;
+    else
         NewCs = [C | NewCs0],
         Changed = Changed0
     ).
@@ -617,21 +617,21 @@ apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !ProofMap,
     list.length(ArgTypes, Arity),
     map.lookup(InstanceTable, class_id(ClassName, Arity), Instances),
     InitialTVarSet = !.TVarSet,
-    (
+    ( if
         find_matching_instance_rule(Instances, C, !TVarSet, !ProofMap,
             NewConstraints0)
-    ->
+    then
         update_constraint_map(C, !ConstraintMap),
         % Remove any constraints we've already seen.
         % This ensures we don't get into an infinite loop.
-        list.filter(matches_no_constraint(!.Seen), NewConstraints0,
-            NewConstraints),
+        list.filter(matches_no_constraint(!.Seen),
+            NewConstraints0, NewConstraints),
         update_redundant_constraints(ClassTable, !.TVarSet,
             NewConstraints, !Redundant),
         % Put the new constraints at the front of the list.
         !:Seen = NewConstraints ++ !.Seen,
         Changed1 = yes
-    ;
+    else
         % Put the old constraint at the front of the list.
         NewConstraints = [C],
         !:TVarSet = InitialTVarSet,
@@ -646,10 +646,12 @@ apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !ProofMap,
     is semidet.
 
 matches_no_constraint(Seen, Constraint) :-
-    \+ ( some [S] (
-        list.member(S, Seen),
-        matching_constraints(S, Constraint)
-    )).
+    not (
+        some [S] (
+            list.member(S, Seen),
+            matching_constraints(S, Constraint)
+        )
+    ).
 
     % We take the first matching instance rule that we can find; any
     % overlapping instance declarations will have been caught earlier.
@@ -686,7 +688,7 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
     tvarset_merge_renaming(!.TVarSet, InstanceTVarSet, NewTVarSet, Renaming),
     apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
         InstanceTypes),
-    ( type_list_subsumes(InstanceTypes, ArgTypes, Subst) ->
+    ( if type_list_subsumes(InstanceTypes, ArgTypes, Subst) then
         !:TVarSet = NewTVarSet,
         apply_variable_renaming_to_prog_constraint_list(Renaming,
             ProgConstraints0, ProgConstraints1),
@@ -697,7 +699,7 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
         NewProof = apply_instance(InstanceNum0),
         retrieve_prog_constraint(Constraint, ProgConstraint),
         map.set(ProgConstraint, NewProof, !ProofMap)
-    ;
+    else
         InstanceNum = InstanceNum0 + 1,
         find_matching_instance_rule_2(Instances, InstanceNum,
             Constraint, !TVarSet, !ProofMap, NewConstraints)
@@ -726,15 +728,15 @@ apply_class_rules_2(_, !ProofMap, !ConstraintMap, [], [], no).
 apply_class_rules_2(Ancestors, !ProofMap, !ConstraintMap,
         [Constraint0 | Constraints0], Constraints, Changed) :-
     retrieve_prog_constraint(Constraint0, ProgConstraint0),
-    (
+    ( if
         map.search(Ancestors, ProgConstraint0, Descendants)
-    ->
+    then
         update_constraint_map(Constraint0, !ConstraintMap),
         add_superclass_proofs(ProgConstraint0, Descendants, !ProofMap),
         apply_class_rules_2(Ancestors, !ProofMap, !ConstraintMap,
             Constraints0, Constraints, _),
         Changed = yes
-    ;
+    else
         apply_class_rules_2(Ancestors, !ProofMap, !ConstraintMap,
             Constraints0, TailConstraints, Changed),
         Constraints = [Constraint0 | TailConstraints]
