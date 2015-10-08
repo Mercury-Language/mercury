@@ -3165,8 +3165,7 @@ case "$host" in
         BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS $WIN32_GC_THREADLIB"
         THREAD_LIBS="-lpthread"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
-        # Disable parallel marking on Windows until next upgrade.
-        # ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+        ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
         ;;
 
     *apple*darwin*)
