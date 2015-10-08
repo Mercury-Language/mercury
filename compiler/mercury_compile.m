@@ -337,8 +337,8 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
             usage_errors(Errors, !IO)
         ;
             Errors = [],
-            main_after_setup(DetectedGradeFlags, Variables, OptionArgs,
-                NonOptionArgs, Link, ActualGlobals, !IO)
+            main_after_setup(ActualGlobals, DetectedGradeFlags, Variables,
+                OptionArgs, NonOptionArgs, Link, !IO)
         )
     ;
         MaybeMCFlags = no,
@@ -468,16 +468,16 @@ maybe_report_detected_libgrade(VeryVerbose, GradeStr, !IO) :-
 %---------------------------------------------------------------------------%
 
 main_for_make(Globals, Args, !IO) :-
-    main_after_setup([], options_variables_init, [], Args, no, Globals, !IO).
+    main_after_setup(Globals, [], options_variables_init, [], Args, no, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred main_after_setup(list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in, bool::in, globals::in,
+:- pred main_after_setup(globals::in, list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in, bool::in,
     io::di, io::uo) is det.
 
-main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
-        Link, Globals, !IO) :-
+main_after_setup(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
+        Args, Link, !IO) :-
     globals.lookup_bool_option(Globals, version, Version),
     globals.lookup_bool_option(Globals, help, Help),
 
@@ -498,133 +498,50 @@ main_after_setup(DetectedGradeFlags, OptionVariables, OptionArgs, Args,
         display_compiler_version(!IO),
         io.set_output_stream(OldOutputStream, _, !IO)
     else
-        OpModeSet = gather_modes_of_operation(Globals),
-        set.to_sorted_list(OpModeSet, OpModes),
+        decide_op_mode(Globals, Link, OpMode, OtherOpModes),
         (
-            OpModes = [_, _ | _],
-            report_conflicting_modes_of_operation(Globals, OpModes, !IO)
+            OtherOpModes = [_ | _],
+            report_conflicting_modes_of_operation(Globals,
+                [OpMode | OtherOpModes], !IO)
         ;
-            OpModes = [OpMode],
-            do_mode_of_operation(DetectedGradeFlags, OptionVariables,
-                OptionArgs, Args, Globals, OpMode, !IO)
-        ;
-            OpModes = [],
-            do_default_mode_of_operation(DetectedGradeFlags, OptionVariables,
-                OptionArgs, Args, Link, Globals, !IO)
+            OtherOpModes = [],
+            do_op_mode(Globals, OpMode, DetectedGradeFlags,
+                OptionVariables, OptionArgs, Args, Link, !IO)
         )
     ).
 
 %---------------------------------------------------------------------------%
-%
-% Specified modes of operation.
-%
 
-    % If the compiler has been invoked with a specific mode of operation,
-    % then perform the task implied by that mode of operation.
-    %
-:- pred do_mode_of_operation(list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in, globals::in,
-    mode_of_operation::in, io::di, io::uo) is det.
+:- pred do_op_mode(globals::in, op_mode::in,
+    list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in, bool::in, io::di, io::uo) is det.
 
-do_mode_of_operation(DetectedGradeFlags, OptionVariables, OptionArgs,
-        Args, Globals, OpMode, !IO) :-
+do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
+        OptionArgs, Args, Link, !IO) :-
     (
-        OpMode = opm_make,
+        OpMode = opm_top_make,
         make_process_args(Globals, DetectedGradeFlags, OptionVariables,
             OptionArgs, Args, !IO)
     ;
-        OpMode = opm_generate_source_file_mapping,
+        OpMode = opm_top_generate_source_file_mapping,
         source_file_map.write_source_file_map(Globals, Args, !IO)
     ;
-        OpMode = opm_generate_standalone_interface(StandaloneIntBasename),
-        do_mode_of_operation_standalone_interface(Globals,
+        OpMode = opm_top_generate_standalone_interface(StandaloneIntBasename),
+        do_op_mode_standalone_interface(Globals,
             StandaloneIntBasename, !IO)
     ;
-        OpMode = opm_output_cc,
-        globals.lookup_string_option(Globals, cc, CC),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CC ++ "\n", !IO)
+        OpMode = opm_top_query(OpModeQuery),
+        do_op_mode_query(Globals, OpModeQuery, !IO)
     ;
-        OpMode = opm_output_c_compiler_type,
-        globals.lookup_string_option(Globals, c_compiler_type, CC_Type),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CC_Type ++ "\n", !IO)
-    ;
-        OpMode = opm_output_cflags,
-        io.stdout_stream(StdOut, !IO),
-        output_c_compiler_flags(Globals, StdOut, !IO),
-        io.nl(StdOut, !IO)
-    ;
-        OpMode = opm_output_c_include_directory_flags,
-        io.stdout_stream(StdOut, !IO),
-        output_c_include_directory_flags(Globals, StdOut, !IO)
-    ;
-        OpMode = opm_output_csharp_compiler,
-        globals.lookup_string_option(Globals, csharp_compiler, CSC),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CSC ++ "\n", !IO)
-    ;
-        OpMode = opm_output_csharp_compiler_type,
-        globals.lookup_string_option(Globals, csharp_compiler_type, CSC_Type),
-        io.stdout_stream(StdOut, !IO),
-        io.write_string(StdOut, CSC_Type ++ "\n", !IO)
-    ;
-        OpMode = opm_output_grade_defines,
-        io.stdout_stream(StdOut, !IO),
-        output_grade_defines(Globals, StdOut, !IO)
-    ;
-        OpMode = opm_output_link_command,
-        globals.lookup_string_option(Globals, link_executable_command,
-            LinkCommand),
-        io.stdout_stream(Stdout, !IO),
-        io.write_string(Stdout, LinkCommand, !IO),
-        io.nl(Stdout, !IO)
-    ;
-        OpMode = opm_output_shared_lib_link_command,
-        globals.lookup_string_option(Globals, link_shared_lib_command,
-            LinkCommand),
-        io.stdout_stream(Stdout, !IO),
-        io.write_string(Stdout, LinkCommand, !IO),
-        io.nl(Stdout, !IO)
-    ;
-        OpMode = opm_output_library_link_flags,
-        io.stdout_stream(StdOut, !IO),
-        output_library_link_flags(Globals, StdOut, !IO)
-    ;
-        OpMode = opm_output_class_dir,
-        io.stdout_stream(StdOut, !IO),
-        get_class_dir_name(Globals, ClassName),
-        io.write_string(StdOut, ClassName ++ "\n", !IO)
-    ;
-        OpMode = opm_output_grade_string,
-        % When Mmake asks for the grade, it really wants the directory
-        % component to use. This is consistent with scripts/canonical_grade.
-        grade_directory_component(Globals, Grade),
-        io.stdout_stream(Stdout, !IO),
-        io.write_string(Stdout, Grade, !IO),
-        io.nl(Stdout, !IO)
-    ;
-        OpMode = opm_output_libgrades,
-        globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
-        (
-            LibGrades = []
-        ;
-            LibGrades = [_ | _],
-            io.stdout_stream(Stdout, !IO),
-            io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO),
-            io.nl(Stdout, !IO)
-        )
-    ;
-        OpMode = opm_output_target_arch,
-        io.stdout_stream(StdOut, !IO),
-        globals.lookup_string_option(Globals, target_arch, TargetArch),
-        io.write_string(StdOut, TargetArch ++ "\n", !IO)
+        OpMode = opm_top_args(OpModeArgs),
+        do_op_mode_args(Globals, OpModeArgs, DetectedGradeFlags,
+            OptionVariables, OptionArgs, Args, Link, !IO)
     ).
 
-:- pred do_mode_of_operation_standalone_interface(globals::in, string::in,
+:- pred do_op_mode_standalone_interface(globals::in, string::in,
     io::di, io::uo) is det.
 
-do_mode_of_operation_standalone_interface(Globals, StandaloneIntBasename,
+do_op_mode_standalone_interface(Globals, StandaloneIntBasename,
         !IO) :-
     globals.get_target(Globals, Target),
     (
@@ -651,20 +568,104 @@ do_mode_of_operation_standalone_interface(Globals, StandaloneIntBasename,
     ).
 
 %---------------------------------------------------------------------------%
-%
-% Default mode of operation.
-%
 
-    % Carry out the compiler's default mode of operation, build the executable
-    % specified the file or module named on the command line (or read in from
-    % the standard input if --filenames-from-stdin is specified).
-    %
-:- pred do_default_mode_of_operation(list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in, bool::in, globals::in,
+:- pred do_op_mode_query(globals::in, op_mode_query::in,
     io::di, io::uo) is det.
 
-do_default_mode_of_operation(DetectedGradeFlags, OptionVariables, OptionArgs,
-        Args, Link, Globals, !IO) :-
+do_op_mode_query(Globals, OpModeQuery, !IO) :-
+    (
+        OpModeQuery = opmq_output_cc,
+        globals.lookup_string_option(Globals, cc, CC),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CC ++ "\n", !IO)
+    ;
+        OpModeQuery = opmq_output_c_compiler_type,
+        globals.lookup_string_option(Globals, c_compiler_type, CC_Type),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CC_Type ++ "\n", !IO)
+    ;
+        OpModeQuery = opmq_output_cflags,
+        io.stdout_stream(StdOut, !IO),
+        output_c_compiler_flags(Globals, StdOut, !IO),
+        io.nl(StdOut, !IO)
+    ;
+        OpModeQuery = opmq_output_c_include_directory_flags,
+        io.stdout_stream(StdOut, !IO),
+        output_c_include_directory_flags(Globals, StdOut, !IO)
+    ;
+        OpModeQuery = opmq_output_csharp_compiler,
+        globals.lookup_string_option(Globals, csharp_compiler, CSC),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CSC ++ "\n", !IO)
+    ;
+        OpModeQuery = opmq_output_csharp_compiler_type,
+        globals.lookup_string_option(Globals, csharp_compiler_type, CSC_Type),
+        io.stdout_stream(StdOut, !IO),
+        io.write_string(StdOut, CSC_Type ++ "\n", !IO)
+    ;
+        OpModeQuery = opmq_output_grade_defines,
+        io.stdout_stream(StdOut, !IO),
+        output_grade_defines(Globals, StdOut, !IO)
+    ;
+        OpModeQuery = opmq_output_link_command,
+        globals.lookup_string_option(Globals, link_executable_command,
+            LinkCommand),
+        io.stdout_stream(Stdout, !IO),
+        io.write_string(Stdout, LinkCommand, !IO),
+        io.nl(Stdout, !IO)
+    ;
+        OpModeQuery = opmq_output_shared_lib_link_command,
+        globals.lookup_string_option(Globals, link_shared_lib_command,
+            LinkCommand),
+        io.stdout_stream(Stdout, !IO),
+        io.write_string(Stdout, LinkCommand, !IO),
+        io.nl(Stdout, !IO)
+    ;
+        OpModeQuery = opmq_output_library_link_flags,
+        io.stdout_stream(StdOut, !IO),
+        output_library_link_flags(Globals, StdOut, !IO)
+    ;
+        OpModeQuery = opmq_output_class_dir,
+        io.stdout_stream(StdOut, !IO),
+        get_class_dir_name(Globals, ClassName),
+        io.write_string(StdOut, ClassName ++ "\n", !IO)
+    ;
+        OpModeQuery = opmq_output_grade_string,
+        % When Mmake asks for the grade, it really wants the directory
+        % component to use. This is consistent with scripts/canonical_grade.
+        grade_directory_component(Globals, Grade),
+        io.stdout_stream(Stdout, !IO),
+        io.write_string(Stdout, Grade, !IO),
+        io.nl(Stdout, !IO)
+    ;
+        OpModeQuery = opmq_output_libgrades,
+        globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
+        (
+            LibGrades = []
+        ;
+            LibGrades = [_ | _],
+            io.stdout_stream(Stdout, !IO),
+            io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO),
+            io.nl(Stdout, !IO)
+        )
+    ;
+        OpModeQuery = opmq_output_target_arch,
+        io.stdout_stream(StdOut, !IO),
+        globals.lookup_string_option(Globals, target_arch, TargetArch),
+        io.write_string(StdOut, TargetArch ++ "\n", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Do the modes of operation that process the argument list.
+%
+
+:- pred do_op_mode_args(globals::in, op_mode_args::in,
+    list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in, bool::in, io::di, io::uo) is det.
+
+do_op_mode_args(Globals, OpModeArgs, DetectedGradeFlags,
+        OptionVariables, OptionArgs, Args, _Link, !IO) :-
     globals.lookup_bool_option(Globals, filenames_from_stdin,
         FileNamesFromStdin),
     ( if
@@ -675,13 +676,13 @@ do_default_mode_of_operation(DetectedGradeFlags, OptionVariables, OptionArgs,
     else
         (
             FileNamesFromStdin = yes,
-            process_stdin_arg_list(Globals, DetectedGradeFlags,
+            process_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
                 OptionVariables, OptionArgs,
                 cord.empty, ModulesToLinkCord,
                 cord.empty, ExtraObjFilesCord, !IO)
         ;
             FileNamesFromStdin = no,
-            process_arg_list(Globals, DetectedGradeFlags,
+            process_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
                 OptionVariables, OptionArgs, Args,
                 cord.empty, ModulesToLinkCord,
                 cord.empty, ExtraObjFilesCord, !IO)
@@ -692,7 +693,8 @@ do_default_mode_of_operation(DetectedGradeFlags, OptionVariables, OptionArgs,
         io.get_exit_status(ExitStatus, !IO),
         ( if ExitStatus = 0 then
             ( if
-                Link = yes,
+                OpModeArgs = opma_augment(opmau_generate_code(
+                    opmcg_target_object_and_executable)),
                 ModulesToLink = [FirstModule | _]
             then
                 file_name_to_module_name(FirstModule, MainModuleName),
@@ -789,14 +791,13 @@ compile_with_module_options(Globals, ModuleName, DetectedGradeFlags,
 
 %---------------------------------------------------------------------------%
 
-:- pred process_stdin_arg_list(globals::in, list(string)::in,
-    options_variables::in, list(string)::in,
+:- pred process_stdin_args(globals::in, op_mode_args::in,
+    list(string)::in, options_variables::in, list(string)::in,
     cord(string)::in, cord(string)::out,
-    cord(string)::in, cord(string)::out,
-    io::di, io::uo) is det.
+    cord(string)::in, cord(string)::out, io::di, io::uo) is det.
 
-process_stdin_arg_list(Globals, DetectedGradeFlags, OptionVariables,
-        OptionArgs, !Modules, !ExtraObjFiles, !IO) :-
+process_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
+        OptionVariables, OptionArgs, !Modules, !ExtraObjFiles, !IO) :-
     ( if is_empty(!.Modules) then
         true
     else
@@ -806,12 +807,12 @@ process_stdin_arg_list(Globals, DetectedGradeFlags, OptionVariables,
     (
         FileResult = ok(Line),
         Arg = string.rstrip(Line),
-        process_arg(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
-            Arg, ArgModules, ArgExtraObjFiles, !IO),
+        process_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
+            OptionArgs, Arg, ArgModules, ArgExtraObjFiles, !IO),
         !:Modules = !.Modules ++ cord.from_list(ArgModules),
         !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
-        process_stdin_arg_list(Globals, DetectedGradeFlags, OptionVariables,
-            OptionArgs, !Modules, !ExtraObjFiles, !IO)
+        process_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
+            OptionVariables, OptionArgs, !Modules, !ExtraObjFiles, !IO)
     ;
         FileResult = eof
     ;
@@ -822,17 +823,17 @@ process_stdin_arg_list(Globals, DetectedGradeFlags, OptionVariables,
         io.set_exit_status(1, !IO)
     ).
 
-:- pred process_arg_list(globals::in, list(string)::in, options_variables::in,
+:- pred process_cmd_line_args(globals::in, op_mode_args::in,
+    list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
-    cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
-    io::di, io::uo) is det.
+    cord(string)::in, cord(string)::out,
+    cord(string)::in, cord(string)::out, io::di, io::uo) is det.
 
-process_arg_list(_, _, _, _,
-        [], !Modules, !ExtraObjFiles, !IO).
-process_arg_list(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
-        [Arg | Args], !Modules, !ExtraObjFiles, !IO) :-
-    process_arg(Globals, DetectedGradeFlags, OptionVariables, OptionArgs, Arg,
-        ArgModules, ArgExtraObjFiles, !IO),
+process_cmd_line_args(_, _, _, _, _, [], !Modules, !ExtraObjFiles, !IO).
+process_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
+        OptionArgs, [Arg | Args], !Modules, !ExtraObjFiles, !IO) :-
+    process_arg(Globals, OpModeArgs, DetectedGradeFlags,
+        OptionVariables, OptionArgs, Arg, ArgModules, ArgExtraObjFiles, !IO),
     (
         Args = [_ | _],
         garbage_collect(!IO)
@@ -841,8 +842,8 @@ process_arg_list(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
     ),
     !:Modules = !.Modules ++ cord.from_list(ArgModules),
     !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
-    process_arg_list(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
-        Args, !Modules, !ExtraObjFiles, !IO).
+    process_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
+        OptionVariables, OptionArgs, Args, !Modules, !ExtraObjFiles, !IO).
 
     % Figure out whether the argument is a module name or a file name.
     % Open the specified file or module, and process it.
@@ -850,12 +851,13 @@ process_arg_list(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
     % if they were compiled to separate object files)
     % that should be linked into the final executable.
     %
-:- pred process_arg(globals::in, list(string)::in, options_variables::in,
+:- pred process_arg(globals::in, op_mode_args::in,
+    list(string)::in, options_variables::in,
     list(string)::in, string::in, list(string)::out, list(string)::out,
     io::di, io::uo) is det.
 
-process_arg(Globals, DetectedGradeFlags, OptionVariables, OptionArgs, Arg,
-        ModulesToLink, ExtraObjFiles, !IO) :-
+process_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
+        OptionArgs, Arg, ModulesToLink, ExtraObjFiles, !IO) :-
     FileOrModule = string_to_file_or_module(Arg),
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
     (
@@ -863,7 +865,7 @@ process_arg(Globals, DetectedGradeFlags, OptionVariables, OptionArgs, Arg,
         build_with_module_options_args(Globals,
             file_or_module_to_module_name(FileOrModule),
             DetectedGradeFlags, OptionVariables, OptionArgs, [],
-            process_arg_build(FileOrModule, OptionArgs),
+            process_arg_build(OpModeArgs, FileOrModule, OptionArgs),
             _, [], MaybeTuple, !IO),
         (
             MaybeTuple = yes(Tuple),
@@ -876,98 +878,91 @@ process_arg(Globals, DetectedGradeFlags, OptionVariables, OptionArgs, Arg,
     ;
         InvokedByMake = yes,
         % `mmc --make' has already set up the options.
-        process_arg_2(Globals, OptionArgs, FileOrModule, ModulesToLink,
-            ExtraObjFiles, !IO)
+        process_arg_2(Globals, OpModeArgs, OptionArgs, FileOrModule,
+            ModulesToLink, ExtraObjFiles, !IO)
     ).
 
-:- pred process_arg_build(file_or_module::in,
+:- pred process_arg_build(op_mode_args::in, file_or_module::in,
     list(string)::in, globals::in, list(string)::in, bool::out,
     list(string)::in, {list(string), list(string)}::out,
     io::di, io::uo) is det.
 
-process_arg_build(FileOrModule, OptionArgs, Globals, _, yes, _,
+process_arg_build(OpModeArgs, FileOrModule, OptionArgs, Globals, _, yes, _,
         {Modules, ExtraObjFiles}, !IO) :-
-    process_arg_2(Globals, OptionArgs, FileOrModule, Modules, ExtraObjFiles,
-        !IO).
-
-:- pred process_arg_2(globals::in, list(string)::in,
-    file_or_module::in, list(string)::out, list(string)::out,
-    io::di, io::uo) is det.
-
-process_arg_2(Globals, OptionArgs, FileOrModule, ModulesToLink, ExtraObjFiles,
-        !IO) :-
-    globals.lookup_bool_option(Globals, generate_dependencies, GenerateDeps),
-    (
-        GenerateDeps = yes,
-        ModulesToLink = [],
-        ExtraObjFiles = [],
-        (
-            FileOrModule = fm_file(FileName),
-            generate_dep_file_for_file(Globals, FileName, !IO)
-        ;
-            FileOrModule = fm_module(ModuleName),
-            generate_dep_file_for_module(Globals, ModuleName, !IO)
-        )
-    ;
-        GenerateDeps = no,
-        globals.lookup_bool_option(Globals, generate_dependency_file,
-            GenerateDepFile),
-        (
-            GenerateDepFile = yes,
-            ModulesToLink = [],
-            ExtraObjFiles = [],
-            (
-                FileOrModule = fm_file(FileName),
-                generate_d_file_for_file(Globals, FileName, !IO)
-            ;
-                FileOrModule = fm_module(ModuleName),
-                generate_d_file_for_module(Globals, ModuleName, !IO)
-            )
-        ;
-            GenerateDepFile = no,
-            read_and_process_module(Globals, OptionArgs, FileOrModule,
-                ModulesToLink, ExtraObjFiles, !IO)
-        )
-    ).
-
-%---------------------------------------------------------------------------%
+    process_arg_2(Globals, OpModeArgs, OptionArgs, FileOrModule,
+        Modules, ExtraObjFiles, !IO).
 
 :- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
 
 version_numbers_return_timestamp(no) = dont_return_timestamp.
 version_numbers_return_timestamp(yes) = do_return_timestamp.
 
-:- pred read_and_process_module(globals::in, list(string)::in,
-    file_or_module::in, list(string)::out, list(string)::out,
+:- pred process_arg_2(globals::in, op_mode_args::in,
+    list(string)::in, file_or_module::in, list(string)::out, list(string)::out,
     io::di, io::uo) is det.
 
-read_and_process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
-        ExtraObjFiles, !IO) :-
-    globals.lookup_bool_option(Globals0, make_interface, MakeInterface),
-    globals.lookup_bool_option(Globals0, make_short_interface,
-        MakeShortInterface),
-    globals.lookup_bool_option(Globals0, make_private_interface,
-        MakePrivateInterface),
-    globals.lookup_bool_option(Globals0, convert_to_mercury,
-        ConvertToMercury),
-    globals.lookup_bool_option(Globals0, generate_item_version_numbers,
-        GenerateVersionNumbers),
-    ( if
-        ( if MakeInterface = yes then
-            ProcessModule = call_make_interface(Globals0),
+process_arg_2(Globals0, OpModeArgs, OptionArgs, FileOrModule,
+        ModulesToLink, ExtraObjFiles, !IO) :-
+    (
+        OpModeArgs = opma_generate_dependencies,
+        (
+            FileOrModule = fm_file(FileName),
+            generate_dep_file_for_file(Globals0, FileName, !IO)
+        ;
+            FileOrModule = fm_module(ModuleName),
+            generate_dep_file_for_module(Globals0, ModuleName, !IO)
+        ),
+        ModulesToLink = [],
+        ExtraObjFiles = []
+    ;
+        OpModeArgs = opma_generate_dependency_file,
+        (
+            FileOrModule = fm_file(FileName),
+            generate_d_file_for_file(Globals0, FileName, !IO)
+        ;
+            FileOrModule = fm_module(ModuleName),
+            generate_d_file_for_module(Globals0, ModuleName, !IO)
+        ),
+        ModulesToLink = [],
+        ExtraObjFiles = []
+    ;
+        OpModeArgs = opma_convert_to_mercury,
+        HaveReadModuleMaps0 =
+            have_read_module_maps(map.init, map.init, map.init),
+        read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, _,
+            dont_return_timestamp, _, ParseTreeSrc, Specs, Errors,
+            HaveReadModuleMaps0, _HaveReadModuleMaps, !IO),
+        % XXX _NumErrors
+        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
+        ( if halt_at_module_error(Globals, Errors) then
+            true
+        else
+            module_name_to_file_name(Globals, ModuleName, ".ugly",
+                do_create_dirs, OutputFileName, !IO),
+            convert_to_mercury_src(Globals, OutputFileName, ParseTreeSrc, !IO)
+        ),
+        ModulesToLink = [],
+        ExtraObjFiles = []
+    ;
+        (
+            OpModeArgs = opma_make_private_interface,
+            ProcessModule = call_make_private_interface(Globals0),
+            globals.lookup_bool_option(Globals0, generate_item_version_numbers,
+                GenerateVersionNumbers),
             ReturnTimestamp =
                 version_numbers_return_timestamp(GenerateVersionNumbers)
-        else if MakeShortInterface = yes then
+        ;
+            OpModeArgs = opma_make_short_interface,
             ProcessModule = call_make_short_interface(Globals0),
             ReturnTimestamp = dont_return_timestamp
-        else if MakePrivateInterface = yes then
-            ProcessModule = call_make_private_interface(Globals0),
+        ;
+            OpModeArgs = opma_make_interface,
+            ProcessModule = call_make_interface(Globals0),
+            globals.lookup_bool_option(Globals0, generate_item_version_numbers,
+                GenerateVersionNumbers),
             ReturnTimestamp =
                 version_numbers_return_timestamp(GenerateVersionNumbers)
-        else
-            fail
-        )
-    then
+        ),
         HaveReadModuleMaps0 =
             have_read_module_maps(map.init, map.init, map.init),
         read_module_or_file(Globals0, Globals, FileOrModule,
@@ -989,26 +984,8 @@ read_and_process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
         ),
         ModulesToLink = [],
         ExtraObjFiles = []
-    else if
-        ConvertToMercury = yes
-    then
-        HaveReadModuleMaps0 =
-            have_read_module_maps(map.init, map.init, map.init),
-        read_module_or_file(Globals0, Globals, FileOrModule, ModuleName, _,
-            dont_return_timestamp, _, ParseTreeSrc, Specs, Errors,
-            HaveReadModuleMaps0, _HaveReadModuleMaps, !IO),
-        % XXX _NumErrors
-        write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
-        ( if halt_at_module_error(Globals, Errors) then
-            true
-        else
-            module_name_to_file_name(Globals, ModuleName, ".ugly",
-                do_create_dirs, OutputFileName, !IO),
-            convert_to_mercury_src(Globals, OutputFileName, ParseTreeSrc, !IO)
-        ),
-        ModulesToLink = [],
-        ExtraObjFiles = []
-    else
+    ;
+        OpModeArgs = opma_augment(OpModeAugment),
         globals.lookup_bool_option(Globals0, smart_recompilation, Smart0),
         io_get_disable_smart_recompilation(DisableSmart, !IO),
         (
@@ -1053,9 +1030,9 @@ read_and_process_module(Globals0, OptionArgs, FileOrModule, ModulesToLink,
             ModulesToLink = [],
             ExtraObjFiles = []
         else
-            read_augment_and_process_module(Globals, OptionArgs, FileOrModule,
-                ModulesToRecompile, HaveReadModuleMaps, ModulesToLink,
-                ExtraObjFiles, !IO)
+            read_augment_and_process_module(Globals, OpModeAugment, OptionArgs,
+                FileOrModule, ModulesToRecompile, HaveReadModuleMaps,
+                ModulesToLink, ExtraObjFiles, !IO)
         )
     ).
 
@@ -1159,17 +1136,14 @@ apply_process_module(ProcessModule, FileName, ModuleName, MaybeTimestamp,
 
 %---------------------------------------------------------------------------%
 
-:- pred read_augment_and_process_module(globals::in, list(string)::in,
-    file_or_module::in, modules_to_recompile::in, have_read_module_maps::in,
+:- pred read_augment_and_process_module(globals::in,
+    op_mode_augment::in, list(string)::in, file_or_module::in,
+    modules_to_recompile::in, have_read_module_maps::in,
     list(string)::out, list(string)::out, io::di, io::uo) is det.
 
-read_augment_and_process_module(Globals0, OptionArgs, FileOrModule,
-        MaybeModulesToRecompile, HaveReadModuleMap0,
+read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
+        FileOrModule, MaybeModulesToRecompile, HaveReadModuleMap0,
         ModulesToLink, ExtraObjFiles, !IO) :-
-    globals.lookup_bool_option(Globals0, make_short_interface,
-        MakeShortInt),
-    globals.lookup_bool_option(Globals0, make_interface,
-        MakeInt),
     globals.lookup_bool_option(Globals0, make_optimization_interface,
         MakeOptInt),
     globals.lookup_bool_option(Globals0, make_transitive_opt_interface,
@@ -1178,7 +1152,7 @@ read_augment_and_process_module(Globals0, OptionArgs, FileOrModule,
         MakeAnalysisRegistry),
     globals.lookup_bool_option(Globals0, make_xml_documentation,
         MakeXmlDocumentation),
-    bool.or_list([MakeShortInt, MakeInt, MakeOptInt, MakeTransOptInt,
+    bool.or_list([MakeOptInt, MakeTransOptInt,
         MakeAnalysisRegistry, MakeXmlDocumentation], DirectReport),
     (
         DirectReport = yes
@@ -1242,10 +1216,10 @@ read_augment_and_process_module(Globals0, OptionArgs, FileOrModule,
         else
             GlobalsToUse = Globals
         ),
-        augment_and_process_all_submodules(GlobalsToUse, FileName, ModuleName,
-            MaybeTimestamp, NestedCompUnitNames, HaveReadModuleMaps,
-            FindTimestampFiles, RawCompUnitsToCompile, Specs1,
-            ModulesToLink, ExtraObjFiles, !IO)
+        augment_and_process_all_submodules(GlobalsToUse, OpModeAugment,
+            FileName, ModuleName, MaybeTimestamp, NestedCompUnitNames,
+            HaveReadModuleMaps, FindTimestampFiles, RawCompUnitsToCompile,
+            Specs1, ModulesToLink, ExtraObjFiles, !IO)
     ).
 
 :- pred maybe_report_cmd_line(bool::in, list(string)::in, list(string)::in,
@@ -1443,21 +1417,21 @@ read_module_or_file(Globals0, Globals, FileOrModuleName,
     %   merge_llds_fragments(LLDS_FragmentList, LLDS),
     %   output_pass(LLDS_FragmentList)
     %
-:- pred augment_and_process_all_submodules(globals::in, string::in,
-    module_name::in, maybe(timestamp)::in, set(module_name)::in,
-    have_read_module_maps::in,
+:- pred augment_and_process_all_submodules(globals::in,
+    op_mode_augment::in, string::in, module_name::in,
+    maybe(timestamp)::in, set(module_name)::in, have_read_module_maps::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(raw_compilation_unit)::in, list(error_spec)::in,
     list(string)::out, list(string)::out, io::di, io::uo) is det.
 
-augment_and_process_all_submodules(Globals, FileName, SourceFileModuleName,
-        MaybeTimestamp, NestedSubModules, HaveReadModuleMaps,
-        FindTimestampFiles, RawCompUnits, !.Specs,
+augment_and_process_all_submodules(Globals, OpModeAugment,
+        FileName, SourceFileModuleName, MaybeTimestamp, NestedSubModules,
+        HaveReadModuleMaps, FindTimestampFiles, RawCompUnits, !.Specs,
         ModulesToLink, ExtraObjFiles, !IO) :-
     list.map_foldl2(
-        augment_and_process_module(Globals, FileName, SourceFileModuleName,
-            MaybeTimestamp, NestedSubModules, HaveReadModuleMaps,
-            FindTimestampFiles),
+        augment_and_process_module(Globals, OpModeAugment,
+            FileName, SourceFileModuleName, MaybeTimestamp, NestedSubModules,
+            HaveReadModuleMaps, FindTimestampFiles),
         RawCompUnits, ExtraObjFileLists, !Specs, !IO),
     % XXX _NumErrors
     write_error_specs(!.Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO),
@@ -1485,16 +1459,18 @@ module_to_link(raw_compilation_unit(ModuleName, _, _), ModuleToLink) :-
     % The initial arrangement had the stage numbers increasing by five
     % so that new stages can be slotted in without too much trouble.
     %
-:- pred augment_and_process_module(globals::in, file_name::in, module_name::in,
+:- pred augment_and_process_module(globals::in,
+    op_mode_augment::in, file_name::in, module_name::in,
     maybe(timestamp)::in, set(module_name)::in, have_read_module_maps::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     raw_compilation_unit::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-augment_and_process_module(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, NestedSubModules0, HaveReadModuleMaps,
-        FindTimestampFiles, RawCompUnit, ExtraObjFiles, !Specs, !IO) :-
+augment_and_process_module(Globals, OpModeAugment,
+        SourceFileName, SourceFileModuleName, MaybeTimestamp,
+        NestedSubModules0, HaveReadModuleMaps, FindTimestampFiles,
+        RawCompUnit, ExtraObjFiles, !Specs, !IO) :-
     check_for_no_exports(Globals, RawCompUnit, !Specs, !IO),
     RawCompUnit = raw_compilation_unit(ModuleName, _, _),
     ( if ModuleName = SourceFileModuleName then
@@ -1510,29 +1486,49 @@ augment_and_process_module(Globals, SourceFileName, SourceFileModuleName,
     !:Specs = ImportedSpecs ++ !.Specs,
     set.intersect(Errors, fatal_read_module_errors, FatalErrors),
     ( if set.is_empty(FatalErrors) then
-        process_augmented_module(Globals, ModuleAndImports, NestedSubModules,
-            FindTimestampFiles, ExtraObjFiles, no_prev_dump, _, !Specs, !IO)
+        process_augmented_module(Globals, OpModeAugment, ModuleAndImports,
+            NestedSubModules, FindTimestampFiles, ExtraObjFiles,
+            no_prev_dump, _, !Specs, !IO)
     else
         ExtraObjFiles = []
     ).
 
-:- pred process_augmented_module(globals::in, module_and_imports::in,
-    set(module_name)::in,
+:- pred process_augmented_module(globals::in, op_mode_augment::in,
+    module_and_imports::in, set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(string)::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-process_augmented_module(Globals, ModuleAndImports, NestedSubModules,
-        FindTimestampFiles, ExtraObjFiles, !DumpInfo, !Specs, !IO) :-
-    module_and_imports_get_module_name(ModuleAndImports, ModuleName),
-    % If we are only typechecking or error checking, then we should not
-    % modify any files, this includes writing to .d files.
-    globals.lookup_bool_option(Globals, typecheck_only, TypeCheckOnly),
-    globals.lookup_bool_option(Globals, errorcheck_only, ErrorCheckOnly),
-    bool.or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile),
-    pre_hlds_pass(Globals, ModuleAndImports, DontWriteDFile, HLDS1, QualInfo,
-        MaybeTimestampMap, UndefTypes, UndefModes, Errors1, !DumpInfo,
-        !Specs, !IO),
+process_augmented_module(Globals, OpModeAugment, ModuleAndImports,
+        NestedSubModules, FindTimestampFiles, ExtraObjFiles,
+        !DumpInfo, !Specs, !IO) :-
+    (
+        ( OpModeAugment = opmau_typecheck_only
+        ; OpModeAugment = opmau_errorcheck_only
+        ),
+        % If we are only typechecking or error checking, then we should not
+        % modify any files; this includes writing to .d files.
+        WriteDFile = do_not_write_d_file
+    ;
+        ( OpModeAugment = opmau_make_trans_opt_int
+        ; OpModeAugment = opmau_generate_code(_)
+        ),
+        WriteDFile = write_d_file
+    ;
+        OpModeAugment = opmau_make_opt_int,
+        % Don't write the `.d' file when making the `.opt' file because
+        % we can't work out the full transitive implementation dependencies.
+        WriteDFile = do_not_write_d_file
+    ;
+        ( OpModeAugment = opmau_make_analysis_registry
+        ; OpModeAugment = opmau_make_xml_documentation
+        ),
+        % XXX I (zs) think we should assign do_not_write_d_file for these.
+        WriteDFile = write_d_file
+    ),
+    pre_hlds_pass(Globals, OpModeAugment, WriteDFile, ModuleAndImports, HLDS1,
+        QualInfo, MaybeTimestampMap, UndefTypes, UndefModes, Errors1,
+        !DumpInfo, !Specs, !IO),
     frontend_pass(QualInfo, UndefTypes, UndefModes, Errors1, Errors2,
         HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
     ( if
@@ -1543,17 +1539,11 @@ process_augmented_module(Globals, ModuleAndImports, NestedSubModules,
         globals.lookup_bool_option(Globals, verbose, Verbose),
         globals.lookup_bool_option(Globals, statistics, Stats),
         maybe_write_dependency_graph(Verbose, Stats, HLDS20, HLDS21, !IO),
-        globals.lookup_bool_option(Globals, make_optimization_interface,
-            MakeOptInt),
-        globals.lookup_bool_option(Globals, make_transitive_opt_interface,
-            MakeTransOptInt),
-        globals.lookup_bool_option(Globals, make_analysis_registry,
-            MakeAnalysisRegistry),
-        globals.lookup_bool_option(Globals, make_xml_documentation,
-            MakeXmlDocumentation),
-        ( if TypeCheckOnly = yes then
+        (
+            OpModeAugment = opmau_typecheck_only,
             ExtraObjFiles = []
-        else if ErrorCheckOnly = yes then
+        ;
+            OpModeAugment = opmau_errorcheck_only,
             % We may still want to run `unused_args' so that we get
             % the appropriate warnings.
             globals.lookup_bool_option(Globals, warn_unused_args, UnusedArgs),
@@ -1569,25 +1559,30 @@ process_augmented_module(Globals, ModuleAndImports, NestedSubModules,
                 UnusedArgs = no
             ),
             ExtraObjFiles = []
-        else if MakeOptInt = yes then
+        ;
+            OpModeAugment = opmau_make_opt_int,
             % Only run up to typechecking when making the .opt file.
             ExtraObjFiles = []
-        else if MakeTransOptInt = yes then
+        ;
+            OpModeAugment = opmau_make_trans_opt_int,
             output_trans_opt_file(HLDS21, !DumpInfo, !IO),
             ExtraObjFiles = []
-        else if MakeAnalysisRegistry = yes then
+        ;
+            OpModeAugment = opmau_make_analysis_registry,
             prepare_for_intermodule_analysis(Globals, Verbose, Stats,
                 HLDS21, HLDS22, !IO),
             output_analysis_file(HLDS22, !DumpInfo, !IO),
             ExtraObjFiles = []
-        else if MakeXmlDocumentation = yes then
+        ;
+            OpModeAugment = opmau_make_xml_documentation,
             xml_documentation(HLDS21, !IO),
             ExtraObjFiles = []
-        else
+        ;
+            OpModeAugment = opmau_generate_code(OpModeCodeGen),
             maybe_prepare_for_intermodule_analysis(Globals, Verbose, Stats,
                 HLDS21, HLDS22, !IO),
-            after_front_end_passes(NestedSubModules,
-                FindTimestampFiles, MaybeTimestampMap, ModuleName, HLDS22,
+            after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
+                FindTimestampFiles, MaybeTimestampMap, HLDS22,
                 !.Specs, ExtraObjFiles, !DumpInfo, !IO)
         )
     else
@@ -1604,36 +1599,45 @@ process_augmented_module(Globals, ModuleAndImports, NestedSubModules,
 
 %---------------------------------------------------------------------------%
 
-:- pred pre_hlds_pass(globals::in, module_and_imports::in, bool::in,
-    module_info::out, make_hlds_qual_info::out,
+:- type maybe_write_d_file
+    --->    do_not_write_d_file
+    ;       write_d_file.
+
+:- pred pre_hlds_pass(globals::in, op_mode_augment::in, maybe_write_d_file::in,
+    module_and_imports::in, module_info::out, make_hlds_qual_info::out,
     maybe(module_timestamp_map)::out, bool::out, bool::out, bool::out,
     dump_info::in, dump_info::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
-        MaybeTimestampMap, UndefTypes, UndefModes, FoundSemanticError,
-        !DumpInfo, !Specs, !IO) :-
+pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, ModuleAndImports0, HLDS1,
+        QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
+        FoundSemanticError, !DumpInfo, !Specs, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, verbose, Verbose),
-    globals.lookup_bool_option(Globals, invoked_by_mmc_make, MMCMake),
-    DontWriteDFile1 = bool.or(DontWriteDFile0, MMCMake),
 
-    % Don't write the `.d' file when making the `.opt' file because
-    % we can't work out the full transitive implementation dependencies.
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
-    DontWriteDFile = bool.or(DontWriteDFile1, MakeOptInt),
+    globals.lookup_bool_option(Globals, invoked_by_mmc_make, MMCMake),
+    (
+        MMCMake = yes,
+        WriteDFile = do_not_write_d_file
+    ;
+        MMCMake = no,
+        WriteDFile = WriteDFile0
+    ),
 
     module_and_imports_get_module_name(ModuleAndImports0, ModuleName),
     (
-        DontWriteDFile = yes,
-        % The only time the TransOptDeps are required is when creating the
-        % .trans_opt file. If DontWriteDFile is yes, then error check only
-        % or type-check only is enabled, so we can't be creating the
-        % .trans_opt file.
+        ( OpModeAugment = opmau_make_opt_int
+        ; OpModeAugment = opmau_make_analysis_registry
+        ; OpModeAugment = opmau_make_xml_documentation
+        ; OpModeAugment = opmau_typecheck_only
+        ; OpModeAugment = opmau_errorcheck_only
+        ; OpModeAugment = opmau_generate_code(_)
+        ),
         MaybeTransOptDeps = no
     ;
-        DontWriteDFile = no,
+        OpModeAugment = opmau_make_trans_opt_int,
+        % The only time the TransOptDeps are required is when creating the
+        % .trans_opt file.
         maybe_read_dependency_file(Globals, ModuleName, MaybeTransOptDeps, !IO)
     ),
 
@@ -1724,9 +1728,9 @@ pre_hlds_pass(Globals, ModuleAndImports0, DontWriteDFile0, HLDS1, QualInfo,
     maybe_dump_hlds(HLDS0, 1, "initial", !DumpInfo, !IO),
 
     (
-        DontWriteDFile = yes
+        WriteDFile = do_not_write_d_file
     ;
-        DontWriteDFile = no,
+        WriteDFile = write_d_file,
         module_info_get_all_deps(HLDS0, AllDeps),
         write_dependency_file(Globals, ModuleAndImports0, AllDeps,
             MaybeTransOptDeps, !IO),
@@ -2095,28 +2099,29 @@ prepare_for_intermodule_analysis(Globals, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred after_front_end_passes(set(module_name)::in,
+:- pred after_front_end_passes(globals::in, op_mode_codegen::in,
+    set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    maybe(module_timestamp_map)::in, module_name::in, module_info::in,
+    maybe(module_timestamp_map)::in, module_info::in,
     list(error_spec)::in, list(string)::out, dump_info::in, dump_info::out,
     io::di, io::uo) is det.
 
-after_front_end_passes(NestedSubModules, FindTimestampFiles, MaybeTimestampMap,
-        ModuleName, !.HLDS, Specs, ExtraObjFiles, !DumpInfo, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
+after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
+        FindTimestampFiles, MaybeTimestampMap, !.HLDS,
+        Specs, ExtraObjFiles, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO),
-    middle_pass(ModuleName, !HLDS, !DumpInfo, !IO),
+    middle_pass(!HLDS, !DumpInfo, !IO),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.get_target(Globals, Target),
-    globals.lookup_bool_option(Globals, target_code_only, TargetCodeOnly),
 
     % Remove any existing `.used' file before writing the output file.
     % This avoids leaving the old `used' file lying around if compilation
     % is interrupted after the new output file is written but before the new
     % `.used' file is written.
 
+    module_info_get_name(!.HLDS, ModuleName),
     module_name_to_file_name(Globals, ModuleName, ".used",
         do_not_create_dirs, UsageFileName, !IO),
     io.remove_file(UsageFileName, _, !IO),
@@ -2128,75 +2133,87 @@ after_front_end_passes(NestedSubModules, FindTimestampFiles, MaybeTimestampMap,
         NumErrors = 0
     then
         (
-            Target = target_c,
-            % Produce the grade independent header file <module>.mh
-            % containing function prototypes for the procedures
-            % referred to by foreign_export pragmas.
-            export.get_foreign_export_decls(!.HLDS, ExportDecls),
-            export.produce_header_file(!.HLDS, ExportDecls, ModuleName, !IO)
-        ;
-            ( Target = target_java
-            ; Target = target_csharp
-            ; Target = target_erlang
-            )
-        ),
-        (
             Target = target_csharp,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
+            % mlds_to_csharp never goes beyond generating C# code.
             mlds_to_csharp(!.HLDS, MLDS, Succeeded, !IO),
             ExtraObjFiles = []
         ;
             Target = target_java,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             mlds_to_java(!.HLDS, MLDS, TargetCodeSucceeded, !IO),
-            ( if
-                TargetCodeSucceeded = yes,
-                TargetCodeOnly = no
-            then
-                io.output_stream(OutputStream, !IO),
-                module_name_to_file_name(Globals, ModuleName, ".java",
-                    do_not_create_dirs, JavaFile, !IO),
-                compile_java_files(Globals, OutputStream, [JavaFile],
-                    Succeeded, !IO),
-                maybe_set_exit_status(Succeeded, !IO)
-            else
+            (
+                OpModeCodeGen = opmcg_target_code_only,
                 Succeeded = TargetCodeSucceeded
+            ;
+                ( OpModeCodeGen = opmcg_target_and_object_code_only
+                ; OpModeCodeGen = opmcg_target_object_and_executable
+                ),
+                (
+                    TargetCodeSucceeded = no,
+                    Succeeded = no
+                ;
+                    TargetCodeSucceeded = yes,
+                    io.output_stream(OutputStream, !IO),
+                    module_name_to_file_name(Globals, ModuleName, ".java",
+                        do_not_create_dirs, JavaFile, !IO),
+                    compile_java_files(Globals, OutputStream, [JavaFile],
+                        Succeeded, !IO),
+                    maybe_set_exit_status(Succeeded, !IO)
+                )
             ),
             ExtraObjFiles = []
         ;
             Target = target_c,
+            % Produce the grade independent header file <module>.mh
+            % containing function prototypes for the procedures referred to
+            % by foreign_export pragmas.
+            export.get_foreign_export_decls(!.HLDS, ExportDecls),
+            export.produce_header_file(!.HLDS, ExportDecls, ModuleName, !IO),
             (
                 HighLevelCode = yes,
                 mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
                 mlds_to_high_level_c(Globals, MLDS, TargetCodeSucceeded, !IO),
-                ( if
-                    TargetCodeSucceeded = yes,
-                    TargetCodeOnly = no
-                then
-                    module_name_to_file_name(Globals, ModuleName, ".c",
-                        do_not_create_dirs, C_File, !IO),
-                    get_linked_target_type(Globals, TargetType),
-                    get_object_code_type(Globals, TargetType, PIC),
-                    maybe_pic_object_file_extension(Globals, PIC, Obj),
-                    module_name_to_file_name(Globals, ModuleName, Obj,
-                        do_create_dirs, O_File, !IO),
-                    io.output_stream(OutputStream, !IO),
-                    do_compile_c_file(Globals, OutputStream, PIC,
-                        C_File, O_File, Succeeded, !IO),
-                    maybe_set_exit_status(Succeeded, !IO)
-                else
+                (
+                    OpModeCodeGen = opmcg_target_code_only,
                     Succeeded = TargetCodeSucceeded
+                ;
+                    ( OpModeCodeGen = opmcg_target_and_object_code_only
+                    ; OpModeCodeGen = opmcg_target_object_and_executable
+                    ),
+                    (
+                        TargetCodeSucceeded = no,
+                        Succeeded = no
+                    ;
+                        TargetCodeSucceeded = yes,
+                        module_name_to_file_name(Globals, ModuleName, ".c",
+                            do_not_create_dirs, C_File, !IO),
+                        get_linked_target_type(Globals, TargetType),
+                        get_object_code_type(Globals, TargetType, PIC),
+                        maybe_pic_object_file_extension(Globals, PIC, Obj),
+                        module_name_to_file_name(Globals, ModuleName, Obj,
+                            do_create_dirs, O_File, !IO),
+                        io.output_stream(OutputStream, !IO),
+                        do_compile_c_file(Globals, OutputStream, PIC,
+                            C_File, O_File, Succeeded, !IO),
+                        maybe_set_exit_status(Succeeded, !IO)
+                    )
                 ),
                 ExtraObjFiles = []
             ;
                 HighLevelCode = no,
                 llds_backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO),
+                % llds_output_pass looks up the target_code_only option
+                % to see whether it should generate object code, using the
+                % same logic as the HighLevelCode = yes case above.
+                % XXX Move that logic here, for symmetry.
                 llds_output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
                     Succeeded, ExtraObjFiles, !IO)
             )
         ;
             Target = target_erlang,
             erlang_backend(!.HLDS, ELDS, !DumpInfo, !IO),
+            % elds_to_erlang never goes beyond generating Erlang code.
             elds_to_erlang(!.HLDS, ELDS, Succeeded, !IO),
             ExtraObjFiles = []
         ),
@@ -2269,63 +2286,210 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
 % Modes of operation.
 %
 
-    % This type enumerates the compiler's modes of operation, with the
-    % exception of the default mode which is implied by the absence of any
-    % of these.
-    % These modes of operation are mutually exclusive.
+    % This type enumerates the compiler's modes of operation.
     %
-:- type mode_of_operation
-    --->    opm_make
-    ;       opm_generate_source_file_mapping
-    ;       opm_generate_standalone_interface(string)
+    % The modes of operation are mutually exclusive, except for the loophole
+    % handled by decide_op_mode.
+    %
+    % The nest structure of this type mirrors the decisions
+    % that the top level compiler code above has to make.
+    %
+:- type op_mode
+    --->    opm_top_make
+    ;       opm_top_generate_source_file_mapping
+    ;       opm_top_generate_standalone_interface(string)
+    ;       opm_top_query(op_mode_query)
+    ;       opm_top_args(op_mode_args).
 
-    % Modes of operation for querying C compiler related properties.
-    ;       opm_output_cc
-    ;       opm_output_c_compiler_type
-    ;       opm_output_cflags
-    ;       opm_output_c_include_directory_flags
-    ;       opm_output_grade_defines
+%---------------------%
 
-    % Modes of operation for querying C# compiler related properties.
-    ;       opm_output_csharp_compiler
-    ;       opm_output_csharp_compiler_type
+    % The modes of operation that ask the compiler to output various properties.
+:- type op_mode_query
+    --->    opmq_output_cc                          % C compiler properties.
+    ;       opmq_output_c_compiler_type
+    ;       opmq_output_cflags
+    ;       opmq_output_c_include_directory_flags
+    ;       opmq_output_grade_defines
 
-    % Modes of operation for querying linker related properties.
-    ;       opm_output_link_command
-    ;       opm_output_shared_lib_link_command
-    ;       opm_output_library_link_flags
+    ;       opmq_output_csharp_compiler             % C# compiler properties.
+    ;       opmq_output_csharp_compiler_type
 
-    % Modes of operation for querying Java related properties.
-    ;       opm_output_class_dir
+    ;       opmq_output_link_command                % Linker properties.
+    ;       opmq_output_shared_lib_link_command
+    ;       opmq_output_library_link_flags
 
-    % Modes of operation for querying grade related information.
-    ;       opm_output_grade_string
-    ;       opm_output_libgrades
+    ;       opmq_output_class_dir                   % Java properties.
 
-    % Modes of operation for querying system related information.
-    ;       opm_output_target_arch.
+    ;       opmq_output_grade_string                % Grade information.
+    ;       opmq_output_libgrades
+
+    ;       opmq_output_target_arch.                % System information.
+
+%---------------------%
+
+    % The modes of operation that must be performed on each file or module
+    % named in the argument list.
+:- type op_mode_args
+    --->    opma_generate_dependencies
+    ;       opma_generate_dependency_file
+    ;       opma_make_private_interface
+    ;       opma_make_short_interface
+    ;       opma_make_interface
+    ;       opma_convert_to_mercury
+    ;       opma_augment(op_mode_augment).
+
+%---------------------%
+
+    % The modes of operation that require the raw compilation units
+    % read in from source files to be augmented, generating at least
+    % an initial version of the HLDS.
+:- type op_mode_augment
+    --->    opmau_make_opt_int
+    ;       opmau_make_trans_opt_int
+    ;       opmau_make_analysis_registry
+    ;       opmau_make_xml_documentation
+    ;       opmau_typecheck_only
+    ;       opmau_errorcheck_only
+    ;       opmau_generate_code(op_mode_codegen).
+
+%---------------------%
+
+    % The modes of operation that require the Mercury code in the HLDS
+    % to have code generated for it in a target language.
+:- type op_mode_codegen
+    --->    opmcg_target_code_only
+    ;       opmcg_target_and_object_code_only
+    ;       opmcg_target_object_and_executable.
+
+%---------------------%
 
     % Return the set of modes of operation implied by the command line options.
     %
-:- func gather_modes_of_operation(globals) = set(mode_of_operation).
+:- pred decide_op_mode(globals::in, bool::in,
+    op_mode::out, list(op_mode)::out) is det.
 
-gather_modes_of_operation(Globals) = !:ModeOpSet :-
-    set.init(!:ModeOpSet),
-    list.foldl(gather_mode_of_operation(Globals), bool_op_modes, !ModeOpSet),
-    globals.lookup_maybe_string_option(Globals,
-        generate_standalone_interface, GenerateStandaloneInt),
-    (
-        GenerateStandaloneInt = no
-    ;
-        GenerateStandaloneInt = yes(IntBasename),
-        set.insert(opm_generate_standalone_interface(IntBasename), !ModeOpSet)
+decide_op_mode(Globals, Link, OpMode, OtherOpModes) :-
+    some [!OpModeSet] (
+        set.init(!:OpModeSet),
+        list.foldl(gather_bool_op_mode(Globals), bool_op_modes, !OpModeSet),
+        globals.lookup_maybe_string_option(Globals,
+            generate_standalone_interface, GenerateStandaloneInt),
+        (
+            GenerateStandaloneInt = no
+        ;
+            GenerateStandaloneInt = yes(IntBasename),
+            set.insert(opm_top_generate_standalone_interface(IntBasename),
+                !OpModeSet)
+        ),
+        set.to_sorted_list(!.OpModeSet, OpModes0),
+        (
+            OpModes0 = [],
+            expect(unify(Link, yes), $module, $pred, "Link should be yes"),
+            OpMode = opm_top_args(opma_augment(opmau_generate_code(
+                opmcg_target_object_and_executable))),
+            OtherOpModes = []
+        ;
+            OpModes0 = [OpMode],
+            % The code in handle_options.m that sets Link to yes doesn't do
+            % as good a job of deciding what this mmc invocation should do
+            % as the code above does.
+            % XXX Replace that code with this one.
+            % expect(unify(Link, no), $module, $pred, "Link should be no")
+            OtherOpModes = []
+        ;
+            OpModes0 = [_, _ | _],
+            % As above.
+            % expect(unify(Link, no), $module, $pred, "Link should be no")
+
+            % The options select more than one operation to perform.
+            % There are two possible reasons for this that are not errors.
+
+            ( if
+                % The first reason is that if --make is specified, we can set
+                % the values of the other options that specify other op modes
+                % to "yes", presumably to control what the code in the make
+                % package does. (XXX We shouldn't, but that is another issue.)
+                % If this is the case, then this module should just hand off
+                % control to the make package, and let it take things
+                % from there.
+                set.member(opm_top_make, !.OpModeSet)
+            then
+                OpMode = opm_top_make,
+                OtherOpModes = []
+            else if
+                % The second reason is that Mercury.options file may specify
+                % options that prevent code generation, but mmake will pass
+                % these options to us even when we wouldn't have progressed
+                % to code generation.
+                set.delete(
+                    opm_top_args(opma_augment(opmau_typecheck_only)),
+                    !OpModeSet),
+                set.delete(
+                    opm_top_args(opma_augment(opmau_errorcheck_only)),
+                    !OpModeSet),
+                some [TogetherOpMode] (
+                    set.member(TogetherOpMode, !.OpModeSet),
+                    may_be_together_with_check_only(TogetherOpMode) = yes
+                ),
+                set.to_sorted_list(!.OpModeSet, FilteredOpModes),
+                FilteredOpModes = [HeadFilteredOpMode | TailFilteredOpModes]
+            then
+                OpMode = HeadFilteredOpMode,
+                % TailFilteredOpModes may still be nonempty, but if it is,
+                % that represents a real error.
+                OtherOpModes = TailFilteredOpModes
+            else
+                % Otherwise, we do have two or more contradictory options.
+                % Return all the options we were given.
+                OpModes0 = [OpMode | OtherOpModes]
+            )
+        )
     ).
 
-:- pred gather_mode_of_operation(globals::in,
-    pair(option, mode_of_operation)::in,
-    set(mode_of_operation)::in, set(mode_of_operation)::out) is det.
+:- func may_be_together_with_check_only(op_mode) = bool.
 
-gather_mode_of_operation(Globals, Option - OpMode, !OpModeSet) :-
+may_be_together_with_check_only(OpMode) = MayBeTogether :-
+    (
+        ( OpMode = opm_top_make
+        ; OpMode = opm_top_generate_source_file_mapping
+        ; OpMode = opm_top_generate_standalone_interface(_)
+        ; OpMode = opm_top_query(_)
+        ),
+        MayBeTogether = yes
+    ;
+        OpMode = opm_top_args(OpModeArgs),
+        (
+            ( OpModeArgs = opma_generate_dependencies
+            ; OpModeArgs = opma_generate_dependency_file
+            ; OpModeArgs = opma_make_private_interface
+            ; OpModeArgs = opma_make_interface
+            ; OpModeArgs = opma_make_short_interface
+            ; OpModeArgs = opma_convert_to_mercury
+            ),
+            MayBeTogether = yes
+        ;
+            OpModeArgs = opma_augment(OpModeAugment),
+            (
+                ( OpModeAugment = opmau_make_opt_int
+                ; OpModeAugment = opmau_make_trans_opt_int
+                ; OpModeAugment = opmau_make_analysis_registry
+                ; OpModeAugment = opmau_make_xml_documentation
+                ),
+                MayBeTogether = yes
+            ;
+                ( OpModeAugment = opmau_typecheck_only
+                ; OpModeAugment = opmau_errorcheck_only
+                ; OpModeAugment = opmau_generate_code(_)
+                ),
+                MayBeTogether = no
+            )
+        )
+    ).
+
+:- pred gather_bool_op_mode(globals::in, pair(option, op_mode)::in,
+    set(op_mode)::in, set(op_mode)::out) is det.
+
+gather_bool_op_mode(Globals, Option - OpMode, !OpModeSet) :-
     globals.lookup_bool_option(Globals, Option, OptionValue),
     (
         OptionValue = yes,
@@ -2334,81 +2498,209 @@ gather_mode_of_operation(Globals, Option - OpMode, !OpModeSet) :-
         OptionValue = no
     ).
 
-:- func bool_op_modes = assoc_list(option, mode_of_operation).
+:- func bool_op_modes = assoc_list(option, op_mode).
 
 bool_op_modes = [
-    make                             - opm_make,
-    generate_source_file_mapping     - opm_generate_source_file_mapping,
+    make -
+        opm_top_make,
+    generate_source_file_mapping -
+        opm_top_generate_source_file_mapping,
 
-    output_cc                        - opm_output_cc,
-    output_c_compiler_type           - opm_output_c_compiler_type,
-    output_cflags                    - opm_output_cflags,
-    output_c_include_directory_flags - opm_output_c_include_directory_flags,
-    output_grade_defines             - opm_output_grade_defines,
+    output_cc -
+        opm_top_query(opmq_output_cc),
+    output_c_compiler_type -
+        opm_top_query(opmq_output_c_compiler_type),
+    output_cflags -
+        opm_top_query(opmq_output_cflags),
+    output_c_include_directory_flags -
+        opm_top_query(opmq_output_c_include_directory_flags),
+    output_grade_defines -
+        opm_top_query(opmq_output_grade_defines),
 
-    output_csharp_compiler           - opm_output_csharp_compiler,
-    output_csharp_compiler_type      - opm_output_csharp_compiler_type,
+    output_csharp_compiler -
+        opm_top_query(opmq_output_csharp_compiler),
+    output_csharp_compiler_type -
+        opm_top_query(opmq_output_csharp_compiler_type),
 
-    output_link_command              - opm_output_link_command,
-    output_shared_lib_link_command   - opm_output_shared_lib_link_command,
-    output_library_link_flags        - opm_output_library_link_flags,
+    output_link_command -
+        opm_top_query(opmq_output_link_command),
+    output_shared_lib_link_command -
+        opm_top_query(opmq_output_shared_lib_link_command),
+    output_library_link_flags -
+        opm_top_query(opmq_output_library_link_flags),
 
-    output_class_dir                 - opm_output_class_dir,
+    output_class_dir -
+        opm_top_query(opmq_output_class_dir),
 
-    output_grade_string              - opm_output_grade_string,
-    output_libgrades                 - opm_output_libgrades,
+    output_grade_string -
+        opm_top_query(opmq_output_grade_string),
+    output_libgrades -
+        opm_top_query(opmq_output_libgrades),
 
-    output_target_arch               - opm_output_target_arch
+    output_target_arch -
+        opm_top_query(opmq_output_target_arch),
+
+    generate_dependencies -
+        opm_top_args(opma_generate_dependencies),
+    generate_dependency_file -
+        opm_top_args(opma_generate_dependency_file),
+    make_private_interface -
+        opm_top_args(opma_make_private_interface),
+    make_short_interface -
+        opm_top_args(opma_make_short_interface),
+    make_interface -
+        opm_top_args(opma_make_interface),
+    convert_to_mercury -
+        opm_top_args(opma_convert_to_mercury),
+
+    make_optimization_interface -
+        opm_top_args(opma_augment(opmau_make_opt_int)),
+    make_transitive_opt_interface -
+        opm_top_args(opma_augment(opmau_make_trans_opt_int)),
+    make_analysis_registry -
+        opm_top_args(opma_augment(opmau_make_analysis_registry)),
+    make_xml_documentation -
+        opm_top_args(opma_augment(opmau_make_xml_documentation)),
+    typecheck_only -
+        opm_top_args(opma_augment(opmau_typecheck_only)),
+    errorcheck_only -
+        opm_top_args(opma_augment(opmau_errorcheck_only)),
+    target_code_only -
+        opm_top_args(opma_augment(opmau_generate_code(
+            opmcg_target_code_only))),
+    compile_only -
+        opm_top_args(opma_augment(opmau_generate_code(
+            opmcg_target_and_object_code_only)))
 ].
 
 %---------------------------------------------------------------------------%
 
 :- pred report_conflicting_modes_of_operation(globals::in,
-    list(mode_of_operation)::in, io::di, io::uo) is det.
+    list(op_mode)::in, io::di, io::uo) is det.
 
 report_conflicting_modes_of_operation(Globals, OpModes, !IO) :-
-    OpModeStrs = list.map(mode_of_operation_to_option_string, OpModes),
-    Msg = [
-        words("Error: only one of the following options may be given:")
-    ] ++ list_to_quoted_pieces(OpModeStrs) ++ [suffix(".")],
+    OpModeStrs = list.map(op_mode_to_option_string, OpModes),
+    Msg = [words("Error: only one of the following options may be given:")] ++
+        list_to_quoted_pieces(OpModeStrs) ++ [suffix("."), nl],
     write_error_pieces_plain(Globals, Msg, !IO),
     io.set_exit_status(1, !IO).
 
-:- func mode_of_operation_to_option_string(mode_of_operation) = string.
+:- func op_mode_to_option_string(op_mode) = string.
 
-mode_of_operation_to_option_string(opm_generate_source_file_mapping) =
-    "--generate-source-file-mapping".
-mode_of_operation_to_option_string(opm_output_grade_string) =
-    "--output-grade-string".
-mode_of_operation_to_option_string(opm_output_link_command) =
-    "--output-link-command".
-mode_of_operation_to_option_string(opm_output_shared_lib_link_command) =
-    "--output-shared-lib-link-command".
-mode_of_operation_to_option_string(opm_output_libgrades) =
-    "--output-libgrades".
-mode_of_operation_to_option_string(opm_output_cc) =
-    "--output-cc".
-mode_of_operation_to_option_string(opm_output_c_compiler_type) =
-    "--output-c-compiler-type".
-mode_of_operation_to_option_string(opm_output_cflags) =
-    "--output-cflags".
-mode_of_operation_to_option_string(opm_output_csharp_compiler) =
-    "--output-csharp-compiler".
-mode_of_operation_to_option_string(opm_output_csharp_compiler_type) =
-    "--output-csharp-compiler-type".
-mode_of_operation_to_option_string(opm_output_library_link_flags) =
-    "--output-library-link-flags".
-mode_of_operation_to_option_string(opm_output_grade_defines) =
-    "--output-grade-defines".
-mode_of_operation_to_option_string(opm_output_c_include_directory_flags) =
-    "--output-c-include-directory-flags".
-mode_of_operation_to_option_string(opm_output_target_arch) =
-    "--output-target-arch".
-mode_of_operation_to_option_string(opm_output_class_dir) =
-    "--output-class-dir".
-mode_of_operation_to_option_string(opm_make) = "--make".
-mode_of_operation_to_option_string(opm_generate_standalone_interface(_)) =
-    "--generate-standalone-interface".
+op_mode_to_option_string(MOP) = Str :-
+    (
+        MOP = opm_top_make,
+        Str = "--make"
+    ;
+        MOP = opm_top_generate_source_file_mapping,
+        Str = "--generate-source-file-mapping"
+    ;
+        MOP = opm_top_generate_standalone_interface(_),
+        Str = "--generate-standalone-interface"
+    ;
+        MOP = opm_top_query(MOPQ),
+        (
+            MOPQ = opmq_output_cc,
+            Str = "--output-cc"
+        ;
+            MOPQ = opmq_output_c_compiler_type,
+            Str = "--output-c-compiler-type"
+        ;
+            MOPQ = opmq_output_cflags,
+            Str = "--output-cflags"
+        ;
+            MOPQ = opmq_output_c_include_directory_flags,
+            Str = "--output-c-include-directory-flags"
+        ;
+            MOPQ = opmq_output_grade_defines,
+            Str = "--output-grade-defines"
+        ;
+            MOPQ = opmq_output_csharp_compiler,
+            Str = "--output-csharp-compiler"
+        ;
+            MOPQ = opmq_output_csharp_compiler_type,
+            Str = "--output-csharp-compiler-type"
+        ;
+            MOPQ = opmq_output_link_command,
+            Str = "--output-link-command"
+        ;
+            MOPQ = opmq_output_shared_lib_link_command,
+            Str = "--output-shared-lib-link-command"
+        ;
+            MOPQ = opmq_output_library_link_flags,
+            Str = "--output-library-link-flags"
+        ;
+            MOPQ = opmq_output_class_dir,
+            Str = "--output-class-dir"
+        ;
+            MOPQ = opmq_output_grade_string,
+            Str = "--output-grade-string"
+        ;
+            MOPQ = opmq_output_libgrades,
+            Str = "--output-libgrades"
+        ;
+            MOPQ = opmq_output_target_arch,
+            Str = "--output-target-arch"
+        )
+    ;
+        MOP = opm_top_args(MOPA),
+        (
+            MOPA = opma_generate_dependencies,
+            Str = "--generate-dependencies"
+        ;
+            MOPA = opma_generate_dependency_file,
+            Str = "--generate-dependency_file"
+        ;
+            MOPA = opma_make_private_interface,
+            Str = "--make-private-interface"
+        ;
+            MOPA = opma_make_short_interface,
+            Str = "--make-short-interface"
+        ;
+            MOPA = opma_make_interface,
+            Str = "--make-interface"
+        ;
+            MOPA = opma_convert_to_mercury,
+            Str = "--convert-to-mercury"
+        ;
+            MOPA = opma_augment(MOPAU),
+            (
+                MOPAU = opmau_make_opt_int,
+                Str = "--make-opt-int"
+            ;
+                MOPAU = opmau_make_trans_opt_int,
+                Str = "--make-trans-opt"
+            ;
+                MOPAU = opmau_make_analysis_registry,
+                Str = "--make-analysis-registry"
+            ;
+                MOPAU = opmau_make_xml_documentation,
+                Str = "--make-xml-doc"
+            ;
+                MOPAU = opmau_typecheck_only,
+                Str = "--typecheck-only"
+            ;
+                MOPAU = opmau_errorcheck_only,
+                Str = "--errorcheck-only"
+            ;
+                MOPAU = opmau_generate_code(MOPCG),
+                (
+                    MOPCG = opmcg_target_code_only,
+                    Str = "--target-code-only"
+                ;
+                    MOPCG = opmcg_target_and_object_code_only,
+                    Str = "--compile-only"
+                ;
+                    MOPCG = opmcg_target_object_and_executable,
+                    % We only set this module of operation if none of the
+                    % others is specified by options, so this op should
+                    % NEVER conflict with any others.
+                    unexpected($module, $pred,
+                        "opmcg_target_object_and_executable")
+                )
+            )
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

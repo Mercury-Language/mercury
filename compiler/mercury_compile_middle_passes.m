@@ -17,14 +17,13 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_item.
 
 :- import_module bool.
 :- import_module io.
 :- import_module set.
 
-:- pred middle_pass(module_name::in, module_info::in, module_info::out,
+:- pred middle_pass(module_info::in, module_info::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 :- pred middle_pass_for_opt_file(module_info::in, module_info::out,
@@ -110,7 +109,7 @@
 
 %-----------------------------------------------------------------------------%
 
-middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
+middle_pass(!HLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -171,7 +170,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 130, "warn_dead_procs", !DumpInfo, !IO),
 
-    maybe_bytecodes(!.HLDS, ModuleName, Verbose, Stats, !DumpInfo, !IO),
+    maybe_bytecodes(!.HLDS, Verbose, Stats, !DumpInfo, !IO),
 
     maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 133, "untupling", !DumpInfo, !IO),
@@ -735,10 +734,10 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_bytecodes(module_info::in, module_name::in,
-    bool::in, bool::in, dump_info::in, dump_info::out, io::di, io::uo) is det.
+:- pred maybe_bytecodes(module_info::in, bool::in, bool::in,
+    dump_info::in, dump_info::out, io::di, io::uo) is det.
 
-maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !DumpInfo, !IO) :-
+maybe_bytecodes(HLDS0, Verbose, Stats, !DumpInfo, !IO) :-
     module_info_get_globals(HLDS0, Globals),
     globals.lookup_bool_option(Globals, generate_bytecode, GenBytecode),
     (
@@ -750,6 +749,7 @@ maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !DumpInfo, !IO) :-
         bytecode_gen.gen_module(HLDS1, Bytecode, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
+        module_info_get_name(HLDS1, ModuleName),
         module_name_to_file_name(Globals, ModuleName, ".bytedebug",
             do_create_dirs, BytedebugFile, !IO),
         maybe_write_string(Verbose, "% Writing bytecodes to `", !IO),

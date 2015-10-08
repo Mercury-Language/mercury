@@ -112,11 +112,21 @@ generate_default_globals(DefaultGlobals, !IO) :-
     handle_given_options([], _, _, _, _, DefaultGlobals, !IO).
 
 handle_given_options(Args0, OptionArgs, Args, Link, Errors, !:Globals, !IO) :-
-    % io.write_string("original arguments\n", !IO),
-    % dump_arguments(Args0, !IO),
+    trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
+        io.nl(!TIO),
+        io.write_string("original arguments\n", !TIO),
+        dump_arguments(Args0, !TIO)
+    ),
     process_given_options(Args0, OptionArgs, Args, Result, !IO),
-    % io.write_string("final arguments\n", !IO),
-    % dump_arguments(Args, !IO),
+    trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
+        io.nl(!TIO),
+        io.write_string("final option arguments\n", !TIO),
+        dump_arguments(OptionArgs, !TIO),
+
+        io.nl(!TIO),
+        io.write_string("final non-option arguments\n", !TIO),
+        dump_arguments(Args, !TIO)
+    ),
     convert_option_table_result_to_globals(Result, Errors, !:Globals, !IO),
     (
         Errors = [_ | _],
@@ -187,14 +197,13 @@ separate_option_args(Args0, OptionArgs, Args, !IO) :-
 process_given_options(Args0, OptionArgs, Args, Result, !IO) :-
     OptionOps = option_ops(short_option, long_option,
         option_defaults, special_handler),
-    getopt_io.process_options(OptionOps, Args0, OptionArgs, Args, Result,
-        !IO).
+    getopt_io.process_options(OptionOps, Args0, OptionArgs, Args, Result, !IO).
 
 :- pred dump_arguments(list(string)::in, io::di, io::uo) is det.
 
 dump_arguments([], !IO).
 dump_arguments([Arg | Args], !IO) :-
-    io.write_string("<", !IO),
+    io.write_string("    <", !IO),
     io.write_string(Arg, !IO),
     io.write_string(">\n", !IO),
     dump_arguments(Args, !IO).

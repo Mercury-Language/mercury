@@ -1010,9 +1010,9 @@ build_with_module_options(Globals, ModuleName, ExtraOptions, Build, Succeeded,
         MaybeInfo = no
     ).
 
-build_with_module_options_args(Globals, ModuleName, DetectedGradeFlags,
-        OptionVariables, OptionArgs, ExtraOptions, Build, Succeeded,
-        !Info, !IO) :-
+build_with_module_options_args(Globals, ModuleName,
+        DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
+        Build, Succeeded, !Info, !IO) :-
     build_with_module_options_args_invoked(Globals, no, ModuleName,
         DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
         Build, Succeeded, !Info, !IO).
