@@ -6,30 +6,31 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File      : post_typecheck.m
-% Author    : fjh
-% Purpose   : finish off type checking.
+% Author: fjh
 %
 % This module does the final parts of type analysis:
 %
-%   - it resolves predicate overloading
-%   - it resolves function overloading
-%   - it expands field access functions
-%   - it propagates type information into the modes of procedures
+%   - it resolves predicate overloading;
+%   - it resolves function overloading;
+%   - it expands field access functions;
+%   - it propagates type information into the modes of procedures;
 %   - it checks for unbound type variables and if there are any,
-%     it reports an error (or a warning, binding them to the type `void').
-%   - it reports errors for unbound inst variables in predicate or
-%     function mode declarations
-%   - it reports errors for unsatisfied type class constraints
+%     it reports an error (or a warning, binding them to the type `void');
+%   - it reports errors for unbound inst variables in predicate or function
+%     mode declarations;
+%   - it reports errors for unsatisfied type class constraints;
 %   - it reports an error if there are indistinguishable modes for
-%     a predicate of function.
+%     a predicate of function;
 %   - it checks that declarations for abstract types also have a
-%     corresponding definition somewhere in the module.
+%     corresponding definition somewhere in the module;
+%   - it checks that exported promises refer only to exported entities.
 %
 % These actions cannot be done until after type inference is complete,
-% so they need to be a separate "post-typecheck pass". For efficiency reasons,
-% this is in fact done at the same time as purity analysis -- the routines here
-% are called from purity.m rather than mercury_compile.m.
+% so they need to be done in a pass *after* the typecheck pass.
+%
+% For efficiency reasons, we don't dedicate a pass to these actions, and
+% instead invoke them during the purity analysis pass. The routines here
+% are called from purity.m, not from mercury_compile*.m.
 
 %-----------------------------------------------------------------------------%
 
@@ -195,10 +196,10 @@ post_typecheck_do_finish_preds(ModuleInfo, ValidPredIdSet,
         NumBadErrors, [HeadAlwaysSpecs | TailAlwaysSpecs],
         [HeadNoTypeErrorSpecs | TailNoTypeErrorSpecs]) :-
     PredIdInfo0 = PredId - PredInfo0,
-    ( set_tree234.contains(ValidPredIdSet, PredId) ->
+    ( if set_tree234.contains(ValidPredIdSet, PredId) then
         post_typecheck_do_finish_pred(ModuleInfo, PredId, PredInfo0, PredInfo,
             HeadNumBadErrors, HeadAlwaysSpecs, HeadNoTypeErrorSpecs)
-    ;
+    else
         PredInfo = PredInfo0,
         HeadNumBadErrors = 0,
         HeadAlwaysSpecs = [],
@@ -216,11 +217,11 @@ post_typecheck_do_finish_preds(ModuleInfo, ValidPredIdSet,
 
 post_typecheck_do_finish_pred(ModuleInfo, PredId, !PredInfo, NumBadErrors,
         !:AlwaysSpecs, !:NoTypeErrorSpecs) :-
-    (
+    ( if
         ( pred_info_is_imported(!.PredInfo)
         ; pred_info_is_pseudo_imported(!.PredInfo)
         )
-    ->
+    then
         % For imported preds, we just need to ensure that all constructors
         % occurring in predicate mode declarations are module qualified.
         post_typecheck_finish_imported_pred_no_io(ModuleInfo, ErrorProcs,
@@ -231,7 +232,7 @@ post_typecheck_do_finish_pred(ModuleInfo, PredId, !PredInfo, NumBadErrors,
             !AlwaysSpecs),
         !:NoTypeErrorSpecs = [],
         NumBadErrors = 0
-    ;
+    else
         check_pred_type_bindings(ModuleInfo, PredId, !PredInfo,
             NumBadErrors, !:NoTypeErrorSpecs),
 
@@ -275,9 +276,9 @@ check_pred_type_bindings(ModuleInfo, PredId, !PredInfo, NumBadErrors,
     clauses_info_get_varset(ClausesInfo0, VarSet),
     clauses_info_get_vartypes(ClausesInfo0, VarTypesMap0),
     vartypes_to_assoc_list(VarTypesMap0, VarTypesList),
-    set.init(Set0),
+    set.init(BindToVoidTVars0),
     check_var_type_bindings(VarTypesList, HeadTypeParams,
-        [], UnresolvedVarsTypes, Set0, Set),
+        [], UnresolvedVarsTypes, BindToVoidTVars0, BindToVoidTVars),
     (
         UnresolvedVarsTypes = []
     ;
@@ -285,10 +286,10 @@ check_pred_type_bindings(ModuleInfo, PredId, !PredInfo, NumBadErrors,
         report_unresolved_type_warning(ModuleInfo, PredId, !.PredInfo,
             VarSet, UnresolvedVarsTypes, !NoTypeErrorSpecs),
 
-        % Bind all the type variables in `Set' to `void' ...
+        % Bind all the type variables in `BindToVoidTVars' to `void' ...
         pred_info_get_constraint_proof_map(!.PredInfo, ProofMap0),
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap0),
-        bind_type_vars_to_void(Set, VarTypesMap0, VarTypesMap,
+        bind_type_vars_to_void(BindToVoidTVars, VarTypesMap0, VarTypesMap,
             ProofMap0, ProofMap, ConstraintMap0, ConstraintMap),
         clauses_info_set_vartypes(VarTypesMap, ClausesInfo0, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo),
@@ -306,39 +307,41 @@ check_pred_type_bindings(ModuleInfo, PredId, !PredInfo, NumBadErrors,
     set(tvar)::in, set(tvar)::out) is det.
 
 check_var_type_bindings(VarTypes, HeadTypeParams, !UnresolvedVarsTypes,
-        !Set) :-
-    check_var_type_bindings_2(VarTypes, HeadTypeParams, 1000, LeftOverVarTypes,
-        !UnresolvedVarsTypes, !Set),
+        !BindToVoidTVars) :-
+    check_var_type_bindings_inner(VarTypes, HeadTypeParams, 1000,
+        LeftOverVarTypes, !UnresolvedVarsTypes, !BindToVoidTVars),
     (
         LeftOverVarTypes = []
     ;
         LeftOverVarTypes = [_ | _],
         check_var_type_bindings(LeftOverVarTypes, HeadTypeParams,
-            !UnresolvedVarsTypes, !Set)
+            !UnresolvedVarsTypes, !BindToVoidTVars)
     ).
 
-:- pred check_var_type_bindings_2(assoc_list(prog_var, mer_type)::in,
+:- pred check_var_type_bindings_inner(assoc_list(prog_var, mer_type)::in,
     list(tvar)::in, int::in, assoc_list(prog_var, mer_type)::out,
     assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
-check_var_type_bindings_2([], _, _, [], !UnresolvedVarsTypes, !Set).
-check_var_type_bindings_2([Var - Type | VarTypes], HeadTypeParams,
-        VarsToDo, LeftOverVarTypes, !UnresolvedVarsTypes, !Set) :-
-    ( VarsToDo < 0 ->
+check_var_type_bindings_inner([], _, _, [],
+        !UnresolvedVarsTypes, !BindToVoidTVars).
+check_var_type_bindings_inner([Var - Type | VarTypes], HeadTypeParams,
+        VarsToDo, LeftOverVarTypes, !UnresolvedVarsTypes, !BindToVoidTVars) :-
+    ( if VarsToDo < 0 then
         LeftOverVarTypes = [Var - Type | VarTypes]
-    ;
+    else
         type_vars(Type, TVars),
         set.list_to_set(TVars, TVarsSet0),
         set.delete_list(HeadTypeParams, TVarsSet0, TVarsSet1),
-        ( set.is_empty(TVarsSet1) ->
+        ( if set.is_empty(TVarsSet1) then
             true
-        ;
+        else
             !:UnresolvedVarsTypes = [Var - Type | !.UnresolvedVarsTypes],
-            set.union(!.Set, TVarsSet1, !:Set)
+            set.union(TVarsSet1, !BindToVoidTVars)
         ),
-        check_var_type_bindings_2(VarTypes, HeadTypeParams,
-            VarsToDo - 1, LeftOverVarTypes, !UnresolvedVarsTypes, !Set)
+        check_var_type_bindings_inner(VarTypes, HeadTypeParams,
+            VarsToDo - 1, LeftOverVarTypes,
+            !UnresolvedVarsTypes, !BindToVoidTVars)
     ).
 
     % Bind all the type variables in `UnboundTypeVarsSet' to the type `void'.
@@ -558,7 +561,7 @@ finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, Context,
     % In the case of a call to an overloaded predicate, typecheck.m
     % does not figure out the correct pred_id. We must do that here.
 
-    ( !.PredId = invalid_pred_id ->
+    ( if !.PredId = invalid_pred_id then
         % Find the set of candidate pred_ids for predicates which
         % have the specified name and arity.
         pred_info_get_typevarset(CallerPredInfo, TVarSet),
@@ -570,7 +573,7 @@ finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, Context,
         lookup_var_types(VarTypes, Args0, ArgTypes),
         resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
             ArgTypes, HeadTypeParams, Context, !PredName, !:PredId)
-    ;
+    else
         !:PredName = get_qualified_pred_name(ModuleInfo, !.PredId)
     ).
 
@@ -592,9 +595,9 @@ post_typecheck_finish_imported_pred_no_io(ModuleInfo, ErrorProcIds,
     % Make sure the vartypes field in the clauses_info is valid for imported
     % predicates. Unification procedures have clauses generated, so they
     % already have valid vartypes.
-    ( pred_info_is_pseudo_imported(!.PredInfo) ->
+    ( if pred_info_is_pseudo_imported(!.PredInfo) then
         true
-    ;
+    else
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
         clauses_info_get_headvar_list(ClausesInfo0, HeadVars),
         pred_info_get_arg_types(!.PredInfo, ArgTypes),
@@ -625,9 +628,9 @@ post_typecheck_finish_promise(PromiseType, PromiseId, !ModuleInfo, !Specs) :-
     % If the promise is in the interface, then ensure that it doesn't refer
     % to any local symbols.
     module_info_pred_info(!.ModuleInfo, PromiseId, PredInfo),
-    ( pred_info_is_exported(PredInfo) ->
-        in_interface_check(!.ModuleInfo, PredInfo, Goal, !Specs)
-    ;
+    ( if pred_info_is_exported(PredInfo) then
+        check_in_interface_promise_goal(!.ModuleInfo, PredInfo, Goal, !Specs)
+    else
         true
     ).
 
@@ -672,10 +675,10 @@ promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     get_clause_list_maybe_repeated(ClausesRep, Clauses),
-    ( Clauses = [Clause] ->
+    ( if Clauses = [Clause] then
         Goal0 = Clause ^ clause_body,
         assertion.normalise_goal(Goal0, Goal)
-    ;
+    else
         unexpected($module, $pred, "not a single clause")
     ).
 
@@ -685,16 +688,18 @@ promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
     % refer to any constructors, functions and predicates defined in the
     % implementation of that module.
     %
-:- pred in_interface_check(module_info::in, pred_info::in, hlds_goal::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred check_in_interface_promise_goal(module_info::in, pred_info::in,
+    hlds_goal::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-in_interface_check(ModuleInfo, PredInfo, Goal, !Specs) :-
+check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = plain_call(PredId, _, _, _, _,SymName),
         module_info_pred_info(ModuleInfo, PredId, CallPredInfo),
         pred_info_get_status(CallPredInfo, PredStatus),
-        ( pred_status_defined_in_impl_section(PredStatus) = yes ->
+        DefnInImplSection = pred_status_defined_in_impl_section(PredStatus),
+        (
+            DefnInImplSection = yes,
             Context = goal_info_get_context(GoalInfo),
             PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
             Arity = pred_info_orig_arity(CallPredInfo),
@@ -703,20 +708,22 @@ in_interface_check(ModuleInfo, PredInfo, Goal, !Specs) :-
             report_assertion_interface_error(ModuleInfo, Context, IdPieces,
                 !Specs)
         ;
-            true
+            DefnInImplSection = no
         )
     ;
         GoalExpr = generic_call(_, _, _, _, _)
     ;
         GoalExpr = unify(Var, RHS, _, _, _),
         Context = goal_info_get_context(GoalInfo),
-        in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
-            !Specs)
+        check_in_interface_promise_unify_rhs(ModuleInfo, PredInfo, Var, RHS,
+            Context, !Specs)
     ;
         GoalExpr = call_foreign_proc(_, PredId, _, _, _, _, _),
         module_info_pred_info(ModuleInfo, PredId, PragmaPredInfo),
         pred_info_get_status(PragmaPredInfo, PredStatus),
-        ( pred_status_defined_in_impl_section(PredStatus) = yes ->
+        DefnInImplSection = pred_status_defined_in_impl_section(PredStatus),
+        (
+            DefnInImplSection = yes,
             Context = goal_info_get_context(GoalInfo),
             PredOrFunc = pred_info_is_pred_or_func(PragmaPredInfo),
             Name = pred_info_name(PragmaPredInfo),
@@ -727,51 +734,54 @@ in_interface_check(ModuleInfo, PredInfo, Goal, !Specs) :-
             report_assertion_interface_error(ModuleInfo, Context, IdPieces,
                 !Specs)
         ;
-            true
+            DefnInImplSection = no
         )
     ;
         GoalExpr = conj(_, Goals),
-        in_interface_check_list(ModuleInfo, PredInfo, Goals, !Specs)
+        check_in_interface_promise_goals(ModuleInfo, PredInfo, Goals, !Specs)
     ;
         GoalExpr = switch(_, _, _),
         unexpected($module, $pred, "assertion contains switch")
     ;
         GoalExpr = disj(Goals),
-        in_interface_check_list(ModuleInfo, PredInfo, Goals, !Specs)
+        check_in_interface_promise_goals(ModuleInfo, PredInfo, Goals, !Specs)
     ;
         GoalExpr = negation(SubGoal),
-        in_interface_check(ModuleInfo, PredInfo, SubGoal, !Specs)
+        check_in_interface_promise_goal(ModuleInfo, PredInfo, SubGoal, !Specs)
     ;
         GoalExpr = scope(_, SubGoal),
-        in_interface_check(ModuleInfo, PredInfo, SubGoal, !Specs)
+        check_in_interface_promise_goal(ModuleInfo, PredInfo, SubGoal, !Specs)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        in_interface_check(ModuleInfo, PredInfo, Cond, !Specs),
-        in_interface_check(ModuleInfo, PredInfo, Then, !Specs),
-        in_interface_check(ModuleInfo, PredInfo, Else, !Specs)
+        check_in_interface_promise_goal(ModuleInfo, PredInfo, Cond, !Specs),
+        check_in_interface_promise_goal(ModuleInfo, PredInfo, Then, !Specs),
+        check_in_interface_promise_goal(ModuleInfo, PredInfo, Else, !Specs)
     ;
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
-            in_interface_check(ModuleInfo, PredInfo, MainGoal, !Specs),
-            in_interface_check_list(ModuleInfo, PredInfo, OrElseGoals, !Specs)
+            check_in_interface_promise_goal(ModuleInfo, PredInfo, MainGoal,
+                !Specs),
+            check_in_interface_promise_goals(ModuleInfo, PredInfo, OrElseGoals,
+                !Specs)
         ;
             ShortHand = try_goal(_, _, SubGoal),
-            in_interface_check(ModuleInfo, PredInfo, SubGoal, !Specs)
+            check_in_interface_promise_goal(ModuleInfo, PredInfo, SubGoal,
+                !Specs)
         ;
             ShortHand = bi_implication(LHS, RHS),
-            in_interface_check(ModuleInfo, PredInfo, LHS, !Specs),
-            in_interface_check(ModuleInfo, PredInfo, RHS, !Specs)
+            check_in_interface_promise_goal(ModuleInfo, PredInfo, LHS, !Specs),
+            check_in_interface_promise_goal(ModuleInfo, PredInfo, RHS, !Specs)
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred in_interface_check_unify_rhs(module_info::in, pred_info::in,
-    unify_rhs::in, prog_var::in, prog_context::in,
+:- pred check_in_interface_promise_unify_rhs(module_info::in, pred_info::in,
+    prog_var::in, unify_rhs::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
+check_in_interface_promise_unify_rhs(ModuleInfo, PredInfo, Var, RHS, Context,
         !Specs) :-
     (
         RHS = rhs_var(_)
@@ -795,18 +805,19 @@ in_interface_check_unify_rhs(ModuleInfo, PredInfo, RHS, Var, Context,
         )
     ;
         RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, Goal),
-        in_interface_check(ModuleInfo, PredInfo, Goal, !Specs)
+        check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred in_interface_check_list(module_info::in, pred_info::in, hlds_goals::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred check_in_interface_promise_goals(module_info::in, pred_info::in,
+    list(hlds_goal)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-in_interface_check_list(_ModuleInfo, _PredInfo, [], !Specs).
-in_interface_check_list(ModuleInfo, PredInfo, [Goal0 | Goal0s], !Specs) :-
-    in_interface_check(ModuleInfo, PredInfo, Goal0, !Specs),
-    in_interface_check_list(ModuleInfo, PredInfo, Goal0s, !Specs).
+check_in_interface_promise_goals(_ModuleInfo, _PredInfo, [], !Specs).
+check_in_interface_promise_goals(ModuleInfo, PredInfo, [Goal0 | Goal0s],
+        !Specs) :-
+    check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal0, !Specs),
+    check_in_interface_promise_goals(ModuleInfo, PredInfo, Goal0s, !Specs).
 
 %-----------------------------------------------------------------------------%
 
@@ -835,21 +846,21 @@ report_assertion_interface_error(ModuleInfo, Context, IdPieces, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_type_of_main(PredInfo, !Specs) :-
-    (
+    ( if
         % Check if this predicate is the program entry point main/2.
         pred_info_name(PredInfo) = "main",
         pred_info_orig_arity(PredInfo) = 2,
         pred_info_is_exported(PredInfo)
-    ->
+    then
         % Check that the arguments of main/2 have type `io.state'.
         pred_info_get_arg_types(PredInfo, ArgTypes),
-        (
+        ( if
             ArgTypes = [Arg1, Arg2],
             type_is_io_state(Arg1),
             type_is_io_state(Arg2)
-        ->
+        then
             true
-        ;
+        else
             pred_info_get_context(PredInfo, Context),
             Pieces = [words("Error: arguments of main/2"),
                 words("must have type"), quote("io.state"), suffix("."), nl],
@@ -857,7 +868,7 @@ check_type_of_main(PredInfo, !Specs) :-
             Spec = error_spec(severity_error, phase_type_check, [Msg]),
             !:Specs = [Spec | !.Specs]
         )
-    ;
+    else
         true
     ).
 
@@ -895,9 +906,9 @@ propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
     % propagate_types_into_mode_list, because we need the insts
     % to be module-qualified; and it needs to be done before mode analysis,
     % to avoid internal errors.)
-    ( mode_list_contains_inst_var(ArgModes, ModuleInfo, _InstVar) ->
+    ( if mode_list_contains_inst_var(ArgModes, ModuleInfo, _InstVar) then
         !:RevErrorProcIds = [ProcId | !.RevErrorProcIds]
-    ;
+    else
         proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo),
         map.det_update(ProcId, ProcInfo, !Procs)
     ),
@@ -946,7 +957,7 @@ report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !Specs) :-
-    (
+    ( if
         % Don't check for indistinguishable modes in unification predicates.
         % The default (in, in) mode must be semidet, but for single-value types
         % we also want to create a det mode which will be indistinguishable
@@ -955,9 +966,9 @@ check_for_indistinguishable_modes(ModuleInfo, PredId, !PredInfo, !Specs) :-
         % the semidet mode.)
         pred_info_get_origin(!.PredInfo, Origin),
         Origin = origin_special_pred(spec_pred_unify, _)
-    ->
+    then
         true
-    ;
+    else
         ProcIds = pred_info_procids(!.PredInfo),
         check_for_indistinguishable_modes_in_procs(ModuleInfo, PredId,
             ProcIds, [], !PredInfo, !Specs)
@@ -991,7 +1002,9 @@ check_for_indistinguishable_modes_in_procs(ModuleInfo, PredId,
 check_for_indistinguishable_mode(_, _, _, [], no, !PredInfo, !Specs).
 check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
         [ProcId | ProcIds], Removed, !PredInfo, !Specs) :-
-    ( modes_are_indistinguishable(ProcId, ProcId1, !.PredInfo, ModuleInfo) ->
+    ( if
+        modes_are_indistinguishable(ProcId, ProcId1, !.PredInfo, ModuleInfo)
+    then
         pred_info_get_status(!.PredInfo, Status),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, intermodule_optimization,
@@ -1000,7 +1013,7 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
             IntermodAnalysis),
         globals.lookup_bool_option(Globals, make_optimization_interface,
             MakeOptInt),
-        (
+        ( if
             % With intermodule optimization we can read the declarations
             % for a predicate from the `.int' and `.int0' files, so ignore
             % the error in those cases.
@@ -1012,18 +1025,18 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
             ;
                 MakeOptInt = yes
             )
-        ->
+        then
             % XXX We shouldn't ignore the updated ModuleInfo, which may
             % differ from the old one in including an updated error count.
             Spec = report_indistinguishable_modes_error(ModuleInfo,
                 ProcId1, ProcId, PredId, !.PredInfo),
             !:Specs = [Spec | !.Specs]
-        ;
+        else
             true
         ),
         pred_info_remove_procid(ProcId1, !PredInfo),
         Removed = yes
-    ;
+    else
         check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
             ProcIds, Removed, !PredInfo, !Specs)
     ).
@@ -1036,7 +1049,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         Goal, IsPlainUnify) :-
     lookup_var_type(!.VarTypes, X0, TypeOfX),
     list.length(ArgVars0, Arity),
-    (
+    ( if
         % Is the function symbol apply/N or ''/N, representing a higher-order
         % function call? Or the impure/semipure equivalents impure_apply/N
         % and semipure_apply/N?
@@ -1049,7 +1062,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         ),
         Arity >= 1,
         ArgVars0 = [FuncVar | FuncArgVars]
-    ->
+    then
         % Convert the higher-order function call (apply/N) into a higher-order
         % predicate call (i.e., replace `X = apply(F, A, B, C)'
         % with `call(F, A, B, C, X)')
@@ -1062,7 +1075,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             ArgVars, Modes, arg_reg_types_unset, Det),
         Goal = hlds_goal(HOCall, GoalInfo0),
         IsPlainUnify = is_not_plain_unify
-    ;
+    else if
         % Is the function symbol a user-defined function, rather than
         % a functor which represents a data constructor?
 
@@ -1084,12 +1097,12 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % whose type is exactly the same as the type of a constructor.
         % (Normally that would cause a type ambiguity error, but
         % compiler-generated predicates are not type-checked.)
-        \+ is_unify_or_compare_pred(!.PredInfo),
+        not is_unify_or_compare_pred(!.PredInfo),
 
         % We don't do this for the clause introduced by the compiler for a
         % field access function -- that needs to be expanded into
         % unifications below.
-        \+ pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
+        not pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
 
         % Check if any of the candidate functions have argument/return types
         % which subsume the actual argument/return types of this function call,
@@ -1107,7 +1120,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
             ArgTypes, HeadTypeParams, yes(ConstraintSearch), Context,
             PredId, QualifiedFuncName)
-    ->
+    then
         % Convert function calls in unifications into plain calls:
         % replace `X = f(A, B, C)' with `f(A, B, C, X)'.
 
@@ -1119,7 +1132,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             yes(FuncCallUnifyContext), QualifiedFuncName),
         Goal = hlds_goal(FuncCall, GoalInfo0),
         IsPlainUnify = is_not_plain_unify
-    ;
+    else if
         % Is the function symbol a higher-order predicate or function constant?
         ConsId0 = cons(Name, _, _),
         type_is_higher_order_details(TypeOfX, _Purity, PredOrFunc,
@@ -1128,7 +1141,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % We don't do this for the clause introduced by the compiler
         % for a field access function -- that needs to be expanded
         % into unifications below.
-        \+ pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
+        not pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
 
         % Find the pred_id of the constant.
         lookup_var_types(!.VarTypes, ArgVars0, ArgTypes0),
@@ -1141,7 +1154,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         get_pred_id_by_types(calls_are_fully_qualified(Markers), Name,
             PredOrFunc, TVarSet, ExistQVars, AllArgTypes, HeadTypeParams,
             ModuleInfo, Context, PredId)
-    ->
+    then
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ProcIds = pred_info_procids(PredInfo),
         (
@@ -1174,7 +1187,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             Spec = error_spec(severity_error, phase_purity_check, [Msg]),
             IsPlainUnify = is_unknown_ref(Spec)
         )
-    ;
+    else if
         % Is it a call to an automatically generated field access function.
         % This test must come after the tests for function calls and
         % higher-order terms above. It's done that way because it's easier
@@ -1186,7 +1199,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
 
         % We don't do this for compiler-generated predicates --
         % they will never contain calls to field access functions.
-        \+ is_unify_or_compare_pred(!.PredInfo),
+        not is_unify_or_compare_pred(!.PredInfo),
 
         % If there is a constructor for which the argument types match,
         % this unification couldn't be a call to a field access function,
@@ -1194,32 +1207,32 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % overloading.
         pred_info_get_typevarset(!.PredInfo, TVarSet),
         lookup_var_types(!.VarTypes, ArgVars0, ArgTypes0),
-        \+ find_matching_constructor(ModuleInfo, TVarSet, ConsId0,
+        not find_matching_constructor(ModuleInfo, TVarSet, ConsId0,
             TypeOfX, ArgTypes0)
-    ->
+    then
         finish_field_access_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
             AccessType, FieldName, UnifyContext, X0, ArgVars0, GoalInfo0,
             Goal),
         IsPlainUnify = is_not_plain_unify
-    ;
+    else
         % Module qualify ordinary construction/deconstruction unifications.
         type_to_ctor_det(TypeOfX, TypeCtorOfX),
-        ( ConsId0 = cons(SymName0, Arity, _OldTypeCtor) ->
-            ( TypeOfX = tuple_type(_, _) ->
+        ( if ConsId0 = cons(SymName0, Arity, _OldTypeCtor) then
+            ( if TypeOfX = tuple_type(_, _) then
                 ConsId = tuple_cons(Arity)
-            ; TypeOfX = builtin_type(builtin_type_char) ->
+            else if TypeOfX = builtin_type(builtin_type_char) then
                 (
                     SymName0 = unqualified(Name0),
-                    ( encode_escaped_char(Char, Name0) ->
+                    ( if encode_escaped_char(Char, Name0) then
                         ConsId = char_const(Char)
-                    ;
+                    else
                         unexpected($module, $pred, "encode_escaped_char")
                     )
                 ;
                     SymName0 = qualified(_, _),
                     unexpected($module, $pred, "qualified char const")
                 )
-            ;
+            else
                 Name = unqualify_name(SymName0),
                 TypeCtorOfX = type_ctor(TypeCtorSymName, _),
                 (
@@ -1231,12 +1244,11 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
                     unexpected($module, $pred, "unqualified type_ctor")
                 )
             )
-        ;
+        else
             ConsId = ConsId0
         ),
-        GoalExpr = unify(X0,
-            rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
-            Mode0, Unification0, UnifyContext),
+        RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
+        GoalExpr = unify(X0, RHS, Mode0, Unification0, UnifyContext),
         Goal = hlds_goal(GoalExpr, GoalInfo0),
         IsPlainUnify = is_plain_unify
     ).
@@ -1314,13 +1326,13 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
         TermType, ArgTypes0, ExistQVars, !PredInfo),
 
     % If the type of the field we are extracting contains existentially
-    % quantified type variables then we need to rename any other
-    % occurrences of those type variables in the arguments of the
-    % constructor so that they match those in the type of the field.
-    % (We don't need to do this for field updates because if any
-    % existentially quantified type variables occur in field to set
-    % and other fields then the field update should have been disallowed
-    % by typecheck.m because the result can't be well-typed).
+    % quantified type variables then we need to rename any other occurrences
+    % of those type variables in the arguments of the constructor so that
+    % they match those in the type of the field. (We don't need to do this
+    % for field updates because if any existentially quantified type variables
+    % occur in field to set and other fields then the field update
+    % should have been disallowed by typecheck.m because the result
+    % can't be well-typed).
     (
         ExistQVars = [_ | _],
         lookup_var_type(!.VarTypes, FieldVar, FieldType),
@@ -1394,10 +1406,10 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
         ConsId = ConsId0
     ;
         ExistQVars = [_ | _],
-        ( ConsId0 = cons(ConsName0, ConsArity, TypeCtor) ->
+        ( if ConsId0 = cons(ConsName0, ConsArity, TypeCtor) then
             add_new_prefix(ConsName0, ConsName),
             ConsId = cons(ConsName, ConsArity, TypeCtor)
-        ;
+        else
             unexpected($module, $pred, "invalid cons_id")
         )
     ),
@@ -1463,9 +1475,11 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
         map.init(KindMap),
         apply_rec_subst_to_tvar_list(KindMap, ExistTSubst, ParentExistQVars,
             ActualExistQVarTypes),
-        ( type_list_to_var_list(ActualExistQVarTypes, ActualExistQVars0) ->
+        ( if
+            type_list_to_var_list(ActualExistQVarTypes, ActualExistQVars0)
+        then
             ActualExistQVars = ActualExistQVars0
-        ;
+        else
             unexpected($module, $pred, "existq_tvar bound to non-var")
         )
     ),
@@ -1479,12 +1493,12 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
 constraint_list_subsumes_det(ConstraintsA, ConstraintsB, Subst) :-
     constraint_list_get_tvars(ConstraintsB, TVarsB),
     map.init(Subst0),
-    (
+    ( if
         unify_constraint_list(ConstraintsA, ConstraintsB, TVarsB,
             Subst0, Subst1)
-    ->
+    then
         Subst = Subst1
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
@@ -1503,14 +1517,14 @@ unify_constraint_list([A | As], [B | Bs], TVars, !Subst) :-
     list(T)::out) is det.
 
 split_list_at_index(Index, List, Before, At, After) :-
-    (
-        list.split_list(Index - 1, List, Before0, AtAndAfter),
-        AtAndAfter = [At0 | After0]
-    ->
-        Before = Before0,
-        At = At0,
-        After = After0
-    ;
+    ( if
+        list.split_list(Index - 1, List, BeforePrime, AtAndAfter),
+        AtAndAfter = [AtPrime | AfterPrime]
+    then
+        Before = BeforePrime,
+        At = AtPrime,
+        After = AfterPrime
+    else
         unexpected($module, $pred, "split_list_at_index")
     ).
 
@@ -1531,7 +1545,7 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
     (
         TermTypeBody = hlds_du_type(Ctors, _, _, _, _, _, _, _, _),
         FieldName = unqualify_name(FieldSymName),
-        get_constructor_containing_field_2(TermTypeCtor, Ctors, FieldName,
+        get_constructor_containing_field_loop(TermTypeCtor, Ctors, FieldName,
             ConsId, FieldNumber)
     ;
         ( TermTypeBody = hlds_eqv_type(_)
@@ -1542,33 +1556,35 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
         unexpected($module, $pred, "not du type")
     ).
 
-:- pred get_constructor_containing_field_2(type_ctor::in,
+:- pred get_constructor_containing_field_loop(type_ctor::in,
     list(constructor)::in, string::in, cons_id::out, int::out) is det.
 
-get_constructor_containing_field_2(_, [], _, _, _) :-
+get_constructor_containing_field_loop(_, [], _, _, _) :-
     unexpected($module, $pred, "can't find field").
-get_constructor_containing_field_2(TypeCtor, [Ctor | Ctors], UnqualFieldName,
+get_constructor_containing_field_loop(TypeCtor, [Ctor | Ctors], UnqualFieldName,
         ConsId, FieldNumber) :-
     Ctor = ctor(_, _, SymName, CtorArgs, Arity, _Ctxt),
-    ( search_for_named_field(CtorArgs, UnqualFieldName, 1, FieldNumberPrime) ->
+    ( if
+        search_for_named_field(CtorArgs, UnqualFieldName, 1, FieldNumberPrime)
+    then
         ConsId = cons(SymName, Arity, TypeCtor),
         FieldNumber = FieldNumberPrime
-    ;
-        get_constructor_containing_field_2(TypeCtor, Ctors, UnqualFieldName,
+    else
+        get_constructor_containing_field_loop(TypeCtor, Ctors, UnqualFieldName,
             ConsId, FieldNumber)
     ).
 
 :- pred search_for_named_field(list(constructor_arg)::in,
     string::in, int::in, int::out) is semidet.
 
-search_for_named_field([CtorArg | CtorArgs],
-        UnqualFieldName, CurFieldNumber, NamedFieldNumber) :-
-    (
+search_for_named_field([CtorArg | CtorArgs], UnqualFieldName,
+        CurFieldNumber, NamedFieldNumber) :-
+    ( if
         CtorArg ^ arg_field_name = yes(ctor_field_name(ArgFieldName, _)),
         UnqualFieldName = unqualify_name(ArgFieldName)
-    ->
+    then
         NamedFieldNumber = CurFieldNumber
-    ;
+    else
         search_for_named_field(CtorArgs, UnqualFieldName,
             CurFieldNumber + 1, NamedFieldNumber)
     ).
@@ -1618,19 +1634,19 @@ make_new_var(Type, Var, !VarTypes, !VarSet) :-
 
 check_for_missing_type_defns(ModuleInfo, Specs) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
-    foldl_over_type_ctor_defns(check_for_missing_type_defns_2, TypeTable,
+    foldl_over_type_ctor_defns(check_for_missing_type_defns_in_type, TypeTable,
         [], Specs).
 
-:- pred check_for_missing_type_defns_2(type_ctor::in, hlds_type_defn::in,
+:- pred check_for_missing_type_defns_in_type(type_ctor::in, hlds_type_defn::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_missing_type_defns_2(TypeCtor, TypeDefn, !Specs) :-
-    (
+check_for_missing_type_defns_in_type(TypeCtor, TypeDefn, !Specs) :-
+    ( if
         get_type_defn_status(TypeDefn, TypeStatus),
         type_status_defined_in_this_module(TypeStatus) = yes,
         get_type_defn_body(TypeDefn, TypeBody),
         TypeBody = hlds_abstract_type(_)
-    ->
+    then
         % We expect the builtin types character, float, int and string to have
         % abstract declarations with no definitions. The following types from
         % the type_desc module also only have abstract declarations:
@@ -1645,7 +1661,7 @@ check_for_missing_type_defns_2(TypeCtor, TypeDefn, !Specs) :-
 
         TypeCtor = type_ctor(SymName, Arity),
         BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
-        (
+        ( if
             sym_name_get_module_name(SymName, ModuleName),
             not any_mercury_builtin_module(ModuleName),
 
@@ -1657,7 +1673,7 @@ check_for_missing_type_defns_2(TypeCtor, TypeDefn, !Specs) :-
             % If we have previously reported an error for this type,
             % then the definition may have been present, though erroneous.
             get_type_defn_prev_errors(TypeDefn, type_defn_no_prev_errors)
-        ->
+        then
             get_type_defn_context(TypeDefn, TypeContext),
             Pieces = [words("Error: abstract declaration for type"),
                 sym_name_and_arity(SymName / Arity),
@@ -1665,10 +1681,10 @@ check_for_missing_type_defns_2(TypeCtor, TypeDefn, !Specs) :-
             Msg = simple_msg(TypeContext, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_type_check, [Msg]),
             !:Specs = [Spec | !.Specs]
-        ;
+        else
             true
         )
-    ;
+    else
         true
     ).
 
