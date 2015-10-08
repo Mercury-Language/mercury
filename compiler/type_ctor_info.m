@@ -24,7 +24,7 @@
 % type_ctor_infos of all the locally-defined types into the HLDS; some of
 % these type_ctor_gen_infos are later eliminated by dead_proc_elim.m. The
 % second stage then generates lower-level RTTI descriptions of type_ctor_infos
-% from the surviving type_ctor_gen_infos.  These can then be easily
+% from the surviving type_ctor_gen_infos. These can then be easily
 % turned into either LLDS or MLDS.
 %
 % The documentation of the data structures built in this module is in
@@ -107,15 +107,15 @@ generate_hlds(!ModuleInfo) :-
     get_all_type_ctor_defns(TypeTable, TypeCtorsDefns),
     gen_type_ctor_gen_infos(!.ModuleInfo, ModuleName, TypeCtorsDefns,
         LocalTypeCtorGenInfos),
-    (
+    ( if
         ModuleName = mercury_public_builtin_module,
         compiler_generated_rtti_for_builtins(!.ModuleInfo)
-    ->
+    then
         gen_builtin_type_ctor_gen_infos(!.ModuleInfo, ModuleName,
             builtin_type_ctors_with_no_hlds_type_defn,
             BuiltinTypeCtorGenInfos),
         AllTypeCtorGenInfos = BuiltinTypeCtorGenInfos ++ LocalTypeCtorGenInfos
-    ;
+    else
         AllTypeCtorGenInfos = LocalTypeCtorGenInfos
     ),
     module_info_set_type_ctor_gen_infos(AllTypeCtorGenInfos, !ModuleInfo).
@@ -136,15 +136,15 @@ gen_type_ctor_gen_infos(ModuleInfo, ModuleName, [TypeCtorDefn | TypeCtorDefns],
     TypeCtor = type_ctor(SymName, TypeArity),
     (
         SymName = qualified(TypeModuleName, TypeName),
-        (
+        ( if
             TypeModuleName = ModuleName,
             create_type_ctor_gen(ModuleInfo, TypeCtorDefn,
                 TypeModuleName, TypeName, TypeArity, TypeDefn)
-        ->
+        then
             gen_type_ctor_gen_info(ModuleInfo, TypeCtor, TypeModuleName,
                 TypeName, TypeArity, TypeDefn, TypeCtorGenInfo),
             TypeCtorGenInfos = [TypeCtorGenInfo | TypeCtorGenInfosTail]
-        ;
+        else
             TypeCtorGenInfos = TypeCtorGenInfosTail
         )
     ;
@@ -176,11 +176,11 @@ gen_type_ctor_gen_infos(ModuleInfo, ModuleName, [TypeCtorDefn | TypeCtorDefns],
 create_type_ctor_gen(ModuleInfo, TypeCtor - TypeDefn, TypeModuleName,
         TypeName, TypeArity, TypeDefn) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    (
+    ( if
         ( TypeBody = hlds_abstract_type(_)
         ; type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody)
         )
-    ->
+    then
         % The builtin types which are declared abstract or which have
         % hand defined rtti due to having a fake type body.
         compiler_generated_rtti_for_builtins(ModuleInfo),
@@ -190,7 +190,7 @@ create_type_ctor_gen(ModuleInfo, TypeCtor - TypeDefn, TypeModuleName,
         ;
             impl_type_ctor(ModuleNameString, TypeName, TypeArity, _)
         )
-    ;
+    else
         true
     ).
 
@@ -239,7 +239,7 @@ gen_type_ctor_gen_info(ModuleInfo, TypeCtor, ModuleName, TypeName, TypeArity,
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_special_pred_maps(ModuleInfo, SpecMaps),
     globals.lookup_bool_option(Globals, special_preds, SpecialPreds),
-    (
+    ( if
         (
             SpecialPreds = yes
         ;
@@ -247,7 +247,7 @@ gen_type_ctor_gen_info(ModuleInfo, TypeCtor, ModuleName, TypeName, TypeArity,
             hlds_data.get_type_defn_body(TypeDefn, Body),
             Body ^ du_type_usereq = yes(_UserDefinedEquality)
         )
-    ->
+    then
         UnifyMap = SpecMaps ^ spm_unify_map,
         map.lookup(UnifyMap, TypeCtor, UnifyPredId),
         special_pred_mode_num(spec_pred_unify, UnifyProcInt),
@@ -259,7 +259,7 @@ gen_type_ctor_gen_info(ModuleInfo, TypeCtor, ModuleName, TypeName, TypeArity,
         special_pred_mode_num(spec_pred_compare, CompareProcInt),
         proc_id_to_int(CompareProcId, CompareProcInt),
         Compare = proc(ComparePredId, CompareProcId)
-    ;
+    else
         lookup_builtin_pred_proc_id(ModuleInfo, mercury_private_builtin_module,
             "unused", pf_predicate, 0, only_mode, PredId, ProcId),
         Unused = proc(PredId, ProcId),
@@ -314,29 +314,29 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
 
     % It is an error for a type body to be an abstract type unless
     % we are generating the RTTI for builtins.
-    (
+    ( if
         TypeBody = hlds_abstract_type(_),
-        \+ compiler_generated_rtti_for_builtins(ModuleInfo)
-    ->
+        not compiler_generated_rtti_for_builtins(ModuleInfo)
+    then
         unexpected($module, $pred, "abstract_type")
-    ;
+    else
         true
     ),
 
     % We check for hand-coded definitions before inspecting the type-bodys
     % as some type definitions have fake bodies, e.g.
     % private_builtin.typeclass_info.
-    (
+    ( if
         ModuleName = unqualified(ModuleStr1),
         builtin_type_ctor(ModuleStr1, TypeName, TypeArity, BuiltinCtor)
-    ->
+    then
         Details = tcd_builtin(BuiltinCtor)
-    ;
+    else if
         ModuleName = unqualified(ModuleStr),
         impl_type_ctor(ModuleStr, TypeName, TypeArity, ImplCtor)
-    ->
+    then
         Details = tcd_impl_artifact(ImplCtor)
-    ;
+    else
         (
             TypeBody = hlds_abstract_type(_),
             unexpected($module, $pred, "abstract_type")
@@ -356,9 +356,9 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             TypeBody = hlds_foreign_type(ForeignBody),
             foreign_type_body_to_exported_type(ModuleInfo, ForeignBody, _, _,
                 Assertions),
-            ( asserted_stable(Assertions) ->
+            ( if asserted_stable(Assertions) then
                 IsStable = is_stable
-            ;
+            else
                 IsStable = is_not_stable
             ),
             Details = tcd_foreign(IsStable)
@@ -481,7 +481,7 @@ impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
     % structures used for RTTI.
     %
     % This number should be kept in sync with MR_RTTI_VERSION in
-    % runtime/mercury_type_info.h.  This means you need to update
+    % runtime/mercury_type_info.h. This means you need to update
     % the handwritten type_ctor_info structures (and the macros that
     % generate them) as well as the code in the runtime that uses RTTI
     % to conform to whatever changes the new version introduces.
@@ -531,9 +531,14 @@ make_mercury_enum_details(TypeCtor, Ctors, ConsTagMap, ReserveTag,
     NameMap0 = map.init,
     list.foldl2(make_enum_maps, EnumFunctors,
         ValueMap0, ValueMap, NameMap0, NameMap),
-    ( Ctors = [_] ->
+    (
+        Ctors = [],
+        unexpected($module, $pred, "enum with no ctors")
+    ;
+        Ctors = [_],
         IsDummy = yes
     ;
+        Ctors = [_, _ | _],
         IsDummy = no
     ),
     FunctorNumberMap = make_functor_number_map(Ctors),
@@ -907,7 +912,7 @@ generate_exist_into(ExistTVars, Constraints, ClassTable, ExistInfo) :-
 
 find_type_info_index(Constraints, ClassTable, StartSlot, TVar, !LocnMap) :-
     first_matching_type_class_info(Constraints, TVar,
-        FirstConstraint, StartSlot, Slot, TypeInfoIndex),
+        StartSlot, Slot, FirstConstraint, TypeInfoIndex),
     FirstConstraint = constraint(ClassName, ArgTypes),
     list.length(ArgTypes, ClassArity),
     map.lookup(ClassTable, class_id(ClassName, ClassArity), ClassDefn),
@@ -917,21 +922,21 @@ find_type_info_index(Constraints, ClassTable, StartSlot, TVar, !LocnMap) :-
     map.det_insert(TVar, Locn, !LocnMap).
 
 :- pred first_matching_type_class_info(list(prog_constraint)::in, tvar::in,
-    prog_constraint::out, int::in, int::out, int::out) is det.
+    int::in, int::out, prog_constraint::out, int::out) is det.
 
-first_matching_type_class_info([], _, _, !N, _) :-
+first_matching_type_class_info([], _, !N, _, _) :-
     unexpected($module, $pred, "not found").
-first_matching_type_class_info([C | Cs], TVar, MatchingConstraint, !N,
-        TypeInfoIndex) :-
-    C = constraint(_, ArgTypes),
+first_matching_type_class_info([Constraint | Constraints], TVar,
+        !N, MatchingConstraint, TypeInfoIndex) :-
+    Constraint = constraint(_, ArgTypes),
     type_vars_list(ArgTypes, TVs),
-    ( list.index1_of_first_occurrence(TVs, TVar, Index) ->
-        MatchingConstraint = C,
+    ( if list.index1_of_first_occurrence(TVs, TVar, Index) then
+        MatchingConstraint = Constraint,
         TypeInfoIndex = Index
-    ;
+    else
         !:N = !.N + 1,
-        first_matching_type_class_info(Cs, TVar, MatchingConstraint, !N,
-            TypeInfoIndex)
+        first_matching_type_class_info(Constraints, TVar,
+            !N, MatchingConstraint, TypeInfoIndex)
     ).
 
 %---------------------------------------------------------------------------%
@@ -958,14 +963,14 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
             SectagAndLocn = sectag_locn_remote(Sectag),
             SectagLocn = sectag_remote
         ),
-        ( map.search(!.PtagTable, Ptag, SectagTable0) ->
+        ( if map.search(!.PtagTable, Ptag, SectagTable0) then
             SectagTable0 = sectag_table(Locn0, NumSharers0, SectagMap0),
             expect(unify(SectagLocn, Locn0), $module, $pred,
                 "sectag locn disagreement"),
             map.det_insert(Sectag, DuFunctor, SectagMap0, SectagMap),
             SectagTable = sectag_table(Locn0, NumSharers0 + 1, SectagMap),
             map.det_update(Ptag, SectagTable, !PtagTable)
-        ;
+        else
             SectagMap = map.singleton(Sectag, DuFunctor),
             SectagTable = sectag_table(SectagLocn, 1, SectagMap),
             map.det_insert(Ptag, SectagTable, !PtagTable)
@@ -982,10 +987,10 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
 make_du_name_ordered_table(DuFunctor, !NameTable) :-
     Name = DuFunctor ^ du_name,
     Arity = DuFunctor ^ du_orig_arity,
-    ( map.search(!.NameTable, Name, NameMap0) ->
+    ( if map.search(!.NameTable, Name, NameMap0) then
         map.det_insert(Arity, DuFunctor, NameMap0, NameMap),
         map.det_update(Name, NameMap, !NameTable)
-    ;
+    else
         NameMap = map.singleton(Arity, DuFunctor),
         map.det_insert(Name, NameMap, !NameTable)
     ).
@@ -1004,10 +1009,10 @@ make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
         Name = ResFunctor ^ res_name,
         Arity = 0
     ),
-    ( map.search(!.NameTable, Name, NameMap0) ->
+    ( if map.search(!.NameTable, Name, NameMap0) then
         map.det_insert(Arity, MaybeResFunctor, NameMap0, NameMap),
         map.det_update(Name, NameMap, !NameTable)
-    ;
+    else
         NameMap = map.singleton(Arity, MaybeResFunctor),
         map.det_insert(Name, NameMap, !NameTable)
     ).
@@ -1020,6 +1025,7 @@ make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
 :- func make_functor_number_map(list(constructor)) = list(int).
 
 make_functor_number_map(Ctors) = Map :-
+    % ZZZ
     CtorNames : assoc_list(sym_name, int) =
             list.map(
                 (func(Ctor) = Ctor ^ cons_name - length(Ctor ^ cons_args)),
@@ -1056,9 +1062,9 @@ compute_contains_var_bit_vector_2([ArgType | ArgTypes], ArgNum, !Vector) :-
 :- pred update_contains_var_bit_vector(int::in, int::in, int::out) is det.
 
 update_contains_var_bit_vector(ArgNum, !Vector) :-
-    ( ArgNum >= contains_var_bit_vector_size - 1 ->
+    ( if ArgNum >= contains_var_bit_vector_size - 1 then
         BitNum = contains_var_bit_vector_size - 1
-    ;
+    else
         BitNum = ArgNum
     ),
     !:Vector = !.Vector \/ (1 << BitNum).
