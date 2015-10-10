@@ -50,12 +50,12 @@
 %       ...,
 %       V1 = ...,
 %       ...,
-%       (
+%       ( if
 %           ...
-%       ->
+%       then
 %           V2 = ... V1 ...,
 %           string.format(..., V2, ...)
-%       ;
+%       else
 %           V3 = ... V1 ...,
 %           string.format(..., V3, ...)
 %       ),
@@ -294,26 +294,26 @@ is_format_call(ModuleName, Name, Args) :-
     % NOTE The logic here must match the test logic of
     % is_format_call_kind_and_vars below.
     Name = "format",
-    (
+    ( if
         ModuleName = mercury_string_module
-    ->
+    then
         Args = [_FormatStringVar, _FormattedValuesVar, _ResultVar]
-    ;
+    else if
         ModuleName = mercury_io_module
-    ->
+    then
         (
             Args = [_FormatStringVar, _FormattedValuesVar, _IOIn, _IOOut]
         ;
             Args = [_StreamVar, _FormatStringVar, _FormattedValuesVar,
                 _IOIn, _IOOut]
         )
-    ;
+    else if
         ModuleName = mercury_std_lib_module_name(
             qualified(unqualified("stream"), "string_writer"))
-    ->
+    then
         Args = [_TC_InfoVarForStream, _StreamVar, _FormatStringVar,
             _FormattedValuesVar, _StateInVar, _StateOutVar]
-    ;
+    else
         fail
     ).
 
@@ -332,17 +332,17 @@ is_format_call_kind_and_vars(ModuleName, Name, Args, GoalInfo,
     %
     % NOTE The test logic here must be duplicated in is_format_call above.
     Name = "format",
-    (
+    ( if
         ModuleName = mercury_string_module
-    ->
+    then
         % We have these arguments regardless of whether we call the
         % predicate or function version of string.format.
         Args = [FormatStringVar, FormattedValuesVar, ResultVar],
         Context = goal_info_get_context(GoalInfo),
         Kind = kind_string_format(Context, ResultVar)
-    ;
+    else if
         ModuleName = mercury_io_module
-    ->
+    then
         (
             Args = [FormatStringVar, FormattedValuesVar, IOIn, IOOut],
             Context = goal_info_get_context(GoalInfo),
@@ -353,10 +353,10 @@ is_format_call_kind_and_vars(ModuleName, Name, Args, GoalInfo,
             Context = goal_info_get_context(GoalInfo),
             Kind = kind_io_format_stream(Context, StreamVar, IOIn, IOOut)
         )
-    ;
+    else if
         ModuleName = mercury_std_lib_module_name(
             qualified(unqualified("stream"), "string_writer"))
-    ->
+    then
         % Since we do this check after polymorphism, there will have been
         % a typeclassinfo inserted at the front of the argument list.
         Args = [TC_InfoVarForStream, StreamVar, FormatStringVar,
@@ -364,7 +364,7 @@ is_format_call_kind_and_vars(ModuleName, Name, Args, GoalInfo,
         Context = goal_info_get_context(GoalInfo),
         Kind = kind_stream_string_writer(Context, TC_InfoVarForStream,
             StreamVar, StateInVar, StateOutVar)
-    ;
+    else
         fail
     ).
 
@@ -406,10 +406,10 @@ analyze_and_optimize_format_calls(ModuleInfo, Goal0, MaybeGoal, Specs,
         check_format_call_site(ModuleInfo, ShouldOptFormatCalls,
             ConjMaps, PredMap),
         FormatCallSites, map.init, GoalIdMap, [], Specs, !VarSet, !VarTypes),
-    ( map.is_empty(GoalIdMap) ->
+    ( if map.is_empty(GoalIdMap) then
         % We have not found anything to improve in Goal1.
         MaybeGoal = no
-    ;
+    else
         % We want to set NeededVars0 to be the set of the procedure's
         % output arguments, but it is ok to add into it some non-output
         % arguments whose insts happen to change as well.
@@ -465,16 +465,16 @@ check_format_call_site(ModuleInfo, ShouldOptFormatCalls, ConjMaps, PredMap,
     ),
 
     follow_list_skeleton(ConjMaps, PredMap, CurId, ValuesVar, SkeletonResult),
-    (
+    ( if
         SkeletonResult = follow_skeleton_result(PolytypeVars0, SkeletonVars0),
         list.map(follow_poly_type(ConjMaps, PredMap, CurId), PolytypeVars0,
             MaybeAbstractPolyTypes0),
         project_all_yes(MaybeAbstractPolyTypes0, AbstractPolyTypes0)
-    ->
+    then
         PolyTypesToDeleteVars0 =
             [StringVar, ValuesVar | SkeletonVars0] ++ PolytypeVars0,
         MaybePolyTypesInfo = yes({AbstractPolyTypes0, PolyTypesToDeleteVars0})
-    ;
+    else
         MaybePolyTypesInfo = no,
         globals.lookup_bool_option(Globals, warn_unknown_format_calls,
             WarnUnknownFormatCallsB),
@@ -493,11 +493,11 @@ check_format_call_site(ModuleInfo, ShouldOptFormatCalls, ConjMaps, PredMap,
         )
     ),
 
-    (
+    ( if
         FormatStringResult = follow_string_result(FormatString,
             FormatStringToDeleteVars, ToDeleteGoals),
         MaybePolyTypesInfo = yes({AbstractPolyTypes, PolyTypeToDeleteVars})
-    ->
+    then
         string.to_char_list(FormatString, FormatStringChars),
         parse_and_optimize_format_string(FormatStringChars, AbstractPolyTypes,
             Context, MaybeSpecs),
@@ -543,7 +543,7 @@ check_format_call_site(ModuleInfo, ShouldOptFormatCalls, ConjMaps, PredMap,
                     !GoalIdMap, !VarSet, !VarTypes)
             )
         )
-    ;
+    else
         % Any error message has already been generated, if asked for.
         true
     ).
@@ -586,9 +586,9 @@ string_format_error_to_words(Error) =
 follow_format_string(ConjMaps, PredMap, CurId, StringVar, Result) :-
     ConjMap = get_conj_map(ConjMaps, CurId),
     ConjMap = conj_map(StringMap, _, _, EqvMap),
-    ( map.search(EqvMap, StringVar, EqvVar) ->
+    ( if map.search(EqvMap, StringVar, EqvVar) then
         follow_format_string(ConjMaps, PredMap, CurId, EqvVar, Result)
-    ; map.search(StringMap, StringVar, StringState) ->
+    else if map.search(StringMap, StringVar, StringState) then
         (
             StringState = string_const(String),
             Result = follow_string_result(String, [StringVar], [])
@@ -598,16 +598,16 @@ follow_format_string(ConjMaps, PredMap, CurId, StringVar, Result) :-
                 ResultA),
             follow_format_string(ConjMaps, PredMap, CurId, StringVarB,
                 ResultB),
-            (
+            ( if
                 ResultA = follow_string_result(StringA,
                     ToDeleteVarsA, ToDeleteGoalsA),
                 ResultB = follow_string_result(StringB,
                     ToDeleteVarsB, ToDeleteGoalsB)
-            ->
+            then
                 Result = follow_string_result(StringA ++ StringB,
                     ToDeleteVarsA ++ ToDeleteVarsB,
                     [AppendGoalId] ++ ToDeleteGoalsA ++ ToDeleteGoalsB)
-            ;
+            else
                 Result = no_follow_string_result
             )
         ;
@@ -622,21 +622,21 @@ follow_format_string(ConjMaps, PredMap, CurId, StringVar, Result) :-
                     SkeletonVars),
                 list.map(follow_format_string(ConjMaps, PredMap, CurId),
                     SubStringVars, SubStringResults),
-                (
+                ( if
                     project_all_follow_string_results(SubStringResults,
                         String, SubStringToDeleteVars, SubStringToDeleteGoals)
-                ->
+                then
                     Result = follow_string_result(String,
                         SkeletonVars ++ SubStringToDeleteVars,
                         [AppendListGoalId | SubStringToDeleteGoals])
-                ;
+                else
                     Result = no_follow_string_result
                 )
             )
         )
-    ; map.search(PredMap, CurId, PredId) ->
+    else if map.search(PredMap, CurId, PredId) then
         follow_format_string(ConjMaps, PredMap, PredId, StringVar, Result)
-    ;
+    else
         Result = no_follow_string_result
     ).
 
@@ -667,9 +667,9 @@ project_all_follow_string_results([HeadResult | TailResults],
 follow_list_skeleton(ConjMaps, PredMap, CurId, ListVar, Result) :-
     ConjMap = get_conj_map(ConjMaps, CurId),
     ConjMap = conj_map(_, ListMap, _, EqvMap),
-    ( map.search(EqvMap, ListVar, EqvVar) ->
+    ( if map.search(EqvMap, ListVar, EqvVar) then
         follow_list_skeleton(ConjMaps, PredMap, CurId, EqvVar, Result)
-    ; map.search(ListMap, ListVar, ListState) ->
+    else if map.search(ListMap, ListVar, ListState) then
         (
             ListState = list_skeleton_nil,
             Result = follow_skeleton_result([], [ListVar])
@@ -684,9 +684,9 @@ follow_list_skeleton(ConjMaps, PredMap, CurId, ListVar, Result) :-
                 TailResult = follow_skeleton_result(TailElementVars,
                     TailSkeletonVars),
                 ElementVars = [HeadVar | TailElementVars],
-                ( list.member(TailVar, TailSkeletonVars) ->
+                ( if list.member(TailVar, TailSkeletonVars) then
                     true
-                ;
+                else
                     unexpected($module, $pred,
                         "TailVar not in TailSkeletonVars")
                 ),
@@ -694,9 +694,9 @@ follow_list_skeleton(ConjMaps, PredMap, CurId, ListVar, Result) :-
                 Result = follow_skeleton_result(ElementVars, SkeletonVars)
             )
         )
-    ; map.search(PredMap, CurId, PredId) ->
+    else if map.search(PredMap, CurId, PredId) then
         follow_list_skeleton(ConjMaps, PredMap, PredId, ListVar, Result)
-    ;
+    else
         Result = no_follow_skeleton_result
     ).
 
@@ -707,15 +707,15 @@ follow_poly_type(ConjMaps, PredMap, CurId, PolytypeVar,
         MaybeAbstractPolyType) :-
     ConjMap = get_conj_map(ConjMaps, CurId),
     ConjMap = conj_map(_, _, ElementMap, EqvMap),
-    ( map.search(EqvMap, PolytypeVar, EqvVar) ->
+    ( if map.search(EqvMap, PolytypeVar, EqvVar) then
         follow_poly_type(ConjMaps, PredMap, CurId, EqvVar,
             MaybeAbstractPolyType)
-    ; map.search(ElementMap, PolytypeVar, AbstractPolyType) ->
+    else if map.search(ElementMap, PolytypeVar, AbstractPolyType) then
         MaybeAbstractPolyType = yes(AbstractPolyType)
-    ; map.search(PredMap, CurId, PredId) ->
+    else if map.search(PredMap, CurId, PredId) then
         follow_poly_type(ConjMaps, PredMap, PredId, PolytypeVar,
             MaybeAbstractPolyType)
-    ;
+    else
         MaybeAbstractPolyType = no
     ).
 
@@ -780,7 +780,7 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
         map.det_insert(SubGoalId, CurId, !PredMap)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(TermVar, from_ground_term_construct),
             % These scopes cannot build the format string (since that is
             % either a single constant, or the result of an operation on
@@ -789,10 +789,10 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
             % only in degenerate cases. However, we do have some degenerate
             % cases in the test suite.
             set_of_var.member(!.RelevantVars, TermVar)
-        ->
+        then
             format_call_traverse_conj(ModuleInfo, [SubGoal], CurId,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars)
-        ;
+        else
             % It is ok not to traverse the subgoal. The scope cannot contain
             % any calls, and the unifications it does contain are apparently
             % not of interest to any later format call.
@@ -807,10 +807,10 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ModuleName = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),
-        (
+        ( if
             is_format_call_kind_and_vars(ModuleName, Name, ArgVars, GoalInfo,
                 Kind, StringVar, ValuesVar)
-        ->
+        then
             Arity = pred_info_orig_arity(PredInfo),
             GoalId = goal_info_get_goal_id(GoalInfo),
             Context = goal_info_get_context(GoalInfo),
@@ -818,36 +818,36 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
                 Kind, ModuleName, Name, Arity, Context, CurId),
             !:FormatCallSites = [FormatCallSite | !.FormatCallSites],
             set_of_var.insert_list([StringVar, ValuesVar], !RelevantVars)
-        ;
+        else if
             ModuleName = mercury_string_module
-        ->
-            (
+        then
+            ( if
                 ( Name = "append"
                 ; Name = "++"
                 ),
                 ArgVars = [ArgVarA, ArgVarB, ResultVar],
                 set_of_var.member(!.RelevantVars, ResultVar)
-            ->
+            then
                 set_of_var.delete(ResultVar, !RelevantVars),
                 set_of_var.insert(ArgVarA, !RelevantVars),
                 set_of_var.insert(ArgVarB, !RelevantVars),
                 GoalId = goal_info_get_goal_id(GoalInfo),
                 StringState = string_append(GoalId, ArgVarA, ArgVarB),
                 add_to_string_map(CurId, ResultVar, StringState, !ConjMaps)
-            ;
+            else if
                 Name = "append_list",
                 ArgVars = [ListSkeletonVar, ResultVar],
                 set_of_var.member(!.RelevantVars, ResultVar)
-            ->
+            then
                 set_of_var.delete(ResultVar, !RelevantVars),
                 set_of_var.insert(ListSkeletonVar, !RelevantVars),
                 GoalId = goal_info_get_goal_id(GoalInfo),
                 StringState = string_append_list(GoalId, ListSkeletonVar),
                 add_to_string_map(CurId, ResultVar, StringState, !ConjMaps)
-            ;
+            else
                 true
             )
-        ;
+        else
             true
         )
     ;
@@ -895,30 +895,30 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
         !RelevantVars) :-
     (
         Unification = assign(TargetVar, SourceVar),
-        ( set_of_var.member(!.RelevantVars, TargetVar) ->
+        ( if set_of_var.member(!.RelevantVars, TargetVar) then
             set_of_var.delete(TargetVar, !RelevantVars),
             set_of_var.insert(SourceVar, !RelevantVars),
             add_to_fc_eqv_map(CurId, TargetVar, SourceVar, !ConjMaps)
-        ;
+        else
             true
         )
     ;
         Unification = construct(CellVar, ConsId, ArgVars, _, _, _, _),
-        ( set_of_var.member(!.RelevantVars, CellVar) ->
-            (
+        ( if set_of_var.member(!.RelevantVars, CellVar) then
+            ( if
                 ConsId = string_const(StringConst)
-            ->
+            then
                 expect(unify(ArgVars, []), $module, $pred,
                     "string constant with args"),
                 set_of_var.delete(CellVar, !RelevantVars),
                 add_to_string_map(CurId, CellVar, string_const(StringConst),
                     !ConjMaps)
-            ;
+            else if
                 ConsId = cons(SymName, Arity, TypeCtor),
                 TypeCtor = list_type_ctor
-            ->
+            then
                 Functor = unqualify_name(SymName),
-                (
+                ( if
                     (
                         Functor = "[|]",
                         Arity = 2,
@@ -930,25 +930,25 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
                         ArgVars = [],
                         ListPrime = list_skeleton_nil
                     )
-                ->
+                then
                     List = ListPrime
-                ;
+                else
                     unexpected($module, $pred, "unexpected list functor")
                 ),
                 set_of_var.delete(CellVar, !RelevantVars),
                 set_of_var.insert_list(ArgVars, !RelevantVars),
                 add_to_list_map(CurId, CellVar, List, !ConjMaps)
-            ;
+            else if
                 ConsId = cons(SymName, Arity, TypeCtor),
                 TypeCtor = poly_type_type_ctor
-            ->
-                (
+            then
+                ( if
                     Arity = 1,
                     ArgVars = [ArgVar]
-                ->
+                then
                     Context = goal_info_get_context(GoalInfo),
                     Functor = unqualify_name(SymName),
-                    (
+                    ( if
                         (
                             Functor = "f",
                             VarPolyTypePrime = apt_f(ArgVar, Context)
@@ -962,21 +962,21 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
                             Functor = "c",
                             VarPolyTypePrime = apt_c(ArgVar, Context)
                         )
-                    ->
+                    then
                         VarPolyType = VarPolyTypePrime
-                    ;
+                    else
                         unexpected($module, $pred,
                             "unexpected poly_type functor")
                     )
-                ;
+                else
                     unexpected($module, $pred, "poly_type arity mismatch")
                 ),
                 set_of_var.delete(CellVar, !RelevantVars),
                 add_to_element_map(CurId, CellVar, VarPolyType, !ConjMaps)
-            ;
+            else
                 true
             )
-        ;
+        else
             true
         )
     ;
@@ -1031,9 +1031,9 @@ alloc_id(ConjId, !Counter) :-
 :- func get_conj_map(conj_maps, conj_id) = conj_map.
 
 get_conj_map(ConjMaps, ConjId) = ConjMap :-
-    ( map.search(ConjMaps, ConjId, ConjMapPrime) ->
+    ( if map.search(ConjMaps, ConjId, ConjMapPrime) then
         ConjMap = ConjMapPrime
-    ;
+    else
         ConjMap = conj_map(map.init, map.init, map.init, map.init)
     ).
 
@@ -1048,12 +1048,12 @@ add_to_string_map(ConjId, Var, StringState, !ConjMaps) :-
         io.write(StringState, !IO),
         io.nl(!IO)
     ),
-    ( map.search(!.ConjMaps, ConjId, ConjMap0) ->
+    ( if map.search(!.ConjMaps, ConjId, ConjMap0) then
         ConjMap0 = conj_map(StringMap0, ListMap, ElementMap, EqvMap),
         map.det_insert(Var, StringState, StringMap0, StringMap),
         ConjMap = conj_map(StringMap, ListMap, ElementMap, EqvMap),
         map.det_update(ConjId, ConjMap, !ConjMaps)
-    ;
+    else
         StringMap = map.singleton(Var, StringState),
         ConjMap = conj_map(StringMap, map.init, map.init, map.init),
         map.det_insert(ConjId, ConjMap, !ConjMaps)
@@ -1070,12 +1070,12 @@ add_to_list_map(ConjId, Var, ListState, !ConjMaps) :-
         io.write(ListState, !IO),
         io.nl(!IO)
     ),
-    ( map.search(!.ConjMaps, ConjId, ConjMap0) ->
+    ( if map.search(!.ConjMaps, ConjId, ConjMap0) then
         ConjMap0 = conj_map(StringMap, ListMap0, ElementMap, EqvMap),
         map.det_insert(Var, ListState, ListMap0, ListMap),
         ConjMap = conj_map(StringMap, ListMap, ElementMap, EqvMap),
         map.det_update(ConjId, ConjMap, !ConjMaps)
-    ;
+    else
         ListMap = map.singleton(Var, ListState),
         ConjMap = conj_map(map.init, ListMap, map.init, map.init),
         map.det_insert(ConjId, ConjMap, !ConjMaps)
@@ -1092,12 +1092,12 @@ add_to_element_map(ConjId, Var, Element, !ConjMaps) :-
         io.write(Element, !IO),
         io.nl(!IO)
     ),
-    ( map.search(!.ConjMaps, ConjId, ConjMap0) ->
+    ( if map.search(!.ConjMaps, ConjId, ConjMap0) then
         ConjMap0 = conj_map(StringMap, ListMap, ElementMap0, EqvMap),
         map.det_insert(Var, Element, ElementMap0, ElementMap),
         ConjMap = conj_map(StringMap, ListMap, ElementMap, EqvMap),
         map.det_update(ConjId, ConjMap, !ConjMaps)
-    ;
+    else
         ElementMap = map.singleton(Var, Element),
         ConjMap = conj_map(map.init, map.init, ElementMap, map.init),
         map.det_insert(ConjId, ConjMap, !ConjMaps)
@@ -1107,12 +1107,12 @@ add_to_element_map(ConjId, Var, Element, !ConjMaps) :-
     conj_maps::in, conj_maps::out) is det.
 
 add_to_fc_eqv_map(ConjId, Var, EqvVar, !ConjMaps) :-
-    ( map.search(!.ConjMaps, ConjId, ConjMap0) ->
+    ( if map.search(!.ConjMaps, ConjId, ConjMap0) then
         ConjMap0 = conj_map(StringMap, ListMap, ElementMap, EqvMap0),
         map.det_insert(Var, EqvVar, EqvMap0, EqvMap),
         ConjMap = conj_map(StringMap, ListMap, ElementMap, EqvMap),
         map.det_update(ConjId, ConjMap, !ConjMaps)
-    ;
+    else
         EqvMap = map.singleton(Var, EqvVar),
         ConjMap = conj_map(map.init, map.init, map.init, EqvMap),
         map.det_insert(ConjId, ConjMap, !ConjMaps)
@@ -1151,22 +1151,22 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
     (
         GoalExpr0 = plain_call(_, _, _, _, _, _),
         GoalId = goal_info_get_goal_id(GoalInfo),
-        ( map.remove(GoalId, OptGoalInfo, !GoalIdMap) ->
+        ( if map.remove(GoalId, OptGoalInfo, !GoalIdMap) then
             OptGoalInfo = fc_opt_goal_info(ReplacementGoal,
                 GoalToDeleteVars, GoalToDeleteGoals),
             Goal = ReplacementGoal,
             set_of_var.insert_list(GoalToDeleteVars, !ToDeleteVars),
             set_tree234.insert_list(GoalToDeleteGoals, !ToDeleteGoals)
-        ;
+        else
             NonLocals = goal_info_get_nonlocals(GoalInfo),
-            (
+            ( if
                 set_tree234.remove(GoalId, !.ToDeleteGoals, NewToDeleteGoals),
                 set_of_var.intersect(NonLocals, !.NeededVars, NeededNonLocals),
                 set_of_var.is_empty(NeededNonLocals)
-            ->
+            then
                 !:ToDeleteGoals = NewToDeleteGoals,
                 Goal = true_goal
-            ;
+            else
                 Goal = Goal0,
                 % Assume that all nonlocals are needed.
                 set_of_var.union(NonLocals, !NeededVars),
@@ -1185,7 +1185,7 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         set_of_var.difference(!.ToDeleteVars, NonLocals, !:ToDeleteVars)
     ;
         GoalExpr0 = unify(_LHS, _RHS, _UnifyModes, Unification, _UnifyContext),
-        (
+        ( if
             Unification = construct(LHSVar, _ConsId, _RHSVars, _ArgModes,
                 _How, _Unique, _SubInfo),
             test_var(LHSVar),
@@ -1193,10 +1193,10 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
             % If this succeeds, then the backward traversal cannot encounter
             % any more producers of LHSVar.
             set_of_var.remove(LHSVar, !ToDeleteVars)
-        ->
+        then
             % This effectively deletes the unification.
             Goal = true_goal
-        ;
+        else
             % If _RHS = rhs_lambda_goal, we should optimize any occurrences
             % of format calls inside the lambda goal. Unfortunately,
             % some of the fields of rhs_lambda_goal, specifically the lambda
@@ -1273,19 +1273,19 @@ opt_format_call_sites_in_goal(Goal0, Goal, !GoalIdMap,
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(TermVar, from_ground_term_construct),
             not set_of_var.member(!.NeededVars, TermVar),
             % If this succeeds, then the backward traversal cannot encounter
             % any more producers of LHSVar.
             set_of_var.remove(TermVar, !ToDeleteVars)
-        ->
+        then
             % We cannot guarantee that the modified version of SubGoal0
             % meets the invariants required of a goal in a
             % from_ground_term_construct scope, so we remove the scope.
             opt_format_call_sites_in_goal(SubGoal0, Goal,
                 !GoalIdMap, !NeededVars, !ToDeleteVars, !ToDeleteGoals)
-        ;
+        else
             opt_format_call_sites_in_goal(SubGoal0, SubGoal,
                 !GoalIdMap, !NeededVars, !ToDeleteVars, !ToDeleteGoals),
             GoalExpr = scope(Reason, SubGoal),
@@ -1346,14 +1346,14 @@ opt_format_call_sites_in_conj([HeadGoal0 | TailGoals0], Goals, !GoalIdMap,
     opt_format_call_sites_in_goal(HeadGoal0, HeadGoal, !GoalIdMap,
         !NeededVars, !ToDeleteVars, !ToDeleteGoals),
     HeadGoal = hlds_goal(HeadGoalExpr, _),
-    ( HeadGoalExpr = conj(plain_conj, HeadSubGoals) ->
+    ( if HeadGoalExpr = conj(plain_conj, HeadSubGoals) then
         % Flatten out nested conjunctions. This will improve the HLDS
         % - when HeadSubGoals is an empty list, i.e. when we simply
         %   deleted HeadGoal0, and
         % - when HeadSubGoals is a non-empty list, i.e. when we
         %   replaced HeadGoal0 with its optimized version.
         Goals = HeadSubGoals ++ TailGoals
-    ;
+    else
         Goals = [HeadGoal | TailGoals]
     ).
 
@@ -1482,9 +1482,9 @@ create_string_format_replacement(ModuleInfo, Specs, Context, ResultVar,
         ReplacementGoal, !VarSet, !VarTypes) :-
     replace_string_format(ModuleInfo, Specs, Context, yes(ResultVar),
         ActualResultVar, Goals, ValueVars, !VarSet, !VarTypes),
-    ( ActualResultVar = ResultVar ->
+    ( if ActualResultVar = ResultVar then
         AllGoals = Goals
-    ;
+    else
         % Since replace_string_format can always put the result
         % in the desired variable, this code point is never actually reached.
         % This code is here just in case that ever changes.
