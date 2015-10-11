@@ -205,15 +205,15 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
     list.length(RealizedCostOpList, RealizedCostOpCount),
     OpRatio = MatchingParams ^ one_path_op_ratio,
     NodeRatio = MatchingParams ^ one_path_node_ratio,
-    (
+    ( if
         RealizedBenefitOpCount * 100 >= RealizedCostOpCount * OpRatio,
         RealizedBenefitNodeCount * 100 >= RealizedCostNodeCount * NodeRatio
-    ->
+    then
         ViaCellOccurringVars = ViaCellOccurringVars0
         % Uncomment if you want to dump performance information into
         % the .err file.
         % Nullified = no
-    ;
+    else
         ViaCellOccurringVars = set_of_var.init
         % Uncomment if you want to dump performance information into
         % the .err file.
@@ -241,7 +241,7 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
     set_of_progvar::out) is semidet.
 
 simplify_segment(CellVar, CandidateArgVars, SegmentVars0, SegmentVars) :-
-    \+ set_of_var.member(SegmentVars0, CellVar),
+    not set_of_var.member(SegmentVars0, CellVar),
     SegmentVars = set_of_var.intersect(SegmentVars0, CandidateArgVars).
 
 :- func number_segments(int, list(set_of_progvar)) =
@@ -271,9 +271,9 @@ find_costs_benefits(CellVar, BeforeFlush, AfterFlush, CellVarFlushedLater,
         CostOps = [cell_var_store | CostOps0]
     ),
     BenefitOps0 = [field_var_store(FieldVar)],
-    ( set_of_var.member(BeforeFlush, CellVar) ->
+    ( if set_of_var.member(BeforeFlush, CellVar) then
         BenefitOps = BenefitOps0
-    ;
+    else
         BenefitOps = [field_var_load(FieldVar) | BenefitOps0]
     ),
 
@@ -300,9 +300,9 @@ find_costs_benefits(CellVar, BeforeFlush, AfterFlush, CellVarFlushedLater,
 find_cell_var_loads_for_field([], _, !CostOps).
 find_cell_var_loads_for_field([SegmentNum - SegmentVars | AfterFlush],
         FieldVar, !CostOps) :-
-    ( set_of_var.member(SegmentVars, FieldVar) ->
+    ( if set_of_var.member(SegmentVars, FieldVar) then
         !:CostOps = [cell_var_load(SegmentNum) | !.CostOps]
-    ;
+    else
         true
     ),
     find_cell_var_loads_for_field(AfterFlush, FieldVar, !CostOps).
@@ -319,9 +319,9 @@ replicate_cost_op(StoreCost, _LoadCost, cell_var_store) =
 :- func make_cost_op_copies(int, cost_operation) = list(cost_node).
 
 make_cost_op_copies(Cur, Op) =
-    ( Cur > 0 ->
+    ( if Cur > 0 then
         [cost_node(Op, Cur) | make_cost_op_copies(Cur - 1, Op)]
-    ;
+    else
         []
     ).
 
@@ -335,9 +335,9 @@ replicate_benefit_op(StoreCost, _LoadCost, field_var_store(FieldVar)) =
 :- func make_benefit_op_copies(int, benefit_operation) = list(benefit_node).
 
 make_benefit_op_copies(Cur, Op) =
-    ( Cur > 0 ->
+    ( if Cur > 0 then
         [benefit_node(Op, Cur) | make_benefit_op_copies(Cur - 1, Op)]
-    ;
+    else
         []
     ).
 
@@ -388,10 +388,10 @@ create_graph_links(field_costs_benefits(_FieldVar, Costs, Benefits),
     map(cost_node, set(benefit_node))::out) is det.
 
 add_cost_benefit_links(Benefits, Cost, !CostToBenefitsMap) :-
-    ( map.search(!.CostToBenefitsMap, Cost, CostBenefits0) ->
+    ( if map.search(!.CostToBenefitsMap, Cost, CostBenefits0) then
         set.union(CostBenefits0, Benefits, CostBenefits),
         map.det_update(Cost, CostBenefits, !CostToBenefitsMap)
-    ;
+    else
         map.det_insert(Cost, Benefits, !CostToBenefitsMap)
     ).
 
@@ -400,10 +400,10 @@ add_cost_benefit_links(Benefits, Cost, !CostToBenefitsMap) :-
     map(benefit_node, set(cost_node))::out) is det.
 
 add_benefit_cost_links(Costs, Benefit, !BenefitToCostsMap) :-
-    ( map.search(!.BenefitToCostsMap, Benefit, BenefitCosts0) ->
+    ( if map.search(!.BenefitToCostsMap, Benefit, BenefitCosts0) then
         set.union(BenefitCosts0, Costs, BenefitCosts),
         map.det_update(Benefit, BenefitCosts, !BenefitToCostsMap)
-    ;
+    else
         map.det_insert(Benefit, Costs, !BenefitToCostsMap)
     ).
 
@@ -421,10 +421,10 @@ maximal_matching(BenefitNodes, Graph) = Matching :-
     matching::in, matching::out) is det.
 
 maximize_matching(BenefitNodes, Graph, !Matching) :-
-    ( Path = find_augmenting_path(BenefitNodes, Graph, !.Matching) ->
+    ( if Path = find_augmenting_path(BenefitNodes, Graph, !.Matching) then
         !:Matching = update_matches(Path, !.Matching),
         maximize_matching(BenefitNodes, Graph, !Matching)
-    ;
+    else
         true
     ).
 
@@ -490,9 +490,9 @@ augpath_bf(Queue0, Seen0, Graph, Matching) = Path :-
     Matching = matching(CostToBenefitMap, _),
     CostMatches = map_adjs_to_matched_cost(
         set.to_sorted_list(AdjCostNodes), CostToBenefitMap),
-    ( find_unmatched_cost(CostMatches) = UnmatchedCostNode ->
+    ( if find_unmatched_cost(CostMatches) = UnmatchedCostNode then
         Path = [BenefitNode - UnmatchedCostNode | Path0]
-    ;
+    else
         add_alternates(CostMatches, Seen0, Seen, BenefitNode, Path0,
             Queue1, Queue2),
         Path = augpath_bf(Queue2, Seen, Graph, Matching)
@@ -525,16 +525,16 @@ find_unmatched_cost([CostNode - MaybeBenefitNode | Matches]) = Unmatched :-
 add_alternates([], !Seen, _, _, !Queue).
 add_alternates([CostMatch | CostMatches], !Seen, BenefitNode, Path, !Queue) :-
     CostMatch = CostNode - MaybeAdjBenefitNode,
-    (
+    ( if
         MaybeAdjBenefitNode = yes(AdjBenefitNode),
         not list.member(AdjBenefitNode, !.Seen)
-    ->
+    then
         !:Seen = [AdjBenefitNode | !.Seen],
         NewPath = [BenefitNode - CostNode | Path],
         BenefitNodeAndEdgeList =
             benefit_node_and_edge_list(AdjBenefitNode, NewPath),
         queue.put(BenefitNodeAndEdgeList, !Queue)
-    ;
+    else
         true
     ),
     add_alternates(CostMatches, !Seen, BenefitNode, Path, !Queue).
@@ -606,9 +606,9 @@ map_adjs_to_matched_cost(AdjCostNodes, CostToBenefitMap) = CostMatches :-
     pair(cost_node, maybe(benefit_node)).
 
 adj_to_matched_cost(CostToBenefitMap, CostNode) = Match :-
-    ( map.search(CostToBenefitMap, CostNode, BenefitNode) ->
+    ( if map.search(CostToBenefitMap, CostNode, BenefitNode) then
         Match = CostNode - yes(BenefitNode)
-    ;
+    else
         Match = CostNode - no
     ).
 
@@ -623,11 +623,11 @@ compute_via_cell_vars([FieldCostsBenefits | FieldsCostsBenefits],
     ViaCellVars1 = compute_via_cell_vars(FieldsCostsBenefits, MarkedBenefits),
     FieldCostsBenefits = field_costs_benefits(FieldVar, _, FieldBenefits),
     set.intersect(FieldBenefits, MarkedBenefits, MarkedFieldBenefits),
-    ( set.is_empty(MarkedFieldBenefits) ->
+    ( if set.is_empty(MarkedFieldBenefits) then
         set_of_var.insert(FieldVar, ViaCellVars1, ViaCellVars)
-    ; set.equal(MarkedFieldBenefits, FieldBenefits) ->
+    else if set.equal(MarkedFieldBenefits, FieldBenefits) then
         ViaCellVars = ViaCellVars1
-    ;
+    else
         unexpected($module, $pred,
             "theorem violation: intersection neither empty nor full")
     ).
@@ -643,9 +643,9 @@ compute_via_cell_vars([FieldCostsBenefits | FieldsCostsBenefits],
 get_unmatched_benefit_nodes([], _) = [].
 get_unmatched_benefit_nodes([Node | Nodes], MatchingBC) = UnmatchedNodes :-
     UnmatchedNodes1 = get_unmatched_benefit_nodes(Nodes, MatchingBC),
-    ( map.search(MatchingBC, Node, _Match) ->
+    ( if map.search(MatchingBC, Node, _Match) then
         UnmatchedNodes = UnmatchedNodes1
-    ;
+    else
         UnmatchedNodes = [Node | UnmatchedNodes1]
     ).
 
@@ -658,9 +658,9 @@ get_unmatched_benefit_nodes([Node | Nodes], MatchingBC) = UnmatchedNodes :-
 get_unmatched_cost_nodes([], _) = [].
 get_unmatched_cost_nodes([Node | Nodes], MatchingCB) = UnmatchedNodes :-
     UnmatchedNodes1 = get_unmatched_cost_nodes(Nodes, MatchingCB),
-    ( map.search(MatchingCB, Node, _Match) ->
+    ( if map.search(MatchingCB, Node, _Match) then
         UnmatchedNodes = UnmatchedNodes1
-    ;
+    else
         UnmatchedNodes = [Node | UnmatchedNodes1]
     ).
 
