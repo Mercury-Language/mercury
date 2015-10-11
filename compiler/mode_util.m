@@ -301,23 +301,24 @@ modes_to_arg_modes(ModuleInfo, [Mode | Modes], [Type | Types],
     modes_to_arg_modes(ModuleInfo, Modes, Types, ArgModes).
 
 mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode) :-
-    mode_to_arg_mode_2(ModuleInfo, Mode, Type, [], ArgMode).
+    mode_to_arg_mode_loop_over_notags(ModuleInfo, Mode, Type, [], ArgMode).
 
-:- pred mode_to_arg_mode_2(module_info::in, mer_mode::in, mer_type::in,
-    list(type_ctor)::in, arg_mode::out) is det.
+:- pred mode_to_arg_mode_loop_over_notags(module_info::in, mer_mode::in,
+    mer_type::in, list(type_ctor)::in, arg_mode::out) is det.
 
-mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
+mode_to_arg_mode_loop_over_notags(ModuleInfo, Mode, Type, ContainingTypes,
+        ArgMode) :-
     % We need to handle no_tag types (types which have exactly one constructor,
     % and whose one constructor has exactly one argument) specially here,
     % since for them an inst of bound(f(free)) is not really bound as far as
     % code generation is concerned, since the f/1 will get optimized away.
-    (
+    ( if
         % Is this a no_tag type?
         type_is_no_tag_type(ModuleInfo, Type, FunctorName, ArgType),
         % Avoid infinite recursion.
         type_to_ctor(Type, TypeCtor),
-        \+ list.member(TypeCtor, ContainingTypes)
-    ->
+        not list.member(TypeCtor, ContainingTypes)
+    then
         % The arg_mode will be determined by the mode and type of the
         % functor's argument, so we figure out the mode and type of the
         % argument, and then recurse.
@@ -327,9 +328,9 @@ mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
         get_single_arg_inst(ModuleInfo, InitialInst, ConsId, InitialArgInst),
         get_single_arg_inst(ModuleInfo, FinalInst, ConsId, FinalArgInst),
         ModeOfArg = (InitialArgInst -> FinalArgInst),
-        mode_to_arg_mode_2(ModuleInfo, ModeOfArg, ArgType,
+        mode_to_arg_mode_loop_over_notags(ModuleInfo, ModeOfArg, ArgType,
             [TypeCtor | ContainingTypes], ArgMode)
-    ;
+    else
         base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode)
     ).
 
@@ -338,11 +339,11 @@ mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
 
 base_mode_to_arg_mode(ModuleInfo, Mode, ArgMode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
-    ( inst_is_bound(ModuleInfo, InitialInst) ->
+    ( if inst_is_bound(ModuleInfo, InitialInst) then
         ArgMode = top_in
-    ; inst_is_bound(ModuleInfo, FinalInst) ->
+    else if inst_is_bound(ModuleInfo, FinalInst) then
         ArgMode = top_out
-    ;
+    else
         ArgMode = top_unused
     ).
 
@@ -434,9 +435,9 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         ArgInst = ground(Uniq, none)
     ;
         Inst = bound(_Uniq, _InstResult, List),
-        ( get_single_arg_inst_2(List, ConsId, ArgInst0) ->
+        ( if get_single_arg_inst_in_bound_insts(List, ConsId, ArgInst0) then
             ArgInst = ArgInst0
-        ;
+        else
             % The code is unreachable.
             ArgInst = not_reached
         )
@@ -460,19 +461,20 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         get_single_arg_inst(ModuleInfo, InsideInst, ConsId, ArgInst)
     ).
 
-:- pred get_single_arg_inst_2(list(bound_inst)::in, cons_id::in, mer_inst::out)
-    is semidet.
+:- pred get_single_arg_inst_in_bound_insts(list(bound_inst)::in, cons_id::in,
+    mer_inst::out) is semidet.
 
-get_single_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
-    (
+get_single_arg_inst_in_bound_insts([BoundInst | BoundInsts], ConsId,
+        ArgInst) :-
+    ( if
         BoundInst = bound_functor(InstConsId, [ArgInst0]),
         % The cons_ids for types and insts can differ in the type_ctor field
         % so we must ignore them.
         equivalent_cons_ids(ConsId, InstConsId)
-    ->
+    then
         ArgInst = ArgInst0
-    ;
-        get_single_arg_inst_2(BoundInsts, ConsId, ArgInst)
+    else
+        get_single_arg_inst_in_bound_insts(BoundInsts, ConsId, ArgInst)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -570,11 +572,11 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_user_insts(InstTable, UserInstTable),
         list.length(Args, Arity),
-        ( map.search(UserInstTable, inst_id(Name, Arity), InstDefn) ->
+        ( if map.search(UserInstTable, inst_id(Name, Arity), InstDefn) then
             InstDefn = hlds_inst_defn(_VarSet, Params, InstBody, _MMTC,
                 _Context, _Status),
             inst_lookup_subst_args(InstBody, Params, Name, Args, Inst)
-        ;
+        else
             Inst = abstract_inst(Name, Args)
         )
     ;
@@ -663,11 +665,11 @@ propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode) :-
 %   % so for the moment it is disabled.
 % propagate_type_into_inst(Type, Subst, ModuleInfo, Inst0, Inst) :-
 %   apply_type_subst(Type0, Subst, Type),
-%   (
+%   ( if
 %       type_constructors(Type, ModuleInfo, Constructors)
-%   ->
+%   then
 %       propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo, Inst)
-%   ;
+%   else
 %       Inst = Inst0
 %   ).
 
@@ -692,11 +694,13 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         unexpected($module, $pred, "type info already present")
     ;
         Inst0 = ground(Uniq, none),
-        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
+        ( if
+            type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
+        then
             default_higher_order_func_inst(ModuleInfo, ArgTypes,
                 HigherOrderInstInfo),
             Inst = ground(Uniq, higher_order(HigherOrderInstInfo))
-        ;
+        else
             type_to_ctor_det(Type, TypeCtor),
             constructors_to_bound_insts(ModuleInfo, Uniq, TypeCtor,
                 Constructors, BoundInsts0),
@@ -713,10 +717,12 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         )
     ;
         Inst0 = any(Uniq, none),
-        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
+        ( if
+            type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
+        then
             default_higher_order_func_inst(ModuleInfo, ArgTypes, PredInstInfo),
             Inst = any(Uniq, higher_order(PredInstInfo))
-        ;
+        else
             type_to_ctor_det(Type, TypeCtor),
             constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor,
                 Constructors, BoundInsts0),
@@ -737,12 +743,12 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
     ;
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
         PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
-        (
+        ( if
             type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
             list.same_length(ArgTypes, Modes0)
-        ->
+        then
             propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
-        ;
+        else
             % The inst is not a valid inst for the type, so leave it alone.
             % This can only happen if the user has made a mistake. A mode
             % error should hopefully be reported if anything tries to match
@@ -754,12 +760,12 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
     ;
         Inst0 = any(Uniq, higher_order(PredInstInfo0)),
         PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
-        (
+        ( if
             type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
             list.same_length(ArgTypes, Modes0)
-        ->
+        then
             propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
-        ;
+        else
             % The inst is not a valid inst for the type, so leave it alone.
             % This can only happen if the user has made a mistake. A mode
             % error should hopefully be reported if anything tries to match
@@ -804,10 +810,12 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
     ;
         Inst0 = ground(Uniq, none),
         apply_type_subst(Type0, Subst, Type),
-        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
+        ( if
+            type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
+        then
             default_higher_order_func_inst(ModuleInfo, ArgTypes, HOInstInfo),
             Inst = ground(Uniq, higher_order(HOInstInfo))
-        ;
+        else
             % XXX The information added by this is not yet used, so
             % it is disabled since it unnecessarily complicates the insts.
             %
@@ -817,22 +825,24 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
     ;
         Inst0 = any(Uniq, none),
         apply_type_subst(Type0, Subst, Type),
-        ( type_is_higher_order_details(Type, _, pf_function, _, ArgTypes) ->
+        ( if
+            type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
+        then
             default_higher_order_func_inst(ModuleInfo, ArgTypes, HOInstInfo),
             Inst = any(Uniq, higher_order(HOInstInfo))
-        ;
+        else
             Inst = any(Uniq, none)
         )
     ;
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
         PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
         apply_type_subst(Type0, Subst, Type),
-        (
+        ( if
             type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
             list.same_length(ArgTypes, Modes0)
-        ->
+        then
             propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
-        ;
+        else
             % The inst is not a valid inst for the type, so leave it alone.
             % This can only happen if the user has made a mistake. A mode error
             % should hopefully be reported if anything tries to match with the
@@ -845,12 +855,12 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         Inst0 = any(Uniq, higher_order(PredInstInfo0)),
         PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det),
         apply_type_subst(Type0, Subst, Type),
-        (
+        ( if
             type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
             list.same_length(ArgTypes, Modes0)
-        ->
+        then
             propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
-        ;
+        else
             % The inst is not a valid inst for the type, so leave it alone.
             % This can only happen if the user has made a mistake. A mode error
             % should hopefully be reported if anything tries to match with the
@@ -880,14 +890,14 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
     ;
         Inst0 = defined_inst(InstName0),
         apply_type_subst(Type0, Subst, Type),
-        ( InstName0 = typed_inst(_, _) ->
+        ( if InstName0 = typed_inst(_, _) then
             % If this happens, it means that we have already lazily propagated
             % type info into this inst. We want to avoid creating insts of
             % the form typed_inst(_, typed_inst(...)), because that would be
             % unnecessary, and could cause efficiency problems or perhaps
             % even infinite loops.
             InstName = InstName0
-        ;
+        else
             InstName = typed_inst(Type, InstName0)
         ),
         Inst = defined_inst(InstName)
@@ -919,27 +929,27 @@ default_higher_order_func_inst(ModuleInfo, PredArgTypes, PredInstInfo) :-
 
 constructors_to_bound_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
         BoundInsts) :-
-    constructors_to_bound_insts_2(ModuleInfo, Uniq, TypeCtor, Constructors,
-        ground(Uniq, none), BoundInsts).
+    constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
+        Constructors, ground(Uniq, none), BoundInsts).
 
 constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
         BoundInsts) :-
-    constructors_to_bound_insts_2(ModuleInfo, Uniq, TypeCtor, Constructors,
-        any(Uniq, none), BoundInsts).
+    constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
+        Constructors, any(Uniq, none), BoundInsts).
 
-:- pred constructors_to_bound_insts_2(module_info::in, uniqueness::in,
-    type_ctor::in, list(constructor)::in, mer_inst::in, list(bound_inst)::out)
-    is det.
+:- pred constructors_to_bound_insts_loop_over_ctors(module_info::in,
+    uniqueness::in, type_ctor::in, list(constructor)::in, mer_inst::in,
+    list(bound_inst)::out) is det.
 
-constructors_to_bound_insts_2(_, _, _, [], _, []).
-constructors_to_bound_insts_2(ModuleInfo, Uniq, TypeCtor, [Ctor | Ctors],
-        ArgInst, [BoundInst | BoundInsts]) :-
+constructors_to_bound_insts_loop_over_ctors(_, _, _, [], _, []).
+constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
+        [Ctor | Ctors], ArgInst, [BoundInst | BoundInsts]) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, Args, _Arity, _Ctxt),
     ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
     list.length(Insts, Arity),
     BoundInst = bound_functor(cons(Name, Arity, TypeCtor), Insts),
-    constructors_to_bound_insts_2(ModuleInfo, Uniq, TypeCtor, Ctors,
-        ArgInst, BoundInsts).
+    constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
+        Ctors, ArgInst, BoundInsts).
 
 :- pred ctor_arg_list_to_inst_list(list(constructor_arg)::in, mer_inst::in,
     list(mer_inst)::out) is det.
@@ -1043,16 +1053,16 @@ propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
 
 propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
     BoundInst0 = bound_functor(Functor, ArgInsts0),
-    (
+    ( if
         Functor = tuple_cons(_),
         list.length(ArgInsts0, ArgInstsLen),
         list.length(TupleArgTypes, TupleArgTypesLen),
         ArgInstsLen = TupleArgTypesLen
-    ->
+    then
         map.init(Subst),
         propagate_types_into_inst_list(ModuleInfo, Subst, TupleArgTypes,
             ArgInsts0, ArgInsts)
-    ;
+    else
         % The bound_inst's arity does not match the tuple's arity, so leave it
         % alone. This can only happen in a user defined bound_inst.
         % A mode error should be reported if anything tries to match with
@@ -1070,24 +1080,24 @@ propagate_ctor_info_into_bound_functors(ModuleInfo, Subst,
         TypeCtor, TypeModule, Constructors,
         [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts]) :-
     BoundInst0 = bound_functor(ConsId0, ArgInsts0),
-    ( ConsId0 = cons(unqualified(Name), ConsArity, _ConsTypeCtor) ->
+    ( if ConsId0 = cons(unqualified(Name), ConsArity, _ConsTypeCtor) then
         % _ConsTypeCtor should be either TypeCtor or cons_id_dummy_type_ctor.
         ConsId = cons(qualified(TypeModule, Name), ConsArity, TypeCtor)
-    ;
+    else
         ConsId = ConsId0
     ),
-    (
+    ( if
         ConsId = cons(ConsName, Arity, _),
         find_first_matching_constructor(ConsName, Arity, Constructors,
             MatchingConstructor)
-    ->
+    then
         MatchingConstructor = ctor(_ExistQVars, _Constraints, _Name, Args,
             _Arity, _Ctxt),
         get_constructor_arg_types(Args, ArgTypes),
         propagate_types_into_inst_list(ModuleInfo, Subst, ArgTypes,
             ArgInsts0, ArgInsts),
         BoundInst = bound_functor(ConsId, ArgInsts)
-    ;
+    else
         % The cons_id is not a valid constructor for the type,
         % so leave it alone. This can only happen in a user defined
         % bound_inst. A mode error should be reported if anything
@@ -1127,9 +1137,9 @@ get_constructor_arg_types([Arg | Args], [ArgType | ArgTypes]) :-
 
 apply_type_subst(Type0, Subst, Type) :-
     % Optimize common case.
-    ( map.is_empty(Subst) ->
+    ( if map.is_empty(Subst) then
         Type = Type0
-    ;
+    else
         apply_subst_to_type(Subst, Type0, Type)
     ).
 
@@ -1177,10 +1187,10 @@ mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
     mode_get_insts_semidet(ModuleInfo, Mode, Initial, Final).
 
 mode_get_insts(ModuleInfo, Mode, InstA, InstB) :-
-    ( mode_get_insts_semidet(ModuleInfo, Mode, InstA0, InstB0) ->
-        InstA = InstA0,
-        InstB = InstB0
-    ;
+    ( if mode_get_insts_semidet(ModuleInfo, Mode, InstAPrime, InstBPrime) then
+        InstA = InstAPrime,
+        InstB = InstBPrime
+    else
         unexpected($module, $pred, "mode_get_insts_semidet failed")
     ).
 
@@ -1219,18 +1229,18 @@ recompute_instmap_delta(RecomputeAtomic, Goal0, Goal, VarTypes, InstVarSet,
 recompute_instmap_delta_1(RecomputeAtomic, Goal0, Goal, VarTypes,
         InstMap0, InstMapDelta, !RI) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    (
+    ( if
         RecomputeAtomic = do_not_recompute_atomic_instmap_deltas,
         goal_expr_has_subgoals(GoalExpr0) = does_not_have_subgoals,
-        \+ (
+        not (
             GoalExpr0 = unify(_, RHS, _, _, _),
             RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _)
         )
         % Lambda expressions always need to be processed.
-    ->
+    then
         GoalExpr = GoalExpr0,
         GoalInfo1 = GoalInfo0
-    ;
+    else
         recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr,
             GoalInfo0, VarTypes, InstMap0, InstMapDelta0, !RI),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
@@ -1239,11 +1249,11 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0, Goal, VarTypes,
     ),
 
     % If the initial instmap is unreachable so is the final instmap.
-    ( instmap_is_unreachable(InstMap0) ->
+    ( if instmap_is_unreachable(InstMap0) then
         instmap_delta_init_unreachable(UnreachableInstMapDelta),
         goal_info_set_instmap_delta(UnreachableInstMapDelta,
             GoalInfo1, GoalInfo)
-    ;
+    else
         GoalInfo = GoalInfo1
     ),
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -1277,10 +1287,12 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         VarTypes, InstMap0, InstMapDelta, !RI) :-
     (
         GoalExpr0 = switch(Var, Det, Cases0),
-        ( goal_info_has_feature(GoalInfo, feature_mode_check_clauses_goal) ->
+        ( if
+            goal_info_has_feature(GoalInfo, feature_mode_check_clauses_goal)
+        then
             Cases = Cases0,
             InstMapDelta = goal_info_get_instmap_delta(GoalInfo)
-        ;
+        else
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             recompute_instmap_delta_cases(RecomputeAtomic, Var, Cases0, Cases,
                 VarTypes, InstMap0, NonLocals, InstMapDelta, !RI)
@@ -1293,10 +1305,12 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
-        ( goal_info_has_feature(GoalInfo, feature_mode_check_clauses_goal) ->
+        ( if
+            goal_info_has_feature(GoalInfo, feature_mode_check_clauses_goal)
+        then
             Goals = Goals0,
             InstMapDelta = goal_info_get_instmap_delta(GoalInfo)
-        ;
+        else
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             recompute_instmap_delta_disj(RecomputeAtomic, Goals0, Goals,
                 VarTypes, InstMap0, NonLocals, InstMapDelta, !RI)
@@ -1305,9 +1319,9 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
     ;
         GoalExpr0 = negation(SubGoal0),
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo),
-        ( instmap_delta_is_reachable(InstMapDelta0) ->
+        ( if instmap_delta_is_reachable(InstMapDelta0) then
             instmap_delta_init_reachable(InstMapDelta)
-        ;
+        else
             instmap_delta_init_unreachable(InstMapDelta)
         ),
         recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal, VarTypes,
@@ -1332,7 +1346,7 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, FGT) ->
+        ( if Reason = from_ground_term(_, FGT) then
             (
                 ( FGT = from_ground_term_construct
                 ; FGT = from_ground_term_deconstruct
@@ -1348,16 +1362,16 @@ recompute_instmap_delta_2(RecomputeAtomic, GoalExpr0, GoalExpr, GoalInfo,
                 recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal,
                     VarTypes, InstMap0, InstMapDelta, !RI)
             )
-        ;
+        else
             recompute_instmap_delta_1(RecomputeAtomic, SubGoal0, SubGoal,
                 VarTypes, InstMap0, InstMapDelta, !RI)
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = generic_call(_Details, Vars, Modes, _, Detism),
-        ( determinism_components(Detism, _, at_most_zero) ->
+        ( if determinism_components(Detism, _, at_most_zero) then
             instmap_delta_init_unreachable(InstMapDelta)
-        ;
+        else
             ModuleInfo = !.RI ^ ri_module_info,
             instmap_delta_from_mode_list(Vars, Modes, ModuleInfo, InstMapDelta)
         ),
@@ -1552,9 +1566,9 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
     ModuleInfo0 = !.RI ^ ri_module_info,
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, _, ProcInfo),
     proc_info_interface_determinism(ProcInfo, Detism),
-    ( determinism_components(Detism, _, at_most_zero) ->
+    ( if determinism_components(Detism, _, at_most_zero) then
         instmap_delta_init_unreachable(InstMapDelta)
-    ;
+    else
         proc_info_get_argmodes(ProcInfo, ArgModes0),
         proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
         InstVarSet0 = !.RI ^ ri_inst_varset,
@@ -1565,7 +1579,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
 
         % Compute the inst_var substitution from the initial insts
         % of the called procedure and the insts of the argument variables.
-        ( instmap_is_reachable(InstMap) ->
+        ( if instmap_is_reachable(InstMap) then
             map.init(InstVarSub0),
             compute_inst_var_sub(Args, VarTypes, InstMap, InitialInsts,
                 InstVarSub0, InstVarSub, ModuleInfo0, ModuleInfo1),
@@ -1579,7 +1593,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
             recompute_instmap_delta_call_2(Args, InstMap, ArgModes2, ArgModes,
                 ModuleInfo1, ModuleInfo),
             !RI ^ ri_module_info := ModuleInfo
-        ;
+        else
             list.length(Args, NumArgs),
             list.duplicate(NumArgs, (not_reached -> not_reached), ArgModes),
             ModuleInfo = ModuleInfo0
@@ -1603,9 +1617,9 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
     SaveSub = !.Sub,
     instmap_lookup_var(InstMap, Arg, ArgInst),
     lookup_var_type(VarTypes, Arg, Type),
-    ( inst_matches_initial_sub(ArgInst, Inst, Type, !ModuleInfo, !Sub) ->
+    ( if inst_matches_initial_sub(ArgInst, Inst, Type, !ModuleInfo, !Sub) then
         true
-    ;
+    else
         % error("compute_inst_var_sub: " ++
         %   ++ "inst_matches_initial failed")
         % XXX  We shouldn't ever get here, but unfortunately
@@ -1631,16 +1645,16 @@ recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
     % This is similar to modecheck_set_var_inst.
     instmap_lookup_var(InstMap, Arg, ArgInst0),
     mode_get_insts(!.ModuleInfo, Mode0, _, FinalInst),
-    (
+    ( if
         % The is_dead allows abstractly_unify_inst to succeed when
         % some parts of ArgInst0 and the corresponding parts of FinalInst
         % are free.
         % XXX There should be a better way to communicate that information.
         abstractly_unify_inst(is_dead, ArgInst0, FinalInst,
             fake_unify, UnifyInst, _, !ModuleInfo)
-    ->
+    then
         Mode = (ArgInst0 -> UnifyInst)
-    ;
+    else
         unexpected($module, $pred, "unify_inst failed")
     ),
     recompute_instmap_delta_call_2(Args, InstMap, Modes0, Modes,
@@ -1666,7 +1680,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
 
         OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_lookup_var(InstMap, Var, InitialInst),
-        ( instmap_delta_search_var(OldInstMapDelta, Var, DeltaInst) ->
+        ( if instmap_delta_search_var(OldInstMapDelta, Var, DeltaInst) then
             % Inlining can result in situations where the initial inst
             % (from procedure 1) can decide that a variable must be bound
             % to one set of function symbols, while the instmap delta from
@@ -1677,18 +1691,18 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
             % parts of InitialInst and the corresponding parts of DeltaInst
             % are free.
             % XXX There should be a better way to communicate that information.
-            (
+            ( if
                 abstractly_unify_inst(is_dead, InitialInst, DeltaInst,
                     fake_unify, FinalInstPrime, _Detism,
                     ModuleInfo0, ModuleInfo1)
-            ->
+            then
                 FinalInst = FinalInstPrime,
                 ModuleInfo = ModuleInfo1,
                 !RI ^ ri_module_info := ModuleInfo
-            ;
+            else
                 unexpected($module, $pred, "abstractly_unify_inst failed")
             )
-        ;
+        else
             % It wasn't in the instmap_delta, so the inst didn't change.
             FinalInst = InitialInst,
             ModuleInfo = ModuleInfo0
@@ -1705,19 +1719,19 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         UniMode = UniMode0
     ;
         Uni = construct(Var, ConsId, Args, _, _, _, _),
-        (
+        ( if
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             set_of_var.member(NonLocals, Var),
             OldInstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-            \+ instmap_delta_search_var(OldInstMapDelta, Var, _),
+            not instmap_delta_search_var(OldInstMapDelta, Var, _),
             MaybeInst = cons_id_to_shared_inst(ModuleInfo0, ConsId,
                 length(Args)),
             MaybeInst = yes(Inst)
-        ->
+        then
             UniMode = UniMode0,
             instmap_delta_init_reachable(InstMapDelta0),
             instmap_delta_set_var(Var, Inst, InstMapDelta0, InstMapDelta)
-        ;
+        else
             InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
             UniMode = UniMode0
         )
@@ -1788,9 +1802,9 @@ get_arg_lives(ModuleInfo, [Mode | Modes], [IsLive | IsLives]) :-
     % Arguments with final inst `clobbered' are dead, any others
     % are assumed to be live.
     mode_get_insts(ModuleInfo, Mode, _InitialInst, FinalInst),
-    ( inst_is_clobbered(ModuleInfo, FinalInst) ->
+    ( if inst_is_clobbered(ModuleInfo, FinalInst) then
         IsLive = is_dead
-    ;
+    else
         IsLive = is_live
     ),
     get_arg_lives(ModuleInfo, Modes, IsLives).
@@ -1802,9 +1816,9 @@ fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
     instmap_lookup_var(InstMap0, Var, Inst0),
     instmap_lookup_var(InstMap, Var, Inst),
-    ( Inst = Inst0 ->
+    ( if Inst = Inst0 then
         GoalInfo = GoalInfo0
-    ;
+    else
         instmap_delta_set_var(Var, Inst, InstMapDelta0, InstMapDelta),
         goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo)
     ),
@@ -1830,36 +1844,36 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
     % XXX should also normalise partially instantiated insts.
 
     inst_expand(ModuleInfo, Inst0, Inst),
-    ( Inst = bound(_, _, _) ->
-        (
+    ( if Inst = bound(_, _, _) then
+        ( if
             % Don't infer unique modes for introduced type_info arguments,
             % because that leads to an increase in the number of inferred modes
             % without any benefit.
-            \+ is_introduced_type_info_type(Type),
+            not is_introduced_type_info_type(Type),
 
             inst_is_ground(ModuleInfo, Inst),
-            ( inst_is_unique(ModuleInfo, Inst) ->
+            ( if inst_is_unique(ModuleInfo, Inst) then
                 Uniq = unique
-            ; inst_is_mostly_unique(ModuleInfo, Inst) ->
+            else if inst_is_mostly_unique(ModuleInfo, Inst) then
                 Uniq = mostly_unique
-            ;
+            else
                 fail
             ),
-            \+ inst_contains_nonstandard_func_mode(ModuleInfo, Inst)
-        ->
+            not inst_contains_nonstandard_func_mode(ModuleInfo, Inst)
+        then
             NormalisedInst = ground(Uniq, none)
-        ;
+        else if
             inst_is_ground(ModuleInfo, Inst),
-            \+ inst_is_clobbered(ModuleInfo, Inst),
-            \+ inst_contains_nonstandard_func_mode(ModuleInfo, Inst)
-        ->
+            not inst_is_clobbered(ModuleInfo, Inst),
+            not inst_contains_nonstandard_func_mode(ModuleInfo, Inst)
+        then
             NormalisedInst = ground(shared, none)
-        ;
+        else
             % XXX We need to limit the potential size of insts here
             % in order to avoid infinite loops in mode inference.
             NormalisedInst = Inst
         )
-    ;
+    else
         NormalisedInst = Inst
     ).
 
@@ -1873,9 +1887,9 @@ partition_args(_, [], [], [], []).
 partition_args(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
         !:InputArgs, !:OutputArgs) :-
     partition_args(ModuleInfo, ArgModes, Args, !:InputArgs, !:OutputArgs),
-    ( mode_is_input(ModuleInfo, ArgMode) ->
+    ( if mode_is_input(ModuleInfo, ArgMode) then
         !:InputArgs = [Arg | !.InputArgs]
-    ;
+    else
         !:OutputArgs = [Arg | !.OutputArgs]
     ).
 
