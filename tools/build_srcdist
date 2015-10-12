@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2013 The University of Melbourne
+# Copyright (C) 2013-2015 The Mercury team.
 #
 # This script builds the Mercury source distribution.
 #
@@ -23,9 +23,9 @@ Options:
     -v VER
         Use VER as the version number.
     -n
-        Don't update VERSION file.
+        Do not update VERSION file.
     -f
-        Without this option the build_srcdist will not run, it will warn
+        Without this option the build_srcdist script will not run, it will warn
         the user that it is destructive and then exit.
     -j N
         Run N jobs in parallel.
@@ -82,6 +82,8 @@ if [ ! -d .git ]; then
     exit 2
 fi
 
+# NOTE: the hlc.gc.pregen grade that we use below *requires* these settings.
+#
 NUM_TAG_BITS=2
 BITS_PER_WORD=32
 BYTES_PER_WORD=4
