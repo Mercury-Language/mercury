@@ -146,20 +146,20 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
         ;
             MaybeImports = yes(Imports),
             CompilationTask = compilation_task(Globals, FileType),
-            (
+            ( if
                 % For a target built by processing a Mercury source file,
                 % the target for a nested sub-module is produced as a side
                 % effect of making the target for the top-level module in
                 % the file.
                 CompilationTask = process_module(_) - _,
                 Imports ^ mai_source_file_module_name \= ModuleName
-            ->
+            then
                 NestedTargetFile = target_file(
                     Imports ^ mai_source_file_module_name, FileType),
                 make_module_target_extra_options(ExtraOptions, Globals,
                     dep_target(NestedTargetFile),
                     Succeeded, !Info, !IO)
-            ;
+            else
                 CompilationTask = CompilationTaskType - _,
                 touched_files(Globals, TargetFile, CompilationTaskType,
                     TouchedTargetFiles, TouchedFiles, !Info, !IO),
@@ -169,10 +169,10 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
                 debug_file_msg(Globals, TargetFile, "checking dependencies",
                     !IO),
 
-                ( CompilationTask = process_module(_) - _ ->
+                ( if CompilationTask = process_module(_) - _ then
                     ModulesToCheck = [ModuleName |
                         set.to_sorted_list(Imports ^ mai_nested_children)]
-                ;
+                else
                     ModulesToCheck = [ModuleName]
                 ),
                 module_names_to_index_set(ModulesToCheck, ModulesToCheckSet,
@@ -184,10 +184,10 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
                     !Info, !IO),
                 dependency_file_index_set_to_plain_set(!.Info, DepFiles0,
                     DepFilesSet0),
-                (
+                ( if
                     TargetFile = target_file(_, TargetType),
                     TargetType = module_target_private_interface
-                ->
+                then
                     % Avoid circular dependencies (the `.int0' files
                     % for the nested sub-modules depend on this module's
                     % `.int0' file).
@@ -195,12 +195,12 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
                         module_target_private_interface),
                     DepFilesToMake = set.to_sorted_list(
                         set.delete_list(DepFilesSet0, PrivateInts))
-                ;
+                else
                     DepFilesToMake = set.to_sorted_list(DepFilesSet0)
                 ),
 
-                debug_msg(Globals,
-                   (pred(!.IO::di, !:IO::uo) is det :-
+                debug_make_msg(Globals,
+                   ( pred(!.IO::di, !:IO::uo) is det :-
                         make_write_target_file(Globals, TargetFile, !IO),
                         io.write_string(": dependencies:\n", !IO),
                         dependency_file_index_set_to_plain_set(!.Info,
@@ -210,12 +210,12 @@ make_module_target_file_extra_options(ExtraOptions, Globals, TargetFile,
                 ), !IO),
 
                 globals.lookup_bool_option(Globals, keep_going, KeepGoing),
-                (
+                ( if
                     DepsSuccess = no,
                     KeepGoing = no
-                ->
+                then
                     DepsResult = deps_error
-                ;
+                else
                     make_dependency_files(Globals, TargetFile, DepFilesToMake,
                         TouchedTargetFiles, TouchedFiles, DepsResult0,
                         !Info, !IO),
@@ -286,18 +286,18 @@ make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
         DepsResult = deps_error
     ;
         MakeDepsSuccess = yes,
-        ( list.member(error(_), TargetTimestamps) ->
+        ( if list.member(error(_), TargetTimestamps) then
             debug_file_msg(Globals, TargetFile, "target file does not exist",
                 !IO),
             DepsResult = deps_out_of_date
-        ;
-            (
+        else
+            ( if
                 TargetFile = target_file(ModuleName, FileType),
                 FileType = module_target_analysis_registry
-            ->
+            then
                 force_reanalysis_of_suboptimal_module(Globals, ModuleName,
                     ForceReanalysis, !.Info, !IO)
-            ;
+            else
                 ForceReanalysis = no
             ),
             (
@@ -333,7 +333,7 @@ make_dependency_files(Globals, TargetFile, DepFilesToMake, TouchedTargetFiles,
 
 force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
         Info, !IO) :-
-    ( Info ^ reanalysis_passes > 0 ->
+    ( if Info ^ reanalysis_passes > 0 then
         do_read_module_overall_status(mmc, Globals, ModuleName, AnalysisStatus,
             !IO),
         (
@@ -345,7 +345,7 @@ force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
             AnalysisStatus = optimal,
             ForceReanalysis = no
         )
-    ;
+    else
         ForceReanalysis = no
     ).
 
@@ -361,22 +361,21 @@ build_target(Globals, CompilationTask, TargetFile, Imports, TouchedTargetFiles,
     maybe_make_target_message(Globals, TargetFile, !IO),
     TargetFile = target_file(ModuleName, _FileType),
     CompilationTask = Task - TaskOptions,
-    (
+    ( if
         CompilationTask = process_module(ModuleTask) - _,
         forkable_module_compilation_task_type(ModuleTask) = yes,
-        \+ can_fork
-    ->
+        not can_fork
+    then
         % We need a temporary file to pass the arguments to the mmc process
-        % which will do the compilation.  It's created here
-        % (not in invoke_mmc) so it can be cleaned up by
-        % build_with_check_for_interrupt.
+        % which will do the compilation. It is created here (not in invoke_mmc)
+        % so it can be cleaned up by build_with_check_for_interrupt.
         io.make_temp(ArgFileName, !IO),
         MaybeArgFileName = yes(ArgFileName)
-    ;
+    else
         MaybeArgFileName = no
     ),
     Cleanup =
-        (pred(!.MakeInfo::in, !:MakeInfo::out, !.IO::di, !:IO::uo) is det :-
+        ( pred(!.MakeInfo::in, !:MakeInfo::out, !.IO::di, !:IO::uo) is det :-
             % XXX Remove `.int.tmp' files.
             list.foldl2(make_remove_target_file(Globals, very_verbose),
                 TouchedTargetFiles, !MakeInfo, !IO),
@@ -406,11 +405,11 @@ build_target(Globals, CompilationTask, TargetFile, Imports, TouchedTargetFiles,
         ShowMakeTimes = yes,
         DiffSecs = float(Time - Time0) / 1000.0,
         % Avoid cluttering the screen with short running times.
-        ( DiffSecs >= 0.4 ->
+        ( if DiffSecs >= 0.4 then
             io.write_string("Making ", !IO),
             make_write_target_file(Globals, TargetFile, !IO),
             io.format(" took %.2fs\n", [f(DiffSecs)], !IO)
-        ;
+        else
             true
         )
     ;
@@ -442,7 +441,7 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
             Verbose = no
         ),
 
-        % Run compilations to target code in a separate process.  This avoids
+        % Run compilations to target code in a separate process. This avoids
         % problems with the Boehm GC retaining memory by scanning too much of
         % the Mercury stacks. If the compilation is run in a separate process,
         % it is also easier to kill if an interrupt arrives. We do the same for
@@ -464,15 +463,15 @@ build_target_2(ModuleName, Task, ArgFileName, Imports, Globals, AllOptionArgs,
         ),
         io.set_output_stream(OldOutputStream, _, !IO),
 
-        (
+        ( if
             ( ModuleTask = task_compile_to_target_code
             ; ModuleTask = task_errorcheck
             )
-        ->
+        then
             % The `.err_date' file is needed because the `.err' file is touched
             % by all phases of compilation, including writing interfaces.
             touch_interface_datestamp(Globals, ModuleName, ".err_date", !IO)
-        ;
+        else
             true
         )
     ;
@@ -576,13 +575,13 @@ forkable_module_compilation_task_type(task_make_xml_doc) = yes.
     foreign_language::in, foreign_code_file::out, io::di, io::uo) is det.
 
 get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
-    (
+    ( if
         ForeignModName0 = foreign_language_module_name(ModuleName, Lang),
         SrcExt0 = foreign_language_file_extension(Lang)
-    ->
+    then
         ForeignModName = ForeignModName0,
         SrcExt = SrcExt0
-    ;
+    else
         unexpected($module, $pred, "unsupported foreign language")
     ),
     ObjExt = get_object_extension(Globals, PIC),
@@ -632,7 +631,7 @@ call_mercury_compile_main(Globals, Args, Succeeded, !IO) :-
     io.set_exit_status(0, !IO),
     mercury_compile.main_for_make(Globals, Args, !IO),
     io.get_exit_status(Status, !IO),
-    Succeeded = ( Status = 0 -> yes ; no ),
+    Succeeded = ( if Status = 0 then yes else no ),
     io.set_exit_status(Status0, !IO).
 
 :- pred invoke_mmc(globals::in, io.output_stream::in, maybe(file_name)::in,
@@ -643,7 +642,7 @@ invoke_mmc(Globals, ErrorStream, MaybeArgFileName, Args, Succeeded, !IO) :-
     ( if
         % NOTE: if the compiler is built in the Java grade then ProgName will
         % be set to "top_level" (which was the name compiled into the module
-        % containing the predicate main/2).   We don't want to attempt to
+        % containing the predicate main/2). We don't want to attempt to
         % invoke an executable named "top_level" however, since the wrapper
         % script will have been renamed to "mercury_compile" by the Mmakefile
         % in the compiler directory.
@@ -755,10 +754,10 @@ record_made_target_2(Globals, Succeeded, TargetFile, TouchedTargetFiles,
         % of files which might be affected can be found by reading the
         % corresponding .imdg file. But it is simpler to just delete the
         % timestamps of all the .analysis files that we know about.
-        ( TargetFile = target_file(_, module_target_analysis_registry) ->
+        ( if TargetFile = target_file(_, module_target_analysis_registry) then
             map.foldl(delete_analysis_registry_timestamps(Globals),
                 !.Timestamps, !Timestamps)
-        ;
+        else
             true
         ),
 
@@ -777,9 +776,9 @@ update_target_status(TargetStatus, TargetFile, !Info) :-
     file_timestamps::in, file_timestamps::out) is det.
 
 delete_analysis_registry_timestamps(Globals, FileName, _, !Timestamps) :-
-    ( string.suffix(FileName, ".analysis") ->
+    ( if string.suffix(FileName, ".analysis") then
         delete_timestamp(Globals, FileName, !Timestamps)
-    ;
+    else
         true
     ).
 
@@ -788,8 +787,8 @@ delete_analysis_registry_timestamps(Globals, FileName, _, !Timestamps) :-
 
 delete_timestamp(Globals, TouchedFile, !Timestamps) :-
     trace [io(!IO)] (
-        debug_msg(Globals,
-            (pred(!.IO::di, !:IO::uo) is det :-
+        debug_make_msg(Globals,
+            ( pred(!.IO::di, !:IO::uo) is det :-
                 io.write_string("Deleting timestamp for ", !IO),
                 io.write_string(TouchedFile, !IO),
                 io.nl(!IO)
@@ -915,14 +914,14 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
 
     list.map_foldl2(get_module_dependencies(Globals), NestedChildren,
         MaybeNestedImportsList, !Info, !IO),
-    (
+    ( if
         list.map(
-            (pred(yes(NestedModuleImports)::in, NestedModuleImports::out)
+            ( pred(yes(NestedModuleImports)::in, NestedModuleImports::out)
                 is semidet),
             MaybeNestedImportsList, NestedImportsList)
-    ->
+    then
         ModuleImportsList = [Imports | NestedImportsList]
-    ;
+    else
         % This error should have been caught earlier. We shouldn't be
         % attempting to build a target if we couldn't find the dependencies
         % for the module or its nested sub-modules.
@@ -1007,20 +1006,23 @@ touched_files_process_module(Globals, TargetFile, Task, TouchedTargetFiles,
         ForeignCodeFiles = [],
         TouchedTargetFiles = make_target_file_list(TargetModuleNames, FileType)
     ),
-    list.foldl2(
-        (pred(TouchedTargetFile::in,
-            !.TimestampFiles::in, !:TimestampFiles::out, !.IO::di, !:IO::uo)
-            is det :-
-        TouchedTargetFile = target_file(TargetModuleName, TargetFileType),
-        ( TimestampExt = timestamp_extension(Globals, TargetFileType) ->
-            module_name_to_file_name(Globals, TargetModuleName, TimestampExt,
-                do_not_create_dirs, TimestampFile, !IO),
-            list.cons(TimestampFile, !TimestampFiles)
-        ;
-            true
-        )
-    ), TouchedTargetFiles, [], TimestampFileNames, !IO),
+    list.foldl2(gather_target_file_timestamp_file_names(Globals),
+        TouchedTargetFiles, [], TimestampFileNames, !IO),
     TouchedFileNames = ForeignCodeFiles ++ TimestampFileNames.
+
+:- pred gather_target_file_timestamp_file_names(globals::in, target_file::in,
+    list(string)::in, list(string)::out, io::di, io::uo) is det.
+
+gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
+        !TimestampFileNames, !IO) :-
+    TouchedTargetFile = target_file(TargetModuleName, TargetFileType),
+    ( if timestamp_extension(TargetFileType, TimestampExt) then
+        module_name_to_file_name(Globals, TargetModuleName, TimestampExt,
+            do_not_create_dirs, TimestampFile, !IO),
+        list.cons(TimestampFile, !TimestampFileNames)
+    else
+        true
+    ).
 
 external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
     % Find externally compiled foreign code files for
@@ -1038,15 +1040,8 @@ external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
     (
         CompilationTarget = target_c,
         list.map_foldl(
-            (pred(FactTableFile::in, FactTableForeignFile::out, di, uo)
-                    is det -->
-                fact_table_file_name(Globals, ModuleName, FactTableFile,
-                    ".c", do_not_create_dirs, FactTableCFile),
-                fact_table_file_name(Globals, ModuleName, FactTableFile,
-                    ObjExt, do_not_create_dirs, FactTableObjFile),
-                { FactTableForeignFile = foreign_code_file(lang_c,
-                    FactTableCFile, FactTableObjFile) }
-            ), Imports ^ mai_fact_table_deps, FactTableForeignFiles, !IO),
+            get_fact_table_foreign_code_file(Globals, ObjExt, ModuleName),
+            Imports ^ mai_fact_table_deps, FactTableForeignFiles, !IO),
         ForeignFiles = ForeignFiles0 ++ FactTableForeignFiles
     ;
         ( CompilationTarget = target_java
@@ -1055,6 +1050,19 @@ external_foreign_code_files(Globals, PIC, Imports, ForeignFiles, !IO) :-
         ),
         ForeignFiles = ForeignFiles0
     ).
+
+:- pred get_fact_table_foreign_code_file(globals::in, string::in,
+    module_name::in, file_name::in, foreign_code_file::out,
+    io::di, io::uo) is det.
+
+get_fact_table_foreign_code_file(Globals, ObjExt, ModuleName, FactTableFile,
+        FactTableForeignFile, !IO) :-
+    fact_table_file_name(Globals, ModuleName, FactTableFile,
+        ".c", do_not_create_dirs, FactTableCFile, !IO),
+    fact_table_file_name(Globals, ModuleName, FactTableFile,
+        ObjExt, do_not_create_dirs, FactTableObjFile, !IO),
+    FactTableForeignFile =
+        foreign_code_file(lang_c, FactTableCFile, FactTableObjFile).
 
 :- func target_type_to_pic(module_target_type) = pic.
 

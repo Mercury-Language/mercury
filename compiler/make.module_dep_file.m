@@ -91,12 +91,12 @@ get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
             MaybeModuleAndImports, !Info, !IO)
     ;
         ModuleName = qualified(_, _),
-        (
+        ( if
             map.search(!.Info ^ module_dependencies, ModuleName,
                 MaybeModuleAndImportsPrime)
-        ->
+        then
             MaybeModuleAndImports = MaybeModuleAndImportsPrime
-        ;
+        else
             % For sub-modules, we need to generate the dependencies
             % for the parent modules first (make_module_dependencies
             % expects to be given the top-level module in a source file).
@@ -128,8 +128,8 @@ get_module_dependencies(Globals, ModuleName, MaybeModuleAndImports,
     module_name::in, bool::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-generate_ancestor_dependencies(_, _, ModuleName, yes, yes, Info,
-        Info ^ module_dependencies ^ elem(ModuleName) := no, !IO).
+generate_ancestor_dependencies(_, _, ModuleName, yes, yes, !Info, !IO) :-
+    !Info ^ module_dependencies ^ elem(ModuleName) := no.
 generate_ancestor_dependencies(Globals, RebuildModuleDeps, ModuleName,
         no, Error, !Info, !IO) :-
     maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
@@ -148,12 +148,12 @@ generate_ancestor_dependencies(Globals, RebuildModuleDeps, ModuleName,
 
 maybe_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         MaybeModuleAndImports, !Info, !IO) :-
-    (
+    ( if
         map.search(!.Info ^ module_dependencies, ModuleName,
             MaybeModuleAndImportsPrime)
-    ->
+    then
         MaybeModuleAndImports = MaybeModuleAndImportsPrime
-    ;
+    else
         do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
             MaybeModuleAndImports, !Info, !IO)
     ).
@@ -184,17 +184,17 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
     (
         MaybeSourceFileTimestamp = ok(SourceFileTimestamp),
         MaybeDepFileTimestamp = ok(DepFileTimestamp),
-        (
+        ( if
             ( RebuildModuleDeps = do_not_rebuild_module_deps
             ; compare((>), DepFileTimestamp, SourceFileTimestamp)
             )
-        ->
+        then
             % Since the source file was found in this directory, don't
             % use module_dep files which might be for installed copies
             % of the module.
             read_module_dependencies_no_search(Globals, RebuildModuleDeps,
                 ModuleName, !Info, !IO)
-        ;
+        else
             make_module_dependencies(Globals, ModuleName, !Info, !IO)
         )
     ;
@@ -210,22 +210,22 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
 
         map.lookup(!.Info ^ module_dependencies, ModuleName,
             !:MaybeModuleAndImports),
-        (
+        ( if
             !.MaybeModuleAndImports = yes(ModuleAndImports0),
             ModuleAndImports0 ^ mai_module_dir = dir.this_directory
-        ->
+        then
             SourceFileName1 = ModuleAndImports0 ^ mai_source_file_name,
             get_file_timestamp([dir.this_directory], SourceFileName1,
                 MaybeSourceFileTimestamp1, !Info, !IO),
             (
                 MaybeSourceFileTimestamp1 = ok(SourceFileTimestamp1),
-                (
+                ( if
                     ( RebuildModuleDeps = do_not_rebuild_module_deps
                     ; compare((>), DepFileTimestamp, SourceFileTimestamp1)
                     )
-                ->
+                then
                     true
-                ;
+                else
                     make_module_dependencies(Globals, ModuleName, !Info, !IO)
                 )
             ;
@@ -238,7 +238,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
                 maybe_write_importing_module(ModuleName,
                     !.Info ^ importing_module, !IO)
             )
-        ;
+        else
             true
         )
     ;
@@ -260,9 +260,9 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         )
     ),
     ModuleDepMap2 = !.Info ^ module_dependencies,
-    ( map.search(ModuleDepMap2, ModuleName, MaybeModuleAndImportsPrime) ->
+    ( if map.search(ModuleDepMap2, ModuleName, MaybeModuleAndImportsPrime) then
         !:MaybeModuleAndImports = MaybeModuleAndImportsPrime
-    ;
+    else
         !:MaybeModuleAndImports = no,
         map.det_insert(ModuleName, no, ModuleDepMap2, ModuleDepMap),
         !Info ^ module_dependencies := ModuleDepMap
@@ -338,9 +338,9 @@ do_write_module_dep_file(Globals, ModuleAndImports, !IO) :-
 
 choose_module_dep_file_version(ModuleAndImports, Version) :-
     ForeignIncludeFilesCord = ModuleAndImports ^ mai_foreign_include_files,
-    ( cord.is_empty(ForeignIncludeFilesCord) ->
+    ( if cord.is_empty(ForeignIncludeFilesCord) then
         Version = module_dep_file_v1
-    ;
+    else
         Version = module_dep_file_v2
     ).
 
@@ -375,12 +375,12 @@ do_write_module_dep_file_2(ModuleAndImports, Version, !IO) :-
     io.write_list(ModuleAndImports ^ mai_fact_table_deps,
         ", ", io.write, !IO),
     io.write_string("},\n\t{", !IO),
-    (
+    ( if
         ModuleAndImports ^ mai_has_foreign_code =
             contains_foreign_code(LangList)
-    ->
+    then
         ForeignLanguages = set.to_sorted_list(LangList)
-    ;
+    else
         ForeignLanguages = []
     ),
     io.write_list(ForeignLanguages,
@@ -439,7 +439,7 @@ contains_foreign_export_to_string(ContainsForeignExport,
         ContainsForeignExportStr = "contains_foreign_export"
     ;
         ContainsForeignExport = contains_no_foreign_export,
-        % Yes, without the "contains_" prefix.  Don't change it unless you mean
+        % Yes, without the "contains_" prefix. Don't change it unless you mean
         % to break compatibility with older .module_dep files.
         ContainsForeignExportStr = "no_foreign_export"
     ).
@@ -778,7 +778,7 @@ read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName, Msg,
         !Info, !IO) :-
     (
         RebuildModuleDeps = do_rebuild_module_deps,
-        debug_msg(Globals,
+        debug_make_msg(Globals,
             read_module_dependencies_remake_msg(Globals, ModuleName, Msg),
             !IO),
         make_module_dependencies(Globals, ModuleName, !Info, !IO)
@@ -915,14 +915,14 @@ make_short_interfaces(ErrorStream, SourceFileName, RawCompUnits, Globals,
         RawCompUnits, !IO),
     io.set_output_stream(OutputStream, _, !IO),
     io.get_exit_status(ExitStatus, !IO),
-    Succeeded = ( ExitStatus = 0 -> yes ; no ).
+    Succeeded = ( if ExitStatus = 0 then yes else no ).
 
 :- pred cleanup_short_interfaces(globals::in, list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 cleanup_short_interfaces(Globals, SubModuleNames, !Info, !IO) :-
     list.foldl2(
-        (pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
+        ( pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
                 is det :-
             make_remove_target_file_by_name(Globals, very_verbose,
                 SubModuleName, module_target_unqualified_short_interface,
@@ -934,7 +934,7 @@ cleanup_short_interfaces(Globals, SubModuleNames, !Info, !IO) :-
 
 cleanup_module_dep_files(Globals, SubModuleNames, !Info, !IO) :-
     list.foldl2(
-        (pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
+        ( pred(SubModuleName::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo)
                 is det :-
             make_remove_module_file(Globals, verbose_make, SubModuleName,
                 make_module_dep_file_extension, !Info, !IO)

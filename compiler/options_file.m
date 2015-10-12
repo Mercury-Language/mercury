@@ -228,11 +228,11 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
         OptionsFile0, !Variables, !IO) :-
     ( if OptionsFile0 = "-" then
         % Read from standard input.
-        debug_msg(Globals, write_reading_options_file_stdin, !IO),
+        debug_make_msg(Globals, write_reading_options_file_stdin, !IO),
         read_options_lines(Globals, dir.this_directory, !Variables, !IO),
-        debug_msg(Globals, write_done, !IO)
+        debug_make_msg(Globals, write_done, !IO)
     else
-        debug_msg(Globals, write_reading_options_file(OptionsFile0), !IO),
+        debug_make_msg(Globals, write_reading_options_file(OptionsFile0), !IO),
         (
             Search = search,
             globals.lookup_accumulating_option(Globals,
@@ -265,7 +265,7 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
             !IO),
         (
             MaybeDir = ok(FoundDir),
-            debug_msg(Globals,
+            debug_make_msg(Globals,
                 write_reading_options_file(FoundDir/FileToFind), !IO),
 
             read_options_lines(Globals, FoundDir, !Variables, !IO),
@@ -289,7 +289,7 @@ read_options_file_params(Globals, ErrorIfNotExist, Search, MaybeDirName,
                 ErrorIfNotExist = no_error
             )
         ),
-        debug_msg(Globals, write_done, !IO)
+        debug_make_msg(Globals, write_done, !IO)
     ).
 
 :- pred write_reading_options_file_stdin(io::di, io::uo) is det.

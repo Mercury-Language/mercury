@@ -344,8 +344,8 @@ make_process_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         % a separate make depend step. The dependencies for each module
         % are regenerated on demand.
         NonDependTargets = list.filter(
-            (pred(Target::in) is semidet :-
-                \+ string.suffix(Target, ".depend")
+            ( pred(Target::in) is semidet :-
+                not string.suffix(Target, ".depend")
             ), Targets),
 
         % Classify the remaining targets.
@@ -439,21 +439,21 @@ make_target(Globals, Target, Success, !Info, !IO) :-
     pair(module_name, target_type)::out) is det.
 
 classify_target(Globals, FileName, ModuleName - TargetType) :-
-    (
+    ( if
         string.length(FileName, NameLength),
         search_backwards_for_dot(FileName, NameLength, DotLocn),
         string.split(FileName, DotLocn, ModuleNameStr0, Suffix),
         solutions(classify_target_2(Globals, ModuleNameStr0, Suffix),
             TargetFiles),
         TargetFiles = [TargetFile]
-    ->
+    then
         TargetFile = ModuleName - TargetType
-    ;
+    else if
         string.append("lib", ModuleNameStr, FileName)
-    ->
+    then
         TargetType = misc_target(misc_target_build_library),
         file_name_to_module_name(ModuleNameStr, ModuleName)
-    ;
+    else
         ExecutableType = get_executable_type(Globals),
         TargetType = linked_target(ExecutableType),
         file_name_to_module_name(FileName, ModuleName)
@@ -463,47 +463,47 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
     pair(module_name, target_type)::out) is nondet.
 
 classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
-    (
+    ( if
         yes(Suffix) = target_extension(Globals, ModuleTargetType),
         % The .cs extension was used to build all C target files, but .cs is
         % also the file name extension for a C# file. The former use is being
         % migrated over to the .all_cs target but we still accept it for now.
         Suffix \= ".cs"
-    ->
+    then
         ModuleNameStr = ModuleNameStr0,
         TargetType = module_target(ModuleTargetType)
-    ;
+    else if
         target_extension_synonym(Suffix, ModuleTargetType)
-    ->
+    then
         ModuleNameStr = ModuleNameStr0,
         TargetType = module_target(ModuleTargetType)
-    ;
+    else if
         globals.lookup_string_option(Globals, library_extension, Suffix),
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
-    ->
+    then
         ModuleNameStr = ModuleNameStr1,
         TargetType = linked_target(static_library)
-    ;
+    else if
         globals.lookup_string_option(Globals, shared_library_extension,
             Suffix),
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
-    ->
+    then
         ModuleNameStr = ModuleNameStr1,
         TargetType = linked_target(shared_library)
-    ;
+    else if
         globals.lookup_string_option(Globals, executable_file_extension,
             Suffix)
-    ->
+    then
         ModuleNameStr = ModuleNameStr0,
         ExecutableType = get_executable_type(Globals),
         TargetType = linked_target(ExecutableType)
-    ;
+    else if
         Suffix = ".beams",
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
-    ->
+    then
         ModuleNameStr = ModuleNameStr1,
         TargetType = linked_target(erlang_archive)
-    ;
+    else if
         (
             string.append(".all_", Rest, Suffix),
             string.append(DotlessSuffix1, "s", Rest),
@@ -520,41 +520,41 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
         % Not yet implemented. `build_all' targets are only used by
         % tools/bootcheck, so it doesn't really matter.
         ModuleTargetType \= module_target_c_header(_)
-    ->
+    then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_build_all(ModuleTargetType))
-    ;
+    else if
         Suffix = ".check"
-    ->
+    then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_build_all(module_target_errors))
-    ;
+    else if
         Suffix = ".analyse"
-    ->
+    then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_build_analyses)
-    ;
+    else if
         Suffix = ".clean"
-    ->
+    then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_clean)
-    ;
+    else if
         Suffix = ".realclean"
-    ->
+    then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_realclean)
-    ;
+    else if
         Suffix = ".install",
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
-    ->
+    then
         ModuleNameStr = ModuleNameStr1,
         TargetType = misc_target(misc_target_install_library)
-    ;
+    else if
         Suffix = ".doc"
-    ->
+    then
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_build_xml_docs)
-    ;
+    else
         fail
     ),
     file_name_to_module_name(ModuleNameStr, ModuleName).
@@ -563,9 +563,9 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
 
 search_backwards_for_dot(String, Index, DotIndex) :-
     string.unsafe_prev_index(String, Index, CharIndex, Char),
-    ( Char = ('.') ->
+    ( if Char = ('.') then
         DotIndex = CharIndex
-    ;
+    else
         search_backwards_for_dot(String, CharIndex, DotIndex)
     ).
 
@@ -596,9 +596,9 @@ get_executable_type(Globals) = ExecutableType :-
             ).
 
     % Generate the .track_flags files for local modules reachable from the
-    % target module.  The files contain hashes of the options which are set for
+    % target module. The files contain hashes of the options which are set for
     % that particular module (deliberately ignoring some options), and are only
-    % updated if they have changed since the last --make run.  We use hashes as
+    % updated if they have changed since the last --make run. We use hashes as
     % the full option tables are quite large.
     %
 :- pred make_track_flags_files(globals::in, module_name::in, bool::out,
@@ -631,15 +631,15 @@ make_track_flags_files_2(Globals, ModuleName, Success, !LastHash, !Info,
         OptionsResult = yes(ModuleOptionArgs),
         DetectedGradeFlags = !.Info ^ detected_grade_flags,
         OptionArgs = !.Info ^ option_args,
-        AllOptionArgs = list.condense([DetectedGradeFlags, ModuleOptionArgs, OptionArgs]),
+        AllOptionArgs = DetectedGradeFlags ++ ModuleOptionArgs ++ OptionArgs,
 
         % The set of options from one module to the next is usually identical,
         % so we can easily avoid running handle_options and stringifying and
         % hashing the option table, all of which can contribute to an annoying
         % delay when mmc --make starts.
-        ( !.LastHash = last_hash(AllOptionArgs, HashPrime) ->
+        ( if !.LastHash = last_hash(AllOptionArgs, HashPrime) then
             Hash = HashPrime
-        ;
+        else
             option_table_hash(AllOptionArgs, Hash, !IO),
             !:LastHash = last_hash(AllOptionArgs, Hash)
         ),
@@ -702,9 +702,9 @@ compare_hash_file(Globals, FileName, Hash, Same, !IO) :-
         io.read_line_as_string(Stream, ReadResult, !IO),
         (
             ReadResult = ok(Line),
-            ( Line = Hash ->
+            ( if Line = Hash then
                 Same = yes
-            ;
+            else
                 Same = no
             )
         ;
