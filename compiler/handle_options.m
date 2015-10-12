@@ -1011,12 +1011,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         LibLinkages0 = [_ | _]
     ),
 
-    % make.m controls generating object code and linking itself,
-    % so mercury_compile.m should only generate target code when
-    % given a module to process.
-    option_implies(make, compile_only, bool(yes), !Globals),
-    option_implies(make, target_code_only, bool(yes), !Globals),
-
     % This is needed for library installation (the library grades
     % are built using `--use-grade-subdirs', and assume that
     % the interface files were built using `--use-subdirs').
