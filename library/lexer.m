@@ -443,33 +443,20 @@ string_set_line_number(LineNumber, Posn0, Posn) :-
     io::di, io::uo) is det.
 
 get_token(Stream, Token, Context, !IO) :-
-    io.read_char_unboxed(Stream, Result, Char, !IO),
-    (
-        Result = error(Error),
-        get_context(Stream, Context, !IO),
-        Token = io_error(Error)
-    ;
-        Result = eof,
-        get_context(Stream, Context, !IO),
-        Token = eof
-    ;
-        Result = ok,
-        ( if lookup_token_action(Char, Action) then
-            execute_get_token_action(Stream, Char, Action,
-                not_scanned_past_whitespace, Token, Context, !IO)
-        else
-            get_context(Stream, Context, !IO),
-            Token = junk(Char)
-        )
-    ).
+    get_token_2(Stream, not_scanned_past_whitespace, Token, Context, !IO).
 
-    % This is just like get_token, except that we have already scanned past
+    % If passed `scanned_past_whitespace' then we have already scanned past
     % some whitespace, so '(' gets scanned as `open' rather than `open_ct'.
     %
-:- pred get_token_2(io.input_stream::in, token::out, token_context::out,
-    io::di, io::uo) is det.
+    % `get_token_2' must be inlined into `execute_get_token_action' so that
+    % the recursive call can be compiled to a loop on backends that cannot
+    % eliminate tail calls in general.
+    %
+:- pragma inline(get_token_2/6).
+:- pred get_token_2(io.input_stream::in, scanned_past_whitespace::in,
+    token::out, token_context::out, io::di, io::uo) is det.
 
-get_token_2(Stream, Token, Context, !IO) :-
+get_token_2(Stream, ScannedPastWhiteSpace, Token, Context, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -483,7 +470,7 @@ get_token_2(Stream, Token, Context, !IO) :-
         Result = ok,
         ( if lookup_token_action(Char, Action) then
             execute_get_token_action(Stream, Char, Action,
-                scanned_past_whitespace, Token, Context, !IO)
+                ScannedPastWhiteSpace, Token, Context, !IO)
         else
             get_context(Stream, Context, !IO),
             Token = junk(Char)
@@ -494,29 +481,20 @@ get_token_2(Stream, Token, Context, !IO) :-
     token_context::out, posn::in, posn::out) is det.
 
 string_get_token(String, Len, Token, Context, !Posn) :-
+    string_get_token_2(String, Len, not_scanned_past_whitespace,
+        Token, Context, !Posn).
+
+:- pragma inline(string_get_token_2/7). % see get_token_2
+:- pred string_get_token_2(string::in, int::in, scanned_past_whitespace::in,
+    token::out, token_context::out, posn::in, posn::out) is det.
+
+string_get_token_2(String, Len, ScannedPastWhiteSpace, Token, Context, !Posn)
+        :-
     Posn0 = !.Posn,
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if lookup_token_action(Char, Action) then
             execute_string_get_token_action(String, Len, Posn0, Char, Action,
-                not_scanned_past_whitespace, Token, Context, !Posn)
-        else
-            string_get_context(Posn0, Context, !Posn),
-            Token = junk(Char)
-        )
-    else
-        string_get_context(Posn0, Context, !Posn),
-        Token = eof
-    ).
-
-:- pred string_get_token_2(string::in, int::in, token::out,
-    token_context::out, posn::in, posn::out) is det.
-
-string_get_token_2(String, Len, Token, Context, !Posn) :-
-    Posn0 = !.Posn,
-    ( if string_read_char(String, Len, Char, !Posn) then
-        ( if lookup_token_action(Char, Action) then
-            execute_string_get_token_action(String, Len, Posn0, Char, Action,
-                scanned_past_whitespace, Token, Context, !Posn)
+                ScannedPastWhiteSpace, Token, Context, !Posn)
         else
             string_get_context(Posn0, Context, !Posn),
             Token = junk(Char)
@@ -645,6 +623,70 @@ lookup_token_action(Char, Action) :-
 
 %---------------------------------------------------------------------------%
 
+    % Some descendant predicates of `execute_get_token_action' have the job of
+    % consuming input that does not correspond to a token, e.g. skip_to_eol
+    % skips to the end of line and does not produce a token unless it
+    % encounters the end-of-file or an I/O error.
+    %
+    % If a descendant predicate does not produce a token, then it must return
+    % an indication back to `execute_get_token_action' that it did not, then
+    % `execute_get_token_action' will call itself recursively to get the next
+    % token.
+    %
+    % An alternative would be for the descendant predicate which has not
+    % produced a token to call `execute_get_token_action' (indirectly) to get
+    % the next token. However, `execute_get_token_action' calling itself is
+    % preferable as the direct recursion can be compiled to a loop by backends
+    % that cannot otherwise eliminate tail calls.
+    %
+    % We would like to define a type to represent token values being produced
+    % or not:
+    %
+    %   :- type maybe_token
+    %       --->    yes(token, token_context)
+    %       ;       no.
+    %
+    % but the heap allocation required to return "yes(Token, Context)" would be
+    % a significant overhead. Instead, each predicate that might not produce a
+    % token returns two values, of type `token' and `maybe_have_valid_token'
+    % (below).
+    %
+    % If the predicate does produce a token then it returns the token and the
+    % context. This corresponds to the "yes(Token, Context)" case.
+    %
+    % If the predicate does not produce a token then it returns a dummy token
+    % value (that must be ignored) and an invalid context, i.e. one for which
+    % have_token_with_context fails. This corresponds to the "no" case.
+    %
+:- type maybe_have_valid_token
+    --->    maybe_have_valid_token(token_context).
+
+:- pred have_token(io.input_stream::in, maybe_have_valid_token::out,
+    io::di, io::uo) is det.
+
+have_token(Stream, maybe_have_valid_token(Context), !IO) :-
+    get_context(Stream, Context, !IO).
+
+:- pred string_have_token(posn::in, maybe_have_valid_token::out,
+    posn::in, posn::out) is det.
+
+string_have_token(Posn0, maybe_have_valid_token(Context), !Posn) :-
+    string_get_context(Posn0, Context, !Posn).
+
+:- pred do_not_have_token(token::out, maybe_have_valid_token::out) is det.
+
+do_not_have_token(Token, HaveToken) :-
+    Token = eof, % dummy
+    HaveToken = maybe_have_valid_token(-1). % invalid context
+
+:- pred have_token_with_context(maybe_have_valid_token::in, token_context::out)
+    is semidet.
+
+have_token_with_context(maybe_have_valid_token(Context), Context) :-
+    Context \= -1.
+
+%---------------------------------------------------------------------------%
+
     % Handle the character we just read the way lookup_token_action decided
     % it should be treated. Note that inlining this predicate does not
     % significantly affect performance.
@@ -658,7 +700,7 @@ execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
         Token, Context, !IO) :-
     (
         Action = action_whitespace,
-        get_token_2(Stream, Token, Context, !IO)
+        get_token_2(Stream, scanned_past_whitespace, Token, Context, !IO)
     ;
         Action = action_alpha_upper_uscore,
         get_context(Stream, Context, !IO),
@@ -684,18 +726,33 @@ execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
         get_context(Stream, Context, !IO),
         get_dot(Stream, Token, !IO)
     ;
-        Action = action_percent,
-        skip_to_eol(Stream, Token, Context, !IO)
-    ;
         Action = action_quote,
         get_context(Stream, Context, !IO),
         start_quoted_name(Stream, Char, [], Token, !IO)
     ;
-        Action = action_slash,
-        get_slash(Stream, Token, Context, !IO)
+        (
+            Action = action_percent,
+            skip_to_eol(Stream, Token0, HaveToken0, !IO)
+        ;
+            Action = action_slash,
+            get_slash(Stream, Token0, HaveToken0, !IO)
+        ),
+        ( have_token_with_context(HaveToken0, Context0) ->
+            Token = Token0,
+            Context = Context0
+        ;
+            get_token_2(Stream, scanned_past_whitespace, Token, Context, !IO)
+        )
     ;
         Action = action_hash,
-        get_source_line_number(Stream, [], Token, Context, !IO)
+        get_source_line_number(Stream, [], Token0, HaveToken0, !IO),
+        ( have_token_with_context(HaveToken0, Context0) ->
+            Token = Token0,
+            Context = Context0
+        ;
+            get_token_2(Stream, not_scanned_past_whitespace, Token, Context,
+                !IO)
+        )
     ;
         Action = action_backquote,
         get_context(Stream, Context, !IO),
@@ -721,7 +778,8 @@ execute_string_get_token_action(String, Len, Posn0, Char, Action,
         ScannedPastWhiteSpace, Token, Context, !Posn) :-
     (
         Action = action_whitespace,
-        string_get_token_2(String, Len, Token, Context, !Posn)
+        string_get_token_2(String, Len, scanned_past_whitespace,
+            Token, Context, !Posn)
     ;
         Action = action_alpha_upper_uscore,
         string_get_variable(String, Len, Posn0, Token, Context, !Posn)
@@ -742,19 +800,35 @@ execute_string_get_token_action(String, Len, Posn0, Char, Action,
         Action = action_dot,
         string_get_dot(String, Len, Posn0, Token, Context, !Posn)
     ;
-        Action = action_percent,
-        string_skip_to_eol(String, Len, Token, Context, !Posn)
-    ;
         Action = action_quote,
         string_start_quoted_name(String, Len, Char, [], Posn0, Token,
             Context, !Posn)
     ;
-        Action = action_slash,
-        string_get_slash(String, Len, Posn0, Token, Context, !Posn)
+        (
+            Action = action_percent,
+            string_skip_to_eol(String, Len, Token0, HaveToken0, !Posn)
+        ;
+            Action = action_slash,
+            string_get_slash(String, Len, Posn0, Token0, HaveToken0, !Posn)
+        ),
+        ( have_token_with_context(HaveToken0, Context0) ->
+            Token = Token0,
+            Context = Context0
+        ;
+            string_get_token_2(String, Len, scanned_past_whitespace,
+                Token, Context, !Posn)
+        )
     ;
         Action = action_hash,
-        string_get_source_line_number(String, Len, !.Posn, Token, Context,
-            !Posn)
+        string_get_source_line_number(String, Len, !.Posn, Token0, HaveToken0,
+            !Posn),
+        ( have_token_with_context(HaveToken0, Context0) ->
+            Token = Token0,
+            Context = Context0
+        ;
+            string_get_token_2(String, Len, not_scanned_past_whitespace,
+                Token, Context, !Posn)
+        )
     ;
         Action = action_backquote,
         string_get_context(Posn0, Context, !Posn),
@@ -888,166 +962,167 @@ whitespace_after_dot(Char) :-
 % Comments.
 %
 
-:- pred skip_to_eol(io.input_stream::in, token::out, token_context::out,
-    io::di, io::uo) is det.
+:- pred skip_to_eol(io.input_stream::in, token::out,
+    maybe_have_valid_token::out, io::di, io::uo) is det.
 
-skip_to_eol(Stream, Token, Context, !IO) :-
+skip_to_eol(Stream, Token, HaveToken, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
-        get_context(Stream, Context, !IO),
+        have_token(Stream, HaveToken, !IO),
         Token = io_error(Error)
     ;
         Result = eof,
-        get_context(Stream, Context, !IO),
+        have_token(Stream, HaveToken, !IO),
         Token = eof
     ;
         Result = ok,
         ( if Char = '\n' then
-            get_token_2(Stream, Token, Context, !IO)
+            do_not_have_token(Token, HaveToken)
         else
-            skip_to_eol(Stream, Token, Context, !IO)
+            skip_to_eol(Stream, Token, HaveToken, !IO)
         )
     ).
 
 :- pred string_skip_to_eol(string::in, int::in, token::out,
-    token_context::out, posn::in, posn::out) is det.
+    maybe_have_valid_token::out, posn::in, posn::out) is det.
 
-string_skip_to_eol(String, Len, Token, Context, !Posn) :-
+string_skip_to_eol(String, Len, Token, HaveToken, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = '\n' then
-            string_get_token_2(String, Len, Token, Context, !Posn)
+            do_not_have_token(Token, HaveToken)
         else
-            string_skip_to_eol(String, Len, Token, Context, !Posn)
+            string_skip_to_eol(String, Len, Token, HaveToken, !Posn)
         )
     else
-        string_get_context(!.Posn, Context, !Posn),
+        string_have_token(!.Posn, HaveToken, !Posn),
         Token = eof
     ).
 
-:- pred get_slash(io.input_stream::in, token::out, token_context::out,
+:- pred get_slash(io.input_stream::in, token::out, maybe_have_valid_token::out,
     io::di, io::uo) is det.
 
-get_slash(Stream, Token, Context, !IO) :-
+get_slash(Stream, Token, HaveToken, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
-        get_context(Stream, Context, !IO),
+        have_token(Stream, HaveToken, !IO),
         Token = io_error(Error)
     ;
         Result = eof,
-        get_context(Stream, Context, !IO),
+        have_token(Stream, HaveToken, !IO),
         Token = name("/")
     ;
         Result = ok,
         ( if Char = ('*') then
-            get_comment(Stream, Token, Context, !IO)
+            get_comment(Stream, Token, HaveToken, !IO)
         else if graphic_token_char(Char) then
-            get_context(Stream, Context, !IO),
-            get_graphic(Stream, [Char, '/'], Token, !IO)
+            get_graphic(Stream, [Char, '/'], Token, !IO),
+            have_token(Stream, HaveToken, !IO)
         else
             io.putback_char(Stream, Char, !IO),
-            get_context(Stream, Context, !IO),
+            have_token(Stream, HaveToken, !IO),
             Token = name("/")
         )
     ).
 
 :- pred string_get_slash(string::in, int::in, posn::in, token::out,
-    string_token_context::out, posn::in, posn::out) is det.
+    maybe_have_valid_token::out, posn::in, posn::out) is det.
 
-string_get_slash(String, Len, Posn0, Token, Context, !Posn) :-
+string_get_slash(String, Len, Posn0, Token, HaveToken, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = ('*') then
-            string_get_comment(String, Len, Posn0, Token, Context, !Posn)
+            string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn)
         else if graphic_token_char(Char) then
-            string_get_graphic(String, Len, Posn0, Token, Context, !Posn)
+            string_get_graphic(String, Len, Posn0, Token, Context, !Posn),
+            HaveToken = maybe_have_valid_token(Context)
         else
             string_ungetchar(String, !Posn),
-            string_get_context(Posn0, Context, !Posn),
+            string_have_token(Posn0, HaveToken, !Posn),
             Token = name("/")
         )
     else
-        string_get_context(Posn0, Context, !Posn),
+        string_have_token(Posn0, HaveToken, !Posn),
         Token = name("/")
     ).
 
-:- pred get_comment(io.input_stream::in, token::out, token_context::out,
-    io::di, io::uo) is det.
+:- pred get_comment(io.input_stream::in, token::out,
+    maybe_have_valid_token::out, io::di, io::uo) is det.
 
-get_comment(Stream, Token, Context, !IO) :-
+get_comment(Stream, Token, HaveToken, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
-        get_context(Stream, Context, !IO),
+        have_token(Stream, HaveToken, !IO),
         Token = io_error(Error)
     ;
         Result = eof,
-        get_context(Stream, Context, !IO),
+        have_token(Stream, HaveToken, !IO),
         Token = error("unterminated '/*' comment")
     ;
         Result = ok,
         ( if Char = ('*') then
-            get_comment_2(Stream, Token, Context, !IO)
+            get_comment_2(Stream, Token, HaveToken, !IO)
         else
-            get_comment(Stream, Token, Context, !IO)
+            get_comment(Stream, Token, HaveToken, !IO)
         )
     ).
 
 :- pred string_get_comment(string::in, int::in, posn::in, token::out,
-    string_token_context::out, posn::in, posn::out) is det.
+    maybe_have_valid_token::out, posn::in, posn::out) is det.
 
-string_get_comment(String, Len, Posn0, Token, Context, !Posn) :-
+string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = ('*') then
-            string_get_comment_2(String, Len, Posn0, Token, Context, !Posn)
+            string_get_comment_2(String, Len, Posn0, Token, HaveToken, !Posn)
         else
-            string_get_comment(String, Len, Posn0, Token, Context, !Posn)
+            string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn)
         )
     else
-        string_get_context(Posn0, Context, !Posn),
+        string_have_token(Posn0, HaveToken, !Posn),
         Token = error("unterminated '/*' comment")
     ).
 
-:- pred get_comment_2(io.input_stream::in, token::out, token_context::out,
-    io::di, io::uo) is det.
+:- pred get_comment_2(io.input_stream::in, token::out,
+    maybe_have_valid_token::out, io::di, io::uo) is det.
 
-get_comment_2(Stream, Token, Context, !IO) :-
+get_comment_2(Stream, Token, HaveToken, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
-        get_context(Stream, Context, !IO),
+        have_token(Stream, HaveToken, !IO),
         Token = io_error(Error)
     ;
         Result = eof,
-        get_context(Stream, Context, !IO),
+        have_token(Stream, HaveToken, !IO),
         Token = error("unterminated '/*' comment")
     ;
         Result = ok,
         ( if Char = ('/') then
             % end of /* ... */ comment, so get next token
-            get_token_2(Stream, Token, Context, !IO)
+            do_not_have_token(Token, HaveToken)
         else if Char = ('*') then
-            get_comment_2(Stream, Token, Context, !IO)
+            get_comment_2(Stream, Token, HaveToken, !IO)
         else
-            get_comment(Stream, Token, Context, !IO)
+            get_comment(Stream, Token, HaveToken, !IO)
         )
     ).
 
 :- pred string_get_comment_2(string::in, int::in, posn::in, token::out,
-    string_token_context::out, posn::in, posn::out) is det.
+    maybe_have_valid_token::out, posn::in, posn::out) is det.
 
-string_get_comment_2(String, Len, Posn0, Token, Context, !Posn) :-
+string_get_comment_2(String, Len, Posn0, Token, HaveToken, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if Char = ('/') then
             % end of /* ... */ comment, so get next token
-            string_get_token_2(String, Len, Token, Context, !Posn)
+            do_not_have_token(Token, HaveToken)
         else if Char = ('*') then
-            string_get_comment_2(String, Len, Posn0, Token, Context, !Posn)
+            string_get_comment_2(String, Len, Posn0, Token, HaveToken, !Posn)
         else
-            string_get_comment(String, Len, Posn0, Token, Context, !Posn)
+            string_get_comment(String, Len, Posn0, Token, HaveToken, !Posn)
         )
     else
-        string_get_context(Posn0, Context, !Posn),
+        string_have_token(Posn0, HaveToken, !Posn),
         Token = error("unterminated '/*' comment")
     ).
 
@@ -1705,23 +1780,23 @@ string_get_implementation_defined_literal_rest(String, Len, Posn0,
     % declaration.)
     %
 :- pred get_source_line_number(io.input_stream::in, list(char)::in, token::out,
-    token_context::out, io::di, io::uo) is det.
+    maybe_have_valid_token::out, io::di, io::uo) is det.
 
-get_source_line_number(Stream, !.RevChars, Token, Context, !IO) :-
+get_source_line_number(Stream, !.RevChars, Token, HaveToken, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
-        get_context(Stream, Context, !IO),
+        have_token(Stream, HaveToken, !IO),
         Token = io_error(Error)
     ;
         Result = eof,
-        get_context(Stream, Context, !IO),
+        have_token(Stream, HaveToken, !IO),
         Token = error("unexpected end-of-file in `#' line number directive")
     ;
         Result = ok,
         ( if char.is_digit(Char) then
             !:RevChars = [Char | !.RevChars],
-            get_source_line_number(Stream, !.RevChars, Token, Context, !IO)
+            get_source_line_number(Stream, !.RevChars, Token, HaveToken, !IO)
         else if Char = '\n' then
             ( if rev_char_list_to_string(!.RevChars, String) then
                 ( if
@@ -1729,19 +1804,19 @@ get_source_line_number(Stream, !.RevChars, Token, Context, !IO) :-
                     Int > 0
                 then
                     io.set_line_number(Stream, Int, !IO),
-                    get_token(Stream, Token, Context, !IO)
+                    do_not_have_token(Token, HaveToken)
                 else
-                    get_context(Stream, Context, !IO),
+                    have_token(Stream, HaveToken, !IO),
                     string.append_list(["invalid line number `", String,
                         "' in `#' line number directive"], Message),
                     Token = error(Message)
                 )
             else
-                get_context(Stream, Context, !IO),
+                have_token(Stream, HaveToken, !IO),
                 Token = error("invalid character in `#' line number directive")
             )
         else
-            get_context(Stream, Context, !IO),
+            have_token(Stream, HaveToken, !IO),
             ( if char.to_int(Char, 0) then
                 String = "NUL"
             else
@@ -1754,12 +1829,12 @@ get_source_line_number(Stream, !.RevChars, Token, Context, !IO) :-
     ).
 
 :- pred string_get_source_line_number(string::in, int::in, posn::in,
-    token::out, token_context::out, posn::in, posn::out) is det.
+    token::out, maybe_have_valid_token::out, posn::in, posn::out) is det.
 
-string_get_source_line_number(String, Len, Posn1, Token, Context, !Posn) :-
+string_get_source_line_number(String, Len, Posn1, Token, HaveToken, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_digit(Char) then
-            string_get_source_line_number(String, Len, Posn1, Token, Context,
+            string_get_source_line_number(String, Len, Posn1, Token, HaveToken,
                 !Posn)
         else if Char = '\n' then
             grab_string(String, Posn1, LineNumString, !Posn),
@@ -1768,15 +1843,15 @@ string_get_source_line_number(String, Len, Posn1, Token, Context, !Posn) :-
                 LineNum > 0
             then
                 string_set_line_number(LineNum, !Posn),
-                string_get_token(String, Len, Token, Context, !Posn)
+                do_not_have_token(Token, HaveToken)
             else
-                string_get_context(Posn1, Context, !Posn),
+                string_have_token(Posn1, HaveToken, !Posn),
                 string.append_list(["invalid line number `", LineNumString,
                     "' in `#' line number directive"], Message),
                 Token = error(Message)
             )
         else
-            string_get_context(Posn1, Context, !Posn),
+            string_have_token(Posn1, HaveToken, !Posn),
             ( if char.to_int(Char, 0) then
                 DirectiveString = "NUL"
             else
@@ -1787,7 +1862,7 @@ string_get_source_line_number(String, Len, Posn1, Token, Context, !Posn) :-
             Token = error(Message)
         )
     else
-        string_get_context(Posn1, Context, !Posn),
+        string_have_token(Posn1, HaveToken, !Posn),
         Token = error("unexpected end-of-file in `#' line number directive")
     ).
 
