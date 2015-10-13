@@ -101,6 +101,11 @@
 
 #if defined(__CYGWIN__)
   #define MR_CYGWIN
+  #if defined(__LP64__)
+     #define MR_CYGWIN64
+  #else
+     #define MR_CYGWIN32
+  #endif
 #endif
 
 /*---------------------------------------------------------------------------*/
