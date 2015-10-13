@@ -816,10 +816,11 @@ module_qualify_items_in_src_item_blocks([SrcItemBlock0 | SrcItemBlocks0],
     list(error_spec)::in, list(error_spec)::out) is det.
 
 module_qualify_items_loop(_InInt, [], [], !Info, !Specs).
-module_qualify_items_loop(InInt, [Item0 | Items0], [Item | Items],
+module_qualify_items_loop(InInt, [HeadItem0 | TailItems0], Items,
         !Info, !Specs) :-
-    module_qualify_item(InInt, Item0, Item, !Info, !Specs),
-    module_qualify_items_loop(InInt, Items0, Items, !Info, !Specs).
+    module_qualify_item(InInt, HeadItem0, HeadItem, !Info, !Specs),
+    module_qualify_items_loop(InInt, TailItems0, TailItems, !Info, !Specs),
+    Items = [HeadItem | TailItems]. % lcmc
 
     % Call predicates to qualify a single item.
     %

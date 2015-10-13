@@ -613,12 +613,15 @@ update_purity_ct_in_goal_info(Purity, ContainsTrace, !GoalInfo) :-
     purity_info::in, purity_info::out) is det.
 
 compute_goals_purity([], [], !Purity, !ContainsTrace, !Info).
-compute_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity, !ContainsTrace,
+compute_goals_purity([HeadGoal0 | TailGoals0], Goals, !Purity, !ContainsTrace,
         !Info) :-
-    compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
+    compute_goal_purity(HeadGoal0, HeadGoal, GoalPurity, GoalContainsTrace,
+        !Info),
     !:Purity = worst_purity(GoalPurity, !.Purity),
     !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
-    compute_goals_purity(Goals0, Goals, !Purity, !ContainsTrace, !Info).
+    compute_goals_purity(TailGoals0, TailGoals, !Purity, !ContainsTrace,
+        !Info),
+    Goals = [HeadGoal | TailGoals]. % lcmc
 
 :- pred compute_cases_purity(list(case)::in, list(case)::out,
     purity::in, purity::out, contains_trace_goal::in, contains_trace_goal::out,

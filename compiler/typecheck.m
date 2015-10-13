@@ -353,9 +353,9 @@ typecheck_report_max_iterations_exceeded(MaxIterations) = Spec :-
 typecheck_module_one_iteration(_, _, [], [],
         !NewlyInvalidPredIds, !Specs, !Changed).
 typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
-        [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos],
+        [HeadPredIdInfo0 | TailPredIdsInfos0], PredIdInfos,
         !NewlyInvalidPredIds, !Specs, !Changed) :-
-    PredIdInfo0 = PredId - PredInfo0,
+    HeadPredIdInfo0 = PredId - PredInfo0,
     ( if
         (
             pred_info_is_imported(PredInfo0)
@@ -363,10 +363,11 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
             not set_tree234.contains(ValidPredIdSet, PredId)
         )
     then
-        PredIdInfo = PredIdInfo0,
+        HeadPredIdInfo = HeadPredIdInfo0,
         typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
-            PredIdsInfos0, PredIdsInfos, !NewlyInvalidPredIds,
-            !Specs, !Changed)
+            TailPredIdsInfos0, TailPredIdsInfos, !NewlyInvalidPredIds,
+            !Specs, !Changed),
+        PredIdInfos = [HeadPredIdInfo | TailPredIdsInfos] % lcmc
     else
         % Potential parallelization site.
         typecheck_pred_if_needed(ModuleInfo, PredId, PredInfo0, PredInfo,
@@ -394,12 +395,13 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
             %   PredInfo1, PredInfo)
             !:NewlyInvalidPredIds = [PredId | !.NewlyInvalidPredIds]
         ),
-        PredIdInfo = PredId - PredInfo,
+        HeadPredIdInfo = PredId - PredInfo,
         !:Specs = PredSpecs ++ !.Specs,
         bool.or(PredChanged, !Changed),
         typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
-            PredIdsInfos0, PredIdsInfos, !NewlyInvalidPredIds,
-            !Specs, !Changed)
+            TailPredIdsInfos0, TailPredIdsInfos, !NewlyInvalidPredIds,
+            !Specs, !Changed),
+        PredIdInfos = [HeadPredIdInfo | TailPredIdsInfos] % lcmc
     ).
 
 :- pred typecheck_pred_if_needed(module_info::in, pred_id::in,

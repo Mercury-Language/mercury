@@ -18,7 +18,14 @@ MCFLAGS-hlds.quantification = --optimize-unused-args
 
 # Delete the code that computes information needed only in trace goals
 # in the common case that the trace goals are not enabled.
-MCFLAGS-check_hlds.typecheck = --unneeded-code
+# typecheck_module_one_iteration should be tail recursive.
+MCFLAGS-check_hlds.typecheck = --unneeded-code --optimize-constructor-last-call
+
+# compute_goals_purity should be tail recursive.
+MCFLAGS-check_hlds.purity = --optimize-constructor-last-call
+
+# module_qualify_items_loop should be tail recursive.
+MCFLAGS-parse_tree.module_qual = --optimize-constructor-last-call
 
 # In these files, some imports are needed only in some grades.
 # Until unused_imports.m can avoid generating messages about these,
