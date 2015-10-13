@@ -21,6 +21,8 @@
 
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
 
 :- import_module bool.
 :- import_module io.
@@ -33,13 +35,13 @@
     %
 :- pred generate_default_globals(globals::out, io::di, io::uo) is det.
 
-    % handle_given_options(Args, OptionArgs, NonOptionArgs, Link,
-    %   Errors, Globals, !IO).
+    % handle_given_options(Args, OptionArgs, NonOptionArgs, Link, Specs,
+    %   Globals, !IO).
     %
     % This predicate does NOT modify the exit status.
     %
 :- pred handle_given_options(list(string)::in,
-    list(string)::out, list(string)::out, bool::out, list(string)::out,
+    list(string)::out, list(string)::out, bool::out, list(error_spec)::out,
     globals::out, io::di, io::uo) is det.
 
     % separate_option_args(Args, OptionArgs, NonOptionArgs, !IO):
@@ -53,10 +55,11 @@
     %
 :- pred display_compiler_version(io::di, io::uo) is det.
 
-    % usage_error(Descr, Message)
+    % usage_errors(Globals, Specs, !IO)
     %
-    % Display given list of error messages and then the usage message.
-:- pred usage_errors(list(string)::in, io::di, io::uo) is det.
+    % Print the list of error messages, and then the usage message.
+    %
+:- pred usage_errors(globals::in, list(error_spec)::in, io::di, io::uo) is det.
 
     % Display usage message.
     %
@@ -89,8 +92,6 @@
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
-:- import_module parse_tree.
-:- import_module parse_tree.error_util.
 
 :- import_module char.
 :- import_module cord.
@@ -101,6 +102,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module std_util.
@@ -111,7 +113,7 @@
 generate_default_globals(DefaultGlobals, !IO) :-
     handle_given_options([], _, _, _, _, DefaultGlobals, !IO).
 
-handle_given_options(Args0, OptionArgs, Args, Link, Errors, !:Globals, !IO) :-
+handle_given_options(Args0, OptionArgs, Args, Link, Specs, !:Globals, !IO) :-
     trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
         io.nl(!TIO),
         io.write_string("original arguments\n", !TIO),
@@ -127,14 +129,14 @@ handle_given_options(Args0, OptionArgs, Args, Link, Errors, !:Globals, !IO) :-
         io.write_string("final non-option arguments\n", !TIO),
         dump_arguments(Args, !TIO)
     ),
-    convert_option_table_result_to_globals(Result, Errors, !:Globals, !IO),
+    convert_option_table_result_to_globals(Result, Specs, !:Globals, !IO),
     (
-        Errors = [_ | _],
+        Specs = [_ | _],
         Link = no
-        % Do NOT set the exit status.  This predicate may be called before all
+        % Do NOT set the exit status. This predicate may be called before all
         % the options are known, so the errors may not be valid.
     ;
-        Errors = [],
+        Specs = [],
         globals.lookup_bool_option(!.Globals, generate_dependencies,
             GenerateDependencies),
         globals.lookup_bool_option(!.Globals, generate_dependency_file,
@@ -215,33 +217,41 @@ dump_arguments([Arg | Args], !IO) :-
     % one option implies setting/unsetting another one).
     %
 :- pred convert_option_table_result_to_globals(maybe_option_table(option)::in,
-    list(string)::out, globals::out, io::di, io::uo) is det.
+    list(error_spec)::out, globals::out, io::di, io::uo) is det.
 
-convert_option_table_result_to_globals(error(ErrorMessage), Errors,
-        Globals, !IO) :-
-    Errors = [ErrorMessage],
-    generate_default_globals(Globals, !IO).
-convert_option_table_result_to_globals(ok(OptionTable0), Errors,
-        Globals, !IO) :-
-    check_option_values(OptionTable0, OptionTable, Target, GC_Method,
-        TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
-        SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
-        ReuseStrategy,
-        MaybeFeedbackInfo, HostEnvType, SystemEnvType, TargetEnvType,
-        LimitErrorContextsMap, cord.init, CheckErrorsCord, !IO),
-    ( if cord.is_empty(CheckErrorsCord) then
-        convert_options_to_globals(OptionTable, Target, GC_Method,
-            TagsMethod, TermNorm, Term2Norm, TraceLevel,
-            TraceSuppress, SSTraceLevel, MaybeThreadSafe, C_CompilerType,
-            CSharp_CompilerType, ReuseStrategy,
-            MaybeFeedbackInfo,
-            HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
-            CheckErrorsCord, ErrorsCord, Globals, !IO)
-    else
-        ErrorsCord = CheckErrorsCord,
+convert_option_table_result_to_globals(MaybeOptionTable0, Specs, Globals,
+        !IO) :-
+    (
+        MaybeOptionTable0 = error(ErrorMessage),
+        OptionTablePieces = [words(ErrorMessage)],
+        OptionTableMsg = error_msg(no, do_not_treat_as_first, 0,
+            [always(OptionTablePieces)]),
+        OptionTableSpec = error_spec(severity_error, phase_options,
+            [OptionTableMsg]),
+        Specs = [OptionTableSpec],
         generate_default_globals(Globals, !IO)
-    ),
-    Errors = cord.list(ErrorsCord).
+    ;
+        MaybeOptionTable0 = ok(OptionTable0),
+        check_option_values(OptionTable0, OptionTable, Target, GC_Method,
+            TagsMethod, TermNorm, Term2Norm, TraceLevel, TraceSuppress,
+            SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+            ReuseStrategy,
+            MaybeFeedbackInfo, HostEnvType, SystemEnvType, TargetEnvType,
+            LimitErrorContextsMap, CheckSpecs, !IO),
+        (
+            CheckSpecs = [],
+            convert_options_to_globals(OptionTable, Target, GC_Method,
+                TagsMethod, TermNorm, Term2Norm, TraceLevel,
+                TraceSuppress, SSTraceLevel, MaybeThreadSafe, C_CompilerType,
+                CSharp_CompilerType, ReuseStrategy, MaybeFeedbackInfo,
+                HostEnvType, SystemEnvType, TargetEnvType,
+                LimitErrorContextsMap, CheckSpecs, Specs, Globals, !IO)
+        ;
+            CheckSpecs = [_ | _],
+            Specs = CheckSpecs,
+            generate_default_globals(Globals, !IO)
+        )
+    ).
 
 :- pred check_option_values(option_table::in, option_table::out,
     compilation_target::out, gc_method::out, tags_method::out,
@@ -251,175 +261,189 @@ convert_option_table_result_to_globals(ok(OptionTable0), Errors,
     reuse_strategy::out,
     maybe(feedback_info)::out, env_type::out, env_type::out, env_type::out,
     limit_error_contexts_map::out,
-    cord(string)::in, cord(string)::out, io::di, io::uo) is det.
+    list(error_spec)::out, io::di, io::uo) is det.
 
 check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
-        !Errors, !IO) :-
-    map.lookup(!.OptionTable, target, Target0),
-    ( if
-        Target0 = string(TargetStr),
-        convert_target(TargetStr, TargetPrime)
-    then
+        !:Specs, !IO) :-
+    !:Specs = [],
+    raw_lookup_string_option(!.OptionTable, target, TargetStr),
+    ( if convert_target(TargetStr, TargetPrime) then
         Target = TargetPrime
     else
         Target = target_c,     % dummy
-        add_error("Invalid target option " ++
-            "(must be `c', `java', 'csharp', or `erlang')",
-            !Errors)
+        TargetSpec =
+            [words("Invalid argument"), quote(TargetStr),
+            words("to the `--target' option;"),
+            words("must be `c', `java', 'csharp', or `erlang'."), nl],
+        add_error(TargetSpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, gc, GC_Method0),
-    ( if
-        GC_Method0 = string(GC_MethodStr),
-        convert_gc_method(GC_MethodStr, GC_MethodPrime)
-    then
+    raw_lookup_string_option(!.OptionTable, gc, GC_MethodStr),
+    ( if convert_gc_method(GC_MethodStr, GC_MethodPrime) then
         GC_Method = GC_MethodPrime
     else
         GC_Method = gc_none,   % dummy
-        add_error("Invalid GC option (must be `none', " ++
-            "`conservative', `boehm', `hgc', `accurate', " ++
-            "or `automatic')",
-            !Errors)
+        GCMethodSpec =
+            [words("Invalid argument"), quote(GC_MethodStr),
+            words("to the `--gc' option;"),
+            words("must be `none', `conservative', `boehm', `hgc',"),
+            words("`accurate', or `automatic'."), nl],
+        add_error(GCMethodSpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, tags, TagsMethod0),
-    ( if
-        TagsMethod0 = string(TagsMethodStr),
-        convert_tags_method(TagsMethodStr, TagsMethodPrime)
-    then
+    raw_lookup_string_option(!.OptionTable, tags, TagsMethodStr),
+    ( if convert_tags_method(TagsMethodStr, TagsMethodPrime) then
         TagsMethod = TagsMethodPrime
     else
         TagsMethod = tags_none,  % dummy
-        add_error("Invalid tags option " ++
-            "(must be `none', `low' or `high')", !Errors)
+        TagsMethodSpec =
+            [words("Invalid argument"), quote(TagsMethodStr),
+            words("to the `--tags' option;"),
+            words("must be `none', `low', or `high'."), nl],
+        add_error(TagsMethodSpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, fact_table_hash_percent_full, PercentFull),
+    raw_lookup_int_option(!.OptionTable, fact_table_hash_percent_full,
+        FactTablePercentFull),
     ( if
-        PercentFull = int(Percent),
-        Percent >= 1,
-        Percent =< 100
+        FactTablePercentFull >= 1,
+        FactTablePercentFull =< 100
     then
         true
     else
-        add_error("Invalid argument to option " ++
-            "`--fact-table-hash-percent-full'\n\t" ++
-            "(must be an integer between 1 and 100)", !Errors)
+        FactTablePercentFullSpec =
+            [words("Invalid argument"), int_fixed(FactTablePercentFull),
+            words("to the `--fact-table-hash-percent-full' option;"),
+            words("must be an integer between 1 and 100."), nl],
+        add_error(FactTablePercentFullSpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, termination_norm, TermNorm0),
-    ( if
-        TermNorm0 = string(TermNormStr),
-        convert_termination_norm(TermNormStr, TermNormPrime)
-    then
+    raw_lookup_string_option(!.OptionTable, termination_norm, TermNormStr),
+    ( if convert_termination_norm(TermNormStr, TermNormPrime) then
         TermNorm = TermNormPrime
     else
         TermNorm = norm_simple,  % dummy
-        add_error("Invalid argument to option " ++
-            "`--termination-norm'\n\t(must be " ++
-            "`simple', `total' or `num-data-elems').", !Errors)
+        TermNormSpec =
+            [words("Invalid argument"), quote(TermNormStr),
+            quote("to the `--termination-norm' option;"),
+            words("must be `simple', `total', or `num-data-elems'."), nl],
+        add_error(TermNormSpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, termination2_norm, Term2Norm0),
-    ( if
-        Term2Norm0 = string(Term2NormStr),
-        convert_termination_norm(Term2NormStr, Term2NormPrime)
-    then
+    raw_lookup_string_option(!.OptionTable, termination2_norm, Term2NormStr),
+    ( if convert_termination_norm(Term2NormStr, Term2NormPrime) then
         Term2Norm = Term2NormPrime
     else
         Term2Norm = norm_simple, % dummy
-        add_error("Invalid argument to option " ++
-            "`--termination2-norm'\n\t(must be" ++
-            "`simple', `total' or `num-data-elems').", !Errors)
+        Term2NormSpec =
+            [words("Invalid argument"), quote(TermNormStr),
+            quote("to the `--termination2-norm' option;"),
+            words("must be `simple', `total', or `num-data-elems')."), nl],
+        add_error(Term2NormSpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, force_disable_tracing, ForceDisableTracing),
-    ( if ForceDisableTracing = bool(yes) then
+    raw_lookup_bool_option(!.OptionTable, force_disable_tracing,
+        ForceDisableTracing),
+    (
+        ForceDisableTracing = yes,
         TraceLevel = trace_level_none
-    else
-        map.lookup(!.OptionTable, trace_level, Trace),
-        map.lookup(!.OptionTable, exec_trace, ExecTraceOpt),
-        map.lookup(!.OptionTable, decl_debug, DeclDebugOpt),
+    ;
+        ForceDisableTracing = no,
+        raw_lookup_string_option(!.OptionTable, trace_level, Trace),
+        raw_lookup_bool_option(!.OptionTable, exec_trace, ExecTrace),
+        raw_lookup_bool_option(!.OptionTable, decl_debug, DeclDebug),
         ( if
-            Trace = string(TraceStr),
-            ExecTraceOpt = bool(ExecTrace),
-            DeclDebugOpt = bool(DeclDebug),
-            convert_trace_level(TraceStr, ExecTrace, DeclDebug,
-                MaybeTraceLevel)
+            convert_trace_level(Trace, ExecTrace, DeclDebug, MaybeTraceLevel)
         then
             (
                 MaybeTraceLevel = yes(TraceLevel)
             ;
                 MaybeTraceLevel = no,
                 TraceLevel = trace_level_none,  % dummy
-                add_error("Specified trace level is not " ++
-                    "compatible with grade", !Errors)
+                InconsistentTraceLevelSpec = 
+                    [words("The specified trace level"), words(Trace),
+                    words("is not compatible with the value"),
+                    words("of the `--decl_debug' option."), nl],
+                add_error(InconsistentTraceLevelSpec, !Specs)
             )
         else
             TraceLevel = trace_level_none,  % dummy
-            add_error("Invalid argument to option `--trace'\n\t" ++
-                "(must be `minimum', `shallow', `deep', " ++
-                "`decl', `rep' or `default').", !Errors)
+            BadTraceLevelSpec =
+                [words("Invalid argument"), quote(Trace),
+                words("to the `--trace' option;"),
+                words("must be `minimum', `shallow', `deep', "),
+                words("`decl', `rep', or `default'."), nl],
+            add_error(BadTraceLevelSpec, !Specs)
         )
     ),
 
-    map.lookup(!.OptionTable, suppress_trace, Suppress),
-    ( if
-        Suppress = string(SuppressStr),
-        convert_trace_suppress(SuppressStr, TraceSuppressPrime)
-    then
+    raw_lookup_string_option(!.OptionTable, suppress_trace, SuppressStr),
+    ( if convert_trace_suppress(SuppressStr, TraceSuppressPrime) then
         TraceSuppress = TraceSuppressPrime
     else
         TraceSuppress = default_trace_suppress, % dummy
-        add_error("Invalid argument to option `--suppress-trace'.", !Errors)
+        TraceSuppressSpec =
+            [words("Invalid argument"), quote(SuppressStr),
+            words("to the `--suppress-trace' option."), nl],
+        % The set of valid options is a given language, not a simple set
+        % of words, so there is no simple, short suggestion we can print.
+        add_error(TraceSuppressSpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, force_disable_ssdebug, ForceDisableSSDB),
-    ( if ForceDisableSSDB = bool(yes) then
+    raw_lookup_bool_option(!.OptionTable, force_disable_ssdebug,
+        ForceDisableSSDB),
+    (
+        ForceDisableSSDB = yes,
         SSTraceLevel = none
-    else
-        map.lookup(!.OptionTable, ssdb_trace_level, SSTrace),
-        map.lookup(!.OptionTable, source_to_source_debug, SSDB),
-        ( if
-            SSTrace = string(SSTraceStr),
-            SSDB = bool(IsInSSDebugGrade),
-            convert_ssdb_trace_level(SSTraceStr, IsInSSDebugGrade, SSTL)
-        then
+    ;
+        ForceDisableSSDB = no,
+        raw_lookup_string_option(!.OptionTable, ssdb_trace_level, SSTrace),
+        raw_lookup_bool_option(!.OptionTable, source_to_source_debug, SSDB),
+        ( if convert_ssdb_trace_level(SSTrace, SSDB, SSTL) then
             SSTraceLevel = SSTL
         else
             SSTraceLevel = none,
-            add_error("Invalid argument to option `--ssdb-trace'.", !Errors)
+            SSDBSpec =
+                [words("Invalid argument"), quote(SSTrace),
+                words("to the `--ssdb-trace' option;"),
+                words("must be `default', `none', `shallow', or `deep'."), nl],
+            add_error(SSDBSpec, !Specs)
         )
     ),
 
-    map.lookup(!.OptionTable, maybe_thread_safe_opt, MaybeThreadSafeOption),
+    raw_lookup_string_option(!.OptionTable, maybe_thread_safe_opt,
+        MaybeThreadSafeStr),
     ( if
-        MaybeThreadSafeOption = string(MaybeThreadSafeString),
-        convert_maybe_thread_safe(MaybeThreadSafeString, MaybeThreadSafe0)
+        convert_maybe_thread_safe(MaybeThreadSafeStr, MaybeThreadSafePrime)
     then
-        MaybeThreadSafe = MaybeThreadSafe0
+        MaybeThreadSafe = MaybeThreadSafePrime
     else
         MaybeThreadSafe = no, % dummy
-        add_error("Invalid argument to option `--maybe-thread-safe'.", !Errors)
+        % XXX This should either be a boolean option, or the two values
+        % should have descriptive names, not `yes' and `no'.
+        % XXX They should definitely use a bespoke type inside the compiler.
+        MTSSpec =
+            [words("Invalid argument"), quote(MaybeThreadSafeStr),
+            words("to the `--maybe-thread-safe' option;"),
+            words("must be `no' or `yes'."), nl],
+        add_error(MTSSpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, dump_hlds_alias, DumpAliasOption),
-    ( if
-        DumpAliasOption = string(DumpAlias),
-        DumpAlias = ""
-    then
+    raw_lookup_string_option(!.OptionTable, dump_hlds_alias, DumpAlias),
+    ( if DumpAlias = "" then
         true
-    else if
-        DumpAliasOption = string(DumpAlias),
-        convert_dump_alias(DumpAlias, AliasDumpOptions)
-    then
+    else if convert_dump_alias(DumpAlias, AliasDumpOptions) then
         map.set(dump_hlds_options, string(AliasDumpOptions), !OptionTable)
     else
-        add_error("Invalid argument to option `--hlds-dump-alias'.", !Errors)
+        DumpAliasSpec =
+            [words("Invalid argument"), quote(DumpAlias),
+            words("to the `-D' (also known as `--dump-hlds-alias') option."),
+            nl],
+        add_error(DumpAliasSpec, !Specs)
     ),
 
     some [!DumpOptions] (
@@ -485,57 +509,59 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         map.set(dump_hlds_options, string(!.DumpOptions), !OptionTable)
     ),
 
-    map.lookup(!.OptionTable, c_compiler_type, C_CompilerType0),
-    ( if
-        C_CompilerType0 = string(C_CompilerTypeStr),
-        convert_c_compiler_type(C_CompilerTypeStr, C_CompilerTypePrime)
-    then
+    raw_lookup_string_option(!.OptionTable, c_compiler_type,
+        C_CompilerTypeStr),
+    ( if convert_c_compiler_type(C_CompilerTypeStr, C_CompilerTypePrime) then
         C_CompilerType = C_CompilerTypePrime
     else
         C_CompilerType = cc_unknown,   % dummy
-        add_error("Invalid argument to option `--c-compiler-type'\n" ++
-            "\t(must be `gcc', `clang', 'msvc', or `unknown').",
-            !Errors)
+        CCTpec =
+            [words("Invalid argument"), quote(C_CompilerTypeStr),
+            words("to the `--c-compiler-type' option;"),
+            words("must be `gcc', `clang', 'msvc', or `unknown'."), nl],
+        add_error(CCTpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, csharp_compiler_type, CSharp_CompilerType0),
+    raw_lookup_string_option(!.OptionTable, csharp_compiler_type,
+        CSharp_CompilerTypeStr),
     ( if
-        CSharp_CompilerType0 = string(CSharp_CompilerTypeStr),
         convert_csharp_compiler_type(CSharp_CompilerTypeStr,
             CSharp_CompilerTypePrime)
     then
         CSharp_CompilerType = CSharp_CompilerTypePrime
     else
         CSharp_CompilerType = csharp_unknown,   % dummy
-        add_error("Invalid argument to option `--csharp-compiler-type'\n" ++
-            "\t(must be `microsoft', `mono', or `unknown').",
-            !Errors),
-        true
+        CSCSpec =
+            [words("Invalid argument"), quote(CSharp_CompilerTypeStr),
+            words("to the `--csharp-compiler-type' option;"),
+            words("must be `microsoft', `mono', or `unknown'."), nl],
+        add_error(CSCSpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, structure_reuse_constraint, ReuseConstraint0),
-    map.lookup(!.OptionTable, structure_reuse_constraint_arg,
-        ReuseConstraintArg0),
+    raw_lookup_string_option(!.OptionTable, structure_reuse_constraint,
+        ReuseConstraintStr),
+    raw_lookup_int_option(!.OptionTable, structure_reuse_constraint_arg,
+        ReuseConstraintArgNum),
     ( if
-        ReuseConstraint0 = string(ReuseConstraintStr),
-        ReuseConstraintArg0 = int(ReuseConstraintArgNum),
         convert_reuse_strategy(ReuseConstraintStr, ReuseConstraintArgNum,
             ReuseStrategyPrime)
     then
         ReuseStrategy = ReuseStrategyPrime
     else
         ReuseStrategy = same_cons_id,   % dummy
-        add_error(
-            "Invalid argument to option `--structure-reuse-constraint'\n" ++
-            "\t(must be `same_cons_id' or `within_n_cells_difference').",
-            !Errors)
+        ReuseConstrSpec =
+            [words("Invalid argument"), quote(ReuseConstraintStr),
+            words("to the `--structure-reuse-constraint' option;"),
+            words("must be `same_cons_id', or `within_n_cells_difference'."),
+            nl],
+        add_error(ReuseConstrSpec, !Specs)
     ),
 
-    map.lookup(!.OptionTable, feedback_file, FeedbackFile0),
-    ( if
-        FeedbackFile0 = string(FeedbackFile),
-        FeedbackFile \= ""
-    then
+    raw_lookup_string_option(!.OptionTable, feedback_file, FeedbackFile),
+    ( if FeedbackFile = "" then
+        % No feedback info.
+        MaybeFeedbackInfo = no
+    else
         % When we are compiling a single module, we generally don't know
         % the name of the executable that the compiled module will end up in,
         % and in fact the compiled module may end up in more than one
@@ -551,29 +577,24 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             FeedbackReadResult = error(Error),
             feedback_read_error_message_string(FeedbackFile, Error,
                 ErrorMessage),
-            add_error(ErrorMessage, !Errors),
+            add_error([words(ErrorMessage)], !Specs),
             MaybeFeedbackInfo = no
         )
-    else
-        % No feedback info.
-        MaybeFeedbackInfo = no
     ),
-    map.lookup(!.OptionTable, host_env_type, HostEnvType0),
-    ( if
-        HostEnvType0 = string(HostEnvTypeStr),
-        convert_env_type(HostEnvTypeStr, HostEnvTypePrime)
-    then
+
+    raw_lookup_string_option(!.OptionTable, host_env_type, HostEnvTypeStr),
+    ( if convert_env_type(HostEnvTypeStr, HostEnvTypePrime) then
         HostEnvType = HostEnvTypePrime
     else
         HostEnvType = env_type_posix,   % dummy
-        add_error(
-            "Invalid argument to option `--host-env-type'\n" ++
-            "\t(must be `posix', `cygwin', `msys' or `windows').",
-            !Errors)
+        HostEnvSpec =
+            [words("Invalid argument"), quote(HostEnvTypeStr),
+            words("to the `--host-env-type' option;"),
+            words("must be `posix', `cygwin', `msys' or `windows')."), nl],
+        add_error(HostEnvSpec, !Specs)
     ),
-    map.lookup(!.OptionTable, system_env_type, SystemEnvType0),
+    raw_lookup_string_option(!.OptionTable, system_env_type, SystemEnvTypeStr),
     ( if
-        SystemEnvType0 = string(SystemEnvTypeStr),
         ( if SystemEnvTypeStr = "" then
             SystemEnvTypePrime = HostEnvType
         else
@@ -583,67 +604,56 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         SystemEnvType = SystemEnvTypePrime
     else
         SystemEnvType = env_type_posix,    % dummy
-        add_error(
-            "Invalid argument to option `--system-env-type'\n" ++
-            "\t(must be `posix', `cygwin', `msys' or `windows').",
-            !Errors)
+        SystemEnvSpec =
+            [words("Invalid argument"), quote(SystemEnvTypeStr),
+            words("to the `--system-env-type' option;"),
+            words("must be `posix', `cygwin', `msys' or `windows')."), nl],
+        add_error(SystemEnvSpec, !Specs)
     ),
-    map.lookup(!.OptionTable, target_env_type, TargetEnvType0),
-    ( if
-        TargetEnvType0 = string(TargetEnvTypeStr),
-        convert_env_type(TargetEnvTypeStr, TargetEnvTypePrime)
-    then
+    raw_lookup_string_option(!.OptionTable, target_env_type, TargetEnvTypeStr),
+    ( if convert_env_type(TargetEnvTypeStr, TargetEnvTypePrime) then
         TargetEnvType = TargetEnvTypePrime
     else
         TargetEnvType = env_type_posix,   % dummy
-        add_error(
-            "Invalid argument to option `--target-env-type'\n" ++
-            "\t(must be `posix', `cygwin', `msys' or `windows').",
-            !Errors)
+        TargetEnvTypeSpec =
+            [words("Invalid argument"), quote(TargetEnvTypeStr),
+            words("to the `--target-env-type' option;"),
+            words("must be `posix', `cygwin', `msys' or `windows'."), nl],
+        add_error(TargetEnvTypeSpec, !Specs)
     ),
 
     ( if
         HostEnvType = env_type_posix,
         CSharp_CompilerType = csharp_microsoft
     then
-        add_error(
-            "`--host-env-type posix` is incompatible with\n" ++
-            "`--csharp-compiler-type microsoft'.",
-            !Errors)
+        PosixCSMSpec =
+            [words("`--host-env-type posix' is incompatible with"),
+            words("`--csharp-compiler-type microsoft'."), nl],
+        add_error(PosixCSMSpec, !Specs)
     else
         true
     ),
 
-    map.lookup(!.OptionTable, limit_error_contexts, LimitErrorContextsOption),
-    ( if
-        LimitErrorContextsOption = accumulating(LimitErrorContextsOptionStrs)
-    then
-        convert_limit_error_contexts(LimitErrorContextsOptionStrs,
-            BadLimitErrorContextsOptions, LimitErrorContextsMap),
-        (
-            BadLimitErrorContextsOptions = []
-        ;
-            BadLimitErrorContextsOptions = [BadLimitErrorContextsOption],
-            add_error(
-                "invalid --limit-error-contexts option\n" ++
-                BadLimitErrorContextsOption,
-                !Errors)
-        ;
-            BadLimitErrorContextsOptions = [_, _ | _],
-            add_error(
-                "invalid --limit-error-contexts options\n  " ++
-                string.join_list("\n", BadLimitErrorContextsOptions),
-                !Errors)
-        )
-    else
-        map.init(LimitErrorContextsMap),
-        add_error("unexpected --limit-error-contexts option.", !Errors)
+    raw_lookup_accumulating_option(!.OptionTable, limit_error_contexts,
+        LimitErrorContextsOptionStrs),
+    convert_limit_error_contexts(LimitErrorContextsOptionStrs,
+        BadLimitErrorContextsOptions, LimitErrorContextsMap),
+    (
+        BadLimitErrorContextsOptions = []
+    ;
+        BadLimitErrorContextsOptions = [BadLimitErrorContextsOption],
+        LECSpec =
+            [words("Invalid argument"), quote(BadLimitErrorContextsOption),
+            words("to the `--limit-error-contexts' option."), nl],
+        add_error(LECSpec, !Specs)
+    ;
+        BadLimitErrorContextsOptions = [_, _ | _],
+        BadPieces = list_to_quoted_pieces(BadLimitErrorContextsOptions),
+        LECSpec =
+            [words("Invalid arguments")] ++ BadPieces ++
+            [words("to the `--limit-error-contexts' option."), nl],
+        add_error(LECSpec, !Specs)
     ).
-
-:- pred add_error(string::in, cord(string)::in, cord(string)::out) is det.
-
-add_error(Error, !Errors) :-
-    !:Errors = cord.snoc(!.Errors, Error).
 
     % NOTE: each termination analyser has its own norm setting.
     %
@@ -654,7 +664,7 @@ add_error(Error, !Errors) :-
     c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in, maybe(feedback_info)::in,
     env_type::in, env_type::in, env_type::in, limit_error_contexts_map::in,
-    cord(string)::in, cord(string)::out,
+    list(error_spec)::in, list(error_spec)::out,
     globals::out, io::di, io::uo) is det.
 
 convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
@@ -662,7 +672,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
-        !Errors, !:Globals, !IO) :-
+        !Specs, !:Globals, !IO) :-
 
     lookup_string_option(OptionTable0, install_command, InstallCmd),
     ( if InstallCmd = "" then
@@ -670,8 +680,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     else
         lookup_string_option(OptionTable0, install_command_dir_option,
             InstallCmdDirOption),
-        FileInstallCmd = install_cmd_user(InstallCmd,
-            InstallCmdDirOption)
+        FileInstallCmd = install_cmd_user(InstallCmd, InstallCmdDirOption)
     ),
 
     globals_init(OptionTable0, Target, GC_Method, TagsMethod0,
@@ -683,9 +692,8 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % NOTE: this call must occur *before* any code below that implicitly
     % sets options based on the target language or GC method.
-    %
     check_grade_component_compatibility(!.Globals, Target, GC_Method,
-        !Errors),
+        !Specs),
 
     globals.lookup_string_option(!.Globals, event_set_file_name,
         EventSetFileName0),
@@ -694,8 +702,8 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             MaybeEventSetFileName, !IO),
         (
             MaybeEventSetFileName = yes(EventSetFileName),
-            globals.set_option(event_set_file_name,
-                string(EventSetFileName), !Globals)
+            globals.set_option(event_set_file_name, string(EventSetFileName),
+                !Globals)
         ;
             MaybeEventSetFileName = no
         )
@@ -740,16 +748,15 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.lookup_int_option(!.Globals, num_tag_bits, NumTagBits0)
     ),
 
-    % If --tags low but --num-tag-bits not specified,
-    % use the autoconf-determined value for --num-tag-bits
-    % (the autoconf-determined value is passed from the `mc' script
-    % using the undocumented --conf-low-tag-bits option).
+    % If --tags low but --num-tag-bits is not specified,
+    % use the autoconf-determined value for --num-tag-bits.
+    % (The autoconf-determined value is passed from the `mmc' script
+    % using the deliberately undocumented --conf-low-tag-bits option.)
     ( if
         TagsMethod0 = tags_low,
         NumTagBits0 = -1
     then
-        globals.lookup_int_option(!.Globals, conf_low_tag_bits,
-            NumTagBits1)
+        globals.lookup_int_option(!.Globals, conf_low_tag_bits, NumTagBits1)
     else
         NumTagBits1 = NumTagBits0
     ),
@@ -757,13 +764,12 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % If --num-tag-bits negative or unspecified, issue a warning
     % and assume --num-tag-bits 0.
     ( if NumTagBits1 < 0 then
-        io.progname_base("mercury_compile", ProgName, !IO),
-        io.format("%s: warning: --num-tag-bits invalid or unspecified\n",
-            [s(ProgName)], !IO),
-        io.format("%s: using --num-tag-bits 0 (tags disabled)\n",
-            [s(ProgName)], !IO),
-        record_warning(!.Globals, !IO),
-        NumTagBits = 0
+        NumTagBits = 0,
+        NumTagBitsSpec =
+            [words("Warning: the value of the `--num-tag-bits' option"),
+            words("is either unspecified or invalid."), nl,
+            words("Using `--num-tag-bits 0, which disables tags."), nl],
+        add_warning(NumTagBitsSpec, !Specs)
     else
         NumTagBits = NumTagBits1
     ),
@@ -783,8 +789,10 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         GradeSupportsParConj = no,
         Threadscope = yes
     then
-        add_error("'threadscope' grade component requires a parallel grade",
-            !Errors)
+        ThreadScopeSpec =
+            [words("The `threadscope' grade component"),
+            words("requires a parallel grade."), nl],
+        add_error(ThreadScopeSpec, !Specs)
     else
         true
     ),
@@ -801,24 +809,26 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.lookup_string_option(!.Globals, feedback_file,
                 FeedbackFile),
             ( if FeedbackFile = "" then
-                add_error(
-                    "'--implicit-parallelism' requires '--feedback-file'",
-                    !Errors)
+                NoFeedbackFileSpec =
+                    [words("The `--implicit-parallelism' option"),
+                    words("requires the use of `--feedback-file'."), nl],
+                add_error(NoFeedbackFileSpec, !Specs)
             else
                 true
             )
         ;
             % Report an error when used in parallel grades without parallel
-            % conjunction support.  In non-parallel grades simply ignore
+            % conjunction support. In non-parallel grades simply ignore
             % --implicit-parallelism.
             GradeSupportsParConj = no,
             (
                 Parallel = yes,
-                add_error(
-                    "'--implicit-parallelism' requires a grade that " ++
-                    "supports parallel conjunctions, use a low-level C " ++
-                    "grade without trailing.",
-                    !Errors)
+                NoParConjSupportSpec =
+                    [words("The `--implicit-parallelism' option"),
+                    words("requires a grade that"),
+                    words("supports parallel conjunctions."),
+                    words("Use a low-level C grade without trailing."), nl],
+                add_error(NoParConjSupportSpec, !Specs)
             ;
                 Parallel = no
             ),
@@ -842,30 +852,26 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % Generating Java implies
     %   - gc_method `automatic' and no heap reclamation on failure
-    %     Because GC is handled automatically by the Java
-    %     implementation.
+    %     Because GC is handled automatically by the Java implementation.
     %   - high-level code
-    %     Because only the MLDS back-end supports
-    %     compiling to Java, not the LLDS back-end.
+    %     Because only the MLDS back-end supports compiling to Java.
     %   - high-level data
-    %     Because it is more efficient,
-    %     and better for interoperability.
-    %     (In theory --low-level-data should work too,
-    %     but there's no reason to bother supporting it.)
+    %     Because it is more efficient, and better for interoperability.
+    %     (In theory --low-level-data should work too, but there is
+    %     no reason to bother supporting it.)
     %   - unboxed floats
     %   - turning off nested functions
     %     Because Java doesn't support nested functions.
     %   - using copy-out for both det and nondet output arguments
     %     Because Java doesn't support pass-by-reference.
     %   - using no tags
-    %     Because Java doesn't provide any mechanism for tagging
-    %     pointers.
+    %     Because Java doesn't provide any mechanism for tagging pointers.
     %   - box no-tag types
-    %         We require no-tag types to be boxed since in Java
-    %         java.lang.Object is the only type that all other types
-    %         can be successfully cast to and then cast back from.
+    %     We require no-tag types to be boxed since in Java java.lang.Object
+    %     is the only type that all other types can be successfully cast to
+    %     and then cast back from.
     %   - store nondet environments on the heap
-    %         Because Java has no way of allocating structs on the stack.
+    %     Because Java has no way of allocating structs on the stack.
     %   - pretest-equality-cast-pointers
     %   - no library grade installation check with `mmc --make'.
     %
@@ -910,8 +916,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % Generating Erlang implies
     %   - gc_method `automatic' and no heap reclamation on failure
-    %     because GC is handled automatically by the Erlang
-    %     implementation.
+    %     Because GC is handled automatically by the Erlang implementation.
     %   - unboxed floats
     %   - delay-partial-instantiations
     %   - no-can-compare-constants-as-ints
@@ -941,7 +946,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         % The following options do not directly affect the Erlang backend,
         % however we need to ensure they are set to values that are consistent
         % with what the predicate grade_component_table/2 (below) expects.
-        %
         globals.set_option(gcc_non_local_gotos, bool(no), !Globals),
         globals.set_option(gcc_global_registers, bool(no), !Globals),
         globals.set_option(asm_labels, bool(no), !Globals),
@@ -976,16 +980,13 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     %
 
     % Shared libraries always use `--linkage shared'.
-    option_implies(compile_to_shared_lib, linkage, string("shared"),
-        !Globals),
+    option_implies(compile_to_shared_lib, linkage, string("shared"), !Globals),
     option_implies(compile_to_shared_lib, mercury_linkage,
         string("shared"), !Globals),
 
     % --high-level-code disables the use of low-level gcc extensions
-    option_implies(highlevel_code, gcc_non_local_gotos, bool(no),
-        !Globals),
-    option_implies(highlevel_code, gcc_global_registers, bool(no),
-        !Globals),
+    option_implies(highlevel_code, gcc_non_local_gotos, bool(no), !Globals),
+    option_implies(highlevel_code, gcc_global_registers, bool(no), !Globals),
     option_implies(highlevel_code, asm_labels, bool(no), !Globals),
 
     % --no-gcc-nested-functions implies --no-gcc-local-labels
@@ -1001,8 +1002,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % If no --lib-linkage option has been specified, default to the
     % set of all possible linkages.
-    globals.lookup_accumulating_option(!.Globals, lib_linkages,
-        LibLinkages0),
+    globals.lookup_accumulating_option(!.Globals, lib_linkages, LibLinkages0),
     (
         LibLinkages0 = [],
         globals.set_option(lib_linkages,
@@ -1028,9 +1028,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % `--transitive-intermodule-optimization' and `--make' are
     % not compatible with each other.
-    %
-    globals.lookup_bool_option(!.Globals, transitive_optimization,
-        TransOpt),
+    globals.lookup_bool_option(!.Globals, transitive_optimization, TransOpt),
     (
         TransOpt = yes,
         globals.lookup_bool_option(!.Globals, make, UsingMMCMake),
@@ -1039,8 +1037,10 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         UsingOrInvokedByMMCMake = bool.or(UsingMMCMake, InvokedByMMCMake),
         (
             UsingOrInvokedByMMCMake = yes,
-            add_error("`--transitive-intermodule-optimization' is" ++
-                " incompatible with `mmc --make'.", !Errors)
+            TransOptMakeSpec =
+                [words("The `--transitive-intermodule-optimization' option"),
+                words("is incompatible with the `--make' option."), nl],
+            add_error(TransOptMakeSpec, !Specs)
         ;
             UsingOrInvokedByMMCMake = no
         )
@@ -1058,8 +1058,12 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         InterModOpt = yes,
         InterModAnalysis = yes
     then
-        add_error("`--intermodule-optimization' is" ++
-            " incompatible with `--intermodule-analysis'.", !Errors)
+        OptAnalysisSpec =
+            [words("The `--intermodule-optimization' option"),
+            words("is incompatible with"),
+            words("the `--intermodule-analysis' option."),
+            nl],
+        add_error(OptAnalysisSpec, !Specs)
     else
         true
     ),
@@ -1078,9 +1082,11 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         MaybeStandaloneInt = yes(_),
         ExtraInitFunctions = yes
     then
-        add_error("`--generate-standalone-interface' is" ++
-            " incompatible with `--extra-initialization-functions'.",
-            !Errors)
+        ExtraInitsSpec =
+            [words("The `--generate-standalone-interface' option"),
+            words("is incompatible with"),
+            words("the `--extra-initialization-functions' option."), nl],
+        add_error(ExtraInitsSpec, !Specs)
     else
         true
     ),
@@ -1235,8 +1241,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.lookup_string_option(!.Globals, dump_hlds_options,
             DumpOptions0),
         string.append(DumpOptions0, AllDumpOptions, DumpOptions1),
-        globals.set_option(dump_hlds_options, string(DumpOptions1),
-            !Globals)
+        globals.set_option(dump_hlds_options, string(DumpOptions1), !Globals)
     else
         true
     ),
@@ -1316,20 +1321,26 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         UseMinimalModelStackCopy = yes,
         UseMinimalModelOwnStacks = yes
     then
-        add_error("can't use both forms of minimal model tabling " ++
-            "at once", !Errors)
+        DualMMSpec =
+            [words("You cannot use both forms of minimal model tabling"),
+            words("at once."), nl],
+        add_error(DualMMSpec, !Specs)
     else if
         UseMinimalModel = yes,
         HighLevelCode = yes
     then
-        add_error("minimal model tabling is incompatible "
-            ++ "with high level code", !Errors)
+        MMHLSpec =
+            [words("Minimal model tabling is incompatible with"),
+            words("high level code."), nl],
+        add_error(MMHLSpec, !Specs)
     else if
         UseMinimalModel = yes,
         UseTrail = yes
     then
-        add_error("minimal model tabling is incompatible " ++
-            "with trailing", !Errors)
+        MMTrailSpec =
+            [words("Minimal model tabling is incompatible with"),
+            words("trailing."), nl],
+        add_error(MMTrailSpec, !Specs)
     else
         true
     ),
@@ -1349,11 +1360,14 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         ( if ArgPackBits0 < 0 then
             ArgPackBits = BitsPerWord
         else if ArgPackBits0 > BitsPerWord then
-            io.progname_base("mercury_compile", ProgNameB, !IO),
-            io.format("%s: warning: --arg-pack-bits invalid\n",
-                [s(ProgNameB)], !IO),
-            record_warning(!.Globals, !IO),
-            ArgPackBits = BitsPerWord
+            ArgPackBits = BitsPerWord,
+            ArgPackBitsSpec =
+                [words("Warning: cannot set the value of `--arg-pack-bits'"),
+                words("to value higher than the value of `--bits-per-word'."),
+                words("Reducing the effective value of `--arg-pack-bits'"),
+                words("to the maximum allowable value, which is"),
+                int_fixed(BitsPerWord), suffix("."), nl],
+            add_error(ArgPackBitsSpec, !Specs)
         else
             ArgPackBits = ArgPackBits0
         ),
@@ -1368,8 +1382,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ),
 
     % We assume that single-precision floats do not need to be boxed.
-    option_implies(single_prec_float, unboxed_float, bool(yes),
-        !Globals),
+    option_implies(single_prec_float, unboxed_float, bool(yes), !Globals),
 
     % We only use the float registers if floats would not fit into the
     % regular registers.
@@ -1415,9 +1428,9 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % Inlining happens before the deep profiling transformation, so if
     % we allowed inlining to happen, then we would lose all profiling
     % information about the inlined calls - this is not usually what we
-    % want so we disable inlining with deep profiling by default.  The
-    % user can re-enable it with the `--profile-optimized' option.  Leave
-    % inlineing enabled when profiling for implicit parallelism.
+    % want so we disable inlining with deep profiling by default.
+    % The user can re-enable it with the `--profile-optimized' option.
+    % Leave inlining enabled when profiling for implicit parallelism.
     %
     option_implies(profile_for_feedback, prof_optimized, bool(yes), !Globals),
     globals.lookup_bool_option(!.Globals, prof_optimized, ProfOptimized),
@@ -1437,8 +1450,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     option_implies(record_term_sizes_as_cells, pre_prof_transforms_simplify,
         bool(yes), !Globals),
 
-    globals.lookup_string_option(!.Globals, experimental_complexity,
-        ExpComp),
+    globals.lookup_string_option(!.Globals, experimental_complexity, ExpComp),
     ( if ExpComp = "" then
         true
     else
@@ -1586,19 +1598,19 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         then
             true
         else
-            add_error("deep profiling is incompatible " ++
-                "with high level code", !Errors)
+            DeepHLSpec =
+                [words("Deep profiling is incompatible with"),
+                words("high level code."), nl],
+            add_error(DeepHLSpec, !Specs)
         ),
-        globals.set_option(optimize_constructor_last_call,
-            bool(no), !Globals),
+        globals.set_option(optimize_constructor_last_call, bool(no), !Globals),
         globals.lookup_bool_option(!.Globals,
             use_lots_of_ho_specialization, LotsOfHOSpec),
         (
             LotsOfHOSpec = yes,
             True = bool(yes),
             globals.set_option(optimize_higher_order, True, !Globals),
-            globals.set_option(higher_order_size_limit, int(999999),
-                !Globals)
+            globals.set_option(higher_order_size_limit, int(999999), !Globals)
         ;
             LotsOfHOSpec = no
         )
@@ -1614,8 +1626,9 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         RecordTermSizesAsWords = yes,
         RecordTermSizesAsCells = yes
     then
-        add_error("we can't record term size " ++
-            "as both words and cells", !Errors)
+        DualTermSizeSpec =
+            [words("Cannot record term size as both words and cells."), nl],
+        add_error(DualTermSizeSpec, !Specs)
     else if
         ( RecordTermSizesAsWords = yes
         ; RecordTermSizesAsCells = yes
@@ -1624,12 +1637,13 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         globals.set_option(optimize_constructor_last_call, bool(no), !Globals),
         % Term size profiling breaks the assumption that even word offsets from
         % the start of the cell are double-word aligned memory addresses.
-        globals.set_option(allow_double_word_fields, bool(no),
-            !Globals),
+        globals.set_option(allow_double_word_fields, bool(no), !Globals),
         (
             HighLevelCode = yes,
-            add_error("term size profiling is incompatible "
-                ++ "with high level code", !Errors)
+            TermSizeHLSpec =
+                [words("Term size profiling is incompatible with"),
+                words("high level code."), nl],
+            add_error(TermSizeHLSpec, !Specs)
         ;
             HighLevelCode = no
         )
@@ -1644,8 +1658,9 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     then
         true
     else
-        add_error("debugging is available only in low level C grades",
-            !Errors)
+        TraceHLSpec =
+            [words("Debugging is available only in low level C grades."), nl],
+        add_error(TraceHLSpec, !Specs)
     ),
 
     % The pthreads headers on some architectures (Solaris, Linux)
@@ -1664,7 +1679,6 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % `--no-allow-inlining' should imply
     % `--no-optimize-constant-propagation' otherwise,
     % e.g. when tracing is enabled.
-    %
     (
         ProfileDeep = no,
         option_neg_implies(allow_inlining, constant_propagation, bool(no),
@@ -1678,8 +1692,8 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     option_neg_implies(reorder_conj, deforestation, bool(no), !Globals),
     option_neg_implies(reorder_conj, constraint_propagation, bool(no),
         !Globals),
-    option_neg_implies(reorder_conj, local_constraint_propagation,
-        bool(no), !Globals),
+    option_neg_implies(reorder_conj, local_constraint_propagation, bool(no),
+        !Globals),
 
     % --stack-trace requires `procid' stack layouts
     option_implies(stack_trace, procid_stack_layout, bool(yes), !Globals),
@@ -1694,33 +1708,30 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % We also turn off optimization of stack slots for no_return calls,
     % because that optimization does not preserve agc typeinfo liveness.
     %
-    % For the MLDS back-end, `--gc accurate' requires just typeinfo
-    % liveness.
+    % For the MLDS back-end, `--gc accurate' requires just typeinfo liveness.
     %
     % XXX Currently we also need to disable heap reclamation on failure
     % if accurate GC is enabled.
     % There are two issues with heap reclamation on failure:
-    % (i) For heap reclamation on failure to work at all,
-    %      we also need at least some degree of liveness-accuracy.
-    %      Otherwise a local variable may get initialized to point
-    %      to the heap, then the heap is reset, then the memory
-    %      is overwritten with new allocations, and then a collection
-    %      occurs, at which point the local variable now points to
-    %      a value of the wrong type.
-    % (ii) The current method of handling saved heap pointers during GC
-    %      means that we lose heap reclamation on failure after a
-    %      GC occurs. A better method would be to just allocate a
-    %      word of heap space at each choice point.
     %
-    % XXX we also need to disable optimize-constructor-last-call
-    % as currently the collector (and tracing code generator) knows
-    % neither about the pre-constructed data structures nor the
-    % references into them that this optimisation uses.
+    % 1 For heap reclamation on failure to work at all, we also need
+    %   at least some degree of liveness-accuracy. Otherwise, a local variable
+    %   may get initialized to point to the heap, then the heap is reset,
+    %   then the memory is overwritten with new allocations, and then
+    %   a collection occurs, at which point the local variable now points to
+    %   a value of the wrong type.
+    % 2 The current method of handling saved heap pointers during GC means that
+    %   we lose heap reclamation on failure after a GC occurs. A better method
+    %   would be to just allocate a word of heap space at each choice point.
     %
-    % XXX we also disable type specialization.
-    % This is needed because type specialization may create
-    % type class constraints of the form `c(t(T))'
-    % (e.g. `enum(var(T))'' in library/sparse_bitset.m),
+    % XXX We also need to disable optimize-constructor-last-call as currently
+    % the collector (and tracing code generator) knows neither about the
+    % pre-constructed data structures nor the references into them
+    % that this optimisation uses.
+    %
+    % XXX We also disable type specialization. This is needed because
+    % type specialization may create type class constraints of the form
+    % `c(t(T))' (e.g. `enum(var(T))'' in library/sparse_bitset.m),
     % which the current RTTI system can't handle.
     %
     (
@@ -1735,11 +1746,9 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             reclaim_heap_on_semidet_failure, bool(no), !Globals),
         globals.set_option(
             reclaim_heap_on_nondet_failure, bool(no), !Globals),
-        globals.set_option(optimize_constructor_last_call,
-            bool(no), !Globals),
+        globals.set_option(optimize_constructor_last_call, bool(no), !Globals),
         globals.set_option(type_specialization, bool(no), !Globals),
-        globals.set_option(user_guided_type_specialization,
-            bool(no), !Globals)
+        globals.set_option(user_guided_type_specialization, bool(no), !Globals)
     ;
         ( GC_Method = gc_automatic
         ; GC_Method = gc_none
@@ -1760,8 +1769,10 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         GC_Method = gc_accurate,
         PutNondetEnvOnHeap = yes
     then
-        add_error("--gc accurate is incompatible with " ++
-            "--put-nondet-env-on-heap", !Errors)
+        AGCEnvSpec =
+            [words("`--gc accurate' is incompatible with"),
+            words("`--put-nondet-env-on-heap'."), nl],
+        add_error(AGCEnvSpec, !Specs)
     else
         true
     ),
@@ -1769,8 +1780,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % `procid' and `agc' stack layouts need `basic' stack layouts
     option_implies(procid_stack_layout, basic_stack_layout, bool(yes),
         !Globals),
-    option_implies(agc_stack_layout, basic_stack_layout, bool(yes),
-        !Globals),
+    option_implies(agc_stack_layout, basic_stack_layout, bool(yes), !Globals),
 
     % dupelim.m doesn't preserve label layout structures (e.g. it can
     % change the return address in a call to a different label whose code
@@ -1788,10 +1798,9 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     % XXX deforestation and constraint propagation do not perform
     % folding on polymorphic predicates correctly with
     % --body-typeinfo-liveness.
-    option_implies(body_typeinfo_liveness, deforestation, bool(no),
+    option_implies(body_typeinfo_liveness, deforestation, bool(no), !Globals),
+    option_implies(body_typeinfo_liveness, constraint_propagation, bool(no),
         !Globals),
-    option_implies(body_typeinfo_liveness, constraint_propagation,
-        bool(no), !Globals),
 
     % XXX if trailing is enabled, middle recursion optimization
     % can generate code which does not allocate a stack frame
@@ -1841,22 +1850,19 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         UseMinimalModelStackCopy = yes,
         DisableCut = no
     then
-        globals.set_option(use_minimal_model_stack_copy_cut,
-            bool(yes), !Globals)
+        globals.set_option(use_minimal_model_stack_copy_cut, bool(yes),
+            !Globals)
     else
         true
     ),
 
     % --dump-hlds, --statistics, --parallel-liveness and
-    % --parallel-code-gen require compilation by phases
-    globals.lookup_accumulating_option(!.Globals, dump_hlds,
-        DumpHLDSStages),
+    % --parallel-code-gen require compilation by phases.
+    globals.lookup_accumulating_option(!.Globals, dump_hlds, DumpHLDSStages),
     globals.lookup_accumulating_option(!.Globals, dump_trace_counts,
         DumpTraceStages),
-    globals.lookup_bool_option(!.Globals, parallel_liveness,
-        ParallelLiveness),
-    globals.lookup_bool_option(!.Globals, parallel_code_gen,
-        ParallelCodeGen),
+    globals.lookup_bool_option(!.Globals, parallel_liveness, ParallelLiveness),
+    globals.lookup_bool_option(!.Globals, parallel_code_gen, ParallelCodeGen),
     ( if
         ( DumpHLDSStages = [_ | _]
         ; DumpTraceStages = [_ | _]
@@ -1883,33 +1889,31 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
 
     % --intermod-unused-args implies --intermodule-optimization and
     % --optimize-unused-args.
-    option_implies(intermod_unused_args, intermodule_optimization,
-        bool(yes), !Globals),
+    option_implies(intermod_unused_args, intermodule_optimization, bool(yes),
+        !Globals),
     option_implies(intermod_unused_args, optimize_unused_args, bool(yes),
         !Globals),
 
     % --introduce-accumulators implies --excess-assign and
     % --common-struct.
-    option_implies(introduce_accumulators, excess_assign, bool(yes),
-        !Globals),
-    option_implies(introduce_accumulators, common_struct, bool(yes),
-        !Globals),
+    option_implies(introduce_accumulators, excess_assign, bool(yes), !Globals),
+    option_implies(introduce_accumulators, common_struct, bool(yes), !Globals),
 
     % Don't do the unused_args optimization when making the
     % optimization interface.
-    option_implies(make_optimization_interface, optimize_unused_args,
-        bool(no), !Globals),
+    option_implies(make_optimization_interface, optimize_unused_args, bool(no),
+        !Globals),
 
     % The results of trail usage analysis assume that trail usage
     % optimization is being done, i.e. that redundant trailing
     % operations are really being eliminated.
-    option_implies(analyse_trail_usage, optimize_trail_usage,
-        bool(yes), !Globals),
+    option_implies(analyse_trail_usage, optimize_trail_usage, bool(yes),
+        !Globals),
 
     % The information needed for generating the module ordering
     % is only available while generating the dependencies.
-    option_implies(generate_module_order, generate_dependencies,
-        bool(yes), !Globals),
+    option_implies(generate_module_order, generate_dependencies, bool(yes),
+        !Globals),
 
     % The information needed for generating the imports graph
     % is only available while generating the dependencies.
@@ -1976,7 +1980,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ),
 
     % Handle the `.opt', C and Erlang header, init file and library search
-    % directories for installed libraries.  These couldn't be handled by
+    % directories for installed libraries. These couldn't be handled by
     % options.m because they are grade dependent.
     globals.lookup_accumulating_option(!.Globals,
         mercury_library_directories, MercuryLibDirs),
@@ -1984,7 +1988,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     (
         MercuryLibDirs = [_ | _],
         ExtraLinkLibDirs = list.map(
-            (func(MercuryLibDir) =
+            ( func(MercuryLibDir) =
                 MercuryLibDir/"lib"/GradeString
             ), MercuryLibDirs),
 
@@ -1999,7 +2003,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             accumulating(Rpath ++ ExtraLinkLibDirs), !Globals),
 
         ExtraIncludeDirs = list.map(
-            (func(MercuryLibDir) =
+            ( func(MercuryLibDir) =
                 MercuryLibDir/"lib"/GradeString/"inc"
             ), MercuryLibDirs),
         globals.lookup_accumulating_option(!.Globals, c_include_directory,
@@ -2012,7 +2016,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             accumulating(ExtraIncludeDirs ++ ErlangIncludeDirs), !Globals),
 
         ExtraIntermodDirs = list.map(
-            (func(MercuryLibDir) =
+            ( func(MercuryLibDir) =
                 dir.make_path_name(MercuryLibDir,
                     dir.make_path_name("ints", GradeString))
             ), MercuryLibDirs),
@@ -2022,7 +2026,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
             accumulating(ExtraIntermodDirs ++ IntermodDirs0), !Globals),
 
         ExtraInitDirs = list.map(
-            (func(MercuryLibDir) =
+            ( func(MercuryLibDir) =
                 MercuryLibDir / "modules" / GradeString
             ), MercuryLibDirs),
 
@@ -2097,8 +2101,8 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         SearchGradeLibDirs = list.map(ToGradeLibDir, SearchLibFilesDirs),
         LinkLibDirs = SearchGradeLibDirs ++ LinkLibDirs2,
 
-        ToGradeInitDir = (func(Dir) =
-            ToGradeSubdir(Dir)/"Mercury"/"inits"),
+        ToGradeInitDir =
+            (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"inits"),
         SearchGradeInitDirs = list.map(ToGradeInitDir, SearchLibFilesDirs),
         InitDirs = SearchGradeInitDirs ++ InitDirs2
     ;
@@ -2166,17 +2170,17 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         option_requires(warn_non_tail_recursion, pessimize_tailcalls, bool(no),
             "--warn-non-tail-recursion is incompatible with " ++
             "--pessimize-tailcalls",
-            !.Globals, !Errors)
+            !.Globals, !Specs)
     ;
         HighLevelCode = yes,
         option_requires(warn_non_tail_recursion, optimize_tailcalls, bool(yes),
             "--warn-non-tail-recursion requires --optimize-tailcalls",
-            !.Globals, !Errors)
+            !.Globals, !Specs)
     ),
     option_requires(warn_non_tail_recursion, errorcheck_only, bool(no),
         "--warn-non-tail-recursion is incompatible with " ++
         "--errorcheck-only",
-        !.Globals, !Errors),
+        !.Globals, !Specs),
 
     % The backend foreign languages depend on the target.
     (
@@ -2250,11 +2254,11 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
     ;
         HighLevelCode = yes
     ),
-    postprocess_options_libgrades(!Globals, !Errors),
+    postprocess_options_libgrades(!Globals, !Specs),
     globals_init_mutables(!.Globals, !IO).
 
     % These option implications only affect the low-level (LLDS) code
-    % generator.  They may in fact be harmful if set for the high-level
+    % generator. They may in fact be harmful if set for the high-level
     % code generator, because sometimes the same option has different
     % meanings and implications in the two backends.
     %
@@ -2368,22 +2372,23 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
     ).
 
     % option_requires(SourceBoolOption, RequiredOption, RequiredOptionValue,
-    %   ErrorMsg, !Errors):
+    %   ErrorMsg, !Specs):
+    %
     % If the SourceBoolOption is set to yes, and RequiredOption is not set
     % to RequiredOptionValue, then add the given error message to the list.
     %
 :- pred option_requires(option::in, option::in, option_data::in, string::in,
-    globals::in, cord(string)::in, cord(string)::out) is det.
+    globals::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 option_requires(SourceOption, RequiredOption, RequiredOptionValue,
-        ErrorMessage, Globals, !Errors) :-
+        ErrorMessage, Globals, !Specs) :-
     globals.lookup_bool_option(Globals, SourceOption, SourceOptionValue),
     globals.lookup_option(Globals, RequiredOption, OptionValue),
     ( if
         SourceOptionValue = yes,
         OptionValue \= RequiredOptionValue
     then
-        add_error(ErrorMessage, !Errors)
+        add_error([words(ErrorMessage)], !Specs)
     else
         true
     ).
@@ -2450,9 +2455,9 @@ disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
     %
 :- pred check_grade_component_compatibility(globals::in,
     compilation_target::in, gc_method::in,
-    cord(string)::in, cord(string)::out) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
+check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
     TargetStr = compilation_target_string(Target),
 
     % Check that the GC method is compatible with the target language.
@@ -2475,22 +2480,22 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
             ( GC_Method = gc_boehm
             ; GC_Method = gc_boehm_debug
             ),
-            string.format(
-                "use of the Boehm GC is incompatible with target language %s",
-                [s(TargetStr)], BoehmIncompatibleMsg),
-            add_error(BoehmIncompatibleMsg, !Errors)
+            BoehmSpec =
+                [words("Use of Boehm GC is incompatible with"),
+                words("target language"), words(TargetStr), suffix("."), nl],
+            add_error(BoehmSpec, !Specs)
         ;
             GC_Method = gc_hgc,
-            string.format(
-                "use of HGC is incompatible with target language %s",
-                [s(TargetStr)], HGC_IncompatibleMsg),
-            add_error(HGC_IncompatibleMsg, !Errors)
+            HGCSpec =
+                [words("Use of HGC is incompatible with"),
+                words("target language"), words(TargetStr), suffix("."), nl],
+            add_error(HGCSpec, !Specs)
         ;
             GC_Method = gc_accurate,
-            string.format(
-                "use of the accurate GC is incompatible with target language %s",
-                [s(TargetStr)],  AGC_IncompatibleMsg),
-            add_error(AGC_IncompatibleMsg, !Errors)
+            AGCSpec =
+                [words("Use of accurate GC is incompatible with"),
+                words("target language"), words(TargetStr), suffix("."), nl],
+            add_error(AGCSpec, !Specs)
         )
     ),
 
@@ -2504,8 +2509,10 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
             ; Target = target_csharp
             ; Target = target_erlang
             ),
-            add_error("time profiling is incompatible with target language " ++
-                TargetStr, !Errors)
+            TimeProfpec =
+                [words("Time profiling is incompatible with"),
+                words("target language"), words(TargetStr), suffix("."), nl],
+            add_error(TimeProfpec, !Specs)
         ;
             Target = target_c
         )
@@ -2523,8 +2530,10 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
             ; Target = target_csharp
             ; Target = target_erlang
             ),
-            add_error("memory profiling is incompatible with target language " ++
-                TargetStr, !Errors)
+            MemProfpec =
+                [words("Memory profiling is incompatible with"),
+                words("target language"), words(TargetStr), suffix("."), nl],
+            add_error(MemProfpec, !Specs)
         ;
             Target = target_c
         )
@@ -2552,8 +2561,10 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
             ; Target = target_csharp
             ; Target = target_erlang
             ),
-            add_error("trailing is incompatible with target language " ++
-                TargetStr, !Errors)
+            Trailpec =
+                [words("Trailing is incompatible with"),
+                words("target language"), words(TargetStr), suffix("."), nl],
+            add_error(Trailpec, !Specs)
         ;
             Target = target_c
         )
@@ -2571,9 +2582,10 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
             globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
             (
                 HighLevelCode = yes,
-                add_error(
-                "stack segments are incompatible with the high-level C backend",
-                !Errors)
+                StackSegmentpec =
+                    [words("Stack segments are incompatible with"),
+                    words("the high-level C backend."), nl],
+                add_error(StackSegmentpec, !Specs)
             ;
                 HighLevelCode = no
             )
@@ -2582,8 +2594,10 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
             ; Target = target_csharp
             ; Target = target_erlang
             ),
-            add_error("stack segments are incompatible with target language " ++
-                TargetStr, !Errors)
+            StackSegmentpec =
+                [words("Stack segments are incompatible with"),
+                words("target language"), words(TargetStr), suffix("."), nl],
+            add_error(StackSegmentpec, !Specs)
         )
     ;
         StackSegments = no
@@ -2599,10 +2613,10 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
             ; Target = target_csharp
             ; Target = target_erlang
             ),
-            string.format(
-                "single precision floats are incompatible with target language %s",
-                [s(TargetStr)], SinglePrecFloatMsg),
-            add_error(SinglePrecFloatMsg, !Errors)
+            SPFSpec =
+                [words("Single precision floats are incompatible with"),
+                words("target language"), words(TargetStr), suffix("."), nl],
+            add_error(SPFSpec, !Specs)
         ;
             Target = target_c
         )
@@ -2612,11 +2626,15 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Errors) :-
 
 %-----------------------------------------------------------------------------%
 
-usage_errors(Errors, !IO) :-
+usage_errors(Globals, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
-    list.foldl(write_error_plain_with_progname(ProgName), Errors, !IO),
-    io.set_exit_status(1, !IO),
-    usage(!IO).
+    io.write_string(ProgName, !IO),
+    io.write_string(":", !IO),
+    io.nl(!IO),
+    % If _NumErrors > 0, this will set the exit status to 1.
+    % It will also set the exit status to 1 if  _NumWarnings > 0
+    % and --halt-at-warn was specified.
+    write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
 display_compiler_version(!IO) :-
     library.version(Version, Fullarch),
@@ -2669,7 +2687,7 @@ long_usage(!IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code for postprocessing the library grade set
+% Code for postprocessing the library grade set.
 %
 
     % Apply some sanity checks to the library grade set and then apply any
@@ -2680,55 +2698,55 @@ long_usage(!IO) :-
     % no duplicate grade components.
     %
 :- pred postprocess_options_libgrades(globals::in, globals::out,
-    cord(string)::in, cord(string)::out) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-postprocess_options_libgrades(!Globals, !Errors) :-
+postprocess_options_libgrades(!Globals, !Specs) :-
     globals.lookup_accumulating_option(!.Globals, libgrades_include_components,
         IncludeComponentStrs),
     globals.lookup_accumulating_option(!.Globals, libgrades_exclude_components,
         OmitComponentStrs),
     list.foldl2(string_to_grade_component("included"),
-        IncludeComponentStrs, [], IncludeComponents, !Errors),
+        IncludeComponentStrs, [], IncludeComponents, !Specs),
     list.foldl2(string_to_grade_component("excluded"),
-        OmitComponentStrs, [], OmitComponents, !Errors),
+        OmitComponentStrs, [], OmitComponents, !Specs),
     some [!LibGrades] (
         globals.lookup_accumulating_option(!.Globals, libgrades, !:LibGrades),
-        %
         % NOTE: the two calls to foldl2 here will preserve the original
-        %       relative ordering of the library grades.
-        %
+        % relative ordering of the library grades.
         list.foldl2(filter_grade(must_contain, IncludeComponents),
-            !.LibGrades, [], !:LibGrades, !Errors),
+            !.LibGrades, [], !:LibGrades, !Specs),
         list.foldl2(filter_grade(must_not_contain, OmitComponents),
-            !.LibGrades, [], !:LibGrades, !Errors),
+            !.LibGrades, [], !:LibGrades, !Specs),
         globals.set_option(libgrades, accumulating(!.LibGrades), !Globals)
     ).
 
-    % string_to_grade_component(OptionStr, Comp, !Comps, !Errors):
+    % string_to_grade_component(OptionStr, Comp, !Comps, !Specs):
     %
     % If `Comp' is a string that represents a valid grade component
-    % then add it to !Comps.  If it is not then emit an error message.
+    % then add it to !Comps. If it is not then emit an error message.
     % `OptionStr' should be the name of the command line option for
     % which the error is to be reported.
     %
 :- pred string_to_grade_component(string::in, string::in,
     list(string)::in, list(string)::out,
-    cord(string)::in, cord(string)::out) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-string_to_grade_component(FilterDesc, Comp, !Comps, !Errors) :-
+string_to_grade_component(FilterDesc, Comp, !Comps, !Specs) :-
     ( if grade_component_table(Comp, _, _, _, _) then
         !:Comps = [Comp | !.Comps]
     else
-        add_error("unknown " ++ FilterDesc ++ " library grade component: "
-            ++ Comp, !Errors)
+        GradeCompSpec =
+            [words("Unknown"), words(FilterDesc),
+            words("library grade component:"), quote(Comp), suffix("."), nl],
+        add_error(GradeCompSpec, !Specs)
     ).
 
-    % filter_grade(FilterPred, Components, GradeString, !Grades, !Errors):
+    % filter_grade(FilterPred, Components, GradeString, !Grades, !Specs):
     %
     % Convert `GradeString' into a list of grade component strings, and
     % then check whether the given grade should be filtered from the
     % library grade set by applying the closure `FilterPred(Components)',
-    % to that list.  The grade is removed from the library grade set if
+    % to that list. The grade is removed from the library grade set if
     % that application fails.
     %
     % Emits an error if `GradeString' cannot be converted into a list
@@ -2737,10 +2755,10 @@ string_to_grade_component(FilterDesc, Comp, !Comps, !Errors) :-
 :- pred filter_grade(pred(list(string), list(string))
     ::in(pred(in, in) is semidet), list(string)::in,
     string::in, list(string)::in, list(string)::out,
-    cord(string)::in, cord(string)::out) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-filter_grade(FilterPred, CondComponents, GradeString, !Grades, !Errors) :-
-    grade_string_to_comp_strings(GradeString, MaybeGrade, !Errors),
+filter_grade(FilterPred, CondComponents, GradeString, !Grades, !Specs) :-
+    grade_string_to_comp_strings(GradeString, MaybeGrade, !Specs),
     (
         MaybeGrade = yes(GradeComponents),
         ( if FilterPred(CondComponents, GradeComponents) then
@@ -2774,25 +2792,29 @@ must_not_contain(OmitComponents, GradeComponents) :-
     % Emit an invalid grade error if the conversion fails.
     %
 :- pred grade_string_to_comp_strings(string::in, maybe(list(string))::out,
-    cord(string)::in, cord(string)::out) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-grade_string_to_comp_strings(GradeString, MaybeGrade, !Errors) :-
+grade_string_to_comp_strings(GradeString, MaybeGrade, !Specs) :-
     ( if
         split_grade_string(GradeString, ComponentStrs),
-        StrToComp = (pred(Str::in, Str::out) is semidet :-
+        StrToComp = ( pred(Str::in, Str::out) is semidet :-
             grade_component_table(Str, _, _, _, _)
         ),
         list.map(StrToComp, ComponentStrs, Components0)
     then
         list.sort_and_remove_dups(Components0, Components),
         ( if list.length(Components0) > list.length(Components) then
-            add_error("invalid library grade: " ++ GradeString, !Errors),
+            GradeSpec =
+                [words("Invalid library grade:"), quote(GradeString), nl],
+            add_error(GradeSpec, !Specs),
             MaybeGrade = no
         else
             MaybeGrade = yes(Components)
         )
     else
-        add_error("invalid library grade: " ++ GradeString, !Errors),
+        GradeSpec =
+            [words("Invalid library grade:"), quote(GradeString), nl],
+        add_error(GradeSpec, !Specs),
         MaybeGrade = no
     ).
 
@@ -2847,39 +2869,40 @@ convert_grade_option(GradeString, Options0, Options) :-
     reset_grade_options(Options0, Options1),
     split_grade_string(GradeString, Components),
     set.init(NoComps),
-    list.foldl2((pred(CompStr::in, Opts0::in, Opts::out,
-            CompSet0::in, CompSet::out) is semidet :-
-        grade_component_table(CompStr, Comp, CompOpts, MaybeTargets, _),
+    list.foldl2(
+        ( pred(CompStr::in, Opts0::in, Opts::out,
+                CompSet0::in, CompSet::out) is semidet :-
+            grade_component_table(CompStr, Comp, CompOpts, MaybeTargets, _),
 
-        % Check that the component isn't mentioned more than once.
-        \+ set.member(Comp, CompSet0),
-        set.insert(Comp, CompSet0, CompSet),
-        add_option_list(CompOpts, Opts0, Opts1),
+            % Check that the component isn't mentioned more than once.
+            not set.member(Comp, CompSet0),
+            set.insert(Comp, CompSet0, CompSet),
+            add_option_list(CompOpts, Opts0, Opts1),
 
-        % XXX Here the behaviour matches what used to happen and that is
-        % to only set the target option iff there was only one possible target.
-        % Is this a bug?
-        ( if MaybeTargets = yes([Target]) then
-            add_option_list([target - Target], Opts1, Opts)
-        else
-            Opts = Opts1
-        )
-    ), Components, Options1, Options, NoComps, _FinalComps).
+            % XXX Here the behaviour matches what used to happen and that is
+            % to only set the target option iff there was only one possible
+            % target. Is this a bug?
+            ( if MaybeTargets = yes([Target]) then
+                add_option_list([target - Target], Opts1, Opts)
+            else
+                Opts = Opts1
+            )
+        ), Components, Options1, Options, NoComps, _FinalComps).
 
 :- pred add_option_list(list(pair(option, option_data))::in, option_table::in,
     option_table::out) is det.
 
 add_option_list(CompOpts, Opts0, Opts) :-
-    list.foldl((pred(Opt::in, Opts1::in, Opts2::out) is det :-
-        Opt = Option - Data,
-        map.set(Option, Data, Opts1, Opts2)
-    ), CompOpts, Opts0, Opts).
+    list.foldl(
+        ( pred(Opt::in, Opts1::in, Opts2::out) is det :-
+            Opt = Option - Data,
+            map.set(Option, Data, Opts1, Opts2)
+        ), CompOpts, Opts0, Opts).
 
 grade_directory_component(Globals, Grade) :-
     compute_grade(Globals, Grade0),
-    % Strip out the `.picreg' part of the grade -- `.picreg' is
-    % implied by the file names (.pic_o vs .o, `.a' vs `.so').
-    %
+    % Strip out the `.picreg' part of the grade -- `.picreg' is implied
+    % by the file names (.pic_o vs .o, `.a' vs `.so').
     ( if
         string.sub_string_search(Grade0, ".picreg", PicRegIndex),
         string.split(Grade0, PicRegIndex, LeftPart, RightPart0),
@@ -2919,41 +2942,42 @@ construct_string([_ - Bit | Bits], Grade) :-
     list(pair(grade_component, string))::out) is det.
 
 compute_grade_components(Options, GradeComponents) :-
-    solutions((pred(CompData::out) is nondet :-
-        grade_component_table(Name, Comp, CompOpts, MaybeTargets,
-            IncludeInGradeString),
+    solutions(
+        ( pred(CompData::out) is nondet :-
+            grade_component_table(Name, Comp, CompOpts, MaybeTargets,
+                IncludeInGradeString),
 
-        % For a possible component of the grade string include, it in the
-        % actual grade string if all the option settings that it implies
-        % are true.
-        all [Opt, Value] (
-            list.member(Opt - Value, CompOpts)
-        =>
-            map.search(Options, Opt, Value)
-        ),
+            % For a possible component of the grade string, include it in the
+            % actual grade string if all the option settings that it implies
+            % are true.
+            all [Opt, Value] (
+                list.member(Opt - Value, CompOpts)
+            =>
+                map.search(Options, Opt, Value)
+            ),
 
-        % Don't include `.mm' or `.dmm' in grade strings because they are just
-        % synonyms for `.mmsc' and `.dmmsc' respectively.
-        IncludeInGradeString = yes,
+            % Don't include `.mm' or `.dmm' in grade strings because they are
+            % just synonyms for `.mmsc' and `.dmmsc' respectively.
+            IncludeInGradeString = yes,
 
-        % When checking gcc_ext there exist grades which can have more than one
-        % possible target, ensure that the target in the options table matches
-        % one of the possible targets.
-        (
-            MaybeTargets = yes(Targets),
-            list.member(Target, Targets),
-            map.search(Options, target, Target)
-        ;
-            MaybeTargets = no
-        ),
-        CompData = Comp - Name
-    ), GradeComponents).
+            % When checking gcc_ext there exist grades which can have
+            % more than one possible target, ensure that the target
+            % in the options table matches one of the possible targets.
+            (
+                MaybeTargets = yes(Targets),
+                list.member(Target, Targets),
+                map.search(Options, target, Target)
+            ;
+                MaybeTargets = no
+            ),
+            CompData = Comp - Name
+        ), GradeComponents).
 
     % grade_component_table(ComponetStr, Component, Options, MaybeTargets,
     %   IncludeGradeStr):
     %
     % `IncludeGradeStr' is `yes' if the component should be included
-    % in the grade string.  It is `no' for those components that are
+    % in the grade string. It is `no' for those components that are
     % just synonyms for other comments, as .mm is for .mmsc.
     %
     % NOTE: .picreg components are handled separately.
@@ -3123,7 +3147,6 @@ grade_component_table("trseg", comp_trail,
     % Minimal model tabling components.
     % NOTE: we do not include `.mm' and `.dmm' in grade strings
     % because they are just synonyms for `.mmsc' and `.dmmsc'.
-    %
 grade_component_table("mm", comp_minimal_model,
     [use_minimal_model_stack_copy - bool(yes),
     use_minimal_model_own_stacks - bool(no),
@@ -3202,7 +3225,7 @@ grade_component_table("rbmmdp", comp_regions,
 
 reset_grade_options(Options0, Options) :-
     solutions.aggregate(grade_start_values,
-        (pred(Pair::in, Opts0::in, Opts::out) is det :-
+        ( pred(Pair::in, Opts0::in, Opts::out) is det :-
             Pair = Option - Value,
             map.set(Option, Value, Opts0, Opts)
         ), Options0, Options).
@@ -3255,7 +3278,7 @@ split_grade_string_2(Chars, Components) :-
     string.from_char_list(ThisChars, ThisComponent),
     Components = [ThisComponent | RestComponents],
     (
-        RestChars0 = [_ | RestChars], % Discard the `.'.
+        RestChars0 = [_ | RestChars],                       % Discard the `.'.
         split_grade_string_2(RestChars, RestComponents)
     ;
         RestChars0 = [],
@@ -3301,6 +3324,72 @@ convert_dump_alias("vars", "npBis").    % Var instantiations, liveness etc.
 convert_dump_alias("statevar", "gvCP").
 convert_dump_alias("lco", "agiuvzD").
 convert_dump_alias("poly", "vxX").
+
+%-----------------------------------------------------------------------------%
+
+:- pred raw_lookup_bool_option(option_table::in, option::in, bool::out) is det.
+
+raw_lookup_bool_option(OptionTable, Option, BoolValue) :-
+    map.lookup(OptionTable, Option, OptionValue),
+    ( if OptionValue = bool(BoolValuePrime) then
+        BoolValue = BoolValuePrime
+    else
+        OptionStr = string.string(Option),
+        unexpected($module, $pred, OptionStr ++ "is not a bool")
+    ).
+
+:- pred raw_lookup_int_option(option_table::in, option::in, int::out) is det.
+
+raw_lookup_int_option(OptionTable, Option, IntValue) :-
+    map.lookup(OptionTable, Option, OptionValue),
+    ( if OptionValue = int(IntValuePrime) then
+        IntValue = IntValuePrime
+    else
+        OptionStr = string.string(Option),
+        unexpected($module, $pred, OptionStr ++ "is not an int")
+    ).
+
+:- pred raw_lookup_string_option(option_table::in, option::in,
+    string::out) is det.
+
+raw_lookup_string_option(OptionTable, Option, StringValue) :-
+    map.lookup(OptionTable, Option, OptionValue),
+    ( if OptionValue = string(StringValuePrime) then
+        StringValue = StringValuePrime
+    else
+        OptionStr = string.string(Option),
+        unexpected($module, $pred, OptionStr ++ "is not a string")
+    ).
+
+:- pred raw_lookup_accumulating_option(option_table::in, option::in,
+    list(string)::out) is det.
+
+raw_lookup_accumulating_option(OptionTable, Option, AccumulatingValue) :-
+    map.lookup(OptionTable, Option, OptionValue),
+    ( if OptionValue = accumulating(AccumulatingValuePrime) then
+        AccumulatingValue = AccumulatingValuePrime
+    else
+        OptionStr = string.string(Option),
+        unexpected($module, $pred, OptionStr ++ "is not accumulating")
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_error(list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_error(Pieces, !Specs) :-
+    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_options, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+:- pred add_warning(list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_warning(Pieces, !Specs) :-
+    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
+    Spec = error_spec(severity_warning, phase_options, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 :- end_module libs.handle_options.

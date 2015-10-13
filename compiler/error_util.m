@@ -106,7 +106,8 @@
     ;       report_only_if_in_all_modes.
 
 :- type error_phase
-    --->    phase_read_files
+    --->    phase_options
+    ;       phase_read_files
     ;       phase_module_name
     ;       phase_term_to_parse_tree
     ;       phase_parse_tree_to_hlds
@@ -705,6 +706,7 @@ error_spec_accumulator_to_list(yes(AnyModeSpecSet - AllModeSpecSet)) =
 :- func get_maybe_mode_report_control(error_phase) =
     maybe(mode_report_control).
 
+get_maybe_mode_report_control(phase_options) = no.
 get_maybe_mode_report_control(phase_read_files) = no.
 get_maybe_mode_report_control(phase_module_name) = no.
 get_maybe_mode_report_control(phase_term_to_parse_tree) = no.

@@ -1453,7 +1453,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
         MaybeMCFlags = yes(MCFlags),
         DetectedGradeFlags = !.Info ^ detected_grade_flags,
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
-        handle_given_options(AllFlags, _, _, _, OptionsErrors, LibGlobals, !IO)
+        handle_given_options(AllFlags, _, _, _, OptionsSpecs, LibGlobals, !IO)
     ;
         MaybeMCFlags = no,
         % Errors should have been caught before.
@@ -1461,11 +1461,11 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
     ),
 
     (
-        OptionsErrors = [_ | _],
-        usage_errors(OptionsErrors, !IO),
+        OptionsSpecs = [_ | _],
+        usage_errors(Globals, OptionsSpecs, !IO),
         Succeeded = no
     ;
-        OptionsErrors = [],
+        OptionsSpecs = [],
 
         % Remove the grade-dependent targets from the status map
         % (we need to rebuild them in the new grade).

@@ -310,7 +310,7 @@ make_process_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
     % are not supported by the rest of the code.
 
     list.filter(
-        (pred(Target::in) is semidet :-
+        ( pred(Target::in) is semidet :-
             string.contains_char(Target, dir.directory_separator)
         ), Targets, AbsTargets),
     (
@@ -320,7 +320,7 @@ make_process_args(Globals, DetectedGradeFlags, Variables, OptionArgs,
         AbsTargets = [_ | _],
         Continue = no,
         list.foldl(
-            (pred(Target::in, !.I::di, !:I::uo) is det :-
+            ( pred(Target::in, !.I::di, !:I::uo) is det :-
                 error_util.write_error_plain_with_progname(Target,
                   "Make target must not contain any directory component.", !I)
             ), AbsTargets, !IO)

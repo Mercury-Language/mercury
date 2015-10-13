@@ -262,15 +262,15 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
                 % Process the options again to find out which configuration
                 % file to read.
                 handle_given_options(MCFlags0 ++ CmdLineArgs, _, _, _,
-                    FlagsErrors, FlagsArgsGlobals, !IO),
+                    FlagsSpecs, FlagsArgsGlobals, !IO),
                 (
-                    FlagsErrors = [_ | _],
-                    usage_errors(FlagsErrors, !IO),
+                    FlagsSpecs = [_ | _],
+                    usage_errors(FlagsArgsGlobals, FlagsSpecs, !IO),
                     DetectedGradeFlags = [],
                     Variables = options_variables_init,
                     MaybeMCFlags = no
                 ;
-                    FlagsErrors = [],
+                    FlagsSpecs = [],
                     globals.lookup_maybe_string_option(FlagsArgsGlobals,
                         config_file, MaybeConfigFile),
                     (
@@ -328,15 +328,15 @@ real_main_after_expansion(CmdLineArgs, !IO) :-
         % currently not defined. It does not  matter at the moment, since
         % Mercury.config does not contain either of those two flags.
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
-        handle_given_options(AllFlags, _, _, _, Errors, ActualGlobals, !IO),
+        handle_given_options(AllFlags, _, _, _, Specs, ActualGlobals, !IO),
 
         % When computing the option arguments to pass to `--make', only include
         % the command-line arguments, not the contents of DEFAULT_MCFLAGS.
         (
-            Errors = [_ | _],
-            usage_errors(Errors, !IO)
+            Specs = [_ | _],
+            usage_errors(ActualGlobals, Specs, !IO)
         ;
-            Errors = [],
+            Specs = [],
             main_after_setup(ActualGlobals, DetectedGradeFlags, Variables,
                 OptionArgs, NonOptionArgs, Link, !IO)
         )

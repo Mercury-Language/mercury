@@ -1053,14 +1053,14 @@ build_with_module_options_args_invoked(Globals, InvokedByMmcMake, ModuleName,
         AllOptionArgs = InvokedByMake ++ DetectedGradeFlags ++
             ModuleOptionArgs ++ OptionArgs ++ ExtraOptions ++ UseSubdirs,
         handle_given_options(AllOptionArgs, _, _, _,
-            OptionsErrors, BuildGlobals, !IO),
+            OptionSpecs, BuildGlobals, !IO),
         (
-            OptionsErrors = [_ | _],
+            OptionSpecs = [_ | _],
             Succeeded = no,
             MaybeInfo = no,
-            usage_errors(OptionsErrors, !IO)
+            usage_errors(BuildGlobals, OptionSpecs, !IO)
         ;
-            OptionsErrors = [],
+            OptionSpecs = [],
             Build(BuildGlobals, AllOptionArgs, Succeeded, Info0, Info, !IO),
             MaybeInfo = yes(Info)
         )
