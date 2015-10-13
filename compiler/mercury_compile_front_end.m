@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: mercury_compile.m.
 % Main authors: fjh, zs.
@@ -15,7 +15,7 @@
 % The constraints on pass ordering are documented in
 % compiler/notes/compiler_design.html.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module top_level.mercury_compile_front_end.
 :- interface.
@@ -67,8 +67,8 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -120,8 +120,8 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 frontend_pass(QualInfo0, FoundUndefTypeError, FoundUndefModeError, !FoundError,
         !HLDS, !DumpInfo, !Specs, !IO) :-
@@ -357,7 +357,7 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_write_initial_optfile(bool::in,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
@@ -459,7 +459,7 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred frontend_pass_by_phases(module_info::in, module_info::out,
     bool::out, dump_info::in, dump_info::out,
@@ -551,8 +551,8 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
     ),
     maybe_dump_hlds(!.HLDS, 99, "front_end", !DumpInfo, !IO).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred puritycheck(bool::in, bool::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
@@ -576,7 +576,7 @@ puritycheck(Verbose, Stats, !HLDS, !Specs, !IO) :-
     ),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred subst_implementation_defined_literals(bool::in, bool::in,
     module_info::in, module_info::out,
@@ -592,7 +592,7 @@ subst_implementation_defined_literals(Verbose, Stats, !HLDS, !Specs, !IO) :-
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_polymorphism(bool::in, bool::in, maybe_safe_to_continue::out,
     module_info::in, module_info::out,
@@ -625,7 +625,7 @@ maybe_polymorphism(Verbose, Stats, SafeToContinue, !HLDS, !Specs, !IO) :-
     maybe_write_out_errors(Verbose, Globals, !HLDS, !Specs, !IO),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_warn_about_unused_imports(bool::in, bool::in,
     module_info::in, module_info::out,
@@ -648,7 +648,7 @@ maybe_warn_about_unused_imports(Verbose, Stats, !HLDS, !Specs, !IO) :-
         WarnUnusedImports = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_mode_constraints(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -730,7 +730,7 @@ maybe_benchmark_modes(Pred, Stage, !HLDS, !IO) :-
 do_io_benchmark(Pred, Repeats, A0, A - Time, !IO) :-
     benchmark_det_io(Pred, A0, A, !IO, Repeats, Time).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_switches(bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
@@ -742,7 +742,7 @@ detect_switches(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_cse(bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
@@ -754,7 +754,7 @@ detect_cse(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred check_determinism(bool::in, bool::in,
     module_info::in, module_info::out,
@@ -777,7 +777,7 @@ check_determinism(Verbose, Stats, !HLDS, !Specs, !IO) :-
     ),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred check_unique_modes(bool::in, bool::in,
     module_info::in, module_info::out, bool::out,
@@ -802,7 +802,7 @@ check_unique_modes(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     ),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred check_stratification(bool::in, bool::in,
     module_info::in, module_info::out, bool::out,
@@ -836,7 +836,7 @@ check_stratification(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
         FoundError = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred check_oisu_pragmas(bool::in, bool::in,
     module_info::in, module_info::out, bool::out,
@@ -880,7 +880,7 @@ type_ctor_is_defined_in_this_module(ModuleName, TypeCtor - _) :-
     TypeSymName = qualified(TypeModuleName, _TypeName),
     ModuleName = TypeModuleName.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred process_try_goals(bool::in, bool::in,
     module_info::in, module_info::out, bool::out,
@@ -903,7 +903,7 @@ process_try_goals(Verbose, Stats, !HLDS, FoundError, !Specs, !IO) :-
     ),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
@@ -1065,6 +1065,6 @@ maybe_proc_statistics(Verbose, Stats, Msg, !HLDS, !Specs, !IO) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module top_level.mercury_compile_front_end.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

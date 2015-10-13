@@ -670,7 +670,7 @@ option_table_hash(AllOptionArgs, Hash, !IO) :-
     % the module to be recompiled if necessary, but that's later. We are not
     % compiling the module immediately, so this is the only use we have for
     % AllOptionArgsGlobals here.
-    handle_given_options(AllOptionArgs, _, _, _, OptionsErrors,
+    handle_given_options(AllOptionArgs, _, _, OptionsErrors,
         AllOptionArgsGlobals, !IO),
     (
         OptionsErrors = []

@@ -1453,7 +1453,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
         MaybeMCFlags = yes(MCFlags),
         DetectedGradeFlags = !.Info ^ detected_grade_flags,
         AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
-        handle_given_options(AllFlags, _, _, _, OptionsSpecs, LibGlobals, !IO)
+        handle_given_options(AllFlags, _, _, OptionsSpecs, LibGlobals, !IO)
     ;
         MaybeMCFlags = no,
         % Errors should have been caught before.

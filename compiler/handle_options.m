@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2014 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: handle_options.m.
 % Main authors: fjh, zs.
@@ -14,7 +14,7 @@
 %
 % It also contains code for handling the --grade option.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module libs.handle_options.
 :- interface.
@@ -24,24 +24,21 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a dummy globals value based on the default values of the
     % options.
     %
 :- pred generate_default_globals(globals::out, io::di, io::uo) is det.
 
-    % handle_given_options(Args, OptionArgs, NonOptionArgs, Link, Specs,
+    % handle_given_options(Args, OptionArgs, NonOptionArgs, Specs,
     %   Globals, !IO).
     %
-    % This predicate does NOT modify the exit status.
-    %
 :- pred handle_given_options(list(string)::in,
-    list(string)::out, list(string)::out, bool::out, list(error_spec)::out,
+    list(string)::out, list(string)::out, list(error_spec)::out,
     globals::out, io::di, io::uo) is det.
 
     % separate_option_args(Args, OptionArgs, NonOptionArgs, !IO):
@@ -82,17 +79,19 @@
     %
 :- pred grade_directory_component(globals::in, string::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module analysis.
 :- import_module libs.compiler_util.
+:- import_module libs.op_mode.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 
+:- import_module bool.
 :- import_module char.
 :- import_module cord.
 :- import_module dir.
@@ -108,12 +107,12 @@
 :- import_module std_util.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_default_globals(DefaultGlobals, !IO) :-
-    handle_given_options([], _, _, _, _, DefaultGlobals, !IO).
+    handle_given_options([], _, _, _, DefaultGlobals, !IO).
 
-handle_given_options(Args0, OptionArgs, Args, Link, Specs, !:Globals, !IO) :-
+handle_given_options(Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
     trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
         io.nl(!TIO),
         io.write_string("original arguments\n", !TIO),
@@ -131,47 +130,20 @@ handle_given_options(Args0, OptionArgs, Args, Link, Specs, !:Globals, !IO) :-
     ),
     convert_option_table_result_to_globals(Result, Specs, !:Globals, !IO),
     (
-        Specs = [_ | _],
-        Link = no
+        Specs = [_ | _]
         % Do NOT set the exit status. This predicate may be called before all
         % the options are known, so the errors may not be valid.
+        % XXX Some
     ;
         Specs = [],
-        globals.lookup_bool_option(!.Globals, generate_dependencies,
-            GenerateDependencies),
-        globals.lookup_bool_option(!.Globals, generate_dependency_file,
-            GenerateDependencyFile),
-        globals.lookup_bool_option(!.Globals, make_interface, MakeInterface),
-        globals.lookup_bool_option(!.Globals, make_private_interface,
-            MakePrivateInterface),
-        globals.lookup_bool_option(!.Globals, make_short_interface,
-            MakeShortInterface),
-        globals.lookup_bool_option(!.Globals, make_optimization_interface,
-            MakeOptimizationInt),
-        globals.lookup_bool_option(!.Globals, make_transitive_opt_interface,
-            MakeTransOptInt),
-        globals.lookup_bool_option(!.Globals, make_analysis_registry,
-            MakeAnalysisRegistry),
-        globals.lookup_bool_option(!.Globals, make_xml_documentation,
-            MakeXmlDocumentation),
-        globals.lookup_bool_option(!.Globals, convert_to_mercury,
-            ConvertToMercury),
-        globals.lookup_bool_option(!.Globals, typecheck_only, TypecheckOnly),
-        globals.lookup_bool_option(!.Globals, errorcheck_only, ErrorcheckOnly),
-        globals.lookup_bool_option(!.Globals, target_code_only,
-            TargetCodeOnly),
-        globals.lookup_bool_option(!.Globals, compile_only, CompileOnly),
-        bool.or_list([GenerateDependencies, GenerateDependencyFile,
-            MakeInterface, MakePrivateInterface, MakeShortInterface,
-            MakeOptimizationInt, MakeTransOptInt, MakeAnalysisRegistry,
-            MakeXmlDocumentation, ConvertToMercury, TypecheckOnly,
-            ErrorcheckOnly, TargetCodeOnly, CompileOnly],
-            NotLink),
-        bool.not(NotLink, Link),
+        globals.get_op_mode(!.Globals, OpMode),
         globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
         ( if
             Smart = yes,
-            Link = yes
+            OpMode = opm_top_args(OpModeArgs),
+            OpModeArgs = opma_augment(OpModeAugment),
+            OpModeAugment = opmau_generate_code(OpModeCG),
+            OpModeCG = opmcg_target_object_and_executable
         then
             % XXX Currently smart recompilation doesn't check that all the
             % files needed to link are present and up-to-date, so disable it.
@@ -187,8 +159,7 @@ separate_option_args(Args0, OptionArgs, Args, !IO) :-
     % process_given_options(Args, OptionArgs, NonOptionArgs, MaybeOptionTable,
     %   !IO):
     %
-    % Process the options, but don't do any post-processing.
-    % This is mainly
+    % Process the options, but don't do any post-processing. This is mainly
     % useful for separating the list of arguments into option and non-option
     % arguments.
     %
@@ -210,7 +181,7 @@ dump_arguments([Arg | Args], !IO) :-
     io.write_string(">\n", !IO),
     dump_arguments(Args, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Convert string-valued options into the appropriate enumeration types,
     % and process implications among the options (i.e. situations where setting
@@ -219,7 +190,7 @@ dump_arguments([Arg | Args], !IO) :-
 :- pred convert_option_table_result_to_globals(maybe_option_table(option)::in,
     list(error_spec)::out, globals::out, io::di, io::uo) is det.
 
-convert_option_table_result_to_globals(MaybeOptionTable0, Specs, Globals,
+convert_option_table_result_to_globals(MaybeOptionTable0, !:Specs, Globals,
         !IO) :-
     (
         MaybeOptionTable0 = error(ErrorMessage),
@@ -228,7 +199,7 @@ convert_option_table_result_to_globals(MaybeOptionTable0, Specs, Globals,
             [always(OptionTablePieces)]),
         OptionTableSpec = error_spec(severity_error, phase_options,
             [OptionTableMsg]),
-        Specs = [OptionTableSpec],
+        !:Specs = [OptionTableSpec],
         generate_default_globals(Globals, !IO)
     ;
         MaybeOptionTable0 = ok(OptionTable0),
@@ -237,18 +208,30 @@ convert_option_table_result_to_globals(MaybeOptionTable0, Specs, Globals,
             SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
             ReuseStrategy,
             MaybeFeedbackInfo, HostEnvType, SystemEnvType, TargetEnvType,
-            LimitErrorContextsMap, CheckSpecs, !IO),
+            LimitErrorContextsMap, !:Specs, !IO),
+        decide_op_mode(OptionTable, OpMode, OtherOpModes),
         (
-            CheckSpecs = [],
-            convert_options_to_globals(OptionTable, Target, GC_Method,
-                TagsMethod, TermNorm, Term2Norm, TraceLevel,
-                TraceSuppress, SSTraceLevel, MaybeThreadSafe, C_CompilerType,
-                CSharp_CompilerType, ReuseStrategy, MaybeFeedbackInfo,
-                HostEnvType, SystemEnvType, TargetEnvType,
-                LimitErrorContextsMap, CheckSpecs, Specs, Globals, !IO)
+            OtherOpModes = []
         ;
-            CheckSpecs = [_ | _],
-            Specs = CheckSpecs,
+            OtherOpModes = [_ | _],
+            OpModeStrs = list.map(op_mode_to_option_string,
+                [OpMode | OtherOpModes]),
+            OpModePieces = [words("Error: only one of the following options"),
+                words("may be given:")] ++
+                list_to_quoted_pieces(OpModeStrs) ++ [suffix("."), nl],
+            add_error(OpModePieces, !Specs)
+        ),
+        (
+            !.Specs = [],
+            convert_options_to_globals(OptionTable, OpMode, Target,
+                GC_Method, TagsMethod, TermNorm, Term2Norm,
+                TraceLevel, TraceSuppress, SSTraceLevel,
+                MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+                ReuseStrategy, MaybeFeedbackInfo,
+                HostEnvType, SystemEnvType, TargetEnvType,
+                LimitErrorContextsMap, !Specs, Globals, !IO)
+        ;
+            !.Specs = [_ | _],
             generate_default_globals(Globals, !IO)
         )
     ).
@@ -657,7 +640,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
 
     % NOTE: each termination analyser has its own norm setting.
     %
-:- pred convert_options_to_globals(option_table::in,
+:- pred convert_options_to_globals(option_table::in, op_mode::in,
     compilation_target::in, gc_method::in, tags_method::in,
     termination_norm::in, termination_norm::in, trace_level::in,
     trace_suppress_items::in, ssdb_trace_level::in, may_be_thread_safe::in,
@@ -667,8 +650,9 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     list(error_spec)::in, list(error_spec)::out,
     globals::out, io::di, io::uo) is det.
 
-convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
-        TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
+convert_options_to_globals(OptionTable0, OpMode, Target,
+        GC_Method, TagsMethod0, TermNorm, Term2Norm,
+        TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
@@ -683,7 +667,7 @@ convert_options_to_globals(OptionTable0, Target, GC_Method, TagsMethod0,
         FileInstallCmd = install_cmd_user(InstallCmd, InstallCmdDirOption)
     ),
 
-    globals_init(OptionTable0, Target, GC_Method, TagsMethod0,
+    globals_init(OptionTable0, OpMode, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
@@ -2436,7 +2420,7 @@ disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
         WarnSmart = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This predicate generates error messages for various combinations of
     % grade components (or their equivalent command line options) that are
@@ -2624,7 +2608,7 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
         SinglePrecFloat = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 usage_errors(Globals, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
@@ -2685,7 +2669,7 @@ long_usage(!IO) :-
     io.write_string("Options:\n", !IO),
     options_help(!IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for postprocessing the library grade set.
 %
@@ -2818,7 +2802,7 @@ grade_string_to_comp_strings(GradeString, MaybeGrade, !Specs) :-
         MaybeGrade = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % IMPORTANT: any changes here may require similar changes to other files,
     % see the list of files at the top of runtime/mercury_grade.h
@@ -3290,7 +3274,7 @@ split_grade_string_2(Chars, Components) :-
 char_is_not(A, B) :-
     A \= B.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % This predicate converts a symbolic name for a set of verbosity options
 % (a "dump alias") into the string consisting of those options' characters.
@@ -3325,7 +3309,7 @@ convert_dump_alias("statevar", "gvCP").
 convert_dump_alias("lco", "agiuvzD").
 convert_dump_alias("poly", "vxX").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred raw_lookup_bool_option(option_table::in, option::in, bool::out) is det.
 
@@ -3373,7 +3357,7 @@ raw_lookup_accumulating_option(OptionTable, Option, AccumulatingValue) :-
         unexpected($module, $pred, OptionStr ++ "is not accumulating")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_error(list(format_component)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -3391,6 +3375,6 @@ add_warning(Pieces, !Specs) :-
     Spec = error_spec(severity_warning, phase_options, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module libs.handle_options.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

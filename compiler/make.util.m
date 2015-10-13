@@ -1052,7 +1052,7 @@ build_with_module_options_args_invoked(Globals, InvokedByMmcMake, ModuleName,
 
         AllOptionArgs = InvokedByMake ++ DetectedGradeFlags ++
             ModuleOptionArgs ++ OptionArgs ++ ExtraOptions ++ UseSubdirs,
-        handle_given_options(AllOptionArgs, _, _, _,
+        handle_given_options(AllOptionArgs, _, _,
             OptionSpecs, BuildGlobals, !IO),
         (
             OptionSpecs = [_ | _],

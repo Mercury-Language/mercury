@@ -14,8 +14,9 @@
 
 % Option handling.
 :- include_module globals.
-:- include_module handle_options.
 :- include_module options.
+:- include_module handle_options.
+:- include_module op_mode.
 :- include_module trace_params.
 
 % Error handling.
@@ -23,7 +24,7 @@
 
 % Generic algorithms and data structures that are not quite useful enough
 % or otherwise aren't in the standard library.
-:- include_module atsort.
+% :- include_module atsort.       % currently unused
 :- include_module file_util.
 :- include_module graph_colour.
 :- include_module int_emu.

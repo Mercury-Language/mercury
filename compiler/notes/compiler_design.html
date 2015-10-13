@@ -215,8 +215,8 @@ Option handling is part of the libs.m package.
 The command-line options are defined in the module options.m.
 mercury_compile.m calls library/getopt_io.m, passing the predicates
 defined in options.m as arguments, to parse them. It then invokes
-handle_options.m to postprocess the option set. The results are
-represented using the type globals, defined in globals.m.
+handle_options.m (and indirectly, op_mode.m) to postprocess the option set.
+The results are represented using the type globals, defined in globals.m.
 The globals structure is available in the HLDS representation,
 but it is passed around as a separate argument both before the HLDS is built
 and after it is no longer needed.

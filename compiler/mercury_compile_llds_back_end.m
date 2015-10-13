@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: mercury_compile_llds_back_end.m.
 %
 % This module implements the LLDS backend for the top level of the Mercury
 % compiler. It invokes the different passes of this backend as appropriate.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module top_level.mercury_compile_llds_back_end.
 :- interface.
@@ -37,8 +37,8 @@
 :- pred map_args_to_regs(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -97,7 +97,7 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 llds_backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
     module_info_get_name(!.HLDS, ModuleName),
@@ -139,7 +139,7 @@ llds_backend_pass(!HLDS, !:GlobalData, LLDS, !DumpInfo, !IO) :-
     % XXX _NumErrors
     write_error_specs(Specs, Globals, 0, _NumWarnings, 0, _NumErrors, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred llds_backend_pass_by_phases(module_info::in, module_info::out,
     list(c_procedure)::out, global_data::in, global_data::out,
@@ -445,8 +445,8 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
     ),
     maybe_collect_call_continuations_in_cproc(!.HLDS, CProc, !GlobalData).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The various passes of the LLDS backend.
 %
@@ -638,8 +638,8 @@ maybe_generate_stack_layouts(HLDS, LLDS, Verbose, Stats, !GlobalData, !IO) :-
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
         FactTableObjFiles, !IO) :-
@@ -921,6 +921,6 @@ compile_fact_table_file(Globals, ErrorStream, BaseName, O_File, Succeeded,
     compile_target_code.do_compile_c_file(Globals, ErrorStream, PIC,
         C_File, O_File, Succeeded, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module top_level.mercury_compile_llds_back_end.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

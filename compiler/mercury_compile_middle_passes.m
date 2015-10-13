@@ -1,16 +1,16 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: mercury_compile_middle_passes.m.
 %
 % This module invokes the middle passes of the compiler as appropriate.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module top_level.mercury_compile_middle_passes.
 :- interface.
@@ -39,8 +39,8 @@
     set(pragma_info_unused_args)::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -107,7 +107,7 @@
 :- import_module string.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 middle_pass(!HLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
@@ -282,7 +282,7 @@ middle_pass(!HLDS, !DumpInfo, !IO) :-
 
     maybe_dump_hlds(!.HLDS, 299, "middle_pass", !DumpInfo, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 middle_pass_for_opt_file(!HLDS, !IO) :-
     % NOTE If you add any passes here, you will probably need to change the
@@ -374,7 +374,7 @@ middle_pass_for_opt_file(!HLDS, !IO) :-
     ),
     append_analysis_pragmas_to_opt_file(!.HLDS, UnusedArgsInfos, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
@@ -429,7 +429,7 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 185, "mm_tabling_analysis", !DumpInfo, !IO),
     write_trans_opt_file(!.HLDS, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
@@ -490,14 +490,14 @@ output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
     analysis.write_analysis_files(mmc, !.HLDS, ImportedModules,
         AnalysisInfo, _AnalysisInfo, !IO).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The various component passes of the middle pass.
 % Please keep these predicates in the order of their (first) invocation.
 %
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_read_experimental_complexity_file(
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -546,7 +546,7 @@ maybe_read_experimental_complexity_file(!HLDS, !IO) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred tabling(bool::in, bool::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
@@ -561,7 +561,7 @@ tabling(Verbose, Stats, !HLDS, !IO) :-
     write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
     module_info_incr_num_errors(NumErrors, !HLDS).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred process_lambdas(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -573,7 +573,7 @@ process_lambdas(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred process_stms(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -585,7 +585,7 @@ process_stms(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred expand_equiv_types_hlds(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -597,7 +597,7 @@ expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_closure_analysis(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -615,7 +615,7 @@ maybe_closure_analysis(Verbose, Stats, !HLDS, !IO) :-
         ClosureAnalysis = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_exception_analysis(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -633,7 +633,7 @@ maybe_exception_analysis(Verbose, Stats, !HLDS, !IO) :-
         ExceptionAnalysis = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_termination(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -653,7 +653,7 @@ maybe_termination(Verbose, Stats, !HLDS, !IO) :-
         Termination = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_termination2(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -673,7 +673,7 @@ maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
         Termination2 = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_type_ctor_infos(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -693,7 +693,7 @@ maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO) :-
         TypeCtorInfo = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_warn_dead_procs(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -732,7 +732,7 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         WarnDead = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_bytecodes(module_info::in, bool::in, bool::in,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
@@ -771,7 +771,7 @@ maybe_bytecodes(HLDS0, Verbose, Stats, !DumpInfo, !IO) :-
         GenBytecode = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_untuple_arguments(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -794,7 +794,7 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
         Untuple = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_tuple_arguments(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -813,7 +813,7 @@ maybe_tuple_arguments(Verbose, Stats, !HLDS, !IO) :-
         Tuple = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_higher_order(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -848,7 +848,7 @@ maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_ssdb(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -869,7 +869,7 @@ maybe_ssdb(Verbose, Stats, !HLDS, !IO) :-
         ForceDisableSSDB = yes
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_implicit_parallelism(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -891,7 +891,7 @@ maybe_implicit_parallelism(Verbose, Stats, !HLDS, !IO) :-
         ImplicitParallelism = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_introduce_accumulators(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -923,7 +923,7 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
         Optimize = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_do_inlining(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -950,7 +950,7 @@ maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_loop_inv(bool::in, bool::in,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
@@ -976,7 +976,7 @@ maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
         LoopInv = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_deforestation(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1019,7 +1019,7 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_delay_construct(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1040,7 +1040,7 @@ maybe_delay_construct(Verbose, Stats, !HLDS, !IO) :-
         DelayConstruct = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_structure_sharing_analysis(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1059,7 +1059,7 @@ maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
         Sharing = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_structure_reuse_analysis(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1079,7 +1079,7 @@ maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :-
         ReuseAnalysis = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
@@ -1103,7 +1103,7 @@ maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !IO) :-
         set.init(UnusedArgsInfos)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_analyse_trail_usage(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1121,7 +1121,7 @@ maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO) :-
         AnalyseTrail = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_unneeded_code(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1142,7 +1142,7 @@ maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
         UnneededCode = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_lco(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1162,7 +1162,7 @@ maybe_lco(Verbose, Stats, !HLDS, !IO) :-
         LCO = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_analyse_mm_tabling(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1181,7 +1181,7 @@ maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO) :-
         TablingAnalysis = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_control_granularity(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1225,7 +1225,7 @@ maybe_control_granularity(Verbose, Stats, !HLDS, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_control_distance_granularity(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1270,7 +1270,7 @@ maybe_control_distance_granularity(Verbose, Stats, !HLDS, !IO) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_impl_dependent_par_conjs(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1299,7 +1299,7 @@ maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO) :-
         HasParallelConj = has_no_parallel_conj
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_par_loop_control(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1319,7 +1319,7 @@ maybe_par_loop_control(Verbose, Stats, !HLDS, !IO) :-
         LoopControl = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_float_reg_wrapper(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1341,7 +1341,7 @@ maybe_float_reg_wrapper(Verbose, Stats, !HLDS, !IO) :-
         UseFloatRegs = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_term_size_prof(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1380,7 +1380,7 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
         MaybeTransform = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_deep_profiling(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1400,7 +1400,7 @@ maybe_deep_profiling(Verbose, Stats, !HLDS, !IO) :-
         ProfileDeep = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_experimental_complexity(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1421,7 +1421,7 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
         maybe_report_stats(Stats, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_region_analysis(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1440,7 +1440,7 @@ maybe_region_analysis(Verbose, Stats, !HLDS, !IO) :-
         Analysis = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_eliminate_dead_procs(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -1460,6 +1460,6 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         Dead = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module top_level.mercury_compile_middle_passes.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

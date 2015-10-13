@@ -20,11 +20,12 @@
 :- module libs.globals.
 :- interface.
 
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
-:- import_module mdbcomp.sym_name. % for module_name
 :- import_module mdbcomp.feedback.
+:- import_module mdbcomp.sym_name. % for module_name
 
 :- import_module bool.
 :- import_module getopt_io.
@@ -246,8 +247,9 @@
 % Access predicates for the `globals' structure.
 %
 
-:- pred globals_init(option_table::in, compilation_target::in, gc_method::in,
-    tags_method::in, termination_norm::in, termination_norm::in,
+:- pred globals_init(option_table::in, op_mode::in,
+    compilation_target::in, gc_method::in, tags_method::in,
+    termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in, maybe(feedback_info)::in, env_type::in,
@@ -255,6 +257,7 @@
     limit_error_contexts_map::in, globals::out) is det.
 
 :- pred get_options(globals::in, option_table::out) is det.
+:- pred get_op_mode(globals::in, op_mode::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
 :- pred get_backend_foreign_languages(globals::in,
     list(foreign_language)::out) is det.
@@ -661,6 +664,7 @@ gc_is_conservative(gc_automatic) = no.
 :- type globals
     --->    globals(
                 g_options                   :: option_table,
+                g_op_mode                   :: op_mode,
                 g_target                    :: compilation_target,
                 g_gc_method                 :: gc_method,
                 g_tags_method               :: tags_method,
@@ -681,18 +685,19 @@ gc_is_conservative(gc_automatic) = no.
                 g_limit_error_contexts_map  :: limit_error_contexts_map
             ).
 
-globals_init(Options, Target, GC_Method, TagsMethod,
+globals_init(Options, OpMode, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
         TargetEnvType, FileInstallCmd, LimitErrorContextsMap, Globals) :-
-    Globals = globals(Options, Target, GC_Method, TagsMethod,
+    Globals = globals(Options, OpMode, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         SSTraceLevel, MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
         TargetEnvType, FileInstallCmd, LimitErrorContextsMap).
 
 get_options(Globals, Globals ^ g_options).
+get_op_mode(Globals, Globals ^ g_op_mode).
 get_target(Globals, Globals ^ g_target).
 get_gc_method(Globals, Globals ^ g_gc_method).
 get_tags_method(Globals, Globals ^ g_tags_method).
