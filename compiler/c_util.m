@@ -480,7 +480,7 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
             ( if char.to_utf8(Char, CodeUnits) then
                 list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
                 list.condense(EscapeCharss, EscapeChars),
-                reverse_append(EscapeChars, RevChars0, RevChars)
+                reverse_prepend(EscapeChars, RevChars0, RevChars)
             else
                 unexpected($module, $pred, "invalid Unicode code point")
             )
@@ -502,7 +502,7 @@ quote_one_char(Lang, Char, RevChars0, RevChars) :-
             Lang = literal_csharp,
             unicode_escape_any_char(Char, EscapeChars)
         ),
-        reverse_append(EscapeChars, RevChars0, RevChars)
+        reverse_prepend(EscapeChars, RevChars0, RevChars)
     ).
 
 :- pred quote_one_char_c(char::in, list(char)::in, list(char)::out) is det.
@@ -533,13 +533,13 @@ quote_one_char_c(Char, RevChars0, RevChars) :-
         ( if char.to_utf8(Char, CodeUnits) then
             list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
             list.condense(EscapeCharss, EscapeChars),
-            reverse_append(EscapeChars, RevChars0, RevChars)
+            reverse_prepend(EscapeChars, RevChars0, RevChars)
         else
             unexpected($module, $pred, "invalid Unicode code point")
         )
     else
         octal_escape_any_char(Char, EscapeChars),
-        reverse_append(EscapeChars, RevChars0, RevChars)
+        reverse_prepend(EscapeChars, RevChars0, RevChars)
     ).
 
 :- pred java_escape_special_char(char::in, list(char)::out) is semidet.
@@ -577,14 +577,6 @@ is_c_source_char(Char) :-
 :- func c_graphic_chars = string.
 
 c_graphic_chars = " !\"#%&'()*+,-./:;<=>?[\\]^_{|}~".
-
-    % reverse_append(Xs, Ys, Zs) <=> Zs = list.reverse(Xs) ++ Ys.
-    %
-:- pred reverse_append(list(T)::in, list(T)::in, list(T)::out) is det.
-
-reverse_append([], L, L).
-reverse_append([X | Xs], L0, L) :-
-    reverse_append(Xs, [X | L0], L).
 
     % Convert a character to the corresponding C octal escape code.
     % XXX This assumes that the target language compiler's representation

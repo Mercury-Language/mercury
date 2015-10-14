@@ -181,6 +181,11 @@ Changes to the Mercury standard library:
 
 * The parser module passes through big_integer tokens as big_integer terms.
 
+* The following predicates and functions have been added to the list module:
+
+   - reverse_prepend/2
+   - reverse_prepend/3
+
 Changes to the Mercury compiler:
 
 * We have enabled stricter checking of non-ground final insts to reject more

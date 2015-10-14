@@ -370,6 +370,13 @@
 
 :- func reverse(list(T)) = list(T).
 
+    % reverse_prepend(Xs, Ys, Zs):
+    %
+    % Same as `Zs = list.reverse(Xs) ++ Ys' but more efficient.
+    %
+:- pred reverse_prepend(list(T)::in, list(T)::in, list(T)::out) is det.
+:- func reverse_prepend(list(T), list(T)) = list(T).
+
     % perm(List0, List):
     %
     % True iff `List' is a permutation of `List0'.
@@ -2135,16 +2142,17 @@ list.reverse(Xs) = Ys :-
 ").
 
 list.reverse(L0::in, L::out) :-
-    list.reverse_acc(L0, [], L).
+    list.reverse_prepend(L0, [], L).
 
 list.reverse(L::out, L0::in) :-
-    list.reverse_acc(L0, [], L).
+    list.reverse_prepend(L0, [], L).
 
-:- pred list.reverse_acc(list(T)::in, list(T)::in, list(T)::out) is det.
+list.reverse_prepend(Xs, Ys) = Zs :-
+    list.reverse_prepend(Xs, Ys, Zs).
 
-list.reverse_acc([], L, L).
-list.reverse_acc([X | Xs], L0, L) :-
-    list.reverse_acc(Xs, [X | L0], L).
+list.reverse_prepend([], L, L).
+list.reverse_prepend([X | Xs], L0, L) :-
+    list.reverse_prepend(Xs, [X | L0], L).
 
 %---------------------------------------------------------------------------%
 
