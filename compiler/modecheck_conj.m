@@ -47,6 +47,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -124,32 +125,35 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
 
 :- type impurity_errors == list(mode_error_info).
 
-    % Flatten conjunctions as we go, as long as they are of the same type.
-    % Call modecheck_conj_list_schedule to do the actual scheduling.
-    %
-    % NOTE: In some rare cases, when the compiler is compled in a in hlc grade
-    % and the conjunction is particularly large, the mutual recursion between
-    % modecheck_conj_list_flatten_and_schedule and modecheck_conj_list_schedule
-    % can exhaust the C stack, causing a core dump. This happens e.g. when
-    % compiling zm_enums.m in a compiler in which polymorphism's reuse of
-    % inserted typeinfo and related variables has been disabled.
+    % Schedule goals, and also flatten conjunctions of the same type as we go.
     %
 :- pred modecheck_conj_list_flatten_and_schedule(conj_type::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     impurity_errors::in, impurity_errors::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_conj_list_flatten_and_schedule(_ConjType, [], [],
-        !ImpurityErrors, !ModeInfo).
-modecheck_conj_list_flatten_and_schedule(ConjType, [Goal0 | Goals0], Goals,
+modecheck_conj_list_flatten_and_schedule(ConjType, Goals0, Goals,
         !ImpurityErrors, !ModeInfo) :-
+    modecheck_conj_list_flatten_and_schedule_acc(ConjType, Goals0,
+        cord.init, GoalsCord, !ImpurityErrors, !ModeInfo),
+    Goals = cord.list(GoalsCord).
+
+:- pred modecheck_conj_list_flatten_and_schedule_acc(conj_type::in,
+    list(hlds_goal)::in, cord(hlds_goal)::in, cord(hlds_goal)::out,
+    impurity_errors::in, impurity_errors::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_conj_list_flatten_and_schedule_acc(_ConjType, [], !Goals,
+        !ImpurityErrors, !ModeInfo).
+modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
+        !Goals, !ImpurityErrors, !ModeInfo) :-
     ( if
         Goal0 = hlds_goal(conj(plain_conj, ConjGoals), _),
         ConjType = plain_conj
     then
         Goals1 = ConjGoals ++ Goals0,
-        modecheck_conj_list_flatten_and_schedule(ConjType, Goals1, Goals,
-            !ImpurityErrors, !ModeInfo)
+        modecheck_conj_list_flatten_and_schedule_acc(ConjType, Goals1,
+            !Goals, !ImpurityErrors, !ModeInfo)
     else
         % We attempt to schedule the first goal in the conjunction.
         % If successful, we try to wake up pending goals (if any), and if not,
@@ -161,13 +165,13 @@ modecheck_conj_list_flatten_and_schedule(ConjType, [Goal0 | Goals0], Goals,
             Purity = purity_impure,
             Impure = yes,
             check_for_impurity_error(Goal0, ScheduledSolverGoals,
-                !ImpurityErrors, !ModeInfo)
+                !ImpurityErrors, !ModeInfo),
+            !:Goals = !.Goals ++ from_list(ScheduledSolverGoals)
         ;
             ( Purity = purity_pure
             ; Purity = purity_semipure
             ),
-            Impure = no,
-            ScheduledSolverGoals = []
+            Impure = no
         ),
 
         % Hang onto the original instmap, delay_info, and live_vars.
@@ -208,7 +212,16 @@ modecheck_conj_list_flatten_and_schedule(ConjType, [Goal0 | Goals0], Goals,
             )
         ;
             Errors = [],
-            mode_info_get_delay_info(!.ModeInfo, DelayInfo1)
+            mode_info_get_delay_info(!.ModeInfo, DelayInfo1),
+            % We successfully scheduled this goal, so insert it
+            % in the list of successfully scheduled goals.
+            % We flatten out conjunctions if we can. They can arise
+            % when Goal0 was a scope(from_ground_term, _) goal.
+            ( if Goal = hlds_goal(conj(ConjType, SubGoals), _) then
+                !:Goals = !.Goals ++ from_list(SubGoals)
+            else
+                !:Goals = snoc(!.Goals, Goal)
+            )
         ),
 
         % Next, we attempt to wake up any pending goals, and then continue
@@ -230,28 +243,11 @@ modecheck_conj_list_flatten_and_schedule(ConjType, [Goal0 | Goals0], Goals,
             % We should not mode-analyse the remaining goals, since they are
             % unreachable. Instead we optimize them away, so that later passes
             % won't complain about them not having mode information.
-            mode_info_remove_goals_live_vars(Goals1, !ModeInfo),
-            Goals2  = []
+            mode_info_remove_goals_live_vars(Goals1, !ModeInfo)
         else
             % The remaining goals may still need to be flattened.
-            modecheck_conj_list_flatten_and_schedule(ConjType, Goals1, Goals2,
-                !ImpurityErrors, !ModeInfo)
-        ),
-        (
-            Errors = [_ | _],
-            % We delayed this goal -- it will be stored in the delay_info.
-            Goals = ScheduledSolverGoals ++ Goals2
-        ;
-            Errors = [],
-            % We successfully scheduled this goal, so insert it
-            % in the list of successfully scheduled goals.
-            % We flatten out conjunctions if we can. They can arise
-            % when Goal0 was a scope(from_ground_term, _) goal.
-            ( if Goal = hlds_goal(conj(ConjType, SubGoals), _) then
-                Goals = ScheduledSolverGoals ++ SubGoals ++ Goals2
-            else
-                Goals = ScheduledSolverGoals ++ [Goal | Goals2]
-            )
+            modecheck_conj_list_flatten_and_schedule_acc(ConjType, Goals1,
+                !Goals, !ImpurityErrors, !ModeInfo)
         )
     ).
 
