@@ -94,7 +94,7 @@ delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal) :-
             ConjType = plain_conj,
             Detism = goal_info_get_determinism(GoalInfo0),
             determinism_components(Detism, CanFail, MaxSoln),
-            (
+            ( if
                 % If the conjunction cannot fail, then its conjuncts cannot
                 % fail either, so we have no hope of pushing a construction
                 % past a failing goal.
@@ -111,10 +111,10 @@ delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal) :-
 
                 CanFail = can_fail,
                 MaxSoln \= at_most_zero
-            ->
+            then
                 delay_construct_in_conj(Goals0, InstMap0, DelayInfo, set.init,
                     [], Goals1)
-            ;
+            else
                 Goals1 = Goals0
             )
         ;
@@ -146,14 +146,14 @@ delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal) :-
         Goal = hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             Goal = Goal0
-        ;
+        else
             delay_construct_in_goal(SubGoal0, InstMap0, DelayInfo, SubGoal),
             Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo0)
         )
@@ -208,7 +208,7 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
     instmap.apply_instmap_delta(InstMap0, InstMapDelta0, InstMap1),
-    (
+    ( if
         GoalExpr0 = unify(_, _, _, Unif, _),
         Unif = construct(Var, _, Args, _, _, _, _),
         Args = [_ | _], % We are constructing a cell, not a constant
@@ -216,12 +216,12 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         inst_is_free(DelayInfo ^ dci_module_info, Inst0),
         instmap_lookup_var(InstMap1, Var, Inst1),
         inst_is_ground(DelayInfo ^ dci_module_info, Inst1)
-    ->
+    then
         set.insert(Var, ConstructedVars0, ConstructedVars1),
         RevDelayedGoals1 = [Goal0 | RevDelayedGoals0],
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,
             ConstructedVars1, RevDelayedGoals1, Goals)
-    ;
+    else if
         Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         delay_construct_skippable(GoalExpr0, GoalInfo0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
@@ -233,11 +233,11 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
             set_to_bitset(ConstructedVars0), Intersection),
         set_of_var.is_empty(Intersection),
         goal_info_get_purity(GoalInfo0) = purity_pure
-    ->
+    then
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,
             ConstructedVars0, RevDelayedGoals0, Goals1),
         Goals = [Goal0 | Goals1]
-    ;
+    else
         list.reverse(RevDelayedGoals0, DelayedGoals),
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,
             set.init, [], Goals1),

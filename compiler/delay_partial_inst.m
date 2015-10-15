@@ -307,14 +307,14 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         Goal = hlds_goal(if_then_else(Vars, Cond, Then, Else), GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             Goal = Goal0
-        ;
+        else
             delay_partial_inst_in_goal(InstMap0, SubGoal0, SubGoal,
                 !.ConstructMap, _, !DelayInfo),
             Goal = hlds_goal(scope(Reason, SubGoal), GoalInfo0)
@@ -529,9 +529,9 @@ create_canonical_variables(OrigVars, CanonVars, !DelayInfo) :-
     construct_map::in, construct_map::out) is det.
 
 add_to_construct_map(Var, ConsId, CanonVars, !ConstructMap) :-
-    ( map.search(!.ConstructMap, Var, ConsIdMap0) ->
+    ( if map.search(!.ConstructMap, Var, ConsIdMap0) then
         ConsIdMap1 = ConsIdMap0
-    ;
+    else
         ConsIdMap1 = map.init
     ),
     map.det_insert(ConsId, CanonVars, ConsIdMap1, ConsIdMap),
