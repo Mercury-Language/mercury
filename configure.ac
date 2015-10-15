@@ -4342,18 +4342,11 @@ case "$host" in
         EXT_FOR_SHARED_LIB=so
         EXT_FOR_LINK_WITH_PIC_OBJECTS=o
         ;;
-    i*86-*-freebsd*)
-        # From Cornelis van der Laan <nils@ims.uni-stuttgart.de>
+    *-freebsd*)
+        # Tested on FreeBSD 10.1 i386/amd64.
         AC_MSG_RESULT(yes)
-        LINK_SHARED_OBJ="ld -Bshareable"
-        LINK_SHARED_OBJ_SH="ld -Bshareable"
         EXT_FOR_SHARED_LIB=so
-        # From Kevet Duncombe <dunc@acm.org> tested on FreeBSD 2.2.5
-        EXE_RPATH_OPT="-R"
-        EXE_RPATH_SEP=" -R"
-        SHLIB_RPATH_OPT="-R"
-        SHLIB_RPATH_SEP=" -R"
-        DEFAULT_LINKAGE=static
+        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
         ;;
     i*86-*-solaris2.*)
         AC_MSG_RESULT(yes)
