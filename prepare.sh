@@ -5,9 +5,7 @@
 if [ ! -e boehm_gc/.git ]; then
     echo "Setting up submodules"
     if git submodule --quiet init; then
-        git submodule update --remote --checkout
-        ln -s ../libatomic_ops boehm_gc/libatomic_ops || \
-            cp -R libatomic_ops boehm_gc/libatomic_ops
+        git submodule update --remote --init --recursive
     else
         echo "There was a problem configuring the submodules.  If the"
         echo "repositories could not be found then edit .git/config and run"

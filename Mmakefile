@@ -489,15 +489,10 @@ tar: 	$(GENERATED_DOCS)
 		test -d $$ROOTNAME/bytecode && 				\
 			mv $$ROOTNAME/bytecode stuff-to-exclude; 	\
 		mv $$ROOTNAME/extras/quickcheck stuff-to-exclude;	\
-		rm $$ROOTNAME/boehm_gc/libatomic_ops;			\
-		mv $$ROOTNAME/libatomic_ops 				\
-			$$ROOTNAME/boehm_gc/libatomic_ops;		\
 		mv $$ROOTNAME		mercury-srcdist-$(VERSION);	\
 		tar --exclude ".git" -cf - mercury-srcdist-$(VERSION) | \
 			gzip -9 > mercury-srcdist-$(VERSION).tar.gz;	\
 		mv mercury-srcdist-$(VERSION)	$$ROOTNAME;		\
-		mv $$ROOTNAME/boehm_gc/libatomic_ops 			\
-			$$ROOTNAME/libatomic_ops;			\
 		mv stuff-to-exclude/quickcheck  $$ROOTNAME/extras/quickcheck; \
 		mv stuff-to-exclude/*		$$ROOTNAME;		\
 		rmdir stuff-to-exclude;					\

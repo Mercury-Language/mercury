@@ -57,20 +57,9 @@ cp boehm_gc/*.[chsS] ${installdir}/boehm_gc/
 cp boehm_gc/tools/*.[ch] ${installdir}/boehm_gc/tools
 cp boehm_gc/tools/*.sh ${installdir}/boehm_gc/tools
 cp boehm_gc/build_atomic_ops.sh* ${installdir}/boehm_gc
-if [ -d libatomic_ops ]; then
-    # If the libatomic_ops directory is present then boehm_gc/libatomic_ops
-    # is a symlink.  This doesn't work on platforms without symlinks, but
-    # does anyone run this script on Windows?
-    cp -Rp libatomic_ops ${installdir}
-    ln -s ${installdir}/libatomic_ops ${installdir}/boehm_gc
-    rm -fr ${installdir}/libatomic_ops/src/*.o
-    rm -fr ${installdir}/libatomic_ops/src/*.a
-else
-    # Otherwise boehmgc_libatomic_ops is a directory.
-    cp -Rp boehm_gc/libatomic_ops ${installdir}/boehm_gc
-    rm -fr ${installdir}/boehm_gc/libatomic_ops/src/*.o
-    rm -fr ${installdir}/boehm_gc/libatomic_ops/src/*.a
-fi
+cp -Rp boehm_gc/libatomic_ops ${installdir}/boehm_gc
+rm -fr ${installdir}/boehm_gc/libatomic_ops/src/*.o
+rm -fr ${installdir}/boehm_gc/libatomic_ops/src/*.a
 cp -Rp boehm_gc/extra ${installdir}/boehm_gc
 mkdir ${installdir}/runtime
 mkdir ${installdir}/runtime/machdeps
