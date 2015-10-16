@@ -382,93 +382,117 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
     (
         !.TokensLeft = token_cons(Token, Context, !:TokensLeft),
         ( if
-            % Check for unary minus of integer.
-            Token = name("-"),
-            !.TokensLeft = token_cons(IntToken, _IntContext, !:TokensLeft),
-            (
-                IntToken = integer(X),
-                NegX = 0 - X
-            ;
-                IntToken = big_integer(_, X),
-                -X = integer(min_int),
-                NegX = int.min_int
-            )
-        then
-            parser_get_term_context(!.PS, Context, TermContext),
-            Term = ok(term.functor(term.integer(NegX), [], TermContext)),
-            OpPriority = 0
-        else if
-            % Check for unary minus of float.
-            Token = name("-"),
-            !.TokensLeft = token_cons(float(F), _FloatContext, !:TokensLeft)
-        then
-            parser_get_term_context(!.PS, Context, TermContext),
-            NegF = 0.0 - F,
-            Term = ok(term.functor(term.float(NegF), [], TermContext)),
-            OpPriority = 0
-        else if
-            % Check for binary prefix op.
-            Token = name(Op),
-            \+ !.TokensLeft = token_cons(open_ct, _, _),
+            Token = name(TokenName),
             OpTable = parser_state_get_ops_table(!.PS),
-            ops.lookup_binary_prefix_op(OpTable, Op, BinOpPriority,
-                RightAssoc, RightRightAssoc),
-            BinOpPriority =< MaxPriority,
-            !.TokensLeft = token_cons(NextToken, _, _),
-            could_start_term(NextToken, yes)
+            ops.lookup_op_infos(OpTable, TokenName, OpInfo, OtherOpInfos)
         then
-            adjust_priority_for_assoc(BinOpPriority,
-                RightAssoc, RightPriority),
-            adjust_priority_for_assoc(BinOpPriority,
-                RightRightAssoc, RightRightPriority),
-            OpPriority = BinOpPriority,
-            parse_term_2(RightPriority, TermKind, RightResult,
-                !TokensLeft, !PS),
-            (
-                RightResult = ok(RightTerm),
-                parse_term_2(RightRightPriority, TermKind, RightRightResult,
+            % We test for unary minus inside the test for TokenName being
+            % an operator, even though we don't use its OpInfos,
+            % because this allows us to avoid a separate test in the
+            % *very* common case that TokenName is NOT an operator.
+            % The cost is that we look up of the op_infos even for
+            % unary minus terms, but this cost should be minor in comparison.
+            %
+            % This scheme relies on "-" being an operator, but the language
+            % guarantees that.
+            ( if
+                % Check for unary minus of an integer or a float.
+                TokenName = "-",
+                !.TokensLeft =
+                    token_cons(NextToken, _NextContext, !:TokensLeft),
+                (
+                    NextToken = integer(X),
+                    NegX = 0 - X,
+                    NewFunctor = integer(NegX)
+                ;
+                    NextToken = big_integer(_, X),
+                    -X = integer(min_int),
+                    NegX = int.min_int,
+                    NewFunctor = integer(NegX)
+                ;
+                    NextToken = float(F),
+                    NegF = 0.0 - F,
+                    NewFunctor = float(NegF)
+                )
+            then
+                parser_get_term_context(!.PS, Context, TermContext),
+                Term = ok(term.functor(NewFunctor, [], TermContext)),
+                OpPriority = 0
+            else if
+                % Check for binary prefix op.
+                %
+                % Since most tokens aren't binary prefix ops, the first test
+                % here will almost always fail.
+                find_first_binary_prefix_op(OpInfo, OtherOpInfos,
+                    BinOpPriority, RightAssoc, RightRightAssoc),
+                BinOpPriority =< MaxPriority,
+                !.TokensLeft = token_cons(NextToken, _, _),
+                could_start_term(NextToken, yes),
+                NextToken \= open_ct
+
+            then
+                OpPriority = BinOpPriority,
+                adjust_priority_for_assoc(OpPriority,
+                    RightAssoc, RightPriority),
+                adjust_priority_for_assoc(OpPriority,
+                    RightRightAssoc, RightRightPriority),
+                parse_term_2(RightPriority, TermKind, RightResult,
                     !TokensLeft, !PS),
                 (
-                    RightRightResult = ok(RightRightTerm),
-                    parser_get_term_context(!.PS, Context, TermContext),
-                    Term = ok(term.functor(term.atom(Op),
-                        [RightTerm, RightRightTerm], TermContext))
+                    RightResult = ok(RightTerm),
+                    parse_term_2(RightRightPriority, TermKind, RightRightResult,
+                        !TokensLeft, !PS),
+                    (
+                        RightRightResult = ok(RightRightTerm),
+                        parser_get_term_context(!.PS, Context, TermContext),
+                        Term = ok(term.functor(term.atom(TokenName),
+                            [RightTerm, RightRightTerm], TermContext))
+                    ;
+                        RightRightResult = error(_, _),
+                        % Propagate error upwards.
+                        Term = RightRightResult
+                    )
                 ;
-                    RightRightResult = error(_, _),
+                    RightResult = error(_, _),
                     % Propagate error upwards.
-                    Term = RightRightResult
+                    Term = RightResult
                 )
-            ;
-                RightResult = error(_, _),
-                % Propagate error upwards.
-                Term = RightResult
-            )
-        else if
-            % Check for unary prefix op.
-            Token = name(Op),
-            \+ !.TokensLeft = token_cons(open_ct, _, _),
-            OpTable = parser_state_get_ops_table(!.PS),
-            ops.lookup_prefix_op(OpTable, Op, UnOpPriority, RightAssoc),
-            UnOpPriority =< MaxPriority,
-            !.TokensLeft = token_cons(NextToken, _, _),
-            could_start_term(NextToken, yes)
-        then
-            adjust_priority_for_assoc(UnOpPriority, RightAssoc,
-                RightPriority),
-            parse_term_2(RightPriority, TermKind, RightResult,
-                !TokensLeft, !PS),
-            OpPriority = UnOpPriority,
-            (
-                RightResult = ok(RightTerm),
-                parser_get_term_context(!.PS, Context, TermContext),
-                Term = ok(term.functor(term.atom(Op), [RightTerm],
-                    TermContext))
-            ;
-                RightResult = error(_, _),
-                % Propagate error upwards.
-                Term = RightResult
+            else if
+                % Check for prefix op.
+                %
+                % Since most tokens aren't prefix ops, the first test
+                % here will almost always fail.
+                find_first_prefix_op(OpInfo, OtherOpInfos,
+                    UnOpPriority, RightAssoc),
+                UnOpPriority =< MaxPriority,
+                !.TokensLeft = token_cons(NextToken, _, _),
+                could_start_term(NextToken, yes),
+                NextToken \= open_ct
+            then
+                OpPriority = UnOpPriority,
+                adjust_priority_for_assoc(OpPriority, RightAssoc,
+                    RightPriority),
+                parse_term_2(RightPriority, TermKind, RightResult,
+                    !TokensLeft, !PS),
+                (
+                    RightResult = ok(RightTerm),
+                    parser_get_term_context(!.PS, Context, TermContext),
+                    Term = ok(term.functor(term.atom(TokenName), [RightTerm],
+                        TermContext))
+                ;
+                    RightResult = error(_, _),
+                    % Propagate error upwards.
+                    Term = RightResult
+                )
+            else
+                % TokenName is an operator, but not of a kind that
+                % we should handle here.
+                parse_simple_term(Token, Context, MaxPriority, Term,
+                    !TokensLeft, !PS),
+                OpPriority = 0
             )
         else
+            % TokenName is not an operator.
             parse_simple_term(Token, Context, MaxPriority, Term,
                 !TokensLeft, !PS),
             OpPriority = 0
@@ -996,6 +1020,37 @@ parser_unexpected_tok(Token, Context, UsualMessage, Error, !TokensLeft, PS) :-
     ).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred find_first_prefix_op(op_info::in, list(op_info)::in,
+    ops.priority::out, ops.assoc::out) is semidet.
+
+find_first_prefix_op(OpInfo, OtherOpInfos, OpPriority, RightAssoc) :-
+    OpInfo = op_info(Class, Priority),
+    ( if Class = prefix(RightAssocPrime) then
+        OpPriority = Priority,
+        RightAssoc = RightAssocPrime
+    else
+        OtherOpInfos = [HeadOpInfo | TailOpInfos],
+        find_first_prefix_op(HeadOpInfo, TailOpInfos, OpPriority, RightAssoc)
+    ).
+
+:- pred find_first_binary_prefix_op(op_info::in, list(op_info)::in,
+    ops.priority::out, ops.assoc::out, ops.assoc::out) is semidet.
+
+find_first_binary_prefix_op(OpInfo, OtherOpInfos,
+        OpPriority, RightAssoc, RightRightAssoc) :-
+    OpInfo = op_info(Class, Priority),
+    ( if Class = binary_prefix(RightAssocPrime, RightRightAssocPrime) then
+        OpPriority = Priority,
+        RightAssoc = RightAssocPrime,
+        RightRightAssoc = RightRightAssocPrime
+    else
+        OtherOpInfos = [HeadOpInfo | TailOpInfos],
+        find_first_binary_prefix_op(HeadOpInfo, TailOpInfos,
+            OpPriority, RightAssoc, RightRightAssoc)
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- pred check_priority(ops.assoc::in, int::in, int::in) is semidet.
