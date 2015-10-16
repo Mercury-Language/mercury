@@ -134,7 +134,7 @@ simplify_pred_proc(SimplifyTasks, PredId, ProcId, !ModuleInfo,
         !ModuleInfo, ProcInfo0, ProcInfo, ProcSpecs),
     % This is ugly, but we want to avoid running the dependent parallel
     % conjunction pass on predicates and even modules that do not contain
-    % parallel conjunctions (nearly all of them).  Since simplification
+    % parallel conjunctions (nearly all of them). Since simplification
     % is always done, we use it to mark modules and procedures containing
     % parallel conjunctions.
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
@@ -205,9 +205,9 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
         SimplifyTasks0, SimplifyTasks),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_markers(PredInfo0, Markers0),
-    ( check_marker(Markers0, marker_mode_check_clauses) ->
+    ( if check_marker(Markers0, marker_mode_check_clauses) then
         simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo)
-    ;
+    else
         true
     ),
 
@@ -226,13 +226,13 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
     % We therefore get determinism analysis to mark the procedure
     % if its body contains any calls relevant to format_calls.m.
 
-    (
+    ( if
         check_marker(Markers0, marker_has_format_call),
         SimplifyTasks ^ do_format_calls = yes
-    ->
+    then
         simplify_proc_analyze_and_format_calls(!ModuleInfo, PredId, ProcId,
             FormatSpecs, !ProcInfo)
-    ;
+    else
         % Either there are no format calls to check, or we don't want to
         % optimize them and would ignore the added messages anyway.
         FormatSpecs = []
@@ -272,11 +272,11 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
     varset.delete_sorted_vars(ElimVars, VarSet0, VarSet1),
     delete_sorted_var_types(ElimVars, VarTypes1, VarTypes),
     % We only eliminate vars that cannot occur in RttiVarMaps.
-    ( simplify_do_after_front_end(Info) ->
+    ( if simplify_do_after_front_end(Info) then
         proc_info_get_var_name_remap(!.ProcInfo, VarNameRemap),
         map.foldl(varset.name_var, VarNameRemap, VarSet1, VarSet),
         proc_info_set_var_name_remap(map.init, !ProcInfo)
-    ;
+    else
         VarSet = VarSet0
     ),
     proc_info_set_varset(VarSet, !ProcInfo),
@@ -315,32 +315,33 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
         !SimplifyTasks) :-
     proc_info_get_vartypes(ProcInfo, VarTypes0),
     vartypes_count(VarTypes0, NumVars),
-    ( NumVars > turn_off_common_struct_threshold ->
+    ( if NumVars > turn_off_common_struct_threshold then
         % If we have too many variables, common_struct takes so long that
         % either the compiler runs out of memory or the user runs out of
         % patience. The fact that we would generate better code if the
         % compilation finished is therefore of limited interest.
         !SimplifyTasks ^ do_common_struct := no
-    ;
+    else
         true
     ),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_string_option(Globals, common_struct_preds,
         CommonStructPreds),
-    ( CommonStructPreds = "" ->
+    ( if CommonStructPreds = "" then
         true
-    ;
+    else
         CommonStructPredIdStrs = string.split_at_char(',', CommonStructPreds),
-        (
+        ( if
             list.map(string.to_int, CommonStructPredIdStrs,
                 CommonStructPredIdInts)
-        ->
-            ( list.member(pred_id_to_int(PredId), CommonStructPredIdInts) ->
+        then
+            PredIdInt = pred_id_to_int(PredId),
+            ( if list.member(PredIdInt, CommonStructPredIdInts) then
                 true
-            ;
+            else
                 !SimplifyTasks ^ do_common_struct := no
             )
-        ;
+        else
             true
         )
     ).
@@ -355,16 +356,16 @@ turn_off_common_struct_threshold = 1000.
 simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    (
+    ( if
         ( GoalExpr0 = disj(_)
         ; GoalExpr0 = switch(_, _, _)
         )
-    ->
+    then
         goal_info_add_feature(feature_mode_check_clauses_goal,
             GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr0, GoalInfo),
         proc_info_set_goal(Goal, !ProcInfo)
-    ;
+    else
         true
     ).
 
@@ -438,14 +439,14 @@ simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
     % The alternate goal by definition cannot be a call_foreign_proc.
     proc_info_get_goal(ProcInfo, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    (
+    ( if
         GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
         MaybeMayDuplicate = get_may_duplicate(Attributes),
         MaybeMayDuplicate = yes(MayDuplicate)
-    ->
+    then
         (
             MayDuplicate = proc_may_duplicate,
-            ( check_marker(Markers, marker_user_marked_no_inline) ->
+            ( if check_marker(Markers, marker_user_marked_no_inline) then
                 Context = goal_info_get_context(GoalInfo),
                 Pieces = [words("Error: the"), quote("may_duplicate"),
                     words("attribute on the foreign_proc contradicts the"),
@@ -455,12 +456,12 @@ simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
                 Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
                     [Msg]),
                 !:Specs = [Spec | !.Specs]
-            ;
+            else
                 true
             )
         ;
             MayDuplicate = proc_may_not_duplicate,
-            ( check_marker(Markers, marker_user_marked_inline) ->
+            ( if check_marker(Markers, marker_user_marked_inline) then
                 Context = goal_info_get_context(GoalInfo),
                 Pieces = [words("Error: the"), quote("may_not_duplicate"),
                     words("attribute on the foreign_proc contradicts the"),
@@ -470,11 +471,11 @@ simplify_proc_maybe_warn_about_duplicates(ModuleInfo, PredId, ProcInfo,
                 Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
                     [Msg]),
                 !:Specs = [Spec | !.Specs]
-            ;
+            else
                 true
             )
         )
-    ;
+    else
         true
     ).
 
@@ -496,11 +497,11 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
     some [!SimplifyTasks] (
         simplify_info_get_simplify_tasks(!.Info, !:SimplifyTasks),
         OriginalSimplifyTasks = !.SimplifyTasks,
-        (
+        ( if
             ( simplify_do_common_struct(!.Info)
             ; simplify_do_opt_duplicate_calls(!.Info)
             )
-        ->
+        then
             !SimplifyTasks ^ do_mark_code_model_changes := no,
             !SimplifyTasks ^ do_excess_assign := no,
             simplify_info_set_simplify_tasks(!.SimplifyTasks, !Info),
@@ -513,7 +514,7 @@ simplify_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
             !SimplifyTasks ^ do_common_struct := no,
             !SimplifyTasks ^ do_opt_duplicate_calls := no,
             simplify_info_reinit(!.SimplifyTasks, !Info)
-        ;
+        else
             true
         ),
         % On the second pass do excess assignment elimination and

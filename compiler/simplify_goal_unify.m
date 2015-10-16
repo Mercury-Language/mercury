@@ -108,15 +108,15 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         ( RT0 = rhs_functor(_, _, _)
         ; RT0 = rhs_var(_)
         ),
-        (
+        ( if
             % A unification of the form X = X can be safely optimised away.
             RT0 = rhs_var(LT0)
-        ->
+        then
             Context = goal_info_get_context(GoalInfo0),
             hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
-        ;
+        else if
             U0 = complicated_unify(UniMode, CanFail, TypeInfoVars)
-        ->
+        then
             (
                 RT0 = rhs_var(V),
                 process_compl_unify(LT0, V, UniMode, CanFail, TypeInfoVars, C,
@@ -127,16 +127,16 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 RT0 = rhs_functor(_, _, _),
                 unexpected($module, $pred, "invalid RHS for complicated unify")
             )
-        ;
+        else if
             simplify_do_common_struct(!.Info)
-        ->
+        then
             common_optimise_unification(U0, M,
                 GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info)
-        ;
+        else if
             ( simplify_do_opt_duplicate_calls(!.Info)
             ; simplify_do_warn_duplicate_calls(!.Info)
             )
-        ->
+        then
             % We need to do the pass, to record the variable equivalences
             % used for optimizing or warning about duplicate calls.
             % But we don't want to perform the optimization, so we disregard
@@ -145,7 +145,7 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 GoalExpr0, _GoalExpr1, GoalInfo0, _GoalInfo1, !Common, !Info),
             GoalExpr = GoalExpr0,
             GoalInfo = GoalInfo0
-        ;
+        else
             GoalExpr = GoalExpr0,
             GoalInfo = GoalInfo0
         )
@@ -163,7 +163,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
     simplify_info_get_module_info(!.Info, ModuleInfo),
     simplify_info_get_var_types(!.Info, VarTypes),
     lookup_var_type(VarTypes, XVar, Type),
-    ( Type = type_variable(TypeVar, Kind) ->
+    ( if Type = type_variable(TypeVar, Kind) then
         % Convert polymorphic unifications into calls to `unify/2',
         % the general unification predicate, passing the appropriate type_info:
         %   unify(TypeInfoVar, X, Y)
@@ -175,7 +175,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
             !Info),
         call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
             UnifyContext, GoalInfo0, Call)
-    ; type_is_higher_order(Type) ->
+    else if type_is_higher_order(Type) then
         % Convert higher-order unifications into calls to
         % builtin_unify_pred (which calls error/1).
         Context = goal_info_get_context(GoalInfo0),
@@ -187,7 +187,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
             NestedContext0, InstMap0, !Common, !Info),
         Call = hlds_goal(Call1, GoalInfo),
         ExtraGoals = []
-    ;
+    else
         type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
         determinism_components(Det, CanFail, at_most_one),
         unify_proc.lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det, ProcId),
@@ -195,7 +195,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
         globals.lookup_bool_option(Globals, special_preds, SpecialPreds),
         globals.lookup_bool_option(Globals, can_compare_compound_values,
             CanCompareCompoundValues),
-        (
+        ( if
             % On the Erlang backend, it is faster for us to use builtin
             % comparison operators on high level data structures than to
             % deconstruct the data structure and compare the atomic
@@ -204,10 +204,10 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
             hlds_pred.in_in_unification_proc_id(ProcId),
             CanCompareCompoundValues = yes,
             type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type)
-        ->
+        then
             ExtraGoals = [],
             call_builtin_compound_eq(XVar, YVar, ModuleInfo, GoalInfo0, Call)
-        ;
+        else if
             hlds_pred.in_in_unification_proc_id(ProcId),
             (
                 SpecialPreds = no
@@ -221,17 +221,17 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
                 %
                 special_pred_is_generated_lazily(ModuleInfo, TypeCtor)
             )
-        ->
+        then
             make_type_info_vars([Type], TypeInfoVars, ExtraGoals, !Info),
-            ( TypeInfoVars = [TypeInfoVarPrime] ->
+            ( if TypeInfoVars = [TypeInfoVarPrime] then
                 TypeInfoVar = TypeInfoVarPrime
-            ;
+            else
                 unexpected($module, $pred,
                     "more than one typeinfo for one type var")
             ),
             call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
                 UnifyContext, GoalInfo0, Call)
-        ;
+        else
             % Convert other complicated unifications into calls to
             % specific unification predicates, inserting extra typeinfo
             % arguments if necessary.

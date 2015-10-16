@@ -65,7 +65,7 @@
 
 simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, Common0, Common, !Info) :-
-    % (A -> B ; C) is logically equivalent to (A, B ; ~A, C).
+    % (if A then B else C) is logically equivalent to (A, B ; ~A, C).
     % If the determinism of A means that one of these disjuncts cannot succeed,
     % then we replace the if-then-else with the other disjunct. (We could
     % also eliminate A, but we leave that to the recursive invocations.)
@@ -108,17 +108,17 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             CondSolns0 = at_most_zero,
             % Optimize away the condition and the `then' part.
             det_negation_det(CondDetism0, MaybeNegDetism),
-            (
+            ( if
                 Cond0 = hlds_goal(negation(NegCond), _),
                 % XXX BUG! This optimization is only safe if it preserves mode
                 % correctness, which means in particular that the negated goal
                 % must not clobber any variables. For now I've just disabled
                 % the optimization.
                 semidet_fail
-            ->
+            then
                 Cond = NegCond
-            ;
-                (
+            else
+                ( if
                     MaybeNegDetism = yes(NegDetism1),
                     (
                         NegDetism1 = detism_erroneous,
@@ -127,10 +127,10 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                         NegDetism1 = detism_det,
                         instmap_delta_init_reachable(NegInstMapDelta1)
                     )
-                ->
+                then
                     NegDetism = NegDetism1,
                     NegInstMapDelta = NegInstMapDelta1
-                ;
+                else
                     unexpected($module, $pred,
                         "cannot get negated determinism")
                 ),
@@ -151,8 +151,8 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ; CondSolns0 = at_most_many
             ; CondSolns0 = at_most_many_cc
             ),
-            ( Else0 = hlds_goal(disj([]), _) ->
-                % (Cond -> Then ; fail) is equivalent to (Cond, Then)
+            ( if Else0 = hlds_goal(disj([]), _) then
+                % (if Cond then Then else fail) is equivalent to (Cond, Then)
                 goal_to_conj_list(Cond0, CondGoals),
                 goal_to_conj_list(Then0, ThenGoals),
                 Goals = CondGoals ++ ThenGoals,
@@ -161,7 +161,7 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                     Common0, Common, !Info),
                 simplify_info_set_should_requantify(!Info),
                 simplify_info_set_should_rerun_det(!Info)
-            ;
+            else
                 simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
                     GoalInfo0, GoalInfo, NestedContext0, InstMap0,
                     Common0, Common, !Info)
@@ -246,7 +246,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
 
     CondDetism = goal_info_get_determinism(CondInfo),
     determinism_components(CondDetism, CondCanFail, CondSolns),
-    (
+    ( if
         % Check again if we can apply one of the above simplifications
         % after having simplified the sub-goals (we need to do this
         % to ensure that the goal is fully simplified, to maintain the
@@ -255,10 +255,10 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
         ; CondSolns = at_most_zero
         ; Else = hlds_goal(disj([]), _)
         )
-    ->
+    then
         simplify_goal_expr(IfThenElseExpr, GoalExpr, GoalInfo1, GoalInfo,
             NestedContext0, InstMap0, Common0, Common, !Info)
-    ;
+    else
         % Any structures generated in one branch won't be available after the
         % if-the-else as a whole if execution takes the other branch.
         Common = Common0,
@@ -272,9 +272,9 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
             simplify_info_get_varset(!.Info, VarSet),
             Pieces0 = [words("Warning: this if-then-else"),
                 words("could be replaced by a switch")],
-            ( varset.search_name(VarSet, SwitchVar, SwitchVarName) ->
+            ( if varset.search_name(VarSet, SwitchVar, SwitchVarName) then
                 OnPieces = [words("on"), quote(SwitchVarName)]
-            ;
+            else
                 OnPieces = []
             ),
             Pieces = Pieces0 ++ OnPieces ++ [suffix("."), nl],
@@ -291,7 +291,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
         ;
             CanSwitch = cond_cannot_switch
         ),
-        (
+        ( if
             % If-then-elses that are det or semidet may nevertheless contain
             % nondet or multi conditions. If this happens, we put the
             % if-then-else inside a commit scope, since the code generators
@@ -301,13 +301,13 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
             simplify_do_mark_code_model_changes(!.Info),
             CondSolns = at_most_many,
             IfThenElseNumSolns \= at_most_many
-        ->
+        then
             determinism_components(InnerDetism, IfThenElseCanFail,
                 at_most_many),
             goal_info_set_determinism(InnerDetism, GoalInfo1, InnerInfo),
             GoalExpr = scope(commit(dont_force_pruning),
                 hlds_goal(IfThenElseExpr, InnerInfo))
-        ;
+        else
             GoalExpr = IfThenElseExpr
         ),
         GoalInfo = GoalInfo1
@@ -335,7 +335,7 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
             Unification = deconstruct(LHSVar, _ConsId, _Args, _ArgModes,
                 _CanFail, _CanCGC),
             lookup_var_type(VarTypes, LHSVar, LHSVarType),
-            ( type_to_type_defn_body(ModuleInfo, LHSVarType, TypeBody) ->
+            ( if type_to_type_defn_body(ModuleInfo, LHSVarType, TypeBody) then
                 CanSwitchOnType = can_switch_on_type(TypeBody),
                 (
                     CanSwitchOnType = no,
@@ -347,16 +347,16 @@ warn_switch_for_ite_cond(ModuleInfo, VarTypes, Cond, !CondCanSwitch) :-
                         !:CondCanSwitch = cond_can_switch_on(LHSVar)
                     ;
                         !.CondCanSwitch = cond_can_switch_on(SwitchVar),
-                        ( SwitchVar = LHSVar ->
+                        ( if SwitchVar = LHSVar then
                             true
-                        ;
+                        else
                             !:CondCanSwitch = cond_cannot_switch
                         )
                     ;
                         !.CondCanSwitch = cond_cannot_switch
                     )
                 )
-            ;
+            else
                 % You cannot have a switch on a type with no body (e.g. a
                 % builtin type such as int).
                 !:CondCanSwitch = cond_cannot_switch
@@ -476,7 +476,7 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         SubGoal1 = hlds_goal(_, SubGoalInfo1),
         Detism = goal_info_get_determinism(SubGoalInfo1),
         determinism_components(Detism, CanFail, MaxSoln),
-        ( CanFail = cannot_fail ->
+        ( if CanFail = cannot_fail then
             Pieces = [words("Warning: the negated goal cannot fail.")],
             Msg = simple_msg(Context,
                 [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
@@ -485,7 +485,7 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             Spec = error_spec(Severity,
                 phase_simplify(report_only_if_in_all_modes), [Msg]),
             simplify_info_add_simple_code_spec(Spec, !Info)
-        ; MaxSoln = at_most_zero ->
+        else if MaxSoln = at_most_zero then
             Pieces = [words("Warning: the negated goal cannot succeed.")],
             Msg = simple_msg(Context,
                 [option_is_set(warn_simple_code, yes, [always(Pieces)])]),
@@ -494,7 +494,7 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             Spec = error_spec(Severity,
                 phase_simplify(report_only_if_in_all_modes), [Msg]),
             simplify_info_add_simple_code_spec(Spec, !Info)
-        ;
+        else
             true
         )
     ;
@@ -504,17 +504,17 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         % condition may not (and typically does not) exist in the other
         % copies.
     ),
-    (
+    ( if
         % Replace `not true' with `fail'.
         SubGoal1 = hlds_goal(conj(plain_conj, []), _)
-    ->
+    then
         hlds_goal(GoalExpr, GoalInfo) = fail_goal_with_context(Context)
-    ;
+    else if
         % Replace `not fail' with `true'.
         SubGoal1 = hlds_goal(disj([]), _)
-    ->
+    then
         hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
-    ;
+    else if
         % Remove double negation.
         SubGoal1 =
             hlds_goal(negation(hlds_goal(SubSubGoal, SubSubGoalInfo)), _),
@@ -523,10 +523,10 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         % the negated goal must not clobber any variables.
         % For now I've just disabled the optimization.
         semidet_fail
-    ->
+    then
         simplify_maybe_wrap_goal(GoalInfo0, SubSubGoalInfo, SubSubGoal,
             GoalExpr, GoalInfo, !Info)
-    ;
+    else
         GoalExpr = negation(SubGoal1),
         GoalInfo = GoalInfo0
     ),

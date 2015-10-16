@@ -202,7 +202,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         )
     then
 % The following warning is disabled, because it often results in spurious
-% warnings.  Sometimes predicate calls are used just to constrain the types,
+% warnings. Sometimes predicate calls are used just to constrain the types,
 % to avoid type ambiguities or unbound type variables, and in such cases,
 % it is perfectly legitimate for a call to be det and to have no outputs.
 % There's no simple way of telling those cases from cases for which we

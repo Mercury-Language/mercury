@@ -106,7 +106,7 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     % Try to evaluate the call at compile-time.
     ModuleSymName = pred_info_module(PredInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    ( is_std_lib_module_name(ModuleSymName, ModuleName) ->
+    ( if is_std_lib_module_name(ModuleSymName, ModuleName) then
         % For calls to library predicates, we can do three things to improve
         % them.
         %
@@ -133,18 +133,18 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         PredName = pred_info_name(PredInfo),
         proc_id_to_int(ProcId, ModeNum),
         simplify_info_get_var_types(!.Info, VarTypes),
-        (
+        ( if
             % Step 1.
             simplify_do_const_prop(!.Info),
             const_prop.evaluate_call(Globals, VarTypes, InstMap0,
                 ModuleName, PredName, ModeNum, Args, 
                 EvaluatedGoalExpr, GoalInfo0, EvaluatedGoalInfo)
-        ->
+        then
             GoalExpr = EvaluatedGoalExpr,
             GoalInfo = EvaluatedGoalInfo,
             Common = Common0,
             simplify_info_set_should_requantify(!Info)
-        ;
+        else
             % Step 2.
             simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0,
                 GoalInfo0, MaybeAssignsGoalExpr, Common0, Common, !Info),
@@ -156,23 +156,23 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 % if needed.
             ;
                 MaybeAssignsGoalExpr = no,
-                (
+                ( if
                     % Step 3.
                     simplify_improve_library_call(InstMap0,
                         ModuleName, PredName, ModeNum, Args, ImprovedGoalExpr,
                         GoalInfo0, ImprovedGoalInfo, InstMap0, !Info)
-                ->
+                then
                     % simplify_improve_library_call will have set
                     % the requantify flag.
                     GoalExpr = ImprovedGoalExpr,
                     GoalInfo = ImprovedGoalInfo
-                ;
+                else
                     GoalExpr = GoalExpr0,
                     GoalInfo = GoalInfo0
                 )
             )
         )
-    ;
+    else
         % For calls to non-library predicates, steps 1 and 3 above
         % don't apply, so we can do only step 2.
         simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0,
@@ -199,19 +199,21 @@ simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo,
     GoalExpr0 = generic_call(GenericCall, Args, Modes, _, Det),
     (
         GenericCall = higher_order(Closure, Purity, _, _),
-        ( simplify_do_warn_or_opt_duplicate_calls(!.Info, OptDuplicateCalls) ->
+        ( if
+            simplify_do_warn_or_opt_duplicate_calls(!.Info, OptDuplicateCalls)
+        then
             common_optimise_higher_order_call(Closure, Args, Modes, Det,
                 Purity, GoalInfo, GoalExpr0, MaybeAssignsGoalExpr,
                 Common0, Common, !Info),
-            (
+            ( if
                 MaybeAssignsGoalExpr = yes(AssignsGoalExpr),
                 OptDuplicateCalls = yes
-            ->
+            then
                 GoalExpr = AssignsGoalExpr
-            ;
+            else
                 GoalExpr = GoalExpr0
             )
-        ;
+        else
             GoalExpr = GoalExpr0,
             Common = Common0
         )
@@ -235,7 +237,7 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
     % XXX The logic of this predicate should be based on
     % simplify_goal_plain_call, and prefer the same transformations
     % as simplify_goal_plain_call, to the maximum extent possible.
-    (
+    ( if
         % XXX Why do we insist on const_prop here? What
         % simplify_improve_library_call does is NOT constant propagation.
         simplify_do_const_prop(!.Info),
@@ -249,12 +251,11 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
         ArgVars = list.map(foreign_arg_var, Args0),
         simplify_improve_library_call(InstMap0, ModuleName, PredName,
             ModeNum, ArgVars, ImprovedGoalExpr, !GoalInfo, InstMap0, !Info)
-    ->
+    then
         GoalExpr = ImprovedGoalExpr,
         Common = Common0
-        % simplify_improve_library_call will have set
-        % the requantify flag.
-    ;
+        % simplify_improve_library_call will have set the requantify flag.
+    else
         BoxPolicy = get_box_policy(Attributes),
         (
             BoxPolicy = native_if_possible,
@@ -268,23 +269,23 @@ simplify_goal_foreign_proc(GoalExpr0, GoalExpr, !GoalInfo,
             GoalExpr1 = call_foreign_proc(Attributes, PredId, ProcId,
                 Args, ExtraArgs, MaybeTraceRuntimeCond, Impl)
         ),
-        (
+        ( if
             simplify_do_warn_or_opt_duplicate_calls(!.Info, OptDuplicateCalls),
             ExtraArgs = []
-        ->
+        then
             ArgVars = list.map(foreign_arg_var, Args),
             Purity = goal_info_get_purity(!.GoalInfo),
             common_optimise_call(PredId, ProcId, ArgVars, Purity, !.GoalInfo,
                 GoalExpr1, MaybeAssignsGoalExpr, Common0, Common, !Info),
-            (
+            ( if
                 MaybeAssignsGoalExpr = yes(AssignsGoalExpr),
                 OptDuplicateCalls = yes
-            ->
+            then
                 GoalExpr = AssignsGoalExpr
-            ;
+            else
                 GoalExpr = GoalExpr1
             )
-        ;
+        else
             GoalExpr = GoalExpr1,
             Common = Common0
         )
@@ -309,7 +310,7 @@ make_arg_always_boxed(Arg) = Arg ^ arg_box_policy := always_boxed.
 maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
         GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
-    (
+    ( if
         simplify_do_warn_obsolete(!.Info),
         pred_info_get_markers(PredInfo, Markers),
         check_marker(Markers, marker_obsolete),
@@ -326,7 +327,7 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
         module_info_pred_info(ModuleInfo, ThisPredId, ThisPredInfo),
         pred_info_get_markers(ThisPredInfo, ThisPredMarkers),
         not check_marker(ThisPredMarkers, marker_obsolete)
-    ->
+    then
         % XXX warn_obsolete isn't really a simple code warning.
         % We should add a separate warning type for this.
         GoalContext = goal_info_get_context(GoalInfo),
@@ -341,7 +342,7 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, PredInfo,
         Spec = error_spec(Severity,
             phase_simplify(report_in_any_mode), [Msg]),
         simplify_info_add_simple_code_spec(Spec, !Info)
-    ;
+    else
         true
     ).
 
@@ -360,7 +361,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
         PredInfo, ProcInfo, GoalInfo, NestedContext, Common, !Info) :-
     % Check for recursive calls with the same input arguments,
     % and warn about them (since they will lead to infinite loops).
-    (
+    ( if
         simplify_do_warn_simple_code(!.Info),
 
         % Is this a (directly) recursive call, i.e. is the procedure being
@@ -407,13 +408,13 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
 
         % Don't count procs using minimal evaluation as they should always
         % terminate if they have a finite number of answers.
-        \+ proc_info_get_eval_method(ProcInfo, eval_minimal(_)),
+        not proc_info_get_eval_method(ProcInfo, eval_minimal(_)),
 
         % Don't warn about impure procedures, since (unlike pure and semipure
         % procedures) they may modify the state in ways not visible to us.
         pred_info_get_purity(PredInfo, Purity),
-        \+ Purity = purity_impure
-    ->
+        Purity \= purity_impure
+    then
         GoalContext = goal_info_get_context(GoalInfo),
 
         % It would be better if we supplied more information than just
@@ -436,7 +437,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
         Spec = error_spec(Severity,
             phase_simplify(report_in_any_mode), [Msg]),
         simplify_info_add_simple_code_spec(Spec, !Info)
-    ;
+    else
         true
     ).
 
@@ -453,9 +454,9 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, Args, IsBuiltin,
 input_args_are_equiv([], [], _, _, _).
 input_args_are_equiv([Arg | Args], [HeadVar | HeadVars], [Mode | Modes],
         CommonInfo, ModuleInfo) :-
-    ( mode_is_input(ModuleInfo, Mode) ->
+    ( if mode_is_input(ModuleInfo, Mode) then
         common_vars_are_equivalent(Arg, HeadVar, CommonInfo)
-    ;
+    else
         true
     ),
     input_args_are_equiv(Args, HeadVars, Modes, CommonInfo, ModuleInfo).
@@ -472,22 +473,22 @@ input_args_are_equiv([Arg | Args], [HeadVar | HeadVars], [Mode | Modes],
 
 simplify_look_for_duplicate_call(PredId, ProcId, Args, GoalExpr0, GoalInfo0,
         MaybeAssignsGoalExpr, Common0, Common, !Info) :-
-    ( simplify_do_warn_or_opt_duplicate_calls(!.Info, OptDuplicateCalls) ->
+    ( if simplify_do_warn_or_opt_duplicate_calls(!.Info, OptDupCalls) then
         Purity = goal_info_get_purity(GoalInfo0),
         % NOTE We want to call common_optimise_call outside the condition,
         % so we can return an updated Common (which will record the first,
         % NON-duplicate appearance of every call) to our caller.
         common_optimise_call(PredId, ProcId, Args, Purity, GoalInfo0,
             GoalExpr0, MaybeAssignsGoalExpr0, Common0, Common, !Info),
-        (
+        ( if
             MaybeAssignsGoalExpr0 = yes(_AssignsGoalExpr0),
-            OptDuplicateCalls = yes
-        ->
+            OptDupCalls = yes
+        then
             MaybeAssignsGoalExpr = MaybeAssignsGoalExpr0
-        ;
+        else
             MaybeAssignsGoalExpr = no
         )
-    ;
+    else
         Common = Common0,
         MaybeAssignsGoalExpr = no
     ).
@@ -562,7 +563,7 @@ simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert, GoalInfo,
 
     % Construct the call to compare/3.
     Context = hlds_goal.goal_info_get_context(GoalInfo),
-    Args    = [TI, CmpRes, X, Y],
+    Args = [TI, CmpRes, X, Y],
 
     instmap_lookup_var(InstMap0, X, XInst),
     instmap_lookup_var(InstMap0, Y, YInst),
@@ -574,7 +575,7 @@ simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert, GoalInfo,
             ( if inst_is_unique(ModuleInfo, YInst) then 3 else 0 )
         ),
 
-    Unique   = ground(unique, none),
+    Unique = ground(unique, none),
     ArgInsts = [CmpRes - Unique],
     BuiltinModule = mercury_public_builtin_module,
     goal_util.generate_simple_call(BuiltinModule, "compare", pf_predicate,
@@ -585,24 +586,23 @@ simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert, GoalInfo,
     CmpNonLocals0 = goal_info_get_nonlocals(CmpInfo0),
     set_of_var.insert(CmpRes, CmpNonLocals0, CmpNonLocals),
     goal_info_set_nonlocals(CmpNonLocals, CmpInfo0, CmpInfo),
-    CmpGoal  = hlds_goal(CmpExpr, CmpInfo),
+    CmpGoal = hlds_goal(CmpExpr, CmpInfo),
 
     % Construct the unification CmpRes = Inequality.
     TypeCtor = type_ctor(
         qualified(mercury_public_builtin_module, "comparison_result"), 0),
-    ConsId   = cons(qualified(BuiltinModule, Inequality), 0, TypeCtor),
-    Bound    = bound(shared, inst_test_results_fgtc,
-                    [bound_functor(ConsId, [])]),
-    UMode    = ((Unique -> Bound) - (Bound -> Bound)),
-    RHS      = rhs_functor(ConsId, is_not_exist_constr, []),
-    UKind    = deconstruct(CmpRes, ConsId, [], [], can_fail, cannot_cgc),
+    ConsId = cons(qualified(BuiltinModule, Inequality), 0, TypeCtor),
+    Bound = bound(shared, inst_test_results_fgtc, [bound_functor(ConsId, [])]),
+    UMode = ((Unique -> Bound) - (Bound -> Bound)),
+    RHS = rhs_functor(ConsId, is_not_exist_constr, []),
+    UKind = deconstruct(CmpRes, ConsId, [], [], can_fail, cannot_cgc),
     UContext = unify_context(umc_implicit(
         "simplify_inline_builtin_inequality"), []),
-    UnifyExpr  = unify(CmpRes, RHS, UMode, UKind, UContext),
+    UnifyExpr = unify(CmpRes, RHS, UMode, UKind, UContext),
     UnifyNonLocals0 = goal_info_get_nonlocals(GoalInfo),
     set_of_var.insert(CmpRes, UnifyNonLocals0, UnifyNonLocals),
     goal_info_set_nonlocals(UnifyNonLocals, GoalInfo, UnifyInfo),
-    UnifyGoal  = hlds_goal(UnifyExpr, UnifyInfo),
+    UnifyGoal = hlds_goal(UnifyExpr, UnifyInfo),
 
     (
         Invert = no,
@@ -796,9 +796,9 @@ simplify_make_int_binary_op_goal_expr(Info, Op, IsBuiltin, X, Y, Z,
     module_info_get_predicate_table(ModuleInfo, PredTable),
     predicate_table_lookup_func_sym_arity(PredTable, is_fully_qualified,
         OpSymName, 2, OpPredIds),
-    ( OpPredIds = [OpPredIdPrime] ->
+    ( if OpPredIds = [OpPredIdPrime] then
         OpPredId = OpPredIdPrime
-    ;
+    else
         unexpected($module, $pred, "cannot find " ++ Op)
     ),
     OpProcIdInt = 0,

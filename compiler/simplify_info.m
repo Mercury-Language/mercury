@@ -307,9 +307,9 @@ simplify_info_add_error_spec(Spec, !Info) :-
     simplify_info_set_error_specs(Specs, !Info).
 
 simplify_info_add_simple_code_spec(Spec, !Info) :-
-    ( simplify_do_warn_simple_code(!.Info) ->
+    ( if simplify_do_warn_simple_code(!.Info) then
         simplify_info_add_error_spec(Spec, !Info)
-    ;
+    else
         true
     ).
 

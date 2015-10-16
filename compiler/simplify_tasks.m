@@ -158,16 +158,16 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
         WarnUnknownFormat),
     globals.lookup_bool_option(Globals, optimize_format_calls,
         OptFormatCalls),
-    (
+    ( if
         (
             WarnThisPass = yes,
             ( WarnKnownBadFormat = yes ; WarnUnknownFormat = yes  )
         ;
             OptFormatCalls = yes
         )
-    ->
+    then
         DoFormatCalls = yes
-    ;
+    else
         DoFormatCalls = no
     ),
     globals.lookup_bool_option(Globals, warn_obsolete, WarnObsolete),
@@ -184,10 +184,10 @@ find_simplify_tasks(WarnThisPass, Globals, SimplifyTasks) :-
         RemoveParConjunctions),
 
     SimplifyTasks = simplify_tasks(
-        ( WarnSimple = yes, WarnThisPass = yes -> yes ; no),
-        ( WarnDupCalls = yes, WarnThisPass = yes -> yes ; no),
+        ( if WarnSimple = yes, WarnThisPass = yes then yes else no),
+        ( if WarnDupCalls = yes, WarnThisPass = yes then yes else no),
         DoFormatCalls,
-        ( WarnObsolete = yes, WarnThisPass = yes -> yes ; no),
+        ( if WarnObsolete = yes, WarnThisPass = yes then yes else no),
         MarkCodeModelChanges,
         AfterFrontEnd,
         ExcessAssign,

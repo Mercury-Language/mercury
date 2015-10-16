@@ -66,9 +66,9 @@
 
 simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, !Common, !Info) :-
-    ( simplify_do_excess_assign(!.Info) ->
+    ( if simplify_do_excess_assign(!.Info) then
         excess_assigns_in_conj(GoalInfo0, Goals0, Goals1, !Info)
-    ;
+    else
         Goals1 = Goals0
     ),
     simplify_conj(cord.empty, Goals1, Goals, GoalInfo0,
@@ -92,16 +92,16 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
         % where they should change the code's execution mechanism.
 
         Detism = goal_info_get_determinism(GoalInfo0),
-        (
+        ( if
             simplify_do_mark_code_model_changes(!.Info),
             determinism_components(Detism, CanFail, at_most_zero),
             contains_multisoln_goal(Goals)
-        ->
+        then
             determinism_components(InnerDetism, CanFail, at_most_many),
             goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
             InnerGoal = hlds_goal(conj(plain_conj, Goals), InnerInfo),
             GoalExpr = scope(commit(dont_force_pruning), InnerGoal)
-        ;
+        else
             GoalExpr = conj(plain_conj, Goals)
         ),
         GoalInfo = GoalInfo0
@@ -128,17 +128,17 @@ simplify_conj(!.PrevGoals, [], Goals, _ConjInfo,
 simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo,
         NestedContext0, InstMap0, !Common, !Info) :-
     % Flatten nested conjunctions in the original code.
-    ( Goal0 = hlds_goal(conj(plain_conj, SubGoals), _) ->
+    ( if Goal0 = hlds_goal(conj(plain_conj, SubGoals), _) then
         Goals1 = SubGoals ++ Goals0,
         simplify_conj(!.PrevGoals, Goals1, Goals, ConjInfo,
             NestedContext0, InstMap0, !Common, !Info)
-    ;
+    else
         Common0 = !.Common,
         simplify_goal(Goal0, Goal1, NestedContext0, InstMap0, !Common, !Info),
-        (
+        ( if
             % Flatten nested conjunctions in the transformed code.
             Goal1 = hlds_goal(conj(plain_conj, SubGoals1), _)
-        ->
+        then
             % Note that this simplifies everything inside Goal1 AGAIN.
             % We want some of this (for example, structures recorded
             % in Common while processing SubGoals1 can sometimes be used
@@ -164,9 +164,9 @@ simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo,
             !:Common = Common0,
             simplify_conj(!.PrevGoals, Goals1, Goals, ConjInfo,
                 NestedContext0, InstMap0, !Common, !Info)
-        ;
+        else
             update_instmap(Goal1, InstMap0, InstMap1),
-            (
+            ( if
                 % Delete unreachable goals.
                 (
                     % This test is here mostly for the sake of completeness.
@@ -181,16 +181,16 @@ simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo,
                     Detism1 = goal_info_get_determinism(GoalInfo1),
                     determinism_components(Detism1, _, at_most_zero)
                 )
-            ->
+            then
                 !:PrevGoals = cord.snoc(!.PrevGoals, Goal1),
-                (
+                ( if
                     ( Goal1 = hlds_goal(disj([]), _)
                     ; Goals0 = []
                     )
-                ->
+                then
                     % XXX If Goals0 = [], why don't we add an explicit failure?
                     true
-                ;
+                else
                     % We insert an explicit failure at the end of the
                     % non-succeeding conjunction. This is necessary, since
                     % the unreachability of the instmap could have been derived
@@ -206,7 +206,7 @@ simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo,
                     !:PrevGoals = cord.snoc(!.PrevGoals, FailGoal)
                 ),
                 Goals = cord.list(!.PrevGoals)
-            ;
+            else
                 !:PrevGoals = cord.snoc(!.PrevGoals, Goal1),
                 simplify_conj(!.PrevGoals, Goals0, Goals, ConjInfo,
                     NestedContext0, InstMap1, !Common, !Info)
@@ -221,9 +221,9 @@ simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo,
 :- pred find_renamed_var(var_renaming::in, prog_var::in, prog_var::out) is det.
 
 find_renamed_var(Subn, Var0, Var) :-
-    ( map.search(Subn, Var0, Var1) ->
+    ( if map.search(Subn, Var0, Var1) then
         find_renamed_var(Subn, Var1, Var)
-    ;
+    else
         Var = Var0
     ).
 
@@ -252,9 +252,9 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
     simplify_info_get_varset(!.Info, VarSet0),
     find_excess_assigns_in_conj(TraceLevel, TraceOptimized,
         VarSet0, ConjNonLocals, Goals0, [], RevGoals, Subn0, Subn1),
-    ( map.is_empty(Subn1) ->
+    ( if map.is_empty(Subn1) then
         Goals = Goals0
-    ;
+    else
         list.reverse(RevGoals, Goals1),
         % XXX Can we delay this until we return to the top level?
         renaming_transitive_closure(Subn1, Subn),
@@ -276,12 +276,12 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
 find_excess_assigns_in_conj(_, _, _, _, [], !RevGoals, !Subn).
 find_excess_assigns_in_conj(Trace, TraceOptimized, VarSet, ConjNonLocals,
         [Goal | Goals], !RevGoals, !Subn) :-
-    (
+    ( if
         goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals,
             Goal, !Subn)
-    ->
+    then
         true
-    ;
+    else
         !:RevGoals = [Goal | !.RevGoals]
     ),
     find_excess_assigns_in_conj(Trace, TraceOptimized, VarSet, ConjNonLocals,
@@ -300,17 +300,19 @@ goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals, Goal0,
     find_renamed_var(!.Subn, LeftVar0, LeftVar),
     find_renamed_var(!.Subn, RightVar0, RightVar),
 
-    CanElimLeft = ( set_of_var.member(ConjNonLocals, LeftVar) -> no ; yes ),
-    CanElimRight = ( set_of_var.member(ConjNonLocals, RightVar) -> no ; yes ),
+    CanElimLeft =
+        ( if set_of_var.member(ConjNonLocals, LeftVar) then no else yes ),
+    CanElimRight =
+        ( if set_of_var.member(ConjNonLocals, RightVar) then no else yes ),
 
     (
         CanElimLeft = yes,
         CanElimRight = yes,
         % If we have a choice, try to eliminate an unnamed variable.
-        ( var_is_named(VarSet, LeftVar) ->
+        ( if var_is_named(VarSet, LeftVar) then
             ElimVar = RightVar,
             ReplacementVar = LeftVar
-        ;
+        else
             ElimVar = LeftVar,
             ReplacementVar = RightVar
         )
@@ -334,18 +336,18 @@ goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals, Goal0,
     % If the module is being compiled with `--trace deep' and
     % `--no-trace-optimized' don't replace a meaningful variable name
     % with `HeadVar__n' or an anonymous variable.
-    \+ (
+    not (
         trace_level_needs_meaningful_var_names(Trace) = yes,
         TraceOptimized = no,
         var_is_named(VarSet, ElimVar),
-        \+ var_is_named(VarSet, ReplacementVar)
+        not var_is_named(VarSet, ReplacementVar)
     ).
 
 :- pred var_is_named(prog_varset::in, prog_var::in) is semidet.
 
 var_is_named(VarSet, Var) :-
     varset.search_name(VarSet, Var, Name),
-    \+ (
+    not (
         string.append("HeadVar__", Suffix, Name),
         string.to_int(Suffix, _)
     ).
@@ -367,10 +369,10 @@ simplify_goal_parallel_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
             GoalExpr, GoalInfo, !Info)
     ;
         Goals0 = [_, _ | _],
-        ( simplify_do_ignore_par_conjunctions(!.Info) ->
+        ( if simplify_do_ignore_par_conjunctions(!.Info) then
             simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
                 NestedContext0, InstMap0, !Common, !Info)
-        ;
+        else
             GoalInfo = GoalInfo0,
             simplify_par_conjuncts(Goals0, Goals,
                 NestedContext0, InstMap0, !.Common, !Info),

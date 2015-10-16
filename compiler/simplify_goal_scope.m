@@ -68,7 +68,7 @@
 simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, Common0, Common, !Info) :-
     GoalExpr0 = scope(Reason0, SubGoal0),
-    ( Reason0 = from_ground_term(TermVar, from_ground_term_construct) ->
+    ( if Reason0 = from_ground_term(TermVar, from_ground_term_construct) then
         simplify_info_get_module_info(!.Info, ModuleInfo0),
         module_info_get_const_struct_db(ModuleInfo0, ConstStructDb0),
         const_struct_db_get_ground_term_enabled(ConstStructDb0,
@@ -120,14 +120,14 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             )
         ;
             ConstStructEnabled = yes,
-            (
+            ( if
                 SubGoal0 = hlds_goal(SubGoalExpr, _),
                 SubGoalExpr = conj(plain_conj, Conjuncts),
                 Conjuncts = [HeadConjunctPrime | TailConjunctsPrime]
-            ->
+            then
                 HeadConjunct = HeadConjunctPrime,
                 TailConjuncts = TailConjunctsPrime
-            ;
+            else
                 unexpected($module, $pred,
                     "from_ground_term_construct scope is not conjunction")
             ),
@@ -141,12 +141,12 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             simplify_info_set_module_info(ModuleInfo, !Info),
 
             map.to_assoc_list(VarArgMap, VarArgs),
-            (
+            ( if
                 VarArgs = [TermVar - TermArg],
                 TermArg = csa_const_struct(TermConstNumPrime)
-            ->
+            then
                 TermConstNum = TermConstNumPrime
-            ;
+            else
                 unexpected($module, $pred, "unexpected VarArgMap")
             ),
 
@@ -166,12 +166,12 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             GoalInfo = GoalInfo0,
             Common = Common0
         )
-    ;
+    else
         simplify_goal(SubGoal0, SubGoal, NestedContext0, InstMap0,
             Common0, Common1, !Info),
         try_to_merge_nested_scopes(Reason0, SubGoal, GoalInfo0, Goal1),
         Goal1 = hlds_goal(GoalExpr1, _GoalInfo1),
-        ( GoalExpr1 = scope(FinalReason, FinalSubGoal) ->
+        ( if GoalExpr1 = scope(FinalReason, FinalSubGoal) then
             (
                 ( FinalReason = promise_purity(_)
                 ; FinalReason = from_ground_term(_, _)
@@ -213,10 +213,10 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             ;
                 FinalReason = trace_goal(MaybeCompiletimeExpr,
                     MaybeRuntimeExpr, _, _, _),
-                ( simplify_do_after_front_end(!.Info) ->
+                ( if simplify_do_after_front_end(!.Info) then
                     simplify_goal_trace_goal(MaybeCompiletimeExpr,
                         MaybeRuntimeExpr, FinalSubGoal, Goal1, Goal, !Info)
-                ;
+                else
                     Goal = Goal1
                 ),
                 % We throw away the updated Common1 for the same reason
@@ -225,7 +225,7 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 % have ANY outputs.
                 Common = Common0
             )
-        ;
+        else
             Goal = Goal1,
             Common = Common1
         ),
@@ -245,14 +245,14 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 simplify_construct_ground_terms(TermVar, VarTypes, Conjunct, Conjuncts,
         !ElimVars, !VarArgMap, !ConstStructDb) :-
     Conjunct = hlds_goal(GoalExpr, GoalInfo),
-    (
+    ( if
         GoalExpr = unify(_, _, _, Unify, _),
         Unify = construct(LHSVarPrime, ConsIdPrime, RHSVarsPrime, _, _, _, _)
-    ->
+    then
         LHSVar = LHSVarPrime,
         ConsId = ConsIdPrime,
         RHSVars = RHSVarsPrime
-    ;
+    else
         unexpected($module, $pred, "not construction unification")
     ),
     lookup_var_type(VarTypes, LHSVar, TermType),
@@ -402,9 +402,9 @@ evaluate_compile_time_condition_comptime(CompTime, Info) = Result :-
     (
         CompTime = trace_flag(FlagName),
         globals.lookup_accumulating_option(Globals, trace_goal_flags, Flags),
-        ( list.member(FlagName, Flags) ->
+        ( if list.member(FlagName, Flags) then
             Result = yes
-        ;
+        else
             Result = no
         )
     ;
@@ -444,33 +444,33 @@ evaluate_compile_time_condition_comptime(CompTime, Info) = Result :-
         ;
             Grade = trace_grade_c,
             globals.get_target(Globals, Target),
-            ( Target = target_c ->
+            ( if Target = target_c then
                 Result = yes
-            ;
+            else
                 Result = no
             )
         ;
             Grade = trace_grade_csharp,
             globals.get_target(Globals, Target),
-            ( Target = target_csharp ->
+            ( if Target = target_csharp then
                 Result = yes
-            ;
+            else
                 Result = no
             )
         ;
             Grade = trace_grade_java,
             globals.get_target(Globals, Target),
-            ( Target = target_java ->
+            ( if Target = target_java then
                 Result = yes
-            ;
+            else
                 Result = no
             )
         ;
             Grade = trace_grade_erlang,
             globals.get_target(Globals, Target),
-            ( Target = target_erlang ->
+            ( if Target = target_erlang then
                 Result = yes
-            ;
+            else
                 Result = no
             )
         )
@@ -494,16 +494,16 @@ evaluate_compile_time_condition_comptime(CompTime, Info) = Result :-
 try_to_merge_nested_scopes(Reason0, InnerGoal0, OuterGoalInfo, Goal) :-
     loop_over_any_nested_scopes(Reason0, Reason, InnerGoal0, InnerGoal),
     InnerGoal = hlds_goal(_, GoalInfo),
-    (
+    ( if
         Reason = exist_quant(_),
         Detism = goal_info_get_determinism(GoalInfo),
         OuterDetism = goal_info_get_determinism(OuterGoalInfo),
         Detism = OuterDetism
-    ->
+    then
         % If the inner and outer detisms match, then we do not need
         % the `some' scope.
         Goal = InnerGoal
-    ;
+    else
         Goal = hlds_goal(scope(Reason, InnerGoal), OuterGoalInfo)
     ).
 
@@ -511,45 +511,45 @@ try_to_merge_nested_scopes(Reason0, InnerGoal0, OuterGoalInfo, Goal) :-
     hlds_goal::in, hlds_goal::out) is det.
 
 loop_over_any_nested_scopes(Reason0, Reason, Goal0, Goal) :-
-    (
+    ( if
         Goal0 = hlds_goal(scope(Reason1, Goal1), _),
-        (
+        ( if
             Reason0 = exist_quant(Vars0),
             Reason1 = exist_quant(Vars1)
-        ->
+        then
             Reason2 = exist_quant(Vars0 ++ Vars1)
-        ;
+        else if
             Reason0 = barrier(Removable0),
             Reason1 = barrier(Removable1)
-        ->
-            (
+        then
+            ( if
                 Removable0 = removable,
                 Removable1 = removable
-            ->
+            then
                 Removable2 = removable
-            ;
+            else
                 Removable2 = not_removable
             ),
             Reason2 = barrier(Removable2)
-        ;
+        else if
             Reason0 = commit(ForcePruning0),
             Reason1 = commit(ForcePruning1)
-        ->
-            (
+        then
+            ( if
                 ForcePruning0 = dont_force_pruning,
                 ForcePruning1 = dont_force_pruning
-            ->
+            then
                 ForcePruning2 = dont_force_pruning
-            ;
+            else
                 ForcePruning2 = force_pruning
             ),
             Reason2 = commit(ForcePruning2)
-        ;
+        else
             fail
         )
-    ->
+    then
         loop_over_any_nested_scopes(Reason2, Reason, Goal1, Goal)
-    ;
+    else
         Reason = Reason0,
         Goal = Goal0
     ).
