@@ -141,6 +141,17 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
             unexpected($module, $pred,
                 "generate_standalone_interface is not maybe_string")
         ),
+
+        % The option `--invoked-by-mmc-make' implicitly disables `--make'.
+        %
+        getopt_io.lookup_bool_option(OptionTable, invoked_by_mmc_make,
+            InvokedByMMCMake),
+        (
+            InvokedByMMCMake = yes,
+            set.delete(opm_top_make, !OpModeSet)
+        ;
+            InvokedByMMCMake = no
+        ),
         set.to_sorted_list(!.OpModeSet, OpModes0),
         (
             OpModes0 = [],
