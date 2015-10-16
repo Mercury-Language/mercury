@@ -157,8 +157,9 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
-        GoalInfo0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
+process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars,
+        UnifyContext, GoalInfo0, Goal, NestedContext0, InstMap0,
+        !Common, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     simplify_info_get_var_types(!.Info, VarTypes),
     lookup_var_type(VarTypes, XVar, Type),
@@ -169,17 +170,19 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         % where TypeInfoVar is the type_info variable associated with
         % the type of the variables that are being unified.
 
-        type_info_locn(TypeVar, Kind, TypeInfoVar, ExtraGoals, !Info),
+        Context = goal_info_get_context(GoalInfo0),
+        get_type_info_locn(TypeVar, Kind, Context, TypeInfoVar, ExtraGoals,
+            !Info),
         call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
-            Context, GoalInfo0, Call)
+            UnifyContext, GoalInfo0, Call)
     ; type_is_higher_order(Type) ->
         % Convert higher-order unifications into calls to
         % builtin_unify_pred (which calls error/1).
-        GContext = goal_info_get_context(GoalInfo0),
+        Context = goal_info_get_context(GoalInfo0),
         generate_simple_call(mercury_private_builtin_module,
             "builtin_unify_pred", pf_predicate, mode_no(0), detism_semi,
             purity_pure, [XVar, YVar], [], instmap_delta_bind_no_var,
-            ModuleInfo, GContext, hlds_goal(Call0, _)),
+            ModuleInfo, Context, hlds_goal(Call0, _)),
         simplify_goal_expr(Call0, Call1, GoalInfo0, GoalInfo,
             NestedContext0, InstMap0, !Common, !Info),
         Call = hlds_goal(Call1, GoalInfo),
@@ -227,14 +230,14 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
                     "more than one typeinfo for one type var")
             ),
             call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, !.Info,
-                Context, GoalInfo0, Call)
+                UnifyContext, GoalInfo0, Call)
         ;
             % Convert other complicated unifications into calls to
             % specific unification predicates, inserting extra typeinfo
             % arguments if necessary.
             make_type_info_vars(TypeArgs, TypeInfoVars, ExtraGoals, !Info),
             call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId,
-                ModuleInfo, Context, GoalInfo0, Call0, CallGoalInfo0),
+                ModuleInfo, UnifyContext, GoalInfo0, Call0, CallGoalInfo0),
             simplify_goal_expr(Call0, Call1, CallGoalInfo0, CallGoalInfo1,
                 NestedContext0, InstMap0, !Common, !Info),
             Call = hlds_goal(Call1, CallGoalInfo1)
@@ -345,10 +348,10 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
     ),
     simplify_info_set_module_info(ModuleInfo, !Info).
 
-:- pred type_info_locn(tvar::in, kind::in, prog_var::out,
+:- pred get_type_info_locn(tvar::in, kind::in, prog_context::in, prog_var::out,
     list(hlds_goal)::out, simplify_info::in, simplify_info::out) is det.
 
-type_info_locn(TypeVar, Kind, TypeInfoVar, Goals, !Info) :-
+get_type_info_locn(TypeVar, Kind, Context, TypeInfoVar, Goals, !Info) :-
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps),
     rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, TypeInfoLocn),
     (
@@ -358,23 +361,23 @@ type_info_locn(TypeVar, Kind, TypeInfoVar, Goals, !Info) :-
     ;
         % If the typeinfo is in a typeclass_info then we need to extract it.
         TypeInfoLocn = typeclass_info(TypeClassInfoVar, Index),
-        extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, Goals,
-            TypeInfoVar, !Info)
+        extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, Context,
+            Goals, TypeInfoVar, !Info)
     ).
 
 :- pred extract_type_info(tvar::in, kind::in, prog_var::in, int::in,
-    list(hlds_goal)::out, prog_var::out,
+    prog_context::in, list(hlds_goal)::out, prog_var::out,
     simplify_info::in, simplify_info::out) is det.
 
-extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, Goals, TypeInfoVar,
-        !Info) :-
+extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, Context,
+        Goals, TypeInfoVar, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
 
     polymorphism.gen_extract_type_info(ModuleInfo, TypeVar, Kind,
-        TypeClassInfoVar, iov_int(Index), Goals, TypeInfoVar,
+        TypeClassInfoVar, iov_int(Index), Context, Goals, TypeInfoVar,
         VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
 
     simplify_info_set_var_types(VarTypes, !Info),

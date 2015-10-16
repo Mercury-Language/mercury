@@ -260,20 +260,23 @@
     --->    iov_int(int)
     ;       iov_var(prog_var).
 
-    % gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
-    %   IndexIntOrVar, Goals, TypeInfoVar, ...):
+    % gen_extract_type_info(ModuleInfo, TypeVar, Kind,
+    %   TypeClassInfoVar, IndexIntOrVar, Context, Goals, TypeInfoVar,
+    %   !VarSet, !VarTypes, !RttiVarMaps):
     %
     % Generate code to extract a type_info variable from a given slot of a
     % typeclass_info variable, by calling type_info_from_typeclass_info from
     % private_builtin. TypeVar is the type variable to which this type_info
     % variable corresponds. Kind is the kind of the type variable.
     % TypeClassInfoVar is the variable holding the type_class_info.
-    % Index specifies which slot it is. The procedure returns TypeInfoVar,
-    % which is a fresh variable holding the type_info, and Goals, which is
-    % the code generated to initialize TypeInfoVar.
+    % IndexIntOrVar specifies which slot it is. The procedure returns
+    % TypeInfoVar, which is a fresh variable holding the type_info,
+    % and Goals, which is the code generated to initialize TypeInfoVar.
+    % The context of these goals will be Context.
     %
 :- pred gen_extract_type_info(module_info::in, tvar::in, kind::in,
-    prog_var::in, int_or_var::in, list(hlds_goal)::out, prog_var::out,
+    prog_var::in, int_or_var::in, prog_context::in,
+    list(hlds_goal)::out, prog_var::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
@@ -1866,7 +1869,7 @@ polymorphism_process_existq_unify_functor(CtorDefn, IsExistConstr,
         % Assume it is a deconstruction.
         lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumExistentialConstraints, ActualExistentialConstraints),
-        make_existq_typeclass_info_vars(ActualExistentialConstraints,
+        make_existq_typeclass_info_vars(ActualExistentialConstraints, Context,
             ExtraTypeClassVars, ExtraTypeClassGoals, !Info)
     ),
 
@@ -2209,8 +2212,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         ),
         Context = goal_info_get_context(GoalInfo0),
         make_typeclass_info_vars(ActualUnivConstraints, ActualExistQVars,
-            Context, ExtraUnivClassVarsMCAs, ExtraUnivClassGoals,
-            !Info),
+            Context, ExtraUnivClassVarsMCAs, ExtraUnivClassGoals, !Info),
         assoc_list.keys(ExtraUnivClassVarsMCAs, ExtraUnivClassVars),
 
         % Make variables to hold any existentially quantified typeclass_infos
@@ -2218,7 +2220,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
         list.length(ParentExistConstraints, NumExistConstraints),
         lookup_hlds_constraint_list(ConstraintMap, assumed, GoalId,
             NumExistConstraints, ActualExistConstraints),
-        make_existq_typeclass_info_vars(ActualExistConstraints,
+        make_existq_typeclass_info_vars(ActualExistConstraints, Context,
             ExtraExistClassVars, ExtraExistClassGoals, !Info),
 
         % Make variables to hold typeinfos for unconstrained universal type
@@ -3153,11 +3155,11 @@ make_typeclass_infos_for_superclasses([Constraint | Constraints], ExistQVars,
     % for a call or deconstruction unification.
     %
 :- pred make_existq_typeclass_info_vars(list(prog_constraint)::in,
-    list(prog_var)::out, list(hlds_goal)::out,
+    prog_context::in, list(prog_var)::out, list(hlds_goal)::out,
     poly_info::in, poly_info::out) is det.
 
-make_existq_typeclass_info_vars(ExistentialConstraints, ExtraTypeClassVars,
-        ExtraGoals, !Info) :-
+make_existq_typeclass_info_vars(ExistentialConstraints, Context,
+        ExtraTypeClassVars, ExtraGoals, !Info) :-
     poly_info_get_rtti_varmaps(!.Info, OldRttiVarMaps),
     make_typeclass_info_head_vars(do_record_type_info_locns,
         ExistentialConstraints, ExtraTypeClassVars, !Info),
@@ -3168,7 +3170,8 @@ make_existq_typeclass_info_vars(ExistentialConstraints, ExtraTypeClassVars,
 
     constraint_list_get_tvars(ExistentialConstraints, TVars0),
     list.sort_and_remove_dups(TVars0, TVars),
-    list.foldl2(polymorphism_maybe_extract_type_info(OldRttiVarMaps), TVars,
+    list.foldl2(
+        polymorphism_maybe_extract_type_info(OldRttiVarMaps, Context), TVars,
         [], ExtraGoals, !Info).
 
     % For code which requires mode reordering, we may have already seen uses
@@ -3178,12 +3181,12 @@ make_existq_typeclass_info_vars(ExistentialConstraints, ExtraTypeClassVars,
     % and the type_info is contained in a typeclass_info, we need to generate
     % code to extract it here.
     %
-:- pred polymorphism_maybe_extract_type_info(rtti_varmaps::in, tvar::in,
-    list(hlds_goal)::in, list(hlds_goal)::out, poly_info::in, poly_info::out)
-    is det.
+:- pred polymorphism_maybe_extract_type_info(rtti_varmaps::in,
+    prog_context::in, tvar::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    poly_info::in, poly_info::out) is det.
 
-polymorphism_maybe_extract_type_info(OldRttiVarMaps, TVar, !ExtraGoals,
-        !Info) :-
+polymorphism_maybe_extract_type_info(OldRttiVarMaps, Context, TVar,
+        !ExtraGoals, !Info) :-
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
     ( if
         rtti_search_type_info_locn(OldRttiVarMaps, TVar,
@@ -3191,8 +3194,8 @@ polymorphism_maybe_extract_type_info(OldRttiVarMaps, TVar, !ExtraGoals,
         rtti_search_type_info_locn(RttiVarMaps, TVar,
             typeclass_info(TypeClassInfoVar, Index))
     then
-        polymorphism_extract_type_info(TVar, TypeClassInfoVar, Index, NewGoals,
-            TypeInfoVar1, !Info),
+        polymorphism_extract_type_info(TVar, TypeClassInfoVar, Index, Context,
+            NewGoals, TypeInfoVar1, !Info),
         assign_var(TypeInfoVar0, TypeInfoVar1, AssignGoal),
         !:ExtraGoals = NewGoals ++ [AssignGoal | !.ExtraGoals]
     else
@@ -3269,8 +3272,8 @@ polymorphism_do_make_type_info_var(Type, Context, VarMCA, ExtraGoals, !Info) :-
             % i.e. type variables.
             Type = type_variable(TypeVar, _),
             get_type_info_locn(TypeVar, TypeInfoLocn, !Info),
-            get_type_info_from_locn(TypeVar, TypeInfoLocn, Var, ExtraGoals,
-                !Info),
+            get_type_info_from_locn(TypeVar, TypeInfoLocn, Context,
+                Var, ExtraGoals, !Info),
             VarMCA = Var - no
         )
     ).
@@ -3783,10 +3786,11 @@ get_type_info_locn(TypeVar, TypeInfoLocn, !Info) :-
 
     % Generate code to get the value of a type variable.
     %
-:- pred get_type_info_from_locn(tvar::in, type_info_locn::in,
+:- pred get_type_info_from_locn(tvar::in, type_info_locn::in, prog_context::in,
     prog_var::out, list(hlds_goal)::out, poly_info::in, poly_info::out) is det.
 
-get_type_info_from_locn(TypeVar, TypeInfoLocn, Var, ExtraGoals, !Info) :-
+get_type_info_from_locn(TypeVar, TypeInfoLocn, Context, Var, ExtraGoals,
+        !Info) :-
     (
         % If the typeinfo is available in a variable, just use it.
         TypeInfoLocn = type_info(TypeInfoVar),
@@ -3797,14 +3801,15 @@ get_type_info_from_locn(TypeVar, TypeInfoLocn, Var, ExtraGoals, !Info) :-
         % before using it.
         TypeInfoLocn = typeclass_info(TypeClassInfoVar, Index),
         polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index,
-            ExtraGoals, Var, !Info)
+            Context, ExtraGoals, Var, !Info)
     ).
 
 :- pred polymorphism_extract_type_info(tvar::in, prog_var::in, int::in,
-    list(hlds_goal)::out, prog_var::out, poly_info::in, poly_info::out) is det.
+    prog_context::in, list(hlds_goal)::out, prog_var::out,
+    poly_info::in, poly_info::out) is det.
 
-polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Goals,
-        TypeInfoVar, !Info) :-
+polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Context,
+        Goals, TypeInfoVar, !Info) :-
     get_poly_const(Index, IndexVar, IndexGoals, !Info),
     poly_info_get_varset(!.Info, VarSet0),
     poly_info_get_var_types(!.Info, VarTypes0),
@@ -3814,13 +3819,14 @@ polymorphism_extract_type_info(TypeVar, TypeClassInfoVar, Index, Goals,
     get_tvar_kind(TVarKindMap, TypeVar, Kind),
     IndexIntOrVar = iov_var(IndexVar),
     gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
-        IndexIntOrVar, ExtractGoals, TypeInfoVar,
+        IndexIntOrVar, Context, ExtractGoals, TypeInfoVar,
         VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
     Goals = IndexGoals ++ ExtractGoals,
     poly_info_set_varset_types_rtti(VarSet, VarTypes, RttiVarMaps, !Info).
 
 gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
-        IndexIntOrVar, Goals, TypeInfoVar, !VarSet, !VarTypes, !RttiVarMaps) :-
+        IndexIntOrVar, Context, Goals, TypeInfoVar,
+        !VarSet, !VarTypes, !RttiVarMaps) :-
     (
         IndexIntOrVar = iov_int(Index),
         % We cannot call get_poly_const since we don't have a poly_info.
@@ -3837,7 +3843,7 @@ gen_extract_type_info(ModuleInfo, TypeVar, Kind, TypeClassInfoVar,
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "type_info_from_typeclass_info", pf_predicate, only_mode,
         detism_det, purity_pure, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
-        instmap_delta_bind_var(TypeInfoVar), ModuleInfo, term.context_init,
+        instmap_delta_bind_var(TypeInfoVar), ModuleInfo, Context,
         CallGoal),
     Goals = IndexGoals ++ [CallGoal].
 
