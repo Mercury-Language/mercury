@@ -4082,7 +4082,7 @@ expand_class_method_bodies(!ModuleInfo) :-
         ClassIds = ClassIds0
     ),
     map.apply_to_list(ClassIds, Classes, ClassDefns),
-    list.foldl(expand_class_method_bodies_2, ClassDefns, !ModuleInfo).
+    list.foldl(expand_class_method_bodies_in_defn, ClassDefns, !ModuleInfo).
 
 :- pred class_id_is_from_given_module(module_name::in, class_id::in)
     is semidet.
@@ -4090,10 +4090,10 @@ expand_class_method_bodies(!ModuleInfo) :-
 class_id_is_from_given_module(ModuleName, ClassId) :-
     ClassId = class_id(qualified(ModuleName, _), _).
 
-:- pred expand_class_method_bodies_2(hlds_class_defn::in,
+:- pred expand_class_method_bodies_in_defn(hlds_class_defn::in,
     module_info::in, module_info::out) is det.
 
-expand_class_method_bodies_2(ClassDefn, !ModuleInfo) :-
+expand_class_method_bodies_in_defn(ClassDefn, !ModuleInfo) :-
     Interface = ClassDefn ^ classdefn_hlds_interface,
     list.foldl2(expand_class_method_body, Interface, 1, _, !ModuleInfo).
 
@@ -4164,7 +4164,8 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
     instmap_delta_from_mode_list(HeadVars0, Modes0, !.ModuleInfo,
         InstmapDelta),
     pred_info_get_purity(PredInfo0, Purity),
-    goal_info_init(NonLocals, InstmapDelta, Detism, Purity, GoalInfo),
+    pred_info_get_context(PredInfo0, Context),
+    goal_info_init(NonLocals, InstmapDelta, Detism, Purity, Context, GoalInfo),
     BodyGoal = hlds_goal(BodyGoalExpr, GoalInfo),
 
     proc_info_set_goal(BodyGoal, ProcInfo0, ProcInfo),
@@ -4185,11 +4186,10 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
 
 :- pred delete_nth(list(T)::in, int::in, list(T)::out) is semidet.
 
-delete_nth([X | Xs], N0, Result) :-
-    ( if N0 > 1 then
-        N = N0 - 1,
-        delete_nth(Xs, N, TheRest),
-        Result = [X | TheRest]
+delete_nth([X | Xs], N, Result) :-
+    ( if N > 1 then
+        delete_nth(Xs, N - 1, ResultTail),
+        Result = [X | ResultTail]
     else
         Result = Xs
     ).
