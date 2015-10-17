@@ -382,43 +382,35 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
     (
         !.TokensLeft = token_cons(Token, Context, !:TokensLeft),
         ( if
+            % Check for unary minus of an integer or a float.
+            Token = name(TokenName),
+            TokenName = "-",
+            !.TokensLeft =
+                token_cons(NextToken, _NextContext, !:TokensLeft),
+            (
+                NextToken = integer(X),
+                NegX = 0 - X,
+                NewFunctor = integer(NegX)
+            ;
+                NextToken = big_integer(_, X),
+                -X = integer(min_int),
+                NegX = int.min_int,
+                NewFunctor = integer(NegX)
+            ;
+                NextToken = float(F),
+                NegF = 0.0 - F,
+                NewFunctor = float(NegF)
+            )
+        then
+            parser_get_term_context(!.PS, Context, TermContext),
+            Term = ok(term.functor(NewFunctor, [], TermContext)),
+            OpPriority = 0
+        else if
             Token = name(TokenName),
             OpTable = parser_state_get_ops_table(!.PS),
             ops.lookup_op_infos(OpTable, TokenName, OpInfo, OtherOpInfos)
         then
-            % We test for unary minus inside the test for TokenName being
-            % an operator, even though we don't use its OpInfos,
-            % because this allows us to avoid a separate test in the
-            % *very* common case that TokenName is NOT an operator.
-            % The cost is that we look up of the op_infos even for
-            % unary minus terms, but this cost should be minor in comparison.
-            %
-            % This scheme relies on "-" being an operator, but the language
-            % guarantees that.
             ( if
-                % Check for unary minus of an integer or a float.
-                TokenName = "-",
-                !.TokensLeft =
-                    token_cons(NextToken, _NextContext, !:TokensLeft),
-                (
-                    NextToken = integer(X),
-                    NegX = 0 - X,
-                    NewFunctor = integer(NegX)
-                ;
-                    NextToken = big_integer(_, X),
-                    -X = integer(min_int),
-                    NegX = int.min_int,
-                    NewFunctor = integer(NegX)
-                ;
-                    NextToken = float(F),
-                    NegF = 0.0 - F,
-                    NewFunctor = float(NegF)
-                )
-            then
-                parser_get_term_context(!.PS, Context, TermContext),
-                Term = ok(term.functor(NewFunctor, [], TermContext)),
-                OpPriority = 0
-            else if
                 % Check for binary prefix op.
                 %
                 % Since most tokens aren't binary prefix ops, the first test
