@@ -40,7 +40,7 @@
 :- implementation.
 
 :- import_module analysis.
-:- import_module libs.handle_options.
+:- import_module libs.compute_grade.
 :- import_module libs.process_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.

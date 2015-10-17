@@ -203,7 +203,7 @@
 :- implementation.
 
 :- import_module libs.process_util.
-:- import_module libs.handle_options.   % for grade_directory_component
+:- import_module libs.compute_grade.    % for grade_directory_component
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.

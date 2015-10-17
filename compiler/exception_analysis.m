@@ -85,8 +85,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
 
-:- import_module io.
-
 %----------------------------------------------------------------------------%
 
     % Perform the exception analysis on a module.
@@ -135,6 +133,7 @@
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

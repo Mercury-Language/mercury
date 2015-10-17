@@ -12,15 +12,12 @@
 % This module does post-processing on the command-line options, after
 % getopt has done its stuff.
 %
-% It also contains code for handling the --grade option.
-%
 %---------------------------------------------------------------------------%
 
 :- module libs.handle_options.
 :- interface.
 
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
@@ -66,19 +63,6 @@
     %
 :- pred long_usage(io::di, io::uo) is det.
 
-    % Given the current set of options, figure out which grade to use.
-    %
-:- pred compute_grade(globals::in, string::out) is det.
-
-    % The inverse of compute_grade: given a grade, set the appropriate options.
-    %
-:- pred convert_grade_option(string::in, option_table::in, option_table::out)
-    is semidet.
-
-    % Produce the grade component of grade-specific installation directories.
-    %
-:- pred grade_directory_component(globals::in, string::out) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -86,24 +70,23 @@
 
 :- import_module analysis.
 :- import_module libs.compiler_util.
+:- import_module libs.compute_grade.
 :- import_module libs.op_mode.
+:- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 
 :- import_module bool.
 :- import_module char.
-:- import_module cord.
 :- import_module dir.
 :- import_module getopt_io.
 :- import_module int.
 :- import_module library.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 
@@ -219,7 +202,7 @@ convert_option_table_result_to_globals(MaybeOptionTable0, !:Specs, Globals,
             OpModePieces = [words("Error: only one of the following options"),
                 words("may be given:")] ++
                 list_to_quoted_pieces(OpModeStrs) ++ [suffix("."), nl],
-            add_error(OpModePieces, !Specs)
+            add_error(phase_options, OpModePieces, !Specs)
         ),
         (
             !.Specs = [],
@@ -262,7 +245,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(TargetStr),
             words("to the `--target' option;"),
             words("must be `c', `java', 'csharp', or `erlang'."), nl],
-        add_error(TargetSpec, !Specs)
+        add_error(phase_options, TargetSpec, !Specs)
     ),
 
     raw_lookup_string_option(!.OptionTable, gc, GC_MethodStr),
@@ -275,7 +258,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             words("to the `--gc' option;"),
             words("must be `none', `conservative', `boehm', `hgc',"),
             words("`accurate', or `automatic'."), nl],
-        add_error(GCMethodSpec, !Specs)
+        add_error(phase_options, GCMethodSpec, !Specs)
     ),
 
     raw_lookup_string_option(!.OptionTable, tags, TagsMethodStr),
@@ -287,7 +270,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(TagsMethodStr),
             words("to the `--tags' option;"),
             words("must be `none', `low', or `high'."), nl],
-        add_error(TagsMethodSpec, !Specs)
+        add_error(phase_options, TagsMethodSpec, !Specs)
     ),
 
     raw_lookup_int_option(!.OptionTable, fact_table_hash_percent_full,
@@ -302,7 +285,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), int_fixed(FactTablePercentFull),
             words("to the `--fact-table-hash-percent-full' option;"),
             words("must be an integer between 1 and 100."), nl],
-        add_error(FactTablePercentFullSpec, !Specs)
+        add_error(phase_options, FactTablePercentFullSpec, !Specs)
     ),
 
     raw_lookup_string_option(!.OptionTable, termination_norm, TermNormStr),
@@ -314,7 +297,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(TermNormStr),
             quote("to the `--termination-norm' option;"),
             words("must be `simple', `total', or `num-data-elems'."), nl],
-        add_error(TermNormSpec, !Specs)
+        add_error(phase_options, TermNormSpec, !Specs)
     ),
 
     raw_lookup_string_option(!.OptionTable, termination2_norm, Term2NormStr),
@@ -326,7 +309,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(TermNormStr),
             quote("to the `--termination2-norm' option;"),
             words("must be `simple', `total', or `num-data-elems')."), nl],
-        add_error(Term2NormSpec, !Specs)
+        add_error(phase_options, Term2NormSpec, !Specs)
     ),
 
     raw_lookup_bool_option(!.OptionTable, force_disable_tracing,
@@ -351,7 +334,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
                     [words("The specified trace level"), words(Trace),
                     words("is not compatible with the value"),
                     words("of the `--decl_debug' option."), nl],
-                add_error(InconsistentTraceLevelSpec, !Specs)
+                add_error(phase_options, InconsistentTraceLevelSpec, !Specs)
             )
         else
             TraceLevel = trace_level_none,  % dummy
@@ -360,7 +343,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
                 words("to the `--trace' option;"),
                 words("must be `minimum', `shallow', `deep', "),
                 words("`decl', `rep', or `default'."), nl],
-            add_error(BadTraceLevelSpec, !Specs)
+            add_error(phase_options, BadTraceLevelSpec, !Specs)
         )
     ),
 
@@ -374,7 +357,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             words("to the `--suppress-trace' option."), nl],
         % The set of valid options is a given language, not a simple set
         % of words, so there is no simple, short suggestion we can print.
-        add_error(TraceSuppressSpec, !Specs)
+        add_error(phase_options, TraceSuppressSpec, !Specs)
     ),
 
     raw_lookup_bool_option(!.OptionTable, force_disable_ssdebug,
@@ -394,7 +377,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
                 [words("Invalid argument"), quote(SSTrace),
                 words("to the `--ssdb-trace' option;"),
                 words("must be `default', `none', `shallow', or `deep'."), nl],
-            add_error(SSDBSpec, !Specs)
+            add_error(phase_options, SSDBSpec, !Specs)
         )
     ),
 
@@ -413,7 +396,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(MaybeThreadSafeStr),
             words("to the `--maybe-thread-safe' option;"),
             words("must be `no' or `yes'."), nl],
-        add_error(MTSSpec, !Specs)
+        add_error(phase_options, MTSSpec, !Specs)
     ),
 
     raw_lookup_string_option(!.OptionTable, dump_hlds_alias, DumpAlias),
@@ -426,7 +409,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(DumpAlias),
             words("to the `-D' (also known as `--dump-hlds-alias') option."),
             nl],
-        add_error(DumpAliasSpec, !Specs)
+        add_error(phase_options, DumpAliasSpec, !Specs)
     ),
 
     some [!DumpOptions] (
@@ -502,7 +485,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(C_CompilerTypeStr),
             words("to the `--c-compiler-type' option;"),
             words("must be `gcc', `clang', 'msvc', or `unknown'."), nl],
-        add_error(CCTpec, !Specs)
+        add_error(phase_options, CCTpec, !Specs)
     ),
 
     raw_lookup_string_option(!.OptionTable, csharp_compiler_type,
@@ -518,7 +501,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(CSharp_CompilerTypeStr),
             words("to the `--csharp-compiler-type' option;"),
             words("must be `microsoft', `mono', or `unknown'."), nl],
-        add_error(CSCSpec, !Specs)
+        add_error(phase_options, CSCSpec, !Specs)
     ),
 
     raw_lookup_string_option(!.OptionTable, structure_reuse_constraint,
@@ -537,7 +520,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             words("to the `--structure-reuse-constraint' option;"),
             words("must be `same_cons_id', or `within_n_cells_difference'."),
             nl],
-        add_error(ReuseConstrSpec, !Specs)
+        add_error(phase_options, ReuseConstrSpec, !Specs)
     ),
 
     raw_lookup_string_option(!.OptionTable, feedback_file, FeedbackFile),
@@ -560,7 +543,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             FeedbackReadResult = error(Error),
             feedback_read_error_message_string(FeedbackFile, Error,
                 ErrorMessage),
-            add_error([words(ErrorMessage)], !Specs),
+            add_error(phase_options, [words(ErrorMessage)], !Specs),
             MaybeFeedbackInfo = no
         )
     ),
@@ -574,7 +557,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(HostEnvTypeStr),
             words("to the `--host-env-type' option;"),
             words("must be `posix', `cygwin', `msys' or `windows')."), nl],
-        add_error(HostEnvSpec, !Specs)
+        add_error(phase_options, HostEnvSpec, !Specs)
     ),
     raw_lookup_string_option(!.OptionTable, system_env_type, SystemEnvTypeStr),
     ( if
@@ -591,7 +574,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(SystemEnvTypeStr),
             words("to the `--system-env-type' option;"),
             words("must be `posix', `cygwin', `msys' or `windows')."), nl],
-        add_error(SystemEnvSpec, !Specs)
+        add_error(phase_options, SystemEnvSpec, !Specs)
     ),
     raw_lookup_string_option(!.OptionTable, target_env_type, TargetEnvTypeStr),
     ( if convert_env_type(TargetEnvTypeStr, TargetEnvTypePrime) then
@@ -602,7 +585,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             [words("Invalid argument"), quote(TargetEnvTypeStr),
             words("to the `--target-env-type' option;"),
             words("must be `posix', `cygwin', `msys' or `windows'."), nl],
-        add_error(TargetEnvTypeSpec, !Specs)
+        add_error(phase_options, TargetEnvTypeSpec, !Specs)
     ),
 
     ( if
@@ -612,7 +595,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         PosixCSMSpec =
             [words("`--host-env-type posix' is incompatible with"),
             words("`--csharp-compiler-type microsoft'."), nl],
-        add_error(PosixCSMSpec, !Specs)
+        add_error(phase_options, PosixCSMSpec, !Specs)
     else
         true
     ),
@@ -628,14 +611,14 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         LECSpec =
             [words("Invalid argument"), quote(BadLimitErrorContextsOption),
             words("to the `--limit-error-contexts' option."), nl],
-        add_error(LECSpec, !Specs)
+        add_error(phase_options, LECSpec, !Specs)
     ;
         BadLimitErrorContextsOptions = [_, _ | _],
         BadPieces = list_to_quoted_pieces(BadLimitErrorContextsOptions),
         LECSpec =
             [words("Invalid arguments")] ++ BadPieces ++
             [words("to the `--limit-error-contexts' option."), nl],
-        add_error(LECSpec, !Specs)
+        add_error(phase_options, LECSpec, !Specs)
     ).
 
     % NOTE: each termination analyser has its own norm setting.
@@ -676,8 +659,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
 
     % NOTE: this call must occur *before* any code below that implicitly
     % sets options based on the target language or GC method.
-    check_grade_component_compatibility(!.Globals, Target, GC_Method,
-        !Specs),
+    check_grade_component_compatibility(!.Globals, Target, GC_Method, !Specs),
 
     globals.lookup_string_option(!.Globals, event_set_file_name,
         EventSetFileName0),
@@ -753,7 +735,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             [words("Warning: the value of the `--num-tag-bits' option"),
             words("is either unspecified or invalid."), nl,
             words("Using `--num-tag-bits 0, which disables tags."), nl],
-        add_warning(NumTagBitsSpec, !Specs)
+        add_warning(phase_options, NumTagBitsSpec, !Specs)
     else
         NumTagBits = NumTagBits1
     ),
@@ -776,7 +758,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         ThreadScopeSpec =
             [words("The `threadscope' grade component"),
             words("requires a parallel grade."), nl],
-        add_error(ThreadScopeSpec, !Specs)
+        add_error(phase_options, ThreadScopeSpec, !Specs)
     else
         true
     ),
@@ -796,7 +778,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
                 NoFeedbackFileSpec =
                     [words("The `--implicit-parallelism' option"),
                     words("requires the use of `--feedback-file'."), nl],
-                add_error(NoFeedbackFileSpec, !Specs)
+                add_error(phase_options, NoFeedbackFileSpec, !Specs)
             else
                 true
             )
@@ -812,7 +794,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
                     words("requires a grade that"),
                     words("supports parallel conjunctions."),
                     words("Use a low-level C grade without trailing."), nl],
-                add_error(NoParConjSupportSpec, !Specs)
+                add_error(phase_options, NoParConjSupportSpec, !Specs)
             ;
                 Parallel = no
             ),
@@ -1024,7 +1006,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             TransOptMakeSpec =
                 [words("The `--transitive-intermodule-optimization' option"),
                 words("is incompatible with the `--make' option."), nl],
-            add_error(TransOptMakeSpec, !Specs)
+            add_error(phase_options, TransOptMakeSpec, !Specs)
         ;
             UsingOrInvokedByMMCMake = no
         )
@@ -1047,7 +1029,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             words("is incompatible with"),
             words("the `--intermodule-analysis' option."),
             nl],
-        add_error(OptAnalysisSpec, !Specs)
+        add_error(phase_options, OptAnalysisSpec, !Specs)
     else
         true
     ),
@@ -1070,7 +1052,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             [words("The `--generate-standalone-interface' option"),
             words("is incompatible with"),
             words("the `--extra-initialization-functions' option."), nl],
-        add_error(ExtraInitsSpec, !Specs)
+        add_error(phase_options, ExtraInitsSpec, !Specs)
     else
         true
     ),
@@ -1308,7 +1290,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         DualMMSpec =
             [words("You cannot use both forms of minimal model tabling"),
             words("at once."), nl],
-        add_error(DualMMSpec, !Specs)
+        add_error(phase_options, DualMMSpec, !Specs)
     else if
         UseMinimalModel = yes,
         HighLevelCode = yes
@@ -1316,7 +1298,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         MMHLSpec =
             [words("Minimal model tabling is incompatible with"),
             words("high level code."), nl],
-        add_error(MMHLSpec, !Specs)
+        add_error(phase_options, MMHLSpec, !Specs)
     else if
         UseMinimalModel = yes,
         UseTrail = yes
@@ -1324,7 +1306,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         MMTrailSpec =
             [words("Minimal model tabling is incompatible with"),
             words("trailing."), nl],
-        add_error(MMTrailSpec, !Specs)
+        add_error(phase_options, MMTrailSpec, !Specs)
     else
         true
     ),
@@ -1351,7 +1333,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
                 words("Reducing the effective value of `--arg-pack-bits'"),
                 words("to the maximum allowable value, which is"),
                 int_fixed(BitsPerWord), suffix("."), nl],
-            add_error(ArgPackBitsSpec, !Specs)
+            add_error(phase_options, ArgPackBitsSpec, !Specs)
         else
             ArgPackBits = ArgPackBits0
         ),
@@ -1585,7 +1567,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             DeepHLSpec =
                 [words("Deep profiling is incompatible with"),
                 words("high level code."), nl],
-            add_error(DeepHLSpec, !Specs)
+            add_error(phase_options, DeepHLSpec, !Specs)
         ),
         globals.set_option(optimize_constructor_last_call, bool(no), !Globals),
         globals.lookup_bool_option(!.Globals,
@@ -1612,7 +1594,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     then
         DualTermSizeSpec =
             [words("Cannot record term size as both words and cells."), nl],
-        add_error(DualTermSizeSpec, !Specs)
+        add_error(phase_options, DualTermSizeSpec, !Specs)
     else if
         ( RecordTermSizesAsWords = yes
         ; RecordTermSizesAsCells = yes
@@ -1627,7 +1609,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             TermSizeHLSpec =
                 [words("Term size profiling is incompatible with"),
                 words("high level code."), nl],
-            add_error(TermSizeHLSpec, !Specs)
+            add_error(phase_options, TermSizeHLSpec, !Specs)
         ;
             HighLevelCode = no
         )
@@ -1644,7 +1626,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     else
         TraceHLSpec =
             [words("Debugging is available only in low level C grades."), nl],
-        add_error(TraceHLSpec, !Specs)
+        add_error(phase_options, TraceHLSpec, !Specs)
     ),
 
     % The pthreads headers on some architectures (Solaris, Linux)
@@ -1756,7 +1738,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         AGCEnvSpec =
             [words("`--gc accurate' is incompatible with"),
             words("`--put-nondet-env-on-heap'."), nl],
-        add_error(AGCEnvSpec, !Specs)
+        add_error(phase_options, AGCEnvSpec, !Specs)
     else
         true
     ),
@@ -2372,7 +2354,7 @@ option_requires(SourceOption, RequiredOption, RequiredOptionValue,
         SourceOptionValue = yes,
         OptionValue \= RequiredOptionValue
     then
-        add_error([words(ErrorMessage)], !Specs)
+        add_error(phase_options, [words(ErrorMessage)], !Specs)
     else
         true
     ).
@@ -2418,194 +2400,6 @@ disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
         )
     ;
         WarnSmart = no
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % This predicate generates error messages for various combinations of
-    % grade components (or their equivalent command line options) that are
-    % incompatible with each other.
-    %
-    % NOTE this predicate does not check *all* combinations, some of the checks
-    % are carried out by the predicate convert_options_to_globals, while others
-    % are carried out by the code that decomposes the grade string.
-    %
-    % NOTE: since grade components may be specified by either a grade component
-    % or via a command line option, please try to ensure that the error
-    % messages generated by this predicate cover both situations.
-    %
-    % XXX we don't currently handle the .par, .threadscope or any undocumented
-    % grade components here.
-    %
-:- pred check_grade_component_compatibility(globals::in,
-    compilation_target::in, gc_method::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
-    TargetStr = compilation_target_string(Target),
-
-    % Check that the GC method is compatible with the target language.
-    %
-    (
-        Target = target_c
-        % XXX how are we supposed to handle gc_automatic for C?
-    ;
-        ( Target = target_csharp
-        ; Target = target_erlang
-        ; Target = target_java
-        ),
-        (
-            % At this point, both of these values are acceptable for the
-            % non-C targets.
-            ( GC_Method = gc_automatic
-            ; GC_Method = gc_none
-            )
-        ;
-            ( GC_Method = gc_boehm
-            ; GC_Method = gc_boehm_debug
-            ),
-            BoehmSpec =
-                [words("Use of Boehm GC is incompatible with"),
-                words("target language"), words(TargetStr), suffix("."), nl],
-            add_error(BoehmSpec, !Specs)
-        ;
-            GC_Method = gc_hgc,
-            HGCSpec =
-                [words("Use of HGC is incompatible with"),
-                words("target language"), words(TargetStr), suffix("."), nl],
-            add_error(HGCSpec, !Specs)
-        ;
-            GC_Method = gc_accurate,
-            AGCSpec =
-                [words("Use of accurate GC is incompatible with"),
-                words("target language"), words(TargetStr), suffix("."), nl],
-            add_error(AGCSpec, !Specs)
-        )
-    ),
-
-    % Time profiling is only supported by the C back-ends.
-    %
-    globals.lookup_bool_option(Globals, profile_time, ProfileTime),
-    (
-        ProfileTime = yes,
-        (
-            ( Target = target_java
-            ; Target = target_csharp
-            ; Target = target_erlang
-            ),
-            TimeProfpec =
-                [words("Time profiling is incompatible with"),
-                words("target language"), words(TargetStr), suffix("."), nl],
-            add_error(TimeProfpec, !Specs)
-        ;
-            Target = target_c
-        )
-    ;
-        ProfileTime = no
-    ),
-
-    % Memory profiling is only supported by the C back-ends.
-    %
-    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
-    (
-        ProfileMemory = yes,
-        (
-            ( Target = target_java
-            ; Target = target_csharp
-            ; Target = target_erlang
-            ),
-            MemProfpec =
-                [words("Memory profiling is incompatible with"),
-                words("target language"), words(TargetStr), suffix("."), nl],
-            add_error(MemProfpec, !Specs)
-        ;
-            Target = target_c
-        )
-    ;
-        ProfileMemory = no
-    ),
-
-    % NOTE: compatibility with profile_deep is checked elsewhere.
-
-    % NOTE: compatibility with debugging is checked elsewhere.
-
-    % Trailing is only supported by the C back-ends.
-    %
-    globals.lookup_bool_option(Globals, use_trail,  UseTrail),
-    globals.lookup_bool_option(Globals, trail_segments, TrailSegments),
-    ( if
-        % NOTE: We haven't yet implicitly enabled use_trail segments
-        % if trail_segments are enabled, so we must check both here.
-        ( UseTrail = yes
-        ; TrailSegments = yes
-        )
-    then
-        (
-            ( Target = target_java
-            ; Target = target_csharp
-            ; Target = target_erlang
-            ),
-            Trailpec =
-                [words("Trailing is incompatible with"),
-                words("target language"), words(TargetStr), suffix("."), nl],
-            add_error(Trailpec, !Specs)
-        ;
-            Target = target_c
-        )
-    else
-        true
-    ),
-
-    % Stack segments are only supported by the low level C back-end.
-    %
-    globals.lookup_bool_option(Globals, stack_segments, StackSegments),
-    (
-        StackSegments = yes,
-        (
-            Target = target_c,
-            globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-            (
-                HighLevelCode = yes,
-                StackSegmentpec =
-                    [words("Stack segments are incompatible with"),
-                    words("the high-level C backend."), nl],
-                add_error(StackSegmentpec, !Specs)
-            ;
-                HighLevelCode = no
-            )
-        ;
-            ( Target = target_java
-            ; Target = target_csharp
-            ; Target = target_erlang
-            ),
-            StackSegmentpec =
-                [words("Stack segments are incompatible with"),
-                words("target language"), words(TargetStr), suffix("."), nl],
-            add_error(StackSegmentpec, !Specs)
-        )
-    ;
-        StackSegments = no
-    ),
-
-    % Single precision floats are only compatible with the C back-ends.
-    % (At least for Mercury, that's currently the case.)
-    globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
-    (
-        SinglePrecFloat = yes,
-        (
-            ( Target = target_java
-            ; Target = target_csharp
-            ; Target = target_erlang
-            ),
-            SPFSpec =
-                [words("Single precision floats are incompatible with"),
-                words("target language"), words(TargetStr), suffix("."), nl],
-            add_error(SPFSpec, !Specs)
-        ;
-            Target = target_c
-        )
-    ;
-        SinglePrecFloat = no
     ).
 
 %---------------------------------------------------------------------------%
@@ -2668,611 +2462,6 @@ long_usage(!IO) :-
         "with the contents of the file.\n", !IO),
     io.write_string("Options:\n", !IO),
     options_help(!IO).
-
-%---------------------------------------------------------------------------%
-%
-% Code for postprocessing the library grade set.
-%
-
-    % Apply some sanity checks to the library grade set and then apply any
-    % library grade filters to that set.
-    %
-    % XXX we could do better with the sanity checks, currently we only
-    % check that all the grade components are valid and that there are
-    % no duplicate grade components.
-    %
-:- pred postprocess_options_libgrades(globals::in, globals::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-postprocess_options_libgrades(!Globals, !Specs) :-
-    globals.lookup_accumulating_option(!.Globals, libgrades_include_components,
-        IncludeComponentStrs),
-    globals.lookup_accumulating_option(!.Globals, libgrades_exclude_components,
-        OmitComponentStrs),
-    list.foldl2(string_to_grade_component("included"),
-        IncludeComponentStrs, [], IncludeComponents, !Specs),
-    list.foldl2(string_to_grade_component("excluded"),
-        OmitComponentStrs, [], OmitComponents, !Specs),
-    some [!LibGrades] (
-        globals.lookup_accumulating_option(!.Globals, libgrades, !:LibGrades),
-        % NOTE: the two calls to foldl2 here will preserve the original
-        % relative ordering of the library grades.
-        list.foldl2(filter_grade(must_contain, IncludeComponents),
-            !.LibGrades, [], !:LibGrades, !Specs),
-        list.foldl2(filter_grade(must_not_contain, OmitComponents),
-            !.LibGrades, [], !:LibGrades, !Specs),
-        globals.set_option(libgrades, accumulating(!.LibGrades), !Globals)
-    ).
-
-    % string_to_grade_component(OptionStr, Comp, !Comps, !Specs):
-    %
-    % If `Comp' is a string that represents a valid grade component
-    % then add it to !Comps. If it is not then emit an error message.
-    % `OptionStr' should be the name of the command line option for
-    % which the error is to be reported.
-    %
-:- pred string_to_grade_component(string::in, string::in,
-    list(string)::in, list(string)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-string_to_grade_component(FilterDesc, Comp, !Comps, !Specs) :-
-    ( if grade_component_table(Comp, _, _, _, _) then
-        !:Comps = [Comp | !.Comps]
-    else
-        GradeCompSpec =
-            [words("Unknown"), words(FilterDesc),
-            words("library grade component:"), quote(Comp), suffix("."), nl],
-        add_error(GradeCompSpec, !Specs)
-    ).
-
-    % filter_grade(FilterPred, Components, GradeString, !Grades, !Specs):
-    %
-    % Convert `GradeString' into a list of grade component strings, and
-    % then check whether the given grade should be filtered from the
-    % library grade set by applying the closure `FilterPred(Components)',
-    % to that list. The grade is removed from the library grade set if
-    % that application fails.
-    %
-    % Emits an error if `GradeString' cannot be converted into a list
-    % of grade component strings.
-    %
-:- pred filter_grade(pred(list(string), list(string))
-    ::in(pred(in, in) is semidet), list(string)::in,
-    string::in, list(string)::in, list(string)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-filter_grade(FilterPred, CondComponents, GradeString, !Grades, !Specs) :-
-    grade_string_to_comp_strings(GradeString, MaybeGrade, !Specs),
-    (
-        MaybeGrade = yes(GradeComponents),
-        ( if FilterPred(CondComponents, GradeComponents) then
-            !:Grades = [GradeString | !.Grades]
-        else
-            true
-        )
-    ;
-        MaybeGrade = no
-    ).
-
-:- pred must_contain(list(string)::in, list(string)::in) is semidet.
-
-must_contain(IncludeComponents, GradeComponents) :-
-    all [Component] (
-        list.member(Component, IncludeComponents)
-    =>
-        list.member(Component, GradeComponents)
-    ).
-
-:- pred must_not_contain(list(string)::in, list(string)::in) is semidet.
-
-must_not_contain(OmitComponents, GradeComponents) :-
-    all [Component] (
-        list.member(Component, OmitComponents)
-    =>
-        not list.member(Component, GradeComponents)
-    ).
-
-    % Convert a grade string into a list of component strings.
-    % Emit an invalid grade error if the conversion fails.
-    %
-:- pred grade_string_to_comp_strings(string::in, maybe(list(string))::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-grade_string_to_comp_strings(GradeString, MaybeGrade, !Specs) :-
-    ( if
-        split_grade_string(GradeString, ComponentStrs),
-        StrToComp = ( pred(Str::in, Str::out) is semidet :-
-            grade_component_table(Str, _, _, _, _)
-        ),
-        list.map(StrToComp, ComponentStrs, Components0)
-    then
-        list.sort_and_remove_dups(Components0, Components),
-        ( if list.length(Components0) > list.length(Components) then
-            GradeSpec =
-                [words("Invalid library grade:"), quote(GradeString), nl],
-            add_error(GradeSpec, !Specs),
-            MaybeGrade = no
-        else
-            MaybeGrade = yes(Components)
-        )
-    else
-        GradeSpec =
-            [words("Invalid library grade:"), quote(GradeString), nl],
-        add_error(GradeSpec, !Specs),
-        MaybeGrade = no
-    ).
-
-%---------------------------------------------------------------------------%
-
-    % IMPORTANT: any changes here may require similar changes to other files,
-    % see the list of files at the top of runtime/mercury_grade.h
-    %
-    % The grade_component type should have one constructor for each
-    % dimension of the grade. It is used when converting the components
-    % of the grade string to make sure the grade string doesn't contain
-    % more than one value for each dimension (eg *.gc.agc).
-    % Adding a value here will require adding clauses to the
-    % grade_component_table.
-    %
-    % A --grade option causes all the grade dependent options to be
-    % reset, and only those described by the grade string to be set.
-    % The value to which a grade option should be reset should be given
-    % in the grade_start_values table below.
-    %
-    % The ordering of the components here is the same as the order used in
-    % scripts/canonical_grand.sh-subr, and any change here will require a
-    % corresponding change there. The only place where the ordering actually
-    % matters is for constructing the pathname for the grade of the library,
-    % etc for linking (and installation).
-    %
-:- type grade_component
-    --->    comp_gcc_ext        % gcc extensions etc. -- see
-                                % grade_component_table
-    ;       comp_par            % parallelism / multithreading
-    ;       comp_par_threadscope
-                                % Whether to support theadscope profiling of
-                                % parallel grades.
-    ;       comp_gc             % the kind of GC to use
-    ;       comp_prof           % what profiling options to use
-    ;       comp_term_size      % whether or not to record term sizes
-    ;       comp_trail          % whether or not to use trailing
-    ;       comp_minimal_model  % whether we set up for minimal model tabling
-    ;       comp_pregen_spf     % whether to assume settings for the
-                                % pregenerated C source distribution;
-                                % and whether or not to use single precision
-                                % floating point values.
-    ;       comp_pic            % Do we need to reserve a register for
-                                % PIC (position independent code)?
-    ;       comp_lowlevel       % what to do to target code
-    ;       comp_trace          % tracing/debugging options
-    ;       comp_stack_extend   % automatic stack extension
-    ;       comp_regions.       % Whether or not to use region-based memory
-                                % management.
-
-convert_grade_option(GradeString, Options0, Options) :-
-    reset_grade_options(Options0, Options1),
-    split_grade_string(GradeString, Components),
-    set.init(NoComps),
-    list.foldl2(
-        ( pred(CompStr::in, Opts0::in, Opts::out,
-                CompSet0::in, CompSet::out) is semidet :-
-            grade_component_table(CompStr, Comp, CompOpts, MaybeTargets, _),
-
-            % Check that the component isn't mentioned more than once.
-            not set.member(Comp, CompSet0),
-            set.insert(Comp, CompSet0, CompSet),
-            add_option_list(CompOpts, Opts0, Opts1),
-
-            % XXX Here the behaviour matches what used to happen and that is
-            % to only set the target option iff there was only one possible
-            % target. Is this a bug?
-            ( if MaybeTargets = yes([Target]) then
-                add_option_list([target - Target], Opts1, Opts)
-            else
-                Opts = Opts1
-            )
-        ), Components, Options1, Options, NoComps, _FinalComps).
-
-:- pred add_option_list(list(pair(option, option_data))::in, option_table::in,
-    option_table::out) is det.
-
-add_option_list(CompOpts, Opts0, Opts) :-
-    list.foldl(
-        ( pred(Opt::in, Opts1::in, Opts2::out) is det :-
-            Opt = Option - Data,
-            map.set(Option, Data, Opts1, Opts2)
-        ), CompOpts, Opts0, Opts).
-
-grade_directory_component(Globals, Grade) :-
-    compute_grade(Globals, Grade0),
-    % Strip out the `.picreg' part of the grade -- `.picreg' is implied
-    % by the file names (.pic_o vs .o, `.a' vs `.so').
-    ( if
-        string.sub_string_search(Grade0, ".picreg", PicRegIndex),
-        string.split(Grade0, PicRegIndex, LeftPart, RightPart0),
-        string.append(".picreg", RightPart, RightPart0)
-    then
-        Grade = LeftPart ++ RightPart
-    else
-        Grade = Grade0
-    ).
-
-compute_grade(Globals, Grade) :-
-    globals.get_options(Globals, Options),
-    compute_grade_components(Options, Components),
-    (
-        Components = [],
-        Grade = "none"
-    ;
-        Components = [_ | _],
-        construct_string(Components, Grade)
-    ).
-
-:- pred construct_string(list(pair(grade_component, string))::in, string::out)
-    is det.
-
-construct_string([], "").
-construct_string([_ - Bit | Bits], Grade) :-
-    (
-        Bits = [_ | _],
-        construct_string(Bits, Grade0),
-        string.append_list([Bit, ".", Grade0], Grade)
-    ;
-        Bits = [],
-        Grade = Bit
-    ).
-
-:- pred compute_grade_components(option_table::in,
-    list(pair(grade_component, string))::out) is det.
-
-compute_grade_components(Options, GradeComponents) :-
-    solutions(
-        ( pred(CompData::out) is nondet :-
-            grade_component_table(Name, Comp, CompOpts, MaybeTargets,
-                IncludeInGradeString),
-
-            % For a possible component of the grade string, include it in the
-            % actual grade string if all the option settings that it implies
-            % are true.
-            all [Opt, Value] (
-                list.member(Opt - Value, CompOpts)
-            =>
-                map.search(Options, Opt, Value)
-            ),
-
-            % Don't include `.mm' or `.dmm' in grade strings because they are
-            % just synonyms for `.mmsc' and `.dmmsc' respectively.
-            IncludeInGradeString = yes,
-
-            % When checking gcc_ext there exist grades which can have
-            % more than one possible target, ensure that the target
-            % in the options table matches one of the possible targets.
-            (
-                MaybeTargets = yes(Targets),
-                list.member(Target, Targets),
-                map.search(Options, target, Target)
-            ;
-                MaybeTargets = no
-            ),
-            CompData = Comp - Name
-        ), GradeComponents).
-
-    % grade_component_table(ComponetStr, Component, Options, MaybeTargets,
-    %   IncludeGradeStr):
-    %
-    % `IncludeGradeStr' is `yes' if the component should be included
-    % in the grade string. It is `no' for those components that are
-    % just synonyms for other comments, as .mm is for .mmsc.
-    %
-    % NOTE: .picreg components are handled separately.
-    % (see compute_grade_components/3).
-    %
-:- pred grade_component_table(string, grade_component,
-    list(pair(option, option_data)), maybe(list(option_data)), bool).
-:- mode grade_component_table(in, out, out, out, out) is semidet.
-:- mode grade_component_table(out, in, out, out, out) is multi.
-:- mode grade_component_table(out, out, out, out, out) is multi.
-
-    % Base components.
-    % These specify the basic compilation model we use,
-    % including the choice of back-end and the use of gcc extensions.
-grade_component_table("none", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        highlevel_code          - bool(no),
-        gcc_nested_functions    - bool(no),
-        highlevel_data          - bool(no)],
-        yes([string("c")]), yes).
-grade_component_table("reg", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(yes),
-        highlevel_code          - bool(no),
-        gcc_nested_functions    - bool(no),
-        highlevel_data          - bool(no)],
-        yes([string("c")]), yes).
-grade_component_table("jump", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(yes),
-        gcc_global_registers    - bool(no),
-        highlevel_code          - bool(no),
-        gcc_nested_functions    - bool(no),
-        highlevel_data          - bool(no)],
-        yes([string("c")]), yes).
-grade_component_table("asm_jump", comp_gcc_ext, [
-        asm_labels              - bool(yes),
-        gcc_non_local_gotos     - bool(yes),
-        gcc_global_registers    - bool(no),
-        highlevel_code          - bool(no),
-        gcc_nested_functions    - bool(no),
-        highlevel_data          - bool(no)],
-        yes([string("c")]), yes).
-grade_component_table("fast", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(yes),
-        gcc_global_registers    - bool(yes),
-        highlevel_code          - bool(no),
-        gcc_nested_functions    - bool(no),
-        highlevel_data          - bool(no)],
-        yes([string("c")]), yes).
-grade_component_table("asm_fast", comp_gcc_ext, [
-        asm_labels              - bool(yes),
-        gcc_non_local_gotos     - bool(yes),
-        gcc_global_registers    - bool(yes),
-        highlevel_code          - bool(no),
-        gcc_nested_functions    - bool(no),
-        highlevel_data          - bool(no)],
-        yes([string("c")]), yes).
-grade_component_table("hl", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        highlevel_code          - bool(yes),
-        gcc_nested_functions    - bool(no),
-        highlevel_data          - bool(yes)],
-        yes([string("c")]), yes).
-grade_component_table("hlc", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        highlevel_code          - bool(yes),
-        gcc_nested_functions    - bool(no),
-        highlevel_data          - bool(no)],
-        yes([string("c")]), yes).
-grade_component_table("hl_nest", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        highlevel_code          - bool(yes),
-        gcc_nested_functions    - bool(yes),
-        highlevel_data          - bool(yes)],
-        yes([string("c")]), yes).
-grade_component_table("hlc_nest", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        highlevel_code          - bool(yes),
-        gcc_nested_functions    - bool(yes),
-        highlevel_data          - bool(no)],
-        yes([string("c")]), yes).
-grade_component_table("java", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        gcc_nested_functions    - bool(no),
-        highlevel_code          - bool(yes),
-        highlevel_data          - bool(yes)],
-        yes([string("java")]), yes).
-grade_component_table("csharp", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        gcc_nested_functions    - bool(no),
-        highlevel_code          - bool(yes),
-        highlevel_data          - bool(yes)],
-        yes([string("csharp")]), yes).
-grade_component_table("erlang", comp_gcc_ext, [
-        asm_labels              - bool(no),
-        gcc_non_local_gotos     - bool(no),
-        gcc_global_registers    - bool(no),
-        gcc_nested_functions    - bool(no),
-        highlevel_code          - bool(no),
-        highlevel_data          - bool(no)],
-        yes([string("erlang")]), yes).
-
-    % Parallelism/multithreading components.
-grade_component_table("par", comp_par, [parallel - bool(yes)], no, yes).
-
-    % Threadscope profiling in parallel grades.
-grade_component_table("threadscope", comp_par_threadscope,
-    [threadscope - bool(yes)], no, yes).
-
-    % GC components.
-grade_component_table("gc", comp_gc, [gc - string("boehm")], no, yes).
-grade_component_table("gcd", comp_gc, [gc - string("boehm_debug")], no, yes).
-grade_component_table("hgc", comp_gc, [gc - string("hgc")], no, yes).
-grade_component_table("agc", comp_gc, [gc - string("accurate")], no, yes).
-
-    % Profiling components.
-grade_component_table("prof", comp_prof,
-    [profile_time - bool(yes), profile_calls - bool(yes),
-    profile_memory - bool(no), profile_deep - bool(no)], no, yes).
-grade_component_table("proftime", comp_prof,
-    [profile_time - bool(yes), profile_calls - bool(no),
-    profile_memory - bool(no), profile_deep - bool(no)], no, yes).
-grade_component_table("profcalls", comp_prof,
-    [profile_time - bool(no), profile_calls - bool(yes),
-    profile_memory - bool(no), profile_deep - bool(no)], no, yes).
-grade_component_table("memprof", comp_prof,
-    [profile_time - bool(no), profile_calls - bool(yes),
-    profile_memory - bool(yes), profile_deep - bool(no)], no, yes).
-grade_component_table("profall", comp_prof,
-    [profile_time - bool(yes), profile_calls - bool(yes),
-    profile_memory - bool(yes), profile_deep - bool(no)], no, yes).
-grade_component_table("profdeep", comp_prof,
-    [profile_time - bool(no), profile_calls - bool(no),
-    profile_memory - bool(no), profile_deep - bool(yes)], no, yes).
-
-    % Term size components.
-grade_component_table("tsw", comp_term_size,
-    [record_term_sizes_as_words - bool(yes),
-    record_term_sizes_as_cells - bool(no)], no, yes).
-grade_component_table("tsc", comp_term_size,
-    [record_term_sizes_as_words - bool(no),
-    record_term_sizes_as_cells - bool(yes)], no, yes).
-
-    % Trailing components.
-grade_component_table("tr", comp_trail,
-    [use_trail - bool(yes), trail_segments - bool(no)], no, yes).
-grade_component_table("trseg", comp_trail,
-    [use_trail - bool(yes), trail_segments - bool(yes)], no, yes).
-
-    % Minimal model tabling components.
-    % NOTE: we do not include `.mm' and `.dmm' in grade strings
-    % because they are just synonyms for `.mmsc' and `.dmmsc'.
-grade_component_table("mm", comp_minimal_model,
-    [use_minimal_model_stack_copy - bool(yes),
-    use_minimal_model_own_stacks - bool(no),
-    minimal_model_debug - bool(no)], no, no).
-grade_component_table("dmm", comp_minimal_model,
-    [use_minimal_model_stack_copy - bool(yes),
-    use_minimal_model_own_stacks - bool(no),
-    minimal_model_debug - bool(yes)], no, no).
-grade_component_table("mmsc", comp_minimal_model,
-    [use_minimal_model_stack_copy - bool(yes),
-    use_minimal_model_own_stacks - bool(no),
-    minimal_model_debug - bool(no)], no, yes).
-grade_component_table("dmmsc", comp_minimal_model,
-    [use_minimal_model_stack_copy - bool(yes),
-    use_minimal_model_own_stacks - bool(no),
-    minimal_model_debug - bool(yes)], no, yes).
-grade_component_table("mmos", comp_minimal_model,
-    [use_minimal_model_stack_copy - bool(no),
-    use_minimal_model_own_stacks - bool(yes),
-    minimal_model_debug - bool(no)], no, yes).
-grade_component_table("dmmos", comp_minimal_model,
-    [use_minimal_model_stack_copy - bool(no),
-    use_minimal_model_own_stacks - bool(yes),
-    minimal_model_debug - bool(yes)], no, yes).
-
-    % Settings for pre-generated source distribution
-    % or single-precision floats.
-grade_component_table("pregen", comp_pregen_spf,
-    [pregenerated_dist - bool(yes)], no, yes).
-grade_component_table("spf", comp_pregen_spf,
-    [single_prec_float - bool(yes),
-    unboxed_float - bool(yes)], no, yes).
-
-    % Pic reg components.
-grade_component_table("picreg", comp_pic, [pic_reg - bool(yes)], no, yes).
-
-    % Debugging/Tracing components.
-grade_component_table("decldebug", comp_trace,
-    [exec_trace - bool(yes), decl_debug - bool(yes)], no, yes).
-grade_component_table("debug", comp_trace,
-    [exec_trace - bool(yes), decl_debug - bool(no)], no, yes).
-grade_component_table("ssdebug", comp_trace,
-    [source_to_source_debug - bool(yes)], no, yes).
-
-    % Low (target) level debugging components.
-grade_component_table("ll_debug", comp_lowlevel,
-    [low_level_debug - bool(yes), target_debug - bool(yes)], no, yes).
-
-    % Stack extension components.
-grade_component_table("exts", comp_stack_extend,
-    [extend_stacks_when_needed - bool(yes), stack_segments - bool(no)],
-    no, yes).
-grade_component_table("stseg", comp_stack_extend,
-    [extend_stacks_when_needed - bool(no), stack_segments - bool(yes)],
-    no, yes).
-
-    % Region-based memory managment components
-grade_component_table("rbmm", comp_regions,
-    [use_regions - bool(yes),
-    use_regions_debug - bool(no), use_regions_profiling - bool(no)],
-    no, yes).
-grade_component_table("rbmmd", comp_regions,
-    [use_regions - bool(yes),
-    use_regions_debug - bool(yes), use_regions_profiling - bool(no)],
-    no, yes).
-grade_component_table("rbmmp", comp_regions,
-    [use_regions - bool(yes),
-    use_regions_debug - bool(no), use_regions_profiling - bool(yes)],
-    no, yes).
-grade_component_table("rbmmdp", comp_regions,
-    [use_regions - bool(yes),
-    use_regions_debug - bool(yes), use_regions_profiling - bool(yes)],
-    no, yes).
-
-:- pred reset_grade_options(option_table::in, option_table::out) is det.
-
-reset_grade_options(Options0, Options) :-
-    solutions.aggregate(grade_start_values,
-        ( pred(Pair::in, Opts0::in, Opts::out) is det :-
-            Pair = Option - Value,
-            map.set(Option, Value, Opts0, Opts)
-        ), Options0, Options).
-
-:- pred grade_start_values(pair(option, option_data)::out) is multi.
-
-grade_start_values(asm_labels - bool(no)).
-grade_start_values(gcc_non_local_gotos - bool(no)).
-grade_start_values(gcc_global_registers - bool(no)).
-grade_start_values(highlevel_code - bool(no)).
-grade_start_values(highlevel_data - bool(no)).
-grade_start_values(gcc_nested_functions - bool(no)).
-grade_start_values(parallel - bool(no)).
-grade_start_values(threadscope - bool(no)).
-grade_start_values(gc - string("none")).
-grade_start_values(profile_deep - bool(no)).
-grade_start_values(profile_time - bool(no)).
-grade_start_values(profile_calls - bool(no)).
-grade_start_values(profile_memory - bool(no)).
-grade_start_values(use_trail - bool(no)).
-grade_start_values(trail_segments - bool(no)).
-grade_start_values(use_minimal_model_stack_copy - bool(no)).
-grade_start_values(use_minimal_model_own_stacks - bool(no)).
-grade_start_values(minimal_model_debug - bool(no)).
-grade_start_values(pregenerated_dist - bool(no)).
-grade_start_values(single_prec_float - bool(no)).
-grade_start_values(pic_reg - bool(no)).
-grade_start_values(exec_trace - bool(no)).
-grade_start_values(decl_debug - bool(no)).
-grade_start_values(source_to_source_debug - bool(no)).
-grade_start_values(extend_stacks_when_needed - bool(no)).
-grade_start_values(stack_segments - bool(no)).
-grade_start_values(use_regions - bool(no)).
-grade_start_values(use_regions_debug - bool(no)).
-grade_start_values(use_regions_profiling - bool(no)).
-grade_start_values(low_level_debug - bool(no)).
-
-:- pred split_grade_string(string::in, list(string)::out) is semidet.
-
-split_grade_string(GradeStr, Components) :-
-    string.to_char_list(GradeStr, Chars),
-    split_grade_string_2(Chars, Components).
-
-:- pred split_grade_string_2(list(char)::in, list(string)::out) is semidet.
-
-split_grade_string_2([], []).
-split_grade_string_2(Chars, Components) :-
-    Chars = [_ | _],
-    list.takewhile(char_is_not('.'), Chars, ThisChars, RestChars0),
-    string.from_char_list(ThisChars, ThisComponent),
-    Components = [ThisComponent | RestComponents],
-    (
-        RestChars0 = [_ | RestChars],                       % Discard the `.'.
-        split_grade_string_2(RestChars, RestComponents)
-    ;
-        RestChars0 = [],
-        RestComponents = []
-    ).
-
-:- pred char_is_not(char::in, char::in) is semidet.
-
-char_is_not(A, B) :-
-    A \= B.
 
 %---------------------------------------------------------------------------%
 
@@ -3356,24 +2545,6 @@ raw_lookup_accumulating_option(OptionTable, Option, AccumulatingValue) :-
         OptionStr = string.string(Option),
         unexpected($module, $pred, OptionStr ++ "is not accumulating")
     ).
-
-%---------------------------------------------------------------------------%
-
-:- pred add_error(list(format_component)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_error(Pieces, !Specs) :-
-    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec(severity_error, phase_options, [Msg]),
-    !:Specs = [Spec | !.Specs].
-
-:- pred add_warning(list(format_component)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-add_warning(Pieces, !Specs) :-
-    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
-    Spec = error_spec(severity_warning, phase_options, [Msg]),
-    !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
 :- end_module libs.handle_options.

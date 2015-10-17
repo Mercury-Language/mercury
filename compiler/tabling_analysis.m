@@ -55,8 +55,6 @@
 :- import_module analysis.
 :- import_module hlds.hlds_module.
 
-:- import_module io.
-
 %----------------------------------------------------------------------------%
 
     % Analyse minimal model tabling in a module.
@@ -96,6 +94,7 @@
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

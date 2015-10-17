@@ -17,6 +17,7 @@
 :- include_module options.
 :- include_module handle_options.
 :- include_module op_mode.
+:- include_module compute_grade.
 :- include_module trace_params.
 
 % Error handling.

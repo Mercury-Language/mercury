@@ -36,7 +36,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
 :- import_module libs.
-:- import_module libs.handle_options.
+:- import_module libs.compute_grade.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.

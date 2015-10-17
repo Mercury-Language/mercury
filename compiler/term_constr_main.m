@@ -92,7 +92,6 @@
 :- import_module libs.options.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.dependency_graph.
-:- import_module transform_hlds.intermod.
 :- import_module transform_hlds.term_constr_build.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.

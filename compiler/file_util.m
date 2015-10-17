@@ -136,7 +136,7 @@
 
 :- implementation.
 
-:- import_module libs.handle_options.
+:- import_module libs.compute_grade.
 :- import_module libs.options.
 
 :- import_module dir.

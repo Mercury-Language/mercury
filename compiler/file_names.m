@@ -146,7 +146,7 @@
 
 :- implementation.
 
-:- import_module libs.handle_options.
+:- import_module libs.compute_grade.
 :- import_module libs.options.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.source_file_map.

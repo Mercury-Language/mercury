@@ -17,8 +17,19 @@
 :- interface.
 
 :- import_module libs.globals.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
 
 :- import_module io.
+:- import_module list.
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_error(error_phase::in, list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_warning(error_phase::in, list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -46,6 +57,19 @@
 :- import_module libs.options.
 
 :- import_module bool.
+:- import_module maybe.
+
+%-----------------------------------------------------------------------------%
+
+add_error(Phase, Pieces, !Specs) :-
+    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
+    Spec = error_spec(severity_error, Phase, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+add_warning(Phase, Pieces, !Specs) :-
+    Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
+    Spec = error_spec(severity_warning, Phase, [Msg]),
+    !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 

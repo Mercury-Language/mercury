@@ -36,7 +36,6 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module require.

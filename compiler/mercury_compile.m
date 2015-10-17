@@ -48,6 +48,7 @@
 :- import_module hlds.make_hlds.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
+:- import_module libs.compute_grade.
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
 :- import_module libs.op_mode.
@@ -89,7 +90,6 @@
 :- import_module top_level.mercury_compile_mlds_back_end.
 :- import_module transform_hlds.dependency_graph.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module cord.
@@ -98,7 +98,6 @@
 :- import_module getopt_io.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
