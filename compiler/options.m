@@ -49,7 +49,7 @@
     maybe_option_table::out) is semidet.
 
     % Return the set of options which are inconsequential as far as the
-    % `--track-flags' option is concerned.  That is, adding or removing such
+    % `--track-flags' option is concerned. That is, adding or removing such
     % an option to a module should not force the module to be recompiled.
     %
 :- pred inconsequential_options(set(option)::out) is det.
@@ -64,8 +64,8 @@
     % `--erlang-include-directory',
     % `--library-directory' and `--init-file-directory' options.
     %
-:- func option_table_add_mercury_library_directory(option_table, string)
-    = option_table.
+:- pred option_table_add_mercury_library_directory(string::in,
+    option_table::in, option_table::out) is det.
 
     % Add a directory using all of the
     % `--search-directory', `--intermod-directory',
@@ -73,8 +73,8 @@
     % `--c-include-directory', `--erlang-include-directory'
     % options.
     %
-:- func option_table_add_search_library_files_directory(option_table,
-    string) = option_table.
+:- pred option_table_add_search_library_files_directory(string::in,
+    option_table::in, option_table::out) is det.
 
     % Quote an argument to a shell command.
     %
@@ -341,7 +341,7 @@
 
     ;       pre_prof_transforms_simplify
             % Run the simplification pass at before profiling (stage 215) this
-            % is implied by some of the profiling settings.  Specifying this
+            % is implied by some of the profiling settings. Specifying this
             % option causes this simplification pass to run even when profiling
             % is not enabled.
 
@@ -374,9 +374,9 @@
     ;       use_lots_of_ho_specialization
 
             % We do not currently enable (or publicly document) this option
-            % because its use results in significant overheads.  Also, it is
+            % because its use results in significant overheads. Also, it is
             % not compatible with coverage profiling, which is enabled by
-            % default.  By default, all deep profiling grades are also built
+            % default. By default, all deep profiling grades are also built
             % with --stack-segments in order to avoid problems caused by the
             % lack of tail recursion.
     ;       deep_profile_tail_recursion
@@ -1852,8 +1852,8 @@ option_defaults_2(build_system_option, [
     use_symlinks                        -   bool(yes),
 
     % If `--mercury-stdlib-dir' is set, `--mercury-config-dir'
-    % must also be set.  This invariant is maintained by the
-    % `special' variants of the options.
+    % must also be set. This invariant is maintained by the `special' variants
+    % of the options.
     mercury_configuration_directory_special - string_special,
     mercury_configuration_directory     -   maybe_string(no),
     install_command                     -   string("cp"),
@@ -2676,7 +2676,6 @@ long_option("link-with-pic-object-file-extension",
 long_option("c-compiler-type",      c_compiler_type).
 long_option("csharp-compiler-type", csharp_compiler_type).
 
-
 long_option("java-compiler",        java_compiler).
 long_option("javac",                java_compiler).
 long_option("java-interpreter",     java_interpreter).
@@ -2899,9 +2898,9 @@ long_option("par-loop-control-preserve-tail-recursion",
 %-----------------------------------------------------------------------------%
 
 special_handler(grade, string(Grade), OptionTable0, Result) :-
-    ( convert_grade_option(Grade, OptionTable0, OptionTable) ->
+    ( if convert_grade_option(Grade, OptionTable0, OptionTable) then
         Result = ok(OptionTable)
-    ;
+    else
         Result = error("invalid grade `" ++ Grade ++ "'")
     ).
 special_handler(compile_to_c, none, !.OptionTable, ok(!:OptionTable)) :-
@@ -3004,11 +3003,11 @@ special_handler(opt_space, none, !.OptionTable, ok(!:OptionTable)) :-
     opt_space(OptionSettingsList),
     override_options(OptionSettingsList, !OptionTable).
 special_handler(opt_level, int(N0), !.OptionTable, ok(!:OptionTable)) :-
-    ( N0 > 6 ->
+    ( if N0 > 6 then
         N = 6
-    ; N0 < -1 ->
+    else if N0 < -1 then
         N = -1
-    ;
+    else
         N = N0
     ),
     map.set(opt_level_number, int(N), !OptionTable),
@@ -3019,20 +3018,17 @@ special_handler(optimize_saved_vars, bool(Optimize),
     map.set(optimize_saved_vars_cell, bool(Optimize), !OptionTable).
 special_handler(mercury_library_directory_special, string(Dir),
         !.OptionTable, ok(!:OptionTable)) :-
-    !:OptionTable = option_table_add_mercury_library_directory(
-        !.OptionTable, Dir).
+    option_table_add_mercury_library_directory(Dir, !OptionTable).
 special_handler(search_library_files_directory_special, string(Dir),
-        OptionTable0, ok(OptionTable)) :-
-    OptionTable = option_table_add_search_library_files_directory(
-        OptionTable0, Dir).
+        !.OptionTable, ok(!:OptionTable)) :-
+    option_table_add_search_library_files_directory(Dir, !OptionTable).
 special_handler(mercury_library_special, string(Lib),
         OptionTable0, ok(OptionTable)) :-
-    OptionTable =
-        list.foldl(append_to_accumulating_option, [
-            link_libraries                  - Lib,
-            mercury_libraries               - Lib,
-            init_files                      - (Lib ++ ".init")
-        ], OptionTable0).
+    list.foldl(append_to_accumulating_option, [
+        link_libraries                  - Lib,
+        mercury_libraries               - Lib,
+        init_files                      - (Lib ++ ".init")
+    ], OptionTable0, OptionTable).
 special_handler(mercury_standard_library_directory_special,
         maybe_string(MaybeStdLibDir), OptionTable0, ok(OptionTable)) :-
     OptionTable =
@@ -3071,24 +3067,28 @@ special_handler(quoted_ld_libflag, string(Flag),
         OptionTable0, ok(OptionTable)) :-
     handle_quoted_flag(ld_libflags, Flag, OptionTable0, OptionTable).
 special_handler(linkage_special, string(Flag), OptionTable0, Result) :-
-    ( ( Flag = "shared" ; Flag = "static" ) ->
-        Result = ok(
-            (OptionTable0 ^ elem(mercury_linkage) := string(Flag))
-                ^ elem(linkage) := string(Flag))
-    ;
+    ( if ( Flag = "shared" ; Flag = "static" ) then
+        map.det_update(mercury_linkage, string(Flag),
+            OptionTable0, OptionTable1),
+        map.det_update(linkage, string(Flag), OptionTable1, OptionTable),
+        Result = ok(OptionTable)
+    else
         Result = error("argument of `--linkage' should be either " ++
             """shared"" or ""static"".")
     ).
 special_handler(mercury_linkage_special, string(Flag),
             OptionTable0, Result) :-
-    ( ( Flag = "shared" ; Flag = "static" ) ->
-        Result = ok(OptionTable0 ^ elem(mercury_linkage) := string(Flag))
-    ;
+    ( if ( Flag = "shared" ; Flag = "static" ) then
+        map.det_update(mercury_linkage, string(Flag),
+            OptionTable0, OptionTable),
+        Result = ok(OptionTable)
+    else
         Result = error("argument of `--mercury-linkage' should be either " ++
             """shared"" or ""static"".")
     ).
 
-special_handler(env_type, string(EnvTypeStr), !.OptionTable, ok(!:OptionTable)) :-
+special_handler(env_type, string(EnvTypeStr), !.OptionTable,
+        ok(!:OptionTable)) :-
     override_options([
             host_env_type   - string(EnvTypeStr),
             system_env_type - string(EnvTypeStr),
@@ -3104,7 +3104,7 @@ special_handler(inform_inferred, bool(Inform), !.OptionTable,
 
 %-----------------------------------------------------------------------------%
 
-option_table_add_mercury_library_directory(OptionTable0, Dir) =
+option_table_add_mercury_library_directory(Dir, !OptionTable) :-
     % The init_file_directories and link_library_directories for Mercury
     % libraries are grade dependent, so they need to be handled in
     % handle_options.m after we know the grade.
@@ -3113,9 +3113,9 @@ option_table_add_mercury_library_directory(OptionTable0, Dir) =
         c_include_directory         - dir.make_path_name(Dir, "inc"),
         erlang_include_directory    - dir.make_path_name(Dir, "inc"),
         mercury_library_directories - Dir
-    ], OptionTable0).
+    ], !OptionTable).
 
-option_table_add_search_library_files_directory(OptionTable0, Dir) =
+option_table_add_search_library_files_directory(Dir, !OptionTable) :-
     % Grade dependent directories need to be handled in handle_options.m
     % after we know the grade.
     list.foldl(append_to_accumulating_option, [
@@ -3123,16 +3123,15 @@ option_table_add_search_library_files_directory(OptionTable0, Dir) =
         c_include_directory         - Dir,
         erlang_include_directory    - Dir,
         search_library_files_directories - Dir
-    ], OptionTable0).
+    ], !OptionTable).
 
-:- func append_to_accumulating_option(pair(option, string),
-        option_table) = option_table.
+:- pred append_to_accumulating_option(pair(option, string)::in,
+    option_table::in, option_table::out) is det.
 
-append_to_accumulating_option(Option - Value, OptionTable0) =
-    OptionTable0 ^ elem(Option) :=
-        accumulating(
-            getopt_io.lookup_accumulating_option(OptionTable0, Option)
-        ++ [Value]).
+append_to_accumulating_option(Option - Value, !OptionTable) :-
+    getopt_io.lookup_accumulating_option(!.OptionTable, Option, Values0),
+    Values = Values0 ++ [Value],
+    map.set(Option, accumulating(Values), !OptionTable).
 
 :- pred set_opt_level(int::in, option_table::in, option_table::out) is det.
 
@@ -3148,14 +3147,13 @@ set_opt_level(N, !OptionTable) :-
 :- pred enable_opt_levels(int::in, int::in,
     option_table::in, option_table::out) is det.
 
-enable_opt_levels(N0, N, !OptionTable) :-
-    ( N0 > N ->
+enable_opt_levels(Cur, Max, !OptionTable) :-
+    ( if Cur > Max then
         true
-    ; opt_level(N0, !.OptionTable, OptionSettingsList) ->
+    else if opt_level(Cur, !.OptionTable, OptionSettingsList) then
         override_options(OptionSettingsList, !OptionTable),
-        N1 = N0 + 1,
-        enable_opt_levels(N1, N, !OptionTable)
-    ;
+        enable_opt_levels(Cur + 1, Max, !OptionTable)
+    else
         unexpected($module, $pred, "unknown optimization level")
     ).
 
@@ -3196,7 +3194,7 @@ opt_space([
 % (However, there are some optimizations that can't be disabled.)
 
 % Optimization level 0: aim to minimize overall compilation time.
-% XXX I just guessed.  We should run lots of experiments.
+% XXX I just guessed. We should run lots of experiments.
 
 opt_level(0, _, [
     common_data                 -   bool(yes),
@@ -3337,28 +3335,32 @@ opt_level(6, _, [
 :- pred handle_quoted_flag(option::in, string::in,
     option_table::in, option_table::out) is det.
 
-handle_quoted_flag(Option, Flag, Table,
-    append_to_accumulating_option(Option - quote_arg(Flag), Table)).
+handle_quoted_flag(Option, Flag, !OptionTable) :-
+    append_to_accumulating_option(Option - quote_arg(Flag), !OptionTable).
 
 quote_arg(Arg0) = Arg :-
     % XXX Instead of using dir.use_windows_paths, this should really
     % test whether we are using a Unix or Windows shell.
-    ( dir.use_windows_paths ->
-        ( ( string_contains_whitespace(Arg0) ; Arg0 = "" ) ->
+    ( if dir.use_windows_paths then
+        ( if
+            ( string_contains_whitespace(Arg0)
+            ; Arg0 = ""
+            )
+        then
             Arg = """" ++ Arg0 ++ """"
-        ;
+        else
             Arg = Arg0
         )
-    ;
+    else
         ArgList = quote_arg_unix(string.to_char_list(Arg0)),
         (
             ArgList = [],
             Arg = """"""
         ;
             ArgList = [_ | _],
-            (
+            ( if
                 list.member(Char, ArgList),
-                \+
+                not
                     ( char.is_alnum_or_underscore(Char)
                     ; Char = ('-')
                     ; Char = ('/')
@@ -3366,9 +3368,9 @@ quote_arg(Arg0) = Arg :-
                     ; Char = (',')
                     ; Char = (':')
                     )
-            ->
+            then
                 Arg = """" ++ string.from_char_list(ArgList) ++ """"
-            ;
+            else
                 Arg = string.from_char_list(ArgList)
             )
         )
@@ -3388,9 +3390,9 @@ string_contains_whitespace(Str) :-
 quote_arg_unix([]) = [].
 quote_arg_unix([Char | Chars0]) = Chars :-
     Chars1 = quote_arg_unix(Chars0),
-    ( quote_char_unix(Char) ->
+    ( if quote_char_unix(Char) then
         Chars = [('\\'), Char | Chars1]
-    ;
+    else
         Chars = [Char | Chars1]
     ).
 
@@ -3450,7 +3452,7 @@ options_help_warning -->
         "\tDisable all warning messages.",
         "--halt-at-warn",
         "\tThis option causes the compiler to treat all ",
-        "\twarnings as if they were errors.  This means that",
+        "\twarnings as if they were errors. This means that",
         "\tif any warning is issued, the compiler will not",
         "\tgenerate code --- instead, it will return a",
         "\tnon-zero exit status.",
@@ -3498,7 +3500,7 @@ options_help_warning -->
         "--no-warn-missing-trans-opt-deps",
         "\tDisable warnings produced when the information required",
         "\tto allow `.trans_opt' files to be read when creating other",
-        "\t`.trans_opt' files has been lost.  The information can be",
+        "\t`.trans_opt' files has been lost. The information can be",
         "\trecreated by running `mmake <mainmodule>.depend'",
         "--no-warn-non-contiguous-clauses",
         "\tDo not generate a warning if the clauses of a predicate or",
@@ -3538,7 +3540,7 @@ options_help_warning -->
         "\twith `--make' are already up-to-date.",
         "--no-warn-stubs",
         "\tDisable warnings about procedures for which there are no",
-        "\tclauses.  Note that this option only has any effect if",
+        "\tclauses. Note that this option only has any effect if",
         "\tthe `--allow-stubs' option (described in the ""Language",
         "\tSemantics Options"" section below) is enabled.",
         "--warn-dead-procs",
@@ -3598,7 +3600,7 @@ options_help_verbosity -->
         "-V, --very-verbose",
         "\tOutput very verbose progress messages.",
         "-E, --verbose-error-messages",
-        "\tExplain error messages.  Asks the compiler to give you a more",
+        "\tExplain error messages. Asks the compiler to give you a more",
         "\tdetailed explanation of any errors it finds in your program.",
         "--no-verbose-make",
         "\tDisable messages about the progress of builds using",
@@ -3611,7 +3613,7 @@ options_help_verbosity -->
         "\texplaining why a module needs to be recompiled.",
         "--find-all-recompilation-reasons",
         "\tFind all the reasons why a module needs to be recompiled,",
-        "\tnot just the first.  Implies `--verbose-recompilation'.",
+        "\tnot just the first. Implies `--verbose-recompilation'.",
         "--output-compile-error-lines <n>",
         "\tWith `--make', output the first <n> lines of the `.err'",
         "\tfile after compiling a module (default: 15).",
@@ -3747,7 +3749,7 @@ options_help_output -->
         "--generate-standalone-interface <basename>",
         "\tOutput a stand-alone interface.",
         "\t<basename> is used as the basename of any files generated for",
-        "\tthe stand-alone interface.  (See the Stand-alone Interface",
+        "\tthe stand-alone interface. (See the Stand-alone Interface",
         "\tchapter of the Mercury User's Guide for further details.)",
         "-i, --make-int, --make-interface",
         "\tWrite the module interface to `<module>.int',",
@@ -3819,9 +3821,9 @@ options_help_output -->
         "\tPrint the C# compiler type to the standard output.",
         "--output-library-link-flags",
         "\tPrint the flags that are passed to linker in order to link",
-        "\tagainst the current set of libraries.  This includes the",
+        "\tagainst the current set of libraries. This includes the",
         "\tstandard library as well as any other libraries specified",
-        "\tvia the --ml option.  The flags are printed to the standard",
+        "\tvia the --ml option. The flags are printed to the standard",
         "\toutput.",
         "--output-grade-defines",
         "\tPrint the flags that are passed to the C compiler to define the",
@@ -3874,7 +3876,7 @@ options_help_aux_output -->
         %"\tthe given module.",
 
 % "--trace decl" is not documented, because it is for backwards
-% compatibility only.  It is now equivalent to `--trace rep'.
+% compatibility only. It is now equivalent to `--trace rep'.
 %       "--trace {minimum, shallow, deep, decl, rep, default}",
         "--trace {minimum, shallow, deep, rep, default}",
         "\tGenerate code that includes the specified level",
@@ -4066,7 +4068,7 @@ options_help_semantics -->
         "\tAllow infinite loops or goals with determinism erroneous to be",
         "\toptimised away.",
         "--allow-stubs",
-        "\tAllow procedures to have no clauses.  Any calls to",
+        "\tAllow procedures to have no clauses. Any calls to",
         "\tsuch procedures will raise an exception at run-time.",
         "\tThis option is sometimes useful during program development.",
         "\t(See also the documentation for the `--warn-stubs' option",
@@ -4090,7 +4092,6 @@ options_help_semantics -->
         "--event-set-file-name <filename>",
         "\tGet the specification of user-defined events from <filename>."
     ]).
-
 
 :- pred options_help_ctgc(io::di, io::uo) is det.
 
@@ -4145,7 +4146,7 @@ options_help_termination -->
         "\tthe problem is either a lack of information about the",
         "\ttermination properties of other predicates, or because language",
         "\tconstructs (such as higher order calls) were used which could",
-        "\tnot be analysed.  In these cases the compiler does not emit a",
+        "\tnot be analysed. In these cases the compiler does not emit a",
         "\twarning of non-termination, as it is likely to be spurious.",
         "--verb-chk-term, --verb-check-term, --verbose-check-termination",
         "\tEnable termination analysis, and emit warnings for all",
@@ -4158,8 +4159,8 @@ options_help_termination -->
         "--termination-norm {simple, total, num-data-elems}",
         "\tThe norm defines how termination analysis measures the size",
         "\tof a memory cell. The `simple' norm says that size is always",
-        "\tone.  The `total' norm says that it is the number of words",
-        "\tin the cell.  The `num-data-elems' norm says that it is the",
+        "\tone. The `total' norm says that it is the number of words",
+        "\tin the cell. The `num-data-elems' norm says that it is the",
         "\tnumber of words in the cell that contain something other",
         "\tthan pointers to cells of the same type.",
         "--term-err-limit <n>, --termination-error-limit <n>",
@@ -4178,12 +4179,12 @@ options_help_termination -->
 %       "\ton convex constraints.",
 %       "--chk-term2, --check-termination2",
 %       "\tEnable the alternative termination analysis, and emit warnings for",
-%       "\tsome predicates or functions that cannot be proved to terminate.  In",
+%       "\tsome predicates or functions that cannot be proved to terminate. In",
 %       "\tmany cases where the compiler is unable to prove termination",
 %       "\tthe problem is either a lack of information about the",
 %       "\ttermination properties of other predicates, or because language",
 %       "\tconstructs (such as higher order calls) were used which could",
-%       "\tnot be analysed.  In these cases the compiler does not emit a",
+%       "\tnot be analysed. In these cases the compiler does not emit a",
 %       "\twarning of non-termination, as it is likely to be spurious.",
 %       "--verb-chk-term2, --verb-check-term2, --verbose-check-termination2",
 %       "--termination2-norm {simple, total, num-data-elems}",
@@ -4198,8 +4199,8 @@ options_help_termination -->
 %       "\tinputs to a goal in contexts where that goal fails."
 %       "--term2-max-matrix-size <n>, --termination2-maximum-matrix-size <n>",
 %       "\tLimit the sizes of constraints systems in the analyser to <n>",
-%       "\tconstraints.  Use approximations of some constraint operations,",
-%       "\tsuch as projection, if this threshold is exceeded.  This will",
+%       "\tconstraints. Use approximations of some constraint operations,",
+%       "\tsuch as projection, if this threshold is exceeded. This will",
 %       "\tspeed up the analysis at the cost of reduced precision.",
 
 % This option is for developers only.
@@ -4314,7 +4315,7 @@ options_help_compilation_model -->
     write_tabbed_lines([
         "-p, --profiling, --time-profiling",
         "\t\t\t\t(grade modifier: `.prof')",
-        "\tEnable time and call profiling.  Insert profiling hooks in the",
+        "\tEnable time and call profiling. Insert profiling hooks in the",
         "\tgenerated code, and also output some profiling",
         "\tinformation (the static call graph) to the file",
         "\t`<module>.prof'.",
@@ -4331,9 +4332,9 @@ options_help_compilation_model -->
 %
 %       "--pre-prof-transforms-simplify",
 %       "\tForce the pre-profiling simplification pass that is usually",
-%       "\tenabled when building a profiling version of a program.  This",
+%       "\tenabled when building a profiling version of a program. This",
 %       "\tallows a developer to enable this pass when using a",
-%       "\tnon-profiling build.  It can be used to test that generated code",
+%       "\tnon-profiling build. It can be used to test that generated code",
 %       "\tintroduced in earlier passes is well-formed before it is",
 %       "\tpotentially removed by the dead procedure elimination pass later",
 %       "\ton.",
@@ -4444,21 +4445,21 @@ options_help_compilation_model -->
         "\tor Erlang back-ends.",
         "--trail-segments\t\t\t(grade modifier: `.trseg')",
         "\tAs above, but use a dynamically sized trail that is composed",
-        "\tof small segments.  This can help to avoid trail exhaustion",
+        "\tof small segments. This can help to avoid trail exhaustion",
         "\tat the cost of increased execution time.",
         "--parallel\t\t(grade modifier: `.par')",
         "\tEnable parallel execution support for the low-level C grades.",
         "\tEnable concurrency (via pthreads) for the high-level C grades.",
         "--maybe-thread-safe {yes, no}",
         "\tSpecify how to treat the `maybe_thread_safe' foreign code",
-        "\tattribute.  `yes' means that a foreign procedure with the",
+        "\tattribute. `yes' means that a foreign procedure with the",
         "\t`maybe_thread_safe' option is treated as though it has a",
-        "\t`thread_safe' attribute.  `no' means that the foreign",
+        "\t`thread_safe' attribute. `no' means that the foreign",
         "\tprocedure is treated as though it has a `not_thread_safe'",
-        "\tattribute.  The default is `no'.",
+        "\tattribute. The default is `no'.",
         "--single-prec-float\t\t(grade modifier: `.spf')",
         "\tUse single precision floats so that, on 32-bit machines,",
-        "\tfloating point values don't need to be boxed.  Double",
+        "\tfloating point values don't need to be boxed. Double",
         "\tprecision floats are used by default.",
         "\tThis option is not supported for the C#, Java or Erlang back-ends."
         % This is commented out as this feature is still experimental.
@@ -4507,10 +4508,10 @@ options_help_compilation_model -->
         %"\tSelect a register usage convention that is compatible,",
         %"\twith position-independent code (gcc's `-fpic' option).",
         %"\tThis is necessary when using shared libraries on Intel x86",
-        %"\tsystems running Unix.  On other systems it has no effect.",
+        %"\tsystems running Unix. On other systems it has no effect.",
         "--stack-segments\t\t(grade modifier: `.stseg')",
         "\tSpecify whether to use dynamically sized stacks that are",
-        "\tcomposed of small segments.  This can help to avoid stack",
+        "\tcomposed of small segments. This can help to avoid stack",
         "\texhaustion at the cost of increased execution time.",
         "\tThis option is not supported by the `--high-level-code'",
         "\tback-ends."
@@ -4621,12 +4622,12 @@ options_help_compilation_model -->
         % This is a developer only option.
 %       "--no-unboxed-enums",
 %       "(This option is not for general use.)",
-%       "\tBox enumerations.  This option is disabled by default.",
+%       "\tBox enumerations. This option is disabled by default.",
 
         % This is a developer only option.
 %       "--no-unboxed-no-tag-types",
 %       "(This option is not for general use.)",
-%       "\tBox no-tag types.  This option is disabled by default."
+%       "\tBox no-tag types. This option is disabled by default."
 
         % This is a developer only option.
 %       "--arg-pack-bits <n>",
@@ -4770,7 +4771,7 @@ options_help_code_generation -->
 %       "\tYou don't want to use this option unless you are hacking",
 %       "\tthe Mercury compiler itself (and probably not even then).",
 %       "\tCauses the generated code to become VERY big and VERY",
-%       "\tinefficient.  Slows down compilation a LOT.",
+%       "\tinefficient. Slows down compilation a LOT.",
 
 %       "--table-debug",
 %       "\tEnables the generation of code that helps to debug tabling",
@@ -4822,7 +4823,7 @@ options_help_code_generation -->
         "\t`:- pragma fact_table' data array (default: 1024).",
         "--fact-table-hash-percent-full <percentage>",
         "\tSpecify how full the `:- pragma fact_table' hash tables",
-        "\tshould be allowed to get.  Given as an integer percentage",
+        "\tshould be allowed to get. Given as an integer percentage",
         "\t(valid range: 1 to 100, default: 90)."
 
 % This option is not yet documented because the `--gcc-nested-functions' option
@@ -4935,7 +4936,7 @@ options_help_hlds_hlds_optimization -->
         "\tDisable the inlining of simple procedures.",
         "--no-inline-builtins",
         "\tGenerate builtins (e.g. arithmetic operators) as calls to",
-        "\tout-of-line procedures.  This is done by default when,",
+        "\tout-of-line procedures. This is done by default when,",
         "\tdebugging, as without this option the execution of",
         "\tbuiltins is not traced.",
         "--no-inline-single-use",
@@ -5094,18 +5095,18 @@ options_help_hlds_hlds_optimization -->
         "\tto be optimized by deforestation.",
         "\tA value of -1 specifies no limit. The default is 15.",
         "--analyse-exceptions",
-        "\tEnable exception analysis.  Identify those",
+        "\tEnable exception analysis. Identify those",
         "\tprocedures that will not throw an exception.",
         "\tSome optimizations can make use of this information.",
 % XXX The options controlling closure analysis are currently
-% commented out because it isn't useful.  It can be uncommented when
+% commented out because it isn't useful. It can be uncommented when
 % we actually have something that uses it.
 %       "--analyse-closures",
-%       "\tEnable closure analysis.  Try to identify the possible",
+%       "\tEnable closure analysis. Try to identify the possible",
 %       "\tvalues that higher-order valued variables can take.",
 %       "\tSome optimizations can make use of this information.",
         "--analyse-trail-usage",
-        "\tEnable trail usage analysis.  Identify those",
+        "\tEnable trail usage analysis. Identify those",
         "\tprocedures that will not modify the trail.",
         "\tThis information is used to reduce the overhead",
         "\tof trailing.",
@@ -5166,7 +5167,7 @@ options_help_hlds_hlds_optimization -->
 %        "\tEnable the analysis for region-based memory management."
     ]).
 
-    % XXX this is out-of-date.  --smart-indxing also affects the
+    % XXX This is out-of-date. --smart-indxing also affects the
     % MLDS backend.
     %
 :- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.
@@ -5352,8 +5353,8 @@ options_help_output_optimization -->
         "\tUse only gotos, don't emit C loop constructs.",
         "--procs-per-c-function <n>",
         "\tPut the code for up to <n> Mercury",
-        "\tprocedures in a single C function.  The default",
-        "\tvalue of <n> is one.  Increasing <n> can produce",
+        "\tprocedures in a single C function. The default",
+        "\tvalue of <n> is one. Increasing <n> can produce",
         "\tslightly more efficient code, but makes compilation slower.",
         "--everything-in-one-c-function",
         "\tThis option has the effect of putting the code for all",
@@ -5391,7 +5392,7 @@ options_help_target_code_compilation -->
 
         "--no-ansi-c",
         "\tDon't specify to the C compiler that the ANSI dialect",
-        "\tof C should be used.  Use the full contents of system",
+        "\tof C should be used. Use the full contents of system",
         "\theaders, rather than the ANSI subset.",
 
         "--c-debug",
@@ -5401,7 +5402,7 @@ options_help_target_code_compilation -->
 
         "--c-include-directory <dir>, --c-include-dir <dir>",
         "\tAppend <dir> to the list of directories to be searched for",
-        "\tC header files.  Note that if you want to override",
+        "\tC header files. Note that if you want to override",
         "\tthis list, rather than append to it, then you can set the",
         "\t`MERCURY_MC_ALL_C_INCL_DIRS' environment variable to a",
         "\tsequence of `--c-include-directory' options.",
@@ -5434,7 +5435,7 @@ options_help_target_code_compilation -->
 
         "--javac <javac>",
         "--java-compiler <javac>",
-        "\tSpecify which Java compiler to use.  The default is `javac'.",
+        "\tSpecify which Java compiler to use. The default is `javac'.",
 
         "--java-interpreter <java>",
         "\tSpecify which Java interpreter to use.",
@@ -5453,7 +5454,7 @@ options_help_target_code_compilation -->
         "\tBy default this is `.class'.",
 
         "--csharp-compiler <csc>",
-        "\tSpecify the name of the C# Compiler.  The default is `csc'.",
+        "\tSpecify the name of the C# Compiler. The default is `csc'.",
         "--csharp-flags <options>, --csharp-flag <option>",
         "\tSpecify options to be passed to the C# compiler.",
         "\t`--csharp-flag' should be used for single words which need",
@@ -5477,7 +5478,7 @@ options_help_target_code_compilation -->
         "\tErlang header files (.hrl).",
         "--erlang-native-code",
         "\tAdd `+native' to the list of flags passed to the",
-        "\tErlang compiler.  Cancelled out by `--no-erlang-native code'",
+        "\tErlang compiler. Cancelled out by `--no-erlang-native code'",
         "\tso it is useful when you wish to enable native code",
         "\tgeneration for all modules except for a select few.",
         "--no-erlang-inhibit-trivial-warnings",
@@ -5530,7 +5531,7 @@ options_help_link -->
         "--search-lib-files-dir <directory>",
         "--search-library-files-directory <directory>",
         "\tSearch <directory> for Mercury library files that have not yet",
-        "\tbeen installed.  Similar to adding <directory> using all of the",
+        "\tbeen installed. Similar to adding <directory> using all of the",
         "\t`--search-directory', `--intermod-directory',",
         "\t`--library-directory', `--init-file-directory' and",
         "\t`--c-include-directory' options.",
@@ -5554,7 +5555,7 @@ options_help_link -->
 
         "--linkage {shared, static}",
         "\tSpecify whether to use shared or static linking for",
-        "\texecutables.  Shared libraries are always linked",
+        "\texecutables. Shared libraries are always linked",
         "\twith `--linkage shared'.",
         "--mercury-linkage {shared, static}",
         "\tSpecify whether to use shared or static linking when",
@@ -5575,7 +5576,7 @@ options_help_link -->
         "--no-demangle",
         "\tDon't pipe link errors through the Mercury demangler.",
         "--no-main",
-        "\tDon't generate a C main() function.  The user's code must",
+        "\tDon't generate a C main() function. The user's code must",
         "\tprovide a main() function.",
         "--no-allow-undefined",
         "\tDo not allow undefined symbols in shared libraries.",
@@ -5627,7 +5628,7 @@ options_help_link -->
 
         "--cstack-reserve-size <size>",
         "\tSet the total size of the C stack in virtual memory for",
-        "\texecutables.  The stack size is given in bytes.",
+        "\texecutables. The stack size is given in bytes.",
         "\t(Microsoft Windows only.)"
 
         % The --shared-library-extension,
@@ -5668,7 +5669,7 @@ options_help_build_system -->
         % when compiling a module.
         "-m, --make",
         "\tTreat the non-option arguments to `mmc' as files to",
-        "\tmake, rather than source files.  Create the specified",
+        "\tmake, rather than source files. Create the specified",
         "\tfiles, if they are not already up-to-date.",
         "\tNote that this option also enables `--use-subdirs'.",
         "-r, --rebuild",
@@ -5683,9 +5684,9 @@ options_help_build_system -->
 
         "--track-flags",
         "\tWith `--make', keep track of the options used when compiling",
-        "\teach module.  If an option for a module is added or removed,",
+        "\teach module. If an option for a module is added or removed,",
         "\t`mmc --make' will then know to recompile the module even if the",
-        "\ttimestamp on the file itself has not changed.  Warning,",
+        "\ttimestamp on the file itself has not changed. Warning,",
         "\tverbosity and build system options are not tracked.",
 
         "--pre-link-command <command>",
@@ -5741,8 +5742,8 @@ options_help_build_system -->
         "\t(This option does not work with Mmake, only `mmc --make'.)",
         "--lib-linkage {shared, static}",
         "\tSpecify whether libraries should be installed for shared",
-        "\tor static linking.  This option can be specified multiple",
-        "\ttimes.  By default libraries will be installed for",
+        "\tor static linking. This option can be specified multiple",
+        "\ttimes. By default libraries will be installed for",
         "\tboth shared and static linking.",
         "--flags <file>",
         "--flags-file <file>",
@@ -5751,7 +5752,7 @@ options_help_build_system -->
         "--options-file <file>",
         "\tAdd <file> to the list of options files to be processed.",
         "\tIf <file> is `-', an options file will be read from the",
-        "\tstandard input.  By default the file `Mercury.options'",
+        "\tstandard input. By default the file `Mercury.options'",
         "\tin the current directory will be read.",
         "--options-search-directory <dir>",
         "\tAdd <dir> to the list of directories to be searched for",
@@ -5761,7 +5762,7 @@ options_help_build_system -->
         "\tSearch <directory> for Mercury system's configuration files.",
         "--config-file <file>",
         "\tRead the Mercury compiler's configuration information",
-        "\tfrom <file>.  If the `--config-file' option is not set,",
+        "\tfrom <file>. If the `--config-file' option is not set,",
         "\ta default configuration will be used, unless",
         "\t`--no-mercury-stdlib-dir' is passed to mmc.",
         "\tThe configuration file is just an options file.",
@@ -5787,7 +5788,7 @@ options_help_build_system -->
         "\twork with `mmc --make').",
         "--no-libgrade-install-check",
         "\tDo not check that libraries have been installed before",
-        "\tattempting to use them.  (This option is only meaningful with",
+        "\tattempting to use them. (This option is only meaningful with",
         "\t`mmc --make'.)",
         "--order-make-by-timestamp",
         "\tMake `mmc --make' compile more recently modified source files",
@@ -5845,7 +5846,7 @@ options_help_misc -->
         "\tDisplay the compiler version.",
 
         % The `--target-arch' options is reserved for use by the
-        % `Mercury.config' file.  The `--fullarch' option is a deprecated
+        % `Mercury.config' file. The `--fullarch' option is a deprecated
         % synonym for this.
 
 % This option has no effect now.
@@ -5858,7 +5859,7 @@ options_help_misc -->
 
 %       "--ignore-parallel-conjunctions",
 %       "\tReplace parallel conjunctions with plain ones, this is useful",
-%       "\tfor benchmarking.  Note that it does not affect implicit",
+%       "\tfor benchmarking. Note that it does not affect implicit",
 %       "\tparallelism",
 
         "--control-granularity",

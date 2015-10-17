@@ -133,9 +133,9 @@ make_atom(Context, Name) =
 %-----------------------------------------------------------------------------%
 
 write_instmap(VarSet, AppendVarNums, Indent, InstMap, !IO) :-
-    ( instmap_is_unreachable(InstMap) ->
+    ( if instmap_is_unreachable(InstMap) then
         io.write_string("unreachable", !IO)
-    ;
+    else
         instmap_to_assoc_list(InstMap, AssocList),
         write_var_inst_list(VarSet, AppendVarNums, Indent, AssocList, !IO)
     ).
@@ -164,14 +164,14 @@ mode_to_term(Lang, Mode) =
 mode_to_term_with_context(Lang, Context, Mode) = Term :-
     (
         Mode = (InstA -> InstB),
-        (
+        ( if
             % Check for higher-order pred or func modes, and output them
             % in a nice format.
             InstA = ground(_Uniq, higher_order(_)),
             InstB = InstA
-        ->
+        then
             Term = inst_to_term_with_context(Lang, Context, InstA)
-        ;
+        else
             construct_qualified_term_with_context(unqualified(">>"),
                 [inst_to_term_with_context(Lang, Context, InstA),
                 inst_to_term_with_context(Lang, Context, InstB)],
@@ -788,36 +788,36 @@ mercury_format_structured_uni_mode(UniMode, Indent, Lang, InclAddr,
         InstVarSet, !U),
 
     mercury_format_tabs(Indent, !U),
-    ( InstB1Addr = InstA1Addr ->
+    ( if InstB1Addr = InstA1Addr then
         % We have printed the old lhs inst.
         add_string("old rhs inst: same as old lhs inst\n", !U)
-    ;
+    else
         add_string("old rhs inst:\n", !U),
         mercury_format_structured_inst(InstB1, Indent, Lang, InclAddr,
             InstVarSet, !U)
     ),
 
     mercury_format_tabs(Indent, !U),
-    ( InstA2Addr = InstA1Addr ->
+    ( if InstA2Addr = InstA1Addr then
         % We have printed the old lhs inst.
         add_string("new lhs inst: unchanged\n", !U)
-    ; InstA2Addr = InstB1Addr ->
+    else if InstA2Addr = InstB1Addr then
         % We have printed or described the old rhs inst.
         add_string("new lhs inst: changed to old rhs inst\n", !U)
-    ;
+    else
         add_string("new lhs inst:\n", !U),
         mercury_format_structured_inst(InstA2, Indent, Lang, InclAddr,
             InstVarSet, !U)
     ),
 
     mercury_format_tabs(Indent, !U),
-    ( InstB2Addr = InstB1Addr ->
+    ( if InstB2Addr = InstB1Addr then
         % We have printed or described the old rhs inst.
         add_string("new rhs inst: unchanged\n", !U)
-    ; InstB2Addr = InstA2Addr ->
+    else if InstB2Addr = InstA2Addr then
         % We have printed or described the new lhs inst.
         add_string("new rhs inst: changed to new lhs inst\n", !U)
-    ;
+    else
         add_string("new rhs inst:\n", !U),
         mercury_format_structured_inst(InstB2, Indent, Lang, InclAddr,
             InstVarSet, !U)

@@ -97,9 +97,9 @@
 
 figure_out_output_vars(CI, CLD, GoalInfo, OutVars) :-
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    ( instmap_delta_is_unreachable(InstMapDelta) ->
+    ( if instmap_delta_is_unreachable(InstMapDelta) then
         OutVars = []
-    ;
+    else
         get_instmap(CLD, CurrentInstMap),
         get_module_info(CI, ModuleInfo),
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),

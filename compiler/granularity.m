@@ -189,14 +189,14 @@ runtime_granularity_test_in_goal(Goal0, Goal, !Changed, SCC, ModuleInfo) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             GoalExpr = GoalExpr0
-        ;
+        else
             runtime_granularity_test_in_goal(SubGoal0, SubGoal, !Changed, SCC,
                 ModuleInfo),
             GoalExpr = scope(Reason, SubGoal)

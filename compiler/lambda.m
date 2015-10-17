@@ -328,16 +328,16 @@ expand_lambdas_in_goal(Goal0, Goal, !Info) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % If the scope had any rhs_lambda_goals, modes.m wouldn't have
             % left its kind field as from_ground_term_(de)construct.
             GoalExpr = GoalExpr0
-        ;
+        else
             expand_lambdas_in_goal(SubGoal0, SubGoal, !Info),
             GoalExpr = scope(Reason, SubGoal)
         )
@@ -475,9 +475,9 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
     set_of_var.difference(ExtraTypeInfos, NonLocals1, NewTypeInfos),
     set_of_var.union(NonLocals1, NewTypeInfos, NonLocals),
 
-    ( set_of_var.is_empty(NewTypeInfos) ->
+    ( if set_of_var.is_empty(NewTypeInfos) then
         MustRecomputeNonLocals = MustRecomputeNonLocals0
-    ;
+    else
         % If we added variables to the nonlocals of the lambda goal, then
         % we must recompute the nonlocals for the procedure that contains it.
         MustRecomputeNonLocals = yes
@@ -485,7 +485,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
 
     set_of_var.to_sorted_list(NonLocals, ArgVars1),
 
-    (
+    ( if
         % Optimize a special case: replace
         %   `(pred(Y1, Y2, ...) is Detism :-
         %       p(X1, X2, ..., Y1, Y2, ...))'
@@ -505,7 +505,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
 
         % Check that none of the variables that we're trying to use
         % as curried arguments are lambda-bound variables.
-        \+ (
+        not (
             list.member(InitialVar, InitialVars),
             list.member(InitialVar, Vars)
         ),
@@ -554,7 +554,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
         =>
             mode_is_input(ModuleInfo0, Mode)
         )
-    ->
+    then
         ArgVars = InitialVars,
         PredId = PredId0,
         ProcId = ProcId0,
@@ -565,7 +565,7 @@ expand_lambda(Purity, _Groundness, PredOrFunc, EvalMethod, RegWrapperProc,
             Call_ProcInfo, Call_NewProcInfo),
         module_info_set_pred_proc_info(PredId, ProcId,
             Call_PredInfo, Call_NewProcInfo, ModuleInfo0, ModuleInfo)
-    ;
+    else
         % Prepare to create a new predicate for the lambda expression:
         % work out the arguments, module name, predicate name, arity,
         % arg types, determinism, context, status, etc. for the new predicate.
@@ -712,14 +712,14 @@ uni_modes_to_modes([UniMode | UniModes], [Mode | Modes]) :-
 
 check_lambda_arg_type_and_mode(ModuleInfo, Type, Mode, X, X) :-
     Inst = mode_get_initial_inst(ModuleInfo, Mode),
-    ( Inst = ground(_, higher_order(_)) ->
-        ( type_is_higher_order(Type) ->
+    ( if Inst = ground(_, higher_order(_)) then
+        ( if type_is_higher_order(Type) then
             true
-        ;
+        else
             unexpected($module, $pred,
                 "non-higher order argument with higher order inst")
         )
-    ;
+    else
         true
     ).
 
@@ -789,9 +789,9 @@ find_used_vars_in_goal(Goal, !VarUses) :-
         mark_var_as_used(LHSVar, !VarUses),
         (
             Unif = construct(_, _, _, _, CellToReuse, _, _),
-            ( CellToReuse = reuse_cell(cell_to_reuse(ReuseVar, _, _)) ->
+            ( if CellToReuse = reuse_cell(cell_to_reuse(ReuseVar, _, _)) then
                 mark_var_as_used(ReuseVar, !VarUses)
-            ;
+            else
                 true
             )
         ;

@@ -121,9 +121,9 @@
     maybe(string)::in, hlds_goal::out, prog_var::out,
     proc_info::in, proc_info::out) is det.
 
-    % Produce a goal to construct or deconstruct a unification with
-    % a functor.  It fills in the non-locals, instmap_delta and
-    % determinism fields of the goal_info.
+    % Produce a goal to construct or deconstruct a unification with a functor.
+    % It fills in the non-locals, instmap_delta and determinism fields
+    % of the goal_info.
     %
 :- pred construct_functor(prog_var::in, cons_id::in, list(prog_var)::in,
     hlds_goal::out) is det.

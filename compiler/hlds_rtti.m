@@ -360,24 +360,28 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     proc_info_get_argmodes(ProcInfo, ProcModes),
     proc_info_interface_determinism(ProcInfo, ProcDetism),
     modes_to_arg_modes(ModuleInfo, ProcModes, ArgTypes, ProcArgModes),
-    PredIsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
-    PredIsPseudoImp = (pred_info_is_pseudo_imported(PredInfo) -> yes ; no),
-    ProcIsExported = (procedure_is_exported(ModuleInfo, PredInfo, ProcId)
-        -> yes ; no),
+    PredIsImported =
+        (if pred_info_is_imported(PredInfo) then yes else no),
+    PredIsPseudoImp =
+        (if pred_info_is_pseudo_imported(PredInfo) then yes else no),
+    ProcIsExported =
+        (if procedure_is_exported(ModuleInfo, PredInfo, ProcId)
+            then yes else no),
     pred_info_get_origin(PredInfo, Origin),
-    ProcHeadVarsWithNames = list.map((func(Var) = Var - Name :-
+    ProcHeadVarsWithNames = list.map(
+        (func(Var) = Var - Name :-
             Name = varset.lookup_name(ProcVarSet, Var)
         ), ProcHeadVars),
-    (
+    ( if
         (
             PredIsImported = yes
         ;
             PredIsPseudoImp = yes,
             hlds_pred.in_in_unification_proc_id(ProcId)
         )
-    ->
+    then
         ProcIsImported = yes
-    ;
+    else
         ProcIsImported = no
     ),
     ProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
@@ -579,11 +583,15 @@ rtti_search_typeclass_info_var(RttiVarMaps, Constraint, ProgVar) :-
     map.search(RttiVarMaps ^ rv_tci_varmap, Constraint, ProgVar).
 
 rtti_varmaps_var_info(RttiVarMaps, Var, VarInfo) :-
-    ( map.search(RttiVarMaps ^ rv_ti_type_map, Var, Type) ->
+    ( if
+        map.search(RttiVarMaps ^ rv_ti_type_map, Var, Type)
+    then
         VarInfo = type_info_var(Type)
-    ; map.search(RttiVarMaps ^ rv_tci_constraint_map, Var, Constraint) ->
+    else if
+        map.search(RttiVarMaps ^ rv_tci_constraint_map, Var, Constraint)
+    then
         VarInfo = typeclass_info_var(Constraint)
-    ;
+    else
         VarInfo = non_rtti_var
     ).
 
@@ -604,9 +612,9 @@ rtti_set_type_info_locn(TVar, Locn, !RttiVarMaps) :-
 
 maybe_check_type_info_var(type_info(Var), TVar, !RttiVarMaps) :-
     map.lookup(!.RttiVarMaps ^ rv_ti_type_map, Var, Type),
-    ( Type = type_variable(TVar, _) ->
+    ( if Type = type_variable(TVar, _) then
         true
-    ;
+    else
         unexpected($module, $pred, "inconsistent info in rtti_varmaps")
     ).
 maybe_check_type_info_var(typeclass_info(_, _), _, !RttiVarMaps).
@@ -689,14 +697,14 @@ rtti_varmaps_rtti_prog_vars(RttiVarMaps, Vars) :-
     list.append(TIVars, TCIVars, Vars).
 
 apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst, !RttiVarMaps) :-
-    (
+    ( if
         % Optimize the simple case.
         map.is_empty(Subst),
         map.is_empty(TSubst),
         map.is_empty(TRenaming)
-    ->
+    then
         true
-    ;
+    else
         !.RttiVarMaps = rtti_varmaps(TCIMap0, TIMap0, TypeMap0,
             ConstraintMap0),
         map.foldl(apply_substs_to_tci_map(TRenaming, TSubst, Subst),
@@ -714,9 +722,9 @@ apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst, !RttiVarMaps) :-
     prog_var::in, prog_var::out) is det.
 
 apply_subst_to_prog_var(Subst, Var0, Var) :-
-    ( map.search(Subst, Var0, Var1) ->
+    ( if map.search(Subst, Var0, Var1) then
         Var = Var1
-    ;
+    else
         Var = Var0
     ).
 
@@ -775,16 +783,16 @@ apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
     apply_variable_renaming_to_type(TRenaming, Type0, Type1),
     apply_rec_subst_to_type(TSubst, Type1, Type),
     apply_subst_to_prog_var(Subst, Var0, Var),
-    ( map.search(!.Map, Var, ExistingType) ->
-        ( Type = ExistingType ->
+    ( if map.search(!.Map, Var, ExistingType) then
+        ( if Type = ExistingType then
             true
-        ;
+        else
             unexpected($module, $pred,
                 string.format("inconsistent type_infos: "
                     ++ " Type: %s ExistingType: %s",
                     [s(string(Type)), s(string(ExistingType))]))
         )
-    ;
+    else
         map.det_insert(Var, Type, !Map)
     ).
 
@@ -799,13 +807,13 @@ apply_substs_to_constraint_map(TRenaming, TSubst, Subst, Var0, Constraint0,
         Constraint1),
     apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
     apply_subst_to_prog_var(Subst, Var0, Var),
-    ( map.search(!.Map, Var, ExistingConstraint) ->
-        ( Constraint = ExistingConstraint ->
+    ( if map.search(!.Map, Var, ExistingConstraint) then
+        ( if Constraint = ExistingConstraint then
             true
-        ;
+        else
             unexpected($module, $pred, "inconsistent typeclass_infos")
         )
-    ;
+    else
         map.det_insert(Var, Constraint, !Map)
     ).
 

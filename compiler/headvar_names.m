@@ -139,51 +139,55 @@ set_var_name_remap_in_proc(ConsensusMap, ProcId, !ProcTable) :-
 improve_single_clause_headvars([], _, _, !VarSet, !Subst, !RevConj).
 improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
         !VarSet, !Subst, !RevConj) :-
-    ( goal_is_headvar_unification(HeadVars, Goal, HeadVar, yes(OtherVar)) ->
+    ( if
+        goal_is_headvar_unification(HeadVars, Goal, HeadVar, yes(OtherVar))
+    then
         % If the headvar doesn't appear elsewhere the unification
         % can be removed.
-        (
+        ( if
             % The headvars must be distinct variables, so check that this
             % variable doesn't already appear in the argument list.
-            \+ proc_arg_vector_member(HeadVars, OtherVar),
-            \+ list.member(OtherVar, SeenVars0),
+            not proc_arg_vector_member(HeadVars, OtherVar),
+            not list.member(OtherVar, SeenVars0),
 
-            \+ ( some [OtherGoal] (
-                ( list.member(OtherGoal, Conj0)
-                ; list.member(OtherGoal, !.RevConj)
-                ),
-                OtherGoal = hlds_goal(_, OtherGoalInfo),
-                OtherNonLocals = goal_info_get_nonlocals(OtherGoalInfo),
-                set_of_var.member(OtherNonLocals, HeadVar)
-            ))
-        ->
+            not (
+                some [OtherGoal] (
+                    ( list.member(OtherGoal, Conj0)
+                    ; list.member(OtherGoal, !.RevConj)
+                    ),
+                    OtherGoal = hlds_goal(_, OtherGoalInfo),
+                    OtherNonLocals = goal_info_get_nonlocals(OtherGoalInfo),
+                    set_of_var.member(OtherNonLocals, HeadVar)
+                )
+            )
+        then
             SeenVars = [OtherVar | SeenVars0],
             map.det_insert(HeadVar, OtherVar, !Subst),
 
             % If the variable wasn't named, use the `HeadVar__n' name.
-            (
-                \+ varset.search_name(!.VarSet, OtherVar, _),
+            ( if
+                not varset.search_name(!.VarSet, OtherVar, _),
                 varset.search_name(!.VarSet, HeadVar, HeadVarName)
-            ->
+            then
                 varset.name_var(OtherVar, HeadVarName, !VarSet)
-            ;
+            else
                 true
             )
-        ;
+        else
             !:RevConj = [Goal | !.RevConj],
             SeenVars = SeenVars0,
-            ( varset.search_name(!.VarSet, OtherVar, OtherVarName) ->
+            ( if varset.search_name(!.VarSet, OtherVar, OtherVarName) then
                 % The unification can't be eliminated,
                 % so just rename the head variable.
                 varset.name_var(HeadVar, OtherVarName, !VarSet)
-            ; varset.search_name(!.VarSet, HeadVar, HeadVarName) ->
+            else if varset.search_name(!.VarSet, HeadVar, HeadVarName) then
                 % If the variable wasn't named, use the `HeadVar__n' name.
                 varset.name_var(OtherVar, HeadVarName, !VarSet)
-            ;
+            else
                 true
             )
         )
-    ;
+    else
         !:RevConj = [Goal | !.RevConj],
         SeenVars = SeenVars0
     ),
@@ -221,36 +225,38 @@ find_headvar_names_in_clause(VarSet, HeadVars, Clause, VarNameInfoMap,
 
 find_headvar_names_in_goal(VarSet, HeadVars, Goal, !VarNameInfoMap,
         !VarsInMap) :-
-    ( goal_is_headvar_unification(HeadVars, Goal, HeadVar, MaybeOtherVar) ->
+    ( if
+        goal_is_headvar_unification(HeadVars, Goal, HeadVar, MaybeOtherVar)
+    then
         set.insert(HeadVar, !VarsInMap),
         (
             MaybeOtherVar = no,
-            ( map.search(!.VarNameInfoMap, HeadVar, VarNameInfo0) ->
+            ( if map.search(!.VarNameInfoMap, HeadVar, VarNameInfo0) then
                 VarNameInfo0 = var_name_info(_UnifiedFunctor, VarNames),
                 VarNameInfo = var_name_info(yes, VarNames),
                 map.det_update(HeadVar, VarNameInfo, !VarNameInfoMap)
-            ;
+            else
                 VarNameInfo = var_name_info(yes, set.init),
                 map.det_insert(HeadVar, VarNameInfo, !VarNameInfoMap)
             )
         ;
             MaybeOtherVar = yes(OtherVar),
-            ( varset.search_name(VarSet, OtherVar, OtherVarName) ->
-                ( map.search(!.VarNameInfoMap, HeadVar, VarNameInfo0) ->
+            ( if varset.search_name(VarSet, OtherVar, OtherVarName) then
+                ( if map.search(!.VarNameInfoMap, HeadVar, VarNameInfo0) then
                     VarNameInfo0 = var_name_info(UnifiedFunctor, VarNames0),
                     set.insert(OtherVarName, VarNames0, VarNames),
                     VarNameInfo = var_name_info(UnifiedFunctor, VarNames),
                     map.det_update(HeadVar, VarNameInfo, !VarNameInfoMap)
-                ;
+                else
                     VarNames = set.make_singleton_set(OtherVarName),
                     VarNameInfo = var_name_info(no, VarNames),
                     map.det_insert(HeadVar, VarNameInfo, !VarNameInfoMap)
                 )
-            ;
+            else
                 true
             )
         )
-    ;
+    else
         true
     ).
 
@@ -262,21 +268,21 @@ goal_is_headvar_unification(HeadVars, Goal, HeadVar, MaybeOtherVar) :-
     GoalExpr = unify(LVar, RHS, _, _, _),
     (
         RHS = rhs_var(RVar),
-        ( proc_arg_vector_member(HeadVars, LVar) ->
+        ( if proc_arg_vector_member(HeadVars, LVar) then
             HeadVar = LVar,
             MaybeOtherVar = yes(RVar)
-        ; proc_arg_vector_member(HeadVars, RVar) ->
+        else if proc_arg_vector_member(HeadVars, RVar) then
             HeadVar = RVar,
             MaybeOtherVar = yes(LVar)
-        ;
+        else
             fail
         )
     ;
         RHS = rhs_functor(_, _, _),
-        ( proc_arg_vector_member(HeadVars, LVar) ->
+        ( if proc_arg_vector_member(HeadVars, LVar) then
             HeadVar = LVar,
             MaybeOtherVar = no
-        ;
+        else
             fail
         )
     ).
@@ -327,9 +333,9 @@ find_consensus_name_for_headvar(VarNameInfoMaps, HeadVar)
             (
                 FunctorOnlys = [],
                 list.sort_and_remove_dups(Consistents, SortedConsistents),
-                ( SortedConsistents = [ConsensusName] ->
+                ( if SortedConsistents = [ConsensusName] then
                     MaybeConsensusName = yes(ConsensusName)
-                ;
+                else
                     MaybeConsensusName = no
                 )
             ;
@@ -355,10 +361,10 @@ find_consensus_name_for_headvar(VarNameInfoMaps, HeadVar)
 group_var_infos([], _, !Inconsistents, !Consistents, !FunctorOnlys).
 group_var_infos([VarNameInfoMap | VarNameInfoMaps], HeadVar,
         !Inconsistents, !Consistents, !FunctorOnlys) :-
-    ( map.search(VarNameInfoMap, HeadVar, VarInfo) ->
+    ( if map.search(VarNameInfoMap, HeadVar, VarInfo) then
         VarInfo = var_name_info(UnifiedFunctor, VarNameSet),
         set.count(VarNameSet, NameCount),
-        ( NameCount = 0 ->
+        ( if NameCount = 0 then
             (
                 UnifiedFunctor = yes,
                 !:FunctorOnlys = [VarInfo | !.FunctorOnlys]
@@ -366,21 +372,21 @@ group_var_infos([VarNameInfoMap | VarNameInfoMaps], HeadVar,
                 UnifiedFunctor = no
                 % The variable was unified only with anonymous variables.
             )
-        ; NameCount = 1 ->
+        else if NameCount = 1 then
             % If the clause gave the variable a name, we don't care that
             % it also unified the variable with a functor.
             set.to_sorted_list(VarNameSet, VarNameList),
-            ( VarNameList = [VarName] ->
+            ( if VarNameList = [VarName] then
                 !:Consistents = [VarName | !.Consistents]
-            ;
+            else
                 unexpected($module, $pred, "bad singleton set")
             )
-        ;
+        else
             % NameCount > 1, so this *single clause* calls HeadVar
             % by more than one name.
             !:Inconsistents = [VarInfo | !.Inconsistents]
         )
-    ;
+    else
         true
     ),
     group_var_infos(VarNameInfoMaps, HeadVar,

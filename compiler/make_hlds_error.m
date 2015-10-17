@@ -182,14 +182,14 @@ maybe_undefined_pred_error(ModuleInfo, Name, Arity, PredOrFunc, Status,
     IsExported = pred_status_is_exported(Status),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, infer_types, InferTypes),
-    (
+    ( if
         DefinedInThisModule = yes,
         IsExported = no,
         IsClassMethod = is_not_a_class_method,
         InferTypes = yes
-    ->
+    then
         true
-    ;
+    else
         PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
         MainPieces = [words("Error:") | DescPieces] ++ [words("for"),
             simple_call(simple_call_id(PredOrFunc, Name, Arity)), nl,

@@ -50,17 +50,23 @@ group_elements(!.Constraints, Colours) :-
     set.delete(EmptySet, !Constraints),
     set.to_sorted_list(!.Constraints, ConstraintList),
     find_all_colours(ConstraintList, AllVars, ColourList),
-    set.list_to_set(ColourList, Colours).
+    set.list_to_set(ColourList, Colours),
 
-%   % performance reducing sanity check....
-%   (
-%       set.power_union(Colours, AllColours),
-%       (set.member(Var, AllVars) => set.member(Var, AllColours))
-%   ->
-%       error("group_elements: sanity check failed")
-%   ;
-%       true
-%   ).
+    % Performance reducing sanity check.
+    trace [compile_time(flag("graph_colour_assertions"))] (
+        ( if
+            set.power_union(Colours, AllColours),
+            (
+                set.member(Var, AllVars)
+            =>
+                set.member(Var, AllColours)
+            )
+        then
+            unexpected($module, $pred, "sanity check failed")
+        else
+            true
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -103,12 +109,12 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
             % See if there are sets that can share a colour with the
             % selected var.
             NotContaining = [_ | _],
-            ( set.is_empty(RestVars) ->
+            ( if set.is_empty(RestVars) then
                 % There were no variables left that could share a colour,
                 % so create a singleton set containing this variable.
                 SameColour = set.make_singleton_set(Var),
                 ResidueSets = NotContaining
-            ;
+            else
                 % If there is at least one variable that can share a colour
                 % with the selected variable, then recursively use the
                 % remaining constraints to assign a colour to one of the
@@ -155,16 +161,16 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
 divide_constraints(_Var, [], [], [], !Vars).
 divide_constraints(Var, [S | Ss], C, NC, !Vars) :-
     divide_constraints(Var, Ss, C0, NC0, !Vars),
-    ( set.member(Var, S) ->
+    ( if set.member(Var, S) then
         set.delete(Var, S, T),
-        ( set.is_empty(T) ->
+        ( if set.is_empty(T) then
             C = C0
-        ;
+        else
             C = [T | C0]
         ),
         NC = NC0,
         set.difference(!.Vars, T, !:Vars)
-    ;
+    else
         C = C0,
         NC = [S | NC0]
     ).
@@ -177,10 +183,10 @@ divide_constraints(Var, [S | Ss], C, NC, !Vars) :-
 :- pred choose_var(set(T)::in, T::out, set(T)::out) is det.
 
 choose_var(Vars0, Var, Vars) :-
-    ( set.remove_least(VarPrime, Vars0, VarsPrime) ->
+    ( if set.remove_least(VarPrime, Vars0, VarsPrime) then
         Var = VarPrime,
         Vars = VarsPrime
-    ;
+    else
         unexpected($module, $pred, "no vars!")
     ).
 

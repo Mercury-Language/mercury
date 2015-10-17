@@ -1275,7 +1275,7 @@ add_pass_3_initialise_user(SymName, Arity, Context, !ModuleInfo, !Specs) :-
             globals.get_target(Globals, CompilationTarget),
             ExportLang =
                 target_lang_to_foreign_export_lang(CompilationTarget),
-            (
+            ( if
                 ArgTypes = [Arg1Type, Arg2Type],
                 type_is_io_state(Arg1Type),
                 type_is_io_state(Arg2Type),
@@ -1289,7 +1289,7 @@ add_pass_3_initialise_user(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                 ( Detism = detism_det ; Detism = detism_cc_multi ),
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_pure
-            ->
+            then
                 module_info_new_user_init_pred(SymName, Arity, CName,
                     !ModuleInfo),
                 PredNameModesPF = pred_name_modes_pf(SymName,
@@ -1302,7 +1302,7 @@ add_pass_3_initialise_user(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                 Origin = item_origin_compiler(Attrs),
                 add_pragma_foreign_proc_export(Origin, FPEInfo, Context,
                     !ModuleInfo, !Specs)
-            ;
+            else if
                 ArgTypes = [],
                 list.member(ProcInfo, ProcInfos),
                 proc_info_get_maybe_declared_argmodes(ProcInfo,
@@ -1314,7 +1314,7 @@ add_pass_3_initialise_user(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                 ( Detism = detism_det ; Detism = detism_cc_multi ),
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_impure
-            ->
+            then
                 module_info_new_user_init_pred(SymName, Arity, CName,
                     !ModuleInfo),
                 PredNameModesPF = pred_name_modes_pf(SymName, [],
@@ -1327,7 +1327,7 @@ add_pass_3_initialise_user(SymName, Arity, Context, !ModuleInfo, !Specs) :-
                 Origin = item_origin_compiler(Attrs),
                 add_pragma_foreign_proc_export(Origin, FPEInfo, Context,
                     !ModuleInfo, !Specs)
-            ;
+            else
                 Pieces = [words("Error:"),
                     sym_name_and_arity(SymName/Arity),
                     words("used in initialise declaration"),

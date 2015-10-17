@@ -156,9 +156,9 @@
     ;       within_n_cells_difference(int).
 
     % The env_type specifies the environment in which a Mercury program
-    % is being run or is expected to be run.  This is used both for the
+    % is being run or is expected to be run. This is used both for the
     % compiler itself, via the --host-env-type option, and for the program
-    % being compiled, via the --target-env-type option.  Note that users
+    % being compiled, via the --target-env-type option. Note that users
     % need to be able to specify the former because one Mercury install
     % (e.g., on Windows) can be called from different environments.
     %
@@ -397,6 +397,15 @@ convert_target_2("java", target_java).
 convert_target_2("c", target_c).
 convert_target_2("erlang", target_erlang).
 
+:- pred convert_foreign_language_det(string::in, foreign_language::out) is det.
+
+convert_foreign_language_det(String, ForeignLang) :-
+    ( if convert_foreign_language(String, ForeignLangPrime) then
+        ForeignLang = ForeignLangPrime
+    else
+        unexpected($module, $pred, "invalid foreign_language string")
+    ).
+
 convert_foreign_language(String, ForeignLanguage) :-
     convert_foreign_language_2(string.to_lower(String), ForeignLanguage).
 
@@ -431,9 +440,9 @@ convert_maybe_thread_safe("yes", yes).
 convert_maybe_thread_safe("no",  no).
 
 convert_c_compiler_type(CC_Str, C_CompilerType) :-
-    ( convert_c_compiler_type_simple(CC_Str, C_CompilerType0) ->
+    ( if convert_c_compiler_type_simple(CC_Str, C_CompilerType0) then
         C_CompilerType = C_CompilerType0
-    ;
+    else
         convert_c_compiler_type_with_version(CC_Str, C_CompilerType)
     ).
 
@@ -449,15 +458,14 @@ convert_c_compiler_type_simple("unknown",  cc_unknown).
     is semidet.
 
 convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
-    Tokens = string.words_separator((pred(X::in) is semidet :- X = ('_')),
-        CC_Str),
-    ( Tokens = ["gcc", Major, Minor, Patch] ->
+    Tokens = string.words_separator(unify('_'), CC_Str),
+    ( if Tokens = ["gcc", Major, Minor, Patch] then
         convert_gcc_version(Major, Minor, Patch, C_CompilerType)
-    ; Tokens = ["clang", Major, Minor, Patch] ->
+    else if Tokens = ["clang", Major, Minor, Patch] then
         convert_clang_version(Major, Minor, Patch, C_CompilerType)
-    ; Tokens = ["msvc", Version] ->
+    else if Tokens = ["msvc", Version] then
         convert_msvc_version(Version, C_CompilerType)
-    ;
+    else
         false
     ).
 
@@ -480,40 +488,40 @@ convert_c_compiler_type_with_version(CC_Str, C_CompilerType) :-
     c_compiler_type::out) is semidet.
 
 convert_gcc_version(MajorStr, MinorStr, PatchStr, C_CompilerType) :-
-    (
+    ( if
         MajorStr = "u",
         MinorStr = "u",
         PatchStr = "u"
-    ->
+    then
         C_CompilerType = cc_gcc(no, no, no)
-    ;
+    else if
         string.to_int(MajorStr, Major),
         Major >= 2
-    ->
-        (
+    then
+        ( if
             MinorStr = "u"
-        ->
+        then
             C_CompilerType = cc_gcc(yes(Major), no, no)
-        ;
+        else if
             string.to_int(MinorStr, Minor),
             Minor >= 0
-        ->
-            (
+        then
+            ( if
                 PatchStr = "u"
-            ->
+            then
                 C_CompilerType = cc_gcc(yes(Major), yes(Minor), no)
-            ;
+            else if
                 string.to_int(PatchStr, Patch),
                 Patch >= 0
-            ->
+            then
                 C_CompilerType = cc_gcc(yes(Major), yes(Minor), yes(Patch))
-            ;
+            else
                 false
             )
-        ;
+        else
             false
         )
-    ;
+    else
         false
     ).
 
@@ -719,12 +727,7 @@ get_limit_error_contexts_map(Globals, Globals ^ g_limit_error_contexts_map).
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),
-    ForeignLangs = list.map(func(String) = ForeignLang :-
-        ( convert_foreign_language(String, ForeignLang0) ->
-            ForeignLang = ForeignLang0
-        ;
-            unexpected($module, $pred, "invalid foreign_language string")
-        ), LangStrs).
+    list.map(convert_foreign_language_det, LangStrs, ForeignLangs).
 
 set_options(Options, !Globals) :-
     !Globals ^ g_options := Options.
@@ -754,57 +757,57 @@ set_maybe_feedback_info(MaybeFeedback, !Globals) :-
 set_file_install_cmd(FileInstallCmd, !Globals) :-
     !Globals ^ g_file_install_cmd := FileInstallCmd.
 
+%-----------------------------------------------------------------------------%
+
 lookup_option(Globals, Option, OptionData) :-
     get_options(Globals, OptionTable),
     map.lookup(OptionTable, Option, OptionData).
 
-%-----------------------------------------------------------------------------%
-
 lookup_bool_option(Globals, Option, Value) :-
     lookup_option(Globals, Option, OptionData),
-    ( OptionData = bool(Bool) ->
+    ( if OptionData = bool(Bool) then
         Value = Bool
-    ;
+    else
         unexpected($module, $pred, "invalid bool option")
     ).
 
 lookup_string_option(Globals, Option, Value) :-
     lookup_option(Globals, Option, OptionData),
-    ( OptionData = string(String) ->
+    ( if OptionData = string(String) then
         Value = String
-    ;
+    else
         unexpected($module, $pred, "invalid string option")
     ).
 
 lookup_int_option(Globals, Option, Value) :-
     lookup_option(Globals, Option, OptionData),
-    ( OptionData = int(Int) ->
+    ( if OptionData = int(Int) then
         Value = Int
-    ;
+    else
         unexpected($module, $pred, "invalid int option")
     ).
 
 lookup_maybe_int_option(Globals, Option, Value) :-
     lookup_option(Globals, Option, OptionData),
-    ( OptionData = maybe_int(MaybeInt) ->
+    ( if OptionData = maybe_int(MaybeInt) then
         Value = MaybeInt
-    ;
+    else
         unexpected($module, $pred, "invalid maybe_int option")
     ).
 
 lookup_maybe_string_option(Globals, Option, Value) :-
     lookup_option(Globals, Option, OptionData),
-    ( OptionData = maybe_string(MaybeString) ->
+    ( if OptionData = maybe_string(MaybeString) then
         Value = MaybeString
-    ;
+    else
         unexpected($module, $pred, "invalid maybe_string option")
     ).
 
 lookup_accumulating_option(Globals, Option, Value) :-
     lookup_option(Globals, Option, OptionData),
-    ( OptionData = accumulating(Accumulating) ->
+    ( if OptionData = accumulating(Accumulating) then
         Value = Accumulating
-    ;
+    else
         unexpected($module, $pred, "invalid accumulating option")
     ).
 
@@ -813,7 +816,7 @@ lookup_accumulating_option(Globals, Option, Value) :-
 want_return_var_layouts(Globals, WantReturnLayouts) :-
     % We need to generate layout info for call return labels
     % if we are using accurate gc or if the user wants uplevel printing.
-    (
+    ( if
         (
             get_gc_method(Globals, GC_Method),
             GC_Method = gc_accurate
@@ -822,9 +825,9 @@ want_return_var_layouts(Globals, WantReturnLayouts) :-
             get_trace_suppress(Globals, TraceSuppress),
             trace_needs_return_info(TraceLevel, TraceSuppress) = yes
         )
-    ->
+    then
         WantReturnLayouts = yes
-    ;
+    else
         WantReturnLayouts = no
     ).
 
@@ -832,13 +835,13 @@ current_grade_supports_tabling(Globals, TablingSupported) :-
     globals.get_target(Globals, Target),
     globals.get_gc_method(Globals, GC_Method),
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
-    (
+    ( if
         Target = target_c,
         GC_Method \= gc_accurate,
         HighLevelData = no
-    ->
+    then
         TablingSupported = yes
-    ;
+    else
         TablingSupported = no
     ).
 
@@ -850,14 +853,14 @@ current_grade_supports_par_conj(Globals, ParConjSupported) :-
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.lookup_bool_option(Globals, parallel, Parallel),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
-    (
+    ( if
         Target = target_c,
         HighLevelCode = no,
         Parallel = yes,
         UseTrail = no
-    ->
+    then
         ParConjSupported = yes
-    ;
+    else
         ParConjSupported = no
     ).
 
@@ -891,9 +894,9 @@ get_any_intermod(Globals, AnyIntermod) :-
 double_width_floats_on_det_stack(Globals, FloatDwords) :-
     globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
     globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
-    ( TargetWordBits = 64 ->
+    ( if TargetWordBits = 64 then
         FloatDwords = no
-    ; TargetWordBits = 32 ->
+    else if TargetWordBits = 32 then
         (
             SinglePrecFloat = yes,
             FloatDwords = no
@@ -901,7 +904,7 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
             SinglePrecFloat = no,
             FloatDwords = yes
         )
-    ;
+    else
         unexpected($module, $pred, "bits_per_word not 32 or 64")
     ).
 

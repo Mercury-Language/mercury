@@ -1898,8 +1898,9 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     (
         MaybeStdLibDir = yes(StdLibDir),
         globals.get_options(!.Globals, OptionTable2),
-        globals.set_options(option_table_add_mercury_library_directory(
-            OptionTable2, StdLibDir), !Globals),
+        option_table_add_mercury_library_directory(StdLibDir,
+            OptionTable2, OptionTable),
+        globals.set_options(OptionTable, !Globals),
 
         % Add `-L' and `-R' options for the location of the GC libraries.
         globals.lookup_accumulating_option(!.Globals,
