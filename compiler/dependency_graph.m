@@ -254,12 +254,12 @@ add_pred_nodes([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
     map.lookup(PredTable, PredId, PredInfo),
     % Don't bother adding nodes (or arcs) for predicates
     % which are imported (i.e. which we don't have any `clauses' for).
-    (
+    ( if
         IncludeImported = do_not_include_imported,
         pred_info_is_imported(PredInfo)
-    ->
+    then
         true
-    ;
+    else
         digraph.add_vertex(PredId, _, !DepGraph)
     ),
     add_pred_nodes(PredIds, ModuleInfo, IncludeImported, !DepGraph).
@@ -326,12 +326,12 @@ add_pred_arcs([], _ModuleInfo, _, !DepGraph).
 add_pred_arcs([PredId | PredIds], ModuleInfo, IncludeImported, !DepGraph) :-
     module_info_get_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
-    (
+    ( if
         IncludeImported = do_not_include_imported,
         pred_info_is_imported(PredInfo)
-    ->
+    then
         true
-    ;
+    else
         pred_info_get_clauses_info(PredInfo, ClausesInfo),
         clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
         get_clause_list_maybe_repeated(ClausesRep, Clauses),
@@ -375,15 +375,15 @@ add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
         add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % The scope references no predicates or procedures.
             true
-        ;
+        else
             add_dependency_arcs_in_goal(Caller, SubGoal, !DepGraph)
         )
     ;
@@ -396,14 +396,14 @@ add_dependency_arcs_in_goal(Caller, Goal, !DepGraph) :-
             ( Builtin = out_of_line_builtin
             ; Builtin = not_builtin
             ),
-            (
+            ( if
                 % If the node isn't in the graph, then we didn't insert it
                 % because is was imported, and we don't consider it.
                 digraph.search_key(!.DepGraph,
                     dependency_node(proc(PredId, ProcId)), Callee)
-            ->
+            then
                 digraph.add_edge(Caller, Callee, !DepGraph)
-            ;
+            else
                 true
             )
         )
@@ -476,13 +476,13 @@ add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph) :-
     (
         ConsId = closure_cons(ShroudedPredProcId, _),
         PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
-        (
+        ( if
             % If the node isn't in the graph, then we didn't insert it
             % because it was imported, and we don't consider it.
             digraph.search_key(!.DepGraph, dependency_node(PredProcId), Callee)
-        ->
+        then
             digraph.add_edge(Caller, Callee, !DepGraph)
-        ;
+        else
             true
         )
     ;
@@ -688,10 +688,10 @@ get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
 handle_higher_order_args([], _, _, _, _, !SCCRel, !NoMerge).
 handle_higher_order_args([Arg | Args], IsAgg, SCCid, Map, PredSCC,
         !SCCGraph, !NoMerge) :-
-    ( multi_map.search(Map, Arg, PredProcIds) ->
+    ( if multi_map.search(Map, Arg, PredProcIds) then
         list.foldl2(handle_higher_order_arg(PredSCC, IsAgg, SCCid),
             PredProcIds, !SCCGraph, !NoMerge)
-    ;
+    else
         true
     ),
     handle_higher_order_args(Args, IsAgg, SCCid, Map, PredSCC,
@@ -704,7 +704,7 @@ handle_higher_order_args([Arg | Args], IsAgg, SCCid, Map, PredSCC,
 
 handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
         !SCCGraph, !NoMerge) :-
-    ( map.search(PredSCC, PredProcId, CalledSCCid) ->
+    ( if map.search(PredSCC, PredProcId, CalledSCCid) then
         % Make sure anything called through an aggregate
         % is not merged into the current sub-module.
         (
@@ -713,12 +713,12 @@ handle_higher_order_arg(PredSCC, IsAgg, SCCid, PredProcId,
         ;
             IsAgg = no
         ),
-        ( CalledSCCid = SCCid ->
+        ( if CalledSCCid = SCCid then
             true
-        ;
+        else
             digraph.add_vertices_and_edge(SCCid, CalledSCCid, !SCCGraph)
         )
-    ;
+    else
         true
     ).
 

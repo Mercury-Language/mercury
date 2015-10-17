@@ -210,22 +210,22 @@ subst_literals_in_case(Info, Case0, Case) :-
 make_impl_defined_literal(Var, Name, Context, Info, Goal) :-
     Context = term.context(File, Line),
     Info = subst_literals_info(ModuleInfo, PredInfo, PredId),
-    ( Name = "file" ->
+    ( if Name = "file" then
         make_string_const_construction(Var, File, Goal)
-    ; Name = "line" ->
+    else if Name = "line" then
         make_int_const_construction(Var, Line, Goal)
-    ; Name = "module" ->
+    else if Name = "module" then
         ModuleName = pred_info_module(PredInfo),
         Str = sym_name_to_string(ModuleName),
         make_string_const_construction(Var, Str, Goal)
-    ; Name = "pred" ->
+    else if Name = "pred" then
         Str = pred_id_to_string(ModuleInfo, PredId),
         make_string_const_construction(Var, Str, Goal)
-    ; Name = "grade" ->
+    else if Name = "grade" then
         module_info_get_globals(ModuleInfo, Globals),
         grade_directory_component(Globals, Grade),
         make_string_const_construction(Var, Grade, Goal)
-    ;
+    else
         % These should have been caught during type checking.
         unexpected($module, $pred, "unknown literal")
     ).

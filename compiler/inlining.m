@@ -219,13 +219,13 @@ inlining(!ModuleInfo) :-
 
     % Get the usage counts for predicates (but only if needed, i.e. only if
     % --inline-single-use or --inline-compound-threshold has been specified).
-    (
+    ( if
         ( SingleUse = yes
         ; CompoundThreshold > 0
         )
-    ->
+    then
         dead_proc_analyze(!.ModuleInfo, NeededMap)
-    ;
+    else
         map.init(NeededMap)
     ),
 
@@ -267,7 +267,7 @@ do_inlining([PPId | PPIds], Needed, Params, !.Inlined, !Module) :-
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
 mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs) :-
-    (
+    ( if
         Simple = Params ^ simple,
         SingleUse = Params ^ single_use,
         CallCost = Params ^ call_cost,
@@ -301,10 +301,10 @@ mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs) :-
             NumUses = 1
         ),
         % Don't inline recursive predicates (unless explicitly requested).
-        \+ goal_calls(CalledGoal, PredProcId)
-    ->
+        not goal_calls(CalledGoal, PredProcId)
+    then
         mark_proc_as_inlined(PredProcId, ModuleInfo, !InlinedProcs)
-    ;
+    else
         true
     ).
 
@@ -350,15 +350,15 @@ is_flat_simple_goal(hlds_goal(GoalExpr, _)) :-
         is_flat_simple_goal(Goal)
     ;
         GoalExpr = scope(Reason, Goal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % These scopes are flat and simple by construction.
             true
-        ;
+        else
             is_flat_simple_goal(Goal)
         )
     ;
@@ -380,9 +380,9 @@ is_flat_simple_goal_list([Goal | Goals]) :-
 mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo, !InlinedProcs) :-
     set.insert(proc(PredId, ProcId), !InlinedProcs),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ( pred_info_requested_inlining(PredInfo) ->
+    ( if pred_info_requested_inlining(PredInfo) then
         true
-    ;
+    else
         trace [io(!IO)] (
             write_proc_progress_message("% Inlining ", PredId, ProcId,
                 ModuleInfo, !IO)
@@ -603,16 +603,16 @@ inlining_in_goal(Goal0, Goal, !Info) :-
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % The scope has no calls to inline.
             GoalExpr = GoalExpr0,
             GoalInfo = GoalInfo0
-        ;
+        else
             inlining_in_goal(SubGoal0, SubGoal, !Info),
             GoalExpr = scope(Reason, SubGoal),
             GoalInfo = GoalInfo0
@@ -639,7 +639,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
 
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     % Should we inline this call?
-    (
+    ( if
         should_inline_proc(PredId, ProcId, Builtin, HighLevelCode,
             AnyTracing, InlinedProcs, Markers, ModuleInfo, UserReq),
         (
@@ -659,7 +659,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         ),
         % XXX Work around bug #142.
         not may_encounter_bug_142(ProcInfo, ArgVars)
-    ->
+    then
         do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
             VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
             RttiVarMaps0, RttiVarMaps, hlds_goal(GoalExpr, GoalInfo)),
@@ -667,15 +667,17 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         % If some of the output variables are not used in the calling
         % procedure, requantify the procedure.
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        ( set_of_var.list_to_set(ArgVars) = NonLocals ->
+        ( if set_of_var.list_to_set(ArgVars) = NonLocals then
             Requantify = Requantify0
-        ;
+        else
             Requantify = yes
         ),
 
-        ( goal_info_get_purity(GoalInfo0) = goal_info_get_purity(GoalInfo) ->
+        ( if
+            goal_info_get_purity(GoalInfo0) = goal_info_get_purity(GoalInfo)
+        then
             PurityChanged = PurityChanged0
-        ;
+        else
             PurityChanged = yes
         ),
 
@@ -684,9 +686,9 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         % on this proc.
         Determinism0 = goal_info_get_determinism(GoalInfo0),
         Determinism = goal_info_get_determinism(GoalInfo),
-        ( Determinism0 = Determinism ->
+        ( if Determinism0 = Determinism then
             DetChanged = DetChanged0
-        ;
+        else
             DetChanged = yes
         ),
 
@@ -705,7 +707,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
             InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
             VarSet, VarTypes, TypeVarSet, RttiVarMaps, DidInlining,
             InlinedParallel, Requantify, DetChanged, PurityChanged)
-    ;
+    else
         GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
         GoalInfo = GoalInfo0
     ).
@@ -823,9 +825,9 @@ get_type_substitution(HeadTypes, ArgTypes,
         HeadTypeParams, CalleeExistQVars, TypeSubn) :-
     (
         CalleeExistQVars = [],
-        ( type_list_subsumes(HeadTypes, ArgTypes, TypeSubn0) ->
+        ( if type_list_subsumes(HeadTypes, ArgTypes, TypeSubn0) then
             TypeSubn = TypeSubn0
-        ;
+        else
             % The head types should always be unifiable with the actual
             % argument types, otherwise it is a type error that should have
             % been detected by typechecking. But polymorphism.m introduces
@@ -841,13 +843,13 @@ get_type_substitution(HeadTypes, ArgTypes,
         CalleeExistQVars = [_ | _],
         % For calls to existentially type preds, we may need to bind
         % type variables in the caller, not just those in the callee.
-        (
+        ( if
             map.init(TypeSubn0),
             type_unify_list(HeadTypes, ArgTypes, HeadTypeParams,
                 TypeSubn0, TypeSubn1)
-        ->
+        then
             TypeSubn = TypeSubn1
-        ;
+        else
             unexpected($module, $pred, "type unification failed")
         )
     ).
@@ -934,15 +936,17 @@ should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
     % OK, we could inline it - but should we?  Apply our heuristic.
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, marker_user_marked_inline) ->
+    ( if
+        check_marker(Markers, marker_user_marked_inline)
+    then
         UserReq = yes
-    ;
+    else if
         ( check_marker(Markers, marker_heuristic_inline)
         ; set.member(proc(PredId, ProcId), InlinedProcs)
         )
-    ->
+    then
         UserReq = no
-    ;
+    else
         fail
     ).
 
@@ -965,11 +969,11 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
 
     % Don't try to inline imported predicates, since we don't
     % have the code for them.
-    \+ pred_info_is_imported(PredInfo),
+    not pred_info_is_imported(PredInfo),
 
     % This next line catches the case of locally defined unification predicates
     % for imported types.
-    \+ (
+    not (
         pred_info_is_pseudo_imported(PredInfo),
         hlds_pred.in_in_unification_proc_id(ProcId)
     ),
@@ -981,7 +985,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     proc_info_get_eval_method(ProcInfo, eval_normal),
 
     % Don't inline anything we have been specifically requested not to inline.
-    \+ pred_info_requested_no_inlining(PredInfo),
+    not pred_info_requested_no_inlining(PredInfo),
 
     % Don't inline any procedure whose complexity we are trying to determine,
     % since the complexity transformation can't transform *part* of a
@@ -1000,7 +1004,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     % For the LLDS back-end, under no circumstances inline model_non
     % foreign_procs. The resulting code would not work properly.
     proc_info_get_goal(ProcInfo, CalledGoal),
-    \+ (
+    not (
         HighLevelCode = no,
         CalledGoal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, _), _),
         proc_info_interface_determinism(ProcInfo, Detism),
@@ -1009,10 +1013,10 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
 
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
-    (
+    ( if
         CalledGoal = hlds_goal(call_foreign_proc(ForeignAttributes,
             _, _, _, _, _, _), _)
-    ->
+    then
         % Only inline a foreign_proc if it is appropriate for the target
         % language.
         (
@@ -1032,7 +1036,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
                 MaybeMayDuplicate = yes(proc_may_duplicate)
             )
         )
-    ;
+    else
         true
     ),
 

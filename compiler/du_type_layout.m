@@ -79,7 +79,7 @@ layout_du_ctor_args(ModuleInfo, DuKind, Ctor0, Ctor) :-
         )
     ),
     globals.lookup_int_option(Globals, arg_pack_bits, ArgPackBits),
-    ( ArgPackBits > 0 ->
+    ( if ArgPackBits > 0 then
         pack_du_ctor_args(ModuleInfo, ArgPackBits, 0, Args1, Args2, _),
         WorthPacking = worth_arg_packing(Args1, Args2),
         (
@@ -89,7 +89,7 @@ layout_du_ctor_args(ModuleInfo, DuKind, Ctor0, Ctor) :-
             WorthPacking = no,
             Args = Args1
         )
-    ;
+    else
         Args = Args1
     ),
     % The individual args may have changed, but the number of args
@@ -105,12 +105,12 @@ use_double_word_floats(Globals, DoubleWordFloats) :-
         AllowDoubleWords = yes,
         globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
         globals.lookup_bool_option(Globals, single_prec_float, SinglePrec),
-        (
+        ( if
             TargetWordBits = 32,
             SinglePrec = no
-        ->
+        then
             DoubleWordFloats = yes
-        ;
+        else
             DoubleWordFloats = no
         )
     ;
@@ -124,10 +124,10 @@ use_double_word_floats(Globals, DoubleWordFloats) :-
 set_double_word_floats(_ModuleInfo, [], []).
 set_double_word_floats(ModuleInfo, [Arg0 | Args0], [Arg | Args]) :-
     Arg0 = ctor_arg(Name, Type, _, Context),
-    ( type_is_float_eqv(ModuleInfo, Type) ->
+    ( if type_is_float_eqv(ModuleInfo, Type) then
         ArgWidth = double_word,
         Arg = ctor_arg(Name, Type, ArgWidth, Context)
-    ;
+    else
         Arg = Arg0
     ),
     set_double_word_floats(ModuleInfo, Args0, Args).
@@ -140,17 +140,17 @@ pack_du_ctor_args(_ModuleInfo, _TargetWordBits, _Shift, [], [], full_word).
 pack_du_ctor_args(ModuleInfo, TargetWordBits, Shift,
         [Arg0 | Args0], [Arg | Args], ArgWidth) :-
     Arg0 = ctor_arg(Name, Type, ArgWidth0, Context),
-    ( type_is_enum_bits(ModuleInfo, Type, NumBits) ->
+    ( if type_is_enum_bits(ModuleInfo, Type, NumBits) then
         Mask = int.pow(2, NumBits) - 1,
         % Try to place the argument in the current word, otherwise move on to
         % the next word.
-        ( Shift + NumBits > TargetWordBits ->
+        ( if Shift + NumBits > TargetWordBits then
             ArgWidth1 = partial_word_first(Mask),
             NextShift = NumBits
-        ; Shift = 0 ->
+        else if Shift = 0 then
             ArgWidth1 = partial_word_first(Mask),
             NextShift = NumBits
-        ;
+        else
             ArgWidth1 = partial_word_shifted(Shift, Mask),
             NextShift = Shift + NumBits
         ),
@@ -158,16 +158,16 @@ pack_du_ctor_args(ModuleInfo, TargetWordBits, Shift,
             NextArgWidth),
         % If this argument starts a word but the next argument is not packed
         % with it, then this argument is not packed.
-        (
+        ( if
             ArgWidth1 = partial_word_first(_),
             NextArgWidth \= partial_word_shifted(_, _)
-        ->
+        then
             ArgWidth = full_word
-        ;
+        else
             ArgWidth = ArgWidth1
         ),
         Arg = ctor_arg(Name, Type, ArgWidth, Context)
-    ;
+    else
         Arg = Arg0,
         ArgWidth = ArgWidth0,
         NextShift = 0,
@@ -197,9 +197,9 @@ cons_tags_bits(ConsTagValues) = NumBits :-
 :- pred max_int_tag(cons_tag::in, int::in, int::out) is det.
 
 max_int_tag(ConsTag, !Max) :-
-    ( ConsTag = int_tag(Int) ->
+    ( if ConsTag = int_tag(Int) then
         int.max(Int, !Max)
-    ;
+    else
         unexpected($module, $pred, "non-integer value for enumeration")
     ).
 
@@ -213,9 +213,9 @@ worth_arg_packing(UnpackedArgs, PackedArgs) = Worthwhile :-
     % Boehm GC will round up allocations (at least) to the next even number
     % of words. There is no point saving a single word if that word will be
     % allocated anyway.
-    ( round_to_even(PackedLength) < round_to_even(UnpackedLength) ->
+    ( if round_to_even(PackedLength) < round_to_even(UnpackedLength) then
         Worthwhile = yes
-    ;
+    else
         Worthwhile = no
     ).
 
@@ -240,7 +240,12 @@ count_words([Arg | Args], !Count) :-
 
 :- func round_to_even(int) = int.
 
-round_to_even(I) = (int.even(I) -> I ; I + 1).
+round_to_even(I) = E :-
+    ( if int.even(I) then
+        E = I
+    else
+        E = I + 1
+    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.make_hlds_passes.du_type_layout.
