@@ -92,7 +92,7 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
                 io.write_string(":\n", !IO),
                 maybe_report_stats(Statistics, !IO),
                 maybe_flush_output(Statistics, !IO),
-                ( instmap_is_reachable(InstMap) ->
+                ( if instmap_is_reachable(InstMap) then
                     instmap_to_assoc_list(InstMap, NewInsts),
                     mode_info_get_last_checkpoint_insts(!.ModeInfo,
                         OldInstMap),
@@ -100,7 +100,7 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
                     mode_info_get_instvarset(!.ModeInfo, InstVarSet),
                     write_var_insts(NewInsts, OldInstMap, VarSet, InstVarSet,
                         Verbose, Minimal, !IO)
-                ;
+                else
                     io.write_string("\tUnreachable\n", !IO)
                 )
             ;
@@ -125,13 +125,13 @@ write_var_insts([], _, _, _, _, _, !IO).
 write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
         Verbose, Minimal, !IO) :-
     instmap_lookup_var(OldInstMap, Var, OldInst),
-    (
+    ( if
         (
             identical_insts(Inst, OldInst)
         ;
             Inst = OldInst
         )
-    ->
+    then
         (
             Verbose = yes,
             io.write_string("\t", !IO),
@@ -141,7 +141,7 @@ write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
         ;
             Verbose = no
         )
-    ;
+    else
         io.write_string("\t", !IO),
         mercury_output_var(VarSet, print_name_only, Var, !IO),
         io.write_string(" ::", !IO),
@@ -158,14 +158,13 @@ write_var_insts([Var - Inst | VarInsts], OldInstMap, VarSet, InstVarSet,
     write_var_insts(VarInsts, OldInstMap, VarSet, InstVarSet,
         Verbose, Minimal, !IO).
 
-    % In the usual case of a C backend, this predicate allows us to
-    % conclude that two insts are identical without traversing them.
-    % Since the terms can be very large, this is a big gain; it can
-    % turn the complexity of printing a checkpoint from quadratic in the
-    % number of variables live at the checkpoint (when the variables
-    % are e.g. all part of a single long list) to linear. The minor
-    % increase in the constant factor in cases where identical_insts fails
-    % is much easier to live with.
+    % In the usual case of a C backend, this predicate allows us to conclude
+    % that two insts are identical without traversing them. Since the terms
+    % can be very large, this is a big gain; it can turn the complexity
+    % of printing a checkpoint from quadratic in the number of variables
+    % live at the checkpoint (when the variables are e.g. all part of a
+    % single long list) to linear. The minor increase in the constant factor
+    % in cases where identical_insts fails is much easier to live with.
     %
 :- pred identical_insts(mer_inst::in, mer_inst::in) is semidet.
 

@@ -240,13 +240,11 @@ process_all_nonimported_preds_errors(Task, !ModuleInfo, !Specs, !IO) :-
 
 process_nonimported_pred(Task, PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    ( pred_info_is_imported(PredInfo0) ->
+    ( if pred_info_is_imported(PredInfo0) then
         true
-    ;
-        (
-            Task = update_pred_error(Closure),
-            Closure(PredId, !ModuleInfo, PredInfo0, PredInfo, !Specs)
-        ),
+    else
+        Task = update_pred_error(Closure),
+        Closure(PredId, !ModuleInfo, PredInfo0, PredInfo, !Specs),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ).
 
@@ -307,18 +305,18 @@ par_process_nonimported_procs_in_preds(_, _, _, [], []).
 par_process_nonimported_procs_in_preds(ModuleInfo, Task, ValidPredIdSet,
         [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos]) :-
     PredIdInfo0 = PredId - PredInfo0,
-    (
+    ( if
         set_tree234.contains(ValidPredIdSet, PredId),
         ProcIds = pred_info_non_imported_procids(PredInfo0),
         ProcIds = [_ | _]
-    ->
+    then
         % Potential parallelization site.
         par_process_nonimported_procs(ModuleInfo, Task, PredId, ProcIds,
             PredInfo0, PredInfo),
         PredIdInfo = PredId - PredInfo,
         par_process_nonimported_procs_in_preds(ModuleInfo, Task,
             ValidPredIdSet, PredIdsInfos0, PredIdsInfos)
-    ;
+    else
         PredIdInfo = PredIdInfo0,
         par_process_nonimported_procs_in_preds(ModuleInfo, Task,
             ValidPredIdSet, PredIdsInfos0, PredIdsInfos)
@@ -481,9 +479,9 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
     % front by polymorphism.m - we only want the last `PredArity' of them.
     list.length(ArgModes0, NumArgModes),
     NumToDrop = NumArgModes - Arity,
-    ( list.drop(NumToDrop, ArgModes0, ArgModes1) ->
+    ( if list.drop(NumToDrop, ArgModes0, ArgModes1) then
         ArgModes = ArgModes1
-    ;
+    else
         unexpected($module, $pred, "list.drop failed")
     ),
     (
@@ -562,14 +560,16 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
     globals.lookup_string_option(Globals, dump_hlds_file_suffix,
         UserFileSuffix),
     StageNumStr = stage_num_str(StageNum),
-    ( should_dump_stage(StageNum, StageNumStr, StageName, DumpHLDSStages) ->
+    ( if
+        should_dump_stage(StageNum, StageNumStr, StageName, DumpHLDSStages)
+    then
         module_info_get_dump_hlds_base_file_name(HLDS, BaseFileName),
         DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName
             ++ UserFileSuffix,
-        (
+        ( if
             !.DumpInfo = prev_dumped_hlds(PrevDumpFileName, PrevHLDS),
             HLDS = PrevHLDS
-        ->
+        then
             globals.lookup_bool_option(Globals, dump_same_hlds, DumpSameHLDS),
             (
                 DumpSameHLDS = no,
@@ -603,12 +603,14 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
                 ),
                 !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
             )
-        ;
+        else
             dump_hlds(DumpFileName, HLDS, !IO),
             CurDumpFileName = DumpFileName,
             !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
         )
-    ; should_dump_stage(StageNum, StageNumStr, StageName, DumpTraceStages) ->
+    else if
+        should_dump_stage(StageNum, StageNumStr, StageName, DumpTraceStages)
+    then
         module_info_get_dump_hlds_base_file_name(HLDS, BaseFileName),
         DumpFileName = string.det_remove_suffix(BaseFileName, ".hlds_dump") ++
             ".trace_counts." ++ StageNumStr ++ "-" ++ StageName ++
@@ -627,7 +629,7 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
             io.nl(!IO),
             io.flush_output(!IO)
         )
-    ;
+    else
         true
     ).
 

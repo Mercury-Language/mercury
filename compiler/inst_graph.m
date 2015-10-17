@@ -237,9 +237,9 @@ descendant_2(InstGraph, Seen, Var, Descendant) :-
     (
         Descendant = Arg
     ;
-        ( Arg `set.member` Seen ->
+        ( if Arg `set.member` Seen then
             fail
-        ;
+        else
             descendant_2(InstGraph, Seen `set.insert` Arg, Arg, Descendant)
         )
     ).
@@ -265,9 +265,9 @@ foldl_reachable_aux(P, InstGraph, Var, Seen, !Acc) :-
     map.lookup(InstGraph, Var, node(Functors, _)),
     map.foldl((pred(_ConsId::in, Args::in, MAcc0::in, MAcc::out) is det :-
         list.foldl((pred(Arg::in, LAcc0::in, LAcc::out) is det :-
-            ( Arg `set.member` Seen ->
+            ( if Arg `set.member` Seen then
                 LAcc = LAcc0
-            ;
+            else
                 foldl_reachable_aux(P, InstGraph, Arg, Seen `set.insert` Arg,
                     LAcc0, LAcc)
             )
@@ -294,10 +294,10 @@ foldl_reachable_aux2(P, InstGraph, Var, Seen, !Acc1, !Acc2) :-
             MAcc20::in, MAcc2::out) is det :-
         list.foldl2((pred(Arg::in, LAccA0::in, LAccA::out,
                 LAccB0::in, LAccB::out) is det :-
-            ( Arg `set.member` Seen ->
+            ( if Arg `set.member` Seen then
                 LAccA = LAccA0,
                 LAccB = LAccB0
-            ;
+            else
                 foldl_reachable_aux2(P, InstGraph, Arg, Seen `set.insert` Arg,
                     LAccA0, LAccA, LAccB0, LAccB)
             )
@@ -332,18 +332,18 @@ corresponding_nodes_2(InstGraphA, InstGraphB, SeenA0, SeenB0, A, B, V, W) :-
     SeenA = SeenA0 `set.insert` A,
     SeenB = SeenB0 `set.insert` B,
 
-    ( map.member(FunctorsA, ConsId, ArgsA) ->
-        ( map.is_empty(FunctorsB) ->
+    ( if map.member(FunctorsA, ConsId, ArgsA) then
+        ( if map.is_empty(FunctorsB) then
             list.member(V0, ArgsA),
             corresponding_nodes_2(InstGraphA, InstGraphB, SeenA, SeenB,
                 V0, B, V, W)
-        ;
+        else
             map.search(FunctorsB, ConsId, ArgsB),
             corresponding_members(ArgsA, ArgsB, V0, W0),
             corresponding_nodes_2(InstGraphA, InstGraphB, SeenA, SeenB,
                 V0, W0, V, W)
         )
-    ;
+    else
         map.member(FunctorsB, _ConsId, ArgsB),
         list.member(W0, ArgsB),
         corresponding_nodes_2(InstGraphA, InstGraphB, SeenA, SeenB,

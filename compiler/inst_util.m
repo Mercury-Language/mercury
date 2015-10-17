@@ -231,9 +231,9 @@ abstractly_unify_inst(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
             module_info_set_inst_table(InstTable, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( inst_contains_inst_name(Inst0, !.ModuleInfo, UnifyInstName) ->
+        ( if inst_contains_inst_name(Inst0, !.ModuleInfo, UnifyInstName) then
             Inst = defined_inst(UnifyInstName)
-        ;
+        else
             Inst = Inst0
         )
     ).
@@ -250,9 +250,9 @@ abstractly_unify_inst_2(Live, InstA, InstB, Real, Inst, Detism,
         Detism, !ModuleInfo),
     % If this unification cannot possibly succeed, the correct inst
     % is not_reached.
-    ( determinism_components(Detism, _, at_most_zero) ->
+    ( if determinism_components(Detism, _, at_most_zero) then
         Inst = not_reached
-    ;
+    else
         Inst = Inst0
     ).
 
@@ -293,10 +293,10 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                     BoundInstsB, !.ModuleInfo),
                 % Since both are live, we must make the result shared
                 % (unless it was already shared).
-                ( ( UniqB = unique ; UniqB = mostly_unique ) ->
+                ( if ( UniqB = unique ; UniqB = mostly_unique ) then
                     make_shared_bound_inst_list(BoundInstsB, BoundInsts,
                         !ModuleInfo)
-                ;
+                else
                     BoundInsts = BoundInstsB
                 ),
                 Inst = bound(Uniq, InstResultsB, BoundInsts),
@@ -424,13 +424,13 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
             %   Detism = detism_semi
             % ;
             %   Live = is_dead,
-            %   ( bound_inst_list_is_ground(BoundInstsA, !.ModuleInfo) ->
+            %   ( if bound_inst_list_is_ground(BoundInstsA, !.ModuleInfo) then
             %       Inst = bound(Uniq, BoundInstsA),
             %       Detism = semidet
-            %   ; bound_inst_list_is_free(BoundInstsA, !.ModuleInfo) ->
+            %   else if bound_inst_list_is_free(BoundInstsA, !.ModuleInfo) then
             %       Inst = abstract_inst(N, As),
             %       Detism = det
-            %   ;
+            %   else
             %       fail
             %   )
             % )
@@ -635,13 +635,13 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
 %           Live = is_dead,
 %           (
 %               InstB = bound(_, _BoundInstsB),
-%               ( bound_inst_list_is_ground(BoundInstsB, ModuleInfo) ->
+%               ( if bound_inst_list_is_ground(BoundInstsB, ModuleInfo) then
 %                   Inst = bound(BoundInstsB),
 %                   Detism = semidet
-%               ; bound_inst_list_is_free(BoundInstsB, ModuleInfo) ->
+%               else if bound_inst_list_is_free(BoundInstsB, ModuleInfo) then
 %                   Inst = abstract_inst(N, As),
 %                   Detism = det
-%               ;
+%               else
 %                   fail
 %               ).
 %           ;
@@ -668,11 +668,11 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
 %
 % check_not_clobbered(Uniq, Real) :-
 %     % Sanity check.
-%     ( Real = real_unify, Uniq = clobbered ->
+%     ( if Real = real_unify, Uniq = clobbered then
 %         unexpected($module, $pred, "clobbered inst")
-%     ; Real = real_unify, Uniq = mostly_clobbered ->
+%     else if Real = real_unify, Uniq = mostly_clobbered then
 %         unexpected($module, $pred, "mostly_clobbered inst")
-%     ;
+%     else
 %         true
 %     ).
 
@@ -733,7 +733,7 @@ abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
         InstA = any(Uniq, _),
         % We only allow `any' to unify with a functor if we know that
         % the type is not a solver type.
-        \+ type_is_solver_type(!.ModuleInfo, Type),
+        not type_is_solver_type(!.ModuleInfo, Type),
         (
             Live = is_live,
             make_any_inst_list_lives(ArgInstsB, Live, ArgLives, Uniq, Real,
@@ -778,10 +778,10 @@ abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
         InstA = constrained_inst_vars(InstVars, SubInstA),
         abstractly_unify_inst_functor(Live, SubInstA, ConsIdB, ArgInstsB,
             ArgLives, Real, Type, Inst0, Detism, !ModuleInfo),
-        ( inst_matches_final(Inst0, SubInstA, !.ModuleInfo) ->
+        ( if inst_matches_final(Inst0, SubInstA, !.ModuleInfo) then
             % We can keep the constrained_inst_vars.
             Inst = constrained_inst_vars(InstVars, Inst0)
-        ;
+        else
             % The inst has become too instantiated so we must remove
             % the constrained_inst_var.
             % XXX This throws away the information that Inst is at least as
@@ -833,7 +833,7 @@ abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
 
 abstractly_unify_bound_inst_list(Live, BoundInstsA, BoundInstsB, Real,
         BoundInsts, Detism, !ModuleInfo) :-
-    ( ( BoundInstsA = [] ; BoundInstsB = [] ) ->
+    ( if ( BoundInstsA = [] ; BoundInstsB = [] ) then
         % This probably shouldn't happen. If we get here, it means that
         % a previous goal had determinism `failure' or `erroneous',
         % but we should have optimized away the rest of the conjunction
@@ -841,7 +841,7 @@ abstractly_unify_bound_inst_list(Live, BoundInstsA, BoundInstsB, Real,
 
         BoundInsts = [],
         Detism = detism_erroneous
-    ;
+    else
         abstractly_unify_bound_inst_list_2(Live, BoundInstsA, BoundInstsB,
             Real, BoundInsts, Detism0, !ModuleInfo),
 
@@ -849,13 +849,13 @@ abstractly_unify_bound_inst_list(Live, BoundInstsA, BoundInstsB, Real,
         % or the constructor of the single alternative for each input
         % doesn't match, then the unification can fail, so adjust the
         % determinism.
-        (
+        ( if
             BoundInstsA = [bound_functor(ConsIdA, _)],
             BoundInstsB = [bound_functor(ConsIdB, _)],
             equivalent_cons_ids(ConsIdA, ConsIdB)
-        ->
+        then
             Detism = Detism0
-        ;
+        else
             determinism_components(Detism0, _, MaxSoln),
             determinism_components(Detism, can_fail, MaxSoln)
         )
@@ -877,7 +877,7 @@ abstractly_unify_bound_inst_list_2(Live,
         BoundInsts, Detism, !ModuleInfo) :-
     BoundInstA = bound_functor(ConsIdA, ArgsA),
     BoundInstB = bound_functor(ConsIdB, ArgsB),
-    ( equivalent_cons_ids(ConsIdA, ConsIdB) ->
+    ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
         abstractly_unify_inst_list(ArgsA, ArgsB, Live,
             Real, Args, Detism1, !ModuleInfo),
         abstractly_unify_bound_inst_list_2(Live, BoundInstsA, BoundInstsB,
@@ -885,18 +885,18 @@ abstractly_unify_bound_inst_list_2(Live,
 
         % If the unification of the two cons_ids is guaranteed
         % not to succeed, don't include it in the list.
-        ( determinism_components(Detism1, _, at_most_zero) ->
+        ( if determinism_components(Detism1, _, at_most_zero) then
             BoundInsts = BoundInstsTail
-        ;
+        else
             BoundInsts = [bound_functor(ConsIdA, Args) | BoundInstsTail]
         ),
         det_switch_detism(Detism1, Detism2, Detism)
-    ;
-        ( compare(<, ConsIdA, ConsIdB) ->
+    else
+        ( if compare(<, ConsIdA, ConsIdB) then
             abstractly_unify_bound_inst_list_2(Live,
                 BoundInstsA, [BoundInstB | BoundInstsB], Real, BoundInsts,
                 Detism1, !ModuleInfo)
-        ;
+        else
             abstractly_unify_bound_inst_list_2(Live,
                 [BoundInstA | BoundInstsA], BoundInstsB, Real, BoundInsts,
                 Detism1, !ModuleInfo)
@@ -914,11 +914,11 @@ abstractly_unify_bound_inst_list_lives([], _, _, _, _, [], detism_failure,
 abstractly_unify_bound_inst_list_lives([BoundInstA | BoundInstsA], ConsIdB,
         ArgsB, LivesB, Real, BoundInsts, Detism, !ModuleInfo) :-
     BoundInstA = bound_functor(ConsIdA, ArgsA),
-    ( equivalent_cons_ids(ConsIdA, ConsIdB) ->
+    ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
         abstractly_unify_inst_list_lives(ArgsA, ArgsB, LivesB, Real, Args,
             Detism, !ModuleInfo),
         BoundInsts = [bound_functor(ConsIdA, Args)]
-    ;
+    else
         abstractly_unify_bound_inst_list_lives(BoundInstsA, ConsIdB, ArgsB,
             LivesB, Real, BoundInsts, Detism, !ModuleInfo)
     ).
@@ -947,14 +947,14 @@ abstractly_unify_constrained_inst_vars(Live, InstVarsA, SubInstA, InstB,
         Real, Inst, Detism, !ModuleInfo) :-
     abstractly_unify_inst(Live, SubInstA, InstB, Real, Inst0, Detism,
         !ModuleInfo),
-    ( \+ inst_matches_final(Inst0, SubInstA, !.ModuleInfo) ->
+    ( if not inst_matches_final(Inst0, SubInstA, !.ModuleInfo) then
         % The inst has become too instantiated so the
         % constrained_inst_vars wrapper must be removed.
         Inst = Inst0
-    ; Inst0 = constrained_inst_vars(InstVars0, SubInst0) ->
+    else if Inst0 = constrained_inst_vars(InstVars0, SubInst0) then
         % Avoid nested constrained_inst_vars wrappers.
         Inst = constrained_inst_vars(set.union(InstVars0, InstVarsA), SubInst0)
-    ;
+    else
         % We can keep the constrained_inst_vars wrapper.
         Inst = constrained_inst_vars(InstVarsA, Inst0)
     ).
@@ -1086,9 +1086,9 @@ unify_uniq(Live, Real, Detism, UniqA, UniqB, Uniq) :-
     ;
         UniqA = mostly_clobbered,
         allow_unify_with_clobbered(Live, Real, Detism),
-        ( UniqB = clobbered ->
+        ( if UniqB = clobbered then
             Uniq = clobbered
-        ;
+        else
             Uniq = mostly_clobbered
         )
     ).
@@ -1111,9 +1111,9 @@ allow_unify_with_clobbered(is_dead, _, detism_det).
 make_ground_inst_list_lives([], _, _, _, _, [], detism_det, !ModuleInfo).
 make_ground_inst_list_lives([Inst0 | Insts0], Live, [ArgLive | ArgLives],
         Uniq, Real, [Inst | Insts], Detism, !ModuleInfo) :-
-    ( Live = is_live, ArgLive = is_live ->
+    ( if Live = is_live, ArgLive = is_live then
         BothLive = is_live
-    ;
+    else
         BothLive = is_dead
     ),
     make_ground_inst(Inst0, BothLive, Uniq, Real, Inst, Detism1,
@@ -1233,9 +1233,11 @@ make_ground_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
             module_info_set_inst_table(InstTable, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( inst_contains_inst_name(GroundInst, !.ModuleInfo, GroundInstName) ->
+        ( if
+            inst_contains_inst_name(GroundInst, !.ModuleInfo, GroundInstName)
+        then
             Inst = defined_inst(GroundInstName)
-        ;
+        else
             Inst = GroundInst
         )
     ).
@@ -1361,9 +1363,9 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
             module_info_set_inst_table(InstTable, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( inst_contains_inst_name(AnyInst, !.ModuleInfo, AnyInstName) ->
+        ( if inst_contains_inst_name(AnyInst, !.ModuleInfo, AnyInstName) then
             Inst = defined_inst(AnyInstName)
-        ;
+        else
             Inst = AnyInst
         )
     ).
@@ -1403,9 +1405,9 @@ make_any_inst_list([Inst0 | Insts0], Live, Uniq, Real, [Inst | Insts], Detism,
 make_any_inst_list_lives([], _, _, _, _, [], detism_det, !ModuleInfo).
 make_any_inst_list_lives([Inst0 | Insts0], Live, [ArgLive | ArgLives],
         Uniq, Real, [Inst | Insts], Detism, !ModuleInfo) :-
-    ( Live = is_live, ArgLive = is_live ->
+    ( if Live = is_live, ArgLive = is_live then
         BothLive = is_live
-    ;
+    else
         BothLive = is_dead
     ),
     make_any_inst(Inst0, BothLive, Uniq, Real, Inst, Detism1, !ModuleInfo),
@@ -1500,10 +1502,10 @@ make_shared_inst(Inst0, Inst, !ModuleInfo) :-
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         make_shared_inst(SubInst0, SubInst1, !ModuleInfo),
-        ( \+ inst_matches_final(SubInst1, SubInst0, !.ModuleInfo) ->
-            Inst = SubInst1
-        ;
+        ( if inst_matches_final(SubInst1, SubInst0, !.ModuleInfo) then
             Inst = constrained_inst_vars(InstVars, SubInst1)
+        else
+            Inst = SubInst1
         )
     ;
         Inst0 = abstract_inst(_, _),
@@ -1548,9 +1550,9 @@ make_shared_inst(Inst0, Inst, !ModuleInfo) :-
             module_info_set_inst_table(InstTable, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( inst_contains_inst_name(SharedInst, !.ModuleInfo, InstName) ->
+        ( if inst_contains_inst_name(SharedInst, !.ModuleInfo, InstName) then
             Inst = defined_inst(InstName)
-        ;
+        else
             Inst = SharedInst
         )
     ).
@@ -1604,10 +1606,10 @@ make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         make_mostly_uniq_inst(SubInst0, SubInst, !ModuleInfo),
-        ( \+ inst_matches_final(SubInst, SubInst0, !.ModuleInfo) ->
-            Inst = SubInst
-        ;
+        ( if inst_matches_final(SubInst, SubInst0, !.ModuleInfo) then
             Inst = constrained_inst_vars(InstVars, SubInst)
+        else
+            Inst = SubInst
         )
     ;
         Inst0 = abstract_inst(_, _),
@@ -1653,9 +1655,11 @@ make_mostly_uniq_inst(Inst0, Inst, !ModuleInfo) :-
             module_info_set_inst_table(InstTable, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( inst_contains_inst_name(MostlyUniqInst, !.ModuleInfo, InstName) ->
+        ( if
+            inst_contains_inst_name(MostlyUniqInst, !.ModuleInfo, InstName)
+        then
             Inst = defined_inst(InstName)
-        ;
+        else
             Inst = MostlyUniqInst
         )
     ).
@@ -1756,9 +1760,9 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
             module_info_set_inst_table(InstTable3, !ModuleInfo)
         ),
         % Avoid expanding recursive insts.
-        ( inst_contains_inst_name(Inst0, !.ModuleInfo, MergeInstName) ->
+        ( if inst_contains_inst_name(Inst0, !.ModuleInfo, MergeInstName) then
             Inst = defined_inst(MergeInstName)
-        ;
+        else
             Inst = Inst0
         )
     ).
@@ -1769,16 +1773,16 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
 inst_merge_2(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
 %   % XXX Would this test improve efficiency?
 %   % What if we compared the addresses?
-%   ( InstA = InstB ->
+%   ( if InstA = InstB then
 %       Inst = InstA,
-%   ;
+%   else
     inst_expand(!.ModuleInfo, InstA, ExpandedInstA),
     inst_expand(!.ModuleInfo, InstB, ExpandedInstB),
-    ( ExpandedInstB = not_reached ->
+    ( if ExpandedInstB = not_reached then
         Inst = ExpandedInstA
-    ; ExpandedInstA = not_reached ->
+    else if ExpandedInstA = not_reached then
         Inst = ExpandedInstB
-    ;
+    else
         inst_merge_3(ExpandedInstA, ExpandedInstB, MaybeType, Inst,
             !ModuleInfo)
     ).
@@ -1787,27 +1791,27 @@ inst_merge_2(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
     mer_inst::out, module_info::in, module_info::out) is semidet.
 
 inst_merge_3(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
-    ( InstA = constrained_inst_vars(InstVarsA, SubInstA) ->
-        ( InstB = constrained_inst_vars(InstVarsB, SubInstB) ->
+    ( if InstA = constrained_inst_vars(InstVarsA, SubInstA) then
+        ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
             inst_merge(SubInstA, SubInstB, MaybeType, Inst0, !ModuleInfo),
             set.intersect(InstVarsA, InstVarsB, InstVars),
-            ( set.is_non_empty(InstVars) ->
+            ( if set.is_non_empty(InstVars) then
                 Inst = constrained_inst_vars(InstVars, Inst0)
                 % We can keep the constrained_inst_vars here since
                 % Inst0 = SubInstA `lub` SubInstB and the original constraint
                 % on the InstVars, InstC, must have been such that
                 % SubInstA `lub` SubInstB =< InstC.
-            ;
+            else
                 Inst = Inst0
             )
-        ;
+        else
             inst_merge(SubInstA, InstB, MaybeType, Inst, !ModuleInfo)
         )
-    ; InstB = constrained_inst_vars(_InstVarsB, SubInstB) ->
+    else if InstB = constrained_inst_vars(_InstVarsB, SubInstB) then
         % InstA \= constrained_inst_vars(_, _) is equivalent to
         % constrained_inst_vars(InstVarsA, InstA) where InstVarsA = empty.
         inst_merge(InstA, SubInstB, MaybeType, Inst, !ModuleInfo)
-    ;
+    else
         inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo)
     ).
 
@@ -1844,9 +1848,9 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         merge_uniq_bound(UniqA, UniqB, BoundInstsB, !.ModuleInfo, Uniq),
         % We do not yet allow merge of any with free, except for
         % clobbered anys.
-        ( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
+        ( if ( Uniq = clobbered ; Uniq = mostly_clobbered ) then
             true
-        ;
+        else
             inst_results_bound_inst_list_is_ground_or_any(InstResultsB,
                 BoundInstsB, !.ModuleInfo)
         ),
@@ -1878,9 +1882,9 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         merge_uniq_bound(UniqB, UniqA, BoundInstsA, !.ModuleInfo, Uniq),
         % We do not yet allow merge of any with free, except
         % for clobbered anys.
-        ( ( Uniq = clobbered ; Uniq = mostly_clobbered ) ->
+        ( if ( Uniq = clobbered ; Uniq = mostly_clobbered ) then
             true
-        ;
+        else
             inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
                 BoundInstsA, !.ModuleInfo)
         ),
@@ -1942,9 +1946,9 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
 :- pred merge_uniq(uniqueness::in, uniqueness::in, uniqueness::out) is det.
 
 merge_uniq(UniqA, UniqB, Merged) :-
-    ( unique_matches_initial(UniqA, UniqB) ->       % A >= B
+    ( if unique_matches_initial(UniqA, UniqB) then       % A >= B
         Merged = UniqB
-    ;
+    else
         Merged = UniqA
     ).
 
@@ -1952,27 +1956,27 @@ merge_uniq(UniqA, UniqB, Merged) :-
     ho_inst_info::out, module_info::in, module_info::out) is semidet.
 
 merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo) :-
-    (
+    ( if
         HOInstInfoA = higher_order(PredA),
         HOInstInfoB = higher_order(PredB)
-    ->
+    then
         % If they specify matching pred insts, but one is more precise
         % (specifies more info) than the other, then we want to choose
         % the least precise one.
-        ( pred_inst_matches(PredA, PredB, !.ModuleInfo) ->
+        ( if pred_inst_matches(PredA, PredB, !.ModuleInfo) then
             HOInstInfo = higher_order(PredB)
-        ; pred_inst_matches(PredB, PredA, !.ModuleInfo) ->
+        else if pred_inst_matches(PredB, PredA, !.ModuleInfo) then
             HOInstInfo = higher_order(PredA)
-        ;
+        else
             % If either is a function inst with non-standard modes,
             % don't allow the higher-order information to be lost.
-            \+ pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredA),
-            \+ pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredB),
+            not pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredA),
+            not pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredB),
             HOInstInfo = none
         )
-    ;
-        \+ ho_inst_info_is_nonstandard_func_mode(!.ModuleInfo, HOInstInfoA),
-        \+ ho_inst_info_is_nonstandard_func_mode(!.ModuleInfo, HOInstInfoB),
+    else
+        not ho_inst_info_is_nonstandard_func_mode(!.ModuleInfo, HOInstInfoA),
+        not ho_inst_info_is_nonstandard_func_mode(!.ModuleInfo, HOInstInfoB),
         HOInstInfo = none
     ).
 
@@ -2034,9 +2038,9 @@ merge_inst_uniq(InstA, UniqB, ModuleInfo, !Expansions, Uniq) :-
             !Expansions, Uniq)
     ;
         InstA = defined_inst(InstName),
-        ( set.member(InstName, !.Expansions) ->
+        ( if set.member(InstName, !.Expansions) then
             Uniq = UniqB
-        ;
+        else
             set.insert(InstName, !Expansions),
             inst_lookup(ModuleInfo, InstName, Inst),
             merge_inst_uniq(Inst, UniqB, ModuleInfo, !Expansions, Uniq)
@@ -2057,13 +2061,13 @@ merge_inst_uniq(InstA, UniqB, ModuleInfo, !Expansions, Uniq) :-
 
 inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
         MaybeType, Result, !ModuleInfo) :-
-    (
+    ( if
         inst_results_bound_inst_list_is_ground(InstResultsA, BoundInstsA,
             !.ModuleInfo)
-    ->
+    then
         merge_uniq_bound(UniqB, UniqA, BoundInstsA, !.ModuleInfo, Uniq),
         Result = ground(Uniq, none)
-    ;
+    else
         inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
             BoundInstsA, !.ModuleInfo),
         % If we know the type, we can give a more accurate result than
@@ -2130,7 +2134,7 @@ bound_inst_list_merge(BoundInstsA, BoundInstsB, MaybeType, BoundInsts,
         BoundInstsB = [BoundInstB | BoundInstsTailB],
         BoundInstA = bound_functor(ConsIdA, ArgsA),
         BoundInstB = bound_functor(ConsIdB, ArgsB),
-        ( equivalent_cons_ids(ConsIdA, ConsIdB) ->
+        ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
             maybe_get_cons_id_arg_types(!.ModuleInfo, MaybeType,
                 ConsIdA, list.length(ArgsA), MaybeTypes),
             inst_list_merge(ArgsA, ArgsB, MaybeTypes, Args, !ModuleInfo),
@@ -2138,11 +2142,11 @@ bound_inst_list_merge(BoundInstsA, BoundInstsB, MaybeType, BoundInsts,
             bound_inst_list_merge(BoundInstsTailA, BoundInstsTailB, MaybeType,
                 BoundInstsTail, !ModuleInfo),
             BoundInsts = [BoundInst | BoundInstsTail]
-        ; compare(<, ConsIdA, ConsIdB) ->
+        else if compare(<, ConsIdA, ConsIdB) then
             bound_inst_list_merge(BoundInstsTailA, BoundInstsB, MaybeType,
                 BoundInstsTail, !ModuleInfo),
             BoundInsts = [BoundInstA | BoundInstsTail]
-        ;
+        else
             bound_inst_list_merge(BoundInstsA, BoundInstsTailB, MaybeType,
                 BoundInstsTail, !ModuleInfo),
             BoundInsts = [BoundInstB | BoundInstsTail]
@@ -2163,9 +2167,9 @@ inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, !.Expansions)
         = ContainsNonstd :-
     (
         Inst = ground(_, HOInstInfo),
-        ( ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfo) ->
+        ( if ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfo) then
             ContainsNonstd = yes
-        ;
+        else
             ContainsNonstd = no
         )
     ;
@@ -2185,9 +2189,9 @@ inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, !.Expansions)
         unexpected($module, $pred, "uninstantiated inst parameter")
     ;
         Inst = defined_inst(InstName),
-        ( set.member(InstName, !.Expansions) ->
+        ( if set.member(InstName, !.Expansions) then
             ContainsNonstd = no
-        ;
+        else
             set.insert(InstName, !Expansions),
             inst_lookup(ModuleInfo, InstName, SubInst),
             ContainsNonstd = inst_contains_nonstandard_func_mode_2(ModuleInfo,
@@ -2253,7 +2257,7 @@ bound_inst_list_contains_nonstandard_func_mode(ModuleInfo,
 pred_inst_info_is_nonstandard_func_mode(ModuleInfo, PredInstInfo) :-
     PredInstInfo = pred_inst_info(pf_function, ArgModes, _, _),
     Arity = list.length(ArgModes),
-    \+ pred_inst_matches(PredInstInfo,
+    not pred_inst_matches(PredInstInfo,
         pred_inst_info_standard_func_mode(Arity), ModuleInfo).
 
 ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfo) :-
@@ -2307,9 +2311,9 @@ inst_contains_any_2(ModuleInfo, Inst, !.Expansions) = ContainsAny :-
         unexpected($module, $pred, "uninstantiated inst parameter")
     ;
         Inst = defined_inst(InstName),
-        ( set.member(InstName, !.Expansions) ->
+        ( if set.member(InstName, !.Expansions) then
             ContainsAny = no
-        ;
+        else
             set.insert(InstName, !Expansions),
             inst_lookup(ModuleInfo, InstName, SubInst),
             ContainsAny =

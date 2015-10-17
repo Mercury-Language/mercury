@@ -77,10 +77,10 @@
 
 construct_maybe_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
         MaybePseudoTypeInfo) :-
-    ( type_is_ground(Type) ->
+    ( if type_is_ground(Type) then
         construct_type_info(Type, TypeInfo),
         MaybePseudoTypeInfo = plain(TypeInfo)
-    ;
+    else
         construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
             PseudoTypeInfo),
         MaybePseudoTypeInfo = pseudo(PseudoTypeInfo)
@@ -96,14 +96,14 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
         ; Type = kinded_type(_, _)
         ),
         type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
-        ( type_is_var_arity(Type, VarArityId) ->
+        ( if type_is_var_arity(Type, VarArityId) then
             TypeCtor = type_ctor(_QualTypeName, RealArity),
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
                 PseudoArgs),
             expect(check_var_arity(VarArityId, PseudoArgs, RealArity),
                 $module, $pred, "var arity mismatch"),
             PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, PseudoArgs)
-        ;
+        else
             TypeCtor = type_ctor(QualTypeName, Arity),
             TypeName = unqualify_name(QualTypeName),
             sym_name_get_module_name_default(QualTypeName,
@@ -138,18 +138,20 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
         % (i.e. the first N vars get integers 1 to N).
 
         term.var_to_int(Var, VarInt0),
-        (
+        ( if
             ( VarInt0 =< NumUnivQTvars
             ; NumUnivQTvars < 0
             )
-        ->
+        then
             % This is a universally quantified variable.
             VarInt = VarInt0
-        ;
+        else
             % This is an existentially quantified variable.
-            ( list.index1_of_first_occurrence(ExistQTvars, Var, ExistNum0) ->
+            ( if
+                list.index1_of_first_occurrence(ExistQTvars, Var, ExistNum0)
+            then
                 VarInt = ExistNum0 + pseudo_typeinfo_exist_var_base
-            ;
+            else
                 unexpected($module, $pred, "not in list")
             )
         ),
@@ -160,13 +162,13 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
 
 construct_type_info(Type, TypeInfo) :-
     type_to_ctor_and_args_det(Type, TypeCtor, TypeArgs),
-    ( type_is_var_arity(Type, VarArityId) ->
+    ( if type_is_var_arity(Type, VarArityId) then
         TypeCtor = type_ctor(_QualTypeName, RealArity),
         generate_plain_args(TypeArgs, TypeInfoArgs),
         expect(check_var_arity(VarArityId, TypeInfoArgs, RealArity),
             $module, $pred, "arity mismatch"),
         TypeInfo = var_arity_type_info(VarArityId, TypeInfoArgs)
-    ;
+    else
         TypeCtor = type_ctor(QualTypeName, Arity),
         TypeName = unqualify_name(QualTypeName),
         sym_name_get_module_name_default(QualTypeName,
@@ -216,10 +218,10 @@ generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars, PseudoArgs) :-
     rtti_maybe_pseudo_type_info::out) is det.
 
 generate_pseudo_arg(NumUnivQTvars, ExistQTvars, TypeArg, MaybePseudoArg) :-
-    ( type_is_ground(TypeArg) ->
+    ( if type_is_ground(TypeArg) then
         construct_type_info(TypeArg, PseudoArg),
         MaybePseudoArg = plain(PseudoArg)
-    ;
+    else
         construct_pseudo_type_info(TypeArg, NumUnivQTvars, ExistQTvars,
             PseudoArg),
         MaybePseudoArg = pseudo(PseudoArg)
@@ -246,7 +248,7 @@ generate_plain_args(TypeArgs, PseudoArgs) :-
 :- pred type_is_var_arity(mer_type::in, var_arity_ctor_id::out) is semidet.
 
 type_is_var_arity(Type, VarArityCtorId) :-
-    ( type_is_higher_order_details(Type, _Purity, PredOrFunc, _, _) ->
+    ( if type_is_higher_order_details(Type, _Purity, PredOrFunc, _, _) then
         (
             PredOrFunc = pf_predicate,
             VarArityCtorId = pred_type_info
@@ -254,9 +256,9 @@ type_is_var_arity(Type, VarArityCtorId) :-
             PredOrFunc = pf_function,
             VarArityCtorId = func_type_info
         )
-    ; type_is_tuple(Type, _) ->
+    else if type_is_tuple(Type, _) then
         VarArityCtorId = tuple_type_info
-    ;
+    else
         fail
     ).
 

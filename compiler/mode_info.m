@@ -516,17 +516,17 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     globals.lookup_int_option(Globals, debug_modes_pred_id,
         DebugModesPredId),
     pred_id_to_int(PredId, PredIdInt),
-    (
+    ( if
         DebugModes = yes,
         ( DebugModesPredId >= 0 => DebugModesPredId = PredIdInt )
-    ->
+    then
         globals.lookup_bool_option(Globals, debug_modes_verbose, DebugVerbose),
         globals.lookup_bool_option(Globals, debug_modes_minimal, DebugMinimal),
         globals.lookup_bool_option(Globals, debug_modes_statistics,
             Statistics),
         Flags = debug_flags(DebugVerbose, DebugMinimal, Statistics),
         Debug = yes(Flags)
-    ;
+    else
         Debug = no
     ),
 
@@ -643,9 +643,9 @@ mode_info_get_in_dupl_for_switch(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_in_dupl_for_switch.
 
 mode_info_set_module_info(X, !MI) :-
-    ( private_builtin.pointer_equal(X, !.MI ^ mi_module_info) ->
+    ( if private_builtin.pointer_equal(X, !.MI ^ mi_module_info) then
         true
-    ;
+    else
         !MI ^ mi_module_info := X
     ).
 mode_info_set_pred_id(X, !MI) :-
@@ -657,9 +657,9 @@ mode_info_set_varset(X, !MI) :-
 mode_info_set_var_types(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_vartypes := X.
 mode_info_set_context(X, !MI) :-
-    ( private_builtin.pointer_equal(X, !.MI ^ mi_context) ->
+    ( if private_builtin.pointer_equal(X, !.MI ^ mi_context) then
         true
-    ;
+    else
         !MI ^ mi_context := X
     ).
 mode_info_set_mode_context(X, !MI) :-
@@ -669,36 +669,36 @@ mode_info_set_locked_vars(X, !MI) :-
 mode_info_set_instvarset(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_instvarset := X.
 mode_info_set_errors(X, !MI) :-
-    ( private_builtin.pointer_equal(X, !.MI ^ mi_errors) ->
+    ( if private_builtin.pointer_equal(X, !.MI ^ mi_errors) then
         true
-    ;
+    else
         !MI ^ mi_errors := X
     ).
 mode_info_set_warnings(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_warnings := X.
 mode_info_set_need_to_requantify(X, !MI) :-
-    (
+    ( if
         private_builtin.pointer_equal(X,
             !.MI ^ mi_sub_info ^ msi_need_to_requantify)
-    ->
+    then
         true
-    ;
+    else
         !MI ^ mi_sub_info ^ msi_need_to_requantify := X
     ).
 mode_info_set_in_promise_purity_scope(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_in_promise_purity_scope := X.
 mode_info_set_delay_info(X, !MI) :-
-    ( private_builtin.pointer_equal(X, !.MI ^ mi_delay_info) ->
+    ( if private_builtin.pointer_equal(X, !.MI ^ mi_delay_info) then
         true
-    ;
+    else
         !MI ^ mi_delay_info := X
     ).
 mode_info_set_live_vars(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_live_vars := X.
 mode_info_set_nondet_live_vars(X, !MI) :-
-    ( private_builtin.pointer_equal(X, !.MI ^ mi_nondet_live_vars) ->
+    ( if private_builtin.pointer_equal(X, !.MI ^ mi_nondet_live_vars) then
         true
-    ;
+    else
         !MI ^ mi_nondet_live_vars := X
     ).
 mode_info_set_last_checkpoint_insts(X, !MI) :-
@@ -706,9 +706,11 @@ mode_info_set_last_checkpoint_insts(X, !MI) :-
 mode_info_set_parallel_vars(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_par_conj := X.
 mode_info_set_changed_flag(X, !MI) :-
-    ( private_builtin.pointer_equal(X, !.MI ^ mi_sub_info ^ msi_changed_flag) ->
+    ( if
+        private_builtin.pointer_equal(X, !.MI ^ mi_sub_info ^ msi_changed_flag)
+    then
         true
-    ;
+    else
         !MI ^ mi_sub_info ^ msi_changed_flag := X
     ).
 mode_info_set_how_to_check(X, !MI) :-
@@ -716,23 +718,23 @@ mode_info_set_how_to_check(X, !MI) :-
 mode_info_set_may_change_called_proc(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_may_change_called_proc := X.
 mode_info_set_may_init_solver_vars(X, !MI) :-
-    (
+    ( if
         private_builtin.pointer_equal(X,
             !.MI ^ mi_sub_info ^ msi_may_init_solver_vars)
-    ->
+    then
         true
-    ;
+    else
         !MI ^ mi_sub_info ^ msi_may_init_solver_vars := X
     ).
 mode_info_set_in_from_ground_term(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_in_from_ground_term := X.
 mode_info_set_had_from_ground_term(X, !MI) :-
-    (
+    ( if
         private_builtin.pointer_equal(X,
             !.MI ^ mi_sub_info ^ msi_had_from_ground_term)
-    ->
+    then
         true
-    ;
+    else
         !MI ^ mi_sub_info ^ msi_had_from_ground_term := X
     ).
 mode_info_set_make_ground_terms_unique(X, !MI) :-
@@ -866,14 +868,14 @@ mode_info_unset_call_context(!MI) :-
 mode_info_set_instmap(InstMap, !MI) :-
     mode_info_get_instmap(!.MI, InstMap0),
     !MI ^ mi_instmap := InstMap,
-    (
+    ( if
         instmap_is_unreachable(InstMap),
         instmap_is_reachable(InstMap0)
-    ->
+    then
         mode_info_get_delay_info(!.MI, DelayInfo0),
         delay_info_bind_all_vars(DelayInfo0, DelayInfo),
         mode_info_set_delay_info(DelayInfo, !MI)
-    ;
+    else
         true
     ).
 
@@ -916,17 +918,17 @@ mode_info_var_list_is_live(ModeInfo, [Var | Vars], [Live | Lives]) :-
 
 mode_info_var_is_live(ModeInfo, Var, Result) :-
     mode_info_get_live_vars(ModeInfo, LiveVars0),
-    ( bag.contains(LiveVars0, Var) ->
+    ( if bag.contains(LiveVars0, Var) then
         Result = is_live
-    ;
+    else
         Result = is_dead
     ).
 
 mode_info_var_is_nondet_live(ModeInfo, Var, Result) :-
     mode_info_get_nondet_live_vars(ModeInfo, NondetLiveVars0),
-    ( bag.contains(NondetLiveVars0, Var) ->
+    ( if bag.contains(NondetLiveVars0, Var) then
         Result = is_live
-    ;
+    else
         Result = is_dead
     ).
 
@@ -956,12 +958,12 @@ mode_info_lock_vars(Reason, Vars, !ModeInfo) :-
 
 mode_info_unlock_vars(Reason, Vars, !ModeInfo) :-
     mode_info_get_locked_vars(!.ModeInfo, LockedVars0),
-    (
+    ( if
         LockedVars0 = [Reason - TheseVars | LockedVars1],
         set_of_var.equal(TheseVars, Vars)
-    ->
+    then
         LockedVars = LockedVars1
-    ;
+    else
         unexpected($module, $pred, "some kind of nesting error")
     ),
     mode_info_set_locked_vars(LockedVars, !ModeInfo).
@@ -974,23 +976,23 @@ mode_info_var_is_locked(ModeInfo, Var, Reason) :-
     var_lock_reason::out) is semidet.
 
 mode_info_var_is_locked_2([ThisReason - Set | Sets], Var, Reason) :-
-    ( set_of_var.member(Set, Var) ->
+    ( if set_of_var.member(Set, Var) then
         Reason = ThisReason
-    ;
+    else
         mode_info_var_is_locked_2(Sets, Var, Reason)
     ).
 
 mode_info_set_checking_extra_goals(Checking, !MI) :-
     mode_info_get_checking_extra_goals(!.MI, Checking0),
-    (
+    ( if
         Checking0 = yes,
         Checking = yes
-    ->
+    then
         % This should never happen - once the extra goals are introduced,
         % rechecking the goal should not introduce more extra goals.
         unexpected($module, $pred,
             "rechecking extra goals adds more extra goals")
-    ;
+    else
         !MI ^ mi_sub_info ^ msi_checking_extra_goals := Checking
     ).
 

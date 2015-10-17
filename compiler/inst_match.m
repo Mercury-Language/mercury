@@ -382,20 +382,20 @@ expansion_insert_new(E, S0, S) :-
 %-----------------------------------------------------------------------------%
 
 inst_expand(ModuleInfo, !Inst) :-
-    ( !.Inst = defined_inst(InstName) ->
+    ( if !.Inst = defined_inst(InstName) then
         inst_lookup(ModuleInfo, InstName, !:Inst),
         inst_expand(ModuleInfo, !Inst)
-    ;
+    else
         true
     ).
 
 inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst) :-
-    ( !.Inst = defined_inst(InstName) ->
+    ( if !.Inst = defined_inst(InstName) then
         inst_lookup(ModuleInfo, InstName, !:Inst),
         inst_expand(ModuleInfo, !Inst)
-    ; !.Inst = constrained_inst_vars(_, !:Inst) ->
+    else if !.Inst = constrained_inst_vars(_, !:Inst) then
         inst_expand(ModuleInfo, !Inst)
-    ;
+    else
         true
     ).
 
@@ -514,7 +514,7 @@ handle_inst_var_subs(Recurse, Continue, InstA, InstB, Type, !Info) :-
     inst_match_info::in, inst_match_info::out) is semidet.
 
 handle_inst_var_subs_2(Recurse, Continue, InstA, InstB, Type, !Info) :-
-    ( InstB = constrained_inst_vars(InstVarsB, SubInstB) ->
+    ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
         % Add the substitution InstVarsB => InstA `glb` SubInstB
         % (see get_subst_inst in dmo's thesis, page 78).
         %
@@ -528,15 +528,15 @@ handle_inst_var_subs_2(Recurse, Continue, InstA, InstB, Type, !Info) :-
 
         % Check that InstA matches InstB after applying the substitution
         % to InstB.
-        ( UnifyInst = constrained_inst_vars(InstVarsB, UnifySubInst) ->
+        ( if UnifyInst = constrained_inst_vars(InstVarsB, UnifySubInst) then
             % Avoid infinite regress.
             Recurse(InstA, UnifySubInst, Type, !Info)
-        ;
+        else
             Recurse(InstA, UnifyInst, Type, !Info)
         )
-    ; InstA = constrained_inst_vars(_InstVarsA, SubInstA) ->
+    else if InstA = constrained_inst_vars(_InstVarsA, SubInstA) then
         Recurse(SubInstA, InstB, Type, !Info)
-    ;
+    else
         Continue(InstA, InstB, Type, !Info)
     ).
 
@@ -561,7 +561,7 @@ update_inst_var_sub(InstVars, InstA, MaybeType, !Info) :-
 update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
     (
         !.Info ^ imi_maybe_sub = yes(InstVarSub0),
-        ( map.search(InstVarSub0, InstVar, InstB) ->
+        ( if map.search(InstVarSub0, InstVar, InstB) then
             % If InstVar already has an inst associated with it, merge
             % the old inst and the new inst. Fail if this merge is not
             % possible.
@@ -571,7 +571,7 @@ update_inst_var_sub_2(InstA, MaybeType, InstVar, !Info) :-
             !Info ^ imi_module_info := ModuleInfo,
             map.det_update(InstVar, Inst, InstVarSub0, InstVarSub),
             !Info ^ imi_maybe_sub := yes(InstVarSub)
-        ;
+        else
             map.det_insert(InstVar, InstA, InstVarSub0, InstVarSub),
             !Info ^ imi_maybe_sub := yes(InstVarSub)
         )
@@ -626,13 +626,13 @@ inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo, !MaybeSub) :-
 inst_matches_initial_mt(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
     Expansions0 = !.Info ^ imi_expansions,
-    ( expansion_insert_new(ThisExpansion, Expansions0, Expansions) ->
+    ( if expansion_insert_new(ThisExpansion, Expansions0, Expansions) then
         !Info ^ imi_expansions := Expansions,
         inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
         inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
         handle_inst_var_subs(inst_matches_initial_mt, inst_matches_initial_4,
             ExpandedInstA, ExpandedInstB, MaybeType, !Info)
-    ;
+    else
         true
     ).
 
@@ -682,12 +682,12 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
         InstB = bound(UniqB, _InstResultsB, BoundInstsB),
-        (
+        ( if
             same_addr_insts(InstA, InstB),
             InstResultsA = inst_test_results_fgtc
-        ->
+        then
             true
-        ;
+        else
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
             bound_inst_list_matches_initial_mt(BoundInstsA, BoundInstsB,
@@ -830,18 +830,18 @@ bound_inst_list_is_complete_for_type(Expansions, ModuleInfo, BoundInsts,
 
 inst_is_complete_for_type(Expansions, ModuleInfo, Inst, Type) :-
     % XXX This should be a switch on Inst.
-    ( Inst = defined_inst(Name) ->
-        ( set.member(Name, Expansions) ->
+    ( if Inst = defined_inst(Name) then
+        ( if set.member(Name, Expansions) then
             true
-        ;
+        else
             inst_lookup(ModuleInfo, Name, ExpandedInst),
             inst_is_complete_for_type(set.insert(Expansions, Name),
                 ModuleInfo, ExpandedInst, Type)
         )
-    ; Inst = bound(_, _, BoundInsts) ->
+    else if Inst = bound(_, _, BoundInsts) then
         bound_inst_list_is_complete_for_type(Expansions, ModuleInfo,
             BoundInsts, Type)
-    ;
+    else
         Inst \= not_reached
     ).
 
@@ -852,10 +852,10 @@ inst_is_complete_for_type(Expansions, ModuleInfo, Inst, Type) :-
     is semidet.
 
 greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
-    (
+    ( if
         ConsIdA = cons(QNameA, ArityA, _),
         ConsIdB = cons(QNameB, ArityB, _)
-    ->
+    then
         ( QNameA = unqualified(NameA)
         ; QNameA = qualified(_, NameA)
         ),
@@ -869,7 +869,7 @@ greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
             O = (=),
             ArityA > ArityB
         )
-    ;
+    else
         compare((>), ConsIdA, ConsIdB)
     ).
 
@@ -884,7 +884,7 @@ greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
 ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
     (
         HOInstInfoB = none,
-        \+ ho_inst_info_is_nonstandard_func_mode(!.Info ^ imi_module_info,
+        not ho_inst_info_is_nonstandard_func_mode(!.Info ^ imi_module_info,
             HOInstInfoA)
     ;
         HOInstInfoA = none,
@@ -1016,11 +1016,11 @@ compare_bound_inst_list_uniq(uc_instantiated, BoundInsts, Uniq, ModuleInfo) :-
     module_info::in) is semidet.
 
 bound_inst_list_matches_uniq(BoundInsts, Uniq, ModuleInfo) :-
-    ( Uniq = unique ->
+    ( if Uniq = unique then
         bound_inst_list_is_unique(BoundInsts, ModuleInfo)
-    ; Uniq = mostly_unique ->
+    else if Uniq = mostly_unique then
         bound_inst_list_is_mostly_unique(BoundInsts, ModuleInfo)
-    ;
+    else
         true
     ).
 
@@ -1028,11 +1028,11 @@ bound_inst_list_matches_uniq(BoundInsts, Uniq, ModuleInfo) :-
     module_info::in) is semidet.
 
 uniq_matches_bound_inst_list(Uniq, BoundInsts, ModuleInfo) :-
-    ( Uniq = shared ->
+    ( if Uniq = shared then
         bound_inst_list_is_not_partly_unique(BoundInsts, ModuleInfo)
-    ; Uniq = mostly_unique ->
+    else if Uniq = mostly_unique then
         bound_inst_list_is_not_fully_unique(BoundInsts, ModuleInfo)
-    ;
+    else
         true
     ).
 
@@ -1052,12 +1052,12 @@ bound_inst_list_matches_initial_mt([], _, _, !Info).
 bound_inst_list_matches_initial_mt([X | Xs], [Y | Ys], MaybeType, !Info) :-
     X = bound_functor(ConsIdX, ArgsX),
     Y = bound_functor(ConsIdY, ArgsY),
-    ( equivalent_cons_ids(ConsIdX, ConsIdY) ->
+    ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         maybe_get_cons_id_arg_types(!.Info ^ imi_module_info, MaybeType,
             ConsIdX, list.length(ArgsX), MaybeTypes),
         inst_list_matches_initial_mt(ArgsX, ArgsY, MaybeTypes, !Info),
         bound_inst_list_matches_initial_mt(Xs, Ys, MaybeType, !Info)
-    ;
+    else
         greater_than_disregard_module_qual(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
@@ -1096,18 +1096,18 @@ inst_matches_final_gmb(InstA, InstB, Type, ModuleInfo, GroundMatchesBound) :-
     inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_matches_final_mt(InstA, InstB, MaybeType, !Info) :-
-    ( InstA = InstB ->
+    ( if InstA = InstB then
         true
-    ;
+    else
         ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
         Expansions0 = !.Info ^ imi_expansions,
-        ( expansion_insert_new(ThisExpansion, Expansions0, Expansions) ->
+        ( if expansion_insert_new(ThisExpansion, Expansions0, Expansions) then
             !Info ^ imi_expansions := Expansions,
             inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
             inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
             handle_inst_var_subs(inst_matches_final_mt, inst_matches_final_3,
                 ExpandedInstA, ExpandedInstB, MaybeType, !Info)
-        ;
+        else
             true
         )
     ).
@@ -1178,7 +1178,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         InstA = ground(UniqA, HOInstInfoA),
         InstB = bound(UniqB, InstResultsB, BoundInstsB),
         ModuleInfo = !.Info ^ imi_module_info,
-        \+ ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfoA),
+        not ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfoA),
         unique_matches_final(UniqA, UniqB),
         inst_results_bound_inst_list_is_ground_mt(InstResultsB, BoundInstsB,
             MaybeType, ModuleInfo),
@@ -1213,12 +1213,12 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         InstA = not_reached
     ;
         InstA = constrained_inst_vars(InstVarsA, SubInstA),
-        ( InstB = constrained_inst_vars(InstVarsB, SubInstB) ->
+        ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
             % Constrained_inst_vars match_final only if InstVarsA contains
             % all the variables in InstVarsB.
             set.subset(InstVarsB, InstVarsA),
             inst_matches_final_mt(SubInstA, SubInstB, MaybeType, !Info)
-        ;
+        else
             inst_matches_final_mt(SubInstA, InstB, MaybeType, !Info)
         )
     ).
@@ -1229,7 +1229,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
 ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
     (
         HOInstInfoB = none,
-        \+ ho_inst_info_is_nonstandard_func_mode(!.Info ^ imi_module_info,
+        not ho_inst_info_is_nonstandard_func_mode(!.Info ^ imi_module_info,
             HOInstInfoA)
     ;
         HOInstInfoA = none,
@@ -1269,12 +1269,12 @@ bound_inst_list_matches_final([], _, _, !Info).
 bound_inst_list_matches_final([X | Xs], [Y | Ys], MaybeType, !Info) :-
     X = bound_functor(ConsIdX, ArgsX),
     Y = bound_functor(ConsIdY, ArgsY),
-    ( equivalent_cons_ids(ConsIdX, ConsIdY) ->
+    ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         maybe_get_cons_id_arg_types(!.Info ^ imi_module_info, MaybeType,
             ConsIdX, list.length(ArgsX), MaybeTypes),
         inst_list_matches_final(ArgsX, ArgsY, MaybeTypes, !Info),
         bound_inst_list_matches_final(Xs, Ys, MaybeType, !Info)
-    ;
+    else
         greater_than_disregard_module_qual(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
@@ -1304,14 +1304,14 @@ inst_matches_binding_allow_any_any(InstA, InstB, Type, ModuleInfo) :-
 inst_matches_binding_mt(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
     Expansions0 = !.Info ^ imi_expansions,
-    ( expansion_insert_new(ThisExpansion, Expansions0, Expansions) ->
+    ( if expansion_insert_new(ThisExpansion, Expansions0, Expansions) then
         !Info ^ imi_expansions := Expansions,
         inst_expand_and_remove_constrained_inst_vars(!.Info ^ imi_module_info,
             InstA, ExpandedInstA),
         inst_expand_and_remove_constrained_inst_vars(!.Info ^ imi_module_info,
             InstB, ExpandedInstB),
         inst_matches_binding_3(ExpandedInstA, ExpandedInstB, MaybeType, !Info)
-    ;
+    else
         true
     ).
 
@@ -1449,12 +1449,12 @@ bound_inst_list_matches_binding([], _, _, !Info).
 bound_inst_list_matches_binding([X | Xs], [Y | Ys], MaybeType, !Info) :-
     X = bound_functor(ConsIdX, ArgsX),
     Y = bound_functor(ConsIdY, ArgsY),
-    ( equivalent_cons_ids(ConsIdX, ConsIdY) ->
+    ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         maybe_get_cons_id_arg_types(!.Info ^ imi_module_info, MaybeType,
             ConsIdX, list.length(ArgsX), MaybeTypes),
         inst_list_matches_binding(ArgsX, ArgsY, MaybeTypes, !Info),
         bound_inst_list_matches_binding(Xs, Ys, MaybeType, !Info)
-    ;
+    else
         greater_than_disregard_module_qual(ConsIdX, ConsIdY),
         % ConsIdX does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
@@ -1619,10 +1619,10 @@ inst_is_ground(ModuleInfo, Inst) :-
             trace [compiletime(flag("inst-is-ground-perf")), io(!IO)] (
                 io.write_string("inst_is_ground miss\n", !IO)
             ),
-            ( inst_is_ground_mt(ModuleInfo, no, Inst) ->
+            ( if inst_is_ground_mt(ModuleInfo, no, Inst) then
                 impure record_inst_is_ground(Inst, yes)
                 % Succeed.
-            ;
+            else
                 impure record_inst_is_ground(Inst, no),
                 fail
             )
@@ -1752,18 +1752,18 @@ inst_is_ground_mt_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
     % of this file. The log message for that version gives a reason why
     % this special casing is required, but I (zs) don't believe it,
     % at least not without more explanation.
-    ( Inst = any(_, _) ->
-        ( set_tree234.contains(!.Expansions, Inst) ->
+    ( if Inst = any(_, _) then
+        ( if set_tree234.contains(!.Expansions, Inst) then
             true
-        ;
+        else
             inst_is_ground_mt_2(ModuleInfo, MaybeType, Inst, !Expansions)
         )
-    ;
+    else
         % ZZZ make this work on Inst's *address*.
-        ( set_tree234.insert_new(Inst, !Expansions) ->
+        ( if set_tree234.insert_new(Inst, !Expansions) then
             % Inst was not yet in Expansions, but we have now inserted it.
             inst_is_ground_mt_2(ModuleInfo, MaybeType, Inst, !Expansions)
-        ;
+        else
             % Inst was already in !.Expansions.
             true
         )
@@ -1844,10 +1844,10 @@ inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
         inst_is_ground_or_any_2(ModuleInfo, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
-        ( set.insert_new(Inst, !Expansions) ->
+        ( if set.insert_new(Inst, !Expansions) then
             inst_lookup(ModuleInfo, InstName, NextInst),
             inst_is_ground_or_any_2(ModuleInfo, NextInst, !Expansions)
-        ;
+        else
             true
         )
     ).
@@ -1894,10 +1894,10 @@ inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
         inst_is_unique_2(ModuleInfo, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
-        ( set.insert_new(Inst, !Expansions) ->
+        ( if set.insert_new(Inst, !Expansions) then
             inst_lookup(ModuleInfo, InstName, NextInst),
             inst_is_unique_2(ModuleInfo, NextInst, !Expansions)
-        ;
+        else
             true
         )
     ).
@@ -1943,10 +1943,10 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
         inst_is_mostly_unique_2(ModuleInfo, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
-        ( set.insert_new(Inst, !Expansions) ->
+        ( if set.insert_new(Inst, !Expansions) then
             inst_lookup(ModuleInfo, InstName, NextInst),
             inst_is_mostly_unique_2(ModuleInfo, NextInst, !Expansions)
-        ;
+        else
             true
         )
     ;
@@ -1998,10 +1998,10 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
         inst_is_not_partly_unique_2(ModuleInfo, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
-        ( set.insert_new(Inst, !Expansions) ->
+        ( if set.insert_new(Inst, !Expansions) then
             inst_lookup(ModuleInfo, InstName, NextInst),
             inst_is_not_partly_unique_2(ModuleInfo, NextInst, !Expansions)
-        ;
+        else
             true
         )
     ;
@@ -2059,10 +2059,10 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
         inst_is_not_fully_unique_2(ModuleInfo, SubInst, !Expansions)
     ;
         Inst = defined_inst(InstName),
-        ( set.insert_new(Inst, !Expansions) ->
+        ( if set.insert_new(Inst, !Expansions) then
             inst_lookup(ModuleInfo, InstName, NextInst),
             inst_is_not_fully_unique_2(ModuleInfo, NextInst, !Expansions)
-        ;
+        else
             true
         )
     ;
@@ -2472,15 +2472,15 @@ inst_contains_inst_name_2(Inst, ModuleInfo, InstName, Contains, !Expansions) :-
             !Expansions)
     ;
         Inst = defined_inst(ThisInstName),
-        ( InstName = ThisInstName ->
+        ( if InstName = ThisInstName then
             Contains = yes
-        ;
-            ( set.insert_new(ThisInstName, !Expansions) ->
+        else
+            ( if set.insert_new(ThisInstName, !Expansions) then
                 inst_lookup(ModuleInfo, ThisInstName, ThisInst),
                 set.insert(ThisInstName, !Expansions),
                 inst_contains_inst_name_2(ThisInst, ModuleInfo, InstName,
                     Contains, !Expansions)
-            ;
+            else
                 Contains = no
             )
         )
@@ -2506,12 +2506,12 @@ inst_contains_inst_name_2(Inst, ModuleInfo, InstName, Contains, !Expansions) :-
             (
                 InstNamesResult =
                     inst_result_contains_inst_names_known(InstNameSet),
-                ( set.contains(InstNameSet, InstName) ->
+                ( if set.contains(InstNameSet, InstName) then
                     % The Inst may contain InstName, and probably does,
                     % but verify it.
                     bound_inst_list_contains_inst_name(ArgInsts, ModuleInfo,
                         InstName, Contains, !Expansions)
-                ;
+                else
                     Contains = no
                 )
             ;
@@ -2702,8 +2702,8 @@ mode_contains_inst_var(Mode, InstVar) :-
     uniqueness::in, ho_inst_info::in, mer_inst::out) is semidet.
 
 maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, none, Inst) :-
-    \+ type_is_solver_type(ModuleInfo, Type),
-    ( type_constructors(ModuleInfo, Type, Constructors) ->
+    not type_is_solver_type(ModuleInfo, Type),
+    ( if type_constructors(ModuleInfo, Type, Constructors) then
         type_to_ctor_det(Type, TypeCtor),
         constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor,
             Constructors, BoundInsts0),
@@ -2719,12 +2719,12 @@ maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, none, Inst) :-
             inst_result_type_ctor_propagated(TypeCtor)
         ),
         Inst = bound(Uniq, InstResult, BoundInsts)
-    ; type_may_contain_solver_type(ModuleInfo, Type) ->
+    else if type_may_contain_solver_type(ModuleInfo, Type) then
         % For a type for which constructors are not available (e.g. an
         % abstract type) and which may contain solver types, we fail, meaning
         % that we will use `any' for this type.
         fail
-    ;
+    else
         Inst = ground(Uniq, none)
     ).
 

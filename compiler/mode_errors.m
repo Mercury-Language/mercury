@@ -480,7 +480,7 @@ mode_error_conj_to_spec(ModeInfo, Errors, Culprit) = Spec :-
 
 is_error_important(Error) :-
     Error = delayed_goal(_, mode_error_info(_, ModeError, _, ModeContext), _),
-    (
+    ( if
         % An error is important unless it is a non-explicit unification,
         % i.e. a head unification or a call argument unification.
         ModeContext = mode_context_unify(unify_context(UnifyContext, _), _),
@@ -489,9 +489,9 @@ is_error_important(Error) :-
         % Except that errors in lambda goals are important even if the
         % unification that creates the lambda goal is an implicit one.
         ModeError \= mode_error_non_local_lambda_var(_, _)
-    ->
+    then
         fail
-    ;
+    else
         true
     ).
 
@@ -584,9 +584,9 @@ merge_error_to_pieces(ModeInfo, MergeError) = Pieces :-
     ;
         ContextsInsts = [HeadContext - _HeadInst | TailContextInsts],
         HeadContext = term.context(FileName, _),
-        ( all_in_same_file(FileName, TailContextInsts) ->
+        ( if all_in_same_file(FileName, TailContextInsts) then
             InclFileName = no
-        ;
+        else
             InclFileName = yes
         )
     ),
@@ -1324,7 +1324,7 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
     pred_info_get_status(PredInfo, PredStatus),
     module_info_get_globals(ModuleInfo, Globals),
     % XXX STATUS
-    ( PredStatus = pred_status(status_local) ->
+    ( if PredStatus = pred_status(status_local) then
         globals.lookup_bool_option(Globals, infer_modes, InferModesOpt),
         (
             InferModesOpt = yes,
@@ -1345,7 +1345,7 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
                     verbose_only(verbose_once, VerbosePieces)])]),
             Specs = [Spec]
         )
-    ;
+    else
         pred_info_get_context(PredInfo, Context),
         Pieces = [words("Error: no mode declaration for exported")] ++
             describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
@@ -1364,13 +1364,13 @@ report_mode_inference_messages(ModuleInfo, OutputDetism, [PredId | PredIds]) =
         PredIds),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, marker_infer_modes) ->
+    ( if check_marker(Markers, marker_infer_modes) then
         ProcIds = pred_info_all_procids(PredInfo),
         pred_info_get_proc_table(PredInfo, Procs),
         HeadSpecs = report_mode_inference_messages_2(ModuleInfo, OutputDetism,
             PredInfo, Procs, ProcIds),
         Specs = HeadSpecs ++ TailSpecs
-    ;
+    else
         Specs = TailSpecs
     ).
 
@@ -1387,7 +1387,7 @@ report_mode_inference_messages_2(ModuleInfo, OutputDetism, PredInfo, Procs,
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     map.lookup(Procs, ProcId, ProcInfo),
-    (
+    ( if
         (
             % We always output `Inferred :- mode ...'
             proc_info_is_valid_mode(ProcInfo)
@@ -1396,11 +1396,11 @@ report_mode_inference_messages_2(ModuleInfo, OutputDetism, PredInfo, Procs,
             % if --verbose-errors is enabled
             VerboseErrors = yes
         )
-    ->
+    then
         HeadSpec = report_mode_inference_message(ModuleInfo, OutputDetism,
             PredInfo, ProcInfo),
         Specs = [HeadSpec | TailSpecs]
-    ;
+    else
         Specs = TailSpecs
     ).
 
@@ -1424,9 +1424,9 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
         %
         list.length(!.ArgModes, NumArgModes),
         NumToDrop = NumArgModes - PredArity,
-        ( list.drop(NumToDrop, !ArgModes) ->
+        ( if list.drop(NumToDrop, !ArgModes) then
             true
-        ;
+        else
             unexpected($module, $pred, "list.drop failed")
         ),
 
@@ -1440,9 +1440,9 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
             OutputDetism = do_not_include_detism_on_modes,
             !:MaybeDet = no
         ),
-        ( proc_info_is_valid_mode(ProcInfo) ->
+        ( if proc_info_is_valid_mode(ProcInfo) then
             Verb = "Inferred"
-        ;
+        else
             Verb = "REJECTED",
             % Replace the final insts with dummy insts '...',
             % since they won't be valid anyway -- they are just
