@@ -14,12 +14,12 @@ mdb> continue -a
 mdb> P
        X (arg 1)              	42
 mdb> 
-      E3:     C3 CALL (from existential_type_classes.m:NNNN)
+      E3:     C3 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.foo/2-0 (det)
 mdb> P
        HeadVar__1             	42
 mdb> 
-      E4:     C4 CALL existential_type_classes.m:NNNN
+      E4:     C4 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
 mdb> P
        HeadVar__1             	42
@@ -32,9 +32,9 @@ mdb> continue -a
                          func int.*/2-0 (det)
       E8:     C5 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.int_foo/2-0 (det)
-      E9:     C4 EXIT existential_type_classes.m:NNNN
+      E9:     C4 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
-     E10:     C3 EXIT (from existential_type_classes.m:NNNN)
+     E10:     C3 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.foo/2-0 (det)
      E11:     C2 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.do_foo/2-0 (det)
@@ -47,12 +47,12 @@ mdb> continue -a
 mdb> P
        X (arg 1)              	"blah"
 mdb> 
-     E13:     C8 CALL (from existential_type_classes.m:NNNN)
+     E13:     C8 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.foo/2-0 (det)
 mdb> P
        HeadVar__1             	"blah"
 mdb> 
-     E14:     C9 CALL existential_type_classes.m:NNNN
+     E14:     C9 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.ClassMethod_for_existential_type_classes__fooable____string__arity0______existential_type_classes__foo_2/2-0 (det)
 mdb> P
        HeadVar__1             	"blah"
@@ -65,9 +65,9 @@ mdb> continue -a
                          pred string.length/2-0 (det)
      E18:    C10 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.string_foo/2-0 (det)
-     E19:     C9 EXIT existential_type_classes.m:NNNN
+     E19:     C9 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.ClassMethod_for_existential_type_classes__fooable____string__arity0______existential_type_classes__foo_2/2-0 (det)
-     E20:     C8 EXIT (from existential_type_classes.m:NNNN)
+     E20:     C8 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.foo/2-0 (det)
      E21:     C7 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.do_foo/2-0 (det)
@@ -84,12 +84,12 @@ mdb> continue -a
 mdb> P
        X (arg 1)              	43
 mdb> 
-     E25:    C14 CALL (from existential_type_classes.m:NNNN)
+     E25:    C14 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.foo/2-0 (det)
 mdb> P
        HeadVar__1             	43
 mdb> 
-     E26:    C15 CALL existential_type_classes.m:NNNN
+     E26:    C15 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
 mdb> P
        HeadVar__1             	43
@@ -102,9 +102,9 @@ mdb> continue -a
                          func int.*/2-0 (det)
      E30:    C16 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.int_foo/2-0 (det)
-     E31:    C15 EXIT existential_type_classes.m:NNNN
+     E31:    C15 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
-     E32:    C14 EXIT (from existential_type_classes.m:NNNN)
+     E32:    C14 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.foo/2-0 (det)
      E33:    C13 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.do_foo/2-0 (det)
@@ -125,12 +125,12 @@ mdb> continue -a
 mdb> P
        X (arg 1)              	43
 mdb> 
-     E39:    C21 CALL (from existential_type_classes.m:NNNN)
+     E39:    C21 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.foo/2-0 (det)
 mdb> P
        HeadVar__1             	43
 mdb> 
-     E40:    C22 CALL existential_type_classes.m:NNNN
+     E40:    C22 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
 mdb> P
        HeadVar__1             	43
@@ -143,9 +143,9 @@ mdb> continue -a
                          func int.*/2-0 (det)
      E44:    C23 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.int_foo/2-0 (det)
-     E45:    C22 EXIT existential_type_classes.m:NNNN
+     E45:    C22 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
-     E46:    C21 EXIT (from existential_type_classes.m:NNNN)
+     E46:    C21 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.foo/2-0 (det)
      E47:    C20 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.do_foo/2-0 (det)
@@ -166,12 +166,12 @@ mdb> continue -a
 mdb> P
        X (arg 1)              	45
 mdb> 
-     E53:    C28 CALL (from existential_type_classes.m:NNNN)
+     E53:    C28 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.foo/2-0 (det)
 mdb> P
        HeadVar__1             	45
 mdb> 
-     E54:    C29 CALL existential_type_classes.m:NNNN
+     E54:    C29 CALL existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
 mdb> P
        HeadVar__1             	45
@@ -184,9 +184,9 @@ mdb> continue -a
                          func int.*/2-0 (det)
      E58:    C30 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.int_foo/2-0 (det)
-     E59:    C29 EXIT existential_type_classes.m:NNNN
+     E59:    C29 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.ClassMethod_for_existential_type_classes__fooable____int__arity0______existential_type_classes__foo_2/2-0 (det)
-     E60:    C28 EXIT (from existential_type_classes.m:NNNN)
+     E60:    C28 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.foo/2-0 (det)
      E61:    C27 EXIT existential_type_classes.m:NNNN (from existential_type_classes.m:NNNN)
                          pred existential_type_classes.do_foo/2-0 (det)
