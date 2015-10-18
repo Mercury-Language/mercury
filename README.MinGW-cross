@@ -7,7 +7,7 @@ After copying and adjusting some paths, the Mercury installation should be
 usable on Windows.  When combined with a native Mercury compiler, it can be
 used to cross-compile Mercury applications for Windows.
 
-NOTE: There are currently problems with 64-bit executalbes in the 'asm_fast*'
+NOTE: There are currently problems with 64-bit executables in the 'asm_fast*'
 grade.  The 'none*' and 'reg*' grades do appear to work correctly in our
 limited testing.
 
@@ -53,15 +53,16 @@ Then install Mercury as usual:
 
 USING THE CROSS-COMPILER ON LINUX
 
-You can substitute the Windows version of the Mercury compiler binary
-(mercury_compile.exe) with a Linux version.  Again, this should be from
-the same or similar version of Mercury.
+To use the cross-compiled installation on Linux, you must provide Linux
+binaries to substitute each of the .exe files in the bin directory.
+The Linux binaries should be from the same version of the Mercury compiler.
 
-The 'mmc' shell script will have been set up to look for a binary named
-'mercury_compile' so you just need to place the Linux binary into the bin
-directory, e.g.
+For example, you can run a command such as below to hard link the binaries
+from the native compiler to the cross-compiler installation, or add the '-s'
+option to create symbolic links instead.  Be careful not to overwrite the
+shell scripts.
 
-    % ln -s /usr/local/mercury/bin/mercury_compile /usr/local/mercury-mingw/bin
+    ln /usr/local/mercury/bin/* /usr/local/mercury-mingw/bin || true
 
 Now you can run the 'mmc' script from the cross-compiled installation:
 
