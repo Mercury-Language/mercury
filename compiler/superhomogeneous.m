@@ -1324,7 +1324,7 @@ make_fresh_arg_var_subst_svars(Arg0, Var, Vars0, !VarSet, !SVarState,
     substitute_state_var_mapping(Arg0, Arg, !VarSet, !SVarState, !Specs),
     ( if
         Arg = term.variable(ArgVar, _),
-        \+ list.member(ArgVar, Vars0)
+        not list.member(ArgVar, Vars0)
     then
         Var = ArgVar
     else
@@ -1363,7 +1363,7 @@ make_fresh_arg_vars_no_svar_loop([Arg | Args], !RevVars, !VarSet) :-
 make_fresh_arg_var_no_svar(Arg, Var, Vars0, !VarSet) :-
     ( if
         Arg = term.variable(ArgVar, _),
-        \+ list.member(ArgVar, Vars0)
+        not list.member(ArgVar, Vars0)
     then
         Var = ArgVar
     else

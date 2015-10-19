@@ -291,11 +291,11 @@ maybe_parse_field_list(Term, VarSet, FieldNames) :-
     MaybeFieldNames = ok1(FieldNames).
 
 parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
-    (
+    ( if
         Term = term.functor(term.atom("^"),
             [FieldNameTerm, OtherFieldNamesTerm], _)
-    ->
-        ( try_parse_sym_name_and_args(FieldNameTerm, FieldName, Args) ->
+    then
+        ( if try_parse_sym_name_and_args(FieldNameTerm, FieldName, Args) then
             parse_field_list(OtherFieldNamesTerm, VarSet, ContextPieces,
                 MaybeFieldNamesTail),
             (
@@ -305,15 +305,15 @@ parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
                 MaybeFieldNamesTail = ok1(FieldNamesTail),
                 MaybeFieldNames = ok1([FieldName - Args | FieldNamesTail])
             )
-        ;
+        else
             Spec = make_field_list_error(VarSet,
                 get_term_context(FieldNameTerm), Term, ContextPieces),
             MaybeFieldNames = error1([Spec])
         )
-    ;
-        ( try_parse_sym_name_and_args(Term, FieldName, Args) ->
+    else
+        ( if try_parse_sym_name_and_args(Term, FieldName, Args) then
             MaybeFieldNames = ok1([FieldName - Args])
-        ;
+        else
             Spec = make_field_list_error(VarSet, get_term_context(Term), Term,
                 ContextPieces),
             MaybeFieldNames = error1([Spec])
