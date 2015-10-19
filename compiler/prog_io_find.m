@@ -171,7 +171,9 @@ drop_one_qualifier_2(ParentQual, ChildName) =  PartialQual :-
 find_source_error(ModuleName, Dirs, MaybeBetterMatch) = Msg :-
     ModuleNameStr = sym_name_to_string(ModuleName),
     Msg0 = "cannot find source for module `" ++ ModuleNameStr ++
-        "' in directories " ++ string.join_list(", ", Dirs),
+        "' in directories " ++
+        string.join_list(", ",
+            map((func(Dir) = "'" ++ Dir ++ "'"), Dirs)),
     (
         MaybeBetterMatch = no,
         Msg = Msg0

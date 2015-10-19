@@ -243,6 +243,13 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
         )
     ;
         MaybeDepFileTimestamp = error(_),
+        SearchDirsString = join_list(", ",
+            map((func(Dir) = "'" ++ Dir ++ "'"), SearchDirs)),
+        debug_make_msg(Globals,
+            io.format("Module dependencies file '%s' "
+                    ++ "not found in directories %s.\n",
+                [s(DepFileName), s(SearchDirsString)]),
+            !IO),
 
         % Try to make the dependencies. This will succeed when the module name
         % doesn't match the file name and the dependencies for this module
@@ -509,14 +516,19 @@ read_module_dependencies_2(Globals, RebuildModuleDeps, SearchDirs, ModuleName,
             Result = ok
         ;
             Result = error(Msg),
+            read_module_dependencies_remake_msg(RebuildModuleDeps,
+                ModuleDir ++ "/" ++ ModuleDepFile, Msg, !IO),
             read_module_dependencies_remake(Globals, RebuildModuleDeps,
-                ModuleName, Msg, !Info, !IO)
+                ModuleName, !Info, !IO)
         )
     ;
-        SearchResult = error(_),
-        % XXX should use the error message.
-        read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName,
-            "couldn't find `.module_dep' file", !Info, !IO)
+        SearchResult = error(Msg),
+        debug_make_msg(Globals,
+            read_module_dependencies_remake_msg(RebuildModuleDeps,
+                ModuleDepFile, Msg),
+            !IO),
+        read_module_dependencies_remake(Globals, RebuildModuleDeps,
+            ModuleName, !Info, !IO)
     ).
 
 :- pred read_module_dependencies_3(globals::in, list(dir_name)::in,
@@ -771,33 +783,32 @@ check_regular_file_exists(FileName, FileExists, !IO) :-
     % Something went wrong reading the dependencies, so just rebuild them.
     %
 :- pred read_module_dependencies_remake(globals::in, rebuild_module_deps::in,
-    module_name::in, string::in, make_info::in, make_info::out,
+    module_name::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName, Msg,
+read_module_dependencies_remake(Globals, RebuildModuleDeps, ModuleName,
         !Info, !IO) :-
     (
         RebuildModuleDeps = do_rebuild_module_deps,
-        debug_make_msg(Globals,
-            read_module_dependencies_remake_msg(Globals, ModuleName, Msg),
-            !IO),
         make_module_dependencies(Globals, ModuleName, !Info, !IO)
     ;
         RebuildModuleDeps = do_not_rebuild_module_deps
     ).
 
-:- pred read_module_dependencies_remake_msg(globals::in, module_name::in,
-    string::in, io::di, io::uo) is det.
+:- pred read_module_dependencies_remake_msg(rebuild_module_deps::in,
+    string::in, string::in, io::di, io::uo) is det.
 
-read_module_dependencies_remake_msg(Globals, ModuleName, Msg, !IO) :-
-    module_name_to_file_name(Globals, ModuleName,
-        make_module_dep_file_extension, do_not_create_dirs, ModuleDepsFile,
+read_module_dependencies_remake_msg(RebuildModuleDeps, ModuleDepsFile, Msg,
+        !IO) :-
+    io.format("** Error reading file `%s': %s", [s(ModuleDepsFile), s(Msg)],
         !IO),
-    io.write_string("Error reading file `", !IO),
-    io.write_string(ModuleDepsFile, !IO),
-    io.write_string("', rebuilding: ", !IO),
-    io.write_string(Msg, !IO),
-    io.nl(!IO).
+    (
+        RebuildModuleDeps = do_rebuild_module_deps,
+        io.write_string(" ...rebuilding\n", !IO)
+    ;
+        RebuildModuleDeps = do_not_rebuild_module_deps,
+        io.nl(!IO)
+    ).
 
     % The module_name given must be the top level module in the source file.
     % get_module_dependencies ensures this by making the dependencies
@@ -822,7 +833,7 @@ make_module_dependencies(Globals, ModuleName, !Info, !IO) :-
             write_error_specs(Specs0, Globals, 0, _NumWarnings, 0, _NumErrors,
                 !IO),
             io.set_output_stream(OldOutputStream, _, !IO),
-            io.write_string("** Error: error reading file `", !IO),
+            io.write_string("** Error reading file `", !IO),
             io.write_string(SourceFileName, !IO),
             io.write_string("' to generate dependencies.\n", !IO),
             maybe_write_importing_module(ModuleName, !.Info ^ importing_module,
