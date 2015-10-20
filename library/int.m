@@ -493,25 +493,25 @@
 
 X div Y = Div :-
     Trunc = X // Y,
-    (
+    ( if
         ( X >= 0, Y >= 0
         ; X < 0, Y < 0
         ; X rem Y = 0
         )
-    ->
+    then
         Div = Trunc
-    ;
+    else
         Div = Trunc - 1
     ).
 
 :- pragma inline('//'/2).
 X // Y = Div :-
-    (
+    ( if
         int_domain_checks,
         Y = 0
-    ->
+    then
         throw(math.domain_error("int.'//': division by zero"))
-    ;
+    else
         Div = unchecked_quotient(X, Y)
     ).
 
@@ -520,12 +520,12 @@ X / Y = X // Y.
 
 :- pragma inline(rem/2).
 X rem Y = Rem :-
-    (
+    ( if
         int_domain_checks,
         Y = 0
-    ->
+    then
         throw(math.domain_error("int.rem: division by zero"))
-    ;
+    else
         Rem = unchecked_rem(X, Y)
     ).
 
@@ -576,9 +576,9 @@ X rem Y = Rem :-
 floor_to_multiple_of_bits_per_int(X) = Floor :-
     Trunc = quot_bits_per_int(X),
     Floor0 = times_bits_per_int(Trunc),
-    ( Floor0 > X ->
+    ( if Floor0 > X then
         Floor = Floor0 - bits_per_int
-    ;
+    else
         Floor = Floor0
     ).
 
@@ -586,16 +586,16 @@ X mod Y = X - (X div Y) * Y.
 
 X << Y = Z :-
     bits_per_int(IntBits),
-    ( Y >= 0 ->
-        ( Y >= IntBits ->
+    ( if Y >= 0 then
+        ( if Y >= IntBits then
             Z = 0
-        ;
+        else
             Z = unchecked_left_shift(X, Y)
         )
-    ;
-        ( Y =< -IntBits ->
+    else
+        ( if Y =< -IntBits then
             Z = (if X >= 0 then 0 else -1)
-        ;
+        else
             Z = unchecked_right_shift(X, -Y)
         )
     ).
@@ -604,16 +604,16 @@ X << Y = Z :-
     % tests/hard_coded/shift_test.m will fail if this is not the case.
 X >> Y = Z :-
     bits_per_int(IntBits),
-    ( Y >= 0 ->
-        ( Y >= IntBits ->
+    ( if Y >= 0 then
+        ( if Y >= IntBits then
             Z = (if X >= 0 then 0 else -1)
-        ;
+        else
             Z = unchecked_right_shift(X, Y)
         )
-    ;
-        ( Y =< -IntBits ->
+    else
+        ( if Y =< -IntBits then
             Z = 0
-        ;
+        else
             Z = unchecked_left_shift(X, -Y)
         )
     ).
@@ -630,9 +630,9 @@ abs(Num) = Abs :-
     abs(Num, Abs).
 
 abs(Num, Abs) :-
-    ( Num < 0 ->
+    ( if Num < 0 then
         Abs = 0 - Num
-    ;
+    else
         Abs = Num
     ).
 
@@ -640,9 +640,9 @@ max(X, Y) = Max :-
     max(X, Y, Max).
 
 max(X, Y, Max) :-
-    ( X > Y ->
+    ( if X > Y then
         Max = X
-    ;
+    else
         Max = Y
     ).
 
@@ -650,9 +650,9 @@ min(X, Y) = Min :-
     min(X, Y, Min).
 
 min(X, Y, Min) :-
-    ( X < Y ->
+    ( if X < Y then
         Min = X
-    ;
+    else
         Min = Y
     ).
 
@@ -660,9 +660,9 @@ pow(Base, Exp) = Result :-
     pow(Base, Exp, Result).
 
 pow(Base, Exp, Result) :-
-    ( int_domain_checks, Exp < 0 ->
+    ( if int_domain_checks, Exp < 0 then
         throw(math.domain_error("int.pow: zero base"))
-    ;
+    else
         Result = multiply_by_pow(1, Base, Exp)
     ).
 
@@ -672,12 +672,12 @@ pow(Base, Exp, Result) :-
 :- func multiply_by_pow(int, int, int) = int.
 
 multiply_by_pow(Scale0, Base, Exp) = Result :-
-    ( Exp = 0 ->
+    ( if Exp = 0 then
         Result = Scale0
-    ;
-        ( odd(Exp) ->
+    else
+        ( if odd(Exp) then
             Scale1 = Scale0 * Base
-        ;
+        else
             Scale1 = Scale0
         ),
         Result = multiply_by_pow(Scale1, Base * Base, Exp div 2)
@@ -687,9 +687,9 @@ log2(X) = N :-
     log2(X, N).
 
 log2(X, N) :-
-    ( int_domain_checks, X =< 0 ->
+    ( if int_domain_checks, X =< 0 then
         throw(math.domain_error("int.log2: taking logarithm of zero"))
-    ;
+    else
         log2_2(X, 0, N)
     ).
 
@@ -697,9 +697,9 @@ log2(X, N) :-
 :- mode log2_2(in, in, out) is det.
 
 log2_2(X, N0, N) :-
-    ( X = 1 ->
+    ( if X = 1 then
         N = N0
-    ;
+    else
         X1 = X + 1,
         X2 = X1 // 2,
         N1 = N0 + 1,
@@ -879,47 +879,59 @@ rem_bits_per_int(Int::in) = (Result::out) :-
 %---------------------------------------------------------------------------%
 
 fold_up(P, Lo, Hi, !A) :-
-    ( if    Lo =< Hi
-      then  P(Lo, !A), fold_up(P, Lo + 1, Hi, !A)
-      else  true
+    ( if Lo =< Hi then
+        P(Lo, !A),
+        fold_up(P, Lo + 1, Hi, !A)
+    else
+        true
     ).
 
 fold_up(F, Lo, Hi, A) =
     ( if Lo =< Hi then fold_up(F, Lo + 1, Hi, F(Lo, A)) else A ).
 
 fold_up2(P, Lo, Hi, !A, !B) :-
-    ( if    Lo =< Hi
-      then  P(Lo, !A, !B), fold_up2(P, Lo + 1, Hi, !A, !B)
-      else  true
+    ( if Lo =< Hi then
+        P(Lo, !A, !B),
+        fold_up2(P, Lo + 1, Hi, !A, !B)
+    else
+        true
     ).
 
 fold_up3(P, Lo, Hi, !A, !B, !C) :-
-    ( if    Lo =< Hi
-      then  P(Lo, !A, !B, !C), fold_up3(P, Lo + 1, Hi, !A, !B, !C)
-      else  true
+    ( if Lo =< Hi then
+        P(Lo, !A, !B, !C),
+        fold_up3(P, Lo + 1, Hi, !A, !B, !C)
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
 
 fold_down(P, Lo, Hi, !A) :-
-    ( if    Lo =< Hi
-      then  P(Hi, !A), fold_down(P, Lo, Hi - 1, !A)
-      else  true
+    ( if Lo =< Hi then
+        P(Hi, !A),
+        fold_down(P, Lo, Hi - 1, !A)
+    else
+        true
     ).
 
 fold_down(F, Lo, Hi, A) =
     ( if Lo =< Hi then fold_down(F, Lo, Hi - 1, F(Hi, A)) else A ).
 
 fold_down2(P, Lo, Hi, !A, !B) :-
-    ( if    Lo =< Hi
-      then  P(Hi, !A, !B), fold_down2(P, Lo, Hi - 1, !A, !B)
-      else  true
+    ( if Lo =< Hi then
+        P(Hi, !A, !B),
+        fold_down2(P, Lo, Hi - 1, !A, !B)
+    else
+        true
     ).
 
 fold_down3(P, Lo, Hi, !A, !B, !C) :-
-    ( if    Lo =< Hi
-      then  P(Hi, !A, !B, !C), fold_down3(P, Lo, Hi - 1, !A, !B, !C)
-      else  true
+    ( if Lo =< Hi then
+        P(Hi, !A, !B, !C),
+        fold_down3(P, Lo, Hi - 1, !A, !B, !C)
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
@@ -927,13 +939,13 @@ fold_down3(P, Lo, Hi, !A, !B, !C) :-
 nondet_int_in_range(Lo, Hi, I) :-
     % Leave a choice point only if there is at least one solution
     % to find on backtracking.
-    ( Lo < Hi ->
+    ( if Lo < Hi then
         (
             I = Lo
         ;
             nondet_int_in_range(Lo + 1, Hi, I)
         )
-    ;
+    else
         Lo = Hi,
         I = Lo
     ).
