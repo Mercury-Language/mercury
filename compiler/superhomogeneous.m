@@ -1073,7 +1073,7 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
     %               H3 = D
     %       )
     %
-    % Note that the quantification is important here. That's why we need
+    % Note that the quantification is important here. That is why we need
     % to introduce the explicit `some [...]'. Variables in the argument
     % positions are lambda-quantified, so when we move them to the body,
     % we need to make them explicitly existentially quantified to avoid
@@ -1115,7 +1115,7 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, Groundness,
             % becoming lambda-quantified.
 
             list.length(Args, NumArgs),
-            varset.new_vars(NumArgs, LambdaVars, !VarSet),
+            make_n_fresh_vars("LambdaHeadVar__", NumArgs, LambdaVars, !VarSet),
 
             % Partition the arguments (and their corresponding lambda vars)
             % into two sets: those that are not output, i.e. input and unused,
