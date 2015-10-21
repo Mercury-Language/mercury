@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
+% vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2000, 2003-2007, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
@@ -10,13 +10,17 @@
 % Main authors: aet, Dan Hazel <odin@svrc.uq.edu.au>.
 % Stability: high.
 %
-% Implements an arbitrary precision integer type and basic
-% operations on it. (An arbitrary precision integer may have
-% any number of digits, unlike an int, which is limited to the
-% precision of the machine's int type, which is typically 32 bits.)
+% This modules defines an arbitrary precision integer type (named "integer")
+% and basic arithmetic operations on it.
 %
-% NOTE: All operators behave as the equivalent operators on ints do.
-% This includes the division operators: / // rem div mod.
+% The builtin Mercury type "int" is implemented as machine integers,
+% which on virtually all modern machines will be 32 or 64 bits in size.
+% If you need to manipulate integers that may not fit into this many bits,
+% you will want to use "integer"s instead of "int"s.
+%
+% NOTE: All the operators we define on "integers" behave the same as the
+% corresponding operators on "int"s. This includes the operators related
+% to division: /, //, rem, div, and mod.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -26,19 +30,19 @@
 
 :- type integer.
 
-    % Less than.
+    % X < Y: Succeed if and only if X is less than Y.
     %
 :- pred '<'(integer::in, integer::in) is semidet.
 
-    % Greater than.
+    % X > Y: Succeed if and only if X is greater than Y.
     %
 :- pred '>'(integer::in, integer::in) is semidet.
 
-    % Less than or equal.
+    % X =< Y: Succeed if and only if X is less than or equal to Y.
     %
 :- pred '=<'(integer::in, integer::in) is semidet.
 
-    % Greater than or equal.
+    % X >= Y: Succeed if and only if X is greater than or equal to Y.
     %
 :- pred '>='(integer::in, integer::in) is semidet.
 
@@ -61,14 +65,14 @@
 
     % Convert a string to an integer. The string must contain only digits
     % [0-9], optionally preceded by a plus or minus sign. If the string does
-    % not match this syntax then the predicate fails.
+    % not match this syntax, then the predicate fails.
     %
 :- pred from_string(string::in, integer::out) is semidet.
 
 :- func from_string(string::in) = (integer::out) is semidet.
 :- pragma obsolete(from_string/1).
 
-    % As above but throws an exception rather than failing.
+    % As above, but throws an exception rather than failing.
     %
 :- func det_from_string(string) = integer.
 
@@ -76,14 +80,14 @@
     % The string must contain one or more digits in the specified base,
     % optionally preceded by a plus or minus sign. For bases > 10, digits
     % 10 to 35 are represented by the letters A-Z or a-z. If the string
-    % does not match this syntax then the predicate fails.
+    % does not match this syntax, then the predicate fails.
     %
 :- pred from_base_string(int::in, string::in, integer::out) is semidet.
 
 :- func from_base_string(int, string) = integer is semidet.
 :- pragma obsolete(from_base_string/2).
 
-    % As above but throws an exception rather than failing.
+    % As above, but throws an exception rather than failing.
     %
 :- func det_from_base_string(int, string) = integer.
 
@@ -178,7 +182,7 @@
     %
 :- pred to_int(integer::in, int::out) is semidet.
 
-    % As above but throws an exception rather than failing.
+    % As above, but throws an exception rather than failing.
     %
 :- func det_to_int(integer) = int.
 
@@ -232,57 +236,53 @@
 
 % Possible improvements:
 %
-% 1) allow negative digits (-base+1 .. base-1) in lists of
-%    digits and normalise only when printing. This would
-%    probably simplify the division algorithm, also.
+% 1) allow negative digits (-base+1 .. base-1) in lists of digits
+%    and normalise only when printing. This would probably simplify
+%    the division algorithm, also.
 %    (djh: this is not really done although -ve integers include a list
 %    of -ve digits for faster comparison and so that normal mercury
 %    sorting produces an intuitive order)
 %
-% 2) alternatively, instead of using base=10000, use *all* the
-%    bits in an int and make use of the properties of machine
-%    arithmetic. Base 10000 doesn't use even half the bits
-%    in an int, which is inefficient. (Base 2^14 would be
-%    a little better but would require a slightly more
-%    complex case conversion on reading and printing.)
+% 2) alternatively, instead of using base=10000, use *all* the bits in an int
+%    and make use of the properties of machine arithmetic. Base 10000 doesn't
+%    use even half the bits in an int, which is inefficient. (Base 2^14
+%    would be a little better but would require a slightly more complex
+%    case conversion on reading and printing.)
 %    (djh: this is done)
 %
-% 3) Use an O(n^(3/2)) algorithm for multiplying large
-%    integers, rather than the current O(n^2) method.
-%    There's an obvious divide-and-conquer technique,
-%    Karatsuba multiplication. (this is done)
+% 3) Use an O(n^(3/2)) algorithm for multiplying large integers, rather than
+%    the current O(n^2) method. There is an obvious divide-and-conquer
+%    technique, Karatsuba multiplication. (this is done)
 %
 % 4) We could overload operators so that we can have mixed operations
 %    on ints and integers. For example, "integer(1)+3". This
 %    would obviate most calls of integer().
 %
-% 5) Use double-ended lists rather than simple lists. This
-%    would improve the efficiency of the division algorithm,
-%    which reverse lists.
+% 5) Use double-ended lists rather than simple lists. This would improve
+%    the efficiency of the division algorithm, which reverse lists.
 %    (djh: this is obsolete - digits lists are now in normal order)
 %
-% 6) Add bit operations (XOR, AND, OR, etc). We would treat
-%    the integers as having a 2's complement bit representation.
-%    This is easier to do if we use base 2^14 as mentioned above.
+% 6) Add bit operations (XOR, AND, OR, etc). We would treat the integers
+%    as having a 2's complement bit representation. This is easier to do
+%    if we use base 2^14 as mentioned above.
 %    (djh: this is done:  /\ \/ << >> xor \)
 %
 % 7) The implementation of `div' is slower than it need be.
 %    (djh: this is much improved)
 %
-% 8) Fourier methods such as Schoenhage-Strassen and
-%    multiplication via modular arithmetic are left as
-%    exercises to the reader. 8^)
+% 8) Fourier methods such as Schoenhage-Strassen and multiplication via
+%    modular arithmetic are left as exercises to the reader. 8^)
 %
-% Of the above, 1) would have the best bang-for-buck, 5) would
-% benefit division and remainder operations quite a lot, and 3)
-% would benefit large multiplications (thousands of digits)
-% and is straightforward to implement.
+% Of the above, 1) would have the best bang-for-buck, 5) would benefit
+% division and remainder operations quite a lot, and 3) would benefit
+% large multiplications (thousands of digits) and is straightforward
+% to implement.
 %
 % (djh: I'd like to see 1) done. integers are now represented as
 % i(Length, Digits) where Digits are no longer reversed.
-% The only penalty for not reversing is in multiplication
-% by the base which now entails walking to the end of the list
-% to append a 0. Therefore I'd like to see:
+% The only penalty for not reversing is in multiplication by the base
+% which now entails walking to the end of the list to append a 0.
+% Therefore I'd like to see:
 %
 % 9) Allow empty tails for low end zeros.
 %    Base multiplication is then an increment to Length.
@@ -358,61 +358,61 @@ X mod Y = big_mod(X, Y).
 divide_with_rem(X, Y, Quotient, Remainder) :-
     big_quot_rem(X, Y, Quotient, Remainder).
 
-X << I =
-    ( I > 0 ->
-        big_left_shift(X, I)
-    ; I < 0 ->
-        X >> -I
-    ;
-        X
+X << I = Result :-
+    ( if I > 0 then
+        Result = big_left_shift(X, I)
+    else if I < 0 then
+        Result = X >> -I
+    else
+        Result = X
     ).
 
-X >> I =
-    ( I < 0 ->
-        X << -I
-    ; I > 0 ->
-        big_right_shift(X, I)
-    ;
-        X
+X >> I = Result :-
+    ( if I < 0 then
+        Result = X << -I
+    else if I > 0 then
+        Result = big_right_shift(X, I)
+    else
+        Result = X
     ).
 
-X /\ Y =
-    ( big_isnegative(X) ->
-        ( big_isnegative(Y) ->
-            \ big_or(\ X, \ Y)
-        ;
-            big_and_not(Y, \ X)
+X /\ Y = Result :-
+    ( if big_isnegative(X) then
+        ( if big_isnegative(Y) then
+            Result = \ big_or(\ X, \ Y)
+        else
+            Result = big_and_not(Y, \ X)
         )
-    ; big_isnegative(Y) ->
-        big_and_not(X, \ Y)
-    ;
-        big_and(X, Y)
+    else if big_isnegative(Y) then
+        Result = big_and_not(X, \ Y)
+    else
+        Result = big_and(X, Y)
     ).
 
-X \/ Y =
-    ( big_isnegative(X) ->
-        ( big_isnegative(Y) ->
-            \ big_and(\ X, \ Y)
-        ;
-            \ big_and_not(\ X, Y)
+X \/ Y = Result :-
+    ( if big_isnegative(X) then
+        ( if big_isnegative(Y) then
+            Result = \ big_and(\ X, \ Y)
+        else
+            Result = \ big_and_not(\ X, Y)
         )
-    ; big_isnegative(Y) ->
-        \ big_and_not(\ Y, X)
-    ;
-        big_or(X, Y)
+    else if big_isnegative(Y) then
+        Result = \ big_and_not(\ Y, X)
+    else
+        Result = big_or(X, Y)
     ).
 
-X `xor` Y =
-    ( big_isnegative(X) ->
-        ( big_isnegative(Y) ->
-            big_xor(\ X, \ Y)
-        ;
-            big_xor_not(Y, \ X)
+X `xor` Y = Result :-
+    ( if big_isnegative(X) then
+        ( if big_isnegative(Y) then
+            Result = big_xor(\ X, \ Y)
+        else
+            Result = big_xor_not(Y, \ X)
         )
-    ; big_isnegative(Y) ->
-        big_xor_not(X, \ Y)
-    ;
-        big_xor(X, Y)
+    else if big_isnegative(Y) then
+        Result = big_xor_not(X, \ Y)
+    else
+        Result = big_xor(X, Y)
     ).
 
 \ X = big_neg(big_plus(X, integer.one)).
@@ -421,7 +421,12 @@ integer.abs(N) = big_abs(N).
 
 :- func big_abs(integer) = integer.
 
-big_abs(i(Sign, Ds)) = ( Sign < 0 -> big_neg(i(Sign, Ds)) ; i(Sign, Ds) ).
+big_abs(i(Sign, Ds)) = Result :-
+    ( if Sign < 0 then
+        Result = big_neg(i(Sign, Ds))
+    else
+        Result = i(Sign, Ds)
+    ).
 
 :- pred neg_list(list(int)::in, list(int)::out) is det.
 
@@ -431,7 +436,8 @@ neg_list([H | T], [-H | NT]) :-
 
 :- pred big_isnegative(integer::in) is semidet.
 
-big_isnegative(i(Sign, _)) :- Sign < 0.
+big_isnegative(i(Sign, _)) :-
+    Sign < 0.
 
 :- func big_neg(integer) = integer.
 
@@ -440,13 +446,19 @@ big_neg(i(S, Digits0)) = i(-S, Digits) :-
 
 :- func big_mul(integer, integer) = integer.
 
-big_mul(X, Y) =
-    big_sign(integer_signum(X) * integer_signum(Y),
-        pos_mul(big_abs(X), big_abs(Y))).
+big_mul(X, Y) = Result :-
+    Sign = integer_signum(X) * integer_signum(Y),
+    Value = pos_mul(big_abs(X), big_abs(Y)),
+    Result = big_sign(Sign, Value).
 
 :- func big_sign(int, integer) = integer.
 
-big_sign(Sign, In) = ( Sign < 0 -> big_neg(In) ; In ).
+big_sign(Sign, In) = Result :-
+    ( if Sign < 0 then
+        Result = big_neg(In)
+    else
+        Result = In
+    ).
 
 :- func big_quot(integer, integer) = integer.
 
@@ -462,9 +474,9 @@ big_rem(X, Y) = Rem :-
 
 big_div(X, Y) = Div :-
     big_quot_rem(X, Y, Trunc, Rem),
-    ( integer_signum(Y) * integer_signum(Rem) < 0 ->
+    ( if integer_signum(Y) * integer_signum(Rem) < 0 then
         Div = Trunc - integer.one
-    ;
+    else
         Div = Trunc
     ).
 
@@ -472,32 +484,32 @@ big_div(X, Y) = Div :-
 
 big_mod(X, Y) = Mod :-
     big_quot_rem(X, Y, _Trunc, Rem),
-    ( integer_signum(Y) * integer_signum(Rem) < 0 ->
+    ( if integer_signum(Y) * integer_signum(Rem) < 0 then
         Mod = Rem + Y
-    ;
+    else
         Mod = Rem
     ).
 
 :- func big_right_shift(integer, int) = integer.
 
-big_right_shift(X, I) =
-    ( is_zero(X) ->
-        X
-    ; big_isnegative(X) ->
-        \ pos_right_shift(\ X, I)
-    ;
-        pos_right_shift(X, I)
+big_right_shift(X, I) = Result :-
+    ( if is_zero(X) then
+        Result = X
+    else if big_isnegative(X) then
+        Result = \ pos_right_shift(\ X, I)
+    else
+        Result = pos_right_shift(X, I)
     ).
 
 :- func pos_right_shift(integer, int) = integer.
 
 pos_right_shift(i(Len, Digits), I) = Integer :-
     Div = I div log2base,
-    ( Div < Len ->
+    ( if Div < Len then
         Mod = I mod log2base,
         Integer = decap(rightshift(Mod, log2base - Mod,
             i(Len - Div, Digits), 0))
-    ;
+    else
         Integer = integer.zero
     ).
 
@@ -505,9 +517,9 @@ pos_right_shift(i(Len, Digits), I) = Integer :-
 
 rightshift(_Mod, _InvMod, i(_Len, []), _Carry) = integer.zero.
 rightshift(Mod, InvMod, i(Len, [H | T]), Carry) = Integer :-
-    ( Len =< 0 ->
+    ( if Len =< 0 then
         Integer = integer.zero
-    ;
+    else
         NewH = Carry \/ (H >> Mod),
         NewCarry = (H /\ (basemask >> InvMod)) << InvMod,
         i(TailLen, NewTail) = rightshift(Mod, InvMod, i(Len - 1, T),
@@ -517,13 +529,13 @@ rightshift(Mod, InvMod, i(Len, [H | T]), Carry) = Integer :-
 
 :- func big_left_shift(integer, int) = integer.
 
-big_left_shift(X, I) =
-    ( is_zero(X) ->
-        X
-    ; big_isnegative(X) ->
-        big_neg(pos_left_shift(big_neg(X), I))
-    ;
-        pos_left_shift(X, I)
+big_left_shift(X, I) = Result :-
+    ( if is_zero(X) then
+        Result = X
+    else if big_isnegative(X) then
+        Result = big_neg(pos_left_shift(big_neg(X), I))
+    else
+        Result = pos_left_shift(X, I)
     ).
 
 :- func pos_left_shift(integer, int) = integer.
@@ -533,9 +545,9 @@ pos_left_shift(i(Len, Digits), I) = Integer :-
     Mod = I mod log2base,
     NewLen = Len + Div,
     leftshift(Mod, log2base - Mod, NewLen, Digits, Carry, NewDigits),
-    ( Carry = 0 ->
+    ( if Carry = 0 then
         Integer = i(NewLen, NewDigits)
-    ;
+    else
         Integer = i(NewLen + 1, [Carry | NewDigits])
     ).
 
@@ -544,25 +556,25 @@ pos_left_shift(i(Len, Digits), I) = Integer :-
 
 leftshift(_Mod, _InvMod, Len, [], Carry, DigitsOut) :-
     Carry = 0,
-    zeros(Len, DigitsOut, []).
+    zeros(Len, [], DigitsOut).
 leftshift(Mod, InvMod, Len, [H | T], Carry, DigitsOut) :-
-    ( Len =< 0 ->
+    ( if Len =< 0 then
         Carry = 0,
         DigitsOut = []
-    ;
+    else
         Carry = (H /\ (basemask << InvMod)) >> InvMod,
         leftshift(Mod, InvMod, Len - 1, T, TailCarry, Tail),
         DigitsOut = [TailCarry \/ ((H << Mod) /\ basemask) | Tail]
     ).
 
-:- pred zeros(int::in, list(digit)::out, list(digit)::in) is det.
+:- pred zeros(int::in, list(digit)::in, list(digit)::out) is det.
 
-zeros(Len) -->
-    ( { Len > 0 } ->
-        [0],
-        zeros(Len - 1)
-    ;
-        []
+zeros(Len, Digits0, Digits) :-
+    ( if Len > 0 then
+        zeros(Len - 1, Digits0, Digits1),
+        Digits = [0 | Digits1]
+    else
+        Digits = Digits0
     ).
 
 :- func big_or(integer, integer) = integer.
@@ -572,15 +584,15 @@ big_or(X, Y) = decap(or_pairs(X, Y)).
 :- func or_pairs(integer, integer) = integer.
 
 or_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    ( L1 = L2 ->
+    ( if L1 = L2 then
         Integer = i(L1, or_pairs_equal(D1, D2))
-    ; L1 < L2, D2 = [H2 | T2] ->
+    else if L1 < L2, D2 = [H2 | T2] then
         i(_, DsT) = or_pairs(i(L1, D1), i(L2 - 1, T2)),
         Integer = i(L2, [H2 | DsT])
-    ; L1 > L2, D1 = [H1 | T1] ->
+    else if L1 > L2, D1 = [H1 | T1] then
         i(_, DsT) = or_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L1, [H1 | DsT])
-    ;
+    else
         unexpected($module, $pred, "invalid integer")
     ).
 
@@ -597,15 +609,15 @@ big_xor(X, Y) = decap(xor_pairs(X, Y)).
 :- func xor_pairs(integer, integer) = integer.
 
 xor_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    ( L1 = L2 ->
+    ( if L1 = L2 then
         Integer = i(L1, xor_pairs_equal(D1, D2))
-    ; L1 < L2, D2 = [H2 | T2] ->
+    else if L1 < L2, D2 = [H2 | T2] then
         i(_, DsT) = xor_pairs(i(L1, D1), i(L2 - 1, T2)),
         Integer = i(L2, [H2 | DsT])
-    ; L1 > L2, D1 = [H1 | T1] ->
+    else if L1 > L2, D1 = [H1 | T1] then
         i(_, DsT) = xor_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L1, [H1 | DsT])
-    ;
+    else
         unexpected($module, $pred, "invalid integer")
     ).
 
@@ -623,15 +635,15 @@ big_and(X, Y) = decap(and_pairs(X, Y)).
 :- func and_pairs(integer, integer) = integer.
 
 and_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    ( L1 = L2 ->
+    ( if L1 = L2 then
         Integer = i(L1, and_pairs_equal(D1, D2))
-    ; L1 < L2, D2 = [_ | T2] ->
+    else if L1 < L2, D2 = [_ | T2] then
         i(_, DsT) = and_pairs(i(L1, D1), i(L2 - 1, T2)),
         Integer = i(L1, DsT)
-    ; L1 > L2, D1 = [_ | T1] ->
+    else if L1 > L2, D1 = [_ | T1] then
         i(_, DsT) = and_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L2, DsT)
-    ;
+    else
         unexpected($module, $pred, "invalid integer")
     ).
 
@@ -648,15 +660,15 @@ big_and_not(X, Y) = decap(and_not_pairs(X, Y)).
 :- func and_not_pairs(integer, integer) = integer.
 
 and_not_pairs(i(L1, D1), i(L2, D2)) = Integer :-
-    ( L1 = L2 ->
+    ( if L1 = L2 then
         Integer = i(L1, and_not_pairs_equal(D1, D2))
-    ; L1 < L2, D2 = [_ | T2] ->
+    else if L1 < L2, D2 = [_ | T2] then
         i(_, DsT) = and_not_pairs(i(L1, D1), i(L2 - 1, T2)),
         Integer = i(L1, DsT)
-    ; L1 > L2, D1 = [H1 | T1] ->
+    else if L1 > L2, D1 = [H1 | T1] then
         i(_, DsT) = and_not_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L1, [H1 | DsT])
-    ;
+    else
         unexpected($module, $pred, "invalid integer")
     ).
 
@@ -685,18 +697,18 @@ pos_cmp(X, Y) = Result :-
 :- func big_plus(integer, integer) = integer.
 
 big_plus(X, Y) = Sum :-
-    ( is_zero(X) ->
+    ( if is_zero(X) then
         Sum = Y
-    ; is_zero(Y) ->
+    else if is_zero(Y) then
         Sum = X
-    ;
+    else
         AbsX = big_abs(X),
         AbsY = big_abs(Y),
         SignX = integer_signum(X),
         SignY = integer_signum(Y),
-        ( SignX = SignY ->
+        ( if SignX = SignY then
             Sum = big_sign(SignX, pos_plus(AbsX, AbsY))
-        ;
+        else
             C = pos_cmp(AbsX, AbsY),
             (
                 C = (<),
@@ -714,40 +726,52 @@ big_plus(X, Y) = Sum :-
 integer(N) = int_to_integer(N).
 
 % Note: Since most machines use 2's complement arithmetic,
-% INT_MIN is usually -INT_MAX-1, hence -INT_MIN will
-% cause int overflow. We handle overflow below.
-% We don't check for a negative result from abs(), which
-% would indicate overflow, since we may trap int overflow
-% instead.
+% INT_MIN is usually -INT_MAX-1, hence -INT_MIN will cause int overflow.
+% We handle overflow below.
+% We don't check for a negative result from abs(), which would indicate
+% overflow, since we may trap int overflow instead.
 %
 % XXX: What about machines that aren't 2's complement?
 
 :- func int_to_integer(int) = integer.
 
 int_to_integer(D) = Int :-
-    ( D = 0 ->
+    ( if D = 0 then
         Int = integer.zero
-    ; D > 0, D < base ->
+    else if D > 0, D < base then
         Int = i(1, [D])
-    ; D < 0, D > -base ->
+    else if D < 0, D > -base then
         Int = i(-1, [D])
-    ;
-        ( int.min_int(D) ->
+    else
+        ( if int.min_int(D) then
             % Were we to call int.abs, int overflow might occur.
             Int = integer(D + 1) - integer.one
-        ;
+        else
             Int = big_sign(D, pos_int_to_digits(int.abs(D)))
         )
     ).
 
 :- func shortint_to_integer(int) = integer.
 
-shortint_to_integer(D) =
-    ( D = 0 -> integer.zero ; D > 0 -> i(1, [D]) ; i(-1, [D]) ).
+shortint_to_integer(D) = Result :-
+    ( if D = 0 then
+        Result = integer.zero
+    else if D > 0 then
+        Result = i(1, [D])
+    else
+        Result = i(-1, [D])
+    ).
 
 :- func signum(int) = int.
 
-signum(N) = ( N < 0 -> -1 ; N = 0 -> 0 ; 1 ).
+signum(N) = Sign :-
+    ( if N < 0 then
+        Sign = -1
+    else if N = 0 then
+        Sign = 0
+    else
+        Sign = 1
+    ).
 
 :- func integer_signum(integer) = int.
 
@@ -760,13 +784,12 @@ pos_int_to_digits(D) = pos_int_to_digits_2(D, integer.zero).
 :- func pos_int_to_digits_2(int, integer) = integer.
 
 pos_int_to_digits_2(D, Tail) = Result :-
-    ( D = 0 ->
+    ( if D = 0 then
         Result = Tail
-    ;
+    else
         Tail = i(Length, Digits),
         chop(D, Div, Mod),
-        Result = pos_int_to_digits_2(Div,
-            i(Length + 1, [Mod | Digits]))
+        Result = pos_int_to_digits_2(Div, i(Length + 1, [Mod | Digits]))
     ).
 
 :- func mul_base(integer) = integer.
@@ -789,7 +812,11 @@ mul_base_2([H | T]) = [H | mul_base_2(T)].
 
 mul_by_digit(Digit, i(Len, Digits0)) = Out :-
     mul_by_digit_2(Digit, Mod, Digits0, Digits),
-    Out = ( Mod = 0 -> i(Len, Digits) ; i(Len + 1, [Mod | Digits]) ).
+    ( if Mod = 0 then
+        Out = i(Len, Digits)
+    else
+        Out = i(Len + 1, [Mod | Digits])
+    ).
 
 :- pred mul_by_digit_2(digit::in, digit::out, list(digit)::in,
     list(digit)::out) is det.
@@ -809,24 +836,32 @@ chop(N, Div, Mod) :-
 
 pos_plus(i(L1, D1), i(L2, D2)) = Out :-
     add_pairs(Div, i(L1, D1), i(L2, D2), Ds),
-    Len = ( L1 > L2 -> L1 ; L2 ),
-    Out = ( Div = 0 -> i(Len, Ds) ; i(Len + 1, [Div | Ds]) ).
+    ( if L1 > L2 then
+        Len = L1
+    else
+        Len = L2
+    ),
+    ( if Div = 0  then
+        Out = i(Len, Ds)
+    else
+        Out = i(Len + 1, [Div | Ds])
+    ).
 
 :- pred add_pairs(digit::out, integer::in, integer::in,
     list(digit)::out) is det.
 
 add_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
-    ( L1 = L2 ->
+    ( if L1 = L2 then
         add_pairs_equal(Div, D1, D2, Ds)
-    ; L1 < L2, D2 = [H2 | T2] ->
+    else if L1 < L2, D2 = [H2 | T2] then
         add_pairs(Div1, i(L1, D1), i(L2 - 1, T2), Ds1),
         chop(H2 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
-    ; L1 > L2, D1 = [H1 | T1] ->
+    else if L1 > L2, D1 = [H1 | T1] then
         add_pairs(Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
         chop(H1 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
-    ;
+    else
         unexpected($module, $pred, "invalid integer")
     ).
 
@@ -843,20 +878,28 @@ add_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
 
 pos_minus(i(L1, D1), i(L2, D2)) = Out :-
     diff_pairs(Mod, i(L1, D1), i(L2, D2), Ds),
-    Len = ( L1 > L2 -> L1 ; L2 ),
-    Out = ( Mod = 0 -> decap(i(Len, Ds)) ; i(Len + 1, [Mod | Ds]) ).
+    ( if L1 > L2 then
+        Len = L1
+    else
+        Len = L2
+    ),
+    ( if Mod = 0 then
+        Out = decap(i(Len, Ds))
+    else
+        Out = i(Len + 1, [Mod | Ds])
+    ).
 
 :- pred diff_pairs(digit::out, integer::in, integer::in,
     list(digit)::out) is det.
 
 diff_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
-    ( L1 = L2 ->
+    ( if L1 = L2 then
         diff_pairs_equal(Div, D1, D2, Ds)
-    ; L1 > L2, D1 = [H1 | T1] ->
+    else if L1 > L2, D1 = [H1 | T1] then
         diff_pairs(Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
         chop(H1 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
-    ;
+    else
         unexpected($module, $pred, "invalid integer")
     ).
 
@@ -872,9 +915,9 @@ diff_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
 :- func pos_mul(integer, integer) = integer.
 
 pos_mul(i(L1, Ds1), i(L2, Ds2)) =
-    ( L1 < L2 ->
+    ( if L1 < L2 then
         pos_mul_karatsuba(i(L1, Ds1), i(L2, Ds2))
-    ;
+    else
         pos_mul_karatsuba(i(L2, Ds2), i(L1, Ds1))
     ).
 
@@ -893,12 +936,12 @@ karatsuba_parallel_threshold = karatsuba_threshold * 10.
 :- func pos_mul_karatsuba(integer, integer) = integer.
 
 pos_mul_karatsuba(i(L1, Ds1), i(L2, Ds2)) = Res :-
-    ( L1 < karatsuba_threshold ->
+    ( if L1 < karatsuba_threshold then
         Res = pos_mul_list(Ds1, integer.zero, i(L2, Ds2))
-    ;
-        ( L2 < L1 ->
+    else
+        ( if L2 < L1 then
             unexpected($module, $pred, "second factor smaller")
-        ;
+        else
             Middle = L2 div 2,
             HiDigits = L2 - Middle,
             HiDigitsSmall = max(0, L1 - Middle),
@@ -911,11 +954,11 @@ pos_mul_karatsuba(i(L1, Ds1), i(L2, Ds2)) = Res :-
             LoDs2 = i(Middle, Ds2Lower),
             HiDs1 = i(HiDigitsSmall, Ds1Upper),
             HiDs2 = i(HiDigits, Ds2Upper),
-            ( Middle > karatsuba_parallel_threshold ->
+            ( if Middle > karatsuba_parallel_threshold then
                 Res0 = pos_mul(LoDs1, LoDs2) &
                 Res1 = pos_mul(LoDs1 + HiDs1, LoDs2 + HiDs2) &
                 Res2 = pos_mul(HiDs1, HiDs2)
-            ;
+            else
                 Res0 = pos_mul(LoDs1, LoDs2),
                 Res1 = pos_mul(LoDs1 + HiDs1, LoDs2 + HiDs2),
                 Res2 = pos_mul(HiDs1, HiDs2)
@@ -932,16 +975,16 @@ pos_mul_list([], Carry, _Y) = Carry.
 pos_mul_list([X | Xs], Carry, Y) =
     pos_mul_list(Xs, pos_plus(mul_base(Carry), mul_by_digit(X, Y)), Y).
 
-:- pred big_quot_rem(integer::in, integer::in, integer::out,
-    integer::out) is det.
+:- pred big_quot_rem(integer::in, integer::in, integer::out, integer::out)
+    is det.
 
 big_quot_rem(X, Y, Quot, Rem) :-
-    ( is_zero(Y) ->
+    ( if is_zero(Y) then
         throw(math.domain_error("integer.big_quot_rem: division by zero"))
-    ; is_zero(X) ->
+    else if is_zero(X) then
         Quot = integer.zero,
         Rem  = integer.zero
-    ;
+    else
         X = i(SignX, _),
         Y = i(SignY, _),
         quot_rem(big_abs(X), big_abs(Y), Quot0, Rem0),
@@ -954,29 +997,27 @@ big_quot_rem(X, Y, Quot, Rem) :-
 % Essentially the usual long division algorithm.
 % Qhat is an approximation to Q. It may be at most 2 too big.
 %
-% If the first digit of V is less than base/2, then
-% we scale both the numerator and denominator. This
-% way, we can use Knuth's[*] nifty trick for finding
-% an accurate approximation to Q. That's all we use from
-% Knuth; his MIX algorithm is fugly.
+% If the first digit of V is less than base/2, then we scale both
+% the numerator and denominator. This way, we can use Knuth's[*] nifty trick
+% for finding an accurate approximation to Q. That's all we use from Knuth;
+% his MIX algorithm is fugly.
 %
 % [*] Knuth, Semi-numerical algorithms.
-%
 
 :- pred quot_rem(integer::in, integer::in, integer::out, integer::out) is det.
 
 quot_rem(U, V, Quot, Rem) :-
-    ( U = i(_, [UI]), V = i(_, [VI]) ->
+    ( if U = i(_, [UI]), V = i(_, [VI]) then
         Quot = shortint_to_integer(UI // VI),
         Rem  = shortint_to_integer(UI rem VI)
-    ;
+    else
         V0 = det_first(V),
-        ( V0 < basediv2 ->
+        ( if V0 < basediv2 then
             M = base div (V0 + 1),
             quot_rem_2(integer.zero, mul_by_digit(M, U),
                 mul_by_digit(M, V), QuotZeros, R),
             Rem = div_by_digit(M, R)
-        ;
+        else
             quot_rem_2(integer.zero, U, V, QuotZeros, Rem)
         ),
         Quot = decap(QuotZeros)
@@ -986,43 +1027,42 @@ quot_rem(U, V, Quot, Rem) :-
     integer::out) is det.
 
 quot_rem_2(Ur, U, V, Quot, Rem) :-
-    ( pos_lt(Ur, V) ->
-        ( U = i(_, [Ua | _]) ->
+    ( if pos_lt(Ur, V) then
+        ( if U = i(_, [Ua | _]) then
             quot_rem_2(integer_append(Ur, Ua), det_tail(U), V,
                 Quot0, Rem0),
             Quot = integer_prepend(0, Quot0),
             Rem = Rem0
-        ;
+        else
             Quot = i(1, [0]),
             Rem = Ur
         )
-    ;
-        ( length(Ur) > length(V) ->
+    else
+        ( if length(Ur) > length(V) then
             Qhat = (det_first(Ur) * base + det_second(Ur)) div det_first(V)
-        ;
+        else
             Qhat = det_first(Ur) div det_first(V)
         ),
         QhatByV = mul_by_digit(Qhat, V),
-        ( pos_geq(Ur, QhatByV) ->
+        ( if pos_geq(Ur, QhatByV) then
             Q = Qhat,
             QByV = QhatByV
-        ;
+        else
             QhatMinus1ByV = pos_minus(QhatByV, V),
-            ( pos_geq(Ur, QhatMinus1ByV) ->
+            ( if pos_geq(Ur, QhatMinus1ByV) then
                 Q = Qhat - 1,
                 QByV = QhatMinus1ByV
-            ;
+            else
                 Q = Qhat - 2,
                 QByV = pos_minus(QhatMinus1ByV, V)
             )
         ),
         NewUr = pos_minus(Ur, QByV),
-        ( U = i(_, [Ua | _]) ->
-            quot_rem_2(integer_append(NewUr, Ua), det_tail(U), V,
-                Quot0, Rem0),
+        ( if U = i(_, [Ua | _]) then
+            quot_rem_2(integer_append(NewUr, Ua), det_tail(U), V, Quot0, Rem0),
             Quot = integer_prepend(Q, Quot0),
             Rem = Rem0
-        ;
+        else
             Quot = i(1, [Q]),
             Rem = NewUr
         )
@@ -1035,7 +1075,12 @@ length(i(L, _)) = L.
 :- func decap(integer) = integer.
 
 decap(i(_, [])) = integer.zero.
-decap(i(L, [H | T])) = ( H = 0 -> decap(i(L - 1, T)) ; i(L, [H | T]) ).
+decap(i(L, [H | T])) = Result :-
+    ( if H = 0 then
+        Result = decap(i(L - 1, T))
+    else
+        Result = i(L, [H | T])
+    ).
 
 :- func det_first(integer) = digit.
 
@@ -1087,13 +1132,18 @@ div_by_digit(Digit, i(_, [X | Xs])) = div_by_digit_1(X, Xs, Digit).
 
 :- func div_by_digit_1(digit, list(digit), digit) = integer.
 
-div_by_digit_1(X, [], D) = ( Q = 0 -> integer.zero ; i(1, [Q]) ) :-
-    Q = X div D.
+div_by_digit_1(X, [], D) = Integer :-
+    Q = X div D,
+    ( if Q = 0 then
+        Integer = integer.zero
+    else
+        Integer = i(1, [Q])
+    ).
 div_by_digit_1(X, [H | T], D) = Integer :-
     Q = X div D,
-    ( Q = 0 ->
+    ( if Q = 0 then
         Integer = div_by_digit_1((X rem D) * base + H, T, D)
-    ;
+    else
         i(L, Ds) = div_by_digit_2((X rem D) * base + H, T, D),
         Integer = i(L + 1, [Q | Ds])
     ).
@@ -1118,47 +1168,45 @@ pos_geq(Xs, Ys) :-
     ).
 
 integer.pow(A, N) = P :-
-    ( big_isnegative(N) ->
+    ( if big_isnegative(N) then
         throw(math.domain_error("integer.pow: negative exponent"))
-    ;
+    else
         P = big_pow(A, N)
     ).
 
 :- func big_pow(integer, integer) = integer.
 
-big_pow(A, N) =
-    ( N = integer.zero ->
-        integer.one
-    ; N = integer.one ->
-        A
-    ; A = integer.one ->
-        integer.one
-    ; A = integer.zero ->
-        integer.zero
-    ; N = i(_, [_ | _]) ->
-        big_pow_sqmul(A, N)
-    ;
-        integer.zero
+big_pow(A, N) = Result :-
+    ( if N = integer.zero then
+        Result = integer.one
+    else if N = integer.one then
+        Result = A
+    else if A = integer.one then
+        Result = integer.one
+    else if A = integer.zero then
+        Result = integer.zero
+    else if N = i(_, [_ | _]) then
+        Result = big_pow_sqmul(A, N)
+    else
+        Result = integer.zero
     ).
 
 :- func big_pow_sqmul(integer, integer) = integer.
 
-big_pow_sqmul(A, N) = Res :-
-    ( N = integer.zero ->
-        Res = integer.one
-    ;
-        ( N = integer.one ->
-            Res = A
-        ;
-            % if exponent N is even -> Res = A^(N//2) * A^(N//2)
-            ( (N mod integer.two) = integer.zero ->
-                TRes = big_pow_sqmul(A, N // integer.two),
-                Res = TRes * TRes
-            ;
-            % if odd, then Res = A * A^(N - 1)
-                TRes = big_pow_sqmul(A, N - integer.one),
-                Res = A * TRes
-            )
+big_pow_sqmul(A, N) = Result :-
+    ( if N = integer.zero then
+        Result = integer.one
+    else if N = integer.one then
+        Result = A
+    else
+        ( if (N mod integer.two) = integer.zero then
+            % if exponent N is even -> Result = A^(N//2) * A^(N//2)
+            HalfResult = big_pow_sqmul(A, N // integer.two),
+            Result = HalfResult * HalfResult
+        else
+            % if odd, then Result = A * A^(N - 1)
+            SubResult = big_pow_sqmul(A, N - integer.one),
+            Result = A * SubResult
         )
     ).
 
@@ -1181,9 +1229,9 @@ integer.to_int(Integer, Int) :-
     Int = int_list(Digits, 0).
 
 integer.det_to_int(Integer) = Int :-
-    ( integer.to_int(Integer, IntPrime) ->
+    ( if integer.to_int(Integer, IntPrime) then
         Int = IntPrime
-    ;
+    else
         throw(math.domain_error(
             "integer.det_to_int: domain error (conversion would overflow)"))
     ).
@@ -1224,45 +1272,46 @@ integer.from_string(S) = Big :-
 
 integer.from_string(S, Big) :-
     string.to_char_list(S, Cs),
-    string_to_integer(Cs) = Big.
+    string_to_integer(Cs, Big).
 
 integer.det_from_string(S) = I :-
-    ( integer.from_string(S, IPrime) ->
+    ( if integer.from_string(S, IPrime) then
         I = IPrime
-    ;
-        error("integer.det_from_string: conversion failed")
+    else
+        unexpected($module, $pred, "conversion failed")
     ).
 
-:- func string_to_integer(list(char)::in) = (integer::out) is semidet.
+:- pred string_to_integer(list(char)::in, integer::out) is semidet.
 
-string_to_integer(Chars) = Integer :-
-    Chars = [C | Cs],
-    ( C = ('-') ->
-        Cs = [_ | _],
-        Integer = big_sign(-1, string_to_integer_acc(Cs, integer.zero))
-    ; C = ('+') ->
-        Cs = [_ | _],
-        Integer = string_to_integer_acc(Cs, integer.zero)
-    ;
-        Integer = string_to_integer_acc(Chars, integer.zero)
+string_to_integer(Chars, Integer) :-
+    Chars = [HeadChar | TailChars],
+    ( if HeadChar = ('-') then
+        TailChars = [_ | _], % Don't accept just "-" as an integer.
+        string_to_integer_acc(TailChars, integer.zero, PosInteger),
+        Integer = big_sign(-1, PosInteger)
+    else if HeadChar = ('+') then
+        TailChars = [_ | _], % Don't accept just "+" as an integer.
+        string_to_integer_acc(TailChars, integer.zero, Integer)
+    else
+        string_to_integer_acc(Chars, integer.zero, Integer)
     ).
 
-:- func string_to_integer_acc(list(char)::in, integer::in) = (integer::out)
+:- pred string_to_integer_acc(list(char)::in, integer::in, integer::out)
     is semidet.
 
-string_to_integer_acc([], Acc) = Acc.
-string_to_integer_acc([C | Cs], Acc) = Result :-
+string_to_integer_acc([], !Integer).
+string_to_integer_acc([C | Cs], !Integer) :-
     % The if-then-else here is acting as a sequential conjunction.
     % It is needed to guarantee termination with --reorder-conj.
     % Without it, the value of `Digit0 - Z' might be negative and
     % then the call to pos_int_to_digits/1 may not terminate.
-    ( char.is_digit(C) ->
+    ( if char.is_digit(C) then
         Digit0 = char.to_int(C),
         Z = char.to_int('0'),
         Digit = pos_int_to_digits(Digit0 - Z),
-        NewAcc = pos_plus(Digit, mul_by_digit(10, Acc)),
-        Result = string_to_integer_acc(Cs, NewAcc)
-    ;
+        !:Integer = pos_plus(Digit, mul_by_digit(10, !.Integer)),
+        string_to_integer_acc(Cs, !Integer)
+    else
         fail
     ).
 
@@ -1274,17 +1323,17 @@ string_to_integer_acc([C | Cs], Acc) = Result :-
 to_string(Integer) = to_base_string(Integer, 10).
 
 to_base_string(Integer, Base) = String :-
-    ( 2 =< Base, Base =< 36 ->
+    ( if 2 =< Base, Base =< 36 then
         true
-    ;
-        error("integer.to_base_string: invalid base")
+    else
+        unexpected($module, $pred, "invalid base")
     ),
     PrintBase = printbase(pow(Base, printbase_exponent)),
     Integer = i(Sign, Digits),
-    ( Sign < 0 ->
+    ( if Sign < 0 then
         neg_list(Digits, AbsDigits),
         String = "-" ++ digits_to_string(Base, PrintBase, AbsDigits)
-    ;
+    else
         String = digits_to_string(Base, PrintBase, Digits)
     ).
 
@@ -1297,9 +1346,9 @@ digits_to_string(Base, PrintBase, Digits) = Str :-
         Digits, i(_, DigitsInPrintBase)),
     (
         DigitsInPrintBase = [Head | Tail],
-        string.int_to_base_string(Head, Base, SHead),
-        digits_to_strings(Base, Tail, Ss, []),
-        string.append_list([SHead | Ss], Str)
+        string.int_to_base_string(Head, Base, HeadStr),
+        digits_to_strings(Base, Tail, [], TailStrs),
+        string.append_list([HeadStr | TailStrs], Str)
     ;
         DigitsInPrintBase = [],
         unexpected($module, $pred, "empty list")
@@ -1320,14 +1369,14 @@ printbase_rep_1(PrintBase, [X | Xs], Base, Carry) =
             printbase_pos_mul(PrintBase, Base, Carry),
             printbase_pos_int_to_digits(PrintBase, X))).
 
-:- pred digits_to_strings(int::in, list(digit)::in, list(string)::out,
-    list(string)::in) is det.
+:- pred digits_to_strings(int::in, list(digit)::in,
+    list(string)::in, list(string)::out) is det.
 
-digits_to_strings(_Base, []) --> [].
-digits_to_strings(Base, [H | T]) -->
-    { digit_to_string(Base, H, S) },
-    [ S ],
-    digits_to_strings(Base, T).
+digits_to_strings(_Base, [], !Strs).
+digits_to_strings(Base, [H | T], !Strs) :-
+    digit_to_string(Base, H, Str),
+    digits_to_strings(Base, T, !Strs),
+    !:Strs = [Str | !.Strs].
 
 :- pred digit_to_string(int::in, digit::in, string::out) is det.
 
@@ -1337,7 +1386,7 @@ digit_to_string(Base, D, S) :-
 
 %---------------------------------------------------------------------------%
 %
-% Essentially duplicated code to work in base `printbase' follows
+% Essentially duplicated code to work in base `printbase' follows.
 %
 
 :- type printbase
@@ -1355,9 +1404,9 @@ printbase_pos_int_to_digits(Base, D) =
 :- func printbase_pos_int_to_digits_2(printbase, int, integer) = integer.
 
 printbase_pos_int_to_digits_2(Base, D, Tail) = Result :-
-    ( D = 0 ->
+    ( if D = 0 then
         Result = Tail
-    ;
+    else
         Tail = i(Length, Digits),
         printbase_chop(Base, D, Div, Mod),
         Result = printbase_pos_int_to_digits_2(Base, Div,
@@ -1374,7 +1423,11 @@ printbase_chop(printbase(Base), N, Div, Mod) :-
 
 printbase_mul_by_digit(Base, D, i(Len, Ds)) = Out :-
     printbase_mul_by_digit_2(Base, D, Div, Ds, DsOut),
-    Out = ( Div = 0 -> i(Len, DsOut) ; i(Len + 1, [Div | DsOut]) ).
+    ( if Div = 0 then
+        Out = i(Len, DsOut)
+    else
+        Out = i(Len + 1, [Div | DsOut])
+    ).
 
 :- pred printbase_mul_by_digit_2(printbase::in, digit::in, digit::out,
     list(digit)::in, list(digit)::out) is det.
@@ -1388,29 +1441,37 @@ printbase_mul_by_digit_2(Base, D, Div, [X | Xs], [Mod | NewXs]) :-
 
 printbase_pos_plus(Base, i(L1, D1), i(L2, D2)) = Out :-
     printbase_add_pairs(Base, Div, i(L1, D1), i(L2, D2), Ds),
-    Len = ( L1 > L2 -> L1 ; L2 ),
-    Out = ( Div = 0 -> i(Len, Ds) ; i(Len + 1, [Div | Ds]) ).
+    ( if L1 > L2 then
+        Len = L1
+    else
+        Len = L2
+    ),
+    ( if Div = 0 then
+        Out = i(Len, Ds)
+    else
+        Out = i(Len + 1, [Div | Ds])
+    ).
 
-:- pred printbase_add_pairs(printbase::in, digit::out, integer::in,
-    integer::in, list(digit)::out) is det.
+:- pred printbase_add_pairs(printbase::in, digit::out,
+    integer::in, integer::in, list(digit)::out) is det.
 
 printbase_add_pairs(Base, Div, i(L1, D1), i(L2, D2), Ds) :-
-    ( L1 = L2 ->
+    ( if L1 = L2 then
         printbase_add_pairs_equal(Base, Div, D1, D2, Ds)
-    ; L1 < L2, D2 = [H2 | T2] ->
+    else if L1 < L2, D2 = [H2 | T2] then
         printbase_add_pairs(Base, Div1, i(L1, D1), i(L2 - 1, T2), Ds1),
         printbase_chop(Base, H2 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
-    ; L1 > L2, D1 = [H1 | T1] ->
+    else if L1 > L2, D1 = [H1 | T1] then
         printbase_add_pairs(Base, Div1, i(L1 - 1, T1), i(L2, D2), Ds1),
         printbase_chop(Base, H1 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
-    ;
+    else
         unexpected($module, $pred, "integer.printbase_add_pairs")
     ).
 
-:- pred printbase_add_pairs_equal(printbase::in, digit::out, list(digit)::in,
-    list(digit)::in, list(digit)::out) is det.
+:- pred printbase_add_pairs_equal(printbase::in, digit::out,
+    list(digit)::in, list(digit)::in, list(digit)::out) is det.
 
 printbase_add_pairs_equal(_, 0, [], _, []).
 printbase_add_pairs_equal(_, 0, [_ | _], [], []).
@@ -1421,9 +1482,9 @@ printbase_add_pairs_equal(Base, Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
 :- func printbase_pos_mul(printbase, integer, integer) = integer.
 
 printbase_pos_mul(Base, i(L1, Ds1), i(L2, Ds2)) =
-    ( L1 < L2 ->
+    ( if L1 < L2 then
         printbase_pos_mul_list(Base, Ds1, integer.zero, i(L2, Ds2))
-    ;
+    else
         printbase_pos_mul_list(Base, Ds2, integer.zero, i(L1, Ds1))
     ).
 
@@ -1444,20 +1505,18 @@ integer.from_base_string(Base, String) = Integer :-
 integer.from_base_string(Base, String, Integer) :-
     string.index(String, 0, Char),
     Len = string.length(String),
-    ( Char = ('-') ->
+    ( if Char = ('-') then
         Len > 1,
         string.foldl_between(accumulate_integer(Base), String, 1, Len,
-            integer.zero, N),
-        Integer = -N
-    ; Char = ('+') ->
+            integer.zero, PosInteger),
+        Integer = -PosInteger
+    else if Char = ('+') then
         Len > 1,
         string.foldl_between(accumulate_integer(Base), String, 1, Len,
-            integer.zero, N),
-        Integer = N
-    ;
+            integer.zero, Integer)
+    else
         string.foldl_between(accumulate_integer(Base), String, 0, Len,
-            integer.zero, N),
-        Integer = N
+            integer.zero, Integer)
     ).
 
 :- pred accumulate_integer(int::in, char::in, integer::in, integer::out)
@@ -1469,10 +1528,10 @@ accumulate_integer(Base, Char, !N) :-
     !:N = (integer(Base) * !.N) + Digit.
 
 integer.det_from_base_string(Base, String) = Integer :-
-    ( integer.from_base_string(Base, String, Integer0) ->
-        Integer = Integer0
-    ;
-        error("integer.det_from_base_string: conversion failed")
+    ( if integer.from_base_string(Base, String, IntegerPrime) then
+        Integer = IntegerPrime
+    else
+        unexpected($module, $pred, "conversion failed")
     ).
 
 %---------------------------------------------------------------------------%
