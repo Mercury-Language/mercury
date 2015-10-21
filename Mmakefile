@@ -434,6 +434,8 @@ TODO: compiler/notes/todo.html
 
 # Generally you should do a `mmake realclean' before doing `mmake tar'.
 
+TAR = tar
+
 .PHONY: tar
 tar: 	$(GENERATED_DOCS)
 	touch Mmake.params
@@ -490,7 +492,7 @@ tar: 	$(GENERATED_DOCS)
 			mv $$ROOTNAME/bytecode stuff-to-exclude; 	\
 		mv $$ROOTNAME/extras/quickcheck stuff-to-exclude;	\
 		mv $$ROOTNAME		mercury-srcdist-$(VERSION);	\
-		tar --exclude ".git" --dereference -cf - 		\
+		$(TAR) --exclude ".git" --dereference -cf - 		\
 			mercury-srcdist-$(VERSION) | 			\
 			gzip -9 > mercury-srcdist-$(VERSION).tar.gz;	\
 		mv mercury-srcdist-$(VERSION)	$$ROOTNAME;		\
