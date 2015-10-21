@@ -12,6 +12,7 @@ RELEASE_VERSION=$ROTD_VERSION
 CC=gcc
 RUN=no
 PARALLEL=1
+TAR=tar
 
 USAGE="\
 $0 [options]
@@ -31,9 +32,11 @@ Options:
         Run N jobs in parallel.
     -c CC
         Use CC as the C compiler.
+    -t TAR
+        Use TAR as the archiving utility (default: tar)
 "
 
-while getopts "hrv:nc:fj:" OPT; do
+while getopts "hrv:nc:fj:t:" OPT; do
     case "$OPT" in
         h)
             echo "$USAGE"
@@ -56,6 +59,9 @@ while getopts "hrv:nc:fj:" OPT; do
             ;;
         j)
             PARALLEL=$OPTARG
+            ;;
+        t)
+            TAR=$OPTARG
             ;;
         ?)
             echo "$USAGE"
@@ -103,6 +109,6 @@ mercury_cv_bits_per_word=$BITS_PER_WORD \
 mercury_cv_bytes_per_word=$BYTES_PER_WORD \
 mercury_cv_unboxed_floats=$UNBOXED_FLOATS \
 sh configure --with-cc="$CC" &&
-mmake GRADE=hlc.gc.pregen MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space' -j$PARALLEL" tar
+mmake TAR="$TAR" GRADE=hlc.gc.pregen MMAKEFLAGS="EXTRA_MCFLAGS='-O5 --opt-space' -j$PARALLEL" tar
 
 
