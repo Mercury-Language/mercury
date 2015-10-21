@@ -244,7 +244,7 @@ do_get_module_dependencies(Globals, RebuildModuleDeps, ModuleName,
     ;
         MaybeDepFileTimestamp = error(_),
         SearchDirsString = join_list(", ",
-            map((func(Dir) = "'" ++ Dir ++ "'"), SearchDirs)),
+            map((func(Dir) = "`" ++ Dir ++ "'"), SearchDirs)),
         debug_make_msg(Globals,
             io.format("Module dependencies file '%s' "
                     ++ "not found in directories %s.\n",
