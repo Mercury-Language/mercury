@@ -578,7 +578,7 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
                     % expression has a state variable named StateVar,
                     % which make_svars_read_only has given this status,
                     % and the lambda expression itself also has !:StateVar.
-                    StatusMap = StatusMap0
+                    map.det_update(StateVar, Status, StatusMap0, StatusMap)
                 )
             else
                 map.det_insert(StateVar, Status, StatusMap0, StatusMap)

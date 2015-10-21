@@ -1101,7 +1101,7 @@ and free occurrences of @samp{!:@var{X}} replaced with @var{NextX}
 (a free occurrence is one not bound by the head of a clause or lambda
 or by explicit quantification.)
 
-State variables obey the special scope rules.
+State variables obey special scope rules.
 A state variable @var{X} must be explicitly introduced either in the head of
 the clause or lambda (in which case it may appear as either or both of
 @samp{!.@var{X}} or @samp{!:@var{X}}) or in an explicit quantification (in
@@ -1267,7 +1267,6 @@ main(!IO) :-
 @item Handling accumulators (1)
 @example
 foldl2(_, [], !A, !B).
-
 foldl2(P, [X | Xs], !A, !B) :-
     P(X, !A, !B),
     foldl2(P, Xs, !A, !B).
