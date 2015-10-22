@@ -509,9 +509,9 @@ rename_in_vars(OldVar, NewVar, [Var0 | Vars0], [Var | Vars]) :-
     prog_var::in, prog_var::out) is det.
 
 rename_in_var(OldVar, NewVar, Var0, Var) :-
-    ( Var0 = OldVar ->
+    ( if Var0 = OldVar then
         Var = NewVar
-    ;
+    else
         Var = Var0
     ).
 
@@ -704,9 +704,9 @@ make_functor_cons_id(Functor, Arity, ConsId) :-
     ).
 
 det_make_functor_cons_id(Functor, Arity, ConsId) :-
-    ( make_functor_cons_id(Functor, Arity, ConsIdPrime) ->
+    ( if make_functor_cons_id(Functor, Arity, ConsIdPrime) then
         ConsId = ConsIdPrime
-    ;
+    else
         unexpected($module, $pred, "make_functor_cons_id failed")
     ).
 
@@ -720,11 +720,11 @@ source_integer_to_int(Base, Integer, Int) :-
         ; Base = base_8
         ; Base = base_16
         ),
-        ( Integer > integer(max_int) ->
+        ( if Integer > integer(max_int) then
             NegInteger = Integer + integer(min_int) + integer(min_int),
             integer.to_int(NegInteger, Int),
             Int < 0
-        ;
+        else
             integer.to_int(Integer, Int)
         )
     ).
@@ -732,20 +732,20 @@ source_integer_to_int(Base, Integer, Int) :-
 %-----------------------------------------------------------------------------%
 
 strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
-    ( ConsId0 = cons(Name0, Arity, TypeCtor) ->
+    ( if ConsId0 = cons(Name0, Arity, TypeCtor) then
         strip_builtin_qualifier_from_sym_name(Name0, Name),
         ConsId = cons(Name, Arity, TypeCtor)
-    ;
+    else
         ConsId = ConsId0
     ).
 
 strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
-    (
+    ( if
         SymName0 = qualified(Module, Name),
         Module = mercury_public_builtin_module
-    ->
+    then
         SymName = unqualified(Name)
-    ;
+    else
         SymName = SymName0
     ).
 
@@ -758,9 +758,9 @@ make_n_fresh_vars(BaseName, N, Vars, VarSet0, VarSet) :-
     varset(T)::in, varset(T)::out) is det.
 
 make_n_fresh_vars_2(BaseName, N, Max, Vars, !VarSet) :-
-    ( N = Max ->
+    ( if N = Max then
         Vars = []
-    ;
+    else
         N1 = N + 1,
         varset.new_var(Var, !VarSet),
         string.int_to_string(N1, Num),
@@ -773,10 +773,10 @@ make_n_fresh_vars_2(BaseName, N, Max, Vars, !VarSet) :-
 pred_args_to_func_args(PredArgs, FuncArgs, FuncReturn) :-
     list.length(PredArgs, NumPredArgs),
     NumFuncArgs = NumPredArgs - 1,
-    ( list.split_list(NumFuncArgs, PredArgs, FuncArgs0, [FuncReturn0]) ->
+    ( if list.split_list(NumFuncArgs, PredArgs, FuncArgs0, [FuncReturn0]) then
         FuncArgs = FuncArgs0,
         FuncReturn = FuncReturn0
-    ;
+    else
         unexpected($module, $pred, "function missing return value?")
     ).
 
@@ -786,40 +786,42 @@ get_state_args(Args0, Args, State0, State) :-
     list.reverse(RevArgs, Args).
 
 get_state_args_det(Args0, Args, State0, State) :-
-    ( get_state_args(Args0, Args1, State0A, StateA) ->
-        Args = Args1,
-        State0 = State0A,
-        State = StateA
-    ;
-        unexpected($module, $pred)
+    ( if get_state_args(Args0, ArgsPrime, State0Prime, StatePrime) then
+        Args = ArgsPrime,
+        State0 = State0Prime,
+        State = StatePrime
+    else
+        unexpected($module, $pred, "get_state_args failed")
     ).
 
 %-----------------------------------------------------------------------------%
 
 parse_rule_term(Context, RuleTerm, HeadTerm, GoalTerm) :-
-    ( RuleTerm = term.functor(term.atom(":-"), [HeadTerm0, GoalTerm0], _) ->
+    ( if
+        RuleTerm = term.functor(term.atom(":-"), [HeadTerm0, GoalTerm0], _)
+    then
         HeadTerm = HeadTerm0,
         GoalTerm = GoalTerm0
-    ;
+    else
         HeadTerm = RuleTerm,
         GoalTerm = term.functor(term.atom("true"), [], Context)
     ).
 
 get_new_tvars([], _,  !TVarSet, !TVarNameMap, !TVarRenaming).
 get_new_tvars([TVar | TVars], VarSet, !TVarSet, !TVarNameMap, !TVarRenaming) :-
-    ( map.contains(!.TVarRenaming, TVar) ->
+    ( if map.contains(!.TVarRenaming, TVar) then
         true
-    ;
-        ( varset.search_name(VarSet, TVar, TVarName) ->
-            ( map.search(!.TVarNameMap, TVarName, TVarSetVar) ->
+    else
+        ( if varset.search_name(VarSet, TVar, TVarName) then
+            ( if map.search(!.TVarNameMap, TVarName, TVarSetVar) then
                 map.det_insert(TVar, TVarSetVar, !TVarRenaming)
-            ;
+            else
                 varset.new_var(NewTVar, !TVarSet),
                 varset.name_var(NewTVar, TVarName, !TVarSet),
                 map.det_insert(TVarName, NewTVar, !TVarNameMap),
                 map.det_insert(TVar, NewTVar, !TVarRenaming)
             )
-        ;
+        else
             varset.new_var(NewTVar, !TVarSet),
             map.det_insert(TVar, NewTVar, !TVarRenaming)
         )

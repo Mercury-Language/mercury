@@ -71,7 +71,7 @@ make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredArity = pred_info_orig_arity(PredInfo),
-    PredIsImported = (pred_info_is_imported(PredInfo) -> yes ; no),
+    PredIsImported = (if pred_info_is_imported(PredInfo) then yes else no),
     pred_info_get_origin(PredInfo, Origin),
 
     ProcLabel = do_make_proc_label(PredOrFunc, ThisModule, PredModule,
@@ -82,8 +82,8 @@ make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
 
 do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredArity,
         ProcId, PredIsImported, Origin) = ProcLabel :-
-    ( Origin = origin_special_pred(SpecialPred, TypeCtor) ->
-        (
+    ( if Origin = origin_special_pred(SpecialPred, TypeCtor) then
+        ( if
             % All type_ctors other than tuples here should be module qualified,
             % since builtin types are handled separately in polymorphism.m.
             TypeCtor = type_ctor(TypeCtorSymName, TypeArity),
@@ -94,24 +94,24 @@ do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredArity,
             ;
                 TypeCtorSymName = qualified(TypeModule, TypeName)
             )
-        ->
-            (
+        then
+            ( if
                 ThisModule \= TypeModule,
                 SpecialPred = spec_pred_unify,
-                \+ hlds_pred.in_in_unification_proc_id(ProcId)
-            ->
+                not hlds_pred.in_in_unification_proc_id(ProcId)
+            then
                 DefiningModule = ThisModule
-            ;
+            else
                 DefiningModule = TypeModule
             ),
             proc_id_to_int(ProcId, ProcIdInt),
             ProcLabel = special_proc_label(DefiningModule, SpecialPred,
                 TypeModule, TypeName, TypeArity, ProcIdInt)
-        ;
+        else
             unexpected($module, $pred,
                 "cannot make label for special pred `" ++ PredName ++ "'")
         )
-    ;
+    else
         ProcLabel = make_user_proc_label(ThisModule, PredIsImported,
             PredOrFunc, PredModule, PredName, PredArity, ProcId)
     ).
@@ -129,14 +129,14 @@ do_make_proc_label(PredOrFunc, ThisModule, PredModule, PredName, PredArity,
 
 make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
         PredName, PredArity, ProcId) = ProcLabel :-
-    (
+    ( if
         % Work out which module supplies the code for the predicate.
         ThisModule \= PredModule,
         PredIsImported = no
-    ->
+    then
         % This predicate is a specialized version of a pred from a `.opt' file.
         DefiningModule = ThisModule
-    ;
+    else
         DefiningModule = PredModule
     ),
     proc_id_to_int(ProcId, ProcIdInt),
@@ -145,16 +145,16 @@ make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
 
 make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
     module_info_get_name(ModuleInfo, ModuleName),
-    ( TypeCtor = type_ctor(qualified(TypeModule, TypeName), Arity) ->
-        ( hlds_pred.in_in_unification_proc_id(UniModeNum) ->
+    ( if TypeCtor = type_ctor(qualified(TypeModule, TypeName), Arity) then
+        ( if hlds_pred.in_in_unification_proc_id(UniModeNum) then
             Module = TypeModule
-        ;
+        else
             Module = ModuleName
         ),
         proc_id_to_int(UniModeNum, UniModeNumInt),
         ProcLabel = special_proc_label(Module, spec_pred_unify, TypeModule,
             TypeName, Arity, UniModeNumInt)
-    ;
+    else
         unexpected($module, $pred, "unqualified type_ctor")
     ).
 

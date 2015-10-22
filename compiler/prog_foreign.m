@@ -6,11 +6,13 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% Main authors: trd, dgj.
+%
 % This module defines predicate for interfacing with foreign languages.
 % that are necessary for the frontend of the compiler to construct
-% the list of items.  The predicates in this module should not depend
-% on the HLDS in any way.  The predicates for interfacing with foreign
-% languages that do depend on the HLDS are defined in foreign.m.
+% the parse tree. The predicates in this module should not depend on the HLDS
+% in any way. The predicates for interfacing with foreign languages that
+% *do* depend on the HLDS are defined in foreign.m.
 %
 % This module also contains the parts of the name mangler that are used
 % by the frontend of the compiler.
@@ -18,9 +20,6 @@
 % Warning: any changes to the name mangling algorithms implemented in this
 % module may also require changes to profiler/demangle.m, util/mdemangle.c and
 % compiler/name_mangle.m.
-%
-% Main authors: trd, dgj.
-% This code was originally part of the foreign module and was moved here.
 %
 %-----------------------------------------------------------------------------%
 
@@ -73,17 +72,17 @@
 
 :- type foreign_export_decl
     --->    foreign_export_decl(
+                % Language of the export.
                 fexp_decl_lang      :: foreign_language,
-                                    % Language of the export.
 
+                % Return type.
                 fexp_decl_ret_type  :: string,
-                                    % Return type.
 
+                % Function name.
                 fexp_decl_func_name :: string,
-                                    % Function name.
 
+                % Argument declarations.
                 fexp_decl_arg_decls :: string
-                                    % Argument declarations.
             ).
 
 %-----------------------------------------------------------------------------%
@@ -120,7 +119,7 @@
     ;       lang_csharp.
 
     % The module name used for this foreign language.
-    % Not all foreign languages generate external modules
+    % Not all foreign languages generate external modules,
     % so this function only succeeds for those that do.
     %
 :- func foreign_language_module_name(module_name, foreign_language) =
@@ -137,13 +136,10 @@
 :- mode foreign_language_file_extension(in(lang_gen_ext_file)) = out is det.
 
     % It is possible that more than one foreign language could be used to
-    % implement a particular piece of code.
-    % Therefore, foreign languages have an order of preference, from most
-    % preferred to least perferred.
-    % prefer_foreign_language(Globals, Target, Lang1, Lang2) returns the
-    % yes if Lang2 is preferred over Lang1.
-    %
-    % Otherwise it will return no.
+    % implement a particular piece of code. Therefore, foreign languages
+    % have an order of preference, from most preferred to least perferred.
+    % prefer_foreign_language(Globals, Target, Lang1, Lang2) returns
+    % `yes' if Lang2 is preferred over Lang1; otherwise, it will return no.
     %
 :- func prefer_foreign_language(globals, compilation_target,
     foreign_language, foreign_language) = bool.
@@ -157,7 +153,7 @@
 %-----------------------------------------------------------------------------%
 %
 % The following are the parts of the name mangler that are needed by
-% the compiler frontend so that it can write out makefile fragments.
+% the compiler frontend so that it can write out Makefile fragments.
 
     % Returns the name of the initialization function for a given module.
     %
@@ -244,16 +240,17 @@ foreign_import_module_name_from_module(ModuleForeignImported, CurrentModule) =
     % On the il backend, we need to refer to the module "mercury" when
     % referencing a std library module when we are not actually building
     % the std library.
+    % XXX Obsolete comment.
     %
 :- func handle_std_library(module_name, module_name) = module_name.
 
 handle_std_library(CurrentModule, ModuleName0) = ModuleName :-
-    (
+    ( if
         mercury_std_library_module_name(ModuleName0),
-        \+ mercury_std_library_module_name(CurrentModule)
-    ->
+        not mercury_std_library_module_name(CurrentModule)
+    then
         ModuleName = unqualified("mercury")
-    ;
+    else
         ModuleName = ModuleName0
     ).
 
@@ -280,27 +277,34 @@ foreign_language_file_extension(lang_java) = ".java".
 
 %-----------------------------------------------------------------------------%
 
+prefer_foreign_language(_Globals, Target, Lang1, Lang2) = Prefer :-
     % Currently we don't use the globals to compare foreign language
     % interfaces, but if we added appropriate options we might want
     % to do this later.
-    %
-prefer_foreign_language(_Globals, target_c, Lang1, Lang2) =
-    % When compiling to C, C is always preferred over any other language.
-    ( Lang2 = lang_c, not Lang1 = lang_c ->
-        yes
+    (
+        Target = target_c,
+        % When compiling to C, C is always preferred over any other language.
+        ( if Lang2 = lang_c, not Lang1 = lang_c then
+            Prefer = yes
+        else
+            Prefer = no
+        )
     ;
-        no
+        Target = target_csharp,
+        Prefer = no
+    ;
+        Target = target_java,
+        % Nothing useful to do here, but when we add Java as a
+        % foreign language, we should add it here.
+        % XXX Obsolete comment.
+        Prefer = no
+    ;
+        Target = target_erlang,
+        % Nothing useful to do here, but when we add Erlang as a
+        % foreign language, we should add it here.
+        % XXX Obsolete comment.
+        Prefer = no
     ).
-
-prefer_foreign_language(_Globals, target_csharp, _Lang1, _Lang2) = no.
-
-prefer_foreign_language(_Globals, target_java, _Lang1, _Lang2) = no.
-    % Nothing useful to do here, but when we add Java as a foreign language,
-    % we should add it here.
-
-prefer_foreign_language(_Globals, target_erlang, _Lang1, _Lang2) = no.
-    % Nothing useful to do here, but when we add Erlang as a foreign language,
-    % we should add it here.
 
 %-----------------------------------------------------------------------------%
 
@@ -348,7 +352,7 @@ name_mangle_2(AllowLeadingDigit, Name) = MangledName :-
     % require changes to profiler/demangle.m, util/mdemangle.c,
     % compiler/name_mangle.m and library/rtti_implementation.m.
 
-    (
+    ( if
         string.is_all_alnum_or_underscore(Name),
         (
             AllowLeadingDigit = yes
@@ -359,17 +363,17 @@ name_mangle_2(AllowLeadingDigit, Name) = MangledName :-
             string.index(Name, 0, FirstChar),
             not char.is_digit(FirstChar)
         )
-    ->
+    then
         % Any names that start with `f_' are changed so that they start with
         % `f__', so that we can use names starting with `f_' (followed by
         % anything except an underscore) without fear of name collisions.
 
-        ( string.append("f_", Suffix, Name) ->
+        ( if string.append("f_", Suffix, Name) then
             MangledName = "f__" ++ Suffix
-        ;
+        else
             MangledName = Name
         )
-    ;
+    else
         MangledName = convert_to_valid_c_identifier(Name)
     ).
 
@@ -377,9 +381,9 @@ qualify_name(Module0, Name0) = Name :-
     string.append_list([Module0, "__", Name0], Name).
 
 convert_to_valid_c_identifier(String) = Name :-
-    ( name_conversion_table(String, Name0) ->
+    ( if name_conversion_table(String, Name0) then
         Name = Name0
-    ;
+    else
         Name = "f" ++ convert_to_valid_c_identifier_2(String)
     ).
 
@@ -422,7 +426,7 @@ name_conversion_table("[]", "f_nil").
 :- func convert_to_valid_c_identifier_2(string) = string.
 
 convert_to_valid_c_identifier_2(String) = Name :-
-    ( string.first_char(String, Char, Rest) ->
+    ( if string.first_char(String, Char, Rest) then
         % XXX This will cause ABI incompatibilities between compilers which are
         % built in grades that have different character representations.
         char.to_int(Char, Code),
@@ -430,8 +434,8 @@ convert_to_valid_c_identifier_2(String) = Name :-
         string.append("_", CodeString, ThisCharString),
         Name0 = convert_to_valid_c_identifier_2(Rest),
         string.append(ThisCharString, Name0, Name)
-    ;
-        % String is the empty string
+    else
+        % String is the empty string.
         Name = String
     ).
 

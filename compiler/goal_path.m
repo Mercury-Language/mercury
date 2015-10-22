@@ -193,9 +193,9 @@ fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter,
         VarTypes = SlotInfo ^ slot_info_vartypes,
         ModuleInfo = SlotInfo ^ slot_info_module_info,
         lookup_var_type(VarTypes, Var, Type),
-        ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
+        ( if switch_type_num_functors(ModuleInfo, Type, NumFunctors) then
             MaybeNumFunctors = known_num_functors_in_type(NumFunctors)
-        ;
+        else
             MaybeNumFunctors = unknown_num_functors_in_type
         ),
         fill_switch_id_slots(SlotInfo, GoalId, 0, MaybeNumFunctors,
@@ -214,9 +214,9 @@ fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter,
         SubGoal0 = hlds_goal(_, InnerInfo),
         OuterDetism = goal_info_get_determinism(GoalInfo),
         InnerDetism = goal_info_get_determinism(InnerInfo),
-        ( InnerDetism = OuterDetism ->
+        ( if InnerDetism = OuterDetism then
             MaybeCut = scope_is_no_cut
-        ;
+        else
             MaybeCut = scope_is_cut
         ),
         fill_goal_id_slots(SlotInfo,
@@ -349,9 +349,9 @@ fill_goal_path_slots(RevGoalPath, SlotInfo, Goal0, Goal) :-
         VarTypes = SlotInfo ^ slot_info_vartypes,
         ModuleInfo = SlotInfo ^ slot_info_module_info,
         lookup_var_type(VarTypes, Var, Type),
-        ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
+        ( if switch_type_num_functors(ModuleInfo, Type, NumFunctors) then
             MaybeNumFunctors = known_num_functors_in_type(NumFunctors)
-        ;
+        else
             MaybeNumFunctors = unknown_num_functors_in_type
         ),
         fill_switch_path_slots(RevGoalPath, 0, MaybeNumFunctors, SlotInfo,
@@ -370,9 +370,9 @@ fill_goal_path_slots(RevGoalPath, SlotInfo, Goal0, Goal) :-
         SubGoal0 = hlds_goal(_, InnerInfo),
         OuterDetism = goal_info_get_determinism(GoalInfo),
         InnerDetism = goal_info_get_determinism(InnerInfo),
-        ( InnerDetism = OuterDetism ->
+        ( if InnerDetism = OuterDetism then
             MaybeCut = scope_is_no_cut
-        ;
+        else
             MaybeCut = scope_is_cut
         ),
         SubRevGoalPath = rgp_cons(RevGoalPath, step_scope(MaybeCut)),

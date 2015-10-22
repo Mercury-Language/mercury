@@ -231,31 +231,50 @@ insts_to_mode(Initial, Final, Mode) :-
     % Use some abbreviations.
     % This is just to make error messages and inferred modes more readable.
 
-    ( Initial = free, Final = ground(shared, none) ->
-        make_std_mode("out", [], Mode)
-    ; Initial = free, Final = ground(unique, none) ->
-        make_std_mode("uo", [], Mode)
-    ; Initial = free, Final = ground(mostly_unique, none) ->
-        make_std_mode("muo", [], Mode)
-    ; Initial = ground(shared, none), Final = ground(shared, none) ->
+    ( if
+        Initial = free
+    then
+        ( if Final = ground(shared, none) then
+            make_std_mode("out", [], Mode)
+        else if Final = ground(unique, none) then
+            make_std_mode("uo", [], Mode)
+        else if Final = ground(mostly_unique, none) then
+            make_std_mode("muo", [], Mode)
+        else
+            make_std_mode("out", [Final], Mode)
+        )
+    else if
+        Initial = ground(shared, none),
+        Final = ground(shared, none)
+    then
         make_std_mode("in", [], Mode)
-    ; Initial = ground(unique, none), Final = ground(clobbered, none) ->
+    else if
+        Initial = ground(unique, none),
+        Final = ground(clobbered, none)
+    then
         make_std_mode("di", [], Mode)
-    ; Initial = ground(mostly_unique, none),
-      Final = ground(mostly_clobbered, none) ->
+    else if
+        Initial = ground(mostly_unique, none),
+        Final = ground(mostly_clobbered, none)
+    then
         make_std_mode("mdi", [], Mode)
-    ; Initial = ground(unique, none), Final = ground(unique, none) ->
+    else if
+        Initial = ground(unique, none),
+        Final = ground(unique, none)
+    then
         make_std_mode("ui", [], Mode)
-    ; Initial = ground(mostly_unique, none),
-      Final = ground(mostly_unique, none) ->
-        make_std_mode("mdi", [], Mode)
-    ; Initial = free ->
-        make_std_mode("out", [Final], Mode)
-    ; Final = ground(clobbered, none) ->
+    else if
+        Initial = ground(mostly_unique, none),
+        Final = ground(mostly_unique, none)
+    then
+        make_std_mode("mui", [], Mode)
+    else if
+        Final = ground(clobbered, none)
+    then
         make_std_mode("di", [Initial], Mode)
-    ; Initial = Final ->
+    else if Initial = Final then
         make_std_mode("in", [Initial], Mode)
-    ;
+    else
         Mode = (Initial -> Final)
     ).
 
@@ -287,17 +306,22 @@ inst_substitute_arg_list(Params, Args, Inst0, Inst) :-
 :- pred mode_apply_substitution(inst_var_sub::in, mer_mode::in, mer_mode::out)
     is det.
 
-mode_apply_substitution(Subst, (I0 -> F0), (I -> F)) :-
-    inst_apply_substitution(Subst, I0, I),
-    inst_apply_substitution(Subst, F0, F).
-mode_apply_substitution(Subst, user_defined_mode(Name, Args0),
-        user_defined_mode(Name, Args)) :-
-    inst_list_apply_substitution_2(Subst, Args0, Args).
+mode_apply_substitution(Subst, Mode0, Mode) :-
+    (
+        Mode0 = (I0 -> F0),
+        inst_apply_substitution(Subst, I0, I),
+        inst_apply_substitution(Subst, F0, F),
+        Mode = (I -> F)
+    ;
+        Mode0 = user_defined_mode(Name, Args0),
+        inst_list_apply_substitution_2(Subst, Args0, Args),
+        Mode = user_defined_mode(Name, Args)
+    ).
 
 inst_list_apply_substitution(Subst, Insts0, Insts) :-
-    ( map.is_empty(Subst) ->
+    ( if map.is_empty(Subst) then
         Insts = Insts0
-    ;
+    else
         inst_list_apply_substitution_2(Subst, Insts0, Insts)
     ).
 
@@ -305,9 +329,9 @@ inst_list_apply_substitution(Subst, Insts0, Insts) :-
     list(mer_inst)::in, list(mer_inst)::out) is det.
 
 inst_list_apply_substitution_2(_, [], []).
-inst_list_apply_substitution_2(Subst, [A0 | As0], [A | As]) :-
-    inst_apply_substitution(Subst, A0, A),
-    inst_list_apply_substitution_2(Subst, As0, As).
+inst_list_apply_substitution_2(Subst, [Inst0 | Insts0], [Inst | Insts]) :-
+    inst_apply_substitution(Subst, Inst0, Inst),
+    inst_list_apply_substitution_2(Subst, Insts0, Insts).
 
 inst_apply_substitution(Subst, Inst0, Inst) :-
     (
@@ -354,31 +378,31 @@ inst_apply_substitution(Subst, Inst0, Inst) :-
         )
     ;
         Inst0 = inst_var(Var),
-        ( map.search(Subst, Var, ReplacementInst) ->
+        ( if map.search(Subst, Var, ReplacementInst) then
             Inst = ReplacementInst
-        ;
+        else
             Inst = Inst0
         )
     ;
         Inst0 = constrained_inst_vars(Vars, SubInst0),
-        ( set.is_singleton(Vars, Var0) ->
+        ( if set.is_singleton(Vars, Var0) then
             Var = Var0
-        ;
+        else
             unexpected($module, $pred, "multiple inst_vars found")
         ),
-        ( map.search(Subst, Var, ReplacementInst) ->
+        ( if map.search(Subst, Var, ReplacementInst) then
             Inst = ReplacementInst
             % XXX Should probably have a sanity check here that
             % ReplacementInst =< Inst0
-        ;
+        else
             inst_apply_substitution(Subst, SubInst0, SubInst),
             Inst = constrained_inst_vars(Vars, SubInst)
         )
     ;
         Inst0 = defined_inst(InstName0),
-        ( inst_name_apply_substitution(Subst, InstName0, InstName) ->
+        ( if inst_name_apply_substitution(Subst, InstName0, InstName) then
             Inst = defined_inst(InstName)
-        ;
+        else
             Inst = Inst0
         )
     ;
@@ -392,7 +416,7 @@ inst_apply_substitution(Subst, Inst0, Inst) :-
 
 no_inst_var_is_in_map([], _Map).
 no_inst_var_is_in_map([InstVar | InstVars], Map) :-
-    \+ (
+    not (
         map.search(Map, InstVar, _ReplacementInst)
     ),
     no_inst_var_is_in_map(InstVars, Map).
@@ -437,16 +461,16 @@ bound_insts_apply_substitution(Subst,
 
 ho_inst_info_apply_substitution(_, none, none).
 ho_inst_info_apply_substitution(Subst, HOInstInfo0, HOInstInfo) :-
-    HOInstInfo0 = higher_order(pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs,
-        Det)),
+    HOInstInfo0 =
+        higher_order(pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det)),
     mode_list_apply_substitution(Subst, Modes0, Modes),
-    HOInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes, MaybeArgRegs,
-        Det)).
+    HOInstInfo =
+        higher_order(pred_inst_info(PredOrFunc, Modes, MaybeArgRegs, Det)).
 
 mode_list_apply_substitution(Subst, Modes0, Modes) :-
-    ( map.is_empty(Subst) ->
+    ( if map.is_empty(Subst) then
         Modes = Modes0
-    ;
+    else
         mode_list_apply_substitution_2(Subst, Modes0, Modes)
     ).
 
@@ -454,9 +478,9 @@ mode_list_apply_substitution(Subst, Modes0, Modes) :-
     list(mer_mode)::in, list(mer_mode)::out) is det.
 
 mode_list_apply_substitution_2(_, [], []).
-mode_list_apply_substitution_2(Subst, [A0 | As0], [A | As]) :-
-    mode_apply_substitution(Subst, A0, A),
-    mode_list_apply_substitution_2(Subst, As0, As).
+mode_list_apply_substitution_2(Subst, [Mode0 | Modes0], [Mode | Modes]) :-
+    mode_apply_substitution(Subst, Mode0, Mode),
+    mode_list_apply_substitution_2(Subst, Modes0, Modes).
 
 %-----------------------------------------------------------------------------%
 
@@ -492,11 +516,11 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
     ;
         Inst0 = ground(Uniq, HOInstInfo0),
         (
-            HOInstInfo0 = higher_order(pred_inst_info(PorF, Modes0,
-                MaybeArgRegs, Det)),
+            HOInstInfo0 =
+                higher_order(pred_inst_info(PorF, Modes0, MaybeArgRegs, Det)),
             list.map(rename_apart_inst_vars_in_mode(Renaming), Modes0, Modes),
-            HOInstInfo = higher_order(pred_inst_info(PorF, Modes,
-                MaybeArgRegs, Det))
+            HOInstInfo =
+                higher_order(pred_inst_info(PorF, Modes, MaybeArgRegs, Det))
         ;
             HOInstInfo0 = none,
             HOInstInfo = none
@@ -505,11 +529,11 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
     ;
         Inst0 = any(Uniq, HOInstInfo0),
         (
-            HOInstInfo0 = higher_order(pred_inst_info(PorF, Modes0,
-                MaybeArgRegs, Det)),
+            HOInstInfo0 =
+                higher_order(pred_inst_info(PorF, Modes0, MaybeArgRegs, Det)),
             list.map(rename_apart_inst_vars_in_mode(Renaming), Modes0, Modes),
-            HOInstInfo = higher_order(pred_inst_info(PorF, Modes,
-                MaybeArgRegs, Det))
+            HOInstInfo =
+                higher_order(pred_inst_info(PorF, Modes, MaybeArgRegs, Det))
         ;
             HOInstInfo0 = none,
             HOInstInfo = none
@@ -547,26 +571,26 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
         )
     ;
         Inst0 = inst_var(Var0),
-        ( map.search(Renaming, Var0, Var1) ->
+        ( if map.search(Renaming, Var0, Var1) then
             Inst = inst_var(Var1)
-        ;
+        else
             Inst = Inst0
         )
     ;
         Inst0 = constrained_inst_vars(Vars0, SubInst0),
         rename_apart_inst_vars_in_inst(Renaming, SubInst0, SubInst),
         Vars = set.map(func(Var0) =
-            ( map.search(Renaming, Var0, Var) ->
+            ( if map.search(Renaming, Var0, Var) then
                 Var
-            ;
+            else
                 Var0
             ), Vars0),
         Inst = constrained_inst_vars(Vars, SubInst)
     ;
         Inst0 = defined_inst(Name0),
-        ( rename_apart_inst_vars_in_inst_name(Renaming, Name0, Name1) ->
+        ( if rename_apart_inst_vars_in_inst_name(Renaming, Name0, Name1) then
             Inst = defined_inst(Name1)
-        ;
+        else
             Inst = Inst0
         )
     ;
@@ -706,9 +730,9 @@ inst_name_contains_unconstrained_var(InstName) :-
 
 bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId) :-
     BoundInst = bound_functor(ConsId0, _ArgInsts),
-    ( ConsId0 = cons(SymName, Arity, _TypeCtor) ->
+    ( if ConsId0 = cons(SymName, Arity, _TypeCtor) then
         ConsId = cons(SymName, Arity, TypeCtor)
-    ;
+    else
         ConsId = ConsId0
     ).
 
@@ -732,9 +756,9 @@ get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
         list.duplicate(Arity, ground(Uniq, none), ArgInsts)
     ;
         Inst = bound(_Uniq, _InstResults, BoundInsts),
-        ( get_arg_insts_2(BoundInsts, ConsId, ArgInsts0) ->
+        ( if get_arg_insts_2(BoundInsts, ConsId, ArgInsts0) then
             ArgInsts = ArgInsts0
-        ;
+        else
             % The code is unreachable.
             list.duplicate(Arity, not_reached, ArgInsts)
         )
@@ -749,9 +773,9 @@ get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
     ).
 
 get_arg_insts_det(Inst, ConsId, Arity, ArgInsts) :-
-    ( get_arg_insts(Inst, ConsId, Arity, ArgInstsPrime) ->
+    ( if get_arg_insts(Inst, ConsId, Arity, ArgInstsPrime) then
         ArgInsts = ArgInstsPrime
-    ;
+    else
         unexpected($module, $pred, "get_arg_insts failed")
     ).
 
@@ -759,12 +783,12 @@ get_arg_insts_det(Inst, ConsId, Arity, ArgInsts) :-
     is semidet.
 
 get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
-    (
+    ( if
         BoundInst = bound_functor(FunctorConsId, ArgInsts0),
         equivalent_cons_ids(ConsId, FunctorConsId)
-    ->
+    then
         ArgInsts = ArgInsts0
-    ;
+    else
         get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
     ).
 
@@ -981,19 +1005,19 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
     ;
         Inst0 = constrained_inst_vars(Vars0, SubInst0),
         constrain_inst_vars_in_inst(InstConstraints, SubInst0, SubInst1),
-        ( SubInst1 = constrained_inst_vars(SubVars, SubSubInst) ->
+        ( if SubInst1 = constrained_inst_vars(SubVars, SubSubInst) then
             set.union(Vars0, SubVars, Vars),
             SubInst = SubSubInst
-        ;
+        else
             Vars = Vars0,
             SubInst = SubInst1
         ),
         Inst = constrained_inst_vars(Vars, SubInst)
     ;
         Inst0 = inst_var(Var),
-        ( map.search(InstConstraints, Var, SubInstPrime) ->
+        ( if map.search(InstConstraints, Var, SubInstPrime) then
             SubInst = SubInstPrime
-        ;
+        else
             SubInst = ground(shared, none)
         ),
         Inst = constrained_inst_vars(set.make_singleton_set(Var), SubInst)
@@ -1029,10 +1053,10 @@ constrain_inst_vars_in_pred_inst_info(InstConstraints, PII0, PII) :-
     inst_name::in, inst_name::out) is det.
 
 constrain_inst_vars_in_inst_name(InstConstraints, Name0, Name) :-
-    ( Name0 = user_inst(SymName, Args0) ->
+    ( if Name0 = user_inst(SymName, Args0) then
         list.map(constrain_inst_vars_in_inst(InstConstraints), Args0, Args),
         Name = user_inst(SymName, Args)
-    ;
+    else
         Name = Name0
     ).
 
@@ -1128,9 +1152,9 @@ inst_var_constraints_are_consistent_in_inst(Inst, !Sub) :-
         unexpected($module, $pred, "unconstrained inst_var")
     ;
         Inst = defined_inst(InstName),
-        ( InstName = user_inst(_, ArgInsts) ->
+        ( if InstName = user_inst(_, ArgInsts) then
             inst_var_constraints_are_consistent_in_insts(ArgInsts, !Sub)
-        ;
+        else
             true
         )
     ;
@@ -1154,11 +1178,11 @@ inst_var_constraints_are_consistent_in_bound_inst_args(BoundInst, !Sub) :-
     inst_var::in, inst_var_sub::in, inst_var_sub::out) is semidet.
 
 inst_var_constraints_are_consistent_in_inst_var(SubInst, InstVar, !Sub) :-
-    ( map.search(!.Sub, InstVar, InstVarInst) ->
+    ( if map.search(!.Sub, InstVar, InstVarInst) then
         % Check that the inst_var constraint is consistent with
         % the previous constraint on this inst_var.
         InstVarInst = SubInst
-    ;
+    else
         map.det_insert(InstVar, SubInst, !Sub)
     ).
 

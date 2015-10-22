@@ -179,9 +179,9 @@ write_context(Context, !IO) :-
 context_to_string(Context, ContextMessage) :-
     term.context_file(Context, FileName),
     term.context_line(Context, LineNumber),
-    ( FileName = "" ->
+    ( if FileName = "" then
         ContextMessage = ""
-    ;
+    else
         string.format("%s:%03d: ", [s(FileName), i(LineNumber)],
             ContextMessage)
     ).
@@ -242,15 +242,15 @@ simple_call_id_to_string(PredOrFunc, SymName, Arity) = Str :-
     % predicates should have more unusual module names.
     Name = unqualify_name(SymName),
     % Is it really a promise?
-    ( string.prefix(Name, "promise__") ->
+    ( if string.prefix(Name, "promise__") then
         MaybePromise = yes(promise_type_true)
-    ; string.prefix(Name, "promise_exclusive__") ->
+    else if string.prefix(Name, "promise_exclusive__") then
         MaybePromise = yes(promise_type_exclusive)
-    ; string.prefix(Name, "promise_exhaustive__") ->
+    else if string.prefix(Name, "promise_exhaustive__") then
         MaybePromise = yes(promise_type_exhaustive)
-    ; string.prefix(Name, "promise_exclusive_exhaustive__") ->
+    else if string.prefix(Name, "promise_exclusive_exhaustive__") then
         MaybePromise = yes(promise_type_exclusive_exhaustive)
-    ;
+    else
         MaybePromise = no   % No, it is really a pred or func.
     ),
     (
@@ -306,18 +306,18 @@ cons_id_and_arity_to_string_maybe_quoted(QuoteCons, ConsId) = String :-
     (
         ConsId = cons(SymName, Arity, _TypeCtor),
         SymNameString0 = sym_name_to_string(SymName),
-        ( string.contains_char(SymNameString0, '*') ->
+        ( if string.contains_char(SymNameString0, '*') then
             % We need to protect against the * appearing next to a /.
             Stuff = (pred(Char::in, Str0::in, Str::out) is det :-
-                ( Char = ('*') ->
+                ( if Char = ('*') then
                     string.append(Str0, "star", Str)
-                ;
+                else
                     string.char_to_string(Char, CharStr),
                     string.append(Str0, CharStr, Str)
                 )
             ),
             string.foldl(Stuff, SymNameString0, "", SymNameString1)
-        ;
+        else
             SymNameString1 = SymNameString0
         ),
         SymNameString = term_io.escaped_string(SymNameString1),
