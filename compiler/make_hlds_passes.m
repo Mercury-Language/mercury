@@ -116,12 +116,14 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_item_stats.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
 
 :- import_module bool.
+:- import_module io.
 :- import_module map.
 :- import_module require.
 :- import_module string.
@@ -136,6 +138,33 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     module_info_init(AugCompUnit, DumpBaseFileName, Globals, PQInfo, no,
         !:ModuleInfo),
     module_info_set_used_modules(UsedModules, !ModuleInfo),
+
+    % Optionally gather statistics about the items in the compilation unit.
+    trace [compile_time(flag("item_stats")), io(!IO)] (
+        % We append statistics to a file, rather than simplify writing to a
+        % file, so that we can gather statistics from a sequence of
+        % Mercury compiler invocations, such as those in a bootcheck.
+        % The file should be created empty before the start of the sequence,
+        % and should be appended to by one Mercury compiler invocation
+        % at a time. (We don't do any locking, so if more than one invocation 
+        % tries to append to the file at the same time, the resulting output
+        % will be malformed.)
+        %
+        % You may of course change the name of the file, if you wish.
+        %
+        % A statistics file resulting from one or more compiler invocations
+        % may be analyzed using tools/item_stats.
+
+        io.open_append("/tmp/ITEM_STATS", Res, !IO),
+        (
+            Res = error(_)
+        ;
+            Res = ok(Stream),
+            gather_and_write_item_stats(Stream, AugCompUnit, !IO),
+            io.close_output(Stream, !IO)
+        )
+    ),
+
     AugCompUnit = aug_compilation_unit(ModuleName, _ModuleNameContext,
         ModuleVersionNumbers, SrcItemBlocks,
         DirectIntItemBlocks, IndirectIntItemBlocks,

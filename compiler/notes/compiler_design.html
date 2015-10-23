@@ -353,50 +353,68 @@ such as pretty-printing.
     The top levels of parse trees are output by parse_tree_out.m.
     This module also outputs most kinds of items.
     <li>
-    Parse_tree_out_clause.m outputs clauses and goals.
+    parse_tree_out_clause.m outputs clauses and goals.
     <li>
-    Parse_tree_out_pragma.m outputs pragmas.
+    parse_tree_out_pragma.m outputs pragmas.
     <li>
-    Parse_tree_out_pred_decl.m outputs (parts of) predicate, function
+    parse_tree_out_pred_decl.m outputs (parts of) predicate, function
     and mode declarations.
     <li>
-    Parse_tree_out_inst.m outputs insts and modes.
+    parse_tree_out_inst.m outputs insts and modes.
     <li>
-    Parse_tree_out_term.m outputs variables and terms.
+    parse_tree_out_term.m outputs variables and terms.
     <li>
-    Parse_tree_out_info.m provides a common infrastructure
+    parse_tree_out_info.m provides a common infrastructure
     for the above modules, and for mercury_to_mercury.m.
     <li>
     The modules prog_out.m and mercury_to_mercury.m output
     the lowest level, and smallest, parts of the parse tree.
     </ul>
 
-    builtin_lib_types.m contains definitions about types, type constructors
-    and function symbols that the Mercury implementation needs to know about.
-
     <p>
 
+    There are several modules that provide utility predicates
+    that operate on (parts of) the parse tree.
+    <ul>
+    <li>
+    builtin_lib_types.m contains definitions about types, type constructors
+    and function symbols that the Mercury implementation needs to know about.
+    <li>
+    prog_item_stats.m has facilities for gathering and printing statistics
+    about the parse tree.
+    <li>
     prog_util.m contains some utility predicates
-    for manipulating the parse tree,
+    for manipulating the parse tree.
+    <li>
     prog_detism.m contains utility predicates
-    for manipulating determinism and determinism components,
+    for manipulating determinism and determinism components.
+    <li>
     prog_mode.m contains utility predicates
-    for manipulating insts and modes,
+    for manipulating insts and modes.
+    <li>
     prog_type.m contains utility predicates
-    for manipulating types,
+    for manipulating types.
+    <li>
     prog_type_subst.m contains predicates
-    for performing type substitutions,
+    for performing type substitutions.
+    <li>
     prog_rename.m contains predicates
-    for performing variable substitutions,
+    for performing variable substitutions.
+    <li>
     prog_foreign.m contains utility predicates
-    for manipulating foreign code,
+    for manipulating foreign code.
+    <li>
     prog_mutable.m contains utility predicates
-    for manipulating mutable variables,
-    prog_event.m contains utility predicates for working with events,
+    for manipulating mutable variables.
+    <li>
+    prog_event.m contains utility predicates for working with events.
+    <li>
     error_util.m contains predicates
-    for printing nicely formatted error messages,
-    and maybe_error.m contains types that allow the representation
+    for printing nicely formatted error messages.
+    <li>
+    maybe_error.m contains types that allow the representation
     of computations that can either succeed or generate such error messages.
+    </ul>
 
 <li>
     <p>
