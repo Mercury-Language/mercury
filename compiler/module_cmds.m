@@ -153,7 +153,7 @@
 :- pred get_mercury_std_libs_for_java(globals::in, list(string)::out) is det.
 
     % Given a list .class files, return the list of .class files that should be
-    % passed to `jar'.  This is required because nested classes are in separate
+    % passed to `jar'. This is required because nested classes are in separate
     % files which we don't know about, so we have to scan the directory to
     % figure out which files were produced by `javac'.
     %
@@ -326,7 +326,7 @@ binary_input_stream_cmp(OutputFileStream, TmpOutputFileStream, FilesDiffer,
         ok(no), FilesDiffer0, !IO),
 
     % Check whether there is anything left in TmpOutputFileStream
-    ( FilesDiffer0 = ok(ok(no)) ->
+    ( if FilesDiffer0 = ok(ok(no)) then
         io.read_byte(TmpOutputFileStream, TmpByteResult2, !IO),
         (
             TmpByteResult2 = ok(_),
@@ -338,23 +338,22 @@ binary_input_stream_cmp(OutputFileStream, TmpOutputFileStream, FilesDiffer,
             TmpByteResult2 = error(Error),
             FilesDiffer = ok(error(Error))
         )
-    ;
+    else
         FilesDiffer = FilesDiffer0
     ).
 
 :- pred binary_input_stream_cmp_2(io.binary_input_stream::in, int::in,
-    bool::out, io.res(bool)::in, io.res(bool)::out,
-    io::di, io::uo) is det.
+    bool::out, io.res(bool)::in, io.res(bool)::out, io::di, io::uo) is det.
 
 binary_input_stream_cmp_2(TmpOutputFileStream, Byte, Continue, _, Differ,
         !IO) :-
     io.read_byte(TmpOutputFileStream, TmpByteResult, !IO),
     (
         TmpByteResult = ok(TmpByte),
-        ( TmpByte = Byte ->
+        ( if TmpByte = Byte then
             Differ = ok(no),
             Continue = yes
-        ;
+        else
             Differ = ok(yes),
             Continue = no
         )
@@ -462,7 +461,7 @@ make_symlink_or_copy_file(Globals, SourceFileName, DestinationFileName,
         io.error_message(Error, ErrorMsg),
         io.format("%s: error %s `%s' to `%s', %s\n",
             [s(ProgName), s(LinkOrCopy), s(SourceFileName),
-             s(DestinationFileName), s(ErrorMsg)], !IO),
+            s(DestinationFileName), s(ErrorMsg)], !IO),
         io.flush_output(!IO)
     ).
 
@@ -575,15 +574,15 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
     % and error streams.
 
     io.make_temp(TmpFile, !IO),
-    ( use_dotnet ->
+    ( if use_dotnet then
         % XXX can't use Bourne shell syntax to redirect on .NET
         % XXX the output will go to the wrong place!
         CommandRedirected = Command
-    ; use_win32 ->
+    else if use_win32 then
         % On windows we can't in general redirect standard error in the
         % shell.
         CommandRedirected = Command ++ " > " ++ TmpFile
-    ;
+    else
         CommandRedirected =
             string.append_list([Command, " > ", TmpFile, " 2>&1"])
     ),
@@ -591,9 +590,9 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
     (
         Result = ok(exited(Status)),
         maybe_write_string(PrintCommand, "% done.\n", !IO),
-        ( Status = 0 ->
+        ( if Status = 0 then
             CommandSucceeded = yes
-        ;
+        else
             % The command should have produced output describing the error.
             CommandSucceeded = no
         )
@@ -617,28 +616,28 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
         CommandSucceeded = no
     ),
 
-    (
+    ( if
         % We can't do bash style redirection on .NET.
         not use_dotnet,
         MaybeProcessOutput = yes(ProcessOutput)
-    ->
+    then
         io.make_temp(ProcessedTmpFile, !IO),
 
         % XXX we should get rid of use_win32
-        ( use_win32 ->
+        ( if use_win32 then
             get_system_env_type(Globals, SystemEnvType),
-            ( SystemEnvType = env_type_powershell ->
+            ( if SystemEnvType = env_type_powershell then
                 ProcessOutputRedirected = string.append_list(
                     ["Get-Content ", TmpFile, " | ", ProcessOutput,
                         " > ", ProcessedTmpFile, " 2>&1"])
-            ;
+            else
                 % On windows we can't in general redirect standard
                 % error in the shell.
                 ProcessOutputRedirected = string.append_list(
                     [ProcessOutput, " < ", TmpFile, " > ",
                         ProcessedTmpFile])
             )
-        ;
+        else
             ProcessOutputRedirected = string.append_list(
                 [ProcessOutput, " < ", TmpFile, " > ",
                     ProcessedTmpFile, " 2>&1"])
@@ -649,9 +648,9 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
         (
             ProcessOutputResult = ok(exited(ProcessOutputStatus)),
             maybe_write_string(PrintCommand, "% done.\n", !IO),
-            ( ProcessOutputStatus = 0 ->
+            ( if ProcessOutputStatus = 0 then
                 ProcessOutputSucceeded = yes
-            ;
+            else
                 % The command should have produced output
                 % describing the error.
                 ProcessOutputSucceeded = no
@@ -671,7 +670,7 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
                 io.error_message(ProcessOutputError), !IO),
             ProcessOutputSucceeded = no
         )
-    ;
+    else
         ProcessOutputSucceeded = yes,
         ProcessedTmpFile = TmpFile
     ),
@@ -703,7 +702,7 @@ invoke_system_command_maybe_filter_output(Globals, ErrorStream, Verbosity,
     io.set_exit_status(OldStatus, !IO).
 
 make_command_string(String0, QuoteType, String) :-
-    ( use_win32 ->
+    ( if use_win32 then
         (
             QuoteType = forward,
             Quote = " '"
@@ -712,7 +711,7 @@ make_command_string(String0, QuoteType, String) :-
             Quote = " """
         ),
         string.append_list(["sh -c ", Quote, String0, Quote], String)
-    ;
+    else
         String = String0
     ).
 
@@ -733,7 +732,7 @@ use_dotnet :-
 
     % Are we compiling in a win32 environment?
     %
-    % If in doubt, use_win32 should succeed.  This is only used to decide
+    % If in doubt, use_win32 should succeed. This is only used to decide
     % whether to invoke Bourne shell command and shell scripts directly,
     % or whether to invoke them via `sh -c ...'. The latter should work
     % correctly in a Unix environment too, but is a little less efficient
@@ -834,7 +833,8 @@ write_java_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
 :- pred write_java_msys_shell_script(globals::in, module_name::in,
     file_name::in, io.text_output_stream::in, io::di, io::uo) is det.
 
-write_java_msys_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
+write_java_msys_shell_script(Globals, MainModuleName, JarFileName, Stream,
+        !IO) :-
     get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
     globals.lookup_accumulating_option(Globals, java_classpath,
         UserClasspath),
@@ -882,9 +882,9 @@ write_java_batch_file(Globals, MainModuleName, JarFileName, Stream, !IO) :-
         Java, " jmercury.", ClassName, " %*\n"
     ], !IO).
 
-    % NOTE: changes here may require changes to get_mercury_std_libs.
-    %
 get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
+    % NOTE: changes here may require changes to get_mercury_std_libs.
+
     !:StdLibs = [],
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdlibDir),
@@ -934,9 +934,9 @@ list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
         Result = ok(NestedClassFiles),
         AllClassFiles0 = MainClassFiles ++ NestedClassFiles,
         % Remove the `Mercury/classs' prefix if present.
-        ( ClassSubDir = dir.this_directory ->
+        ( if ClassSubDir = dir.this_directory then
             AllClassFiles = AllClassFiles0
-        ;
+        else
             ClassSubDirSep = ClassSubDir / "",
             AllClassFiles = list.map(
                 string.remove_prefix_if_present(ClassSubDirSep),
@@ -983,13 +983,13 @@ make_nested_class_prefix(ClassFileName, ClassPrefix) :-
 
 accumulate_nested_class_files(NestedClassPrefixes, DirName, BaseName,
         _FileType, Continue, !Acc, !IO) :-
-    (
+    ( if
         string.sub_string_search(BaseName, "$", Dollar),
         BaseNameToDollar = string.left(BaseName, Dollar + 1),
         set.contains(NestedClassPrefixes, DirName / BaseNameToDollar)
-    ->
+    then
         !:Acc = [DirName / BaseName | !.Acc]
-    ;
+    else
         true
     ),
     Continue = yes.
@@ -1011,7 +1011,7 @@ get_env_classpath(Classpath, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Erlang utilities
+% Erlang utilities.
 %
 
 create_erlang_shell_script(Globals, MainModuleName, Succeeded, !IO) :-
@@ -1078,7 +1078,7 @@ write_erlang_shell_script(Globals, MainModuleName, Stream, !IO) :-
         list.sort_and_remove_dups(LinkLibrariesList))),
 
     % XXX main_2_p_0 is not necessarily in the main module itself and
-    % could be in a submodule.  We don't handle that yet.
+    % could be in a submodule. We don't handle that yet.
     SearchProg = pa_option(yes, no, """$DIR""/" ++ quote_arg(BeamDirName)),
 
     % Write the shell script.
@@ -1141,7 +1141,7 @@ write_erlang_batch_file(Globals, MainModuleName, Stream, !IO) :-
         list.sort_and_remove_dups(LinkLibrariesList))),
 
     % XXX main_2_p_0 is not necessarily in the main module itself and
-    % could be in a submodule.  We don't handle that yet.
+    % could be in a submodule. We don't handle that yet.
     SearchProg = pa_option(no, no, "%DIR%\\" ++ quote_arg(BeamDirName)),
     io.write_strings(Stream, [
         "@echo off\n",
@@ -1215,10 +1215,10 @@ create_launcher_shell_script(Globals, MainModuleName, Pred, Succeeded, !IO) :-
         io.call_system("chmod a+x " ++ FileName, ChmodResult, !IO),
         (
             ChmodResult = ok(Status),
-            ( Status = 0 ->
+            ( if Status = 0 then
                 Succeeded = yes,
                 maybe_write_string(Verbose, "% done.\n", !IO)
-            ;
+            else
                 unexpected($module, $pred, "chmod exit status != 0"),
                 Succeeded = no
             )

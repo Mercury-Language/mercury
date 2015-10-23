@@ -137,15 +137,15 @@ merge_adjacent_const_strs([HeadSpec | TailSpecs], MergedSpecs) :-
     merge_adjacent_const_strs(TailSpecs, TailMergedSpecs),
     (
         HeadSpec = compiler_const_string(HeadContext, HeadConstString),
-        (
+        ( if
             TailMergedSpecs = [FirstTailMergedSpec | LaterTailMergedSpecs],
             FirstTailMergedSpec =
                 compiler_const_string(_TailContext, TailConstString)
-        ->
+        then
             HeadMergedSpec = compiler_const_string(HeadContext,
                 HeadConstString ++ TailConstString),
             MergedSpecs = [HeadMergedSpec | LaterTailMergedSpecs]
-        ;
+        else
             MergedSpecs = [HeadSpec | TailMergedSpecs]
         )
     ;

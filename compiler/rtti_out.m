@@ -12,9 +12,9 @@
 % This module contains code to output the RTTI data structures defined in
 % rtti.m as C code.
 %
-% This module is part of the LLDS back-end.  The decl_set data type that it
+% This module is part of the LLDS back-end. The decl_set data type that it
 % uses, which is defined in llds_out.m, represents a set of LLDS declarations,
-% and thus depends on the LLDS.  Also the code to output code_addrs depends on
+% and thus depends on the LLDS. Also the code to output code_addrs depends on
 % the LLDS.
 %
 % The MLDS back-end does not use this module; instead it converts the RTTI
@@ -464,12 +464,12 @@ output_maybe_pseudo_type_info_defn(Info, MaybePseudoTypeInfo, !DeclSet, !IO) :-
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_type_info_defn(Info, TypeInfo, !DeclSet, !IO) :-
-    (
+    ( if
         rtti_data_to_id(rtti_data_type_info(TypeInfo), RttiId),
         decl_set_is_member(decl_rtti_id(RttiId), !.DeclSet)
-    ->
+    then
         true
-    ;
+    else
         do_output_type_info_defn(Info, TypeInfo, !DeclSet, !IO)
     ).
 
@@ -525,16 +525,16 @@ do_output_type_info_defn(Info, TypeInfo, !DeclSet, !IO) :-
     io::di, io::uo) is det.
 
 output_pseudo_type_info_defn(Info, PseudoTypeInfo, !DeclSet, !IO) :-
-    (
+    ( if
         PseudoTypeInfo = type_var(_)
-    ->
+    then
         true
-    ;
+    else if
         rtti_data_to_id(rtti_data_pseudo_type_info(PseudoTypeInfo), RttiId),
         decl_set_is_member(decl_rtti_id(RttiId), !.DeclSet)
-    ->
+    then
         true
-    ;
+    else
         do_output_pseudo_type_info_defn(Info, PseudoTypeInfo, !DeclSet, !IO)
     ).
 
@@ -876,7 +876,7 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         ArgInfos, MaybeExistInfo),
     ArgTypes = list.map(du_arg_info_type, ArgInfos),
     MaybeArgNames = list.map(du_arg_info_name, ArgInfos),
-    HaveArgNames = (list.member(yes(_), MaybeArgNames) -> yes ; no),
+    HaveArgNames = (if list.member(yes(_), MaybeArgNames) then yes else no),
     (
         ArgInfos = [_ | _],
         output_du_arg_types(Info, RttiTypeCtor, Ordinal, ArgTypes,
@@ -1137,11 +1137,11 @@ output_du_arg_names(Info, RttiTypeCtor, Ordinal, MaybeNames, !DeclSet, !IO) :-
 
 output_du_arg_locns(Info, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
         !DeclSet, !IO) :-
-    (
+    ( if
         list.member(ArgInfo, ArgInfos),
         ArgInfo = du_arg_info(_, _, Width),
         Width \= full_word
-    ->
+    then
         output_generic_rtti_data_defn_start(Info,
             ctor_rtti_id(RttiTypeCtor, type_ctor_field_locns(Ordinal)),
             !DeclSet, !IO),
@@ -1149,7 +1149,7 @@ output_du_arg_locns(Info, RttiTypeCtor, Ordinal, ArgInfos, HaveArgLocns,
         output_du_arg_locns_2(ArgInfos, -1, !IO),
         io.write_string("};\n", !IO),
         HaveArgLocns = yes
-    ;
+    else
         HaveArgLocns = no
     ).
 
@@ -1295,13 +1295,13 @@ output_du_ptag_ordered_table(Info, RttiTypeCtor, PtagMap, !DeclSet, !IO) :-
         ctor_rtti_id(RttiTypeCtor, type_ctor_du_ptag_ordered_table),
         !DeclSet, !IO),
     io.write_string(" = {\n", !IO),
-    ( PtagList = [1 - _ | _] ->
+    ( if PtagList = [1 - _ | _] then
         % Output a dummy ptag definition for the reserved tag first.
         output_dummy_ptag_layout_defn(!IO),
         FirstPtag = 1
-    ; PtagList = [0 - _ | _] ->
+    else if PtagList = [0 - _ | _] then
         FirstPtag = 0
-    ;
+    else
         unexpected($module, $pred, "bad ptag list")
     ),
     output_du_ptag_ordered_table_body(RttiTypeCtor, PtagList, FirstPtag, !IO),
@@ -1486,11 +1486,11 @@ output_rtti_data_decl_list(Info, RttiDatas, !DeclSet, !IO) :-
 
 classify_rtti_datas_to_decl([], !GroupMap).
 classify_rtti_datas_to_decl([RttiData | RttiDatas], !GroupMap) :-
-    ( RttiData = rtti_data_pseudo_type_info(type_var(_)) ->
+    ( if RttiData = rtti_data_pseudo_type_info(type_var(_)) then
         % These just get represented as integers, so we don't need to declare
         % them. Also rtti_data_to_id/3 does not handle this case.
         true
-    ;
+    else
         rtti_data_to_id(RttiData, RttiId),
         rtti_id_c_type(RttiId, CType, IsArray),
         rtti_id_linkage(RttiId, Linkage),
@@ -1569,11 +1569,11 @@ output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
 %-----------------------------------------------------------------------------%
 
 output_rtti_data_decl(Info, RttiData, !DeclSet, !IO) :-
-    ( RttiData = rtti_data_pseudo_type_info(type_var(_)) ->
+    ( if RttiData = rtti_data_pseudo_type_info(type_var(_)) then
         % These just get represented as integers, so we don't need to declare
         % them. Also rtti_data_to_id/3 does not handle this case.
         true
-    ;
+    else
         rtti_data_to_id(RttiData, RttiId),
         output_generic_rtti_data_decl(Info, RttiId, !DeclSet, !IO)
     ).
@@ -1630,15 +1630,15 @@ output_rtti_id_storage_type_name(Info, RttiId, BeingDefined, !DeclSet, !IO) :-
     io::di, io::uo) is det.
 
 output_rtti_type_decl(RttiId, !DeclSet, !IO) :-
-    (
+    ( if
         RttiId = ctor_rtti_id(_, RttiName),
         rtti_type_ctor_template_arity(RttiName, Arity),
         Arity > max_always_declared_arity_type_ctor
-    ->
+    then
         DeclId = decl_type_info_like_struct(Arity),
-        ( decl_set_is_member(DeclId, !.DeclSet) ->
+        ( if decl_set_is_member(DeclId, !.DeclSet) then
             true
-        ;
+        else
             Template =
 "#ifndef MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
 #define MR_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY_%d_GUARD
@@ -1648,15 +1648,15 @@ MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY(%d);
             io.format(Template, [i(Arity), i(Arity), i(Arity)], !IO),
             decl_set_insert(DeclId, !DeclSet)
         )
-    ;
+    else if
         RttiId = tc_rtti_id(_, TCRttiName),
         rtti_type_class_constraint_template_arity(TCRttiName, Arity),
         Arity > max_always_declared_arity_type_class_constraint
-    ->
+    then
         DeclId = decl_typeclass_constraint_struct(Arity),
-        ( decl_set_is_member(DeclId, !.DeclSet) ->
+        ( if decl_set_is_member(DeclId, !.DeclSet) then
             true
-        ;
+        else
             Template =
 "#ifndef MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
 #define MR_TYPECLASS_CONSTRAINT_STRUCT_%d_GUARD
@@ -1667,7 +1667,7 @@ MR_DEFINE_TYPECLASS_CONSTRAINT_STRUCT(MR_TypeClassConstraint_%d, %d);
                 !IO),
             decl_set_insert(DeclId, !DeclSet)
         )
-    ;
+    else
         true
     ).
 
@@ -1718,9 +1718,9 @@ init_rtti_data_if_nec(Data, !IO) :-
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, Arity),
         ModuleNameString = sym_name_mangle(ModuleName),
         string.append(ModuleNameString, "__", UnderscoresModule),
-        ( string.append(UnderscoresModule, _, TypeName) ->
+        ( if string.append(UnderscoresModule, _, TypeName) then
             true
-        ;
+        else
             io.write_string(UnderscoresModule, !IO)
         ),
         MangledTypeName = name_mangle(TypeName),
@@ -1819,11 +1819,11 @@ output_record_rtti_datas_decls(Info, [RttiData | RttiDatas],
 
 output_record_rtti_data_decls(Info, RttiData, FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
-    ( RttiData = rtti_data_pseudo_type_info(type_var(_)) ->
+    ( if RttiData = rtti_data_pseudo_type_info(type_var(_)) then
         % These just get represented as integers, so we don't need to declare
         % them. Also rtti_data_to_id/3 does not handle this case.
         true
-    ;
+    else
         rtti_data_to_id(RttiData, RttiId),
         output_record_rtti_id_decls(Info, RttiId, FirstIndent, LaterIndent,
             !N, !DeclSet, !IO)
@@ -1888,10 +1888,10 @@ output_cast_addr_of_rtti_data(Cast, RttiData, !IO) :-
     output_addr_of_rtti_data(RttiData, !IO).
 
 output_addr_of_rtti_data(RttiData, !IO) :-
-    ( RttiData = rtti_data_pseudo_type_info(type_var(VarNum)) ->
+    ( if RttiData = rtti_data_pseudo_type_info(type_var(VarNum)) then
         % rtti_data_to_id/3 does not handle this case
         io.write_int(VarNum, !IO)
-    ;
+    else
         rtti_data_to_id(RttiData, RttiId),
         output_addr_of_rtti_id(RttiId, !IO)
     ).
@@ -1907,9 +1907,11 @@ output_cast_addr_of_rtti_id(Cast, RttiId, !IO) :-
 
 output_addr_of_rtti_id(RttiId, !IO) :-
     % All RttiIds are references to memory, with one exception: type variables.
-    ( RttiId = ctor_rtti_id(_, type_ctor_pseudo_type_info(type_var(VarNum))) ->
+    ( if
+        RttiId = ctor_rtti_id(_, type_ctor_pseudo_type_info(type_var(VarNum)))
+    then
         io.write_int(VarNum, !IO)
-    ;
+    else
         % If the RttiName is not an array, then we need to use `&'
         % to take its address.
         IsArray = rtti_id_has_array_type(RttiId),

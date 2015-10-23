@@ -975,16 +975,19 @@
 
 encode_type_ctor_flags(FlagSet) = Encoding :-
     set.to_sorted_list(FlagSet, FlagList),
-    Encoding = list.foldl(encode_type_ctor_flag, FlagList, 0).
-
-:- func encode_type_ctor_flag(type_ctor_flag, int) = int.
+    list.foldl(encode_type_ctor_flag, FlagList, 0, Encoding).
 
     % NOTE: the encoding here must match the one in
-    %       runtime/mercury_type_info.h.
+    % runtime/mercury_type_info.h.
     %
-encode_type_ctor_flag(reserve_tag_flag, N)    = N + 1.
-encode_type_ctor_flag(variable_arity_flag, N) = N + 2.
-encode_type_ctor_flag(kind_of_du_flag, N)     = N + 4.
+:- pred encode_type_ctor_flag(type_ctor_flag::in, int::in, int::out) is det.
+
+encode_type_ctor_flag(reserve_tag_flag, !Encoding) :-
+    !:Encoding = !.Encoding + 1.
+encode_type_ctor_flag(variable_arity_flag, !Encoding) :-
+    !:Encoding = !.Encoding + 2.
+encode_type_ctor_flag(kind_of_du_flag, !Encoding) :-
+    !:Encoding = !.Encoding + 4.
 
 rtti_data_to_id(RttiData, RttiId) :-
     (
@@ -1038,7 +1041,7 @@ pti_get_rtti_type_ctor(plain_pseudo_type_info(RttiTypeCtor, _))
 pti_get_rtti_type_ctor(var_arity_pseudo_type_info(RttiVarArityId, _)) =
     var_arity_id_to_rtti_type_ctor(RttiVarArityId).
 pti_get_rtti_type_ctor(type_var(_)) = _ :-
-    % there's no rtti_type_ctor associated with a type_var
+    % There is no rtti_type_ctor associated with a type_var.
     unexpected($module, $pred, "type_var").
 
 var_arity_id_to_rtti_type_ctor(pred_type_info) = Ctor :-
@@ -1073,67 +1076,98 @@ rtti_id_is_exported(ctor_rtti_id(_, RttiName)) =
 rtti_id_is_exported(tc_rtti_id(_, TCRttiName)) =
     tc_rtti_name_is_exported(TCRttiName).
 
-ctor_rtti_name_is_exported(type_ctor_exist_locns(_))              = no.
-ctor_rtti_name_is_exported(type_ctor_exist_locn)                  = no.
-ctor_rtti_name_is_exported(type_ctor_exist_tc_constr(_, _, _))    = no.
-ctor_rtti_name_is_exported(type_ctor_exist_tc_constrs(_))         = no.
-ctor_rtti_name_is_exported(type_ctor_exist_info(_))               = no.
-ctor_rtti_name_is_exported(type_ctor_field_names(_))              = no.
-ctor_rtti_name_is_exported(type_ctor_field_types(_))              = no.
-ctor_rtti_name_is_exported(type_ctor_field_locns(_))              = no.
-ctor_rtti_name_is_exported(type_ctor_res_addrs)                   = no.
-ctor_rtti_name_is_exported(type_ctor_res_addr_functors)           = no.
-ctor_rtti_name_is_exported(type_ctor_enum_functor_desc(_))        = no.
-ctor_rtti_name_is_exported(type_ctor_foreign_enum_functor_desc(_)) = no.
-ctor_rtti_name_is_exported(type_ctor_notag_functor_desc)          = no.
-ctor_rtti_name_is_exported(type_ctor_du_functor_desc(_))          = no.
-ctor_rtti_name_is_exported(type_ctor_res_functor_desc(_))         = no.
-ctor_rtti_name_is_exported(type_ctor_enum_name_ordered_table)     = no.
-ctor_rtti_name_is_exported(type_ctor_enum_value_ordered_table)    = no.
-ctor_rtti_name_is_exported(type_ctor_foreign_enum_name_ordered_table) = no.
-ctor_rtti_name_is_exported(type_ctor_foreign_enum_ordinal_ordered_table) = no.
-ctor_rtti_name_is_exported(type_ctor_du_name_ordered_table)       = no.
-ctor_rtti_name_is_exported(type_ctor_du_stag_ordered_table(_))    = no.
-ctor_rtti_name_is_exported(type_ctor_du_ptag_ordered_table)       = no.
-ctor_rtti_name_is_exported(type_ctor_du_ptag_layout(_))           = no.
-ctor_rtti_name_is_exported(type_ctor_res_value_ordered_table)     = no.
-ctor_rtti_name_is_exported(type_ctor_res_name_ordered_table)      = no.
-ctor_rtti_name_is_exported(type_ctor_maybe_res_addr_functor_desc) = no.
-ctor_rtti_name_is_exported(type_ctor_functor_number_map)          = no.
-ctor_rtti_name_is_exported(type_ctor_type_functors)               = no.
-ctor_rtti_name_is_exported(type_ctor_type_layout)                 = no.
-ctor_rtti_name_is_exported(type_ctor_type_ctor_info)              = yes.
-ctor_rtti_name_is_exported(type_ctor_type_info(TypeInfo)) =
-    type_info_is_exported(TypeInfo).
-ctor_rtti_name_is_exported(type_ctor_pseudo_type_info(PseudoTypeInfo)) =
-    pseudo_type_info_is_exported(PseudoTypeInfo).
-ctor_rtti_name_is_exported(type_ctor_type_hashcons_pointer)       = no.
+ctor_rtti_name_is_exported(CtorRttiName) = IsExported :-
+    (
+        ( CtorRttiName = type_ctor_exist_locns(_)
+        ; CtorRttiName = type_ctor_exist_locn
+        ; CtorRttiName = type_ctor_exist_tc_constr(_, _, _)
+        ; CtorRttiName = type_ctor_exist_tc_constrs(_)
+        ; CtorRttiName = type_ctor_exist_info(_)
+        ; CtorRttiName = type_ctor_field_names(_)
+        ; CtorRttiName = type_ctor_field_types(_)
+        ; CtorRttiName = type_ctor_field_locns(_)
+        ; CtorRttiName = type_ctor_res_addrs
+        ; CtorRttiName = type_ctor_res_addr_functors
+        ; CtorRttiName = type_ctor_enum_functor_desc(_)
+        ; CtorRttiName = type_ctor_foreign_enum_functor_desc(_)
+        ; CtorRttiName = type_ctor_notag_functor_desc
+        ; CtorRttiName = type_ctor_du_functor_desc(_)
+        ; CtorRttiName = type_ctor_res_functor_desc(_)
+        ; CtorRttiName = type_ctor_enum_name_ordered_table
+        ; CtorRttiName = type_ctor_enum_value_ordered_table
+        ; CtorRttiName = type_ctor_foreign_enum_name_ordered_table
+        ; CtorRttiName = type_ctor_foreign_enum_ordinal_ordered_table
+        ; CtorRttiName = type_ctor_du_name_ordered_table
+        ; CtorRttiName = type_ctor_du_stag_ordered_table(_)
+        ; CtorRttiName = type_ctor_du_ptag_ordered_table
+        ; CtorRttiName = type_ctor_du_ptag_layout(_)
+        ; CtorRttiName = type_ctor_res_value_ordered_table
+        ; CtorRttiName = type_ctor_res_name_ordered_table
+        ; CtorRttiName = type_ctor_maybe_res_addr_functor_desc
+        ; CtorRttiName = type_ctor_functor_number_map
+        ; CtorRttiName = type_ctor_type_functors
+        ; CtorRttiName = type_ctor_type_layout
+        ; CtorRttiName = type_ctor_type_hashcons_pointer
+        ),
+        IsExported = no
+    ;
+        CtorRttiName = type_ctor_type_ctor_info,
+        IsExported = yes
+    ;
+        CtorRttiName = type_ctor_type_info(TypeInfo),
+        IsExported = type_info_is_exported(TypeInfo)
+    ;
+        CtorRttiName = type_ctor_pseudo_type_info(PseudoTypeInfo),
+        IsExported = pseudo_type_info_is_exported(PseudoTypeInfo)
+    ).
 
-tc_rtti_name_is_exported(type_class_base_typeclass_info(_, _)) = yes.
-tc_rtti_name_is_exported(type_class_id) = no.
-tc_rtti_name_is_exported(type_class_id_var_names) = no.
-tc_rtti_name_is_exported(type_class_id_method_ids) = no.
-tc_rtti_name_is_exported(type_class_decl) = yes.
-tc_rtti_name_is_exported(type_class_decl_super(_, _)) = no.
-tc_rtti_name_is_exported(type_class_decl_supers) = no.
-tc_rtti_name_is_exported(type_class_instance(_)) = yes.
-tc_rtti_name_is_exported(type_class_instance_tc_type_vector(_)) = no.
-tc_rtti_name_is_exported(type_class_instance_constraint(_, _, _)) = no.
-tc_rtti_name_is_exported(type_class_instance_constraints(_)) = no.
-tc_rtti_name_is_exported(type_class_instance_methods(_)) = no.
+tc_rtti_name_is_exported(TCName) = IsExported :-
+    (
+        ( TCName = type_class_base_typeclass_info(_, _)
+        ; TCName = type_class_instance(_)
+        ; TCName = type_class_decl
+        ),
+        IsExported = yes
+    ;
+        ( TCName = type_class_id
+        ; TCName = type_class_id_var_names
+        ; TCName = type_class_id_method_ids
+        ; TCName = type_class_decl_super(_, _)
+        ; TCName = type_class_decl_supers
+        ; TCName = type_class_instance_tc_type_vector(_)
+        ; TCName = type_class_instance_constraint(_, _, _)
+        ; TCName = type_class_instance_constraints(_)
+        ; TCName = type_class_instance_methods(_)
+        ),
+        IsExported = no
+    ).
 
 :- func type_info_is_exported(rtti_type_info) = bool.
 
-type_info_is_exported(plain_arity_zero_type_info(_)) = yes.
-type_info_is_exported(plain_type_info(_, _))         = no.
-type_info_is_exported(var_arity_type_info(_, _))     = no.
+type_info_is_exported(TypeInfo) = IsExported :-
+    (
+        TypeInfo = plain_arity_zero_type_info(_),
+        IsExported = yes
+    ;
+        ( TypeInfo = plain_type_info(_, _)
+        ; TypeInfo = var_arity_type_info(_, _)
+        ),
+        IsExported = no
+    ).
 
 :- func pseudo_type_info_is_exported(rtti_pseudo_type_info) = bool.
 
-pseudo_type_info_is_exported(plain_arity_zero_pseudo_type_info(_)) = yes.
-pseudo_type_info_is_exported(plain_pseudo_type_info(_, _)) = no.
-pseudo_type_info_is_exported(var_arity_pseudo_type_info(_, _))  = no.
-pseudo_type_info_is_exported(type_var(_)) = no.
+pseudo_type_info_is_exported(PseudoTypeInfo) = IsExported :-
+    (
+        PseudoTypeInfo = plain_arity_zero_pseudo_type_info(_),
+        IsExported = yes
+    ;
+        ( PseudoTypeInfo = plain_pseudo_type_info(_, _)
+        ; PseudoTypeInfo = var_arity_pseudo_type_info(_, _)
+        ; PseudoTypeInfo = type_var(_)
+        ),
+        IsExported = no
+    ).
 
 id_to_c_identifier(ctor_rtti_id(RttiTypeCtor, RttiName), Str) :-
     Str = name_to_string(RttiTypeCtor, RttiName).
@@ -1293,74 +1327,76 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
 :- pred tc_name_to_string(tc_name::in, tc_rtti_name::in, string::out) is det.
 
 tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_base_typeclass_info(_ModuleName, InstanceStr),
-    Str = make_base_typeclass_info_name(TCName, InstanceStr).
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_id,
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    Str = ModuleName ++ "__type_class_id_" ++ ClassName ++ "_" ++ ArityStr.
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_id_method_ids,
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    Str = ModuleName ++ "__type_class_id_method_ids_" ++ ClassName
-        ++ "_" ++ ArityStr.
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_id_var_names,
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    Str = ModuleName ++ "__type_class_id_var_names_" ++ ClassName
-        ++ "_" ++ ArityStr.
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_decl,
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    Str = ModuleName ++ "__type_class_decl_" ++ ClassName
-        ++ "_" ++ ArityStr.
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_decl_supers,
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    Str = ModuleName ++ "__type_class_decl_supers_" ++ ClassName
-        ++ "_" ++ ArityStr.
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_decl_super(Ordinal, _),
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    string.int_to_string(Ordinal, OrdinalStr),
-    Str = ModuleName ++ "__type_class_decl_super_" ++ ClassName ++
-        "_" ++ ArityStr ++ "_" ++ OrdinalStr.
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_instance(TCTypes),
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    TypeStrs = list.map(encode_tc_instance_type, TCTypes),
-    TypeVectorStr = string.append_list(TypeStrs),
-    Str = ModuleName ++ "__type_class_instance_" ++ ClassName
-        ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr.
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_instance_tc_type_vector(TCTypes),
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    TypeStrs = list.map(encode_tc_instance_type, TCTypes),
-    TypeVectorStr = string.append_list(TypeStrs),
-    Str = ModuleName ++ "__type_class_instance_tc_type_vector_" ++ ClassName
-        ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr.
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_instance_constraint(TCTypes, Ordinal, _),
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    TypeStrs = list.map(encode_tc_instance_type, TCTypes),
-    TypeVectorStr = string.append_list(TypeStrs),
-    string.int_to_string(Ordinal, OrdinalStr),
-    Str = ModuleName ++ "__type_class_instance_constraint_" ++ ClassName
-        ++ "_" ++ ArityStr ++ "_" ++ OrdinalStr ++ "_" ++ TypeVectorStr.
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_instance_constraints(TCTypes),
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    TypeStrs = list.map(encode_tc_instance_type, TCTypes),
-    TypeVectorStr = string.append_list(TypeStrs),
-    Str = ModuleName ++ "__type_class_instance_constraints_"
-        ++ ClassName ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr.
-tc_name_to_string(TCName, TCRttiName, Str) :-
-    TCRttiName = type_class_instance_methods(TCTypes),
-    mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    TypeStrs = list.map(encode_tc_instance_type, TCTypes),
-    TypeVectorStr = string.append_list(TypeStrs),
-    Str = ModuleName ++ "__type_class_instance_methods_"
-        ++ ClassName ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr.
+    (
+        TCRttiName = type_class_base_typeclass_info(_ModuleName, InstanceStr),
+        Str = make_base_typeclass_info_name(TCName, InstanceStr)
+    ;
+        TCRttiName = type_class_id,
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        Str = ModuleName ++ "__type_class_id_" ++ ClassName ++ "_" ++ ArityStr
+    ;
+        TCRttiName = type_class_id_method_ids,
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        Str = ModuleName ++ "__type_class_id_method_ids_" ++ ClassName
+            ++ "_" ++ ArityStr
+    ;
+        TCRttiName = type_class_id_var_names,
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        Str = ModuleName ++ "__type_class_id_var_names_" ++ ClassName
+            ++ "_" ++ ArityStr
+    ;
+        TCRttiName = type_class_decl,
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        Str = ModuleName ++ "__type_class_decl_" ++ ClassName
+            ++ "_" ++ ArityStr
+    ;
+        TCRttiName = type_class_decl_supers,
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        Str = ModuleName ++ "__type_class_decl_supers_" ++ ClassName
+            ++ "_" ++ ArityStr
+    ;
+        TCRttiName = type_class_decl_super(Ordinal, _),
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        string.int_to_string(Ordinal, OrdinalStr),
+        Str = ModuleName ++ "__type_class_decl_super_" ++ ClassName ++
+            "_" ++ ArityStr ++ "_" ++ OrdinalStr
+    ;
+        TCRttiName = type_class_instance(TCTypes),
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        TypeStrs = list.map(encode_tc_instance_type, TCTypes),
+        TypeVectorStr = string.append_list(TypeStrs),
+        Str = ModuleName ++ "__type_class_instance_" ++ ClassName
+            ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr
+    ;
+        TCRttiName = type_class_instance_tc_type_vector(TCTypes),
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        TypeStrs = list.map(encode_tc_instance_type, TCTypes),
+        TypeVectorStr = string.append_list(TypeStrs),
+        Str = ModuleName ++ "__type_class_instance_tc_type_vector_" ++ ClassName
+            ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr
+    ;
+        TCRttiName = type_class_instance_constraint(TCTypes, Ordinal, _),
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        TypeStrs = list.map(encode_tc_instance_type, TCTypes),
+        TypeVectorStr = string.append_list(TypeStrs),
+        string.int_to_string(Ordinal, OrdinalStr),
+        Str = ModuleName ++ "__type_class_instance_constraint_" ++ ClassName
+            ++ "_" ++ ArityStr ++ "_" ++ OrdinalStr ++ "_" ++ TypeVectorStr
+    ;
+        TCRttiName = type_class_instance_constraints(TCTypes),
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        TypeStrs = list.map(encode_tc_instance_type, TCTypes),
+        TypeVectorStr = string.append_list(TypeStrs),
+        Str = ModuleName ++ "__type_class_instance_constraints_"
+            ++ ClassName ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr
+    ;
+        TCRttiName = type_class_instance_methods(TCTypes),
+        mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
+        TypeStrs = list.map(encode_tc_instance_type, TCTypes),
+        TypeVectorStr = string.append_list(TypeStrs),
+        Str = ModuleName ++ "__type_class_instance_methods_"
+            ++ ClassName ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr
+    ).
 
 encode_tc_instance_type(TCType) = Str :-
     % The encoding we use here depends on the types in instance declarations
@@ -1419,9 +1455,9 @@ mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr) :-
     % This predicate will be invoked only at stages of compilation
     % that are after everything has been module qualified. The only
     % things with an empty module name should be the builtins.
-    ( ModuleNameSym0 = unqualified("") ->
+    ( if ModuleNameSym0 = unqualified("") then
         ModuleNameSym = mercury_public_builtin_module
-    ;
+    else
         ModuleNameSym = ModuleNameSym0
     ),
     ModuleName = sym_name_mangle(ModuleNameSym),
@@ -1629,15 +1665,15 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
         TypeName = TypeCtorData ^ tcr_type_name,
         TypeArity = TypeCtorData ^ tcr_arity,
         TypeCtor = type_ctor(qualified(ModuleName, TypeName), TypeArity),
-        ( type_ctor_is_array(TypeCtor) ->
+        ( if type_ctor_is_array(TypeCtor) then
             % XXX This is a kludge to allow accurate GC to trace arrays.
             % We should allow users to provide tracing functions for
             % foreign types.
             RepStr = "MR_TYPECTOR_REP_ARRAY"
-        ; type_ctor_is_bitmap(TypeCtor) ->
+        else if type_ctor_is_bitmap(TypeCtor) then
             % bitmaps are handled much like strings.
             RepStr = "MR_TYPECTOR_REP_BITMAP"
-        ;
+        else
             (
                 IsStable = is_stable,
                 RepStr = "MR_TYPECTOR_REP_STABLE_FOREIGN"
@@ -1702,40 +1738,59 @@ maybe_pseudo_type_info_or_self_to_rtti_data(plain(TypeInfo)) =
 maybe_pseudo_type_info_or_self_to_rtti_data(self) =
     rtti_data_pseudo_type_info(type_var(0)).
 
-type_ctor_details_num_ptags(tcd_enum(_, _, _, _, _, _)) = -1.
-type_ctor_details_num_ptags(tcd_foreign_enum(_, _, _, _, _, _)) = -1.
-type_ctor_details_num_ptags(tcd_du(_, _, PtagMap, _, _)) = LastPtag + 1 :-
-    map.keys(PtagMap, Ptags),
-    list.det_last(Ptags, LastPtag).
-type_ctor_details_num_ptags(tcd_reserved(_, _, _, PtagMap, _, _)) = NumPtags :-
-    map.keys(PtagMap, Ptags),
+type_ctor_details_num_ptags(TypeCtorDetails) = NumPtags :-
     (
-        Ptags = [],
+        ( TypeCtorDetails = tcd_enum(_, _, _, _, _, _)
+        ; TypeCtorDetails = tcd_foreign_enum(_, _, _, _, _, _)
+        ; TypeCtorDetails = tcd_notag(_, _)
+        ; TypeCtorDetails = tcd_eqv(_)
+        ; TypeCtorDetails = tcd_builtin(_)
+        ; TypeCtorDetails = tcd_impl_artifact(_)
+        ; TypeCtorDetails = tcd_foreign(_)
+        ),
         NumPtags = -1
     ;
-        Ptags = [_ | _],
+        TypeCtorDetails = tcd_du(_, _, PtagMap, _, _),
+        map.keys(PtagMap, Ptags),
         list.det_last(Ptags, LastPtag),
         NumPtags = LastPtag + 1
+    ;
+        TypeCtorDetails = tcd_reserved(_, _, _, PtagMap, _, _),
+        map.keys(PtagMap, Ptags),
+        (
+            Ptags = [],
+            NumPtags = -1
+        ;
+            Ptags = [_ | _],
+            list.det_last(Ptags, LastPtag),
+            NumPtags = LastPtag + 1
+        )
     ).
-type_ctor_details_num_ptags(tcd_notag(_, _)) = -1.
-type_ctor_details_num_ptags(tcd_eqv(_)) = -1.
-type_ctor_details_num_ptags(tcd_builtin(_)) = -1.
-type_ctor_details_num_ptags(tcd_impl_artifact(_)) = -1.
-type_ctor_details_num_ptags(tcd_foreign(_)) = -1.
 
-type_ctor_details_num_functors(tcd_enum(_, Functors, _, _, _, _)) =
-    list.length(Functors).
-type_ctor_details_num_functors(tcd_foreign_enum(_, _, Functors, _, _, _)) =
-    list.length(Functors).
-type_ctor_details_num_functors(tcd_du(_, Functors, _, _, _)) =
-    list.length(Functors).
-type_ctor_details_num_functors(tcd_reserved(_, Functors, _, _, _, _)) =
-    list.length(Functors).
-type_ctor_details_num_functors(tcd_notag(_, _)) = 1.
-type_ctor_details_num_functors(tcd_eqv(_)) = -1.
-type_ctor_details_num_functors(tcd_builtin(_)) = -1.
-type_ctor_details_num_functors(tcd_impl_artifact(_)) = -1.
-type_ctor_details_num_functors(tcd_foreign(_)) = -1.
+type_ctor_details_num_functors(TypeCtorDetails) = NumFunctors :-
+    (
+        TypeCtorDetails = tcd_enum(_, EnumFunctors, _, _, _, _),
+        list.length(EnumFunctors, NumFunctors)
+    ;
+        TypeCtorDetails = tcd_foreign_enum(_, _, ForeignFunctors, _, _, _),
+        list.length(ForeignFunctors, NumFunctors)
+    ;
+        TypeCtorDetails = tcd_du(_, DuFunctors, _, _, _),
+        list.length(DuFunctors, NumFunctors)
+    ;
+        TypeCtorDetails = tcd_reserved(_, ReservedFunctors, _, _, _, _),
+        list.length(ReservedFunctors, NumFunctors)
+    ;
+        TypeCtorDetails = tcd_notag(_, _),
+        NumFunctors = 1
+    ;
+        ( TypeCtorDetails = tcd_eqv(_)
+        ; TypeCtorDetails = tcd_builtin(_)
+        ; TypeCtorDetails = tcd_impl_artifact(_)
+        ; TypeCtorDetails = tcd_foreign(_)
+        ),
+        NumFunctors = -1
+    ).
 
 du_arg_info_name(ArgInfo) = ArgInfo ^ du_arg_name.
 
@@ -1770,76 +1825,93 @@ rtti_id_would_include_code_addr(ctor_rtti_id(_, RttiName)) =
 rtti_id_would_include_code_addr(tc_rtti_id(_, TCRttiName)) =
     tc_rtti_name_would_include_code_addr(TCRttiName).
 
-ctor_rtti_name_would_include_code_addr(RttiName) =
-    % Just to make the table not overflow every line.
-    ctor_rtti_name_code_addr(RttiName).
+ctor_rtti_name_would_include_code_addr(RttiName) = InclCodeAddr :-
+    (
+        ( RttiName = type_ctor_exist_locns(_)
+        ; RttiName = type_ctor_exist_locn
+        ; RttiName = type_ctor_exist_tc_constr(_, _, _)
+        ; RttiName = type_ctor_exist_tc_constrs(_)
+        ; RttiName = type_ctor_exist_info(_)
+        ; RttiName = type_ctor_field_names(_)
+        ; RttiName = type_ctor_field_types(_)
+        ; RttiName = type_ctor_field_locns(_)
+        ; RttiName = type_ctor_res_addrs
+        ; RttiName = type_ctor_res_addr_functors
+        ; RttiName = type_ctor_enum_functor_desc(_)
+        ; RttiName = type_ctor_foreign_enum_functor_desc(_)
+        ; RttiName = type_ctor_notag_functor_desc
+        ; RttiName = type_ctor_du_functor_desc(_)
+        ; RttiName = type_ctor_res_functor_desc(_)
+        ; RttiName = type_ctor_enum_name_ordered_table
+        ; RttiName = type_ctor_enum_value_ordered_table
+        ; RttiName = type_ctor_foreign_enum_name_ordered_table
+        ; RttiName = type_ctor_foreign_enum_ordinal_ordered_table
+        ; RttiName = type_ctor_du_name_ordered_table
+        ; RttiName = type_ctor_du_stag_ordered_table(_)
+        ; RttiName = type_ctor_du_ptag_ordered_table
+        ; RttiName = type_ctor_du_ptag_layout(_)
+        ; RttiName = type_ctor_res_value_ordered_table
+        ; RttiName = type_ctor_res_name_ordered_table
+        ; RttiName = type_ctor_maybe_res_addr_functor_desc
+        ; RttiName = type_ctor_functor_number_map
+        ; RttiName = type_ctor_type_hashcons_pointer
+        ; RttiName = type_ctor_type_functors
+        ; RttiName = type_ctor_type_layout
+        ),
+        InclCodeAddr = no
+    ;
+        RttiName = type_ctor_type_ctor_info,
+        InclCodeAddr = yes
+    ;
+        RttiName = type_ctor_type_info(TypeInfo),
+        InclCodeAddr = type_info_would_incl_code_addr(TypeInfo)
+    ;
+        RttiName = type_ctor_pseudo_type_info(PseudoTypeInfo),
+        InclCodeAddr = pseudo_type_info_would_incl_code_addr(PseudoTypeInfo)
+    ).
 
-tc_rtti_name_would_include_code_addr(TCName) =
-    % Just to make the table not overflow every line.
-    tc_rtti_name_code_addr(TCName).
+tc_rtti_name_would_include_code_addr(TCName) = InclCodeAddr :-
+    (
+        TCName = type_class_base_typeclass_info(_, _),
+        InclCodeAddr = yes
+    ;
+        ( TCName = type_class_id
+        ; TCName = type_class_id_var_names
+        ; TCName = type_class_id_method_ids
+        ; TCName = type_class_decl
+        ; TCName = type_class_decl_super(_, _)
+        ; TCName = type_class_decl_supers
+        ; TCName = type_class_instance(_)
+        ; TCName = type_class_instance_tc_type_vector(_)
+        ; TCName = type_class_instance_constraint(_, _, _)
+        ; TCName = type_class_instance_constraints(_)
+        ; TCName = type_class_instance_methods(_)
+        ),
+        InclCodeAddr = no
+    ).
 
-:- func ctor_rtti_name_code_addr(ctor_rtti_name) = bool.
+type_info_would_incl_code_addr(TypeInfo) = InclCodeAddr :-
+    (
+        TypeInfo = plain_arity_zero_type_info(_),
+        InclCodeAddr = yes
+    ;
+        ( TypeInfo = plain_type_info(_, _)
+        ; TypeInfo = var_arity_type_info(_, _)
+        ),
+        InclCodeAddr = no
+    ).
 
-ctor_rtti_name_code_addr(type_ctor_exist_locns(_)) =                no.
-ctor_rtti_name_code_addr(type_ctor_exist_locn)  =                   no.
-ctor_rtti_name_code_addr(type_ctor_exist_tc_constr(_, _, _)) =      no.
-ctor_rtti_name_code_addr(type_ctor_exist_tc_constrs(_)) =           no.
-ctor_rtti_name_code_addr(type_ctor_exist_info(_)) =                 no.
-ctor_rtti_name_code_addr(type_ctor_field_names(_)) =                no.
-ctor_rtti_name_code_addr(type_ctor_field_types(_)) =                no.
-ctor_rtti_name_code_addr(type_ctor_field_locns(_)) =                no.
-ctor_rtti_name_code_addr(type_ctor_res_addrs) =                     no.
-ctor_rtti_name_code_addr(type_ctor_res_addr_functors) =             no.
-ctor_rtti_name_code_addr(type_ctor_enum_functor_desc(_)) =          no.
-ctor_rtti_name_code_addr(type_ctor_foreign_enum_functor_desc(_)) =  no.
-ctor_rtti_name_code_addr(type_ctor_notag_functor_desc) =            no.
-ctor_rtti_name_code_addr(type_ctor_du_functor_desc(_)) =            no.
-ctor_rtti_name_code_addr(type_ctor_res_functor_desc(_)) =           no.
-ctor_rtti_name_code_addr(type_ctor_enum_name_ordered_table) =       no.
-ctor_rtti_name_code_addr(type_ctor_enum_value_ordered_table) =      no.
-ctor_rtti_name_code_addr(type_ctor_foreign_enum_name_ordered_table) = no.
-ctor_rtti_name_code_addr(type_ctor_foreign_enum_ordinal_ordered_table) = no.
-ctor_rtti_name_code_addr(type_ctor_du_name_ordered_table) =         no.
-ctor_rtti_name_code_addr(type_ctor_du_stag_ordered_table(_)) =      no.
-ctor_rtti_name_code_addr(type_ctor_du_ptag_ordered_table) =         no.
-ctor_rtti_name_code_addr(type_ctor_du_ptag_layout(_)) =             no.
-ctor_rtti_name_code_addr(type_ctor_res_value_ordered_table) =       no.
-ctor_rtti_name_code_addr(type_ctor_res_name_ordered_table) =        no.
-ctor_rtti_name_code_addr(type_ctor_maybe_res_addr_functor_desc) =   no.
-ctor_rtti_name_code_addr(type_ctor_functor_number_map) =            no.
-ctor_rtti_name_code_addr(type_ctor_type_hashcons_pointer) =         no.
-ctor_rtti_name_code_addr(type_ctor_type_functors) =                 no.
-ctor_rtti_name_code_addr(type_ctor_type_layout) =                   no.
-ctor_rtti_name_code_addr(type_ctor_type_ctor_info) =                yes.
-ctor_rtti_name_code_addr(type_ctor_type_info(TypeInfo)) =
-    type_info_would_incl_code_addr(TypeInfo).
-ctor_rtti_name_code_addr(type_ctor_pseudo_type_info(PseudoTypeInfo)) =
-    pseudo_type_info_would_incl_code_addr(PseudoTypeInfo).
-
-:- func tc_rtti_name_code_addr(tc_rtti_name) = bool.
-
-tc_rtti_name_code_addr(type_class_base_typeclass_info(_, _)) =    yes.
-tc_rtti_name_code_addr(type_class_id) =                           no.
-tc_rtti_name_code_addr(type_class_id_var_names) =                 no.
-tc_rtti_name_code_addr(type_class_id_method_ids) =                no.
-tc_rtti_name_code_addr(type_class_decl) =                         no.
-tc_rtti_name_code_addr(type_class_decl_super(_, _)) =             no.
-tc_rtti_name_code_addr(type_class_decl_supers) =                  no.
-tc_rtti_name_code_addr(type_class_instance(_)) =                  no.
-tc_rtti_name_code_addr(type_class_instance_tc_type_vector(_)) =   no.
-tc_rtti_name_code_addr(type_class_instance_constraint(_, _, _)) = no.
-tc_rtti_name_code_addr(type_class_instance_constraints(_)) =      no.
-tc_rtti_name_code_addr(type_class_instance_methods(_)) =          no.
-
-type_info_would_incl_code_addr(plain_arity_zero_type_info(_)) = yes.
-type_info_would_incl_code_addr(plain_type_info(_, _)) = no.
-type_info_would_incl_code_addr(var_arity_type_info(_, _)) = no.
-
-pseudo_type_info_would_incl_code_addr(plain_arity_zero_pseudo_type_info(_))
-    = yes.
-pseudo_type_info_would_incl_code_addr(plain_pseudo_type_info(_, _)) = no.
-pseudo_type_info_would_incl_code_addr(var_arity_pseudo_type_info(_, _)) = no.
-pseudo_type_info_would_incl_code_addr(type_var(_)) = no.
+pseudo_type_info_would_incl_code_addr(PseudoTypeInfo) = InclCodeAddr :-
+    (
+        PseudoTypeInfo = plain_arity_zero_pseudo_type_info(_),
+        InclCodeAddr = yes
+    ;
+        ( PseudoTypeInfo = plain_pseudo_type_info(_, _)
+        ; PseudoTypeInfo = var_arity_pseudo_type_info(_, _)
+        ; PseudoTypeInfo = type_var(_)
+        ),
+        InclCodeAddr = no
+    ).
 
 rtti_id_maybe_element_c_type(item_type(RttiId), CTypeName, IsArray) :-
     rtti_id_c_type(RttiId, CTypeName, IsArray).
@@ -1884,33 +1956,33 @@ rtti_id_java_type(tc_rtti_id(_, TCRttiName), JavaTypeName, IsArray) :-
     tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray).
 
 ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
+    % Changes here may need similar changes in tc_rtti_name_java_type.
     ctor_rtti_name_type(RttiName, GenTypeName0, IsArray),
-    (
-        % Java doesn't have typedefs (or "const"),
-        % so we need to use "String" rather than "ConstString"
+    ( if
+        % Java doesn't have typedefs (or "const"), so we need to use "String"
+        % rather than "ConstString".
         GenTypeName0 = "ConstString"
-    ->
+    then
         JavaTypeName = "java.lang.String"
-    ;
+    else if
         GenTypeName0 = "Integer"
-    ->
+    then
         JavaTypeName = "int"
-    ;
-        % In Java, every non-builtin type is a pointer,
-        % so there's no need for the "Ptr" suffixes.
+    else if
+        % In Java, every non-builtin type is a pointer, so there is no need
+        % for the "Ptr" suffixes.
         string.remove_suffix(GenTypeName0, "Ptr", GenTypeName1)
-    ->
+    then
         JavaTypeName = "jmercury.runtime." ++ GenTypeName1
-    ;
-        % In C, we do some nasty hacks to represent type class
-        % constraints of different arities as different structures
-        % ending with arrays of the appropriate length, but in
-        % Java we just use a single type for all of them
-        % (with an extra level of indirection for the array).
+    else if
+        % In C, we do some nasty hacks to represent type class constraints
+        % of different arities as different structures ending with arrays
+        % of the appropriate length, but in Java we just use a single type
+        % for all of them (with an extra level of indirection for the array).
         string.prefix(GenTypeName0, "TypeClassConstraint_")
-    ->
+    then
         JavaTypeName = "jmercury.runtime.TypeClassConstraint"
-    ;
+    else if
         % In C, we do some nasty hacks to represent type infos
         % different arities as different structures
         % ending with arrays of the appropriate length, but in
@@ -1921,37 +1993,36 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
         ; string.prefix(GenTypeName0, "VA_PseudoTypeInfo_Struct")
         ; string.prefix(GenTypeName0, "VA_TypeInfo_Struct")
         )
-    ->
+    then
         JavaTypeName = "jmercury.runtime.TypeInfo_Struct"
-    ;
+    else
         JavaTypeName = "jmercury.runtime." ++ GenTypeName0
     ).
 
 tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
+    % Changes here may need similar changes in ctor_rtti_name_java_type.
     tc_rtti_name_type(TCRttiName, GenTypeName, IsArray),
-    (
-        % BaseTypeClassInfo in C is represented using a
-        % variable-length array as the last field,
-        % so we need to handle it specially in Java
+    ( if
+        % BaseTypeClassInfo in C is represented using a variable-length array
+        % as the last field, so we need to handle it specially in Java.
         GenTypeName = "BaseTypeclassInfo"
-    ->
+    then
         JavaTypeName = "java.lang.Object" /* & IsArray = yes */
-    ;
-        % Java doesn't have typedefs (or "const"),
-        % so we need to use "String" rather than "ConstString"
+    else if
+        % Java doesn't have typedefs (or "const"), so we need to use "String"
+        % rather than "ConstString".
         GenTypeName = "ConstString"
-    ->
+    then
         JavaTypeName = "java.lang.String"
-    ;
-        % In C, we do some nasty hacks to represent type class
-        % constraints of different arities as different structures
-        % ending with arrays of the appropriate length, but in
-        % Java we just use a single type for all of them
-        % (with an extra level of indirection for the array).
+    else if
+        % In C, we do some nasty hacks to represent type class constraints
+        % of different arities as different structures ending with arrays
+        % of the appropriate length, but in Java we just use a single type
+        % for all of them (with an extra level of indirection for the array).
         string.prefix(GenTypeName, "TypeClassConstraint_")
-    ->
+    then
         JavaTypeName = "jmercury.runtime.TypeClassConstraint"
-    ;
+    else
         % The rest are all defined in Mercury's Java runtime
         % (java/runtime/*.java).
         JavaTypeName = "jmercury.runtime." ++ GenTypeName
@@ -1976,35 +2047,35 @@ rtti_id_csharp_type(tc_rtti_id(_, TCRttiName), CsharpTypeName, IsArray) :-
 
 ctor_rtti_name_csharp_type(RttiName, CsharpTypeName, IsArray) :-
     ctor_rtti_name_type(RttiName, GenTypeName0, IsArray),
-    ( GenTypeName0 = "ConstString" ->
+    ( if GenTypeName0 = "ConstString" then
         CsharpTypeName = "string"
-    ; GenTypeName0 = "Integer" ->
+    else if GenTypeName0 = "Integer" then
         CsharpTypeName = "int"
-    ; string.remove_suffix(GenTypeName0, "Ptr", GenTypeName1) ->
+    else if string.remove_suffix(GenTypeName0, "Ptr", GenTypeName1) then
         CsharpTypeName = "runtime." ++ GenTypeName1
-    ; string.prefix(GenTypeName0, "TypeClassConstraint_") ->
+    else if string.prefix(GenTypeName0, "TypeClassConstraint_") then
         CsharpTypeName = "runtime.TypeClassConstraint"
-    ;
+    else if
         ( string.prefix(GenTypeName0, "FA_PseudoTypeInfo_Struct")
         ; string.prefix(GenTypeName0, "FA_TypeInfo_Struct")
         ; string.prefix(GenTypeName0, "VA_PseudoTypeInfo_Struct")
         ; string.prefix(GenTypeName0, "VA_TypeInfo_Struct")
         )
-    ->
+    then
         CsharpTypeName = "runtime.TypeInfo_Struct"
-    ;
+    else
         CsharpTypeName = "runtime." ++ GenTypeName0
     ).
 
 tc_rtti_name_csharp_type(TCRttiName, CsharpTypeName, IsArray) :-
     tc_rtti_name_type(TCRttiName, GenTypeName, IsArray),
-    ( GenTypeName = "BaseTypeclassInfo" ->
+    ( if GenTypeName = "BaseTypeclassInfo" then
         CsharpTypeName = "object" /* & IsArray = yes */
-    ; GenTypeName = "ConstString" ->
+    else if GenTypeName = "ConstString" then
         CsharpTypeName = "string"
-    ; string.prefix(GenTypeName, "TypeClassConstraint_") ->
+    else if string.prefix(GenTypeName, "TypeClassConstraint_") then
         CsharpTypeName = "runtime.TypeClassConstraint"
-    ;
+    else
         CsharpTypeName = "runtime." ++ GenTypeName
     ).
 
