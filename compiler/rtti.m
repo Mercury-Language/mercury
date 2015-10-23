@@ -16,10 +16,13 @@
 % The code to generate the structures is in type_ctor_info.m.
 % See also pseudo_type_info.m.
 %
-% This module is independent of whether we are compiling to LLDS or MLDS.  It
-% is used as an intermediate data structure that we generate from the HLDS,
-% and which we can then convert to either LLDS or MLDS.  The LLDS actually
+% This module is independent of whether we are compiling to LLDS or MLDS.
+% It is used as an intermediate data structure that we generate from the HLDS,
+% and which we can then convert to either LLDS or MLDS. The LLDS actually
 % incorporates this data structure unchanged.
+%
+% Any changes here will probably need to be reflected in
+% runtime/erlang_rtti_implementation.m.
 %
 %-----------------------------------------------------------------------------%
 
@@ -111,7 +114,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% The data structures representing type constructors
+% The data structures representing type constructors.
 %
 
     % A type_ctor_data structure contains all the information that the
@@ -345,16 +348,17 @@
     %
 :- type exist_typeinfo_locn
     --->    plain_typeinfo(
-                int         % The typeinfo is stored directly in the cell,
-                            % at this offset.
+                % The typeinfo is stored directly in the cell, at this offset.
+                int
             )
     ;       typeinfo_in_tci(
-                int,        % The typeinfo is stored indirectly in the
-                            % typeclass info stored at this offset in the cell.
+                % The typeinfo is stored indirectly in the typeclass info
+                % stored at this offset in the cell.
+                int,
 
-                int         % To find the typeinfo inside the typeclass info
-                            % structure, give this integer to the
-                            % MR_typeclass_info_type_info macro.
+                % To find the typeinfo inside the typeclass info structure,
+                % give this integer to the MR_typeclass_info_type_info macro.
+                int
             ).
 
     % These tables let the runtime system interpret values in memory
@@ -368,8 +372,8 @@
     % The type sectag_table corresponds to the C type MR_DuPtagLayout.
     % The two maps are implemented in C as simple arrays.
     %
-:- type ptag_map    == map(int, sectag_table).  % key is primary tag
-:- type stag_map    == map(int, du_functor).    % key is secondary tag
+:- type ptag_map == map(int, sectag_table).  % key is primary tag
+:- type stag_map == map(int, du_functor).    % key is secondary tag
 
 :- type sectag_table
     --->    sectag_table(
@@ -396,8 +400,7 @@
     ;       sectag_locn_local(int)
     ;       sectag_locn_remote(int).
 
-    % Information about an argument of a functor in a discriminated union
-    % type.
+    % Information about an argument of a functor in a discriminated union type.
     %
 :- type du_arg_info
     --->    du_arg_info(
@@ -597,10 +600,17 @@
                 rtti_pseudo_type_info
             )
     ;       rtti_data_base_typeclass_info(
-                tc_name,        % identifies the type class
-                module_name,    % module containing instance decl.
-                string,         % encodes the names and arities of the
-                                % types in the instance declaration
+                % The id of the type class.
+                tc_name,
+
+                % The module containing the instance declaration.
+                module_name,
+
+                % A string that uniquely and reversibly encodes
+                % the names and arities of the types in the
+                % instance declaration.
+                string,
+
                 base_typeclass_info
             )
     ;       rtti_data_type_class_decl(
@@ -661,9 +671,13 @@
 
 :- type tc_rtti_name
     --->    type_class_base_typeclass_info(
-                module_name,    % Module containing instance decl.
-                string          % Encodes the names and arities of the
-                                % types in the instance declaration.
+                % The name of the odule containing the instance declaration.
+                module_name,
+
+                % A string that uniquely and reversibly encodes
+                % the names and arities of the types in the
+                % instance declaration.
+                string
             )
     ;       type_class_id
     ;       type_class_id_var_names
@@ -681,7 +695,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Functions operating on RTTI data
+% Functions operating on RTTI data.
 %
 
 :- func encode_type_ctor_flags(set(type_ctor_flag)) = int.
