@@ -62,7 +62,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
-:- import_module transform_hlds.    % for pd_cost, etc.
+:- import_module transform_hlds.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.
@@ -129,13 +129,13 @@ first_order_check_sccs([HeadSCC| TailSCCs], MustBeStratifiedPreds, Warn,
     HeadSCC = HeadSCCProcs - HeadSCCPreds,
     set.intersect(HeadSCCPreds, MustBeStratifiedPreds,
         MustBeStratifiedPredsInScc),
-    (
+    ( if
         ( Warn = yes
         ; set.is_non_empty(MustBeStratifiedPredsInScc)
         )
-    ->
+    then
         first_order_check_scc(HeadSCCProcs, is_warning, ModuleInfo, !Specs)
-    ;
+    else
         true
     ),
     first_order_check_sccs(TailSCCs, MustBeStratifiedPreds, Warn,
@@ -195,15 +195,15 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
             ThisPredProcId, ErrorOrWarning, ModuleInfo, !Specs)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % These scopes cannot contain any calls.
             true
-        ;
+        else
             first_order_check_goal(SubGoal, Negated, WholeScc,
                 ThisPredProcId, ErrorOrWarning, ModuleInfo, !Specs)
         )
@@ -212,16 +212,16 @@ first_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId, ErrorOrWarning,
         ; GoalExpr = call_foreign_proc(_Attributes, CPred, CProc, _, _, _, _)
         ),
         Callee = proc(CPred, CProc),
-        (
+        ( if
             Negated = yes,
             list.member(Callee, WholeScc)
-        ->
+        then
             Context = goal_info_get_context(GoalInfo),
             ErrorMsg = "call introduces a non-stratified loop.",
             Spec = generate_stratify_error(ModuleInfo, ThisPredProcId, Context,
                 ErrorMsg, ErrorOrWarning),
             !:Specs = [Spec | !.Specs]
-        ;
+        else
             true
         )
     ;
@@ -303,15 +303,15 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
     ErrorOrWarning = is_warning,
-    (
+    ( if
         Warn = yes,
         map.search(HOInfo, PredProcId, HigherOrderInfo)
-    ->
+    then
         HigherOrderInfo = strat_ho_info(HOCalls, _),
         set.intersect(HOCalls, WholeScc, HOLoops),
-        ( set.is_empty(HOLoops) ->
+        ( if set.is_empty(HOLoops) then
             HighOrderLoops = no
-        ;
+        else
             HighOrderLoops = yes
         ),
         pred_info_get_proc_table(PredInfo, ProcTable),
@@ -319,7 +319,7 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
         proc_info_get_goal(Proc, Goal),
         higher_order_check_goal(Goal, no, WholeScc, PredProcId, HighOrderLoops,
             ErrorOrWarning, ModuleInfo, !Specs)
-    ;
+    else
         true
     ),
     higher_order_check_scc(Remaining, WholeScc, HOInfo, ModuleInfo, !Specs).
@@ -355,53 +355,53 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
             HighOrderLoops, ErrorOrWarning, ModuleInfo, !Specs)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % These scopes cannot contain any calls.
             true
-        ;
+        else
             higher_order_check_goal(SubGoal, Negated, WholeScc,
                 ThisPredProcId, HighOrderLoops, ErrorOrWarning,
                 ModuleInfo, !Specs)
         )
     ;
         GoalExpr = plain_call(_CPred, _CProc, _Args, _Builtin, _UC, Sym),
-        (
-            % XXX : is this good enough to detect all calls to solutions ?
+        ( if
+            % XXX Is this good enough to detect all calls to solutions ?
             HighOrderLoops = yes,
             ( Sym = unqualified(Name)
             ; Sym = qualified(_, Name)
             ),
             Name = "solutions"
-        ->
+        then
             Context = goal_info_get_context(GoalInfo),
             ErrorMsg = "call to solutions/2 introduces a non-stratified loop.",
             Spec = generate_stratify_error(ModuleInfo, ThisPredProcId, Context,
                 ErrorMsg, ErrorOrWarning),
             !:Specs = [Spec | !.Specs]
-        ;
+        else
             true
         )
     ;
         GoalExpr = generic_call(GenericCall, _Vars, _Modes, _MaybeArgRegs,
             _Det),
-        (
+        ( if
             Negated = yes,
             HighOrderLoops = yes,
             ( GenericCall = higher_order(_, _, _, _), Msg = "higher order"
             ; GenericCall = class_method(_, _, _, _), Msg = "class method"
             )
-        ->
+        then
             Context = goal_info_get_context(GoalInfo),
             ErrorMsg = Msg ++ " call may introduce a non-stratified loop.",
             Spec = generate_stratify_error(ModuleInfo, ThisPredProcId, Context,
                 ErrorMsg, ErrorOrWarning),
             !:Specs = [Spec | !.Specs]
-        ;
+        else
             true
         )
     ;
@@ -555,38 +555,38 @@ stratify_tc([PredProcId | PredProcIds], ProcCalls, CallsHO, !HOInfo,
 
 merge_calls([], _, _, _, !HOInfo, !Changed).
 merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
-    ( map.search(!.HOInfo, C, CInfo) ->
+    ( if map.search(!.HOInfo, C, CInfo) then
         map.lookup(!.HOInfo, P, PInfo),
         CInfo = strat_ho_info(CHaveAT0, CHOInOut),
         PInfo = strat_ho_info(PHaveAT0, PHOInOut),
         % First merge the first order info, if we need to.
-        ( CHOInOut = ho_none ->
+        ( if CHOInOut = ho_none then
             true
-        ;
+        else
             (
                 CHOInOut = ho_in,
-                ( set.subset(PHaveAT0, CHaveAT0) ->
+                ( if set.subset(PHaveAT0, CHaveAT0) then
                     CHaveAT = CHaveAT0
-                ;
+                else
                     set.union(PHaveAT0, CHaveAT0, CHaveAT),
                     !:Changed = yes
                 ),
                 PHaveAT = PHaveAT0
             ;
                 CHOInOut = ho_out,
-                ( set.subset(CHaveAT0, PHaveAT0) ->
+                ( if set.subset(CHaveAT0, PHaveAT0) then
                     PHaveAT = PHaveAT0
-                ;
+                else
                     set.union(CHaveAT0, PHaveAT0, PHaveAT),
                     !:Changed = yes
                 ),
                 CHaveAT = CHaveAT0
             ;
                 CHOInOut = ho_in_out,
-                ( CHaveAT0 = PHaveAT0 ->
+                ( if CHaveAT0 = PHaveAT0 then
                     CHaveAT = CHaveAT0,
                     PHaveAT = PHaveAT0
-                ;
+                else
                     set.union(CHaveAT0, PHaveAT0, NewHaveAT),
                     CHaveAT = NewHaveAT,
                     PHaveAT = NewHaveAT,
@@ -603,21 +603,21 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
             map.det_update(P, NewPInfo, !HOInfo)
         ),
         % Then, if we need to, merge the higher order info.
-        (
+        ( if
             DoingFirstOrder = yes,
             set.member(P, CallsHO)
-        ->
+        then
             map.lookup(!.HOInfo, P, PHOInfo),
             PHOInfo = strat_ho_info(PossibleCalls, _),
             set.to_sorted_list(PossibleCalls, PossibleCallsL),
             merge_calls(PossibleCallsL, P, CallsHO, no, !HOInfo, !Changed)
-        ;
+        else
             true
-        ),
-        merge_calls(Cs, P, CallsHO, DoingFirstOrder, !HOInfo, !Changed)
-    ;
-        merge_calls(Cs, P, CallsHO, DoingFirstOrder, !HOInfo, !Changed)
-    ).
+        )
+    else
+        true
+    ),
+    merge_calls(Cs, P, CallsHO, DoingFirstOrder, !HOInfo, !Changed).
 
     % Given the set of procedures that make higher order calls and a
     % list of procedures and higher order call info, this predicate rebuilds
@@ -629,12 +629,12 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
 add_new_arcs([], _, !DepGraph).
 add_new_arcs([Caller - CallerInfo | Cs], CallsHO, !DepGraph) :-
     % Only add arcs for callers who call higher order procs.
-    ( set.member(Caller, CallsHO) ->
+    ( if set.member(Caller, CallsHO) then
         CallerInfo = strat_ho_info(PossibleCallees0, _),
         set.to_sorted_list(PossibleCallees0, PossibleCallees),
         digraph.lookup_key(!.DepGraph, Caller, CallerKey),
         add_new_arcs2(PossibleCallees, CallerKey, !DepGraph)
-    ;
+    else
         true
     ),
     add_new_arcs(Cs, CallsHO, !DepGraph).
@@ -731,20 +731,20 @@ higherorder_in_out1([_ | _], [], _, !HOIn, !HOOut) :-
     unexpected($module, $pred, "mismatched lists").
 higherorder_in_out1([Type | Types], [Mode | Modes], ModuleInfo,
         !HOIn, !HOOut) :-
-    (
+    ( if
         % XXX We should use a more general check for higher order constants
         % in parameters; users could hide higher order constants in data
         % structures.
         type_is_higher_order(Type)
-    ->
-        ( mode_is_input(ModuleInfo, Mode) ->
+    then
+        ( if mode_is_input(ModuleInfo, Mode) then
             !:HOIn = yes
-        ; mode_is_output(ModuleInfo, Mode) ->
+        else if mode_is_output(ModuleInfo, Mode) then
             !:HOOut = yes
-        ;
+        else
             true
         )
-    ;
+    else
         true
     ),
     higherorder_in_out1(Types, Modes, ModuleInfo, !HOIn, !HOOut).
@@ -795,10 +795,10 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             % happen as higher order constants have been transformed to
             % lambda goals. See above.
             Unification = construct(_, ConsId, _, _, _, _, _),
-            ( ConsId = closure_cons(ShroudedPredProcId, _) ->
+            ( if ConsId = closure_cons(ShroudedPredProcId, _) then
                 PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
                 set.insert(PredProcId, !HasAT)
-            ;
+            else
                 % Do nothing.
                 true
             )
@@ -843,16 +843,16 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
         stratify_analyze_goal(SubGoal, !Calls, !HasAT, !CallsHO)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % The code in these scopes does not make calls (either first order
             % or higher order), and it does not take addresses.
             true
-        ;
+        else
             stratify_analyze_goal(SubGoal, !Calls, !HasAT, !CallsHO)
         )
     ;
@@ -922,10 +922,10 @@ get_called_procs(Goal, !Calls) :-
             % happen as higher order constants have been transformed to lambda
             % goals. See above.
             Unification = construct(_, ConsId, _, _, _, _, _),
-            ( ConsId = closure_cons(ShroudedPredProcId, _) ->
+            ( if ConsId = closure_cons(ShroudedPredProcId, _) then
                 PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
                 !:Calls = [PredProcId | !.Calls]
-            ;
+            else
                 % Do nothing.
                 true
             )
@@ -967,15 +967,15 @@ get_called_procs(Goal, !Calls) :-
         get_called_procs(SubGoal, !Calls)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % The code in these scopes does not make calls.
             true
-        ;
+        else
             get_called_procs(SubGoal, !Calls)
         )
     ;
