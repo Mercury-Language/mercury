@@ -190,10 +190,10 @@ introduce_partial_fgt_scopes(GoalInfo0, SubGoalInfo0, RevMarkedSubGoals,
         SubGoalExpr1 = conj(plain_conj, BuildGoals),
         SubGoal1 = hlds_goal(SubGoalExpr1, SubGoalInfo0)
     ),
-    ( goal_info_has_feature(GoalInfo0, feature_from_head) ->
+    ( if goal_info_has_feature(GoalInfo0, feature_from_head) then
         attach_features_to_all_goals([feature_from_head],
             attach_in_from_ground_term, SubGoal1, SubGoal)
-    ;
+    else
         SubGoal = SubGoal1
     ).
 
@@ -305,14 +305,14 @@ lookup_and_remove_arg_vars_insert_fgt([Var | Vars], Order, !GoalCord,
     BuildInfo = fgt_build_info(VarKept, VarGoalCord0),
     (
         VarKept = kept_old_gi(Size0, GoalInfo0),
-        ( cord.is_empty(VarGoalCord0) ->
+        ( if cord.is_empty(VarGoalCord0) then
             unexpected($module, $pred, "VarGoalCord0 is empty")
-        ;
+        else
             MaybeThreshold = get_maybe_from_ground_term_threshold,
-            (
+            ( if
                 MaybeThreshold = yes(Threshold),
                 Size0 >= Threshold
-            ->
+            then
                 goal_info_set_nonlocals(set_of_var.make_singleton(Var),
                     GoalInfo0, GoalInfo),
                 VarGoals0 = cord.list(VarGoalCord0),
@@ -329,7 +329,7 @@ lookup_and_remove_arg_vars_insert_fgt([Var | Vars], Order, !GoalCord,
                 ScopeGoalExpr = scope(Reason, ConjGoal),
                 ScopeGoal = hlds_goal(ScopeGoalExpr, GoalInfo),
                 VarGoalCord = cord.singleton(ScopeGoal)
-            ;
+            else
                 VarGoalCord = VarGoalCord0
             )
         )
