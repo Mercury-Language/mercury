@@ -486,17 +486,17 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
     ;
         Goal = call_expr(Context, Name, ArgTerms0, Purity),
         expand_bang_states(ArgTerms0, ArgTerms1),
-        (
+        ( if
             Name = unqualified("\\="),
             ArgTerms1 = [LHSTerm, RHSTerm]
-        ->
+        then
             % `LHS \= RHS' is defined as `not (LHS = RHS)'
             TransformedGoal = not_expr(Context,
                 unify_expr(Context, LHSTerm, RHSTerm, Purity)),
             transform_parse_tree_goal_to_hlds(LocKind, TransformedGoal,
                 Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
-        ;
+        else if
             % check for a state var record assignment:
             % !Var ^ field := Value
             Name = unqualified(":="),
@@ -505,7 +505,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
                 FieldListContext),
             StateVar0 = functor(atom("!"), StateVarNameTerms, StateVarContext),
             StateVarNameTerms = [variable(_, _)]
-        ->
+        then
             % !Var ^ field := Value is defined as
             % !:Var = !.Var ^ field := Value.
             LHSTerm = functor(atom("!:"), StateVarNameTerms, StateVarContext),
@@ -517,7 +517,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
             transform_parse_tree_goal_to_hlds(LocKind, TransformedGoal,
                 Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
-        ;
+        else if
             % check for a DCG field access goal:
             % get: Field =^ field
             % set: ^ field := Field
@@ -525,26 +525,26 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
             ( Operator = "=^", AccessType = get
             ; Operator = ":=", AccessType = set
             )
-        ->
+        then
             rename_vars_in_term_list(need_not_rename, Renaming,
                 ArgTerms1, ArgTerms),
             transform_dcg_record_syntax(LocKind, AccessType, ArgTerms, Context,
                 HLDSGoal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs)
-        ;
+        else
             rename_vars_in_term_list(need_not_rename, Renaming,
                 ArgTerms1, ArgTerms),
             make_fresh_arg_vars_subst_svars(ArgTerms, HeadVars, !VarSet,
                 !SVarState, !Specs),
             list.length(ArgTerms, Arity),
-            (
+            ( if
                 % Check for a higher-order call,
                 % i.e. a call to either call/N or ''/N.
                 ( Name = unqualified("call")
                 ; Name = unqualified("")
                 ),
                 HeadVars = [PredVar | RealHeadVars]
-            ->
+            then
                 % Initialize some fields to junk.
                 Modes = [],
                 MaybeArgRegs = arg_reg_types_unset,
@@ -557,7 +557,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
 
                 hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
                 CallId = generic_call_id(GenericCallId)
-            ;
+            else
                 % Initialize some fields to junk.
                 PredId = invalid_pred_id,
                 ModeId = invalid_proc_id,
@@ -584,21 +584,21 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         rename_vars_in_term(need_not_rename, Renaming, TermB0, TermB),
         % It is an error for the left or right hand side of a unification
         % to be !A (although it may be !.A or !:A).
-        ( TermA = functor(atom("!"), [variable(StateVarA, _)], _) ->
+        ( if TermA = functor(atom("!"), [variable(StateVarA, _)], _) then
             report_svar_unify_error(Context, StateVarA, 
                 !VarSet, !SVarState, !Specs),
-            ( TermB = functor(atom("!"), [variable(StateVarB, _)], _) ->
+            ( if TermB = functor(atom("!"), [variable(StateVarB, _)], _) then
                 report_svar_unify_error(Context, StateVarB, 
                     !VarSet, !SVarState, !Specs)
-            ;
+            else
                 true
             ),
             HLDSGoal = true_goal_with_context(Context)
-        ; TermB = functor(atom("!"), [variable(StateVarB, _)], _) ->
+        else if TermB = functor(atom("!"), [variable(StateVarB, _)], _) then
             report_svar_unify_error(Context, StateVarB,
                 !VarSet, !SVarState, !Specs),
             HLDSGoal = true_goal
-        ;
+        else
             unravel_unification(TermA, TermB, Context, umc_explicit, [],
                 Purity, HLDSGoal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
@@ -691,7 +691,7 @@ transform_promise_eqv_goal(LocKind, Vars0, StateVars0, DotSVars0, ColonSVars0,
 transform_dcg_record_syntax(LocKind, AccessType, ArgTerms0, Context, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     goal_info_init(Context, GoalInfo),
-    (
+    ( if
         ArgTerms0 = [LHSTerm, RHSTerm, TermInputTerm, TermOutputTerm],
         (
             AccessType = get,
@@ -703,7 +703,7 @@ transform_dcg_record_syntax(LocKind, AccessType, ArgTerms0, Context, HLDSGoal,
             FieldNameTerm = FieldNameTerm0,
             FieldValueTerm = RHSTerm
         )
-    ->
+    then
         ContextPieces = dcg_field_error_context_pieces(AccessType),
         parse_field_list(FieldNameTerm, !.VarSet, ContextPieces,
             MaybeFieldNames),
@@ -721,7 +721,7 @@ transform_dcg_record_syntax(LocKind, AccessType, ArgTerms0, Context, HLDSGoal,
                 !SVarState, !Specs),
             qual_info_set_found_syntax_error(yes, !QualInfo)
         )
-    ;
+    else
         invalid_goal("^", ArgTerms0, GoalInfo, HLDSGoal, !VarSet, !SVarState,
             !Specs),
         qual_info_set_found_syntax_error(yes, !QualInfo),
@@ -745,11 +745,13 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
         !ModuleInfo, !QualInfo, !Specs) :-
     make_fresh_arg_vars_subst_svars(ArgTerms, ArgVars, !VarSet,
         !SVarState, !Specs),
-    ( ArgVars = [FieldValueVarPrime, TermInputVarPrime, TermOutputVarPrime] ->
+    ( if
+        ArgVars = [FieldValueVarPrime, TermInputVarPrime, TermOutputVarPrime]
+    then
         FieldValueVar = FieldValueVarPrime,
         TermInputVar = TermInputVarPrime,
         TermOutputVar = TermOutputVarPrime
-    ;
+    else
         unexpected($module, $pred, "arity != 3")
     ),
     (
@@ -764,10 +766,10 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
             InnermostSubContext),
         InputTermArgNumber = 1,
         InputTermArgContext = ac_functor(Functor, umc_explicit, []),
-        ( Functor = cons(FuncNamePrime, FuncArityPrime, _TypeCtor) ->
+        ( if Functor = cons(FuncNamePrime, FuncArityPrime, _TypeCtor) then
             FuncName = FuncNamePrime,
             FuncArity = FuncArityPrime
-        ;
+        else
             unexpected($module, $pred, "not cons")
         ),
         % DCG arguments should always be distinct variables,
@@ -793,10 +795,10 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
         InputTermArgNumber = 1,
         InputTermArgContext = ac_functor(Functor, umc_explicit, []),
 
-        ( InnermostFunctor = cons(FuncNamePrime, FuncArityPrime, _TC) ->
+        ( if InnermostFunctor = cons(FuncNamePrime, FuncArityPrime, _TC) then
             FuncName = FuncNamePrime,
             FuncArity = FuncArityPrime
-        ;
+        else
             unexpected($module, $pred, "not cons")
         ),
         FieldArgNumber = 2,
@@ -832,21 +834,21 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
 
 accumulate_plain_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    ( Goal = conj_expr(_Context, SubGoalA, SubGoalB) ->
+    ( if Goal = conj_expr(_Context, SubGoalA, SubGoalB) then
         accumulate_plain_conjuncts(LocKind, SubGoalA, Renaming,
             !HLDSConjunctsCord, !SVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs),
         accumulate_plain_conjuncts(LocKind, SubGoalB, Renaming,
             !HLDSConjunctsCord, !SVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs)
-    ;
+    else
         transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         HLDSGoal = hlds_goal(HLDSGoalExpr, _),
-        ( HLDSGoalExpr = conj(plain_conj, HLDSConjuncts) ->
+        ( if HLDSGoalExpr = conj(plain_conj, HLDSConjuncts) then
             !:HLDSConjunctsCord = !.HLDSConjunctsCord ++
                 cord.from_list(HLDSConjuncts)
-        ;
+        else
             !:HLDSConjunctsCord = cord.snoc(!.HLDSConjunctsCord, HLDSGoal)
         )
     ).
@@ -863,21 +865,21 @@ accumulate_plain_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
 
 accumulate_par_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    ( Goal = par_conj_expr(_Context, SubGoalA, SubGoalB) ->
+    ( if Goal = par_conj_expr(_Context, SubGoalA, SubGoalB) then
         accumulate_par_conjuncts(LocKind, SubGoalA, Renaming,
             !HLDSConjunctsCord, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         accumulate_par_conjuncts(LocKind, SubGoalB, Renaming,
             !HLDSConjunctsCord, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
-    ;
+    else
         transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
         HLDSGoal = hlds_goal(HLDSGoalExpr, _),
-        ( HLDSGoalExpr = conj(parallel_conj, HLDSConjuncts) ->
+        ( if HLDSGoalExpr = conj(parallel_conj, HLDSConjuncts) then
             !:HLDSConjunctsCord = !.HLDSConjunctsCord ++
                 cord.from_list(HLDSConjuncts)
-        ;
+        else
             !:HLDSConjunctsCord = cord.snoc(!.HLDSConjunctsCord, HLDSGoal)
         )
     ).
@@ -896,7 +898,7 @@ accumulate_par_conjuncts(LocKind, Goal, Renaming, !HLDSConjunctsCord,
 
 get_disj(LocKind, Goal, Renaming, DisjStates0, DisjStates, SVarStateBefore,
         !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    ( Goal = disj_expr(_Context, SubGoalA, SubGoalB) ->
+    ( if Goal = disj_expr(_Context, SubGoalA, SubGoalB) then
         % We recurse on the *second* arm first, so that we will put the
         % disjuncts from *that* arm at the front of DisjStates0, before
         % putting the disjuncts from the first arm at the front of the
@@ -908,7 +910,7 @@ get_disj(LocKind, Goal, Renaming, DisjStates0, DisjStates, SVarStateBefore,
         get_disj(LocKind, SubGoalA, Renaming, DisjStates1, DisjStates,
             SVarStateBefore, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
-    ;
+    else
         transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming,
             HLDSGoal, SVarStateBefore, SVarStateAfterDisjunct,
             !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
@@ -1077,9 +1079,9 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
     %   magic_exception_result(TryResult),
     %   (
     %       TryResult = succeeded({}),
-    %       ( Goal ->
+    %       ( if Goal then
     %           Then
-    %       ;
+    %       else
     %           Else
     %       )
     %   ;

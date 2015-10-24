@@ -214,14 +214,14 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             SubGoal = SubGoal0
-        ;
+        else
             find_follow_vars_in_goal(SubGoal0, SubGoal, VarTypes, ModuleInfo,
                 !FollowVarsMap, !NextNonReservedR, !NextNonReservedF)
         ),
@@ -229,12 +229,12 @@ find_follow_vars_in_goal_expr(GoalExpr0, GoalExpr, !GoalInfo,
     ;
         GoalExpr0 = unify(_, _, _, Unification, _),
         GoalExpr = GoalExpr0,
-        (
+        ( if
             Unification = assign(LVar, RVar),
             map.search(!.FollowVarsMap, LVar, DesiredLoc)
-        ->
+        then
             map.set(RVar, DesiredLoc, !FollowVarsMap)
-        ;
+        else
             true
         )
     ;
@@ -322,9 +322,9 @@ find_follow_vars_from_arginfo([ArgVar - arg_info(ArgLoc, Mode) | ArgsInfos],
         Mode = top_in,
         ArgLoc = reg(RegType, RegNum),
         Locn = abs_reg(RegType, RegNum),
-        ( map.insert(ArgVar, Locn, !FollowVarsMap) ->
+        ( if map.insert(ArgVar, Locn, !FollowVarsMap) then
             true    % FollowVarsMap is updated
-        ;
+        else
             % The call is not in superhomogeneous form: this
             % argument has appeared before. Since the earlier
             % appearance will have given the variable a smaller
@@ -357,9 +357,9 @@ find_follow_vars_from_generic_in_vars(_RegType, [], !FollowVarsMap, !NextReg).
 find_follow_vars_from_generic_in_vars(RegType, [InVar | InVars],
         !FollowVarsMap, !NextReg) :-
     Locn = abs_reg(RegType, !.NextReg),
-    ( map.insert(InVar, Locn, !FollowVarsMap) ->
+    ( if map.insert(InVar, Locn, !FollowVarsMap) then
         true    % FollowVarsMap is updated
-    ;
+    else
         % The call is not in superhomogeneous form: this argument has
         % appeared before. Since the earlier appearance will have given
         % the variable a smaller register number, we prefer that
@@ -469,7 +469,7 @@ find_follow_vars_in_conj([], [], _, _ModuleInfo, _AttachToFirst,
 find_follow_vars_in_conj([Goal0 | Goals0], [Goal | Goals], VarTypes,
         ModuleInfo, AttachToFirst, !FollowVarsMap, !NextNonReservedR,
         !NextNonReservedF) :-
-    (
+    ( if
         Goal0 = hlds_goal(GoalExpr0, _),
         (
             GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
@@ -478,9 +478,9 @@ find_follow_vars_in_conj([Goal0 | Goals0], [Goal | Goals], VarTypes,
             GoalExpr0 = unify(_, _, _, Unification, _),
             Unification \= complicated_unify(_, _, _)
         )
-    ->
+    then
         AttachToNext = no
-    ;
+    else
         AttachToNext = yes
     ),
     find_follow_vars_in_conj(Goals0, Goals, VarTypes, ModuleInfo,

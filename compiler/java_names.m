@@ -93,16 +93,16 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Java naming
+% Java naming.
 %
 
 mangle_sym_name_for_java(SymName0, QualKind, QualifierOp, JavaSafeName) :-
     % Modules in the Mercury standard library get a `mercury' prefix when
     % mapped to MLDS module names. Since we place all Java classes inside a
     % `jmercury' package, the extra prefix is just redundant so we remove it.
-    ( strip_outermost_qualifier(SymName0, "mercury", StrippedSymName) ->
+    ( if strip_outermost_qualifier(SymName0, "mercury", StrippedSymName) then
         SymName = StrippedSymName
-    ;
+    else
         SymName = SymName0
     ),
     mangle_sym_name_for_java_2(SymName, QualKind, MangledSymName),
@@ -139,14 +139,14 @@ java_safe_name_component(QualKind, Name) = JavaSafeName :-
 
 valid_java_symbol_name(SymName) = ValidSymName :-
     Prefix = "mr_",
-    ( java_is_keyword(SymName) ->
+    ( if java_is_keyword(SymName) then
         % This is a reserved Java word, add the above prefix.
         ValidSymName = Prefix ++ SymName
-    ; string.append(Prefix, Suffix, SymName) ->
+    else if string.append(Prefix, Suffix, SymName) then
         % This name already contains the prefix we are adding to
         % variables to avoid conficts, so add an additional '_'.
         ValidSymName = Prefix ++ "_" ++ Suffix
-    ;
+    else
         % Normal name; do nothing.
         ValidSymName = SymName
     ).
@@ -249,14 +249,14 @@ csharp_safe_name_component(QualKind, Name) = SafeName :-
 
 valid_csharp_symbol_name(SymName) = ValidSymName :-
     Prefix = "mr_",
-    ( csharp_is_keyword(SymName) ->
+    ( if csharp_is_keyword(SymName) then
         % This is a reserved word, add the above prefix.
         ValidSymName = Prefix ++ SymName
-    ; string.append(Prefix, Suffix, SymName) ->
+    else if string.append(Prefix, Suffix, SymName) then
         % This name already contains the prefix we are adding to
         % variables to avoid conficts, so add an additional '_'.
         ValidSymName = Prefix ++ "_" ++ Suffix
-    ;
+    else
         % Normal name; do nothing.
         ValidSymName = SymName
     ).
@@ -345,16 +345,16 @@ csharp_mercury_runtime_package_name =
 %-----------------------------------------------------------------------------%
 
 flip_initial_case(S0) = S :-
-    ( string.first_char(S0, First0, Rest) ->
-        ( char.is_upper(First0) ->
+    ( if string.first_char(S0, First0, Rest) then
+        ( if char.is_upper(First0) then
             First = char.to_lower(First0)
-        ; char.is_lower(First0) ->
+        else if char.is_lower(First0) then
             First = char.to_upper(First0)
-        ;
+        else
             First = First0
         ),
         string.first_char(S, First, Rest)
-    ;
+    else
         S = S0
     ).
 

@@ -227,7 +227,7 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
         ItemsNeedTabling = dont_need_tabling,
         expect(unify(ItemsNeedTablingStatistics, dont_need_tabling_statistics),
             $module, $pred, "tabling statistics without tabling"),
-        (
+        ( if
             % These forms of tabling cannot ask for statistics.
             (
                 globals.lookup_bool_option(Globals,
@@ -238,9 +238,9 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
             ;
                 globals.lookup_bool_option(Globals, trace_table_io, yes)
             )
-        ->
+        then
             set.insert(mercury_table_builtin_module, !UseDeps)
-        ;
+        else
             true
         )
     ),
@@ -283,7 +283,7 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
     ;
         Deep = no
     ),
-    (
+    ( if
         (
             globals.lookup_bool_option(Globals,
                 record_term_sizes_as_words, yes)
@@ -291,21 +291,21 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
             globals.lookup_bool_option(Globals,
                 record_term_sizes_as_cells, yes)
         )
-    ->
+    then
         set.insert(mercury_term_size_prof_builtin_module, !UseDeps)
-    ;
+    else
         true
     ),
     globals.get_target(Globals, Target),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.lookup_bool_option(Globals, parallel, Parallel),
-    (
+    ( if
         Target = target_c,
         HighLevelCode = no,
         Parallel = yes
-    ->
+    then
         set.insert(mercury_par_builtin_module, !UseDeps)
-    ;
+    else
         true
     ),
     globals.lookup_bool_option(Globals, use_regions, UseRegions),
@@ -317,14 +317,14 @@ compute_implicit_import_needs(Globals, ImplicitImportNeeds,
     ),
     globals.get_ssdb_trace_level(Globals, SSDBTraceLevel),
     globals.lookup_bool_option(Globals, force_disable_ssdebug, DisableSSDB),
-    (
+    ( if
         ( SSDBTraceLevel = shallow
         ; SSDBTraceLevel = deep
         ),
         DisableSSDB = no
-    ->
+    then
         set.insert(mercury_ssdb_builtin_module, !UseDeps)
-    ;
+    else
         true
     ).
 
@@ -805,14 +805,14 @@ gather_fact_table_dependencies_in_blocks([ItemBlock | ItemBlocks],
 gather_fact_table_dependencies_in_items([], !RevFactTableFileNames).
 gather_fact_table_dependencies_in_items([Item | Items],
         !RevFactTableFileNames) :-
-    (
+    ( if
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         Pragma = pragma_fact_table(FTInfo),
         FTInfo = pragma_info_fact_table(_PredNameArity, FileName)
-    ->
+    then
         !:RevFactTableFileNames = [FileName | !.RevFactTableFileNames]
-    ;
+    else
         true
     ),
     gather_fact_table_dependencies_in_items(Items, !RevFactTableFileNames).
@@ -837,7 +837,7 @@ gather_foreign_include_files_in_item_blocks_acc(ItemBlock, !IncludeFiles) :-
 
 gather_foreign_include_files_in_items_acc([], !IncludeFiles).
 gather_foreign_include_files_in_items_acc([Item | Items], !IncludeFiles) :-
-    (
+    ( if
         Item = item_pragma(ItemPragma),
         ItemPragma = item_pragma_info(Pragma, _, _, _),
         (
@@ -847,7 +847,7 @@ gather_foreign_include_files_in_items_acc([Item | Items], !IncludeFiles) :-
             Pragma = pragma_foreign_code(FCInfo),
             FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude)
         )
-    ->
+    then
         (
             LiteralOrInclude = literal(_)
         ;
@@ -855,7 +855,7 @@ gather_foreign_include_files_in_items_acc([Item | Items], !IncludeFiles) :-
             IncludeFile = foreign_include_file_info(Lang, FileName),
             !:IncludeFiles = cord.snoc(!.IncludeFiles, IncludeFile)
         )
-    ;
+    else
         true
     ),
     gather_foreign_include_files_in_items_acc(Items, !IncludeFiles).

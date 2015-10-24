@@ -212,13 +212,13 @@ test_if_builtin(FullyQualifiedModule, PredName, ProcId, Args) :-
     builtin_translation(ModuleName, PredName, ProcNum, Args, _Code).
 
 translate_builtin(FullyQualifiedModule, PredName, ProcId, Args, Code) :-
-    (
+    ( if
         is_std_lib_module_name(FullyQualifiedModule, ModuleName),
         proc_id_to_int(ProcId, ProcNum),
         builtin_translation(ModuleName, PredName, ProcNum, Args, CodePrime)
-    ->
+    then
         Code = CodePrime
-    ;
+    else
         list.length(Args, Arity),
         string.format("unknown builtin %s/%d", [s(PredName), i(Arity)], Msg),
         unexpected($module, $pred, Msg)

@@ -280,12 +280,12 @@ propagate_conj(Goals0, Constraints, Goals, !Info) :-
         flatten_constraints(Constraints, Goals)
     ;
         Goals0 = [Goal0 | GoalsTail0],
-        (
+        ( if
             GoalsTail0 = [],
             Constraints = []
-        ->
+        then
             propagate_conj_sub_goal(Goal0, [], Goals, !Info)
-        ;
+        else
             InstMap0 = !.Info ^ constr_instmap,
             ModuleInfo = !.Info ^ constr_module_info,
             VarTypes = !.Info ^ constr_vartypes,
@@ -321,11 +321,11 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
     % changing the inst to `bound(shared, ...)'.
 
     InCompatible =
-        (pred(Var::in) is semidet :-
+        ( pred(Var::in) is semidet :-
             instmap_lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
             lookup_var_type(VarTypes, Var, Type),
-            \+ inst_matches_initial(InstAfter, InstBefore, Type, ModuleInfo)
+            not inst_matches_initial(InstAfter, InstBefore, Type, ModuleInfo)
         ),
     IncompatibleInstVars = set_of_var.list_to_set(
         list.filter(InCompatible, InstMapVars)),
@@ -335,11 +335,11 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
     % to be constraints. XXX This is too conservative.
 
     Bound =
-        (pred(Var::in) is semidet :-
+        ( pred(Var::in) is semidet :-
             instmap_lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
             lookup_var_type(VarTypes, Var, Type),
-            \+ inst_matches_binding(InstAfter, InstBefore, Type, ModuleInfo)
+            not inst_matches_binding(InstAfter, InstBefore, Type, ModuleInfo)
         ),
     BoundVars = set_of_var.list_to_set(list.filter(Bound, InstMapVars)),
 
@@ -429,7 +429,7 @@ annotate_conj_constraints(ModuleInfo,
     goal_can_loop_or_throw(Goal, GoalCanLoopOrThrow,
         CI_ModuleInfo0, CI_ModuleInfo),
     !Info ^ constr_module_info := CI_ModuleInfo,
-    (
+    ( if
         % Propagate goals that can fail and have no output variables.
         % Propagating cc_nondet goals would be tricky, because we would
         % need to be careful about reordering the constraints (the cc_nondet
@@ -448,14 +448,14 @@ annotate_conj_constraints(ModuleInfo,
 
         % Only propagate goals that cannot loop or throw exceptions.
         GoalCanLoopOrThrow = cannot_loop_or_throw
-    ->
+    then
         % It's a constraint, add it to the list of constraints
         % to be attached to goals earlier in the conjunction.
         Goals1 = Goals0,
         Constraint = constraint(hlds_goal(GoalExpr, GoalInfo), ChangedVars,
             IncompatibleInstVars, []),
         Constraints1 = [Constraint | Constraints0]
-    ;
+    else if
         % Look for a simple goal which some constraint depends on
         % which can be propagated backwards. This handles cases like
         % X = 2, Y < X. This should only be done for goals which result in
@@ -467,7 +467,7 @@ annotate_conj_constraints(ModuleInfo,
         % on the stack.
         Goal = hlds_goal(unify(_, _, _, Unify, _), _),
         Unify = construct(ConstructVar, _, [], _, _, _, _)
-    ->
+    then
         Goals1 = [Goal - [] | Goals0],
         add_constant_construction(ConstructVar, Goal,
             Constraints0, Constraints1, !Info),
@@ -475,36 +475,36 @@ annotate_conj_constraints(ModuleInfo,
         % If the constraint was the only use of the constant, the old goal
         % can be removed. We need to rerun quantification to work that out.
         !Info ^ constr_changed := yes
-    ;
+    else if
         % Prune away the constraints after a goal that cannot succeed
         % -- they can never be executed.
         Detism = goal_info_get_determinism(GoalInfo),
         determinism_components(Detism, _, at_most_zero)
-    ->
+    then
         constraint_info_update_changed(Constraints0, !Info),
         Constraints1 = [],
         Goals1 = [Goal - [] | Goals0]
-    ;
+    else if
         % Don't propagate constraints into or past impure goals
         % or trace goals.
         Goal = hlds_goal(_, GoalInfo),
         ( goal_info_get_purity(GoalInfo) = purity_impure
         ; goal_info_has_feature(GoalInfo, feature_contains_trace)
         )
-    ->
+    then
         Constraints1 = [],
         flatten_constraints(Constraints0,
             ConstraintGoals),
         list.map(add_empty_constraints, [Goal | ConstraintGoals],
             GoalsAndConstraints),
         Goals1 = GoalsAndConstraints ++ Goals0
-    ;
+    else if
         % Don't move goals which can fail before a goal which can loop
         % or throw an exception if `--fully-strict' is set.
-        \+ goal_cannot_loop_or_throw(ModuleInfo, Goal),
+        not goal_cannot_loop_or_throw(ModuleInfo, Goal),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, fully_strict, yes)
-    ->
+    then
         filter_dependent_constraints(NonLocals, ChangedVars,
             Constraints0, DependentConstraints, IndependentConstraints),
         flatten_constraints(IndependentConstraints,
@@ -514,7 +514,7 @@ annotate_conj_constraints(ModuleInfo,
         Goals1 = [attach_constraints(Goal, DependentConstraints)
             | GoalsAndConstraints] ++ Goals0,
         Constraints1 = []
-    ;
+    else
         filter_dependent_constraints(NonLocals, OutputVars,
             Constraints0, DependentConstraints, IndependentConstraints),
         Constraints1 = IndependentConstraints,
@@ -532,13 +532,13 @@ add_empty_constraints(Goal, Goal - []).
     pair(hlds_goal, list(constraint)).
 
 attach_constraints(Goal, Constraints0) = Goal - Constraints :-
-    ( Goal = hlds_goal(plain_call(_, _, _, _, _, _), _) ->
+    ( if Goal = hlds_goal(plain_call(_, _, _, _, _, _), _) then
         Constraints = list.map(
             (func(constraint(Goal0, B, C, Constructs0)) =
                 constraint(add_constraint_feature(Goal0), B, C,
                     list.map(add_constraint_feature, Constructs0))
             ), Constraints0)
-    ;
+    else
         Constraints = Constraints0
     ).
 
@@ -559,11 +559,11 @@ add_constant_construction(ConstructVar, Construct0,
         [Constraint0 | Constraints0], [Constraint | Constraints], !Info) :-
     Constraint0 = constraint(ConstraintGoal0, ChangedVars,
         IncompatibleInstVars, Constructs0),
-    (
+    ( if
         ConstraintGoal0 = hlds_goal(_, ConstraintInfo),
         ConstraintNonLocals = goal_info_get_nonlocals(ConstraintInfo),
         set_of_var.member(ConstraintNonLocals, ConstructVar)
-    ->
+    then
         VarSet0 = !.Info ^ constr_varset,
         VarTypes0 = !.Info ^ constr_vartypes,
         varset.new_var(NewVar, VarSet0, VarSet),
@@ -577,7 +577,7 @@ add_constant_construction(ConstructVar, Construct0,
         rename_some_vars_in_goal(Subn, ConstraintGoal0, ConstraintGoal),
         Constraint = constraint(ConstraintGoal, ChangedVars,
             IncompatibleInstVars, Constructs)
-    ;
+    else
         Constraint = Constraint0
     ),
     add_constant_construction(ConstructVar, Construct0,
@@ -619,13 +619,13 @@ filter_dependent_constraints_2(NonLocals, GoalOutputVars,
     ConstraintGoal = hlds_goal(_, ConstraintGoalInfo),
     ConstraintNonLocals = goal_info_get_nonlocals(ConstraintGoalInfo),
 
-    (
+    ( if
         (
             % A constraint is not independent of a goal if it uses
             % any of the output variables of that goal.
             set_of_var.intersect(ConstraintNonLocals, GoalOutputVars,
                 OutputVarsUsedByConstraint),
-            \+ set_of_var.is_empty(OutputVarsUsedByConstraint)
+            not set_of_var.is_empty(OutputVarsUsedByConstraint)
         ;
             % A constraint is not independent of a goal if it changes
             % the inst of a non-local of the goal in such a way that
@@ -633,7 +633,7 @@ filter_dependent_constraints_2(NonLocals, GoalOutputVars,
             % losing uniqueness).
             set_of_var.intersect(NonLocals, IncompatibleInstVars,
                 IncompatibleInstVarsUsedByGoal),
-            \+ set_of_var.is_empty(IncompatibleInstVarsUsedByGoal)
+            not set_of_var.is_empty(IncompatibleInstVarsUsedByGoal)
         ;
             % A constraint is not independent of a goal if it uses
             % any variables whose instantiatedness is changed
@@ -641,11 +641,11 @@ filter_dependent_constraints_2(NonLocals, GoalOutputVars,
             % (the dependent constraints will be attached to the goal
             % to be pushed into it by propagate_conj_sub_goal).
             list.member(EarlierConstraint, !.RevDependent),
-            \+ can_reorder_constraints(EarlierConstraint, Constraint)
+            not can_reorder_constraints(EarlierConstraint, Constraint)
         )
-    ->
+    then
         !:RevDependent = [Constraint | !.RevDependent]
-    ;
+    else
         !:RevIndependent = [Constraint | !.RevIndependent]
     ),
     filter_dependent_constraints_2(NonLocals, GoalOutputVars, Constraints,
@@ -708,7 +708,7 @@ filter_complex_constraints_2([],
 filter_complex_constraints_2([Constraint | Constraints],
         !RevSimpleConstraints, !RevComplexConstraints) :-
     Constraint = constraint(ConstraintGoal, _, _, _),
-    (
+    ( if
         goal_is_simple(ConstraintGoal),
 
         % Check whether this simple constraint can be reordered
@@ -718,9 +718,9 @@ filter_complex_constraints_2([Constraint | Constraints],
         =>
             can_reorder_constraints(ComplexConstraint, Constraint)
         )
-    ->
+    then
         !:RevSimpleConstraints = [Constraint | !.RevSimpleConstraints]
-    ;
+    else
         !:RevComplexConstraints = [Constraint | !.RevComplexConstraints]
     ),
     filter_complex_constraints_2(Constraints,
@@ -738,14 +738,14 @@ goal_is_simple(Goal) :-
         goal_is_simple(SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             true
-        ;
+        else
             goal_is_simple(SubGoal)
         )
     ).
@@ -815,9 +815,9 @@ constraint_info_update_changed(Constraints, !Info) :-
 
 strip_constraint_markers(hlds_goal(GoalExpr, GoalInfo0)) =
         hlds_goal(strip_constraint_markers_expr(GoalExpr), GoalInfo) :-
-    ( goal_info_has_feature(GoalInfo0, feature_constraint) ->
+    ( if goal_info_has_feature(GoalInfo0, feature_constraint) then
         goal_info_remove_feature(feature_constraint, GoalInfo0, GoalInfo)
-    ;
+    else
         GoalInfo = GoalInfo0
     ).
 

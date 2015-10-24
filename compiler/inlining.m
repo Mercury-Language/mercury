@@ -140,8 +140,8 @@
     %
     % Determine whether a predicate can be inlined.
     %
-:- pred can_inline_proc(pred_id::in, proc_id::in, builtin_state::in,
-    bool::in, pred_markers::in, module_info::in) is semidet.
+:- pred can_inline_proc(module_info::in, pred_id::in, proc_id::in,
+    builtin_state::in, bool::in, pred_markers::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -931,8 +931,8 @@ inlining_in_par_conj([Goal0 | Goals0], Goals, !Info) :-
 should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
         _Tracing, InlinedProcs, CallingPredMarkers, ModuleInfo, UserReq) :-
     InlinePromisedPure = yes,
-    can_inline_proc_2(PredId, ProcId, BuiltinState,
-        HighLevelCode, InlinePromisedPure, CallingPredMarkers, ModuleInfo),
+    can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState,
+        HighLevelCode, InlinePromisedPure, CallingPredMarkers),
     % OK, we could inline it - but should we?  Apply our heuristic.
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
@@ -950,19 +950,18 @@ should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
         fail
     ).
 
-can_inline_proc(PredId, ProcId, BuiltinState, InlinePromisedPure,
-        CallingPredMarkers, ModuleInfo) :-
+can_inline_proc(ModuleInfo, PredId, ProcId, BuiltinState, InlinePromisedPure,
+        CallingPredMarkers) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
-        InlinePromisedPure, CallingPredMarkers, ModuleInfo).
+    can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState, HighLevelCode,
+        InlinePromisedPure, CallingPredMarkers).
 
-:- pred can_inline_proc_2(pred_id::in, proc_id::in,
-    builtin_state::in, bool::in, bool::in, pred_markers::in, module_info::in)
-    is semidet.
+:- pred can_inline_proc_2(module_info::in, pred_id::in, proc_id::in,
+    builtin_state::in, bool::in, bool::in, pred_markers::in) is semidet.
 
-can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
-        InlinePromisedPure, _CallingPredMarkers, ModuleInfo) :-
+can_inline_proc_2(ModuleInfo, PredId, ProcId, BuiltinState, HighLevelCode,
+        InlinePromisedPure, _CallingPredMarkers) :-
     % Don't inline builtins, the code generator will handle them.
     BuiltinState = not_builtin,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
@@ -1001,24 +1000,15 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         IsInComplexityMap = no
     ),
 
-    % For the LLDS back-end, under no circumstances inline model_non
-    % foreign_procs. The resulting code would not work properly.
     proc_info_get_goal(ProcInfo, CalledGoal),
-    not (
-        HighLevelCode = no,
-        CalledGoal = hlds_goal(call_foreign_proc(_, _, _, _, _, _, _), _),
-        proc_info_interface_determinism(ProcInfo, Detism),
-        ( Detism = detism_non ; Detism = detism_multi )
-    ),
-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
+    CalledGoal = hlds_goal(CalledGoalExpr, _),
     ( if
-        CalledGoal = hlds_goal(call_foreign_proc(ForeignAttributes,
-            _, _, _, _, _, _), _)
+        CalledGoalExpr = call_foreign_proc(ForeignAttributes, _, _, _, _, _, _)
     then
         % Only inline a foreign_proc if it is appropriate for the target
         % language.
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_target(Globals, Target),
         (
             ForeignLanguage = get_foreign_language(ForeignAttributes)
         =>
@@ -1035,6 +1025,16 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
             ;
                 MaybeMayDuplicate = yes(proc_may_duplicate)
             )
+        ),
+
+        % For the LLDS back-end, under no circumstances inline model_non
+        % foreign_procs. The resulting code would not work properly.
+        not (
+            HighLevelCode = no,
+            proc_info_interface_determinism(ProcInfo, Detism),
+            ( Detism = detism_non
+            ; Detism = detism_multi
+            )
         )
     else
         true
@@ -1046,7 +1046,6 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         % For some optimizations (such as deforestation) we don't want to
         % inline predicates which are promised pure because the extra impurity
         % propagated through the goal will defeat any attempts at optimization.
-        %
         InlinePromisedPure = no,
         pred_info_get_promised_purity(PredInfo, purity_impure)
     ).
@@ -1063,17 +1062,6 @@ ok_to_inline_language(lang_c, target_c).
 ok_to_inline_language(lang_erlang, target_erlang).
 ok_to_inline_language(lang_java, target_java).
 ok_to_inline_language(lang_csharp, target_csharp).
-
-% ok_to_inline_language(il, il). %
-% XXX we need to fix the handling of parameter marshalling for inlined code
-% before we can enable this -- see the comments in
-% ml_gen_ordinary_pragma_il_proc in ml_code_gen.m.
-%
-% ok_to_inline_language(asm, asm).   % foreign_language = asm not implemented
-% We could define a language "C/C++" (c_slash_cplusplus) which was the
-% intersection of "C" and "C++", and then we'd have
-%   ok_to_inline_language(c_slash_cplusplus, c).
-%   ok_to_inline_language(c_slash_cplusplus, cplusplus).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.inlining.

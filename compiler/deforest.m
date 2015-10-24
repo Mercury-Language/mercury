@@ -942,8 +942,8 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         % XXX We should probably allow deforestation of semipure goals.
         InlinePromisedPure = no,
         pred_info_get_markers(PredInfo, CallerMarkers),
-        not inlining.can_inline_proc(PredId, ProcId, BuiltinState,
-            InlinePromisedPure, CallerMarkers, ModuleInfo)
+        not inlining.can_inline_proc(ModuleInfo, PredId, ProcId, BuiltinState,
+            InlinePromisedPure, CallerMarkers)
     then
         trace [io(!IO)] (
             pd_debug_message(DebugPD, "non-inlineable calls\n", [], !IO)
@@ -1933,8 +1933,8 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
         % XXX We should probably allow deforestation of
         % semipure goals.
         InlinePromisedPure = no,
-        inlining.can_inline_proc(PredId, ProcId, BuiltinState,
-            InlinePromisedPure, CallerMarkers, ModuleInfo),
+        inlining.can_inline_proc(ModuleInfo, PredId, ProcId, BuiltinState,
+            InlinePromisedPure, CallerMarkers),
 
         % Check the goal size.
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,

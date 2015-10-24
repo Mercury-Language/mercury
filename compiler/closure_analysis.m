@@ -206,7 +206,7 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
             % The closure_info won't yet contain any information about
             % higher-order outputs from this call.
 
-            ( map.search(!.ClosureInfo, Var, PossibleValues) ->
+            ( if map.search(!.ClosureInfo, Var, PossibleValues) then
                 (
                     PossibleValues = unknown
                 ;
@@ -215,7 +215,7 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
                     PossibleValues = exclusive(KnownValues),
                     map.det_insert(Var, KnownValues, !ValueMap)
                 )
-            ;
+            else
                 true
             )
         ),
@@ -237,16 +237,16 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         % in 'GCallArgs' so we need to include in the set of input argument
         % separately.
 
-        ( Details = higher_order(CalledClosure0, _, _, _) ->
+        ( if Details = higher_order(CalledClosure0, _, _, _) then
             set_of_var.insert(CalledClosure0, InputArgs0, InputArgs)
-        ;
+        else
             InputArgs = InputArgs0
         ),
         AddValues = (pred(Var::in, !.ValueMap::in, !:ValueMap::out) is det :-
             % The closure_info won't yet contain any information about
             % higher-order outputs from this call.
 
-            ( map.search(!.ClosureInfo, Var, PossibleValues) ->
+            ( if map.search(!.ClosureInfo, Var, PossibleValues) then
                 (
                     PossibleValues = unknown
                 ;
@@ -255,7 +255,7 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
                     PossibleValues = exclusive(KnownValues),
                     map.det_insert(Var, KnownValues, !ValueMap)
                 )
-            ;
+            else
                 true
             )
         ),
@@ -283,14 +283,14 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         GoalExpr0 = unify(_, _, _, Unification, _),
         (
             Unification = construct(LHS, RHS, _, _, _, _, _),
-            (
+            ( if
                 RHS = closure_cons(ShroudedPPId, EvalMethod),
                 EvalMethod = lambda_normal
-            ->
+            then
                 PPId = unshroud_pred_proc_id(ShroudedPPId),
                 HO_Value = set.make_singleton_set(PPId),
                 map.det_insert(LHS, exclusive(HO_Value), !ClosureInfo)
-            ;
+            else
                 true
             )
         ;
@@ -303,18 +303,18 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
             list.foldl(insert_unknown, HO_Args, !ClosureInfo)
         ;
             Unification = assign(LHS, RHS),
-            ( var_has_ho_type(VarTypes, LHS) ->
+            ( if var_has_ho_type(VarTypes, LHS) then
                 % Sanity check: make sure the rhs is also a higher-order
                 % variable.
 
-                ( var_has_ho_type(VarTypes, RHS) ->
+                ( if var_has_ho_type(VarTypes, RHS) then
                     true
-                ;
+                else
                     unexpected($module, $pred, "not a higher-order var")
                 ),
                 Values = map.lookup(!.ClosureInfo, RHS),
                 map.det_insert(LHS, Values, !ClosureInfo)
-            ;
+            else
                 true
             )
         ;
@@ -344,14 +344,14 @@ closure_analyse_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             SubGoal = SubGoal0
-        ;
+        else
             closure_analyse_goal(VarTypes, ModuleInfo,
                 SubGoal0, SubGoal, !ClosureInfo)
         ),
@@ -404,15 +404,15 @@ partition_arguments(_, _, [],    [_|_], _, _, _, _) :-
     unexpected($module, $pred, "unequal length lists.").
 partition_arguments(ModuleInfo, VarTypes, [ Var | Vars ], [ Mode | Modes ],
         !Inputs, !Outputs) :-
-    ( var_has_ho_type(VarTypes, Var) ->
-        ( mode_is_input(ModuleInfo, Mode) ->
+    ( if var_has_ho_type(VarTypes, Var) then
+        ( if mode_is_input(ModuleInfo, Mode) then
             set_of_var.insert(Var, !Inputs)
-        ; mode_is_output(ModuleInfo, Mode) ->
+        else if mode_is_output(ModuleInfo, Mode) then
             set_of_var.insert(Var, !Outputs)
-        ;
+        else
             true
         )
-    ;
+    else
         true
     ),
     partition_arguments(ModuleInfo, VarTypes, Vars, Modes, !Inputs, !Outputs).
@@ -479,9 +479,9 @@ dump_closure_info_expr(_, shorthand(_), _, _, _) :-
 
 dump_ho_values(GoalInfo, Varset, !IO) :-
     HO_Values = goal_info_get_ho_values(GoalInfo),
-    ( map.is_empty(HO_Values) ->
+    ( if map.is_empty(HO_Values) then
         true
-    ;
+    else
         prog_out.write_context(goal_info_get_context(GoalInfo), !IO),
         io.nl(!IO),
         map.foldl(dump_ho_value(Varset), HO_Values, !IO)

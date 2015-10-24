@@ -136,14 +136,14 @@ move_follow_code_in_goal(Goal0, Goal, RttiVarMaps, !Changed) :-
         Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             SubGoal = SubGoal0
-        ;
+        else
             move_follow_code_in_goal(SubGoal0, SubGoal, RttiVarMaps, !Changed)
         ),
         GoalExpr = scope(Reason, SubGoal),
@@ -210,7 +210,7 @@ move_follow_code_in_conj_2([], _ConjPurity, _RttiVarMaps, !RevPrevGoals,
         !Changed).
 move_follow_code_in_conj_2([Goal0 | Goals0], ConjPurity, RttiVarMaps,
         !RevPrevGoals, !Changed) :-
-    (
+    ( if
         Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
         goal_util.goal_is_branched(GoalExpr0),
         % A goal that has the mode_check_clauses marker on it will not
@@ -236,11 +236,11 @@ move_follow_code_in_conj_2([Goal0 | Goals0], ConjPurity, RttiVarMaps,
         ),
         move_follow_code_move_goals(Goal0, FollowGoals, WorstPurity,
             Goal1Prime)
-    ->
+    then
         !:Changed = yes,
         Goal1 = Goal1Prime,
         RestGoals = RestGoalsPrime
-    ;
+    else
         Goal1 = Goal0,
         RestGoals = Goals0
     ),
@@ -271,7 +271,7 @@ move_follow_code_select([], _, [], [], !Purity).
 move_follow_code_select([Goal | Goals], RttiVarMaps, FollowGoals, RestGoals,
         !Purity) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    (
+    ( if
         move_follow_code_is_builtin(GoalExpr),
 
         % Don't attempt to move existentially typed deconstructions
@@ -284,20 +284,20 @@ move_follow_code_select([Goal | Goals], RttiVarMaps, FollowGoals, RestGoals,
         % which would allow separate type variables for each branch and
         % avoid the above confusion.
         %
-        \+ (
+        not (
             GoalExpr = unify(_, _, _, Unification, _),
             Unification = deconstruct(_, _, Args, _, _, _),
             list.member(Arg, Args),
             rtti_varmaps_var_info(RttiVarMaps, Arg, RttiVarInfo),
             RttiVarInfo \= non_rtti_var
         )
-    ->
+    then
         GoalPurity = goal_info_get_purity(GoalInfo),
         !:Purity = worst_purity(!.Purity, GoalPurity),
         move_follow_code_select(Goals, RttiVarMaps, FollowGoals0, RestGoals,
             !Purity),
         FollowGoals = [Goal | FollowGoals0]
-    ;
+    else
         FollowGoals = [],
         RestGoals = [Goal | Goals]
     ).
@@ -382,9 +382,9 @@ follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, FollowPurity,
         ; MaxSolns0 = at_most_many_cc
         ),
         check_follow_code_detism(FollowGoals, Detism0),
-        ( GoalExpr0 = conj(plain_conj, Conjuncts0) ->
+        ( if GoalExpr0 = conj(plain_conj, Conjuncts0) then
             GoalExpr = conj(plain_conj, Conjuncts0 ++ FollowGoals)
-        ;
+        else
             GoalExpr = conj(plain_conj, [Goal0 | FollowGoals])
         ),
         OldPurity = goal_info_get_purity(GoalInfo0),

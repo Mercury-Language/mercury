@@ -132,9 +132,9 @@ unchecked_left_shift(BitsPerInt, X, Y, Z) :-
     left_shift(BitsPerInt, X, Y, Z).
 
 right_shift(BitsPerInt, X, Y, Z) :-
-    ( Y < 0 ->
+    ( if Y < 0 then
         left_shift(BitsPerInt, X, -Y, Z)
-    ;
+    else
         to_int_in_range(BitsPerInt, integer(X) >> Y, Z)
     ).
 
@@ -148,9 +148,9 @@ floor_to_multiple_of_bits_per_int(X, BitsPerInt, FloorInt) :-
     BitsPerInt = bits_per_int(N),
     Trunc = integer(X) // integer(N),
     Floor0 = Trunc * integer(N),
-    ( Floor0 > integer(X) ->
+    ( if Floor0 > integer(X) then
         Floor = Floor0 - integer(N)
-    ;
+    else
         Floor = Floor0
     ),
     to_int_in_range(BitsPerInt, Floor, FloorInt).

@@ -166,8 +166,8 @@ const_struct_db_init(Globals, Db) :-
         map.init, map.init, map.init, map.init).
 
     % Test if constant structures are enabled for polymorphism structures
-    % and from ground_term_contexts.  The latter is only enabled if tracing
-    % does not require procedure bodies to be preserved.  The caller
+    % and from ground_term_contexts. The latter is only enabled if tracing
+    % does not require procedure bodies to be preserved. The caller
     % (const_struct_db_init/2) must also check if the compilation grade
     % supports constant structures.
     %
@@ -187,10 +187,10 @@ can_enable_const_struct(Globals, PolyEnabled, GroundTermEnabled) :-
     ;
         Bodies = yes,
         % We generate representations of procedure bodies for the
-        % declarative debugger and for the profiler. When
-        % traverse_primitives in browser/declarative_tree.m looks for the
-        % Nth argument of variable X and X is built with a unification such
-        % as X = ground_term_const(...), it crashes. It should be taught not
+        % declarative debugger and for the profiler. When traverse_primitives
+        % in browser/declarative_tree.m looks for the Nth argument of
+        % variable X and X is built with a unification such as
+        % X = ground_term_const(...), it crashes. It should be taught not
         % to do that, but in the meantime, we prevent the situation from
         % arising in the first place. (We never look for the original
         % sources of type infos and typeclass infos, so we can use constant
@@ -206,7 +206,7 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
     ;
         Enabled = yes,
         ConstStruct = const_struct(ConsId, Args, Type, Inst),
-        ( ConsId = cons(SymName, _, _) ->
+        ( if ConsId = cons(SymName, _, _) then
             Name = unqualify_name(SymName),
             ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId,
                 Type, Inst),
@@ -227,7 +227,7 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
                 const_struct_db_set_cons_proxy_map(ConsMap, !Db),
                 const_struct_db_set_num_map(NumMap, !Db)
             )
-        ;
+        else
             const_struct_db_get_next_num(!.Db, NextConstNum),
             const_struct_db_get_other_struct_map(!.Db, OtherMap0),
             map.search_insert(ConstStruct, NextConstNum, MaybeOldConstNum,
@@ -267,13 +267,13 @@ delete_const_struct(ConstNum, !Db) :-
     const_struct_db_set_num_map(NumMap, !Db),
 
     ConstStruct = const_struct(ConsId, Args, Type, Inst),
-    ( ConsId = cons(SymName, _, _) ->
+    ( if ConsId = cons(SymName, _, _) then
         Name = unqualify_name(SymName),
         ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId, Type, Inst),
         const_struct_db_get_cons_proxy_map(!.Db, ConsMap0),
         map.det_remove(ConsProxyStruct, _ConstNum, ConsMap0, ConsMap),
         const_struct_db_set_cons_proxy_map(ConsMap, !Db)
-    ;
+    else
         const_struct_db_get_other_struct_map(!.Db, OtherMap0),
         map.det_remove(ConstStruct, _ConstNum, OtherMap0, OtherMap),
         const_struct_db_set_other_struct_map(OtherMap, !Db)

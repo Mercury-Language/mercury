@@ -86,18 +86,18 @@ evaluate_call(Globals, VarTypes, InstMap,
 
 evaluate_call_2(Globals, ModuleName, Pred, ModeNum, Args, GoalExpr,
         !GoalInfo) :-
-    (
+    ( if
         evaluate_det_call(Globals, ModuleName, Pred, ModeNum,
             Args, OutputArg, Cons)
-    ->
+    then
         make_construction_goal(OutputArg, Cons, GoalExpr, !GoalInfo)
-    ;
+    else if
         evaluate_test(ModuleName, Pred, ModeNum, Args, Succeeded)
-    ->
+    then
         make_true_or_fail(Succeeded, GoalExpr)
-    ;
+    else if
         evaluate_semidet_call(ModuleName, Pred, ModeNum, Args, Result)
-    ->
+    then
         (
             Result = yes(OutputArg - const(Cons)),
             make_construction_goal(OutputArg, Cons, GoalExpr, !GoalInfo)
@@ -108,7 +108,7 @@ evaluate_call_2(Globals, ModuleName, Pred, ModeNum, Args, GoalExpr,
             Result = no,
             GoalExpr = fail_goal_expr
         )
-    ;
+    else
         fail
     ).
 
@@ -580,36 +580,36 @@ evaluate_test("int", "<", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
-    ( XVal < YVal ->
+    ( if XVal < YVal then
         Result = yes
-    ;
+    else
         Result = no
     ).
 evaluate_test("int", "=<", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
-    ( XVal =< YVal ->
+    ( if XVal =< YVal then
         Result = yes
-    ;
+    else
         Result = no
     ).
 evaluate_test("int", ">", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
-    ( XVal > YVal ->
+    ( if XVal > YVal then
         Result = yes
-    ;
+    else
         Result = no
     ).
 evaluate_test("int", ">=", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(int_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(int_const(YVal), [])]),
-    ( XVal >= YVal ->
+    ( if XVal >= YVal then
         Result = yes
-    ;
+    else
         Result = no
     ).
 
@@ -619,36 +619,36 @@ evaluate_test("float", "<", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
-    ( XVal < YVal ->
+    ( if XVal < YVal then
         Result = yes
-    ;
+    else
         Result = no
     ).
 evaluate_test("float", "=<", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
-    ( XVal =< YVal ->
+    ( if XVal =< YVal then
         Result = yes
-    ;
+    else
         Result = no
     ).
 evaluate_test("float", ">", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
-    ( XVal > YVal ->
+    ( if XVal > YVal then
         Result = yes
-    ;
+    else
         Result = no
     ).
 evaluate_test("float", ">=", 0, Args, Result) :-
     Args = [X, Y],
     X ^ arg_inst = bound(_, _, [bound_functor(float_const(XVal), [])]),
     Y ^ arg_inst = bound(_, _, [bound_functor(float_const(YVal), [])]),
-    ( XVal >= YVal ->
+    ( if XVal >= YVal then
         Result = yes
-    ;
+    else
         Result = no
     ).
 evaluate_test("private_builtin", "typed_unify", Mode, Args, Result) :-
@@ -721,26 +721,29 @@ evaluate_semidet_call("private_builtin", "typed_unify", Mode, Args, Result) :-
 :- pred eval_unify(arg_hlds_info::in, arg_hlds_info::in, bool::out) is semidet.
 
 eval_unify(X, Y, Result) :-
-    (
+    ( if
         X ^ arg_var = Y ^ arg_var
-    ->
+    then
         Result = yes
-    ;
+    else if
         X ^ arg_inst = bound(_, _, [bound_functor(XCtor, XArgVars)]),
         Y ^ arg_inst = bound(_, _, [bound_functor(YCtor, YArgVars)])
-    ->
-        ( XCtor = YCtor, XArgVars = YArgVars ->
+    then
+        ( if
+            XCtor = YCtor,
+            XArgVars = YArgVars
+        then
             Result = yes
-        ;
+        else if
             ( XCtor \= YCtor
             ; length(XArgVars) \= length(YArgVars) `with_type` int
             )
-        ->
+        then
             Result = no
-        ;
+        else
             fail
         )
-    ;
+    else
         fail
     ).
 

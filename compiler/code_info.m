@@ -857,20 +857,20 @@ search_type_defn(CI, Type, TypeDefn) :-
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn).
 
 lookup_type_defn(CI, Type) = TypeDefn :-
-    ( search_type_defn(CI, Type, TypeDefnPrime) ->
+    ( if search_type_defn(CI, Type, TypeDefnPrime) then
         TypeDefn = TypeDefnPrime
-    ;
+    else
         unexpected($module, $pred, "type ctor has no definition")
     ).
 
 lookup_cheaper_tag_test(CI, Type) = CheaperTagTest :-
-    (
+    ( if
         search_type_defn(CI, Type, TypeDefn),
         get_type_defn_body(TypeDefn, TypeBody),
         TypeBody = hlds_du_type(_, _, CheaperTagTestPrime, _, _, _, _, _, _)
-    ->
+    then
         CheaperTagTest = CheaperTagTestPrime
-    ;
+    else
         CheaperTagTest = no_cheaper_tag_test
     ).
 
@@ -943,7 +943,7 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, GoalPath,
         Label = entry_label(_, _),
         unexpected($module, $pred, "entry")
     ),
-    ( map.search(Internals0, LabelNum, Internal0) ->
+    ( if map.search(Internals0, LabelNum, Internal0) then
         Internal0 = internal_layout_info(Exec0, Resume, Return),
         (
             Exec0 = no
@@ -953,7 +953,7 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, GoalPath,
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
         map.det_update(LabelNum, Internal, Internals0, Internals)
-    ;
+    else
         Internal = internal_layout_info(Exec, no, no),
         map.det_insert(LabelNum, Internal, Internals0, Internals)
     ),
@@ -968,7 +968,7 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
         Label = entry_label(_, _),
         unexpected($module, $pred, "entry")
     ),
-    ( map.search(Internals0, LabelNum, Internal0) ->
+    ( if map.search(Internals0, LabelNum, Internal0) then
         Internal0 = internal_layout_info(Exec, Resume0, Return),
         (
             Resume0 = no
@@ -978,7 +978,7 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
         map.det_update(LabelNum, Internal, Internals0, Internals)
-    ;
+    else
         Internal = internal_layout_info(no, Resume, no),
         map.det_insert(LabelNum, Internal, Internals0, Internals)
     ),
@@ -1089,9 +1089,9 @@ add_out_of_line_code(NewCode, !CI) :-
 
 get_variable_slot(CI, Var, Slot) :-
     get_stack_slots(CI, StackSlots),
-    ( map.search(StackSlots, Var, SlotLocn) ->
+    ( if map.search(StackSlots, Var, SlotLocn) then
         Slot = stack_slot_to_lval(SlotLocn)
-    ;
+    else
         Name = variable_name(CI, Var),
         term.var_to_int(Var, Num),
         string.int_to_string(Num, NumStr),
@@ -1105,13 +1105,13 @@ get_total_stackslot_count(CI, NumSlots) :-
     NumSlots = SlotsForVars + SlotsForTemps.
 
 round_det_stack_frame_size(CI, NumSlots) = NumSlotsRoundup :-
-    (
+    ( if
         odd(NumSlots),
         get_exprn_opts(CI, ExprnOpts),
         get_det_stack_float_width(ExprnOpts) = double_width
-    ->
+    then
         NumSlotsRoundup = NumSlots + 1
-    ;
+    else
         NumSlotsRoundup = NumSlots
     ).
 

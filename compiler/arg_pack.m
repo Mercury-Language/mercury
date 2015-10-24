@@ -60,9 +60,9 @@
 %-----------------------------------------------------------------------------%
 
 pack_args(ShiftCombine, ArgWidths, !Args, !Acc1, !Acc2) :-
-    ( list.member(partial_word_first(_), ArgWidths) ->
+    ( if list.member(partial_word_first(_), ArgWidths) then
         do_pack_args(ShiftCombine, ArgWidths, !Args, !Acc1, !Acc2)
-    ;
+    else
         true
     ).
 
@@ -86,7 +86,7 @@ do_pack_args(ShiftCombine, [Width | Widths], [Arg0 | Args0], [Arg | Args],
     ;
         Width = partial_word_shifted(Shift, _Mask)
     ),
-    ( belongs_in_same_word(Width, Widths) ->
+    ( if belongs_in_same_word(Width, Widths) then
         do_pack_args(ShiftCombine, Widths, Args0, Args1, !Acc1, !Acc2),
         (
             Args1 = [SecondArg | Args],
@@ -95,7 +95,7 @@ do_pack_args(ShiftCombine, [Width | Widths], [Arg0 | Args0], [Arg | Args],
             Args1 = [],
             unexpected($module, $pred, "mismatched lists")
         )
-    ;
+    else
         ShiftCombine(Arg0, Shift, no, Arg, !Acc1, !Acc2),
         do_pack_args(ShiftCombine, Widths, Args0, Args, !Acc1, !Acc2)
     ).
