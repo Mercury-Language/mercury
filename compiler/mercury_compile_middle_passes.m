@@ -1012,7 +1012,7 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
         ),
         maybe_write_string(Verbose, Msg, !IO),
         maybe_flush_output(Verbose, !IO),
-        deforestation(!HLDS, !IO),
+        deforestation(!HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     else

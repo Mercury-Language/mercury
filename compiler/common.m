@@ -307,12 +307,12 @@ common_optimise_unification(Unification0, Mode, !GoalExpr, !GoalInfo,
         !Common, !Info) :-
     (
         Unification0 = construct(Var, ConsId, ArgVars, _, _, _, SubInfo),
-        (
+        ( if
             SubInfo = construct_sub_info(MaybeTakeAddr, _),
             MaybeTakeAddr = yes(_)
-        ->
+        then
             true
-        ;
+        else
             common_optimise_construct(Var, ConsId, ArgVars, Mode,
                 !GoalExpr, !GoalInfo, !Common, !Info)
         )
@@ -345,13 +345,13 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
     % because it would be tricky to work out how to mode the replacement
     % assignment unifications. In the vast majority of cases, the variable
     % is ground.
-    ( inst_is_ground(ModuleInfo, Inst) ->
+    ( if inst_is_ground(ModuleInfo, Inst) then
         TypeCtor = lookup_var_type_ctor(!.Info, Var),
         VarEqv0 = !.Common ^ var_eqv,
         list.map_foldl(eqvclass.ensure_element_partition_id,
             ArgVars, ArgVarIds, VarEqv0, VarEqv1),
         AllStructMap0 = !.Common ^ all_structs,
-        (
+        ( if
             % generate_assign assumes that the output variable
             % is in the instmap_delta, which will not be true if the
             % variable is local to the unification. The optimization
@@ -363,7 +363,7 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
             map.search(ConsIdMap0, ConsId, Structs),
             find_matching_cell_construct(Structs, VarEqv1, ArgVarIds,
                 OldStruct)
-        ->
+        then
             OldStruct = structure(OldVar, _),
             eqvclass.ensure_equivalence(Var, OldVar, VarEqv1, VarEqv),
             !Common ^ var_eqv := VarEqv,
@@ -383,13 +383,13 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
                 goal_cost(hlds_goal(GoalExpr0, GoalInfo0), Cost),
                 simplify_info_incr_cost_delta(Cost, !Info)
             )
-        ;
+        else
             GoalExpr = GoalExpr0,
             GoalInfo = GoalInfo0,
             Struct = structure(Var, ArgVars),
             record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv1, !Common)
         )
-    ;
+    else
         GoalExpr = GoalExpr0,
         GoalInfo = GoalInfo0
     ).
@@ -404,32 +404,32 @@ common_optimise_construct(Var, ConsId, ArgVars, Mode, GoalExpr0, GoalExpr,
 common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
         GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, !Common, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
-    (
+    ( if
         % Don't optimise partially instantiated deconstruction unifications,
         % because it would be tricky to work out how to mode the replacement
         % assignment unifications. In the vast majority of cases, the variable
         % is ground.
         Mode = LVarMode - _,
         mode_get_insts(ModuleInfo, LVarMode, Inst0, _),
-        \+ inst_is_ground(ModuleInfo, Inst0)
-    ->
+        not inst_is_ground(ModuleInfo, Inst0)
+    then
         GoalExpr = GoalExpr0
-    ;
+    else
         TypeCtor = lookup_var_type_ctor(!.Info, Var),
         VarEqv0 = !.Common ^ var_eqv,
         eqvclass.ensure_element_partition_id(Var, VarId, VarEqv0, VarEqv1),
         SinceCallStructMap0 = !.Common ^ since_call_structs,
-        (
+        ( if
             % Do not delete deconstruction unifications inserted by
             % stack_opt.m or tupling.m, which have done a more comprehensive
             % cost analysis than common.m can do.
-            \+ goal_info_has_feature(GoalInfo, feature_stack_opt),
-            \+ goal_info_has_feature(GoalInfo, feature_tuple_opt),
+            not goal_info_has_feature(GoalInfo, feature_stack_opt),
+            not goal_info_has_feature(GoalInfo, feature_tuple_opt),
 
             map.search(SinceCallStructMap0, TypeCtor, ConsIdMap0),
             map.search(ConsIdMap0, ConsId, Structs),
             find_matching_cell_deconstruct(Structs, VarEqv1, VarId, OldStruct)
-        ->
+        then
             OldStruct = structure(_, OldArgVars),
             eqvclass.ensure_corresponding_equivalences(ArgVars,
                 OldArgVars, VarEqv1, VarEqv),
@@ -446,7 +446,7 @@ common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
             ;
                 CanFail = cannot_fail
             )
-        ;
+        else
             GoalExpr = GoalExpr0,
             Struct = structure(Var, ArgVars),
             record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv1, !Common)
@@ -470,9 +470,9 @@ lookup_var_type_ctor(Info, Var) = TypeCtor :-
 
 find_matching_cell_construct([Struct | Structs], VarEqv, ArgVarIds, Match) :-
     Struct = structure(_Var, Vars),
-    ( ids_vars_match(ArgVarIds, Vars, VarEqv) ->
+    ( if ids_vars_match(ArgVarIds, Vars, VarEqv) then
         Match = Struct
-    ;
+    else
         find_matching_cell_construct(Structs, VarEqv, ArgVarIds, Match)
     ).
 
@@ -481,9 +481,9 @@ find_matching_cell_construct([Struct | Structs], VarEqv, ArgVarIds, Match) :-
 
 find_matching_cell_deconstruct([Struct | Structs], VarEqv, VarId, Match) :-
     Struct = structure(Var, _Vars),
-    ( id_var_match(VarId, Var, VarEqv) ->
+    ( if id_var_match(VarId, Var, VarEqv) then
         Match = Struct
-    ;
+    else
         find_matching_cell_deconstruct(Structs, VarEqv, VarId, Match)
     ).
 
@@ -523,15 +523,15 @@ record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv, !Common) :-
     structure::in, struct_map::in, struct_map::out) is det.
 
 do_record_cell_in_struct_map(TypeCtor, ConsId, Struct, !StructMap) :-
-    ( map.search(!.StructMap, TypeCtor, ConsIdMap0) ->
-        ( map.search(ConsIdMap0, ConsId, Structs0) ->
+    ( if map.search(!.StructMap, TypeCtor, ConsIdMap0) then
+        ( if map.search(ConsIdMap0, ConsId, Structs0) then
             Structs = [Struct | Structs0],
             map.det_update(ConsId, Structs, ConsIdMap0, ConsIdMap)
-        ;
+        else
             map.det_insert(ConsId, [Struct], ConsIdMap0, ConsIdMap)
         ),
         map.det_update(TypeCtor, ConsIdMap, !StructMap)
-    ;
+    else
         ConsIdMap = map.singleton(ConsId, [Struct]),
         map.det_insert(TypeCtor, ConsIdMap, !StructMap)
     ).
@@ -551,7 +551,7 @@ record_equivalence(VarA, VarB, !Common) :-
 
 common_optimise_call(PredId, ProcId, Args, Purity, GoalInfo,
         GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info) :-
-    (
+    ( if
         Purity = purity_pure,
         Det = goal_info_get_determinism(GoalInfo),
         check_call_detism(Det),
@@ -561,28 +561,28 @@ common_optimise_call(PredId, ProcId, Args, Purity, GoalInfo,
         proc_info_get_argmodes(ProcInfo, ArgModes),
         partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,
             InputArgs, OutputArgs, OutputModes)
-    ->
+    then
         common_optimise_call_2(seen_call(PredId, ProcId), InputArgs,
             OutputArgs, OutputModes, GoalInfo,
             GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info)
-    ;
+    else
         MaybeAssignsGoalExpr = no
     ).
 
 common_optimise_higher_order_call(Closure, Args, Modes, Det, Purity, GoalInfo,
         GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info) :-
-    (
+    ( if
         Purity = purity_pure,
         check_call_detism(Det),
         simplify_info_get_var_types(!.Info, VarTypes),
         simplify_info_get_module_info(!.Info, ModuleInfo),
         partition_call_args(VarTypes, ModuleInfo, Modes, Args,
             InputArgs, OutputArgs, OutputModes)
-    ->
+    then
         common_optimise_call_2(higher_order_call, [Closure | InputArgs],
             OutputArgs, OutputModes, GoalInfo,
             GoalExpr0, MaybeAssignsGoalExpr, !Common, !Info)
-    ;
+    else
         MaybeAssignsGoalExpr = no
     ).
 
@@ -605,23 +605,23 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
         GoalExpr0, MaybeAssignsGoalExpr, Common0, Common, !Info) :-
     Eqv0 = Common0 ^ var_eqv,
     SeenCalls0 = Common0 ^ seen_calls,
-    ( map.search(SeenCalls0, SeenCall, SeenCallsList0) ->
-        (
+    ( if map.search(SeenCalls0, SeenCall, SeenCallsList0) then
+        ( if
             find_previous_call(SeenCallsList0, InputArgs, Eqv0,
                 OutputArgs2, PrevContext)
-        ->
+        then
             simplify_info_get_module_info(!.Info, ModuleInfo),
             modes_to_uni_modes(ModuleInfo, Modes, Modes, UniModes),
             create_output_unifications(GoalInfo, OutputArgs, OutputArgs2,
                 UniModes, AssignGoals, Common0, Common, !Info),
-            ( AssignGoals = [hlds_goal(OnlyGoalExpr, _OnlyGoalInfo)] ->
+            ( if AssignGoals = [hlds_goal(OnlyGoalExpr, _OnlyGoalInfo)] then
                 AssignsGoalExpr = OnlyGoalExpr
-            ;
+            else
                 AssignsGoalExpr = conj(plain_conj, AssignGoals)
             ),
             MaybeAssignsGoalExpr = yes(AssignsGoalExpr),
             simplify_info_get_var_types(!.Info, VarTypes),
-            (
+            ( if
                 simplify_do_warn_duplicate_calls(!.Info),
                 % Don't warn for cases such as:
                 % set.init(Set1 : set(int)),
@@ -629,7 +629,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 lookup_var_types(VarTypes, OutputArgs, OutputArgTypes1),
                 lookup_var_types(VarTypes, OutputArgs2, OutputArgTypes2),
                 types_match_exactly_list(OutputArgTypes1, OutputArgTypes2)
-            ->
+            then
                 Context = goal_info_get_context(GoalInfo),
                 CallPieces = det_report_seen_call_id(ModuleInfo, SeenCall),
                 CurPieces = [words("Warning: redundant") | CallPieces]
@@ -647,7 +647,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 Spec = error_spec(Severity, phase_simplify(report_in_any_mode),
                     [Msg, PrevMsg]),
                 simplify_info_add_error_spec(Spec, !Info)
-            ;
+            else
                 true
             ),
             goal_cost(hlds_goal(GoalExpr0, GoalInfo), Cost),
@@ -667,7 +667,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 ),
                 simplify_info_set_should_rerun_det(!Info)
             )
-        ;
+        else
             Context = goal_info_get_context(GoalInfo),
             ThisCall = call_args(Context, InputArgs, OutputArgs),
             map.det_update(SeenCall, [ThisCall | SeenCallsList0],
@@ -675,7 +675,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             Common = Common0 ^ seen_calls := SeenCalls,
             MaybeAssignsGoalExpr = no
         )
-    ;
+    else
         Context = goal_info_get_context(GoalInfo),
         ThisCall = call_args(Context, InputArgs, OutputArgs),
         map.det_insert(SeenCall, [ThisCall], SeenCalls0, SeenCalls),
@@ -704,11 +704,11 @@ partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
         InputArgs1, OutputArgs1, OutputModes1),
     mode_get_insts(ModuleInfo, ArgMode, InitialInst, FinalInst),
     lookup_var_type(VarTypes, Arg, Type),
-    ( inst_matches_binding(InitialInst, FinalInst, Type, ModuleInfo) ->
+    ( if inst_matches_binding(InitialInst, FinalInst, Type, ModuleInfo) then
         InputArgs = [Arg | InputArgs1],
         OutputArgs = OutputArgs1,
         OutputModes = OutputModes1
-    ;
+    else
         % Calls with partly unique outputs cannot be replaced,
         % since a unique copy of the outputs must be produced.
         inst_is_not_partly_unique(ModuleInfo, FinalInst),
@@ -738,9 +738,9 @@ partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
 find_previous_call([SeenCall | SeenCalls], InputArgs, Eqv, OutputArgs,
         PrevContext) :-
     SeenCall = call_args(PrevContext, InputArgs1, OutputArgs1),
-    ( common_var_lists_are_equiv(InputArgs, InputArgs1, Eqv) ->
+    ( if common_var_lists_are_equiv(InputArgs, InputArgs1, Eqv) then
         OutputArgs = OutputArgs1
-    ;
+    else
         find_previous_call(SeenCalls, InputArgs, Eqv, OutputArgs, PrevContext)
     ).
 
@@ -790,18 +790,18 @@ common_vars_are_equiv(X, Y, VarEqv) :-
 
 create_output_unifications(OldGoalInfo, OutputArgs, OldOutputArgs, UniModes,
         AssignGoals, !Common, !Info) :-
-    (
+    ( if
         OutputArgs = [HeadOutputArg | TailOutputArgs],
         OldOutputArgs = [HeadOldOutputArg | TailOldOutputArgs],
         UniModes = [HeadUniMode | TailUniModes]
-    ->
-        ( HeadOutputArg = HeadOldOutputArg ->
+    then
+        ( if HeadOutputArg = HeadOldOutputArg then
             % This can happen if the first cell was created
             % with a partially instantiated deconstruction.
             create_output_unifications(OldGoalInfo,
                 TailOutputArgs, TailOldOutputArgs, TailUniModes,
                 AssignGoals, !Common, !Info)
-        ;
+        else
             generate_assign(HeadOutputArg, HeadOldOutputArg, HeadUniMode,
                 OldGoalInfo, HeadAssignGoalExpr, HeadAssignGoalInfo,
                 !Common, !Info),
@@ -811,13 +811,13 @@ create_output_unifications(OldGoalInfo, OutputArgs, OldOutputArgs, UniModes,
                 TailAssignGoals, !Common, !Info),
             AssignGoals = [HeadAssignGoal | TailAssignGoals]
         )
-    ;
+    else if
         OutputArgs = [],
         OldOutputArgs = [],
         UniModes = []
-    ->
+    then
         AssignGoals = []
-    ;
+    else
         unexpected($module, $pred, "mode mismatch")
     ).
 
@@ -837,12 +837,12 @@ generate_assign(ToVar, FromVar, UniMode, OldGoalInfo, GoalExpr, GoalInfo,
 
     set_of_var.list_to_set([ToVar, FromVar], NonLocals),
     UniMode = ((_ - ToVarInst0) -> (_ - ToVarInst)),
-    ( types_match_exactly(ToVarType, FromVarType) ->
+    ( if types_match_exactly(ToVarType, FromVarType) then
         UnifyMode = (ToVarInst0 -> ToVarInst) - (ToVarInst -> ToVarInst),
         UnifyContext = unify_context(umc_explicit, []),
         GoalExpr = unify(ToVar, rhs_var(FromVar), UnifyMode,
             assign(ToVar, FromVar), UnifyContext)
-    ;
+    else
         % If the cells we are optimizing don't have exactly the same type,
         % we insert explicit type casts to ensure type correctness.
         % This avoids problems with HLDS optimizations such as inlining
@@ -922,14 +922,14 @@ apply_induced_substitutions(ToVar, FromVar, !Info) :-
     simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     rtti_varmaps_var_info(RttiVarMaps0, FromVar, FromVarRttiInfo),
     rtti_varmaps_var_info(RttiVarMaps0, ToVar, ToVarRttiInfo),
-    ( calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst) ->
-        ( map.is_empty(TSubst) ->
+    ( if calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst) then
+        ( if map.is_empty(TSubst) then
             true
-        ;
+        else
             simplify_info_apply_substitutions_and_duplicate(ToVar, FromVar,
                 TSubst, !Info)
         )
-    ;
+    else
         % Update the rtti_varmaps with new information if only one of the
         % variables has rtti_var_info recorded. This can happen if a new
         % variable has been introduced, eg in quantification, without

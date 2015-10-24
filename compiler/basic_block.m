@@ -124,11 +124,11 @@ create_basic_blocks(Instrs0, Comments, ProcLabel, !C, NewLabels, LabelSeq,
 build_block_map([], [], _, _, !BlockMap, !NewLabels, !C).
 build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         !BlockMap, !NewLabels, !C) :-
-    ( OrigInstr0 = llds_instr(label(OrigLabel), _) ->
+    ( if OrigInstr0 = llds_instr(label(OrigLabel), _) then
         Label = OrigLabel,
         LabelInstr = OrigInstr0,
         RestInstrs = OrigInstrs0
-    ;
+    else
         counter.allocate(N, !C),
         Label = internal_label(N, ProcLabel),
         set.insert(Label, !NewLabels),
@@ -173,12 +173,12 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
 take_until_end_of_block([], !RevBlockInstrs, []).
 take_until_end_of_block([Instr0 | Instrs0], !RevBlockInstrs, Rest) :-
     Instr0 = llds_instr(Uinstr0, _Comment),
-    ( Uinstr0 = label(_) ->
+    ( if Uinstr0 = label(_) then
         Rest = [Instr0 | Instrs0]
-    ; opt_util.can_instr_branch_away(Uinstr0) = yes ->
+    else if opt_util.can_instr_branch_away(Uinstr0) = yes then
         !:RevBlockInstrs = [Instr0 | !.RevBlockInstrs],
         Rest = Instrs0
-    ;
+    else
         !:RevBlockInstrs = [Instr0 | !.RevBlockInstrs],
         take_until_end_of_block(Instrs0, !RevBlockInstrs, Rest)
     ).
@@ -207,10 +207,10 @@ get_fallthrough_from_seq(LabelSeq, MaybeFallThrough) :-
 
 extend_basic_blocks([], [], !BlockMap, _NewLabels).
 extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
-    (
+    ( if
         Labels = [NextLabel | RestLabels],
         set.member(NextLabel, NewLabels)
-    ->
+    then
         map.lookup(!.BlockMap, Label, BlockInfo),
         map.lookup(!.BlockMap, NextLabel, NextBlockInfo),
         BlockInfo = block_info(BlockLabel, BlockLabelInstr, BlockInstrs,
@@ -235,7 +235,7 @@ extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
         map.delete(NextLabel, !BlockMap),
         extend_basic_blocks([Label | RestLabels], LabelSeq, !BlockMap,
             NewLabels)
-    ;
+    else
         extend_basic_blocks(Labels, LabelSeqTail, !BlockMap, NewLabels),
         LabelSeq = [Label | LabelSeqTail]
     ).
