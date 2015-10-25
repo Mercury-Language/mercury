@@ -3094,14 +3094,19 @@ list.sort(F, Xs) = Ys :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
     list.sort(P, Xs, Ys).
 
-list.sort(P, L0, L) :-
-    list.length(L0, N),
+list.sort(ComparePred, List, SortedList) :-
+    list.length(List, N),
     ( if N = 0 then
-        L = []
-    else if list.hosort(P, N, L0, L1, []) then
-        L = L1
+        SortedList = []
     else
-        unexpected($module, $pred, "hosort failed")
+        ( if
+            list.hosort(ComparePred, N, List, SortedListPrime, LeftOver),
+            LeftOver = []
+        then
+            SortedList = SortedListPrime
+        else
+            unexpected($module, $pred, "hosort failed")
+        )
     ).
 
     % list.hosort is a Mercury implementation of the mergesort described
@@ -3117,68 +3122,70 @@ list.sort(P, L0, L) :-
 :- pred list.hosort(comparison_pred(X)::in(comparison_pred), int::in,
     list(X)::in, list(X)::out, list(X)::out) is semidet.
 
-list.hosort(P, N, L0, L, Rest) :-
+list.hosort(ComparePred, N, List, SortedInitialN, LeftOver) :-
     ( if N = 1 then
-        L0 = [X | Rest],
-        L = [X]
+        List = [X | LeftOver],
+        SortedInitialN = [X]
     else if N = 2 then
-        L0 = [X, Y | Rest],
-        P(X, Y, C),
+        List = [X, Y | LeftOver],
+        ComparePred(X, Y, C),
         (
             C = (<),
-            L = [X, Y]
+            SortedInitialN = [X, Y]
         ;
             C = (=),
-            L = [X, Y]
+            SortedInitialN = [X, Y]
         ;
             C = (>),
-            L = [Y, X]
+            SortedInitialN = [Y, X]
         )
     else
         N1 = N // 2,
-        list.hosort(P, N1, L0, L1, Middle),
+        list.hosort(ComparePred, N1, List, SortedInitialN1, Middle),
         N2 = N - N1,
-        list.hosort(P, N2, Middle, L2, Rest),
-        list.merge(P, L1, L2, L)
+        list.hosort(ComparePred, N2, Middle, SortedNextN2, LeftOver),
+        list.merge(ComparePred, SortedInitialN1, SortedNextN2, SortedInitialN)
     ).
 
-list.merge(F, Xs, Ys) = Zs :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.merge(P, Xs, Ys, Zs).
+list.merge(CompareFunc, Xs, Ys) = XY :-
+    ComparePred =
+        ( pred(X::in, Y::in, Res::out) is det :- Res = CompareFunc(X, Y) ),
+    list.merge(ComparePred, Xs, Ys, XY).
 
-list.merge(_P, [], [], []).
-list.merge(_P, [], [Y | Ys], [Y | Ys]).
-list.merge(_P, [X | Xs], [], [X | Xs]).
-list.merge(P, [H1 | T1], [H2 | T2], L) :-
-    ( if P(H1, H2, (>)) then
-        list.merge(P, [H1 | T1], T2, T),
-        L = [H2 | T]
+list.merge(_ComparePred, [], [], []).
+list.merge(_ComparePred, [], [Y | Ys], [Y | Ys]).
+list.merge(_ComparePred, [X | Xs], [], [X | Xs]).
+list.merge(ComparePred, [X | Xs], [Y | Ys], XYs) :-
+    ( if ComparePred(X, Y, (>)) then
+        list.merge(ComparePred, [X | Xs], Ys, XYsTail),
+        XYs = [Y | XYsTail]
     else
-        list.merge(P, T1, [H2 | T2], T),
-        L = [H1 | T]
+        list.merge(ComparePred, Xs, [Y | Ys], XYsTail),
+        XYs = [X | XYsTail]
     ).
 
-list.merge_and_remove_dups(F, Xs, Ys) = Zs :-
-    P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    list.merge_and_remove_dups(P, Xs, Ys, Zs).
+list.merge_and_remove_dups(CompareFunc, Xs, Ys) = XY :-
+    ComparePred =
+        ( pred(X::in, Y::in, Res::out) is det :- Res = CompareFunc(X, Y) ),
+    list.merge_and_remove_dups(ComparePred, Xs, Ys, XY).
 
-list.merge_and_remove_dups(_P, [], [], []).
-list.merge_and_remove_dups(_P, [], [Y | Ys], [Y | Ys]).
-list.merge_and_remove_dups(_P, [X | Xs], [], [X | Xs]).
-list.merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
-    P(H1, H2, C),
+list.merge_and_remove_dups(_ComparePred, [], [], []).
+list.merge_and_remove_dups(_ComparePred, [], [Y | Ys], [Y | Ys]).
+list.merge_and_remove_dups(_ComparePred, [X | Xs], [], [X | Xs]).
+list.merge_and_remove_dups(ComparePred, [X | Xs], [Y | Ys], XYs) :-
+    ComparePred(X, Y, C),
     (
         C = (<),
-        list.merge_and_remove_dups(P, T1, [H2 | T2], T),
-        L = [H1 | T]
+        list.merge_and_remove_dups(ComparePred, Xs, [Y | Ys], XYsTail),
+        XYs = [X | XYsTail]
     ;
         C = (=),
-        list.merge_and_remove_dups(P, T1, T2, T),
-        L = [H1 | T]
+        list.merge_and_remove_dups(ComparePred, Xs, Ys, XYsTail),
+        XYs = [X | XYsTail]
     ;
         C = (>),
-        list.merge_and_remove_dups(P, [H1 | T1], T2, T),
-        L = [H2 | T]
+        list.merge_and_remove_dups(ComparePred, [X | Xs], Ys, XYsTail),
+        XYs = [Y | XYsTail]
     ).
 
 %---------------------------------------------------------------------------%
