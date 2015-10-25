@@ -2472,7 +2472,7 @@ find_special_proc(Type, SpecialId, SymName, PredId, ProcId, !Info) :-
         ProcId = ProcId0
     else
         type_to_ctor(Type, TypeCtor),
-        special_pred_is_generated_lazily(ModuleInfo, TypeCtor),
+        special_pred_is_generated_lazily(ModuleInfo0, TypeCtor),
         (
             SpecialId = spec_pred_compare,
             unify_proc.add_lazily_generated_compare_pred_decl(TypeCtor,
