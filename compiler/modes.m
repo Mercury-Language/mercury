@@ -862,7 +862,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
             WhatToCheck = check_modes,
             (
                 ClausesForm0 = clause_disj(Disjuncts1),
-                Disjuncts2 = flatten_disjs(Disjuncts1),
+                flatten_disj(Disjuncts1, Disjuncts2),
                 list.map_foldl(
                     modecheck_clause_disj(CheckpointMsg, HeadVars,
                         InstMap0, ArgFinalInsts0),
@@ -893,7 +893,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, Markers,
             ),
             (
                 ClausesForm0 = clause_disj(Disjuncts1),
-                Disjuncts2 = flatten_disjs(Disjuncts1),
+                flatten_disj(Disjuncts1, Disjuncts2),
                 (
                     SolnCount = at_most_many,
                     mode_info_add_live_vars(NonLocals, !ModeInfo),

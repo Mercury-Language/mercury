@@ -332,10 +332,10 @@ maybe_output_imports_graph(Globals, Module, IntDepsGraph, ImpDepsGraph,
     digraph(sym_name).
 
 filter_imports_graph(A - B, DepsGraph) =
-    (
+    ( if
         % Don't keep the edge if it points to a builtin-module or if the
         % relationship is between two standard library modules.
-        % XXX it would be better to change this to be only keep those
+        % XXX It would be better to change this to be only keep those
         % edges for which the left-hand side is in the current directory.
         (
             any_mercury_builtin_module(B)
@@ -343,9 +343,9 @@ filter_imports_graph(A - B, DepsGraph) =
             is_std_lib_module_name(A, _),
             is_std_lib_module_name(B, _)
         )
-    ->
+    then
         DepsGraph
-    ;
+    else
         digraph.add_vertices_and_edge(A, B, DepsGraph)
     ).
 

@@ -14,22 +14,22 @@
 % The module is not used otherwise.
 %
 % Arguments in first-order calls are passed via float registers if the formal
-% parameter has type `float' or equivalent.  All other arguments are passed via
+% parameter has type `float' or equivalent. All other arguments are passed via
 % regular registers.
 %
-% Higher-order calls are complicated by polymorphism.  A procedure of type
+% Higher-order calls are complicated by polymorphism. A procedure of type
 % `pred(float)' may be an argument to another procedure, where that argument
-% position has type `pred(T)'.  Calling that higher-order term should place
+% position has type `pred(T)'. Calling that higher-order term should place
 % its argument into a regular register (since it is polymorphic), but the
 % actual procedure expects its argument in a float register.
 %
 % We deal with these problems of incompatible calling conventions by
 % substituting wrapper closures over the original higher-order terms, when the
 % original higher-order term is passed to a callee or stored in a data term,
-% where the expected calling convention is different.  See below for examples.
+% where the expected calling convention is different. See below for examples.
 %
 % As we have seen, a higher-order type does not identify the register class for
-% each argument.  A higher-order inst already contains information about the
+% each argument. A higher-order inst already contains information about the
 % calling convention to use for a term with that inst: the argument modes.
 % In this module, we extend higher-order insts to record the register class
 % that must be used for each argument, e.g.
@@ -37,7 +37,7 @@
 %       pred(in, out, out) is det /* arg regs: [reg_r, reg_r, reg_f] */
 %
 % indicates that the first and second arguments must be passed via regular
-% registers.  The third argument must be passed via a float register.
+% registers. The third argument must be passed via a float register.
 %
 %-----------------------------------------------------------------------------%
 %
@@ -52,7 +52,7 @@
 %       call(Q, 1.0, X).
 %
 % Q has type `pred(float, float)' and we would be misled to pass the float
-% arguments in the higher-order call via the float registers.  The inst
+% arguments in the higher-order call via the float registers. The inst
 % contains the information to correct the higher-order call.
 %
 %   :- pred get_q(pred(T, T)).
@@ -115,7 +115,7 @@
 %       Q1 = wrapper2(Q),   /* arg regs: [reg_r, reg_r] */
 %       Foo = mkfoo(Q1).
 %
-% `q' needs to be wrapped in argument of `mkfoo'.  Foo has type `foo(float)'
+% `q' needs to be wrapped in argument of `mkfoo'. Foo has type `foo(float)'
 % but may be passed to a procedure with the argument type `foo(T)'.
 % Then `q' could be extracted from Foo, and called with arguments placed in
 % the regular registers.
@@ -183,7 +183,7 @@ insert_reg_wrappers(!ModuleInfo, Specs) :-
     list.foldl(add_arg_regs_in_pred, PredIds, !ModuleInfo),
 
     % In the second phase, go over every procedure goal, update instmap deltas
-    % to include the information from pred_inst_infos.  When a higher-order
+    % to include the information from pred_inst_infos. When a higher-order
     % variable has an inst that indicates it uses a different calling
     % convention than is required in a given context, replace that variable
     % with a wrapper closure which has the expected calling convention.
@@ -212,7 +212,7 @@ add_arg_regs_in_proc(ModuleInfo, ProcId, PredInfo0, PredInfo) :-
     pred_info_get_markers(PredInfo0, PredMarkers),
     pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
-    ( check_marker(PredMarkers, marker_class_instance_method) ->
+    ( if check_marker(PredMarkers, marker_class_instance_method) then
         % For class instance methods use the argument types before
         % instance types were substituted. The list of arguments in the
         % procedure may be longer due to type_infos and typeclass_infos.
@@ -223,7 +223,7 @@ add_arg_regs_in_proc(ModuleInfo, ProcId, PredInfo0, PredInfo) :-
         list.map_corresponding(add_arg_regs_in_proc_arg(ModuleInfo),
             IM_ArgTypes, ArgModes1, ArgModes2),
         ArgModes = FrontModes ++ ArgModes2
-    ;
+    else
         pred_info_get_arg_types(PredInfo0, ArgTypes),
         list.map_corresponding(add_arg_regs_in_proc_arg(ModuleInfo),
             ArgTypes, ArgModes0, ArgModes)
@@ -235,10 +235,10 @@ add_arg_regs_in_proc(ModuleInfo, ProcId, PredInfo0, PredInfo) :-
     mer_mode::in, mer_mode::out) is det.
 
 add_arg_regs_in_proc_arg(ModuleInfo, RealVarType, ArgMode0, ArgMode) :-
-    (
+    ( if
         type_to_ctor_and_args(RealVarType, _TypeCtor, TypeArgs),
         TypeArgs = [_ | _]
-    ->
+    then
         % Even though a type parameter might be substituted by `float', in
         % another procedure it might be left generic, e.g.
         %
@@ -250,7 +250,7 @@ add_arg_regs_in_proc_arg(ModuleInfo, RealVarType, ArgMode0, ArgMode) :-
         %
         % The same value may be passed to `p1' and `p2' so the higher-order
         % term contained within must use the same calling convention, namely a
-        % regular register for its argument.  Therefore while processing `p1'
+        % regular register for its argument. Therefore while processing `p1'
         % we must undo the type substitution and treat `f(float)' as if it were
         % `f(T)'.
         %
@@ -268,34 +268,34 @@ add_arg_regs_in_proc_arg(ModuleInfo, RealVarType, ArgMode0, ArgMode) :-
         PolymorphicContext = no,
         make_generic_type(PolymorphicContext, RealVarType, AssumedType),
         add_arg_regs_in_mode(ModuleInfo, AssumedType, ArgMode0, ArgMode)
-    ;
+    else
         ArgMode = ArgMode0
     ).
 
 :- pred make_generic_type(bool::in, mer_type::in, mer_type::out) is det.
 
 make_generic_type(PolymorphicContext, Type0, Type) :-
-    (
+    ( if
         type_is_higher_order_details(Type0, Purity, PredOrFunc, EvalMethod,
             ArgTypes0)
-    ->
+    then
         list.map(make_generic_type(PolymorphicContext), ArgTypes0, ArgTypes),
         construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes,
             Type)
-    ;
+    else if
         type_to_ctor_and_args(Type0, TypeCtor, ArgTypes0)
-    ->
+    then
         (
             ArgTypes0 = [],
-            (
+            ( if
                 PolymorphicContext = yes,
                 TypeCtor = float_type_ctor
-            ->
+            then
                 % We don't actually need to replace `float' by a type variable.
                 % Any other type will do, so long as it forces the argument to
                 % be passed via a regular register.
                 Type = heap_pointer_type
-            ;
+            else
                 Type = Type0
             )
         ;
@@ -303,7 +303,7 @@ make_generic_type(PolymorphicContext, Type0, Type) :-
             list.map(make_generic_type(yes), ArgTypes0, ArgTypes),
             construct_type(TypeCtor, ArgTypes, Type)
         )
-    ;
+    else
         Type = Type0
     ).
 
@@ -321,12 +321,12 @@ add_arg_regs_in_mode_2(ModuleInfo, Seen, VarType, ArgMode0, ArgMode) :-
     add_arg_regs_in_inst(ModuleInfo, Seen, VarType, InitialInst0, InitialInst),
     add_arg_regs_in_inst(ModuleInfo, Seen, VarType, FinalInst0, FinalInst),
     % Avoid expanding insts if unchanged.
-    (
+    ( if
         InitialInst = InitialInst0,
         FinalInst = FinalInst0
-    ->
+    then
         ArgMode = ArgMode0
-    ;
+    else
         ArgMode = (InitialInst -> FinalInst)
     ).
 
@@ -336,19 +336,19 @@ add_arg_regs_in_mode_2(ModuleInfo, Seen, VarType, ArgMode0, ArgMode) :-
 add_arg_regs_in_inst(ModuleInfo, Seen0, Type, Inst0, Inst) :-
     (
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
-        ( type_is_higher_order_details(Type, _, _, _, ArgTypes) ->
+        ( if type_is_higher_order_details(Type, _, _, _, ArgTypes) then
             add_arg_regs_in_pred_inst_info(ModuleInfo, Seen0, ArgTypes,
                 PredInstInfo0, PredInstInfo)
-        ;
+        else
             PredInstInfo = PredInstInfo0
         ),
         Inst = ground(Uniq, higher_order(PredInstInfo))
     ;
         Inst0 = any(Uniq, higher_order(PredInstInfo0)),
-        ( type_is_higher_order_details(Type, _, _, _, ArgTypes) ->
+        ( if type_is_higher_order_details(Type, _, _, _, ArgTypes) then
             add_arg_regs_in_pred_inst_info(ModuleInfo, Seen0, ArgTypes,
                 PredInstInfo0, PredInstInfo)
-        ;
+        else
             PredInstInfo = PredInstInfo0
         ),
         Inst = any(Uniq, higher_order(PredInstInfo))
@@ -364,16 +364,16 @@ add_arg_regs_in_inst(ModuleInfo, Seen0, Type, Inst0, Inst) :-
     ;
         Inst0 = defined_inst(InstName),
         % XXX is this correct?
-        ( set.contains(Seen0, InstName) ->
+        ( if set.contains(Seen0, InstName) then
             Inst = Inst0
-        ;
+        else
             set.insert(InstName, Seen0, Seen1),
             inst_lookup(ModuleInfo, InstName, Inst1),
             add_arg_regs_in_inst(ModuleInfo, Seen1, Type, Inst1, Inst2),
             % Avoid expanding insts if unchanged.
-            ( Inst1 = Inst2 ->
+            ( if Inst1 = Inst2 then
                 Inst = Inst0
-            ;
+            else
                 Inst = Inst2
             )
         )
@@ -406,10 +406,10 @@ add_arg_regs_in_pred_inst_info(ModuleInfo, Seen, ArgTypes, PredInstInfo0,
 
 add_arg_regs_in_bound_inst(ModuleInfo, Seen, Type, BoundInst0, BoundInst) :-
     BoundInst0 = bound_functor(ConsId, ArgInsts0),
-    (
+    ( if
         get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId,
             ArgTypes)
-    ->
+    then
         (
             ArgTypes = [],
             % When a foreign type overrides a d.u. type, the inst may have
@@ -420,7 +420,7 @@ add_arg_regs_in_bound_inst(ModuleInfo, Seen, Type, BoundInst0, BoundInst) :-
             list.map_corresponding(add_arg_regs_in_inst(ModuleInfo, Seen),
                 ArgTypes, ArgInsts0, ArgInsts)
         )
-    ;
+    else
         % XXX handle existentially typed cons_ids
         trace [compile_time(flag("debug_float_regs"))] (
             sorry($module, $pred, "existentially typed cons_id")
@@ -432,9 +432,9 @@ add_arg_regs_in_bound_inst(ModuleInfo, Seen, Type, BoundInst0, BoundInst) :-
 :- pred ho_arg_reg_for_type(mer_type::in, ho_arg_reg::out) is det.
 
 ho_arg_reg_for_type(Type, RegType) :-
-    ( Type = float_type ->
+    ( if Type = float_type then
         RegType = ho_arg_reg_f
-    ;
+    else
         RegType = ho_arg_reg_r
     ).
 
@@ -557,9 +557,9 @@ insert_reg_wrappers_proc_body(HeadVars, ArgModes, Goal0, Goal, InstMap0,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 insert_reg_wrappers_goal(Goal0, Goal, !InstMap, !Info, !Specs) :-
-    ( instmap_is_reachable(!.InstMap) ->
+    ( if instmap_is_reachable(!.InstMap) then
         insert_reg_wrappers_goal_2(Goal0, Goal, !InstMap, !Info, !Specs)
-    ;
+    else
         Goal = Goal0
     ).
 
@@ -613,12 +613,12 @@ insert_reg_wrappers_goal_2(Goal0, Goal, !InstMap, !Info, !Specs) :-
         update_instmap_if_unreachable(Goal, !InstMap)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             % The subgoal cannot construct higher order values.
             GoalExpr = GoalExpr0,
             Goal = hlds_goal(GoalExpr, GoalInfo0),
             update_instmap(Goal, !InstMap)
-        ;
+        else
             insert_reg_wrappers_goal(SubGoal0, SubGoal, !InstMap, !Info,
                 !Specs),
             GoalExpr = scope(Reason, SubGoal),
@@ -722,9 +722,9 @@ do_recompute_atomic_instmap_delta(Goal0, Goal, InstMap, !Info) :-
 update_instmap_if_unreachable(Goal, InstMap0, InstMap) :-
     Goal = hlds_goal(_, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    ( instmap_delta_is_unreachable(InstMapDelta) ->
+    ( if instmap_delta_is_unreachable(InstMapDelta) then
         init_unreachable(InstMap)
-    ;
+    else
         InstMap = InstMap0
     ).
 
@@ -792,18 +792,18 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
         list.length(Args, Arity),
         instmap_lookup_var(!.InstMap, CellVar, CellVarInst0),
         inst_expand(ModuleInfo, CellVarInst0, CellVarInst),
-        (
+        ( if
             get_arg_insts(CellVarInst, ConsId, Arity, ArgInsts),
             list.map_corresponding(uni_mode_set_rhs_final_inst(ModuleInfo),
                 ArgInsts, UniModes0, UniModes),
             UniModes \= UniModes0
-        ->
+        then
             Unification = deconstruct(CellVar, ConsId, Args, UniModes,
                 CanFail, CanCGC),
             GoalExpr1 = unify(LHS, RHS0, Mode, Unification, Context),
             Goal1 = hlds_goal(GoalExpr1, GoalInfo0),
             do_recompute_atomic_instmap_delta(Goal1, Goal, !.InstMap, !Info)
-        ;
+        else
             Goal = hlds_goal(GoalExpr0, GoalInfo0)
         ),
         update_instmap(Goal, !InstMap)
@@ -836,7 +836,7 @@ insert_reg_wrappers_construct(CellVar, ConsId, OrigVars, Vars,
     lambda_info_get_module_info(!.Info, ModuleInfo),
     lambda_info_get_vartypes(!.Info, VarTypes),
     lookup_var_type(VarTypes, CellVar, CellType),
-    (
+    ( if
         % Replace all type parameters by phony type variables.
         % See EXAMPLE 3 at the top of the file.
         type_to_ctor_and_args(CellType, TypeCtor, TypeArgs),
@@ -848,7 +848,7 @@ insert_reg_wrappers_construct(CellVar, ConsId, OrigVars, Vars,
         get_cons_id_non_existential_arg_types(ModuleInfo, PhonyCellType,
             ConsId, PhonyArgTypes),
         PhonyArgTypes = [_ | _]
-    ->
+    then
         uni_modes_to_modes(UniModes0, LhsModes0, RhsModes0),
         list.map_corresponding(add_arg_regs_in_mode(ModuleInfo),
             PhonyArgTypes, LhsModes0, LhsModes),
@@ -859,7 +859,7 @@ insert_reg_wrappers_construct(CellVar, ConsId, OrigVars, Vars,
         match_args(InstMap0, Context, PhonyArgTypes, ArgInitialInsts,
             OrigVars, Vars, [], WrapGoals, !Info, !Specs),
         MaybeWrappedGoals = yes(WrapGoals)
-    ;
+    else
         Vars = OrigVars,
         UniModes = UniModes0,
         MaybeWrappedGoals = no
@@ -869,15 +869,15 @@ insert_reg_wrappers_construct(CellVar, ConsId, OrigVars, Vars,
     tvarset::in, tvarset::out) is det.
 
 replace_type_params_by_dummy_vars(Type0, Type, !TVarSet) :-
-    (
+    ( if
         type_is_higher_order_details(Type0, Purity, PredOrFunc, EvalMethod,
             ArgTypes0)
-    ->
+    then
         list.map_foldl(replace_type_params_by_dummy_vars, ArgTypes0, ArgTypes,
             !TVarSet),
         construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes,
             Type)
-    ;
+    else
         varset.new_var(TVar, !TVarSet),
         Type = type_variable(TVar, kind_star)
     ).
@@ -899,13 +899,13 @@ uni_modes_to_modes([UniMode | UniModes], [L | Ls], [R | Rs]) :-
 update_construct_goal_instmap_delta(ModuleInfo, CellVar, ConsId, Args,
         GoalInfo0, GoalInfo, !InstMap) :-
     Delta0 = goal_info_get_instmap_delta(GoalInfo0),
-    ( instmap_delta_search_var(Delta0, CellVar, CellInst0) ->
+    ( if instmap_delta_search_var(Delta0, CellVar, CellInst0) then
         rebuild_cell_inst(ModuleInfo, !.InstMap, ConsId, Args,
             CellInst0, CellInst),
         instmap_delta_set_var(CellVar, CellInst, Delta0, Delta),
         goal_info_set_instmap_delta(Delta, GoalInfo0, GoalInfo),
         apply_instmap_delta_sv(Delta, !InstMap)
-    ;
+    else
         GoalInfo = GoalInfo0,
         apply_instmap_delta_sv(Delta0, !InstMap)
     ).
@@ -926,7 +926,7 @@ rebuild_cell_inst(ModuleInfo, InstMap, ConsId, Args, Inst0, Inst) :-
             Inst0 = any(Uniq, higher_order(PredInstInfo0))
         ),
         PredInstInfo0 = pred_inst_info(PredOrFunc, Modes, _, Determinism),
-        ( ConsId = closure_cons(ShroudedPredProcId, _EvalMethod) ->
+        ( if ConsId = closure_cons(ShroudedPredProcId, _EvalMethod) then
             proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
             pred_info_get_arg_types(PredInfo, ArgTypes),
@@ -942,7 +942,7 @@ rebuild_cell_inst(ModuleInfo, InstMap, ConsId, Args, Inst0, Inst) :-
                 Inst0 = any(_, _),
                 Inst = any(Uniq, higher_order(PredInstInfo))
             )
-        ;
+        else
             Inst = Inst0
         )
     ;
@@ -973,11 +973,11 @@ rebuild_cell_inst(ModuleInfo, InstMap, ConsId, Args, Inst0, Inst) :-
 
 rebuild_cell_bound_inst(InstMap, ConsId, Args, Inst0, Inst) :-
     Inst0 = bound_functor(BoundConsId, ArgInsts0),
-    ( equivalent_cons_ids(ConsId, BoundConsId) ->
+    ( if equivalent_cons_ids(ConsId, BoundConsId) then
         list.map_corresponding(rebuild_cell_bound_inst_arg(InstMap),
             Args, ArgInsts0, ArgInsts),
         Inst = bound_functor(BoundConsId, ArgInsts)
-    ;
+    else
         Inst = Inst0
     ).
 
@@ -987,9 +987,9 @@ rebuild_cell_bound_inst(InstMap, ConsId, Args, Inst0, Inst) :-
 rebuild_cell_bound_inst_arg(InstMap, Var, ArgInst0, ArgInst) :-
     instmap_lookup_var(InstMap, Var, VarInst),
     % To cope with LCO.
-    ( VarInst = free_inst ->
+    ( if VarInst = free_inst then
         ArgInst = ArgInst0
-    ;
+    else
         ArgInst = VarInst
     ).
 
@@ -999,12 +999,12 @@ rebuild_cell_bound_inst_arg(InstMap, Var, ArgInst0, ArgInst) :-
 uni_mode_set_rhs_final_inst(ModuleInfo, ArgInst, UniMode0, UniMode) :-
     UniMode0 = ((LI - RI) -> (LF - RF)),
     % Only when deconstructing to produce the right variable.
-    (
+    ( if
         inst_is_free(ModuleInfo, RI),
         inst_is_bound(ModuleInfo, RF)
-    ->
+    then
         UniMode = ((LI - RI) -> (LF - ArgInst))
-    ;
+    else
         UniMode = UniMode0
     ).
 
@@ -1034,11 +1034,11 @@ insert_reg_wrappers_disj(Goals0, Goals, NonLocals, InstMap0, InstMap, !Info,
     list.map2_foldl2(insert_reg_wrappers_disjunct(InstMap0),
         Goals0, Goals1, InstMaps1, !Info, !Specs),
     common_instmap_delta(InstMap0, NonLocals, InstMaps1, CommonDelta, !Info),
-    ( instmap_delta_is_reachable(CommonDelta) ->
+    ( if instmap_delta_is_reachable(CommonDelta) then
         instmap_delta_to_assoc_list(CommonDelta, VarsExpectInsts),
         list.map_corresponding_foldl2(fix_branching_goal(VarsExpectInsts),
             Goals1, InstMaps1, Goals, !Info, !Specs)
-    ;
+    else
         Goals = Goals1
     ),
     apply_instmap_delta(InstMap0, CommonDelta, InstMap).
@@ -1065,11 +1065,11 @@ insert_reg_wrappers_switch(Var, Cases0, Cases, NonLocals, InstMap0, InstMap,
     list.map2_foldl2(insert_reg_wrappers_case(Var, Type, InstMap0),
         Cases0, Cases1, InstMaps1, !Info, !Specs),
     common_instmap_delta(InstMap0, NonLocals, InstMaps1, CommonDelta, !Info),
-    ( instmap_delta_is_reachable(CommonDelta) ->
+    ( if instmap_delta_is_reachable(CommonDelta) then
         instmap_delta_to_assoc_list(CommonDelta, VarsExpectInsts),
         list.map_corresponding_foldl2(fix_case_goal(VarsExpectInsts),
             Cases1, InstMaps1, Cases, !Info, !Specs)
-    ;
+    else
         Cases = Cases1
     ),
     apply_instmap_delta(InstMap0, CommonDelta, InstMap).
@@ -1107,13 +1107,13 @@ insert_reg_wrappers_ite(NonLocals, GoalExpr0, GoalExpr, InstMap0, InstMap,
 
     common_instmap_delta(InstMap0, NonLocals, [InstMapThen, InstMapElse],
         CommonDelta, !Info),
-    ( instmap_delta_is_reachable(CommonDelta) ->
+    ( if instmap_delta_is_reachable(CommonDelta) then
         instmap_delta_to_assoc_list(CommonDelta, VarsExpectInsts),
         fix_branching_goal(VarsExpectInsts, Then1, InstMapThen, Then,
             !Info, !Specs),
         fix_branching_goal(VarsExpectInsts, Else1, InstMapElse, Else,
             !Info, !Specs)
-    ;
+    else
         Then = Then1,
         Else = Else1
     ),
@@ -1132,13 +1132,13 @@ insert_reg_wrappers_plain_call(PredId, ProcId, Vars0, Vars, WrapGoals,
     lambda_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
-    ( map.search(ProcTable, ProcId, ProcInfo) ->
+    ( if map.search(ProcTable, ProcId, ProcInfo) then
         pred_info_get_arg_types(PredInfo, ArgTypes),
         proc_info_get_argmodes(ProcInfo, ArgModes),
         match_args_for_call(InstMap0, Context, ArgTypes, ArgModes, Vars0, Vars,
             WrapGoals, !Info, !Specs),
         MissingProc = no
-    ;
+    else
         % XXX After the dep_par_conj pass, some dead procedures are removed
         % but calls to them (from also dead procedures?) remain.
         trace [compile_time(flag("debug_float_regs")), io(!IO)] (
@@ -1221,13 +1221,13 @@ insert_reg_wrappers_method_call(ClassId, MethodNum, Vars0, Vars,
 take_non_rtti_types_from_tail([], []).
 take_non_rtti_types_from_tail([Type | Types0], Types) :-
     take_non_rtti_types_from_tail(Types0, Types1),
-    (
+    ( if
         ( polymorphism.type_is_typeclass_info(Type)
         ; Type = type_info_type
         )
-    ->
+    then
         Types = Types1
-    ;
+    else
         Types = [Type | Types1]
     ).
 
@@ -1272,22 +1272,22 @@ match_args_for_call(InstMap0, Context, ArgTypes, ArgModes, OrigVars, Vars,
 
 match_args(InstMap0, Context, ArgTypes, Insts, OrigVars, Vars, !WrapGoals,
         !Info, !Specs) :-
-    (
+    ( if
         ArgTypes = [],
         Insts = [],
         OrigVars = []
-    ->
+    then
         Vars = []
-    ;
+    else if
         ArgTypes = [AT | ATs],
         Insts = [I | Is],
         OrigVars = [OV | OVs]
-    ->
+    then
         match_arg(InstMap0, Context, AT, I, OV, V, !WrapGoals, !Info, !Specs),
         match_args(InstMap0, Context, ATs, Is, OVs, Vs, !WrapGoals, !Info,
             !Specs),
         Vars = [V | Vs]
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -1300,20 +1300,20 @@ match_arg(InstMapBefore, Context, ArgType, ExpectInst, OrigVar, Var,
         !WrapGoals, !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
     lambda_info_get_vartypes(!.Info, VarTypes),
-    (
+    ( if
         inst_is_bound(ModuleInfo, ExpectInst),
         type_is_higher_order_details(ArgType, _, PredOrFunc, _,
             ArgPredArgTypes),
         ArgPredArgTypes = [_ | _]
-    ->
+    then
         lookup_var_type(VarTypes, OrigVar, OrigVarType),
         type_is_higher_order_details_det(OrigVarType, _, _, _,
             OrigPredArgTypes),
         list.length(OrigPredArgTypes, Arity),
-        (
+        ( if
             search_pred_inst_info(ModuleInfo, ExpectInst, PredOrFunc, Arity,
                 ExpectPredInstInfo)
-        ->
+        then
             instmap_lookup_var(InstMapBefore, OrigVar, OrigVarInst),
             lookup_pred_inst_info(ModuleInfo, OrigVarInst, PredOrFunc, Arity,
                 OrigPredInstInfo),
@@ -1321,21 +1321,21 @@ match_arg(InstMapBefore, Context, ArgType, ExpectInst, OrigVar, Var,
                 ExpectArgRegs),
             get_ho_arg_regs(OrigPredInstInfo, OrigPredArgTypes,
                 OrigArgRegs),
-            ( OrigArgRegs = ExpectArgRegs ->
+            ( if OrigArgRegs = ExpectArgRegs then
                 Var = OrigVar
-            ;
+            else
                 create_reg_wrapper(OrigVar, OrigPredInstInfo, ExpectArgRegs,
                     OrigArgRegs, Context, Var, UnifyGoal, !Info),
                 list.cons(UnifyGoal, !WrapGoals)
             )
-        ;
+        else
             lambda_info_get_pred_info(!.Info, PredInfo),
             lambda_info_get_varset(!.Info, VarSet),
             maybe_report_missing_pred_inst(PredInfo, VarSet, OrigVar, Context,
                 OrigPredArgTypes, ArgPredArgTypes, !Specs),
             Var = OrigVar
         )
-    ;
+    else
         Var = OrigVar
     ).
 
@@ -1343,12 +1343,12 @@ match_arg(InstMapBefore, Context, ArgType, ExpectInst, OrigVar, Var,
     int::in, pred_inst_info::out) is det.
 
 lookup_pred_inst_info(ModuleInfo, Inst, PredOrFunc, Arity, PredInstInfo) :-
-    (
+    ( if
         search_pred_inst_info(ModuleInfo, Inst, PredOrFunc, Arity,
             PredInstInfo0)
-    ->
+    then
         PredInstInfo = PredInstInfo0
-    ;
+    else
         unexpected($module, $pred, "no higher order inst")
     ).
 
@@ -1356,9 +1356,9 @@ lookup_pred_inst_info(ModuleInfo, Inst, PredOrFunc, Arity, PredInstInfo) :-
     int::in, pred_inst_info::out) is semidet.
 
 search_pred_inst_info(ModuleInfo, Inst, PredOrFunc, Arity, PredInstInfo) :-
-    ( search_pred_inst_info_2(ModuleInfo, Inst, PredInstInfo0) ->
+    ( if search_pred_inst_info_2(ModuleInfo, Inst, PredInstInfo0) then
         PredInstInfo = PredInstInfo0
-    ;
+    else
         PredOrFunc = pf_function,
         PredInstInfo = pred_inst_info_standard_func_mode(Arity)
     ).
@@ -1390,7 +1390,7 @@ get_ho_arg_regs(PredInstInfo, ArgTypes, ArgRegs) :-
     ).
 
     % Emit an error if a higher-order inst cannot be found for the variable,
-    % but only if any of its arguments are floats.  We want to avoid reporting
+    % but only if any of its arguments are floats. We want to avoid reporting
     % errors for code which simply copies a higher-order term when updating an
     % unrelated structure field.
     %
@@ -1402,18 +1402,18 @@ get_ho_arg_regs(PredInstInfo, ArgTypes, ArgRegs) :-
 
 maybe_report_missing_pred_inst(PredInfo, VarSet, Var, Context,
         ArgTypesA, ArgTypesB, !Specs) :-
-    (
+    ( if
         ( list.member(float_type, ArgTypesA)
         ; list.member(float_type, ArgTypesB)
         ),
         % Ignore special predicates.
         pred_info_get_origin(PredInfo, Origin),
         Origin \= origin_special_pred(_, _)
-    ->
+    then
         Spec = report_missing_higher_order_inst(PredInfo, VarSet, Var,
             Context),
         list.cons(Spec, !Specs)
-    ;
+    else
         true
     ).
 
@@ -1444,7 +1444,7 @@ report_missing_higher_order_inst(PredInfo, VarSet, Var, Context) = Spec :-
     %
     % Currently the choice of calling convention is arbitrary and may lead to
     % more wrappers, or more boxing of floats, than if we had chosen another
-    % calling convention.  This kind of code should be rare.
+    % calling convention. This kind of code should be rare.
     %
 :- pred common_instmap_delta(instmap::in, set_of_progvar::in,
     list(instmap)::in, instmap_delta::out, lambda_info::in, lambda_info::out)
@@ -1475,7 +1475,7 @@ common_instmap_delta(InstMap0, NonLocals, InstMaps, CommonDelta, !Info) :-
 
 fix_branching_goal(VarsExpectInsts, Goal0, GoalInstMap0, Goal, !Info,
         !Specs) :-
-    ( instmap_is_reachable(GoalInstMap0) ->
+    ( if instmap_is_reachable(GoalInstMap0) then
         % GoalInstMap0 is the instmap at the end of Goal0.
         Goal0 = hlds_goal(_, GoalInfo0),
         Context = goal_info_get_context(GoalInfo0),
@@ -1489,7 +1489,7 @@ fix_branching_goal(VarsExpectInsts, Goal0, GoalInstMap0, Goal, !Info,
             conjoin_goal_and_goal_list(Goal0, WrapGoals0, Goal1),
             rename_some_vars_in_goal(Renaming, Goal1, Goal)
         )
-    ;
+    else
         Goal = Goal0
     ).
 
@@ -1531,15 +1531,15 @@ match_var_inst(Var, ExpectInst, InstMap0, Context, !Renaming, !WrapGoals,
         !Info, !Specs) :-
     lambda_info_get_module_info(!.Info, ModuleInfo),
     lambda_info_get_vartypes(!.Info, VarTypes),
-    ( inst_is_free(ModuleInfo, ExpectInst) ->
+    ( if inst_is_free(ModuleInfo, ExpectInst) then
         true
-    ;
+    else
         lookup_var_type(VarTypes, Var, VarType),
         match_arg(InstMap0, Context, VarType, ExpectInst, Var, SubstVar,
             [], WrapGoals, !Info, !Specs),
-        ( Var = SubstVar ->
+        ( if Var = SubstVar then
             true
-        ;
+        else
             map.det_insert(Var, SubstVar, !Renaming),
             map.det_insert(SubstVar, Var, !Renaming),
             list.append(WrapGoals, !WrapGoals)
@@ -1638,9 +1638,9 @@ make_reg_r_headvars(VarTypes, Var, RegType, !RegR_HeadVars) :-
     (
         RegType = ho_arg_reg_r,
         lookup_var_type(VarTypes, Var, VarType),
-        ( VarType = float_type ->
+        ( if VarType = float_type then
             set_of_var.insert(Var, !RegR_HeadVars)
-        ;
+        else
             true
         )
     ;
@@ -1655,12 +1655,12 @@ make_reg_r_headvars(VarTypes, Var, RegType, !RegR_HeadVars) :-
 split_list_from_end(EndLen, List, Start, End) :-
     list.length(List, Len),
     StartLen = Len - EndLen,
-    ( StartLen = 0 ->
+    ( if StartLen = 0 then
         Start = [],
         End = List
-    ; StartLen > 0 ->
+    else if StartLen > 0 then
         list.det_split_list(StartLen, List, Start, End)
-    ;
+    else
         unexpected($module, $pred, "list too short")
     ).
 

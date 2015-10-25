@@ -305,7 +305,7 @@ modecheck_goal_disj(Disjuncts0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % Since merge_disj_branches depends on each disjunct in Disjuncts2
         % having a corresponding instmap in InstMaps, we can flatten disjuncts
         % only *after* merge_disj_branches has done its job.
-        Disjuncts = flatten_disjs(Disjuncts3),
+        flatten_disj(Disjuncts3, Disjuncts),
         disj_list_to_goal(Disjuncts, GoalInfo0, hlds_goal(GoalExpr, _GoalInfo))
     ),
     mode_checkpoint(exit, "disj", !ModeInfo).

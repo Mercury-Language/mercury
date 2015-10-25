@@ -10,11 +10,11 @@
 % Main authors: conway, zs.
 %
 % This module finds out what variables need to be saved across calls,
-% across goals that may fail, and in parallel conjunctions. It then does those
+% across goals that may fail, and in parallel conjunctions. It then does two
 % things with that information. First, it attaches that information to the
 % relevant goal as a LLDS-backend-specific annotation. Second, it invokes
 % the relevant type class method of the allocator-specific data structure
-% it is passed; the basic stack slot allocator and the optimizing stack slot
+% it is passed. The basic stack slot allocator and the optimizing stack slot
 % allocator pass different instances of this type class.
 %
 %-----------------------------------------------------------------------------%
@@ -182,10 +182,13 @@ build_live_sets_in_goal(Goal0, Goal, ResumeVars0,
         GoalInfo1 = GoalInfo0
     ;
         ResumePoint = resume_point(ResumePointVars, Locs),
-        ( resume_locs_include_stack(Locs, yes) ->
+        resume_locs_include_stack(Locs, InclStack),
+        (
+            InclStack = yes,
             set_of_var.union(ResumeVars0, ResumePointVars, ResumeVars1),
             ResumeOnStack = yes
         ;
+            InclStack = no,
             ResumeVars1 = ResumeVars0,
             ResumeOnStack = no
         ),
@@ -304,7 +307,7 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 % Note that we must check the disjunction's code model, not any
                 % disjuncts'; the disjunction as a whole can be model_non
                 % without any disjunct being model_non.
-                (
+                ( if
                     goal_info_get_code_model(GoalInfo0) = model_non,
                     some [Disjunct] (
                         list.member(Disjunct, Goals),
@@ -314,10 +317,10 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                         DisjunctResumePoint = resume_point(_, Locs),
                         resume_locs_include_stack(Locs, yes)
                     )
-                ->
+                then
                     set_of_var.union(!.NondetLiveness, ResumeVars,
                         !:NondetLiveness)
-                ;
+                else
                     true
                 )
             ;
@@ -367,7 +370,9 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+        ( if
+            Reason = from_ground_term(TermVar, from_ground_term_construct)
+        then
             % We do not modify construct unifications or conjunctions,
             % so we do not modify these scopes, which contain only a
             % conjunction of construct unifications.
@@ -380,7 +385,9 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 
             % XXX We could treat from_ground_term_deconstruct scopes specially
             % as well.
-        ; Reason = loop_control(LCVar, LCSVar, _) ->
+        else if
+            Reason = loop_control(LCVar, LCSVar, _)
+        then
             % We must handle loop control scopes specially, see the comment for
             % parallel conjunctions above. Like parallel conjunctions, we need
             % stack slots for the NonLocals, but we also need non-overlapping
@@ -432,7 +439,7 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 !ParStackVars),
 
             GoalExpr = scope(Reason, SubGoal)
-        ;
+        else
             NondetLiveness0 = !.NondetLiveness,
             build_live_sets_in_goal(SubGoal0, SubGoal, ResumeVars0, AllocData,
                 !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
@@ -494,7 +501,7 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 !StackAlloc, !.Liveness, !NondetLiveness, !ParStackVars)
         ),
         CalleePredProcId = AllocData ^ ad_pred_proc_id,
-        ( CalleePredProcId = proc(PredId, ProcId) ->
+        ( if CalleePredProcId = proc(PredId, ProcId) then
             % If a call is recursive and a loop control scope has been seen
             % then the recursive call is a barrier for loop control, we have to
             % ensure that spawned off computations use distinct stack slots
@@ -509,7 +516,7 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 MaybeNeedLC = no
             ),
             !:Liveness = set_of_var.difference(!.Liveness, DelayDeathSet)
-        ;
+        else
             true
         )
     ;
@@ -538,7 +545,7 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         arg_info.partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
             ArgVars, _InVars, OutVars, _UnusedVars),
         CodeModel = goal_info_get_code_model(GoalInfo0),
-        (
+        ( if
             % We don't need to save any variables onto the stack before a
             % foreign_proc if we know that it can't succeed more than once
             % and that it is not going to call back Mercury code, because
@@ -546,9 +553,9 @@ build_live_sets_in_goal_expr(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 
             CodeModel \= model_non,
             get_may_call_mercury(Attributes) = proc_will_not_call_mercury
-        ->
+        then
             GoalInfo = GoalInfo0
-        ;
+        else
             % The variables which need to be saved onto the stack before
             % the call are all the variables that are live after the call
             % (except for the output arguments produced by the call), plus
@@ -589,13 +596,13 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
         AllocData ^ ad_typeinfo_liveness, OutVars, ForwardVars0, ForwardVars),
 
     Detism = goal_info_get_determinism(GoalInfo0),
-    (
+    ( if
         Detism = detism_erroneous,
         AllocData ^ ad_opt_no_return_calls = yes
-    ->
+    then
         NeedAcrossCall = need_across_call(set_of_var.init, set_of_var.init,
             set_of_var.init)
-    ;
+    else
         NeedAcrossCall = need_across_call(ForwardVars, ResumeVars0,
             !.NondetLiveness)
     ),
@@ -634,15 +641,15 @@ build_live_sets_in_conj([], [], _, _, !StackAlloc, !Liveness, !NondetLiveness,
         !ParStackVars).
 build_live_sets_in_conj([Goal0 | Goals0], [Goal | Goals], ResumeVars0,
         AllocData, !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
-    (
+    ( if
         Goal0 = hlds_goal(_, GoalInfo),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_is_unreachable(InstMapDelta)
-    ->
+    then
         build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
             !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
         Goals = [] % XXX was Goals = Goal0
-    ;
+    else
         build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
             !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars),
         build_live_sets_in_conj(Goals0, Goals, ResumeVars0, AllocData,
@@ -698,12 +705,12 @@ build_live_sets_in_disj([Goal0 | Goals0], [Goal | Goals],
         % just keep them in this set of sets.
         set_of_var.union(NondetLiveness1, NondetLiveness2, NondetLiveness3),
         goal_info_get_resume_point(GoalInfo, Resume),
-        (
+        ( if
             Resume = resume_point(ResumePointVars, Locs),
             resume_locs_include_stack(Locs, yes)
-        ->
+        then
             set_of_var.union(NondetLiveness3, ResumePointVars, NondetLiveness)
-        ;
+        else
             NondetLiveness = NondetLiveness3
         )
     ;
@@ -993,11 +1000,13 @@ par_stack_vars_get_nonlocals(after_loop_control_scope(_, _, _),
     parallel_stackvars::in, parallel_stackvars::out) is det.
 
 par_stack_vars_next_par_conjunct(!ParStackVars) :-
-    ( !.ParStackVars = parallel_conjunction(Nonlocals, PrevSets, CurSet) ->
+    ( if
+        !.ParStackVars = parallel_conjunction(Nonlocals, PrevSets, CurSet)
+    then
         !:ParStackVars =
             parallel_conjunction(Nonlocals, [CurSet | PrevSets],
                 set_of_var.init)
-    ;
+    else
         unexpected($module, $pred, "expected parallel_conjunction/3")
     ).
 

@@ -574,10 +574,10 @@ substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval) :-
     lval::in, lval::out, int::in, int::out) is det.
 
 substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N) :-
-    ( Lval0 = OldLval ->
+    ( if Lval0 = OldLval then
         Lval = NewLval,
         !:N = !.N + 1
-    ;
+    else
         substitute_lval_in_lval_count_2(OldLval, NewLval, Lval0, Lval, !N)
     ).
 
@@ -635,9 +635,9 @@ substitute_lval_in_lval_count_2(OldLval, NewLval, Lval0, Lval, !N) :-
     ).
 
 substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval) :-
-    ( Rval0 = OldRval ->
+    ( if Rval0 = OldRval then
         Rval = NewRval
-    ;
+    else
         (
             Rval0 = lval(Lval0),
             substitute_rval_in_lval(OldRval, NewRval, Lval0, Lval),
@@ -778,36 +778,36 @@ substitute_rvals_in_rval_2([Left - Right | Rest], !Rval) :-
 %---------------------------------------------------------------------------%
 
 simplify_rval(Rval0, Rval) :-
-    ( simplify_rval_2(Rval0, Rval1) ->
+    ( if simplify_rval_2(Rval0, Rval1) then
         simplify_rval(Rval1, Rval)
-    ;
+    else
         Rval = Rval0
     ).
 
 :- pred simplify_rval_2(rval::in, rval::out) is semidet.
 
 simplify_rval_2(Rval0, Rval) :-
-    (
+    ( if
         Rval0 = lval(field(MaybeTag, Rval1, Num)),
         simplify_rval_2(Rval1, Rval2)
-    ->
+    then
         Rval = lval(field(MaybeTag, Rval2, Num))
-    ;
+    else if
         Rval0 = unop(UnOp, Rval1),
         simplify_rval_2(Rval1, Rval2)
-    ->
+    then
         Rval = unop(UnOp, Rval2)
-    ;
+    else if
         Rval0 = binop(BinOp, Rval1, Rval2),
         simplify_rval_2(Rval1, Rval3)
-    ->
+    then
         Rval = binop(BinOp, Rval3, Rval2)
-    ;
+    else if
         Rval0 = binop(BinOp, Rval1, Rval2),
         simplify_rval_2(Rval2, Rval3)
-    ->
+    then
         Rval = binop(BinOp, Rval1, Rval3)
-    ;
+    else
         fail
     ).
 
@@ -821,75 +821,91 @@ simplify_args([MR0 | Ms0], [MR | Ms]) :-
 :- pred simplify_arg(maybe(rval)::in, maybe(rval)::out) is det.
 
 simplify_arg(MaybeRval0, MaybeRval) :-
-    (
+    ( if
         MaybeRval0 = yes(Rval0),
         simplify_rval_2(Rval0, Rval)
-    ->
+    then
         MaybeRval = yes(Rval)
-    ;
+    else
         MaybeRval = MaybeRval0
     ).
 
 %-----------------------------------------------------------------------------%
 
-rval_addrs(lval(Lval), CodeAddrs, DataIds) :-
-    lval_addrs(Lval, CodeAddrs, DataIds).
-rval_addrs(var(_Var), [], []).
-rval_addrs(mkword(_Tag, Rval), CodeAddrs, DataIds) :-
-    rval_addrs(Rval, CodeAddrs, DataIds).
-rval_addrs(mkword_hole(_Tag), [], []).
-rval_addrs(const(Const), CodeAddrs, DataIds) :-
-    ( Const = llconst_code_addr(CodeAddress) ->
-        CodeAddrs = [CodeAddress],
-        DataIds = []
-    ; Const = llconst_data_addr(DataId, _) ->
-        CodeAddrs = [],
-        DataIds = [DataId]
+rval_addrs(Rval, CodeAddrs, DataIds) :-
+    (
+        Rval = lval(Lval),
+        lval_addrs(Lval, CodeAddrs, DataIds)
     ;
+        ( Rval = var(_Var)
+        ; Rval = mkword_hole(_Tag)
+        ),
         CodeAddrs = [],
         DataIds = []
+    ;
+        Rval = mkword(_Tag, SubRval),
+        rval_addrs(SubRval, CodeAddrs, DataIds)
+    ;
+        Rval = const(Const),
+        ( if Const = llconst_code_addr(CodeAddress) then
+            CodeAddrs = [CodeAddress],
+            DataIds = []
+        else if Const = llconst_data_addr(DataId, _) then
+            CodeAddrs = [],
+            DataIds = [DataId]
+        else
+            CodeAddrs = [],
+            DataIds = []
+        )
+    ;
+        Rval = unop(_Unop, SubRvalA),
+        rval_addrs(SubRvalA, CodeAddrs, DataIds)
+    ;
+        Rval = binop(_Binop, SubRvalA, SubRvalB),
+        rval_addrs(SubRvalA, CodeAddrsA, DataIdsA),
+        rval_addrs(SubRvalB, CodeAddrsB, DataIdsB),
+        CodeAddrs = CodeAddrsA ++ CodeAddrsB,
+        DataIds = DataIdsA ++ DataIdsB
+    ;
+        Rval = mem_addr(SubRval),
+        mem_ref_addrs(SubRval, CodeAddrs, DataIds)
     ).
-rval_addrs(unop(_Unop, Rval), CodeAddrs, DataIds) :-
-    rval_addrs(Rval, CodeAddrs, DataIds).
-rval_addrs(binop(_Binop, RvalA, RvalB), CodeAddrs, DataIds) :-
-    rval_addrs(RvalA, CodeAddrsA, DataIdsA),
-    rval_addrs(RvalB, CodeAddrsB, DataIdsB),
-    CodeAddrs = CodeAddrsA ++ CodeAddrsB,
-    DataIds = DataIdsA ++ DataIdsB.
-rval_addrs(mem_addr(Rval), CodeAddrs, DataIds) :-
-    mem_ref_addrs(Rval, CodeAddrs, DataIds).
 
-lval_addrs(reg(_Type, _RegNum), [], []).
-lval_addrs(stackvar(_SlotNum), [], []).
-lval_addrs(parent_stackvar(_SlotNum), [], []).
-lval_addrs(framevar(_SlotNum), [], []).
-lval_addrs(double_stackvar(_Type, _SlotNum), [], []).
-lval_addrs(succip, [], []).
-lval_addrs(maxfr, [], []).
-lval_addrs(curfr, [], []).
-lval_addrs(prevfr_slot(Rval), CodeAddrs, DataIds) :-
-    rval_addrs(Rval, CodeAddrs, DataIds).
-lval_addrs(succfr_slot(Rval), CodeAddrs, DataIds) :-
-    rval_addrs(Rval, CodeAddrs, DataIds).
-lval_addrs(redofr_slot(Rval), CodeAddrs, DataIds) :-
-    rval_addrs(Rval, CodeAddrs, DataIds).
-lval_addrs(redoip_slot(Rval), CodeAddrs, DataIds) :-
-    rval_addrs(Rval, CodeAddrs, DataIds).
-lval_addrs(succip_slot(Rval), CodeAddrs, DataIds) :-
-    rval_addrs(Rval, CodeAddrs, DataIds).
-lval_addrs(hp, [], []).
-lval_addrs(sp, [], []).
-lval_addrs(parent_sp, [], []).
-lval_addrs(field(_Tag, RvalA, RvalB), CodeAddrs, DataIds) :-
-    rval_addrs(RvalA, CodeAddrsA, DataIdsA),
-    rval_addrs(RvalB, CodeAddrsB, DataIdsB),
-    CodeAddrs = CodeAddrsA ++ CodeAddrsB,
-    DataIds = DataIdsA ++ DataIdsB.
-lval_addrs(lvar(_Var), [], []).
-lval_addrs(temp(_Type, _TmpNum), [], []).
-lval_addrs(mem_ref(Rval), CodeAddrs, DataIds) :-
-    rval_addrs(Rval, CodeAddrs, DataIds).
-lval_addrs(global_var_ref(_), [], []).
+lval_addrs(Lval, CodeAddrs, DataIds) :-
+    (
+        ( Lval = reg(_Type, _RegNum)
+        ; Lval = stackvar(_SlotNum)
+        ; Lval = parent_stackvar(_SlotNum)
+        ; Lval = framevar(_SlotNum)
+        ; Lval = double_stackvar(_Type, _SlotNum)
+        ; Lval = succip
+        ; Lval = maxfr
+        ; Lval = curfr
+        ; Lval = hp
+        ; Lval = sp
+        ; Lval = parent_sp
+        ; Lval = temp(_Type, _TmpNum)
+        ; Lval = lvar(_Var)
+        ; Lval = global_var_ref(_)
+        ),
+        CodeAddrs = [],
+        DataIds = []
+    ;
+        ( Lval = prevfr_slot(Rval)
+        ; Lval = succfr_slot(Rval)
+        ; Lval = redofr_slot(Rval)
+        ; Lval = redoip_slot(Rval)
+        ; Lval = succip_slot(Rval)
+        ; Lval = mem_ref(Rval)
+        ),
+        rval_addrs(Rval, CodeAddrs, DataIds)
+    ;
+        Lval = field(_Tag, SubRvalA, SubRvalB),
+        rval_addrs(SubRvalA, CodeAddrsA, DataIdsA),
+        rval_addrs(SubRvalB, CodeAddrsB, DataIdsB),
+        CodeAddrs = CodeAddrsA ++ CodeAddrsB,
+        DataIds = DataIdsA ++ DataIdsB
+    ).
 
 rval_list_addrs([], [], []).
 rval_list_addrs([Rval | Rvals], CodeAddrs, DataIds) :-

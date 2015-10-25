@@ -117,6 +117,7 @@
 :- import_module parse_tree.prog_rename.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -218,16 +219,16 @@ implicitly_quantify_goal_general(NonLocalsToRecompute, OutsideVars, Warnings,
         implicitly_quantify_goal_2(ordinary_nonlocals_no_lambda,
             OutsideVars, Warnings, !Goal, !VarSet, !VarTypes, !RttiVarMaps)
     ),
-    (
+    ( if
         NonLocalsToRecompute = code_gen_nonlocals_no_lambda,
 
         % If the goal does not contain a reconstruction, the code-gen nonlocals
         % and the ordinary nonlocals are the same.
-        goal_contains_reconstruction(!.Goal)
-    ->
+        goal_contains_reconstruction(!.Goal, yes)
+    then
         implicitly_quantify_goal_2(code_gen_nonlocals_no_lambda, OutsideVars,
             _, !Goal, !VarSet, !VarTypes, !RttiVarMaps)
-    ;
+    else
         true
     ).
 
@@ -276,9 +277,9 @@ implicitly_quantify_goal_quant_info(Goal0, Goal, NonLocalsToRecompute,
         set_of_var.intersect(SeenVars, LocalVars, RenameVars),
         % If there are any variables that are local to the goal
         % which we have come across before, then we rename them apart.
-        ( set_of_var.is_empty(RenameVars) ->
+        ( if set_of_var.is_empty(RenameVars) then
             true
-        ;
+        else
             rename_apart(RenameVars, RenameMap, NonLocalsToRecompute,
                 hlds_goal(!.GoalExpr, !.GoalInfo),
                 hlds_goal(!:GoalExpr, !:GoalInfo),
@@ -409,11 +410,11 @@ implicitly_quantify_goal_quant_info_2(GoalExpr0, GoalExpr, GoalInfo0,
         set_of_var.intersect(OutsideVars, QVars, RenameVars1),
         set_of_var.intersect(LambdaOutsideVars, QVars, RenameVars2),
         set_of_var.union(RenameVars1, RenameVars2, RenameVars),
-        ( set_of_var.is_empty(RenameVars) ->
+        ( if set_of_var.is_empty(RenameVars) then
             Cond1 = Cond0,
             Then1 = Then0,
             Vars = Vars0
-        ;
+        else
             Context = goal_info_get_context(GoalInfo0),
             warn_overlapping_scope(RenameVars, Context, !Info),
             rename_apart(RenameVars, RenameMap, NonLocalsToRecompute,
@@ -688,14 +689,14 @@ implicitly_quantify_goal_quant_info_scope(Reason0, SubGoal0, GoalExpr,
             SubGoal = SubGoal0,
             get_outside(!.Info, OutsideVars),
             get_lambda_outside(!.Info, LambdaOutsideVars),
-            (
+            ( if
                 ( set_of_var.contains(OutsideVars, TermVar)
                 ; set_of_var.contains(LambdaOutsideVars, TermVar)
                 )
-            ->
+            then
                 GoalExpr = scope(Reason0, SubGoal),
                 NonLocals = set_of_var.make_singleton(TermVar)
-            ;
+            else
                 (
                     FGT = from_ground_term_initial,
                     % We couldn't have invoked the modechecker yet, since
@@ -779,11 +780,11 @@ implicitly_quantify_goal_quant_info_scope_rename_vars(Reason0, Reason,
     set_of_var.intersect(OutsideVars, QVars, RenameVars1),
     set_of_var.intersect(LambdaOutsideVars, QVars, RenameVars2),
     set_of_var.union(RenameVars1, RenameVars2, RenameVars),
-    ( set_of_var.is_empty(RenameVars) ->
+    ( if set_of_var.is_empty(RenameVars) then
         SubGoal = SubGoal0,
         Vars = Vars0,
         Reason = Reason0
-    ;
+    else
         Context = goal_info_get_context(GoalInfo0),
         warn_overlapping_scope(RenameVars, Context, !Info),
         rename_apart(RenameVars, RenameMap, NonLocalsToRecompute,
@@ -942,15 +943,15 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
         RHSNonLocals = set_of_var.make_singleton(X)
     ;
         !.RHS = rhs_functor(_, _, ArgVars),
-        (
+        ( if
             NonLocalsToRecompute = code_gen_nonlocals_no_lambda,
             ReuseArgs = yes(SetArgs)
-        ->
+        then
             % The fields taken from the reused cell aren't counted
             % as code-gen nonlocals.
             get_updated_fields(SetArgs, ArgVars, Vars0),
             RHSNonLocals = set_of_var.list_to_set(Vars0)
-        ;
+        else
             RHSNonLocals = set_of_var.list_to_set(ArgVars)
         )
     ;
@@ -967,9 +968,9 @@ implicitly_quantify_unify_rhs(ReuseArgs, GoalInfo0, !RHS, !Unification,
         % Figure out which variables have overlapping scopes because they occur
         % outside the goal and are also lambda-quantified vars.
         set_of_var.intersect(OutsideVars0, QVars, RenameVars0),
-        ( set_of_var.is_empty(RenameVars0) ->
+        ( if set_of_var.is_empty(RenameVars0) then
             true
-        ;
+        else
             Context = goal_info_get_context(GoalInfo0),
             warn_overlapping_scope(RenameVars0, Context, !Info)
         ),
@@ -1188,9 +1189,11 @@ implicitly_quantify_atomic_goals([], [], _, !Info, !NonLocalVarSets).
 implicitly_quantify_atomic_goals([Goal0 - Inner0 | Goals0], [Goal | Goals],
         NonLocalsToRecompute, !Info, !NonLocalVarSets) :-
     Goal0 = hlds_goal(_, GoalInfo0),
-    ( goal_info_has_feature(GoalInfo0, feature_contains_stm_inner_outer) ->
+    ( if
+        goal_info_has_feature(GoalInfo0, feature_contains_stm_inner_outer)
+    then
         true
-    ;
+    else
         % The calls to stm_from_outer_to_inner and stm_from_inner_to_outer are
         % not inserted until the purity checking pass.
         Inner0 = atomic_interface_vars(InnerDI, InnerUO),
@@ -1795,12 +1798,12 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
                 ; How = construct_dynamically
                 )
             ),
-            (
+            ( if
                 SubInfo = construct_sub_info(_, MaybeSize),
                 MaybeSize = yes(dynamic_size(SizeVar))
-            ->
+            then
                 set_of_var.insert(SizeVar, !Set)
-            ;
+            else
                 true
             )
         ;
@@ -1969,12 +1972,12 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
                 ; How = construct_dynamically
                 )
             ),
-            (
+            ( if
                 SubInfo = construct_sub_info(_, MaybeSize),
                 MaybeSize = yes(dynamic_size(SizeVar))
-            ->
+            then
                 set_of_var.insert(SizeVar, !Set)
-            ;
+            else
                 true
             )
         ;
@@ -2133,12 +2136,12 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
                 ),
                 MaybeSetArgs = no
             ),
-            (
+            ( if
                 SubInfo = construct_sub_info(_, MaybeSize),
                 MaybeSize = yes(dynamic_size(SizeVar))
-            ->
+            then
                 set_of_var.insert(SizeVar, !Set)
-            ;
+            else
                 true
             )
         ;
@@ -2312,14 +2315,14 @@ unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set) :-
         set_of_var.insert(Y, !Set)
     ;
         RHS = rhs_functor(_, _, ArgVars),
-        (
+        ( if
             NonLocalsToRecompute = code_gen_nonlocals_no_lambda,
             MaybeSetArgs = yes(SetArgs)
-        ->
+        then
             % Ignore the fields taken from the reused cell.
             get_updated_fields(SetArgs, ArgVars, ArgsToSet),
             set_of_var.insert_list(ArgsToSet, !Set)
-        ;
+        else
             set_of_var.insert_list(ArgVars, !Set)
         )
     ;
@@ -2387,7 +2390,7 @@ warn_overlapping_scope(OverlapVars, Context, !Info) :-
     in, out, in, out) is det.
 
 rename_apart(RenameSet, RenameMap, NonLocalsToRecompute, !Goal, !Info) :-
-    (
+    ( if
         % Don't rename apart variables when recomputing the code-gen nonlocals
         % -- that would stuff up the ordinary nonlocals and the mode
         % information. The ordinary nonlocals are always recomputed
@@ -2397,9 +2400,9 @@ rename_apart(RenameSet, RenameMap, NonLocalsToRecompute, !Goal, !Info) :-
         ( set_of_var.is_empty(RenameSet)
         ; NonLocalsToRecompute = code_gen_nonlocals_no_lambda
         )
-    ->
+    then
         map.init(RenameMap)
-    ;
+    else
         RenameList = to_sorted_list(RenameSet),
         get_varset(!.Info, VarSet0),
         get_vartypes(!.Info, VarTypes0),

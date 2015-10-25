@@ -71,7 +71,7 @@
     % `goal_cannot_throw' otherwise.
     %
     % This version differs from the ones below in that it can use results from
-    % the intermodule-analysis framework (if they are available).  The HLDS
+    % the intermodule-analysis framework (if they are available). The HLDS
     % and I/O state need to be threaded through in case analysis files need to
     % be read and in case IMDGs need to be updated.
     %
@@ -132,35 +132,35 @@
 :- func goal_is_flat(hlds_goal) = bool.
 
     % Determine whether a goal might allocate some heap space, i.e.
-    % whether it contains any construction unifications or predicate
-    % calls.  BEWARE that this predicate is only an approximation,
-    % used to decide whether or not to try to reclaim the heap
-    % space; currently it fails even for some goals which do
-    % allocate heap space, such as construction of boxed constants.
+    % whether it contains any construction unifications or predicate calls.
+    % BEWARE that this predicate is only an approximation,
+    % used to decide whether or not to try to reclaim the heap space;
+    % currently it fails even for some goals which do allocate heap space,
+    % such as construction of boxed constants.
     %
 :- pred goal_may_allocate_heap(hlds_goal::in) is semidet.
 :- pred goal_list_may_allocate_heap(hlds_goals::in) is semidet.
 
     % Succeed if execution of the given goal cannot encounter a context
-    % that causes any variable to be flushed to its stack slot.  If such a
-    % goal needs a resume point, and that resume point cannot be
-    % backtracked to once control leaves the goal, then the only entry
-    % point we need for the resume point is the one with the resume
-    % variables in their original locations.
+    % that causes any variable to be flushed to its stack slot. If such a goal
+    % needs a resume point, and that resume point cannot be backtracked to
+    % once control leaves the goal, then the only entry point we need
+    % for the resume point is the one with the resume variables in their
+    % original locations.
     %
 :- pred cannot_stack_flush(hlds_goal::in) is semidet.
 
     % Succeed if the given goal cannot fail before encountering a
-    % context that forces all variables to be flushed to their stack
-    % slots.  If such a goal needs a resume point, the only entry
-    % point we need is the stack entry point.
+    % context that forces all variables to be flushed to their stack slots.
+    % If such a goal needs a resume point, the only entry point we need
+    % is the stack entry point.
     %
 :- pred cannot_fail_before_stack_flush(hlds_goal::in) is semidet.
 
-    % count_recursive_calls(Goal, PredId, ProcId, Min, Max). Given
-    % that we are in predicate PredId and procedure ProcId, return
-    % the minimum and maximum number of recursive calls that an
-    % execution of Goal may encounter.
+    % count_recursive_calls(Goal, PredId, ProcId, Min, Max). Given that
+    % we are in predicate PredId and procedure ProcId, return the minimum
+    % and maximum number of recursive calls that an execution of Goal
+    % may encounter.
     %
 :- pred count_recursive_calls(hlds_goal::in, pred_id::in, proc_id::in,
     int::out, int::out) is det.
@@ -249,10 +249,10 @@ only_constant_goals([Goal | Goals], !ToAssignVars) :-
 
 goal_can_throw(hlds_goal(GoalExpr, GoalInfo), Result, !ModuleInfo) :-
     Determinism = goal_info_get_determinism(GoalInfo),
-    ( Determinism \= detism_erroneous ->
-        goal_can_throw_2(GoalExpr, GoalInfo, Result, !ModuleInfo)
-    ;
+    ( if Determinism = detism_erroneous then
         Result = can_throw
+    else
+        goal_can_throw_2(GoalExpr, GoalInfo, Result, !ModuleInfo)
     ).
 
 :- pred goal_can_throw_2(hlds_goal_expr::in, hlds_goal_info::in,
@@ -308,31 +308,31 @@ goal_can_throw_2(GoalExpr, _GoalInfo, Result, !ModuleInfo) :-
         goal_can_throw(SubGoal, Result, !ModuleInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % These scopes contain only construction/deconstruction
             % unifications.
             Result = cannot_throw
-        ;
+        else
             goal_can_throw(SubGoal, Result, !ModuleInfo)
         )
     ;
         GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
         ExceptionStatus = get_may_throw_exception(Attributes),
-        (
+        ( if
             (
                 ExceptionStatus = proc_will_not_throw_exception
             ;
                 ExceptionStatus = default_exception_behaviour,
                 get_may_call_mercury(Attributes) = proc_will_not_call_mercury
             )
-        ->
+        then
             Result = cannot_throw
-        ;
+        else
             Result = can_throw
         )
     ;
@@ -384,7 +384,7 @@ cases_can_throw([Case | Cases], Result, !ModuleInfo) :-
 goal_can_loop_or_throw(Goal, Result, !ModuleInfo) :-
     % XXX This will need to change after the termination analyses are converted
     % to use the intermodule-analysis framework.
-    ( goal_cannot_loop(!.ModuleInfo, Goal) ->
+    ( if goal_cannot_loop(!.ModuleInfo, Goal) then
         goal_can_throw(Goal, ThrowResult, !ModuleInfo),
         (
             ThrowResult = can_throw,
@@ -393,7 +393,7 @@ goal_can_loop_or_throw(Goal, Result, !ModuleInfo) :-
             ThrowResult = cannot_throw,
             Result = cannot_loop_or_throw
         )
-    ;
+    else
         Result = can_loop_or_throw
     ).
 
@@ -446,7 +446,7 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
         )
     ;
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
-        (
+        ( if
             MaybeModuleInfo = yes(ModuleInfo),
             module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
                 ProcInfo),
@@ -457,9 +457,9 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
                 proc_info_get_termination2_info(ProcInfo, Term2Info),
                 term2_info_get_term_status(Term2Info) = yes(cannot_loop(_))
             )
-        ->
+        then
             CanLoop = no
-        ;
+        else
             CanLoop = yes
         )
     ;
@@ -469,7 +469,7 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
         CanLoop = yes
     ;
         GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
-        (
+        ( if
             Terminates = get_terminates(Attributes),
             (
                 Terminates = proc_terminates
@@ -477,9 +477,9 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
                 Terminates = depends_on_mercury_calls,
                 get_may_call_mercury(Attributes) = proc_will_not_call_mercury
             )
-        ->
+        then
             CanLoop = no
-        ;
+        else
             CanLoop = yes
         )
     ;
@@ -499,11 +499,11 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
         CanLoop = case_list_can_loop(MaybeModuleInfo, Cases)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        ( goal_can_loop_func(MaybeModuleInfo, Cond) = yes ->
+        ( if goal_can_loop_func(MaybeModuleInfo, Cond) = yes then
             CanLoop = yes
-        ; goal_can_loop_func(MaybeModuleInfo, Then) = yes ->
+        else if goal_can_loop_func(MaybeModuleInfo, Then) = yes then
             CanLoop = yes
-        ;
+        else
             CanLoop = goal_can_loop_func(MaybeModuleInfo, Else)
         )
     ;
@@ -511,16 +511,16 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
         CanLoop = goal_can_loop_func(MaybeModuleInfo, SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % These scopes contain only construction/deconstruction
             % unifications.
             CanLoop = no
-        ;
+        else
             CanLoop = goal_can_loop_func(MaybeModuleInfo, SubGoal)
         )
     ;
@@ -543,9 +543,9 @@ goal_can_loop_func(MaybeModuleInfo, Goal) = CanLoop :-
 
 goal_list_can_loop(_, []) = no.
 goal_list_can_loop(MaybeModuleInfo, [Goal | Goals]) =
-    ( goal_can_loop_func(MaybeModuleInfo, Goal) = yes ->
+    ( if goal_can_loop_func(MaybeModuleInfo, Goal) = yes then
         yes
-    ;
+    else
         goal_list_can_loop(MaybeModuleInfo, Goals)
     ).
 
@@ -553,9 +553,9 @@ goal_list_can_loop(MaybeModuleInfo, [Goal | Goals]) =
 
 case_list_can_loop(_, []) = no.
 case_list_can_loop(MaybeModuleInfo, [case(_, _, Goal) | Cases]) =
-    ( goal_can_loop_func(MaybeModuleInfo, Goal) = yes ->
+    ( if goal_can_loop_func(MaybeModuleInfo, Goal) = yes then
         yes
-    ;
+    else
         case_list_can_loop(MaybeModuleInfo, Cases)
     ).
 
@@ -566,9 +566,9 @@ case_list_can_loop(MaybeModuleInfo, [case(_, _, Goal) | Cases]) =
 goal_can_throw_func(MaybeModuleInfo, hlds_goal(GoalExpr, GoalInfo))
         = CanThrow :-
     Determinism = goal_info_get_determinism(GoalInfo),
-    ( Determinism = detism_erroneous ->
+    ( if Determinism = detism_erroneous then
         CanThrow = yes
-    ;
+    else
         CanThrow = goal_expr_can_throw(MaybeModuleInfo, GoalExpr)
     ).
 
@@ -592,31 +592,31 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
         )
     ;
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
-        (
+        ( if
             MaybeModuleInfo = yes(ModuleInfo),
             module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
                 _PredInfo, ProcInfo),
             proc_info_get_exception_info(ProcInfo, MaybeExceptionInfo),
             MaybeExceptionInfo = yes(ExceptionInfo),
             ExceptionInfo = proc_exception_info(will_not_throw, _)
-        ->
+        then
             CanThrow = no
-        ;
+        else
             CanThrow = yes
         )
     ;
         GoalExpr = call_foreign_proc(Attributes, _, _, _, _, _, _),
         ExceptionStatus = get_may_throw_exception(Attributes),
-        (
+        ( if
             (
                 ExceptionStatus = proc_will_not_throw_exception
             ;
                 ExceptionStatus = default_exception_behaviour,
                 get_may_call_mercury(Attributes) = proc_will_not_call_mercury
             )
-        ->
+        then
             CanThrow = no
-        ;
+        else
             CanThrow = yes
         )
     ;
@@ -634,11 +634,11 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
         CanThrow = case_list_can_throw(MaybeModuleInfo, Cases)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        ( goal_can_throw_func(MaybeModuleInfo, Cond) = yes ->
+        ( if goal_can_throw_func(MaybeModuleInfo, Cond) = yes then
             CanThrow = yes
-        ; goal_can_throw_func(MaybeModuleInfo, Then) = yes ->
+        else if goal_can_throw_func(MaybeModuleInfo, Then) = yes then
             CanThrow = yes
-        ;
+        else
             CanThrow = goal_can_throw_func(MaybeModuleInfo, Else)
         )
     ;
@@ -646,16 +646,16 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
         CanThrow = goal_can_throw_func(MaybeModuleInfo, SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % These scopes contain only construction/deconstruction
             % unifications.
             CanThrow = no
-        ;
+        else
             CanThrow = goal_can_throw_func(MaybeModuleInfo, SubGoal)
         )
     ;
@@ -676,9 +676,9 @@ goal_expr_can_throw(MaybeModuleInfo, GoalExpr) = CanThrow :-
 
 goal_list_can_throw(_, []) = no.
 goal_list_can_throw(MaybeModuleInfo, [Goal | Goals]) =
-    ( goal_can_throw_func(MaybeModuleInfo, Goal) = yes ->
+    ( if goal_can_throw_func(MaybeModuleInfo, Goal) = yes then
         yes
-    ;
+    else
         goal_list_can_throw(MaybeModuleInfo, Goals)
     ).
 
@@ -686,9 +686,9 @@ goal_list_can_throw(MaybeModuleInfo, [Goal | Goals]) =
 
 case_list_can_throw(_, []) = no.
 case_list_can_throw(MaybeModuleInfo, [case(_, _, Goal) | Cases]) =
-    ( goal_can_throw_func(MaybeModuleInfo, Goal) = yes ->
+    ( if goal_can_throw_func(MaybeModuleInfo, Goal) = yes then
         yes
-    ;
+    else
         case_list_can_throw(MaybeModuleInfo, Cases)
     ).
 
@@ -727,14 +727,14 @@ goal_is_flat_expr(GoalExpr) = IsFlat :-
         IsFlat = goal_is_flat(SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             IsFlat = yes
-        ;
+        else
             IsFlat = goal_is_flat(SubGoal)
         )
     ).
@@ -743,9 +743,9 @@ goal_is_flat_expr(GoalExpr) = IsFlat :-
 
 goal_is_flat_list([]) = yes.
 goal_is_flat_list([Goal | Goals]) = IsFlat :-
-    ( goal_is_flat(Goal) = yes ->
+    ( if goal_is_flat(Goal) = yes then
         IsFlat = goal_is_flat_list(Goals)
-    ;
+    else
         IsFlat = no
     ).
 
@@ -767,12 +767,12 @@ goal_may_allocate_heap(hlds_goal(GoalExpr, _GoalInfo), May) :-
 goal_may_allocate_heap_2(GoalExpr, May) :-
     (
         GoalExpr = unify(_, _, _, Unification, _),
-        (
+        ( if
             Unification = construct(_, _, Args, _, _, _, _),
             Args = [_ | _]
-        ->
+        then
             May = yes
-        ;
+        else
             May = no
         )
     ;
@@ -814,11 +814,11 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
         cases_may_allocate_heap(Cases, May)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        ( goal_may_allocate_heap(Cond, yes) ->
+        ( if goal_may_allocate_heap(Cond, yes) then
             May = yes
-        ; goal_may_allocate_heap(Then, yes) ->
+        else if goal_may_allocate_heap(Then, yes) then
             May = yes
-        ;
+        else
             goal_may_allocate_heap(Else, May)
         )
     ;
@@ -826,19 +826,19 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
         goal_may_allocate_heap(SubGoal, May)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % Construct scopes construct ground terms, but they construct them
             % statically, so if we modify the code above to check the
             % construct_how field of construction unifications, we could
             % return May = no for them.
             % Deconstruct scopes do not construct new ground terms.
             May = yes
-        ;
+        else
             goal_may_allocate_heap(SubGoal, May)
         )
     ;
@@ -850,9 +850,9 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
             May = yes
         ;
             ShortHand = bi_implication(GoalA, GoalB),
-            ( goal_may_allocate_heap(GoalA, yes) ->
+            ( if goal_may_allocate_heap(GoalA, yes) then
                 May = yes
-            ;
+            else
                 goal_may_allocate_heap(GoalB, May)
             )
         )
@@ -862,9 +862,9 @@ goal_may_allocate_heap_2(GoalExpr, May) :-
 
 goal_list_may_allocate_heap([], no).
 goal_list_may_allocate_heap([Goal | Goals], May) :-
-    ( goal_may_allocate_heap(Goal, yes) ->
+    ( if goal_may_allocate_heap(Goal, yes) then
         May = yes
-    ;
+    else
         goal_list_may_allocate_heap(Goals, May)
     ).
 
@@ -872,9 +872,9 @@ goal_list_may_allocate_heap([Goal | Goals], May) :-
 
 cases_may_allocate_heap([], no).
 cases_may_allocate_heap([case(_, _, Goal) | Cases], May) :-
-    ( goal_may_allocate_heap(Goal, yes) ->
+    ( if goal_may_allocate_heap(Goal, yes) then
         May = yes
-    ;
+    else
         cases_may_allocate_heap(Cases, May)
     ).
 
@@ -934,21 +934,21 @@ cannot_fail_before_stack_flush_2(conj(ConjType, Goals)) :-
 cannot_fail_before_stack_flush_conj([]).
 cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    (
+    ( if
         (
             GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
             BuiltinState \= inline_builtin
         ;
             GoalExpr = generic_call(_, _, _, _, _)
         )
-    ->
+    then
         true
-    ;
+    else if
         Detism = goal_info_get_determinism(GoalInfo),
         determinism_components(Detism, cannot_fail, _)
-    ->
+    then
         cannot_fail_before_stack_flush_conj(Goals)
-    ;
+    else
         fail
     ).
 
@@ -965,12 +965,12 @@ count_recursive_calls(Goal, PredId, ProcId, Min, Max) :-
         Max = 0
     ;
         GoalExpr = plain_call(CallPredId, CallProcId, _, _, _, _),
-        (
+        ( if
             PredId = CallPredId,
             ProcId = CallProcId
-        ->
+        then
             Count = 1
-        ;
+        else
             Count = 0
         ),
         Min = Count,
@@ -998,17 +998,17 @@ count_recursive_calls(Goal, PredId, ProcId, Min, Max) :-
         count_recursive_calls(SubGoal, PredId, ProcId, Min, Max)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % These scopes contain only construction/deconstruction
             % unifications.
             Min = 0,
             Max = 0
-        ;
+        else
             count_recursive_calls(SubGoal, PredId, ProcId, Min, Max)
         )
     ;
@@ -1079,9 +1079,9 @@ count_recursive_calls_cases([case(_, _, Goal) | Cases], PredId, ProcId,
 %
 
 goal_cannot_modify_trail(GoalInfo) =
-    ( goal_info_has_feature(GoalInfo, feature_will_not_modify_trail) ->
+    ( if goal_info_has_feature(GoalInfo, feature_will_not_modify_trail) then
         yes
-    ;
+    else
         no
     ).
 
@@ -1111,26 +1111,26 @@ goal_has_foreign(Goal) = HasForeign :-
         HasForeign = goal_has_foreign(SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             HasForeign = no
-        ;
+        else
             HasForeign = goal_has_foreign(SubGoal)
         )
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        (
+        ( if
             ( goal_has_foreign(Cond) = yes
             ; goal_has_foreign(Then) = yes
             ; goal_has_foreign(Else) = yes
             )
-        ->
+        then
             HasForeign = yes
-        ;
+        else
             HasForeign = no
         )
     ;
@@ -1155,9 +1155,9 @@ goal_has_foreign(Goal) = HasForeign :-
 
 goal_list_has_foreign([]) = no.
 goal_list_has_foreign([Goal | Goals]) = HasForeign :-
-    ( goal_has_foreign(Goal) = yes ->
+    ( if goal_has_foreign(Goal) = yes then
         HasForeign = yes
-    ;
+    else
         HasForeign = goal_list_has_foreign(Goals)
     ).
 
@@ -1166,9 +1166,9 @@ goal_list_has_foreign([Goal | Goals]) = HasForeign :-
 case_list_has_foreign([]) = no.
 case_list_has_foreign([Case | Cases]) = HasForeign :-
     Case = case(_, _, Goal),
-    ( goal_has_foreign(Goal) = yes ->
+    ( if goal_has_foreign(Goal) = yes then
         HasForeign = yes
-    ;
+    else
         HasForeign = case_list_has_foreign(Cases)
     ).
 

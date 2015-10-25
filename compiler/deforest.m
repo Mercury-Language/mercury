@@ -1185,13 +1185,12 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             proc_info_get_goal(CalledProcInfo1, CalledGoal1),
             goal_util.goal_vars(CalledGoal1, GoalVars1),
             set_of_var.to_sorted_list(GoalVars1, GoalVarsList1),
-            set_of_var.init(GoalVars2),
-            goal_util.goals_goal_vars(BetweenGoals, GoalVars2, GoalVars3),
-            set_of_var.to_sorted_list(GoalVars3, GoalVarsList3),
+            goal_util.goals_goal_vars(BetweenGoals, GoalVars2),
+            set_of_var.to_sorted_list(GoalVars2, GoalVarsList2),
 
             list.length(GoalVarsList1, NumVars1),
-            list.length(GoalVarsList3, NumVars3),
-            NumVars = NumVars1 + NumVars3,
+            list.length(GoalVarsList2, NumVars2),
+            NumVars = NumVars1 + NumVars2,
             NumVars < VarsOpt
         )
     then

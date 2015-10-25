@@ -49,7 +49,7 @@
     %
     % This predicate is intended for use in program transformations
     % that need to wrap up semidet goals, replacing Goal with
-    % ( Goal' -> UnifyGoals, ... ; ...), where Goal' has its output
+    % ( if Goal' then UnifyGoals, ... else ...), where Goal' has its output
     % variables (OutputVars) replaced with new variables (NewVars),
     % with the mapping from OutputVars to NewVars being Renaming.
     % VarTypes and VarSet are updated for the new variables. The final
@@ -101,11 +101,9 @@
     %
 :- pred goal_vars(hlds_goal::in, set_of_progvar::out) is det.
 
-    % Do the same job as goal_vars, but for a list of goals, and adding
-    % the goals' variables to the accumulator.
+    % Do the same job as goal_vars, but for a list of goals.
     %
-:- pred goals_goal_vars(list(hlds_goal)::in,
-    set_of_progvar::in, set_of_progvar::out) is det.
+:- pred goals_goal_vars(list(hlds_goal)::in, set_of_progvar::out) is det.
 
     % Return all the variables in a generic call.
     %
@@ -204,7 +202,7 @@
     % Test whether the goal contains a reconstruction
     % (a construction where the `construct_how' field is `cell_to_reuse(_)').
     %
-:- pred goal_contains_reconstruction(hlds_goal::in) is semidet.
+:- pred goal_contains_reconstruction(hlds_goal::in, bool::out) is det.
 
     % goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,
     % i.e. iff Goal = SubGoal or Goal contains SubGoal as a direct
@@ -262,11 +260,16 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Flatten a list of goals of a conjunction.
+    % Flatten the conjuncts of a conjunction.
+    % Flattens only one level.
+    % XXX Why not all levels recursively, as flatten_disj does?
     %
 :- pred flatten_conj(list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-:- func flatten_disjs(list(hlds_goal)) = list(hlds_goal).
+    % Flatten the disjuncts of a disjunction.
+    % Flattens all levels recursively.
+    %
+:- pred flatten_disj(list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
     % Create a conjunction of the specified type using the specified goals,
     % This fills in the hlds_goal_info.
@@ -342,18 +345,16 @@
     hlds_goal::in, bool::out, module_info::in, module_info::out) is det.
 
     % generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
-    %   Purity, Args, Features, InstMapDelta, ModuleInfo, Context,
-    %   CallGoal):
+    %   Purity, Args, Features, InstMapDelta, ModuleInfo, Context, CallGoal):
     %
     % Generate a call to a builtin procedure (e.g. from the private_builtin
     % or table_builtin module). This is used by HLDS->HLDS transformation
     % passes that introduce calls to builtin procedures.
     %
-    % If ModeNo = only_mode then the predicate must have exactly one
-    % procedure (an error is raised if this is not the case.)
+    % If ModeNo = only_mode, then the predicate must have exactly one
+    % procedure; an error is raised if this is not the case.
     %
-    % If ModeNo = mode_no(N) then the Nth procedure is used, counting
-    % from 0.
+    % If ModeNo = mode_no(N) then the Nth procedure is used, counting from 0.
     %
 :- pred generate_simple_call(module_name::in, string::in, pred_or_func::in,
     mode_no::in, determinism::in, purity::in, list(prog_var)::in,
@@ -486,11 +487,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
     varset.new_var(NewVar, !VarSet),
     lookup_var_type(!.VarTypes, OrigVar, Type),
     add_var_type(NewVar, Type, !VarTypes),
-    ( instmap_delta_search_var(InstMapDelta, OrigVar, DeltaInst) ->
-        NewInst = DeltaInst
-    ;
-        unexpected($module, $pred, "cannot get new inst")
-    ),
+    instmap_delta_lookup_var(InstMapDelta, OrigVar, NewInst),
     Mode = ((NewInst -> NewInst) - (free -> NewInst)),
     UnifyInfo = assign(OrigVar, NewVar),
     UnifyContext = unify_context(umc_explicit, []),
@@ -510,19 +507,18 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
 
 clone_variable(Var, OldVarNames, OldVarTypes, !VarSet, !VarTypes, !Renaming,
         CloneVar) :-
-    ( map.search(!.Renaming, Var, CloneVarPrime) ->
+    ( if map.search(!.Renaming, Var, CloneVarPrime) then
         CloneVar = CloneVarPrime
-    ;
-        varset.new_var(CloneVar, !VarSet),
-        ( varset.search_name(OldVarNames, Var, Name) ->
-            varset.name_var(CloneVar, Name, !VarSet)
-        ;
-            true
+    else
+        ( if varset.search_name(OldVarNames, Var, Name) then
+            varset.new_named_var(Name, CloneVar, !VarSet)
+        else
+            varset.new_var(CloneVar, !VarSet)
         ),
         map.det_insert(Var, CloneVar, !Renaming),
-        ( search_var_type(OldVarTypes, Var, VarType) ->
+        ( if search_var_type(OldVarTypes, Var, VarType) then
             add_var_type(CloneVar, VarType, !VarTypes)
-        ;
+        else
             % This should never happen after typechecking, but may happen
             % before it.
             true
@@ -541,33 +537,35 @@ clone_variables([Var | Vars], OldVarNames, OldVarTypes, !VarSet, !VarTypes,
 
 goal_vars(Goal, !:Set) :-
     !:Set = set_of_var.init,
-    goal_vars_2(Goal, !Set).
+    goal_vars_acc(Goal, !Set).
 
-:- pred goal_vars_2(hlds_goal::in, set_of_progvar::in, set_of_progvar::out)
-    is det.
+goals_goal_vars(Goals, !:Set) :-
+    !:Set = set_of_var.init,
+    goals_goal_vars_acc(Goals, !Set).
 
-goal_vars_2(Goal, !Set) :-
+:- pred goal_vars_acc(hlds_goal::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
+
+goal_vars_acc(Goal, !Set) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = unify(Var, RHS, _, Unif, _),
         set_of_var.insert(Var, !Set),
         (
             Unif = construct(_, _, _, _, CellToReuse, _, _),
-            ( CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) ->
+            ( if CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) then
                 set_of_var.insert(Var, !Set)
-            ;
+            else
                 true
             )
         ;
-            Unif = deconstruct(_, _, _, _, _, _)
-        ;
-            Unif = assign(_, _)
-        ;
-            Unif = simple_test(_, _)
-        ;
-            Unif = complicated_unify(_, _, _)
+            ( Unif = deconstruct(_, _, _, _, _, _)
+            ; Unif = assign(_, _)
+            ; Unif = simple_test(_, _)
+            ; Unif = complicated_unify(_, _, _)
+            )
         ),
-        rhs_goal_vars(RHS, !Set)
+        rhs_goal_vars_acc(RHS, !Set)
     ;
         GoalExpr = generic_call(GenericCall, ArgVars, _, _, _),
         generic_call_vars(GenericCall, GenericCallVars),
@@ -580,11 +578,11 @@ goal_vars_2(Goal, !Set) :-
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        goals_goal_vars(Goals, !Set)
+        goals_goal_vars_acc(Goals, !Set)
     ;
         GoalExpr = switch(Var, _Det, Cases),
         set_of_var.insert(Var, !Set),
-        cases_goal_vars(Cases, !Set)
+        cases_goal_vars_acc(Cases, !Set)
     ;
         GoalExpr = scope(Reason, SubGoal),
         (
@@ -613,16 +611,16 @@ goal_vars_2(Goal, !Set) :-
             ; Reason = trace_goal(_, _, _, _, _)
             )
         ),
-        goal_vars_2(SubGoal, !Set)
+        goal_vars_acc(SubGoal, !Set)
     ;
         GoalExpr = negation(SubGoal),
-        goal_vars_2(SubGoal, !Set)
+        goal_vars_acc(SubGoal, !Set)
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         set_of_var.insert_list(Vars, !Set),
-        goal_vars_2(Cond, !Set),
-        goal_vars_2(Then, !Set),
-        goal_vars_2(Else, !Set)
+        goal_vars_acc(Cond, !Set),
+        goal_vars_acc(Then, !Set),
+        goal_vars_acc(Else, !Set)
     ;
         GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
         ArgVars = list.map(foreign_arg_var, Args),
@@ -646,46 +644,51 @@ goal_vars_2(Goal, !Set) :-
                 MaybeOutputVars = yes(OutputVars),
                 set_of_var.insert_list(OutputVars, !Set)
             ),
-            goal_vars_2(MainGoal, !Set),
-            goals_goal_vars(OrElseGoals, !Set)
+            goal_vars_acc(MainGoal, !Set),
+            goals_goal_vars_acc(OrElseGoals, !Set)
         ;
             Shorthand = try_goal(_, _, SubGoal),
             % The IO and Result variables would be in SubGoal.
-            goal_vars_2(SubGoal, !Set)
+            goal_vars_acc(SubGoal, !Set)
         ;
             Shorthand = bi_implication(LeftGoal, RightGoal),
-            goal_vars_2(LeftGoal, !Set),
-            goal_vars_2(RightGoal, !Set)
+            goal_vars_acc(LeftGoal, !Set),
+            goal_vars_acc(RightGoal, !Set)
         )
     ).
 
-goals_goal_vars([], !Set).
-goals_goal_vars([Goal | Goals], !Set) :-
-    goal_vars_2(Goal, !Set),
-    goals_goal_vars(Goals, !Set).
-
-:- pred cases_goal_vars(list(case)::in,
+:- pred goals_goal_vars_acc(list(hlds_goal)::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-cases_goal_vars([], !Set).
-cases_goal_vars([case(_, _, Goal) | Cases], !Set) :-
-    goal_vars_2(Goal, !Set),
-    cases_goal_vars(Cases, !Set).
+goals_goal_vars_acc([], !Set).
+goals_goal_vars_acc([Goal | Goals], !Set) :-
+    goal_vars_acc(Goal, !Set),
+    goals_goal_vars_acc(Goals, !Set).
 
-:- pred rhs_goal_vars(unify_rhs::in,
+:- pred cases_goal_vars_acc(list(case)::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-rhs_goal_vars(RHS, !Set) :-
-    RHS = rhs_var(X),
-    set_of_var.insert(X, !Set).
-rhs_goal_vars(RHS, !Set) :-
-    RHS = rhs_functor(_Functor, _, ArgVars),
-    set_of_var.insert_list(ArgVars, !Set).
-rhs_goal_vars(RHS, !Set) :-
-    RHS = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal),
-    set_of_var.insert_list(NonLocals, !Set),
-    set_of_var.insert_list(LambdaVars, !Set),
-    goal_vars_2(Goal, !Set).
+cases_goal_vars_acc([], !Set).
+cases_goal_vars_acc([case(_, _, Goal) | Cases], !Set) :-
+    goal_vars_acc(Goal, !Set),
+    cases_goal_vars_acc(Cases, !Set).
+
+:- pred rhs_goal_vars_acc(unify_rhs::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
+
+rhs_goal_vars_acc(RHS, !Set) :-
+    (
+        RHS = rhs_var(X),
+        set_of_var.insert(X, !Set)
+    ;
+        RHS = rhs_functor(_Functor, _, ArgVars),
+        set_of_var.insert_list(ArgVars, !Set)
+    ;
+        RHS = rhs_lambda_goal(_, _, _, _, NonLocals, LambdaVars, _, _, Goal),
+        set_of_var.insert_list(NonLocals, !Set),
+        set_of_var.insert_list(LambdaVars, !Set),
+        goal_vars_acc(Goal, !Set)
+    ).
 
 generic_call_vars(higher_order(Var, _, _, _), [Var]).
 generic_call_vars(class_method(Var, _, _, _), [Var]).
@@ -770,7 +773,7 @@ attach_features_to_goal_expr(Features, InFromGroundTerm,
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, _) ->
+        ( if Reason = from_ground_term(_, _) then
             (
                 InFromGroundTerm = do_not_attach_in_from_ground_term,
                 SubGoal = SubGoal0
@@ -779,7 +782,7 @@ attach_features_to_goal_expr(Features, InFromGroundTerm,
                 attach_features_to_all_goals(Features, InFromGroundTerm,
                     SubGoal0, SubGoal)
             )
-        ;
+        else
             attach_features_to_all_goals(Features, InFromGroundTerm,
                 SubGoal0, SubGoal)
         ),
@@ -889,14 +892,14 @@ proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
         IsLeaf = proc_body_is_leaf(SubGoal)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             IsLeaf = is_leaf
-        ;
+        else
             IsLeaf = proc_body_is_leaf(SubGoal)
         )
     ;
@@ -904,13 +907,13 @@ proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
         IsLeaf = proc_body_is_leaf_cases(Cases)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        (
+        ( if
             proc_body_is_leaf(Cond) = is_leaf,
             proc_body_is_leaf(Then) = is_leaf,
             proc_body_is_leaf(Else) = is_leaf
-        ->
+        then
             IsLeaf = is_leaf
-        ;
+        else
             IsLeaf = is_not_leaf
         )
     ;
@@ -922,12 +925,12 @@ proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
             IsLeaf = is_not_leaf
         ;
             ShortHand = bi_implication(GoalA, GoalB),
-            (
+            ( if
                 proc_body_is_leaf(GoalA) = is_leaf,
                 proc_body_is_leaf(GoalB) = is_leaf
-            ->
+            then
                 IsLeaf = is_leaf
-            ;
+            else
                 IsLeaf = is_not_leaf
             )
         )
@@ -937,12 +940,12 @@ proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
 
 proc_body_is_leaf_goals([]) = is_leaf.
 proc_body_is_leaf_goals([Goal | Goals]) = IsLeaf :-
-    (
+    ( if
         proc_body_is_leaf(Goal) = is_leaf,
         proc_body_is_leaf_goals(Goals) = is_leaf
-    ->
+    then
         IsLeaf = is_leaf
-    ;
+    else
         IsLeaf = is_not_leaf
     ).
 
@@ -951,12 +954,12 @@ proc_body_is_leaf_goals([Goal | Goals]) = IsLeaf :-
 proc_body_is_leaf_cases([]) = is_leaf.
 proc_body_is_leaf_cases([Case | Cases]) = IsLeaf :-
     Case = case(_, _, Goal),
-    (
+    ( if
         proc_body_is_leaf(Goal) = is_leaf,
         proc_body_is_leaf_cases(Cases) = is_leaf
-    ->
+    then
         IsLeaf = is_leaf
-    ;
+    else
         IsLeaf = is_not_leaf
     ).
 
@@ -979,9 +982,9 @@ goals_size([Goal | Goals], Size) :-
 
 clause_list_size(Clauses, GoalSize) :-
     list.foldl(clause_size_increment, Clauses, 0, GoalSize0),
-    ( Clauses = [_] ->
+    ( if Clauses = [_] then
         GoalSize = GoalSize0
-    ;
+    else
         % Add one for the disjunction.
         GoalSize = GoalSize0 + 1
     ).
@@ -1040,10 +1043,10 @@ goal_expr_size(GoalExpr, Size) :-
         Size = Size1 + 1
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             % These scopes get turned into a single assignment.
             Size = 1
-        ;
+        else
             goal_size(SubGoal, Size1),
             Size = Size1 + 1
         )
@@ -1110,35 +1113,51 @@ cases_calls([case(_, _, Goal) | Cases], PredProcId) :-
 :- mode goal_expr_calls(in, in) is semidet.
 :- mode goal_expr_calls(in, out) is nondet.
 
-goal_expr_calls(conj(_ConjType, Goals), PredProcId) :-
-    goals_calls(Goals, PredProcId).
-goal_expr_calls(disj(Goals), PredProcId) :-
-    goals_calls(Goals, PredProcId).
-goal_expr_calls(switch(_, _, Goals), PredProcId) :-
-    cases_calls(Goals, PredProcId).
-goal_expr_calls(if_then_else(_, Cond, Then, Else), PredProcId) :-
+goal_expr_calls(GoalExpr, PredProcId) :-
+    require_complete_switch [GoalExpr]
     (
-        goal_calls(Cond, PredProcId)
+        GoalExpr = conj(_ConjType, Conjuncts),
+        goals_calls(Conjuncts, PredProcId)
     ;
-        goal_calls(Then, PredProcId)
+        GoalExpr = disj(Disjuncts),
+        goals_calls(Disjuncts, PredProcId)
     ;
-        goal_calls(Else, PredProcId)
-    ).
-goal_expr_calls(negation(Goal), PredProcId) :-
-    goal_calls(Goal, PredProcId).
-goal_expr_calls(scope(Reason, Goal), PredProcId) :-
-    (
-        Reason = from_ground_term(_, FGT),
-        ( FGT = from_ground_term_construct
-        ; FGT = from_ground_term_deconstruct
+        GoalExpr = switch(_, _, Cases),
+        cases_calls(Cases, PredProcId)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        ( goal_calls(Cond, PredProcId)
+        ; goal_calls(Then, PredProcId)
+        ; goal_calls(Else, PredProcId)
         )
-    ->
-        % These goals contain only construction/deconstruction unifications.
-        fail
     ;
-        goal_calls(Goal, PredProcId)
+        GoalExpr = negation(SubGoal),
+        goal_calls(SubGoal, PredProcId)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( if
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        then
+            % These goals contain only construction and deconstruction
+            % unifications respectively.
+            fail
+        else
+            goal_calls(SubGoal, PredProcId)
+        )
+    ;
+        GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
+        PredProcId = proc(PredId, ProcId)
+    ;
+        ( GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = shorthand(_)
+        ),
+        fail
     ).
-goal_expr_calls(plain_call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1178,35 +1197,50 @@ cases_calls_pred_id([case(_, _, Goal) | Cases], PredId) :-
 :- mode goal_expr_calls_pred_id(in, in) is semidet.
 :- mode goal_expr_calls_pred_id(in, out) is nondet.
 
-goal_expr_calls_pred_id(conj(_ConjType, Goals), PredId) :-
-    goals_calls_pred_id(Goals, PredId).
-goal_expr_calls_pred_id(disj(Goals), PredId) :-
-    goals_calls_pred_id(Goals, PredId).
-goal_expr_calls_pred_id(switch(_, _, Goals), PredId) :-
-    cases_calls_pred_id(Goals, PredId).
-goal_expr_calls_pred_id(if_then_else(_, Cond, Then, Else), PredId) :-
+goal_expr_calls_pred_id(GoalExpr, PredId) :-
+    require_complete_switch [GoalExpr]
     (
-        goal_calls_pred_id(Cond, PredId)
+        GoalExpr = conj(_ConjType, Conjuncts),
+        goals_calls_pred_id(Conjuncts, PredId)
     ;
-        goal_calls_pred_id(Then, PredId)
+        GoalExpr = disj(Disjuncts),
+        goals_calls_pred_id(Disjuncts, PredId)
     ;
-        goal_calls_pred_id(Else, PredId)
-    ).
-goal_expr_calls_pred_id(negation(Goal), PredId) :-
-    goal_calls_pred_id(Goal, PredId).
-goal_expr_calls_pred_id(scope(Reason, Goal), PredId) :-
-    (
-        Reason = from_ground_term(_, FGT),
-        ( FGT = from_ground_term_construct
-        ; FGT = from_ground_term_deconstruct
+        GoalExpr = switch(_, _, Cases),
+        cases_calls_pred_id(Cases, PredId)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        ( goal_calls_pred_id(Cond, PredId)
+        ; goal_calls_pred_id(Then, PredId)
+        ; goal_calls_pred_id(Else, PredId)
         )
-    ->
-        % These goals contain only construction/deconstruction unifications.
-        fail
     ;
-        goal_calls_pred_id(Goal, PredId)
+        GoalExpr = negation(SubGoal),
+        goal_calls_pred_id(SubGoal, PredId)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( if
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        then
+            % These goals contain only construction and deconstruction
+            % unifications respectively.
+            fail
+        else
+            goal_calls_pred_id(SubGoal, PredId)
+        )
+    ;
+        GoalExpr = plain_call(PredId, _, _, _, _, _)
+    ;
+        ( GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = shorthand(_)
+        ),
+        fail
     ).
-goal_expr_calls_pred_id(plain_call(PredId, _, _, _, _, _), PredId).
 
 %-----------------------------------------------------------------------------%
 
@@ -1227,9 +1261,9 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
         GoalExpr = unify(_, _, _, _, _)
     ;
         GoalExpr = plain_call(PredId, ProcId, _, _, _, _),
-        ( list.member(proc(PredId, ProcId), PredProcIds) ->
+        ( if list.member(proc(PredId, ProcId), PredProcIds) then
             set.insert(proc(PredId, ProcId), !CalledSet)
-        ;
+        else
             true
         )
     ;
@@ -1255,15 +1289,15 @@ goal_calls_proc_in_list_2(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
         goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
     ;
         GoalExpr = scope(Reason, Goal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % These goals contain only construction unifications.
             true
-        ;
+        else
             goal_calls_proc_in_list_2(Goal, PredProcIds, !CalledSet)
         )
     ;
@@ -1302,46 +1336,118 @@ case_list_calls_proc_in_list([Case | Cases], PredProcIds, !CalledSet) :-
 
 %-----------------------------------------------------------------------------%
 
-goal_contains_reconstruction(hlds_goal(GoalExpr, _)) :-
-    goal_expr_contains_reconstruction(GoalExpr).
-
-:- pred goal_expr_contains_reconstruction(hlds_goal_expr::in) is semidet.
-
-goal_expr_contains_reconstruction(conj(_ConjType, Goals)) :-
-    goals_contain_reconstruction(Goals).
-goal_expr_contains_reconstruction(disj(Goals)) :-
-    goals_contain_reconstruction(Goals).
-goal_expr_contains_reconstruction(switch(_, _, Cases)) :-
-    list.member(Case, Cases),
-    Case = case(_, _, Goal),
-    goal_contains_reconstruction(Goal).
-goal_expr_contains_reconstruction(if_then_else(_, Cond, Then, Else)) :-
-    goals_contain_reconstruction([Cond, Then, Else]).
-goal_expr_contains_reconstruction(negation(Goal)) :-
-    goal_contains_reconstruction(Goal).
-goal_expr_contains_reconstruction(scope(Reason, Goal)) :-
+goal_contains_reconstruction(Goal, ContainsReconstruction) :-
+    Goal = hlds_goal(GoalExpr, _),
     (
-        Reason = from_ground_term(_, FGT),
-        ( FGT = from_ground_term_construct
-        ; FGT = from_ground_term_deconstruct
-        )
-    ->
-        % Construct scopes contain only construction unifications
-        % that do no reuse. Deconstruct scopes do not contain any constructions
-        % at all.
-        fail
+        GoalExpr = conj(_ConjType, Conjuncts),
+        goals_contain_reconstruction(Conjuncts, ContainsReconstruction)
     ;
-        goal_contains_reconstruction(Goal)
+        GoalExpr = disj(Disjuncts),
+        goals_contain_reconstruction(Disjuncts, ContainsReconstruction)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        cases_contain_reconstruction(Cases, ContainsReconstruction)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        ( if
+            ( goal_contains_reconstruction(Cond, yes)
+            ; goal_contains_reconstruction(Then, yes)
+            ; goal_contains_reconstruction(Else, yes)
+            )
+        then
+            ContainsReconstruction = yes
+        else
+            ContainsReconstruction = no
+        )
+    ;
+        GoalExpr = negation(SubGoal),
+        goal_contains_reconstruction(SubGoal, ContainsReconstruction)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( if
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        then
+            % Construct scopes contain only construction unifications
+            % that do no reuse. Deconstruct scopes do not contain
+            % any constructions at all.
+            ContainsReconstruction = no
+        else
+            goal_contains_reconstruction(SubGoal, ContainsReconstruction)
+        )
+    ;
+        GoalExpr = unify(_, _, _, Unify, _),
+        ( if
+            Unify = construct(_, _, _, _, HowToConstruct, _, _),
+            HowToConstruct = reuse_cell(_)
+        then
+            ContainsReconstruction = yes
+        else
+            ContainsReconstruction = no
+        )
+    ;
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        ContainsReconstruction = no
+    ;
+        GoalExpr = shorthand(Shorthand),
+        (
+            Shorthand = bi_implication(GoalA, GoalB),
+            ( if
+                goal_contains_reconstruction(GoalA, yes),
+                goal_contains_reconstruction(GoalB, yes)
+            then
+                ContainsReconstruction = yes
+            else
+                ContainsReconstruction = no
+            )
+        ;
+            Shorthand = atomic_goal(_AtomicGoalType, _OuterVars, _InnerVars,
+                _OutputVars, MainGoal, OrElseGoals, _Inners),
+            ( if
+                goal_contains_reconstruction(MainGoal, yes),
+                goals_contain_reconstruction(OrElseGoals, yes)
+            then
+                ContainsReconstruction = yes
+            else
+                ContainsReconstruction = no
+            )
+        ;
+            Shorthand = try_goal(_MaybeTryIOStateVars, _ResultVar, SubGoal),
+            goal_contains_reconstruction(SubGoal, ContainsReconstruction)
+        )
     ).
-goal_expr_contains_reconstruction(unify(_, _, _, Unify, _)) :-
-    Unify = construct(_, _, _, _, HowToConstruct, _, _),
-    HowToConstruct = reuse_cell(_).
 
-:- pred goals_contain_reconstruction(list(hlds_goal)::in) is semidet.
+:- pred goals_contain_reconstruction(list(hlds_goal)::in, bool::out) is det.
 
-goals_contain_reconstruction(Goals) :-
-    list.member(Goal, Goals),
-    goal_contains_reconstruction(Goal).
+goals_contain_reconstruction([], no).
+goals_contain_reconstruction([Goal | Goals], ContainsReconstruction) :-
+    goal_contains_reconstruction(Goal, HeadContainsReconstruction),
+    (
+        HeadContainsReconstruction = yes,
+        ContainsReconstruction = yes
+    ;
+        HeadContainsReconstruction = no,
+        goals_contain_reconstruction(Goals, ContainsReconstruction)
+    ).
+
+:- pred cases_contain_reconstruction(list(case)::in, bool::out) is det.
+
+cases_contain_reconstruction([], no).
+cases_contain_reconstruction([Case | Cases], ContainsReconstruction) :-
+    Case = case(_, _, CaseGoal),
+    goal_contains_reconstruction(CaseGoal, HeadContainsReconstruction),
+    (
+        HeadContainsReconstruction = yes,
+        ContainsReconstruction = yes
+    ;
+        HeadContainsReconstruction = no,
+        cases_contain_reconstruction(Cases, ContainsReconstruction)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -1352,8 +1458,8 @@ goal_contains_goal(hlds_goal(GoalExpr, _), SubGoal) :-
 
 direct_subgoal(scope(_, Goal), Goal).
 direct_subgoal(negation(Goal), Goal).
-direct_subgoal(if_then_else(_, If, Then, Else), Goal) :-
-    ( Goal = If
+direct_subgoal(if_then_else(_, Cond, Then, Else), Goal) :-
+    ( Goal = Cond
     ; Goal = Then
     ; Goal = Else
     ).
@@ -1387,12 +1493,12 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
     type_util.get_cons_id_arg_types(!.ModuleInfo, VarType, ConsId, ArgTypes),
     vartypes_add_corresponding_lists(ArgVars, ArgTypes, !VarTypes),
     instmap_lookup_var(InstMap, Var, Inst0),
-    (
+    ( if
         inst_expand(!.ModuleInfo, Inst0, Inst1),
         get_arg_insts(Inst1, ConsId, ConsArity, ArgInsts1)
-    ->
+    then
         ArgInsts = ArgInsts1
-    ;
+    else
         unexpected($module, $pred, "get_arg_insts failed")
     ),
     InstToUniMode = (pred(ArgInst::in, ArgUniMode::out) is det :-
@@ -1434,23 +1540,25 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
 %-----------------------------------------------------------------------------%
 
 flatten_conj([], []).
-flatten_conj([Goal | Goals0], Goals) :-
-    flatten_conj(Goals0, Goals1),
-    ( Goal ^ hlds_goal_expr = conj(plain_conj, SubGoals) ->
-        list.append(SubGoals, Goals1, Goals)
-    ;
-        Goals = [Goal | Goals1]
+flatten_conj([Goal | Goals0], FlatConj) :-
+    flatten_conj(Goals0, FlatConjTail),
+    ( if Goal = hlds_goal(conj(plain_conj, SubGoals), _) then
+        FlatConj = SubGoals ++ FlatConjTail
+    else
+        FlatConj = [Goal | FlatConjTail]
     ).
 
-flatten_disjs(Disjs) = list.foldr(flatten_disj, Disjs, []).
+flatten_disj(Disjuncts, FlatDisjuncts) :-
+    list.foldr(flatten_disj_acc, Disjuncts, [], FlatDisjuncts).
 
-:- func flatten_disj(hlds_goal, list(hlds_goal)) = list(hlds_goal).
+:- pred flatten_disj_acc(hlds_goal::in,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-flatten_disj(Disj, Disjs0) = Disjs :-
-    ( Disj = hlds_goal(disj(Disjs1), _GoalInfo) ->
-        Disjs = list.foldr(flatten_disj, Disjs1, Disjs0)
-    ;
-        Disjs = [Disj | Disjs0]
+flatten_disj_acc(Disjunct, !FlatDisjuncts) :-
+    ( if Disjunct = hlds_goal(disj(SubDisjs), _GoalInfo) then
+        list.foldr(flatten_disj_acc, SubDisjs, !FlatDisjuncts)
+    else
+        !:FlatDisjuncts = [Disjunct | !.FlatDisjuncts]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1506,14 +1614,14 @@ can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
 
     % Don't reorder the goals if the later goal depends on the outputs
     % of the current goal.
-    \+ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal,
+    not goal_depends_on_earlier_goal(LaterGoal, EarlierGoal,
         InstmapBeforeEarlierGoal, VarTypes, ModuleInfo),
 
     % Don't reorder the goals if the later goal changes the instantiatedness
     % of any of the non-locals of the earlier goal. This is necessary if the
     % later goal clobbers any of the non-locals of the earlier goal, and
     % avoids rerunning full mode analysis in other cases.
-    \+ goal_depends_on_earlier_goal(EarlierGoal, LaterGoal,
+    not goal_depends_on_earlier_goal(EarlierGoal, LaterGoal,
         InstmapBeforeLaterGoal, VarTypes, ModuleInfo).
 
 can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
@@ -1528,15 +1636,15 @@ can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
     % Impure goals and trace goals cannot be reordered.
     goal_info_get_goal_purity(EarlierGoalInfo, EarlierPurity, EarlierTrace),
     goal_info_get_goal_purity(LaterGoalInfo, LaterPurity, LaterTrace),
-    (
+    ( if
         ( EarlierPurity = purity_impure
         ; LaterPurity = purity_impure
         ; EarlierTrace = contains_trace_goal
         ; LaterTrace = contains_trace_goal
         )
-    ->
+    then
         CanReorder = no
-    ;
+    else
         reordering_maintains_termination(FullyStrict,
             EarlierGoal, LaterGoal, MaintainsTermination, !ModuleInfo),
         (
@@ -1544,15 +1652,15 @@ can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
             CanReorder = no
         ;
             MaintainsTermination = yes,
-            (
+            ( if
                 % Don't reorder the goals if the later goal depends on the
                 % outputs of the current goal.
                 %
                 goal_depends_on_earlier_goal(LaterGoal, EarlierGoal,
                     InstmapBeforeEarlierGoal, VarTypes, !.ModuleInfo)
-            ->
+            then
                 CanReorder = no
-            ;
+            else if
                 % Don't reorder the goals if the later goal changes the
                 % instantiatedness of any of the non-locals of the earlier
                 % goal. This is necessary if the later goal clobbers any of
@@ -1561,9 +1669,9 @@ can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
                 %
                 goal_depends_on_earlier_goal(EarlierGoal, LaterGoal,
                     InstmapBeforeLaterGoal, VarTypes, !.ModuleInfo)
-            ->
+            then
                 CanReorder = no
-            ;
+            else
                 CanReorder = yes
             )
         )
@@ -1581,12 +1689,12 @@ reordering_maintains_termination_old(ModuleInfo, FullyStrict,
 
     % If --fully-strict was specified, don't convert (can_loop, can_fail)
     % into (can_fail, can_loop).
-    (
+    ( if
         FullyStrict = yes,
-        \+ goal_cannot_loop_or_throw(EarlierGoal)
-    ->
+        not goal_cannot_loop_or_throw(EarlierGoal)
+    then
         LaterCanFail = cannot_fail
-    ;
+    else
         true
     ),
     % Don't convert (can_fail, can_loop) into (can_loop, can_fail), since
@@ -1611,24 +1719,24 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
     % If --fully-strict was specified, don't convert (can_loop, can_fail) into
     % (can_fail, can_loop).
     goal_can_loop_or_throw(EarlierGoal, EarlierCanLoopOrThrow, !ModuleInfo),
-    (
+    ( if
         FullyStrict = yes,
         EarlierCanLoopOrThrow = can_loop_or_throw,
         LaterCanFail = can_fail
-    ->
+    then
         MaintainsTermination = no
-    ;
+    else
         % Don't convert (can_fail, can_loop) into (can_loop, can_fail), since
         % this could worsen the termination properties of the program.
         %
         goal_can_loop_or_throw(LaterGoal, LaterCanLoopOrThrow,
             !ModuleInfo),
-        (
+        ( if
             EarlierCanFail = can_fail,
             LaterCanLoopOrThrow = can_loop_or_throw
-        ->
+        then
             MaintainsTermination = no
-        ;
+        else
             MaintainsTermination = yes
         )
     ).
@@ -1831,9 +1939,9 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        ( goal_info_has_feature(GoalInfo0, feature_pretest_equality) ->
+        ( if goal_info_has_feature(GoalInfo0, feature_pretest_equality) then
             Goal = Else0
-        ;
+        else
             Cond = maybe_strip_equality_pretest(Cond0),
             Then = maybe_strip_equality_pretest(Then0),
             Else = maybe_strip_equality_pretest(Else0),
@@ -1847,14 +1955,14 @@ maybe_strip_equality_pretest(Goal0) = Goal :-
         Goal = hlds_goal(GoalExpr, GoalInfo0)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             Goal = Goal0
-        ;
+        else
             SubGoal = maybe_strip_equality_pretest(SubGoal0),
             GoalExpr = scope(Reason, SubGoal),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -1910,10 +2018,10 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
             MaybeGoal = goal_not_found
         ;
             GoalExpr0 = conj(ConjType, Conjs0),
-            (
+            ( if
                 FirstStep = step_conj(ConjNum),
                 list.index1(Conjs0, ConjNum, Conj0)
-            ->
+            then
                 maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     Conj0, MaybeConj),
                 (
@@ -1927,15 +2035,15 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeConj
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = disj(Disjs0),
-            (
+            ( if
                 FirstStep = step_disj(DisjNum),
                 list.index1(Disjs0, DisjNum, Disj0)
-            ->
+            then
                 maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     Disj0, MaybeDisj),
                 (
@@ -1949,15 +2057,15 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeDisj
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = switch(Var, CanFail, Cases0),
-            (
+            ( if
                 FirstStep = step_switch(CaseNum, _MaybeNumConstructors),
                 list.index1(Cases0, CaseNum, Case0)
-            ->
+            then
                 CaseGoal0 = Case0 ^ case_goal,
                 maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     CaseGoal0, MaybeCaseGoal),
@@ -1973,12 +2081,12 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeCaseGoal
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = negation(SubGoal0),
-            ( FirstStep = step_neg ->
+            ( if FirstStep = step_neg then
                 maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     SubGoal0, MaybeSubGoal),
                 (
@@ -1990,12 +2098,12 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeSubGoal
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
-            ( FirstStep = step_scope(_MaybeCut) ->
+            ( if FirstStep = step_scope(_MaybeCut) then
                 maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     SubGoal0, MaybeSubGoal),
                 (
@@ -2008,12 +2116,12 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeSubGoal
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
-            ( FirstStep = step_ite_cond ->
+            ( if FirstStep = step_ite_cond then
                 maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     Cond0, MaybeCond),
                 (
@@ -2026,7 +2134,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeCond
                 )
-            ; FirstStep = step_ite_then ->
+            else if FirstStep = step_ite_then then
                 maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     Then0, MaybeThen),
                 (
@@ -2039,7 +2147,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeThen
                 )
-            ; FirstStep = step_ite_else ->
+            else if FirstStep = step_ite_else then
                 maybe_transform_goal_at_goal_path(TransformP, LaterPath,
                     Else0, MaybeElse),
                 (
@@ -2052,7 +2160,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeElse
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
@@ -2080,10 +2188,10 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
             MaybeGoal = goal_not_found
         ;
             GoalExpr0 = conj(ConjType, Conjs0),
-            (
+            ( if
                 FirstStep = step_conj(ConjNum),
                 list.index1(Conjs0, ConjNum, Conj0)
-            ->
+            then
                 list.take_upto(ConjNum - 1, Conjs0, HeadConjs),
                 HeadInstdeltas = map(
                     (func(G) =
@@ -2104,15 +2212,15 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeConj
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = disj(Disjs0),
-            (
+            ( if
                 FirstStep = step_disj(DisjNum),
                 list.index1(Disjs0, DisjNum, Disj0)
-            ->
+            then
                 maybe_transform_goal_at_goal_path_with_instmap(TransformP,
                     LaterPath, Instmap0, Disj0, MaybeDisj),
                 (
@@ -2125,15 +2233,15 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeDisj
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = switch(Var, CanFail, Cases0),
-            (
+            ( if
                 FirstStep = step_switch(CaseNum, _MaybeNumConstructors),
                 list.index1(Cases0, CaseNum, Case0)
-            ->
+            then
                 CaseGoal0 = Case0 ^ case_goal,
                 maybe_transform_goal_at_goal_path_with_instmap(TransformP,
                     LaterPath, Instmap0, CaseGoal0, MaybeCaseGoal),
@@ -2149,12 +2257,12 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeCaseGoal
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = negation(SubGoal0),
-            ( FirstStep = step_neg ->
+            ( if FirstStep = step_neg then
                 maybe_transform_goal_at_goal_path_with_instmap(TransformP,
                     LaterPath, Instmap0, SubGoal0, MaybeSubGoal),
                 (
@@ -2167,12 +2275,12 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeSubGoal
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
-            ( FirstStep = step_scope(_MaybeCut) ->
+            ( if FirstStep = step_scope(_MaybeCut) then
                 maybe_transform_goal_at_goal_path_with_instmap(TransformP,
                     LaterPath, Instmap0, SubGoal0, MaybeSubGoal),
                 (
@@ -2185,12 +2293,12 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeSubGoal
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
-            ( FirstStep = step_ite_cond ->
+            ( if FirstStep = step_ite_cond then
                 maybe_transform_goal_at_goal_path_with_instmap(TransformP,
                     LaterPath, Instmap0, Cond0, MaybeCond),
                 (
@@ -2203,7 +2311,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeCond
                 )
-            ; FirstStep = step_ite_then ->
+            else if FirstStep = step_ite_then then
                 apply_instmap_delta_sv(
                     goal_info_get_instmap_delta(Cond0 ^ hlds_goal_info),
                     Instmap0, Instmap),
@@ -2219,7 +2327,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeThen
                 )
-            ; FirstStep = step_ite_else ->
+            else if FirstStep = step_ite_else then
                 maybe_transform_goal_at_goal_path_with_instmap(TransformP,
                     LaterPath, Instmap0, Else0, MaybeElse),
                 (
@@ -2232,7 +2340,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     ),
                     MaybeGoal = MaybeElse
                 )
-            ;
+            else
                 MaybeGoal = goal_not_found
             )
         ;
