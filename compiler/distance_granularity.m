@@ -25,13 +25,13 @@
 % :- pred fibonacci(int::in, int::out) is det.
 %
 % fibonacci(X, Y) :-
-%     ( X = 0 ->
+%     ( if X = 0 then
 %         Y = 0
-%     ;
-%         ( X = 1 ->
+%     else
+%         ( if X = 1 then
 %             Y = 1
-%         ;
-%             ( X > 1 ->
+%         else
+%             ( if X > 1 then
 %                 J = X - 1,
 %                 K = X - 2,
 %                 (
@@ -40,7 +40,7 @@
 %                     fibonacci(K, Kout)
 %                 ),
 %                 Y = Jout + Kout
-%             ;
+%             else
 %                 error("fibonacci: wrong value")
 %             )
 %         )
@@ -53,16 +53,16 @@
 %     int::in) is det.
 %
 % DistanceGranularityFor__pred__fibonacci__10(X, Y, Distance) :-
-%     ( X = 0 ->
+%     ( if X = 0 then
 %         Y = 0
-%     ;
-%         ( X = 1 ->
+%     else
+%         ( if X = 1 then
 %             Y = 1
-%         ;
-%             ( X > 1 ->
+%         else
+%             ( if X > 1 then
 %                 J = X - 1,
 %                 K = X - 2,
-%                 ( Distance = 0 ->
+%                 ( if Distance = 0 then
 %                     (
 %                         DistanceGranularityFor__pred__fibonacci__10(J, Jout,
 %                             10)
@@ -70,14 +70,14 @@
 %                         DistanceGranularityFor__pred__fibonacci__10(K, Kout,
 %                             10)
 %                     )
-%                 ;
+%                 else
 %                     DistanceGranularityFor__pred__fibonacci__10(J, Jout,
 %                         Distance - 1),
 %                     DistanceGranularityFor__pred__fibonacci__10(K, Kout,
 %                         Distance - 1)
 %                 ),
 %                 Y = Jout + Kout
-%             ;
+%             else
 %                 error("fibonacci: wrong value")
 %             )
 %         )
@@ -88,13 +88,13 @@
 % :- pred fibonacci(int::in, int::out) is det.
 %
 % fibonacci(X, Y) :-
-%     ( X = 0 ->
+%     ( if X = 0 then
 %         Y = 0
-%     ;
-%         ( X = 1 ->
+%     else
+%         ( if X = 1 then
 %             Y = 1
-%         ;
-%             ( X > 1 ->
+%         else
+%             ( if X > 1 then
 %                 J = X - 1,
 %                 K = X - 2,
 %                 (
@@ -103,7 +103,7 @@
 %                     DistanceGranularityFor__pred__fibonacci__10(K, Kout, 10)
 %                 ),
 %                 Y = Jout + Kout
-%             ;
+%             else
 %                 error("fibonacci: wrong value")
 %             )
 %         )
@@ -367,10 +367,10 @@ apply_dg_to_goal(!Goal, CallerPredId, CallerProcId, PredIdSpecialized,
         !:Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             % Return !.Goal as !:Goal.
             IsRecursiveCallInParallelConj = no
-        ;
+        else
             apply_dg_to_goal(SubGoal0, SubGoal, CallerPredId, CallerProcId,
                 PredIdSpecialized, SymNameSpecialized, !ProcInfo, !ModuleInfo,
                 Distance, IsInParallelConj, !MaybeGranularityVar,
@@ -412,16 +412,15 @@ apply_dg_to_plain_call(!GoalExpr, CallerPredId, PredIdSpecialized,
         IsRecursiveCallInParallelConj) :-
     !.GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs, CallBuiltin,
         CallUnifyContext, _),
-    (
+    ( if
         IsInParallelConj = yes,
         CalleePredId = CallerPredId,
         CalleeProcId = CallerProcId
-    ->
+    then
         % That is a recursive plain call in a parallel conjunction.
         (
-            !.MaybeGranularityVar = yes(_GranularityVar),
+            !.MaybeGranularityVar = yes(_GranularityVar)
             % The variable Granularity has already been added to ProcInfo.
-            true
         ;
             !.MaybeGranularityVar = no,
             % Add the variable Granularity to ProcInfo.
@@ -449,7 +448,7 @@ apply_dg_to_plain_call(!GoalExpr, CallerPredId, PredIdSpecialized,
         !:GoalExpr = plain_call(PredIdSpecialized, CallerProcId,
             CallArgs, CallBuiltin, CallUnifyContext, SymNameSpecialized),
         IsRecursiveCallInParallelConj = yes
-    ;
+    else
         IsRecursiveCallInParallelConj = no
     ).
 
@@ -552,18 +551,21 @@ apply_dg_to_then(!Goal, GranularityVar, CallerPredId, CallerProcId, Distance,
 
 apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
         CallerProcId, Distance, !ProcInfo) :-
-    ( !.GoalExpr = conj(parallel_conj, Goals0) ->
+    ( if !.GoalExpr = conj(parallel_conj, Goals0) then
         list.length(Goals0, Length),
-        ( !.IndexInConj > Length ->
+        ( if !.IndexInConj > Length then
             true
-        ;
+        else
             list.det_index1(Goals0, !.IndexInConj, Goal0),
             Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-            (
+            ( if
                 GoalExpr0 = plain_call(CalleePredId, CalleeProcId, CallArgs0,
                     CallBuiltin, _, CallSymName)
-            ->
-                ( CalleePredId = CallerPredId, CalleeProcId = CallerProcId ->
+            then
+                ( if
+                    CalleePredId = CallerPredId,
+                    CalleeProcId = CallerProcId
+                then
                     % That is a recursive plain call.
 
                     % Create granularity variable containing value Distance.
@@ -599,18 +601,18 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     list.det_replace_nth(Goals0, !.IndexInConj, PlainConj,
                         Goals),
                     !:GoalExpr = conj(parallel_conj, Goals)
-                ;
+                else
                     % Not a recursive call.
                     true
                 ),
                 !:IndexInConj = !.IndexInConj + 1
-            ;
+            else
                 !:IndexInConj = !.IndexInConj + 1
             ),
             apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar,
                 CallerPredId, CallerProcId, Distance, !ProcInfo)
         )
-    ;
+    else
         % Not a parallel conjunction.
         unexpected($module, $pred, "unexpected goal type")
     ).
@@ -620,7 +622,7 @@ apply_dg_to_then2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
 :- pred recompute_conj_info(hlds_goal::in, hlds_goal::out) is det.
 
 recompute_conj_info(!Conj) :-
-    ( !.Conj = hlds_goal(conj(Type, Goals), ConjInfo0) ->
+    ( if !.Conj = hlds_goal(conj(Type, Goals), ConjInfo0) then
         goal_list_nonlocals(Goals, NonLocals),
         goal_list_instmap_delta(Goals, InstMapDelta),
         goal_list_determinism(Goals, Detism),
@@ -630,7 +632,7 @@ recompute_conj_info(!Conj) :-
         goal_info_set_determinism(Detism, ConjInfo2, ConjInfo3),
         goal_info_set_purity(Purity, ConjInfo3, ConjInfo),
         !:Conj = hlds_goal(conj(Type, Goals), ConjInfo)
-    ;
+    else
         % Not a conjunction.
         unexpected($module, $pred, "unexpected goal type")
     ).
@@ -658,21 +660,21 @@ apply_dg_to_else(!Goal, GranularityVar, CallerPredId, CallerProcId,
 
 apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
         CallerProcId, ModuleInfo, !ProcInfo) :-
-    ( !.GoalExpr = conj(plain_conj, Goals0) ->
+    ( if !.GoalExpr = conj(plain_conj, Goals0) then
         list.length(Goals0, Length),
-        ( !.IndexInConj > Length ->
+        ( if !.IndexInConj > Length then
             true
-        ;
+        else
             list.det_index1(Goals0, !.IndexInConj, Goal0),
             Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-            (
+            ( if
                 GoalExpr0 = plain_call(CalleePredId, CalleeProcId, CallArgs0,
                     CallBuiltin, _, CallSymName)
-            ->
-                (
+            then
+                ( if
                     CalleePredId = CallerPredId,
                     CalleeProcId = CallerProcId
-                ->
+                then
                     % That is a recursive plain call.
 
                     % Create an int variable containing the value 1.
@@ -748,18 +750,18 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                         GoalsAppend1),
                     list.append(GoalsAppend1, EndGoals, Goals),
                     !:GoalExpr = conj(plain_conj, Goals)
-                ;
+                else
                     % Not a recursive call.
                     true
                 ),
                 !:IndexInConj = !.IndexInConj + 3
-            ;
+            else
                 !:IndexInConj = !.IndexInConj + 1
             ),
             apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar,
                 CallerPredId, CallerProcId, ModuleInfo, !ProcInfo)
         )
-    ;
+    else
         unexpected($module, $pred, "unexpected goal type")
     ).
 
@@ -920,10 +922,10 @@ update_original_predicate_goal(!Goal, CallerPredId, CallerProcId,
         !:Goal = hlds_goal(GoalExpr, GoalInfo)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             % Leave !Goal as it is.
             true
-        ;
+        else
             update_original_predicate_goal(SubGoal0, SubGoal,
                 CallerPredId, CallerProcId,
                 PredIdSpecialized, SymNameSpecialized, !ProcInfo, Distance),
@@ -959,10 +961,10 @@ update_original_predicate_plain_call(!Goal, CallerPredId, CallerProcId,
     !.Goal = hlds_goal(CallExpr0, CallInfo0),
     CallExpr0 = plain_call(CalleePredId, CalleeProcId, CallArgs0,
         CallBuiltin, _, _),
-    (
+    ( if
         CalleePredId = CallerPredId,
         CalleeProcId = CallerProcId
-    ->
+    then
         % That is a recursive plain call.
 
         % Create the int variable which will be used as the last argument of
@@ -995,7 +997,7 @@ update_original_predicate_plain_call(!Goal, CallerPredId, CallerProcId,
         % the conjunction has been processed
         % (see update_original_predicate_goal).
         create_conj(UnifyGoal, Call, plain_conj, !:Goal)
-    ;
+    else
         true
     ).
 

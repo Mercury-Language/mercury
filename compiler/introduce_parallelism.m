@@ -100,11 +100,11 @@ do_apply_implicit_parallelism_transformation(SourceFileMap, Specs,
     module_info_get_globals(!.ModuleInfo, Globals0),
     globals.get_maybe_feedback_info(Globals0, MaybeFeedbackInfo),
     module_info_get_name(!.ModuleInfo, ModuleName),
-    (
+    ( if
         yes(FeedbackInfo) = MaybeFeedbackInfo,
         get_implicit_parallelism_feedback(ModuleName, FeedbackInfo,
             ParallelismInfo)
-    ->
+    then
         % Retrieve and process predicates.
         module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -121,7 +121,7 @@ do_apply_implicit_parallelism_transformation(SourceFileMap, Specs,
             module_info_set_predicate_table(PredTable, !ModuleInfo),
             module_info_set_has_parallel_conj(!ModuleInfo)
         )
-    ;
+    else
         map.lookup(SourceFileMap, ModuleName, ModuleFilename),
         Context = context(ModuleFilename, 1),
         Pieces = [words("Implicit parallelism was requested but the"),
@@ -244,7 +244,7 @@ maybe_parallelise_proc(ParallelismInfo, PredInfo, _PredId, ProcId,
     Mode = proc_id_to_int(ProcId),
     IMProcLabel = intra_module_proc_label(Name, Arity, PredOrFunc, Mode),
     CPCMap = ParallelismInfo ^ pi_cpc_map,
-    ( map.search(CPCMap, IMProcLabel, CPCProc) ->
+    ( if map.search(CPCMap, IMProcLabel, CPCProc) then
         proc_info_get_has_parallel_conj(ProcInfo0, HasParallelConj),
         (
             HasParallelConj = has_parallel_conj,
@@ -262,7 +262,7 @@ maybe_parallelise_proc(ParallelismInfo, PredInfo, _PredId, ProcId,
                 map.det_update(ProcId, ProcInfo, !ProcTable)
             )
         )
-    ;
+    else
         true
     ).
 
@@ -335,12 +335,7 @@ parallelise_proc(CPCProc, PredInfo, !ProcInfo,
 maybe_parallelise_goal(PredInfo, ProgRepInfo, VarNameTable, Instmap0, CPC,
         Goal0, Goal, !IntroducedParallelism, !Specs) :-
     TargetGoalPathString = CPC ^ cpc_goal_path,
-    ( goal_path_from_string(TargetGoalPathString, TargetGoalPathPrime) ->
-        TargetGoalPath = TargetGoalPathPrime
-    ;
-        unexpected($module, $pred,
-            "Invalid goal path in CPC Feedback Information")
-    ),
+    goal_path_from_string_det(TargetGoalPathString, TargetGoalPath),
     maybe_transform_goal_at_goal_path_with_instmap(
         maybe_parallelise_conj(ProgRepInfo, VarNameTable, CPC),
         TargetGoalPath, Instmap0, Goal0, MaybeGoal),
@@ -373,12 +368,12 @@ maybe_parallelise_conj(ProgRepInfo, VarNameTable, CPC, Instmap0,
     % We have reached the point indicated by the goal path.
     % Find the conjuncts that we wish to parallelise.
     cpc_get_first_goal(CPC, FirstGoalRep),
-    (
+    ( if
         GoalExpr0 = conj(plain_conj, Conjs0),
         flatten_conj(Conjs0, Conjs1),
         find_first_goal(FirstGoalRep, Conjs1, ProgRepInfo, VarNameTable,
             Instmap0, found_first_goal(GoalsBefore, FirstGoal, OtherGoals))
-    ->
+    then
         GoalsBeforeInstDeltas = list.map(
             (func(G) = goal_info_get_instmap_delta(G ^ hlds_goal_info)),
             GoalsBefore),
@@ -387,17 +382,17 @@ maybe_parallelise_conj(ProgRepInfo, VarNameTable, CPC, Instmap0,
         build_par_conjunction(ProgRepInfo, VarNameTable, Instmap,
             [FirstGoal | OtherGoals], CPC, MaybeParConjunction),
         (
-            MaybeParConjunction = ok(
-                par_conjunction_and_remaining_goals(ParConjunction,
-                RemainingGoals)),
-            Conjs = GoalsBefore ++ ParConjunction ++ RemainingGoals,
-            GoalExpr = conj(plain_conj, Conjs),
+            MaybeParConjunction = ok(ParConjAndRemaining),
+            ParConjAndRemaining = par_conjunction_and_remaining_goals(
+                ParConjunction, RemainingGoals),
+            Conjuncts = GoalsBefore ++ ParConjunction ++ RemainingGoals,
+            GoalExpr = conj(plain_conj, Conjuncts),
             MaybeGoal = ok(hlds_goal(GoalExpr, Goal0 ^ hlds_goal_info))
         ;
             MaybeParConjunction = error(Error),
             MaybeGoal = error(Error)
         )
-    ;
+    else
         MaybeGoal = error("Could not find partition within conjunction: "
             ++ "perhaps the program has changed")
     ).
@@ -412,12 +407,12 @@ cpc_get_first_goal(CPC, FirstGoal) :-
     ;
         GoalsBefore = [],
         ParConj = CPC ^ cpc_conjs,
-        (
+        ( if
             ParConj = [FirstParConj | _],
             FirstParConj = seq_conj([FirstGoalPrime | _])
-        ->
+        then
             FirstGoal = FirstGoalPrime
-        ;
+        else
             unexpected($module, $pred,
                 "candidate parallel conjunction is empty")
         )
@@ -438,12 +433,12 @@ cpc_get_first_goal(CPC, FirstGoal) :-
 find_first_goal(_, [], _, _, _, did_not_find_first_goal).
 find_first_goal(GoalRep, [Goal | Goals], ProcRepInfo, VarNameTable, !.Instmap,
         Result) :-
-    (
+    ( if
         pard_goal_match_hlds_goal(ProcRepInfo, VarNameTable, !.Instmap,
             GoalRep, Goal)
-    ->
+    then
         Result = found_first_goal([], Goal, Goals)
-    ;
+    else
         InstmapDelta = goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
         apply_instmap_delta_sv(InstmapDelta, !Instmap),
         find_first_goal(GoalRep, Goals, ProcRepInfo, VarNameTable, !.Instmap,
@@ -548,10 +543,10 @@ build_seq_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],
         MaybeConjs, !Goals, !Instmap) :-
     (
         !.Goals = [Goal | !:Goals],
-        (
+        ( if
             pard_goal_match_hlds_goal(ProcRepInfo, VarNameTable, !.Instmap,
                 GoalRep, Goal)
-        ->
+        then
             InstmapDelta = goal_info_get_instmap_delta(Goal ^ hlds_goal_info),
             apply_instmap_delta_sv(InstmapDelta, !Instmap),
             build_seq_conjuncts(ProcRepInfo, VarNameTable, GoalReps,
@@ -563,7 +558,7 @@ build_seq_conjuncts(ProcRepInfo, VarNameTable, [GoalRep | GoalReps],
                 MaybeConjs0 = no,
                 MaybeConjs = no
             )
-        ;
+        else
             MaybeConjs = no
         )
     ;
@@ -582,11 +577,11 @@ report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
+    SNA = qualified(ModuleName, PredName) / Arity,
     Pieces = [words("In"), p_or_f(PredOrFunc),
-        sym_name_and_arity(qualified(ModuleName, PredName) / Arity),
-        suffix(":"), nl,
-        words("Warning: could not auto-parallelise"), quote(GoalPath),
-        suffix(":"), words(Error)],
+        sym_name_and_arity(SNA), suffix(":"), nl,
+        words("Warning: could not auto-parallelise"),
+        quote(GoalPath), suffix(":"), words(Error), nl],
     pred_info_get_context(PredInfo, Context),
     % XXX Make this a warning or error if the user wants compilation to
     % abort.
@@ -601,11 +596,11 @@ report_already_parallelised(PredInfo) = Spec :-
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
+    SNA = qualified(ModuleName, PredName) / Arity,
     Pieces = [words("In"), p_or_f(PredOrFunc),
-        sym_name_and_arity(qualified(ModuleName, PredName) / Arity),
-        suffix(":"), nl,
+        sym_name_and_arity(SNA), suffix(":"), nl,
         words("Warning: this procedure contains explicit parallel"),
-        words("conjunctions, it will not be automatically parallelised.")],
+        words("conjunctions, it will not be automatically parallelised."), nl],
     pred_info_get_context(PredInfo, Context),
     Spec = error_spec(severity_warning, phase_auto_parallelism,
         [simple_msg(Context, [always(Pieces)])]).
@@ -793,13 +788,14 @@ case_reps_match(VarNameTable, CaseRepA, CaseRepB) :-
     is semidet.
 
 var_reps_match(VarNameTable, VarA, VarB) :-
-    ( search_var_name(VarNameTable, VarA, _) ->
+    ( if search_var_name(VarNameTable, VarA, _) then
         % Variables named by the programmer _must_ match, we expect to find
-        % them in the var table, and that they would be identical.  (Since one
-        % of the variables will be built using its name and the var table
-        % constructed when converting the original code to byte code).
+        % them in the var table, and that they would be identical.
+        % (Since one of the variables will be built using its name and
+        % the var table constructed when converting the original code
+        % to byte code).
         VarA = VarB
-    ;
+    else
         % Unnamed variables match implicitly. They will usually be identical,
         % but we do not REQUIRE them to be identical, to allow the program
         % to change a little after being profiled but before being

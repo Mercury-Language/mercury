@@ -129,10 +129,10 @@ read_spec_file_lines(Stream, CurLineNum, NumLines, MaybeError, !ProcMap,
         ResLine = ok(Chars0),
         list.filter(unify('\n'), Chars0, _, Chars),
         string.from_char_list(Chars, ProcName),
-        ( map.insert(ProcName, CurLineNum, !ProcMap) ->
+        ( if map.insert(ProcName, CurLineNum, !ProcMap) then
             read_spec_file_lines(Stream, CurLineNum + 1,
                 NumLines, MaybeError, !ProcMap, !IO)
-        ;
+        else
             NumLines = CurLineNum,
             MaybeError = yes("repeated line: " ++ ProcName)
         )
@@ -152,9 +152,9 @@ complexity_proc_name(ModuleInfo, PredId, ProcId) = FullName :-
 
 is_in_complexity_proc_map(ProcMap, ModuleInfo, PredId, ProcId) = IsInMap :-
     FullName = complexity_proc_name(ModuleInfo, PredId, ProcId),
-    ( map.search(ProcMap, FullName, ProcNum) ->
+    ( if map.search(ProcMap, FullName, ProcNum) then
         IsInMap = yes(ProcNum)
-    ;
+    else
         IsInMap = no
     ).
 
@@ -518,19 +518,19 @@ classify_args([], [_ | _], _, _, _, _) :-
 classify_args([Var | Vars], [Mode | Modes], ModuleInfo, VarSet, VarTypes,
         [Var - complexity_arg_info(MaybeName, Kind) | VarInfos]) :-
     classify_args(Vars, Modes, ModuleInfo, VarSet, VarTypes, VarInfos),
-    ( varset.search_name(VarSet, Var, Name) ->
+    ( if varset.search_name(VarSet, Var, Name) then
         MaybeName = yes(Name)
-    ;
+    else
         MaybeName = no
     ),
-    ( mode_is_fully_input(ModuleInfo, Mode) ->
+    ( if mode_is_fully_input(ModuleInfo, Mode) then
         lookup_var_type(VarTypes, Var, VarType),
-        ( zero_size_type(ModuleInfo, VarType) ->
+        ( if zero_size_type(ModuleInfo, VarType) then
             Kind = complexity_input_fixed_size
-        ;
+        else
             Kind = complexity_input_variable_size
         )
-    ;
+    else
         Kind = complexity_output
     ).
 
