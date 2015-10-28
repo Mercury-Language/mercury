@@ -30,7 +30,7 @@
 %
 % NOTE: many of the operations in this module require you to pass in
 % the varset that the variables in the constraints that define the polyhedron
-% were allocated from.  This because the code for computing the convex hull
+% were allocated from. This because the code for computing the convex hull
 % and the linear solver in lp_rational.m need to allocate fresh temporary
 % variables.
 %
@@ -60,11 +60,11 @@
 
 %-----------------------------------------------------------------------------%
 
-    % The `empty' polyhedron.  Equivalent to the constraint `false'.
+    % The `empty' polyhedron. Equivalent to the constraint `false'.
     %
 :- func polyhedron.empty = polyhedron.
 
-    % The `universe' polyhedron.  Equivalent to the constraint `true'.
+    % The `universe' polyhedron. Equivalent to the constraint `true'.
     %
 :- func polyhedron.universe = polyhedron.
 
@@ -84,8 +84,8 @@
     % Succeeds iff the given polyhedron is the empty polyhedron.
     %
     % NOTE: this only succeeds if the polyhedron is actually *known*
-    % to be empty.  It might fail even when the constraint set is
-    % is inconsistent.  You currently need to call polyhedron.optimize
+    % to be empty. It might fail even when the constraint set is
+    % is inconsistent. You currently need to call polyhedron.optimize
     % to force this to always work.
     %
 :- pred polyhedron.is_empty(polyhedron::in) is semidet.
@@ -292,7 +292,7 @@ convex_union(Varset, MaybeMaxSize, eqns(ConstraintsA),
 % The following transformation for computing the convex hull is described in
 % the paper:
 %
-% F. Benoy and A. King.  Inferring Argument Size Relationships with CLPR(R).
+% F. Benoy and A. King. Inferring Argument Size Relationships with CLPR(R).
 % Logic-based Program Synthesis and Transformation,
 % LNCS 1207: pp. 204-223, 1997.
 %
@@ -350,11 +350,9 @@ convex_union(Varset, MaybeMaxSize, eqns(ConstraintsA),
 convex_hull([], _, _, _) :-
     unexpected($module, $pred, "empty list").
 convex_hull([Poly], eqns(Poly), _, _).
-convex_hull(Polys @ [_,_|_], ConvexHull, MaybeMaxSize, Varset0) :-
-    %
+convex_hull(Polys @ [_, _ | _], ConvexHull, MaybeMaxSize, Varset0) :-
     % Perform the matrix transformation from the paper by Benoy and King.
     % Rename variables and add sigma constraints as necessary.
-    %
     PolyInfo0 = polyhedra_info([], [], Varset0),
     transform_polyhedra(Polys, Matrix0, PolyInfo0, PolyInfo),
     PolyInfo = polyhedra_info(VarMaps, Sigmas, Varset),
@@ -364,13 +362,12 @@ convex_hull(Polys @ [_,_|_], ConvexHull, MaybeMaxSize, Varset0) :-
         Varlist = Varlist0 ++ map.values(Map)
     ),
     VarsToEliminate = Sigmas ++ list.foldl(AppendValues, VarMaps, []),
-    %
+
     % Calculate the closure of the convex hull of the original polyhedra by
     % projecting the constraints in the transformed matrix onto the original
-    % variables (ie. eliminate all the sigma and temporary variables).  Since
-    % the resulting matrix tends to contain a large number of redundant
+    % variables (ie. eliminate all the sigma and temporary variables).
+    % Since the resulting matrix tends to contain a large number of redundant
     % constraints, we need to do a redundancy check after this.
-    %
     lp_rational.project(VarsToEliminate, Varset, MaybeMaxSize, Matrix,
         ProjectionResult),
     (
@@ -417,7 +414,7 @@ transform_polyhedron(Poly, Polys0, Polys, !PolyInfo) :-
     % transform_constraint: takes a constraint (with original variables) and
     % the sigma variable to add, and returns the constraint where the original
     % variables are substituted for new ones and where the sigma variable is
-    % included.  The map of old to new variables is updated if necessary.
+    % included. The map of old to new variables is updated if necessary.
     %
 :- pred transform_constraint(lp_var::in, constraint::in, constraint::out,
     var_map::in, var_map::out, lp_varset::in, lp_varset::out) is det.
@@ -431,7 +428,7 @@ transform_constraint(Sigma, !Constraint, !VarMap, !Varset) :-
     ).
 
     % change_var: takes a Var-Num pair with an old variable and returns one
-    % with a new variable which the old variable maps to.  Updates the map of
+    % with a new variable which the old variable maps to. Updates the map of
     % old to new variables if necessary.
     %
 :- pred change_var(lp_term::in, lp_term::out, var_map::in, var_map::out,
@@ -442,9 +439,9 @@ change_var(!Term, !VarMap, !Varset) :-
         !.Term = !:Var - Coefficient,
 
         % Have we already mapped this original variable to a new one?
-        ( map.search(!.VarMap, !.Var, !:Var) ->
+        ( if map.search(!.VarMap, !.Var, !:Var) then
             true
-        ;
+        else
             varset.new_var(NewVar, !Varset),
             map.det_insert(!.Var, NewVar, !VarMap),
             !:Var = NewVar

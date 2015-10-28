@@ -87,12 +87,14 @@ goal_mark_static_terms(Goal0, Goal, !SI) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(TermVar, from_ground_term_construct) ->
+        ( if
+            Reason = from_ground_term(TermVar, from_ground_term_construct)
+        then
             % These scopes already have all their unifications marked
             % as construct_statically.
             set_tree234.insert(TermVar, !SI),
             GoalExpr = GoalExpr0
-        ;
+        else
             goal_mark_static_terms(SubGoal0, SubGoal, !SI),
             GoalExpr = scope(Reason, SubGoal)
         )
@@ -158,25 +160,25 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
             HowToConstruct0, Unique, SubInfo),
         % If all the arguments are static, then the newly constructed variable
         % is static too.
-        ( list.all_true(set_tree234.contains(!.StaticVars), ArgVars) ->
+        ( if list.all_true(set_tree234.contains(!.StaticVars), ArgVars) then
             HowToConstruct = construct_statically,
             set_tree234.insert(Var, !StaticVars),
             % This is a minor optimization to improve the efficiency of the
             % compiler: don't bother allocating memory if we don't need to.
-            ( HowToConstruct = HowToConstruct0 ->
+            ( if HowToConstruct = HowToConstruct0 then
                 Unification = Unification0
-            ;
+            else
                 Unification = construct(Var, ConsId, ArgVars, ArgModes,
                     HowToConstruct, Unique, SubInfo)
             )
-        ;
+        else
             Unification = Unification0
         )
     ;
         Unification0 = deconstruct(_Var, _ConsId, _ArgVars, _UniModes,
             _CanFail, _CanCGC),
         Unification = Unification0
-%       (
+%       ( if
 %           % if the variable being deconstructed is static,
 %           % and the deconstruction cannot fail,
 %           % then the newly extracted argument variables
@@ -184,9 +186,9 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
 %           % (XXX is the "cannot fail" bit really necessary?)
 %           map.search(StaticVars0, Var, Data),
 %           CanFail = cannot_fail
-%       ->
+%       then
 %           XXX insert ArgVars into StaticVars0
-%       ;
+%       else
 %           true
 %       )
     ;
@@ -194,9 +196,9 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
         Unification = Unification0,
         % If the variable being assigned from is static, then the variable
         % being assigned to is static too.
-        ( set_tree234.contains(!.StaticVars, SourceVar) ->
+        ( if set_tree234.contains(!.StaticVars, SourceVar) then
             set_tree234.insert(TargetVar, !StaticVars)
-        ;
+        else
             true
         )
     ;

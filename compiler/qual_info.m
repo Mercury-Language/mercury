@@ -228,17 +228,17 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 update_var_types(Var, Type, Context, !VarTypes, !Specs) :-
-    ( search_var_type(!.VarTypes, Var, Type0) ->
-        ( Type = Type0 ->
+    ( if search_var_type(!.VarTypes, Var, Type0) then
+        ( if Type = Type0 then
             true
-        ;
+        else
             Pieces = [words("Error: explicit type qualification"),
                 words("does not match prior qualification."), nl],
             Msg = simple_msg(Context, [always(Pieces)]),
             Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
             !:Specs = [Spec | !.Specs]
         )
-    ;
+    else
         add_var_type(Var, Type, !VarTypes)
     ).
 
@@ -270,11 +270,11 @@ record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
 :- pred record_used_functor(cons_id::in, qual_info::in, qual_info::out) is det.
 
 record_used_functor(ConsId, !QualInfo) :-
-    ( ConsId = cons(SymName, Arity, _) ->
+    ( if ConsId = cons(SymName, Arity, _) then
         Id = item_name(SymName, Arity),
         apply_to_recompilation_info(record_used_item(functor_item, Id, Id),
             !QualInfo)
-    ;
+    else
         true
     ).
 

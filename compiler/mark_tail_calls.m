@@ -116,9 +116,11 @@ mark_tail_calls(Feature, ModuleInfo, proc(PredId, ProcId), PredInfo,
      list(maybe(prog_var))::out) is det.
 
 find_maybe_output_args(ModuleInfo, Types, Modes, Vars, Outputs) :-
-    ( find_maybe_output_args_2(ModuleInfo, Types, Modes, Vars, OutputsPrime) ->
+    ( if
+        find_maybe_output_args_2(ModuleInfo, Types, Modes, Vars, OutputsPrime)
+    then
         Outputs = OutputsPrime
-    ;
+    else
         unexpected($module, $pred, "list length mismatch")
     ).
 
@@ -187,11 +189,11 @@ mark_tail_calls_in_goal(Info, Outputs0, MaybeOutputs, Goal0, Goal,
         Goal = Goal0,
         ModuleInfo = Info ^ mtc_module,
         VarTypes = Info ^ mtc_vartypes,
-        ( var_is_of_dummy_type(ModuleInfo, VarTypes, LHS) ->
+        ( if var_is_of_dummy_type(ModuleInfo, VarTypes, LHS) then
             % Unifications involving dummy type variables are no-ops,
             % and do not inhibit a preceding tail call.
             MaybeOutputs = yes(Outputs0)
-        ;
+        else
             (
                 ( Unify0 = construct(_, _, _, _, _, _, _)
                 ; Unify0 = deconstruct(_, _, _, _, _, _)
@@ -201,9 +203,11 @@ mark_tail_calls_in_goal(Info, Outputs0, MaybeOutputs, Goal0, Goal,
                 MaybeOutputs = no
             ;
                 Unify0 = assign(ToVar, FromVar),
-                ( is_output_arg_rename(ToVar, FromVar, Outputs0, Outputs) ->
+                ( if
+                    is_output_arg_rename(ToVar, FromVar, Outputs0, Outputs)
+                then
                     MaybeOutputs = yes(Outputs)
-                ;
+                else
                     MaybeOutputs = no
                 )
             )
@@ -214,17 +218,17 @@ mark_tail_calls_in_goal(Info, Outputs0, MaybeOutputs, Goal0, Goal,
         MaybeOutputs = no,
         PredId = Info ^ mtc_pred_id,
         ProcId = Info ^ mtc_proc_id,
-        (
+        ( if
             CallPredId = PredId,
             CallProcId = ProcId,
             match_output_args(Outputs0, Args),
             Builtin = not_builtin
-        ->
+        then
             Feature = Info ^ mtc_feature,
             goal_info_add_feature(Feature, GoalInfo0, GoalInfo),
             Goal = hlds_goal(GoalExpr0, GoalInfo),
             !:FoundTailCalls = found_tail_calls
-        ;
+        else
             Goal = Goal0
         )
     ;
