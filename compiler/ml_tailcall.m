@@ -342,15 +342,18 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings, AtTailAfter0,
         AtTailBefore = not_at_tail_have_not_seen_reccall,
         Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
     ;
-        % XXX: Maybe not true for some of these.
-        ( Stmt0 = ml_stmt_label(_)
-        ; Stmt0 = ml_stmt_goto(_)
+        ( Stmt0 = ml_stmt_goto(_)
         ; Stmt0 = ml_stmt_computed_goto(_, _)
         ; Stmt0 = ml_stmt_do_commit(_Ref)
         ; Stmt0 = ml_stmt_atomic(_)
         ),
         Warnings = [],
         not_at_tail(AtTailAfter0, AtTailBefore),
+        Stmt = Stmt0
+    ;
+        Stmt0 = ml_stmt_label(_),
+        Warnings = [],
+        AtTailBefore = AtTailAfter0,
         Stmt = Stmt0
     ;
         Stmt0 = ml_stmt_return(ReturnVals),
