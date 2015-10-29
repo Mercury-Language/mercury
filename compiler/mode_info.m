@@ -93,6 +93,10 @@
 
 :- type mode_info.
 
+:- type maybe_have_auto_init_var
+    --->    have_no_auto_init_var
+    ;       have_auto_init_var.
+
 :- type debug_flags
     --->    debug_flags(
                 % The value --debug-modes-verbose.
@@ -177,6 +181,8 @@
 :- pred mode_info_get_varset(mode_info::in, prog_varset::out) is det.
 :- pred mode_info_get_instvarset(mode_info::in, inst_varset::out) is det.
 :- pred mode_info_get_var_types(mode_info::in, vartypes::out) is det.
+:- pred mode_info_get_have_auto_init_var(mode_info::in,
+    maybe_have_auto_init_var::out) is det.
 :- pred mode_info_get_delay_info(mode_info::in, delay_info::out) is det.
 :- pred mode_info_get_live_vars(mode_info::in, bag(prog_var)::out) is det.
 :- pred mode_info_get_nondet_live_vars(mode_info::in, bag(prog_var)::out)
@@ -350,6 +356,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -374,6 +381,10 @@
 
                 % The types of the variables.
                 msi_vartypes                :: vartypes,
+
+                % Do any of the variables in msi_vartypes have a type
+                % for which type_is_solver_type_with_auto_init succeeds?
+                msi_have_auto_init_var      :: maybe_have_auto_init_var,
 
                 % Is mode debugging of this procedure enabled? If yes,
                 % is verbose mode debugging enabled, is minimal mode debugging
@@ -533,6 +544,8 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
+    vartypes_types(VarTypes, AllTypes),
+    do_we_have_auto_init_var(ModuleInfo, AllTypes, HaveAutoInitVar),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
 
     bag.from_sorted_list(set_of_var.to_sorted_list(LiveVars), LiveVarsBag),
@@ -551,7 +564,8 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     MakeGroundTermsUnique = do_not_make_ground_terms_unique,
     InDuplForSwitch = not_in_dupl_for_switch,
 
-    ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes, Debug,
+    ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes,
+        HaveAutoInitVar, Debug,
         LockedVars, LiveVarsBag, InstVarSet, ParallelVars, HowToCheck,
         MayChangeProc, MayInitSolverVars, LastCheckpointInstMap, Changed,
         CheckingExtraGoals, InstMap0, HeadInstVars, WarningList,
@@ -566,6 +580,17 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
 
     ModeInfo = mode_info(ModuleInfo, InstMap0, DelayInfo, ErrorList,
         ModeContext, Context, NondetLiveVarsBag, ModeSubInfo).
+
+:- pred do_we_have_auto_init_var(module_info::in, list(mer_type)::in,
+    maybe_have_auto_init_var::out) is det.
+
+do_we_have_auto_init_var(_, [], have_no_auto_init_var).
+do_we_have_auto_init_var(ModuleInfo, [Type | Types], HaveAutoInitVar) :-
+    ( if type_is_solver_type_with_auto_init(ModuleInfo, Type) then
+        HaveAutoInitVar = have_auto_init_var
+    else
+        do_we_have_auto_init_var(ModuleInfo, Types, HaveAutoInitVar)
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -591,6 +616,8 @@ mode_info_get_varset(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_varset.
 mode_info_get_var_types(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_vartypes.
+mode_info_get_have_auto_init_var(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_have_auto_init_var.
 mode_info_get_context(MI, X) :-
     X = MI ^ mi_context.
 mode_info_get_mode_context(MI, X) :-

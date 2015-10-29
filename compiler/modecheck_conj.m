@@ -316,14 +316,25 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
         % There are no unscheduled goals, so we don't need to do anything.
 
         DelayedGoals0 = [],
-        DelayedGoals  = [],
-        Goals         = []
+        DelayedGoals = [],
+        Goals = []
     ;
         % There are some unscheduled goals. See if allowing extra
         % initialisation calls (for a single goal) makes a difference.
 
         DelayedGoals0 = [_ | _],
         ( if
+            % At the end of the condition, we require that all variables
+            % in CandidateInitVars have a solver type with auto init.
+            % However, in some cases, just computing CandidateInitVars
+            % can take a very long time, and there is no point in doing so
+            % if the final test cannot succeed. So in the *very* common case
+            % where the procedure we are analysing has no auto init solver vars
+            % *at all*, we don't have to compute CandidateInitVars; we can just
+            % fail right now.
+            mode_info_get_have_auto_init_var(!.ModeInfo, have_auto_init_var),
+            mode_info_solver_init_is_supported(!.ModeInfo),
+
             % Extract the HLDS goals from the delayed goals.
             Goals0 = list.map(hlds_goal_from_delayed_goal, DelayedGoals0),
 
@@ -341,8 +352,12 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
                     CandidateInitVars)
             ),
 
-            % And verify that all of these vars are solver type vars
-            % (and can therefore be initialised.)
+            % And verify that all of these vars are solver type vars,
+            % and can therefore be initialised. (Since the test at the
+            % top of this condition had to succeed to get here, we know that
+            % type_is_solver_type_with_auto_init will succeed for *some*
+            % variable in the current procedure, but we don't yet know
+            % whether it will succeed for one of the CandidateInitVars).
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             mode_info_get_var_types(!.ModeInfo, VarTypes),
             all [Var] (
@@ -352,8 +367,7 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
                     lookup_var_type(VarTypes, Var, VarType),
                     type_is_solver_type_with_auto_init(ModuleInfo, VarType)
                 )
-            ),
-            mode_info_solver_init_is_supported(!.ModeInfo)
+            )
         then
             % Construct the inferred initialisation goals
             % and try scheduling again.
@@ -378,7 +392,7 @@ modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
         else
             % We couldn't identify a deterministic solution.
             DelayedGoals = DelayedGoals0,
-            Goals        = []
+            Goals = []
         )
     ).
 
@@ -436,7 +450,7 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
     (
         % A var/var unification.
         GoalExpr = unify(X, RHS, _, _, _),
-        RHS  = rhs_var(Y),
+        RHS = rhs_var(Y),
         ( if set_of_var.member(!.NonFree, X) then
             not set_of_var.member(!.NonFree, Y),
             % It is an assignment from X to Y.
@@ -458,7 +472,7 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         % A var/functor unification, which can only be deterministic
         % if it is a construction.
         GoalExpr = unify(X, RHS, _, _, _),
-        RHS  = rhs_functor(_, _, Args),
+        RHS = rhs_functor(_, _, Args),
 
         % If this is a construction then X must be free.
         not set_of_var.member(!.NonFree, X),
@@ -472,7 +486,7 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         % A var/lambda unification, which can only be deterministic if it is
         % a construction.
         GoalExpr = unify(X, RHS, _, _, _),
-        RHS  = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, _),
 
         % If this is a construction then X must be free.
         not set_of_var.member(!.NonFree, X),
@@ -610,8 +624,8 @@ modecheck_delayed_goals_eager(ConjType, DelayedGoals0, DelayedGoals, Goals,
     (
         % There are no unscheduled goals, so we don't need to do anything.
         DelayedGoals0 = [],
-        DelayedGoals  = [],
-        Goals         = []
+        DelayedGoals = [],
+        Goals = []
     ;
         % There are some unscheduled goals. See if allowing extra
         % initialisation calls (for a single goal) makes a difference.
