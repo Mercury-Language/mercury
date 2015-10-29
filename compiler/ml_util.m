@@ -35,10 +35,15 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Return `true' if the statement is a tail call which can be optimized
-    % into a jump back to the start of the function.
+    % True if the statement is a directly recursive tail call which can be
+    % optimized into a jump back to the start of the function.
     %
 :- pred can_optimize_tailcall(mlds_qualified_entity_name::in, mlds_stmt::in)
+    is semidet.
+
+    % True if the statement is a directly-recursive call.
+    %
+:- pred call_is_recursive(mlds_qualified_entity_name::in, mlds_stmt::in)
     is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -200,10 +205,21 @@ defns_contain_main([Defn | Defns]) :-
     ).
 
 can_optimize_tailcall(Name, Call) :-
-    Call = ml_stmt_call(_Signature, FuncRval, MaybeObject, _CallArgs,
+    Call = ml_stmt_call(_Signature, _FuncRval, MaybeObject, _CallArgs,
         _Results, CallKind),
     % Check if this call can be optimized as a tail call.
     ( CallKind = tail_call ; CallKind = no_return_call ),
+
+    % In C++, `this' is a constant, so our usual technique of assigning
+    % the arguments won't work if it is a member function. Thus we don't do
+    % this optimization if we're optimizing a member function call.
+    MaybeObject = no,
+
+    call_is_recursive(Name, Call).
+
+call_is_recursive(Name, Call) :-
+    Call = ml_stmt_call(_Signature, FuncRval, _MaybeObject, _CallArgs,
+        _Results, _CallKind),
 
     % Check if the callee address is the same as the caller.
     FuncRval = ml_const(mlconst_code_addr(CodeAddr)),
@@ -221,12 +237,7 @@ can_optimize_tailcall(Name, Call) :-
     Name = qual(ModuleName, module_qual, FuncName),
 
     % Check that the PredLabel, ProcId, and MaybeSeqNum match.
-    FuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, _),
-
-    % In C++, `this' is a constant, so our usual technique of assigning
-    % the arguments won't work if it is a member function. Thus we don't do
-    % this optimization if we're optimizing a member function call.
-    MaybeObject = no.
+    FuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, _).
 
 %-----------------------------------------------------------------------------%
 %

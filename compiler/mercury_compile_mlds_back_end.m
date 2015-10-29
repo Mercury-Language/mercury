@@ -145,29 +145,13 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     (
         OptimizeTailCalls = yes,
         maybe_write_string(Verbose, "% Detecting tail calls...\n", !IO),
-        ml_mark_tailcalls(!MLDS, !IO),
+        ml_mark_tailcalls(Globals, !MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         OptimizeTailCalls = no
     ),
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 20, "tailcalls", !IO),
-
-    % Warning about non-tail calls must come after detection of tail calls.
-    globals.lookup_bool_option(Globals, warn_non_tail_recursion,
-        WarnTailCalls),
-    ( if
-        OptimizeTailCalls = yes,
-        WarnTailCalls = yes
-    then
-        maybe_write_string(Verbose,
-            "% Warning about non-tail recursive calls...\n", !IO),
-        ml_warn_tailcalls(Globals, !.MLDS, !IO),
-        maybe_write_string(Verbose, "% done.\n", !IO)
-    else
-        true
-    ),
-    maybe_report_stats(Stats, !IO),
 
     % Run the ml_optimize pass before ml_elim_nested, so that we eliminate
     % as many local variables as possible before the ml_elim_nested
