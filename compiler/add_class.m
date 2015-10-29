@@ -12,7 +12,6 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.qual_info.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -21,14 +20,11 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred module_add_class_defn(item_typeclass_info::in,
-    typeclass_status::in, need_qualifier::in,
+:- pred add_typeclass_defn(sec_item(item_typeclass_info)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred module_add_instance_defn(module_name::in, list(prog_constraint)::in,
-    sym_name::in, list(mer_type)::in, list(mer_type)::in, instance_body::in,
-    tvarset::in, instance_status::in, prog_context::in,
+:- pred add_instance_defn(ims_item(item_instance_info)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -59,6 +55,8 @@
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.pred_table.
 :- import_module hlds.vartypes.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
@@ -72,8 +70,12 @@
 :- import_module set.
 :- import_module varset.
 
-module_add_class_defn(ItemTypeClassInfo, TypeClassStatus0, NeedQual,
-        !ModuleInfo, !Specs) :-
+add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
+    SectionItem = sec_item(SectionInfo, ItemTypeClassInfo),
+    SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
+    item_mercury_status_to_typeclass_status(ItemMercuryStatus,
+        TypeClassStatus0),
+
     ItemTypeClassInfo = item_typeclass_info(ClassName, ClassParamVars,
         Constraints, FunDeps, Interface, VarSet, Context, _SeqNum),
     module_info_get_class_table(!.ModuleInfo, Classes0),
@@ -469,9 +471,26 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
     ),
     check_method_modes(Methods, !PredProcIds, !ModuleInfo, !Specs).
 
-module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
-        Types, OriginalTypes, InstanceBody0, VarSet, InstanceStatus, Context,
-        !ModuleInfo, !Specs) :-
+%-----------------------------------------------------------------------------%
+
+add_instance_defn(StatusItem, !ModuleInfo, !Specs) :-
+    StatusItem = ims_item(ItemMercuryStatus, ItemInstanceInfo),
+    ItemInstanceInfo = item_instance_info(ClassName, Types, OriginalTypes,
+        Constraints, InstanceBody0, VarSet, InstanceModuleName,
+        Context, _SeqNum),
+    item_mercury_status_to_instance_status(ItemMercuryStatus, InstanceStatus0),
+    (
+        InstanceBody0 = instance_body_abstract,
+        % XXX This can make the status abstract_imported even if the instance
+        % is NOT imported.
+        % When this is fixed, please undo the workaround for this bug
+        % in instance_used_modules in unused_imports.m.
+        instance_make_status_abstract(InstanceStatus0, InstanceStatus)
+    ;
+        InstanceBody0 = instance_body_concrete(_),
+        InstanceStatus = InstanceStatus0
+    ),
+
     module_info_get_class_table(!.ModuleInfo, Classes),
     module_info_get_instance_table(!.ModuleInfo, InstanceTable0),
     list.length(Types, ClassArity),

@@ -36,7 +36,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
-:- import_module assoc_list.
 :- import_module int.
 :- import_module list.
 :- import_module map.

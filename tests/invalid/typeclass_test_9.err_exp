@@ -1,3 +1,18 @@
+typeclass_test_9.m:007: In declaration for predicate `typeclass_test_9.p'/0:
+typeclass_test_9.m:007:   error in type class constraints: type variable `T'
+typeclass_test_9.m:007:   occurs in the constraints, but is not determined by
+typeclass_test_9.m:007:   the predicate's argument types.
+typeclass_test_9.m:009: In declaration for predicate `typeclass_test_9.q'/0:
+typeclass_test_9.m:009:   error in type class constraints: type variable `T'
+typeclass_test_9.m:009:   occurs in the constraints, but is not determined by
+typeclass_test_9.m:009:   the predicate's argument types.
 typeclass_test_9.m:022: Error: multiply defined (or overlapping) instance
 typeclass_test_9.m:022:   declarations for class `typeclass_test_9.foo'/1.
 typeclass_test_9.m:019: Previous instance declaration was here.
+typeclass_test_9.m:025: In instance declaration for `typeclass_test_9.bar'/1:
+typeclass_test_9.m:025:   the type class has no predicate method named
+typeclass_test_9.m:025:   `typeclass_test_9.p'/0.
+typeclass_test_9.m:028: In instance declaration for `typeclass_test_9.baz'/1:
+typeclass_test_9.m:028:   the type class has no predicate method named
+typeclass_test_9.m:028:   `typeclass_test_9.r'/0.
+For more information, recompile with `-E'.

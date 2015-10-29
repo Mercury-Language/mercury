@@ -1787,6 +1787,12 @@
     list(T)::in(list_skel(I =< ground))) =
     (list(T)::out(list_skel(I =< ground))) is det.
 
+    % This is the same as the usual forward mode of reverse, but preserves
+    % any extra information available in the input argument.
+    %
+:- func inst_preserving_reverse(list(T)::in(list_skel(I =< ground))) =
+    (list(T)::out(list_skel(I =< ground))) is det.
+
 :- import_module term.      % for var/1.
 
 :- pragma type_spec(list.merge(in, in, out), T = var(_)).
@@ -3260,6 +3266,17 @@ list.det_tail([_ | Xs]) = Xs.
 inst_preserving_append([], L) = L.
 inst_preserving_append([H | T], L) = [H | NT] :-
     inst_preserving_append(T, L) = NT.
+
+inst_preserving_reverse(Xs) = Ys :-
+    inst_preserving_reverse_prepend(Xs, [], Ys).
+
+:- pred inst_preserving_reverse_prepend(list(T)::in(list_skel(I =< ground)),
+    list(T)::in(list_skel(I =< ground)), list(T)::out(list_skel(I =< ground)))
+    is det.
+
+inst_preserving_reverse_prepend([], L, L).
+inst_preserving_reverse_prepend([X | Xs], L0, L) :-
+    inst_preserving_reverse_prepend(Xs, [X | L0], L).
 
 %---------------------------------------------------------------------------%
 

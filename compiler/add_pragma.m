@@ -20,13 +20,59 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_pass_2_pragma(item_pragma_info::in,
-    item_mercury_status::in, module_info::in, module_info::out,
+:- inst item_pragma_info(I)     % XXX for item_pragma_info/0
+    --->    item_pragma_info(I, ground, ground, ground).
+
+:- inst pragma_pass_2           % XXX for pragma_type/0
+    --->    pragma_foreign_decl(ground)
+    ;       pragma_foreign_code(ground)
+    ;       pragma_foreign_import_module(ground)
+    ;       pragma_external_proc(ground)
+    ;       pragma_inline(ground)
+    ;       pragma_no_inline(ground)
+    ;       pragma_unused_args(ground)
+    ;       pragma_exceptions(ground)
+    ;       pragma_trailing_info(ground)
+    ;       pragma_mm_tabling_info(ground)
+    ;       pragma_obsolete(ground)
+    ;       pragma_no_detism_warning(ground)
+    ;       pragma_promise_eqv_clauses(ground)
+    ;       pragma_promise_pure(ground)
+    ;       pragma_promise_semipure(ground)
+    ;       pragma_terminates(ground)
+    ;       pragma_does_not_terminate(ground)
+    ;       pragma_check_termination(ground)
+    ;       pragma_mode_check_clauses(ground)
+    ;       pragma_require_feature_set(ground)
+    ;       pragma_foreign_enum(ground)
+    ;       pragma_foreign_export_enum(ground).
+
+:- inst pragma_pass_3           % XXX for pragma_type/0
+    --->    pragma_foreign_proc(ground)
+    ;       pragma_type_spec(ground)
+    ;       pragma_tabled(ground)
+    ;       pragma_fact_table(ground)
+    ;       pragma_reserve_tag(ground)
+    ;       pragma_oisu(ground)
+    ;       pragma_foreign_proc_export(ground)
+    ;       pragma_termination_info(ground)
+    ;       pragma_termination2_info(ground)
+    ;       pragma_structure_sharing(ground)
+    ;       pragma_structure_reuse(ground).
+
+:- inst ims_pragma_2 == ims_item(item_pragma_info(pragma_pass_2)).
+:- inst ims_pragma_3 == ims_item(item_pragma_info(pragma_pass_3)).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pass_2_pragmas(
+    list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_2)),
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_pass_3_pragma(item_pragma_info::in,
-    item_mercury_status::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+:- pred add_pass_3_pragmas(
+    list(ims_item(item_pragma_info))::in(list_skel(ims_pragma_3)),
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -69,8 +115,26 @@
 
 %-----------------------------------------------------------------------------%
 
-add_pass_2_pragma(ItemPragma, ItemMercuryStatus, !ModuleInfo, !Specs) :-
-    ItemPragma = item_pragma_info(Pragma, MaybeAttrs, Context, _SeqNum),
+add_pass_2_pragmas([], !ModuleInfo, !Specs).
+add_pass_2_pragmas([SectionItem | SectionItems], !ModuleInfo, !Specs) :-
+    add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs),
+    add_pass_2_pragmas(SectionItems, !ModuleInfo, !Specs).
+
+add_pass_3_pragmas([], !ModuleInfo, !QualInfo, !Specs).
+add_pass_3_pragmas([SectionItem | SectionItems],
+        !ModuleInfo, !QualInfo, !Specs) :-
+    add_pass_3_pragma(SectionItem, !ModuleInfo, !QualInfo, !Specs),
+    add_pass_3_pragmas(SectionItems, !ModuleInfo, !QualInfo, !Specs).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pass_2_pragma(ims_item(item_pragma_info)::in(ims_pragma_2),
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
+    SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
+    ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs, Context, _SeqNum),
     % Check for invalid pragmas in the `interface' section.
     Allowed = pragma_allowed_in_interface(Pragma),
     (
@@ -316,33 +380,6 @@ add_pass_2_pragma(ItemPragma, ItemMercuryStatus, !ModuleInfo, !Specs) :-
         item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus),
         add_pragma_foreign_enum(FEInfo, TypeStatus, Context,
             !ModuleInfo, !Specs)
-    ;
-        % Ignore these pragmas in pass 2; we will handle them in pass 3,
-        % when we process clauses.
-        ( Pragma = pragma_foreign_proc(_)
-        ; Pragma = pragma_type_spec(_)
-        ; Pragma = pragma_tabled(_)
-        ; Pragma = pragma_fact_table(_)
-        )
-    ;
-        % Ignore these pragmas in pass 2; we will handle them in pass 3,
-        % after we have added all the types.
-        ( Pragma = pragma_reserve_tag(_)
-        ; Pragma = pragma_oisu(_)
-        )
-    ;
-        % Ignore these pragmas in pass 2; we will handle them in pass 3,
-        % after default function modes have been added.
-        ( Pragma = pragma_foreign_proc_export(_)
-        ; Pragma = pragma_termination_info(_)
-        ; Pragma = pragma_termination2_info(_)
-        )
-    ;
-        % Ignore these pragmas in pass 2; we will handle them in pass 3.
-        % XXX Document the reason why we handle them then.
-        ( Pragma = pragma_structure_sharing(_)
-        ; Pragma = pragma_structure_reuse(_)
-        )
     ).
 
 %-----------------------------------------------------------------------------%
@@ -824,9 +861,13 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-add_pass_3_pragma(ItemPragma, ItemMercuryStatus,
-        !ModuleInfo, !QualInfo, !Specs) :-
-    ItemPragma = item_pragma_info(Pragma, MaybeAttrs, Context, SeqNum),
+:- pred add_pass_3_pragma(ims_item(item_pragma_info)::in(ims_pragma_3),
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pass_3_pragma(SectionItem, !ModuleInfo, !QualInfo, !Specs) :-
+    SectionItem = ims_item(ItemMercuryStatus, ItemPragmaInfo),
+    ItemPragmaInfo = item_pragma_info(Pragma, MaybeAttrs, Context, SeqNum),
     (
         Pragma = pragma_foreign_proc(FPInfo),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
@@ -885,32 +926,6 @@ add_pass_3_pragma(ItemPragma, ItemMercuryStatus,
     ;
         Pragma = pragma_structure_reuse(ReuseInfo),
         add_pragma_structure_reuse(ReuseInfo, Context, !ModuleInfo, !Specs)
-    ;
-        % Ignore these kinds of pragmas in pass 3, since they have
-        % already been handled earlier, in pass 2, or even earlier.
-        ( Pragma = pragma_foreign_decl(_)
-        ; Pragma = pragma_foreign_code(_)
-        ; Pragma = pragma_foreign_import_module(_)
-        ; Pragma = pragma_foreign_export_enum(_)
-        ; Pragma = pragma_foreign_enum(_)
-        ; Pragma = pragma_external_proc(_)
-        ; Pragma = pragma_inline(_)
-        ; Pragma = pragma_no_inline(_)
-        ; Pragma = pragma_unused_args(_)
-        ; Pragma = pragma_exceptions(_)
-        ; Pragma = pragma_trailing_info(_)
-        ; Pragma = pragma_mm_tabling_info(_)
-        ; Pragma = pragma_obsolete(_)
-        ; Pragma = pragma_no_detism_warning(_)
-        ; Pragma = pragma_promise_eqv_clauses(_)
-        ; Pragma = pragma_promise_pure(_)
-        ; Pragma = pragma_promise_semipure(_)
-        ; Pragma = pragma_terminates(_)
-        ; Pragma = pragma_does_not_terminate(_)
-        ; Pragma = pragma_check_termination(_)
-        ; Pragma = pragma_mode_check_clauses(_)
-        ; Pragma = pragma_require_feature_set(_)
-        )
     ).
 
 %---------------------------------------------------------------------------%

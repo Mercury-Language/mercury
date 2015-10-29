@@ -19,6 +19,17 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type solver_aux_pred_info
+    --->    solver_aux_pred_info(
+                sym_name,
+                list(type_param),
+                tvarset,
+                solver_type_details,
+                prog_context,
+                item_mercury_status,
+                need_qualifier
+            ).
+
     % A solver type t defined with
     %
     % :- solver type st
@@ -39,15 +50,18 @@
     % :- impure func 'representation to any st'(rt::in(ai)) =
     %           (st::out(any)) is det.
     %
-    % These predicates respectively declare and define these aux predicates.
-
-:- pred add_solver_type_aux_pred_decls(tvarset::in, sym_name::in,
-    list(type_param)::in, solver_type_details::in, prog_context::in,
-    pred_status::in, need_qualifier::in, module_info::in, module_info::out,
+    % Declare these auxiliary predicates. We need the declarations available
+    % whether the solver type is defined in this module or not.
+    %
+:- pred add_solver_type_aux_pred_decls(solver_aux_pred_info::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_solver_type_aux_pred_defns(sym_name::in, list(type_param)::in,
-    solver_type_details::in, prog_context::in, pred_status::in,
+    % Define the auxiliary predicates above IF the solver type is defined
+    % in this module; we don't want them to be doubly defined if the solver
+    % type is defined in another module.
+    %
+:- pred add_solver_type_aux_pred_defns_if_local(solver_aux_pred_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -68,9 +82,11 @@
 
 %-----------------------------------------------------------------------------%
 
-add_solver_type_aux_pred_decls(TVarSet, TypeSymName, TypeParams,
-        SolverTypeDetails, Context, PredStatus, NeedQual,
-        !ModuleInfo, !Specs) :-
+add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
+    SolverAuxPredInfo = solver_aux_pred_info(TypeSymName, TypeParams, TVarSet,
+        SolverTypeDetails, Context, ItemMercuryStatus, NeedQual),
+    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+
     % XXX kind inference:
     % We set the kinds to `star'.  This will be different when we have a
     % kind system.
@@ -155,8 +171,28 @@ add_solver_type_aux_pred_decls(TVarSet, TypeSymName, TypeParams,
 
 %-----------------------------------------------------------------------------%
 
-add_solver_type_aux_pred_defns(TypeSymName, TypeParams, SolverTypeDetails,
-        Context, PredStatus, !ModuleInfo, !QualInfo, !Specs) :-
+add_solver_type_aux_pred_defns_if_local(SolverAuxPredInfo,
+        !ModuleInfo, !QualInfo, !Specs) :-
+    SolverAuxPredInfo = solver_aux_pred_info(_TypeSymName, _TypeParams,
+        _TVarSet, _SolverTypeDetails, _Context, ItemMercuryStatus, _NeedQual),
+    (
+        ItemMercuryStatus = item_defined_in_this_module(_),
+        add_solver_type_aux_pred_defns(SolverAuxPredInfo,
+            !ModuleInfo, !QualInfo, !Specs)
+    ;
+        ItemMercuryStatus = item_defined_in_other_module(_)
+    ).
+
+:- pred add_solver_type_aux_pred_defns(solver_aux_pred_info::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_solver_type_aux_pred_defns(SolverAuxPredInfo,
+        !ModuleInfo, !QualInfo, !Specs) :-
+    SolverAuxPredInfo = solver_aux_pred_info(TypeSymName, TypeParams,
+        _TVarSet, SolverTypeDetails, Context, ItemMercuryStatus, _NeedQual),
+    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+
     Arity = length(TypeParams),
 
     AnyInst = SolverTypeDetails ^ std_any_inst,

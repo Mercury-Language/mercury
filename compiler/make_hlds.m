@@ -54,6 +54,25 @@
     --->    did_not_find_invalid_inst_or_mode
     ;       found_invalid_inst_or_mode.
 
+:- type ims_list(T) == list(ims_item(T)).
+:- type ims_item(T)
+    --->    ims_item(item_mercury_status, T).
+
+:- type sec_list(T) == list(sec_item(T)).
+:- type sec_item(T)
+    --->    sec_item(sec_info, T).
+:- type sec_info
+    --->    sec_info(item_mercury_status, need_qualifier).
+
+:- inst ims_item(I)             % XXX for ims_item/1
+    --->    ims_item(ground, I).
+:- inst sec_item(I)             % XXX for sec_item/1
+    --->    sec_item(ground, I).
+
+:- pred wrap_with_section_info(sec_info::in, T::in, sec_item(T)::out) is det.
+
+%-----------------------------------------------------------------------------%
+
     % parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName,
     %   MQInfo, TypeEqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes,
     %   HLDS, Specs):
@@ -153,6 +172,11 @@
 %-----------------------------------------------------------------------------%
 
 :- type make_hlds_qual_info == hlds.make_hlds.qual_info.qual_info.
+
+wrap_with_section_info(SectionInfo, Item, SectionItem) :-
+    SectionItem = sec_item(SectionInfo, Item).
+
+%-----------------------------------------------------------------------------%
 
 parse_tree_to_hlds(AugCompilationUnit, Globals, DumpBaseFileName,
         MQInfo0, TypeEqvMap, UsedModules, QualInfo,

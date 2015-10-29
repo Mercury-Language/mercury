@@ -649,7 +649,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         % subtract the methods we have successfully processed from any
         % initial InstanceMethods.
         Context = !.InstanceDefn ^ instdefn_context,
-        check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds,
+        check_for_unknown_methods(InstanceMethods, ClassId, ClassPredIds,
             Context, !.ModuleInfo, !Specs)
     ).
 
@@ -657,28 +657,28 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
     % any of the methods from the class interface. If so, add an appropriate
     % error message to the list of error messages.
     %
-:- pred check_for_bogus_methods(list(instance_method)::in, class_id::in,
+:- pred check_for_unknown_methods(list(instance_method)::in, class_id::in,
     list(pred_id)::in, prog_context::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
+check_for_unknown_methods(InstanceMethods, ClassId, ClassPredIds, Context,
         ModuleInfo, !Specs) :-
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    list.filter(method_is_ok(PredTable, ClassPredIds), InstanceMethods,
-        _OKInstanceMethods, BogusInstanceMethods),
+    list.filter(method_is_known(PredTable, ClassPredIds), InstanceMethods,
+        _KnownInstanceMethods, UnknownInstanceMethods),
     (
-        BogusInstanceMethods = []
+        UnknownInstanceMethods = []
     ;
-        BogusInstanceMethods = [_ | _],
-        report_bogus_instance_methods(ClassId, BogusInstanceMethods, Context,
-            !Specs)
+        UnknownInstanceMethods = [HeadMethod | TailMethods],
+        report_unknown_instance_methods(ClassId, HeadMethod, TailMethods,
+            Context, !Specs)
     ).
 
-:- pred method_is_ok(predicate_table::in, list(pred_id)::in,
+:- pred method_is_known(predicate_table::in, list(pred_id)::in,
     instance_method::in) is semidet.
 
-method_is_ok(PredTable, ClassPredIds, Method) :-
-    % Find this method definition's p/f, name, arity
+method_is_known(PredTable, ClassPredIds, Method) :-
+    % Find this method definition's p/f, name, arity.
     Method = instance_method(MethodPredOrFunc, MethodName, _MethodDefn,
         MethodArity, _Context),
     % Search for pred_ids matching that p/f, name, arity, and succeed
@@ -2141,8 +2141,7 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
         InstanceTypes),
 
     Pieces = [words("In instance declaration for"),
-        words("`" ++ ClassNameString ++
-            "(" ++ InstanceTypesString ++ ")'"),
+        words("`" ++ ClassNameString ++ "(" ++ InstanceTypesString ++ ")'"),
         suffix(":"),
         words("no implementation for type class"), p_or_f(PredOrFunc),
         words("method"), sym_name_and_arity(MethodName / Arity),
@@ -2153,29 +2152,55 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
 
 %---------------------------------------------------------------------------%
 
-:- pred report_bogus_instance_methods(class_id::in, list(instance_method)::in,
+:- pred report_unknown_instance_methods(class_id::in,
+    instance_method::in, list(instance_method)::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_bogus_instance_methods(ClassId, BogusInstanceMethods, Context,
+report_unknown_instance_methods(ClassId, HeadMethod, TailMethods, Context,
         !Specs) :-
     ClassId = class_id(ClassName, ClassArity),
-    ErrorMsgStart =  [words("In instance declaration for"),
-        sym_name_and_arity(ClassName / ClassArity), suffix(":"),
-        words("incorrect method name(s):")],
-    ErrorMsgBody0 = list.map(format_method_name, BogusInstanceMethods),
-    ErrorMsgBody1 = list.condense(ErrorMsgBody0),
-    ErrorMsgBody = list.append(ErrorMsgBody1, [suffix(".")]),
-    Pieces = ErrorMsgStart ++ ErrorMsgBody,
+    (
+        TailMethods = [],
+        HeadMethod = instance_method(HeadPredOrFunc, HeadMethodName, _Defn,
+            HeadArity, _Context),
+        adjust_func_arity(HeadPredOrFunc, HeadArity, HeadPredArity),
+        Pieces = [words("In instance declaration for"),
+            sym_name_and_arity(ClassName / ClassArity), suffix(":"), nl,
+            words("the type class has no"),
+            p_or_f(HeadPredOrFunc), words("method named"),
+            sym_name_and_arity(HeadMethodName / HeadPredArity),
+            suffix("."), nl]
+    ;
+        TailMethods = [_ | _],
+        Pieces1 = [words("In instance declaration for"),
+            sym_name_and_arity(ClassName / ClassArity), suffix(":"),
+            words("the type class has none of these methods:"), nl],
+        format_method_names(HeadMethod, TailMethods, Pieces2),
+        Pieces = Pieces1 ++ Pieces2
+    ),
+
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-:- func format_method_name(instance_method) = format_components.
+:- pred format_method_names(instance_method::in, list(instance_method)::in,
+    list(format_component)::out) is det.
 
-format_method_name(Method) = MethodName :-
-    Method = instance_method(PredOrFunc, Name, _Defn, Arity, _Context),
+format_method_names(HeadMethod, TailMethods, Pieces) :-
+    HeadMethod = instance_method(PredOrFunc, Name, _Defn, Arity, _Context),
     adjust_func_arity(PredOrFunc, Arity, PredArity),
-    MethodName = [p_or_f(PredOrFunc), sym_name_and_arity(Name / PredArity)].
+    (
+        TailMethods = [],
+        Pieces =
+            [p_or_f(PredOrFunc), sym_name_and_arity(Name / PredArity),
+            suffix("."), nl]
+    ;
+        TailMethods = [HeadTailMethod | TailTailMethods],
+        format_method_names(HeadTailMethod, TailTailMethods, TailPieces),
+        Pieces =
+            [p_or_f(PredOrFunc), sym_name_and_arity(Name / PredArity),
+            suffix(","), words("or"), nl | TailPieces]
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.check_typeclass.

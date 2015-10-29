@@ -17,23 +17,27 @@
 
 %---------------------------------------------------------------------------%
 
-    % Handle mutable items during pass 1 of making the HLDS.
+    % If the given mutable item is local to this module,
+    % add the declarations of its auxiliary predicates to the HLDS.
     %
-:- pred add_mutable_aux_pred_decls(item_mutable_info::in,
-    pred_status::in, need_qualifier::in, module_info::in, module_info::out,
+:- pred add_aux_pred_decls_for_mutable_if_local(
+    sec_item(item_mutable_info)::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Handle mutable items during pass 2 of making the HLDS.
     %
-:- pred do_mutable_checks(item_mutable_info::in,
-    module_info::in, module_info::out,
+:- pred check_mutable_if_local(module_info::in,
+    sec_item(item_mutable_info)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Handle mutable items during pass 3 of making the HLDS.
+    % If the given mutable item is local to this module,
+    % add the definitions of its auxiliary predicates to the HLDS,
+    % add the (backend-specific) data structure holding the mutable's value
+    % to the HLDS, and arrange for this data structure to be initialized.
     %
-:- pred add_mutable_aux_pred_defns(item_mutable_info::in,
-    pred_status::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+:- pred add_aux_pred_defns_for_mutable_if_local(
+    sec_item(item_mutable_info)::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -48,6 +52,7 @@
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
+:- import_module hlds.make_hlds.make_hlds_error.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -66,7 +71,23 @@
 
 %---------------------------------------------------------------------------%
 
-add_mutable_aux_pred_decls(ItemMutable, PredStatus, NeedQual,
+add_aux_pred_decls_for_mutable_if_local(SectionItem, !ModuleInfo, !Specs) :-
+    SectionItem = sec_item(SectionInfo, ItemMutable),
+    SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
+    (
+        ItemMercuryStatus = item_defined_in_this_module(_),
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
+            !ModuleInfo, !Specs)
+    ;
+        ItemMercuryStatus = item_defined_in_other_module(_)
+    ).
+
+:- pred add_aux_pred_decls_for_mutable(item_mutable_info::in,
+    pred_status::in, need_qualifier::in, module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
         !ModuleInfo, !Specs) :-
     ItemMutable = item_mutable_info(Name, Type, _InitValue, Inst, MutAttrs,
         _VarSet, Context, _SeqNum),
@@ -320,17 +341,46 @@ add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, Name, Kind,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-do_mutable_checks(ItemMutable, !ModuleInfo, !Specs) :-
-    module_info_get_name(!.ModuleInfo, ModuleName),
+check_mutable_if_local(ModuleInfo, SectionItem, !Specs) :-
+    SectionItem = sec_item(SectionInfo, ItemMutable),
+    SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
+    (
+        ItemMercuryStatus = item_defined_in_other_module(_)
+        % We don't implement the `mutable' declaration unless it is defined
+        % in this module. If we did not have this check, we would duplicate
+        % the definition of the global variable storing the mutable
+        % in any submodules of the module that actually defined the mutable.
+    ;
+        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
+        (
+            ( ItemExport = item_export_nowhere
+            ; ItemExport = item_export_only_submodules
+            )
+            % Even though the submodule will see the mutable, it won't
+            % implement it.
+        ;
+            ItemExport = item_export_anywhere,
+            ItemMutable = item_mutable_info(_Name, _Type, _InitTerm, _Inst,
+                _MutAttrs, _VarSet, Context, _SeqNum),
+            error_is_exported(Context,
+                [decl("mutable"), words("declaration")], !Specs)
+        ),
+        check_mutable(ModuleInfo, ItemMutable, !Specs)
+    ).
+
+:- pred check_mutable(module_info::in, item_mutable_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable(ModuleInfo, ItemMutable, !Specs) :-
+    module_info_get_name(ModuleInfo, ModuleName),
     ItemMutable = item_mutable_info(Name, _Type, _InitTerm, Inst,
         MutAttrs, _VarSet, Context, _SeqNum),
-    module_info_get_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, CompilationTarget),
 
     % XXX We don't currently support the foreign_name attribute
     % for all languages.
     (
-        % mutable transformation is.
         ( CompilationTarget = target_c,      ForeignLanguage = lang_c
         ; CompilationTarget = target_java,   ForeignLanguage = lang_java
         ; CompilationTarget = target_csharp, ForeignLanguage = lang_csharp
@@ -343,7 +393,7 @@ do_mutable_checks(ItemMutable, !ModuleInfo, !Specs) :-
             MaybeForeignNames = yes(ForeignNames),
             % Report any errors with the foreign_name attributes
             % during this pass.
-            get_global_name_from_foreign_names(!.ModuleInfo, Context,
+            get_global_name_from_foreign_names(ModuleInfo, Context,
                 ModuleName, Name, ForeignLanguage, ForeignNames,
                 _TargetMutableName, !Specs)
         )
@@ -368,14 +418,14 @@ do_mutable_checks(ItemMutable, !ModuleInfo, !Specs) :-
 
     % Check that the inst in the mutable declaration is a valid inst
     % for a mutable declaration.
-    ( if is_valid_mutable_inst(!.ModuleInfo, Inst) then
+    ( if is_valid_mutable_inst(ModuleInfo, Inst) then
         true
     else
         % It is okay to pass a dummy varset in here since any attempt
         % to use inst variables in a mutable declaration should already
         % been dealt with when the mutable declaration was parsed.
         DummyInstVarset = varset.init,
-        InstStr = mercury_expanded_inst_to_string(output_debug, !.ModuleInfo,
+        InstStr = mercury_expanded_inst_to_string(output_debug, ModuleInfo,
             DummyInstVarset, Inst),
         InvalidInstPieces = [words("Error: the inst"), quote(InstStr),
             words("is not a valid inst for a"),
@@ -391,8 +441,27 @@ do_mutable_checks(ItemMutable, !ModuleInfo, !Specs) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-add_mutable_aux_pred_defns(ItemMutable, PredStatus, !ModuleInfo,
-        !QualInfo, !Specs) :-
+add_aux_pred_defns_for_mutable_if_local(SectionItem,
+        !ModuleInfo, !QualInfo, !Specs) :-
+    SectionItem = sec_item(SectionInfo, ItemMutable),
+    SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
+    (
+        ItemMercuryStatus = item_defined_in_this_module(_),
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        add_aux_pred_defns_for_mutable(ItemMutable, PredStatus, !ModuleInfo,
+            !QualInfo, !Specs)
+    ;
+        ItemMercuryStatus = item_defined_in_other_module(_)
+    ).
+
+:- pred add_aux_pred_defns_for_mutable(item_mutable_info::in, pred_status::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_aux_pred_defns_for_mutable(ItemMutable, PredStatus,
+        !ModuleInfo, !QualInfo, !Specs) :-
+    % The transformation here is documented in the comments at the
+    % beginning of prog_mutable.m.
     ItemMutable = item_mutable_info(MutableName, Type, _InitTerm, _Inst,
         MutAttrs, _VarSet, Context, _SeqNum),
     get_mutable_target_params(!.ModuleInfo, MutAttrs, MaybeTargetParams),
@@ -410,10 +479,9 @@ add_mutable_aux_pred_defns(ItemMutable, PredStatus, !ModuleInfo,
         decide_mutable_target_var_name(!.ModuleInfo, MutAttrs, ModuleName,
             MutableName, Lang, Context, TargetMutableName),
 
-        % We define the global storing the mutable here rather than in
-        % pass 2 because the target-language-specific name of the type
-        % of the global depends on whether there are any foreign_type
-        % declarations for Type.
+        % We define the global storing the mutable now rather than earlier
+        % because the target-language-specific name of the type of the global
+        % depends on whether there are any foreign_type declarations for Type.
         (
             ImplLang = mutable_lang_c,
             define_global_var_c(TargetMutableName, Type, IsConstant,
@@ -1206,17 +1274,17 @@ define_init_pred(ItemMutable, MaybeCallPreInitExpr, InitSetPredName,
         !ModuleInfo, !QualInfo, !Specs),
 
     InitPredArity = 0,
-    add_pass_3_initialise_for_mutable(InitPredName, InitPredArity, Context,
+    add_initialise_for_mutable(InitPredName, InitPredArity, Context,
         Lang, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred add_pass_3_initialise_for_mutable(sym_name::in, arity::in,
+:- pred add_initialise_for_mutable(sym_name::in, arity::in,
     prog_context::in, foreign_language::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pass_3_initialise_for_mutable(SymName, Arity, Context, Lang,
+add_initialise_for_mutable(SymName, Arity, Context, Lang,
         !ModuleInfo, !Specs) :-
     % The compiler introduces initialise declarations that call impure
     % predicates as part of the source-to-source transformation for mutable

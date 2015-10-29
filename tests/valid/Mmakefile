@@ -78,6 +78,7 @@ OTHER_PROGS = \
 	bug257b \
 	bug300 \
 	bug301 \
+	bug318 \
 	bug361 \
 	bug380 \
 	bug51 \

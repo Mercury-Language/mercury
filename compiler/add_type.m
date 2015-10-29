@@ -439,6 +439,17 @@ process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
     ),
     (
         !.FoundInvalidType = found_invalid_type
+        % If there is an error in this type definition, we may not
+        % be able to add the special preds for it correctly.
+        % Even if the errors occurred only in other types, adding the special
+        % predicates for this error-free type wouldn't help us, because
+        % the presence of an invalid type anywhere will prevent the compiler
+        % from going on to process those special predicates. It won't even
+        % look at them to find errors, such as user-defined unify and compare
+        % predicates being not found or having the wrong signature.
+        % XXX If this ever changes, we *should* add the special preds
+        % for error-free type definitions regardless of the presence
+        % of any previous type errors.
     ;
         !.FoundInvalidType = did_not_find_invalid_type,
         % XXX kind inference:

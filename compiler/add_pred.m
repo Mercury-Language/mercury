@@ -65,8 +65,8 @@
     module_name::in, sym_name::in, arity::in, pred_or_func::in, prog_vars::in,
     pred_status::in, prog_context::in, pred_id::out) is det.
 
-:- pred maybe_check_field_access_function(module_info::in,
-    sym_name::in, arity::in, pred_status::in, prog_context::in,
+:- pred check_pred_if_field_access_function(module_info::in,
+    sec_item(item_pred_decl_info)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -624,6 +624,26 @@ preds_do_add_implicit(ModuleInfo, ModuleName, PredName, Arity, PredOrFunc,
 
 %-----------------------------------------------------------------------------%
 
+check_pred_if_field_access_function(ModuleInfo, SectionItem, !Specs) :-
+    SectionItem = sec_item(SectionInfo, ItemPredDecl),
+    SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
+    ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndModes,
+        _, _, _, _, _, _, _, _, _, Context, _SeqNum),
+    (
+        PredOrFunc = pf_predicate
+    ;
+        PredOrFunc = pf_function,
+        list.length(TypesAndModes, PredArity),
+        adjust_func_arity(pf_function, FuncArity, PredArity),
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        maybe_check_field_access_function(ModuleInfo, SymName, FuncArity,
+            PredStatus, Context, !Specs)
+    ).
+
+:- pred maybe_check_field_access_function(module_info::in,
+    sym_name::in, arity::in, pred_status::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 maybe_check_field_access_function(ModuleInfo, FuncName, FuncArity, FuncStatus,
         Context, !Specs) :-
     ( if
@@ -642,6 +662,8 @@ maybe_check_field_access_function(ModuleInfo, FuncName, FuncArity, FuncStatus,
 
 check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncName,
         FuncArity, FuncStatus, Context, !Specs) :-
+    % XXX Our caller adjusted the arity one way; we now adjust it back.
+    % It should be possible to do without the double adjustment.
     adjust_func_arity(pf_function, FuncArity, PredArity),
     FuncCallId = simple_call_id(pf_function, FuncName, PredArity),
 
