@@ -105,11 +105,35 @@ ml_mark_tailcalls(Globals, !MLDS, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-    % The `at_tail' type indicates whether or not a subgoal is at a tail
+    % The algorithm works by walking backwards through each function in the
+    % MLDS.  It tracks (via at_tail) whether the current position in the
+    % function's body is a tail position.
+
+    % The `at_tail' type indicates whether or not a statement is at a tail
     % position, i.e. is followed by a return statement or the end of the
     % function, and if so, specifies the return values (if any) in the return
     % statement.
-:- type at_tail == maybe(list(mlds_rval)).
+    %
+    % If a subgoal is not at a tail position, then this type also tracks
+    % whether a recursive call has been seen (backwards) along this
+    % execution path.  This is used to avoid creating warnings for further
+    % recursive calls.
+    %
+    % The algorithm must track this rather than stop walking through the
+    % function body as it may encounter a return statement and therefore
+    % find more tailcalls.
+    %
+:- type at_tail
+    --->        at_tail(list(mlds_rval))
+    ;           not_at_tail_seen_reccall
+    ;           not_at_tail_have_not_seen_reccall.
+
+:- pred not_at_tail(at_tail::in, at_tail::out) is det.
+
+not_at_tail(at_tail(_), not_at_tail_have_not_seen_reccall).
+not_at_tail(not_at_tail_seen_reccall, not_at_tail_seen_reccall).
+not_at_tail(not_at_tail_have_not_seen_reccall,
+    not_at_tail_have_not_seen_reccall).
 
     % The `locals' type contains a list of local definitions
     % which are in scope.
@@ -167,10 +191,10 @@ mark_tailcalls_in_defn(ModuleName, Defn0, Defn, Warnings) :-
         Locals = [local_params(Args)],
         (
             RetTypes = [],
-            AtTail = yes([])
+            AtTail = at_tail([])
         ;
             RetTypes = [_ | _],
-            AtTail = no
+            AtTail = not_at_tail_have_not_seen_reccall
         ),
         TCallInfo = tailcall_info(ModuleName, Name, Locals),
         mark_tailcalls_in_function_body(TCallInfo, AtTail, Warnings,
@@ -246,7 +270,7 @@ mark_tailcalls_in_statement(TCallInfo, Warnings, !AtTail, !Statement) :-
     list(tailcall_warning)::out, at_tail::in, at_tail::out,
     mlds_stmt::in, mlds_stmt::out) is det.
 
-mark_tailcalls_in_stmt(TCallInfo, Context, Warnings, AtTailAfter,
+mark_tailcalls_in_stmt(TCallInfo, Context, Warnings, AtTailAfter0,
         AtTailBefore, Stmt0, Stmt) :-
     (
         % Whenever we encounter a block statement, we recursively mark
@@ -261,7 +285,7 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings, AtTailAfter,
         Locals = TCallInfo ^ tci_locals,
         NewTCallInfo = TCallInfo ^ tci_locals := [local_defns(Defns) | Locals],
         mark_tailcalls_in_statements(NewTCallInfo,
-            StatementsWarnings, AtTailAfter, AtTailBefore,
+            StatementsWarnings, AtTailAfter0, AtTailBefore,
             Statements0, Statements),
         Warnings = DefnsWarnings ++ StatementsWarnings,
         Stmt = ml_stmt_block(Defns, Statements)
@@ -269,48 +293,53 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings, AtTailAfter,
         % The statement in the body of a while loop is never in a tail
         % position.
         Stmt0 = ml_stmt_while(Kind, Rval, Statement0),
-        mark_tailcalls_in_statement(TCallInfo, Warnings, no, _,
-            Statement0, Statement),
+        not_at_tail(AtTailAfter0, AtTailAfter),
+        mark_tailcalls_in_statement(TCallInfo, Warnings,
+            AtTailAfter, AtTailBefore0, Statement0, Statement),
         % Neither is any statement before the loop.
-        AtTailBefore = no,
+        not_at_tail(AtTailBefore0, AtTailBefore),
         Stmt = ml_stmt_while(Kind, Rval, Statement)
     ;
         % Both the `then' and the `else' parts of an if-then-else are in a
         % tail position iff the if-then-else is in a tail position.
         Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0),
-        mark_tailcalls_in_statement(TCallInfo, ThenWarnings, AtTailAfter, _,
+        mark_tailcalls_in_statement(TCallInfo, ThenWarnings, AtTailAfter0, _,
             Then0, Then),
         mark_tailcalls_in_maybe_statement(TCallInfo, ElseWarnings,
-            AtTailAfter, _, MaybeElse0, MaybeElse),
+            AtTailAfter0, _, MaybeElse0, MaybeElse),
         Warnings = ThenWarnings ++ ElseWarnings,
-        AtTailBefore = no,
+        % This is conservative, if improved it may remove some false
+        % positive tailcall warnings.
+        AtTailBefore = not_at_tail_have_not_seen_reccall,
         Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse)
     ;
         % All of the cases of a switch (including the default) are in a
         % tail position iff the switch is in a tail position.
         Stmt0 = ml_stmt_switch(Type, Val, Range, Cases0, Default0),
-        mark_tailcalls_in_cases(TCallInfo, AtTailAfter, CasesWarnings,
+        mark_tailcalls_in_cases(TCallInfo, AtTailAfter0, CasesWarnings,
             Cases0, Cases),
-        mark_tailcalls_in_default(TCallInfo, AtTailAfter, DefaultWarnings,
+        mark_tailcalls_in_default(TCallInfo, AtTailAfter0, DefaultWarnings,
             Default0, Default),
         Warnings = CasesWarnings ++ DefaultWarnings,
-        AtTailBefore = no,
+        % This is conservative, if improved it may remove some false
+        % positive tailcall warnings.
+        AtTailBefore = not_at_tail_have_not_seen_reccall,
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
         Stmt0 = ml_stmt_call(_, _, _, _, _, _),
         mark_tailcalls_in_stmt_call(TCallInfo, Context, Warnings,
-            AtTailAfter, AtTailBefore, Stmt0, Stmt)
+            AtTailAfter0, AtTailBefore, Stmt0, Stmt)
     ;
         Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
         % Both the statement inside a `try_commit' and the handler are in
         % tail call position iff the `try_commit' statement is in a tail call
         % position.
-        mark_tailcalls_in_statement(TCallInfo, TryWarnings, AtTailAfter, _,
+        mark_tailcalls_in_statement(TCallInfo, TryWarnings, AtTailAfter0, _,
             Statement0, Statement),
-        mark_tailcalls_in_statement(TCallInfo, HandlerWarnings, AtTailAfter, _,
+        mark_tailcalls_in_statement(TCallInfo, HandlerWarnings, AtTailAfter0, _,
             Handler0, Handler),
         Warnings = TryWarnings ++ HandlerWarnings,
-        AtTailBefore = no,
+        AtTailBefore = not_at_tail_have_not_seen_reccall,
         Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
     ;
         % XXX: Maybe not true for some of these.
@@ -321,13 +350,13 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings, AtTailAfter,
         ; Stmt0 = ml_stmt_atomic(_)
         ),
         Warnings = [],
-        AtTailBefore = no,
+        not_at_tail(AtTailAfter0, AtTailBefore),
         Stmt = Stmt0
     ;
         Stmt0 = ml_stmt_return(ReturnVals),
         % The statement before a return statement is in a tail position.
         Warnings = [],
-        AtTailBefore = yes(ReturnVals),
+        AtTailBefore = at_tail(ReturnVals),
         Stmt = Stmt0
     ).
 
@@ -354,7 +383,7 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, Warnings,
     then
         ( if
             % We must be in a tail position.
-            AtTailAfter = yes(ReturnRvals),
+            AtTailAfter = at_tail(ReturnRvals),
 
             % The values returned in this call must match those returned
             % by the `return' statement that follows.
@@ -371,24 +400,38 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, Warnings,
             % Mark this call as a tail call.
             Stmt = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals,
                 tail_call),
-            Warnings = []
+            Warnings = [],
+            AtTailBefore = not_at_tail_seen_reccall
         else
-            Stmt = Stmt0,
             (
-                CodeAddr = code_addr_proc(QualProcLabel, _Sig)
+                AtTailAfter = not_at_tail_seen_reccall,
+                Warnings = []
             ;
-                CodeAddr = code_addr_internal(QualProcLabel, _SeqNum, _Sig)
+                (
+                    AtTailAfter = not_at_tail_have_not_seen_reccall
+                ;
+                    % This might happen if one of the other tests above
+                    % fails.  If so a warning may be useful.
+                    AtTailAfter = at_tail(_)
+                ),
+                (
+                    CodeAddr = code_addr_proc(QualProcLabel, _Sig)
+                ;
+                    CodeAddr = code_addr_internal(QualProcLabel, _SeqNum, _Sig)
+                ),
+                QualProcLabel = qual(_, _, ProcLabel),
+                ProcLabel = mlds_proc_label(PredLabel, ProcId),
+                Warnings = [tailcall_warning(PredLabel, ProcId, Context)]
             ),
-            QualProcLabel = qual(_, _, ProcLabel),
-            ProcLabel = mlds_proc_label(PredLabel, ProcId),
-            Warnings = [tailcall_warning(PredLabel, ProcId, Context)]
+            Stmt = Stmt0,
+            AtTailBefore = not_at_tail_seen_reccall
         )
     else
         % Leave this call unchanged.
         Stmt = Stmt0,
-        Warnings = []
-    ),
-    AtTailBefore = no.
+        Warnings = [],
+        not_at_tail(AtTailAfter, AtTailBefore)
+    ).
 
 :- pred mark_tailcalls_in_cases(tailcall_info::in, at_tail::in,
     list(tailcall_warning)::out,
