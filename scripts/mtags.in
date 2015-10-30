@@ -154,6 +154,7 @@ $all_module_qualified_names = 0;
 # $all_module_qualified_names is meaningful
 # only if $module_qualified_names = 1.
 $underscore_qualified_names = 0;
+$avoid_name = "";
 $debug = 0;
 
 OPTION:
@@ -286,26 +287,29 @@ sub output_name() {
     $src_name = $name;
     $name =~ s|\.|__|g;     # replace `.' module qualifiers with `__'
 
-    if ($module_qualified_names) {
-        # Output a tag for the fully-qualified name.
-        if (substr($name, 0, length($module)) ne $module) {
-            $name = "${module}__$name";
-        }
-        output_single_module_qualified_name();
-
-        # Strip off the leading module qualifiers one by one, and output a tag
-        # for each partially qualified or unqualified name.
-        while ($name =~ /__/) {
-            $name =~ s/[^_]*(_[^_]+)*__//;
+    # Don't print anything if the name is one we are told to avoid.
+    if ($name ne $avoid_name) {
+        if ($module_qualified_names) {
+            # Output a tag for the fully-qualified name.
+            if (substr($name, 0, length($module)) ne $module) {
+                $name = "${module}__$name";
+            }
             output_single_module_qualified_name();
+
+            # Strip off the leading module qualifiers one by one, and output
+            # a tag for each partially qualified or unqualified name.
+            while ($name =~ /__/) {
+                $name =~ s/[^_]*(_[^_]+)*__//;
+                output_single_module_qualified_name();
+            }
+        } else {
+            # Strip off any leading module qualifiers one by one, and output
+            # a tag only for the unqualified name.
+            while ($name =~ /__/) {
+                $name =~ s/[^_]*(_[^_]+)*__//;
+            }
+            output_single_tag();
         }
-    } else {
-        # Strip off any leading module qualifiers one by one, and output a tag
-        # only for the unqualified name.
-        while ($name =~ /__/) {
-            $name =~ s/[^_]*(_[^_]+)*__//;
-        }
-        output_single_tag();
     }
 }
 
@@ -576,9 +580,9 @@ while ($#ARGV >= 0)
                     # definition of the type or the constructor is annoying,
                     # since they are certainly near each other, and in most
                     # cases are only a line or two apart.
-                    if ($name ne $type_name) {
-                        output_name();
-                    }
+                    $avoid_name = $type_name;
+                    output_name();
+                    $avoid_name = "";
 
                     # Look for field names on the same line as the
                     # constructor name. Don't allow the line to start with
@@ -607,7 +611,11 @@ while ($#ARGV >= 0)
                     while ($body =~ /([a-z][_a-zA-Z0-9]*)[ \t]*::/) {
                         $name = $1;
                         $kind = "fld";
+                        # See the comment on the assignment to $avoid_name
+                        # above.
+                        $avoid_name = $type_name;
                         output_name();
+                        $avoid_name = "";
                         $body =~ s/^[^:]*:://;
                     }
                 }
