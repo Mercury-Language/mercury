@@ -22,7 +22,7 @@
 % incorporates this data structure unchanged.
 %
 % Any changes here will probably need to be reflected in
-% runtime/erlang_rtti_implementation.m.
+% library/erlang_rtti_implementation.m.
 %
 %-----------------------------------------------------------------------------%
 
