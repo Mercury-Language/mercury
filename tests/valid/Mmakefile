@@ -83,6 +83,7 @@ OTHER_PROGS = \
 	bug380 \
 	bug51 \
 	bug85 \
+	inst_perf_bug_2 \
 	builtin_false \
 	call_failure \
 	common_struct_bug \
@@ -285,13 +286,12 @@ RESERVE_TAG_PROGS = \
 	reserve_tag
 
 CONSTRAINT_TYPECHECK_PROGS = \
- 	ambig_functor \
- 	ambiguity_stress_test
+	ambig_functor \
+	ambiguity_stress_test
 
 # XXX The mode system can't handle the following test cases yet:
 #	assoc_list_bug
 #	determinism
-#	inst_perf_bug_2
 #	mode_merge_insts
 #	unify_inst_bug
 #
