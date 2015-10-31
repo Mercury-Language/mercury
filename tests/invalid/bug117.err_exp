@@ -1,0 +1,5 @@
+bug117.m:022: In clause for `extract(in) = out((list.non_empty_list))':
+bug117.m:022:   mode error: argument 2 did not get sufficiently instantiated.
+bug117.m:022:   Final instantiatedness of `X' was `ground',
+bug117.m:022:   expected final instantiatedness was `bound(list.'[|]'(ground,
+bug117.m:022:   ground))'.

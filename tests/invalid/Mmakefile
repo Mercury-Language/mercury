@@ -58,6 +58,7 @@ SINGLEMODULE= \
 	bind_in_negated \
 	bind_var_errors \
 	bug113 \
+	bug117 \
 	bug150 \
 	bug197 \
 	bug238 \
