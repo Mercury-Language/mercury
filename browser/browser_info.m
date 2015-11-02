@@ -43,7 +43,7 @@
 
                 % The list of directories to take, starting from the root,
                 % to reach the current subterm.
-                dirs        :: list(dir),
+                dirs        :: list(down_dir),
 
                 % What command called the browser?
                 caller_type :: browse_caller_type,
@@ -56,7 +56,7 @@
 
                 % Location of subterm for which the `track' or `mark' command
                 % was given, or `no_track' if no `track' command was given.
-                maybe_track :: maybe_track_subterm(list(dir)),
+                maybe_track :: maybe_track_subterm(list(down_dir)),
 
                 % An optional function to determine the mode of a particular
                 % subterm should the user issue a `mode' query.
@@ -78,7 +78,7 @@
     % A signature for functions that can be used by the browser to work
     % out the mode of a sub-term.
     %
-:- type browser_mode_func == (func(list(dir)) = browser_term_mode).
+:- type browser_mode_func == (func(list(down_dir)) = browser_term_mode).
 
     % The possible modes of a sub-term in the browser. Note these do not
     % correspond directly with the declared Mercury modes.
@@ -101,16 +101,17 @@
             % If the user asks about the mode of an atom, this value should be
             % returned by the browser term mode function.
 
-:- type dir
-    --->    parent
-    ;       child_num(int)
-    ;       child_name(string).
+:- type up_down_dir
+    --->    updown_parent
+    ;       updown_child_num(int)
+    ;       updown_child_name(string).
 
-:- inst dir_no_parent
-    --->    child_num(ground)
-    ;       child_name(ground).
+:- type down_dir
+    --->    down_child_num(int)
+    ;       down_child_name(string).
 
-:- inst simplified_dirs == list_skel(dir_no_parent).
+:- func down_to_up_down_dir(down_dir) = up_down_dir.
+:- func down_to_up_down_dirs(list(down_dir)) = list(up_down_dir).
 
     % The browser is required to behave differently for different caller
     % circumstances. The following type enumerates the various possibilities.
@@ -172,7 +173,7 @@
 
 :- func get_num_printed_io_actions(browser_persistent_state) = int.
 
-:- pred convert_dirs_to_term_path(term_rep::in, list(dir)::in(simplified_dirs),
+:- pred convert_dirs_to_term_path(term_rep::in, list(down_dir)::in,
     term_path::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -208,7 +209,7 @@
     % As above but the first argument specifies where the browser was
     % invoked from.
     %
-:- pred set_browser_param_with_caller_type(browse_caller_type::in, 
+:- pred set_browser_param_with_caller_type(browse_caller_type::in,
     bool::in, bool::in, bool::in, bool::in, bool::in, bool::in, bool::in,
     setting::in, browser_persistent_state::in, browser_persistent_state::out)
     is det.
@@ -302,7 +303,8 @@
 :- pred print_format_debugger(debugger::in, portray_format::in,
     io::di, io::uo) is det.
 
-:- pred write_path(debugger::in, list(dir)::in, io::di, io::uo) is det.
+:- pred write_down_path(debugger::in, list(down_dir)::in,
+    io::di, io::uo) is det.
 
 :- pred send_term_to_socket(term_browser_response::in, io::di, io::uo) is det.
 
@@ -520,6 +522,15 @@ mercury_bool_yes = yes.
     "ML_BROWSE_mercury_bool_no").
 
 mercury_bool_no = no.
+
+%---------------------------------------------------------------------------%
+
+down_to_up_down_dir(down_child_num(Num)) = updown_child_num(Num).
+down_to_up_down_dir(down_child_name(Name)) = updown_child_name(Name).
+
+down_to_up_down_dirs([]) = [].
+down_to_up_down_dirs([DownDir | DownDirs]) =
+    [down_to_up_down_dir(DownDir) | down_to_up_down_dirs(DownDirs)].
 
 %---------------------------------------------------------------------------%
 
@@ -873,7 +884,7 @@ show_settings(Debugger, ShowPath, Info, !IO) :-
     (
         ShowPath = yes,
         write_string_debugger(Debugger, "Current path is: ", !IO),
-        write_path(Debugger, Info ^ dirs, !IO),
+        write_down_path(Debugger, Info ^ dirs, !IO),
         nl_debugger(Debugger, !IO)
     ;
         ShowPath = no
@@ -974,57 +985,47 @@ print_format_debugger(debugger_external, X, !IO) :-
         send_term_to_socket(browser_str("pretty"), !IO)
     ).
 
-write_path(Debugger, [], !IO) :-
-    write_string_debugger(Debugger, "/", !IO).
-write_path(Debugger, [Dir], !IO) :-
+%---------------------------------------------------------------------------%
+
+write_down_path(Debugger, Dirs, !IO) :-
     (
-        Dir = parent,
+        Dirs = [],
+        % If the whole path is empty, we print a top level "/".
+        % This is the difference between write_down_path and
+        % write_down_path_loop.
         write_string_debugger(Debugger, "/", !IO)
     ;
-        Dir = child_num(N),
+        Dirs = [HeadDir | TailDirs],
+        write_down_step(Debugger, HeadDir, !IO),
+        write_down_path_loop(Debugger, TailDirs, !IO)
+    ).
+
+:- pred write_down_path_loop(debugger::in, list(down_dir)::in,
+    io::di, io::uo) is det.
+
+write_down_path_loop(Debugger, Dirs, !IO) :-
+    (
+        Dirs = []
+    ;
+        Dirs = [HeadDir | TailDirs],
+        write_down_step(Debugger, HeadDir, !IO),
+        write_down_path_loop(Debugger, TailDirs, !IO)
+    ).
+
+:- pred write_down_step(debugger::in, down_dir::in, io::di, io::uo) is det.
+
+write_down_step(Debugger, Dir, !IO) :-
+    (
+        Dir = down_child_num(N),
         write_string_debugger(Debugger, "/", !IO),
         write_int_debugger(Debugger, N, !IO)
     ;
-        Dir = child_name(Name),
+        Dir = down_child_name(Name),
         write_string_debugger(Debugger, "/", !IO),
         write_string_debugger(Debugger, Name, !IO)
     ).
-write_path(Debugger, [Dir, Dir2 | Dirs], !IO) :-
-    write_path_2(Debugger, [Dir, Dir2 | Dirs], !IO).
 
-:- pred write_path_2(debugger::in, list(dir)::in, io::di, io::uo) is det.
-
-write_path_2(Debugger, [], !IO) :-
-    write_string_debugger(Debugger, "/", !IO).
-write_path_2(Debugger, [Dir], !IO) :-
-    (
-        Dir = parent,
-        write_string_debugger(Debugger, "/..", !IO)
-    ;
-        Dir = child_num(N),
-        write_string_debugger(Debugger, "/", !IO),
-        write_int_debugger(Debugger, N, !IO)
-    ;
-        Dir = child_name(Name),
-        write_string_debugger(Debugger, "/", !IO),
-        write_string_debugger(Debugger, Name, !IO)
-    ).
-write_path_2(Debugger, [Dir, Dir2 | Dirs], !IO) :-
-    (
-        Dir = parent,
-        write_string_debugger(Debugger, "/..", !IO),
-        write_path_2(Debugger, [Dir2 | Dirs], !IO)
-    ;
-        Dir = child_num(N),
-        write_string_debugger(Debugger, "/", !IO),
-        write_int_debugger(Debugger, N, !IO),
-        write_path_2(Debugger, [Dir2 | Dirs], !IO)
-    ;
-        Dir = child_name(Name),
-        write_string_debugger(Debugger, "/", !IO),
-        write_string_debugger(Debugger, Name, !IO),
-        write_path_2(Debugger, [Dir2 | Dirs], !IO)
-    ).
+%---------------------------------------------------------------------------%
 
 send_term_to_socket(Term, !IO) :-
     write(Term, !IO),
@@ -1260,24 +1261,32 @@ pretty_value(BrowserDb, Univ0) = Value :-
 
 %---------------------------------------------------------------------------%
 
-convert_dirs_to_term_path(_, [], []).
-convert_dirs_to_term_path(Term, [child_num(N) | Dirs], [N | TermPath]) :-
-    ( if
-        term_rep.argument(Term, N, Subterm)
-    then
-        convert_dirs_to_term_path(Subterm, Dirs, TermPath)
-    else
-        unexpected($module, $pred, "invalid argument")
-    ).
-convert_dirs_to_term_path(Term, [child_name(Name) | Dirs], [N | TermPath]) :-
-    ( if
-        term_rep.field_pos(Name, Term, Pos),
-        term_rep.argument(Term, Pos, Subterm)
-    then
-        convert_dirs_to_term_path(Subterm, Dirs, TermPath),
-        N = Pos
-    else
-        unexpected($module, $pred, "invalid field name")
+convert_dirs_to_term_path(Term, Dirs, TermPath) :-
+    (
+        Dirs = [],
+        TermPath = []
+    ;
+        Dirs = [down_child_num(N) | DirsTail],
+        ( if
+            term_rep.argument(Term, N, Subterm)
+        then
+            convert_dirs_to_term_path(Subterm, DirsTail, TermPathTail)
+        else
+            unexpected($module, $pred, "invalid argument")
+        ),
+        TermPath = [N | TermPathTail]
+    ;
+        Dirs =  [down_child_name(Name) | DirsTail],
+        ( if
+            term_rep.field_pos(Name, Term, Pos),
+            term_rep.argument(Term, Pos, Subterm)
+        then
+            convert_dirs_to_term_path(Subterm, DirsTail, TermPathTail),
+            N = Pos
+        else
+            unexpected($module, $pred, "invalid field name")
+        ),
+        TermPath = [N | TermPathTail]
     ).
 
 %---------------------------------------------------------------------------%

@@ -151,8 +151,8 @@
     ;       param_lines.
 
 :- type path
-    --->    root_rel(list(dir))
-    ;       dot_rel(list(dir)).
+    --->    root_rel(list(up_down_dir))
+    ;       dot_rel(list(up_down_dir)).
 
 :- type format_option
     --->    flat
@@ -610,37 +610,37 @@ param_cmd_to_setting(param_lines, N, setting_lines(N)).
 parse_path([Token | Tokens], Path) :-
     ( if Token = token_slash then
         Path = root_rel(Dirs),
-        parse_dirs(Tokens, Dirs)
+        parse_up_down_dirs(Tokens, Dirs)
     else
         Path = dot_rel(Dirs),
-        parse_dirs([Token | Tokens], Dirs)
+        parse_up_down_dirs([Token | Tokens], Dirs)
     ).
 
-:- pred parse_dirs(list(token)::in, list(dir)::out) is semidet.
+:- pred parse_up_down_dirs(list(token)::in, list(up_down_dir)::out) is semidet.
 
-parse_dirs([], []).
-parse_dirs([Token | Tokens], Dirs) :-
+parse_up_down_dirs([], []).
+parse_up_down_dirs([Token | Tokens], Dirs) :-
     (
         Token = token_num(Subdir),
-        Dirs = [child_num(Subdir) | RestDirs],
-        parse_dirs(Tokens, RestDirs)
+        Dirs = [updown_child_num(Subdir) | RestDirs],
+        parse_up_down_dirs(Tokens, RestDirs)
     ;
         Token = token_name(NamedSubdir),
-        Dirs = [child_name(NamedSubdir) | RestDirs],
-        parse_dirs(Tokens, RestDirs)
+        Dirs = [updown_child_name(NamedSubdir) | RestDirs],
+        parse_up_down_dirs(Tokens, RestDirs)
     ;
         Token = token_dot_dot,
-        Dirs = [parent | RestDirs],
-        parse_dirs(Tokens, RestDirs)
+        Dirs = [updown_parent | RestDirs],
+        parse_up_down_dirs(Tokens, RestDirs)
     ;
-        % We can effectively ignore slashes (for Unix-style
-        % pathnames) and carets (for SICStus-style pathnames),
+        % We can effectively ignore slashes (for Unix-style pathnames)
+        % and carets (for SICStus-style pathnames),
         % but anything else is not allowed.
         Token = token_slash,
-        parse_dirs(Tokens, Dirs)
+        parse_up_down_dirs(Tokens, Dirs)
     ;
         Token = token_up,
-        parse_dirs(Tokens, Dirs)
+        parse_up_down_dirs(Tokens, Dirs)
     ).
 
 :- pred parse_format(list(token)::in, setting::out) is semidet.

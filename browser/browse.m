@@ -41,7 +41,7 @@
     %
 :- pred browse_browser_term_no_modes(browser_term::in,
     io.input_stream::in, io.output_stream::in,
-    maybe_track_subterm(list(dir))::out,
+    maybe_track_subterm(list(down_dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
@@ -50,7 +50,7 @@
     %
 :- pred browse_browser_term(browser_term::in,
     io.input_stream::in, io.output_stream::in,
-    maybe(browser_mode_func)::in, maybe_track_subterm(list(dir))::out,
+    maybe(browser_mode_func)::in, maybe_track_subterm(list(down_dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
@@ -152,10 +152,10 @@
 
     % Remove "/dir/../" sequences from a list of directories to yield
     % a form that lacks ".." entries.
-    % If there are more ".." entries than normal entries then the
-    % empty list is returned.
+    % If there are more ".." entries than normal entries, we return
+    % the empty list.
     %
-:- pred simplify_dirs(list(dir)::in, list(dir)::out(simplified_dirs)) is det.
+:- pred simplify_dirs(list(up_down_dir)::in, list(down_dir)::out) is det.
 
     % True if the given string can be used to cd to the return value of a
     % function.
@@ -164,7 +164,8 @@
 
     % For use in representing unbound head variables in the "print goal"
     % commands in the debugger.
-:- type unbound ---> '_'.
+:- type unbound
+    --->    '_'.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -527,7 +528,7 @@ browse_external(Term, InputStream, OutputStream, MaybeModeFunc, !State, !IO) :-
 
 :- pred browse_common(debugger::in, browser_term::in, io.input_stream::in,
     io.output_stream::in, maybe(portray_format)::in,
-    maybe(browser_mode_func)::in, maybe_track_subterm(list(dir))::out,
+    maybe(browser_mode_func)::in, maybe_track_subterm(list(down_dir))::out,
     browser_persistent_state::in, browser_persistent_state::out,
     io::di, io::uo) is cc_multi.
 
@@ -624,7 +625,7 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
         Quit = no
     ;
         Command = cmd_pwd,
-        write_path(Debugger, !.Info ^ dirs, !IO),
+        write_down_path(Debugger, !.Info ^ dirs, !IO),
         nl_debugger(Debugger, !IO),
         Quit = no
     ;
@@ -1042,19 +1043,19 @@ write_univ_or_unbound(Stream, Univ, !IO) :-
         string_writer.write_univ(Stream, include_details_cc, Univ, !IO)
     ).
 
-:- pred report_deref_error(debugger::in, list(dir)::in, dir::in,
+:- pred report_deref_error(debugger::in, list(down_dir)::in, down_dir::in,
     io::di, io::uo) is det.
 
 report_deref_error(Debugger, OKPath, ErrorDir, !IO) :-
     write_string_debugger(Debugger, "error: ", !IO),
     (
         OKPath = [_ | _],
-        Context = "in subdir " ++ dirs_to_string(OKPath) ++ ": ",
+        Context = "in subdir " ++ down_dirs_to_string(OKPath) ++ ": ",
         write_string_debugger(Debugger, Context, !IO)
     ;
         OKPath = []
     ),
-    Msg = "there is no subterm " ++ dir_to_string(ErrorDir) ++ "\n",
+    Msg = "there is no subterm " ++ down_dir_to_string(ErrorDir) ++ "\n",
     write_string_debugger(Debugger, Msg, !IO).
 
 %---------------------------------------------------------------------------%
@@ -1391,31 +1392,30 @@ unlines([Line | Lines], Str) :-
 
 :- type deref_result(T)
     --->    deref_result(T)
-    ;       deref_error(list(dir), dir).
+    ;       deref_error(list(down_dir), down_dir).
 
     % We assume a root-relative path. We assume Term is the entire term
     % passed into browse/3, not a subterm.
     %
-:- pred deref_subterm(browser_term::in, list(dir)::in,
+:- pred deref_subterm(browser_term::in, list(down_dir)::in,
     deref_result(browser_term)::out) is cc_multi.
 
 deref_subterm(BrowserTerm, Path, Result) :-
-    simplify_dirs(Path, SimplifiedPath),
     (
         BrowserTerm = plain_term(Univ),
-        deref_subterm_2(Univ, SimplifiedPath, [], SubResult),
+        deref_subterm_2(Univ, Path, [], SubResult),
         deref_result_univ_to_browser_term(SubResult, Result)
     ;
         BrowserTerm = synthetic_term(_Functor, Args, MaybeReturn),
         (
-            SimplifiedPath = [],
+            Path = [],
             SubBrowserTerm = BrowserTerm,
             Result = deref_result(SubBrowserTerm)
         ;
-            SimplifiedPath = [Step | SimplifiedPathTail],
+            Path = [Step | PathTail],
             ( if
                 (
-                    Step = child_num(N),
+                    Step = down_child_num(N),
                     ( if
                         N = list.length(Args) + 1,
                         MaybeReturn = yes(ReturnValue)
@@ -1427,13 +1427,12 @@ deref_subterm(BrowserTerm, Path, Result) :-
                         list.index1(Args, N, ArgUniv)
                     )
                 ;
-                    Step = child_name(Name),
+                    Step = down_child_name(Name),
                     string_is_return_value_alias(Name),
                     MaybeReturn = yes(ArgUniv)
                 )
             then
-                deref_subterm_2(ArgUniv, SimplifiedPathTail, [Step],
-                    SubResult),
+                deref_subterm_2(ArgUniv, PathTail, [Step], SubResult),
                 deref_result_univ_to_browser_term(SubResult, Result)
             else
                 Result = deref_error([], Step)
@@ -1461,7 +1460,7 @@ deref_result_univ_to_browser_term(SubResult, Result) :-
         Result = deref_error(OKPath, ErrorDir)
     ).
 
-:- pred deref_subterm_2(univ::in, list(dir)::in, list(dir)::in,
+:- pred deref_subterm_2(univ::in, list(down_dir)::in, list(down_dir)::in,
     deref_result(univ)::out) is cc_multi.
 
 deref_subterm_2(Univ, Path, RevPath0, Result) :-
@@ -1471,7 +1470,7 @@ deref_subterm_2(Univ, Path, RevPath0, Result) :-
     ;
         Path = [Dir | Dirs],
         (
-            Dir = child_num(N),
+            Dir = down_child_num(N),
             ( if
                 TypeCtor = type_ctor(univ_type(Univ)),
                 type_ctor_name(TypeCtor) = "array",
@@ -1485,11 +1484,8 @@ deref_subterm_2(Univ, Path, RevPath0, Result) :-
                 arg_cc(univ_value(Univ), N - 1, MaybeValue)
             )
         ;
-            Dir = child_name(Name),
+            Dir = down_child_name(Name),
             named_arg_cc(univ_value(Univ), Name, MaybeValue)
-        ;
-            Dir = parent,
-            error("deref_subterm_2: found parent")
         ),
         (
             MaybeValue = arg(Value),
@@ -1505,7 +1501,8 @@ deref_subterm_2(Univ, Path, RevPath0, Result) :-
 
 :- pred get_path(browser_info::in, path::out) is det.
 
-get_path(Info, root_rel(Info ^ dirs)).
+get_path(Info, root_rel(UpDownDirs)) :-
+    UpDownDirs = down_to_up_down_dirs(Info ^ dirs).
 
 :- pred set_path(path::in, browser_info::in, browser_info::out) is det.
 
@@ -1513,7 +1510,7 @@ set_path(NewPath, Info0, Info) :-
     change_dir(Info0 ^ dirs, NewPath, NewDirs),
     Info = Info0 ^ dirs := NewDirs.
 
-:- pred change_dir(list(dir)::in, path::in, list(dir)::out) is det.
+:- pred change_dir(list(down_dir)::in, path::in, list(down_dir)::out) is det.
 
 change_dir(PwdDirs, Path, RootRelDirs) :-
     (
@@ -1521,7 +1518,7 @@ change_dir(PwdDirs, Path, RootRelDirs) :-
         NewDirs = Dirs
     ;
         Path = dot_rel(Dirs),
-        list.append(PwdDirs, Dirs, NewDirs)
+        NewDirs = down_to_up_down_dirs(PwdDirs) ++ Dirs
     ),
     simplify_dirs(NewDirs, RootRelDirs).
 
@@ -1552,7 +1549,7 @@ show_settings(Debugger, Info, !IO) :-
     show_settings_caller(Debugger, Info, print_all, "Printall", !IO),
 
     write_string_debugger(Debugger, "Current path is: ", !IO),
-    write_path(Debugger, Info ^ dirs, !IO),
+    write_down_path(Debugger, Info ^ dirs, !IO),
     nl_debugger(Debugger, !IO),
 
     write_string_debugger(Debugger,
@@ -1641,26 +1638,26 @@ chars_to_path([C | Cs], Path) :-
         chars_to_dirs([C | Cs], Dirs)
     ).
 
-:- pred chars_to_dirs(list(char)::in, list(dir)::out) is semidet.
+:- pred chars_to_dirs(list(char)::in, list(up_down_dir)::out) is semidet.
 
 chars_to_dirs(Cs, Dirs) :-
     split_dirs(Cs, Names),
     names_to_dirs(Names, Dirs).
 
-:- pred names_to_dirs(list(string)::in, list(dir)::out) is semidet.
+:- pred names_to_dirs(list(string)::in, list(up_down_dir)::out) is semidet.
 
 names_to_dirs([], []).
 names_to_dirs([Name | Names], Dirs) :-
     ( if Name = ".." then
-        Dirs = [parent | RestDirs],
+        Dirs = [updown_parent | RestDirs],
         names_to_dirs(Names, RestDirs)
     else if Name = "." then
         names_to_dirs(Names, Dirs)
     else if string.to_int(Name, Num) then
-        Dirs = [child_num(Num) | RestDirs],
+        Dirs = [updown_child_num(Num) | RestDirs],
         names_to_dirs(Names, RestDirs)
     else
-        Dirs = [child_name(Name) | RestDirs],
+        Dirs = [updown_child_name(Name) | RestDirs],
         names_to_dirs(Names, RestDirs)
     ).
 
@@ -1693,53 +1690,59 @@ simplify_dirs(Dirs, SimpleDirs) :-
     list.reverse(Dirs, RevDirs),
     simplify_rev_dirs(RevDirs, 0, [], SimpleDirs).
 
-    % simplify_rev_dirs(RevDirs, N, SoFar, SimpleDirs):
+    % simplify_rev_dirs(RevUpDownDirs, ToDelete, !DownDirs):
     %
     % Assumes a reverse list of directories and removes redundant `..'
     % entries by scanning from the bottom most directory to the top,
-    % counting how many `..' occurred (N) and removing entries accordingly.
-    % SoFar accumulates the simplified dirs processed so far so we can be
-    % tail recursive.
+    % counting how many `..' occurred (!.ToDelete) and removing entries
+    % accordingly. !DownDirs accumulates the simplified dirs processed so far
+    % so we can be tail recursive.
     %
-:- pred simplify_rev_dirs(list(dir)::in, int::in,
-    list(dir)::in(simplified_dirs), list(dir)::out(simplified_dirs)) is det.
+:- pred simplify_rev_dirs(list(up_down_dir)::in, int::in,
+    list(down_dir)::in, list(down_dir)::out) is det.
 
-simplify_rev_dirs([], _, SimpleDirs, SimpleDirs).
-simplify_rev_dirs([Dir | Dirs], N, SoFar, SimpleDirs) :-
+simplify_rev_dirs([], _, !DownDirs).
+simplify_rev_dirs([RevUpDownDir | RevUpDownDirs], !.ToDelete, !DownDirs) :-
     (
-        Dir = parent,
-        simplify_rev_dirs(Dirs, N+1, SoFar, SimpleDirs)
+        RevUpDownDir = updown_parent,
+        !:ToDelete = !.ToDelete + 1
     ;
-        ( Dir = child_num(_) ; Dir = child_name(_) ),
-        ( if N > 0 then
-            simplify_rev_dirs(Dirs, N-1, SoFar, SimpleDirs)
+        (
+            RevUpDownDir = updown_child_num(ChildNum),
+            DownDir = down_child_num(ChildNum)
+        ;
+            RevUpDownDir = updown_child_name(ChildName),
+            DownDir = down_child_name(ChildName)
+        ),
+        ( if !.ToDelete > 0 then
+            !:ToDelete = !.ToDelete - 1
         else
-            simplify_rev_dirs(Dirs, N, [Dir | SoFar], SimpleDirs)
+            !:DownDirs = [DownDir | !.DownDirs]
         )
-    ).
+    ),
+    simplify_rev_dirs(RevUpDownDirs, !.ToDelete, !DownDirs).
 
-:- func dir_to_string(dir) = string.
+:- func down_dir_to_string(down_dir) = string.
 
-dir_to_string(parent) = "..".
-dir_to_string(child_num(Num)) = int_to_string(Num).
-dir_to_string(child_name(Name)) = Name.
+down_dir_to_string(down_child_num(Num)) = int_to_string(Num).
+down_dir_to_string(down_child_name(Name)) = Name.
 
-:- func dirs_to_string(list(dir)) = string.
+:- func down_dirs_to_string(list(down_dir)) = string.
 
-dirs_to_string([]) = "".
-dirs_to_string([Dir | Dirs]) = DirStr :-
+down_dirs_to_string([]) = "".
+down_dirs_to_string([Dir | Dirs]) = DirStr :-
     (
         Dirs = [],
-        DirStr = dir_to_string(Dir)
+        DirStr = down_dir_to_string(Dir)
     ;
         Dirs = [_ | _],
-        DirStr = dir_to_string(Dir) ++ "/" ++ dirs_to_string(Dirs)
+        DirStr = down_dir_to_string(Dir) ++ "/" ++ down_dirs_to_string(Dirs)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred write_term_mode_debugger(debugger::in, maybe(browser_mode_func)::in,
-    list(dir)::in, io::di, io::uo) is det.
+    list(down_dir)::in, io::di, io::uo) is det.
 
 write_term_mode_debugger(Debugger, MaybeModeFunc, Dirs, !IO) :-
     (
