@@ -717,9 +717,9 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         % XXX We forbid the construction of partially instantiated structures
         % involving solver types. We'd like to forbid all such constructions
         % here, but that causes trouble with the current implementation of
-        % term.term_to_univ_special_case which does use partial instantiation
-        % (in a rather horrible way). This is a hacky solution that gets us
-        % most of what we want w.r.t. solver types.
+        % term_conversion.term_to_univ_special_case which does use partial
+        % instantiation (in a rather horrible way). This is a hacky solution
+        % that gets us most of what we want w.r.t. solver types.
         not (
             inst_is_free(ModuleInfo0, InstOfX),
             list.member(InstArg, InstArgs),
@@ -752,6 +752,15 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
 
         % Construct the final goal expression.
         ( if
+            Unification = construct(_, _, ConstructArgVars, _, _, _, _),
+            find_nondefault_mode_func_vars(!.ModeInfo, ConstructArgVars,
+                BadArgVars),
+            BadArgVars = [HeadBadArgVar | TailBadArgVars]
+        then
+            handle_nondefault_mode_func_error(X, InstConsId,
+                ArgVars0, one_or_more(HeadBadArgVar, TailBadArgVars),
+                GoalExpr, !ModeInfo)
+        else if
             Unification = construct(_, _, _, _, _, _, _),
             LiveX = is_dead
         then
@@ -887,6 +896,104 @@ all_arg_vars_are_non_free_or_solver_vars([ArgVar | ArgVars], [Inst | Insts],
         all_arg_vars_are_non_free_or_solver_vars(ArgVars, Insts,
             VarTypes, ModuleInfo, ArgVarsToInit)
     ).
+
+:- pred find_nondefault_mode_func_vars(mode_info::in, list(prog_var)::in,
+    list(prog_var)::out) is det.
+
+find_nondefault_mode_func_vars(_ModeInfo, [], []).
+find_nondefault_mode_func_vars(ModeInfo, [ArgVar | ArgVars], BadArgVars) :-
+    find_nondefault_mode_func_vars(ModeInfo, ArgVars, BadArgVarsTail),
+    mode_info_get_var_types(ModeInfo, VarTypes),
+    lookup_var_type(VarTypes, ArgVar, ArgType),
+    ( if
+        type_is_higher_order(ArgType),
+        mode_info_get_instmap(ModeInfo, InstMap),
+        instmap_lookup_var(InstMap, ArgVar, ArgInst),
+        ArgInst = ground(_Uniq, HoInstInfo),
+        ho_inst_info_is_nondefault_mode_func(HoInstInfo, yes)
+    then
+        BadArgVars = [ArgVar | BadArgVarsTail]
+    else
+        BadArgVars = BadArgVarsTail
+    ).
+
+:- pred ho_inst_info_is_nondefault_mode_func(ho_inst_info::in, bool::out)
+    is det.
+
+ho_inst_info_is_nondefault_mode_func(HoInstInfo, IsBad) :-
+    (
+        HoInstInfo = none,
+        % When you take a higher order value out of a term, we record
+        % `none' as its ho_inst_info. It should be ok to put such values
+        % back into another term.
+        IsBad = no
+    ;
+        HoInstInfo = higher_order(PredInstInfo),
+        PredInstInfo = pred_inst_info(PredOrFunc, ArgModes, _ArgRegInfo,
+            Detism),
+        (
+            PredOrFunc = pf_predicate,
+            IsBad = no
+        ;
+            PredOrFunc = pf_function,
+            ( if Detism = detism_det then
+                list.det_split_last(ArgModes,
+                    ShouldBeInputArgModes, ShouldBeOutputMode),
+                ( if 
+                    list.all_true(is_input_mode, ShouldBeInputArgModes),
+                    is_output_mode(ShouldBeOutputMode)
+                then
+                    IsBad = no
+                else
+                    IsBad = yes
+                )
+            else
+                IsBad = yes
+            )
+        )
+    ).
+
+:- pred is_input_mode(mer_mode::in) is semidet.
+
+is_input_mode(Mode) :-
+    (
+        % The structural version of the input mode.
+        Mode = (ground_inst -> ground_inst)
+    ;
+        % The named version of the input mode.
+        Mode = in_mode
+    ).
+
+:- pred is_output_mode(mer_mode::in) is semidet.
+
+is_output_mode(Mode) :-
+    (
+        % The structural version of the output mode.
+        Mode = (free -> ground_inst)
+    ;
+        % The named version of the output mode.
+        Mode = out_mode
+    ).
+
+:- pred handle_nondefault_mode_func_error(prog_var::in, cons_id::in,
+    list(prog_var)::in, one_or_more(prog_var)::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out) is det.
+
+handle_nondefault_mode_func_error(X, InstConsId, ArgVars0, BadArgVars,
+        GoalExpr, !ModeInfo) :-
+    set_of_var.init(NoWaitingVars),
+    ModeError = mode_error_nondefault_mode_func(X, InstConsId,
+        ArgVars0, BadArgVars),
+    mode_info_error(NoWaitingVars, ModeError, !ModeInfo),
+    % If we get an error, set the inst to not_reached to avoid cascading
+    % errors. But don't call categorize_unification, because that could
+    % cause an invalid call to `unify_proc.request_unify'.
+    Inst = not_reached,
+    modecheck_set_var_inst(X, Inst, no, !ModeInfo),
+    NoArgInsts = list.duplicate(list.length(ArgVars0), no),
+    bind_args(Inst, ArgVars0, NoArgInsts, !ModeInfo),
+    % Return any old garbage.
+    GoalExpr = disj([]).
 
 :- pred handle_var_functor_mode_error(prog_var::in, cons_id::in,
     list(prog_var)::in, mer_inst::in, list(mer_inst)::in,

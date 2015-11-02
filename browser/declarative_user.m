@@ -125,6 +125,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module require.
 :- import_module string.
 :- import_module univ.
 
@@ -720,10 +721,28 @@ browse_xml_atom(Atom, User, !IO) :-
     save_and_browse_browser_term_xml(BrowserTerm, User ^ outstr,
         User ^ outstr, User ^ browser, !IO).
 
-:- func get_subterm_mode_from_atoms(trace_atom::in, trace_atom::in,
-    list(dir)::in(simplified_dirs)) = (browser_term_mode::out) is det.
+:- pred assert_dirs_are_simplified(list(dir)::in,
+    list(dir)::out(simplified_dirs)) is det.
 
-get_subterm_mode_from_atoms(InitAtom, FinalAtom, Dirs) = Mode :-
+assert_dirs_are_simplified([], []).
+assert_dirs_are_simplified([Dir0 | Dirs0], [Dir | Dirs]) :-
+    assert_dirs_are_simplified(Dirs0, Dirs),
+    (
+        Dir0 = parent,
+        unexpected($module, $pred, "parent")
+    ;
+        Dir0 = child_num(_),
+        Dir = Dir0
+    ;
+        Dir0 = child_name(_),
+        Dir = Dir0
+    ).
+
+:- func get_subterm_mode_from_atoms(trace_atom::in, trace_atom::in,
+    list(dir)::in) = (browser_term_mode::out) is det.
+
+get_subterm_mode_from_atoms(InitAtom, FinalAtom, Dirs0) = Mode :-
+    assert_dirs_are_simplified(Dirs0, Dirs),
     convert_dirs_to_term_path_from_atom(FinalAtom, Dirs, Path),
     (
         Path = [ArgNum | TermPath],
@@ -749,11 +768,11 @@ get_subterm_mode_from_atoms_and_term_path(InitAtom, FinalAtom, ArgPos,
     ).
 
 :- func get_subterm_mode_from_atoms_for_arg(int::in, trace_atom::in,
-    trace_atom::in, list(dir)::in(simplified_dirs)) =
-    (browser_term_mode::out) is det.
+    trace_atom::in, list(dir)::in) = (browser_term_mode::out) is det.
 
-get_subterm_mode_from_atoms_for_arg(ArgNum, InitAtom, FinalAtom, Dirs)
+get_subterm_mode_from_atoms_for_arg(ArgNum, InitAtom, FinalAtom, Dirs0)
         = Mode :-
+    assert_dirs_are_simplified(Dirs0, Dirs),
     convert_dirs_to_term_path_from_atom(FinalAtom, Dirs, TermPath),
     ArgPos = arg_num_to_arg_pos(ArgNum),
     Mode = get_subterm_mode_from_atoms_and_term_path(InitAtom, FinalAtom,

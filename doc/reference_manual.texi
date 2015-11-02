@@ -4500,6 +4500,15 @@ term that does not match this standard mode to somewhere where its higher-order
 inst information may be lost, such as to a polymorphic predicate where the
 argument mode is @code{in}.
 
+The Melbourne Mercury implementation currently cannot track
+all the places where higher-order inst information could be lost
+if a function is put into a term.
+To preserve safety, it therefore requires that
+functions may be put into terms only if they have the default signature,
+i.e. all their arguments have mode @code{in},
+their result has mode @code{out},
+and they have determinism @code{det}.
+
 Mercury also provides builtin @samp{inst} values for use with solver types:
 
 @example

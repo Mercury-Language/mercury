@@ -133,7 +133,6 @@ OTHER_PROGS = \
 	higher_order_implied_mode \
 	ho_and_type_spec_bug \
 	ho_and_type_spec_bug2 \
-	ho_func_call \
 	ho_inst \
 	ho_unify \
 	id_type_bug \
@@ -303,6 +302,7 @@ CONSTRAINT_TYPECHECK_PROGS = \
 # language rules:
 #
 #	field_detism
+#	ho_func_call
 #
 # The following test case checked for a problem with the varsets attached
 # to mutables. It only ever worked in the presence of automatic solver

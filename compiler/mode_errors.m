@@ -142,6 +142,13 @@
             % One of the head variables did not have the expected final inst
             % on exit from the proc.
 
+    ;       mode_error_nondefault_mode_func(prog_var, cons_id,
+                list(prog_var), one_or_more(prog_var))
+            % mode_error_nondefault_mode_func(X, ConsId, Ys, BadYs):
+            % In the unification X = ConsId(Ys), the BadYs are functions
+            % that do NOT have the default mode and determinism, i.e.
+            % they aren't functions of the form f(in, ..., in) = out is det.
+
     ;       purity_error_should_be_in_promise_purity_scope(
                 negated_context_desc, prog_var)
             % The condition of an if-then-else or the body of a negation
@@ -343,6 +350,11 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
             ArgInsts),
         Spec = mode_error_unify_var_functor_to_spec(ModeInfo, Var, Name,
             Args, Inst, ArgInsts)
+    ;
+        ModeError = mode_error_nondefault_mode_func(Var, Name,
+            AllArgVars, BadArgVars),
+        Spec = mode_error_nondefault_mode_func_to_spec(ModeInfo, Var, Name,
+            AllArgVars, BadArgVars)
     ;
         ModeError = mode_error_conj(Errors, Culprit),
         Spec = mode_error_conj_to_spec(ModeInfo, Errors, Culprit)
@@ -1115,6 +1127,44 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, Args,
     ),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces1 ++ Pieces2)])]).
+
+%-----------------------------------------------------------------------------%
+
+:- func mode_error_nondefault_mode_func_to_spec(mode_info, prog_var,
+    cons_id, list(prog_var), one_or_more(prog_var)) = error_spec.
+
+mode_error_nondefault_mode_func_to_spec(ModeInfo, X, ConsId,
+        AllArgVars, BadArgVars) = Spec :-
+    Preamble = mode_info_context_preamble(ModeInfo),
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_varset(ModeInfo, VarSet),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    FunctorConsIdStr = functor_cons_id_to_string(ModuleInfo, VarSet,
+        print_name_only, ConsId, AllArgVars),
+    BadArgVars = one_or_more(HeadBadArgVar, TailBadArgVars),
+    (
+        TailBadArgVars = [],
+        ArgPieces = [words("Argument"),
+            quote(mercury_var_to_name_only(VarSet, HeadBadArgVar)),
+            words("is a function")]
+    ;
+        TailBadArgVars = [_ | _],
+        ArgPieces = [words("Arguments"),
+            quote(mercury_vars_to_name_only(VarSet,
+                [HeadBadArgVar | TailBadArgVars])),
+            words("are functions")]
+    ),
+    Pieces = [words("mode error in unification of"),
+        quote(mercury_var_to_name_only(VarSet, X)),
+        words("and"), words_quote(FunctorConsIdStr), suffix("."), nl] ++
+        ArgPieces ++ [words("whose argument modes and/or determinism"),
+        words("differ from the default function signature"),
+        words("(f(in, ..., in) = out is det)."),
+        words("This is not allowed, because taking such arguments"),
+        words("out of the term being constructed"),
+        words("would lose their mode and determinism information."), nl],
+    Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+        [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
 %-----------------------------------------------------------------------------%
 
