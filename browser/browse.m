@@ -542,8 +542,8 @@ browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
     browse_main_loop(Debugger, Info0, Info, !IO),
     io.set_input_stream(OldInputStream, _, !IO),
     io.set_output_stream(OldOutputStream, _, !IO),
-    MaybeTrack = Info ^ maybe_track,
-    !:State = Info ^ state.
+    MaybeTrack = Info ^ bri_maybe_track,
+    !:State = Info ^ bri_state.
 
 :- pred browse_main_loop(debugger::in, browser_info::in, browser_info::out,
     io::di, io::uo) is cc_multi.
@@ -613,11 +613,11 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
         Quit = no
     ;
         Command = cmd_cd_path(Path),
-        change_dir(!.Info ^ dirs, Path, NewPwd),
-        deref_subterm(!.Info ^ term, NewPwd, Result),
+        change_dir(!.Info ^ bri_dirs, Path, NewPwd),
+        deref_subterm(!.Info ^ bri_term, NewPwd, Result),
         (
             Result = deref_result(_),
-            !Info ^ dirs := NewPwd
+            !Info ^ bri_dirs := NewPwd
         ;
             Result = deref_error(OKPath, ErrorDir),
             report_deref_error(Debugger, OKPath, ErrorDir, !IO)
@@ -625,18 +625,18 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
         Quit = no
     ;
         Command = cmd_pwd,
-        write_down_path(Debugger, !.Info ^ dirs, !IO),
+        write_down_path(Debugger, !.Info ^ bri_dirs, !IO),
         nl_debugger(Debugger, !IO),
         Quit = no
     ;
         Command = cmd_track(HowTrack, ShouldAssertInvalid, MaybePath),
         (
             MaybePath = yes(Path),
-            change_dir(!.Info ^ dirs, Path, NewPwd),
-            deref_subterm(!.Info ^ term, NewPwd, SubResult),
+            change_dir(!.Info ^ bri_dirs, Path, NewPwd),
+            deref_subterm(!.Info ^ bri_term, NewPwd, SubResult),
             (
                 SubResult = deref_result(_),
-                !Info ^ maybe_track :=
+                !Info ^ bri_maybe_track :=
                     track(HowTrack, ShouldAssertInvalid, NewPwd),
                 Quit = yes
             ;
@@ -647,20 +647,21 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
             )
         ;
             MaybePath = no,
-            !Info ^ maybe_track :=
-                track(HowTrack, ShouldAssertInvalid, !.Info ^ dirs),
+            !Info ^ bri_maybe_track :=
+                track(HowTrack, ShouldAssertInvalid, !.Info ^ bri_dirs),
             Quit = yes
         )
     ;
         Command = cmd_mode_query(Path),
-        change_dir(!.Info ^ dirs, Path, NewPwd),
-        MaybeModeFunc = !.Info ^ maybe_mode_func,
+        change_dir(!.Info ^ bri_dirs, Path, NewPwd),
+        MaybeModeFunc = !.Info ^ bri_maybe_mode_func,
         write_term_mode_debugger(Debugger, MaybeModeFunc, NewPwd, !IO),
         Quit = no
     ;
         Command = cmd_mode_query_no_path,
-        MaybeModeFunc = !.Info ^ maybe_mode_func,
-        write_term_mode_debugger(Debugger, MaybeModeFunc, !.Info ^ dirs, !IO),
+        MaybeModeFunc = !.Info ^ bri_maybe_mode_func,
+        write_term_mode_debugger(Debugger, MaybeModeFunc, !.Info ^ bri_dirs,
+            !IO),
         Quit = no
     ;
         Command = cmd_param(ParamCmd),
@@ -724,7 +725,7 @@ do_portray(Debugger, CallerType, MaybeMaybeOptionTable, Info, MaybePath,
     io::di, io::uo) is cc_multi.
 
 do_print_memory_addr(Debugger, Info, MaybePath, !IO) :-
-    Dirs0 = Info ^ dirs,
+    Dirs0 = Info ^ bri_dirs,
     (
         MaybePath = no,
         Dirs = Dirs0
@@ -732,7 +733,7 @@ do_print_memory_addr(Debugger, Info, MaybePath, !IO) :-
         MaybePath = yes(Path),
         change_dir(Dirs0, Path, Dirs)
     ),
-    deref_subterm(Info ^ term, Dirs, DerefResult),
+    deref_subterm(Info ^ bri_term, Dirs, DerefResult),
     (
         DerefResult = deref_result(BrowserTerm),
         (
@@ -876,7 +877,7 @@ portray_maybe_path(Debugger, Caller, MaybeFormat, Info, MaybePath, !IO) :-
 portray(Debugger, Caller, MaybeFormat, Info, !IO) :-
     browser_info.get_format(Info, Caller, MaybeFormat, Format),
     browser_info.get_format_params(Info, Caller, Format, Params),
-    deref_subterm(Info ^ term, Info ^ dirs, SubResult),
+    deref_subterm(Info ^ bri_term, Info ^ bri_dirs, SubResult),
     (
         SubResult = deref_result(SubUniv),
         (
@@ -1502,13 +1503,14 @@ deref_subterm_2(Univ, Path, RevPath0, Result) :-
 :- pred get_path(browser_info::in, path::out) is det.
 
 get_path(Info, root_rel(UpDownDirs)) :-
-    UpDownDirs = down_to_up_down_dirs(Info ^ dirs).
+    UpDownDirs = down_to_up_down_dirs(Info ^ bri_dirs).
 
 :- pred set_path(path::in, browser_info::in, browser_info::out) is det.
 
-set_path(NewPath, Info0, Info) :-
-    change_dir(Info0 ^ dirs, NewPath, NewDirs),
-    Info = Info0 ^ dirs := NewDirs.
+set_path(NewPath, !Info) :-
+    Dirs0 = !.Info ^ bri_dirs,
+    change_dir(Dirs0, NewPath, Dirs),
+    !Info ^ bri_dirs := Dirs.
 
 :- pred change_dir(list(down_dir)::in, path::in, list(down_dir)::out) is det.
 
@@ -1533,7 +1535,8 @@ set_term(Term, Info0, Info) :-
 :- pred set_browser_term(browser_term::in, browser_info::in, browser_info::out)
     is det.
 
-set_browser_term(BrowserTerm, Info, Info ^ term := BrowserTerm).
+set_browser_term(BrowserTerm, !Info) :-
+    !Info ^ bri_term := BrowserTerm.
 
 %---------------------------------------------------------------------------%
 %
@@ -1549,13 +1552,13 @@ show_settings(Debugger, Info, !IO) :-
     show_settings_caller(Debugger, Info, print_all, "Printall", !IO),
 
     write_string_debugger(Debugger, "Current path is: ", !IO),
-    write_down_path(Debugger, Info ^ dirs, !IO),
+    write_down_path(Debugger, Info ^ bri_dirs, !IO),
     nl_debugger(Debugger, !IO),
 
     write_string_debugger(Debugger,
         "Number of I/O actions printed is: ", !IO),
     write_int_debugger(Debugger,
-        get_num_printed_io_actions(Info ^ state), !IO),
+        get_num_printed_io_actions(Info ^ bri_state), !IO),
     nl_debugger(Debugger, !IO).
 
 :- pred show_settings_caller(debugger::in, browser_info::in,

@@ -39,28 +39,28 @@
 :- type browser_info
     --->    browser_info(
                 % The term to browse.
-                term        :: browser_term,
+                bri_term        :: browser_term,
 
                 % The list of directories to take, starting from the root,
                 % to reach the current subterm.
-                dirs        :: list(down_dir),
+                bri_dirs        :: list(down_dir),
 
                 % What command called the browser?
-                caller_type :: browse_caller_type,
+                bri_caller_type :: browse_caller_type,
 
                 % Format specified as an option to the mdb command.
-                format      :: maybe(portray_format),
+                bri_format      :: maybe(portray_format),
 
                 % Persistent settings.
-                state       :: browser_persistent_state,
+                bri_state       :: browser_persistent_state,
 
                 % Location of subterm for which the `track' or `mark' command
                 % was given, or `no_track' if no `track' command was given.
-                maybe_track :: maybe_track_subterm(list(down_dir)),
+                bri_maybe_track :: maybe_track_subterm(list(down_dir)),
 
                 % An optional function to determine the mode of a particular
                 % subterm should the user issue a `mode' query.
-                maybe_mode_func :: maybe(browser_mode_func)
+                bri_maybe_mode_func :: maybe(browser_mode_func)
             ).
 
 :- type maybe_track_subterm(P)
@@ -404,26 +404,26 @@ set_lines_from_mdb(P, B, A, F, Pr, V, NPr, Lines, !Browser) :-
         !Browser).
 
 info_set_browse_param(OptionTable, Setting, !Info) :-
-    PersistentState0 = !.Info ^ state,
-    CallerType = !.Info ^ caller_type,
+    PersistentState0 = !.Info ^ bri_state,
+    CallerType = !.Info ^ bri_caller_type,
     set_browser_param_from_option_table(CallerType, OptionTable, Setting,
         PersistentState0, PersistentState),
-    !Info ^ state := PersistentState.
+    !Info ^ bri_state := PersistentState.
 
 info_set_num_io_actions(N, !Info) :-
-    PersistentState0 = !.Info ^ state,
+    PersistentState0 = !.Info ^ bri_state,
     set_num_io_actions(N, PersistentState0, PersistentState),
-    !Info ^ state := PersistentState.
+    !Info ^ bri_state := PersistentState.
 
 info_set_xml_browser_cmd(Cmd, !Info) :-
-    PersistentState0 = !.Info ^ state,
+    PersistentState0 = !.Info ^ bri_state,
     set_xml_browser_cmd_from_mdb(Cmd, PersistentState0, PersistentState),
-    !Info ^ state := PersistentState.
+    !Info ^ bri_state := PersistentState.
 
 info_set_xml_tmp_filename(FileName, !Info) :-
-    PersistentState0 = !.Info ^ state,
+    PersistentState0 = !.Info ^ bri_state,
     set_xml_tmp_filename_from_mdb(FileName, PersistentState0, PersistentState),
-    !Info ^ state := PersistentState.
+    !Info ^ bri_state := PersistentState.
 
 :- pred set_format_from_mdb(bool::in, bool::in, bool::in, portray_format::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
@@ -543,18 +543,18 @@ get_format(Info, Caller, MaybeFormat, Format) :-
         MaybeFormat = yes(Format)
     ;
         MaybeFormat = no,
-        MdbFormatOption = Info ^ format,
+        MdbFormatOption = Info ^ bri_format,
         (
             MdbFormatOption = yes(Format)
         ;
             MdbFormatOption = no,
-            get_caller_params(Info ^ state, Caller, Params),
+            get_caller_params(Info ^ bri_state, Caller, Params),
             Format = Params ^ default_format
         )
     ).
 
 get_format_params(Info, Caller, Format, Params) :-
-    get_caller_params(Info ^ state, Caller, CallerParams),
+    get_caller_params(Info ^ bri_state, Caller, CallerParams),
     get_caller_format_params(CallerParams, Format, Params).
 
 %---------------------------------------------------------------------------%
@@ -878,13 +878,13 @@ show_settings(Debugger, ShowPath, Info, !IO) :-
     write_string_debugger(Debugger,
         "Number of I/O actions printed is: ", !IO),
     write_int_debugger(Debugger,
-        get_num_printed_io_actions(Info ^ state), !IO),
+        get_num_printed_io_actions(Info ^ bri_state), !IO),
     nl_debugger(Debugger, !IO),
 
     (
         ShowPath = yes,
         write_string_debugger(Debugger, "Current path is: ", !IO),
-        write_down_path(Debugger, Info ^ dirs, !IO),
+        write_down_path(Debugger, Info ^ bri_dirs, !IO),
         nl_debugger(Debugger, !IO)
     ;
         ShowPath = no
