@@ -433,7 +433,7 @@ map_ids(Func, Items0, Init) = Items :-
     % such as mutable_item and foreign_proc_item?
     Items1 = init_item_id_set(Init),
     Items = list.foldl(
-        (func(ItemType, NewItems0) = NewItems :-
+        ( func(ItemType, NewItems0) = NewItems :-
             update_ids(ItemType, Func(ItemType, extract_ids(Items0, ItemType)),
                 NewItems0, NewItems)
         ),

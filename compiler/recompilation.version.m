@@ -75,18 +75,18 @@ compute_version_numbers(SourceFileTime, CurParseTreeInt, MaybeOldParseTreeInt,
         _CurIntIncls, _CurImpIncls, _CurIntAvails, _CurImpAvails,
         CurIntItems, CurImpItems),
     gather_items(CurIntItems, CurImpItems, CurGatheredItems, CurInstanceItems),
-    (
+    ( if
         MaybeOldParseTreeInt = yes(OldParseTreeInt),
         OldParseTreeInt = parse_tree_int(_, _, _, OldMaybeVersionNumbers,
             _OldIntIncls, _OldImpIncls, _OldIntAvails, _OldImpAvails,
             OldIntItems, OldImpItems),
         OldMaybeVersionNumbers = yes(OldVersionNumbers)
-    ->
+    then
         OldVersionNumbers = version_numbers(OldItemVersionNumbers,
             OldInstanceVersionNumbers),
         gather_items(OldIntItems, OldImpItems,
             OldGatheredItems, OldInstanceItems)
-    ;
+    else
         % There were no old version numbers, so every item gets
         % the same timestamp as the source module.
         % XXX ITEM_LIST In which case, the call to compute_item_version_numbers
@@ -137,7 +137,7 @@ compute_item_version_numbers_3(SourceFileTime, OldGatheredItems,
         OldItemVersionNumbers, ItemType, NameArity, CurItems) = TimeStamp :-
     OldIds = extract_ids(OldGatheredItems, ItemType),
     OldItemTypeVersionNumbers = extract_ids(OldItemVersionNumbers, ItemType),
-    (
+    ( if
         map.search(OldIds, NameArity, OldItems),
         % We call order_items on the items in both the interface and the
         % implementation of the current parse tree, but doing the same for
@@ -150,9 +150,9 @@ compute_item_version_numbers_3(SourceFileTime, OldGatheredItems,
         list.sort(CurItems, SortedCurItems),
         are_items_changed(SortedOldItems, SortedCurItems, unchanged),
         map.search(OldItemTypeVersionNumbers, NameArity, OldItemVersionNumber)
-    ->
+    then
         TimeStamp = OldItemVersionNumber
-    ;
+    else
         TimeStamp = SourceFileTime
     ).
 
@@ -165,14 +165,14 @@ compute_instance_version_numbers(SourceFileTime,
         OldInstanceVersionNumbers, NewInstanceVersionNumbers) :-
     NewInstanceVersionNumbers = map.map_values(
         ( func(ClassId, Items) = InstanceVersionNumber :-
-            (
+            ( if
                 map.search(OldInstanceItemMap, ClassId, OldItems),
                 are_items_changed(OldItems, Items, unchanged),
                 map.search(OldInstanceVersionNumbers, ClassId,
                     OldInstanceVersionNumber)
-            ->
+            then
                 InstanceVersionNumber = OldInstanceVersionNumber
-            ;
+            else
                 InstanceVersionNumber = SourceFileTime
             )
         ),
@@ -313,11 +313,11 @@ gather_in_item(Section, Item, !Info) :-
         ClassArity = list.length(ClassArgs),
         ClassItemName = item_name(ClassName, ClassArity),
         NewInstanceItem = Section - Item,
-        ( map.search(Instances0, ClassItemName, OldInstanceItems) ->
+        ( if map.search(Instances0, ClassItemName, OldInstanceItems) then
             NewInstanceItems = [NewInstanceItem | OldInstanceItems],
             map.det_update(ClassItemName, NewInstanceItems,
                 Instances0, Instances)
-        ;
+        else
             map.det_insert(ClassItemName, [NewInstanceItem],
                 Instances0, Instances)
         ),
@@ -406,7 +406,7 @@ add_gathered_item(Item, ItemId, Section, !GatheredItems) :-
     % XXX ITEM_LIST Maybe that should be fixed, instead of this workaround.
     % That needs to be done here as well the item list read from the interface
     % file will match the item list generated here.
-    (
+    ( if
         Item = item_pred_decl(ItemPredDecl),
         ItemPredDecl = item_pred_decl_info( PredName, PredOrFunc,
             TypesAndModes, WithType, WithInst, MaybeDetism,
@@ -417,7 +417,7 @@ add_gathered_item(Item, ItemId, Section, !GatheredItems) :-
         ( Modes = [_ | _]
         ; WithInst = yes(_)
         )
-    ->
+    then
         TypesWithoutModes = list.map((func(Type) = type_only(Type)), Types),
         varset.init(EmptyInstVarSet),
         PredItemPredDecl = item_pred_decl_info(PredName, PredOrFunc,
@@ -439,17 +439,17 @@ add_gathered_item(Item, ItemId, Section, !GatheredItems) :-
             Modes, WithInst, MaybeDetism, InstVarSet, Context, SeqNum),
         ModeItem = item_mode_decl(ModeItemModeDecl),
         AddedItems = [Section - PredItem, Section - ModeItem]
-    ;
+    else if
         Item = item_typeclass(ItemTypeClass),
         ItemTypeClass ^ tc_class_methods = class_interface_concrete(Methods0)
-    ->
+    then
         MethodsList = list.map(split_class_method_types_and_modes, Methods0),
         list.condense(MethodsList, Methods),
         NewItemTypeClass = ItemTypeClass ^ tc_class_methods
             := class_interface_concrete(Methods),
         NewItem = item_typeclass(NewItemTypeClass),
         AddedItems = [Section - NewItem]
-    ;
+    else
         AddedItems = [Section - Item]
     ),
     IdMap0 = extract_ids(!.GatheredItems, ItemType),
@@ -475,13 +475,13 @@ split_class_method_types_and_modes(Method0) = Methods :-
         Method0 = method_pred_or_func(SymName, PredOrFunc, TypesAndModes,
             WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
             ExistQVars, Purity, Constraints, _Context),
-        (
+        ( if
             split_types_and_modes(TypesAndModes, Types, MaybeModes),
             MaybeModes = yes(Modes),
             ( Modes = [_ | _]
             ; WithInst = yes(_)
             )
-        ->
+        then
             TypesWithoutModes =
                 list.map((func(Type) = type_only(Type)), Types),
             (
@@ -498,7 +498,7 @@ split_class_method_types_and_modes(Method0) = Methods :-
                 MaybePredOrFunc, Modes, WithInst, MaybeDetism,
                 InstVarSet, term.context_init),
             PredOrFuncModeItems = [PredOrFuncModeItem]
-        ;
+        else
             TypesWithoutModes = TypesAndModes,
             PredOrFuncModeItems = []
         ),
@@ -552,7 +552,7 @@ distribute_pragma_items({ItemId, Item, Section}, !GatheredItems) :-
 
 distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
         Item, Section, !ClassItems) :-
-    (
+    ( if
         % Does this pragma match any of the methods of this class.
         list.member(_ - ClassItem, !.ClassItems),
         ClassItem = item_typeclass(ClassItemTypeClass),
@@ -573,10 +573,10 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
             % We don't know the actual arity, so just match on the name
             % and pred_or_func.
         )
-    ->
+    then
         % XXX O(N^2), but shouldn't happen too often.
         !:ClassItems = !.ClassItems ++ [Section - Item]
-    ;
+    else
         true
     ).
 
@@ -796,48 +796,48 @@ is_item_changed(Item1, Item2, Changed) :-
         % XXX Need to compare the goals properly in clauses and assertions.
         % That's not necessary at the moment because smart recompilation
         % doesn't work with inter-module optimization yet.
-        (
+        ( if
             Item2 = item_clause(ItemClause2),
             ItemClause2 =
                 item_clause_info(_, _, PorF, SymName, Args, Goal, _, _)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_type_defn(ItemTypeDefn1),
         ItemTypeDefn1 = item_type_defn_info(_, Name, Args, Defn, _, _),
-        (
+        ( if
             Item2 = item_type_defn(ItemTypeDefn2),
             ItemTypeDefn2 = item_type_defn_info(_, Name, Args, Defn, _, _)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_inst_defn(ItemInstDefn1),
         ItemInstDefn1 = item_inst_defn_info(_, Name, Args,
             MaybeForTypeCtor, Defn, _, _),
-        (
+        ( if
             Item2 = item_inst_defn(ItemInstDefn2),
             ItemInstDefn2 = item_inst_defn_info(_, Name, Args,
                 MaybeForTypeCtor, Defn, _, _)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_mode_defn(ItemModeDefn1),
         ItemModeDefn1 = item_mode_defn_info(_, Name, Args, Defn, _, _),
-        (
+        ( if
             Item2 = item_mode_defn(ItemModeDefn2),
             ItemModeDefn2 = item_mode_defn_info(_, Name, Args, Defn, _, _)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
@@ -845,7 +845,7 @@ is_item_changed(Item1, Item2, Changed) :-
         ItemPredDecl1 = item_pred_decl_info(Name, PredOrFunc,
             TypesAndModes1, WithType1, _, Det1, _, TVarSet1, _,
             ExistQVars1, Purity, Constraints1, _, _),
-        (
+        ( if
             Item2 = item_pred_decl(ItemPredDecl2),
             ItemPredDecl2 = item_pred_decl_info(Name, PredOrFunc,
                 TypesAndModes2, WithType2, _, Det2, _, TVarSet2, _,
@@ -869,24 +869,24 @@ is_item_changed(Item1, Item2, Changed) :-
             pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
                 TypesAndModes1, WithType1, Constraints1, TVarSet2,
                 ExistQVars2, TypesAndModes2, WithType2, Constraints2)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_mode_decl(ItemModeDecl1),
         ItemModeDecl1 = item_mode_decl_info(Name, PredOrFunc, Modes1,
             WithInst1, Det, InstVarSet1, _, _),
-        (
+        ( if
             Item2 = item_mode_decl(ItemModeDecl2),
             ItemModeDecl2 = item_mode_decl_info(Name, PredOrFunc, Modes2,
                 WithInst2, Det, InstVarSet2, _, _),
             pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, WithInst1,
                 InstVarSet2, Modes2, WithInst2)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
@@ -896,18 +896,18 @@ is_item_changed(Item1, Item2, Changed) :-
         % declarations because the names of the variables are used to find
         % the corresponding variables in the predicate or function
         % type declaration.
-        (
+        ( if
             Item2 = item_pragma(ItemPragma2),
             ItemPragma2 = item_pragma_info(PragmaType2, _, _, _)
-        ->
-            (
+        then
+            ( if
                 PragmaType1 = pragma_type_spec(TypeSpecInfo1),
                 PragmaType2 = pragma_type_spec(TypeSpecInfo2),
                 TypeSpecInfo1 = pragma_info_type_spec(Name, SpecName, Arity,
                     MaybePredOrFunc, MaybeModes, TypeSubst1, TVarSet1, _),
                 TypeSpecInfo2 = pragma_info_type_spec(Name, SpecName, Arity,
                     MaybePredOrFunc, MaybeModes, TypeSubst2, TVarSet2, _)
-            ->
+            then
                 assoc_list.keys_and_values(TypeSubst1, TVars1, Types1),
                 assoc_list.keys_and_values(TypeSubst2, TVars2, Types2),
                 % XXX kind inference:
@@ -915,104 +915,108 @@ is_item_changed(Item1, Item2, Changed) :-
                 KindMap = map.init,
                 prog_type.var_list_to_type_list(KindMap, TVars1, TVarTypes1),
                 prog_type.var_list_to_type_list(KindMap, TVars2, TVarTypes2),
-                (
+                ( if
                     type_list_is_unchanged(
                         TVarSet1, TVarTypes1 ++ Types1,
                         TVarSet2, TVarTypes2 ++ Types2,
                         _, _, _)
-                ->
+                then
                     Changed = unchanged
-                ;
+                else
                     Changed = changed
                 )
-            ;
-                Changed = ( PragmaType1 = PragmaType2 -> unchanged ; changed )
+            else
+                ( if PragmaType1 = PragmaType2 then
+                    Changed = unchanged
+                else
+                    Changed = changed
+                )
             )
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_promise(ItemPromiseInfo1),
         ItemPromiseInfo1 = item_promise_info(PromiseType, Goal, _,
             UnivVars, _, _),
-        (
+        ( if
             Item2 = item_promise(ItemPromiseInfo2),
             ItemPromiseInfo2 = item_promise_info(PromiseType, Goal, _,
                 UnivVars, _, _)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_initialise(ItemInitialise1),
         ItemInitialise1 = item_initialise_info(A, B, C, _, _),
-        (
+        ( if
             Item2 = item_initialise(ItemInitialise2),
             ItemInitialise2 = item_initialise_info(A, B, C, _, _)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_finalise(ItemFinalise1),
         ItemFinalise1 = item_finalise_info(A, B, C, _, _),
-        (
+        ( if
             Item2 = item_finalise(ItemFinalise2),
             ItemFinalise2 = item_finalise_info(A, B, C, _, _)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_mutable(ItemMutable1),
         ItemMutable1 = item_mutable_info(A, B, C, D, E, F, _, _),
-        (
+        ( if
             Item2 = item_mutable(ItemMutable2),
             ItemMutable2 = item_mutable_info(A, B, C, D, E, F, _, _)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_typeclass(ItemTypeClass1),
         ItemTypeClass1 = item_typeclass_info(Constraints, FunDeps, Name,
             Vars, Interface1, _, _, _),
-        (
+        ( if
             Item2 = item_typeclass(ItemTypeClass2),
             ItemTypeClass2 = item_typeclass_info(Constraints, FunDeps, Name,
                 Vars, Interface2, _, _, _),
             class_interface_is_unchanged(Interface1, Interface2)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_instance(ItemInstance1),
         ItemInstance1 = item_instance_info(Constraints, Name,
             Types, OriginalTypes, Body, _, Module, _, _),
-        (
+        ( if
             Item2 = item_instance(ItemInstance2),
             ItemInstance2 = item_instance_info(Constraints, Name,
                 Types, OriginalTypes, Body, _, Module, _, _)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ;
         Item1 = item_nothing(ItemNothing1),
         ItemNothing1 = item_nothing_info(A, _, _),
-        (
+        ( if
             Item2 = item_nothing(ItemNothing2),
             ItemNothing2 = item_nothing_info(A, _, _)
-        ->
+        then
             Changed = unchanged
-        ;
+        else
             Changed = changed
         )
     ).
@@ -1038,7 +1042,7 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
         MaybeWithType1, Constraints1, TVarSet2, ExistQVars2,
         TypesAndModes2, MaybeWithType2, Constraints2) :-
     GetArgTypes =
-        (func(TypeAndMode0) = Type :-
+        ( func(TypeAndMode0) = Type :-
             (
                 TypeAndMode0 = type_only(Type)
             ;
@@ -1076,9 +1080,11 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
         RenamedExistQVars2),
     apply_rec_subst_to_tvar_list(RenamedKindMap2, Types2ToTypes1Subst,
         RenamedExistQVars2, SubstExistQTypes2),
-    ( prog_type.type_list_to_var_list(SubstExistQTypes2, SubstExistQVars2) ->
+    ( if
+        prog_type.type_list_to_var_list(SubstExistQTypes2, SubstExistQVars2)
+    then
         ExistQVars1 = SubstExistQVars2
-    ;
+    else
         unexpected($module, $pred, "non-var")
     ),
 
@@ -1127,7 +1133,7 @@ type_list_is_unchanged(TVarSet1, Types1, TVarSet2, Types2,
                 % just use varset.search_name to check whether the variables
                 % are named.
                 VarIsNotNamed =
-                    (pred(VarName::in) is semidet :-
+                    ( pred(VarName::in) is semidet :-
                         string.append("V_", VarNum, VarName),
                         string.to_int(VarNum, _)
                     ),
@@ -1223,18 +1229,18 @@ write_version_numbers(AllVersionNumbers, !IO) :-
     AllVersionNumbers = version_numbers(VersionNumbers,
         InstanceVersionNumbers),
     VersionNumbersList = list.filter_map(
-        (func(ItemType) = (ItemType - ItemVersions) is semidet :-
+        ( func(ItemType) = (ItemType - ItemVersions) is semidet :-
             ItemVersions = extract_ids(VersionNumbers, ItemType),
-            \+ map.is_empty(ItemVersions)
+            not map.is_empty(ItemVersions)
         ),
         [type_abstract_item, type_body_item, mode_item, inst_item,
             predicate_item, function_item, typeclass_item]),
     io.write_string("{\n\t", !IO),
     io.write_list(VersionNumbersList, ",\n\t",
         write_item_type_and_versions, !IO),
-    ( map.is_empty(InstanceVersionNumbers) ->
+    ( if map.is_empty(InstanceVersionNumbers) then
         true
-    ;
+    else
         (
             VersionNumbersList = []
         ;
@@ -1292,12 +1298,12 @@ version_numbers_version_number = 1.
 %-----------------------------------------------------------------------------%
 
 parse_version_numbers(VersionNumbersTerm, Result) :-
-    (
+    ( if
         VersionNumbersTerm = term.functor(term.atom("{}"),
             VersionNumbersTermList0, _)
-    ->
+    then
         VersionNumbersTermList = VersionNumbersTermList0
-    ;
+    else
         VersionNumbersTermList = [VersionNumbersTerm]
     ),
     map_parser(parse_item_type_version_numbers, VersionNumbersTermList,
@@ -1307,7 +1313,7 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
         VersionNumbers0 = version_numbers(init_item_id_set(map.init),
             map.init),
         VersionNumbers = list.foldl(
-            (func(VNResult, version_numbers(VNs0, Instances0)) =
+            ( func(VNResult, version_numbers(VNs0, Instances0)) =
                     version_numbers(VNs, Instances) :-
                 (
                     VNResult = items(ItemType, ItemVNs),
@@ -1332,12 +1338,12 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
     maybe1(item_version_numbers_result)::out) is det.
 
 parse_item_type_version_numbers(Term, Result) :-
-    (
+    ( if
         Term = term.functor(term.atom(ItemTypeStr), ItemsVNsTerms, _),
         string_to_item_type(ItemTypeStr, ItemType)
-    ->
+    then
         ParseName =
-            (pred(NameTerm::in, Name::out) is semidet :-
+            ( pred(NameTerm::in, Name::out) is semidet :-
                 NameTerm = term.functor(term.atom(Name), [], _)
             ),
         map_parser(parse_key_version_number(ParseName), ItemsVNsTerms,
@@ -1350,9 +1356,9 @@ parse_item_type_version_numbers(Term, Result) :-
             Result0 = error1(Specs),
             Result = error1(Specs)
         )
-    ;
+    else if
         Term = term.functor(term.atom("instance"), InstanceVNsTerms, _)
-    ->
+    then
         map_parser(parse_item_version_number(try_parse_sym_name_and_no_args),
             InstanceVNsTerms, Result1),
         (
@@ -1363,7 +1369,7 @@ parse_item_type_version_numbers(Term, Result) :-
             Result1 = error1(Specs),
             Result = error1(Specs)
         )
-    ;
+    else
         % XXX This is an uninformative error message.
         Pieces = [words("Invalid item type version numbers."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -1376,7 +1382,7 @@ parse_item_type_version_numbers(Term, Result) :-
     maybe1(pair(pair(string, arity), version_number))::out) is det.
 
 parse_key_version_number(ParseName, Term, Result) :-
-    (
+    ( if
         Term = term.functor(term.atom("-"),
             [ItemNameArityTerm, VersionNumberTerm], _),
         ItemNameArityTerm = term.functor(term.atom("/"),
@@ -1384,9 +1390,9 @@ parse_key_version_number(ParseName, Term, Result) :-
         ParseName(NameTerm, Name),
         ArityTerm = term.functor(term.integer(Arity), _, _),
         VersionNumber = term_to_version_number(VersionNumberTerm)
-    ->
+    then
         Result = ok1((Name - Arity) - VersionNumber)
-    ;
+    else
         Pieces = [words("Error in item version number."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
@@ -1398,7 +1404,7 @@ parse_key_version_number(ParseName, Term, Result) :-
     maybe1(pair(item_name, version_number))::out) is det.
 
 parse_item_version_number(ParseName, Term, Result) :-
-    (
+    ( if
         Term = term.functor(term.atom("-"),
             [ItemNameArityTerm, VersionNumberTerm], _),
         ItemNameArityTerm = term.functor(term.atom("/"),
@@ -1406,9 +1412,9 @@ parse_item_version_number(ParseName, Term, Result) :-
         ParseName(NameTerm, SymName),
         ArityTerm = term.functor(term.integer(Arity), _, _),
         VersionNumber = term_to_version_number(VersionNumberTerm)
-    ->
+    then
         Result = ok1(item_name(SymName, Arity) - VersionNumber)
-    ;
+    else
         Pieces = [words("Error in item version number."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),

@@ -141,9 +141,9 @@ should_recompile_2(Globals, IsSubModule, FindTargetFiles, FindTimestampFiles,
             unexpected($module, $pred, "try failed")
         ;
             Result = exception(Exception),
-            ( univ_to_type(Exception, RecompileException0) ->
+            ( if univ_to_type(Exception, RecompileException0) then
                 RecompileException = RecompileException0
-            ;
+            else
                 rethrow(Result)
             ),
             RecompileException = recompile_exception(Reason, !:Info),
@@ -350,14 +350,14 @@ should_recompile_3(Globals, IsSubModule, FindTargetFiles, !Info, !IO) :-
 require_recompilation_if_not_up_to_date(RecordedTimestamp, TargetFile,
         !Info, !IO) :-
     io.file_modification_time(TargetFile, TargetModTimeResult, !IO),
-    (
+    ( if
         TargetModTimeResult = ok(TargetModTime),
         compare(TargetModTimeCompare, time_t_to_timestamp(TargetModTime),
             RecordedTimestamp),
         TargetModTimeCompare = (>)
-    ->
+    then
         true
-    ;
+    else
         Reason = recompile_for_output_file_not_up_to_date(TargetFile),
         record_recompilation_reason(Reason, !Info)
     ).
@@ -375,7 +375,7 @@ parse_name_and_arity_to_used(Term, UsedClass) :-
 
 parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
     conjunction_to_list(Term, Args),
-    (
+    ( if
         Args = [ModuleNameTerm, SuffixTerm, TimestampTerm | MaybeOtherTerms],
         try_parse_sym_name_and_no_args(ModuleNameTerm, ModuleNamePrime),
         SuffixTerm = term.functor(term.string(SuffixStr), [], _),
@@ -388,10 +388,10 @@ parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
             MaybeOtherTerms = [],
             NeedQualifier = may_be_unqualified
         )
-    ->
+    then
         ModuleName = ModuleNamePrime,
         ModuleTimestamp = module_timestamp(FileKind, Timestamp, NeedQualifier)
-    ;
+    else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in module timestamp"),
         throw_syntax_error(Reason, Info)
@@ -403,10 +403,10 @@ parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
     term::in, resolved_used_items::out) is det.
 
 parse_used_items(Info, Term, UsedItems) :-
-    ( Term = term.functor(term.atom("used_items"), UsedItemTerms, _) ->
+    ( if Term = term.functor(term.atom("used_items"), UsedItemTerms, _) then
         list.foldl(parse_used_item_set(Info), UsedItemTerms,
             init_item_id_set(map.init, map.init, map.init), UsedItems)
-    ;
+    else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in used items"),
         throw_syntax_error(Reason, Info)
@@ -416,30 +416,30 @@ parse_used_items(Info, Term, UsedItems) :-
     resolved_used_items::in, resolved_used_items::out) is det.
 
 parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
-    (
+    ( if
         Term = term.functor(term.atom(ItemTypeStr), ItemTerms, _),
         string_to_item_type(ItemTypeStr, ItemType)
-    ->
-        ( is_simple_item_type(ItemType) ->
+    then
+        ( if is_simple_item_type(ItemType) then
             list.foldl(parse_simple_item(Info), ItemTerms,
                 map.init, SimpleItems),
             update_simple_item_set(ItemType, SimpleItems,
                 UsedItems0, UsedItems)
-        ; is_pred_or_func_item_type(ItemType) ->
+        else if is_pred_or_func_item_type(ItemType) then
             list.foldl(parse_pred_or_func_item(Info),
                 ItemTerms, map.init, PredOrFuncItems),
             update_pred_or_func_set(ItemType, PredOrFuncItems,
                 UsedItems0, UsedItems)
-        ; ItemType = functor_item ->
+        else if ItemType = functor_item then
             list.foldl(parse_functor_item(Info),
                 ItemTerms, map.init, CtorItems),
             UsedItems = UsedItems0 ^ functors := CtorItems
-        ;
+        else
             Reason = recompile_for_syntax_error(get_term_context(Term),
                 "error in used items: unknown item type: " ++ ItemTypeStr),
             throw_syntax_error(Reason, Info)
         )
-    ;
+    else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in used items"),
         throw_syntax_error(Reason, Info)
@@ -449,16 +449,16 @@ parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
     simple_item_set::in, simple_item_set::out) is det.
 
 parse_simple_item(Info, Term, !Set) :-
-    (
+    ( if
         Term = term.functor(term.atom("-"), [NameArityTerm, MatchesTerm], _),
         parse_name_and_arity_unqualified(NameArityTerm, SymName, Arity)
-    ->
+    then
         Name = unqualify_name(SymName),
         conjunction_to_list(MatchesTerm, MatchTermList),
         list.foldl(parse_simple_item_match(Info), MatchTermList,
             map.init, Matches),
         map.det_insert(Name - Arity, Matches, !Set)
-    ;
+    else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in simple items"),
         throw_syntax_error(Reason, Info)
@@ -469,20 +469,20 @@ parse_simple_item(Info, Term, !Set) :-
     map(module_qualifier, module_name)::out) is det.
 
 parse_simple_item_match(Info, Term, !Items) :-
-    (
-        (
+    ( if
+        ( if
             Term = term.functor(term.atom("=>"),
                 [QualifierTerm, ModuleNameTerm], _)
-        ->
+        then
             try_parse_sym_name_and_no_args(QualifierTerm, Qualifier),
             try_parse_sym_name_and_no_args(ModuleNameTerm, ModuleName)
-        ;
+        else
             try_parse_sym_name_and_no_args(Term, ModuleName),
             Qualifier = ModuleName
         )
-    ->
+    then
         map.det_insert(Qualifier, ModuleName, !Items)
-    ;
+    else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in simple item match"),
         throw_syntax_error(Reason, Info)
@@ -499,26 +499,26 @@ parse_pred_or_func_item(Info, Term, !Set) :-
 
 parse_pred_or_func_item_match(Info, Term, !Items) :-
     PredId = invalid_pred_id,
-    (
-        (
+    ( if
+        ( if
             Term = term.functor(term.atom("=>"),
                 [QualifierTerm, MatchesTerm], _)
-        ->
+        then
             try_parse_sym_name_and_no_args(QualifierTerm, Qualifier),
             conjunction_to_list(MatchesTerm, MatchesList),
             list.map(
-                (pred(MatchTerm::in, Match::out) is semidet :-
+                ( pred(MatchTerm::in, Match::out) is semidet :-
                     try_parse_sym_name_and_no_args(MatchTerm, MatchName),
                     Match = PredId - MatchName
                 ),
                 MatchesList, Matches)
-        ;
+        else
             try_parse_sym_name_and_no_args(Term, Qualifier),
             Matches = [PredId - Qualifier]
         )
-    ->
+    then
         map.det_insert(Qualifier, set.list_to_set(Matches), !Items)
-    ;
+    else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in pred or func match"),
         throw_syntax_error(Reason, Info)
@@ -534,15 +534,15 @@ parse_functor_item(Info, Term, !Set) :-
     resolved_functor_map::in, resolved_functor_map::out) is det.
 
 parse_functor_matches(Info, Term, !Map) :-
-    (
+    ( if
         Term = term.functor(term.atom("=>"),
             [QualifierTerm, MatchesTerm], _),
         try_parse_sym_name_and_no_args(QualifierTerm, Qualifier)
-    ->
+    then
         conjunction_to_list(MatchesTerm, MatchesList),
         list.map(parse_resolved_functor(Info), MatchesList, Matches),
         map.det_insert(Qualifier, set.list_to_set(Matches), !Map)
-    ;
+    else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in functor match"),
         throw_syntax_error(Reason, Info)
@@ -552,7 +552,7 @@ parse_functor_matches(Info, Term, !Map) :-
     resolved_functor::out) is det.
 
 parse_resolved_functor(Info, Term, Ctor) :-
-    (
+    ( if
         Term = term.functor(term.atom(PredOrFuncStr),
             [ModuleTerm, ArityTerm], _),
         ( PredOrFuncStr = "predicate", PredOrFunc = pf_predicate
@@ -560,26 +560,26 @@ parse_resolved_functor(Info, Term, Ctor) :-
         ),
         try_parse_sym_name_and_no_args(ModuleTerm, ModuleName),
         ArityTerm = term.functor(term.integer(Arity), [], _)
-    ->
+    then
         PredId = invalid_pred_id,
         Ctor = resolved_functor_pred_or_func(PredId, ModuleName, PredOrFunc,
             Arity)
-    ;
+    else if
         Term = term.functor(term.atom("ctor"), [NameArityTerm], _),
         parse_name_and_arity_unqualified(NameArityTerm, TypeName, TypeArity)
-    ->
+    then
         Ctor = resolved_functor_constructor(item_name(TypeName, TypeArity))
-    ;
+    else if
         Term = term.functor(term.atom("field"),
             [TypeNameArityTerm, ConsNameArityTerm], _),
         parse_name_and_arity_unqualified(TypeNameArityTerm,
             TypeName, TypeArity),
         parse_name_and_arity_unqualified(ConsNameArityTerm,
             ConsName, ConsArity)
-    ->
+    then
         Ctor = resolved_functor_field(item_name(TypeName, TypeArity),
             item_name(ConsName, ConsArity))
-    ;
+    else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in functor match"),
         throw_syntax_error(Reason, Info)
@@ -595,15 +595,15 @@ parse_resolved_functor(Info, Term, Ctor) :-
     term::in, resolved_item_set(T)::in, resolved_item_set(T)::out) is det.
 
 parse_resolved_item_set(Info, ParseMatches, Term, !Set) :-
-    (
+    ( if
         Term = term.functor(term.atom("-"), [NameTerm, MatchesTerm], _),
         NameTerm = term.functor(term.atom(Name), [], _)
-    ->
+    then
         conjunction_to_list(MatchesTerm, MatchTermList),
         list.map(parse_resolved_item_arity_matches(Info, ParseMatches),
             MatchTermList, Matches),
         map.det_insert(Name, Matches, !Set)
-    ;
+    else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in resolved item matches"),
         throw_syntax_error(Reason, Info)
@@ -615,18 +615,18 @@ parse_resolved_item_set(Info, ParseMatches, Term, !Set) :-
 
 parse_resolved_item_arity_matches(Info, ParseMatches, Term,
         Arity - MatchMap) :-
-    (
+    ( if
         Term = term.functor(term.atom("-"), [ArityTerm, MatchesTerm], _),
         ArityTerm = term.functor(term.integer(Arity0), [], _),
         conjunction_to_list(MatchesTerm, MatchTermList)
-    ->
+    then
         Arity = Arity0,
         list.foldl(
-            (pred(MatchTerm::in, Map0::in, Map::out) is det :-
+            ( pred(MatchTerm::in, Map0::in, Map::out) is det :-
                 ParseMatches(Info, MatchTerm, Map0, Map)
             ),
             MatchTermList, map.init, MatchMap)
-    ;
+    else
         Reason = recompile_for_syntax_error(get_term_context(Term),
             "error in resolved item matches"),
         throw_syntax_error(Reason, Info)
@@ -646,9 +646,9 @@ check_imported_modules(Globals, !Info, !IO) :-
     parser.read_term(TermResult, !IO),
     (
         TermResult = term(_, Term),
-        ( Term = term.functor(term.atom("done"), [], _) ->
+        ( if Term = term.functor(term.atom("done"), [], _) then
             true
-        ;
+        else
             check_imported_module(Globals, Term, !Info, !IO),
             check_imported_modules(Globals, !Info, !IO)
         )
@@ -675,13 +675,13 @@ check_imported_modules(Globals, !Info, !IO) :-
     io::di, io::uo) is det.
 
 check_imported_module(Globals, Term, !Info, !IO) :-
-    (
+    ( if
         Term = term.functor(term.atom("=>"),
             [TimestampTerm0, UsedItemsTerm0], _)
-    ->
+    then
         TimestampTerm = TimestampTerm0,
         MaybeUsedItemsTerm = yes(UsedItemsTerm0)
-    ;
+    else
         TimestampTerm = Term,
         MaybeUsedItemsTerm = no
     ),
@@ -701,7 +701,7 @@ check_imported_module(Globals, Term, !Info, !IO) :-
     ),
     HaveReadModuleMaps = !.Info ^ rci_have_read_module_maps,
     HaveReadModuleMapInt = HaveReadModuleMaps ^ hrmm_int,
-    (
+    ( if
         % If we are checking a submodule, don't re-read interface files
         % read for other modules checked during this compilation.
         !.Info ^ rci_is_inline_sub_module = yes,
@@ -709,14 +709,14 @@ check_imported_module(Globals, Term, !Info, !IO) :-
             IntFileKind, do_return_timestamp,
             FileNamePrime, MaybeNewTimestampPrime,
             ParseTreeIntPrime, SpecsPrime, ErrorsPrime)
-    ->
+    then
         FileName = FileNamePrime,
         MaybeNewTimestamp = MaybeNewTimestampPrime,
         ParseTreeInt = ParseTreeIntPrime,
         Specs = SpecsPrime,
         Errors = ErrorsPrime,
         Recorded = bool.yes
-    ;
+    else
         Recorded = bool.no,
         read_module_int(Globals, "Reading interface file for module",
             do_not_ignore_errors, do_search,
@@ -888,15 +888,15 @@ check_instance_version_numbers(ModuleName, UsedInstanceVersionNumbers,
 
 check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
         ClassId, UsedVersionNumber, !Info) :-
-    ( map.search(NewInstanceVersionNumbers, ClassId, NewVersionNumber) ->
-        ( UsedVersionNumber = NewVersionNumber ->
+    ( if map.search(NewInstanceVersionNumbers, ClassId, NewVersionNumber) then
+        ( if UsedVersionNumber = NewVersionNumber then
             true
-        ;
+        else
             Reason = recompile_for_changed_or_added_instance(ModuleName,
                 ClassId),
             record_recompilation_reason(Reason, !Info)
         )
-    ;
+    else
         Reason = recompile_for_removed_instance(ModuleName, ClassId),
         record_recompilation_reason(Reason, !Info)
     ).
@@ -1017,13 +1017,13 @@ check_class_method_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
         ItemType, SymName, Arity) :-
     Name = unqualify_name(SymName),
-    (
+    ( if
         map.search(extract_ids(UsedVersionNumbers, ItemType), Name - Arity,
             UsedVersionNumber)
-    ->
+    then
         % XXX This assumes that version numbers are timestamps.
         compare((>), UsedVersionNumber, UsedFileTimestamp)
-    ;
+    else
         true
     ).
 
@@ -1034,23 +1034,23 @@ item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
 
 check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
         VersionNumbers, ItemType, SymName, Arity, NeedsCheck, !Info) :-
-    (
+    ( if
         item_is_new_or_changed(UsedFileTimestamp, VersionNumbers,
             ItemType, SymName, Arity)
-    ->
+    then
         NeedsCheck = yes,
         UsedItems = !.Info ^ rci_used_items,
         UsedItemMap = extract_simple_item_set(UsedItems, ItemType),
         Name = unqualify_name(SymName),
-        ( map.search(UsedItemMap, Name - Arity, MatchingQualifiers) ->
+        ( if map.search(UsedItemMap, Name - Arity, MatchingQualifiers) then
             map.foldl(
                 check_for_simple_item_ambiguity_2(ItemType,
                     NeedQualifier, SymName, Arity),
                 MatchingQualifiers, !Info)
-        ;
+        else
             true
         )
-    ;
+    else
         NeedsCheck = no
     ).
 
@@ -1061,24 +1061,24 @@ check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
 check_for_simple_item_ambiguity_2(ItemType, NeedQualifier, SymName, Arity,
         OldModuleQualifier, OldMatchingModuleName, !Info) :-
     Name = unqualify_name(SymName),
-    (
+    ( if
         % XXX This is a bit conservative in the case of partially qualified
         % names but that hopefully won't come up too often.
         NeedQualifier = must_be_qualified,
         OldModuleQualifier = unqualified("")
-    ->
+    then
         true
-    ;
+    else if
         QualifiedName = module_qualify_name(OldModuleQualifier, Name),
         partial_sym_name_matches_full(QualifiedName, SymName),
-        \+ SymName = qualified(OldMatchingModuleName, _)
-    ->
+        not SymName = qualified(OldMatchingModuleName, _)
+    then
         OldMatchingName = qualified(OldMatchingModuleName, Name),
         Reason = recompile_for_item_ambiguity(
             item_id(ItemType, item_name(SymName, Arity)),
             [item_id(ItemType, item_name(OldMatchingName, Arity))]),
         record_recompilation_reason(Reason, !Info)
-    ;
+    else
         true
     ).
 
@@ -1097,22 +1097,22 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
         Arity = list.length(Args)
     ),
     ItemType = pred_or_func_to_item_type(PredOrFunc),
-    (
+    ( if
         (
             NeedsCheck = yes
         ;
             item_is_new_or_changed(OldTimestamp, VersionNumbers,
                 ItemType, SymName, Arity)
         )
-    ->
+    then
         UsedItems = !.Info ^ rci_used_items,
         UsedItemMap = extract_pred_or_func_set(UsedItems, ItemType),
         Name = unqualify_name(SymName),
-        ( map.search(UsedItemMap, Name, MatchingArityList) ->
+        ( if map.search(UsedItemMap, Name, MatchingArityList) then
             list.foldl(check_for_pred_or_func_item_ambiguity_1(WithType,
                 ItemType, NeedQualifier, SymName, Arity), MatchingArityList,
                 !Info)
-        ;
+        else
             true
         ),
 
@@ -1135,7 +1135,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
             SymName = unqualified(_),
             unexpected($module, $pred, "unqualified predicate name")
         )
-    ;
+    else
         true
     ).
 
@@ -1146,7 +1146,7 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
 
 check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, NeedQualifier,
         SymName, Arity, MatchArity - MatchingQualifiers, !Info) :-
-    (
+    ( if
         (
             WithType = yes(_),
             MatchArity >= Arity
@@ -1154,12 +1154,12 @@ check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, NeedQualifier,
             WithType = no,
             MatchArity = Arity
         )
-    ->
+    then
         map.foldl(
             check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
                 SymName, MatchArity),
             MatchingQualifiers, !Info)
-    ;
+    else
         true
     ).
 
@@ -1171,23 +1171,23 @@ check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, NeedQualifier,
 check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
         SymName, Arity, OldModuleQualifier, OldMatchingModuleNames, !Info) :-
     Name = unqualify_name(SymName),
-    (
+    ( if
         % XXX This is a bit conservative in the case of partially qualified
         % names but that hopefully won't come up too often.
         NeedQualifier = must_be_qualified,
         OldModuleQualifier = unqualified("")
-    ->
+    then
         true
-    ;
+    else if
         QualifiedName = module_qualify_name(OldModuleQualifier, Name),
         partial_sym_name_matches_full(QualifiedName, SymName),
-        \+ (
+        not (
             SymName = qualified(PredModuleName, _),
             set.member(_ - PredModuleName, OldMatchingModuleNames)
         )
-    ->
+    then
         AmbiguousDecls = list.map(
-            (func(_ - OldMatchingModule) = Item :-
+            ( func(_ - OldMatchingModule) = Item :-
                 OldMatchingName = qualified(OldMatchingModule, Name),
                 Item = item_id(ItemType, item_name(OldMatchingName, Arity))
             ),
@@ -1195,7 +1195,7 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
         Reason = recompile_for_item_ambiguity(item_id(ItemType,
             item_name(SymName, Arity)), AmbiguousDecls),
         record_recompilation_reason(Reason, !Info)
-    ;
+    else
         true
     ).
 
@@ -1268,10 +1268,10 @@ check_functor_ambiguities_by_name(NeedQualifier, Name, MatchArity,
     UsedItems = !.Info ^ rci_used_items,
     UnqualName = unqualify_name(Name),
     UsedCtors = UsedItems ^ functors,
-    ( map.search(UsedCtors, UnqualName, UsedCtorAL) ->
+    ( if map.search(UsedCtors, UnqualName, UsedCtorAL) then
         check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
             ResolvedCtor, UsedCtorAL, !Info)
-    ;
+    else
         true
     ).
 
@@ -1285,23 +1285,23 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
         ResolvedCtor, [Arity - UsedCtorMap | UsedCtorAL], !Info) :-
     (
         MatchArity = match_arity_exact(ArityToMatch),
-        ( ArityToMatch = Arity ->
+        ( if ArityToMatch = Arity then
             Check = yes,
             Continue = no
-        ;
+        else
             Check = no,
-            ( Arity < ArityToMatch ->
+            ( if Arity < ArityToMatch then
                 Continue = yes
-            ;
+            else
                 Continue = no
             )
         )
     ;
         MatchArity = match_arity_less_than_or_equal(ArityToMatch),
-        ( Arity =< ArityToMatch ->
+        ( if Arity =< ArityToMatch then
             Check = yes,
             Continue = yes
-        ;
+        else
             Check = no,
             Continue = no
         )
@@ -1332,25 +1332,25 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
 
 check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
         OldModuleQualifier, OldResolvedCtors, !Info) :-
-    (
+    ( if
         % XXX This is a bit conservative in the case of partially qualified
         % names but that hopefully won't come up too often.
         NeedQualifier = must_be_qualified,
         OldModuleQualifier = unqualified("")
-    ->
+    then
         true
-    ;
+    else if
         Name = unqualify_name(SymName),
         OldName = module_qualify_name(OldModuleQualifier, Name),
         partial_sym_name_matches_full(OldName, SymName),
-        \+ set.member(ResolvedCtor, OldResolvedCtors)
-    ->
+        not set.member(ResolvedCtor, OldResolvedCtors)
+    then
         Reason = recompile_for_functor_ambiguity(
             module_qualify_name(OldModuleQualifier, Name),
             Arity, ResolvedCtor, set.to_sorted_list(OldResolvedCtors)
         ),
         record_recompilation_reason(Reason, !Info)
-    ;
+    else
         true
     ).
 
@@ -1567,10 +1567,10 @@ project_spec_to_msgs(Spec) = Msgs :-
 :- func describe_item(item_id) = list(format_component).
 
 describe_item(item_id(ItemType0, item_name(SymName, Arity))) = Pieces :-
-    ( body_item(ItemType0, ItemType1) ->
+    ( if body_item(ItemType0, ItemType1) then
         string_to_item_type(ItemTypeStr, ItemType1),
         ItemPieces = [words("body of"), words(ItemTypeStr)]
-    ;
+    else
         string_to_item_type(ItemTypeStr, ItemType0),
         ItemPieces = [words(ItemTypeStr)]
     ),
