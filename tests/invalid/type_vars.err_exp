@@ -21,6 +21,6 @@ type_vars.m:012: Error: type variable T2 in existential quantifier does not
 type_vars.m:012:   occur in arguments or constraints of constructor.
 type_vars.m:013: Error: type variable `T1' has overlapping scopes (explicit
 type_vars.m:013:   type quantifier shadows argument type).
-type_vars.m:014: Error: type variable T2 in class constraints, which was
+type_vars.m:014: Error: type variable `T2' in class constraints, which was
 type_vars.m:014:   introduced with `=>' must be explicitly existentially
 type_vars.m:014:   quantified using `some'.

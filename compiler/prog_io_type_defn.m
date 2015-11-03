@@ -483,13 +483,13 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         NotExistQArgTypes = [_ | _]
     then
         varset.coerce(VarSet, GenericVarSet),
-        NotExistQArgTypesStr =
-            mercury_vars_to_name_only(GenericVarSet, NotExistQArgTypes),
+        NotExistQArgTypeStrs = list.map(
+            mercury_var_to_name_only(GenericVarSet), NotExistQArgTypes),
         Pieces = [words("Error:"),
             words(choose_number(NotExistQArgTypes,
-                "type variable", "type variables")),
-            words(NotExistQArgTypesStr),
-            words("in class constraints,"),
+                "type variable", "type variables"))]
+            ++ list_to_quoted_pieces(NotExistQArgTypeStrs) ++
+            [words("in class constraints,"),
             words(choose_number(NotExistQArgTypes,
                 "which was", "which were")),
             words("introduced with"), quote("=>"),
