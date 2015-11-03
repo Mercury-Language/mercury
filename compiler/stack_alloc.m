@@ -112,9 +112,9 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
 
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
     MainStack = code_model_to_main_stack(CodeModel),
-    allocate_stack_slots(ColourList, Globals, MainStack, VarTypes,
-        NumReservedSlots, MaybeReservedVarInfo, StackSlots1),
-    allocate_dummy_stack_slots(DummyVars, MainStack, -1,
+    allocate_stack_slots(Globals, VarTypes, MainStack, NumReservedSlots,
+        MaybeReservedVarInfo, ColourList, StackSlots1),
+    allocate_dummy_stack_slots(MainStack, DummyVars, -1,
         StackSlots1, StackSlots),
     proc_info_set_stack_slots(StackSlots, !ProcInfo).
 
@@ -210,106 +210,89 @@ var_is_not_dummy(DummyVarArray, Var) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred allocate_stack_slots(list(set_of_progvar)::in, globals::in,
-    main_stack::in, vartypes::in, int::in, maybe(pair(prog_var, int))::in,
-    stack_slots::out) is det.
+:- pred allocate_stack_slots(globals::in, vartypes::in,
+    main_stack::in, int::in, maybe(pair(prog_var, int))::in,
+    list(set_of_progvar)::in, stack_slots::out) is det.
 
-allocate_stack_slots(ColourList, Globals, MainStack, VarTypes,
-        NumReservedSlots, MaybeReservedVarInfo, StackSlots) :-
+allocate_stack_slots(Globals, VarTypes, MainStack, NumReservedSlots,
+        MaybeReservedVarInfo, Colours, StackSlots) :-
+    ( if float_width_on_stack(Globals, MainStack) = double_width then
+        MaybeDoubleWidthFloats = yes(VarTypes)
+    else
+        MaybeDoubleWidthFloats = no
+    ),
     % The reserved slots are referred to by fixed number
     % (e.g. framevar(1)) in trace.setup.
-    FirstVarSlot = NumReservedSlots + 1,
-    allocate_stack_slots_2(ColourList, Globals, MainStack, VarTypes,
-        MaybeReservedVarInfo, FirstVarSlot, map.init, StackSlots).
+    FirstFreeSlot = NumReservedSlots + 1,
+    allocate_stack_slots_to_colours(MainStack, MaybeDoubleWidthFloats,
+        MaybeReservedVarInfo, Colours, FirstFreeSlot, map.init, StackSlots).
 
-:- pred allocate_stack_slots_2(list(set_of_progvar)::in, globals::in,
-    main_stack::in, vartypes::in, maybe(pair(prog_var, int))::in,
+:- pred allocate_stack_slots_to_colours(main_stack::in, maybe(vartypes)::in,
+    maybe(pair(prog_var, int))::in, list(set_of_progvar)::in,
     int::in, stack_slots::in, stack_slots::out) is det.
 
-allocate_stack_slots_2([], _, _, _, _, _, !StackSlots).
-allocate_stack_slots_2([Vars | VarSets], Globals, MainStack, VarTypes,
-        MaybeReservedVarInfo, N0, !StackSlots) :-
-    ( float_width_on_stack(Globals, MainStack) = double_width ->
-        set_of_var.divide(var_is_float(VarTypes), Vars,
-            DoubleWidthVars, SingleWidthVars)
-    ;
-        SingleWidthVars = Vars,
-        DoubleWidthVars = set_of_var.init
-    ),
-    ( set_of_var.is_non_empty(SingleWidthVars) ->
-        allocate_stack_slots_3(SingleWidthVars, MainStack, single_width,
-            MaybeReservedVarInfo, N0, N1, !StackSlots)
-    ;
-        N1 = N0
-    ),
-    ( set_of_var.is_non_empty(DoubleWidthVars) ->
-        % XXX We do NOT currently allow single-width vars to overlap with
-        % double-width vars. The code generator does not understand that
-        % clobbering one of the pair of slots is equivalent to clobbering
-        % both of them.
-        align_double_width_slots(N1, N2),
-        allocate_stack_slots_3(DoubleWidthVars, MainStack, double_width,
-            MaybeReservedVarInfo, N2, N, !StackSlots)
-    ;
-        N = N1
-    ),
-    allocate_stack_slots_2(VarSets, Globals, MainStack, VarTypes,
-        MaybeReservedVarInfo, N, !StackSlots).
+allocate_stack_slots_to_colours(_, _, _, [], _, !StackSlots).
+allocate_stack_slots_to_colours(MainStack, MaybeDoubleWidthFloats,
+        MaybeReservedVarInfo, [FirstColour | LaterColours],
+        !.FirstFreeSlot, !StackSlots) :-
+    allocate_stack_slots_to_colour(MainStack, MaybeDoubleWidthFloats,
+        MaybeReservedVarInfo, FirstColour, !FirstFreeSlot, !StackSlots),
+    allocate_stack_slots_to_colours(MainStack, MaybeDoubleWidthFloats,
+        MaybeReservedVarInfo, LaterColours, !.FirstFreeSlot, !StackSlots).
 
-:- func float_width_on_stack(globals, main_stack) = stack_slot_width.
+:- pred allocate_stack_slots_to_colour(main_stack::in, maybe(vartypes)::in,
+    maybe(pair(prog_var, int))::in, set_of_progvar::in,
+    int::in, int::out, stack_slots::in, stack_slots::out) is det.
 
-float_width_on_stack(Globals, Stack) = FloatWidth :-
-    % We only store unboxed double-width floats on the det stack.
-    % It would be possible to do on the nondet stack but we would probably
-    % need to pad the frame allocation at run time to ensure that any double
-    % variables in the frame will be at aligned memory addresses.
+allocate_stack_slots_to_colour(MainStack, MaybeDoubleWidthFloats,
+        MaybeReservedVarInfo, ColourVars, !FirstFreeSlot, !StackSlots) :-
     (
-        Stack = det_stack,
-        double_width_floats_on_det_stack(Globals, yes)
-    ->
-        FloatWidth = double_width
+        MaybeDoubleWidthFloats = no,
+        % Treat all variables in ColourVars as single_width.
+        allocate_next_stack_slot(MainStack, single_width,
+            MaybeReservedVarInfo, ColourVars, !FirstFreeSlot, !StackSlots)
     ;
-        FloatWidth = single_width
+        MaybeDoubleWidthFloats = yes(VarTypes),
+        % XXX We do NOT currently allow single-width vars to overlap with
+        % double-width vars, because the code generator does not understand
+        % that clobbering one slot in a pair destroys any double_width values
+        % in that slot pair, even if its officially-recorded slot number
+        % is the number of the *other* slot.
+        set_of_var.divide(var_is_float(VarTypes), ColourVars,
+            DoubleWidthVars, SingleWidthVars),
+        ( if set_of_var.is_non_empty(SingleWidthVars) then
+            allocate_next_stack_slot(MainStack, single_width,
+                MaybeReservedVarInfo, SingleWidthVars,
+                !FirstFreeSlot, !StackSlots)
+        else
+            true
+        ),
+        ( if set_of_var.is_non_empty(DoubleWidthVars) then
+            align_double_width_slots(!FirstFreeSlot),
+            allocate_next_stack_slot(MainStack, double_width,
+                MaybeReservedVarInfo, DoubleWidthVars,
+                !FirstFreeSlot, !StackSlots)
+        else
+            true
+        )
     ).
 
-    % Conform to memory alignment requirements for double-word values.
-    % We maintain the invariant that the stack pointer is double-aligned.
-    % The first stack variable is numbered 1 so all odd-numbered stack slots
-    % are aligned. In a downwards-growing stack a higher slot number has a
-    % lower address. When allocating two consecutive slots, we therefore want
-    % the highered-numbered slot to be ODD. [N, N+1] shall be the next slots
-    % to be allocated, therefore N must be EVEN and N+1 must be ODD.
-    %
-:- pred align_double_width_slots(int::in, int::out) is det.
-
-align_double_width_slots(N0, N) :-
-    ( int.even(N0) ->
-        N = N0
-    ;
-        N = N0 + 1
-    ).
-
-:- pred var_is_float(vartypes::in, prog_var::in) is semidet.
-
-var_is_float(VarTypes, Var) :-
-    lookup_var_type(VarTypes, Var, float_type).
-
-:- pred allocate_stack_slots_3(set_of_progvar::in, main_stack::in,
-    stack_slot_width::in, maybe(pair(prog_var, int))::in, int::in, int::out,
+:- pred allocate_next_stack_slot(main_stack::in, stack_slot_width::in,
+    maybe(pair(prog_var, int))::in, set_of_progvar::in, int::in, int::out,
     stack_slots::in, stack_slots::out) is det.
 
-allocate_stack_slots_3(Vars, MainStack, StackSlotWidth, MaybeReservedVarInfo,
-        !N, !StackSlots) :-
-    (
+allocate_next_stack_slot(MainStack, StackSlotWidth, MaybeReservedVarInfo, Vars,
+        !FirstFreeSlot, !StackSlots) :-
+    ( if
         MaybeReservedVarInfo = yes(ResVar - ResSlotNum),
         set_of_var.member(Vars, ResVar)
-    ->
+    then
         expect(unify(StackSlotWidth, single_width), $module, $pred,
             "reserved multiple stack slots"),
         SlotNum = ResSlotNum
-    ;
-        SlotNum = !.N,
-        next_slot(StackSlotWidth, !N)
+    else
+        SlotNum = !.FirstFreeSlot,
+        next_slot(StackSlotWidth, !FirstFreeSlot)
     ),
     (
         MainStack = det_stack,
@@ -319,37 +302,35 @@ allocate_stack_slots_3(Vars, MainStack, StackSlotWidth, MaybeReservedVarInfo,
         Locn = nondet_slot(SlotNum)
     ),
     VarList = set_of_var.to_sorted_list(Vars),
-    allocate_same_stack_slot(VarList, Locn, !StackSlots).
+    allocate_given_stack_slot(Locn, VarList, !StackSlots).
 
-:- pred next_slot(stack_slot_width::in, int::in, int::out) is det.
-
-next_slot(single_width, N, N + 1).
-next_slot(double_width, N, N + 2).
-
-:- pred allocate_same_stack_slot(list(prog_var)::in, stack_slot::in,
+:- pred allocate_given_stack_slot(stack_slot::in, list(prog_var)::in,
     stack_slots::in, stack_slots::out) is det.
 
-allocate_same_stack_slot([], _Slot, !StackSlots).
-allocate_same_stack_slot([Var | Vars], Slot, !StackSlots) :-
+allocate_given_stack_slot(_Slot, [], !StackSlots).
+allocate_given_stack_slot(Slot, [Var | Vars], !StackSlots) :-
     map.det_insert(Var, Slot, !StackSlots),
-    allocate_same_stack_slot(Vars, Slot, !StackSlots).
+    allocate_given_stack_slot(Slot, Vars, !StackSlots).
 
-    % We must not allocate the same stack slot to dummy variables. If we do,
-    % then the code that saves variables on the stack at calls will get
-    % confused. After saving one dummy variable on the stack, it will try
-    % to save the next in the same stack slot; believing the first variable
-    % to still be live, it will move it away.
+%-----------------------------------------------------------------------------%
+
+    % We must not allocate the same stack slot to different dummy variables.
+    % If we do, then the code that saves variables on the stack at calls
+    % will get confused. After saving one dummy variable on the stack,
+    % it will try to save the next in the same stack slot; believing
+    % the first variable to still be live, it will move it away.
     %
     % In ordinary grades, it is possible to have one value of type io.state
     % and another of type store.store live at the same time; in debugging
     % grades, due to our policy of extending variable lifetimes, more than
     % one io.state may be live at the same time.
     %
-:- pred allocate_dummy_stack_slots(list(prog_var)::in, main_stack::in,
+:- pred allocate_dummy_stack_slots(main_stack::in, list(prog_var)::in,
     int::in, stack_slots::in, stack_slots::out) is det.
 
-allocate_dummy_stack_slots([], _, _, !StackSlots).
-allocate_dummy_stack_slots([Var | Vars], MainStack, N0, !StackSlots) :-
+allocate_dummy_stack_slots(_, [], _, !StackSlots).
+allocate_dummy_stack_slots(MainStack, [DummyVar | DummyVars],
+        N0, !StackSlots) :-
     (
         MainStack = det_stack,
         Locn = det_slot(N0, single_width)
@@ -357,8 +338,58 @@ allocate_dummy_stack_slots([Var | Vars], MainStack, N0, !StackSlots) :-
         MainStack = nondet_stack,
         Locn = nondet_slot(N0)
     ),
-    allocate_same_stack_slot([Var], Locn, !StackSlots),
-    allocate_dummy_stack_slots(Vars, MainStack, N0 - 1, !StackSlots).
+    allocate_given_stack_slot(Locn, [DummyVar], !StackSlots),
+    allocate_dummy_stack_slots(MainStack, DummyVars, N0 - 1, !StackSlots).
+
+%-----------------------------------------------------------------------------%
+
+:- func float_width_on_stack(globals, main_stack) = stack_slot_width.
+
+float_width_on_stack(Globals, Stack) = FloatWidth :-
+    % We only store unboxed double-width floats on the det stack.
+    % It would be possible to do on the nondet stack but we would probably
+    % need to pad the frame allocation at run time to ensure that any double
+    % variables in the frame will be at aligned memory addresses.
+    ( if
+        Stack = det_stack,
+        double_width_floats_on_det_stack(Globals, yes)
+    then
+        FloatWidth = double_width
+    else
+        FloatWidth = single_width
+    ).
+
+:- pred var_is_float(vartypes::in, prog_var::in) is semidet.
+
+var_is_float(VarTypes, Var) :-
+    lookup_var_type(VarTypes, Var, float_type).
+
+%-----------------------------------------------------------------------------%
+
+    % Conform to memory alignment requirements for double-word values.
+    % We maintain the invariant that the stack pointer is double-aligned.
+    % The first stack variable is numbered 1 so all odd-numbered stack slots
+    % are aligned. In a downwards-growing stack a higher slot number has a
+    % lower address. When allocating two consecutive slots, we therefore want
+    % the highered-numbered slot to be ODD.
+    %
+    % [!:FirstFreeSlot, !:FirstFreeSlot+1] shall be the next slots to be
+    % allocated, therefore !:FirstFreeSlot must be EVEN and !:FirstFreeSlot+1
+    % must be ODD.
+    %
+:- pred align_double_width_slots(int::in, int::out) is det.
+
+align_double_width_slots(!FirstFreeSlot) :-
+    ( if int.even(!.FirstFreeSlot) then
+        true
+    else
+        !:FirstFreeSlot= !.FirstFreeSlot + 1
+    ).
+
+:- pred next_slot(stack_slot_width::in, int::in, int::out) is det.
+
+next_slot(single_width, FirstFreeSlot, FirstFreeSlot + 1).
+next_slot(double_width, FirstFreeSlot, FirstFreeSlot + 2).
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.stack_alloc.
