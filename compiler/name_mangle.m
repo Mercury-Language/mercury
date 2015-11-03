@@ -196,16 +196,16 @@ make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
 
     DeclaringModuleName = sym_name_mangle(DeclaringModule),
     DefiningModuleName = sym_name_mangle(DefiningModule),
-    ( dont_module_qualify_name(Name0, Arity) ->
+    ( if dont_module_qualify_name(Name0, Arity) then
         LabelName0 = Name0
-    ;
+    else
         LabelName0 = qualify_name(DeclaringModuleName, Name0)
     ),
     % If this is a specialized version of a predicate defined
     % in some other module, then it needs both module prefixes.
-    ( DefiningModule \= DeclaringModule ->
+    ( if DefiningModule \= DeclaringModule then
         LabelName1 = DefiningModuleName ++ "__" ++ LabelName0
-    ;
+    else
         LabelName1 = LabelName0
     ),
     LabelName2 = name_mangle(LabelName1),
@@ -239,7 +239,7 @@ dont_module_qualify_name(Name, Arity) :-
 
 name_doesnt_need_mangling(Name) :-
     string.is_all_alnum_or_underscore(Name),
-    \+ string.append("f_", _Suffix, Name).
+    not string.append("f_", _Suffix, Name).
 
 sym_name_doesnt_need_mangling(unqualified(Name)) :-
     name_doesnt_need_mangling(Name).
@@ -254,9 +254,9 @@ sym_name_doesnt_need_mangling(qualified(ModuleName, PlainName)) :-
 
 maybe_qualify_name(Module0, Name0) = Name :-
     string.append(Module0, "__", UnderscoresModule),
-    ( string.append(UnderscoresModule, _, Name0) ->
+    ( if string.append(UnderscoresModule, _, Name0) then
         Name = Name0
-    ;
+    else
         string.append(UnderscoresModule, Name0, Name)
     ).
 
