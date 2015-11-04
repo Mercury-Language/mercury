@@ -12,8 +12,7 @@
 % - the MLDS data structure, which is an abstract
 %   representation of a generic imperative language;
 % - the MLDS code generator, which converts HLDS to MLDS;
-% - the high-level C back-end, the Java back-end, the .NET back-end,
-%   and a wrapper for the assembler back-end,
+% - the high-level C back-end, the Java back-end and the C# back-end,
 %   each of which convert MLDS to their respective target language.
 %
 %-----------------------------------------------------------------------------%
