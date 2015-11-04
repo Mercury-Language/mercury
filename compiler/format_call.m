@@ -80,19 +80,16 @@
 % a warning in such cases is controlled by a separate option, which is
 % consulted in det_report.m.
 %
-% We could in theory track e.g. format strings through calls to library
-% functions such as string.append. However, we have not yet felt the need
-% for this in practice.
-%
 % The second job (optimizing the calls) starts by processing the information
 % gathered by the first pass through the code. For each call site, we
 % systematically convert each component of the format string and its
 % associated value to be printed (if any) to a string, and then either append
 % the resulting strings together (if the original call was to string.format),
 % or print the resulting strings as they are produced (if the original call
-% was to io.format). We do not yet optimize calls to the predicate
-% stream.string_writer.format. For each call site that we could optimize,
-% we record its replacement in a map.
+% was to io.format). We optimize calls to stream.string_writer.format by
+% constructing the string to be written the same way as we do for
+% string.format, and then printing the result. For each call site that
+% we could optimize, we record its replacement in a map.
 %
 % If there are any such replacements, we perform a second backward traversal
 % of the procedure body, looking for the goals to be replaced (which we
@@ -788,15 +785,15 @@ format_call_traverse_conj(ModuleInfo, [Goal | Goals], CurId, !FormatCallSites,
             % scopes. It can build the term to print, but that will happen
             % only in degenerate cases. However, we do have some degenerate
             % cases in the test suite.
-            set_of_var.member(!.RelevantVars, TermVar)
+            not set_of_var.member(!.RelevantVars, TermVar)
         then
-            format_call_traverse_conj(ModuleInfo, [SubGoal], CurId,
-                !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars)
-        else
             % It is ok not to traverse the subgoal. The scope cannot contain
             % any calls, and the unifications it does contain are apparently
             % not of interest to any later format call.
             true
+        else
+            format_call_traverse_conj(ModuleInfo, [SubGoal], CurId,
+                !FormatCallSites, !Counter, !ConjMaps, !PredMap, !RelevantVars)
         )
     ;
         GoalExpr = generic_call(_, _, _, _, _)
