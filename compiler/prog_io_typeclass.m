@@ -307,25 +307,37 @@ parse_unconstrained_class(ModuleName, NameTerm, TVarSet, Context, SeqNum,
     (
         MaybeClassName = ok2(ClassName, TermVars0),
         list.map(term.coerce, TermVars0, TermVars),
-        ( if
-            term.term_list_to_var_list(TermVars, Vars),
-            list.sort_and_remove_dups(TermVars, SortedTermVars),
-            list.length(SortedTermVars, NumSortedTermVars),
-            list.length(TermVars, NumTermVars),
-            NumSortedTermVars = NumTermVars
-        then
-            % XXX Would this be a better context?
-            % Context = get_term_context(NameTerm),
-            TypeClassInfo = item_typeclass_info(ClassName, Vars, [], [],
-                class_interface_abstract, TVarSet, Context, SeqNum),
-            MaybeTypeClassInfo = ok1(TypeClassInfo)
-        else
-            Pieces = [words("Error: expected distinct variables"),
-                words("as class parameters."), nl],
-            % XXX Would Context be better than get_term_context(NameTerm)?
+        (
+            TermVars = [],
+            Pieces = [
+                words("Error: typeclass declarations require"),
+                words("at least one class parameter.")
+            ],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(NameTerm), [always(Pieces)])]),
             MaybeTypeClassInfo = error1([Spec])
+        ;
+            TermVars = [_ | _],
+            ( if
+                term.term_list_to_var_list(TermVars, Vars),
+                list.sort_and_remove_dups(TermVars, SortedTermVars),
+                list.length(SortedTermVars, NumSortedTermVars),
+                list.length(TermVars, NumTermVars),
+                NumSortedTermVars = NumTermVars
+            then
+                % XXX Would this be a better context?
+                % Context = get_term_context(NameTerm),
+                TypeClassInfo = item_typeclass_info(ClassName, Vars, [], [],
+                    class_interface_abstract, TVarSet, Context, SeqNum),
+                MaybeTypeClassInfo = ok1(TypeClassInfo)
+            else
+                Pieces = [words("Error: expected distinct variables"),
+                    words("as class parameters."), nl],
+                % XXX Would Context be better than get_term_context(NameTerm)?
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(NameTerm), [always(Pieces)])]),
+                MaybeTypeClassInfo = error1([Spec])
+            )
         )
     ;
         MaybeClassName = error2(Specs),

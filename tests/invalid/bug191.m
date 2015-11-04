@@ -16,17 +16,17 @@
 
 :- inst a ---> a(ground).
 
-:- typeclass foo where [pred baz(int::in, foo::out(a)) is det].
-:- instance foo where [pred(baz/2) is bar].
+:- typeclass foo(T) where [pred baz(T::in, int::in, foo::out(a)) is det].
+:- instance foo(int) where [pred(baz/3) is bar].
 
 :- pred foo(foo::in(a), int::out) is det.
 foo(a(I), I).
 
 % should be bar(int::in, foo::out(a))
-:- pred bar(int::in, foo::out) is det.
-bar(_S, b("GOTCHA")).
+:- pred bar(int::in, int::in, foo::out) is det.
+bar(_, _S, b("GOTCHA")).
 
 main(!IO) :-
-    baz(42, F),
+    baz(561, 42, F),
     foo(F, I),
     print(I, !IO), nl(!IO).

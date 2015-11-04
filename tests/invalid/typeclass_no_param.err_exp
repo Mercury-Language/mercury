@@ -1,0 +1,5 @@
+typeclass_no_param.m:004: Warning: interface for module `typeclass_no_param'
+typeclass_no_param.m:004:   does not export anything.
+typeclass_no_param.m:007: Error: typeclass declarations require at least one
+typeclass_no_param.m:007:   class parameter.
+For more information, recompile with `-E'.

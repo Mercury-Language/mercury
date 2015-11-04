@@ -247,6 +247,7 @@ SINGLEMODULE= \
 	typeclass_mode_2 \
 	typeclass_mode_3 \
 	typeclass_mode_4 \
+	typeclass_no_param \
 	typeclass_test_1 \
 	typeclass_test_10 \
 	typeclass_test_11 \
