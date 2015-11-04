@@ -456,13 +456,14 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
     then
         % There should be no duplicate names to remove.
         varset.coerce(VarSet, GenericVarSet),
-        NotOccursExistQVarsStr =
-            mercury_vars_to_name_only(GenericVarSet, NotOccursExistQVars),
+        NotOccursExistQVarStrs =
+            list.map(mercury_var_to_name_only(GenericVarSet),
+            NotOccursExistQVars),
         Pieces = [words("Error:"),
             words(choose_number(NotOccursExistQVars,
-                "type variable", "type variables")),
-            words(NotOccursExistQVarsStr),
-            words("in existential quantifier"),
+                "type variable", "type variables"))] ++
+            list_to_quoted_pieces(NotOccursExistQVarStrs) ++
+            [words("in existential quantifier"),
             words(choose_number(NotOccursExistQVars,
                 "does not occur", "do not occur")),
             words("in arguments or constraints of constructor."), nl],
