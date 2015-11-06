@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -188,7 +189,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
@@ -819,12 +820,12 @@ single_mode_constraints(ModuleInfo, MCVar, Mode) = Constraint :-
     mode_util.mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     (
         % Already produced?
-        not inst_match.inst_is_free(ModuleInfo, InitialInst)
+        not inst_is_free(ModuleInfo, InitialInst)
     ->
         IsProduced = no     % Not produced here.
     ;
         % free -> non-free
-        not inst_match.inst_is_free(ModuleInfo, FinalInst)
+        not inst_is_free(ModuleInfo, FinalInst)
     ->
         IsProduced = yes    % Produced here.
     ;

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -108,7 +109,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
@@ -1609,7 +1610,7 @@ solver_var_must_be_initialised(VarTypes, ModuleInfo, InstMaps, Var) :-
     type_is_solver_type_with_auto_init(ModuleInfo, VarType),
     list.member(InstMap, InstMaps),
     instmap_lookup_var(InstMap, Var, Inst),
-    not inst_match.inst_is_free(ModuleInfo, Inst).
+    not inst_is_free(ModuleInfo, Inst).
 
 :- pred add_necessary_disj_init_calls(list(hlds_goal)::in,
     list(hlds_goal)::out, list(instmap)::in, list(instmap)::out,
@@ -1660,7 +1661,7 @@ solver_vars_to_init(Vars, ModuleInfo, InstMap) =
 
 solver_var_to_init(ModuleInfo, InstMap, Var) :-
     instmap_lookup_var(InstMap, Var, Inst),
-    inst_match.inst_is_free(ModuleInfo, Inst).
+    inst_is_free(ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.modecheck_goal.

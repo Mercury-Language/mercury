@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -132,6 +133,8 @@
 :- import_module check_hlds.delay_partial_inst.
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_test.
+:- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.
@@ -1353,8 +1356,8 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, GroundMatchesBound,
                 %
                 % (c) the option `--solver-type-auto-init' is enabled.
                 %
-                inst_match.inst_is_free(ModuleInfo, VarInst),
-                inst_match.inst_is_any(ModuleInfo, Inst),
+                inst_is_free(ModuleInfo, VarInst),
+                inst_is_any(ModuleInfo, Inst),
                 type_is_solver_type_with_auto_init(ModuleInfo, Type),
                 mode_info_solver_init_is_supported(!.ModeInfo)
             then

@@ -2,6 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -120,7 +121,7 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.

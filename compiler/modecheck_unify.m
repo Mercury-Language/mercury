@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,6 +44,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_debug.
@@ -856,7 +858,7 @@ add_solver_init_calls_if_needed(InstOfX, ArgVars0, ExtraGoals, !ModeInfo) :-
         % so we can insert the necessary initialisation calls.
         ArgVars0 = [_ | _],
         HowToCheckGoal = check_modes,
-        inst_match.inst_is_free(ModuleInfo0, InstOfX),
+        inst_is_free(ModuleInfo0, InstOfX),
         mode_info_may_init_solver_vars(!.ModeInfo),
         mode_info_solver_init_is_supported(!.ModeInfo),
         instmap_lookup_vars(InstMap0, ArgVars0, InstArgs0),
@@ -886,7 +888,7 @@ all_arg_vars_are_non_free_or_solver_vars([_ | _], [], _, _, _) :-
     unexpected($module, $pred, "mismatched list lengths").
 all_arg_vars_are_non_free_or_solver_vars([ArgVar | ArgVars], [Inst | Insts],
         VarTypes, ModuleInfo, ArgVarsToInit) :-
-    ( if inst_match.inst_is_free(ModuleInfo, Inst) then
+    ( if inst_is_free(ModuleInfo, Inst) then
         lookup_var_type(VarTypes, ArgVar, ArgType),
         type_is_or_may_contain_solver_type(ModuleInfo, ArgType),
         all_arg_vars_are_non_free_or_solver_vars(ArgVars, Insts,

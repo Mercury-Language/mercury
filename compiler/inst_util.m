@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,6 +50,20 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
+
+%-----------------------------------------------------------------------------%
+
+    % inst_expand(ModuleInfo, Inst0, Inst) checks if the top-level part
+    % of the inst is a defined inst, and if so replaces it with the definition.
+    %
+:- pred inst_expand(module_info::in, mer_inst::in, mer_inst::out) is det.
+
+    % inst_expand_and_remove_constrained_inst_vars is the same as inst_expand
+    % except that it also removes constrained_inst_vars from the top level,
+    % replacing them with the constraining inst.
+    %
+:- pred inst_expand_and_remove_constrained_inst_vars(module_info::in,
+    mer_inst::in, mer_inst::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -149,6 +164,7 @@
 :- implementation.
 
 :- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
@@ -161,6 +177,26 @@
 :- import_module int.
 :- import_module require.
 :- import_module set.
+
+%---------------------------------------------------------------------------%
+
+inst_expand(ModuleInfo, !Inst) :-
+    ( if !.Inst = defined_inst(InstName) then
+        inst_lookup(ModuleInfo, InstName, !:Inst),
+        inst_expand(ModuleInfo, !Inst)
+    else
+        true
+    ).
+
+inst_expand_and_remove_constrained_inst_vars(ModuleInfo, !Inst) :-
+    ( if !.Inst = defined_inst(InstName) then
+        inst_lookup(ModuleInfo, InstName, !:Inst),
+        inst_expand(ModuleInfo, !Inst)
+    else if !.Inst = constrained_inst_vars(_, !:Inst) then
+        inst_expand(ModuleInfo, !Inst)
+    else
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 
