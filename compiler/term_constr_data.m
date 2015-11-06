@@ -22,25 +22,24 @@
 %
 % The AR has four kinds of goal:
 %
-% * primitives      - a set of primitive constraints representing the
+% * primitives      - A set of primitive constraints representing the
 %                     abstraction variable size relationships in some
 %                     HLDS goal.
 %
-% * conjunction     - a conjunction of AR goals.
+% * conjunction     - A conjunction of AR goals.
 %
-% * disjunction     - a disjunction of AR goals.
+% * disjunction     - A disjunction of AR goals.
 %
-% * calls           - an abstraction of intra-SCC calls.  Calls to
-%                     procedures lower down the call-graph are abstracted
-%                     as primitive AR goals.
+% * calls           - An abstraction of intra-SCC calls. Calls to procedures
+%                     lower down the call-graph are abstracted as primitive
+%                     AR goals.
 %
-% XXX In order to handle higher-order we need to either modify the
+% XXX In order to handle higher-order, we need to either modify the
 % exiting AR call goal or add a new AR goal type.
 %
 %-----------------------------------------------------------------------------%
 %
-% Mapping the HLDS to the AR
-%
+% Mapping the HLDS to the AR.
 %
 % 1. unification
 %
@@ -53,29 +52,29 @@
 %       { |X| = |A| + |B| + |C| + |f| }
 %
 % where |X| represents the size of the variable X (according to whatever
-% measure we are using).  There will also additional non-negativity
-% constraints on any variables that have non-zero size type.  Variables
-% of that have zero size type are not included at all.  Variables that
-% represent polymorphic types are included.  The code in
-% term_constr_fixpoint.m and term_constr_pass2.m that processes calls is
-% responsible for dealing with the situation where a polymorphic
-% procedure is called with zero sized arguments.
+% measure we are using). There will also additional non-negativity
+% constraints on any variables that have non-zero size type. Variables
+% of that have zero size type are not included at all. Variables that
+% represent polymorphic types are included. The code in term_constr_fixpoint.m
+% and term_constr_pass2.m that processes calls is responsible for dealing with
+% the situation where a polymorphic procedure is called with zero sized
+% arguments.
 %
 % 2. conjunction and parallel conjunction
 %
-% A HLDS conjunction (A, B) is converted to an AR conjunction.  Parallel
+% A HLDS conjunction (A, B) is converted to an AR conjunction. Parallel
 % conjunction is treated the same way.
 %
 % 3. disjunction and switches.
 %
-% A HLDS disjunction (A ; B) is converted to an AR disjunction.  Switches
+% A HLDS disjunction (A ; B) is converted to an AR disjunction. Switches
 % are similar although we also have to add any constraints on the variable
 % being switched on.
 %
 % 4. calls
 %
 % A HLDS call to a procedure lower down the call graph is abstracted as
-% an AR primitive.  A call to something in the same SCC becomes an AR call.
+% an AR primitive. A call to something in the same SCC becomes an AR call.
 %
 % 5. negation.
 %
@@ -90,7 +89,7 @@
 %
 % 8. if-then-else.
 %
-% ( Cond -> Then ; Else ) is abstracted as
+% ( if Cond then Then else Else ) is abstracted as
 %
 %  disj(conj(|Cond|, |Then|), conj(neg(|Cond|), |Else|))
 %
@@ -152,8 +151,8 @@
 
     % The result of the argument size analysis.
     %
-    % NOTE: this is just an indication that everything worked, any
-    % argument size constraint derived will be stored in the
+    % NOTE: this is just an indication that everything worked,
+    % any argument size constraint derived will be stored in the
     % termination2_info structure.
     %
 :- type arg_size_result
@@ -230,18 +229,18 @@
                 ap_ho_calls         :: list(abstract_ho_call)
             ).
 
-    % This is like an error message (and is treated as such
-    % at the moment).  It's here because we want to treat information
-    % regarding higher-order constructs differently from other errors.
-    % In particular higher-order constructs will not always be errors
-    % (ie. when we can analyse them properly).
+    % This is like an error message (and is treated as such at the moment).
+    % It is here because we want to treat information regarding higher-order
+    % constructs differently from other errors. In particular, higher-order
+    % constructs will not always be errors (i.e. when we can analyse
+    % them properly).
     %
 :- type abstract_ho_call
     --->    ho_call(prog_context).
 
-    % NOTE: the AR's notion of local/non-local variables may not
-    % correspond directly to that in the HLDS because of various
-    % transformations performed on the the AR.
+    % NOTE: the AR's notion of local/non-local variables may not correspond
+    % directly to that in the HLDS because of various transformations
+    % performed on the AR.
     %
 :- type local_vars == size_vars.
 :- type nonlocal_vars == size_vars.
@@ -260,10 +259,9 @@
 :- type abstract_goal
     --->    term_disj(
                 disj_goals     :: list(abstract_goal),
+                % We keep track of the number of disjuncts for use
+                % in heuristics that may speed up the convex hull calculation.
                 disj_size      :: int,
-                        % We keep track of the number of disjuncts for use
-                        % in heuristics that may speed up the convex hull
-                        % calculation.
 
                 disj_locals    :: local_vars,
                 disj_nonlocals :: nonlocal_vars
@@ -320,10 +318,9 @@
 :- func combine_recursion_types(recursion_type, recursion_type)
     = recursion_type.
 
-    % Combines the constraints contained in two primitive goals
-    % into a single primitive goal.  It is an error to pass
-    % any other kind of abstract goal as an argument to this
-    % function.
+    % Combines the constraints contained in two primitive goals into
+    % a single primitive goal. It is an error to pass any other kind
+    % of abstract goal as an argument to this function.
     %
 :- func combine_primitive_goals(abstract_goal, abstract_goal) = abstract_goal.
 
@@ -346,8 +343,8 @@
     %
 :- func size_varset_from_abstract_scc(abstract_scc) = size_varset.
 
-    % Succeeds iff the results of the analysis depend upon the
-    % values of some higher-order variables.
+    % Succeeds iff the results of the analysis depend upon the values
+    % of some higher-order variables.
     %
 :- pred analysis_depends_on_ho(abstract_proc::in) is semidet.
 
@@ -361,7 +358,7 @@
 :- pred dump_abstract_scc(module_info::in, abstract_scc::in, io::di,
     io::uo) is det.
 
-    % As above.  The extra argument specifies the indentation level.
+    % As above. The extra argument specifies the indentation level.
     %
 :- pred dump_abstract_scc(module_info::in, int::in, abstract_scc::in, io::di,
     io::uo) is det.
@@ -441,8 +438,7 @@ analysis_depends_on_ho(Proc) :-
 % Code for simplifying the abstract representation.
 %
 
-% XXX We should keep running the simplifications until we arrive at a
-% fixpoint.
+% XXX We should keep running the simplifications until we arrive at a fixpoint.
 
 simplify_abstract_rep(Goal0) = Goal :-
     simplify_abstract_rep(Goal0, Goal).
@@ -478,12 +474,12 @@ simplify_abstract_rep(Goal0, Goal) :-
             list.filter(isnt(is_empty_conj), !Conjuncts),
             Conjuncts = !.Conjuncts
         ),
-        ( Conjuncts = [Conjunct] ->
+        ( if Conjuncts = [Conjunct] then
             % The local/non-local var sets need to be updated for similar
             % reasons as we do with disjunctions.
             Goal = update_local_and_nonlocal_vars(Conjunct, Locals,
                 NonLocals)
-        ;
+        else
             Goal = term_conj(Conjuncts, Locals, NonLocals)
         )
     ;
@@ -502,16 +498,15 @@ simplify_abstract_rep(Goal0, Goal) :-
     %
     %   where Px is a primitive goal and NPx is a non-primitive
     %
-    %   then simplify this to:
+    % then simplify this to:
     %
     %   [ ( P1 /\ P2 /\ P3), NP1, NP2, ( P4 /\ P5), NP3, (P6 /\ P7) ]
     %
     %   where `/\' is the intersection of the primitive goals.
     %
     % Note: because intersection is commutative we could go further
-    % and take the intersection of all the primitive goals in a
-    % conjunction but that unnecessarily increases the size of the edge
-    % labels in pass 2.
+    % and take the intersection of all the primitive goals in a conjunction,
+    % but that unnecessarily increases the size of the edge labels in pass 2.
     %
 :- pred flatten_conjuncts(list(abstract_goal)::in, list(abstract_goal)::out)
     is det.
@@ -527,7 +522,7 @@ flatten_conjuncts(Goals0 @ [_, _ | _], Goals) :-
 
 flatten_conjuncts_2([], !RevGoals).
 flatten_conjuncts_2([Goal0 | Goals0], !RevGoals) :-
-    ( Goal0 = term_primitive(_, _, _) ->
+    ( if Goal0 = term_primitive(_, _, _) then
         list.takewhile(is_primitive, Goals0, Primitives, NextNonPrimitive),
         (
             Primitives = [],
@@ -537,7 +532,7 @@ flatten_conjuncts_2([Goal0 | Goals0], !RevGoals) :-
             NewPrimitive = list.foldl(combine_primitives, Primitives, Goal0)
         ),
         list.cons(NewPrimitive, !RevGoals)
-    ;
+    else
         list.cons(Goal0, !RevGoals),
         NextNonPrimitive = Goals0
     ),
@@ -552,15 +547,15 @@ is_primitive(term_primitive(_, _, _)).
 :- func combine_primitives(abstract_goal, abstract_goal) = abstract_goal.
 
 combine_primitives(GoalA, GoalB) = Goal :-
-    (
+    ( if
         GoalA = term_primitive(PolyA, LocalsA, NonLocalsA),
         GoalB = term_primitive(PolyB, LocalsB, NonLocalsB)
-    ->
+    then
         Poly = polyhedron.intersection(PolyA, PolyB),
         Locals = LocalsA ++ LocalsB,
         NonLocals = NonLocalsA ++ NonLocalsB,
         Goal = term_primitive(Poly, Locals, NonLocals)
-    ;
+    else
         unexpected($module, $pred, "non-primitive goals")
     ).
 
@@ -609,22 +604,61 @@ combine_recursion_types(both,        mutual_only) = both.
 combine_recursion_types(both,        both)        = both.
 
 combine_primitive_goals(GoalA, GoalB) = Goal :-
-    (
+    ( if
         GoalA = term_primitive(PolyA, LocalsA, NonLocalsA),
         GoalB = term_primitive(PolyB, LocalsB, NonLocalsB)
-    ->
+    then
         Poly      = polyhedron.intersection(PolyA, PolyB),
         Locals    = LocalsA ++ LocalsB,
         NonLocals = NonLocalsA ++ NonLocalsB,
         Goal      = term_primitive(Poly, Locals, NonLocals)
-    ;
+    else
         unexpected($module, $pred, "non-primitive goals")
     ).
 
 %-----------------------------------------------------------------------------%
 %
+% Predicates for simplifying conjuncts.
+%
+
+% XXX Make this part of the other AR simplification predicates.
+
+simplify_conjuncts(Goals0) = Goals :-
+    simplify_conjuncts(Goals0, Goals).
+
+:- pred simplify_conjuncts(list(abstract_goal)::in, list(abstract_goal)::out)
+    is det.
+
+simplify_conjuncts(Goals0, Goals) :-
+    (
+        Goals0 = [],
+        Goals = []
+    ;
+        Goals0 = [Goal],
+        Goals = [Goal]
+    ;
+        % If the list of conjuncts starts with two primitives
+        % join them together into a single primitive.
+        Goals0 = [GoalA, GoalB | OtherGoals],
+        ( if
+            GoalA = term_primitive(PolyA,  LocalsA, NonLocalsA),
+            GoalB = term_primitive(PolyB,  LocalsB, NonLocalsB)
+        then
+            Poly = polyhedron.intersection(PolyA, PolyB),
+            Locals = LocalsA ++ LocalsB,
+            NonLocals = NonLocalsA ++ NonLocalsB,
+            Goal = term_primitive(Poly, Locals, NonLocals),
+            Goals1 = [Goal | OtherGoals],
+            simplify_conjuncts(Goals1, Goals)
+        else
+            Goals = Goals0
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+%
 % Predicates for printing out the abstract data structure.
-% (These are for debugging only)
+% (These are for debugging only.)
 %
 
 dump_abstract_scc(ModuleInfo, SCC, !IO) :-
@@ -642,13 +676,15 @@ dump_abstract_proc(ModuleInfo, Indent, Proc, !IO) :-
     AbstractPPId = real(PPId),
     write_pred_proc_id(ModuleInfo, PPId, !IO),
     io.write_string(" : [", !IO),
-    WriteHeadVars = (pred(Var::in, !.IO::di, !:IO::uo) is det :-
-        varset.lookup_name(SizeVarSet, Var, VarName),
-        io.format(VarName ++ "[%d]", [i(term.var_to_int(Var))], !IO)
-    ),
-    io.write_list(HeadVars, ", ", WriteHeadVars, !IO),
+    io.write_list(HeadVars, ", ", dump_size_var(SizeVarSet), !IO),
     io.write_string(" ] :- \n", !IO),
     dump_abstract_goal(ModuleInfo, SizeVarSet, Indent + 1, Body, !IO).
+
+:- pred dump_size_var(size_varset::in, size_var::in, io::di, io::uo) is det.
+
+dump_size_var(SizeVarSet, Var, !IO) :-
+    varset.lookup_name(SizeVarSet, Var, VarName),
+    io.format("%s[%d]", [s(VarName), i(term.var_to_int(Var))], !IO).
 
 :- func recursion_type_to_string(recursion_type) = string.
 
@@ -733,57 +769,13 @@ dump_var_name(VarSet, Var, !IO) :-
     varset.lookup_name(VarSet, Var, VarName),
     io.write_string(VarName, !IO).
 
-%-----------------------------------------------------------------------------%
-%
-% Predicates for simplifying conjuncts.
-%
-
-% XXX Make this part of the other AR simplification predicates.
-
-simplify_conjuncts(Goals0) = Goals :-
-    simplify_conjuncts(Goals0, Goals).
-
-:- pred simplify_conjuncts(list(abstract_goal)::in, list(abstract_goal)::out)
-    is det.
-
-simplify_conjuncts(Goals0, Goals) :-
-    (
-        Goals0 = [],
-        Goals = []
-    ;
-        Goals0 = [Goal],
-        Goals = [Goal]
-    ;
-        % If the list of conjuncts starts with two primitives
-        % join them together into a single primitive.
-        Goals0 = [GoalA, GoalB | OtherGoals],
-        (
-            GoalA = term_primitive(PolyA,  LocalsA, NonLocalsA),
-            GoalB = term_primitive(PolyB,  LocalsB, NonLocalsB)
-        ->
-            Poly = polyhedron.intersection(PolyA, PolyB),
-            Locals = LocalsA ++ LocalsB,
-            NonLocals = NonLocalsA ++ NonLocalsB,
-            Goal = term_primitive(Poly, Locals, NonLocals),
-            Goals1 = [Goal | OtherGoals],
-            simplify_conjuncts(Goals1, Goals)
-        ;
-            Goals = Goals0
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-%
-% Utility predicates.
-%
-
 :- pred indent_line(int::in, io::di, io::uo) is det.
 
 indent_line(N, !IO) :-
-    ( N > 0 ->
+    ( if N > 0 then
         io.write_string("  ", !IO),
         indent_line(N - 1, !IO)
-    ;
+    else
         true
     ).
 
