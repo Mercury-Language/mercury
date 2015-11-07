@@ -289,7 +289,7 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
         ;
             Unify0 = deconstruct(Var, ConsId, Args, ArgModes,
                 _CanFail, _CanCGC),
-            (
+            ( if
                 % The following test is an optimization. If
                 % BindingArgModes = [], which is almost 100% likely,
                 % then size_prof_process_deconstruct would return GoalExpr0 as
@@ -297,10 +297,10 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
                 list.filter(binds_arg_in_cell(!.Info), ArgModes,
                     BindingArgModes),
                 BindingArgModes = [_ | _]
-            ->
+            then
                 size_prof_process_deconstruct(Var, ConsId, Args, ArgModes,
                     Goal0, GoalExpr, !Info)
-            ;
+            else
                 GoalExpr = GoalExpr0
             )
         ;
@@ -482,9 +482,11 @@ size_prof_process_goal(Goal0, Goal, !Info) :-
         % The code inside from_ground_term_construct scopes wants to construct
         % terms statically, but for term size profiling, we need to construct
         % terms dynamically,
-        ( Reason0 = from_ground_term(TermVar, from_ground_term_construct) ->
+        ( if
+            Reason0 = from_ground_term(TermVar, from_ground_term_construct)
+        then
             Reason = from_ground_term(TermVar, from_ground_term_other)
-        ;
+        else
             Reason = Reason0
         ),
         size_prof_process_goal(SubGoal0, SubGoal, !Info),
@@ -504,13 +506,13 @@ size_prof_process_conj([], [], !Info).
 size_prof_process_conj([Goal0 | Goals0], Conj, !Info) :-
     size_prof_process_goal(Goal0, Goal, !Info),
     size_prof_process_conj(Goals0, Goals, !Info),
-    ( Goal = hlds_goal(conj(plain_conj, SubConj), _) ->
+    ( if Goal = hlds_goal(conj(plain_conj, SubConj), _) then
         % Flatten out any conjunction introduced by size_prof_process_goal.
         % We never create conjunctions more than one level deep,
         % so this single test is sufficient to ensure that we never
         % leave conjunctions nested more deeply than the input goal.
         Conj = list.append(SubConj, Goals)
-    ;
+    else
         Conj = [Goal | Goals]
     ).
 
@@ -624,46 +626,46 @@ size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
     type_to_ctor_det(VarType, VarTypeCtor),
     type_ctor_module_name_arity(VarTypeCtor,
         VarTypeCtorModule, VarTypeCtorName, _),
-    (
+    ( if
         ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName)
-    ->
-        ( VarTypeCtorName = "type_info" ->
-            (
+    then
+        ( if VarTypeCtorName = "type_info" then
+            ( if
                 ConsId = type_info_cell_constructor(_),
                 Args = [TypeCtorInfoVar | ArgTypeInfoVars]
-            ->
+            then
                 record_known_type_info(Var, TypeCtorInfoVar, ArgTypeInfoVars,
                     !Info)
-            ;
+            else if
                 ConsId = type_ctor_info_const(M, N, A)
-            ->
+            then
                 % When type specialization creates a procedure with a type
                 % substitution such as K=int, it leaves the type of
                 % TypeInfo_for_K as type_info, not type_ctor_info.
                 record_known_type_ctor_info(Var, M, N, A, !Info)
-            ;
+            else
                 unexpected($module, $pred, "bad type_info")
             )
-        ; VarTypeCtorName = "type_ctor_info" ->
-            ( ConsId = type_ctor_info_const(M, N, A) ->
+        else if VarTypeCtorName = "type_ctor_info" then
+            ( if ConsId = type_ctor_info_const(M, N, A) then
                 record_known_type_ctor_info(Var, M, N, A, !Info)
-            ;
+            else
                 unexpected($module, $pred, "bad type_ctor_info")
             )
-        ;
+        else
             !:Info = !.Info
         ),
         Unification = construct(Var, ConsId, Args, ArgModes, How, Unique,
             no_construct_sub_info),
         GoalExpr = unify(LHS, RHS, UniMode, Unification, UnifyContext)
-    ;
+    else if
         ConsId = cons(_Name, _Arity, _TypeCtor),
         Args = [_ | _]
-    ->
+    then
         size_prof_process_cons_construct(LHS, RHS, UniMode, UnifyContext,
             Var, VarType, ConsId, Args, ArgModes, How, Unique,
             GoalInfo, GoalExpr, !Info)
-    ;
+    else
         % All ConsIds other than cons/2 with at least one argument
         % construct terms that we consider zero-sized.
         record_known_size(Var, 0, !Info),
@@ -684,19 +686,19 @@ size_prof_process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr,
     type_to_ctor_det(VarType, VarTypeCtor),
     type_ctor_module_name_arity(VarTypeCtor, VarTypeCtorModule,
         VarTypeCtorName, _),
-    (
+    ( if
         ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName)
-    ->
+    then
         Goal0 = hlds_goal(GoalExpr, _)
-    ;
+    else if
         ( ConsId = cons(_Name, _Arity, _TypeCtor)
         ; ConsId = tuple_cons(_Arity)
         ),
         Args = [_ | _]
-    ->
+    then
         size_prof_process_cons_deconstruct(Var, Args, ArgModes, Goal0,
             GoalExpr, !Info)
-    ;
+    else
         % All ConsIds other than cons/2 deconstruct terms that we
         % consider zero-sized.
         record_known_size(Var, 0, !Info),
@@ -800,12 +802,12 @@ size_prof_process_args([], !KnownSize, !MaybeSizeVar, _, [], !Info).
 size_prof_process_args([Arg | Args], !KnownSize, !MaybeSizeVar, Context, Goals,
         !Info) :-
     lookup_var_type(!.Info ^ spi_vartypes, Arg, Type),
-    ( map.search(!.Info ^ spi_known_size_map, Arg, ArgSize) ->
+    ( if map.search(!.Info ^ spi_known_size_map, Arg, ArgSize) then
         !:KnownSize = !.KnownSize + ArgSize,
         ArgGoals = []
-    ; zero_size_type(!.Info ^ spi_module_info, Type) ->
+    else if zero_size_type(!.Info ^ spi_module_info, Type) then
         ArgGoals = []
-    ;
+    else
         make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info),
         make_size_goal(TypeInfoVar, Arg, Context, SizeGoal, !MaybeSizeVar,
             !Info),
@@ -826,10 +828,10 @@ size_prof_process_args([Arg | Args], !KnownSize, !MaybeSizeVar, Context, Goals,
     prog_var::out, list(hlds_goal)::out, info::in, info::out) is det.
 
 generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
-    ( KnownSize = 0 ->
+    ( if KnownSize = 0 then
         SizeVar = SizeVar0,
         Goals = []
-    ;
+    else
         VarSet0 = !.Info ^ spi_varset,
         VarTypes0 = !.Info ^ spi_vartypes,
         make_int_const_construction_alloc(KnownSize,
@@ -858,13 +860,13 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
     list(hlds_goal)::out, info::in, info::out) is det.
 
 make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
-    ( map.search(!.Info ^ spi_type_info_map, Type, TypeInfoVarPrime) ->
+    ( if map.search(!.Info ^ spi_type_info_map, Type, TypeInfoVarPrime) then
         TypeInfoVar = TypeInfoVarPrime,
         TypeInfoGoals = []
-    ; type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes) ->
+    else if type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes) then
         construct_type_info(Context, Type, TypeCtor, ArgTypes, yes,
             TypeInfoVar, TypeInfoGoals, !Info)
-    ; type_to_ctor_and_args(Type, TypeCtor, ArgTypes) ->
+    else if type_to_ctor_and_args(Type, TypeCtor, ArgTypes) then
         (
             ArgTypes = [],
             make_type_ctor_info(TypeCtor, [], TypeCtorVar, TypeCtorGoals,
@@ -876,7 +878,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
             construct_type_info(Context, Type, TypeCtor, ArgTypes,
                 no, TypeInfoVar, TypeInfoGoals, !Info)
         )
-    ; Type = type_variable(TVar, _) ->
+    else if Type = type_variable(TVar, _) then
         rtti_lookup_type_info_locn(!.Info ^ spi_rtti_varmaps, TVar, TVarLocn),
         (
             TVarLocn = type_info(TypeInfoVar),
@@ -886,11 +888,11 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
             TargetTypeInfoMap = !.Info ^ spi_target_type_info_map,
             VarSet0 = !.Info ^ spi_varset,
             VarTypes0 = !.Info ^ spi_vartypes,
-            ( map.search(TargetTypeInfoMap, Type, TargetVar) ->
+            ( if map.search(TargetTypeInfoMap, Type, TargetVar) then
                 TypeInfoVar = TargetVar,
                 VarSet1 = VarSet0,
                 VarTypes1 = VarTypes0
-            ;
+            else
                 RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
                 polymorphism.new_type_info_var_raw(Type, type_info,
                     TypeInfoVar, VarSet0, VarSet1, VarTypes0, VarTypes1,
@@ -911,7 +913,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
             record_type_info_var(Type, TypeInfoVar, !Info),
             TypeInfoGoals = [SlotGoal, ExtractGoal]
         )
-    ;
+    else
         % Type_to_ctor_and_args can fail only if Type is a type variable,
         % or acts like one. The tests in our callers should have filtered
         % out both cases.
@@ -953,9 +955,9 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
     VarTypes2 = !.Info ^ spi_vartypes,
     RttiVarMaps0 = !.Info ^ spi_rtti_varmaps,
     TargetTypeInfoMap = !.Info ^ spi_target_type_info_map,
-    ( map.search(TargetTypeInfoMap, Type, PrefTIVar) ->
+    ( if map.search(TargetTypeInfoMap, Type, PrefTIVar) then
         MaybePreferredVar = yes(PrefTIVar)
-    ;
+    else
         MaybePreferredVar = no
     ),
     polymorphism.init_type_info_var(Type, ArgVars, MaybePreferredVar,
@@ -975,16 +977,18 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
     list(hlds_goal)::out, info::in, info::out) is det.
 
 make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
-    ( map.search(!.Info ^ spi_type_ctor_map, TypeCtor, TypeCtorVarPrime) ->
+    ( if
+        map.search(!.Info ^ spi_type_ctor_map, TypeCtor, TypeCtorVarPrime)
+    then
         TypeCtorVar = TypeCtorVarPrime,
         TypeCtorGoals = []
-    ;
-        (
+    else
+        ( if
             type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod)
-        ->
+        then
             construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
                 TypeArgs, Type)
-        ;
+        else
             construct_type(TypeCtor, [], Type)
         ),
         VarSet0 = !.Info ^ spi_varset,
@@ -1092,19 +1096,21 @@ record_known_type_ctor_info(Var, TypeCtorModule, TypeCtorName, TypeCtorArity,
 
 record_known_type_info(Var, TypeCtorInfoVar, ArgTypeInfoVars, !Info) :-
     RevTypeCtorMap0 = !.Info ^ spi_rev_type_ctor_map,
-    ( map.search(RevTypeCtorMap0, TypeCtorInfoVar, TypeCtor0) ->
+    ( if map.search(RevTypeCtorMap0, TypeCtorInfoVar, TypeCtor0) then
         RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
-        ( list.map(map.search(RevTypeInfoMap0), ArgTypeInfoVars, ArgTypes) ->
+        ( if
+            list.map(map.search(RevTypeInfoMap0), ArgTypeInfoVars, ArgTypes)
+        then
             list.length(ArgTypes, Arity),
             % Just in case TypeCtorInfo0 has fake arity, e.g. if it is a tuple.
             TypeCtor0 = type_ctor(SymName, _DeclArity),
             TypeCtor1 = type_ctor(SymName, Arity),
             construct_type(TypeCtor1, ArgTypes, Type),
             record_type_info_var(Type, Var, !Info)
-        ;
+        else
             true
         )
-    ;
+    else
         % We don't know what type is being constructed, because we have
         % forgotten what type constructor the type constructor variable
         % stands for due to an intervening call. This cannot happen
@@ -1121,12 +1127,12 @@ record_type_info_var(Type, Var, !Info) :-
     RevTypeInfoMap0 = !.Info ^ spi_rev_type_info_map,
     TypeInfoMap0 = !.Info ^ spi_type_info_map,
     map.set(Type, Var, TypeInfoMap0, TypeInfoMap),
-    ( map.insert(Var, Type, RevTypeInfoMap0, RevTypeInfoMap1) ->
+    ( if map.insert(Var, Type, RevTypeInfoMap0, RevTypeInfoMap1) then
         RevTypeInfoMap = RevTypeInfoMap1
-    ;
-        % This can happen because inlining XXX can leave a
-        % type_info_varmap saying that one type_info variable
-        % holds the typeinfo for more than one type.
+    else
+        % This can happen because inlining XXX can leave a type_info_varmap
+        % saying that one type_info variable holds the typeinfo for
+        % more than one type.
         RevTypeInfoMap = RevTypeInfoMap0
     ),
     !Info ^ spi_type_info_map := TypeInfoMap,
@@ -1194,9 +1200,9 @@ update_rev_maps(!Info) :-
 
 count_appearances([], !VarCounts).
 count_appearances([_ - Var | AssocList], !VarCounts) :-
-    ( map.search(!.VarCounts, Var, Count) ->
+    ( if map.search(!.VarCounts, Var, Count) then
         map.det_update(Var, Count + 1, !VarCounts)
-    ;
+    else
         map.det_insert(Var, 1, !VarCounts)
     ),
     count_appearances(AssocList, !VarCounts).
@@ -1208,9 +1214,9 @@ count_appearances([_ - Var | AssocList], !VarCounts) :-
 construct_rev_map([], _, !RevMap).
 construct_rev_map([T - Var | AssocList], VarCounts, !RevMap) :-
     map.lookup(VarCounts, Var, Count),
-    ( Count = 1 ->
+    ( if Count = 1 then
         map.det_insert(Var, T, !RevMap)
-    ;
+    else
         true
     ),
     construct_rev_map(AssocList, VarCounts, !RevMap).
@@ -1242,9 +1248,9 @@ update_target_map(!Info) :-
     type_info_map::in, type_info_map::out) is det.
 
 include_in_target_map(TypeInfoMap, Type - TypeInfoVar, !TargetTypeInfoMap) :-
-    ( map.search(TypeInfoMap, Type, TypeInfoVar) ->
+    ( if map.search(TypeInfoMap, Type, TypeInfoVar) then
         map.det_insert(Type, TypeInfoVar, !TargetTypeInfoMap)
-    ;
+    else
         true
     ).
 
@@ -1284,10 +1290,10 @@ find_defined_args(Args, Modes, DefinedArgs, NonDefinedArgs, Info) :-
         Modes = [FirstMode | LaterModes],
         find_defined_args(LaterArgs, LaterModes, LaterDefinedArgs,
             LaterNonDefinedArgs, Info),
-        ( binds_arg_in_cell(Info, FirstMode) ->
+        ( if binds_arg_in_cell(Info, FirstMode) then
             DefinedArgs = [FirstArg | LaterDefinedArgs],
             NonDefinedArgs = LaterNonDefinedArgs
-        ;
+        else
             DefinedArgs = LaterDefinedArgs,
             NonDefinedArgs = [FirstArg | LaterNonDefinedArgs]
         )
@@ -1295,8 +1301,9 @@ find_defined_args(Args, Modes, DefinedArgs, NonDefinedArgs, Info) :-
 
 :- pred binds_arg_in_cell(info::in, uni_mode::in) is semidet.
 
-binds_arg_in_cell(Info,
-        (CellInitInst - _ArgInitInst) -> (CellFinalInst - _ArgFinalInst)) :-
+binds_arg_in_cell(Info, UniMode) :-
+    UniMode =
+        ((CellInitInst - _ArgInitInst) -> (CellFinalInst - _ArgFinalInst)),
     ModuleInfo = Info ^ spi_module_info,
     inst_is_free(ModuleInfo, CellInitInst),
     inst_is_bound(ModuleInfo, CellFinalInst).
