@@ -258,17 +258,11 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     list.foldl2(add_instance_defn, ItemInstances,
         !ModuleInfo, !Specs),
 
-    % Perform checks for various kinds of errors in mutable, initialise
-    % and finalise items.
-    % XXX PASS STRUCTURE We should check mutables when we first process them,
-    % and initialise and finalise items when we add them to the HLDS.
+    % Perform checks for various kinds of errors in mutable items.
+    % XXX PASS STRUCTURE We should check mutables when we first process them.
     list.foldl(check_mutable_if_local(!.ModuleInfo), ItemMutables,
         !Specs),
     list.foldl(check_mutable_if_local(!.ModuleInfo), SolverItemMutables,
-        !Specs),
-    list.foldl(check_initialise_if_local, ItemInitialises,
-        !Specs),
-    list.foldl(check_finalise_if_local, ItemFinalises,
         !Specs),
 
     % Implement several kinds of pragmas, the ones in the subtype
@@ -725,81 +719,6 @@ maybe_add_default_mode(SectionItem, !ModuleInfo) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pred check_initialise_if_local(ims_item(item_initialise_info)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_initialise_if_local(StatusItem, !Specs) :-
-    % The initialise is actually implemented later by add_initialise,
-    % we just do some error checking at this point.
-    StatusItem = ims_item(ItemMercuryStatus, ItemInitialise),
-    ItemInitialise = item_initialise_info(_, _, Origin, Context, _SeqNum),
-    (
-        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
-        (
-            ItemExport = item_export_anywhere,
-            (
-                Origin = item_origin_user,
-                error_is_exported(Context,
-                    [decl("initialise"), words("declaration")], !Specs)
-            ;
-                Origin = item_origin_compiler(CompilerAttrs),
-                CompilerAttrs = item_compiler_attributes(_AllowExport,
-                    IsMutable),
-                (
-                    % Ignore the error if this initialise declaration was
-                    % introduced because of a mutable declaration.
-                    IsMutable = is_mutable
-                ;
-                    IsMutable = is_not_mutable,
-                    unexpected($module, $pred,
-                        "bad introduced initialise declaration")
-                )
-            )
-        ;
-            ( ItemExport = item_export_nowhere
-            ; ItemExport = item_export_only_submodules
-            )
-        )
-    ;
-        ItemMercuryStatus = item_defined_in_other_module(_)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred check_finalise_if_local(ims_item(item_finalise_info)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_finalise_if_local(StatusItem, !Specs) :-
-    % The finalise is actually implemented later by add_finalise,
-    % we just do some error checking at this point.
-    StatusItem = ims_item(ItemMercuryStatus, ItemFinalise),
-    ItemFinalise = item_finalise_info(_, _, Origin, Context, _SeqNum),
-    (
-        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
-        (
-            ItemExport = item_export_anywhere,
-            (
-                Origin = item_origin_user,
-                error_is_exported(Context,
-                    [decl("finalise"), words("declaration")], !Specs)
-            ;
-                % There are no source-to-source transformations that introduce
-                % finalise declarations.
-                Origin = item_origin_compiler(_),
-                unexpected($module, $pred,
-                    "bad introduced finalise declaration")
-            )
-        ;
-            ( ItemExport = item_export_nowhere
-            ; ItemExport = item_export_only_submodules
-            )
-        )
-    ;
-        ItemMercuryStatus = item_defined_in_other_module(_)
-    ).
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred add_clause(ims_item(item_clause_info)::in,
@@ -932,25 +851,75 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_initialise(StatusItem, !ModuleInfo, !Specs) :-
-    StatusItem = ims_item(_ItemMercuryStatus, ItemInitialiseInfo),
-    % XXX STATUS check (a) defined in this module,
-    % (b) in implementation section.
-    ItemInitialiseInfo = item_initialise_info(SymName, Arity, Origin, Context,
+    StatusItem = ims_item(ItemMercuryStatus, ItemInitialise),
+    ItemInitialise = item_initialise_info(SymName, Arity, Origin, Context,
         _SeqNum),
     (
-        Origin = item_origin_user,
-        add_initialise_user(SymName, Arity, Context, !ModuleInfo, !Specs)
+        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
+        (
+            ItemExport = item_export_anywhere,
+            error_is_exported(Context,
+                [decl("initialise"), words("declaration")], !Specs)
+        ;
+            ( ItemExport = item_export_nowhere
+            ; ItemExport = item_export_only_submodules
+            )
+        ),
+        (
+            Origin = item_origin_user,
+            implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs)
+        ;
+            Origin = item_origin_compiler(_CompilerAttrs),
+            unexpected($module, $pred, "bad introduced initialise declaration")
+        )
     ;
-        Origin = item_origin_compiler(_CompilerAttrs),
-        unexpected($module, $pred, "bad introduced initialise declaration")
+        ItemMercuryStatus = item_defined_in_other_module(_)
+        % It is OK if the initialise is defined in a parent module,
+        % and we get to see it (though it SHOULD be kept out of .int0 files),
+        % but we should NOT implement it.
     ).
 
-:- pred add_initialise_user(sym_name::in, arity::in, prog_context::in,
+:- pred add_finalise(ims_item(item_finalise_info)::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_initialise_user(SymName, Arity, Context, !ModuleInfo, !Specs) :-
-    % To handle a `:- initialise initpred.' declaration for C backends,
+add_finalise(StatusItem, !ModuleInfo, !Specs) :-
+    StatusItem = ims_item(ItemMercuryStatus, ItemFinaliseInfo),
+    ItemFinaliseInfo = item_finalise_info(SymName, Arity, Origin, Context,
+        _SeqNum),
+    (
+        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
+        (
+            ItemExport = item_export_anywhere,
+            error_is_exported(Context,
+                [decl("finalise"), words("declaration")], !Specs)
+        ;
+            ( ItemExport = item_export_nowhere
+            ; ItemExport = item_export_only_submodules
+            )
+        ),
+        (
+            Origin = item_origin_user,
+            implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs)
+        ;
+            Origin = item_origin_compiler(_),
+            unexpected($module, $pred, "bad introduced finalise declaration")
+        )
+    ;
+        ItemMercuryStatus = item_defined_in_other_module(_)
+        % It is OK if the initialise is defined in a parent module,
+        % and we get to see it (though it SHOULD be kept out of .int0 files),
+        % but we should NOT implement it.
+    ).
+
+%---------------------%
+
+:- pred implement_initialise(sym_name::in, arity::in, prog_context::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+implement_initialise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
+    % To implement an `:- initialise initpred.' declaration for C backends,
     % we need to:
     %
     % (1) construct a new C function name, CName, to use to export initpred,
@@ -1062,15 +1031,14 @@ add_initialise_user(SymName, Arity, Context, !ModuleInfo, !Specs) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
-:- pred add_finalise(ims_item(item_finalise_info)::in,
+:- pred implement_finalise(sym_name::in, arity::in, prog_context::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_finalise(StatusItem, !ModuleInfo, !Specs) :-
-    StatusItem = ims_item(_ItemMercuryStatus, ItemFinaliseInfo),
-    % To handle a `:- finalise finalpred.' declaration for C backends,
+implement_finalise(SymName, Arity, Context, !ModuleInfo, !Specs) :-
+    % To implement a `:- finalise finalpred.' declaration for C backends,
     % we need to:
     %
     % (1) construct a new C function name, CName, to use to export finalpred,
@@ -1080,14 +1048,7 @@ add_finalise(StatusItem, !ModuleInfo, !Specs) :-
     %
     % For the Erlang backend, we need to have the finalpred recorded in the
     % ModuleInfo. This is implied by the handling for the C backends.
-    ItemFinaliseInfo = item_finalise_info(SymName, Arity, Origin, Context,
-        _SeqNum),
-    (
-        Origin = item_origin_compiler(_),
-        unexpected($module, $pred, "bad introduced finalise declaration")
-    ;
-        Origin = item_origin_user
-    ),
+
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     predicate_table_lookup_pred_sym_arity(PredTable,
         may_be_partially_qualified, SymName, Arity, PredIds),
