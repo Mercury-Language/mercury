@@ -1310,7 +1310,7 @@ maybe_clobber_insts([], [], []).
 maybe_clobber_insts([Inst0 | Insts0], [IsLive | IsLives], [Inst | Insts]) :-
     (
         IsLive = is_dead,
-        Inst = ground(clobbered, none)
+        Inst = ground(clobbered, none_or_default_func)
     ;
         IsLive = is_live,
         Inst = Inst0
@@ -1502,11 +1502,13 @@ check_mode_of_main([Di, Uo], ModuleInfo) :-
     % manual specifies, rather than looking for a particular
     % abstract property.
     %
-    inst_expand(ModuleInfo, DiInitialInst, ground(unique, none)),
-    inst_expand(ModuleInfo, DiFinalInst, ground(clobbered, none)),
+    Unique = ground(unique, none_or_default_func),
+    Clobbered = ground(clobbered, none_or_default_func),
+    inst_expand(ModuleInfo, DiInitialInst, Unique),
+    inst_expand(ModuleInfo, DiFinalInst, Clobbered),
     inst_expand(ModuleInfo, UoInitialInst, Free),
     ( Free = free ; Free = free(_Type) ),
-    inst_expand(ModuleInfo, UoFinalInst, ground(unique, none)).
+    inst_expand(ModuleInfo, UoFinalInst, Unique).
 
 :- func report_eval_method_requires_ground_args(proc_info) = error_spec.
 

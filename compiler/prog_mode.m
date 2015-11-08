@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2008-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -205,9 +206,9 @@ unused_mode = make_std_mode("unused", []).
 in_any_mode = make_std_mode("in", [any_inst]).
 out_any_mode = make_std_mode("out", [any_inst]).
 
-ground_inst = ground(shared, none).
+ground_inst = ground(shared, none_or_default_func).
 free_inst = free.
-any_inst = any(shared, none).
+any_inst = any(shared, none_or_default_func).
 
 make_std_mode(Name, Args, make_std_mode(Name, Args)).
 
@@ -235,42 +236,42 @@ insts_to_mode(Initial, Final, Mode) :-
     ( if
         Initial = free
     then
-        ( if Final = ground(shared, none) then
+        ( if Final = ground(shared, none_or_default_func) then
             make_std_mode("out", [], Mode)
-        else if Final = ground(unique, none) then
+        else if Final = ground(unique, none_or_default_func) then
             make_std_mode("uo", [], Mode)
-        else if Final = ground(mostly_unique, none) then
+        else if Final = ground(mostly_unique, none_or_default_func) then
             make_std_mode("muo", [], Mode)
         else
             make_std_mode("out", [Final], Mode)
         )
     else if
-        Initial = ground(shared, none),
-        Final = ground(shared, none)
+        Initial = ground(shared, none_or_default_func),
+        Final = ground(shared, none_or_default_func)
     then
         make_std_mode("in", [], Mode)
     else if
-        Initial = ground(unique, none),
-        Final = ground(clobbered, none)
+        Initial = ground(unique, none_or_default_func),
+        Final = ground(clobbered, none_or_default_func)
     then
         make_std_mode("di", [], Mode)
     else if
-        Initial = ground(mostly_unique, none),
-        Final = ground(mostly_clobbered, none)
+        Initial = ground(mostly_unique, none_or_default_func),
+        Final = ground(mostly_clobbered, none_or_default_func)
     then
         make_std_mode("mdi", [], Mode)
     else if
-        Initial = ground(unique, none),
-        Final = ground(unique, none)
+        Initial = ground(unique, none_or_default_func),
+        Final = ground(unique, none_or_default_func)
     then
         make_std_mode("ui", [], Mode)
     else if
-        Initial = ground(mostly_unique, none),
-        Final = ground(mostly_unique, none)
+        Initial = ground(mostly_unique, none_or_default_func),
+        Final = ground(mostly_unique, none_or_default_func)
     then
         make_std_mode("mui", [], Mode)
     else if
-        Final = ground(clobbered, none)
+        Final = ground(clobbered, none_or_default_func)
     then
         make_std_mode("di", [Initial], Mode)
     else if Initial = Final then
@@ -460,7 +461,7 @@ bound_insts_apply_substitution(Subst,
 :- pred ho_inst_info_apply_substitution(inst_var_sub::in,
     ho_inst_info::in, ho_inst_info::out) is det.
 
-ho_inst_info_apply_substitution(_, none, none).
+ho_inst_info_apply_substitution(_, none_or_default_func, none_or_default_func).
 ho_inst_info_apply_substitution(Subst, HOInstInfo0, HOInstInfo) :-
     HOInstInfo0 =
         higher_order(pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Det)),
@@ -523,8 +524,8 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
             HOInstInfo =
                 higher_order(pred_inst_info(PorF, Modes, MaybeArgRegs, Det))
         ;
-            HOInstInfo0 = none,
-            HOInstInfo = none
+            HOInstInfo0 = none_or_default_func,
+            HOInstInfo = none_or_default_func
         ),
         Inst = ground(Uniq, HOInstInfo)
     ;
@@ -536,8 +537,8 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
             HOInstInfo =
                 higher_order(pred_inst_info(PorF, Modes, MaybeArgRegs, Det))
         ;
-            HOInstInfo0 = none,
-            HOInstInfo = none
+            HOInstInfo0 = none_or_default_func,
+            HOInstInfo = none_or_default_func
         ),
         Inst = any(Uniq, HOInstInfo)
     ;
@@ -754,7 +755,7 @@ get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
         list.duplicate(Arity, not_reached, ArgInsts)
     ;
         Inst = ground(Uniq, _PredInst),
-        list.duplicate(Arity, ground(Uniq, none), ArgInsts)
+        list.duplicate(Arity, ground(Uniq, none_or_default_func), ArgInsts)
     ;
         Inst = bound(_Uniq, _InstResults, BoundInsts),
         ( if get_arg_insts_2(BoundInsts, ConsId, ArgInsts0) then
@@ -770,7 +771,7 @@ get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
         list.duplicate(Arity, free, ArgInsts)
     ;
         Inst = any(Uniq, _),
-        list.duplicate(Arity, any(Uniq, none), ArgInsts)
+        list.duplicate(Arity, any(Uniq, none_or_default_func), ArgInsts)
     ).
 
 get_arg_insts_det(Inst, ConsId, Arity, ArgInsts) :-
@@ -922,8 +923,8 @@ strip_builtin_qualifiers_from_inst_name(Inst0, Inst) :-
 
 strip_builtin_qualifiers_from_ho_inst_info(HOInstInfo0, HOInstInfo) :-
     (
-        HOInstInfo0 = none,
-        HOInstInfo = none
+        HOInstInfo0 = none_or_default_func,
+        HOInstInfo = none_or_default_func
     ;
         HOInstInfo0 = higher_order(Pred0),
         Pred0 = pred_inst_info(PorF, Modes0, ArgRegs, Det),
@@ -957,8 +958,8 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
         ( Inst0 = not_reached
         ; Inst0 = free
         ; Inst0 = free(_)
-        ; Inst0 = ground(_Uniq, none)
-        ; Inst0 = any(_Uniq, none)
+        ; Inst0 = ground(_Uniq, none_or_default_func)
+        ; Inst0 = any(_Uniq, none_or_default_func)
         ),
         Inst = Inst0
     ;
@@ -1019,7 +1020,7 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
         ( if map.search(InstConstraints, Var, SubInstPrime) then
             SubInst = SubInstPrime
         else
-            SubInst = ground(shared, none)
+            SubInst = ground(shared, none_or_default_func)
         ),
         Inst = constrained_inst_vars(set.make_singleton_set(Var), SubInst)
     ;
@@ -1143,7 +1144,7 @@ inst_var_constraints_are_consistent_in_inst(Inst, !Sub) :-
         ; Inst = any(_, HOInstInfo)
         ),
         (
-            HOInstInfo = none
+            HOInstInfo = none_or_default_func
         ;
             HOInstInfo = higher_order(pred_inst_info(_, Modes, _, _)),
             inst_var_constraints_are_consistent_in_modes(Modes, !Sub)

@@ -1739,7 +1739,8 @@ replace_head_vars(ModuleInfo, FutureMap,
         ( mode_is_input(ModuleInfo, Mode0) ->
             Mode = Mode0
         ; mode_is_output(ModuleInfo, Mode0) ->
-            Mode = (ground(shared, none) -> ground(shared, none))
+            Ground = ground(shared, none_or_default_func),
+            Mode = (Ground -> Ground)
         ;
             sorry($module, $pred,
                 "dependent parallel conjunction transformation " ++
@@ -3187,7 +3188,7 @@ make_future_name_var_and_goal(Name, FutureNameVar, Goal, !VarSet, !VarTypes,
     IntType = builtin_type(builtin_type_int),
     add_var_type(FutureNameVar, IntType, !VarTypes),
     allocate_ts_string(Name, NameId, !TSStringTable),
-    Ground = ground(unique, none),
+    Ground = ground(unique, none_or_default_func),
     GoalExpr = unify(FutureNameVar,
         rhs_functor(int_const(NameId), is_not_exist_constr, []),
         (free(IntType) -> Ground) - (Ground -> Ground),

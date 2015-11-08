@@ -486,7 +486,7 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
     ;
         InstA = ground(UniqA, HOInstInfoA),
         (
-            HOInstInfoA = none,
+            HOInstInfoA = none_or_default_func,
             make_ground_inst(InstB, Live, UniqA, Real, Inst, Detism,
                 !ModuleInfo)
         ;
@@ -566,7 +566,7 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
     ;
         InstA = any(UniqA, HOInstInfoA),
         (
-            HOInstInfoA = none,
+            HOInstInfoA = none_or_default_func,
             make_any_inst(InstB, Live, UniqA, Real, Inst, Detism,
                 !ModuleInfo)
         ;
@@ -1190,7 +1190,7 @@ make_ground_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
     ;
         Inst0 = free,
         unify_uniq(Live, Real, detism_det, unique, Uniq1, Uniq),
-        Inst = ground(Uniq, none),
+        Inst = ground(Uniq, none_or_default_func),
         Detism = detism_det
     ;
         Inst0 = free(T),
@@ -1215,10 +1215,11 @@ make_ground_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         abstractly_unify_constrained_inst_vars(Live, InstVars,
-            SubInst0, ground(Uniq1, none), Real, Inst, Detism, !ModuleInfo)
+            SubInst0, ground(Uniq1, none_or_default_func), Real, Inst, Detism,
+            !ModuleInfo)
     ;
         Inst0 = abstract_inst(_, _),
-        Inst = ground(shared, none),
+        Inst = ground(shared, none_or_default_func),
         Detism = detism_semi
     ;
         Inst0 = defined_inst(InstName),
@@ -1317,16 +1318,17 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
     ;
         Inst0 = free,
         unify_uniq(Live, Real, detism_det, unique, Uniq1, Uniq),
-        Inst = any(Uniq, none),
+        Inst = any(Uniq, none_or_default_func),
         Detism = detism_det
     ;
         Inst0 = free(T),
         % The following is a round-about way of doing this
         %   unify_uniq(Live, Real, detism_det, unique, Uniq0, Uniq),
-        %   Any = typed_any(Uniq, T).
+        %   TypedAny = typed_any(Uniq, T).
         % without the need for a `typed_any' inst.
-        Any = typed_inst(T, unify_inst(Live, Real, free, any(Uniq1, none))),
-        Inst = defined_inst(Any),
+        Any = any(Uniq1, none_or_default_func),
+        TypedAny = typed_inst(T, unify_inst(Live, Real, free, Any)),
+        Inst = defined_inst(TypedAny),
         Detism = detism_det
     ;
         Inst0 = bound(Uniq0, _InstResults0, BoundInsts0),
@@ -1349,10 +1351,11 @@ make_any_inst(Inst0, Live, Uniq1, Real, Inst, Detism, !ModuleInfo) :-
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
         abstractly_unify_constrained_inst_vars(Live, InstVars,
-            SubInst0, any(Uniq1, none), Real, Inst, Detism, !ModuleInfo)
+            SubInst0, any(Uniq1, none_or_default_func), Real, Inst, Detism,
+            !ModuleInfo)
     ;
         Inst0 = abstract_inst(_, _),
-        Inst = any(shared, none),
+        Inst = any(shared, none_or_default_func),
         Detism = detism_semi
     ;
         Inst0 = defined_inst(InstName),
@@ -1887,10 +1890,13 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         ( if ( Uniq = clobbered ; Uniq = mostly_clobbered ) then
             true
         else
+            % XXX We will lose any nondefault higher-order info in
+            % BoundInstsB. We should at least check that there isn't any
+            % such info, as the result may be treated as default.
             inst_results_bound_inst_list_is_ground_or_any(InstResultsB,
                 BoundInstsB, !.ModuleInfo)
         ),
-        Inst = any(Uniq, none)
+        Inst = any(Uniq, none_or_default_func)
     ;
         InstA = any(UniqA, HOInstInfoA),
         InstB = ground(UniqB, HOInstInfoB),
@@ -1904,7 +1910,7 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         % We do not yet allow merge of any with free, except for
         % clobbered anys.
         ( Uniq = clobbered ; Uniq = mostly_clobbered ),
-        Inst = any(Uniq, none)
+        Inst = any(Uniq, none_or_default_func)
     ;
         InstA = free,
         InstB = any(Uniq, HOInstInfo),
@@ -1921,10 +1927,13 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         ( if ( Uniq = clobbered ; Uniq = mostly_clobbered ) then
             true
         else
+            % XXX We will lose any nondefault higher-order info in
+            % BoundInstsA. We should at least check that there isn't any
+            % such info, as the result may be treated as default.
             inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
                 BoundInstsA, !.ModuleInfo)
         ),
-        Inst = any(Uniq, none)
+        Inst = any(Uniq, none_or_default_func)
     ;
         InstA = ground(UniqA, HOInstInfoA),
         InstB = any(UniqB, HOInstInfoB),
@@ -1938,7 +1947,7 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         % We do not yet allow merge of any with free, except for
         % clobbered anys.
         ( Uniq = clobbered ; Uniq = mostly_clobbered ),
-        Inst = any(Uniq, none)
+        Inst = any(Uniq, none_or_default_func)
     ;
         InstA = free,
         InstB = free,
@@ -2004,16 +2013,16 @@ merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo) :-
         else if pred_inst_matches(PredB, PredA, !.ModuleInfo) then
             HOInstInfo = higher_order(PredA)
         else
-            % If either is a function inst with non-standard modes,
+            % If either is a function inst with non-default modes,
             % don't allow the higher-order information to be lost.
             not pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredA),
             not pred_inst_info_is_nonstandard_func_mode(!.ModuleInfo, PredB),
-            HOInstInfo = none
+            HOInstInfo = none_or_default_func
         )
     else
         not ho_inst_info_is_nonstandard_func_mode(!.ModuleInfo, HOInstInfoA),
         not ho_inst_info_is_nonstandard_func_mode(!.ModuleInfo, HOInstInfoB),
-        HOInstInfo = none
+        HOInstInfo = none_or_default_func
     ).
 
     % merge_uniq_bound(UniqA, UniqB, BoundInstsB, ModuleInfo, Uniq) succeeds
@@ -2102,7 +2111,7 @@ inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
             !.ModuleInfo)
     then
         merge_uniq_bound(UniqB, UniqA, BoundInstsA, !.ModuleInfo, Uniq),
-        Result = ground(Uniq, none)
+        Result = ground(Uniq, none_or_default_func)
     else
         inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
             BoundInstsA, !.ModuleInfo),
@@ -2129,7 +2138,7 @@ inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
         ;
             MaybeType = no,
             merge_uniq_bound(UniqB, UniqA, BoundInstsA, !.ModuleInfo, Uniq),
-            Result = any(Uniq, none)
+            Result = any(Uniq, none_or_default_func)
         )
     ).
 

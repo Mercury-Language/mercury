@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1543,7 +1544,7 @@ replace_string_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
             only_mode, detism_det, purity_pure,
             [HeadSpecVar, TailSpecsVar, ResultVar], [],
             instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none)]),
+                [ResultVar - ground(unique, none_or_default_func)]),
             ModuleInfo, Context, AppendGoal),
         Goals = TailSpecsGoals ++ HeadSpecGoals ++ [AppendGoal]
     ).
@@ -1608,8 +1609,8 @@ replace_io_format(ModuleInfo, Specs, MaybeStreamVar, IOInVar, IOOutVar,
     (
         Specs = [],
         Unification = assign(IOOutVar, IOInVar),
-        Uniq = ground(unique, none),
-        Clobbered = ground(clobbered, none),
+        Uniq = ground(unique, none_or_default_func),
+        Clobbered = ground(clobbered, none_or_default_func),
         UniMode = ((free -> Uniq) - (Uniq -> Clobbered)),
         UnifyMainContext = umc_implicit("replace_io_format"),
         UnifyContext = unify_context(UnifyMainContext, []),
@@ -1748,7 +1749,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ [ValueVar, ResultVar], [],
             instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none)]),
+                [ResultVar - ground(unique, none_or_default_func)]),
             ModuleInfo, Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ [CallGoal]
     ;
@@ -1767,7 +1768,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar], [],
             instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none)]),
+                [ResultVar - ground(unique, none_or_default_func)]),
             ModuleInfo, Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
     ;
@@ -1786,7 +1787,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             pf_predicate, only_mode, detism_det, purity_pure,
             [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar], [],
             instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none)]),
+                [ResultVar - ground(unique, none_or_default_func)]),
             ModuleInfo, Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
     ;
@@ -1807,7 +1808,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             [FlagsVar] ++ WidthVars ++ PrecVars ++
                 [BaseVar, ValueVar, ResultVar], [],
             instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none)]),
+                [ResultVar - ground(unique, none_or_default_func)]),
             ModuleInfo, Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [BaseGoal, CallGoal]
     ;
@@ -1828,7 +1829,7 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
             [FlagsVar] ++ WidthVars ++ PrecVars ++
                 [KindVar, ValueVar, ResultVar], [],
             instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none)]),
+                [ResultVar - ground(unique, none_or_default_func)]),
             ModuleInfo, Context, CallGoal),
         Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [KindGoal, CallGoal]
     ).
@@ -2076,8 +2077,8 @@ make_result_var_if_needed(MaybeResultVar, ResultVar, !VarSet, !VarTypes) :-
     instmap_delta::out) is det.
 
 make_di_uo_instmap_delta(InVar, OutVar, InstMapDelta) :-
-    Uniq = ground(unique, none),
-    Clobbered = ground(clobbered, none),
+    Uniq = ground(unique, none_or_default_func),
+    Clobbered = ground(clobbered, none_or_default_func),
     InstMapDelta = instmap_delta_from_assoc_list(
         [InVar - Clobbered, OutVar - Uniq]).
 

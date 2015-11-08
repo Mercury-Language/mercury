@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1020,7 +1021,7 @@ ground_var_in_instmap(Var, !InstMap) :-
     % not bound before the place where the success expression will be
     % inserted).  For our purposes it doesn't matter what insts these variables
     % have, other than not being free, so we just use `ground'.
-    instmap_set_var(Var, ground(shared, none), !InstMap).
+    instmap_set_var(Var, ground(shared, none_or_default_func), !InstMap).
 
 %-----------------------------------------------------------------------------%
 %

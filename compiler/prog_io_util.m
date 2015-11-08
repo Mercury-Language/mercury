@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -897,28 +898,28 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
             SimpleInst = free
         ;
             Name = "ground",
-            SimpleInst = ground(shared, none)
+            SimpleInst = ground(shared, none_or_default_func)
         ;
             Name = "clobbered",
-            SimpleInst = ground(clobbered, none)
+            SimpleInst = ground(clobbered, none_or_default_func)
         ;
             Name = "mostly_clobbered",
-            SimpleInst = ground(mostly_clobbered, none)
+            SimpleInst = ground(mostly_clobbered, none_or_default_func)
         ;
             Name = "any",
-            SimpleInst = any(shared, none)
+            SimpleInst = any(shared, none_or_default_func)
         ;
             Name = "unique_any",
-            SimpleInst = any(unique, none)
+            SimpleInst = any(unique, none_or_default_func)
         ;
             Name = "mostly_unique_any",
-            SimpleInst = any(mostly_unique, none)
+            SimpleInst = any(mostly_unique, none_or_default_func)
         ;
             Name = "clobbered_any",
-            SimpleInst = any(clobbered, none)
+            SimpleInst = any(clobbered, none_or_default_func)
         ;
             Name = "mostly_clobbered_any",
-            SimpleInst = any(mostly_clobbered, none)
+            SimpleInst = any(mostly_clobbered, none_or_default_func)
         ;
             Name = "not_reached",
             SimpleInst = not_reached
@@ -934,7 +935,7 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
         Name = "unique",
         (
             Args = [],
-            KnownInst = known_inst_simple(ground(unique, none))
+            KnownInst = known_inst_simple(ground(unique, none_or_default_func))
         ;
             Args = [Arg1],
             KnownInst = known_inst_compound(kcik_unique(Arg1))
@@ -946,7 +947,8 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
         Name = "mostly_unique",
         (
             Args = [],
-            KnownInst = known_inst_simple(ground(mostly_unique, none))
+            KnownInst = known_inst_simple(
+                ground(mostly_unique, none_or_default_func))
         ;
             Args = [Arg1],
             KnownInst = known_inst_compound(kcik_mostly_unique(Arg1))

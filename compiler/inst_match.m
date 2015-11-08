@@ -507,7 +507,7 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
         InstB = free
     ;
         InstA = bound(UniqA, _InstResultsA, BoundInstsA),
-        InstB = any(UniqB, none),
+        InstB = any(UniqB, none_or_default_func),
         compare_uniqueness(!.Info ^ imi_uniqueness_comparison, UniqA, UniqB),
         compare_bound_inst_list_uniq(!.Info ^ imi_uniqueness_comparison,
             BoundInstsA, UniqB, !.Info ^ imi_module_info)
@@ -530,7 +530,7 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
         )
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
-        InstB = ground(UniqB, none),
+        InstB = ground(UniqB, none_or_default_func),
         compare_uniqueness(!.Info ^ imi_uniqueness_comparison, UniqA, UniqB),
         inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
             MaybeType, !.Info ^ imi_module_info),
@@ -540,6 +540,7 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
         InstA = bound(Uniq, InstResultsA, BoundInstsA),
         InstB = abstract_inst(_,_),
         Uniq = unique,
+        % XXX check that InstA does not contain non-default funcs
         inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
             no, !.Info ^ imi_module_info),
         bound_inst_list_is_unique(BoundInstsA, !.Info ^ imi_module_info)
@@ -547,6 +548,7 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
         InstA = bound(Uniq, InstResultsA, BoundInstsA),
         InstB = abstract_inst(_,_),
         Uniq = mostly_unique,
+        % XXX check that InstA does not contain non-default funcs
         inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
             no, !.Info ^ imi_module_info),
         bound_inst_list_is_mostly_unique(BoundInstsA, !.Info ^ imi_module_info)
@@ -576,7 +578,7 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
         ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType,
             !Info)
     ;
-        InstA = ground(_UniqA, none),
+        InstA = ground(_UniqA, none_or_default_func),
         InstB = abstract_inst(_,_),
         % I don't know what this should do.
         % Abstract insts aren't really supported.
@@ -584,7 +586,7 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
             "inst_matches_initial(ground, abstract_inst) == ??")
     ;
         InstA = abstract_inst(_,_),
-        InstB = any(shared, none)
+        InstB = any(shared, none_or_default_func)
     ;
         InstA = abstract_inst(_,_),
         InstB = free
@@ -623,7 +625,8 @@ ground_matches_initial_bound_inst_list(Uniq, [BoundInst | BoundInsts],
 ground_matches_initial_inst_list(_, [], [], !Info).
 ground_matches_initial_inst_list(Uniq, [Inst | Insts],
         [MaybeType | MaybeTypes], !Info) :-
-    inst_matches_initial_mt(ground(Uniq, none), Inst, MaybeType, !Info),
+    Ground = ground(Uniq, none_or_default_func),
+    inst_matches_initial_mt(Ground, Inst, MaybeType, !Info),
     ground_matches_initial_inst_list(Uniq, Insts, MaybeTypes, !Info).
 
 %-----------------------------------------------------------------------------%
@@ -718,11 +721,11 @@ greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
 
 ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
     (
-        HOInstInfoB = none,
+        HOInstInfoB = none_or_default_func,
         not ho_inst_info_is_nonstandard_func_mode(!.Info ^ imi_module_info,
             HOInstInfoA)
     ;
-        HOInstInfoA = none,
+        HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
         PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
         Arity = list.length(ArgModes),
@@ -851,6 +854,7 @@ compare_bound_inst_list_uniq(uc_instantiated, BoundInsts, Uniq, ModuleInfo) :-
     module_info::in) is semidet.
 
 bound_inst_list_matches_uniq(BoundInsts, Uniq, ModuleInfo) :-
+    % XXX check that BoundsInsts does not contain non-default funcs
     ( if Uniq = unique then
         bound_inst_list_is_unique(BoundInsts, ModuleInfo)
     else if Uniq = mostly_unique then
@@ -863,6 +867,7 @@ bound_inst_list_matches_uniq(BoundInsts, Uniq, ModuleInfo) :-
     module_info::in) is semidet.
 
 uniq_matches_bound_inst_list(Uniq, BoundInsts, ModuleInfo) :-
+    % XXX check that BoundsInsts does not contain non-default funcs
     ( if Uniq = shared then
         bound_inst_list_is_not_partly_unique(BoundInsts, ModuleInfo)
     else if Uniq = mostly_unique then
@@ -981,7 +986,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         InstB = free
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
-        InstB = any(UniqB, none),
+        InstB = any(UniqB, none_or_default_func),
         unique_matches_final(UniqA, UniqB),
         bound_inst_list_matches_uniq(BoundInstsA, UniqB,
             !.Info ^ imi_module_info),
@@ -998,7 +1003,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
             !Info)
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
-        InstB = ground(UniqB, none),
+        InstB = ground(UniqB, none_or_default_func),
         unique_matches_final(UniqA, UniqB),
         inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
             MaybeType, !.Info ^ imi_module_info),
@@ -1037,7 +1042,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         unique_matches_final(UniqA, UniqB)
     ;
         InstA = abstract_inst(_, _),
-        InstB = any(shared, none)
+        InstB = any(shared, none_or_default_func)
     ;
         InstA = abstract_inst(Name, ArgsA),
         InstB = abstract_inst(Name, ArgsB),
@@ -1063,11 +1068,11 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
 
 ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
     (
-        HOInstInfoB = none,
+        HOInstInfoB = none_or_default_func,
         not ho_inst_info_is_nonstandard_func_mode(!.Info ^ imi_module_info,
             HOInstInfoA)
     ;
-        HOInstInfoA = none,
+        HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
         PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
         Arity = list.length(ArgModes),
@@ -1207,12 +1212,14 @@ inst_matches_binding_3(InstA, InstB, MaybeType, !Info) :-
             !Info)
     ;
         InstA = bound(_UniqA, InstResultsA, BoundInstsA),
-        InstB = ground(_UniqB, none),
+        InstB = ground(_UniqB, none_or_default_func),
+        % XXX check that InstA does not contain non-default funcs.
         inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
             MaybeType, !.Info ^ imi_module_info)
     ;
         InstA = ground(_UniqA, _),
         InstB = bound(_UniqB, InstResultsB, BoundInstsB),
+        % XXX check that InstB does not contain non-default funcs
         inst_results_bound_inst_list_is_ground_mt(InstResultsB, BoundInstsB,
             MaybeType, !.Info ^ imi_module_info),
         (
@@ -1245,9 +1252,10 @@ inst_matches_binding_3(InstA, InstB, MaybeType, !Info) :-
 ho_inst_info_matches_binding(HOInstInfoA, HOInstInfoB, MaybeType,
         ModuleInfo) :-
     (
-        HOInstInfoB = none
+        % XXX Non-default funcs should not match-binding with default ones.
+        HOInstInfoB = none_or_default_func
     ;
-        HOInstInfoA = none,
+        HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
         PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
         Arity = list.length(ArgModes),

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -176,7 +177,7 @@ mercury_format_inst(Lang, InstInfo, Inst, !U) :-
             mercury_format_any_pred_inst_info(Lang, instvarset(InstInfo),
                 Uniq, PredInstInfo, !U)
         ;
-            HOInstInfo = none,
+            HOInstInfo = none_or_default_func,
             mercury_format_any_uniqueness(Uniq, !U)
         )
     ;
@@ -198,7 +199,7 @@ mercury_format_inst(Lang, InstInfo, Inst, !U) :-
             mercury_format_ground_pred_inst_info(Lang, instvarset(InstInfo),
                 Uniq, PredInstInfo, !U)
         ;
-            HOInstInfo = none,
+            HOInstInfo = none_or_default_func,
             mercury_format_uniqueness(Uniq, "ground", !U)
         )
     ;

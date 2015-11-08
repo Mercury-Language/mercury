@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2014 The Mercury team.
+% Copyright (C) 2014-2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -203,7 +203,7 @@ create_atomic_complicated_unification(LHS, RHS, Context,
 %-----------------------------------------------------------------------------%
 
 make_simple_assign(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
-    Ground = ground(shared, none),
+    Ground = ground(shared, none_or_default_func),
     Mode = ((free -> Ground) - (Ground -> Ground)),
     Unification = assign(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
@@ -213,7 +213,7 @@ make_simple_assign(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
-    Ground = ground(shared, none),
+    Ground = ground(shared, none_or_default_func),
     Mode = ((Ground -> Ground) - (Ground -> Ground)),
     Unification = simple_test(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),

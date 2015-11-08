@@ -434,7 +434,7 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         ArgInst = not_reached
     ;
         Inst = ground(Uniq, _PredInst),
-        ArgInst = ground(Uniq, none)
+        ArgInst = ground(Uniq, none_or_default_func)
     ;
         Inst = bound(_Uniq, _InstResult, List),
         ( if get_single_arg_inst_in_bound_insts(List, ConsId, ArgInst0) then
@@ -451,7 +451,7 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         ArgInst = free   % XXX loses type info
     ;
         Inst = any(Uniq, _),
-        ArgInst = any(Uniq, none)
+        ArgInst = any(Uniq, none_or_default_func)
     ;
         Inst = abstract_inst(_, _),
         unexpected($module, $pred, "abstract insts not supported")
@@ -585,7 +585,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         InstName = typed_ground(Uniq, Type),
         map.init(Subst),
         propagate_type_into_inst(ModuleInfo, Subst, Type,
-            ground(Uniq, none), Inst)
+            ground(Uniq, none_or_default_func), Inst)
     ;
         InstName = typed_inst(Type, TypedInstName),
         inst_lookup(ModuleInfo, TypedInstName, Inst0),
@@ -695,7 +695,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         Inst0 = free(_),
         unexpected($module, $pred, "type info already present")
     ;
-        Inst0 = ground(Uniq, none),
+        Inst0 = ground(Uniq, none_or_default_func),
         ( if
             type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
         then
@@ -718,7 +718,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
             Inst = bound(Uniq, InstResults, BoundInsts)
         )
     ;
-        Inst0 = any(Uniq, none),
+        Inst0 = any(Uniq, none_or_default_func),
         ( if
             type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
         then
@@ -810,7 +810,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         Inst0 = free(_),
         unexpected($module, $pred, "typeinfo already present")
     ;
-        Inst0 = ground(Uniq, none),
+        Inst0 = ground(Uniq, none_or_default_func),
         apply_type_subst(Type0, Subst, Type),
         ( if
             type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
@@ -822,10 +822,10 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
             % it is disabled since it unnecessarily complicates the insts.
             %
             % Inst = defined_inst(typed_ground(Uniq, Type))
-            Inst = ground(Uniq, none)
+            Inst = ground(Uniq, none_or_default_func)
         )
     ;
-        Inst0 = any(Uniq, none),
+        Inst0 = any(Uniq, none_or_default_func),
         apply_type_subst(Type0, Subst, Type),
         ( if
             type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
@@ -833,7 +833,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
             default_higher_order_func_inst(ModuleInfo, ArgTypes, HOInstInfo),
             Inst = any(Uniq, higher_order(HOInstInfo))
         else
-            Inst = any(Uniq, none)
+            Inst = any(Uniq, none_or_default_func)
         )
     ;
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
@@ -917,8 +917,9 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
     pred_inst_info::out) is det.
 
 default_higher_order_func_inst(ModuleInfo, PredArgTypes, PredInstInfo) :-
-    In = (ground(shared, none) -> ground(shared, none)),
-    Out = (free -> ground(shared, none)),
+    Ground = ground(shared, none_or_default_func),
+    In = (Ground -> Ground),
+    Out = (free -> Ground),
     list.length(PredArgTypes, NumPredArgs),
     NumFuncArgs = NumPredArgs - 1,
     list.duplicate(NumFuncArgs, In, FuncArgModes),
@@ -932,12 +933,12 @@ default_higher_order_func_inst(ModuleInfo, PredArgTypes, PredInstInfo) :-
 constructors_to_bound_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
         BoundInsts) :-
     constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
-        Constructors, ground(Uniq, none), BoundInsts).
+        Constructors, ground(Uniq, none_or_default_func), BoundInsts).
 
 constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
         BoundInsts) :-
     constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
-        Constructors, any(Uniq, none), BoundInsts).
+        Constructors, any(Uniq, none_or_default_func), BoundInsts).
 
 :- pred constructors_to_bound_insts_loop_over_ctors(module_info::in,
     uniqueness::in, type_ctor::in, list(constructor)::in, mer_inst::in,
@@ -1794,7 +1795,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         ; ConsId = table_io_entry_desc(_)
         ; ConsId = deep_profiling_proc_layout(_)
         ),
-        MaybeInst = yes(ground(shared, none))
+        MaybeInst = yes(ground(shared, none_or_default_func))
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1863,13 +1864,13 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
             ),
             not inst_contains_nonstandard_func_mode(ModuleInfo, Inst)
         then
-            NormalisedInst = ground(Uniq, none)
+            NormalisedInst = ground(Uniq, none_or_default_func)
         else if
             inst_is_ground(ModuleInfo, Inst),
             not inst_is_clobbered(ModuleInfo, Inst),
             not inst_contains_nonstandard_func_mode(ModuleInfo, Inst)
         then
-            NormalisedInst = ground(shared, none)
+            NormalisedInst = ground(shared, none_or_default_func)
         else
             % XXX We need to limit the potential size of insts here
             % in order to avoid infinite loops in mode inference.

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -855,8 +856,8 @@ replace_in_inst(TypeEqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
 type_may_occur_in_inst(Inst) = MayOccur :-
     (
         ( Inst = free
-        ; Inst = ground(_, none)
-        ; Inst = any(_, none)
+        ; Inst = ground(_, none_or_default_func)
+        ; Inst = any(_, none_or_default_func)
         ; Inst = not_reached
         ; Inst = inst_var(_)
         ),
@@ -1054,8 +1055,8 @@ record_inst_may_occur(_, _) :-
 replace_in_inst_2(TypeEqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
     (
         ( Inst0 = free
-        ; Inst0 = ground(_, none)
-        ; Inst0 = any(_, none)
+        ; Inst0 = ground(_, none_or_default_func)
+        ; Inst0 = any(_, none_or_default_func)
         ; Inst0 = not_reached
         ; Inst0 = inst_var(_)
         ),

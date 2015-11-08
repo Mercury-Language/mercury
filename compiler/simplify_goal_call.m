@@ -575,7 +575,7 @@ simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert, GoalInfo,
             ( if inst_is_unique(ModuleInfo, YInst) then 3 else 0 )
         ),
 
-    Unique = ground(unique, none),
+    Unique = ground(unique, none_or_default_func),
     ArgInsts = [CmpRes - Unique],
     BuiltinModule = mercury_public_builtin_module,
     goal_util.generate_simple_call(BuiltinModule, "compare", pf_predicate,

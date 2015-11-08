@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1809,7 +1810,7 @@ generate_deep_call(ModuleInfo, Name, Arity, ArgVars, MaybeOutputVars, Detism,
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 generate_deep_const_unify(ConsId, Var, Goal) :-
-    Ground = ground(shared, none),
+    Ground = ground(shared, none_or_default_func),
     NonLocals = set_of_var.make_singleton(Var),
     InstMapDelta = instmap_delta_bind_var(Var),
     Determinism = detism_det,
@@ -1827,7 +1828,7 @@ generate_deep_const_unify(ConsId, Var, Goal) :-
     prog_var::in, hlds_goal::out) is det.
 
 generate_deep_cell_unify(Length, ConsId, Args, Var, Goal) :-
-    Ground = ground(shared, none),
+    Ground = ground(shared, none_or_default_func),
     NonLocals = set_of_var.list_to_set([Var | Args]),
     InstMapDelta = instmap_delta_bind_var(Var),
     Determinism = detism_det,

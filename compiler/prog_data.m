@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2132,8 +2133,9 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     --->    higher_order(pred_inst_info)
             % The inst is higher-order, and we have mode/determinism
             % information for the value.
-    ;       none.
-            % No extra information is available.
+    ;       none_or_default_func.
+            % No extra information is available, or the inst is function
+            % with the default mode.
 
     % higher-order predicate terms are given the inst
     %   `ground(shared, higher_order(PredInstInfo))' or

@@ -635,8 +635,8 @@ qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
         HOInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes,
             MaybeArgRegs, Detism))
     ;
-        HOInstInfo0 = none,
-        HOInstInfo = none
+        HOInstInfo0 = none_or_default_func,
+        HOInstInfo = none_or_default_func
     ).
 
     % Find the unique inst_id that matches this inst, and qualify

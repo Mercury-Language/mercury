@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-2012,2014 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1339,17 +1340,17 @@ wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
     OuterToInnerPred = "stm_from_outer_to_inner",
     InnerToOuterPred = "stm_from_inner_to_outer",
     ModuleInfo = !.Info ^ pi_module_info,
+    Clobbered = ground(clobbered, none_or_default_func),
+    Unique = ground(unique, none_or_default_func),
     generate_simple_call(mercury_stm_builtin_module,
         OuterToInnerPred, pf_predicate, only_mode,
         detism_det, purity_pure, [OuterDI, InnerDI], [],
-        instmap_delta_from_assoc_list([OuterDI - ground(clobbered, none),
-            InnerDI - ground(unique, none)]),
+        instmap_delta_from_assoc_list([OuterDI - Clobbered, InnerDI - Unique]),
         ModuleInfo, Context, OuterToInnerGoal),
     generate_simple_call(mercury_stm_builtin_module,
         InnerToOuterPred, pf_predicate, only_mode,
         detism_det, purity_pure, [InnerUO, OuterUO], [],
-        instmap_delta_from_assoc_list([InnerUO - ground(clobbered, none),
-            OuterUO - ground(unique, none)]),
+        instmap_delta_from_assoc_list([InnerUO - Clobbered, OuterUO - Unique]),
         ModuleInfo, Context, InnerToOuterGoal),
 
     WrapExpr = conj(plain_conj, [OuterToInnerGoal, Goal0, InnerToOuterGoal]),

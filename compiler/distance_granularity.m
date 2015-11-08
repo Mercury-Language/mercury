@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -710,7 +711,8 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                         MinusCallSymName),
                     set_of_var.list_to_set([GranularityVar, Var, VarResult],
                         NonLocals),
-                    VarResultDelta = VarResult - ground(unique, none),
+                    VarResultDelta =
+                        VarResult - ground(unique, none_or_default_func),
                     VarDelta = Var - bound(shared, inst_test_results_fgtc,
                         [bound_functor(int_const(1), [])]),
                     InstMapDeltaDecrement = instmap_delta_from_assoc_list(
@@ -738,7 +740,7 @@ apply_dg_to_else2(!GoalExpr, !IndexInConj, GranularityVar, CallerPredId,
                     GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs,
                         CallBuiltin, CallUnifyContext, CallSymName),
                     InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-                    MerInst = ground(shared, none),
+                    MerInst = ground(shared, none_or_default_func),
                     instmap_delta_insert_var(Var, MerInst,
                         InstMapDelta0, InstMapDelta),
                     goal_info_set_instmap_delta(InstMapDelta, GoalInfo0,
@@ -992,7 +994,7 @@ update_original_predicate_plain_call(!Goal, CallerPredId, CallerProcId,
         set_of_var.insert(Var, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, CallInfo0, CallInfo1),
         InstMapDelta0 = goal_info_get_instmap_delta(CallInfo1),
-        MerInst = ground(shared, none),
+        MerInst = ground(shared, none_or_default_func),
         instmap_delta_insert_var(Var, MerInst, InstMapDelta0, InstMapDelta),
         goal_info_set_instmap_delta(InstMapDelta, CallInfo1, CallInfo),
         Call = hlds_goal(CallExpr, CallInfo),

@@ -359,7 +359,7 @@ merge_disj_branches(NonLocals, LargeFlatConstructs, Disjuncts0, Disjuncts,
         LargeFlatConstructList =
             set_of_var.to_sorted_list(LargeFlatConstructs),
         list.map(
-            instmap_set_vars_same(ground(shared, none),
+            instmap_set_vars_same(ground(shared, none_or_default_func),
                 LargeFlatConstructList),
             InstMaps0, InstMaps)
     ),
@@ -464,7 +464,7 @@ merge_switch_branches(NonLocals, LargeFlatConstructs, Cases0, Cases,
         LargeFlatConstructList =
             set_of_var.to_sorted_list(LargeFlatConstructs),
         list.map(
-            instmap_set_vars_same(ground(shared, none),
+            instmap_set_vars_same(ground(shared, none_or_default_func),
                 LargeFlatConstructList),
             InstMaps0, InstMaps)
     ),
@@ -581,7 +581,8 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
             Reason = from_ground_term(TermVar, from_ground_term_construct),
             ( if set_of_var.member(LargeFlatConstructs, TermVar) then
                 InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
-                instmap_delta_set_var(TermVar, ground(shared, none),
+                instmap_delta_set_var(TermVar,
+                    ground(shared, none_or_default_func),
                     InstMapDelta0, InstMapDelta),
                 goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo),
 
@@ -623,7 +624,7 @@ set_large_flat_constructs_to_ground_in_goal(LargeFlatConstructs,
         InstMapDelta0 = goal_info_get_instmap_delta(GoalInfo0),
         instmap_delta_changed_vars(InstMapDelta0, ChangedVars),
         set_of_var.intersect(ChangedVars, LargeFlatConstructs, GroundVars),
-        instmap_delta_set_vars_same(ground(shared, none),
+        instmap_delta_set_vars_same(ground(shared, none_or_default_func),
             set_of_var.to_sorted_list(GroundVars),
             InstMapDelta0, InstMapDelta),
         goal_info_set_instmap_delta(InstMapDelta, GoalInfo0, GoalInfo),
@@ -983,7 +984,7 @@ modecheck_goal_make_ground_term_unique(TermVar, SubGoal0, GoalInfo0, GoalExpr,
     % We could get a more accurate new inst for TermVar by replacing
     % all the "shared" functors in TermVarOldInst with "unique".
     % However, this should be good enough. XXX wangp, is this right?
-    TermVarUniqueInst = ground(unique, none),
+    TermVarUniqueInst = ground(unique, none_or_default_func),
 
     instmap_set_var(CloneVar, TermVarOldInst, InstMap0, InstMap1),
     mode_info_set_instmap(InstMap1, !ModeInfo),
@@ -1149,7 +1150,7 @@ modecheck_specializable_ground_term(SubGoal, TermVar, TermVarInst,
 
             list.reverse([UnifyTermGoal | UnifyArgGoals], RevConj),
             MaybeGroundTermMode = yes(construct_ground_term(RevConj))
-        else if TermVarInst = ground(shared, none) then
+        else if TermVarInst = ground(shared, none_or_default_func) then
             Conj = [UnifyTermGoal | UnifyArgGoals],
             MaybeGroundTermMode = yes(deconstruct_ground_term(Conj))
         else

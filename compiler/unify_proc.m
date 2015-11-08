@@ -597,7 +597,7 @@ generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
         InitCall = plain_call(PredId, ModeId, [X0], not_builtin, no, InitPred),
         InitGoal = hlds_goal(InitCall, GoalInfo),
 
-        Any = any(shared, none),
+        Any = any(shared, none_or_default_func),
         generate_cast_with_insts(equiv_type_cast, X0, X, Any, Any, Context,
             CastGoal),
         Goal = hlds_goal(conj(plain_conj, [InitGoal, CastGoal]), GoalInfo),

@@ -1127,7 +1127,7 @@ get_constrained_insts_in_inst(ModuleInfo, Inst, !Map, !Expansions) :-
         ; Inst = ground(_, HOInstInfo)
         ),
         (
-            HOInstInfo = none
+            HOInstInfo = none_or_default_func
         ;
             HOInstInfo = higher_order(PredInstInfo),
             get_constrained_insts_in_ho_inst(ModuleInfo, PredInstInfo,

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1993-2012,2014 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -294,7 +295,7 @@ add_builtin(PredId, Types, CompilationTarget, !PredInfo) :-
         ExtraTypes = [int_type],
 
         Free = free,
-        Ground = ground(shared, none),
+        Ground = ground(shared, none_or_default_func),
         ConsId = int_const(0),
         LHS = ZeroVar,
         RHS = rhs_functor(ConsId, is_not_exist_constr, []),

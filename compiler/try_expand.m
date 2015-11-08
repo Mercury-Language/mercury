@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -931,7 +932,7 @@ make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
     % If all the arguments have inst `ground' then a unification is enough.
     (
         list.member(ArgInst, TupleArgInsts),
-        ArgInst \= ground(_, none)
+        ArgInst \= ground(_, none_or_default_func)
     ->
         TupleArity = list.length(TupleArgInsts),
         TupleInst = bound(shared, inst_test_no_results, [

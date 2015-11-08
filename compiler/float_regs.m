@@ -383,8 +383,11 @@ add_arg_regs_in_inst(ModuleInfo, Seen0, Type, Inst0, Inst) :-
             )
         )
     ;
-        ( Inst0 = ground(_, none)
-        ; Inst0 = any(_, none)
+        % XXX handle functions with default mode. If they have float
+        % arguments, we may need to include include the pred_inst_info
+        % even though they are default.
+        ( Inst0 = ground(_, none_or_default_func)
+        ; Inst0 = any(_, none_or_default_func)
         ; Inst0 = free
         ; Inst0 = free(_)
         ; Inst0 = not_reached
@@ -957,10 +960,12 @@ rebuild_cell_inst(ModuleInfo, InstMap, ConsId, Args, Inst0, Inst) :-
         Inst = constrained_inst_vars(InstVarSet, SpecInst)
     ;
         % XXX do we need to handle any of these other cases?
+        % XXX handle functions with default mode: look for pred_inst_info
+        % for the called proc if ConsId is a closure.
         ( Inst0 = free
         ; Inst0 = free(_)
-        ; Inst0 = any(_, none)
-        ; Inst0 = ground(_, none)
+        ; Inst0 = any(_, none_or_default_func)
+        ; Inst0 = ground(_, none_or_default_func)
         ; Inst0 = not_reached
         ; Inst0 = defined_inst(_)
         ),

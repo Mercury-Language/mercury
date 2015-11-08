@@ -454,7 +454,7 @@ instmap_delta_bind_no_var = InstMapDelta :-
     InstMapDelta = instmap_delta_from_assoc_list([]).
 
 instmap_delta_bind_var(Var) = InstMapDelta :-
-    InstMapDelta = instmap_delta_from_assoc_list([Var - ground(shared, none)]).
+    InstMapDelta = instmap_delta_from_assoc_list([pair_with_ground(Var)]).
 
 instmap_delta_bind_vars(Vars) = InstMapDelta :-
     VarsAndGround = ground_vars(Vars),
@@ -467,7 +467,7 @@ ground_vars(Vars) = VarsAndGround :-
 
 :- func pair_with_ground(prog_var) = pair(prog_var, mer_inst).
 
-pair_with_ground(Var) = Var - ground(shared, none).
+pair_with_ground(Var) = Var - ground(shared, none_or_default_func).
 
 %-----------------------------------------------------------------------------%
 

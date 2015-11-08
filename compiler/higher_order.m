@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1187,7 +1188,7 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
 
     set_of_var.list_to_set(CallArgs, NonLocals),
     instmap_delta_init_reachable(InstMapDelta0),
-    instmap_delta_insert_var(ResultVar, ground(shared, none),
+    instmap_delta_insert_var(ResultVar, ground(shared, none_or_default_func),
         InstMapDelta0, InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     CallGoalExpr = plain_call(PredId, ProcId, CallArgs, not_builtin,
@@ -2554,8 +2555,8 @@ unwrap_no_tag_arg(OuterType, WrappedType, Context, Constructor, Arg,
     proc_info_create_var_from_type(WrappedType, no, UnwrappedArg, !ProcInfo),
     type_to_ctor_det(OuterType, OuterTypeCtor),
     ConsId = cons(Constructor, 1, OuterTypeCtor),
-    UniModes = [(ground(shared, none) - free) ->
-        (ground(shared, none) - ground(shared, none))],
+    Ground = ground(shared, none_or_default_func),
+    UniModes = [(Ground - free) -> (Ground - Ground)],
     set_of_var.list_to_set([Arg, UnwrappedArg], NonLocals),
     % This will be recomputed later.
     InstMapDelta = instmap_delta_bind_var(UnwrappedArg),
@@ -3253,7 +3254,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
             NonCurriedArgModes, arg_reg_types_unset, ProcDetism))
     else
         in_mode(InMode),
-        GroundInstInfo = none,
+        GroundInstInfo = none_or_default_func,
         list.duplicate(NumArgs, InMode, CurriedArgModes1)
     ),
 

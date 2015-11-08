@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1408,8 +1409,8 @@ create_new_io_goal(OrigGoal, TableIoEntryKind, Unitize, TableIoStates,
         table_generate_call("table_io_copy_io_state", detism_det,
             [IoStateAssignFromVar, IoStateAssignToVar], purity_pure,
             instmap_delta_from_assoc_list([
-                IoStateAssignFromVar - ground(clobbered, none),
-                IoStateAssignToVar - ground(unique, none)]),
+                IoStateAssignFromVar - ground(clobbered, none_or_default_func),
+                IoStateAssignToVar - ground(unique, none_or_default_func)]),
             ModuleInfo, Context, IoStateAssignGoal),
         RestoreAnswerGoalExpr = conj(plain_conj,
             [RestoreAnswerGoal0, IoStateAssignGoal]),

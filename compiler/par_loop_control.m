@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -645,7 +646,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
         % Now create the new proc_info structure.
         HeadVars = [LCVar | HeadVars0],
         ArgTypes = [loop_control_var_type | ArgTypes0],
-        Ground = ground(shared, none),
+        Ground = ground(shared, none_or_default_func),
         In = (Ground -> Ground),
         ArgModes = [In | ArgModes0],
 

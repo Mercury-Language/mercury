@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -201,7 +202,7 @@ inst_to_term_with_context(Lang, Context, Inst) = Term :-
             Term = any_pred_inst_info_to_term(Lang, Context, Uniq,
                 PredInstInfo)
         ;
-            HOInstInfo = none,
+            HOInstInfo = none_or_default_func,
             Term = make_atom(Context, any_inst_uniqueness(Uniq))
         )
     ;
@@ -233,7 +234,7 @@ inst_to_term_with_context(Lang, Context, Inst) = Term :-
             Term = ground_pred_inst_info_to_term(Lang, Context, Uniq,
                 PredInstInfo)
         ;
-            HOInstInfo = none,
+            HOInstInfo = none_or_default_func,
             Term = make_atom(Context, inst_uniqueness(Uniq, "ground"))
         )
     ;
@@ -891,7 +892,7 @@ mercury_format_structured_inst(Suffix, Inst, Indent, Lang, InclAddr,
             mercury_format_any_pred_inst_info(output_debug, InstVarSet,
                 Uniq, PredInstInfo, !U)
         ;
-            HOInstInfo = none,
+            HOInstInfo = none_or_default_func,
             mercury_format_any_uniqueness(Uniq, !U)
         ),
         add_string(Suffix, !U)
@@ -945,7 +946,7 @@ mercury_format_structured_inst(Suffix, Inst, Indent, Lang, InclAddr,
             mercury_format_ground_pred_inst_info(output_debug, InstVarSet,
                 Uniq, PredInstInfo, !U)
         ;
-            HOInstInfo = none,
+            HOInstInfo = none_or_default_func,
             mercury_format_uniqueness(Uniq, "ground", !U)
         ),
         add_string(Suffix, !U)

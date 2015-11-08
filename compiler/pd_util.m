@@ -940,7 +940,7 @@ bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, BoundInsts, Inst) :-
         ),
         \+ inst_contains_nonstandard_func_mode(ModuleInfo,
             bound(shared, inst_test_no_results, BoundInsts)),
-        Inst = ground(Uniq, none)
+        Inst = ground(Uniq, none_or_default_func)
     ).
 
 %-----------------------------------------------------------------------------%

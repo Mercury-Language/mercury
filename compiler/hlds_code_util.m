@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -417,8 +418,8 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
 match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
         Renaming) :-
     (
-        HOInstInfoA = none,
-        HOInstInfoB = none,
+        HOInstInfoA = none_or_default_func,
+        HOInstInfoB = none_or_default_func,
         Renaming = map.init
     ;
         HOInstInfoA = higher_order(PredInstInfoA),

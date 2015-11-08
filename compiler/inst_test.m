@@ -32,7 +32,7 @@
 
     % Succeed if the inst is fully ground (i.e. contains only `ground',
     % `bound', and `not_reached' insts, with no `free' or `any' insts).
-    % This predicate succeeds for non-standard function insts so some care
+    % This predicate succeeds for non-default function insts so some care
     % needs to be taken since these insts may not be replaced by a less
     % precise inst that uses the higher-order mode information.
     %
@@ -40,7 +40,7 @@
 
     % Succeed if the inst is not partly free (i.e. contains only `any',
     % `ground', `bound', and `not_reached' insts, with no `free' insts).
-    % This predicate succeeds for non-standard function insts so some care
+    % This predicate succeeds for non-default function insts so some care
     % needs to be taken since these insts may not be replaced by a less
     % precise inst that uses the higher-order mode information.
     %
@@ -1300,7 +1300,7 @@ inst_list_contains_inst_name([Inst | Insts], ModuleInfo, InstName, Contains,
 
 %-----------------------------------------------------------------------------%
 
-maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, none, Inst) :-
+maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, none_or_default_func, Inst) :-
     not type_is_solver_type(ModuleInfo, Type),
     ( if type_constructors(ModuleInfo, Type, Constructors) then
         type_to_ctor_det(Type, TypeCtor),
@@ -1324,7 +1324,7 @@ maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, none, Inst) :-
         % that we will use `any' for this type.
         fail
     else
-        Inst = ground(Uniq, none)
+        Inst = ground(Uniq, none_or_default_func)
     ).
 
 :- pred type_may_contain_solver_type(module_info::in, mer_type::in) is semidet.

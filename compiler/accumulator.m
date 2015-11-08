@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1999-2000,2002-2007, 2009-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1525,7 +1526,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
     % than it should be. ie int_const(1) when it should be any integer.
     % However this will no longer handle partially instantiated data
     % structures.
-    Inst = ground(shared, none),
+    Inst = ground(shared, none_or_default_func),
     inst_lists_to_mode_list([Inst], [Inst], Mode),
     list.duplicate(list.length(Accs), list.det_head(Mode), AccModes),
     HeadModes = AccModes ++ HeadModes0,

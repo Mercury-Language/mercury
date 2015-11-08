@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -841,7 +842,7 @@ ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules) :-
         HOInstInfo = higher_order(pred_inst_info(_, Modes, _, _)),
         list.foldl(mer_mode_used_modules(Visibility), Modes, !UsedModules)
     ;
-        HOInstInfo = none
+        HOInstInfo = none_or_default_func
     ).
 
 %-----------------------------------------------------------------------------%

@@ -414,7 +414,10 @@ modecheck_unification_rhs_lambda(X, LambdaGoal, Unification0, UnifyContext, _,
             ( pred(NonLocal::in) is semidet :-
                 lookup_var_type(NonLocalTypes, NonLocal, NonLocalType),
                 instmap_lookup_var(InstMap1, NonLocal, NonLocalInst),
-                not inst_matches_initial(NonLocalInst, any(shared, none),
+                % XXX should filter other higher-order any vars, not just
+                % functions with the default mode.
+                not inst_matches_initial(NonLocalInst,
+                    any(shared, none_or_default_func),
                     NonLocalType, ModuleInfo0)
             ), NonLocals1)
     ),
@@ -924,10 +927,10 @@ find_nondefault_mode_func_vars(ModeInfo, [ArgVar | ArgVars], BadArgVars) :-
 
 ho_inst_info_is_nondefault_mode_func(HoInstInfo, IsBad) :-
     (
-        HoInstInfo = none,
+        HoInstInfo = none_or_default_func,
         % When you take a higher order value out of a term, we record
-        % `none' as its ho_inst_info. It should be ok to put such values
-        % back into another term.
+        % `none_or_default_func' as its ho_inst_info. It should be ok to put
+        % such values back into another term.
         IsBad = no
     ;
         HoInstInfo = higher_order(PredInstInfo),
@@ -1361,7 +1364,8 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
     ;
         UnifyTypeInfoVars = [_ | _],
         list.length(UnifyTypeInfoVars, NumTypeInfoVars),
-        list.duplicate(NumTypeInfoVars, ground(shared, none), ExpectedInsts),
+        list.duplicate(NumTypeInfoVars, ground(shared, none_or_default_func),
+            ExpectedInsts),
         mode_info_set_call_context(call_context_unify(UnifyContext),
             !ModeInfo),
         InitialArgNum = 0,
@@ -1647,7 +1651,7 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
     then
         mode_info_set_call_arg_context(1, !ModeInfo),
         modecheck_introduced_type_info_var_has_inst_no_exact_match(ArgVar,
-            ArgType, ground(shared, none), !ModeInfo),
+            ArgType, ground(shared, none_or_default_func), !ModeInfo),
         check_type_info_args_are_ground(ArgVars, VarTypes, UnifyContext,
             !ModeInfo)
     else
@@ -1810,7 +1814,7 @@ try_bind_args(Inst, ArgVars, UnifyArgInsts, !ModeInfo) :-
         instmap.init_unreachable(InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
-        Inst = ground(Uniq, none),
+        Inst = ground(Uniq, none_or_default_func),
         ground_args(Uniq, ArgVars, UnifyArgInsts, !ModeInfo)
     ;
         Inst = bound(_Uniq, _InstResults, BoundInsts),
@@ -1842,7 +1846,8 @@ try_bind_args_2([Arg | Args], [Inst | Insts], [UnifyArgInst | UnifyArgInsts],
 
 ground_args(_Uniq, [], [], !ModeInfo).
 ground_args(Uniq, [Arg | Args], [UnifyArgInst | UnifyArgInsts], !ModeInfo) :-
-    modecheck_set_var_inst(Arg, ground(Uniq, none), UnifyArgInst, !ModeInfo),
+    Ground = ground(Uniq, none_or_default_func),
+    modecheck_set_var_inst(Arg, Ground, UnifyArgInst, !ModeInfo),
     ground_args(Uniq, Args, UnifyArgInsts, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1871,11 +1876,11 @@ try_get_mode_of_args(Inst, ArgInsts, ArgModes) :-
         Inst = not_reached,
         mode_set_args(ArgInsts, not_reached, ArgModes)
     ;
-        Inst = any(Uniq, none),
-        mode_set_args(ArgInsts, any(Uniq, none), ArgModes)
+        Inst = any(Uniq, none_or_default_func),
+        mode_set_args(ArgInsts, any(Uniq, none_or_default_func), ArgModes)
     ;
-        Inst = ground(Uniq, none),
-        mode_set_args(ArgInsts, ground(Uniq, none), ArgModes)
+        Inst = ground(Uniq, none_or_default_func),
+        mode_set_args(ArgInsts, ground(Uniq, none_or_default_func), ArgModes)
     ;
         Inst = bound(_Uniq, _InstResults, BoundInsts),
         (
