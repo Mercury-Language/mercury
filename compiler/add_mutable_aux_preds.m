@@ -24,12 +24,6 @@
     sec_item(item_mutable_info)::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Handle mutable items during pass 2 of making the HLDS.
-    %
-:- pred check_mutable_if_local(module_info::in,
-    sec_item(item_mutable_info)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
     % If the given mutable item is local to this module,
     % add the definitions of its auxiliary predicates to the HLDS,
     % add the (backend-specific) data structure holding the mutable's value
@@ -75,13 +69,105 @@ add_aux_pred_decls_for_mutable_if_local(SectionItem, !ModuleInfo, !Specs) :-
     SectionItem = sec_item(SectionInfo, ItemMutable),
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     (
-        ItemMercuryStatus = item_defined_in_this_module(_),
+        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
+        (
+            ( ItemExport = item_export_nowhere
+            ; ItemExport = item_export_only_submodules
+            )
+            % Even though the submodule will see the mutable, it won't
+            % implement it.
+        ;
+            ItemExport = item_export_anywhere,
+            ItemMutable = item_mutable_info(_Name, _Type, _InitTerm, _Inst,
+                _MutAttrs, _VarSet, Context, _SeqNum),
+            error_is_exported(Context,
+                [decl("mutable"), words("declaration")], !Specs)
+        ),
+        check_mutable(ItemMutable, !.ModuleInfo, !Specs),
+
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
             !ModuleInfo, !Specs)
     ;
         ItemMercuryStatus = item_defined_in_other_module(_)
+        % We don't implement the `mutable' declaration unless it is defined
+        % in this module. If we did not have this check, we would duplicate
+        % the definition of the global variable storing the mutable
+        % in any submodules of the module that actually defined the mutable.
     ).
+
+:- pred check_mutable(item_mutable_info::in, module_info::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable(ItemMutable, ModuleInfo, !Specs) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    ItemMutable = item_mutable_info(Name, _Type, _InitTerm, Inst,
+        MutAttrs, _VarSet, Context, _SeqNum),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, CompilationTarget),
+
+    % XXX We don't currently support the foreign_name attribute
+    % for all languages.
+    (
+        ( CompilationTarget = target_c,      ForeignLanguage = lang_c
+        ; CompilationTarget = target_java,   ForeignLanguage = lang_java
+        ; CompilationTarget = target_csharp, ForeignLanguage = lang_csharp
+        ; CompilationTarget = target_erlang, ForeignLanguage = lang_erlang
+        ),
+        mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
+        (
+            MaybeForeignNames = no
+        ;
+            MaybeForeignNames = yes(ForeignNames),
+            % Report any errors with the foreign_name attributes
+            % during this pass.
+            get_global_name_from_foreign_names(ModuleInfo, Context,
+                ModuleName, Name, ForeignLanguage, ForeignNames,
+                _TargetMutableName, !Specs)
+        )
+    ),
+
+    % If the mutable is to be trailed, then we need to be in a trailing grade.
+    TrailMutableUpdates = mutable_var_trailed(MutAttrs),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
+    ( if
+        TrailMutableUpdates = mutable_trailed,
+        UseTrail = no
+    then
+        TrailPieces = [words("Error: trailed"), decl("mutable"),
+            words("declaration in non-trailing grade."), nl],
+        TrailMsg = simple_msg(Context, [always(TrailPieces)]),
+        TrailSpec = error_spec(severity_error,
+            phase_parse_tree_to_hlds, [TrailMsg]),
+        !:Specs = [TrailSpec | !.Specs]
+    else
+        true
+    ),
+
+    % Check that the inst in the mutable declaration is a valid inst
+    % for a mutable declaration.
+    ( if is_valid_mutable_inst(ModuleInfo, Inst) then
+        true
+    else
+        % It is okay to pass a dummy varset in here since any attempt
+        % to use inst variables in a mutable declaration should already
+        % been dealt with when the mutable declaration was parsed.
+        DummyInstVarset = varset.init,
+        InstStr = mercury_expanded_inst_to_string(output_debug, ModuleInfo,
+            DummyInstVarset, Inst),
+        InvalidInstPieces = [words("Error: the inst"), quote(InstStr),
+            words("is not a valid inst for a"),
+            decl("mutable"), words("declaration.")],
+        % XXX We could provide more information about exactly *why* the
+        % inst was not valid here as well.
+        InvalidInstMsg = simple_msg(Context, [always(InvalidInstPieces)]),
+        InvalidInstSpec = error_spec(severity_error,
+            phase_parse_tree_to_hlds, [InvalidInstMsg]),
+        !:Specs = [InvalidInstSpec | !.Specs]
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_aux_pred_decls_for_mutable(item_mutable_info::in,
     pred_status::in, need_qualifier::in, module_info::in, module_info::out,
@@ -337,106 +423,6 @@ add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, Name, Kind,
     module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
         PredOrFunc, PredName, TypesAndModes, MaybeDetism, Purity, Constraints,
         Markers, Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-check_mutable_if_local(ModuleInfo, SectionItem, !Specs) :-
-    SectionItem = sec_item(SectionInfo, ItemMutable),
-    SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
-    (
-        ItemMercuryStatus = item_defined_in_other_module(_)
-        % We don't implement the `mutable' declaration unless it is defined
-        % in this module. If we did not have this check, we would duplicate
-        % the definition of the global variable storing the mutable
-        % in any submodules of the module that actually defined the mutable.
-    ;
-        ItemMercuryStatus = item_defined_in_this_module(ItemExport),
-        (
-            ( ItemExport = item_export_nowhere
-            ; ItemExport = item_export_only_submodules
-            )
-            % Even though the submodule will see the mutable, it won't
-            % implement it.
-        ;
-            ItemExport = item_export_anywhere,
-            ItemMutable = item_mutable_info(_Name, _Type, _InitTerm, _Inst,
-                _MutAttrs, _VarSet, Context, _SeqNum),
-            error_is_exported(Context,
-                [decl("mutable"), words("declaration")], !Specs)
-        ),
-        check_mutable(ModuleInfo, ItemMutable, !Specs)
-    ).
-
-:- pred check_mutable(module_info::in, item_mutable_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_mutable(ModuleInfo, ItemMutable, !Specs) :-
-    module_info_get_name(ModuleInfo, ModuleName),
-    ItemMutable = item_mutable_info(Name, _Type, _InitTerm, Inst,
-        MutAttrs, _VarSet, Context, _SeqNum),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, CompilationTarget),
-
-    % XXX We don't currently support the foreign_name attribute
-    % for all languages.
-    (
-        ( CompilationTarget = target_c,      ForeignLanguage = lang_c
-        ; CompilationTarget = target_java,   ForeignLanguage = lang_java
-        ; CompilationTarget = target_csharp, ForeignLanguage = lang_csharp
-        ; CompilationTarget = target_erlang, ForeignLanguage = lang_erlang
-        ),
-        mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
-        (
-            MaybeForeignNames = no
-        ;
-            MaybeForeignNames = yes(ForeignNames),
-            % Report any errors with the foreign_name attributes
-            % during this pass.
-            get_global_name_from_foreign_names(ModuleInfo, Context,
-                ModuleName, Name, ForeignLanguage, ForeignNames,
-                _TargetMutableName, !Specs)
-        )
-    ),
-
-    % If the mutable is to be trailed, then we need to be in a trailing grade.
-    TrailMutableUpdates = mutable_var_trailed(MutAttrs),
-    globals.lookup_bool_option(Globals, use_trail, UseTrail),
-    ( if
-        TrailMutableUpdates = mutable_trailed,
-        UseTrail = no
-    then
-        TrailPieces = [words("Error: trailed"), decl("mutable"),
-            words("declaration in non-trailing grade."), nl],
-        TrailMsg = simple_msg(Context, [always(TrailPieces)]),
-        TrailSpec = error_spec(severity_error,
-            phase_parse_tree_to_hlds, [TrailMsg]),
-        !:Specs = [TrailSpec | !.Specs]
-    else
-        true
-    ),
-
-    % Check that the inst in the mutable declaration is a valid inst
-    % for a mutable declaration.
-    ( if is_valid_mutable_inst(ModuleInfo, Inst) then
-        true
-    else
-        % It is okay to pass a dummy varset in here since any attempt
-        % to use inst variables in a mutable declaration should already
-        % been dealt with when the mutable declaration was parsed.
-        DummyInstVarset = varset.init,
-        InstStr = mercury_expanded_inst_to_string(output_debug, ModuleInfo,
-            DummyInstVarset, Inst),
-        InvalidInstPieces = [words("Error: the inst"), quote(InstStr),
-            words("is not a valid inst for a"),
-            decl("mutable"), words("declaration.")],
-        % XXX We could provide more information about exactly *why* the
-        % inst was not valid here as well.
-        InvalidInstMsg = simple_msg(Context, [always(InvalidInstPieces)]),
-        InvalidInstSpec = error_spec(severity_error,
-            phase_parse_tree_to_hlds, [InvalidInstMsg]),
-        !:Specs = [InvalidInstSpec | !.Specs]
-    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

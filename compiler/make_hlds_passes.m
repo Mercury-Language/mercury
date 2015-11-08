@@ -232,7 +232,10 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
 
     % Every mutable has its own set of access predicates. Declare them,
     % whether the mutable definition was a standalone item or part of
-    % the definition of a solver type.
+    % the definition of a solver type. We have to do this after we add
+    % types and insts to the HLDS, so we can check the types and insts
+    % in the mutable for validity.
+    % XXX Currently, we check only the inst for validity.
     list.foldl2(add_aux_pred_decls_for_mutable_if_local, ItemMutables,
         !ModuleInfo, !Specs),
     list.foldl2(add_aux_pred_decls_for_mutable_if_local, SolverItemMutables,
@@ -257,13 +260,6 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % Record instance definitions.
     list.foldl2(add_instance_defn, ItemInstances,
         !ModuleInfo, !Specs),
-
-    % Perform checks for various kinds of errors in mutable items.
-    % XXX PASS STRUCTURE We should check mutables when we first process them.
-    list.foldl(check_mutable_if_local(!.ModuleInfo), ItemMutables,
-        !Specs),
-    list.foldl(check_mutable_if_local(!.ModuleInfo), SolverItemMutables,
-        !Specs),
 
     % Implement several kinds of pragmas, the ones in the subtype
     % defined by the pragma_pass_2 inst.
