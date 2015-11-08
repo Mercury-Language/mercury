@@ -541,11 +541,14 @@ of the make_hlds module in the hlds package.
 
 <dt> make_hlds_passes.m
 <dd>
-    This submodule calls the others to perform the conversion,
-    in several passes.
-    (We cannot do everything in one pass;
-    for example, we need to have seen a predicate's declaration
-    before we can process its clauses.)
+    This submodule calls the others to perform the conversion.
+
+<dt> make_hlds_separate_items.m
+<dd>
+    This submodule separates out the different kinds of items,
+    so that when make_hlds_passes.m adds one kind of item (e.g. clauses)
+    to the HLDS, it can rely on the fact that all items of another kind
+    (e.g. predicate declarations) have already been processed.
 
 <dt> superhomogeneous.m
 <dd>
