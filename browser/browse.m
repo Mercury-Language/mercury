@@ -184,7 +184,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module pretty_printer.
-:- import_module require.
 :- import_module stream.
 :- import_module stream.string_writer.
 :- import_module string.
@@ -1818,9 +1817,7 @@ synthetic_term_to_doc(Functor0, Args, MaybeReturn) = Doc :-
 :- func qualified_functor_to_doc(list(string)) = doc.
 
 qualified_functor_to_doc([]) = str("").
-
 qualified_functor_to_doc([Part]) = str(term_io.quoted_atom(Part)).
-
 qualified_functor_to_doc([PartA, PartB | Parts]) =
     docs([str(term_io.quoted_atom(PartA)), str("."),
         qualified_functor_to_doc([PartB | Parts])]).
