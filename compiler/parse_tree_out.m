@@ -1390,8 +1390,8 @@ mercury_output_item_finalise(_, ItemFinalise, !IO) :-
     io::di, io::uo) is det.
 
 mercury_output_item_mutable(Info, ItemMutable, !IO) :-
-    ItemMutable = item_mutable_info(Name, Type, InitTerm, Inst, Attrs,
-        MutVarSet, _Context, _SeqNum),
+    ItemMutable = item_mutable_info(Name, _OrigType, Type, _OrigInst, Inst,
+        InitTerm, MutVarSet, Attrs, _Context, _SeqNum),
     io.write_string(":- mutable(", !IO),
     io.write_string(Name, !IO),
     io.write_string(", ", !IO),

@@ -1018,13 +1018,15 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 do_module_qualify_mutable(InInt, ItemMutable0, ItemMutable, !Info, !Specs) :-
-    ItemMutable0 = item_mutable_info(Name, Type0, InitTerm, Inst0,
-        Attrs, Varset, Context, SeqNum),
+    ItemMutable0 = item_mutable_info(Name, OrigType0, Type0, OrigInst0, Inst0,
+        InitTerm, Attrs, Varset, Context, SeqNum),
     ErrorContext = mqec_mutable(Context, Name),
+    qualify_type(InInt, ErrorContext, OrigType0, OrigType, !Info, [], _),
     qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+    qualify_inst(InInt, ErrorContext, OrigInst0, OrigInst, !Info, [], _),
     qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
-    ItemMutable = item_mutable_info(Name, Type, InitTerm, Inst,
-        Attrs, Varset, Context, SeqNum).
+    ItemMutable = item_mutable_info(Name, OrigType, Type, OrigInst, Inst,
+        InitTerm, Attrs, Varset, Context, SeqNum).
 
 :- pred do_module_qualify_event_specs(mq_in_interface::in, string::in,
     assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,

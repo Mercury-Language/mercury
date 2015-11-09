@@ -532,11 +532,17 @@
     --->    item_mutable_info(
                 % :- mutable(var_name, type, inst, value, attrs).
                 mut_name                        :: string,
+                % The mut_type and mut_inst fields are subject to
+                % expansion in equiv_type.m; the mut_orig_type and
+                % mut_orig_inst fields aren't. The latter are used
+                % to improve error reporting.
+                mut_orig_type                   :: mer_type,
                 mut_type                        :: mer_type,
-                mut_init_value                  :: prog_term,
+                mut_orig_inst                   :: mer_inst,
                 mut_inst                        :: mer_inst,
+                mut_init_value                  :: prog_term,
+                mut_init_value_varset           :: prog_varset,
                 mut_attrs                       :: mutable_var_attributes,
-                mut_varset                      :: prog_varset,
                 mut_context                     :: prog_context,
                 mut_seq_num                     :: int
             ).

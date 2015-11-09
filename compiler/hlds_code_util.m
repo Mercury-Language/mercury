@@ -45,11 +45,6 @@
 :- func base_typeclass_info_cons_id(instance_table,
     prog_constraint, int, list(mer_type)) = cons_id.
 
-    % Succeeds iff this inst is one that can be used in a valid
-    % mutable declaration.
-    %
-:- pred is_valid_mutable_inst(module_info::in, mer_inst::in) is semidet.
-
 %-----------------------------------------------------------------------------%
 
     % Find the procedure with argmodes which match the ones we want.
@@ -216,53 +211,6 @@ base_typeclass_info_cons_id(InstanceTable, Constraint, InstanceNum,
     make_instance_string(InstanceTypes, InstanceString),
     ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
         InstanceNum, InstanceString).
-
-%----------------------------------------------------------------------------%
-
-is_valid_mutable_inst(ModuleInfo, Inst) :-
-    set.init(Expansions),
-    is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions).
-
-:- pred is_valid_mutable_inst_2(module_info::in, mer_inst::in,
-    set(inst_name)::in) is semidet.
-
-is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions0) :-
-    (
-        ( Inst = any(Uniq, _)
-        ; Inst = ground(Uniq, _)
-        ),
-        Uniq = shared
-    ;
-        Inst = bound(shared, _, BoundInsts),
-        are_valid_mutable_bound_insts(ModuleInfo, BoundInsts, Expansions0)
-    ;
-        Inst = defined_inst(InstName),
-        ( if not set.member(InstName, Expansions0) then
-            set.insert(InstName, Expansions0, Expansions),
-            inst_lookup(ModuleInfo, InstName, SubInst),
-            is_valid_mutable_inst_2(ModuleInfo, SubInst, Expansions)
-        else
-            true
-        )
-    ).
-
-:- pred are_valid_mutable_bound_insts(module_info::in, list(bound_inst)::in,
-    set(inst_name)::in) is semidet.
-
-are_valid_mutable_bound_insts(_ModuleInfo, [], _Expansions0).
-are_valid_mutable_bound_insts(ModuleInfo, [BoundInst | BoundInsts],
-        Expansions0) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
-    are_valid_mutable_insts(ModuleInfo, ArgInsts, Expansions0),
-    are_valid_mutable_bound_insts(ModuleInfo, BoundInsts, Expansions0).
-
-:- pred are_valid_mutable_insts(module_info::in, list(mer_inst)::in,
-    set(inst_name)::in) is semidet.
-
-are_valid_mutable_insts(_ModuleInfo, [], _Expansions0).
-are_valid_mutable_insts(ModuleInfo, [Inst | Insts], Expansions0) :-
-    is_valid_mutable_inst_2(ModuleInfo, Inst, Expansions0),
-    are_valid_mutable_insts(ModuleInfo, Insts, Expansions0).
 
 %----------------------------------------------------------------------------%
 

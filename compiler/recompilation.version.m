@@ -972,10 +972,10 @@ is_item_changed(Item1, Item2, Changed) :-
         )
     ;
         Item1 = item_mutable(ItemMutable1),
-        ItemMutable1 = item_mutable_info(A, B, C, D, E, F, _, _),
+        ItemMutable1 = item_mutable_info(A, _, B, _, C, D, E, F, _, _),
         ( if
             Item2 = item_mutable(ItemMutable2),
-            ItemMutable2 = item_mutable_info(A, B, C, D, E, F, _, _)
+            ItemMutable2 = item_mutable_info(A, _, B, _, C, D, E, F, _, _)
         then
             Changed = unchanged
         else

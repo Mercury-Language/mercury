@@ -164,8 +164,8 @@ parse_mutable_decl_info(_ModuleName, VarSet, Terms, Context, SeqNum,
         % references to it. Ignoring the varset may lead to later compiler
         % passes attempting to reuse this variable when fresh variables are
         % allocated.
-        MutableInfo = item_mutable_info(Name, Type, Value, Inst, MutAttrs,
-            ProgVarSet, Context, SeqNum),
+        MutableInfo = item_mutable_info(Name, Type, Type, Inst, Inst,
+            Value, ProgVarSet, MutAttrs, Context, SeqNum),
         MaybeMutableInfo = ok1(MutableInfo)
     else
         Specs = get_any_errors1(MaybeName) ++ get_any_errors1(MaybeType) ++

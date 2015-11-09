@@ -1,8 +1,7 @@
 bad_mutable.m:009: Error: `:- mutable' declaration in module interface.
 bad_mutable.m:017: In declaration for mutable `not_a_type':
 bad_mutable.m:017:   error: undefined type `no_type'/0.
-bad_mutable.m:019: Error: the inst `special_ground' is not a valid inst for a
-bad_mutable.m:019:   `:- mutable' declaration.
+bad_mutable.m:019: Error: the inst `special_ground' is not defined.
 bad_mutable.m:019: In declaration for mutable `not_an_inst':
 bad_mutable.m:019:   error: undefined inst `special_ground'/0.
 bad_mutable.m:021: Error: malformed attribute list in `:- mutable' declaration:
@@ -17,5 +16,7 @@ bad_mutable.m:030: Error: conflicting attributes in attribute list:
 bad_mutable.m:030:   [thread_local, trailed].
 bad_mutable.m:032: Error: conflicting attributes in attribute list:
 bad_mutable.m:032:   [thread_local, constant].
-bad_mutable.m:039: Error: the inst `bound(f1(ground, unique))' is not a valid
-bad_mutable.m:039:   inst for a `:- mutable' declaration.
+bad_mutable.m:039: Error: in the expansion of the named inst
+bad_mutable.m:039:   `bad_mutable.t1'/0:
+bad_mutable.m:039:   the inst `unique' is not allowed in `:- mutable'
+bad_mutable.m:039:   declarations.

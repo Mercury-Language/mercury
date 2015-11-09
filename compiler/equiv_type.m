@@ -711,15 +711,15 @@ replace_in_mutable_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
 
 replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap, Info0, Info,
         !ExpandedItems, !UsedModules) :-
-    Info0 = item_mutable_info(MutName, Type0, InitValue, Inst0, Attrs, Varset,
-        Context, SeqNum),
+    Info0 = item_mutable_info(MutName, OrigType, Type0, OrigInst, Inst0,
+        InitValue, Attrs, Varset, Context, SeqNum),
     TVarSet0 = varset.init,
     replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, Type0, Type,
         _TypeChanged, TVarSet0, _TVarSet, !ExpandedItems, !UsedModules),
     replace_in_inst(MaybeRecord, Inst0, InstEqvMap, Inst, !ExpandedItems,
         !UsedModules),
-    Info = item_mutable_info(MutName, Type, InitValue, Inst, Attrs, Varset,
-        Context, SeqNum).
+    Info = item_mutable_info(MutName, OrigType, Type, OrigInst, Inst,
+        InitValue, Attrs, Varset, Context, SeqNum).
 
 :- pred replace_in_event_specs(
     assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,

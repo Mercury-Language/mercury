@@ -336,8 +336,9 @@ process_item_for_private_interface(ModuleName, Section, Item,
             !IntItemsCord, !ImpItemsCord)
     ;
         Item = item_mutable(ItemMutable),
-        ItemMutable = item_mutable_info(MutableName, Type, _Value, Inst, Attrs,
-            _Varset, Context, _SeqNum),
+        ItemMutable = item_mutable_info(MutableName,
+            _OrigType, Type, _OrigInst, Inst, _Value, _Varset, Attrs,
+            Context, _SeqNum),
         ConstantInterface = mutable_var_constant(Attrs),
         (
             ConstantInterface = mutable_constant,

@@ -1,10 +1,13 @@
-uniq_mutable.m:021: Error: the inst `unique' is not a valid inst for a
-uniq_mutable.m:021:   `:- mutable' declaration.
-uniq_mutable.m:022: Error: the inst `mostly_unique' is not a valid inst for a
-uniq_mutable.m:022:   `:- mutable' declaration.
-uniq_mutable.m:023: Error: the inst `free' is not a valid inst for a
-uniq_mutable.m:023:   `:- mutable' declaration.
-uniq_mutable.m:024: Error: the inst `clobbered' is not a valid inst for a
-uniq_mutable.m:024:   `:- mutable' declaration.
-uniq_mutable.m:025: Error: the inst `mostly_clobbered' is not a valid inst for
-uniq_mutable.m:025:   a `:- mutable' declaration.
+uniq_mutable.m:021: Error: the inst `unique' is not allowed in `:- mutable'
+uniq_mutable.m:021:   declarations.
+uniq_mutable.m:022: Error: the inst `mostly_unique' is not allowed in
+uniq_mutable.m:022:   `:- mutable' declarations.
+uniq_mutable.m:023: Error: the inst `free' may not appear in `:- mutable'
+uniq_mutable.m:023:   declarations.
+uniq_mutable.m:024: Error: in the expansion of the named inst `builtin.dead'/0:
+uniq_mutable.m:024:   the inst `clobbered' is not allowed in `:- mutable'
+uniq_mutable.m:024:   declarations.
+uniq_mutable.m:025: Error: in the expansion of the named inst
+uniq_mutable.m:025:   `builtin.mostly_dead'/0:
+uniq_mutable.m:025:   the inst `mostly_clobbered' is not allowed in
+uniq_mutable.m:025:   `:- mutable' declarations.

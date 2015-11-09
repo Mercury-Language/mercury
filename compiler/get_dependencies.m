@@ -538,7 +538,8 @@ gather_implicit_import_needs_in_instance_method(InstanceMethod,
 
 gather_implicit_import_needs_in_mutable(ItemMutableInfo,
         !ImplicitImportNeeds) :-
-    ItemMutableInfo = item_mutable_info(_Name, _Type, InitValue, _Inst,
+    ItemMutableInfo = item_mutable_info(_Name,
+        _OrigType, _Type, _OrigInst, _Inst, InitValue,
         _Attrs, _VarSet, _Context, _SeqNum),
     gather_implicit_import_needs_in_term(InitValue, !ImplicitImportNeeds).
 

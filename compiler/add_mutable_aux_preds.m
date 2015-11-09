@@ -41,7 +41,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
-:- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.make_hlds.add_clause.
@@ -59,6 +58,7 @@
 :- import_module parse_tree.prog_mutable.
 
 :- import_module bool.
+:- import_module map.
 :- import_module require.
 :- import_module string.
 :- import_module varset.
@@ -70,21 +70,7 @@ add_aux_pred_decls_for_mutable_if_local(SectionItem, !ModuleInfo, !Specs) :-
     SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     (
         ItemMercuryStatus = item_defined_in_this_module(ItemExport),
-        (
-            ( ItemExport = item_export_nowhere
-            ; ItemExport = item_export_only_submodules
-            )
-            % Even though the submodule will see the mutable, it won't
-            % implement it.
-        ;
-            ItemExport = item_export_anywhere,
-            ItemMutable = item_mutable_info(_Name, _Type, _InitTerm, _Inst,
-                _MutAttrs, _VarSet, Context, _SeqNum),
-            error_is_exported(Context,
-                [decl("mutable"), words("declaration")], !Specs)
-        ),
-        check_mutable(ItemMutable, !.ModuleInfo, !Specs),
-
+        check_mutable(ItemMutable, ItemExport, !.ModuleInfo, !Specs),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
             !ModuleInfo, !Specs)
@@ -96,18 +82,27 @@ add_aux_pred_decls_for_mutable_if_local(SectionItem, !ModuleInfo, !Specs) :-
         % in any submodules of the module that actually defined the mutable.
     ).
 
-:- pred check_mutable(item_mutable_info::in, module_info::in,
+:- pred check_mutable(item_mutable_info::in, item_export::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_mutable(ItemMutable, ModuleInfo, !Specs) :-
-    module_info_get_name(ModuleInfo, ModuleName),
-    ItemMutable = item_mutable_info(Name, _Type, _InitTerm, Inst,
-        MutAttrs, _VarSet, Context, _SeqNum),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, CompilationTarget),
+check_mutable(ItemMutable, ItemExport, ModuleInfo, !Specs) :-
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, _Type, OrigInst, Inst,
+        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
+    (
+        ( ItemExport = item_export_nowhere
+        ; ItemExport = item_export_only_submodules
+        )
+    ;
+        ItemExport = item_export_anywhere,
+        error_is_exported(Context,
+            [decl("mutable"), words("declaration")], !Specs)
+    ),
 
     % XXX We don't currently support the foreign_name attribute
     % for all languages.
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, CompilationTarget),
     (
         ( CompilationTarget = target_c,      ForeignLanguage = lang_c
         ; CompilationTarget = target_java,   ForeignLanguage = lang_java
@@ -121,8 +116,9 @@ check_mutable(ItemMutable, ModuleInfo, !Specs) :-
             MaybeForeignNames = yes(ForeignNames),
             % Report any errors with the foreign_name attributes
             % during this pass.
+            module_info_get_name(ModuleInfo, ModuleName),
             get_global_name_from_foreign_names(ModuleInfo, Context,
-                ModuleName, Name, ForeignLanguage, ForeignNames,
+                ModuleName, MutableName, ForeignLanguage, ForeignNames,
                 _TargetMutableName, !Specs)
         )
     ),
@@ -146,25 +142,235 @@ check_mutable(ItemMutable, ModuleInfo, !Specs) :-
 
     % Check that the inst in the mutable declaration is a valid inst
     % for a mutable declaration.
-    ( if is_valid_mutable_inst(ModuleInfo, Inst) then
-        true
-    else
-        % It is okay to pass a dummy varset in here since any attempt
-        % to use inst variables in a mutable declaration should already
-        % been dealt with when the mutable declaration was parsed.
-        DummyInstVarset = varset.init,
-        InstStr = mercury_expanded_inst_to_string(output_debug, ModuleInfo,
-            DummyInstVarset, Inst),
-        InvalidInstPieces = [words("Error: the inst"), quote(InstStr),
-            words("is not a valid inst for a"),
-            decl("mutable"), words("declaration.")],
-        % XXX We could provide more information about exactly *why* the
-        % inst was not valid here as well.
-        InvalidInstMsg = simple_msg(Context, [always(InvalidInstPieces)]),
-        InvalidInstSpec = error_spec(severity_error,
-            phase_parse_tree_to_hlds, [InvalidInstMsg]),
-        !:Specs = [InvalidInstSpec | !.Specs]
+    % It is okay to pass a dummy varset in here since any attempt
+    % to use inst variables in a mutable declaration should already
+    % been dealt with when the mutable declaration was parsed.
+    DummyInstVarSet = varset.init,
+    check_mutable_inst(ModuleInfo, Context, DummyInstVarSet, [], Inst,
+        [], ExpandedInstSpecs),
+    (
+        ExpandedInstSpecs = []
+    ;
+        ExpandedInstSpecs = [_ | _],
+        % We found some insts in Inst that are not allowed in mutables.
+        %
+        % Inst has been processed by equiv_type.m, which replaces named insts
+        % with the definition of the named inst. When we check it, the error
+        % messages we generate for any errors in it will lack information
+        % about what nested sequence of named inst definitions the errors is
+        % inside. We therefore compute the error messages on the original
+        % inst as well.
+        %
+        % If ExpandedInstSpecs is nonempty, then UnexpandedInstSpecs should
+        % be nonempty as well, but we prepare for it to be empty just in case.
+        check_mutable_inst(ModuleInfo, Context, DummyInstVarSet, [], OrigInst,
+            [], UnexpandedInstSpecs),
+        (
+            UnexpandedInstSpecs = [],
+            % Printing error messages without the proper context is better than
+            % not printing error messages at all, once we have discovered
+            % an error.
+            !:Specs = ExpandedInstSpecs ++ !.Specs
+        ;
+            UnexpandedInstSpecs = [_ | _],
+            !:Specs = UnexpandedInstSpecs ++ !.Specs
+        )
     ).
+
+%---------------------------------------------------------------------------%
+
+    % Add an error to !Specs for each part of the inst that isn't allowed
+    % inside a mutable declaration.
+    %
+:- pred check_mutable_inst(module_info::in, prog_context::in,
+    inst_varset::in, list(inst_id)::in, mer_inst::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
+        !Specs) :-
+    (
+        ( Inst = any(Uniq, _)
+        ; Inst = ground(Uniq, _)
+        ),
+        check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet,
+            ParentInsts, Inst, Uniq, !Specs)
+    ;
+        Inst = bound(Uniq, _, BoundInsts),
+        check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet,
+            ParentInsts, Inst, Uniq, !Specs),
+        check_mutable_bound_insts(ModuleInfo, Context, InstVarSet,
+            ParentInsts, BoundInsts, !Specs)
+    ;
+        Inst = defined_inst(InstName),
+        (
+            InstName = user_inst(UserInstName, UserInstArgs),
+            list.length(UserInstArgs, UserInstArity),
+            UserInstId = inst_id(UserInstName, UserInstArity),
+            ( if list.member(UserInstId, ParentInsts) then
+                true
+            else
+                check_mutable_insts(ModuleInfo, Context, InstVarSet,
+                    ParentInsts, UserInstArgs, !Specs),
+
+                module_info_get_inst_table(ModuleInfo, InstTable),
+                inst_table_get_user_insts(InstTable, UserInstTable),
+                ( if map.search(UserInstTable, UserInstId, InstDefn) then
+                    InstDefn = hlds_inst_defn(DefnInstVarSet, _Params,
+                        InstBody, _MMTC, _Context, _Status),
+                    (
+                        InstBody = eqv_inst(EqvInst),
+                        DefnParentInsts = [UserInstId | ParentInsts],
+                        check_mutable_inst(ModuleInfo, Context, DefnInstVarSet,
+                            DefnParentInsts, EqvInst, !Specs)
+                    ;
+                        InstBody = abstract_inst
+                    )
+                else
+                    UndefinedPieces = [words("is not defined.")],
+                    invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet,
+                        ParentInsts, Inst, UndefinedPieces, !Specs)
+                )
+            )
+        ;
+            ( InstName = unify_inst(_, _, _, _)
+            ; InstName = merge_inst(_, _)
+            ; InstName = ground_inst(_, _, _, _)
+            ; InstName = any_inst(_, _, _, _)
+            ; InstName = shared_inst(_)
+            ; InstName = mostly_uniq_inst(_)
+            ; InstName = typed_inst(_, _)
+            ; InstName = typed_ground(_, _)
+            ),
+            unexpected($module, $pred, "non-user inst")
+        )
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ),
+        FreePieces = [words("may not appear in"),
+            decl("mutable"), words("declarations.")],
+        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
+            Inst, FreePieces, !Specs)
+    ;
+        Inst = constrained_inst_vars(_, _),
+        ConstrainedPieces = [words("is constrained, and thus"),
+            words("may not appear in"), decl("mutable"),
+            words("declarations.")],
+        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
+            Inst, ConstrainedPieces, !Specs)
+    ;
+        Inst = abstract_inst(_, _),
+        AbstractPieces = [words("is abstract, and thus"),
+            words("may not appear in"), decl("mutable"),
+            words("declarations.")],
+        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
+            Inst, AbstractPieces, !Specs)
+    ;
+        Inst = inst_var(_)
+        % The parser ensures that the inst in the mutable declaration does
+        % not have any variables. Any variables we encounter here must be
+        % a parameter from a named inst that the top level inst refers to
+        % either directly or indirectly.
+    ;
+        Inst = not_reached,
+        unexpected($module, $pred, "not_reached")
+    ).
+
+:- pred check_mutable_bound_insts(module_info::in, prog_context::in,
+    inst_varset::in, list(inst_id)::in, list(bound_inst)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable_bound_insts(_ModuleInfo, _Context, _InstVarSet, _ParentInsts,
+        [], !Specs).
+check_mutable_bound_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
+        [BoundInst | BoundInsts], !Specs) :-
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
+        ArgInsts, !Specs),
+    check_mutable_bound_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
+        BoundInsts, !Specs).
+
+:- pred check_mutable_insts(module_info::in, prog_context::in,
+    inst_varset::in, list(inst_id)::in, list(mer_inst)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable_insts(_ModuleInfo, _Context, _InstVarSet, _ParentInsts,
+        [], !Specs).
+check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
+        [Inst | Insts], !Specs) :-
+    check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts,
+        Inst, !Specs),
+    check_mutable_insts(ModuleInfo, Context, InstVarSet, ParentInsts,
+        Insts, !Specs).
+
+%---------------------%
+
+:- pred check_mutable_inst_uniqueness(module_info::in, prog_context::in,
+    inst_varset::in, list(inst_id)::in, mer_inst::in, uniqueness::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet, ParentInsts,
+        Inst, Uniq, !Specs) :-
+    (
+        Uniq = shared
+    ;
+        (
+            Uniq = unique,
+            UniqStr = "unique"
+        ;
+            Uniq = mostly_unique,
+            UniqStr = "mostly_unique"
+        ;
+            Uniq = clobbered,
+            UniqStr = "clobbered"
+        ;
+            Uniq = mostly_clobbered,
+            UniqStr = "mostly_clobbered"
+        ),
+        ( if Inst = ground(Uniq, _) then
+            UniqPieces = [words("is not allowed in"),
+                decl("mutable"), words("declarations.")]
+        else
+            UniqPieces = [words("has uniqueness"), quote(UniqStr), suffix(","),
+                words("which is not allowed in"),
+                decl("mutable"), words("declarations.")]
+        ),
+        invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
+            Inst, UniqPieces, !Specs)
+    ).
+
+:- pred invalid_inst_in_mutable(module_info::in, prog_context::in,
+    inst_varset::in, list(inst_id)::in, mer_inst::in,
+    list(format_component)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
+        ProblemPieces, !Specs) :-
+    named_parents_to_pieces(ParentInsts, ParentPieces),
+    InstStr = mercury_expanded_inst_to_string(output_debug, ModuleInfo,
+        InstVarSet, Inst),
+    Pieces = [words("Error:") | ParentPieces] ++
+        [words("the inst"), quote(InstStr) | ProblemPieces] ++ [nl],
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+:- pred named_parents_to_pieces(list(inst_id)::in,
+    list(format_component)::out) is det.
+
+named_parents_to_pieces([], []).
+named_parents_to_pieces([InstId | InstIds], Pieces) :-
+    named_parent_to_pieces(InstId, HeadPieces),
+    named_parents_to_pieces(InstIds, TailPieces),
+    Pieces = HeadPieces ++ TailPieces.
+
+:- pred named_parent_to_pieces(inst_id::in,
+    list(format_component)::out) is det.
+
+named_parent_to_pieces(InstId, Pieces) :-
+    InstId = inst_id(InstName, InstArity),
+    Pieces = [words("in the expansion of the named inst"),
+        sym_name_and_arity(InstName / InstArity), suffix(":"), nl].
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -175,8 +381,9 @@ check_mutable(ItemMutable, ModuleInfo, !Specs) :-
 
 add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
         !ModuleInfo, !Specs) :-
-    ItemMutable = item_mutable_info(Name, Type, _InitValue, Inst, MutAttrs,
-        _VarSet, Context, _SeqNum),
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, Type, _OrigInst, Inst,
+        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     get_mutable_target_params(!.ModuleInfo, MutAttrs, MaybeTargetParams),
     (
         MaybeTargetParams = no
@@ -196,12 +403,12 @@ add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
             PreInit = dont_need_pre_init_pred
         ;
             PreInit = need_pre_init_pred,
-            add_mutable_pre_init_pred_decl(ModuleName, Name,
+            add_mutable_pre_init_pred_decl(ModuleName, MutableName,
                 PredStatus, NeedQual, Context, !ModuleInfo, !Specs)
         ),
 
         % Create the mutable initialisation predicate.
-        add_mutable_init_pred_decl(ModuleName, Name,
+        add_mutable_init_pred_decl(ModuleName, MutableName,
             PredStatus, NeedQual, Context, !ModuleInfo, !Specs),
 
         % Create the primitive access and locking predicates, if needed.
@@ -209,19 +416,21 @@ add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
             LockUnlock = dont_need_lock_unlock_preds
         ;
             LockUnlock = need_lock_unlock_preds,
-            add_mutable_lock_pred_decl(ModuleName, Name,
+            add_mutable_lock_pred_decl(ModuleName, MutableName,
                 PredStatus, NeedQual, Context, !ModuleInfo, !Specs),
-            add_mutable_unlock_pred_decl(ModuleName, Name,
+            add_mutable_unlock_pred_decl(ModuleName, MutableName,
                 PredStatus, NeedQual, Context, !ModuleInfo, !Specs)
         ),
         (
             UnsafeAccess = dont_need_unsafe_get_set_preds
         ;
             UnsafeAccess = need_unsafe_get_set_preds,
-            add_mutable_unsafe_get_pred_decl(ModuleName, Name, Type, Inst,
-                PredStatus, NeedQual, Context, !ModuleInfo, !Specs),
-            add_mutable_unsafe_set_pred_decl(ModuleName, Name, Type, Inst,
-                PredStatus, NeedQual, Context, !ModuleInfo, !Specs)
+            add_mutable_unsafe_get_pred_decl(ModuleName, MutableName,
+                Type, Inst, PredStatus, NeedQual, Context,
+                !ModuleInfo, !Specs),
+            add_mutable_unsafe_set_pred_decl(ModuleName, MutableName,
+                Type, Inst, PredStatus, NeedQual, Context,
+                !ModuleInfo, !Specs)
         ),
 
         IsConstant = mutable_var_constant(MutAttrs),
@@ -240,30 +449,30 @@ add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
             % We create the "get" access predicate, which is pure since
             % it always returns the same value, but we must also create
             % a secret "set" predicate for use by the initialization code.
-            ConstantGetPredDecl = constant_get_pred_decl(ModuleName, Name,
-                Type, Inst, Context),
-            ConstantSetPredDecl = constant_set_pred_decl(ModuleName, Name,
-                Type, Inst, Context),
+            ConstantGetPredDecl = constant_get_pred_decl(ModuleName,
+                MutableName, Type, Inst, Context),
+            ConstantSetPredDecl = constant_set_pred_decl(ModuleName,
+                MutableName, Type, Inst, Context),
             add_pred_decl_info_for_mutable_aux_pred(ConstantGetPredDecl,
-                ModuleName, Name, mutable_pred_constant_get,
+                ModuleName, MutableName, mutable_pred_constant_get,
                 PredStatus, NeedQual, !ModuleInfo, !Specs),
             add_pred_decl_info_for_mutable_aux_pred(ConstantSetPredDecl,
-                ModuleName, Name, mutable_pred_constant_secret_set,
+                ModuleName, MutableName, mutable_pred_constant_secret_set,
                 PredStatus, NeedQual, !ModuleInfo, !Specs)
         ;
             IsConstant = mutable_not_constant,
             % Create the standard, non-pure access predicates. These are
             % always created for non-constant mutables, even if the
             % `attach_to_io_state' attribute has been specified.
-            StdGetPredDecl = std_get_pred_decl(ModuleName, Name,
+            StdGetPredDecl = std_get_pred_decl(ModuleName, MutableName,
                 Type, Inst, Context),
-            StdSetPredDecl = std_set_pred_decl(ModuleName, Name,
+            StdSetPredDecl = std_set_pred_decl(ModuleName, MutableName,
                 Type, Inst, Context),
             add_pred_decl_info_for_mutable_aux_pred(StdGetPredDecl,
-                ModuleName, Name, mutable_pred_std_get,
+                ModuleName, MutableName, mutable_pred_std_get,
                 PredStatus, NeedQual, !ModuleInfo, !Specs),
             add_pred_decl_info_for_mutable_aux_pred(StdSetPredDecl,
-                ModuleName, Name, mutable_pred_std_set,
+                ModuleName, MutableName, mutable_pred_std_set,
                 PredStatus, NeedQual, !ModuleInfo, !Specs),
 
             % If requested, create pure access predicates using
@@ -272,15 +481,15 @@ add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
                 AttachToIO = mutable_dont_attach_to_io_state
             ;
                 AttachToIO = mutable_attach_to_io_state,
-                IOGetPredDecl = io_get_pred_decl(ModuleName, Name,
+                IOGetPredDecl = io_get_pred_decl(ModuleName, MutableName,
                     Type, Inst, Context),
-                IOSetPredDecl = io_set_pred_decl(ModuleName, Name,
+                IOSetPredDecl = io_set_pred_decl(ModuleName, MutableName,
                     Type, Inst, Context),
                 add_pred_decl_info_for_mutable_aux_pred(IOGetPredDecl,
-                    ModuleName, Name, mutable_pred_io_get,
+                    ModuleName, MutableName, mutable_pred_io_get,
                     PredStatus, NeedQual, !ModuleInfo, !Specs),
                 add_pred_decl_info_for_mutable_aux_pred(IOSetPredDecl,
-                    ModuleName, Name, mutable_pred_io_set,
+                    ModuleName, MutableName, mutable_pred_io_set,
                     PredStatus, NeedQual, !ModuleInfo, !Specs)
             )
         )
@@ -307,35 +516,35 @@ add_aux_pred_decls_for_mutable(ItemMutable, PredStatus, NeedQual,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mutable_unsafe_get_pred_decl(ModuleName, Name, Type, Inst,
+add_mutable_unsafe_get_pred_decl(ModuleName, MutableName, Type, Inst,
         PredStatus, NeedQual, Context, !ModuleInfo, !Specs) :-
-    PredName = mutable_unsafe_get_pred_sym_name(ModuleName, Name),
+    PredName = mutable_unsafe_get_pred_sym_name(ModuleName, MutableName),
     ArgTypesAndModes = [type_and_mode(Type, out_mode(Inst))],
-    add_mutable_aux_pred_decl(ModuleName, Name, mutable_pred_unsafe_get,
+    add_mutable_aux_pred_decl(ModuleName, MutableName, mutable_pred_unsafe_get,
         PredName, ArgTypesAndModes, purity_semipure, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs).
 
-add_mutable_unsafe_set_pred_decl(ModuleName, Name, Type, Inst,
+add_mutable_unsafe_set_pred_decl(ModuleName, MutableName, Type, Inst,
         PredStatus, NeedQual, Context, !ModuleInfo, !Specs) :-
-    PredName = mutable_unsafe_set_pred_sym_name(ModuleName, Name),
+    PredName = mutable_unsafe_set_pred_sym_name(ModuleName, MutableName),
     ArgTypesAndModes = [type_and_mode(Type, in_mode(Inst))],
-    add_mutable_aux_pred_decl(ModuleName, Name, mutable_pred_unsafe_set,
+    add_mutable_aux_pred_decl(ModuleName, MutableName, mutable_pred_unsafe_set,
         PredName, ArgTypesAndModes, purity_impure, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs).
 
-add_mutable_lock_pred_decl(ModuleName, Name, PredStatus, NeedQual,
+add_mutable_lock_pred_decl(ModuleName, MutableName, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs) :-
-    PredName = mutable_lock_pred_sym_name(ModuleName, Name),
+    PredName = mutable_lock_pred_sym_name(ModuleName, MutableName),
     ArgTypesAndModes = [],
-    add_mutable_aux_pred_decl(ModuleName, Name, mutable_pred_lock,
+    add_mutable_aux_pred_decl(ModuleName, MutableName, mutable_pred_lock,
         PredName, ArgTypesAndModes, purity_impure, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs).
 
-add_mutable_unlock_pred_decl(ModuleName, Name, PredStatus, NeedQual,
+add_mutable_unlock_pred_decl(ModuleName, MutableName, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs) :-
-    PredName = mutable_unlock_pred_sym_name(ModuleName, Name),
+    PredName = mutable_unlock_pred_sym_name(ModuleName, MutableName),
     ArgTypesAndModes = [],
-    add_mutable_aux_pred_decl(ModuleName, Name, mutable_pred_unlock,
+    add_mutable_aux_pred_decl(ModuleName, MutableName, mutable_pred_unlock,
         PredName, ArgTypesAndModes, purity_impure, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs).
 
@@ -346,11 +555,11 @@ add_mutable_unlock_pred_decl(ModuleName, Name, PredStatus, NeedQual,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mutable_init_pred_decl(ModuleName, Name, PredStatus, NeedQual,
+add_mutable_init_pred_decl(ModuleName, MutableName, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs) :-
-    PredName = mutable_init_pred_sym_name(ModuleName, Name),
+    PredName = mutable_init_pred_sym_name(ModuleName, MutableName),
     ArgTypesAndModes = [],
-    add_mutable_aux_pred_decl(ModuleName, Name, mutable_pred_pre_init,
+    add_mutable_aux_pred_decl(ModuleName, MutableName, mutable_pred_pre_init,
         PredName, ArgTypesAndModes, purity_impure, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs).
 
@@ -364,11 +573,11 @@ add_mutable_init_pred_decl(ModuleName, Name, PredStatus, NeedQual,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mutable_pre_init_pred_decl(ModuleName, Name, PredStatus, NeedQual,
+add_mutable_pre_init_pred_decl(ModuleName, MutableName, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs) :-
-    PredName = mutable_pre_init_pred_sym_name(ModuleName, Name),
+    PredName = mutable_pre_init_pred_sym_name(ModuleName, MutableName),
     ArgTypesAndModes = [],
-    add_mutable_aux_pred_decl(ModuleName, Name, mutable_pred_pre_init,
+    add_mutable_aux_pred_decl(ModuleName, MutableName, mutable_pred_pre_init,
         PredName, ArgTypesAndModes, purity_impure, PredStatus, NeedQual,
         Context, !ModuleInfo, !Specs).
 
@@ -380,9 +589,10 @@ add_mutable_pre_init_pred_decl(ModuleName, Name, PredStatus, NeedQual,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_mutable_aux_pred_decl(ModuleName, Name, Kind, PredName, ArgTypesAndModes,
-        Purity, PredStatus, NeedQual, Context, !ModuleInfo, !Specs) :-
-    PredOrigin = origin_mutable(ModuleName, Name, Kind),
+add_mutable_aux_pred_decl(ModuleName, MutableName, Kind, PredName,
+        ArgTypesAndModes, Purity, PredStatus, NeedQual, Context,
+        !ModuleInfo, !Specs) :-
+    PredOrigin = origin_mutable(ModuleName, MutableName, Kind),
     TypeVarSet = varset.init,
     InstVarSet = varset.init,
     ExistQVars = [],
@@ -400,9 +610,9 @@ add_mutable_aux_pred_decl(ModuleName, Name, Kind, PredName, ArgTypesAndModes,
     pred_status::in, need_qualifier::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, Name, Kind,
-        PredStatus, NeedQual, !ModuleInfo, !Specs) :-
-    PredOrigin = origin_mutable(ModuleName, Name, Kind),
+add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, MutableName,
+        Kind, PredStatus, NeedQual, !ModuleInfo, !Specs) :-
+    PredOrigin = origin_mutable(ModuleName, MutableName, Kind),
     ItemPredDecl = item_pred_decl_info(PredName, PredOrFunc, TypesAndModes,
         WithType, WithInst, MaybeDetism, _Origin, TypeVarSet, InstVarSet,
         ExistQVars, Purity, Constraints, Context, _SeqNum),
@@ -448,8 +658,9 @@ add_aux_pred_defns_for_mutable(ItemMutable, PredStatus,
         !ModuleInfo, !QualInfo, !Specs) :-
     % The transformation here is documented in the comments at the
     % beginning of prog_mutable.m.
-    ItemMutable = item_mutable_info(MutableName, Type, _InitTerm, _Inst,
-        MutAttrs, _VarSet, Context, _SeqNum),
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, Type, _OrigInst, _Inst,
+        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     get_mutable_target_params(!.ModuleInfo, MutAttrs, MaybeTargetParams),
     (
         MaybeTargetParams = no
@@ -730,8 +941,9 @@ define_aux_preds(ItemMutable, TargetParams, TargetMutableName, PredStatus,
 define_pre_init_pred(ItemMutable, TargetParams, TargetMutableName, Attrs,
         CallPreInitExpr, PredStatus, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
-    ItemMutable = item_mutable_info(MutableName, _Type, _InitTerm,
-        _Inst, MutAttrs, _VarSetMutable, Context, _SeqNum),
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, _Type, _OrigInst, _Inst,
+        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     IsConstant = mutable_var_constant(MutAttrs),
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
     TargetParams = mutable_target_params(ImplLang, _Lang, _BoxPolicy,
@@ -792,8 +1004,9 @@ define_pre_init_pred(ItemMutable, TargetParams, TargetMutableName, Attrs,
 define_lock_unlock_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
         LockUnlockExprs, PredStatus, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
-    ItemMutable = item_mutable_info(MutableName, _Type, _InitTerm,
-        _Inst, MutAttrs, _VarSetMutable, Context, _SeqNum),
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, _Type, _OrigInst, _Inst,
+        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     IsConstant = mutable_var_constant(MutAttrs),
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
     TargetParams = mutable_target_params(ImplLang, _Lang, _BoxPolicy,
@@ -879,8 +1092,9 @@ define_unsafe_get_set_preds(ItemMutable, TargetParams, TargetMutableName,
         Attrs, UnsafeGetSetExprs, PredStatus,
         !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
-    ItemMutable = item_mutable_info(MutableName, Type, _InitTerm,
-        Inst, MutAttrs, _VarSetMutable, Context, _SeqNum),
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, Type, _OrigInst, Inst,
+        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     IsConstant = mutable_var_constant(MutAttrs),
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
     TargetParams = mutable_target_params(ImplLang, Lang, BoxPolicy,
@@ -1016,8 +1230,9 @@ define_main_get_set_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
         MaybeLockUnlockExprs, MaybeUnsafeGetSetExprs, InitSetPredName,
         PredStatus, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
-    ItemMutable = item_mutable_info(MutableName, _Type, _InitTerm,
-        Inst, MutAttrs, _VarSetMutable, Context, _SeqNum),
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, _Type, _OrigInst, Inst,
+        _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     IsConstant = mutable_var_constant(MutAttrs),
     IsThreadLocal = mutable_var_thread_local(MutAttrs),
     AttachToIO = mutable_var_attach_to_io_state(MutAttrs),
@@ -1237,8 +1452,9 @@ define_main_get_set_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
 define_init_pred(ItemMutable, MaybeCallPreInitExpr, InitSetPredName,
         Lang, PredStatus, !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
-    ItemMutable = item_mutable_info(MutableName, _Type, InitTerm,
-        _Inst, _MutAttrs, VarSetMutable, Context, _SeqNum),
+    ItemMutable = item_mutable_info(MutableName,
+        _OrigType, _Type, _OrigInst, _Inst,
+        InitTerm, VarSetMutable, _MutAttrs, Context, _SeqNum),
     varset.new_named_var("X", X, VarSetMutable, VarSetMutableX),
     VarX = variable(X, Context),
 
@@ -1294,19 +1510,19 @@ add_initialise_for_mutable(SymName, Arity, Context, Lang,
     mutable_var_attributes::in, module_name::in, string::in,
     foreign_language::in, prog_context::in, string::out) is det.
 
-decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName, Name,
+decide_mutable_target_var_name(ModuleInfo, MutAttrs, ModuleName, MutableName,
         ForeignLanguage, Context, TargetMutableName) :-
     mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
     (
         MaybeForeignNames = no,
         % This works for Erlang as well.
-        TargetMutableName = mutable_c_var_name(ModuleName, Name)
+        TargetMutableName = mutable_c_var_name(ModuleName, MutableName)
     ;
         MaybeForeignNames = yes(ForeignNames),
         % We have already any errors during pass 2, so ignore them here.
         get_global_name_from_foreign_names(ModuleInfo, Context,
-            ModuleName, Name, ForeignLanguage, ForeignNames, TargetMutableName,
-            [], _Specs)
+            ModuleName, MutableName, ForeignLanguage, ForeignNames,
+            TargetMutableName, [], _Specs)
     ).
 
     % Check to see if there is a valid foreign_name attribute for this backend.
