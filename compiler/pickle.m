@@ -137,21 +137,29 @@ register_pickler(TypeCtorDesc, Pickle, Pickles0, Pickles) :-
     Pickles = picklers(Map).
 
 pickle(Pickles, T, !IO) :-
-    ( dynamic_cast(T, String) ->
+    ( if
+        dynamic_cast(T, String)
+    then
         pickle_string(String, !IO)
-    ; dynamic_cast(T, Int) ->
+    else if
+        dynamic_cast(T, Int)
+    then
         pickle_int32(Int, !IO)
-    ; dynamic_cast(T, Float) ->
+    else if
+        dynamic_cast(T, Float)
+    then
         pickle_float(Float, !IO)
-    ; dynamic_cast(T, Char) ->
+    else if
+        dynamic_cast(T, Char)
+    then
         pickle_char(Char, !IO)
-    ;
+    else if
         TypeDesc = type_of(T),
         TypeCtorDesc = type_ctor(TypeDesc),
         user_defined_pickler(Pickles, TypeCtorDesc, Pickle)
-    ->
+    then
         Pickle(Pickles, univ(T), !IO)
-    ;
+    else
         deconstruct.functor(T, do_not_allow, Functor, Arity),
         pickle_string(Functor, !IO),
         pickle_int32(Arity, !IO),
@@ -162,13 +170,13 @@ pickle(Pickles, T, !IO) :-
     is det.
 
 pickle_args(Pickles, N, Arity, T, !IO) :-
-    ( N = Arity ->
+    ( if N = Arity then
         true
-    ;
-        ( deconstruct.arg(T, do_not_allow, N, Arg) ->
+    else
+        ( if deconstruct.arg(T, do_not_allow, N, Arg) then
             pickle(Pickles, Arg, !IO),
             pickle_args(Pickles, N + 1, Arity, T, !IO)
-        ;
+        else
             unexpected($module, $pred, "unable to deconstruct arg")
         )
     ).
@@ -243,9 +251,9 @@ unpickle_from_file(Unpicklers, FileName, Result, !IO) :-
                 Result = ok(T)
             ;
                 TryResult = exception(Excp),
-                ( univ_to_type(Excp, get_byte_out_of_range(Msg)) ->
+                ( if univ_to_type(Excp, get_byte_out_of_range(Msg)) then
                     Result = error(io.make_io_error(Msg))
-                ;
+                else
                     rethrow(TryResult)
                 )
             )
@@ -267,34 +275,44 @@ unpickle(Unpicklers, Handle, T, !State) :-
     is det.
 
 unpickle_2(Unpicklers, Handle, TypeDesc, Univ, !State) :-
-    ( TypeDesc = type_of(_ : string) ->
+    ( if
+        TypeDesc = type_of(_ : string)
+    then
         unpickle_string(Handle, String, !State),
         Univ = univ(String)
-    ; TypeDesc = type_of(_ : int) ->
+    else if
+        TypeDesc = type_of(_ : int)
+    then
         unpickle_int32(Handle, Int, !State),
         Univ = univ(Int)
-    ; TypeDesc = type_of(_ : float) ->
+    else if
+        TypeDesc = type_of(_ : float)
+    then
         unpickle_float(Handle, Float, !State),
         Univ = univ(Float)
-    ; TypeDesc = type_of(_ : character) ->
+    else if
+        TypeDesc = type_of(_ : character)
+    then
         unpickle_char(Handle, Char, !State),
         Univ = univ(Char)
-    ; user_defined_unpickler(Unpicklers, type_ctor(TypeDesc), Unpickle) ->
+    else if
+        user_defined_unpickler(Unpicklers, type_ctor(TypeDesc), Unpickle)
+    then
         Unpickle(Unpicklers, Handle, TypeDesc, Univ, !State)
-    ;
+    else
         unpickle_string(Handle, Functor, !State),
         unpickle_int32(Handle, Arity, !State),
-        (
-            ( Functor = "{}" ->
+        ( if
+            ( if Functor = "{}" then
                 IsTuple = yes,
                 type_ctor_and_args(TypeDesc, _, ArgTypes),
                 N = 0
-            ;
+            else
                 IsTuple = no,
                 % XXX consider tabling this call
                 find_functor(TypeDesc, Functor, Arity, N, ArgTypes)
             )
-        ->
+        then
             list.map_foldl(unpickle_2(Unpicklers, Handle), ArgTypes, ArgUnivs,
                 !State),
             (
@@ -302,13 +320,13 @@ unpickle_2(Unpicklers, Handle, TypeDesc, Univ, !State) :-
                 Univ = construct_tuple(ArgUnivs)
             ;
                 IsTuple = no,
-                ( Univ0 = construct(TypeDesc, N, ArgUnivs) ->
+                ( if Univ0 = construct(TypeDesc, N, ArgUnivs) then
                     Univ = Univ0
-                ;
+                else
                     unexpected($module, $pred, "unable to construct")
                 )
             )
-        ;
+        else
             unexpected($module, $pred, "unable to unpickle")
         )
     ).
@@ -422,9 +440,9 @@ unpickle_string(Handle, String, !State) :-
     string::di, string::uo, unpickle_state::di, unpickle_state::uo) is det.
 
 unpickle_string_2(Handle, Index, Length, !String, !State) :-
-    ( Index = Length ->
+    ( if Index = Length then
         true
-    ;
+    else
         unpickle_char(Handle, Char, !State),
         local_unsafe_set_char(Char, Index, !String),
         unpickle_string_2(Handle, Index + 1, Length, !String, !State)
@@ -531,9 +549,9 @@ reinterpret_ints_as_float(_, _, _) :-
     unpickle_state::di, unpickle_state::uo) is det.
 
 get_byte(Bitmap, Byte, Index, Index + 1) :-
-    ( bitmap.byte_in_range(Bitmap, Index) ->
+    ( if bitmap.byte_in_range(Bitmap, Index) then
         Byte = Bitmap ^ unsafe_byte(Index)
-    ;
+    else
         Msg = "byte " ++ string.from_int(Index) ++ " is out of range",
         throw(get_byte_out_of_range(Msg))
     ).
