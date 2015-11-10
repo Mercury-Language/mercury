@@ -4973,8 +4973,10 @@ have any type class constraints.
 
 The inst @var{varinst} is not allowed to contain any inst variables.
 It is also not allowed to be equivalent to, or contain components that
-are equivalent to, the builtin insts @code{free}, @code{unique},
-@code{mostly_unique}, @code{dead} or @code{mostly_dead}.
+are equivalent to, the builtin insts @code{free},
+@code{unique}, @code{mostly_unique},
+@code{dead} (@code{clobbered})
+or @code{mostly_dead} (@code{mostly_clobbered}).
 
 The initial value of a mutable, @var{initial_value}, may be any Mercury
 expression with type @var{vartype} and inst @var{varinst} subject to
