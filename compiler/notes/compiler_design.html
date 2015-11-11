@@ -491,13 +491,36 @@ such as pretty-printing.
     are written. This also checks whether imports are really needed
     in the interface.
 
+    module_qual.m does the above by coordinating the work of its four
+    submodules.
+    <dl>
+    <dt> module_qual.collect_mq_info.m
+    <dd>
+    collects information about what types, insts etc are defined
+    in which modules.
+    <dt> module_qual.qualify_items.m
+    <dd>
+    uses the collected information to module qualify items
+    and their components.
+    <dt> module_qual.id_set.m
+    <dd>
+    defines the data structure used by collect_mq_info and qualify_items
+    to do their job and communicate with each other
+    <dt> module_qual.qual_errors.m
+    <dd>
+    handles the errors that arise when an item refers to an entity
+    (type, or inst, or ...) that is either not defined anywhere,
+    or is defined in more than once module, and the reference
+    does not indicate which one is intended.
+    </dl>
+
     <p>
     Notes on module qualification:
     <ul>
     <li>
         all types, typeclasses, insts and modes occurring in pred, func,
         type, typeclass and mode declarations are module qualified by
-        module_qual.m.
+        module_qual.m and its submodules.
     <li>
         all types, insts and modes occurring in lambda expressions,
         explicit type qualifications, and clause mode annotations
