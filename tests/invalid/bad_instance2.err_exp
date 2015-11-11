@@ -1,0 +1,7 @@
+bad_instance2.m:012: In instance declaration for
+bad_instance2.m:012:   `bad_instance2.foo(bad_instance2.bar(T), U)':
+bad_instance2.m:012:   the second argument is a type variable.
+bad_instance2.m:016: In instance declaration for
+bad_instance2.m:016:   `bad_instance2.foo(bad_instance2.bar(T), T)':
+bad_instance2.m:016:   the second argument is a type variable.
+For more information, recompile with `-E'.

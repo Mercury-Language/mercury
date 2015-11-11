@@ -166,7 +166,7 @@
     % into the symbol table:
     %   - if the current value of the NeedQual flag at this point
     %       is `may_be_unqualified',
-    %       i.e. module `foo.bar.baz' was imported
+    %       i.e. module `foo.bar.baz' was imported,
     %       then we insert the fully unqualified symbol quux/1;
     %   - if module `foo.bar.baz' occurs in the "imported" section,
     %       i.e. if module `foo.bar' was imported,
@@ -340,34 +340,87 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
 
 %-----------------------------------------------------------------------------%
 
+    % We record two kinds of permissions for each entity. Whether
+    % it may be used in the interface, and whether it may be used
+    % without module qualification.
+    %
+    % An entity may be used in the interface if it is defined in the current
+    % module or one of its ancestors, or if it is defined in a module that is
+    % imported (or used) in the interface.
+    %
+    % An entity may be used without module qualification if it is defined
+    % in the current module, in one of its ancestors, or in a module
+    % that is the subject of an explicit import_module declaration
+    % in the current module. It may not be used without qualification
+    % if it is made available by a use_module declaration, or if it is
+    % defined in a `.opt' and `.trans_opt' file.
+:- type module_permissions
+    --->    module_permissions(
+                use_in_interface,
+                need_qualifier
+            ).
+
+:- type use_in_interface
+    --->    may_not_use_in_interface
+    ;       may_use_in_interface.
+
 :- type mq_section
     --->    mq_section_exported
     ;       mq_section_local
     ;       mq_section_imported(import_locn)
     ;       mq_section_abstract_imported.
 
-:- type section_mq_info(MS) == (pred(MS, mq_section, need_qualifier)).
+:- type section_mq_info(MS) == (pred(MS, mq_section, module_permissions)).
 :- inst section_mq_info     == (pred(in, out, out) is det).
 
 :- pred src_section_mq_info(src_module_section::in,
-    mq_section::out, need_qualifier::out) is det.
+    mq_section::out, module_permissions::out) is det.
 
-src_section_mq_info(sms_interface,
-    mq_section_exported, may_be_unqualified).
-src_section_mq_info(sms_implementation,
-    mq_section_local, may_be_unqualified).
-src_section_mq_info(sms_impl_but_exported_to_submodules,
-    mq_section_local, may_be_unqualified).
+src_section_mq_info(SrcSection, MQSection, Permissions) :-
+    (
+        SrcSection = sms_interface,
+        MQSection = mq_section_exported,
+        Permissions =
+            module_permissions(may_use_in_interface, may_be_unqualified)
+    ;
+        ( SrcSection = sms_implementation
+        ; SrcSection = sms_impl_but_exported_to_submodules
+        ),
+        MQSection = mq_section_local,
+        Permissions =
+            module_permissions(may_not_use_in_interface, may_be_unqualified)
+    ).
 
 :- pred int_section_mq_info(int_module_section::in,
-    mq_section::out, need_qualifier::out) is det.
+    mq_section::out, module_permissions::out) is det.
 
-int_section_mq_info(ims_imported(_ModuleName, _IntFileKind, Locn),
-    mq_section_imported(Locn), may_be_unqualified).
-int_section_mq_info(ims_used(_ModuleName, _IntFileKind, Locn),
-    mq_section_imported(Locn), must_be_qualified).
-int_section_mq_info(ims_abstract_imported(_ModuleName, _IntFileKind),
-    mq_section_abstract_imported, must_be_qualified).
+int_section_mq_info(IntSection, MQSection, Permissions) :-
+    (
+        (
+            IntSection = ims_imported(_ModuleName, _IntFileKind, Locn),
+            NeedQual = may_be_unqualified
+        ;
+            IntSection = ims_used(_ModuleName, _IntFileKind, Locn),
+            NeedQual = must_be_qualified
+        ),
+        (
+            ( Locn = import_locn_interface
+            ; Locn = import_locn_import_by_ancestor
+            ; Locn = import_locn_ancestor_private_interface_proper
+            ),
+            MayUseInInterface = may_use_in_interface
+        ;
+            Locn = import_locn_implementation,
+            MayUseInInterface = may_not_use_in_interface
+        ),
+        MQSection = mq_section_imported(Locn),
+        Permissions = module_permissions(MayUseInInterface, NeedQual)
+    ;
+        IntSection = ims_abstract_imported(_ModuleName, _IntFileKind),
+        MQSection = mq_section_abstract_imported,
+        Permissions =
+            module_permissions(may_not_use_in_interface, must_be_qualified)
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -383,23 +436,24 @@ collect_mq_info_in_item_blocks(_, [], !Info).
 collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks],
         !Info) :-
     ItemBlock = item_block(Section, _Context, Incls, Avails, Items),
-    SectionInfo(Section, MQSection, NeedQual),
-    list.foldl(collect_mq_info_in_item_include(NeedQual), Incls, !Info),
-    list.foldl(collect_mq_info_in_item_avail(MQSection), Avails, !Info),
-    collect_mq_info_in_items(MQSection, NeedQual, Items, !Info),
+    SectionInfo(Section, MQSection, Permissions),
+    list.foldl(collect_mq_info_in_item_include(Permissions), Incls, !Info),
+    list.foldl(collect_mq_info_in_item_avail(MQSection, Permissions), Avails,
+        !Info),
+    collect_mq_info_in_items(MQSection, Permissions, Items, !Info),
     collect_mq_info_in_item_blocks(SectionInfo, ItemBlocks, !Info).
 
-:- pred collect_mq_info_in_item_include(need_qualifier::in,
+:- pred collect_mq_info_in_item_include(module_permissions::in,
     item_include::in, mq_info::in, mq_info::out) is det.
 
-collect_mq_info_in_item_include(NeedQual, Incl, !Info) :-
+collect_mq_info_in_item_include(Permissions, Incl, !Info) :-
     Incl = item_include(IncludedModuleName, _Context, _SeqNum),
-    add_included_module(NeedQual, IncludedModuleName, !Info).
+    add_included_module(Permissions, IncludedModuleName, !Info).
 
-:- pred collect_mq_info_in_item_avail(mq_section::in,
+:- pred collect_mq_info_in_item_avail(mq_section::in, module_permissions::in,
     item_avail::in, mq_info::in, mq_info::out) is det.
 
-collect_mq_info_in_item_avail(MQSection, Avail, !Info) :-
+collect_mq_info_in_item_avail(MQSection, _Permissions, Avail, !Info) :-
     ( Avail = avail_import(avail_import_info(ModuleName, Context, _SeqNum))
     ; Avail = avail_use(avail_use_info(ModuleName, Context, _SeqNum))
     ),
@@ -409,18 +463,18 @@ collect_mq_info_in_item_avail(MQSection, Avail, !Info) :-
     % inst ids, all module synonym definitions, and the names of all
     % modules imported in the interface.
     %
-:- pred collect_mq_info_in_items(mq_section::in, need_qualifier::in,
+:- pred collect_mq_info_in_items(mq_section::in, module_permissions::in,
     list(item)::in, mq_info::in, mq_info::out) is det.
 
 collect_mq_info_in_items(_, _, [], !Info).
-collect_mq_info_in_items(MQSection, NeedQual, [Item | Items], !Info) :-
-    collect_mq_info_in_item(MQSection, NeedQual, Item, !Info),
-    collect_mq_info_in_items(MQSection, NeedQual, Items, !Info).
+collect_mq_info_in_items(MQSection, Permissions, [Item | Items], !Info) :-
+    collect_mq_info_in_item(MQSection, Permissions, Item, !Info),
+    collect_mq_info_in_items(MQSection, Permissions, Items, !Info).
 
-:- pred collect_mq_info_in_item(mq_section::in, need_qualifier::in,
+:- pred collect_mq_info_in_item(mq_section::in, module_permissions::in,
     item::in, mq_info::in, mq_info::out) is det.
 
-collect_mq_info_in_item(MQSection, NeedQual, Item, !Info) :-
+collect_mq_info_in_item(MQSection, Permissions, Item, !Info) :-
     (
         Item = item_type_defn(ItemTypeDefn),
         ItemTypeDefn = item_type_defn_info(SymName, Params, _, _, _, _),
@@ -430,12 +484,8 @@ collect_mq_info_in_item(MQSection, NeedQual, Item, !Info) :-
         else
             list.length(Params, Arity),
             mq_info_get_types(!.Info, Types0),
-            mq_info_get_impl_types(!.Info, ImplTypes0),
-            id_set_insert(NeedQual, mq_id(SymName, Arity), Types0, Types),
-            id_set_insert(NeedQual, mq_id(SymName, Arity),
-                ImplTypes0, ImplTypes),
-            mq_info_set_types(Types, !Info),
-            mq_info_set_impl_types(ImplTypes, !Info)
+            id_set_insert(Permissions, mq_id(SymName, Arity), Types0, Types),
+            mq_info_set_types(Types, !Info)
         )
     ;
         Item = item_inst_defn(ItemInstDefn),
@@ -446,7 +496,7 @@ collect_mq_info_in_item(MQSection, NeedQual, Item, !Info) :-
         else
             list.length(Params, Arity),
             mq_info_get_insts(!.Info, Insts0),
-            id_set_insert(NeedQual, mq_id(SymName, Arity), Insts0, Insts),
+            id_set_insert(Permissions, mq_id(SymName, Arity), Insts0, Insts),
             mq_info_set_insts(Insts, !Info)
         )
     ;
@@ -458,7 +508,7 @@ collect_mq_info_in_item(MQSection, NeedQual, Item, !Info) :-
         else
             list.length(Params, Arity),
             mq_info_get_modes(!.Info, Modes0),
-            id_set_insert(NeedQual, mq_id(SymName, Arity), Modes0, Modes),
+            id_set_insert(Permissions, mq_id(SymName, Arity), Modes0, Modes),
             mq_info_set_modes(Modes, !Info)
         )
     ;
@@ -487,7 +537,7 @@ collect_mq_info_in_item(MQSection, NeedQual, Item, !Info) :-
         else
             list.length(Params, Arity),
             mq_info_get_classes(!.Info, Classes0),
-            id_set_insert(NeedQual, mq_id(SymName, Arity),
+            id_set_insert(Permissions, mq_id(SymName, Arity),
                 Classes0, Classes),
             mq_info_set_classes(Classes, !Info)
         )
@@ -536,13 +586,13 @@ mq_section_to_in_interface(mq_section_abstract_imported) =
     % was later transformed into the aug_compilation_unit whose items
     % we process here.
     %
-:- pred add_included_module(need_qualifier::in, module_name::in,
+:- pred add_included_module(module_permissions::in, module_name::in,
     mq_info::in, mq_info::out) is det.
 
-add_included_module(NeedQual, ModuleName, !Info) :-
+add_included_module(Permissions, ModuleName, !Info) :-
     mq_info_get_modules(!.Info, Modules0),
     Arity = 0,
-    id_set_insert(NeedQual, mq_id(ModuleName, Arity), Modules0, Modules),
+    id_set_insert(Permissions, mq_id(ModuleName, Arity), Modules0, Modules),
     mq_info_set_modules(Modules, !Info).
 
     % For import declarations (`:- import_module' or `:- use_module'),
@@ -566,24 +616,17 @@ maybe_add_import(MQSection, ModuleName, Context, !Info) :-
     % in the interface.
     % (Handled by add_module_to_as_yet_unused_interface_modules.)
 
-    % Only modules imported in the interface or in the private
-    % interface of ancestor modules may be used in the interface.
-    % (Handled by add_module_to_interface_visible_modules.)
-
     (
-        MQSection = mq_section_local,
+        ( MQSection = mq_section_local
+        ; MQSection = mq_section_imported(
+            import_locn_ancestor_private_interface_proper)
+        ),
         add_module_to_imported_modules(ModuleName, !Info)
     ;
         MQSection = mq_section_exported,
         add_module_to_imported_modules(ModuleName, !Info),
         add_module_to_as_yet_unused_interface_modules(ModuleName, Context,
-            !Info),
-        add_module_to_interface_visible_modules(ModuleName, !Info)
-    ;
-        MQSection = mq_section_imported(
-            import_locn_ancestor_private_interface_proper),
-        add_module_to_imported_modules(ModuleName, !Info),
-        add_module_to_interface_visible_modules(ModuleName, !Info)
+            !Info)
     ;
         ( MQSection = mq_section_imported(import_locn_interface)
         ; MQSection = mq_section_imported(import_locn_implementation)
@@ -618,15 +661,6 @@ add_module_to_as_yet_unused_interface_modules(ModuleName, Context, !Info) :-
             UnusedIntModules0, UnusedIntModules)
     ),
     mq_info_set_as_yet_unused_interface_modules(UnusedIntModules, !Info).
-
-:- pred add_module_to_interface_visible_modules(module_name::in,
-    mq_info::in, mq_info::out) is det.
-:- pragma inline(add_module_to_interface_visible_modules/3).
-
-add_module_to_interface_visible_modules(ModuleName, !Info) :-
-    mq_info_get_interface_visible_modules(!.Info, IntModules0),
-    set.insert(ModuleName, IntModules0, IntModules),
-    mq_info_set_interface_visible_modules(IntModules, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -1979,68 +2013,138 @@ add_module_qualifier(DefaultModule, SymName0, SymName) :-
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-find_unique_match(InInt, ErrorContext, IdSet, TypeOfId, Id0, SymName,
+find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         !Info, !Specs) :-
     % Find all IDs which match the current id.
     Id0 = mq_id(SymName0, Arity),
     mq_info_get_modules(!.Info, Modules),
-    id_set_search_sym_arity(IdSet, Modules, SymName0, Arity, MatchingModules),
-
+    id_set_search_sym_arity(IdSet, Modules, SymName0, Arity,
+        ModuleNamesPermissions),
     (
-        InInt = mq_used_in_interface,
-        % Items in the interface may only refer to modules imported
-        % in the interface.
-        mq_info_get_interface_visible_modules(!.Info, InterfaceImports),
-        set.intersect(InterfaceImports, MatchingModules,
-            ApplicableMatchingModules)
-    ;
-        InInt = mq_not_used_in_interface,
-        ApplicableMatchingModules = MatchingModules
-    ),
-
-    set.to_sorted_list(ApplicableMatchingModules,
-        ApplicableMatchingModulesList),
-    (
-        ApplicableMatchingModulesList = [],
-        % No matches for this id. Returning any SymName is fine,
-        % since it won't be used.
-        Id0 = mq_id(SymName, _),
+        ModuleNamesPermissions = [],
+        % No matches for this id.
+        MaybeUniqModuleName = no,
         mq_info_get_report_error_flag(!.Info, ReportErrors),
         (
             ReportErrors = yes,
             id_set_search_sym(IdSet, Modules, SymName0, PossibleArities),
-            report_undefined_mq_id(!.Info, ErrorContext, Id0, TypeOfId,
-                MatchingModules, PossibleArities, !Specs),
-            mq_info_set_error_flag(TypeOfId, !Info)
+            report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
+                [], PossibleArities, !Specs),
+            mq_info_set_error_flag(IdType, !Info)
         ;
             ReportErrors = no
         )
     ;
-        ApplicableMatchingModulesList = [Module],
+        ModuleNamesPermissions = [ModuleName - ModulePermissions],
         % A unique match for this ID.
-        IdName = unqualify_name(SymName0),
-        SymName = qualified(Module, IdName),
-        mq_info_set_module_used(InInt, Module, !Info),
-        ItemType = convert_simple_item_type(TypeOfId),
+        ModulePermissions = module_permissions(MayUseInInterface, _),
+        ( if
+            InInt = mq_used_in_interface,
+            MayUseInInterface = may_not_use_in_interface
+        then
+            MaybeUniqModuleName = no,
+            mq_info_get_report_error_flag(!.Info, ReportErrors),
+            (
+                ReportErrors = yes,
+                BadBaseName = unqualify_name(SymName0),
+                BadSymName = qualified(ModuleName, BadBaseName),
+                mq_info_get_this_module(!.Info, ThisModuleName),
+                ( if ModuleName = ThisModuleName then
+                    report_may_not_use_in_interface(ErrorContext, IdType,
+                        BadSymName, Arity, !Specs)
+                else
+                    id_set_search_sym(IdSet, Modules, SymName0,
+                        PossibleArities),
+                    report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
+                        [ModuleName], PossibleArities, !Specs)
+                ),
+                mq_info_set_error_flag(IdType, !Info)
+            ;
+                ReportErrors = no
+            )
+        else
+            MaybeUniqModuleName = yes(ModuleName)
+        )
+    ;
+        ModuleNamesPermissions = [_, _ | _],
+        (
+            InInt = mq_used_in_interface,
+            which_modules_may_be_used_in_interface(ModuleNamesPermissions,
+                UsableModuleNamesPermissions, NonUsableModuleNames)
+        ;
+            InInt = mq_not_used_in_interface,
+            UsableModuleNamesPermissions = ModuleNamesPermissions,
+            NonUsableModuleNames = []
+        ),
+        (
+            UsableModuleNamesPermissions = [],
+            % There are several matches, but none is usable from the interface.
+            MaybeUniqModuleName = no,
+            mq_info_get_report_error_flag(!.Info, ReportErrors),
+            (
+                ReportErrors = yes,
+                id_set_search_sym(IdSet, Modules, SymName0, PossibleArities),
+                report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
+                    NonUsableModuleNames, PossibleArities, !Specs),
+                mq_info_set_error_flag(IdType, !Info)
+            ;
+                ReportErrors = no
+            )
+        ;
+            UsableModuleNamesPermissions = [ModuleName - _Permissions],
+            MaybeUniqModuleName = yes(ModuleName)
+        ;
+            UsableModuleNamesPermissions = [_, _ | _],
+            MaybeUniqModuleName = no,
+            mq_info_get_report_error_flag(!.Info, ReportErrors),
+            (
+                ReportErrors = yes,
+                assoc_list.keys(UsableModuleNamesPermissions,
+                    UsableModuleNames),
+                report_ambiguous_match(ErrorContext, Id0, IdType,
+                    UsableModuleNames, NonUsableModuleNames, !Specs),
+                mq_info_set_error_flag(IdType, !Info)
+            ;
+                ReportErrors = no
+            )
+        )
+    ),
+    (
+        MaybeUniqModuleName = no,
+        % Returning any SymName is fine, since it won't be used.
+        Id0 = mq_id(SymName, _)
+    ;
+        MaybeUniqModuleName = yes(UniqModuleName),
+        BaseName = unqualify_name(SymName0),
+        SymName = qualified(UniqModuleName, BaseName),
+        mq_info_set_module_used(InInt, UniqModuleName, !Info),
+        ItemType = convert_simple_item_type(IdType),
         ItemName0 = item_name(SymName0, Arity),
         ItemName = item_name(SymName, Arity),
         update_recompilation_info(
             recompilation.record_used_item(ItemType, ItemName0, ItemName),
             !Info)
+    ).
+
+:- pred which_modules_may_be_used_in_interface(
+    assoc_list(module_name, module_permissions)::in,
+    assoc_list(module_name, module_permissions)::out,
+    list(module_name)::out) is det.
+
+which_modules_may_be_used_in_interface([], [], []).
+which_modules_may_be_used_in_interface([Pair | Pairs],
+        MayUsePairs, MayNotUseNames) :-
+    which_modules_may_be_used_in_interface(Pairs,
+        MayUsePairsTail, MayNotUseNamesTail),
+    Pair = ModuleName - module_permissions(MayUseInInterface, _),
+    (
+        MayUseInInterface = may_use_in_interface,
+        MayUsePairs = [Pair | MayUsePairsTail],
+        MayNotUseNames = MayNotUseNamesTail
     ;
-        ApplicableMatchingModulesList = [_, _ | _],
-        % There are multiple matches. Returnng any SymName is fine,
-        % since it won't be used.
-        Id0 = mq_id(SymName, _),
-        mq_info_get_report_error_flag(!.Info, ReportErrors),
-        (
-            ReportErrors = yes,
-            report_ambiguous_match(ErrorContext, Id0, TypeOfId,
-                ApplicableMatchingModulesList, !Specs),
-            mq_info_set_error_flag(TypeOfId, !Info)
-        ;
-            ReportErrors = no
-        )
+        MayUseInInterface = may_not_use_in_interface,
+        MayUsePairs = MayUsePairsTail,
+        MayNotUseNames = [ModuleName | MayNotUseNamesTail]
     ).
 
 :- pred update_recompilation_info(
@@ -2212,14 +2316,16 @@ qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing,
 
 id_to_sym_name_and_arity(mq_id(SymName, Arity)) = SymName / Arity.
 
+%----------------------------------------------------------------------------%
+
     % Report an undefined type, inst or mode.
     %
 :- pred report_undefined_mq_id(mq_info::in, mq_error_context::in,
-    mq_id::in, id_type::in, set(module_name)::in, set(int)::in,
+    mq_id::in, id_type::in, list(module_name)::in, set(int)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_undefined_mq_id(Info, ErrorContext, Id, IdType,
-        MatchingModulesSet, PossibleAritiesSet, !Specs) :-
+        UnusableModules, PossibleAritiesSet, !Specs) :-
     mq_error_context_to_pieces(ErrorContext, Context, ErrorContextPieces),
     id_type_to_string(IdType, IdStr),
     Pieces1 = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
@@ -2230,7 +2336,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType,
         % has been imported.
 
         Id = mq_id(qualified(ModuleName, _), _Arity),
-        ThisModuleName = Info ^ mqi_this_module,
+        mq_info_get_this_module(Info, ThisModuleName),
         mq_info_get_imported_modules(Info, ImportedModuleNames),
         AvailModuleNames =
             [ThisModuleName | set.to_sorted_list(ImportedModuleNames)],
@@ -2239,24 +2345,23 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType,
         Pieces2 = [words("(The module"), sym_name(ModuleName),
             words("has not been imported.)"), nl]
     else
-        set.to_sorted_list(MatchingModulesSet, MatchingModules),
         (
-            MatchingModules = [],
+            UnusableModules = [],
             Pieces2 = []
         ;
-            MatchingModules = [_ | MatchingModulesTail],
+            UnusableModules = [_ | UnusableModulesTail],
             (
-                MatchingModulesTail = [],
+                UnusableModulesTail = [],
                 ModuleWord = "module",
                 HasWord = "has"
             ;
-                MatchingModulesTail = [_ | _],
+                UnusableModulesTail = [_ | _],
                 ModuleWord = "modules",
                 HasWord = "have"
             ),
-            MatchingSymNames = list.map(wrap_module_name, MatchingModules),
+            UnusableSymNames = list.map(wrap_module_name, UnusableModules),
             Pieces2 = [words("(The"), fixed(ModuleWord)] ++
-                component_list_to_pieces(MatchingSymNames) ++
+                component_list_to_pieces(UnusableSymNames) ++
                 [fixed(HasWord),
                     words("not been imported in the interface.)"), nl]
         )
@@ -2299,23 +2404,61 @@ module_name_matches_some(SearchModuleName, [ModuleName | ModuleNames]) =
     % multiple possible matches.
     %
 :- pred report_ambiguous_match(mq_error_context::in, mq_id::in, id_type::in,
-    list(module_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
+    list(module_name)::in, list(module_name)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_ambiguous_match(ErrorContext, Id, IdType, Modules, !Specs) :-
+report_ambiguous_match(ErrorContext, Id, IdType,
+        UsableModuleNames, UnusableModuleNames, !Specs) :-
     mq_error_context_to_pieces(ErrorContext, Context, ErrorContextPieces),
     id_type_to_string(IdType, IdStr),
-    ModuleNames = list.map(wrap_module_name, Modules),
-    MainPieces = [words("In")] ++ ErrorContextPieces ++
-        [words("ambiguity error: multiple possible matches for"),
+    UsableModuleSymNames = list.map(wrap_module_name, UsableModuleNames),
+    MainPieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
+        words("ambiguity error: multiple possible matches for"),
         fixed(IdStr), wrap_id(Id), suffix("."), nl,
-        words("The possible matches are in modules")] ++ ModuleNames ++
-        [suffix("."), nl],
+        words("The possible matches are in modules")] ++
+        UsableModuleSymNames ++ [suffix("."), nl],
+    (
+        UnusableModuleNames = [],
+        UnusablePieces = []
+    ;
+        (
+            UnusableModuleNames = [_],
+            MatchWord = "match"
+        ;
+            UnusableModuleNames = [_, _ | _],
+            MatchWord = "matches"
+        ),
+        UnusableModuleSymNames =
+            list.map(wrap_module_name, UnusableModuleNames),
+        UnusablePieces = [words("The"), words(MatchWord),
+            words("in modules")] ++ UnusableModuleSymNames ++
+            [words("may not be used in the interface."), nl]
+    ),
     VerbosePieces = [words("An explicit module qualifier"),
         words("may be necessary."), nl],
     Msg = simple_msg(Context,
-        [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
+        [always(MainPieces), always(UnusablePieces),
+        verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
+
+:- pred report_may_not_use_in_interface(mq_error_context::in,
+    id_type::in, sym_name::in, arity::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_may_not_use_in_interface(ErrorContext, IdType,
+        BadSymName, BadArity, !Specs) :-
+    mq_error_context_to_pieces(ErrorContext, Context, ErrorContextPieces),
+    id_type_to_string(IdType, IdStr),
+    SNA = sym_name_and_arity(BadSymName / BadArity),
+    MainPieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
+        words("error: the"), fixed(IdStr), SNA, words("is not exported,"),
+        words("and thus it may not be used in the interface."), nl],
+    Msg = simple_msg(Context, [always(MainPieces)]),
+    Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+    !:Specs = [Spec | !.Specs].
+
+%----------------------------------------------------------------------------%
 
 :- pred mq_constraint_error_context_to_pieces(mq_constraint_error_context::in,
     prog_context::out, string::out, list(format_component)::out) is det.
@@ -2647,11 +2790,9 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
                 mqi_this_module                 :: module_name,
 
                 % Sets of all modules, types, insts, modes, and typeclasses
-                % visible in this module. Impl_types is the set of all types
-                % visible from the implementation of the module.
+                % visible in this module.
                 mqi_modules                     :: module_id_set,
                 mqi_types                       :: type_id_set,
-                mqi_impl_types                  :: type_id_set,
                 mqi_insts                       :: inst_id_set,
                 mqi_modes                       :: mode_id_set,
                 mqi_classes                     :: class_id_set,
@@ -2664,9 +2805,6 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
                 % for which there was a `:- import_module' or `:- use_module'
                 % declaration in this module.
                 mqi_imported_modules            :: set(module_name),
-
-                % Modules which have been imported or used in the interface.
-                mqi_interface_visible_modules   :: set(module_name),
 
                 % Map each modules known to be imported in the interface
                 % that is not yet known to be needed in the interface
@@ -2703,7 +2841,6 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         ItemBlocksD, ReportErrors, Info) :-
     id_set_init(ModuleIdSet),
     id_set_init(TypeIdSet),
-    id_set_init(ImplTypeIdSet),
     id_set_init(InstIdSet),
     id_set_init(ModeIdSet),
     id_set_init(ClassIdSet),
@@ -2720,11 +2857,6 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         UseDepsA, UseDepsB, UseDepsC, UseDepsD]),
 
     set.init(InstanceModules),
-
-    % Ancestor modules are visible without being explicitly imported.
-    set.insert_list([ModuleName | get_ancestors(ModuleName)],
-        ImportedModules, InterfaceVisibleModules),
-
     map.init(AsYetUnusedInterfaceModules),
 
     globals.lookup_bool_option(Globals, smart_recompilation,
@@ -2737,17 +2869,14 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         MaybeRecompInfo = yes(init_recompilation_info(ModuleName))
     ),
     ExportedInstancesFlag = no,
-    Info = mq_info(ModuleName,
-        ModuleIdSet, TypeIdSet, ImplTypeIdSet,
-        InstIdSet, ModeIdSet, ClassIdSet,
-        InstanceModules, ImportedModules,
-        InterfaceVisibleModules, AsYetUnusedInterfaceModules,
-        MaybeRecompInfo,
-        ExportedInstancesFlag, no, no, ReportErrors, 0).
+    Info = mq_info(ModuleName, ModuleIdSet,
+        TypeIdSet, InstIdSet, ModeIdSet, ClassIdSet,
+        InstanceModules, ImportedModules, AsYetUnusedInterfaceModules,
+        MaybeRecompInfo, ExportedInstancesFlag, no, no, ReportErrors, 0).
 
+:- pred mq_info_get_this_module(mq_info::in, module_name::out) is det.
 :- pred mq_info_get_modules(mq_info::in, module_id_set::out) is det.
 :- pred mq_info_get_types(mq_info::in, type_id_set::out) is det.
-:- pred mq_info_get_impl_types(mq_info::in, type_id_set::out) is det.
 :- pred mq_info_get_insts(mq_info::in, inst_id_set::out) is det.
 :- pred mq_info_get_modes(mq_info::in, mode_id_set::out) is det.
 :- pred mq_info_get_classes(mq_info::in, class_id_set::out) is det.
@@ -2755,8 +2884,6 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
     set(module_name)::out) is det.
 :- pred mq_info_get_imported_modules(mq_info::in, set(module_name)::out)
     is det.
-:- pred mq_info_get_interface_visible_modules(mq_info::in,
-    set(module_name)::out) is det.
 :- pred mq_info_get_as_yet_unused_interface_modules(mq_info::in,
     map(module_name, one_or_more(prog_context))::out) is det.
 :- pred mq_info_get_exported_instances_flag(mq_info::in, bool::out) is det.
@@ -2764,12 +2891,12 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
 % :- pred mq_info_get_mode_error_flag(mq_info::in, bool::out) is det.
 :- pred mq_info_get_report_error_flag(mq_info::in, bool::out) is det.
 
+mq_info_get_this_module(Info, X) :-
+    X = Info ^ mqi_this_module.
 mq_info_get_modules(Info, X) :-
     X = Info ^ mqi_modules.
 mq_info_get_types(Info, X) :-
     X = Info ^ mqi_types.
-mq_info_get_impl_types(Info, X) :-
-    X = Info ^ mqi_impl_types.
 mq_info_get_insts(Info, X) :-
     X = Info ^ mqi_insts.
 mq_info_get_modes(Info, X) :-
@@ -2780,8 +2907,6 @@ mq_info_get_imported_instance_modules(Info, X) :-
     X = Info ^ mqi_imported_instance_modules.
 mq_info_get_imported_modules(Info, X) :-
     X = Info ^ mqi_imported_modules.
-mq_info_get_interface_visible_modules(Info, X) :-
-    X = Info ^ mqi_interface_visible_modules.
 mq_info_get_as_yet_unused_interface_modules(Info, X) :-
     X = Info ^ mqi_as_yet_unused_interface_modules.
 mq_info_get_exported_instances_flag(Info, X) :-
@@ -2799,8 +2924,6 @@ mq_info_get_recompilation_info(Info, X) :-
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_types(type_id_set::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_impl_types(type_id_set::in,
-    mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_insts(inst_id_set::in,
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_modes(mode_id_set::in,
@@ -2810,8 +2933,6 @@ mq_info_get_recompilation_info(Info, X) :-
 :- pred mq_info_set_imported_instance_modules(set(module_name)::in,
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_imported_modules(set(module_name)::in,
-    mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_interface_visible_modules(set(module_name)::in,
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_as_yet_unused_interface_modules(
     map(module_name, one_or_more(prog_context))::in,
@@ -2825,8 +2946,6 @@ mq_info_set_modules(X, !Info) :-
     !Info ^ mqi_modules := X.
 mq_info_set_types(X, !Info) :-
     !Info ^ mqi_types := X.
-mq_info_set_impl_types(X, !Info) :-
-    !Info ^ mqi_impl_types := X.
 mq_info_set_insts(X, !Info) :-
     !Info ^ mqi_insts := X.
 mq_info_set_modes(X, !Info) :-
@@ -2837,8 +2956,6 @@ mq_info_set_imported_instance_modules(X, !Info) :-
     !Info ^ mqi_imported_instance_modules := X.
 mq_info_set_imported_modules(X, !Info) :-
     !Info ^ mqi_imported_modules := X.
-mq_info_set_interface_visible_modules(X, !Info) :-
-    !Info ^ mqi_interface_visible_modules := X.
 mq_info_set_as_yet_unused_interface_modules(X, !Info) :-
     !Info ^ mqi_as_yet_unused_interface_modules := X.
 mq_info_set_exported_instances_flag(X, !Info) :-
@@ -2899,24 +3016,16 @@ mq_info_set_module_used(InInt, Module, !Info) :-
 % with a certain name and arity.
 %
 
-:- type id_set == map(string, map(arity, symname_arity_modules)).
-
-    % The first set of module_names can be used without module qualifiers;
-    % items from the second set can only be used with module qualifiers.
-    % Items from modules imported with a :- use_module declaration
-    % and from `.opt' and `.trans_opt' files should go into the second set.
-:- type symname_arity_modules
-    --->    symname_arity_modules(
-                mm_may_be_unqualified   :: set(module_name),
-                mm_must_be_qualified    :: set(module_name)
-            ).
+:- type id_set == map(string, map(arity, permissions_map)).
+:- type permissions_map == map(module_name, module_permissions).
 
 :- type type_id_set == id_set.
-:- type mode_id_set == id_set.
 :- type inst_id_set == id_set.
+:- type mode_id_set == id_set.
 :- type class_id_set == id_set.
     % Modules don't have an arity, but for simplicity we use the same
-    % data structure here, assigning arity zero to all module names.
+    % data structure for modules as for types etc, assigning arity zero
+    % to all module names.
 :- type module_id_set == id_set.
 
 :- pred id_set_init(id_set::out) is det.
@@ -2927,81 +3036,86 @@ id_set_init(IdSet) :-
     % Insert an mq_id into an id_set, aborting with an error if the
     % mq_id is not module qualified.
     %
-:- pred id_set_insert(need_qualifier::in, mq_id::in, id_set::in, id_set::out)
-    is det.
+:- pred id_set_insert(module_permissions::in, mq_id::in,
+    id_set::in, id_set::out) is det.
 
-id_set_insert(NeedQualifier, MQId,!IdSet) :-
+id_set_insert(Permissions, MQId,!IdSet) :-
     MQId = mq_id(SymName, Arity),
     (
         SymName = unqualified(_),
         unexpected($module, $pred, "unqualified id")
     ;
-        SymName = qualified(Module, Name),
-        ( if map.search(!.IdSet, Name, SubMap0) then
-            ( if map.search(SubMap0, Arity, SymNameArityModules0) then
-                insert_into_symname_arity_modules(NeedQualifier, Module,
-                    SymNameArityModules0, SymNameArityModules),
-                map.det_update(Arity, SymNameArityModules, SubMap0, SubMap),
-                map.det_update(Name, SubMap, !IdSet)
+        SymName = qualified(ModuleName, BaseName),
+        ( if map.search(!.IdSet, BaseName, SubMap0) then
+            ( if map.search(SubMap0, Arity, PermissionsMap0) then
+                insert_into_permissions_map(Permissions, ModuleName,
+                    PermissionsMap0, PermissionsMap),
+                map.det_update(Arity, PermissionsMap, SubMap0, SubMap),
+                map.det_update(BaseName, SubMap, !IdSet)
             else
-                init_symname_arity_modules(NeedQualifier, Module,
-                    SymNameArityModules),
-                map.det_insert(Arity, SymNameArityModules, SubMap0, SubMap),
-                map.det_update(Name, SubMap, !IdSet)
+                PermissionsMap = map.singleton(ModuleName, Permissions),
+                map.det_insert(Arity, PermissionsMap, SubMap0, SubMap),
+                map.det_update(BaseName, SubMap, !IdSet)
             )
         else
-            init_symname_arity_modules(NeedQualifier, Module,
-                SymNameArityModules),
-            SubMap = map.singleton(Arity, SymNameArityModules),
-            map.det_insert(Name, SubMap, !IdSet)
+            PermissionsMap = map.singleton(ModuleName, Permissions),
+            SubMap = map.singleton(Arity, PermissionsMap),
+            map.det_insert(BaseName, SubMap, !IdSet)
         )
     ).
 
-:- pred init_symname_arity_modules(need_qualifier::in, module_name::in,
-    symname_arity_modules::out) is det.
+:- pred insert_into_permissions_map(module_permissions::in, module_name::in,
+    permissions_map::in, permissions_map::out) is det.
 
-init_symname_arity_modules(NeedQualifier, Module, SymNameArityModules) :-
-    (
-        NeedQualifier = may_be_unqualified,
-        ImportModules = set.make_singleton_set(Module),
-        set.init(UseModules)
-    ;
-        NeedQualifier = must_be_qualified,
-        set.init(ImportModules),
-        UseModules = set.make_singleton_set(Module)
-    ),
-    SymNameArityModules = symname_arity_modules(ImportModules, UseModules).
-
-:- pred insert_into_symname_arity_modules(need_qualifier::in, module_name::in,
-    symname_arity_modules::in, symname_arity_modules::out) is det.
-
-insert_into_symname_arity_modules(NeedQualifier, Module,
-        SymNameArityModules0, SymNameArityModules) :-
-    SymNameArityModules0 = symname_arity_modules(ImportModules0, UseModules0),
-    (
-        NeedQualifier = may_be_unqualified,
-        set.insert(Module, ImportModules0, ImportModules),
-        UseModules = UseModules0
-    ;
-        NeedQualifier = must_be_qualified,
-        ImportModules = ImportModules0,
-        set.insert(Module, UseModules0, UseModules)
-    ),
-    SymNameArityModules = symname_arity_modules(ImportModules, UseModules).
+insert_into_permissions_map(NewPermissions, ModuleName, !PermissionsMap) :-
+    ( if map.search(!.PermissionsMap, ModuleName, OldPermissions) then
+        OldPermissions = module_permissions(OldMayUseInInterface, OldNeedQual),
+        NewPermissions = module_permissions(NewMayUseInInterface, NewNeedQual),
+        % Grant the permissions granted by either OldPermissions or
+        % NewPermissions.
+        (
+            OldMayUseInInterface = may_use_in_interface,
+            MayUseInInterface = OldMayUseInInterface
+        ;
+            OldMayUseInInterface = may_not_use_in_interface,
+            MayUseInInterface = NewMayUseInInterface
+        ),
+        (
+            OldNeedQual = may_be_unqualified,
+            NeedQual = OldNeedQual
+        ;
+            OldNeedQual = must_be_qualified,
+            NeedQual = NewNeedQual
+        ),
+        % Update the entry only if it changed.
+        ( if
+            MayUseInInterface = OldMayUseInInterface,
+            NeedQual = OldNeedQual
+        then
+            true
+        else
+            Permissions = module_permissions(MayUseInInterface, NeedQual),
+            map.det_update(ModuleName, Permissions, !PermissionsMap)
+        )
+    else
+        map.det_insert(ModuleName, NewPermissions, !PermissionsMap)
+    ).
 
 :- pred id_set_search_sym_arity(id_set::in, module_id_set::in,
-    sym_name::in, int::in, set(module_name)::out) is det.
+    sym_name::in, int::in, assoc_list(module_name, module_permissions)::out)
+    is det.
 
-id_set_search_sym_arity(IdSet, ModuleIdSet, SymName, Arity, MatchingModules) :-
+id_set_search_sym_arity(IdSet, ModuleIdSet, SymName, Arity,
+        MatchingModuleNamesPermissions) :-
     UnqualName = unqualify_name(SymName),
     ( if
         map.search(IdSet, UnqualName, SubMap),
-        map.search(SubMap, Arity, SymNameArityModules)
+        map.search(SubMap, Arity, PermissionsMap)
     then
-        find_matches_in_symname_arity_modules(SymName, ModuleIdSet,
-            SymNameArityModules, MatchingModules)
+        find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
+            MatchingModuleNamesPermissions)
     else
-        set.init(MatchingModules)
+        MatchingModuleNamesPermissions = []
     ).
 
 :- pred id_set_search_sym(id_set::in, module_id_set::in, sym_name::in,
@@ -3020,33 +3134,34 @@ id_set_search_sym(IdSet, ModuleIdSet, SymName, PossibleArities) :-
     ).
 
 :- pred find_matching_arities(sym_name::in, module_id_set::in,
-    assoc_list(int, symname_arity_modules)::in, set(int)::in, set(int)::out)
-    is det.
+    assoc_list(int, permissions_map)::in, set(int)::in, set(int)::out) is det.
 
 find_matching_arities(_SymName, _ModuleIdSet, [], !PossibleArities).
 find_matching_arities(SymName, ModuleIdSet, [Pair | Pairs],
         !PossibleArities) :-
-    Pair = Arity - SymNameArityModules,
-    find_matches_in_symname_arity_modules(SymName, ModuleIdSet,
-        SymNameArityModules, MatchingModules),
-    ( if set.is_empty(MatchingModules) then
-        true
-    else
+    Pair = Arity - PermissionsMap,
+    find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
+        MatchingModuleNamesPermissions),
+    (
+        MatchingModuleNamesPermissions = []
+    ;
+        MatchingModuleNamesPermissions = [_ | _],
         set.insert(Arity, !PossibleArities)
     ),
     find_matching_arities(SymName, ModuleIdSet, Pairs, !PossibleArities).
 
-:- pred find_matches_in_symname_arity_modules(sym_name::in, module_id_set::in,
-    symname_arity_modules::in, set(module_name)::out) is det.
+:- pred find_matches_in_permissions_map(sym_name::in, module_id_set::in,
+    permissions_map::in,
+    assoc_list(module_name, module_permissions)::out) is det.
 
-find_matches_in_symname_arity_modules(SymName, ModuleIdSet,
-        SymNameArityModules, MatchingModules) :-
-    SymNameArityModules = symname_arity_modules(ImportModules, UseModules),
+find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
+        MatchingModuleNamesPermissions) :-
     (
         SymName = unqualified(_),
-        MatchingModules = ImportModules
+        map.foldr(add_may_be_unqualified_modules, PermissionsMap,
+            [], MatchingModuleNamesPermissions)
     ;
-        SymName = qualified(Module, _),
+        SymName = qualified(ModuleName, _),
 
         % Compute the set of modules that this module specifier
         % could possibly refer to.
@@ -3054,22 +3169,51 @@ find_matches_in_symname_arity_modules(SymName, ModuleIdSet,
         % Do a recursive search to find nested modules that match
         % the specified module name.
         ModuleArity = 0,
-        id_set_search_sym_arity(ModuleIdSet, ModuleIdSet, Module, ModuleArity,
-            MatchingParentModules),
-        UnqualModule = unqualify_name(Module),
-        AppendModuleName = (pred(X::in, Y::out) is det :-
-            Y = qualified(X, UnqualModule)
+        id_set_search_sym_arity(ModuleIdSet, ModuleIdSet,
+            ModuleName, ModuleArity, MatchingParentModuleNamesPermissions),
+        ModuleBaseName = unqualify_name(ModuleName),
+        AppendModuleBaseName = (pred(X::in, Y::out) is det :-
+            Y = qualified(X, ModuleBaseName)
         ),
-        set.map(AppendModuleName,
-            MatchingParentModules, MatchingNestedModules),
+        assoc_list.keys(MatchingParentModuleNamesPermissions,
+            MatchingParentModuleNames),
+        list.map(AppendModuleBaseName,
+            MatchingParentModuleNames, MatchingNestedModuleNames),
 
         % Add the specified module name itself, in case it refers to
         % a top-level (unnested) module name, since top-level modules
         % don't get inserted into the module_id_set.
-        set.insert(Module, MatchingNestedModules, AllMatchingModules),
+        set.list_to_set([ModuleName | MatchingNestedModuleNames],
+            MatchingModuleNamesSet),
 
-        set.union(ImportModules, UseModules, DefiningModules),
-        set.intersect(AllMatchingModules, DefiningModules, MatchingModules)
+        map.foldr(add_modules_in_set(MatchingModuleNamesSet), PermissionsMap,
+            [], MatchingModuleNamesPermissions)
+    ).
+
+:- pred add_may_be_unqualified_modules(module_name::in, module_permissions::in,
+    assoc_list(module_name, module_permissions)::in,
+    assoc_list(module_name, module_permissions)::out) is det.
+
+add_may_be_unqualified_modules(ModuleName, Permissions, !NamesPermissions) :-
+    Permissions = module_permissions(_, NeedQual),
+    (
+        NeedQual = may_be_unqualified,
+        !:NamesPermissions = [ModuleName - Permissions | !.NamesPermissions]
+    ;
+        NeedQual = must_be_qualified
+    ).
+
+:- pred add_modules_in_set(set(module_name)::in,
+    module_name::in, module_permissions::in,
+    assoc_list(module_name, module_permissions)::in,
+    assoc_list(module_name, module_permissions)::out) is det.
+
+add_modules_in_set(MatchingModuleNames, ModuleName, Permissions,
+        !NamesPermissions) :-
+    ( if set.member(ModuleName, MatchingModuleNames) then
+        !:NamesPermissions = [ModuleName - Permissions | !.NamesPermissions]
+    else
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3081,20 +3225,18 @@ get_partial_qualifiers(ModuleName, PartialQualInfo, PartialQualifiers) :-
         PartialQualifiers = []
     ;
         ModuleName = qualified(Parent, Child),
-        get_partial_qualifiers_2(Parent, unqualified(Child),
+        get_partial_qualifiers_acc(Parent, unqualified(Child),
             ModuleIdSet, [], PartialQualifiers)
     ).
 
-:- pred get_partial_qualifiers_2(module_name::in, module_name::in,
-    module_id_set::in, list(module_name)::in, list(module_name)::out)
-    is det.
+:- pred get_partial_qualifiers_acc(module_name::in, module_name::in,
+    module_id_set::in, list(module_name)::in, list(module_name)::out) is det.
 
-get_partial_qualifiers_2(ImplicitPart, ExplicitPart, ModuleIdSet,
+get_partial_qualifiers_acc(ImplicitPart, ExplicitPart, ModuleIdSet,
         !Qualifiers) :-
     % If the ImplicitPart module was imported, rather than just being used,
     % then insert the ExplicitPart module into the list of valid partial
     % qualifiers.
-
     ( if
         parent_module_is_imported(ImplicitPart, ExplicitPart, ModuleIdSet)
     then
@@ -3107,7 +3249,7 @@ get_partial_qualifiers_2(ImplicitPart, ExplicitPart, ModuleIdSet,
         ImplicitPart = qualified(Parent, Child),
         NextImplicitPart = Parent,
         NextExplicitPart = add_outermost_qualifier(Child, ExplicitPart),
-        get_partial_qualifiers_2(NextImplicitPart, NextExplicitPart,
+        get_partial_qualifiers_acc(NextImplicitPart, NextExplicitPart,
             ModuleIdSet, !Qualifiers)
     ;
         ImplicitPart = unqualified(_)
@@ -3121,7 +3263,7 @@ get_partial_qualifiers_2(ImplicitPart, ExplicitPart, ModuleIdSet,
 
 parent_module_is_imported(ParentModule, ChildModule, ModuleIdSet) :-
     % Find the module name at the start of the ChildModule;
-    % this sub-module will be a direct sub-module of ParentModule
+    % this submodule will be a direct sub-module of ParentModule.
     DirectSubModuleName = get_first_module_name(ChildModule),
 
     % Check that the ParentModule was imported.
@@ -3130,9 +3272,9 @@ parent_module_is_imported(ParentModule, ChildModule, ModuleIdSet) :-
     % imported module.
     Arity = 0,
     map.search(ModuleIdSet, DirectSubModuleName, SubMap),
-    map.search(SubMap, Arity, SymNameArityModules),
-    SymNameArityModules = symname_arity_modules(ImportModules, _UseModules),
-    set.member(ParentModule, ImportModules).
+    map.search(SubMap, Arity, PermissionsMap),
+    map.search(PermissionsMap, ParentModule, ParentModulePermissions),
+    ParentModulePermissions = module_permissions(_, may_be_unqualified).
 
     % Given a module name, possibly module-qualified, return the name
     % of the first module in the qualifier list. For example, given

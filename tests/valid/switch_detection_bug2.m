@@ -9,6 +9,7 @@
 :- module switch_detection_bug2.
 
 :- interface.
+:- import_module bool.
 :- import_module io.
 :- import_module int.
 :- import_module list.
@@ -25,22 +26,6 @@
 
 :- type diff == list(edit).
 
-:- pred display_diff_side_by_side_2(int, side_by_side_info, diff,
-    io__state, io__state).
-:- mode display_diff_side_by_side_2(in, in, in, di, uo) is det.
-
-%---------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module bool.
-:- import_module char.
-:- import_module int.
-:- import_module list.
-:- import_module require.
-:- import_module std_util.
-:- import_module string.
-
     % Parameters to pass around.
 :- type side_by_side_info
     --->    side_by_side_info(
@@ -50,6 +35,21 @@
                 bool,       % Suppress common lines
                 bool        % Help sdiff
             ).
+
+:- pred display_diff_side_by_side_2(int, side_by_side_info, diff,
+    io__state, io__state).
+:- mode display_diff_side_by_side_2(in, in, in, di, uo) is det.
+
+%---------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
 
 display_diff_side_by_side_2(_Prev, SBS, []) -->
     { SBS = side_by_side_info(_, _, _, Suppress, _) },

@@ -3,12 +3,11 @@
 %---------------------------------------------------------------------------%
 %
 % This is a regression test (extracted from some code in std_util.m).
-% The MLDS back-end in Mercury 0.10.1 generated incorrect code
-% for this test case.  In particular when the float argument is
-% passed to private_builtin__var(T::unused), it generated code
-% which passes a pointer and then tries to unbox the float value returned,
-% even though no value was actually returned, so it ends up dereferencing
-% an uninitialized pointer.
+% The MLDS back-end in Mercury 0.10.1 generated incorrect code for this
+% test case. In particular, when the float argument is passed to
+% private_builtin__var(T::unused), it generated code which passed a pointer
+% and then tried to unbox the float value returned, even though no value
+% was actually returned, so it ended up dereferencing an uninitialized pointer.
 
 :- module unused_float_box_test.
 :- interface.
@@ -29,6 +28,9 @@
         ;       my_functor_unshared(int, list(univ))
         ;       my_functor_notag(univ)
         ;       my_functor_equiv(univ).
+
+:- type my_univ
+    --->    some [T] my_univ_cons(T).
 
 :- pred my_get_functor_info(my_univ::in, my_functor_tag_info::out) is semidet.
 
@@ -126,9 +128,6 @@ get_du_functor_info(_, _, _, _, _) :-
     private_builtin__sorry("local get_du_functor_info").
 
 %---------------------------------------------------------------------------%
-
-:- type my_univ
-    --->    some [T] my_univ_cons(T).
 
 :- pred my_type_to_univ(T, my_univ).
 :- pragma promise_pure(my_type_to_univ/2).

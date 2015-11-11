@@ -18,9 +18,6 @@
 :- pred main(io__state, io__state).
 :- mode main(di, uo) is cc_multi.
 
-:- pred main1(quad).
-:- mode main1(out) is nondet.
-
 :- implementation.
 
 :- import_module int.
@@ -41,6 +38,9 @@ main -->
     ;
         io__write_string("No solutions\n")
     ).
+
+:- pred main1(quad).
+:- mode main1(out) is nondet.
 
 main1(Out) :-
     query(Out).

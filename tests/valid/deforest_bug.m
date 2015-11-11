@@ -26,6 +26,9 @@
     --->    ok(T)
     ;       error(string).
 
+:- type (A, B)
+    --->    (A, B).
+
 :- pred deforest_load([(int, [char])], [string], catalog).
 :- mode deforest_load(in, out, out) is det.
 
@@ -45,8 +48,6 @@ deforest_load(CatLines, Errors, Cat) :-
     parse(Entries, Errors, CatLines),
     init(Cat0),
     my_foldl(addEntry, Entries, catalog(Cat0), Cat).
-
-:- type (A, B) ---> (A, B).
 
 :- pred parse([entry], [string], [(int, [char])]).
 :- mode parse(out, out, in) is det.

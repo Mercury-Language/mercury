@@ -15,6 +15,10 @@
             analysis_request(unit(FuncInfo), Call)
                 => call_pattern(FuncInfo, Call).
 
+:- type mymap(K, V)
+    --->    empty
+    ;       two(K, V, mymap(K, V), mymap(K, V)).
+
 :- type module_analysis_map(T) == mymap(analysis_name, func_analysis_map(T)).
 :- type func_analysis_map(T) == mymap(func_id, list(T)).
 :- type analysis_name == string.
@@ -38,7 +42,7 @@ write_module_analysis_requests(Compiler, ModuleRequests, !IO) :-
 
 write_request_entry(_, _, _, analysis_request(_, _), !IO).
 
-:- type write_entry(T) == pred(analysis_name, func_id, T, io__state, io__state).
+:- type write_entry(T) == pred(analysis_name, func_id, T, io, io).
 :- inst write_entry == (pred(in, in, in, di, uo) is det).
 
 :- pred write_analysis_entries(write_entry(T)::in(write_entry),
@@ -55,10 +59,6 @@ write_analysis_entries(WriteEntry, ModuleResults, !IO) :-
                     ), FuncResultList)
             ), FuncResults)
         ), ModuleResults, !IO).
-
-:- type mymap(K, V)
-    --->    empty
-    ;       two(K, V, mymap(K, V), mymap(K, V)).
 
 :- pred mymap_foldl(pred(K, V, T, T), mymap(K, V), T, T).
 :- mode mymap_foldl(pred(in, in, di, uo) is det, in, di, uo) is det.

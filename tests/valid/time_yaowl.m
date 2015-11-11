@@ -13,6 +13,13 @@
 :- type time_token(T).
 :- type time_state_holder(StateHolder).
 
+:- type yaowl_specification(G, T)
+    --->    yaowl_specification(
+                G, T
+            ).
+
+:- typeclass yaowl_static_global_token(S, G, T) <= ((S -> G)) where [].
+
 :- pred build_time_yaowl_specification(S::in,
     yaowl_specification(time_global(G), time_token(T))::out,
     io::di, io::uo) is det
@@ -50,9 +57,4 @@ build_time_yaowl_specification(S, WF, !IO) :-
 :- pred build_specification(S::in, yaowl_specification(G, T)::out,
     io::di, io::uo) is det <= (yaowl_static_global_token(S, G, T)).
 
-:- typeclass yaowl_static_global_token(S, G, T) <= ((S -> G)) where [].
-
-:- type yaowl_specification(G, T)
-    --->    yaowl_specification(
-                G, T
-            ).
+:- pragma external_pred(build_specification/4).

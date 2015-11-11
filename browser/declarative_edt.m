@@ -333,16 +333,6 @@
 :- pred skip_suspect(suspect_id::in, search_space(T)::in, search_space(T)::out)
     is det.
 
-    % lookup_subterm_node(Store, SuspectId, ArgPos, TermPath, SearchSpace,
-    %   Suspect, Mode, Node):
-    %
-    % Finds the node of the subterm given by SuspectId, ArgPos and TermPath
-    % in its immediate neighbours.
-    %
-:- pred lookup_subterm_node(S::in, suspect_id::in, arg_pos::in, term_path::in,
-    search_space(T)::in, suspect(T)::out, subterm_mode::out, T::out)
-    is det <= mercury_edt(S, T).
-
     % find_subterm_origin(Store, Oracle, SuspectId, ArgPos, TermPath, HowTrack,
     %   !TriedShortcutProcs, !SearchSpace, Response):
     %
@@ -946,6 +936,16 @@ travel_up(SearchSpace, StartId, Distance, FinishId) :-
     else
         FinishId = StartId
     ).
+
+    % lookup_subterm_node(Store, SuspectId, ArgPos, TermPath, SearchSpace,
+    %   Suspect, Mode, Node):
+    %
+    % Finds the node of the subterm given by SuspectId, ArgPos and TermPath
+    % in its immediate neighbours.
+    %
+:- pred lookup_subterm_node(S::in, suspect_id::in, arg_pos::in, term_path::in,
+    search_space(T)::in, suspect(T)::out, subterm_mode::out, T::out)
+    is det <= mercury_edt(S, T).
 
 lookup_subterm_node(Store, SuspectId, ArgPos, TermPath, SearchSpace, Suspect,
         Mode, Node) :-

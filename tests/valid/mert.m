@@ -34,6 +34,7 @@
                 iters   :: int
             ).
 
+:- type scorednbestlist.
 :- func optimize(scorednbestlist, randomize, weights) = weights.
 % given an nbestlist, reference translations, starting weights and possibly
 % a randomization requirement, optimize weights to get highest bleu
@@ -113,7 +114,7 @@ nbestlist_to_data(NBL) = OutData :-
         = (D::uo),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* NSents, CandsPerSent, TotNCands, AllCands */
+    /* NSents, CandsPerSent, TotNCands, AllCands, D */
 ").
 :- pragma foreign_proc("Java",
     new_c_data(NSents::in, CandsPerSent::in, TotNCands::in, AllCands::in)
@@ -165,7 +166,7 @@ optimize(NBL, Rand, InW) = OutW :-
         = (Out::out),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
-    /* Data, BestSoFar, Min, Max, Iter */
+    /* Data, BestSoFar, Min, Max, Iter, Out */
 ").
 :- pragma foreign_proc("Java",
     optimize_random(Data::in, BestSoFar::in, Min::in, Max::in, Iter::in)

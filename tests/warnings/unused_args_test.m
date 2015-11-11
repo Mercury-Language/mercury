@@ -5,9 +5,9 @@
 %  Predicates to check that unused_args.m is producing the correct warning.
 
 :- module unused_args_test.
-
 :- interface.
 
+:- type switch_test.
 :- pred recursive(int::in, switch_test::in, int::in) is semidet.
 
 :- pred nonrecursive(int::in) is semidet.

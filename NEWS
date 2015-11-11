@@ -1,6 +1,19 @@
 NEWS since Mercury 14.01.x
 --------------------------
 
+Changes that may break compatibility:
+
+* We have enabled stricter checking of non-ground final insts to reject more
+  mode-incorrect code.  Due to compiler limitations, some code that should be
+  accepted will now be rejected.  They will require modifications to appease
+  the compiler.
+
+* We have enabled stricter checking of the requirement that a type, inst
+  or a mode that is *not* exported from a module may not be used in the
+  declarations of entities (such as predicates and typeclasses) that *is*
+  exported from that module. This may require the explicit export of e.g.
+  some types that previously were not exported.
+
 Changes to the Mercury language:
 
 * We have added a new kind of scope to the language: determinism checks
@@ -187,11 +200,6 @@ Changes to the Mercury standard library:
    - reverse_prepend/3
 
 Changes to the Mercury compiler:
-
-* We have enabled stricter checking of non-ground final insts to reject more
-  mode-incorrect code.  Due to compiler limitations, some code that should be
-  accepted will now be rejected.  They will require modifications to appease
-  the compiler.
 
 * We have fixed a long-standing bug causing crashes in deep profiling
   grades, related to unify/compare for tuples.  (Bug #3)

@@ -335,15 +335,12 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         Type = kinded_type(_, _),
         unexpected("check_typeclass", "kinded_type")
     ;
-        Type = defined_type(TypeName, Args, _),
+        Type = defined_type(_TypeName, Args, _),
         each_arg_is_a_type_variable(!.SeenTypes, Args, 1, Result),
         (
             Result = no_error,
             set.insert_list(Args, !SeenTypes),
             ( if type_to_type_defn(ModuleInfo, Type, TypeDefn) then
-                list.length(Args, TypeArity),
-                is_visible_instance_type(ClassId, InstanceDefn,
-                    TypeName, TypeArity, TypeDefn, !Specs),
                 get_type_defn_body(TypeDefn, TypeBody),
                 (
                     TypeBody = hlds_eqv_type(EqvType),
@@ -366,52 +363,6 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
                 N, Result),
             !:Specs = [Spec | !.Specs]
         )
-    ).
-
-    % Check that types mentioned in an abstract instance declaration
-    % in a module interface are visible in the module interface,
-    % i.e. they are either exported by the module or imported in the
-    % module interface.
-    %
-:- pred is_visible_instance_type(class_id::in, hlds_instance_defn::in,
-    sym_name::in, arity::in, hlds_type_defn::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-is_visible_instance_type(ClassId, InstanceDefn, TypeName, TypeArity, TypeDefn,
-        !Specs) :-
-    InstanceBody = InstanceDefn ^ instdefn_body,
-    (
-        InstanceBody = instance_body_abstract,
-        InstanceStatus = InstanceDefn ^ instdefn_status,
-        InstanceIsExported =
-            instance_status_is_exported_to_non_submodules(InstanceStatus),
-        (
-            InstanceIsExported = yes,
-            get_type_defn_status(TypeDefn, TypeDefnStatus),
-            ( if
-                type_status_is_imported(TypeDefnStatus) = no,
-                type_status_is_exported_to_non_submodules(TypeDefnStatus) = no
-            then
-                ClassId = class_id(ClassName, ClassArity),
-                Pieces = [words("Error: abstract instance declaration for"),
-                    words("type class"),
-                    sym_name_and_arity(ClassName / ClassArity),
-                    words("contains the type"),
-                    sym_name_and_arity(TypeName / TypeArity),
-                    words("but that type is not visible in the"),
-                    words("module interface."), nl],
-                Context = InstanceDefn ^ instdefn_context,
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_type_check, [Msg]),
-                !:Specs = [Spec | !.Specs]
-            else
-                true
-            )
-        ;
-            InstanceIsExported = no
-        )
-    ;
-        InstanceBody = instance_body_concrete(_)
     ).
 
 :- type instance_arg_result

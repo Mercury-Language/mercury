@@ -56,8 +56,6 @@
             % The analyser would like the oracle to re-ask the user
             % this question and then for analysis to continue.
 
-:- func reason_to_string(reason_for_question) = string.
-
 :- type analyser_state(T).
 
 :- type search_mode.
@@ -1196,6 +1194,8 @@ suspect_still_unknown(SearchSpace, SuspectId) :-
     suspect_unknown(SearchSpace, SuspectId).
 
 %-----------------------------------------------------------------------------%
+
+:- func reason_to_string(reason_for_question) = string.
 
 reason_to_string(ques_reason_start) =
     "this is the node where the `dd' command was issued.".

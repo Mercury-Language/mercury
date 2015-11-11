@@ -10,13 +10,6 @@
 
 :- import_module list.
 
-:- func list_data_term(list(data_term)) = data_term.
-
-:- implementation.
-
-:- import_module int.
-:- import_module string.
-
 :- type data_term == mer_term(literal).
 
 :- type mer_term(T)
@@ -29,6 +22,10 @@
 :- type literal
     --->    string(string)
     ;       int(int).
+
+:- func list_data_term(list(data_term)) = data_term.
+
+:- implementation.
 
 list_data_term([]) = functor(["list", "[]"], []).
 list_data_term([H | T]) = functor(["list", "[ | ]"], [H, list_data_term(T)]).

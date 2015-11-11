@@ -259,6 +259,10 @@
                 buckets                 :: array(hash_table_alist(K, V))
             ).
 
+    % This needs to be exported for use in the export of hash_table(K, V).
+    %
+:- type hash_table_alist(K, V).
+
 :- implementation.
 
     % We use a custom association list representation for better performance.

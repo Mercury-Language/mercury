@@ -14,8 +14,8 @@
 
 :- import_module io.
 
-:- pred compile_display_list(display_list, io__state, io__state).
-:- mode compile_display_list(out, di, uo) is det.
+:- type display_list.
+:- pred compile_display_list(display_list::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -41,8 +41,9 @@ compile_display_list([mon(PPos, 1) | DList]) -->
         for(0, 1, (pred(Y::in, in, out) is det -->
             ( { search(MapIKnow, pos(X, Y), Place) } ->
                 { Place = place(Kind, _Flags, Obj) },
-                (   (
-                    { Kind \= 1 }
+                (
+                    (
+                        { Kind \= 1 }
                     ;
                         { PPos = pos(X, Y) }
                     )
@@ -95,7 +96,7 @@ pos(X, Y) = pos(X, Y).
 
 %---------------------------------------------------------------------------%
 
-:- pred get_monst(int, int, io__state, io__state).
+:- pred get_monst(int, int, io, io).
 :- mode get_monst(in, out, di, uo) is det.
 
 :- external(get_monst/4).

@@ -25,13 +25,6 @@
 :- import_module list.
 :- import_module maybe.
 
-:- type proc_coverage_info.
-
-    % Initialize the coverage_profiling_options structure.
-    %
-:- pred coverage_profiling_options(module_info::in,
-    coverage_profiling_options::out) is det.
-
     % Perform the coverage profiling transformation on the given goal,
     % and return a list of the coverage points created.
     %
@@ -116,7 +109,10 @@
                 cpo_run_first_pass          :: bool
             ).
 
-coverage_profiling_options(ModuleInfo, CoveragePointOptions) :-
+:- pred init_coverage_profiling_options(module_info::in,
+    coverage_profiling_options::out) is det.
+
+init_coverage_profiling_options(ModuleInfo, CoveragePointOptions) :-
     module_info_get_globals(ModuleInfo, Globals),
 
     % Options controlling what instrumentation code we generate.
@@ -153,9 +149,11 @@ coverage_profiling_options(ModuleInfo, CoveragePointOptions) :-
         CoverageAfterGoal, BranchIf, BranchSwitch, BranchDisj,
         UsePortCounts, UseTrivial, RunFirstPass).
 
+%-----------------------------------------------------------------------------%
+
 coverage_prof_transform_proc_body(ModuleInfo, PredProcId, ContainingGoalMap,
         MaybeRecInfo, !Goal, !VarInfo, CoveragePoints) :-
-    coverage_profiling_options(ModuleInfo, CoverageProfilingOptions),
+    init_coverage_profiling_options(ModuleInfo, CoverageProfilingOptions),
     CoverageInfo0 = init_proc_coverage_info(!.VarInfo, ModuleInfo,
         PredProcId, MaybeRecInfo, CoverageProfilingOptions, ContainingGoalMap),
     RunFirstPass = CoverageProfilingOptions ^ cpo_run_first_pass,
