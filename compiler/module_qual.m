@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: module_qual.m.
 % Main authors: stayl, fjh.
@@ -68,7 +68,7 @@
 % stop before the unused_imports pass; throw them away if we *do* get to
 % that pass. We don't (yet) do this.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.module_qual.
 :- interface.
@@ -80,15 +80,30 @@
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
 
-:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type maybe_found_undef_type
+    --->    did_not_find_undef_type
+    ;       found_undef_type.
+
+:- type maybe_found_undef_inst
+    --->    did_not_find_undef_inst
+    ;       found_undef_inst.
+
+:- type maybe_found_undef_mode
+    --->    did_not_find_undef_mode
+    ;       found_undef_mode.
+
+:- type maybe_found_undef_typeclass
+    --->    did_not_find_undef_typeclass
+    ;       found_undef_typeclass.
 
     % module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
-    %   EventSpecMap0, EventSpecMap, MaybeContext, EventSpecFileName,
-    %   MQ_Info, UndefTypes, UndefModes, !Specs):
+    %   EventSpecMap0, EventSpecMap, MaybeContext, EventSpecFileName, MQ_Info,
+    %   UndefTypes, UndefInsts, UndefModes, UndefTypeClasses, !Specs):
     %
     % AugCompUnit is AugCompUnit0 with all items module qualified
     % as much as possible; likewise for EventSpecMap0 and EventSpecMap.
@@ -98,7 +113,9 @@
 :- pred module_qualify_aug_comp_unit(globals::in,
     aug_compilation_unit::in, aug_compilation_unit::out,
     event_spec_map::in, event_spec_map::out, string::in, mq_info::out,
-    bool::out, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+    maybe_found_undef_type::out, maybe_found_undef_inst::out,
+    maybe_found_undef_mode::out, maybe_found_undef_typeclass::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt,
     %   !Specs):
@@ -110,7 +127,7 @@
     parse_tree_int::in, parse_tree_int::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % When we process types, typeclasses, insts or modes, we need to know
     % whether they occur in the interface of the current module. This is
@@ -145,11 +162,17 @@
     %
 :- type mq_info.
 
+:- pred mq_info_get_found_undef_type(mq_info::in,
+    maybe_found_undef_type::out) is det.
+:- pred mq_info_get_found_undef_inst(mq_info::in,
+    maybe_found_undef_inst::out) is det.
+:- pred mq_info_get_found_undef_mode(mq_info::in,
+    maybe_found_undef_mode::out) is det.
+:- pred mq_info_get_found_undef_typeclass(mq_info::in,
+    maybe_found_undef_typeclass::out) is det.
+
 :- pred mq_info_get_recompilation_info(mq_info::in,
     maybe(recompilation_info)::out) is det.
-:- pred mq_info_get_type_error_flag(mq_info::in, bool::out) is det.
-:- pred mq_info_get_mode_error_flag(mq_info::in, bool::out) is det.
-
 :- pred mq_info_set_recompilation_info(maybe(recompilation_info)::in,
     mq_info::in, mq_info::out) is det.
 
@@ -188,8 +211,8 @@
 :- pred get_partial_qualifiers(module_name::in, partial_qualifier_info::in,
     list(module_name)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -201,6 +224,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module pair.
@@ -209,18 +233,18 @@
 :- import_module string.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
-        EventSpecMap0, EventSpecMap, EventSpecFileName,
-        !:Info, UndefTypes, UndefModes, !Specs) :-
+        EventSpecMap0, EventSpecMap, EventSpecFileName, !:Info,
+        UndefTypes, UndefInsts, UndefModes, UndefTypeClasses, !Specs) :-
     AugCompUnit0 = aug_compilation_unit(ModuleName, ModuleNameContext,
         ModuleVersionNumbers, SrcItemBlocks0,
         DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
     init_mq_info(Globals, ModuleName, SrcItemBlocks0,
         DirectIntItemBlocks ++ IndirectIntItemBlocks,
-        OptItemBlocks, IntForOptItemBlocks, yes, !:Info),
+        OptItemBlocks, IntForOptItemBlocks, should_report_errors, !:Info),
     collect_mq_info_in_item_blocks(src_section_mq_info, SrcItemBlocks0,
         !Info),
     collect_mq_info_in_item_blocks(int_section_mq_info, DirectIntItemBlocks,
@@ -234,11 +258,13 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
         OptItemBlocks, IntForOptItemBlocks),
 
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
-    do_module_qualify_event_specs(mq_not_used_in_interface, EventSpecFileName,
+    qualify_event_specs(mq_not_used_in_interface, EventSpecFileName,
         EventSpecList0, EventSpecList, !Info, !Specs),
     map.from_assoc_list(EventSpecList, EventSpecMap),
-    mq_info_get_type_error_flag(!.Info, UndefTypes),
-    mq_info_get_mode_error_flag(!.Info, UndefModes),
+    mq_info_get_found_undef_type(!.Info, UndefTypes),
+    mq_info_get_found_undef_inst(!.Info, UndefInsts),
+    mq_info_get_found_undef_mode(!.Info, UndefModes),
+    mq_info_get_found_undef_typeclass(!.Info, UndefTypeClasses),
 
     % Warn about any unused module imports in the interface.
     % There is a special case involving type class instances that
@@ -299,7 +325,8 @@ module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     DummyItemBlocks = []:list(src_item_block),
     some [!IntInfo] (
         init_mq_info(Globals, ModuleName, IntSrcItemBlocks0,
-            DummyItemBlocks, DummyItemBlocks, DummyItemBlocks, no, !:IntInfo),
+            DummyItemBlocks, DummyItemBlocks, DummyItemBlocks,
+            should_not_report_errors, !:IntInfo),
         collect_mq_info_in_item_blocks(src_section_mq_info, IntSrcItemBlocks0,
             !IntInfo),
         module_qualify_items_loop(mq_used_in_interface,
@@ -307,7 +334,8 @@ module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
     ),
     some [!ImpInfo] (
         init_mq_info(Globals, ModuleName, ImpSrcItemBlocks0,
-            DummyItemBlocks, DummyItemBlocks, DummyItemBlocks, no, !:ImpInfo),
+            DummyItemBlocks, DummyItemBlocks, DummyItemBlocks,
+            should_not_report_errors, !:ImpInfo),
         collect_mq_info_in_item_blocks(src_section_mq_info, ImpSrcItemBlocks0,
             !ImpInfo),
         module_qualify_items_loop(mq_not_used_in_interface,
@@ -317,7 +345,7 @@ module_qualify_parse_tree_int(Globals, ParseTreeInt0, ParseTreeInt, !Specs) :-
         MaybeVersionNumbers, IntIncls, ImpIncls, IntAvails, ImpAvails,
         IntItems, ImpItems).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 qualify_lambda_mode_list(InInt, Context, Modes0, Modes, !Info, !Specs) :-
     ErrorContext = mqec_lambda_expr(Context),
@@ -338,7 +366,82 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
     mq_info_get_modules(MQInfo, ModuleIdSet),
     QualifierInfo = partial_qualifier_info(ModuleIdSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+get_partial_qualifiers(ModuleName, PartialQualInfo, PartialQualifiers) :-
+    PartialQualInfo = partial_qualifier_info(ModuleIdSet),
+    (
+        ModuleName = unqualified(_),
+        PartialQualifiers = []
+    ;
+        ModuleName = qualified(Parent, Child),
+        get_partial_qualifiers_acc(Parent, unqualified(Child),
+            ModuleIdSet, [], PartialQualifiers)
+    ).
+
+:- pred get_partial_qualifiers_acc(module_name::in, module_name::in,
+    module_id_set::in, list(module_name)::in, list(module_name)::out) is det.
+
+get_partial_qualifiers_acc(ImplicitPart, ExplicitPart, ModuleIdSet,
+        !Qualifiers) :-
+    % If the ImplicitPart module was imported, rather than just being used,
+    % then insert the ExplicitPart module into the list of valid partial
+    % qualifiers.
+    ( if
+        parent_module_is_imported(ImplicitPart, ExplicitPart, ModuleIdSet)
+    then
+        !:Qualifiers = [ExplicitPart | !.Qualifiers]
+    else
+        true
+    ),
+    % Recursively try to add the other possible partial qualifiers.
+    (
+        ImplicitPart = qualified(Parent, Child),
+        NextImplicitPart = Parent,
+        NextExplicitPart = add_outermost_qualifier(Child, ExplicitPart),
+        get_partial_qualifiers_acc(NextImplicitPart, NextExplicitPart,
+            ModuleIdSet, !Qualifiers)
+    ;
+        ImplicitPart = unqualified(_)
+    ).
+
+    % Check whether the parent module was imported, given the name of a
+    % child (or grandchild, etc.) module occurring in that parent module.
+    %
+:- pred parent_module_is_imported(module_name::in, module_name::in,
+    module_id_set::in) is semidet.
+
+parent_module_is_imported(ParentModule, ChildModule, ModuleIdSet) :-
+    % Find the module name at the start of the ChildModule;
+    % this submodule will be a direct sub-module of ParentModule.
+    DirectSubModuleName = get_first_module_name(ChildModule),
+
+    % Check that the ParentModule was imported.
+    % We do this by looking up the definitions for the direct sub-module
+    % and checking that the one in ParentModule came from an
+    % imported module.
+    Arity = 0,
+    map.search(ModuleIdSet, DirectSubModuleName, SubMap),
+    map.search(SubMap, Arity, PermissionsMap),
+    map.search(PermissionsMap, ParentModule, ParentModulePermissions),
+    ParentModulePermissions = module_permissions(_, may_be_unqualified).
+
+    % Given a module name, possibly module-qualified, return the name
+    % of the first module in the qualifier list. For example, given
+    % `foo.bar.baz', this returns `foo', and given just `baz',
+    % it returns `baz'.
+    %
+:- func get_first_module_name(module_name) = string.
+
+get_first_module_name(unqualified(ModuleName)) = ModuleName.
+get_first_module_name(qualified(Parent, _)) = get_first_module_name(Parent).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% This section contains the predicates that record what entities are available
+% in which modules and with what permissions.
+%
 
     % We record two kinds of permissions for each entity. Whether
     % it may be used in the interface, and whether it may be used
@@ -372,6 +475,8 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
 
 :- type section_mq_info(MS) == (pred(MS, mq_section, module_permissions)).
 :- inst section_mq_info     == (pred(in, out, out) is det).
+
+%---------------------%
 
 :- pred src_section_mq_info(src_module_section::in,
     mq_section::out, module_permissions::out) is det.
@@ -422,19 +527,17 @@ int_section_mq_info(IntSection, MQSection, Permissions) :-
             module_permissions(may_not_use_in_interface, must_be_qualified)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
-    % Pass over the item_block list collecting all defined module, type, mode
-    % and inst ids, all module synonym definitions, and the names of all
-    % modules imported in the interface.
+    % Pass over the item_block list collecting all defined module, type,
+    % inst, mode and class ids, together with their permissions.
     %
 :- pred collect_mq_info_in_item_blocks(
     section_mq_info(MS)::in(section_mq_info), list(item_block(MS))::in,
     mq_info::in, mq_info::out) is det.
 
 collect_mq_info_in_item_blocks(_, [], !Info).
-collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks],
-        !Info) :-
+collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks], !Info) :-
     ItemBlock = item_block(Section, _Context, Incls, Avails, Items),
     SectionInfo(Section, MQSection, Permissions),
 
@@ -592,7 +695,8 @@ collect_mq_info_in_item(MQSection, Permissions, Item, !Info) :-
         Item = item_promise(ItemPromise),
         ItemPromise = item_promise_info(_PromiseType, Goal, _ProgVarSet,
             _UnivVars, _Context, _SeqNum),
-        process_promise_goal(Goal, set.init, UsedModuleNames, no, FoundUnqual),
+        collect_used_modules_in_promise_goal(Goal,
+            set.init, UsedModuleNames, no, FoundUnqual),
         (
             FoundUnqual = no,
             InInt = mq_section_to_in_interface(MQSection),
@@ -652,16 +756,16 @@ mq_section_to_in_interface(mq_section_imported(_)) = mq_not_used_in_interface.
 mq_section_to_in_interface(mq_section_abstract_imported) =
     mq_not_used_in_interface.
 
-%-----------------------------------------------------------------------------%
+%---------------------%
 
     % Scan Goal. Add the set of module names found in the qualified symbols
     % in Goal to !UsedModuleNames. If there exists a single unqualified symbol,
     % in Goal, set !Success to no.
     %
-:- pred process_promise_goal(goal::in,
+:- pred collect_used_modules_in_promise_goal(goal::in,
     set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
 
-process_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
+collect_used_modules_in_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
     (
         ( Goal = conj_expr(_, SubGoalA, SubGoalB)
         ; Goal = par_conj_expr(_, SubGoalA, SubGoalB)
@@ -669,8 +773,10 @@ process_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
         ; Goal = implies_expr(_, SubGoalA, SubGoalB)
         ; Goal = equivalent_expr(_, SubGoalA, SubGoalB)
         ),
-        process_promise_goal(SubGoalA, !UsedModuleNames, !FoundUnqual),
-        process_promise_goal(SubGoalB, !UsedModuleNames, !FoundUnqual)
+        collect_used_modules_in_promise_goal(SubGoalA,
+            !UsedModuleNames, !FoundUnqual),
+        collect_used_modules_in_promise_goal(SubGoalB,
+            !UsedModuleNames, !FoundUnqual)
     ;
         ( Goal = true_expr(_)
         ; Goal = fail_expr(_)
@@ -691,39 +797,49 @@ process_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
         ; Goal = require_switch_arms_detism_expr(_, _, _, SubGoal)
         ; Goal = trace_expr(_, _, _, _, _, SubGoal)
         ),
-        process_promise_goal(SubGoal, !UsedModuleNames, !FoundUnqual)
+        collect_used_modules_in_promise_goal(SubGoal,
+            !UsedModuleNames, !FoundUnqual)
     ;
         Goal = try_expr(_, _, SubGoal, ThenGoal, MaybeElseGoal, Catches,
             MaybeCatchAny),
-        process_promise_goal(SubGoal, !UsedModuleNames, !FoundUnqual),
-        process_promise_goal(ThenGoal, !UsedModuleNames, !FoundUnqual),
+        collect_used_modules_in_promise_goal(SubGoal,
+            !UsedModuleNames, !FoundUnqual),
+        collect_used_modules_in_promise_goal(ThenGoal,
+            !UsedModuleNames, !FoundUnqual),
         (
             MaybeElseGoal = no
         ;
             MaybeElseGoal = yes(ElseGoal),
-            process_promise_goal(ElseGoal, !UsedModuleNames, !FoundUnqual)
+            collect_used_modules_in_promise_goal(ElseGoal,
+                !UsedModuleNames, !FoundUnqual)
         ),
-        list.foldl2(process_promise_catch, Catches,
+        list.foldl2(collect_used_modules_in_promise_catch, Catches,
             !UsedModuleNames, !FoundUnqual),
         (
             MaybeCatchAny = no
         ;
             MaybeCatchAny = yes(catch_any_expr(_, CatchAnyGoal)),
-            process_promise_goal(CatchAnyGoal, !UsedModuleNames, !FoundUnqual)
+            collect_used_modules_in_promise_goal(CatchAnyGoal,
+                !UsedModuleNames, !FoundUnqual)
         )
     ;
         Goal = atomic_expr(_, _, _, _, MainGoal, OrElseGoals),
-        process_promise_goal(MainGoal, !UsedModuleNames, !FoundUnqual),
-        process_promise_goals(OrElseGoals, !UsedModuleNames, !FoundUnqual)
+        collect_used_modules_in_promise_goal(MainGoal,
+            !UsedModuleNames, !FoundUnqual),
+        collect_used_modules_in_promise_goals(OrElseGoals,
+            !UsedModuleNames, !FoundUnqual)
     ;
         Goal = if_then_else_expr(_, _, _, CondGoal, ThenGoal, ElseGoal),
-        process_promise_goal(CondGoal, !UsedModuleNames, !FoundUnqual),
-        process_promise_goal(ThenGoal, !UsedModuleNames, !FoundUnqual),
-        process_promise_goal(ElseGoal, !UsedModuleNames, !FoundUnqual)
+        collect_used_modules_in_promise_goal(CondGoal,
+            !UsedModuleNames, !FoundUnqual),
+        collect_used_modules_in_promise_goal(ThenGoal,
+            !UsedModuleNames, !FoundUnqual),
+        collect_used_modules_in_promise_goal(ElseGoal,
+            !UsedModuleNames, !FoundUnqual)
     ;
         Goal = event_expr(_, _Name, ArgTerms0),
         list.map(term.coerce, ArgTerms0, ArgTerms),
-        terms_qualified_symbols(ArgTerms, !UsedModuleNames, !FoundUnqual)
+        collect_used_modules_in_terms(ArgTerms, !UsedModuleNames, !FoundUnqual)
     ;
         Goal = call_expr(_, SymName, ArgTerms0, _Purity),
         (
@@ -734,42 +850,46 @@ process_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
             !:FoundUnqual = yes
         ),
         list.map(term.coerce, ArgTerms0, ArgTerms),
-        terms_qualified_symbols(ArgTerms, !UsedModuleNames, !FoundUnqual)
+        collect_used_modules_in_terms(ArgTerms, !UsedModuleNames, !FoundUnqual)
     ;
         Goal = unify_expr(_, LHS0, RHS0, _Purity),
         term.coerce(LHS0, LHS),
         term.coerce(RHS0, RHS),
-        term_qualified_symbols(LHS, !UsedModuleNames, !FoundUnqual),
-        term_qualified_symbols(RHS, !UsedModuleNames, !FoundUnqual)
+        collect_used_modules_in_term(LHS, !UsedModuleNames, !FoundUnqual),
+        collect_used_modules_in_term(RHS, !UsedModuleNames, !FoundUnqual)
     ).
 
-:- pred process_promise_catch(catch_expr::in,
+    % Performs collect_used_modules_in_promise_goal on a list of goals.
+    %
+:- pred collect_used_modules_in_promise_goals(list(goal)::in,
     set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
 
-process_promise_catch(CatchExpr, !UsedModuleNames, !FoundUnqual) :-
+collect_used_modules_in_promise_goals([], !UsedModuleNames, !FoundUnqual).
+collect_used_modules_in_promise_goals([Goal | Goals],
+        !UsedModuleNames, !FoundUnqual) :-
+    collect_used_modules_in_promise_goal(Goal,
+        !UsedModuleNames, !FoundUnqual),
+    collect_used_modules_in_promise_goals(Goals,
+        !UsedModuleNames, !FoundUnqual).
+
+:- pred collect_used_modules_in_promise_catch(catch_expr::in,
+    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
+
+collect_used_modules_in_promise_catch(CatchExpr,
+        !UsedModuleNames, !FoundUnqual) :-
     CatchExpr = catch_expr(Pattern0, Goal),
     term.coerce(Pattern0, Pattern),
-    term_qualified_symbols(Pattern, !UsedModuleNames, !FoundUnqual),
-    process_promise_goal(Goal, !UsedModuleNames, !FoundUnqual).
-
-    % Performs process_promise_goal on a list of goals.
-    %
-:- pred process_promise_goals(list(goal)::in,
-    set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
-
-process_promise_goals([], !UsedModuleNames, !FoundUnqual).
-process_promise_goals([Goal | Goals], !UsedModuleNames, !FoundUnqual) :-
-    process_promise_goal(Goal, !UsedModuleNames, !FoundUnqual),
-    process_promise_goals(Goals, !UsedModuleNames, !FoundUnqual).
+    collect_used_modules_in_term(Pattern, !UsedModuleNames, !FoundUnqual),
+    collect_used_modules_in_promise_goal(Goal, !UsedModuleNames, !FoundUnqual).
 
     % Add all the module names in qualified sym_names in Term to
     % !UsedModuleNames, and set !FoundUnqual to true if any of the sym_names
     % in Term is unqualified.
     %
-:- pred term_qualified_symbols(term::in,
+:- pred collect_used_modules_in_term(term::in,
     set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
 
-term_qualified_symbols(Term, !UsedModuleNames, !FoundUnqual) :-
+collect_used_modules_in_term(Term, !UsedModuleNames, !FoundUnqual) :-
     ( if try_parse_sym_name_and_args(Term, SymName, ArgTerms) then
         (
             SymName = qualified(ModuleName, _),
@@ -778,20 +898,22 @@ term_qualified_symbols(Term, !UsedModuleNames, !FoundUnqual) :-
             SymName = unqualified(_),
             !:FoundUnqual = yes
         ),
-        terms_qualified_symbols(ArgTerms, !UsedModuleNames, !FoundUnqual)
+        collect_used_modules_in_terms(ArgTerms, !UsedModuleNames, !FoundUnqual)
     else
         true
     ).
 
-:- pred terms_qualified_symbols(list(term)::in,
+:- pred collect_used_modules_in_terms(list(term)::in,
     set(module_name)::in, set(module_name)::out, bool::in, bool::out) is det.
 
-terms_qualified_symbols([], !UsedModuleNames, !FoundUnqual).
-terms_qualified_symbols([Term | Terms], !UsedModuleNames, !FoundUnqual) :-
-    term_qualified_symbols(Term, !UsedModuleNames, !FoundUnqual),
-    terms_qualified_symbols(Terms, !UsedModuleNames, !FoundUnqual).
+collect_used_modules_in_terms([], !UsedModuleNames, !FoundUnqual).
+collect_used_modules_in_terms([Term | Terms],
+        !UsedModuleNames, !FoundUnqual) :-
+    collect_used_modules_in_term(Term, !UsedModuleNames, !FoundUnqual),
+    collect_used_modules_in_terms(Terms, !UsedModuleNames, !FoundUnqual).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Iterate over the items in the given blocks, module qualifying
     % all declarations. Stop when we reach a section that is imported,
@@ -846,7 +968,7 @@ module_qualify_items_loop(InInt, [HeadItem0 | TailItems0], Items,
     module_qualify_items_loop(InInt, TailItems0, TailItems, !Info, !Specs),
     Items = [HeadItem | TailItems]. % lcmc
 
-    % Call predicates to qualify a single item.
+    % Module qualify a single item.
     %
 :- pred module_qualify_item(mq_in_interface::in, item::in, item::out,
     mq_info::in, mq_info::out,
@@ -965,12 +1087,6 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
             MaybeWithInst, MaybeDetism, InstVarSet, Context, SeqNum),
         Item = item_mode_decl(ItemModeDecl)
     ;
-        Item0 = item_pragma(ItemPragma0),
-        ItemPragma0 = item_pragma_info(Pragma0, Origin, Context, SeqNum),
-        qualify_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs),
-        ItemPragma = item_pragma_info(Pragma, Origin, Context, SeqNum),
-        Item = item_pragma(ItemPragma)
-    ;
         Item0 = item_typeclass(ItemTypeClass0),
         ItemTypeClass0 = item_typeclass_info(Name, Vars, Constraints0, FunDeps,
             Interface0, VarSet, Context, SeqNum),
@@ -1030,72 +1146,20 @@ module_qualify_item(InInt, Item0, Item, !Info, !Specs) :-
         Item = item_instance(ItemInstance)
     ;
         Item0 = item_mutable(ItemMutable0),
-        do_module_qualify_mutable(InInt, ItemMutable0, ItemMutable,
-            !Info, !Specs),
+        qualify_mutable(InInt, ItemMutable0, ItemMutable, !Info, !Specs),
         Item = item_mutable(ItemMutable)
+    ;
+        Item0 = item_pragma(ItemPragma0),
+        ItemPragma0 = item_pragma_info(Pragma0, Origin, Context, SeqNum),
+        qualify_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs),
+        ItemPragma = item_pragma_info(Pragma, Origin, Context, SeqNum),
+        Item = item_pragma(ItemPragma)
     ).
 
-%-----------------------------------------------------------------------------%
-
-:- pred do_module_qualify_mutable(mq_in_interface::in,
-    item_mutable_info::in, item_mutable_info::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-do_module_qualify_mutable(InInt, ItemMutable0, ItemMutable, !Info, !Specs) :-
-    ItemMutable0 = item_mutable_info(Name, OrigType0, Type0, OrigInst0, Inst0,
-        InitTerm, Attrs, Varset, Context, SeqNum),
-    ErrorContext = mqec_mutable(Context, Name),
-    qualify_type(InInt, ErrorContext, OrigType0, OrigType, !Info, [], _),
-    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-    qualify_inst(InInt, ErrorContext, OrigInst0, OrigInst, !Info, [], _),
-    qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
-    ItemMutable = item_mutable_info(Name, OrigType, Type, OrigInst, Inst,
-        InitTerm, Attrs, Varset, Context, SeqNum).
-
-:- pred do_module_qualify_event_specs(mq_in_interface::in, string::in,
-    assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-do_module_qualify_event_specs(_InInt, _, [], [], !Info, !Specs).
-do_module_qualify_event_specs(InInt, FileName,
-        [Name - Spec0 | NameSpecs0], [Name - Spec | NameSpecs],
-        !Info, !Specs) :-
-    do_module_qualify_event_spec(InInt, FileName, Spec0, Spec,
-        !Info, !Specs),
-    do_module_qualify_event_specs(InInt, FileName, NameSpecs0, NameSpecs,
-        !Info, !Specs).
-
-:- pred do_module_qualify_event_spec(mq_in_interface::in, string::in,
-    event_spec::in, event_spec::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-do_module_qualify_event_spec(InInt, FileName, EventSpec0, EventSpec,
-        !Info, !Specs) :-
-    EventSpec0 = event_spec(EventNumber, EventName, EventLineNumber,
-        Attrs0, SynthAttrNumOrder),
-    list.map_foldl2(
-        do_module_qualify_event_attr(InInt, EventName, FileName,
-            EventLineNumber),
-        Attrs0, Attrs, !Info, !Specs),
-    EventSpec = event_spec(EventNumber, EventName, EventLineNumber,
-        Attrs, SynthAttrNumOrder).
-
-:- pred do_module_qualify_event_attr(mq_in_interface::in,
-    string::in, string::in, int::in,
-    event_attribute::in, event_attribute::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-do_module_qualify_event_attr(InInt, EventName, FileName, LineNumber,
-        Attr0, Attr, !Info, !Specs) :-
-    Attr0 = event_attribute(AttrNum, AttrName, AttrType0, AttrMode0,
-        MaybeSynthCall),
-    Context = context(FileName, LineNumber),
-    ErrorContext = mqec_event_spec_attr(Context, EventName, AttrName),
-    qualify_type(InInt, ErrorContext, AttrType0, AttrType, !Info, !Specs),
-    qualify_mode(InInt, ErrorContext, AttrMode0, AttrMode, !Info, !Specs),
-    Attr = event_attribute(AttrNum, AttrName, AttrType, AttrMode,
-        MaybeSynthCall).
+%---------------------------------------------------------------------------%
+%
+% Module qualify type definitions and types.
+%
 
     % Qualify the constructors or other types in a type definition.
     %
@@ -1157,7 +1221,7 @@ qualify_type_defn(InInt, Context, TypeCtor, TypeDefn0, TypeDefn,
 qualify_constraint_stores(_InInt, [], [], !Info, !Specs).
 qualify_constraint_stores(InInt,
         [Mutable0 | Mutables0], [Mutable | Mutables], !Info, !Specs) :-
-    do_module_qualify_mutable(InInt, Mutable0, Mutable, !Info, !Specs),
+    qualify_mutable(InInt, Mutable0, Mutable, !Info, !Specs),
     qualify_constraint_stores(InInt, Mutables0, Mutables, !Info, !Specs).
 
 :- pred qualify_constructors(mq_in_interface::in, type_ctor::in,
@@ -1218,274 +1282,6 @@ qualify_constructor_arg(InInt, ContainingTypeCtor, FunctionSymbol, ArgNum,
         FunctionSymbol, ArgNum, MaybeFieldName),
     qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
     Arg = ctor_arg(MaybeFieldName, Type, Width, Context).
-
-    % Qualify the inst parameters of an inst definition.
-    %
-:- pred qualify_inst_defn(mq_in_interface::in, mq_error_context::in,
-    inst_defn::in, inst_defn::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_inst_defn(InInt, ErrorContext, InstDefn0, InstDefn,
-        !Info, !Specs) :-
-    (
-        InstDefn0 = eqv_inst(Inst0),
-        qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
-        InstDefn = eqv_inst(Inst)
-    ;
-        InstDefn0 = abstract_inst,
-        InstDefn = abstract_inst
-    ).
-
-    % Qualify the mode parameter of an equivalence mode definition.
-    %
-:- pred qualify_mode_defn(mq_in_interface::in, mq_error_context::in,
-    mode_defn::in, mode_defn::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_mode_defn(InInt, ErrorContext, eqv_mode(Mode0), eqv_mode(Mode),
-        !Info, !Specs) :-
-    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs).
-
-    % Qualify a list of items of the form Type::Mode, as in a
-    % predicate declaration.
-    %
-:- pred qualify_types_and_modes(mq_in_interface::in, mq_error_context::in,
-    list(type_and_mode)::in, list(type_and_mode)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_types_and_modes(_InInt, _ErrorContext, [], [], !Info, !Specs).
-qualify_types_and_modes(InInt, ErrorContext,
-        [TypeAndMode0 | TypesAndModes0], [TypeAndMode | TypesAndModes],
-        !Info, !Specs) :-
-    qualify_type_and_mode(InInt, ErrorContext,
-        TypeAndMode0, TypeAndMode, !Info, !Specs),
-    qualify_types_and_modes(InInt, ErrorContext,
-        TypesAndModes0, TypesAndModes, !Info, !Specs).
-
-:- pred qualify_type_and_mode(mq_in_interface::in, mq_error_context::in,
-    type_and_mode::in, type_and_mode::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_type_and_mode(InInt, ErrorContext, TypeAndMode0, TypeAndMode,
-        !Info, !Specs) :-
-    (
-        TypeAndMode0 = type_only(Type0),
-        qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-        TypeAndMode = type_only(Type)
-    ;
-        TypeAndMode0 = type_and_mode(Type0, Mode0),
-        qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-        qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
-        TypeAndMode = type_and_mode(Type, Mode)
-    ).
-
-:- pred qualify_mode_list(mq_in_interface::in, mq_error_context::in,
-    list(mer_mode)::in, list(mer_mode)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_mode_list(_InInt, _ErrorContext, [], [], !Info, !Specs).
-qualify_mode_list(InInt, ErrorContext, [Mode0 | Modes0], [Mode | Modes],
-        !Info, !Specs) :-
-    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
-    qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs).
-
-:- pred qualify_mode(mq_in_interface::in, mq_error_context::in,
-    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
-    (
-        Mode0 = (InstA0 -> InstB0),
-        qualify_inst(InInt, ErrorContext, InstA0, InstA, !Info, !Specs),
-        qualify_inst(InInt, ErrorContext, InstB0, InstB, !Info, !Specs),
-        Mode = (InstA -> InstB)
-    ;
-        Mode0 = user_defined_mode(SymName0, Insts0),
-        qualify_inst_list(InInt, ErrorContext, Insts0, Insts,
-            !Info, !Specs),
-        list.length(Insts, Arity),
-        mq_info_get_modes(!.Info, Modes),
-        find_unique_match(InInt, ErrorContext, Modes, mode_id,
-            mq_id(SymName0, Arity), SymName, !Info, !Specs),
-        Mode = user_defined_mode(SymName, Insts)
-    ).
-
-:- pred qualify_inst_list(mq_in_interface::in, mq_error_context::in,
-    list(mer_inst)::in, list(mer_inst)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_inst_list(_InInt, _ErrorContext, [], [], !Info, !Specs).
-qualify_inst_list(InInt, ErrorContext, [Inst0 | Insts0], [Inst | Insts],
-        !Info, !Specs) :-
-    qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
-    qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info, !Specs).
-
-    % Qualify a single inst.
-    %
-:- pred qualify_inst(mq_in_interface::in, mq_error_context::in,
-    mer_inst::in, mer_inst::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs) :-
-    (
-        Inst0 = any(Uniq, HOInstInfo0),
-        qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
-            !Info, !Specs),
-        Inst = any(Uniq, HOInstInfo)
-    ;
-        ( Inst0 = free
-        ; Inst0 = not_reached
-        ; Inst0 = inst_var(_)
-        ),
-        Inst = Inst0
-    ;
-        Inst0 = free(_),
-        unexpected($module, $pred, "compiler generated inst not expected")
-    ;
-        Inst0 = bound(Uniq, InstResults0, BoundInsts0),
-        (
-            ( InstResults0 = inst_test_results_fgtc
-            ; InstResults0 = inst_test_no_results
-            )
-        ;
-            InstResults0 = inst_test_results(_, _, _, _, _, _),
-            unexpected($module, $pred, "compiler generated inst not expected")
-        ),
-        % XXX We could pass a more specific error context.
-        qualify_bound_insts(InInt, ErrorContext, BoundInsts0, BoundInsts,
-            !Info, !Specs),
-        Inst = bound(Uniq, InstResults0, BoundInsts)
-    ;
-        Inst0 = ground(Uniq, HOInstInfo0),
-        % XXX We could pass a more specific error context.
-        qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
-            !Info, !Specs),
-        Inst = ground(Uniq, HOInstInfo)
-    ;
-        Inst0 = constrained_inst_vars(Vars, SubInst0),
-        % XXX We could pass a more specific error context.
-        qualify_inst(InInt, ErrorContext, SubInst0, SubInst, !Info, !Specs),
-        Inst = constrained_inst_vars(Vars, SubInst)
-    ;
-        Inst0 = defined_inst(InstName0),
-        % XXX We could pass a more specific error context.
-        qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
-            !Info, !Specs),
-        Inst = defined_inst(InstName)
-    ;
-        Inst0 = abstract_inst(Name, Args0),
-        % XXX We could pass a more specific error context.
-        qualify_inst_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
-        Inst = abstract_inst(Name, Args)
-    ).
-
-:- pred qualify_ho_inst_info(mq_in_interface::in, mq_error_context::in,
-    ho_inst_info::in, ho_inst_info::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
-        !Info, !Specs) :-
-    (
-        HOInstInfo0 = higher_order(pred_inst_info(PredOrFunc, Modes0,
-            MaybeArgRegs, Detism)),
-        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
-        HOInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes,
-            MaybeArgRegs, Detism))
-    ;
-        HOInstInfo0 = none,
-        HOInstInfo = none
-    ).
-
-    % Find the unique inst_id that matches this inst, and qualify
-    % the argument insts.
-    %
-:- pred qualify_inst_name(mq_in_interface::in, mq_error_context::in,
-    inst_name::in, inst_name::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
-        !Info, !Specs) :-
-    (
-        InstName0 = user_inst(SymName0, Insts0),
-        qualify_inst_list(InInt, ErrorContext, Insts0, Insts,
-            !Info, !Specs),
-        ( if
-            % Check for a variable inst constructor.
-            SymName0 = unqualified("")
-        then
-            report_invalid_user_inst(SymName0, Insts, ErrorContext, !Specs),
-            mq_info_set_error_flag(inst_id, !Info),
-            SymName = SymName0
-        else
-            list.length(Insts0, Arity),
-            mq_info_get_insts(!.Info, InstIdSet),
-            find_unique_match(InInt, ErrorContext, InstIdSet, inst_id,
-                mq_id(SymName0, Arity), SymName, !Info, !Specs)
-        ),
-        InstName = user_inst(SymName, Insts)
-    ;
-        ( InstName0 = unify_inst(_, _, _, _)
-        ; InstName0 = merge_inst(_, _)
-        ; InstName0 = ground_inst(_, _, _, _)
-        ; InstName0 = any_inst(_, _, _, _)
-        ; InstName0 = shared_inst(_)
-        ; InstName0 = mostly_uniq_inst(_)
-        ; InstName0 = typed_ground(_, _)
-        ; InstName0 = typed_inst(_, _)
-        ),
-        unexpected($module, $pred, "unexpected compiler generated inst_name")
-    ).
-
-:- pred qualify_bound_insts(mq_in_interface::in, mq_error_context::in,
-    list(bound_inst)::in, list(bound_inst)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_bound_insts(_InInt, _ErrorContext, [], [], !Info, !Specs).
-qualify_bound_insts(InInt, ErrorContext,
-        [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
-        !Info, !Specs) :-
-    qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
-        !Info, !Specs),
-    qualify_bound_insts(InInt, ErrorContext, BoundInsts0, BoundInsts,
-        !Info, !Specs).
-
-    % Qualify an inst of the form bound(functor(...)).
-    %
-:- pred qualify_bound_inst(mq_in_interface::in, mq_error_context::in,
-    bound_inst::in, bound_inst::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
-        !Info, !Specs) :-
-    BoundInst0 = bound_functor(ConsId, Insts0),
-    (
-        ConsId = cons(Name, Arity, _),
-        Id = item_name(Name, Arity),
-        update_recompilation_info(
-            recompilation.record_used_item(functor_item, Id, Id), !Info)
-    ;
-        ( ConsId = tuple_cons(_)
-        ; ConsId = closure_cons(_, _)
-        ; ConsId = int_const(_)
-        ; ConsId = float_const(_)
-        ; ConsId = char_const(_)
-        ; ConsId = string_const(_)
-        ; ConsId = impl_defined_const(_)
-        ; ConsId = type_ctor_info_const(_, _, _)
-        ; ConsId = base_typeclass_info_const(_, _, _, _)
-        ; ConsId = type_info_cell_constructor(_)
-        ; ConsId = typeclass_info_cell_constructor
-        ; ConsId = type_info_const(_)
-        ; ConsId = typeclass_info_const(_)
-        ; ConsId = ground_term_const(_, _)
-        ; ConsId = tabling_info_const(_)
-        ; ConsId = table_io_entry_desc(_)
-        ; ConsId = deep_profiling_proc_layout(_)
-        )
-    ),
-    qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info, !Specs),
-    BoundInst = bound_functor(ConsId, Insts).
 
 :- pred qualify_type_list(mq_in_interface::in, mq_error_context::in,
     list(mer_type)::in, list(mer_type)::out, mq_info::in, mq_info::out,
@@ -1590,6 +1386,526 @@ qualify_type_ctor(InInt, ErrorContext, TypeCtor0, TypeCtor,
             TypeCtorId0, SymName, !Info, !Specs)
     ),
     TypeCtor = type_ctor(SymName, Arity).
+
+    % is_builtin_atomic_type(TypeCtor):
+    %
+    % Succeeds iff 'TypeCtor' is the type_ctor of a builtin atomic type.
+    %
+:- pred is_builtin_atomic_type(type_ctor::in) is semidet.
+
+is_builtin_atomic_type(type_ctor(unqualified("int"), 0)).
+is_builtin_atomic_type(type_ctor(unqualified("float"), 0)).
+is_builtin_atomic_type(type_ctor(unqualified("string"), 0)).
+is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
+
+%---------------------------------------------------------------------------%
+%
+% Module qualify inst definitions and insts.
+%
+
+    % Qualify the inst parameters of an inst definition.
+    %
+:- pred qualify_inst_defn(mq_in_interface::in, mq_error_context::in,
+    inst_defn::in, inst_defn::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_inst_defn(InInt, ErrorContext, InstDefn0, InstDefn,
+        !Info, !Specs) :-
+    (
+        InstDefn0 = eqv_inst(Inst0),
+        qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
+        InstDefn = eqv_inst(Inst)
+    ;
+        InstDefn0 = abstract_inst,
+        InstDefn = abstract_inst
+    ).
+
+    % Qualify a single inst.
+    %
+:- pred qualify_inst(mq_in_interface::in, mq_error_context::in,
+    mer_inst::in, mer_inst::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs) :-
+    (
+        Inst0 = any(Uniq, HOInstInfo0),
+        qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
+            !Info, !Specs),
+        Inst = any(Uniq, HOInstInfo)
+    ;
+        ( Inst0 = free
+        ; Inst0 = not_reached
+        ; Inst0 = inst_var(_)
+        ),
+        Inst = Inst0
+    ;
+        Inst0 = free(_),
+        unexpected($module, $pred, "compiler generated inst not expected")
+    ;
+        Inst0 = bound(Uniq, InstResults0, BoundInsts0),
+        (
+            ( InstResults0 = inst_test_results_fgtc
+            ; InstResults0 = inst_test_no_results
+            )
+        ;
+            InstResults0 = inst_test_results(_, _, _, _, _, _),
+            unexpected($module, $pred, "compiler generated inst not expected")
+        ),
+        % XXX We could pass a more specific error context.
+        qualify_bound_insts(InInt, ErrorContext, BoundInsts0, BoundInsts,
+            !Info, !Specs),
+        Inst = bound(Uniq, InstResults0, BoundInsts)
+    ;
+        Inst0 = ground(Uniq, HOInstInfo0),
+        % XXX We could pass a more specific error context.
+        qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
+            !Info, !Specs),
+        Inst = ground(Uniq, HOInstInfo)
+    ;
+        Inst0 = constrained_inst_vars(Vars, SubInst0),
+        % XXX We could pass a more specific error context.
+        qualify_inst(InInt, ErrorContext, SubInst0, SubInst, !Info, !Specs),
+        Inst = constrained_inst_vars(Vars, SubInst)
+    ;
+        Inst0 = defined_inst(InstName0),
+        % XXX We could pass a more specific error context.
+        qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
+            !Info, !Specs),
+        Inst = defined_inst(InstName)
+    ;
+        Inst0 = abstract_inst(Name, Args0),
+        % XXX We could pass a more specific error context.
+        qualify_inst_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
+        Inst = abstract_inst(Name, Args)
+    ).
+
+:- pred qualify_inst_list(mq_in_interface::in, mq_error_context::in,
+    list(mer_inst)::in, list(mer_inst)::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_inst_list(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_inst_list(InInt, ErrorContext, [Inst0 | Insts0], [Inst | Insts],
+        !Info, !Specs) :-
+    qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
+    qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info, !Specs).
+
+:- pred qualify_ho_inst_info(mq_in_interface::in, mq_error_context::in,
+    ho_inst_info::in, ho_inst_info::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
+        !Info, !Specs) :-
+    (
+        HOInstInfo0 = higher_order(pred_inst_info(PredOrFunc, Modes0,
+            MaybeArgRegs, Detism)),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        HOInstInfo = higher_order(pred_inst_info(PredOrFunc, Modes,
+            MaybeArgRegs, Detism))
+    ;
+        HOInstInfo0 = none,
+        HOInstInfo = none
+    ).
+
+    % Find the unique inst_id that matches this inst, and qualify
+    % the argument insts.
+    %
+:- pred qualify_inst_name(mq_in_interface::in, mq_error_context::in,
+    inst_name::in, inst_name::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
+        !Info, !Specs) :-
+    (
+        InstName0 = user_inst(SymName0, Insts0),
+        qualify_inst_list(InInt, ErrorContext, Insts0, Insts,
+            !Info, !Specs),
+        ( if
+            % Check for a variable inst constructor.
+            SymName0 = unqualified("")
+        then
+            report_invalid_user_inst(SymName0, Insts, ErrorContext, !Specs),
+            mq_info_set_found_undef_inst(!Info),
+            SymName = SymName0
+        else
+            list.length(Insts0, Arity),
+            mq_info_get_insts(!.Info, InstIdSet),
+            find_unique_match(InInt, ErrorContext, InstIdSet, inst_id,
+                mq_id(SymName0, Arity), SymName, !Info, !Specs)
+        ),
+        InstName = user_inst(SymName, Insts)
+    ;
+        ( InstName0 = unify_inst(_, _, _, _)
+        ; InstName0 = merge_inst(_, _)
+        ; InstName0 = ground_inst(_, _, _, _)
+        ; InstName0 = any_inst(_, _, _, _)
+        ; InstName0 = shared_inst(_)
+        ; InstName0 = mostly_uniq_inst(_)
+        ; InstName0 = typed_ground(_, _)
+        ; InstName0 = typed_inst(_, _)
+        ),
+        unexpected($module, $pred, "unexpected compiler generated inst_name")
+    ).
+
+:- pred qualify_bound_insts(mq_in_interface::in, mq_error_context::in,
+    list(bound_inst)::in, list(bound_inst)::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_bound_insts(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_bound_insts(InInt, ErrorContext,
+        [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
+        !Info, !Specs) :-
+    qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
+        !Info, !Specs),
+    qualify_bound_insts(InInt, ErrorContext, BoundInsts0, BoundInsts,
+        !Info, !Specs).
+
+    % Qualify an inst of the form bound(functor(...)).
+    %
+:- pred qualify_bound_inst(mq_in_interface::in, mq_error_context::in,
+    bound_inst::in, bound_inst::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
+        !Info, !Specs) :-
+    BoundInst0 = bound_functor(ConsId, Insts0),
+    (
+        ConsId = cons(Name, Arity, _),
+        Id = item_name(Name, Arity),
+        update_recompilation_info(
+            recompilation.record_used_item(functor_item, Id, Id), !Info)
+    ;
+        ( ConsId = tuple_cons(_)
+        ; ConsId = closure_cons(_, _)
+        ; ConsId = int_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = impl_defined_const(_)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = type_info_const(_)
+        ; ConsId = typeclass_info_const(_)
+        ; ConsId = ground_term_const(_, _)
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = table_io_entry_desc(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        )
+    ),
+    qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info, !Specs),
+    BoundInst = bound_functor(ConsId, Insts).
+
+%---------------------------------------------------------------------------%
+%
+% Module qualify mode definitions and modes.
+%
+
+    % Qualify the mode parameter of an equivalence mode definition.
+    %
+:- pred qualify_mode_defn(mq_in_interface::in, mq_error_context::in,
+    mode_defn::in, mode_defn::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_mode_defn(InInt, ErrorContext, eqv_mode(Mode0), eqv_mode(Mode),
+        !Info, !Specs) :-
+    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs).
+
+:- pred qualify_mode(mq_in_interface::in, mq_error_context::in,
+    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
+    (
+        Mode0 = (InstA0 -> InstB0),
+        qualify_inst(InInt, ErrorContext, InstA0, InstA, !Info, !Specs),
+        qualify_inst(InInt, ErrorContext, InstB0, InstB, !Info, !Specs),
+        Mode = (InstA -> InstB)
+    ;
+        Mode0 = user_defined_mode(SymName0, Insts0),
+        qualify_inst_list(InInt, ErrorContext, Insts0, Insts,
+            !Info, !Specs),
+        list.length(Insts, Arity),
+        mq_info_get_modes(!.Info, Modes),
+        find_unique_match(InInt, ErrorContext, Modes, mode_id,
+            mq_id(SymName0, Arity), SymName, !Info, !Specs),
+        Mode = user_defined_mode(SymName, Insts)
+    ).
+
+:- pred qualify_mode_list(mq_in_interface::in, mq_error_context::in,
+    list(mer_mode)::in, list(mer_mode)::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_mode_list(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_mode_list(InInt, ErrorContext, [Mode0 | Modes0], [Mode | Modes],
+        !Info, !Specs) :-
+    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
+    qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs).
+
+%---------------------------------------------------------------------------%
+%
+% Module qualify the components of predicate declarations.
+%
+
+    % Qualify a list of items of the form Type::Mode, as in a
+    % predicate declaration.
+    %
+:- pred qualify_types_and_modes(mq_in_interface::in, mq_error_context::in,
+    list(type_and_mode)::in, list(type_and_mode)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_types_and_modes(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_types_and_modes(InInt, ErrorContext,
+        [TypeAndMode0 | TypesAndModes0], [TypeAndMode | TypesAndModes],
+        !Info, !Specs) :-
+    qualify_type_and_mode(InInt, ErrorContext,
+        TypeAndMode0, TypeAndMode, !Info, !Specs),
+    qualify_types_and_modes(InInt, ErrorContext,
+        TypesAndModes0, TypesAndModes, !Info, !Specs).
+
+:- pred qualify_type_and_mode(mq_in_interface::in, mq_error_context::in,
+    type_and_mode::in, type_and_mode::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_type_and_mode(InInt, ErrorContext, TypeAndMode0, TypeAndMode,
+        !Info, !Specs) :-
+    (
+        TypeAndMode0 = type_only(Type0),
+        qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+        TypeAndMode = type_only(Type)
+    ;
+        TypeAndMode0 = type_and_mode(Type0, Mode0),
+        qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+        qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
+        TypeAndMode = type_and_mode(Type, Mode)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Module qualify the components of typeclass declarations and typeclass
+% constraints.
+%
+
+:- pred qualify_prog_constraints(mq_in_interface::in,
+    mq_constraint_error_context::in,
+    prog_constraints::in, prog_constraints::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_prog_constraints(InInt, ConstraintErrorContext,
+        Constraints0, Constraints, !Info, !Specs) :-
+    Constraints0 = constraints(UnivCs0, ExistCs0),
+    % XXX We could pass a more specific error context.
+    qualify_prog_constraint_list(InInt, ConstraintErrorContext,
+        UnivCs0, UnivCs, !Info, !Specs),
+    qualify_prog_constraint_list(InInt, ConstraintErrorContext,
+        ExistCs0, ExistCs, !Info, !Specs),
+    Constraints = constraints(UnivCs, ExistCs).
+
+:- pred qualify_prog_constraint_list(mq_in_interface::in,
+    mq_constraint_error_context::in,
+    list(prog_constraint)::in, list(prog_constraint)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_prog_constraint_list(_InInt, _ConstraintErrorContext,
+        [], [], !Info, !Specs).
+qualify_prog_constraint_list(InInt, ConstraintErrorContext,
+        [Constraint0 | Constraints0], [Constraint | Constraints],
+        !Info, !Specs) :-
+    qualify_prog_constraint(InInt, ConstraintErrorContext,
+        Constraint0, Constraint, !Info, !Specs),
+    qualify_prog_constraint_list(InInt, ConstraintErrorContext,
+        Constraints0, Constraints, !Info, !Specs).
+
+:- pred qualify_prog_constraint(mq_in_interface::in,
+    mq_constraint_error_context::in,
+    prog_constraint::in, prog_constraint::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_prog_constraint(InInt, ContainingErrorContext,
+        Constraint0, Constraint, !Info, !Specs) :-
+    Constraint0 = constraint(ClassName0, Types0),
+    list.length(Types0, Arity),
+    OutsideContext = mqec_typeclass_constraint_name(ContainingErrorContext),
+    qualify_class_name(InInt, OutsideContext,
+        mq_id(ClassName0, Arity), ClassName, !Info, !Specs),
+    ErrorContext = mqec_typeclass_constraint(ClassName0, Arity,
+        ContainingErrorContext),
+    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs),
+    Constraint = constraint(ClassName, Types).
+
+:- pred qualify_class_name(mq_in_interface::in, mq_error_context::in,
+    mq_id::in, sym_name::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_class_name(InInt, ErrorContext, Class0, Name, !Info, !Specs) :-
+    mq_info_get_classes(!.Info, ClassIdSet),
+    find_unique_match(InInt, ErrorContext, ClassIdSet, class_id, Class0, Name,
+        !Info, !Specs).
+
+%---------------------%
+
+:- pred qualify_class_methods(mq_in_interface::in, mq_error_context::in,
+    list(class_method)::in, list(class_method)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_class_methods(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_class_methods(InInt, ErrorContext,
+        [Method0 | Methods0], [Method | Methods], !Info, !Specs) :-
+    % XXX We could pass a more specific error context.
+    qualify_class_method(InInt, ErrorContext, Method0, Method,
+        !Info, !Specs),
+    qualify_class_methods(InInt, ErrorContext, Methods0, Methods,
+        !Info, !Specs).
+
+:- pred qualify_class_method(mq_in_interface::in, mq_error_context::in,
+    class_method::in, class_method::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_class_method(InInt, ErrorContext, Method0, Method, !Info, !Specs) :-
+    % There is no need to qualify the method name, since that is done
+    % when the item is parsed.
+    (
+        Method0 = method_pred_or_func(Name, PredOrFunc, TypesAndModes0,
+            MaybeWithType0, MaybeWithInst0, MaybeDetism,
+            TypeVarset, InstVarset, ExistQVars,
+            Purity, Constraints0, Context),
+        % XXX We could pass a more specific error context.
+        qualify_types_and_modes(InInt, ErrorContext,
+            TypesAndModes0, TypesAndModes, !Info, !Specs),
+        ConstraintErrorContext = mqcec_class_method(Context, PredOrFunc,
+            unqualify_name(Name)),
+        qualify_prog_constraints(InInt, ConstraintErrorContext,
+            Constraints0, Constraints, !Info, !Specs),
+        (
+            MaybeWithType0 = yes(WithType0),
+            % XXX We could pass a more specific error context.
+            qualify_type(InInt, ErrorContext, WithType0, WithType,
+                !Info, !Specs),
+            MaybeWithType = yes(WithType)
+        ;
+            MaybeWithType0 = no,
+            MaybeWithType = no
+        ),
+        (
+            MaybeWithInst0 = yes(WithInst0),
+            % XXX We could pass a more specific error context.
+            qualify_inst(InInt, ErrorContext, WithInst0, WithInst,
+                !Info, !Specs),
+            MaybeWithInst = yes(WithInst)
+        ;
+            MaybeWithInst0 = no,
+            MaybeWithInst = no
+        ),
+        Method = method_pred_or_func(Name, PredOrFunc, TypesAndModes,
+            MaybeWithType, MaybeWithInst, MaybeDetism,
+            TypeVarset, InstVarset, ExistQVars,
+            Purity, Constraints, Context)
+    ;
+        Method0 = method_pred_or_func_mode(PredOrFunc, Name, Modes0,
+            MaybeWithInst0, MaybeDetism, Varset, Context),
+        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        (
+            MaybeWithInst0 = yes(WithInst0),
+            % XXX We could pass a more specific error context.
+            qualify_inst(InInt, ErrorContext, WithInst0, WithInst,
+                !Info, !Specs),
+            MaybeWithInst = yes(WithInst)
+        ;
+            MaybeWithInst0 = no,
+            MaybeWithInst = no
+        ),
+        Method = method_pred_or_func_mode(PredOrFunc, Name, Modes,
+            MaybeWithInst, MaybeDetism, Varset, Context)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Module qualify instance definitions.
+%
+
+:- pred qualify_instance_body(sym_name::in,
+    instance_body::in, instance_body::out) is det.
+
+qualify_instance_body(ClassName, InstanceBody0, InstanceBody) :-
+    (
+        InstanceBody0 = instance_body_abstract,
+        InstanceBody = instance_body_abstract
+    ;
+        InstanceBody0 = instance_body_concrete(Methods0),
+        (
+            ClassName = unqualified(_),
+            InstanceBody = InstanceBody0
+        ;
+            ClassName = qualified(_, _),
+            sym_name_get_module_name_default(ClassName, unqualified(""),
+                DefaultModuleName),
+            list.map(qualify_instance_method(DefaultModuleName),
+                Methods0, Methods),
+            InstanceBody = instance_body_concrete(Methods)
+        )
+    ).
+
+:- pred qualify_instance_method(module_name::in,
+    instance_method::in, instance_method::out) is det.
+
+qualify_instance_method(DefaultModuleName, InstanceMethod0, InstanceMethod) :-
+    % XXX InstanceProcDef may contain a list of clauses.
+    % Why aren't those clauses module qualified?
+    InstanceMethod0 = instance_method(PredOrFunc, MethodSymName0,
+        InstanceProcDef, Arity, DeclContext),
+    (
+        MethodSymName0 = unqualified(Name),
+        MethodSymName = qualified(DefaultModuleName, Name)
+    ;
+        MethodSymName0 = qualified(MethodModuleName, MethodBaseName),
+        ( if
+            partial_sym_name_matches_full(MethodModuleName, DefaultModuleName)
+        then
+            MethodSymName = qualified(DefaultModuleName, MethodBaseName)
+        else
+            % This case is an error. The user must have written something like
+            %   :- instance foo.bar(some_type) where [
+            %       pred(baz.p/1) is q
+            %   ].
+            % where the module qualifier on the pred or func in the instance
+            % (baz) does not match the qualifier for the class name (foo).
+            %
+            % We don't report the error here, we just leave the original
+            % module qualifier intact so that the error can be reported
+            % later on. XXX Where is the code that does this reporting?
+            MethodSymName = MethodSymName0
+        )
+    ),
+    InstanceMethod = instance_method(PredOrFunc, MethodSymName,
+        InstanceProcDef, Arity, DeclContext).
+
+%---------------------------------------------------------------------------%
+%
+% Module qualify the definitions of mutables.
+%
+
+:- pred qualify_mutable(mq_in_interface::in,
+    item_mutable_info::in, item_mutable_info::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_mutable(InInt, ItemMutable0, ItemMutable, !Info, !Specs) :-
+    ItemMutable0 = item_mutable_info(Name, OrigType0, Type0, OrigInst0, Inst0,
+        InitTerm, Attrs, Varset, Context, SeqNum),
+    ErrorContext = mqec_mutable(Context, Name),
+    qualify_type(InInt, ErrorContext, OrigType0, OrigType, !Info, [], _),
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+    qualify_inst(InInt, ErrorContext, OrigInst0, OrigInst, !Info, [], _),
+    qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs),
+    ItemMutable = item_mutable_info(Name, OrigType, Type, OrigInst, Inst,
+        InitTerm, Attrs, Varset, Context, SeqNum).
+
+%---------------------------------------------------------------------------%
+%
+% Module qualify pragmas.
+%
 
 :- pred qualify_pragma(mq_in_interface::in, prog_context::in,
     pragma_type::in, pragma_type::out, mq_info::in, mq_info::out,
@@ -1804,192 +2120,298 @@ qualify_type_spec_subst(InInt, ErrorContext,
     qualify_type_spec_subst(InInt, ErrorContext, Subst0, Subst,
         !Info, !Specs).
 
-:- pred qualify_prog_constraints(mq_in_interface::in,
-    mq_constraint_error_context::in,
-    prog_constraints::in, prog_constraints::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_prog_constraints(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs) :-
-    Constraints0 = constraints(UnivCs0, ExistCs0),
-    % XXX We could pass a more specific error context.
-    qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        UnivCs0, UnivCs, !Info, !Specs),
-    qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        ExistCs0, ExistCs, !Info, !Specs),
-    Constraints = constraints(UnivCs, ExistCs).
-
-:- pred qualify_prog_constraint_list(mq_in_interface::in,
-    mq_constraint_error_context::in,
-    list(prog_constraint)::in, list(prog_constraint)::out,
+:- pred qualify_user_sharing(mq_in_interface::in, mq_error_context::in,
+    user_annotated_sharing::in, user_annotated_sharing::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_prog_constraint_list(_InInt, _ConstraintErrorContext,
-        [], [], !Info, !Specs).
-qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        [Constraint0 | Constraints0], [Constraint | Constraints],
+qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing,
         !Info, !Specs) :-
-    qualify_prog_constraint(InInt, ConstraintErrorContext,
-        Constraint0, Constraint, !Info, !Specs),
-    qualify_prog_constraint_list(InInt, ConstraintErrorContext,
-        Constraints0, Constraints, !Info, !Specs).
-
-:- pred qualify_prog_constraint(mq_in_interface::in,
-    mq_constraint_error_context::in,
-    prog_constraint::in, prog_constraint::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_prog_constraint(InInt, ContainingErrorContext,
-        Constraint0, Constraint, !Info, !Specs) :-
-    Constraint0 = constraint(ClassName0, Types0),
-    list.length(Types0, Arity),
-    OutsideContext = mqec_typeclass_constraint_name(ContainingErrorContext),
-    qualify_class_name(InInt, OutsideContext,
-        mq_id(ClassName0, Arity), ClassName, !Info, !Specs),
-    ErrorContext = mqec_typeclass_constraint(ClassName0, Arity,
-        ContainingErrorContext),
-    qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs),
-    Constraint = constraint(ClassName, Types).
-
-:- pred qualify_class_name(mq_in_interface::in, mq_error_context::in,
-    mq_id::in, sym_name::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_class_name(InInt, ErrorContext, Class0, Name, !Info, !Specs) :-
-    mq_info_get_classes(!.Info, ClassIdSet),
-    find_unique_match(InInt, ErrorContext, ClassIdSet, class_id, Class0, Name,
-        !Info, !Specs).
-
-:- pred qualify_class_methods(mq_in_interface::in, mq_error_context::in,
-    list(class_method)::in, list(class_method)::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_class_methods(_InInt, _ErrorContext, [], [], !Info, !Specs).
-qualify_class_methods(InInt, ErrorContext,
-        [Method0 | Methods0], [Method | Methods], !Info, !Specs) :-
-    % XXX We could pass a more specific error context.
-    qualify_class_method(InInt, ErrorContext, Method0, Method,
-        !Info, !Specs),
-    qualify_class_methods(InInt, ErrorContext, Methods0, Methods,
-        !Info, !Specs).
-
-:- pred qualify_class_method(mq_in_interface::in, mq_error_context::in,
-    class_method::in, class_method::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_class_method(InInt, ErrorContext, Method0, Method, !Info, !Specs) :-
-    % There is no need to qualify the method name, since that is done
-    % when the item is parsed.
     (
-        Method0 = method_pred_or_func(Name, PredOrFunc, TypesAndModes0,
-            MaybeWithType0, MaybeWithInst0, MaybeDetism,
-            TypeVarset, InstVarset, ExistQVars,
-            Purity, Constraints0, Context),
-        % XXX We could pass a more specific error context.
-        qualify_types_and_modes(InInt, ErrorContext,
-            TypesAndModes0, TypesAndModes, !Info, !Specs),
-        ConstraintErrorContext = mqcec_class_method(Context, PredOrFunc,
-            unqualify_name(Name)),
-        qualify_prog_constraints(InInt, ConstraintErrorContext,
-            Constraints0, Constraints, !Info, !Specs),
-        (
-            MaybeWithType0 = yes(WithType0),
-            % XXX We could pass a more specific error context.
-            qualify_type(InInt, ErrorContext, WithType0, WithType,
-                !Info, !Specs),
-            MaybeWithType = yes(WithType)
-        ;
-            MaybeWithType0 = no,
-            MaybeWithType = no
-        ),
-        (
-            MaybeWithInst0 = yes(WithInst0),
-            % XXX We could pass a more specific error context.
-            qualify_inst(InInt, ErrorContext, WithInst0, WithInst,
-                !Info, !Specs),
-            MaybeWithInst = yes(WithInst)
-        ;
-            MaybeWithInst0 = no,
-            MaybeWithInst = no
-        ),
-        Method = method_pred_or_func(Name, PredOrFunc, TypesAndModes,
-            MaybeWithType, MaybeWithInst, MaybeDetism,
-            TypeVarset, InstVarset, ExistQVars,
-            Purity, Constraints, Context)
+        UserSharing0 = no_user_annotated_sharing,
+        UserSharing = UserSharing0
     ;
-        Method0 = method_pred_or_func_mode(PredOrFunc, Name, Modes0,
-            MaybeWithInst0, MaybeDetism, Varset, Context),
-        qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
+        UserSharing0 = user_sharing(Sharing, MaybeTypes0),
         (
-            MaybeWithInst0 = yes(WithInst0),
-            % XXX We could pass a more specific error context.
-            qualify_inst(InInt, ErrorContext, WithInst0, WithInst,
+            MaybeTypes0 = yes(user_type_info(Types0, TVarset)),
+            qualify_type_list(InInt, ErrorContext, Types0, Types,
                 !Info, !Specs),
-            MaybeWithInst = yes(WithInst)
+            MaybeTypes = yes(user_type_info(Types, TVarset)),
+            UserSharing = user_sharing(Sharing, MaybeTypes)
         ;
-            MaybeWithInst0 = no,
-            MaybeWithInst = no
-        ),
-        Method = method_pred_or_func_mode(PredOrFunc, Name, Modes,
-            MaybeWithInst, MaybeDetism, Varset, Context)
-    ).
-
-:- pred qualify_instance_body(sym_name::in,
-    instance_body::in, instance_body::out) is det.
-
-qualify_instance_body(ClassName, InstanceBody0, InstanceBody) :-
-    (
-        InstanceBody0 = instance_body_abstract,
-        InstanceBody = instance_body_abstract
-    ;
-        InstanceBody0 = instance_body_concrete(Methods0),
-        (
-            ClassName = unqualified(_),
-            Methods = Methods0
-        ;
-            ClassName = qualified(_, _),
-            sym_name_get_module_name_default(ClassName, unqualified(""),
-                Module),
-            % XXX InstanceProcDef may contain a list of clauses.
-            % Why aren't those clauses module qualified?
-            Qualify = (pred(InstanceMethod0::in, InstanceMethod::out) is det :-
-                InstanceMethod0 = instance_method(PredOrFunc, Method0,
-                    InstanceProcDef, Arity, DeclContext),
-                add_module_qualifier(Module, Method0, Method),
-                InstanceMethod = instance_method(PredOrFunc, Method,
-                    InstanceProcDef, Arity, DeclContext)
-            ),
-            list.map(Qualify, Methods0, Methods)
-        ),
-        InstanceBody = instance_body_concrete(Methods)
-    ).
-
-:- pred add_module_qualifier(sym_name::in, sym_name::in, sym_name::out) is det.
-
-add_module_qualifier(DefaultModule, SymName0, SymName) :-
-    (
-        SymName0 = unqualified(Name),
-        SymName = qualified(DefaultModule, Name)
-    ;
-        SymName0 = qualified(SymModule, SubSymName),
-        ( if partial_sym_name_matches_full(SymModule, DefaultModule) then
-            SymName = qualified(DefaultModule, SubSymName)
-        else
-            % This case is an error. The user must have written something like
-            %   :- instance foo.bar(some_type) where [
-            %       pred(baz.p/1) is q
-            %   ].
-            % where the module qualifier on the pred or func in the instance
-            % (baz) does not match the qualifier for the class name (foo).
-            %
-            % We don't report the error here, we just leave the original
-            % module qualifier intact so that the error can be reported
-            % later on.
-            SymName = SymName0
+            MaybeTypes0 = no,
+            UserSharing = UserSharing0
         )
     ).
+
+%---------------------------------------------------------------------------%
+%
+% Module qualify event specifications.
+%
+
+:- pred qualify_event_specs(mq_in_interface::in, string::in,
+    assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_event_specs(_InInt, _, [], [], !Info, !Specs).
+qualify_event_specs(InInt, FileName,
+        [Name - Spec0 | NameSpecs0], [Name - Spec | NameSpecs],
+        !Info, !Specs) :-
+    qualify_event_spec(InInt, FileName, Spec0, Spec, !Info, !Specs),
+    qualify_event_specs(InInt, FileName, NameSpecs0, NameSpecs, !Info, !Specs).
+
+:- pred qualify_event_spec(mq_in_interface::in, string::in,
+    event_spec::in, event_spec::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_event_spec(InInt, FileName, EventSpec0, EventSpec,
+        !Info, !Specs) :-
+    EventSpec0 = event_spec(EventNumber, EventName, EventLineNumber,
+        Attrs0, SynthAttrNumOrder),
+    list.map_foldl2(
+        qualify_event_attr(InInt, EventName, FileName, EventLineNumber),
+        Attrs0, Attrs, !Info, !Specs),
+    EventSpec = event_spec(EventNumber, EventName, EventLineNumber,
+        Attrs, SynthAttrNumOrder).
+
+:- pred qualify_event_attr(mq_in_interface::in,
+    string::in, string::in, int::in,
+    event_attribute::in, event_attribute::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_event_attr(InInt, EventName, FileName, LineNumber,
+        Attr0, Attr, !Info, !Specs) :-
+    Attr0 = event_attribute(AttrNum, AttrName, AttrType0, AttrMode0,
+        MaybeSynthCall),
+    Context = context(FileName, LineNumber),
+    ErrorContext = mqec_event_spec_attr(Context, EventName, AttrName),
+    qualify_type(InInt, ErrorContext, AttrType0, AttrType, !Info, !Specs),
+    qualify_mode(InInt, ErrorContext, AttrMode0, AttrMode, !Info, !Specs),
+    Attr = event_attribute(AttrNum, AttrName, AttrType, AttrMode,
+        MaybeSynthCall).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Define a type for representing sets of ids during module qualification,
+% to allow efficient retrieval of all the modules which define an id
+% with a certain name and arity.
+%
+
+:- type id_type
+    --->    type_id
+    ;       mode_id
+    ;       inst_id
+    ;       class_id.
+
+:- type mq_id
+    --->    mq_id(sym_name, int).
+
+:- type id_set == map(string, map(arity, permissions_map)).
+:- type permissions_map == map(module_name, module_permissions).
+
+:- type type_id_set == id_set.
+:- type inst_id_set == id_set.
+:- type mode_id_set == id_set.
+:- type class_id_set == id_set.
+    % Modules don't have an arity, but for simplicity we use the same
+    % data structure for modules as for types etc, assigning arity zero
+    % to all module names.
+:- type module_id_set == id_set.
+
+:- pred id_set_init(id_set::out) is det.
+
+id_set_init(IdSet) :-
+    map.init(IdSet).
+
+    % Insert an mq_id into an id_set, aborting with an error if the
+    % mq_id is not module qualified.
+    %
+:- pred id_set_insert(module_permissions::in, mq_id::in,
+    id_set::in, id_set::out) is det.
+
+id_set_insert(Permissions, MQId, !IdSet) :-
+    MQId = mq_id(SymName, Arity),
+    (
+        SymName = unqualified(_),
+        unexpected($module, $pred, "unqualified id")
+    ;
+        SymName = qualified(ModuleName, BaseName),
+        % Most of the time, BaseName does not occur in !.IdSet.
+        % We therefore try the insertion first, and only if it fails
+        % do we update the existing entry that caused that failure.
+        FreshPermissionsMap = map.singleton(ModuleName, Permissions),
+        FreshSubMap = map.singleton(Arity, FreshPermissionsMap),
+        ( if map.insert(BaseName, FreshSubMap, !IdSet) then
+            true
+        else
+            map.lookup(!.IdSet, BaseName, SubMap0),
+            ( if map.search(SubMap0, Arity, PermissionsMap0) then
+                insert_into_permissions_map(Permissions, ModuleName,
+                    PermissionsMap0, PermissionsMap),
+                map.det_update(Arity, PermissionsMap, SubMap0, SubMap),
+                map.det_update(BaseName, SubMap, !IdSet)
+            else
+                map.det_insert(Arity, FreshPermissionsMap, SubMap0, SubMap),
+                map.det_update(BaseName, SubMap, !IdSet)
+            )
+        )
+    ).
+
+:- pred insert_into_permissions_map(module_permissions::in, module_name::in,
+    permissions_map::in, permissions_map::out) is det.
+
+insert_into_permissions_map(NewPermissions, ModuleName, !PermissionsMap) :-
+    ( if map.search(!.PermissionsMap, ModuleName, OldPermissions) then
+        OldPermissions = module_permissions(OldMayUseInInterface, OldNeedQual),
+        NewPermissions = module_permissions(NewMayUseInInterface, NewNeedQual),
+        % Grant the permissions granted by either OldPermissions or
+        % NewPermissions.
+        (
+            OldMayUseInInterface = may_use_in_interface,
+            MayUseInInterface = OldMayUseInInterface
+        ;
+            OldMayUseInInterface = may_not_use_in_interface,
+            MayUseInInterface = NewMayUseInInterface
+        ),
+        (
+            OldNeedQual = may_be_unqualified,
+            NeedQual = OldNeedQual
+        ;
+            OldNeedQual = must_be_qualified,
+            NeedQual = NewNeedQual
+        ),
+        % Update the entry only if it changed.
+        ( if
+            MayUseInInterface = OldMayUseInInterface,
+            NeedQual = OldNeedQual
+        then
+            true
+        else
+            Permissions = module_permissions(MayUseInInterface, NeedQual),
+            map.det_update(ModuleName, Permissions, !PermissionsMap)
+        )
+    else
+        map.det_insert(ModuleName, NewPermissions, !PermissionsMap)
+    ).
+
+:- pred id_set_search_sym_arity(id_set::in, module_id_set::in,
+    sym_name::in, int::in, assoc_list(module_name, module_permissions)::out)
+    is det.
+
+id_set_search_sym_arity(IdSet, ModuleIdSet, SymName, Arity,
+        MatchingModuleNamesPermissions) :-
+    UnqualName = unqualify_name(SymName),
+    ( if
+        map.search(IdSet, UnqualName, SubMap),
+        map.search(SubMap, Arity, PermissionsMap)
+    then
+        find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
+            MatchingModuleNamesPermissions)
+    else
+        MatchingModuleNamesPermissions = []
+    ).
+
+:- pred id_set_search_sym(id_set::in, module_id_set::in, sym_name::in,
+    set(int)::out) is det.
+
+id_set_search_sym(IdSet, ModuleIdSet, SymName, PossibleArities) :-
+    UnqualName = unqualify_name(SymName),
+    ( if
+        map.search(IdSet, UnqualName, SubMap)
+    then
+        map.to_assoc_list(SubMap, SubMapPairs),
+        find_matching_arities(SymName, ModuleIdSet, SubMapPairs,
+            set.init, PossibleArities)
+    else
+        set.init(PossibleArities)
+    ).
+
+:- pred find_matching_arities(sym_name::in, module_id_set::in,
+    assoc_list(int, permissions_map)::in, set(int)::in, set(int)::out) is det.
+
+find_matching_arities(_SymName, _ModuleIdSet, [], !PossibleArities).
+find_matching_arities(SymName, ModuleIdSet, [Pair | Pairs],
+        !PossibleArities) :-
+    Pair = Arity - PermissionsMap,
+    find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
+        MatchingModuleNamesPermissions),
+    (
+        MatchingModuleNamesPermissions = []
+    ;
+        MatchingModuleNamesPermissions = [_ | _],
+        set.insert(Arity, !PossibleArities)
+    ),
+    find_matching_arities(SymName, ModuleIdSet, Pairs, !PossibleArities).
+
+:- pred find_matches_in_permissions_map(sym_name::in, module_id_set::in,
+    permissions_map::in,
+    assoc_list(module_name, module_permissions)::out) is det.
+
+find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
+        MatchingModuleNamesPermissions) :-
+    (
+        SymName = unqualified(_),
+        map.foldr(add_may_be_unqualified_modules, PermissionsMap,
+            [], MatchingModuleNamesPermissions)
+    ;
+        SymName = qualified(ModuleName, _),
+
+        % Compute the set of modules that this module specifier
+        % could possibly refer to.
+        %
+        % Do a recursive search to find nested modules that match
+        % the specified module name.
+        ModuleArity = 0,
+        id_set_search_sym_arity(ModuleIdSet, ModuleIdSet,
+            ModuleName, ModuleArity, MatchingParentModuleNamesPermissions),
+        ModuleBaseName = unqualify_name(ModuleName),
+        AppendModuleBaseName = (pred(X::in, Y::out) is det :-
+            Y = qualified(X, ModuleBaseName)
+        ),
+        assoc_list.keys(MatchingParentModuleNamesPermissions,
+            MatchingParentModuleNames),
+        list.map(AppendModuleBaseName,
+            MatchingParentModuleNames, MatchingNestedModuleNames),
+
+        % Add the specified module name itself, in case it refers to
+        % a top-level (unnested) module name, since top-level modules
+        % don't get inserted into the module_id_set.
+        set.list_to_set([ModuleName | MatchingNestedModuleNames],
+            MatchingModuleNamesSet),
+
+        map.foldr(add_modules_in_set(MatchingModuleNamesSet), PermissionsMap,
+            [], MatchingModuleNamesPermissions)
+    ).
+
+:- pred add_may_be_unqualified_modules(module_name::in, module_permissions::in,
+    assoc_list(module_name, module_permissions)::in,
+    assoc_list(module_name, module_permissions)::out) is det.
+
+add_may_be_unqualified_modules(ModuleName, Permissions, !NamesPermissions) :-
+    Permissions = module_permissions(_, NeedQual),
+    (
+        NeedQual = may_be_unqualified,
+        !:NamesPermissions = [ModuleName - Permissions | !.NamesPermissions]
+    ;
+        NeedQual = must_be_qualified
+    ).
+
+:- pred add_modules_in_set(set(module_name)::in,
+    module_name::in, module_permissions::in,
+    assoc_list(module_name, module_permissions)::in,
+    assoc_list(module_name, module_permissions)::out) is det.
+
+add_modules_in_set(MatchingModuleNames, ModuleName, Permissions,
+        !NamesPermissions) :-
+    ( if set.member(ModuleName, MatchingModuleNames) then
+        !:NamesPermissions = [ModuleName - Permissions | !.NamesPermissions]
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
 
     % Find the unique match in the current name space for a given mq_id
     % from a list of ids. If none exists, either because no match was found
@@ -2014,15 +2436,15 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         ModuleNamesPermissions = [],
         % No matches for this id.
         MaybeUniqModuleName = no,
-        mq_info_get_report_error_flag(!.Info, ReportErrors),
+        mq_info_get_should_report_errors(!.Info, ReportErrors),
         (
-            ReportErrors = yes,
+            ReportErrors = should_report_errors,
             id_set_search_sym(IdSet, Modules, SymName0, PossibleArities),
             report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
                 [], PossibleArities, !Specs),
-            mq_info_set_error_flag(IdType, !Info)
+            mq_info_record_undef_mq_id(IdType, !Info)
         ;
-            ReportErrors = no
+            ReportErrors = should_not_report_errors
         )
     ;
         ModuleNamesPermissions = [ModuleName - ModulePermissions],
@@ -2033,9 +2455,9 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
             MayUseInInterface = may_not_use_in_interface
         then
             MaybeUniqModuleName = no,
-            mq_info_get_report_error_flag(!.Info, ReportErrors),
+            mq_info_get_should_report_errors(!.Info, ReportErrors),
             (
-                ReportErrors = yes,
+                ReportErrors = should_report_errors,
                 BadBaseName = unqualify_name(SymName0),
                 BadSymName = qualified(ModuleName, BadBaseName),
                 mq_info_get_this_module(!.Info, ThisModuleName),
@@ -2048,9 +2470,9 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
                     report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
                         [ModuleName], PossibleArities, !Specs)
                 ),
-                mq_info_set_error_flag(IdType, !Info)
+                mq_info_record_undef_mq_id(IdType, !Info)
             ;
-                ReportErrors = no
+                ReportErrors = should_not_report_errors
             )
         else
             MaybeUniqModuleName = yes(ModuleName)
@@ -2070,15 +2492,15 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
             UsableModuleNamesPermissions = [],
             % There are several matches, but none is usable from the interface.
             MaybeUniqModuleName = no,
-            mq_info_get_report_error_flag(!.Info, ReportErrors),
+            mq_info_get_should_report_errors(!.Info, ReportErrors),
             (
-                ReportErrors = yes,
+                ReportErrors = should_report_errors,
                 id_set_search_sym(IdSet, Modules, SymName0, PossibleArities),
                 report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
                     NonUsableModuleNames, PossibleArities, !Specs),
-                mq_info_set_error_flag(IdType, !Info)
+                mq_info_record_undef_mq_id(IdType, !Info)
             ;
-                ReportErrors = no
+                ReportErrors = should_not_report_errors
             )
         ;
             UsableModuleNamesPermissions = [ModuleName - _Permissions],
@@ -2086,16 +2508,16 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         ;
             UsableModuleNamesPermissions = [_, _ | _],
             MaybeUniqModuleName = no,
-            mq_info_get_report_error_flag(!.Info, ReportErrors),
+            mq_info_get_should_report_errors(!.Info, ReportErrors),
             (
-                ReportErrors = yes,
+                ReportErrors = should_report_errors,
                 assoc_list.keys(UsableModuleNamesPermissions,
                     UsableModuleNames),
                 report_ambiguous_match(ErrorContext, Id0, IdType,
                     UsableModuleNames, NonUsableModuleNames, !Specs),
-                mq_info_set_error_flag(IdType, !Info)
+                mq_info_record_undef_mq_id(IdType, !Info)
             ;
-                ReportErrors = no
+                ReportErrors = should_not_report_errors
             )
         )
     ),
@@ -2137,20 +2559,6 @@ which_modules_may_be_used_in_interface([Pair | Pairs],
         MayNotUseNames = [ModuleName | MayNotUseNamesTail]
     ).
 
-:- pred update_recompilation_info(
-    pred(recompilation_info, recompilation_info)::in(pred(in, out) is det),
-    mq_info::in, mq_info::out) is det.
-
-update_recompilation_info(Pred, !Info) :-
-    mq_info_get_recompilation_info(!.Info, MaybeRecompInfo0),
-    (
-        MaybeRecompInfo0 = yes(RecompInfo0),
-        Pred(RecompInfo0, RecompInfo),
-        mq_info_set_recompilation_info(yes(RecompInfo), !Info)
-    ;
-        MaybeRecompInfo0 = no
-    ).
-
 :- func convert_simple_item_type(id_type) = item_type.
 
 convert_simple_item_type(type_id) = type_abstract_item.
@@ -2158,40 +2566,10 @@ convert_simple_item_type(mode_id) = mode_item.
 convert_simple_item_type(inst_id) = inst_item.
 convert_simple_item_type(class_id) = typeclass_item.
 
-:- pred qualify_user_sharing(mq_in_interface::in, mq_error_context::in,
-    user_annotated_sharing::in, user_annotated_sharing::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing,
-        !Info, !Specs) :-
-    (
-        UserSharing0 = no_user_annotated_sharing,
-        UserSharing = UserSharing0
-    ;
-        UserSharing0 = user_sharing(Sharing, MaybeTypes0),
-        (
-            MaybeTypes0 = yes(user_type_info(Types0, TVarset)),
-            qualify_type_list(InInt, ErrorContext, Types0, Types,
-                !Info, !Specs),
-            MaybeTypes = yes(user_type_info(Types, TVarset)),
-            UserSharing = user_sharing(Sharing, MaybeTypes)
-        ;
-            MaybeTypes0 = no,
-            UserSharing = UserSharing0
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- type id_type
-    --->    type_id
-    ;       mode_id
-    ;       inst_id
-    ;       class_id.
-
-:- type mq_id
-    --->    mq_id(sym_name, int).
+%---------------------------------------------------------------------------%
+%
+% Facilities for recording the contexts of errors.
+%
 
 :- type mq_constraint_error_context
     --->    mqcec_class_defn(prog_context,
@@ -2306,7 +2684,10 @@ qualify_user_sharing(InInt, ErrorContext, UserSharing0, UserSharing,
 
 id_to_sym_name_and_arity(mq_id(SymName, Arity)) = SymName / Arity.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Error reporting predicates.
+%
 
     % Report an undefined type, inst or mode.
     %
@@ -2448,7 +2829,7 @@ report_may_not_use_in_interface(ErrorContext, IdType,
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred mq_constraint_error_context_to_pieces(mq_constraint_error_context::in,
     prog_context::out, string::out, list(format_component)::out) is det.
@@ -2741,7 +3122,7 @@ report_invalid_user_inst(_SymName, _Insts, ErrorContext, !Specs) :-
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func wrap_module_name(module_name) = format_component.
 
@@ -2756,23 +3137,43 @@ wrap_type_ctor(type_ctor(SymName, Arity)) =
 
 wrap_id(mq_id(SymName, Arity)) = sym_name_and_arity(SymName / Arity).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % is_builtin_atomic_type(TypeCtor):
+    % If the current item is in the interface, remove its module name from
+    % the list of modules not used in the interface, and if the module name
+    % is itself module-qualified, mark its ancestor modules as used as well.
     %
-    % Succeeds iff 'TypeCtor' is the type_ctor of a builtin atomic type.
-    %
-:- pred is_builtin_atomic_type(type_ctor::in) is semidet.
+:- pred mq_info_set_module_used(mq_in_interface::in, module_name::in,
+    mq_info::in, mq_info::out) is det.
 
-is_builtin_atomic_type(type_ctor(unqualified("int"), 0)).
-is_builtin_atomic_type(type_ctor(unqualified("float"), 0)).
-is_builtin_atomic_type(type_ctor(unqualified("string"), 0)).
-is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
+mq_info_set_module_used(InInt, ModuleName, !Info) :-
+    (
+        InInt = mq_used_in_interface,
+        mq_info_get_as_yet_unused_interface_modules(!.Info, AsYetUnused0),
+        ( if map.remove(ModuleName, _, AsYetUnused0, AsYetUnused) then
+            mq_info_set_as_yet_unused_interface_modules(AsYetUnused, !Info)
+        else
+            % ModuleName was not in AsYetUnused0.
+            true
+        ),
+        (
+            ModuleName = qualified(ParentModule, _),
+            mq_info_set_module_used(InInt, ParentModule, !Info)
+        ;
+            ModuleName = unqualified(_)
+        )
+    ;
+        InInt = mq_not_used_in_interface
+    ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Access and initialisation predicates.
 %
+
+:- type maybe_should_report_errors
+    --->    should_not_report_errors
+    ;       should_report_errors.
 
 :- type mq_sub_info
     --->    mq_sub_info(
@@ -2791,14 +3192,14 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
                 % Does this module export any type class instances?
                 mqsi_exported_instances_flag    :: bool,
 
-                % Are there any undefined types or typeclasses.
-                mqsi_type_error_flag            :: bool,
-
-                % Are there any undefined insts or modes.
-                mqsi_mode_error_flag            :: bool,
+                % Are there any undefined types, insts, modes or typeclasses?
+                mqsi_found_undef_type           :: maybe_found_undef_type,
+                mqsi_found_undef_inst           :: maybe_found_undef_inst,
+                mqsi_found_undef_mode           :: maybe_found_undef_mode,
+                mqsi_found_undef_typeclass      :: maybe_found_undef_typeclass,
 
                 % Do we want to report errors.
-                mqsi_report_error_flag          :: bool,
+                mqsi_should_report_errors       :: maybe_should_report_errors,
 
                 % The number of errors found.
                 mqsi_num_errors                 :: int
@@ -2830,7 +3231,7 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
     list(item_block(MS2))::in,
     list(item_block(MS3))::in,
     list(item_block(MS4))::in,
-    bool::in, mq_info::out) is det.
+    maybe_should_report_errors::in, mq_info::out) is det.
 
 init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         ItemBlocksD, ReportErrors, Info) :-
@@ -2848,7 +3249,9 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
     set.init(InstanceModules),
     ExportedInstancesFlag = no,
     SubInfo = mq_sub_info(ModuleName, ImportedModules, InstanceModules,
-        ExportedInstancesFlag, no, no, ReportErrors, 0),
+        ExportedInstancesFlag, did_not_find_undef_type,
+        did_not_find_undef_inst, did_not_find_undef_mode,
+        did_not_find_undef_typeclass, ReportErrors, 0),
 
     id_set_init(ModuleIdSet),
     id_set_init(TypeIdSet),
@@ -2869,25 +3272,26 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         TypeIdSet, InstIdSet, ModeIdSet, ClassIdSet,
         AsYetUnusedInterfaceModules, MaybeRecompInfo).
 
-:- pred mq_info_get_this_module(mq_info::in, module_name::out) is det.
 :- pred mq_info_get_modules(mq_info::in, module_id_set::out) is det.
 :- pred mq_info_get_types(mq_info::in, type_id_set::out) is det.
 :- pred mq_info_get_insts(mq_info::in, inst_id_set::out) is det.
 :- pred mq_info_get_modes(mq_info::in, mode_id_set::out) is det.
 :- pred mq_info_get_classes(mq_info::in, class_id_set::out) is det.
-:- pred mq_info_get_imported_instance_modules(mq_info::in,
-    set(module_name)::out) is det.
-:- pred mq_info_get_imported_modules(mq_info::in, set(module_name)::out)
-    is det.
 :- pred mq_info_get_as_yet_unused_interface_modules(mq_info::in,
     map(module_name, one_or_more(prog_context))::out) is det.
-:- pred mq_info_get_exported_instances_flag(mq_info::in, bool::out) is det.
-% :- pred mq_info_get_type_error_flag(mq_info::in, bool::out) is det.
-% :- pred mq_info_get_mode_error_flag(mq_info::in, bool::out) is det.
-:- pred mq_info_get_report_error_flag(mq_info::in, bool::out) is det.
+% mq_info_get_recompilation_info is exported
 
-mq_info_get_this_module(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_this_module.
+:- pred mq_info_get_this_module(mq_info::in, module_name::out) is det.
+:- pred mq_info_get_imported_modules(mq_info::in, set(module_name)::out)
+    is det.
+:- pred mq_info_get_imported_instance_modules(mq_info::in,
+    set(module_name)::out) is det.
+:- pred mq_info_get_exported_instances_flag(mq_info::in, bool::out) is det.
+% mq_info_get_type_error_flag is exported
+% mq_info_get_mode_error_flag is exported
+:- pred mq_info_get_should_report_errors(mq_info::in,
+    maybe_should_report_errors::out) is det.
+
 mq_info_get_modules(Info, X) :-
     X = Info ^ mqi_modules.
 mq_info_get_types(Info, X) :-
@@ -2898,22 +3302,29 @@ mq_info_get_modes(Info, X) :-
     X = Info ^ mqi_modes.
 mq_info_get_classes(Info, X) :-
     X = Info ^ mqi_classes.
-mq_info_get_imported_instance_modules(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_imported_instance_modules.
-mq_info_get_imported_modules(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_imported_modules.
 mq_info_get_as_yet_unused_interface_modules(Info, X) :-
     X = Info ^ mqi_as_yet_unused_interface_modules.
-mq_info_get_exported_instances_flag(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_exported_instances_flag.
-mq_info_get_type_error_flag(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_type_error_flag.
-mq_info_get_mode_error_flag(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_mode_error_flag.
-mq_info_get_report_error_flag(Info, X) :-
-    X = Info ^ mqi_sub_info ^ mqsi_report_error_flag.
 mq_info_get_recompilation_info(Info, X) :-
     X = Info ^ mqi_maybe_recompilation_info.
+
+mq_info_get_this_module(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_this_module.
+mq_info_get_imported_modules(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_imported_modules.
+mq_info_get_imported_instance_modules(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_imported_instance_modules.
+mq_info_get_exported_instances_flag(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_exported_instances_flag.
+mq_info_get_found_undef_type(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_found_undef_type.
+mq_info_get_found_undef_inst(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_found_undef_inst.
+mq_info_get_found_undef_mode(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_found_undef_mode.
+mq_info_get_found_undef_typeclass(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_found_undef_typeclass.
+mq_info_get_should_report_errors(Info, X) :-
+    X = Info ^ mqi_sub_info ^ mqsi_should_report_errors.
 
 :- pred mq_info_set_modules(module_id_set::in,
     mq_info::in, mq_info::out) is det.
@@ -2925,17 +3336,21 @@ mq_info_get_recompilation_info(Info, X) :-
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_classes(class_id_set::in,
     mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_as_yet_unused_interface_modules(
+    map(module_name, one_or_more(prog_context))::in,
+    mq_info::in, mq_info::out) is det.
+% mq_info_get_recompilation_info is exported
+
 :- pred mq_info_set_imported_instance_modules(set(module_name)::in,
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_imported_modules(set(module_name)::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_as_yet_unused_interface_modules(
-    map(module_name, one_or_more(prog_context))::in,
-    mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_exported_instances_flag(bool::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_type_error_flag(mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_mode_error_flag(mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_found_undef_type(mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_found_undef_inst(mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_found_undef_mode(mq_info::in, mq_info::out) is det.
+:- pred mq_info_set_found_undef_typeclass(mq_info::in, mq_info::out) is det.
 
 mq_info_set_modules(X, !Info) :-
     !Info ^ mqi_modules := X.
@@ -2947,347 +3362,64 @@ mq_info_set_modes(X, !Info) :-
     !Info ^ mqi_modes := X.
 mq_info_set_classes(X, !Info) :-
     !Info ^ mqi_classes := X.
-mq_info_set_imported_instance_modules(X, !Info) :-
-    !Info ^ mqi_sub_info ^ mqsi_imported_instance_modules := X.
-mq_info_set_imported_modules(X, !Info) :-
-    !Info ^ mqi_sub_info ^ mqsi_imported_modules := X.
 mq_info_set_as_yet_unused_interface_modules(X, !Info) :-
     !Info ^ mqi_as_yet_unused_interface_modules := X.
-mq_info_set_exported_instances_flag(X, !Info) :-
-    !Info ^ mqi_sub_info ^ mqsi_exported_instances_flag := X.
-mq_info_set_type_error_flag(!Info) :-
-    X = yes,
-    !Info ^ mqi_sub_info ^ mqsi_type_error_flag := X.
-mq_info_set_mode_error_flag(!Info) :-
-    X = yes,
-    !Info ^ mqi_sub_info ^ mqsi_mode_error_flag := X.
 mq_info_set_recompilation_info(X, !Info) :-
     !Info ^ mqi_maybe_recompilation_info := X.
 
-:- pred mq_info_set_error_flag(id_type::in, mq_info::in, mq_info::out) is det.
+mq_info_set_imported_modules(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_imported_modules := X.
+mq_info_set_imported_instance_modules(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_imported_instance_modules := X.
+mq_info_set_exported_instances_flag(X, !Info) :-
+    !Info ^ mqi_sub_info ^ mqsi_exported_instances_flag := X.
+mq_info_set_found_undef_type(!Info) :-
+    X = found_undef_type,
+    !Info ^ mqi_sub_info ^ mqsi_found_undef_type := X.
+mq_info_set_found_undef_inst(!Info) :-
+    X = found_undef_inst,
+    !Info ^ mqi_sub_info ^ mqsi_found_undef_inst := X.
+mq_info_set_found_undef_mode(!Info) :-
+    X = found_undef_mode,
+    !Info ^ mqi_sub_info ^ mqsi_found_undef_mode := X.
+mq_info_set_found_undef_typeclass(!Info) :-
+    X = found_undef_typeclass,
+    !Info ^ mqi_sub_info ^ mqsi_found_undef_typeclass := X.
 
-mq_info_set_error_flag(IdType, !Info) :-
-    mq_info_set_error_flag_2(IdType, !Info).
-
-:- pred mq_info_set_error_flag_2(id_type::in, mq_info::in, mq_info::out)
-    is det.
-
-mq_info_set_error_flag_2(type_id, !Info) :-
-    mq_info_set_type_error_flag(!Info).
-mq_info_set_error_flag_2(mode_id, !Info) :-
-    mq_info_set_mode_error_flag(!Info).
-mq_info_set_error_flag_2(inst_id, !Info) :-
-    mq_info_set_mode_error_flag(!Info).
-mq_info_set_error_flag_2(class_id, !Info) :-
-    mq_info_set_type_error_flag(!Info).
-
-    % If the current item is in the interface, remove its module name from
-    % the list of modules not used in the interface, and if the module name
-    % is itself module-qualified, mark its ancestor modules as used as well.
-    %
-:- pred mq_info_set_module_used(mq_in_interface::in, module_name::in,
+:- pred mq_info_record_undef_mq_id(id_type::in,
     mq_info::in, mq_info::out) is det.
 
-mq_info_set_module_used(InInt, ModuleName, !Info) :-
+mq_info_record_undef_mq_id(IdType, !Info) :-
     (
-        InInt = mq_used_in_interface,
-        mq_info_get_as_yet_unused_interface_modules(!.Info, AsYetUnused0),
-        ( if map.remove(ModuleName, _, AsYetUnused0, AsYetUnused) then
-            mq_info_set_as_yet_unused_interface_modules(AsYetUnused, !Info)
-        else
-            % ModuleName was not in AsYetUnused0.
-            true
-        ),
-        (
-            ModuleName = qualified(ParentModule, _),
-            mq_info_set_module_used(InInt, ParentModule, !Info)
-        ;
-            ModuleName = unqualified(_)
-        )
+        IdType = type_id,
+        mq_info_set_found_undef_type(!Info)
     ;
-        InInt = mq_not_used_in_interface
+        IdType = inst_id,
+        mq_info_set_found_undef_inst(!Info)
+    ;
+        IdType = mode_id,
+        mq_info_set_found_undef_mode(!Info)
+    ;
+        IdType = class_id,
+        mq_info_set_found_undef_typeclass(!Info)
     ).
 
-%----------------------------------------------------------------------------%
-%
-% Define a type for representing sets of ids during module qualification,
-% to allow efficient retrieval of all the modules which define an id
-% with a certain name and arity.
-%
+%---------------------%
 
-:- type id_set == map(string, map(arity, permissions_map)).
-:- type permissions_map == map(module_name, module_permissions).
+:- pred update_recompilation_info(
+    pred(recompilation_info, recompilation_info)::in(pred(in, out) is det),
+    mq_info::in, mq_info::out) is det.
 
-:- type type_id_set == id_set.
-:- type inst_id_set == id_set.
-:- type mode_id_set == id_set.
-:- type class_id_set == id_set.
-    % Modules don't have an arity, but for simplicity we use the same
-    % data structure for modules as for types etc, assigning arity zero
-    % to all module names.
-:- type module_id_set == id_set.
-
-:- pred id_set_init(id_set::out) is det.
-
-id_set_init(IdSet) :-
-    map.init(IdSet).
-
-    % Insert an mq_id into an id_set, aborting with an error if the
-    % mq_id is not module qualified.
-    %
-:- pred id_set_insert(module_permissions::in, mq_id::in,
-    id_set::in, id_set::out) is det.
-
-id_set_insert(Permissions, MQId, !IdSet) :-
-    MQId = mq_id(SymName, Arity),
+update_recompilation_info(Pred, !Info) :-
+    mq_info_get_recompilation_info(!.Info, MaybeRecompInfo0),
     (
-        SymName = unqualified(_),
-        unexpected($module, $pred, "unqualified id")
+        MaybeRecompInfo0 = yes(RecompInfo0),
+        Pred(RecompInfo0, RecompInfo),
+        mq_info_set_recompilation_info(yes(RecompInfo), !Info)
     ;
-        SymName = qualified(ModuleName, BaseName),
-        % Most of the time, BaseName does not occur in !.IdSet.
-        % We therefore try the insertion first, and only if it fails
-        % do we update the existing entry that caused that failure.
-        FreshPermissionsMap = map.singleton(ModuleName, Permissions),
-        FreshSubMap = map.singleton(Arity, FreshPermissionsMap),
-        ( if map.insert(BaseName, FreshSubMap, !IdSet) then
-            true
-        else
-            map.lookup(!.IdSet, BaseName, SubMap0),
-            ( if map.search(SubMap0, Arity, PermissionsMap0) then
-                insert_into_permissions_map(Permissions, ModuleName,
-                    PermissionsMap0, PermissionsMap),
-                map.det_update(Arity, PermissionsMap, SubMap0, SubMap),
-                map.det_update(BaseName, SubMap, !IdSet)
-            else
-                map.det_insert(Arity, FreshPermissionsMap, SubMap0, SubMap),
-                map.det_update(BaseName, SubMap, !IdSet)
-            )
-        )
+        MaybeRecompInfo0 = no
     ).
 
-:- pred insert_into_permissions_map(module_permissions::in, module_name::in,
-    permissions_map::in, permissions_map::out) is det.
-
-insert_into_permissions_map(NewPermissions, ModuleName, !PermissionsMap) :-
-    ( if map.search(!.PermissionsMap, ModuleName, OldPermissions) then
-        OldPermissions = module_permissions(OldMayUseInInterface, OldNeedQual),
-        NewPermissions = module_permissions(NewMayUseInInterface, NewNeedQual),
-        % Grant the permissions granted by either OldPermissions or
-        % NewPermissions.
-        (
-            OldMayUseInInterface = may_use_in_interface,
-            MayUseInInterface = OldMayUseInInterface
-        ;
-            OldMayUseInInterface = may_not_use_in_interface,
-            MayUseInInterface = NewMayUseInInterface
-        ),
-        (
-            OldNeedQual = may_be_unqualified,
-            NeedQual = OldNeedQual
-        ;
-            OldNeedQual = must_be_qualified,
-            NeedQual = NewNeedQual
-        ),
-        % Update the entry only if it changed.
-        ( if
-            MayUseInInterface = OldMayUseInInterface,
-            NeedQual = OldNeedQual
-        then
-            true
-        else
-            Permissions = module_permissions(MayUseInInterface, NeedQual),
-            map.det_update(ModuleName, Permissions, !PermissionsMap)
-        )
-    else
-        map.det_insert(ModuleName, NewPermissions, !PermissionsMap)
-    ).
-
-:- pred id_set_search_sym_arity(id_set::in, module_id_set::in,
-    sym_name::in, int::in, assoc_list(module_name, module_permissions)::out)
-    is det.
-
-id_set_search_sym_arity(IdSet, ModuleIdSet, SymName, Arity,
-        MatchingModuleNamesPermissions) :-
-    UnqualName = unqualify_name(SymName),
-    ( if
-        map.search(IdSet, UnqualName, SubMap),
-        map.search(SubMap, Arity, PermissionsMap)
-    then
-        find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
-            MatchingModuleNamesPermissions)
-    else
-        MatchingModuleNamesPermissions = []
-    ).
-
-:- pred id_set_search_sym(id_set::in, module_id_set::in, sym_name::in,
-    set(int)::out) is det.
-
-id_set_search_sym(IdSet, ModuleIdSet, SymName, PossibleArities) :-
-    UnqualName = unqualify_name(SymName),
-    ( if
-        map.search(IdSet, UnqualName, SubMap)
-    then
-        map.to_assoc_list(SubMap, SubMapPairs),
-        find_matching_arities(SymName, ModuleIdSet, SubMapPairs,
-            set.init, PossibleArities)
-    else
-        set.init(PossibleArities)
-    ).
-
-:- pred find_matching_arities(sym_name::in, module_id_set::in,
-    assoc_list(int, permissions_map)::in, set(int)::in, set(int)::out) is det.
-
-find_matching_arities(_SymName, _ModuleIdSet, [], !PossibleArities).
-find_matching_arities(SymName, ModuleIdSet, [Pair | Pairs],
-        !PossibleArities) :-
-    Pair = Arity - PermissionsMap,
-    find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
-        MatchingModuleNamesPermissions),
-    (
-        MatchingModuleNamesPermissions = []
-    ;
-        MatchingModuleNamesPermissions = [_ | _],
-        set.insert(Arity, !PossibleArities)
-    ),
-    find_matching_arities(SymName, ModuleIdSet, Pairs, !PossibleArities).
-
-:- pred find_matches_in_permissions_map(sym_name::in, module_id_set::in,
-    permissions_map::in,
-    assoc_list(module_name, module_permissions)::out) is det.
-
-find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
-        MatchingModuleNamesPermissions) :-
-    (
-        SymName = unqualified(_),
-        map.foldr(add_may_be_unqualified_modules, PermissionsMap,
-            [], MatchingModuleNamesPermissions)
-    ;
-        SymName = qualified(ModuleName, _),
-
-        % Compute the set of modules that this module specifier
-        % could possibly refer to.
-        %
-        % Do a recursive search to find nested modules that match
-        % the specified module name.
-        ModuleArity = 0,
-        id_set_search_sym_arity(ModuleIdSet, ModuleIdSet,
-            ModuleName, ModuleArity, MatchingParentModuleNamesPermissions),
-        ModuleBaseName = unqualify_name(ModuleName),
-        AppendModuleBaseName = (pred(X::in, Y::out) is det :-
-            Y = qualified(X, ModuleBaseName)
-        ),
-        assoc_list.keys(MatchingParentModuleNamesPermissions,
-            MatchingParentModuleNames),
-        list.map(AppendModuleBaseName,
-            MatchingParentModuleNames, MatchingNestedModuleNames),
-
-        % Add the specified module name itself, in case it refers to
-        % a top-level (unnested) module name, since top-level modules
-        % don't get inserted into the module_id_set.
-        set.list_to_set([ModuleName | MatchingNestedModuleNames],
-            MatchingModuleNamesSet),
-
-        map.foldr(add_modules_in_set(MatchingModuleNamesSet), PermissionsMap,
-            [], MatchingModuleNamesPermissions)
-    ).
-
-:- pred add_may_be_unqualified_modules(module_name::in, module_permissions::in,
-    assoc_list(module_name, module_permissions)::in,
-    assoc_list(module_name, module_permissions)::out) is det.
-
-add_may_be_unqualified_modules(ModuleName, Permissions, !NamesPermissions) :-
-    Permissions = module_permissions(_, NeedQual),
-    (
-        NeedQual = may_be_unqualified,
-        !:NamesPermissions = [ModuleName - Permissions | !.NamesPermissions]
-    ;
-        NeedQual = must_be_qualified
-    ).
-
-:- pred add_modules_in_set(set(module_name)::in,
-    module_name::in, module_permissions::in,
-    assoc_list(module_name, module_permissions)::in,
-    assoc_list(module_name, module_permissions)::out) is det.
-
-add_modules_in_set(MatchingModuleNames, ModuleName, Permissions,
-        !NamesPermissions) :-
-    ( if set.member(ModuleName, MatchingModuleNames) then
-        !:NamesPermissions = [ModuleName - Permissions | !.NamesPermissions]
-    else
-        true
-    ).
-
-%-----------------------------------------------------------------------------%
-
-get_partial_qualifiers(ModuleName, PartialQualInfo, PartialQualifiers) :-
-    PartialQualInfo = partial_qualifier_info(ModuleIdSet),
-    (
-        ModuleName = unqualified(_),
-        PartialQualifiers = []
-    ;
-        ModuleName = qualified(Parent, Child),
-        get_partial_qualifiers_acc(Parent, unqualified(Child),
-            ModuleIdSet, [], PartialQualifiers)
-    ).
-
-:- pred get_partial_qualifiers_acc(module_name::in, module_name::in,
-    module_id_set::in, list(module_name)::in, list(module_name)::out) is det.
-
-get_partial_qualifiers_acc(ImplicitPart, ExplicitPart, ModuleIdSet,
-        !Qualifiers) :-
-    % If the ImplicitPart module was imported, rather than just being used,
-    % then insert the ExplicitPart module into the list of valid partial
-    % qualifiers.
-    ( if
-        parent_module_is_imported(ImplicitPart, ExplicitPart, ModuleIdSet)
-    then
-        !:Qualifiers = [ExplicitPart | !.Qualifiers]
-    else
-        true
-    ),
-    % Recursively try to add the other possible partial qualifiers.
-    (
-        ImplicitPart = qualified(Parent, Child),
-        NextImplicitPart = Parent,
-        NextExplicitPart = add_outermost_qualifier(Child, ExplicitPart),
-        get_partial_qualifiers_acc(NextImplicitPart, NextExplicitPart,
-            ModuleIdSet, !Qualifiers)
-    ;
-        ImplicitPart = unqualified(_)
-    ).
-
-    % Check whether the parent module was imported, given the name of a
-    % child (or grandchild, etc.) module occurring in that parent module.
-    %
-:- pred parent_module_is_imported(module_name::in, module_name::in,
-    module_id_set::in) is semidet.
-
-parent_module_is_imported(ParentModule, ChildModule, ModuleIdSet) :-
-    % Find the module name at the start of the ChildModule;
-    % this submodule will be a direct sub-module of ParentModule.
-    DirectSubModuleName = get_first_module_name(ChildModule),
-
-    % Check that the ParentModule was imported.
-    % We do this by looking up the definitions for the direct sub-module
-    % and checking that the one in ParentModule came from an
-    % imported module.
-    Arity = 0,
-    map.search(ModuleIdSet, DirectSubModuleName, SubMap),
-    map.search(SubMap, Arity, PermissionsMap),
-    map.search(PermissionsMap, ParentModule, ParentModulePermissions),
-    ParentModulePermissions = module_permissions(_, may_be_unqualified).
-
-    % Given a module name, possibly module-qualified, return the name
-    % of the first module in the qualifier list. For example, given
-    % `foo.bar.baz', this returns `foo', and given just `baz',
-    % it returns `baz'.
-    %
-:- func get_first_module_name(module_name) = string.
-
-get_first_module_name(unqualified(ModuleName)) = ModuleName.
-get_first_module_name(qualified(Parent, _)) = get_first_module_name(Parent).
-
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.module_qual.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

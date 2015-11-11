@@ -1667,7 +1667,8 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, ModuleAndImports0, HLDS1,
     maybe_flush_output(Verbose, !IO),
     module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit2,
         EventSpecMap1, EventSpecMap2, EventSetFileName, MQInfo0,
-        MQUndefTypes, MQUndefModes, [], QualifySpecs),
+        MQUndefTypes, MQUndefInsts, MQUndefModes, MQUndefTypeClasses,
+        [], QualifySpecs),
     !:Specs = QualifySpecs ++ !.Specs,
     maybe_write_out_errors_no_module(Verbose, Globals, !Specs, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
@@ -1696,7 +1697,8 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, ModuleAndImports0, HLDS1,
     maybe_write_definitions(Verbose, Stats, HLDS0, !IO),
 
     ( if
-        MQUndefTypes = no,
+        MQUndefTypes = did_not_find_undef_type,
+        MQUndefTypeClasses = did_not_find_undef_typeclass,
         EventSetErrors = no,
         ExpandErrors = no,
         MakeHLDSFoundInvalidType = did_not_find_invalid_type
@@ -1706,7 +1708,8 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, ModuleAndImports0, HLDS1,
         UndefTypes = yes
     ),
     ( if
-        MQUndefModes = no,
+        MQUndefInsts = did_not_find_undef_inst,
+        MQUndefModes = did_not_find_undef_mode,
         MakeHLDSFoundInvalidInstOrMode = did_not_find_invalid_inst_or_mode
     then
         UndefModes = no

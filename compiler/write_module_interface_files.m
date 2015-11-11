@@ -153,7 +153,7 @@ write_private_interface_file(Globals, SourceFileName, SourceFileModuleName,
     else
         % Module-qualify all items.
         module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit,
-            map.init, _EventSpecMap, "", _, _, _, Specs0, Specs),
+            map.init, _EventSpecMap, "", _, _, _, _, _, Specs0, Specs),
         (
             Specs = [_ | _],
             module_name_to_file_name(Globals, ModuleName, ".m",
@@ -432,7 +432,7 @@ write_interface_file(Globals, SourceFileName, SourceFileModuleName,
         else
             % Module-qualify all items.
             module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
-                map.init, _, "", _, _, _, !Specs),
+                map.init, _, "", _, _, _, _, _, !Specs),
 
             % We want to finish writing the interface file (and keep
             % the exit status at zero) if we found some warnings.

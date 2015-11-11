@@ -344,7 +344,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Add Mercury-defined clauses to the auxiliary predicates
-    % that implement solver types and mutables, and promises.
+    % that implement solver types, mutables, and promises.
     list.foldl3(add_solver_type_aux_pred_defns_if_local,
         SolverAuxPredInfos,
         !ModuleInfo, !QualInfo, !Specs),
@@ -387,19 +387,27 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     map.foldl(add_version_numbers, ModuleVersionNumbers, !QualInfo),
 
     qual_info_get_mq_info(!.QualInfo, MQInfo),
-    mq_info_get_type_error_flag(MQInfo, MQInvalidType),
-    mq_info_get_mode_error_flag(MQInfo, MQInvalidInstOrMode),
-    (
-        MQInvalidType = no
-    ;
-        MQInvalidType = yes,
+    mq_info_get_found_undef_type(MQInfo, MQUndefType),
+    mq_info_get_found_undef_inst(MQInfo, MQUndefInst),
+    mq_info_get_found_undef_mode(MQInfo, MQUndefMode),
+    mq_info_get_found_undef_typeclass(MQInfo, MQUndefTypeClass),
+    ( if
+        ( MQUndefType = found_undef_type
+        ; MQUndefTypeClass = found_undef_typeclass
+        )
+    then
         !:FoundInvalidType = found_invalid_type
+    else
+        true
     ),
-    (
-        MQInvalidInstOrMode = no
-    ;
-        MQInvalidInstOrMode = yes,
+    ( if
+        ( MQUndefInst = found_undef_inst
+        ; MQUndefMode = found_undef_mode
+        )
+    then
         !:FoundInvalidInstOrMode = found_invalid_inst_or_mode
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
