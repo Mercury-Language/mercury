@@ -437,27 +437,104 @@ collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks],
         !Info) :-
     ItemBlock = item_block(Section, _Context, Incls, Avails, Items),
     SectionInfo(Section, MQSection, Permissions),
-    list.foldl(collect_mq_info_in_item_include(Permissions), Incls, !Info),
-    list.foldl(collect_mq_info_in_item_avail(MQSection, Permissions), Avails,
-        !Info),
+
+    % The usual case is Incls = []; optimize for it.
+    (
+        Incls = []
+    ;
+        Incls = [_ | _],
+        mq_info_get_modules(!.Info, Modules0),
+        list.foldl(collect_mq_info_in_item_include(Permissions), Incls,
+            Modules0, Modules),
+        mq_info_set_modules(Modules, !Info)
+    ),
+
+    % The usual case is Avails = [_ | _]. Testing for that would be
+    % unnecessary overhead in most cases.
+    mq_info_get_imported_modules(!.Info, ImportedModules0),
+    mq_info_get_as_yet_unused_interface_modules(!.Info, UnusedIntModules0),
+    list.foldl2(collect_mq_info_in_item_avail(MQSection, Permissions), Avails,
+        ImportedModules0, ImportedModules,
+        UnusedIntModules0, UnusedIntModules),
+    mq_info_set_imported_modules(ImportedModules, !Info),
+    mq_info_set_as_yet_unused_interface_modules(UnusedIntModules, !Info),
+
     collect_mq_info_in_items(MQSection, Permissions, Items, !Info),
     collect_mq_info_in_item_blocks(SectionInfo, ItemBlocks, !Info).
 
+    % For submodule definitions (whether nested or separate,
+    % i.e. either `:- module foo.' or `:- include_module foo.'),
+    % add the module id to the module_id_set.
+    %
+    % We don't actually handle nested submodules here. Nested submodules
+    % were separated out and replaced with the internal representation of
+    % the `:- include_module' declaration that would correspond to it
+    % by the code that created the module's raw_compilation_unit, which
+    % was later transformed into the aug_compilation_unit whose items
+    % we process here.
+    %
 :- pred collect_mq_info_in_item_include(module_permissions::in,
-    item_include::in, mq_info::in, mq_info::out) is det.
+    item_include::in, module_id_set::in, module_id_set::out) is det.
 
-collect_mq_info_in_item_include(Permissions, Incl, !Info) :-
+collect_mq_info_in_item_include(Permissions, Incl, !Modules) :-
     Incl = item_include(IncludedModuleName, _Context, _SeqNum),
-    add_included_module(Permissions, IncludedModuleName, !Info).
+    Arity = 0,
+    id_set_insert(Permissions, mq_id(IncludedModuleName, Arity), !Modules).
 
+    % For import declarations (`:- import_module' or `:- use_module'),
+    % if we are currently in the interface section, then add the
+    % imported modules to the as_yet_unused_interface_modules list.
+    %
+    % XXX ITEM_LIST Why do we base this decision on the status we get
+    % from the mq_info, instead of directly on the current section's
+    % section kind?
+    %
 :- pred collect_mq_info_in_item_avail(mq_section::in, module_permissions::in,
-    item_avail::in, mq_info::in, mq_info::out) is det.
+    item_avail::in, set(module_name)::in, set(module_name)::out,
+    map(module_name, one_or_more(prog_context))::in,
+    map(module_name, one_or_more(prog_context))::out) is det.
 
-collect_mq_info_in_item_avail(MQSection, _Permissions, Avail, !Info) :-
+collect_mq_info_in_item_avail(MQSection, _Permissions, Avail,
+        !ImportedModules, !UnusedIntModules) :-
+    % Modules imported from the the proper private interface of ancestors of
+    % the current module are treated as if they were directly imported
+    % by the current module.
+    %
+    % We check that all modules imported in the interface are used
+    % in the interface.
     ( Avail = avail_import(avail_import_info(ModuleName, Context, _SeqNum))
     ; Avail = avail_use(avail_use_info(ModuleName, Context, _SeqNum))
     ),
-    maybe_add_import(MQSection, ModuleName, Context, !Info).
+    (
+        ( MQSection = mq_section_local
+        ; MQSection = mq_section_imported(
+            import_locn_ancestor_private_interface_proper)
+        ),
+        set.insert(ModuleName, !ImportedModules)
+    ;
+        MQSection = mq_section_exported,
+        set.insert(ModuleName, !ImportedModules),
+        % Most of the time, ModuleName does not occur in !.UnusedIntModules.
+        % We therefore try the insertion first, and only if the insertion
+        % fails do we look up and update the existing entry (OldContexts)
+        % that caused that failure.
+        OnlyNewContexts = one_or_more(Context, []),
+        ( if map.insert(ModuleName, OnlyNewContexts, !UnusedIntModules) then
+            true
+        else
+            map.lookup(!.UnusedIntModules, ModuleName, OldContexts),
+            OldContexts = one_or_more(OldHeadContext, OldTailContexts),
+            NewContexts = one_or_more(Context,
+                [OldHeadContext | OldTailContexts]),
+            map.det_update(ModuleName, NewContexts, !UnusedIntModules)
+        )
+    ;
+        ( MQSection = mq_section_imported(import_locn_interface)
+        ; MQSection = mq_section_imported(import_locn_implementation)
+        ; MQSection = mq_section_imported(import_locn_import_by_ancestor)
+        ; MQSection = mq_section_abstract_imported
+        )
+    ).
 
     % Pass over the item list collecting all defined module, type, mode and
     % inst ids, all module synonym definitions, and the names of all
@@ -574,93 +651,6 @@ mq_section_to_in_interface(mq_section_local) = mq_not_used_in_interface.
 mq_section_to_in_interface(mq_section_imported(_)) = mq_not_used_in_interface.
 mq_section_to_in_interface(mq_section_abstract_imported) =
     mq_not_used_in_interface.
-
-    % For submodule definitions (whether nested or separate,
-    % i.e. either `:- module foo.' or `:- include_module foo.'),
-    % add the module id to the module_id_set.
-    %
-    % We don't actually handle nested submodules here. Nested submodules
-    % were separated out and replaced with the internal representation of
-    % the `:- include_module' declaration that would correspond to it
-    % by the code that created the module's raw_compilation_unit, which
-    % was later transformed into the aug_compilation_unit whose items
-    % we process here.
-    %
-:- pred add_included_module(module_permissions::in, module_name::in,
-    mq_info::in, mq_info::out) is det.
-
-add_included_module(Permissions, ModuleName, !Info) :-
-    mq_info_get_modules(!.Info, Modules0),
-    Arity = 0,
-    id_set_insert(Permissions, mq_id(ModuleName, Arity), Modules0, Modules),
-    mq_info_set_modules(Modules, !Info).
-
-    % For import declarations (`:- import_module' or `:- use_module'),
-    % if we are currently in the interface section, then add the
-    % imported modules to the as_yet_unused_interface_modules list.
-    %
-    % XXX ITEM_LIST Why do we base this decision on the status we get
-    % from the mq_info, instead of directly on the current section's
-    % section kind?
-    %
-:- pred maybe_add_import(mq_section::in, module_name::in, prog_context::in,
-    mq_info::in, mq_info::out) is det.
-
-maybe_add_import(MQSection, ModuleName, Context, !Info) :-
-    % Modules imported from the the proper private interface of ancestors of
-    % the current module are treated as if they were directly imported
-    % by the current module.
-    % (Handled by add_module_to_imported_modules.)
-
-    % We check that all modules imported in the interface are used
-    % in the interface.
-    % (Handled by add_module_to_as_yet_unused_interface_modules.)
-
-    (
-        ( MQSection = mq_section_local
-        ; MQSection = mq_section_imported(
-            import_locn_ancestor_private_interface_proper)
-        ),
-        add_module_to_imported_modules(ModuleName, !Info)
-    ;
-        MQSection = mq_section_exported,
-        add_module_to_imported_modules(ModuleName, !Info),
-        add_module_to_as_yet_unused_interface_modules(ModuleName, Context,
-            !Info)
-    ;
-        ( MQSection = mq_section_imported(import_locn_interface)
-        ; MQSection = mq_section_imported(import_locn_implementation)
-        ; MQSection = mq_section_imported(import_locn_import_by_ancestor)
-        ; MQSection = mq_section_abstract_imported
-        )
-    ).
-
-:- pred add_module_to_imported_modules(module_name::in,
-    mq_info::in, mq_info::out) is det.
-:- pragma inline(add_module_to_imported_modules/3).
-
-add_module_to_imported_modules(ModuleName, !Info) :-
-    mq_info_get_imported_modules(!.Info, Modules0),
-    set.insert(ModuleName, Modules0, Modules),
-    mq_info_set_imported_modules(Modules, !Info).
-
-:- pred add_module_to_as_yet_unused_interface_modules(module_name::in,
-    prog_context::in, mq_info::in, mq_info::out) is det.
-:- pragma inline(add_module_to_as_yet_unused_interface_modules/4).
-
-add_module_to_as_yet_unused_interface_modules(ModuleName, Context, !Info) :-
-    mq_info_get_as_yet_unused_interface_modules(!.Info, UnusedIntModules0),
-    ( if map.search(UnusedIntModules0, ModuleName, OldContexts) then
-        OldContexts = one_or_more(OldHeadContext, OldTailContexts),
-        NewContexts = one_or_more(Context, [OldHeadContext | OldTailContexts]),
-        map.det_update(ModuleName, NewContexts,
-            UnusedIntModules0, UnusedIntModules)
-    else
-        NewContexts = one_or_more(Context, []),
-        map.det_insert(ModuleName, NewContexts,
-            UnusedIntModules0, UnusedIntModules)
-    ),
-    mq_info_set_as_yet_unused_interface_modules(UnusedIntModules, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -2784,10 +2774,39 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
 % Access and initialisation predicates.
 %
 
+:- type mq_sub_info
+    --->    mq_sub_info(
+                % The name of the current module.
+                mqsi_this_module                :: module_name,
+
+                % Modules which have been imported or used, i.e. the ones
+                % for which there was a `:- import_module' or `:- use_module'
+                % declaration in this module.
+                mqsi_imported_modules           :: set(module_name),
+
+                % Modules from which `:- instance' declarations have
+                % been imported.
+                mqsi_imported_instance_modules  :: set(module_name),
+
+                % Does this module export any type class instances?
+                mqsi_exported_instances_flag    :: bool,
+
+                % Are there any undefined types or typeclasses.
+                mqsi_type_error_flag            :: bool,
+
+                % Are there any undefined insts or modes.
+                mqsi_mode_error_flag            :: bool,
+
+                % Do we want to report errors.
+                mqsi_report_error_flag          :: bool,
+
+                % The number of errors found.
+                mqsi_num_errors                 :: int
+            ).
+
 :- type mq_info
     --->    mq_info(
-                % The name of the current module.
-                mqi_this_module                 :: module_name,
+                mqi_sub_info                    :: mq_sub_info,
 
                 % Sets of all modules, types, insts, modes, and typeclasses
                 % visible in this module.
@@ -2797,37 +2816,13 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
                 mqi_modes                       :: mode_id_set,
                 mqi_classes                     :: class_id_set,
 
-                % Modules from which `:- instance' declarations have
-                % been imported.
-                mqi_imported_instance_modules   :: set(module_name),
-
-                % Modules which have been imported or used, i.e. the ones
-                % for which there was a `:- import_module' or `:- use_module'
-                % declaration in this module.
-                mqi_imported_modules            :: set(module_name),
-
                 % Map each modules known to be imported in the interface
                 % that is not yet known to be needed in the interface
                 % to the location (or sometimes, locations) of the import.
                 mqi_as_yet_unused_interface_modules :: map(module_name,
                                                     one_or_more(prog_context)),
 
-                mqi_maybe_recompilation_info    :: maybe(recompilation_info),
-
-                % Does this module export any type class instances?
-                mqi_exported_instances_flag     :: bool,
-
-                % Are there any undefined types or typeclasses.
-                mqi_type_error_flag             :: bool,
-
-                % Are there any undefined insts or modes.
-                mqi_mode_error_flag             :: bool,
-
-                % Do we want to report errors.
-                mqi_report_error_flag           :: bool,
-
-                % The number of errors found.
-                mqi_num_errors                  :: int
+                mqi_maybe_recompilation_info    :: maybe(recompilation_info)
             ).
 
 :- pred init_mq_info(globals::in, module_name::in,
@@ -2839,11 +2834,6 @@ is_builtin_atomic_type(type_ctor(unqualified("character"), 0)).
 
 init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         ItemBlocksD, ReportErrors, Info) :-
-    id_set_init(ModuleIdSet),
-    id_set_init(TypeIdSet),
-    id_set_init(InstIdSet),
-    id_set_init(ModeIdSet),
-    id_set_init(ClassIdSet),
     get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksA,
         ImportDepsA, UseDepsA),
     get_implicit_dependencies_in_item_blocks(Globals, ItemBlocksB,
@@ -2855,10 +2845,17 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
     ImportedModules = set.union_list(
         [ImportDepsA, ImportDepsB, ImportDepsC, ImportDepsD,
         UseDepsA, UseDepsB, UseDepsC, UseDepsD]),
-
     set.init(InstanceModules),
-    map.init(AsYetUnusedInterfaceModules),
+    ExportedInstancesFlag = no,
+    SubInfo = mq_sub_info(ModuleName, ImportedModules, InstanceModules,
+        ExportedInstancesFlag, no, no, ReportErrors, 0),
 
+    id_set_init(ModuleIdSet),
+    id_set_init(TypeIdSet),
+    id_set_init(InstIdSet),
+    id_set_init(ModeIdSet),
+    id_set_init(ClassIdSet),
+    map.init(AsYetUnusedInterfaceModules),
     globals.lookup_bool_option(Globals, smart_recompilation,
         SmartRecompilation),
     (
@@ -2868,11 +2865,9 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
         SmartRecompilation = yes,
         MaybeRecompInfo = yes(init_recompilation_info(ModuleName))
     ),
-    ExportedInstancesFlag = no,
-    Info = mq_info(ModuleName, ModuleIdSet,
+    Info = mq_info(SubInfo, ModuleIdSet,
         TypeIdSet, InstIdSet, ModeIdSet, ClassIdSet,
-        InstanceModules, ImportedModules, AsYetUnusedInterfaceModules,
-        MaybeRecompInfo, ExportedInstancesFlag, no, no, ReportErrors, 0).
+        AsYetUnusedInterfaceModules, MaybeRecompInfo).
 
 :- pred mq_info_get_this_module(mq_info::in, module_name::out) is det.
 :- pred mq_info_get_modules(mq_info::in, module_id_set::out) is det.
@@ -2892,7 +2887,7 @@ init_mq_info(Globals, ModuleName, ItemBlocksA, ItemBlocksB, ItemBlocksC,
 :- pred mq_info_get_report_error_flag(mq_info::in, bool::out) is det.
 
 mq_info_get_this_module(Info, X) :-
-    X = Info ^ mqi_this_module.
+    X = Info ^ mqi_sub_info ^ mqsi_this_module.
 mq_info_get_modules(Info, X) :-
     X = Info ^ mqi_modules.
 mq_info_get_types(Info, X) :-
@@ -2904,19 +2899,19 @@ mq_info_get_modes(Info, X) :-
 mq_info_get_classes(Info, X) :-
     X = Info ^ mqi_classes.
 mq_info_get_imported_instance_modules(Info, X) :-
-    X = Info ^ mqi_imported_instance_modules.
+    X = Info ^ mqi_sub_info ^ mqsi_imported_instance_modules.
 mq_info_get_imported_modules(Info, X) :-
-    X = Info ^ mqi_imported_modules.
+    X = Info ^ mqi_sub_info ^ mqsi_imported_modules.
 mq_info_get_as_yet_unused_interface_modules(Info, X) :-
     X = Info ^ mqi_as_yet_unused_interface_modules.
 mq_info_get_exported_instances_flag(Info, X) :-
-    X = Info ^ mqi_exported_instances_flag.
+    X = Info ^ mqi_sub_info ^ mqsi_exported_instances_flag.
 mq_info_get_type_error_flag(Info, X) :-
-    X = Info ^ mqi_type_error_flag.
+    X = Info ^ mqi_sub_info ^ mqsi_type_error_flag.
 mq_info_get_mode_error_flag(Info, X) :-
-    X = Info ^ mqi_mode_error_flag.
+    X = Info ^ mqi_sub_info ^ mqsi_mode_error_flag.
 mq_info_get_report_error_flag(Info, X) :-
-    X = Info ^ mqi_report_error_flag.
+    X = Info ^ mqi_sub_info ^ mqsi_report_error_flag.
 mq_info_get_recompilation_info(Info, X) :-
     X = Info ^ mqi_maybe_recompilation_info.
 
@@ -2953,19 +2948,19 @@ mq_info_set_modes(X, !Info) :-
 mq_info_set_classes(X, !Info) :-
     !Info ^ mqi_classes := X.
 mq_info_set_imported_instance_modules(X, !Info) :-
-    !Info ^ mqi_imported_instance_modules := X.
+    !Info ^ mqi_sub_info ^ mqsi_imported_instance_modules := X.
 mq_info_set_imported_modules(X, !Info) :-
-    !Info ^ mqi_imported_modules := X.
+    !Info ^ mqi_sub_info ^ mqsi_imported_modules := X.
 mq_info_set_as_yet_unused_interface_modules(X, !Info) :-
     !Info ^ mqi_as_yet_unused_interface_modules := X.
 mq_info_set_exported_instances_flag(X, !Info) :-
-    !Info ^ mqi_exported_instances_flag := X.
+    !Info ^ mqi_sub_info ^ mqsi_exported_instances_flag := X.
 mq_info_set_type_error_flag(!Info) :-
     X = yes,
-    !Info ^ mqi_type_error_flag := X.
+    !Info ^ mqi_sub_info ^ mqsi_type_error_flag := X.
 mq_info_set_mode_error_flag(!Info) :-
     X = yes,
-    !Info ^ mqi_mode_error_flag := X.
+    !Info ^ mqi_sub_info ^ mqsi_mode_error_flag := X.
 mq_info_set_recompilation_info(X, !Info) :-
     !Info ^ mqi_maybe_recompilation_info := X.
 
@@ -2993,17 +2988,21 @@ mq_info_set_error_flag_2(class_id, !Info) :-
 :- pred mq_info_set_module_used(mq_in_interface::in, module_name::in,
     mq_info::in, mq_info::out) is det.
 
-mq_info_set_module_used(InInt, Module, !Info) :-
+mq_info_set_module_used(InInt, ModuleName, !Info) :-
     (
         InInt = mq_used_in_interface,
         mq_info_get_as_yet_unused_interface_modules(!.Info, AsYetUnused0),
-        map.delete(Module, AsYetUnused0, AsYetUnused),
-        mq_info_set_as_yet_unused_interface_modules(AsYetUnused, !Info),
+        ( if map.remove(ModuleName, _, AsYetUnused0, AsYetUnused) then
+            mq_info_set_as_yet_unused_interface_modules(AsYetUnused, !Info)
+        else
+            % ModuleName was not in AsYetUnused0.
+            true
+        ),
         (
-            Module = qualified(ParentModule, _),
+            ModuleName = qualified(ParentModule, _),
             mq_info_set_module_used(InInt, ParentModule, !Info)
         ;
-            Module = unqualified(_)
+            ModuleName = unqualified(_)
         )
     ;
         InInt = mq_not_used_in_interface
@@ -3039,28 +3038,31 @@ id_set_init(IdSet) :-
 :- pred id_set_insert(module_permissions::in, mq_id::in,
     id_set::in, id_set::out) is det.
 
-id_set_insert(Permissions, MQId,!IdSet) :-
+id_set_insert(Permissions, MQId, !IdSet) :-
     MQId = mq_id(SymName, Arity),
     (
         SymName = unqualified(_),
         unexpected($module, $pred, "unqualified id")
     ;
         SymName = qualified(ModuleName, BaseName),
-        ( if map.search(!.IdSet, BaseName, SubMap0) then
+        % Most of the time, BaseName does not occur in !.IdSet.
+        % We therefore try the insertion first, and only if it fails
+        % do we update the existing entry that caused that failure.
+        FreshPermissionsMap = map.singleton(ModuleName, Permissions),
+        FreshSubMap = map.singleton(Arity, FreshPermissionsMap),
+        ( if map.insert(BaseName, FreshSubMap, !IdSet) then
+            true
+        else
+            map.lookup(!.IdSet, BaseName, SubMap0),
             ( if map.search(SubMap0, Arity, PermissionsMap0) then
                 insert_into_permissions_map(Permissions, ModuleName,
                     PermissionsMap0, PermissionsMap),
                 map.det_update(Arity, PermissionsMap, SubMap0, SubMap),
                 map.det_update(BaseName, SubMap, !IdSet)
             else
-                PermissionsMap = map.singleton(ModuleName, Permissions),
-                map.det_insert(Arity, PermissionsMap, SubMap0, SubMap),
+                map.det_insert(Arity, FreshPermissionsMap, SubMap0, SubMap),
                 map.det_update(BaseName, SubMap, !IdSet)
             )
-        else
-            PermissionsMap = map.singleton(ModuleName, Permissions),
-            SubMap = map.singleton(Arity, PermissionsMap),
-            map.det_insert(BaseName, SubMap, !IdSet)
         )
     ).
 
