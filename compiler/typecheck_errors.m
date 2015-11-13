@@ -1431,7 +1431,7 @@ language_builtin_functor_components(Name, Arity, Components) :-
         words("should be used as a goal, not as an expression."), nl],
     VerbosePieces = [words("If you are trying to use a goal"),
         words("as a boolean function, you should write"),
-        words("`if <goal> then yes else no' instead."), nl],
+        words_quote("if <goal> then yes else no"), words("instead."), nl],
     ( Name = "call" ->
         VerboseCallPieces =
             [words("If you are trying to invoke"),

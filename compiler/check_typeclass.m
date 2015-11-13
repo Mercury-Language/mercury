@@ -439,7 +439,8 @@ bad_instance_type_msg(ClassId, InstanceDefn, N, EndPieces, Kind) = Spec :-
         InstanceTypes),
 
     HeaderPieces = [words("In instance declaration for"),
-        words("`" ++ ClassNameString ++ "(" ++ InstanceTypesString ++ ")':")],
+        words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
+        suffix(":")],
     ArgNumPieces = [words("the"), nth_fixed(N), words("argument") | EndPieces]
         ++ [nl],
     (
@@ -1087,8 +1088,7 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
         constraint_list_to_string(ClassVarSet, UnprovenConstraints,
             ConstraintsString),
         Pieces = [words("In instance declaration for"),
-            words("`" ++ ClassNameString ++
-                "(" ++ InstanceTypesString ++ ")'"),
+            words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
             words(choose_number(UnprovenConstraintsTail,
                 "superclass constraint", "superclass constraints")),
             words("not satisfied:"), words(ConstraintsString), suffix("."),
@@ -1596,11 +1596,11 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep)
     RangeParams = restrict_list_elements(Range, Params),
     Domains = mercury_vars_to_name_only(TVarSet, DomainParams),
     Ranges = mercury_vars_to_name_only(TVarSet, RangeParams),
-    FunDepStr = "`(" ++ Domains ++ " -> " ++ Ranges ++ ")'",
 
     PiecesA = [words("Inconsistent instance declaration for typeclass"),
         sym_name_and_arity(SymName / Arity),
-        words("with functional dependency"), fixed(FunDepStr),
+        words("with functional dependency"),
+        quote("(" ++ Domains ++ " -> " ++ Ranges ++ ")"),
         suffix("."), nl],
     PiecesB = [words("Here is the conflicting instance.")],
 
@@ -2048,8 +2048,8 @@ report_duplicate_method_defn(ClassId, InstanceDefn, PredOrFunc, MethodName,
         InstanceTypes),
     HeaderPieces =
         [words("In instance declaration for"),
-        words("`" ++ ClassNameString ++  "(" ++ InstanceTypesString ++ ")':"),
-        words("multiple implementations of type class"),
+        words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
+        suffix(":"), words("multiple implementations of type class"),
         p_or_f(PredOrFunc), words("method"),
         sym_name_and_arity(MethodName / Arity), suffix("."), nl],
     HeadingMsg = simple_msg(InstanceContext, [always(HeaderPieces)]),
@@ -2092,7 +2092,7 @@ report_undefined_method(ClassId, InstanceDefn, PredOrFunc, MethodName, Arity,
         InstanceTypes),
 
     Pieces = [words("In instance declaration for"),
-        words("`" ++ ClassNameString ++ "(" ++ InstanceTypesString ++ ")'"),
+        words_quote(ClassNameString ++ "(" ++ InstanceTypesString ++ ")"),
         suffix(":"),
         words("no implementation for type class"), p_or_f(PredOrFunc),
         words("method"), sym_name_and_arity(MethodName / Arity),
