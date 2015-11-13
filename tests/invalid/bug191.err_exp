@@ -1,6 +1,5 @@
-bug191.m:020: In clause for
-bug191.m:020:   `'ClassMethod_for_bug191__foo____int__arity0______bug191__baz_3'(in,
-bug191.m:020:   in, out((bug191.a)))':
+bug191.m:020: In clause for type class method implementation for `baz(in, in,
+bug191.m:020:   out((bug191.a)))':
 bug191.m:020:   mode error: argument 3 did not get sufficiently instantiated.
 bug191.m:020:   Final instantiatedness of `HeadVar__3' was `ground',
 bug191.m:020:   expected final instantiatedness was `bound(bug191.a(ground))'.

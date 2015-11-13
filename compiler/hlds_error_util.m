@@ -164,7 +164,7 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
     else if check_marker(Markers, marker_class_instance_method) then
         Pieces = [words("type class method implementation")]
     else if pred_info_is_promise(PredInfo, PromiseType) then
-        Pieces = [words("`" ++ promise_to_string(PromiseType) ++ "'"),
+        Pieces = [quote(promise_to_string(PromiseType)),
             words("declaration")]
     else
         ( if check_marker(Markers, marker_class_method) then
