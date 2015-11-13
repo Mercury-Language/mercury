@@ -67,6 +67,7 @@
 :- module ml_backend.mlds_to_java.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
 
@@ -86,13 +87,16 @@
     % XXX needed for c_util.output_quoted_string,
     %     c_util.output_quoted_multi_string, and
     %     c_util.make_float_literal.
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_pred.           % for pred_proc_id.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.java_util.
@@ -101,6 +105,7 @@
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
 :- import_module ml_backend.rtti_to_mlds.
+:- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.    % for mercury_std_library_name.
 :- import_module parse_tree.java_names.

@@ -101,11 +101,13 @@
 :- module ll_backend.par_conj_gen.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -125,12 +127,14 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.code_gen.
@@ -139,6 +143,7 @@
 :- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.llds_out.llds_out_data.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.set_of_var.
 

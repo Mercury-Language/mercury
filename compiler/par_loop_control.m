@@ -84,6 +84,7 @@
 :- module transform_hlds.par_loop_control.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 %----------------------------------------------------------------------------%
@@ -106,11 +107,14 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.

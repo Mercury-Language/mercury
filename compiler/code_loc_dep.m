@@ -33,6 +33,7 @@
 :- module ll_backend.code_loc_dep.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_data.
@@ -43,6 +44,7 @@
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.llds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
@@ -59,13 +61,16 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.

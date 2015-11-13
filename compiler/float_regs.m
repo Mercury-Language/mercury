@@ -126,7 +126,9 @@
 :- module transform_hlds.float_regs.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
 :- import_module list.
@@ -141,6 +143,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
@@ -155,6 +158,7 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.

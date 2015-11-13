@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module mdb.browser_term.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module list.

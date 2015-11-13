@@ -17,6 +17,7 @@
 :- module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 
 %-----------------------------------------------------------------------------%
@@ -36,8 +37,10 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.vartypes.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.ctgc.datastruct.

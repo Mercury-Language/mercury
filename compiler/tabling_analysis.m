@@ -53,6 +53,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 %----------------------------------------------------------------------------%
@@ -81,12 +82,14 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.dependency_graph.

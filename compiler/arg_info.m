@@ -32,6 +32,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -137,7 +138,9 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.builtin_lib_types.

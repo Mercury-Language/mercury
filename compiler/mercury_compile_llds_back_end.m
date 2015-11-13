@@ -16,9 +16,12 @@
 :- module top_level.mercury_compile_llds_back_end.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module ll_backend.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 
@@ -42,6 +45,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.base_typeclass_info.
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.export.
@@ -49,6 +53,7 @@
 :- import_module backend_libs.proc_label.
 :- import_module backend_libs.type_class_info.
 :- import_module backend_libs.type_ctor_info.
+:- import_module check_hlds.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.
@@ -58,6 +63,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mark_tail_calls.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -84,6 +90,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module top_level.mercury_compile_front_end.
+:- import_module transform_hlds.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module assoc_list.

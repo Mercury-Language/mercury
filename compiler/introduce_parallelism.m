@@ -19,6 +19,7 @@
 :- module transform_hlds.implicit_parallelism.introduce_parallelism.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 :- import_module io.
@@ -43,16 +44,19 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.
 :- import_module ll_backend.prog_rep.
 :- import_module ll_backend.stack_layout.
+:- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module mdbcomp.program_representation.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.implicit_parallelism.push_goals_together.

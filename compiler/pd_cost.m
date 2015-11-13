@@ -18,6 +18,7 @@
 :- module transform_hlds.pd_cost.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 
 %-----------------------------------------------------------------------------%
@@ -42,6 +43,7 @@
 
 :- implementation.
 
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 

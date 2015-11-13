@@ -18,6 +18,7 @@
 :- module transform_hlds.term_pass2.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.term_util.
@@ -38,8 +39,10 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_errors.
 :- import_module transform_hlds.term_traversal.

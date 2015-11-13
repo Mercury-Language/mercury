@@ -18,8 +18,10 @@
 :- module ll_backend.llds.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
@@ -27,10 +29,12 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module ll_backend.layout.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 

@@ -36,6 +36,7 @@
 :- module parse_tree.error_util.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.

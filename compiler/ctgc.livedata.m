@@ -20,12 +20,14 @@
 :- module transform_hlds.ctgc.livedata.
 :- interface.
 
-:- import_module parse_tree.prog_data.
+:- import_module hlds.
+:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
-:- import_module hlds.hlds_goal.
 
 :- import_module list.
 

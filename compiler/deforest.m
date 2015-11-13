@@ -34,6 +34,7 @@
 :- module transform_hlds.deforest.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 %-----------------------------------------------------------------------------%
@@ -45,6 +46,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.det_report.
 :- import_module check_hlds.inst_test.
@@ -60,9 +62,12 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.

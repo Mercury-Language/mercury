@@ -330,17 +330,22 @@
 :- module ml_backend.mlds.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_global_data.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
@@ -1837,6 +1842,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.file_names.

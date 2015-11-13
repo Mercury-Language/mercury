@@ -126,6 +126,7 @@
 :- module transform_hlds.distance_granularity.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 %-----------------------------------------------------------------------------%
@@ -143,6 +144,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
@@ -151,8 +153,10 @@
 :- import_module hlds.quantification.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.

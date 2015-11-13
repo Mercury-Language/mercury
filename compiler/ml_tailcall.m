@@ -54,6 +54,7 @@
 :- interface.
 
 :- import_module ml_backend.mlds.
+:- import_module libs.
 :- import_module libs.globals.
 
 :- import_module io.
@@ -72,10 +73,13 @@
 
 :- implementation.
 
+:- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 

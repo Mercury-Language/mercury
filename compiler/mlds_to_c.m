@@ -27,7 +27,9 @@
 :- module ml_backend.mlds_to_c.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.rtti.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module ml_backend.mlds.
 
@@ -55,15 +57,19 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_util.
@@ -73,6 +79,7 @@
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen. % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.

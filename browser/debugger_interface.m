@@ -41,6 +41,7 @@
 
 :- import_module mdb.interactive_query.
 :- import_module mdb.util.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 

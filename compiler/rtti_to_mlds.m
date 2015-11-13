@@ -19,7 +19,9 @@
 :- module ml_backend.rtti_to_mlds.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.rtti.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.mlds.
@@ -54,7 +56,9 @@
 :- import_module backend_libs.type_ctor_info.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_rtti.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -62,6 +66,7 @@
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
 

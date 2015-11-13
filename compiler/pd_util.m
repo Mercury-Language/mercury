@@ -17,13 +17,16 @@
 :- module transform_hlds.pd_util.
 :- interface.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_tasks.
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.pd_info.
@@ -169,6 +172,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.

@@ -20,9 +20,11 @@
 :- module top_level.mercury_compile_front_end.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.
 :- import_module hlds.passes_aux.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
 :- import_module bool.
@@ -72,6 +74,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.check_typeclass.
 :- import_module check_hlds.cse_detection.
 :- import_module check_hlds.det_analysis.
@@ -98,6 +101,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_statistics.
 :- import_module hlds.make_tags.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -108,6 +112,7 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.
 :- import_module top_level.mercury_compile_middle_passes.
+:- import_module transform_hlds.
 :- import_module transform_hlds.dead_proc_elim.
 :- import_module transform_hlds.intermod.
 

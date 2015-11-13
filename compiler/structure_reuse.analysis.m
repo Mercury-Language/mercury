@@ -51,6 +51,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
@@ -98,11 +99,13 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
@@ -113,6 +116,7 @@
 :- import_module transform_hlds.ctgc.structure_reuse.lbu.
 :- import_module transform_hlds.ctgc.structure_reuse.lfu.
 :- import_module transform_hlds.ctgc.structure_reuse.versions.
+:- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.intermod.
 :- import_module transform_hlds.mmc_analysis.

@@ -20,6 +20,7 @@
 :- module transform_hlds.equiv_type_hlds.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 %-----------------------------------------------------------------------------%
@@ -31,6 +32,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
@@ -42,7 +44,9 @@
 :- import_module hlds.quantification.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_rename.

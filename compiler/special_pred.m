@@ -22,7 +22,9 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -128,7 +130,9 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.

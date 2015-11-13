@@ -18,6 +18,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module check_hlds.
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module check_hlds.mode_errors.
 :- import_module hlds.hlds_clauses.
@@ -31,14 +32,18 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
+:- import_module transform_hlds.
 :- import_module transform_hlds.term_constr_main_types.
 :- import_module transform_hlds.term_util.
 

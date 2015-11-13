@@ -25,6 +25,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module check_hlds.
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_data.
@@ -32,8 +33,11 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
@@ -584,6 +588,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
+:- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module assoc_list.

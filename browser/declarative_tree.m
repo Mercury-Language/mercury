@@ -19,6 +19,7 @@
 
 :- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_execution.
+:- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 
 %-----------------------------------------------------------------------------%

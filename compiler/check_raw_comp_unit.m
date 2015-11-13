@@ -15,6 +15,7 @@
 :- module parse_tree.check_raw_comp_unit.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
@@ -49,6 +50,7 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.file_names.

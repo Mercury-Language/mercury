@@ -22,11 +22,13 @@
 :- module hlds.instmap.
 :- interface.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_info.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.vartypes.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.

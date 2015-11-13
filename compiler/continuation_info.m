@@ -58,6 +58,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.trace_params.
 :- import_module ll_backend.global_data.
@@ -66,6 +67,7 @@
 :- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -408,6 +410,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_llds.
 :- import_module libs.options.

@@ -30,6 +30,7 @@
 :- interface.
 
 :- import_module erl_backend.elds.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 :- import_module io.
@@ -46,7 +47,9 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.foreign.
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module erl_backend.erl_call_gen.
 :- import_module erl_backend.erl_code_util.
@@ -61,10 +64,13 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.

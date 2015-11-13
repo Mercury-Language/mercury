@@ -16,7 +16,9 @@
 :- module parse_tree.module_cmds.
 :- interface.
 
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 

@@ -172,6 +172,7 @@
 
 :- implementation.
 
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_util.

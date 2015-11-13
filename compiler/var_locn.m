@@ -20,6 +20,7 @@
 :- module ll_backend.var_locn.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
@@ -27,6 +28,7 @@
 :- import_module hlds.vartypes.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
@@ -404,7 +406,9 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.exprn_aux.

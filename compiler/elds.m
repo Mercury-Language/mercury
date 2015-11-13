@@ -22,10 +22,13 @@
 :- module erl_backend.elds.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.rtti.
+:- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 

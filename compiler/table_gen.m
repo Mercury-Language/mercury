@@ -39,7 +39,9 @@
 :- module transform_hlds.table_gen.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
 :- import_module list.
@@ -53,6 +55,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
 :- import_module check_hlds.purity.
@@ -69,6 +72,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.

@@ -25,6 +25,7 @@
 :- module ll_backend.stack_alloc.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
@@ -38,10 +39,12 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.trace_params.
@@ -49,6 +52,7 @@
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.trace_gen.
+:- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.

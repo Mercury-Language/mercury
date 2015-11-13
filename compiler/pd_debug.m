@@ -16,8 +16,10 @@
 :- module transform_hlds.pd_debug.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.pd_info.
 
@@ -65,6 +67,7 @@
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.parse_tree_out_info.

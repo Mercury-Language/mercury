@@ -9,8 +9,6 @@
 :- module mdb.
 :- interface.
 
-:- import_module mdbcomp.
-
 :- pred mdb.version(string::out) is det.
 
     % These interface modules are used directly by the test programs

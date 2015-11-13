@@ -16,10 +16,12 @@
 :- module ll_backend.opt_debug.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.livemap.

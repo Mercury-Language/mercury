@@ -15,14 +15,19 @@
 :- module ll_backend.llds_out.llds_out_util.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.rtti.
+:- import_module hlds.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.trace_params.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.

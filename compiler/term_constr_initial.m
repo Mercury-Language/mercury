@@ -32,6 +32,7 @@
 :- module transform_hlds.term_constr_initial.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 %----------------------------------------------------------------------------%
@@ -55,6 +56,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.lp_rational.
 :- import_module libs.options.
@@ -64,6 +66,7 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.

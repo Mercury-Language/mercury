@@ -99,6 +99,7 @@
 
 :- implementation.
 
+:- import_module libs.
 :- import_module libs.rat.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_inst.

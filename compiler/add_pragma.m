@@ -10,9 +10,8 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.
-:- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_hlds.qual_info.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
@@ -85,6 +84,7 @@
 :- include_module hlds.make_hlds.add_pragma.add_pragma_type_spec.
 
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module hlds.make_hlds.add_pragma.add_foreign_enum.
 :- import_module hlds.make_hlds.add_pragma.add_pragma_tabling.
@@ -93,14 +93,17 @@
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_tags.
 :- import_module hlds.pred_table.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.fact_table.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
+:- import_module transform_hlds.
 :- import_module transform_hlds.term_constr_main_types.
 :- import_module transform_hlds.term_constr_util.
 :- import_module transform_hlds.term_util.

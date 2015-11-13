@@ -21,6 +21,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
@@ -200,6 +201,7 @@
 
 :- import_module hlds.code_model.
 :- import_module parse_tree.prog_data.
+:- import_module transform_hlds.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.term_constr_main_types.
 

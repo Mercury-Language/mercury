@@ -26,6 +26,7 @@
 
 :- implementation.
 
+:- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 
 :- import_module deconstruct.

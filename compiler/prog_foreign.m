@@ -29,6 +29,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.prog_data.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
 :- import_module bool.

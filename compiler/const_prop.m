@@ -18,11 +18,13 @@
 :- module transform_hlds.const_prop.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.

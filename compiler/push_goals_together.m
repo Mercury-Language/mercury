@@ -19,8 +19,10 @@
 :- module transform_hlds.implicit_parallelism.push_goals_together.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.feedback.automatic_parallelism.
 
@@ -49,6 +51,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
@@ -58,6 +61,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.quantification.
 :- import_module mdbcomp.goal_path.
+:- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 

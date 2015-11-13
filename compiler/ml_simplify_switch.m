@@ -36,12 +36,15 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.switch_util.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_target_util.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.

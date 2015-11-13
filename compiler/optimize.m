@@ -16,6 +16,7 @@
 :- module ll_backend.optimize.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
@@ -35,6 +36,7 @@
 
 :- implementation.
 
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.
 :- import_module libs.file_util.
@@ -52,6 +54,7 @@
 :- import_module ll_backend.reassign.
 :- import_module ll_backend.use_local_vars.
 :- import_module ll_backend.wrap_blocks.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.

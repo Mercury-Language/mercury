@@ -32,7 +32,9 @@
 :- module transform_hlds.termination.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
 :- import_module list.
@@ -53,6 +55,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.

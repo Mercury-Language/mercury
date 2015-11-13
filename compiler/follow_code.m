@@ -31,6 +31,7 @@
 :- module ll_backend.follow_code.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
@@ -44,6 +45,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
@@ -51,6 +53,7 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.set_of_var.

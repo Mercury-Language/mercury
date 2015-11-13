@@ -16,6 +16,7 @@
 :- module ml_backend.ml_target_util.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
 
 :- import_module bool.

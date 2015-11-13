@@ -40,9 +40,11 @@
 :- module parse_tree.write_module_interface_files.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.timestamp.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_item.
 

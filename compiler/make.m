@@ -25,8 +25,6 @@
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module make.options_file.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.module_imports.
 
@@ -74,8 +72,10 @@
 :- import_module make.module_target.
 :- import_module make.program_target.
 :- import_module make.util.
-:- import_module parse_tree.file_names.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.file_names.
 :- import_module top_level.                 % XXX unwanted dependency
 :- import_module top_level.mercury_compile. % XXX unwanted dependency
 

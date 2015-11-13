@@ -25,6 +25,7 @@
 :- import_module hlds.make_hlds.state_var.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -98,6 +99,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_util.
@@ -106,6 +108,7 @@
 :- import_module hlds.make_goal.
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.goal_expr_to_goal.
+:- import_module libs.
 :- import_module libs.globals.  % for get_maybe_from_ground_term_threshold
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.

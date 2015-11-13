@@ -33,7 +33,6 @@
 
 :- import_module assoc_list.
 :- import_module io.
-:- import_module list.
 :- import_module maybe.
 
 %-----------------------------------------------------------------------------%
@@ -220,6 +219,7 @@
 :- implementation.
 
 :- import_module exception.
+:- import_module list.
 :- import_module require.
 :- import_module string.
 :- import_module unit.

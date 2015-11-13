@@ -111,9 +111,11 @@
 :- module transform_hlds.dep_par_conj.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
+:- import_module parse_tree.
 :- import_module parse_tree.set_of_var.
 
 :- import_module list.
@@ -141,6 +143,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
@@ -153,8 +156,10 @@
 :- import_module hlds.quantification.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

@@ -19,9 +19,12 @@
 
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -33,6 +36,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.

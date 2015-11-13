@@ -20,6 +20,7 @@
 :- module ll_backend.disj_gen.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
@@ -39,10 +40,12 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.code_gen.
@@ -50,6 +53,7 @@
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.lookup_util.
 :- import_module ll_backend.trace_gen.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 

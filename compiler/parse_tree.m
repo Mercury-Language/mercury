@@ -16,9 +16,6 @@
 :- module parse_tree.
 :- interface.
 
-:- import_module libs.
-:- import_module mdbcomp.
-
 % The parse tree data type itself.
 % The parse tree is split in two. The parts defined in prog_item are needed
 % only by the frontend of the compiler, the parts in prog_data are needed

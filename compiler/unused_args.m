@@ -48,7 +48,9 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
@@ -85,6 +87,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
@@ -100,8 +103,10 @@
 :- import_module hlds.quantification.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.

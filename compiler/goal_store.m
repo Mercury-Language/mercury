@@ -18,6 +18,7 @@
 :- module transform_hlds.goal_store.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.

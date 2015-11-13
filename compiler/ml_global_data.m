@@ -18,9 +18,12 @@
 :- module ml_backend.ml_global_data.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.rtti.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module ml_backend.mlds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

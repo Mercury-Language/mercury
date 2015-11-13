@@ -21,7 +21,9 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.error_util.
 
@@ -115,6 +117,7 @@
 :- implementation.
 
 :- import_module hlds.special_pred.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_info.

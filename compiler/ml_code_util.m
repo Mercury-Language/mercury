@@ -17,18 +17,23 @@
 :- module ml_backend.ml_code_util.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.mlds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -547,6 +552,7 @@
 :- implementation.
 
 :- import_module backend_libs.foreign.
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.vartypes.

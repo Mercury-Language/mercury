@@ -11,17 +11,13 @@
 % Note that the bytecode interpreter, which was supposed to interpret
 % the bytecodes that this back-end generates, is not yet implemented.
 %
+
 :- module bytecode_backend.
 :- interface.
-
-%-----------------------------------------------------------------------------%
 
 :- include_module bytecode.
 :- include_module bytecode_gen.
 
 %-----------------------------------------------------------------------------%
-
-:- implementation.
 :- end_module bytecode_backend.
-
 %-----------------------------------------------------------------------------%

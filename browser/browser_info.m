@@ -20,6 +20,7 @@
 :- import_module mdb.browser_term.
 :- import_module mdb.parse.
 :- import_module mdb.term_rep.
+:- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 
 :- import_module bool.

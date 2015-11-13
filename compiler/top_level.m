@@ -9,29 +9,10 @@
 % This package contains the top-level stuff that uses all the other packages.
 % In particular it contains the module mercury_compile.m, which defines main/2,
 % and which invokes all the other parts of the Mercury compiler.
+%
 
 :- module top_level.
 :- interface.
-
-% The front-end phases.
-:- import_module analysis.
-:- import_module check_hlds.
-:- import_module hlds.
-:- import_module mode_robdd.
-:- import_module parse_tree.
-:- import_module transform_hlds.
-
-% Back-ends that we currently use or plan to use.
-:- import_module ll_backend.
-:- import_module ml_backend.
-:- import_module erl_backend.
-
-% Incomplete back-ends.
-:- import_module bytecode_backend.
-
-% Misc utilities.
-:- import_module backend_libs.
-:- import_module libs.
 
 :- include_module mercury_compile.
 :- include_module mercury_compile_front_end.

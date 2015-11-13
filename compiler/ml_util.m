@@ -16,11 +16,12 @@
 :- module ml_backend.ml_util.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.          % for foreign_language
+:- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
-%:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module list.
@@ -186,7 +187,9 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.rtti.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_unify_gen.

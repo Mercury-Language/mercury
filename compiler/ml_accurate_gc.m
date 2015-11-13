@@ -19,6 +19,7 @@
 
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.ml_gen_info.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 %-----------------------------------------------------------------------------%
@@ -77,15 +78,20 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.foreign.
+:- import_module check_hlds.
 :- import_module check_hlds.polymorphism.
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.

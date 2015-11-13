@@ -90,6 +90,7 @@
 :- module transform_hlds.untupling.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 :- import_module io.
@@ -102,6 +103,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -110,7 +112,9 @@
 :- import_module hlds.quantification.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.

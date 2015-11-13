@@ -19,6 +19,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
+:- import_module erl_backend.
 :- import_module erl_backend.elds.
 
 :- import_module bool.
@@ -35,12 +36,14 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.base_typeclass_info.
 :- import_module backend_libs.type_class_info.
 :- import_module backend_libs.type_ctor_info.
 :- import_module erl_backend.elds_to_erlang.
 :- import_module erl_backend.erl_code_gen.
 :- import_module erl_backend.erl_rtti.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.

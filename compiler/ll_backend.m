@@ -12,10 +12,6 @@
 :- module ll_backend.
 :- interface.
 
-:- import_module hlds.
-:- import_module mdbcomp.
-:- import_module parse_tree.
-
 %-----------------------------------------------------------------------------%
 
 % Pre-passes to transform or annotate the HLDS.
@@ -95,12 +91,6 @@
 :- include_module llds_out.
 :- include_module layout_out.
 :- include_module rtti_out.
-
-:- implementation.
-
-:- import_module check_hlds.        % needed for type_util, mode_util etc
-:- import_module backend_libs.
-:- import_module libs.
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.

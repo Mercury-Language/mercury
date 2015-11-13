@@ -157,10 +157,12 @@
 :- module ml_backend.ml_commit_gen.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -176,7 +178,9 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_accurate_gc.

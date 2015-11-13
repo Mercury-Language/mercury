@@ -156,6 +156,7 @@
 :- module transform_hlds.stm_expand.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 %-----------------------------------------------------------------------------%
@@ -167,6 +168,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.polymorphism.
@@ -183,6 +185,7 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.

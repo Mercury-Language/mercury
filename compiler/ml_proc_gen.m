@@ -13,6 +13,7 @@
 :- module ml_backend.ml_proc_gen.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
 
@@ -28,8 +29,10 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.foreign.      % XXX needed for foreign_proc
 :- import_module backend_libs.rtti.
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
@@ -39,6 +42,7 @@
 :- import_module hlds.quantification.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ml_backend.ml_code_gen.
@@ -48,6 +52,7 @@
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_unify_gen.
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.

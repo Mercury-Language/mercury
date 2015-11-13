@@ -20,6 +20,7 @@
 :- module top_level.mercury_compile.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
 
 :- import_module io.
@@ -40,9 +41,13 @@
 
 :- implementation.
 
+:- import_module analysis.
+:- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.export.
+:- import_module check_hlds.
 :- import_module check_hlds.xml_documentation.
+:- import_module hlds.
 :- import_module hlds.hlds_defns.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.
@@ -57,9 +62,11 @@
 :- import_module make.
 :- import_module make.options_file.
 :- import_module make.util.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.shared_utilities.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.check_raw_comp_unit.
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.
@@ -88,6 +95,7 @@
 :- import_module top_level.mercury_compile_llds_back_end.
 :- import_module top_level.mercury_compile_middle_passes.
 :- import_module top_level.mercury_compile_mlds_back_end.
+:- import_module transform_hlds.
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module bool.

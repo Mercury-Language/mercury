@@ -54,9 +54,11 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -300,6 +302,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_llds.

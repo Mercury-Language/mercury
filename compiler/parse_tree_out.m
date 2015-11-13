@@ -14,6 +14,7 @@
 :- module parse_tree.parse_tree_out.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.

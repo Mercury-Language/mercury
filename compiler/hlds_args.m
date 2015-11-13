@@ -18,6 +18,7 @@
 :- module hlds.hlds_args.
 :- interface.
 
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
 :- import_module list.
@@ -219,6 +220,7 @@
 
 :- implementation.
 
+:- import_module parse_tree.
 :- import_module parse_tree.prog_type.
     % Required for apply_partial_map_to_list.
     % XXX That should really live in a different module.

@@ -449,11 +449,13 @@
 :- module ml_backend.ml_code_gen.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.vartypes.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -513,7 +515,9 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_code_util.

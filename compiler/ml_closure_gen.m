@@ -17,10 +17,12 @@
 :- module ml_backend.ml_closure_gen.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module ml_backend.ml_gen_info.
 :- import_module ml_backend.mlds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -71,18 +73,22 @@
 :- implementation.
 
 % XXX The modules from the LLDS backend should not be used here.
+:- import_module backend_libs.
 :- import_module backend_libs.pseudo_type_info.
 :- import_module backend_libs.rtti.
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.continuation_info. % for `generate_closure_layout'
 :- import_module ll_backend.llds.              % for `layout_locn'
 :- import_module ll_backend.stack_layout.      % for `represent_locn_as_int'
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_accurate_gc.
 :- import_module ml_backend.ml_call_gen.

@@ -17,6 +17,7 @@
 :- interface.
 
 :- import_module erl_backend.elds.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 :- import_module bool.
@@ -44,16 +45,20 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data.

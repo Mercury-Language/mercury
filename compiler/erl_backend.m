@@ -14,11 +14,9 @@
 % - the ELDS code generator, which converts HLDS to ELDS;
 % - the Erlang back-end which writes out the ELDS as Erlang code.
 %
+
 :- module erl_backend.
 :- interface.
-
-:- import_module hlds.
-:- import_module parse_tree.
 
 %-----------------------------------------------------------------------------%
 
@@ -31,13 +29,6 @@
 :- include_module erl_rtti.
 
 :- include_module elds_to_erlang.
-
-:- implementation.
-
-:- import_module backend_libs.
-:- import_module check_hlds.
-:- import_module libs.
-:- import_module mdbcomp.
 
 %-----------------------------------------------------------------------------%
 :- end_module erl_backend.

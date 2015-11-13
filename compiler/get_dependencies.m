@@ -20,7 +20,9 @@
 :- module parse_tree.get_dependencies.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.

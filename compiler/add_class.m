@@ -12,6 +12,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.qual_info.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
@@ -43,6 +44,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.clause_to_proc.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_data.

@@ -20,10 +20,12 @@
 :- module transform_hlds.term_util.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_errors.
 :- import_module transform_hlds.term_norm.
@@ -198,6 +200,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module mdbcomp.

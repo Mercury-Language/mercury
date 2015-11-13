@@ -30,6 +30,7 @@
 :- module ll_backend.follow_vars.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
@@ -54,6 +55,7 @@
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module ll_backend.call_gen.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

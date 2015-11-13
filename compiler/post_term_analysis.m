@@ -21,7 +21,9 @@
 :- module transform_hlds.post_term_analysis.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
 :- import_module list.
@@ -35,6 +37,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
@@ -42,8 +45,10 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.

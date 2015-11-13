@@ -16,9 +16,12 @@
 :- module transform_hlds.term_norm.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -70,6 +73,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_data.

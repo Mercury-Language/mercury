@@ -25,9 +25,11 @@
 :- module transform_hlds.ctgc.structure_reuse.direct.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
+:- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 
 :- import_module list.
@@ -54,6 +56,7 @@
 :- import_module analysis.
 :- import_module hlds.passes_aux.
 :- import_module hlds.status.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.

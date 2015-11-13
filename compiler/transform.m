@@ -34,7 +34,9 @@
 :- module transform_hlds.transform.
 :- interface.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_info.
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 
 :- import_module list.

@@ -20,9 +20,6 @@
 :- module ml_backend.
 :- interface.
 
-:- import_module hlds.
-:- import_module parse_tree.
-
 %-----------------------------------------------------------------------------%
 
 :- include_module mlds.
@@ -70,14 +67,6 @@
 
 % MLDS->C# back-end.
 :- include_module mlds_to_cs.
-
-:- implementation.
-
-:- import_module backend_libs.
-:- import_module libs.
-:- import_module check_hlds.    % needed for type_util, mode_util,
-                                % and polymorphism.
-:- import_module mdbcomp.
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.

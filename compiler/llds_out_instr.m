@@ -75,19 +75,24 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.export.
 :- import_module backend_libs.name_mangle.
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.llds_out.llds_out_data.
 :- import_module ll_backend.pragma_c_gen.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.

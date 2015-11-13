@@ -15,8 +15,10 @@
 :- module top_level.mercury_compile_middle_passes.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_item.
 
 :- import_module bool.
@@ -44,19 +46,25 @@
 
 :- implementation.
 
+:- import_module analysis.
+:- import_module backend_libs.
 :- import_module backend_libs.type_ctor_info.
+:- import_module bytecode_backend.
 :- import_module bytecode_backend.bytecode.
 :- import_module bytecode_backend.bytecode_gen.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module ll_backend.
 :- import_module ll_backend.deep_profiling.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 :- import_module top_level.mercury_compile_mlds_back_end.
+:- import_module transform_hlds.
 :- import_module transform_hlds.accumulator.
 :- import_module transform_hlds.closure_analysis.
 :- import_module transform_hlds.complexity.

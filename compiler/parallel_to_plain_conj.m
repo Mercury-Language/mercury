@@ -16,6 +16,7 @@
 :- module transform_hlds.parallel_to_plain_conj.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 

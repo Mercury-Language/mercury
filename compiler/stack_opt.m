@@ -71,6 +71,7 @@
 :- module ll_backend.stack_opt.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
@@ -84,8 +85,10 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.interval.
 :- import_module backend_libs.matching.
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.
@@ -101,12 +104,15 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.quantification.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.live_vars.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.store_alloc.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
+:- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.

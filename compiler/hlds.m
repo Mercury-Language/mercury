@@ -13,9 +13,6 @@
 :- module hlds.
 :- interface.
 
-:- import_module mdbcomp.
-:- import_module parse_tree.
-
 %-----------------------------------------------------------------------------%
 
 % The HLDS data structure itself.
@@ -64,13 +61,5 @@
 :- include_module passes_aux.
 
 %-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module libs.
-:- import_module check_hlds.        % needed for unify_proc.unify_proc_id, etc
-:- import_module transform_hlds.    % needed for term_util, mmc_analysis
-
 :- end_module hlds.
-
 %-----------------------------------------------------------------------------%

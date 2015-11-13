@@ -19,9 +19,11 @@
 
 :- import_module erl_backend.elds.
 :- import_module erl_backend.erl_code_util.
+:- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -103,7 +105,9 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.vartypes.

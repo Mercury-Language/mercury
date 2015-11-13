@@ -23,6 +23,7 @@
 :- module ll_backend.transform_llds.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.llds.
 
@@ -35,7 +36,9 @@
 
 :- implementation.
 
+:- import_module hlds.
 :- import_module hlds.hlds_pred.
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
 :- import_module libs.options.

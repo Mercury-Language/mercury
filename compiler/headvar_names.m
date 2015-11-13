@@ -18,6 +18,7 @@
 :- interface.
 
 :- import_module hlds.hlds_pred.
+:- import_module libs.
 :- import_module libs.globals.
 
     % If all clauses give a given head variables the same name, use this name
@@ -36,6 +37,7 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
 :- import_module libs.options.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.set_of_var.

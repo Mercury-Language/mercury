@@ -17,6 +17,7 @@
 :- module ll_backend.llds_out.llds_out_data.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.llds_out.llds_out_util.
@@ -148,6 +149,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.name_mangle.
@@ -155,8 +157,10 @@
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.llds_out.llds_out_code_addr.
 :- import_module ll_backend.rtti_out.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module int.

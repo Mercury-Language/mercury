@@ -16,7 +16,9 @@
 :- module transform_hlds.ctgc.selector.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module io.
@@ -86,6 +88,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module parse_tree.prog_type.
 

@@ -129,6 +129,7 @@
 :- implementation.
 
 :- import_module hlds.goal_util.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.set_of_var.
 

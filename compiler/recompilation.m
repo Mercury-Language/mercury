@@ -27,15 +27,12 @@
 :- module recompilation.
 :- interface.
 
-:- import_module check_hlds.
-:- import_module hlds.
 :- import_module libs.
-:- import_module mdbcomp.
-:- import_module parse_tree.
-
 :- import_module libs.timestamp.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module io.
@@ -299,6 +296,7 @@
 
 :- implementation.
 
+:- import_module hlds.
 :- import_module hlds.passes_aux.
 :- import_module libs.globals.
 :- import_module libs.options.

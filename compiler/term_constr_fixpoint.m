@@ -21,6 +21,7 @@
 :- module transform_hlds.term_constr_fixpoint.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.term_constr_data.
@@ -56,6 +57,7 @@
 
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.lp_rational.
 :- import_module libs.options.

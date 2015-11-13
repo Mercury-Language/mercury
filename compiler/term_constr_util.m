@@ -16,11 +16,14 @@
 :- module transform_hlds.term_constr_util.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.lp_rational.
 :- import_module libs.polyhedron.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_main_types.
@@ -189,6 +192,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.

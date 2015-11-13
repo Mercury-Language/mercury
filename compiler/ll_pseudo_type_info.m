@@ -26,6 +26,7 @@
 
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 %---------------------------------------------------------------------------%
@@ -60,6 +61,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.pseudo_type_info.
 :- import_module backend_libs.rtti.
 

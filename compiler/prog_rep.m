@@ -21,12 +21,15 @@
 :- module ll_backend.prog_rep.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module hlds.vartypes.
 :- import_module ll_backend.prog_rep_tables.
+:- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -87,7 +90,9 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.proc_label.
+:- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.code_model.

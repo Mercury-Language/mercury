@@ -78,6 +78,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.name_mangle.
 
 :- import_module int.

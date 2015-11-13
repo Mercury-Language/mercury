@@ -18,6 +18,7 @@
 :- module ml_backend.java_util.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 
 %-----------------------------------------------------------------------------%

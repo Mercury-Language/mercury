@@ -12,10 +12,6 @@
 
 :- module transform_hlds.
 :- interface.
-:- import_module hlds.
-:- import_module parse_tree.
-:- import_module libs.
-:- import_module mdbcomp.
 
 %-----------------------------------------------------------------------------%
 
@@ -102,12 +98,6 @@
 
 % XXX The following modules are all currently unused.
 :- include_module transform.
-
-%-----------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module check_hlds.
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.

@@ -27,9 +27,11 @@
 :- import_module hlds.instmap.
 :- import_module hlds.pred_table.
 :- import_module hlds.vartypes.
+:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
@@ -443,6 +445,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.

@@ -22,7 +22,9 @@
 :- module transform_hlds.closure_analysis.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
+
 :- import_module io.
 
 :- pred closure_analyse_module(module_info::in, module_info::out,
@@ -33,13 +35,16 @@
 
 :- implementation.
 
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.passes_aux.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.

@@ -17,6 +17,7 @@
 :- module ll_backend.prog_rep_tables.
 :- interface.
 
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.

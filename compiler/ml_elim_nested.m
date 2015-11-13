@@ -414,6 +414,7 @@
 :- module ml_backend.ml_elim_nested.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
 :- import_module ml_backend.mlds.
 
@@ -440,9 +441,11 @@
 
 :- implementation.
 
+:- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module libs.options.
+:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

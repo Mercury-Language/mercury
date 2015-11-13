@@ -17,7 +17,9 @@
 :- module hlds.const_struct.
 :- interface.
 
+:- import_module libs.
 :- import_module libs.globals.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.

@@ -76,8 +76,10 @@
 :- module transform_hlds.intermod.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_item.
 
 :- import_module io.
@@ -179,6 +181,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
+:- import_module check_hlds.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
@@ -194,11 +197,13 @@
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
 :- import_module hlds.vartypes.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.lp_rational.
 :- import_module libs.options.
 :- import_module libs.polyhedron.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_names.

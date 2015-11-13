@@ -52,9 +52,12 @@
 :- module ll_backend.fact_table.
 :- interface.
 
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module io.
@@ -95,14 +98,17 @@
 
 :- implementation.
 
+:- import_module backend_libs.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.export.
 :- import_module backend_libs.foreign.
+:- import_module check_hlds.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_llds.
+:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.

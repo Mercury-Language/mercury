@@ -19,9 +19,11 @@
 :- module erl_backend.erl_rtti.
 :- interface.
 
+:- import_module backend_libs.
 :- import_module backend_libs.erlang_rtti.
 :- import_module backend_libs.rtti.
 :- import_module erl_backend.elds.
+:- import_module hlds.
 :- import_module hlds.hlds_module.
 
 :- import_module list.
@@ -49,7 +51,9 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
