@@ -840,37 +840,29 @@ write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
         ),
 
         % Dump structure sharing information.
-        ( if string.contains_char(DumpOptions, 'S') then
+        ( if
+            string.contains_char(DumpOptions, 'S'),
+            MaybeStructureSharing = yes(StructureSharing)
+        then
             write_indent(Indent, !IO),
             io.write_string("% Structure sharing: \n", !IO),
-            (
-                MaybeStructureSharing = yes(StructureSharing),
-                StructureSharing =
-                    structure_sharing_domain_and_status(SharingAs, _Status),
-                dump_maybe_structure_sharing_domain(VarSet, TVarSet,
-                    yes(SharingAs), !IO)
-            ;
-                MaybeStructureSharing = no,
-                dump_maybe_structure_sharing_domain(VarSet, TVarSet, no, !IO)
-            )
+            StructureSharing =
+                structure_sharing_domain_and_status(SharingAs, _Status),
+            dump_structure_sharing_domain(VarSet, TVarSet, SharingAs, !IO)
         else
             true
         ),
 
         % Dump structure reuse information.
-        ( if string.contains_char(DumpOptions, 'R') then
+        ( if
+            string.contains_char(DumpOptions, 'R'),
+            MaybeStructureReuse = yes(StructureReuse)
+        then
             write_indent(Indent, !IO),
             io.write_string("% Structure reuse: \n", !IO),
-            (
-                MaybeStructureReuse = yes(StructureReuse),
-                StructureReuse =
-                    structure_reuse_domain_and_status(ReuseAs, _ReuseStatus),
-                dump_maybe_structure_reuse_domain(VarSet, TVarSet,
-                    yes(ReuseAs), !IO)
-            ;
-                MaybeStructureReuse = no,
-                dump_maybe_structure_reuse_domain(VarSet, TVarSet, no, !IO)
-            )
+            StructureReuse =
+                structure_reuse_domain_and_status(ReuseAs, _ReuseStatus),
+            dump_structure_reuse_domain(VarSet, TVarSet, ReuseAs, !IO)
         else
             true
         ),

@@ -2479,7 +2479,7 @@ long_usage(!IO) :-
 % None of the 'all' aliases actually include all the options.
 convert_dump_alias("ALL", "abcdEfgilmnprstuvzBCDIMPRSTUZ").
 convert_dump_alias("allD", "abcdEfgilmnprstuvzBCDMPT").
-convert_dump_alias("all", "abcdEfgilmnprstuvzBCMPSTZ").
+convert_dump_alias("all", "abcdEfgilmnprstuvzBCMPTZ").
 convert_dump_alias("most", "bcdfgilmnprstvzP").
 convert_dump_alias("cmp", "bdfgilmnprstuvzP").
 convert_dump_alias("trans", "bcdglmnstuvz").
