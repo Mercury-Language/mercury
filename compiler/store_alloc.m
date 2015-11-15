@@ -96,9 +96,9 @@ allocate_store_maps(RunType, ModuleInfo, proc(PredId, _), !ProcInfo) :-
         RunType = for_stack_opt,
         proc_info_get_goal(!.ProcInfo, Goal2)
     ),
-    initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
-    globals.get_trace_level(Globals, TraceLevel),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    initial_liveness(ModuleInfo, PredInfo, !.ProcInfo, Liveness0),
+    globals.get_trace_level(Globals, TraceLevel),
     NeedFailVars = eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo,
         !.ProcInfo, TraceLevel),
     (

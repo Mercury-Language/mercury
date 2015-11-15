@@ -177,7 +177,7 @@
 
     % Return the set of variables live at the start of the procedure.
     %
-:- pred initial_liveness(proc_info::in, pred_id::in, module_info::in,
+:- pred initial_liveness(module_info::in, pred_info::in, proc_info::in,
     set_of_progvar::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -300,7 +300,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
             DebugLiveness, PredIdInt, VarSet, GoalAfterQuant, !IO)
     ),
 
-    initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
+    initial_liveness(ModuleInfo, PredInfo, !.ProcInfo, Liveness0),
     detect_liveness_in_goal(GoalAfterQuant, GoalAfterLiveness,
         Liveness0, _, LiveInfo),
 
@@ -309,7 +309,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
             DebugLiveness, PredIdInt, VarSet, GoalAfterLiveness, !IO)
     ),
 
-    initial_deadness(!.ProcInfo, LiveInfo, ModuleInfo, Deadness0),
+    initial_deadness(ModuleInfo, !.ProcInfo, LiveInfo, Deadness0),
     detect_deadness_in_goal(GoalAfterLiveness, GoalAfterDeadness,
         Deadness0, _, Liveness0, LiveInfo),
     trace [io(!IO)] (
@@ -737,9 +737,9 @@ detect_deadness_in_goal(Goal0, Goal, !Deadness, !.Liveness, LiveInfo) :-
             GoalExpr = GoalExpr0
         ;
             Disjuncts0 = [_ | _],
-            Union0 = set_of_var.init,
             get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
                 _, CompletedNonLocals),
+            Union0 = set_of_var.init,
             detect_deadness_in_disj(Disjuncts0, Disjuncts, !.Deadness,
                 !.Liveness, CompletedNonLocals, LiveInfo, Union0, Union, _),
             !:Deadness = Union,
@@ -748,9 +748,9 @@ detect_deadness_in_goal(Goal0, Goal, !Deadness, !.Liveness, LiveInfo) :-
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = switch(Var, Det, Cases0),
-        Union0 = set_of_var.init,
         get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
             _, CompletedNonLocals),
+        Union0 = set_of_var.init,
         detect_deadness_in_cases(Var, Cases0, Cases, !.Deadness, !.Liveness,
             CompletedNonLocals, LiveInfo, Union0, Union, _),
         !:Deadness = Union,
@@ -1768,13 +1768,13 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
+initial_liveness(ModuleInfo, PredInfo, ProcInfo, !:Liveness) :-
     proc_info_get_headvars(ProcInfo, Vars),
     proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     lookup_var_types(VarTypes, Vars, Types),
     !:Liveness = set_of_var.init,
-    ( if initial_liveness_2(Vars, Modes, Types, ModuleInfo, !Liveness) then
+    ( if initial_liveness_2(ModuleInfo, Vars, Types, Modes, !Liveness) then
         true
     else
         unexpected($module, $pred, "length mismatch")
@@ -1789,35 +1789,35 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
     module_info_get_globals(ModuleInfo, Globals),
     proc_info_get_goal(ProcInfo, hlds_goal(_Goal, GoalInfo)),
     NonLocals0 = goal_info_get_code_gen_nonlocals(GoalInfo),
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeinfoLiveness),
     maybe_complete_with_typeinfo_vars(NonLocals0, TypeinfoLiveness, VarTypes,
         RttiVarMaps, NonLocals),
     set_of_var.intersect(!.Liveness, NonLocals, !:Liveness).
 
-:- pred initial_liveness_2(list(prog_var)::in, list(mer_mode)::in,
-    list(mer_type)::in, module_info::in,
+:- pred initial_liveness_2(module_info::in,
+    list(prog_var)::in, list(mer_type)::in, list(mer_mode)::in,
     set_of_progvar::in, set_of_progvar::out) is semidet.
 
-initial_liveness_2([], [], [], _ModuleInfo, !Liveness).
-initial_liveness_2([V | Vs], [M | Ms], [T | Ts], ModuleInfo, !Liveness) :-
-    ( if mode_to_arg_mode(ModuleInfo, M, T, top_in) then
-        set_of_var.insert(V, !Liveness)
+initial_liveness_2(_ModuleInfo, [], [], [], !Liveness).
+initial_liveness_2(ModuleInfo, [Var | Vars], [Type | Types], [Mode | Modes],
+        !Liveness) :-
+    ( if mode_to_arg_mode(ModuleInfo, Mode, Type, top_in) then
+        set_of_var.insert(Var, !Liveness)
     else
         true
     ),
-    initial_liveness_2(Vs, Ms, Ts, ModuleInfo, !Liveness).
+    initial_liveness_2(ModuleInfo, Vars, Types, Modes, !Liveness).
 
 %-----------------------------------------------------------------------------%
 
     % Return the set of variables whose values are needed beyond the end
     % of the procedure (i.e. its output arguments).
     %
-:- pred initial_deadness(proc_info::in, live_info::in, module_info::in,
+:- pred initial_deadness(module_info::in, proc_info::in, live_info::in,
     set_of_progvar::out) is det.
 
-initial_deadness(ProcInfo, LiveInfo, ModuleInfo, Deadness) :-
+initial_deadness(ModuleInfo, ProcInfo, LiveInfo, Deadness) :-
     % The output arguments are all in the initial deadness.
     arg_info.partition_proc_args(ProcInfo, ModuleInfo, _, Deadness0, _),
 

@@ -821,10 +821,13 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
 
 :- type count_info
     --->    count_info(
+                ci_module                   :: module_info,
                 ci_pred_proc_id             :: pred_proc_id,
                                             % Which procedure is being counted.
-                ci_proc                     :: proc_info,
-                ci_module                   :: module_info,
+                ci_pred_info                :: pred_info,
+                ci_proc_info                :: proc_info,
+                                            % The pred_ and proc_info of that
+                                            % procedure.
                 ci_proc_counts              :: proc_trace_counts,
                 ci_params                   :: tuning_params,
                 ci_tupling_scheme           :: tupling_scheme,
@@ -892,7 +895,7 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
         generate_proc_arg_info(Markers, ArgTypes, !.ModuleInfo, !ProcInfo),
 
         detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo),
-        initial_liveness(!.ProcInfo, PredId, !.ModuleInfo, Liveness0),
+        initial_liveness(!.ModuleInfo, PredInfo, !.ProcInfo, Liveness0),
         module_info_get_globals(!.ModuleInfo, Globals),
         body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
         globals.lookup_bool_option(Globals,
@@ -991,8 +994,8 @@ count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo,
         FileName, ProcLabel),
     ( get_proc_counts(TraceCounts, ProcLabelInContext, yes(ProcCounts)) ->
         map.lookup(ReverseGoalPathMapMap, PredProcId, ReverseGoalPathMap),
-        CountInfo = count_info(PredProcId, ProcInfo, ModuleInfo, ProcCounts,
-            TuningParams, TuplingScheme, ReverseGoalPathMap),
+        CountInfo = count_info(ModuleInfo, PredProcId, PredInfo, ProcInfo,
+            ProcCounts, TuningParams, TuplingScheme, ReverseGoalPathMap),
         count_load_stores_in_proc(CountInfo, ProcLoads, ProcStores),
         % XXX: There is a problem somewhere causing CALL and EXIT
         % events not to show up for some procedures in trace count files.
@@ -1014,10 +1017,10 @@ count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo,
     is det.
 
 count_load_stores_in_proc(CountInfo, Loads, Stores) :-
-    proc(PredId, _) = CountInfo ^ ci_pred_proc_id,
-    ProcInfo = CountInfo ^ ci_proc,
     ModuleInfo = CountInfo ^ ci_module,
-    initial_liveness(ProcInfo, PredId, ModuleInfo, InitialLiveness),
+    PredInfo = CountInfo ^ ci_pred_info,
+    ProcInfo = CountInfo ^ ci_proc_info,
+    initial_liveness(ModuleInfo, PredInfo, ProcInfo, InitialLiveness),
     CountState0 = count_state(InitialLiveness, set_of_var.init, 0.0, 0.0),
     proc_info_get_goal(ProcInfo, Goal),
     count_load_stores_in_goal(Goal, CountInfo, CountState0, CountState1),
@@ -1075,9 +1078,8 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
     ;
         GoalExpr = generic_call(GenericCall, ArgVars, ArgModes, MaybeArgRegs,
             _Detism),
-        ProcInfo = CountInfo ^ ci_proc,
         ModuleInfo = CountInfo ^ ci_module,
-        goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
+        ProcInfo = CountInfo ^ ci_proc_info,
         proc_info_get_vartypes(ProcInfo, VarTypes),
         lookup_var_types(VarTypes, ArgVars, ArgTypes),
         arg_info.generic_call_arg_reg_types(ModuleInfo, VarTypes,
@@ -1100,6 +1102,8 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
             assoc_list.keys(GenericVarsArgInfos, GenericVars),
             list.append(GenericVars, InputArgs, Inputs),
             Outputs = set.list_to_set(OutputArgs),
+            goal_info_get_maybe_need_across_call(GoalInfo,
+                MaybeNeedAcrossCall),
             count_load_stores_for_call(CountInfo, Inputs, Outputs,
                 MaybeNeedAcrossCall, GoalInfo, !CountState)
         ;
@@ -1116,7 +1120,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
             _PredInfo, ProcInfo),
         ArgVars = list.map(foreign_arg_var, Args),
         ExtraVars = list.map(foreign_arg_var, ExtraArgs),
-        CallingProcInfo = CountInfo ^ ci_proc,
+        CallingProcInfo = CountInfo ^ ci_proc_info,
         proc_info_get_vartypes(CallingProcInfo, VarTypes),
         arg_info.partition_proc_call_args(ProcInfo, VarTypes,
             ModuleInfo, ArgVars, InputArgVarSet, OutputArgVarSet, _),
@@ -1215,7 +1219,7 @@ count_load_stores_in_call_to_tupled(GoalExpr, GoalInfo, CountInfo,
     ModuleInfo = CountInfo ^ ci_module,
     module_info_pred_proc_info(ModuleInfo, CalleePredId, CalleeProcId,
         _, CalleeProcInfo),
-    CallingProcInfo = CountInfo ^ ci_proc,
+    CallingProcInfo = CountInfo ^ ci_proc_info,
     proc_info_get_vartypes(CallingProcInfo, VarTypes),
     arg_info.partition_proc_call_args(CalleeProcInfo, VarTypes,
         ModuleInfo, ArgVars, InputArgs0, Outputs, _),
@@ -1266,7 +1270,7 @@ count_load_stores_in_call_to_not_tupled(GoalExpr, GoalInfo, CountInfo,
     ModuleInfo = CountInfo ^ ci_module,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, CalleeProcInfo),
-    ProcInfo = CountInfo ^ ci_proc,
+    ProcInfo = CountInfo ^ ci_proc_info,
     proc_info_get_vartypes(ProcInfo, VarTypes),
     arg_info.partition_proc_call_args(CalleeProcInfo, VarTypes,
         ModuleInfo, ArgVars, InputArgs, OutputArgs, _),

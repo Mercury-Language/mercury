@@ -71,8 +71,8 @@
 %-----------------------------------------------------------------------------%
 
 allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
-    initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    initial_liveness(ModuleInfo, PredInfo, !.ProcInfo, Liveness0),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_trace_level(Globals, TraceLevel),
     NeedFailVars = eff_trace_level_needs_fail_vars(ModuleInfo, PredInfo,
