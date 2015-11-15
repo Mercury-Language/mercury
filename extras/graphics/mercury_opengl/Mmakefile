@@ -22,7 +22,7 @@ MAIN_TARGET = libmercury_opengl
 GL_LIBS = -lGL -lGLU -L/usr/X11R6/lib -lX11 -lXt -lICE -lXext -lSM
 
 # Don't issue a warning because mercury_opengl doesn't export anything.
-MCFLAGS-mercury_opengl = --no-warn-nothing-exported
+MCFLAGS-mercury_opengl = --no-warn-nothing-exported --no-warn-interface-imports
 
 # This is necessary for a couple of predicatest that have not been
 # implemented completely.

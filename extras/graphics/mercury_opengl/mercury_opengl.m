@@ -8,6 +8,8 @@
 % mercury_opengl -- a Mercury binding for OpenGL.
 
 :- module mercury_opengl.
+:- interface.
 
-:- import_module mglu, mogl.
+:- import_module mglu.
+:- import_module mogl.
 
