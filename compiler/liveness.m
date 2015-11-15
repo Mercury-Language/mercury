@@ -1167,6 +1167,17 @@ find_reachable_case([case(_, _, Goal) | Cases], ReachableGoal) :-
 % since a variable cannot be live on entry to a branched control structure
 % without the type(class)info variables describing its type being live there as
 % well.
+%
+% This is why cse_detection.m, when it duplicates a deconstruction unification
+% and finds that an argument variable contains a typeinfo or typeclass info
+% (which can happen with existential types), it will preserve the name of
+% that argument variable. Specifically, will copy the name of the argument
+% variable in the deconstruction in ONE of the branches of the branched control
+% structure it processes, but since such variables should be named in ALL
+% branches, and we don't care about the actual name itself, this should be ok.
+%
+% For the details of potential problems with delaying the death of some
+% but not all variables, see tests/valid/bug50.m.
 
 :- pred delay_death_proc_body(hlds_goal::in, hlds_goal::out, prog_varset::in,
     set_of_progvar::in) is det.

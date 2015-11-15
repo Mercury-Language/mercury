@@ -361,8 +361,7 @@
 :- type svar_store
     --->    svar_store(
                 store_next_goal_id  ::  counter,
-                store_final_remap   ::  map(goal_id,
-                                            assoc_list(prog_var, prog_var)),
+                store_final_remap   ::  incremental_rename_map,
                 store_specs         ::  list(error_spec)
             ).
 
@@ -1004,8 +1003,7 @@ find_changes_in_arm_and_update_changed_status_map([Before | Befores],
     map(svar, svar_status)::in, assoc_list(svar, svar_status)::in,
     prog_varset::in, list(hlds_goal)::in, list(hlds_goal)::out,
     counter::in, counter::out,
-    map(goal_id, assoc_list(prog_var, prog_var))::in,
-    map(goal_id, assoc_list(prog_var, prog_var))::out,
+    incremental_rename_map::in, incremental_rename_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 merge_changes_made_by_arms([], _StatusMapBefore, _ChangedStatusListAfter,
@@ -1850,8 +1848,7 @@ svar_goal_to_conj_list(Goal, Conjuncts, !Store) :-
 
 :- pred svar_goal_to_conj_list_internal(hlds_goal::in, list(hlds_goal)::out,
     counter::in, counter::out,
-    map(goal_id, assoc_list(prog_var, prog_var))::in,
-    map(goal_id, assoc_list(prog_var, prog_var))::out) is det.
+    incremental_rename_map::in, incremental_rename_map::out) is det.
 
 svar_goal_to_conj_list_internal(Goal, Conjuncts,
         !NextGoalId, !DelayedRenamingMap) :-
@@ -1873,8 +1870,7 @@ svar_goal_to_conj_list_internal(Goal, Conjuncts,
 
 :- pred add_conjunct_delayed_renames(assoc_list(prog_var, prog_var)::in,
     hlds_goal::in, hlds_goal::out, counter::in, counter::out,
-    map(goal_id, assoc_list(prog_var, prog_var))::in,
-    map(goal_id, assoc_list(prog_var, prog_var))::out) is det.
+    incremental_rename_map::in, incremental_rename_map::out) is det.
 
 add_conjunct_delayed_renames(DelayedRenamingToAdd, Goal0, Goal,
         !NextGoalId, !DelayedRenamingMap) :-

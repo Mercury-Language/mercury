@@ -1324,8 +1324,7 @@
 
     ;       feature_tuple_opt
             % This goal was created by the tupling optimization.
-            % The comment for the stack slot optimization above
-            % applies here.
+            % The comment for the stack slot optimization above applies here.
 
     ;       feature_call_table_gen
             % This goal generates the variable that represents the call table
@@ -1653,6 +1652,9 @@
 :- pred rename_vars_in_goal_info(must_rename::in, prog_var_renaming::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
 
+:- type incremental_rename_map ==
+    map(goal_id, assoc_list(prog_var, prog_var)).
+
     % Rename the variables in the given goal, incrementally updating the
     % substitution. When we start processing a goal, we look up its goal_id
     % in the provided map. If we find it, we add the given var to var mappings
@@ -1661,8 +1663,7 @@
     % Must = need_not_rename).
     %
 :- pred incremental_rename_vars_in_goal(prog_var_renaming::in,
-    map(goal_id, assoc_list(prog_var, prog_var))::in,
-    hlds_goal::in, hlds_goal::out) is det.
+    incremental_rename_map::in, hlds_goal::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2682,7 +2683,7 @@ follow_subn_until_fixpoint(FromVar - ToVar, !Subn) :-
     ).
 
 :- pred incremental_rename_vars_in_goals(prog_var_renaming::in,
-    map(goal_id, assoc_list(prog_var, prog_var))::in,
+    incremental_rename_map::in,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
 incremental_rename_vars_in_goals(_, _, [], []).
@@ -2692,8 +2693,7 @@ incremental_rename_vars_in_goals(Subn, SubnUpdates,
     incremental_rename_vars_in_goals(Subn, SubnUpdates, Goals0, Goals).
 
 :- pred incremental_rename_vars_in_cases(prog_var_renaming::in,
-    map(goal_id, assoc_list(prog_var, prog_var))::in,
-    list(case)::in, list(case)::out) is det.
+    incremental_rename_map::in, list(case)::in, list(case)::out) is det.
 
 incremental_rename_vars_in_cases(_, _, [], []).
 incremental_rename_vars_in_cases(Subn, SubnUpdates,
@@ -2706,7 +2706,7 @@ incremental_rename_vars_in_cases(Subn, SubnUpdates,
 %-----------------------------------------------------------------------------%
 
 :- pred incremental_rename_vars_in_goal_expr(prog_var_renaming::in,
-    map(goal_id, assoc_list(prog_var, prog_var))::in,
+    incremental_rename_map::in,
     hlds_goal_expr::in, hlds_goal_expr::out) is det.
 
 incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
@@ -2853,8 +2853,7 @@ incremental_rename_vars_in_goal_expr(Subn, SubnUpdates, Expr0, Expr) :-
     ).
 
 :- pred incremental_rename_unify_rhs(prog_var_renaming::in,
-    map(goal_id, assoc_list(prog_var, prog_var))::in,
-    unify_rhs::in, unify_rhs::out) is det.
+    incremental_rename_map::in, unify_rhs::in, unify_rhs::out) is det.
 
 incremental_rename_unify_rhs(Subn, SubnUpdates, RHS0, RHS) :-
     (

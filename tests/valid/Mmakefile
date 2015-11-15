@@ -255,6 +255,8 @@ DEEP_PROF_CAPABLE_PROGS = \
 	impure_detism
 
 LLDS_PROGS = \
+	bug50 \
+	bug50_full \
 	exists_cast_bug \
 	fzn_debug_abort \
 	liveness_disagree \

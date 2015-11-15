@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: cse_detection.m.
 % Main author: zs.
@@ -17,10 +17,10 @@
 %
 %   (
 %       X = f(A1, B1, C1),
-%       ...
+%       <arm 1>
 %   ;
 %       X = f(A2, B2, C2),
-%       ...
+%       <arm 2>
 %   )
 %
 % with
@@ -28,10 +28,10 @@
 %   X = f(A0, B0, C0),
 %   (
 %       A1 := A0, B1 := B0, C1 := C0,
-%       ...
+%       <arm 1>
 %   ;
 %       A2 := A0, B2 := B0, C2 := C0,
-%       ...
+%       <arm 2>
 %   )
 %
 % This may (and often does) allow switch detection to recognize that
@@ -39,8 +39,27 @@
 % This in turn often allows determinism analysis to recognize that
 % the code is in fact deterministic.
 %
-% The structure of the code in this module is similar to the structure
-% of the code in switch_detection.m. That is because the jobs of
+% In theory, we could use goal renames instead of adding unifications.
+% This means that we instead of the above, we could generate this:
+%
+%   X = f(A0, B0, C0),
+%   (
+%       <arm 1> with the substitution [A1 -> A0, B1 -> B0, C1 -> C0]
+%   ;
+%       <arm 2> with the substitution [A2 -> A0, B2 -> B0, C2 -> C0]
+%   )
+%
+% This would reduce the size of the goal instead of increasing it,
+% which would help speed up later passes of the compiler. Unfortunately,
+% it also has the potential to make error messages about code in the
+% various <arm i> confusing: if the user wrote "p(A2, ...)", he/she will
+% be surprised to see an error message mention "A0" in the call to p.
+% That is why we add unifications instead of doing renaming.
+%
+%---------------------------------------------------------------------------%
+%
+% Note that the structure of the code in this module is similar to the
+% structure of the code in switch_detection.m. That is because the jobs of
 % the two modules are related:
 %
 % cse_detection.m:
@@ -51,7 +70,7 @@
 %   looks for unifications that deconstruct the same variable
 %   with DIFFERENT function symbols in different arms of a disjunction
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.cse_detection.
 :- interface.
@@ -65,8 +84,8 @@
 :- pred detect_cse_in_proc(pred_id::in, proc_id::in,
     module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -89,6 +108,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
@@ -102,7 +122,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 detect_cse_in_module(!ModuleInfo) :-
     % Traverse the module structure, calling `detect_cse_in_goal'
@@ -281,7 +301,7 @@ detect_cse_in_proc_pass(ModuleInfo, Redo, !ProcInfo) :-
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a goal, and the instmap on entry to that goal,
     % find disjunctions that contain common subexpressions
@@ -423,7 +443,7 @@ detect_cse_in_goal_expr(GoalExpr0, GoalExpr, !CseInfo, GoalInfo, InstMap0,
         GoalExpr = shorthand(ShortHand)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_cse_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     cse_info::in, cse_info::out, conj_type::in, instmap::in, bool::out) is det.
@@ -445,13 +465,14 @@ detect_cse_in_conj([Goal0 | Goals0], Goals, !CseInfo, ConjType, !.InstMap,
     ),
     bool.or(Redo1, Redo2, Redo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% We have found a non-empty branched structure, and we have a list
+% of the nonlocal variables of that structure. For each nonlocal variable,
+% we check whether each branch matches that variable against
+%the same functor.
+%
 
-    % These are the interesting bits - we've found a non-empty branched
-    % structure, and we've got a list of the non-local variables of that
-    % structure. Now for each non-local variable, we check whether each
-    % branch matches that variable against the same functor.
-    %
 :- pred detect_cse_in_disj(list(prog_var)::in, list(hlds_goal)::in,
     hlds_goal_info::in, instmap::in, cse_info::in,
     cse_info::out, bool::out, hlds_goal_expr::out) is det.
@@ -575,7 +596,7 @@ detect_cse_in_ite_arms(Cond0, Cond, Then0, Then, Else0, Else, !CseInfo,
     bool.or(Redo1, Redo2, Redo12),
     bool.or(Redo12, Redo3, Redo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % common_deconstruct(Goals0, Var, !CseInfo, Unify, Goals):
     % input vars:
@@ -612,7 +633,7 @@ common_deconstruct_2([Goal0 | Goals0], Var, !CseState, !CseInfo,
     !.CseState = have_candidate(_, _, _),
     common_deconstruct_2(Goals0, Var, !CseState, !CseInfo, Goals).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred common_deconstruct_cases(list(case)::in, prog_var::in,
     cse_info::in, cse_info::out, hlds_goal::out, assoc_list(prog_var)::out,
@@ -638,7 +659,7 @@ common_deconstruct_cases_2([Case0 | Cases0], Var, !CseState, !CseInfo,
     !.CseState = have_candidate(_, _, _),
     common_deconstruct_cases_2(Cases0, Var, !CseState, !CseInfo, Cases).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % This data structure represents the state of the search for
     % deconstructions in all the branches of a branched control structure
@@ -705,13 +726,14 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
     cse_info::in, cse_info::out, assoc_list(prog_var)::out,
     hlds_goal::out, list(hlds_goal)::out) is det.
 
-construct_common_unify(Var, hlds_goal(GoalExpr0, GoalInfo), !CseInfo,
-        OldNewVars, HoistedGoal, Replacements) :-
+construct_common_unify(Var, Goal0, !CseInfo, OldNewVars, HoistedGoal,
+        ReplacementGoals) :-
+    Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     ( if
         GoalExpr0 = unify(_, RHS, Umode, Unif0, Ucontext),
-        Unif0 = deconstruct(_, Consid, Args, Submodes, CanFail, CanCGC)
+        Unif0 = deconstruct(_, ConsId, ArgVars, Submodes, CanFail, CanCGC)
     then
-        Unif = deconstruct(Var, Consid, Args, Submodes, CanFail, CanCGC),
+        Unif = deconstruct(Var, ConsId, ArgVars, Submodes, CanFail, CanCGC),
         (
             RHS = rhs_functor(_, _, _),
             GoalExpr1 = unify(Var, RHS, Umode, Unif, Ucontext)
@@ -722,52 +744,93 @@ construct_common_unify(Var, hlds_goal(GoalExpr0, GoalInfo), !CseInfo,
             unexpected($module, $pred, "non-functor unify")
         ),
         Context = goal_info_get_context(GoalInfo),
-        create_parallel_subterms(Args, Context, Ucontext, !CseInfo,
-            OldNewVars, Replacements),
-        map.from_assoc_list(OldNewVars, Sub),
-        rename_some_vars_in_goal(Sub, hlds_goal(GoalExpr1, GoalInfo),
+        create_new_arg_vars(ArgVars, Context, Ucontext, !CseInfo,
+            OldNewVars, ReplacementGoals),
+        map.from_assoc_list(OldNewVars, Subn),
+        rename_some_vars_in_goal(Subn, hlds_goal(GoalExpr1, GoalInfo),
             HoistedGoal)
     else
         unexpected($module, $pred, "non-unify goal")
     ).
 
-:- pred create_parallel_subterms(list(prog_var)::in, prog_context::in,
+:- pred create_new_arg_vars(list(prog_var)::in, prog_context::in,
     unify_context::in, cse_info::in, cse_info::out,
     assoc_list(prog_var)::out, list(hlds_goal)::out) is det.
 
-create_parallel_subterms([], _, _, !CseInfo, [], []).
-create_parallel_subterms([OFV | OFV0], Context, UnifyContext, !CseInfo,
-        OldNewVars, Replacements) :-
-    create_parallel_subterms(OFV0, Context, UnifyContext, !CseInfo,
-        OldNewVars1, Replacements1),
-    create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo,
-        OldNewVars1, OldNewVars, Goal),
-    Replacements = [Goal | Replacements1].
+create_new_arg_vars([], _, _, !CseInfo, [], []).
+create_new_arg_vars([HeadOldArgVar | TailOldArgVars], Context,
+        UnifyContext, !CseInfo, !:OldNewVars, ReplacementGoals) :-
+    create_new_arg_vars(TailOldArgVars, Context, UnifyContext, !CseInfo,
+        !:OldNewVars, TailReplacementGoals),
+    create_new_arg_var(HeadOldArgVar, Context, UnifyContext, !CseInfo,
+        !OldNewVars, HeadReplacementGoal),
+    ReplacementGoals = [HeadReplacementGoal | TailReplacementGoals].
 
-:- pred create_parallel_subterm(prog_var::in, prog_context::in,
+:- pred create_new_arg_var(prog_var::in, prog_context::in,
     unify_context::in, cse_info::in, cse_info::out,
     assoc_list(prog_var)::in, assoc_list(prog_var)::out,
     hlds_goal::out) is det.
 
-create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
+create_new_arg_var(OldArgVar, Context, UnifyContext, !CseInfo, !OldNewVars,
         Goal) :-
+    % If OldArgVar was a type_info, typeclass_info or a component of either,
+    % and it was named, then we need to preserve the fact that it is named.
+    % The reason is documented by the comment before delay_death_proc_body
+    % in liveness.m.
+    %
+    % The reason why we don't preserve the name of all fields that have names
+    % is that taking the name of an argument variable from one branch
+    % and using it as the name of the argument variable in the hoisted-out
+    % goal makes that name visible in the other branches as well, and in
+    % THOSE branches, it can be misleading.
+    %
+    % This is illustrataed by the merge predicate in tests/debugger/dice.m:
+    %
+    % merge([], [], []).
+    % merge([S | Ss], [], [S | Ss]).
+    % merge([], [S | Ss], [S | Ss]).
+    % merge([A | As], [B | Bs], [C | Cs]) :-
+    %   ( if
+    %       A =< B
+    %   then
+    %       dice.merge(As, [B | Bs], Cs),
+    %       C = A
+    %   else
+    %       dice.merge(As, [B | Bs], Cs), % BUG
+    %       C = B
+    %   ).
+    %
+    % When printing the variables live at some point in the if-then-else,
+    % programmers shouldn't be surprised by the debugger telling them
+    % about a live variable named "S" or "Ss", when the names of those fields
+    % at that point in the code are actually "A" and "As".
+
     VarSet0 = !.CseInfo ^ csei_varset,
     VarTypes0 = !.CseInfo ^ csei_vartypes,
-    varset.new_var(NFV, VarSet0, VarSet),
-    lookup_var_type(VarTypes0, OFV, Type),
-    add_var_type(NFV, Type, VarTypes0, VarTypes),
-    !:OldNewVar = [OFV - NFV | !.OldNewVar],
+    lookup_var_type(VarTypes0, OldArgVar, Type),
+    ModuleInfo = !.CseInfo ^ csei_module_info,
+    TypeCat = classify_type(ModuleInfo, Type),
+    ( if
+        TypeCat = ctor_cat_system(_),
+        varset.search_name(VarSet0, OldArgVar, OldName)
+    then
+        varset.new_named_var(OldName, NewArgVar, VarSet0, VarSet)
+    else
+        varset.new_var(NewArgVar, VarSet0, VarSet)
+    ),
+    add_var_type(NewArgVar, Type, VarTypes0, VarTypes),
+    !:OldNewVars = [OldArgVar - NewArgVar | !.OldNewVars],
     UnifyContext = unify_context(MainCtxt, SubCtxt),
     % It is ok to create complicated unifications here, because we rerun
     % mode analysis on the resulting goal. It would be nicer to generate
     % the right assignment unification directly, but that would require keeping
-    % track of the inst of OFV.
-    create_pure_atomic_complicated_unification(OFV, rhs_var(NFV),
+    % track of the inst of OldArgVar.
+    create_pure_atomic_complicated_unification(OldArgVar, rhs_var(NewArgVar),
         Context, MainCtxt, SubCtxt, Goal),
     !CseInfo ^ csei_varset := VarSet,
     !CseInfo ^ csei_vartypes := VarTypes.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred find_similar_deconstruct(hlds_goal::in, hlds_goal::in,
     prog_context::in, assoc_list(prog_var)::out, list(hlds_goal)::out)
@@ -813,8 +876,8 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
         Replacements = [Goal | Replacements1]
     ).
 
-%-----------------------------------------------------------------------------%
-
+%---------------------------------------------------------------------------%
+%
 % This section handles the case where the functor involved in the
 % common subexpression contains existentially typed arguments,
 % whether or not they are constrained to belong to a typeclass.
@@ -831,16 +894,16 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
 % As an example, consider a disjunction such as
 %
 %   (
-%       HeadVar.g2_2 = x:u(TypeClassInfo_for_v_8, V_4),
+%       HeadVar.g2_2 = x.u(TypeClassInfo_for_v_8, V_4),
 %       ...
 %   ;
-%       HeadVar.g2_2 = x:u(TypeClassInfo_for_v_14, V_6)
+%       HeadVar.g2_2 = x.u(TypeClassInfo_for_v_14, V_6)
 %       ...
 %   )
 %
 % The main part of cse_detection will replace this with
 %
-%   HeadVar.g2_2 = x:u(V_17, V_16)
+%   HeadVar.g2_2 = x.u(V_17, V_16)
 %   (
 %       TypeClassInfo_for_v_8 = V_17,
 %       V_4 = V_16,
@@ -876,6 +939,7 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
 % variable types map:
 % V_4 (number 4) :: T_1
 % V_6 (number 6) :: T_1
+%
 
 :- pred maybe_update_existential_data_structures(hlds_goal::in,
     assoc_list(prog_var)::in, list(assoc_list(prog_var))::in,
@@ -967,6 +1031,6 @@ find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !Renaming) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.cse_detection.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

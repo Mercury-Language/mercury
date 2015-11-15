@@ -865,30 +865,40 @@ build_closure_info([Var | Vars], [Type0 | Types],
 find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    list.map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
-        TypeInfoLocns),
-    FindLocn = (pred(TypeInfoLocn::in, Locns::out) is det :-
-        type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-        ( if map.search(VarLocs, TypeInfoVar, TypeInfoLvalSet) then
-            AddLocn = (pred(Lval::in, LocnSet0::in, LocnSet::out) is det :-
-                (
-                    TypeInfoLocn = typeclass_info(_, FieldNum),
-                    Locn = locn_indirect(Lval, FieldNum)
-                ;
-                    TypeInfoLocn = type_info(_),
-                    Locn = locn_direct(Lval)
-                ),
-                set.insert(Locn, LocnSet0, LocnSet)
-            ),
-            set.fold(AddLocn, TypeInfoLvalSet, set.init, Locns)
-        else
-            varset.lookup_name(VarSet, TypeInfoVar, VarName),
-            unexpected($module, $pred,
-                "can't find rval for type_info var " ++ VarName)
-        )
+    list.foldl(
+        gather_type_info_layout_locns_for_tvar(VarSet, RttiVarMaps, VarLocs),
+        TypeVars, map.init, TypeInfoDataMap).
+
+:- pred gather_type_info_layout_locns_for_tvar(prog_varset::in,
+    rtti_varmaps::in, map(prog_var, set(lval))::in, tvar::in,
+    map(tvar, set(layout_locn))::in, map(tvar, set(layout_locn))::out) is det.
+
+gather_type_info_layout_locns_for_tvar(VarSet, RttiVarMaps, VarLocs, TypeVar,
+        !TypeInfoDataMap) :-
+    rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, TypeInfoLocn),
+    type_info_locn_var(TypeInfoLocn, TypeInfoVar),
+    ( if map.search(VarLocs, TypeInfoVar, TypeInfoLvalSet) then
+        set.fold(gather_type_info_layout_locn(TypeInfoLocn), TypeInfoLvalSet,
+            set.init, Locns),
+        map.det_insert(TypeVar, Locns, !TypeInfoDataMap)
+    else
+        varset.lookup_name(VarSet, TypeInfoVar, VarName),
+        unexpected($module, $pred,
+            "can't find rval for type_info var " ++ VarName)
+    ).
+
+:- pred gather_type_info_layout_locn(type_info_locn::in, lval::in,
+    set(layout_locn)::in, set(layout_locn)::out) is det.
+
+gather_type_info_layout_locn(TypeInfoLocn, Lval, !Locns) :-
+    (
+        TypeInfoLocn = typeclass_info(_, FieldNum),
+        Locn = locn_indirect(Lval, FieldNum)
+    ;
+        TypeInfoLocn = type_info(_),
+        Locn = locn_direct(Lval)
     ),
-    list.map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
-    map.from_corresponding_lists(TypeVars, TypeInfoVarLocns, TypeInfoDataMap).
+    set.insert(Locn, !Locns).
 
 %---------------------------------------------------------------------------%
 

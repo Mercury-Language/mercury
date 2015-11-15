@@ -49,6 +49,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
+:- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -256,12 +257,41 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
         Goals = Goals0
     else
         list.reverse(RevGoals, Goals1),
-        % XXX Can we delay this until we return to the top level?
+
+        % NOTE Instead of doing the renaming here, we could assign
+        % a unique goal id to the conjunction and record the fact that
+        % we should perform Subn on this goal id, and then use
+        % incremental_rename_vars_in_goal to do all the renamings for
+        % all conjunctions in the procedure body at once.
+        %
+        % This would have the advantage of guaranteeing that the rename
+        % will NOT visit any part of the procedure body more than once.
+        % However, it would have the disadvantage of guaranteeing that
+        % the rename WILL visit EVERY part of the procedure body once.
+        % This would be a slowdown in the average case because the average
+        % number of times that the current code visits a goal in the procedure
+        % body is significantly less than one, since most conjunctions
+        % do not have excess assigments. (The profiling data I am looking at
+        % shows less than 10,000 times we get to this branch in a compiler
+        % invocation that called simplify_proc_return_msgs more than 50,000
+        % times, which implies that the average number of times we get here
+        % per procedure simplification is less than 0.2.)
+        %
+        % Until we see a piece of code whose compilation suffers from
+        % the potential worst case of this approach being realized,
+        % we prefer to get its better performance in the usual case.
+
         renaming_transitive_closure(Subn1, Subn),
         rename_vars_in_goals(need_not_rename, Subn, Goals1, Goals),
         map.keys(Subn0, RemovedVars),
+
         varset.delete_vars(RemovedVars, VarSet0, VarSet),
         simplify_info_set_varset(VarSet, !Info),
+
+        simplify_info_get_var_types(!.Info, VarTypes0),
+        delete_var_types(RemovedVars, VarTypes0, VarTypes),
+        simplify_info_set_var_types(VarTypes, !Info),
+
         simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         apply_substitutions_to_rtti_varmaps(map.init, map.init, Subn,
             RttiVarMaps0, RttiVarMaps),
