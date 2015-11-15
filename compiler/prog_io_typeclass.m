@@ -335,7 +335,8 @@ parse_unconstrained_class(ModuleName, NameTerm, TVarSet, Context, SeqNum,
                     words("as class parameters."), nl],
                 % XXX Would Context be better than get_term_context(NameTerm)?
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(NameTerm), [always(Pieces)])]),
+                    [simple_msg(get_term_context(NameTerm),
+                        [always(Pieces)])]),
                 MaybeTypeClassInfo = error1([Spec])
             )
         )
@@ -447,7 +448,8 @@ parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm, Pieces,
         ( if
             % Fail if any of the constraints aren't simple.
             get_simple_constraint(HeadArbConstraint, HeadConstraint),
-            list.map(get_simple_constraint, TailArbConstraints, TailConstraints)
+            list.map(get_simple_constraint,
+                TailArbConstraints, TailConstraints)
         then
             % XXX ITEM_LIST Loosens representation; switching from one_or_more
             % to list allows an empty list.

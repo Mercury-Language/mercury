@@ -223,9 +223,12 @@ llds_backend_pass_by_preds(!HLDS, LLDS, !GlobalData, !Specs) :-
         !GlobalData, !Specs),
     LLDS = cord.list(CProcsCord).
 
+:- type dup_proc_label_map ==
+    map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label).
+
 :- pred llds_backend_pass_by_preds_loop_over_preds(
     module_info::in, module_info::out, const_struct_map::in, list(pred_id)::in,
-    maybe(map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label))::in,
+    maybe(dup_proc_label_map)::in,
     cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -242,8 +245,7 @@ llds_backend_pass_by_preds_loop_over_preds(!HLDS, ConstStructMap,
 
 :- pred llds_backend_pass_by_preds_do_one_pred(
     module_info::in, module_info::out, const_struct_map::in, pred_id::in,
-    maybe(map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label))::in,
-    maybe(map(mdbcomp.prim_data.proc_label, mdbcomp.prim_data.proc_label))::out,
+    maybe(dup_proc_label_map)::in, maybe(dup_proc_label_map)::out,
     cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out,
     list(error_spec)::in, list(error_spec)::out) is det.

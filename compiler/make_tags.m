@@ -646,7 +646,8 @@ is_direct_arg_ctor(TypeTable, Target, TypeCtorModule, TypeStatus,
                 ArgCond = direct_arg_asserted
             else
                 ArgTypeCtor = type_ctor(ArgTypeCtorSymName, _ArgTypeCtorArity),
-                sym_name_get_module_name(ArgTypeCtorSymName, ArgTypeCtorModule),
+                sym_name_get_module_name(ArgTypeCtorSymName,
+                    ArgTypeCtorModule),
                 ( if TypeCtorModule = ArgTypeCtorModule then
                     get_type_defn_status(ArgTypeDefn, ArgTypeStatus),
                     ArgCond = arg_type_defined_in_same_module(ArgTypeStatus)

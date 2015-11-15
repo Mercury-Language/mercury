@@ -407,7 +407,8 @@ mercury_format_remaining_terms(VarSet, VarNamePrint, [Term | Terms], !U) :-
     <= output(U).
 
 mercury_format_bracketed_constant(Const, !U) :-
-    mercury_format_bracketed_constant_ngt(not_next_to_graphic_token, Const, !U).
+    mercury_format_bracketed_constant_ngt(not_next_to_graphic_token, Const,
+        !U).
 
 :- pred mercury_format_bracketed_constant_ngt(needs_quotes::in, const::in,
     U::di, U::uo) is det <= output(U).

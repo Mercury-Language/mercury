@@ -2958,7 +2958,8 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI, !CLD) :-
     % thus it is OK for this action to delete the last record of the state
     % of a variable.
     %
-:- pred clear_all_registers(bool::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred clear_all_registers(bool::in, code_loc_dep::in, code_loc_dep::out)
+    is det.
 
 :- pred clobber_reg(lval::in, code_loc_dep::in, code_loc_dep::out) is det.
 

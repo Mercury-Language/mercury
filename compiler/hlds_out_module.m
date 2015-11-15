@@ -690,7 +690,8 @@ write_inst_table(Lang, Indent, Limit, InstTable, !IO) :-
     io.write_string("%-------- Ground insts --------\n", !IO),
     list.foldl2(write_key_maybe_inst_det(Lang, Limit, write_key_ground_inst),
         GroundInstPairs, 0, NumGroundInsts, !IO),
-    io.format("\nTotal number of ground insts: %d\n", [i(NumGroundInsts)], !IO),
+    io.format("\nTotal number of ground insts: %d\n",
+        [i(NumGroundInsts)], !IO),
 
     io.write_string("%-------- Any insts --------\n", !IO),
     list.foldl2(write_key_maybe_inst_det(Lang, Limit, write_key_any_inst),
@@ -700,7 +701,8 @@ write_inst_table(Lang, Indent, Limit, InstTable, !IO) :-
     io.write_string("%-------- Shared insts --------\n", !IO),
     list.foldl2(write_key_maybe_inst(Lang, Limit, write_inst_name_nl),
         SharedInstPairs, 0, NumSharedInsts, !IO),
-    io.format("\nTotal number of shared insts: %d\n", [i(NumSharedInsts)], !IO),
+    io.format("\nTotal number of shared insts: %d\n",
+        [i(NumSharedInsts)], !IO),
 
     io.write_string("%-------- MostlyUniq insts --------\n", !IO),
     list.foldl2(write_key_maybe_inst(Lang, Limit, write_inst_name_nl),

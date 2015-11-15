@@ -537,7 +537,8 @@ add_type_defn(SectionItem, !ModuleInfo, !FoundInvalidType, !Specs,
         MutableItems = SolverTypeDetails ^ std_mutable_items,
         list.map(wrap_with_section_info(SectionInfo), MutableItems,
             TypeSectionMutableItems),
-        !:SectionMutableItems = TypeSectionMutableItems ++ !.SectionMutableItems
+        !:SectionMutableItems =
+            TypeSectionMutableItems ++ !.SectionMutableItems
     ;
         ( TypeDefn = parse_tree_du_type(_, _, _)
         ; TypeDefn = parse_tree_eqv_type(_)

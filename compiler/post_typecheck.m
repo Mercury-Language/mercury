@@ -1561,8 +1561,8 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
 
 get_constructor_containing_field_loop(_, [], _, _, _) :-
     unexpected($module, $pred, "can't find field").
-get_constructor_containing_field_loop(TypeCtor, [Ctor | Ctors], UnqualFieldName,
-        ConsId, FieldNumber) :-
+get_constructor_containing_field_loop(TypeCtor, [Ctor | Ctors],
+        UnqualFieldName, ConsId, FieldNumber) :-
     Ctor = ctor(_, _, SymName, CtorArgs, Arity, _Ctxt),
     ( if
         search_for_named_field(CtorArgs, UnqualFieldName, 1, FieldNumberPrime)
@@ -1570,8 +1570,8 @@ get_constructor_containing_field_loop(TypeCtor, [Ctor | Ctors], UnqualFieldName,
         ConsId = cons(SymName, Arity, TypeCtor),
         FieldNumber = FieldNumberPrime
     else
-        get_constructor_containing_field_loop(TypeCtor, Ctors, UnqualFieldName,
-            ConsId, FieldNumber)
+        get_constructor_containing_field_loop(TypeCtor, Ctors,
+            UnqualFieldName, ConsId, FieldNumber)
     ).
 
 :- pred search_for_named_field(list(constructor_arg)::in,

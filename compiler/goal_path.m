@@ -270,8 +270,8 @@ fill_conj_id_slots(SlotInfo, GoalId, LastConjunctNum, !GoalNumCounter,
         !ContainingGoalList, [Goal0 | Goals0], [Goal | Goals]) :-
     CurConjunctNum = LastConjunctNum + 1,
     ContainingGoal = containing_goal(GoalId, step_conj(CurConjunctNum)),
-    fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter, !ContainingGoalList,
-        Goal0, Goal),
+    fill_goal_id_slots(SlotInfo, ContainingGoal,
+        !GoalNumCounter, !ContainingGoalList, Goal0, Goal),
     fill_conj_id_slots(SlotInfo, GoalId, CurConjunctNum, !GoalNumCounter,
         !ContainingGoalList, Goals0, Goals).
 
@@ -285,8 +285,8 @@ fill_disj_id_slots(SlotInfo, GoalId, LastDisjunctNum, !GoalNumCounter,
         !ContainingGoalList, [Goal0 | Goals0], [Goal | Goals]) :-
     CurDisjunctNum = LastDisjunctNum + 1,
     ContainingGoal = containing_goal(GoalId, step_disj(CurDisjunctNum)),
-    fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter, !ContainingGoalList,
-        Goal0, Goal),
+    fill_goal_id_slots(SlotInfo, ContainingGoal,
+        !GoalNumCounter, !ContainingGoalList, Goal0, Goal),
     fill_disj_id_slots(SlotInfo, GoalId, CurDisjunctNum, !GoalNumCounter,
         !ContainingGoalList, Goals0, Goals).
 
@@ -297,13 +297,14 @@ fill_disj_id_slots(SlotInfo, GoalId, LastDisjunctNum, !GoalNumCounter,
 
 fill_switch_id_slots(_, _, _, _, !GoalNumCounter, !ContainingGoalList, [], []).
 fill_switch_id_slots(SlotInfo, GoalId, LastArmNum, MaybeNumFunctors,
-        !GoalNumCounter, !ContainingGoalList, [Case0 | Cases0], [Case | Cases]) :-
+        !GoalNumCounter, !ContainingGoalList,
+        [Case0 | Cases0], [Case | Cases]) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     CurArmNum = LastArmNum + 1,
     ContainingGoal =
         containing_goal(GoalId, step_switch(CurArmNum, MaybeNumFunctors)),
-    fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter, !ContainingGoalList,
-        Goal0, Goal),
+    fill_goal_id_slots(SlotInfo, ContainingGoal,
+        !GoalNumCounter, !ContainingGoalList, Goal0, Goal),
     Case = case(MainConsId, OtherConsIds, Goal),
     fill_switch_id_slots(SlotInfo, GoalId, CurArmNum, MaybeNumFunctors,
         !GoalNumCounter, !ContainingGoalList, Cases0, Cases).
@@ -318,8 +319,8 @@ fill_orelse_id_slots(SlotInfo, GoalId, LastOrElseNum, !GoalNumCounter,
         !ContainingGoalList, [Goal0 | Goals0], [Goal | Goals]) :-
     CurOrElseNum = LastOrElseNum + 1,
     ContainingGoal = containing_goal(GoalId, step_atomic_orelse(CurOrElseNum)),
-    fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter, !ContainingGoalList,
-        Goal0, Goal),
+    fill_goal_id_slots(SlotInfo, ContainingGoal,
+        !GoalNumCounter, !ContainingGoalList, Goal0, Goal),
     fill_orelse_id_slots(SlotInfo, GoalId, CurOrElseNum, !GoalNumCounter,
         !ContainingGoalList, Goals0, Goals).
 

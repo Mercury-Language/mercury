@@ -640,7 +640,8 @@ mm_tabling_annotate_goal_2(VarTypes, !GoalExpr, Status, !ModuleInfo) :-
         !:GoalExpr = disj(Disjuncts)
     ;
         !.GoalExpr = switch(Var, CanFail, Cases0),
-        mm_tabling_annotate_cases(VarTypes, Cases0, Cases, Status, !ModuleInfo),
+        mm_tabling_annotate_cases(VarTypes, Cases0, Cases, Status,
+            !ModuleInfo),
         !:GoalExpr = switch(Var, CanFail, Cases)
     ;
         !.GoalExpr = if_then_else(Vars, Cond0, Then0, Else0),

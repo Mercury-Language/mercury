@@ -542,9 +542,9 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO) :-
                 FoundOISUError = no,
                 FoundTryError = no,
                 NumErrors = 0,
-                % Strictly speaking, we shouldn't need to check the exit status.
-                % But the values returned for FoundModeError etc. aren't always
-                % correct.
+                % Strictly speaking, we shouldn't need to check
+                % the exit status. But the values returned for FoundModeError
+                % etc. aren't always correct.
                 ExitStatus = 0
             then
                 FoundError = no
@@ -976,7 +976,8 @@ maybe_simplify(Warn, SimplifyPass, Verbose, Stats, !HLDS, !Specs, !IO) :-
             then
                 list.cons(simptask_constant_prop, !SimpList)
             else
-                !:SimpList = list.delete_all(!.SimpList, simptask_constant_prop)
+                !:SimpList =
+                    list.delete_all(!.SimpList, simptask_constant_prop)
             ),
             list.cons(simptask_mark_code_model_changes, !SimpList),
             list.cons(simptask_elim_removable_scopes, !SimpList)

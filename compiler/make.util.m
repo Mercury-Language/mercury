@@ -99,7 +99,8 @@
     % option list.
     %
 :- pred build_with_module_options_args(globals::in, module_name::in,
-    list(string)::in, options_variables::in, list(string)::in, list(string)::in,
+    list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in,
     build(list(string), Info1, Info2)::in(build),
     bool::out, Info1::in, maybe(Info2)::out, io::di, io::uo) is det.
 

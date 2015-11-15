@@ -1005,12 +1005,14 @@ gen_out_proc_goal(PPId, Replacement, Goal, AuxGoal) :-
         AuxGoal = Goal
     ;
         GoalExpr = conj(ConjType, Conjuncts),
-        list.map(gen_out_proc_goal(PPId, Replacement), Conjuncts, AuxConjuncts),
+        list.map(gen_out_proc_goal(PPId, Replacement),
+            Conjuncts, AuxConjuncts),
         AuxGoalExpr = conj(ConjType, AuxConjuncts),
         AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
     ;
         GoalExpr = disj(Disjuncts),
-        list.map(gen_out_proc_goal(PPId, Replacement), Disjuncts, AuxDisjuncts),
+        list.map(gen_out_proc_goal(PPId, Replacement),
+            Disjuncts, AuxDisjuncts),
         AuxGoalExpr = disj(AuxDisjuncts),
         AuxGoal = hlds_goal(AuxGoalExpr, GoalInfo)
     ;

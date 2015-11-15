@@ -725,7 +725,8 @@ out_of_date_java_modules(Globals, ObjModules, OutOfDateModules, !Info, !IO) :-
 
 build_java_files(Globals, MainModuleName, ModuleNames, Succeeded,
         !Info, !IO) :-
-    verbose_make_msg(Globals, io.write_string("Making Java class files\n"), !IO),
+    verbose_make_msg(Globals,
+        io.write_string("Making Java class files\n"), !IO),
     ToJavaFile =
         ( pred(ModuleName::in, JavaFile::out, !.IO::di, !:IO::uo) is det :-
             module_name_to_file_name(Globals, ModuleName, ".java",

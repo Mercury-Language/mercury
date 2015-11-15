@@ -1184,8 +1184,8 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                     % pointless, since the code generator will turn the entire
                     % scope into a single assignment statement. We therefore
                     % put he signal *after* the scope.
-                    insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
-                        Goal0, Goal, !VarSet, !VarTypes)
+                    insert_signal_after_goal(ModuleInfo, FutureMap,
+                        ProducedVar, Goal0, Goal, !VarSet, !VarTypes)
                 ;
                     SubGoal0 = hlds_goal(_, SubGoalInfo0),
                     Detism0 = goal_info_get_determinism(GoalInfo0),
@@ -1207,7 +1207,8 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                             ProducedVar, Goal0, Goal, !VarSet, !VarTypes)
                     ;
                         insert_signal_in_goal(ModuleInfo, FutureMap,
-                            ProducedVar, SubGoal0, SubGoal, !VarSet, !VarTypes),
+                            ProducedVar, SubGoal0, SubGoal,
+                            !VarSet, !VarTypes),
                         GoalExpr = scope(Reason, SubGoal),
                         Goal = hlds_goal(GoalExpr, GoalInfo0)
                     )
@@ -1279,8 +1280,8 @@ insert_signal_in_plain_conj(ModuleInfo, FutureMap, ProducedVar,
         Goals = [Goal0 | Goals1]
     ).
 
-:- pred insert_signal_in_par_conj(module_info::in, future_map::in, prog_var::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred insert_signal_in_par_conj(module_info::in, future_map::in,
+    prog_var::in, list(hlds_goal)::in, list(hlds_goal)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 insert_signal_in_par_conj(_ModuleInfo, _FutureMap, _ProducedVar,
@@ -1865,8 +1866,8 @@ specialize_sequences_in_conj_2(RevGoals0, [Goal0 | Goals0], Goals,
             NonLocals, !SpecInfo)
     ).
 
-:- pred specialize_sequences_in_goals(list(hlds_goal)::in, list(hlds_goal)::out,
-    spec_info::in, spec_info::out) is det.
+:- pred specialize_sequences_in_goals(list(hlds_goal)::in,
+    list(hlds_goal)::out, spec_info::in, spec_info::out) is det.
 
 specialize_sequences_in_goals([], [], !SpecInfo).
 specialize_sequences_in_goals([Goal0 | Goals0], [Goal | Goals], !SpecInfo) :-
@@ -1978,10 +1979,12 @@ maybe_specialize_call_and_goals(RevGoals0, Goal0, FwdGoals0,
                 list.filter(should_add_get_goal(NonLocals, FwdGoals1),
                     PushedPairs, PushedPairsNeedGets),
                 VarTypes = !.SpecInfo ^ spec_vartypes,
-                list.map(make_get_goal(!.SpecInfo ^ spec_module_info, VarTypes),
+                list.map(
+                    make_get_goal(!.SpecInfo ^ spec_module_info, VarTypes),
                     PushedPairsNeedGets, GetGoals),
 
-                RevGoals = GetGoals ++ [Goal] ++ UnPushedWaitGoals ++ RevGoals1,
+                RevGoals = GetGoals ++ [Goal] ++ UnPushedWaitGoals
+                    ++ RevGoals1,
                 FwdGoals = UnPushedSignalGoals ++ FwdGoals1
             ;
                 MaybeGoal = no,
@@ -2883,9 +2886,9 @@ should_we_push_signal(Var, Goal, !Signal) :-
             GoalExpr = negation(SubGoal),
             (
                 !.Signal = not_seen_signal
-                % A negated goal cannot produce a nonlocal variable such as Var,
-                % and we don't care about the cost of computations before the
-                % signal.
+                % A negated goal cannot produce a nonlocal variable
+                % such as Var, and we don't care about the cost of computations
+                % before the signal.
             ;
                 !.Signal = seen_signal_negligible_cost_after,
                 % We do care whether the cost of SubGoal is negligible or not.
@@ -3173,7 +3176,8 @@ make_future_var(SharedVarName, SharedVarType, FutureVar, FutureVarType,
     varset.new_named_var("Future" ++ SharedVarName, FutureVar, !VarSet),
     add_var_type(FutureVar, FutureVarType, !VarTypes).
 
-:- pred make_future_name_var_and_goal(string::in, prog_var::out, hlds_goal::out,
+:- pred make_future_name_var_and_goal(string::in,
+    prog_var::out, hlds_goal::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     ts_string_table::in, ts_string_table::out) is det.
 

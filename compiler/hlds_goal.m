@@ -1576,10 +1576,12 @@
 :- func 'consuming_vars :='(hlds_goal_info, set_of_progvar) = hlds_goal_info.
 
 :- func make_visible_vars(hlds_goal_info) = set_of_progvar.
-:- func 'make_visible_vars :='(hlds_goal_info, set_of_progvar) = hlds_goal_info.
+:- func 'make_visible_vars :='(hlds_goal_info, set_of_progvar)
+    = hlds_goal_info.
 
 :- func need_visible_vars(hlds_goal_info) = set_of_progvar.
-:- func 'need_visible_vars :='(hlds_goal_info, set_of_progvar) = hlds_goal_info.
+:- func 'need_visible_vars :='(hlds_goal_info, set_of_progvar)
+    = hlds_goal_info.
 
 :- type contains_trace_goal
     --->    contains_trace_goal

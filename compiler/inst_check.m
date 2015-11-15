@@ -251,7 +251,8 @@ check_inst_defn_has_matching_type(TypeTable, FunctorsToTypesMap, InstId,
                 else if
                     ( ForTypeCtorName = unqualified("float")
                     ; ForTypeCtorName = qualified(unqualified(""), "float")
-                    ; ForTypeCtorName = qualified(unqualified("float"), "float")
+                    ; ForTypeCtorName = qualified(unqualified("float"),
+                        "float")
                     ),
                     ForTypeCtorArity = 0
                 then

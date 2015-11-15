@@ -383,8 +383,8 @@ gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
     gen_pickups(OutputArgs, ByteInfo, PickupArgs),
 
     map_var(ByteInfo, PredVar, BytePredVar),
-    Call = cord.singleton(byte_higher_order_call(BytePredVar, NInVars, NOutVars,
-        Detism)),
+    Call = cord.singleton(byte_higher_order_call(BytePredVar,
+        NInVars, NOutVars, Detism)),
     ( CodeModel = model_semi ->
         Check = cord.singleton(byte_semidet_success_check)
     ;
@@ -523,7 +523,8 @@ gen_unify(construct(Var, ConsId, Args, UniModes, _, _, _), _, _,
         % unifications that create closures aren't like other arg-modes.
         map_uni_modes(UniModes, Args, ByteInfo, Dirs),
         ( all_dirs_same(Dirs, to_var) ->
-            Code = cord.singleton(byte_construct(ByteVar, ByteConsId, ByteArgs))
+            Code =
+                cord.singleton(byte_construct(ByteVar, ByteConsId, ByteArgs))
         ;
             assoc_list.from_corresponding_lists(ByteArgs, Dirs, Pairs),
             Code = cord.singleton(byte_complex_construct(ByteVar, ByteConsId,

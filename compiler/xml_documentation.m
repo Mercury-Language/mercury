@@ -851,7 +851,8 @@ mode_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
 
 :- func typeclass_visibility_to_xml(typeclass_status) = xml.
 
-typeclass_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
+typeclass_visibility_to_xml(Status) =
+        tagged_string("visibility", Visibility) :-
     ( if typeclass_status_defined_in_impl_section(Status) = yes then
         ( if Status = typeclass_status(status_abstract_exported) then
             Visibility = "abstract"

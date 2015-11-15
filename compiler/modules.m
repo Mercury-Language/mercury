@@ -1022,10 +1022,10 @@ process_module_short_interfaces_transitively(Globals, HaveReadModuleMaps,
     %   Modules, IntFileKind, NewIntSection, NewImpSection, SectionAppend,
     %   !IndirectImports, !ImpIndirectImports, !ModuleAndImports, !IO):
     %
-    % Read the short interfaces for modules in Modules (unless they have already
-    % been read in). Append the modules imported by the interface of Modules to
-    % !IndirectImports. Append the modules imported by the implementation of
-    % Modules to !ImpIndirectImports.
+    % Read the short interfaces for modules in Modules (unless they have
+    % already been read in). Append the modules imported by the interface
+    % of Modules to !IndirectImports. Append the modules imported by the
+    % implementation of Modules to !ImpIndirectImports.
     %
     % Append all the item blocks in the read-in files to !ModuleAndImports,
     % putting all the ms_interface blocks in the int_module_section kind

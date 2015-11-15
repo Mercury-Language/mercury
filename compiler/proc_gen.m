@@ -708,8 +708,8 @@ generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
             get_maybe_trace_info(!.CI, MaybeTraceInfo),
             (
                 MaybeTraceInfo = yes(TraceInfo),
-                generate_call_event(TraceInfo, ProcContext, MaybeTraceCallLabel,
-                    TraceCallCode, !CI, !CLD),
+                generate_call_event(TraceInfo, ProcContext,
+                    MaybeTraceCallLabel, TraceCallCode, !CI, !CLD),
                 get_trace_maybe_tail_rec_info(TraceInfo, MaybeTailRecInfo),
                 (
                     MaybeTailRecInfo = yes(_TailRecLval - TailRecLabel),

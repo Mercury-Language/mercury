@@ -3324,7 +3324,8 @@ proc_info_get_structure_reuse(ProcInfo, MaybeReuse) :-
     MaybeReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse.
 
 proc_info_set_structure_reuse(Reuse, !ProcInfo) :-
-    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse := yes(Reuse).
+    !ProcInfo ^ proc_sub_info ^ psi_structure_reuse ^ maybe_reuse
+        := yes(Reuse).
 
 proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types, Reuse) :-
     MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ psi_structure_reuse

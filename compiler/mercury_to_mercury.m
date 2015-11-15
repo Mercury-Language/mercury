@@ -390,7 +390,8 @@ mercury_output_bracketed_sym_name_ngt(NextToGraphicToken, SymName, !IO) :-
     mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName, !IO).
 
 mercury_bracketed_sym_name_to_string_ngt(NextToGraphicToken, SymName) = Str :-
-    mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName, "", Str).
+    mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
+        "", Str).
 
 mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName, !U) :-
     (
@@ -436,13 +437,13 @@ mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, Operator,
 
 %---------------------------------------------------------------------------%
 
-mercury_output_class_context(TypeVarSet, VarNamePrint, ClassContext, ExistQVars,
-        !IO) :-
+mercury_output_class_context(TypeVarSet, VarNamePrint,
+        ClassContext, ExistQVars, !IO) :-
     mercury_format_class_context(TypeVarSet, VarNamePrint,
         ClassContext, ExistQVars, !IO).
 
-mercury_format_class_context(TypeVarSet, VarNamePrint, ClassContext, ExistQVars,
-        !U) :-
+mercury_format_class_context(TypeVarSet, VarNamePrint,
+        ClassContext, ExistQVars, !U) :-
     ClassContext = constraints(UnivCs, ExistCs),
     mercury_format_prog_constraint_list(TypeVarSet, VarNamePrint, "=>",
         ExistCs, !U),

@@ -663,7 +663,8 @@ convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
                 EndCaseId = case_id(EndCaseNum),
 
                 EndCaseNumRval = ml_const(mlconst_int(EndCaseNum)),
-                EndSetCaseNumVarAssign = assign(CaseNumVarLval, EndCaseNumRval),
+                EndSetCaseNumVarAssign =
+                    assign(CaseNumVarLval, EndCaseNumRval),
                 EndSetCaseNumVarStmt = ml_stmt_atomic(EndSetCaseNumVarAssign),
                 EndSetCaseNumVarStatement =
                     statement(EndSetCaseNumVarStmt, Context),

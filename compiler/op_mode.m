@@ -38,7 +38,8 @@
 
 %---------------------%
 
-    % The modes of operation that ask the compiler to output various properties.
+    % The modes of operation that ask the compiler
+    % to output various properties.
 :- type op_mode_query
     --->    opmq_output_cc                          % C compiler properties.
     ;       opmq_output_c_compiler_type

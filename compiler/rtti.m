@@ -1386,8 +1386,8 @@ tc_name_to_string(TCName, TCRttiName, Str) :-
         mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
         TypeStrs = list.map(encode_tc_instance_type, TCTypes),
         TypeVectorStr = string.append_list(TypeStrs),
-        Str = ModuleName ++ "__type_class_instance_tc_type_vector_" ++ ClassName
-            ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr
+        Str = ModuleName ++ "__type_class_instance_tc_type_vector_"
+            ++ ClassName ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr
     ;
         TCRttiName = type_class_instance_constraint(TCTypes, Ordinal, _),
         mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),

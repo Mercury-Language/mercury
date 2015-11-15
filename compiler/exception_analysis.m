@@ -865,7 +865,8 @@ handle_mixed_conditional_scc(Results) =
 :- func excp_check_types(module_info, list(mer_type)) = type_excp_status.
 
 excp_check_types(ModuleInfo, Types) = Status :-
-    list.foldl(excp_check_type(ModuleInfo), Types, type_will_not_throw, Status).
+    list.foldl(excp_check_type(ModuleInfo), Types,
+        type_will_not_throw, Status).
 
 :- pred excp_check_type(module_info::in, mer_type::in, type_excp_status::in,
     type_excp_status::out) is det.

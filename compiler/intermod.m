@@ -2317,7 +2317,8 @@ append_analysis_pragmas_to_opt_file(ModuleInfo, UnusedArgsInfos, !IO) :-
                 true
             ),
             ( if set.contains(ProcAnalysisKinds, pak_structure_sharing) then
-                list.foldl2(write_pragma_structure_sharing_for_pred(ModuleInfo),
+                list.foldl2(
+                    write_pragma_structure_sharing_for_pred(ModuleInfo),
                     OrderPredInfos, is_first, _, !IO)
             else
                 true
@@ -2447,7 +2448,8 @@ maybe_write_pragma_trailing_info_for_proc(ModuleInfo, OrderPredInfo,
     order_pred_info::in, maybe_first::in, maybe_first::out,
     io::di, io::uo) is det.
 
-write_pragma_mm_tabling_info_for_pred(ModuleInfo, OrderPredInfo, !First, !IO) :-
+write_pragma_mm_tabling_info_for_pred(ModuleInfo, OrderPredInfo,
+        !First, !IO) :-
     OrderPredInfo = order_pred_info(_, _, _, _, PredInfo),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.foldl2(

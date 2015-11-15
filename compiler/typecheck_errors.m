@@ -1942,7 +1942,8 @@ type_stuff_to_actual_expected(Type, VarTypeStuff) = ActualExpected :-
 
 arg_type_stuff_to_actual_expected(ArgTypeStuff) = ActualExpected :-
     ArgTypeStuff = arg_type_stuff(Type, VarType, TVarSet, HeadTypeParams),
-    ActualPieces = type_to_pieces(add_quotes, VarType, TVarSet, HeadTypeParams),
+    ActualPieces = type_to_pieces(add_quotes, VarType,
+        TVarSet, HeadTypeParams),
     ExpectedPieces = type_to_pieces(add_quotes, Type, TVarSet, HeadTypeParams),
     ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces).
 

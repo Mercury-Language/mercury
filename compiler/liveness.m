@@ -1103,7 +1103,9 @@ update_liveness_expr(GoalExpr, LiveInfo, !Liveness) :-
         update_liveness_goal(SubGoal, LiveInfo, !Liveness)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        ( if Reason = from_ground_term(TermVar, from_ground_term_construct) then
+        ( if
+            Reason = from_ground_term(TermVar, from_ground_term_construct)
+        then
             maybe_complete_with_typeinfos(LiveInfo,
                 set_of_var.make_singleton(TermVar), CompletedTermVars),
             set_of_var.union(CompletedTermVars, !Liveness)
@@ -1554,7 +1556,9 @@ detect_resume_points_in_goal(Goal0, Goal, !Liveness, LiveInfo, ResumeVars0) :-
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( if Reason = from_ground_term(TermVar, from_ground_term_construct) then
+        ( if
+            Reason = from_ground_term(TermVar, from_ground_term_construct)
+        then
             maybe_complete_with_typeinfos(LiveInfo,
                 set_of_var.make_singleton(TermVar), CompletedTermVars),
             set_of_var.union(CompletedTermVars, !Liveness),

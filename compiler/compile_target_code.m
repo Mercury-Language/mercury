@@ -2590,7 +2590,8 @@ post_link_make_symlink_or_copy(Globals, ErrorStream, LinkTargetType,
             ;
                 ScriptSameTimestamp = no,
                 io.set_output_stream(ErrorStream, ScriptOutputStream, !IO),
-                % Remove the target of the symlink/copy in case it already exists.
+                % Remove the target of the symlink/copy in case
+                % it already exists.
                 io.remove_file_recursively(UserDirScriptName, _, !IO),
                 make_symlink_or_copy_file(Globals, OutputScriptName,
                     UserDirScriptName, Succeeded, !IO),

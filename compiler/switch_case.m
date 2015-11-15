@@ -91,7 +91,8 @@ represent_tagged_case_for_llds(Params, TaggedCase, Label, !CaseLabelMap,
     some [!CLD] (
         Params = represent_params(SwitchVarName, SwitchGoalInfo, CodeModel,
             BranchStart, EndLabel),
-        TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, Goal),
+        TaggedCase =
+            tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, Goal),
         project_cons_name_and_tag(MainTaggedConsId, MainConsName, _),
         list.map2(project_cons_name_and_tag, OtherTaggedConsIds,
             OtherConsNames, _),

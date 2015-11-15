@@ -1462,9 +1462,9 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
     ).
 
 % goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed,
-%         atomic_goal(GoalType, Outer, Inner, OutVars, MainGoal0, OrElseGoals0),
-%         atomic_goal(GoalType, Outer, Inner, OutVars, MainGoal, OrElseGoals),
-%         !Constraint, !GCInfo) :-
+%         AtomicGoal0, AtomicGoal, !Constraint, !GCInfo) :-
+%     AtomicGoal0 = atomic_goal(GoalType, Outer, Inner, OutVars,
+%         MainGoal0, OrElseGoals0),
 %     Goals0 = [MainGoal0 | OrElseGoals0],
 %     disj_constraints(NonLocals, CanSucceed, !Constraint, Goals0, Goals,
 %         [], DisjunctPaths, !GCInfo),
@@ -1476,7 +1476,9 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
 %         ), DisjunctPaths, Cons0, Cons)
 %     ), set.to_sorted_list(Vars), !Constraint, !GCInfo),
 %     MainGoal = list.det_head(Goals),
-%     OrElseGoals = list.det_tail(Goals).
+%     OrElseGoals = list.det_tail(Goals),
+%     AtomicGoal = atomic_goal(GoalType, Outer, Inner, OutVars,
+%         MainGoal, OrElseGoals).
 
     % Constraints for the conjunction. If UseKnownVars = yes, generate
     % constraints only for the vars in KnownVars, otherwise generate
@@ -1631,7 +1633,8 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
             % a construction or a deconstruction.
             list.map_foldl(
                 ( pred(ProgVar::in, RepVar::out, S0::in, S::out) is det :-
-                    mode_constraints.get_var(ProgVar `at` GoalId, RepVar, S0, S)
+                    mode_constraints.get_var(ProgVar `at` GoalId, RepVar,
+                        S0, S)
                 ), Args, ArgsGi0, !GCInfo),
             set_of_var.list_to_set(ArgsGi0, ArgsGi),
             get_var(LHSVar `at` GoalId, LHSVargi, !GCInfo),
