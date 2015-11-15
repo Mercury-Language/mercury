@@ -8,6 +8,8 @@
 % mercury_tcltk -- a Mercury binding for Tcl/Tk.
 
 :- module mercury_tcltk.
+:- interface.
 
-:- import_module mtk, mtcltk.
+:- import_module mtk.
+:- import_module mtcltk.
 
