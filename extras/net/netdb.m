@@ -1,12 +1,12 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014 The Mercury Team
+% Copyright (C) 2014-2015 The Mercury Team
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %-----------------------------------------------------------------------------%
 %
-% Module: netdb 
+% Module: netdb
 % Main Author:  Paul Bone <paul@bone.id.au>
 % Stability:    low
 %
@@ -17,8 +17,8 @@
 %
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-:- module net.netdb.
 
+:- module net.netdb.
 :- interface.
 
 :- import_module io.
@@ -151,7 +151,10 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
         Found::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-#ifndef MR_WIN32
+/*
+** getprotobyname_r is a GNU extension.
+*/
+#if defined(__GNU_LIBRARY__)
 
     int result;
     struct protoent *temp = MR_GC_NEW(struct protoent);
@@ -166,9 +169,9 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
     int             num_aliases;
     int             i;
 
-#ifdef MR_THREAD_SAFE
-    MR_LOCK(lookup_lock, ""getprotobyname_r"");
-#endif
+    #ifdef MR_THREAD_SAFE
+      MR_LOCK(lookup_lock, ""getprotobyname_r"");
+    #endif
 
     temp = getprotobyname(Name);
     if (temp != NULL) {
@@ -187,11 +190,11 @@ getprotobyname(Name, MaybeProtocol, !IO) :-
     }
     Success = MR_YES;
 
-#ifdef MR_THREAD_SAFE
-    MR_UNLOCK(lookup_lock, ""getprotobyname_r"");
-#endif
+    #ifdef MR_THREAD_SAFE
+      MR_UNLOCK(lookup_lock, ""getprotobyname_r"");
+    #endif
 
-#endif /* RM_WIN32 */
+#endif /* ! __GNU_LIBRARY__ */
 ").
 
 %-----------------------------------------------------------------------------%
