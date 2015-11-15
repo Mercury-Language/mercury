@@ -7,6 +7,7 @@
 %
 
 :- module mercury_allegro.
+:- interface.
 
 :- import_module allegro.
 
