@@ -64,7 +64,9 @@
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.module_qual.qual_errors.
 
+:- import_module int.
 :- import_module pair.
+:- import_module require.
 
 module_qualify_items_in_src_item_blocks([], [], !Info, !Specs).
 module_qualify_items_in_src_item_blocks([SrcItemBlock0 | SrcItemBlocks0],

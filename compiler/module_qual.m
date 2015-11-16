@@ -224,22 +224,15 @@
 :- include_module parse_tree.module_qual.qualify_items.
 
 :- import_module libs.options.
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.module_qual.collect_mq_info.
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.module_qual.qual_errors.
 :- import_module parse_tree.module_qual.qualify_items.
-:- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_out.
-:- import_module parse_tree.prog_util.
 
-:- import_module assoc_list.
 :- import_module bool.
-:- import_module int.
 :- import_module map.
 :- import_module pair.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.

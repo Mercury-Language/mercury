@@ -13,6 +13,8 @@
 :- module parse_tree.module_qual.qual_errors.
 :- interface.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 
 %---------------------------------------------------------------------------%
@@ -163,6 +165,9 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_util.
 
 %---------------------------------------------------------------------------%
 %

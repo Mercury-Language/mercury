@@ -119,6 +119,9 @@
 
 :- implementation.
 
+:- import_module assoc_list.
+:- import_module require.
+
 % This want efficient retrieval of all the modules which define an id
 % with a certain name and arity. We therefore implement an id_set as a
 % staged map from the base name of an entity, to its arity, to the

@@ -71,7 +71,6 @@
 :- import_module ml_backend.mlds_to_java.           % MLDS -> Java
 :- import_module ml_backend.mlds_to_cs.             % MLDS -> C#
 :- import_module ml_backend.ml_util.                % MLDS utility predicates
-:- import_module parse_tree.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module top_level.mercury_compile_front_end.
