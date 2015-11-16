@@ -240,7 +240,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
             mode_info_get_var_types(!.ModeInfo, VarTypes),
             lookup_var_type(VarTypes, PredVar, Type),
             type_is_higher_order_details(Type, _, pf_function, _, ArgTypes),
-            PredInstInfo = pred_inst_info_standard_func_mode(
+            PredInstInfo = pred_inst_info_default_func_mode(
                 list.length(ArgTypes))
         ),
         PredInstInfo = pred_inst_info(PredOrFunc, ModesPrime, _, DetPrime),

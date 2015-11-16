@@ -2023,8 +2023,8 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
     % whose results we can consider adding, together with the names of the
     % predicates that could use them.
     %
-    % Does the inst contain a nonstandard func mode?
-    %   inst_contains_nonstandard_func_mode
+    % Does the inst contain a nondefault func mode?
+    %   inst_contains_nondefault_func_mode
     %
     % Does the inst contain any part that is uniq or mostly_uniq?
     %   make_shared_inst

@@ -1370,7 +1370,7 @@ search_pred_inst_info(ModuleInfo, Inst, PredOrFunc, Arity, PredInstInfo) :-
         PredInstInfo = PredInstInfo0
     else
         PredOrFunc = pf_function,
-        PredInstInfo = pred_inst_info_standard_func_mode(Arity)
+        PredInstInfo = pred_inst_info_default_func_mode(Arity)
     ).
 
 :- pred search_pred_inst_info_2(module_info::in, mer_inst::in,

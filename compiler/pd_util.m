@@ -938,7 +938,7 @@ bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, BoundInsts, Inst) :-
             NewInst = bound(unique, inst_test_no_results, BoundInsts),
             inst_is_unique(ModuleInfo, NewInst)
         ),
-        \+ inst_contains_nonstandard_func_mode(ModuleInfo,
+        \+ inst_contains_nondefault_func_mode(ModuleInfo,
             bound(shared, inst_test_no_results, BoundInsts)),
         Inst = ground(Uniq, none_or_default_func)
     ).

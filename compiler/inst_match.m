@@ -722,14 +722,14 @@ greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
 ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
     (
         HOInstInfoB = none_or_default_func,
-        not ho_inst_info_is_nonstandard_func_mode(!.Info ^ imi_module_info,
+        not ho_inst_info_is_nondefault_func_mode(!.Info ^ imi_module_info,
             HOInstInfoA)
     ;
         HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
         PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
         Arity = list.length(ArgModes),
-        PredInstA = pred_inst_info_standard_func_mode(Arity),
+        PredInstA = pred_inst_info_default_func_mode(Arity),
         pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
     ;
         HOInstInfoA = higher_order(PredInstA),
@@ -1018,7 +1018,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         InstA = ground(UniqA, HOInstInfoA),
         InstB = bound(UniqB, InstResultsB, BoundInstsB),
         ModuleInfo = !.Info ^ imi_module_info,
-        not ho_inst_info_is_nonstandard_func_mode(ModuleInfo, HOInstInfoA),
+        not ho_inst_info_is_nondefault_func_mode(ModuleInfo, HOInstInfoA),
         unique_matches_final(UniqA, UniqB),
         inst_results_bound_inst_list_is_ground_mt(InstResultsB, BoundInstsB,
             MaybeType, ModuleInfo),
@@ -1069,14 +1069,14 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
 ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
     (
         HOInstInfoB = none_or_default_func,
-        not ho_inst_info_is_nonstandard_func_mode(!.Info ^ imi_module_info,
+        not ho_inst_info_is_nondefault_func_mode(!.Info ^ imi_module_info,
             HOInstInfoA)
     ;
         HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
         PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
         Arity = list.length(ArgModes),
-        PredInstA = pred_inst_info_standard_func_mode(Arity),
+        PredInstA = pred_inst_info_default_func_mode(Arity),
         pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
     ;
         HOInstInfoA = higher_order(PredInstA),
@@ -1259,7 +1259,7 @@ ho_inst_info_matches_binding(HOInstInfoA, HOInstInfoB, MaybeType,
         HOInstInfoB = higher_order(PredInstB),
         PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
         Arity = list.length(ArgModes),
-        PredInstA = pred_inst_info_standard_func_mode(Arity),
+        PredInstA = pred_inst_info_default_func_mode(Arity),
         pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo)
     ;
         HOInstInfoA = higher_order(PredInstA),
