@@ -1932,6 +1932,7 @@ type classes (@pxref{Type classes}), and existentially quantified types
 * User-defined types::
 * Predicate and function type declarations::
 * Field access functions::
+* The standard ordering::
 @end menu
 
 @node Builtin types
@@ -2523,6 +2524,48 @@ module @samp{map} can be used as follows:
 update_field_in_map(Map, Index, Value) =
     Map ^ elem(Index) ^ field2 := Value.
 @end example
+
+@node The standard ordering
+@section The standard ordering
+
+For every Mercury type there exists a standard ordering;
+any two values of the same type can be compared under this ordering
+by using the @code{builtin.compare/3} predicate.
+The ordering is total, meaning that the corresponding binary relations
+are reflexive, transitive and anti-symmetric.
+
+The existence of this ordering makes it possible to implement
+generic data structures such as sets and maps,
+without needing to know the specifics of the ordering.
+Furthermore, different platforms often have their own natural orderings
+which are not necessarily consistent with each other.
+As such, the standard ordering for most types is not fully defined.
+
+For the builtin type @code{int},
+the standard ordering is the usual numerical ordering.
+Implementations are permitted to give inconsistent results
+for overflowing literals.
+
+For the builtin type @code{float},
+the standard ordering approximates the usual numerical ordering.
+If the result of @code{builtin.compare/3} is @code{(<)} or @code{(>)}
+then this relation holds in the numerical ordering,
+but this is not necessarily the case for @code{(=)} due to lack of precision.
+Implementations are permitted to give inconsistent results
+for overflowing literals.
+
+For the builtin type @code{char}, the standard ordering is
+the numerical ordering of the Unicode code point values.
+
+For tuple types, corresponding arguments are compared,
+with the first argument being the most significant.
+
+For discriminated union types,
+if both values have the same principal constructor
+then corresponding arguments are compared,
+with the first argument being the most significant.
+If the values have different principal constructors,
+the result of comparing them is not defined.
 
 @node Modes
 @chapter Modes
