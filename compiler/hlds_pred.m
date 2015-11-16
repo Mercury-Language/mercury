@@ -375,7 +375,7 @@
 
 :- type pred_attribute
     --->    custom(mer_type).
-            % A custom attribute, indended to be associated
+            % A custom attribute, intended to be associated
             % with this predicate in the underlying implementation.
 
 :- type pred_transformation
@@ -1427,7 +1427,7 @@ pred_info_set_proc_table(X, !PI) :-
 % 15    476703    276426    152903  64.39%    head_type_params
 % 16   7871038         0   2700797   0.00%    class_context
 % 17   2591016    425209      3483  99.19%    constraint_proof_map
-% 18   2752537    404771     23921  94.42%    constrant_map
+% 18   2752537    404771     23921  94.42%    constraint_map
 % 19    285538    428650         4 100.00%    unproven_body_constraints
 % 20         0         0         0            inst_graph_info
 % 21         0         0         0            arg_modes_maps
@@ -1905,7 +1905,7 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
                 % before either part of the deep profiling transformation
                 % was executed. For inner procedures created by the tail
                 % recursion part of the deep profiling transformation,
-                % it holds the origional body of the outer procedure.
+                % it holds the original body of the outer procedure.
                 deep_orig_body          :: deep_original_body
             ).
 
@@ -2520,7 +2520,7 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
                 % first clause if there was no mode declaration.
                 psi_proc_context                :: prog_context,
 
-                % Set to cannot_proces if we must not process this procedure
+                % Set to cannot_process if we must not process this procedure
                 % just yet. This is used to delay mode checking etc. for
                 % complicated modes of unification predicates until the end
                 % of the unique_modes pass.
