@@ -232,7 +232,7 @@ typecheck_constraints(!HLDS, Specs) :-
 typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
     predicate_table_get_preds(!.Environment ^ pred_env, Preds0),
     map.lookup(Preds0, PredId, PredInfo),
-    (
+    ( if
         % Compiler-generated predicates are created already type-correct,
         % so there's no need to typecheck them. The same is true for builtins.
         % However, compiler-generated unify predicates are not guaranteed to be
@@ -241,11 +241,11 @@ typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
         % type.
         (
             is_unify_or_compare_pred(PredInfo),
-            \+ special_pred_needs_typecheck(PredInfo, !.HLDS)
+            not special_pred_needs_typecheck(PredInfo, !.HLDS)
         ;
             pred_info_is_builtin(PredInfo)
         )
-    ->
+    then
         pred_info_get_clauses_info(PredInfo, ClausesInfo0),
         clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers),
         IsEmpty = clause_list_is_empty(ClausesRep0),
@@ -260,7 +260,7 @@ typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
         ;
             IsEmpty = no
         )
-    ;
+    else
         typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs)
     ).
 
@@ -294,11 +294,11 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
         pred_info_get_arg_types(!.PredInfo, HeadTypes),
         prog_type.type_vars_list(HeadTypes, HeadTVars),
-        ( list.same_length(HeadTypes, HeadVars) ->
+        ( if list.same_length(HeadTypes, HeadVars) then
             list.foldl_corresponding(variable_assignment_constraint(Context),
                 HeadVars, HeadTypes, tconstr_info(bimap.init, counter.init(0),
                 map.init, map.init, TVarSet, []), !:TCInfo)
-        ;
+        else
             unexpected($module, $pred, "head variable types vs vars mismatch")
         ),
 
@@ -373,7 +373,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 
     % Check that the special pred isn't one of the builtin types which don't
     % have a hlds_type_defn.
-    \+ list.member(TypeCtor, builtin_type_ctors_with_no_hlds_type_defn),
+    not list.member(TypeCtor, builtin_type_ctors_with_no_hlds_type_defn),
 
     % Check whether that type is a type for which there is a user-defined
     % equality predicate or which is existentially typed.
@@ -425,7 +425,7 @@ apply_pred_data_to_goal(ForwardGoalPathMap, GoalId - PredId, !Goal) :-
 
 set_goal_pred_id(PredId, Goal0, MaybeGoal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-    ( GoalExpr0 = plain_call(_, _, _, _, _, _) ->
+    ( if GoalExpr0 = plain_call(_, _, _, _, _, _) then
         trace [compile_time(flag("type_error_diagnosis")), io(!IO)] (
             Context = goal_info_get_context(GoalInfo),
             LineNumber = term.context_line(Context),
@@ -439,7 +439,7 @@ set_goal_pred_id(PredId, Goal0, MaybeGoal) :-
         GoalExpr = GoalExpr0 ^ call_pred_id := PredId,
         Goal = hlds_goal(GoalExpr, GoalInfo),
         MaybeGoal = ok(Goal)
-    ;
+    else
         MaybeGoal = error("Goal was not a plain call")
     ).
 
@@ -493,44 +493,46 @@ create_vartypes_map(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
     prog_var::in, mer_type::out, maybe(error_msg)::out) is det.
 
 find_variable_type(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
-        ReplacementMap, Var, Type, Error) :-
+        ReplacementMap, Var, Type, MaybeMsg) :-
     bimap.lookup(VarMap, Var, TVar),
-    ( map.search(ReplacementMap, Var, ReplacementType) ->
+    ( if map.search(ReplacementMap, Var, ReplacementType) then
         DefaultType = tvar_to_type(ReplacementType)
-    ;
+    else
         DefaultType = tvar_to_type(TVar)
     ),
-    ( map.search(DomainMap, TVar, Domain) ->
+    ( if map.search(DomainMap, TVar, Domain) then
         (
             Domain = tdomain_any,
             Type = DefaultType,
-            Error = no
+            MaybeMsg = no
         ;
             Domain = tdomain_singleton(Type),
-            Error = no
+            MaybeMsg = no
         ;
             Domain = tdomain(Types),
-            ( set.is_singleton(Types, Type0) ->
+            ( if set.is_singleton(Types, Type0) then
                 Type = Type0,
-                Error = no
-            ; set.is_empty(Types) ->
+                MaybeMsg = no
+            else if set.is_empty(Types) then
                 Type = DefaultType,
-                Error = no  % This error is handled elsewhere.
-            ;
+                MaybeMsg = no  % This error is handled elsewhere.
+            else
                 Type = DefaultType,
                 VarName = mercury_var_to_name_only(ProgVarSet, Var),
                 list.map(type_to_string(TVarSet), set.to_sorted_list(Types),
                     TypeStrings),
                 TypesString = string.join_list(" or ", TypeStrings),
-                Error = yes(simple_msg(Context, [always([words("Error:"),
+                Pieces = [words("Error:"),
                     words("ambiguous overloading causes type ambiguity."),
                     nl, words("Possible type assignments include:"), nl,
-                    fixed(VarName), suffix(": "), words(TypesString)])]))
+                    fixed(VarName), suffix(":"), words(TypesString), nl],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                MaybeMsg = yes(Msg)
             )
         )
-    ;
+    else
         Type = DefaultType,
-        Error = no
+        MaybeMsg = no
     ).
 
 :- pred get_clause_body(clause::in, hlds_goal::out) is det.
@@ -618,11 +620,11 @@ solve_constraint_labeling(TVarSet, VarConstraints, ConstraintMap0, DomainMap0,
     map.union(type_domain_intersect, Guesses, DomainMap0, GuessMap),
     solve_constraint(TVarSet, VarConstraints, ConstraintMap0, ConstraintMap1,
         GuessMap, DomainMap1),
-    ( constraint_has_no_solutions(DomainMap1) ->
+    ( if constraint_has_no_solutions(DomainMap1) then
         DomainMaps = [DomainMap1],
         ConstraintMap = ConstraintMap1,
         Success = no
-    ; constraint_has_multiple_solutions(DomainMap1, Var, Domains) ->
+    else if constraint_has_multiple_solutions(DomainMap1, Var, Domains) then
         % If there are multiple solutions, pick the variable with the smallest
         % domain. Try to solve the constraints for each valuation of the
         % variable, then return any valuations which succeed. If none succeed,
@@ -657,7 +659,7 @@ solve_constraint_labeling(TVarSet, VarConstraints, ConstraintMap0, DomainMap0,
             list.foldl(map.union(merge_type_constraints), RelevantTail,
                 RelevantHead, ConstraintMap)
         )
-    ;
+    else
         DomainMaps = [DomainMap1],
         ConstraintMap = ConstraintMap1,
         Success = yes
@@ -694,18 +696,18 @@ solve_constraint(TVarSet, VarConstraints, !ConstraintMap, !DomainMap) :-
     ConstraintIds = map.keys(!.ConstraintMap),
     list.foldl2(propagate(TVarSet, VarConstraints), ConstraintIds,
         !ConstraintMap, !DomainMap),
-    (
+    ( if
         % Failure.
         constraint_has_no_solutions(!.DomainMap)
-    ->
+    then
         true
-    ;
+    else if
         % Fixed-point reached (success).
         !.ConstraintMap = ConstraintMap0,
         !.DomainMap = DomainMap0
-    ->
+    then
         true
-    ;
+    else
         % Need to iterate again.
         solve_constraint(TVarSet, VarConstraints, !ConstraintMap, !DomainMap)
     ).
@@ -801,9 +803,9 @@ find_domain(Constraint0, Constraint, !DomainMap) :-
             % the disjunction as such, which effectively turns the constraint
             % into a conjunction constraint.
             list.filter(still_active, !.DisjConstraints, Active),
-            ( Active = [SingleConstraint0] ->
+            ( if Active = [SingleConstraint0] then
                 SingleConstraint = yes(SingleConstraint0)
-            ;
+            else
                 SingleConstraint = no
             ),
             list.append(InactiveConstraints, !DisjConstraints),
@@ -828,14 +830,16 @@ conj_find_domain(!ConjTypeConstraint, DomainMap0, DomainMap) :-
         !.ConjTypeConstraint = ctconstr(Constraints, tconstr_active, Context,
             GoalId, PredId),
         list.foldl(simple_find_domain, Constraints, DomainMap0, DomainMap1),
-        ( constraint_is_satisfiable(DomainMap1, Constraints) ->
+        ( if constraint_is_satisfiable(DomainMap1, Constraints) then
             map.to_assoc_list(DomainMap1, AssocDomain1),
-            ( list.all_true(domain_map_unchanged(DomainMap0), AssocDomain1) ->
+            ( if
+                list.all_true(domain_map_unchanged(DomainMap0), AssocDomain1)
+            then
                 DomainMap = DomainMap1
-            ;
+            else
                 conj_find_domain(!ConjTypeConstraint, DomainMap1, DomainMap)
             )
-        ;
+        else
             !:ConjTypeConstraint = ctconstr(Constraints, tconstr_unsatisfiable,
                 Context, GoalId, PredId),
             DomainMap = DomainMap1
@@ -857,17 +861,17 @@ simple_find_domain(stconstr(TVarA, TypeA), !DomainMap) :-
         % If two type variables are unified, the domain of each is restricted
         % to the insersection of the domains.
         TypeA = type_variable(TVarB, _),
-        ( map.search(!.DomainMap, TVarB, DomainBPrime) ->
+        ( if map.search(!.DomainMap, TVarB, DomainBPrime) then
             DomainB = DomainBPrime
-        ;
+        else
             DomainB = tdomain_any,
             map.det_insert(TVarB, DomainB, !DomainMap)
         ),
-        ( map.search(!.DomainMap, TVarA, DomainA) ->
+        ( if map.search(!.DomainMap, TVarA, DomainA) then
             type_domain_intersect(DomainA, DomainB, NewDomain),
             map.det_update(TVarA, NewDomain, !DomainMap),
             map.det_update(TVarB, NewDomain, !DomainMap)
-        ;
+        else
             map.det_insert(TVarA, DomainB, !DomainMap)
         )
     ;
@@ -913,10 +917,10 @@ unify_equal_tvars(TCInfo, Replaced, Replacement, Target,
         !ReplacementMap, !DomainMap) :-
     TCInfo = tconstr_info(VarMap, _, ConstraintMap, VarConstraints, _, _),
     Renaming = map.singleton(Target, Replacement),
-    (
+    ( if
         map.search(!.DomainMap, Target, tdomain_any),
         map.search(VarConstraints, Target, ConstraintIds)
-    ->
+    then
         % Find all variables unified with the target variable.
         map.apply_to_list(ConstraintIds, ConstraintMap, Constraints),
         list.filter_map(to_simple_constraints, Constraints,
@@ -932,17 +936,17 @@ unify_equal_tvars(TCInfo, Replaced, Replacement, Target,
         set.insert_list(UnifiedVars, Replaced, Replaced1),
         list.foldl2(unify_equal_tvars(TCInfo, Replaced1, Replacement),
             UnifiedVars, !ReplacementMap, !DomainMap)
-    ;
+    else if
         map.search(!.DomainMap, Target, tdomain_singleton(Type0))
-    ->
+    then
         apply_variable_renaming_to_type(Renaming, Type0, Type),
         map.det_update(Target, tdomain_singleton(Type), !DomainMap)
-    ;
+    else if
         map.search(!.DomainMap, Target, tdomain(Types0))
-    ->
+    then
         set.map(apply_variable_renaming_to_type(Renaming), Types0, Types),
         map.det_update(Target, tdomain(Types), !DomainMap)
-    ;
+    else
         % This will only be reached if there are no constraints on the type of
         % a variable. In this case, there can be no variable replacement
         % performed on it. XXX I don't know if this will ever occur.
@@ -961,17 +965,17 @@ unify_equal_tvars(TCInfo, Replaced, Replacement, Target,
     is semidet.
 
 find_unified_var(Target, stconstr(LHS, type_variable(RHS, _)), Unified) :-
-    (
+    ( if
         LHS = Target,
         RHS = Unified0
-    ->
+    then
         Unified = Unified0
-    ;
+    else if
         LHS = Unified0,
         RHS = Target
-    ->
+    then
         Unified = Unified0
-    ;
+    else
         fail
     ).
 
@@ -985,9 +989,9 @@ to_simple_constraints(tconstr_disj(_, yes(Conj)), Conj ^ tconstr_simples).
     simple_prog_var_map::in, simple_prog_var_map::out) is det.
 
 update_replacement_map(VarMap, Replacement, OldVar, !ReplacementMap) :-
-    ( bimap.reverse_search(VarMap, ProgVar, OldVar) ->
+    ( if bimap.reverse_search(VarMap, ProgVar, OldVar) then
         map.set(ProgVar, Replacement, !ReplacementMap)
-    ;
+    else
         true
     ).
 
@@ -995,9 +999,9 @@ update_replacement_map(VarMap, Replacement, OldVar, !ReplacementMap) :-
     is det.
 
 find_type_domain(DomainMap, TVar, Domain) :-
-    ( map.search(DomainMap, TVar, Domain0) ->
+    ( if map.search(DomainMap, TVar, Domain0) then
         Domain = Domain0
-    ;
+    else
         Domain = tdomain_any
     ).
 
@@ -1008,12 +1012,12 @@ find_type_domain(DomainMap, TVar, Domain) :-
     is det.
 
 find_type_of_tvar(DomainMap, !Type) :-
-    (
+    ( if
         !.Type = type_variable(TVar, _),
         map.search(DomainMap, TVar, tdomain_singleton(KnownType))
-    ->
+    then
         !:Type = KnownType
-    ;
+    else
         true
     ).
 
@@ -1025,9 +1029,9 @@ find_type_of_tvar(DomainMap, !Type) :-
     type_domain_map::out) is det.
 
 restrict_domain(TVar, Type, !DomainMap) :-
-    ( map.search(!.DomainMap, TVar, CurrDomain0) ->
+    ( if map.search(!.DomainMap, TVar, CurrDomain0) then
         CurrDomain = CurrDomain0
-    ;
+    else
         CurrDomain = tdomain_any
     ),
     type_domain_intersect(CurrDomain, tdomain(set.make_singleton_set(Type)),
@@ -1048,9 +1052,9 @@ type_domain_intersect(DomainA, DomainB, Domain) :-
     ;
         DomainA = tdomain_singleton(TypeA),
         DomainB = tdomain_singleton(TypeB),
-        ( unify_types(TypeA, TypeB, Type) ->
+        ( if unify_types(TypeA, TypeB, Type) then
             Domain = tdomain_singleton(Type)
-        ;
+        else
             Domain = tdomain(set.init)
         )
     ;
@@ -1058,9 +1062,9 @@ type_domain_intersect(DomainA, DomainB, Domain) :-
         DomainB = tdomain(TypesB),
         % Symmetrical case below.
         set.filter_map(unify_types(TypeA), TypesB, UnifiedTypes),
-        ( set.is_singleton(UnifiedTypes, SingletonType) ->
+        ( if set.is_singleton(UnifiedTypes, SingletonType) then
             Domain = tdomain_singleton(SingletonType)
-        ;
+        else
             Domain = tdomain(UnifiedTypes)
         )
     ;
@@ -1072,9 +1076,9 @@ type_domain_intersect(DomainA, DomainB, Domain) :-
         DomainB = tdomain_singleton(TypeB),
         % Symmetrical case above.
         set.filter_map(unify_types(TypeB), TypesA, UnifiedTypes),
-        ( set.is_singleton(UnifiedTypes, SingletonType) ->
+        ( if set.is_singleton(UnifiedTypes, SingletonType) then
             Domain = tdomain_singleton(SingletonType)
-        ;
+        else
             Domain = tdomain(UnifiedTypes)
         )
     ;
@@ -1097,10 +1101,10 @@ type_domain_intersect(DomainA, DomainB, Domain) :-
 td_list_intersect([], _, []).
 td_list_intersect([_ | _], [], []).
 td_list_intersect([A | As], [B | Bs], Cs) :-
-    ( unify_types(A, B, AB) ->
+    ( if unify_types(A, B, AB) then
         td_list_intersect(As, Bs, Cs0),
         Cs = [AB | Cs0]
-    ;
+    else
         compare(R, A, B),
         (
             R = (<),
@@ -1126,18 +1130,18 @@ unify_types(A, B, Type) :-
     % e.g., yes(type_variable(V_1)) = yes(type_variable(V_2)),
     % and unify any type variable with anything.
     % Fail if types cannot be unified.
-    ( B = type_variable(_, _) ->
+    ( if B = type_variable(_, _) then
         Type = A
-    ; A = type_variable(_, _) ->
+    else if A = type_variable(_, _) then
         Type = B
-    ;
+    else
         (
             A = defined_type(Name, ArgsA, Kind),
             B = defined_type(Name, ArgsB, Kind),
-            ( list.same_length(ArgsA, ArgsB) ->
+            ( if list.same_length(ArgsA, ArgsB) then
                 list.map_corresponding(unify_types, ArgsA, ArgsB, Args),
                 Type = defined_type(Name, Args, Kind)
-            ;
+            else
                 fail
             )
         ;
@@ -1147,16 +1151,16 @@ unify_types(A, B, Type) :-
         ;
             A = tuple_type(ArgsA, Kind),
             B = tuple_type(ArgsB, Kind),
-            ( list.same_length(ArgsA, ArgsB) ->
+            ( if list.same_length(ArgsA, ArgsB) then
                 list.map_corresponding(unify_types, ArgsA, ArgsB, Args),
                 Type = tuple_type(Args, Kind)
-            ;
+            else
                 fail
             )
         ;
             A = higher_order_type(ArgsA, ResultA, Purity, Lambda),
             B = higher_order_type(ArgsB, ResultB, Purity, Lambda),
-            ( list.same_length(ArgsA, ArgsB) ->
+            ( if list.same_length(ArgsA, ArgsB) then
                 list.map_corresponding(unify_types, ArgsA, ArgsB, Args),
                 (
                     ResultA = yes(ResultA1),
@@ -1169,16 +1173,16 @@ unify_types(A, B, Type) :-
                     Result = no
                 ),
                 Type = higher_order_type(Args, Result, Purity, Lambda)
-            ;
+            else
                 fail
             )
         ;
             A = apply_n_type(TVarA, ArgsA, Kind),
             B = apply_n_type(_, ArgsB, Kind),
-            ( list.same_length(ArgsA, ArgsB) ->
+            ( if list.same_length(ArgsA, ArgsB) then
                 list.map_corresponding(unify_types, ArgsA, ArgsB, Args),
                 Type = apply_n_type(TVarA, Args, Kind)
-            ;
+            else
                 fail
             )
         ;
@@ -1204,18 +1208,18 @@ type_domain_union(DomainA, DomainB, Domain) :-
     ;
         DomainA = tdomain_singleton(TypeA),
         DomainB = tdomain_singleton(TypeB),
-        ( TypeA = TypeB ->
+        ( if TypeA = TypeB then
             Domain = tdomain_singleton(TypeA)
-        ;
+        else
             Domain = tdomain(set.from_list([TypeA, TypeB]))
         )
     ;
         DomainA = tdomain_singleton(TypeA),
         DomainB = tdomain(TypesB),
         % Symmetrical case below.
-        ( set.is_empty(TypesB) ->
+        ( if set.is_empty(TypesB) then
             Domain = DomainA
-        ;
+        else
             Domain = tdomain(set.insert(TypesB, TypeA))
         )
     ;
@@ -1226,9 +1230,9 @@ type_domain_union(DomainA, DomainB, Domain) :-
         DomainA = tdomain(TypesA),
         DomainB = tdomain_singleton(TypeB),
         % Symmetrical case above.
-        ( set.is_empty(TypesA) ->
+        ( if set.is_empty(TypesA) then
             Domain = DomainB
-        ;
+        else
             Domain = tdomain(set.insert(TypesA, TypeB))
         )
     ;
@@ -1278,13 +1282,13 @@ equal_domain(tdomain_any, tdomain_any).
 equal_domain(tdomain_singleton(A), tdomain_singleton(B)) :-
     unify_types(A, B, _).
 equal_domain(tdomain(A), tdomain(B)) :-
-    (
+    ( if
         set.count(A, C),
         set.count(B, C)
-    ->
+    then
         list.map_corresponding(unify_types,
             set.to_sorted_list(A), set.to_sorted_list(B), _)
-    ;
+    else
         fail
     ).
 
@@ -1312,12 +1316,12 @@ is_singleton_domain(tdomain(Domain), Type) :-
     type_domain_map::out) is det.
 
 update_singleton_domain(TVar, !DomainMap) :-
-    (
+    ( if
         map.search(!.DomainMap, TVar, tdomain(Domain)),
         set.is_singleton(Domain, Type)
-    ->
+    then
         map.set(TVar, tdomain_singleton(Type), !DomainMap)
-    ;
+    else
         true
     ).
 
@@ -1374,14 +1378,14 @@ has_ambiguous_domain((_ - tdomain(Dom))) :-
     pair(tvar, type_domain)::in, comparison_result::out) is det.
 
 domain_size_compare((_ - A), (_ - B), Result) :-
-    (
+    ( if
         A = tdomain(D1),
         B = tdomain(D2)
-    ->
+    then
         list.length(set.to_sorted_list(D1), L1),
         list.length(set.to_sorted_list(D2), L2),
         compare(Result, L1, L2)
-    ;
+    else
         Result = (=)
     ).
 
@@ -1396,9 +1400,9 @@ to_singleton_type_domain(Type) = tdomain_singleton(Type).
     vartypes::in, vartypes::out) is det.
 
 add_unused_prog_var(TCInfo, Var, !Vartypes) :-
-    ( is_in_vartypes(!.Vartypes, Var) ->
+    ( if is_in_vartypes(!.Vartypes, Var) then
         true
-    ;
+    else
         bimap.lookup(TCInfo ^ tconstr_var_map, Var, TVar),
         add_var_type(Var, tvar_to_type(TVar), !Vartypes)
     ).
@@ -1430,11 +1434,11 @@ merge_type_constraints(A, B, Result) :-
         B = tconstr_disj(ConjsB, _)
     ),
     list.map_corresponding(merge_type_constraints2, ConjsA, ConjsB, Conjs),
-    ( Conjs = [SingletonConj] ->
+    ( if Conjs = [SingletonConj] then
         Result = tconstr_conj(SingletonConj)
-    ; list.filter(still_active, Conjs, [SingletonConj]) ->
+    else if list.filter(still_active, Conjs, [SingletonConj]) then
         Result = tconstr_disj(Conjs, yes(SingletonConj))
-    ;
+    else
         Result = tconstr_disj(Conjs, no)
     ).
 
@@ -1442,12 +1446,12 @@ merge_type_constraints(A, B, Result) :-
     conj_type_constraint::in, conj_type_constraint::out) is det.
 
 merge_type_constraints2(A, B, Result) :-
-    (
+    ( if
         A ^ tconstr_activity = tconstr_unsatisfiable,
         B ^ tconstr_activity = tconstr_unsatisfiable
-    ->
+    then
         Result = A
-    ;
+    else
         Result = A ^ tconstr_activity := tconstr_active
     ).
 
@@ -1466,7 +1470,7 @@ merge_type_constraints2(A, B, Result) :-
 diagnose_ambig_pred_error(PredEnv, Conjunctions, Msg) :-
     conj_constraint_get_context(head(Conjunctions), Context),
     list.filter_map(pred_constraint_info, Conjunctions, AmbigPredData),
-    \+ list.all_same(assoc_list.values(AmbigPredData)),
+    not list.all_same(assoc_list.values(AmbigPredData)),
     list.map(ambig_pred_error_message(PredEnv), AmbigPredData, Components),
     Pieces = [always([words("Ambiguous predicate call."),
         words("Possible predicates include:"), nl_indent_delta(2)])
@@ -1485,9 +1489,10 @@ ambig_pred_error_message(PredEnv, (_ - PredId), Component) :-
     pred_info_get_context(PredInfo, Context),
     LineNumber = term.context_line(Context),
     FileName = term.context_file(Context),
-    Component = always([fixed(Name), suffix("/"), suffix(int_to_string(Arity)),
+    Pieces = [fixed(Name), suffix("/"), suffix(int_to_string(Arity)),
         prefix("("), words(FileName), suffix(": "), int_fixed(LineNumber),
-        suffix(")")]).
+        suffix(")"), nl],
+    Component = always(Pieces).
 
 :- pred pred_constraint_info(conj_type_constraint::in,
     pair(goal_id, pred_id)::out) is semidet.
@@ -1514,19 +1519,19 @@ diagnose_unsatisfiability_error(TCInfo, Context, ProgVarSet, TypeVar, Msg) :-
     zip_single([suffix(") or"), nl, prefix("(")],
         MinUnsatPieces, ErrorLocations0),
     list.condense(ErrorLocations0, ErrorLocations),
-    ( bimap.reverse_search(VarMap, ProgVar, TypeVar) ->
+    ( if bimap.reverse_search(VarMap, ProgVar, TypeVar) then
         VarName = mercury_var_to_name_only(ProgVarSet, ProgVar),
         VarKind = "program"
-    ;
+    else
         VarName = mercury_var_to_name_only(TVarSet, TypeVar),
         VarKind = "type"
     ),
-    Msg = simple_msg(Context,
-        [always([words("Conflicting type assignments for the"),
+    Pieces = [words("Conflicting type assignments for the"),
         fixed(VarKind), words("variable"), words(VarName), nl,
         words("The problem is most likely due to one of the following"),
         words("sets of goals"), nl, prefix("(")] ++ ErrorLocations ++
-        [suffix(")"), nl])]).
+        [suffix(")"), nl],
+    Msg = simple_msg(Context, [always(Pieces)]).
 
 :- pred error_from_one_min_set(type_constraint_map::in,
     set(type_constraint_id)::in, list(format_component)::out) is det.
@@ -1571,9 +1576,9 @@ min_unsat_constraints(TCInfo, D, P, !MinUnsats) :-
     (
         Success = no,
         set.fold3(next_min_unsat(Constraint), P, D, NewD, P, _, !MinUnsats),
-        ( list.all_false(set.superset(NewD), !.MinUnsats) ->
+        ( if list.all_false(set.superset(NewD), !.MinUnsats) then
             !:MinUnsats = [NewD | !.MinUnsats]
-        ;
+        else
             true
         )
     ;
@@ -1684,27 +1689,27 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
         RelevantTVars = [LTVar, RTVar]
     ;
         RHS = rhs_functor(ConsId, _, Args),
-        (
+        ( if
             builtin_atomic_type(ConsId, Builtin)
-        ->
+        then
             SimpleConstraint = stconstr(LTVar, builtin_type(Builtin)),
             Constraints = [ctconstr([SimpleConstraint], tconstr_active,
                 Context, no, no)],
             RelevantTVars = [LTVar]
-        ;
+        else if
             ConsId = cons(Name, Arity, _TypeCtor),
             % The _TypeCtor field is not meaningful yet.
             Arity = list.length(Args)
-        ->
+        then
             list.map_foldl(get_var_type, Args, ArgTypeVars, !TCInfo),
             % If it is a data constructor, create a disjunction constraint
             % with each possible type of the constructor.
             Environment = tconstr_environment(_, _, FuncEnv, PredEnv),
-            ( search_cons_table(FuncEnv, ConsId, ConsDefns) ->
+            ( if search_cons_table(FuncEnv, ConsId, ConsDefns) then
                 list.map_foldl(
                     functor_unif_constraint(LTVar, ArgTypeVars, GoalInfo),
                     ConsDefns, TypeConstraints, !TCInfo)
-            ;
+            else
                 TypeConstraints = []
             ),
             % If it is a closure constructor, create a disjunction
@@ -1725,18 +1730,18 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             Constraints = TypeConstraints ++ PredConstraints,
             (
                 Constraints = [],
-                ErrMsg = simple_msg(Context, [always([
-                    words("The constructor"),
+                Pieces = [words("The constructor"),
                     sym_name_and_arity(Name / Arity),
-                    words("has not been defined")])]),
+                    words("has not been defined."), nl],
+                ErrMsg = simple_msg(Context, [always(Pieces)]),
                 add_message_to_spec(ErrMsg, !TCInfo)
             ;
                 Constraints = [_ | _]
             ),
             RelevantTVars = [LTVar | ArgTypeVars]
-        ;
+        else
             Pieces = [words("The given type is not supported"),
-                words("by constraint-based type checking.")],
+                words("by constraint-based type checking."), nl],
             ErrMsg = simple_msg(Context, [always(Pieces)]),
             add_message_to_spec(ErrMsg, !TCInfo),
             RelevantTVars = [],
@@ -1785,7 +1790,7 @@ foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     ArgVars = list.map(foreign_arg_var, ForeignArgs),
     ArgTypes0 = list.map(foreign_arg_type, ForeignArgs),
     predicate_table_get_preds(Environment ^ pred_env, Preds),
-    ( map.search(Preds, PredId, PredInfo) ->
+    ( if map.search(Preds, PredId, PredInfo) then
         pred_info_get_typevarset(PredInfo, PredTVarSet),
         prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
             PredTVarSet, NewTVarSet, TVarRenaming),
@@ -1794,7 +1799,7 @@ foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             ArgTypes0, ArgTypes),
         list.foldl_corresponding(variable_assignment_constraint(Context),
             ArgVars, ArgTypes, !TCInfo)
-    ;
+    else
         unexpected($module, $pred, "cannot find pred_info for foreign_proc")
     ).
 
@@ -1825,49 +1830,50 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
         % class' method list.
         Details = class_method(_, MethodNum, ClassId, _),
         ClassId = class_id(Name, Arity),
-        ( map.search(Environment ^ class_env, ClassId, ClassDefn) ->
-            (
+        ( if map.search(Environment ^ class_env, ClassId, ClassDefn) then
+            ( if
                 list.index0(ClassDefn ^ classdefn_hlds_interface, MethodNum,
                     Method)
-            ->
+            then
                 Method = hlds_class_proc(PredId, _),
                 predicate_table_get_preds(Environment ^ pred_env, Preds),
-                ( pred_has_arity(Preds, list.length(Vars), PredId) ->
+                ( if pred_has_arity(Preds, list.length(Vars), PredId) then
                     pred_call_constraint(Preds, GoalInfo, ArgTVars, PredId,
                         Constraint, PredTVars, !TCInfo),
                     list.append(ArgTVars, PredTVars, TVars),
                     add_type_constraint([Constraint], TVars, !TCInfo)
-                ;
+                else
                     Pieces = [words("Incorrect number of arguments"),
                         words("provided to method"), int_fixed(MethodNum),
                         words("of typeclass"),
-                        sym_name_and_arity(Name / Arity)],
+                        sym_name_and_arity(Name / Arity), suffix("."), nl],
                     ErrMsg = simple_msg(Context, [always(Pieces)]),
                     add_message_to_spec(ErrMsg, !TCInfo)
                 )
-            ;
+            else
                 Pieces = [words("The typeclass"),
                     sym_name_and_arity(Name / Arity),
-                    words("does not have the given method.")],
+                    words("does not have the given method."), nl],
                 ErrMsg = simple_msg(Context, [always(Pieces)]),
                 add_message_to_spec(ErrMsg, !TCInfo)
             )
-        ;
+        else
             Pieces = [words("The typeclass"),
                 sym_name_and_arity(Name / Arity),
-                words("is undefined.")],
+                words("is undefined."), nl],
             ErrMsg = simple_msg(Context, [always(Pieces)]),
             add_message_to_spec(ErrMsg, !TCInfo)
         )
     ;
         Details = event_call(Name),
-        ( event_arg_types(Environment ^ event_env, Name, _ArgTypes0) ->
+        ( if event_arg_types(Environment ^ event_env, Name, _ArgTypes0) then
             Pieces = [words("Event calls are not yet supported"),
-                words("by constraint-based typechecking.")],
+                words("by constraint-based typechecking."), nl],
             ErrMsg = simple_msg(Context, [always(Pieces)]),
             add_message_to_spec(ErrMsg, !TCInfo)
-        ;
-            Pieces = [words("There is not event named"), words(Name)],
+        else
+            Pieces = [words("There is not event named"), words(Name),
+                suffix("."), nl],
             ErrMsg = simple_msg(Context, [always(Pieces)]),
             add_message_to_spec(ErrMsg, !TCInfo)
         )
@@ -1966,7 +1972,7 @@ pred_call_constraint(PredTable, Info, ArgTVars, PredId, Constraint, TVars,
         yes(GoalId), yes(PredId)),
     Context = goal_info_get_context(Info),
     GoalId = goal_info_get_goal_id(Info),
-    ( map.search(PredTable, PredId, PredInfo) ->
+    ( if map.search(PredTable, PredId, PredInfo) then
         pred_info_get_arg_types(PredInfo, PredArgTypes0),
         pred_info_get_typevarset(PredInfo, PredTVarSet),
         prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
@@ -1977,10 +1983,10 @@ pred_call_constraint(PredTable, Info, ArgTVars, PredId, Constraint, TVars,
         Constraints = list.map_corresponding(create_stconstr, ArgTVars,
             PredArgTypes),
         prog_type.type_vars_list(PredArgTypes, TVars)
-    ;
+    else
         Pieces = [words("The predicate with id"),
             int_fixed(pred_id_to_int(PredId)),
-            words("has not been defined.")],
+            words("has not been defined."), nl],
         ErrMsg = simple_msg(Context, [always(Pieces)]),
         add_message_to_spec(ErrMsg, !TCInfo),
         TVars = [],
@@ -2003,7 +2009,7 @@ ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
         yes(GoalId), yes(PredId)),
     Context = goal_info_get_context(Info),
     GoalId = goal_info_get_goal_id(Info),
-    ( map.search(PredTable, PredId, PredInfo) ->
+    ( if map.search(PredTable, PredId, PredInfo) then
         pred_info_get_arg_types(PredInfo, PredArgTypes0),
         pred_info_get_typevarset(PredInfo, PredTVarSet),
         pred_info_get_purity(PredInfo, Purity),
@@ -2013,10 +2019,10 @@ ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
         !TCInfo ^ tconstr_tvarset := NewTVarSet,
         prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
             PredArgTypes0, PredArgTypes),
-        (
+        ( if
             list.split_list(list.length(ArgTVars), PredArgTypes, HOArgTypes,
                 LambdaTypes)
-        ->
+        then
             ArgConstraints = list.map_corresponding(create_stconstr,
                 ArgTVars, HOArgTypes),
             (
@@ -2037,13 +2043,13 @@ ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
                 )
             ),
             Constraints = [LHSConstraint | ArgConstraints]
-        ;
+        else
             fail
         )
-    ;
+    else
         Pieces = [words("The predicate with id"),
             int_fixed(pred_id_to_int(PredId)),
-            words("has not been defined.")],
+            words("has not been defined."), nl],
         ErrMsg = simple_msg(Context, [always(Pieces)]),
         add_message_to_spec(ErrMsg, !TCInfo),
         Constraints = []
@@ -2161,13 +2167,13 @@ add_type_constraint(Constraints, TVars, !TConstrInfo) :-
     var_constraint_map::in, var_constraint_map::out) is det.
 
 map_var_to_constraint(Id, TVar, !VarConstraints) :-
-    ( map.search(!.VarConstraints, TVar, OldIds) ->
-        ( list.contains(OldIds, Id) ->
+    ( if map.search(!.VarConstraints, TVar, OldIds) then
+        ( if list.contains(OldIds, Id) then
             true
-        ;
+        else
             map.det_update(TVar, [Id | OldIds], !VarConstraints)
         )
-    ;
+    else
         map.det_insert(TVar, [Id], !VarConstraints)
     ).
 
@@ -2181,9 +2187,9 @@ map_var_to_constraint(Id, TVar, !VarConstraints) :-
 get_var_type(Var, TVar,
         tconstr_info(!.VarMap, CC, CM, VC, !.TVarSet, Errs),
         tconstr_info(!:VarMap, CC, CM, VC, !:TVarSet, Errs)) :-
-    ( bimap.search(!.VarMap, Var, TVar0) ->
+    ( if bimap.search(!.VarMap, Var, TVar0) then
         TVar = TVar0
-    ;
+    else
         varset.new_var(TVar, !TVarSet),
         bimap.det_insert(Var, TVar, !VarMap)
     ).
@@ -2242,12 +2248,12 @@ print_constraint_change(TVarSet, Constraint0, Constraint1, !IO) :-
         Constraint1 = tconstr_disj(DisjConstraints1, MaybeSingleton1),
         list.foldl_corresponding(print_conj_constraint_change(TVarSet),
             DisjConstraints0, DisjConstraints1, !IO),
-        (
+        ( if
             MaybeSingleton0 = no,
             MaybeSingleton1 = yes(_)
-        ->
+        then
             io.write_string("  Disjunction reduced to one disjunct\n", !IO)
-        ;
+        else
             true
         )
     ).
@@ -2258,15 +2264,15 @@ print_constraint_change(TVarSet, Constraint0, Constraint1, !IO) :-
 print_conj_constraint_change(TVarSet, ConjConstraintA, ConjConstraintB, !IO) :-
     ConjConstraintA = ctconstr(_, ActivityA, _, _, _),
     ConjConstraintB = ctconstr(_, ActivityB, _, _, _),
-    (
+    ( if
         ActivityA = tconstr_active,
         ActivityB = tconstr_unsatisfiable
-    ->
+    then
         conj_constraint_to_string(4, TVarSet, ConjConstraintA,
             ConstraintString),
         io.write_string("  Conjunction marked unsatisfiable:\n", !IO),
         io.write_string(ConstraintString ++ "\n", !IO)
-    ;
+    else
         true
     ).
 
@@ -2274,16 +2280,16 @@ print_conj_constraint_change(TVarSet, ConjConstraintA, ConjConstraintB, !IO) :-
     pair(tvar, type_domain)::in, io::di, io::uo) is det.
 
 print_domain_map_change(TVarSet, OldDomainMap, TVar - NewDomain, !IO) :-
-    ( map.search(OldDomainMap, TVar, OldDomain) ->
-        ( equal_domain(OldDomain, NewDomain) ->
+    ( if map.search(OldDomainMap, TVar, OldDomain) then
+        ( if equal_domain(OldDomain, NewDomain) then
             true
-        ;
+        else
             io.write_string("  Old domain:", !IO),
             print_type_domain(TVarSet, pair(TVar, OldDomain), !IO),
             io.write_string("  New domain:", !IO),
             print_type_domain(TVarSet, pair(TVar, NewDomain), !IO)
         )
-    ;
+    else
         io.write_string("  New domain added:", !IO),
         print_type_domain(TVarSet, pair(TVar, NewDomain), !IO)
     ).
@@ -2353,9 +2359,9 @@ print_var_constraints(ConstraintMap, VarConstraints, TVarSet, ProgVarSet,
     VarName = mercury_var_to_string(ProgVarSet, print_name_and_num, Var),
     TVarName = mercury_var_to_string(TVarSet, print_name_and_num, TVar),
     io.print(VarName ++ " -> " ++ TVarName ++ "\n", !IO),
-    ( map.search(VarConstraints, TVar, ConstraintIds0) ->
+    ( if map.search(VarConstraints, TVar, ConstraintIds0) then
         ConstraintIds = ConstraintIds0
-    ;
+    else
         ConstraintIds = []
     ),
     list.map(constraint_to_string(2, TVarSet, ConstraintMap), ConstraintIds,

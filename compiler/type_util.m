@@ -755,7 +755,7 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
     ; Name = "typeclass_info"
     ; Name = "base_typeclass_info"
     ),
-    \+ ( Body = hlds_du_type(_, _, _, _, _, _, _, _, yes(_))
+    not ( Body = hlds_du_type(_, _, _, _, _, _, _, _, yes(_))
        ; Body = hlds_foreign_type(_)
        ; Body = hlds_solver_type(_, _)
        ).
@@ -763,9 +763,9 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
 %-----------------------------------------------------------------------------%
 
 classify_type(ModuleInfo, VarType) = TypeCategory :-
-    ( type_to_ctor(VarType, TypeCtor) ->
+    ( if type_to_ctor(VarType, TypeCtor) then
         TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor)
-    ;
+    else
         TypeCategory = ctor_cat_variable
     ).
 

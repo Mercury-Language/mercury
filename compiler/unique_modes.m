@@ -210,14 +210,14 @@ select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
     instmap_lookup_var(InstMap0, Var, Inst0),
     mode_info_get_var_types(ModeInfo, VarTypes),
     lookup_var_type(VarTypes, Var, Type),
-    (
+    ( if
         instmap_delta_is_reachable(DeltaInstMap),
         instmap_delta_search_var(DeltaInstMap, Var, Inst),
-        \+ inst_matches_final_typed(Inst, Inst0, Type, ModuleInfo)
-    ->
+        not inst_matches_final_typed(Inst, Inst0, Type, ModuleInfo)
+    then
         select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo, ChangedVars1),
         ChangedVars = [Var | ChangedVars1]
-    ;
+    else
         select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo, ChangedVars)
     ).
 
@@ -235,7 +235,7 @@ make_var_list_mostly_uniq([Var | Vars], !ModeInfo) :-
 make_var_mostly_uniq(Var, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    (
+    ( if
         % Only variables which are `unique' need to be changed.
         instmap_is_reachable(InstMap0),
         instmap_vars_list(InstMap0, Vars),
@@ -246,12 +246,12 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
         ; Inst1 = bound(unique, _, _)
         ; Inst1 = any(unique, _)
         )
-    ->
+    then
         make_mostly_uniq_inst(Inst0, Inst, ModuleInfo0, ModuleInfo),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
         instmap_set_var(Var, Inst, InstMap0, InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
-    ;
+    else
         true
     ).
 
@@ -373,11 +373,11 @@ unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo) :-
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         Determinism = goal_info_get_determinism(GoalInfo0),
         % Does this disjunction create a choice point?
-        ( determinism_components(Determinism, _, at_most_many) ->
+        ( if determinism_components(Determinism, _, at_most_many) then
             mode_info_add_live_vars(NonLocals, !ModeInfo),
             make_all_nondet_live_vars_mostly_uniq(!ModeInfo),
             mode_info_remove_live_vars(NonLocals, !ModeInfo)
-        ;
+        else
             true
         ),
 
@@ -445,10 +445,10 @@ unique_modes_check_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
     mode_info_remove_live_vars(ThenVars, !ModeInfo),
     mode_info_unlock_vars(var_lock_if_then_else, NonLocals, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMapCond),
-    ( instmap_is_reachable(InstMapCond) ->
+    ( if instmap_is_reachable(InstMapCond) then
         unique_modes_check_goal(Then0, Then, !ModeInfo),
         mode_info_get_instmap(!.ModeInfo, InstMapThen)
-    ;
+    else
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having unique mode information.
@@ -533,14 +533,14 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
                 SubGoal = SubGoal0,
                 SubGoal = hlds_goal(_, SubGoalInfo),
                 InstMapDelta = goal_info_get_instmap_delta(SubGoalInfo),
-                (
+                ( if
                     instmap_delta_search_var(InstMapDelta, TermVar,
                         TermVarInst)
-                ->
+                then
                     mode_info_get_instmap(!.ModeInfo, InstMap0),
                     instmap_set_var(TermVar, TermVarInst, InstMap0, InstMap),
                     mode_info_set_instmap(InstMap, !ModeInfo)
-                ;
+                else
                     unexpected($module, $pred, "bad InstMapDelta")
                 ),
                 GoalExpr = scope(Reason, SubGoal)
@@ -591,9 +591,9 @@ unique_modes_check_goal_generic_call(GenericCall, ArgVars, Modes,
     hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
     CallId = generic_call_id(GenericCallId),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
-    ( determinism_components(Detism, _, at_most_zero) ->
+    ( if determinism_components(Detism, _, at_most_zero) then
         NeverSucceeds = yes
-    ;
+    else
         NeverSucceeds = no
     ),
     (
@@ -717,16 +717,16 @@ unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
     ;
         OrElseGoals0 = [_ | _],
         % The unique mode check on the or_else goals is very similar
-        % to the unique mode check for disjunctions.  Please see
+        % to the unique mode check for disjunctions. Please see
         % "unique_modes_check_goal_disj" for disjunctions for discussion
         % of this code.
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         Determinism = goal_info_get_determinism(GoalInfo0),
-        ( determinism_components(Determinism, _, at_most_many) ->
+        ( if determinism_components(Determinism, _, at_most_many) then
             mode_info_add_live_vars(NonLocals, !ModeInfo),
             make_all_nondet_live_vars_mostly_uniq(!ModeInfo),
             mode_info_remove_live_vars(NonLocals, !ModeInfo)
-        ;
+        else
             true
         ),
         Goals0 = [MainGoal0 | OrElseGoals0],
@@ -817,12 +817,12 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
             modecheck_call_pred(PredId, yes(Determinism), ProcId0, ProcId,
                 ArgVars, NewArgVars, GoalInfo, ExtraGoals, !ModeInfo),
 
-            (
+            ( if
                 NewArgVars = ArgVars,
                 ExtraGoals = no_extra_goals
-            ->
+            then
                 true
-            ;
+            else
                 % This shouldn't happen, since modes.m should do all the
                 % handling of implied modes.
                 % XXX It might happen, though, if the user writes strange code;
@@ -849,12 +849,12 @@ unique_modes_check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism,
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
     modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,
         ArgOffset, NewArgVars, ExtraGoals, !ModeInfo),
-    (
+    ( if
         NewArgVars = ArgVars,
         ExtraGoals = no_extra_goals
-    ->
+    then
         true
-    ;
+    else
         % This shouldn't happen, since modes.m should do all the handling
         % of implied modes.
         unexpected($module, $pred, "call to implied mode?")
@@ -868,9 +868,9 @@ unique_modes_check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism,
         % Check whether we are at a call to a nondet predicate.
         % If so, mark all the currently nondet-live variables
         % whose inst is `unique' as instead being only `mostly_unique'.
-        ( determinism_components(Determinism, _, at_most_many) ->
+        ( if determinism_components(Determinism, _, at_most_many) then
             make_all_nondet_live_vars_mostly_uniq(!ModeInfo)
-        ;
+        else
             true
         )
     ).
@@ -881,15 +881,15 @@ unique_modes_check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism,
     list(hlds_goal)::in, list(hlds_goal)::out, mode_info::in, mode_info::out)
     is det.
 
-    % Just process each conjunct in turn.  Note that we don't do any
+    % Just process each conjunct in turn. Note that we don't do any
     % reordering of conjuncts here, although we do flatten conjunctions.
     %
 unique_modes_check_conj(_ConjType, [], [], !ModeInfo).
 unique_modes_check_conj(ConjType, [Goal0 | Goals0], Goals, !ModeInfo) :-
-    ( Goal0 = hlds_goal(conj(ConjType, ConjGoals), _) ->
+    ( if Goal0 = hlds_goal(conj(ConjType, ConjGoals), _) then
         list.append(ConjGoals, Goals0, Goals1),
         unique_modes_check_conj(ConjType, Goals1, Goals, !ModeInfo)
-    ;
+    else
         unique_modes_check_conj_2(ConjType, Goal0, Goals0, Goals, !ModeInfo)
     ).
 
@@ -903,13 +903,13 @@ unique_modes_check_conj_2(ConjType, Goal0, Goals0, [Goal | Goals],
     mode_info_remove_live_vars(NonLocals, !ModeInfo),
     unique_modes_check_goal(Goal0, Goal, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    ( instmap_is_unreachable(InstMap) ->
+    ( if instmap_is_unreachable(InstMap) then
         % We should not mode-analyse the remaining goals, since they are
         % unreachable. Instead we optimize them away, so that later passes
         % won't complain about them not having unique mode information.
         mode_info_remove_goals_live_vars(Goals0, !ModeInfo),
         Goals = []
-    ;
+    else
         unique_modes_check_conj(ConjType, Goals0, Goals, !ModeInfo)
     ).
 
@@ -1013,25 +1013,26 @@ unique_modes_check_disj([Goal0 | Goals0], DisjDetism, DisjNonLocals,
         !ModeInfo).
 
 prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals, !ModeInfo) :-
-    (
+    determinism_components(DisjDetism, _, DisjMaxSolns),
+    Goal0 = hlds_goal(_, GoalInfo0),
+    Determinism = goal_info_get_determinism(GoalInfo0),
+    determinism_components(Determinism, CanFail, _),
+    ( if
         % If the disjunction was model_nondet, then we already marked all the
         % non-locals as only being mostly-unique, so we don't need to do
         % anything special here...
-        \+ determinism_components(DisjDetism, _, at_most_many),
+        DisjMaxSolns \= at_most_many,
 
         % ... but for model_semi or model_det disjunctions, if the _disjunct_
         % can fail, then we still might backtrack to another disjunct, so again
         % in that case we need to mark all the non-locals as being only
         % mostly-unique rather than unique.
-        Goal0 = hlds_goal(_, GoalInfo0),
-        Determinism = goal_info_get_determinism(GoalInfo0),
-        determinism_components(Determinism, CanFail, _),
         CanFail = can_fail
-    ->
+    then
         mode_info_add_live_vars(DisjNonLocals, !ModeInfo),
         make_all_nondet_live_vars_mostly_uniq(!ModeInfo),
         mode_info_remove_live_vars(DisjNonLocals, !ModeInfo)
-    ;
+    else
         true
     ).
 
@@ -1054,9 +1055,9 @@ unique_modes_check_case_list([Case0 | Cases0], Var, [Case | Cases],
     modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap1),
-    ( instmap_is_reachable(InstMap1) ->
+    ( if instmap_is_reachable(InstMap1) then
         unique_modes_check_goal(Goal0, Goal1, !ModeInfo)
-    ;
+    else
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having unique mode information.

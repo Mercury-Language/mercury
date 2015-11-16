@@ -265,13 +265,13 @@ type_assign_set_get_final_info(TypeAssignSet,
         TypeBindings, HLDSTypeConstraints, ConstraintProofMap0,
         ConstraintMap0),
 
-    ( map.is_empty(TypeBindings) ->
+    ( if map.is_empty(TypeBindings) then
         VarTypes1 = VarTypes0,
         ConstraintProofMap = ConstraintProofMap0,
         ConstraintMap1 = ConstraintMap0,
         vartypes_types(VarTypes1, Types1),
         type_vars_list(Types1, TypeVars1)
-    ;
+    else
         transform_foldl_var_types(expand_types(TypeBindings),
             VarTypes0, VarTypes1, set.init, TypeVarsSet1),
         set.to_sorted_list(TypeVarsSet1, TypeVars1),
@@ -336,13 +336,13 @@ type_assign_set_get_final_info(TypeAssignSet,
     % Finally, if necessary, rename the types and type class constraints
     % to use the new typevarset type variables.
     retrieve_prog_constraints(HLDSTypeConstraints, TypeConstraints),
-    ( map.is_empty(TSubst) ->
+    ( if map.is_empty(TSubst) then
         NewVarTypes = VarTypes1,
         NewHeadTypeParams = HeadTypeParams,
         NewTypeConstraints = TypeConstraints,
         NewConstraintProofMap = ConstraintProofMap,
         NewConstraintMap = ConstraintMap
-    ;
+    else
         apply_variable_renaming_to_vartypes(TSubst, VarTypes1, NewVarTypes),
         map.apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
         apply_variable_renaming_to_prog_constraints(TSubst,
@@ -381,23 +381,23 @@ get_existq_tvar_renaming(OldHeadTypeParams, ExistQVars, TypeBindings,
     tvar::in, tvar_renaming::in, tvar_renaming::out) is det.
 
 get_existq_tvar_renaming_2(OldHeadTypeParams, TypeBindings, TVar, !Renaming) :-
-    (
+    ( if
         tvar_maps_to_tvar(TypeBindings, TVar, NewTVar),
         NewTVar \= TVar,
-        \+ list.member(NewTVar, OldHeadTypeParams)
-    ->
+        not list.member(NewTVar, OldHeadTypeParams)
+    then
         map.det_insert(TVar, NewTVar, !Renaming)
-    ;
+    else
         true
     ).
 
 :- pred tvar_maps_to_tvar(tsubst::in, tvar::in, tvar::out) is semidet.
 
 tvar_maps_to_tvar(TypeBindings, TVar0, TVar) :-
-    ( map.search(TypeBindings, TVar0, Type) ->
+    ( if map.search(TypeBindings, TVar0, Type) then
         Type = type_variable(TVar1, _),
         tvar_maps_to_tvar(TypeBindings, TVar1, TVar)
-    ;
+    else
         TVar = TVar0
     ).
 
@@ -470,9 +470,9 @@ type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) = Pieces :-
     (
         MaybeSeq = yes(N),
         SeqPieces0 = [words("Type assignment"), int_fixed(N), suffix(":"), nl],
-        ( N > 1 ->
+        ( if N > 1 then
             SeqPieces = [blank_line | SeqPieces0]
-        ;
+        else
             SeqPieces = SeqPieces0
         )
     ;
@@ -512,7 +512,7 @@ type_assign_types_to_pieces([], _, _, _, _, FoundOne) = Pieces :-
     ).
 type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
         TypeVarSet, FoundOne) = Pieces :-
-    ( search_var_type(VarTypes, Var, Type) ->
+    ( if search_var_type(VarTypes, Var, Type) then
         (
             FoundOne = yes,
             PrefixPieces = [nl]
@@ -526,7 +526,7 @@ type_assign_types_to_pieces([Var | Vars], VarSet, VarTypes, TypeBindings,
         TailPieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
             TypeBindings, TypeVarSet, yes),
         Pieces = PrefixPieces ++ AssignPieces ++ TailPieces
-    ;
+    else
         Pieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
             TypeBindings, TypeVarSet, FoundOne)
     ).
@@ -604,10 +604,10 @@ do_type_checkpoint(Msg, ModuleInfo, VarSet, TypeAssignSet, !IO) :-
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     maybe_report_stats(Statistics, !IO),
     io.write_string("\n", !IO),
-    (
+    ( if
         Statistics = yes,
         TypeAssignSet = [TypeAssign | _]
-    ->
+    then
         type_assign_get_var_types(TypeAssign, VarTypes),
         vartypes_count(VarTypes, VarTypesCount),
         io.format("\t`var -> type' map: count = %d\n",
@@ -616,7 +616,7 @@ do_type_checkpoint(Msg, ModuleInfo, VarSet, TypeAssignSet, !IO) :-
         map.count(TypeBindings, TypeBindingsCount),
         io.format("\t`type var -> type' map: count = %d\n",
             [i(TypeBindingsCount)], !IO)
-    ;
+    else
         true
     ),
     write_type_assign_set(TypeAssignSet, VarSet, !IO).
@@ -667,7 +667,7 @@ write_type_assign_types(_, _, _, _, FoundOne, [], !IO) :-
     ).
 write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
         FoundOne, [Var | Vars], !IO) :-
-    ( search_var_type(VarTypes, Var, Type) ->
+    ( if search_var_type(VarTypes, Var, Type) then
         (
             FoundOne = yes,
             io.write_string("\n\t", !IO)
@@ -679,7 +679,7 @@ write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
         write_type_with_bindings(TypeVarSet, TypeBindings, Type, !IO),
         write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
             yes, Vars, !IO)
-    ;
+    else
         write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
             FoundOne, Vars, !IO)
     ).

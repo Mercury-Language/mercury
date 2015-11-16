@@ -140,15 +140,15 @@ generate_instance_decls(ModuleInfo, ClassId - Instances, !RttiDatas) :-
 generate_maybe_instance_decl(ModuleInfo, ClassId, InstanceDefn, !RttiDatas) :-
     ImportStatus = InstanceDefn ^ instdefn_status,
     Body = InstanceDefn ^ instdefn_body,
-    (
+    ( if
         Body = instance_body_concrete(_),
         % Only make the RTTI structure for the type class instance if the
         % instance declaration originally came from _this_ module.
         instance_status_defined_in_this_module(ImportStatus) = yes
-    ->
+    then
         RttiData = generate_instance_decl(ModuleInfo, ClassId, InstanceDefn),
         !:RttiDatas = [RttiData | !.RttiDatas]
-    ;
+    else
         true
     ).
 
@@ -163,11 +163,11 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
     varset.vars(TVarSet, TVars),
     TVarNums = list.map(term.var_to_int, TVars),
     TVarLength = list.length(TVarNums),
-    ( list.last(TVarNums, LastTVarNum) ->
+    ( if list.last(TVarNums, LastTVarNum) then
         expect(unify(TVarLength, LastTVarNum), $module, $pred,
             "tvar num mismatch"),
         NumTypeVars = TVarLength
-    ;
+    else
         NumTypeVars = 0
     ),
     Constraints = Instance ^ instdefn_constraints,

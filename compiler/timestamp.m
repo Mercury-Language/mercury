@@ -78,9 +78,8 @@
     % A timestamp is a string formatted as "yyyy-mm-dd hh:mm:ss"
     % representing a time expressed as UTC (Universal Coordinated Time).
     %
-    % We use a no-tag type rather than an abstract equivalence type
-    % to avoid type errors with abstract equivalence types in the hlc
-    % back-end.
+    % We use a no-tag type rather than an abstract equivalence type to avoid
+    % type errors with abstract equivalence types in the hlc backend.
 :- type timestamp
     --->    timestamp(string).
 
@@ -157,11 +156,17 @@ gmtime_to_timestamp_2(_, _, _, _, _, _, _, _, _) = _ :-
 :- func maybe_dst_to_int(maybe(dst)) = int.
 
 maybe_dst_to_int(M) = N :-
-    ( M = yes(DST), DST = daylight_time,
-        N = 1
-    ; M = yes(DST), DST = standard_time,
-        N = 0
-    ; M = no,
+    (
+        M = yes(DST),
+        (
+            DST = daylight_time,
+            N = 1
+        ;
+            DST = standard_time,
+            N = 0
+        )
+    ;
+        M = no,
         N = -1
     ).
 
@@ -172,10 +177,12 @@ string_to_timestamp(Timestamp) = timestamp(Timestamp) :-
     % we need to ensure that the sanity checks occur before the
     % calls to unsafe_index. The offsets are only valid if the string
     % contains only ASCII characters, as expected.
-    (
+    ( if
         string.all_match(plausible_timestamp_char, Timestamp),
-        string.length(Timestamp) : int = string.length("yyyy-mm-dd hh:mm:ss")
-    ->
+        string.length(Timestamp, TimestampLength),
+        string.length("yyyy-mm-dd hh:mm:ss", ShouldBeTimestampLength),
+        TimestampLength = ShouldBeTimestampLength
+    then
         string.to_int(string.unsafe_between(Timestamp, 0, 4), _),
 
         string.unsafe_index(Timestamp, 4, '-'),
@@ -207,7 +214,7 @@ string_to_timestamp(Timestamp) = timestamp(Timestamp) :-
         string.to_int(string.unsafe_between(Timestamp, 17, 19), Second),
         Second >= 0,
         Second =< 61    % Seconds 60 and 61 are for leap seconds.
-    ;
+    else
         fail
     ).
 

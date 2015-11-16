@@ -373,11 +373,11 @@ typecheck_info_get_ctors(Info, Ctors) :-
 
 typecheck_info_add_overloaded_symbol(Symbol, Context, !Info) :-
     typecheck_info_get_overloaded_symbol_map(!.Info, OverloadedSymbolMap0),
-    ( map.search(OverloadedSymbolMap0, Symbol, OldContexts) ->
+    ( if map.search(OverloadedSymbolMap0, Symbol, OldContexts) then
         Contexts = [Context | OldContexts],
         map.det_update(Symbol, Contexts,
             OverloadedSymbolMap0, OverloadedSymbolMap)
-    ;
+    else
         Contexts = [Context],
         map.det_insert(Symbol, Contexts,
             OverloadedSymbolMap0, OverloadedSymbolMap)

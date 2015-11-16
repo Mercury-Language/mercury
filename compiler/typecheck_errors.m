@@ -295,10 +295,10 @@ report_error_undef_pred(ClauseContext, Context, SimpleCallId) = Msg :-
     SimpleCallId = simple_call_id(_PredOrFunc, PredName, Arity),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     InClauseForComponent = always(InClauseForPieces),
-    (
+    ( if
         PredName = unqualified("->"),
         ( Arity = 2 ; Arity = 4 )
-    ->
+    then
         MainPieces = [words("error:"), quote("->"), words("without"),
             quote(";"), suffix("."), nl],
         MainComponent = always(MainPieces),
@@ -307,23 +307,23 @@ report_error_undef_pred(ClauseContext, Context, SimpleCallId) = Msg :-
             words("Every if-then must have an else."), nl],
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent]
-    ;
+    else if
         PredName = unqualified("else"),
         ( Arity = 2 ; Arity = 4 )
-    ->
+    then
         Components = [always([words("error: unmatched"), quote("else"),
             suffix("."), nl])]
-    ;
+    else if
         PredName = unqualified("if"),
         ( Arity = 2 ; Arity = 4 )
-    ->
+    then
         Pieces = [words("error:"), quote("if"), words("without"),
             quote("then"), words("or"), quote("else"), suffix("."), nl],
         Components = [always(Pieces)]
-    ;
+    else if
         PredName = unqualified("then"),
         ( Arity = 2 ; Arity = 4 )
-    ->
+    then
         MainPieces = [words("error:"), quote("then"), words("without"),
             quote("if"), words("or"), quote("else"), suffix("."), nl],
         MainComponent = always(MainPieces),
@@ -333,16 +333,16 @@ report_error_undef_pred(ClauseContext, Context, SimpleCallId) = Msg :-
             quote("else"), suffix("."), nl],
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent]
-    ;
+    else if
         PredName = unqualified("apply"),
         Arity >= 1
-    ->
+    then
         Components = report_apply_instead_of_pred
-    ;
+    else if
         PredName = unqualified(PurityString),
         Arity = 1,
         ( PurityString = "impure" ; PurityString = "semipure" )
-    ->
+    then
         MainPieces = [words("error:"), quote(PurityString),
             words("marker in an inappropriate place."), nl],
         MainComponent = always(MainPieces),
@@ -350,15 +350,15 @@ report_error_undef_pred(ClauseContext, Context, SimpleCallId) = Msg :-
             [words("Such markers only belong before predicate calls."), nl],
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent]
-    ;
+    else if
         PredName = unqualified("some"),
         Arity = 2
-    ->
+    then
         Pieces = [words("syntax error in existential quantification:"),
             words("first argument of"), quote("some"),
             words("should be a list of variables."), nl],
         Components = [always(Pieces)]
-    ;
+    else
         MainPieces = [words("error: undefined"), simple_call(SimpleCallId)],
         (
             PredName = qualified(ModuleQualifier, _),
@@ -472,13 +472,13 @@ report_non_contiguous_clause_contexts(PredPieces, GapNumber,
     SecondRegion =
         clause_item_number_region(_SecondLowerNumber, _SecondUpperNumber,
         SecondLowerContext, _SecondUpperContext),
-    (
+    ( if
         GapNumber = 1,
         LaterRegions = []
-    ->
+    then
         % There is only one gap, so don't number it.
         GapPieces = []
-    ;
+    else
         GapPieces = [int_fixed(GapNumber)]
     ),
     % The wording here is chosen be non-confusing even if a clause has a gap
@@ -799,10 +799,10 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
     % that may be in error.
     ConsArgTypesSet = list.map(get_callee_arg_types, ArgsTypeAssignSet),
 
-    (
+    ( if
         list.all_same(ConsArgTypesSet),
         ConsArgTypesSet = [ConsArgTypes | _]
-    ->
+    then
         assoc_list.from_corresponding_lists(Args, ConsArgTypes, ArgExpTypes),
         TypeAssigns = list.map(get_caller_arg_assign, ArgsTypeAssignSet),
         find_mismatched_args(1, ArgExpTypes, TypeAssigns,
@@ -828,7 +828,7 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
                 VarSet, Functor)
         ),
         VerboseComponents = []
-    ;
+    else
         % XXX It should be possible to compute which arguments are
         % definitely OK, and which are suspect.
         MaybeNumMismatches = no,
@@ -836,16 +836,16 @@ report_error_functor_arg_types(ClauseContext, UnifyContext, Context, Var,
 
         % For polymorphic data structures, the type of `Var' (the functor's
         % result type) can affect the valid types for the arguments.
-        (
+        ( if
             % Could the type of the functor be polymorphic?
             list.member(ConsDefn, ConsDefnList),
             ConsDefn ^ cti_arg_types = [_ | _]
-        ->
+        then
             % If so, print out the type of `Var'.
             ResultTypePieces = argument_name_to_pieces(VarSet, Var) ++
                 type_of_var_to_pieces(TypeAssignSet, Var) ++
                 [suffix(","), nl]
-        ;
+        else
             ResultTypePieces = []
         ),
 
@@ -934,10 +934,10 @@ find_mismatched_args(CurArgNum, [Arg - ExpType | ArgExpTypes], TypeAssignSet,
             TypeMismatches = [HeadTypeMismatch | TailTypeMismatches],
             Mismatch = mismatch_info(CurArgNum, Arg, HeadTypeMismatch,
                 TailTypeMismatches),
-            ( all_no_subsume_mismatches(TypeMismatches) ->
+            ( if all_no_subsume_mismatches(TypeMismatches) then
                 !:RevNoSubsumeMismatches =
                     [Mismatch | !.RevNoSubsumeMismatches]
-            ;
+            else
                 !:RevSubsumesMismatches =
                     [Mismatch | !.RevSubsumesMismatches]
             )
@@ -959,7 +959,7 @@ substitute_types_check_match(ExpType, TypeStuff,
     TypeStuff = type_stuff(ArgType, TVarSet, TypeBindings, HeadTypeParams),
     apply_rec_subst_to_type(TypeBindings, ArgType, FullArgType),
     apply_rec_subst_to_type(TypeBindings, ExpType, FullExpType),
-    (
+    ( if
         (
             % There is no mismatch if the actual type of the argument
             % is the same as the expected type.
@@ -969,12 +969,12 @@ substitute_types_check_match(ExpType, TypeStuff,
             % has no constraints on it.
             FullArgType = defined_type(unqualified("<any>"), [], _)
         )
-    ->
+    then
         !:DoesSomeTypeStuffMatch = some_type_stuff_matches
-    ;
-        ( type_subsumes(FullArgType, FullExpType, _Subst) ->
+    else
+        ( if type_subsumes(FullArgType, FullExpType, _Subst) then
             ActualSubsumesExpected = actual_subsumes_expected
-        ;
+        else
             ActualSubsumesExpected = actual_does_not_subsume_expected
         ),
         ExpectedPieces = type_to_pieces(add_quotes, FullExpType,
@@ -1001,7 +1001,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
         = Pieces :-
     Mismatch = mismatch_info(ArgNum, Var,
         HeadTypeMismatch, TailTypeMismatches),
-    (
+    ( if
         % Handle higher-order syntax such as ''(F, A) specially:
         % output
         %   Functor (F) has type ...;
@@ -1011,7 +1011,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
         %   argument 2 (A) has type ...
         Functor = cons(unqualified(""), Arity, _),
         Arity > 0
-    ->
+    then
         (
             First = yes,
             ArgNumPieces = [fixed("Functor")]
@@ -1019,7 +1019,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
             First = no,
             ArgNumPieces = [fixed("argument"), int_fixed(ArgNum - 1)]
         )
-    ;
+    else
         (
             First = yes,
             ArgNumPieces = [fixed("Argument"), int_fixed(ArgNum)]
@@ -1028,20 +1028,20 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
             ArgNumPieces = [fixed("argument"), int_fixed(ArgNum)]
         )
     ),
-    ( varset.search_name(VarSet, Var, _) ->
+    ( if varset.search_name(VarSet, Var, _) then
         VarNamePieces = [prefix("("),
             words(mercury_var_to_name_only(VarSet, Var)),
             suffix(")")]
-    ;
+    else
         VarNamePieces = []
     ),
     HeadTypeMismatch =
         type_mismatch_exp_act(HeadExpectedTypePieces, HeadActualTypePieces,
             _ActualSubsumesExpected),
-    (
+    ( if
         expected_types_match(HeadExpectedTypePieces, TailTypeMismatches,
             TailActualTypePieces)
-    ->
+    then
         (
             TailActualTypePieces = [],
             ErrorDescPieces = [words("has type")] ++ HeadActualTypePieces ++
@@ -1056,7 +1056,7 @@ mismatched_args_to_pieces([Mismatch | Mismatches], First, VarSet, Functor)
                 [suffix(","), nl] ++
                 [words("expected type was")] ++ HeadExpectedTypePieces
         )
-    ;
+    else
         AllMismatches = [HeadTypeMismatch | TailTypeMismatches],
         ErrorDescPieces =
             [words("has one of the following type mismatches."), nl] ++
@@ -1135,13 +1135,13 @@ report_error_var(ClauseContext, GoalContext, Context, Var, Type,
 
     Pieces1 = [words("type error:")],
     VarSet = ClauseContext ^ tecc_varset,
-    ( ActualExpectedList = [ActualExpected] ->
+    ( if ActualExpectedList = [ActualExpected] then
         MaybeActualExpected = yes(ActualExpected),
         ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces),
         Pieces2 = argument_name_to_pieces(VarSet, Var) ++
             [words("has type")] ++ ActualPieces ++ [suffix(","), nl,
             words("expected type was")] ++ ExpectedPieces ++ [suffix("."), nl]
-    ;
+    else
         MaybeActualExpected = no,
         Pieces2 = [words("type of")] ++
             argument_name_to_pieces(VarSet, Var) ++
@@ -1244,12 +1244,12 @@ find_expecteds_matching_actual(VarSet, SearchActualPieces,
         TailMismatchPieces),
     HeadError = arg_vector_type_error(ArgNum, Var, ActualExpected),
     ActualExpected = actual_expected_types(_ActualPieces, ExpectedPieces),
-    ( SearchActualPieces = ExpectedPieces ->
-        ( varset.search_name(VarSet, Var, _) ->
+    ( if SearchActualPieces = ExpectedPieces then
+        ( if varset.search_name(VarSet, Var, _) then
             HeadMismatchPieces = [words("argument"), int_fixed(ArgNum),
                 suffix(","), words("which is variable"),
                 quote(mercury_var_to_name_only(VarSet, Var))]
-        ;
+        else
             HeadMismatchPieces = [words("argument"), int_fixed(ArgNum)]
         ),
         (
@@ -1261,7 +1261,7 @@ find_expecteds_matching_actual(VarSet, SearchActualPieces,
             MismatchPieces = HeadMismatchPieces ++ ConnectPieces ++
                 TailMismatchPieces
         )
-    ;
+    else
         MismatchPieces = TailMismatchPieces
     ).
 
@@ -1282,17 +1282,17 @@ report_error_var_either_type(ClauseContext, GoalContext, Context,
 
     Pieces1 = [words("type error:")],
     VarSet = ClauseContext ^ tecc_varset,
-    (
+    ( if
         ActualExpectedListA = [ActualExpectedA],
         ActualExpectedListB = [ActualExpectedB]
-    ->
+    then
         ActualExpectedA = actual_expected_types(ActualPieces, ExpectedPiecesA),
         ActualExpectedB = actual_expected_types(_, ExpectedPiecesB),
         Pieces2 = argument_name_to_pieces(VarSet, Var) ++
             [words("has type")] ++ ActualPieces ++ [suffix(","), nl,
             words("expected type was either")] ++ ExpectedPiecesA ++
             [words("or")] ++ ExpectedPiecesB ++ [suffix("."), nl]
-    ;
+    else
         Pieces2 = [words("type of")] ++
             argument_name_to_pieces(VarSet, Var) ++
             [words("does not match its expected type;"), nl] ++
@@ -1326,12 +1326,12 @@ report_error_arg_var(ClauseContext, GoalContext, Context, Var,
 
     Pieces1 = [words("type error:")],
     VarSet = ClauseContext ^ tecc_varset,
-    ( ActualExpectedList = [ActualExpected] ->
+    ( if ActualExpectedList = [ActualExpected] then
         ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces),
         Pieces2 = argument_name_to_pieces(VarSet, Var) ++
             [words("has type")] ++ ActualPieces ++ [suffix(","), nl,
             words("expected type was")] ++ ExpectedPieces ++ [suffix("."), nl]
-    ;
+    else
         Pieces2 = [words("type of")] ++
             argument_name_to_pieces(VarSet, Var) ++
             [words("does not match its expected type;"), nl] ++
@@ -1359,63 +1359,63 @@ report_error_undef_cons(ClauseContext, GoalContext, Context,
     InitComp = always(InClauseForPieces ++ GoalContextPieces),
 
     % Check for some special cases, so that we can give clearer error messages.
-    (
+    ( if
         Functor = cons(unqualified(FunctorName), FunctorArity, _),
         expect(unify(Arity, FunctorArity), $module, $pred, "arity mismatch"),
-        (
+        ( if
             language_builtin_functor_components(FunctorName, Arity,
                 FunctorComps0)
-        ->
+        then
             FunctorComps1 = FunctorComps0
-        ;
+        else if
             syntax_functor_components(FunctorName, FunctorArity, FunctorComps0)
-        ->
+        then
             FunctorComps1 = FunctorComps0
-        ;
+        else
             fail
         )
-    ->
+    then
         FunctorComps = FunctorComps1,
         ReportConsErrors = no
-    ;
+    else if
         Functor = cons(Constructor, FunctorArity, _),
         expect(unify(Arity, FunctorArity), $module, $pred, "arity mismatch"),
         ModuleInfo = ClauseContext ^ tecc_module_info,
         module_info_get_cons_table(ModuleInfo, ConsTable),
         return_other_arities(ConsTable, Constructor, Arity, OtherArities),
         OtherArities = [_ | _]
-    ->
+    then
         FunctorPieces = wrong_arity_constructor_to_pieces(Constructor, Arity,
             OtherArities),
         FunctorComps = [always(FunctorPieces)],
         ReportConsErrors = yes
-    ;
+    else
         Pieces1 = [words("error: undefined symbol"),
             cons_id_and_maybe_arity(Functor)],
-        (
+        ( if
             Functor = cons(Constructor, _, _),
             Constructor = qualified(ModQual, _)
-        ->
+        then
             Pieces2 = maybe_report_missing_import_addendum(ClauseContext,
                 ModQual)
-        ;
+        else if
             Functor = cons(unqualified("[|]"), 2, _)
-        ->
+        then
             Pieces2 = maybe_report_missing_import_addendum(ClauseContext,
                 unqualified("list"))
-        ;
+        else
             Pieces2 = [suffix("."), nl]
         ),
         FunctorComps = [always(Pieces1 ++ Pieces2)],
         ReportConsErrors = yes
     ),
-    (
+    ( if
         ReportConsErrors = yes,
         ConsErrors = [_ | _]
-    ->
+    then
         ConsMsgLists = list.map(report_cons_error(Context), ConsErrors),
         list.condense(ConsMsgLists, ConsMsgs)
-    ;
+    else
         ConsMsgs = []
     ),
     Spec = error_spec(severity_error, phase_type_check,
@@ -1432,7 +1432,7 @@ language_builtin_functor_components(Name, Arity, Components) :-
     VerbosePieces = [words("If you are trying to use a goal"),
         words("as a boolean function, you should write"),
         words_quote("if <goal> then yes else no"), words("instead."), nl],
-    ( Name = "call" ->
+    ( if Name = "call" then
         VerboseCallPieces =
             [words("If you are trying to invoke"),
             words("a higher-order function,"),
@@ -1449,7 +1449,7 @@ language_builtin_functor_components(Name, Arity, Components) :-
             quote("call"), words("is actually defined (if it is defined"),
             words("in a separate module, check that the module is"),
             words("correctly imported)."), nl]
-    ;
+    else
         VerboseCallPieces = []
     ),
     Components = [always(MainPieces),
@@ -1656,13 +1656,13 @@ ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet,
     type_assign_get_type_bindings(TypeAssign2, TypeBindings2),
     type_assign_get_head_type_params(TypeAssign1, HeadTypeParams1),
     type_assign_get_head_type_params(TypeAssign2, HeadTypeParams2),
-    (
+    ( if
         search_var_type(VarTypes1, Var, Type1),
         search_var_type(VarTypes2, Var, Type2),
         apply_rec_subst_to_type(TypeBindings1, Type1, T1),
         apply_rec_subst_to_type(TypeBindings2, Type2, T2),
-        \+ identical_types(T1, T2)
-    ->
+        not identical_types(T1, T2)
+    then
         type_assign_get_typevarset(TypeAssign1, TVarSet1),
         type_assign_get_typevarset(TypeAssign2, TVarSet2),
         HeadPieces =
@@ -1670,7 +1670,7 @@ ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet,
             type_to_pieces(add_quotes, T1, TVarSet1, HeadTypeParams1) ++
             [words("or")] ++
             type_to_pieces(add_quotes, T2, TVarSet2, HeadTypeParams2) ++ [nl]
-    ;
+    else
         HeadPieces = []
     ),
     TailPieces = ambiguity_error_possibilities_to_pieces(Vars, VarSet,
@@ -1694,9 +1694,9 @@ report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     list.map_foldl(constraints_to_pieces, TypeAssignSet, ConstraintPieceLists,
         0, NumUnsatisfied),
-    ( NumUnsatisfied = 1 ->
+    ( if NumUnsatisfied = 1 then
         Pieces1 = [words("unsatisfiable typeclass constraint:"), nl]
-    ;
+    else
         Pieces1 = [words("unsatisfiable typeclass constraints:"), nl]
     ),
     % XXX this won't be very pretty when there are multiple type_assigns.
@@ -1761,10 +1761,10 @@ types_of_vars_to_pieces([Var | Vars], VarSet, TypeAssignSet) =
     = list(format_component).
 
 argument_name_to_pieces(VarSet, Var) = Pieces :-
-    ( varset.search_name(VarSet, Var, _) ->
+    ( if varset.search_name(VarSet, Var, _) then
         Pieces = [words("variable"),
             quote(mercury_var_to_name_only(VarSet, Var))]
-    ;
+    else
         Pieces = [words("argument")]
     ).
 
@@ -1772,18 +1772,18 @@ argument_name_to_pieces(VarSet, Var) = Pieces :-
 
 functor_name_to_pieces(Functor, Arity) = Pieces :-
     strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
-    ( Arity = 0 ->
+    ( if Arity = 0 then
         Piece1 = words("constant"),
-        ( Functor = cons(Name, _, _) ->
+        ( if Functor = cons(Name, _, _) then
             Piece2 = sym_name(Name)
-        ;
+        else
             Piece2 = quote(cons_id_and_arity_to_string(StrippedFunctor))
         ),
         Pieces = [Piece1, Piece2]
-    ; Functor = cons(unqualified(""), _, _) ->
+    else if Functor = cons(unqualified(""), _, _) then
         Pieces = [words("higher-order term (with arity"),
             int_fixed(Arity - 1), suffix(")")]
-    ;
+    else
         Pieces = [words("functor"), cons_id_and_maybe_arity(Functor)]
     ).
 
@@ -1794,9 +1794,9 @@ type_of_var_to_pieces(TypeAssignSet, Var) = Pieces :-
     get_type_stuff(TypeAssignSet, Var, TypeStuffList),
     TypeStrs0 = list.map(typestuff_to_typestr, TypeStuffList),
     list.sort_and_remove_dups(TypeStrs0, TypeStrs),
-    ( TypeStrs = [TypeStr] ->
+    ( if TypeStrs = [TypeStr] then
         Pieces = [words("has type"), words(add_quotes(TypeStr))]
-    ;
+    else
         Pieces = [words("has overloaded type {"), nl_indent_delta(2)] ++
             component_list_to_line_pieces(
                 list.map(string_to_pieces, TypeStrs), []) ++
@@ -1807,16 +1807,16 @@ type_of_var_to_pieces(TypeAssignSet, Var) = Pieces :-
     = list(format_component).
 
 type_of_functor_to_pieces(Functor, Arity, ConsDefnList) = Pieces :-
-    ( ConsDefnList = [SingleDefn] ->
-        ( Arity \= 0 ->
-            SepPieces = [nl]
-        ;
+    ( if ConsDefnList = [SingleDefn] then
+        ( if Arity = 0 then
             SepPieces = []
+        else
+            SepPieces = [nl]
         ),
         ConsTypePieces = cons_type_to_pieces(SingleDefn, Functor),
         Pieces = [words("has type")] ++ SepPieces ++
             [prefix("`")] ++ ConsTypePieces ++ [suffix("'")]
-    ;
+    else
         ConsTypeListPieces =
             cons_type_list_to_pieces(ConsDefnList, Functor, Arity),
         Pieces = [words("has overloaded type {"), nl_indent_delta(1)] ++
@@ -1834,7 +1834,7 @@ cons_type_to_pieces(ConsInfo, Functor) = Pieces :-
     ConsInfo = cons_type_info(TVarSet, ExistQVars, ConsType, ArgTypes, _, _),
     (
         ArgTypes = [_ | _],
-        ( Functor = cons(SymName, _Arity, _) ->
+        ( if Functor = cons(SymName, _Arity, _) then
             % What we construct in Type is not really a type: it is a
             % function symbol applied to a list of argument types. However
             % *syntactically*, it looks like a type, and we already have
@@ -1843,7 +1843,7 @@ cons_type_to_pieces(ConsInfo, Functor) = Pieces :-
             ArgPieces =
                 type_to_pieces(do_not_add_quotes, Type, TVarSet, ExistQVars) ++
                 [suffix(":")]
-        ;
+        else
             unexpected($module, $pred, "invalid cons_id")
         )
     ;
@@ -1870,9 +1870,9 @@ cons_type_list_to_pieces([ConsDefn | ConsDefns], Functor, Arity) = Pieces :-
         Pieces = ThisPieces
     ;
         ConsDefns = [_ | _],
-        ( Arity = 0 ->
+        ( if Arity = 0 then
             ConnectPieces = [suffix(",")]
-        ;
+        else
             ConnectPieces = [suffix(","), nl]
         ),
         TailPieces = cons_type_list_to_pieces(ConsDefns, Functor, Arity),
@@ -1890,10 +1890,10 @@ cons_type_list_to_pieces([ConsDefn | ConsDefns], Functor, Arity) = Pieces :-
     = list(format_component).
 
 type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet) = Pieces :-
-    ( TypeAssignSet0 = [_] ->
+    ( if TypeAssignSet0 = [_] then
         FirstWords = "The partial type assignment was:",
         MaybeSeq = no
-    ;
+    else
         FirstWords = "The possible partial type assignments were:",
         MaybeSeq = yes(1)
     ),
@@ -1913,10 +1913,10 @@ type_assign_set_msg_to_pieces(TypeAssignSet0, VarSet) = Pieces :-
     = list(format_component).
 
 args_type_assign_set_msg_to_pieces(ArgTypeAssignSet0, VarSet) = Pieces :-
-    ( ArgTypeAssignSet0 = [_] ->
+    ( if ArgTypeAssignSet0 = [_] then
         FirstWords = "The partial type assignment was:",
         MaybeSeq = no
-    ;
+    else
         FirstWords = "The possible partial type assignments were:",
         MaybeSeq = yes(1)
     ),
@@ -1962,9 +1962,9 @@ actual_expected_types_list_to_pieces(ActualExpectedList) = Pieces :-
 expected_types_to_pieces(ActualExpected, Pieces0) = Pieces :-
     ActualExpected = actual_expected_types(_ActualPieces, ExpectedPieces),
     TaggedPieces = [words("(expected)") | ExpectedPieces],
-    ( list.member(TaggedPieces, Pieces0) ->
+    ( if list.member(TaggedPieces, Pieces0) then
         Pieces = Pieces0
-    ;
+    else
         Pieces = Pieces0 ++ [TaggedPieces]
     ).
 
@@ -1995,12 +1995,12 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier)
 
     set.filter(partial_sym_name_matches_full(ModuleQualifier),
         VisibleModules, MatchingVisibleModules),
-    ( set.is_empty(MatchingVisibleModules) ->
+    ( if set.is_empty(MatchingVisibleModules) then
         % The module qualifier does not match any of the visible modules,
         % so we report that the module has not been imported.
         Pieces = [nl, words("(the module"), sym_name(ModuleQualifier),
             words("has not been imported)."), nl]
-    ;
+    else
         % The module qualifier matches one or more of the visible modules.
         % But maybe the user forgot to import the parent module(s) of that
         % module...
@@ -2034,12 +2034,12 @@ get_unimported_parent(VisibleModules, MatchingModuleNames, UnimportedParent) :-
 report_unimported_parents(UnimportedParents) = Pieces :-
     UnimportedParentDescs = list.map(describe_sym_name, UnimportedParents),
     AllUnimportedParents = list_to_pieces(UnimportedParentDescs),
-    ( AllUnimportedParents = [_] ->
+    ( if AllUnimportedParents = [_] then
         Pieces = [words("(the possible parent module")]
-            ++ AllUnimportedParents ++ [words("has not been imported).")]
-    ;
+            ++ AllUnimportedParents ++ [words("has not been imported)."), nl]
+    else
         Pieces = [words("(the possible parent modules")]
-            ++ AllUnimportedParents ++ [words("have not been imported).")]
+            ++ AllUnimportedParents ++ [words("have not been imported)."), nl]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2111,13 +2111,13 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                 words("variable of loop control scope:"), nl]
         ;
             VarVectorKind = var_vector_try_io,
-            ( ArgNum = 1 ->
+            ( if ArgNum = 1 then
                 Pieces = [invis_order_default_end(1),
                     words("in initial I/O state variable of try goal:"), nl]
-            ; ArgNum = 2 ->
+            else if ArgNum = 2 then
                 Pieces = [invis_order_default_end(2),
                     words("in final I/O state variable of try goal:"), nl]
-            ;
+            else
                 unexpected($module, $pred, "try io variable not arg 1 or 2")
             )
         ;
@@ -2127,15 +2127,15 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                 nl]
         ;
             VarVectorKind = var_vector_atomic_outer,
-            ( ArgNum = 1 ->
+            ( if ArgNum = 1 then
                 Pieces = [invis_order_default_end(1),
                     words("in the first outer variable"),
                     words("of atomic goal:"), nl]
-            ; ArgNum = 2 ->
+            else if ArgNum = 2 then
                 Pieces = [invis_order_default_end(2),
                     words("in the second outer variable"),
                     words("of atomic goal:"), nl]
-            ;
+            else
                 unexpected($module, $pred, "outer variable not arg 1 or 2")
             )
         )
@@ -2212,14 +2212,14 @@ in_clause_for_pieces(ClauseContext) = Pieces :-
 
 error_num_args_to_pieces(MaybePredOrFunc, Arity0, Arities0) = Pieces :-
     % Adjust arities for functions.
-    ( MaybePredOrFunc = yes(pf_function) ->
+    ( if MaybePredOrFunc = yes(pf_function) then
         adjust_func_arity(pf_function, Arity, Arity0),
         ReverseAdjust =
             ( pred(OtherArity0::in, OtherArity::out) is det :-
                 adjust_func_arity(pf_function, OtherArity, OtherArity0)
             ),
         list.map(ReverseAdjust, Arities0, Arities)
-    ;
+    else
         Arity = Arity0,
         Arities = Arities0
     ),
@@ -2268,17 +2268,17 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_var_types(TypeAssign, VarTypes),
-    ( search_var_type(VarTypes, Var, Type0) ->
+    ( if search_var_type(VarTypes, Var, Type0) then
         Type = Type0
-    ;
+    else
         % This shouldn't happen - how can a variable which has not yet been
         % assigned a type variable fail to have the correct type?
         Type = defined_type(unqualified("<any>"), [], kind_star)
     ),
     TypeStuff = type_stuff(Type, TVarSet, TypeBindings, HeadTypeParams),
-    ( list.member(TypeStuff, TailTypeStuffs) ->
+    ( if list.member(TypeStuff, TailTypeStuffs) then
         TypeStuffs = TailTypeStuffs
-    ;
+    else
         TypeStuffs = [TypeStuff | TailTypeStuffs]
     ).
 
@@ -2316,9 +2316,9 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_var_types(TypeAssign, VarTypes),
-    ( search_var_type(VarTypes, Var, VarType0) ->
+    ( if search_var_type(VarTypes, Var, VarType0) then
         VarType = VarType0
-    ;
+    else
         % This shouldn't happen - how can a variable which has
         % not yet been assigned a type variable fail to have
         % the correct type?
@@ -2328,15 +2328,15 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
     apply_rec_subst_to_type(TypeBindings, ArgType, ArgType2),
     apply_rec_subst_to_type(TypeBindings, VarType, VarType2),
     ArgTypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet, HeadTypeParams),
-    ( list.member(ArgTypeStuff, TailArgTypeStuffs) ->
+    ( if list.member(ArgTypeStuff, TailArgTypeStuffs) then
         ArgTypeStuffs = TailArgTypeStuffs
-    ;
+    else
         ArgTypeStuffs = [ArgTypeStuff | TailArgTypeStuffs]
     ).
 
     % Check if any of the variables in the term are existentially quantified
     % (occur in the first argument), and if so, add the appropriate
-    % quantification to the term.  Otherwise return the term unchanged.
+    % quantification to the term. Otherwise, return the term unchanged.
     %
 :- pred maybe_add_existential_quantifier(list(var)::in, term::in, term::out)
     is det.
@@ -2356,10 +2356,12 @@ maybe_add_existential_quantifier(HeadTypeParams, !Term) :-
 
 :- func make_list_term(list(var)) = term.
 
-make_list_term([]) = term.functor(term.atom("[]"), [], term.context_init).
-make_list_term([Var | Vars]) = term.functor(term.atom("[|]"),
-    [term.variable(Var, context_init), make_list_term(Vars)],
-    term.context_init).
+make_list_term([]) =
+    term.functor(term.atom("[]"), [], term.context_init).
+make_list_term([Var | Vars]) =
+    term.functor(term.atom("[|]"),
+        [term.variable(Var, context_init), make_list_term(Vars)],
+        term.context_init).
 
 %-----------------------------------------------------------------------------%
 

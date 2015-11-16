@@ -69,11 +69,11 @@
 %           CallVarDescs = [ ... ],
 %           Level = ...,
 %           impure handle_event_call(ProcId, CallVarDescs, Level),
-%           (
+%           ( if
 %               promise_equivalent_solutions [...] (
 %                   <original body>     % renaming outputs
 %               )
-%           ->
+%           then
 %               ExitVarDescs = [ ... | CallVarDescs ],
 %               impure handle_event_exit(ProcId, ExitVarDescs, DoRetryA),
 %               (
@@ -83,7 +83,7 @@
 %                   DoRetryA = do_not_retry,
 %                   % bind outputs
 %               )
-%           ;
+%           else
 %               impure handle_event_fail(ProcId, CallVarDescs, DoRetryB),
 %               (
 %                   DoRetryB = do_retry,
@@ -312,10 +312,10 @@ ssdebug_first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
     !.Goal = hlds_goal(GoalExpr0, GoalInfo0),
     (
         GoalExpr0 = unify(_, _, _, Unification0, _),
-        (
+        ( if
             Unification0 = construct(_, ConsId0, _, _, _, _, _),
             ConsId0 = closure_cons(ShroudedPredProcId, lambda_normal)
-        ->
+        then
             PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
             PredProcId = proc(PredId, ProcId),
             lookup_proxy_pred(PredId, MaybeNewPredId, !ProxyMap, !ModuleInfo),
@@ -330,7 +330,7 @@ ssdebug_first_pass_in_goal(!Goal, !ProcInfo, !ProxyMap, !ModuleInfo) :-
             ;
                 MaybeNewPredId = no
             )
-        ;
+        else
             true
         )
     ;
@@ -423,15 +423,15 @@ ssdebug_first_pass_in_case(Case0, Case, !ProcInfo, !ProxyMap, !ModuleInfo) :-
     proxy_map::in, proxy_map::out, module_info::in, module_info::out) is det.
 
 lookup_proxy_pred(PredId, MaybeNewPredId, !ProxyMap, !ModuleInfo) :-
-    ( map.search(!.ProxyMap, PredId, MaybeNewPredId0) ->
+    ( if map.search(!.ProxyMap, PredId, MaybeNewPredId0) then
         MaybeNewPredId = MaybeNewPredId0
-    ;
+    else
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
         PredModule = pred_info_module(PredInfo),
-        ( mercury_std_library_module_name(PredModule) ->
+        ( if mercury_std_library_module_name(PredModule) then
             create_proxy_pred(PredId, NewPredId, !ModuleInfo),
             MaybeNewPredId = yes(NewPredId)
-        ;
+        else
             MaybeNewPredId = no
         ),
         map.det_insert(PredId, MaybeNewPredId, !ProxyMap)
@@ -535,9 +535,9 @@ ssdebug_process_proc_if_needed(SSTraceLevel, PredProcId,
         % XXX We still need to fix the ssdb so that events generated
         % below the shallow call event aren't seen.
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-        ( pred_info_is_exported(PredInfo) ->
+        ( if pred_info_is_exported(PredInfo) then
             ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo)
-        ;
+        else
             true
         )
     ;
@@ -552,7 +552,7 @@ ssdebug_process_proc_if_needed(SSTraceLevel, PredProcId,
 ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
-    ( all_args_fully_input_or_output(!.ModuleInfo, ArgModes) ->
+    ( if all_args_fully_input_or_output(!.ModuleInfo, ArgModes) then
         % We have different transformations for procedures of different
         % determinisms.
 
@@ -584,7 +584,7 @@ ssdebug_process_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
             ssdebug_process_proc_failure(PredId, ProcId, !ProcInfo,
                 !ModuleInfo)
         )
-    ;
+    else
         % In the case of a mode which is not fully input or output,
         % we don't transform the procedure, since we don't know how.
         true
@@ -1223,13 +1223,13 @@ make_handle_event(HandleTypeString, Arguments, HandleEventGoal, !ModuleInfo,
 make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar,
         !VarSet, !VarTypes) :-
     pred_info_get_origin(PredInfo, Origin),
-    (
+    ( if
         Origin = origin_transformed(transform_source_to_source_debug, _,
             OrigPredId)
-    ->
+    then
         % This predicate is a proxy for a standard library predicate.
         module_info_pred_info(ModuleInfo, OrigPredId, OrigPredInfo)
-    ;
+    else
         OrigPredInfo = PredInfo
     ),
     SymModuleName = pred_info_module(OrigPredInfo),
@@ -1338,23 +1338,23 @@ make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar,
         !ModuleInfo, !ProcInfo, !PredInfo, !VarSet, !VarTypes, !BoundVarDescs),
 
     lookup_var_type(!.VarTypes, ProgVar, ProgVarType),
-    (
+    ( if
         ( ProgVarType = io_state_type
         ; ProgVarType = io_io_type
         )
-    ->
+    then
         OutVar = OutVar0,
         Goals = Goals0
-    ;
+    else
         % BoundVarDescs is filled with the description of the input variable
         % during the first call to make_arg_list predicate.
         % At the second call, we search if the current ProgVar already exist
         % in the map and if yes, copy his recorded description.
 
-        ( map.search(!.BoundVarDescs, ProgVar, ExistingVarDesc) ->
+        ( if map.search(!.BoundVarDescs, ProgVar, ExistingVarDesc) then
             ValueGoals = [],
             VarDesc = ExistingVarDesc
-        ;
+        else
             make_var_value(InstMap, ProgVar, Renaming, VarDesc, Pos0,
                 ValueGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarSet,
                 !VarTypes, !BoundVarDescs)
@@ -1406,7 +1406,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         ConstructVarPos, VarPosVar, !VarSet, !VarTypes),
 
     varset.new_named_var("VarDesc", VarDesc, !VarSet),
-    ( var_is_ground_in_instmap(!.ModuleInfo, InstMap, VarToInspect) ->
+    ( if var_is_ground_in_instmap(!.ModuleInfo, InstMap, VarToInspect) then
         % Update proc_varset and proc_vartypes; without this,
         % polymorphism_make_type_info_var uses a prog_var which is
         % already bound.
@@ -1442,10 +1442,10 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
 
         % Renaming contains the names of all instantiated arguments
         % during the execution of the procedure's body.
-        ( map.is_empty(Renaming) ->
+        ( if map.is_empty(Renaming) then
             construct_functor(VarDesc, ConsId, [TypeInfoVar, VarNameVar,
                 VarPosVar, VarToInspect], ConstructVarGoal)
-        ;
+        else
             map.lookup(Renaming, VarToInspect, RenamedVar),
             construct_functor(VarDesc, ConsId, [TypeInfoVar, VarNameVar,
                 VarPosVar, RenamedVar], ConstructVarGoal)
@@ -1461,7 +1461,7 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
         Goals = [ConstructVarName, ConstructVarPos | TypeInfoGoals] ++
             [ConstructVarGoal],
         map.det_insert(VarToInspect, VarDesc, !BoundVarDescs)
-    ;
+    else
         ConsId = cons(qualified(SSDBModule, "unbound_head_var"), 2,
             VarValueTypeCtor),
         add_var_type(VarDesc, VarValueType, !VarTypes),
