@@ -57,7 +57,6 @@
 
 :- implementation.
 
-:- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
@@ -66,7 +65,6 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
-:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module mdbcomp.

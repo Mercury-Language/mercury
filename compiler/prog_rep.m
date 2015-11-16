@@ -99,7 +99,6 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.special_pred.
-:- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.rtti_access.
