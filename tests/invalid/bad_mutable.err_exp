@@ -18,5 +18,5 @@ bad_mutable.m:032: Error: conflicting attributes in attribute list:
 bad_mutable.m:032:   [thread_local, constant].
 bad_mutable.m:039: Error: in the expansion of the named inst
 bad_mutable.m:039:   `bad_mutable.t1'/0:
-bad_mutable.m:039:   the inst `unique' is not allowed in `:- mutable'
+bad_mutable.m:039:   the inst `unique' may not appear in `:- mutable'
 bad_mutable.m:039:   declarations.

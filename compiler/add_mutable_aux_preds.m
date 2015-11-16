@@ -49,6 +49,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_info.
@@ -203,11 +204,29 @@ check_mutable_inst(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
     ;
         Inst = defined_inst(InstName),
         (
-            InstName = user_inst(UserInstName, UserInstArgs),
+            InstName = user_inst(UserInstSymName, UserInstArgs),
             list.length(UserInstArgs, UserInstArity),
-            UserInstId = inst_id(UserInstName, UserInstArity),
-            ( if list.member(UserInstId, ParentInsts) then
+            UserInstId = inst_id(UserInstSymName, UserInstArity),
+            ( if
+                list.member(UserInstId, ParentInsts)
+            then
                 true
+            else if
+                UserInstSymName =
+                    qualified(UserInstModuleName, UserInstBaseName),
+                UserInstModuleName = mercury_public_builtin_module,
+                UserInstArity = 0,
+                ( UserInstBaseName = "dead"
+                ; UserInstBaseName = "mostly_dead"
+                )
+            then
+                FreePieces = [words("may not appear in"),
+                    decl("mutable"), words("declarations.")],
+                UnqualInstName =
+                    user_inst(unqualified(UserInstBaseName), UserInstArgs),
+                UnqualInst = defined_inst(UnqualInstName),
+                invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet,
+                    ParentInsts, UnqualInst, FreePieces, !Specs)
             else
                 check_mutable_insts(ModuleInfo, Context, InstVarSet,
                     ParentInsts, UserInstArgs, !Specs),
@@ -328,11 +347,11 @@ check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet, ParentInsts,
             UniqStr = "mostly_clobbered"
         ),
         ( if Inst = ground(Uniq, _) then
-            UniqPieces = [words("is not allowed in"),
+            UniqPieces = [words("may not appear in"),
                 decl("mutable"), words("declarations.")]
         else
             UniqPieces = [words("has uniqueness"), quote(UniqStr), suffix(","),
-                words("which is not allowed in"),
+                words("which may not appear in"),
                 decl("mutable"), words("declarations.")]
         ),
         invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
