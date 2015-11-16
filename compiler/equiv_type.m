@@ -716,7 +716,7 @@ replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap, Info0, Info,
     TVarSet0 = varset.init,
     replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap, Type0, Type,
         _TypeChanged, TVarSet0, _TVarSet, !ExpandedItems, !UsedModules),
-    replace_in_inst(MaybeRecord, Inst0, InstEqvMap, Inst, !ExpandedItems,
+    replace_in_inst(MaybeRecord, InstEqvMap, Inst0, Inst, !ExpandedItems,
         !UsedModules),
     Info = item_mutable_info(MutName, OrigType, Type, OrigInst, Inst,
         InitValue, Attrs, Varset, Context, SeqNum).
@@ -1268,22 +1268,21 @@ replace_type_ctor(MaybeRecord, TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
         bool.or(AlreadyExpanded, !Circ)
     ).
 
-:- pred replace_in_inst(maybe_record_sym_name_use::in,
-    mer_inst::in, inst_eqv_map::in, mer_inst::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+:- pred replace_in_inst(maybe_record_sym_name_use::in, inst_eqv_map::in,
+    mer_inst::in, mer_inst::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_inst(MaybeRecord, Inst0, InstEqvMap, Inst,
+replace_in_inst(MaybeRecord, InstEqvMap, Inst0, Inst,
         !EquivTypeInfo, !UsedModules) :-
-    replace_in_inst_location(MaybeRecord, Inst0, InstEqvMap, set.init, Inst,
+    replace_in_inst_location(MaybeRecord, InstEqvMap, set.init, Inst0, Inst,
         !EquivTypeInfo, !UsedModules).
 
-:- pred replace_in_inst_location(maybe_record_sym_name_use::in, mer_inst::in,
-    inst_eqv_map::in, set(inst_id)::in, mer_inst::out,
+:- pred replace_in_inst_location(maybe_record_sym_name_use::in,
+    inst_eqv_map::in, set(inst_id)::in, mer_inst::in, mer_inst::out,
     eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_inst_location(MaybeRecord, Inst0, InstEqvMap, ExpandedInstIds, Inst,
+replace_in_inst_location(MaybeRecord, InstEqvMap, ExpandedInstIds, Inst0, Inst,
         !EquivTypeInfo, !UsedModules) :-
     % XXX Need to record the used modules
     ( if Inst0 = defined_inst(user_inst(SymName, ArgInsts)) then
@@ -1300,8 +1299,8 @@ replace_in_inst_location(MaybeRecord, Inst0, InstEqvMap, ExpandedInstIds, Inst,
             InstIdItem = inst_id_to_item_name(InstId),
             record_expanded_item(item_id(inst_item, InstIdItem),
                 !EquivTypeInfo),
-            replace_in_inst_location(MaybeRecord, Inst1, InstEqvMap,
-                set.insert(ExpandedInstIds, InstId), Inst,
+            replace_in_inst_location(MaybeRecord, InstEqvMap,
+                set.insert(ExpandedInstIds, InstId), Inst1, Inst,
                 !EquivTypeInfo, !UsedModules)
         else
             Inst = Inst0
@@ -1331,7 +1330,8 @@ replace_in_pred_type(MaybeRecord, PredName, PredOrFunc, Context,
     replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
         ClassContext0, ClassContext, !TypeVarSet,
         !EquivTypeInfo, !UsedModules),
-    replace_in_tms(MaybeRecord, TypeEqvMap, TypesAndModes0, TypesAndModes1,
+    replace_in_types_and_modes(MaybeRecord, TypeEqvMap,
+        TypesAndModes0, TypesAndModes1,
         !TypeVarSet, !EquivTypeInfo, !UsedModules),
     (
         MaybeWithType0 = yes(WithType0),
@@ -1376,21 +1376,48 @@ replace_in_pred_type(MaybeRecord, PredName, PredOrFunc, Context,
                 ExtraTypes)
         ;
             ExtraModes = [_ | _],
-            ( if length(ExtraTypes) `with_type` int = length(ExtraModes) then
-                assoc_list.from_corresponding_lists(ExtraTypes, ExtraModes,
-                    ExtraTypesModes),
-                ExtraTypesAndModes = list.map(
-                    (func(Type - Mode) = type_and_mode(Type, Mode)),
-                    ExtraTypesModes)
-            else
+            pair_extra_types_and_modes(ExtraTypes, ExtraModes,
+                ExtraTypesAndModes, LeftOverExtraTypes, LeftOverExtraModes),
+            (
+                LeftOverExtraTypes = [],
+                LeftOverExtraModes = []
+            ;
+                LeftOverExtraTypes = [],
+                LeftOverExtraModes = [_ | _],
+                list.length(ExtraTypes, NumExtraTypes),
+                list.length(ExtraModes, NumExtraModes),
                 Pieces2 = [words("In type declaration for"),
                     p_or_f(PredOrFunc), sym_name(PredName), suffix(":"), nl,
                     words("error: the `with_type` and `with_inst`"),
-                    words("annotations are incompatible."), nl],
+                    words("annotations are incompatible;"),
+                    words("they specify"), int_fixed(NumExtraModes),
+                    words(choose_number(ExtraModes, "mode", "modes")),
+                    words("but only"), int_fixed(NumExtraTypes),
+                    words(choose_number(ExtraTypes, "type.", "types.")), nl],
                 Msg2 = simple_msg(Context, [always(Pieces2)]),
                 Spec2 = error_spec(severity_error, phase_expand_types, [Msg2]),
-                !:Specs = [Spec2 | !.Specs],
-                ExtraTypesAndModes = []
+                !:Specs = [Spec2 | !.Specs]
+            ;
+                LeftOverExtraTypes = [_ | _],
+                LeftOverExtraModes = [],
+                list.length(ExtraTypes, NumExtraTypes),
+                list.length(ExtraModes, NumExtraModes),
+                Pieces2 = [words("In type declaration for"),
+                    p_or_f(PredOrFunc), sym_name(PredName), suffix(":"), nl,
+                    words("error: the `with_type` and `with_inst`"),
+                    words("annotations are incompatible;"),
+                    words("they specify"), int_fixed(NumExtraTypes),
+                    words(choose_number(ExtraTypes, "type", "types")),
+                    words("but only"), int_fixed(NumExtraModes),
+                    words(choose_number(ExtraModes, "mode.", "modes.")), nl],
+                Msg2 = simple_msg(Context, [always(Pieces2)]),
+                Spec2 = error_spec(severity_error, phase_expand_types, [Msg2]),
+                !:Specs = [Spec2 | !.Specs]
+            ;
+                LeftOverExtraTypes = [_ | _],
+                LeftOverExtraModes = [_ | _],
+                % pair_extra_types_and_modes should have paired these up.
+                unexpected($module, $pred, "both types and modes left over")
             )
         )
     ),
@@ -1416,6 +1443,18 @@ replace_in_pred_type(MaybeRecord, PredName, PredOrFunc, Context,
         TypesAndModes = TypesAndModes1 ++ ExtraTypesAndModes
     ).
 
+:- pred pair_extra_types_and_modes(list(mer_type)::in, list(mer_mode)::in,
+    list(type_and_mode)::out, list(mer_type)::out, list(mer_mode)::out) is det.
+
+pair_extra_types_and_modes([], [], [], [], []).
+pair_extra_types_and_modes(LeftOverTypes @ [_ | _], [], [], LeftOverTypes, []).
+pair_extra_types_and_modes([], LeftOverModes @ [_ | _], [], [], LeftOverModes).
+pair_extra_types_and_modes([Type | Types], [Mode | Modes],
+        [type_and_mode(Type, Mode) | TypesAndModes],
+        LeftOverTypes, LeftOverModes) :-
+    pair_extra_types_and_modes(Types, Modes, TypesAndModes,
+        LeftOverTypes, LeftOverModes).
+
 :- pred replace_in_pred_mode(maybe_record_sym_name_use::in, inst_eqv_map::in,
     sym_name::in, arity::in, prog_context::in, pred_or_func_decl_type::in,
     list(mer_mode)::out,
@@ -1431,7 +1470,7 @@ replace_in_pred_mode(MaybeRecord, InstEqvMap, PredName, OrigArity, Context,
         !EquivTypeInfo, !UsedModules, Specs) :-
     (
         MaybeWithInst0 = yes(WithInst0),
-        replace_in_inst(MaybeRecord, WithInst0, InstEqvMap, WithInst,
+        replace_in_inst(MaybeRecord, InstEqvMap, WithInst0, WithInst,
             !EquivTypeInfo, !UsedModules),
         ( if
             WithInst = ground(_, GroundInstInfo),
@@ -1487,30 +1526,34 @@ replace_in_pred_mode(MaybeRecord, InstEqvMap, PredName, OrigArity, Context,
         Specs = []
     ).
 
-:- pred replace_in_tms(maybe_record_sym_name_use::in, type_eqv_map::in,
-    list(type_and_mode)::in, list(type_and_mode)::out,
+:- pred replace_in_types_and_modes(maybe_record_sym_name_use::in,
+    type_eqv_map::in, list(type_and_mode)::in, list(type_and_mode)::out,
     tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_tms(MaybeRecord, TypeEqvMap, !TMs, !VarSet, !EquivTypeInfo,
-        !UsedModules) :-
-    list.map_foldl3(replace_in_tm(MaybeRecord, TypeEqvMap), !TMs,
-        !VarSet, !EquivTypeInfo, !UsedModules).
+replace_in_types_and_modes(MaybeRecord, TypeEqvMap,
+        !TypeAndModes, !VarSet, !EquivTypeInfo, !UsedModules) :-
+    list.map_foldl3(replace_in_type_and_mode(MaybeRecord, TypeEqvMap),
+        !TypeAndModes, !VarSet, !EquivTypeInfo, !UsedModules).
 
-:- pred replace_in_tm(maybe_record_sym_name_use::in, type_eqv_map::in,
-    type_and_mode::in, type_and_mode::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out,
+:- pred replace_in_type_and_mode(maybe_record_sym_name_use::in,
+    type_eqv_map::in, type_and_mode::in, type_and_mode::out,
+    tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_tm(MaybeRecord, TypeEqvMap, type_only(Type0),
-        type_only(Type), !VarSet, !EquivTypeInfo, !UsedModules) :-
-    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
-        Type0, Type, _, !VarSet, !EquivTypeInfo, !UsedModules).
-
-replace_in_tm(MaybeRecord, TypeEqvMap, type_and_mode(Type0, Mode),
-        type_and_mode(Type, Mode), !VarSet, !EquivTypeInfo, !UsedModules) :-
-    replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
-        Type0, Type, _, !VarSet, !EquivTypeInfo, !UsedModules).
+replace_in_type_and_mode(MaybeRecord, TypeEqvMap, TypeAndMode0, TypeAndMode,
+        !VarSet, !EquivTypeInfo, !UsedModules) :-
+    (
+        TypeAndMode0 = type_only(Type0),
+        replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
+            Type0, Type, _, !VarSet, !EquivTypeInfo, !UsedModules),
+        TypeAndMode = type_only(Type)
+    ;
+        TypeAndMode0 = type_and_mode(Type0, Mode),
+        replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
+            Type0, Type, _, !VarSet, !EquivTypeInfo, !UsedModules),
+        TypeAndMode = type_and_mode(Type, Mode)
+    ).
 
 %---------------------------------------------------------------------------%
 
