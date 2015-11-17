@@ -1,13 +1,17 @@
-require_scopes.m:036: Error: required determinism is `det', but actual
-require_scopes.m:036:   determinism is `semidet'.
+require_scopes.m:036: Error: the required determinism of the goal in this scope
+require_scopes.m:036:   is `det', but its actual determinism is `semidet'.
 require_scopes.m:037:   Call to `int.>'(in, in) can fail.
-require_scopes.m:040: Error: required determinism is `nondet', but actual
-require_scopes.m:040:   determinism is `semidet'.
+require_scopes.m:040: Error: the required determinism of the goal in this scope
+require_scopes.m:040:   is `nondet', but its actual determinism is `semidet'.
 require_scopes.m:064: Error: the switch on `A' is required to be complete, but
 require_scopes.m:064:   it does not cover `require_scopes.f1'/0.
-require_scopes.m:097: Error: required determinism is `det', but actual
-require_scopes.m:097:   determinism is `semidet'.
+require_scopes.m:097: Error: the arms of the switch on A are required have a
+require_scopes.m:097:   determinism that is acceptable in a `det' context, but
+require_scopes.m:097:   the actual determinism of the arm for
+require_scopes.m:097:   require_scopes.f3/1 is `semidet'.
 require_scopes.m:098:   Call to `int.>'(in, in) can fail.
-require_scopes.m:109: Error: required determinism is `semidet', but actual
-require_scopes.m:109:   determinism is `multi'.
+require_scopes.m:109: Error: the arms of the switch on B are required have a
+require_scopes.m:109:   determinism that is acceptable in a `semidet' context,
+require_scopes.m:109:   but the actual determinism of the arm for 10 is
+require_scopes.m:109:   `multi'.
 require_scopes.m:111:   Disjunction has multiple clauses with solutions.

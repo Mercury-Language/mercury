@@ -258,9 +258,10 @@ check_determinism(PredId, ProcId, PredInfo, ProcInfo, !ModuleInfo, !Specs) :-
             report_determinism_problem(PredId, ProcId, !.ModuleInfo,
                 MessagePieces, DeclaredDetism, InferredDetism, ReportMsgs),
             proc_info_get_goal(ProcInfo, Goal),
+            proc_info_get_varset(ProcInfo, VarSet),
             proc_info_get_vartypes(ProcInfo, VarTypes),
             proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InstMap0),
-            det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId,
+            det_info_init(!.ModuleInfo, PredId, ProcId, VarSet, VarTypes,
                 pess_extra_vars_report, [], DetInfo0),
             det_diagnose_goal(Goal, InstMap0, DeclaredDetism, [],
                 DetInfo0, DetInfo, GoalMsgs),
@@ -315,9 +316,10 @@ make_reqscope_checks_if_needed(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     pred_info_get_markers(PredInfo, Markers),
     ( if check_marker(Markers, marker_has_require_scope) then
         proc_info_get_goal(ProcInfo, Goal),
+        proc_info_get_varset(ProcInfo, VarSet),
         proc_info_get_vartypes(ProcInfo, VarTypes),
         proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
-        det_info_init(ModuleInfo, VarTypes, PredId, ProcId,
+        det_info_init(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
             pess_extra_vars_ignore, [], DetInfo0),
         reqscope_check_goal(Goal, InstMap0, DetInfo0, DetInfo),
         det_info_get_error_specs(DetInfo, RCSSpecs),
@@ -1043,7 +1045,7 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
     (
         Reason = require_detism(RequiredDetism),
         reqscope_check_goal_detism(RequiredDetism, SubGoal,
-            check_require_detism(ScopeGoalInfo), InstMap0, !DetInfo)
+            require_detism_scope(ScopeGoalInfo), InstMap0, !DetInfo)
     ;
         Reason = require_complete_switch(RequiredVar),
         % We must test the version of the subgoal that has not yet been
@@ -1095,8 +1097,7 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
             det_info_get_vartypes(!.DetInfo, VarTypes),
             lookup_var_type(VarTypes, SwitchVar, SwitchVarType),
             reqscope_check_goal_detism_for_cases(RequiredDetism,
-                SwitchVar, SwitchVarType, Cases,
-                check_require_switch_arms_detism, InstMap0, !DetInfo)
+                SwitchVar, SwitchVarType, Cases, InstMap0, !DetInfo)
         else
             generate_warning_for_switch_var_if_missing(RequiredVar, SubGoal,
                 ScopeGoalInfo, !DetInfo)
@@ -1140,8 +1141,8 @@ reqscope_check_scope(Reason, SubGoal, ScopeGoalInfo, InstMap0, !DetInfo) :-
     % or for a require_switch_arms_{det,...} scope?
     %
 :- type detism_check_kind
-    --->    check_require_detism(hlds_goal_info)
-    ;       check_require_switch_arms_detism.
+    --->    require_detism_scope(hlds_goal_info)
+    ;       require_detism_switch_arm(prog_var, cons_id, list(cons_id)).
 
 :- pred reqscope_check_goal_detism(determinism::in, hlds_goal::in,
     detism_check_kind::in, instmap::in, det_info::in, det_info::out) is det.
@@ -1153,13 +1154,13 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
     compare_determinisms(ActualDetism, RequiredDetism, CompareResult),
     ( if
         (
-            CheckKind = check_require_detism(_),
+            CheckKind = require_detism_scope(_),
             % For require_detism scopes, the programmer requires an exact
             % match.
             % keyword is the most appropriate scope.
             CompareResult = first_detism_same_as
         ;
-            CheckKind = check_require_switch_arms_detism,
+            CheckKind = require_detism_switch_arm(_, _, _),
             % For require_switch_arms_detism scopes, the programmer requires
             % only that each switch arm's determinism must be at least as tight
             % as RequiredDetism.
@@ -1170,50 +1171,66 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
     then
         true
     else
+        RequiredDetismStr = determinism_to_string(RequiredDetism),
+        ActualDetismStr = determinism_to_string(ActualDetism),
         (
-            CheckKind = check_require_detism(ScopeGoalInfo),
+            CheckKind = require_detism_scope(ScopeGoalInfo),
             % For require_detism scopes, the context of the require_detism
             % keyword is the most appropriate scope.
-            Context = goal_info_get_context(ScopeGoalInfo)
+            Context = goal_info_get_context(ScopeGoalInfo),
+            Pieces = [words("Error: the required determinism of the goal"),
+                words("in this scope is"),
+                quote(RequiredDetismStr), suffix(","),
+                words("but its actual determinism is"),
+                quote(ActualDetismStr), suffix("."), nl]
         ;
-            CheckKind = check_require_switch_arms_detism,
+            CheckKind =
+                require_detism_switch_arm(SwitchVar, MainConsId, OtherConsIds),
             % For require_switch_arms_detism scopes, the context of the
             % require_switch_arms_detism keyword won't work, since it
             % won't tell the user *which* arm's determinism isn't right.
             % We have to use the context of the switch arm itself.
-            Context = goal_info_get_context(GoalInfo)
+            Context = goal_info_get_context(GoalInfo),
+            det_info_get_varset(!.DetInfo, VarSet),
+            varset.lookup_name(VarSet, SwitchVar, SwitchVarName),
+            MainConsIdStr = cons_id_and_arity_to_string(MainConsId),
+            OtherConsIdStrs =
+                list.map(cons_id_and_arity_to_string, OtherConsIds),
+            ConsIdsPieces = list_to_pieces([MainConsIdStr | OtherConsIdStrs]),
+            Pieces = [words("Error: the arms of the switch on"),
+                words(SwitchVarName), words("are required have"),
+                words("a determinism that is acceptable in a"),
+                quote(RequiredDetismStr), words("context,"),
+                words("but the actual determinism"),
+                words("of the arm for")] ++ ConsIdsPieces ++
+                [words("is"), quote(ActualDetismStr), suffix("."), nl]
         ),
-        RequiredDetismStr = determinism_to_string(RequiredDetism),
-        ActualDetismStr = determinism_to_string(ActualDetism),
+        Msg = simple_msg(Context, [always(Pieces)]),
         det_diagnose_goal(Goal, InstMap0, RequiredDetism, [], !DetInfo,
             SubMsgs),
-        Pieces = [words("Error: required determinism is"),
-            quote(RequiredDetismStr), suffix(","),
-            words("but actual determinism is"),
-            quote(ActualDetismStr), suffix("."), nl],
-        Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_detism_check, [Msg | SubMsgs]),
         det_info_add_error_spec(Spec, !DetInfo)
     ).
 
 :- pred reqscope_check_goal_detism_for_cases(determinism::in,
-    prog_var::in, mer_type::in, list(case)::in,
-    detism_check_kind::in, instmap::in, det_info::in, det_info::out) is det.
+    prog_var::in, mer_type::in, list(case)::in, instmap::in,
+    det_info::in, det_info::out) is det.
 
 reqscope_check_goal_detism_for_cases(_RequiredDetism, _Var, _VarType,
-        [], _CheckKind, _InstMap0, !DetInfo).
+        [], _InstMap0, !DetInfo).
 reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
-        [Case | Cases], CheckKind, InstMap0, !DetInfo) :-
+        [Case | Cases], InstMap0, !DetInfo) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     det_info_get_module_info(!.DetInfo, ModuleInfo0),
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     det_info_set_module_info(ModuleInfo, !DetInfo),
-
+    CheckKind = require_detism_switch_arm(Var, MainConsId, OtherConsIds),
     reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap1,
         !DetInfo),
+
     reqscope_check_goal_detism_for_cases(RequiredDetism, Var, VarType,
-        Cases, CheckKind, InstMap0, !DetInfo).
+        Cases, InstMap0, !DetInfo).
 
     % Emit a warning if the variable in the head of a require_complete_switch
     % or require_switch_arms_detism scope does not occur somewhere in the goal

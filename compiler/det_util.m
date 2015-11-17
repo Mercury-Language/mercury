@@ -104,12 +104,14 @@
 :- pred det_info_add_error_spec(error_spec::in, det_info::in, det_info::out)
     is det.
 
-:- pred det_info_init(module_info::in, vartypes::in, pred_id::in, proc_id::in,
-    report_pess_extra_vars::in, list(error_spec)::in, det_info::out) is det.
+:- pred det_info_init(module_info::in, pred_id::in, proc_id::in,
+    prog_varset::in, vartypes::in, report_pess_extra_vars::in,
+    list(error_spec)::in, det_info::out) is det.
 
 :- pred det_info_get_module_info(det_info::in, module_info::out) is det.
 :- pred det_info_get_pred_id(det_info::in, pred_id::out) is det.
 :- pred det_info_get_proc_id(det_info::in, proc_id::out) is det.
+:- pred det_info_get_varset(det_info::in, prog_varset::out) is det.
 :- pred det_info_get_vartypes(det_info::in, vartypes::out) is det.
 :- pred det_info_get_pess_extra_vars(det_info::in,
     report_pess_extra_vars::out) is det.
@@ -221,19 +223,21 @@ det_info_add_error_spec(Spec, !DetInfo) :-
 :- type det_info
     --->    det_info(
                 di_module_info      :: module_info,
-                di_vartypes         :: vartypes,
                 di_pred_id          :: pred_id,     % the id of the proc
                 di_proc_id          :: proc_id,     % currently processed
+                di_varset           :: prog_varset,
+                di_vartypes         :: vartypes,
                 di_pess_extra_vars  :: report_pess_extra_vars,
                 di_has_format_call  :: contains_format_call,
                 di_has_req_scope    :: contains_require_scope,
                 di_error_specs      :: list(error_spec)
             ).
 
-det_info_init(ModuleInfo, VarTypes, PredId, ProcId, PessExtraVars, Specs,
-        DetInfo) :-
-    DetInfo = det_info(ModuleInfo, VarTypes, PredId, ProcId, PessExtraVars,
-        does_not_contain_format_call, does_not_contain_require_scope, Specs).
+det_info_init(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
+        PessExtraVars, Specs, DetInfo) :-
+    DetInfo = det_info(ModuleInfo, PredId, ProcId, VarSet, VarTypes,
+        PessExtraVars, does_not_contain_format_call,
+        does_not_contain_require_scope, Specs).
 
 det_info_get_module_info(DetInfo, X) :-
     X = DetInfo ^ di_module_info.
@@ -243,6 +247,8 @@ det_info_get_proc_id(DetInfo, X) :-
     X = DetInfo ^ di_proc_id.
 det_info_get_vartypes(DetInfo, X) :-
     X = DetInfo ^ di_vartypes.
+det_info_get_varset(DetInfo, X) :-
+    X = DetInfo ^ di_varset.
 det_info_get_pess_extra_vars(DetInfo, X) :-
     X = DetInfo ^ di_pess_extra_vars.
 det_info_get_has_format_call(DetInfo, X) :-

@@ -370,8 +370,9 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
         ModuleInfo0, ModuleInfo1),
 
+    proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    det_info_init(ModuleInfo1, VarTypes, PredId, ProcId,
+    det_info_init(ModuleInfo1, PredId, ProcId, VarSet, VarTypes,
         pess_extra_vars_ignore, [], DetInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
     det_infer_goal(Goal0, Goal, InstMap, SolnContext, [], no, _, _,

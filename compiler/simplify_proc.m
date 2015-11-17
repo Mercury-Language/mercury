@@ -593,7 +593,7 @@ do_process_top_level_goal(!Goal, NestedContext0, InstMap0, !Info) :-
                 PredInfo, !.ProcInfo, !ModuleInfo),
             simplify_info_set_module_info(!.ModuleInfo, !Info),
 
-            det_info_init(!.ModuleInfo, !.VarTypes, PredId, ProcId,
+            det_info_init(!.ModuleInfo, PredId, ProcId, !.VarSet, !.VarTypes,
                 pess_extra_vars_report, [], DetInfo0),
             det_infer_goal(!Goal, InstMap0, SolnContext, [], no,
                 _, _, DetInfo0, DetInfo),

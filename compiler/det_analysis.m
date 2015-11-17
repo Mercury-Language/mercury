@@ -307,8 +307,9 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, OldDetism, NewDetism, !Specs) :-
     % Infer the determinism of the goal.
     proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap0),
+    proc_info_get_varset(ProcInfo0, VarSet),
     proc_info_get_vartypes(ProcInfo0, VarTypes),
-    det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId,
+    det_info_init(!.ModuleInfo, PredId, ProcId, VarSet, VarTypes,
         pess_extra_vars_report, !.Specs, DetInfo0),
     det_infer_goal(Goal0, Goal, InstMap0, SolnContext, [], no,
         InferDetism, _,  DetInfo0, DetInfo),
