@@ -582,13 +582,17 @@
     ;       mlds_function(
                 % Represents functions.
 
-                maybe(pred_proc_id),    % Identifies the original
-                                        % Mercury procedure, if any.
-                mlds_func_params,       % The arguments & return types.
-                mlds_function_body,     % The function body.
-                list(mlds_attribute),   % Attributes.
-                set(string)             % The set of environment variables
-                                        % referred to by the function body.
+                maybe(pred_proc_id),        % Identifies the original
+                                            % Mercury procedure, if any.
+                mlds_func_params,           % The arguments & return types.
+                mlds_function_body,         % The function body.
+                list(mlds_attribute),       % Attributes.
+                set(string),                % The set of environment
+                                            % variables referred to by the
+                                            % function body.
+                maybe(require_tail_recursion)
+                                            % Information used to generate
+                                            % tail recursion errors.
             )
     ;       mlds_class(
                 % Represents packages, classes, interfaces, structs, enums.

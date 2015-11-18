@@ -500,6 +500,9 @@ mq_error_context_to_pieces(ErrorContext, Context,Pieces) :-
             Pragma = pragma_no_detism_warning(_),
             PragmaName = "no_detism_warning"
         ;
+            Pragma = pragma_require_tail_recursion(_),
+            PragmaName = "require_tail_recursion"
+        ;
             Pragma = pragma_tabled(_),
             PragmaName = "tabled"
         ;

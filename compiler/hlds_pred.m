@@ -2197,6 +2197,8 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     has_tail_call_event::out) is det.
 :- pred proc_info_get_oisu_kind_fors(proc_info::in,
     list(oisu_pred_kind_for)::out) is det.
+:- pred proc_info_get_maybe_require_tailrec_info(proc_info::in,
+    maybe(require_tail_recursion)::out) is det.
 :- pred proc_info_get_reg_r_headvars(proc_info::in,
     set_of_progvar::out) is det.
 :- pred proc_info_get_maybe_arg_info(proc_info::in,
@@ -2280,6 +2282,8 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
 :- pred proc_info_set_has_tail_call_event(has_tail_call_event::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_oisu_kind_fors(list(oisu_pred_kind_for)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_require_tailrec_info(require_tail_recursion::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_reg_r_headvars(set_of_progvar::in,
     proc_info::in, proc_info::out) is det.
@@ -2607,6 +2611,11 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
                 % for the each of the types in those pragmas.
                 psi_oisu_kind_fors              :: list(oisu_pred_kind_for),
 
+                % Has the user requested (via a require_tail_recursion
+                % pragma) that we suppress or enable warnings about tail
+                % recursion for this procedure?
+                psi_maybe_require_tailrec   :: maybe(require_tail_recursion),
+
                 %-----------------------------------------------------------%
                 % Information needed by the LLDS code generator.
                 %-----------------------------------------------------------%
@@ -2847,6 +2856,7 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     HasUserEvent = has_no_user_event,
     HasTailCallEvent = has_no_tail_call_event,
     OisuKinds = [],
+    MaybeRequireTailRecursion = no,
     set_of_var.init(RegR_HeadVars),
     MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
     MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
@@ -2880,6 +2890,7 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
         HasUserEvent,
         HasTailCallEvent,
         OisuKinds,
+        MaybeRequireTailRecursion,
         RegR_HeadVars,
         MaybeArgPassInfo,
         MaybeSpecialReturn,
@@ -2971,6 +2982,7 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     HasUserEvent = has_no_user_event,
     HasTailCallEvent = has_no_tail_call_event,
     OisuKinds = [],
+    MaybeRequireTailRecursion = no,
     set_of_var.init(RegR_HeadVars),
     MaybeArgPassInfo = no `with_type` maybe(list(arg_info)),
     MaybeSpecialReturn = no `with_type` maybe(special_proc_return),
@@ -3004,6 +3016,7 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
         HasUserEvent,
         HasTailCallEvent,
         OisuKinds,
+        MaybeRequireTailRecursion,
         RegR_HeadVars,
         MaybeArgPassInfo,
         MaybeSpecialReturn,
@@ -3113,6 +3126,8 @@ proc_info_get_has_user_event(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_has_user_event.
 proc_info_get_has_tail_call_event(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_has_tail_call_event.
+proc_info_get_maybe_require_tailrec_info(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_maybe_require_tailrec.
 proc_info_get_oisu_kind_fors(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_oisu_kind_fors.
 proc_info_get_reg_r_headvars(PI, X) :-
@@ -3199,6 +3214,8 @@ proc_info_set_has_tail_call_event(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_proc_has_tail_call_event := X.
 proc_info_set_oisu_kind_fors(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_oisu_kind_fors := X.
+proc_info_set_require_tailrec_info(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_maybe_require_tailrec := yes(X).
 proc_info_set_reg_r_headvars(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_reg_r_headvars := X.
 proc_info_set_arg_info(X, !PI) :-

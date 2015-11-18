@@ -744,7 +744,7 @@ ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
     Attributes = [],
     EnvVarNames = set.init,
     FuncDefn = mlds_function(MaybePredProcId, FuncParams,
-        body_defined_here(Statement), Attributes, EnvVarNames),
+        body_defined_here(Statement), Attributes, EnvVarNames, no),
     Func = mlds_defn(FuncName, mlds_make_context(Context), DeclFlags,
         FuncDefn).
 
@@ -1971,7 +1971,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     ( if
         Defn = mlds_defn(EntityName, _, _, EntityDefn),
         EntityName = entity_function(PredLabel, ProcId, yes(SeqNum), _),
-        EntityDefn = mlds_function(_, _, body_defined_here(_), _, _)
+        EntityDefn = mlds_function(_, _, body_defined_here(_), _, _, _)
     then
         % We call the proxy function.
         ProcLabel = mlds_proc_label(PredLabel, ProcId),

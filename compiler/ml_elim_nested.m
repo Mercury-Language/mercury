@@ -521,7 +521,8 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     ( if
         DefnBody0 = mlds_function(PredProcId, Params0,
-            body_defined_here(FuncBody0), Attributes, EnvVarNames),
+            body_defined_here(FuncBody0), Attributes, EnvVarNames,
+            MaybeRequiretailrecInfo),
         % Don't add GC tracing code to the gc_trace/1 primitive!
         % (Doing so would just slow things down unnecessarily.)
         not (
@@ -658,7 +659,8 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
         ),
         Params = mlds_func_params(Arguments, RetValues),
         DefnBody = mlds_function(PredProcId, Params,
-            body_defined_here(FuncBody), Attributes, EnvVarNames),
+            body_defined_here(FuncBody), Attributes, EnvVarNames,
+            MaybeRequiretailrecInfo),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         Defns = list.append(HoistedDefns, [Defn])
     else
@@ -1043,7 +1045,7 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
     Attributes = [],
     EnvVarNames = set.init,
     FuncDefn = mlds_function(MaybePredProcId, FuncParams,
-        body_defined_here(Statement), Attributes, EnvVarNames),
+        body_defined_here(Statement), Attributes, EnvVarNames, no),
     GCTraceFuncDefn = mlds_defn(GCTraceFuncName, Context, DeclFlags,
         FuncDefn).
 
@@ -1128,7 +1130,8 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     ( if
         DefnBody0 = mlds_function(PredProcId, Params,
-            body_defined_here(FuncBody0), Attributes, EnvVarNames),
+            body_defined_here(FuncBody0), Attributes, EnvVarNames,
+            MaybeRequiretailrecInfo),
         statement_contains_var(FuncBody0, qual(ModuleName, module_qual,
             mlds_data_var(mlds_var_name("env_ptr", no)))) = yes
     then
@@ -1146,7 +1149,8 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
         FuncBody = statement(ml_stmt_block([EnvPtrDecl],
             [InitEnvPtr, FuncBody0]), Context),
         DefnBody = mlds_function(PredProcId, Params,
-            body_defined_here(FuncBody), Attributes, EnvVarNames),
+            body_defined_here(FuncBody), Attributes, EnvVarNames,
+            MaybeRequiretailrecInfo),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         Init = yes
     else
@@ -1605,7 +1609,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
     Defn0 = mlds_defn(Name, Context, Flags0, DefnBody0),
     (
         DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes,
-            EnvVarNames),
+            EnvVarNames, MaybeRequiretailrecInfo),
         % Recursively flatten the nested function.
         flatten_function_body(Action, FuncBody0, FuncBody, !Info),
 
@@ -1621,7 +1625,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
             Flags = Flags0
         ),
         DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes,
-            EnvVarNames),
+            EnvVarNames, MaybeRequiretailrecInfo),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         (
             Action = hoist_nested_funcs,
@@ -1744,7 +1748,7 @@ ml_need_to_hoist(ModuleName, DataName, FollowingDefns, FollowingStatements) :-
     mlds_defn::in) is semidet.
 
 ml_need_to_hoist_defn(QualDataName, FollowingDefn) :-
-    FollowingDefn = mlds_defn(_, _, _, mlds_function(_, _, _, _, _)),
+    FollowingDefn = mlds_defn(_, _, _, mlds_function(_, _, _, _, _, _)),
     defn_contains_var(FollowingDefn, QualDataName) = yes.
 
 %-----------------------------------------------------------------------------%
@@ -2319,7 +2323,7 @@ defn_contains_matching_defn(Filter, Defn) :-
         Defn = mlds_defn(_Name, _Context, _Flags, DefnBody),
         (
             DefnBody = mlds_function(_PredProcId, _Params, FunctionBody,
-                _Attrs, _EnvVarNames),
+                _Attrs, _EnvVarNames, _MaybeRequiretailrecInfo),
             FunctionBody = body_defined_here(Statement),
             statement_contains_matching_defn(Filter, Statement)
         ;

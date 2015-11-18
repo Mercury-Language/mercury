@@ -676,7 +676,7 @@ has_foreign_languages(Statement, Langs) :-
 
 defn_contains_foreign_code(NativeTargetLang, Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_function(_, _, body_defined_here(FunctionBody), _, _),
+    Body = mlds_function(_, _, body_defined_here(FunctionBody), _, _, _),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     (
@@ -688,7 +688,7 @@ defn_contains_foreign_code(NativeTargetLang, Defn) :-
 
 defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_function(_, _, body_defined_here(FunctionBody), _, _),
+    Body = mlds_function(_, _, body_defined_here(FunctionBody), _, _, _),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     Stmt = ml_stmt_atomic(outline_foreign_proc(ForeignLang, _, _, _)).
@@ -751,7 +751,7 @@ defn_body_contains_var(DefnBody, DataName) = ContainsVar :-
         ContainsVar = initializer_contains_var(Initializer, DataName)
     ;
         DefnBody = mlds_function(_PredProcId, _Params, FunctionBody,
-            _Attrs, _EnvVarNames),
+            _Attrs, _EnvVarNames, _MaybeRequireTailrecInfo),
         ContainsVar = function_body_contains_var(FunctionBody, DataName)
     ;
         DefnBody = mlds_class(ClassDefn),

@@ -35,6 +35,7 @@
     ;       pragma_mm_tabling_info(ground)
     ;       pragma_obsolete(ground)
     ;       pragma_no_detism_warning(ground)
+    ;       pragma_require_tail_recursion(ground)
     ;       pragma_promise_eqv_clauses(ground)
     ;       pragma_promise_pure(ground)
     ;       pragma_promise_semipure(ground)
@@ -112,6 +113,7 @@
 :- import_module int.
 :- import_module io.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module varset.
@@ -311,6 +313,10 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
         add_pred_marker("no_determinism_warning", Name, Arity, PredStatus,
             Context, marker_no_detism_warning, [], !ModuleInfo, !Specs)
+    ;
+        Pragma = pragma_require_tail_recursion(TailrecWarningPragma),
+        add_pragma_require_tail_recursion(TailrecWarningPragma, Context,
+            !ModuleInfo, !Specs)
     ;
         Pragma = pragma_promise_eqv_clauses(PredNameArity),
         PredNameArity = pred_name_arity(Name, Arity),
@@ -532,6 +538,108 @@ add_pragma_mm_tabling_info(MMTablingInfo, _Context, !ModuleInfo, !Specs) :-
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
         % XXX What kinds of errors?
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred add_pragma_require_tail_recursion(
+    pragma_info_require_tail_recursion::in, prog_context::in,
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pragma_require_tail_recursion(Pragma, Context, !ModuleInfo, !Specs) :-
+    Pragma ^ rtr_proc_id =
+        pred_name_arity_mpf_mmode(Name, Arity, _MaybePF, MaybeMode),
+    get_matching_pred_ids(!.ModuleInfo, Name, Arity, PredIds),
+    (
+        PredIds = [],
+        Pieces = [pragma_decl("require_tail_recursion"), words("pragma")],
+        undefined_pred_or_func_error(Name, Arity, Context, Pieces, !Specs)
+    ;
+        PredIds = [PredId],
+        NameAndArity = Name / Arity,
+
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+        pred_info_get_proc_table(PredInfo0, Procs0),
+        map.to_assoc_list(Procs0, Procs),
+        (
+            MaybeMode = yes(Mode),
+            % Choose the matching proc.
+            ( if
+                % We have to take inst variables into account (two free
+                % variables need to be unified, not just compared) when
+                % searching for the matching procedure.
+                %
+                % I looked up how to do this and found an example in
+                % add_pragma_foreign_proc/8 in add_foreign_proc.m:342  It
+                % also contained thsi comment which may be relevant:
+                %
+                %   XXX We should probably also check that each pair in the
+                %   renaming has the same name.  See the comment in
+                %   add_foreign_proc.
+                %
+                get_procedure_matching_declmodes_with_renaming(Procs,
+                    Mode, !.ModuleInfo, ProcId)
+            then
+                map.lookup(Procs0, ProcId, Proc),
+                add_pragma_require_tail_recursion_proc(
+                    Pragma ^ rtr_require_tailrec, Context,
+                    NameAndArity, ProcId - Proc, PredInfo0, PredInfo, !Specs)
+            else
+                Pieces = [words("Error: no such mode for"),
+                    sym_name_and_arity(NameAndArity), words("in"),
+                    pragma_decl("require_tail_recursion"),
+                    words("pragma.")],
+                Msg = simple_msg(Context, [always(Pieces)]),
+                Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+                    [Msg]),
+                PredInfo = PredInfo0,
+                !:Specs = [Spec | !.Specs]
+            )
+        ;
+            MaybeMode = no,
+            list.foldl2(add_pragma_require_tail_recursion_proc(
+                    Pragma ^ rtr_require_tailrec, Context, NameAndArity),
+                Procs, PredInfo0, PredInfo, !Specs)
+        ),
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+    ;
+        PredIds = [_, _ | _],
+        Pieces = [words("Error: ambiguous predicate or function in"),
+            pragma_decl("require_tail_recursion"), words("pragma.")],
+        Msg = simple_msg(Context, [always(Pieces)]),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred add_pragma_require_tail_recursion_proc(
+    require_tail_recursion::in, prog_context::in,
+    sym_name_and_arity::in, pair(proc_id, proc_info)::in,
+    pred_info::in, pred_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+add_pragma_require_tail_recursion_proc(RequireTailrec, Context,
+        SymNameAndArity, ProcId - ProcInfo0, !PredInfo, !Specs) :-
+    proc_info_get_maybe_require_tailrec_info(ProcInfo0,
+        MaybeRequireTailrecOrig),
+    (
+        MaybeRequireTailrecOrig = yes(RequireTailrecOrig),
+        Parts1 = [words("Error: conflicting"),
+            pragma_decl("require_tail_recursion"), words("pragmas for"),
+            sym_name_and_arity(SymNameAndArity),
+            words("or one of its modes.")],
+        Parts2 = [words("Earlier pragma is here.")],
+        ( RequireTailrecOrig = suppress_tailrec_warnings(ContextOrig)
+        ; RequireTailrecOrig = enable_tailrec_warnings(_, _, ContextOrig)
+        ),
+        Spec = error_spec(severity_error, phase_parse_tree_to_hlds,
+            [simple_msg(Context, [always(Parts1)]),
+             simple_msg(ContextOrig, [always(Parts2)])]),
+        !:Specs = [Spec | !.Specs]
+    ;
+        MaybeRequireTailrecOrig = no,
+        proc_info_set_require_tailrec_info(RequireTailrec, ProcInfo0, ProcInfo),
+        pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -24,17 +24,20 @@
 :- import_module ml_backend.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module io.
+:- import_module list.
 
     % Return `yes' iff this module defines the main/2 entry point.
     %
 :- func mlds_has_main(mlds) = has_main.
 
 :- pred mlds_backend(module_info::in, module_info::out, mlds::out,
-    dump_info::in, dump_info::out, io::di, io::uo) is det.
+    list(error_spec)::out, dump_info::in, dump_info::out, io::di, io::uo)
+    is det.
 
 :- pred maybe_mark_static_terms(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -71,13 +74,11 @@
 :- import_module ml_backend.mlds_to_java.           % MLDS -> Java
 :- import_module ml_backend.mlds_to_cs.             % MLDS -> C#
 :- import_module ml_backend.ml_util.                % MLDS utility predicates
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 
 :- import_module getopt_io.
-:- import_module list.
 :- import_module pprint.
 :- import_module require.
 :- import_module string.
@@ -96,7 +97,7 @@ mlds_has_main(MLDS) =
 
 %---------------------------------------------------------------------------%
 
-mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
+mlds_backend(!HLDS, !:MLDS, Specs, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -147,10 +148,11 @@ mlds_backend(!HLDS, !:MLDS, !DumpInfo, !IO) :-
     (
         OptimizeTailCalls = yes,
         maybe_write_string(Verbose, "% Detecting tail calls...\n", !IO),
-        ml_mark_tailcalls(Globals, !MLDS, !IO),
+        ml_mark_tailcalls(Globals, Specs, !MLDS),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
-        OptimizeTailCalls = no
+        OptimizeTailCalls = no,
+        Specs = []
     ),
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(Globals, !.MLDS, 20, "tailcalls", !IO),

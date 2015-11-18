@@ -92,14 +92,14 @@ optimize_in_defn(ModuleName, Globals, Defn0, Defn) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
         DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes,
-            EnvVarNames),
+            EnvVarNames, MaybeRequireTailrecInfo),
         OptInfo = opt_info(Globals, ModuleName, Name, Params, Context),
 
         optimize_func(OptInfo, FuncBody0, FuncBody1),
         optimize_in_function_body(OptInfo, FuncBody1, FuncBody),
 
         DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes,
-            EnvVarNames),
+            EnvVarNames, MaybeRequireTailrecInfo),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ;
         DefnBody0 = mlds_data(_, _, _),
@@ -1208,9 +1208,11 @@ eliminate_var_in_defn(Defn0, Defn, !VarElimInfo) :-
         % in the containing scope.
         DefnBody = DefnBody0
     ;
-        DefnBody0 = mlds_function(Id, Params, Body0, Attributes, EnvVarNames),
+        DefnBody0 = mlds_function(Id, Params, Body0, Attributes,
+            EnvVarNames, MaybeRequireTailrecInfo),
         eliminate_var_in_function_body(Body0, Body, !VarElimInfo),
-        DefnBody = mlds_function(Id, Params, Body, Attributes, EnvVarNames)
+        DefnBody = mlds_function(Id, Params, Body, Attributes,
+            EnvVarNames, MaybeRequireTailrecInfo)
     ),
     Defn = mlds_defn(Name, Context, Flags, DefnBody).
 

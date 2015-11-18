@@ -100,6 +100,7 @@
 :- implementation.
 
 :- import_module libs.
+:- import_module libs.compiler_util.
 :- import_module libs.rat.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_inst.
@@ -187,6 +188,10 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
         PredNameArity = pred_name_arity(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "no_determinism_warning", no, !IO)
+    ;
+        Pragma = pragma_require_tail_recursion(RequireTailrecPragma),
+        mercury_output_pragma_require_tail_recursion(Lang,
+            RequireTailrecPragma, !IO)
     ;
         Pragma = pragma_tabled(TabledInfo),
         mercury_output_pragma_tabled(TabledInfo, !IO)
@@ -1141,6 +1146,68 @@ mercury_output_pragma_mm_tabling_info(TablingInfo, !IO) :-
         io.write_string("mm_tabled_conditional", !IO)
     ),
     io.write_string(").\n", !IO).
+
+%---------------------------------------------------------------------------%
+%
+% Output a require tail recursion pragma
+%
+
+:- pred mercury_output_pragma_require_tail_recursion(output_lang::in,
+    pragma_info_require_tail_recursion::in, io::di, io::uo) is det.
+
+mercury_output_pragma_require_tail_recursion(Lang, RequireTR, !IO) :-
+    RequireTR = pragma_info_require_tail_recursion(Proc, Info),
+    ProcSpecStr = format_pred_name_arity_mpf_mmode(Lang, Proc),
+
+    (
+        Info = suppress_tailrec_warnings(_),
+        format(":- pragma warn_tail_recursion(%s, [none]).\n",
+            [s(ProcSpecStr)], !IO)
+    ;
+        Info = enable_tailrec_warnings(WarnOrError, Type, _),
+        warning_or_error_string(WarnOrError, WarnOrErrorStr),
+        require_tailrec_type_string(Type, TypeStr),
+
+        format(":- pragma warn_tail_recursion(%s, [%s, %s]).\n",
+            [s(ProcSpecStr), s(WarnOrErrorStr), s(TypeStr)], !IO)
+    ).
+
+:- func format_pred_name_arity_mpf_mmode(output_lang,
+    pred_name_arity_mpf_mmode) = string.
+
+format_pred_name_arity_mpf_mmode(Lang, Proc) = ProcSpecStr :-
+    Proc = pred_name_arity_mpf_mmode(Pred, Arity, MaybePredOrFunc, MaybeMode),
+    (
+        MaybePredOrFunc = yes(PredOrFunc)
+    ;
+        MaybePredOrFunc = no,
+        PredOrFunc = pf_predicate
+    ),
+    (
+        MaybeMode = no,
+        (
+            PredOrFunc = pf_predicate,
+            DeclaredArity = Arity
+        ;
+            PredOrFunc = pf_function,
+            DeclaredArity = Arity - 1
+        ),
+        ProcSpecStr = format("%s/%d",
+            [s(mercury_bracketed_sym_name_to_string(Pred)), i(DeclaredArity)])
+    ;
+        MaybeMode = yes(ModeList),
+        varset.init(InitVarSet),
+        (
+            PredOrFunc = pf_predicate,
+            ProcSpecStr = mercury_pred_mode_subdecl_to_string(Lang, InitVarSet,
+                Pred, ModeList, no)
+        ;
+            PredOrFunc = pf_function,
+            pred_args_to_func_args(ModeList, FuncModeList, RetMode),
+            ProcSpecStr = mercury_func_mode_subdecl_to_string(Lang,
+                InitVarSet, Pred, FuncModeList, RetMode, no)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 %

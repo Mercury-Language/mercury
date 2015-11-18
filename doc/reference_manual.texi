@@ -9872,6 +9872,7 @@ extensions to the Mercury language:
                                 calculated results and detecting or avoiding
                                 certain kinds of infinite loops.
 * Termination analysis::        Support for automatic proofs of termination.
+@c * Tail recursion check::        Require that a predicate is tail recursive.
 * Feature sets::                Support for checking that optional features of
                                 the implementation are supported at compile
                                 time.
@@ -10467,6 +10468,105 @@ function then the compiler will quit with an error message.
 @c 
 @c The compiler includes a structure reuse analysis system. 
 @c
+
+@c @node Tail recursion check
+@c @section Tail recursion check
+@c 
+@c The @samp{require_tail_recursion} pragma can be used to enable and disable
+@c warnings or errors for predicates and functions that contain recursive
+@c calls which are not @emph{tail} recursive.
+@c 
+@c @example
+@c :- pragma require_tail_recursion(@var{Name}/@var{Arity}, @var{Options}).
+@c :- pragma require_tail_recursion(@var{Name}(@var{Modes}), @var{Options}).
+@c :- pragma require_tail_recursion(@var{Name}(@var{Modes}) = @var{ReturnMode},
+@c     @var{Options}).
+@c @end example
+@c 
+@c This pragma affects all modes of a predicate or function (in the first form)
+@c or a specific mode of a predicate or function (the second and third forms).
+@c These pragmas can be used to enable or inhibit warnings for non tail
+@c recursive code.
+@c 
+@c When tail recursion warnings are enabled using the
+@c @samp{--warn-non-tail-recursion} compiler option (see the user's guide),
+@c the compiler may emit warnings for predicates that the developer knows and
+@c accepts aren't tail recursive.
+@c These can be suppressed using the @samp{none} option in the
+@c @samp{require_tail_recursion} pragma.
+@c 
+@c @example
+@c :- pragma require_tail_recursion(foo/3, [none]).
+@c @end example
+@c 
+@c When the @samp{--warn-non-tail-recursion} compiler option is not enabled
+@c then the pragma can be used to explicitly enable the tail recursion check
+@c for a predicate or function.
+@c If you think that a predicate or function will probably recurse deeply,
+@c and may exhaust the stack unless its recursive calls are all tail recursive,
+@c then use this pragma on that predicate
+@c to get a warning or an error
+@c if any of those recursive calls are not tail recursive.
+@c You may also wish to enable this warning
+@c if you expect the predicate or function to be called many times,
+@c even if those calls are very unlikely to exhaust the stack,
+@c simply because tail recursion is more efficient than non-tail recursion.
+@c 
+@c @example
+@c :- pragma require_tail_recursion(map/3).
+@c @end example
+@c 
+@c The following options may be given:
+@c 
+@c @table @code
+@c 
+@c @item warn
+@c Non tail recursive code should generate a compiler warning.
+@c This is the default.
+@c This option is incompatible with @samp{error} and @samp{none}.
+@c 
+@c @item error
+@c Non tail recursive code should generate a compiler error.
+@c This option is incompatible with @samp{warn} and @samp{none}.
+@c 
+@c @item none
+@c Disable the tail recursion check for this predicate or function.
+@c This option is incompatible with every other option.
+@c 
+@c @item self_or_mutual_recursion
+@c Allow the recursive calls to be self or mutually recursive.
+@c The compiler will generate warnings or errors for recursive calls that are
+@c not tail calls (and not later followed by a recursive call that @emph{is} a
+@c tail call).
+@c This is the default.
+@c This option is incompatible with @samp{self_recursion_only} and @samp{none}.
+@c 
+@c @item self_recursion_only
+@c Require that all recursive calls are self-recursive.
+@c In addition to @code{self_or_mutual_recursion},
+@c this option causes the compiler to generate a warning or error
+@c when a mutually recursive call is a @emph{tail} call, even if it can
+@c optimize the tail call.
+@c Some backends can optimize self recursion but not mutual recursion,
+@c or mutual recursion is less efficient.
+@c This option can be used to alert the programmer of code that isn't tail
+@c recursive on these backends.
+@c This option is incompatible with @samp{self_or_mutual_recursion} and
+@c @samp{none}.
+@c 
+@c @end table
+@c
+@c Note that the compiler cannot analyse recursion across module boundaries
+@c or through higher order calls.
+@c Therefore inter-module and higher order calls are considered to be
+@c non-recursive.
+@c
+@c This pragma has no effect with @samp{--no-optimize-tailcalls}.
+@c It also has no effect when generating Erlang code,
+@c because the Erlang implementation itself implements last call optimisation.
+@c 
+@c Issuing the pragma more than once for the same predicate or function, or a
+@c mode off that predicate or function, will cause undefined behaviour.
 
 @node Feature sets
 @section Feature sets

@@ -323,6 +323,7 @@ gather_stats_in_item_pragma(ItemPragmaInfo, !ItemStats) :-
         ; PragmaType = pragma_check_termination(_)
         ; PragmaType = pragma_mode_check_clauses(_)
         ; PragmaType = pragma_require_feature_set(_)
+        ; PragmaType = pragma_require_tail_recursion(_)
         ),
         !ItemStats ^ item_num_pragma_other_pass_2 :=
             !.ItemStats ^ item_num_pragma_other_pass_2 + 1

@@ -463,6 +463,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
             ; Pragma = pragma_structure_sharing(_)
             ; Pragma = pragma_structure_reuse(_)
             ; Pragma = pragma_require_feature_set(_)
+            ; Pragma = pragma_require_tail_recursion(_)
             )
         )
     ;

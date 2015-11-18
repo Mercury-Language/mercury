@@ -2074,6 +2074,7 @@ classify_items([Item | Items], !TypeDefnMap, !InstDefnMap, !ModeDefnMap,
             ; Pragma = pragma_structure_reuse(_)
             ; Pragma = pragma_require_feature_set(_)
             ; Pragma = pragma_foreign_import_module(_)
+            ; Pragma = pragma_require_tail_recursion(_)
             ),
             set.insert(Item, !SortableItems)
         ;

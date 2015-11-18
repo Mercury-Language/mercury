@@ -25,6 +25,7 @@
 :- interface.
 
 :- import_module libs.
+:- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.rat.
 :- import_module mdbcomp.
@@ -886,6 +887,36 @@ default_export_enum_attributes =
     ;       reqf_trailing
     ;       reqf_strict_sequential
     ;       reqf_conservative_gc.
+
+%---------------------------------------------------------------------------%
+%
+% Require tail recursion pragma.
+%
+
+:- type require_tail_recursion
+    --->    suppress_tailrec_warnings(
+                rtrs_context            :: prog_context
+            )
+    ;       enable_tailrec_warnings(
+                rtre_warn_or_error      :: warning_or_error,
+                rtre_recursion_type     :: require_tail_recursion_type,
+                rtre_context            :: prog_context
+            ).
+
+:- type require_tail_recursion_type
+    --->    require_direct_tail_recursion
+    ;       require_any_tail_recursion.
+
+:- pred require_tailrec_type_string(require_tail_recursion_type, string).
+:- mode require_tailrec_type_string(in, out) is det.
+:- mode require_tailrec_type_string(out, in) is semidet.
+
+:- implementation.
+
+require_tailrec_type_string(require_direct_tail_recursion,
+    "self_recursion_only").
+require_tailrec_type_string(require_any_tail_recursion,
+    "self_or_mutual_recursion").
 
 %---------------------------------------------------------------------------%
 %

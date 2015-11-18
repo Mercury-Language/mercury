@@ -931,7 +931,7 @@ ml_gen_constructor_function(Target, BaseClassId, ClassType, ClassQualifier,
     Attributes = [],
     EnvVarNames = set.init,
     Ctor = mlds_function(no, mlds_func_params(Args, ReturnValues),
-        body_defined_here(Stmt), Attributes, EnvVarNames),
+        body_defined_here(Stmt), Attributes, EnvVarNames, no),
     CtorFlags = init_decl_flags(acc_public, per_instance, non_virtual,
         overridable, modifiable, concrete),
 
@@ -964,7 +964,7 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         Defn = mlds_data(Type0, _Init, _GCStatement),
         Type = Type0
     ;
-        ( Defn = mlds_function(_, _, _, _, _)
+        ( Defn = mlds_function(_, _, _, _, _, _)
         ; Defn = mlds_class(_)
         ),
         unexpected($module, $pred, "non-data member")

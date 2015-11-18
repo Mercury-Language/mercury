@@ -463,7 +463,7 @@ mlds_get_env_var_names(Defns) = EnvVarNameSet :-
     is semidet.
 
 mlds_get_env_var_names_from_defn(Defn, EnvVarNameSet) :-
-    Defn = mlds_defn(_, _, _, mlds_function(_, _, _, _, EnvVarNameSet)).
+    Defn = mlds_defn(_, _, _, mlds_function(_, _, _, _, EnvVarNameSet, _)).
 
 :- pred mlds_output_env_var_decl(string::in, io::di, io::uo) is det.
 
@@ -1519,7 +1519,7 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
         HighLevelData = Opts ^ m2co_highlevel_data,
         ( if
             HighLevelData = yes,
-            DefnBody = mlds_function(_, Params, _, _, _)
+            DefnBody = mlds_function(_, Params, _, _, _, _)
         then
             Params = mlds_func_params(Arguments, _RetTypes),
             ParamTypes = mlds_get_arg_types(Arguments),
@@ -1866,7 +1866,7 @@ mlds_output_type_forward_decl(Opts, Indent, Type, !IO) :-
 mlds_output_defn(Opts, Indent, Separate, ModuleName, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
     (
-        ( DefnBody = mlds_function(_, _, _, _, _)
+        ( DefnBody = mlds_function(_, _, _, _, _, _)
         ; DefnBody = mlds_class(_)
         ),
         io.nl(!IO)
@@ -1896,7 +1896,7 @@ mlds_output_decl_body(Opts, Indent, Name, Context, DefnBody, !IO) :-
             get_initializer_array_size(Initializer), !IO)
     ;
         DefnBody = mlds_function(MaybePredProcId, Signature,
-            _MaybeBody, _Attrs, _EnvVarNames),
+            _MaybeBody, _Attrs, _EnvVarNames, _MaybeRequireTailrecInfo),
         mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id(Opts),
             !IO),
         mlds_output_func_decl(Opts, Indent, Name, Context, Signature, !IO)
@@ -1917,7 +1917,7 @@ mlds_output_defn_body(Opts, Indent, Name, Context, DefnBody, !IO) :-
         mlds_output_gc_statement(Opts, Indent, Name, GCStatement, "", !IO)
     ;
         DefnBody = mlds_function(MaybePredProcId, Signature,
-            MaybeBody, _Attributes, _EnvVarNames),
+            MaybeBody, _Attributes, _EnvVarNames, _MaybeRequireTailrecInfo),
         mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id(Opts),
             !IO),
         mlds_output_func(Opts, Indent, Name, Context, Signature, MaybeBody,
@@ -2133,7 +2133,7 @@ mlds_output_enum_constant(Opts, Indent, EnumModuleName, Defn, !IO) :-
             qual(EnumModuleName, type_qual, Name), !IO),
         mlds_output_initializer(Opts, Type, Initializer, !IO)
     ;
-        ( DefnBody = mlds_function(_, _, _, _, _)
+        ( DefnBody = mlds_function(_, _, _, _, _, _)
         ; DefnBody = mlds_class(_)
         ),
         unexpected($module, $pred, "constant is not data")
@@ -3138,7 +3138,7 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody,
         Name \= entity_type(_, _),
         % Don't output "static" for functions that don't have a body.
         % This can happen for Mercury procedures declared `:- external'
-        DefnBody \= mlds_function(_, _, body_external, _, _)
+        DefnBody \= mlds_function(_, _, body_external, _, _, _)
     then
         io.write_string("static ", !IO)
     else if

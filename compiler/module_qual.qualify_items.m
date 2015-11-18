@@ -1058,6 +1058,7 @@ qualify_pragma(InInt, Context, Pragma0, Pragma, !Info, !Specs) :-
         ; Pragma0 = pragma_no_inline(_)
         ; Pragma0 = pragma_obsolete(_)
         ; Pragma0 = pragma_no_detism_warning(_)
+        ; Pragma0 = pragma_require_tail_recursion(_)
         ; Pragma0 = pragma_unused_args(_)
         ; Pragma0 = pragma_exceptions(_)
         ; Pragma0 = pragma_trailing_info(_)

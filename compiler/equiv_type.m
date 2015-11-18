@@ -681,6 +681,7 @@ replace_in_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         ; Pragma0 = pragma_termination_info(_)
         ; Pragma0 = pragma_trailing_info(_)
         ; Pragma0 = pragma_unused_args(_)
+        ; Pragma0 = pragma_require_tail_recursion(_)
         ),
         Pragma = Pragma0
     ),

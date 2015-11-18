@@ -622,6 +622,7 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         ; PragmaType = pragma_reserve_tag(_)
         ; PragmaType = pragma_oisu(_)               % XXX
         ; PragmaType = pragma_require_feature_set(_)
+        ; PragmaType = pragma_require_tail_recursion(_)
         ),
         MaybePredOrFuncId = no
     ;

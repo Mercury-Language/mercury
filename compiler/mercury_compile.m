@@ -1580,7 +1580,7 @@ process_augmented_module(Globals, OpModeAugment, ModuleAndImports,
                 HLDS21, HLDS22, !IO),
             after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                 FindTimestampFiles, MaybeTimestampMap, HLDS22,
-                !.Specs, ExtraObjFiles, !DumpInfo, !IO)
+                ExtraObjFiles, !Specs, !DumpInfo, !IO)
         )
     else
         % If the number of errors is > 0, make sure that the compiler
@@ -2103,12 +2103,12 @@ prepare_for_intermodule_analysis(Globals, Verbose, Stats, !HLDS, !IO) :-
     set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
     maybe(module_timestamp_map)::in, module_info::in,
-    list(error_spec)::in, list(string)::out, dump_info::in, dump_info::out,
-    io::di, io::uo) is det.
+    list(string)::out, list(error_spec)::in, list(error_spec)::out,
+    dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
         FindTimestampFiles, MaybeTimestampMap, !.HLDS,
-        Specs, ExtraObjFiles, !DumpInfo, !IO) :-
+        ExtraObjFiles, !Specs, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO),
@@ -2129,10 +2129,10 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
     globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
     (
         HaltAtWarn = no,
-        FrontEndErrors = contains_errors(Globals, Specs)
+        FrontEndErrors = contains_errors(Globals, !.Specs)
     ;
         HaltAtWarn = yes,
-        FrontEndErrors = contains_errors_and_or_warnings(Globals, Specs)
+        FrontEndErrors = contains_errors_and_or_warnings(Globals, !.Specs)
     ),
     module_info_get_num_errors(!.HLDS, NumErrors),
     ( if
@@ -2141,13 +2141,15 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
     then
         (
             Target = target_csharp,
-            mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
+            mlds_backend(!.HLDS, _, MLDS, NewSpecs, !DumpInfo, !IO),
+            !:Specs = NewSpecs ++ !.Specs,
             % mlds_to_csharp never goes beyond generating C# code.
             mlds_to_csharp(!.HLDS, MLDS, Succeeded, !IO),
             ExtraObjFiles = []
         ;
             Target = target_java,
-            mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
+            mlds_backend(!.HLDS, _, MLDS, NewSpecs, !DumpInfo, !IO),
+            !:Specs = NewSpecs ++ !.Specs,
             mlds_to_java(!.HLDS, MLDS, TargetCodeSucceeded, !IO),
             (
                 OpModeCodeGen = opmcg_target_code_only,
@@ -2179,7 +2181,8 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
             export.produce_header_file(!.HLDS, ExportDecls, ModuleName, !IO),
             (
                 HighLevelCode = yes,
-                mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
+                mlds_backend(!.HLDS, _, MLDS, NewSpecs, !DumpInfo, !IO),
+                !:Specs = NewSpecs ++ !.Specs,
                 mlds_to_high_level_c(Globals, MLDS, TargetCodeSucceeded, !IO),
                 (
                     OpModeCodeGen = opmcg_target_code_only,

@@ -420,6 +420,7 @@ separate_items([Item | Items], SectionInfo,
             ; PragmaType = pragma_mm_tabling_info(_)
             ; PragmaType = pragma_obsolete(_)
             ; PragmaType = pragma_no_detism_warning(_)
+            ; PragmaType = pragma_require_tail_recursion(_)
 
             ; PragmaType = pragma_promise_eqv_clauses(_)
             ; PragmaType = pragma_promise_pure(_)

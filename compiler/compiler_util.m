@@ -22,6 +22,27 @@
 
 :- import_module io.
 :- import_module list.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
+
+    % This type is useful when defining options and behaviours that may
+    % raise either an error or a warning.  See
+    % pragma_require_tail_recursion.
+    %
+:- type warning_or_error
+    --->    we_warning
+    ;       we_error.
+
+    % warning_or_error_string(we_warning, "warn").
+    % warning_or_error_string(we_error, "error").
+    %
+:- pred warning_or_error_string(warning_or_error, string).
+:- mode warning_or_error_string(in, out) is det.
+:- mode warning_or_error_string(out, in) is semidet.
+
+:- pred warning_or_error_severity(warning_or_error::in, error_severity::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -58,6 +79,14 @@
 
 :- import_module bool.
 :- import_module maybe.
+
+%-----------------------------------------------------------------------------%
+
+warning_or_error_string(we_warning, "warn").
+warning_or_error_string(we_error, "error").
+
+warning_or_error_severity(we_warning, severity_warning).
+warning_or_error_severity(we_error, severity_error).
 
 %-----------------------------------------------------------------------------%
 

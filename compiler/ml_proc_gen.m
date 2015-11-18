@@ -472,12 +472,14 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
     MLDS_ProcContext = mlds_make_context(ProcContext),
     DeclFlags = ml_gen_proc_decl_flags(!.ModuleInfo, PredId, ProcId),
     MaybePredProcId = yes(proc(PredId, ProcId)),
+    proc_info_get_maybe_require_tailrec_info(ProcInfo0,
+        MaybeRequireTailrecInfo),
     pred_info_get_attributes(PredInfo, Attributes),
     attributes_to_attribute_list(Attributes, AttributeList),
     MLDS_Attributes =
         attributes_to_mlds_attributes(!.ModuleInfo, AttributeList),
     EntityBody = mlds_function(MaybePredProcId, MLDS_Params,
-        FunctionBody, MLDS_Attributes, EnvVarNames),
+        FunctionBody, MLDS_Attributes, EnvVarNames, MaybeRequireTailrecInfo),
     ProcDefn = mlds_defn(EntityName, MLDS_ProcContext, DeclFlags, EntityBody),
     !:Defns = ExtraDefns ++ [ProcDefn | !.Defns].
 

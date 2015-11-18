@@ -302,6 +302,7 @@ include_in_int_file_implementation(Item) = MaybeIFileItem :-
             ; Pragma = pragma_mm_tabling_info(_)
             ; Pragma = pragma_obsolete(_)
             ; Pragma = pragma_no_detism_warning(_)
+            ; Pragma = pragma_require_tail_recursion(_)
             ; Pragma = pragma_oisu(_)
             ; Pragma = pragma_tabled(_)
             ; Pragma = pragma_fact_table(_)

@@ -1,0 +1,86 @@
+require_tail_recursion.m:014: Error: `:- pragma require_tail_recursion'
+require_tail_recursion.m:014:   declaration in module interface.
+require_tail_recursion.m:021: Error: `:- pragma require_tail_recursion' pragma
+require_tail_recursion.m:021:   for
+require_tail_recursion.m:021:   `require_tail_recursion.non_existant_pred'/3
+require_tail_recursion.m:021:   without corresponding `:- pred' or `:- func'
+require_tail_recursion.m:021:   declaration.
+require_tail_recursion.m:022: Error: `:- pragma require_tail_recursion' pragma
+require_tail_recursion.m:022:   for
+require_tail_recursion.m:022:   `require_tail_recursion.non_existant_proc'/2
+require_tail_recursion.m:022:   without corresponding `:- pred' or `:- func'
+require_tail_recursion.m:022:   declaration.
+require_tail_recursion.m:023: Error: `:- pragma require_tail_recursion' pragma
+require_tail_recursion.m:023:   for
+require_tail_recursion.m:023:   `require_tail_recursion.non_existant_func_proc'/1
+require_tail_recursion.m:023:   without corresponding `:- pred' or `:- func'
+require_tail_recursion.m:023:   declaration.
+require_tail_recursion.m:026: Error: no such mode for
+require_tail_recursion.m:026:   `require_tail_recursion.length'/2 in
+require_tail_recursion.m:026:   `:- pragma require_tail_recursion' pragma.
+require_tail_recursion.m:029: Error: Conflicting
+require_tail_recursion.m:029:   `:- pragma require_tail_recursion' attributes:
+require_tail_recursion.m:029:   `error' conflicts with earlier attribute
+require_tail_recursion.m:029:   `warn'.
+require_tail_recursion.m:032: Error: Conflicting
+require_tail_recursion.m:032:   `:- pragma require_tail_recursion' attributes:
+require_tail_recursion.m:032:   `none' conflicts with earlier attribute `warn'.
+require_tail_recursion.m:035: Error: Conflicting
+require_tail_recursion.m:035:   `:- pragma require_tail_recursion' attributes:
+require_tail_recursion.m:035:   `none' conflicts with earlier attribute
+require_tail_recursion.m:035:   `error'.
+require_tail_recursion.m:039: Error: Conflicting
+require_tail_recursion.m:039:   `:- pragma require_tail_recursion' attributes:
+require_tail_recursion.m:039:   `self_recursion_only' conflicts with earlier
+require_tail_recursion.m:039:   attribute `self_or_mutual_recursion'.
+require_tail_recursion.m:042: Error: Conflicting
+require_tail_recursion.m:042:   `:- pragma require_tail_recursion' attributes:
+require_tail_recursion.m:042:   `none' conflicts with earlier attribute
+require_tail_recursion.m:042:   `self_or_mutual_recursion'.
+require_tail_recursion.m:046: Error: Conflicting
+require_tail_recursion.m:046:   `:- pragma require_tail_recursion' attributes:
+require_tail_recursion.m:046:   `none' conflicts with earlier attribute
+require_tail_recursion.m:046:   `self_recursion_only'.
+require_tail_recursion.m:050: Error: unrecognised
+require_tail_recursion.m:050:   `:- pragma require_tail_recursion' attribute:
+require_tail_recursion.m:050:   `blahblahblah'.
+require_tail_recursion.m:054: Error: `:- pragma require_tail_recursion' pragma
+require_tail_recursion.m:054:   for `require_tail_recursion.blahblahblah'/0
+require_tail_recursion.m:054:   without corresponding `:- pred' or `:- func'
+require_tail_recursion.m:054:   declaration.
+require_tail_recursion.m:056: Error: expected attribute list for
+require_tail_recursion.m:056:   `:- pragma require_tail_recursion' declaration,
+require_tail_recursion.m:056:   not `Woop'.
+require_tail_recursion.m:059: Error: expected attribute list for
+require_tail_recursion.m:059:   `:- pragma require_tail_recursion' declaration,
+require_tail_recursion.m:059:   not `23'.
+require_tail_recursion.m:066: Error: Conflicting
+require_tail_recursion.m:066:   `:- pragma require_tail_recursion' attributes:
+require_tail_recursion.m:066:   `none' conflicts with earlier attribute
+require_tail_recursion.m:066:   `self_recursion_only'.
+require_tail_recursion.m:066: Error: Conflicting
+require_tail_recursion.m:066:   `:- pragma require_tail_recursion' attributes:
+require_tail_recursion.m:066:   `none' conflicts with earlier attribute `warn'.
+require_tail_recursion.m:067: Error: unrecognised
+require_tail_recursion.m:067:   `:- pragma require_tail_recursion' attribute:
+require_tail_recursion.m:067:   `grasshopper'.
+require_tail_recursion.m:072: Error: conflicting
+require_tail_recursion.m:072:   `:- pragma require_tail_recursion' pragmas for
+require_tail_recursion.m:072:   `require_tail_recursion.length10'/2 or one of
+require_tail_recursion.m:072:   its modes.
+require_tail_recursion.m:070:   Earlier pragma is here.
+require_tail_recursion.m:075: Error: conflicting
+require_tail_recursion.m:075:   `:- pragma require_tail_recursion' pragmas for
+require_tail_recursion.m:075:   `require_tail_recursion.length10'/2 or one of
+require_tail_recursion.m:075:   its modes.
+require_tail_recursion.m:070:   Earlier pragma is here.
+require_tail_recursion.m:089: Error: conflicting
+require_tail_recursion.m:089:   `:- pragma require_tail_recursion' pragmas for
+require_tail_recursion.m:089:   `require_tail_recursion.append'/3 or one of its
+require_tail_recursion.m:089:   modes.
+require_tail_recursion.m:087:   Earlier pragma is here.
+require_tail_recursion.m:089: Error: conflicting
+require_tail_recursion.m:089:   `:- pragma require_tail_recursion' pragmas for
+require_tail_recursion.m:089:   `require_tail_recursion.append'/3 or one of its
+require_tail_recursion.m:089:   modes.
+require_tail_recursion.m:088:   Earlier pragma is here.

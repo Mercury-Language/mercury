@@ -54,10 +54,12 @@
 :- interface.
 
 :- import_module ml_backend.mlds.
+:- import_module parse_tree.
+:- import_module parse_tree.error_util.
 :- import_module libs.
 :- import_module libs.globals.
 
-:- import_module io.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -65,8 +67,8 @@
     %
     % If enabled, warn for calls that "look like" tail calls, but aren't.
     %
-:- pred ml_mark_tailcalls(globals::in, mlds::in, mlds::out,
-    io::di, io::uo) is det.
+:- pred ml_mark_tailcalls(globals::in, list(error_spec)::out,
+    mlds::in, mlds::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -75,36 +77,36 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
+:- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_util.
-:- import_module parse_tree.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module maybe.
-
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
-ml_mark_tailcalls(Globals, !MLDS, !IO) :-
+ml_mark_tailcalls(Globals, Specs, !MLDS) :-
     Defns0 = !.MLDS ^ mlds_defns,
     ModuleName = mercury_module_name_to_mlds(!.MLDS ^ mlds_name),
-    mark_tailcalls_in_defns(ModuleName, Warnings, Defns0, Defns),
-    !MLDS ^ mlds_defns := Defns,
     globals.lookup_bool_option(Globals, warn_non_tail_recursion,
-        WarnTailCalls),
+        WarnTailCallsBool),
     (
-        WarnTailCalls = yes,
-        list.foldl(report_nontailcall_warning(Globals), Warnings, !IO)
+        WarnTailCallsBool = yes,
+        WarnTailCalls = warn_tail_calls
     ;
-        WarnTailCalls = no
-    ).
+        WarnTailCallsBool = no,
+        WarnTailCalls = do_not_warn_tail_calls
+    ),
+    mark_tailcalls_in_defns(ModuleName, WarnTailCalls, Specs,
+        Defns0, Defns),
+    !MLDS ^ mlds_defns := Defns.
 
 %-----------------------------------------------------------------------------%
 
@@ -151,8 +153,14 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
     --->    tailcall_info(
                 tci_module_name             :: mlds_module_name,
                 tci_function_name           :: mlds_entity_name,
-                tci_locals                  :: locals
+                tci_locals                  :: locals,
+                tci_warn_tail_calls         :: warn_tail_calls,
+                tci_maybe_require_tailrec   :: maybe(require_tail_recursion)
             ).
+
+:- type warn_tail_calls
+    --->    warn_tail_calls
+    ;       do_not_warn_tail_calls.
 
 %-----------------------------------------------------------------------------%
 
@@ -177,20 +185,22 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
 %   at the current point.
 
 :- pred mark_tailcalls_in_defns(mlds_module_name::in,
-    list(tailcall_warning)::out, list(mlds_defn)::in, list(mlds_defn)::out)
-    is det.
+    warn_tail_calls::in, list(error_spec)::out,
+    list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
-mark_tailcalls_in_defns(ModuleName, condense(Warnings), Defns0, Defns) :-
-    list.map2(mark_tailcalls_in_defn(ModuleName), Defns0, Defns, Warnings).
+mark_tailcalls_in_defns(ModuleName, WarnTailCalls, condense(Warnings),
+        Defns0, Defns) :-
+    list.map2(mark_tailcalls_in_defn(ModuleName, WarnTailCalls),
+        Defns0, Defns, Warnings).
 
-:- pred mark_tailcalls_in_defn(mlds_module_name::in,
-    mlds_defn::in, mlds_defn::out, list(tailcall_warning)::out) is det.
+:- pred mark_tailcalls_in_defn(mlds_module_name::in, warn_tail_calls::in,
+    mlds_defn::in, mlds_defn::out, list(error_spec)::out) is det.
 
-mark_tailcalls_in_defn(ModuleName, Defn0, Defn, Warnings) :-
+mark_tailcalls_in_defn(ModuleName, WarnTailCalls, Defn0, Defn, Warnings) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
         DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes,
-            EnvVarNames),
+            EnvVarNames, MaybeRequireTailrecInfo),
         % Compute the initial values of the `Locals' and `AtTail' arguments.
         Params = mlds_func_params(Args, RetTypes),
         Locals = [local_params(Args)],
@@ -201,11 +211,12 @@ mark_tailcalls_in_defn(ModuleName, Defn0, Defn, Warnings) :-
             RetTypes = [_ | _],
             AtTail = not_at_tail_have_not_seen_reccall
         ),
-        TCallInfo = tailcall_info(ModuleName, Name, Locals),
+        TCallInfo = tailcall_info(ModuleName, Name, Locals,
+            WarnTailCalls, MaybeRequireTailrecInfo),
         mark_tailcalls_in_function_body(TCallInfo, AtTail, Warnings,
             FuncBody0, FuncBody),
         DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes,
-            EnvVarNames),
+            EnvVarNames, MaybeRequireTailrecInfo),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ;
         DefnBody0 = mlds_data(_, _, _),
@@ -215,9 +226,9 @@ mark_tailcalls_in_defn(ModuleName, Defn0, Defn, Warnings) :-
         DefnBody0 = mlds_class(ClassDefn0),
         ClassDefn0 = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
             TypeParams, CtorDefns0, MemberDefns0),
-        mark_tailcalls_in_defns(ModuleName, CtorWarnings,
+        mark_tailcalls_in_defns(ModuleName, WarnTailCalls, CtorWarnings,
             CtorDefns0, CtorDefns),
-        mark_tailcalls_in_defns(ModuleName, MemberWarnings,
+        mark_tailcalls_in_defns(ModuleName, WarnTailCalls, MemberWarnings,
             MemberDefns0, MemberDefns),
         Warnings = CtorWarnings ++ MemberWarnings,
         ClassDefn = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
@@ -227,7 +238,7 @@ mark_tailcalls_in_defn(ModuleName, Defn0, Defn, Warnings) :-
     ).
 
 :- pred mark_tailcalls_in_function_body(tailcall_info::in, at_tail::in,
-    list(tailcall_warning)::out,
+    list(error_spec)::out,
     mlds_function_body::in, mlds_function_body::out) is det.
 
 mark_tailcalls_in_function_body(TCallInfo, AtTail, Warnings, Body0, Body) :-
@@ -243,7 +254,7 @@ mark_tailcalls_in_function_body(TCallInfo, AtTail, Warnings, Body0, Body) :-
     ).
 
 :- pred mark_tailcalls_in_maybe_statement(tailcall_info::in,
-    list(tailcall_warning)::out, at_tail::in, at_tail::out,
+    list(error_spec)::out, at_tail::in, at_tail::out,
     maybe(statement)::in, maybe(statement)::out) is det.
 
 mark_tailcalls_in_maybe_statement(_, [], !AtTail, no, no).
@@ -253,7 +264,7 @@ mark_tailcalls_in_maybe_statement(TCallInfo, Warnings, !AtTail,
         !AtTail, Statement0, Statement).
 
 :- pred mark_tailcalls_in_statements(tailcall_info::in,
-    list(tailcall_warning)::out, at_tail::in, at_tail::out,
+    list(error_spec)::out, at_tail::in, at_tail::out,
     list(statement)::in, list(statement)::out) is det.
 
 mark_tailcalls_in_statements(_, [], !AtTail, [], []).
@@ -265,7 +276,7 @@ mark_tailcalls_in_statements(TCallInfo, FirstWarnings ++ RestWarnings,
         First0, First).
 
 :- pred mark_tailcalls_in_statement(tailcall_info::in,
-    list(tailcall_warning)::out,
+    list(error_spec)::out,
     at_tail::in, at_tail::out, statement::in, statement::out) is det.
 
 mark_tailcalls_in_statement(TCallInfo, Warnings, !AtTail, !Statement) :-
@@ -274,7 +285,7 @@ mark_tailcalls_in_statement(TCallInfo, Warnings, !AtTail, !Statement) :-
     !:Statement = statement(Stmt, Context).
 
 :- pred mark_tailcalls_in_stmt(tailcall_info::in, mlds_context::in,
-    list(tailcall_warning)::out, at_tail::in, at_tail::out,
+    list(error_spec)::out, at_tail::in, at_tail::out,
     mlds_stmt::in, mlds_stmt::out) is det.
 
 mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
@@ -288,7 +299,8 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
         % statements in that block. The statement list will be in a tail
         % position iff the block is in a tail position.
         ModuleName = TCallInfo ^ tci_module_name,
-        mark_tailcalls_in_defns(ModuleName, DefnsWarnings, Defns0, Defns),
+        mark_tailcalls_in_defns(ModuleName, TCallInfo ^ tci_warn_tail_calls,
+            DefnsWarnings, Defns0, Defns),
         Locals = TCallInfo ^ tci_locals,
         NewTCallInfo = TCallInfo ^ tci_locals := [local_defns(Defns) | Locals],
         mark_tailcalls_in_statements(NewTCallInfo, StatementsWarnings,
@@ -389,7 +401,7 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
     --->    ml_stmt_call(ground, ground, ground, ground, ground, ground).
 
 :- pred mark_tailcalls_in_stmt_call(tailcall_info::in, mlds_context::in,
-    list(tailcall_warning)::out, at_tail::in, at_tail::out,
+    list(error_spec)::out, at_tail::in, at_tail::out,
     mlds_stmt::in(ml_stmt_call), mlds_stmt::out) is det.
 
 mark_tailcalls_in_stmt_call(TCallInfo, Context, Warnings,
@@ -439,14 +451,7 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, Warnings,
                     % If so, a warning may be useful.
                     AtTailAfter = at_tail(_)
                 ),
-                (
-                    CodeAddr = code_addr_proc(QualProcLabel, _Sig)
-                ;
-                    CodeAddr = code_addr_internal(QualProcLabel, _SeqNum, _Sig)
-                ),
-                QualProcLabel = qual(_, _, ProcLabel),
-                ProcLabel = mlds_proc_label(PredLabel, ProcId),
-                Warnings = [tailcall_warning(PredLabel, ProcId, Context)]
+                maybe_warn_tailcalls(TCallInfo, CodeAddr, Context, Warnings)
             ),
             Stmt = Stmt0,
             AtTailBefore = not_at_tail_seen_reccall
@@ -458,7 +463,7 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, Warnings,
         not_at_tail(AtTailAfter, AtTailBefore)
     ).
 
-:- pred mark_tailcalls_in_cases(tailcall_info::in, list(tailcall_warning)::out,
+:- pred mark_tailcalls_in_cases(tailcall_info::in, list(error_spec)::out,
     at_tail::in, list(at_tail)::out,
     list(mlds_switch_case)::in, list(mlds_switch_case)::out) is det.
 
@@ -471,7 +476,7 @@ mark_tailcalls_in_cases(TCallInfo, CaseWarnings ++ CasesWarnings,
     mark_tailcalls_in_cases(TCallInfo, CasesWarnings,
         AtTailAfter, AtTailBefores, Cases0, Cases).
 
-:- pred mark_tailcalls_in_case(tailcall_info::in, list(tailcall_warning)::out,
+:- pred mark_tailcalls_in_case(tailcall_info::in, list(error_spec)::out,
     at_tail::in, at_tail::out, mlds_switch_case::in, mlds_switch_case::out)
     is det.
 
@@ -483,7 +488,7 @@ mark_tailcalls_in_case(TCallInfo, Warnings, AtTailAfter, AtTailBefore,
     Case = mlds_switch_case(FirstCond, LaterConds, Statement).
 
 :- pred mark_tailcalls_in_default(tailcall_info::in,
-    list(tailcall_warning)::out, at_tail::in, at_tail::out,
+    list(error_spec)::out, at_tail::in, at_tail::out,
     mlds_switch_default::in, mlds_switch_default::out) is det.
 
 mark_tailcalls_in_default(TCallInfo, Warnings, AtTailAfter, AtTailBefore,
@@ -500,6 +505,112 @@ mark_tailcalls_in_default(TCallInfo, Warnings, AtTailAfter, AtTailBefore,
         mark_tailcalls_in_statement(TCallInfo, Warnings,
             AtTailAfter, AtTailBefore, Statement0, Statement),
         Default = default_case(Statement)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred maybe_warn_tailcalls(tailcall_info::in, mlds_code_addr::in,
+    mlds_context::in, list(error_spec)::out) is det.
+
+maybe_warn_tailcalls(TCallInfo, CodeAddr, Context, Specs) :-
+    WarnTailCalls = TCallInfo ^ tci_warn_tail_calls,
+    MaybeRequireTailrecInfo = TCallInfo ^ tci_maybe_require_tailrec,
+    ( if
+        % Trivially reject the common case
+        WarnTailCalls = do_not_warn_tail_calls,
+        MaybeRequireTailrecInfo = no
+    then
+        Specs = []
+    else if
+        require_complete_switch [WarnTailCalls]
+        (
+            WarnTailCalls = do_not_warn_tail_calls,
+
+            % We always warn/error if the pragma says so.
+            MaybeRequireTailrecInfo = yes(RequireTailrecInfo),
+            RequireTailrecInfo = enable_tailrec_warnings(WarnOrError,
+                TailrecType, _)
+        ;
+            WarnTailCalls = warn_tail_calls,
+
+            % if warnings are enabled then we check the pragma.  We check
+            % that it doesn't disable warnings and also determine whether
+            % this should be a warning or error.
+            require_complete_switch [MaybeRequireTailrecInfo]
+            (
+                MaybeRequireTailrecInfo = no,
+                % Choose some defaults.
+                WarnOrError = we_warning,
+                TailrecType = require_any_tail_recursion
+            ;
+                MaybeRequireTailrecInfo = yes(RequireTailrecInfo),
+                require_complete_switch [RequireTailrecInfo]
+                (
+                    RequireTailrecInfo =
+                        enable_tailrec_warnings(WarnOrError, TailrecType, _)
+                ;
+                    RequireTailrecInfo = suppress_tailrec_warnings(_),
+                    false
+                )
+            )
+        ),
+        require_complete_switch [TailrecType]
+        (
+            TailrecType = require_any_tail_recursion
+        ;
+            TailrecType = require_direct_tail_recursion
+            % XXX: Currently this has no effect since all tailcalls on MLDS
+            % are direct tail calls.
+        )
+    then
+        (
+            CodeAddr = code_addr_proc(QualProcLabel, _Sig)
+        ;
+            CodeAddr = code_addr_internal(QualProcLabel,
+                _SeqNum, _Sig)
+        ),
+        QualProcLabel = qual(_, _, ProcLabel),
+        ProcLabel = mlds_proc_label(PredLabel, ProcId),
+        ( if PredLabel = mlds_special_pred_label(_, _, _, _) then
+            % Don't warn about special preds.
+            Specs = []
+        else
+            report_nontailcall(WarnOrError, PredLabel, ProcId, Context, Specs)
+        )
+    else
+        Specs = []
+    ).
+
+:- pred report_nontailcall(warning_or_error::in, mlds_pred_label::in,
+    proc_id::in, mlds_context::in, list(error_spec)::out) is det.
+
+report_nontailcall(WarnOrError, PredLabel, ProcId, Context, Specs) :-
+    (
+        PredLabel = mlds_user_pred_label(PredOrFunc, _MaybeModule, Name, Arity,
+            _CodeModel, _NonOutputFunc),
+        SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),
+        proc_id_to_int(ProcId, ProcNumber0),
+        ProcNumber = ProcNumber0 + 1,
+        (
+            WarnOrError = we_warning,
+            WarnOrErrorWords = words("warning:")
+        ;
+            WarnOrError = we_error,
+            WarnOrErrorWords = words("error:")
+        ),
+        Pieces =
+            [words("In mode number"), int_fixed(ProcNumber),
+            words("of"), simple_call(SimpleCallId), suffix(":"), nl,
+            WarnOrErrorWords,
+            words("recursive call is not tail recursive."), nl],
+        Msg = simple_msg(mlds_get_prog_context(Context), [always(Pieces)]),
+        warning_or_error_severity(WarnOrError, Severity),
+        Specs = [error_spec(Severity, phase_code_gen, [Msg])]
+    ;
+        PredLabel = mlds_special_pred_label(_, _, _, _),
+        % This case is tested for when deciding weather to create an error
+        % or warning.
+        unexpected($file, $pred, "mlds_special_pred_label")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -748,36 +859,6 @@ locals_member(Name, LocalsList) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-:- type tailcall_warning
-    --->    tailcall_warning(
-                mlds_pred_label,
-                proc_id,
-                mlds_context
-            ).
-
-:- pred report_nontailcall_warning(globals::in, tailcall_warning::in,
-    io::di, io::uo) is det.
-
-report_nontailcall_warning(Globals, Warning, !IO) :-
-    Warning = tailcall_warning(PredLabel, ProcId, Context),
-    (
-        PredLabel = mlds_user_pred_label(PredOrFunc, _MaybeModule, Name, Arity,
-            _CodeModel, _NonOutputFunc),
-        SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),
-        proc_id_to_int(ProcId, ProcNumber0),
-        ProcNumber = ProcNumber0 + 1,
-        Pieces =
-            [words("In mode number"), int_fixed(ProcNumber),
-            words("of"), simple_call(SimpleCallId), suffix(":"), nl,
-            words("warning: recursive call is not tail recursive."), nl],
-        Msg = simple_msg(mlds_get_prog_context(Context), [always(Pieces)]),
-        Spec = error_spec(severity_warning, phase_code_gen, [Msg]),
-        write_error_spec(Spec, Globals, 0, _NumWarnings, 0, _NumErrors, !IO)
-    ;
-        PredLabel = mlds_special_pred_label(_, _, _, _)
-        % Don't warn about these.
-    ).
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.ml_tailcall.

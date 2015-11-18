@@ -792,6 +792,7 @@
     ;       pragma_mm_tabling_info(pragma_info_mm_tabling_info)
     ;       pragma_obsolete(pred_name_arity)
     ;       pragma_no_detism_warning(pred_name_arity)
+    ;       pragma_require_tail_recursion(pragma_info_require_tail_recursion)
     ;       pragma_tabled(pragma_info_tabled)
     ;       pragma_fact_table(pragma_info_fact_table)
     ;       pragma_reserve_tag(type_ctor)
@@ -944,6 +945,21 @@
                 mm_tabling_info_status  :: mm_tabling_status
             ).
 
+:- type pragma_info_require_tail_recursion
+    --->    pragma_info_require_tail_recursion(
+                rtr_proc_id             :: pred_name_arity_mpf_mmode,
+                rtr_require_tailrec     :: require_tail_recursion
+
+                % This parameter only makes sense when options contains
+                % either rtro_mutual_rec_only or rtro_all_recursion.
+                % TODO, currently unused, may be used later to implement one
+                % of Zoltan's suggestions here:
+                % http://www.mercurylang.org/list-archives/developers/
+                %   2015-November/016482.html
+                % rtr_maybe_scc           :: maybe(list(
+                %                             pred_name_arity_mpf_mmode))
+            ).
+
     % Evaluation method pragmas.
 
 :- type pragma_info_tabled
@@ -1056,6 +1072,14 @@
                 pnapm_arity             :: arity,
                 pnapm_pf                :: pred_or_func,
                 pnapm_mode_num          :: mode_num
+            ).
+
+:- type pred_name_arity_mpf_mmode
+    --->    pred_name_arity_mpf_mmode(
+                pnampm_pred_name        :: sym_name,
+                pnampm_arity            :: arity,
+                pnampm_maybe_pf         :: maybe(pred_or_func),
+                pnampm_maybe_mode       :: maybe(list(mer_mode))
             ).
 
 :- type pred_name_modes_pf
@@ -1530,6 +1554,7 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ; Pragma = pragma_inline(_)
         ; Pragma = pragma_no_inline(_)
         ; Pragma = pragma_no_detism_warning(_)
+        ; Pragma = pragma_require_tail_recursion(_)
         ; Pragma = pragma_fact_table(_)
         ; Pragma = pragma_tabled(_)
         ; Pragma = pragma_promise_pure(_)
@@ -1605,6 +1630,10 @@ pragma_context_pieces(Pragma) = ContextPieces :-
     ;
         Pragma = pragma_no_detism_warning(_),
         ContextPieces = [pragma_decl("no_determinism_warning"),
+            words("declaration")]
+    ;
+        Pragma = pragma_require_tail_recursion(_),
+        ContextPieces = [pragma_decl("require_tail_recursion"),
             words("declaration")]
     ;
         Pragma = pragma_fact_table(_),
@@ -1924,6 +1953,7 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
         ; Pragma = pragma_promise_pure(_)
         ; Pragma = pragma_promise_semipure(_)
         ; Pragma = pragma_require_feature_set(_)
+        ; Pragma = pragma_require_tail_recursion(_)
         ; Pragma = pragma_reserve_tag(_)
         ; Pragma = pragma_structure_reuse(_)
         ; Pragma = pragma_structure_sharing(_)

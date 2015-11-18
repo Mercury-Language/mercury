@@ -45,6 +45,7 @@
 
 :- implementation.
 
+:- import_module libs.compiler_util.
 :- import_module libs.rat.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
@@ -231,6 +232,10 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         parse_name_arity_pragma(ModuleName, PragmaName,
             "predicate or function", MakePragma, PragmaTerms, ErrorTerm,
             VarSet, Context, SeqNum, MaybeIOM)
+    ;
+        PragmaName = "require_tail_recursion",
+        parse_pragma_require_tail_recursion(ModuleName, PragmaTerms,
+            ErrorTerm, VarSet, Context, SeqNum, MaybeIOM)
     ;
         PragmaName = "reserve_tag",
         MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
@@ -977,6 +982,236 @@ parse_pragma_external_options(VarSet, MaybeOptionsTerm, ContextPieces,
 
 %----------------------------------------------------------------------------%
 
+:- pred parse_pragma_require_tail_recursion(module_name::in, list(term)::in,
+    term::in, varset::in, prog_context::in, int::in,
+    maybe1(item_or_marker)::out) is det.
+
+parse_pragma_require_tail_recursion(ModuleName, PragmaTerms, _ErrorTerm,
+        VarSet, Context, SeqNum, MaybeIOM) :-
+    PragmaName = "require_tail_recursion",
+    ( if
+        (
+            PragmaTerms = [PredAndModesTerm, OptionsTermPrime],
+            MaybeOptionsTerm = yes(OptionsTermPrime)
+        ;
+            PragmaTerms = [PredAndModesTerm],
+            MaybeOptionsTerm = no
+        )
+    then
+        % Parse the procedure name.
+        ContextPieces = cord.from_list([words("In"),
+            pragma_decl(PragmaName), words("declaration:")]),
+        parse_arity_or_modes(ModuleName, PredAndModesTerm,
+            PredAndModesTerm, VarSet, ContextPieces, MaybeProc),
+
+        % Parse the options
+        (
+            MaybeOptionsTerm = yes(OptionsTerm),
+            ( if list_term_to_term_list(OptionsTerm, OptionsTerms)
+            then
+                parse_pragma_require_tail_recursion_options(OptionsTerms,
+                    have_not_seen_none, no, no, [], Context, MaybeOptions)
+            else
+                OptionsContext = get_term_context(OptionsTerm),
+                Pieces1 = [words("Error: expected attribute list for"),
+                    pragma_decl("require_tail_recursion"),
+                    words("declaration, not"),
+                    quote(describe_error_term(VarSet, OptionsTerm)),
+                    suffix("."), nl],
+                Message1 = simple_msg(OptionsContext, [always(Pieces1)]),
+                MaybeOptions = error1([error_spec(severity_error,
+                    phase_term_to_parse_tree, [Message1])])
+            )
+        ;
+            MaybeOptionsTerm = no,
+            MaybeOptions = ok1(enable_tailrec_warnings(we_warning,
+                require_any_tail_recursion, Context))
+        ),
+
+        % Put them together.
+        (
+            MaybeProc = ok1(Proc),
+            (
+                MaybeOptions = ok1(RequireTailrecInfo),
+                PragmaType = pragma_require_tail_recursion(
+                    pragma_info_require_tail_recursion(Proc,
+                        RequireTailrecInfo)),
+                MaybeIOM = ok1(iom_item(item_pragma(
+                    item_pragma_info(PragmaType, item_origin_user, Context,
+                    SeqNum))))
+            ;
+                MaybeOptions = error1(Errors),
+                MaybeIOM = error1(Errors)
+            )
+        ;
+            MaybeProc = error1(ProcErrors),
+            (
+                MaybeOptions = ok1(_),
+                MaybeIOM = error1(ProcErrors)
+            ;
+                MaybeOptions = error1(OptionsErrors),
+                MaybeIOM = error1(ProcErrors ++ OptionsErrors)
+            )
+        )
+    else
+        Pieces = [words("Error: wrong number of arguments in"),
+            pragma_decl(PragmaName), words("declaration."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
+    ).
+
+:- type seen_none
+    --->    seen_none
+    ;       have_not_seen_none.
+
+:- pred parse_pragma_require_tail_recursion_options(list(term)::in,
+    seen_none::in, maybe(warning_or_error)::in,
+    maybe(require_tail_recursion_type)::in, list(error_spec)::in,
+    prog_context::in, maybe1(require_tail_recursion)::out) is det.
+
+parse_pragma_require_tail_recursion_options([], SeenNone, MaybeWarnOrError,
+        MaybeType, !.Specs, Context, MaybeRTR) :-
+    (
+        SeenNone = seen_none,
+        % Check for conflicts with "none" option.
+        (
+            MaybeWarnOrError = yes(WarnOrError0),
+            warning_or_error_string(WarnOrError0, WarnOrErrorString),
+            SpecA = conflicting_attributes_error("none", WarnOrErrorString,
+                Context),
+            !:Specs = [SpecA | !.Specs]
+        ;
+            MaybeWarnOrError = no
+        ),
+        (
+            MaybeType = yes(Type0),
+            require_tailrec_type_string(Type0, TypeString),
+            SpecB = conflicting_attributes_error("none", TypeString,
+                Context),
+            !:Specs = [SpecB | !.Specs]
+        ;
+            MaybeType = no
+        )
+    ;
+        SeenNone = have_not_seen_none
+    ),
+    (
+        !.Specs = [_ | _],
+        MaybeRTR = error1(!.Specs)
+    ;
+        !.Specs = [],
+        (
+            SeenNone = seen_none,
+            MaybeRTR = ok1(suppress_tailrec_warnings(Context))
+        ;
+            SeenNone = have_not_seen_none,
+            % If these values were not set then use the defaults.
+            (
+                MaybeWarnOrError = yes(WarnOrError)
+            ;
+                MaybeWarnOrError = no,
+                WarnOrError = we_warning
+            ),
+            (
+                MaybeType = yes(Type)
+            ;
+                MaybeType = no,
+                Type = require_any_tail_recursion
+            ),
+            MaybeRTR = ok1(enable_tailrec_warnings(WarnOrError, Type,
+                Context))
+        )
+    ).
+parse_pragma_require_tail_recursion_options([Term | Terms], SeenNone0,
+        MaybeWarnOrError0, MaybeType0, !.Specs, PragmaContext, MaybeRTR) :-
+    (
+        Term = functor(Functor, _Args, Context),
+        ( if
+            Functor = atom(Name),
+            warning_or_error_string(WarnOrError, Name)
+        then
+            (
+                MaybeWarnOrError0 = no,
+                MaybeWarnOrError = yes(WarnOrError)
+            ;
+                MaybeWarnOrError0 = yes(WarnOrErrorFirst),
+                warning_or_error_string(WarnOrErrorFirst,
+                    WarnOrErrorFirstString),
+                Spec = conflicting_attributes_error(Name,
+                    WarnOrErrorFirstString, Context),
+                MaybeWarnOrError = MaybeWarnOrError0,
+                !:Specs = [Spec | !.Specs]
+            ),
+            MaybeType = MaybeType0,
+            SeenNone = SeenNone0
+        else if
+            Functor = atom(Name),
+            require_tailrec_type_string(Type, Name)
+        then
+            (
+                MaybeType0 = no,
+                MaybeType = yes(Type)
+            ;
+                MaybeType0 = yes(TypeFirst),
+                require_tailrec_type_string(TypeFirst, TypeFirstString),
+                Spec = conflicting_attributes_error(Name,
+                    TypeFirstString, Context),
+                MaybeType = MaybeType0,
+                !:Specs = [Spec | !.Specs]
+            ),
+            MaybeWarnOrError = MaybeWarnOrError0,
+            SeenNone = SeenNone0
+        else if
+            Functor = atom("none")
+        then
+            SeenNone = seen_none,
+            MaybeWarnOrError = MaybeWarnOrError0,
+            MaybeType = MaybeType0
+        else
+            Spec = pragma_require_tailrec_unknown_term_error(Term, Context),
+            !:Specs = [Spec | !.Specs],
+            SeenNone = SeenNone0,
+            MaybeType = MaybeType0,
+            MaybeWarnOrError = MaybeWarnOrError0
+        )
+    ;
+        Term = variable(_, Context),
+        Spec = pragma_require_tailrec_unknown_term_error(Term, Context),
+        !:Specs = [Spec | !.Specs],
+        SeenNone = SeenNone0,
+        MaybeType = MaybeType0,
+        MaybeWarnOrError = MaybeWarnOrError0
+    ),
+    parse_pragma_require_tail_recursion_options(Terms, SeenNone,
+        MaybeWarnOrError, MaybeType, !.Specs, PragmaContext, MaybeRTR).
+
+:- func conflicting_attributes_error(string, string, prog_context) =
+    error_spec.
+
+conflicting_attributes_error(ThisName, EarlierName, Context) = ErrorSpec :-
+    Pieces = [words("Error: Conflicting "),
+        pragma_decl("require_tail_recursion"), words("attributes: "),
+        quote(ThisName), words("conflicts with earlier attribute"),
+        quote(EarlierName), suffix("."), nl],
+    Message = simple_msg(Context, [always(Pieces)]),
+    ErrorSpec = error_spec(severity_error,
+        phase_term_to_parse_tree, [Message]).
+
+:- func pragma_require_tailrec_unknown_term_error(term, prog_context) =
+    error_spec.
+
+pragma_require_tailrec_unknown_term_error(Term, Context) = ErrorSpec :-
+    varset.init(VarSet),
+    Pieces = [words("Error: unrecognised "),
+        pragma_decl("require_tail_recursion"), words("attribute: "),
+        quote(describe_error_term(VarSet, Term)), suffix("."), nl],
+    Message = simple_msg(Context, [always(Pieces)]),
+    ErrorSpec = error_spec(severity_error,
+        phase_term_to_parse_tree, [Message]).
+
+%----------------------------------------------------------------------------%
+
 :- pred parse_pragma_unused_args(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, int::in,
     maybe1(item_or_marker)::out) is det.
@@ -1045,8 +1280,8 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             VarSet, ArityOrModesContextPieces, MaybeArityOrModes),
         (
             MaybeArityOrModes = ok1(ArityOrModes),
-            ArityOrModes = arity_or_modes(PredName, Arity, MaybePredOrFunc,
-                MaybeModes),
+            ArityOrModes = pred_name_arity_mpf_mmode(PredName, Arity,
+                MaybePredOrFunc, MaybeModes),
             conjunction_to_list(TypeSubnTerm, TypeSubnTerms),
 
             % The varset is actually a tvarset.
@@ -2611,8 +2846,8 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             VarSet, ContextPieces, MaybeArityOrModes),
         (
             MaybeArityOrModes = ok1(ArityOrModes),
-            ArityOrModes = arity_or_modes(PredName, Arity, MaybePredOrFunc,
-                MaybeModes),
+            ArityOrModes = pred_name_arity_mpf_mmode(PredName, Arity,
+                MaybePredOrFunc, MaybeModes),
             (
                 MaybeAttrs = no,
                 PredNameArityMPF = pred_name_arity_mpf(PredName, Arity,
@@ -2882,16 +3117,8 @@ parse_arg_tabling_method(term.functor(term.atom("promise_implied"), [], _),
     yes(arg_promise_implied)).
 parse_arg_tabling_method(term.functor(term.atom("output"), [], _), no).
 
-:- type arity_or_modes
-    --->    arity_or_modes(
-                sym_name,
-                arity,
-                maybe(pred_or_func),
-                maybe(list(mer_mode))
-            ).
-
 :- pred parse_arity_or_modes(module_name::in, term::in, term::in, varset::in,
-    cord(format_component)::in, maybe1(arity_or_modes)::out) is det.
+    cord(format_component)::in, maybe1(pred_name_arity_mpf_mmode)::out) is det.
 
 parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
         ContextPieces, MaybeArityOrModes) :-
@@ -2905,7 +3132,8 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
                 PredNameTerm, PredName),
             ArityTerm = term.functor(term.integer(Arity), [], _)
         then
-            MaybeArityOrModes = ok1(arity_or_modes(PredName, Arity, no, no))
+            MaybeArityOrModes = ok1(pred_name_arity_mpf_mmode(PredName,
+                Arity, no, no))
         else
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: expected predname/arity."), nl],
@@ -2926,8 +3154,8 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm, VarSet,
                 PredOrFunc = pf_predicate,
                 Arity = Arity0
             ),
-            ArityOrModes = arity_or_modes(PredName, Arity, yes(PredOrFunc),
-                yes(Modes)),
+            ArityOrModes = pred_name_arity_mpf_mmode(PredName, Arity,
+                yes(PredOrFunc), yes(Modes)),
             MaybeArityOrModes = ok1(ArityOrModes)
         ;
             MaybePredAndModes = error2(Specs),

@@ -217,6 +217,7 @@ SINGLEMODULE= \
 	repeated_instance_vars_unsat \
 	require_det_in_lambda \
 	require_scopes \
+	require_tail_recursion \
 	reserved \
 	some \
 	specified \

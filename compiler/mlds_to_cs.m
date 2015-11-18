@@ -469,21 +469,25 @@ find_pointer_addressed_methods_in_scalars(Cord, !CodeAddrs) :-
 :- pred method_ptrs_in_entity_defn(mlds_entity_defn::in,
     code_addr_map::in, code_addr_map::out) is det.
 
-method_ptrs_in_entity_defn(mlds_function(_MaybeID, _Params, Body,
-        _Attributes, _EnvVars), !CodeAddrs) :-
+method_ptrs_in_entity_defn(Defn, !CodeAddrs) :-
     (
-        Body = body_defined_here(Statement),
-        method_ptrs_in_statement(Statement, !CodeAddrs)
+        Defn = mlds_function(_MaybeID, _Params, Body, _Attributes, _EnvVars,
+            _MaybeRequireTailrecInfo),
+        (
+            Body = body_defined_here(Statement),
+            method_ptrs_in_statement(Statement, !CodeAddrs)
+        ;
+            Body = body_external
+        )
     ;
-        Body = body_external
+        Defn = mlds_data(_Type, Initializer, _GCStatement),
+        method_ptrs_in_initializer(Initializer, !CodeAddrs)
+    ;
+        Defn = mlds_class(ClassDefn),
+        ClassDefn = mlds_class_defn(_, _, _, _, _, Ctors, Members),
+        method_ptrs_in_defns(Ctors, !CodeAddrs),
+        method_ptrs_in_defns(Members, !CodeAddrs)
     ).
-method_ptrs_in_entity_defn(mlds_data(_Type, Initializer, _GCStatement),
-        !CodeAddrs) :-
-    method_ptrs_in_initializer(Initializer, !CodeAddrs).
-method_ptrs_in_entity_defn(mlds_class(ClassDefn), !CodeAddrs) :-
-    ClassDefn = mlds_class_defn(_, _, _, _, _, Ctors, Members),
-    method_ptrs_in_defns(Ctors, !CodeAddrs),
-    method_ptrs_in_defns(Members, !CodeAddrs).
 
 :- pred method_ptrs_in_statements(list(statement)::in,
     code_addr_map::in, code_addr_map::out) is det.
@@ -738,7 +742,7 @@ collect_env_var_names(Defn, !EnvVarNames) :-
     (
         EntityDefn = mlds_data(_, _, _)
     ;
-        EntityDefn = mlds_function(_, _, _, _, EnvVarNames),
+        EntityDefn = mlds_function(_, _, _, _, EnvVarNames, _),
         set.union(EnvVarNames, !EnvVarNames)
     ;
         EntityDefn = mlds_class(_)
@@ -929,7 +933,7 @@ output_defns(Info, Indent, OutputAux, Defns, !IO) :-
 output_defn(Info, Indent, OutputAux, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
     indent_line(Indent, !IO),
-    ( DefnBody = mlds_function(_, _, body_external, _, _) ->
+    ( DefnBody = mlds_function(_, _, body_external, _, _, _) ->
         % This is just a function declaration, with no body.
         % C# doesn't support separate declarations and definitions,
         % so just output the declaration as a comment.
@@ -982,7 +986,7 @@ output_defn_body(Info, Indent, UnqualName, OutputAux, Context, Entity, !IO) :-
             !IO)
     ;
         Entity = mlds_function(MaybePredProcId, Signature, MaybeBody,
-            _Attributes, _EnvVarNames),
+            _Attributes, _EnvVarNames, _MaybeRequireTailrecInfo),
         output_maybe(MaybePredProcId, output_pred_proc_id(Info), !IO),
         output_func(Info, Indent, UnqualName, OutputAux, Context,
             Signature, MaybeBody, !IO)
@@ -1737,7 +1741,7 @@ output_rtti_defn_assignments(Info, Indent, Defn, !IO) :-
         DefnBody = mlds_data(_Type, Initializer, _),
         output_rtti_defn_assignments_2(Info, Indent, Name, Initializer, !IO)
     ;
-        ( DefnBody = mlds_function(_, _, _, _, _)
+        ( DefnBody = mlds_function(_, _, _, _, _, _)
         ; DefnBody = mlds_class(_)
         ),
         unexpected($module, $pred, "expected mlds_data")
