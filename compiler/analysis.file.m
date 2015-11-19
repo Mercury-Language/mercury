@@ -235,13 +235,13 @@ read_module_overall_status_2(FileName, ModuleStatus, !IO) :-
         io.close_input(Stream, !IO),
         (
             ReadResult = ok(String),
-            ( string.prefix(String, "optimal.") ->
+            ( if string.prefix(String, "optimal.") then
                 ModuleStatus = optimal
-            ; string.prefix(String, "suboptimal.") ->
+            else if string.prefix(String, "suboptimal.") then
                 ModuleStatus = suboptimal
-            ; string.prefix(String, "invalid.") ->
+            else if string.prefix(String, "invalid.") then
                 ModuleStatus = invalid
-            ;
+            else
                 unexpected($module, $pred, "unexpected line")
             )
         ;
@@ -272,19 +272,19 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
         % up-to-date, then read from the cache instead.
         globals.lookup_string_option(Globals, analysis_file_cache_dir,
             CacheDir),
-        ( CacheDir = "" ->
+        ( if CacheDir = "" then
             read_module_analysis_results_2(Compiler, AnalysisFileName,
                 ModuleResults, !IO)
-        ;
+        else
             CacheFileName = make_cache_filename(CacheDir, AnalysisFileName),
             io.file_modification_time(AnalysisFileName, AnalysisTimeResult,
                 !IO),
             io.file_modification_time(CacheFileName, CacheTimeResult, !IO),
-            (
+            ( if
                 AnalysisTimeResult = ok(AnalysisTime),
                 CacheTimeResult = ok(CacheTime),
                 CacheTime @>= AnalysisTime
-            ->
+            then
                 Unpicklers = init_analysis_unpicklers(Compiler),
                 unpickle_from_file(Unpicklers, CacheFileName, UnpickleResult,
                     !IO),
@@ -302,7 +302,7 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
                     write_analysis_cache_file(CacheFileName, ModuleResults,
                         !IO)
                 )
-            ;
+            else
                 read_module_analysis_results_2(Compiler, AnalysisFileName,
                     ModuleResults, !IO),
                 write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
@@ -359,7 +359,7 @@ read_module_analysis_results_2(Compiler, AnalysisFileName, ModuleResults,
     <= compiler(Compiler).
 
 parse_result_entry(Compiler, Term, !Results) :-
-    (
+    ( if
         Term = term.functor(term.atom(AnalysisName),
             [VersionNumberTerm, FuncIdTerm,
             CallPatternTerm, AnswerPatternTerm, StatusTerm], _),
@@ -371,31 +371,31 @@ parse_result_entry(Compiler, Term, !Results) :-
         from_term(CallPatternTerm, CallPattern : Call),
         from_term(AnswerPatternTerm, AnswerPattern : Answer),
         analysis_status_to_string(Status, StatusString)
-    ->
-        (
+    then
+        ( if
             VersionNumber = analysis_version_number(_ : Call, _ : Answer),
             VersionNumberTerm = term.functor(
                 term.integer(VersionNumber), [], _)
-        ->
+        then
             Result = 'new some_analysis_result'(CallPattern, AnswerPattern,
                 Status),
-            ( map.search(!.Results, AnalysisName, AnalysisResults0) ->
+            ( if map.search(!.Results, AnalysisName, AnalysisResults0) then
                 AnalysisResults1 = AnalysisResults0
-            ;
+            else
                 AnalysisResults1 = map.init
             ),
-            ( map.search(AnalysisResults1, FuncId, FuncResults0) ->
+            ( if map.search(AnalysisResults1, FuncId, FuncResults0) then
                 FuncResults = [Result | FuncResults0]
-            ;
+            else
                 FuncResults = [Result]
             ),
             map.set(FuncId, FuncResults, AnalysisResults1, AnalysisResults),
             map.set(AnalysisName, AnalysisResults, !Results)
-        ;
+        else
             % Ignore results with an out-of-date version number.
             true
         )
-    ;
+    else
         Msg = "failed to parse result entry: " ++ string(Term),
         throw(invalid_analysis_file(Msg))
     ).
@@ -414,7 +414,7 @@ read_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
     <= compiler(Compiler).
 
 parse_request_entry(Compiler, Term, !Requests) :-
-    (
+    ( if
         Term = term.functor(atom("->"), [CallerModuleTerm, RHS], _),
         RHS = term.functor(atom(AnalysisName),
             [VersionNumberTerm, FuncIdTerm, CallPatternTerm], _),
@@ -424,30 +424,30 @@ parse_request_entry(Compiler, Term, !Requests) :-
         try_parse_module_name(CallerModuleTerm, CallerModule),
         parse_func_id(FuncIdTerm, FuncId),
         from_term(CallPatternTerm, CallPattern : Call)
-    ->
-        (
+    then
+        ( if
             VersionNumber = analysis_version_number(_ : Call, _ : Answer),
             VersionNumberTerm = term.functor(
                 term.integer(VersionNumber), [], _)
-        ->
+        then
             Result = 'new analysis_request'(CallPattern, CallerModule),
-            ( map.search(!.Requests, AnalysisName, AnalysisRequests0) ->
+            ( if map.search(!.Requests, AnalysisName, AnalysisRequests0) then
                 AnalysisRequests1 = AnalysisRequests0
-            ;
+            else
                 AnalysisRequests1 = map.init
             ),
-            ( map.search(AnalysisRequests1, FuncId, FuncRequests0) ->
+            ( if map.search(AnalysisRequests1, FuncId, FuncRequests0) then
                 FuncRequests = [Result | FuncRequests0]
-            ;
+            else
                 FuncRequests = [Result]
             ),
             map.set(FuncId, FuncRequests, AnalysisRequests1, AnalysisRequests),
             map.set(AnalysisName, AnalysisRequests, !Requests)
-        ;
+        else
             % Ignore requests with an out-of-date version number.
             true
         )
-    ;
+    else
         Msg = "failed to parse request entry: " ++ string(Term),
         throw(invalid_analysis_file(Msg))
     ).
@@ -463,7 +463,7 @@ read_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
     is det <= compiler(Compiler).
 
 parse_imdg_arc(Compiler, Term, !Arcs) :-
-    (
+    ( if
         Term = term.functor(atom("->"), [DependentModuleTerm, ResultTerm], _),
         ResultTerm = functor(atom(AnalysisName),
             [VersionNumberTerm, FuncIdTerm, CallPatternTerm], _),
@@ -473,32 +473,32 @@ parse_imdg_arc(Compiler, Term, !Arcs) :-
         try_parse_module_name(DependentModuleTerm, DependentModule),
         parse_func_id(FuncIdTerm, FuncId),
         from_term(CallPatternTerm, CallPattern : Call)
-    ->
-        (
+    then
+        ( if
             VersionNumber = analysis_version_number(_ : Call, _ : Answer),
             VersionNumberTerm = term.functor(
                 term.integer(VersionNumber), [], _)
-        ->
+        then
             Arc = 'new imdg_arc'(CallPattern, DependentModule),
-            ( map.search(!.Arcs, AnalysisName, AnalysisArcs0) ->
+            ( if map.search(!.Arcs, AnalysisName, AnalysisArcs0) then
                 AnalysisArcs1 = AnalysisArcs0
-            ;
+            else
                 AnalysisArcs1 = map.init
             ),
-            ( map.search(AnalysisArcs1, FuncId, FuncArcs0) ->
+            ( if map.search(AnalysisArcs1, FuncId, FuncArcs0) then
                 FuncArcs = [Arc | FuncArcs0]
-            ;
+            else
                 FuncArcs = [Arc]
             ),
             map.set(FuncId, FuncArcs, AnalysisArcs1, AnalysisArcs),
             map.set(AnalysisName, AnalysisArcs, !Arcs)
-        ;
+        else
             % Ignore results with an out-of-date version number.
             % XXX: is that the right thing to do?
             % do we really need a version number for the IMDG?
             true
         )
-    ;
+    else
         Msg = "failed to parse IMDG arc: " ++ string(Term),
         throw(invalid_analysis_file(Msg))
     ).
@@ -600,11 +600,11 @@ read_analysis_file(AnalysisFileName, ParseEntry, ModuleResults0, ModuleResults,
 
 check_analysis_file_version_number(!IO) :-
     parser.read_term(TermResult : read_term, !IO),
-    (
+    ( if
         TermResult = term(_, term.functor(term.integer(version_number), [], _))
-    ->
+    then
         true
-    ;
+    else
         Msg = "bad analysis file version: " ++ string(TermResult),
         throw(invalid_analysis_file(Msg))
     ).
@@ -673,13 +673,13 @@ write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
     % If analysis file caching is turned on, write the internal represention of
     % the module results to disk right now.
     globals.lookup_string_option(Globals, analysis_file_cache_dir, CacheDir),
-    (
+    ( if
         CacheDir \= "",
         Result = interface_new_or_changed
-    ->
+    then
         CacheFileName = make_cache_filename(CacheDir, FileName),
         write_analysis_cache_file(CacheFileName, ModuleResults, !IO)
-    ;
+    else
         true
     ).
 
@@ -726,10 +726,10 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         parser.read_term(VersionResult : read_term, !IO),
         io.set_input_stream(OldInputStream, _, !IO),
         io.close_input(InputStream, !IO),
-        (
+        ( if
             VersionResult = term(_, term.functor(
                 term.integer(version_number), [], _))
-        ->
+        then
             io.open_append(AnalysisFileName, AppendResult, !IO),
             (
                 AppendResult = ok(AppendStream),
@@ -743,7 +743,7 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
                 AppendResult = error(_),
                 Appended = no
             )
-        ;
+        else
             Appended = no
         )
     ;
@@ -763,12 +763,12 @@ write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
 
 write_request_entry(Compiler, AnalysisName, FuncId, Request, !IO) :-
     Request = analysis_request(Call, CallerModule),
-    (
+    ( if
         analysis_type(_ : unit(Call), _ : unit(Answer))
             = analyses(Compiler, AnalysisName)
-    ->
+    then
         VersionNumber = analysis_version_number(_ : Call, _ :  Answer)
-    ;
+    else
         unexpected($module, $pred, "unknown analysis type")
     ),
 
@@ -795,12 +795,12 @@ write_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
 
 write_imdg_arc(Compiler, AnalysisName, FuncId, Arc, !IO) :-
     Arc = imdg_arc(Call, DependentModule),
-    (
+    ( if
         analysis_type(_ : unit(Call), _ : unit(Answer))
             = analyses(Compiler, AnalysisName)
-    ->
+    then
         VersionNumber = analysis_version_number(_ : Call, _ : Answer)
-    ;
+    else
         unexpected($module, $pred, "unknown analysis type")
     ),
 
@@ -1010,16 +1010,16 @@ init_analysis_unpicklers(Compiler) = Unpicklers :-
 
 unpickle_analysis_result(Compiler, Unpicklers, Handle, _Type, Univ, !State) :-
     unpickle(Unpicklers, Handle, Name : string, !State),
-    (
+    ( if
         analysis_type(_ : unit(Call), _ : unit(Answer))
             = analyses(Compiler, Name)
-    ->
+    then
         unpickle(Unpicklers, Handle, Call : Call, !State),
         unpickle(Unpicklers, Handle, Answer : Answer, !State),
         unpickle(Unpicklers, Handle, Status, !State),
         Result = 'new some_analysis_result'(Call, Answer, Status),
         type_to_univ(Result, Univ)
-    ;
+    else
         unexpected($module, $pred, Name)
     ).
 

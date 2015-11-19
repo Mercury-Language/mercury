@@ -10,7 +10,7 @@
 % Authors: fjh, juliensf.
 %
 % This module is an HLDS-to-HLDS transformation that inserts code to
-% handle trailing.  The module implements two ways of doing this:
+% handle trailing. The module implements two ways of doing this:
 %
 % (1) by adding calls to impure predicates defined in
 %     library/private_builtin.m, which in turn call macros defined in
@@ -20,8 +20,8 @@
 %     runtime/mercury_trail.h.
 %
 % There is a space/time tradeoff between these two methods, the second
-% is generally faster but results in larger executables.  The
-% `--generate-trail-ops-inline' option can be used to control which
+% is generally faster but results in larger executables.
+% The `--generate-trail-ops-inline' option can be used to control which
 % of the methods is used.
 %
 % This pass is currently only used for the MLDS back-end.
@@ -36,7 +36,7 @@
 % that use it to implement trailing (see trailing_analysis.m for details).
 %
 % NOTE: it is important that passes following this one do not attempt
-%       to reorder disjunctions.  If trail usage optimization is being
+%       to reorder disjunctions. If trail usage optimization is being
 %       performed and a disjunction is reordered then the trail might
 %       be corrupted.
 %
@@ -211,10 +211,10 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         InnerGoal0 = hlds_goal(_, InnerGoalInfo),
         InnerCodeModel = goal_info_get_code_model(InnerGoalInfo),
         OuterCodeModel = goal_info_get_code_model(OuterGoalInfo),
-        (
+        ( if
             InnerCodeModel = model_non,
             OuterCodeModel \= model_non
-        ->
+        then
             % Handle commits.
 
             % Before executing the goal, we save the ticket counter,
@@ -267,16 +267,16 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             ),
             GoalExpr =
                 conj(plain_conj, [MarkTicketStackGoal, StoreTicketGoal, Goal3])
-        ;
+        else if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % The scope has no goals that either create choice points
             % or allocate dynamic terms.
             GoalExpr = scope(Reason, InnerGoal0)
-        ;
+        else
             goal_add_trail_ops(InnerGoal0, InnerGoal, !Info),
             GoalExpr = scope(Reason, InnerGoal)
         ),
@@ -292,13 +292,13 @@ goal_expr_add_trail_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         OptTrailUsage = !.Info ^ opt_trail_usage,
         Cond = hlds_goal(_, CondGoalInfo),
         CondCodeModel = goal_info_get_code_model(CondGoalInfo),
-        (
+        ( if
             OptTrailUsage = yes,
             CondCodeModel \= model_non,
             goal_cannot_modify_trail(CondGoalInfo) = yes
-        ->
+        then
             GoalExpr = if_then_else(ExistQVars, Cond, Then1, Else1)
-        ;
+        else
             % Allocate a new trail ticket so that we can restore things if the
             % condition fails.
 

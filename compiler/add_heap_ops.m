@@ -130,11 +130,11 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             % won't allocate any heap -- in that case, we delay saving the heap
             % pointer until just before the first disjunct that might allocate
             % heap.
-            (
+            ( if
                 ( CodeModel = model_non
                 ; goal_may_allocate_heap(FirstDisjunct0)
                 )
-            ->
+            then
                 new_saved_hp_var(SavedHeapPointerVar, !Info),
                 gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal,
                     !Info),
@@ -147,7 +147,7 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
                 ConjGoal = hlds_goal(ConjGoalExpr, GoalInfo0),
                 Purity0 = goal_info_get_purity(GoalInfo0),
                 GoalExpr = scope(promise_purity(Purity0), ConjGoal)
-            ;
+            else
                 disj_add_heap_ops(Disjuncts0, Disjuncts, is_first_disjunct,
                     no, GoalInfo0, !Info),
                 GoalExpr = disj(Disjuncts)
@@ -192,9 +192,9 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         goal_expr_add_heap_ops(NewOuterGoal, OuterGoalInfo, Goal, !Info)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             SubGoal = SubGoal0
-        ;
+        else
             goal_add_heap_ops(SubGoal0, SubGoal, !Info)
         ),
         GoalExpr = scope(Reason, SubGoal),
@@ -207,7 +207,7 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
 
         % If the condition can allocate heap space, save the heap pointer
         % so that we can restore it if the condition fails.
-        ( goal_may_allocate_heap(CondGoal0) ->
+        ( if goal_may_allocate_heap(CondGoal0) then
             new_saved_hp_var(SavedHeapPointerVar, !Info),
             Context = goal_info_get_context(GoalInfo0),
             gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal,
@@ -227,7 +227,7 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
             ConjGoal = hlds_goal(ConjGoalExpr, GoalInfo0),
             Purity0 = goal_info_get_purity(GoalInfo0),
             GoalExpr = scope(promise_purity(Purity0), ConjGoal)
-        ;
+        else
             GoalExpr = if_then_else(Vars, CondGoal, ThenGoal, ElseGoal1)
         ),
         Goal = hlds_goal(GoalExpr, GoalInfo0)
@@ -265,14 +265,14 @@ disj_add_heap_ops([Goal0 | Goals0], DisjGoals, IsFirstBranch,
 
     % If needed, reset the heap pointer before executing the goal,
     % to reclaim heap space allocated in earlier branches.
-    (
+    ( if
         IsFirstBranch = is_not_first_disjunct,
         MaybeSavedHeapPointerVar = yes(SavedHeapPointerVar0)
-    ->
+    then
         gen_restore_hp(SavedHeapPointerVar0, Context, RestoreHeapPointerGoal,
             !Info),
         conj_list_to_goal([RestoreHeapPointerGoal, Goal1], GoalInfo, Goal)
-    ;
+    else
         Goal = Goal1
     ),
 
@@ -281,11 +281,11 @@ disj_add_heap_ops([Goal0 | Goals0], DisjGoals, IsFirstBranch,
     % - if this disjunct might allocate heap space, and
     % - if a next disjunct exists to give us a chance to recover
     %   that heap space.
-    (
+    ( if
         MaybeSavedHeapPointerVar = no,
         goal_may_allocate_heap(Goal),
         Goals0 = [_ | _]
-    ->
+    then
         % Generate code to save the heap pointer.
         new_saved_hp_var(SavedHeapPointerVar, !Info),
         gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info),
@@ -304,7 +304,7 @@ disj_add_heap_ops([Goal0 | Goals0], DisjGoals, IsFirstBranch,
         ScopeGoalExpr = scope(promise_purity(Purity), ConjGoal),
         ScopeGoal = hlds_goal(ScopeGoalExpr, DisjGoalInfo),
         DisjGoals = [ScopeGoal]
-    ;
+    else
         % Just recursively handle the remaining disjuncts.
         disj_add_heap_ops(Goals0, Goals, is_not_first_disjunct,
             MaybeSavedHeapPointerVar, DisjGoalInfo, !Info),
