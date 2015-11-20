@@ -48,10 +48,10 @@
 %               Result0 = succeeded(Y)
 %           ;
 %               Result0 = exception(Excp),
-%               ( Excp = univ(rollback_invalid_transaction) ->
+%               ( if Excp = univ(rollback_invalid_transaction) then
 %                   impure stm_discard_transaction_log(STM),
 %                   'StmExpanded_rollback_0_0_0'(X, Y)
-%               ; Excp = univ(rollback_retry) ->
+%               else if Excp = univ(rollback_retry) then
 %                   impure stm_lock,
 %                   impure stm_validate(STM, IsValid),
 %                   (
@@ -63,7 +63,7 @@
 %                   ),
 %                   impure stm_discard_trasaction_log(STM),
 %                   'StmExpanded_rollback_0_0_0'(X, Y)
-%               ;
+%               else
 %                   impure stm_lock,
 %                   impure stm_validate(STM, IsValid),
 %                   impure stm_unlock,
@@ -547,22 +547,22 @@ order_vars_into_groups_2(ModuleInfo, [Var|Vars], InitInstmap, FinalInstmap,
         !LocalVars, !InputVars, !OutputVars) :-
     instmap_lookup_var(InitInstmap, Var, InitVarInst),
     instmap_lookup_var(FinalInstmap, Var, FinalVarInst),
-    (
+    ( if
         inst_is_free(ModuleInfo, InitVarInst),
         inst_is_free(ModuleInfo, FinalVarInst)
-    ->
+    then
         !:LocalVars = [Var | !.LocalVars]
-    ;
+    else if
         inst_is_free(ModuleInfo, InitVarInst),
         inst_is_bound(ModuleInfo, FinalVarInst)
-    ->
+    then
         !:OutputVars = [Var | !.OutputVars]
-    ;
+    else if
         inst_is_bound(ModuleInfo, InitVarInst),
         inst_is_bound(ModuleInfo, FinalVarInst)
-    ->
+    then
         !:InputVars = [Var | !.InputVars]
-    ;
+    else
         unexpected($module, $pred, "unhandled inst case")
     ),
     order_vars_into_groups_2(ModuleInfo, Vars, InitInstmap, FinalInstmap,
@@ -600,17 +600,17 @@ copy_input_vars_in_goallist(GoalVar, !GoalList) :-
 
 calc_pred_variables_list(InitInstmap, FinalInstmap, Goals, InnerDIs, InnerUOs,
         IgnoreVarList0, StmGoalVarList, !StmInfo) :-
-    (
+    ( if
         Goals = [],
         InnerDIs = [],
         InnerUOs = []
-    ->
+    then
         StmGoalVarList = []
-    ;
+    else if
         Goals = [HeadGoal | TailGoals],
         InnerDIs = [HeadInnerDI | TailInnerDIs],
         InnerUOs = [HeadInnerUO | TailInnerUOs]
-    ->
+    then
         IgnoreVarList = [HeadInnerDI, HeadInnerUO | IgnoreVarList0],
 
         calc_pred_variables(InitInstmap, FinalInstmap, HeadGoal, HeadInnerDI,
@@ -619,7 +619,7 @@ calc_pred_variables_list(InitInstmap, FinalInstmap, Goals, InnerDIs, InnerUOs,
             TailInnerDIs, TailInnerUOs, IgnoreVarList, StmGoalVarList0,
             !StmInfo),
         StmGoalVarList = [StmGoalVar | StmGoalVarList0]
-    ;
+    else
         unexpected($module, $pred, "lengths mismatch")
     ).
 
@@ -669,23 +669,29 @@ calc_pred_variables(InitInstmap, FinalInstmap, Goal,
 	pair(maybe(prog_var), maybe(prog_var))::out) is det.
 
 remove_tail([], [], no - no, no - no).
-remove_tail([G | Gs], Goals, MaybeOutDI - MaybeOutUO, MaybeInDI - MaybeInUO) :-
-    remove_tail(Gs, Goals0, MaybeOutDI0 - MaybeOutUO0,
+remove_tail([HeadGoal0 | TailGoals0], Goals,
+        MaybeOutDI - MaybeOutUO, MaybeInDI - MaybeInUO) :-
+    remove_tail(TailGoals0, TailGoals, MaybeOutDI0 - MaybeOutUO0,
         MaybeInDI0 - MaybeInUO0),
-    ( G = hlds_goal(plain_call(_, _, [_, X, V], _, _, stm_outer_inner), _) ->
+    HeadGoal0 = hlds_goal(HeadGoalExpr0, _),
+    ( if
+        HeadGoalExpr0 = plain_call(_, _, [_, X, V], _, _, stm_outer_inner)
+    then
         MaybeInDI = yes(V),
         MaybeInUO = MaybeInUO0,
 		MaybeOutDI = yes(X),
 		MaybeOutUO = MaybeOutUO0,
-        Goals = Goals0
-    ; G = hlds_goal(plain_call(_, _, [_, V, X], _, _, stm_inner_outer), _) ->
+        Goals = TailGoals
+    else if
+        HeadGoalExpr0 = plain_call(_, _, [_, V, X], _, _, stm_inner_outer)
+    then
         MaybeInDI = MaybeInDI0,
         MaybeInUO = yes(V),
 		MaybeOutDI = MaybeOutDI0,
 		MaybeOutUO = yes(X),
-        Goals = Goals0
-    ;
-        Goals = [G | Goals0],
+        Goals = TailGoals
+    else
+        Goals = [HeadGoal0 | TailGoals],
         MaybeInDI = MaybeInDI0,
         MaybeInUO = MaybeInUO0,
         MaybeOutDI = MaybeOutDI0,
@@ -699,8 +705,7 @@ remove_tail([G | Gs], Goals, MaybeOutDI - MaybeOutUO, MaybeInDI - MaybeInUO) :-
     prog_var::out, prog_var::out, prog_var::out, prog_var::out) is det.
 
 strip_goal_calls(Goal0, Goal, StmOutDI, StmOutUO, StmInDI, StmInUO) :-
-    (
-        Goal0 = hlds_goal(conj(plain_conj, GoalList0), GoalInfo) ->
+    ( if Goal0 = hlds_goal(conj(plain_conj, GoalList0), GoalInfo) then
         (
             GoalList0 = [],
             unexpected($module, $pred, "empty conjunction")
@@ -711,22 +716,22 @@ strip_goal_calls(Goal0, Goal, StmOutDI, StmOutUO, StmInDI, StmInUO) :-
             MaybeInUO = snd(MaybeInVarPair),
             MaybeOutDI = fst(MaybeOutVarPair),
             MaybeOutUO = snd(MaybeOutVarPair),
-            (
+            ( if
                 MaybeInDI = yes(StmInDI0),
                 MaybeInUO = yes(StmInUO0),
                 MaybeOutDI = yes(StmOutDI0),
                 MaybeOutUO = yes(StmOutUO0)
-            ->
+            then
                 StmInDI = StmInDI0,
                 StmInUO = StmInUO0,
                 StmOutDI = StmOutDI0,
                 StmOutUO = StmOutUO0,
                 Goal = hlds_goal(conj(plain_conj, GoalList), GoalInfo)
-            ;
+            else
                 unexpected($module, $pred, "Vars not extracted")
             )
         )
-    ;
+    else
         unexpected($module, $pred, "atomic_goal not a conj")
     ).
 
@@ -869,12 +874,12 @@ create_top_level_pred(AtomicGoalVarList, OuterDI, OuterUO, AtomicGoal,
 
     % Predicate that creates the following goal:
     %
-    %       (
+    %       ( if
     %           X <- univ.univ(<<ExceptRes>>),
     %           X == << stm_rollback_exception_functor >>
-    %       ->
+    %       then
     %           << true_goal >>
-    %       ;
+    %       else
     %           << false_goal >>
     %       )
     %
@@ -1309,9 +1314,9 @@ move_variables_to_new_pred(AtomicGoal0, AtomicGoal, AtomicGoalVars,
         OldPredVarSet0, OldPredVarSet, OldPredVarTypes0, OldPredVarTypes,
         VarMapping0, VarMapping1),
 
-    ( OrigInnerDI = OrigInnerUO ->
+    ( if OrigInnerDI = OrigInnerUO then
         map.det_insert(OrigInnerDI, InnerDI, VarMapping1, VarMapping)
-    ;
+    else
         map.det_insert(OrigInnerDI, InnerDI, VarMapping1, VarMapping2),
         map.det_insert(OrigInnerUO, InnerUO, VarMapping2, VarMapping)
     ),
@@ -1411,11 +1416,11 @@ create_wrapper_pred_2(AtomicGoalVars, ResultType, ResultVar0,
     % (because of the uniqueness requirements of a number of calls added to
     % the end of the original goal)
 
-    ( InnerUO0 = InnerDI ->
+    ( if InnerUO0 = InnerDI then
         CopyStm = yes,
         create_aux_variable(stm_state_type, yes("NewUO"), InnerUO,
             !NewPredInfo)
-    ;
+    else
         CopyStm = no,
         InnerUO = InnerUO0
     ),
@@ -1559,11 +1564,11 @@ create_simple_wrapper_pred_2(AtomicGoalVars, ResultType, ResultVar0,
     % (because of the uniqueness requirements of a number of calls added to
     % the end of the original goal)
 
-    ( InnerUO0 = InnerDI ->
+    ( if InnerUO0 = InnerDI then
         CopyStm = yes,
         create_aux_variable(stm_state_type, yes("NewUO"), InnerUO,
             !NewPredInfo)
-    ;
+    else
         CopyStm = no,
         InnerUO = InnerUO0
     ),
@@ -1604,12 +1609,14 @@ create_simple_post_wrapper_goal(AtomicGoalVars, AtomicGoal, ResultType,
     create_probe_call("start_of_wrapper", StmUO, Call2, !NewPredInfo),
 
     % Creates the unification between StmUO and StmDI is needed.
-    ( CopySTM = yes ->
+    (
+        CopySTM = yes,
         create_var_unify(StmUO, StmDI, uo_mode - di_mode,
             CopySTMAssign, !NewPredInfo),
         TopLevelGoalList0 = Call1 ++ [CopySTMAssign, AtomicGoal] ++ Call2 ++
             AssignResult
     ;
+        CopySTM = no,
         TopLevelGoalList0 = Call1 ++ [AtomicGoal] ++ Call2 ++ AssignResult
     ),
 
@@ -1695,24 +1702,24 @@ create_or_else_pred_2(AtomicGoalVars, Closures, StmDI, StmUO, ReturnType,
 create_or_else_branches(AtomicGoalVars, ReturnType, OuterStmDIVar,
         OuterStmUOVar, InnerSTMVars, RttiVar, RollbackExceptionRttiVar,
         WrapperIDs, EndBranch, Goal, StmInfo, !NewPredInfo) :-
-    (
+    ( if
         InnerSTMVars = [],
         WrapperIDs = [],
         AtomicGoalVars = []
-    ->
+    then
         Goal = EndBranch
-    ;
+    else if
         AtomicGoalVars = [AGV | AGVs],
         InnerSTMVars = [InnerVar | InnerSTMVars0],
         WrapperIDs = [WrapID | WrapperIDs0]
-    ->
+    then
         create_or_else_branches(AGVs, ReturnType, OuterStmDIVar,
             OuterStmUOVar, InnerSTMVars0, RttiVar, RollbackExceptionRttiVar,
             WrapperIDs0, EndBranch, Goal0, StmInfo, !NewPredInfo),
         create_or_else_branch(AGV, ReturnType, OuterStmDIVar,
             OuterStmUOVar, InnerVar, RttiVar, RollbackExceptionRttiVar,
             WrapID, Goal0, Goal, StmInfo, !NewPredInfo)
-    ;
+    else
         unexpected($module, $pred, "mismatched lists")
     ).
 
@@ -1720,14 +1727,14 @@ create_or_else_branches(AtomicGoalVars, ReturnType, OuterStmDIVar,
     stm_new_pred_info::in, stm_new_pred_info::out) is det.
 
 create_or_else_inner_stm_vars(Count, Vars, !NewPredInfo) :-
-    ( Count = 0 ->
+    ( if Count = 0 then
         Vars = []
-    ; Count > 0 ->
+    else if Count > 0 then
         create_aux_variable(stm_state_type, yes("InnSTM"), Var, !NewPredInfo),
         Count1 = Count - 1,
         create_or_else_inner_stm_vars(Count1, Vars0, !NewPredInfo),
         Vars = [Var | Vars0]
-    ;
+    else
         unexpected($module, $pred, "negative count")
     ).
 
@@ -1740,9 +1747,9 @@ create_or_else_inner_stm_vars(Count, Vars, !NewPredInfo) :-
     %           impure stm_merge_nested_logs(InnerSTM, OuterSTM0, OuterSTM)
     %       ;
     %           ResultA = exception(Excp)
-    %           ( Excp = univ(rollback_retry) ->
+    %           ( if Excp = univ(rollback_retry) then
     %               << nested or_else branch >>
-    %           ;
+    %           else
     %               impure stm_discard_transaction_log(InnerSTM),
     %               rethrow(Result)
     %           )
@@ -1753,19 +1760,19 @@ create_or_else_inner_stm_vars(Count, Vars, !NewPredInfo) :-
     list(K)::in, list(L)::in, list(N)::out, A::in, A::out) is det.
 
 map2_in_foldl(Pred, Src1, Src2, Dest, !Accum) :-
-    (
+    ( if
         Src1 = [],
         Src2 = []
-    ->
+    then
         Dest = []
-    ;
+    else if
         Src1 = [S | Ss],
         Src2 = [T | Ts]
-    ->
+    then
         Pred(S, T, R, !Accum),
         map2_in_foldl(Pred, Ss, Ts,  Rs, !Accum),
         Dest = [R | Rs]
-    ;
+    else
         unexpected($module, $pred, "source list lengths mismatch")
     ).
 
@@ -1774,21 +1781,21 @@ map2_in_foldl(Pred, Src1, Src2, Dest, !Accum) :-
     list(K)::in, list(L)::in, list(M)::in, list(N)::out, A::in, A::out) is det.
 
 map3_in_foldl(Pred, Src1, Src2, Src3, Dest, !Accum) :-
-    (
+    ( if
         Src1 = [],
         Src2 = [],
         Src3 = []
-    ->
+    then
         Dest = []
-    ;
+    else if
         Src1 = [S | Ss],
         Src2 = [T | Ts],
         Src3 = [U | Us]
-    ->
+    then
         Pred(S, T, U, R, !Accum),
         map3_in_foldl(Pred, Ss, Ts, Us, Rs, !Accum),
         Dest = [R | Rs]
-    ;
+    else
         unexpected($module, $pred, "source list lengths mismatch")
     ).
 
@@ -1799,7 +1806,7 @@ map3_in_foldl(Pred, Src1, Src2, Src3, Dest, !Accum) :-
 create_or_else_end_branch(StmVars, OuterSTMDI, OuterSTMUO, ExceptionRttiVar,
         Goal, !NewPredInfo) :-
     MakeIntermediateStmVars =
-        (pred(_::in, Var::out, NPI0::in, NPI::out) is det:-
+        ( pred(_::in, Var::out, NPI0::in, NPI::out) is det:-
             create_aux_variable(stm_state_type, yes("InterSTM"), Var,
                 NPI0, NPI)
         ),
@@ -2095,9 +2102,9 @@ rename_var_in_wrapper_pred(Name, ResultVar0, ResultType, ResultVar,
     VarMapping = map.singleton(ResultVar0, ResultVar),
 
     MapLambda = ((pred(X::in, Y::out) is det) :-
-        ( X = ResultVar0 ->
+        ( if X = ResultVar0 then
             Y = ResultVar
-        ;
+        else
             Y = X
         )
     ),

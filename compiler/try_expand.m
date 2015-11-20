@@ -51,9 +51,9 @@
 %      magic_exception_result(TryResult),  % out(cannot_fail)
 %      (
 %          TryResult = succeeded({}),
-%          ( p(X, Y) ->
+%          ( if p(X, Y) then
 %              q(X, Y)
-%          ;
+%          else
 %              r
 %          )
 %      ;
@@ -73,9 +73,9 @@
 %      magic_exception_result(TryResult),  % out(cannot_fail)
 %      (
 %          TryResult = succeeded({}),
-%          ( <Goal> ->
+%          ( if <Goal> then
 %              <Then>
-%          ;
+%          else
 %              <Else>
 %          )
 %      ;
@@ -168,22 +168,22 @@
 % The <ExcpHandling> parts can be passed through from the pre-transformation.
 % If a `catch_any' is present the exception handling looks like this:
 %
-%      ( exc_univ_to_type(Excp, <CatchPattern1>) ->
+%      ( if exc_univ_to_type(Excp, <CatchPattern1>) then
 %          <CatchGoal1>
-%      ; exc_univ_to_type(Excp, <CatchPattern2>) ->
+%      else if exc_univ_to_type(Excp, <CatchPattern2>) then
 %          <CatchGoal2>
-%      ;
+%      else
 %          CatchAnyVar = exc_univ_value(Excp),
 %          <CatchAnyGoal>
 %      )
 %
 % Otherwise, if `catch_any' is not present:
 %
-%      ( exc_univ_to_type(Excp, <CatchPattern1>) ->
+%      ( if exc_univ_to_type(Excp, <CatchPattern1>) then
 %          <CatchGoal1>
-%      ; exc_univ_to_type(Excp, <CatchPattern2>) ->
+%      else if exc_univ_to_type(Excp, <CatchPattern2>) then
 %          <CatchGoal2>
-%      ;
+%      else
 %          rethrow(TryResult)
 %      )
 %
@@ -252,7 +252,7 @@ expand_try_goals_in_module(!ModuleInfo, !Specs) :-
     % so if the exception module is not imported, then we know there are
     % no try goals to be expanded.
     module_info_get_avail_module_map(!.ModuleInfo, AvailModuleMap),
-    ( map.search(AvailModuleMap, mercury_exception_module, _) ->
+    ( if map.search(AvailModuleMap, mercury_exception_module, _) then
         some [!Globals] (
             module_info_get_globals(!.ModuleInfo, !:Globals),
             disable_det_warnings(OptionsToRestore, !Globals),
@@ -266,7 +266,7 @@ expand_try_goals_in_module(!ModuleInfo, !Specs) :-
             restore_det_warnings(OptionsToRestore, !Globals),
             module_info_set_globals(!.Globals, !ModuleInfo)
         )
-    ;
+    else
         true
     ).
 
@@ -647,16 +647,16 @@ expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
 
 extract_intermediate_goal_parts(ModuleInfo, ResultVar, IntermediateGoal,
         Goal, Then, MaybeElse, ExcpHandling) :-
-    (
+    ( if
         extract_intermediate_goal_parts_2(ModuleInfo, ResultVar,
             IntermediateGoal, GoalPrime, ThenPrime, MaybeElsePrime,
             ExcpHandlingPrime)
-    ->
+    then
         Goal = GoalPrime,
         Then = ThenPrime,
         MaybeElse = MaybeElsePrime,
         ExcpHandling = ExcpHandlingPrime
-    ;
+    else if
         % This form should only be encountered if there was an error in the
         % program, when the inner goal may fail, in a context where it must not
         % fail.  Compilation doesn't stop immediately after determinism
@@ -665,12 +665,12 @@ extract_intermediate_goal_parts(ModuleInfo, ResultVar, IntermediateGoal,
         extract_intermediate_goal_parts_2(ModuleInfo, ResultVar,
             ScopedGoal, GoalPrime, ThenPrime, MaybeElsePrime,
             ExcpHandlingPrime)
-    ->
+    then
         Goal = GoalPrime,
         Then = ThenPrime,
         MaybeElse = MaybeElsePrime,
         ExcpHandling = ExcpHandlingPrime
-    ;
+    else
         unexpected($module, $pred, "unexpected goal form")
     ).
 
@@ -699,9 +699,9 @@ extract_intermediate_goal_parts_2(ModuleInfo, ResultVar, IntermediateGoal,
     %
     %      TryResult = exception.succeeded(V),
     %      V = {},
-    %      ( Goal ->
+    %      ( if Goal then
     %          Then
-    %      ;
+    %      else
     %          Else
     %      ),
     %      Rest
@@ -725,10 +725,10 @@ extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
     TestNullTuple = hlds_goal(unify(_, TestRHS, _, _, _), _),
     TestRHS = rhs_functor(tuple_cons(0), is_not_exist_constr, []),
 
-    (
+    ( if
         Conjuncts1 = [hlds_goal(IfThenElse, _) | Rest],
         IfThenElse = if_then_else(_, GoalPrime, Then0, Else0)
-    ->
+    then
         Goal = GoalPrime,
 
         % If Goal is erroneous the Then part may have been optimised away to
@@ -752,16 +752,16 @@ extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
 
         conjoin_goal_and_goal_list(Else0, Rest, Else),
         MaybeElse = yes(Else)
-    ;
+    else
         Conjuncts1 = [SomeGoal | AfterSomeGoal],
         SomeGoal = hlds_goal(scope(exist_quant([]), Goal), _),
-        (
+        ( if
             AfterSomeGoal = [SomeThen | Rest],
             SomeThen = hlds_goal(scope(exist_quant([]), Then0), _)
-        ->
+        then
             conjoin_goal_and_goal_list(Then0, Rest, Then),
             MaybeElse = no
-        ;
+        else
             % If "some [] Then" is missing then "some [] Goal" must be
             % `erroneous'.  Make the Then part into a call to an erroneous
             % procedure.
@@ -786,11 +786,11 @@ extract_from_succeeded_goal(ModuleInfo, SucceededGoal, Goal, Then,
 
 lookup_case_goal([], ConsId, _) :-
     unexpected($module, $pred, "couldn't find " ++ string(ConsId)).
-lookup_case_goal([H | T], ConsId, Goal) :-
-    ( H = case(ConsId, [], GoalPrime) ->
+lookup_case_goal([Case | Cases], ConsId, Goal) :-
+    ( if Case = case(ConsId, [], GoalPrime) then
         Goal = GoalPrime
-    ;
-        lookup_case_goal(T, ConsId, Goal)
+    else
+        lookup_case_goal(Cases, ConsId, Goal)
     ).
 
 :- pred bound_nonlocals_in_goal(module_info::in, instmap::in, hlds_goal::in,
@@ -930,17 +930,17 @@ make_unreachable_call(ModuleInfo, Goal) :-
 make_output_tuple_inst_cast(TmpTupleVar, TupleVar, TupleArgInsts,
         CastOrUnify) :-
     % If all the arguments have inst `ground' then a unification is enough.
-    (
+    ( if
         list.member(ArgInst, TupleArgInsts),
         ArgInst \= ground(_, none_or_default_func)
-    ->
+    then
         TupleArity = list.length(TupleArgInsts),
         TupleInst = bound(shared, inst_test_no_results, [
             bound_functor(tuple_cons(TupleArity), TupleArgInsts)
         ]),
         generate_cast_with_insts(unsafe_type_inst_cast, TmpTupleVar, TupleVar,
             ground_inst, TupleInst, term.context_init, CastOrUnify)
-    ;
+    else
         create_pure_atomic_complicated_unification(TupleVar,
             rhs_var(TmpTupleVar), term.context_init,
             umc_implicit("try_expand"), [], CastOrUnify)
