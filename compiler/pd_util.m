@@ -162,6 +162,7 @@
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.det_report.
 :- import_module check_hlds.det_util.
+:- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_info.

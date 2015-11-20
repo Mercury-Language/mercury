@@ -169,6 +169,28 @@
 
 %-----------------------------------------------------------------------------%
 
+    % inst_contains_nondefault_func_mode(Inst, ModuleInfo) succeeds iff the
+    % inst contains a higher-order function inst that does not match the
+    % default function mode `(in, ..., in) = out is det'.
+    % E.g. this predicate fails for "func(in) = uo" because that matches the
+    % default func mode "func(in) = out", even though it isn't the same as
+    % the default func mode.
+    %
+:- pred inst_contains_nondefault_func_mode(module_info::in, mer_inst::in)
+    is semidet.
+
+    % Succeed iff the second argument is not a function ho_inst_info
+    % whose mode does not match the default func mode.
+    %
+:- pred ho_inst_info_matches_ground(module_info::in, ho_inst_info::in)
+    is semidet.
+
+    % Succeed iff the second argument is not a function pred_inst_info
+    % whose mode does not match the default func mode.
+    %
+:- pred pred_inst_matches_ground(module_info::in, pred_inst_info::in)
+    is semidet.
+
     % pred_inst_matches(PredInstA, PredInstB, ModuleInfo)
     %
     % Succeeds if PredInstA specifies a pred that can be used wherever and
@@ -722,8 +744,7 @@ greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
 ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
     (
         HOInstInfoB = none_or_default_func,
-        not ho_inst_info_is_nondefault_func_mode(!.Info ^ imi_module_info,
-            HOInstInfoA)
+        ho_inst_info_matches_ground_2(HOInstInfoA, MaybeType, !Info)
     ;
         HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
@@ -735,78 +756,6 @@ ho_inst_info_matches_initial(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
         HOInstInfoA = higher_order(PredInstA),
         HOInstInfoB = higher_order(PredInstB),
         pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info)
-    ).
-
-pred_inst_matches(PredInstA, PredInstB, ModuleInfo) :-
-    pred_inst_matches_mt(PredInstA, PredInstB, no, ModuleInfo).
-
-:- pred pred_inst_matches_mt(pred_inst_info::in, pred_inst_info::in,
-    maybe(mer_type)::in, module_info::in) is semidet.
-
-pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo) :-
-    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
-        ground_matches_bound_if_complete),
-    pred_inst_matches_2(PredInstA, PredInstB, MaybeType, Info0, _).
-
-    % pred_inst_matches_2(PredInstA, PredInstB, !Info)
-    %
-    % Same as pred_inst_matches/3, except that it updates the inst_var_sub
-    % in the inst_match_info, and that any inst pairs in !.Info ^ expansions
-    % are assumed to match_final each other. (This avoids infinite loops
-    % when calling inst_matches_final on higher-order recursive insts.)
-    %
-:- pred pred_inst_matches_2(pred_inst_info::in, pred_inst_info::in,
-    maybe(mer_type)::in, inst_match_info::in, inst_match_info::out) is semidet.
-
-pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info) :-
-    % In the float_regs.m pass a variable may take on pred insts which differ
-    % only in the arg reg lists in different branches. They should be allowed
-    % to match here.
-    PredInstA = pred_inst_info(PredOrFunc, ModesA, _MaybeArgRegsA, Det),
-    PredInstB = pred_inst_info(PredOrFunc, ModesB, _MaybeArgRegsB, Det),
-    maybe_get_higher_order_arg_types(MaybeType, length(ModesA), MaybeTypes),
-    pred_inst_argmodes_matches(ModesA, ModesB, MaybeTypes, !Info).
-
-    % pred_inst_argmodes_matches(ModesA, ModesB, MaybeTypes, !Info):
-    %
-    % succeeds if the initial insts of ModesB specify at least as much
-    % information as, and the same binding as, the initial insts of ModesA;
-    % and the final insts of ModesA specify at least as much information as,
-    % and the same binding as, the final insts of ModesB. Any inst pairs
-    % in Inst0 ^ expansions are assumed to match_final each other.
-    %
-    % (In other words, as far as subtyping goes it is contravariant in
-    % the initial insts, and covariant in the final insts;
-    % as far as binding goes, it is invariant for both.)
-    %
-:- pred pred_inst_argmodes_matches(list(mer_mode)::in, list(mer_mode)::in,
-    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
-    is semidet.
-
-pred_inst_argmodes_matches([], [], [], !Info).
-pred_inst_argmodes_matches([ModeA | ModeAs], [ModeB | ModeBs],
-        [MaybeType | MaybeTypes], !Info) :-
-    ModuleInfo = !.Info ^ imi_module_info,
-    mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA0),
-    mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB),
-    % inst_matches_final_mt should probably just accept cs_reverse directly.
-    swap_sub(inst_matches_final_mt(InitialB, InitialA, MaybeType), !Info),
-    % Apply the substitution computed so far (it may be necessary for InitialA
-    % as well).
-    maybe_apply_substitution(!.Info, FinalA0, FinalA),
-    inst_matches_final_mt(FinalA, FinalB, MaybeType, !Info),
-    pred_inst_argmodes_matches(ModeAs, ModeBs, MaybeTypes, !Info).
-
-:- pred maybe_apply_substitution(inst_match_info::in,
-    mer_inst::in, mer_inst::out) is det.
-
-maybe_apply_substitution(Info, Inst0, Inst) :-
-    (
-        Info ^ imi_maybe_sub = yes(Subst),
-        inst_apply_substitution(Subst, Inst0, Inst)
-    ;
-        Info ^ imi_maybe_sub = no,
-        Inst = Inst0
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1017,9 +966,9 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
     ;
         InstA = ground(UniqA, HOInstInfoA),
         InstB = bound(UniqB, InstResultsB, BoundInstsB),
-        ModuleInfo = !.Info ^ imi_module_info,
-        not ho_inst_info_is_nondefault_func_mode(ModuleInfo, HOInstInfoA),
+        ho_inst_info_matches_ground_2(HOInstInfoA, MaybeType, !Info),
         unique_matches_final(UniqA, UniqB),
+        ModuleInfo = !.Info ^ imi_module_info,
         inst_results_bound_inst_list_is_ground_mt(InstResultsB, BoundInstsB,
             MaybeType, ModuleInfo),
         uniq_matches_bound_inst_list(UniqA, BoundInstsB, ModuleInfo),
@@ -1069,8 +1018,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
 ho_inst_info_matches_final(HOInstInfoA, HOInstInfoB, MaybeType, !Info) :-
     (
         HOInstInfoB = none_or_default_func,
-        not ho_inst_info_is_nondefault_func_mode(!.Info ^ imi_module_info,
-            HOInstInfoA)
+        ho_inst_info_matches_ground_2(HOInstInfoA, MaybeType, !Info)
     ;
         HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
@@ -1304,6 +1252,218 @@ bound_inst_list_matches_binding([X | Xs], [Y | Ys], MaybeType, !Info) :-
         % of ConsIdY, and hence automatically matches_binding Y. We just
         % need to check that [X | Xs] matches_binding Ys.
         bound_inst_list_matches_binding([X | Xs], Ys, MaybeType, !Info)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+inst_contains_nondefault_func_mode(ModuleInfo, Inst) :-
+    set.init(Expansions0),
+    Info = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
+        ground_matches_bound_if_complete),
+    inst_contains_nondefault_func_mode_2(Inst, Expansions0, yes, Info, _).
+
+:- pred inst_contains_nondefault_func_mode_2(mer_inst::in, set(inst_name)::in,
+    bool::out, inst_match_info::in, inst_match_info::out) is det.
+
+inst_contains_nondefault_func_mode_2(Inst, !.Expansions, ContainsNonstd,
+        !Info) :-
+    (
+        Inst = ground(_, HOInstInfo),
+        ( if ho_inst_info_matches_ground_2(HOInstInfo, no, !Info) then
+            ContainsNonstd = no
+        else
+            ContainsNonstd = yes
+        )
+    ;
+        Inst = bound(_, InstResults, BoundInsts),
+        (
+            InstResults = inst_test_results_fgtc,
+            ContainsNonstd = no
+        ;
+            ( InstResults = inst_test_results(_, _, _, _, _, _)
+            ; InstResults = inst_test_no_results
+            ),
+            bound_inst_list_contains_nondefault_func_mode(BoundInsts,
+                !.Expansions, ContainsNonstd, !Info)
+        )
+    ;
+        Inst = inst_var(_),
+        unexpected($module, $pred, "uninstantiated inst parameter")
+    ;
+        Inst = defined_inst(InstName),
+        ( if set.member(InstName, !.Expansions) then
+            ContainsNonstd = no
+        else
+            set.insert(InstName, !Expansions),
+            inst_lookup(!.Info ^ imi_module_info, InstName, SubInst),
+            inst_contains_nondefault_func_mode_2(SubInst, !.Expansions,
+                ContainsNonstd, !Info)
+        )
+    ;
+        Inst = constrained_inst_vars(_, SubInst),
+        inst_contains_nondefault_func_mode_2(SubInst, !.Expansions,
+            ContainsNonstd, !Info)
+    ;
+        ( Inst = free
+        ; Inst = free(_)
+        ; Inst = not_reached
+        ; Inst = abstract_inst(_, _)
+        ),
+        ContainsNonstd = no
+    ;
+        Inst = any(_, _),
+        % XXX This code preserves the old behavior of the predicate that
+        % preceded this function, but it is arguably incorrect, since
+        % any/2 insts, like ground/2 insts, contain a ho_inst_info.
+        ContainsNonstd = no
+    ).
+
+:- pred inst_list_contains_nondefault_func_mode(list(mer_inst)::in,
+    set(inst_name)::in, bool::out, inst_match_info::in, inst_match_info::out)
+    is det.
+
+inst_list_contains_nondefault_func_mode([], _Expansions, no, !Info).
+inst_list_contains_nondefault_func_mode([Inst | Insts], Expansions,
+        ContainsNonstd, !Info) :-
+    inst_contains_nondefault_func_mode_2(Inst, Expansions, HeadContainsNonstd,
+        !Info),
+    (
+        HeadContainsNonstd = yes,
+        ContainsNonstd = yes
+    ;
+        HeadContainsNonstd = no,
+        inst_list_contains_nondefault_func_mode(Insts, Expansions,
+            ContainsNonstd, !Info)
+    ).
+
+:- pred bound_inst_list_contains_nondefault_func_mode(list(bound_inst)::in,
+    set(inst_name)::in, bool::out, inst_match_info::in, inst_match_info::out)
+    is det.
+
+bound_inst_list_contains_nondefault_func_mode([], _Expansions, no, !Info).
+bound_inst_list_contains_nondefault_func_mode([BoundInst | BoundInsts],
+        Expansions, ContainsNonstd, !Info) :-
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_contains_nondefault_func_mode(ArgInsts, Expansions,
+        HeadContainsNonstd, !Info),
+    (
+        HeadContainsNonstd = yes,
+        ContainsNonstd = yes
+    ;
+        HeadContainsNonstd = no,
+        bound_inst_list_contains_nondefault_func_mode(BoundInsts, Expansions,
+            ContainsNonstd, !Info)
+    ).
+
+%---------------------------------------------------------------------------%
+
+ho_inst_info_matches_ground(ModuleInfo, HOInstInfo) :-
+    Info = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
+        ground_matches_bound_if_complete),
+    ho_inst_info_matches_ground_2(HOInstInfo, no, Info, _).
+
+:- pred ho_inst_info_matches_ground_2(ho_inst_info::in, maybe(mer_type)::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
+
+ho_inst_info_matches_ground_2(HOInstInfo, MaybeType, !Info) :-
+    (
+        HOInstInfo = higher_order(PredInst),
+        pred_inst_matches_ground_2(PredInst, MaybeType, !Info)
+    ;
+        HOInstInfo = none_or_default_func
+    ).
+
+pred_inst_matches_ground(ModuleInfo, PredInst) :-
+    Info = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
+        ground_matches_bound_if_complete),
+    pred_inst_matches_ground_2(PredInst, no, Info, _).
+
+:- pred pred_inst_matches_ground_2(pred_inst_info::in, maybe(mer_type)::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
+
+pred_inst_matches_ground_2(PredInst, MaybeType, !Info) :-
+    PredInst = pred_inst_info(PredOrFunc, ArgModes, _, _),
+    (
+        PredOrFunc = pf_predicate
+    ;
+        PredOrFunc = pf_function,
+        Arity = list.length(ArgModes),
+        DefaultFunc = pred_inst_info_default_func_mode(Arity),
+        pred_inst_matches_2(PredInst, DefaultFunc, MaybeType, !Info)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+pred_inst_matches(PredInstA, PredInstB, ModuleInfo) :-
+    pred_inst_matches_mt(PredInstA, PredInstB, no, ModuleInfo).
+
+:- pred pred_inst_matches_mt(pred_inst_info::in, pred_inst_info::in,
+    maybe(mer_type)::in, module_info::in) is semidet.
+
+pred_inst_matches_mt(PredInstA, PredInstB, MaybeType, ModuleInfo) :-
+    Info0 = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
+        ground_matches_bound_if_complete),
+    pred_inst_matches_2(PredInstA, PredInstB, MaybeType, Info0, _).
+
+    % pred_inst_matches_2(PredInstA, PredInstB, !Info)
+    %
+    % Same as pred_inst_matches/3, except that it updates the inst_var_sub
+    % in the inst_match_info, and that any inst pairs in !.Info ^ expansions
+    % are assumed to match_final each other. (This avoids infinite loops
+    % when calling inst_matches_final on higher-order recursive insts.)
+    %
+:- pred pred_inst_matches_2(pred_inst_info::in, pred_inst_info::in,
+    maybe(mer_type)::in, inst_match_info::in, inst_match_info::out) is semidet.
+
+pred_inst_matches_2(PredInstA, PredInstB, MaybeType, !Info) :-
+    % In the float_regs.m pass a variable may take on pred insts which differ
+    % only in the arg reg lists in different branches. They should be allowed
+    % to match here.
+    PredInstA = pred_inst_info(PredOrFunc, ModesA, _MaybeArgRegsA, Det),
+    PredInstB = pred_inst_info(PredOrFunc, ModesB, _MaybeArgRegsB, Det),
+    maybe_get_higher_order_arg_types(MaybeType, length(ModesA), MaybeTypes),
+    pred_inst_argmodes_matches(ModesA, ModesB, MaybeTypes, !Info).
+
+    % pred_inst_argmodes_matches(ModesA, ModesB, MaybeTypes, !Info):
+    %
+    % succeeds if the initial insts of ModesB specify at least as much
+    % information as, and the same binding as, the initial insts of ModesA;
+    % and the final insts of ModesA specify at least as much information as,
+    % and the same binding as, the final insts of ModesB. Any inst pairs
+    % in Inst0 ^ expansions are assumed to match_final each other.
+    %
+    % (In other words, as far as subtyping goes it is contravariant in
+    % the initial insts, and covariant in the final insts;
+    % as far as binding goes, it is invariant for both.)
+    %
+:- pred pred_inst_argmodes_matches(list(mer_mode)::in, list(mer_mode)::in,
+    list(maybe(mer_type))::in, inst_match_info::in, inst_match_info::out)
+    is semidet.
+
+pred_inst_argmodes_matches([], [], [], !Info).
+pred_inst_argmodes_matches([ModeA | ModeAs], [ModeB | ModeBs],
+        [MaybeType | MaybeTypes], !Info) :-
+    ModuleInfo = !.Info ^ imi_module_info,
+    mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA0),
+    mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB),
+    % inst_matches_final_mt should probably just accept cs_reverse directly.
+    swap_sub(inst_matches_final_mt(InitialB, InitialA, MaybeType), !Info),
+    % Apply the substitution computed so far (it may be necessary for InitialA
+    % as well).
+    maybe_apply_substitution(!.Info, FinalA0, FinalA),
+    inst_matches_final_mt(FinalA, FinalB, MaybeType, !Info),
+    pred_inst_argmodes_matches(ModeAs, ModeBs, MaybeTypes, !Info).
+
+:- pred maybe_apply_substitution(inst_match_info::in,
+    mer_inst::in, mer_inst::out) is det.
+
+maybe_apply_substitution(Info, Inst0, Inst) :-
+    (
+        Info ^ imi_maybe_sub = yes(Subst),
+        inst_apply_substitution(Subst, Inst0, Inst)
+    ;
+        Info ^ imi_maybe_sub = no,
+        Inst = Inst0
     ).
 
 %-----------------------------------------------------------------------------%

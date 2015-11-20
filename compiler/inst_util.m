@@ -118,16 +118,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % inst_contains_nondefault_func_mode(Inst, ModuleInfo) succeeds iff the
-    % inst contains a higher-order function inst that does not match the
-    % default function mode `(in, ..., in) = out is det'.
-    % E.g. this predicate fails for "func(in) = uo" because that matches the
-    % default func mode "func(in) = out", even though it isn't the same as
-    % the default func mode.
-    %
-:- pred inst_contains_nondefault_func_mode(module_info::in, mer_inst::in)
-    is semidet.
-
     % Succeed iff the inst is any or contains any.
     %
 :- pred inst_contains_any(module_info::in, mer_inst::in) is semidet.
@@ -136,18 +126,6 @@
     %
 :- pred var_inst_contains_any(module_info::in, instmap::in, prog_var::in)
     is semidet.
-
-    % Succeed iff the first argument is a function pred_inst_info
-    % whose mode does not match the default func mode.
-    %
-:- pred pred_inst_info_is_nondefault_func_mode(module_info::in,
-    pred_inst_info::in) is semidet.
-
-    % Succeed iff the first argument is a function ho_inst_info
-    % whose mode does not match the default func mode.
-    %
-:- pred ho_inst_info_is_nondefault_func_mode(module_info::in,
-    ho_inst_info::in) is semidet.
 
     % Return the default mode for a function of the given arity.
     %
@@ -2015,13 +1993,13 @@ merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo) :-
         else
             % If either is a function inst with non-default modes,
             % don't allow the higher-order information to be lost.
-            not pred_inst_info_is_nondefault_func_mode(!.ModuleInfo, PredA),
-            not pred_inst_info_is_nondefault_func_mode(!.ModuleInfo, PredB),
+            pred_inst_matches_ground(!.ModuleInfo, PredA),
+            pred_inst_matches_ground(!.ModuleInfo, PredB),
             HOInstInfo = none_or_default_func
         )
     else
-        not ho_inst_info_is_nondefault_func_mode(!.ModuleInfo, HOInstInfoA),
-        not ho_inst_info_is_nondefault_func_mode(!.ModuleInfo, HOInstInfoB),
+        ho_inst_info_matches_ground(!.ModuleInfo, HOInstInfoA),
+        ho_inst_info_matches_ground(!.ModuleInfo, HOInstInfoB),
         HOInstInfo = none_or_default_func
     ).
 
@@ -2201,123 +2179,6 @@ bound_inst_list_merge(BoundInstsA, BoundInstsB, MaybeType, BoundInsts,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-inst_contains_nondefault_func_mode(ModuleInfo, Inst) :-
-    set.init(Expansions0),
-    inst_contains_nondefault_func_mode_2(ModuleInfo, Inst, Expansions0) = yes.
-
-:- func inst_contains_nondefault_func_mode_2(module_info, mer_inst,
-    set(inst_name)) = bool.
-
-inst_contains_nondefault_func_mode_2(ModuleInfo, Inst, !.Expansions)
-        = ContainsNonstd :-
-    (
-        Inst = ground(_, HOInstInfo),
-        ( if ho_inst_info_is_nondefault_func_mode(ModuleInfo, HOInstInfo) then
-            ContainsNonstd = yes
-        else
-            ContainsNonstd = no
-        )
-    ;
-        Inst = bound(_, InstResults, BoundInsts),
-        (
-            InstResults = inst_test_results_fgtc,
-            ContainsNonstd = no
-        ;
-            ( InstResults = inst_test_results(_, _, _, _, _, _)
-            ; InstResults = inst_test_no_results
-            ),
-            ContainsNonstd = bound_inst_list_contains_nondefault_func_mode(
-                ModuleInfo, BoundInsts, !.Expansions)
-        )
-    ;
-        Inst = inst_var(_),
-        unexpected($module, $pred, "uninstantiated inst parameter")
-    ;
-        Inst = defined_inst(InstName),
-        ( if set.member(InstName, !.Expansions) then
-            ContainsNonstd = no
-        else
-            set.insert(InstName, !Expansions),
-            inst_lookup(ModuleInfo, InstName, SubInst),
-            ContainsNonstd = inst_contains_nondefault_func_mode_2(ModuleInfo,
-                SubInst, !.Expansions)
-        )
-    ;
-        Inst = constrained_inst_vars(_, SubInst),
-        ContainsNonstd = inst_contains_nondefault_func_mode_2(ModuleInfo,
-            SubInst, !.Expansions)
-    ;
-        ( Inst = free
-        ; Inst = free(_)
-        ; Inst = not_reached
-        ; Inst = abstract_inst(_, _)
-        ),
-        ContainsNonstd = no
-    ;
-        Inst = any(_, _),
-        % XXX This code preserves the old behavior of the predicate that
-        % preceded this function, but it is arguably incorrect, since
-        % any/2 insts, like ground/2 insts, contain a ho_inst_info.
-        ContainsNonstd = no
-    ).
-
-:- func inst_list_contains_nondefault_func_mode(module_info, list(mer_inst),
-    set(inst_name)) = bool.
-
-inst_list_contains_nondefault_func_mode(_ModuleInfo, [], _Expansions) = no.
-inst_list_contains_nondefault_func_mode(ModuleInfo, [Inst | Insts],
-        Expansions) = ContainsNonstd :-
-    HeadContainsNonstd = inst_contains_nondefault_func_mode_2(ModuleInfo,
-        Inst, Expansions),
-    (
-        HeadContainsNonstd = yes,
-        ContainsNonstd = yes
-    ;
-        HeadContainsNonstd = no,
-        ContainsNonstd = inst_list_contains_nondefault_func_mode(ModuleInfo,
-            Insts, Expansions)
-    ).
-
-:- func bound_inst_list_contains_nondefault_func_mode(module_info,
-    list(bound_inst), set(inst_name)) = bool.
-
-bound_inst_list_contains_nondefault_func_mode(_ModuleInfo, [], _Expansions)
-        = no.
-bound_inst_list_contains_nondefault_func_mode(ModuleInfo,
-        [BoundInst | BoundInsts], Expansions) = ContainsNonstd :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
-    HeadContainsNonstd = inst_list_contains_nondefault_func_mode(ModuleInfo,
-        ArgInsts, Expansions),
-    (
-        HeadContainsNonstd = yes,
-        ContainsNonstd = yes
-    ;
-        HeadContainsNonstd = no,
-        ContainsNonstd = bound_inst_list_contains_nondefault_func_mode(
-            ModuleInfo, BoundInsts, Expansions)
-    ).
-
-%---------------------------------------------------------------------------%
-
-pred_inst_info_is_nondefault_func_mode(ModuleInfo, PredInstInfo) :-
-    PredInstInfo = pred_inst_info(pf_function, ArgModes, _, _),
-    Arity = list.length(ArgModes),
-    not pred_inst_matches(PredInstInfo,
-        pred_inst_info_default_func_mode(Arity), ModuleInfo).
-
-ho_inst_info_is_nondefault_func_mode(ModuleInfo, HOInstInfo) :-
-    HOInstInfo = higher_order(PredInstInfo),
-    pred_inst_info_is_nondefault_func_mode(ModuleInfo, PredInstInfo).
-
-pred_inst_info_default_func_mode(Arity) = PredInstInfo :-
-    in_mode(InMode),
-    out_mode(OutMode),
-    ArgModes = list.duplicate(Arity - 1, InMode) ++ [OutMode],
-    PredInstInfo = pred_inst_info(pf_function, ArgModes, arg_reg_types_unset,
-        detism_det).
-
-%---------------------------------------------------------------------------%
-
 inst_contains_any(ModuleInfo, Inst) :-
     set.init(Expansions),
     inst_contains_any_2(ModuleInfo, Inst, Expansions) = yes.
@@ -2414,6 +2275,15 @@ bound_inst_list_contains_any(ModuleInfo, [BoundInst | BoundInsts],
 var_inst_contains_any(ModuleInfo, Instmap, Var) :-
     instmap_lookup_var(Instmap, Var, Inst),
     inst_contains_any(ModuleInfo, Inst).
+
+%---------------------------------------------------------------------------%
+
+pred_inst_info_default_func_mode(Arity) = PredInstInfo :-
+    in_mode(InMode),
+    out_mode(OutMode),
+    ArgModes = list.duplicate(Arity - 1, InMode) ++ [OutMode],
+    PredInstInfo = pred_inst_info(pf_function, ArgModes, arg_reg_types_unset,
+        detism_det).
 
 %---------------------------------------------------------------------------%
 
