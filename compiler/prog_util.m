@@ -309,25 +309,10 @@ rename_in_goal(OldVar, NewVar, Goal0, Goal) :-
         rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
         Goal = not_expr(Context, SubGoal)
     ;
-        Goal0 = some_expr(Context, Vars0, SubGoal0),
+        Goal0 = quant_expr(QuantType, QuantVarsKind, Context, Vars0, SubGoal0),
         rename_in_vars(OldVar, NewVar, Vars0, Vars),
         rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
-        Goal = some_expr(Context, Vars, SubGoal)
-    ;
-        Goal0 = some_state_vars_expr(Context, Vars0, SubGoal0),
-        rename_in_vars(OldVar, NewVar, Vars0, Vars),
-        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
-        Goal = some_state_vars_expr(Context, Vars, SubGoal)
-    ;
-        Goal0 = all_expr(Context, Vars0, SubGoal0),
-        rename_in_vars(OldVar, NewVar, Vars0, Vars),
-        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
-        Goal = all_expr(Context, Vars, SubGoal)
-    ;
-        Goal0 = all_state_vars_expr(Context, Vars0, SubGoal0),
-        rename_in_vars(OldVar, NewVar, Vars0, Vars),
-        rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
-        Goal = all_state_vars_expr(Context, Vars, SubGoal)
+        Goal = quant_expr(QuantType, QuantVarsKind, Context, Vars, SubGoal)
     ;
         Goal0 = promise_purity_expr(Context, Purity, SubGoal0),
         rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),

@@ -340,10 +340,7 @@ collect_used_modules_in_promise_goal(Goal, !UsedModuleNames, !FoundUnqual) :-
         )
     ;
         ( Goal = not_expr(_, SubGoal)
-        ; Goal = some_expr(_, _, SubGoal)
-        ; Goal = some_state_vars_expr(_, _, SubGoal)
-        ; Goal = all_expr(_, _, SubGoal)
-        ; Goal = all_state_vars_expr(_, _, SubGoal)
+        ; Goal = quant_expr(_, _, _, _, SubGoal)
         ; Goal = promise_purity_expr(_, _, SubGoal)
         ; Goal = promise_equivalent_solutions_expr(_, _, _, _, _, SubGoal)
         ; Goal = promise_equivalent_solution_sets_expr(_, _, _, _, _, SubGoal)

@@ -574,10 +574,7 @@ gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds) :-
         gather_implicit_import_needs_in_goal(SubGoalB, !ImplicitImportNeeds)
     ;
         ( Goal = not_expr(_, SubGoal)
-        ; Goal = some_expr(_, _Vars, SubGoal)
-        ; Goal = all_expr(_, _Vars, SubGoal)
-        ; Goal = some_state_vars_expr(_, _Vars, SubGoal)
-        ; Goal = all_state_vars_expr(_, _Vars, SubGoal)
+        ; Goal = quant_expr(_, _, _, _Vars, SubGoal)
         ; Goal = promise_purity_expr(_, _Purity, SubGoal)
         ; Goal = promise_equivalent_solutions_expr(_, _OrdVars,
             _StateVars, _DotVars, _ColonVars, SubGoal)

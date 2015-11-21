@@ -1714,7 +1714,10 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
         (
             MaybeGoal0 = ok1(Goal0),
             PromiseType = promise_type_true,
-            ( if Goal0 = all_expr(_, UnivVars0, AllGoal) then
+            ( if
+                Goal0 = quant_expr(quant_all, quant_ordinary_vars, _,
+                    UnivVars0, AllGoal)
+            then
                 UnivVars0 = UnivVars,
                 Goal = AllGoal
             else

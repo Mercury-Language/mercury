@@ -1131,7 +1131,8 @@ mercury_output_item_promise(_, ItemPromise, !IO) :-
         io.write_string(":- promise ", !IO),
         (
             UnivVars = [_ | _],
-            Goal = all_expr(goal_get_context(Goal0), UnivVars, Goal0)
+            Goal = quant_expr(quant_all, quant_ordinary_vars,
+                goal_get_context(Goal0), UnivVars, Goal0)
         ;
             UnivVars = [],
             Goal = Goal0

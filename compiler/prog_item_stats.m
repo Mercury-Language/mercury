@@ -370,22 +370,26 @@ gather_stats_in_goal(Goal, !GoalStats) :-
         Goal = fail_expr(_),
         !GoalStats ^ goal_num_fail := !.GoalStats ^ goal_num_fail + 1
     ;
-        Goal = some_expr(_, _, SubGoal),
-        !GoalStats ^ goal_num_some := !.GoalStats ^ goal_num_some + 1,
-        gather_stats_in_goal(SubGoal, !GoalStats)
-    ;
-        Goal = all_expr(_, _, SubGoal),
-        !GoalStats ^ goal_num_all := !.GoalStats ^ goal_num_all + 1,
-        gather_stats_in_goal(SubGoal, !GoalStats)
-    ;
-        Goal = some_state_vars_expr(_, _, SubGoal),
-        !GoalStats ^ goal_num_some_state_vars :=
-            !.GoalStats ^ goal_num_some_state_vars + 1,
-        gather_stats_in_goal(SubGoal, !GoalStats)
-    ;
-        Goal = all_state_vars_expr(_, _, SubGoal),
-        !GoalStats ^ goal_num_all_state_vars :=
-            !.GoalStats ^ goal_num_all_state_vars + 1,
+        Goal = quant_expr(QuantType, QuantVarsKind, _, _, SubGoal),
+        (
+            QuantType = quant_some,
+            QuantVarsKind = quant_ordinary_vars,
+            !GoalStats ^ goal_num_some := !.GoalStats ^ goal_num_some + 1
+        ;
+            QuantType = quant_some,
+            QuantVarsKind = quant_state_vars,
+            !GoalStats ^ goal_num_some_state_vars :=
+                !.GoalStats ^ goal_num_some_state_vars + 1
+        ;
+            QuantType = quant_all,
+            QuantVarsKind = quant_ordinary_vars,
+            !GoalStats ^ goal_num_all := !.GoalStats ^ goal_num_all + 1
+        ;
+            QuantType = quant_all,
+            QuantVarsKind = quant_state_vars,
+            !GoalStats ^ goal_num_all_state_vars :=
+                !.GoalStats ^ goal_num_all_state_vars + 1
+        ),
         gather_stats_in_goal(SubGoal, !GoalStats)
     ;
         Goal = promise_purity_expr(_, _, SubGoal),

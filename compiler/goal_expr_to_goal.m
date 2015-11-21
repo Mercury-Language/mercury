@@ -90,49 +90,49 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         goal_info_init(Context, GoalInfo),
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        % Convert `all [Vars] SubGoal' into `not (some [Vars] (not SubGoal))'.
+        Goal = quant_expr(QuantType, VarsKind, Context, Vars0, SubGoal),
         (
-            Goal = all_expr(Context, Vars, SubGoal),
+            QuantType = quant_all,
+            % Convert
+            %   `all [Vars0] SubGoal'
+            % into
+            %   `not (some [Vars0] (not SubGoal))'.
+            %
+            % The Renaming will be applied in the recursive call.
             TransformedGoal =
                 not_expr(Context,
-                    some_expr(Context, Vars,
-                        not_expr(Context, SubGoal)))
+                    quant_expr(quant_some, VarsKind, Context, Vars0,
+                        not_expr(Context, SubGoal))),
+            transform_parse_tree_goal_to_hlds(LocKind, TransformedGoal,
+                Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
+                !ModuleInfo, !QualInfo, !Specs)
         ;
-            Goal = all_state_vars_expr(Context, StateVars, SubGoal),
-            TransformedGoal =
-                not_expr(Context,
-                    some_state_vars_expr(Context, StateVars,
-                        not_expr(Context, SubGoal)))
-        ),
-        transform_parse_tree_goal_to_hlds(LocKind, TransformedGoal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs)
-    ;
-        Goal = some_expr(Context, Vars0, SubGoal),
-        rename_var_list(need_not_rename, Renaming, Vars0, Vars),
-        transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
-            HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs),
-        Reason = exist_quant(Vars),
-        GoalExpr = scope(Reason, HLDSSubGoal),
-        goal_info_init(Context, GoalInfo),
-        HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
-    ;
-        Goal = some_state_vars_expr(Context, StateVars0, SubGoal0),
-        BeforeOutsideSVarState = !.SVarState,
-        rename_var_list(need_not_rename, Renaming, StateVars0, StateVars),
-        svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
-            BeforeOutsideSVarState, BeforeInsideSVarState, !Specs),
-        transform_parse_tree_goal_to_hlds(LocKind, SubGoal0, Renaming,
-            HLDSSubGoal, BeforeInsideSVarState, AfterInsideSVarState,
-            !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        svar_finish_local_state_vars(StateVars, BeforeOutsideSVarState,
-            AfterInsideSVarState, AfterOutsideSVarState),
-        !:SVarState = AfterOutsideSVarState,
-        Reason = exist_quant([]),
-        GoalExpr = scope(Reason, HLDSSubGoal),
-        goal_info_init(Context, GoalInfo),
-        HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
+            QuantType = quant_some,
+            rename_var_list(need_not_rename, Renaming, Vars0, Vars),
+            (
+                VarsKind = quant_ordinary_vars,
+                transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
+                    HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
+                    !ModuleInfo, !QualInfo, !Specs),
+                Reason = exist_quant(Vars)
+            ;
+                VarsKind = quant_state_vars,
+                BeforeOutsideSVarState = !.SVarState,
+                StateVars = Vars,
+                svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
+                    BeforeOutsideSVarState, BeforeInsideSVarState, !Specs),
+                transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
+                    HLDSSubGoal, BeforeInsideSVarState, AfterInsideSVarState,
+                    !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
+                svar_finish_local_state_vars(StateVars, BeforeOutsideSVarState,
+                    AfterInsideSVarState, AfterOutsideSVarState),
+                !:SVarState = AfterOutsideSVarState,
+                Reason = exist_quant([])
+            ),
+            GoalExpr = scope(Reason, HLDSSubGoal),
+            goal_info_init(Context, GoalInfo),
+            HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
+        )
     ;
         Goal = promise_purity_expr(Context, Purity, SubGoal),
         transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
@@ -1015,7 +1015,8 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
         functor(atom("!:"), [variable(IOStateVarUnrenamed, Context)], Context),
         functor(atom("!."), [variable(IOStateVarUnrenamed, Context)], Context),
         purity_pure),
-    ScopedGoal = some_expr(Context, [], conj_expr(Context, IOUnify, Goal0)),
+    ScopedGoal = quant_expr(quant_some, quant_ordinary_vars, Context, [],
+        conj_expr(Context, IOUnify, Goal0)),
     transform_parse_tree_goal_to_hlds(LocKind, ScopedGoal, Renaming,
         HLDSScopedGoal, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
@@ -1025,7 +1026,8 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
         !VarSet, !SVarState, !Specs),
 
     % Build "some [] ( Then )".
-    ScopedThenGoal = some_expr(Context, [], Then0),
+    ScopedThenGoal = quant_expr(quant_some, quant_ordinary_vars, Context, [],
+        Then0),
     transform_parse_tree_goal_to_hlds(LocKind, ScopedThenGoal, Renaming,
         HLDSScopedThenGoal, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
@@ -1138,8 +1140,10 @@ transform_try_expr_without_io(LocKind, SubGoal, ThenGoal, MaybeElseGoal,
         MaybeElseGoal = no,
         SucceededSubGoal =
             conj_expr(Context,
-                some_expr(Context, [], SubGoal),
-                some_expr(Context, [], ThenGoal)
+                quant_expr(quant_some, quant_ordinary_vars, Context, [],
+                    SubGoal),
+                quant_expr(quant_some, quant_ordinary_vars, Context, [],
+                    ThenGoal)
             )
     ),
     ResultIsSucceededDisjunctGoal =

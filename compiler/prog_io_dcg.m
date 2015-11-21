@@ -403,12 +403,24 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             MaybeGoal = error1(Specs)
         )
     ;
-        Functor = "all",
+        % Existential or universal quantification.
+        (
+            Functor = "some",
+            QuantType = quant_some,
+            VarsContextPieces = [lower_case_next_if_not_first,
+                words("In first argument of"), quote("all"), suffix(":")]
+        ;
+            Functor = "all",
+            QuantType = quant_all,
+            VarsContextPieces = [lower_case_next_if_not_first,
+                words("In first argument of"), quote("all"), suffix(":")]
+        ),
         Args = [QVarsTerm, SubGoalTerm],
-        % Universal quantification.
-        % Extract any state variables in the quantifier.
         varset.coerce(!.VarSet, GenericVarSet),
-        parse_quantifier_vars(QVarsTerm, GenericVarSet, ContextPieces,
+        % Note that both versions of VarsContextPieces should be static data;
+        % factoring out their common parts would destroy this property.
+        UpdatedContextPieces = ContextPieces ++ VarsContextPieces,
+        parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
             MaybeStateVarsAndVars),
         parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeSubGoal,
             !VarSet, !Counter, !DCGVar),
@@ -419,62 +431,20 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             list.map(term.coerce_var, StateVars0, StateVars),
             list.map(term.coerce_var, Vars0, Vars),
             (
-                Vars = [],
                 StateVars = [],
-                Goal = SubGoal
+                Goal1 = SubGoal
             ;
-                Vars = [],
                 StateVars = [_ | _],
-                Goal = all_state_vars_expr(Context, StateVars, SubGoal)
-            ;
-                Vars = [_ | _],
-                StateVars = [],
-                Goal = all_expr(Context, Vars, SubGoal)
-            ;
-                Vars = [_ | _],
-                StateVars = [_ | _],
-                Goal = all_expr(Context, Vars,
-                    all_state_vars_expr(Context, StateVars, SubGoal))
+                Goal1 = quant_expr(QuantType, quant_state_vars, Context,
+                    StateVars, SubGoal)
             ),
-            MaybeGoal = ok1(Goal)
-        else
-            VarsSpecs = get_any_errors2(MaybeStateVarsAndVars),
-            SubGoalSpecs = get_any_errors1(MaybeSubGoal),
-            MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
-        )
-    ;
-        Functor = "some",
-        Args = [QVarsTerm, SubGoalTerm],
-        % Existential quantification.
-        % Extract any state variables in the quantifier.
-        varset.coerce(!.VarSet, GenericVarSet),
-        parse_quantifier_vars(QVarsTerm, GenericVarSet, ContextPieces,
-            MaybeStateVarsAndVars),
-        parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeSubGoal,
-            !VarSet, !Counter, !DCGVar),
-        ( if
-            MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
-            MaybeSubGoal = ok1(SubGoal)
-        then
-            list.map(term.coerce_var, StateVars0, StateVars),
-            list.map(term.coerce_var, Vars0, Vars),
             (
                 Vars = [],
-                StateVars = [],
-                Goal = SubGoal
-            ;
-                Vars = [],
-                StateVars = [_ | _],
-                Goal = some_state_vars_expr(Context, StateVars, SubGoal)
+                Goal = Goal1
             ;
                 Vars = [_ | _],
-                StateVars = [],
-                Goal = some_expr(Context, Vars, SubGoal)
-            ;
-                Vars = [_ | _],
-                StateVars = [_ | _],
-                Goal = some_expr(Context, Vars,
-                    some_state_vars_expr(Context, StateVars, SubGoal))
+                Goal = quant_expr(QuantType, quant_ordinary_vars, Context,
+                    Vars, Goal1)
             ),
             MaybeGoal = ok1(Goal)
         else

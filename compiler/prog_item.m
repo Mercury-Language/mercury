@@ -1098,12 +1098,12 @@
     % goal_pro_purity              1492
     % goal_trace                   1356
     % goal_pro_eqv_solns            913
-    % goal_some_state_vars          620
-    % goal_some                     192
+    % goal_some_state_vars          620 now goal_quant/some/state
+    % goal_some                     192 now goal_quant/some/ordinary
     % goal_req_compl_switch         172
     % goal_par_conj                 132
     % goal_implies                  129
-    % goal_all                       78
+    % goal_all                       78 now goal_quant/all/ordinary
     % goal_req_detism                49
     % goal_try                       35
     % goal_equivalent                18
@@ -1112,7 +1112,15 @@
     % goal_pro_arbitrary             12
     % goal_pro_eqv_soln_sets          8
     % goal_atomic                     2
-    % goal_all_state_vars             0
+    % goal_all_state_vars             0 now goal_quant/all/state
+
+:- type quant_type
+    --->    quant_some
+    ;       quant_all.
+
+:- type quant_vars_kind
+    --->    quant_ordinary_vars
+    ;       quant_state_vars.
 
 :- type goal
     % The most frequent kinds of goals.
@@ -1146,14 +1154,17 @@
     ;       par_conj_expr(prog_context, goal, goal)
             % nonempty parallel conjunction
 
-    ;       some_expr(prog_context, list(prog_var), goal)
-    ;       all_expr(prog_context, list(prog_var), goal)
-            % existential and universal quantification respectively
+    ;       quant_expr(
+                % Existential or universal quantification?
+                quant_type,
 
-    ;       some_state_vars_expr(prog_context, list(prog_var), goal)
-    ;       all_state_vars_expr(prog_context, list(prog_var), goal)
-            % existential and universal quantification respectively
-            % with state variables
+                % Are the variables ordinary variables or state variables?
+                quant_vars_kind,
+
+                prog_context,
+                list(prog_var),
+                goal
+            )
 
     ;       promise_purity_expr(prog_context, purity, goal)
     ;       promise_equivalent_solutions_expr(
@@ -1702,10 +1713,7 @@ goal_get_context(Goal) = Context :-
     ; Goal = true_expr(Context)
     ; Goal = disj_expr(Context, _, _)
     ; Goal = fail_expr(Context)
-    ; Goal = some_expr(Context, _, _)
-    ; Goal = all_expr(Context, _, _)
-    ; Goal = some_state_vars_expr(Context, _, _)
-    ; Goal = all_state_vars_expr(Context, _, _)
+    ; Goal = quant_expr(_, _, Context, _, _)
     ; Goal = promise_purity_expr(Context, _, _)
     ; Goal = promise_equivalent_solutions_expr(Context, _, _, _, _, _)
     ; Goal = promise_equivalent_solution_sets_expr(Context, _, _, _, _, _)

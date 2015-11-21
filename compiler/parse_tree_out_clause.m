@@ -181,62 +181,27 @@ mercury_output_goal(VarSet, Indent, Goal, !IO) :-
         mercury_output_newline(Indent, !IO),
         io.write_string(")", !IO)
     ;
-        Goal = some_expr(_, Vars, SubGoal),
+        Goal = quant_expr(QuantType, QuantVarsKind, _, Vars, SubGoal),
         (
             Vars = [],
             mercury_output_goal(VarSet, Indent, SubGoal, !IO)
         ;
             Vars = [_ | _],
-            io.write_string("some [", !IO),
-            mercury_output_vars(VarSet, print_name_only, Vars, !IO),
-            io.write_string("] (", !IO),
-            Indent1 = Indent + 1,
-            mercury_output_newline(Indent1, !IO),
-            mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-            mercury_output_newline(Indent, !IO),
-            io.write_string(")", !IO)
-        )
-    ;
-        Goal = some_state_vars_expr(_, Vars, SubGoal),
-        (
-            Vars = [],
-            mercury_output_goal(VarSet, Indent, SubGoal, !IO)
-        ;
-            Vars = [_ | _],
-            io.write_string("some [", !IO),
-            mercury_output_state_vars(VarSet, print_name_only, Vars, !IO),
-            io.write_string("] (", !IO),
-            Indent1 = Indent + 1,
-            mercury_output_newline(Indent1, !IO),
-            mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-            mercury_output_newline(Indent, !IO),
-            io.write_string(")", !IO)
-        )
-    ;
-        Goal = all_expr(_, Vars, SubGoal),
-        (
-            Vars = [],
-            mercury_output_goal(VarSet, Indent, SubGoal, !IO)
-        ;
-            Vars = [_ | _],
-            io.write_string("all [", !IO),
-            mercury_output_vars(VarSet, print_name_only, Vars, !IO),
-            io.write_string("] (", !IO),
-            Indent1 = Indent + 1,
-            mercury_output_newline(Indent1, !IO),
-            mercury_output_goal(VarSet, Indent1, SubGoal, !IO),
-            mercury_output_newline(Indent, !IO),
-            io.write_string(")", !IO)
-        )
-    ;
-        Goal = all_state_vars_expr(_, Vars, SubGoal),
-        (
-            Vars = [],
-            mercury_output_goal(VarSet, Indent, SubGoal, !IO)
-        ;
-            Vars = [_ | _],
-            io.write_string("all [", !IO),
-            mercury_output_state_vars(VarSet, print_name_only, Vars, !IO),
+            (
+                QuantType = quant_some,
+                io.write_string("some", !IO)
+            ;
+                QuantType = quant_all,
+                io.write_string("all", !IO)
+            ),
+            io.write_string("[", !IO),
+            (
+                QuantVarsKind = quant_ordinary_vars,
+                mercury_output_vars(VarSet, print_name_only, Vars, !IO)
+            ;
+                QuantVarsKind = quant_state_vars,
+                mercury_output_state_vars(VarSet, print_name_only, Vars, !IO)
+            ),
             io.write_string("] (", !IO),
             Indent1 = Indent + 1,
             mercury_output_newline(Indent1, !IO),
@@ -564,10 +529,7 @@ mercury_output_connected_goal(VarSet, Indent, Goal, !IO) :-
         ),
         mercury_output_goal(VarSet, Indent, Goal, !IO)
     ;
-        ( Goal = some_expr(_, _, _)
-        ; Goal = some_state_vars_expr(_, _, _)
-        ; Goal = all_expr(_, _, _)
-        ; Goal = all_state_vars_expr(_, _, _)
+        ( Goal = quant_expr(_, _, _, _, _)
         ; Goal = promise_equivalent_solutions_expr(_, _, _, _, _, _)
         ; Goal = promise_equivalent_solution_sets_expr(_, _, _, _, _, _)
         ; Goal = promise_equivalent_solution_arbitrary_expr(_, _, _, _, _, _)

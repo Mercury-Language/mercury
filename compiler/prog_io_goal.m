@@ -324,11 +324,24 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             MaybeGoal = MaybeAGoal
         )
     ;
-        Functor = "all",
+        (
+            Functor = "some",
+            QuantType = quant_some,
+            VarsContextPieces = [lower_case_next_if_not_first,
+                words("In first argument of"), quote("some"), suffix(":")]
+        ;
+            Functor = "all",
+            QuantType = quant_all,
+            VarsContextPieces = [lower_case_next_if_not_first,
+                words("In first argument of"), quote("all"), suffix(":")]
+        ),
+        % Note that both versions of VarsContextPieces should be static data;
+        % factoring out their common parts would destroy this property.
         Args = [QVarsTerm, SubGoalTerm],
         % Extract any state variables in the quantifier.
         varset.coerce(!.VarSet, GenericVarSet),
-        parse_quantifier_vars(QVarsTerm, GenericVarSet, ContextPieces,
+        UpdatedContextPieces = ContextPieces ++ VarsContextPieces,
+        parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
             MaybeStateVarsAndVars),
         % XXX We should update ContextPieces, instead of supplying [].
         parse_goal(SubGoalTerm, [], MaybeSubGoal, !VarSet),
@@ -339,21 +352,20 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             list.map(term.coerce_var, Vars0, Vars),
             list.map(term.coerce_var, StateVars0, StateVars),
             (
-                Vars = [],
                 StateVars = [],
-                Goal = SubGoal
+                Goal1 = SubGoal
             ;
-                Vars = [],
                 StateVars = [_ | _],
-                Goal = all_state_vars_expr(Context, StateVars, SubGoal)
+                Goal1 = quant_expr(QuantType, quant_state_vars, Context,
+                    StateVars, SubGoal)
+            ),
+            (
+                Vars = [],
+                Goal = Goal1
             ;
                 Vars = [_ | _],
-                StateVars = [],
-                Goal = all_expr(Context, Vars, SubGoal)
-            ;
-                Vars = [_ | _], StateVars = [_ | _],
-                Goal = all_expr(Context, Vars,
-                    all_state_vars_expr(Context, StateVars, SubGoal))
+                Goal = quant_expr(QuantType, quant_ordinary_vars, Context,
+                    Vars, Goal1)
             ),
             MaybeGoal = ok1(Goal)
         else
@@ -405,48 +417,6 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             ASpecs = get_any_errors1(MaybeAGoal),
             BSpecs = get_any_errors1(MaybeBGoal),
             MaybeGoal = error1(ASpecs ++ BSpecs)
-        )
-    ;
-        Functor = "some",
-        Args = [QVarsTerm, SubGoalTerm],
-        % Extract any state variables in the quantifier.
-        UpdatedContextPieces = ContextPieces ++ [lower_case_next_if_not_first,
-            words("In first argument of"), quote("some"), suffix(":")],
-        varset.coerce(!.VarSet, GenericVarSet),
-        parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
-            MaybeStateVarsAndVars),
-        parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
-        ( if
-            MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
-            MaybeSubGoal = ok1(SubGoal)
-        then
-            list.map(term.coerce_var, Vars0, Vars),
-            list.map(term.coerce_var, StateVars0, StateVars),
-            (
-                Vars = [],
-                StateVars = [],
-                % We used to use Context, not SubContext,
-                Goal = SubGoal
-            ;
-                Vars = [],
-                StateVars = [_ | _],
-                Goal = some_state_vars_expr(Context, StateVars, SubGoal)
-            ;
-                Vars = [_ | _],
-                StateVars = [],
-                Goal = some_expr(Context, Vars, SubGoal)
-            ;
-                Vars = [_ | _],
-                StateVars = [_ | _],
-                Goal = some_expr(Context, Vars,
-                    % We used to use SubContext, not Context
-                    some_state_vars_expr(Context, StateVars, SubGoal))
-            ),
-            MaybeGoal = ok1(Goal)
-        else
-            VarsSpecs = get_any_errors2(MaybeStateVarsAndVars),
-            SubGoalSpecs = get_any_errors1(MaybeSubGoal),
-            MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
         )
     ;
         Functor = "trace",
@@ -804,10 +774,7 @@ apply_purity_marker_to_maybe_goal(GoalTerm, Purity, MaybeGoal0, MaybeGoal) :-
             ; Goal0 = true_expr(_)
             ; Goal0 = disj_expr(_, _, _)
             ; Goal0 = fail_expr(_)
-            ; Goal0 = some_expr(_, _, _)
-            ; Goal0 = all_expr(_, _, _)
-            ; Goal0 = some_state_vars_expr(_, _, _)
-            ; Goal0 = all_state_vars_expr(_, _, _)
+            ; Goal0 = quant_expr(_, _, _, _, _)
             ; Goal0 = promise_purity_expr(_, _, _)
             ; Goal0 = promise_equivalent_solutions_expr(_, _, _, _, _, _)
             ; Goal0 = promise_equivalent_solution_sets_expr(_, _, _, _, _, _)

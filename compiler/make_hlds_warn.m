@@ -780,13 +780,20 @@ check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_promise_ex_goal(PromiseType, Goal, !Specs) :-
-    ( if Goal = some_expr(_, _, SubGoal) then
+    ( if
+        Goal = quant_expr(quant_some, quant_ordinary_vars, _, _, SubGoal)
+    then
         check_promise_ex_goal(PromiseType, SubGoal, !Specs)
-    else if Goal = disj_expr(_, _, _) then
+    else if
+        Goal = disj_expr(_, _, _)
+    then
         flatten_to_disj_list(Goal, DisjList),
         list.map(flatten_to_conj_list, DisjList, DisjConjList),
         check_promise_ex_disjunction(PromiseType, DisjConjList, !Specs)
-    else if Goal = all_expr(Context, _UnivVars, SubGoal) then
+    else if
+        Goal = quant_expr(quant_all, quant_ordinary_vars, Context, _UnivVars,
+            SubGoal)
+    then
         promise_ex_error(PromiseType, Context,
             "universal quantification should come before " ++
             "the declaration name", !Specs),
@@ -849,13 +856,20 @@ check_promise_ex_disj_arm(PromiseType, Goals, CallUsed, !Specs) :-
         Goals = []
     ;
         Goals = [HeadGoal | TailGoals],
-        ( if HeadGoal = unify_expr(_, _, _, _) then
+        ( if
+            HeadGoal = unify_expr(_, _, _, _)
+        then
             check_promise_ex_disj_arm(PromiseType, TailGoals,
                 CallUsed, !Specs)
-        else if HeadGoal = some_expr(_, _, HeadSubGoal) then
+        else if
+            HeadGoal = quant_expr(quant_some, quant_ordinary_vars, _, _,
+                HeadSubGoal)
+            then
             check_promise_ex_disj_arm(PromiseType, [HeadSubGoal | TailGoals],
                 CallUsed, !Specs)
-        else if HeadGoal = call_expr(Context, _, _, _) then
+        else if
+            HeadGoal = call_expr(Context, _, _, _)
+        then
             (
                 CallUsed = no
             ;
