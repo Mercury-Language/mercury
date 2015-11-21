@@ -190,6 +190,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io_iom.
 :- import_module parse_tree.prog_io_item.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module recompilation.

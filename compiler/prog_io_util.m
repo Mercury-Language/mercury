@@ -34,7 +34,6 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
-:- import_module assoc_list.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -60,7 +59,8 @@
 % Some of these predicates fail if they encounter a syntax error; others
 % return an error indication.
 
-:- pred parse_list_of_vars(term(T)::in, list(var(T))::out) is semidet.
+:- pred parse_list_of_vars(varset(T)::in, list(format_component)::in,
+    term(T)::in, maybe1(list(var(T)))::out) is det.
 
     % Parse a list of quantified variables.
     % The other input argument is a prefix for any error messages.
@@ -177,33 +177,6 @@
     is det.
 
 :- pred list_term_to_term_list(term::in, list(term)::out) is semidet.
-
-%-----------------------------------------------------------------------------%
-
-:- type decl_attribute
-    --->    decl_attr_purity(purity)
-    ;       decl_attr_quantifier(quantifier_type, list(var))
-    ;       decl_attr_constraints(quantifier_type, term)
-            % the term here is the (not yet parsed) list of constraints
-    ;       decl_attr_solver_type.
-
-:- type quantifier_type
-    --->    quant_type_exist
-    ;       quant_type_univ.
-
-    % The term associated with each decl_attribute is the term containing
-    % both the attribute and the declaration that that attribute modifies;
-    % this term is used when printing out error messages for cases when
-    % attributes are used on declarations where they are not allowed.
-:- type decl_attrs == assoc_list(decl_attribute, term.context).
-
-:- pred parse_decl_attribute(string::in, list(term)::in, decl_attribute::out,
-    term::out) is semidet.
-
-:- pred check_no_attributes(maybe1(T)::in, decl_attrs::in, maybe1(T)::out)
-    is det.
-
-:- func attribute_description(decl_attribute) = string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1275,11 +1248,35 @@ map_parser(Parser, [Head | Tail], Result) :-
 
 %-----------------------------------------------------------------------------%
 
-parse_list_of_vars(term.functor(term.atom("[]"), [], _), []).
-parse_list_of_vars(term.functor(term.atom("[|]"), [Head, Tail], _),
-        [Var | Vars]) :-
-    Head = term.variable(Var, _),
-    parse_list_of_vars(Tail, Vars).
+parse_list_of_vars(VarSet, ContextPieces, Term, MaybeVars) :-
+    ( if Term = term.functor(term.atom("[]"), [], _) then
+        MaybeVars = ok1([])
+    else if Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) then
+        (
+            HeadTerm = term.variable(HeadVar0, _),
+            MaybeHeadVar = ok1(HeadVar0)
+        ;
+            HeadTerm = term.functor(_, _, _),
+            generate_unexpected_term_message(ContextPieces, VarSet,
+                "a variable", HeadTerm, Spec),
+            MaybeHeadVar = error1([Spec])
+        ),
+        parse_list_of_vars(VarSet, ContextPieces, TailTerm, MaybeTailVars),
+        ( if
+            MaybeHeadVar = ok1(HeadVar),
+            MaybeTailVars = ok1(TailVars)
+        then
+            MaybeVars = ok1([HeadVar | TailVars])
+        else
+            Specs = get_any_errors1(MaybeHeadVar) ++
+                get_any_errors1(MaybeTailVars),
+            MaybeVars = error1(Specs)
+        )
+    else
+        generate_unexpected_term_message(ContextPieces, VarSet,
+            "a list of variables", Term, Spec),
+        MaybeVars = error1([Spec])
+    ).
 
 parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
     ( if Term = functor(atom("[]"), [], _) then
@@ -1291,7 +1288,7 @@ parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         ;
             HeadTerm = functor(_, _, _),
             generate_unexpected_term_message(ContextPieces, VarSet,
-                "variable", HeadTerm, HeadSpec),
+                "a variable", HeadTerm, HeadSpec),
             MaybeHeadVar = error1([HeadSpec])
         ),
         parse_vars(TailTerm, VarSet, ContextPieces, MaybeTailVars),
@@ -1314,7 +1311,7 @@ parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
-            "list of variables", Term, Spec),
+            "a list of variables", Term, Spec),
         MaybeVars = error1([Spec])
     ).
 
@@ -1338,7 +1335,7 @@ parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
             MaybeHeadVar = ok1(VarKind0)
         else
             generate_unexpected_term_message(ContextPieces, VarSet,
-                "variable or state variable", HeadTerm, HeadSpec),
+                "a variable or state variable", HeadTerm, HeadSpec),
             MaybeHeadVar = error1([HeadSpec])
         ),
         parse_quantifier_vars(TailTerm, VarSet, ContextPieces,
@@ -1375,7 +1372,7 @@ parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
-            "list of variables and/or state variables", Term, Spec),
+            "a list of variables and/or state variables", Term, Spec),
         MaybeVars = error2([Spec])
     ).
 
@@ -1407,7 +1404,7 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
             MaybeHeadVar = ok1(VarKind0)
         else
             generate_unexpected_term_message(ContextPieces, VarSet,
-                "variable or state variable", HeadTerm, HeadSpec),
+                "a variable or state variable", HeadTerm, HeadSpec),
             MaybeHeadVar = error1([HeadSpec])
         ),
         parse_vars_and_state_vars(Tail, VarSet, ContextPieces,
@@ -1484,7 +1481,7 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
-            "list of variables and/or state variables", Term, Spec),
+            "a list of variables and/or state variables", Term, Spec),
         MaybeVars = error4([Spec])
     ).
 
@@ -1516,7 +1513,7 @@ generate_unexpected_term_message(ContextPieces, VarSet, Expected, Term,
     TermStr = describe_error_term(VarSet, Term),
     Pieces = ContextPieces ++ [lower_case_next_if_not_first,
         words("Expected"), words(Expected), suffix(","),
-        words("not"), words(TermStr), suffix("."), nl],
+        words("got"), quote(TermStr), suffix("."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(get_term_context(Term), [always(Pieces)])]).
 
@@ -1531,67 +1528,6 @@ list_term_to_term_list(Term, Terms) :-
         Term = term.functor(term.atom("[]"), [], _),
         Terms = []
     ).
-
-%-----------------------------------------------------------------------------%
-
-parse_decl_attribute(Functor, ArgTerms, Attribute, SubTerm) :-
-    (
-        Functor = "impure",
-        ArgTerms = [SubTerm],
-        Attribute = decl_attr_purity(purity_impure)
-    ;
-        Functor = "semipure",
-        ArgTerms = [SubTerm],
-        Attribute = decl_attr_purity(purity_semipure)
-    ;
-        Functor = "<=",
-        ArgTerms = [SubTerm, ConstraintsTerm],
-        Attribute = decl_attr_constraints(quant_type_univ, ConstraintsTerm)
-    ;
-        Functor = "=>",
-        ArgTerms = [SubTerm, ConstraintsTerm],
-        Attribute = decl_attr_constraints(quant_type_exist, ConstraintsTerm)
-    ;
-        Functor = "some",
-        ArgTerms = [TVarsTerm, SubTerm],
-        parse_list_of_vars(TVarsTerm, TVars),
-        Attribute = decl_attr_quantifier(quant_type_exist, TVars)
-    ;
-        Functor = "all",
-        ArgTerms = [TVarsTerm, SubTerm],
-        parse_list_of_vars(TVarsTerm, TVars),
-        Attribute = decl_attr_quantifier(quant_type_univ, TVars)
-    ;
-        Functor = "solver",
-        ArgTerms = [SubTerm],
-        Attribute = decl_attr_solver_type
-    ).
-
-check_no_attributes(Result0, Attributes, Result) :-
-    ( if
-        Result0 = ok1(_),
-        Attributes = [Attr - Context | _]
-    then
-        % XXX Shouldn't we mention EVERY element of Attributes?
-        Pieces = [words("Error:"), words(attribute_description(Attr)),
-            words("not allowed here."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
-        Result = error1([Spec])
-    else
-        Result = Result0
-    ).
-
-attribute_description(decl_attr_purity(_)) = "purity specifier".
-attribute_description(decl_attr_quantifier(quant_type_univ, _)) =
-    "universal quantifier (`all')".
-attribute_description(decl_attr_quantifier(quant_type_exist, _)) =
-    "existential quantifier (`some')".
-attribute_description(decl_attr_constraints(quant_type_univ, _)) =
-    "type class constraint (`<=')".
-attribute_description(decl_attr_constraints(quant_type_exist, _)) =
-    "existentially quantified type class constraint (`=>')".
-attribute_description(decl_attr_solver_type) = "solver type specifier".
 
 %-----------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_util.

@@ -3,8 +3,7 @@ bigtest.m:005: Error: module `bigtest' should start with either an
 bigtest.m:005:   `:- interface' or an `:- implementation' declaration.
 bigtest.m:005:   The following assumes that the missing declaration is an
 bigtest.m:005:   `:- implementation' declaration.
-bigtest.m:005: Error: unrecognized declaration:
-bigtest.m:005:   export_sym(((list / 1) , ((append / 3) , member))).
+bigtest.m:005: Error: `export_sym' is not a valid declaration type.
 bigtest.m:005: Warning: interface for module `bigtest' does not export
 bigtest.m:005:   anything.
 bigtest.m:005:   To be useful, a module should export something. A file should
@@ -12,18 +11,15 @@ bigtest.m:005:   contain at least one declaration other than `:- import_module'
 bigtest.m:005:   in its interface section(s). This would normally be a
 bigtest.m:005:   `:- pred', `:- func', `:- type', `:- inst' or `:- mode'
 bigtest.m:005:   declaration.
-bigtest.m:006: Error: unrecognized declaration:
-bigtest.m:006:   export_pred(((append / 3) , member)).
-bigtest.m:007: Error: unrecognized declaration:
-bigtest.m:007:   export_type(((list / 1) , bag)).
+bigtest.m:006: Error: `export_pred' is not a valid declaration type.
+bigtest.m:007: Error: `export_type' is not a valid declaration type.
 bigtest.m:009: Error: clause for predicate `bigtest.fact'/0
 bigtest.m:009:   without corresponding `:- pred' declaration.
 bigtest.m:009: Error: no mode declaration for predicate `fact'/0.
 bigtest.m:009:   (Use `--infer-modes' to enable mode inference.)
 bigtest.m:009: Inferred :- pred fact.
 bigtest.m:010: Syntax error at token ':-': operator precedence error.
-bigtest.m:012: Error: unrecognized declaration:
-bigtest.m:012:   incorrect_declaration.
+bigtest.m:012: Error: `incorrect_declaration' is not a valid declaration type.
 bigtest.m:014: Error: no mode declaration for predicate `p'/1.
 bigtest.m:020: Error: the type name `=' is reserved for the Mercury
 bigtest.m:020:   implementation.

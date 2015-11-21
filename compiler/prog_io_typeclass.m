@@ -20,7 +20,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_io_iom.
 
 :- import_module list.
 :- import_module term.
@@ -30,13 +30,13 @@
 
     % Parse a typeclass declaration.
     %
-:- pred parse_typeclass(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_typeclass_info)::out) is semidet.
+:- pred parse_typeclass_item(module_name::in, varset::in, list(term)::in,
+    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
     % Parse an instance declaration.
     %
-:- pred parse_instance(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_instance_info)::out) is semidet.
+:- pred parse_instance_item(module_name::in, varset::in, list(term)::in,
+    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
     % Parse constraints on a pred or func declaration, or on an existentially
     % quantified type definition. Currently all such constraints must be
@@ -63,81 +63,101 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_io_item.
 :- import_module parse_tree.prog_io_sym_name.
+:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.prog_io_util.
 
 :- import_module map.
+:- import_module maybe.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%
 
-parse_typeclass(ModuleName, VarSet, TypeClassTerm, Context, SeqNum,
-        MaybeItemTypeClass) :-
-    % XXX We should return an error if we get more than one arg, instead of
-    % failing.
-    TypeClassTerm = [Arg],
-    ( if Arg = term.functor(term.atom("where"), [Name, Methods], _) then
-        parse_non_empty_class(ModuleName, Name, Methods, VarSet, Context,
-            SeqNum, MaybeItemTypeClass)
-    else
-        parse_class_head(ModuleName, Arg, VarSet, Context, SeqNum,
-            MaybeItemTypeClass)
-    ).
-
-:- pred parse_non_empty_class(module_name::in, term::in, term::in, varset::in,
-    prog_context::in, int::in, maybe1(item_typeclass_info)::out) is det.
-
-parse_non_empty_class(ModuleName, Name, Methods, VarSet, Context, SeqNum,
-        MaybeItemTypeClass) :-
-    varset.coerce(VarSet, TVarSet),
-    parse_class_methods(ModuleName, Methods, VarSet,
-        MaybeParsedMethods),
-    (
-        MaybeParsedMethods = ok1(MethodList),
-        parse_class_head(ModuleName, Name, VarSet, Context, SeqNum,
-            MaybeParsedNameAndVars),
+parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
+        MaybeIOM) :-
+    ( if ArgTerms = [ArgTerm] then
+        ( if
+            ArgTerm = term.functor(term.atom("where"),
+                [NameTerm, MethodsTerm], _)
+        then
+            parse_non_empty_class(ModuleName, VarSet, NameTerm, MethodsTerm,
+                Context, SeqNum, MaybeItemTypeClassInfo)
+        else
+            parse_class_head(ModuleName, VarSet, ArgTerm, Context, SeqNum,
+                MaybeItemTypeClassInfo)
+        ),
         (
-            MaybeParsedNameAndVars = error1(Specs),
-            MaybeItemTypeClass = error1(Specs)
+            MaybeItemTypeClassInfo = ok1(ItemTypeClassInfo),
+            MaybeIOM = ok1(iom_item(item_typeclass(ItemTypeClassInfo)))
         ;
-            MaybeParsedNameAndVars = ok1(ParsedNameAndVars),
-            MaybeItemTypeClass = ok1((ParsedNameAndVars
-                ^ tc_class_methods := class_interface_concrete(MethodList))
-                ^ tc_varset := TVarSet)
+            MaybeItemTypeClassInfo = error1(Specs),
+            MaybeIOM = error1(Specs)
         )
-    ;
-        MaybeParsedMethods = error1(Specs),
-        MaybeItemTypeClass = error1(Specs)
+    else
+        Pieces = [words("Error: a"), decl("typeclass"), words("declaration"),
+            words("should have the form"),
+            quote(":- typeclass tcname(T1, ... Tn)"),
+            words("optionally followed by"),
+            quote("where [method_signature_1, ... method_signature_m]"),
+            suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_class_head(module_name::in, term::in, varset::in,
+:- pred parse_non_empty_class(module_name::in, varset::in, term::in, term::in,
     prog_context::in, int::in, maybe1(item_typeclass_info)::out) is det.
 
-parse_class_head(ModuleName, Arg, VarSet, Context, SeqNum,
-        MaybeItemTypeClass) :-
-    ( if Arg = term.functor(term.atom("<="), [Name, Constraints], _) then
-        parse_constrained_class(ModuleName, Name, Constraints, VarSet, Context,
-            SeqNum, MaybeItemTypeClass)
+parse_non_empty_class(ModuleName, VarSet, NameTerm, MethodsTerm,
+        Context, SeqNum, MaybeItemTypeClassInfo) :-
+    parse_class_head(ModuleName, VarSet, NameTerm, Context, SeqNum,
+        MaybeItemTypeClassInfo0),
+    parse_class_methods(ModuleName, VarSet, MethodsTerm, MaybeClassMethods),
+    ( if
+        MaybeItemTypeClassInfo0 = ok1(ItemTypeClassInfo0),
+        MaybeClassMethods = ok1(ClassMethods)
+    then
+        varset.coerce(VarSet, TVarSet),
+        ItemTypeClassInfo = ((ItemTypeClassInfo0
+            ^ tc_class_methods := class_interface_concrete(ClassMethods))
+            ^ tc_varset := TVarSet),
+        MaybeItemTypeClassInfo = ok1(ItemTypeClassInfo)
+    else
+        Specs = get_any_errors1(MaybeItemTypeClassInfo0) ++
+            get_any_errors1(MaybeClassMethods),
+        MaybeItemTypeClassInfo = error1(Specs)
+    ).
+
+:- pred parse_class_head(module_name::in, varset::in, term::in,
+    prog_context::in, int::in, maybe1(item_typeclass_info)::out) is det.
+
+parse_class_head(ModuleName, VarSet, ArgTerm, Context, SeqNum,
+        MaybeItemTypeClassInfo) :-
+    ( if
+        ArgTerm = term.functor(term.atom("<="), [NameTerm, ConstraintsTerm], _)
+    then
+        parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
+            Context, SeqNum, MaybeItemTypeClassInfo)
     else
         varset.coerce(VarSet, TVarSet),
-        parse_unconstrained_class(ModuleName, Arg, TVarSet, Context,
-            SeqNum, MaybeItemTypeClass)
+        parse_unconstrained_class(ModuleName, TVarSet, ArgTerm,
+            Context, SeqNum, MaybeItemTypeClassInfo)
     ).
 
-:- pred parse_constrained_class(module_name::in, term::in, term::in,
-    varset::in, prog_context::in, int::in, maybe1(item_typeclass_info)::out)
-    is det.
+:- pred parse_constrained_class(module_name::in, varset::in,
+    term::in, term::in, prog_context::in, int::in,
+    maybe1(item_typeclass_info)::out) is det.
 
-parse_constrained_class(ModuleName, Decl, ConstraintsTerm, VarSet, Context,
-        SeqNum, MaybeItemTypeClass) :-
+parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
+        Context, SeqNum, MaybeItemTypeClass) :-
     varset.coerce(VarSet, TVarSet),
     parse_superclass_constraints(ModuleName, VarSet, ConstraintsTerm,
         MaybeParsedConstraints),
     (
         MaybeParsedConstraints = ok2(ConstraintList, FunDeps),
-        parse_unconstrained_class(ModuleName, Decl, TVarSet, Context, SeqNum,
-            MaybeItemTypeClass0),
+        parse_unconstrained_class(ModuleName, TVarSet, NameTerm,
+            Context, SeqNum, MaybeItemTypeClass0),
         (
             MaybeItemTypeClass0 = error1(_),
             MaybeItemTypeClass = MaybeItemTypeClass0
@@ -295,10 +315,10 @@ collect_simple_and_fundep_constraints([Constraint | Constraints],
         SimpleConstraints = SimpleConstraints0
     ).
 
-:- pred parse_unconstrained_class(module_name::in, term::in, tvarset::in,
+:- pred parse_unconstrained_class(module_name::in, tvarset::in, term::in,
     prog_context::in, int::in, maybe1(item_typeclass_info)::out) is det.
 
-parse_unconstrained_class(ModuleName, NameTerm, TVarSet, Context, SeqNum,
+parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
         MaybeTypeClassInfo) :-
     ContextPieces = [words("In typeclass declaration:")],
     varset.coerce(TVarSet, VarSet),
@@ -309,10 +329,8 @@ parse_unconstrained_class(ModuleName, NameTerm, TVarSet, Context, SeqNum,
         list.map(term.coerce, TermVars0, TermVars),
         (
             TermVars = [],
-            Pieces = [
-                words("Error: typeclass declarations require"),
-                words("at least one class parameter.")
-            ],
+            Pieces = [words("Error: typeclass declarations require"),
+                words("at least one class parameter."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(get_term_context(NameTerm), [always(Pieces)])]),
             MaybeTypeClassInfo = error1([Spec])
@@ -345,54 +363,22 @@ parse_unconstrained_class(ModuleName, NameTerm, TVarSet, Context, SeqNum,
         MaybeTypeClassInfo = error1(Specs)
     ).
 
-:- pred parse_class_methods(module_name::in, term::in, varset::in,
+:- pred parse_class_methods(module_name::in, varset::in, term::in,
     maybe1(class_methods)::out) is det.
 
-parse_class_methods(ModuleName, MethodsTerm, VarSet, Result) :-
+parse_class_methods(ModuleName, VarSet, MethodsTerm, MaybeClassMethods) :-
     ( if
         % Convert the list of terms into a list of maybe1(class_method)s.
-        list_term_to_term_list(MethodsTerm, MethodList)
+        list_term_to_term_list(MethodsTerm, MethodTerms)
     then
-        list.map(
-            (pred(MethodTerm::in, Method::out) is det :-
-                % Turn the term into an item.
-                parse_decl(ModuleName, VarSet, MethodTerm, -1, Item),
-                % Turn the item into a class_method.
-                item_to_class_method(Item, MethodTerm, Method)
-            ), MethodList, Interface),
-        find_errors(Interface, Result)
+        list.map(parse_class_method_decl(ModuleName, VarSet),
+            MethodTerms, MaybeMethods),
+        find_errors(MaybeMethods, MaybeClassMethods)
     else
-        Pieces = [words("Error: expected list of class methods."), nl],
+        Pieces = [words("Error: expected a list of class methods."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(MethodsTerm), [always(Pieces)])]),
-        Result = error1([Spec])
-    ).
-
-:- pred item_to_class_method(maybe1(item)::in, term::in,
-    maybe1(class_method)::out) is det.
-
-item_to_class_method(error1(Specs), _, error1(Specs)).
-item_to_class_method(ok1(Item), Term, Result) :-
-    ( if Item = item_pred_decl(ItemPredDecl) then
-        ItemPredDecl = item_pred_decl_info(Name, PorF, ArgDecls,
-            WithType, WithInst, MaybeDetism, _Origin, TypeVarSet, InstVarSet,
-            ExistQVars, Purity, Constraints, Context, _SeqNum),
-        ClassMethod = method_pred_or_func(Name, PorF, ArgDecls,
-            WithType, WithInst, MaybeDetism, TypeVarSet, InstVarSet,
-            ExistQVars, Purity, Constraints, Context),
-        Result = ok1(ClassMethod)
-    else if Item = item_mode_decl(ItemModeDecl) then
-        ItemModeDecl = item_mode_decl_info(Name, MaybePorF, ArgModes,
-            WithInst, MaybeDetism, InstVarSet, Context, _SeqNum),
-        ClassMethod = method_pred_or_func_mode(Name, MaybePorF, ArgModes,
-            WithInst, MaybeDetism, InstVarSet, Context),
-        Result = ok1(ClassMethod)
-    else
-        Pieces = [words("Error: only pred, func and mode declarations"),
-            words("are allowed in class interfaces."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        Result = error1([Spec])
+        MaybeClassMethods = error1([Spec])
     ).
 
     % From a list of maybe1s, search through until you find an error.
@@ -659,62 +645,76 @@ constraint_is_not_simple(constraint(_ClassName, ArgTypes)) :-
 
 %-----------------------------------------------------------------------------%
 
-parse_instance(ModuleName, VarSet, TypeClassTerm, Context, SeqNum, Result) :-
-    % XXX We should return an error if we get more than one arg,
-    % instead of failing.
-    TypeClassTerm = [Arg],
-    varset.coerce(VarSet, TVarSet),
-    ( if Arg = term.functor(term.atom("where"), [Name, Methods], _) then
-        parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet,
-            Context, SeqNum, Result)
+parse_instance_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
+        MaybeIOM) :-
+    ( if ArgTerms = [ArgTerm] then
+        varset.coerce(VarSet, TVarSet),
+        ( if
+            ArgTerm = term.functor(term.atom("where"),
+                [NameTerm, MethodsTerm], _)
+        then
+            parse_non_empty_instance(ModuleName, VarSet, TVarSet,
+                NameTerm, MethodsTerm, Context, SeqNum, MaybeItemInstanceInfo)
+        else
+            parse_instance_name(ModuleName, TVarSet, ArgTerm,
+                Context, SeqNum, MaybeItemInstanceInfo)
+        ),
+        (
+            MaybeItemInstanceInfo = ok1(ItemInstanceInfo),
+            MaybeIOM = ok1(iom_item(item_instance(ItemInstanceInfo)))
+        ;
+            MaybeItemInstanceInfo = error1(Specs),
+            MaybeIOM = error1(Specs)
+        )
     else
-        parse_instance_name(ModuleName, Arg, TVarSet, Context, SeqNum, Result)
+        Pieces = [words("Error: an"), decl("instance"), words("declaration"),
+            words("should have the form"),
+            quote(":- instance tcname(type1, ... typen)"),
+            words("optionally followed by"),
+            quote("where [method_spec_1, ... method_spec_m]"),
+            suffix("."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_instance_name(module_name::in, term::in, tvarset::in,
+:- pred parse_instance_name(module_name::in, tvarset::in, term::in,
     prog_context::in, int::in, maybe1(item_instance_info)::out) is det.
 
-parse_instance_name(ModuleName, Arg, TVarSet, Context, SeqNum,
-        MaybeItemInstance) :-
-    ( if Arg = term.functor(term.atom("<="), [Name, Constraints], _) then
-        parse_derived_instance(ModuleName, Name, Constraints, TVarSet, Context,
-            SeqNum, MaybeItemInstance)
+parse_instance_name(ModuleName, TVarSet, ArgTerm, Context, SeqNum,
+        MaybeItemInstanceInfo) :-
+    ( if
+        ArgTerm = term.functor(term.atom("<="), [NameTerm, ConstraintsTerm], _)
+    then
+        parse_derived_instance(ModuleName, TVarSet, NameTerm, ConstraintsTerm,
+            Context, SeqNum, MaybeItemInstanceInfo)
     else
-        parse_underived_instance(ModuleName, Arg, TVarSet, Context,
-            SeqNum, MaybeItemInstance)
+        parse_underived_instance(ModuleName, TVarSet, ArgTerm,
+            Context, SeqNum, MaybeItemInstanceInfo)
     ).
 
-:- pred parse_derived_instance(module_name::in, term::in, term::in,
-    tvarset::in, prog_context::in, int::in, maybe1(item_instance_info)::out)
-    is det.
+:- pred parse_derived_instance(module_name::in, tvarset::in,
+    term::in, term::in, prog_context::in, int::in,
+    maybe1(item_instance_info)::out) is det.
 
-parse_derived_instance(ModuleName, Decl, Constraints, TVarSet, Context,
-        SeqNum, MaybeItemInstance) :-
+parse_derived_instance(ModuleName, TVarSet, NameTerm, ConstraintsTerm,
+        Context, SeqNum, MaybeItemInstanceInfo) :-
     varset.coerce(TVarSet, VarSet),
-    parse_instance_constraints(ModuleName, VarSet, Constraints,
-        MaybeParsedConstraints),
-    (
-        MaybeParsedConstraints = ok1(ConstraintList),
-        parse_underived_instance(ModuleName, Decl, TVarSet, Context, SeqNum,
-            MaybeItemInstance0),
-        (
-            MaybeItemInstance0 = error1(_),
-            MaybeItemInstance = MaybeItemInstance0
-        ;
-            MaybeItemInstance0 = ok1(ItemInstance0),
-            ItemInstance0 = item_instance_info(Name, Types, OriginalTypes,
-                _ConstraintList0, Body, InstanceVarSet, ModName,
-                InstanceContext, ItemSeqNum),
-            % XXX Should we keep InstanceContext, or should we replace it
-            % with Context? Or will they always be the same?
-            ItemInstance = item_instance_info(Name, Types, OriginalTypes,
-                ConstraintList, Body, InstanceVarSet, ModName,
-                InstanceContext, ItemSeqNum),
-            MaybeItemInstance = ok1(ItemInstance)
-        )
-    ;
-        MaybeParsedConstraints = error1(Specs),
-        MaybeItemInstance = error1(Specs)
+    parse_underived_instance(ModuleName, TVarSet, NameTerm,
+        Context, SeqNum, MaybeItemInstanceInfo0),
+    parse_instance_constraints(ModuleName, VarSet, ConstraintsTerm,
+        MaybeInstanceConstraints),
+    ( if
+        MaybeItemInstanceInfo0 = ok1(ItemInstanceInfo0),
+        MaybeInstanceConstraints = ok1(InstanceConstraints)
+    then
+        ItemInstanceInfo = ItemInstanceInfo0 ^ ci_deriving_class
+            := InstanceConstraints,
+        MaybeItemInstanceInfo = ok1(ItemInstanceInfo)
+    else
+        Specs = get_any_errors1(MaybeItemInstanceInfo0) ++
+            get_any_errors1(MaybeInstanceConstraints),
+        MaybeItemInstanceInfo = error1(Specs)
     ).
 
 :- pred parse_instance_constraints(module_name::in, varset::in, term::in,
@@ -726,11 +726,11 @@ parse_instance_constraints(ModuleName, VarSet, ConstraintsTerm, Result) :-
     parse_simple_class_constraints(ModuleName, VarSet, ConstraintsTerm, Pieces,
         Result).
 
-:- pred parse_underived_instance(module_name::in, term::in, tvarset::in,
+:- pred parse_underived_instance(module_name::in, tvarset::in, term::in,
     prog_context::in, int::in, maybe1(item_instance_info)::out) is det.
 
-parse_underived_instance(ModuleName, NameTerm, TVarSet, Context, SeqNum,
-        MaybeItemInstance) :-
+parse_underived_instance(ModuleName, TVarSet, NameTerm, Context, SeqNum,
+        MaybeItemInstanceInfo) :-
     % We don't give a default module name here since the instance declaration
     % could well be for a typeclass defined in another module.
     NameContextPieces = [words("In instance declaration:")],
@@ -738,65 +738,62 @@ parse_underived_instance(ModuleName, NameTerm, TVarSet, Context, SeqNum,
     parse_sym_name_and_args(NameTerm, VarSet, NameContextPieces,
         MaybeClassName),
     (
-        MaybeClassName = ok2(ClassName, TermTypes),
+        MaybeClassName = ok2(ClassName, TypeTerms),
         % XXX Give better TypesContextPieces.
         TypesContextPieces = [],
-        parse_types(TermTypes, VarSet, TypesContextPieces, MaybeTypes),
+        parse_types(TypeTerms, VarSet, TypesContextPieces, MaybeTypes),
         (
             MaybeTypes = ok1(Types),
-            ItemInstance = item_instance_info(ClassName, Types, Types, [],
+            ItemInstanceInfo = item_instance_info(ClassName, Types, Types, [],
                 instance_body_abstract, TVarSet, ModuleName, Context, SeqNum),
-            MaybeItemInstance = ok1(ItemInstance)
+            MaybeItemInstanceInfo = ok1(ItemInstanceInfo)
         ;
             MaybeTypes = error1(Specs),
-            MaybeItemInstance = error1(Specs)
+            MaybeItemInstanceInfo = error1(Specs)
         )
     ;
         MaybeClassName = error2(Specs),
-        MaybeItemInstance = error1(Specs)
+        MaybeItemInstanceInfo = error1(Specs)
     ).
 
-:- pred parse_non_empty_instance(module_name::in, term::in, term::in,
-    varset::in, tvarset::in, prog_context::in, int::in,
+:- pred parse_non_empty_instance(module_name::in, varset::in, tvarset::in,
+    term::in, term::in, prog_context::in, int::in,
     maybe1(item_instance_info)::out) is det.
 
-parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Context,
-        SeqNum, MaybeItemInstance) :-
-    parse_instance_methods(ModuleName, Methods, VarSet, MaybeParsedMethods),
-    (
-        MaybeParsedMethods = ok1(MethodList),
-        parse_instance_name(ModuleName, Name, TVarSet, Context, SeqNum,
-            MaybeItemInstance0),
+parse_non_empty_instance(ModuleName, VarSet, TVarSet, NameTerm, MethodsTerm,
+        Context, SeqNum, MaybeItemInstanceInfo) :-
+    parse_instance_name(ModuleName, TVarSet, NameTerm, Context, SeqNum,
+        MaybeItemInstanceInfo0),
+    parse_instance_methods(ModuleName, VarSet, MethodsTerm,
+        MaybeInstanceMethods),
+    ( if
+        MaybeItemInstanceInfo0 = ok1(ItemInstanceInfo0),
+        MaybeInstanceMethods = ok1(InstanceMethods)
+    then
+        ItemInstanceInfo = ((ItemInstanceInfo0
+            ^ ci_method_instances := instance_body_concrete(InstanceMethods))
+            ^ ci_varset := TVarSet),
+        check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm,
+            MaybeCheckSpec),
         (
-            MaybeItemInstance0 = error1(Specs),
-            MaybeItemInstance = error1(Specs)
+            MaybeCheckSpec = yes(Spec),
+            MaybeItemInstanceInfo = error1([Spec])
         ;
-            MaybeItemInstance0 = ok1(ItemInstance0),
-            % XXX Should we keep InstanceContext, or should we replace it
-            % with Context? Or will they always be the same?
-            ItemInstance0 = item_instance_info(Constraints, NameString,
-                Types, OriginalTypes, _, _,
-                ModName, InstanceContext, ItemSeqNum),
-            ItemInstance = item_instance_info(Constraints, NameString,
-                Types, OriginalTypes,
-                instance_body_concrete(MethodList), TVarSet,
-                ModName, InstanceContext, ItemSeqNum),
-            MaybeItemInstance1 = ok1(ItemInstance),
-            check_tvars_in_instance_constraint(MaybeItemInstance1, Name,
-                MaybeItemInstance)
+            MaybeCheckSpec = no,
+            MaybeItemInstanceInfo = ok1(ItemInstanceInfo)
         )
-    ;
-        MaybeParsedMethods = error1(Specs),
-        MaybeItemInstance = error1(Specs)
+    else
+        Specs = get_any_errors1(MaybeItemInstanceInfo0) ++
+            get_any_errors1(MaybeInstanceMethods),
+        MaybeItemInstanceInfo = error1(Specs)
     ).
 
-:- pred check_tvars_in_instance_constraint(maybe1(item_instance_info)::in,
-    term::in, maybe1(item_instance_info)::out) is det.
+:- pred check_tvars_in_instance_constraint(item_instance_info::in,
+    term::in, maybe(error_spec)::out) is det.
 
-check_tvars_in_instance_constraint(error1(Specs), _, error1(Specs)).
-check_tvars_in_instance_constraint(ok1(ItemInstance), InstanceTerm, Result) :-
+check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
     % XXX
-    ItemInstance = item_instance_info(_Name, Types, _OriginalTypes,
+    ItemInstanceInfo = item_instance_info(_Name, Types, _OriginalTypes,
         Constraints, _Methods, TVarSet, _ModName, _Context, _SeqNum),
     % Check that all of the type variables in the constraints on the instance
     % declaration also occur in the type class argument types in the instance
@@ -817,18 +814,18 @@ check_tvars_in_instance_constraint(ok1(ItemInstance), InstanceTerm, Result) :-
         ),
         Pieces = Prefix ++ UnboundTVarPieces ++
             [words("in constraints on instance declaration."), nl],
-        % XXX Would _Context be better than get_term_context(InstanceTerm)?
+        % XXX Would _Context be better than get_term_context(NameTerm)?
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(get_term_context(InstanceTerm), [always(Pieces)])]),
-        Result = error1([Spec])
+            [simple_msg(get_term_context(NameTerm), [always(Pieces)])]),
+        MaybeSpec = yes(Spec)
     else
-        Result = ok1(ItemInstance)
+        MaybeSpec = no
     ).
 
-:- pred parse_instance_methods(module_name::in, term::in, varset::in,
+:- pred parse_instance_methods(module_name::in, varset::in, term::in,
     maybe1(list(instance_method))::out) is det.
 
-parse_instance_methods(ModuleName, MethodsTerm, VarSet, Result) :-
+parse_instance_methods(ModuleName, VarSet, MethodsTerm, Result) :-
     ( if list_term_to_term_list(MethodsTerm, MethodList) then
         % Convert the list of terms into a list of maybe1(class_method)s.
         list.map(term_to_instance_method(ModuleName, VarSet), MethodList,

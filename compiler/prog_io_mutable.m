@@ -18,23 +18,31 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io_iom.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
 :- import_module term.
 :- import_module varset.
 
-:- pred parse_initialise_decl(module_name::in, varset::in, term::in,
-    prog_context::in, int::in, maybe1(item)::out) is det.
+:- pred parse_initialise_item(module_name::in, varset::in, list(term)::in,
+    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
-:- pred parse_finalise_decl(module_name::in, varset::in, term::in,
-    prog_context::in, int::in, maybe1(item)::out) is det.
+:- pred parse_finalise_item(module_name::in, varset::in, list(term)::in,
+    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
-:- pred parse_mutable_decl(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item)::out) is semidet.
+:- pred parse_mutable_item(module_name::in, varset::in, list(term)::in,
+    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
+
+:- type mutable_locn
+    --->    mutable_locn_item
+            % The mutable is an item of its own.
+    ;       mutable_locn_in_solver_type.
+            % The mutable is part of an item that defines a solver type.
 
 :- pred parse_mutable_decl_info(module_name::in, varset::in, list(term)::in,
-    prog_context::in, int::in, maybe1(item_mutable_info)::out) is semidet.
+    prog_context::in, int::in, mutable_locn::in,
+    maybe1(item_mutable_info)::out) is det.
 
 %-----------------------------------------------------------------------------e
 
@@ -46,131 +54,189 @@
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_util.
 
+:- import_module maybe.
 :- import_module pair.
+:- import_module string.
 
 %-----------------------------------------------------------------------------e
 
-parse_initialise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
-    parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier),
-    (
-        MaybeSymNameSpecifier = error1(Specs),
-        MaybeItem = error1(Specs)
-    ;
-        MaybeSymNameSpecifier = ok1(SymNameSpecifier),
+parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
+        MaybeIOM) :-
+    ( if ArgTerms = [Term] then
+        parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier),
         (
-            SymNameSpecifier = name(_),
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error:"), decl("initialise"),
-                words("declaration"), words("requires arity, found"),
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            MaybeItem = error1([Spec])
+            MaybeSymNameSpecifier = error1(Specs),
+            MaybeIOM = error1(Specs)
         ;
-            SymNameSpecifier = name_arity(SymName, Arity),
-            ( if ( Arity = 0 ; Arity = 2 ) then
-                ItemInitialise = item_initialise_info(SymName, Arity,
-                    item_origin_user, Context, SeqNum),
-                Item = item_initialise(ItemInitialise),
-                MaybeItem = ok1(Item)
-            else
+            MaybeSymNameSpecifier = ok1(SymNameSpecifier),
+            (
+                SymNameSpecifier = name(_),
                 TermStr = describe_error_term(VarSet, Term),
-                Pieces = [words("Error:"), decl("initialise"),
-                    words("declaration specifies a predicate"),
-                    words("whose arity is not zero or two:"),
-                    fixed(TermStr), suffix("."), nl],
+                Pieces = [words("Error: the predicate specification in an"),
+                    decl("initialise"), words("declaration"),
+                    words("must specify the predicate's arity;"),
+                    quote(TermStr), words("doesn't."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(Term), [always(Pieces)])]),
-                MaybeItem = error1([Spec])
+                MaybeIOM = error1([Spec])
+            ;
+                SymNameSpecifier = name_arity(SymName, Arity),
+                ( if ( Arity = 0 ; Arity = 2 ) then
+                    ItemInitialise = item_initialise_info(SymName, Arity,
+                        item_origin_user, Context, SeqNum),
+                    Item = item_initialise(ItemInitialise),
+                    MaybeIOM = ok1(iom_item(Item))
+                else
+                    TermStr = describe_error_term(VarSet, Term),
+                    Pieces = [words("Error:"), decl("initialise"),
+                        words("declaration specifies a predicate,"),
+                        quote(TermStr), suffix(","), words("whose arity"),
+                        words("is not zero or two."), nl],
+                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                        [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                    MaybeIOM = error1([Spec])
+                )
             )
         )
+    else
+        Pieces = [words("Error: an"), decl("initialise"), words("declaration"),
+            words("should have the form"),
+            quote(":- initialise pred_name/pred_arity."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
     ).
 
 %-----------------------------------------------------------------------------%
 
-parse_finalise_decl(_ModuleName, VarSet, Term, Context, SeqNum, MaybeItem) :-
-    parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier),
-    (
-        MaybeSymNameSpecifier = error1(Specs),
-        MaybeItem = error1(Specs)
-    ;
-        MaybeSymNameSpecifier = ok1(SymNameSpecifier),
+parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
+        MaybeIOM) :-
+    ( if ArgTerms = [Term] then
+        parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier),
         (
-            SymNameSpecifier = name(_),
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error:"), decl("finalise"),
-                words("declaration"), words("requires arity, found"),
-                fixed(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(Term), [always(Pieces)])]),
-            MaybeItem = error1([Spec])
+            MaybeSymNameSpecifier = error1(Specs),
+            MaybeIOM = error1(Specs)
         ;
-            SymNameSpecifier = name_arity(SymName, Arity),
-            ( if ( Arity = 0 ; Arity = 2 ) then
-                ItemFinalise = item_finalise_info(SymName, Arity,
-                    item_origin_user, Context, SeqNum),
-                Item = item_finalise(ItemFinalise),
-                MaybeItem = ok1(Item)
-            else
+            MaybeSymNameSpecifier = ok1(SymNameSpecifier),
+            (
+                SymNameSpecifier = name(_),
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = [words("Error:"), decl("finalise"),
-                    words("declaration specifies a predicate"),
-                    words("whose arity is not zero or two:"),
-                    words(TermStr), suffix("."), nl],
+                    words("declaration"), words("requires arity, found"),
+                    fixed(TermStr), suffix("."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(Term), [always(Pieces)])]),
-                MaybeItem = error1([Spec])
+                MaybeIOM = error1([Spec])
+            ;
+                SymNameSpecifier = name_arity(SymName, Arity),
+                ( if ( Arity = 0 ; Arity = 2 ) then
+                    ItemFinalise = item_finalise_info(SymName, Arity,
+                        item_origin_user, Context, SeqNum),
+                    Item = item_finalise(ItemFinalise),
+                    MaybeIOM = ok1(iom_item(Item))
+                else
+                    TermStr = describe_error_term(VarSet, Term),
+                    Pieces = [words("Error:"), decl("finalise"),
+                        words("declaration specifies a predicate"),
+                        words("whose arity is not zero or two:"),
+                        words(TermStr), suffix("."), nl],
+                    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                        [simple_msg(get_term_context(Term), [always(Pieces)])]),
+                    MaybeIOM = error1([Spec])
+                )
             )
         )
-    ).
-
-parse_mutable_decl(ModuleName, VarSet, Terms, Context, SeqNum, MaybeItem) :-
-    parse_mutable_decl_info(ModuleName, VarSet, Terms, Context, SeqNum,
-        MaybeMutableInfo),
-    (
-        MaybeMutableInfo = ok1(MutableInfo),
-        MaybeItem = ok1(item_mutable(MutableInfo))
-    ;
-        MaybeMutableInfo = error1(Specs),
-        MaybeItem = error1(Specs)
-    ).
-
-parse_mutable_decl_info(_ModuleName, VarSet, Terms, Context, SeqNum,
-        MaybeMutableInfo) :-
-    Terms = [NameTerm, TypeTerm, ValueTerm, InstTerm | OptMutAttrsTerm],
-    parse_mutable_name(NameTerm, MaybeName),
-    parse_mutable_type(VarSet, TypeTerm, MaybeType),
-    term.coerce(ValueTerm, Value),
-    varset.coerce(VarSet, ProgVarSet),
-    parse_mutable_inst(VarSet, InstTerm, MaybeInst),
-
-    % The list of attributes is optional.
-    (
-        OptMutAttrsTerm = [],
-        MaybeMutAttrs = ok1(default_mutable_attributes)
-    ;
-        OptMutAttrsTerm = [MutAttrsTerm],
-        parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs)
-    ),
-    ( if
-        MaybeName = ok1(Name),
-        MaybeType = ok1(Type),
-        MaybeInst = ok1(Inst),
-        MaybeMutAttrs = ok1(MutAttrs)
-    then
-        % We *must* attach the varset to the mutable item because if the
-        % initial value is non-ground, then the initial value will be a
-        % variable and the mutable initialisation predicate will contain
-        % references to it. Ignoring the varset may lead to later compiler
-        % passes attempting to reuse this variable when fresh variables are
-        % allocated.
-        MutableInfo = item_mutable_info(Name, Type, Type, Inst, Inst,
-            Value, ProgVarSet, MutAttrs, Context, SeqNum),
-        MaybeMutableInfo = ok1(MutableInfo)
     else
-        Specs = get_any_errors1(MaybeName) ++ get_any_errors1(MaybeType) ++
-            get_any_errors1(MaybeInst) ++ get_any_errors1(MaybeMutAttrs),
-        MaybeMutableInfo = error1(Specs)
+        Pieces = [words("Error: a"), decl("finalise"), words("declaration"),
+            words("should have the form"),
+            quote(":- finalise pred_name/pred_arity."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
+    ).
+
+%-----------------------------------------------------------------------------%
+
+parse_mutable_item(ModuleName, VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
+    parse_mutable_decl_info(ModuleName, VarSet, ArgTerms, Context, SeqNum,
+        mutable_locn_item, MaybeItemMutableInfo),
+    (
+        MaybeItemMutableInfo = ok1(ItemMutableInfo),
+        MaybeIOM = ok1(iom_item(item_mutable(ItemMutableInfo)))
+    ;
+        MaybeItemMutableInfo = error1(Specs),
+        MaybeIOM = error1(Specs)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+parse_mutable_decl_info(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
+        MutableLocn, MaybeItemMutableInfo) :-
+    ( if
+        ArgTerms = [NameTerm, TypeTerm, ValueTerm, InstTerm | OptMutAttrsTerm],
+        % The list of attributes is optional.
+        (
+            OptMutAttrsTerm = [],
+            MaybeAttrsTerm = no
+        ;
+            OptMutAttrsTerm = [MutAttrsTerm0],
+            MaybeAttrsTerm = yes(MutAttrsTerm0)
+        )
+    then
+        parse_mutable_name(NameTerm, MaybeName),
+        parse_mutable_type(VarSet, TypeTerm, MaybeType),
+        term.coerce(ValueTerm, Value),
+        varset.coerce(VarSet, ProgVarSet),
+        parse_mutable_inst(VarSet, InstTerm, MaybeInst),
+
+        (
+            MaybeAttrsTerm = no,
+            MaybeMutAttrs = ok1(default_mutable_attributes)
+        ;
+            MaybeAttrsTerm = yes(MutAttrsTerm),
+            parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs)
+        ),
+        ( if
+            MaybeName = ok1(Name),
+            MaybeType = ok1(Type),
+            MaybeInst = ok1(Inst),
+            MaybeMutAttrs = ok1(MutAttrs)
+        then
+            % We *must* attach the varset to the mutable item because if the
+            % initial value is non-ground, then the initial value will be a
+            % variable and the mutable initialisation predicate will contain
+            % references to it. Ignoring the varset may lead to later compiler
+            % passes attempting to reuse this variable when fresh variables are
+            % allocated.
+            ItemMutableInfo = item_mutable_info(Name, Type, Type, Inst, Inst,
+                Value, ProgVarSet, MutAttrs, Context, SeqNum),
+            MaybeItemMutableInfo = ok1(ItemMutableInfo)
+        else
+            Specs = get_any_errors1(MaybeName) ++ get_any_errors1(MaybeType) ++
+                get_any_errors1(MaybeInst) ++ get_any_errors1(MaybeMutAttrs),
+            MaybeItemMutableInfo = error1(Specs)
+        )
+    else
+        Form1 = "mutable(name, type, init_value, inst)",
+        Form2 = "mutable(name, type, init_value, inst, [attr1, ...])",
+        (
+            MutableLocn = mutable_locn_item,
+            WhatPieces = [words("a"), decl("mutable"), words("declaration")],
+            Prefix = ":- ",
+            Suffix1 = "."
+        ;
+            MutableLocn = mutable_locn_in_solver_type,
+            WhatPieces = [words("a"), decl("mutable"),
+                words("representing part of the constraint store")],
+            Prefix = "",
+            Suffix1 = ""
+        ),
+        Pieces = [words("Error:") | WhatPieces] ++
+            [words("should have the form"), quote(Prefix ++ Form1 ++ Suffix1),
+            words("or the form"), quote(Prefix ++ Form2 ++ "."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeItemMutableInfo = error1([Spec])
     ).
 
 :- pred parse_mutable_name(term::in, maybe1(string)::out) is det.

@@ -26,6 +26,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_io_iom.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
@@ -35,7 +36,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred parse_dcg_clause(module_name::in, varset::in, term::in, term::in,
-    prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
     % parse_dcg_pred_goal(GoalTerm, MaybeGoal, DCGVar0, DCGVar, !VarSet):
     %
@@ -51,16 +52,16 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_util.
 
 :- import_module counter.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
 
-parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, Context,
-        SeqNum, MaybeItem) :-
+parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, Context, SeqNum,
+        MaybeIOM) :-
     varset.coerce(VarSet0, ProgVarSet0),
     new_dcg_var(ProgVarSet0, ProgVarSet1, counter.init(0), Counter0,
         DCGVar0),
@@ -82,14 +83,14 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, Context,
             ItemClause = item_clause_info(Name, pf_predicate, Args,
                 item_origin_user, ProgVarSet, Body, Context, SeqNum),
             Item = item_clause(ItemClause),
-            MaybeItem = ok1(Item)
+            MaybeIOM = ok1(iom_item(Item))
         ;
             MaybeFunctor = error2(Specs),
-            MaybeItem = error1(Specs)
+            MaybeIOM = error1(Specs)
         )
     ;
         MaybeBody = error1(Specs),
-        MaybeItem = error1(Specs)
+        MaybeIOM = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%

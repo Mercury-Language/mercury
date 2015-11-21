@@ -34,6 +34,31 @@
 
 :- pred write_version_numbers(version_numbers::in, io::di, io::uo) is det.
 
+    % Parse a term that maps item ids to timestamps. These terms
+    % look like this:
+    %
+    % {
+    %     type(
+    %         state_mc/0 - "2015-10-16 08:51:02",
+    %         state_no/0 - "2015-10-16 08:51:02",
+    %         transition/0 - "2015-10-16 08:51:02",
+    %         transitions/0 - "2015-10-16 08:51:02"
+    %     ),
+    %     type_body(
+    %         state_mc/0 - "2015-10-16 08:51:02",
+    %         state_no/0 - "2015-10-16 08:51:02",
+    %         transition/0 - "2015-10-16 08:51:02",
+    %         transitions/0 - "2015-10-16 08:51:02"
+    %     ),
+    %     inst(
+    %         atom_transition/0 - "2015-10-16 08:51:02",
+    %         atom_transitions/0 - "2015-10-16 08:51:02",
+    %         null_transition/0 - "2015-10-16 08:51:02",
+    %         null_transition_free_state_mc/0 - "2015-10-16 08:51:02",
+    %         null_transitions/0 - "2015-10-16 08:51:02"
+    %     )
+    % }
+    %
 :- pred parse_version_numbers(term::in, maybe1(version_numbers)::out) is det.
 
     % The version number for the format of the version numbers

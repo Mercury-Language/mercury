@@ -30,6 +30,7 @@
    :- include_module prog_io_error.
    :- include_module prog_io_find.
    :- include_module prog_io_goal.
+   :- include_module prog_io_iom.
    :- include_module prog_io_item.
    :- include_module prog_io_mode_defn.
    :- include_module prog_io_mutable.

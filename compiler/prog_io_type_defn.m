@@ -19,18 +19,24 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_io_iom.
 
 :- import_module list.
 :- import_module maybe.
 :- import_module term.
 :- import_module varset.
 
+    % Parse the definition of a solver type.
+    %
+:- pred parse_solver_type_defn_item(module_name::in, varset::in,
+    list(term)::in, prog_context::in, int::in,
+    maybe1(item_or_marker)::out) is det.
+
     % Parse the definition of a type.
     %
-:- pred parse_type_defn(module_name::in, varset::in, term::in, decl_attrs::in,
-    prog_context::in, int::in, maybe1(item)::out) is det.
+:- pred parse_type_defn_item(module_name::in, varset::in,
+    list(term)::in, prog_context::in, int::in, is_solver_type::in,
+    maybe1(item_or_marker)::out) is det.
 
     % parse_type_defn_head(ModuleName, VarSet, Head, HeadResult):
     %
@@ -51,6 +57,15 @@
     maybe3(maybe(solver_type_details), maybe(unify_compare),
         maybe(list(sym_name_and_arity)))::out) is det.
 
+    % A cut-down version of parse_type_decl_where_part_if_present
+    % that looks for and processes only the attributes that can occur
+    % on foreign_type pragmas. This includes only the specification
+    % of equality and/or comparison predicates, or the assertion that
+    % they exist (but that they are visible only in another module).
+    %
+:- pred parse_where_unify_compare(module_name::in, varset::in, term::in,
+    maybe1(maybe(unify_compare))::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -61,43 +76,70 @@
 :- import_module parse_tree.prog_io_mutable.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_typeclass.
+:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 
 :- import_module bag.
 :- import_module bool.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module unit.
 
-parse_type_defn(ModuleName, VarSet, TypeDefnTerm, Attributes, Context,
-        SeqNum, MaybeItem) :-
+parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
+        MaybeIOM) :-
     ( if
-        TypeDefnTerm = term.functor(term.atom(Name), ArgTerms, _),
-        ArgTerms = [HeadTerm, BodyTerm],
-        ( Name = "--->"
-        ; Name = "=="
-        ; Name = "where"
-        )
+        ArgTerms = [ArgTerm],
+        ArgTerm = term.functor(term.atom("type"), SubArgTerms, SubContext)
     then
-        (
-            Name = "--->",
-            parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
-                Attributes, Context, SeqNum, MaybeItem)
-        ;
-            Name = "==",
-            parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
-                Attributes, Context, SeqNum, MaybeItem)
-        ;
-            Name = "where",
-            parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
-                Attributes, Context, SeqNum, MaybeItem)
+        parse_type_defn_item(ModuleName, VarSet, SubArgTerms,
+            SubContext, SeqNum, solver_type, MaybeIOM)
+    else
+        Pieces = [words("Error: the"), decl("solver"), words("keyword"),
+            words("should be followed by a type definition."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
+    ).
+
+parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
+        IsSolverType, MaybeIOM) :-
+    ( if ArgTerms = [TypeDefnTerm] then
+        ( if
+            TypeDefnTerm = term.functor(term.atom(Name), TypeDefnArgTerms, _),
+            TypeDefnArgTerms = [HeadTerm, BodyTerm],
+            ( Name = "--->"
+            ; Name = "=="
+            ; Name = "where"
+            )
+        then
+            (
+                Name = "--->",
+                parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
+                    Context, SeqNum, IsSolverType, MaybeIOM)
+            ;
+                Name = "==",
+                parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
+                    Context, SeqNum, IsSolverType, MaybeIOM)
+            ;
+                Name = "where",
+                parse_where_block_type_defn(ModuleName, VarSet,
+                    HeadTerm, BodyTerm, Context, SeqNum, IsSolverType,
+                    MaybeIOM)
+            )
+        else
+            parse_abstract_type_defn(ModuleName, VarSet, TypeDefnTerm,
+                Context, SeqNum, IsSolverType, MaybeIOM)
         )
     else
-        parse_abstract_type_defn(ModuleName, VarSet, TypeDefnTerm, Attributes,
-            Context, SeqNum, MaybeItem)
+        Pieces = [words("Error: a"), decl("type"), words("declaration"),
+            words("should have just one argument,"),
+            words("which should be the definition of a type."), nl],
+        Spec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(Pieces)])]),
+        MaybeIOM = error1([Spec])
     ).
 
 %-----------------------------------------------------------------------------%
@@ -108,11 +150,11 @@ parse_type_defn(ModuleName, VarSet, TypeDefnTerm, Attributes, Context,
     % parse_du_type_defn parses the definition of a discriminated union type.
     %
 :- pred parse_du_type_defn(module_name::in, varset::in, term::in, term::in,
-    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, is_solver_type::in,
+    maybe1(item_or_marker)::out) is det.
 
-parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
-        Context, SeqNum, MaybeItem) :-
-    get_is_solver_type(IsSolverType, Attributes0, Attributes),
+parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
+        IsSolverType, MaybeIOM) :-
     (
         IsSolverType = solver_type,
         SolverPieces = [words("Error: a solver type"),
@@ -127,7 +169,8 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
 
     parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeTypeCtorAndArgs),
     du_type_rhs_ctors_and_where_terms(BodyTerm, CtorsTerm, MaybeWhereTerm),
-    MaybeOneOrMoreCtors = parse_constructors(ModuleName, VarSet, CtorsTerm),
+    parse_maybe_exist_quant_constructors(ModuleName, VarSet, CtorsTerm,
+        MaybeOneOrMoreCtors),
     (
         MaybeWhereTerm = no,
         MaybeWhere = ok3(no, no, no)
@@ -167,18 +210,17 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes0,
             ItemTypeDefn = item_type_defn_info(Name, Params, TypeDefn,
                 TypeVarSet, Context, SeqNum),
             Item = item_type_defn(ItemTypeDefn),
-            MaybeItem0 = ok1(Item),
-            check_no_attributes(MaybeItem0, Attributes, MaybeItem)
+            MaybeIOM = ok1(iom_item(Item))
         ;
             ErrorSpecs = [_ | _],
-            MaybeItem = error1(ErrorSpecs)
+            MaybeIOM = error1(ErrorSpecs)
         )
     else
         Specs = SolverSpecs ++
             get_any_errors2(MaybeTypeCtorAndArgs) ++
             get_any_errors1(MaybeOneOrMoreCtors) ++
             get_any_errors3(MaybeWhere),
-        MaybeItem = error1(Specs)
+        MaybeIOM = error1(Specs)
     ).
 
 :- pred du_type_rhs_ctors_and_where_terms(term::in,
@@ -200,23 +242,26 @@ du_type_rhs_ctors_and_where_terms(Term, CtorsTerm, MaybeWhereTerm) :-
     % "disjunction", even thought the terms aren't goals in this case)
     % into a list of constructors.
     %
-:- func parse_constructors(module_name, varset, term) =
-    maybe1(one_or_more(constructor)).
+:- pred parse_maybe_exist_quant_constructors(module_name::in, varset::in,
+    term::in, maybe1(one_or_more(constructor))::out) is det.
 
-parse_constructors(ModuleName, VarSet, Term) = MaybeConstructors :-
+parse_maybe_exist_quant_constructors(ModuleName, VarSet, Term,
+        MaybeConstructors) :-
     disjunction_to_one_or_more(Term, one_or_more(HeadBodyTerm, TailBodyTerms)),
-    parse_constructors_loop(ModuleName, VarSet, HeadBodyTerm, TailBodyTerms,
-        MaybeConstructors).
+    parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet,
+        HeadBodyTerm, TailBodyTerms, MaybeConstructors).
 
     % Try to parse the term as a list of constructors.
     %
-:- pred parse_constructors_loop(module_name::in, varset::in,
+:- pred parse_maybe_exist_quant_constructors_loop(module_name::in, varset::in,
     term::in, list(term)::in, maybe1(one_or_more(constructor))::out) is det.
 
-parse_constructors_loop(ModuleName, VarSet, Head, Tail, MaybeConstructors) :-
-    MaybeHeadConstructor = parse_constructor(ModuleName, VarSet, Head),
+parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet,
+        HeadTerm, TailTerms, MaybeConstructors) :-
+    parse_maybe_exist_quant_constructor(ModuleName, VarSet, HeadTerm,
+        MaybeHeadConstructor),
     (
-        Tail = [],
+        TailTerms = [],
         (
             MaybeHeadConstructor = ok1(HeadConstructor),
             MaybeConstructors = ok1(one_or_more(HeadConstructor, []))
@@ -225,9 +270,9 @@ parse_constructors_loop(ModuleName, VarSet, Head, Tail, MaybeConstructors) :-
             MaybeConstructors = error1(Specs)
         )
     ;
-        Tail = [HeadTail | TailTail],
-        parse_constructors_loop(ModuleName, VarSet, HeadTail, TailTail,
-            MaybeTailConstructors),
+        TailTerms = [HeadTailTerm | TailTailTerms],
+        parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet,
+            HeadTailTerm, TailTailTerms, MaybeTailConstructors),
         ( if
             MaybeHeadConstructor = ok1(HeadConstructor),
             MaybeTailConstructors = ok1(TailConstructors)
@@ -241,32 +286,34 @@ parse_constructors_loop(ModuleName, VarSet, Head, Tail, MaybeConstructors) :-
         )
     ).
 
-:- func parse_constructor(module_name, varset, term) = maybe1(constructor).
+:- pred parse_maybe_exist_quant_constructor(module_name::in, varset::in,
+    term::in, maybe1(constructor)::out) is det.
 
-parse_constructor(ModuleName, VarSet, Term) = MaybeConstructor :-
+parse_maybe_exist_quant_constructor(ModuleName, VarSet, Term,
+        MaybeConstructor) :-
     ( if Term = term.functor(term.atom("some"), [VarsTerm, SubTerm], _) then
-        ( if parse_list_of_vars(VarsTerm, ExistQVars) then
+        ContextPieces = [words("in first argument of"),
+            quote("some"), suffix(":")],
+        parse_list_of_vars(VarSet, ContextPieces, VarsTerm, MaybeExistQVars),
+        (
+            MaybeExistQVars = ok1(ExistQVars),
             list.map(term.coerce_var, ExistQVars, ExistQTVars),
-            MaybeConstructor = parse_constructor_2(ModuleName, VarSet,
-                ExistQTVars, SubTerm)
-        else
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error: syntax error in variable list at"),
-                words(TermStr), suffix("."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(VarsTerm), [always(Pieces)])]),
-            MaybeConstructor = error1([Spec])
+            parse_constructor(ModuleName, VarSet, ExistQTVars, SubTerm,
+                MaybeConstructor)
+        ;
+            MaybeExistQVars = error1(Specs),
+            MaybeConstructor = error1(Specs)
         )
     else
         ExistQVars = [],
-        MaybeConstructor = parse_constructor_2(ModuleName, VarSet, ExistQVars,
-            Term)
+        parse_constructor(ModuleName, VarSet, ExistQVars, Term,
+            MaybeConstructor)
     ).
 
-:- func parse_constructor_2(module_name, varset, list(tvar), term) =
-    maybe1(constructor).
+:- pred parse_constructor(module_name::in, varset::in, list(tvar)::in,
+    term::in, maybe1(constructor)::out) is det.
 
-parse_constructor_2(ModuleName, VarSet, ExistQVars, Term) = MaybeConstructor :-
+parse_constructor(ModuleName, VarSet, ExistQVars, Term, MaybeConstructor) :-
     get_existential_constraints_from_term(ModuleName, VarSet, Term,
         BeforeConstraintsTerm, MaybeConstraints),
     (
@@ -564,15 +611,28 @@ find_constructor([Ctor | Ctors], SymName, Arity, NamedCtor) :-
     % parse_eqv_type_defn parses the definition of an equivalence type.
     %
 :- pred parse_eqv_type_defn(module_name::in, varset::in, term::in, term::in,
-    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, is_solver_type::in, maybe1(item_or_marker)::out)
+    is det.
 
-parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes,
-        Context, SeqNum, MaybeItem) :-
+parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
+        IsSolverType, MaybeIOM) :-
+    (
+        IsSolverType = non_solver_type,
+        SolverSpecs = []
+    ;
+        IsSolverType = solver_type,
+        SolverPieces = [words("Error: a solver type cannot be defined"),
+            words("to be equivalent to another type."), nl],
+        SolverSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(get_term_context(HeadTerm), [always(SolverPieces)])]),
+        SolverSpecs = [SolverSpec]
+    ),
     parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameAndParams),
     % XXX Should pass more correct ContextPieces.
     ContextPieces = [],
     parse_type(BodyTerm, VarSet, ContextPieces, MaybeType),
     ( if
+        SolverSpecs = [],
         MaybeNameAndParams = ok2(Name, ParamTVars),
         MaybeType = ok1(Type)
     then
@@ -585,16 +645,16 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes,
             ItemTypeDefn = item_type_defn_info(Name, ParamTVars, TypeDefn,
                 TVarSet, Context, SeqNum),
             Item = item_type_defn(ItemTypeDefn),
-            MaybeItem0 = ok1(Item),
-            check_no_attributes(MaybeItem0, Attributes, MaybeItem)
+            MaybeIOM = ok1(iom_item(Item))
         ;
             FreeSpecs = [_ | _],
-            MaybeItem = error1(FreeSpecs)
+            MaybeIOM = error1(FreeSpecs)
         )
     else
-        Specs = get_any_errors2(MaybeNameAndParams) ++
+        Specs = SolverSpecs ++
+            get_any_errors2(MaybeNameAndParams) ++
             get_any_errors1(MaybeType),
-        MaybeItem = error1(Specs)
+        MaybeIOM = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -603,23 +663,22 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Attributes,
     % This is either an abstract enumeration type, or a solver type.
     %
 :- pred parse_where_block_type_defn(module_name::in, varset::in, term::in,
-    term::in, decl_attrs::in, prog_context::in, int::in,
-    maybe1(item)::out) is det.
+    term::in, prog_context::in, int::in, is_solver_type::in,
+    maybe1(item_or_marker)::out) is det.
 
 parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
-        Attributes0, Context, SeqNum, MaybeItem) :-
-    get_is_solver_type(IsSolverType, Attributes0, Attributes),
+        Context, SeqNum, IsSolverType, MaybeIOM) :-
     (
         IsSolverType = non_solver_type,
         parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm,
-            BodyTerm, Context, SeqNum, MaybeItem)
+            BodyTerm, Context, SeqNum, MaybeIOM)
     ;
         IsSolverType = solver_type,
         parse_type_decl_where_term(solver_type, ModuleName, VarSet, BodyTerm,
             MaybeWhere),
         (
             MaybeWhere = error3(Specs),
-            MaybeItem = error1(Specs)
+            MaybeIOM = error1(Specs)
         ;
             MaybeWhere = ok3(MaybeSolverTypeDetails, MaybeUserEqComp,
                 MaybeDirectArgCtors),
@@ -631,21 +690,22 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,
                     [simple_msg(get_term_context(HeadTerm),
                         [always(Pieces)])]),
-                MaybeItem = error1([Spec])
+                MaybeIOM = error1([Spec])
             ;
                 MaybeDirectArgCtors = no,
                 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
-                    MaybeSolverTypeDetails, MaybeUserEqComp, Attributes,
-                    Context, SeqNum, MaybeItem)
+                    MaybeSolverTypeDetails, MaybeUserEqComp, Context, SeqNum,
+                    MaybeIOM)
             )
         )
     ).
 
 :- pred parse_where_type_is_abstract_enum(module_name::in, varset::in,
-    term::in, term::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    term::in, term::in, prog_context::in, int::in,
+    maybe1(item_or_marker)::out) is det.
 
 parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
-        Context, SeqNum, MaybeItem) :-
+        Context, SeqNum, MaybeIOM) :-
     varset.coerce(VarSet, TypeVarSet),
     parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameParams),
     ( if
@@ -678,20 +738,19 @@ parse_where_type_is_abstract_enum(ModuleName, VarSet, HeadTerm, BodyTerm,
         ItemTypeDefn = item_type_defn_info(Name, Params, TypeDefn,
             TypeVarSet, Context, SeqNum),
         Item = item_type_defn(ItemTypeDefn),
-        MaybeItem = ok1(Item)
+        MaybeIOM = ok1(iom_item(Item))
     else
         Specs = get_any_errors2(MaybeNameParams) ++
             get_any_errors1(MaybeTypeDefn),
-        MaybeItem = error1(Specs)
+        MaybeIOM = error1(Specs)
     ).
 
 :- pred parse_solver_type_base(module_name::in, varset::in, term::in,
     maybe(solver_type_details)::in, maybe(unify_compare)::in,
-    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
 
 parse_solver_type_base(ModuleName, VarSet, HeadTerm,
-        MaybeSolverTypeDetails, MaybeUserEqComp, Attributes,
-        Context, SeqNum, MaybeItem) :-
+        MaybeSolverTypeDetails, MaybeUserEqComp, Context, SeqNum, MaybeIOM) :-
     varset.coerce(VarSet, TVarSet),
     parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameParams),
     (
@@ -723,11 +782,10 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
         ItemTypeDefn = item_type_defn_info(SymName, ParamTVars, TypeDefn,
             TVarSet, Context, SeqNum),
         Item = item_type_defn(ItemTypeDefn),
-        MaybeItem0 = ok1(Item),
-        check_no_attributes(MaybeItem0, Attributes, MaybeItem)
+        MaybeIOM = ok1(iom_item(Item))
     else
         Specs = SolverSpecs ++ get_any_errors2(MaybeNameParams) ++ FreeSpecs,
-        MaybeItem = error1(Specs)
+        MaybeIOM = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -736,15 +794,15 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
 %
 
 :- pred parse_abstract_type_defn(module_name::in, varset::in, term::in,
-    decl_attrs::in, prog_context::in, int::in, maybe1(item)::out) is det.
+    prog_context::in, int::in, is_solver_type::in,
+    maybe1(item_or_marker)::out) is det.
 
-parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Attributes0,
-        Context, SeqNum, MaybeItem) :-
+parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
+        IsSolverType, MaybeIOM) :-
     parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeTypeCtorAndArgs),
-    get_is_solver_type(IsSolverType, Attributes0, Attributes),
     (
         MaybeTypeCtorAndArgs = error2(Specs),
-        MaybeItem = error1(Specs)
+        MaybeIOM = error1(Specs)
     ;
         MaybeTypeCtorAndArgs = ok2(Name, Params),
         varset.coerce(VarSet, TypeVarSet),
@@ -759,8 +817,7 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Attributes0,
         ItemTypeDefn = item_type_defn_info(Name, Params, TypeDefn,
             TypeVarSet, Context, SeqNum),
         Item = item_type_defn(ItemTypeDefn),
-        MaybeItem0 = ok1(Item),
-        check_no_attributes(MaybeItem0, Attributes, MaybeItem)
+        MaybeIOM = ok1(iom_item(Item))
     ).
 
 %-----------------------------------------------------------------------------%
@@ -835,7 +892,17 @@ parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
         parse_where_attribute(parse_where_is("direct_arg",
                 parse_where_direct_arg_is(ModuleName, VarSet)),
             MaybeDirectArgIs, !MaybeTerm),
-        parse_where_end(!.MaybeTerm, MaybeWhereEnd)
+        (
+            !.MaybeTerm = no,
+            MaybeEndSpec = ok1(unit)
+        ;
+            !.MaybeTerm = yes(EndTerm),
+            Pieces = [words("Error: attributes are either badly ordered"),
+                words("or contain an unrecognised attribute."), nl],
+            EndSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(EndTerm), [always(Pieces)])]),
+            MaybeEndSpec = error1([EndSpec])
+        )
     ),
     MaybeWhereDetails = make_maybe_where_details(
         IsSolverType,
@@ -848,8 +915,62 @@ parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
         MaybeEqualityIs,
         MaybeComparisonIs,
         MaybeDirectArgIs,
-        MaybeWhereEnd,
+        MaybeEndSpec,
         Term0
+    ).
+
+parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeUnifyCompare) :-
+    some [!MaybeTerm] (
+        !:MaybeTerm = yes(Term0),
+        parse_where_attribute(parse_where_type_is_abstract_noncanonical,
+            MaybeTypeIsAbstractNoncanonical, !MaybeTerm),
+        parse_where_attribute(parse_where_is("equality",
+                parse_where_pred_is(ModuleName, VarSet)),
+            MaybeEqualityIs, !MaybeTerm),
+        parse_where_attribute(parse_where_is("comparison",
+                parse_where_pred_is(ModuleName, VarSet)),
+            MaybeComparisonIs, !MaybeTerm),
+        (
+            !.MaybeTerm = no,
+            MaybeWhereEnd = ok1(unit)
+        ;
+            !.MaybeTerm = yes(EndTerm),
+            Pieces = [words("Error: unrecognized or unexpected attribute."),
+                nl],
+            EndSpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(EndTerm), [always(Pieces)])]),
+            MaybeWhereEnd = error1([EndSpec])
+        )
+    ),
+    ( if
+        MaybeTypeIsAbstractNoncanonical = ok1(TypeIsAbstractNoncanonical),
+        MaybeEqualityIs = ok1(EqualityIs),
+        MaybeComparisonIs = ok1(ComparisonIs),
+        MaybeWhereEnd = ok1(_)
+    then
+        (
+            TypeIsAbstractNoncanonical = yes(_),
+            ( if
+                EqualityIs = no,
+                ComparisonIs = no
+            then
+                MaybeUnifyCompare =
+                    ok1(yes(abstract_noncanonical_type(non_solver_type)))
+            else
+                Spec = abstract_noncanonical_excludes_others(Term0),
+                MaybeUnifyCompare = error1([Spec])
+            )
+        ;
+            TypeIsAbstractNoncanonical = no,
+            MaybeUC = maybe_unify_compare(EqualityIs, ComparisonIs),
+            MaybeUnifyCompare = ok1(MaybeUC)
+        )
+    else
+        Specs =
+            get_any_errors1(MaybeEqualityIs) ++
+            get_any_errors1(MaybeComparisonIs) ++
+            get_any_errors1(MaybeWhereEnd),
+        MaybeUnifyCompare = error1(Specs)
     ).
 
     % parse_where_attribute(Parser, Result, MaybeTerm, MaybeTailTerm) handles
@@ -1021,19 +1142,19 @@ parse_where_mutable_is(ModuleName, Term) = MaybeItems :-
 :- pred parse_mutable_decl_term(module_name::in, term::in,
     maybe1(item_mutable_info)::out) is det.
 
-parse_mutable_decl_term(ModuleName, Term, MaybeMutableInfo) :-
+parse_mutable_decl_term(ModuleName, Term, MaybeItemMutableInfo) :-
     ( if
-        Term = term.functor(term.atom("mutable"), Args, Context),
-        varset.init(VarSet),
-        parse_mutable_decl_info(ModuleName, VarSet, Args, Context, -1,
-            MaybeMutableInfoPrime)
+        Term = term.functor(term.atom("mutable"), ArgTerms, Context)
     then
-        MaybeMutableInfo = MaybeMutableInfoPrime
+        varset.init(VarSet),
+        SeqNum = -1,
+        parse_mutable_decl_info(ModuleName, VarSet, ArgTerms, Context, SeqNum,
+            mutable_locn_in_solver_type, MaybeItemMutableInfo)
     else
         Pieces = [words("Error: expected a mutable declaration."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
-        MaybeMutableInfo = error1([Spec])
+        MaybeItemMutableInfo = error1([Spec])
     ).
 
 :- func parse_where_direct_arg_is(module_name, varset, term) =
@@ -1068,22 +1189,13 @@ parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
         MaybeFunctor = error1([Spec])
     ).
 
-:- pred parse_where_end(maybe(term)::in, maybe1(maybe(unit))::out) is det.
-
-parse_where_end(no, ok1(yes(unit))).
-parse_where_end(yes(Term), error1([Spec])) :-
-    Pieces = [words("Error: attributes are either badly ordered"),
-        words("or contain an unrecognised attribute."), nl],
-    Spec = error_spec(severity_error, phase_term_to_parse_tree,
-        [simple_msg(get_term_context(Term), [always(Pieces)])]).
-
 :- func make_maybe_where_details(is_solver_type, maybe1(maybe(unit)),
     maybe1(maybe(mer_type)), maybe1(maybe(init_pred)),
     maybe1(maybe(mer_inst)), maybe1(maybe(mer_inst)),
     maybe1(maybe(list(item_mutable_info))),
     maybe1(maybe(equality_pred)), maybe1(maybe(comparison_pred)),
     maybe1(maybe(list(sym_name_and_arity))),
-    maybe1(maybe(unit)), term)
+    maybe1(unit), term)
     = maybe3(maybe(solver_type_details), maybe(unify_compare),
         maybe(list(sym_name_and_arity))).
 
@@ -1102,12 +1214,12 @@ make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
         MaybeEqualityIs = ok1(EqualityIs),
         MaybeComparisonIs = ok1(ComparisonIs),
         MaybeDirectArgIs = ok1(DirectArgIs),
-        MaybeWhereEnd = ok1(WhereEnd)
+        MaybeWhereEnd = ok1(_WhereEnd)
     then
         MaybeWhereDetails = make_maybe_where_details_2(IsSolverType,
             TypeIsAbstractNoncanonical, RepresentationIs, InitialisationIs,
             GroundIs, AnyIs, CStoreIs, EqualityIs, ComparisonIs, DirectArgIs,
-            WhereEnd, WhereTerm)
+            WhereTerm)
     else
         Specs =
             get_any_errors1(MaybeTypeIsAbstractNoncanonical) ++
@@ -1127,13 +1239,13 @@ make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
     maybe(mer_type), maybe(init_pred), maybe(mer_inst), maybe(mer_inst),
     maybe(list(item_mutable_info)),
     maybe(equality_pred), maybe(comparison_pred),
-    maybe(list(sym_name_and_arity)), maybe(unit), term)
+    maybe(list(sym_name_and_arity)), term)
     = maybe3(maybe(solver_type_details), maybe(unify_compare),
         maybe(list(sym_name_and_arity))).
 
 make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
         RepresentationIs, InitialisationIs, GroundIs, AnyIs, CStoreIs,
-        EqualityIs, ComparisonIs, DirectArgIs, _WhereEnd, WhereTerm)
+        EqualityIs, ComparisonIs, DirectArgIs, WhereTerm)
         = MaybeWhereDetails :-
     (
         TypeIsAbstractNoncanonical = yes(_),
@@ -1152,12 +1264,7 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
             MaybeWhereDetails =
                 ok3(no, yes(abstract_noncanonical_type(IsSolverType)), no)
         else
-            Pieces = [words("Error:"),
-                quote("where type_is_abstract_noncanonical"),
-                words("excludes other"), quote("where ..."),
-                words("attributes."), nl],
-            Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                [simple_msg(get_term_context(WhereTerm), [always(Pieces)])]),
+            Spec = abstract_noncanonical_excludes_others(WhereTerm),
             MaybeWhereDetails = error3([Spec])
         )
     ;
@@ -1256,6 +1363,16 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
             )
         )
     ).
+
+:- func abstract_noncanonical_excludes_others(term) = error_spec.
+
+abstract_noncanonical_excludes_others(Term) = Spec :-
+    Pieces = [words("Error:"),
+        quote("where type_is_abstract_noncanonical"),
+        words("excludes other"), quote("where ..."),
+        words("attributes."), nl],
+    Spec = error_spec(severity_error, phase_term_to_parse_tree,
+        [simple_msg(get_term_context(Term), [always(Pieces)])]).
 
 :- func maybe_unify_compare(maybe(equality_pred), maybe(comparison_pred))
     = maybe(unify_compare).
@@ -1379,18 +1496,6 @@ check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(BodyContext, [always(Pieces)])]),
         Specs = [Spec]
-    ).
-
-%-----------------------------------------------------------------------------e
-
-:- pred get_is_solver_type(is_solver_type::out,
-    decl_attrs::in, decl_attrs::out) is det.
-
-get_is_solver_type(IsSolverType, !Attributes) :-
-    ( if !.Attributes = [decl_attr_solver_type - _ | !:Attributes] then
-        IsSolverType = solver_type
-    else
-        IsSolverType = non_solver_type
     ).
 
 %-----------------------------------------------------------------------------e
