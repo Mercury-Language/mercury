@@ -6486,10 +6486,24 @@ exported predicates, functions, insts, modes or types.
 Warn about predicate or function arguments which are not used.
 
 @sp 1
-@item --warn-interface-imports
+@item --no-warn-interface-imports
+@c @item --warn-interface-imports
+@findex --no-warn-interface-imports
 @findex --warn-interface-imports
-Warn about modules imported in the interface which are not
-used in the interface.
+@c Warn about modules imported in the interface
+@c which are not used in the interface.
+Do not warn about modules imported in the interface
+which are not used in the interface.
+
+@sp 1
+@c @item --no-warn-interface-imports-in-parents
+@item --warn-interface-imports-in-parents
+@findex --no-warn-interface-imports-in-parents
+@findex --warn-interface-imports-in-parents
+Warn about modules imported in the interface a parent module
+which are not used in the interface of that module.
+@c Do not warn about modules imported in the interface of a parent module
+@c which are not used in the interface of that module.
 
 @sp 1
 @item --warn-missing-opt-files

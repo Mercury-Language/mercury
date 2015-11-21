@@ -109,6 +109,7 @@
     ;       warn_nothing_exported
     ;       warn_unused_args
     ;       warn_interface_imports
+    ;       warn_interface_imports_in_parents
     ;       warn_missing_opt_files
     ;       warn_missing_trans_opt_files
     ;       warn_missing_trans_opt_deps
@@ -1089,6 +1090,7 @@ option_defaults_2(warning_option, [
     warn_nothing_exported               -   bool(yes),
     warn_unused_args                    -   bool(no),
     warn_interface_imports              -   bool(yes),
+    warn_interface_imports_in_parents   -   bool(no),
     warn_non_contiguous_clauses         -   bool(no),   % XXX should be yes
     warn_non_contiguous_foreign_procs   -   bool(no),
     warn_non_stratification             -   bool(no),
@@ -1957,6 +1959,8 @@ long_option("warn-inferred-erroneous",  warn_inferred_erroneous).
 long_option("warn-nothing-exported",    warn_nothing_exported).
 long_option("warn-unused-args",         warn_unused_args).
 long_option("warn-interface-imports",   warn_interface_imports).
+long_option("warn-interface-imports-in-parents",
+                                        warn_interface_imports_in_parents).
 long_option("warn-non-contiguous-clauses",  warn_non_contiguous_clauses).
 long_option("warn-non-contiguous-foreign-procs",
                                         warn_non_contiguous_foreign_procs).
@@ -1986,7 +1990,7 @@ long_option("warn-known-bad-format-calls", warn_known_bad_format_calls).
 long_option("warn-only-one-format-string-error",
                     warn_only_one_format_string_error).
 long_option("warn-unknown-format-calls", warn_unknown_format_calls).
-long_option("warn-obsolete",             warn_obsolete).
+long_option("warn-obsolete",            warn_obsolete).
 long_option("warn-insts-without-matching-type",
                                         warn_insts_without_matching_type).
 long_option("warn-unused-imports",      warn_unused_imports).
@@ -3489,9 +3493,12 @@ options_help_warning -->
         "\tDo not warn about modules which export nothing.",
         "--warn-unused-args",
         "\tWarn about predicate arguments which are not used.",
-        "--warn-interface-imports",
-        "\tWarn about modules imported in the interface, but",
+        "--no-warn-interface-imports",
+        "\tDo not warn about modules imported in the interface, but",
         "\twhich are not used in the interface.",
+        "--warn-interface-imports-in-parents",
+        "\tWarn about modules that are imported in the interface of",
+        "\ta parent module, but not used in the interface of that module.",
         "--no-warn-missing-opt-files",
         "\tDisable warnings about `.opt' files which cannot be opened.",
         "--warn-missing-trans-opt-files",

@@ -319,14 +319,11 @@ warn_unused_interface_import(ParentModuleName,
         words("warning: module"), sym_name(ImportedModuleName),
         words("is imported in the interface,"),
         words("but it is not used in the interface."), nl],
-    HeadMsg = simple_msg(HeadContext,
-        [option_is_set(warn_interface_imports, yes, [always(HeadPieces)])]),
+    HeadMsg = simple_msg(HeadContext, [always(HeadPieces)]),
     % TailContexts is almost always [], we add TailMsgs just in case it isn't.
     list.map(warn_redundant_import_context(ImportedModuleName),
         TailContexts, TailMsgs),
-    Severity = severity_conditional(warn_interface_imports, yes,
-        severity_warning, no),
-    Spec = error_spec(Severity, phase_parse_tree_to_hlds,
+    Spec = error_spec(severity_warning, phase_parse_tree_to_hlds,
         [HeadMsg | TailMsgs]),
     !:Specs = [Spec | !.Specs].
 
@@ -336,8 +333,7 @@ warn_unused_interface_import(ParentModuleName,
 warn_redundant_import_context(ImportedModuleName, Context, Msg) :-
     Pieces = [words("Module"), sym_name(ImportedModuleName),
         words("is also redundantly imported here."), nl],
-    Msg = simple_msg(Context,
-        [option_is_set(warn_interface_imports, yes, [always(Pieces)])]).
+    Msg = simple_msg(Context, [always(Pieces)]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

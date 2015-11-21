@@ -87,13 +87,19 @@ module_qualify_items_in_src_item_blocks([SrcItemBlock0 | SrcItemBlocks0],
         Incls = [_ | _],
         % The submodule might make use of *any* of the imported modules.
         % There is no way for us to tell which ones. So we conservatively
-        % assume that it uses *all* of them.
-        % XXX ITEM_LIST Fix this too-conservative behavior.
-        % If a submodule needs a module that the parent doesn't,
-        % it should import it for itself. Anything else may lead to
-        % unnecessary recompilations.
-        map.init(UnusedModules),
-        mq_info_set_as_yet_unused_interface_modules(UnusedModules, !Info)
+        % assume that it uses *all* of them, *unless* we were given the option
+        % that tells us that we should not make that assumption.
+        mq_info_get_should_warn_unused_imports_in_parents(!.Info,
+            ShouldWarnUnusedImportsInParents),
+        (
+            ShouldWarnUnusedImportsInParents =
+                should_not_warn_unused_imports_in_parents,
+            map.init(UnusedModules),
+            mq_info_set_as_yet_unused_interface_modules(UnusedModules, !Info)
+        ;
+            ShouldWarnUnusedImportsInParents =
+                should_warn_unused_imports_in_parents
+        )
     ),
     module_qualify_items_loop(InInt, Items0, Items, !Info, !Specs),
     SrcItemBlock = item_block(SrcSection, Context, Incls, Avails, Items),
