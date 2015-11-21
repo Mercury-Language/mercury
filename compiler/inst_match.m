@@ -532,7 +532,8 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
         InstB = any(UniqB, none_or_default_func),
         compare_uniqueness(!.Info ^ imi_uniqueness_comparison, UniqA, UniqB),
         compare_bound_inst_list_uniq(!.Info ^ imi_uniqueness_comparison,
-            BoundInstsA, UniqB, !.Info ^ imi_module_info)
+            BoundInstsA, UniqB, !.Info ^ imi_module_info),
+        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
     ;
         InstA = bound(_, _, _),
         InstB = free
@@ -557,23 +558,22 @@ inst_matches_initial_4(InstA, InstB, MaybeType, !Info) :-
         inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
             MaybeType, !.Info ^ imi_module_info),
         compare_bound_inst_list_uniq(!.Info ^ imi_uniqueness_comparison,
-            BoundInstsA, UniqB, !.Info ^ imi_module_info)
+            BoundInstsA, UniqB, !.Info ^ imi_module_info),
+        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
     ;
         InstA = bound(Uniq, InstResultsA, BoundInstsA),
         InstB = abstract_inst(_,_),
-        Uniq = unique,
-        % XXX check that InstA does not contain non-default funcs
         inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
             no, !.Info ^ imi_module_info),
-        bound_inst_list_is_unique(BoundInstsA, !.Info ^ imi_module_info)
-    ;
-        InstA = bound(Uniq, InstResultsA, BoundInstsA),
-        InstB = abstract_inst(_,_),
-        Uniq = mostly_unique,
-        % XXX check that InstA does not contain non-default funcs
-        inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
-            no, !.Info ^ imi_module_info),
-        bound_inst_list_is_mostly_unique(BoundInstsA, !.Info ^ imi_module_info)
+        (
+            Uniq = unique,
+            bound_inst_list_is_unique(BoundInstsA, !.Info ^ imi_module_info)
+        ;
+            Uniq = mostly_unique,
+            bound_inst_list_is_mostly_unique(BoundInstsA,
+                !.Info ^ imi_module_info)
+        ),
+        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
     ;
         InstA = ground(UniqA, HOInstInfoA),
         InstB = any(UniqB, HOInstInfoB),
@@ -803,7 +803,6 @@ compare_bound_inst_list_uniq(uc_instantiated, BoundInsts, Uniq, ModuleInfo) :-
     module_info::in) is semidet.
 
 bound_inst_list_matches_uniq(BoundInsts, Uniq, ModuleInfo) :-
-    % XXX check that BoundsInsts does not contain non-default funcs
     ( if Uniq = unique then
         bound_inst_list_is_unique(BoundInsts, ModuleInfo)
     else if Uniq = mostly_unique then
@@ -816,7 +815,6 @@ bound_inst_list_matches_uniq(BoundInsts, Uniq, ModuleInfo) :-
     module_info::in) is semidet.
 
 uniq_matches_bound_inst_list(Uniq, BoundInsts, ModuleInfo) :-
-    % XXX check that BoundsInsts does not contain non-default funcs
     ( if Uniq = shared then
         bound_inst_list_is_not_partly_unique(BoundInsts, ModuleInfo)
     else if Uniq = mostly_unique then
@@ -943,7 +941,8 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         % Among other things, changing this would break compare_inst
         % in modecheck_call.m.
         inst_results_bound_inst_list_is_ground_or_any(InstResultsA,
-            BoundInstsA, !.Info ^ imi_module_info)
+            BoundInstsA, !.Info ^ imi_module_info),
+        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
     ;
         InstA = bound(UniqA, _InstResultsA, BoundInstsA),
         InstB = bound(UniqB, _InstResultsB, BoundInstsB),
@@ -957,7 +956,8 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
             MaybeType, !.Info ^ imi_module_info),
         bound_inst_list_matches_uniq(BoundInstsA, UniqB,
-            !.Info ^ imi_module_info)
+            !.Info ^ imi_module_info),
+        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
     ;
         InstA = ground(UniqA, HOInstInfoA),
         InstB = any(UniqB, HOInstInfoB),
@@ -972,6 +972,7 @@ inst_matches_final_3(InstA, InstB, MaybeType, !Info) :-
         inst_results_bound_inst_list_is_ground_mt(InstResultsB, BoundInstsB,
             MaybeType, ModuleInfo),
         uniq_matches_bound_inst_list(UniqA, BoundInstsB, ModuleInfo),
+        inst_contains_nondefault_func_mode_1(InstB, no, !Info),
         (
             MaybeType = yes(Type),
             % We can only do this check if the type is known.
@@ -1161,15 +1162,15 @@ inst_matches_binding_3(InstA, InstB, MaybeType, !Info) :-
     ;
         InstA = bound(_UniqA, InstResultsA, BoundInstsA),
         InstB = ground(_UniqB, none_or_default_func),
-        % XXX check that InstA does not contain non-default funcs.
         inst_results_bound_inst_list_is_ground_mt(InstResultsA, BoundInstsA,
-            MaybeType, !.Info ^ imi_module_info)
+            MaybeType, !.Info ^ imi_module_info),
+        inst_contains_nondefault_func_mode_1(InstA, no, !Info)
     ;
         InstA = ground(_UniqA, _),
         InstB = bound(_UniqB, InstResultsB, BoundInstsB),
-        % XXX check that InstB does not contain non-default funcs
         inst_results_bound_inst_list_is_ground_mt(InstResultsB, BoundInstsB,
             MaybeType, !.Info ^ imi_module_info),
+        inst_contains_nondefault_func_mode_1(InstB, no, !Info),
         (
             MaybeType = yes(Type),
             % We can only do this check if the type is known.
@@ -1200,8 +1201,8 @@ inst_matches_binding_3(InstA, InstB, MaybeType, !Info) :-
 ho_inst_info_matches_binding(HOInstInfoA, HOInstInfoB, MaybeType,
         ModuleInfo) :-
     (
-        % XXX Non-default funcs should not match-binding with default ones.
-        HOInstInfoB = none_or_default_func
+        HOInstInfoB = none_or_default_func,
+        ho_inst_info_matches_ground_mt(ModuleInfo, HOInstInfoA, MaybeType)
     ;
         HOInstInfoA = none_or_default_func,
         HOInstInfoB = higher_order(PredInstB),
@@ -1257,10 +1258,16 @@ bound_inst_list_matches_binding([X | Xs], [Y | Ys], MaybeType, !Info) :-
 %-----------------------------------------------------------------------------%
 
 inst_contains_nondefault_func_mode(ModuleInfo, Inst) :-
-    set.init(Expansions0),
     Info = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
         ground_matches_bound_if_complete),
-    inst_contains_nondefault_func_mode_2(Inst, Expansions0, yes, Info, _).
+    inst_contains_nondefault_func_mode_1(Inst, yes, Info, _).
+
+:- pred inst_contains_nondefault_func_mode_1(mer_inst::in, bool::out,
+    inst_match_info::in, inst_match_info::out) is det.
+
+inst_contains_nondefault_func_mode_1(Inst, ContainsNonstd, !Info) :-
+    inst_contains_nondefault_func_mode_2(Inst, set.init, ContainsNonstd,
+        !Info).
 
 :- pred inst_contains_nondefault_func_mode_2(mer_inst::in, set(inst_name)::in,
     bool::out, inst_match_info::in, inst_match_info::out) is det.
@@ -1358,9 +1365,15 @@ bound_inst_list_contains_nondefault_func_mode([BoundInst | BoundInsts],
 %---------------------------------------------------------------------------%
 
 ho_inst_info_matches_ground(ModuleInfo, HOInstInfo) :-
+    ho_inst_info_matches_ground_mt(ModuleInfo, HOInstInfo, no).
+
+:- pred ho_inst_info_matches_ground_mt(module_info::in, ho_inst_info::in,
+    maybe(mer_type)::in) is semidet.
+
+ho_inst_info_matches_ground_mt(ModuleInfo, HOInstInfo, MaybeType) :-
     Info = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
         ground_matches_bound_if_complete),
-    ho_inst_info_matches_ground_2(HOInstInfo, no, Info, _).
+    ho_inst_info_matches_ground_2(HOInstInfo, MaybeType, Info, _).
 
 :- pred ho_inst_info_matches_ground_2(ho_inst_info::in, maybe(mer_type)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
@@ -1374,9 +1387,15 @@ ho_inst_info_matches_ground_2(HOInstInfo, MaybeType, !Info) :-
     ).
 
 pred_inst_matches_ground(ModuleInfo, PredInst) :-
+    pred_inst_matches_ground_mt(ModuleInfo, PredInst, no).
+
+:- pred pred_inst_matches_ground_mt(module_info::in, pred_inst_info::in,
+    maybe(mer_type)::in) is semidet.
+
+pred_inst_matches_ground_mt(ModuleInfo, PredInst, MaybeType) :-
     Info = init_inst_match_info(ModuleInfo, no, cs_none, uc_match, yes,
         ground_matches_bound_if_complete),
-    pred_inst_matches_ground_2(PredInst, no, Info, _).
+    pred_inst_matches_ground_2(PredInst, MaybeType, Info, _).
 
 :- pred pred_inst_matches_ground_2(pred_inst_info::in, maybe(mer_type)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
