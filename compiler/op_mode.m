@@ -269,6 +269,8 @@ gather_bool_op_mode(OptionTable, Option - OpMode, !OpModeSet) :-
 bool_op_modes = [
     make -
         opm_top_make,
+    rebuild -
+        opm_top_make,
     generate_source_file_mapping -
         opm_top_generate_source_file_mapping,
 
