@@ -1942,12 +1942,14 @@ inst_merge_4(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
         InstB = ground(UniqB, _),
         inst_merge_bound_ground(UniqA, InstResultsA, BoundInstsA, UniqB,
-            MaybeType, Inst, !ModuleInfo)
+            MaybeType, Inst, !ModuleInfo),
+        not inst_contains_nondefault_func_mode(!.ModuleInfo, InstA)
     ;
         InstA = ground(UniqA, _),
         InstB = bound(UniqB, InstResultsB, BoundInstsB),
         inst_merge_bound_ground(UniqB, InstResultsB, BoundInstsB, UniqA,
-            MaybeType, Inst, !ModuleInfo)
+            MaybeType, Inst, !ModuleInfo),
+        not inst_contains_nondefault_func_mode(!.ModuleInfo, InstB)
     ;
         InstA = ground(UniqA, HOInstInfoA),
         InstB = ground(UniqB, HOInstInfoB),
