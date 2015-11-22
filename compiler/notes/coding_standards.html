@@ -237,11 +237,54 @@ rather than having a separate mode declaration.
 If-then-elses should always be parenthesized,
 except that an if-then-else that occurs as the else
 part of another if-then-else doesn't need to be parenthesized.
-The condition of an if-then-else can either be on the same
-line as the opening parenthesis and the `->',
+Note that the
+<code>( if <i>C</i> then <i>T</i> else <i>E</i> )</code> syntax is preferred
+over the
+<code>( <i>C</i> -&gt; <i>T</i> ; <i>E</i> )</code> syntax.
+
+<p>
+The condition can either be on the same line as the '<code>if</code>'
+keyword:
 
 <pre>
+    ( if test1 then
+        goal1
+    ; else if test2 then
+        goal2
+    ; else
+        goal
+    )
+</pre>
 
+or if the test is complicated on separate line(s) between the
+'<code>if</code>' and "<code>then</code>' keywords,
+
+<pre>
+    ( if
+        very_long_test_that_does_not_fit_on_one_line(VeryLongArgument1,
+            VeryLongArgument2)
+    then
+        goal1
+    else if
+        test2a,
+        test2b,
+    then
+        goal2
+    else if
+        test3    % would fit one one line, but separate for consistency
+    then
+        goal3
+    else
+        goal
+    ).
+</pre>
+
+When using the
+<code>( <i>C</i> -&gt; <i>T</i> ; <i>E</i> )</code> syntax The condition can
+either be on the same line as the opening parenthesis and the
+`<code>-&gt;</code>',
+
+<pre>
 	( test1 ->
 		goal1
 	; test2 ->
@@ -249,13 +292,11 @@ line as the opening parenthesis and the `->',
 	;
 		goal
 	)
-
 </pre>
 
 or, if the test is complicated, it can be on a line of its own:
 
 <pre>
-
 	(
 		very_long_test_that_does_not_fit_on_one_line(VeryLongArgument1,
 			VeryLongArgument2)
@@ -273,7 +314,6 @@ or, if the test is complicated, it can be on a line of its own:
 	;
 		goal
 	).
-
 </pre>
 
 <p>
