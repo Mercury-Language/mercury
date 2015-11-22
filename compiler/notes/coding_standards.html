@@ -237,7 +237,7 @@ rather than having a separate mode declaration.
 If-then-elses should always be parenthesized,
 except that an if-then-else that occurs as the else
 part of another if-then-else doesn't need to be parenthesized.
-Note that the
+The
 <code>( if <i>C</i> then <i>T</i> else <i>E</i> )</code> syntax is preferred
 over the
 <code>( <i>C</i> -&gt; <i>T</i> ; <i>E</i> )</code> syntax.
@@ -249,9 +249,9 @@ keyword:
 <pre>
     ( if test1 then
         goal1
-    ; else if test2 then
+    else if test2 then
         goal2
-    ; else
+    else
         goal
     )
 </pre>
@@ -267,7 +267,7 @@ or if the test is complicated on separate line(s) between the
         goal1
     else if
         test2a,
-        test2b,
+        test2b
     then
         goal2
     else if
@@ -280,7 +280,7 @@ or if the test is complicated on separate line(s) between the
 </pre>
 
 When using the
-<code>( <i>C</i> -&gt; <i>T</i> ; <i>E</i> )</code> syntax The condition can
+<code>( <i>C</i> -&gt; <i>T</i> ; <i>E</i> )</code> syntax the condition can
 either be on the same line as the opening parenthesis and the
 `<code>-&gt;</code>',
 
@@ -304,7 +304,7 @@ or, if the test is complicated, it can be on a line of its own:
 		goal1
 	;
 		test2a,
-		test2b,
+		test2b
 	->
 		goal2
 	;
