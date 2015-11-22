@@ -133,6 +133,7 @@ OTHER_PROGS = \
 	higher_order_implied_mode \
 	ho_and_type_spec_bug \
 	ho_and_type_spec_bug2 \
+	ho_func_call_2 \
 	ho_inst \
 	ho_unify \
 	id_type_bug \

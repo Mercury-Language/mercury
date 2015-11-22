@@ -1,10 +1,8 @@
 default_ho_inst.m:026: In clause for `main(di, uo)':
-default_ho_inst.m:026:   mode error in unification of `V_7' and
-default_ho_inst.m:026:   `default_ho_inst.foo(V_9)'.
-default_ho_inst.m:026:   Argument `V_9' is a function whose argument modes
-default_ho_inst.m:026:   and/or determinism differ from the default function
-default_ho_inst.m:026:   signature (f(in, ..., in) = out is det). This is not
-default_ho_inst.m:026:   allowed, because taking such arguments out of the term
-default_ho_inst.m:026:   being constructed would lose their mode and
-default_ho_inst.m:026:   determinism information.
+default_ho_inst.m:026:   in argument 1 of call to predicate
+default_ho_inst.m:026:   `default_ho_inst.callfoo'/3:
+default_ho_inst.m:026:   mode error: variable `V_7' has instantiatedness
+default_ho_inst.m:026:   `unique(default_ho_inst.foo(/* unique */(func((ground
+default_ho_inst.m:026:   >> ground)) = (free >> ground) is semidet)))',
+default_ho_inst.m:026:   expected instantiatedness was `ground'.
 For more information, recompile with `-E'.

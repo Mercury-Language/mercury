@@ -1,10 +1,8 @@
-default_ho_inst_2.m:031: In clause for `main(di, uo)':
-default_ho_inst_2.m:031:   mode error in unification of `F' and
-default_ho_inst_2.m:031:   `default_ho_inst_2.foo(V_8)'.
-default_ho_inst_2.m:031:   Argument `V_8' is a function whose argument modes
-default_ho_inst_2.m:031:   and/or determinism differ from the default function
-default_ho_inst_2.m:031:   signature (f(in, ..., in) = out is det). This is not
-default_ho_inst_2.m:031:   allowed, because taking such arguments out of the
-default_ho_inst_2.m:031:   term being constructed would lose their mode and
-default_ho_inst_2.m:031:   determinism information.
+default_ho_inst_2.m:033: In clause for `main(di, uo)':
+default_ho_inst_2.m:033:   mode mismatch in disjunction.
+default_ho_inst_2.m:033:   The variable `F' has these instantiation states:
+default_ho_inst_2.m:033:     line 31: unique(default_ho_inst_2.foo(/* unique
+default_ho_inst_2.m:033:     */(func((ground >> ground)) = (free >> ground) is
+default_ho_inst_2.m:033:     semidet)))
+default_ho_inst_2.m:033:     line 33: ground
 For more information, recompile with `-E'.
