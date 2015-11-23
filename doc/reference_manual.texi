@@ -6259,31 +6259,38 @@ The declarative semantics of a try goal is:
 
 @example
 @group
-    (try [] Goal
-     then Then
-     else Else
-     catch CP1 -> CG1
-     catch CG2 -> CG2
-     @dots{}
-     catch_any CAV -> CAG
-    )  <=>
-        ( 
-            Goal, Then
-        ;
-            not Goal, Else
-        ;
-            some [Excp]
-            ( Excp = CP1 -> CG1
-            ; Excp = CP2 -> CG2
-            ; @dots{}
-            ; Excp = CAV, CAG
-            )
-        ).
+    (
+        try [] Goal
+        then Then
+        else Else
+        catch CP1 -> CG1
+        catch CP2 -> CG2
+        @dots{}
+        catch_any CAV -> CAG
+    )
+    <=>
+    ( 
+        Goal, Then
+    ;
+        not Goal, Else
+    ;
+        some [Excp]
+        ( if Excp = CP1 then
+            CG1
+        else if Excp = CP2 then
+            CG2
+        else if @dots{}
+            @dots{}
+        else
+            Excp = CAV,
+            CAG
+        )
+    ).
 @end group
 @end example
 
-If no @samp{else} branch is present, let @samp{Else = fail}.
-If no @samp{catch_any} branch is present, let @samp{CAG = fail}.
+If no @samp{else} branch is present, then @samp{Else = fail}.
+If no @samp{catch_any} branch is present, then @samp{CAG = fail}.
 
 @noindent
 An example of a try goal that performs I/O is:

@@ -114,9 +114,9 @@ parse_dcg_goal(Term, ContextPieces, MaybeGoal, !VarSet, !Counter, !DCGVar) :-
     ( Term = term.functor(_, _, Context)
     ; Term = term.variable(_, Context)
     ),
+    term.coerce(Term, ProgTerm),
     % Next, parse it.
     ( if
-        term.coerce(Term, ProgTerm),
         try_parse_sym_name_and_args(ProgTerm, SymName, Args0)
     then
         % First check for the special cases:
@@ -128,31 +128,36 @@ parse_dcg_goal(Term, ContextPieces, MaybeGoal, !VarSet, !Counter, !DCGVar) :-
         then
             MaybeGoal = MaybeGoalPrime
         else
-            % It's the ordinary case of nonterminal. Create a fresh var
-            % as the DCG output var from this goal, and append the DCG argument
-            % pair to the nonterminal's argument list.
-            InVar = !.DCGVar,
-            new_dcg_var(!VarSet, !Counter, OutVar),
-            !:DCGVar = OutVar,
-            Args = Args0 ++
-                [term.variable(InVar, Context),
-                term.variable(OutVar, Context)],
-            Goal = call_expr(Context, SymName, Args, purity_pure),
+            % It's the ordinary case of nonterminal. Turn the term into a call,
+            % and add the current and next DCG variables to the end of the
+            % argument list.
+            make_dcg_call(SymName, Args0, Context, Goal,
+                !VarSet, !Counter, !DCGVar),
             MaybeGoal = ok1(Goal)
         )
     else
         % A call to a free variable, or to a number or string.
-        % Just translate it into a call to call/3 - the typechecker
-        % will catch calls to numbers and strings.
-        InVar = !.DCGVar,
-        new_dcg_var(!VarSet, !Counter, OutVar),
-        !:DCGVar = OutVar,
-        term.coerce(Term, ProgTerm),
-        Goal = call_expr(Context, unqualified("call"),
-            [ProgTerm, variable(InVar, Context), variable(OutVar, Context)],
-            purity_pure),
+        % Just translate it into a call to call/3 - the typechecker will catch
+        % calls to numbers and strings.
+        SymName = unqualified("call"),
+        Args = [ProgTerm],
+        make_dcg_call(SymName, Args, Context, Goal,
+            !VarSet, !Counter, !DCGVar),
         MaybeGoal = ok1(Goal)
     ).
+
+:- pred make_dcg_call(sym_name::in, list(prog_term)::in, prog_context::in,
+    goal::out, prog_varset::in, prog_varset::out, counter::in, counter::out,
+    prog_var::in, prog_var::out) is det.
+
+make_dcg_call(SymName, Args0, Context, Goal, !VarSet, !Counter, !DCGVar) :-
+    InVar = !.DCGVar,
+    new_dcg_var(!VarSet, !Counter, OutVar),
+    !:DCGVar = OutVar,
+    Args = Args0 ++
+        [term.variable(InVar, Context),
+        term.variable(OutVar, Context)],
+    Goal = call_expr(Context, SymName, Args, purity_pure).
 
     % parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, Goal,
     %   !VarSet, !Counter, !DCGVar):
@@ -171,15 +176,27 @@ parse_dcg_goal(Term, ContextPieces, MaybeGoal, !VarSet, !Counter, !DCGVar) :-
 parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         !VarSet, !Counter, !DCGVar) :-
     % XXX We should update ContextPieces as we recurse.
+    % XXX Should reorder the disjuncts to match (a) the order of goal kinds
+    % in the goal type definition, and (b) parse_non_call_dcg_goal.
+    require_switch_arms_det [Functor]
     (
         Functor = "{}",
-        Args = [HeadGoal | TailGoals],
-        % Ordinary goal inside { curly braces }.
-        % The parser treats '{}/N' terms as tuples, so we need to undo
-        % the parsing of the argument conjunction here.
-        one_or_more_to_conjunction(Context, one_or_more(HeadGoal, TailGoals),
-            SubGoal),
-        parse_goal(SubGoal, ContextPieces, MaybeGoal, !VarSet)
+        (
+            Args = [],
+            Pieces = [words("Error: there should be at least one goal"),
+                words("between the curly braces."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            MaybeGoal = error1([Spec])
+        ;
+            Args = [HeadGoal | TailGoals],
+            % Ordinary goal inside { curly braces }.
+            % The parser treats '{}/N' terms as tuples, so we need to undo
+            % the parsing of the argument conjunction here.
+            one_or_more_to_conjunction(Context,
+                one_or_more(HeadGoal, TailGoals), SubGoal),
+            parse_goal(SubGoal, ContextPieces, MaybeGoal, !VarSet)
+        )
     ;
         (
             Functor = "impure",
@@ -188,11 +205,16 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             Functor = "semipure",
             Purity = purity_semipure
         ),
-        Args = [SubGoalTerm],
-        parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeGoal0,
-            !VarSet, !Counter, !DCGVar),
-        apply_purity_marker_to_maybe_goal(SubGoalTerm, Purity,
-            MaybeGoal0, MaybeGoal)
+        ( if Args = [SubGoalTerm] then
+            parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeGoal0,
+                !VarSet, !Counter, !DCGVar),
+            apply_purity_marker_to_maybe_goal(SubGoalTerm, Purity,
+                MaybeGoal0, MaybeGoal)
+        else
+            Spec = should_have_one_goal_prefix(ContextPieces, Context,
+                Functor),
+            MaybeGoal = error1([Spec])
+        )
     ;
         (
             Functor = "promise_pure",
@@ -204,203 +226,316 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             Functor = "promise_impure",
             PromisedPurity = purity_impure
         ),
-        Args = [SubGoalTerm],
-        parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeGoal0,
-            !VarSet, !Counter, !DCGVar),
-        (
-            MaybeGoal0 = ok1(Goal0),
-            Goal = promise_purity_expr(Context, PromisedPurity, Goal0),
-            MaybeGoal = ok1(Goal)
-        ;
-            MaybeGoal0 = error1(Specs),
-            MaybeGoal = error1(Specs)
+        ( if Args = [SubGoalTerm] then
+            parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeGoal0,
+                !VarSet, !Counter, !DCGVar),
+            (
+                MaybeGoal0 = ok1(Goal0),
+                Goal = promise_purity_expr(Context, PromisedPurity, Goal0),
+                MaybeGoal = ok1(Goal)
+            ;
+                MaybeGoal0 = error1(Specs),
+                MaybeGoal = error1(Specs)
+            )
+        else
+            Spec = should_have_one_goal_prefix(ContextPieces, Context,
+                Functor),
+            MaybeGoal = error1([Spec])
         )
     ;
         Functor = "[]",
-        Args = [],
-        % Empty list - just unify the input and output DCG args.
-        InVar = !.DCGVar,
-        new_dcg_var(!VarSet, !Counter, OutVar),
-        !:DCGVar = OutVar,
-        Goal = unify_expr(Context,
-            term.variable(InVar, Context), term.variable(OutVar, Context),
-            purity_pure),
-        MaybeGoal = ok1(Goal)
+        (
+            Args = [],
+            % Empty list - just unify the input and output DCG args.
+            InVar = !.DCGVar,
+            new_dcg_var(!VarSet, !Counter, OutVar),
+            !:DCGVar = OutVar,
+            Goal = unify_expr(Context,
+                term.variable(InVar, Context), term.variable(OutVar, Context),
+                purity_pure),
+            MaybeGoal = ok1(Goal)
+        ;
+            Args = [_ | _],
+            Pieces = [words("Error: in DCG clauses,"),
+                words("the"), quote("[]"), words("operator"),
+                words("may only be used to match the input"),
+                words("against a list of zero items,"),
+                words("and must therefore be used with arity 0."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            MaybeGoal = error1([Spec])
+        )
     ;
         Functor = "[|]",
-        Args = [X, Xs],
-        % Non-empty list of terminals. Append the DCG output arg as the
-        % new tail of the list, and unify the result with the DCG input arg.
-        InVar = !.DCGVar,
-        new_dcg_var(!VarSet, !Counter, OutVar),
-        !:DCGVar = OutVar,
-        ConsTerm0 = term.functor(term.atom("[|]"), [X, Xs], Context),
-        term.coerce(ConsTerm0, ConsTerm),
-        term_list_append_term(ConsTerm, term.variable(OutVar, Context), Term),
-        Goal = unify_expr(Context, variable(InVar, Context), Term,
-            purity_pure),
-        MaybeGoal = ok1(Goal)
+        ( if Args = [X, Xs] then
+            % Translate
+            %   [A, B, C]
+            % as
+            %   DCGIn = [A, B, C | DCGOut].
+            InVar = !.DCGVar,
+            new_dcg_var(!VarSet, !Counter, OutVar),
+            !:DCGVar = OutVar,
+            ConsTerm0 = term.functor(term.atom("[|]"), [X, Xs], Context),
+            term.coerce(ConsTerm0, ConsTerm),
+            OutVarTerm = term.variable(OutVar, Context),
+            ( if term_list_append_term(ConsTerm, OutVarTerm, Term) then
+                Goal = unify_expr(Context, variable(InVar, Context), Term,
+                    purity_pure),
+                MaybeGoal = ok1(Goal)
+            else
+                Pieces = [words("Error: there no"),
+                    quote("[]"), words("at the end of the list."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(Context, [always(Pieces)])]),
+                MaybeGoal = error1([Spec])
+            )
+        else
+            Pieces = [words("Error: in DCG clauses,"),
+                words("the"), quote("[|]"), words("operator"),
+                words("may only be used to match the input"),
+                words("against a list of one or more items,"),
+                words("and must therefore be used with arity 2."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            MaybeGoal = error1([Spec])
+        )
     ;
         Functor = "=",
-        Args = [Arg0],
-        % Call to '='/1 - unify argument with DCG input arg.
-        term.coerce(Arg0, Arg),
-        Goal = unify_expr(Context, Arg, variable(!.DCGVar, Context),
-            purity_pure),
-        MaybeGoal = ok1(Goal)
-    ;
-        Functor = ":=",
-        Args = [Arg0],
-        % Call to ':='/1 - unify argument with DCG output arg.
-        new_dcg_var(!VarSet, !Counter, OutVar),
-        !:DCGVar = OutVar,
-        term.coerce(Arg0, Arg),
-        Goal = unify_expr(Context, Arg, variable(OutVar, Context),
-            purity_pure),
-        MaybeGoal = ok1(Goal)
-    ;
-        Functor = "if",
-        Args = [term.functor(term.atom("then"),
-            [CondGoalTerm, ThenGoalTerm], _)],
-        % If-then (NU-Prolog syntax).
-        InVar = !.DCGVar,
-        parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, Context, ContextPieces,
-            MaybeVarsCondGoal, MaybeThenGoal, !VarSet, !Counter, !DCGVar),
-        OutVar = !.DCGVar,
-        ( if
-            MaybeVarsCondGoal = ok3(Vars, StateVars, CondGoal),
-            MaybeThenGoal = ok1(ThenGoal)
-        then
-            ( if OutVar = InVar then
-                ElseGoal = true_expr(Context)
-            else
-                ElseGoal = unify_expr(Context,
-                    term.variable(OutVar, Context),
-                    term.variable(InVar, Context),
-                    purity_pure)
-            ),
-            Goal = if_then_else_expr(Context, Vars, StateVars,
-                CondGoal, ThenGoal, ElseGoal),
+        ( if Args = [Arg0] then
+            % Call to '='/1 - unify argument with DCG input arg.
+            term.coerce(Arg0, Arg),
+            DCGVarTerm = variable(!.DCGVar, Context),
+            Goal = unify_expr(Context, Arg, DCGVarTerm, purity_pure),
             MaybeGoal = ok1(Goal)
         else
-            CondSpecs = get_any_errors3(MaybeVarsCondGoal),
-            ThenSpecs = get_any_errors1(MaybeThenGoal),
-            MaybeGoal = error1(CondSpecs ++ ThenSpecs)
+            Spec = should_have_two_terms_infix(ContextPieces, Context,
+                Functor),
+            MaybeGoal = error1([Spec])
+        )
+    ;
+        Functor = ":=",
+        ( if Args = [Arg0] then
+            % ":=(Term)" is a DCG output unification, which unifies Term
+            % with the implicit DCG output argument, while ignoring
+            % the input DCG argument.
+
+            new_dcg_var(!VarSet, !Counter, OutVar),
+            !:DCGVar = OutVar,
+            term.coerce(Arg0, Arg),
+            OutVarTerm = variable(OutVar, Context),
+            Goal = unify_expr(Context, Arg, OutVarTerm, purity_pure),
+            MaybeGoal = ok1(Goal)
+        else
+            % "^ field_list := Term" is a DCG field update, which replaces
+            % the named field in the implicit DCG argument. 
+            %
+            % Such field updates are represented as calls in the parse tree.
+            % The field update is implemented by goal_expr_to_goal.m when
+            % we convert the parse tree to the HLDS. That code will also
+            % generate the error message if Args has the wrong shape.
+            SymName = unqualified(":="),
+            list.map(term.coerce, Args, ProgArgs),
+            make_dcg_call(SymName, ProgArgs, Context, Goal,
+                !VarSet, !Counter, !DCGVar),
+            MaybeGoal = ok1(Goal)
+        )
+    ;
+        Functor = "if",
+        % If-then (NU-Prolog syntax).
+        ( if
+            Args = [term.functor(term.atom("then"),
+                [CondGoalTerm, ThenGoalTerm], _)]
+        then
+            InVar = !.DCGVar,
+            parse_dcg_if_then(CondGoalTerm, ThenGoalTerm,
+                Context, ContextPieces, MaybeVarsCondGoal, MaybeThenGoal,
+                !VarSet, !Counter, !DCGVar),
+            OutVar = !.DCGVar,
+            ( if
+                MaybeVarsCondGoal = ok3(Vars, StateVars, CondGoal),
+                MaybeThenGoal = ok1(ThenGoal)
+            then
+                ( if OutVar = InVar then
+                    ElseGoal = true_expr(Context)
+                else
+                    ElseGoal = unify_expr(Context,
+                        term.variable(OutVar, Context),
+                        term.variable(InVar, Context),
+                        purity_pure)
+                ),
+                Goal = if_then_else_expr(Context, Vars, StateVars,
+                    CondGoal, ThenGoal, ElseGoal),
+                MaybeGoal = ok1(Goal)
+            else
+                Specs = get_any_errors3(MaybeVarsCondGoal) ++
+                    get_any_errors1(MaybeThenGoal),
+                MaybeGoal = error1(Specs)
+            )
+        else
+            Pieces = [words("Error: the "), quote("else"), words("operator"),
+                words("should occur in expressions of the form"),
+                quote("( if goal then goal else goal )"), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            MaybeGoal = error1([Spec])
         )
     ;
         Functor = ",",
-        Args = [SubGoalTermA, SubGoalTermB],
-        % Conjunction.
-        parse_dcg_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA,
-            !VarSet, !Counter, !DCGVar),
-        parse_dcg_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB,
-            !VarSet, !Counter, !DCGVar),
-        ( if
-            MaybeSubGoalA = ok1(SubGoalA),
-            MaybeSubGoalB = ok1(SubGoalB)
-        then
-            Goal = conj_expr(Context, SubGoalA, SubGoalB),
-            MaybeGoal = ok1(Goal)
+        ( if Args = [SubGoalTermA, SubGoalTermB] then
+            % Conjunction.
+            parse_dcg_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA,
+                !VarSet, !Counter, !DCGVar),
+            parse_dcg_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB,
+                !VarSet, !Counter, !DCGVar),
+            ( if
+                MaybeSubGoalA = ok1(SubGoalA),
+                MaybeSubGoalB = ok1(SubGoalB)
+            then
+                Goal = conj_expr(Context, SubGoalA, SubGoalB),
+                MaybeGoal = ok1(Goal)
+            else
+                Specs = get_any_errors1(MaybeSubGoalA) ++
+                    get_any_errors1(MaybeSubGoalB),
+                MaybeGoal = error1(Specs)
+            )
         else
-            SpecsA = get_any_errors1(MaybeSubGoalA),
-            SpecsB = get_any_errors1(MaybeSubGoalB),
-            MaybeGoal = error1(SpecsA ++ SpecsB)
+            Spec = should_have_two_goals_infix(ContextPieces, Context,
+                Functor),
+            MaybeGoal = error1([Spec])
         )
     ;
         Functor = "&",
-        Args = [SubGoalTermA, SubGoalTermB],
-        parse_dcg_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA,
-            !VarSet, !Counter, !DCGVar),
-        parse_dcg_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB,
-            !VarSet, !Counter, !DCGVar),
-        ( if
-            MaybeSubGoalA = ok1(SubGoalA),
-            MaybeSubGoalB = ok1(SubGoalB)
-        then
-            Goal = par_conj_expr(Context, SubGoalA, SubGoalB),
-            MaybeGoal = ok1(Goal)
+        ( if Args = [SubGoalTermA, SubGoalTermB] then
+            % Conjunction.
+            parse_dcg_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA,
+                !VarSet, !Counter, !DCGVar),
+            parse_dcg_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB,
+                !VarSet, !Counter, !DCGVar),
+            ( if
+                MaybeSubGoalA = ok1(SubGoalA),
+                MaybeSubGoalB = ok1(SubGoalB)
+            then
+                Goal = par_conj_expr(Context, SubGoalA, SubGoalB),
+                MaybeGoal = ok1(Goal)
+            else
+                Specs = get_any_errors1(MaybeSubGoalA) ++
+                    get_any_errors1(MaybeSubGoalB),
+                MaybeGoal = error1(Specs)
+            )
         else
-            SpecsA = get_any_errors1(MaybeSubGoalA),
-            SpecsB = get_any_errors1(MaybeSubGoalB),
-            MaybeGoal = error1(SpecsA ++ SpecsB)
+            Spec = should_have_two_goals_infix(ContextPieces, Context,
+                Functor),
+            MaybeGoal = error1([Spec])
         )
     ;
         Functor = ";",
-        Args = [SubGoalTermA, SubGoalTermB],
-        % Disjunction or if-then-else (Prolog syntax).
-        ( if
-            SubGoalTermA = term.functor(term.atom("->"),
-                [CondGoalTerm, ThenGoalTerm], _Context)
-        then
-            parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm, SubGoalTermB,
-                Context, ContextPieces, MaybeGoal, !VarSet, !Counter, !DCGVar)
-        else
-            Var0 = !.DCGVar,
-            parse_dcg_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA0,
-                !VarSet, !Counter, Var0, VarA),
-            parse_dcg_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB0,
-                !VarSet, !Counter, Var0, VarB),
+        ( if Args = [SubGoalTermA, SubGoalTermB] then
+            % Disjunction or if-then-else (Prolog syntax).
             ( if
-                MaybeSubGoalA0 = ok1(SubGoalA0),
-                MaybeSubGoalB0 = ok1(SubGoalB0)
+                SubGoalTermA = term.functor(term.atom("->"),
+                    [CondGoalTerm, ThenGoalTerm], _Context)
             then
-                ( if VarA = Var0, VarB = Var0 then
-                    Var = Var0,
-                    Goal = disj_expr(Context, SubGoalA0, SubGoalB0)
-                else if VarA = Var0 then
-                    Var = VarB,
-                    Unify = unify_expr(Context,
-                        term.variable(Var, Context),
-                        term.variable(VarA, Context),
-                        purity_pure),
-                    append_to_disjunct(Unify, Context, SubGoalA0, SubGoalA),
-                    Goal = disj_expr(Context, SubGoalA, SubGoalB0)
-                else if VarB = Var0 then
-                    Var = VarA,
-                    Unify = unify_expr(Context,
-                        term.variable(Var, Context),
-                        term.variable(VarB, Context),
-                        purity_pure),
-                    append_to_disjunct(Unify, Context, SubGoalB0, SubGoalB),
-                    Goal = disj_expr(Context, SubGoalA0, SubGoalB)
-                else
-                    Var = VarB,
-                    prog_util.rename_in_goal(VarA, VarB, SubGoalA0, SubGoalA),
-                    Goal = disj_expr(Context, SubGoalA, SubGoalB0)
-                ),
-                !:DCGVar = Var,
-                MaybeGoal = ok1(Goal)
+                parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm,
+                    SubGoalTermB, Context, ContextPieces, MaybeGoal,
+                    !VarSet, !Counter, !DCGVar)
             else
-                !:DCGVar = VarA,    % Dummy; the value shouldn't matter.
-                SpecsA = get_any_errors1(MaybeSubGoalA0),
-                SpecsB = get_any_errors1(MaybeSubGoalB0),
-                MaybeGoal = error1(SpecsA ++ SpecsB)
+                Var0 = !.DCGVar,
+                parse_dcg_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA0,
+                    !VarSet, !Counter, Var0, VarA),
+                parse_dcg_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB0,
+                    !VarSet, !Counter, Var0, VarB),
+                ( if
+                    MaybeSubGoalA0 = ok1(SubGoalA0),
+                    MaybeSubGoalB0 = ok1(SubGoalB0)
+                then
+                    ( if VarA = Var0, VarB = Var0 then
+                        Var = Var0,
+                        Goal = disj_expr(Context, SubGoalA0, SubGoalB0)
+                    else if VarA = Var0 then
+                        Var = VarB,
+                        Unify = unify_expr(Context,
+                            term.variable(Var, Context),
+                            term.variable(VarA, Context),
+                            purity_pure),
+                        append_to_disjunct(Unify, Context,
+                            SubGoalA0, SubGoalA),
+                        Goal = disj_expr(Context, SubGoalA, SubGoalB0)
+                    else if VarB = Var0 then
+                        Var = VarA,
+                        Unify = unify_expr(Context,
+                            term.variable(Var, Context),
+                            term.variable(VarB, Context),
+                            purity_pure),
+                        append_to_disjunct(Unify, Context,
+                            SubGoalB0, SubGoalB),
+                        Goal = disj_expr(Context, SubGoalA0, SubGoalB)
+                    else
+                        Var = VarB,
+                        prog_util.rename_in_goal(VarA, VarB,
+                            SubGoalA0, SubGoalA),
+                        Goal = disj_expr(Context, SubGoalA, SubGoalB0)
+                    ),
+                    !:DCGVar = Var,
+                    MaybeGoal = ok1(Goal)
+                else
+                    !:DCGVar = VarA,    % Dummy; the value shouldn't matter.
+                    Specs = get_any_errors1(MaybeSubGoalA0) ++
+                        get_any_errors1(MaybeSubGoalB0),
+                    MaybeGoal = error1(Specs)
+                )
             )
+        else
+            % XXX This generates an error message that is appropriate
+            % for goals that are intended to be disjunctions. Should we
+            % instead generate a message that also talks about if-then-elses
+            % using (C->T;E) syntax? It would be more complete, but also
+            % more complex, and therefore potentially more confusing
+            % than helpful.
+            % We do the same for ";" in parse_non_call_goal.
+            Spec = should_have_two_goals_infix(ContextPieces, Context,
+                Functor),
+            MaybeGoal = error1([Spec])
         )
     ;
         Functor = "else",
-        Args = [CondThenTerm, ElseGoalTerm],
         % If-then-else (NU-Prolog syntax).
-        CondThenTerm = term.functor(term.atom("if"),
-            [term.functor(term.atom("then"),
-                [CondGoalTerm, ThenGoalTerm], _)],
-            CondContext),
-        parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm, ElseGoalTerm,
-            CondContext, ContextPieces, MaybeGoal, !VarSet, !Counter, !DCGVar)
+        ( if
+            Args = [CondThenTerm, ElseGoalTerm],
+            CondThenTerm = term.functor(term.atom("if"),
+                [term.functor(term.atom("then"),
+                    [CondGoalTerm, ThenGoalTerm], _)],
+                CondContext)
+        then
+            parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm, ElseGoalTerm,
+                CondContext, ContextPieces, MaybeGoal,
+                !VarSet, !Counter, !DCGVar)
+        else
+            Pieces = [words("Error: the "), quote("else"), words("operator"),
+                words("should occur in expressions of the form"),
+                quote("( if goal then goal else goal )"), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            MaybeGoal = error1([Spec])
+        )
     ;
         ( Functor = "not"   % Negation (NU-Prolog syntax).
         ; Functor = "\\+"   % Negation (Prolog syntax).
         ),
-        Args = [SubGoalTermA],
-        parse_dcg_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA,
-            !VarSet, !Counter, !.DCGVar, _),
-        (
-            MaybeSubGoalA = ok1(SubGoalA),
-            Goal = not_expr(Context, SubGoalA),
-            MaybeGoal = ok1(Goal)
-        ;
-            MaybeSubGoalA = error1(Specs),
-            MaybeGoal = error1(Specs)
+        ( if Args = [SubGoalTermA] then
+            parse_dcg_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA,
+                !VarSet, !Counter, !.DCGVar, _),
+            (
+                MaybeSubGoalA = ok1(SubGoalA),
+                Goal = not_expr(Context, SubGoalA),
+                MaybeGoal = ok1(Goal)
+            ;
+                MaybeSubGoalA = error1(Specs),
+                MaybeGoal = error1(Specs)
+            )
+        else
+            Spec = should_have_one_goal_prefix(ContextPieces, Context,
+                Functor),
+            MaybeGoal = error1([Spec])
         )
     ;
         % Existential or universal quantification.
@@ -415,42 +550,48 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             VarsContextPieces = [lower_case_next_if_not_first,
                 words("In first argument of"), quote("all"), suffix(":")]
         ),
-        Args = [QVarsTerm, SubGoalTerm],
-        varset.coerce(!.VarSet, GenericVarSet),
-        % Note that both versions of VarsContextPieces should be static data;
-        % factoring out their common parts would destroy this property.
-        UpdatedContextPieces = ContextPieces ++ VarsContextPieces,
-        parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
-            MaybeStateVarsAndVars),
-        parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeSubGoal,
-            !VarSet, !Counter, !DCGVar),
-        ( if
-            MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
-            MaybeSubGoal = ok1(SubGoal)
-        then
-            list.map(term.coerce_var, StateVars0, StateVars),
-            list.map(term.coerce_var, Vars0, Vars),
-            (
-                StateVars = [],
-                Goal1 = SubGoal
-            ;
-                StateVars = [_ | _],
-                Goal1 = quant_expr(QuantType, quant_state_vars, Context,
-                    StateVars, SubGoal)
-            ),
-            (
-                Vars = [],
-                Goal = Goal1
-            ;
-                Vars = [_ | _],
-                Goal = quant_expr(QuantType, quant_ordinary_vars, Context,
-                    Vars, Goal1)
-            ),
-            MaybeGoal = ok1(Goal)
+        ( if Args = [QVarsTerm, SubGoalTerm] then
+            varset.coerce(!.VarSet, GenericVarSet),
+            % Note that both versions of VarsContextPieces should be
+            % static data; factoring out their common parts would destroy
+            % this property.
+            UpdatedContextPieces = ContextPieces ++ VarsContextPieces,
+            parse_quantifier_vars(QVarsTerm, GenericVarSet,
+                UpdatedContextPieces, MaybeStateVarsAndVars),
+            parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeSubGoal,
+                !VarSet, !Counter, !DCGVar),
+            ( if
+                MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
+                MaybeSubGoal = ok1(SubGoal)
+            then
+                list.map(term.coerce_var, StateVars0, StateVars),
+                list.map(term.coerce_var, Vars0, Vars),
+                (
+                    StateVars = [],
+                    Goal1 = SubGoal
+                ;
+                    StateVars = [_ | _],
+                    Goal1 = quant_expr(QuantType, quant_state_vars, Context,
+                        StateVars, SubGoal)
+                ),
+                (
+                    Vars = [],
+                    Goal = Goal1
+                ;
+                    Vars = [_ | _],
+                    Goal = quant_expr(QuantType, quant_ordinary_vars, Context,
+                        Vars, Goal1)
+                ),
+                MaybeGoal = ok1(Goal)
+            else
+                Specs = get_any_errors2(MaybeStateVarsAndVars) ++
+                    get_any_errors1(MaybeSubGoal),
+                MaybeGoal = error1(Specs)
+            )
         else
-            VarsSpecs = get_any_errors2(MaybeStateVarsAndVars),
-            SubGoalSpecs = get_any_errors1(MaybeSubGoal),
-            MaybeGoal = error1(VarsSpecs ++ SubGoalSpecs)
+            Spec = should_have_one_x_one_goal_prefix(ContextPieces, Context,
+                "a list of variables", Functor),
+            MaybeGoal = error1([Spec])
         )
     ).
 
