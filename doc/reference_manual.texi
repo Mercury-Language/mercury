@@ -4496,10 +4496,14 @@ we assume that it has the default higher-order function inst
 @samp{func(in, @dots{}, in) = out is det}.
 
 As a consequence of this,
-a higher-order function term that does not match this default mode
-cannot match the Mercury @code{ground} inst.
-If it did, the term might later be called with the default mode,
-which would be unsound.
+a higher-order function term can @emph{only} be passed
+where a term with no higher-order inst information is expected
+if it can be passed where a term with the default higher-order function inst
+is expected.
+Higher-order predicate terms can always be passed to such a place,
+but note that there is little value in doing so because there is no
+default higher-order inst for predicates
+therefore it will not be possible to call those terms.
 
 Mercury also provides builtin @samp{inst} values for use with solver types:
 
