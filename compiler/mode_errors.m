@@ -292,11 +292,11 @@ mode_error_info_to_spec(ModeInfo0, ModeErrorInfo) = Spec :-
 
 mode_error_to_spec(ModeInfo, ModeError) = Spec :-
     (
-        ModeError = mode_error_disj(MergeContext, ErrorList),
-        Spec = mode_error_disj_to_spec(ModeInfo, MergeContext, ErrorList)
+        ModeError = mode_error_disj(MergeContext, MergeErrors),
+        Spec = mode_error_disj_to_spec(ModeInfo, MergeContext, MergeErrors)
     ;
-        ModeError = mode_error_par_conj(ErrorList),
-        Spec = mode_error_par_conj_to_spec(ModeInfo, ErrorList)
+        ModeError = mode_error_par_conj(MergeErrors),
+        Spec = mode_error_par_conj_to_spec(ModeInfo, MergeErrors)
     ;
         ModeError = mode_error_higher_order_pred_var(PredOrFunc, Var, Inst,
             Arity),
@@ -549,12 +549,12 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
 :- func mode_error_disj_to_spec(mode_info, merge_context, merge_errors)
     = error_spec.
 
-mode_error_disj_to_spec(ModeInfo, MergeContext, ErrorList) = Spec :-
+mode_error_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     MainPieces = [words("mode mismatch in "),
         words(merge_context_to_string(MergeContext)), suffix("."), nl],
-    MergePieceLists = list.map(merge_error_to_pieces(ModeInfo), ErrorList),
+    MergePieceLists = list.map(merge_error_to_pieces(ModeInfo), MergeErrors),
     list.condense(MergePieceLists, MergePieces),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
@@ -562,14 +562,14 @@ mode_error_disj_to_spec(ModeInfo, MergeContext, ErrorList) = Spec :-
 
 :- func mode_error_par_conj_to_spec(mode_info, merge_errors) = error_spec.
 
-mode_error_par_conj_to_spec(ModeInfo, ErrorList) = Spec :-
+mode_error_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     Pieces = [words("mode error: mutually exclusive bindings"),
         words("in parallel conjunction."),
         words("(The current implementation does not permit"),
         words("parallel conjunctions to fail.)"), nl],
-    MergePieceLists = list.map(merge_error_to_pieces(ModeInfo), ErrorList),
+    MergePieceLists = list.map(merge_error_to_pieces(ModeInfo), MergeErrors),
     list.condense(MergePieceLists, MergePieces),
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
@@ -602,7 +602,7 @@ merge_error_to_pieces(ModeInfo, MergeError) = Pieces :-
             InclFileName = yes
         )
     ),
-    InstPiecesList = list.map(context_inst_to_string(ModeInfo, InclFileName),
+    InstPiecesList = list.map(context_inst_to_pieces(ModeInfo, InclFileName),
         ContextsInsts),
     InstPieces = list.condense(InstPiecesList),
     SuffixPieces = [nl_indent_delta(-1)],
@@ -617,10 +617,10 @@ all_in_same_file(FileName, [Pair | Pairs]) :-
     Context = term.context(FileName, _),
     all_in_same_file(FileName, Pairs).
 
-:- func context_inst_to_string(mode_info, bool, pair(prog_context, mer_inst))
+:- func context_inst_to_pieces(mode_info, bool, pair(prog_context, mer_inst))
     = list(format_component).
 
-context_inst_to_string(ModeInfo, InclFileName, Context - Inst) = Pieces :-
+context_inst_to_pieces(ModeInfo, InclFileName, Context - Inst) = Pieces :-
     Context = context(FileName, LineNum),
     LineNumStr = string.int_to_string(LineNum),
     (
@@ -630,7 +630,8 @@ context_inst_to_string(ModeInfo, InclFileName, Context - Inst) = Pieces :-
         InclFileName = yes,
         ContextStr = FileName ++ ":" ++ LineNumStr ++ ":"
     ),
-    Pieces = [fixed(ContextStr), words(inst_to_string(ModeInfo, Inst)), nl].
+    Pieces = [fixed(ContextStr), nl,
+        words(inst_to_string(ModeInfo, Inst)), nl].
 
 %-----------------------------------------------------------------------------%
 
@@ -1573,6 +1574,8 @@ mode_decl_to_string(ProcId, PredInfo) = String :-
     String = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
         InstVarSet, Name, Modes, MaybeDet).
 
+%-----------------------------------------------------------------------------%
+
 :- func inst_to_string(mode_info, mer_inst) = string.
 
 inst_to_string(ModeInfo, Inst0) = Str :-
@@ -1582,10 +1585,7 @@ inst_to_string(ModeInfo, Inst0) = Str :-
     Str = mercury_expanded_inst_to_string(output_debug, ModuleInfo,
         InstVarSet, Inst).
 
-:- func inst_list_to_string(mode_info, list(mer_inst)) = string.
-
-inst_list_to_string(ModeInfo, Insts) =
-    string.join_list(", ", list.map(inst_to_string(ModeInfo), Insts)).
+%-----------------------------------------------------------------------------%
 
 :- func inst_list_to_sep_lines(mode_info, list(mer_inst))
     = list(format_component).
