@@ -35,8 +35,9 @@
 % dependent. The current implementation performs string comparison using
 %
 % - C's strcmp() function, when compiling to C;
-% - Java's String.compareTo() method, when compiling to Java; and
-% - C#'s System.String.CompareOrdinal() method, when compiling to C#.
+% - Java's String.compareTo() method, when compiling to Java;
+% - C#'s System.String.CompareOrdinal() method, when compiling to C#; and
+% - Erlang's term comparison operator, when compiling to Erlang.
 %
 %---------------------------------------------------------------------------%
 %

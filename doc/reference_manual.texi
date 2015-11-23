@@ -2543,19 +2543,32 @@ As such, the standard ordering for most types is not fully defined.
 
 For the builtin type @code{int},
 the standard ordering is the usual numerical ordering.
-Implementations are permitted to give inconsistent results
-for overflowing literals.
+Implementations should reject code containing overflowing integer literals.
 
 For the builtin type @code{float},
 the standard ordering approximates the usual numerical ordering.
 If the result of @code{builtin.compare/3} is @code{(<)} or @code{(>)}
 then this relation holds in the numerical ordering,
 but this is not necessarily the case for @code{(=)} due to lack of precision.
-Implementations are permitted to give inconsistent results
-for overflowing literals.
+In the standard ordering, ``negative'' and ``positive'' zero values are equal.
+Implementations should replace overflowing literals
+with the infinity of the same sign;
+in the standard ordering positive infinity is greater than all finite values
+and negative infinity is less than all finite values.
+Implementations must throw an exception when comparing
+a ``not a number'' (NaN) value.
 
 For the builtin type @code{char}, the standard ordering is
 the numerical ordering of the Unicode code point values.
+
+For the builtin type @code{string},
+the standard ordering is implementation dependent.
+The current implementation performs string comparison using
+the C @code{strcmp()} function,
+the Java @code{String.compareTo()} method,
+the C# @code{System.String.CompareOrdinal()} method, and
+the Erlang term comparison operators,
+when compiling to C, Java, C# and Erlang respectively.
 
 For tuple types, corresponding arguments are compared,
 with the first argument being the most significant.
