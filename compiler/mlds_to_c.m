@@ -1505,7 +1505,7 @@ mlds_output_decl(Opts, Indent, ModuleName, Defn, !IO) :-
         % If we're using --high-level-data, then for function declarations,
         % we need to ensure that we forward-declare any types used in the
         % function parameters. This is because otherwise, for any struct names
-        % whose first occurence is in the function parameters, the scope of
+        % whose first occurrence is in the function parameters, the scope of
         % such struct names is just that function declaration, which is never
         % right.
         %
