@@ -630,8 +630,7 @@ context_inst_to_pieces(ModeInfo, InclFileName, Context - Inst) = Pieces :-
         InclFileName = yes,
         ContextStr = FileName ++ ":" ++ LineNumStr ++ ":"
     ),
-    Pieces = [fixed(ContextStr), nl,
-        words(inst_to_string(ModeInfo, Inst)), nl].
+    Pieces = [fixed(ContextStr), words(inst_to_string(ModeInfo, Inst)), nl].
 
 %-----------------------------------------------------------------------------%
 
