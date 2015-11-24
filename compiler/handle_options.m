@@ -242,9 +242,10 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     else
         Target = target_c,     % dummy
         TargetSpec =
-            [words("Invalid argument"), quote(TargetStr),
-            words("to the `--target' option;"),
-            words("must be `c', `java', 'csharp', or `erlang'."), nl],
+            [words("Invalid argument"), quote(TargetStr), words("to the"),
+            quote("--target"), words("option; must be")] ++
+            list_to_quoted_pieces_or(["c", "java", "csharp", "erlang"]) ++
+            [suffix("."), nl],
         add_error(phase_options, TargetSpec, !Specs)
     ),
 
@@ -255,9 +256,9 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         GC_Method = gc_none,   % dummy
         GCMethodSpec =
             [words("Invalid argument"), quote(GC_MethodStr),
-            words("to the `--gc' option;"),
-            words("must be `none', `conservative', `boehm', `hgc',"),
-            words("`accurate', or `automatic'."), nl],
+            words("to the"), quote("--gc"), words("option; must be")] ++
+            list_to_quoted_pieces_or(["none", "conservative", "boehm", "hgc",
+                "accurate", "automatic"]) ++ [suffix("."), nl],
         add_error(phase_options, GCMethodSpec, !Specs)
     ),
 
@@ -267,9 +268,10 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     else
         TagsMethod = tags_none,  % dummy
         TagsMethodSpec =
-            [words("Invalid argument"), quote(TagsMethodStr),
-            words("to the `--tags' option;"),
-            words("must be `none', `low', or `high'."), nl],
+            [words("Invalid argument"), quote(TagsMethodStr), words("to the"),
+            quote("--tags"), words("option; must be")] ++
+            list_to_quoted_pieces_or(["none", "low", "high"]) ++
+            [suffix("."), nl],
         add_error(phase_options, TagsMethodSpec, !Specs)
     ),
 
@@ -283,8 +285,8 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     else
         FactTablePercentFullSpec =
             [words("Invalid argument"), int_fixed(FactTablePercentFull),
-            words("to the `--fact-table-hash-percent-full' option;"),
-            words("must be an integer between 1 and 100."), nl],
+            words("to the"), quote("--fact-table-hash-percent-full"),
+            words("option; must be an integer between 1 and 100."), nl],
         add_error(phase_options, FactTablePercentFullSpec, !Specs)
     ),
 
@@ -294,9 +296,10 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     else
         TermNorm = norm_simple,  % dummy
         TermNormSpec =
-            [words("Invalid argument"), quote(TermNormStr),
-            quote("to the `--termination-norm' option;"),
-            words("must be `simple', `total', or `num-data-elems'."), nl],
+            [words("Invalid argument"), quote(TermNormStr), words("to the"),
+            quote("--termination-norm"), words("option; must be")] ++
+            list_to_quoted_pieces_or(["simple", "total", "num-data-elems"]) ++
+            [suffix("."), nl],
         add_error(phase_options, TermNormSpec, !Specs)
     ),
 
@@ -306,9 +309,10 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     else
         Term2Norm = norm_simple, % dummy
         Term2NormSpec =
-            [words("Invalid argument"), quote(TermNormStr),
-            quote("to the `--termination2-norm' option;"),
-            words("must be `simple', `total', or `num-data-elems')."), nl],
+            [words("Invalid argument"), quote(TermNormStr), words("to the"),
+            quote("--termination2-norm"), words("option; must be")] ++
+            list_to_quoted_pieces_or(["simple", "total", "num-data-elems"]) ++
+            [suffix("."), nl],
         add_error(phase_options, Term2NormSpec, !Specs)
     ),
 
@@ -330,19 +334,19 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
             ;
                 MaybeTraceLevel = no,
                 TraceLevel = trace_level_none,  % dummy
-                InconsistentTraceLevelSpec = 
+                InconsistentTraceLevelSpec =
                     [words("The specified trace level"), words(Trace),
-                    words("is not compatible with the value"),
-                    words("of the `--decl_debug' option."), nl],
+                    words("is not compatible with the value of the"),
+                    quote("--decl_debug"), words("option."), nl],
                 add_error(phase_options, InconsistentTraceLevelSpec, !Specs)
             )
         else
             TraceLevel = trace_level_none,  % dummy
             BadTraceLevelSpec =
-                [words("Invalid argument"), quote(Trace),
-                words("to the `--trace' option;"),
-                words("must be `minimum', `shallow', `deep', "),
-                words("`decl', `rep', or `default'."), nl],
+                [words("Invalid argument"), quote(Trace), words("to the"),
+                quote("--trace"), words("option; must be")] ++
+                list_to_quoted_pieces_or(["minimum", "shallow", "deep",
+                    "decl", "rep", "default"]) ++ [suffix("."), nl],
             add_error(phase_options, BadTraceLevelSpec, !Specs)
         )
     ),
@@ -354,7 +358,7 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TraceSuppress = default_trace_suppress, % dummy
         TraceSuppressSpec =
             [words("Invalid argument"), quote(SuppressStr),
-            words("to the `--suppress-trace' option."), nl],
+            words("to the"), quote("--suppress-trace"), words("option."), nl],
         % The set of valid options is a given language, not a simple set
         % of words, so there is no simple, short suggestion we can print.
         add_error(phase_options, TraceSuppressSpec, !Specs)
@@ -374,9 +378,10 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         else
             SSTraceLevel = none,
             SSDBSpec =
-                [words("Invalid argument"), quote(SSTrace),
-                words("to the `--ssdb-trace' option;"),
-                words("must be `default', `none', `shallow', or `deep'."), nl],
+                [words("Invalid argument"), quote(SSTrace), words("to the"),
+                quote("--ssdb-trace"), words("option; must be")] ++
+                list_to_quoted_pieces_or(["default", "none",
+                    "shallow", "deep"]) ++ [suffix("."), nl],
             add_error(phase_options, SSDBSpec, !Specs)
         )
     ),
@@ -394,8 +399,9 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         % XXX They should definitely use a bespoke type inside the compiler.
         MTSSpec =
             [words("Invalid argument"), quote(MaybeThreadSafeStr),
-            words("to the `--maybe-thread-safe' option;"),
-            words("must be `no' or `yes'."), nl],
+            words("to the"), quote("--maybe-thread-safe"), words("option;"),
+            words("must be")] ++
+            list_to_quoted_pieces_or(["no", "yes"]) ++ [suffix("."), nl],
         add_error(phase_options, MTSSpec, !Specs)
     ),
 
@@ -407,8 +413,8 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     else
         DumpAliasSpec =
             [words("Invalid argument"), quote(DumpAlias),
-            words("to the `-D' (also known as `--dump-hlds-alias') option."),
-            nl],
+            words("to the"), quote("D"), words("(also known as"),
+            quote("--dump-hlds-alias"), suffix(")"), words("option."), nl],
         add_error(phase_options, DumpAliasSpec, !Specs)
     ),
 
@@ -483,8 +489,10 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         C_CompilerType = cc_unknown,   % dummy
         CCTpec =
             [words("Invalid argument"), quote(C_CompilerTypeStr),
-            words("to the `--c-compiler-type' option;"),
-            words("must be `gcc', `clang', 'msvc', or `unknown'."), nl],
+            words("to the"), quote("--c-compiler-type"), words("option;"),
+            words("must be")] ++
+            list_to_quoted_pieces_or(["gcc", "clang", "msvc", "unknown"]) ++
+            [suffix("."), nl],
         add_error(phase_options, CCTpec, !Specs)
     ),
 
@@ -499,8 +507,10 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         CSharp_CompilerType = csharp_unknown,   % dummy
         CSCSpec =
             [words("Invalid argument"), quote(CSharp_CompilerTypeStr),
-            words("to the `--csharp-compiler-type' option;"),
-            words("must be `microsoft', `mono', or `unknown'."), nl],
+            words("to the"), quote("--csharp-compiler-type"), words("option;"),
+            words("must be")] ++
+            list_to_quoted_pieces_or(["microsoft", "mono", "unknown"]) ++
+            [suffix("."), nl],
         add_error(phase_options, CSCSpec, !Specs)
     ),
 
@@ -517,9 +527,11 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         ReuseStrategy = same_cons_id,   % dummy
         ReuseConstrSpec =
             [words("Invalid argument"), quote(ReuseConstraintStr),
-            words("to the `--structure-reuse-constraint' option;"),
-            words("must be `same_cons_id', or `within_n_cells_difference'."),
-            nl],
+            words("to the"), quote("--structure-reuse-constraint"),
+            words("option; must be")] ++
+            list_to_quoted_pieces_or(["same_cons_id",
+                "within_n_cells_difference"]) ++
+            [suffix("."), nl],
         add_error(phase_options, ReuseConstrSpec, !Specs)
     ),
 
@@ -554,9 +566,10 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
     else
         HostEnvType = env_type_posix,   % dummy
         HostEnvSpec =
-            [words("Invalid argument"), quote(HostEnvTypeStr),
-            words("to the `--host-env-type' option;"),
-            words("must be `posix', `cygwin', `msys' or `windows')."), nl],
+            [words("Invalid argument"), quote(HostEnvTypeStr), words("to the"),
+            quote("--host-env-type"), words("option; must be")] ++
+            list_to_quoted_pieces_or(["posix", "cygwin", "msys", "windows"]) ++
+            [suffix("."), nl],
         add_error(phase_options, HostEnvSpec, !Specs)
     ),
     raw_lookup_string_option(!.OptionTable, system_env_type, SystemEnvTypeStr),
@@ -572,8 +585,10 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         SystemEnvType = env_type_posix,    % dummy
         SystemEnvSpec =
             [words("Invalid argument"), quote(SystemEnvTypeStr),
-            words("to the `--system-env-type' option;"),
-            words("must be `posix', `cygwin', `msys' or `windows')."), nl],
+            words("to the"), quote("--system-env-type"), words("option;"),
+            words("must be")] ++
+            list_to_quoted_pieces_or(["posix", "cygwin", "msys", "windows"]) ++
+            [suffix("."), nl],
         add_error(phase_options, SystemEnvSpec, !Specs)
     ),
     raw_lookup_string_option(!.OptionTable, target_env_type, TargetEnvTypeStr),
@@ -583,8 +598,10 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         TargetEnvType = env_type_posix,   % dummy
         TargetEnvTypeSpec =
             [words("Invalid argument"), quote(TargetEnvTypeStr),
-            words("to the `--target-env-type' option;"),
-            words("must be `posix', `cygwin', `msys' or `windows'."), nl],
+            words("to the"), quote("--target-env-type"), words("option;"),
+            words("must be")] ++
+            list_to_quoted_pieces_or(["posix", "cygwin", "msys", "windows"]) ++
+            [suffix("."), nl],
         add_error(phase_options, TargetEnvTypeSpec, !Specs)
     ),
 
@@ -593,8 +610,9 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         CSharp_CompilerType = csharp_microsoft
     then
         PosixCSMSpec =
-            [words("`--host-env-type posix' is incompatible with"),
-            words("`--csharp-compiler-type microsoft'."), nl],
+            [words_quote("--host-env-type posix"),
+            words("is incompatible with"),
+            words_quote("--csharp-compiler-type microsoft"), suffix("."), nl],
         add_error(phase_options, PosixCSMSpec, !Specs)
     else
         true
@@ -610,14 +628,16 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
         BadLimitErrorContextsOptions = [BadLimitErrorContextsOption],
         LECSpec =
             [words("Invalid argument"), quote(BadLimitErrorContextsOption),
-            words("to the `--limit-error-contexts' option."), nl],
+            words("to the"), quote("--limit-error-contexts"),
+            words("option."), nl],
         add_error(phase_options, LECSpec, !Specs)
     ;
         BadLimitErrorContextsOptions = [_, _ | _],
         BadPieces = list_to_quoted_pieces(BadLimitErrorContextsOptions),
         LECSpec =
             [words("Invalid arguments")] ++ BadPieces ++
-            [words("to the `--limit-error-contexts' option."), nl],
+            [words("to the"), quote("--limit-error-contexts"),
+            words("option."), nl],
         add_error(phase_options, LECSpec, !Specs)
     ).
 
@@ -732,9 +752,10 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     ( if NumTagBits1 < 0 then
         NumTagBits = 0,
         NumTagBitsSpec =
-            [words("Warning: the value of the `--num-tag-bits' option"),
-            words("is either unspecified or invalid."), nl,
-            words("Using `--num-tag-bits 0, which disables tags."), nl],
+            [words("Warning: the value of the"), quote("--num-tag-bits"),
+            words("option is either unspecified or invalid."), nl,
+            words("Using"), quote("--num-tag-bits 0"), suffix(","),
+            words("which disables tags."), nl],
         add_warning(phase_options, NumTagBitsSpec, !Specs)
     else
         NumTagBits = NumTagBits1
@@ -756,7 +777,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         Threadscope = yes
     then
         ThreadScopeSpec =
-            [words("The `threadscope' grade component"),
+            [words("The"), quote("threadscope"), words("grade component"),
             words("requires a parallel grade."), nl],
         add_error(phase_options, ThreadScopeSpec, !Specs)
     else
@@ -776,8 +797,9 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
                 FeedbackFile),
             ( if FeedbackFile = "" then
                 NoFeedbackFileSpec =
-                    [words("The `--implicit-parallelism' option"),
-                    words("requires the use of `--feedback-file'."), nl],
+                    [words("The"), quote("--implicit-parallelism"),
+                    words("option requires the use of"), quote("--feedback-file"),
+                    suffix("."), nl],
                 add_error(phase_options, NoFeedbackFileSpec, !Specs)
             else
                 true
@@ -790,8 +812,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             (
                 Parallel = yes,
                 NoParConjSupportSpec =
-                    [words("The `--implicit-parallelism' option"),
-                    words("requires a grade that"),
+                    [words("The"), quote("--implicit-parallelism"),
+                    words("option requires a grade that"),
                     words("supports parallel conjunctions."),
                     words("Use a low-level C grade without trailing."), nl],
                 add_error(phase_options, NoParConjSupportSpec, !Specs)
@@ -1004,8 +1026,9 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         (
             UsingOrInvokedByMMCMake = yes,
             TransOptMakeSpec =
-                [words("The `--transitive-intermodule-optimization' option"),
-                words("is incompatible with the `--make' option."), nl],
+                [words("The"), quote("--transitive-intermodule-optimization"),
+                words("option is incompatible with the"), quote("--make"),
+                words("option."), nl],
             add_error(phase_options, TransOptMakeSpec, !Specs)
         ;
             UsingOrInvokedByMMCMake = no
@@ -1025,10 +1048,9 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         InterModAnalysis = yes
     then
         OptAnalysisSpec =
-            [words("The `--intermodule-optimization' option"),
-            words("is incompatible with"),
-            words("the `--intermodule-analysis' option."),
-            nl],
+            [words("The"), quote("--intermodule-optimization"),
+            words("option is incompatible with the"),
+            quote("--intermodule-analysis"), words("option."), nl],
         add_error(phase_options, OptAnalysisSpec, !Specs)
     else
         true
@@ -1049,9 +1071,9 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         ExtraInitFunctions = yes
     then
         ExtraInitsSpec =
-            [words("The `--generate-standalone-interface' option"),
-            words("is incompatible with"),
-            words("the `--extra-initialization-functions' option."), nl],
+            [words("The"), quote("--generate-standalone-interface"),
+            words("option is incompatible with the"),
+            quote("--extra-initialization-functions"), words("option."), nl],
         add_error(phase_options, ExtraInitsSpec, !Specs)
     else
         true
@@ -1328,9 +1350,11 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         else if ArgPackBits0 > BitsPerWord then
             ArgPackBits = BitsPerWord,
             ArgPackBitsSpec =
-                [words("Warning: cannot set the value of `--arg-pack-bits'"),
-                words("to value higher than the value of `--bits-per-word'."),
-                words("Reducing the effective value of `--arg-pack-bits'"),
+                [words("Warning: cannot set the value of"),
+                quote("--arg-pack-bits"),
+                words("to value higher than the value of"),
+                quote("--bits-per-word"), suffix("."),
+                words("Reducing the effective value of"), quote("--arg-pack-bits"),
                 words("to the maximum allowable value, which is"),
                 int_fixed(BitsPerWord), suffix("."), nl],
             add_error(phase_options, ArgPackBitsSpec, !Specs)
@@ -1736,8 +1760,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         PutNondetEnvOnHeap = yes
     then
         AGCEnvSpec =
-            [words("`--gc accurate' is incompatible with"),
-            words("`--put-nondet-env-on-heap'."), nl],
+            [words_quote("--gc accurate"), words("is incompatible with"),
+            words_quote("--put-nondet-env-on-heap"), suffix("."), nl],
         add_error(phase_options, AGCEnvSpec, !Specs)
     else
         true

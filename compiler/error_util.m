@@ -401,6 +401,10 @@
     %
 :- func list_to_quoted_pieces(list(string)) = list(format_component).
 
+    % As above, but with the last two elements separated by `or'.
+    %
+:- func list_to_quoted_pieces_or(list(string)) = list(format_component).
+
     % Convert a list of lists of format_components into a list of
     % format_components separated by commas, with the last two elements
     % separated by `and'.
@@ -1088,6 +1092,14 @@ list_to_quoted_pieces([Elem1, Elem2]) =
 list_to_quoted_pieces([Elem1, Elem2, Elem3 | Elems]) =
     [quote(Elem1), suffix(",") |
         list_to_quoted_pieces([Elem2, Elem3 | Elems])].
+
+list_to_quoted_pieces_or([]) = [].
+list_to_quoted_pieces_or([Elem]) = [quote(Elem)].
+list_to_quoted_pieces_or([Elem1, Elem2]) =
+    [quote(Elem1), words("or"), quote(Elem2)].
+list_to_quoted_pieces_or([Elem1, Elem2, Elem3 | Elems]) =
+    [quote(Elem1), suffix(",") |
+        list_to_quoted_pieces_or([Elem2, Elem3 | Elems])].
 
 component_lists_to_pieces([]) = [].
 component_lists_to_pieces([Comps]) = Comps.
