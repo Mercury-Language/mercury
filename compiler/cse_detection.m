@@ -682,9 +682,9 @@ common_deconstruct_cases_2([Case0 | Cases0], Var, !CseState, !CseInfo,
 :- type cse_state
     --->    before_candidate
     ;       have_candidate(
-                goal            ::  hlds_goal,
-                first_old_new   ::  assoc_list(prog_var),
-                later_old_new   ::  list(assoc_list(prog_var))
+                hc_goal             ::  hlds_goal,
+                hc_first_old_new    ::  assoc_list(prog_var),
+                hc_later_old_new    ::  list(assoc_list(prog_var))
             )
     ;       multiple_candidates.
 
