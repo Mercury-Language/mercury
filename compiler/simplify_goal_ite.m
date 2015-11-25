@@ -100,7 +100,7 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         simplify_goal(hlds_goal(conj(plain_conj, Goals), GoalInfo0),
             hlds_goal(GoalExpr, GoalInfo), NestedContext0, InstMap0,
             Common0, Common, !Info),
-        maybe_warm_about_condition(GoalInfo0, NestedContext0, "cannot fail",
+        maybe_warn_about_condition(GoalInfo0, NestedContext0, "cannot fail",
             !Info)
     ;
         CondCanFail0 = can_fail,
@@ -144,7 +144,7 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             simplify_goal(hlds_goal(conj(plain_conj, List), GoalInfo0),
                 hlds_goal(GoalExpr, GoalInfo), NestedContext0, InstMap0,
                 Common0, Common, !Info),
-            maybe_warm_about_condition(GoalInfo0, NestedContext0,
+            maybe_warn_about_condition(GoalInfo0, NestedContext0,
                 "cannot succeed", !Info)
         ;
             ( CondSolns0 = at_most_one
@@ -169,11 +169,11 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         )
     ).
 
-:- pred maybe_warm_about_condition(hlds_goal_info::in,
+:- pred maybe_warn_about_condition(hlds_goal_info::in,
     simplify_nested_context::in, string::in,
     simplify_info::in, simplify_info::out) is det.
 
-maybe_warm_about_condition(GoalInfo0, NestedContext0, Problem, !Info) :-
+maybe_warn_about_condition(GoalInfo0, NestedContext0, Problem, !Info) :-
     InsideDuplForSwitch = NestedContext0 ^ snc_inside_dupl_for_switch,
     (
         InsideDuplForSwitch = yes
