@@ -811,7 +811,7 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
 
 parse_clause(ModuleName, ProgVarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         MaybeIOM) :-
-    GoalContextPieces = [],
+    GoalContextPieces = cord.init,
     parse_goal(BodyTerm0, GoalContextPieces, MaybeBodyGoal,
         ProgVarSet0, ProgVarSet),
     (
@@ -822,7 +822,7 @@ parse_clause(ModuleName, ProgVarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
                 [FuncHeadTerm0, FuncResultTerm], _),
             FuncHeadTerm = desugar_field_access(FuncHeadTerm0)
         then
-            HeadContextPieces = [words("In equation head:")],
+            HeadContextPieces = cord.singleton(words("In equation head:")),
             parse_implicitly_qualified_sym_name_and_args(ModuleName,
                 FuncHeadTerm, VarSet, HeadContextPieces, MaybeFunctor),
             (
@@ -838,7 +838,7 @@ parse_clause(ModuleName, ProgVarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
                 MaybeIOM = error1(Specs)
             )
         else
-            HeadContextPieces = [words("In clause head:")],
+            HeadContextPieces = cord.singleton(words("In clause head:")),
             parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
                 VarSet, HeadContextPieces, MaybeFunctor),
             (
@@ -956,16 +956,17 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
 parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
         WithType, WithInst, MaybeDet, Context, SeqNum,
         PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
+    ContextPieces = cord.singleton(words("In")) ++
+        cord.from_list(pred_or_func_decl_pieces(PredOrFunc)) ++
+        cord.singleton(suffix(":")),
     get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
-        QuantConstrAttrs, MaybeExistClassInstContext),
+        QuantConstrAttrs, ContextPieces, MaybeExistClassInstContext),
     get_purity_from_attrs(Context, PurityAttrs, MaybePurity),
     ( if
         MaybeExistClassInstContext =
             ok3(ExistQVars, Constraints, InstConstraints),
         MaybePurity = ok1(Purity)
     then
-        ContextPieces = [words("In")] ++ pred_or_func_decl_pieces(PredOrFunc)
-            ++ [suffix(":")],
         parse_implicitly_qualified_sym_name_and_args(ModuleName, PredTypeTerm,
             VarSet, ContextPieces, MaybePredNameAndArgs),
         (
@@ -1057,8 +1058,10 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
 
 parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Context, SeqNum,
         PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
+    ContextPieces = cord.from_list([words("In"), decl("func"),
+        words("declaration")]),
     get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
-        QuantConstrAttrs, MaybeContext),
+        QuantConstrAttrs, ContextPieces, MaybeContext),
     (
         MaybeContext = error3(Specs),
         MaybeIOM = error1(Specs)
@@ -1069,8 +1072,6 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, Context, SeqNum,
                 [MaybeSugaredFuncTerm, ReturnTerm], _)
         then
             FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
-            ContextPieces = [words("In"), decl("func"),
-                words("declaration")],
             parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
                 VarSet, ContextPieces, MaybeFuncNameAndArgs),
             (
@@ -1366,8 +1367,8 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Context, SeqNum,
             MaybeIOM = error1([Spec])
         else
             FuncTerm = desugar_field_access(MaybeSugaredFuncTerm),
-            ContextPieces = [words("In function"), decl("mode"),
-                words("declaration")],
+            ContextPieces = cord.from_list([words("In function"), decl("mode"),
+                words("declaration")]),
             parse_implicitly_qualified_sym_name_and_args(ModuleName, FuncTerm,
                 VarSet, ContextPieces, MaybeFunctorArgs),
             (
@@ -1388,7 +1389,8 @@ parse_mode_decl_base(ModuleName, VarSet, Term, Context, SeqNum,
                 [simple_msg(get_term_context(Term), [always(Pieces)])]),
             MaybeIOM = error1([Spec])
         else
-            ContextPieces = [words("In"), decl("mode"), words("declaration")],
+            ContextPieces = cord.from_list([words("In"), decl("mode"),
+                words("declaration")]),
             parse_implicitly_qualified_sym_name_and_args(ModuleName, Term,
                 VarSet, ContextPieces, MaybeFunctorArgs),
             (
@@ -1413,8 +1415,10 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
     ( if
         convert_mode_list(allow_constrained_inst_var, ArgTerms, ArgModes0)
     then
+        ContextPieces = cord.from_list([words("In predicate"), decl("mode"),
+            words("declaration")]),
         get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
-            QuantConstrAttrs, MaybeConstraints),
+            QuantConstrAttrs, ContextPieces, MaybeConstraints),
         (
             MaybeConstraints = ok3(_, _, InstConstraints),
             list.map(constrain_inst_vars_in_mode_sub(InstConstraints),
@@ -1472,8 +1476,10 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
     ( if
         convert_mode_list(allow_constrained_inst_var, ArgTerms, ArgModes0)
     then
+        ContextPieces = cord.from_list([words("In function"), decl("mode"),
+            words("declaration")]),
         get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
-            QuantConstrAttrs, MaybeConstraints),
+            QuantConstrAttrs, ContextPieces, MaybeConstraints),
         (
             MaybeConstraints = ok3(_, _, InstConstraints),
             list.map(constrain_inst_vars_in_mode_sub(InstConstraints),
@@ -1555,7 +1561,7 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
 
     % XXX This documentation is out of date.
     % get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
-    %   QuantConstrAttrs, MaybeExistClassInstContext):
+    %   QuantConstrAttrs, ContextPieces, MaybeExistClassInstContext):
     %
     % Parse type quantifiers, type class constraints and inst constraints
     % from the attributes in QuantConstrAttrs.
@@ -1569,11 +1575,11 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
     % XXX The "smallest" part of that is almost certainly bug.
     %
 :- pred get_class_context_and_inst_constraints_from_attrs(module_name::in,
-    varset::in, list(quant_constr_attr)::in,
+    varset::in, list(quant_constr_attr)::in, cord(format_component)::in,
     maybe3(existq_tvars, prog_constraints, inst_var_sub)::out) is det.
 
 get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
-        QuantConstrAttrs, MaybeExistClassInstContext) :-
+        QuantConstrAttrs, ContextPieces, MaybeExistClassInstContext) :-
     % When we reach here, QuantConstrAttrs contains declaration attributes
     % in the outermost to innermost order.
     %
@@ -1607,7 +1613,7 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
     % and if not, issue a warning or error message.)
 
     get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
-        QuantConstrAttrs, [], Specs,
+        QuantConstrAttrs, ContextPieces, [], Specs,
         cord.init, _UnivQVarsCord, cord.init, ExistQVarsCord,
         cord.init, UnivClassConstraints, map.init, UnivInstConstraints,
         cord.init, ExistClassConstraints, map.init, ExistInstConstraints),
@@ -1629,7 +1635,7 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
     ).
 
 :- pred get_class_context_and_inst_constraints_loop(module_name::in,
-    varset::in, list(quant_constr_attr)::in,
+    varset::in, list(quant_constr_attr)::in, cord(format_component)::in,
     list(error_spec)::in, list(error_spec)::out,
     cord(var)::in, cord(var)::out, cord(var)::in, cord(var)::out,
     cord(prog_constraint)::in, cord(prog_constraint)::out,
@@ -1638,11 +1644,12 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
     inst_var_sub::in, inst_var_sub::out) is det.
 
 get_class_context_and_inst_constraints_loop(_ModuleName, _VarSet,
-        [], !Specs, !UnivQVars, !ExistQVars,
+        [], _ContextPieces, !Specs, !UnivQVars, !ExistQVars,
         !UnivClassConstraints, !UnivInstConstraints,
         !ExistvClassConstraints, !ExistvInstConstraints).
 get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
-        [QuantConstrAttr | QuantConstrAttrs], !Specs, !UnivQVars, !ExistQVars,
+        [QuantConstrAttr | QuantConstrAttrs], ContextPieces, !Specs,
+        !UnivQVars, !ExistQVars,
         !UnivClassConstraints, !UnivInstConstraints,
         !ExistClassConstraints, !ExistInstConstraints) :-
     (
@@ -1650,14 +1657,15 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
         % Both versions of ContextPieces should be statically allocated terms.
         (
             QuantType = quant_type_exist,
-            ContextPieces = [words("in first argument of"),
+            TailContextPieces = [words("in first argument of"),
                 quote("some"), suffix(":")]
         ;
             QuantType = quant_type_univ,
-            ContextPieces = [words("in first argument of"),
+            TailContextPieces = [words("in first argument of"),
                 quote("all"), suffix(":")]
         ),
-        parse_list_of_vars(VarSet, ContextPieces, VarsTerm, MaybeVars),
+        VarsContextPieces = ContextPieces ++ cord.from_list(TailContextPieces),
+        parse_list_of_vars(VarSet, VarsContextPieces, VarsTerm, MaybeVars),
         (
             MaybeVars = error1(VarsSpecs),
             !:Specs = VarsSpecs ++ !.Specs
@@ -1697,7 +1705,7 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
 
     ),
     get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
-        QuantConstrAttrs, !Specs, !UnivQVars, !ExistQVars,
+        QuantConstrAttrs, ContextPieces, !Specs, !UnivQVars, !ExistQVars,
         !UnivClassConstraints, !UnivInstConstraints,
         !ExistClassConstraints, !ExistInstConstraints).
 
@@ -1709,7 +1717,7 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
 parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
     ( if ArgTerms = [Term] then
         varset.coerce(VarSet, ProgVarSet0),
-        ContextPieces = [],
+        ContextPieces = cord.init,
         parse_goal(Term, ContextPieces, MaybeGoal0, ProgVarSet0, ProgVarSet),
         (
             MaybeGoal0 = ok1(Goal0),
@@ -1751,7 +1759,7 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
         PromiseType, _UnivVarTerms, MaybeIOM) :-
     ( if ArgTerms = [Term] then
         varset.coerce(VarSet, ProgVarSet0),
-        ContextPieces = [],
+        ContextPieces = cord.init,
         parse_goal(Term, ContextPieces, MaybeGoal0, ProgVarSet0, ProgVarSet),
         (
             MaybeGoal0 = ok1(Goal),
@@ -1825,8 +1833,8 @@ parse_determinism_suffix(VarSet, Term, BeforeDetismTerm, MaybeMaybeDetism) :-
 
     % Process the `with_type type` suffix part of a declaration.
     %
-:- pred parse_with_type_suffix(varset::in, term::in, term::out,
-    maybe1(maybe(mer_type))::out) is det.
+:- pred parse_with_type_suffix(varset::in, term::in,
+    term::out, maybe1(maybe(mer_type))::out) is det.
 
 parse_with_type_suffix(VarSet, Term, BeforeWithTypeTerm, MaybeWithType) :-
     ( if
@@ -1837,8 +1845,8 @@ parse_with_type_suffix(VarSet, Term, BeforeWithTypeTerm, MaybeWithType) :-
         )
     then
         BeforeWithTypeTerm = BeforeWithTypeTermPrime,
-        % XXX Should supply more correct ContextPieces.
-        ContextPieces = [],
+        ContextPieces = cord.from_list([words("In"), quote("with_type"),
+            words("annotation:")]),
         parse_type(TypeTerm, VarSet, ContextPieces, MaybeType),
         (
             MaybeType = ok1(Type),
@@ -1863,6 +1871,9 @@ parse_with_inst_suffix(Term, BeforeWithInstTerm, MaybeWithInst) :-
             [BeforeWithInstTermPrime, InstTerm], _)
     then
         BeforeWithInstTerm = BeforeWithInstTermPrime,
+        % XXX For with_type annotations, if the type is not valid,
+        % we generate an error message that say which PART of it is not valid.
+        % We should do the same for with_inst annotations.
         ( if convert_inst(allow_constrained_inst_var, InstTerm, Inst) then
             MaybeWithInst = ok1(yes(Inst))
         else

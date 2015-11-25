@@ -34,6 +34,7 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
+:- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -59,13 +60,13 @@
 % Some of these predicates fail if they encounter a syntax error; others
 % return an error indication.
 
-:- pred parse_list_of_vars(varset(T)::in, list(format_component)::in,
+:- pred parse_list_of_vars(varset(T)::in, cord(format_component)::in,
     term(T)::in, maybe1(list(var(T)))::out) is det.
 
     % Parse a list of quantified variables.
     % The other input argument is a prefix for any error messages.
     %
-:- pred parse_vars(term(T)::in, varset(T)::in, list(format_component)::in,
+:- pred parse_vars(term(T)::in, varset(T)::in, cord(format_component)::in,
     maybe1(list(var(T)))::out) is det.
 
     % Parse a list of quantified variables, splitting it into
@@ -73,7 +74,7 @@
     % The other input argument is a prefix for any error messages.
     %
 :- pred parse_quantifier_vars(term(T)::in, varset(T)::in,
-    list(format_component)::in, maybe2(list(var(T)), list(var(T)))::out)
+    cord(format_component)::in, maybe2(list(var(T)), list(var(T)))::out)
     is det.
 
     % Similar to parse_vars, but also allow state variables to appear
@@ -82,7 +83,7 @@
     % listed as !:X.
     %
 :- pred parse_vars_and_state_vars(term(T)::in, varset(T)::in,
-    list(format_component)::in,
+    cord(format_component)::in,
     maybe4(list(var(T)), list(var(T)), list(var(T)), list(var(T)))::out)
     is det.
 
@@ -99,17 +100,17 @@
     pred_or_func::out, sym_name::out, list(term(_T))::out) is semidet.
 
 :- pred parse_pred_or_func_and_args_general(maybe(module_name)::in,
-    term(_T)::in, varset(_T)::in, list(format_component)::in,
+    term(_T)::in, varset(_T)::in, cord(format_component)::in,
     maybe_pred_or_func(term(_T))::out) is det.
 
 :- pred maybe_parse_type(term::in, mer_type::out) is semidet.
 
-:- pred parse_type(term::in, varset::in, list(format_component)::in,
+:- pred parse_type(term::in, varset::in, cord(format_component)::in,
     maybe1(mer_type)::out) is det.
 
 :- pred maybe_parse_types(list(term)::in, list(mer_type)::out) is semidet.
 
-:- pred parse_types(list(term)::in, varset::in, list(format_component)::in,
+:- pred parse_types(list(term)::in, varset::in, cord(format_component)::in,
     maybe1(list(mer_type))::out) is det.
 
 :- pred is_known_type_name(string::in) is semidet.
@@ -122,9 +123,11 @@
     --->    allow_constrained_inst_var
     ;       no_allow_constrained_inst_var.
 
+    % XXX These predicates should take a ContextPieces argument, be det,
+    % and return a maybe1(...) result.
+    %
 :- pred convert_mode_list(allow_constrained_inst_var::in, list(term)::in,
     list(mer_mode)::out) is semidet.
-
 :- pred convert_mode(allow_constrained_inst_var::in, term::in, mer_mode::out)
     is semidet.
 
@@ -262,7 +265,7 @@ maybe_parse_type(Term, Type) :-
     % The values of VarSet and ContextPieces do not matter since we succeed
     % only if they aren't used.
     VarSet = varset.init,
-    ContextPieces = [],
+    ContextPieces = cord.init,
     parse_type(Term, VarSet, ContextPieces, ok1(Type)).
 
 parse_type(Term, VarSet, ContextPieces, Result) :-
@@ -324,7 +327,7 @@ parse_type(Term, VarSet, ContextPieces, Result) :-
         )
     ).
 
-:- pred parse_compound_type(term::in, varset::in, list(format_component)::in,
+:- pred parse_compound_type(term::in, varset::in, cord(format_component)::in,
     known_compound_type_kind(term)::in, maybe1(mer_type)::out) is det.
 
 parse_compound_type(Term, VarSet, ContextPieces, CompoundTypeKind, Result) :-
@@ -343,7 +346,7 @@ parse_compound_type(Term, VarSet, ContextPieces, CompoundTypeKind, Result) :-
         % We don't support apply/N types yet, so we just detect them
         % and report an error message.
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
             words("Error: ill-formed type"), words(TermStr), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(Term), [always(Pieces)])]),
@@ -504,12 +507,12 @@ is_known_type_name_args(Name, Args, KnownType) :-
         KnownType = known_type_compound(kctk_apply(Args))
     ).
 
-:- func ill_formed_type_result(list(format_component), varset, term)
+:- func ill_formed_type_result(cord(format_component), varset, term)
     = maybe1(mer_type).
 
 ill_formed_type_result(ContextPieces, VarSet, Term) = Result :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
         words("Error: ill-formed type"), words(TermStr), suffix("."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(get_term_context(Term), [always(Pieces)])]),
@@ -519,7 +522,7 @@ maybe_parse_types(Term, Types) :-
     % The values of VarSet and ContextPieces do not matter since we succeed
     % only if they aren't used.
     VarSet = varset.init,
-    ContextPieces = [],
+    ContextPieces = cord.init,
     parse_types(Term, VarSet, ContextPieces, ok1(Types)).
 
 parse_types(Terms, VarSet, ContextPieces, Result) :-
@@ -532,7 +535,7 @@ parse_types(Terms, VarSet, ContextPieces, Result) :-
         Result = error1(Specs)
     ).
 
-:- pred parse_types_acc(list(term)::in, varset::in, list(format_component)::in,
+:- pred parse_types_acc(list(term)::in, varset::in, cord(format_component)::in,
     list(mer_type)::in, list(mer_type)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1485,33 +1488,33 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         MaybeVars = error4([Spec])
     ).
 
-:- pred generate_repeated_var_msg(list(format_component)::in,
+:- pred generate_repeated_var_msg(cord(format_component)::in,
     varset(T)::in, term(T)::in, error_spec::out) is det.
 
 generate_repeated_var_msg(ContextPieces, VarSet, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
         words("Repeated variable"), words(TermStr), suffix("."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(get_term_context(Term), [always(Pieces)])]).
 
-:- pred generate_repeated_state_var_msg(list(format_component)::in,
+:- pred generate_repeated_state_var_msg(cord(format_component)::in,
     varset(T)::in, term(T)::in, error_spec::out) is det.
 
 generate_repeated_state_var_msg(ContextPieces, VarSet, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
         words("Repeated state variable"), words(TermStr), suffix("."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(get_term_context(Term), [always(Pieces)])]).
 
-:- pred generate_unexpected_term_message(list(format_component)::in,
+:- pred generate_unexpected_term_message(cord(format_component)::in,
     varset(T)::in, string::in, term(T)::in, error_spec::out) is det.
 
 generate_unexpected_term_message(ContextPieces, VarSet, Expected, Term,
         Spec) :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
         words("Expected"), words(Expected), suffix(","),
         words("got"), quote(TermStr), suffix("."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,

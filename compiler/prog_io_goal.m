@@ -21,6 +21,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
+:- import_module cord.
 :- import_module list.
 :- import_module term.
 
@@ -28,7 +29,7 @@
 
     % Convert a single term into a goal.
     %
-:- pred parse_goal(term::in, list(format_component)::in, maybe1(goal)::out,
+:- pred parse_goal(term::in, cord(format_component)::in, maybe1(goal)::out,
     prog_varset::in, prog_varset::out) is det.
 
     % Convert a term, possibly starting with `some [Vars]', into a list
@@ -38,7 +39,7 @@
     %
     % Exported to superhomogeneous.m for parsing if-then-else expressions.
     %
-:- pred parse_some_vars_goal(term::in, list(format_component)::in,
+:- pred parse_some_vars_goal(term::in, cord(format_component)::in,
     maybe3(list(prog_var), list(prog_var), goal)::out,
     prog_varset::in, prog_varset::out) is det.
 
@@ -108,13 +109,13 @@
     % to allow DCG and non-DCG clauses to generate identical error messages
     % in analogous situations.
     %
-:- func should_have_one_goal_prefix(list(format_component),
+:- func should_have_one_goal_prefix(cord(format_component),
     term.context, string) = error_spec.
-:- func should_have_two_terms_infix(list(format_component),
+:- func should_have_two_terms_infix(cord(format_component),
     term.context, string) = error_spec.
-:- func should_have_two_goals_infix(list(format_component),
+:- func should_have_two_goals_infix(cord(format_component),
     term.context, string) = error_spec.
-:- func should_have_one_x_one_goal_prefix(list(format_component),
+:- func should_have_one_x_one_goal_prefix(cord(format_component),
     term.context, string, string) = error_spec.
 
 %-----------------------------------------------------------------------------%
@@ -142,11 +143,7 @@
 parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
     % We could do some error-checking here, but all errors are picked up
     % in either the type-checker or parser anyway.
-
-    % First, get the goal context.
-    ( Term = term.functor(_, _, Context)
-    ; Term = term.variable(_, Context)
-    ),
+    %
     % We just check if it matches the appropriate pattern for one of the
     % builtins. If it doesn't match any of the builtins, then it's just
     % a predicate call.
@@ -159,6 +156,7 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
         MaybeGoal = MaybeGoalPrime
     else
         % It's not a builtin.
+        Context = get_term_context(Term),
         term.coerce(Term, ArgsTerm),
         % Check for predicate calls.
         ( if try_parse_sym_name_and_args(ArgsTerm, SymName, Args) then
@@ -176,7 +174,7 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
 %-----------------------------------------------------------------------------%
 
 :- pred parse_non_call_goal(string::in, list(term)::in, term.context::in,
-    list(format_component)::in, maybe1(goal)::out,
+    cord(format_component)::in, maybe1(goal)::out,
     prog_varset::in, prog_varset::out) is semidet.
 
 parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
@@ -252,7 +250,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
     % for parsing them.
 
     % XXX We should update ContextPieces at every call to parse a goal
-    % component.
+    % component that is not itself a goal.
+
     require_switch_arms_det [Functor]
     (
         (
@@ -319,23 +318,21 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         (
             Functor = "some",
             QuantType = quant_some,
-            VarsContextPieces = [lower_case_next_if_not_first,
+            VarsTailPieces = [lower_case_next_if_not_first,
                 words("In first argument of"), quote("some"), suffix(":")]
         ;
             Functor = "all",
             QuantType = quant_all,
-            VarsContextPieces = [lower_case_next_if_not_first,
+            VarsTailPieces = [lower_case_next_if_not_first,
                 words("In first argument of"), quote("all"), suffix(":")]
         ),
-        % Note that both versions of VarsContextPieces should be static data;
-        % factoring out their common parts would destroy this property.
         ( if Args = [QVarsTerm, SubGoalTerm] then
             varset.coerce(!.VarSet, GenericVarSet),
-            UpdatedContextPieces = ContextPieces ++ VarsContextPieces,
+            VarsContextPieces = ContextPieces ++
+                cord.from_list(VarsTailPieces),
             parse_quantifier_vars(QVarsTerm, GenericVarSet,
-                UpdatedContextPieces, MaybeStateVarsAndVars),
-            % XXX We should update ContextPieces, instead of supplying [].
-            parse_goal(SubGoalTerm, [], MaybeSubGoal, !VarSet),
+                VarsContextPieces, MaybeStateVarsAndVars),
+            parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
             ( if
                 MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
                 MaybeSubGoal = ok1(SubGoal)
@@ -477,7 +474,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 CondThenTerm = term.functor(term.atom("if"),
                     [term.functor(term.atom("then"),
                         [CondGoalTerm, ThenGoalTerm], _)],
-                    _)
+                    CondContext)
             then
                 parse_some_vars_goal(CondGoalTerm, ContextPieces,
                     MaybeCondGoal, !VarSet),
@@ -490,7 +487,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                     MaybeThenGoal = ok1(ThenGoal),
                     MaybeElseGoal = ok1(ElseGoal)
                 then
-                    Goal = if_then_else_expr(Context, Vars, StateVars,
+                    Goal = if_then_else_expr(CondContext, Vars, StateVars,
                         CondGoal, ThenGoal, ElseGoal),
                     MaybeGoal = ok1(Goal)
                 else
@@ -889,7 +886,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                                 SymName = unqualified(_)
                             ;
                                 SymName = qualified(_, _),
-                                QualPieces = ContextPieces ++
+                                QualPieces = cord.list(ContextPieces) ++
                                     [lower_case_next_if_not_first,
                                     words("Error: the event name"),
                                     words("must not be qualified."), nl],
@@ -905,7 +902,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                                 ( Purity = purity_semipure
                                 ; Purity = purity_impure
                                 ),
-                                PurityPieces = ContextPieces ++
+                                PurityPieces = cord.list(ContextPieces) ++
                                     [lower_case_next_if_not_first,
                                     words("Error: an event cannot be"),
                                     words("impure or semipure."), nl],
@@ -965,18 +962,18 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
 
 %-----------------------------------------------------------------------------%
 
-:- func should_have_no_args(list(format_component),
+:- func should_have_no_args(cord(format_component),
     term.context, string) = error_spec.
 
 should_have_no_args(ContextPieces, Context, Functor) = Spec :-
-    Pieces = ContextPieces ++
+    Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         quote(Functor), words("should have no arguments."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(Context, [always(Pieces)])]).
 
 should_have_one_goal_prefix(ContextPieces, Context, Functor) = Spec :-
-    Pieces = ContextPieces ++
+    Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         words("the prefix operator"), quote(Functor),
         words("should precede a single goal."), nl],
@@ -984,7 +981,7 @@ should_have_one_goal_prefix(ContextPieces, Context, Functor) = Spec :-
         [simple_msg(Context, [always(Pieces)])]).
 
 should_have_two_terms_infix(ContextPieces, Context, Functor) = Spec :-
-    Pieces = ContextPieces ++
+    Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         words("the infix operator"), quote(Functor),
         words("should have two terms as arguments."), nl],
@@ -992,7 +989,7 @@ should_have_two_terms_infix(ContextPieces, Context, Functor) = Spec :-
         [simple_msg(Context, [always(Pieces)])]).
 
 should_have_two_goals_infix(ContextPieces, Context, Functor) = Spec :-
-    Pieces = ContextPieces ++
+    Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         words("the infix operator"), quote(Functor),
         words("should have two goals as arguments."), nl],
@@ -1000,18 +997,18 @@ should_have_two_goals_infix(ContextPieces, Context, Functor) = Spec :-
         [simple_msg(Context, [always(Pieces)])]).
 
 should_have_one_x_one_goal_prefix(ContextPieces, Context, X, Functor) = Spec :-
-    Pieces = ContextPieces ++
+    Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         words("the binary prefix operator"), quote(Functor),
         words("should precede"), words(X), words("and a goal."), nl],
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(Context, [always(Pieces)])]).
 
-:- func should_have_one_call_prefix(list(format_component),
+:- func should_have_one_call_prefix(cord(format_component),
     term.context, string) = error_spec.
 
 should_have_one_call_prefix(ContextPieces, Context, Functor) = Spec :-
-    Pieces = ContextPieces ++
+    Pieces = cord.list(ContextPieces) ++
         [lower_case_next_if_not_first, words("Error:"),
         words("the prefix operator"), quote(Functor),
         words("should precede a call."), nl],
@@ -1095,13 +1092,13 @@ bad_purity_goal(GoalTerm0, Context, Purity) = Goal :-
 %-----------------------------------------------------------------------------%
 
 :- pred parse_one_var_list(list(var(T))::in, goal::in,
-    list(format_component)::in, string::in, maybe1(prog_var)::out) is det.
+    cord(format_component)::in, string::in, maybe1(prog_var)::out) is det.
 
 parse_one_var_list(Vars0, Goal, ContextPieces, ConstructName, MaybeVar) :-
     (
         Vars0 = [],
         Context = goal_get_context(Goal),
-        Pieces = ContextPieces ++
+        Pieces = cord.list(ContextPieces) ++
             [words("Error: the first argument of"), words(ConstructName),
             words("must contain a variable."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -1114,7 +1111,7 @@ parse_one_var_list(Vars0, Goal, ContextPieces, ConstructName, MaybeVar) :-
     ;
         Vars0 = [_, _ | _],
         Context = goal_get_context(Goal),
-        Pieces = ContextPieces ++
+        Pieces = cord.list(ContextPieces) ++
             [words("Error: the first argument of"), words(ConstructName),
             words("cannot contain more than one variable."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
@@ -1125,14 +1122,18 @@ parse_one_var_list(Vars0, Goal, ContextPieces, ConstructName, MaybeVar) :-
 %-----------------------------------------------------------------------------%
 
 parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
+    % We parse existentially quantified goals in non-DCG contexts here,
+    % while we parse them in DCG contexts in parse_some_vars_dcg_goal
+    % in prog_io_dcg.m.
     ( if
-        Term = term.functor(term.atom("some"), [QVarsTerm, SubGoalTerm],
+        Term = term.functor(term.atom("some"), [VarsTerm, SubGoalTerm],
             _Context)
     then
-        UpdatedContextPieces = ContextPieces ++ [lower_case_next_if_not_first,
-            words("In first argument of"), quote("some"), suffix(":")],
         varset.coerce(!.VarSet, GenericVarSet),
-        parse_quantifier_vars(QVarsTerm, GenericVarSet, UpdatedContextPieces,
+        VarsTailPieces = [lower_case_next_if_not_first,
+            words("In first argument of"), quote("some"), suffix(":")],
+        VarsContextPieces = ContextPieces ++ cord.from_list(VarsTailPieces),
+        parse_quantifier_vars(VarsTerm, GenericVarSet, VarsContextPieces,
             MaybeVars),
         GoalTerm = SubGoalTerm
     else
@@ -1148,9 +1149,9 @@ parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
         list.map(term.coerce_var, StateVars0, StateVars),
         MaybeVarsAndGoal = ok3(Vars, StateVars, Goal)
     else
-        VarsSpecs = get_any_errors2(MaybeVars),
-        GoalSpecs = get_any_errors1(MaybeGoal),
-        MaybeVarsAndGoal = error3(VarsSpecs ++ GoalSpecs)
+        Specs = get_any_errors2(MaybeVars) ++
+            get_any_errors1(MaybeGoal),
+        MaybeVarsAndGoal = error3(Specs)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1179,9 +1180,9 @@ parse_trace_params(VarSet, Context, Term, MaybeComponentsContexts) :-
             MaybeComponentsContexts =
                 ok1([HeadComponentContext | TailComponentsContexts])
         else
-            HeadSpecs = get_any_errors1(MaybeHeadComponentContext),
-            TailSpecs = get_any_errors1(MaybeTailComponentsContexts),
-            MaybeComponentsContexts = error1(HeadSpecs ++ TailSpecs)
+            Specs = get_any_errors1(MaybeHeadComponentContext) ++
+                get_any_errors1(MaybeTailComponentsContexts),
+            MaybeComponentsContexts = error1(Specs)
         )
     else
         TermStr = describe_error_term(VarSet, Term),
@@ -1320,10 +1321,9 @@ parse_trace_component(VarSet, _ErrorTerm, Term, MaybeComponentContext) :-
                     Component = trace_component_mutable_var(MutableVar),
                     MaybeComponentContext = ok1(Component - Context)
                 else
-                    VarSpecs = get_any_errors1(MaybeVar),
-                    MutableSpecs = get_any_errors1(MaybeMutable),
-                    MaybeComponentContext =
-                        error1(VarSpecs ++ MutableSpecs)
+                    Specs = get_any_errors1(MaybeVar) ++
+                        get_any_errors1(MaybeMutable),
+                    MaybeComponentContext = error1(Specs)
                 )
             else
                 Pieces = [words("Error:"), fixed(Atom),
@@ -1374,9 +1374,9 @@ parse_trace_tree(BaseParser, Term, MaybeTree) :-
         then
             MaybeTree = ok1(trace_op(Op, LExpr, RExpr))
         else
-            LSpecs = get_any_errors1(MaybeLExpr),
-            RSpecs = get_any_errors1(MaybeRExpr),
-            MaybeTree = error1(LSpecs ++ RSpecs)
+            Specs = get_any_errors1(MaybeLExpr) ++
+                get_any_errors1(MaybeRExpr),
+            MaybeTree = error1(Specs)
         )
     else if
         Term = term.functor(term.atom("not"), [SubTerm], _)
@@ -1643,7 +1643,7 @@ convert_trace_params_2([Component - Context | ComponentsContexts],
 %-----------------------------------------------------------------------------%
 
 :- pred parse_catch_any_term(term::in, term.context::in,
-    list(format_component)::in, maybe1(catch_any_expr)::out,
+    cord(format_component)::in, maybe1(catch_any_expr)::out,
     prog_varset::in, prog_varset::out) is det.
 
 parse_catch_any_term(ArrowTerm, _Context, ContextPieces, MaybeCatchAny,
@@ -1679,7 +1679,7 @@ parse_catch_any_term(ArrowTerm, _Context, ContextPieces, MaybeCatchAny,
     ).
 
 :- pred parse_catch_then_try_term_args(list(term)::in,
-    maybe(catch_any_expr)::in, term.context::in, list(format_component)::in,
+    maybe(catch_any_expr)::in, term.context::in, cord(format_component)::in,
     maybe1(goal)::out, prog_varset::in, prog_varset::out) is det.
 
 parse_catch_then_try_term_args(CatchTermArgs, MaybeCatchAnyExpr,
@@ -1707,7 +1707,7 @@ parse_catch_then_try_term_args(CatchTermArgs, MaybeCatchAnyExpr,
     ).
 
 :- pred parse_sub_catch_terms(term::in, term.context::in,
-    list(format_component)::in, maybe1(list(catch_expr))::out,
+    cord(format_component)::in, maybe1(list(catch_expr))::out,
     prog_varset::in, prog_varset::out) is det.
 
 parse_sub_catch_terms(Term, Context, ContextPieces, MaybeCatches, !VarSet) :-
@@ -1739,7 +1739,7 @@ parse_sub_catch_terms(Term, Context, ContextPieces, MaybeCatches, !VarSet) :-
     ).
 
 :- pred parse_catch_arrow_term(term::in, term.context::in,
-    list(format_component)::in, maybe1(catch_expr)::out,
+    cord(format_component)::in, maybe1(catch_expr)::out,
     prog_varset::in, prog_varset::out) is det.
 
 parse_catch_arrow_term(ArrowTerm, _Context, ContextPieces, MaybeCatch,
@@ -1765,7 +1765,7 @@ parse_catch_arrow_term(ArrowTerm, _Context, ContextPieces, MaybeCatch,
     ).
 
 :- pred parse_else_then_try_term(term::in, list(catch_expr)::in,
-    maybe(catch_any_expr)::in, term.context::in, list(format_component)::in,
+    maybe(catch_any_expr)::in, term.context::in, cord(format_component)::in,
     maybe1(goal)::out, prog_varset::in, prog_varset::out) is det.
 
 parse_else_then_try_term(Term, CatchExprs, MaybeCatchAnyExpr,
@@ -1787,7 +1787,7 @@ parse_else_then_try_term(Term, CatchExprs, MaybeCatchAnyExpr,
     ).
 
 :- pred parse_then_try_term(term::in, maybe(goal)::in, list(catch_expr)::in,
-    maybe(catch_any_expr)::in, term.context::in, list(format_component)::in,
+    maybe(catch_any_expr)::in, term.context::in, cord(format_component)::in,
     maybe1(goal)::out, prog_varset::in, prog_varset::out) is det.
 
 parse_then_try_term(ThenTryTerm, MaybeElse, CatchExprs, MaybeCatchAnyExpr,
@@ -1979,9 +1979,9 @@ parse_atomic_params(Context, Term, VarSet, MaybeComponentsContexts) :-
             MaybeComponentsContexts =
                 ok1([HeadComponent | TailComponentsContexts])
         else
-            HeadSpecs = get_any_errors1(MaybeHeadComponent),
-            TailSpecs = get_any_errors1(MaybeTailComponentsContexts),
-            MaybeComponentsContexts = error1(HeadSpecs ++ TailSpecs)
+            Specs = get_any_errors1(MaybeHeadComponent) ++
+                get_any_errors1(MaybeTailComponentsContexts),
+            MaybeComponentsContexts = error1(Specs)
         )
     else
         (
@@ -2060,8 +2060,8 @@ parse_atomic_component(ErrorTerm, Term, VarSet, MaybeComponentContext) :-
                 )
             else if Atom = "vars" then
                 ( if SubTerms = [SubTerm] then
-                    ContextPieces = [words("In"), quote("vars"),
-                        words("specifier of atomic scope:")],
+                    ContextPieces = cord.from_list([words("In"), quote("vars"),
+                        words("specifier of atomic scope:")]),
                     parse_vars(SubTerm, VarSet, ContextPieces, MaybeVars),
                     (
                         MaybeVars = ok1(Vars),
@@ -2264,13 +2264,13 @@ parse_atomic_subgoals_as_list(Term, MaybeGoals, !VarSet) :-
         then
             MaybeGoals = ok1(LeftGoalList ++ RightGoalList)
         else
-            LeftSpecs = get_any_errors1(MaybeLeftGoalList),
-            RightSpecs = get_any_errors1(MaybeRightGoalList),
-            MaybeGoals = error1(LeftSpecs ++ RightSpecs)
+            Specs = get_any_errors1(MaybeLeftGoalList) ++
+                get_any_errors1(MaybeRightGoalList),
+            MaybeGoals = error1(Specs)
         )
     else
         % XXX Provide better ContextPieces.
-        ContextPieces = [],
+        ContextPieces = cord.init,
         parse_goal(Term, ContextPieces, MaybeSubGoal, !VarSet),
         (
             MaybeSubGoal = ok1(SubGoal),

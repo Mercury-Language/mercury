@@ -28,6 +28,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_util.
 
+:- import_module cord.
 :- import_module list.
 :- import_module term.
 :- import_module varset.
@@ -56,7 +57,7 @@
     % parse_implicitly_qualified_sym_name_and_args.
     %
 :- pred parse_sym_name_and_args(term(T)::in, varset::in,
-    list(format_component)::in, maybe_functor(T)::out) is det.
+    cord(format_component)::in, maybe_functor(T)::out) is det.
 :- pred try_parse_sym_name_and_args(term(T)::in,
     sym_name::out, list(term(T))::out) is semidet.
 :- pred try_parse_sym_name_and_no_args(term(T)::in, sym_name::out)
@@ -85,8 +86,8 @@
     % parse_implicitly_qualified_sym_name_and_args.
     %
 :- pred parse_implicitly_qualified_sym_name_and_args(module_name::in,
-    term(T)::in, varset::in, list(format_component)::in, maybe_functor(T)::out)
-    is det.
+    term(T)::in, varset::in, cord(format_component)::in,
+    maybe_functor(T)::out) is det.
 :- pred try_parse_implicitly_qualified_sym_name_and_args(module_name::in,
     term(T)::in, sym_name::out, list(term(T))::out) is semidet.
 :- pred try_parse_implicitly_qualified_sym_name_and_no_args(module_name::in,
@@ -151,7 +152,8 @@ parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs) :-
                 MaybeModule = error1(_),
                 ModuleTermStr = describe_error_term(GenericVarSet, ModuleTerm),
                 % XXX We should say "module name" OR "identifier", not both.
-                Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+                Pieces = cord.list(ContextPieces) ++
+                    [lower_case_next_if_not_first,
                     words("Error: module name identifier expected before '.'"),
                     words("in qualified symbol name, not"),
                     words(ModuleTermStr), suffix("."), nl],
@@ -162,7 +164,7 @@ parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs) :-
         else
             varset.coerce(VarSet, GenericVarSet),
             TermStr = describe_error_term(GenericVarSet, Term),
-            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: identifier expected after '.'"),
                 words("in qualified symbol name, not"),
                 words(TermStr), suffix("."), nl],
@@ -177,7 +179,7 @@ parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs) :-
             MaybeSymNameAndArgs = ok2(SymName, Args)
         else
             TermStr = describe_error_term(GenericVarSet, Term),
-            Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: atom expected at"),
                 words(TermStr), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,

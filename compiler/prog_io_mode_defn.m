@@ -47,6 +47,7 @@
 
 :- import_module bag.
 :- import_module bool.
+:- import_module cord.
 :- import_module maybe.
 :- import_module set.
 
@@ -98,7 +99,7 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
 
 parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeIOM) :-
-    ContextPieces = [words("In inst definition:")],
+    ContextPieces = cord.singleton(words("In inst definition:")),
     ( if
         HeadTerm = term.functor(term.atom("for"),
             [NameTermPrime, ForTypeTerm], _)
@@ -178,7 +179,7 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
 
 parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
         MaybeIOM) :-
-    ContextPieces = [words("In inst definition:")],
+    ContextPieces = cord.singleton(words("In inst definition:")),
     parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
         VarSet, ContextPieces, MaybeNameAndArgs),
     (
@@ -220,7 +221,7 @@ parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
 
 parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeIOM) :-
-    ContextPieces = [words("In mode definition:")],
+    ContextPieces = cord.singleton(words("In mode definition:")),
     parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
         VarSet, ContextPieces, MaybeSymNameAndArgs),
     (

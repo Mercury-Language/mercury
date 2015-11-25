@@ -30,7 +30,7 @@
 :- import_module parse_tree.prog_io_iom.
 :- import_module parse_tree.prog_item.
 
-:- import_module list.
+:- import_module cord.
 :- import_module term.
 :- import_module varset.
 
@@ -44,7 +44,7 @@
     % Parses `GoalTerm' and expands it as a DCG goal.
     % `DCGVar0' is the initial DCG variable, and `DCGVar' is the final one.
     %
-:- pred parse_dcg_pred_goal(term::in, list(format_component)::in,
+:- pred parse_dcg_pred_goal(term::in, cord(format_component)::in,
     maybe1(goal)::out, prog_var::out, prog_var::out,
     prog_varset::in, prog_varset::out) is det.
 
@@ -57,6 +57,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module counter.
+:- import_module list.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -66,13 +67,13 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, Context, SeqNum,
     varset.coerce(VarSet0, ProgVarSet0),
     new_dcg_var(ProgVarSet0, ProgVarSet1, counter.init(0), Counter0,
         DCGVar0),
-    % XXX Should this be [words("In DCG clause body:")]?
-    BodyContextPieces = [],
+    % XXX Should this be cord.singleton(words("In DCG clause body:"))?
+    BodyContextPieces = cord.init,
     parse_dcg_goal(DCG_Body, BodyContextPieces, MaybeBody,
         ProgVarSet1, ProgVarSet, Counter0, _Counter, DCGVar0, DCGVar),
     (
         MaybeBody = ok1(Body),
-        HeadContextPieces = [words("In DCG clause head:")],
+        HeadContextPieces = cord.singleton(words("In DCG clause head:")),
         parse_implicitly_qualified_sym_name_and_args(ModuleName, DCG_Head,
             VarSet0, HeadContextPieces, MaybeFunctor),
         (
@@ -106,17 +107,13 @@ parse_dcg_pred_goal(GoalTerm, ContextPieces, MaybeGoal,
 
     % Expand a DCG goal.
     %
-:- pred parse_dcg_goal(term::in, list(format_component)::in, maybe1(goal)::out,
+:- pred parse_dcg_goal(term::in, cord(format_component)::in, maybe1(goal)::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
 
 parse_dcg_goal(Term, ContextPieces, MaybeGoal, !VarSet, !Counter, !DCGVar) :-
-    % First, figure out the context for the goal.
-    ( Term = term.functor(_, _, Context)
-    ; Term = term.variable(_, Context)
-    ),
+    Context = get_term_context(Term),
     term.coerce(Term, ProgTerm),
-    % Next, parse it.
     ( if
         try_parse_sym_name_and_args(ProgTerm, SymName, Args0)
     then
@@ -170,7 +167,7 @@ make_dcg_call(SymName, Args0, Context, Goal, !VarSet, !Counter, !DCGVar) :-
     % the current DCG variable.
     %
 :- pred parse_non_call_dcg_goal(string::in, list(term)::in, prog_context::in,
-    list(format_component)::in, maybe1(goal)::out,
+    cord(format_component)::in, maybe1(goal)::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is semidet.
 
@@ -191,7 +188,8 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
     % common code between these two predicates.
 
     % XXX We should update ContextPieces at every call to parse a goal
-    % component.
+    % component that is not itself a goal.
+
     require_switch_arms_det [Functor]
     (
         (
@@ -262,21 +260,20 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         (
             Functor = "some",
             QuantType = quant_some,
-            VarsContextPieces = [lower_case_next_if_not_first,
+            VarsTailPieces = [lower_case_next_if_not_first,
                 words("In first argument of"), quote("some"), suffix(":")]
         ;
             Functor = "all",
             QuantType = quant_all,
-            VarsContextPieces = [lower_case_next_if_not_first,
+            VarsTailPieces = [lower_case_next_if_not_first,
                 words("In first argument of"), quote("all"), suffix(":")]
         ),
-        % Note that both versions of VarsContextPieces should be static data;
-        % factoring out their common parts would destroy this property.
         ( if Args = [QVarsTerm, SubGoalTerm] then
             varset.coerce(!.VarSet, GenericVarSet),
-            UpdatedContextPieces = ContextPieces ++ VarsContextPieces,
+            VarsContextPieces = ContextPieces ++
+                cord.from_list(VarsTailPieces),
             parse_quantifier_vars(QVarsTerm, GenericVarSet,
-                UpdatedContextPieces, MaybeStateVarsAndVars),
+                VarsContextPieces, MaybeStateVarsAndVars),
             parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeSubGoal,
                 !VarSet, !Counter, !DCGVar),
             ( if
@@ -608,20 +605,25 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         )
     ).
 
-:- pred parse_some_vars_dcg_goal(term::in, list(format_component)::in,
+:- pred parse_some_vars_dcg_goal(term::in, cord(format_component)::in,
     maybe3(list(prog_var), list(prog_var), goal)::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
 
 parse_some_vars_dcg_goal(Term, ContextPieces, MaybeVarsGoal,
         !VarSet, !Counter, !DCGVar) :-
+    % We parse existentially quantified goals in DCG contexts here,
+    % while we parse them in non-DCG contexts in parse_some_vars_goal
+    % in prog_io_goal.m.
     ( if
         Term = term.functor(term.atom("some"), [VarsTerm, SubGoalTerm],
             _Context)
     then
-        % XXX We should update ContextPieces.
         varset.coerce(!.VarSet, GenericVarSet),
-        parse_quantifier_vars(VarsTerm, GenericVarSet, ContextPieces,
+        VarsTailPieces = [lower_case_next_if_not_first,
+            words("In first argument of"), quote("some"), suffix(":")],
+        VarsContextPieces = ContextPieces ++ cord.from_list(VarsTailPieces),
+        parse_quantifier_vars(VarsTerm, GenericVarSet, VarsContextPieces,
             MaybeVars),
         GoalTerm = SubGoalTerm
     else
@@ -638,9 +640,9 @@ parse_some_vars_dcg_goal(Term, ContextPieces, MaybeVarsGoal,
         list.map(term.coerce_var, StateVars0, StateVars),
         MaybeVarsGoal = ok3(Vars, StateVars, Goal)
     else
-        VarsSpecs = get_any_errors2(MaybeVars),
-        GoalSpecs = get_any_errors1(MaybeGoal),
-        MaybeVarsGoal = error3(VarsSpecs ++ GoalSpecs)
+        Specs = get_any_errors2(MaybeVars) ++
+            get_any_errors1(MaybeGoal),
+        MaybeVarsGoal = error3(Specs)
     ).
 
     % Parse the "if" and the "then" part of an if-then or an if-then-else.
@@ -667,7 +669,7 @@ parse_some_vars_dcg_goal(Term, ContextPieces, MaybeVarsGoal,
     % so that the implicit quantification of DCG_2 is correct.
     %
 :- pred parse_dcg_if_then(term::in, term::in, prog_context::in,
-    list(format_component)::in,
+    cord(format_component)::in,
     maybe3(list(prog_var), list(prog_var), goal)::out,
     maybe1(goal)::out, prog_varset::in, prog_varset::out,
     counter::in, counter::out, prog_var::in, prog_var::out) is det.
@@ -701,7 +703,7 @@ parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, Context, ContextPieces,
     ).
 
 :- pred parse_dcg_if_then_else(term::in, term::in, term::in, prog_context::in,
-    list(format_component)::in, maybe1(goal)::out,
+    cord(format_component)::in, maybe1(goal)::out,
     prog_varset::in, prog_varset::out, counter::in, counter::out,
     prog_var::in, prog_var::out) is det.
 
@@ -751,10 +753,10 @@ parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm, ElseGoalTerm,
         Goal = if_then_else_expr(Context, Vars, StateVars, Cond, Then, Else),
         MaybeGoal = ok1(Goal)
     else
-        CondSpecs = get_any_errors3(MaybeVarsCond),
-        ThenSpecs = get_any_errors1(MaybeThen1),
-        ElseSpecs = get_any_errors1(MaybeElse1),
-        MaybeGoal = error1(CondSpecs ++ ThenSpecs ++ ElseSpecs),
+        Specs = get_any_errors3(MaybeVarsCond) ++
+            get_any_errors1(MaybeThen1) ++
+            get_any_errors1(MaybeElse1),
+        MaybeGoal = error1(Specs),
         Var = Var0              % Dummy; the value shouldn't matter.
     ).
 

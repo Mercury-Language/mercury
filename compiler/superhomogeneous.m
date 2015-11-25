@@ -643,7 +643,7 @@ unravel_var_functor_unification(XVar, YFunctor0, YArgTerms0, YFunctorContext,
             !QualInfo, !Specs),
         Det = Det1,
         term.coerce(GoalTerm1, GoalTerm),
-        ContextPieces = [words("Error:")],
+        ContextPieces = cord.init,
         parse_goal(GoalTerm, ContextPieces, MaybeParsedGoal, !VarSet),
         (
             MaybeParsedGoal = ok1(ParsedGoal),
@@ -799,7 +799,8 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgs,
             % DeclType0 is a prog_term, but it is really a type,
             % so we coerce it to a generic term before parsing it.
             term.coerce(DeclType0, DeclType1),
-            ContextPieces = [words("In explicit type qualification:")],
+            ContextPieces =
+                cord.singleton(words("In explicit type qualification:")),
             varset.coerce(!.VarSet, GenericVarSet),
             parse_type(DeclType1, GenericVarSet, ContextPieces,
                 DeclTypeResult),
@@ -855,7 +856,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgs,
 
         require_det (
             term.coerce(CondTerm0, CondTerm),
-            ContextPieces = [words("Error:")],
+            ContextPieces = cord.init,
             parse_some_vars_goal(CondTerm, ContextPieces, MaybeVarsCond,
                 !VarSet),
             (
@@ -995,7 +996,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgs,
             qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes,
                 Context, !QualInfo, !Specs),
             term.coerce(GoalTerm0, GoalTerm),
-            ContextPieces = [words("Error:")],
+            ContextPieces = cord.init,
             parse_dcg_pred_goal(GoalTerm, ContextPieces, MaybeParsedGoal,
                 DCG0, DCGn, !VarSet),
             (

@@ -68,6 +68,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
+:- import_module cord.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -320,7 +321,7 @@ collect_simple_and_fundep_constraints([Constraint | Constraints],
 
 parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
         MaybeTypeClassInfo) :-
-    ContextPieces = [words("In typeclass declaration:")],
+    ContextPieces = cord.singleton(words("In typeclass declaration:")),
     varset.coerce(TVarSet, VarSet),
     parse_implicitly_qualified_sym_name_and_args(ModuleName, NameTerm,
         VarSet, ContextPieces, MaybeClassName),
@@ -574,9 +575,8 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
     else if
         try_parse_sym_name_and_args(ConstraintTerm, ClassName, Args0)
     then
-        % XXX ITEM_LIST Should we use
-        % ArgsResultContextPieces = [words("In typeclass constraint:")]
-        ArgsResultContextPieces = [],
+        ArgsResultContextPieces =
+            cord.singleton(words("In class or inst constraint:")),
         parse_types(Args0, VarSet, ArgsResultContextPieces, ArgsResult),
         (
             ArgsResult = ok1(Args),
@@ -733,14 +733,13 @@ parse_underived_instance(ModuleName, TVarSet, NameTerm, Context, SeqNum,
         MaybeItemInstanceInfo) :-
     % We don't give a default module name here since the instance declaration
     % could well be for a typeclass defined in another module.
-    NameContextPieces = [words("In instance declaration:")],
+    NameContextPieces = cord.singleton(words("In instance declaration:")),
     varset.coerce(TVarSet, VarSet),
     parse_sym_name_and_args(NameTerm, VarSet, NameContextPieces,
         MaybeClassName),
     (
         MaybeClassName = ok2(ClassName, TypeTerms),
-        % XXX Give better TypesContextPieces.
-        TypesContextPieces = [],
+        TypesContextPieces = NameContextPieces,
         parse_types(TypeTerms, VarSet, TypesContextPieces, MaybeTypes),
         (
             MaybeTypes = ok1(Types),

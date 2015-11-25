@@ -1,6 +1,6 @@
 some.m:009: Error: no clauses for predicate `p1'/1.
-some.m:010: in first argument of `some': expected a list of variables, got
-some.m:010:   `junk'.
+some.m:010: In `:- pred' declaration: in first argument of `some': expected a
+some.m:010:   list of variables, got `junk'.
 some.m:011: Error: no clauses for predicate `p3'/1.
 some.m:017: In first argument of `some': expected a list of variables and/or
 some.m:017:   state variables, got `junk'.

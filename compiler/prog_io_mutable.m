@@ -54,6 +54,7 @@
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_util.
 
+:- import_module cord.
 :- import_module maybe.
 :- import_module pair.
 :- import_module string.
@@ -263,7 +264,7 @@ parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
             [simple_msg(get_term_context(TypeTerm), [always(Pieces)])]),
         MaybeType = error1([Spec])
     else
-        ContextPieces = [],
+        ContextPieces = cord.init,
         parse_type(TypeTerm, VarSet, ContextPieces, MaybeType)
     ).
 

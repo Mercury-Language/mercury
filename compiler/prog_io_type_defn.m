@@ -83,6 +83,7 @@
 
 :- import_module bag.
 :- import_module bool.
+:- import_module cord.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -292,8 +293,8 @@ parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet,
 parse_maybe_exist_quant_constructor(ModuleName, VarSet, Term,
         MaybeConstructor) :-
     ( if Term = term.functor(term.atom("some"), [VarsTerm, SubTerm], _) then
-        ContextPieces = [words("in first argument of"),
-            quote("some"), suffix(":")],
+        ContextPieces = cord.from_list([words("in first argument of"),
+            quote("some"), suffix(":")]),
         parse_list_of_vars(VarSet, ContextPieces, VarsTerm, MaybeExistQVars),
         (
             MaybeExistQVars = ok1(ExistQVars),
@@ -332,7 +333,7 @@ parse_constructor(ModuleName, VarSet, ExistQVars, Term, MaybeConstructor) :-
         else
             MainTerm = BeforeConstraintsTerm
         ),
-        ContextPieces = [words("In constructor definition:")],
+        ContextPieces = cord.singleton(words("In constructor definition:")),
         parse_implicitly_qualified_sym_name_and_args(ModuleName, MainTerm,
             VarSet, ContextPieces, MaybeFunctorAndArgTerms),
         (
@@ -376,7 +377,7 @@ convert_constructor_arg_list(_, _, []) = ok1([]).
 convert_constructor_arg_list(ModuleName, VarSet, [Term | Terms])
         = MaybeConstructorArgs :-
     ( if Term = term.functor(term.atom("::"), [NameTerm, TypeTerm], _) then
-        ContextPieces = [words("In field name:")],
+        ContextPieces = cord.singleton(words("In field name:")),
         parse_implicitly_qualified_sym_name_and_args(ModuleName, NameTerm,
             VarSet, ContextPieces, MaybeSymNameAndArgs),
         (
@@ -413,7 +414,7 @@ convert_constructor_arg_list(ModuleName, VarSet, [Term | Terms])
 
 convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
         TypeTerm, Terms) = MaybeArgs :-
-    ContextPieces = [words("In type definition:")],
+    ContextPieces = cord.singleton(words("In type definition:")),
     parse_type(TypeTerm, VarSet, ContextPieces, MaybeType),
     (
         MaybeType = ok1(Type),
@@ -629,7 +630,7 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     ),
     parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameAndParams),
     % XXX Should pass more correct ContextPieces.
-    ContextPieces = [],
+    ContextPieces = cord.init,
     parse_type(BodyTerm, VarSet, ContextPieces, MaybeType),
     ( if
         SolverSpecs = [],
@@ -1113,7 +1114,7 @@ parse_where_inst_is(_ModuleName, Term) = MaybeInst :-
 
 parse_where_type_is(_ModuleName, VarSet, Term) = MaybeType :-
     % XXX We should pass meaningful ContextPieces.
-    ContextPieces = [],
+    ContextPieces = cord.init,
     parse_type(Term, VarSet, ContextPieces, MaybeType).
 
 :- func parse_where_mutable_is(module_name, term) =
@@ -1401,7 +1402,7 @@ parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeTypeCtorAndArgs) :-
         MaybeTypeCtorAndArgs = error2([Spec])
     ;
         HeadTerm = term.functor(_, _, HeadContext),
-        ContextPieces = [words("In type definition:")],
+        ContextPieces = cord.singleton(words("In type definition:")),
         parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
             VarSet, ContextPieces, HeadResult),
         (
