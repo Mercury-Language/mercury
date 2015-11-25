@@ -181,41 +181,200 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
 
 parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         !VarSet) :-
-    % XXX We should update ContextPieces as we recurse down.
-    % XXX Should reorder the disjuncts to match (a) the order of goal kinds
-    % in the goal type definition, and (b) parse_non_call_dcg_goal.
+    % We parse goals in non-DCG contexts here, while we parse goals
+    % in DCG contexts in parse_non_call_dcg_goal in prog_io_dcg.m.
+    %
+    % Since many kinds of goals can occur in both kinds of contexts,
+    % the code handling those kinds of goals should be kept as identical
+    % as possible in the two places. For ease of maintenance, the switch arms
+    % handling the common goal types should also be kept in the same order.
+    % The list below documents the order in both predicates. If you add
+    % code to handle a new goal type either here or there, please update
+    % this comment.
+    %
+    % In both parse_non_call_goal and parse_non_call_dcg_goal:
+    %
+    %   impure/1, semipure/1
+    %   promise_pure/1, promise_semipure/1, promise_impure/1
+    %   not/1, \+/1
+    %   some/2, all/2
+    %   ,/2
+    %   &/2
+    %   ;/2                     (disjunction, or C->T;E style if-then-else)
+    %   else                    (if C then T else E style if-then-else;
+    %                               or try goal in parse_non_call_goal)
+    %
+    % Only in parse_non_call_goal, after the common goal types:
+    %
+    %   then/2                  (try goal)
+    %   catch/2                 (try goal)
+    %   catch_any/2             (try goal)
+    %   <=/2, =>/2, <=>/2       (implication, bi-implication)
+    %   trace/2                 (trace goals)
+    %   atomic/2                (atomic goals)
+    %   prom_eqv_{solns,sets}/2 (determinism cast)
+    %   arbitrary/2             (determinism cast)
+    %   req_{det,...}/2         (determinism check)
+    %   req_compl_switch/2      (determinism check)
+    %   req_sw_arms_{det,...}/2 (determinism check)
+    %   event/2                 (debugger event)
+    %   true/0, fail/0          (empty conjunction/disjunction)
+    %   =/2, is/2               (unification)
+    %
+    % Only in parse_non_call_dcg_goal, after the common goal types:
+    %
+    %   if/2                    (if C then T, with implicit "else")
+    %   {}/1                    (wrapping non-DCG goal)
+    %   []/0                    (consuming nothing from dcg)
+    %   [|]/2                   (consuming something from dcg)
+    %   =/1                     (reading current dcg var)
+    %   :=/1                    (writing to next dcg var)
+    %
+    % For the goal types that can occur in both DCG and non-DCG contexts,
+    % the code handling them here and in parse_non_call_dcg_goal is often
+    % very similar. These goal types are all compound, and they tend to differ
+    % only in whether they call parse_goal or parse_dcg_goal to handle their
+    % subgoals. However, factor out the commonalities would nevertheless
+    % not be a good idea, for two reasons. Both relate to the fact that
+    % the common code would have to make a runtime decision between
+    % calling parse_goal and parse_dcg_goal on terms representing subgoals,
+    % and would have to pass around the arguments needed by parse_dcg_goal
+    % to make the latter choice possible.
+    %
+    % The first reason is simply that with this extra generality,
+    % the common code would not be significantly shorter OR simpler
+    % than the two specialized pieces of code put together.
+    %
+    % The second reason is that the extra tests and parameter passing
+    % would slow down the code in both contexts. For infrequently occurring
+    % kinds of goals, this wouldn't matter, but conjunctions and if-then-elses
+    % occur very frequently, and we don't want to pay any extra cost
+    % for parsing them.
+
+    % XXX We should update ContextPieces at every call to parse a goal
+    % component.
     require_switch_arms_det [Functor]
     (
         (
-            Functor = "true",
-            Goal = true_expr(Context)
+            Functor = "impure",
+            Purity = purity_impure
         ;
-            Functor = "fail",
-            Goal = fail_expr(Context)
+            Functor = "semipure",
+            Purity = purity_semipure
         ),
-        (
-            Args = [],
-            MaybeGoal = ok1(Goal)
-        ;
-            Args = [_ | _],
-            Spec = should_have_no_args(ContextPieces, Context, Functor),
-            MaybeGoal = error1([Spec])
-        )
-    ;
-        ( Functor = "="
-        ; Functor = "is"
-        ),
-        ( if Args = [TermA0, TermB0] then
-            term.coerce(TermA0, TermA),
-            term.coerce(TermB0, TermB),
-            MaybeGoal = ok1(unify_expr(Context, TermA, TermB, purity_pure))
+        ( if Args = [SubGoalTerm] then
+            parse_goal(SubGoalTerm, ContextPieces, MaybeGoal0, !VarSet),
+            apply_purity_marker_to_maybe_goal(SubGoalTerm, Purity,
+                MaybeGoal0, MaybeGoal)
         else
-            Spec = should_have_two_terms_infix(ContextPieces, Context,
+            Spec = should_have_one_goal_prefix(ContextPieces, Context,
                 Functor),
             MaybeGoal = error1([Spec])
         )
     ;
+        (
+            Functor = "promise_pure",
+            Purity = purity_pure
+        ;
+            Functor = "promise_semipure",
+            Purity = purity_semipure
+        ;
+            Functor = "promise_impure",
+            Purity = purity_impure
+        ),
+        ( if Args = [SubGoalTerm] then
+            parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
+            (
+                MaybeSubGoal = ok1(SubGoal),
+                Goal = promise_purity_expr(Context, Purity, SubGoal),
+                MaybeGoal = ok1(Goal)
+            ;
+                MaybeSubGoal = error1(Specs),
+                MaybeGoal = error1(Specs)
+            )
+        else
+            Spec = should_have_one_goal_prefix(ContextPieces, Context,
+                Functor),
+            MaybeGoal = error1([Spec])
+        )
+    ;
+        ( Functor = "not"   % Negation (NU-Prolog syntax).
+        ; Functor = "\\+"   % Negation (Prolog syntax).
+        ),
+        ( if Args = [SubGoalTerm] then
+            parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
+            (
+                MaybeSubGoal = ok1(SubGoal),
+                MaybeGoal = ok1(not_expr(Context, SubGoal))
+            ;
+                MaybeSubGoal = error1(_),
+                MaybeGoal = MaybeSubGoal
+            )
+        else
+            Spec = should_have_one_goal_prefix(ContextPieces, Context,
+                Functor),
+            MaybeGoal = error1([Spec])
+        )
+    ;
+        (
+            Functor = "some",
+            QuantType = quant_some,
+            VarsContextPieces = [lower_case_next_if_not_first,
+                words("In first argument of"), quote("some"), suffix(":")]
+        ;
+            Functor = "all",
+            QuantType = quant_all,
+            VarsContextPieces = [lower_case_next_if_not_first,
+                words("In first argument of"), quote("all"), suffix(":")]
+        ),
+        % Note that both versions of VarsContextPieces should be static data;
+        % factoring out their common parts would destroy this property.
+        ( if Args = [QVarsTerm, SubGoalTerm] then
+            varset.coerce(!.VarSet, GenericVarSet),
+            UpdatedContextPieces = ContextPieces ++ VarsContextPieces,
+            parse_quantifier_vars(QVarsTerm, GenericVarSet,
+                UpdatedContextPieces, MaybeStateVarsAndVars),
+            % XXX We should update ContextPieces, instead of supplying [].
+            parse_goal(SubGoalTerm, [], MaybeSubGoal, !VarSet),
+            ( if
+                MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
+                MaybeSubGoal = ok1(SubGoal)
+            then
+                list.map(term.coerce_var, Vars0, Vars),
+                list.map(term.coerce_var, StateVars0, StateVars),
+                (
+                    StateVars = [],
+                    Goal1 = SubGoal
+                ;
+                    StateVars = [_ | _],
+                    Goal1 = quant_expr(QuantType, quant_state_vars, Context,
+                        StateVars, SubGoal)
+                ),
+                (
+                    Vars = [],
+                    Goal = Goal1
+                ;
+                    Vars = [_ | _],
+                    Goal = quant_expr(QuantType, quant_ordinary_vars, Context,
+                        Vars, Goal1)
+                ),
+                MaybeGoal = ok1(Goal)
+            else
+                Specs = get_any_errors2(MaybeStateVarsAndVars) ++
+                    get_any_errors1(MaybeSubGoal),
+                MaybeGoal = error1(Specs)
+            )
+        else
+            Spec = should_have_one_x_one_goal_prefix(ContextPieces, Context,
+                "a list of variables", Functor),
+            MaybeGoal = error1([Spec])
+        )
+    ;
         Functor = ",",
+        % Although we do almost exactly the same thing for "&" as for ",",
+        % we handle them separately, because "," is FAR more common than "&",
+        % and keeping its processing efficient is important enough to warrant
+        % a small amount of code duplication.
         ( if Args = [SubGoalTermA, SubGoalTermB] then
             parse_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA, !VarSet),
             parse_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB, !VarSet),
@@ -256,40 +415,45 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         )
     ;
         Functor = ";",
-        ( if Args = [TermA, TermB] then
-            ( if TermA = term.functor(term.atom("->"), [TermX, TermY], _) then
-                TermC = TermX,  % The condition.
-                TermT = TermY,  % The then part.
-                TermE = TermB,  % The else part.
-                parse_some_vars_goal(TermC, ContextPieces, MaybeGoalC,
+        ( if Args = [SubGoalTermA, SubGoalTermB] then
+            ( if
+                SubGoalTermA = term.functor(term.atom("->"),
+                    [CondGoalTerm, ThenGoalTerm], _)
+            then
+                ElseGoalTerm = SubGoalTermB,
+                parse_some_vars_goal(CondGoalTerm, ContextPieces,
+                    MaybeCondGoal, !VarSet),
+                parse_goal(ThenGoalTerm, ContextPieces, MaybeThenGoal,
                     !VarSet),
-                parse_goal(TermT, ContextPieces, MaybeGoalT, !VarSet),
-                parse_goal(TermE, ContextPieces, MaybeGoalE, !VarSet),
+                parse_goal(ElseGoalTerm, ContextPieces, MaybeElseGoal,
+                    !VarSet),
                 ( if
-                    MaybeGoalC = ok3(Vars, StateVars, GoalC),
-                    MaybeGoalT = ok1(GoalT),
-                    MaybeGoalE = ok1(GoalE)
+                    MaybeCondGoal = ok3(Vars, StateVars, CondGoal),
+                    MaybeThenGoal = ok1(ThenGoal),
+                    MaybeElseGoal = ok1(ElseGoal)
                 then
                     Goal = if_then_else_expr(Context, Vars, StateVars,
-                        GoalC, GoalT, GoalE),
+                        CondGoal, ThenGoal, ElseGoal),
                     MaybeGoal = ok1(Goal)
                 else
-                    Specs = get_any_errors3(MaybeGoalC) ++
-                        get_any_errors1(MaybeGoalT) ++
-                        get_any_errors1(MaybeGoalE),
+                    Specs = get_any_errors3(MaybeCondGoal) ++
+                        get_any_errors1(MaybeThenGoal) ++
+                        get_any_errors1(MaybeElseGoal),
                     MaybeGoal = error1(Specs)
                 )
             else
-                parse_goal(TermA, ContextPieces, MaybeGoalA, !VarSet),
-                parse_goal(TermB, ContextPieces, MaybeGoalB, !VarSet),
+                parse_goal(SubGoalTermA, ContextPieces, MaybeSubGoalA,
+                    !VarSet),
+                parse_goal(SubGoalTermB, ContextPieces, MaybeSubGoalB,
+                    !VarSet),
                 ( if
-                    MaybeGoalA = ok1(GoalA),
-                    MaybeGoalB = ok1(GoalB)
+                    MaybeSubGoalA = ok1(SubGoalA),
+                    MaybeSubGoalB = ok1(SubGoalB)
                 then
-                    MaybeGoal = ok1(disj_expr(Context, GoalA, GoalB))
+                    MaybeGoal = ok1(disj_expr(Context, SubGoalA, SubGoalB))
                 else
-                    Specs = get_any_errors1(MaybeGoalA) ++
-                        get_any_errors1(MaybeGoalB),
+                    Specs = get_any_errors1(MaybeSubGoalA) ++
+                        get_any_errors1(MaybeSubGoalB),
                     MaybeGoal = error1(Specs)
                 )
             )
@@ -307,37 +471,39 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         )
     ;
         Functor = "else",
-        ( if Args = [TermA, TermB] then
+        % If-then-else (NU-Prolog syntax).
+        ( if Args = [CondThenTerm, ElseGoalTerm] then
             ( if
-                TermA = term.functor(term.atom("if"),
-                    [term.functor(term.atom("then"), [TermX, TermY], _)], _)
+                CondThenTerm = term.functor(term.atom("if"),
+                    [term.functor(term.atom("then"),
+                        [CondGoalTerm, ThenGoalTerm], _)],
+                    _)
             then
-                TermC = TermX,  % The condition.
-                TermT = TermY,  % The then part.
-                TermE = TermB,  % The else part.
-                parse_some_vars_goal(TermC, ContextPieces, MaybeGoalC,
-                    !VarSet),
-                parse_goal(TermT, ContextPieces, MaybeGoalT, !VarSet),
-                parse_goal(TermE, ContextPieces, MaybeGoalE, !VarSet),
+                parse_some_vars_goal(CondGoalTerm, ContextPieces,
+                    MaybeCondGoal, !VarSet),
+                parse_goal(ThenGoalTerm, ContextPieces,
+                    MaybeThenGoal, !VarSet),
+                parse_goal(ElseGoalTerm, ContextPieces,
+                    MaybeElseGoal, !VarSet),
                 ( if
-                    MaybeGoalC = ok3(Vars, StateVars, GoalC),
-                    MaybeGoalT = ok1(GoalT),
-                    MaybeGoalE = ok1(GoalE)
+                    MaybeCondGoal = ok3(Vars, StateVars, CondGoal),
+                    MaybeThenGoal = ok1(ThenGoal),
+                    MaybeElseGoal = ok1(ElseGoal)
                 then
                     Goal = if_then_else_expr(Context, Vars, StateVars,
-                        GoalC, GoalT, GoalE),
+                        CondGoal, ThenGoal, ElseGoal),
                     MaybeGoal = ok1(Goal)
                 else
-                    Specs = get_any_errors3(MaybeGoalC) ++
-                        get_any_errors1(MaybeGoalT) ++
-                        get_any_errors1(MaybeGoalE),
+                    Specs = get_any_errors3(MaybeCondGoal) ++
+                        get_any_errors1(MaybeThenGoal) ++
+                        get_any_errors1(MaybeElseGoal),
                     MaybeGoal = error1(Specs)
                 )
             else
                 % `else' can also be part of a `try' goal.
-                parse_else_then_try_term(
-                    term.functor(term.atom("else"), [TermA, TermB], Context),
-                    [], no, Context, ContextPieces, MaybeGoal, !VarSet)
+                FullTerm = term.functor(term.atom("else"), Args, Context),
+                parse_else_then_try_term(FullTerm, [], no,
+                    Context, ContextPieces, MaybeGoal, !VarSet)
             )
         else
             % XXX This generates an error message that is appropriate
@@ -411,78 +577,6 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 quote("variable -> goal"), suffix("."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(Context, [always(Pieces)])]),
-            MaybeGoal = error1([Spec])
-        )
-    ;
-        ( Functor = "not"
-        ; Functor = "\\+"
-        ),
-        ( if Args = [ATerm] then
-            parse_goal(ATerm, ContextPieces, MaybeAGoal, !VarSet),
-            (
-                MaybeAGoal = ok1(AGoal),
-                MaybeGoal = ok1(not_expr(Context, AGoal))
-            ;
-                MaybeAGoal = error1(_),
-                MaybeGoal = MaybeAGoal
-            )
-        else
-            Spec = should_have_one_goal_prefix(ContextPieces, Context,
-                Functor),
-            MaybeGoal = error1([Spec])
-        )
-    ;
-        (
-            Functor = "some",
-            QuantType = quant_some,
-            VarsContextPieces = [lower_case_next_if_not_first,
-                words("In first argument of"), quote("some"), suffix(":")]
-        ;
-            Functor = "all",
-            QuantType = quant_all,
-            VarsContextPieces = [lower_case_next_if_not_first,
-                words("In first argument of"), quote("all"), suffix(":")]
-        ),
-        % Note that both versions of VarsContextPieces should be static data;
-        % factoring out their common parts would destroy this property.
-        ( if Args = [QVarsTerm, SubGoalTerm] then
-            varset.coerce(!.VarSet, GenericVarSet),
-            UpdatedContextPieces = ContextPieces ++ VarsContextPieces,
-            parse_quantifier_vars(QVarsTerm, GenericVarSet,
-                UpdatedContextPieces, MaybeStateVarsAndVars),
-            % XXX We should update ContextPieces, instead of supplying [].
-            parse_goal(SubGoalTerm, [], MaybeSubGoal, !VarSet),
-            ( if
-                MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
-                MaybeSubGoal = ok1(SubGoal)
-            then
-                list.map(term.coerce_var, Vars0, Vars),
-                list.map(term.coerce_var, StateVars0, StateVars),
-                (
-                    StateVars = [],
-                    Goal1 = SubGoal
-                ;
-                    StateVars = [_ | _],
-                    Goal1 = quant_expr(QuantType, quant_state_vars, Context,
-                        StateVars, SubGoal)
-                ),
-                (
-                    Vars = [],
-                    Goal = Goal1
-                ;
-                    Vars = [_ | _],
-                    Goal = quant_expr(QuantType, quant_ordinary_vars, Context,
-                        Vars, Goal1)
-                ),
-                MaybeGoal = ok1(Goal)
-            else
-                Specs = get_any_errors2(MaybeStateVarsAndVars) ++
-                    get_any_errors1(MaybeSubGoal),
-                MaybeGoal = error1(Specs)
-            )
-        else
-            Spec = should_have_one_x_one_goal_prefix(ContextPieces, Context,
-                "a list of variables", Functor),
             MaybeGoal = error1([Spec])
         )
     ;
@@ -649,32 +743,6 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         )
     ;
         (
-            Functor = "promise_pure",
-            Purity = purity_pure
-        ;
-            Functor = "promise_semipure",
-            Purity = purity_semipure
-        ;
-            Functor = "promise_impure",
-            Purity = purity_impure
-        ),
-        ( if Args = [SubGoalTerm] then
-            parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
-            (
-                MaybeSubGoal = ok1(SubGoal),
-                Goal = promise_purity_expr(Context, Purity, SubGoal),
-                MaybeGoal = ok1(Goal)
-            ;
-                MaybeSubGoal = error1(Specs),
-                MaybeGoal = error1(Specs)
-            )
-        else
-            Spec = should_have_one_goal_prefix(ContextPieces, Context,
-                Functor),
-            MaybeGoal = error1([Spec])
-        )
-    ;
-        (
             Functor = "require_det",
             Detism = detism_det
         ;
@@ -800,23 +868,6 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             MaybeGoal = error1([Spec])
         )
     ;
-        (
-            Functor = "impure",
-            Purity = purity_impure
-        ;
-            Functor = "semipure",
-            Purity = purity_semipure
-        ),
-        ( if Args = [SubGoalTerm] then
-            parse_goal(SubGoalTerm, ContextPieces, MaybeGoal0, !VarSet),
-            apply_purity_marker_to_maybe_goal(SubGoalTerm, Purity,
-                MaybeGoal0, MaybeGoal)
-        else
-            Spec = should_have_one_goal_prefix(ContextPieces, Context,
-                Functor),
-            MaybeGoal = error1([Spec])
-        )
-    ;
         Functor = "event",
         ( if Args = [SubGoalTerm] then
             parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
@@ -878,6 +929,35 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             )
         else
             Spec = should_have_one_call_prefix(ContextPieces, Context,
+                Functor),
+            MaybeGoal = error1([Spec])
+        )
+    ;
+        (
+            Functor = "true",
+            Goal = true_expr(Context)
+        ;
+            Functor = "fail",
+            Goal = fail_expr(Context)
+        ),
+        (
+            Args = [],
+            MaybeGoal = ok1(Goal)
+        ;
+            Args = [_ | _],
+            Spec = should_have_no_args(ContextPieces, Context, Functor),
+            MaybeGoal = error1([Spec])
+        )
+    ;
+        ( Functor = "="
+        ; Functor = "is"
+        ),
+        ( if Args = [TermA0, TermB0] then
+            term.coerce(TermA0, TermA),
+            term.coerce(TermB0, TermB),
+            MaybeGoal = ok1(unify_expr(Context, TermA, TermB, purity_pure))
+        else
+            Spec = should_have_two_terms_infix(ContextPieces, Context,
                 Functor),
             MaybeGoal = error1([Spec])
         )
