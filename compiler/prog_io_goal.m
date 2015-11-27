@@ -496,6 +496,30 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                         get_any_errors1(MaybeElseGoal),
                     MaybeGoal = error1(Specs)
                 )
+            else if
+                CondThenTerm = term.functor(term.atom("if"),
+                    [term.functor(term.atom("->"),
+                        [_CondGoalTerm, _ThenGoalTerm], ArrowContext)],
+                    _CondContext)
+            then
+                Pieces = [words("Error: malformed if-then-else;"),
+                    words("replace the"), quote("->"),
+                    words("with"), quote("then"), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(ArrowContext, [always(Pieces)])]),
+                MaybeGoal = error1([Spec])
+            else if
+                CondThenTerm = term.functor(term.atom("->"),
+                    [_CondGoalTerm, _ThenGoalTerm], ArrowContext)
+            then
+                Pieces = [words("Error: malformed if-then-else;"),
+                    words("replace the"), quote("->"),
+                    words("with"), quote("then"), suffix(","),
+                    words("and add an"), quote("if"),
+                    words("before the condition."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(ArrowContext, [always(Pieces)])]),
+                MaybeGoal = error1([Spec])
             else
                 % `else' can also be part of a `try' goal.
                 FullTerm = term.functor(term.atom("else"), Args, Context),
@@ -517,11 +541,58 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             MaybeGoal = error1([Spec])
         )
     ;
+        Functor = "if",
+        % If-then-else (NU-Prolog syntax) with a missing "else".
+        ( if
+            Args = [term.functor(term.atom("then"),
+                [_CondGoalTerm, ThenGoalTerm], ThenContext)]
+        then
+            ( if
+                ThenGoalTerm = term.functor(term.atom(";"),
+                    [_, _], SemiColonContext)
+            then
+                Pieces = [words("Error: malformed if-then-else;"),
+                    words("replace the"), quote(";"),
+                    words("with"), quote("else"), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(SemiColonContext, [always(Pieces)])])
+            else
+                Pieces = [words("Error: malformed if-then-else;"),
+                    words("this"), quote("then"),
+                    words("has no"), quote("else"), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(ThenContext, [always(Pieces)])])
+            )
+        else
+            Pieces = [words("Error: malformed if-then-else;"),
+                words("this"), quote("if"),
+                words("has no"), quote("then"), suffix("."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])])
+        ),
+        MaybeGoal = error1([Spec])
+    ;
         Functor = "then",
         ( if Args = [TryTerm, ThenTerm] then
-            parse_then_try_term(
-                term.functor(atom("then"), [TryTerm, ThenTerm], Context),
-                no, [], no, Context, ContextPieces, MaybeGoal, !VarSet)
+            ( if
+                ThenTerm = term.functor(term.atom(";"), [_, _],
+                    SemiColonContext)
+            then
+                % The term we are parsing is not a valid try goal.
+                % It is much more likely to be a malformed if-then-else
+                % than a malformed try goal, so generate an error message
+                % that is more informative in the common case.
+                Pieces = [words("Error: malformed if-then-else;"),
+                    words("replace the"), quote(";"),
+                    words("with"), quote("else"), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(SemiColonContext, [always(Pieces)])]),
+                MaybeGoal = error1([Spec])
+            else
+                parse_then_try_term(
+                    term.functor(atom("then"), [TryTerm, ThenTerm], Context),
+                    no, [], no, Context, ContextPieces, MaybeGoal, !VarSet)
+            )
         else
             % Since there was no "else" wrapped around this use of "then",
             % it is quite likely that this may have been intended to be
@@ -1776,7 +1847,21 @@ parse_else_then_try_term(Term, CatchExprs, MaybeCatchAnyExpr,
         (
             MaybeElseGoal0 = ok1(ElseGoal),
             parse_then_try_term(ThenTerm, yes(ElseGoal), CatchExprs,
-                MaybeCatchAnyExpr, Context, ContextPieces, MaybeGoal, !VarSet)
+                MaybeCatchAnyExpr, Context, ContextPieces, MaybeTryGoal,
+                !VarSet),
+            ( if
+                MaybeTryGoal = error1(_),
+                ThenTerm = term.functor(term.atom("then"), [_, _], ThenContext)
+            then
+                Pieces = [words("Error: malformed if-then-else;"),
+                    words("this"), quote("then"),
+                    words("is missing its"), quote("if"), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(ThenContext, [always(Pieces)])]),
+                MaybeGoal = error1([Spec])
+            else
+                MaybeGoal = MaybeTryGoal
+            )
         ;
             MaybeElseGoal0 = error1(Specs),
             MaybeGoal = error1(Specs)

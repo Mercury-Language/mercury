@@ -1,0 +1,12 @@
+malformed_ite.m:019: Error: no clauses for predicate `p'/2.
+malformed_ite.m:027: Error: malformed if-then-else; this `then' is missing its
+malformed_ite.m:027:   `if'.
+malformed_ite.m:035: Error: malformed if-then-else; replace the `->' with
+malformed_ite.m:035:   `then'.
+malformed_ite.m:045: Error: malformed if-then-else; replace the `;' with
+malformed_ite.m:045:   `else'.
+malformed_ite.m:051: Error: malformed if-then-else; replace the `->' with
+malformed_ite.m:051:   `then', and add an `if' before the condition.
+malformed_ite.m:061: Error: malformed if-then-else; replace the `;' with
+malformed_ite.m:061:   `else'.
+malformed_ite.m:067: Error: malformed if-then-else; this `if' has no `then'.

@@ -162,6 +162,7 @@ SINGLEMODULE= \
 	loopcheck \
 	magicbox \
 	make_opt_error \
+	malformed_ite \
 	max_error_line_width \
 	merge_ground_any \
 	merge_inst_error \
