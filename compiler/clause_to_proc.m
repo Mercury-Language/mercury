@@ -189,8 +189,8 @@ copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, !Procs) :-
     copy_clauses_to_procs_2(ProcIds, ClausesInfo, !Procs).
 
 copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
-    ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars,
-        ClausesRep0, _ItemNumbers, RttiInfo, _HaveForeignClauses),
+    ClausesInfo = clauses_info(VarSet0, _, _, VarTypes, HeadVars, ClausesRep0,
+        _ItemNumbers, RttiInfo, _HaveForeignClauses, _HadSyntaxError),
     % The "replacement" is the replacement of the pred_info's clauses_rep
     % with the goal in the proc_info; the clauses_rep won't be needed again.
     get_clause_list_for_replacement(ClausesRep0, Clauses),

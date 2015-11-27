@@ -823,7 +823,7 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
     % First find the instance method definitions that match this
     % predicate/function's name and arity
     list.filter(
-        (pred(Method::in) is semidet :-
+        ( pred(Method::in) is semidet :-
             Method = instance_method(PredOrFunc, MethodName, _MethodDefn,
                 MethodArity, _Context)
         ),
@@ -831,7 +831,7 @@ get_matching_instance_defns(instance_body_concrete(InstanceMethods),
     ( if
         MatchingMethods = [First, _Second | _],
         FirstContext = First ^ instance_method_decl_context,
-        \+ (
+        not (
             list.member(DefnViaName, MatchingMethods),
             DefnViaName = instance_method(_, _, InstanceProcDef, _, _),
             InstanceProcDef = DefnViaName ^ instance_method_proc_def,

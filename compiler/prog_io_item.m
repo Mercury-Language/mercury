@@ -130,8 +130,7 @@ parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
             ClauseContext = get_term_context(HeadTerm),
             BodyTerm = term.functor(term.atom("true"), [], ClauseContext)
         ),
-        varset.coerce(VarSet, ProgVarSet),
-        parse_clause(ModuleName, ProgVarSet, HeadTerm, BodyTerm,
+        parse_clause(ModuleName, VarSet, HeadTerm, BodyTerm,
             ClauseContext, SeqNum, MaybeIOM)
     ).
 
@@ -806,55 +805,51 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred parse_clause(module_name::in, prog_varset::in, term::in, term::in,
+:- pred parse_clause(module_name::in, varset::in, term::in, term::in,
     term.context::in, int::in, maybe1(item_or_marker)::out) is det.
 
-parse_clause(ModuleName, ProgVarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
+parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         MaybeIOM) :-
+    varset.coerce(VarSet0, ProgVarSet0),
     GoalContextPieces = cord.init,
     parse_goal(BodyTerm0, GoalContextPieces, MaybeBodyGoal,
         ProgVarSet0, ProgVarSet),
+    varset.coerce(ProgVarSet, VarSet),
+    ( if
+        HeadTerm = term.functor(term.atom("="),
+            [FuncHeadTerm0, FuncResultTerm0], _),
+        FuncHeadTerm = desugar_field_access(FuncHeadTerm0)
+    then
+        MaybeFuncResultTerm = yes(FuncResultTerm0),
+        HeadContextPieces = cord.singleton(words("In equation head:")),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName,
+            FuncHeadTerm, VarSet, HeadContextPieces, MaybeFunctor)
+    else
+        MaybeFuncResultTerm = no,
+        HeadContextPieces = cord.singleton(words("In clause head:")),
+        parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
+            VarSet, HeadContextPieces, MaybeFunctor)
+    ),
+
     (
-        MaybeBodyGoal = ok1(BodyGoal),
-        varset.coerce(ProgVarSet, VarSet),
-        ( if
-            HeadTerm = term.functor(term.atom("="),
-                [FuncHeadTerm0, FuncResultTerm], _),
-            FuncHeadTerm = desugar_field_access(FuncHeadTerm0)
-        then
-            HeadContextPieces = cord.singleton(words("In equation head:")),
-            parse_implicitly_qualified_sym_name_and_args(ModuleName,
-                FuncHeadTerm, VarSet, HeadContextPieces, MaybeFunctor),
-            (
-                MaybeFunctor = ok2(Name, ArgTerms0),
-                list.map(term.coerce, ArgTerms0 ++ [FuncResultTerm],
-                    ProgArgTerms),
-                ItemClause = item_clause_info(Name, pf_function, ProgArgTerms,
-                    item_origin_user, ProgVarSet, BodyGoal, Context, SeqNum),
-                Item = item_clause(ItemClause),
-                MaybeIOM = ok1(iom_item(Item))
-            ;
-                MaybeFunctor = error2(Specs),
-                MaybeIOM = error1(Specs)
-            )
-        else
-            HeadContextPieces = cord.singleton(words("In clause head:")),
-            parse_implicitly_qualified_sym_name_and_args(ModuleName, HeadTerm,
-                VarSet, HeadContextPieces, MaybeFunctor),
-            (
-                MaybeFunctor = ok2(Name, ArgTerms),
-                list.map(term.coerce, ArgTerms, ProgArgTerms),
-                ItemClause = item_clause_info(Name, pf_predicate, ProgArgTerms,
-                    item_origin_user, ProgVarSet, BodyGoal, Context, SeqNum),
-                Item = item_clause(ItemClause),
-                MaybeIOM = ok1(iom_item(Item))
-            ;
-                MaybeFunctor = error2(Specs),
-                MaybeIOM = error1(Specs)
-            )
-        )
+        MaybeFunctor = ok2(Name, ArgTerms0),
+        (
+            MaybeFuncResultTerm = yes(FuncResultTerm),
+            PredOrFunc = pf_function,
+            ArgTerms = ArgTerms0 ++ [FuncResultTerm]
+        ;
+            MaybeFuncResultTerm = no,
+            PredOrFunc = pf_predicate,
+            ArgTerms = ArgTerms0
+        ),
+        list.map(term.coerce, ArgTerms, ProgArgTerms),
+        ItemClause = item_clause_info(Name, PredOrFunc, ProgArgTerms,
+            item_origin_user, ProgVarSet, MaybeBodyGoal, Context, SeqNum),
+        Item = item_clause(ItemClause),
+        MaybeIOM = ok1(iom_item(Item))
     ;
-        MaybeBodyGoal = error1(Specs),
+        MaybeFunctor = error2(FunctorSpecs),
+        Specs = FunctorSpecs ++ get_any_errors1(MaybeBodyGoal),
         MaybeIOM = error1(Specs)
     ).
 

@@ -67,31 +67,26 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, Context, SeqNum,
     varset.coerce(VarSet0, ProgVarSet0),
     new_dcg_var(ProgVarSet0, ProgVarSet1, counter.init(0), Counter0,
         DCGVar0),
-    % XXX Should this be cord.singleton(words("In DCG clause body:"))?
     BodyContextPieces = cord.init,
-    parse_dcg_goal(DCG_Body, BodyContextPieces, MaybeBody,
+    parse_dcg_goal(DCG_Body, BodyContextPieces, MaybeBodyGoal,
         ProgVarSet1, ProgVarSet, Counter0, _Counter, DCGVar0, DCGVar),
+
+    HeadContextPieces = cord.singleton(words("In DCG clause head:")),
+    parse_implicitly_qualified_sym_name_and_args(ModuleName, DCG_Head,
+        VarSet0, HeadContextPieces, MaybeFunctor),
     (
-        MaybeBody = ok1(Body),
-        HeadContextPieces = cord.singleton(words("In DCG clause head:")),
-        parse_implicitly_qualified_sym_name_and_args(ModuleName, DCG_Head,
-            VarSet0, HeadContextPieces, MaybeFunctor),
-        (
-            MaybeFunctor = ok2(Name, Args0),
-            list.map(term.coerce, Args0, Args1),
-            Args = Args1 ++
-                [term.variable(DCGVar0, Context),
-                term.variable(DCGVar, Context)],
-            ItemClause = item_clause_info(Name, pf_predicate, Args,
-                item_origin_user, ProgVarSet, Body, Context, SeqNum),
-            Item = item_clause(ItemClause),
-            MaybeIOM = ok1(iom_item(Item))
-        ;
-            MaybeFunctor = error2(Specs),
-            MaybeIOM = error1(Specs)
-        )
+        MaybeFunctor = ok2(Name, Args0),
+        list.map(term.coerce, Args0, Args1),
+        Args = Args1 ++
+            [term.variable(DCGVar0, Context),
+            term.variable(DCGVar, Context)],
+        ItemClause = item_clause_info(Name, pf_predicate, Args,
+            item_origin_user, ProgVarSet, MaybeBodyGoal, Context, SeqNum),
+        Item = item_clause(ItemClause),
+        MaybeIOM = ok1(iom_item(Item))
     ;
-        MaybeBody = error1(Specs),
+        MaybeFunctor = error2(FunctorSpecs),
+        Specs = FunctorSpecs ++ get_any_errors1(MaybeBodyGoal),
         MaybeIOM = error1(Specs)
     ).
 

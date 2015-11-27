@@ -567,9 +567,10 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
     set_clause_list([Clause], ClausesRep),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = yes,
+    HadSyntaxErrors = no,
     ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, ArgVec,
         ClausesRep, init_clause_item_numbers_comp_gen,
-        RttiVarMaps, HasForeignClauses).
+        RttiVarMaps, HasForeignClauses, HadSyntaxErrors).
 
 :- pred generate_initialise_proc_body(mer_type::in, hlds_type_body::in,
     prog_var::in, prog_context::in, clause::out,

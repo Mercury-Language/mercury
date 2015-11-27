@@ -105,6 +105,7 @@
 
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
+:- import_module parse_tree.maybe_error.
 
 :- import_module bool.
 :- import_module cord.
@@ -550,9 +551,14 @@ gather_implicit_import_needs_in_mutable(ItemMutableInfo,
 
 gather_implicit_import_needs_in_clause(ItemClause, !ImplicitImportNeeds) :-
     ItemClause = item_clause_info(_PredName,_PredOrFunc, HeadTerms,
-        _Origin, _VarSet, Goal, _Context, _SeqNum),
+        _Origin, _VarSet, MaybeGoal, _Context, _SeqNum),
     gather_implicit_import_needs_in_terms(HeadTerms, !ImplicitImportNeeds),
-    gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds).
+    (
+        MaybeGoal = ok1(Goal),
+        gather_implicit_import_needs_in_goal(Goal, !ImplicitImportNeeds)
+    ;
+        MaybeGoal = error1(_)
+    ).
 
 :- pred gather_implicit_import_needs_in_goal(goal::in,
     implicit_import_needs::in, implicit_import_needs::out) is det.

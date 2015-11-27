@@ -35,6 +35,7 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.maybe_error.
 
 :- import_module int.
 :- import_module list.
@@ -225,8 +226,13 @@ gather_stats_in_item(Item, !ItemStats, !GoalStats) :-
         Item = item_clause(ItemClauseInfo),
         !ItemStats ^ item_num_clauses := !.ItemStats ^ item_num_clauses + 1,
 
-        ItemClauseInfo = item_clause_info(_, _, _, _, _, Goal, _, _),
-        gather_stats_in_goal(Goal, !GoalStats)
+        ItemClauseInfo = item_clause_info(_, _, _, _, _, MaybeGoal, _, _),
+        (
+            MaybeGoal = ok1(Goal),
+            gather_stats_in_goal(Goal, !GoalStats)
+        ;
+            MaybeGoal = error1(_)
+        )
     ;
         Item = item_type_defn(_),
         !ItemStats ^ item_num_type_defn := !.ItemStats ^ item_num_type_defn + 1

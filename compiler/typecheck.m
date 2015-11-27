@@ -371,10 +371,8 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
     else
         % Potential parallelization site.
         typecheck_pred_if_needed(ModuleInfo, PredId, PredInfo0, PredInfo,
-            PredSpecs, PredChanged),
+            PredSpecs, ContainsErrors, PredChanged),
 
-        module_info_get_globals(ModuleInfo, Globals),
-        ContainsErrors = contains_errors(Globals, PredSpecs),
         (
             ContainsErrors = no
         ;
@@ -405,12 +403,14 @@ typecheck_module_one_iteration(ModuleInfo, ValidPredIdSet,
     ).
 
 :- pred typecheck_pred_if_needed(module_info::in, pred_id::in,
-    pred_info::in, pred_info::out, list(error_spec)::out, bool::out) is det.
+    pred_info::in, pred_info::out, list(error_spec)::out,
+    bool::out, bool::out) is det.
 
-typecheck_pred_if_needed(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
+typecheck_pred_if_needed(ModuleInfo, PredId, !PredInfo, Specs,
+        ContainsErrors, Changed) :-
     ( if
         % Compiler-generated predicates are created already type-correct,
-        % so there's no need to typecheck them. The same is true for builtins,
+        % so there is no need to typecheck them. The same is true for builtins,
         % except for builtins marked with marker_builtin_stub which need to
         % have their stub clauses generated.
         % But, compiler-generated unify predicates are not guaranteed to be
@@ -436,15 +436,19 @@ typecheck_pred_if_needed(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
             IsEmpty = no
         ),
         Specs = [],
+        ContainsErrors = no,
         Changed = no
     else
-        typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs, Changed)
+        typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
+            ContainsErrors, Changed)
     ).
 
 :- pred typecheck_pred(module_info::in, pred_id::in,
-    pred_info::in, pred_info::out, list(error_spec)::out, bool::out) is det.
+    pred_info::in, pred_info::out, list(error_spec)::out,
+    bool::out, bool::out) is det.
 
-typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
+typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
+        ContainsErrors, Changed) :-
     % Handle the --allow-stubs and --warn-stubs options.
     % If --allow-stubs is set, and there are no clauses, then
     % - issue a warning (if --warn-stubs is set), and then
@@ -523,15 +527,30 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs, Changed) :-
                 type_vars_list(ArgTypes0, HeadVarsIncludingExistentials),
                 pred_info_set_head_type_params(HeadVarsIncludingExistentials,
                     !PredInfo),
+                ContainsErrors = no,
                 Specs = []
             else
-                Specs = [report_no_clauses(ModuleInfo, PredId, !.PredInfo)]
+                ContainsErrors = yes,
+                HadSyntaxErrors = !.ClausesInfo ^ cli_had_syntax_errors,
+                (
+                    HadSyntaxErrors = no,
+                    Specs = [report_no_clauses(ModuleInfo, PredId, !.PredInfo)]
+                ;
+                    HadSyntaxErrors = yes,
+                    % There were clauses, they just had errors. Printing
+                    % a message saying there were no clauses would be
+                    % misleading, and the messages for the syntax errors
+                    % will mean that this compiler invocation won't succeed
+                    % anyway.
+                    Specs = []
+                )
             ),
             Changed = no
         ;
             ClausesRep1IsEmpty = no,
             do_typecheck_pred(ModuleInfo, PredId, !PredInfo,
-                StartingSpecs, Specs, Changed)
+                StartingSpecs, Specs, Changed),
+            ContainsErrors = contains_errors(Globals, Specs)
         )
     ).
 

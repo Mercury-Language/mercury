@@ -2805,15 +2805,18 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     map.init(EmptyTVarNameMap),
     map.init(EmptyProofs),
     map.init(EmptyConstraintMap),
-    rtti_varmaps_init(EmptyRttiVarMaps),
 
     % This isn't looked at after here, and just clutters up HLDS dumps
     % if it's filled in.
     set_clause_list([], ClausesRep),
     EmptyHeadVars = proc_arg_vector_init(pf_predicate, []),
+    ItemNumbers = init_clause_item_numbers_comp_gen,
+    rtti_varmaps_init(EmptyRttiVarMaps),
+    HasForeignClauses = no,
+    HadSyntaxError = no,
     ClausesInfo = clauses_info(EmptyVarSet, EmptyVarTypes, EmptyTVarNameMap,
-        EmptyVarTypes, EmptyHeadVars, ClausesRep,
-        init_clause_item_numbers_comp_gen, EmptyRttiVarMaps, no),
+        EmptyVarTypes, EmptyHeadVars, ClausesRep, ItemNumbers,
+        EmptyRttiVarMaps, HasForeignClauses, HadSyntaxError),
     Origin = origin_transformed(Transform, OrigOrigin, CallerPredId),
     pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
         PredStatus, GoalType, MarkerList, Types, ArgTVarSet, ExistQVars,

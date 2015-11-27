@@ -75,6 +75,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_item_stats.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -737,7 +738,7 @@ maybe_add_default_mode(SectionItem, !ModuleInfo) :-
 add_clause(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
     StatusItem = ims_item(ItemMercuryStatus, ItemClauseInfo),
     ItemClauseInfo = item_clause_info(PredSymName, PredOrFunc, Args, Origin,
-        VarSet, Body, Context, SeqNum),
+        VarSet, MaybeBodyGoal, Context, SeqNum),
 
     PredName = unqualify_name(PredSymName),
     ( if PredName = "" then
@@ -785,7 +786,7 @@ add_clause(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
         ),
         % At this stage we only need know that it is not a promise declaration.
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        module_add_clause(VarSet, PredOrFunc, PredSymName, Args, Body,
+        module_add_clause(VarSet, PredOrFunc, PredSymName, Args, MaybeBodyGoal,
             PredStatus, Context, yes(SeqNum), goal_type_none,
             !ModuleInfo, !QualInfo, !Specs)
     ).
@@ -850,8 +851,8 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
 
     module_info_get_name(!.ModuleInfo, ModuleName),
     module_add_clause(VarSet, pf_predicate, qualified(ModuleName, Name),
-        HeadVars, Goal, Status, Context, no, goal_type_promise(PromiseType),
-        !ModuleInfo, !QualInfo, !Specs).
+        HeadVars, ok1(Goal), Status, Context, no,
+        goal_type_promise(PromiseType), !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 

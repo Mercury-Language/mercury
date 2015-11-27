@@ -1675,7 +1675,8 @@ convert_trace_params_2([Component - Context | ComponentsContexts],
             !:MaybeCompileTime = yes(CompileTime)
         ;
             !.MaybeCompileTime = yes(_),
-            Pieces = [words("Duplicate compile_time trace parameter."), nl],
+            Pieces = [words("Error: duplicate compile_time trace parameter."),
+                nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(Context, [always(Pieces)])]),
             !:Specs = [Spec | !.Specs]
@@ -1687,7 +1688,7 @@ convert_trace_params_2([Component - Context | ComponentsContexts],
             !:MaybeRunTime = yes(RunTime)
         ;
             !.MaybeRunTime = yes(_),
-            Pieces = [words("Duplicate run_time trace parameter."), nl],
+            Pieces = [words("Error: duplicate run_time trace parameter."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(Context, [always(Pieces)])]),
             !:Specs = [Spec | !.Specs]
@@ -1699,7 +1700,7 @@ convert_trace_params_2([Component - Context | ComponentsContexts],
             !:MaybeIO = yes(IOStateVar)
         ;
             !.MaybeIO = yes(_),
-            Pieces = [words("Duplicate io trace parameter."), nl],
+            Pieces = [words("Error: duplicate io trace parameter."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(Context, [always(Pieces)])]),
             !:Specs = [Spec | !.Specs]
@@ -2033,7 +2034,7 @@ convert_try_params_2([Component - Context | ComponentsContexts],
         !:MaybeIO = yes(IOStateVar)
     ;
         !.MaybeIO = yes(_),
-        Pieces = [words("Duplicate io try parameter."), nl],
+        Pieces = [words("Error: duplicate io try parameter."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         !:Specs = [Spec | !.Specs]
@@ -2276,7 +2277,7 @@ convert_atomic_params_2(Context,
         ;
             !.MaybeOuter = yes(_),
             % XXX We should specify the duplicate parameter.
-            Pieces = [words("Duplicate outer atomic parameter."), nl],
+            Pieces = [words("Error: duplicate outer atomic parameter."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(CompContext, [always(Pieces)])]),
             !:Specs = !.Specs ++ [Spec]
@@ -2289,7 +2290,7 @@ convert_atomic_params_2(Context,
         ;
             !.MaybeInner = yes(_),
             % XXX We should specify the duplicate parameter.
-            Pieces = [words("Duplicate inner atomic parameter."), nl],
+            Pieces = [words("Error: duplicate inner atomic parameter."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(CompContext, [always(Pieces)])]),
             !:Specs = !.Specs ++ [Spec]
@@ -2302,7 +2303,7 @@ convert_atomic_params_2(Context,
         ;
             !.MaybeVars = yes(_),
             % XXX We should specify the duplicate parameter.
-            Pieces = [words("Duplicate atomic vars parameter."), nl],
+            Pieces = [words("Error: duplicate atomic vars parameter."), nl],
             Spec = error_spec(severity_error, phase_term_to_parse_tree,
                 [simple_msg(CompContext, [always(Pieces)])]),
             !:Specs = !.Specs ++ [Spec]

@@ -59,6 +59,7 @@
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
@@ -691,9 +692,10 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         set_clause_list([IntroducedClause], ClausesRep),
         rtti_varmaps_init(RttiVarMaps),
         HasForeignClauses = no,
+        HadSyntaxErrors = no,
         ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
             HeadVarVec, ClausesRep, init_clause_item_numbers_comp_gen,
-            RttiVarMaps, HasForeignClauses)
+            RttiVarMaps, HasForeignClauses, HadSyntaxErrors)
     ;
         % Handle the arbitrary clauses syntax.
         InstanceProcDefn = instance_proc_def_clauses(InstanceClauses),
@@ -716,40 +718,47 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
         InstanceClause, TVarSet0, TVarSet, !ModuleInfo, !QualInfo,
         !ClausesInfo, !Specs) :-
     InstanceClause = item_clause_info(PredName, ClausePredOrFunc, HeadTerms0,
-        _Origin, CVarSet, Body, _ClauseContext, _SeqNum),
+        _Origin, CVarSet, MaybeBodyGoal, _ClauseContext, _SeqNum),
     % XXX Can this ever fail? If yes, we should generate an error message
     % instead of aborting.
     expect(unify(PredOrFunc, ClausePredOrFunc), $module, $pred,
         "PredOrFunc mismatch"),
     ( if illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar) then
         TVarSet = TVarSet0,
-        report_illegal_func_svar_result(Context, CVarSet, StateVar, !Specs)
+        report_illegal_func_svar_result(Context, CVarSet, StateVar, !Specs),
+        !:Specs = get_any_errors1(MaybeBodyGoal) ++ !.Specs
     else
-        expand_bang_states(HeadTerms0, HeadTerms),
-        PredArity = list.length(HeadTerms),
-        adjust_func_arity(PredOrFunc, Arity, PredArity),
+        (
+            MaybeBodyGoal = error1(BodyGoalSpecs),
+            TVarSet = TVarSet0,
+            !:Specs = BodyGoalSpecs ++ !.Specs
+        ;
+            MaybeBodyGoal = ok1(BodyGoal),
+            expand_bang_states(HeadTerms0, HeadTerms),
+            PredArity = list.length(HeadTerms),
+            adjust_func_arity(PredOrFunc, Arity, PredArity),
 
-        % AllProcIds is only used when the predicate has foreign procs,
-        % which the instance method pred should not have, so this dummy value
-        % should be ok.
-        AllProcIds = [],
+            % AllProcIds is only used when the predicate has foreign procs,
+            % which the instance method pred should not have, so this
+            % dummy value should be ok.
+            AllProcIds = [],
+            GoalType = goal_type_none,    % goal is not a promise
+            % XXX STATUS
+            InstanceStatus = instance_status(OldImportStatus),
+            PredStatus = pred_status(OldImportStatus),
+            clauses_info_add_clause(all_modes, AllProcIds, CVarSet, TVarSet0,
+                HeadTerms, BodyGoal, Context, no, PredStatus, PredOrFunc,
+                Arity, GoalType, Goal, VarSet, TVarSet, Warnings, !ClausesInfo,
+                !ModuleInfo, !QualInfo, !Specs),
 
-        GoalType = goal_type_none,    % goal is not a promise
-        % XXX STATUS
-        InstanceStatus = instance_status(OldImportStatus),
-        PredStatus = pred_status(OldImportStatus),
-        clauses_info_add_clause(all_modes, AllProcIds, CVarSet, TVarSet0,
-            HeadTerms, Body, Context, no, PredStatus, PredOrFunc, Arity,
-            GoalType, Goal, VarSet, TVarSet, !ClausesInfo, Warnings,
-            !ModuleInfo, !QualInfo, !Specs),
+            SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
 
-        SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
+            % Warn about singleton variables.
+            warn_singletons(!.ModuleInfo, SimpleCallId, VarSet, Goal, !Specs),
 
-        % Warn about singleton variables.
-        warn_singletons(!.ModuleInfo, SimpleCallId, VarSet, Goal, !Specs),
-
-        % Warn about variables with overlapping scopes.
-        add_quant_warnings(SimpleCallId, VarSet, Warnings, !Specs)
+            % Warn about variables with overlapping scopes.
+            add_quant_warnings(SimpleCallId, VarSet, Warnings, !Specs)
+        )
     ).
 
 :- pred pred_method_with_no_modes_error(pred_info::in,

@@ -52,6 +52,7 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
@@ -1354,10 +1355,10 @@ define_main_get_set_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
                 ImpureGetExpr),
             StdSetPredExpr = ImpureSetExpr,
             module_add_clause(VarSetOnlyX, pf_predicate, StdGetPredName,
-                StdPredArgs, StdGetPredExpr, PredStatus, Context, no,
+                StdPredArgs, ok1(StdGetPredExpr), PredStatus, Context, no,
                 goal_type_none, !ModuleInfo, !QualInfo, !Specs),
             module_add_clause(VarSetOnlyX, pf_predicate, StdSetPredName,
-                StdPredArgs, StdSetPredExpr, PredStatus, Context, no,
+                StdPredArgs, ok1(StdSetPredExpr), PredStatus, Context, no,
                 goal_type_none, !ModuleInfo, !QualInfo, !Specs)
         ;
             ImplLang = mutable_lang_erlang,
@@ -1452,10 +1453,10 @@ define_main_get_set_preds(ItemMutable, TargetParams, TargetMutableName, Attrs,
                 promise_purity_expr(Context, purity_pure, IOSetPredExpr),
 
             module_add_clause(VarSetXandIOs, pf_predicate, IOGetPredName,
-                IOPredArgs, PureIOGetPredExpr, PredStatus, Context, no,
+                IOPredArgs, ok1(PureIOGetPredExpr), PredStatus, Context, no,
                 goal_type_none, !ModuleInfo, !QualInfo, !Specs),
             module_add_clause(VarSetXandIOs, pf_predicate, IOSetPredName,
-                IOPredArgs, PureIOSetPredExpr, PredStatus, Context, no,
+                IOPredArgs, ok1(PureIOSetPredExpr), PredStatus, Context, no,
                 goal_type_none, !ModuleInfo, !QualInfo, !Specs)
         )
     ).
@@ -1491,7 +1492,7 @@ define_init_pred(ItemMutable, MaybeCallPreInitExpr, InitSetPredName,
     % See the comments for prog_io.parse_mutable_decl for the reason
     % why we _must_ pass VarSetMutableX here.
     module_add_clause(VarSetMutableX, pf_predicate, InitPredName, [],
-        InitPredExpr, PredStatus, Context, no, goal_type_none,
+        ok1(InitPredExpr), PredStatus, Context, no, goal_type_none,
         !ModuleInfo, !QualInfo, !Specs),
 
     InitPredArity = 0,

@@ -648,7 +648,7 @@ polymorphism_process_clause_info(ModuleInfo0, PredInfo0, !ClausesInfo, !:Info,
     init_poly_info(ModuleInfo0, PredInfo0, !.ClausesInfo, !:Info),
     !.ClausesInfo = clauses_info(_VarSet, ExplicitVarTypes, _TVarNameMap,
         _VarTypes, HeadVars0, ClausesRep0, ItemNumbers,
-        _RttiVarMaps, HaveForeignClauses),
+        _RttiVarMaps, HaveForeignClauses, HadSyntaxErrors),
 
     setup_headvars(PredInfo0, HeadVars0, HeadVars,
         ExtraArgModes, UnconstrainedTVars,
@@ -669,7 +669,7 @@ polymorphism_process_clause_info(ModuleInfo0, PredInfo0, !ClausesInfo, !:Info,
     map.init(TVarNameMap), % This is only used while adding the clauses.
     !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
         VarTypes, HeadVars, ClausesRep, ItemNumbers,
-        RttiVarMaps, HaveForeignClauses).
+        RttiVarMaps, HaveForeignClauses, HadSyntaxErrors).
 
 :- pred polymorphism_process_clause(pred_info::in,
     proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::in,

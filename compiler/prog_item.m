@@ -32,6 +32,7 @@
 :- import_module recompilation.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -379,7 +380,7 @@
                 cl_head_args                    :: list(prog_term),
                 cl_maybe_attrs                  :: item_maybe_attrs,
                 cl_varset                       :: prog_varset,
-                cl_body                         :: goal,
+                cl_body                         :: maybe1(goal),
                 cl_context                      :: prog_context,
                 cl_seq_num                      :: int
             ).

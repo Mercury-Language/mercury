@@ -458,7 +458,7 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
     % Our caller should have already added this foreign_proc to ItemNumbers.
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
         InferredVarTypes, HeadVars, ClausesRep0, ItemNumbers,
-        RttiVarMaps, _HasForeignClauses),
+        RttiVarMaps, _HasForeignClauses, HadSyntaxError),
 
     get_clause_list_for_replacement(ClausesRep0, Clauses0),
 
@@ -583,11 +583,11 @@ clauses_info_do_add_pragma_foreign_proc(Purity, Attributes0,
             Clause = clause(selected_modes([ProcId]), HldsGoal,
                 impl_lang_foreign(NewLang), Context, []),
             Clauses = [Clause | Clauses1],
-            HasForeignClauses = yes,
             set_clause_list(Clauses, ClausesRep),
+            HasForeignClauses = yes,
             !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
                 InferredVarTypes, HeadVars, ClausesRep, ItemNumbers,
-                RttiVarMaps, HasForeignClauses)
+                RttiVarMaps, HasForeignClauses, HadSyntaxError)
         )
     ).
 

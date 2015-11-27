@@ -152,7 +152,7 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
         true
     ),
     ClausesInfo = clauses_info(VarSet, _, _, VarTypes, HeadVars, ClausesRep,
-        _ItemNumbers, RttiVarMaps, _HaveForeignClauses),
+        _ItemNumbers, RttiVarMaps, _HaveForeignClauses, _HadSyntaxErrors),
     ( if string.contains_char(DumpOptions, 'C') then
         write_indent(Indent, !IO),
         io.write_string("% pred id: ", !IO),

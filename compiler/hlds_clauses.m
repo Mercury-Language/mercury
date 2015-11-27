@@ -70,8 +70,13 @@
                 % This field is computed by polymorphism.m.
                 cli_rtti_varmaps            :: rtti_varmaps,
 
-                % Do we have foreign language clauses?
-                cli_have_foreign_clauses    :: bool
+                % Does this predicate/function have foreign language clauses?
+                cli_have_foreign_clauses    :: bool,
+
+                % Did this predicate/function have clauses with syntax errors
+                % in their bodies (so we could know, despite the error, that
+                % the clause was for them)?
+                cli_had_syntax_errors       :: bool
         ).
 
 :- pred clauses_info_init(pred_or_func::in, int::in, clause_item_numbers::in,
@@ -417,16 +422,18 @@ add_clause_item_number_regions(ItemNum, Context, !Regions) :-
 %-----------------------------------------------------------------------------%
 
 clauses_info_init(PredOrFunc, Arity, ItemNumbers, ClausesInfo) :-
-    init_vartypes(VarTypes),
-    map.init(TVarNameMap),
     varset.init(VarSet0),
     make_n_fresh_vars("HeadVar__", Arity, HeadVars, VarSet0, VarSet),
+    init_vartypes(VarTypes),
+    map.init(TVarNameMap),
     HeadVarVec = proc_arg_vector_init(PredOrFunc, HeadVars),
+    set_clause_list([], ClausesRep),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
-    set_clause_list([], ClausesRep),
+    HadSyntaxError = no,
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps, HasForeignClauses).
+        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
+        HasForeignClauses, HadSyntaxError).
 
 clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     varset.init(VarSet),
@@ -436,11 +443,13 @@ clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     % functions.
     HeadVarVec = proc_arg_vector_init(pf_predicate, HeadVars),
     set_clause_list([], ClausesRep),
+    ItemNumbers = init_clause_item_numbers_comp_gen,
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
+    HadSyntaxError = no,
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVarVec, ClausesRep, init_clause_item_numbers_comp_gen,
-        RttiVarMaps, HasForeignClauses).
+        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
+        HasForeignClauses, HadSyntaxError).
 
 clauses_info_get_varset(CI, CI ^ cli_varset).
 clauses_info_get_explicit_vartypes(CI, CI ^ cli_explicit_vartypes).

@@ -1,6 +1,4 @@
-try_bad_params.m:010: Error: no clauses for predicate `main'/2.
-try_bad_params.m:019: Duplicate io try parameter.
-try_bad_params.m:025: Error: no clauses for predicate `main_2'/2.
+try_bad_params.m:019: Error: duplicate io try parameter.
 try_bad_params.m:028: Error: invalid try goal parameter `bloop'.
 try_bad_params.m:037: In clause for predicate `main_3'/2:
 try_bad_params.m:037:   in initial I/O state variable of try goal:
@@ -12,9 +10,7 @@ try_bad_params.m:037:   in final I/O state variable of try goal:
 try_bad_params.m:037:   type error: variable `STATE_VARIABLE_Int' has type
 try_bad_params.m:037:   `int',
 try_bad_params.m:037:   expected type was `io.state'.
-try_bad_params.m:043: Error: no clauses for predicate `main_4'/1.
 try_bad_params.m:046: Error: the argument of io should be a state variable.
-try_bad_params.m:052: Error: no clauses for predicate `main_5'/2.
 try_bad_params.m:055: Error: io takes exactly one argument, which should be a
 try_bad_params.m:055:   state variable name.
 For more information, recompile with `-E'.

@@ -1,5 +1,3 @@
-record_syntax_errors.m:018: Error: no clauses for predicate `dcg_syntax'/2.
-record_syntax_errors.m:020: Error: no clauses for predicate `dcg_syntax_2'/2.
 record_syntax_errors.m:027: Error: `:- mode' declaration for function
 record_syntax_errors.m:027:   `record_syntax_errors.field8'/1
 record_syntax_errors.m:027:   without corresponding `:- func' declaration.

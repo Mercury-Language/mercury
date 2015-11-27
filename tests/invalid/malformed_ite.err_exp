@@ -1,4 +1,3 @@
-malformed_ite.m:019: Error: no clauses for predicate `p'/2.
 malformed_ite.m:027: Error: malformed if-then-else; this `then' is missing its
 malformed_ite.m:027:   `if'.
 malformed_ite.m:035: Error: malformed if-then-else; replace the `->' with

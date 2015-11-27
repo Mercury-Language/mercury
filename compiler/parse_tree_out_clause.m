@@ -53,6 +53,7 @@
 :- implementation.
 
 :- import_module mdbcomp.prim_data.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_out.
@@ -73,7 +74,8 @@
 
 mercury_output_item_clause(Info, ItemClause, !IO) :-
     ItemClause = item_clause_info(PredName0, PredOrFunc, ArgTerms, _MaybeAttrs,
-        VarSet, BodyGoal, Context, _SeqNum),
+        VarSet, MaybeBodyGoal, Context, _SeqNum),
+    get_clause_body_goal(MaybeBodyGoal, BodyGoal),
     maybe_unqualify_sym_name(Info, PredName0, PredName),
     maybe_output_line_number(Info, Context, !IO),
     (
@@ -89,7 +91,8 @@ mercury_output_item_clause(Info, ItemClause, !IO) :-
 
 output_instance_method_clause(MethodName, ItemClause, !IO) :-
     ItemClause = item_clause_info(_PredName, PredOrFunc, ArgTerms, _MaybeAttrs,
-        VarSet, BodyGoal, _Context, _SeqNum),
+        VarSet, MaybeBodyGoal, _Context, _SeqNum),
+    get_clause_body_goal(MaybeBodyGoal, BodyGoal),
     (
         PredOrFunc = pf_predicate,
         mercury_output_pred_clause(VarSet, MethodName, ArgTerms, BodyGoal, !IO)
@@ -98,6 +101,17 @@ output_instance_method_clause(MethodName, ItemClause, !IO) :-
         pred_args_to_func_args(ArgTerms, FuncArgTerms, ResultTerm),
         mercury_output_func_clause(VarSet, MethodName,
             FuncArgTerms, ResultTerm, BodyGoal, !IO)
+    ).
+
+:- pred get_clause_body_goal(maybe1(goal)::in, goal::out) is det.
+
+get_clause_body_goal(MaybeBodyGoal, BodyGoal) :-
+    (
+        MaybeBodyGoal = ok1(BodyGoal)
+    ;
+        MaybeBodyGoal = error1(_),
+        PredName = unqualified("there_was_a_syntax_error"),
+        BodyGoal = call_expr(term.context_init, PredName, [], purity_pure)
     ).
 
 %---------------------------------------------------------------------------%

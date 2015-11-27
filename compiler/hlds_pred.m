@@ -1126,8 +1126,10 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
     ItemNumbers = init_clause_item_numbers_user,
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     HasForeignClauses = no,
+    HadSyntaxErrors = no,
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
-        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps, HasForeignClauses),
+        HeadVarVec, ClausesRep, ItemNumbers, RttiVarMaps,
+        HasForeignClauses, HadSyntaxErrors),
 
     % argument ModuleName
     PredName = unqualify_name(PredSymName),

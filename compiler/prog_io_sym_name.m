@@ -151,10 +151,9 @@ parse_sym_name_and_args(Term, VarSet, ContextPieces, MaybeSymNameAndArgs) :-
             ;
                 MaybeModule = error1(_),
                 ModuleTermStr = describe_error_term(GenericVarSet, ModuleTerm),
-                % XXX We should say "module name" OR "identifier", not both.
                 Pieces = cord.list(ContextPieces) ++
                     [lower_case_next_if_not_first,
-                    words("Error: module name identifier expected before '.'"),
+                    words("Error: module name expected before '.'"),
                     words("in qualified symbol name, not"),
                     words(ModuleTermStr), suffix("."), nl],
                 Spec = error_spec(severity_error, phase_term_to_parse_tree,

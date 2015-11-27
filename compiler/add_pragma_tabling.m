@@ -45,6 +45,7 @@
 :- import_module ml_backend.mlds.               % XXX undesirable dependency
 :- import_module ml_backend.mlds_to_c.          % XXX undesirable dependency
 :- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -513,7 +514,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
             BodyExpr = promise_purity_expr(Context, purity_pure,
                 GetStatsUpdateIOExpr),
             module_add_clause(!.VarSet, pf_predicate, StatsPredSymName, Args,
-                BodyExpr, PredStatus, Context, no, goal_type_none,
+                ok1(BodyExpr), PredStatus, Context, no, goal_type_none,
                 !ModuleInfo, !QualInfo, !Specs)
         )
     ).
@@ -577,7 +578,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
             BodyExpr = unify_expr(Context,
                 variable(IO0, Context), variable(IO, Context), purity_pure),
             module_add_clause(!.VarSet, pf_predicate, ResetPredSymName, Args,
-                BodyExpr, PredStatus, Context, no, goal_type_none,
+                ok1(BodyExpr), PredStatus, Context, no, goal_type_none,
                 !ModuleInfo, !QualInfo, !Specs)
         )
     ).
