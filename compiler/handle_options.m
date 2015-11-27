@@ -911,6 +911,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     %   - can-compare-compound-values
     %   - lexically-compare-constructors
     %   - no library grade installation check with `mmc --make'
+    %   - --no-optimize-tailcalls because Erlang implementations perform
+    %     LCO.
 
     (
         Target = target_erlang,
@@ -930,6 +932,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(lexically_order_constructors, bool(yes),
             !Globals),
         globals.set_option(libgrade_install_check, bool(no), !Globals),
+        globals.set_option(optimize_tailcalls, bool(no), !Globals),
 
         % The following options do not directly affect the Erlang backend,
         % however we need to ensure they are set to values that are consistent
