@@ -5,6 +5,7 @@
 *.date0
 *.date3
 *.dep
+*.dep_err
 *.dv
 *.err
 *.err2
