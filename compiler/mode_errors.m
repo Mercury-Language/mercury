@@ -248,6 +248,7 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
@@ -586,11 +587,31 @@ merge_context_to_string(merge_stm_atomic) = "atomic".
 :- func merge_error_to_pieces(mode_info, merge_error) = list(format_component).
 
 merge_error_to_pieces(ModeInfo, MergeError) = Pieces :-
-    mode_info_get_varset(ModeInfo, VarSet),
-    VarPieces = [words("The variable"),
-        quote(mercury_var_to_name_only(VarSet, Var)),
-        words("has these instantiation states:"), nl_indent_delta(1)],
     MergeError = merge_error(Var, ContextsInsts0),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    mode_info_get_varset(ModeInfo, VarSet),
+    count_ground_insts(ModuleInfo, ContextsInsts0,
+        0, NumGroundInsts, 0, NumAllInsts),
+    ( if
+        NumGroundInsts < NumAllInsts,
+        NumGroundInsts * 2 > NumAllInsts
+    then
+        % More than half the insts are ground, so it is likely that they
+        % were *all* intended to be ground, but not all actually *are* ground,
+        % which is likely to be the bug.
+        VarPieces = [words("The variable"),
+            quote(mercury_var_to_name_only(VarSet, Var)),
+            words("is ground in"), int_fixed(NumGroundInsts),
+            words("out of"), int_fixed(NumAllInsts), words("branches."),
+            words("It has these instantiation states:"), nl_indent_delta(1)],
+        ReportGround = yes
+    else
+        VarPieces = [words("The variable"),
+            quote(mercury_var_to_name_only(VarSet, Var)),
+            words("has these instantiation states:"), nl_indent_delta(1)],
+        ReportGround = no
+    ),
+
     list.sort(ContextsInsts0, ContextsInsts),
     (
         ContextsInsts = [],
@@ -604,11 +625,29 @@ merge_error_to_pieces(ModeInfo, MergeError) = Pieces :-
             InclFileName = yes
         )
     ),
-    InstPiecesList = list.map(report_inst_in_context(ModeInfo, InclFileName),
+    InstPiecesList = list.map(
+        report_inst_in_context(ModeInfo, InclFileName, ReportGround),
         ContextsInsts),
     InstPieces = list.condense(InstPiecesList),
     SuffixPieces = [nl_indent_delta(-1)],
     Pieces = VarPieces ++ InstPieces ++ SuffixPieces.
+
+:- pred count_ground_insts(module_info::in,
+    assoc_list(prog_context, mer_inst)::in,
+    int::in, int::out, int::in, int::out) is det.
+
+count_ground_insts(_ModuleInfo, [], !NumGroundInsts, !NumAllInsts).
+count_ground_insts(ModuleInfo, [ContextInst | ContextsInsts],
+        !NumGroundInsts, !NumAllInsts) :-
+    ContextInst = _Context - Inst,
+    ( if inst_is_ground(ModuleInfo, Inst) then
+        !:NumGroundInsts = !.NumGroundInsts + 1
+    else
+        true
+    ),
+    !:NumAllInsts = !.NumAllInsts + 1,
+    count_ground_insts(ModuleInfo, ContextsInsts,
+        !NumGroundInsts, !NumAllInsts).
 
 :- pred all_in_same_file(string::in, assoc_list(prog_context, mer_inst)::in)
     is semidet.
@@ -1580,18 +1619,31 @@ expected_inst_was(ModeInfo, Inst) =
 
 %---------------------------------------------------------------------------%
 
-:- func report_inst_in_context(mode_info, bool, pair(prog_context, mer_inst))
-    = list(format_component).
+:- func report_inst_in_context(mode_info, bool, bool,
+    pair(prog_context, mer_inst)) = list(format_component).
 
-report_inst_in_context(ModeInfo, InclFileName, Context - Inst) = Pieces :-
+report_inst_in_context(ModeInfo, InclFileName, ReportGround, Context - Inst)
+        = Pieces :-
+    (
+        ReportGround = no,
+        GroundStr = ""
+    ;
+        ReportGround = yes,
+        mode_info_get_module_info(ModeInfo, ModuleInfo),
+        ( if inst_is_ground(ModuleInfo, Inst) then
+            GroundStr = " (ground)"
+        else
+            GroundStr = " (not ground)"
+        )
+    ),
     Context = context(FileName, LineNum),
     LineNumStr = string.int_to_string(LineNum),
     (
         InclFileName = no,
-        ContextStr = "line " ++ LineNumStr ++ ":"
+        ContextStr = "line " ++ LineNumStr ++ GroundStr ++ ":"
     ;
         InclFileName = yes,
-        ContextStr = FileName ++ ":" ++ LineNumStr ++ ":"
+        ContextStr = FileName ++ ":" ++ LineNumStr ++ GroundStr ++ ":"
     ),
     Pieces = [fixed(ContextStr), nl_indent_delta(1) |
         report_inst(ModeInfo, fixed_short_inst, [nl_indent_delta(-1)],
