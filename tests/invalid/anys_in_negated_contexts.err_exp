@@ -26,5 +26,4 @@ anys_in_negated_contexts.m:080:   in argument 1 (i.e. the predicate term) of
 anys_in_negated_contexts.m:080:   higher-order predicate call:
 anys_in_negated_contexts.m:080:   mode error: variable `P' has instantiatedness
 anys_in_negated_contexts.m:080:   `free',
-anys_in_negated_contexts.m:080:   expecting higher-order pred inst (of arity
-anys_in_negated_contexts.m:080:   1).
+anys_in_negated_contexts.m:080:   expecting higher-order pred inst of arity 1.

@@ -12,13 +12,16 @@ partial_implied_mode.m:039:   mode error in unification of `HeadVar__1' and
 partial_implied_mode.m:039:   `partial_implied_mode2.physic_quantity(V_13, V_4,
 partial_implied_mode.m:039:   V_14)'.
 partial_implied_mode.m:039:   Variable `HeadVar__1' has instantiatedness
-partial_implied_mode.m:039:   `unique(partial_implied_mode2.physic_quantity(ground,
-partial_implied_mode.m:039:   free, unique(partial_implied_mode2.absol(free,
-partial_implied_mode.m:039:   free))))',
+partial_implied_mode.m:039:     unique(
+partial_implied_mode.m:039:       physic_quantity(
+partial_implied_mode.m:039:         ground,
+partial_implied_mode.m:039:         free,
+partial_implied_mode.m:039:         unique(
+partial_implied_mode.m:039:           absol(free, free)
+partial_implied_mode.m:039:         )
+partial_implied_mode.m:039:       )
+partial_implied_mode.m:039:     ),
 partial_implied_mode.m:039:   term `partial_implied_mode2.physic_quantity(V_13,
 partial_implied_mode.m:039:   V_4, V_14)' has instantiatedness
-partial_implied_mode.m:039:   `partial_implied_mode2.physic_quantity(
-partial_implied_mode.m:039:     free,
-partial_implied_mode.m:039:     ground,
-partial_implied_mode.m:039:     free
-partial_implied_mode.m:039:   )'.
+partial_implied_mode.m:039:     named inst
+partial_implied_mode.m:039:     partial_implied_mode2.physic_quantity(free, ground, free).

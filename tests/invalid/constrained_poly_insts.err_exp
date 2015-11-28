@@ -28,6 +28,6 @@ constrained_poly_insts.m:031:   ground)))':
 constrained_poly_insts.m:031:   mode error: argument 2 became too instantiated.
 constrained_poly_insts.m:031:   Final instantiatedness of `HeadVar__2' was
 constrained_poly_insts.m:031:   `unique(42)',
-constrained_poly_insts.m:031:   expected final instantiatedness was `(I =<
-constrained_poly_insts.m:031:   ground)'.
+constrained_poly_insts.m:031:   expected final instantiatedness was
+constrained_poly_insts.m:031:   `( I =< ground )'.
 For more information, recompile with `-E'.

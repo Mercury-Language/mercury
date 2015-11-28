@@ -8,10 +8,17 @@ try_detism.m:016:   in call to predicate `exception.try_io'/4:
 try_detism.m:016:   mode error: arguments
 try_detism.m:016:   `TypeInfo_22, TryLambda, TryResult, STATE_VARIABLE_IO_10, TryIOOutput'
 try_detism.m:016:   have the following insts:
-try_detism.m:016:     bound(private_builtin.type_info(bound(<type_ctor_info for
-try_detism.m:016:     .tuple/0>), bound(0))),
-try_detism.m:016:     /* unique */(pred((free >> ground), (unique >>
-try_detism.m:016:     clobbered), (free >> unique)) is semidet),
+try_detism.m:016:     bound(
+try_detism.m:016:       type_info(
+try_detism.m:016:         bound(
+try_detism.m:016:           <type_ctor_info for .tuple/0>
+try_detism.m:016:         ),
+try_detism.m:016:         bound(
+try_detism.m:016:           0
+try_detism.m:016:         )
+try_detism.m:016:       )
+try_detism.m:016:     ),
+try_detism.m:016:     /* unique */ (pred(out, di, uo) is semidet),
 try_detism.m:016:     free,
 try_detism.m:016:     unique,
 try_detism.m:016:     free

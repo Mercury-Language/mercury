@@ -2,8 +2,18 @@ polymorphic_unification.m:023: In clause for `p(in, ((list.list_skel) >>
 polymorphic_unification.m:023:   dead))':
 polymorphic_unification.m:023:   in polymorphically-typed unification:
 polymorphic_unification.m:023:   mode error: variable `X' has instantiatedness
-polymorphic_unification.m:023:   `bound([] ; '[|]'(free,
-polymorphic_unification.m:023:   list.list_skel(free)))',
+polymorphic_unification.m:023:     named inst list.list_skel,
+polymorphic_unification.m:023:     which expands to
+polymorphic_unification.m:023:     named inst list.list_skel(free),
+polymorphic_unification.m:023:     which expands to
+polymorphic_unification.m:023:     bound(
+polymorphic_unification.m:023:       []
+polymorphic_unification.m:023:     ;
+polymorphic_unification.m:023:       '[|]'(
+polymorphic_unification.m:023:         free,
+polymorphic_unification.m:023:         named inst list.list_skel(free)
+polymorphic_unification.m:023:       )
+polymorphic_unification.m:023:     ),
 polymorphic_unification.m:023:   expected instantiatedness was `ground' or
 polymorphic_unification.m:023:   `any'.
 polymorphic_unification.m:023:   When unifying two variables whose type will

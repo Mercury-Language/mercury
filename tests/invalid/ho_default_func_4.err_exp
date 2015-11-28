@@ -2,13 +2,33 @@ ho_default_func_4.m:036: In clause for `baz(in, out)':
 ho_default_func_4.m:036:   in call to function `univ.univ'/1:
 ho_default_func_4.m:036:   mode error: arguments `TypeInfo_9, V_7, V_6' have
 ho_default_func_4.m:036:   the following insts:
-ho_default_func_4.m:036:     bound(private_builtin.type_info(bound(<type_ctor_info
-ho_default_func_4.m:036:     for .func/0>), bound(2), bound(<type_ctor_info for
-ho_default_func_4.m:036:     .int/0>), bound(<type_ctor_info for .int/0>))),
-ho_default_func_4.m:036:     /* unique */(func(($typed_inst(int,
-ho_default_func_4.m:036:     (ho_default_func_4.one)) >> $typed_inst(int,
-ho_default_func_4.m:036:     (ho_default_func_4.one)))) = (free >> ground) is
-ho_default_func_4.m:036:     det),
+ho_default_func_4.m:036:     bound(
+ho_default_func_4.m:036:       type_info(
+ho_default_func_4.m:036:         bound(
+ho_default_func_4.m:036:           <type_ctor_info for .func/0>
+ho_default_func_4.m:036:         ),
+ho_default_func_4.m:036:         bound(
+ho_default_func_4.m:036:           2
+ho_default_func_4.m:036:         ),
+ho_default_func_4.m:036:         bound(
+ho_default_func_4.m:036:           <type_ctor_info for .int/0>
+ho_default_func_4.m:036:         ),
+ho_default_func_4.m:036:         bound(
+ho_default_func_4.m:036:           <type_ctor_info for .int/0>
+ho_default_func_4.m:036:         )
+ho_default_func_4.m:036:       )
+ho_default_func_4.m:036:     ),
+ho_default_func_4.m:036:     /* unique */ (func(
+ho_default_func_4.m:036:       named inst one,
+ho_default_func_4.m:036:       which expands to
+ho_default_func_4.m:036:       bound(
+ho_default_func_4.m:036:         1
+ho_default_func_4.m:036:       ) >> named inst one,
+ho_default_func_4.m:036:       which expands to
+ho_default_func_4.m:036:       bound(
+ho_default_func_4.m:036:         1
+ho_default_func_4.m:036:       )
+ho_default_func_4.m:036:     ) = out is det),
 ho_default_func_4.m:036:     free
 ho_default_func_4.m:036:   which does not match any of the modes for function
 ho_default_func_4.m:036:   `univ.univ'/1.

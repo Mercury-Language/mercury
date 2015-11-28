@@ -13,5 +13,5 @@ qualified_cons_id2.m:025:   in argument 1 of clause head:
 qualified_cons_id2.m:025:   warning: unification of `HeadVar__1' and maybe.yes
 qualified_cons_id2.m:025:   cannot succeed.
 qualified_cons_id2.m:025:   `HeadVar__1' has instantiatedness
-qualified_cons_id2.m:025:   `bound(qualified_cons_id2.yes(ground))'.
+qualified_cons_id2.m:025:   `bound(yes(ground))'.
 For more information, recompile with `-E'.

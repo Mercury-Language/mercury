@@ -6,9 +6,8 @@ occurs.m:007:   `:- implementation' declaration.
 occurs.m:014: In clause for `p':
 occurs.m:014:   mode error in unification of `X' and `occurs.f(X)'.
 occurs.m:014:   Variable `X' has instantiatedness `free',
-occurs.m:014:   term `occurs.f(X)' has instantiatedness `occurs.f(
-occurs.m:014:     free
-occurs.m:014:   )'.
+occurs.m:014:   term `occurs.f(X)' has instantiatedness
+occurs.m:014:   `named inst occurs.f(free)'.
 occurs.m:014: In clause for predicate `occurs.p'/0:
 occurs.m:014:   warning: variable `X' occurs only once in this scope.
 occurs.m:016: In `p2':
@@ -19,8 +18,7 @@ occurs.m:019:   warning: unification of `X' and occurs.f cannot succeed,
 occurs.m:019:   because `X' cannot be equal to a term containing itself.
 occurs.m:024: In clause for `p3':
 occurs.m:024:   mode error in unification of `X' and `occurs.f(X)'.
-occurs.m:024:   Variable `X' has instantiatedness `unique(occurs.f(free))',
-occurs.m:024:   term `occurs.f(X)' has instantiatedness `occurs.f(
-occurs.m:024:     unique(occurs.f(free))
-occurs.m:024:   )'.
+occurs.m:024:   Variable `X' has instantiatedness `unique(f(free))',
+occurs.m:024:   term `occurs.f(X)' has instantiatedness
+occurs.m:024:   `named inst occurs.f(unique(f(free)))'.
 For more information, recompile with `-E'.

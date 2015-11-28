@@ -11,7 +11,6 @@ state_vars_test4.m:018: In clause for `f(in) = out':
 state_vars_test4.m:018:   in argument 1 of call to function `list.foldl'/3:
 state_vars_test4.m:018:   mode error: variable `V_7' has instantiatedness
 state_vars_test4.m:018:   `free',
-state_vars_test4.m:018:   expected instantiatedness was `(func((ground >>
-state_vars_test4.m:018:   ground), (ground >> ground)) = (free >> ground) is
-state_vars_test4.m:018:   det)'.
+state_vars_test4.m:018:   expected instantiatedness was
+state_vars_test4.m:018:   `(func(in, in) = out is det)'.
 For more information, recompile with `-E'.

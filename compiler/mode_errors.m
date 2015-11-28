@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: mode_errors.m.
 % Main author: fjh.
 %
 % This module contains all the error-reporting routines for the mode-checker.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.mode_errors.
 :- interface.
@@ -32,7 +32,7 @@
 :- import_module bool.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type merge_context
     --->    merge_disj
@@ -203,7 +203,7 @@
                 mode_context        % Where the error occurred.
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Initialize the mode_context.
     %
@@ -243,8 +243,8 @@
 
 :- func should_report_mode_warning_for_pred_origin(pred_origin) = bool.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -261,6 +261,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_mode.
@@ -273,11 +274,12 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mode_error_info_to_spec(ModeInfo0, ModeErrorInfo) = Spec :-
     some [!ModeInfo] (
@@ -398,7 +400,7 @@ mode_warning_info_to_spec(!.ModeInfo, Warning) = Spec :-
             Var, ConsId)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_conj_to_spec(mode_info, list(delayed_goal),
     schedule_culprit) = error_spec.
@@ -544,7 +546,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     )
 ].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_disj_to_spec(mode_info, merge_context, merge_errors)
     = error_spec.
@@ -602,7 +604,7 @@ merge_error_to_pieces(ModeInfo, MergeError) = Pieces :-
             InclFileName = yes
         )
     ),
-    InstPiecesList = list.map(context_inst_to_pieces(ModeInfo, InclFileName),
+    InstPiecesList = list.map(report_inst_in_context(ModeInfo, InclFileName),
         ContextsInsts),
     InstPieces = list.condense(InstPiecesList),
     SuffixPieces = [nl_indent_delta(-1)],
@@ -617,22 +619,7 @@ all_in_same_file(FileName, [Pair | Pairs]) :-
     Context = term.context(FileName, _),
     all_in_same_file(FileName, Pairs).
 
-:- func context_inst_to_pieces(mode_info, bool, pair(prog_context, mer_inst))
-    = list(format_component).
-
-context_inst_to_pieces(ModeInfo, InclFileName, Context - Inst) = Pieces :-
-    Context = context(FileName, LineNum),
-    LineNumStr = string.int_to_string(LineNum),
-    (
-        InclFileName = no,
-        ContextStr = "line " ++ LineNumStr ++ ":"
-    ;
-        InclFileName = yes,
-        ContextStr = FileName ++ ":" ++ LineNumStr ++ ":"
-    ),
-    Pieces = [fixed(ContextStr), words(inst_to_string(ModeInfo, Inst)), nl].
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_bind_var_to_spec(mode_info, var_lock_reason,
     prog_var, mer_inst, mer_inst) = error_spec.
@@ -666,12 +653,8 @@ mode_error_bind_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst) = Spec :-
             " inside more than one parallel conjunct."
     ),
     MainPieces = [words("scope error:"), words(ReasonStr), nl,
-        words("Variable"),
-        quote(mercury_var_to_name_only(VarSet, Var)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, VarInst)), suffix(","), nl,
-        words("expected instantiatedness was"),
-        words_quote(inst_to_string(ModeInfo, Inst)), suffix("."), nl],
+        words("Variable"), quote(mercury_var_to_name_only(VarSet, Var)) |
+        has_inst_expected_inst_was(ModeInfo, VarInst, Inst)],
     (
         Reason = var_lock_negation,
         VerbosePieces =
@@ -713,7 +696,7 @@ mode_error_bind_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst) = Spec :-
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_always, VerbosePieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_non_local_lambda_var_to_spec(mode_info, prog_var, mer_inst)
     = error_spec.
@@ -723,16 +706,14 @@ mode_error_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst) = Spec :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     Pieces = [words("mode error: variable"),
-        quote(mercury_var_to_name_only(VarSet, Var)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, VarInst)),
-        suffix(","), nl,
-        words("expected instantiatedness for non-local variables"),
+        quote(mercury_var_to_name_only(VarSet, Var)) |
+        has_instantiatedness(ModeInfo, VarInst, ",")] ++
+        [words("expected instantiatedness for non-local variables"),
         words("of lambda goals is"), quote("ground"), suffix("."), nl],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_in_callee_to_spec(mode_info, list(prog_var), list(mer_inst),
     pred_id, proc_id, list(mode_error_info)) = error_spec.
@@ -854,20 +835,21 @@ mode_error_higher_order_pred_var_to_spec(ModeInfo, PredOrFunc, Var, VarInst,
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
+    % Don't let the specification of the expected arity be broken up,
+    % since that would make the error message harder to read.
     (
         PredOrFunc = pf_predicate,
-        Expecting = "expecting higher-order pred inst (of arity " ++
-            int_to_string(Arity) ++ ")."
+        ExpectingPieces = [words("expecting higher-order pred inst"),
+            fixed("of arity " ++ int_to_string(Arity) ++ "."), nl]
     ;
         PredOrFunc = pf_function,
-        Expecting = "expecting higher-order func inst (of arity " ++
-            int_to_string(Arity - 1) ++ ")."
+        ExpectingPieces = [words("expecting higher-order func inst"),
+            fixed("of arity " ++ int_to_string(Arity - 1) ++ "."), nl]
     ),
     Pieces = [words("mode error: variable"),
-        quote(mercury_var_to_name_only(VarSet, Var)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, VarInst)), suffix(","), nl,
-        words(Expecting), nl],
+        quote(mercury_var_to_name_only(VarSet, Var)) |
+        has_instantiatedness(ModeInfo, VarInst, ",")] ++
+        ExpectingPieces,
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
@@ -880,10 +862,9 @@ mode_error_poly_unify_to_spec(ModeInfo, Var, VarInst) = Spec :-
     mode_info_get_varset(ModeInfo, VarSet),
     MainPieces = [words("in polymorphically-typed unification:"), nl,
         words("mode error: variable"),
-        quote(mercury_var_to_name_only(VarSet, Var)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, VarInst)), suffix(","), nl,
-        words("expected instantiatedness was"), quote("ground"),
+        quote(mercury_var_to_name_only(VarSet, Var)) |
+        has_instantiatedness(ModeInfo, VarInst, ",")] ++
+        [words("expected instantiatedness was"), quote("ground"),
         words("or"), quote("any"), suffix("."), nl],
     VerbosePieces = [words("When unifying two variables whose type"),
         words("will not be known until runtime, the variables must both"),
@@ -916,11 +897,8 @@ mode_error_var_has_inst_to_spec(ModeInfo, Var, VarInst, Inst) = Spec :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     Pieces = [words("mode error: variable"),
-        quote(mercury_var_to_name_only(VarSet, Var)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, VarInst)), suffix(","), nl,
-        words("expected instantiatedness was"),
-        words_quote(inst_to_string(ModeInfo, Inst)), suffix("."), nl],
+        quote(mercury_var_to_name_only(VarSet, Var)) |
+        has_inst_expected_inst_was(ModeInfo, VarInst, Inst)],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
@@ -934,12 +912,8 @@ mode_error_implied_mode_to_spec(ModeInfo, Var, VarInst, Inst) = Spec :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     Pieces = [words("sorry, implied modes not implemented."), nl,
-        words("Variable"),
-        quote(mercury_var_to_name_only(VarSet, Var)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, VarInst)), suffix(","), nl,
-        words("expected instantiatedness was"),
-        words_quote(inst_to_string(ModeInfo, Inst)), suffix("."), nl],
+        words("Variable"), quote(mercury_var_to_name_only(VarSet, Var)) |
+        has_inst_expected_inst_was(ModeInfo, VarInst, Inst)],
     Severity = severity_conditional(errorcheck_only, no, severity_error, no),
     Spec = error_spec(Severity, phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
@@ -1002,7 +976,7 @@ mode_error_unify_pred_to_spec(ModeInfo, X, RHS, Type, PredOrFunc) = Spec :-
             [always(Preamble ++ MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_var_to_spec(mode_info, prog_var,
     prog_var, mer_inst, mer_inst) = error_spec.
@@ -1014,16 +988,14 @@ mode_error_unify_var_var_to_spec(ModeInfo, X, Y, InstX, InstY) = Spec :-
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarSet, X)), words("and"),
         quote(mercury_var_to_name_only(VarSet, Y)), suffix("."), nl,
-        words("Variable"), quote(mercury_var_to_name_only(VarSet, X)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, InstX)), suffix(","), nl,
-        words("variable"), quote(mercury_var_to_name_only(VarSet, Y)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, InstY)), suffix("."), nl],
+        words("Variable"), quote(mercury_var_to_name_only(VarSet, X)) |
+        has_instantiatedness(ModeInfo, InstX, ",")] ++
+        [words("variable"), quote(mercury_var_to_name_only(VarSet, Y)) |
+        has_instantiatedness(ModeInfo, InstY, ".")],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_lambda_to_spec(mode_info, prog_var,
     mer_inst, mer_inst) = error_spec.
@@ -1035,15 +1007,14 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarSet, X)),
         words("and lambda expression."), nl,
-        words("Variable"), quote(mercury_var_to_name_only(VarSet, X)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, InstX)), suffix(","), nl,
-        words("lambda expression has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, InstY)), suffix("."), nl],
+        words("Variable"), quote(mercury_var_to_name_only(VarSet, X)) |
+        has_instantiatedness(ModeInfo, InstX, ",")] ++
+        [words("lambda expression") |
+        has_instantiatedness(ModeInfo, InstY, ".")],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_multimode_pred_to_spec(mode_info, prog_var,
     pred_id) = error_spec.
@@ -1093,7 +1064,7 @@ mode_error_unify_var_multimode_pred_undetermined_to_spec(ModeInfo, X, PredId)
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_unify_var_functor_to_spec(mode_info, prog_var,
     cons_id, list(prog_var), mer_inst, list(mer_inst)) = error_spec.
@@ -1106,29 +1077,19 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, Args,
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     FunctorConsIdStr = functor_cons_id_to_string(ModuleInfo, VarSet,
         print_name_only, ConsId, Args),
-    Pieces1 = [words("mode error in unification of"),
+    ConsIdStr = mercury_cons_id_to_string(does_not_need_brackets, ConsId),
+    FakeTermInst = defined_inst(user_inst(unqualified(ConsIdStr), ArgInsts)),
+    Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarSet, X)),
         words("and"), words_quote(FunctorConsIdStr), suffix("."), nl,
-        words("Variable"), quote(mercury_var_to_name_only(VarSet, X)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, InstX)), suffix(","), nl,
-        words("term"), words_quote(FunctorConsIdStr)],
-    ConsIdStr = mercury_cons_id_to_string(does_not_need_brackets, ConsId),
-    (
-        Args = [_ | _],
-        Pieces2 = [words("has instantiatedness"),
-            prefix("`"), words(ConsIdStr), suffix("("), nl_indent_delta(1)] ++
-            inst_list_to_sep_lines(ModeInfo, ArgInsts) ++
-            [fixed(")'.")]
-    ;
-        Args = [],
-        Pieces2 = [words("has instantiatedness"),
-            words(ConsIdStr), suffix("."), nl]
-    ),
+        words("Variable"), quote(mercury_var_to_name_only(VarSet, X)) |
+        has_instantiatedness(ModeInfo, InstX, ",")] ++
+        [words("term"), words_quote(FunctorConsIdStr) |
+        has_instantiatedness(ModeInfo, FakeTermInst, ".")],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context, [always(Preamble ++ Pieces1 ++ Pieces2)])]).
+        [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_nondefault_mode_func_to_spec(mode_info, prog_var,
     cons_id, list(prog_var), one_or_more(prog_var)) = error_spec.
@@ -1166,7 +1127,7 @@ mode_error_nondefault_mode_func_to_spec(ModeInfo, X, ConsId,
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_warning_cannot_succeed_var_var(mode_info,
     prog_var, prog_var, mer_inst, mer_inst) = error_spec.
@@ -1179,12 +1140,10 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
         quote(mercury_var_to_name_only(VarSet, X)),
         words("and"), quote(mercury_var_to_name_only(VarSet, Y)),
         words("cannot succeed."), nl,
-        quote(mercury_var_to_name_only(VarSet, X)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, InstX)), suffix(","), nl,
-        quote(mercury_var_to_name_only(VarSet, Y)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, InstY)), suffix("."), nl],
+        quote(mercury_var_to_name_only(VarSet, X)) |
+        has_instantiatedness(ModeInfo, InstX, ",")] ++
+        [quote(mercury_var_to_name_only(VarSet, Y)) |
+        has_instantiatedness(ModeInfo, InstY, ".")],
     Spec = error_spec(severity_warning,
         phase_mode_check(report_only_if_in_all_modes),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
@@ -1200,9 +1159,8 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
         quote(mercury_var_to_name_only(VarSet, X)), words("and"),
         words(mercury_cons_id_to_string(does_not_need_brackets, ConsId)),
         words("cannot succeed."), nl,
-        quote(mercury_var_to_name_only(VarSet, X)),
-        words("has instantiatedness"),
-        words_quote(inst_to_string(ModeInfo, InstX)), suffix("."), nl],
+        quote(mercury_var_to_name_only(VarSet, X)) |
+        has_instantiatedness(ModeInfo, InstX, ".")],
     Spec = error_spec(severity_warning,
         phase_mode_check(report_only_if_in_all_modes),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
@@ -1224,7 +1182,7 @@ mode_warning_cannot_succeed_ground_occur_check(ModeInfo, X, ConsId) = Spec :-
         phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_info_context_preamble(mode_info) = list(format_component).
 
@@ -1258,7 +1216,7 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
         [words_quote(ModeSubDeclStr), suffix(":"), nl] ++
         ModeContextPieces.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX some parts of the mode context never get set up
 
@@ -1274,23 +1232,23 @@ mode_context_to_pieces(mode_context_unify(UnifyContext, _Side), _Markers)
         = Pieces :-
     unify_context_first_to_pieces(is_not_first, _, UnifyContext, [], Pieces).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mode_context_init(mode_context_uninitialized).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func mode_error_final_inst_to_spec(mode_info, int, prog_var,
     mer_inst, mer_inst, final_inst_error) = error_spec.
 
-mode_error_final_inst_to_spec(ModeInfo, ArgNum, Var, VarInst, Inst, Reason)
+mode_error_final_inst_to_spec(ModeInfo, ArgNum, Var, VarInst, ExpInst, Reason)
         = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     (
         Reason = too_instantiated,
-        Problem = " became too instantiated."
+        Problem = "became too instantiated."
     ;
         Reason = not_instantiated_enough,
         Problem = "did not get sufficiently instantiated."
@@ -1302,15 +1260,18 @@ mode_error_final_inst_to_spec(ModeInfo, ArgNum, Var, VarInst, Inst, Reason)
     Pieces = [words("mode error: argument"), fixed(int_to_string(ArgNum)),
         words(Problem), nl,
         words("Final instantiatedness of"),
-        quote(mercury_var_to_name_only(VarSet, Var)),
-        words("was"),
-        words_quote(inst_to_string(ModeInfo, VarInst)), suffix(","), nl,
-        words("expected final instantiatedness was"),
-        words_quote(inst_to_string(ModeInfo, Inst)), suffix("."), nl],
+        quote(mercury_var_to_name_only(VarSet, Var)), words("was") |
+        report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
+            [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)], 
+            VarInst)] ++
+        [words("expected final instantiatedness was") |
+        report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
+            [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)], 
+            ExpInst)],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func purity_error_should_be_in_promise_purity_scope_to_spec(
     negated_context_desc, mode_info, prog_var) = error_spec.
@@ -1338,7 +1299,7 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func purity_error_lambda_should_be_any_to_spec(mode_info, list(prog_var))
     = error_spec.
@@ -1362,7 +1323,7 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, Vars) = Spec :-
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [Always, VerboseOnly])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 should_report_mode_warning_for_pred_origin(origin_special_pred(_, _)) = no.
 should_report_mode_warning_for_pred_origin(origin_instance_method(_, _)) = no.
@@ -1375,7 +1336,7 @@ should_report_mode_warning_for_pred_origin(origin_tabling(_, _)) = no.
 should_report_mode_warning_for_pred_origin(origin_mutable(_, _, _)) = no.
 should_report_mode_warning_for_pred_origin(origin_user(_)) = yes.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
     pred_info_get_status(PredInfo, PredStatus),
@@ -1412,7 +1373,7 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
         Specs = [Spec]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_mode_inference_messages(_, _, []) = [].
 report_mode_inference_messages(ModuleInfo, OutputDetism, [PredId | PredIds]) =
@@ -1534,7 +1495,7 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo)
             phase_mode_check(report_in_any_mode), [Msg])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
         PredId, PredInfo) = Spec :-
@@ -1558,7 +1519,7 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
             [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
         simple_msg(OldContext, [always(OldPieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mode_decl_to_string(ProcId, PredInfo) = String :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -1573,36 +1534,909 @@ mode_decl_to_string(ProcId, PredInfo) = String :-
     String = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
         InstVarSet, Name, Modes, MaybeDet).
 
-%-----------------------------------------------------------------------------%
-
-:- func inst_to_string(mode_info, mer_inst) = string.
-
-inst_to_string(ModeInfo, Inst0) = Str :-
-    strip_builtin_qualifiers_from_inst(Inst0, Inst),
-    mode_info_get_instvarset(ModeInfo, InstVarSet),
-    mode_info_get_module_info(ModeInfo, ModuleInfo),
-    Str = mercury_expanded_inst_to_string(output_debug, ModuleInfo,
-        InstVarSet, Inst).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func inst_list_to_sep_lines(mode_info, list(mer_inst))
     = list(format_component).
 
 inst_list_to_sep_lines(_ModeInfo, []) = [].
-inst_list_to_sep_lines(ModeInfo, [Inst | Insts]) = Pieces ++ MorePieces :-
+inst_list_to_sep_lines(ModeInfo, [Inst | Insts]) = Pieces :-
     (
         Insts = [],
-        Comma = [],
-        Newline = nl_indent_delta(-1)
+        Pieces = report_inst(ModeInfo, fixed_short_inst, [nl_indent_delta(-1)],
+            [], [nl_indent_delta(-1)], Inst)
     ;
         Insts = [_ | _],
-        Comma = [suffix(",")],
-        Newline = nl
-    ),
-    Pieces = [words(inst_to_string(ModeInfo, Inst))] ++ Comma ++ [Newline],
-    MorePieces = inst_list_to_sep_lines(ModeInfo, Insts).
+        HeadPieces = report_inst(ModeInfo, fixed_short_inst, [suffix(","), nl],
+            [], [suffix(","), nl], Inst),
+        TailPieces = inst_list_to_sep_lines(ModeInfo, Insts),
+        Pieces = HeadPieces ++ TailPieces
+    ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- func has_inst_expected_inst_was(mode_info, mer_inst, mer_inst)
+    = list(format_component).
+
+has_inst_expected_inst_was(ModeInfo, ActualInst, ExpectedInst) =
+    has_instantiatedness(ModeInfo, ActualInst, ",") ++
+    expected_inst_was(ModeInfo, ExpectedInst).
+
+:- func has_instantiatedness(mode_info, mer_inst, string)
+    = list(format_component).
+
+has_instantiatedness(ModeInfo, Inst, Suffix) =
+    [words("has instantiatedness") |
+        report_inst(ModeInfo, quote_short_inst, [suffix(Suffix), nl],
+            [nl_indent_delta(1)], [suffix(Suffix), nl_indent_delta(-1)],
+            Inst)].
+
+:- func expected_inst_was(mode_info, mer_inst) = list(format_component).
+
+expected_inst_was(ModeInfo, Inst) =
+    [words("expected instantiatedness was") |
+        report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
+            [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)], Inst)].
+
+%---------------------------------------------------------------------------%
+
+:- func report_inst_in_context(mode_info, bool, pair(prog_context, mer_inst))
+    = list(format_component).
+
+report_inst_in_context(ModeInfo, InclFileName, Context - Inst) = Pieces :-
+    Context = context(FileName, LineNum),
+    LineNumStr = string.int_to_string(LineNum),
+    (
+        InclFileName = no,
+        ContextStr = "line " ++ LineNumStr ++ ":"
+    ;
+        InclFileName = yes,
+        ContextStr = FileName ++ ":" ++ LineNumStr ++ ":"
+    ),
+    Pieces = [fixed(ContextStr), nl_indent_delta(1) |
+        report_inst(ModeInfo, fixed_short_inst, [nl_indent_delta(-1)],
+            [], [nl_indent_delta(-1)], Inst)].
+
+%---------------------------------------------------------------------------%
+
+:- type short_inst
+    --->    quote_short_inst
+    ;       fixed_short_inst.
+
+    % report_inst(ModeInfo, ShortInstQF, ShortInstSuffix,
+    %    LongInstPrefix, LongInstSuffix, Inst0) = Pieces:
+    %
+    % Format Inst0 for use in an error message, in a short form that fits at
+    % the end of the current line if possible, and in a long form that starts
+    % on a separate line, if it is not.
+    %
+    % When using the short form, put the inst's text representation into quotes
+    % if ShortInstSuffix = quote_short_inst. Don't put anything before it
+    % (our caller will do that), but add ShortInstSuffix after it. Normally,
+    % ShortInstSuffix will end with either nl or nl_indent_delta.
+    %
+    % When using the long form, leave the inst's text representation as is,
+    % without quotations, put LongInstPrefix before it, and LongInstSuffix
+    % after it. Normally, LongInstPrefix will start with nl or nl_indent_delta
+    % to start the inst on a new line, and LongInstSuffix will end with nl
+    % or nl_indent_delta as well.
+    %
+:- func report_inst(mode_info, short_inst,
+    list(format_component), list(format_component), list(format_component),
+    mer_inst) = list(format_component).
+
+report_inst(ModeInfo, ShortInstQF, ShortInstSuffix,
+        LongInstPrefix, LongInstSuffix, Inst0) = Pieces :-
+    strip_builtin_qualifiers_from_inst(Inst0, Inst),
+    set.init(Expansions0),
+    InlinePieces = inst_to_inline_pieces(ModeInfo, Expansions0, Inst, []),
+    InlineStr = error_pieces_to_string(InlinePieces),
+    % We could base the decision on whether to put the inst inline
+    % on criteria other than its length, such as
+    %
+    % - on a count of the parentheses in it (which would effectively be
+    %   a test of the inst's depth);
+    % - on a count of the commas in it (which would effectively be a test of the
+    %   number of arguments in the inst); or
+    % - on a composite test, such as "the number of left parentheses
+    %   plus the number of commas cannot exceed six".
+    %
+    % The current test is just a guess; experience will give us feedback.
+    ( if
+        string.length(InlineStr, Len),
+        Len < 40
+    then
+        (
+            ShortInstQF = quote_short_inst,
+            % An inst that is shown on the same line as English text needs
+            % something to visually separate it from the English text.
+            % The quotes provide that separation.
+            %
+            % Without a small length limit, we would use words_quote instead of
+            % quote to wrap InlineStr.
+            InlinePiece = quote(InlineStr)
+        ;
+            % Our caller has told us that it ensured this separation already.
+            ShortInstQF = fixed_short_inst,
+            InlinePiece = fixed(InlineStr)
+        ),
+        Pieces = [InlinePiece | ShortInstSuffix]
+    else
+        % Showing the inst on a separate line from the English text
+        % provides enough separation by itself.
+        Pieces = LongInstPrefix ++
+            inst_to_pieces(ModeInfo, Expansions0, Inst, LongInstSuffix)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% The following functions are sort-of duplicated. The functions whose names
+% end in "to_pieces" generate output that put different parts of the inst
+% on (mostly) separate lines, showing the structure of the inst through
+% indentation. The functions whose names end in "to_inline_pieces" generate
+% output that contains the same components, but all on one line.
+%
+
+:- func inst_to_pieces(mode_info, set(inst_name), mer_inst,
+    list(format_component)) = list(format_component).
+
+inst_to_pieces(ModeInfo, Expansions0, Inst, Suffix) = Pieces :-
+    (
+        ( Inst = free
+        ; Inst = free(_)
+        ),
+        Pieces = [fixed("free") | Suffix]
+    ;
+        Inst = bound(Uniq, _, BoundInsts),
+        mercury_format_uniqueness(Uniq, "bound", "", BoundName),
+        (
+            BoundInsts = [],
+            Pieces = [fixed(BoundName) | Suffix]
+        ;
+            BoundInsts = [HeadBoundInst | TailBoundInsts],
+            BoundPieces = bound_insts_to_pieces(ModeInfo, Expansions0,
+                HeadBoundInst, TailBoundInsts, [nl_indent_delta(-1)]),
+            Pieces = [fixed(BoundName), suffix("("), nl_indent_delta(1) |
+                BoundPieces] ++ [fixed(")") | Suffix]
+        )
+    ;
+        Inst = ground(Uniq, HOInstInfo),
+        (
+            HOInstInfo = higher_order(PredInstInfo),
+            HOPieces = pred_inst_info_to_pieces(ModeInfo, Expansions0,
+                "", Uniq, PredInstInfo),
+            Pieces = HOPieces ++ Suffix
+        ;
+            HOInstInfo = none_or_default_func,
+            mercury_format_uniqueness(Uniq, "ground", "", Str),
+            Pieces = [fixed(Str) | Suffix]
+        )
+    ;
+        Inst = any(Uniq, HOInstInfo),
+        (
+            HOInstInfo = higher_order(PredInstInfo),
+            HOPieces = pred_inst_info_to_pieces(ModeInfo, Expansions0,
+                "any_", Uniq, PredInstInfo),
+            Pieces = HOPieces ++ Suffix
+        ;
+            HOInstInfo = none_or_default_func,
+            mercury_format_any_uniqueness(Uniq, "", Str),
+            Pieces = [fixed(Str) | Suffix]
+        )
+    ;
+        Inst = inst_var(Var),
+        mode_info_get_instvarset(ModeInfo, InstVarSet),
+        mercury_format_var(InstVarSet, print_name_only, Var, "", Name),
+        Pieces = [fixed(Name) | Suffix]
+    ;
+        Inst = constrained_inst_vars(Vars, ConstrainedInst),
+        mode_info_get_instvarset(ModeInfo, InstVarSet),
+        mercury_format_vars(InstVarSet, print_name_only,
+            set.to_sorted_list(Vars), "", Names),
+        Pieces = [fixed("("), words(Names), fixed("=<") |
+            inst_to_pieces(ModeInfo, Expansions0, ConstrainedInst,
+                [fixed(")") | Suffix])]
+    ;
+        Inst = abstract_inst(Name, ArgInsts),
+        InstName = user_inst(Name, ArgInsts),
+        Pieces = inst_name_to_pieces(ModeInfo, Expansions0, InstName, Suffix)
+    ;
+        Inst = defined_inst(InstName),
+        Pieces = inst_name_to_pieces(ModeInfo, Expansions0, InstName, Suffix)
+    ;
+        Inst = not_reached,
+        Pieces = [fixed("not_reached") | Suffix]
+    ).
+
+:- func inst_to_inline_pieces(mode_info, set(inst_name), mer_inst,
+    list(format_component)) = list(format_component).
+
+inst_to_inline_pieces(ModeInfo, Expansions0, Inst, Suffix) = Pieces :-
+    (
+        ( Inst = free
+        ; Inst = free(_)
+        ),
+        Pieces = [fixed("free") | Suffix]
+    ;
+        Inst = bound(Uniq, _, BoundInsts),
+        mercury_format_uniqueness(Uniq, "bound", "", BoundName),
+        (
+            BoundInsts = [],
+            Pieces = [fixed(BoundName) | Suffix]
+        ;
+            BoundInsts = [HeadBoundInst | TailBoundInsts],
+            BoundPieces = bound_insts_to_inline_pieces(ModeInfo, Expansions0,
+                HeadBoundInst, TailBoundInsts, []),
+            Pieces = [prefix(BoundName ++ "(") | BoundPieces] ++
+                [suffix(")") | Suffix]
+        )
+    ;
+        Inst = ground(Uniq, HOInstInfo),
+        (
+            HOInstInfo = higher_order(PredInstInfo),
+            HOPieces = pred_inst_info_to_inline_pieces(ModeInfo, Expansions0,
+                "", Uniq, PredInstInfo),
+            Pieces = HOPieces ++ Suffix
+        ;
+            HOInstInfo = none_or_default_func,
+            mercury_format_uniqueness(Uniq, "ground", "", Str),
+            Pieces = [fixed(Str) | Suffix]
+        )
+    ;
+        Inst = any(Uniq, HOInstInfo),
+        (
+            HOInstInfo = higher_order(PredInstInfo),
+            HOPieces = pred_inst_info_to_inline_pieces(ModeInfo, Expansions0,
+                "any_", Uniq, PredInstInfo),
+            Pieces = HOPieces ++ Suffix
+        ;
+            HOInstInfo = none_or_default_func,
+            mercury_format_any_uniqueness(Uniq, "", Str),
+            Pieces = [fixed(Str) | Suffix]
+        )
+    ;
+        Inst = inst_var(Var),
+        mode_info_get_instvarset(ModeInfo, InstVarSet),
+        mercury_format_var(InstVarSet, print_name_only, Var, "", Name),
+        Pieces = [fixed(Name) | Suffix]
+    ;
+        Inst = constrained_inst_vars(Vars, ConstrainedInst),
+        mode_info_get_instvarset(ModeInfo, InstVarSet),
+        mercury_format_vars(InstVarSet, print_name_only,
+            set.to_sorted_list(Vars), "", Names),
+        Pieces = [fixed("("), words(Names), fixed("=<") |
+            inst_to_inline_pieces(ModeInfo, Expansions0, ConstrainedInst,
+                [fixed(")") | Suffix])]
+    ;
+        Inst = abstract_inst(Name, ArgInsts),
+        InstName = user_inst(Name, ArgInsts),
+        Pieces = inst_name_to_inline_pieces(ModeInfo, Expansions0,
+            InstName, Suffix)
+    ;
+        Inst = defined_inst(InstName),
+        Pieces = inst_name_to_inline_pieces(ModeInfo, Expansions0,
+            InstName, Suffix)
+    ;
+        Inst = not_reached,
+        Pieces = [fixed("not_reached") | Suffix]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- func insts_to_pieces(mode_info, set(inst_name),
+    mer_inst, list(mer_inst), list(format_component)) = list(format_component).
+
+insts_to_pieces(ModeInfo, Expansions0, HeadInst, TailInsts, Suffix) = Pieces :-
+    (
+        TailInsts = [],
+        HeadSuffix = Suffix
+    ;
+        TailInsts = [HeadTailInst | TailTailInsts],
+        TailPieces = insts_to_pieces(ModeInfo, Expansions0,
+            HeadTailInst, TailTailInsts, Suffix),
+        HeadSuffix = [suffix(","), nl] ++ TailPieces
+    ),
+    Pieces = inst_to_pieces(ModeInfo, Expansions0, HeadInst, HeadSuffix).
+
+:- func insts_to_inline_pieces(mode_info, set(inst_name),
+    mer_inst, list(mer_inst), list(format_component)) = list(format_component).
+
+insts_to_inline_pieces(ModeInfo, Expansions0, HeadInst, TailInsts, Suffix)
+        = Pieces :-
+    (
+        TailInsts = [],
+        HeadSuffix = Suffix
+    ;
+        TailInsts = [HeadTailInst | TailTailInsts],
+        TailPieces = insts_to_inline_pieces(ModeInfo, Expansions0,
+            HeadTailInst, TailTailInsts, Suffix),
+        HeadSuffix = [suffix(",")] ++ TailPieces
+    ),
+    Pieces = inst_to_inline_pieces(ModeInfo, Expansions0, HeadInst,
+        HeadSuffix).
+
+%---------------------------------------------------------------------------%
+
+:- func bound_insts_to_pieces(mode_info, set(inst_name),
+    bound_inst, list(bound_inst), list(format_component))
+    = list(format_component).
+
+bound_insts_to_pieces(ModeInfo, Expansions0, HeadBoundInst, TailBoundInsts,
+        Suffix) = Pieces :-
+    (
+        TailBoundInsts = [],
+        HeadSuffix = Suffix
+    ;
+        TailBoundInsts = [HeadTailBoundInst | TailTailBoundInsts],
+        TailPieces = bound_insts_to_pieces(ModeInfo, Expansions0,
+            HeadTailBoundInst, TailTailBoundInsts, Suffix),
+        HeadSuffix = [nl_indent_delta(-1), fixed(";"), nl_indent_delta(1) |
+            TailPieces]
+    ),
+    HeadBoundInst = bound_functor(ConsId0, ArgInsts),
+    ( if
+        ConsId0 = cons(SymName, Arity, TypeCtor),
+        % The module names of the cons_ids are uniquely specified
+        % by the types of the variables whose we are printing. Printing them
+        % would therefore generate more clutter than enlightenment.
+        SymName = qualified(_ModuleName, BaseName)
+    then
+        ConsId = cons(unqualified(BaseName), Arity, TypeCtor)
+    else
+        ConsId = ConsId0
+    ),
+    mercury_format_cons_id(does_not_need_brackets, ConsId, "", ConsIdStr),
+    Pieces = name_and_arg_insts_to_pieces(ModeInfo, Expansions0,
+        ConsIdStr, ArgInsts, HeadSuffix).
+
+:- func bound_insts_to_inline_pieces(mode_info, set(inst_name),
+    bound_inst, list(bound_inst), list(format_component))
+    = list(format_component).
+
+bound_insts_to_inline_pieces(ModeInfo, Expansions0,
+        HeadBoundInst, TailBoundInsts, Suffix) = Pieces :-
+    (
+        TailBoundInsts = [],
+        HeadSuffix = Suffix
+    ;
+        TailBoundInsts = [HeadTailBoundInst | TailTailBoundInsts],
+        TailPieces = bound_insts_to_inline_pieces(ModeInfo, Expansions0,
+            HeadTailBoundInst, TailTailBoundInsts, Suffix),
+        HeadSuffix = [fixed(";") | TailPieces]
+    ),
+    HeadBoundInst = bound_functor(ConsId0, ArgInsts),
+    ( if
+        ConsId0 = cons(SymName, Arity, TypeCtor),
+        % The module names of the cons_ids are uniquely specified
+        % by the types of the variables whose we are printing. Printing them
+        % would therefore generate more clutter than enlightenment.
+        SymName = qualified(_ModuleName, BaseName)
+    then
+        ConsId = cons(unqualified(BaseName), Arity, TypeCtor)
+    else
+        ConsId = ConsId0
+    ),
+    mercury_format_cons_id(does_not_need_brackets, ConsId, "", ConsIdStr),
+    Pieces = name_and_arg_insts_to_inline_pieces(ModeInfo, Expansions0,
+        ConsIdStr, ArgInsts, HeadSuffix).
+
+%---------------------------------------------------------------------------%
+
+:- func inst_name_to_pieces(mode_info, set(inst_name), inst_name,
+    list(format_component)) = list(format_component).
+
+inst_name_to_pieces(ModeInfo, Expansions0, InstName, Suffix) = Pieces :-
+    (
+        InstName = user_inst(SymName, ArgInsts),
+        mode_info_get_module_info(ModeInfo, ModuleInfo),
+        (
+            SymName = qualified(ModuleName, BaseName),
+            module_info_get_name(ModuleInfo, CurModuleName),
+            ( if ModuleName = CurModuleName then
+                SymNameStr = BaseName
+            else
+                SymNameStr = sym_name_to_string(SymName)
+            )
+        ;
+            SymName = unqualified(BaseName),
+            SymNameStr = BaseName
+        ),
+        set.insert(InstName, Expansions0, Expansions1),
+        % We do the circularity check by looking up InstName in Expansions0,
+        % but do everything else with Expansions1.
+        ( if set.contains(Expansions0, InstName) then
+            NamePieces = name_and_arg_insts_to_pieces(ModeInfo, Expansions1,
+                SymNameStr, ArgInsts, Suffix),
+            Pieces = [words("named inst") | NamePieces]
+        else
+            inst_lookup(ModuleInfo, InstName, EqvInst),
+            ( if
+                ( EqvInst = defined_inst(InstName)
+                ; EqvInst = abstract_inst(SymName, ArgInsts)
+                )
+            then
+                NamePieces = name_and_arg_insts_to_pieces(ModeInfo,
+                    Expansions1, SymNameStr, ArgInsts, Suffix),
+                Pieces = [words("named inst") | NamePieces]
+            else
+                NamePieces = name_and_arg_insts_to_pieces(ModeInfo,
+                    Expansions1, SymNameStr, ArgInsts, [suffix(","), nl]),
+                ExpandedPieces = inst_to_pieces(ModeInfo,
+                    Expansions1, EqvInst, Suffix),
+                Pieces = [words("named inst") | NamePieces] ++
+                    [words("which expands to"), nl | ExpandedPieces]
+            )
+        )
+    ;
+        InstName = typed_inst(_Type, SubInstName),
+        % The user doesn't care about the typed_inst wrapper.
+        Pieces = inst_name_to_pieces(ModeInfo, Expansions0, SubInstName,
+            Suffix)
+    ;
+        InstName = typed_ground(Uniq, _Type),
+        % The user doesn't care about the typed_ground wrapper.
+        EqvInst = ground(Uniq, none_or_default_func),
+        Pieces = inst_to_pieces(ModeInfo, Expansions0, EqvInst, Suffix)
+    ;
+        (
+            InstName = unify_inst(_, _, _, _),
+            InstNameStr = "$unify_inst"
+        ;
+            InstName = merge_inst(_, _),
+            InstNameStr = "$merge_inst"
+        ;
+            InstName = ground_inst(_, _, _, _),
+            InstNameStr = "$ground_inst"
+        ;
+            InstName = any_inst(_, _, _, _),
+            InstNameStr = "$any_inst"
+        ;
+            InstName = shared_inst(_),
+            InstNameStr = "$shared_inst"
+        ;
+            InstName = mostly_uniq_inst(_),
+            InstNameStr = "$mostly_uniq_inst"
+        ),
+        mode_info_get_module_info(ModeInfo, ModuleInfo),
+        inst_lookup(ModuleInfo, InstName, EqvInst),
+        ( if EqvInst = defined_inst(InstName) then
+            Pieces = [fixed(InstNameStr) | Suffix]
+        else
+            Pieces = inst_to_pieces(ModeInfo, Expansions0, EqvInst, Suffix)
+        )
+    ).
+
+:- func inst_name_to_inline_pieces(mode_info, set(inst_name), inst_name,
+    list(format_component)) = list(format_component).
+
+inst_name_to_inline_pieces(ModeInfo, Expansions0, InstName, Suffix) = Pieces :-
+    (
+        InstName = user_inst(SymName, ArgInsts),
+        mode_info_get_module_info(ModeInfo, ModuleInfo),
+        (
+            SymName = qualified(ModuleName, BaseName),
+            module_info_get_name(ModuleInfo, CurModuleName),
+            ( if ModuleName = CurModuleName then
+                SymNameStr = BaseName
+            else
+                SymNameStr = sym_name_to_string(SymName)
+            )
+        ;
+            SymName = unqualified(BaseName),
+            SymNameStr = BaseName
+        ),
+        set.insert(InstName, Expansions0, Expansions1),
+        % We do the circularity check by looking up InstName in Expansions0,
+        % but do everything else with Expansions1.
+        ( if set.contains(Expansions0, InstName) then
+            NamePieces = name_and_arg_insts_to_inline_pieces(ModeInfo,
+                Expansions1, SymNameStr, ArgInsts, Suffix),
+            Pieces = [words("named inst") | NamePieces]
+        else
+            inst_lookup(ModuleInfo, InstName, EqvInst),
+            ( if
+                ( EqvInst = defined_inst(InstName)
+                ; EqvInst = abstract_inst(SymName, ArgInsts)
+                )
+            then
+                NamePieces = name_and_arg_insts_to_inline_pieces(ModeInfo,
+                    Expansions1, SymNameStr, ArgInsts, Suffix),
+                Pieces = [words("named inst") | NamePieces]
+            else
+                NamePieces = name_and_arg_insts_to_inline_pieces(ModeInfo,
+                    Expansions1, SymNameStr, ArgInsts, [suffix(","), nl]),
+                ExpandedPieces = inst_to_inline_pieces(ModeInfo,
+                    Expansions1, EqvInst, Suffix),
+                Pieces = [words("named inst") | NamePieces] ++
+                    [words("which expands to"), nl | ExpandedPieces]
+            )
+        )
+    ;
+        InstName = typed_inst(_Type, SubInstName),
+        % The user doesn't care about the typed_inst wrapper.
+        Pieces = inst_name_to_inline_pieces(ModeInfo, Expansions0, SubInstName,
+            Suffix)
+    ;
+        InstName = typed_ground(Uniq, _Type),
+        % The user doesn't care about the typed_ground wrapper.
+        EqvInst = ground(Uniq, none_or_default_func),
+        Pieces = inst_to_inline_pieces(ModeInfo, Expansions0, EqvInst, Suffix)
+    ;
+        (
+            InstName = unify_inst(_, _, _, _),
+            InstNameStr = "$unify_inst"
+        ;
+            InstName = merge_inst(_, _),
+            InstNameStr = "$merge_inst"
+        ;
+            InstName = ground_inst(_, _, _, _),
+            InstNameStr = "$ground_inst"
+        ;
+            InstName = any_inst(_, _, _, _),
+            InstNameStr = "$any_inst"
+        ;
+            InstName = shared_inst(_),
+            InstNameStr = "$shared_inst"
+        ;
+            InstName = mostly_uniq_inst(_),
+            InstNameStr = "$mostly_uniq_inst"
+        ),
+        mode_info_get_module_info(ModeInfo, ModuleInfo),
+        inst_lookup(ModuleInfo, InstName, EqvInst),
+        ( if EqvInst = defined_inst(InstName) then
+            Pieces = [fixed(InstNameStr) | Suffix]
+        else
+            Pieces = inst_to_inline_pieces(ModeInfo, Expansions0,
+                EqvInst, Suffix)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- func pred_inst_info_to_pieces(mode_info, set(inst_name), string,
+    uniqueness, pred_inst_info) = list(format_component).
+
+pred_inst_info_to_pieces(ModeInfo, Expansions0, AnyPrefix, Uniq,
+        PredInstInfo) = Pieces :-
+    PredInstInfo = pred_inst_info(PredOrFunc, ArgModes, _MaybeArgRegs, Det),
+    (
+        Uniq = shared,
+        UniqPieces = []
+    ;
+        ( Uniq = unique
+        ; Uniq = mostly_unique
+        ; Uniq = clobbered
+        ; Uniq = mostly_clobbered
+        ),
+        mercury_format_uniqueness(Uniq, "ground", "", BoundName),
+        UniqPieces = [fixed("/*"), fixed(BoundName), fixed("*/")]
+    ),
+    ArgModesPieces = list.map(mode_to_pieces(ModeInfo, Expansions0), ArgModes),
+    mercury_format_det(Det, "is ", IsDetStr),
+    % XXX Should we print each argument mode on a separate line?
+    (
+        PredOrFunc = pf_predicate,
+        (
+            ArgModes = [],
+            ModesDetPieces = [fixed("(" ++ AnyPrefix ++ "pred"),
+                fixed(IsDetStr), suffix(")")]
+        ;
+            ArgModes = [_ | _],
+            JoinedArgModePieces =
+                strict_component_lists_to_pieces(ArgModesPieces),
+            ModesDetPieces = [prefix("(" ++ AnyPrefix ++ "pred(") |
+                JoinedArgModePieces] ++
+                [suffix(")"), fixed(IsDetStr), suffix(")")]
+        )
+    ;
+        PredOrFunc = pf_function,
+        pred_args_to_func_args(ArgModesPieces,
+            RealArgModesPieces, RetModePieces),
+        JoinedRealArgModePieces =
+            component_list_to_line_pieces(RealArgModesPieces, []),
+        % XXX Should we put parentheses around RetModePieces?
+        % If it prints as "InitInst >> FinalInst", then the parentheses
+        % could make the output easier to read, but if it prints as a
+        % simple name, they would probably be just in the way.
+        (
+            ArgModes = [],
+            ModesDetPieces = [fixed("(" ++ AnyPrefix ++ "func =") |
+                RetModePieces] ++
+                [fixed(IsDetStr), suffix(")")]
+        ;
+            ArgModes = [_ | _],
+            ModesDetPieces = [fixed("(" ++ AnyPrefix ++ "func("),
+                nl_indent_delta(1) |
+                JoinedRealArgModePieces] ++
+                [nl_indent_delta(-1), fixed(") =") | RetModePieces] ++
+                [fixed(IsDetStr), suffix(")")]
+        )
+    ),
+    Pieces = UniqPieces ++ ModesDetPieces.
+
+:- func pred_inst_info_to_inline_pieces(mode_info, set(inst_name), string,
+    uniqueness, pred_inst_info) = list(format_component).
+
+pred_inst_info_to_inline_pieces(ModeInfo, Expansions0, AnyPrefix, Uniq,
+        PredInstInfo) = Pieces :-
+    PredInstInfo = pred_inst_info(PredOrFunc, ArgModes, _MaybeArgRegs, Det),
+    (
+        Uniq = shared,
+        UniqPieces = []
+    ;
+        ( Uniq = unique
+        ; Uniq = mostly_unique
+        ; Uniq = clobbered
+        ; Uniq = mostly_clobbered
+        ),
+        mercury_format_uniqueness(Uniq, "ground", "", BoundName),
+        UniqPieces = [fixed("/*"), fixed(BoundName), fixed("*/")]
+    ),
+    ArgModesPieces =
+        list.map(mode_to_inline_pieces(ModeInfo, Expansions0), ArgModes),
+    mercury_format_det(Det, "is ", IsDetStr),
+    (
+        PredOrFunc = pf_predicate,
+        (
+            ArgModes = [],
+            ModesDetPieces = [fixed("(" ++ AnyPrefix ++ "pred"),
+                fixed(IsDetStr), suffix(")")]
+        ;
+            ArgModes = [_ | _],
+            JoinedArgModePieces =
+                strict_component_lists_to_pieces(ArgModesPieces),
+            ModesDetPieces = [prefix("(" ++ AnyPrefix ++ "pred(") |
+                JoinedArgModePieces] ++
+                [suffix(")"), fixed(IsDetStr), suffix(")")]
+        )
+    ;
+        PredOrFunc = pf_function,
+        pred_args_to_func_args(ArgModesPieces,
+            RealArgModesPieces, RetModePieces),
+        JoinedRealArgModePieces =
+            strict_component_lists_to_pieces(RealArgModesPieces),
+        % XXX Should we put parentheses around RetModePieces?
+        % If it prints as "InitInst >> FinalInst", then the parentheses
+        % could make the output easier to read, but if it prints as a
+        % simple name, they would probably be just in the way.
+        (
+            ArgModes = [],
+            ModesDetPieces = [fixed("(" ++ AnyPrefix ++ "func =") |
+                RetModePieces] ++
+                [fixed(IsDetStr), suffix(")")]
+        ;
+            ArgModes = [_ | _],
+            ModesDetPieces = [prefix("(" ++ AnyPrefix ++ "func(") |
+                JoinedRealArgModePieces] ++
+                [suffix(")"), fixed("=") | RetModePieces] ++
+                [fixed(IsDetStr), suffix(")")]
+        )
+    ),
+    Pieces = UniqPieces ++ ModesDetPieces.
+
+%---------------------------------------------------------------------------%
+
+:- func mode_to_pieces(mode_info, set(inst_name), mer_mode)
+    = list(format_component).
+
+mode_to_pieces(ModeInfo, Expansions0, Mode) = Pieces :-
+    (
+        Mode = (InitInst0 -> FinalInst0),
+        % XXX We should strip these wrappers everywhere in both insts,
+        % not just at the top.
+        ( if InitInst0 = defined_inst(typed_inst(_, SubInitInstName)) then
+            InitInst = defined_inst(SubInitInstName)
+        else
+            InitInst = InitInst0
+        ),
+        ( if FinalInst0 = defined_inst(typed_inst(_, SubFinalInstName)) then
+            FinalInst = defined_inst(SubFinalInstName)
+        else
+            FinalInst = FinalInst0
+        ),
+        % XXX Should we special case the situation where InitInst = FinalInst?
+        ( if
+            InitInst = ground(shared, none_or_default_func),
+            FinalInst = ground(shared, none_or_default_func)
+        then
+            Pieces = [fixed("in")]
+        else if
+            InitInst = free,
+            FinalInst = ground(shared, none_or_default_func)
+        then
+            Pieces = [fixed("out")]
+        else if
+            InitInst = ground(unique, none_or_default_func),
+            FinalInst = ground(clobbered, none_or_default_func)
+        then
+            Pieces = [fixed("di")]
+        else if
+            InitInst = ground(unique, none_or_default_func),
+            FinalInst = ground(unique, none_or_default_func)
+        then
+            Pieces = [fixed("ui")]
+        else if
+            InitInst = free,
+            FinalInst = ground(unique, none_or_default_func)
+        then
+            Pieces = [fixed("uo")]
+        else if
+            InitInst = ground(mostly_unique, none_or_default_func),
+            FinalInst = ground(mostly_clobbered, none_or_default_func)
+        then
+            Pieces = [fixed("mdi")]
+        else if
+            InitInst = ground(mostly_unique, none_or_default_func),
+            FinalInst = ground(mostly_unique, none_or_default_func)
+        then
+            Pieces = [fixed("mui")]
+        else if
+            InitInst = free,
+            FinalInst = ground(mostly_unique, none_or_default_func)
+        then
+            Pieces = [fixed("muo")]
+        else
+            InitPieces = inst_to_pieces(ModeInfo, Expansions0, InitInst, []),
+            FinalPieces = inst_to_pieces(ModeInfo, Expansions0, FinalInst, []),
+            Pieces = InitPieces ++ [fixed(">>") | FinalPieces]
+        )
+    ;
+        Mode = user_defined_mode(ModeName, ArgInsts),
+        BaseModeName = unqualify_name(ModeName),
+        (
+            ArgInsts = [],
+            Pieces = [fixed(BaseModeName)]
+        ;
+            ArgInsts = [_ | _],
+            ArgInstPieces = list.map(
+                arg_inst_to_pieces(ModeInfo, Expansions0), ArgInsts),
+            Pieces =
+                [prefix(BaseModeName ++ "(") |
+                    strict_component_lists_to_pieces(ArgInstPieces)] ++
+                    [suffix(")")]
+        )
+    ).
+
+:- func mode_to_inline_pieces(mode_info, set(inst_name), mer_mode)
+    = list(format_component).
+
+mode_to_inline_pieces(ModeInfo, Expansions0, Mode) = Pieces :-
+    (
+        Mode = (InitInst0 -> FinalInst0),
+        % XXX We should strip these wrappers everywhere in both insts,
+        % not just at the top.
+        ( if InitInst0 = defined_inst(typed_inst(_, SubInitInstName)) then
+            InitInst = defined_inst(SubInitInstName)
+        else
+            InitInst = InitInst0
+        ),
+        ( if FinalInst0 = defined_inst(typed_inst(_, SubFinalInstName)) then
+            FinalInst = defined_inst(SubFinalInstName)
+        else
+            FinalInst = FinalInst0
+        ),
+        % XXX Should we special case the expanded versions of other
+        % "builtin" modes?
+        % XXX Should we special case the situation where InitInst = FinalInst?
+        ( if
+            InitInst = ground(shared, none_or_default_func),
+            FinalInst = ground(shared, none_or_default_func)
+        then
+            Pieces = [fixed("in")]
+        else if
+            InitInst = ground(unique, none_or_default_func),
+            FinalInst = ground(clobbered, none_or_default_func)
+        then
+            Pieces = [fixed("di")]
+        else if
+            InitInst = free,
+            FinalInst = ground(shared, none_or_default_func)
+        then
+            Pieces = [fixed("out")]
+        else if
+            InitInst = free,
+            FinalInst = ground(unique, none_or_default_func)
+        then
+            Pieces = [fixed("uo")]
+        else
+            InitPieces = inst_to_inline_pieces(ModeInfo, Expansions0,
+                InitInst, []),
+            FinalPieces = inst_to_inline_pieces(ModeInfo, Expansions0,
+                FinalInst, []),
+            Pieces = InitPieces ++ [fixed(">>") | FinalPieces]
+        )
+    ;
+        Mode = user_defined_mode(ModeName, ArgInsts),
+        BaseModeName = unqualify_name(ModeName),
+        (
+            ArgInsts = [],
+            Pieces = [fixed(BaseModeName)]
+        ;
+            ArgInsts = [_ | _],
+            ArgInstPieces = list.map(
+                arg_inst_to_inline_pieces(ModeInfo, Expansions0), ArgInsts),
+            Pieces =
+                [prefix(BaseModeName ++ "(") |
+                    strict_component_lists_to_pieces(ArgInstPieces)] ++
+                    [suffix(")")]
+        )
+    ).
+
+:- func arg_inst_to_pieces(mode_info, set(inst_name), mer_inst)
+    = list(format_component).
+
+arg_inst_to_pieces(ModeInfo, Expansions0, Inst) =
+    inst_to_pieces(ModeInfo, Expansions0, Inst, []).
+
+:- func arg_inst_to_inline_pieces(mode_info, set(inst_name), mer_inst)
+    = list(format_component).
+
+arg_inst_to_inline_pieces(ModeInfo, Expansions0, Inst) =
+    inst_to_inline_pieces(ModeInfo, Expansions0, Inst, []).
+
+%---------------------------------------------------------------------------%
+
+:- func name_and_arg_insts_to_pieces(mode_info, set(inst_name),
+    string, list(mer_inst), list(format_component)) = list(format_component).
+
+name_and_arg_insts_to_pieces(ModeInfo, Expansions0, Name, ArgInsts, Suffix)
+        = Pieces :-
+    (
+        ArgInsts = [],
+        Pieces = [fixed(Name) | Suffix]
+    ;
+        ArgInsts = [HeadArgInst | TailArgInsts],
+        ArgPieces = insts_to_pieces(ModeInfo, Expansions0,
+            HeadArgInst, TailArgInsts, [nl_indent_delta(-1)]),
+        ( if
+            summarize_a_few_arg_insts(ArgPieces, 4, ArgSummary)
+        then
+            Pieces = [fixed(Name), suffix("(" ++ ArgSummary ++ ")") | Suffix]
+        else
+            Pieces = [fixed(Name), suffix("("), nl_indent_delta(1)] ++
+                ArgPieces ++ [fixed(")") | Suffix]
+        )
+    ).
+
+:- func name_and_arg_insts_to_inline_pieces(mode_info, set(inst_name),
+    string, list(mer_inst), list(format_component)) = list(format_component).
+
+name_and_arg_insts_to_inline_pieces(ModeInfo, Expansions0, Name, ArgInsts,
+        Suffix) = Pieces :-
+    (
+        ArgInsts = [],
+        Pieces = [fixed(Name) | Suffix]
+    ;
+        ArgInsts = [HeadArgInst | TailArgInsts],
+        ArgPieces = insts_to_inline_pieces(ModeInfo, Expansions0,
+            HeadArgInst, TailArgInsts, []),
+        ( if
+            summarize_a_few_arg_insts(ArgPieces, 4, ArgSummary)
+        then
+            Pieces = [fixed(Name ++ "(" ++ ArgSummary ++ ")") | Suffix]
+        else
+            Pieces = [prefix(Name ++ "(") | ArgPieces] ++
+                [suffix(")") | Suffix]
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred summarize_a_few_arg_insts(list(format_component)::in,
+    int::in, string::out) is semidet.
+
+summarize_a_few_arg_insts(Pieces, Left, Summary) :-
+    Left > 0,
+    Pieces = [fixed(FirstFixed) | AfterFirstFixed],
+    (
+        AfterFirstFixed = [nl_indent_delta(-1)],
+        Summary = FirstFixed
+    ;
+        AfterFirstFixed = [suffix(","), nl |  TailPieces],
+        summarize_a_few_arg_insts(TailPieces, Left - 1, TailSummary),
+        Summary = FirstFixed ++ ", " ++ TailSummary
+    ).
+
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.mode_errors.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

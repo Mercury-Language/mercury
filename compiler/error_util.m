@@ -397,7 +397,13 @@
     %
 :- func list_to_pieces(list(string)) = list(format_component).
 
-    % As above, but surround each string by `' quotes.
+    % Convert a list of strings into a list of format_components
+    % separated by commas. Even the last pair of strings will be
+    % separated by commas.
+    %
+:- func strict_list_to_pieces(list(string)) = list(format_component).
+
+    % As list_to_pieces, but surround each string by `' quotes.
     %
 :- func list_to_quoted_pieces(list(string)) = list(format_component).
 
@@ -412,10 +418,24 @@
 :- func component_lists_to_pieces(list(list(format_component))) =
     list(format_component).
 
+    % Convert a list of lists of format_components into a list of
+    % format_components separated by commas. Even the last pair of lists
+    % will be separated by commas.
+    %
+:- func strict_component_lists_to_pieces(list(list(format_component))) =
+    list(format_component).
+
     % Convert a list of format_components into a list of format_components
     % separated by commas, with the last two elements separated by `and'.
     %
 :- func component_list_to_pieces(list(format_component)) =
+    list(format_component).
+
+    % Convert a list of format_components into a list of format_components
+    % separated by commas. Even the last pair of list elements will be
+    % separated by commas.
+    %
+:- func strict_component_list_to_pieces(list(format_component)) =
     list(format_component).
 
     % component_list_to_line_pieces(Lines, Final):
@@ -1085,6 +1105,11 @@ list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
 list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
     [fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
 
+strict_list_to_pieces([]) = [].
+strict_list_to_pieces([Elem]) = [words(Elem)].
+strict_list_to_pieces([Elem1, Elem2 | Elems]) =
+    [fixed(Elem1 ++ ",") | strict_list_to_pieces([Elem2 | Elems])].
+
 list_to_quoted_pieces([]) = [].
 list_to_quoted_pieces([Elem]) = [quote(Elem)].
 list_to_quoted_pieces([Elem1, Elem2]) =
@@ -1109,12 +1134,24 @@ component_lists_to_pieces([Comps1, Comps2, Comps3 | Comps]) =
     Comps1 ++ [suffix(",")]
     ++ component_lists_to_pieces([Comps2, Comps3 | Comps]).
 
+strict_component_lists_to_pieces([]) = [].
+strict_component_lists_to_pieces([Comps]) = Comps.
+strict_component_lists_to_pieces([Comps1, Comps2 | Comps]) =
+    Comps1 ++ [suffix(",")]
+    ++ strict_component_lists_to_pieces([Comps2 | Comps]).
+
 component_list_to_pieces([]) = [].
 component_list_to_pieces([Comp]) = [Comp].
 component_list_to_pieces([Comp1, Comp2]) = [Comp1, words("and"), Comp2].
 component_list_to_pieces([Comp1, Comp2, Comp3 | Comps]) =
     [Comp1, suffix(",")]
     ++ component_list_to_pieces([Comp2, Comp3 | Comps]).
+
+strict_component_list_to_pieces([]) = [].
+strict_component_list_to_pieces([Comp]) = [Comp].
+strict_component_list_to_pieces([Comp1, Comp2 | Comps]) =
+    [Comp1, suffix(",")]
+    ++ strict_component_list_to_pieces([Comp2 | Comps]).
 
 component_list_to_line_pieces([], _) = [].
 component_list_to_line_pieces([Comps], Final) = Comps ++ Final ++ [nl].

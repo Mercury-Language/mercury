@@ -3,9 +3,9 @@ bind_in_negated.m:019:   (bound(f(ground, free)) >> ground), out)':
 bind_in_negated.m:019:   scope error: attempt to bind a non-local variable
 bind_in_negated.m:019:   inside the condition of an if-then-else.
 bind_in_negated.m:019:   Variable `A' has instantiatedness
-bind_in_negated.m:019:   `bound(bind_in_negated.f(free, ground))',
+bind_in_negated.m:019:   `bound(f(free, ground))',
 bind_in_negated.m:019:   expected instantiatedness was
-bind_in_negated.m:019:   `bound(bind_in_negated.f(ground, ground))'.
+bind_in_negated.m:019:   `bound(f(ground, ground))'.
 bind_in_negated.m:019:   The condition of an if-then-else is only allowed to
 bind_in_negated.m:019:   bind variables which are local to the condition or
 bind_in_negated.m:019:   which occur only in the condition and the `then' part.
