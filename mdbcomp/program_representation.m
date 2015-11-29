@@ -718,9 +718,9 @@ atomic_goal_generates_event_like_call(GoalRep) = Generates :-
     ;
         GoalRep = plain_call_rep(ModuleName, PredName, Args),
         NumArgs = list.length(Args),
-        ( call_does_not_generate_events(ModuleName, PredName, NumArgs) ->
+        ( if call_does_not_generate_events(ModuleName, PredName, NumArgs) then
             Generates = no
-        ;
+        else
             Generates = yes(Args)
         )
     ).
@@ -958,9 +958,9 @@ var_flag_byte(var_num_4_bytes,
 :- type var_name_table == map(var_rep, string).
 
 lookup_var_name(VarNameTable, VarRep, String) :-
-    ( search_var_name(VarNameTable, VarRep, StringPrime) ->
+    ( if search_var_name(VarNameTable, VarRep, StringPrime) then
         String = StringPrime
-    ;
+    else
         % Generate an automatic name for the variable.
         String = string.format("V_%d", [i(VarRep)])
     ).
@@ -969,9 +969,9 @@ search_var_name(VarNameTable, VarRep, String) :-
     map.search(VarNameTable, VarRep, String).
 
 maybe_search_var_name(VarNameTable, VarRep, MaybeString) :-
-    ( search_var_name(VarNameTable, VarRep, String) ->
+    ( if search_var_name(VarNameTable, VarRep, String) then
         MaybeString = yes(String)
-    ;
+    else
         MaybeString = no
     ).
 
@@ -983,10 +983,10 @@ maybe_search_var_name(VarNameTable, VarRep, MaybeString) :-
 
 read_file_as_bytecode(FileName, Result, !IO) :-
     read_file_as_bytecode_2(FileName, ByteCode, Size, Error, !IO),
-    ( Size < 0 ->
+    ( if Size < 0 then
         io.make_err_msg(Error, "opening " ++ FileName ++ ": ", Msg, !IO),
         Result = error(io.make_io_error(Msg))
-    ;
+    else
         Result = ok(bytecode(ByteCode, Size))
     ).
 
@@ -1056,15 +1056,15 @@ read_prog_rep_file(FileName, Result, !IO) :-
         Result = error(Error)
     ;
         ReadResult = ok(ByteCode),
-        (
+        ( if
             some [!Pos] (
                 !:Pos = 0,
                 read_line(ByteCode, Line, !Pos),
-                ( Line = old_procrep_id_string ->
+                ( if Line = old_procrep_id_string then
                     ExpectNewFormat = no
-                ; Line = new_procrep_id_string ->
+                else if Line = new_procrep_id_string  then
                     ExpectNewFormat = yes
-                ;
+                else
                     fail
                 ),
                 read_module_reps(ExpectNewFormat, ByteCode,
@@ -1072,9 +1072,9 @@ read_prog_rep_file(FileName, Result, !IO) :-
                 ByteCode = bytecode(_, Size),
                 !.Pos = Size
             )
-        ->
+        then
             Result = ok(prog_rep(ModuleReps))
-        ;
+        else
             Msg = FileName ++ ": is not a valid program representation file",
             Result = error(io.make_io_error(Msg))
         )
@@ -1124,7 +1124,7 @@ read_module_rep(ExpectNewFormat, ByteCode, ModuleRep, !Pos) :-
     ;
         ExpectNewFormat = yes,
         read_num(ByteCode, NumOISUTypes, !Pos),
-        ( NumOISUTypes > 0 ->
+        ( if NumOISUTypes > 0 then
             OISUStartPos = !.Pos,
             read_int32(ByteCode, OISUSize, !Pos),
             trace [io(!IO), compiletime(flag("debug_oisu_bytecode"))] (
@@ -1139,11 +1139,11 @@ read_module_rep(ExpectNewFormat, ByteCode, ModuleRep, !Pos) :-
                 OISUTypes, !Pos),
             expect(unify(!.Pos, OISUStartPos + OISUSize), $module, $pred,
                 "oisu limit mismatch")
-        ;
+        else
             OISUTypes = []
         ),
         read_num(ByteCode, NumTableTypes, !Pos),
-        ( NumTableTypes > 0 ->
+        ( if NumTableTypes > 0 then
             TypeStartPos = !.Pos,
             read_int32(ByteCode, TypeSize, !Pos),
             trace [io(!IO), compiletime(flag("debug_oisu_bytecode"))] (
@@ -1158,7 +1158,7 @@ read_module_rep(ExpectNewFormat, ByteCode, ModuleRep, !Pos) :-
                 map.init, TypeTable, !Pos),
             expect(unify(!.Pos, TypeStartPos + TypeSize), $module, $pred,
                 "type limit mismatch")
-        ;
+        else
             map.init(TypeTable)
         )
     ),
@@ -1194,12 +1194,12 @@ read_oisu_type_procs(ByteCode, OISUTypeProcs, !Pos) :-
 
 read_n_encoded_types(ByteCode, StringTable, CurTypeNum, NumTableTypes,
         !TypeTable, !Pos) :-
-    ( CurTypeNum < NumTableTypes ->
+    ( if CurTypeNum < NumTableTypes then
         read_encoded_type(ByteCode, StringTable, !.TypeTable, TypeRep, !Pos),
         map.det_insert(CurTypeNum, TypeRep, !TypeTable),
         read_n_encoded_types(ByteCode, StringTable,
             CurTypeNum + 1, NumTableTypes, !TypeTable, !Pos)
-    ;
+    else
         true
     ).
 
@@ -1420,13 +1420,13 @@ read_var_table(ExpectNewFormat, ByteCode, StringTable, TypeTable, VarNumRep,
 
 read_var_name_table_entries(NumVarsLeftInTable, VarNumRep,
         ByteCode, StringTable, !VarNameTable, !Pos) :-
-    ( NumVarsLeftInTable > 0 ->
+    ( if NumVarsLeftInTable > 0 then
         read_var(VarNumRep, ByteCode, VarRep, !Pos),
         read_string_via_offset(ByteCode, StringTable, VarName, !Pos),
         map.det_insert(VarRep, VarName, !VarNameTable),
         read_var_name_table_entries(NumVarsLeftInTable - 1, VarNumRep,
             ByteCode, StringTable, !VarNameTable, !Pos)
-    ;
+    else
         % No more variables to read.
         true
     ).
@@ -1441,7 +1441,7 @@ read_var_name_table_entries(NumVarsLeftInTable, VarNumRep,
 
 read_var_name_type_table_entries(NumVarsLeftInTable, VarNumRep,
         ByteCode, StringTable, TypeTable, !VarNameTable, !VarTypeTable, !Pos) :-
-    ( NumVarsLeftInTable > 0 ->
+    ( if NumVarsLeftInTable > 0 then
         read_var(VarNumRep, ByteCode, VarRep, !Pos),
         read_string_via_offset(ByteCode, StringTable, VarName, !Pos),
         map.det_insert(VarRep, VarName, !VarNameTable),
@@ -1451,7 +1451,7 @@ read_var_name_type_table_entries(NumVarsLeftInTable, VarNumRep,
         read_var_name_type_table_entries(NumVarsLeftInTable - 1, VarNumRep,
             ByteCode, StringTable, TypeTable, !VarNameTable, !VarTypeTable,
             !Pos)
-    ;
+    else
         % No more variables to read.
         true
     ).
@@ -1463,9 +1463,9 @@ read_var_name_type_table_entries(NumVarsLeftInTable, VarNumRep,
 
 trace_read_proc_defn_rep(Bytes, LabelLayout, ProcDefnRep) :-
     ProcLayout = containing_proc_layout(LabelLayout),
-    ( containing_module_layout(ProcLayout, ModuleLayout) ->
+    ( if containing_module_layout(ProcLayout, ModuleLayout) then
         StringTable = module_string_table(ModuleLayout)
-    ;
+    else
         unexpected($module, $pred, "no module layout")
     ),
     some [!Pos] (
@@ -1500,7 +1500,7 @@ trace_read_proc_defn_rep(Bytes, LabelLayout, ProcDefnRep) :-
 
 read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
     read_byte(ByteCode, GoalTypeByte, !Pos),
-    ( byte_to_goal_type(GoalTypeByte, GoalType) ->
+    ( if byte_to_goal_type(GoalTypeByte, GoalType) then
         (
             GoalType = goal_conj,
             read_goals(VarNumRep, ByteCode, StringTable, Info, Goals, !Pos),
@@ -1574,9 +1574,9 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
         ;
             GoalType = goal_scope,
             read_byte(ByteCode, MaybeCutByte, !Pos),
-            ( cut_byte(MaybeCutPrime, MaybeCutByte) ->
+            ( if cut_byte(MaybeCutPrime, MaybeCutByte) then
                 MaybeCut = MaybeCutPrime
-            ;
+            else
                 unexpected($module, $pred, "bad maybe_cut")
             ),
             read_goal(VarNumRep, ByteCode, StringTable, Info, SubGoal, !Pos),
@@ -1635,7 +1635,7 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
         ),
         read_determinism(ByteCode, Detism, !Pos),
         Goal = goal_rep(GoalExpr, Detism, unit)
-    ;
+    else
         unexpected($module, $pred, "invalid goal type")
     ).
 
@@ -1646,9 +1646,9 @@ read_goal(VarNumRep, ByteCode, StringTable, Info, Goal, !Pos) :-
 read_atomic_info(VarNumRep, ByteCode, StringTable, Info, AtomicGoal, GoalExpr,
         !Pos) :-
     read_string_via_offset(ByteCode, StringTable, FileName0, !Pos),
-    ( FileName0 = "" ->
+    ( if FileName0 = "" then
         FileName = Info ^ rpri_filename
-    ;
+    else
         FileName = FileName0
     ),
     read_lineno(ByteCode, LineNo, !Pos),
@@ -1726,12 +1726,12 @@ read_maybe_vars(VarNumRep, ByteCode, MaybeVars, !Pos) :-
 
 read_maybe_var(VarNumRep, ByteCode, MaybeVar, !Pos) :-
     read_byte(ByteCode, YesOrNo, !Pos),
-    ( YesOrNo = 1 ->
+    ( if YesOrNo = 1 then
         read_var(VarNumRep, ByteCode, Var, !Pos),
         MaybeVar = yes(Var)
-    ; YesOrNo = 0 ->
+    else if YesOrNo = 0  then
         MaybeVar = no
-    ;
+    else
         unexpected($module, $pred, "invalid yes or no flag")
     ).
 
@@ -1783,9 +1783,9 @@ read_cons_id(ByteCode, StringTable, ConsId, !Pos) :-
 
 read_var_num_rep(ByteCode, VarNumRep, !Pos) :-
     read_byte(ByteCode, Byte, !Pos),
-    ( var_num_rep_byte(VarNumRepPrime, Byte) ->
+    ( if var_num_rep_byte(VarNumRepPrime, Byte) then
         VarNumRep = VarNumRepPrime
-    ;
+    else
         unexpected($module, $pred, "unknown var_num_rep")
     ).
 
@@ -1796,14 +1796,14 @@ read_var_num_rep(ByteCode, VarNumRep, !Pos) :-
 read_var_flag(ByteCode, VarNumRep, IncludeVarNameTable, IncludeVarTypes,
         !Pos) :-
     read_byte(ByteCode, Byte, !Pos),
-    (
+    ( if
         var_flag_byte(VarNumRepPrime,
             IncludeVarNameTablePrime, IncludeVarTypesPrime, Byte)
-    ->
+    then
         VarNumRep = VarNumRepPrime,
         IncludeVarNameTable = IncludeVarNameTablePrime,
         IncludeVarTypes = IncludeVarTypesPrime
-    ;
+    else
         unexpected($module, $pred, "unknown var_flag_byte")
     ).
 
@@ -1812,9 +1812,9 @@ read_var_flag(ByteCode, VarNumRep, IncludeVarNameTable, IncludeVarTypes,
 
 read_determinism(ByteCode, Detism, !Pos) :-
     read_byte(ByteCode, DetismByte, !Pos),
-    ( determinism_representation(DetismPrime, DetismByte) ->
+    ( if determinism_representation(DetismPrime, DetismByte) then
         Detism = DetismPrime
-    ;
+    else
         unexpected($module, $pred, "bad detism")
     ).
 
@@ -1823,7 +1823,7 @@ read_determinism(ByteCode, Detism, !Pos) :-
 
 read_switch_can_fail(Bytecode, CanFail, !Pos) :-
     read_byte(Bytecode, CanFailByte, !Pos),
-    (
+    ( if
         (
             CanFailByte = 0,
             CanFailPrime = switch_can_fail_rep
@@ -1831,9 +1831,9 @@ read_switch_can_fail(Bytecode, CanFail, !Pos) :-
             CanFailByte = 1,
             CanFailPrime = switch_can_not_fail_rep
         )
-    ->
+    then
         CanFail = CanFailPrime
-    ;
+    else
         unexpected($module, $pred, "bad switch_can_fail")
     ).
 
@@ -1854,11 +1854,11 @@ can_fail_byte(switch_can_not_fail_rep, 1).
     is semidet.
 
 read_n_items(Read, N, Items, !Pos) :-
-    ( N > 0 ->
+    ( if N > 0 then
         Read(Item, !Pos),
         read_n_items(Read, N - 1, TailItems, !Pos),
         Items = [ Item | TailItems ]
-    ;
+    else
         Items = []
     ).
 

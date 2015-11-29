@@ -216,10 +216,10 @@ string_to_sym_name_sep(String, ModuleSeparator) = Result :-
     % With that, we could search for underscores right-to-left, and construct
     % the resulting symbol directly. Instead, we search for them left-to-right,
     % and then call add_outermost_qualifier to fix things up.
-    (
+    ( if
         string.sub_string_search(String, ModuleSeparator, LeftLength),
         LeftLength > 0
-    ->
+    then
         string.left(String, LeftLength, ModuleName),
         string.length(String, StringLength),
         string.length(ModuleSeparator, SeparatorLength),
@@ -227,7 +227,7 @@ string_to_sym_name_sep(String, ModuleSeparator) = Result :-
         string.right(String, RightLength, Name),
         NameSym = string_to_sym_name_sep(Name, ModuleSeparator),
         Result = add_outermost_qualifier(ModuleName, NameSym)
-    ;
+    else
         Result = unqualified(String)
     ).
 

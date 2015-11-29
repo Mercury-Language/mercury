@@ -197,10 +197,10 @@
 %-----------------------------------------------------------------------------%
 
 summarize_trace_counts_list(TraceCountsList, TraceCounts) :-
-    ( TraceCountsList = [TraceCountsPrime] ->
+    ( if TraceCountsList = [TraceCountsPrime] then
         % optimize the common case
         TraceCounts = TraceCountsPrime
-    ;
+    else
         list.foldl(sum_trace_counts, TraceCountsList, map.init, TraceCounts)
     ).
 
@@ -240,10 +240,10 @@ diff_trace_counts(TraceCountsA, TraceCountsB, TraceCounts) :-
 
 diff_trace_counts_acc(TraceCountsB, ProcLabelInContextA, ProcTraceCountsA,
         !TraceCounts) :-
-    ( map.search(TraceCountsB, ProcLabelInContextA, ProcTraceCountsB) ->
+    ( if map.search(TraceCountsB, ProcLabelInContextA, ProcTraceCountsB) then
         ProcTraceCounts = diff_proc_counts(ProcTraceCountsA, ProcTraceCountsB),
         map.det_insert(ProcLabelInContextA, ProcTraceCounts, !TraceCounts)
-    ;
+    else
         map.det_insert(ProcLabelInContextA, ProcTraceCountsA, !TraceCounts)
     ).
 
@@ -260,10 +260,10 @@ diff_proc_counts(ProcTraceCountsA, ProcTraceCountsB) = ProcTraceCounts :-
 
 diff_proc_counts_acc(ProcTraceCountsB, PathPortA, LineNoCountA,
         !ProcTraceCounts) :-
-    ( map.search(ProcTraceCountsB, PathPortA, LineNoCountB) ->
+    ( if map.search(ProcTraceCountsB, PathPortA, LineNoCountB) then
         LineNoCount = diff_counts_on_line(LineNoCountA, LineNoCountB),
         map.det_insert(PathPortA, LineNoCount, !ProcTraceCounts)
-    ;
+    else
         map.det_insert(PathPortA, LineNoCountA, !ProcTraceCounts)
     ).
 
@@ -337,13 +337,13 @@ read_trace_counts_list_stream(ShowProgress, FileType0, TraceCounts0,
         ReadResult = ok(Line),
         % Remove trailing whitespace:
         FileName = string.rstrip(Line),
-        (
+        ( if
             % Ignore blank lines.
             FileName = ""
-        ->
+        then
             read_trace_counts_list_stream(ShowProgress, FileType0,
                 TraceCounts0, MainFileName, Stream, Result, !IO)
-        ;
+        else
             (
                 ShowProgress = yes,
                 io.write_string(FileName, !IO),
@@ -393,11 +393,11 @@ read_trace_counts(FileName, ReadResult, !IO) :-
     % and having to recreate it again. Unfortunately, we don't have any
     % facilities equivalent to popen in Unix, and I don't know how to
     % write one in a way that is portable to Windows. zs.
-    ( string.remove_suffix(FileName, ".gz", BaseName) ->
+    ( if string.remove_suffix(FileName, ".gz", BaseName) then
         io.call_system("gunzip " ++ FileName, _UnzipResult, !IO),
         ActualFileName = BaseName,
         GzipCmd = "gzip " ++ BaseName
-    ;
+    else
         ActualFileName = FileName,
         GzipCmd = ""
     ),
@@ -406,13 +406,13 @@ read_trace_counts(FileName, ReadResult, !IO) :-
         Result = ok(FileStream),
         io.set_input_stream(FileStream, OldInputStream, !IO),
         io.read_line_as_string(IdReadResult, !IO),
-        (
+        ( if
             IdReadResult = ok(FirstLine),
             string.rstrip(FirstLine) = trace_count_file_id
-        ->
+        then
             promise_only_solution_io(read_trace_counts_from_cur_stream,
                 ReadResult, !IO)
-        ;
+        else
             ReadResult = syntax_error("no trace count file id")
         ),
         io.set_input_stream(OldInputStream, _, !IO),
@@ -421,9 +421,9 @@ read_trace_counts(FileName, ReadResult, !IO) :-
         Result = error(IOError),
         ReadResult = open_error(IOError)
     ),
-    ( GzipCmd = "" ->
+    ( if GzipCmd = "" then
         true
-    ;
+    else
         io.call_system(GzipCmd, _ZipResult, !IO)
     ).
 
@@ -439,25 +439,25 @@ read_trace_counts_from_cur_stream(ReadResult, !IO) :-
     (
         FileTypeResult = ok(FileType),
         io.read_line_as_string(NewlineResult, !IO),
-        ( NewlineResult = ok("\n") ->
+        ( if NewlineResult = ok("\n") then
             try_io(read_trace_counts_setup(map.init), Result, !IO),
             (
                 Result = succeeded(TraceCounts),
                 ReadResult = ok(FileType, TraceCounts)
             ;
                 Result = exception(Exception),
-                ( Exception = univ(IOError) ->
+                ( if Exception = univ(IOError) then
                     ReadResult = io_error(IOError)
-                ; Exception = univ(Message) ->
+                else if Exception = univ(Message) then
                     ReadResult = error_message(Message)
-                ; Exception = univ(trace_count_syntax_error(Error)) ->
+                else if Exception = univ(trace_count_syntax_error(Error)) then
                     ReadResult = syntax_error(Error)
-                ;
-                    error("read_trace_counts_from_cur_stream: " ++
+                else
+                    unexpected($module, $pred,
                         "unexpected exception type: " ++ string(Exception))
                 )
             )
-        ;
+        else
             ReadResult = syntax_error("no info on trace count file type")
         )
     ;
@@ -499,13 +499,13 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
         CurFileName, !TraceCounts, !IO) :-
     lexer.string_get_token_list_max(HeaderLine, string.length(HeaderLine),
         TokenList, posn(HeaderLineNumber, 1, 0), _),
-    ( TokenList = token_cons(name(TokenName), _, TokenListRest) ->
-        (
+    ( if TokenList = token_cons(name(TokenName), _, TokenListRest) then
+        ( if
             TokenName = "module",
             TokenListRest =
                 token_cons(name(NextModuleName), _,
                 token_nil)
-        ->
+        then
             NextModuleNameSym = string_to_sym_name(NextModuleName),
             io.read_line_as_string(Result, !IO),
             (
@@ -519,12 +519,12 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                 Result = error(Error),
                 throw(Error)
             )
-        ;
+        else if
             TokenName = "file",
             TokenListRest =
                 token_cons(name(NextFileName), _,
                 token_nil)
-        ->
+        then
             io.read_line_as_string(Result, !IO),
             (
                 Result = ok(Line),
@@ -537,7 +537,7 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                 Result = error(Error),
                 throw(Error)
             )
-        ;
+        else if
             % At the moment runtime/mercury_trace_base.c doesn't write out
             % data for unify, compare, index or init procedures.
             (
@@ -581,25 +581,25 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurModuleNameSym,
                 ProcLabel = ordinary_proc_label(CurModuleNameSym, pf_function,
                     DeclModuleNameSym, Name, Arity, Mode)
             )
-        ->
+        then
             ProcLabelInContext = proc_label_in_context(CurModuleNameSym,
                 CurFileName, ProcLabel),
             % For whatever reason some of the trace counts for a single
             % procedure or function can be split over multiple spans.
             % We collate them as if they appeared in a single span.
-            ( map.remove(ProcLabelInContext, ProbeCounts, !TraceCounts) ->
+            ( if map.remove(ProcLabelInContext, ProbeCounts, !TraceCounts) then
                 StartCounts = ProbeCounts
-            ;
+            else
                 StartCounts = map.init
             ),
             read_proc_trace_counts_2(ProcLabelInContext, StartCounts,
                 !TraceCounts, !IO)
-        ;
+        else
             string.format("parse error on line %d of execution trace",
                 [i(HeaderLineNumber)], Message),
             throw(trace_count_syntax_error(Message))
         )
-    ;
+    else
         string.format("parse error on line %d of execution trace",
             [i(HeaderLineNumber)], Message),
         throw(trace_count_syntax_error(Message))
@@ -613,16 +613,16 @@ read_proc_trace_counts_2(ProcLabelInContext, ProcCounts0, !TraceCounts, !IO) :-
     io.read_line_as_string(Result, !IO),
     (
         Result = ok(Line),
-        (
+        ( if
             parse_path_port_line(Line, PathPort, LineNumber, ExecCount,
                 NumTests)
-        ->
+        then
             LineNoAndCount = line_no_and_count(LineNumber, ExecCount,
                 NumTests),
             map.det_insert(PathPort, LineNoAndCount, ProcCounts0, ProcCounts),
             read_proc_trace_counts_2(ProcLabelInContext, ProcCounts,
                 !TraceCounts, !IO)
-        ;
+        else
             map.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts),
             io.get_line_number(LineNumber, !IO),
             CurModuleNameSym = ProcLabelInContext ^ context_module_symname,
@@ -643,23 +643,23 @@ read_proc_trace_counts_2(ProcLabelInContext, ProcCounts0, !TraceCounts, !IO) :-
 
 parse_path_port_line(Line, PathPort, LineNumber, ExecCount, NumTests) :-
     Words = string.words(Line),
-    (
+    ( if
         Words = [Word1, LineNumberStr | Rest],
-        ( string_to_trace_port(Word1, Port) ->
+        ( if string_to_trace_port(Word1, Port) then
             PathPortPrime = port_only(Port)
-        ; Path = string_to_goal_path(Word1) ->
+        else if Path = string_to_goal_path(Word1) then
             PathPortPrime = path_only(Path)
-        ;
+        else
             fail
         ),
         string.to_int(LineNumberStr, LineNumberPrime),
         parse_rest(Rest, ExecCountPrime, NumTestsPrime)
-    ->
+    then
         PathPort = PathPortPrime,
         LineNumber = LineNumberPrime,
         ExecCount = ExecCountPrime,
         NumTests = NumTestsPrime
-    ;
+    else
         Words = [PortStr, PathStr, LineNumberStr | Rest],
         string_to_trace_port(PortStr, Port),
         Path = string_to_goal_path(PathStr),
@@ -813,18 +813,18 @@ write_proc_label_and_file_trace_counts(ProcLabelInContext, PathPortCounts,
         !CurModuleNameSym, !CurFileName, !IO) :-
     ProcLabelInContext = proc_label_in_context(ModuleNameSym, FileName,
         ProcLabel),
-    ( ModuleNameSym = !.CurModuleNameSym ->
+    ( if ModuleNameSym = !.CurModuleNameSym then
         true
-    ;
+    else
         ModuleName = sym_name_to_string(ModuleNameSym),
         io.write_string("module ", !IO),
         term_io.quote_atom(ModuleName, !IO),
         io.write_string("\n", !IO),
         !:CurModuleNameSym = ModuleNameSym
     ),
-    ( FileName = !.CurFileName ->
+    ( if FileName = !.CurFileName then
         true
-    ;
+    else
         io.write_string("file ", !IO),
         term_io.quote_atom(FileName, !IO),
         io.write_string("\n", !IO),
@@ -854,9 +854,9 @@ write_proc_label(ProcLabel, !IO) :-
             DeclModuleSym, Name, Arity, Mode),
         (
             PredOrFunc = pf_predicate,
-            ( DeclModuleSym = DefModuleSym ->
+            ( if DeclModuleSym = DefModuleSym then
                 io.write_string("pproc ", !IO)
-            ;
+            else
                 DeclModule = sym_name_to_string(DeclModuleSym),
                 io.write_string("pprocdecl ", !IO),
                 term_io.quote_atom(DeclModule, !IO),
@@ -864,9 +864,9 @@ write_proc_label(ProcLabel, !IO) :-
             )
         ;
             PredOrFunc = pf_function,
-            ( DeclModuleSym = DefModuleSym ->
+            ( if DeclModuleSym = DefModuleSym then
                 io.write_string("fproc ", !IO)
-            ;
+            else
                 DeclModule = sym_name_to_string(DeclModuleSym),
                 io.write_string("fprocdecl ", !IO),
                 term_io.quote_atom(DeclModule, !IO),
@@ -924,9 +924,9 @@ restrict_trace_counts_to_module(ModuleName, TraceCounts0, TraceCounts) :-
 restrict_trace_counts_2(ModuleName, ProcLabelInContext, ProcCounts,
         !TraceCounts) :-
     ProcLabel = ProcLabelInContext ^ proc_label,
-    ( ProcLabel = ordinary_proc_label(ModuleName, _, _, _, _, _) ->
+    ( if ProcLabel = ordinary_proc_label(ModuleName, _, _, _, _, _) then
         map.det_insert(ProcLabelInContext, ProcCounts, !TraceCounts)
-    ;
+    else
         true
     ).
 

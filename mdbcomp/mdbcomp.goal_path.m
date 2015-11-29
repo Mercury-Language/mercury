@@ -424,9 +424,9 @@ goal_path_from_strings([Str | Strs], fgp_cons(HeadStep, LaterSteps)) :-
     goal_path_from_strings(Strs, LaterSteps).
 
 goal_path_from_string_det(GoalPathStr, GoalPath) :-
-    ( goal_path_from_string(GoalPathStr, GoalPathPrime) ->
+    ( if goal_path_from_string(GoalPathStr, GoalPathPrime) then
         GoalPath = GoalPathPrime
-    ;
+    else
         unexpected($module, $pred, "goal_path_from_string failed")
     ).
 
@@ -444,9 +444,9 @@ rev_goal_path_from_rev_strings([Str | Strs], rgp_cons(HeadSteps, TailStep)) :-
     goal_path_step_from_string(Str, TailStep).
 
 rev_goal_path_from_string_det(GoalPathStr, GoalPath) :-
-    ( rev_goal_path_from_string(GoalPathStr, GoalPathPrime) ->
+    ( if rev_goal_path_from_string(GoalPathStr, GoalPathPrime) then
         GoalPath = GoalPathPrime
-    ;
+    else
         unexpected($module, $pred, "rev_goal_path_from_string failed")
     ).
 
@@ -465,9 +465,9 @@ goal_path_step_from_string_2('s', Str, step_switch(N, MaybeM)) :-
     string.words_separator(unify('-'), Str) = [NStr, MStr],
     string.to_int(NStr, N),
     % "na" is short for "not applicable"
-    ( MStr = "na" ->
+    ( if MStr = "na" then
         MaybeM = unknown_num_functors_in_type
-    ;
+    else
         string.to_int(MStr, M),
         MaybeM = known_num_functors_in_type(M)
     ).

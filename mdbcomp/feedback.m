@@ -434,13 +434,13 @@ read_check_line(TestLine, NotMatchError, Stream, _, Result, !IO) :-
     io.read_line_as_string(Stream, IOResultLine, !IO),
     (
         IOResultLine = ok(Line),
-        (
+        ( if
             ( Line = TestLine
             ; Line = TestLine ++ "\n"
             )
-        ->
+        then
             Result = ok(unit)
-        ;
+        else
             Result = error(NotMatchError)
         )
     ;
@@ -466,9 +466,9 @@ read_profiled_program_name(MaybeExpectedProfiledProgramName, Stream,
         ;
             MaybeExpectedProfiledProgramName =
                 yes(ExpectedProfiledProgramName),
-            ( ActualProfiledProgramName = ExpectedProfiledProgramName ->
+            ( if ActualProfiledProgramName = ExpectedProfiledProgramName then
                 Result = ok(ActualProfiledProgramName)
-            ;
+            else
                 Result = error(fre_incorrect_profiled_program_name(
                     ExpectedProfiledProgramName, ActualProfiledProgramName))
 
@@ -549,9 +549,9 @@ write_feedback_file(Path, Feedback, Result, !IO) :-
             ExcpResult = exception(ExcpUniv),
 
             % If the exception is not of a type we expected, then re-throw it.
-            ( univ_to_type(ExcpUniv, Excp) ->
+            ( if univ_to_type(ExcpUniv, Excp) then
                 Result = fwr_write_error(Excp)
-            ;
+            else
                 rethrow(ExcpResult)
             )
         )

@@ -263,7 +263,7 @@ get_path_port_from_label_layout(Label) = PathPort :-
 :- pragma foreign_type("Erlang", proc_layout, "").
 
 get_proc_label_from_layout(Layout) = ProcLabel :-
-    ( proc_layout_is_uci(Layout) ->
+    ( if proc_layout_is_uci(Layout) then
         proc_layout_get_uci_fields(Layout, TypeName, TypeModule,
             DefModule, PredName, TypeArity, ModeNum),
         ( special_pred_name_arity(SpecialIdPrime, _, PredName, _) ->
@@ -275,7 +275,7 @@ get_proc_label_from_layout(Layout) = ProcLabel :-
         SymTypeModule = string_to_sym_name(TypeModule),
         ProcLabel = special_proc_label(SymDefModule, SpecialId,
             SymTypeModule, TypeName, TypeArity, ModeNum)
-    ;
+    else
         proc_layout_get_non_uci_fields(Layout, PredOrFunc,
             DeclModule, DefModule, PredName, Arity, ModeNum),
         SymDefModule = string_to_sym_name(DefModule),
@@ -731,10 +731,10 @@ read_num(ByteCode, Num, !Pos) :-
 read_num_2(ByteCode, Num0, Num, !Pos) :-
     read_byte(ByteCode, Byte, !Pos),
     Num1 = (Num0 << 7) \/ (Byte /\ 0x7F),
-    ( Byte /\ 0x80 \= 0 ->
-        read_num_2(ByteCode, Num1, Num, !Pos)
-    ;
+    ( if Byte /\ 0x80 = 0 then
         Num = Num1
+    else
+        read_num_2(ByteCode, Num1, Num, !Pos)
     ).
 
 read_string_via_offset(ByteCode, StringTable, String, !Pos) :-
@@ -751,9 +751,9 @@ read_line(ByteCode, Line, !Pos) :-
 read_line_2(ByteCode, !RevChars, !Pos) :-
     read_byte(ByteCode, Byte, !Pos),
     char.from_int(Byte, Char),
-    ( Char = '\n' ->
+    ( if Char = '\n' then
         !:RevChars = [Char | !.RevChars]
-    ;
+    else
         !:RevChars = [Char | !.RevChars],
         read_line_2(ByteCode, !RevChars, !Pos)
     ).
@@ -767,9 +767,9 @@ read_len_string(ByteCode, String, !Pos) :-
     list(char)::in, list(char)::out, int::in, int::out) is semidet.
 
 read_len_string_2(ByteCode, N, !RevChars, !Pos) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         true
-    ;
+    else
         read_byte(ByteCode, Byte, !Pos),
         char.from_int(Byte, Char),
         !:RevChars = [Char | !.RevChars],
@@ -812,9 +812,9 @@ encode_byte(Byte, [Byte]) :-
     Byte < 128.
 
 encode_byte_det(Byte, Bytes) :-
-    ( encode_byte(Byte, BytesPrime) ->
+    ( if encode_byte(Byte, BytesPrime) then
         Bytes = BytesPrime
-    ;
+    else
         unexpected($module, $pred, "encode_byte failed")
     ).
 
@@ -828,9 +828,9 @@ encode_short(Short, [Byte1, Byte2]) :-
     Byte1 < 128.
 
 encode_short_det(Short, Bytes) :-
-    ( encode_short(Short, BytesPrime) ->
+    ( if encode_short(Short, BytesPrime)then
         Bytes = BytesPrime
-    ;
+    else
         unexpected($module, $pred, "encode_short failed")
     ).
 
@@ -848,9 +848,9 @@ encode_int32(Int32, [Byte1, Byte2, Byte3, Byte4]) :-
     Byte1 < 128.
 
 encode_int32_det(Int32, Bytes) :-
-    ( encode_int32(Int32, BytesPrime) ->
+    ( if encode_int32(Int32, BytesPrime) then
         Bytes = BytesPrime
-    ;
+    else
         unexpected($module, $pred, "encode_int32 failed")
     ).
 
@@ -866,18 +866,18 @@ encode_num(Num, Bytes) :-
 :- pred encode_num_2(int::in, list(int)::in, list(int)::out) is det.
 
 encode_num_2(Num, RestBytes, Bytes) :-
-    ( Num = 0 ->
+    ( if Num = 0 then
         Bytes = RestBytes
-    ;
+    else
         CurByte = (Num /\ 127) \/ 128,
         NextNum = Num / 128,
         encode_num_2(NextNum, [CurByte | RestBytes], Bytes)
     ).
 
 encode_num_det(Num, Bytes) :-
-    ( encode_num(Num, BytesPrime) ->
+    ( if encode_num(Num, BytesPrime)then
         Bytes = BytesPrime
-    ;
+    else
         unexpected($module, $pred, "encode_num failed")
     ).
 
