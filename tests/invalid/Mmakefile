@@ -58,6 +58,7 @@ SINGLEMODULE= \
 	bigtest \
 	bind_in_negated \
 	bind_var_errors \
+	bug10 \
 	bug113 \
 	bug117 \
 	bug150 \
