@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prof_info.m
 % Main author: petdr.
@@ -14,8 +14,8 @@
 % predicates need to access entire data structure.
 % XXX Should maybe changed at a later date.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module prof_info.
 :- interface.
@@ -23,7 +23,7 @@
 :- import_module list.
 :- import_module map.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % prof: Data structure which contains ALL the relevant info for use
     % in generating the output.
@@ -47,7 +47,7 @@
     --->    predicate
     ;       cycle.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Get prof_node from via predicate name.
     %
@@ -64,7 +64,7 @@
 :- func prof_node_init_cycle(string, int, int, float, list(pred_info), int,
     int) = prof_node.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % `prof' access predicates.
 %
@@ -75,7 +75,7 @@
 :- pred prof_get_addrdeclmap(prof::in, addrdecl::out) is det.
 :- pred prof_get_profnodemap(prof::in, prof_node_map::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % `prof' update predicates.
 %
@@ -86,14 +86,14 @@
 :- pred prof_set_profnodemap(prof_node_map::in, prof::in, prof::out) is det.
 :- pred prof_set_cyclemap(cycle_map::in, prof::in, prof::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % *** Special prof_node predicates ***
 %
 
 :- pred prof_node_type(prof_node::in, prof_node_type::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % *** Access Predicate for prof_node ***
 %
@@ -114,7 +114,7 @@
 :- pred prof_node_get_total_calls(prof_node::in, int::out) is det.
 :- pred prof_node_get_self_calls(prof_node::in, int::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % *** Update prof_node predicates ***
 %
@@ -145,14 +145,14 @@
 :- pred prof_node_concat_to_member(string::in, int::in,
     prof_node::in, prof_node::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % *** Init  predicates for pred_info ***
 %
 
 :- pred pred_info_init(string::in, int::in, pred_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % *** Access predicates for pred_info ***
 %
@@ -161,8 +161,8 @@
 :- pred pred_info_get_pred_name(pred_info::in, string::out) is det.
 :- pred pred_info_get_counts(pred_info::in, int::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -258,7 +258,7 @@
                 pred_info_count     :: int      % count (to or from)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % get_prof_node:
     %
@@ -272,7 +272,7 @@ update_prof_node(Pred, ProfNode, AddrMap, !ProfNodeMap) :-
     map.lookup(AddrMap, Pred, Key),
     map.det_update(Key, ProfNode, !ProfNodeMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % *** Access prof predicates *** %
 
@@ -281,7 +281,7 @@ prof_get_entire(prof(A, B, C, D, E, F), A, B, C, D, E, F).
 prof_get_addrdeclmap(Prof, Prof ^ addr_decl_map).
 prof_get_profnodemap(Prof, Prof ^ prof_node_map).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % *** Update prof predicates *** %
 
@@ -290,7 +290,7 @@ prof_set_entire(A, B, C, D, E, F, prof(A, B, C, D, E, F)).
 prof_set_profnodemap(ProfNodeMap, Prof, Prof ^ prof_node_map := ProfNodeMap).
 prof_set_cyclemap(CycleMap, Prof, Prof ^ cycle_map := CycleMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % *** Initialise predicates *** %
 
@@ -300,14 +300,14 @@ prof_node_init(PredName) =
 prof_node_init_cycle(A, B, C, D, E, F, G) =
     cycle_node(A, B, C, D, E, F, G).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % *** Special prof_node predicates *** %
 
 prof_node_type(pred_node(_, _, _, _, _, _, _, _, _), predicate).
 prof_node_type(cycle_node(_, _, _, _, _, _, _), cycle).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % *** Access prof_node predicates *** %
 
@@ -345,7 +345,7 @@ prof_node_get_total_calls(cycle_node(_, _, _, _, _, Calls, _), Calls).
 prof_node_get_self_calls(pred_node(_, _, _, _, _, _, _, Calls, _), Calls).
 prof_node_get_self_calls(cycle_node(_, _, _, _, _, _, Calls), Calls).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % *** Update prof_node predicates *** %
 
@@ -394,13 +394,13 @@ prof_node_concat_to_member(Name, Count, cycle_node(A, B, C, D, CList, F, G),
 prof_node_concat_to_member(_, _, pred_node(_, _, _, _, _, _, _, _, _), _) :-
     error("prof_node_concat_to_member: pred_node has no members\n").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % *** Init predicates for pred_info *** %
 
 pred_info_init(Name, Count, pred_info(Name, Count)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % *** Access predicates for pred_info *** %
 
@@ -409,6 +409,6 @@ pred_info_get_entire(pred_info(A, B), A, B).
 pred_info_get_pred_name(Pred, Pred ^ pred_info_name).
 pred_info_get_counts(Pred, Pred ^ pred_info_count).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module prof_info.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

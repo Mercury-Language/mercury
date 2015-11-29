@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: demangle_test.m
 % Author: fjh
@@ -18,7 +18,7 @@
 %
 % We might eventually replace util/mdemangle.c with this Mercury version.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module demangle_test.
 :- interface.
@@ -57,9 +57,9 @@ demangle_stdin(RevChars, !IO) :-
     io.read_char(Result, !IO),
     (
         Result = ok(Char),
-        ( char.is_alnum_or_underscore(Char) ->
+        ( if char.is_alnum_or_underscore(Char) then
             demangle_stdin([Char | RevChars], !IO)
-        ;
+        else
             string.from_rev_char_list(RevChars, MangledName),
             demangle(MangledName, DemangledName),
             io.write_string(DemangledName, !IO),
@@ -81,4 +81,4 @@ demangle_stdin(RevChars, !IO) :-
             Message, "\n"], !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

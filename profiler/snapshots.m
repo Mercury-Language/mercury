@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: snapshots.m.
 % Main author: wangp.
@@ -12,7 +12,7 @@
 % This module summarises and outputs the data for memory attribution profiling.
 % This is a distinct mode from the rest of the mprof tool.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module snapshots.
 :- interface.
@@ -21,8 +21,8 @@
 
 :- pred show_snapshots(io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -38,7 +38,7 @@
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type alloc_site_map ==  map(alloc_id, alloc_site).
 
@@ -95,7 +95,7 @@
     --->    major_axis_proc
     ;       major_axis_type.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 show_snapshots(!IO) :-
     globals.io_lookup_string_option(snapshots_file, SnapshotsFile, !IO),
@@ -134,7 +134,7 @@ show_snapshots(!IO) :-
         error(ErrorStr)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_alloc_site_decls(io.input_stream::in,
     alloc_site_map::out, size_map::out, io::di, io::uo) is det.
@@ -145,10 +145,10 @@ parse_alloc_site_decls(Stream, AllocSiteMap, SizeMap, !IO) :-
         LineRes = ok(Line),
         % Search for the size_map, which indicates the start of allocation site
         % declarations.
-        ( string.prefix(Line, "size_map ") ->
+        ( if string.prefix(Line, "size_map ") then
             parse_size_map(Line, SizeMap),
             parse_alloc_site_lines(Stream, map.init, AllocSiteMap, !IO)
-        ;
+        else
             parse_alloc_site_decls(Stream, AllocSiteMap, SizeMap, !IO)
         )
     ;
@@ -162,12 +162,12 @@ parse_alloc_site_decls(Stream, AllocSiteMap, SizeMap, !IO) :-
 :- pred parse_size_map(string::in, list(int)::out) is det.
 
 parse_size_map(Line, SizeMap) :-
-    (
+    ( if
         string.words(Line) = ["size_map" | Words],
         list.map(string.to_int, Words, Ints)
-    ->
+    then
         SizeMap = Ints
-    ;
+    else
         unexpected($module, $pred, "format error: bad size_map line")
     ).
 
@@ -193,21 +193,21 @@ parse_alloc_site_lines(Stream, !AllocSiteMap, !IO) :-
 parse_alloc_site_line(Line0, !AllocSiteMap, !IO) :-
     Line = string.chomp(Line0),
     Words = string.split_at_char('\t', Line),
-    (
+    ( if
         Words = [IdStr, MangledProcName, FileName, LineNumStr, Type,
             NumWordsStr],
         string.to_int(IdStr, Id),
         string.to_int(LineNumStr, LineNum),
         string.to_int(NumWordsStr, NumWords)
-    ->
+    then
         demangle(MangledProcName, ProcName),
         AllocSite = alloc_site(ProcName, Type, FileName, LineNum, NumWords),
         map.det_insert(alloc_id(Id), AllocSite, !AllocSiteMap)
-    ;
+    else
         unexpected($module, $pred, "format error: bad alloc site declaration")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred show_all_snapshots(io.input_stream::in, snapshot_options::in,
     alloc_site_map::in, size_map::in, io::di, io::uo) is det.
@@ -216,12 +216,12 @@ show_all_snapshots(Stream, Options, AllocSiteMap, SizeMap, !IO) :-
     io.read_line_as_string(Stream, LineRes, !IO),
     (
         LineRes = ok(Line),
-        ( string.remove_prefix("start ", Line, SnapshotName0) ->
+        ( if string.remove_prefix("start ", Line, SnapshotName0) then
             SnapshotName = string.chomp(SnapshotName0),
             output_snapshot_title(SnapshotName, !IO),
             show_single_snapshot(Stream, Options, AllocSiteMap, SizeMap, !IO),
             show_all_snapshots(Stream, Options, AllocSiteMap, SizeMap, !IO)
-        ;
+        else
             true
         )
     ;
@@ -248,17 +248,17 @@ parse_snapshot(Stream, Options, AllocSiteMap, SizeMap, AllocCounts, !IO) :-
     io.read_line_as_string(Stream, LineRes, !IO),
     (
         LineRes = ok(Line),
-        (
+        ( if
             string.prefix(Line, "end ")
-        ->
+        then
             AllocCounts = []
-        ;
+        else if
             parse_alloc_site(Options, AllocSiteMap, SizeMap, Line, Counts)
-        ->
+        then
             parse_snapshot(Stream, Options, AllocSiteMap, SizeMap,
                 RestCounts, !IO),
             AllocCounts = [Counts | RestCounts]
-        ;
+        else
             parse_snapshot(Stream, Options, AllocSiteMap, SizeMap,
                 AllocCounts, !IO)
         )
@@ -277,29 +277,31 @@ parse_alloc_site(Options, AllocSiteMap, SizeMap, Line, Counts) :-
     string.words(Line) = [IdStr, NumCellsStr, NumWordsStr0],
     string.to_int(NumCellsStr, NumCells),
     string.to_int(NumWordsStr0, NumWords0),
-    ( string.to_int(IdStr, Id) ->
+    ( if string.to_int(IdStr, Id) then
         get_alloc_site(AllocSiteMap, alloc_id(Id), AllocSite),
         RecalcSize = Options ^ recalc_words
-    ;
-        IdStr = "runtime",
-        Options ^ include_runtime = yes,
-        string.format("runtime struct (%d words)", [i(NumWords0)], Type),
-        AllocSite = alloc_site("unknown", Type, "unknown", 0, NumWords0),
-        RecalcSize = no
-    ;
-        IdStr = "unknown",
-        string.format("unknown (%d words)", [i(NumWords0)], Type),
-        AllocSite = alloc_site("unknown", Type, "unknown", 0, NumWords0),
-        RecalcSize = no
+    else
+        (
+            IdStr = "runtime",
+            Options ^ include_runtime = yes,
+            string.format("runtime struct (%d words)", [i(NumWords0)], Type),
+            AllocSite = alloc_site("unknown", Type, "unknown", 0, NumWords0),
+            RecalcSize = no
+        ;
+            IdStr = "unknown",
+            string.format("unknown (%d words)", [i(NumWords0)], Type),
+            AllocSite = alloc_site("unknown", Type, "unknown", 0, NumWords0),
+            RecalcSize = no
+        )
     ),
-    (
+    ( if
         RecalcSize = yes,
         WordsPerCell = AllocSite ^ alloc_words,
         WordsPerCell > 0,
         list.index1(SizeMap, WordsPerCell, SizeMapWords)
-    ->
+    then
         NumWords = NumCells * SizeMapWords
-    ;
+    else
         NumWords = NumWords0
     ),
     Counts = alloc_site_counts(AllocSite, NumCells, NumWords).
@@ -308,13 +310,13 @@ parse_alloc_site(Options, AllocSiteMap, SizeMap, Line, Counts) :-
     is det.
 
 get_alloc_site(AllocSiteMap, AllocId, AllocSite) :-
-    ( map.search(AllocSiteMap, AllocId, AllocSite0) ->
+    ( if map.search(AllocSiteMap, AllocId, AllocSite0) then
         AllocSite = AllocSite0
-    ;
+    else
         AllocSite = alloc_site("unknown", "unknown", "(unknown)", 0, 0)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_sorted_groups(major_axis::in, list(alloc_site_counts)::in,
     list(group)::out) is det.
@@ -357,7 +359,7 @@ make_group(Counts, Group) :-
     FirstSite = list.det_head(SortedCounts) ^ asc_alloc_site,
     Group = group(TotalCells, TotalWords, FirstSite, SortedCounts).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred output_snapshot_title(string::in, io::di, io::uo) is det.
 
@@ -410,12 +412,12 @@ output_group(Options, TotalCells, TotalWords, Group, !CumulWords, !IO) :-
     CellsPercent = percentage(NumCells, TotalCells),
     WordsPercent = percentage(NumWords, TotalWords),
     CumulPercent = percentage(!.CumulWords, TotalWords),
-    (
+    ( if
         CellsPercent =< min_percentage_major,
         WordsPercent =< min_percentage_major
-    ->
+    then
         true
-    ;
+    else
         MajorAxis = Options ^ major_axis,
         Brief = Options ^ brief,
         (
@@ -441,7 +443,7 @@ output_group(Options, TotalCells, TotalWords, Group, !CumulWords, !IO) :-
             Brief = yes
         ;
             Brief = no,
-            Single = ( Counts = [_] -> yes ; no ),
+            Single = ( if Counts = [_] then yes else no ),
             list.foldl(output_site(MajorAxis, TotalCells, TotalWords, Single),
                 Counts, !IO),
             io.nl(!IO)
@@ -469,12 +471,12 @@ output_site(MajorAxis, TotalCells, TotalWords, Single, AllocCounts, !IO) :-
             [s(""), s(RightLabel), s(File), i(LineNum)], !IO)
     ;
         Single = no,
-        (
+        ( if
             CellsPercent =< min_percentage_major,
             WordsPercent =< min_percentage_major
-        ->
+        then
             true
-        ;
+        else
             io.format(" %7d/%5.1f%% %9d/%5.1f%%  %5s  %s (%s:%d)\n", [
                 i(NumCells), f(CellsPercent),
                 i(NumWords), f(WordsPercent), s(""),
@@ -483,7 +485,7 @@ output_site(MajorAxis, TotalCells, TotalWords, Single, AllocCounts, !IO) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred group_by_words(group::in, group::in, comparison_result::out) is det.
 
@@ -529,7 +531,7 @@ sum_counts(Site, !TotalCells, !TotalWords) :-
     !:TotalCells = !.TotalCells + (Site ^ asc_num_cells),
     !:TotalWords = !.TotalWords + (Site ^ asc_num_words).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func percentage(int, int) = float.
 
@@ -543,7 +545,7 @@ min_percentage_major = 0.1.
 
 min_percentage_minor = 0.05.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred takewhile(comparison_pred(T)::in(comparison_pred),
     list(T)::in, list(T)::out, list(T)::out) is det.
@@ -573,4 +575,4 @@ takewhile(Compare, List, Upto, After) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

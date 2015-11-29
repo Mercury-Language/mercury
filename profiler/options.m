@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 2000-2001, 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: options.m.
 % Main author: fjh.
@@ -12,8 +12,8 @@
 % This defines the stuff necessary so that getopt.m can parse the command line
 % options.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module options.
 :- interface.
@@ -22,7 +22,7 @@
 :- import_module getopt.
 :- import_module io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type option
     % Verbosity options
@@ -66,14 +66,14 @@
 :- pred maybe_write_string(bool::input, string::input, io::di, io::uo) is det.
 :- pred maybe_flush_output(bool::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module map.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Verbosity Options
 option_default(verbose,                 bool(no)).
@@ -144,10 +144,10 @@ long_option("verbose",              verbose).
 long_option("very-verbose",         very_verbose).
 
 special_handler(profile, string(WhatToProfile), !.OptionTable, Result) :-
-    ( valid_profile_option(WhatToProfile, CountFile) ->
+    ( if valid_profile_option(WhatToProfile, CountFile) then
         map.set(countfile, string(CountFile), !OptionTable),
         Result = ok(!.OptionTable)
-    ;
+    else
         Result = error("Invalid argument to `--profile' or `-p' option")
     ).
 special_handler(profile_memory_words, _, !.OptionTable, ok(!:OptionTable)) :-
@@ -217,7 +217,7 @@ options_help -->
     io.write_string("\t-V, --very-verbose\n"),
     io.write_string("\t\tOutput very verbose progress messages.\n").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_write_string(yes, String, !IO) :-
     io.write_string(String, !IO).
@@ -227,6 +227,6 @@ maybe_flush_output(yes, !IO) :-
     io.flush_output(!IO).
 maybe_flush_output(no, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module options.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

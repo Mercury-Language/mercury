@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 2003-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: propagate.m
 % Main author: petdr.
@@ -17,8 +17,8 @@
 % Then using a topological sorting of the call graph, the time is propagated
 % from the leaves of all the call graph to the head.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module propagate.
 :- interface.
@@ -28,13 +28,13 @@
 :- import_module io.
 :- import_module digraph.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred propagate_counts(digraph(string)::in, prof::in, prof::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -49,7 +49,7 @@
 :- import_module sparse_bitset.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type pred_to_cycle_map == map(string, int).
 :- type cycle_to_preds_map == multi_map(int, string).
@@ -73,7 +73,7 @@ propagate_counts(CallGraph, !Prof, !IO) :-
     prof_set_cyclemap(CycleInfo ^ pred_to_cycle_map, !Prof),
     prof_set_profnodemap(ProfNodeMap, !Prof).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % identify_cycles(Rel, ATSort, CycleInfo):
     %
@@ -108,7 +108,7 @@ identify_cycles_2([Key | Keys0], CycleNum0, InvG, Visit0, !ATSort,
 
     (
         DfsRev = [],
-        error("identify_cycles_2: empty list\n")
+        unexpected($module, $pred, "empty list\n")
     ;
         DfsRev = [_],
         CycleNum = CycleNum0
@@ -140,7 +140,7 @@ add_to_cycle_map([Pred | Preds], Cycle, !PredToCycleMap, !CycleToPredsMap) :-
     multi_map.set(Cycle, Pred, !CycleToPredsMap),
     add_to_cycle_map(Preds, Cycle, !PredToCycleMap, !CycleToPredsMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred update_cycles(cycle_info::in, addrdecl::in,
     prof_node_map::in, prof_node_map::out) is det.
@@ -167,7 +167,7 @@ update_cycles_3([P | Ps], CycleNum, AddrDecl, !ProfNodeMap) :-
     update_prof_node(P, ProfNode, AddrDecl, !ProfNodeMap),
     update_cycles_3(Ps, CycleNum, AddrDecl, !ProfNodeMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % propagate_counts_2
     %
@@ -178,19 +178,19 @@ update_cycles_3([P | Ps], CycleNum, AddrDecl, !ProfNodeMap) :-
 
 propagate_counts_2([], _, _, !ProfNodeMap).
 propagate_counts_2([Pred | Preds], CycleInfo, AddrDeclMap, !ProfNodeMap) :-
-    ( map.search(CycleInfo ^ pred_to_cycle_map, Pred, Cycle) ->
+    ( if map.search(CycleInfo ^ pred_to_cycle_map, Pred, Cycle) then
         multi_map.lookup(CycleInfo ^ cycle_to_preds_map, Cycle, CyclePreds),
         list.length(CyclePreds, Length),
 
         % Throw away the rest of the predicates to be processed by the profiler
         % as we are about to make them into one cycle.
-        ( list.drop((Length - 1), Preds, NewPreds) ->
+        ( if list.drop((Length - 1), Preds, NewPreds)  then
             process_cycle(CyclePreds, Cycle, AddrDeclMap, !ProfNodeMap),
             propagate_counts_2(NewPreds, CycleInfo, AddrDeclMap, !ProfNodeMap)
-        ;
-            error("propagate_counts_2: list_drop failed\n")
+        else
+            unexpected($module, $pred, "list_drop failed\n")
         )
-    ;
+    else
         get_prof_node(Pred, AddrDeclMap, !.ProfNodeMap, ProfNode),
         prof_node_get_initial_counts(ProfNode, InitCounts),
         prof_node_get_propagated_counts(ProfNode, PropCounts),
@@ -342,7 +342,7 @@ build_parent_map(CliqueList, AddrMap, ProfNodeMap, TotalCalls, SelfCalls,
         ParentMap) :-
     (
         CliqueList = [],
-        error("build_parent_map: empty cycle list\n")
+        unexpected($module, $pred, "empty cycle list\n")
     ;
         CliqueList = [_ | _],
         build_parent_map_2(CliqueList, CliqueList, AddrMap, ProfNodeMap,
@@ -382,21 +382,21 @@ add_to_parent_map([Pred | Preds], CliqueList, !TotalCalls, !SelfCalls,
         !ParentMap) :-
     pred_info_get_pred_name(Pred, PredName),
     pred_info_get_counts(Pred, Counts),
-    (
+    ( if
         (
             list.member(PredName, CliqueList)
         ;
             Counts = 0
         )
-    ->
+    then
         !:SelfCalls = !.SelfCalls + Counts,
         add_to_parent_map(Preds, CliqueList, !TotalCalls, !SelfCalls,
             !ParentMap)
-    ;
-        ( map.search(!.ParentMap, PredName, CurrCount0) ->
+    else
+        ( if map.search(!.ParentMap, PredName, CurrCount0) then
             CurrCount = CurrCount0 + Counts,
             map.det_update(PredName, CurrCount, !ParentMap)
-        ;
+        else
             map.det_insert(PredName, Counts, !ParentMap)
         ),
         !:TotalCalls = !.TotalCalls + Counts,
@@ -413,6 +413,6 @@ assoc_list_to_pred_info_list([S - I | Xs]) = List :-
     pred_info_init(S, I, PredInfo),
     List = [PredInfo | List0].
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module propagate.
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

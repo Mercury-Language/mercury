@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-1998,2000,2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: read.m.
 % Main author: petdr.
 %
 % Input predicates for use with mercury_profile.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module read.
 :- interface.
@@ -22,7 +22,7 @@
 :- import_module io.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_read_label_addr(maybe(int)::out, io::di, io::uo) is det.
 
@@ -40,8 +40,8 @@
 
 :- pred read_what_to_profile(what_to_profile::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -49,35 +49,34 @@
 :- import_module options.
 
 :- import_module bool.
+:- import_module list.
 :- import_module require.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_read_label_addr(MaybeLabelAddr, !IO) :-
     io.read_word(WordResult, !IO),
     (
         WordResult = ok(CharList),
         string.from_char_list(CharList, LabelAddrStr),
-        ( string.base_string_to_int(10, LabelAddrStr, LabelAddr) ->
+        ( if string.base_string_to_int(10, LabelAddrStr, LabelAddr) then
             MaybeLabelAddr = yes(LabelAddr)
-        ;
-            ( string.base_string_to_int(16, LabelAddrStr, LabelAddrHex) ->
-                MaybeLabelAddr = yes(LabelAddrHex)
-            ;
-                error("maybe_read_label_addr: " ++
-                    "Label address not hexadecimal or integer\n")
-            )
+        else if string.base_string_to_int(16, LabelAddrStr, LabelAddrHex) then
+            MaybeLabelAddr = yes(LabelAddrHex)
+        else
+            unexpected($module, $pred,
+                "Label address not hexadecimal or integer")
         )
     ;
         WordResult = eof,
         MaybeLabelAddr = no
     ;
         WordResult = error(Error),
-        error("maybe_read_label_addr: " ++ io.error_message(Error))
+        unexpected($module, $pred, io.error_message(Error))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_read_label_name(MaybeLabelName, !IO) :-
     globals.io_lookup_bool_option(demangle, Demangle, !IO),
@@ -98,35 +97,33 @@ maybe_read_label_name(MaybeLabelName, !IO) :-
         MaybeLabelName = no
     ;
         WordResult = error(Error),
-        error("maybe_read_label_name: " ++ io.error_message(Error))
+        unexpected($module, $pred, io.error_message(Error))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_label_addr(LabelAddr, !IO) :-
     io.read_word(WordResult, !IO),
     (
         WordResult = ok(CharList),
         string.from_char_list(CharList, LabelAddrStr),
-        ( string.base_string_to_int(10, LabelAddrStr, LabelAddr0) ->
+        ( if string.base_string_to_int(10, LabelAddrStr, LabelAddr0) then
             LabelAddr = LabelAddr0
-        ;
-            ( string.base_string_to_int(16,LabelAddrStr, LabelAddrHex) ->
-                LabelAddr = LabelAddrHex
-            ;
-                error("maybe_read_label_addr: " ++
-                    "Label address not hexadecimal or integer\n")
-            )
+        else if string.base_string_to_int(16,LabelAddrStr, LabelAddrHex) then
+            LabelAddr = LabelAddrHex
+        else
+            unexpected($module, $pred,
+                "Label address not hexadecimal or integer")
         )
     ;
         WordResult = eof,
-        error("read_label_addr: EOF reached")
+        unexpected($module, $pred, "EOF reached")
     ;
         WordResult = error(Error),
-        error("read_label_addr: " ++ io.error_message(Error))
+        unexpected($module, $pred, io.error_message(Error))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_label_name(LabelName, !IO) :-
     globals.io_lookup_bool_option(demangle, Demangle, !IO),
@@ -143,13 +140,13 @@ read_label_name(LabelName, !IO) :-
         )
     ;
         WordResult = eof,
-        error("read_label_name: EOF reached")
+        unexpected($module, $pred, "EOF reached")
     ;
         WordResult = error(Error),
-        error("read_label_name: " ++ io.error_message(Error))
+        unexpected($module, $pred, io.error_message(Error))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_string(String, !IO) :-
     io.read_word(WordResult, !IO),
@@ -158,45 +155,45 @@ read_string(String, !IO) :-
         string.from_char_list(CharList, String)
     ;
         WordResult = eof,
-        error("read_string: EOF reached")
+        unexpected($module, $pred, "EOF reached")
     ;
         WordResult = error(Error),
-        error("read_string: " ++ io.error_message(Error))
+        unexpected($module, $pred, io.error_message(Error))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_int(Int, !IO) :-
     read_string(IntStr, !IO),
-    ( string.to_int(IntStr, Int0) ->
+    ( if string.to_int(IntStr, Int0) then
         Int = Int0
-    ;
-        Error = "\nIntger = " ++ IntStr,
-        error("\nread_int: Not an integer\n" ++ Error)
+    else
+        unexpected($module, $pred,
+            string.format("Invalid input: not an integer %s", [s(IntStr)]))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_float(Float, !IO) :-
     read_string(FloatStr, !IO),
-    ( string.to_float(FloatStr, Float0) ->
+    ( if string.to_float(FloatStr, Float0) then
         Float = Float0
-    ;
-        Error = "\nFloat = " ++ FloatStr,
-        error("\nread_float: Not an float\n" ++ Error)
+    else
+        unexpected($module, $pred,
+            string.format("Invalid input: not a float %s", [s(FloatStr)]))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_what_to_profile(WhatToProfile, !IO) :-
     read_string(Str, !IO),
-    ( what_to_profile(Str, WhatToProfile0) ->
+    ( if what_to_profile(Str, WhatToProfile0) then
         WhatToProfile = WhatToProfile0
-    ;
-        Error = "\nWhatToProfile = " ++ Str,
-        error("\nread_what_to_profile: invalid input\n" ++ Error)
+    else
+        unexpected($module, $pred,
+            string.format("Invalid input: WhatToProfile = %s", [s(Str)]))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module read.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: call_graph.m
 % Main author: petdr.
@@ -13,7 +13,7 @@
 % built during the processing of 'Prof.CallPair', if the appropriate option
 % is set.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module call_graph.
 :- interface.
@@ -22,14 +22,14 @@
 :- import_module io.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 
 :- pred build_call_graph(list(string)::in,
     digraph(string)::in, digraph(string)::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -40,7 +40,7 @@
 :- import_module bool.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 build_call_graph(Args, !StaticCallGraph, !IO) :-
     globals.io_lookup_bool_option(dynamic_cg, Dynamic, !IO),
@@ -98,16 +98,17 @@ process_prof_file(VeryVerbose, File, !StaticCallGraph, !IO) :-
 
 process_prof_file_2(!StaticCallGraph, !IO) :-
     maybe_read_label_name(MaybeLabelName, !IO),
-    ( MaybeLabelName = yes(CallerLabel) ->
+    (
+        MaybeLabelName = yes(CallerLabel),
         read_label_name(CalleeLabel, !IO),
         digraph.lookup_key(!.StaticCallGraph, CallerLabel, CallerKey),
         digraph.lookup_key(!.StaticCallGraph, CalleeLabel, CalleeKey),
         digraph.add_edge(CallerKey, CalleeKey, !StaticCallGraph),
         process_prof_file_2(!StaticCallGraph, !IO)
     ;
-        true
+        MaybeLabelName = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module call_graph.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

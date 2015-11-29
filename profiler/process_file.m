@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997,2000, 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: process_file.m
 % Main author: petdr.
@@ -13,8 +13,8 @@
 % the caller-callee pairs, also builds the dynamic call graph if the option
 % set.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module process_file.
 :- interface.
@@ -24,13 +24,13 @@
 :- import_module digraph.
 :- import_module io.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred process_profiling_data_files(prof::out, digraph(string)::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -47,7 +47,7 @@
 :- import_module string.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 process_profiling_data_files(Prof, DynamicCallGraph, !IO) :-
     globals.io_lookup_bool_option(very_verbose, VVerbose, !IO),
@@ -98,7 +98,7 @@ process_profiling_data_files(Prof, DynamicCallGraph, !IO) :-
         Dynamic = yes
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % process_addr_decl(AddrDeclMap, ProfNodeMap, !IO):
     %
@@ -138,9 +138,9 @@ process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO) :-
         map.det_insert(LabelName, LabelAddr, !AddrDecl),
 
         % Labels with different names but the same addresses.
-        ( map.insert(LabelAddr, ProfNode, !ProfNodeMap) ->
+        ( if map.insert(LabelAddr, ProfNode, !ProfNodeMap) then
             true
-        ;
+        else
             lookup_addr(LabelAddr, ProfNode0, !AddrDecl, !ProfNodeMap),
             prof_node_concat_to_name_list(LabelName, ProfNode0, NewProfNode),
             map.det_update(LabelAddr, NewProfNode, !ProfNodeMap)
@@ -150,7 +150,7 @@ process_addr_decl_2(!AddrDecl, !ProfNodeMap, !IO) :-
         MaybeLabelAddr = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % process_addr(!ProfNodeMap, WhatToProfile, Scale, Units, TotalCounts,
     %   !IO):
@@ -202,13 +202,13 @@ process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
 
         % Add to initial counts if we have a ProfNode structure
         % for the address otherwise ignore it.
-        ( map.search(!.ProfNodeMap, LabelAddr, ProfNode0) ->
+        ( if map.search(!.ProfNodeMap, LabelAddr, ProfNode0) then
             prof_node_get_initial_counts(ProfNode0, InitCount0),
             InitCount = InitCount0 + Count,
             prof_node_set_initial_counts(InitCount, ProfNode0, ProfNode),
             map.set(LabelAddr, ProfNode, !ProfNodeMap),
             !:TotalCounts = !.TotalCounts + Count
-        ;
+        else
             io.format("\nWarning address %d not found!  " ++
                 "Ignoring address and continuing computation.\n",
                 [i(LabelAddr)], !IO)
@@ -218,7 +218,7 @@ process_addr_2(!TotalCounts, !ProfNodeMap, !IO) :-
         MaybeLabelAddr = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % process_addr_pair(!ProfNodeMap, !AddrDecl, DynamicCallGraph, !IO):
     %
@@ -271,15 +271,15 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
         map.set(CallerAddr, CallerProfNode, !ProfNodeMap),
 
         % Update the total calls field if not self recursive.
-        ( CalleeAddr \= CallerAddr ->
+        ( if CalleeAddr = CallerAddr then
+            prof_node_set_self_calls(Count, CalleeProfNode0, CalleeProfNode)
+        else
             prof_node_get_total_calls(CalleeProfNode0, TotalCalls0),
             TotalCalls = TotalCalls0 + Count,
             prof_node_set_total_calls(TotalCalls, CalleeProfNode0,
                 CalleeProfNode1),
             prof_node_concat_to_parent(CallerName, Count,
                 CalleeProfNode1, CalleeProfNode)
-        ;
-            prof_node_set_self_calls(Count, CalleeProfNode0, CalleeProfNode)
         ),
 
         % Insert parent information.
@@ -300,7 +300,7 @@ process_addr_pair_2(Dynamic, !DynamicCallGraph, !ProfNodeMap, !AddrDecl,
         MaybeLabelAddr = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % process_library_callgraph(LibraryATSort, LibPredMap, !IO):
     %
@@ -342,7 +342,7 @@ process_library_callgraph_2(!LibATSort, !LibPredMap, !IO) :-
         MaybeLabelName = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Attempt to lookup the addr in the prof_node_map, if it does not exist
     % then record the name as unknown__<address> in the relevant data
@@ -352,15 +352,15 @@ process_library_callgraph_2(!LibATSort, !LibPredMap, !IO) :-
     prof_node_map::in, prof_node_map::out) is det.
 
 lookup_addr(Addr, ProfNode, !AddrDeclMap, !ProfNodeMap) :-
-    ( map.search(!.ProfNodeMap, Addr, ProfNode0) ->
+    ( if map.search(!.ProfNodeMap, Addr, ProfNode0) then
         ProfNode = ProfNode0
-    ;
+    else
         Str = string.format("unknown__%d", [i(Addr)]),
         ProfNode = prof_node_init(Str),
         map.det_insert(Addr, ProfNode, !ProfNodeMap),
         map.det_insert(Str, Addr, !AddrDeclMap)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module process_file.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

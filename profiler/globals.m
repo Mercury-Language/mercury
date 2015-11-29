@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995, 1997-1998, 2001, 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: globals.m.
 % Main author: fjh.
@@ -14,7 +14,7 @@
 % that would be global variables in an imperative language.
 % This global data is stored in the io state.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module globals.
 :- interface.
@@ -26,8 +26,8 @@
 :- import_module io.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type globals.
 
@@ -43,7 +43,7 @@
 :- mode what_to_profile(in, out) is semidet.
 :- mode what_to_profile(out, in) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Access predicates for the `globals' structure
 %
@@ -68,7 +68,7 @@
 :- pred globals.lookup_accumulating_option(globals::in, option::in,
     list(string)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Access predicates for storing a `globals' structure in the
     % io using io.set_globals and io.get_globals.
@@ -94,8 +94,8 @@
 :- pred globals.io_lookup_accumulating_option(option::in, list(string)::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -104,7 +104,7 @@
 :- import_module string.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 what_to_profile("memory-words", memory_words).
 what_to_profile("memory-cells", memory_cells).
@@ -132,43 +132,43 @@ globals.lookup_option(Globals, Option, OptionData) :-
     globals.get_options(Globals, OptionTable),
     map.lookup(OptionTable, Option, OptionData).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 globals.lookup_bool_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
-    ( OptionData = bool(Bool) ->
+    ( if OptionData = bool(Bool) then
         Value = Bool
-    ;
+    else
         error("globals.lookup_bool_option: invalid bool option")
     ).
 
 globals.lookup_string_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
-    ( OptionData = string(String) ->
+    ( if OptionData = string(String) then
         Value = String
-    ;
+    else
         error("globals.lookup_string_option: invalid string option")
     ).
 
 globals.lookup_int_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
-    ( OptionData = int(Int) ->
+    ( if OptionData = int(Int) then
         Value = Int
-    ;
+    else
         error("globals.lookup_int_option: invalid int option")
     ).
 
 globals.lookup_accumulating_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
-    ( OptionData = accumulating(Accumulating) ->
+    ( if OptionData = accumulating(Accumulating) then
         Value = Accumulating
-    ;
+    else
         error("globals.lookup_accumulating_option: " ++
             "invalid accumulating option")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 globals.io_init(Options, !IO) :-
     globals.init(Options, Globals),
@@ -176,9 +176,9 @@ globals.io_init(Options, !IO) :-
 
 globals.io_get_globals(Globals, !IO) :-
     io.get_globals(UnivGlobals, !IO),
-    ( univ_to_type(UnivGlobals, Globals0) ->
+    ( if univ_to_type(UnivGlobals, Globals0) then
         Globals = Globals0
-    ;
+    else
         error("globals.io_get_globals: univ_to_type failed")
     ).
 
@@ -187,7 +187,7 @@ globals.io_set_globals(Globals0, !IO) :-
     type_to_univ(Globals, UnivGlobals),
     io.set_globals(UnivGlobals, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 globals.io_lookup_option(Option, OptionData, !IO) :-
     globals.io_get_globals(Globals, !IO),
@@ -201,7 +201,7 @@ globals.io_set_option(Option, OptionData, !IO) :-
     globals.set_options(OptionTable, Globals0, Globals),
     globals.io_set_globals(Globals, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 globals.io_lookup_bool_option(Option, Value, !IO) :-
     globals.io_get_globals(Globals, !IO),
@@ -219,6 +219,6 @@ globals.io_lookup_accumulating_option(Option, Value, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_accumulating_option(Globals, Option, Value).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module globals.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-1998, 2004-2006, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: generate_output.m
 % Main author: petdr.
 %
 % Takes the prof structure and generates the output.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module generate_output.
 :- interface.
@@ -23,15 +23,15 @@
 :- import_module io.
 :- import_module map.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_prof_output(prof::in, map(string, int)::out, output::out,
     io::di, io::uo) is det.
 
 :- func checked_float_divide(float, float) = float.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -45,7 +45,7 @@
 :- import_module rbtree.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We use rbtrees because they allow duplicate values to be stored.
     % This means that we can then convert to a sorted list of names which
@@ -66,7 +66,7 @@
                     int     % number of calls to this predicate
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_prof_output(Prof, IndexMap, Output, !IO) :-
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
@@ -111,9 +111,9 @@ process_prof_node_list([PN | PNs], Prof, VeryVerbose, !OutputProf, !IO) :-
 
 process_prof_node(ProfNode, Prof, !OutputProf) :-
     prof_node_type(ProfNode, ProfNodeType),
-    ( ProfNodeType = predicate ->
+    ( if ProfNodeType = predicate then
         generate_output_for_single_predicate(ProfNode, Prof, !OutputProf)
-    ;
+    else
         true
         % generate_output.cycle(ProfNode, Prof, OutputProf0, OutputProf)
     ).
@@ -137,9 +137,9 @@ generate_output_for_cycle(ProfNode, Prof, !OutputProf) :-
     % Calculate proportion of time in current predicate and its descendants
     % as a percentage.
     InitialFloat = float.float(Initial),
-    ( TotalCounts = 0.0 ->
+    ( if TotalCounts = 0.0 then
         DescPercentage = 0.0
-    ;
+    else
         DescPercentage = (InitialFloat + Prop) / TotalCounts * 100.0
     ),
 
@@ -172,12 +172,12 @@ generate_output_for_single_predicate(ProfNode, Prof, !OutputProf) :-
         ParentList, ChildList, TotalCalls, SelfCalls, NameList),
 
     % Node only needs to be processed if it has a parent or a child.
-    (
+    ( if
         ParentList = [],
         ChildList = []
-    ->
+    then
         true
-    ;
+    else
         !.OutputProf = profiling(InfoMap0, CallTree0, FlatTree0),
 
         Name = LabelName ++ construct_name(NameList),
@@ -187,10 +187,10 @@ generate_output_for_single_predicate(ProfNode, Prof, !OutputProf) :-
         % Calculate proportion of time in current predicate
         % as a percentage.
         InitialFloat = float.float(Initial),
-        ( TotalCounts = 0.0 ->
+        ( if TotalCounts = 0.0 then
             DescPercentage = 0.0,
             FlatPercentage = 0.0
-        ;
+        else
             DescPercentage = (InitialFloat + Prop) / TotalCounts * 100.0,
             FlatPercentage = InitialFloat / TotalCounts * 100.0
         ),
@@ -265,20 +265,20 @@ remove_cycle_members([], _, _, !TotalCalls, [], []).
 remove_cycle_members([PN | PNs], CycleNum, CycleMap, !TotalCalls, List,
         OutputCycleParentList) :-
     pred_info_get_entire(PN, LabelName, Calls),
-    ( map.search(CycleMap, LabelName, ParentCycleNum) ->
-        ( ParentCycleNum = CycleNum ->
+    ( if map.search(CycleMap, LabelName, ParentCycleNum) then
+        ( if ParentCycleNum = CycleNum then
             !:TotalCalls = !.TotalCalls - Calls,
             remove_cycle_members(PNs, CycleNum, CycleMap, !TotalCalls,
                 List, OC0),
             Parent = parent(LabelName, CycleNum, 0.0, 0.0, Calls),
             OutputCycleParentList = [Parent | OC0]
-        ;
+        else
             remove_cycle_members(PNs, CycleNum, CycleMap, !TotalCalls,
                 List0, OC0),
             OutputCycleParentList = OC0,
             List = [PN | List0]
         )
-    ;
+    else
         remove_cycle_members(PNs, CycleNum, CycleMap, !TotalCalls,
             List0, OutputCycleParentList),
         List = [PN | List0]
@@ -305,9 +305,9 @@ process_prof_node_parents_3([PN | PNs], SelfTime, DescTime, TotalCalls,
     pred_info_get_entire(PN, LabelName, Calls),
 
     % Check if the parent is a member of a cycle.
-    ( map.search(CycleMap, LabelName, ParentCycleNum0) ->
+    ( if map.search(CycleMap, LabelName, ParentCycleNum0) then
         ParentCycleNum = ParentCycleNum0
-    ;
+    else
         ParentCycleNum = 0
     ),
 
@@ -350,17 +350,17 @@ remove_child_cycle_members([], _, _, [], []).
 remove_child_cycle_members([PN | PNs], CycleNum, CycleMap, List,
         CycleChildList) :-
     pred_info_get_entire(PN, LabelName, Calls),
-    ( map.search(CycleMap, LabelName, ChildCycleNum) ->
-        ( ChildCycleNum = CycleNum ->
+    ( if map.search(CycleMap, LabelName, ChildCycleNum) then
+        ( if ChildCycleNum = CycleNum then
             remove_child_cycle_members(PNs, CycleNum, CycleMap, List, OC0),
             Child = child(LabelName, CycleNum, 0.0, 0.0, Calls, 0),
             CycleChildList = [Child | OC0]
-        ;
+        else
             remove_child_cycle_members(PNs, CycleNum, CycleMap, List0, OC0),
             CycleChildList = OC0,
             List = [PN | List0]
         )
-    ;
+    else
         remove_child_cycle_members(PNs, CycleNum, CycleMap, List0,
             CycleChildList),
         List = [PN | List0]
@@ -374,9 +374,9 @@ process_prof_node_children_2([PN | PNs], Prof, !Output) :-
     pred_info_get_entire(PN, LabelName, Calls),
     prof_get_entire(Prof, Scale, _Units, _, AddrMap, ProfNodeMap, CycleMap),
 
-    ( map.search(CycleMap, LabelName, CycleNum0) ->
+    ( if map.search(CycleMap, LabelName, CycleNum0) then
         CycleNum = CycleNum0
-    ;
+    else
         CycleNum = 0
     ),
 
@@ -435,8 +435,8 @@ profiling_init = Profiling :-
     rbtree.init(FlatTree),
     Profiling = profiling(InfoMap, CallTree, FlatTree).
 
-checked_float_divide(A, B) = ( B = 0.0 -> 0.0 ; A / B).
+checked_float_divide(A, B) = ( if B = 0.0 then 0.0 else A / B).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module generate_output.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
