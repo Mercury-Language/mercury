@@ -96,6 +96,8 @@
     % have been expanded out; recursive insts have their self-referential
     % parts printed out as elipses ("...").
     % (These routines are used for outputting insts in mode errors.)
+    % NOTE They *were* used for that, but have been replaced by the code
+    % now in error_msg_inst.m.
     %
 :- pred mercury_output_expanded_inst(output_lang::in, module_info::in,
     inst_varset::in, mer_inst::in, io::di, io::uo) is det.

@@ -43,6 +43,10 @@
 :- include_module hlds_desc.
 :- include_module hlds_out.
 
+% Modules for handling errors.
+:- include_module hlds_error_util.
+:- include_module error_msg_inst.
+
 % Miscellaneous utilities.
 :- include_module arg_info.
 :- include_module code_model.
@@ -53,7 +57,6 @@
 :- include_module headvar_names.
 :- include_module hlds_defns.
 :- include_module hlds_code_util.
-:- include_module hlds_error_util.
 :- include_module hlds_statistics.
 :- include_module make_goal.
 :- include_module mark_static_terms.

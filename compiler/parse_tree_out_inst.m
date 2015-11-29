@@ -101,6 +101,9 @@
 %
 % (XXX Perhaps we should use the same sort of technique to also avoid
 % code duplication with mercury_format_structured_inst.)
+%
+% XXX Since mercury_output_expanded_inst has been replaced by the code in
+% error_msg_inst.m, this flexibility is not needed anymore.
 
 :- typeclass inst_info(InstInfo) where [
     (func instvarset(InstInfo) = inst_varset),

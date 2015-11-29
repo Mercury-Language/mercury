@@ -41,8 +41,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.foreign.
-:- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_mode.
+:- import_module hlds.error_msg_inst.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module hlds.make_hlds.make_hlds_error.
@@ -367,10 +366,11 @@ check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet, ParentInsts,
 invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         ProblemPieces, !Specs) :-
     named_parents_to_pieces(ParentInsts, ParentPieces),
-    InstStr = mercury_expanded_inst_to_string(output_debug, ModuleInfo,
-        InstVarSet, Inst),
+    InstPieces = error_msg_inst(ModuleInfo, InstVarSet,
+        dont_expand_named_insts, quote_short_inst,
+        [], [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst),
     Pieces = [words("Error:") | ParentPieces] ++
-        [words("the inst"), quote(InstStr) | ProblemPieces] ++ [nl],
+        [words("the inst") | InstPieces] ++ ProblemPieces ++ [nl],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
