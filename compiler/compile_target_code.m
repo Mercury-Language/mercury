@@ -3058,13 +3058,8 @@ create_java_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
         invoke_system_command(Globals, ErrorStream, cmd_verbose_commands, Cmd,
             Succeeded0, !IO),
         io.remove_file(TempFileName, _, !IO),
-
         (
-            Succeeded0 = yes,
-            % Add an index, which is supposed to speed up class loading.
-            IndexCmd = string.append_list([Jar, " i ", JarFileName]),
-            invoke_system_command(Globals, ErrorStream, cmd_verbose_commands,
-                IndexCmd, _, !IO)
+            Succeeded0 = yes
         ;
             Succeeded0 = no,
             io.remove_file(JarFileName, _, !IO)
