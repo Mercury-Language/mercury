@@ -702,7 +702,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
             % so that the type variables names match up (e.g. with the type
             % variables in the constraint_proofs)
 
-            % Apply any type substititions that map existentially quantified
+            % Apply any type substitutions that map existentially quantified
             % type variables to other type vars.
             (
                 ExistQVars0 = [],
@@ -1006,7 +1006,7 @@ identical_up_to_renaming(TypesList1, TypesList2) :-
 
     % A compiler-generated predicate only needs type checking if
     % (a) it is a user-defined equality pred, or
-    % (b) it is the unification or comparison predicate for an existially
+    % (b) it is the unification or comparison predicate for an existentially
     %     quantified type.
     %
     % In case (b), we need to typecheck it to fill in the head_type_params
@@ -3135,7 +3135,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                     OutputFunctorType),
 
                 % Rename the class constraints, projecting the constraints
-                % onto the set of type variables occuring in the types of the
+                % onto the set of type variables occurring in the types of the
                 % arguments of the call to `'field :='/2'. Note that we have
                 % already flipped the constraints.
                 type_vars_list([FunctorType, FieldType], CallTVars0),
