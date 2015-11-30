@@ -10,13 +10,13 @@
 % Main author: gjd.
 % Stability: low.
 % 
-% This module provides a region tree (R-tree) ADT.  A region tree associates
+% This module provides a region tree (R-tree) ADT. A region tree associates
 % values with regions in some space, e.g. rectangles in the 2D plane, or
-% bounding spheres in 3D space.  Region trees accept spatial queries, e.g. a
+% bounding spheres in 3D space. Region trees accept spatial queries, e.g. a
 % typical usage is "find all pubs within a 2km radius".
 % 
 % This module also provides the typeclass region(K) which allows the user to
-% define new regions and spaces.  Three "builtin" instances for region(K)
+% define new regions and spaces. Three "builtin" instances for region(K)
 % are provided: region(interval), region(box) and region(box3d)
 % corresponding to "square" regions in one, two and three dimensional spaces
 % respectively.
@@ -108,7 +108,7 @@
     % search_general(KTest, VTest, T) = V.
     %
     % Search for all values V with associated keys K that satisfy
-    % KTest(K) /\ VTest(V).  The search assumes that for all K1, K2
+    % KTest(K) /\ VTest(V). The search assumes that for all K1, K2
     % such that K1 contains K2, then if KTest(K2) holds we have that
     % KTest(K1) also holds.
     %
@@ -129,7 +129,7 @@
     % Search for a value V with associated key K such that 
     % KTest(K, _) /\ VTest(V, L) is satisfied and there does not exist a
     % V' with K' such that KTest(K', _) /\ VTest(V', L') /\ (L' < L) is 
-    % satisfied.  Fail if no such key-value pair exists.
+    % satisfied. Fail if no such key-value pair exists.
     %
     % The search assumes that for all K1, K2 such that
     % K1 contains K2, then if KTest(K2, L2) holds we have that 
@@ -145,7 +145,7 @@
     % search_general_fold(KTest, VPred, T, !A).
     %
     % Apply accumulator VPred to each key-value pair K-V that satisfies 
-    % KTest(K).  The same assumptions for KTest from search_general apply
+    % KTest(K). The same assumptions for KTest from search_general apply
     % here.
     %
 :- pred search_general_fold(pred(K), pred(K, V, A, A), rtree(K, V), 
@@ -173,7 +173,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Pre-defined regions
+% Pre-defined regions.
 %
    
     % An interval type represented as interval(Min, Max).
@@ -231,10 +231,10 @@
     % (which contain the values) and 2/3/4 nodes which contain 2/3/4 keys
     % which are the bounding regions of the 2/3/4 subtrees.
     %
-    % The key for the root node is not stored anywhere.  This means queries
+    % The key for the root node is not stored anywhere. This means queries
     % outside the bounds of the tree will be slower, since we must descend
-    % to level 1 instead of level 0.  However, we will win if the query is
-    % within range.  Also doing this simplifies the code slightly.
+    % to level 1 instead of level 0. However, we will win if the query is
+    % within range. Also doing this simplifies the code slightly.
     %
 :- type rtree_2(K, V) 
     --->    leaf(V) 
@@ -264,14 +264,14 @@
 
 %---------------------------------------------------------------------------%
 %
-% Creation
+% Creation.
 %
 
 rtree.init = empty.
 
 %---------------------------------------------------------------------------%
 %
-% Test for emptiness
+% Test for emptiness.
 %
 
 rtree.is_empty(empty).
@@ -279,7 +279,7 @@ rtree.is_empty(empty).
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% Insertion
+% Insertion.
 %
 
 rtree.insert(K, V, !.Tree) = !:Tree :-
@@ -328,11 +328,11 @@ insert_2(Node, K, V, T) :-
 
 %---------------------------------------------------------------------------%
 %
-% Choosing what subtree to insert a new node into
+% Choosing what subtree to insert a new node into.
 %
  
 % The following functions choose a subtree into which to insert a new
-% Key-Value pair.  There are two versions, one for when we are inserting into
+% Key-Value pair. There are two versions, one for when we are inserting into
 % two-nodes and another for when we are inserting into three-nodes.
 % (Four-nodes should be split when they are encountered so we will never need
 % to insert into them.)
@@ -341,7 +341,7 @@ insert_2(Node, K, V, T) :-
 % the paper by Guttman).
 %
 % We insert the new Value into the subtree whose associated region needs the
-% least enlargement to include Key.  Ties are resolved in favour of the
+% least enlargement to include Key. Ties are resolved in favour of the
 % subtree with the region of smallest size.
 
     % choose_subtree(Key, KA, KB).
@@ -362,13 +362,13 @@ choose_subtree(Key, KA, KB) = Result :-
     EnlargedSizeB = bounding_region_size(Key, KB), 
     IncreaseForA  = EnlargedSizeA - SizeA,
     IncreaseForB  = EnlargedSizeB - SizeB,
-    ( IncreaseForA < IncreaseForB ->
+    ( if IncreaseForA < IncreaseForB then
         Result = min2_first
-    ; IncreaseForA > IncreaseForB ->
+    else if IncreaseForA > IncreaseForB then
         Result = min2_second
-    ; SizeA =< SizeB ->
+    else if SizeA =< SizeB then
         Result = min2_first
-    ;
+    else
         Result = min2_second
     ).
 
@@ -388,16 +388,16 @@ choose_subtree(Key, KA, KB, KC) = Result :-
     IncreaseForC = EnlargedAreaC - AreaC,
     include_min(IncreaseForA, IncreaseForB, AreaA, AreaB,
         min3_first, min3_second, Result0), 
-    ( Result0 = min3_first ->
+    ( if Result0 = min3_first then
         include_min(IncreaseForA, IncreaseForC, AreaA, AreaC,
             min3_first, min3_third, Result)
-    ;
+    else
         include_min(IncreaseForB, IncreaseForC, AreaA, AreaB,
             min3_second, min3_third, Result)
     ).
 
     % D1 and D2 are the enlargement to the two rectangles caused by adding
-    % the new key.  We choose the Key that causes the smallest enlargement.
+    % the new key. We choose the Key that causes the smallest enlargement.
     % In the event of a tie with choose the Key with the smallest area.
     %
 :- pred include_min(float::in, float::in, float::in, float::in,
@@ -405,13 +405,13 @@ choose_subtree(Key, KA, KB, KC) = Result :-
     min_of_three_result::out) is det.
 
 include_min(D1, D2, A1, A2, R1, R2, R3) :-
-    ( D1 < D2 ->
+    ( if D1 < D2 then
         R3 = R1
-    ; D1 > D2 ->
+    else if D1 > D2 then
         R3 = R2
-    ; A1 =< A2 ->
+    else if A1 =< A2 then
         R3 = R1
-    ;
+    else
         R3 = R2
     ).
 
@@ -492,7 +492,7 @@ insert_and_split_child3(K0, T0, K1, T1, K2, T2, K, V, T) :-
 
 %---------------------------------------------------------------------------%
 %
-% Node splitting
+% Node splitting.
 %
 
     % Split a 4-node into two 2-nodes.
@@ -512,15 +512,16 @@ split_4_node(Four, K4, T4, K5, T5) :-
     A03 = bounding_region_size(K0, K3), 
     A12 = bounding_region_size(K1, K2), 
     A0312 = A03 + A12, 
-    ( A0123 =< A0213 ->
-        ( A0123 =< A0312 ->
+    ( if A0123 =< A0213 then
+        ( if A0123 =< A0312 then
             Min = min3_first
-        ;
+        else
             Min = min3_third
         )
-    ;   ( A0213 =< A0312 ->
+    else 
+        ( if A0213 =< A0312 then
             Min = min3_second
-        ;
+        else
             Min = min3_third
         )
     ), 
@@ -547,11 +548,11 @@ split_4_node(Four, K4, T4, K5, T5) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% Deletion
+% Deletion.
 %    
     
     % When deleting from an rtree we may need to collect some subtrees that
-    % need to be reinserted.  These subtrees are called orphan entries.
+    % need to be reinserted. These subtrees are called orphan entries.
     %
 :- type orphan(K, V)
     --->    orphan(K, rtree_2(K, V)).
@@ -574,30 +575,30 @@ rtree.delete(K, V, !Tree) :-
             !:Tree = rtree(!.T)
         ;
             Info = deleting(Orphans), 
-            %
-            % We are still deleting and we have reached the root node.  This 
+            % We are still deleting and we have reached the root node. This 
             % means the path to the deleted leaf contained all 2-nodes 
             % (including the root-node).
-            %
             (
                 Orphans = [ Orphan | Orphans0], 
                 Orphan  = orphan(OrphanKey, OrphanTree),
-                %
                 % Here we detect the special case that the root was a 2-node
-                % with two leaves (& one was deleted).  Thus we need to drop 
+                % with two leaves (& one was deleted). Thus we need to drop 
                 % back to a 1-node.
-                %
-                ( OrphanTree = leaf(OrphanValue) ->
-                    ( Orphans0 = [] ->
+                ( if OrphanTree = leaf(OrphanValue) then
+                    ( if
+                        Orphans0 = []
+                    then
                         !:Tree = one(OrphanKey, OrphanValue)
-                    ; Orphans0 = [orphan(NextOrphanKey, NextOrphanTree)] ->
+                    else if
+                        Orphans0 = [orphan(NextOrphanKey, NextOrphanTree)]
+                    then
                         !:T = two(OrphanKey, OrphanTree, NextOrphanKey,
                             NextOrphanTree), 
                         !:Tree = rtree(!.T)
-                    ;
+                    else
                         error("delete: unbalanced rtree")
                     )
-                ;
+                else
                     reinsert_deleted_subtrees(Orphans0, 1, OrphanTree, !:T), 
                     !:Tree = rtree(!.T)
                 )
@@ -609,55 +610,59 @@ rtree.delete(K, V, !Tree) :-
     ).
     
     % Algorithm: descend into subtrees with bounding regions that contain the
-    % query key.  Fail if key-value pair is not found in any subtree.
+    % query key. Fail if key-value pair is not found in any subtree.
     %
 :- pred delete_2(rtree_2(K, V)::in, K::in, V::in, int::in, K::out,
     rtree_2(K, V)::out, delete_info(K, V)::out) is semidet <= region(K).
 
 delete_2(leaf(V), K, V, _, K, leaf(V), deleting([])).
 delete_2(two(K0, T0, K1, T1), K, V, Depth, DK, DT, Info) :-
-    ( try_deletion2(K0, T0, K1, T1, K, V, Depth, DK0, DT0, Info0) ->
+    ( if try_deletion2(K0, T0, K1, T1, K, V, Depth, DK0, DT0, Info0) then
         DK = DK0, 
         DT = DT0, 
         Info = Info0
-    ;
+    else
         try_deletion2(K1, T1, K0, T0, K, V, Depth, DK, DT, Info)
     ).
 delete_2(three(K0, T0, K1, T1, K2, T2), K, V, Depth, DK, DT, Info) :-
-    ( try_deletion3(K0, T0, K1, T1, K2, T2, K, V, Depth, DK0, DT0, Info0) ->
+    ( if
+        try_deletion3(K0, T0, K1, T1, K2, T2, K, V, Depth, DK0, DT0, Info0)
+    then
         DK = DK0, 
         DT = DT0, 
         Info = Info0
-    ; try_deletion3(K1, T1, K0, T0, K2, T2, K, V, Depth, DK0, DT0, Info0) ->
+    else if
+        try_deletion3(K1, T1, K0, T0, K2, T2, K, V, Depth, DK0, DT0, Info0)
+    then
         DK = DK0, 
         DT = DT0, 
         Info = Info0
-    ;
+    else
         try_deletion3(K2, T2, K0, T0, K1, T1, K, V, Depth, DK, DT, Info)
     ).
 delete_2(four(K0, T0, K1, T1, K2, T2, K3, T3), K, V, Depth, DK, DT, Info) :-
-    (
+    ( if
         try_deletion4(K0, T0, K1, T1, K2, T2, K3, T3, K, V, Depth, DK0, DT0,
             Info0)
-    ->
+    then
         DK = DK0, 
         DT = DT0, 
         Info = Info0
-    ;
+    else if
         try_deletion4(K1, T1, K0, T0, K2, T2, K3, T3, K, V, Depth, DK0, DT0,
             Info0)
-    ->
+    then
         DK = DK0, 
         DT = DT0, 
         Info = Info0
-    ;
+    else if
         try_deletion4(K2, T2, K0, T0, K1, T1, K3, T3, K, V, Depth, DK0, DT0,
             Info0)
-    ->
+    then
         DK = DK0, 
         DT = DT0, 
         Info = Info0
-    ;
+    else
         try_deletion4(K3, T3, K0, T0, K1, T1, K2, T2, K, V, Depth, DK, DT,
             Info)
     ).
@@ -737,9 +742,9 @@ try_deletion4(K0, T0, K1, T1, K2, T2, K3, T3, K, V, D, DK, DT, DI) :-
 reinsert_deleted_subtrees([], _, !T).
 reinsert_deleted_subtrees([orphan(K, T) | DLs], Depth, T0, T2) :-
     T1 = insert_tree(T0, K, T, 1, Depth), 
-    ( T0 = four(_, _, _, _, _, _, _, _) ->
+    ( if T0 = four(_, _, _, _, _, _, _, _) then
         reinsert_deleted_subtrees(DLs, Depth + 2, T1, T2)
-    ;
+    else
         reinsert_deleted_subtrees(DLs, Depth + 1, T1, T2)
     ).
     
@@ -752,9 +757,9 @@ reinsert_deleted_subtrees([orphan(K, T) | DLs], Depth, T0, T2) :-
 insert_tree(leaf(_), _, _, _, _) = 
     func_error("insert_tree: leaf unexpected").
 insert_tree(two(K0, T0, K1, T1), K, S, D0, D) = T :-
-    ( D0 = D ->
+    ( if D0 = D then
         T = three(K0, T0, K1, T1, K, S)
-    ;
+    else
         Result = choose_subtree(K, K0, K1), 
         ( 
             Result = min2_first,
@@ -765,9 +770,9 @@ insert_tree(two(K0, T0, K1, T1), K, S, D0, D) = T :-
         )
     ).
 insert_tree(three(K0, T0, K1, T1, K2, T2), K, S, D0, D) = T :-
-    ( D0 = D ->
+    ( if D0 = D then
         T = four(K0, T0, K1, T1, K2, T2, K, S)
-    ;
+    else
         Result = choose_subtree(K, K0, K1, K2), 
         (
             Result = min3_first, 
@@ -861,7 +866,7 @@ insert_tree_and_split_child3(K0, T0, K1, T1, K2, T2, K, S, D0, D, T) :-
 
 %---------------------------------------------------------------------------%
 %
-% search_intersects
+% Search_intersects.
 %
 
 rtree.search_intersects(empty, _) = [].
@@ -894,15 +899,15 @@ search_intersects_2(four(K0, T0, K1, T1, K2, T2, K3, T3), QueryKey, !Values) :-
     list(V)::in, list(V)::out) is det <= region(K).
     
 search_intersects_subtree(K, T, QueryKey, !Values) :-
-    ( intersects(QueryKey, K) ->
+    ( if intersects(QueryKey, K) then
         search_intersects_2(T, QueryKey, !Values)
-    ;
+    else
         true
     ).
 
 %---------------------------------------------------------------------------%
 %
-% search_contains
+% Search_contains.
 %
 
 rtree.search_contains(empty, _) = [].
@@ -935,9 +940,9 @@ search_contains_2(four(K0, T0, K1, T1, K2, T2, K3, T3), QueryKey, !Values) :-
     list(V)::in, list(V)::out) is det <= region(K).
 
 search_contains_subtree(K, T, QueryKey, !Values) :-
-    ( contains(QueryKey, K) ->
+    ( if contains(QueryKey, K) then
         search_contains_2(T, QueryKey, !Values)
-    ;
+    else
         true
     ).
 
@@ -957,9 +962,9 @@ rtree.search_general(KeyTest, ValueTest, rtree(T)) = Values :-
     list(V)::in, list(V)::out) is det.
 
 search_general_2(leaf(Value), _, ValueTest, !Values) :-
-    ( ValueTest(Value) ->
+    ( if ValueTest(Value) then
         !:Values = [ Value | !.Values ]
-    ;
+    else
         true
     ).
 search_general_2(Node, KeyTest, ValueTest, !Values) :-
@@ -976,7 +981,7 @@ search_general_2(Node, KeyTest, ValueTest, !Values) :-
     search_general_subtree(K0, T0, KeyTest, ValueTest, !Values),
     search_general_subtree(K1, T1, KeyTest, ValueTest, !Values),
     search_general_subtree(K2, T2, KeyTest, ValueTest, !Values),
-    search_general_subtree(K3, T3, KeyTest, ValueTest, !Values). 
+search_general_subtree(K3, T3, KeyTest, ValueTest, !Values). 
 
 :- pred search_general_subtree(K::in, rtree_2(K, V)::in, 
     pred(K)::in(pred(in) is semidet),
@@ -984,15 +989,15 @@ search_general_2(Node, KeyTest, ValueTest, !Values) :-
     list(V)::in, list(V)::out) is det.
     
 search_general_subtree(K, T, KeyTest, ValueTest, !Values) :-
-    ( KeyTest(K) ->
+    ( if KeyTest(K) then
         search_general_2(T, KeyTest, ValueTest, !Values)
-    ;
+    else
         true
     ).
 
 %---------------------------------------------------------------------------%
 %
-% search_first
+% Search_first.
 %
 
 rtree.search_first(P, C, one(K0, V0), L, V0, E0) :-
@@ -1012,7 +1017,7 @@ maybe_limit(K, P, L, E) :-
     compare((<), E, L).
     
     % Algorithm: searches for the first element by traversing the tree in
-    % the order induced by KTest.  If we find a solution, we try and find
+    % the order induced by KTest. If we find a solution, we try and find
     % a better solution by setting a tighter maximum.
     %
     % We avoid searching the entire tree by (1) not searching subtrees that
@@ -1026,93 +1031,97 @@ maybe_limit(K, P, L, E) :-
 search_first_2(leaf(V), _, C, L, V, E) :-
     maybe_limit(V, C, L, E).
 search_first_2(two(K0, T0, K1, T1), P, C, L, V, E) :-
-    ( maybe_limit(K0, P, L, E0) ->
-        ( maybe_limit(K1, P, L, E1) ->
+    ( if maybe_limit(K0, P, L, E0) then
+        ( if maybe_limit(K1, P, L, E1) then
             search_first_2_two_choices(E0, E1, T0, T1, P, C, L, V, E)
-        ;
+        else
             search_first_2(T0, P, C, L, V, E)
         )
-    ;
+    else
         maybe_limit(K1, P, L, _), 
         search_first_2(T1, P, C, L, V, E)
     ).
 search_first_2(three(K0, T0, K1, T1, K2, T2), P, C, L, V, E) :-
-    ( maybe_limit(K0, P, L, E0) ->
-        ( maybe_limit(K1, P, L, E1) ->
-            ( maybe_limit(K2, P, L, E2) ->
+    ( if maybe_limit(K0, P, L, E0) then
+        ( if maybe_limit(K1, P, L, E1) then
+            ( if maybe_limit(K2, P, L, E2) then
                 search_first_2_three_choices(E0, E1, E2, T0, T1, T2, P, C, 
                     L, V, E)
-            ;
+            else
                 search_first_2_two_choices(E0, E1, T0, T1, P, C, L, V, E)
             )
-        ; maybe_limit(K2, P, L, E2) ->
+        else if maybe_limit(K2, P, L, E2) then
             search_first_2_two_choices(E0, E2, T0, T2, P, C, L, V, E)
-        ;
+        else
             search_first_2(T0, P, C, L, V, E)
         )
-    ; maybe_limit(K1, P, L, E1) ->
-        ( maybe_limit(K2, P, L, E2) ->
+    else if maybe_limit(K1, P, L, E1) then
+        ( if maybe_limit(K2, P, L, E2) then
             search_first_2_two_choices(E1, E2, T1, T2, P, C, L, V, E)
-        ;
+        else
             search_first_2(T1, P, C, L, V, E)
         )
-    ;
+    else
         maybe_limit(K2, P, L, _), 
         search_first_2(T2, P, C, L, V, E)
     ).
 search_first_2(four(K0, T0, K1, T1, K2, T2, K3, T3), P, C, L, V, E) :-
-    ( maybe_limit(K0, P, L, E0) ->
-        ( maybe_limit(K1, P, L, E1) ->
-            ( maybe_limit(K2, P, L, E2) ->
-                ( maybe_limit(K3, P, L, E3) ->
+    ( if maybe_limit(K0, P, L, E0) then
+        ( if maybe_limit(K1, P, L, E1) then
+            ( if maybe_limit(K2, P, L, E2) then
+                ( if maybe_limit(K3, P, L, E3) then
                     search_first_2_four_choices(E0, E1, E2, E3, T0, T1, T2,
                         T3, P, C, L, V, E)
-                ;
+                else
                     search_first_2_three_choices(E0, E1, E2, T0, T1, T2, P, 
                         C, L, V, E)
                 )
-            ;   ( maybe_limit(K3, P, L, E3) ->
+            else
+                ( if maybe_limit(K3, P, L, E3) then
                     search_first_2_three_choices(E0, E1, E3, T0, T1, T3, P, 
                         C, L, V, E)
-                ;
+                else
                     search_first_2_two_choices(E0, E1, T0, T1, P, C, L, V, E)
                 )
             )
-        ;   ( maybe_limit(K2, P, L, E2) ->
-                ( maybe_limit(K3, P, L, E3) ->
+        else
+            ( if maybe_limit(K2, P, L, E2) then
+                ( if maybe_limit(K3, P, L, E3) then
                     search_first_2_three_choices(E0, E2, E3, T0, T2, T3, P, 
                         C, L, V, E)
-                ;
+                else
                     search_first_2_two_choices(E0, E2, T0, T2, P, C, L, V, E)
                 )
-            ;   ( maybe_limit(K3, P, L, E3) ->
+            else
+                ( if maybe_limit(K3, P, L, E3) then
                     search_first_2_two_choices(E0, E3, T0, T3, P, C, L, V, E)
-                ;
+                else
                     search_first_2(T0, P, C, L, V, E)
                 )
             )
         )
-    ; maybe_limit(K1, P, L, E1) ->
-        ( maybe_limit(K2, P, L, E2) ->
-            ( maybe_limit(K3, P, L, E3) ->
+    else if maybe_limit(K1, P, L, E1) then
+        ( if maybe_limit(K2, P, L, E2) then
+            ( if maybe_limit(K3, P, L, E3) then
                 search_first_2_three_choices(E1, E2, E3, T1, T2, T3, P, C, L, 
                     V, E)
-            ;
+            else
                 search_first_2_two_choices(E1, E2, T1, T2, P, C, L, V, E)
             )
-        ;   ( maybe_limit(K3, P, L, E3) ->
+        else
+            ( if maybe_limit(K3, P, L, E3) then
                 search_first_2_two_choices(E1, E3, T1, T3, P, C, L, V, E)
-            ;
+            else
                 search_first_2(T1, P, C, L, V, E)
             )
         )
-    ; maybe_limit(K2, P, L, E2) ->
-        ( maybe_limit(K3, P, L, E3) ->
+    else if maybe_limit(K2, P, L, E2) then
+        ( if maybe_limit(K3, P, L, E3) then
             search_first_2_two_choices(E2, E3, T2, T3, P, C, L, V, E)
-        ;
+        else
             search_first_2(T2, P, C, L, V, E)
         )
-    ;
+    else
         maybe_limit(K3, P, L, _), 
         search_first_2(T3, P, C, L, V, E)
     ).
@@ -1125,9 +1134,9 @@ search_first_2(four(K0, T0, K1, T1, K2, T2, K3, T3), P, C, L, V, E) :-
     pred(in, out) is semidet, in, out, out) is semidet.
 
 search_first_2_two_choices(E0, E1, T0, T1, P, C, L, V, E) :-
-    ( compare((<), E0, E1) ->
+    ( if compare((<), E0, E1) then
         search_first_2_try_first_from_two(E1, T0, T1, P, C, L, V, E)
-    ;
+    else
         search_first_2_try_first_from_two(E0, T1, T0, P, C, L, V, E)
     ).
 
@@ -1177,7 +1186,7 @@ search_first_2_four_choices(E0, E1, E2, E3, T0, T1, T2, T3, P, C, L, V, E) :-
     ).
 
     % Search the first subtree, if we find a solution, we then try and find
-    % a better solution.  Otherwise we search the remaining 3 choices.
+    % a better solution. Otherwise we search the remaining 3 choices.
     % Arguments are ordered in terms of "goodness".
     %
 :- pred search_first_2_try_first_from_four(E, E, E, rtree_2(K, V),
@@ -1188,10 +1197,10 @@ search_first_2_four_choices(E0, E1, E2, E3, T0, T1, T2, T3, P, C, L, V, E) :-
     is semidet.
 
 search_first_2_try_first_from_four(E1, E2, E3, T0, T1, T2, T3, P, C, L, V, E) :-
-    ( search_first_2(T0, P, C, L, V0, E0) ->
+    ( if search_first_2(T0, P, C, L, V0, E0) then
         search_first_2_find_better_solution_three(V0, E0, E1, E2, E3, T1, T2, 
             T3, P, C, V, E)
-    ;
+    else
         search_first_2_three_choices(E1, E2, E3, T1, T2, T3, P, C, L, V, E)
     ).
 
@@ -1202,10 +1211,10 @@ search_first_2_try_first_from_four(E1, E2, E3, T0, T1, T2, T3, P, C, L, V, E) :-
     is semidet.
 
 search_first_2_try_first_from_three(E1, E2, T0, T1, T2, P, C, L, V, E) :-
-    ( search_first_2(T0, P, C, L, V0, E0) ->
+    ( if search_first_2(T0, P, C, L, V0, E0) then
         search_first_2_find_better_solution_two(V0, E0, E1, E2, T1, T2, P, 
             C, V, E)
-    ;
+    else
         search_first_2_two_choices(E1, E2, T1, T2, P, C, L, V, E)
     ).
 
@@ -1215,14 +1224,14 @@ search_first_2_try_first_from_three(E1, E2, T0, T1, T2, P, C, L, V, E) :-
     pred(in, out) is semidet, in, out, out) is semidet.
 
 search_first_2_try_first_from_two(E1, T0, T1, P, C, L, V, E) :-
-    ( search_first_2(T0, P, C, L, V0, E0) ->
+    ( if search_first_2(T0, P, C, L, V0, E0) then
         search_first_2_find_better_solution_one(V0, E0, E1, T1, P, C, V, E)
-    ;
+    else
         search_first_2(T1, P, C, L, V, E)
     ).
 
     % We have found a solution, however it may not be the best solution, 
-    % so we search the other possibilities.  The first solution becomes the
+    % so we search the other possibilities. The first solution becomes the
     % new maximum, so it is likely the new searches are cheaper.
     %
 :- pred search_first_2_find_better_solution_one(V, E, E, rtree_2(K, V), 
@@ -1231,18 +1240,18 @@ search_first_2_try_first_from_two(E1, T0, T1, P, C, L, V, E) :-
     pred(in, out) is semidet, pred(in, out) is semidet, out, out) is det.
 
 search_first_2_find_better_solution_one(VM, EM, E0, T0, P, C, V, E) :-
-    ( compare((<), EM, E0) ->
+    ( if compare((<), EM, E0) then
         V = VM, 
         E = EM
-    ; search_first_2(T0, P, C, EM, V0, F0) ->
-        ( compare((<), EM, F0) ->
+    else if search_first_2(T0, P, C, EM, V0, F0) then
+        ( if compare((<), EM, F0) then
             V = VM, 
             E = EM
-        ;
+        else
             V = V0, 
             E = F0
         )
-    ;
+    else
         V = VM, 
         E = EM
     ).
@@ -1272,13 +1281,13 @@ search_first_2_find_better_solution_two(VM, EM, E0, E1, T0, T1, P, C, V, E) :-
     pred(in, out) is semidet, pred(in, out) is semidet, out, out) is det.
 
 search_first_2_better_solution_two(VM, EM, E1, T0, T1, P, C, V, E) :-
-    ( search_first_2(T0, P, C, EM, V0, F0) ->
-        ( compare((<), EM, F0) ->
+    ( if search_first_2(T0, P, C, EM, V0, F0) then
+        ( if compare((<), EM, F0) then
             search_first_2_find_better_solution_one(VM, EM, E1, T1, P, C, V, E)
-        ;
+        else
             search_first_2_find_better_solution_one(V0, F0, E1, T1, P, C, V, E)
         )
-    ;
+    else
         search_first_2_find_better_solution_one(VM, EM, E1, T1, P, C, V, E)
     ).
 
@@ -1314,29 +1323,29 @@ search_first_2_find_better_solution_three(VM, EM, E0, E1, E2, T0, T1, T2, P,
     pred(in, out) is semidet, pred(in, out) is semidet, out, out) is det.
 
 search_first_2_better_solution_three(VM, EM, E1, E2, T0, T1, T2, P, C, V, E) :-
-    ( search_first_2(T0, P, C, EM, V0, F0) ->
-        ( compare((<), EM, F0) ->
+    ( if search_first_2(T0, P, C, EM, V0, F0) then
+        ( if compare((<), EM, F0) then
             search_first_2_find_better_solution_two(VM, EM, E1, E2, T1, T2, P, 
                 C, V, E)
-        ;
+        else
             search_first_2_find_better_solution_two(V0, F0, E1, E2, T1, T2, P, 
                 C, V, E)
         )
-    ;
+    else
         search_first_2_find_better_solution_two(VM, EM, E1, E2, T1, T2, P, C, 
             V, E)
     ).
 
 %---------------------------------------------------------------------------%
 %
-% search_general_fold
+% Search_general_fold.
 %
 
 rtree.search_general_fold(_, _, empty, !Acc).
 rtree.search_general_fold(KTest, VPred, one(K, V), !Acc) :-
-    ( KTest(K) ->
+    ( if KTest(K) then
         VPred(K, V, !Acc)
-    ;
+    else
         true
     ).
 rtree.search_general_fold(KTest, VPred, rtree(T), !Acc) :-
@@ -1377,19 +1386,19 @@ search_general_fold_2(Node, KTest, VPred, !Acc) :-
     in(pred(in, in, di, uo) is det), di, uo) is det.
 
 search_general_fold_subtree(K, T, KTest, VPred, !Acc) :-
-    ( KTest(K) ->
-        ( T = leaf(V) ->
+    ( if KTest(K) then
+        ( if T = leaf(V) then
             VPred(K, V, !Acc)
-        ;
+        else
             search_general_fold_2(T, KTest, VPred, !Acc)
         )
-    ;
+    else
         true
     ).
 
 %---------------------------------------------------------------------------%
 %
-% Fold
+% Fold.
 %
 
 rtree.fold(_P, empty, !Acc).
@@ -1438,7 +1447,7 @@ fold_subtree(P, K, T, !Acc) :-
 
 %---------------------------------------------------------------------------%
 %
-% map_values
+% Map_values.
 %
 
 rtree.map_values(_, empty, empty).
@@ -1491,16 +1500,16 @@ map_values_key_2(P, K, T, U) :-
 :- func minimum_of_three(T, T, T) = min_of_three_result.
 
 minimum_of_three(A, B, C) =
-    ( compare((<), A, B) ->
-        ( compare((<), A, C) ->
+    ( if compare((<), A, B) then
+        ( if compare((<), A, C) then
             min3_first
-        ;
+        else
             min3_third
         )
-    ;
-        ( compare((<), B, C) ->
+    else
+        ( if compare((<), B, C) then
             min3_second
-        ;
+        else
             min3_third
         )
     ).
@@ -1512,30 +1521,30 @@ minimum_of_three(A, B, C) =
 :- func minimum_of_four(T, T, T, T) = min_of_four_result.
 
 minimum_of_four(A, B, C, D) = Min :-
-    ( compare((<), A, B) ->
+    ( if compare((<), A, B) then
         Min0 = min4_first, 
         MinItem0 = A 
-    ;
+    else
         Min0 = min4_second, 
         MinItem0 = B 
     ), 
-    ( compare((<), MinItem0, C) ->
+    ( if compare((<), MinItem0, C) then
         Min1 = Min0, 
         MinItem = MinItem0
-    ;
+    else
         Min1 = min4_third, 
         MinItem = C
     ), 
-    ( compare((<), MinItem, D) ->
+    ( if compare((<), MinItem, D) then
         Min = Min1
-    ;
+    else
         Min = min4_fourth
     ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% Pre-defined regions
+% Pre-defined regions.
 %
 
 %---------------------------------------------------------------------------%
@@ -1555,19 +1564,19 @@ minimum_of_four(A, B, C, D) = Min :-
 box3d_intersects(A, B) :-
     A = box3d(AXMin, AXMax, AYMin, AYMax, AZMin, AZMax), 
     B = box3d(BXMin, BXMax, BYMin, BYMax, BZMin, BZMax), 
-    ( AXMin =< BXMin ->
+    ( if AXMin =< BXMin then
         AXMax >= BXMin 
-    ;
+    else
         AXMin =< BXMax 
     ), 
-    ( AYMin =< BYMin ->
+    ( if AYMin =< BYMin then
         AYMax >= BYMin 
-    ;
+    else
         AYMin =< BYMax 
     ), 
-    ( AZMin =< BZMin ->
+    ( if AZMin =< BZMin then
         AZMax >= BZMin 
-    ;
+    else
         AZMin =< BZMax 
     ).
 
@@ -1639,14 +1648,14 @@ box3d_bounding_region_volume(A, B) = Volume :-
 box_intersects(A, B) :-
     A = box(AXMin, AXMax, AYMin, AYMax), 
     B = box(BXMin, BXMax, BYMin, BYMax), 
-    ( AXMin =< BXMin ->
+    ( if AXMin =< BXMin then
         AXMax >= BXMin
-    ;
+    else
         AXMin =< BXMax 
     ), 
-    ( AYMin =< BYMin ->
+    ( if AYMin =< BYMin then
         AYMax >= BYMin 
-    ;
+    else
         AYMin =< BYMax
     ).
 
@@ -1710,9 +1719,9 @@ box_bounding_region_area(A, B) = (XMax - XMin) * (YMax - YMin) :-
 interval_intersects(A, B) :-
     A = interval(AMin, AMax), 
     B = interval(BMin, BMax), 
-    ( AMin =< BMin ->
+    ( if AMin =< BMin then
         AMax >= BMin 
-    ;
+    else
         AMin =< BMax 
     ).
 

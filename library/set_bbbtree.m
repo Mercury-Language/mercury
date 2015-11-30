@@ -508,9 +508,9 @@ set_bbbtree.contains(Set, X) :-
 %---------------------------------------------------------------------------%
 
 set_bbbtree.is_member(X, Set, Result) :-
-    ( set_bbbtree.member(X, Set) ->
+    ( if set_bbbtree.member(X, Set) then
         Result = yes
-    ;
+    else
         Result = no
     ).
 
@@ -663,9 +663,9 @@ set_bbbtree.insert_list_r(!.Set, [X | Xs], !:Set, Ratio) :-
 %   ).
 %
 % set_bbbtree.delete(Set0, X, Set) :-
-%   ( set_bbbtree.remove(Set0, X, Set1) ->
+%   ( if set_bbbtree.remove(Set0, X, Set1) then
 %       Set = Set1
-%   ;
+%   else
 %       Set = Set0
 %   ).
 
@@ -673,9 +673,9 @@ set_bbbtree.delete(!.S, T) = !:S :-
     set_bbbtree.delete(T, !S).
 
 set_bbbtree.delete(X, !Set) :-
-    ( set_bbbtree.remove(X, !.Set, NewSet) ->
+    ( if set_bbbtree.remove(X, !.Set, NewSet) then
         !:Set = NewSet
-    ;
+    else
         true
     ),
     unsafe_promise_unique(!Set).
@@ -819,7 +819,7 @@ set_bbbtree.sorted_list_to_set_len([X | Xs], Set, N) :-
     int::in, set_bbbtree(T)::out) is det.
 
 set_bbbtree.sorted_list_to_set_len2(List, RestOfList, N, Set) :-
-    ( N > 3 ->
+    ( if N > 3 then
         NL = N//2,
         NR = N - NL - 1,
         set_bbbtree.sorted_list_to_set_len2(List, RestOfList0, NL, L),
@@ -833,33 +833,33 @@ set_bbbtree.sorted_list_to_set_len2(List, RestOfList, N, Set) :-
             RestOfList0 = [],
             error("set_bbbtree.sorted_list_to_set_len2.1")
         )
-    ; N = 3 ->
-        ( List = [X, Y, Z | RestOfList0] ->
+    else if N = 3 then
+        ( if List = [X, Y, Z | RestOfList0] then
             RestOfList = RestOfList0,
             Set = tree(Y, N,
                 tree(X, 1, empty, empty),
                 tree(Z, 1, empty, empty))
-        ;
+        else
             % Should never occur. Here only to satisfy det checker
             error("set_bbbtree.sorted_list_to_set_len2.2")
         )
-    ; N = 2 ->
-        ( List = [X, Y | RestOfList0] ->
+    else if N = 2 then
+        ( if List = [X, Y | RestOfList0] then
             RestOfList = RestOfList0,
             Set = tree(Y, N, tree(X, 1, empty, empty), empty)
-        ;
+        else
             % Should never occur. Here only to satisfy det checker
             error("set_bbbtree.sorted_list_to_set_len2.3")
         )
-    ; N = 1 ->
-        ( List = [X | RestOfList0] ->
+    else if N = 1 then
+        ( if List = [X | RestOfList0] then
             RestOfList = RestOfList0,
             Set = tree(X, N, empty, empty)
-        ;
+        else
             % Should never occur. Here only to satisfy det checker
             error("set_bbbtree.sorted_list_to_set_len2.4")
         )
-    ;
+    else
             % N = 0.
         RestOfList = List,
         Set = empty
@@ -976,9 +976,9 @@ set_bbbtree.intersect_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
     set_bbbtree.split_gt(R, V, NewRR, Ratio),
     set_bbbtree.intersect_r(LL, NewRL, LSet, Ratio),
     set_bbbtree.intersect_r(LR, NewRR, RSet, Ratio),
-    ( set_bbbtree.member(V, R) ->
+    ( if set_bbbtree.member(V, R) then
         set_bbbtree.concat4(LSet, RSet, V, Set, Ratio)
-    ;
+    else
         set_bbbtree.concat3(LSet, RSet, Set)
     ).
 
@@ -1058,9 +1058,9 @@ set_bbbtree.difference_r(tree(V, _N, LL, LR), R, Set, Ratio) :-
     set_bbbtree.split_gt(R, V, NewRR, Ratio),
     set_bbbtree.difference_r(LL, NewRL, LSet, Ratio),
     set_bbbtree.difference_r(LR, NewRR, RSet, Ratio),
-    ( set_bbbtree.member(V, R) ->
+    ( if set_bbbtree.member(V, R) then
         set_bbbtree.concat3(LSet, RSet, Set)
-    ;
+    else
         set_bbbtree.concat4(LSet, RSet, V, Set, Ratio)
     ).
 
@@ -1184,47 +1184,47 @@ set_bbbtree.double_rot_r(C, tree(A, _N0, X, Y), Z, Set) :-
 set_bbbtree.balance(V, L, R, Set, Ratio) :-
     set_bbbtree.count(L, LSize),
     set_bbbtree.count(R, RSize),
-    (
+    ( if
         Val = LSize + RSize,
         Val < 2
-    ->
+    then
         % the two trees are too small to bother rebalancing.
         set_bbbtree.build_node(V, L, R, Set)
-    ;
+    else if
         Val = Ratio * LSize,
         RSize > Val
-    ->
+    then
         (
             R = tree(_V0, _N0, RL, RR),
             set_bbbtree.count(RL, RLSize),  % Right side too big.
             set_bbbtree.count(RR, RRSize),
-            ( RLSize < RRSize ->
+            ( if RLSize < RRSize then
                 set_bbbtree.single_rot_l(V, L, R, Set)
-            ;
+            else
                 set_bbbtree.double_rot_l(V, L, R, Set)
             )
         ;
             R = empty,
             error("set_bbbtree.balance.1")
         )
-    ;
+    else if
         Val = Ratio * RSize,
         LSize > Val
-    ->
+    then
         (
             L = tree(_V1, _N1, LL, LR),
             set_bbbtree.count(LL, LLSize),  % Left side too big.
             set_bbbtree.count(LR, LRSize),
-            ( LRSize < LLSize ->
+            ( if LRSize < LLSize then
                 set_bbbtree.single_rot_r(V, L, R, Set)
-            ;
+            else
                 set_bbbtree.double_rot_r(V, L, R, Set)
             )
         ;
             L = empty,
             error("set_bbbtree.balance.2")
         )
-    ;
+    else
         set_bbbtree.build_node(V, L, R, Set)   % Already balanced
     ).
 
@@ -1244,31 +1244,31 @@ set_bbbtree.balance(V, L, R, Set, Ratio) :-
 
 set_bbbtree.concat3(L, R, Set) :-
     set_bbbtree.count(L, LSize),
-    ( LSize = 0 ->
+    ( if LSize = 0 then
         % Left tree empty so just return the right tree.
         Set = R
-    ;
+    else
         set_bbbtree.count(R, RSize),
-        ( RSize = 0 ->
+        ( if RSize = 0 then
             % Right tree empty so just return the left tree.
             Set = L
-        ;
+        else
             % If the left tree is the larger of the two then
             % remove its largest value and make it the root
             % of the new left and the right trees.
             % Otherwise remove the smallest value from the
             % right tree and make it the root of the left and
             % the new right trees.
-            ( LSize > RSize ->
-                ( set_bbbtree.remove_largest(X, L, NewL) ->
+            ( if LSize > RSize then
+                ( if set_bbbtree.remove_largest(X, L, NewL) then
                     set_bbbtree.build_node(X, NewL, R, Set)
-                ;
+                else
                     error("set_bbbtree.concat3.1")
                 )
-            ;
-                ( set_bbbtree.remove_least(X, R, NewR) ->
+            else
+                ( if set_bbbtree.remove_least(X, R, NewR) then
                     set_bbbtree.build_node(X, L, NewR, Set)
-                ;
+                else
                     error("set_bbbtree.concat3.2")
                 )
             )
@@ -1294,19 +1294,19 @@ set_bbbtree.concat4(tree(LV, LN, LL, LR), R, V, Set, Ratio) :-
         set_bbbtree.insert_r(tree(LV, LN, LL, LR), V, Set, Ratio)
     ;
         R = tree(RV, RN, RL, RR),
-        (
+        ( if
             Val = Ratio * LN,   % Right too big
             Val < RN
-        ->
+        then
             set_bbbtree.concat4(tree(LV, LN, LL, LR), RL, V, NewL, Ratio),
             set_bbbtree.balance(RV, NewL, RR, Set, Ratio)
-        ;
+        else if
             Val = Ratio * RN,   % Left too big
             Val < LN
-        ->
+        then
             set_bbbtree.concat4(LR, tree(RV, RN, RL, RR), V, NewR, Ratio),
             set_bbbtree.balance(LV, LL, NewR, Set, Ratio)
-        ;
+        else
             set_bbbtree.build_node(V, tree(LV, LN, LL, LR), R, Set)
         )
     ).

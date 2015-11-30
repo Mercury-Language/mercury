@@ -504,13 +504,18 @@ process_arguments([], [], _, OptionArgs, OptionArgs,
         OptionTable, ok(OptionTable), !OptionsSet).
 process_arguments([Option | Args0], Args, OptionOps,
         OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet) :-
-    ( Option = "--" ->  % "--" terminates option processing
+    ( if
+        Option = "--"
+    then
+        % "--" terminates option processing
         OptionArgs = OptionArgs0,
         Args = Args0,
         Result = ok(OptionTable0)
-    ; string.append("--no-", LongOption, Option) ->
+    else if
+        string.append("--no-", LongOption, Option)
+    then
         LongOptionPred = OptionOps ^ long_option,
-        ( LongOptionPred(LongOption, Flag) ->
+        ( if LongOptionPred(LongOption, Flag) then
             OptName = "--" ++ LongOption,
             process_negated_option(OptName, Flag, OptionOps,
                 OptionTable0, Result1, !OptionsSet),
@@ -525,51 +530,56 @@ process_arguments([Option | Args0], Args, OptionOps,
                 OptionArgs = OptionArgs0,
                 Args = Args0
             )
-        ;
+        else
             Error = unrecognized_option(Option),
             Result = error(Error),
             OptionArgs = OptionArgs0,
             Args = Args0
         )
-    ; string.append("--", LongOptionStr, Option) ->
+    else if
+        string.append("--", LongOptionStr, Option)
+    then
         LongOptionPred = OptionOps ^ long_option,
-        ( string.sub_string_search(LongOptionStr, "=", OptionLen) ->
+        ( if string.sub_string_search(LongOptionStr, "=", OptionLen) then
             string.split(LongOptionStr, OptionLen, LongOption,
                 EqualOptionArg),
-            ( string.first_char(EqualOptionArg, '=', OptionArg) ->
+            ( if string.first_char(EqualOptionArg, '=', OptionArg) then
                 MaybeArg = yes(OptionArg)
-            ;
+            else
                 error("bad split of --longoption=arg")
             )
-        ;
+        else
             LongOption = LongOptionStr,
             MaybeArg = no
         ),
         OptionName = "--" ++ LongOption,
-        ( LongOptionPred(LongOption, Flag) ->
-            ( map.search(OptionTable0, Flag, OptionData) ->
+        ( if LongOptionPred(LongOption, Flag) then
+            ( if map.search(OptionTable0, Flag, OptionData) then
                 handle_long_option(OptionName, Flag, OptionData,
                     MaybeArg, Args0, Args, OptionOps,
                     [Option | OptionArgs0], OptionArgs,
                     OptionTable0, Result, !OptionsSet)
-            ;
+            else
                 Error = option_error(Flag, Option, unknown_type),
                 Result = error(Error),
                 OptionArgs = OptionArgs0,
                 Args = Args0
             )
-        ;
+        else
             Error = unrecognized_option(OptionName),
             Result = error(Error),
             OptionArgs = OptionArgs0,
             Args = Args0
         )
-    ; string.first_char(Option, '-', ShortOptions), ShortOptions \= "" ->
+    else if
+        string.first_char(Option, '-',
+        ShortOptions), ShortOptions \= ""
+    then
         string.to_char_list(ShortOptions, ShortOptionsList),
         % Process a single negated option `-x-'.
-        ( ShortOptionsList = [SingleShortOpt, '-'] ->
+        ( if ShortOptionsList = [SingleShortOpt, '-'] then
             ShortOptionPred = OptionOps ^ short_option,
-            ( ShortOptionPred(SingleShortOpt, Flag) ->
+            ( if ShortOptionPred(SingleShortOpt, Flag) then
                 string.from_char_list(['-', SingleShortOpt], OptName),
                 process_negated_option(OptName, Flag, OptionOps,
                     OptionTable0, Result1, !OptionsSet),
@@ -584,13 +594,13 @@ process_arguments([Option | Args0], Args, OptionOps,
                     OptionArgs = OptionArgs0,
                     Args = Args0
                 )
-            ;
+            else
                 Error = unrecognized_option("-" ++ ShortOptions),
                 Result = error(Error),
                 OptionArgs = OptionArgs0,
                 Args = Args0
             )
-        ;
+        else
             % Process a list of options `-xyz'.
             % -xyz may be several boolean options
             % or part of it may be the argument of an option.
@@ -610,7 +620,7 @@ process_arguments([Option | Args0], Args, OptionOps,
                 Args = Args0
             )
         )
-    ;
+    else
         % It's a normal non-option argument.
         % As a GNU extension, keep searching for options
         % in the remaining arguments.
@@ -629,10 +639,10 @@ process_arguments([Option | Args0], Args, OptionOps,
 handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
         Args0, Args, OptionOps, OptionArgs0, OptionArgs, OptionTable0, Result,
         !OptionsSet) :-
-    (
+    ( if
         need_arg(OptionData, yes),
         MaybeOptionArg0 = no
-    ->
+    then
         (
             Args0 = [Arg | ArgsTail],
             MaybeOptionArg = yes(Arg),
@@ -646,7 +656,7 @@ handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
             OptionArgs1 = OptionArgs0,
             MissingArg = yes
         )
-    ;
+    else
         MaybeOptionArg = MaybeOptionArg0,
         Args1 = Args0,
         OptionArgs1 = OptionArgs0,
@@ -660,16 +670,16 @@ handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
         Result = error(Error)
     ;
         MissingArg = no,
-        (
+        ( if
             need_arg(OptionData, no),
             MaybeOptionArg = yes(ArgVal)
-        ->
+        then
             Args = Args0,
             OptionArgs = OptionArgs1,
             Error = option_error(Flag, Option,
                 does_not_allow_argument(ArgVal)),
             Result = error(Error)
-        ;
+        else
             process_option(OptionData, Option, Flag, MaybeOptionArg,
                 OptionOps, OptionTable0, Result1, !OptionsSet),
             (
@@ -697,14 +707,14 @@ handle_short_options([], _, Args, Args, OptionArgs, OptionArgs,
 handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
         OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet) :-
     ShortOptionPred = OptionOps ^ short_option,
-    ( ShortOptionPred(Opt, Flag) ->
-        ( map.search(OptionTable0, Flag, OptionData) ->
-            ( need_arg(OptionData, yes) ->
+    ( if ShortOptionPred(Opt, Flag) then
+        ( if map.search(OptionTable0, Flag, OptionData) then
+            ( if need_arg(OptionData, yes) then
                 get_short_option_arg(Opts0, Arg, Args0, Args1,
                     OptionArgs0, OptionArgs1),
                 MaybeOptionArg = yes(Arg),
                 Opts1 = []
-            ;
+            else
                 MaybeOptionArg = no,
                 Opts1 = Opts0,
                 OptionArgs1 = OptionArgs0,
@@ -723,14 +733,14 @@ handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
                 OptionArgs = OptionArgs1,
                 Args = Args1
             )
-        ;
+        else
             string.char_to_string(Opt, OptString),
             Error = option_error(Flag, "-" ++ OptString, unknown_type),
             Result = error(Error),
             OptionArgs = OptionArgs0,
             Args = Args0
         )
-    ;
+    else
         string.char_to_string(Opt, OptString),
         Error = unrecognized_option("-" ++ OptString),
         Result = error(Error),
@@ -744,14 +754,14 @@ handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
 
 get_short_option_arg(Opts, Arg, Args0, Args,
         OptionArgs0, OptionArgs) :-
-    (
+    ( if
         Opts = [],
         Args0 = [ArgPrime | ArgsPrime]
-    ->
+    then
         OptionArgs = [ArgPrime | OptionArgs0],
         Arg = ArgPrime,
         Args = ArgsPrime
-    ;
+    else
         string.from_char_list(Opts, Arg),
         OptionArgs = OptionArgs0,
         Args = Args0
@@ -780,10 +790,10 @@ process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
     set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        ( string.to_int(Arg, IntArg) ->
+        ( if string.to_int(Arg, IntArg) then
             map.set(Flag, int(IntArg), !OptionTable),
             Result = ok(!.OptionTable)
-        ;
+        else
             numeric_argument(Flag, Option, Arg, Result)
         )
     ;
@@ -806,10 +816,10 @@ process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
     set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        ( string.to_int(Arg, IntArg) ->
+        ( if string.to_int(Arg, IntArg) then
             map.set(Flag, maybe_int(yes(IntArg)), !OptionTable),
             Result = ok(!.OptionTable)
-        ;
+        else
             numeric_argument(Flag, Option, Arg, Result)
         )
     ;
@@ -867,10 +877,10 @@ process_option(int_special, Option, Flag, MaybeArg, OptionOps,
     set.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        ( string.to_int(Arg, IntArg) ->
+        ( if string.to_int(Arg, IntArg) then
             process_special(Option, Flag, int(IntArg),
                 OptionOps, OptionTable0, Result, !OptionsSet)
-        ;
+        else
             numeric_argument(Flag, Option, Arg, Result)
         )
     ;
@@ -907,7 +917,7 @@ process_option(maybe_string_special, Option, Flag, MaybeArg, OptionOps,
 
 process_negated_option(Option, Flag, OptionOps, OptionTable0, Result,
         !OptionsSet) :-
-    ( map.search(OptionTable0, Flag, OptionData) ->
+    ( if map.search(OptionTable0, Flag, OptionData) then
         (
             OptionData = bool(_),
             set.insert(Flag, !OptionsSet),
@@ -948,7 +958,7 @@ process_negated_option(Option, Flag, OptionOps, OptionTable0, Result,
             Error = option_error(Flag, Option, cannot_negate),
             Result = error(Error)
         )
-    ;
+    else
         Error = option_error(Flag, Option, unknown_type),
         Result = error(Error)
     ).
@@ -963,9 +973,9 @@ process_special(Option, Flag, OptionData, OptionOps,
     MaybeHandler = OptionOps ^ special_handler,
     (
         MaybeHandler = notrack(Handler),
-        (
+        ( if
             Handler(Flag, OptionData, OptionTable0, Result0)
-        ->
+        then
             (
                 Result0 = ok(OptionTable),
                 Result = ok(OptionTable)
@@ -975,16 +985,16 @@ process_special(Option, Flag, OptionData, OptionOps,
                 Error = option_error(Flag, Option, Reason),
                 Result = error(Error)
             )
-        ;
+        else
             Error = option_error(Flag, Option, special_handler_failed),
             Result = error(Error)
         )
     ;
         MaybeHandler = track(TrackHandler),
-        (
+        ( if
             TrackHandler(Flag, OptionData, OptionTable0, Result0,
                 NewOptionsSet)
-        ->
+        then
             set.union(NewOptionsSet, !OptionsSet),
             (
                 Result0 = ok(OptionTable),
@@ -995,7 +1005,7 @@ process_special(Option, Flag, OptionData, OptionOps,
                 Error = option_error(Flag, Option, Reason),
                 Result = error(Error)
             )
-        ;
+        else
             Error = option_error(Flag, Option, special_handler_failed),
             Result = error(Error)
         )
@@ -1078,9 +1088,9 @@ lookup_bool_option(OT, Opt) = B :-
     lookup_bool_option(OT, Opt, B).
 
 lookup_bool_option(OptionTable, Opt, Val) :-
-    ( map.lookup(OptionTable, Opt, bool(Val0)) ->
+    ( if map.lookup(OptionTable, Opt, bool(Val0)) then
         Val = Val0
-    ;
+    else
         error("Expected bool option and didn't get one.")
     ).
 
@@ -1088,9 +1098,9 @@ lookup_int_option(OT, Opt) = N :-
     lookup_int_option(OT, Opt, N).
 
 lookup_int_option(OptionTable, Opt, Val) :-
-    ( map.lookup(OptionTable, Opt, int(Val0)) ->
+    ( if map.lookup(OptionTable, Opt, int(Val0)) then
         Val = Val0
-    ;
+    else
         error("Expected int option and didn't get one.")
     ).
 
@@ -1098,9 +1108,9 @@ lookup_string_option(OT, Opt) = S :-
     lookup_string_option(OT, Opt, S).
 
 lookup_string_option(OptionTable, Opt, Val) :-
-    ( map.lookup(OptionTable, Opt, string(Val0)) ->
+    ( if map.lookup(OptionTable, Opt, string(Val0)) then
         Val = Val0
-    ;
+    else
         error("Expected string option and didn't get one.")
     ).
 
@@ -1108,9 +1118,9 @@ lookup_maybe_int_option(OT, Opt) = MN :-
     lookup_maybe_int_option(OT, Opt, MN).
 
 lookup_maybe_int_option(OptionTable, Opt, Val) :-
-    ( map.lookup(OptionTable, Opt, maybe_int(Val0)) ->
+    ( if map.lookup(OptionTable, Opt, maybe_int(Val0)) then
         Val = Val0
-    ;
+    else
         error("Expected maybe_int option and didn't get one.")
     ).
 
@@ -1118,9 +1128,9 @@ lookup_maybe_string_option(OT, Opt) = MS :-
     lookup_maybe_string_option(OT, Opt, MS).
 
 lookup_maybe_string_option(OptionTable, Opt, Val) :-
-    ( map.lookup(OptionTable, Opt, maybe_string(Val0)) ->
+    ( if map.lookup(OptionTable, Opt, maybe_string(Val0)) then
         Val = Val0
-    ;
+    else
         error("Expected maybe_string option and didn't get one.")
     ).
 
@@ -1128,9 +1138,9 @@ lookup_accumulating_option(OT, Opt) = Ss :-
     lookup_accumulating_option(OT, Opt, Ss).
 
 lookup_accumulating_option(OptionTable, Opt, Val) :-
-    ( map.lookup(OptionTable, Opt, accumulating(Val0)) ->
+    ( if map.lookup(OptionTable, Opt, accumulating(Val0)) then
         Val = Val0
-    ;
+    else
         error("Expected accumulating option and didn't get one.")
     ).
 

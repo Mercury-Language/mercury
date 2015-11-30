@@ -156,11 +156,11 @@ public static object dummy_var;
 builtin_unify_int(X, X).
 
 builtin_compare_int(R, X, Y) :-
-    ( X < Y ->
+    ( if X < Y then
         R = (<)
-    ; X = Y ->
+    else if X = Y then
         R = (=)
-    ;
+    else
         R = (>)
     ).
 
@@ -169,11 +169,11 @@ builtin_unify_character(C, C).
 builtin_compare_character(R, X, Y) :-
     char.to_int(X, XI),
     char.to_int(Y, YI),
-    ( XI < YI ->
+    ( if XI < YI then
         R = (<)
-    ; XI = YI ->
+    else if XI = YI then
         R = (=)
-    ;
+    else
         R = (>)
     ).
 
@@ -181,11 +181,11 @@ builtin_unify_string(S, S).
 
 builtin_compare_string(R, S1, S2) :-
     builtin_strcmp(Res, S1, S2),
-    ( Res < 0 ->
+    ( if Res < 0 then
         R = (<)
-    ; Res = 0 ->
+    else if Res = 0 then
         R = (=)
-    ;
+    else
         R = (>)
     ).
 
@@ -229,48 +229,48 @@ builtin_compare_string(R, S1, S2) :-
 builtin_unify_float(F, F).
 
 builtin_compare_float(R, F1, F2) :-
-    ( F1 < F2 ->
+    ( if F1 < F2 then
         R = (<)
-    ; F1 > F2 ->
+    else if F1 > F2 then
         R = (>)
-    ;
+    else
         R = (=)
     ).
 
 builtin_unify_tuple(_, _) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         % The generic unification function in the runtime
         % should handle this itself.
         error("builtin_unify_tuple called")
-    ;
+    else
         % The following is never executed.
         semidet_succeed
     ).
 
 builtin_compare_tuple(Res, _, _) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         % The generic comparison function in the runtime
         % should handle this itself.
         error("builtin_compare_tuple called")
-    ;
+    else
         % The following is never executed.
         Res = (<)
     ).
 
 :- pragma no_inline(builtin_unify_pred/2).
 builtin_unify_pred(_X, _Y) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         error("attempted higher-order unification")
-    ;
+    else
         % The following is never executed.
         semidet_succeed
     ).
 
 :- pragma no_inline(builtin_compare_pred/3).
 builtin_compare_pred(Result, _X, _Y) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         error("attempted higher-order comparison")
-    ;
+    else
         % The following is never executed.
         Result = (<)
     ).
@@ -278,11 +278,11 @@ builtin_compare_pred(Result, _X, _Y) :-
 :- pragma no_inline(builtin_compare_non_canonical_type/3).
 builtin_compare_non_canonical_type(Res, X, _Y) :-
     % Suppress determinism warning.
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         Message = "call to compare/3 for non-canonical type `"
             ++ type_name(type_of(X)) ++ "'",
         error(Message)
-    ;
+    else
         % The following is never executed.
         Res = (<)
     ).
@@ -290,7 +290,7 @@ builtin_compare_non_canonical_type(Res, X, _Y) :-
 :- pragma no_inline(builtin_unify_solver_type/2).
 builtin_unify_solver_type(_X, _Y) :-
     % Suppress determinism warning.
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         % XXX ideally we should use the commented out code but looking up
         % the name of the solver type in RTTI currently gives us the name of
         % the representation type - reporting the name of the latter is likely
@@ -300,7 +300,7 @@ builtin_unify_solver_type(_X, _Y) :-
         %    ++ type_name(type_of(X)) ++ "'",
         Message = "call to generated unify/2 for solver type",
         error(Message)
-    ;
+    else
         % This is never executed.
         semidet_fail
     ).
@@ -308,13 +308,13 @@ builtin_unify_solver_type(_X, _Y) :-
 :- pragma no_inline(builtin_compare_solver_type/3).
 builtin_compare_solver_type(Res, _X, _Y) :-
     % Suppress determinism warning.
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         % XXX see the comment above regarding RTTI.
         %Message = "call to compare/3 for solver type `"
         %    ++ type_name(type_of(X)) ++ "'",
         Message = "call to generated compare/3 for solver type",
         error(Message)
-    ;
+    else
         % This is never executed.
         Res = (<)
     ).
@@ -326,18 +326,18 @@ compare_error :-
 %---------------------------------------------------------------------------%
 
 typed_unify(X, Y) :-
-    ( type_of(X) = type_of(Y) ->
+    ( if type_of(X) = type_of(Y) then
         unsafe_type_cast(X, Y)
-    ;
+    else
         fail
     ).
 
 typed_compare(R, X, Y) :-
     compare(R0, type_of(X), type_of(Y)),
-    ( R0 = (=) ->
+    ( if R0 = (=) then
         unsafe_type_cast(X, Z),
         compare(R, Z, Y)
-    ;
+    else
         R = R0
     ).
 
@@ -1461,24 +1461,24 @@ __Compare__private_builtin__ref_1_0(
 :- implementation.
 
 unused :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         error("attempted use of dead predicate")
-    ;
+    else
         % the following is never executed
         true
     ).
 
 nyi_foreign_type_unify(_, _) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         sorry("unify for foreign types")
-    ;
+    else
         semidet_succeed
     ).
 
 nyi_foreign_type_compare(Result, _, _) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         sorry("compare for foreign types")
-    ;
+    else
         Result = (=)
     ).
 

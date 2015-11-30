@@ -173,58 +173,66 @@ make_singleton_set(test_bitset.make_singleton_set(A), A).
 count(SetA - SetB) = Count :-
     CountA = tree_bitset.count(SetA),
     CountB = set_ordlist.count(SetB),
-    ( CountA = CountB ->
+    ( if CountA = CountB then
         Count = CountA
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
 %---------------------------------------------------------------------------%
 
 is_empty(A - B) :-
-    ( tree_bitset.is_empty(A) -> EmptyA = yes; EmptyA = no),
-    ( set_ordlist.is_empty(B) -> EmptyB = yes; EmptyB = no),
-    ( EmptyA = EmptyB ->
+    ( if tree_bitset.is_empty(A) then EmptyA = yes else EmptyA = no),
+    ( if set_ordlist.is_empty(B) then EmptyB = yes else EmptyB = no),
+    ( if EmptyA = EmptyB then
         EmptyA = yes
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
 is_non_empty(A - B) :-
-    ( tree_bitset.is_non_empty(A) -> NonEmptyA = yes; NonEmptyA = no),
-    ( set_ordlist.is_non_empty(B) -> NonEmptyB = yes; NonEmptyB = no),
-    ( NonEmptyA = NonEmptyB ->
+    ( if tree_bitset.is_non_empty(A) then NonEmptyA = yes else NonEmptyA = no),
+    ( if set_ordlist.is_non_empty(B) then NonEmptyB = yes else NonEmptyB = no),
+    ( if NonEmptyA = NonEmptyB then
         NonEmptyA = yes
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
 is_singleton(A - B, E) :-
-    ( tree_bitset.is_singleton(A, AE) -> NonEmptyA = yes(AE); NonEmptyA = no),
-    ( set_ordlist.is_singleton(B, BE) -> NonEmptyB = yes(BE); NonEmptyB = no),
-    ( NonEmptyA = NonEmptyB ->
+    ( if tree_bitset.is_singleton(A, AE) then
+        NonEmptyA = yes(AE)
+    else
+        NonEmptyA = no
+    ),
+    ( if set_ordlist.is_singleton(B, BE) then
+        NonEmptyB = yes(BE)
+    else
+        NonEmptyB = no
+    ),
+    ( if NonEmptyA = NonEmptyB then
         NonEmptyA = yes(E)
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
 contains(SetA - SetB, E) :-
-    ( tree_bitset.contains(SetA, E) -> InSetA = yes ; InSetA = no),
-    ( set_ordlist.contains(SetB, E) -> InSetB = yes ; InSetB = no),
-    ( InSetA = InSetB ->
+    ( if tree_bitset.contains(SetA, E) then InSetA = yes else InSetA = no),
+    ( if set_ordlist.contains(SetB, E) then InSetB = yes else InSetB = no),
+    ( if InSetA = InSetB then
         InSetA = yes
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
 :- pragma promise_equivalent_clauses(member/2).
 
 member(E::in, (SetA - SetB)::in) :-
-    ( tree_bitset.member(E, SetA) -> InSetA = yes ; InSetA = no),
-    ( set_ordlist.member(E, SetB) -> InSetB = yes ; InSetB = no),
-    ( InSetA = InSetB ->
+    ( if tree_bitset.member(E, SetA) then InSetA = yes else InSetA = no),
+    ( if set_ordlist.member(E, SetB) then InSetB = yes else InSetB = no),
+    ( if InSetA = InSetB then
         InSetA = yes
-    ;
+    else
         unexpected($module, $pred, "failed (in, in)")
     ).
 
@@ -233,44 +241,44 @@ member(E::out, (SetA - SetB)::in) :-
     PredB = (pred(EB::out) is nondet :- set_ordlist.member(EB, SetB)),
     solutions(PredA, SolnsA),
     solutions(PredB, SolnsB),
-    ( SolnsA = SolnsB ->
+    ( if SolnsA = SolnsB then
         tree_bitset.member(E, SetA)
-    ;
+    else
         unexpected($module, $pred, "failed (out, in)")
     ).
 
 equal(SetA1 - SetB1, SetA2 - SetB2) :-
-    ( tree_bitset.equal(SetA1, SetA2) -> EqualA = yes ; EqualA = no),
-    ( set_ordlist.equal(SetB1, SetB2) -> EqualB = yes ; EqualB = no),
-    ( EqualA = EqualB ->
+    ( if tree_bitset.equal(SetA1, SetA2) then EqualA = yes else EqualA = no),
+    ( if set_ordlist.equal(SetB1, SetB2) then EqualB = yes else EqualB = no),
+    ( if EqualA = EqualB then
         EqualA = yes
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
 subset(SetA1 - SetB1, SetA2 - SetB2) :-
-    ( tree_bitset.subset(SetA1, SetA2) ->
-        ( set_ordlist.subset(SetB1, SetB2) ->
+    ( if tree_bitset.subset(SetA1, SetA2) then
+        ( if set_ordlist.subset(SetB1, SetB2) then
             true
-        ;
+        else
             unexpected($module, $pred, "unexpected success")
         )
-    ; set_ordlist.subset(SetB1, SetB2) ->
+    else if set_ordlist.subset(SetB1, SetB2) then
         unexpected($module, $pred, "unexpected failure")
-    ;
+    else
         fail
     ).
 
 superset(SetA1 - SetB1, SetA2 - SetB2) :-
-    ( tree_bitset.superset(SetA1, SetA2) ->
-        ( set_ordlist.superset(SetB1, SetB2) ->
+    ( if tree_bitset.superset(SetA1, SetA2) then
+        ( if set_ordlist.superset(SetB1, SetB2) then
             true
-        ;
+        else
             unexpected($module, $pred, "unexpected success")
         )
-    ; set_ordlist.superset(SetB1, SetB2) ->
+    else if set_ordlist.superset(SetB1, SetB2) then
         unexpected($module, $pred, "unexpected failure")
-    ;
+    else
         fail
     ).
 
@@ -290,9 +298,9 @@ sorted_list_to_set(List) = Result :-
 to_sorted_list(A - B) = List :-
     ListA = tree_bitset.to_sorted_list(A),
     ListB = set_ordlist.to_sorted_list(B),
-    ( ListA = ListB ->
+    ( if ListA = ListB then
         List = ListB
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
@@ -319,18 +327,18 @@ insert(E, SetA0 - SetB0, Result) :-
     check1("insert", SetA0 - SetB0, SetA - SetB, Result).
 
 insert_new(E, SetA0 - SetB0, Result) :-
-    ( tree_bitset.insert_new(E, SetA0, SetA) ->
-        ( set_ordlist.insert_new(E, SetB0, SetB) ->
+    ( if tree_bitset.insert_new(E, SetA0, SetA) then
+        ( if set_ordlist.insert_new(E, SetB0, SetB) then
             check1("insert", SetA0 - SetB0, SetA - SetB, Result)
-        ;
+        else
             unexpected($module, $pred,
                 "success/fail in tree_bitset/set_ordlist")
         )
-    ;
-        ( set_ordlist.insert_new(E, SetB0, _SetB) ->
+    else
+        ( if set_ordlist.insert_new(E, SetB0, _SetB) then
             unexpected($module, $pred,
                 "fail/success in tree_bitset/set_ordlist")
-        ;
+        else
             % insert_new failed in both tree_bitset and set_ordlist.
             fail
         )
@@ -352,50 +360,50 @@ delete_list(Es, SetA0 - SetB0, Result) :-
     check1("delete_list", SetA0 - SetB0, SetA - SetB, Result).
 
 remove(E, SetA0 - SetB0, Result) :-
-    ( tree_bitset.remove(E, SetA0, SetA1) ->
-        ( set_ordlist.remove(E, SetB0, SetB1) ->
+    ( if tree_bitset.remove(E, SetA0, SetA1) then
+        ( if set_ordlist.remove(E, SetB0, SetB1) then
             SetA = SetA1,
             SetB = SetB1,
             check1("remove", SetA0 - SetB0, SetA - SetB, Result)
-        ;
+        else
             unexpected($module, $pred, "unexpected success")
         )
-    ; set_ordlist.remove(E, SetB0, _) ->
+    else if set_ordlist.remove(E, SetB0, _) then
         unexpected($module, $pred, "unexpected failure")
-    ;
+    else
         fail
     ).
 
 remove_list(Es, SetA0 - SetB0, Result) :-
-    ( tree_bitset.remove_list(Es, SetA0, SetA1) ->
-        ( set_ordlist.remove_list(Es, SetB0, SetB1) ->
+    ( if tree_bitset.remove_list(Es, SetA0, SetA1) then
+        ( if set_ordlist.remove_list(Es, SetB0, SetB1) then
             SetA = SetA1,
             SetB = SetB1,
             check1("remove_list", SetA0 - SetB0, SetA - SetB, Result)
-        ;
+        else
             unexpected($module, $pred, "unexpected success")
         )
-    ; set_ordlist.remove_list(Es, SetB0, _) ->
+    else if set_ordlist.remove_list(Es, SetB0, _) then
         unexpected($module, $pred, "unexpected failure")
-    ;
+    else
         fail
     ).
 
 remove_least(Least, SetA0 - SetB0, Result) :-
-    ( tree_bitset.remove_least(LeastA, SetA0, SetA1) ->
-        ( set_ordlist.remove_least(LeastB, SetB0, SetB1) ->
-            ( LeastA = LeastB ->
+    ( if tree_bitset.remove_least(LeastA, SetA0, SetA1) then
+        ( if set_ordlist.remove_least(LeastB, SetB0, SetB1) then
+            ( if LeastA = LeastB then
                 Least = LeastA,
                 check1("remove_least", SetA0 - SetB0, SetA1 - SetB1, Result)
-            ;
+            else
                 unexpected($module, $pred, "wrong least element")
             )
-        ;
+        else
             unexpected($module, $pred, "should be no least value")
         )
-    ; set_ordlist.remove_least(_, SetB0, _) ->
+    else if set_ordlist.remove_least(_, SetB0, _) then
         unexpected($module, $pred, "failed")
-    ;
+    else
         fail
     ).
 
@@ -441,9 +449,9 @@ get_sets(_, [], [], []).
 get_sets(Op, [SetA - SetB | SetsAB], [SetA | SetsA], [SetB | SetsB]) :-
     tree_bitset.to_sorted_list(SetA, SetListA),
     set_ordlist.to_sorted_list(SetB, SetListB),
-    ( SetListA = SetListB ->
+    ( if SetListA = SetListB then
         get_sets(Op, SetsAB, SetsA, SetsB)
-    ;
+    else
         unexpected($module, $pred, "unequal sets in " ++ Op ++ " arg list")
     ).
 
@@ -457,14 +465,14 @@ divide(Pred, SetA - SetB, ResultIn, ResultOut) :-
     set_ordlist.to_sorted_list(InSetB, InSetListB),
     tree_bitset.to_sorted_list(OutSetA, OutSetListA),
     set_ordlist.to_sorted_list(OutSetB, OutSetListB),
-    (
+    ( if
         SetListA = SetListB,
         InSetListA = InSetListB,
         OutSetListA = OutSetListB
-    ->
+    then
         ResultIn = InSetA - InSetB,
         ResultOut = OutSetA - OutSetB
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
@@ -480,15 +488,15 @@ divide_by_set(DivideBySetA - DivideBySetB, SetA - SetB, ResultIn, ResultOut) :-
     set_ordlist.to_sorted_list(InSetB, InSetListB),
     tree_bitset.to_sorted_list(OutSetA, OutSetListA),
     set_ordlist.to_sorted_list(OutSetB, OutSetListB),
-    (
+    ( if
         DivideBySetListA = DivideBySetListB,
         SetListA = SetListB,
         InSetListA = InSetListB,
         OutSetListA = OutSetListB
-    ->
+    then
         ResultIn = InSetA - InSetB,
         ResultOut = OutSetA - OutSetB
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
@@ -499,9 +507,9 @@ foldl(Pred, SetA - SetB, Acc0, Acc) :-
     set_ordlist.to_sorted_list(SetB, SetListB),
     tree_bitset.foldl(Pred, SetA, Acc0, AccA),
     set_ordlist.fold(Pred, SetB, Acc0, AccB),
-    ( SetListA = SetListB, AccA = AccB ->
+    ( if SetListA = SetListB, AccA = AccB then
         Acc = AccA
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
@@ -510,23 +518,23 @@ foldl(Pred, SetA - SetB, Acc0) = Acc :-
     set_ordlist.to_sorted_list(SetB, SetListB),
     tree_bitset.foldl(Pred, SetA, Acc0) = AccA,
     set_ordlist.fold(Pred, SetB, Acc0) = AccB,
-    ( SetListA = SetListB, AccA = AccB ->
+    ( if SetListA = SetListB, AccA = AccB then
         Acc = AccA
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
 all_true(Pred, SetA - SetB) :-
-    ( tree_bitset.all_true(Pred, SetA) ->
-        ( set_ordlist.all_true(Pred, SetB) ->
+    ( if tree_bitset.all_true(Pred, SetA) then
+        ( if set_ordlist.all_true(Pred, SetB) then
             true
-        ;
+        else
             unexpected($module, $pred, "tree_bitset but not set_ordlist")
         )
-    ;
-        ( set_ordlist.all_true(Pred, SetB) ->
+    else
+        ( if set_ordlist.all_true(Pred, SetB) then
             unexpected($module, $pred, "set_ordlist but not tree_bitset")
-        ;
+        else
             fail
         )
     ).
@@ -538,9 +546,9 @@ filter(Pred, SetA - SetB) = Result :-
     InSetB = set_ordlist.filter(Pred, SetB),
     tree_bitset.to_sorted_list(InSetA, InSetListA),
     set_ordlist.to_sorted_list(InSetB, InSetListB),
-    ( SetListA = SetListB, InSetListA = InSetListB ->
+    ( if SetListA = SetListB, InSetListA = InSetListB then
         Result = InSetA - InSetB
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
@@ -553,14 +561,14 @@ filter(Pred, SetA - SetB, ResultIn, ResultOut) :-
     set_ordlist.to_sorted_list(InSetB, InSetListB),
     tree_bitset.to_sorted_list(OutSetA, OutSetListA),
     set_ordlist.to_sorted_list(OutSetB, OutSetListB),
-    (
+    ( if
         SetListA = SetListB,
         InSetListA = InSetListB,
         OutSetListA = OutSetListB
-    ->
+    then
         ResultIn = InSetA - InSetB,
         ResultOut = OutSetA - OutSetB
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
@@ -573,9 +581,9 @@ check0(Op, Tester, Result) :-
     Tester = BitSet - Set,
     tree_bitset.to_sorted_list(BitSet, BitSetList),
     set_ordlist.to_sorted_list(Set, SetList),
-    ( BitSetList = SetList ->
+    ( if BitSetList = SetList then
         Result = Tester
-    ;
+    else
         throw(zero_argument(Op, Tester))
     ).
 
@@ -589,9 +597,12 @@ check1(Op, TesterA, Tester, Result) :-
     Tester = BitSet - Set,
     tree_bitset.to_sorted_list(BitSet, BitSetList),
     set_ordlist.to_sorted_list(Set, SetList),
-    ( BitSetListA = SetListA, BitSetList = SetList ->
+    ( if
+        BitSetListA = SetListA,
+        BitSetList = SetList
+    then
         Result = Tester
-    ;
+    else
         throw(one_argument(Op, TesterA, Tester))
     ).
 
@@ -609,9 +620,13 @@ check2(Op, TesterA, TesterB, Tester, Result) :-
     tree_bitset.to_sorted_list(BitSet, BitSetList),
     set_ordlist.to_sorted_list(Set, SetList),
 
-    ( BitSetListA = SetListA, BitSetListB = SetListB, BitSetList = SetList ->
+    ( if
+        BitSetListA = SetListA,
+        BitSetListB = SetListB,
+        BitSetList = SetList
+    then
         Result = Tester
-    ;
+    else
         throw(two_arguments(Op, TesterA, TesterB, Tester))
     ).
 

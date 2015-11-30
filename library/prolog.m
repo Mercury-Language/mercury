@@ -112,9 +112,9 @@ prolog.arg(ArgumentIndex, Type, Univ) :-
     type_to_univ(Arg, Univ).
 
 det_arg(ArgumentIndex, Type, Argument) :-
-    ( arg(ArgumentIndex, Type, Arg) ->
+    ( if arg(ArgumentIndex, Type, Arg) then
         Argument = Arg
-    ;
+    else
         error("det_arg: arg failed")
     ).
 

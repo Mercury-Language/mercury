@@ -664,17 +664,17 @@ do_foldr2_pred(P, [H | T], !Acc1, !Acc2) :-
 :- pragma type_spec(fold_bits/7, T = var(_)).
 
 fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         true
-    ; Size = 1 ->
-        ( Elem = from_int(Offset) ->
+    else if Size = 1 then
+        ( if Elem = from_int(Offset) then
             P(Elem, !Acc)
-        ;
+        else
             % We only apply `from_int/1' to integers returned
             % by `to_int/1', so it should never fail.
             unexpected($module, $pred, "`enum.from_int/1' failed")
         )
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
@@ -723,17 +723,17 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
 :- pragma type_spec(fold2_bits/9, T = var(_)).
 
 fold2_bits(Dir, P, Offset, Bits, Size, !Acc1, !Acc2) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         true
-    ; Size = 1 ->
-        ( Elem = from_int(Offset) ->
+    else if Size = 1 then
+        ( if Elem = from_int(Offset) then
             P(Elem, !Acc1, !Acc2)
-        ;
+        else
             % We only apply `from_int/1' to integers returned
             % by `to_int/1', so it should never fail.
             unexpected($module, $pred, "`enum.from_int/1' failed")
         )
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
@@ -777,17 +777,17 @@ all_true_node(P, [bitset_elem(Offset, Bits) | Rest]) :-
 :- pragma type_spec(all_true_bits/4, T = var(_)).
 
 all_true_bits(P, Offset, Bits, Size) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         true
-    ; Size = 1 ->
-        ( Elem = from_int(Offset) ->
+    else if Size = 1 then
+        ( if Elem = from_int(Offset) then
             P(Elem)
-        ;
+        else
             % We only apply `from_int/1' to integers returned
             % by `to_int/1', so it should never fail.
             unexpected($module, $pred, "`enum.from_int/1' failed")
         )
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
@@ -830,9 +830,9 @@ is_singleton(sparse_bitset([Node]), Elem) :-
     Node = bitset_elem(Offset, Bits),
     count_bits(Offset, bits_per_int, Bits, [], SetOffsets),
     SetOffsets = [SetOffset],
-    ( ElemPrime = from_int(SetOffset) ->
+    ( if ElemPrime = from_int(SetOffset) then
         Elem = ElemPrime
-    ;
+    else
         % We only apply `from_int/1' to integers returned
         % by `to_int/1', so it should never fail.
         unexpected($module, $pred, "`enum.from_int/1' failed")
@@ -844,12 +844,12 @@ is_singleton(sparse_bitset([Node]), Elem) :-
     list(int)::in, list(int)::out) is det.
 
 count_bits(BitOffset, Size, Bits, !SetOffsets) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         true
-    ; Size = 1 ->
+    else if Size = 1 then
         % If Bits were 0, we wouldn't have got here.
         !:SetOffsets = [BitOffset | !.SetOffsets]
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
@@ -880,18 +880,18 @@ insert_2([], Index, [make_bitset_elem(Offset, Bits)]) :-
 insert_2(Set0, Index, Set) :-
     Set0 = [Data0 | Rest0],
     Offset0 = Data0 ^ offset,
-    ( Index < Offset0 ->
+    ( if Index < Offset0 then
         bits_for_index(Index, Offset, Bits),
         Set = [make_bitset_elem(Offset, Bits) | Set0]
-    ; BitToSet = Index - Offset0, BitToSet < bits_per_int ->
+    else if BitToSet = Index - Offset0, BitToSet < bits_per_int then
         Bits0 = Data0 ^ bits,
-        ( get_bit(Bits0, BitToSet) \= 0 ->
+        ( if get_bit(Bits0, BitToSet) \= 0 then
             Set = Set0
-        ;
+        else
             Bits = set_bit(Bits0, BitToSet),
             Set = [make_bitset_elem(Offset0, Bits) | Rest0]
         )
-    ;
+    else
         insert_2(Rest0, Index, Set1),
         Set = [Data0 | Set1]
     ).
@@ -911,18 +911,18 @@ insert_new_2(Index, [], [make_bitset_elem(Offset, Bits)]) :-
 insert_new_2(Index, Set0, Set) :-
     Set0 = [Data0 | Rest0],
     Offset0 = Data0 ^ offset,
-    ( Index < Offset0 ->
+    ( if Index < Offset0 then
         bits_for_index(Index, Offset, Bits),
         Set = [make_bitset_elem(Offset, Bits) | Set0]
-    ; BitToSet = Index - Offset0, BitToSet < bits_per_int ->
+    else if BitToSet = Index - Offset0, BitToSet < bits_per_int then
         Bits0 = Data0 ^ bits,
-        ( get_bit(Bits0, BitToSet) \= 0 ->
+        ( if get_bit(Bits0, BitToSet) \= 0 then
             fail
-        ;
+        else
             Bits = set_bit(Bits0, BitToSet),
             Set = [make_bitset_elem(Offset0, Bits) | Rest0]
         )
-    ;
+    else
         insert_new_2(Index, Rest0, Set1),
         Set = [Data0 | Set1]
     ).
@@ -970,19 +970,19 @@ remove_leq(sparse_bitset(Set), Elem) =
 remove_leq_2([], _) = [].
 remove_leq_2([Data | Rest], Index) = Result :-
     Offset = Data ^ offset,
-    ( Offset + bits_per_int =< Index ->
+    ( if Offset + bits_per_int =< Index then
         Result = remove_leq_2(Rest, Index)
-    ; Offset =< Index ->
-        (
+    else if Offset =< Index then
+        ( if
             Bits = Data ^ bits /\
                 unchecked_left_shift(\ 0, Index - Offset + 1),
             Bits \= 0
-        ->
+        then
             Result = [make_bitset_elem(Offset, Bits) | Rest]
-        ;
+        else
             Result = Rest
         )
-    ;
+    else
         Result = [Data | Rest]
     ).
 
@@ -999,19 +999,19 @@ remove_gt(sparse_bitset(Set), Elem) =
 remove_gt_2([], _) = [].
 remove_gt_2([Data | Rest], Index) = Result :-
     Offset = Data ^ offset,
-    ( Offset + bits_per_int - 1 =< Index ->
+    ( if Offset + bits_per_int - 1 =< Index then
         Result = [Data | remove_gt_2(Rest, Index)]
-    ; Offset =< Index ->
-        (
+    else if Offset =< Index then
+        ( if
             Bits = Data ^ bits /\
                 \ unchecked_left_shift(\ 0, Index - Offset + 1),
             Bits \= 0
-        ->
+        then
             Result = [make_bitset_elem(Offset, Bits)]
-        ;
+        else
             Result = []
         )
-    ;
+    else
         Result = []
     ).
 
@@ -1022,17 +1022,17 @@ remove_least(Elem, sparse_bitset(Set0), sparse_bitset(Set)) :-
     Bits0 = First ^ bits,
     Offset = First ^ offset,
     Bit = find_least_bit(Bits0),
-    ( Elem0 = from_int(Offset + Bit) ->
+    ( if Elem0 = from_int(Offset + Bit) then
         Elem = Elem0
-    ;
+    else
         % We only apply `from_int/1' to integers returned
         % by `to_int/1', so it should never fail.
         unexpected($module, $pred, "`enum.from_int/1' failed")
     ),
     Bits = clear_bit(Bits0, Bit),
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         Set = Rest
-    ;
+    else
         Set = [make_bitset_elem(Offset, Bits) | Rest]
     ).
 
@@ -1046,17 +1046,17 @@ find_least_bit(Bits0) = BitNum :-
 :- func find_least_bit_2(int, int, int) = int.
 
 find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
-    ( Size = 1 ->
+    ( if Size = 1 then
         % We can't get here unless the bit is a 1 bit.
         BitNum = BitNum0
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
         LowBits = Bits0 /\ Mask,
-        ( LowBits \= 0 ->
+        ( if LowBits \= 0 then
             BitNum = find_least_bit_2(LowBits, HalfSize, BitNum0)
-        ;
+        else
             HighBits = Mask /\ unchecked_right_shift(Bits0, HalfSize),
             BitNum = find_least_bit_2(HighBits, HalfSize, BitNum0 + HalfSize)
         )
@@ -1096,9 +1096,9 @@ list_to_set_2([H | T], List0) = List :-
 list_to_set_3([], _, !Bits, !Rest).
 list_to_set_3([H | T], Offset, !Bits, !Rest) :-
     BitToSet = enum.to_int(H) - Offset,
-    ( BitToSet >= 0, BitToSet < bits_per_int ->
+    ( if BitToSet >= 0, BitToSet < bits_per_int then
         !:Bits = set_bit(!.Bits, BitToSet)
-    ;
+    else
         !:Rest = [H | !.Rest]
     ),
     list_to_set_3(T, Offset, !Bits, !Rest).
@@ -1110,9 +1110,9 @@ list_to_set_3([H | T], Offset, !Bits, !Rest) :-
 
 insert_bitset_elem(Data, []) = [Data].
 insert_bitset_elem(Data, [Head | Tail]) = List :-
-    ( Data ^ offset < Head ^ offset ->
+    ( if Data ^ offset < Head ^ offset then
         List = [Data, Head | Tail]
-    ;
+    else
         List = [Head | insert_bitset_elem(Data, Tail)]
     ).
 
@@ -1129,9 +1129,9 @@ sorted_list_to_set(L) = sparse_bitset(sorted_list_to_set_2(L)).
 sorted_list_to_set_2([]) = [].
 sorted_list_to_set_2([H | T]) = Set :-
     sorted_list_to_set_3(H, T, Offset, Bits, Set0),
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         Set = Set0
-    ;
+    else
         Set = [make_bitset_elem(Offset, Bits) | Set0]
     ).
 
@@ -1145,11 +1145,11 @@ sorted_list_to_set_3(Elem, [], Offset, Bits, []) :-
 sorted_list_to_set_3(Elem1, [Elem2 | Elems], Offset, Bits, Rest) :-
     sorted_list_to_set_3(Elem2, Elems, Offset0, Bits0, Rest0),
     bits_for_index(enum.to_int(Elem1), Offset1, Bits1),
-    ( Offset1 = Offset0 ->
+    ( if Offset1 = Offset0 then
         Bits = Bits1 \/ Bits0,
         Offset = Offset1,
         Rest = Rest0
-    ;
+    else
         Rest = [make_bitset_elem(Offset0, Bits0) | Rest0],
         Offset = Offset1,
         Bits = Bits1
@@ -1173,9 +1173,9 @@ contains(sparse_bitset(Set), Elem) :-
 contains_search_nodes([Data | Rest], Index) :-
     Offset = Data ^ offset,
     Index >= Offset,
-    ( Index < Offset + bits_per_int ->
+    ( if Index < Offset + bits_per_int then
         get_bit(Data ^ bits, Index - Offset) \= 0
-    ;
+    else
         contains_search_nodes(Rest, Index)
     ).
 
@@ -1187,9 +1187,9 @@ member(Elem::in, Set::in) :-
     contains(Set, Elem).
 member(Elem::out, sparse_bitset(Set)::in) :-
     member_search_nodes(Index, Set),
-    ( Elem0 = from_int(Index) ->
+    ( if Elem0 = from_int(Index) then
         Elem = Elem0
-    ;
+    else
         % We only apply `from_int/1' to integers returned
         % by `to_int/1', so it should never fail.
         unexpected($module, $pred, "`enum.from_int/1' failed")
@@ -1205,11 +1205,11 @@ member_search_nodes(Index, [Elem | Elems]) :-
 :- pred member_search_one_node(int::out, int::in, int::in, int::in) is nondet.
 
 member_search_one_node(Index, Offset, Size, Bits) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         fail
-    ; Size = 1 ->
+    else if Size = 1 then
         Index = Offset
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
@@ -1248,12 +1248,12 @@ union_2(Set1, Set2) = Set :-
     Set2 = [Data2 | _],
     Offset1 = Data1 ^ offset,
     Offset2 = Data2 ^ offset,
-    ( Offset1 = Offset2 ->
+    ( if Offset1 = Offset2 then
         Elem = make_bitset_elem(Offset1, (Data1 ^ bits) \/ (Data2 ^ bits)),
         Set = [Elem | union_2(Set1 ^ rest, Set2 ^ rest)]
-    ; Offset1 < Offset2 ->
+    else if Offset1 < Offset2 then
         Set = [Data1 | union_2(Set1 ^ rest, Set2)]
-    ;
+    else
         Set = [Data2 | union_2(Set1, Set2 ^ rest)]
     ).
 
@@ -1276,17 +1276,17 @@ intersect_2(Set1, Set2) = Set :-
     Set2 = [Data2 | _],
     Offset1 = Data1 ^ offset,
     Offset2 = Data2 ^ offset,
-    ( Offset1 = Offset2 ->
+    ( if Offset1 = Offset2 then
         Bits = Data1 ^ bits /\ Data2 ^ bits,
-        ( Bits = 0 ->
+        ( if Bits = 0 then
             Set = intersect_2(Set1 ^ rest, Set2 ^ rest)
-        ;
+        else
             Set = [make_bitset_elem(Offset1, Bits) |
                 intersect_2(Set1 ^ rest, Set2 ^ rest)]
         )
-    ; Offset1 < Offset2 ->
+    else if Offset1 < Offset2 then
         Set = intersect_2(Set1 ^ rest, Set2)
-    ;
+    else
         Set = intersect_2(Set1, Set2 ^ rest)
     ).
 
@@ -1309,17 +1309,17 @@ difference_2(Set1, Set2) = Set :-
     Set2 = [Data2 | _],
     Offset1 = Data1 ^ offset,
     Offset2 = Data2 ^ offset,
-    ( Offset1 = Offset2 ->
+    ( if Offset1 = Offset2 then
         Bits = (Data1 ^ bits) /\ \ (Data2 ^ bits),
-        ( Bits = 0 ->
+        ( if Bits = 0 then
             Set = difference_2(Set1 ^ rest, Set2 ^ rest)
-        ;
+        else
             Set = [make_bitset_elem(Offset1, Bits) |
                 difference_2(Set1 ^ rest, Set2 ^ rest)]
         )
-    ; Offset1 < Offset2 ->
+    else if Offset1 < Offset2 then
         Set = [Data1 | difference_2(Set1 ^ rest, Set2)]
-    ;
+    else
         Set = difference_2(Set1, Set2 ^ rest)
     ).
 
@@ -1414,14 +1414,14 @@ divide_nodes(Pred, [Node | Nodes], InNodes, OutNodes) :-
     divide_nodes(Pred, Nodes, InNodesTail, OutNodesTail),
     Node = bitset_elem(Offset, Bits),
     divide_bits(Pred, Offset, 0, Bits, bits_per_int, 0, In, 0, Out),
-    ( In = 0 ->
+    ( if In = 0 then
         InNodes = InNodesTail
-    ;
+    else
         InNodes = [make_bitset_elem(Offset, In) | InNodesTail]
     ),
-    ( Out = 0 ->
+    ( if Out = 0 then
         OutNodes = OutNodesTail
-    ;
+    else
         OutNodes = [make_bitset_elem(Offset, Out) | OutNodesTail]
     ).
 
@@ -1432,22 +1432,22 @@ divide_nodes(Pred, [Node | Nodes], InNodes, OutNodes) :-
     is det <= enum(T).
 
 divide_bits(P, BaseOffset, OffsetInWord, Bits, Size, !In, !Out) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         true
-    ; Size = 1 ->
-        ( Elem = from_int(BaseOffset + OffsetInWord) ->
+    else if Size = 1 then
+        ( if Elem = from_int(BaseOffset + OffsetInWord) then
             OffsetBit = unchecked_left_shift(1, OffsetInWord),
-            ( P(Elem) ->
+            ( if P(Elem) then
                 !:In = !.In \/ OffsetBit
-            ;
+            else
                 !:Out = !.Out \/ OffsetBit
             )
-        ;
+        else
             % We only apply `from_int/1' to integers returned
             % by `to_int/1', so it should never fail.
             unexpected($module, $pred, "`enum.from_int/1' failed")
         )
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
@@ -1479,24 +1479,24 @@ divide_nodes_by_set([DivideByNode | DivideByNodes], [Node | Nodes],
         InNodes, OutNodes) :-
     DivideByNode = bitset_elem(DivideByOffset, DivideByBits),
     Node = bitset_elem(Offset, Bits),
-    ( DivideByOffset < Offset ->
+    ( if DivideByOffset < Offset then
         divide_nodes_by_set(DivideByNodes, [Node | Nodes], InNodes, OutNodes)
-    ; DivideByOffset > Offset ->
+    else if DivideByOffset > Offset then
         divide_nodes_by_set([DivideByNode | DivideByNodes], Nodes,
             InNodes, OutNodesTail),
         OutNodes = [Node | OutNodesTail]
-    ;
+    else
         divide_nodes_by_set(DivideByNodes, Nodes, InNodesTail, OutNodesTail),
         divide_bits_by_set(DivideByBits, Offset, Bits, bits_per_int,
             0, In, 0, Out),
-        ( In = 0 ->
+        ( if In = 0 then
             InNodes = InNodesTail
-        ;
+        else
             InNodes = [make_bitset_elem(Offset, In) | InNodesTail]
         ),
-        ( Out = 0 ->
+        ( if Out = 0 then
             OutNodes = OutNodesTail
-        ;
+        else
             OutNodes = [make_bitset_elem(Offset, Out) | OutNodesTail]
         )
     ).
@@ -1507,16 +1507,16 @@ divide_nodes_by_set([DivideByNode | DivideByNodes], [Node | Nodes],
     int::in, int::in, int::in, int::in, int::out, int::in, int::out) is det.
 
 divide_bits_by_set(DivideByBits, Offset, Bits, Size, !In, !Out) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         true
-    ; Size = 1 ->
+    else if Size = 1 then
         OffsetBit = unchecked_left_shift(1, Offset),
-        ( DivideByBits /\ OffsetBit = 0 ->
+        ( if DivideByBits /\ OffsetBit = 0 then
             !:Out = !.Out \/ OffsetBit
-        ;
+        else
             !:In = !.In \/ OffsetBit
         )
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 

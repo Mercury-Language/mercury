@@ -302,11 +302,11 @@ term_io.write_variable_with_op_table(Ops, Variable, VarSet, !IO) :-
     io::di, io::uo) is det <= op_table(Ops).
 
 term_io.write_variable_2(Ops, Id, !VarSet, !N, !IO) :-
-    ( varset.search_var(!.VarSet, Id, Val) ->
+    ( if varset.search_var(!.VarSet, Id, Val) then
         term_io.write_term_2(Ops, Val, !VarSet, !N, !IO)
-    ; varset.search_name(!.VarSet, Id, Name) ->
+    else if varset.search_name(!.VarSet, Id, Name) then
         io.write_string(Name, !IO)
-    ;
+    else
         % XXX Problems with name clashes.
 
         term.var_to_int(Id, VarNum),
@@ -350,51 +350,51 @@ term_io.write_term_3(Ops, term.variable(Id, _), _, !VarSet, !N, !IO) :-
     term_io.write_variable_2(Ops, Id, !VarSet, !N, !IO).
 term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         !VarSet, !N, !IO) :-
-    (
+    ( if
         Functor = term.atom("[|]"),
         Args = [ListHead, ListTail]
-    ->
+    then
         io.write_char('[', !IO),
         term_io.write_arg_term(Ops, ListHead, !VarSet, !N, !IO),
         term_io.write_list_tail(Ops, ListTail, !VarSet, !N, !IO),
         io.write_char(']', !IO)
-    ;
+    else if
         Functor = term.atom("[]"),
         Args = []
-    ->
+    then
         io.write_string("[]", !IO)
-    ;
+    else if
         Functor = term.atom("{}"),
         Args = [BracedTerm]
-    ->
+    then
         io.write_string("{ ", !IO),
         term_io.write_term_2(Ops, BracedTerm, !VarSet, !N, !IO),
         io.write_string(" }", !IO)
-    ;
+    else if
         Functor = term.atom("{}"),
         Args = [BracedHead | BracedTail]
-    ->
+    then
         io.write_char('{', !IO),
         term_io.write_arg_term(Ops, BracedHead, !VarSet, !N, !IO),
         term_io.write_term_args(Ops, BracedTail, !VarSet, !N, !IO),
         io.write_char('}', !IO)
-    ;
+    else if
         % The empty functor '' is used for higher-order syntax: Var(Arg, ...)
         % gets parsed as ''(Var, Arg). When writing it out, we want to use
         % the nice syntax.
         Functor = term.atom(""),
         Args = [term.variable(Var, _), FirstArg | OtherArgs]
-    ->
+    then
         term_io.write_variable_2(Ops, Var, !VarSet, !N, !IO),
         io.write_char('(', !IO),
         term_io.write_arg_term(Ops, FirstArg, !VarSet, !N, !IO),
         term_io.write_term_args(Ops, OtherArgs, !VarSet, !N, !IO),
         io.write_char(')', !IO)
-    ;
+    else if
         Args = [PrefixArg],
         Functor = term.atom(OpName),
         ops.lookup_prefix_op(Ops, OpName, OpPriority, OpAssoc)
-    ->
+    then
         io.output_stream(Stream, !IO),
         maybe_write_paren(Stream, '(', Priority, OpPriority, !IO),
         term_io.write_constant(Functor, !IO),
@@ -402,11 +402,11 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
         term_io.write_term_3(Ops, PrefixArg, NewPriority, !VarSet, !N, !IO),
         maybe_write_paren(Stream, ')', Priority, OpPriority, !IO)
-    ;
+    else if
         Args = [PostfixArg],
         Functor = term.atom(OpName),
         ops.lookup_postfix_op(Ops, OpName, OpPriority, OpAssoc)
-    ->
+    then
         io.output_stream(Stream, !IO),
         maybe_write_paren(Stream, '(', Priority, OpPriority, !IO),
         adjust_priority_for_assoc(OpPriority, OpAssoc, NewPriority),
@@ -414,29 +414,29 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         io.write_char(' ', !IO),
         term_io.write_constant(Functor, !IO),
         maybe_write_paren(Stream, ')', Priority, OpPriority, !IO)
-    ;
+    else if
         Args = [Arg1, Arg2],
         Functor = term.atom(OpName),
         ops.lookup_infix_op(Ops, OpName, OpPriority, LeftAssoc, RightAssoc)
-    ->
+    then
         io.output_stream(Stream, !IO),
         maybe_write_paren(Stream, '(', Priority, OpPriority, !IO),
         adjust_priority_for_assoc(OpPriority, LeftAssoc, LeftPriority),
         term_io.write_term_3(Ops, Arg1, LeftPriority, !VarSet, !N, !IO),
-        ( OpName = "," ->
+        ( if OpName = "," then
             io.write_string(", ", !IO)
-        ; OpName = "." ->
+        else if OpName = "." then
             % If the operator is '.'/2 then we must not put spaces around it
             % (or at the very least, we should not put spaces afterwards, which
             % would make it appear as the end-of-term token). However, we do
             % have to quote it if the right hand side can begin with a digit.
-            ( starts_with_digit(Arg2) ->
+            ( if starts_with_digit(Arg2) then
                 Dot = "'.'"
-            ;
+            else
                 Dot = "."
             ),
             io.write_string(Dot, !IO)
-        ;
+        else
             io.write_char(' ', !IO),
             term_io.write_constant(Functor, !IO),
             io.write_char(' ', !IO)
@@ -444,12 +444,12 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         adjust_priority_for_assoc(OpPriority, RightAssoc, RightPriority),
         term_io.write_term_3(Ops, Arg2, RightPriority, !VarSet, !N, !IO),
         maybe_write_paren(Stream, ')', Priority, OpPriority, !IO)
-    ;
+    else if
         Args = [Arg1, Arg2],
         Functor = term.atom(OpName),
         ops.lookup_binary_prefix_op(Ops, OpName, OpPriority,
             FirstAssoc, SecondAssoc)
-    ->
+    then
         io.output_stream(Stream, !IO),
         maybe_write_paren(Stream, '(', Priority, OpPriority, !IO),
         term_io.write_constant(Functor, !IO),
@@ -460,17 +460,17 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
         adjust_priority_for_assoc(OpPriority, SecondAssoc, SecondPriority),
         term_io.write_term_3(Ops, Arg2, SecondPriority, !VarSet, !N, !IO),
         maybe_write_paren(Stream, ')', Priority, OpPriority, !IO)
-    ;
-        (
+    else
+        ( if
             Args = [],
             Functor = term.atom(Op),
             ops.lookup_op(Ops, Op),
             Priority =< ops.max_priority(Ops)
-        ->
+        then
             io.write_char('(', !IO),
             term_io.write_constant(Functor, !IO),
             io.write_char(')', !IO)
-        ;
+        else
             term_io.write_constant(Functor,
                 maybe_adjacent_to_graphic_token, !IO)
         ),
@@ -490,22 +490,22 @@ term_io.write_term_3(Ops, term.functor(Functor, Args, _), Priority,
     <= op_table(Ops).
 
 term_io.write_list_tail(Ops, Term, !VarSet, !N, !IO) :-
-    (
+    ( if
         Term = term.variable(Id, _),
         varset.search_var(!.VarSet, Id, Val)
-    ->
+    then
         term_io.write_list_tail(Ops, Val, !VarSet, !N, !IO)
-    ;
+    else if
         Term = term.functor(term.atom("[|]"), [ListHead, ListTail], _)
-    ->
+    then
         io.write_string(", ", !IO),
         term_io.write_arg_term(Ops, ListHead, !VarSet, !N, !IO),
         term_io.write_list_tail(Ops, ListTail, !VarSet, !N, !IO)
-    ;
+    else if
         Term = term.functor(term.atom("[]"), [], _)
-    ->
+    then
         true
-    ;
+    else
         io.write_string(" | ", !IO),
         term_io.write_term_2(Ops, Term, !VarSet, !N, !IO)
     ).
@@ -644,7 +644,7 @@ term_io.quoted_atom_agt(S, NextToGraphicToken) = String :-
 :- func should_atom_be_quoted(string, adjacent_to_graphic_token) = bool.
 
 should_atom_be_quoted(S, NextToGraphicToken) = ShouldQuote :-
-    (
+    ( if
         % I didn't make these rules up: see ISO Prolog 6.3.1.3 and 6.4.2. -fjh
         (
             % Letter digit token (6.4.2)
@@ -679,9 +679,9 @@ should_atom_be_quoted(S, NextToGraphicToken) = ShouldQuote :-
             % 6.3.1.3: atom = open curly, close curly ;
             S = "{}"
         )
-    ->
+    then
         ShouldQuote = no
-    ;
+    else
         % Anything else must be output as a quoted token (6.4.2).
         ShouldQuote = yes
     ).
@@ -715,11 +715,11 @@ term_io.escaped_string(String) =
 :- func term_io.add_escaped_char(char, list(string)) = list(string).
 
 term_io.add_escaped_char(Char, Strings0) = Strings :-
-    ( mercury_escape_special_char(Char, QuoteChar) ->
+    ( if mercury_escape_special_char(Char, QuoteChar) then
         Strings = [from_char_list(['\\', QuoteChar]) | Strings0]
-    ; is_mercury_source_char(Char) ->
+    else if is_mercury_source_char(Char) then
         Strings = [string.char_to_string(Char) | Strings0]
-    ;
+    else
         Strings = [mercury_escape_char(Char) | Strings0]
     ).
 
@@ -733,12 +733,12 @@ term_io.write_escaped_char(Char, !IO) :-
     term_io.write_escaped_char(Stream, Char, !IO).
 
 term_io.write_escaped_char(Stream, Char, !State) :-
-    ( mercury_escape_special_char(Char, QuoteChar) ->
+    ( if mercury_escape_special_char(Char, QuoteChar) then
         stream.put(Stream, ('\\'), !State),
         stream.put(Stream, QuoteChar, !State)
-    ; is_mercury_source_char(Char) ->
+    else if is_mercury_source_char(Char) then
         stream.put(Stream, Char, !State)
-    ;
+    else
         stream.put(Stream, mercury_escape_char(Char), !State)
     ).
 
@@ -748,11 +748,11 @@ term_io.escaped_char(Char) = String :-
 :- pragma promise_equivalent_clauses(string_is_escaped_char/2).
 
 string_is_escaped_char(Char::in, String::out) :-
-    ( mercury_escape_special_char(Char, QuoteChar) ->
+    ( if mercury_escape_special_char(Char, QuoteChar) then
         String = string.append("\\", string.char_to_string(QuoteChar))
-    ; is_mercury_source_char(Char) ->
+    else if is_mercury_source_char(Char) then
         String = string.char_to_string(Char)
-    ;
+    else
         String = mercury_escape_char(Char)
     ).
 string_is_escaped_char(Char::out, String::in) :-
@@ -840,11 +840,11 @@ is_mercury_punctuation_char('|').
 :- pragma promise_equivalent_clauses(encode_escaped_char/2).
 
 encode_escaped_char(Char::in, Str::out) :-
-    ( mercury_escape_special_char(Char, EscapeChar) ->
+    ( if mercury_escape_special_char(Char, EscapeChar) then
         string.from_char_list(['\\', EscapeChar], Str)
-    ; is_mercury_source_char(Char) ->
+    else if is_mercury_source_char(Char) then
         string.from_char_list([Char], Str)
-    ;
+    else
         fail
     ).
 encode_escaped_char(Char::out, Str::in) :-

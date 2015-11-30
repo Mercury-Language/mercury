@@ -627,11 +627,11 @@ from_list(List) = list_to_set(List).
 
 sorted_list_to_set(List) = ct(Len, Tree) :-
     list.length(List, Len),
-    ( Len = 0 ->
+    ( if Len = 0 then
         % We can handle the Len = 0 case here just once, or we can handle it
         % lots of times in do_from_sorted_list. The former is more efficient.
         Tree = empty
-    ;
+    else
         find_num_234_levels(Len, Level, AllThrees),
         do_from_sorted_list(Len, List, LeftOver, Level, AllThrees, Tree),
         trace [compiletime(flag("set_ctree234_sanity_checks"))] (
@@ -643,8 +643,8 @@ sorted_list_to_set(List) = ct(Len, Tree) :-
     int::in, int::in, set_tree234(E)::out) is det.
 
 do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
-    ( Level0 = 1 ->
-        ( Len = 1 ->
+    ( if Level0 = 1 then
+        ( if Len = 1 then
             (
                 !.List = [E1 | !:List],
                 Tree = two(E1, empty, empty)
@@ -652,7 +652,7 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 !.List = [],
                 unexpected($module, $pred, "len 1 nil")
             )
-        ; Len = 2 ->
+        else if Len = 2 then
             trace [compiletime(flag("set_ctree234_sanity_checks"))] (
                 expect(unify(Level0, 1), $module, $pred,
                     "Len = 2 but Level != 1")
@@ -667,28 +667,28 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 !.List = [],
                 unexpected($module, $pred, "len 2 nil")
             )
-        ;
+        else
             unexpected($module, $pred, "level 1, but len not 1 or 2")
         )
-    ;
+    else
         Level = Level0 - 1,
         AllThrees = (AllThrees0 - 2) / 3,
-        ( Len > 2 * AllThrees ->
+        ( if Len > 2 * AllThrees then
             BaseSubLen = (Len / 3),
             Diff = Len - (BaseSubLen * 3),
-            ( Diff = 0 ->
+            ( if Diff = 0 then
                 % Len = BaseSubLen * 3:
                 % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
                 SubLen1 = BaseSubLen,
                 SubLen2 = BaseSubLen - 1,
                 SubLen3 = BaseSubLen - 1
-            ; Diff = 1 ->
+            else if Diff = 1 then
                 % Len = BaseSubLen * 3 + 1:
                 % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
                 SubLen1 = BaseSubLen,
                 SubLen2 = BaseSubLen,
                 SubLen3 = BaseSubLen - 1
-            ;
+            else
                 trace [compiletime(flag("set_ctree234_sanity_checks"))] (
                     expect(unify(Diff, 2), $module, $pred, "Diff != 2")
                 ),
@@ -725,15 +725,15 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 io.write(Tree, !IO),
                 io.nl(!IO)
             )
-        ;
+        else
             BaseSubLen = (Len) / 2,
             Diff = Len - (BaseSubLen * 2),
-            ( Diff = 0 ->
+            ( if Diff = 0 then
                 % Len = BaseSubLen * 2:
                 % (BaseSubLen) + 1 + (BaseSubLen - 1)
                 SubLen1 = BaseSubLen,
                 SubLen2 = BaseSubLen - 1
-            ;
+            else
                 trace [compiletime(flag("set_ctree234_sanity_checks"))] (
                     expect(unify(Diff, 1), $module, $pred, "Diff != 1")
                 ),
@@ -767,11 +767,11 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
 
 rev_sorted_list_to_set(List) = ct(Len, Tree) :-
     list.length(List, Len),
-    ( Len = 0 ->
+    ( if Len = 0 then
         % We can handle the Len = 0 case here just once, or we can handle it
         % lots of times in do_from_sorted_list. The former is more efficient.
         Tree = empty
-    ;
+    else
         find_num_234_levels(Len, Level, AllThrees),
         do_from_rev_sorted_list(Len, List, LeftOver, Level, AllThrees, Tree),
         trace [compiletime(flag("set_ctree234_sanity_checks"))] (
@@ -783,8 +783,8 @@ rev_sorted_list_to_set(List) = ct(Len, Tree) :-
     int::in, int::in, set_tree234(E)::out) is det.
 
 do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
-    ( Level0 = 1 ->
-        ( Len = 1 ->
+    ( if Level0 = 1 then
+        ( if Len = 1 then
             (
                 !.List = [E1 | !:List],
                 Tree = two(E1, empty, empty)
@@ -792,7 +792,7 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 !.List = [],
                 unexpected($module, $pred, "len 1 nil")
             )
-        ; Len = 2 ->
+        else if Len = 2 then
             trace [compiletime(flag("set_ctree234_sanity_checks"))] (
                 expect(unify(Level0, 1), $module, $pred,
                     "Len = 2 but Level != 1")
@@ -807,28 +807,28 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 !.List = [],
                 unexpected($module, $pred, "len 2 nil")
             )
-        ;
+        else
             unexpected($module, $pred, "level 1, but len not 1 or 2")
         )
-    ;
+    else
         Level = Level0 - 1,
         AllThrees = (AllThrees0 - 2) / 3,
-        ( Len > 2 * AllThrees ->
+        ( if Len > 2 * AllThrees then
             BaseSubLen = (Len / 3),
             Diff = Len - (BaseSubLen * 3),
-            ( Diff = 0 ->
+            ( if Diff = 0 then
                 % Len = BaseSubLen * 3:
                 % (BaseSubLen) + 1 + (BaseSubLen - 1) + 1 + (BaseSubLen - 1)
                 SubLen1 = BaseSubLen,
                 SubLen2 = BaseSubLen - 1,
                 SubLen3 = BaseSubLen - 1
-            ; Diff = 1 ->
+            else if Diff = 1 then
                 % Len = BaseSubLen * 3 + 1:
                 % (BaseSubLen) + 1 + (BaseSubLen) + 1 + (BaseSubLen - 1)
                 SubLen1 = BaseSubLen,
                 SubLen2 = BaseSubLen,
                 SubLen3 = BaseSubLen - 1
-            ;
+            else
                 trace [compiletime(flag("set_ctree234_sanity_checks"))] (
                     expect(unify(Diff, 2), $module, $pred, "Diff != 2")
                 ),
@@ -868,15 +868,15 @@ do_from_rev_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
                 io.write(Tree, !IO),
                 io.nl(!IO)
             )
-        ;
+        else
             BaseSubLen = (Len) / 2,
             Diff = Len - (BaseSubLen * 2),
-            ( Diff = 0 ->
+            ( if Diff = 0 then
                 % Len = BaseSubLen * 2:
                 % (BaseSubLen) + 1 + (BaseSubLen - 1)
                 SubLen1 = BaseSubLen,
                 SubLen2 = BaseSubLen - 1
-            ;
+            else
                 trace [compiletime(flag("set_ctree234_sanity_checks"))] (
                     expect(unify(Diff, 1), $module, $pred, "Diff != 1")
                 ),
@@ -919,9 +919,9 @@ find_num_234_levels(Len, Level, AllThrees) :-
     int::in, int::out, int::in, int::out) is det.
 
 find_num_234_levels_loop(Len, !Level, !AllThrees) :-
-    ( Len =< !.AllThrees ->
+    ( if Len =< !.AllThrees then
         true
-    ;
+    else
         !:Level = !.Level + 1,
         !:AllThrees = !.AllThrees * 3 + 2,
         find_num_234_levels_loop(Len, !Level, !AllThrees)
@@ -1052,10 +1052,10 @@ do_insert(E, Incr, Tin, Tout) :-
 
 insert2(E, Incr, Tin, Tout) :-
     Tin = two(E0, T0, T1),
-    (
+    ( if
         T0 = empty
         % T1 = empty implied by T0 = empty
-    ->
+    then
         compare(Result, E, E0),
         (
             Result = (<),
@@ -1070,7 +1070,7 @@ insert2(E, Incr, Tin, Tout) :-
             Incr = 1,
             Tout = three(E0, E, empty, empty, empty)
         )
-    ;
+    else
         compare(Result, E, E0),
         (
             Result = (<),
@@ -1154,11 +1154,11 @@ insert2(E, Incr, Tin, Tout) :-
 
 insert3(E, Incr, Tin, Tout) :-
     Tin = three(E0, E1, T0, T1, T2),
-    (
+    ( if
         T0 = empty
         % T1 = empty implied by T0 = empty
         % T2 = empty implied by T0 = empty
-    ->
+    then
         compare(Result0, E, E0),
         (
             Result0 = (<),
@@ -1185,7 +1185,7 @@ insert3(E, Incr, Tin, Tout) :-
                 Tout = four(E0, E1, E, empty, empty, empty, empty)
             )
         )
-    ;
+    else
         compare(Result0, E, E0),
         (
             Result0 = (<),
@@ -1352,10 +1352,10 @@ do_insert_new(E, Tin, Tout) :-
 
 insert_new2(E, Tin, Tout) :-
     Tin = two(E0, T0, T1),
-    (
+    ( if
         T0 = empty
         % T1 = empty implied by T0 = empty
-    ->
+    then
         compare(Result, E, E0),
         (
             Result = (<),
@@ -1367,7 +1367,7 @@ insert_new2(E, Tin, Tout) :-
             Result = (>),
             Tout = three(E0, E, empty, empty, empty)
         )
-    ;
+    else
         compare(Result, E, E0),
         (
             Result = (<),
@@ -1442,11 +1442,11 @@ insert_new2(E, Tin, Tout) :-
 
 insert_new3(E, Tin, Tout) :-
     Tin = three(E0, E1, T0, T1, T2),
-    (
+    ( if
         T0 = empty
         % T1 = empty implied by T0 = empty
         % T2 = empty implied by T0 = empty
-    ->
+    then
         compare(Result0, E, E0),
         (
             Result0 = (<),
@@ -1468,7 +1468,7 @@ insert_new3(E, Tin, Tout) :-
                 Tout = four(E0, E1, E, empty, empty, empty, empty)
             )
         )
-    ;
+    else
         compare(Result0, E, E0),
         (
             Result0 = (<),
@@ -1643,7 +1643,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
+            ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                 (
                     RHT1 = yes,
                     fix_2node_t1(ST1E, T0, NewT1, Tout, RH)
@@ -1652,7 +1652,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                     Tout = two(ST1E, T0, NewT1),
                     RH = no
                 )
-            ;
+            else
                 % T1 must be empty
                 Tout = T0,
                 RH = yes
@@ -1686,7 +1686,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
+            ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                 (
                     RHT1 = yes,
                     fix_3node_t1(ST1E, E1, T0, NewT1, T2, Tout, RH)
@@ -1695,7 +1695,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                     Tout = three(ST1E, E1, T0, NewT1, T2),
                     RH = no
                 )
-            ;
+            else
                 % T1 must be empty
                 Tout = two(E1, T0, T2),
                 RH = no
@@ -1717,9 +1717,9 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                 )
             ;
                 Result1 = (=),
-                (
+                ( if
                     do_remove_least(T2, ST2E, NewT2, RHT2)
-                ->
+                then
                     (
                         RHT2 = yes,
                         fix_3node_t2(E0, ST2E, T0, T1, NewT2, Tout, RH)
@@ -1728,7 +1728,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                         Tout = three(E0, ST2E, T0, T1, NewT2),
                         RH = no
                     )
-                ;
+                else
                     % T2 must be empty
                     Tout = two(E0, T0, T1),
                     RH = no
@@ -1766,7 +1766,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                 )
             ;
                 Result0 = (=),
-                ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
+                ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                     (
                         RHT1 = yes,
                         fix_4node_t1(ST1E, E1, E2, T0, NewT1, T2, T3, Tout, RH)
@@ -1775,7 +1775,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                         Tout = four(ST1E, E1, E2, T0, NewT1, T2, T3),
                         RH = no
                     )
-                ;
+                else
                     % T1 must be empty
                     Tout = three(E1, E2, T0, T2, T3),
                     RH = no
@@ -1795,7 +1795,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
             )
         ;
             Result1 = (=),
-            ( do_remove_least(T2, ST2E, NewT2, RHT2) ->
+            ( if do_remove_least(T2, ST2E, NewT2, RHT2) then
                 (
                     RHT2 = yes,
                     fix_4node_t2(E0, ST2E, E2, T0, T1, NewT2, T3, Tout, RH)
@@ -1804,7 +1804,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                     Tout = four(E0, ST2E, E2, T0, T1, NewT2, T3),
                     RH = no
                 )
-            ;
+            else
                 % T2 must be empty
                 Tout = three(E0, E2, T0, T1, T3),
                 RH = no
@@ -1826,7 +1826,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                 )
             ;
                 Result2 = (=),
-                ( do_remove_least(T3, ST3E, NewT3, RHT3) ->
+                ( if do_remove_least(T3, ST3E, NewT3, RHT3) then
                     (
                         RHT3 = yes,
                         fix_4node_t3(E0, E1, ST3E, T0, T1, T2, NewT3, Tout, RH)
@@ -1835,7 +1835,7 @@ do_delete(E, Decr, Tin, Tout, RH) :-
                         Tout = four(E0, E1, ST3E, T0, T1, T2, NewT3),
                         RH = no
                     )
-                ;
+                else
                     % T3 must be empty
                     Tout = three(E0, E1, T0, T1, T2),
                     RH = no
@@ -1901,7 +1901,7 @@ do_remove(E, Tin, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
+            ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                 (
                     RHT1 = yes,
                     fix_2node_t1(ST1E, T0, NewT1, Tout, RH)
@@ -1910,7 +1910,7 @@ do_remove(E, Tin, Tout, RH) :-
                     Tout = two(ST1E, T0, NewT1),
                     RH = no
                 )
-            ;
+            else
                 % T1 must be empty
                 Tout = T0,
                 RH = yes
@@ -1943,7 +1943,7 @@ do_remove(E, Tin, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
+            ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                 (
                     RHT1 = yes,
                     fix_3node_t1(ST1E, E1, T0, NewT1, T2, Tout, RH)
@@ -1952,7 +1952,7 @@ do_remove(E, Tin, Tout, RH) :-
                     Tout = three(ST1E, E1, T0, NewT1, T2),
                     RH = no
                 )
-            ;
+            else
                 % T1 must be empty
                 Tout = two(E1, T0, T2),
                 RH = no
@@ -1973,7 +1973,7 @@ do_remove(E, Tin, Tout, RH) :-
                 )
             ;
                 Result1 = (=),
-                ( do_remove_least(T2, ST2E, NewT2, RHT2) ->
+                ( if do_remove_least(T2, ST2E, NewT2, RHT2) then
                     (
                         RHT2 = yes,
                         fix_3node_t2(E0, ST2E, T0, T1, NewT2, Tout, RH)
@@ -1982,7 +1982,7 @@ do_remove(E, Tin, Tout, RH) :-
                         Tout = three(E0, ST2E, T0, T1, NewT2),
                         RH = no
                     )
-                ;
+                else
                     % T2 must be empty
                     Tout = two(E0, T0, T1),
                     RH = no
@@ -2019,7 +2019,7 @@ do_remove(E, Tin, Tout, RH) :-
                 )
             ;
                 Result0 = (=),
-                ( do_remove_least(T1, ST1E, NewT1, RHT1) ->
+                ( if do_remove_least(T1, ST1E, NewT1, RHT1) then
                     (
                         RHT1 = yes,
                         fix_4node_t1(ST1E, E1, E2, T0, NewT1, T2, T3, Tout, RH)
@@ -2028,7 +2028,7 @@ do_remove(E, Tin, Tout, RH) :-
                         Tout = four(ST1E, E1, E2, T0, NewT1, T2, T3),
                         RH = no
                     )
-                ;
+                else
                     % T1 must be empty
                     Tout = three(E1, E2, T0, T2, T3),
                     RH = no
@@ -2047,7 +2047,7 @@ do_remove(E, Tin, Tout, RH) :-
             )
         ;
             Result1 = (=),
-            ( do_remove_least(T2, ST2E, NewT2, RHT2) ->
+            ( if do_remove_least(T2, ST2E, NewT2, RHT2) then
                 (
                     RHT2 = yes,
                     fix_4node_t2(E0, ST2E, E2, T0, T1, NewT2, T3, Tout, RH)
@@ -2056,7 +2056,7 @@ do_remove(E, Tin, Tout, RH) :-
                     Tout = four(E0, ST2E, E2, T0, T1, NewT2, T3),
                     RH = no
                 )
-            ;
+            else
                 % T2 must be empty
                 Tout = three(E0, E2, T0, T1, T3),
                 RH = no
@@ -2077,7 +2077,7 @@ do_remove(E, Tin, Tout, RH) :-
                 )
             ;
                 Result2 = (=),
-                ( do_remove_least(T3, ST3E, NewT3, RHT3) ->
+                ( if do_remove_least(T3, ST3E, NewT3, RHT3) then
                     (
                         RHT3 = yes,
                         fix_4node_t3(E0, E1, ST3E, T0, T1, T2, NewT3, Tout, RH)
@@ -2086,7 +2086,7 @@ do_remove(E, Tin, Tout, RH) :-
                         Tout = four(E0, E1, ST3E, T0, T1, T2, NewT3),
                         RH = no
                     )
-                ;
+                else
                     % T3 must be empty
                     Tout = three(E0, E1, T0, T1, T2),
                     RH = no
@@ -2135,11 +2135,11 @@ do_remove_least(Tin, E, Tout, RH) :-
         fail
     ;
         Tin = two(E0, T0, T1),
-        ( T0 = empty ->
+        ( if T0 = empty then
             E = E0,
             Tout = T1,
             RH = yes
-        ;
+        else
             do_remove_least(T0, E, NewT0, RHT0),
             (
                 RHT0 = yes,
@@ -2152,11 +2152,11 @@ do_remove_least(Tin, E, Tout, RH) :-
         )
     ;
         Tin = three(E0, E1, T0, T1, T2),
-        ( T0 = empty ->
+        ( if T0 = empty then
             E = E0,
             Tout = two(E1, T1, T2),
             RH = no
-        ;
+        else
             do_remove_least(T0, E, NewT0, RHT0),
             (
                 RHT0 = yes,
@@ -2169,11 +2169,11 @@ do_remove_least(Tin, E, Tout, RH) :-
         )
     ;
         Tin = four(E0, E1, E2, T0, T1, T2, T3),
-        ( T0 = empty ->
+        ( if T0 = empty then
             E = E0,
             Tout = three(E1, E2, T1, T2, T3),
             RH = no
-        ;
+        else
             do_remove_least(T0, E, NewT0, RHT0),
             (
                 RHT0 = yes,
@@ -2492,9 +2492,9 @@ union(SetA, SetB) = Set :-
     union(SetA, SetB, Set).
 
 union(ct(SizeA, TreeA), ct(SizeB, TreeB), ct(Size, Tree)) :-
-    ( SizeA < SizeB ->
+    ( if SizeA < SizeB then
         do_union(TreeA, SizeB, Size, TreeB, Tree)
-    ;
+    else
         do_union(TreeB, SizeA, Size, TreeA, Tree)
     ).
 
@@ -2585,9 +2585,9 @@ intersect(SetA, SetB) = Set :-
     intersect(SetA, SetB, Set).
 
 intersect(ct(SizeA, TreeA), ct(SizeB, TreeB), ct(Size, Tree)) :-
-    ( SizeA < SizeB ->
+    ( if SizeA < SizeB then
         do_intersect(TreeA, TreeB, 0, Size, empty, Tree)
-    ;
+    else
         do_intersect(TreeB, TreeA, 0, Size, empty, Tree)
     ).
 
@@ -2597,49 +2597,49 @@ intersect(ct(SizeA, TreeA), ct(SizeB, TreeB), ct(Size, Tree)) :-
 do_intersect(empty, _SetB, !Size, !Tree).
 do_intersect(two(E0, T0, T1), SetB, !Size, !Tree) :-
     do_intersect(T0, SetB, !Size, !Tree),
-    ( do_is_member(SetB, E0, yes) ->
+    ( if do_is_member(SetB, E0, yes) then
         do_insert(E0, _, !Tree),
         !:Size = !.Size + 1
-    ;
+    else
         true
     ),
     do_intersect(T1, SetB, !Size, !Tree).
 do_intersect(three(E0, E1, T0, T1, T2), SetB, !Size, !Tree) :-
     do_intersect(T0, SetB, !Size, !Tree),
-    ( do_is_member(SetB, E0, yes) ->
+    ( if do_is_member(SetB, E0, yes) then
         do_insert(E0, _, !Tree),
         !:Size = !.Size + 1
-    ;
+    else
         true
     ),
     do_intersect(T1, SetB, !Size, !Tree),
-    ( do_is_member(SetB, E1, yes) ->
+    ( if do_is_member(SetB, E1, yes) then
         do_insert(E1, _, !Tree),
         !:Size = !.Size + 1
-    ;
+    else
         true
     ),
     do_intersect(T2, SetB, !Size, !Tree).
 do_intersect(four(E0, E1, E2, T0, T1, T2, T3), SetB, !Size, !Tree) :-
     do_intersect(T0, SetB, !Size, !Tree),
-    ( do_is_member(SetB, E0, yes) ->
+    ( if do_is_member(SetB, E0, yes) then
         do_insert(E0, _, !Tree),
         !:Size = !.Size + 1
-    ;
+    else
         true
     ),
     do_intersect(T1, SetB, !Size, !Tree),
-    ( do_is_member(SetB, E1, yes) ->
+    ( if do_is_member(SetB, E1, yes) then
         do_insert(E1, _, !Tree),
         !:Size = !.Size + 1
-    ;
+    else
         true
     ),
     do_intersect(T2, SetB, !Size, !Tree),
-    ( do_is_member(SetB, E2, yes) ->
+    ( if do_is_member(SetB, E2, yes) then
         do_insert(E2, _, !Tree),
         !:Size = !.Size + 1
-    ;
+    else
         true
     ),
     do_intersect(T3, SetB, !Size, !Tree).
@@ -2662,10 +2662,10 @@ intersect_list(Sets) = Intersect :-
 
 do_intersect_list(SizeIn, TreeIn, [], SizeIn, TreeIn).
 do_intersect_list(SizeIn, TreeIn, [Head | Tail], Size, Tree) :-
-    ( SizeIn = 0 ->
+    ( if SizeIn = 0 then
         Size = SizeIn,
         Tree = TreeIn
-    ;
+    else
         Head = ct(_HeadSize, HeadTree),
         do_intersect(TreeIn, HeadTree, 0, Size1, empty, Tree1),
         do_intersect_list(Size1, Tree1, Tail, Size, Tree)
@@ -3150,45 +3150,45 @@ filter_map_pred(_Pred, empty, !List).
 filter_map_pred(Pred, Tin, !List) :-
     Tin = two(E0, T0, T1),
     filter_map_pred(Pred, T0, !List),
-    ( Pred(E0, N0) ->
+    ( if Pred(E0, N0) then
         !:List = [N0 | !.List]
-    ;
+    else
         true
     ),
     filter_map_pred(Pred, T1, !List).
 filter_map_pred(Pred, Tin, !List) :-
     Tin = three(E0, E1, T0, T1, T2),
     filter_map_pred(Pred, T0, !List),
-    ( Pred(E0, N0) ->
+    ( if Pred(E0, N0) then
         !:List = [N0 | !.List]
-    ;
+    else
         true
     ),
     filter_map_pred(Pred, T1, !List),
-    ( Pred(E1, N1) ->
+    ( if Pred(E1, N1) then
         !:List = [N1 | !.List]
-    ;
+    else
         true
     ),
     filter_map_pred(Pred, T2, !List).
 filter_map_pred(Pred, Tin, !List) :-
     Tin = four(E0, E1, E2, T0, T1, T2, T3),
     filter_map_pred(Pred, T0, !List),
-    ( Pred(E0, N0) ->
+    ( if Pred(E0, N0) then
         !:List = [N0 | !.List]
-    ;
+    else
         true
     ),
     filter_map_pred(Pred, T1, !List),
-    ( Pred(E1, N1) ->
+    ( if Pred(E1, N1) then
         !:List = [N1 | !.List]
-    ;
+    else
         true
     ),
     filter_map_pred(Pred, T2, !List),
-    ( Pred(E2, N2) ->
+    ( if Pred(E2, N2) then
         !:List = [N2 | !.List]
-    ;
+    else
         true
     ),
     filter_map_pred(Pred, T3, !List).
@@ -3205,45 +3205,45 @@ filter_map_func(_Func, empty, !List).
 filter_map_func(Func, Tin, !List) :-
     Tin = two(E0, T0, T1),
     filter_map_func(Func, T0, !List),
-    ( N0 = Func(E0) ->
+    ( if N0 = Func(E0) then
         !:List = [N0 | !.List]
-    ;
+    else
         true
     ),
     filter_map_func(Func, T1, !List).
 filter_map_func(Func, Tin, !List) :-
     Tin = three(E0, E1, T0, T1, T2),
     filter_map_func(Func, T0, !List),
-    ( N0 = Func(E0) ->
+    ( if N0 = Func(E0) then
         !:List = [N0 | !.List]
-    ;
+    else
         true
     ),
     filter_map_func(Func, T1, !List),
-    ( N1 = Func(E1) ->
+    ( if N1 = Func(E1) then
         !:List = [N1 | !.List]
-    ;
+    else
         true
     ),
     filter_map_func(Func, T2, !List).
 filter_map_func(Func, Tin, !List) :-
     Tin = four(E0, E1, E2, T0, T1, T2, T3),
     filter_map_func(Func, T0, !List),
-    ( N0 = Func(E0) ->
+    ( if N0 = Func(E0) then
         !:List = [N0 | !.List]
-    ;
+    else
         true
     ),
     filter_map_func(Func, T1, !List),
-    ( N1 = Func(E1) ->
+    ( if N1 = Func(E1) then
         !:List = [N1 | !.List]
-    ;
+    else
         true
     ),
     filter_map_func(Func, T2, !List),
-    ( N2 = Func(E2) ->
+    ( if N2 = Func(E2) then
         !:List = [N2 | !.List]
-    ;
+    else
         true
     ),
     filter_map_func(Func, T3, !List).
@@ -3272,45 +3272,45 @@ do_divide(Pred, Tin, !RevTrues, !RevFalses) :-
     ;
         Tin = two(E0, T0, T1),
         do_divide(Pred, T0, !RevTrues, !RevFalses),
-        ( Pred(E0) ->
+        ( if Pred(E0) then
             !:RevTrues = [E0 | !.RevTrues]
-        ;
+        else
             !:RevFalses = [E0 | !.RevFalses]
         ),
         do_divide(Pred, T1, !RevTrues, !RevFalses)
     ;
         Tin = three(E0, E1, T0, T1, T2),
         do_divide(Pred, T0, !RevTrues, !RevFalses),
-        ( Pred(E0) ->
+        ( if Pred(E0) then
             !:RevTrues = [E0 | !.RevTrues]
-        ;
+        else
             !:RevFalses = [E0 | !.RevFalses]
         ),
         do_divide(Pred, T1, !RevTrues, !RevFalses),
-        ( Pred(E1) ->
+        ( if Pred(E1) then
             !:RevTrues = [E1 | !.RevTrues]
-        ;
+        else
             !:RevFalses = [E1 | !.RevFalses]
         ),
         do_divide(Pred, T2, !RevTrues, !RevFalses)
     ;
         Tin = four(E0, E1, E2, T0, T1, T2, T3),
         do_divide(Pred, T0, !RevTrues, !RevFalses),
-        ( Pred(E0) ->
+        ( if Pred(E0) then
             !:RevTrues = [E0 | !.RevTrues]
-        ;
+        else
             !:RevFalses = [E0 | !.RevFalses]
         ),
         do_divide(Pred, T1, !RevTrues, !RevFalses),
-        ( Pred(E1) ->
+        ( if Pred(E1) then
             !:RevTrues = [E1 | !.RevTrues]
-        ;
+        else
             !:RevFalses = [E1 | !.RevFalses]
         ),
         do_divide(Pred, T2, !RevTrues, !RevFalses),
-        ( Pred(E2) ->
+        ( if Pred(E2) then
             !:RevTrues = [E2 | !.RevTrues]
-        ;
+        else
             !:RevFalses = [E2 | !.RevFalses]
         ),
         do_divide(Pred, T3, !RevTrues, !RevFalses)
@@ -3382,9 +3382,9 @@ verify_depths(ct(_, Tree), Depths) :-
     list(int)::in, list(int)::out) is det.
 
 do_verify_depths(empty, Depth, !Depths) :-
-    ( list.member(Depth, !.Depths) ->
+    ( if list.member(Depth, !.Depths) then
         true
-    ;
+    else
         !:Depths = [Depth | !.Depths]
     ).
 do_verify_depths(two(_, T0, T1), Depth, !Depths) :-

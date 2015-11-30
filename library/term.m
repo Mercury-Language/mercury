@@ -762,38 +762,38 @@ unify_term(TermX, TermY, !Subst) :-
     (
         TermX = variable(X, _),
         TermY = variable(Y, _),
-        ( map.search(!.Subst, X, TermBoundToX) ->
-            ( map.search(!.Subst, Y, TermBoundToY) ->
+        ( if map.search(!.Subst, X, TermBoundToX) then
+            ( if map.search(!.Subst, Y, TermBoundToY) then
                 % Both X and Y already have bindings, so just unify
                 % the terms they are bound to.
                 unify_term(TermBoundToX, TermBoundToY, !Subst)
-            ;
+            else
                 % X is bound, but Y isn't.
                 apply_rec_substitution_in_term(!.Subst,
                     TermBoundToX, SubstTermBoundToX),
-                ( SubstTermBoundToX = variable(Y, _) ->
+                ( if SubstTermBoundToX = variable(Y, _) then
                     true
-                ;
-                    \+ occurs(SubstTermBoundToX, Y, !.Subst),
+                else
+                    not occurs(SubstTermBoundToX, Y, !.Subst),
                     map.det_insert(Y, SubstTermBoundToX, !Subst)
                 )
             )
-        ;
-            ( map.search(!.Subst, Y, TermBoundToY) ->
+        else
+            ( if map.search(!.Subst, Y, TermBoundToY) then
                 % Y is bound, but X isn't.
                 apply_rec_substitution_in_term(!.Subst,
                     TermBoundToY, SubstTermBoundToY),
-                ( SubstTermBoundToY = variable(X, _) ->
+                ( if SubstTermBoundToY = variable(X, _) then
                     true
-                ;
-                    \+ occurs(SubstTermBoundToY, X, !.Subst),
+                else
+                    not occurs(SubstTermBoundToY, X, !.Subst),
                     map.det_insert(X, SubstTermBoundToY, !Subst)
                 )
-            ;
+            else
                 % Neither X nor Y are bound, so bind one to the other.
-                ( X = Y ->
+                ( if X = Y then
                     true
-                ;
+                else
                     map.det_insert(X, TermY, !Subst)
                 )
             )
@@ -801,19 +801,19 @@ unify_term(TermX, TermY, !Subst) :-
     ;
         TermX = variable(X, _),
         TermY = functor(_, ArgTermsY, _),
-        ( map.search(!.Subst, X, TermBoundToX) ->
+        ( if map.search(!.Subst, X, TermBoundToX) then
             unify_term(TermBoundToX, TermY, !Subst)
-        ;
-            \+ occurs_list(ArgTermsY, X, !.Subst),
+        else
+            not occurs_list(ArgTermsY, X, !.Subst),
             map.det_insert(X, TermY, !Subst)
         )
     ;
         TermX = functor(_, ArgTermsX, _),
         TermY = variable(Y, _),
-        ( map.search(!.Subst, Y, TermBoundToY) ->
+        ( if map.search(!.Subst, Y, TermBoundToY) then
             unify_term(TermX, TermBoundToY, !Subst)
-        ;
-            \+ occurs_list(ArgTermsX, Y, !.Subst),
+        else
+            not occurs_list(ArgTermsX, Y, !.Subst),
             map.det_insert(Y, TermX, !Subst)
         )
     ;
@@ -835,43 +835,43 @@ unify_term_dont_bind(TermX, TermY, DontBindVars, !Subst) :-
     (
         TermX = variable(X, _),
         TermY = variable(Y, _),
-        ( list.member(Y, DontBindVars) ->
+        ( if list.member(Y, DontBindVars) then
             unify_term_bound_var(X, Y, DontBindVars, !Subst)
-        ; list.member(X, DontBindVars) ->
+        else if list.member(X, DontBindVars) then
             unify_term_bound_var(Y, X, DontBindVars, !Subst)
-        ; map.search(!.Subst, X, TermBoundToX) ->
-            ( map.search(!.Subst, Y, TermBoundToY) ->
+        else if map.search(!.Subst, X, TermBoundToX) then
+            ( if map.search(!.Subst, Y, TermBoundToY) then
                 % Both X and Y already have bindings, so just unify
                 % the terms they are bound to.
                 unify_term_dont_bind(TermBoundToX, TermBoundToY, DontBindVars,
                     !Subst)
-            ;
+            else
                 % X is bound, but Y isn't.
                 apply_rec_substitution_in_term(!.Subst,
                     TermBoundToX, SubstTermBoundToX),
-                ( SubstTermBoundToX = variable(Y, _) ->
+                ( if SubstTermBoundToX = variable(Y, _) then
                     true
-                ;
-                    \+ occurs(SubstTermBoundToX, Y, !.Subst),
+                else
+                    not occurs(SubstTermBoundToX, Y, !.Subst),
                     map.det_insert(Y, SubstTermBoundToX, !Subst)
                 )
             )
-        ;
-            ( map.search(!.Subst, Y, TermBoundToY) ->
+        else
+            ( if map.search(!.Subst, Y, TermBoundToY) then
                 % Y is bound, but X isn't.
                 apply_rec_substitution_in_term(!.Subst,
                     TermBoundToY, SubstTermBoundToY),
-                ( SubstTermBoundToY = variable(X, _) ->
+                ( if SubstTermBoundToY = variable(X, _) then
                     true
-                ;
-                    \+ occurs(SubstTermBoundToY, X, !.Subst),
+                else
+                    not occurs(SubstTermBoundToY, X, !.Subst),
                     map.det_insert(X, SubstTermBoundToY, !Subst)
                 )
-            ;
+            else
                 % Neither X nor Y are bound, so bind one to the other.
-                ( X = Y ->
+                ( if X = Y then
                     true
-                ;
+                else
                     map.det_insert(X, TermY, !Subst)
                 )
             )
@@ -879,21 +879,21 @@ unify_term_dont_bind(TermX, TermY, DontBindVars, !Subst) :-
     ;
         TermX = variable(X, _),
         TermY = functor(_, ArgTermsY, _),
-        ( map.search(!.Subst, X, TermBoundToX) ->
+        ( if map.search(!.Subst, X, TermBoundToX) then
             unify_term_dont_bind(TermBoundToX, TermY, DontBindVars, !Subst)
-        ;
-            \+ occurs_list(ArgTermsY, X, !.Subst),
-            \+ list.member(X, DontBindVars),
+        else
+            not occurs_list(ArgTermsY, X, !.Subst),
+            not list.member(X, DontBindVars),
             map.det_insert(X, TermY, !Subst)
         )
     ;
         TermX = functor(_, ArgTermsX, _),
         TermY = variable(Y, _),
-        ( map.search(!.Subst, Y, TermBoundToY) ->
+        ( if map.search(!.Subst, Y, TermBoundToY) then
             unify_term_dont_bind(TermX, TermBoundToY, DontBindVars, !Subst)
-        ;
-            \+ occurs_list(ArgTermsX, Y, !.Subst),
-            \+ list.member(Y, DontBindVars),
+        else
+            not occurs_list(ArgTermsX, Y, !.Subst),
+            not list.member(Y, DontBindVars),
             map.det_insert(Y, TermX, !Subst)
         )
     ;
@@ -916,14 +916,14 @@ unify_term_list_dont_bind([TermX | TermXs], [TermY | TermYs],
     substitution(T)::in, substitution(T)::out) is semidet.
 
 unify_term_bound_var(X, BoundY, DontBindVars, !Subst) :-
-    ( map.search(!.Subst, X, TermBoundToX) ->
+    ( if map.search(!.Subst, X, TermBoundToX) then
         TermBoundToX = variable(NewX, _),
         unify_term_bound_var(NewX, BoundY, DontBindVars, !Subst)
-    ;
-        ( X = BoundY ->
+    else
+        ( if X = BoundY then
             true
-        ;
-            \+ list.member(X, DontBindVars),
+        else
+            not list.member(X, DontBindVars),
             map.det_insert(X, variable(BoundY, context_init), !Subst)
         )
     ).
@@ -987,9 +987,9 @@ contains_var_list([_ | Terms], Var) :-
 occurs(Term, Var, Subst) :-
     (
         Term = variable(X, _Context),
-        ( X = Var ->
+        ( if X = Var then
             true
-        ;
+        else
             map.search(Subst, X, TermBoundToX),
             occurs(TermBoundToX, Var, Subst)
         )
@@ -999,9 +999,9 @@ occurs(Term, Var, Subst) :-
     ).
 
 occurs_list([Term | Terms], Var, Subst) :-
-    ( occurs(Term, Var, Subst) ->
+    ( if occurs(Term, Var, Subst) then
         true
-    ;
+    else
         occurs_list(Terms, Var, Subst)
     ).
 
@@ -1058,9 +1058,9 @@ rename_list(Terms0, Var, ReplacementVar, Terms) :-
 rename_var_in_term(Var, ReplacementVar, Term0, Term) :-
     (
         Term0 = variable(Var0, Context),
-        ( Var0 = Var ->
+        ( if Var0 = Var then
             Term = variable(ReplacementVar, Context)
-        ;
+        else
             Term = Term0
         )
     ;
@@ -1105,9 +1105,9 @@ apply_variable_renaming_to_list(Terms0, Renaming, Terms) :-
 %---------------------%
 
 apply_renaming_in_var(Renaming, Var0, Var) :-
-    ( map.search(Renaming, Var0, NewVar) ->
+    ( if map.search(Renaming, Var0, NewVar) then
         Var = NewVar
-    ;
+    else
         Var = Var0
     ).
 
@@ -1157,9 +1157,9 @@ substitute_corresponding_list(Vars, ReplacementTerms, Terms0, Terms) :-
 substitute_var_in_term(Var, ReplacementTerm, Term0, Term) :-
     (
         Term0 = variable(Var0, _Context),
-        ( Var0 = Var ->
+        ( if Var0 = Var then
             Term = ReplacementTerm
-        ;
+        else
             Term = Term0
         )
     ;
@@ -1223,9 +1223,9 @@ apply_rec_substitution_to_list(Terms0, Subst, Terms) :-
 apply_substitution_in_term(Subst, Term0, Term) :-
     (
         Term0 = variable(Var, _),
-        ( map.search(Subst, Var, ReplacementTerm) ->
+        ( if map.search(Subst, Var, ReplacementTerm) then
             Term = ReplacementTerm
-        ;
+        else
             Term = Term0
         )
     ;
@@ -1242,10 +1242,10 @@ apply_substitution_in_terms(Subst, [Term0 | Terms0], [Term | Terms]) :-
 apply_rec_substitution_in_term(Subst, Term0, Term) :-
     (
         Term0 = variable(Var, _),
-        ( map.search(Subst, Var, ReplacementTerm) ->
+        ( if map.search(Subst, Var, ReplacementTerm) then
             % Recursively apply the substitution to the replacement.
             apply_rec_substitution_in_term(Subst, ReplacementTerm, Term)
-        ;
+        else
             Term = Term0
         )
     ;
@@ -1262,9 +1262,9 @@ apply_rec_substitution_in_terms(Subst, [Term0 | Terms0], [Term | Terms]) :-
 %---------------------------------------------------------------------------%
 
 term_list_to_var_list(Terms) = Vars :-
-    ( term_list_to_var_list(Terms, VarsPrime) ->
+    ( if term_list_to_var_list(Terms, VarsPrime) then
         Vars = VarsPrime
-    ;
+    else
         unexpected($module, $pred, "not all vars")
     ).
 

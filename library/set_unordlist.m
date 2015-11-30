@@ -387,9 +387,9 @@ set_unordlist.insert_list(List, sul(!.Set), sul(!:Set)) :-
 set_unordlist.insert(E, sul(S0), sul([E | S0])).
 
 set_unordlist.insert_new(E, sul(S0), sul(S)) :-
-    ( list.member(E, S0) ->
+    ( if list.member(E, S0) then
         fail
-    ;
+    else
         S = [E | S0]
     ).
 
@@ -433,9 +433,9 @@ set_unordlist.member(E, sul(S)) :-
     list.member(E, S).
 
 set_unordlist.is_member(E, S, R) :-
-    ( set_unordlist.member(E, S) ->
+    ( if set_unordlist.member(E, S) then
         R = yes
-    ;
+    else
         R = no
     ).
 
@@ -490,9 +490,9 @@ set_unordlist.intersect(sul(S0), sul(S1), sul(S)) :-
 
 set_unordlist.intersect_2([], _, S, S).
 set_unordlist.intersect_2([E | S0], S1, S2, S) :-
-    ( list.member(E, S1) ->
+    ( if list.member(E, S1) then
         S3 = [E | S2]
-    ;
+    else
         S3 = S2
     ),
     set_unordlist.intersect_2(S0, S1, S3, S).
@@ -635,9 +635,9 @@ set_unordlist.divide(Pred, sul(Set), sul(RevTruePart), sul(RevFalsePart)) :-
 
 set_unordlist.divide_2(_Pred, [], !RevTrue, !RevFalse).
 set_unordlist.divide_2(Pred, [H | T], !RevTrue, !RevFalse) :-
-    ( Pred(H) ->
+    ( if Pred(H) then
         !:RevTrue = [H | !.RevTrue]
-    ;
+    else
         !:RevFalse = [H | !.RevFalse]
     ),
     set_unordlist.divide_2(Pred, T, !RevTrue, !RevFalse).

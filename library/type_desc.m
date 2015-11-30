@@ -268,23 +268,23 @@ import jmercury.runtime.TypeInfo_Struct;
 %---------------------------------------------------------------------------%
 
 type_desc_to_type_info(TypeDesc, TypeInfo) :-
-    ( type_info_desc_same_representation ->
+    ( if type_info_desc_same_representation then
         private_builtin.unsafe_type_cast(TypeDesc, TypeInfo)
-    ;
+    else
         error("type_desc_to_type_info/2")
     ).
 
 type_info_to_type_desc(TypeInfo, TypeDesc) :-
-    ( type_info_desc_same_representation ->
+    ( if type_info_desc_same_representation then
         private_builtin.unsafe_type_cast(TypeInfo, TypeDesc)
-    ;
+    else
         error("type_info_to_type_desc/2")
     ).
 
 type_info_list_to_type_desc_list(TypeInfoList, TypeDescList) :-
-    ( type_info_desc_same_representation ->
+    ( if type_info_desc_same_representation then
         private_builtin.unsafe_type_cast(TypeInfoList, TypeDescList)
-    ;
+    else
         list.map(type_info_to_type_desc, TypeInfoList, TypeDescList)
     ).
 
@@ -292,9 +292,9 @@ type_info_list_to_type_desc_list(TypeInfoList, TypeDescList) :-
     rtti_implementation.type_ctor_info::out) is det.
 
 type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
-    ( type_info_desc_same_representation ->
+    ( if type_info_desc_same_representation then
         private_builtin.unsafe_type_cast(TypeCtorDesc, TypeCtorInfo)
-    ;
+    else
         error("type_ctor_desc_to_type_ctor_info/2")
     ).
 
@@ -302,9 +302,9 @@ type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
     rtti_implementation.pseudo_type_info::out) is det.
 
 pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc, PseudoTypeInfo) :-
-    ( type_info_desc_same_representation ->
+    ( if type_info_desc_same_representation then
         private_builtin.unsafe_type_cast(PseudoTypeDesc, PseudoTypeInfo)
-    ;
+    else
         error("pseudo_type_desc_to_pseudo_type_info/2")
     ).
 
@@ -338,13 +338,13 @@ pseudo_type_desc_is_ground(PseudoTypeDesc) :-
     list.all_true(pseudo_type_desc_is_ground, ArgPseudos).
 
 pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
-    ( pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtor, ArgPseudos) ->
+    ( if pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtor, ArgPseudos) then
         PseudoTypeRep = bound(TypeCtor, ArgPseudos)
-    ; is_exist_pseudo_type_desc(PseudoTypeDesc, UnivNum) ->
+    else if is_exist_pseudo_type_desc(PseudoTypeDesc, UnivNum) then
         PseudoTypeRep = exist_tvar(UnivNum)
-    ; is_univ_pseudo_type_desc(PseudoTypeDesc, UnivNum) ->
+    else if is_univ_pseudo_type_desc(PseudoTypeDesc, UnivNum) then
         PseudoTypeRep = univ_tvar(UnivNum)
-    ;
+    else
         error("pseudo_type_desc_to_rep: internal error")
     ).
 
@@ -369,9 +369,9 @@ pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
 ").
 
 is_univ_pseudo_type_desc(PTD, N) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.is_univ_pseudo_type_desc(PTD, N)
-    ;
+    else
         pseudo_type_desc_to_pseudo_type_info(PTD, PTI),
         rtti_implementation.is_univ_pseudo_type_info(PTI, N)
     ).
@@ -397,9 +397,9 @@ is_univ_pseudo_type_desc(PTD, N) :-
 ").
 
 is_exist_pseudo_type_desc(PTD, N) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.is_exist_pseudo_type_desc(PTD, N)
-    ;
+    else
         pseudo_type_desc_to_pseudo_type_info(PTD, PTI),
         rtti_implementation.is_exist_pseudo_type_info(PTI, N)
     ).
@@ -441,16 +441,16 @@ ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
     ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc, TypeDesc).
 
 ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc, TypeDesc) :-
-    ( pseudo_type_desc_is_ground(PseudoTypeDesc) ->
+    ( if pseudo_type_desc_is_ground(PseudoTypeDesc) then
         private_builtin.unsafe_type_cast(PseudoTypeDesc, TypeDesc)
-    ;
+    else
         fail
     ).
 
 det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
-    ( pseudo_type_desc_is_ground(PseudoTypeDesc) ->
+    ( if pseudo_type_desc_is_ground(PseudoTypeDesc) then
         private_builtin.unsafe_type_cast(PseudoTypeDesc, TypeDesc)
-    ;
+    else
         error("det_ground_pseudo_type_desc_to_type_desc: not ground")
     ).
 
@@ -532,29 +532,29 @@ same_type(_, _).
 type_name(Type) = TypeName :-
     type_ctor_and_args(Type, TypeCtor, ArgTypes),
     type_ctor_name_and_arity(TypeCtor, ModuleName, Name, Arity),
-    ( Arity = 0 ->
+    ( if Arity = 0 then
         UnqualifiedTypeName = Name
-    ;
-        ( ModuleName = "builtin", Name = "func" ->
+    else
+        ( if ModuleName = "builtin", Name = "func" then
             IsFunc = yes
-        ;
+        else
             IsFunc = no
         ),
-        (
+        ( if
             ModuleName = "builtin", Name = "{}"
-        ->
+        then
             type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
             list.append(ArgTypeNames, ["}"], TypeStrings0),
             TypeStrings = ["{" | TypeStrings0],
             string.append_list(TypeStrings, UnqualifiedTypeName)
-        ;
+        else if
             IsFunc = yes,
             ArgTypes = [FuncRetType]
-        ->
+        then
             FuncRetTypeName = type_name(FuncRetType),
             string.append_list(["((func) = ", FuncRetTypeName, ")"],
                 UnqualifiedTypeName)
-        ;
+        else
             type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
             (
                 IsFunc = no,
@@ -567,9 +567,9 @@ type_name(Type) = TypeName :-
             string.append_list(TypeNameStrings, UnqualifiedTypeName)
         )
     ),
-    ( ModuleName = "builtin" ->
+    ( if ModuleName = "builtin" then
         TypeName = UnqualifiedTypeName
-    ;
+    else
         string.append_list([ModuleName, ".", UnqualifiedTypeName], TypeName)
     ).
 
@@ -592,13 +592,13 @@ type_arg_names([Type | Types], IsFunc, ArgNames) :-
         ArgNames = [Name]
     ;
         Types = [_ | _],
-        (
+        ( if
             IsFunc = yes,
             Types = [FuncReturnType]
-        ->
+        then
             FuncReturnName = type_name(FuncReturnType),
             ArgNames = [Name, ") = ", FuncReturnName]
-        ;
+        else
             type_arg_names(Types, IsFunc, Names),
             ArgNames = [Name, ", " | Names]
         )
@@ -620,9 +620,9 @@ type_ctor_arity(TypeCtor) = Arity :-
     type_ctor_name_and_arity(TypeCtor, _ModuleName, _Name, Arity).
 
 det_make_type(TypeCtor, ArgTypes) = Type :-
-    ( make_type(TypeCtor, ArgTypes) = NewType ->
+    ( if make_type(TypeCtor, ArgTypes) = NewType then
         Type = NewType
-    ;
+    else
         error("det_make_type/2: make_type/2 failed (wrong arity)")
     ).
 
@@ -645,9 +645,9 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 }").
 
 type_ctor(TypeDesc) = TypeCtorDesc :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.type_ctor_desc(TypeDesc, TypeCtorDesc)
-    ;
+    else
         type_desc_to_type_info(TypeDesc, TypeInfo),
         TypeCtorInfo = rtti_implementation.get_type_ctor_info(TypeInfo),
         make_type_ctor_desc(TypeInfo, TypeCtorInfo, TypeCtorDesc)
@@ -696,10 +696,10 @@ pseudo_type_ctor(_) = _ :-
 }").
 
 type_ctor_and_args(TypeDesc, TypeCtorDesc, ArgTypeDescs) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.type_ctor_desc_and_args(TypeDesc,
             TypeCtorDesc, ArgTypeDescs)
-    ;
+    else
         type_desc_to_type_info(TypeDesc, TypeInfo),
         rtti_implementation.type_ctor_and_args(TypeInfo, TypeCtorInfo,
             ArgTypeInfos),
@@ -726,10 +726,10 @@ type_ctor_and_args(TypeDesc, TypeCtorDesc, ArgTypeDescs) :-
 }").
 
 pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, ArgPseudoTypeDescs) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.pseudo_type_ctor_and_args(PseudoTypeDesc,
             TypeCtorDesc, ArgPseudoTypeDescs)
-    ;
+    else
         pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc, PseudoTypeInfo),
         rtti_implementation.pseudo_type_ctor_and_args(PseudoTypeInfo,
             TypeCtorInfo, ArgPseudoTypeInfos),

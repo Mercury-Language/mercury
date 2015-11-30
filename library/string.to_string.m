@@ -109,23 +109,23 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
     %   type_info, univ, c_pointer, array
     %   and private_builtin.type_info
 
-    ( dynamic_cast(X, String) ->
+    ( if dynamic_cast(X, String) then
         add_revstring(term_io.quoted_string(String), !Rs)
-    ; dynamic_cast(X, Char) ->
+    else if dynamic_cast(X, Char) then
         add_revstring(term_io.quoted_char(Char), !Rs)
-    ; dynamic_cast(X, Int) ->
+    else if dynamic_cast(X, Int) then
         add_revstring(string.int_to_string(Int), !Rs)
-    ; dynamic_cast(X, Float) ->
+    else if dynamic_cast(X, Float) then
         add_revstring(string.float_to_string(Float), !Rs)
-    ; dynamic_cast(X, Bitmap) ->
+    else if dynamic_cast(X, Bitmap) then
         add_revstring(term_io.quoted_string(bitmap.to_string(Bitmap)), !Rs)
-    ; dynamic_cast(X, TypeDesc) ->
+    else if dynamic_cast(X, TypeDesc) then
         type_desc_to_revstrings(TypeDesc, !Rs)
-    ; dynamic_cast(X, TypeCtorDesc) ->
+    else if dynamic_cast(X, TypeCtorDesc) then
         type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs)
-    ; dynamic_cast(X, C_Pointer) ->
+    else if dynamic_cast(X, C_Pointer) then
         add_revstring(c_pointer_to_string(C_Pointer), !Rs)
-    ;
+    else if
         % Check if the type is array.array/1. We cannot just use dynamic_cast
         % here since array.array/1 is a polymorphic type.
         %
@@ -143,7 +143,7 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         ArgTypes = [ElemType],
         type_ctor_name(TypeCtor) = "array",
         type_ctor_module_name(TypeCtor) = "array"
-    ->
+    then
         % Now that we know the element type, we can constrain the type of
         % the variable `Array' so that we can use det_dynamic_cast.
         %
@@ -151,17 +151,17 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         same_array_elem_type(Array, Elem),
         det_dynamic_cast(X, Array),
         array_to_revstrings(NonCanon, OpsTable, Array, !Rs)
-    ;
+    else if
         type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
         ArgTypes = [ElemType],
         type_ctor_name(TypeCtor) = "version_array",
         type_ctor_module_name(TypeCtor) = "version_array"
-    ->
+    then
         has_type(Elem, ElemType),
         same_version_array_elem_type(VersionArray, Elem),
         det_dynamic_cast(X, VersionArray),
         version_array_to_revstrings(NonCanon, OpsTable, VersionArray, !Rs)
-    ;
+    else if
         % Check if the type is private_builtin.type_info/1.
         % See the comments above for array.array/1.
         %
@@ -169,12 +169,12 @@ value_to_revstrings_prio(NonCanon, OpsTable, Priority, X, !Rs) :-
         ArgTypes = [ElemType],
         type_ctor_name(TypeCtor) = "type_info",
         type_ctor_module_name(TypeCtor) = "private_builtin"
-    ->
+    then
         has_type(Elem, ElemType),
         same_private_builtin_type(PrivateBuiltinTypeInfo, Elem),
         det_dynamic_cast(X, PrivateBuiltinTypeInfo),
         private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs)
-    ;
+    else
         ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs)
     ).
 
@@ -205,22 +205,22 @@ same_private_builtin_type(_, _).
 
 ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
     deconstruct(X, NonCanon, Functor, _Arity, Args),
-    (
+    ( if
         Functor = "[|]",
         Args = [ListHead, ListTail]
-    ->
+    then
         add_revstring("[", !Rs),
         arg_to_revstrings(NonCanon, OpsTable, ListHead, !Rs),
         univ_list_tail_to_revstrings(NonCanon, OpsTable, ListTail, !Rs),
         add_revstring("]", !Rs)
-    ;
+    else if
         Functor = "[]",
         Args = []
-    ->
+    then
         add_revstring("[]", !Rs)
-    ;
+    else if
         Functor = "{}"
-    ->
+    then
         (
             Args = [],
             add_revstring("{}", !Rs)
@@ -238,12 +238,12 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
             term_args_to_revstrings(NonCanon, OpsTable, BracedTail, !Rs),
             add_revstring("}", !Rs)
         )
-    ;
+    else if
         Args = [Arg]
-    ->
-        (
+    then
+        ( if
             ops.lookup_prefix_op(OpsTable, Functor, OpPriority, OpAssoc)
-        ->
+        then
             maybe_add_revstring("(", Priority, OpPriority, !Rs),
             add_revstring(term_io.quoted_atom(Functor), !Rs),
             add_revstring(" ", !Rs),
@@ -251,9 +251,9 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
             value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
                 univ_value(Arg), !Rs),
             maybe_add_revstring(")", Priority, OpPriority, !Rs)
-        ;
+        else if
             ops.lookup_postfix_op(OpsTable, Functor, OpPriority, OpAssoc)
-        ->
+        then
             maybe_add_revstring("(", Priority, OpPriority, !Rs),
             adjust_priority(OpPriority, OpAssoc, NewPriority),
             value_to_revstrings_prio(NonCanon, OpsTable, NewPriority,
@@ -261,24 +261,24 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
             add_revstring(" ", !Rs),
             add_revstring(term_io.quoted_atom(Functor), !Rs),
             maybe_add_revstring(")", Priority, OpPriority, !Rs)
-        ;
+        else
             plain_term_to_revstrings(NonCanon, OpsTable, Priority,
                 Functor, Args, !Rs)
         )
-    ;
+    else if
         Args = [Arg1, Arg2]
-    ->
-        (
+    then
+        ( if
             ops.lookup_infix_op(OpsTable, Functor, OpPriority,
                 LeftAssoc, RightAssoc)
-        ->
+        then
             maybe_add_revstring("(", Priority, OpPriority, !Rs),
             adjust_priority(OpPriority, LeftAssoc, LeftPriority),
             value_to_revstrings_prio(NonCanon, OpsTable, LeftPriority,
                 univ_value(Arg1), !Rs),
-            ( Functor = "," ->
+            ( if Functor = "," then
                 add_revstring(", ", !Rs)
-            ;
+            else
                 add_revstring(" ", !Rs),
                 add_revstring(term_io.quoted_atom(Functor), !Rs),
                 add_revstring(" ", !Rs)
@@ -287,10 +287,10 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
             value_to_revstrings_prio(NonCanon, OpsTable, RightPriority,
                 univ_value(Arg2), !Rs),
             maybe_add_revstring(")", Priority, OpPriority, !Rs)
-        ;
+        else if
             ops.lookup_binary_prefix_op(OpsTable, Functor,
                 OpPriority, FirstAssoc, SecondAssoc)
-        ->
+        then
             maybe_add_revstring("(", Priority, OpPriority, !Rs),
             add_revstring(term_io.quoted_atom(Functor), !Rs),
             add_revstring(" ", !Rs),
@@ -302,11 +302,11 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
             value_to_revstrings_prio(NonCanon, OpsTable, SecondPriority,
                 univ_value(Arg2), !Rs),
             maybe_add_revstring(")", Priority, OpPriority, !Rs)
-        ;
+        else
             plain_term_to_revstrings(NonCanon, OpsTable, Priority,
                 Functor, Args, !Rs)
         )
-    ;
+    else
         plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args,
             !Rs)
     ).
@@ -323,15 +323,15 @@ ordinary_term_to_revstrings(NonCanon, OpsTable, Priority, X, !Rs) :-
     is cc_multi.
 
 plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args, !Rs) :-
-    (
+    ( if
         Args = [],
         ops.lookup_op(OpsTable, Functor),
         Priority =< ops.max_priority(OpsTable)
-    ->
+    then
         add_revstring("(", !Rs),
         add_revstring(term_io.quoted_atom(Functor), !Rs),
         add_revstring(")", !Rs)
-    ;
+    else
         add_revstring(
             term_io.quoted_atom_agt(Functor,
                 term_io.maybe_adjacent_to_graphic_token),
@@ -352,9 +352,9 @@ plain_term_to_revstrings(NonCanon, OpsTable, Priority, Functor, Args, !Rs) :-
     revstrings::in, revstrings::out) is det.
 
 maybe_add_revstring(String, Priority, OpPriority, !Rs) :-
-    ( OpPriority > Priority ->
+    ( if OpPriority > Priority then
         add_revstring(String, !Rs)
-    ;
+    else
         true
     ).
 
@@ -374,19 +374,19 @@ adjust_priority(Priority, ops.x, Priority - 1).
 
 univ_list_tail_to_revstrings(NonCanon, OpsTable, Univ, !Rs) :-
     deconstruct(univ_value(Univ), NonCanon, Functor, _Arity, Args),
-    (
+    ( if
         Functor = "[|]",
         Args = [ListHead, ListTail]
-    ->
+    then
         add_revstring(", ", !Rs),
         arg_to_revstrings(NonCanon, OpsTable, ListHead, !Rs),
         univ_list_tail_to_revstrings(NonCanon, OpsTable, ListTail, !Rs)
-    ;
+    else if
         Functor = "[]",
         Args = []
-    ->
+    then
         true
-    ;
+    else
         add_revstring(" | ", !Rs),
         value_to_revstrings(NonCanon, OpsTable, univ_value(Univ), !Rs)
     ).
@@ -421,9 +421,9 @@ arg_to_revstrings(NonCanon, OpsTable, X, !Rs) :-
 :- func comma_priority(ops.table) = ops.priority.
 
 % comma_priority(OpsTable) =
-%   ( ops.lookup_infix_op(OpTable, ",", Priority, _, _) ->
+%   ( if ops.lookup_infix_op(OpTable, ",", Priority, _, _) then
 %       Priority
-%   ;
+%   else
 %       func_error("arg_priority: cannot find the priority of `,'")
 %   ).
 % We could implement this as above, but it is more efficient to just
@@ -472,20 +472,20 @@ type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs) :-
     type_desc.type_ctor_name_and_arity(TypeCtorDesc, ModuleName,
         Name0, Arity0),
     Name = term_io.quoted_atom(Name0),
-    (
+    ( if
         ModuleName = "builtin",
         Name = "func"
-    ->
+    then
         % The type ctor that we call `builtin.func/N' takes N + 1 type
         % parameters: N arguments plus one return value. So we need to subtract
         % one from the arity here.
         Arity = Arity0 - 1
-    ;
+    else
         Arity = Arity0
     ),
-    ( ModuleName = "builtin" ->
+    ( if ModuleName = "builtin" then
         String = string.format("%s/%d", [s(Name), i(Arity)])
-    ;
+    else
         String = string.format("%s.%s/%d", [s(ModuleName), s(Name), i(Arity)])
     ),
     add_revstring(String, !Rs).

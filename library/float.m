@@ -311,9 +311,9 @@
 
 :- pragma inline('/'/2).
 X / Y = Z :-
-    ( float_domain_checks, Y = 0.0 ->
+    ( if float_domain_checks, Y = 0.0 then
         throw(math.domain_error("float.'/': division by zero"))
-    ;
+    else
         Z = unchecked_quotient(X, Y)
     ).
 
@@ -551,33 +551,33 @@ X / Y = Z :-
 %
 
 float.abs(Num) = Abs :-
-    ( Num =< 0.0 ->
+    ( if Num =< 0.0 then
         Abs = - Num
-    ;
+    else
         Abs = Num
     ).
 
 float.max(X, Y) = Max :-
-    ( X >= Y ->
+    ( if X >= Y then
         Max = X
-    ;
+    else
         Max = Y
     ).
 
 float.min(X, Y) = Min :-
-    ( X =< Y ->
+    ( if X =< Y then
         Min = X
-    ;
+    else
         Min = Y
     ).
 
 float.pow(Base, Exp) = Ans :-
-    ( Exp >= 0 ->
+    ( if Exp >= 0 then
         Ans = float.multiply_by_pow(1.0, Base, Exp)
-    ;
-        ( float_domain_checks, Base = 0.0 ->
+    else
+        ( if float_domain_checks, Base = 0.0 then
             throw(math.domain_error("float.pow: zero base"))
-        ;
+        else
             Ans = unchecked_quotient(1.0,
                 float.multiply_by_pow(1.0, Base, -Exp))
             % See below re use of unchecked_quotient.
@@ -591,12 +591,12 @@ float.pow(Base, Exp) = Ans :-
 :- func float.multiply_by_pow(float, float, int) = float.
 
 float.multiply_by_pow(Scale0, Base, Exp) = Result :-
-    ( Exp = 0 ->
+    ( if Exp = 0 then
         Result = Scale0
-    ;
-        ( odd(Exp) ->
+    else
+        ( if odd(Exp) then
             Scale1 = Scale0 * Base
-        ;
+        else
             Scale1 = Scale0
         ),
         Result = float.multiply_by_pow(Scale1, Base * Base, Exp div 2)

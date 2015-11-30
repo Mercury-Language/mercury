@@ -13,7 +13,7 @@
 % This file encapsulates all the file I/O.
 %
 % We implement a purely logical I/O system using non-logical I/O primitives of
-% the underlying system.  We ensure referential transparency by passing around
+% the underlying system. We ensure referential transparency by passing around
 % a ``state-of-the-world'' argument using unique modes. The compiler will check
 % that the state of the world argument is properly single-threaded, and will
 % also ensure that you don't attempt to backtrack over any I/O.
@@ -324,7 +324,7 @@
     % is determined by the context in which `io.read' is used.
     %
     % First, the input stream is read until an end-of-term token, end-of-file,
-    % or I/O error is reached.  (An end-of-term token consists of a `.'
+    % or I/O error is reached. (An end-of-term token consists of a `.'
     % followed by whitespace. The trailing whitespace is left in the input
     % stream.)
     %
@@ -382,23 +382,23 @@
 
     % print/3 writes its argument to the standard output stream.
     % print/4 writes its second argument to the output stream specified in
-    % its first argument.  In all cases, the argument to output can be of any
-    % type.  It is output in a format that is intended to be human readable.
+    % its first argument. In all cases, the argument to output can be of any
+    % type. It is output in a format that is intended to be human readable.
     %
     % If the argument is just a single string or character, it will be printed
-    % out exactly as is (unquoted).  If the argument is of type integer (i.e.
+    % out exactly as is (unquoted). If the argument is of type integer (i.e.
     % an arbitrary precision integer), then its decimal representation will be
-    % printed.  If the argument is of type univ, then the value stored in the
-    % the univ will be printed out, but not the type.  If the argument is of
+    % printed. If the argument is of type univ, then the value stored in the
+    % the univ will be printed out, but not the type. If the argument is of
     % type date_time, it will be printed out in the same form as the string
-    % returned by the function date_to_string/1.  If the argument is of type
+    % returned by the function date_to_string/1. If the argument is of type
     % duration, it will be printed out in the same form as the string
     % returned by the function duration_to_string/1.
     %
     % print/5 is the same as print/4 except that it allows the caller to
     % specify how non-canonical types should be handled. print/3 and
     % print/4 implicitly specify `canonicalize' as the method for handling
-    % non-canonical types.  This means that for higher-order types, or types
+    % non-canonical types. This means that for higher-order types, or types
     % with user-defined equality axioms, or types defined using the foreign
     % language interface (i.e. pragma foreign_type), the text output will only
     % describe the type that is being printed, not the value.
@@ -446,18 +446,17 @@
     % be valid Mercury syntax whenever possible.
     %
     % Strings and characters are always printed out in quotes, using backslash
-    % escapes if necessary.  For higher-order types, or for types defined using
+    % escapes if necessary. For higher-order types, or for types defined using
     % the foreign language interface (pragma foreign_type), the text output
     % will only describe the type that is being printed, not the value, and the
-    % result may not be parsable by `read'.  For the types containing
+    % result may not be parsable by `read'. For the types containing
     % existential quantifiers, the type `type_desc' and closure types, the
-    % result may not be parsable by `read', either.  But in all other cases
+    % result may not be parsable by `read', either. But in all other cases
     % the format used is standard Mercury syntax, and if you append a period
-    % and newline (".\n"), then the results can be read in again using
-    % `read'.
+    % and newline (".\n"), then the results can be read in again using `read'.
     %
     % write/5 is the same as write/4 except that it allows the caller
-    % to specify how non-canonical types should be handled.  write_cc/3
+    % to specify how non-canonical types should be handled. write_cc/3
     % is the same as write/3 except that it specifies `include_details_cc'
     % rather than `canonicalize'.
     %
@@ -1217,7 +1216,7 @@
     % progname_base(DefaultProgname, Progname).
     %
     % Like `progname', except that it strips off any path name
-    % preceding the program name.  Useful for error messages.
+    % preceding the program name. Useful for error messages.
     %
 :- pred progname_base(string::in, string::out, io::di, io::uo) is det.
 
@@ -1237,7 +1236,7 @@
     % The I/O state includes a `globals' field which is not used by the
     % standard library, but can be used by the application. The globals field
     % is of type `univ' so that the application can store any data it wants
-    % there.  The following predicates can be used to access this global state.
+    % there. The following predicates can be used to access this global state.
     %
     % Does not modify the I/O state.
     %
@@ -1245,8 +1244,8 @@
 :- pred set_globals(univ::in, io::di, io::uo) is det.
 
     % update_globals(UpdatePred, !IO).
-    % Update the `globals' field in the I/O state based upon its current
-    % value.  This is equivalent to the following:
+    % Update the `globals' field in the I/O state based upon its current value.
+    % This is equivalent to the following:
     %
     %   get_globals(Globals0, !IO),
     %   UpdatePred(Globals0, Globals),
@@ -1804,13 +1803,13 @@
     // It must be either ML_OS_text_encoding or ML_Unix_text_encoding.
     //
     // XXX The initial setting for this should be controlled
-    // by an environment variable.  (This might require moving
+    // by an environment variable. (This might require moving
     // the code which initializes mercury_stdin, etc.)
     //
     static readonly ML_line_ending_kind ML_default_line_ending =
         ML_line_ending_kind.ML_OS_line_ending;
 
-    // Assume UTF-8 encoding on files.  When writing a file, don't emit
+    // Assume UTF-8 encoding on files. When writing a file, don't emit
     // a byte order mark.
     static readonly System.Text.Encoding text_encoding =
         new System.Text.UTF8Encoding(false);
@@ -1995,11 +1994,11 @@ io.read_char(Result, !IO) :-
 
 io.read_char(Stream, Result, !IO) :-
     io.read_char_code(Stream, Code, !IO),
-    ( Code = -1 ->
+    ( if Code = -1 then
         Result = eof
-    ; char.to_int(Char, Code) ->
+    else if char.to_int(Char, Code) then
         Result = ok(Char)
-    ;
+    else
         io.make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
@@ -2008,13 +2007,13 @@ io.read_char(Stream, Result, !IO) :-
 
 io.read_char_unboxed(Stream, Result, Char, !IO) :-
     io.read_char_code(Stream, Code, !IO),
-    ( Code = -1 ->
+    ( if Code = -1 then
         Result = eof,
         Char = char.det_from_int(0)
-    ; char.to_int(Char0, Code) ->
+    else if char.to_int(Char0, Code) then
         Result = ok,
         Char = Char0
-    ;
+    else
         io.make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg)),
         Char = char.det_from_int(0)
@@ -2030,11 +2029,11 @@ io.read_byte(Result, !IO) :-
 
 io.read_byte(binary_input_stream(Stream), Result, !IO) :-
     io.read_byte_val(input_stream(Stream), Code, !IO),
-    ( Code >= 0 ->
+    ( if Code >= 0 then
         Result = ok(Code)
-    ; Code = -1 ->
+    else if Code = -1 then
         Result = eof
-    ;
+    else
         io.make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
@@ -2049,34 +2048,34 @@ io.read_bitmap(StartByte, NumBytes, !Bitmap, BytesRead, Result, !IO) :-
         BytesRead, Result, !IO).
 
 io.read_bitmap(Stream, !Bitmap, BytesRead, Result, !IO) :-
-    ( NumBytes = !.Bitmap ^ num_bytes ->
+    ( if NumBytes = !.Bitmap ^ num_bytes then
         io.read_bitmap(Stream, 0, NumBytes, !Bitmap, BytesRead, Result, !IO)
-    ;
+    else
         error("io.read_bitmap: bitmap contains partial final byte")
     ).
 
 io.read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
         BytesRead, Result, !IO) :-
-    (
+    ( if
         NumBytes > 0,
         byte_in_range(!.Bitmap, Start),
         byte_in_range(!.Bitmap, Start + NumBytes - 1)
-    ->
+    then
         io.do_read_bitmap(Stream, Start, NumBytes,
             !Bitmap, 0, BytesRead, !IO),
         io.ferror(Stream, ErrInt, ErrMsg, !IO),
-        ( ErrInt = 0 ->
+        ( if ErrInt = 0 then
             Result = ok
-        ;
+        else
             Result = error(io_error(ErrMsg))
         )
-    ;
+    else if
         NumBytes = 0,
         byte_in_range(!.Bitmap, Start)
-    ->
+    then
         Result = ok,
         BytesRead = 0
-    ;
+    else
         bitmap.throw_bounds_error(!.Bitmap, "io.read_bitmap",
                 Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
@@ -2088,7 +2087,7 @@ io.read_bitmap(binary_input_stream(Stream), Start, NumBytes, !Bitmap,
 
     % Default implementation for C# and Java.
 io.do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, !IO) :-
-    ( NumBytes > 0 ->
+    ( if NumBytes > 0 then
         io.read_byte(binary_input_stream(Stream), ByteResult, !IO),
         (
             ByteResult = ok(Byte),
@@ -2101,7 +2100,7 @@ io.do_read_bitmap(Stream, Start, NumBytes, !Bitmap, !BytesRead, !IO) :-
         ;
             ByteResult = error(_)
         )
-    ;
+    else
         true
     ).
 :- pragma foreign_proc("C",
@@ -2124,16 +2123,16 @@ io.read_binary_file_as_bitmap(Stream, Result, !IO) :-
     % according to the size of the file. Otherwise, just use a default buffer
     % size of 4k minus a bit (to give malloc some room).
     io.binary_input_stream_file_size(Stream, FileSize, !IO),
-    ( FileSize >= 0 ->
+    ( if FileSize >= 0 then
         some [!BM] (
             !:BM = bitmap.init(FileSize * bits_per_byte),
             io.read_bitmap(Stream, 0, FileSize,
                 !BM, BytesRead, ReadResult, !IO),
             (
                 ReadResult = ok,
-                ( BytesRead = FileSize ->
+                ( if BytesRead = FileSize then
                     Result = ok(!.BM)
-                ;
+                else
                     Result = error(io_error(
                         "io.read_binary_file_as_bitmap: incorrect file size"))
                 )
@@ -2142,7 +2141,7 @@ io.read_binary_file_as_bitmap(Stream, Result, !IO) :-
                 Result = error(Msg)
             )
         )
-    ;
+    else
         BufferSize = 4000,
         io.read_binary_file_as_bitmap_2(Stream, BufferSize,
             Res, [], RevBitmaps, !IO),
@@ -2165,16 +2164,15 @@ io.read_binary_file_as_bitmap_2(Stream, BufferSize, Res, !BMs, !IO) :-
         io.read_bitmap(0, BufferSize, !BM, NumBytesRead, ReadRes, !IO),
         (
             ReadRes = ok,
-            ( NumBytesRead < BufferSize ->
+            ( if NumBytesRead < BufferSize then
                 !:BM = bitmap.shrink_without_copying(!.BM,
                         NumBytesRead * bits_per_byte),
                 !:BMs = [!.BM | !.BMs],
                 Res = ok
-            ;
+            else
                 !:BMs = [!.BM | !.BMs],
 
                 % Double the buffer size each time.
-                %
                 io.read_binary_file_as_bitmap_2(Stream, BufferSize * 2,
                     Res, !BMs, !IO)
             )
@@ -2216,10 +2214,10 @@ io.read_word_2(Stream, Result, !IO) :-
         Result = eof
     ;
         CharResult = ok(Char),
-        ( char.is_whitespace(Char) ->
+        ( if char.is_whitespace(Char) then
             io.putback_char(Stream, Char, !IO),
             Result = ok([])
-        ;
+        else
             io.read_word_2(Stream, Result0, !IO),
             (
                 Result0 = ok(Chars),
@@ -2240,16 +2238,16 @@ io.read_line(Result, !IO) :-
 
 io.read_line(Stream, Result, !IO) :-
     io.read_char_code(Stream, Code, !IO),
-    ( Code = -1 ->
+    ( if Code = -1 then
         Result = eof
-    ; char.to_int(Char, Code) ->
-        ( Char = '\n' ->
+    else if char.to_int(Char, Code) then
+        ( if Char = '\n' then
             Result = ok([Char])
-        ;
+        else
             io.read_line_2(Stream, Result0, !IO),
             Result = ok([Char | Result0])
         )
-    ;
+    else
         io.make_err_msg("read failed: ", Msg, !IO),
         Result = error(io_error(Msg))
     ).
@@ -2259,16 +2257,16 @@ io.read_line(Stream, Result, !IO) :-
 
 io.read_line_2(Stream, Result, !IO) :-
     io.read_char_code(Stream, Code, !IO),
-    ( Code = -1 ->
+    ( if Code = -1 then
         Result = []
-    ; char.to_int(Char, Code) ->
-        ( Char = '\n' ->
+    else if char.to_int(Char, Code) then
+        ( if Char = '\n' then
             Result = [Char]
-        ;
+        else
             io.read_line_2(Stream, Chars, !IO),
             Result = [Char | Chars]
         )
-    ;
+    else
         Result = []
     ).
 
@@ -2278,16 +2276,16 @@ io.read_line_as_string(Result, !IO) :-
 
 io.read_line_as_string(input_stream(Stream), Result, !IO) :-
     io.read_line_as_string_2(Stream, yes, Res, String, !IO),
-    ( Res < 0 ->
-        ( Res = -1 ->
+    ( if Res < 0 then
+        ( if Res = -1 then
             Result = eof
-        ; Res = -2 ->
+        else if Res = -2 then
             Result = error(io_error("null character in input"))
-        ;
+        else
             io.make_err_msg("read failed: ", Msg, !IO),
             Result = error(io_error(Msg))
         )
-    ;
+    else
         Result = ok(String)
     ).
 
@@ -2380,13 +2378,13 @@ io.read_line_as_string_2(Stream, FirstCall, Res, String, !IO) :-
     io.read_char(input_stream(Stream), Result, !IO),
     (
         Result = ok(Char),
-        ( Char = '\n' ->
+        ( if Char = '\n' then
             Res = 0,
             String = "\n"
-        ; char.to_int(Char, 0) ->
+        else if char.to_int(Char, 0) then
             Res = -2,
             String = ""
-        ;
+        else
             io.read_line_as_string_2(Stream, no, Res, String0, !IO),
             string.first_char(String, Char, String0)
         )
@@ -2469,9 +2467,9 @@ io.read_file_as_string(Stream, Result, !IO) :-
     % according to the size of the file. Otherwise, just use a default buffer
     % size of 4k minus a bit (to give malloc some room).
     io.input_stream_file_size(Stream, FileSize, !IO),
-    ( FileSize >= 0 ->
+    ( if FileSize >= 0 then
         BufferSize0 = FileSize + 1
-    ;
+    else
         BufferSize0 = 4000
     ),
     io.alloc_buffer(BufferSize0, Buffer0),
@@ -2483,7 +2481,7 @@ io.read_file_as_string(Stream, Result, !IO) :-
     io.read_file_as_string_2(Stream, Buffer0, Buffer, Pos0, Pos,
         BufferSize0, BufferSize, !IO),
     require(Pos < BufferSize, "io.read_file_as_string: overflow"),
-    ( io.buffer_to_string(Buffer, Pos, String) ->
+    ( if io.buffer_to_string(Buffer, Pos, String) then
         io.input_check_err(Stream, Result0, !IO),
         (
             Result0 = ok,
@@ -2492,7 +2490,7 @@ io.read_file_as_string(Stream, Result, !IO) :-
             Result0 = error(Error),
             Result = error(String, Error)
         )
-    ;
+    else
         Result = error("", io_error("null character in input"))
     ).
 
@@ -2505,15 +2503,15 @@ io.read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO) :-
     Size0 = !.Size,
     Stream = input_stream(RealStream),
     io.read_into_buffer(RealStream, !Buffer, !Pos, !.Size, !IO),
-    ( !.Pos =< Pos0 ->
+    ( if !.Pos =< Pos0 then
         % End-of-file or error.
         true
-    ; !.Pos = Size0 ->
+    else if !.Pos = Size0 then
         % Full buffer.
         !:Size = Size0 * 2,
         io.resize_buffer(Size0, !.Size, !Buffer),
         io.read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO)
-    ;
+    else
         io.read_file_as_string_2(Stream, !Buffer, !Pos, !Size, !IO)
     ).
 
@@ -2659,9 +2657,9 @@ io.input_check_err(input_stream(Stream), Result, !IO) :-
 
 io.check_err(Stream, Res, !IO) :-
     io.ferror(Stream, Int, Msg, !IO),
-    ( Int = 0 ->
+    ( if Int = 0 then
         Res = ok
-    ;
+    else
         Res = error(io_error(Msg))
     ).
 
@@ -2725,7 +2723,7 @@ io.make_err_msg(Msg0, Msg, !IO) :-
     /*
     ** XXX If the Mercury context that called the failing C function is now
     ** running on a different OS thread, this errno won't be the one
-    ** we are looking for.  Or, if a different Mercury context was run on
+    ** we are looking for. Or, if a different Mercury context was run on
     ** the same thread in the meantime, the errno could have been clobbered.
     */
     Error = errno;
@@ -2839,9 +2837,9 @@ have_dotnet :-
     "ML_make_win32_err_msg").
 
 make_win32_err_msg(_, _, "", !IO) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         error("io.make_win32_err_msg called for non Win32 back-end")
-    ;
+    else
         true
     ).
 
@@ -2854,9 +2852,9 @@ make_win32_err_msg(_, _, "", !IO) :-
 ").
 
 make_maybe_win32_err_msg(Error, Msg0, Msg, !IO) :-
-    ( have_win32 ->
+    ( if have_win32 then
         make_win32_err_msg(Error, Msg0, Msg, !IO)
-    ;
+    else
         make_err_msg(Error, Msg0, Msg, !IO)
     ).
 
@@ -2950,9 +2948,9 @@ io.output_stream_file_size(output_stream(Stream), Size, !IO) :-
 
 io.file_modification_time(File, Result, !IO) :-
     io.file_modification_time_2(File, Status, Msg, Time, !IO),
-    ( Status = 1 ->
+    ( if Status = 1 then
         Result = ok(Time)
-    ;
+    else
         Result = error(io_error(Msg))
     ).
 
@@ -3059,7 +3057,7 @@ io.file_modification_time(File, Result, !IO) :-
 %---------------------------------------------------------------------------%
 
 io.file_type(FollowSymLinks, FileName, MaybeType, !IO) :-
-    ( file_type_implemented ->
+    ( if file_type_implemented then
         (
             FollowSymLinks = yes,
             FollowSymLinksInt = 1
@@ -3068,7 +3066,7 @@ io.file_type(FollowSymLinks, FileName, MaybeType, !IO) :-
             FollowSymLinksInt = 0
         ),
         io.file_type_2(FollowSymLinksInt, FileName, MaybeType, !IO)
-    ;
+    else
         MaybeType = error(io.make_io_error(
             "Sorry, io.file_type not implemented on this platform"))
     ).
@@ -3434,9 +3432,9 @@ file_type_unknown = unknown.
 %---------------------------------------------------------------------------%
 
 io.check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
-    ( have_dotnet ->
+    ( if have_dotnet then
         io.check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO)
-    ;
+    else
         io.check_file_accessibility_2(FileName, AccessTypes, Result, !IO)
     ).
 
@@ -3614,10 +3612,10 @@ io.check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
     io.file_type(yes, FileName, FileTypeRes, !IO),
     (
         FileTypeRes = ok(FileType),
-        ( FileType = directory ->
+        ( if FileType = directory then
             check_directory_accessibility_dotnet(FileName,
                 to_int(CheckRead), to_int(CheckWrite), Result, !IO)
-        ;
+        else
             (
                 CheckRead = yes,
                 io.open_input(FileName, InputRes, !IO),
@@ -3633,10 +3631,10 @@ io.check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
                 CheckRead = no,
                 CheckReadRes = ok
             ),
-            (
+            ( if
                 CheckReadRes = ok,
                 CheckWrite = yes
-            ->
+            then
                 io.open_append(FileName, OutputRes, !IO),
                 (
                     OutputRes = ok(OutputStream),
@@ -3646,18 +3644,18 @@ io.check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
                     OutputRes = error(OutputError),
                     CheckWriteRes = error(OutputError)
                 )
-            ;
+            else
                 CheckWriteRes = CheckReadRes
             ),
-            (
+            ( if
                 CheckWriteRes = ok,
                 % Unix programs need to check whether the execute bit is set
                 % for the directory, but we can't actually execute the
                 % directory.
                 CheckExec = yes
-            ->
+            then
                 have_dotnet_exec_permission(Result, !IO)
-            ;
+            else
                 Result = CheckWriteRes
             )
         )
@@ -3670,10 +3668,10 @@ io.check_file_accessibility_dotnet(FileName, AccessTypes, Result, !IO) :-
 
 have_dotnet_exec_permission(Res, !IO) :-
     % Avoid determinism warnings.
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         error("io.have_dotnet_exec_permission invoked " ++
             "for non-.NET CLI backend")
-    ;
+    else
         % Never reached.
         Res = ok
     ).
@@ -3701,10 +3699,10 @@ have_dotnet_exec_permission(Res, !IO) :-
 
 check_directory_accessibility_dotnet(_, _, _, Res, !IO) :-
     % Avoid determinism warnings.
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         error("io.check_directory_accessibility_dotnet called " ++
             "for non-.NET CLI backend")
-    ;
+    else
         % Never reached.
         Res = ok
     ).
@@ -3936,11 +3934,11 @@ typedef struct {
 
 compare_file_id(Result, FileId1, FileId2) :-
     compare_file_id_2(Result0, FileId1, FileId2),
-    ( Result0 < 0 ->
+    ( if Result0 < 0 then
         Result = (<)
-    ; Result0 = 0 ->
+    else if Result0 = 0 then
         Result = (=)
-    ;
+    else
         Result = (>)
     ).
 
@@ -4003,14 +4001,14 @@ compare_file_id(Result, FileId1, FileId2) :-
 ").
 
 io.file_id(FileName, Result, !IO) :-
-    ( have_file_ids ->
+    ( if have_file_ids then
         io.file_id_2(FileName, Status, Msg, FileId, !IO),
-        ( Status = 1 ->
+        ( if Status = 1 then
             Result = ok(FileId)
-        ;
+        else
             Result = error(io_error(Msg))
         )
-    ;
+    else
         Result = error(make_io_error("io.file_id not implemented " ++
             "on this platform"))
     ).
@@ -4114,7 +4112,7 @@ have_file_ids :- semidet_fail.
 :- pragma foreign_type(c, buffer, "char *", [can_pass_as_mercury_type]).
 
     % XXX It would be better to use a char_array (e.g. defined as char[] in
-    % C#) type rather than array(char).  This is because on the Java and IL
+    % C#) type rather than array(char). This is because on the Java and IL
     % backends indexing into an array whose element type is known
     % statically requires less overhead.
 :- type buffer ---> buffer(array(char)).
@@ -4236,9 +4234,9 @@ io.read_into_buffer(Stream, buffer(Array0), buffer(Array), !Pos, Size, !IO) :-
     int::in, io::di, io::uo) is det.
 
 io.read_into_array(Stream, !Array, !Pos, Size, !IO) :-
-    ( !.Pos >= Size ->
+    ( if !.Pos >= Size then
         true
-    ;
+    else
         io.read_char(input_stream(Stream), CharResult, !IO),
         (
             CharResult = ok(Char),
@@ -4362,7 +4360,7 @@ io.binary_input_stream_foldl_io_chunk(Stream, Pred, Res, !IO) :-
     (pred(in, di, uo) is cc_multi), out, di, uo) is cc_multi.
 
 io.binary_input_stream_foldl_io_inner(Left, Stream, Pred, Res, !IO) :-
-    ( Left > 0 ->
+    ( if Left > 0 then
         io.read_byte(Stream, ByteResult, !IO),
         (
             ByteResult = ok(Byte),
@@ -4376,7 +4374,7 @@ io.binary_input_stream_foldl_io_inner(Left, Stream, Pred, Res, !IO) :-
             ByteResult = error(Error),
             Res = error(Error)
         )
-    ;
+    else
         Res = more
     ).
 
@@ -4444,7 +4442,7 @@ io.binary_input_stream_foldl2_io_chunk(Stream, Pred, T0, Res, !IO) :-
     (pred(in, in, out, di, uo) is cc_multi), in, out, di, uo) is cc_multi.
 
 io.binary_input_stream_foldl2_io_inner(Left, Stream, Pred, T0, Res, !IO) :-
-    ( Left > 0 ->
+    ( if Left > 0 then
         io.read_byte(Stream, ByteResult, !IO),
         (
             ByteResult = ok(Byte),
@@ -4458,7 +4456,7 @@ io.binary_input_stream_foldl2_io_inner(Left, Stream, Pred, T0, Res, !IO) :-
             ByteResult = error(Error),
             Res = error(T0, Error)
         )
-    ;
+    else
         Res = more(T0)
     ).
 
@@ -4548,7 +4546,7 @@ io.binary_input_stream_foldl2_io_maybe_stop_chunk(Stream, Pred, T0, Res,
 
 binary_input_stream_foldl2_io_maybe_stop_inner(Left, Stream, Pred, T0, Res,
         !IO) :-
-    ( Left > 0 ->
+    ( if Left > 0 then
         io.read_byte(Stream, ByteResult, !IO),
         (
             ByteResult = ok(Byte),
@@ -4568,7 +4566,7 @@ binary_input_stream_foldl2_io_maybe_stop_inner(Left, Stream, Pred, T0, Res,
             ByteResult = error(Error),
             Res = error(T0, Error)
         )
-    ;
+    else
         Res = more(T0)
     ).
 
@@ -4640,16 +4638,14 @@ io.read_from_string(FileName, String, Len, Result, !Posn) :-
 io.process_read_term(ReadResult, LineNumber, Result) :-
     (
         ReadResult = term(_VarSet, Term),
-        (
-            term_to_type(Term, Type)
-        ->
+        ( if term_to_type(Term, Type) then
             Result = ok(Type)
-        ;
-            ( term.is_ground(Term) ->
+        else
+            ( if term.is_ground(Term) then
                 Result = error(
                     "io.read: the term read did not have the right type",
                     LineNumber)
-            ;
+            else
                 Result = error("io.read: the term read was not a ground term",
                     LineNumber)
             )
@@ -4681,9 +4677,9 @@ io.ignore_whitespace(Stream, Result, !IO) :-
         Result = eof
     ;
         CharResult = ok(Char),
-        ( char.is_whitespace(Char) ->
+        ( if char.is_whitespace(Char) then
             io.ignore_whitespace(Stream, Result, !IO)
-        ;
+        else
             io.putback_char(Stream, Char, !IO),
             Result = ok
         )
@@ -4877,9 +4873,9 @@ io.read_binary(Result, !IO) :-
             Result = error(Error)
         ;
             NewLineRes = ok(NewLineChar),
-            ( NewLineChar = '\n' ->
+            ( if NewLineChar = '\n' then
                 Result = ok(T)
-            ;
+            else
                 Result = error(io_error("io.read_binary: missing newline"))
             )
         ;
@@ -4896,73 +4892,73 @@ io.read_binary(Result, !IO) :-
 
 %---------------------------------------------------------------------------%
 %
-% Stream predicates
+% Stream predicates.
 %
 
 io.open_input(FileName, Result, !IO) :-
     io.do_open_text(FileName, "r", Result0, OpenCount, NewStream, !IO),
-    ( Result0 \= -1 ->
+    ( if Result0 = -1 then
+        io.make_err_msg("can't open input file: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    else
         Result = ok(input_stream(NewStream)),
         io.insert_stream_info(NewStream,
             stream(OpenCount, input, text, file(FileName)), !IO)
-    ;
-        io.make_err_msg("can't open input file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 io.open_output(FileName, Result, !IO) :-
     io.do_open_text(FileName, "w", Result0, OpenCount, NewStream, !IO),
-    ( Result0 \= -1 ->
+    ( if Result0 = -1 then
+        io.make_err_msg("can't open output file: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    else
         Result = ok(output_stream(NewStream)),
         io.insert_stream_info(NewStream,
             stream(OpenCount, output, text, file(FileName)), !IO)
-    ;
-        io.make_err_msg("can't open output file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 io.open_append(FileName, Result, !IO) :-
     io.do_open_text(FileName, "a", Result0, OpenCount, NewStream, !IO),
-    ( Result0 \= -1 ->
+    ( if Result0 = -1 then
+        io.make_err_msg("can't append to file: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    else
         Result = ok(output_stream(NewStream)),
         io.insert_stream_info(NewStream,
             stream(OpenCount, append, text, file(FileName)), !IO)
-    ;
-        io.make_err_msg("can't append to file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 io.open_binary_input(FileName, Result, !IO) :-
     io.do_open_binary(FileName, "rb", Result0, OpenCount, NewStream, !IO),
-    ( Result0 \= -1 ->
+    ( if Result0 = -1 then
+        io.make_err_msg("can't open input file: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    else
         Result = ok(binary_input_stream(NewStream)),
         io.insert_stream_info(NewStream,
             stream(OpenCount, input, binary, file(FileName)), !IO)
-    ;
-        io.make_err_msg("can't open input file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 io.open_binary_output(FileName, Result, !IO) :-
     io.do_open_binary(FileName, "wb", Result0, OpenCount, NewStream, !IO),
-    ( Result0 \= -1 ->
+    ( if Result0 = -1 then
+        io.make_err_msg("can't open output file: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    else
         Result = ok(binary_output_stream(NewStream)),
         io.insert_stream_info(NewStream,
             stream(OpenCount, output, binary, file(FileName)), !IO)
-    ;
-        io.make_err_msg("can't open output file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 io.open_binary_append(FileName, Result, !IO) :-
     io.do_open_binary(FileName, "ab", Result0, OpenCount, NewStream, !IO),
-    ( Result0 \= -1 ->
+    ( if Result0 = -1 then
+        io.make_err_msg("can't append to file: ", Msg, !IO),
+        Result = error(io_error(Msg))
+    else
         Result = ok(binary_output_stream(NewStream)),
         io.insert_stream_info(NewStream,
             stream(OpenCount, append, binary, file(FileName)), !IO)
-    ;
-        io.make_err_msg("can't append to file: ", Msg, !IO),
-        Result = error(io_error(Msg))
     ).
 
 %---------------------------------------------------------------------------%
@@ -5093,9 +5089,9 @@ io.stream_info(Stream, MaybeInfo, !IO) :-
     io.lock_stream_db(!IO),
     io.get_stream_db(StreamDb, !IO),
     io.unlock_stream_db(!IO),
-    ( map.search(StreamDb, get_stream_id(Stream), Info) ->
+    ( if map.search(StreamDb, get_stream_id(Stream), Info) then
         MaybeInfo = yes(Info)
-    ;
+    else
         MaybeInfo = no
     ).
 
@@ -5114,26 +5110,26 @@ io.binary_output_stream_info(StreamDb, binary_output_stream(Stream)) =
 :- func io.maybe_stream_info(io.stream_db, io.stream) = maybe_stream_info.
 
 io.maybe_stream_info(StreamDb, Stream) = Info :-
-    ( map.search(StreamDb, get_stream_id(Stream), Info0) ->
+    ( if map.search(StreamDb, get_stream_id(Stream), Info0) then
         % Info0 and Info have different types.
         Info0 = stream(Id, Mode, Content, Source),
         Info  = stream(Id, Mode, Content, Source)
-    ;
+    else
         Info  = unknown_stream
     ).
 
 get_io_stream_info(StreamDB, Stream) = StreamInfo :-
-    ( dynamic_cast(Stream, input_stream(IOStream0)) ->
+    ( if dynamic_cast(Stream, input_stream(IOStream0)) then
         IOStream = IOStream0
-    ; dynamic_cast(Stream, output_stream(IOStream0)) ->
+    else if dynamic_cast(Stream, output_stream(IOStream0)) then
         IOStream = IOStream0
-    ; dynamic_cast(Stream, binary_input_stream(IOStream0)) ->
+    else if dynamic_cast(Stream, binary_input_stream(IOStream0)) then
         IOStream = IOStream0
-    ; dynamic_cast(Stream, binary_output_stream(IOStream0)) ->
+    else if dynamic_cast(Stream, binary_output_stream(IOStream0)) then
         IOStream = IOStream0
-    ; dynamic_cast(Stream, IOStream0) ->
+    else if dynamic_cast(Stream, IOStream0) then
         IOStream = IOStream0
-    ;
+    else
         fail
     ),
     StreamInfo = io.maybe_stream_info(StreamDB, IOStream).
@@ -5295,14 +5291,14 @@ io.insert_stream_info(Stream, Name, !IO) :-
 
 io.maybe_delete_stream_info(Stream, !IO) :-
     io.may_delete_stream_info(MayDeleteStreamInfo, !IO),
-    ( MayDeleteStreamInfo \= 0 ->
+    ( if MayDeleteStreamInfo = 0 then
+        true
+    else
         io.lock_stream_db(!IO),
         io.get_stream_db(StreamDb0, !IO),
         map.delete(get_stream_id(Stream), StreamDb0, StreamDb),
         io.set_stream_db(StreamDb, !IO),
         io.unlock_stream_db(!IO)
-    ;
-        true
     ).
 
     % Return an integer that is nonzero if and only if we should delete
@@ -5410,7 +5406,7 @@ io.unlock_globals :-
     impure impure_true.
 
     % NOTE: io.unsafe_{get, set}_globals/3 are marked as `thread_safe' so that
-    % calling them to does not acquire the global lock.  Since calls to these
+    % calling them to does not acquire the global lock. Since calls to these
     % predicates should be surrounded by calls to io.{lock, unlock}_globals/2
     % this is safe.
     %
@@ -5532,9 +5528,9 @@ io.progname_base(DefaultName, PrognameBase, !IO) :-
 :- pragma promise_pure(io.get_environment_var/4).
 
 io.get_environment_var(Var, OptValue, !IO) :-
-    ( semipure io.getenv(Var, Value) ->
+    ( if semipure io.getenv(Var, Value) then
         OptValue0 = yes(Value)
-    ;
+    else
         OptValue0 = no
     ),
     OptValue = OptValue0.
@@ -5542,9 +5538,9 @@ io.get_environment_var(Var, OptValue, !IO) :-
 :- pragma promise_pure(io.set_environment_var/4).
 
 io.set_environment_var(Var, Value, !IO) :-
-    ( impure io.setenv(Var, Value) ->
+    ( if impure io.setenv(Var, Value) then
         true
-    ;
+    else
         string.format("Could not set environment variable `%s'",
             [s(Var)], Message),
         error(Message)
@@ -5561,13 +5557,13 @@ io.report_stats(!IO) :-
 :- pragma promise_pure(io.report_stats/3).
 
 io.report_stats(Selector, !IO) :-
-    ( Selector = "standard" ->
+    ( if Selector = "standard" then
         impure report_stats
-    ; Selector = "full_memory_stats" ->
+    else if Selector = "full_memory_stats" then
         impure report_full_memory_stats
-    ; Selector = "tabling" ->
+    else if Selector = "tabling" then
         impure table_builtin.table_report_statistics
-    ;
+    else
         string.format("io.report_stats: selector `%s' not understood",
             [s(Selector)], Message),
         error(Message)
@@ -5734,7 +5730,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
     public class MR_MercuryFileStruct {
         // Note that stream reader and writer are initialized lazily;
         // that is, if the stream has not yet been used for reading,
-        // the `reader' field may be null.  Any code which accesses that
+        // the `reader' field may be null. Any code which accesses that
         // field must check for null and initialize it if needed.
         // Likewise for the `writer' field.
 
@@ -5762,7 +5758,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
     ** system charset.
     ** Binary files are opened via RandomAccessFile, which supports seek,
     ** but not character encoding/decoding or buffering.
-    ** Binary stdin and stdout are a special case.  They are opened via
+    ** Binary stdin and stdout are a special case. They are opened via
     ** FileInput/OutputStreams and seeking is controlled through use of
     ** FileChannels (requring Java versions >= 1.4).
     **
@@ -5841,7 +5837,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         ** read_char(): [Java]
         **
         ** Reads one character in from a text input file using the default
-        ** charset decoding.  Returns -1 at end of file.
+        ** charset decoding. Returns -1 at end of file.
         */
         public int read_char()
             throws java.io.IOException
@@ -5868,7 +5864,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         ** read_line(): [Java]
         **
         ** Reads in a line of a text input file using the default
-        ** charset decoding.  Returns null at end of file.
+        ** charset decoding. Returns null at end of file.
         */
         public String read_line()
             throws java.io.IOException
@@ -5937,7 +5933,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         private void unget_code_unit(char c) {
             /*
             ** If necessary, shift the unread characters in the input buffer
-            ** to make room at the front of the buffer.  If the buffer is full
+            ** to make room at the front of the buffer. If the buffer is full
             ** then allocate a bigger buffer.
             */
             if (buf_pos == 0) {
@@ -6071,7 +6067,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
         protected static final int  SEEK_CUR = 1;
         protected static final int  SEEK_END = 2;
 
-        // channel is used for positioning the stream.  Read/write operations
+        // channel is used for positioning the stream. Read/write operations
         // use randomaccess, binary_input, binary_output instead.
         protected java.nio.channels.FileChannel channel = null;
 
@@ -6347,7 +6343,7 @@ mercury_init_io(void)
         **
         ** NOTE: some versions of nohup may also cause the above call to
         **       fdopen() to fail because they redirect stdin to /dev/null
-        **       in *write* mode.  Setting binary stdin to stdin in such
+        **       in *write* mode. Setting binary stdin to stdin in such
         **       a case also ensures that we work with those versions of
         **       nohup.
         */
@@ -6363,7 +6359,7 @@ mercury_init_io(void)
 #else
     /*
     ** XXX Standard ANSI/ISO C provides no way to set stdin/stdout
-    ** to binary mode.  I guess we just have to punt...
+    ** to binary mode. I guess we just have to punt...
     */
     MR_file(mercury_stdin_binary) = stdin;
     MR_file(mercury_stdout_binary) = stdout;
@@ -6442,7 +6438,7 @@ mercury_file_init(System.IO.Stream stream,
 }
 
     // Note: for Windows GUI programs, the Console is set to the equivalent
-    // of /dev/null.  This could perhaps be considered a problem. But if so,
+    // of /dev/null. This could perhaps be considered a problem. But if so,
     // it is a problem in Windows, not in Mercury -- I don't think it is one
     // that the Mercury implementation should try to solve.
 
@@ -6552,7 +6548,7 @@ public static ThreadLocal<Exception> MR_io_exception =
 :- pragma foreign_decl("Erlang", local, "
 
     % These need to be exported because code in foreign_procs may be inlined
-    % into other modules.  Hence, calls to these functions must be module
+    % into other modules. Hence, calls to these functions must be module
     % qualified as well.
     %
 -export([
@@ -6596,7 +6592,7 @@ public static ThreadLocal<Exception> MR_io_exception =
     % This is necessary so we can layer pushback support and line number
     % tracking on top of what the Erlang runtime provides.
     %
-    % Note that we send back acknowledgements for all messages.  This is to
+    % Note that we send back acknowledgements for all messages. This is to
     % ensure that two operations from the same process are done in order.
     %
 mercury_start_file_server(ParentPid, FileName, Mode) ->
@@ -6990,7 +6986,7 @@ MR_MercuryFileStruct mercury_open(string filename, string openmode,
     try {
         if (openmode == ""r"" || openmode == ""rb"") {
             // Like '<' in Bourne shell.
-            // Read a file.  The file must exist already.
+            // Read a file. The file must exist already.
             mode   = System.IO.FileMode.Open;
             access = System.IO.FileAccess.Read;
         } else if (openmode == ""w"" || openmode == ""wb"") {
@@ -7014,7 +7010,7 @@ MR_MercuryFileStruct mercury_open(string filename, string openmode,
 
         // For Unix compatibility, we allow files
         // to be read or written by multiple processes
-        // simultaneously.  XXX Is this a good idea?
+        // simultaneously. XXX Is this a good idea?
         share = System.IO.FileShare.ReadWrite;
 
         stream = System.IO.File.Open(filename, mode, access, share);
@@ -7351,7 +7347,7 @@ mercury_close(MercuryFilePtr mf)
 
     /*
     ** On some systems attempting to close a file stream that has been
-    ** previously closed will lead to a segmentation fault.  We check
+    ** previously closed will lead to a segmentation fault. We check
     ** that we have not previously closed the file stream here so we
     ** can give the user some idea about what has happened.
     */
@@ -8186,19 +8182,19 @@ io.write_byte(binary_output_stream(Stream), Byte, !IO) :-
 ").
 
 io.write_bitmap(binary_output_stream(Stream), Bitmap, !IO) :-
-    ( NumBytes = Bitmap ^ num_bytes ->
+    ( if NumBytes = Bitmap ^ num_bytes then
         io.do_write_bitmap(Stream, Bitmap, 0, NumBytes, !IO)
-    ;
+    else
         error("io.write_bitmap: bitmap contains partial final byte")
     ).
 
 io.write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
-    (
+    ( if
         byte_in_range(Bitmap, Start),
         byte_in_range(Bitmap, Start + NumBytes - 1)
-    ->
+    then
         io.do_write_bitmap(Stream, Bitmap, Start, NumBytes, !IO)
-    ;
+    else
         bitmap.throw_bounds_error(Bitmap, "io.write_bitmap",
             Start * bits_per_byte, NumBytes * bits_per_byte)
     ).
@@ -8210,11 +8206,11 @@ io.write_bitmap(binary_output_stream(Stream), Bitmap, Start, NumBytes, !IO) :-
 
     % Default implementation for C# and Java.
 io.do_write_bitmap(Stream, Bitmap, Start, Length, !IO) :-
-    ( Length > 0 ->
+    ( if Length > 0 then
         io.write_byte(binary_output_stream(Stream),
             Bitmap ^ unsafe_byte(Start), !IO),
         io.do_write_bitmap(Stream, Bitmap, Start + 1, Length - 1, !IO)
-    ;
+    else
         true
     ).
 
@@ -9897,7 +9893,7 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 
         System.Diagnostics.Process process = new System.Diagnostics.Process();
         // Never interpret the command as a document to open with whatever
-        // application is registered for that document type.  This also
+        // application is registered for that document type. This also
         // prevents creating a new window for console programs on Windows.
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.FileName = command;
@@ -9978,10 +9974,10 @@ io.command_line_arguments(Args, IO, IO) :-
 :- pred build_command_line_args(int::in, list(string)::out) is det.
 
 build_command_line_args(ArgNumber, Args) :-
-    ( command_line_argument(ArgNumber, Arg) ->
+    ( if command_line_argument(ArgNumber, Arg) then
         Args = [Arg | MoreArgs],
         build_command_line_args(ArgNumber + 1, MoreArgs)
-    ;
+    else
         Args = []
     ).
 
@@ -9991,9 +9987,9 @@ command_line_argument(_, "") :-
     % XXX This predicate is currently only used by the Java implementation,
     % but to prevent compilation warnings for (eg) the C implementation,
     % some definition needs to be present.
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         error("unexpected call to command_line_argument")
-    ;
+    else
         semidet_fail
     ).
 
@@ -10229,15 +10225,15 @@ io.setenv(Var, Value) :-
     % We need to do an explicit check of TMPDIR because not all
     % systems check TMPDIR for us (eg Linux #$%*@&).
 io.make_temp(Name, !IO) :-
-    Var = ( dir.use_windows_paths -> "TMP" ; "TMPDIR" ),
+    Var = ( if dir.use_windows_paths then "TMP" else "TMPDIR" ),
     io.get_environment_var(Var, Result, !IO),
     (
         Result = yes(Dir)
     ;
         Result = no,
-        ( dir.use_windows_paths ->
+        ( if dir.use_windows_paths then
             Dir = dir.this_directory
-        ;
+        else
             Dir = "/tmp"
         )
     ),
@@ -10246,10 +10242,10 @@ io.make_temp(Name, !IO) :-
 io.make_temp(Dir, Prefix, Name, !IO) :-
     io.do_make_temp(Dir, Prefix, char_to_string(dir.directory_separator),
         Name, Err, Message, !IO),
-    ( Err \= 0 ->
-        throw_io_error(Message)
-    ;
+    ( if Err = 0 then
         true
+    else
+        throw_io_error(Message)
     ).
 
 %---------------------------------------------------------------------------%
@@ -10623,10 +10619,10 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 
 io.remove_file(FileName, Result, !IO) :-
     io.remove_file_2(FileName, Res, ResString, !IO),
-    ( Res \= 0 ->
-        Result = error(io_error(ResString))
-    ;
+    ( if Res = 0 then
         Result = ok
+    else
+        Result = error(io_error(ResString))
     ).
 
 :- pred io.remove_file_2(string::in, int::out, string::out, io::di, io::uo)
@@ -10765,10 +10761,10 @@ remove_directory_entry(DirName, FileName, _FileType, Continue, _, Res, !IO) :-
 
 io.rename_file(OldFileName, NewFileName, Result, IO0, IO) :-
     io.rename_file_2(OldFileName, NewFileName, Res, ResString, IO0, IO),
-    ( Res \= 0 ->
-        Result = error(io_error(ResString))
-    ;
+    ( if Res = 0 then
         Result = ok
+    else
+        Result = error(io_error(ResString))
     ).
 
 :- pred io.rename_file_2(string::in, string::in, int::out, string::out,
@@ -10880,15 +10876,15 @@ io.have_symlinks :- semidet_fail.
 ").
 
 io.make_symlink(FileName, LinkFileName, Result, !IO) :-
-    ( io.have_symlinks ->
+    ( if io.have_symlinks then
         io.make_symlink_2(FileName, LinkFileName, Status, !IO),
-        ( Status = 0 ->
+        ( if Status = 0 then
             io.make_err_msg("io.make_symlink failed: ", Msg, !IO),
             Result = error(make_io_error(Msg))
-        ;
+        else
             Result = ok
         )
-    ;
+    else
         Result = error(make_io_error(
             "io.make_symlink not supported on this platform"))
     ).
@@ -10927,15 +10923,15 @@ io.make_symlink(FileName, LinkFileName, Result, !IO) :-
 ").
 
 io.read_symlink(FileName, Result, !IO) :-
-    ( io.have_symlinks ->
+    ( if io.have_symlinks then
         io.read_symlink_2(FileName, TargetFileName, Status, Error, !IO),
-        ( Status = 0 ->
+        ( if Status = 0 then
             io.make_err_msg(Error, "io.read_symlink failed: ", Msg, !IO),
             Result = error(make_io_error(Msg))
-        ;
+        else
             Result = ok(TargetFileName)
         )
-    ;
+    else
         Result = error(make_io_error(
             "io.read_symlink not supported on this platform"))
     ).

@@ -393,10 +393,10 @@ multi_map.set(!.MultiMap, Key, Value) = !:MultiMap :-
     multi_map.set(Key, Value, !MultiMap).
 
 multi_map.set(Key, Value, !MultiMap) :-
-    ( map.search(!.MultiMap, Key, Values0) ->
+    ( if map.search(!.MultiMap, Key, Values0) then
         Values = [Value | Values0],
         map.set(Key, Values, !MultiMap)
-    ;
+    else
         map.det_insert(Key, [Value], !MultiMap)
     ).
 

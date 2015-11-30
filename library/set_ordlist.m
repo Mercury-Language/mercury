@@ -42,7 +42,7 @@
 :- func from_list(list(T)) = set_ordlist(T).
 
     % `sorted_list_to_set(List, Set)' is true iff `Set' is the set containing
-    % only the members of `List'.  `List' must be sorted.
+    % only the members of `List'. `List' must be sorted.
     %
 :- pred sorted_list_to_set(list(T)::in, set_ordlist(T)::out) is det.
 :- func sorted_list_to_set(list(T)) = set_ordlist(T).
@@ -145,7 +145,7 @@
 
     % `remove(X, Set0, Set)' is true iff `Set0' contains `X',
     % and `Set' is the relative complement of `Set0' and the set
-    % containing only `X', i.e.  if `Set' is the set which contains
+    % containing only `X', i.e. if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
 :- pred remove(T::in, set_ordlist(T)::in, set_ordlist(T)::out)
@@ -925,10 +925,10 @@ divide(Pred, sol(Set), sol(TruePart), sol(FalsePart)) :-
 
 divide_loop(_Pred, [], RevTrue, RevTrue, RevFalse, RevFalse).
 divide_loop(Pred, [H | T], RevTrue0, RevTrue, RevFalse0, RevFalse) :-
-    ( Pred(H) ->
+    ( if Pred(H) then
         RevTrue1 = [H | RevTrue0],
         RevFalse1 = RevFalse0
-    ;
+    else
         RevTrue1 = RevTrue0,
         RevFalse1 = [H | RevFalse0]
     ),

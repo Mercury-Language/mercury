@@ -1127,13 +1127,13 @@
 :- func det_base_string_to_int(int, string) = int.
 
     % Convert a string to a float, returning infinity or -infinity if the
-    % conversion overflows.  Fails if the string is not a syntactically correct
+    % conversion overflows. Fails if the string is not a syntactically correct
     % float literal.
     %
 :- pred to_float(string::in, float::out) is semidet.
 
     % Convert a string to a float, returning infinity or -infinity if the
-    % conversion overflows.  Throws an exception if the string is not a
+    % conversion overflows. Throws an exception if the string is not a
     % syntactically correct float literal.
     %
 :- func det_to_float(string) = float.
@@ -1491,9 +1491,9 @@ string.from_char_list(Cs) = S :-
 string.from_char_list(Chars::out, Str::in) :-
     string.to_char_list(Str, Chars).
 string.from_char_list(Chars::in, Str::uo) :-
-    ( string.semidet_from_char_list(Chars, Str0) ->
+    ( if string.semidet_from_char_list(Chars, Str0) then
         Str = Str0
-    ;
+    else
         error("string.from_char_list: null character in list")
     ).
 
@@ -1612,7 +1612,7 @@ string.semidet_from_char_list(CharList, Str) :-
         Str = ""
     ;
         CharList = [C | Cs],
-        \+ char.to_int(C, 0),
+        not char.to_int(C, 0),
         string.semidet_from_char_list(Cs, Str0),
         string.first_char(Str, C, Str0)
     ).
@@ -1629,9 +1629,9 @@ string.from_rev_char_list(Cs) = S :-
     string.from_rev_char_list(Cs, S).
 
 string.from_rev_char_list(Chars, Str) :-
-    ( string.semidet_from_rev_char_list(Chars, Str0) ->
+    ( if string.semidet_from_rev_char_list(Chars, Str0) then
         Str = Str0
-    ;
+    else
         error("string.from_rev_char_list: null character in list")
     ).
 
@@ -1742,9 +1742,9 @@ string.to_code_unit_list(String, List) :-
     list(int)::out) is det.
 
 string.to_code_unit_list_loop(String, Index, End, List) :-
-    ( Index >= End ->
+    ( if Index >= End then
         List = []
-    ;
+    else
         string.unsafe_index_code_unit(String, Index, Code),
         string.to_code_unit_list_loop(String, Index + 1, End, Tail),
         List = [Code | Tail]
@@ -1753,36 +1753,36 @@ string.to_code_unit_list_loop(String, Index, End, List) :-
 %---------------------%
 
 string.to_utf8_code_unit_list(String, CodeList) :-
-    ( internal_encoding_is_utf8 ->
+    ( if internal_encoding_is_utf8 then
         string.to_code_unit_list(String, CodeList)
-    ;
+    else
         string.foldr(encode_utf8, String, [], CodeList)
     ).
 
 :- pred encode_utf8(char::in, list(int)::in, list(int)::out) is det.
 
 encode_utf8(Char, CodeList0, CodeList) :-
-    ( char.to_utf8(Char, CharCodes) ->
+    ( if char.to_utf8(Char, CharCodes) then
         CodeList = CharCodes ++ CodeList0
-    ;
+    else
         unexpected($module, $pred, "char.to_utf8 failed")
     ).
 
 %---------------------%
 
 string.to_utf16_code_unit_list(String, CodeList) :-
-    ( internal_encoding_is_utf8 ->
+    ( if internal_encoding_is_utf8 then
         string.foldr(encode_utf16, String, [], CodeList)
-    ;
+    else
         string.to_code_unit_list(String, CodeList)
     ).
 
 :- pred encode_utf16(char::in, list(int)::in, list(int)::out) is det.
 
 encode_utf16(Char, CodeList0, CodeList) :-
-    ( char.to_utf16(Char, CharCodes) ->
+    ( if char.to_utf16(Char, CharCodes) then
         CodeList = CharCodes ++ CodeList0
-    ;
+    else
         unexpected($module, $pred, "char.to_utf16 failed")
     ).
 
@@ -1914,9 +1914,9 @@ encode_utf16(Char, CodeList0, CodeList) :-
 %---------------------%
 
 string.from_utf8_code_unit_list(CodeList, String) :-
-    ( internal_encoding_is_utf8 ->
+    ( if internal_encoding_is_utf8 then
         string.from_code_unit_list(CodeList, String)
-    ;
+    else
         decode_utf8(CodeList, [], RevChars),
         string.from_rev_char_list(RevChars, String)
     ).
@@ -1925,20 +1925,20 @@ string.from_utf8_code_unit_list(CodeList, String) :-
 
 decode_utf8([], RevChars, RevChars).
 decode_utf8([A | FollowA], RevChars0, RevChars) :-
-    ( A < 0 ->
+    ( if A < 0 then
         fail
-    ; A =< 0x7f ->  % 1-byte sequence
+    else if A =< 0x7f then  % 1-byte sequence
         CharInt = A,
         Rest = FollowA
-    ; A =< 0xc1 ->
+    else if A =< 0xc1 then
         fail
-    ; A =< 0xdf ->  % 2-byte sequence
+    else if A =< 0xdf then  % 2-byte sequence
         FollowA = [B | Rest],
         utf8_is_trail_byte(B),
         CharInt = (A /\ 0x1f) << 6
                \/ (B /\ 0x3f),
         CharInt >= 0x80
-    ; A =< 0xef ->  % 3-byte sequence
+    else if A =< 0xef then  % 3-byte sequence
         FollowA = [B, C | Rest],
         utf8_is_trail_byte(B),
         utf8_is_trail_byte(C),
@@ -1946,7 +1946,7 @@ decode_utf8([A | FollowA], RevChars0, RevChars) :-
                \/ (B /\ 0x3f) << 6
                \/ (C /\ 0x3f),
         CharInt >= 0x800
-    ; A =< 0xf4 ->  % 4-byte sequence
+    else if A =< 0xf4 then  % 4-byte sequence
         FollowA = [B, C, D | Rest],
         utf8_is_trail_byte(B),
         utf8_is_trail_byte(C),
@@ -1956,7 +1956,7 @@ decode_utf8([A | FollowA], RevChars0, RevChars) :-
                \/ (C /\ 0x3f) << 6
                \/ (D /\ 0x3f),
         CharInt >= 0x10000
-    ;
+    else
         fail
     ),
     char.from_int(CharInt, Char),
@@ -1970,10 +1970,10 @@ utf8_is_trail_byte(C) :-
 %---------------------%
 
 string.from_utf16_code_unit_list(CodeList, String) :-
-    ( internal_encoding_is_utf8 ->
+    ( if internal_encoding_is_utf8 then
         decode_utf16(CodeList, [], RevChars),
         string.from_rev_char_list(RevChars, String)
-    ;
+    else
         string.from_code_unit_list(CodeList, String)
     ).
 
@@ -1982,20 +1982,20 @@ string.from_utf16_code_unit_list(CodeList, String) :-
 
 decode_utf16([], RevChars, RevChars).
 decode_utf16([A | FollowA], RevChars0, RevChars) :-
-    ( A < 0 ->
+    ( if A < 0 then
         fail
-    ; A < 0xd800 ->
+    else if A < 0xd800 then
         CharInt = A,
         Rest = FollowA
-    ; A < 0xdc00 ->
+    else if A < 0xdc00 then
         FollowA = [B | Rest],
         B >= 0xdc00,
         B =< 0xdfff,
         CharInt = (A << 10) + B - 0x35fdc00
-    ; A =< 0xffff ->
+    else if A =< 0xffff then
         CharInt = A,
         Rest = FollowA
-    ;
+    else
         fail
     ),
     char.from_int(CharInt, Char),
@@ -2025,9 +2025,9 @@ string.duplicate_char(Char, Count, String) :-
 
 string.index(Str, Index, Char) :-
     Len = string.length(Str),
-    ( string.index_check(Index, Len) ->
+    ( if string.index_check(Index, Len) then
         string.unsafe_index(Str, Index, Char)
-    ;
+    else
         fail
     ).
 
@@ -2035,9 +2035,9 @@ string.det_index(S, N) = C :-
     string.det_index(S, N, C).
 
 string.det_index(String, Int, Char) :-
-    ( string.index(String, Int, Char0) ->
+    ( if string.index(String, Int, Char0) then
         Char = Char0
-    ;
+    else
         error("string.det_index: index out of range")
     ).
 
@@ -2045,9 +2045,9 @@ string.unsafe_index(S, N) = C :-
     string.unsafe_index(S, N, C).
 
 string.unsafe_index(Str, Index, Char) :-
-    ( string.unsafe_index_2(Str, Index, CharPrime) ->
+    ( if string.unsafe_index_2(Str, Index, CharPrime) then
         Char = CharPrime
-    ;
+    else
         error("string.unsafe_index: illegal sequence")
     ).
 
@@ -2111,9 +2111,9 @@ String ^ unsafe_elem(Index) = unsafe_index(String, Index).
 
 string.index_next(Str, Index, NextIndex, Char) :-
     Len = string.length(Str),
-    ( string.index_check(Index, Len) ->
+    ( if string.index_check(Index, Len) then
         string.unsafe_index_next(Str, Index, NextIndex, Char)
-    ;
+    else
         fail
     ).
 
@@ -2200,9 +2200,9 @@ string.index_next(Str, Index, NextIndex, Char) :-
 
 string.prev_index(Str, Index, CharIndex, Char) :-
     Len = string.length(Str),
-    ( string.index_check(Index - 1, Len) ->
+    ( if string.index_check(Index - 1, Len) then
         string.unsafe_prev_index(Str, Index, CharIndex, Char)
-    ;
+    else
         fail
     ).
 
@@ -2366,9 +2366,9 @@ string.index_check(Index, Length) :-
 %
 
 string.set_char(Char, Index, !Str) :-
-    ( char.to_int(Char, 0) ->
+    ( if char.to_int(Char, 0) then
         error("string.set_char: null character")
-    ;
+    else
         string.set_char_non_null(Char, Index, !Str)
     ).
 
@@ -2478,9 +2478,9 @@ string.det_set_char(C, N, S0) = S :-
     string.det_set_char(C, N, S0, S).
 
 string.det_set_char(Char, Int, String0, String) :-
-    ( string.set_char(Char, Int, String0, String1) ->
+    ( if string.set_char(Char, Int, String0, String1) then
         String = String1
-    ;
+    else
         error("string.det_set_char: index out of range")
     ).
 
@@ -2490,9 +2490,9 @@ string.unsafe_set_char(C, N, S0) = S :-
     string.unsafe_set_char(C, N, S0, S).
 
 string.unsafe_set_char(Char, Index, !Str) :-
-    ( char.to_int(Char, 0) ->
+    ( if char.to_int(Char, 0) then
         error("string.unsafe_set_char: null character")
-    ;
+    else
         string.unsafe_set_char_non_null(Char, Index, !Str)
     ).
 
@@ -2681,9 +2681,9 @@ string.count_codepoints(String, Count) :-
 :- pred count_codepoints_loop(string::in, int::in, int::in, int::out) is det.
 
 count_codepoints_loop(String, I, Count0, Count) :-
-    ( string.unsafe_index_next(String, I, J, _) ->
+    ( if string.unsafe_index_next(String, I, J, _) then
         count_codepoints_loop(String, J, Count0 + 1, Count)
-    ;
+    else
         Count = Count0
     ).
 
@@ -2709,11 +2709,11 @@ string.count_utf8_code_units(String) = Length :-
 
 count_utf8_code_units_2(Char, !Length) :-
     char.to_int(Char, CharInt),
-    ( CharInt =< 0x7f ->
+    ( if CharInt =< 0x7f then
         !:Length = !.Length + 1
-    ; char.to_utf8(Char, UTF8) ->
+    else if char.to_utf8(Char, UTF8) then
         !:Length = !.Length + list.length(UTF8)
-    ;
+    else
         error($pred, "char.to_utf8 failed")
     ).
 
@@ -2780,9 +2780,9 @@ string.codepoint_offset(String, StartOffset, N, Index) :-
 
 codepoint_offset_loop(String, Offset, Length, N, Index) :-
     Offset < Length,
-    ( N = 0 ->
+    ( if N = 0 then
         Index = Offset
-    ;
+    else
         string.unsafe_index_next(String, Offset, NextOffset, _),
         string.codepoint_offset_loop(String, NextOffset, Length, N - 1, Index)
     ).
@@ -2809,12 +2809,12 @@ string.hash(String) = HashVal :-
     is det.
 
 string.hash_loop(String, Index, Length, !HashVal) :-
-    ( Index < Length ->
+    ( if Index < Length then
         string.unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal `xor` (!.HashVal `unchecked_left_shift` 5),
         !:HashVal = !.HashVal `xor` C,
         string.hash_loop(String, Index + 1, Length, !HashVal)
-    ;
+    else
         true
     ).
 
@@ -2827,12 +2827,12 @@ string.hash2(String) = HashVal :-
     is det.
 
 string.hash2_loop(String, Index, Length, !HashVal) :-
-    ( Index < Length ->
+    ( if Index < Length then
         string.unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal * 37,
         !:HashVal= !.HashVal + C,
         string.hash2_loop(String, Index + 1, Length, !HashVal)
-    ;
+    else
         true
     ).
 
@@ -2845,12 +2845,12 @@ string.hash3(String) = HashVal :-
     is det.
 
 string.hash3_loop(String, Index, Length, !HashVal) :-
-    ( Index < Length ->
+    ( if Index < Length then
         string.unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal * 49,
         !:HashVal= !.HashVal + C,
         string.hash3_loop(String, Index + 1, Length, !HashVal)
-    ;
+    else
         true
     ).
 
@@ -2867,13 +2867,13 @@ string.hash4(String) = HashVal :-
     is det.
 
 string.hash4_loop(String, Index, Length, !HashVal) :-
-    ( Index < Length ->
+    ( if Index < Length then
         string.unsafe_index_code_unit(String, Index, C),
         !:HashVal = keep_30_bits(!.HashVal `xor`
             (!.HashVal `unchecked_left_shift` 5)),
         !:HashVal = !.HashVal `xor` C,
         string.hash_loop(String, Index + 1, Length, !HashVal)
-    ;
+    else
         true
     ).
 
@@ -2886,12 +2886,12 @@ string.hash5(String) = HashVal :-
     is det.
 
 string.hash5_loop(String, Index, Length, !HashVal) :-
-    ( Index < Length ->
+    ( if Index < Length then
         string.unsafe_index_code_unit(String, Index, C),
         !:HashVal = keep_30_bits(!.HashVal * 37),
         !:HashVal= keep_30_bits(!.HashVal + C),
         string.hash5_loop(String, Index + 1, Length, !HashVal)
-    ;
+    else
         true
     ).
 
@@ -2904,12 +2904,12 @@ string.hash6(String) = HashVal :-
     is det.
 
 string.hash6_loop(String, Index, Length, !HashVal) :-
-    ( Index < Length ->
+    ( if Index < Length then
         string.unsafe_index_code_unit(String, Index, C),
         !:HashVal = keep_30_bits(!.HashVal * 49),
         !:HashVal= keep_30_bits(!.HashVal + C),
         string.hash6_loop(String, Index + 1, Length, !HashVal)
-    ;
+    else
         true
     ).
 
@@ -3071,10 +3071,10 @@ all_match(P, String) :-
     int::in) is semidet.
 
 all_match_loop(P, String, Cur) :-
-    ( string.unsafe_index_next(String, Cur, Next, Char) ->
+    ( if string.unsafe_index_next(String, Cur, Next, Char) then
         P(Char),
         all_match_loop(P, String, Next)
-    ;
+    else
         true
     ).
 
@@ -3124,13 +3124,13 @@ string.contains_char(String, Char) :-
 :- pred string.contains_char(string::in, char::in, int::in) is semidet.
 
 string.contains_char(Str, Char, I) :-
-    ( string.unsafe_index_next(Str, I, J, IndexChar) ->
-        ( IndexChar = Char ->
+    ( if string.unsafe_index_next(Str, I, J, IndexChar) then
+        ( if IndexChar = Char then
             true
-        ;
+        else
             string.contains_char(Str, Char, J)
         )
-    ;
+    else
         fail
     ).
 
@@ -3143,12 +3143,12 @@ prefix_length(P, S) = Index :-
     string::in, int::in, int::out) is det.
 
 prefix_length_loop(P, S, I, Index) :-
-    (
+    ( if
         string.unsafe_index_next(S, I, J, Char),
         P(Char)
-    ->
+    then
         prefix_length_loop(P, S, J, Index)
-    ;
+    else
         Index = I
     ).
 
@@ -3160,12 +3160,12 @@ suffix_length(P, S) = End - Index :-
     string::in, int::in, int::out) is det.
 
 suffix_length_loop(P, S, I, Index) :-
-    (
+    ( if
         string.unsafe_prev_index(S, I, J, Char),
         P(Char)
-    ->
+    then
         suffix_length_loop(P, S, J, Index)
-    ;
+    else
         Index = I
     ).
 
@@ -3251,16 +3251,16 @@ sub_string_search_start(String, SubString, BeginAt, Index) :-
 
 sub_string_search_start_loop(String, SubString, I, Len, SubLen, Index) :-
     I < Len,
-    (
+    ( if
         % XXX This is inefficient -- there is no (in, in, in) = in is semidet
         % mode of between, so this ends up calling the (in, in, in) = out
         % mode and then doing the unification. This will create a lot of
         % unnecessary garbage.
         % XXX This will abort if either index is not at a code point boundary.
         between(String, I, I + SubLen) = SubString
-    ->
+    then
         Index = I
-    ;
+    else
         sub_string_search_start_loop(String, SubString, I + 1, Len, SubLen,
             Index)
     ).
@@ -3427,9 +3427,9 @@ string.append_ooi(S1, S2, S3) :-
     string::in) is multi.
 
 string.append_ooi_2(NextS1Len, S3Len, S1, S2, S3) :-
-    ( NextS1Len = S3Len ->
+    ( if NextS1Len = S3Len then
         string.append_ooi_3(NextS1Len, S3Len, S1, S2, S3)
-    ;
+    else
         (
             string.append_ooi_3(NextS1Len, S3Len, S1, S2, S3)
         ;
@@ -4054,36 +4054,36 @@ join_list_loop(Sep, [H | T]) = Sep ++ H ++ join_list_loop(Sep, T).
 ").
 
 string.split(Str, Count, Left, Right) :-
-    ( Count =< 0 ->
+    ( if Count =< 0 then
         Left = "",
         Right = Str
-    ;
+    else
         string.to_code_unit_list(Str, List),
         Len = string.length(Str),
-        ( Count > Len ->
+        ( if Count > Len then
             Num = Len
-        ;
+        else
             Num = Count
         ),
-        (
+        ( if
             list.split_list(Num, List, LeftList, RightList),
             string.from_code_unit_list(LeftList, LeftPrime),
             string.from_code_unit_list(RightList, RightPrime)
-        ->
+        then
             Left = LeftPrime,
             Right = RightPrime
-        ;
+        else
             unexpected($pred, "split_list failed")
         )
     ).
 
 string.split_by_codepoint(Str, Count, Left, Right) :-
-    ( string.codepoint_offset(Str, Count, Offset) ->
+    ( if string.codepoint_offset(Str, Count, Offset) then
         string.split(Str, Offset, Left, Right)
-    ; Count =< 0 ->
+    else if Count =< 0 then
         Left = "",
         Right = Str
-    ;
+    else
         Left = Str,
         Right = ""
     ).
@@ -4202,9 +4202,9 @@ string.between(Str, Start, End) = SubString :-
 ").
 
 between(Str, Start, End, SubStr) :-
-    ( Start >= End ->
+    ( if Start >= End then
         SubStr = ""
-    ;
+    else
         Len = string.length(Str),
         max(0, Start, ClampStart),
         min(Len, End, ClampEnd),
@@ -4215,14 +4215,14 @@ between(Str, Start, End, SubStr) :-
 :- func between_loop(int, int, string) = list(char).
 
 between_loop(I, End, Str) = Chars :-
-    (
+    ( if
         I < End,
         string.unsafe_index_next(Str, I, J, C),
         J =< End
-    ->
+    then
         Cs = between_loop(J, End, Str),
         Chars = [C | Cs]
-    ;
+    else
         Chars = []
     ).
 
@@ -4239,13 +4239,13 @@ string.substring(Str, Start, Count, SubString) :-
 
 convert_endpoints(Start, Count, ClampStart, ClampEnd) :-
     ClampStart = int.max(0, Start),
-    ( Count =< 0 ->
+    ( if Count =< 0 then
         ClampEnd = ClampStart
-    ;
+    else
         % Check for overflow.
-        ( ClampStart > max_int - Count ->
+        ( if ClampStart > max_int - Count then
             ClampEnd = max_int
-        ;
+        else
             ClampEnd = ClampStart + Count
         )
     ).
@@ -4256,18 +4256,18 @@ string.between_codepoints(Str, Start, End) = SubString :-
     string.between_codepoints(Str, Start, End, SubString).
 
 string.between_codepoints(Str, Start, End, SubString) :-
-    ( Start < 0 ->
+    ( if Start < 0 then
         StartOffset = 0
-    ; string.codepoint_offset(Str, Start, StartOffset0) ->
+    else if string.codepoint_offset(Str, Start, StartOffset0) then
         StartOffset = StartOffset0
-    ;
+    else
         StartOffset = string.length(Str)
     ),
-    ( End =< Start ->
+    ( if End =< Start then
         EndOffset = StartOffset
-    ; string.codepoint_offset(Str, End, EndOffset0) ->
+    else if string.codepoint_offset(Str, End, EndOffset0) then
         EndOffset = EndOffset0
-    ;
+    else
         EndOffset = string.length(Str)
     ),
     string.between(Str, StartOffset, EndOffset, SubString).
@@ -4328,14 +4328,14 @@ string.words(String) = string.words_separator(char.is_whitespace, String).
 
 words_loop(SepP, String, WordStart, Words) :-
     next_boundary(isnt(SepP), String, WordStart, WordEnd),
-    ( WordEnd = WordStart ->
+    ( if WordEnd = WordStart then
         Words = []
-    ;
+    else
         string.unsafe_between(String, WordStart, WordEnd, Word),
         next_boundary(SepP, String, WordEnd, NextWordStart),
-        ( WordEnd = NextWordStart ->
+        ( if WordEnd = NextWordStart then
             Words = [Word]
-        ;
+        else
             words_loop(SepP, String, NextWordStart, Words0),
             Words = [Word | Words0]
         )
@@ -4347,12 +4347,12 @@ words_loop(SepP, String, WordStart, Words) :-
     int::in, int::out) is det.
 
 next_boundary(P, String, Cur, NextWordStart) :-
-    (
+    ( if
         string.unsafe_index_next(String, Cur, Next, Char),
         P(Char)
-    ->
+    then
         next_boundary(P, String, Next, NextWordStart)
-    ;
+    else
         NextWordStart = Cur
     ).
 
@@ -4372,17 +4372,17 @@ split_at_separator_loop(DelimP, Str, I, SegEnd, Acc0, Acc) :-
     % Invariant: 0 =< I =< length(Str)
     % SegEnd is one past the last index of the current segment.
     %
-    ( string.unsafe_prev_index(Str, I, J, C) ->
-        ( DelimP(C) ->
+    ( if string.unsafe_prev_index(Str, I, J, C) then
+        ( if DelimP(C) then
             % Chop here.
             SegStart = I,
             Seg = string.unsafe_between(Str, SegStart, SegEnd),
             split_at_separator_loop(DelimP, Str, J, J, [Seg | Acc0], Acc)
-        ;
+        else
             % Extend current segment.
             split_at_separator_loop(DelimP, Str, J, SegEnd, Acc0, Acc)
         )
-    ;
+    else
         % We have reached the beginning of the string.
         Seg = string.unsafe_between(Str, 0, SegEnd),
         Acc = [Seg | Acc0]
@@ -4399,12 +4399,12 @@ split_at_string(Needle, Total) =
 :- func split_at_string_loop(int, int, string, string) = list(string).
 
 split_at_string_loop(StartAt, NeedleLen, Needle, Total) = Out :-
-    ( sub_string_search_start(Total, Needle, StartAt, NeedlePos) ->
+    ( if sub_string_search_start(Total, Needle, StartAt, NeedlePos) then
         BeforeNeedle = between(Total, StartAt, NeedlePos),
         Tail = split_at_string_loop(NeedlePos+NeedleLen, NeedleLen,
             Needle, Total),
         Out = [BeforeNeedle | Tail]
-    ;
+    else
         string.split(Total, StartAt, _Skip, Last),
         Out = [Last]
     ).
@@ -4427,11 +4427,11 @@ string.prefix(String::in, Prefix::out) :-
 :- pred prefix_2_iii(string::in, string::in, int::in) is semidet.
 
 prefix_2_iii(String, Prefix, I) :-
-    ( 0 =< I ->
+    ( if 0 =< I then
         string.unsafe_index_code_unit(String, I, C),
         string.unsafe_index_code_unit(Prefix, I, C),
         prefix_2_iii(String, Prefix, I - 1)
-    ;
+    else
         true
     ).
 
@@ -4460,11 +4460,11 @@ string.suffix(String::in, Suffix::out) :-
     is semidet.
 
 suffix_2_iiii(String, Suffix, I, Offset, Len) :-
-    ( I < Len ->
+    ( if I < Len then
         string.unsafe_index_code_unit(String, I + Offset, C),
         string.unsafe_index_code_unit(Suffix, I, C),
         suffix_2_iiii(String, Suffix, I + 1, Offset, Len)
-    ;
+    else
         true
     ).
 
@@ -4484,9 +4484,9 @@ string.remove_prefix(Prefix, String, Suffix) :-
     string.append(Prefix, Suffix, String).
 
 string.remove_prefix_if_present(Prefix, String) = Out :-
-    ( string.remove_prefix(Prefix, String, Suffix) ->
+    ( if string.remove_prefix(Prefix, String, Suffix) then
         Out = Suffix
-    ;
+    else
         Out = String
     ).
 
@@ -4495,18 +4495,18 @@ string.remove_suffix(String, Suffix, StringWithoutSuffix) :-
     string.left(String, length(String) - length(Suffix), StringWithoutSuffix).
 
 string.det_remove_suffix(String, Suffix) = StringWithoutSuffix :-
-    ( string.remove_suffix(String, Suffix, StringWithoutSuffixPrime) ->
+    ( if string.remove_suffix(String, Suffix, StringWithoutSuffixPrime) then
         StringWithoutSuffix = StringWithoutSuffixPrime
-    ;
+    else
         error("string.det_remove_suffix: string does not have given suffix")
     ).
 
 string.remove_suffix_if_present(Suffix, String) = Out :-
     LeftCount = length(String) - length(Suffix),
     string.split(String, LeftCount, LeftString, RightString),
-    ( RightString = Suffix ->
+    ( if RightString = Suffix then
         Out = LeftString
-    ;
+    else
         Out = String
     ).
 
@@ -4519,10 +4519,10 @@ string.capitalize_first(S1) = S2 :-
     string.capitalize_first(S1, S2).
 
 string.capitalize_first(S0, S) :-
-    ( string.first_char(S0, C, S1) ->
+    ( if string.first_char(S0, C, S1) then
         char.to_upper(C, UpperC),
         string.first_char(S, UpperC, S1)
-    ;
+    else
         S = S0
     ).
 
@@ -4530,10 +4530,10 @@ string.uncapitalize_first(S1) = S2 :-
     string.uncapitalize_first(S1, S2).
 
 string.uncapitalize_first(S0, S) :-
-    ( string.first_char(S0, C, S1) ->
+    ( if string.first_char(S0, C, S1) then
         char.to_lower(C, LowerC),
         string.first_char(S, LowerC, S1)
-    ;
+    else
         S = S0
     ).
 
@@ -4574,11 +4574,11 @@ string.pad_left(S1, C, N) = S2 :-
 
 string.pad_left(String0, PadChar, Width, String) :-
     string.count_codepoints(String0, Length),
-    ( Length < Width ->
+    ( if Length < Width then
         Count = Width - Length,
         string.duplicate_char(PadChar, Count, PadString),
         string.append(PadString, String0, String)
-    ;
+    else
         String = String0
     ).
 
@@ -4587,18 +4587,18 @@ string.pad_right(S1, C, N) = S2 :-
 
 string.pad_right(String0, PadChar, Width, String) :-
     string.count_codepoints(String0, Length),
-    ( Length < Width ->
+    ( if Length < Width then
         Count = Width - Length,
         string.duplicate_char(PadChar, Count, PadString),
         string.append(String0, PadString, String)
-    ;
+    else
         String = String0
     ).
 
 chomp(S) = Chomp :-
-    ( prev_index(S, length(S), Offset, '\n') ->
+    ( if prev_index(S, length(S), Offset, '\n') then
         Chomp = left(S, Offset)
-    ;
+    else
         Chomp = S
     ).
 
@@ -4632,11 +4632,11 @@ string.replace_all(S1, S2, S3) = S4 :-
     string.replace_all(S1, S2, S3, S4).
 
 string.replace_all(Str, Pat, Subst, Result) :-
-    ( Pat = "" ->
+    ( if Pat = "" then
         F = (func(C, L) = [char_to_string(C) ++ Subst | L]),
         Foldl = string.foldl(F, Str, []),
         Result = append_list([Subst | list.reverse(Foldl)])
-    ;
+    else
         PatLength = string.length(Pat),
         replace_all_loop(Str, Pat, Subst, PatLength, 0, [], ReversedChunks),
         Chunks = list.reverse(ReversedChunks),
@@ -4648,12 +4648,12 @@ string.replace_all(Str, Pat, Subst, Result) :-
 
 string.replace_all_loop(Str, Pat, Subst, PatLength, BeginAt,
         RevChunks0, RevChunks) :-
-    ( sub_string_search_start(Str, Pat, BeginAt, Index) ->
+    ( if sub_string_search_start(Str, Pat, BeginAt, Index) then
         Initial = string.unsafe_between(Str, BeginAt, Index),
         Start = Index + PatLength,
         string.replace_all_loop(Str, Pat, Subst, PatLength, Start,
             [Subst, Initial | RevChunks0], RevChunks)
-    ;
+    else
         EndString = string.unsafe_between(Str, BeginAt, length(Str)),
         RevChunks = [EndString | RevChunks0]
     ).
@@ -4665,10 +4665,10 @@ word_wrap(Str, N) = word_wrap_separator(Str, N, "").
 word_wrap_separator(Str, N, WordSep0) = Wrapped :-
     Words = string.words_separator(char.is_whitespace, Str),
     SepLen0 = string.count_codepoints(WordSep0),
-    ( SepLen0 < N ->
+    ( if SepLen0 < N then
         WordSep = WordSep0,
         SepLen = SepLen0
-    ;
+    else
         WordSep = "",
         SepLen = 0
     ),
@@ -4704,20 +4704,20 @@ word_wrap_loop([], _, _, _, _, !RevWordsSpacesNls).
 word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
         !RevWordsSpacesNls) :-
     WordLen = string.count_codepoints(Word),
-    (
+    ( if
         % We are on the first column and the length of the word
         % is less than the line length.
         CurCol = 1,
         WordLen < MaxCol
-    ->
+    then
         NewWords = Words,
         NewCol = CurCol + WordLen,
         !:RevWordsSpacesNls = [Word | !.RevWordsSpacesNls]
-    ;
+    else if
         % The word takes up the whole line.
         CurCol = 1,
         WordLen = MaxCol
-    ->
+    then
         NewWords = Words,
         NewCol = 1,
         % We only add a newline if there are more words to follow.
@@ -4728,18 +4728,18 @@ word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
             NewWords = [_ | _],
             !:RevWordsSpacesNls = ["\n", Word | !.RevWordsSpacesNls]
         )
-    ;
+    else if
         % If we add a space and the current word to the line,
         % we will still be within the line length limit.
         CurCol + WordLen < MaxCol
-    ->
+    then
         NewWords = Words,
         NewCol = CurCol + WordLen + 1,
         !:RevWordsSpacesNls = [Word, " " | !.RevWordsSpacesNls]
-    ;
+    else if
         % Adding the word and a space takes us to the end of the line exactly.
         CurCol + WordLen = MaxCol
-    ->
+    then
         NewWords = Words,
         NewCol = 1,
         % We only add a newline if there are more words to follow.
@@ -4750,9 +4750,9 @@ word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
             NewWords = [_ | _],
             !:RevWordsSpacesNls = ["\n", Word, " " | !.RevWordsSpacesNls]
         )
-    ;
+    else
         % Adding the word would take us over the line limit.
-        ( CurCol = 1 ->
+        ( if CurCol = 1 then
             % Break up words that are too big to fit on a line.
             RevPieces = break_up_string_reverse(Word, MaxCol - SepLen, []),
             (
@@ -4765,7 +4765,7 @@ word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
             NewCol = 1,
             RestWithSep = list.map(func(S) = S ++ WordSep ++ "\n", Rest),
             !:RevWordsSpacesNls = RestWithSep ++ !.RevWordsSpacesNls
-        ;
+        else
             NewWords = [Word | Words],
             NewCol = 1,
             !:RevWordsSpacesNls = ["\n" | !.RevWordsSpacesNls]
@@ -4777,9 +4777,9 @@ word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
 :- func break_up_string_reverse(string, int, list(string)) = list(string).
 
 break_up_string_reverse(Str, N, Prev) = Strs :-
-    ( string.count_codepoints(Str) =< N ->
+    ( if string.count_codepoints(Str) =< N then
         Strs = [Str | Prev]
-    ;
+    else
         string.split_by_codepoint(Str, N, Left, Right),
         Strs = break_up_string_reverse(Right, N, [Left | Prev])
     ).
@@ -4828,14 +4828,14 @@ string.foldl2_between(Closure, String, Start0, End0, !Acc1, !Acc2) :-
     in, out) is multi.
 
 string.foldl_between_2(Closure, String, I, End, !Acc) :-
-    (
+    ( if
         I < End,
         string.unsafe_index_next(String, I, J, Char),
         J =< End
-    ->
+    then
         Closure(Char, !Acc),
         string.foldl_between_2(Closure, String, J, End, !Acc)
-    ;
+    else
         true
     ).
 
@@ -4855,14 +4855,14 @@ string.foldl_between_2(Closure, String, I, End, !Acc) :-
     in, in, in, in, out, in, out) is multi.
 
 string.foldl2_between_2(Closure, String, I, End, !Acc1, !Acc2) :-
-    (
+    ( if
         I < End,
         string.unsafe_index_next(String, I, J, Char),
         J =< End
-    ->
+    then
         Closure(Char, !Acc1, !Acc2),
         string.foldl2_between_2(Closure, String, J, End, !Acc1, !Acc2)
-    ;
+    else
         true
     ).
 
@@ -4910,14 +4910,14 @@ string.foldr_between(Closure, String, Start0, End0, !Acc) :-
     in, out) is multi.
 
 string.foldr_between_2(Closure, String, Start, I, !Acc) :-
-    (
+    ( if
         I > Start,
         string.unsafe_prev_index(String, I, J, Char),
         J >= Start
-    ->
+    then
         Closure(Char, !Acc),
         string.foldr_between_2(Closure, String, Start, J, !Acc)
-    ;
+    else
         true
     ).
 
@@ -4980,9 +4980,9 @@ project_column_strings(right(Strings) - _) = Strings.
     list(list(string))::in, list(string)::in, list(string)::out) is det.
 
 generate_rows(MaxWidthsSenses, Separator, SepLen, Columns0, !RevRows) :-
-    ( all_empty(Columns0) ->
+    ( if all_empty(Columns0) then
         true
-    ;
+    else
         get_next_line(Columns0, Line, Columns),
         pad_row(MaxWidthsSenses, Line, Separator, SepLen, 0, Row),
         !:RevRows = [Row | !.RevRows],
@@ -5019,7 +5019,7 @@ pad_row([Justify - MaxWidth | JustifyWidths], [ColumnStr0 | ColumnStrs0],
     NextColumn = CurColumn + MaxWidth + SepLen,
     pad_row(JustifyWidths, ColumnStrs0, Separator, SepLen, NextColumn,
         LineRest),
-    ( string.count_codepoints(ColumnStr0) =< MaxWidth ->
+    ( if string.count_codepoints(ColumnStr0) =< MaxWidth then
         (
             Justify = just_left,
             ColumnStr = string.pad_right(ColumnStr0, ' ', MaxWidth)
@@ -5034,7 +5034,7 @@ pad_row([Justify - MaxWidth | JustifyWidths], [ColumnStr0 | ColumnStrs0],
             JustifyWidths = [_ | _],
             Line = ColumnStr ++ Separator ++ LineRest
         )
-    ;
+    else
         (
             JustifyWidths = [],
             Line = ColumnStr0
@@ -5079,9 +5079,9 @@ find_max_length_with_limit(JustColumn - MaybeLimit) = Sense - MaxLength :-
     list.foldl(max_str_length, Strings, 0, MaxLength0),
     (
         MaybeLimit = yes(Limit),
-        ( MaxLength0 > Limit ->
+        ( if MaxLength0 > Limit then
             MaxLength = Limit
-        ;
+        else
             MaxLength = MaxLength0
         )
     ;
@@ -5108,9 +5108,9 @@ lpad(Chr, N, Str) = string.pad_left(Str, Chr, N).
 
 max_str_length(Str, PrevMaxLen, MaxLen) :-
     Length = string.count_codepoints(Str),
-    ( Length > PrevMaxLen ->
+    ( if Length > PrevMaxLen then
         MaxLen = Length
-    ;
+    else
         MaxLen = PrevMaxLen
     ).
 
@@ -5134,20 +5134,20 @@ string.det_to_int(S) = string.det_base_string_to_int(10, S).
 string.base_string_to_int(Base, String, Int) :-
     string.index(String, 0, Char),
     End = string.count_code_units(String),
-    ( Char = ('-') ->
+    ( if Char = ('-') then
         End > 1,
         foldl_between(accumulate_negative_int(Base), String, 1, End, 0, Int)
-    ; Char = ('+') ->
+    else if Char = ('+') then
         End > 1,
         foldl_between(accumulate_int(Base), String, 1, End, 0, Int)
-    ;
+    else
         foldl_between(accumulate_int(Base), String, 0, End, 0, Int)
     ).
 
 string.det_base_string_to_int(Base, S) = N :-
-    ( string.base_string_to_int(Base, S, N0) ->
+    ( if string.base_string_to_int(Base, S, N0) then
         N = N0
-    ;
+    else
         error("string.det_base_string_to_int: conversion failed")
     ).
 
@@ -5285,9 +5285,9 @@ accumulate_negative_int(Base, Char, N0, N) :-
 ").
 
 string.det_to_float(FloatString) = Float :-
-    ( string.to_float(FloatString, FloatPrime) ->
+    ( if string.to_float(FloatString, FloatPrime) then
         Float = FloatPrime
-    ;
+    else
         error("string.det_to_float/1: conversion failed.")
     ).
 
@@ -5318,9 +5318,9 @@ string.int_to_base_string(N1, N2) = S2 :-
     string.int_to_base_string(N1, N2, S2).
 
 string.int_to_base_string(N, Base, Str) :-
-    ( 2 =< Base, Base =< 36 ->
+    ( if 2 =< Base, Base =< 36 then
         true
-    ;
+    else
         error("string.int_to_base_string: invalid base")
     ),
     string.int_to_base_string_1(N, Base, Str).
@@ -5331,9 +5331,9 @@ string.int_to_base_string_1(N, Base, Str) :-
     % Note that in order to handle MININT correctly, we need to do the
     % conversion of the absolute number into digits using negative numbers;
     % we can't use positive numbers, since -MININT overflows.
-    ( N < 0 ->
+    ( if N < 0 then
         string.int_to_base_string_2(N, Base, ['-'], RevChars)
-    ;
+    else
         NegN = 0 - N,
         string.int_to_base_string_2(NegN, Base, [], RevChars)
     ),
@@ -5346,11 +5346,11 @@ string.int_to_base_string_2(NegN, Base, !RevChars) :-
     % string.int_to_base_string_2/3 is almost identical to
     % string.int_to_base_string_group_2/6 below so any changes here might
     % also need to be applied to string.int_to_base_string_group_2/3.
-    ( NegN > -Base ->
+    ( if NegN > -Base then
         N = -NegN,
         DigitChar = char.det_base_int_to_digit(Base, N),
         !:RevChars = [DigitChar | !.RevChars]
-    ;
+    else
         NegN1 = NegN // Base,
         N10 = (NegN1 * Base) - NegN,
         DigitChar = char.det_base_int_to_digit(Base, N10),
@@ -5362,9 +5362,9 @@ string.int_to_string_thousands(N) =
     string.int_to_base_string_group(N, 10, 3, ",").
 
 string.int_to_base_string_group(N, Base, GroupLength, Sep) = Str :-
-    ( 2 =< Base, Base =< 36 ->
+    ( if 2 =< Base, Base =< 36 then
         true
-    ;
+    else
         error("string.int_to_base_string_group: invalid base")
     ),
     string.int_to_base_string_group_1(N, Base, GroupLength, Sep, Str).
@@ -5376,10 +5376,10 @@ string.int_to_base_string_group_1(N, Base, GroupLength, Sep, Str) :-
     % Note that in order to handle MININT correctly, we need to do
     % the conversion of the absolute number into digits using negative numbers
     % (we can't use positive numbers, since -MININT overflows)
-    ( N < 0 ->
+    ( if N < 0 then
         string.int_to_base_string_group_2(N, Base, 0, GroupLength, Sep, Str1),
         string.append("-", Str1, Str)
-    ;
+    else
         N1 = 0 - N,
         string.int_to_base_string_group_2(N1, Base, 0, GroupLength, Sep, Str)
     ).
@@ -5397,19 +5397,19 @@ string.int_to_base_string_group_1(N, Base, GroupLength, Sep, Str) :-
     string::in, string::uo) is det.
 
 string.int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
-    (
+    ( if
         Curr = GroupLength,
         GroupLength > 0
-    ->
+    then
         string.int_to_base_string_group_2(NegN, Base, 0, GroupLength,
             Sep, Str1),
         string.append(Str1, Sep, Str)
-    ;
-        ( NegN > -Base ->
+    else
+        ( if NegN > -Base then
             N = -NegN,
             DigitChar = char.det_base_int_to_digit(Base, N),
             string.char_to_string(DigitChar, Str)
-        ;
+        else
             NegN1 = NegN // Base,
             N10 = (NegN1 * Base) - NegN,
             DigitChar = char.det_base_int_to_digit(Base, N10),
@@ -5493,12 +5493,12 @@ string.float_to_string(Float, unsafe_promise_unique(String)) :-
 
 string.float_to_string_loop(Prec, Float) = String :-
     string.format("%#." ++ int_to_string(Prec) ++ "g", [f(Float)], Tmp),
-    ( Prec = max_precision ->
+    ( if Prec = max_precision then
         String = Tmp
-    ;
-        ( string.to_float(Tmp, Float) ->
+    else
+        ( if string.to_float(Tmp, Float) then
             String = Tmp
-        ;
+        else
             String = string.float_to_string_loop(Prec + 1, Float)
         )
     ).

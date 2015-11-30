@@ -10,7 +10,7 @@
 % Main author: bromage.
 % Stability: high.
 %
-% Higher mathematical operations.  (The basics are in float.m.)
+% Higher mathematical operations. (The basics are in float.m.)
 %
 % By default, domain errors are currently handled by throwing an exception.
 % For better performance, each operation in this module that can throw a domain
@@ -31,7 +31,7 @@
 :- interface.
 
     % A domain error exception, indicates that the inputs to a function
-    % were outside the domain of the function.  The string indicates
+    % were outside the domain of the function. The string indicates
     % where the error occurred.
     %
 :- type domain_error ---> domain_error(string).
@@ -240,7 +240,7 @@
     **
     ** The maximum number of significant decimal digits which
     ** can be packed into an IEEE-754 extended precision
-    ** floating point number is 18.  Therefore 20 significant
+    ** floating point number is 18. Therefore 20 significant
     ** decimal digits for these constants should be plenty.
     */
 
@@ -338,7 +338,7 @@
     Pi = math:pi()
 ").
     % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.  We define this with sufficient
+    % matching foreign_proc version. We define this with sufficient
     % digits that if the underlying implementation's
     % floating point parsing routines are good, it should
     % to be accurate enough for 128-bit IEEE float.
@@ -365,7 +365,7 @@ math.pi = 3.1415926535897932384626433832795029.
     E = java.lang.Math.E;
 ").
     % This version is only used for back-ends for which there is no
-    % matching foreign_proc version.  We define this with sufficient
+    % matching foreign_proc version. We define this with sufficient
     % digits that if the underlying implementation's
     % floating point parsing routines are good, it should
     % to be accurate enough for 128-bit IEEE float.
@@ -464,12 +464,12 @@ math.e = 2.7182818284590452353602874713526625.
 ").
 math.round(Num) = math.floor(Num + 0.5).
 
-math.truncate(X) = (X < 0.0 -> math.ceiling(X) ; math.floor(X)).
+math.truncate(X) = ( if X < 0.0 then math.ceiling(X) else math.floor(X)).
 
 math.sqrt(X) = SquareRoot :-
-    ( math_domain_checks, X < 0.0 ->
+    ( if math_domain_checks, X < 0.0 then
         throw(domain_error("math.sqrt"))
-    ;
+    else
         SquareRoot = math.unchecked_sqrt(X)
     ).
 
@@ -537,15 +537,15 @@ math.solve_quadratic(A, B, C) = Roots :-
     ).
 
 math.pow(X, Y) = Res :-
-    ( math_domain_checks, X < 0.0 ->
+    ( if math_domain_checks, X < 0.0 then
         throw(domain_error("math.pow"))
-    ; X = 0.0 ->
-        ( Y =< 0.0 ->
+    else if X = 0.0 then
+        ( if Y =< 0.0 then
             throw(domain_error("math.pow"))
-        ;
+        else
             Res = 0.0
         )
-    ;
+    else
         Res = math.unchecked_pow(X, Y)
     ).
 
@@ -605,9 +605,9 @@ math.pow(X, Y) = Res :-
 ").
 
 math.ln(X) = Log :-
-    ( math_domain_checks, X =< 0.0 ->
+    ( if math_domain_checks, X =< 0.0 then
         throw(domain_error("math.ln"))
-    ;
+    else
         Log = math.unchecked_ln(X)
     ).
 
@@ -638,9 +638,9 @@ math.ln(X) = Log :-
 ").
 
 math.log10(X) = Log :-
-    ( math_domain_checks, X =< 0.0 ->
+    ( if math_domain_checks, X =< 0.0 then
         throw(domain_error("math.log10"))
-    ;
+    else
         Log = math.unchecked_log10(X)
     ).
 
@@ -667,9 +667,9 @@ math.log10(X) = Log :-
 math.unchecked_log10(X) = math.unchecked_ln(X) / math.unchecked_ln(10.0).
 
 math.log2(X) = Log :-
-    ( math_domain_checks, X =< 0.0 ->
+    ( if math_domain_checks, X =< 0.0 then
         throw(domain_error("math.log2"))
-    ;
+    else
         Log = math.unchecked_log2(X)
     ).
 
@@ -695,15 +695,15 @@ math.log2(X) = Log :-
 math.unchecked_log2(X) = math.unchecked_ln(X) / math.unchecked_ln(2.0).
 
 math.log(B, X) = Log :-
-    (
+    ( if
         math_domain_checks,
         ( X =< 0.0
         ; B =< 0.0
         ; B = 1.0
         )
-    ->
+    then
         throw(domain_error("math.log"))
-    ;
+    else
         Log = math.unchecked_log(B, X)
     ).
 
@@ -803,14 +803,14 @@ math.unchecked_log(B, X) = math.unchecked_ln(X) / math.unchecked_ln(B).
 ").
 
 math.asin(X) = ASin :-
-    (
+    ( if
         math_domain_checks,
         ( X < -1.0
         ; X > 1.0
         )
-    ->
+    then
         throw(domain_error("math.asin"))
-    ;
+    else
         ASin = math.unchecked_asin(X)
     ).
 
@@ -841,14 +841,14 @@ math.asin(X) = ASin :-
 ").
 
 math.acos(X) = ACos :-
-    (
+    ( if
         math_domain_checks,
         ( X < -1.0
         ; X > 1.0
         )
-    ->
+    then
         throw(domain_error("math.acos"))
-    ;
+    else
         ACos = math.unchecked_acos(X)
     ).
 

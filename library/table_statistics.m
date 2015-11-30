@@ -170,7 +170,7 @@ get_tabling_stats(Info, Statistics, !IO) :-
     CallStats = table_stats_curr_prev(CurCallStats, PrevCallStats),
     copy_current_stats_to_prev(CurCallStatsPtr, PrevCallStatsPtr,
         NumInputs, !IO),
-    ( HasAnswerTable > 0 ->
+    ( if HasAnswerTable > 0 then
         get_one_table_stats(OutputStepDescsPtr, CurAnswerStatsPtr, NumOutputs,
             CurAnswerStats, !IO),
         get_one_table_stats(OutputStepDescsPtr, PrevAnswerStatsPtr, NumOutputs,
@@ -179,7 +179,7 @@ get_tabling_stats(Info, Statistics, !IO) :-
         copy_current_stats_to_prev(CurAnswerStatsPtr, PrevAnswerStatsPtr,
             NumOutputs, !IO),
         MaybeAnswerStats = yes(AnswerStats)
-    ;
+    else
         MaybeAnswerStats = no
     ),
     Statistics = proc_table_statistics(CallStats, MaybeAnswerStats).
@@ -250,9 +250,9 @@ get_one_table_stats(StepDescsPtr, StatsPtr, NumSteps, Stats, !IO) :-
 
 get_one_table_stats_step_loop(StepDescsPtr, StatsPtr, CurStep, NumSteps,
         !StepStats, !IO) :-
-    ( CurStep >= NumSteps ->
+    ( if CurStep >= NumSteps then
         true
-    ;
+    else
         get_one_table_stats_step_loop(StepDescsPtr, StatsPtr,
             CurStep + 1, NumSteps, !StepStats, !IO),
         get_one_table_step_stats(StepDescsPtr, StatsPtr, CurStep, StepStats,
@@ -274,8 +274,8 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
         EnumNodeAllocs, EnumNodeBytes,
         DuNodeAllocs, DuNodeBytes, DuArgLookups, DuExistLookups,
         StartAllocs, StartBytes, !IO),
-    ( KindInt = 0 ->                    % MR_TABLE_STATS_DETAIL_HASH
-        (
+    ( if KindInt = 0 then                    % MR_TABLE_STATS_DETAIL_HASH
+        ( if
             EnumNodeAllocs = 0,
             EnumNodeBytes = 0,
             DuNodeAllocs = 0,
@@ -284,16 +284,16 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
             DuExistLookups = 0,
             StartAllocs = 0,
             StartBytes = 0
-        ->
+        then
             Details = step_stats_hash(HashTableAllocs, HashTableBytes,
                 HashLinkChunkAllocs, HashLinkChunkBytes,
                 HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                 HashResizes, HashResizeOldEntries, HashResizeNewEntries)
-        ;
+        else
             unexpected($module, $pred, "extra counts for hash")
         )
-    ; KindInt = 1 ->                    % MR_TABLE_STATS_DETAIL_ENUM
-        (
+    else if KindInt = 1 then                    % MR_TABLE_STATS_DETAIL_ENUM
+        ( if
             HashTableAllocs = 0,
             HashTableBytes = 0,
             HashLinkChunkAllocs = 0,
@@ -309,13 +309,13 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
             DuExistLookups = 0,
             StartAllocs = 0,
             StartBytes = 0
-        ->
+        then
             Details = step_stats_enum(EnumNodeAllocs, EnumNodeBytes)
-        ;
+        else
             unexpected($module, $pred, "extra counts for enum")
         )
-    ; KindInt = 2 ->                    % MR_TABLE_STATS_DETAIL_START
-        (
+    else if KindInt = 2 then                    % MR_TABLE_STATS_DETAIL_START
+        ( if
             HashTableAllocs = 0,
             HashTableBytes = 0,
             HashLinkChunkAllocs = 0,
@@ -331,41 +331,41 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
             DuNodeBytes = 0,
             DuArgLookups = 0,
             DuExistLookups = 0
-        ->
+        then
             Details = step_stats_start(StartAllocs, StartBytes)
-        ;
+        else
             unexpected($module, $pred, "extra counts for start")
         )
-    ; KindInt = 3 ->                    % MR_TABLE_STATS_DETAIL_DU
-        (
+    else if KindInt = 3 then                    % MR_TABLE_STATS_DETAIL_DU
+        ( if
             StartAllocs = 0,
             StartBytes = 0
-        ->
+        then
             Details = step_stats_du(DuNodeAllocs, DuNodeBytes,
                 DuArgLookups, DuExistLookups, EnumNodeAllocs, EnumNodeBytes,
                 HashTableAllocs, HashTableBytes,
                 HashLinkChunkAllocs, HashLinkChunkBytes,
                 HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                 HashResizes, HashResizeOldEntries, HashResizeNewEntries)
-        ;
+        else
             unexpected($module, $pred, "extra counts for du")
         )
-    ; KindInt = 4 ->                    % MR_TABLE_STATS_DETAIL_POLY
-        (
+    else if KindInt = 4 then                    % MR_TABLE_STATS_DETAIL_POLY
+        ( if
             StartAllocs = 0,
             StartBytes = 0
-        ->
+        then
             Details = step_stats_poly(DuNodeAllocs, DuNodeBytes,
                 DuArgLookups, DuExistLookups, EnumNodeAllocs, EnumNodeBytes,
                 HashTableAllocs, HashTableBytes,
                 HashLinkChunkAllocs, HashLinkChunkBytes,
                 HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                 HashResizes, HashResizeOldEntries, HashResizeNewEntries)
-        ;
+        else
             unexpected($module, $pred, "extra counts for poly")
         )
-    ; KindInt = 5 ->                    % MR_TABLE_STATS_DETAIL_NONE
-        (
+    else if KindInt = 5 then                    % MR_TABLE_STATS_DETAIL_NONE
+        ( if
             HashTableAllocs = 0,
             HashTableBytes = 0,
             HashLinkChunkAllocs = 0,
@@ -382,12 +382,12 @@ get_one_table_step_stats(StepDescsPtr, StatsPtr, StepNum, Stats, !IO) :-
             DuExistLookups = 0,
             StartAllocs = 0,
             StartBytes = 0
-        ->
+        then
             Details = step_stats_none
-        ;
+        else
             unexpected($module, $pred, "extra counts for none")
         )
-    ;
+    else
         unexpected($module, $pred, "unexpected detail kind")
     ),
     Stats = table_step_stats(VarName, NumLookups, NumLookupsIsDupl, Details).
@@ -540,9 +540,9 @@ table_step_stats_diff([StepA | StepsA], [StepB | StepsB])
         "table_step_stats_diff: mismatches in variable name"),
     LookupsDiff = LookupsA - LookupsB,
     LookupsIsDuplDiff = LookupsIsDuplA - LookupsIsDuplB,
-    ( table_step_stats_detail_diff(DetailsA, DetailsB, DetailsDiffPrime) ->
+    ( if table_step_stats_detail_diff(DetailsA, DetailsB, DetailsDiffPrime) then
         DetailsDiff = DetailsDiffPrime
-    ;
+    else
         unexpected($module, $pred, "mismatches in details")
     ),
 
@@ -656,7 +656,7 @@ write_table_stats(Stats, !IO) :-
 
     io.format("number of lookups:                            %9s\n",
         [s(LookupsStr)], !IO),
-    ( Lookups > 0 ->
+    ( if Lookups > 0 then
         FractionIsDuplStr = percentage_str(LookupsIsDupl, Lookups),
         FractionNotDuplStr = percentage_str(LookupsNotDupl, Lookups),
 
@@ -666,7 +666,7 @@ write_table_stats(Stats, !IO) :-
             [s(LookupsNotDuplStr), s(FractionNotDuplStr)], !IO),
         io.write_string("statistics for the individual steps:\n", !IO),
         list.foldl2(write_table_step_stats_loop, Steps, 1, _, !IO)
-    ;
+    else
         true
     ).
 
@@ -692,7 +692,7 @@ write_table_step_stats_header(VarName, StepNum, KindStr,
 
     io.format("  number of lookups:                          %9s\n",
         [s(LookupsStr)], !IO),
-    ( Lookups > 0 ->
+    ( if Lookups > 0 then
         FractionIsDuplStr = percentage_str(LookupsIsDupl, Lookups),
         FractionNotDuplStr = percentage_str(LookupsNotDupl, Lookups),
 
@@ -700,7 +700,7 @@ write_table_step_stats_header(VarName, StepNum, KindStr,
             [s(LookupsIsDuplStr), s(FractionIsDuplStr)], !IO),
         io.format("  number of unsuccessful lookups:             %9s %9s\n",
             [s(LookupsNotDuplStr), s(FractionNotDuplStr)], !IO)
-    ;
+    else
         true
     ).
 
@@ -763,12 +763,12 @@ write_table_step_stats_hash(HashTableAllocs, HashTableBytes,
         [s(HashKeyComparesIsDuplStr)], !IO),
     io.format("  number of hash table resizes:               %9s\n",
         [s(HashResizesStr)], !IO),
-    ( HashResizes > 0 ->
+    ( if HashResizes > 0 then
         io.format("  number of old entries in resizes:           %9s\n",
             [s(HashResizeOldEntriesStr)], !IO),
         io.format("  number of new entries in resizes:           %9s\n",
             [s(HashResizeNewEntriesStr)], !IO)
-    ;
+    else
         true
     ).
 
@@ -787,10 +787,10 @@ write_table_step_stats_du(DuNodeAllocs, DuNodeBytes,
         [s(DuNodeBytesStr)], !IO),
     io.format("  number of du functor argument lookups:      %9s\n",
         [s(DuArgLookupsStr)], !IO),
-    ( DuExistLookups > 0 ->
+    ( if DuExistLookups > 0 then
         io.format("  number of du existential type lookups:      %9s\n",
             [s(DuExistLookupsStr)], !IO)
-    ;
+    else
         true
     ).
 
@@ -807,18 +807,18 @@ write_table_step_stats(Step, StepNum, !IO) :-
         Details = step_stats_start(StartAllocs, StartBytes),
         write_table_step_stats_header(VarName, StepNum, "expandable array",
             Lookups, LookupsIsDupl, !IO),
-        ( Lookups > 0 ->
+        ( if Lookups > 0 then
             write_table_step_stats_start(StartAllocs, StartBytes, !IO)
-        ;
+        else
             true
         )
     ;
         Details = step_stats_enum(EnumNodeAllocs, EnumNodeBytes),
         write_table_step_stats_header(VarName, StepNum, "enum trie",
             Lookups, LookupsIsDupl, !IO),
-        ( Lookups > 0 ->
+        ( if Lookups > 0 then
             write_table_step_stats_enum(EnumNodeAllocs, EnumNodeBytes, !IO)
-        ;
+        else
             true
         )
     ;
@@ -828,12 +828,12 @@ write_table_step_stats(Step, StepNum, !IO) :-
             HashResizes, HashResizeOldEntries, HashResizeNewEntries),
         write_table_step_stats_header(VarName, StepNum, "hash table",
             Lookups, LookupsIsDupl, !IO),
-        ( Lookups > 0 ->
+        ( if Lookups > 0 then
             write_table_step_stats_hash(HashTableAllocs, HashTableBytes,
                 HashLinkChunkAllocs, HashLinkChunkBytes,
                 HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                 HashResizes, HashResizeOldEntries, HashResizeNewEntries, !IO)
-        ;
+        else
             true
         )
     ;
@@ -858,11 +858,11 @@ write_table_step_stats(Step, StepNum, !IO) :-
         ),
         write_table_step_stats_header(VarName, StepNum, KindStr,
             Lookups, LookupsIsDupl, !IO),
-        ( Lookups > 0 ->
-            ( DuNodeAllocs > 0 ->
+        ( if Lookups > 0 then
+            ( if DuNodeAllocs > 0 then
                 write_table_step_stats_du(DuNodeAllocs, DuNodeBytes,
                     DuArgLookups, DuExistLookups, !IO)
-            ;
+            else
                 (
                     MustHaveDu = no
                 ;
@@ -870,21 +870,21 @@ write_table_step_stats(Step, StepNum, !IO) :-
                     error("write_table_step_stats: no du stats")
                 )
             ),
-            ( EnumNodeAllocs > 0 ->
+            ( if EnumNodeAllocs > 0 then
                 write_table_step_stats_enum(EnumNodeAllocs, EnumNodeBytes, !IO)
-            ;
+            else
                 true
             ),
-            ( HashTableAllocs > 0 ->
+            ( if HashTableAllocs > 0 then
                 write_table_step_stats_hash(HashTableAllocs, HashTableBytes,
                     HashLinkChunkAllocs, HashLinkChunkBytes,
                     HashKeyComparesNotDupl, HashKeyComparesIsDupl,
                     HashResizes, HashResizeOldEntries, HashResizeNewEntries,
                     !IO)
-            ;
+            else
                 true
             )
-        ;
+        else
             true
         )
     ).

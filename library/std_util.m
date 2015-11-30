@@ -86,7 +86,7 @@
 %---------------------------------------------------------------------------%
 
 maybe_pred(Pred, X, Y) :-
-    Y = ( Pred(X, Z) -> yes(Z) ; no ).
+    Y = ( if Pred(X, Z) then yes(Z) else no ).
 
 maybe_func(PF, X) =
     ( if Y = PF(X) then yes(Y) else no ).

@@ -456,9 +456,9 @@ ignore_whitespace(Stream, Result, !State) :-
         Result = eof
     ;
         CharResult = ok(Char),
-        ( is_whitespace(Char) ->
+        ( if is_whitespace(Char) then
             ignore_whitespace(Stream, Result, !State)
-        ;
+        else
             unget(Stream, Char, !State),
             Result = ok
         )

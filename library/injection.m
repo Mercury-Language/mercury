@@ -402,10 +402,10 @@ injection.set(I, K, V, injection.set(I, K, V)).
 
 injection.set_2(K, V, !F, !R) :-
     map.set(K, V, !F),
-    ( map.search(!.R, V, OrigK) ->
+    ( if map.search(!.R, V, OrigK) then
         % Fail if the existing key is not the same as the given key.
         K = OrigK
-    ;
+    else
         map.det_insert(V, K, !R)
     ).
 
@@ -419,22 +419,20 @@ injection.det_set(I, K, V, injection.det_set(I, K, V)).
 
 injection.det_set_2(K, V, !F, !R) :-
     map.set(K, V, !F),
-    ( map.search(!.R, V, OrigK) ->
+    ( if map.search(!.R, V, OrigK) then
         % Abort if the existing key is not the same as the given key.
-        (
-            K = OrigK
-        ->
+        ( if K = OrigK then
             true
-        ;
+        else
             error("injection.det_set: " ++
                 "value is already associated with another key")
         )
-    ;
+    else
         map.det_insert(V, K, !R)
     ).
 
 injection.insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
-    P = (pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
+    P = ( pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
             KV = K - V,
             map.insert(K, V, !F),
             map.insert(V, K, !R)
@@ -444,7 +442,7 @@ injection.insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
 injection.insert_from_assoc_list(A, I, injection.insert_from_assoc_list(A, I)).
 
 injection.det_insert_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
-    P = (pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
+    P = ( pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
             KV = K - V,
             map.det_insert(K, V, !F),
             map.det_insert(V, K, !R)
@@ -455,7 +453,7 @@ injection.det_insert_from_assoc_list(A, I,
     injection.det_insert_from_assoc_list(A, I)).
 
 injection.set_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
-    P = (pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
+    P = ( pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
             KV = K - V,
             injection.set_2(K, V, !F, !R)
         ),
@@ -464,7 +462,7 @@ injection.set_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
 injection.set_from_assoc_list(A, I, injection.set_from_assoc_list(A, I)).
 
 injection.det_set_from_assoc_list(A, injection(F0, R0)) = injection(F, R) :-
-    P = (pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
+    P = ( pred(KV::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
             KV = K - V,
             injection.det_set_2(K, V, !F, !R)
         ),
@@ -475,7 +473,7 @@ injection.det_set_from_assoc_list(A, I,
 
 injection.insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
         injection(F, R) :-
-    P = (pred(K::in, V::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
+    P = ( pred(K::in, V::in, !.F::in, !:F::out, !.R::in, !:R::out) is semidet :-
             map.insert(K, V, !F),
             map.insert(V, K, !R)
         ),
@@ -486,7 +484,7 @@ injection.insert_from_corresponding_lists(As, Bs, I,
 
 injection.det_insert_from_corresponding_lists(As, Bs, injection(F0, R0)) =
         injection(F, R) :-
-    P = (pred(K::in, V::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
+    P = ( pred(K::in, V::in, !.F::in, !:F::out, !.R::in, !:R::out) is det :-
             map.det_insert(K, V, !F),
             map.det_insert(V, K, !R)
         ),
@@ -510,9 +508,9 @@ injection.det_set_from_corresponding_lists(As, Bs, I,
     injection.det_set_from_corresponding_lists(As, Bs, I)).
 
 injection.delete_key(injection(!.F, !.R), K) = injection(!:F, !:R) :-
-    ( map.remove(K, _, !F) ->
+    ( if map.remove(K, _, !F) then
         map.foldl(filter_values_with_key(K), !.R, map.init, !:R)
-    ;
+    else
         true
     ).
 
@@ -522,22 +520,22 @@ injection.delete_key(K, I, injection.delete_key(I, K)).
     map(V, K)::out) is det.
 
 filter_values_with_key(FilterKey, V, K, !Map) :-
-    ( K = FilterKey ->
+    ( if K = FilterKey then
         true
-    ;
+    else
         map.det_insert(V, K, !Map)
     ).
 
 injection.delete_value(injection(!.F, !.R), V) = injection(!:F, !:R) :-
-    ( map.remove(V, K, !R) ->
+    ( if map.remove(V, K, !R) then
         % Only K could possibly be associated with V.  If it is,
         % then we throw an exception.
-        ( map.lookup(!.F, K, V) ->
+        ( if map.lookup(!.F, K, V) then
             error("injection.delete_value: value is associated with a key")
-        ;
+        else
             true
         )
-    ;
+    else
         true
     ).
 
@@ -610,9 +608,9 @@ injection.filter_map_keys(Pred, injection(F0, R0), injection(F, R)) :-
     = out is det.
 
 maybe_set_transformed_key(Pred, K, V, !.Map) = !:Map :-
-    ( Pred(V, K, L) ->
+    ( if Pred(V, K, L) then
         map.set(L, V, !Map)
-    ;
+    else
         true
     ).
 
@@ -631,14 +629,14 @@ injection.map_values(Func, injection(F0, R0)) = injection(F, R) :-
 
 insert_transformed_value_f(Func, V, K, !.Map) = !:Map :-
     W = Func(K, V),
-    ( map.insert(W, K, !Map) ->
+    ( if map.insert(W, K, !Map) then
         true
-    ;
+    else
         % Another value in the original was already mapped to this value.
         % We ensure that it had the same key.
-        ( map.lookup(!.Map, W, K) ->
+        ( if map.lookup(!.Map, W, K) then
             true
-        ;
+        else
             error("injection.map_values: " ++
                 "merged two values with different keys")
         )

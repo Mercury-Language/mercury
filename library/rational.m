@@ -148,9 +148,9 @@ r(An, Ad) * r(Bn, Bd) = rational_norm(Numer, Denom) :-
 R1 / R2 = R1 * reciprocal(R2).
 
 rational.reciprocal(r(Num, Den)) =
-    ( Num = integer.zero ->
+    ( if Num = integer.zero then
         func_error("rational.reciprocal: division by zero")
-    ;
+    else
         r(signum(Num) * Den, integer.abs(Num))
     ).
 
@@ -163,11 +163,11 @@ rational.abs(r(Num, Den)) = r(integer.abs(Num), Den).
 :- func rational_norm(integer, integer) = rational.
 
 rational_norm(Num, Den) = Rat :-
-    ( Den = integer.zero ->
+    ( if Den = integer.zero then
         error("rational.rational_norm: division by zero")
-    ; Num = integer.zero ->
+    else if Num = integer.zero then
         Rat = r(integer.zero, integer.one)
-    ;
+    else
         G    = gcd(Num, Den),
         Num2 = Num * signum(Den),
         Den2 = integer.abs(Den),
@@ -180,33 +180,39 @@ gcd(A, B) = gcd_2(integer.abs(A), integer.abs(B)).
 
 :- func gcd_2(integer, integer) = integer.
 
-gcd_2(A, B) = ( B = integer.zero -> A ; gcd_2(B, A rem B) ).
+gcd_2(A, B) = ( if B = integer.zero then A else gcd_2(B, A rem B) ).
 
 :- func lcm(integer, integer) = integer.
 
 lcm(A, B) =
-    ( A = integer.zero -> integer.zero
-    ; B = integer.zero -> integer.zero
-    ; integer.abs((A // gcd(A, B)) * B)
+    ( if A = integer.zero then
+        integer.zero
+    else if B = integer.zero then
+        integer.zero
+    else
+        integer.abs((A // gcd(A, B)) * B)
     ).
 
 :- func signum(integer) = integer.
 
 signum(N) =
-    ( N = integer.zero -> integer.zero
-    ; N < integer.zero -> -integer.one
-    ; integer.one
+    ( if N = integer.zero then
+        integer.zero
+    else if N < integer.zero then
+        -integer.one
+    else
+        integer.one
     ).
 
 :- func cmp(rational, rational) = comparison_result.
 
 cmp(R1, R2) = Cmp :-
     Diff = R1 - R2,
-    ( is_zero(Diff) ->
+    ( if is_zero(Diff) then
         Cmp = (=)
-    ; is_negative(Diff) ->
+    else if is_negative(Diff) then
         Cmp = (<)
-    ;
+    else
         Cmp = (>)
     ).
 
