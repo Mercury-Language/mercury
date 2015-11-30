@@ -494,10 +494,10 @@ X * Y = R :-
     R = glb(X, Y),
 
     % XXX debugging code.
-    %( R = zero ->
-    ( (X = zero ; Y = zero) ->
+    % ( if R = zero then
+    ( if (X = zero ; Y = zero) then
         impure report_zero_constraint
-    ;
+    else
         true
     ).
 
@@ -564,15 +564,15 @@ X * Y = R :-
 % :- pragma memo(vars_entailed/1).
 
 vars_entailed(R) =
-    ( R = one ->
+    ( if R = one then
         some_vars(empty_vars_set)
-    ; R = zero ->
+    else if R = zero then
         all_vars
-    ;
-        ( R ^ fa = zero ->
+    else
+        ( if R ^ fa = zero then
             (vars_entailed(R ^ tr) `intersection` vars_entailed(R ^ fa))
                 `insert` R ^ value
-        ;
+        else
             vars_entailed(R ^ tr) `intersection` vars_entailed(R ^ fa)
         )
     ).
@@ -580,15 +580,15 @@ vars_entailed(R) =
 % :- pragma memo(vars_disentailed/1).
 
 vars_disentailed(R) =
-    ( R = one ->
+    ( if R = one then
         some_vars(empty_vars_set)
-    ; R = zero ->
+    else if R = zero then
         all_vars
-    ;
-        ( R ^ tr = zero ->
+    else
+        ( if R ^ tr = zero then
             (vars_disentailed(R ^ tr) `intersection`
                 vars_disentailed(R ^ fa)) `insert` R ^ value
-        ;
+        else
             vars_disentailed(R ^ tr) `intersection`
                 vars_disentailed(R ^ fa)
         )
@@ -597,24 +597,24 @@ vars_disentailed(R) =
 % :- pragma memo(definite_vars/3).
 
 definite_vars(R, T, F) :-
-    ( R = one ->
+    ( if R = one then
         T = some_vars(empty_vars_set),
         F = some_vars(empty_vars_set)
-    ; R = zero ->
+    else if R = zero then
         T = all_vars,
         F = all_vars
-    ;
+    else
         definite_vars(R ^ tr, T_tr, F_tr),
         definite_vars(R ^ fa, T_fa, F_fa),
         T0 = T_tr `intersection` T_fa,
         F0 = F_tr `intersection` F_fa,
-        ( R ^ fa = zero ->
+        ( if R ^ fa = zero then
             T = T0 `insert` R ^ value,
             F = F0
-        ; R ^ tr = zero ->
+        else if R ^ tr = zero then
             T = T0,
             F = F0 `insert` R ^ value
-        ;
+        else
             T = T0,
             F = F0
         )
@@ -630,11 +630,11 @@ equivalent_vars(R) = rev_map(equivalent_vars_2(R)).
 % :- pragma memo(equivalent_vars_2/1).
 
 equivalent_vars_2(R) = EQ :-
-    ( R = one ->
+    ( if R = one then
         EQ = some_vars(leader_to_eqvclass(map.init))
-    ; R = zero ->
+    else if R = zero then
         EQ = all_vars
-    ;
+    else
         EQVars = vars_entailed(R ^ tr) `intersection`
                 vars_disentailed(R ^ fa),
         EQ0 = equivalent_vars_2(R ^ tr) `intersection`
@@ -647,9 +647,9 @@ equivalent_vars_2(R) = EQ :-
             % both branches of R must have been zero.
         ;
             EQVars = some_vars(Vars),
-            ( empty(Vars) ->
+            ( if empty(Vars) then
                 EQ = EQ0
-            ;
+            else
                 (
                     EQ0 = all_vars,
                     error("equivalent_vars: unexpected result")
@@ -675,9 +675,9 @@ rev_map(all_vars) = all_vars.
 rev_map(some_vars(leader_to_eqvclass(EQ0))) = some_vars(equiv_vars(EQ)) :-
     map.foldl2(
         ( pred(V::in, Vs::in, Seen0::in, Seen::out, in, out) is det -->
-            ( { Seen0 `contains` V } ->
+            ( if { Seen0 `contains` V } then
                 { Seen = Seen0 }
-            ;
+            else
                 ^ elem(V) := V,
                 sparse_bitset.foldl((pred(Ve::in, in, out) is det -->
                     ^ elem(Ve) := V
@@ -704,17 +704,17 @@ extract_implications(R) = implication_result_to_imp_vars(implications_2(R)).
 % :- pragma memo(implications_2/1).
 
 implications_2(R) = implication_result(Imps, RevImps, DisImps, RevDisImps) :-
-    ( R = one ->
+    ( if R = one then
         Imps = some_vars(imps(map.init)),
         RevImps = Imps,
         DisImps = Imps,
         RevDisImps = Imps
-    ; R = zero ->
+    else if R = zero then
         Imps = all_vars,
         RevImps = Imps,
         DisImps = Imps,
         RevDisImps = Imps
-    ;
+    else
         TTVars = vars_entailed(R ^ tr),
         FFVars = vars_disentailed(R ^ fa),
         TFVars = vars_disentailed(R ^ tr),
@@ -759,8 +759,8 @@ merge_imp_res_2(EntailedVarsA, EntailedVarsB, imps(ImpsA), imps(ImpsB)) =
     KeysB = map.sorted_keys(ImpsB),
     Keys = list.merge_and_remove_dups(KeysA, KeysB),
     Imps = list.foldl((func(V, M) = M ^ elem(V) := VsA `intersection` VsB :-
-            VsA = ( VsA0 = ImpsA ^ elem(V) -> VsA0 ; EntailedVarsA ),
-            VsB = ( VsB0 = ImpsB ^ elem(V) -> VsB0 ; EntailedVarsB )
+            VsA = ( if VsA0 = ImpsA ^ elem(V) then VsA0 else EntailedVarsA ),
+            VsB = ( if VsB0 = ImpsB ^ elem(V) then VsB0 else EntailedVarsB )
         ), Keys, map.init).
 
 :- func implication_result_to_imp_vars(implication_result(T)) = imp_vars(T).
@@ -778,12 +778,12 @@ implication_result_to_imp_vars(ImpRes) = ImpVars :-
 imp_res_to_imp_map(all_vars) = map.init.
 imp_res_to_imp_map(some_vars(imps(IRMap))) =
     map.foldl(func(V, MaybeVs, M) =
-        (
+        ( if
             MaybeVs = some_vars(Vs),
-            \+ empty(Vs)
-        ->
+            not empty(Vs)
+        then
             M ^ elem(V) := Vs
-        ;
+        else
             M
         ), IRMap, init).
 
@@ -796,15 +796,15 @@ remove_implications(ImpRes, R0) = R :-
     robdd_cache(T)::in, robdd_cache(T)::out) is det.
 
 remove_implications_2(ImpRes, True, False, R0, R) -->
-    ( { is_terminal(R0) } ->
+    ( if { is_terminal(R0) } then
         { R = R0 }
-    ; { True `contains` R0 ^ value } ->
+    else if { True `contains` R0 ^ value } then
         remove_implications_2(ImpRes, True, False, R0 ^ tr, R)
-    ; { False `contains` R0 ^ value } ->
+    else if { False `contains` R0 ^ value } then
         remove_implications_2(ImpRes, True, False, R0 ^ fa, R)
-    ; R1 =^ elem(R0) ->
+    else if R1 =^ elem(R0) then
         { R = R1 }
-    ;
+    else
         { TrueT = True `union` ImpRes ^ imps ^ get(R0 ^ value) },
         { FalseT = False `union` ImpRes ^ dis_imps ^ get(R0 ^ value) },
         remove_implications_2(ImpRes, TrueT, FalseT, R0 ^ tr, RT),
@@ -820,10 +820,10 @@ remove_implications_2(ImpRes, True, False, R0, R) -->
 :- func get(var(T), imp_map(T)) = vars(T).
 
 get(K, IM) =
-    ( Vs = IM ^ elem(K) ->
+    ( if Vs = IM ^ elem(K) then
         % In case Vs doesn't already contain K
         Vs `insert` K
-    ;
+    else
         init
     ).
 
@@ -845,13 +845,13 @@ get(K, IM) =
 :- instance intersectable(leader_to_eqvclass(T)) where [
     ( leader_to_eqvclass(MapA) `intersection` leader_to_eqvclass(MapB) =
         leader_to_eqvclass(map.foldl((func(V, VsA, M) =
-            ( Vs = VsA `intersect` (MapB ^ elem(V)) ->
-                ( empty(Vs) ->
+            ( if Vs = VsA `intersect` (MapB ^ elem(V)) then
+                ( if empty(Vs) then
                     M
-                ;
+                else
                     M ^ elem(V) := Vs
                 )
-            ;
+            else
                 M
             )), MapA, map.init))
     )
@@ -908,21 +908,21 @@ some_vars(Vs) `insert` V = some_vars(Vs `insert` V).
 % :- pragma memo(dnf/1).
 
 dnf(R) =
-    ( R = zero ->
+    ( if R = zero then
         []
-    ; R = one ->
+    else if R = one then
         [[]]
-    ;
+    else
         list.map(func(L) = [pos(R ^ value) | L], dnf(R ^ tr)) ++
         list.map(func(L) = [neg(R ^ value) | L], dnf(R ^ fa))
     ).
 
 % cnf(R) =
-%   ( R = zero ->
+%   ( if R = zero then
 %       [[]]
-%   ; R = one ->
+%   else if R = one then
 %       []
-%   ;
+%   else
 %       [pos(R ^ value) | cnf(R ^ tr)] `merge_cnf`
 %       [neg(R ^ value) | cnf(R ^ fa)]
 %   ).
@@ -935,7 +935,7 @@ dnf(R) =
 %       Bs
 %   ; Bs = [] ->
 %       As
-%   ; As = [[]] ->
+%   ; if As = [[]] ->
 %       As
 %   ; Bs = [[]] % XXX check
 %   ;
@@ -953,11 +953,11 @@ dnf(R) =
 % ").
 
 print_robdd(F) -->
-    ( { F = one } ->
+    ( if { F = one } then
         io.write_string("TRUE\n")
-    ; { F = zero } ->
+    else if { F = zero } then
         io.write_string("FALSE\n")
-    ;
+    else
         { init(Trues) },
         { init(Falses) },
         print_robdd_2(F, Trues, Falses)
@@ -967,23 +967,23 @@ print_robdd(F) -->
     set_unordlist(var(T))::in, io::di, io::uo) is det.
 
 print_robdd_2(F, Trues, Falses) -->
-    ( { F = one } ->
+    ( if { F = one } then
         { All = to_sorted_list(Trues `union` Falses) },
         io.write_string("("),
         list.foldl((pred(Var::in, di, uo) is det -->
-            { Var `set_unordlist.member` Trues ->
+            { if Var `set_unordlist.member` Trues then
                 C = ' '
-            ;
+            else
                 C = ('~')
             },
             { term.var_to_int(Var, N) },
             io.format(" %c%02d", [c(C), i(N)])
         ), All),
         io.write_string(")\n")
-    ; { F \= zero } ->
+    else if { F \= zero } then
         print_robdd_2(F ^ tr, Trues `insert` F ^ value, Falses),
         print_robdd_2(F ^ fa, Trues, Falses `insert` F ^ value)
-    ;
+    else
         % Don't do anything for zero terminal
         []
     ).
@@ -1008,9 +1008,9 @@ print_robdd_2(F, Trues, Falses) -->
 % :- pragma memo(rename_vars/2).
 
 rename_vars(Subst, F) =
-    ( is_terminal(F) ->
+    ( if is_terminal(F) then
         F
-    ;
+    else
         ite(var(Subst(F ^ value)),
             rename_vars(Subst, F ^ tr),
             rename_vars(Subst, F ^ fa))
@@ -1093,9 +1093,9 @@ at_most_one_of_2(Vars, OneOf0, NoneOf0) = R :-
 % :- pragma memo(var_restrict_true/2).
 
 var_restrict_true(V, F0) = F :-
-    ( is_terminal(F0) ->
+    ( if is_terminal(F0) then
         F = F0
-    ;
+    else
         compare(R, F0 ^ value, V),
         (
             R = (<),
@@ -1114,9 +1114,9 @@ var_restrict_true(V, F0) = F :-
 % :- pragma memo(var_restrict_false/2).
 
 var_restrict_false(V, F0) = F :-
-    ( is_terminal(F0) ->
+    ( if is_terminal(F0) then
         F = F0
-    ;
+    else
         compare(R, F0 ^ value, V),
         (
             R = (<),
@@ -1146,26 +1146,26 @@ restrict_true_false_vars(TrueVars, FalseVars, R0) = R :-
     robdd_cache(T)::in, robdd_cache(T)::out) is det.
 
 restrict_true_false_vars_2(TrueVars0, FalseVars0, R0, R, Seen0, Seen) :-
-    ( is_terminal(R0) ->
+    ( if is_terminal(R0) then
         R = R0,
         Seen = Seen0
-    ; empty(TrueVars0), empty(FalseVars0) ->
+    else if empty(TrueVars0), empty(FalseVars0) then
         R = R0,
         Seen = Seen0
-    ; search(Seen0, R0, R1) ->
+    else if search(Seen0, R0, R1) then
         R = R1,
         Seen = Seen0
-    ;
+    else
         Var = R0 ^ value,
         TrueVars = TrueVars0 `remove_leq` Var,
         FalseVars = FalseVars0 `remove_leq` Var,
-        ( TrueVars0 `contains` Var ->
+        ( if TrueVars0 `contains` Var then
             restrict_true_false_vars_2(TrueVars, FalseVars,
                 R0 ^ tr, R, Seen0, Seen2)
-        ; FalseVars0 `contains` Var ->
+        else if FalseVars0 `contains` Var then
             restrict_true_false_vars_2(TrueVars, FalseVars,
                 R0 ^ fa, R, Seen0, Seen2)
-        ;
+        else
             restrict_true_false_vars_2(TrueVars, FalseVars,
                 R0 ^ tr, R_tr, Seen0, Seen1),
             restrict_true_false_vars_2(TrueVars, FalseVars,
@@ -1195,25 +1195,25 @@ restrict_filter(P, D, F0) = F :-
     in, out) is det.
 
 filter_2(P, D, F0, F, SeenVars0, SeenVars, SeenNodes0, SeenNodes) :-
-    ( is_terminal(F0) ->
+    ( if is_terminal(F0) then
         F = F0,
         SeenVars = SeenVars0,
         SeenNodes = SeenNodes0
-    ; \+ D(F0 ^ value) ->
+    else if not D(F0 ^ value) then
         F = F0,
         SeenVars = SeenVars0,
         SeenNodes = SeenNodes0
-    ; map.search(SeenNodes0, F0, F1) ->
+    else if map.search(SeenNodes0, F0, F1) then
         F = F1,
         SeenVars = SeenVars0,
         SeenNodes = SeenNodes0
-    ;
+    else
         filter_2(P, D, F0 ^ tr, Ftrue, SeenVars0, SeenVars1, SeenNodes0,
             SeenNodes1),
         filter_2(P, D, F0 ^ fa, Ffalse, SeenVars1, SeenVars2, SeenNodes1,
             SeenNodes2),
         V = F0 ^ value,
-        ( map.search(SeenVars0, V, SeenF) ->
+        ( if map.search(SeenVars0, V, SeenF) then
             SeenVars = SeenVars2,
             (
                 SeenF = yes,
@@ -1222,10 +1222,10 @@ filter_2(P, D, F0, F, SeenVars0, SeenVars, SeenNodes0, SeenNodes) :-
                 SeenF = no,
                 F = Ftrue + Ffalse
             )
-        ; P(V) ->
+        else if P(V) then
             F = make_node(V, Ftrue, Ffalse),
             map.det_insert(V, yes, SeenVars2, SeenVars)
-        ;
+        else
             F = Ftrue + Ffalse,
             map.det_insert(V, no, SeenVars2, SeenVars)
         ),
@@ -1233,15 +1233,15 @@ filter_2(P, D, F0, F, SeenVars0, SeenVars, SeenNodes0, SeenNodes) :-
     ).
 
 squeeze_equiv(equiv_vars(LeaderMap), R0) =
-    ( Max = map.max_key(LeaderMap) ->
+    ( if Max = map.max_key(LeaderMap) then
         restrict_filter(
             ( pred(V::in) is semidet :-
                 map.search(LeaderMap, V, L) => L = V
             ),
             ( pred(V::in) is semidet :-
-                \+ compare(>, V, Max)
+                not compare(>, V, Max)
             ), R0)
-    ;
+    else
         R0
     ).
 
@@ -1252,12 +1252,12 @@ make_equiv(equiv_vars(LeaderMap)) =
 
 make_equiv_2([], _) = one.
 make_equiv_2([Var - LeaderVar | Vs], Trues) = Robdd :-
-    ( Var = LeaderVar ->
+    ( if Var = LeaderVar then
         Robdd = make_node(Var, make_equiv_2(Vs, Trues `insert` Var),
             make_equiv_2(Vs, Trues))
-    ; Trues `contains` LeaderVar ->
+    else if Trues `contains` LeaderVar then
         Robdd = make_node(Var, make_equiv_2(Vs, Trues), zero)
-    ;
+    else
         var_to_int(Var, VarNum),
         var_to_int(LeaderVar, LeaderVarNum),
         require(LeaderVarNum < VarNum, "make_equiv_2: unordered vars"),
@@ -1278,14 +1278,14 @@ add_equivalences(equiv_vars(LeaderMap), R0) = R :-
 
 add_equivalences_2([], _, R, R, !Cache).
 add_equivalences_2([Var - LeaderVar | Vs], Trues, R0, R, !Cache) :-
-    ( R0 = zero ->
+    ( if R0 = zero then
         R = zero
-    ; R1 = !.Cache ^ elem(R0) ->
+    else if R1 = !.Cache ^ elem(R0) then
         R = R1
-    ; R0 = one ->
+    else if R0 = one then
         R = make_equiv_2([Var - LeaderVar | Vs], Trues),
         !:Cache = !.Cache ^ elem(R0) := R
-    ; compare((<), R0 ^ value, Var) ->
+    else if compare((<), R0 ^ value, Var) then
         add_equivalences_2([Var - LeaderVar | Vs], Trues,
             R0 ^ tr, Rtr, !Cache),
         add_equivalences_2([Var - LeaderVar | Vs], Trues,
@@ -1293,19 +1293,19 @@ add_equivalences_2([Var - LeaderVar | Vs], Trues, R0, R, !Cache) :-
         % This step can make R exponentially bigger than R0.
         R = make_node(R0 ^ value, Rtr, Rfa),
         !:Cache = !.Cache ^ elem(R0) := R
-    ; compare((<), Var, R0 ^ value) ->
-        ( LeaderVar = Var ->
+    else if compare((<), Var, R0 ^ value) then
+        ( if LeaderVar = Var then
             add_equivalences_2(Vs, Trues `insert` Var,
                 R0, Rtr, !Cache),
             add_equivalences_2(Vs, Trues, R0, Rfa, !Cache),
             % This step can make R exponentially bigger than R0.
             R = make_node(Var, Rtr, Rfa),
             !:Cache = !.Cache ^ elem(R0) := R
-        ; Trues `contains` LeaderVar ->
+        else if Trues `contains` LeaderVar then
             add_equivalences_2(Vs, Trues, R0, Rtr, !Cache),
             R = make_node(Var, Rtr, zero),
             !:Cache = !.Cache ^ elem(R0) := R
-        ;
+        else
             add_equivalences_2(Vs, Trues, R0, Rfa, !Cache),
             % Since LeaderVar < Var, and every leader must
             % appear in an equivalence with itself, an ancestor
@@ -1315,16 +1315,16 @@ add_equivalences_2([Var - LeaderVar | Vs], Trues, R0, R, !Cache) :-
             R = make_node(Var, zero, Rfa),
             !:Cache = !.Cache ^ elem(R0) := R
         )
-    ; LeaderVar = Var ->
+    else if LeaderVar = Var then
         add_equivalences_2(Vs, Trues `insert` Var, R0 ^ tr, Rtr, !Cache),
         add_equivalences_2(Vs, Trues, R0 ^ fa, Rfa, !Cache),
         R = make_node(Var, Rtr, Rfa),
         !:Cache = !.Cache ^ elem(R0) := R
-    ; Trues `contains` LeaderVar ->
+    else if Trues `contains` LeaderVar then
         add_equivalences_2(Vs, Trues, R0 ^ tr, Rtr, !Cache),
         R = make_node(Var, Rtr, zero),
         !:Cache = !.Cache ^ elem(R0) := R
-    ;
+    else
         add_equivalences_2(Vs, Trues, R0 ^ fa, Rfa, !Cache),
         % Since LeaderVar < Var, and every leader must
         % appear in an equivalence with itself, an ancestor
@@ -1377,13 +1377,13 @@ size(F, Nodes, Depth, Vars) :-
         set_bbbtree(robdd(T))::in, set_bbbtree(robdd(T))::out) is det.
 
 size_2(F, Nodes0, Nodes, Depth0, Depth, Val0, Seen0, Seen) :-
-    ( is_terminal(F) ->
+    ( if is_terminal(F) then
         Nodes = Nodes0, Depth = Depth0, Seen = Seen0
-    ; term.var_to_int(F ^ value) =< Val0 ->
+    else if term.var_to_int(F ^ value) =< Val0 then
         error("robdd invariant broken (possible loop)")
-    ; F `member` Seen0 ->
+    else if F `member` Seen0 then
         Nodes = Nodes0, Depth = Depth0, Seen = Seen0
-    ;
+    else
         Val = term.var_to_int(F ^ value),
         size_2(F ^ tr, Nodes0+1, Nodes1, Depth0, Depth1, Val, Seen0, Seen1),
         size_2(F ^ fa, Nodes1, Nodes, Depth0, Depth2, Val, Seen1, Seen2),
@@ -1393,9 +1393,9 @@ size_2(F, Nodes0, Nodes, Depth0, Depth, Val0, Seen0, Seen) :-
     ).
 
 var_is_constrained(F, V) :-
-    ( is_terminal(F) ->
+    ( if is_terminal(F) then
         fail
-    ;
+    else
         compare(R, F ^ value, V),
         (
             R = (<),
@@ -1415,9 +1415,9 @@ vars_are_constrained(F, Vs) :-
 vars_are_constrained_2(_, []).
 vars_are_constrained_2(F, Vs) :-
     Vs = [V | Vs1],
-    ( is_terminal(F) ->
+    ( if is_terminal(F) then
         fail
-    ;
+    else
         compare(R, F ^ value, V),
         (
             R = (<),
@@ -1472,13 +1472,13 @@ robdd_to_dot(Robdd, WV) -->
     io::di, io::uo) is det.
 
 robdd_to_dot_2(Robdd, WV, Seen0, Seen, Ranks0, Ranks) -->
-    ( { is_terminal(Robdd) } ->
+    ( if { is_terminal(Robdd) } then
         { Seen = Seen0 },
         { Ranks = Ranks0 }
-    ; { Robdd `member` Seen0 } ->
+    else if { Robdd `member` Seen0 } then
         { Seen = Seen0 },
         { Ranks = Ranks0 }
-    ;
+    else
         robdd_to_dot_2(Robdd ^ tr, WV, Seen0, Seen1, Ranks0, Ranks1),
         robdd_to_dot_2(Robdd ^ fa, WV, Seen1, Seen2, Ranks1, Ranks2),
         write_node(Robdd, WV),
@@ -1501,11 +1501,11 @@ write_node(R, WV) -->
 :- func node_name(robdd(T)) = string.
 
 node_name(R) =
-    ( R = one ->
+    ( if R = one then
         "true"
-    ; R = zero ->
+    else if R = zero then
         "false"
-    ;
+    else
         string.format("node%d", [i(node_num(R))])
     ).
 
@@ -1520,11 +1520,11 @@ node_name(R) =
 :- func terminal_name(robdd(T)) = string.
 
 terminal_name(R) =
-    ( R = zero ->
+    ( if R = zero then
         "0"
-    ; R = one ->
+    else if R = one then
         "1"
-    ;
+    else
         ""
     ).
 
@@ -1532,12 +1532,12 @@ terminal_name(R) =
     io::di, io::uo) is det.
 
 write_edge(R0, R1, Arc) -->
-    ( { is_terminal(R1) } ->
+    ( if { is_terminal(R1) } then
         []
-    ;
+    else
         io.format("""%s"":%s -> ""%s"":f1 [label=""%s""];\n",
-            [s(node_name(R0)), s(Arc = yes -> "f0" ; "f2"),
-            s(node_name(R1)), s(Arc = yes -> "t" ; "f")])
+            [s(node_name(R0)), s(if Arc = yes then "f0" else "f2"),
+            s(node_name(R1)), s(if Arc = yes then "t" else "f")])
     ).
 
 labelling(Vars, R, TrueVars, FalseVars) :-
@@ -1558,10 +1558,10 @@ labelling_2([V | Vs], R0, TrueVars0, TrueVars, FalseVars0, FalseVars) :-
     labelling_2(Vs, R, TrueVars0 `insert` V, TrueVars, FalseVars0, FalseVars).
 
 minimal_model(Vars, R, TrueVars, FalseVars) :-
-    ( empty(Vars) ->
+    ( if empty(Vars) then
         TrueVars = empty_vars_set,
         FalseVars = empty_vars_set
-    ;
+    else
         minimal_model_2(to_sorted_list(Vars), R, empty_vars_set,
             TrueVars0, empty_vars_set, FalseVars0),
         (
@@ -1579,21 +1579,21 @@ minimal_model(Vars, R, TrueVars, FalseVars) :-
 minimal_model_2([], _, TrueVars, TrueVars, FalseVars, FalseVars).
 minimal_model_2([V | Vs], R0, TrueVars0, TrueVars, FalseVars0, FalseVars) :-
     R1 = var_restrict_false(V, R0),
-    ( R1 \= zero ->
-        minimal_model_2(Vs, R1, TrueVars0, TrueVars,
-            FalseVars0 `insert` V, FalseVars)
-    ;
+    ( if R1 = zero then
         R2 = var_restrict_true(V, R0),
         R2 \= zero,
         minimal_model_2(Vs, R2, TrueVars0 `insert` V, TrueVars,
             FalseVars0, FalseVars)
+    else
+        minimal_model_2(Vs, R1, TrueVars0, TrueVars,
+            FalseVars0 `insert` V, FalseVars)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pragma promise_pure(clear_caches/2).
-clear_caches -->
-    { impure clear_caches }.
+clear_caches(!IO) :-
+    impure clear_caches.
 
 :- pragma no_inline(clear_caches/0).
 :- pragma foreign_proc("C",

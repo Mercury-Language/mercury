@@ -329,16 +329,16 @@ arg(Term, NonCanon, Index, Argument) :-
         univ_arg_can(Term, Index, Univ)
     ;
         NonCanon = include_details_cc,
-        error("deconstruct.arg called with include_details_cc")
+        unexpected($module, $pred, "called with include_details_cc")
     ),
     Argument = univ_value(Univ).
 
 arg_cc(Term, Index, MaybeArg) :-
     univ_arg_idcc(Term, Index, dummy_univ, Univ, Success),
-    ( Success \= 0 ->
-        MaybeArg = 'new arg'(univ_value(Univ))
-    ;
+    ( if Success = 0 then
         MaybeArg = no_arg
+    else
+        MaybeArg = 'new arg'(univ_value(Univ))
     ).
 
 named_arg(Term, NonCanon, Name, Argument) :-
@@ -350,16 +350,16 @@ named_arg(Term, NonCanon, Name, Argument) :-
         univ_named_arg_can(Term, Name, Univ)
     ;
         NonCanon = include_details_cc,
-        error("deconstruct.named_arg called with include_details_cc")
+        unexpected($module, $pred, "called with include_details_cc")
     ),
     Argument = univ_value(Univ).
 
 named_arg_cc(Term, Name, MaybeArg) :-
     univ_named_arg_idcc(Term, Name, dummy_univ, Univ, Success),
-    ( Success \= 0 ->
-        MaybeArg = 'new arg'(univ_value(Univ))
-    ;
+    ( if Success = 0 then
         MaybeArg = no_arg
+    else
+        MaybeArg = 'new arg'(univ_value(Univ))
     ).
 
     % This is a dummy value of type `univ'. It is used only to ensure that
@@ -373,31 +373,31 @@ dummy_univ = univ(0).
 det_arg(Term, NonCanon, Index, Argument) :-
     (
         NonCanon = do_not_allow,
-        ( univ_arg_dna(Term, Index, Univ0) ->
+        ( if univ_arg_dna(Term, Index, Univ0) then
             Univ = Univ0
-        ;
-            error("det_arg: argument number out of range")
+        else
+            unexpected($module, $pred, "argument number out of range")
         )
     ;
         NonCanon = canonicalize,
-        ( univ_arg_can(Term, Index, Univ0) ->
+        ( if univ_arg_can(Term, Index, Univ0) then
             Univ = Univ0
-        ;
-            error("det_arg: argument number out of range")
+        else
+            unexpected($module, $pred, "argument number out of range")
         )
     ;
         NonCanon = include_details_cc,
         univ_arg_idcc(Term, Index, dummy_univ, Univ0, Success),
-        ( Success \= 0 ->
+        ( if Success = 0 then
+            unexpected($module, $pred, "argument number out of range")
+        else
             Univ = Univ0
-        ;
-            error("det_arg: argument number out of range")
         )
     ),
     Argument = univ_value(Univ).
 
 det_named_arg(Term, NonCanon, Name, Argument) :-
-    (
+    ( if
         (
             NonCanon = do_not_allow,
             univ_named_arg_dna(Term, Name, Univ)
@@ -407,16 +407,16 @@ det_named_arg(Term, NonCanon, Name, Argument) :-
         ;
             NonCanon = include_details_cc,
             univ_named_arg_idcc(Term, Name, dummy_univ, Univ0, Success),
-            ( Success \= 0 ->
+            ( if Success = 0 then
+                unexpected($module, $pred, "no argument with that name")
+            else
                 Univ = Univ0
-            ;
-                error("det_named_arg: no argument with that name")
             )
         )
-    ->
+    then
         Argument = univ_value(Univ)
-    ;
-        error("det_named_arg: no argument with that name")
+    else
+        unexpected($module, $pred, "no argument with that name")
     ).
 
 deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
@@ -432,10 +432,10 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     ).
 
 deconstruct_du(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.deconstruct_du(Term, NonCanon,
             FunctorNumber, Arity, Arguments)
-    ;
+    else
         deconstruct_du_2(Term, NonCanon, FunctorNumber, Arity, Arguments)
     ).
 
@@ -447,23 +447,25 @@ deconstruct_du(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
 :- mode deconstruct_du_2(in, in, out, out, out) is cc_nondet.
 
 deconstruct_du_2(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
-    ( _ = construct.num_functors(type_of(Term)) ->
+    ( if _ = construct.num_functors(type_of(Term)) then
         (
             NonCanon = do_not_allow,
             deconstruct_dna(Term, _, FunctorNumber, Arity, Arguments)
         ;
             NonCanon = canonicalize,
-            error("deconstruct_du: canonicalize not supported")
+            unexpected($module, "deconstruct_du",
+                "canonicalize not supported")
         ;
             NonCanon = include_details_cc,
             deconstruct_idcc(Term, _, FunctorNumber, Arity, Arguments)
         ),
-        ( FunctorNumber >= 0 ->
+        ( if FunctorNumber >= 0 then
             true
-        ;
-            error("deconstruct_du: internal error (recompile needed?)")
+        else
+            unexpected($module, "deconstruct_du",
+                "internal error (recompile needed?)")
         )
-    ;
+    else
         fail
     ).
 
@@ -476,14 +478,14 @@ limited_deconstruct(Term, NonCanon, MaxArity, Functor, Arity, Arguments) :-
         limited_deconstruct_can(Term, MaxArity, Functor, Arity, Arguments)
     ;
         NonCanon = include_details_cc,
-        error("limited_deconstruct called with include_details_cc")
+        unexpected($module, $pred, "called with include_details_cc")
     ).
 
 limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
     limited_deconstruct_idcc(Term, MaxArity, Functor, Arity, Arguments),
-    ( Arity =< MaxArity ->
+    ( if Arity =< MaxArity then
         MaybeResult = yes({Functor, Arity, Arguments})
-    ;
+    else
         MaybeResult = no
     ).
 
@@ -596,17 +598,17 @@ SUCCESS_INDICATOR = (FunctorNumber >= 0);
 }").
 
 functor_number(Term, FunctorNumber, Arity) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.functor_number(Term, FunctorNumber, Arity)
-    ;
+    else
         private_builtin.sorry("deconstruct.functor_number")
     ).
 
 functor_number_cc(Term, FunctorNumber, Arity) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.functor_number_cc(Term, FunctorNumber,
             Arity)
-    ;
+    else
         rtti_implementation.functor_number_cc(Term, FunctorNumber, Arity)
     ).
 
@@ -802,10 +804,10 @@ univ_arg_can(Term, Index, Arg) :-
 univ_arg_idcc(Term, Index, DummyUniv, Argument, Success) :-
     local_deconstruct(Term, include_details_cc, _Functor, _FunctorNumber,
         _Arity, Arguments),
-    ( list.index0(Arguments, Index, Arg) ->
+    ( if list.index0(Arguments, Index, Arg) then
         Argument = Arg,
         Success = 1
-    ;
+    else
         Argument = DummyUniv,
         Success = 0
     ).
@@ -817,16 +819,18 @@ univ_named_arg_can(Term, Name, Argument) :-
     local_univ_named_arg(Term, canonicalize, Name, Argument).
 
 univ_named_arg_idcc(Term, Name, DummyUniv, Argument, Success) :-
-    ( local_univ_named_arg(Term, include_details_cc, Name, Arg) ->
+    ( if local_univ_named_arg(Term, include_details_cc, Name, Arg) then
         Argument = Arg,
         Success = 1
-    ;
-        Argument = DummyUniv,
-        Success = 0
-    ;
-        % Force cc_multi.
-        Argument = DummyUniv,
-        Success = 0
+    else
+        (
+            Argument = DummyUniv,
+            Success = 0
+        ;
+            % Force cc_multi.
+            Argument = DummyUniv,
+            Success = 0
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -1058,12 +1062,12 @@ limited_deconstruct_idcc(Term, _MaxArity, Functor, Arity, Arguments) :-
 :- mode local_deconstruct(in, in, out, out, out, out) is cc_multi.
 
 local_deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.deconstruct(Term, NonCanon, Functor, Arity,
             Arguments),
         % XXX incomplete
         FunctorNumber = 0
-    ;
+    else
         rtti_implementation.deconstruct(Term, NonCanon, Functor, FunctorNumber,
             Arity, Arguments)
     ).
@@ -1075,9 +1079,9 @@ local_deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
     is semidet. % conceptually committed-choice
 
 local_univ_named_arg(Term, NonCanon, Name, Argument) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         private_builtin.sorry("local_univ_named_arg")
-    ;
+    else
         rtti_implementation.univ_named_arg(Term, NonCanon, Name, Argument)
     ).
 

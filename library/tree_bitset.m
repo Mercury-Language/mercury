@@ -559,9 +559,9 @@ enum_to_index(Elem) = Index :-
 :- func index_to_enum(int) = T <= enum(T).
 
 index_to_enum(Index) = Elem :-
-    ( Elem0 = enum.from_int(Index) ->
+    ( if Elem0 = enum.from_int(Index) then
         Elem = Elem0
-    ;
+    else
         % We only apply `from_int/1' to integers returned by `to_int/1',
         % so it should never fail.
         unexpected($module, $pred, "`enum.from_int/1' failed")
@@ -585,10 +585,13 @@ index_to_enum(Index) = Elem :-
 
 wrap_tree_bitset(NodeList) = Set :-
     trace [compile_time(flag("tree-bitset-integrity"))] (
-        ( integrity(no, NodeList) = no ->
-            unexpected($module, $pred, "integrity failed")
+        MaybeBounds = no,
+        Integrity = integrity(MaybeBounds, NodeList),
+        (
+            Integrity = yes
         ;
-            true
+            Integrity = no,
+            unexpected($module, $pred, "integrity failed")
         )
     ),
     Set = tree_bitset(NodeList).
@@ -616,12 +619,12 @@ integrity(MaybeBounds, NodeList) = OK :-
                 LimitOK = yes
             ;
                 MaybeBounds = yes(Init - Limit),
-                (
+                ( if
                     Init = ParentInitOffset,
                     Limit = ParentLimitOffset
-                ->
+                then
                     LimitOK = yes
-                ;
+                else
                     LimitOK = no
                 )
             ),
@@ -667,12 +670,12 @@ integrity(MaybeBounds, NodeList) = OK :-
                 LimitOK = yes
             ;
                 MaybeBounds = yes(Init - Limit),
-                (
+                ( if
                     Init = ParentInitOffset,
                     Limit = ParentLimitOffset
-                ->
+                then
                     LimitOK = yes
-                ;
+                else
                     LimitOK = no
                 )
             ),
@@ -692,11 +695,11 @@ integrity(MaybeBounds, NodeList) = OK :-
 integrity_leaf_nodes([], _Init, _Limit) = yes.
 integrity_leaf_nodes([Head | Tail], Init, Limit) = OK :-
     Offset = Head ^ leaf_offset,
-    ( Offset rem bits_per_int > 0 ->
+    ( if Offset rem bits_per_int > 0 then
         OK = no
-    ; \+ (Init =< Offset, Offset + bits_per_int - 1 < Limit) ->
+    else if not (Init =< Offset, Offset + bits_per_int - 1 < Limit) then
         OK = no
-    ;
+    else
         OK = integrity_leaf_nodes(Tail, Init, Limit)
     ).
 
@@ -707,28 +710,28 @@ integrity_interior_nodes([Head | Tail], Level, Init, Limit) = OK :-
     Head = interior_node(NodeInit, NodeLimit, Components),
     CalcLimit = NodeInit +
         unchecked_left_shift(bits_per_int, Level * bits_per_level),
-    ( NodeInit rem bits_per_int > 0 ->
+    ( if NodeInit rem bits_per_int > 0 then
         OK = no
-    ; NodeLimit rem bits_per_int > 0 ->
+    else if NodeLimit rem bits_per_int > 0 then
         OK = no
-    ; NodeLimit \= CalcLimit ->
+    else if NodeLimit \= CalcLimit then
         OK = no
-    ; \+ (Init =< NodeInit, NodeLimit - 1 < Limit) ->
+    else if not (Init =< NodeInit, NodeLimit - 1 < Limit) then
         OK = no
-    ;
+    else
         (
             Components = leaf_list(LeafNodes),
-            ( Level = 1 ->
+            ( if Level = 1 then
                 SubOK = integrity_leaf_nodes(LeafNodes, NodeInit, NodeLimit)
-            ;
+            else
                 SubOK = no
             )
         ;
             Components = interior_list(CompLevel, InteriorNodes),
-            ( CompLevel = Level - 1 ->
+            ( if CompLevel = Level - 1 then
                 SubOK = integrity_interior_nodes(InteriorNodes, CompLevel,
                     NodeInit, NodeLimit)
-            ;
+            else
                 SubOK = no
             )
         ),
@@ -762,9 +765,9 @@ expand_range(Index, SubNodes, CurLevel, CurInitOffset, CurLimitOffset,
         (
             Range = unchecked_left_shift(bits_per_int,
                 CurLevel * bits_per_level),
-            ( CurLimitOffset - CurInitOffset = Range ->
+            ( if CurLimitOffset - CurInitOffset = Range then
                 true
-            ;
+            else
                 unexpected($module, $pred, "bad range for level")
             )
         ;
@@ -774,13 +777,13 @@ expand_range(Index, SubNodes, CurLevel, CurInitOffset, CurLimitOffset,
     CurNode = interior_node(CurInitOffset, CurLimitOffset, SubNodes),
     range_of_parent_node(CurInitOffset, CurLevel,
         ParentInitOffset, ParentLimitOffset),
-    (
+    ( if
         ParentInitOffset =< Index,
         Index < ParentLimitOffset
-    ->
+    then
         TopNode = CurNode,
         TopLevel = CurLevel
-    ;
+    else
         expand_range(Index, interior_list(CurLevel, [CurNode]), CurLevel + 1,
             ParentInitOffset, ParentLimitOffset, TopNode, TopLevel)
     ).
@@ -815,9 +818,9 @@ raise_leaves_to_level(TargetLevel, LeafNode, LeafNodes, TopNode) :-
     interior_node::in, interior_node::out) is det.
 
 raise_one_interior_to_level(TargetLevel, CurLevel, CurNode, TopNode) :-
-    ( CurLevel = TargetLevel ->
+    ( if CurLevel = TargetLevel then
         TopNode = CurNode
-    ;
+    else
         range_of_parent_node(CurNode ^ init_offset, CurLevel,
             ParentInitOffset, ParentLimitOffset),
         NodeList = interior_list(CurLevel, [CurNode]),
@@ -833,10 +836,10 @@ raise_one_interior_to_level(TargetLevel, CurLevel, CurNode, TopNode) :-
 
 raise_interiors_to_level(TargetLevel, CurLevel, CurNodesHead, CurNodesTail,
         TopNodesHead, TopNodesTail) :-
-    ( CurLevel = TargetLevel ->
+    ( if CurLevel = TargetLevel then
         TopNodesHead = CurNodesHead,
         TopNodesTail = CurNodesTail
-    ;
+    else
         range_of_parent_node(CurNodesHead ^ init_offset, CurLevel,
             ParentInitOffset, ParentLimitOffset),
         NodeList = interior_list(CurLevel, [CurNodesHead | CurNodesTail]),
@@ -860,7 +863,7 @@ raise_to_common_level(CurLevel, HeadA, TailA, HeadB, TailB,
         ParentInitOffsetA, ParentLimitOffsetA),
     range_of_parent_node(HeadB ^ init_offset, CurLevel,
         ParentInitOffsetB, ParentLimitOffsetB),
-    ( ParentInitOffsetA = ParentInitOffsetB ->
+    ( if ParentInitOffsetA = ParentInitOffsetB then
         trace [compile_time(flag("tree-bitset-checks"))] (
             expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
                 $module, $pred, "limit mismatch")
@@ -870,7 +873,7 @@ raise_to_common_level(CurLevel, HeadA, TailA, HeadB, TailB,
         TopHeadB = HeadB,
         TopTailB = TailB,
         TopLevel = CurLevel
-    ;
+    else
         ComponentsA = interior_list(CurLevel, [HeadA | TailA]),
         ParentA = interior_node(ParentInitOffsetA, ParentLimitOffsetA,
             ComponentsA),
@@ -922,7 +925,7 @@ is_non_empty(Set) :-
 
 equal(SetA, SetB) :-
     trace [compile_time(flag("tree-bitset-integrity"))] (
-        (
+        ( if
             to_sorted_list(SetA, ListA),
             to_sorted_list(SetB, ListB),
             (
@@ -930,9 +933,9 @@ equal(SetA, SetB) :-
             <=>
                  ListA = ListB
             )
-         ->
+         then
              true
-        ;
+        else
              unexpected($module, $pred, "set and list equality differ")
         )
     ),
@@ -996,13 +999,13 @@ insert(Set0, Elem) = Set :-
             LeafList0 = [Leaf0 | _],
             range_of_parent_node(Leaf0 ^ leaf_offset, 0,
                 ParentInitOffset, ParentLimitOffset),
-            (
+            ( if
                 ParentInitOffset =< Index,
                 Index < ParentLimitOffset
-            ->
+            then
                 leaflist_insert(Index, LeafList0, LeafList),
                 Set = wrap_tree_bitset(leaf_list(LeafList))
-            ;
+            else
                 expand_range(Index, List0, 1,
                     ParentInitOffset, ParentLimitOffset,
                     InteriorNode1, InteriorLevel1),
@@ -1023,15 +1026,15 @@ insert(Set0, Elem) = Set :-
             InteriorList0 = [InteriorNode0 | _],
             range_of_parent_node(InteriorNode0 ^ init_offset, InteriorLevel,
                 ParentInitOffset, ParentLimitOffset),
-            (
+            ( if
                 ParentInitOffset =< Index,
                 Index < ParentLimitOffset
-            ->
+            then
                 interiorlist_insert(Index, InteriorLevel,
                     InteriorList0, InteriorList),
                 Set = wrap_tree_bitset(
                     interior_list(InteriorLevel, InteriorList))
-            ;
+            else
                 expand_range(Index, List0, InteriorLevel + 1,
                     ParentInitOffset, ParentLimitOffset,
                     InteriorNode1, InteriorLevel1),
@@ -1051,18 +1054,18 @@ leaflist_insert(Index, [], Leaves) :-
     Leaves = [make_leaf_node(Offset, Bits)].
 leaflist_insert(Index, Leaves0 @ [Head0 | Tail0], Leaves) :-
     Offset0 = Head0 ^ leaf_offset,
-    ( Index < Offset0 ->
+    ( if Index < Offset0 then
         bits_for_index(Index, Offset, Bits),
         Leaves = [make_leaf_node(Offset, Bits) | Leaves0]
-    ; BitToSet = Index - Offset0, BitToSet < bits_per_int ->
+    else if BitToSet = Index - Offset0, BitToSet < bits_per_int then
         Bits0 = Head0 ^ leaf_bits,
-        ( get_bit(Bits0, BitToSet) \= 0 ->
-            Leaves = Leaves0
-        ;
+        ( if get_bit(Bits0, BitToSet) = 0 then
             Bits = set_bit(Bits0, BitToSet),
             Leaves = [make_leaf_node(Offset0, Bits) | Tail0]
+        else
+            Leaves = Leaves0
         )
-    ;
+    else
         leaflist_insert(Index, Tail0, Tail),
         Leaves = [Head0 | Tail]
     ).
@@ -1076,11 +1079,11 @@ interiorlist_insert(Index, Level, [], Nodes) :-
     Nodes = [Node].
 interiorlist_insert(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
     Offset0 = Head0 ^ init_offset,
-    ( Index < Offset0 ->
+    ( if Index < Offset0 then
         bits_for_index(Index, Offset, Bits),
         raise_leaf_to_level(Level, make_leaf_node(Offset, Bits), Node),
         Nodes = [Node | Nodes0]
-    ; Head0 ^ init_offset =< Index, Index < Head0 ^ limit_offset ->
+    else if Head0 ^ init_offset =< Index, Index < Head0 ^ limit_offset then
         Components0 = Head0 ^ components,
         (
             Components0 = leaf_list(LeafList0),
@@ -1102,7 +1105,7 @@ interiorlist_insert(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         ),
         Head = Head0 ^ components := Components,
         Nodes = [Head | Tail0]
-    ;
+    else
         interiorlist_insert(Index, Level, Tail0, Tail),
         Nodes = [Head0 | Tail]
     ).
@@ -1122,13 +1125,13 @@ insert_new(Elem, Set0, Set) :-
             LeafList0 = [Leaf0 | _],
             range_of_parent_node(Leaf0 ^ leaf_offset, 0,
                 ParentInitOffset, ParentLimitOffset),
-            (
+            ( if
                 ParentInitOffset =< Index,
                 Index < ParentLimitOffset
-            ->
+            then
                 leaflist_insert_new(Index, LeafList0, LeafList),
                 Set = wrap_tree_bitset(leaf_list(LeafList))
-            ;
+            else
                 expand_range(Index, List0, 1,
                     ParentInitOffset, ParentLimitOffset,
                     InteriorNode1, InteriorLevel1),
@@ -1149,15 +1152,15 @@ insert_new(Elem, Set0, Set) :-
             InteriorList0 = [InteriorNode0 | _],
             range_of_parent_node(InteriorNode0 ^ init_offset, InteriorLevel,
                 ParentInitOffset, ParentLimitOffset),
-            (
+            ( if
                 ParentInitOffset =< Index,
                 Index < ParentLimitOffset
-            ->
+            then
                 interiorlist_insert_new(Index, InteriorLevel,
                     InteriorList0, InteriorList),
                 Set = wrap_tree_bitset(
                     interior_list(InteriorLevel, InteriorList))
-            ;
+            else
                 expand_range(Index, List0, InteriorLevel + 1,
                     ParentInitOffset, ParentLimitOffset,
                     InteriorNode1, InteriorLevel1),
@@ -1177,18 +1180,18 @@ leaflist_insert_new(Index, [], Leaves) :-
     Leaves = [make_leaf_node(Offset, Bits)].
 leaflist_insert_new(Index, Leaves0 @ [Head0 | Tail0], Leaves) :-
     Offset0 = Head0 ^ leaf_offset,
-    ( Index < Offset0 ->
+    ( if Index < Offset0 then
         bits_for_index(Index, Offset, Bits),
         Leaves = [make_leaf_node(Offset, Bits) | Leaves0]
-    ; BitToSet = Index - Offset0, BitToSet < bits_per_int ->
+    else if BitToSet = Index - Offset0, BitToSet < bits_per_int then
         Bits0 = Head0 ^ leaf_bits,
-        ( get_bit(Bits0, BitToSet) \= 0 ->
-            fail
-        ;
+        ( if get_bit(Bits0, BitToSet) = 0 then
             Bits = set_bit(Bits0, BitToSet),
             Leaves = [make_leaf_node(Offset0, Bits) | Tail0]
+        else
+            fail
         )
-    ;
+    else
         leaflist_insert_new(Index, Tail0, Tail),
         Leaves = [Head0 | Tail]
     ).
@@ -1202,11 +1205,11 @@ interiorlist_insert_new(Index, Level, [], Nodes) :-
     Nodes = [Node].
 interiorlist_insert_new(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
     Offset0 = Head0 ^ init_offset,
-    ( Index < Offset0 ->
+    ( if Index < Offset0 then
         bits_for_index(Index, Offset, Bits),
         raise_leaf_to_level(Level, make_leaf_node(Offset, Bits), Node),
         Nodes = [Node | Nodes0]
-    ; Head0 ^ init_offset =< Index, Index < Head0 ^ limit_offset ->
+    else if Head0 ^ init_offset =< Index, Index < Head0 ^ limit_offset then
         Components0 = Head0 ^ components,
         (
             Components0 = leaf_list(LeafList0),
@@ -1228,7 +1231,7 @@ interiorlist_insert_new(Index, Level, Nodes0 @ [Head0 | Tail0], Nodes) :-
         ),
         Head = Head0 ^ components := Components,
         Nodes = [Head | Tail0]
-    ;
+    else
         interiorlist_insert_new(Index, Level, Tail0, Tail),
         Nodes = [Head0 | Tail]
     ).
@@ -1259,10 +1262,10 @@ delete(Set0, Elem) = Set :-
 
 interiorlist_delete([], _, []).
 interiorlist_delete([Head0 | Tail0], Index, Result) :-
-    ( Head0 ^ limit_offset =< Index ->
+    ( if Head0 ^ limit_offset =< Index then
         interiorlist_delete(Tail0, Index, Tail),
         Result = [Head0 | Tail]
-    ; Head0 ^ init_offset =< Index ->
+    else if Head0 ^ init_offset =< Index then
         Components0 = Head0 ^ components,
         (
             Components0 = leaf_list(LeafNodes0),
@@ -1291,7 +1294,7 @@ interiorlist_delete([Head0 | Tail0], Index, Result) :-
                 Result = [Head | Tail0]
             )
         )
-    ;
+    else
         Result = [Head0 | Tail0]
     ).
 
@@ -1301,17 +1304,17 @@ interiorlist_delete([Head0 | Tail0], Index, Result) :-
 leaflist_delete([], _, []).
 leaflist_delete([Head0 | Tail0], Index, Result) :-
     Offset = Head0 ^ leaf_offset,
-    ( Offset + bits_per_int =< Index ->
+    ( if Offset + bits_per_int =< Index then
         leaflist_delete(Tail0, Index, Tail),
         Result = [Head0 | Tail]
-    ; Offset =< Index ->
+    else if Offset =< Index then
         Bits = clear_bit(Head0 ^ leaf_bits, Index - Offset),
-        ( Bits \= 0 ->
-            Result = [make_leaf_node(Offset, Bits) | Tail0]
-        ;
+        ( if Bits = 0 then
             Result = Tail0
+        else
+            Result = [make_leaf_node(Offset, Bits) | Tail0]
         )
-    ;
+    else
         Result = [Head0 | Tail0]
     ).
 
@@ -1350,9 +1353,9 @@ remove_leq(Set0, Elem) = Set :-
 
 remove_leq_interior([], _, []).
 remove_leq_interior([Head0 | Tail0], Index, Result) :-
-    ( Head0 ^ limit_offset =< Index ->
+    ( if Head0 ^ limit_offset =< Index then
         remove_leq_interior(Tail0, Index, Result)
-    ; Head0 ^ init_offset =< Index ->
+    else if Head0 ^ init_offset =< Index then
         Components0 = Head0 ^ components,
         (
             Components0 = leaf_list(LeafNodes0),
@@ -1381,7 +1384,7 @@ remove_leq_interior([Head0 | Tail0], Index, Result) :-
                 Result = [Head | Tail0]
             )
         )
-    ;
+    else
         Result = [Head0 | Tail0]
     ).
 
@@ -1391,17 +1394,17 @@ remove_leq_interior([Head0 | Tail0], Index, Result) :-
 remove_leq_leaf([], _, []).
 remove_leq_leaf([Head0 | Tail0], Index, Result) :-
     Offset = Head0 ^ leaf_offset,
-    ( Offset + bits_per_int =< Index ->
+    ( if Offset + bits_per_int =< Index then
         remove_leq_leaf(Tail0, Index, Result)
-    ; Offset =< Index ->
+    else if Offset =< Index then
         Bits = Head0 ^ leaf_bits /\
             unchecked_left_shift(\ 0, Index - Offset + 1),
-        ( Bits \= 0 ->
-            Result = [make_leaf_node(Offset, Bits) | Tail0]
-        ;
+        ( if Bits = 0 then
             Result = Tail0
+        else
+            Result = [make_leaf_node(Offset, Bits) | Tail0]
         )
-    ;
+    else
         Result = [Head0 | Tail0]
     ).
 
@@ -1427,10 +1430,10 @@ remove_gt(Set0, Elem) = Set :-
 
 remove_gt_interior([], _, []).
 remove_gt_interior([Head0 | Tail0], Index, Result) :-
-    ( Head0 ^ limit_offset =< Index ->
+    ( if Head0 ^ limit_offset =< Index then
         remove_gt_interior(Tail0, Index, Tail),
         Result = [Head0 | Tail]
-    ; Head0 ^ init_offset =< Index ->
+    else if Head0 ^ init_offset =< Index then
         Components0 = Head0 ^ components,
         (
             Components0 = leaf_list(LeafNodes0),
@@ -1459,7 +1462,7 @@ remove_gt_interior([Head0 | Tail0], Index, Result) :-
                 Result = [Head]
             )
         )
-    ;
+    else
         Result = []
     ).
 
@@ -1469,20 +1472,20 @@ remove_gt_interior([Head0 | Tail0], Index, Result) :-
 remove_gt_leaf([], _, []).
 remove_gt_leaf([Head0 | Tail0], Index, Result) :-
     Offset = Head0 ^ leaf_offset,
-    ( Offset + bits_per_int - 1 =< Index ->
+    ( if Offset + bits_per_int - 1 =< Index then
         remove_gt_leaf(Tail0, Index, Tail),
         Result = [Head0 | Tail]
-    ; Offset =< Index ->
-        (
+    else if Offset =< Index then
+        ( if
             Bits = Head0 ^ leaf_bits /\
                 \ unchecked_left_shift(\ 0, Index - Offset + 1),
             Bits \= 0
-        ->
+        then
             Result = [make_leaf_node(Offset, Bits)]
-        ;
+        else
             Result = []
         )
-    ;
+    else
         Result = []
     ).
 
@@ -1570,9 +1573,9 @@ remove_least_leaf(Head0, Tail0, Index, Nodes) :-
     Bit = find_least_bit(Bits0),
     Bits = clear_bit(Bits0, Bit),
     Index = Offset + Bit,
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         Nodes = Tail0
-    ;
+    else
         Nodes = [make_leaf_node(Offset, Bits) | Tail0]
     ).
 
@@ -1586,19 +1589,19 @@ find_least_bit(Bits0) = BitNum :-
 :- func find_least_bit_2(int, int, int) = int.
 
 find_least_bit_2(Bits0, Size, BitNum0) = BitNum :-
-    ( Size = 1 ->
+    ( if Size = 1 then
         % We can't get here unless the bit is a 1 bit.
         BitNum = BitNum0
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
         LowBits = Bits0 /\ Mask,
-        ( LowBits \= 0 ->
-            BitNum = find_least_bit_2(LowBits, HalfSize, BitNum0)
-        ;
+        ( if LowBits = 0 then
             HighBits = Mask /\ unchecked_right_shift(Bits0, HalfSize),
             BitNum = find_least_bit_2(HighBits, HalfSize, BitNum0 + HalfSize)
+        else
+            BitNum = find_least_bit_2(LowBits, HalfSize, BitNum0)
         )
     ).
 
@@ -1663,10 +1666,10 @@ sorted_list_to_leaf_nodes([Head | Tail]) = LeafNodes :-
 gather_bits_for_leaf([], _Offset, !Bits, []).
 gather_bits_for_leaf(List @ [Head | Tail], Offset, !Bits, Remaining) :-
     bits_for_index(Head, HeadOffset, HeadBits),
-    ( HeadOffset = Offset ->
+    ( if HeadOffset = Offset then
         !:Bits = !.Bits \/ HeadBits,
         gather_bits_for_leaf(Tail, Offset, !Bits, Remaining)
-    ;
+    else
         Remaining = List
     ).
 
@@ -1699,7 +1702,7 @@ group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, !.RevAcc,
         [Head | Tail], ParentNode, Remaining) :-
     range_of_parent_node(Head ^ leaf_offset, 0,
         HeadParentInitOffset, HeadParentLimitOffset),
-    ( ParentInitOffset = HeadParentInitOffset ->
+    ( if ParentInitOffset = HeadParentInitOffset then
         trace [compile_time(flag("tree-bitset-checks"))] (
             expect(unify(ParentLimitOffset, HeadParentLimitOffset),
                 $module, $pred, "limit mismatch")
@@ -1707,7 +1710,7 @@ group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset, !.RevAcc,
         !:RevAcc = [Head | !.RevAcc],
         group_leaf_nodes_in_range(ParentInitOffset, ParentLimitOffset,
             !.RevAcc, Tail, ParentNode, Remaining)
-    ;
+    else
         ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
             leaf_list(list.reverse(!.RevAcc))),
         Remaining = [Head | Tail]
@@ -1762,7 +1765,7 @@ group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
         !.RevAcc, [Head | Tail], ParentNode, Remaining) :-
     range_of_parent_node(Head ^ init_offset, Level,
         HeadParentInitOffset, HeadParentLimitOffset),
-    ( ParentInitOffset = HeadParentInitOffset ->
+    ( if ParentInitOffset = HeadParentInitOffset then
         trace [compile_time(flag("tree-bitset-checks"))] (
             expect(unify(ParentLimitOffset, HeadParentLimitOffset),
                 $module, $pred, "limit mismatch")
@@ -1771,7 +1774,7 @@ group_interior_nodes_in_range(Level, ParentInitOffset, ParentLimitOffset,
         group_interior_nodes_in_range(Level,
             ParentInitOffset, ParentLimitOffset,
             !.RevAcc, Tail, ParentNode, Remaining)
-    ;
+    else
         ParentNode = interior_node(ParentInitOffset, ParentLimitOffset,
             interior_list(Level, list.reverse(!.RevAcc))),
         Remaining = [Head | Tail]
@@ -1803,9 +1806,9 @@ contains(Set, Elem) :-
 leaflist_contains([Head | Tail], Index) :-
     Offset = Head ^ leaf_offset,
     Index >= Offset,
-    ( Index < Offset + bits_per_int ->
+    ( if Index < Offset + bits_per_int then
         get_bit(Head ^ leaf_bits, Index - Offset) \= 0
-    ;
+    else
         leaflist_contains(Tail, Index)
     ).
 
@@ -1813,7 +1816,7 @@ leaflist_contains([Head | Tail], Index) :-
 
 interiorlist_contains([Head | Tail], Index) :-
     Index >= Head ^ init_offset,
-    ( Index < Head ^ limit_offset ->
+    ( if Index < Head ^ limit_offset then
         Components = Head ^ components,
         (
             Components = leaf_list(LeafNodes),
@@ -1822,7 +1825,7 @@ interiorlist_contains([Head | Tail], Index) :-
             Components = interior_list(_, InteriorNodes),
             interiorlist_contains(InteriorNodes, Index)
         )
-    ;
+    else
         interiorlist_contains(Tail, Index)
     ).
 
@@ -1872,11 +1875,11 @@ leaflist_member(Index, [Elem | Elems]) :-
 :- pred leafnode_member(int::out, int::in, int::in, int::in) is nondet.
 
 leafnode_member(Index, Offset, Size, Bits) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         fail
-    ; Size = 1 ->
+    else if Size = 1 then
         Index = Offset
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
@@ -1918,14 +1921,14 @@ union(SetA, SetB) = Set :-
                 ParentInitOffsetA, ParentLimitOffsetA),
             range_of_parent_node(FirstNodeB ^ leaf_offset, 0,
                 ParentInitOffsetB, ParentLimitOffsetB),
-            ( ParentInitOffsetA = ParentInitOffsetB ->
+            ( if ParentInitOffsetA = ParentInitOffsetB then
                 trace [compile_time(flag("tree-bitset-checks"))] (
                     expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
                         $module, $pred, "limit mismatch")
                 ),
                 leaflist_union(LeafNodesA, LeafNodesB, LeafNodes),
                 List = leaf_list(LeafNodes)
-            ;
+            else
                 raise_leaves_to_interior(FirstNodeA, LaterNodesA,
                     InteriorNodeA),
                 raise_leaves_to_interior(FirstNodeB, LaterNodesB,
@@ -2000,15 +2003,15 @@ leaflist_union(ListA @ [_ | _], [], ListA).
 leaflist_union(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
     OffsetA = HeadA ^ leaf_offset,
     OffsetB = HeadB ^ leaf_offset,
-    ( OffsetA = OffsetB ->
+    ( if OffsetA = OffsetB then
         Head = make_leaf_node(OffsetA,
             (HeadA ^ leaf_bits) \/ (HeadB ^ leaf_bits)),
         leaflist_union(TailA, TailB, Tail),
         List = [Head | Tail]
-    ; OffsetA < OffsetB ->
+    else if OffsetA < OffsetB then
         leaflist_union(TailA, ListB, Tail),
         List = [HeadA | Tail]
-    ;
+    else
         leaflist_union(ListA, TailB, Tail),
         List = [HeadB | Tail]
     ).
@@ -2022,7 +2025,7 @@ interiorlist_union(ListA @ [_ | _], [], ListA).
 interiorlist_union(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
     OffsetA = HeadA ^ init_offset,
     OffsetB = HeadB ^ init_offset,
-    ( OffsetA = OffsetB ->
+    ( if OffsetA = OffsetB then
         ComponentsA = HeadA ^ components,
         ComponentsB = HeadB ^ components,
         (
@@ -2054,10 +2057,10 @@ interiorlist_union(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
         ),
         interiorlist_union(TailA, TailB, Tail),
         List = [Head | Tail]
-    ; OffsetA < OffsetB ->
+    else if OffsetA < OffsetB then
         interiorlist_union(TailA, ListB, Tail),
         List = [HeadA | Tail]
-    ;
+    else
         interiorlist_union(ListA, TailB, Tail),
         List = [HeadB | Tail]
     ).
@@ -2089,14 +2092,14 @@ intersect(SetA, SetB) = Set :-
                 ParentInitOffsetA, ParentLimitOffsetA),
             range_of_parent_node(FirstNodeB ^ leaf_offset, 0,
                 ParentInitOffsetB, ParentLimitOffsetB),
-            ( ParentInitOffsetA = ParentInitOffsetB ->
+            ( if ParentInitOffsetA = ParentInitOffsetB then
                 trace [compile_time(flag("tree-bitset-checks"))] (
                     expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
                         $module, $pred, "limit mismatch")
                 ),
                 leaflist_intersect(LeafNodesA, LeafNodesB, LeafNodes),
                 List = leaf_list(LeafNodes)
-            ;
+            else
                 % The ranges of the two sets do not overlap.
                 List = leaf_list([])
             )
@@ -2128,11 +2131,11 @@ intersect(SetA, SetB) = Set :-
     ;
         ListA = interior_list(LevelA, InteriorNodesA),
         ListB = interior_list(LevelB, InteriorNodesB),
-        ( LevelA = LevelB ->
+        ( if LevelA = LevelB then
             interiorlist_intersect(InteriorNodesA, InteriorNodesB,
                 InteriorNodes),
             List = interior_list(LevelA, InteriorNodes)
-        ;
+        else
             head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
             head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
             % Our basic approach of raising both operands to the same level
@@ -2156,18 +2159,18 @@ leaflist_intersect([_ | _], [], []).
 leaflist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
     OffsetA = HeadA ^ leaf_offset,
     OffsetB = HeadB ^ leaf_offset,
-    ( OffsetA = OffsetB ->
+    ( if OffsetA = OffsetB then
         Bits = HeadA ^ leaf_bits /\ HeadB ^ leaf_bits,
-        ( Bits = 0 ->
+        ( if Bits = 0 then
             leaflist_intersect(TailA, TailB, List)
-        ;
+        else
             Head = make_leaf_node(OffsetA, Bits),
             leaflist_intersect(TailA, TailB, Tail),
             List = [Head | Tail]
         )
-    ; OffsetA < OffsetB ->
+    else if OffsetA < OffsetB then
         leaflist_intersect(TailA, ListB, List)
-    ;
+    else
         leaflist_intersect(ListA, TailB, List)
     ).
 
@@ -2177,11 +2180,11 @@ leaflist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
 descend_and_intersect(_LevelA, _InteriorNodeA, _LevelB, [], List) :-
     List = leaf_list([]).
 descend_and_intersect(LevelA, InteriorNodeA, LevelB, [HeadB | TailB], List) :-
-    (
+    ( if
         HeadB ^ init_offset =< InteriorNodeA ^ init_offset,
         InteriorNodeA ^ limit_offset =< HeadB ^ limit_offset
-    ->
-        ( LevelA = LevelB ->
+    then
+        ( if LevelA = LevelB then
             trace [compile_time(flag("tree-bitset-checks"))] (
                 expect(
                     unify(InteriorNodeA ^ init_offset, HeadB ^ init_offset),
@@ -2212,7 +2215,7 @@ descend_and_intersect(LevelA, InteriorNodeA, LevelB, [HeadB | TailB], List) :-
                     InteriorNodes),
                 List = interior_list(LevelA, InteriorNodes)
             )
-        ;
+        else
             trace [compile_time(flag("tree-bitset-checks"))] (
                 expect(LevelA < LevelB, $module, $pred, "LevelA > LevelB")
             ),
@@ -2226,7 +2229,7 @@ descend_and_intersect(LevelA, InteriorNodeA, LevelB, [HeadB | TailB], List) :-
                     SubLevelB, InteriorNodesB, List)
             )
         )
-    ;
+    else
         descend_and_intersect(LevelA, InteriorNodeA, LevelB, TailB, List)
     ).
 
@@ -2258,7 +2261,7 @@ interiorlist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
         List) :-
     OffsetA = HeadA ^ init_offset,
     OffsetB = HeadB ^ init_offset,
-    ( OffsetA = OffsetB ->
+    ( if OffsetA = OffsetB then
         ComponentsA = HeadA ^ components,
         ComponentsB = HeadB ^ components,
         (
@@ -2305,9 +2308,9 @@ interiorlist_intersect(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
                 List = [Head | Tail]
             )
         )
-    ; OffsetA < OffsetB ->
+    else if OffsetA < OffsetB then
         interiorlist_intersect(TailA, ListB, List)
-    ;
+    else
         interiorlist_intersect(ListA, TailB, List)
     ).
 
@@ -2338,14 +2341,14 @@ difference(SetA, SetB) = Set :-
                 ParentInitOffsetA, ParentLimitOffsetA),
             range_of_parent_node(FirstNodeB ^ leaf_offset, 0,
                 ParentInitOffsetB, ParentLimitOffsetB),
-            ( ParentInitOffsetA = ParentInitOffsetB ->
+            ( if ParentInitOffsetA = ParentInitOffsetB then
                 trace [compile_time(flag("tree-bitset-checks"))] (
                     expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
                         $module, $pred, "limit mismatch")
                 ),
                 leaflist_difference(LeafNodesA, LeafNodesB, LeafNodes),
                 List = leaf_list(LeafNodes)
-            ;
+            else
                 % The ranges of the two sets do not overlap.
                 List = ListA
             )
@@ -2381,18 +2384,18 @@ difference(SetA, SetB) = Set :-
     ;
         ListA = interior_list(LevelA, InteriorNodesA),
         ListB = interior_list(LevelB, InteriorNodesB),
-        ( LevelA > LevelB ->
+        ( if LevelA > LevelB then
             head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
             descend_and_difference_list(LevelA, InteriorNodesA,
                 LevelB, InteriorHeadB, InteriorTailB, Level, InteriorNodes),
             List = interior_list(Level, InteriorNodes)
-        ; LevelA = LevelB ->
+        else if LevelA = LevelB then
             head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
             head_and_tail(InteriorNodesB, InteriorHeadB, InteriorTailB),
             interiornode_difference(LevelA, InteriorHeadA, InteriorTailA,
                 LevelB, InteriorHeadB, InteriorTailB, Level, InteriorNodes),
             List = interior_list(Level, InteriorNodes)
-        ;
+        else
             % LevelA < LevelB
             head_and_tail(InteriorNodesA, InteriorHeadA, InteriorTailA),
             range_of_parent_node(InteriorHeadA ^ init_offset, LevelA,
@@ -2427,7 +2430,7 @@ find_leaf_nodes_at_parent_offset(_LevelB, [],
         _ParentInitOffsetA, _ParentLimitOffsetA, []).
 find_leaf_nodes_at_parent_offset(LevelB, [HeadB | TailB],
         ParentInitOffsetA, ParentLimitOffsetA, LeafNodesB) :-
-    ( HeadB ^ init_offset > ParentInitOffsetA ->
+    ( if HeadB ^ init_offset > ParentInitOffsetA then
         % The leaf nodes in ListA cover at most one level 1 interior node's
         % span of bits. Call that the hypothetical level 1 interior node.
         % HeadB ^ init_offset should be a multiple of (a power of) that span,
@@ -2436,14 +2439,14 @@ find_leaf_nodes_at_parent_offset(LevelB, [HeadB | TailB],
         % hypothetical node as well. The limit offset is one bigger than
         % the final offset.
         trace [compile_time(flag("tree-bitset-checks"))] (
-            ( HeadB ^ init_offset >= ParentLimitOffsetA ->
+            ( if HeadB ^ init_offset >= ParentLimitOffsetA then
                 true
-            ;
+            else
                 unexpected($module, $pred, "screwed-up offsets")
             )
         ),
         LeafNodesB = []
-    ; ParentInitOffsetA < HeadB ^ limit_offset ->
+    else if ParentInitOffsetA < HeadB ^ limit_offset then
         % ListA's range is inside HeadB's range.
         HeadNodeListB = HeadB ^ components,
         (
@@ -2462,7 +2465,7 @@ find_leaf_nodes_at_parent_offset(LevelB, [HeadB | TailB],
             find_leaf_nodes_at_parent_offset(HeadSubLevelB, HeadInteriorNodesB,
                 ParentInitOffsetA, ParentLimitOffsetA, LeafNodesB)
         )
-    ;
+    else
         find_leaf_nodes_at_parent_offset(LevelB, TailB,
             ParentInitOffsetA, ParentLimitOffsetA, LeafNodesB)
     ).
@@ -2474,8 +2477,8 @@ find_interior_nodes_at_parent_offset(_LevelB, [],
         _ParentLevelA, _ParentInitOffsetA, _ParentLimitOffsetA, []).
 find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
         ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA, NodesB) :-
-    ( LevelB > ParentLevelA ->
-        ( HeadB ^ init_offset > ParentInitOffsetA ->
+    ( if LevelB > ParentLevelA then
+        ( if HeadB ^ init_offset > ParentInitOffsetA then
             % ListA's range is before HeadB's range.
             % The nodes in ListA cover at most one level ParentLevelA interior
             % node's span of bits. Call that the hypothetical level
@@ -2485,14 +2488,14 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
             % greater than the final offset of that hypothetical node as well.
             % The limit offset is one bigger than the final offset.
             trace [compile_time(flag("tree-bitset-checks"))] (
-                ( HeadB ^ init_offset >= ParentLimitOffsetA ->
+                ( if HeadB ^ init_offset >= ParentLimitOffsetA then
                     true
-                ;
+                else
                     unexpected($module, $pred, "screwed-up offsets")
                 )
             ),
             NodesB = []
-        ; ParentInitOffsetA < HeadB ^ limit_offset ->
+        else if ParentInitOffsetA < HeadB ^ limit_offset then
             % ListA's range is inside HeadB's range.
             HeadNodeListB = HeadB ^ components,
             (
@@ -2510,17 +2513,17 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
                     HeadInteriorNodesB,
                     ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA, NodesB)
             )
-        ;
+        else
             % ListA's range is after HeadB's range.
             find_interior_nodes_at_parent_offset(LevelB, TailB,
                 ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA, NodesB)
         )
-    ;
+    else
         trace [compile_time(flag("tree-bitset-checks"))] (
             expect(unify(ParentLevelA, LevelB), $module, $pred,
                 "ParentLevelA != LevelB")
         ),
-        ( HeadB ^ init_offset > ParentInitOffsetA ->
+        ( if HeadB ^ init_offset > ParentInitOffsetA then
             % ListA's range is before HeadB's range.
             % The nodes in ListA cover at most one level ParentLevelA interior
             % node's span of bits. Call that the hypothetical level
@@ -2530,14 +2533,14 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
             % greater than the final offset of that hypothetical node as well.
             % The limit offset is one bigger than the final offset.
             trace [compile_time(flag("tree-bitset-checks"))] (
-                ( HeadB ^ init_offset >= ParentLimitOffsetA ->
+                ( if HeadB ^ init_offset >= ParentLimitOffsetA then
                     true
-                ;
+                else
                     unexpected($module, $pred, "screwed-up offsets")
                 )
             ),
             NodesB = []
-        ; HeadB ^ init_offset = ParentInitOffsetA ->
+        else if HeadB ^ init_offset = ParentInitOffsetA then
             ComponentsB = HeadB ^ components,
             (
                 ComponentsB = leaf_list(_),
@@ -2545,7 +2548,7 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
             ;
                 ComponentsB = interior_list(_, NodesB)
             )
-        ;
+        else
             find_interior_nodes_at_parent_offset(LevelB, TailB,
                 ParentLevelA, ParentInitOffsetA, ParentLimitOffsetA, NodesB)
         )
@@ -2556,14 +2559,14 @@ find_interior_nodes_at_parent_offset(LevelB, [HeadB | TailB],
 
 descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
         Level, List) :-
-    ( LevelA > LevelB ->
+    ( if LevelA > LevelB then
         (
             InteriorNodesA = [],
             Level = LevelA,
             List = []
         ;
             InteriorNodesA = [HeadA | TailA],
-            ( HeadA ^ limit_offset =< InteriorNodeB ^ init_offset ->
+            ( if HeadA ^ limit_offset =< InteriorNodeB ^ init_offset then
                 % All of the region covered by HeadA is before the region
                 % covered by InteriorNodeB.
                 descend_and_difference_one(LevelA, TailA, LevelB, InteriorNodeB,
@@ -2574,13 +2577,15 @@ descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
                 ),
                 Level = LevelA,
                 List = [HeadA | ListTail]
-            ; HeadA ^ init_offset =< InteriorNodeB ^ init_offset ->
+            else if HeadA ^ init_offset =< InteriorNodeB ^ init_offset then
                 % The region covered by HeadA contains the region
                 % covered by InteriorNodeB.
                 trace [compile_time(flag("tree-bitset-checks"))] (
-                    ( InteriorNodeB ^ limit_offset =< HeadA ^ limit_offset ->
+                    ( if
+                        InteriorNodeB ^ limit_offset =< HeadA ^ limit_offset
+                    then
                         true
-                    ;
+                    else
                         unexpected($module, $pred, "weird region relationship")
                     )
                 ),
@@ -2617,7 +2622,7 @@ descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
                     Level = LevelA,
                     List = [RaisedHead | TailA]
                 )
-            ;
+            else
                 % All of the region covered by HeadA is after the region
                 % covered by InteriorNodeB, and therefore so are all the
                 % regions covered by TailA.
@@ -2625,10 +2630,10 @@ descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
                 List = InteriorNodesA
             )
         )
-    ; LevelA = LevelB ->
+    else if LevelA = LevelB then
         interiorlist_difference(InteriorNodesA, [InteriorNodeB], List),
         Level = LevelA
-    ;
+    else
         unexpected($module, $pred, "LevelA < LevelB")
     ).
 
@@ -2638,14 +2643,14 @@ descend_and_difference_one(LevelA, InteriorNodesA, LevelB, InteriorNodeB,
 
 descend_and_difference_list(LevelA, InteriorNodesA,
         LevelB, InteriorNodeB, InteriorNodesB, Level, List) :-
-    ( LevelA > LevelB ->
+    ( if LevelA > LevelB then
         (
             InteriorNodesA = [],
             Level = LevelA,
             List = []
         ;
             InteriorNodesA = [HeadA | TailA],
-            ( HeadA ^ limit_offset =< InteriorNodeB ^ init_offset ->
+            ( if HeadA ^ limit_offset =< InteriorNodeB ^ init_offset then
                 % All of the region covered by HeadA is before the region
                 % covered by [InteriorNodeB | InteriorNodesB].
                 trace [compile_time(flag("tree-bitset-checks"))] (
@@ -2663,13 +2668,15 @@ descend_and_difference_list(LevelA, InteriorNodesA,
                 ),
                 Level = LevelA,
                 List = [HeadA | ListTail]
-            ; HeadA ^ init_offset =< InteriorNodeB ^ init_offset ->
+            else if HeadA ^ init_offset =< InteriorNodeB ^ init_offset then
                 % The region covered by HeadA contains the region
                 % covered by InteriorNodeB.
                 trace [compile_time(flag("tree-bitset-checks"))] (
-                    ( InteriorNodeB ^ limit_offset =< HeadA ^ limit_offset ->
+                    ( if
+                        InteriorNodeB ^ limit_offset =< HeadA ^ limit_offset
+                    then
                         true
-                    ;
+                    else
                         unexpected($module, $pred, "weird region relationship")
                     )
                 ),
@@ -2706,7 +2713,7 @@ descend_and_difference_list(LevelA, InteriorNodesA,
                     Level = LevelA,
                     List = [RaisedHead | TailA]
                 )
-            ;
+            else
                 % All of the region covered by HeadA is after the region
                 % covered by InteriorNodeB, and therefore so are all the
                 % regions covered by TailA.
@@ -2714,11 +2721,11 @@ descend_and_difference_list(LevelA, InteriorNodesA,
                 List = InteriorNodesA
             )
         )
-    ; LevelA = LevelB ->
+    else if LevelA = LevelB then
         interiorlist_difference(InteriorNodesA,
             [InteriorNodeB | InteriorNodesB], List),
         Level = LevelA
-    ;
+    else
         unexpected($module, $pred, "LevelA < LevelB")
     ).
 
@@ -2737,14 +2744,14 @@ interiornode_difference(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
         ParentInitOffsetA, ParentLimitOffsetA),
     range_of_parent_node(HeadB ^ init_offset, LevelB,
         ParentInitOffsetB, ParentLimitOffsetB),
-    ( ParentInitOffsetA = ParentInitOffsetB ->
+    ( if ParentInitOffsetA = ParentInitOffsetB then
         trace [compile_time(flag("tree-bitset-checks"))] (
             expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
                 $module, $pred, "limit mismatch")
         ),
         interiorlist_difference([HeadA | TailA], [HeadB | TailB], List),
         Level = LevelA
-    ;
+    else
         (
             TailA = [],
             List = [HeadA],
@@ -2770,19 +2777,19 @@ leaflist_difference(ListA @ [_ | _], [], ListA).
 leaflist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
     OffsetA = HeadA ^ leaf_offset,
     OffsetB = HeadB ^ leaf_offset,
-    ( OffsetA = OffsetB ->
+    ( if OffsetA = OffsetB then
         Bits = (HeadA ^ leaf_bits) /\ \ (HeadB ^ leaf_bits),
-        ( Bits = 0 ->
+        ( if Bits = 0 then
             leaflist_difference(TailA, TailB, List)
-        ;
+        else
             Head = make_leaf_node(OffsetA, Bits),
             leaflist_difference(TailA, TailB, Tail),
             List = [Head | Tail]
         )
-    ; OffsetA < OffsetB ->
+    else if OffsetA < OffsetB then
         leaflist_difference(TailA, ListB, Tail),
         List = [HeadA | Tail]
-    ;
+    else
         leaflist_difference(ListA, TailB, List)
     ).
 
@@ -2797,7 +2804,7 @@ interiorlist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
         List) :-
     OffsetA = HeadA ^ init_offset,
     OffsetB = HeadB ^ init_offset,
-    ( OffsetA = OffsetB ->
+    ( if OffsetA = OffsetB then
         ComponentsA = HeadA ^ components,
         ComponentsB = HeadB ^ components,
         (
@@ -2844,10 +2851,10 @@ interiorlist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB],
                 List = [Head | Tail]
             )
         )
-    ; OffsetA < OffsetB ->
+    else if OffsetA < OffsetB then
         interiorlist_difference(TailA, ListB, Tail),
         List = [HeadA | Tail]
-    ;
+    else
         interiorlist_difference(ListA, TailB, List)
     ).
 
@@ -2956,15 +2963,15 @@ leaflist_divide(Pred, [Head | Tail], InList, OutList) :-
     leaflist_divide(Pred, Tail, InTail, OutTail),
     Head = leaf_node(Offset, Bits),
     leafnode_divide(Pred, Offset, 0, Bits, 0, InBits, 0, OutBits),
-    ( InBits = 0 ->
+    ( if InBits = 0 then
         InList = InTail
-    ;
+    else
         InHead = make_leaf_node(Offset, InBits),
         InList = [InHead | InTail]
     ),
-    ( OutBits = 0 ->
+    ( if OutBits = 0 then
         OutList = OutTail
-    ;
+    else
         OutHead = make_leaf_node(Offset, OutBits),
         OutList = [OutHead | OutTail]
     ).
@@ -2973,20 +2980,20 @@ leaflist_divide(Pred, [Head | Tail], InList, OutList) :-
     int::in, int::in, int::out, int::in, int::out) is det <= enum(T).
 
 leafnode_divide(Pred, Offset, WhichBit, Bits, !InBits, !OutBits) :-
-    ( WhichBit < bits_per_int ->
+    ( if WhichBit < bits_per_int then
         SelectedBit = get_bit(Bits, WhichBit),
-        ( SelectedBit = 0 ->
+        ( if SelectedBit = 0 then
             true
-        ;
+        else
             Elem = index_to_enum(Offset + WhichBit),
-            ( Pred(Elem) ->
+            ( if Pred(Elem) then
                 !:InBits = set_bit(!.InBits, WhichBit)
-            ;
+            else
                 !:OutBits = set_bit(!.OutBits, WhichBit)
             )
         ),
         leafnode_divide(Pred, Offset, WhichBit + 1, Bits, !InBits, !OutBits)
-    ;
+    else
         true
     ).
 
@@ -3073,16 +3080,16 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
             DBNodesHead = interior_node(DBFirstInitOffset, _, _),
             range_of_parent_node(DBFirstInitOffset, DBLevel,
                 DBInitOffset, DBLimitOffset),
-            (
+            ( if
                 DBInitOffset =< InitOffset,
                 InitOffset < DBLimitOffset
-            ->
-                (
+            then
+                ( if
                     DBInitOffset < LimitOffset,
                     LimitOffset =< DBLimitOffset
-                ->
+                then
                     true
-                ;
+                else
                     unexpected($module, $pred, "strange offsets")
                 ),
                 divide_by_set_descend_divide_by(DBLevel, DBNodes,
@@ -3091,7 +3098,7 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
                 prune_top_levels(OutList0, OutList),
                 InSet = wrap_tree_bitset(InList),
                 OutSet = wrap_tree_bitset(OutList)
-            ;
+            else
                 % The ranges of the two sets do not overlap.
                 InSet = wrap_tree_bitset(leaf_list([])),
                 OutSet = Set
@@ -3109,7 +3116,7 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
     ;
         DivideByList = interior_list(DBLevel, DBNodes),
         List = interior_list(Level, Nodes),
-        ( DBLevel = Level ->
+        ( if DBLevel = Level then
             interiorlist_divide_by_set(Level, DBNodes, Nodes,
                 InNodes, OutNodes),
             (
@@ -3130,7 +3137,7 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
             ),
             InSet = wrap_tree_bitset(InList),
             OutSet = wrap_tree_bitset(OutList)
-        ; DBLevel > Level ->
+        else if DBLevel > Level then
             head_and_tail(Nodes, NodesHead, _),
             NodesHead = interior_node(FirstInitOffset, _, _),
             range_of_parent_node(FirstInitOffset, Level,
@@ -3141,7 +3148,7 @@ divide_by_set(DivideBySet, Set, InSet, OutSet) :-
             prune_top_levels(OutList0, OutList),
             InSet = wrap_tree_bitset(InList),
             OutSet = wrap_tree_bitset(OutList)
-        ;
+        else
             % XXX Should have specialized code here that traverses Set
             % just once. This will require something analogous to
             % divide_by_set_descend_divide_by, but descending List
@@ -3167,16 +3174,16 @@ divide_by_set_descend_divide_by(DBLevel, DBNodes,
         DBNodes = [DBNodesHead | DBNodesTail],
         DBNodesHead = interior_node(DBHeadInitOffset, DBHeadLimitOffset,
             DBHeadComponents),
-        ( DBHeadLimitOffset =< InitOffset ->
+        ( if DBHeadLimitOffset =< InitOffset then
             % DBNodesHead is before List.
             divide_by_set_descend_divide_by(DBLevel, DBNodesTail,
                 Level, InitOffset, LimitOffset, List, InList, OutList)
-        ; LimitOffset =< DBHeadInitOffset ->
+        else if LimitOffset =< DBHeadInitOffset then
             % DBNodesHead is after List, and every other
             % node in the original DivideByList is before List.
             InList = leaf_list([]),
             OutList = List
-        ;
+        else
             % The range of DBNodesHead contains the range of List.
             % Dividing List by DBNodesHead is thus the same as
             % dividing List by the original DivideBySet.
@@ -3202,10 +3209,10 @@ divide_by_set_descend_divide_by(DBLevel, DBNodes,
                 DBHeadComponents = interior_list(DBSubLevel, DBSubNodes),
                 expect(unify(DBLevel, DBSubLevel + 1), $pred, $module,
                     "DBLevel != SubLevel + 1"),
-                ( DBSubLevel > Level ->
+                ( if DBSubLevel > Level then
                     divide_by_set_descend_divide_by(DBSubLevel, DBSubNodes,
                         Level, InitOffset, LimitOffset, List, InList, OutList)
-                ; DBSubLevel = Level ->
+                else if DBSubLevel = Level then
                     (
                         List = leaf_list(_),
                         % Since DBHeadComponents is an interior list,
@@ -3231,8 +3238,8 @@ divide_by_set_descend_divide_by(DBLevel, DBNodes,
                             OutList = interior_list(Level, OutNodes)
                         )
                     )
-                ;
-                    unexpected($module, $pred, "DBSubLevel > Level")
+                else
+                    unexpected($module, $pred, "DBSubLevel < Level")
                 )
             )
         )
@@ -3251,7 +3258,7 @@ interiorlist_divide_by_set(Level, DBNodes @ [DBNodesHead | DBNodesTail],
     % Since DBNodesHead and NodesHead are at the same level,
     % they cover the same region only if their initial and limit offsets
     % both match.
-    ( DBInitOffset = InitOffset ->
+    ( if DBInitOffset = InitOffset then
         expect(unify(DBLimitOffset, LimitOffset), $module, $pred,
             "DBLimitOffset != LimitOffset"),
         interiorlist_divide_by_set(Level, DBNodesTail, NodesTail,
@@ -3282,11 +3289,11 @@ interiorlist_divide_by_set(Level, DBNodes @ [DBNodesHead | DBNodesTail],
         ;
             DBComponents = interior_list(_, _),
             Components = leaf_list(_),
-            unexpected($module, $pred, "DB interior vs leaf") 
+            unexpected($module, $pred, "DB interior vs leaf")
         ;
             DBComponents = leaf_list(_),
             Components = interior_list(_, _),
-            unexpected($module, $pred, "DB leaf vs interior") 
+            unexpected($module, $pred, "DB leaf vs interior")
         ;
             DBComponents = interior_list(DBSubLevel, DBSubNodes),
             Components = interior_list(SubLevel, SubNodes),
@@ -3315,12 +3322,12 @@ interiorlist_divide_by_set(Level, DBNodes @ [DBNodesHead | DBNodesTail],
                 OutNodes = [OutNodesHead | OutNodesTail]
             )
         )
-    ; DBInitOffset < InitOffset ->
+    else if DBInitOffset < InitOffset then
         % DBNodesHead covers a region that is entirely before the region
         % covered by Nodes.
         interiorlist_divide_by_set(Level, DBNodesTail, Nodes,
             InNodes, OutNodes)
-    ;
+    else
         % NodesHead covers a region that is entirely before the region
         % covered by DBNodesHead. Therefore all the items in NodesHead
         % are outside DivideBySet.
@@ -3338,27 +3345,27 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
         List @ [ListHead | ListTail], InList, OutList) :-
     DivideByOffset = DivideByHead ^ leaf_offset,
     ListOffset = ListHead ^ leaf_offset,
-    ( DivideByOffset = ListOffset ->
+    ( if DivideByOffset = ListOffset then
         ListHeadBits = ListHead ^ leaf_bits,
         DivideByHeadBits = DivideByHead ^ leaf_bits,
         InBits = ListHeadBits /\ DivideByHeadBits,
         OutBits = ListHeadBits /\ \ DivideByHeadBits,
-        ( InBits = 0 ->
-            ( OutBits = 0 ->
+        ( if InBits = 0 then
+            ( if OutBits = 0 then
                 leaflist_divide_by_set(DivideByTail, ListTail, InList, OutList)
-            ;
+            else
                 NewOutNode = make_leaf_node(ListOffset, OutBits),
                 leaflist_divide_by_set(DivideByTail, ListTail,
                     InList, OutTail),
                 OutList = [NewOutNode | OutTail]
             )
-        ;
+        else
             NewInNode = make_leaf_node(ListOffset, InBits),
-            ( OutBits = 0 ->
+            ( if OutBits = 0 then
                 leaflist_divide_by_set(DivideByTail, ListTail,
                     InTail, OutList),
                 InList = [NewInNode | InTail]
-            ;
+            else
                 NewOutNode = make_leaf_node(ListOffset, OutBits),
                 leaflist_divide_by_set(DivideByTail, ListTail,
                     InTail, OutTail),
@@ -3366,13 +3373,12 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
                 OutList = [NewOutNode | OutTail]
             )
         )
-    ; DivideByOffset < ListOffset ->
+    else if DivideByOffset < ListOffset then
         leaflist_divide_by_set(DivideByTail, List, InList, OutList)
-    ;
+    else
         leaflist_divide_by_set(DivideByList, ListTail, InList, OutTail),
         OutList = [ListHead | OutTail]
     ).
-
 
 %     % Our basic approach of raising both operands to the same level simplifies
 %     % the code (by allowing the reuse of the basic pattern and the helper
@@ -3398,14 +3404,14 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %                 ParentInitOffset, ParentLimitOffset),
 %             range_of_parent_node(DivideByFirstNode ^ leaf_offset, 0,
 %                 DivideByParentInitOffset, DivideByParentLimitOffset),
-%             ( DivideByParentInitOffset = ParentInitOffset ->
+%             ( if DivideByParentInitOffset = ParentInitOffset then
 %                 expect(unify(DivideByParentLimitOffset, ParentLimitOffset),
 %                     $module, $pred, "limit mismatch"),
 %                 leaflist_divide_by_set(DivideByLeafNodes, LeafNodes,
 %                     InLeafNodes, OutLeafNodes),
 %                 InList = leaf_list(InLeafNodes),
 %                 OutList = leaf_list(OutLeafNodes)
-%             ;
+%             else
 %                 % The ranges of the two sets do not overlap.
 %                 InList = [],
 %                 OutList = List
@@ -3458,13 +3464,13 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %
 % interiornode_difference(LevelA, HeadA, TailA, LevelB, HeadB, TailB,
 %         Level, List) :-
-%     ( LevelA < LevelB ->
+%     ( if LevelA < LevelB then
 %         range_of_parent_node(HeadA ^ init_offset, LevelA + 1,
 %             ParentInitOffsetA, ParentLimitOffsetA),
-%         (
+%         ( if
 %             find_containing_node(ParentInitOffsetA, ParentLimitOffsetA,
 %                 [HeadB | TailB], ChosenB)
-%         ->
+%         then
 %             ComponentsB = ChosenB ^ components,
 %             (
 %                 ComponentsB = leaf_list(_),
@@ -3480,24 +3486,24 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %                 interiornode_difference(LevelA, HeadA, TailA,
 %                     SubLevelB, SubHeadB, SubTailB, Level, List)
 %             )
-%         ;
+%         else
 %             Level = 1,
 %             List = []
 %         )
-%     ;
+%     else
 %         raise_interiors_to_level(LevelA, LevelB, HeadB, TailB,
 %             RaisedHeadB, RaisedTailB),
 %         range_of_parent_node(HeadA ^ init_offset, LevelA,
 %             ParentInitOffsetA, ParentLimitOffsetA),
 %         range_of_parent_node(RaisedHeadB ^ init_offset, LevelA,
 %             ParentInitOffsetB, ParentLimitOffsetB),
-%         ( ParentInitOffsetA = ParentInitOffsetB ->
+%         ( if ParentInitOffsetA = ParentInitOffsetB then
 %             expect(unify(ParentLimitOffsetA, ParentLimitOffsetB),
 %                 $module, $pred, "limit mismatch"),
 %             interiorlist_difference([HeadA | TailA],
 %                 [RaisedHeadB | RaisedTailB], List),
 %             Level = LevelA
-%         ;
+%         else
 %             Level = 1,
 %             List = []
 %         )
@@ -3507,12 +3513,12 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %     interior_node::out) is semidet.
 %
 % find_containing_node(InitOffsetA, LimitOffsetA, [HeadB | TailB], ChosenB) :-
-%     (
+%     ( if
 %         HeadB ^ init_offset =< InitOffsetA,
 %         LimitOffsetA =< HeadB ^ limit_offset
-%     ->
+%     then
 %         ChosenB = HeadB
-%     ;
+%     else
 %         find_containing_node(InitOffsetA, LimitOffsetA, TailB, ChosenB)
 %     ).
 %
@@ -3525,19 +3531,19 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 % leaflist_difference(ListA @ [HeadA | TailA], ListB @ [HeadB | TailB], List) :-
 %     OffsetA = HeadA ^ leaf_offset,
 %     OffsetB = HeadB ^ leaf_offset,
-%     ( OffsetA = OffsetB ->
+%     ( if OffsetA = OffsetB then
 %         Bits = (HeadA ^ leaf_bits) /\ \ (HeadB ^ leaf_bits),
-%         ( Bits = 0 ->
+%         ( if Bits = 0 then
 %             leaflist_difference(TailA, TailB, List)
-%         ;
+%         else
 %             Head = make_leaf_node(OffsetA, Bits),
 %             leaflist_difference(TailA, TailB, Tail),
 %             List = [Head | Tail]
 %         )
-%     ; OffsetA < OffsetB ->
+%     else if OffsetA < OffsetB then
 %         leaflist_difference(TailA, ListB, Tail),
 %         List = [HeadA | Tail]
-%     ;
+%     else
 %         leaflist_difference(ListA, TailB, List)
 %     ).
 %
@@ -3552,7 +3558,7 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %         List) :-
 %     OffsetA = HeadA ^ init_offset,
 %     OffsetB = HeadB ^ init_offset,
-%     ( OffsetA = OffsetB ->
+%     ( if OffsetA = OffsetB tnen
 %         ComponentsA = HeadA ^ components,
 %         ComponentsB = HeadB ^ components,
 %         (
@@ -3600,10 +3606,10 @@ leaflist_divide_by_set(DivideByList @ [DivideByHead | DivideByTail],
 %                 List = [Head | Tail]
 %             )
 %         )
-%     ; OffsetA < OffsetB ->
+%     else if OffsetA < OffsetB then
 %         interiorlist_difference(TailA, ListB, Tail),
 %         List = [HeadA | Tail]
-%     ;
+%     else
 %         interiorlist_difference(ListA, TailB, List)
 %     ).
 
@@ -3973,12 +3979,12 @@ leaf_foldr2_pred(P, [H | T], !AccA, !AccB) :-
 :- pragma type_spec(fold_bits/7, T = var(_)).
 
 fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         true
-    ; Size = 1 ->
+    else if Size = 1 then
         Elem = index_to_enum(Offset),
         P(Elem, !Acc)
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
@@ -4021,12 +4027,12 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
 :- pragma type_spec(fold2_bits/9, T = var(_)).
 
 fold2_bits(Dir, P, Offset, Bits, Size, !AccA, !AccB) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         true
-    ; Size = 1 ->
+    else if Size = 1 then
         Elem = index_to_enum(Offset),
         P(Elem, !AccA, !AccB)
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 
@@ -4096,12 +4102,12 @@ leaf_all_true(P, [H | T]) :-
 :- pragma type_spec(all_true_bits/4, T = var(_)).
 
 all_true_bits(P, Offset, Bits, Size) :-
-    ( Bits = 0 ->
+    ( if Bits = 0 then
         true
-    ; Size = 1 ->
+    else if Size = 1 then
         Elem = index_to_enum(Offset),
         P(Elem)
-    ;
+    else
         HalfSize = unchecked_right_shift(Size, 1),
         Mask = mask(HalfSize),
 

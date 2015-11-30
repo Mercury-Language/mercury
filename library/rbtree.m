@@ -310,10 +310,10 @@ rbtree.insert_2(red(K0, V0, L0, R0), K, V, Tree) :-
 % Only ever need to look for a possible rotation if we are in a black node.
 % The rotation criteria is when there is 2 red nodes in a row.
 rbtree.insert_2(black(K0, V0, L0, R0), K, V, Tree) :-
-    (
+    ( if
         L0 = red(LK, LV, LL, LR),
         R0 = red(RK, RV, RL, RR)
-    ->
+    then
         % On the way down the rbtree we split any 4-nodes we find.
         % This converts the current node to a red node, so we call
         % the red node version of rbtree.insert_2/4.
@@ -321,53 +321,53 @@ rbtree.insert_2(black(K0, V0, L0, R0), K, V, Tree) :-
         R = black(RK, RV, RL, RR),
         Tree0 = red(K0, V0, L, R),
         rbtree.insert_2(Tree0, K, V, Tree)
-    ;
+    else
         % Work out which side of the rbtree to insert.
         compare(Result, K, K0),
         (
             Result = (<),
             rbtree.insert_2(L0, K, V, NewL),
-            (
+            ( if
                 % Only need to start looking for a rotation case
                 % if the current node is black(known), and its
                 % new child red.
                 NewL = red(LK, LV, LL, LR)
-            ->
+            then
                 % Check to see if a grandchild is red and if so rotate.
-                ( LL = red(_LLK, _LLV, _LLL, _LLR) ->
+                ( if LL = red(_LLK, _LLV, _LLL, _LLR) then
                     TreeR = red(K0, V0, LR, R0),
                     Tree = black(LK, LV, LL, TreeR)
-                ; LR = red(LRK, LRV, LRL, LRR) ->
+                else if LR = red(LRK, LRV, LRL, LRR) then
                     TreeL = red(LK, LV, LL, LRL),
                     TreeR = red(K0, V0, LRR, R0),
                     Tree = black(LRK, LRV, TreeL, TreeR)
-                ;
+                else
                     Tree = black(K0, V0, NewL, R0)
                 )
-            ;
+            else
                 Tree = black(K0, V0, NewL, R0)
             )
         ;
             Result = (>),
             rbtree.insert_2(R0, K, V, NewR),
-            (
+            ( if
                 % Only need to start looking for a rotation case
                 % if the current node is black(known), and its
                 % new child red.
                 NewR = red(RK, RV, RL, RR)
-            ->
+            then
                 % Check to see if a grandchild is red and if so rotate.
-                ( RL = red(RLK, RLV, RLL, RLR) ->
+                ( if RL = red(RLK, RLV, RLL, RLR) then
                     TreeL = red(K0, V0, L0, RLL),
                     TreeR = red(RK, RV, RLR, RR),
                     Tree = black(RLK, RLV, TreeL, TreeR)
-                ; RR = red(_RRK, _RRV, _RRL, _RRR) ->
+                else if RR = red(_RRK, _RRV, _RRL, _RRR) then
                     TreeL = red(K0, V0, L0, RL),
                     Tree = black(RK, RV, TreeL, RR)
-                ;
+                else
                     Tree = black(K0, V0, L0, NewR)
                 )
-            ;
+            else
                 Tree = black(K0, V0, L0, NewR)
             )
         ;
@@ -499,16 +499,16 @@ rbtree.set_2(red(K0, V0, L0, R0), K, V, Tree) :-
         Tree = red(K0, V0, L0, NewR)
     ).
 rbtree.set_2(black(K0, V0, L0, R0), K, V, Tree) :-
-    (
+    ( if
         L0 = red(LK, LV, LL, LR),
         R0 = red(RK, RV, RL, RR)
-    ->
+    then
         % On the way down the rbtree we split any 4-nodes we find.
         L = black(LK, LV, LL, LR),
         R = black(RK, RV, RL, RR),
         Tree0 = red(K0, V0, L, R),
         rbtree.set_2(Tree0, K, V, Tree)
-    ;
+    else
         % Work out which side of the rbtree to insert.
         compare(Result, K, K0),
         (
@@ -517,53 +517,53 @@ rbtree.set_2(black(K0, V0, L0, R0), K, V, Tree) :-
         ;
             Result = (<),
             rbtree.set_2(L0, K, V, NewL),
-            (
+            ( if
                 % Only need to start looking for a rotation case
                 % if the current node is black(known), and its
                 % new child red.
                 NewL = red(LK, LV, LL, LR)
-            ->
+            then
                 % Check to see if a grandchild is red and if so rotate.
-                ( LL = red(_LLK, _LLV, _LLL, _LLR) ->
+                ( if LL = red(_LLK, _LLV, _LLL, _LLR) then
                     TreeR = red(K0, V0, LR, R0),
                     Tree = black(LK, LV, LL, TreeR)
-                ; LR = red(LRK, LRV, LRL, LRR) ->
+                else if LR = red(LRK, LRV, LRL, LRR) then
                     TreeL = red(LK, LV, LL, LRL),
                     TreeR = red(K0, V0, LRR, R0),
                     Tree = black(LRK, LRV, TreeL, TreeR)
-                ;
+                else
                     % NewL2 == NewL, but this hack
                     % needed for unique modes to work.
                     NewL2 = red(LK, LV, LL, LR),
                     Tree = black(K0, V0, NewL2, R0)
                 )
-            ;
+            else
                 Tree = black(K0, V0, NewL, R0)
             )
         ;
             Result = (>),
             rbtree.set_2(R0, K, V, NewR),
-            (
+            ( if
                 % Only need to start looking for a rotation case
                 % if the current node is black(known), and its
                 % new child red.
                 NewR = red(RK, RV, RL, RR)
-            ->
+            then
                 % Check to see if a grandchild is red and if so rotate.
-                ( RL = red(RLK, RLV, RLL, RLR) ->
+                ( if RL = red(RLK, RLV, RLL, RLR) then
                     TreeL = red(K0, V0, L0, RLL),
                     TreeR = red(RK, RV, RLR, RR),
                     Tree = black(RLK, RLV, TreeL, TreeR)
-                ; RR = red(_RRK, _RRV, _RRL, _RRR) ->
+                else if RR = red(_RRK, _RRV, _RRL, _RRR) then
                     TreeL = red(K0, V0, L0, RL),
                     Tree = black(RK, RV, TreeL, RR)
-                ;
+                else
                     % NewR2 == NewR, but this hack
                     % needed for unique modes to work.
                     NewR2 = red(RK, RV, RL, RR),
                     Tree = black(K0, V0, L0, NewR2)
                 )
-            ;
+            else
                 Tree = black(K0, V0, L0, NewR)
             )
         )
@@ -584,9 +584,9 @@ rbtree.insert_duplicate(_K, _V, red(_, _, _, _), _Tree) :-
 rbtree.insert_duplicate(K, V, black(K0, V0, L0, R0), Tree) :-
     rbtree.insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree0),
     % Ensure that the root of the tree is black.
-    ( Tree0 = red(K1, V1, L1, R1) ->
+    ( if Tree0 = red(K1, V1, L1, R1) then
         Tree = black(K1, V1, L1, R1)
-    ;
+    else
         Tree = Tree0
     ).
 
@@ -621,10 +621,10 @@ rbtree.insert_duplicate_2(red(K0, V0, L0, R0), K, V, Tree) :-
 % Only ever need to look for a possible rotation if we are in a black node.
 % The rotation criteria is when there is 2 red nodes in a row.
 rbtree.insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree) :-
-    (
+    ( if
         L0 = red(LK, LV, LL, LR),
         R0 = red(RK, RV, RL, RR)
-    ->
+    then
         % On the way down the rbtree we split any 4-nodes we find.
         % This converts the current node to a red node, so we call
         % the red node version of rbtree.insert_duplicate_2/4.
@@ -632,75 +632,75 @@ rbtree.insert_duplicate_2(black(K0, V0, L0, R0), K, V, Tree) :-
         R = black(RK, RV, RL, RR),
         Tree0 = red(K0, V0, L, R),
         rbtree.insert_duplicate_2(Tree0, K, V, Tree)
-    ;
+    else
         % Work out which side of the rbtree to insert.
         compare(Result, K, K0),
         (
             Result = (<),
             rbtree.insert_duplicate_2(L0, K, V, NewL),
-            (
+            ( if
                 % Only need to start looking for a rotation case
                 % if the current node is black(known), and its
                 % new child red.
                 NewL = red(LK, LV, LL, LR)
-            ->
+            then
                 % Check to see if a grandchild is red and if so rotate.
-                ( LL = red(_LLK1, _LLV1, _LLL1, _LLR1) ->
+                ( if LL = red(_LLK1, _LLV1, _LLL1, _LLR1) then
                     TreeR = red(K0, V0, LR, R0),
                     Tree = black(LK, LV, LL, TreeR)
-                ; LR = red(LRK, LRV, LRL, LRR) ->
+                else if LR = red(LRK, LRV, LRL, LRR) then
                     TreeL = red(LK, LV, LL, LRL),
                     TreeR = red(K0, V0, LRR, R0),
                     Tree = black(LRK, LRV, TreeL, TreeR)
-                ;
+                else
                     Tree = black(K0, V0, NewL, R0)
                 )
-            ;
+            else
                 Tree = black(K0, V0, NewL, R0)
             )
         ;
             Result = (>),
             rbtree.insert_duplicate_2(R0, K, V, NewR),
-            (
+            ( if
                 % Only need to start looking for a rotation case
                 % if the current node is black(known), and its
                 % new child red.
                 NewR = red(RK, RV, RL, RR)
-            ->
+            then
                 % Check to see if a grandchild is red and if so rotate.
-                ( RL = red(RLK, RLV, RLL, RLR) ->
+                ( if RL = red(RLK, RLV, RLL, RLR) then
                     TreeL = red(K0, V0, L0, RLL),
                     TreeR = red(RK, RV, RLR, RR),
                     Tree = black(RLK, RLV, TreeL, TreeR)
-                ; RR = red(_RRK, _RRV, _RRL, _RRR) ->
+                else if RR = red(_RRK, _RRV, _RRL, _RRR) then
                     TreeL = red(K0, V0, L0, RL),
                     Tree = black(RK, RV, TreeL, RR)
-                ;
+                else
                     Tree = black(K0, V0, L0, NewR)
                 )
-            ;
+            else
                 Tree = black(K0, V0, L0, NewR)
             )
         ;
             Result = (=),
             rbtree.insert_duplicate_2(L0, K, V, NewL),
-            (
+            ( if
                 % Only need to start looking for a rotation case if the
                 % current node is black(known), and its new child red.
                 NewL = red(LK, LV, LL, LR)
-            ->
+            then
                 % Check to see if a grandchild is red and if so rotate.
-                ( LL = red(_LLK2, _LLV2, _LLL2, _LLR2) ->
+                ( if LL = red(_LLK2, _LLV2, _LLL2, _LLR2) then
                     TreeR = red(K0, V0, LR, R0),
                     Tree = black(LK, LV, LL, TreeR)
-                ; LR = red(LRK, LRV, LRL, LRR) ->
+                else if LR = red(LRK, LRV, LRL, LRR) then
                     TreeL = red(LK, LV, LL, LRL),
                     TreeR = red(K0, V0, LRR, R0),
                     Tree = black(LRK, LRV, TreeL, TreeR)
-                ;
+                else
                     Tree = black(K0, V0, NewL, R0)
                 )
-            ;
+            else
                 Tree = black(K0, V0, NewL, R0)
             )
         )
@@ -750,9 +750,9 @@ rbtree.lookup(RBT, K) = V :-
     rbtree.lookup(RBT, K, V).
 
 rbtree.lookup(T, K, V) :-
-    ( rbtree.search(T, K, V0) ->
+    ( if rbtree.search(T, K, V0) then
         V = V0
-    ;
+    else
         report_lookup_error("rbtree.lookup: key not found", K, V)
     ).
 
@@ -772,20 +772,20 @@ rbtree.lower_bound_search(Tree, SearchK, K, V) :-
         rbtree.lower_bound_search(Left, SearchK, K, V)
     ;
         Result = (>),
-        ( rbtree.lower_bound_search(Right, SearchK, Kp, Vp) ->
+        ( if rbtree.lower_bound_search(Right, SearchK, Kp, Vp) then
             K = Kp,
             V = Vp
-        ;
+        else
             K = K0,
             V = V0
         )
     ).
 
 rbtree.lower_bound_lookup(T, SearchK, K, V) :-
-    ( rbtree.lower_bound_search(T, SearchK, K0, V0) ->
+    ( if rbtree.lower_bound_search(T, SearchK, K0, V0) then
         K = K0,
         V = V0
-    ;
+    else
         report_lookup_error("rbtree.lower_bound_lookup: key not found",
             SearchK, V)
     ).
@@ -803,10 +803,10 @@ rbtree.upper_bound_search(Tree, SearchK, K, V) :-
         V = V0
     ;
         Result = (<),
-        ( rbtree.upper_bound_search(Left, SearchK, Kp, Vp) ->
+        ( if rbtree.upper_bound_search(Left, SearchK, Kp, Vp) then
             K = Kp,
             V = Vp
-        ;
+        else
             K = K0,
             V = V0
         )
@@ -816,10 +816,10 @@ rbtree.upper_bound_search(Tree, SearchK, K, V) :-
     ).
 
 rbtree.upper_bound_lookup(T, SearchK, K, V) :-
-    ( rbtree.upper_bound_search(T, SearchK, K0, V0) ->
+    ( if rbtree.upper_bound_search(T, SearchK, K0, V0) then
         K = K0,
         V = V0
-    ;
+    else
         report_lookup_error("rbtree.upper_bound_lookup: key not found",
             SearchK, V)
     ).
@@ -863,13 +863,13 @@ rbtree.delete_2(red(K0, V0, L, R), K, MustRemove, MaybeV, Tree) :-
     compare(Result, K, K0),
     (
         Result = (=),
-        ( rbtree.remove_largest(NewK, NewV, L, NewL) ->
+        ( if rbtree.remove_largest(NewK, NewV, L, NewL) then
             Tree = red(NewK, NewV, NewL, R)
-        ;
+        else
             % L must be empty.
-            ( rbtree.remove_smallest(NewK, NewV, R, NewR) ->
+            ( if rbtree.remove_smallest(NewK, NewV, R, NewR) then
                 Tree = red(NewK, NewV, empty, NewR)
-            ;
+            else
                 % R must be empty
                 Tree = empty
             )
@@ -888,13 +888,13 @@ rbtree.delete_2(black(K0, V0, L, R), K, MustRemove, MaybeV, Tree) :-
     compare(Result, K, K0),
     (
         Result = (=),
-        ( rbtree.remove_largest(NewK, NewV, L, NewL) ->
+        ( if rbtree.remove_largest(NewK, NewV, L, NewL) then
             Tree = black(NewK, NewV, NewL, R)
-        ;
+        else
             % L must be empty
-            ( rbtree.remove_smallest(NewK, NewV, R, NewR) ->
+            ( if rbtree.remove_smallest(NewK, NewV, R, NewR) then
                 Tree = black(NewK, NewV, empty, NewR)
-            ;
+            else
                 % R must be empty
                 Tree = empty
             )

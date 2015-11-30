@@ -574,7 +574,7 @@ type_name(Type) = TypeName :-
     ).
 
     % Turn the types into a list of strings representing an argument list,
-    % adding commas as separators as required.  For example:
+    % adding commas as separators as required. For example:
     %   ["TypeName1", ",", "TypeName2"]
     % If formatting a function type, we close the parentheses around
     % the function's input parameters, e.g.
@@ -741,12 +741,12 @@ pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, ArgPseudoTypeDescs) :-
 
 %---------------------------------------------------------------------------%
 
-    % Make a type_info_desc from a type_ctor_info.  A type_info_desc is
+    % Make a type_info_desc from a type_ctor_info. A type_info_desc is
     % different to a type_ctor_info in the case of variable arity types,
     % i.e. predicates, functions and tuples.
     %
     % The C implementation uses small integers to encode variable arity
-    % type_ctor_infos (see mercury_type_desc.h).  In the Java backend we simply
+    % type_ctor_infos (see mercury_type_desc.h). In the Java backend we simply
     % allocate new TypeCtorInfo_Struct objects and set the `arity' field.
     % Two equivalent type_ctor_descs may have different addresses.
     %
@@ -945,10 +945,10 @@ make_type_ctor_desc_with_arity(_, _, _) :-
 }").
 
 make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.make_type_desc(TypeCtorDesc, ArgTypes,
             TypeDesc)
-    ;
+    else
         private_builtin.sorry("make_type(in, in) = out")
     ).
 
@@ -1016,10 +1016,10 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
 
 type_ctor_name_and_arity(TypeCtorDesc, ModuleName, TypeCtorName,
         TypeCtorArity) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.type_ctor_desc_name_and_arity(TypeCtorDesc,
             ModuleName, TypeCtorName, TypeCtorArity)
-    ;
+    else
         type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo),
         rtti_implementation.type_ctor_name_and_arity(TypeCtorInfo,
             ModuleName, TypeCtorName, TypeCtorArity)

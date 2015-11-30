@@ -187,9 +187,9 @@ random.permutation(List0, List, !RS) :-
 :- mode perform_sampling(in, array_di, in, out, in, out) is det.
 
 perform_sampling(I, !.Record, !Order, !RS) :-
-	( I =< 0 ->
+	( if I =< 0 then
         true
-	;
+	else
 		I1 = I - 1,
 		random.random(0, I, Index, !RS),
 		array.lookup(!.Record, Index, Next),
@@ -212,12 +212,12 @@ random.test(Seed, N, Nums, Max) :-
 :- mode random.test_2(in, out, in, out) is det.
 
 random.test_2(N, Is, !RS) :-
-	( N > 0 ->
+	( if N > 0 then
 		N1 = N - 1,
 		random.random(I, !RS),
 		random.test_2(N1, Is0, !RS),
 		Is = [I | Is0]
-	;
+	else
 		Is = []
 	).
 

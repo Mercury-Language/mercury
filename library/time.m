@@ -28,7 +28,7 @@
 
     % The `clock_t' type represents times measured in clock ticks.
     % NOTE: the unit used for a value of this type depends on whether it was
-    % returned by `clock' or `times'.  See the comments on these
+    % returned by `clock' or `times'. See the comments on these
     % predicates below.
     %
 :- type clock_t == int.
@@ -250,9 +250,9 @@ compare_time_t_reps(Result, X, Y) :-
 
 time.clock(Result, !IO) :-
     time.c_clock(Ret, !IO),
-    ( Ret = -1 ->
+    ( if Ret = -1 then
         throw(time_error("can't get clock value"))
-    ;
+    else
         Result = Ret
     ).
 
@@ -318,9 +318,9 @@ time.clock(Result, !IO) :-
 
 time.times(Tms, Result, !IO) :-
     time.c_times(Ret, Ut, St, CUt, CSt, !IO),
-    ( Ret = -1 ->
+    ( if Ret = -1 then
         throw(time_error("can't get times value"))
-    ;
+    else
         Tms = tms(Ut, St, CUt, CSt),
         Result = Ret
     ).
@@ -435,9 +435,9 @@ time.times(Tms, Result, !IO) :-
 
 time.clk_tck = Ret :-
     Ret0 = time.c_clk_tck,
-    ( Ret0 = -1 ->
+    ( if Ret0 = -1 then
         throw(time_error("can't get clk_tck value"))
-    ;
+    else
         Ret = Ret0
     ).
 
@@ -477,9 +477,9 @@ time.c_clk_tck = -1.   % default is to throw an exception.
 
 time.time(Result, !IO) :-
     time.c_time(Ret, !IO),
-    ( time.time_t_is_invalid(Ret) ->
+    ( if time.time_t_is_invalid(Ret) then
         throw(time_error("can't get time value"))
-    ;
+    else
         Result = time_t(Ret)
     ).
 
@@ -627,7 +627,7 @@ time.localtime(time_t(Time)) = TM :-
     // XXX On the day when you switch back to standard time from daylight
     // savings time, the time '2:30am' occurs twice, once during daylight
     // savings time (N = 1), and then again an hour later, during standard
-    // time (N = 0).  The .NET API does not seem to provide any way to
+    // time (N = 0). The .NET API does not seem to provide any way to
     // get the right answer in both cases.
     if (System.TimeZone.CurrentTimeZone.IsDaylightSavingTime(t)) {
         N = 1;
@@ -805,11 +805,11 @@ time.gmtime(time_t(Time)) = TM :-
 :- func int_to_maybe_dst(int) = maybe(dst).
 
 int_to_maybe_dst(N) = DST :-
-    ( N = 0 ->
+    ( if N = 0 then
         DST = yes(standard_time)
-    ; N > 0 ->
+    else if N > 0 then
         DST = yes(daylight_time)
-    ; % N < 0
+    else % N < 0
         DST = no
     ).
 
@@ -857,7 +857,7 @@ time.mktime(TM) = time_t(Time) :-
     // On the day when you switch back to standard time from daylight
     // savings time, the time '2:30am' occurs twice, once during daylight
     // savings time (N = 1), and then again an hour later, during standard
-    // time (N = 0).  The .NET API does not seem to provide any way to
+    // time (N = 0). The .NET API does not seem to provide any way to
     // get the right answer in both cases.
     System.DateTime local_time =
         new System.DateTime(Yr + 1900, Mnt + 1, MD, Hrs, Min, Sec);
@@ -913,7 +913,7 @@ time.mktime(TM) = time_t(Time) :-
 ** module) is a SimpleTimeZone.
 ** However, we can't just cast the TimeZone instance to SimpleTimeZone,
 ** because for Java versions >= 1.4, GregorianCalender no longer uses a
-** SimpleTimeZone.  So in this case, what we really want is
+** SimpleTimeZone. So in this case, what we really want is
 ** TimeZone.getDSTSavings(), but we can't just put that or the code won't
 ** compile for Java versions < 1.4.
 **
@@ -963,9 +963,9 @@ time.asctime(TM) = Str :-
 :- func wday_name(int) = string.
 
 wday_name(N) = Name :-
-    ( wday_name(N, Name0) ->
+    ( if wday_name(N, Name0) then
         Name = Name0
-    ;
+    else
         error("time: wday_name")
     ).
 
@@ -982,9 +982,9 @@ wday_name(6, "Sat").
 :- func mon_name(int) = string.
 
 mon_name(N) = Name :-
-    ( mon_name(N, Name0) ->
+    ( if mon_name(N, Name0) then
         Name = Name0
-    ;
+    else
         error("time: mon_name")
     ).
 

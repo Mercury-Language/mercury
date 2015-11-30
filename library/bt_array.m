@@ -183,9 +183,15 @@
 
 %---------------------------------------------------------------------------%
 
+make_empty_array(N) = BTA :-
+    make_empty_array(N, BTA).
+
 make_empty_array(Low, bt_array(Low, High, ListOut)) :-
     High = Low - 1,
     ra_list_nil(ListOut).
+
+init(N1, N2, T) = BTA :-
+    init(N1, N2, T, BTA).
 
 init(Low, High, Item, bt_array(Low, High, ListOut)) :-
     ra_list_nil(ListIn),
@@ -195,9 +201,9 @@ init(Low, High, Item, bt_array(Low, High, ListOut)) :-
 :- pred add_elements(int::in, T::in, ra_list(T)::in, ra_list(T)::out) is det.
 
 add_elements(ElemsToAdd, Item, RaList0, RaList) :-
-    ( ElemsToAdd =< 0 ->
+    ( if ElemsToAdd =< 0 then
         RaList0 = RaList
-    ;
+    else
         ra_list_cons(Item, RaList0, RaList1),
         ElemsToAdd1 = ElemsToAdd - 1,
         add_elements(ElemsToAdd1, Item, RaList1, RaList)
@@ -205,9 +211,18 @@ add_elements(ElemsToAdd, Item, RaList0, RaList) :-
 
 %---------------------------------------------------------------------------%
 
+min(BTA) = N :-
+    min(BTA, N).
+
 min(bt_array(Low, _, _), Low).
 
+max(BTA) = N :-
+    max(BTA, N).
+
 max(bt_array(_, High, _), High).
+
+size(BTA) = N :-
+    size(BTA, N).
 
 size(bt_array(Low, High, _), Size) :-
     Size = High - Low + 1.
@@ -219,18 +234,23 @@ in_bounds(bt_array(Low, High, _), Index) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma inline(actual_position/4).
 :- pred actual_position(int::in, int::in, int::in, int::out) is det.
+:- pragma inline(actual_position/4).
 
 actual_position(Low, High, Index, Pos) :-
     Pos = High - Low - Index.
 
+elem(Index, Array) = lookup(Array, Index).
+
+lookup(BTA, N) = T :-
+    lookup(BTA, N, T).
+
 lookup(bt_array(Low, High, RaList), Index, Item) :-
     actual_position(Low, High, Index, Pos),
-    ( ra_list_lookup(Pos, RaList, Item0) ->
+    ( if ra_list_lookup(Pos, RaList, Item0) then
         Item = Item0
-    ;
-        error("bt_array.lookup: Array subscript out of bounds")
+    else
+        unexpected($module, $pred, "array subscript out of bounds")
     ).
 
 semidet_lookup(bt_array(Low, High, RaList), Index, Item) :-
@@ -239,11 +259,16 @@ semidet_lookup(bt_array(Low, High, RaList), Index, Item) :-
 
 %---------------------------------------------------------------------------%
 
+'elem :='(Index, Array, Value) = set(Array, Index, Value).
+
+set(BT1A, N, T) = BTA2 :-
+    set(BT1A, N, T, BTA2).
+
 set(BtArray0, Index, Item, BtArray) :-
-    ( semidet_set(BtArray0, Index, Item, BtArray1) ->
+    ( if semidet_set(BtArray0, Index, Item, BtArray1) then
         BtArray = BtArray1
-    ;
-        error("bt_array.set: index out of bounds")
+    else
+        unexpected($module, $pred, "index out of bounds")
     ).
 
 semidet_set(bt_array(Low, High, RaListIn), Index, Item,
@@ -253,29 +278,32 @@ semidet_set(bt_array(Low, High, RaListIn), Index, Item,
 
 %---------------------------------------------------------------------------%
 
+resize(BT1A, N1, N2, T) = BTA2 :-
+    resize(BT1A, N1, N2, T, BTA2).
+
 resize(Array0, L, H, Item, Array) :-
     Array0 = bt_array(L0, H0, RaList0),
-    ( L = L0 ->
+    ( if L = L0 then
         % Optimise the common case where the lower bounds are
         % the same.
 
-        ( H < H0 ->
+        ( if H < H0 then
             SizeDiff = H0 - H,
-            ( ra_list_drop(SizeDiff, RaList0, RaList1) ->
+            ( if ra_list_drop(SizeDiff, RaList0, RaList1) then
                 RaList = RaList1
-            ;
-                error("bt_array.resize: " ++
-                    "Can't resize to a less-than-empty array")
+            else
+                unexpected($module, $pred,
+                    "can't resize to a less-than-empty array")
             ),
             Array = bt_array(L, H, RaList)
-        ; H > H0 ->
+        else if H > H0 then
             SizeDiff = H - H0,
             add_elements(SizeDiff, Item, RaList0, RaList),
             Array = bt_array(L, H, RaList)
-        ;
+        else
             Array = Array0
         )
-    ;
+    else
         int.max(L, L0, L1),
         int.min(H, H0, H1),
         fetch_items(Array0, L1, H1, Items),
@@ -283,25 +311,29 @@ resize(Array0, L, H, Item, Array) :-
         insert_items(Array1, L1, Items, Array)
     ).
 
+shrink(BT1A, N1, N2) = BTA2 :-
+    shrink(BT1A, N1, N2, BTA2).
+
 shrink(Array0, L, H, Array) :-
     Array0 = bt_array(L0, H0, RaList0),
-    ( ( L < L0 ; H > H0 ) ->
-        error("bt_array.shrink: New bounds are larger than old ones")
-    ; L = L0 ->
+    ( if ( L < L0 ; H > H0 ) then
+        unexpected($module, $pred, "new bounds are larger than old ones")
+    else if L = L0 then
         % Optimise the common case where the lower bounds are the same.
 
         SizeDiff = H0 - H,
-        ( ra_list_drop(SizeDiff, RaList0, RaList1) ->
+        ( if ra_list_drop(SizeDiff, RaList0, RaList1) then
             RaList = RaList1
-        ;
-            error("bt_array.shrink: Can't resize to a less-than-empty array")
+        else
+            unexpected($module, $pred,
+                "can't resize to a less-than-empty array")
         ),
         Array = bt_array(L, H, RaList)
-    ;
-        ( ra_list_head(RaList0, Item0) ->
+    else
+        ( if ra_list_head(RaList0, Item0) then
             Item = Item0
-        ;
-            error("bt_array.shrink: Can't shrink an empty array")
+        else
+            unexpected($module, $pred, "can't shrink an empty array")
         ),
         int.max(L, L0, L1),
         int.min(H, H0, H1),
@@ -311,6 +343,9 @@ shrink(Array0, L, H, Array) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+from_list(N, Xs) = BTA :-
+    from_list(N, Xs, BTA).
 
 from_list(Low, List, bt_array(Low, High, RaList)) :-
     list.length(List, Len),
@@ -339,33 +374,39 @@ insert_items(Array0, N, [Head|Tail], Array) :-
 
 %---------------------------------------------------------------------------%
 
+to_list(BTA) = Xs :-
+    to_list(BTA, Xs).
+
 to_list(bt_array(_, _, RaList), List) :-
     reverse_from_ra_list(RaList, [], List).
 
 :- pred reverse_from_ra_list(ra_list(T)::in, list(T)::in, list(T)::out) is det.
 
 reverse_from_ra_list(RaList0, Xs0, Xs) :-
-    ( ra_list_head_tail(RaList0, X, RaList1) ->
+    ( if ra_list_head_tail(RaList0, X, RaList1) then
         reverse_from_ra_list(RaList1, [X | Xs0], Xs)
-    ;
+    else
         Xs0 = Xs
     ).
 
 %---------------------------------------------------------------------------%
 
+fetch_items(BTA, N1, N2) = Xs :-
+    fetch_items(BTA, N1, N2, Xs).
+
 fetch_items(bt_array(ALow, AHigh, RaList0), Low, High, List) :-
-    (
+    ( if
         Low > High
-    ->
+    then
         List = []
-    ;
+    else if
         actual_position(ALow, AHigh, High, Drop),
         ra_list_drop(Drop, RaList0, RaList),
         Take = High - Low + 1,
         reverse_from_ra_list_count(Take, RaList, [], List0)
-    ->
+    then
         List = List0
-    ;
+    else
         List = []
     ).
 
@@ -373,13 +414,13 @@ fetch_items(bt_array(ALow, AHigh, RaList0), Low, High, List) :-
     list(T)::in, list(T)::out) is det.
 
 reverse_from_ra_list_count(I, RaList0, Xs0, Xs) :-
-    (
+    ( if
         ra_list_head_tail(RaList0, X, RaList1),
         I >= 0
-    ->
+    then
         I1 = I - 1,
         reverse_from_ra_list_count(I1, RaList1, [X | Xs0], Xs)
-    ;
+    else
         Xs0 = Xs
     ).
 
@@ -392,7 +433,7 @@ bsearch(A, SearchX, Compare, I) :-
 
     % XXX Would we gain anything by traversing the ra_list instead
     % of doing a vanilla binary chop?
-
+    %
 :- pred bsearch_loop(bt_array(T)::in, int::in, int::in, T::in,
     pred(T, T, comparison_result)::in(pred(in, in, out) is det), int::out)
     is semidet.
@@ -405,11 +446,11 @@ bsearch_loop(A, Lo, Hi, SearchX, Compare, I) :-
 
     % If Width == 0, we may just have found our element.
     % Do a Compare to check.
-    ( Width = 0 ->
+    ( if Width = 0 then
         lookup(A, Lo, LoX),
         Compare(SearchX, LoX, (=)),
         I = Lo
-    ;
+    else
         % We calculate Mid this way to avoid overflow, and because it works
         % even if Lo, and maybe Hi, is negative.
         Mid = Lo + ((Hi - Lo) `unchecked_right_shift` 1),
@@ -494,13 +535,13 @@ ra_list_nil(nil).
 :- pragma inline(ra_list_cons/3).
 
 ra_list_cons(X, List0, List) :-
-    (
+    ( if
         List0 = cons(Size1, T1, cons(Size2, T2, Rest)),
         Size1 = Size2
-    ->
+    then
         NewSize = 1 + Size1 + Size2,
         List = cons(NewSize, node(X, T1, T2), Rest)
-    ;
+    else
         List = cons(1, leaf(X), List0)
     ).
 
@@ -534,9 +575,9 @@ ra_list_lookup(I, List, X) :-
 :- pred ra_list_lookup_2(int::in, ra_list(T)::in, T::out) is semidet.
 
 ra_list_lookup_2(I, cons(Size, T, Rest), X) :-
-    ( I < Size ->
+    ( if I < Size then
         ra_list_bintree_lookup(Size, T, I, X)
-    ;
+    else
         NewI = I - Size,
         ra_list_lookup_2(NewI, Rest, X)
     ).
@@ -546,14 +587,14 @@ ra_list_lookup_2(I, cons(Size, T, Rest), X) :-
 
 ra_list_bintree_lookup(_, leaf(X), 0, X).
 ra_list_bintree_lookup(Size, node(X0, T1, T2), I, X) :-
-    ( I = 0 ->
+    ( if I = 0 then
         X0 = X
-    ;
+    else
         Size2 = Size // 2,
-        ( I =< Size2 ->
+        ( if I =< Size2 then
             NewI = I - 1,
             ra_list_bintree_lookup(Size2, T1, NewI, X)
-        ;
+        else
             NewI = I - 1 - Size2,
             ra_list_bintree_lookup(Size2, T2, NewI, X)
         )
@@ -571,10 +612,10 @@ ra_list_update(List0, I, X, List) :-
     is semidet.
 
 ra_list_update_2(cons(Size, T0, Rest), I, X, List) :-
-    ( I < Size ->
+    ( if I < Size then
         ra_list_bintree_update(Size, T0, I, X, T),
         List = cons(Size, T, Rest)
-    ;
+    else
         NewI = I - Size,
         ra_list_update_2(Rest, NewI, X, List0),
         List = cons(Size, T0, List0)
@@ -585,15 +626,15 @@ ra_list_update_2(cons(Size, T0, Rest), I, X, List) :-
 
 ra_list_bintree_update(_, leaf(_), 0, X, leaf(X)).
 ra_list_bintree_update(Size, node(X0, T1, T2), I, X, T) :-
-    ( I = 0 ->
+    ( if I = 0 then
         T = node(X, T1, T2)
-    ;
+    else
         Size2 = Size // 2,
-        ( I =< Size2 ->
+        ( if I =< Size2 then
             NewI = I - 1,
             ra_list_bintree_update(Size2, T1, NewI, X, T0),
             T = node(X0, T0, T2)
-        ;
+        else
             NewI = I - 1 - Size2,
             ra_list_bintree_update(Size2, T2, NewI, X, T0),
             T = node(X0, T1, T0)
@@ -603,70 +644,25 @@ ra_list_bintree_update(Size, node(X0, T1, T2), I, X, T) :-
 %---------------------------------------------------------------------------%
 
 ra_list_drop(N, As, Bs) :-
-    ( N > 0 ->
+    ( if N > 0 then
         As = cons(Size, _, Cs),
-        ( Size < N ->
+        ( if Size < N then
             N1 = N - Size,
             ra_list_drop(N1, Cs, Bs)
-        ;
+        else
             ra_list_slow_drop(N, As, Bs)
         )
-    ;
+    else
         As = Bs
     ).
 
 :- pred ra_list_slow_drop(int::in, ra_list(T)::in, ra_list(T)::out) is semidet.
 
 ra_list_slow_drop(N, As, Bs) :-
-    ( N > 0 ->
+    ( if N > 0 then
         N1 = N - 1,
         ra_list_tail(As, Cs),
         ra_list_slow_drop(N1, Cs, Bs)
-    ;
+    else
         As = Bs
     ).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
-%   Function forms added.
-
-make_empty_array(N) = BTA :-
-    make_empty_array(N, BTA).
-
-init(N1, N2, T) = BTA :-
-    init(N1, N2, T, BTA).
-
-min(BTA) = N :-
-    min(BTA, N).
-
-max(BTA) = N :-
-    max(BTA, N).
-
-size(BTA) = N :-
-    size(BTA, N).
-
-lookup(BTA, N) = T :-
-    lookup(BTA, N, T).
-
-set(BT1A, N, T) = BTA2 :-
-    set(BT1A, N, T, BTA2).
-
-resize(BT1A, N1, N2, T) = BTA2 :-
-    resize(BT1A, N1, N2, T, BTA2).
-
-shrink(BT1A, N1, N2) = BTA2 :-
-    shrink(BT1A, N1, N2, BTA2).
-
-from_list(N, Xs) = BTA :-
-    from_list(N, Xs, BTA).
-
-to_list(BTA) = Xs :-
-    to_list(BTA, Xs).
-
-fetch_items(BTA, N1, N2) = Xs :-
-    fetch_items(BTA, N1, N2, Xs).
-
-elem(Index, Array) = lookup(Array, Index).
-
-'elem :='(Index, Array, Value) = set(Array, Index, Value).

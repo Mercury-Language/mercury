@@ -366,14 +366,14 @@
 :- func key_set_map_add(key_set_map(T), int, digraph_key(T)) = key_set_map(T).
 
 key_set_map_add(Map0, XI, Y) = Map :-
-    ( map.search(Map0, XI, SuccXs0) ->
-        ( contains(SuccXs0, Y) ->
+    ( if map.search(Map0, XI, SuccXs0) then
+        ( if contains(SuccXs0, Y) then
             Map = Map0
-        ;
+        else
             insert(Y, SuccXs0, SuccXs),
             Map = map.det_update(Map0, XI, SuccXs)
         )
-    ;
+    else
         init(SuccXs0),
         insert(Y, SuccXs0, SuccXs),
         Map = map.det_insert(Map0, XI, SuccXs)
@@ -383,10 +383,10 @@ key_set_map_add(Map0, XI, Y) = Map :-
     key_set_map(T).
 
 key_set_map_delete(Map0, XI, Y) = Map :-
-    ( map.search(Map0, XI, SuccXs0) ->
+    ( if map.search(Map0, XI, SuccXs0) then
         delete(Y, SuccXs0, SuccXs),
         Map = map.det_update(Map0, XI, SuccXs)
-    ;
+    else
         Map = Map0
     ).
 
@@ -403,9 +403,9 @@ digraph.init(digraph(0, VMap, FwdMap, BwdMap)) :-
 %---------------------------------------------------------------------------%
 
 digraph.add_vertex(Vertex, Key, !G) :-
-    ( bimap.search(!.G ^ vertex_map, Vertex, Key0) ->
+    ( if bimap.search(!.G ^ vertex_map, Vertex, Key0) then
         Key = Key0
-    ;
+    else
         allocate_key(Key, !G),
         !G ^ vertex_map := bimap.set(!.G ^ vertex_map, Vertex, Key)
     ).
@@ -426,9 +426,9 @@ digraph.lookup_key(G, Vertex) = Key :-
     digraph.lookup_key(G, Vertex, Key).
 
 digraph.lookup_key(G, Vertex, Key) :-
-    ( digraph.search_key(G, Vertex, Key0) ->
+    ( if digraph.search_key(G, Vertex, Key0) then
         Key = Key0
-    ;
+    else
         unexpected($module, $pred, "search for key failed")
     ).
 
@@ -436,9 +436,9 @@ digraph.lookup_vertex(G, Key) = Vertex :-
     digraph.lookup_vertex(G, Key, Vertex).
 
 digraph.lookup_vertex(G, Key, Vertex) :-
-    ( bimap.search(G ^ vertex_map, Vertex0, Key) ->
+    ( if bimap.search(G ^ vertex_map, Vertex0, Key) then
         Vertex = Vertex0
-    ;
+    else
         unexpected($module, $pred, "search for vertex failed")
     ).
 
@@ -516,9 +516,9 @@ digraph.lookup_key_set_from(G, X) = Ys :-
     digraph.lookup_key_set_from(G, X, Ys).
 
 digraph.lookup_key_set_from(G, digraph_key(XI), Ys) :-
-    ( map.search(G ^ fwd_map, XI, Ys0) ->
+    ( if map.search(G ^ fwd_map, XI, Ys0) then
         Ys = Ys0
-    ;
+    else
         init(Ys)
     ).
 
@@ -532,9 +532,9 @@ digraph.lookup_key_set_to(G, Y) = Xs :-
     digraph.lookup_key_set_to(G, Y, Xs).
 
 digraph.lookup_key_set_to(G, digraph_key(YI), Xs) :-
-    ( map.search(G ^ bwd_map, YI, Xs0) ->
+    ( if map.search(G ^ bwd_map, YI, Xs0) then
         Xs = Xs0
-    ;
+    else
         init(Xs)
     ).
 
@@ -641,9 +641,9 @@ digraph.dfsrev(G, X, !Visited, DfsRev) :-
     list(digraph_key(T))::in, list(digraph_key(T))::out) is det.
 
 digraph.dfs_2(G, X, !Visited, !DfsRev) :-
-    ( contains(!.Visited, X) ->
+    ( if contains(!.Visited, X) then
         true
-    ;
+    else
         digraph.lookup_key_set_from(G, X, SuccXs),
         insert(X, !Visited),
 
@@ -776,11 +776,11 @@ digraph.is_dag(G) :-
     is semidet.
 
 digraph.is_dag_2(G, Ancestors, X, !Visited) :-
-    ( list.member(X, Ancestors) ->
+    ( if list.member(X, Ancestors) then
         fail
-    ; contains(!.Visited, X) ->
+    else if contains(!.Visited, X) then
         true
-    ;
+    else
         digraph.lookup_key_set_from(G, X, SuccXs),
         !:Visited = insert(!.Visited, X),
         foldl(digraph.is_dag_2(G, [X | Ancestors]), SuccXs, !Visited)
@@ -800,14 +800,14 @@ digraph.components(G, Components) :-
     set(set(digraph_key(T)))::in, set(set(digraph_key(T)))::out) is det.
 
 digraph.components_2(G, Xs0, !Components) :-
-    ( remove_least(X, Xs0, Xs1) ->
+    ( if remove_least(X, Xs0, Xs1) then
         init(Comp0),
         Keys0 = make_singleton_set(X),
         digraph.reachable_from(G, Keys0, Comp0, Comp),
         set.insert(to_set(Comp), !Components),
         difference(Xs1, Comp, Xs2),
         digraph.components_2(G, Xs2, !Components)
-    ;
+    else
         true
     ).
 
@@ -816,7 +816,7 @@ digraph.components_2(G, Xs0, !Components) :-
 
 digraph.reachable_from(G, Keys0, !Comp) :-
     % Invariant: Keys0 and !.Comp are disjoint.
-    ( remove_least(X, Keys0, Keys1) ->
+    ( if remove_least(X, Keys0, Keys1) then
         insert(X, !Comp),
         digraph.lookup_key_set_from(G, X, FwdSet),
         digraph.lookup_key_set_to(G, X, BwdSet),
@@ -824,7 +824,7 @@ digraph.reachable_from(G, Keys0, !Comp) :-
         difference(NextSet0, !.Comp, NextSet),
         union(Keys1, NextSet, Keys),
         digraph.reachable_from(G, Keys, !Comp)
-    ;
+    else
         true
     ).
 
@@ -916,9 +916,9 @@ digraph.make_reduced_graph(_, [], !R).
 digraph.make_reduced_graph(CliqMap, [X - Y | Edges], !R) :-
     map.lookup(CliqMap, X, CliqX),
     map.lookup(CliqMap, Y, CliqY),
-    ( CliqX = CliqY ->
+    ( if CliqX = CliqY then
         true
-    ;
+    else
         digraph.add_edge(CliqX, CliqY, !R)
     ),
     digraph.make_reduced_graph(CliqMap, Edges, !R).
@@ -963,9 +963,9 @@ digraph.atsort(G, ATsort) :-
 
 digraph.atsort_2([], _, _, !ATsort).
 digraph.atsort_2([X | Xs], GInv, !.Vis, !ATsort) :-
-    ( contains(!.Vis, X) ->
+    ( if contains(!.Vis, X) then
         true
-    ;
+    else
         digraph.dfs_2(GInv, X, !Vis, [], CliqKeys),
         list.map(digraph.lookup_vertex(GInv), CliqKeys, CliqList),
         set.list_to_set(CliqList, Cliq),
@@ -1018,9 +1018,9 @@ digraph.detect_fake_reflexives(G, Rtc, [X | Xs], !Fakes) :-
     digraph.lookup_key_set_from(G, X, SuccXs),
     digraph.lookup_key_set_to(Rtc, X, PreXs),
     intersect(SuccXs, PreXs, Ys),
-    ( empty(Ys) ->
+    ( if empty(Ys) then
         !:Fakes = [X - X | !.Fakes]
-    ;
+    else
         true
     ),
     digraph.detect_fake_reflexives(G, Rtc, Xs, !Fakes).
@@ -1059,9 +1059,9 @@ digraph.rtc(G, !:Rtc) :-
 
 digraph.rtc_2([], _, _, !Rtc).
 digraph.rtc_2([X | Xs], G, !.Vis, !Rtc) :-
-    ( contains(!.Vis, X) ->
+    ( if contains(!.Vis, X) then
         true
-    ;
+    else
         digraph.dfs_2(G, X, !Vis, [], CliqList),
         list_to_set(CliqList, Cliq),
         foldl(find_followers(G), Cliq, Cliq, Followers0),

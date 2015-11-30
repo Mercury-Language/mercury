@@ -373,10 +373,10 @@ get_tournament_view(Winner) = TournamentView :-
     ;
         LTree = loser_node(_, LoserPrio, LoserKey,
             SubLTreeL, SplitKey, SubLTreeR),
-        ( LoserKey `leq` SplitKey ->
+        ( if LoserKey `leq` SplitKey then
             WinnerA = winner(LoserPrio, LoserKey, SubLTreeL, SplitKey),
             WinnerB = winner(WinnerPrio, WinnerKey, SubLTreeR, MaxKey)
-        ;
+        else
             WinnerA = winner(WinnerPrio, WinnerKey, SubLTreeL, SplitKey),
             WinnerB = winner(LoserPrio, LoserKey, SubLTreeR, MaxKey)
         ),
@@ -455,11 +455,11 @@ combine_psqueue_winner_via_tournament(PSQA, WinnerB, CombinedWinner) :-
 combine_winners_via_tournament(WinnerA, WinnerB, CombinedWinner) :-
     WinnerA = winner(PrioA, KeyA, LTreeA, MaxKeyA),
     WinnerB = winner(PrioB, KeyB, LTreeB, MaxKeyB),
-    ( PrioA `leq` PrioB ->
+    ( if PrioA `leq` PrioB then
         % WinnerA wins
         LTree = balance(PrioB, KeyB, LTreeA, MaxKeyA, LTreeB),
         CombinedWinner = winner(PrioA, KeyA, LTree, MaxKeyB)
-    ;
+    else
         % WinnerB wins
         LTree = balance(PrioA, KeyA, LTreeA, MaxKeyA, LTreeB),
         CombinedWinner = winner(PrioB, KeyB, LTree, MaxKeyB)
@@ -497,21 +497,21 @@ combine_winners_via_tournament(WinnerA, WinnerB, CombinedWinner) :-
 balance(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
     SizeL = loser_tree_size(LTreeL),
     SizeR = loser_tree_size(LTreeR),
-    (
+    ( if
         SizeR + SizeL < 2
-    ->
+    then
         LTree = construct_node(Prio, Key, LTreeL, SplitKey, LTreeR)
-    ;
+    else if
         compare(CMPL, SizeR, balance_omega * SizeL),
         CMPL = (>)
-    ->
+    then
         LTree = balance_left(Prio, Key, LTreeL, SplitKey, LTreeR)
-    ;
+    else if
         compare(CMPR, SizeL, balance_omega * SizeR),
         CMPR = (>)
-    ->
+    then
         LTree = balance_right(Prio, Key, LTreeL, SplitKey, LTreeR)
-    ;
+    else
         LTree = construct_node(Prio, Key, LTreeL, SplitKey, LTreeR)
     ).
 
@@ -527,9 +527,9 @@ balance_left(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
     (
         LTreeR = loser_node(_, _, _, SubLTreeRL, _, SubLTreeRR),
         compare(CMP, loser_tree_size(SubLTreeRL), loser_tree_size(SubLTreeRR)),
-        ( CMP = (<) ->
+        ( if CMP = (<) then
             LTree = single_left(Prio, Key, LTreeL, SplitKey, LTreeR)
-        ;
+        else
             LTree = double_left(Prio, Key, LTreeL, SplitKey, LTreeR)
         )
     ;
@@ -549,9 +549,9 @@ balance_right(Prio, Key, LTreeL, SplitKey, LTreeR) = LTree :-
     (
         LTreeL = loser_node(_, _, _, SubLTreeLL, _, SubLTreeLR),
         compare(CMP, loser_tree_size(SubLTreeLR), loser_tree_size(SubLTreeLL)),
-        ( CMP = (<) ->
+        ( if CMP = (<) then
             LTree = single_right(Prio, Key, LTreeL, SplitKey, LTreeR)
-        ;
+        else
             LTree = double_right(Prio, Key, LTreeL, SplitKey, LTreeR)
         )
     ;
@@ -610,16 +610,16 @@ single_left(InsertPrio, InsertKey, LTreeA, SplitKeyAB, LTreeBC) = LTree :-
     (
         LTreeBC = loser_node(_, LoserPrio, LoserKey,
             LTreeB, SplitKeyBC, LTreeC),
-        (
+        ( if
             LoserKey `leq` SplitKeyBC,
             InsertPrio `leq` LoserPrio
-        ->
+        then
             LTree = construct_node(InsertPrio, InsertKey,
                 construct_node(LoserPrio, LoserKey,
                     LTreeA, SplitKeyAB, LTreeB),
                 SplitKeyBC,
                 LTreeC)
-        ;
+        else
             LTree = construct_node(LoserPrio, LoserKey,
                 construct_node(InsertPrio, InsertKey,
                     LTreeA, SplitKeyAB, LTreeB),
@@ -642,17 +642,17 @@ single_right(InsertPrio, InsertKey, LTreeAB, SplitKeyBC, LTreeC) = LTree :-
     (
         LTreeAB = loser_node(_, LoserPrio, LoserKey,
             LTreeA, SplitKeyAB, LTreeB),
-        (
+        ( if
             compare(CMP0, LoserKey, SplitKeyAB),
             CMP0 = (>),
             InsertPrio `leq` LoserPrio
-        ->
+        then
             LTree = construct_node(InsertPrio, InsertKey,
                 LTreeA,
                 SplitKeyAB,
                 construct_node(LoserPrio, LoserKey,
                     LTreeB, SplitKeyBC, LTreeC))
-        ;
+        else
             LTree = construct_node(LoserPrio, LoserKey,
                 LTreeA,
                 SplitKeyAB,
@@ -716,9 +716,9 @@ det_insert(PSQ0, InsertPrio, InsertKey) = PSQ :-
     det_insert(InsertPrio, InsertKey, PSQ0, PSQ).
 
 det_insert(InsertPrio, InsertKey, !PSQ) :-
-    ( insert(InsertPrio, InsertKey, !PSQ) ->
+    ( if insert(InsertPrio, InsertKey, !PSQ) then
         true
-    ;
+    else
         unexpected($file, $pred, "key being inserted is already present")
     ).
 
@@ -746,11 +746,11 @@ insert_tv(InsertPrio, InsertKey, TV, Winner) :-
         TV = tournament_between(WinnerA, WinnerB),
         WinnerA = winner(_, _, _, MaxKeyA),
         WinnerB = winner(_, _, _, _),
-        ( InsertKey `leq` MaxKeyA ->
+        ( if InsertKey `leq` MaxKeyA then
             insert_tv(InsertPrio, InsertKey,
                 get_tournament_view(WinnerA), UpdatedWinnerA),
             combine_winners_via_tournament(UpdatedWinnerA, WinnerB, Winner)
-        ;
+        else
             insert_tv(InsertPrio, InsertKey,
                 get_tournament_view(WinnerB), UpdatedWinnerB),
             combine_winners_via_tournament(WinnerA, UpdatedWinnerB, Winner)
@@ -763,10 +763,10 @@ peek(PSQ, MinPrio, MinKey) :-
     PSQ = nonempty_psqueue(winner(MinPrio, MinKey, _, _)).
 
 det_peek(PSQ, MinPrio, MinKey) :-
-    ( peek(PSQ, MinPrioPrime, MinKeyPrime) ->
+    ( if peek(PSQ, MinPrioPrime, MinKeyPrime) then
         MinKey = MinKeyPrime,
         MinPrio = MinPrioPrime
-    ;
+    else
         unexpected($file, $pred, "priority search queue is empty")
     ).
 
@@ -775,10 +775,10 @@ remove_least(MinPrio, MinKey, !PSQ) :-
     !:PSQ = convert_loser_tree_to_psqueue(LTree, MaxKey).
 
 det_remove_least(MinPrio, MinKey, !PSQ) :-
-    ( remove_least(MinPrioPrime, MinKeyPrime, !PSQ) ->
+    ( if remove_least(MinPrioPrime, MinKeyPrime, !PSQ) then
         MinKey = MinKeyPrime,
         MinPrio = MinPrioPrime
-    ;
+    else
         unexpected($file, $pred, "priority search queue is empty")
     ).
 
@@ -797,11 +797,11 @@ convert_loser_tree_to_psqueue(LTree, MaxKey) = PSQ :-
     ;
         LTree = loser_node(_, LoserPrio, LoserKey,
             SubLTreeL, SplitKey, SubLTreeR),
-        ( LoserKey `leq` SplitKey ->
+        ( if LoserKey `leq` SplitKey then
             WinnerA = winner(LoserPrio, LoserKey, SubLTreeL, SplitKey),
             PSQA = nonempty_psqueue(WinnerA),
             PSQB = convert_loser_tree_to_psqueue(SubLTreeR, MaxKey)
-        ;
+        else
             PSQA = convert_loser_tree_to_psqueue(SubLTreeL, SplitKey),
             WinnerB = winner(LoserPrio, LoserKey, SubLTreeR, MaxKey),
             PSQB = nonempty_psqueue(WinnerB)
@@ -815,10 +815,10 @@ to_assoc_list(PSQ) = AssocList :-
     to_assoc_list(PSQ, AssocList).
 
 to_assoc_list(PSQ0, AssocList) :-
-    ( remove_least(K, P, PSQ0, PSQ1) ->
+    ( if remove_least(K, P, PSQ0, PSQ1) then
         to_assoc_list(PSQ1, AssocListTail),
         AssocList = [K - P | AssocListTail]
-    ;
+    else
         AssocList = []
     ).
 
@@ -849,9 +849,9 @@ remove(MatchingPrio, SearchKey, !PSQ) :-
     ).
 
 det_remove(MatchingPrio, SearchKey, !PSQ) :-
-    ( remove(MatchingPrioPrime, SearchKey, !PSQ) ->
+    ( if remove(MatchingPrioPrime, SearchKey, !PSQ) then
         MatchingPrio = MatchingPrioPrime
-    ;
+    else
         unexpected($file, $pred, "element not found")
     ).
 
@@ -862,21 +862,21 @@ det_remove(MatchingPrio, SearchKey, !PSQ) :-
 remove_tv(MatchingPrio, SearchKey, TournamentView, PSQ) :-
     (
         TournamentView = singleton_tournament(Prio, Key),
-        ( Key = SearchKey ->
+        ( if Key = SearchKey then
             MatchingPrio = Prio,
             PSQ = empty_psqueue
-        ;
+        else
             fail
         )
     ;
         TournamentView = tournament_between(WinnerA, WinnerB),
         WinnerA = winner(_, _, _, MaxKeyA),
-        ( SearchKey `leq` MaxKeyA ->
+        ( if SearchKey `leq` MaxKeyA then
             remove_tv(MatchingPrio, SearchKey,
                 get_tournament_view(WinnerA), UpdatedPSQA),
             combine_psqueue_winner_via_tournament(UpdatedPSQA, WinnerB,
                 CombinedWinner)
-        ;
+        else
             remove_tv(MatchingPrio, SearchKey,
                 get_tournament_view(WinnerB), UpdatedPSQB),
             combine_winner_psqueue_via_tournament(WinnerA, UpdatedPSQB,
@@ -904,20 +904,20 @@ adjust(AdjustFunc, SearchKey, !PSQ) :-
 adjust_tv(AdjustFunc, SearchKey, TournamentView, Winner) :-
     (
         TournamentView = singleton_tournament(Prio, Key),
-        ( Key = SearchKey ->
+        ( if Key = SearchKey then
             Winner = singleton_winner(AdjustFunc(Prio), Key)
-        ;
+        else
             % XXX was Winner = singleton_winner(Prio, Key)
             fail
         )
     ;
         TournamentView = tournament_between(WinnerA, WinnerB),
         WinnerA = winner(_, _, _, MaxKeyA),
-        ( SearchKey `leq` MaxKeyA ->
+        ( if SearchKey `leq` MaxKeyA then
             adjust_tv(AdjustFunc, SearchKey,
                 get_tournament_view(WinnerA), UpdatedWinnerA),
             combine_winners_via_tournament(UpdatedWinnerA, WinnerB, Winner)
-        ;
+        else
             adjust_tv(AdjustFunc, SearchKey,
                 get_tournament_view(WinnerB), UpdatedWinnerB),
             combine_winners_via_tournament(WinnerA, UpdatedWinnerB, Winner)
@@ -944,17 +944,17 @@ search(PSQ, SearchKey, MatchingPrio) :-
 search_tv(TournamentView, SearchKey, MatchingPrio) :-
     (
         TournamentView = singleton_tournament(Prio, Key),
-        ( Key = SearchKey ->
+        ( if Key = SearchKey then
             MatchingPrio = Prio
-        ;
+        else
             fail
         )
     ;
         TournamentView = tournament_between(WinnerA, WinnerB),
         WinnerA = winner(_, _, _, MaxKeyA),
-        ( SearchKey `leq` MaxKeyA ->
+        ( if SearchKey `leq` MaxKeyA then
             search_tv(get_tournament_view(WinnerA), SearchKey, MatchingPrio)
-        ;
+        else
             search_tv(get_tournament_view(WinnerB), SearchKey, MatchingPrio)
         )
     ).
@@ -963,9 +963,9 @@ lookup(PSQ, SearchKey) = MatchingPrio :-
     lookup(PSQ, SearchKey, MatchingPrio).
 
 lookup(PSQ, SearchKey, MatchingPrio) :-
-    ( search(PSQ, SearchKey, MatchingPrioPrime) ->
+    ( if search(PSQ, SearchKey, MatchingPrioPrime) then
         MatchingPrio = MatchingPrioPrime
-    ;
+    else
         unexpected($file, $pred, "key not found")
     ).
 
@@ -1050,9 +1050,9 @@ leq(ValLeft, ValRight) :-
 :- pragma type_spec(min2/2, V = int).
 
 min2(A, B) = Min :-
-    ( A `leq` B ->
+    ( if A `leq` B then
         Min = A
-    ;
+    else
         Min = B
     ).
 
@@ -1060,9 +1060,9 @@ min2(A, B) = Min :-
 :- pragma type_spec(max2/2, V = int).
 
 max2(A, B) = Max :-
-    ( A `leq` B ->
+    ( if A `leq` B then
         Max = B
-    ;
+    else
         Max = A
     ).
 
@@ -1104,9 +1104,9 @@ all_nodes_obey_semi_heap(LTree) :-
         LTree = loser_leaf
     ;
         LTree = loser_node(_, Prio, Key, SubLTreeL, SplitKey, SubLTreeR),
-        ( Key `leq` SplitKey ->
+        ( if Key `leq` SplitKey then
             min_prio_in_loser_tree_acc(SubLTreeL, Prio, MaybeMinPrio)
-        ;
+        else
             min_prio_in_loser_tree_acc(SubLTreeR, Prio, MaybeMinPrio)
         ),
         (
@@ -1372,14 +1372,14 @@ dump_psqueue(PSQ) =
     dump_psqueue(0, PSQ).
 
 verify_and_dump_psqueue(PSQ) = Str :-
-    (
+    ( if
         is_semi_heap(PSQ),
         is_search_tree(PSQ),
         has_key_condition(PSQ),
         is_finite_map(PSQ)
-    ->
+    then
         Str = dump_psqueue(PSQ)
-    ;
+    else
         unexpected($module, $pred, "verification failed")
     ).
 

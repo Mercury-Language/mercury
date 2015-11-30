@@ -63,7 +63,7 @@
     % Binds FunctorName and Arity to the name and arity of functor number
     % FunctorNumber for the specified type, ArgTypes to the type_descs
     % for the types of the arguments of that functor, and ArgNames to the
-    % field name of each functor argument, if any.  Fails if the type is
+    % field name of each functor argument, if any. Fails if the type is
     % not a discriminated union type, or if FunctorNumber is out of range.
     %
 :- pred get_functor_with_names(type_desc::in, functor_number_lex::in,
@@ -105,7 +105,7 @@
     %
     % Returns a term of the type specified by Type whose functor
     % is functor number I of the type given by Type, and whose
-    % arguments are given by Args.  Fails if the type is not a
+    % arguments are given by Args. Fails if the type is not a
     % discriminated union type, or if I is out of range, or if the
     % number of arguments supplied doesn't match the arity of the selected
     % functor, or if the types of the arguments do not match
@@ -143,10 +143,10 @@
 ").
 
 det_num_functors(TypeInfo) =
-    ( if N = num_functors(TypeInfo)
-      then N
-      else func_error(
-                "construct.det_num_functors: type does not have functors")
+    ( if N = num_functors(TypeInfo) then
+        N
+    else
+        unexpected($module, $pred, "type does not have functors")
     ).
 
 :- pragma foreign_proc("C",
@@ -160,9 +160,9 @@ det_num_functors(TypeInfo) =
 }").
 
 num_functors(TypeDesc) = NumFunctors :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         NumFunctors = erlang_rtti_implementation.num_functors(TypeDesc)
-    ;
+    else
         type_desc_to_type_info(TypeDesc, TypeInfo),
         rtti_implementation.type_info_num_functors(TypeInfo, NumFunctors)
     ).
@@ -182,7 +182,7 @@ get_functor_with_names(TypeDesc, I, Functor, Arity,
 
 get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         PseudoTypeDescList) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.get_functor(TypeDesc, FunctorNumber,
             FunctorName, Arity, TypeDescList),
         % XXX This old comment is wrong now:
@@ -191,7 +191,7 @@ get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         % only kind of function symbol in which we may want to return unbound.
         PseudoTypeDescList = list.map(type_desc_to_pseudo_type_desc,
             TypeDescList)
-    ;
+    else
         type_desc_to_type_info(TypeDesc, TypeInfo),
         rtti_implementation.type_info_get_functor(TypeInfo, FunctorNumber,
             FunctorName, Arity, PseudoTypeInfoList),
@@ -264,7 +264,7 @@ get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
 
 get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         PseudoTypeDescList, Names) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.get_functor_with_names(TypeDesc,
             FunctorNumber, FunctorName, Arity, TypeDescList, Names),
         % XXX This old comment is wrong now:
@@ -273,7 +273,7 @@ get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         % only kind of function symbol in which we may want to return unbound.
         PseudoTypeDescList = list.map(type_desc_to_pseudo_type_desc,
             TypeDescList)
-    ;
+    else
         type_desc_to_type_info(TypeDesc, TypeInfo),
         rtti_implementation.type_info_get_functor_with_names(TypeInfo,
             FunctorNumber, FunctorName, Arity, PseudoTypeInfoList, Names),
@@ -392,10 +392,10 @@ get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
     get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal).
 
 get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.get_functor_ordinal(TypeDesc, FunctorNumber,
             Ordinal)
-    ;
+    else
         type_desc_to_type_info(TypeDesc, TypeInfo),
         rtti_implementation.type_info_get_functor_ordinal(TypeInfo,
             FunctorNumber, Ordinal)
@@ -494,10 +494,10 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
 }").
 
 get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         erlang_rtti_implementation.get_functor_lex(TypeDesc, Ordinal,
             FunctorNumber)
-    ;
+    else
         type_desc_to_type_info(TypeDesc, TypeInfo),
         rtti_implementation.type_info_get_functor_lex(TypeInfo, Ordinal,
             FunctorNumber)
@@ -545,11 +545,11 @@ find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
 find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
     Num0 >= 0,
     Num = Num0 - 1,
-    ( get_functor(TypeInfo, Num, Functor, Arity, ArgPseudoTypes) ->
+    ( if get_functor(TypeInfo, Num, Functor, Arity, ArgPseudoTypes) then
         ArgTypes = list.map(det_ground_pseudo_type_desc_to_type_desc,
             ArgPseudoTypes),
         FunctorNumber = Num
-    ;
+    else
         find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes)
     ).
 
@@ -1058,9 +1058,9 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
 }").
 
 construct(TypeDesc, Index, Args) = Term :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         Term = erlang_rtti_implementation.construct(TypeDesc, Index, Args)
-    ;
+    else
         type_desc_to_type_info(TypeDesc, TypeInfo),
         Term = rtti_implementation.construct(TypeInfo, Index, Args)
     ).
@@ -1120,10 +1120,10 @@ construct_tuple(Args) =
 }").
 
 construct_tuple_2(Args, ArgTypeDescs, Arity) = Term :-
-    ( erlang_rtti_implementation.is_erlang_backend ->
+    ( if erlang_rtti_implementation.is_erlang_backend then
         Term = erlang_rtti_implementation.construct_tuple_2(Args, ArgTypeDescs,
             Arity)
-    ;
+    else
         list.map(type_desc_to_type_info, ArgTypeDescs, ArgTypeInfos),
         Term = rtti_implementation.construct_tuple_2(Args, ArgTypeInfos, Arity)
     ).

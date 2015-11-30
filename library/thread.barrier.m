@@ -103,20 +103,20 @@ wait(barrier(WaitingOn, Go), !IO) :-
     take(WaitingOn, N, !IO),
     StillWaitingFor = N - 1,
 
-    ( StillWaitingFor > 0 ->
+    ( if StillWaitingFor > 0 then
         % There are still outstanding threads.
 
-        % Unlock the counter
+        % Unlock the counter.
         put(WaitingOn, StillWaitingFor, !IO),
 
         % Wait on the barrier then unlock another thread.
         take(Go, WhyGo, !IO),
         put(Go, WhyGo, !IO)
-    ; StillWaitingFor = 0 ->
+    else if StillWaitingFor = 0 then
         % The last thread at the barrier, so signal that we can go.
         put(Go, can_go_normal, !IO),
         put(WaitingOn, StillWaitingFor, !IO)
-    ;
+    else
         put(WaitingOn, 0, !IO),
 
         % Go is always updated before WaitingOn, so if this branch is being

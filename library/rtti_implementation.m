@@ -427,9 +427,9 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
     ),
     PseudoTypeInfoList = iterate(0, Arity - 1, F),
 
-    ( get_du_functor_arg_names(DuFunctorDesc, ArgNames) ->
+    ( if get_du_functor_arg_names(DuFunctorDesc, ArgNames) then
         Names = iterate(0, Arity - 1, arg_names_index(ArgNames))
-    ;
+    else
         Names = list.duplicate(Arity, null_string)
     ).
 
@@ -442,16 +442,16 @@ get_functor_du(TypeCtorRep, TypeInfo, TypeCtorInfo, FunctorNumber,
 :- func create_pseudo_type_info(type_info, pseudo_type_info) = pseudo_type_info.
 
 create_pseudo_type_info(TypeInfo, PseudoTypeInfo) = ArgPseudoTypeInfo :-
-    ( is_exist_pseudo_type_info(PseudoTypeInfo, _VarNum) ->
+    ( if is_exist_pseudo_type_info(PseudoTypeInfo, _VarNum) then
         ArgPseudoTypeInfo = PseudoTypeInfo
-    ; is_univ_pseudo_type_info(PseudoTypeInfo, VarNum) ->
+    else if is_univ_pseudo_type_info(PseudoTypeInfo, VarNum) then
         % In some cases we may need to call var_arity_type_info_index_as_pti.
         ArgPseudoTypeInfo = type_info_index_as_pti(TypeInfo, VarNum)
-    ; pseudo_type_ctor_and_args(PseudoTypeInfo, TypeCtorInfo, Args0) ->
+    else if pseudo_type_ctor_and_args(PseudoTypeInfo, TypeCtorInfo, Args0) then
         Args = list.map(create_pseudo_type_info(TypeInfo), Args0),
         NewTypeInfo = make_type_info(TypeCtorInfo, list.length(Args), Args),
         private_builtin.unsafe_type_cast(NewTypeInfo, ArgPseudoTypeInfo)
-    ;
+    else
         unexpected($module, $pred, "create_pseudo_type_info")
     ).
 
@@ -673,41 +673,41 @@ generic_compare(Res, X, Y) :-
     TypeInfo = get_type_info(X),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
-    (
+    ( if
         TypeCtorRep = tcr_tuple
-    ->
+    then
         compare_tuple(TypeInfo, Res, X, Y)
-    ;
+    else if
         ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
-    ->
+    then
         unexpected($module, $pred, "unimplemented: higher order comparisons")
-    ;
+    else
         Arity = TypeCtorInfo ^ type_ctor_arity,
         ComparePred = TypeCtorInfo ^ type_ctor_compare_pred,
-        ( Arity = 0 ->
+        ( if Arity = 0 then
             result_call_4(ComparePred, Res, X, Y)
-        ; Arity = 1 ->
+        else if Arity = 1 then
             result_call_5(ComparePred, Res,
                 type_info_index_as_ti(TypeInfo, 1), X, Y)
-        ; Arity = 2 ->
+        else if Arity = 2 then
             result_call_6(ComparePred, Res,
                 type_info_index_as_ti(TypeInfo, 1),
                 type_info_index_as_ti(TypeInfo, 2),
                 X, Y)
-        ; Arity = 3 ->
+        else if Arity = 3 then
             result_call_7(ComparePred, Res,
                 type_info_index_as_ti(TypeInfo, 1),
                 type_info_index_as_ti(TypeInfo, 2),
                 type_info_index_as_ti(TypeInfo, 3),
                 X, Y)
-        ; Arity = 4 ->
+        else if Arity = 4 then
             result_call_8(ComparePred, Res,
                 type_info_index_as_ti(TypeInfo, 1),
                 type_info_index_as_ti(TypeInfo, 2),
                 type_info_index_as_ti(TypeInfo, 3),
                 type_info_index_as_ti(TypeInfo, 4),
                 X, Y)
-        ; Arity = 5 ->
+        else if Arity = 5 then
             result_call_9(ComparePred, Res,
                 type_info_index_as_ti(TypeInfo, 1),
                 type_info_index_as_ti(TypeInfo, 2),
@@ -715,7 +715,7 @@ generic_compare(Res, X, Y) :-
                 type_info_index_as_ti(TypeInfo, 4),
                 type_info_index_as_ti(TypeInfo, 5),
                 X, Y)
-        ;
+        else
             error("compare/3: type arity > 5 not supported")
         )
     ).
@@ -724,42 +724,42 @@ generic_unify(X, Y) :-
     TypeInfo = get_type_info(X),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
-    (
+    ( if
         TypeCtorRep = tcr_tuple
-    ->
+    then
         unify_tuple(TypeInfo, X, Y)
-    ;
+    else if
         ( TypeCtorRep = tcr_pred ; TypeCtorRep = tcr_func )
-    ->
+    then
         unexpected($module, $pred, "unimplemented: higher order unification")
-    ;
+    else
         Arity = TypeCtorInfo ^ type_ctor_arity,
         UnifyPred = TypeCtorInfo ^ type_ctor_unify_pred,
-        ( Arity = 0 ->
+        ( if Arity = 0 then
             semidet_call_3(UnifyPred, X, Y)
-        ; Arity = 1 ->
+        else if Arity = 1 then
             semidet_call_4(UnifyPred,
                 type_info_index_as_ti(TypeInfo, 1),
                 X, Y)
-        ; Arity = 2 ->
+        else if Arity = 2 then
             semidet_call_5(UnifyPred,
                 type_info_index_as_ti(TypeInfo, 1),
                 type_info_index_as_ti(TypeInfo, 2),
                 X, Y)
-        ; Arity = 3 ->
+        else if Arity = 3 then
             semidet_call_6(UnifyPred,
                 type_info_index_as_ti(TypeInfo, 1),
                 type_info_index_as_ti(TypeInfo, 2),
                 type_info_index_as_ti(TypeInfo, 3),
                 X, Y)
-        ; Arity = 4 ->
+        else if Arity = 4 then
             semidet_call_7(UnifyPred,
                 type_info_index_as_ti(TypeInfo, 1),
                 type_info_index_as_ti(TypeInfo, 2),
                 type_info_index_as_ti(TypeInfo, 3),
                 type_info_index_as_ti(TypeInfo, 4),
                 X, Y)
-        ; Arity = 5 ->
+        else if Arity = 5 then
             semidet_call_8(UnifyPred,
                 type_info_index_as_ti(TypeInfo, 1),
                 type_info_index_as_ti(TypeInfo, 2),
@@ -767,7 +767,7 @@ generic_unify(X, Y) :-
                 type_info_index_as_ti(TypeInfo, 4),
                 type_info_index_as_ti(TypeInfo, 5),
                 X, Y)
-        ;
+        else
             error("unify/2: type arity > 5 not supported")
         )
     ).
@@ -782,9 +782,9 @@ unify_tuple(TypeInfo, TermA, TermB) :-
         type_info::in, T::in, T::in) is semidet.
 
 unify_tuple_pos(Loc, TupleArity, TypeInfo, TermA, TermB) :-
-    ( Loc > TupleArity ->
+    ( if Loc > TupleArity then
         true
-    ;
+    else
         ArgTypeInfo = var_arity_type_info_index_as_ti(TypeInfo, Loc),
 
         SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
@@ -807,9 +807,9 @@ compare_tuple(TypeInfo, Result, TermA, TermB) :-
     comparison_result::out, T::in, T::in) is det.
 
 compare_tuple_pos(Loc, TupleArity, TypeInfo, Result, TermA, TermB) :-
-    ( Loc > TupleArity ->
+    ( if Loc > TupleArity then
         Result = (=)
-    ;
+    else
         ArgTypeInfo = var_arity_type_info_index_as_ti(TypeInfo, Loc),
 
         SubTermA = get_tuple_subterm(ArgTypeInfo, TermA, Loc - 1),
@@ -1126,14 +1126,14 @@ result_call_9(_::in, (=)::out, _::in, _::in, _::in, _::in, _::in,
     "ML_compare_type_infos").
 
 compare_type_infos(Res, TypeInfo1, TypeInfo2) :-
-    ( same_pointer_value(TypeInfo1, TypeInfo2) ->
+    ( if same_pointer_value(TypeInfo1, TypeInfo2) then
         Res = (=)
-    ;
+    else
         NewTypeInfo1 = collapse_equivalences(TypeInfo1),
         NewTypeInfo2 = collapse_equivalences(TypeInfo2),
-        ( same_pointer_value(NewTypeInfo1, NewTypeInfo2) ->
+        ( if same_pointer_value(NewTypeInfo1, NewTypeInfo2) then
             Res = (=)
-        ;
+        else
             compare_collapsed_type_infos(Res, NewTypeInfo1, NewTypeInfo2)
         )
     ).
@@ -1154,7 +1154,7 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
             TypeCtorInfo2 ^ type_ctor_name),
         (
             NameRes = (=),
-            ( type_ctor_is_variable_arity(TypeCtorInfo1) ->
+            ( if type_ctor_is_variable_arity(TypeCtorInfo1) then
                 Arity1 = get_var_arity_typeinfo_arity(TypeInfo1),
                 Arity2 = get_var_arity_typeinfo_arity(TypeInfo2),
                 compare(ArityRes, Arity1, Arity2),
@@ -1168,7 +1168,7 @@ compare_collapsed_type_infos(Res, TypeInfo1, TypeInfo2) :-
                     ),
                     Res = ArityRes
                 )
-            ;
+            else
                 Arity1 = type_ctor_arity(TypeCtorInfo1),
                 Arity2 = type_ctor_arity(TypeCtorInfo2),
                 compare(ArityRes, Arity1, Arity2),
@@ -1236,9 +1236,9 @@ compare_type_ctor_infos(Res, TypeCtorInfo1, TypeCtorInfo2) :-
     type_info::in, type_info::in) is det.
 
 compare_type_info_args(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
-    ( Loc > Arity ->
+    ( if Loc > Arity then
         Result = (=)
-    ;
+    else
         SubTypeInfoA = type_info_index_as_ti(TypeInfoA, Loc),
         SubTypeInfoB = type_info_index_as_ti(TypeInfoB, Loc),
 
@@ -1259,9 +1259,9 @@ compare_type_info_args(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
     comparison_result::out, type_info::in, type_info::in) is det.
 
 compare_var_arity_type_info_args(Loc, Arity, Result, TypeInfoA, TypeInfoB) :-
-    ( Loc > Arity ->
+    ( if Loc > Arity then
         Result = (=)
-    ;
+    else
         SubTypeInfoA = var_arity_type_info_index_as_ti(TypeInfoA, Loc),
         SubTypeInfoB = var_arity_type_info_index_as_ti(TypeInfoB, Loc),
 
@@ -1298,37 +1298,37 @@ type_ctor_is_variable_arity(TypeCtorInfo) :-
 compare_pseudo_type_infos(Res, PTI1, PTI2) :-
     % Try to optimize a common case:
     % If type_info addresses are equal, they must represent the same type.
-    ( same_pointer_value(PTI1, PTI2) ->
+    ( if same_pointer_value(PTI1, PTI2) then
         Res = (=)
-    ;
+    else
         % Otherwise, we need to expand equivalence types, if any.
         NewPTI1 = collapse_equivalences_pseudo(PTI1),
         NewPTI2 = collapse_equivalences_pseudo(PTI2),
 
         % Perhaps they are equal now...
-        ( same_pointer_value(NewPTI1, NewPTI2) ->
+        ( if same_pointer_value(NewPTI1, NewPTI2) then
             Res = (=)
-        ;
+        else
             % Handle the comparison if either pseudo_type_info is a variable.
             % Any non-variable is greater than a variable.
-            (
+            ( if
                 pseudo_type_info_is_variable(NewPTI1, VarNum1),
                 pseudo_type_info_is_variable(NewPTI2, VarNum2)
-            ->
+            then
                 compare(Res, VarNum1, VarNum2)
-            ;
+            else if
                 pseudo_type_info_is_variable(NewPTI1, _)
-            ->
+            then
                 Res = (<)
-            ;
+            else if
                 pseudo_type_info_is_variable(NewPTI2, _)
-            ->
+            then
                 Res = (>)
-            ;
+            else if
                 % Otherwise find the type_ctor_infos, and compare those.
                 pseudo_type_ctor_and_args(NewPTI1, TypeCtorInfo1, Args1),
                 pseudo_type_ctor_and_args(NewPTI2, TypeCtorInfo2, Args2)
-            ->
+            then
                 compare_type_ctor_infos(ResTCI, TypeCtorInfo1, TypeCtorInfo2),
                 (
                     ResTCI = (<),
@@ -1352,7 +1352,7 @@ compare_pseudo_type_infos(Res, PTI1, PTI2) :-
                         compare_pseudo_type_info_args(Res, Args1, Args2)
                     )
                 )
-            ;
+            else
                 unexpected($module, $pred, "impossible pseudo_type_infos")
             )
         )
@@ -1402,35 +1402,35 @@ compare_pseudo_type_info_args(Res, Args1, Args2) :-
 collapse_equivalences(TypeInfo) = NewTypeInfo :-
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
-    (
+    ( if
         % Look past equivalences.
         ( TypeCtorRep = tcr_equiv_ground
         ; TypeCtorRep = tcr_equiv
         )
-    ->
+    then
         TypeLayout = get_type_layout(TypeCtorInfo),
         EquivTypeInfo = get_layout_equiv(TypeLayout),
         NewTypeInfo = collapse_equivalences(EquivTypeInfo)
-    ;
+    else
         NewTypeInfo = TypeInfo
     ).
 
 :- func collapse_equivalences_pseudo(pseudo_type_info) = pseudo_type_info.
 
 collapse_equivalences_pseudo(PTI) = NewPTI :-
-    (
+    ( if
         pseudo_type_ctor_and_args(PTI, TypeCtorInfo, _Args),
         TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
         % Look past equivalences.
         ( TypeCtorRep = tcr_equiv_ground
         ; TypeCtorRep = tcr_equiv
         )
-    ->
+    then
         TypeLayout = get_type_layout(TypeCtorInfo),
         EquivTypeInfo = get_layout_equiv(TypeLayout),
         NewPTI0 = create_pseudo_type_info(EquivTypeInfo, PTI),
         NewPTI = collapse_equivalences_pseudo(NewPTI0)
-    ;
+    else
         NewPTI = PTI
     ).
 
@@ -1466,12 +1466,12 @@ type_ctor_name_and_arity(TypeCtorInfo, ModuleName, Name, Arity) :-
 type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
     TypeInfo = collapse_equivalences(TypeInfo0),
     TypeCtorInfo = get_type_ctor_info(TypeInfo),
-    (
+    ( if
         type_ctor_is_variable_arity(TypeCtorInfo)
-    ->
+    then
         Arity = get_var_arity_typeinfo_arity(TypeInfo),
         TypeArgs = iterate(1, Arity, var_arity_type_info_index_as_ti(TypeInfo))
-    ;
+    else
         Arity = type_ctor_arity(TypeCtorInfo),
         TypeArgs = iterate(1, Arity, type_info_index_as_ti(TypeInfo))
     ).
@@ -1479,10 +1479,10 @@ type_ctor_and_args(TypeInfo0, TypeCtorInfo, TypeArgs) :-
 :- func iterate(int, int, (func(int) = T)) = list(T).
 
 iterate(Start, Max, Func) = Results :-
-    ( Start =< Max ->
+    ( if Start =< Max then
         Res = Func(Start),
         Results = [Res | iterate(Start + 1, Max, Func)]
-    ;
+    else
         Results = []
     ).
 
@@ -2447,13 +2447,13 @@ deconstruct(Term, NonCanon, Functor, FunctorNumber, Arity, Arguments) :-
     TypeCtorRep = get_type_ctor_rep(TypeCtorInfo),
     deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Functor, Ordinal, Arity, Arguments),
-    (
+    ( if
         Ordinal >= 0,
         type_ctor_search_functor_number_map(TypeCtorInfo, Ordinal,
             FunctorNumber0)
-    ->
+    then
         FunctorNumber = FunctorNumber0
-    ;
+    else
         FunctorNumber = 0
     ).
 
@@ -2691,10 +2691,10 @@ deconstruct_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
 
         % Constrain the T in array(T) to the correct element type.
         type_ctor_and_args(type_of(Term), _, Args),
-        ( Args = [ElemType] ->
+        ( if Args = [ElemType] then
             has_type(Elem, ElemType),
             same_array_elem_type(Array, Elem)
-        ;
+        else
             unexpected($module, $pred, "array without a type_ctor arg")
         ),
 
@@ -2853,14 +2853,14 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
             ),
             FunctorDesc = PTagEntry ^ du_sectag_alternatives(SecTag),
             Arity = FunctorDesc ^ du_functor_arity,
-            (
+            ( if
                 get_du_functor_arg_names(FunctorDesc, Names),
                 search_arg_names(Names, 0, Arity, Name, Index)
-            ->
+            then
                 ArgUniv = get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo,
                     Index),
                 MaybeArgument = yes(ArgUniv)
-            ;
+            else
                 MaybeArgument = no
             )
         ;
@@ -3016,10 +3016,10 @@ expand_type_name(TypeCtorInfo, Wrap) = Name :-
     type_info::in, int::in, T::out) is det.
 
 get_arg(Term, SecTagLocn, FunctorDesc, TypeInfo, Index, Arg) :-
-    ( get_du_functor_exist_info(FunctorDesc, ExistInfo) ->
+    ( if get_du_functor_exist_info(FunctorDesc, ExistInfo) then
         ExtraArgs = exist_info_typeinfos_plain(ExistInfo) +
             exist_info_tcis(ExistInfo)
-    ;
+    else
         ExtraArgs = 0
     ),
 
@@ -3027,14 +3027,14 @@ get_arg(Term, SecTagLocn, FunctorDesc, TypeInfo, Index, Arg) :-
     PseudoTypeInfo = get_pti_from_arg_types(ArgTypes, Index),
     get_arg_type_info(TypeInfo, PseudoTypeInfo, Term, FunctorDesc,
         ArgTypeInfo),
-    (
+    ( if
         ( SecTagLocn = stag_none
         ; SecTagLocn = stag_none_direct_arg
         ; high_level_data
         )
-    ->
+    then
         TagOffset = 0
-    ;
+    else
         TagOffset = 1
     ),
     RealArgsOffset = TagOffset + ExtraArgs,
@@ -3065,9 +3065,9 @@ get_arg_univ(Term, SecTagLocn, FunctorDesc, TypeInfo, Index) = Univ :-
 #endif
 ").
 high_level_data :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         private_builtin.sorry("high_level_data")
-    ;
+    else
         semidet_succeed
     ).
 
@@ -3076,16 +3076,16 @@ high_level_data :-
 
 get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
         ArgTypeInfo) :-
-    ( pseudo_type_info_is_variable(PseudoTypeInfo, VarNum) ->
+    ( if pseudo_type_info_is_variable(PseudoTypeInfo, VarNum) then
         get_type_info_for_var(TypeInfoParams, VarNum, Term,
             FunctorDesc, ArgTypeInfo)
-    ;
+    else
         CastTypeInfo = type_info_from_pseudo_type_info(PseudoTypeInfo),
         TypeCtorInfo = get_type_ctor_info(CastTypeInfo),
-        ( type_ctor_is_variable_arity(TypeCtorInfo) ->
+        ( if type_ctor_is_variable_arity(TypeCtorInfo) then
             Arity = type_info_get_higher_order_arity(CastTypeInfo),
             StartRegionSize = 2
-        ;
+        else
             Arity = TypeCtorInfo ^ type_ctor_arity,
             StartRegionSize = 1
         ),
@@ -3100,13 +3100,13 @@ get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
 
 get_arg_type_info_2(TypeInfoParams, TypeInfo, Term, FunctorDesc,
         Offset, I, Max, !ArgTypeInfo) :-
-    ( I < Max ->
+    ( if I < Max then
         get_pti_from_type_info_index(TypeInfo, Offset, I, PTI),
         get_arg_type_info(TypeInfoParams, PTI, Term, FunctorDesc, ETypeInfo),
         set_type_info_index(Offset, I, ETypeInfo, !ArgTypeInfo),
         get_arg_type_info_2(TypeInfoParams, TypeInfo, Term, FunctorDesc,
             Offset, I + 1, Max, !ArgTypeInfo)
-    ;
+    else
         true
     ).
 
@@ -3216,13 +3216,13 @@ get_pti_from_type_info_index(_, _, _, _) :-
     du_functor_desc::in, type_info::out) is det.
 
 get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
-    ( type_variable_is_univ_quant(VarNum) ->
+    ( if type_variable_is_univ_quant(VarNum) then
         ArgTypeInfo = type_info_index_as_ti(TypeInfo, VarNum)
-    ;
+    else
         % Existentially qualified.
-        ( get_du_functor_exist_info(FunctorDesc, ExistInfo0) ->
+        ( if get_du_functor_exist_info(FunctorDesc, ExistInfo0) then
             ExistInfo = ExistInfo0
-        ;
+        else
             unexpected($module, $pred, "no exist_info")
         ),
 
@@ -3232,9 +3232,9 @@ get_type_info_for_var(TypeInfo, VarNum, Term, FunctorDesc, ArgTypeInfo) :-
         Slot = ExistLocn ^ exist_arg_num,
         Offset = ExistLocn ^ exist_offset_in_tci,
 
-        ( Offset < 0 ->
+        ( if Offset < 0 then
             ArgTypeInfo = get_type_info_from_term(Term, Slot)
-        ;
+        else
             TypeClassInfo = get_typeclass_info_from_term(Term, Slot),
             ArgTypeInfo = typeclass_info_type_info(TypeClassInfo, Offset)
         )
@@ -4154,18 +4154,18 @@ set_type_info_index(_, _, _, !TypeInfo) :-
 :- pred semidet_unimplemented(string::in) is semidet.
 
 semidet_unimplemented(S) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         sorry($module, S)
-    ;
+    else
         semidet_succeed
     ).
 
 :- pred det_unimplemented(string::in) is det.
 
 det_unimplemented(S) :-
-    ( semidet_succeed ->
+    ( if semidet_succeed then
         sorry($module, S)
-    ;
+    else
         true
     ).
 
@@ -4781,9 +4781,9 @@ arg_names_index(_, _) = _ :-
 
 search_arg_names(ArgNames, I, Arity, Name, Index) :-
     I < Arity,
-    ( arg_names_index(ArgNames, I) = Name ->
+    ( if arg_names_index(ArgNames, I) = Name then
         Index = I
-    ;
+    else
         search_arg_names(ArgNames, I + 1, Arity, Name, Index)
     ).
 

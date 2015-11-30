@@ -14,11 +14,11 @@
 % Discrete Interval Encoding Trees are a highly efficient set implementation
 % for fat sets, i.e. densely populated sets over a discrete linear order.
 %
-% M. Erwig: Diets for Fat Sets
-% Journal of Functional Programming, Vol. 8, No. 6, pp. 627-632
+% M. Erwig: Diets for Fat Sets,
+% Journal of Functional Programming, Vol. 8, No. 6, pp. 627-632.
 %
-% O. Friedmann, M. Lange: More on Balanced Diets
-% Journal of Functional Programming, volume 21, issue 02, pp. 135-157
+% O. Friedmann, M. Lange: More on Balanced Diets,
+% Journal of Functional Programming, volume 21, issue 02, pp. 135-157.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -481,11 +481,11 @@ X =< Y :-
 
 :- func min_elem(T, T) = T <= diet_element(T).
 
-min_elem(X, Y) = ( X < Y -> X ; Y ).
+min_elem(X, Y) = ( if X < Y then X else Y ).
 
 :- func max_elem(T, T) = T <= diet_element(T).
 
-max_elem(X, Y) = ( X > Y -> X ; Y ).
+max_elem(X, Y) = ( if X > Y then X else Y ).
 
 :- pred int_gt(int::in, int::in) is semidet.
 
@@ -525,15 +525,15 @@ create(X, L, R) = node(X, height_join(L, R), L, R).
 balance(X, L, R) = T :-
     HL = height(L),
     HR = height(R),
-    ( int_gt(HL, HR + bal_const) ->
+    ( if int_gt(HL, HR + bal_const) then
         (
             L = empty,
             unexpected($module, $pred, "L empty")
         ;
             L = node(LVX, _, LL, LR),
-            ( int_ge(height(LL), height(LR)) ->
+            ( if int_ge(height(LL), height(LR)) then
                 T = create(LVX, LL, create(X, LR, R))
-            ;
+            else
                 (
                     LR = empty,
                     unexpected($module, $pred, "LR empty")
@@ -543,15 +543,15 @@ balance(X, L, R) = T :-
                 )
             )
         )
-    ; int_gt(HR, HL + bal_const) ->
+    else if int_gt(HR, HL + bal_const) then
         (
             R = empty,
             unexpected($module, $pred, "R empty")
         ;
             R = node(RVX, _, RL, RR),
-            ( int_ge(height(RR), height(RL)) ->
+            ( if int_ge(height(RR), height(RL)) then
                 T = create(RVX, create(X, L, RL), RR)
-            ;
+            else
                 (
                     RL = empty,
                     unexpected($module, $pred, "RL empty")
@@ -561,7 +561,7 @@ balance(X, L, R) = T :-
                 )
             )
         )
-    ;
+    else
         HT = 1 + max(HL, HR),
         T = node(X, HT, L, R)
     ).
@@ -579,11 +579,11 @@ join(V, L, R) = T :-
     ;
         L = node(LX, LH, LL, LR),
         R = node(RX, RH, RL, RR),
-        ( int_gt(LH, RH + bal_const) ->
+        ( if int_gt(LH, RH + bal_const) then
             T = balance(LX, LL, join(V, LR, R))
-        ; int_gt(RH, LH + bal_const) ->
+        else if int_gt(RH, LH + bal_const) then
             T = balance(RX, join(V, L, RL), RR)
-        ;
+        else
             T = create(V, L, R)
         )
     ).
@@ -632,7 +632,7 @@ take_max(T0, X, T) :-
 :- func reroot(diet(T), diet(T)) = diet(T) <= diet_element(T).
 
 reroot(L, R) = T :-
-    ( int_gt(height(L), height(R)) ->
+    ( if int_gt(height(L), height(R)) then
         (
             L = empty,
             unexpected($module, $pred, "L empty")
@@ -641,13 +641,15 @@ reroot(L, R) = T :-
             take_max(L, I, L1),
             T = join(I, L1, R)
         )
-    ;
-        R = empty,
-        T = empty
-    ;
-        R = node(_, _, _, _),
-        take_min(R, I, R1),
-        T = join(I, L, R1)
+    else
+        (
+            R = empty,
+            T = empty
+        ;
+            R = node(_, _, _, _),
+            take_min(R, I, R1),
+            T = join(I, L, R1)
+        )
     ).
 
 :- pred take_min_iter(diet(T)::in(node), interval(T)::out, diet(T)::out)
@@ -717,9 +719,9 @@ equal(T1, T2) :-
 make_singleton_set(X) = singleton({X, X}).
 
 make_interval_set(X, Y) = T :-
-    ( X =< Y ->
+    ( if X =< Y then
         T = singleton({X, Y})
-    ;
+    else
         unexpected_interval($pred, X, Y)
     ).
 
@@ -730,11 +732,11 @@ is_singleton(Set, X) :-
 
 contains(T, Z) :-
     T = node({X, Y}, _, L, R),
-    ( Z < X ->
+    ( if Z < X then
         contains(L, Z)
-    ; Z > Y ->
+    else if Z > Y then
         contains(R, Z)
-    ;
+    else
         true
     ).
 
@@ -759,13 +761,13 @@ member(Elem::out, Set::in) :-
 member_in_range(Lo, Hi, Elem) :-
     % Leave a choice point only if there is at least one solution
     % to find on backtracking.
-    ( Lo < Hi ->
+    ( if Lo < Hi then
         (
             Elem = Lo
         ;
             member_in_range(successor(Lo), Hi, Elem)
         )
-    ;
+    else
         Elem = Lo
     ).
 
@@ -786,9 +788,9 @@ subset(T1, T2) :-
     bool::out) is det <= diet_element(T).
 
 subset_2({X1, Y1}, R1, {X2, Y2}, R2, IsSubset) :-
-    ( X1 < X2 ->
+    ( if X1 < X2 then
         IsSubset = no
-    ; X1 > Y2 ->
+    else if X1 > Y2 then
         (
             R2 = empty,
             IsSubset = no
@@ -797,7 +799,7 @@ subset_2({X1, Y1}, R1, {X2, Y2}, R2, IsSubset) :-
             take_min_iter(R2, Min2, MinR2),
             subset_2({X1, Y1}, R1, Min2, MinR2, IsSubset)
         )
-    ;
+    else
         compare(Upper, Y1, Y2),
         (
             Upper = (<),
@@ -852,37 +854,37 @@ add(P, T0) = T :-
         T = node({P, P}, 1, empty, empty)
     ;
         T0 = node({X, Y}, H, Left, Right),
-        ( P >= X ->
-            ( P =< Y ->
+        ( if P >= X then
+            ( if P =< Y then
                 T = T0
-            ; P > successor(Y) ->
+            else if P > successor(Y) then
                 T = join({X, Y}, Left, add(P, Right))
-            ;
+            else
                 (
                     Right = empty,
                     T = node({X, P}, H, Left, Right)
                 ;
                     Right = node(_, _, _, _),
                     take_min(Right, {U, V}, R),
-                    ( predecessor(U) = P ->
+                    ( if predecessor(U) = P then
                         T = join({X, V}, Left, R)
-                    ;
+                    else
                         T = node({X, P}, H, Left, Right)
                     )
                 )
             )
-        ; P < predecessor(X) ->
+        else if P < predecessor(X) then
             T = join({X, Y}, add(P, Left), Right)
-        ;
+        else
             (
                 Left = empty,
                 T = node({P, Y}, H, Left, Right)
             ;
                 Left = node(_, _, _, _),
                 take_max(Left, {U, V}, L),
-                ( successor(V) = P ->
+                ( if successor(V) = P then
                     T = join({U, Y}, L, Right)
-                ;
+                else
                     T = node({P, Y}, H, Left, Right)
                 )
             )
@@ -897,40 +899,40 @@ insert_new(P, T0, T) :-
         T = node({P, P}, 1, empty, empty)
     ;
         T0 = node({X, Y}, H, Left, Right),
-        ( P >= X ->
-            ( P =< Y ->
+        ( if P >= X then
+            ( if P =< Y then
                 % Already exists.
                 fail
-            ; P > successor(Y) ->
+            else if P > successor(Y) then
                 insert_new(P, Right, R),
                 T = join({X, Y}, Left, R)
-            ;
+            else
                 (
                     Right = empty,
                     T = node({X, P}, H, Left, Right)
                 ;
                     Right = node(_, _, _, _),
                     take_min(Right, {U, V}, R),
-                    ( predecessor(U) = P ->
+                    ( if predecessor(U) = P then
                         T = join({X, V}, Left, R)
-                    ;
+                    else
                         T = node({X, P}, H, Left, Right)
                     )
                 )
             )
-        ; P < predecessor(X) ->
+        else if P < predecessor(X) then
             insert_new(P, Left, L),
             T = join({X, Y}, L, Right)
-        ;
+        else
             (
                 Left = empty,
                 T = node({P, Y}, H, Left, Right)
             ;
                 Left = node(_, _, _, _),
                 take_max(Left, {U, V}, L),
-                ( successor(V) = P ->
+                ( if successor(V) = P then
                     T = join({U, V}, L, Right)
-                ;
+                else
                     T = node({P, Y}, H, Left, Right)
                 )
             )
@@ -948,9 +950,9 @@ insert_list(Elems, Set0, Set) :-
 %---------------------------------------------------------------------------%
 
 insert_interval(X, Y, Set0, Set) :-
-    ( X =< Y ->
+    ( if X =< Y then
         Set = do_insert({X, Y}, Set0)
-    ;
+    else
         unexpected_interval($pred, X, Y)
     ).
 
@@ -969,21 +971,21 @@ do_insert(PQ, T0) = T :-
         T = singleton(PQ)
     ;
         T0 = node({X0, Y0}, _, Left0, Right0),
-        ( Q < predecessor(X0) ->
+        ( if Q < predecessor(X0) then
             T = join({X0, Y0}, do_insert(PQ, Left0), Right0)
-        ; P > successor(Y0) ->
+        else if P > successor(Y0) then
             T = join({X0, Y0}, Left0, do_insert(PQ, Right0))
-        ;
-            ( P >= X0 ->
+        else
+            ( if P >= X0 then
                 X1 = X0,
                 Left1 = Left0
-            ;
+            else
                 find_del_left(P, Left0, X1, Left1)
             ),
-            ( Q =< Y0 ->
+            ( if Q =< Y0 then
                 Y1 = Y0,
                 Right1 = Right0
-            ;
+            else
                 find_del_right(Q, Right0, Y1, Right1)
             ),
             T = join({X1, Y1}, Left1, Right1)
@@ -1000,10 +1002,10 @@ find_del_left(P0, T0, P, T) :-
         T = empty
     ;
         T0 = node({X, Y}, _, Left, Right0),
-        ( P0 > successor(Y) ->
+        ( if P0 > successor(Y) then
             find_del_left(P0, Right0, P, Right1),
             T = join({X, Y}, Left, Right1)
-        ;
+        else
             P = X,
             T = Left
         )
@@ -1019,10 +1021,10 @@ find_del_right(P0, T0, P, T) :-
         T = empty
     ;
         T0 = node({X, Y}, _, Left0, Right),
-        ( P0 < predecessor(X) ->
+        ( if P0 < predecessor(X) then
             find_del_right(P0, Left0, P, Left1),
             T = join({X, Y}, Left1, Right)
-        ;
+        else
             P = Y,
             T = Right
         )
@@ -1034,9 +1036,9 @@ delete(Set0, Elem) = Set :-
     delete(Elem, Set0, Set).
 
 delete(Elem, Set0, Set) :-
-    ( remove(Elem, Set0, Set1) ->
+    ( if remove(Elem, Set0, Set1) then
         Set = Set1
-    ;
+    else
         Set = Set0
     ).
 
@@ -1106,9 +1108,9 @@ remove_least(X, Set0, Set) :-
     ;
         Set0 = node(_, _, _, _),
         take_min(Set0, {X, Y}, Stream),
-        ( X = Y ->
+        ( if X = Y then
             Set = Stream
-        ;
+        else
             Set = do_insert({successor(X), Y}, Stream)
         )
     ).
@@ -1123,22 +1125,22 @@ split(X, Set, Lesser, IsPresent, Greater) :-
         Greater = empty
     ;
         Set = node({A, B}, _, L, R),
-        ( X < A ->
+        ( if X < A then
             split(X, L, Lesser, IsPresent, RL),
             Greater = join({A, B}, RL, R)
-        ; B < X ->
+        else if B < X then
             split(X, R, LR, IsPresent, Greater),
             Lesser = join({A, B}, L, LR)
-        ;
+        else
             IsPresent = yes,
-            ( X = A ->
+            ( if X = A then
                 Lesser = L
-            ;
+            else
                 Lesser = do_insert({A, predecessor(X)}, L)
             ),
-            ( X = B ->
+            ( if X = B then
                 Greater = R
-            ;
+            else
                 Greater = do_insert({successor(X), B}, R)
             )
         )
@@ -1149,9 +1151,9 @@ split(X, Set, Lesser, IsPresent, Greater) :-
 union(DietA, DietB, union(DietA, DietB)).
 
 union(Input, Stream0) = Result :-
-    ( int_gt(height(Stream0), height(Input)) ->
+    ( if int_gt(height(Stream0), height(Input)) then
         Result = union(Stream0, Input)
-    ;
+    else
         take_min_iter2(Stream0, Head1, Stream1),
         union_2(Input, no, Head1, Stream1, Left2, Head2, Stream2),
         (
@@ -1182,10 +1184,10 @@ union_2(Input, Limit, Head0, Stream0, Left, Head, Stream) :-
             Stream = Stream0
         ;
             Input = node({A, B}, _, Left0, Right0),
-            ( X < A ->
+            ( if X < A then
                 union_2(Left0, yes(predecessor(A)), Head0, Stream0,
                     Left1, Head1, Stream1)
-            ;
+            else
                 Left1 = Left0,
                 Head1 = Head0,
                 Stream1 = Stream0
@@ -1208,37 +1210,37 @@ union_helper(Left0, {A, B}, Right0, Limit, Head0, Stream0,
         Stream = empty
     ;
         Head0 = yes({X, Y}),
-        (
+        ( if
             Y < A,
             Y < predecessor(A)
-        ->
+        then
             Left1 = do_insert({X, Y}, Left0),
             take_min_iter2(Stream0, Head1, Stream1),
             union_helper(Left1, {A, B}, Right0, Limit, Head1, Stream1,
                 Left, Head, Stream)
-        ;
+        else if
             X > B,
             X > successor(B)
-        ->
+        then
             union_2(Right0, Limit, Head0, Stream0,
                 Right1, Head1, Stream1),
             Left = join({A, B}, Left0, Right1),
             Head = Head1,
             Stream = Stream1
-        ;
+        else if
             B >= Y
-        ->
+        then
             take_min_iter2(Stream0, Head1, Stream1),
             union_helper(Left0, {min_elem(A, X), B}, Right0, Limit, Head1,
                 Stream1, Left, Head, Stream)
-        ;
+        else if
             Limit = yes(LimitValue),
             Y >= LimitValue
-        ->
+        then
             Left = Left0,
             Head = yes({min_elem(A, X), Y}),
             Stream = Stream0
-        ;
+        else
             union_2(Right0, Limit, yes({min_elem(A, X), Y}), Stream0,
                 Right1, Head1, Stream1),
             Left = reroot(Left0, Right1),
@@ -1270,15 +1272,17 @@ intersect(SetA, SetB, inter(SetA, SetB)).
 :- func inter(diet(T), diet(T)) = diet(T) <= diet_element(T).
 
 inter(Input, Stream0) = Result :-
-    ( int_gt(height(Stream0), height(Input)) ->
+    ( if int_gt(height(Stream0), height(Input)) then
         Result = inter(Stream0, Input)
-    ;
-        Stream0 = empty,
-        Result = empty
-    ;
-        Stream0 = node(_, _, _, _),
-        take_min_iter(Stream0, Head, Stream),
-        inter_2(Input, yes(Head), Stream, Result, _, _)
+    else
+        (
+            Stream0 = empty,
+            Result = empty
+        ;
+            Stream0 = node(_, _, _, _),
+            take_min_iter(Stream0, Head, Stream),
+            inter_2(Input, yes(Head), Stream, Result, _, _)
+        )
     ).
 
 :- pred inter_2(diet(T)::in, maybe({T, T})::in, diet(T)::in,
@@ -1299,9 +1303,9 @@ inter_2(Input, Head0, Stream0, Result, Head, Stream) :-
             Stream = Stream0
         ;
             Input = node({A, B}, _, Left0, Right0),
-            ( X < A ->
+            ( if X < A then
                 inter_2(Left0, Head0, Stream0, Left1, Head1, Stream1)
-            ;
+            else
                 Left1 = empty,
                 Head1 = Head0,
                 Stream1 = Stream0
@@ -1324,7 +1328,7 @@ inter_help({A, B}, Right0, Left0, Head0, Stream0,
         Stream = empty
     ;
         Head0 = yes({X, Y}),
-        ( Y < A ->
+        ( if Y < A then
             (
                 Stream0 = empty,
                 Result = Left0,
@@ -1336,17 +1340,17 @@ inter_help({A, B}, Right0, Left0, Head0, Stream0,
                 inter_help({A, B}, Right0, Left0, yes(Head1), Stream1,
                     Result, Head, Stream)
             )
-        ; B < X ->
+        else if B < X then
             inter_2(Right0, Head0, Stream0, Right1, Head1, Stream1),
             Result = reroot(Left0, Right1),
             Head = Head1,
             Stream = Stream1
-        ; Y >= safe_predecessor(Y, B) ->
+        else if Y >= safe_predecessor(Y, B) then
             inter_2(Right0, Head0, Stream0, Right1, Head1, Stream1),
             Result = join({max_elem(X, A), min_elem(Y, B)}, Left0, Right1),
             Head = Head1,
             Stream = Stream1
-        ;
+        else
             Left1 = do_insert({max_elem(X, A), Y}, Left0),
             inter_help({successor(Y), B}, Right0, Left1, Head0, Stream0,
                 Result, Head, Stream)
@@ -1401,9 +1405,9 @@ diff(Input, Head0, Stream0, Output, Head, Stream) :-
     ;
         Head0 = yes({X, _Y}),
         Input = node({A, B}, _, Left0, Right0),
-        ( X < A ->
+        ( if X < A then
             diff(Left0, Head0, Stream0, Left1, Head1, Stream1)
-        ;
+        else
             Left1 = Left0,
             Head1 = Head0,
             Stream1 = Stream0
@@ -1425,22 +1429,22 @@ diff_helper({A, B}, Right0, Left0, Head0, Stream0,
         Stream = empty
     ;
         Head0 = yes({X, Y}),
-        ( Y < A ->
+        ( if Y < A then
             take_min_iter2(Stream0, Head1, Stream1),
             diff_helper({A, B}, Right0, Left0, Head1, Stream1,
                 Output, Head, Stream)
-        ; B < X ->
+        else if B < X then
             diff(Right0, Head0, Stream0, Right1, Head, Stream),
             Output = join({A, B}, Left0, Right1)
-        ; A < X ->
+        else if A < X then
             Left1 = do_insert({A, predecessor(X)}, Left0),
             diff_helper({X, B}, Right0, Left1, Head0, Stream0,
                 Output, Head, Stream)
-        ; Y < B ->
+        else if Y < B then
             take_min_iter2(Stream0, Head1, Stream1),
             diff_helper({successor(Y), B}, Right0, Left0, Head1, Stream1,
                 Output, Head, Stream)
-        ;
+        else
             diff(Right0, Head0, Stream0, Right1, Head, Stream),
             Output = reroot(Left0, Right1)
         )
@@ -1457,9 +1461,9 @@ divide(Pred, Set, TrueSet, FalseSet) :-
 :- mode divide_2(pred(in) is semidet, in, in, out, in, out) is det.
 
 divide_2(Pred, Elem, !TrueSet, !FalseSet) :-
-    ( Pred(Elem) ->
+    ( if Pred(Elem) then
         insert(Elem, !TrueSet)
-    ;
+    else
         insert(Elem, !FalseSet)
     ).
 
@@ -1541,10 +1545,10 @@ foldl(P, T, !Acc) :-
 :- mode foldl_2(pred(in, di, uo) is semidet, in, in, di, uo) is semidet.
 
 foldl_2(P, Lo, Hi, !Acc) :-
-    ( Lo =< Hi ->
+    ( if Lo =< Hi then
         P(Lo, !Acc),
         foldl_2(P, successor(Lo), Hi, !Acc)
-    ;
+    else
         true
     ).
 
@@ -1576,10 +1580,10 @@ foldl2(P, T, !Acc1, !Acc2) :-
     in, out, di, uo) is semidet.
 
 fold_up2(P, Lo, Hi, !A, !B) :-
-    ( Lo =< Hi ->
+    ( if Lo =< Hi then
         P(Lo, !A, !B),
         fold_up2(P, successor(Lo), Hi, !A, !B)
-    ;
+    else
         true
     ).
 
@@ -1611,10 +1615,10 @@ foldl3(P, T, !Acc1, !Acc2, !Acc3) :-
     in, out, in, out, di, uo) is semidet.
 
 fold_up3(P, Lo, Hi, !A, !B, !C) :-
-    ( Lo =< Hi ->
+    ( if Lo =< Hi then
         P(Lo, !A, !B, !C),
         fold_up3(P, successor(Lo), Hi, !A, !B, !C)
-    ;
+    else
         true
     ).
 
@@ -1646,10 +1650,10 @@ foldl4(P, T, !A, !B, !C, !D) :-
     in, in, in, out, in, out, in, out, di, uo) is semidet.
 
 fold_up4(P, Lo, Hi, !A, !B, !C, !D) :-
-    ( Lo =< Hi ->
+    ( if Lo =< Hi then
         P(Lo, !A, !B, !C, !D),
         fold_up4(P, successor(Lo), Hi, !A, !B, !C, !D)
-    ;
+    else
         true
     ).
 
@@ -1688,10 +1692,10 @@ foldl5(P, T, !A, !B, !C, !D, !E) :-
     in, in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 fold_up5(P, Lo, Hi, !A, !B, !C, !D, !E) :-
-    ( Lo =< Hi ->
+    ( if Lo =< Hi then
         P(Lo, !A, !B, !C, !D, !E),
         fold_up5(P, successor(Lo), Hi, !A, !B, !C, !D, !E)
-    ;
+    else
         true
     ).
 
@@ -1722,10 +1726,10 @@ foldr(P, T, !Acc) :-
 :- mode fold_down(pred(in, di, uo) is semidet, in, in, di, uo) is semidet.
 
 fold_down(P, Lo, Hi, !A) :-
-    ( Lo =< Hi ->
+    ( if Lo =< Hi then
         P(Hi, !A),
         fold_down(P, Lo, predecessor(Hi), !A)
-    ;
+    else
         true
     ).
 
@@ -1745,10 +1749,10 @@ all_true(P, Set) :-
     is semidet <= diet_element(T).
 
 all_true_interval(P, Lo, Hi) :-
-    ( Lo =< Hi ->
+    ( if Lo =< Hi then
         P(Lo),
         all_true_interval(P, successor(Lo), Hi)
-    ;
+    else
         true
     ).
 
@@ -1796,6 +1800,3 @@ cons_interval(X, Y, L, [{X, Y} | L]).
 
 from_interval_list(List, Set) :-
     list.foldl(insert_interval, List, init, Set).
-
-%---------------------------------------------------------------------------%
-% vim: ft=mercury ts=4 sts=4 sw=4 et

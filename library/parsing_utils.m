@@ -10,7 +10,7 @@
 % Authors: Ralph Becket <rafe@csse.unimelb.edu.au>, maclarty
 % Stability: low
 %
-% Utilities for recursive descent parsers.  Parsers take at least three
+% Utilities for recursive descent parsers. Parsers take at least three
 % arguments: a source (src) containing the input string and a parser state (ps)
 % input/output pair tracking the current offset into the input.
 %
@@ -22,7 +22,7 @@
 % Alternatively a new src and ps can be constructed by calling
 % new_src_and_ps(InputString, SkipWS, Src, !:PS).
 % Parsing predicates are semidet and typically take the form
-% p(...parameters..., Src, Result, !PS).  A parser matching variable
+% p(...parameters..., Src, Result, !PS). A parser matching variable
 % assignments of the form `x = 42' might be defined like this:
 %
 %   var_assignment(Src, {Var, Value}, !PS) :-
@@ -30,9 +30,8 @@
 %       punct(Src, "=", !PS),
 %       expr(Src, Expr, !PS).
 %
-% where var/4 and expr/4 are parsers for variables and expressions
-% respectively and punct/4 is provided by this module for matching
-% punctuation.
+% where var/4 and expr/4 are parsers for variables and expressions respectively
+% and punct/4 is provided by this module for matching punctuation.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -82,10 +81,10 @@
     % parse(Input, SkipWS, Parser, Result).
     % Try to parse Input using Parser and SkipWS to consume whitespace.
     % If Parser succeeds then return ok with the parsed value,
-    % otherwise return error.  If there were any calls to fail_with_message
+    % otherwise return error. If there were any calls to fail_with_message
     % without any subsequent progress being made, then the error message
     % passed to the last call to fail_with_message will be returned in the
-    % error result.  Otherwise no message is returned and the furthest
+    % error result. Otherwise no message is returned and the furthest
     % position the parser got in the input string is returned.
     %
 :- pred parse(string::in, skip_whitespace_pred::in(parser),
@@ -180,7 +179,7 @@
 
     % identifier(InitIdChars, IdChars, Src, Identifier, !PS) matches the next
     % identifier (result in Identifier) comprising a char from InitIdChars
-    % followed by zero or more chars from IdChars.  Any subsequent whitespace
+    % followed by zero or more chars from IdChars. Any subsequent whitespace
     % is consumed.
     %
 :- pred identifier(string::in, string::in, src::in, string::out,
@@ -203,8 +202,8 @@
 :- pred eof(src::in, unit::out, ps::in, ps::out) is semidet.
 
     % Parse a float literal matching [-][0-9]+[.][0-9]+([Ee][-+][0-9]+)?
-    % followed by any whitespace.  The float_literal_as_string version simply
-    % returns the matched string.  The float_literal version uses
+    % followed by any whitespace. The float_literal_as_string version simply
+    % returns the matched string. The float_literal version uses
     % string.to_float to convert the output of float_literal_as_string; this
     % may return an approximate answer since not all floating point numbers
     % can be perfectly represented as Mercury floats.
@@ -215,8 +214,8 @@
     ps::in, ps::out) is semidet.
 
     % Parse an int literal matching [-][0-9]+, not followed by [.][0-9]+,
-    % followed by any whitespace.  The int_literal_as_string version simply
-    % returns the matched string.  The int_literal version uses string.to_int
+    % followed by any whitespace. The int_literal_as_string version simply
+    % returns the matched string. The int_literal version uses string.to_int
     % to convert the output of int_literal_as_string; this may fail if the
     % number in question cannot be represented as a Mercury int.
     %
@@ -225,9 +224,9 @@
 :- pred int_literal(src::in, int::out,
     ps::in, ps::out) is semidet.
 
-    % Parse an string literal.  The string argument is the quote character.
+    % Parse an string literal. The string argument is the quote character.
     % A backslash (\) character in the string makes the next character
-    % literal (e.g., for embedding quotes).  These 'escaped' characters
+    % literal (e.g., for embedding quotes). These 'escaped' characters
     % are included as-is in the result, along with the preceding backslash.
     % Any following whitespace is also consumed.
     %
@@ -241,16 +240,15 @@
     ps::in, ps::out) is semidet.
 
     % zero_or_more(P, Src, Xs, !PS) returns the list of results Xs obtained
-    % by repeatedly applying P until P fails.  The nth item in Xs is
+    % by repeatedly applying P until P fails. The nth item in Xs is
     % the result from the nth application of P.
     %
 :- pred zero_or_more(parser(T)::in(parser), src::in, list(T)::out,
     ps::in, ps::out) is semidet.
 
     % one_or_more(P, Src, Xs, !PS) returns the list of results Xs obtained
-    % by repeatedly applying P until P fails.  The nth item in Xs is
-    % the result from the nth application of P.  P must succeed at
-    % least once.
+    % by repeatedly applying P until P fails. The nth item in Xs is
+    % the result from the nth application of P. P must succeed at least once.
     %
 :- pred one_or_more(parser(T)::in(parser), src::in, list(T)::out,
     ps::in, ps::out) is semidet.
@@ -274,7 +272,7 @@
 :- pred comma_separated_list(parser(T)::in(parser), src::in, list(T)::out,
     ps::in, ps::out) is semidet.
 
-    % Declaratively this predicate is equivalent to false.  Operationally
+    % Declaratively this predicate is equivalent to false. Operationally,
     % it will record an error message that will be returned by parse/4
     % if no further progress is made and then fail.
     %
@@ -297,16 +295,15 @@
     maybe(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
 
     % zero_or_more(P, Src, Xs, !S, !PS) returns the list of results Xs obtained
-    % by repeatedly applying P until P fails.  The nth item in Xs is
+    % by repeatedly applying P until P fails. The nth item in Xs is
     % the result from the nth application of P.
     %
 :- pred zero_or_more(parser_with_state(T, S)::in(parser_with_state), src::in,
     list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
 
     % one_or_more(P, Src, Xs, !S, !PS) returns the list of results Xs obtained
-    % by repeatedly applying P until P fails.  The nth item in Xs is
-    % the result from the nth application of P.  P must succeed at
-    % least once.
+    % by repeatedly applying P until P fails. The nth item in Xs is
+    % the result from the nth application of P. P must succeed at least once.
     %
 :- pred one_or_more(parser_with_state(T, S)::in(parser_with_state), src::in,
     list(T)::out, S::in, S::out, ps::in, ps::out) is semidet.
@@ -377,14 +374,14 @@ parse(InputString, SkipWS, Parser, Result) :-
         new_src_and_ps(InputString, SkipWS, Src, PS0),
         ( if Parser(Src, Val, PS0, _) then
             Result = ok(Val)
-          else
+        else
             impure get_mutvar(Src ^ last_fail_message, Info),
             impure get_mutvar(Src ^ furthest_offset, FurthestOffset),
             Info = fail_message_info(MessageOffset, LastFailMsg),
             ( if MessageOffset < FurthestOffset then
                 Msg = no,
                 Offset = FurthestOffset
-              else
+            else
                 Msg = LastFailMsg,
                 Offset = MessageOffset
             ),
@@ -487,14 +484,14 @@ src_to_line_numbers(Src) = LineNos :-
     list(int)::in, list(int)::out) is det.
 
 src_to_line_numbers_2(Str, Pos0, !RevLineNosList) :-
-    ( string.unsafe_index_next(Str, Pos0, Pos, Char) ->
-        ( Char = '\n' ->
+    ( if string.unsafe_index_next(Str, Pos0, Pos, Char) then
+        ( if Char = '\n' then
             !:RevLineNosList = [Pos0 | !.RevLineNosList]
-        ;
+        else
             true
         ),
         src_to_line_numbers_2(Str, Pos, !RevLineNosList)
-    ;
+    else
         !:RevLineNosList = [Pos0 | !.RevLineNosList]
     ).
 
@@ -520,17 +517,17 @@ offset_to_line_number_and_position_2(LineNos, Lo, Hi, Offset, LineNo, Pos) :-
         ( if MidOffset < Offset then
             offset_to_line_number_and_position_2(LineNos, Mid + 1, Hi, Offset,
                 LineNo, Pos)
-          else
+        else
             offset_to_line_number_and_position_2(LineNos, Lo, Mid, Offset,
                 LineNo, Pos)
         )
-      else
+    else
         % Lo is the index of the newline that terminates the line that Offset
-        % is on.  We compute LineBegin as the offset of the first character
+        % is on. We compute LineBegin as the offset of the first character
         % of the line Offset is on.
         ( if Lo = 0 then
             LineBegin = 0
-          else
+        else
             LineBegin = LineNos ^ elem(Lo - 1) + 1
         ),
         LineNo = 1 + Lo,
@@ -600,7 +597,7 @@ match_string_2(N, I, MatchStr, Offset, Str) :-
         string.unsafe_index_code_unit(MatchStr, I, CodeUnit),
         string.unsafe_index_code_unit(Str, Offset + I, CodeUnit),
         match_string_2(N, I + 1, MatchStr, Offset, Str)
-      else
+    else
         true
     ).
 
@@ -628,7 +625,7 @@ imatch_string_2(N, I, MatchStr, Offset, Str) :-
         char.det_from_int(CodeUnit2, Chr2),
         char.to_upper(Chr1) = char.to_upper(Chr2) : char,
         imatch_string_2(N, I + 1, MatchStr, Offset, Str)
-      else
+    else
         true
     ).
 
@@ -641,7 +638,7 @@ imatch_string_2(N, I, MatchStr, Offset, Str) :-
 optional(P, Src, Result, !PS) :-
     ( if P(Src, X, !PS) then
         Result = yes(X)
-      else
+    else
         Result = no,
         semidet_true
     ).
@@ -651,7 +648,7 @@ optional(P, Src, Result, !PS) :-
 optional(P, Src, Result, !S, !PS) :-
     ( if P(Src, X, !S, !PS) then
         Result = yes(X)
-      else
+    else
         Result = no,
         semidet_true
     ).
@@ -672,7 +669,7 @@ zero_or_more_2(P, Src, !RevResult, !PS) :-
     ( if P(Src, X, !PS) then
         list.cons(X, !RevResult),
         zero_or_more_2(P, Src, !RevResult, !PS)
-      else
+    else
         semidet_true
     ).
 
@@ -689,7 +686,7 @@ zero_or_more_2(P, Src, !RevResult, !S, !PS) :-
     ( if P(Src, X, !S, !PS) then
         list.cons(X, !RevResult),
         zero_or_more_2(P, Src, !RevResult, !S, !PS)
-      else
+    else
         semidet_true
     ).
 
@@ -724,32 +721,31 @@ brackets(L, R, P, Src, Result, !S, !PS) :-
 %---------------------------------------------------------------------------%
 
 separated_list(Separator, P, Src, Result, !PS) :-
-    CommaP = (
-        pred(CommaPSrc::in, CommaPX::out, !.PS::in, !:PS::out)
-            is semidet :-
-        punct(Separator, CommaPSrc, _, !PS),
-        P(CommaPSrc, CommaPX, !PS)
-    ),
-    ( P(Src, X, !PS) ->
+    CommaP =
+        ( pred(CommaPSrc::in, CommaPX::out, !.PS::in, !:PS::out) is semidet :-
+            punct(Separator, CommaPSrc, _, !PS),
+            P(CommaPSrc, CommaPX, !PS)
+        ),
+    ( if P(Src, X, !PS) then
         zero_or_more(CommaP, Src, Xs, !PS),
         Result = [X | Xs]
-    ;
+    else
         Result = []
     ).
 
 %---------------------------------------------------------------------------%
 
 separated_list(Separator, P, Src, Result, !S, !PS) :-
-    CommaP = (
-        pred(CommaPSrc::in, CommaPX::out, !.S::in, !:S::out,
-            !.PS::in, !:PS::out) is semidet :-
-        punct(Separator, CommaPSrc, _, !PS),
-        P(CommaPSrc, CommaPX, !S, !PS)
-    ),
-    ( P(Src, X, !S, !PS) ->
+    CommaP =
+        ( pred(CommaPSrc::in, CommaPX::out, !.S::in, !:S::out,
+                !.PS::in, !:PS::out) is semidet :-
+            punct(Separator, CommaPSrc, _, !PS),
+            P(CommaPSrc, CommaPX, !S, !PS)
+        ),
+    ( if P(Src, X, !S, !PS) then
         zero_or_more(CommaP, Src, Xs, !S, !PS),
         Result = [X | Xs]
-    ;
+    else
         Result = []
     ).
 
@@ -775,7 +771,7 @@ fail_with_message(Msg, Src, Val, !PS) :-
         impure set_mutvar(Src ^ furthest_offset, !.PS),
         ( if semidet_fail then
             dynamic_cast(0, Val) % unreachable
-          else
+        else
             fail
         )
     ).
@@ -789,9 +785,9 @@ whitespace(Src, unit, !PS) :-
     ( if
         next_char(Src, C, !PS),
         char.is_whitespace(C)
-      then
+    then
         whitespace(Src, _, !PS)
-      else
+    else
         semidet_true
     ).
 
@@ -830,7 +826,7 @@ float_literal_as_string(Src, FloatStr, !PS) :-
     ( if char_in_class("eE", Src, _, !PS) then
         optional_sign(Src, !PS),
         digits(10, Src, _, !PS)
-      else
+    else
         true
     ),
     current_offset(Src, EndPlusOne, !PS),
@@ -845,9 +841,9 @@ optional_sign(Src, !PS) :-
         ( Char = ('-')
         ; Char = ('+')
         )
-      then
+    then
         true
-      else
+    else
         true
     ).
 
@@ -918,10 +914,10 @@ string_literal_2(Src, QuoteChar, unit, !PS) :-
     next_char(Src, C, !PS),
     ( if C = QuoteChar then
         true
-      else if C = ('\\') then
+    else if C = ('\\') then
         next_char(Src, _, !PS),
         string_literal_2(Src, QuoteChar, _, !PS)
-      else
+    else
         string_literal_2(Src, QuoteChar, _, !PS)
     ).
 
@@ -943,7 +939,7 @@ identifier(InitIdChars, IdChars, Src, Identifier, !PS) :-
 identifier_2(IdChars, Src, unit, !PS) :-
     ( if char_in_class(IdChars, Src, _, !PS) then
         identifier_2(IdChars, Src, _, !PS)
-      else
+    else
         true
     ).
 
@@ -958,7 +954,7 @@ record_progress(Src, PS) :-
     impure get_mutvar(MutVar, OS0),
     ( if PS > OS0 then
         impure set_mutvar(MutVar, PS)
-      else
+    else
         true
     ).
 

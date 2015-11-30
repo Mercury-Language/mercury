@@ -14,7 +14,7 @@
 % unbounded buffering.
 %
 % For example a program could consist of 2 worker threads and one logging
-% thread.  The worker threads can place messages into the channel, and they
+% thread. The worker threads can place messages into the channel, and they
 % will be buffered for processing by the logging thread.
 %
 %---------------------------------------------------------------------------%
@@ -48,9 +48,9 @@
     %
 :- pred try_take(channel(T)::in, maybe(T)::out, io::di, io::uo) is det.
 
-    % Duplicate a channel.  The new channel sees all (and only) the
+    % Duplicate a channel. The new channel sees all (and only) the
     % data written to the channel after the `duplicate'/4 call.
-    % 
+    %
 :- pred duplicate(channel(T)::in, channel(T)::out, io::di, io::uo)
     is det.
 

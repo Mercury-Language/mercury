@@ -170,9 +170,9 @@ Using error requests:
 Collected bitmap compares OK.
 I/O bitmap compares OK.
 bitmap reads failed as expected:
-univ_cons(software_error("bit_buffer.read.get_bits: negative number of bits"))
+univ_cons(software_error("predicate `bit_buffer.read.get_bits\'/8: Unexpected: negative number of bits"))
 I/O reads failed as expected:
-univ_cons(software_error("bit_buffer.read.get_bits: negative number of bits"))
+univ_cons(software_error("predicate `bit_buffer.read.get_bits\'/8: Unexpected: negative number of bits"))
 
 Testing sequence that should cause an error:
 Using setup requests:
@@ -182,9 +182,9 @@ Using error requests:
 Collected bitmap compares OK.
 I/O bitmap compares OK.
 bitmap reads failed as expected:
-univ_cons(software_error("bit_buffer.read.get_bits: invalid number of bits"))
+univ_cons(software_error("predicate `bit_buffer.read.get_bits\'/8: Unexpected: invalid number of bits"))
 I/O reads failed as expected:
-univ_cons(software_error("bit_buffer.read.get_bits: invalid number of bits"))
+univ_cons(software_error("predicate `bit_buffer.read.get_bits\'/8: Unexpected: invalid number of bits"))
 
 Testing sequence that should cause an error:
 Using setup requests:

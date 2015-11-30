@@ -212,37 +212,37 @@ unexpected(Module, Proc, What) :-
 %---------------------------------------------------------------------------%
 
 require(Goal, Message) :-
-    ( call(Goal) ->
+    ( if call(Goal) then
         true
-    ;
+    else
         error(Message)
     ).
 
 expect(Goal, Module, Message) :-
-    ( Goal ->
+    ( if Goal then
         true
-    ;
+    else
         unexpected(Module, Message)
     ).
 
 expect(Goal, Module, Proc, Message) :-
-    ( Goal ->
+    ( if Goal then
         true
-    ;
+    else
         unexpected(Module, Proc, Message)
     ).
 
 expect_not(Goal, Module, Message) :-
-    ( Goal ->
+    ( if Goal then
         unexpected(Module, Message)
-    ;
+    else
         true
     ).
 
 expect_not(Goal, Module, Proc, Message) :-
-    ( Goal ->
+    ( if Goal then
         unexpected(Module, Proc, Message)
-    ;
+    else
         true
     ).
 

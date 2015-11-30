@@ -431,11 +431,11 @@
 date_from_string(Str, Date) :-
     some [!Chars] (
         !:Chars = string.to_char_list(Str),
-        ( read_char((-), !.Chars, Rest1) ->
+        ( if read_char((-), !.Chars, Rest1) then
             !:Chars = Rest1,
             read_int_and_num_chars(Year0, YearChars, !Chars),
             Year = -Year0
-        ;
+        else
             read_int_and_num_chars(Year, YearChars, !Chars)
         ),
         YearChars >= 4,
@@ -467,14 +467,14 @@ date_from_string(Str, Date) :-
     is det.
 
 read_microseconds(MicroSeconds, !Chars) :-
-    (
+    ( if
         read_char((.), !.Chars, Chars1),
         read_int_and_num_chars(Fraction, FractionDigits, Chars1, !:Chars),
         FractionDigits > 0,
         FractionDigits < 7
-    ->
+    then
         MicroSeconds = int.pow(10, 6 - FractionDigits) * Fraction
-    ;
+    else
         MicroSeconds = 0
     ).
 
@@ -488,13 +488,13 @@ read_int_and_num_chars(Val, N, !Chars) :-
     list(char)::in, list(char)::out) is det.
 
 read_int_and_num_chars_2(!Val, !N, !Chars) :-
-    (
+    ( if
         !.Chars = [Char | Rest],
         decimal_digit_to_int(Char, Digit)
-    ->
+    then
         !:Val = !.Val * 10 + Digit,
         read_int_and_num_chars_2(!Val, !.N + 1, !:N, Rest, !:Chars)
-    ;
+    else
         true
     ).
 
@@ -506,7 +506,7 @@ duration_from_string(Str, Duration) :-
         read_years(Years, !Chars),
         read_months(Months, !Chars),
         read_days(Days, !Chars),
-        ( read_char('T', !.Chars, TimePart) ->
+        ( if read_char('T', !.Chars, TimePart) then
             TimePart = [_ | _],
             read_hours(Hours, TimePart, !:Chars),
             read_minutes(Minutes, !Chars),
@@ -515,7 +515,7 @@ duration_from_string(Str, Duration) :-
             Duration = init_duration(Sign * Years, Sign * Months,
                 Sign * Days, Sign * Hours, Sign * Minutes, Sign * Seconds,
                 Sign * MicroSeconds)
-        ;
+        else
             !.Chars = [],
             Duration = init_duration(Sign * Years, Sign * Months, Sign * Days,
                 0, 0, 0, 0)
@@ -525,10 +525,10 @@ duration_from_string(Str, Duration) :-
 :- pred read_sign(int::out, list(char)::in, list(char)::out) is det.
 
 read_sign(Sign, !Chars) :-
-    ( !.Chars = [(-) | Rest] ->
+    ( if !.Chars = [(-) | Rest] then
         !:Chars = Rest,
         Sign = -1
-    ;
+    else
         Sign = 1
     ).
 
@@ -565,15 +565,15 @@ read_minutes(Minutes, !Chars) :-
     list(char)::in, list(char)::out) is det.
 
 read_seconds_and_microseconds(Seconds, MicroSeconds, !Chars) :-
-    (
+    ( if
         read_int(Seconds0, !.Chars, Chars1),
         read_microseconds(MicroSeconds0, Chars1, Chars2),
         read_char('S', Chars2, Chars3)
-    ->
+    then
         !:Chars = Chars3,
         Seconds = Seconds0,
         MicroSeconds = MicroSeconds0
-    ;
+    else
         Seconds = 0,
         MicroSeconds = 0
     ).
@@ -582,13 +582,13 @@ read_seconds_and_microseconds(Seconds, MicroSeconds, !Chars) :-
     list(char)::in, list(char)::out) is det.
 
 read_int_and_char_or_zero(Int, Char, !Chars) :-
-    (
+    ( if
         read_int(Int0, !.Chars, Chars1),
         Chars1 = [Char | Rest]
-    ->
+    then
         !:Chars = Rest,
         Int = Int0
-    ;
+    else
         Int = 0
     ).
 
@@ -600,20 +600,20 @@ read_int(Val, !Chars) :-
 :- pred read_int_2(int::in, int::out, list(char)::in, list(char)::out) is det.
 
 read_int_2(!Val, !Chars) :-
-    (
+    ( if
         !.Chars = [Char | Rest],
         decimal_digit_to_int(Char, Digit)
-    ->
+    then
         !:Val = !.Val * 10 + Digit,
         read_int_2(!Val, Rest, !:Chars)
-    ;
+    else
         true
     ).
 
 init_duration(Years0, Months0, Days0, Hours0, Minutes0, Seconds0,
         MicroSeconds0) =
         duration(Months, Days, Seconds, MicroSeconds) :-
-    (
+    ( if
         (
             Years0 >= 0,
             Months0 >= 0,
@@ -631,15 +631,16 @@ init_duration(Years0, Months0, Days0, Hours0, Minutes0, Seconds0,
             Seconds0 =< 0,
             MicroSeconds0 =< 0
         )
-    ->
+    then
         Months = Years0 * 12 + Months0,
         Seconds1 = Seconds0 + MicroSeconds0 // microseconds_per_second,
         MicroSeconds = MicroSeconds0 rem microseconds_per_second,
         Seconds2 = Seconds1 + Minutes0 * 60 + Hours0 * 3600,
         Days = Days0 + Seconds2 // seconds_per_day,
         Seconds = Seconds2 rem seconds_per_day
-    ;
-        error("init_duration: some components negative and some positive")
+    else
+        unexpected($module, $pred,
+            "some components negative and some positive")
     ).
 
 :- func seconds_per_day = int.
@@ -655,19 +656,17 @@ unpack_duration(Duration,
     minutes(Duration), seconds(Duration), microseconds(Duration)).
 
 det_date_from_string(Str) = Date :-
-    ( date_from_string(Str, Date0) ->
+    ( if date_from_string(Str, Date0) then
         Date = Date0
-    ;
-        error("det_date_from_string: invalid date: " ++
-            Str)
+    else
+        unexpected($module, $pred, "invalid date: " ++ Str)
     ).
 
 det_duration_from_string(Str) = Duration :-
-    ( duration_from_string(Str, Duration0) ->
+    ( if duration_from_string(Str, Duration0) then
         Duration = Duration0
-    ;
-        error("det_duration_from_string: invalid duration: " ++
-            Str)
+    else
+        unexpected($module, $pred, "invalid duration: " ++ Str)
     ).
 
 %---------------------------------------------------------------------------%
@@ -677,65 +676,65 @@ det_duration_from_string(Str) = Duration :-
 
 date_to_string(Date) = Str :-
     unpack_date(Date, Year0, Month, Day, Hour, Minute, Second, MicroSecond),
-    ( Year0 < 0 ->
+    ( if Year0 < 0 then
         SignStr = "-",
         Year = -Year0
-    ;
+    else
         SignStr = "",
         Year = Year0
     ),
     MicroSecondStr = microsecond_string(MicroSecond),
     Str = string.format("%s%04d-%02d-%02d %02d:%02d:%02d%s",
-        [s(SignStr), i(Year), i(month_to_int(Month)), i(Day), i(Hour), i(Minute),
-         i(Second), s(MicroSecondStr)]).
+        [s(SignStr), i(Year), i(month_to_int(Month)), i(Day),
+        i(Hour), i(Minute), i(Second), s(MicroSecondStr)]).
 
 :- func microsecond_string(microseconds) = string.
 
 microsecond_string(MicroSeconds) = Str :-
-    ( MicroSeconds > 0 ->
+    ( if MicroSeconds > 0 then
         Str = rstrip_pred(unify('0'),
             string.format(".%06d", [i(MicroSeconds)]))
-    ;
+    else
         Str = ""
     ).
 
 duration_to_string(duration(Months, Days, Seconds, MicroSeconds) @ Duration)
         = Str :-
-    (
+    ( if
         Months = 0,
         Days = 0,
         Seconds = 0,
         MicroSeconds = 0
-    ->
+    then
         % At least one component must appear in the string.
         % The choice of days is arbitrary.
         Str = "P0D"
-    ;
-        (
+    else
+        ( if
             Months >= 0,
             Days >= 0,
             Seconds >= 0,
             MicroSeconds >= 0
-        ->
+        then
             Sign = 1,
             SignStr = ""
-        ;
+        else if
             Months =< 0,
             Days =< 0,
             Seconds =< 0,
             MicroSeconds =< 0
-        ->
+        then
             Sign = -1,
             SignStr = "-"
-        ;
-            error("duration_to_string: duration components have mixed signs")
+        else
+            unexpected($module, $pred, "duration components have mixed signs")
         ),
-        (
+        ( if
             Seconds = 0,
             MicroSeconds = 0
-        ->
+        then
             TimePart = []
-        ;
+        else
             TimePart = ["T",
                 string_if_nonzero(Sign * hours(Duration), "H"),
                 string_if_nonzero(Sign * minutes(Duration), "M"),
@@ -753,18 +752,18 @@ duration_to_string(duration(Months, Days, Seconds, MicroSeconds) @ Duration)
 :- func string_if_nonzero(int, string) = string.
 
 string_if_nonzero(X, Suffix) =
-    ( X = 0 ->
+    ( if X = 0 then
         ""
-    ;
+    else
         int_to_string(X) ++ Suffix
     ).
 
 :- func seconds_duration_string(seconds, microseconds) = string.
 
 seconds_duration_string(Seconds, MicroSeconds) = Str :-
-    ( Seconds = 0, MicroSeconds = 0 ->
+    ( if Seconds = 0, MicroSeconds = 0 then
         Str = ""
-    ;
+    else
         Str = string.from_int(Seconds) ++
             microsecond_string(MicroSeconds) ++ "S"
     ).
@@ -820,7 +819,7 @@ modulo(A, Low, High) = modulo(A - Low, High - Low) + Low.
 max_day_in_month_for(YearValue, MonthValue) = Max :-
     M = int.mod(MonthValue - 1, 12) + 1,
     Y = YearValue + int.div(MonthValue - 1, 12),
-    (
+    ( if
         (
             ( M = 1 ; M = 3 ; M = 5 ; M = 7 ; M = 8 ; M = 10 ; M = 12 ),
             Max0 = 31
@@ -829,17 +828,17 @@ max_day_in_month_for(YearValue, MonthValue) = Max :-
             Max0 = 30
         ;
             M = 2,
-            ( ( Y mod 400 = 0 ; ( Y mod 100 \= 0, Y mod 4 = 0 ) ) ->
+            ( if ( Y mod 400 = 0 ; ( Y mod 100 \= 0, Y mod 4 = 0 ) ) then
                 Max0 = 29
-            ;
+            else
                 Max0 = 28
             )
         )
-    ->
+    then
         Max = Max0
-    ;
+    else
         % This should never happen.
-        error("max_day_in_month_for: unexpected value for M: " ++ string(M))
+        unexpected($module, $pred, "unexpected value for M: " ++ string(M))
     ).
 
 add_duration(D, S, E) :-
@@ -869,11 +868,11 @@ add_duration(D, S, E) :-
         !:Carry = int.div(!.Temp, 24),
         % Days
         MaxDaysInMonth = max_day_in_month_for(!.E ^ dt_year, !.E ^ dt_month),
-        ( S ^ dt_day > MaxDaysInMonth ->
+        ( if S ^ dt_day > MaxDaysInMonth then
             TempDays = MaxDaysInMonth
-        ; S ^ dt_day < 1 ->
+        else if S ^ dt_day < 1 then
             TempDays = 1
-        ;
+        else
             TempDays = S ^ dt_day
         ),
         !E ^ dt_day := TempDays + D ^ dur_days + !.Carry,
@@ -884,7 +883,7 @@ add_duration(D, S, E) :-
 :- pred add_duration_loop(duration::in, date::in, date::in, date::out) is det.
 
 add_duration_loop(D, S, !E) :-
-    ( !.E ^ dt_day < 1 ->
+    ( if !.E ^ dt_day < 1 then
         !E ^ dt_day := !.E ^ dt_day +
             max_day_in_month_for(!.E ^ dt_year, !.E ^ dt_month - 1),
         Carry = -1,
@@ -892,17 +891,17 @@ add_duration_loop(D, S, !E) :-
         !E ^ dt_month := modulo(Temp, 1, 13),
         !E ^ dt_year := !.E ^ dt_year + fquotient(Temp, 1, 13),
         add_duration_loop(D, S, !E)
-    ;
+    else if
         MaxDaysInMonth = max_day_in_month_for(!.E ^ dt_year, !.E ^ dt_month),
         !.E ^ dt_day > MaxDaysInMonth
-    ->
+    then
         !E ^ dt_day := !.E ^ dt_day - MaxDaysInMonth,
         Carry = 1,
         Temp = !.E ^ dt_month + Carry,
         !E ^ dt_month := modulo(Temp, 1, 13),
         !E ^ dt_year := !.E ^ dt_year + fquotient(Temp, 1, 13),
         add_duration_loop(D, S, !E)
-    ;
+    else
         true
     ).
 
@@ -1010,12 +1009,12 @@ greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
         subtract_ints_with_borrow(12, MonthA, MonthB, Months, !:Borrow),
         YearA = DateA ^ dt_year - !.Borrow,
         YearB = DateB ^ dt_year,
-        ( YearA >= YearB ->
+        ( if YearA >= YearB then
             Years = YearA - YearB
-        ;
-            % If this happens then DateA < DateB which violates a precondition
-            % of this predicate.
-            error("greedy_subtract_descending: left over years")
+        else
+            % If this happens, then DateA < DateB, which violates
+            % a precondition of this predicate.
+            unexpected($module, $pred, "left over years")
         ),
         Duration = init_duration(Years, Months, Days, Hours, Minutes, Seconds,
             MicroSeconds)
@@ -1030,10 +1029,10 @@ greedy_subtract_descending(OriginalOrder, DateA, DateB, Duration) :-
     int::out) is det.
 
 subtract_ints_with_borrow(BorrowVal, Val1, Val2, Diff, Borrow) :-
-    ( Val1 >= Val2 ->
+    ( if Val1 >= Val2 then
         Borrow = 0,
         Diff = Val1 - Val2
-    ;
+    else
         Borrow = 1,
         Diff = BorrowVal + Val1 - Val2
     ).
@@ -1060,10 +1059,10 @@ julian_day_number(date(Year, Month, Day, _, _, _, _)) = JDN :-
 :- func det_day_of_week_from_mod(int) = day_of_week.
 
 det_day_of_week_from_mod(Mod) = DayOfWeek :-
-    ( day_of_week_num(DayOfWeek0, Mod) ->
+    ( if day_of_week_num(DayOfWeek0, Mod) then
         DayOfWeek = DayOfWeek0
-    ;
-        error("det_day_of_week_from_mod: invalid mod: " ++ int_to_string(Mod))
+    else
+        unexpected($module, $pred, "invalid mod: " ++ int_to_string(Mod))
     ).
 
 %---------------------------------------------------------------------------%
@@ -1101,9 +1100,10 @@ int_to_month(11, november).
 int_to_month(12, december).
 
 det_int_to_month(Int) =
-    ( if int_to_month(Int, Month)
-    then Month
-    else func_error("det_int_to_month: invalid month: " ++ int_to_string(Int))
+    ( if int_to_month(Int, Month) then
+        Month
+    else
+        unexpected($module, $pred, "invalid month: " ++ int_to_string(Int))
     ).
 
 month_to_int(Month) = Int :-
@@ -1113,9 +1113,10 @@ int0_to_month(Int, Month) :-
     int_to_month(Int + 1, Month).
 
 det_int0_to_month(Int) =
-    ( if int0_to_month(Int, Month)
-    then Month
-    else func_error("det_int0_to_month: invalid month: " ++ int_to_string(Int)) 
+    ( if int0_to_month(Int, Month) then
+        Month
+    else
+        unexpected($module, $pred, "invalid month: " ++ int_to_string(Int)) 
     ).
 
 month_to_int0(Month) = Int :-
@@ -1133,12 +1134,15 @@ init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date) :-
 
 det_init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond)
         = Date :-
-    ( init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date0) ->
+    ( if
+        init_date(Year, Month, Day, Hour, Minute, Second, MicroSecond, Date0)
+    then
         Date = Date0
-    ;
-        error(string.format("calendar.det_init_date: invalid date: " ++
-            "%i-%i-%i %i:%i:%i", [i(Year), i(month_to_int(Month)), i(Day), i(Hour),
-            i(Minute), i(Second)]))
+    else
+        unexpected($module, $pred,
+            string.format("invalid date: %i-%i-%i %i:%i:%i",
+                [i(Year), i(month_to_int(Month)), i(Day), i(Hour),
+                i(Minute), i(Second)]))
     ).
 
 unpack_date(date(Year, Month, Day, Hour, Minute, Second, MicroSecond),

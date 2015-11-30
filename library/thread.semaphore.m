@@ -435,7 +435,7 @@ ML_finalize_semaphore(void *obj, void *cd)
 
 impure_try_wait(Sem, Res) :-
     impure impure_try_wait_2(Sem, Res0),
-    Res = ( Res0 = 0 -> yes ; no ).
+    Res = ( if Res0 = 0 then yes else no ).
 
 :- impure pred impure_try_wait_2(semaphore::in, int::out) is det.
 

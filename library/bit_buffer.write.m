@@ -48,22 +48,24 @@
     <= stream.writer(Stream, byte_index, State).
 :- mode new(in, in, di) = write_buffer_uo is det.
 
-    % new(NumBytes)
+    % new(NumBytes):
+    %
     % Create a buffer which collects all of the bits written, and does
     % not write them to a stream.  The bits are collected in chunks of
     % size NumBytes bytes, and are written to a bitmap by
     % `finalize_to_bitmap/1'.
+    %
 :- func new_bitmap_builder(num_bytes) = write_buffer.
 :- mode new_bitmap_builder(in) = out is det.
 
-    % How many bits to be written does the buffer contain.
+    % How many bits to be written does the buffer contain?
     %
 :- func num_buffered_bits(write_buffer(_, _)) = num_bits.
 :- mode num_buffered_bits(write_buffer_ui) = out is det.
 
     % Return how many bits need to be written to get to a byte boundary
     % in the output stream.
-    % 
+    %
 :- func num_bits_to_byte_boundary(write_buffer(_, _)) = num_bits.
 :- mode num_bits_to_byte_boundary(write_buffer_ui) = out is det.
 
@@ -146,22 +148,24 @@
 */
 
     % For a write_buffer, a bit_buffer is allocated that is bits_per_int
-    % larger than the size requested.  This allows a full word to be
-    % written at any time.  After each write, the position is checked.
+    % larger than the size requested. This allows a full word to be
+    % written at any time. After each write, the position is checked.
     % If the position is greater than the requested size, a chunk of the
-    % requested size is written to the stream.  The unwritten bits are
+    % requested size is written to the stream. The unwritten bits are
     % then copied to the start of the buffer.
     %
     % We always use a buffer size that is at least the size of a word
     % so that writing a word to the buffer will require at most a single
-    % call to `put'.  Allowing smaller sizes complicates the code
+    % call to `put'. Allowing smaller sizes complicates the code
     % for a case that shouldn't occur in practice.
     %
     % For a bitmap_builder, we store the filled bitmaps in a list rather
     % than writing them to an output stream.
     %
 :- type write_buffer(Stream, State)
-        ---> write_buffer(bit_buffer :: bit_buffer(Stream, State)).
+    --->    write_buffer(
+                bit_buffer :: bit_buffer(Stream, State)
+            ).
 
 new(NumBytes, Stream, State) = Buffer :-
     SizeInBits = NumBytes * bits_per_byte,
@@ -173,19 +177,18 @@ new_bitmap_builder(NumBytes) = Buffer :-
     Size = NumBytes * bits_per_byte,
     BM = bitmap.init(Size + int.bits_per_int, no),
     Buffer = write_buffer(new_buffer(BM, 0, Size, no,
-                error_stream, error_state)).
+        error_stream, error_state)).
 
 num_buffered_bits(write_buffer(Buffer)) =
-        Buffer ^ pos +
-                foldl((func(BM, N) = N + BM ^ num_bits),
-                        Buffer ^ filled_bitmaps, 0).
- 
+    Buffer ^ pos +
+        foldl((func(BM, N) = N + BM ^ num_bits), Buffer ^ filled_bitmaps, 0).
+
 num_bits_to_byte_boundary(Buffer) = NumBits :-
     Pos = Buffer ^ bit_buffer ^ pos,
     Rem = Pos `unchecked_rem` bits_per_byte,
-    ( Rem = 0 ->
+    ( if Rem = 0 then
         NumBits = 0
-    ;
+    else
         NumBits = bits_per_byte - Rem
     ).
 
@@ -228,9 +231,9 @@ put_bitmap(BM, Index, NumBits,
     write_buffer_di, write_buffer_uo) is det.
 
 put_bitmap_2(BM, Index, NumBits, !Buffer) :-
-    ( NumBits = 0 ->
+    ( if NumBits = 0 then
         true
-    ;
+    else
         BufferBM0 = !.Buffer ^ bitmap,
         Pos = !.Buffer ^ pos,
         Size = !.Buffer ^ size,
@@ -261,15 +264,16 @@ finalize_to_bitmap(write_buffer(Buffer)) = !:BM :-
     list.foldl2(copy_out_bitmap, Buffer ^ filled_bitmaps, Index, _, !BM).
 
     % Copy the bitmap to the result bitmap, starting at the end.
+    %
 :- pred copy_out_bitmap(bitmap::in, bit_index::in,
-            bit_index::out, bitmap::bitmap_di, bitmap::bitmap_uo) is det.
+    bit_index::out, bitmap::bitmap_di, bitmap::bitmap_uo) is det.
 
 copy_out_bitmap(FilledBM, !Index, !BM) :-
     Size = FilledBM ^ num_bits,
-    ( Size > 0 ->
+    ( if Size > 0 then
         !:Index = !.Index - Size,
         !:BM = bitmap.copy_bits(FilledBM, 0, !.BM, !.Index, Size)
-    ;
+    else
         true
     ).
 
@@ -278,10 +282,10 @@ copy_out_bitmap(FilledBM, !Index, !BM) :-
     <= stream.writer(Stream, bitmap.slice, State).
 
 maybe_make_room(!Buffer) :-
-    ( !.Buffer ^ pos >= !.Buffer ^ size ->
+    ( if !.Buffer ^ pos >= !.Buffer ^ size then
         make_room(!Buffer)
-    ;
-        true   
+    else
+        true
     ).
 
 :- pred make_room(bit_buffer(Stream, State)::bit_buffer_di,
@@ -297,7 +301,7 @@ make_room(!Buffer) :-
         UseStream = no,
         store_full_buffer(!Buffer)
     ).
- 
+
 flush(write_buffer(!.Buffer), write_buffer(!:Buffer)) :-
     UseStream = !.Buffer ^ use_stream,
     (
@@ -312,10 +316,10 @@ flush(write_buffer(!.Buffer), write_buffer(!:Buffer)) :-
     <= stream.writer(Stream, bitmap.slice, State).
 
 flush_all_to_stream(!Buffer) :-
-    ( num_buffered_bits(write_buffer(!.Buffer)) >= bits_per_byte ->
+    ( if num_buffered_bits(write_buffer(!.Buffer)) >= bits_per_byte then
         flush_chunk_to_stream(!Buffer),
         flush_all_to_stream(!Buffer)
-    ;
+    else
         true
     ).
 
@@ -324,36 +328,33 @@ flush_all_to_stream(!Buffer) :-
     <= stream.writer(Stream, bitmap.slice, State).
 
 flush_chunk_to_stream(!Buffer) :-
-    % Write at most Size bytes at once (this is the output chunk
-    % size set in the call to `new').
-    %
+    % Write at most Size bytes at once (this is the output chunk size
+    % set in the call to `new').
     Pos = !.Buffer ^ pos,
     Size = !.Buffer ^ size,
     NumBitsToWrite0 = int.min(Size, Pos),
     NumBytes = NumBitsToWrite0 `unchecked_quotient` bits_per_byte,
-    ( NumBytes \= 0 ->
+    ( if NumBytes = 0 then
+        true
+    else
         NumBitsToWrite = NumBytes * bits_per_byte,
         stream.put(!.Buffer ^ stream,
             bitmap.byte_slice(!.Buffer ^ bitmap, 0, NumBytes),
             unsafe_promise_unique(!.Buffer ^ state), NewState),
         Remain = Pos - NumBitsToWrite,
-        ( Remain \= 0 ->
+        ( if Remain = 0 then
+            NewBM = !.Buffer ^ bitmap
+        else
             % Copy the remainder to the start of the bitmap.
             % (We know that there are at most int.bits_per_int bits
-            % after the flush because that was the size of the
-            % bitmap created in `new', so we don't need to use
-            % copy_bits here).
-            %
+            % after the flush because that was the size of the bitmap
+            % created in `new', so we don't need to use copy_bits here).
             NewBM0 = !.Buffer ^ bitmap,
             NewBM = NewBM0 ^ bits(0, Remain) :=
-                        NewBM0 ^ bits(NumBitsToWrite, Remain)
-        ;
-            NewBM = !.Buffer ^ bitmap
+                NewBM0 ^ bits(NumBitsToWrite, Remain)
         ),
         set_all(NewBM, Remain, !.Buffer ^ size, NewState,
             !.Buffer ^ filled_bitmaps, !Buffer)
-    ;
-        true
     ).
 
     % This must only be called when the buffer has less than a word
@@ -372,13 +373,10 @@ store_full_buffer(!Buffer) :-
     % Double the buffer size at each allocation.
     NewSize = (!.Buffer ^ size) * 2,
 
-    % Create the new bitmap, copying the left-over bytes from
-    % the old one.
-    % (We know that there are at most int.bits_per_int bits
-    % after the flush because that was the size of the
-    % bitmap created in `new', so we don't need to use
-    % copy_bits here).
-    %
+    % Create the new bitmap, copying the left-over bytes from the old one.
+    % (We know that there are at most int.bits_per_int bits after the flush
+    % because that was the size of the bitmap created in `new', so
+    % we don't need to use copy_bits here).
     NewBM0 = bitmap.init(NewSize + int.bits_per_int),
     Remain = Pos - Size,
     NewPos = Remain,
@@ -430,11 +428,12 @@ store_full_buffer(!Buffer) :-
     where
 [
     (put(_, Slice, !Buffer) :-
-        put_bitmap(Slice ^ slice_bitmap, Slice ^ slice_start_bit_index, 
+        put_bitmap(Slice ^ slice_bitmap, Slice ^ slice_start_bit_index,
             Slice ^ slice_num_bits, !Buffer)
     )
 ].
 */
 
+%---------------------------------------------------------------------------%
 :- end_module bit_buffer.write.
 %---------------------------------------------------------------------------%

@@ -40,9 +40,9 @@
 :- import_module require.
 
 det_from_int(I) = X :-
-    ( X0 = from_int(I) ->
+    ( if X0 = from_int(I) then
         X = X0
-    ;
+    else
         unexpected($module, $pred, "from_int failed")
     ).
 

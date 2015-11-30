@@ -129,9 +129,9 @@ future(Func) = Future :-
 run_future(future(Future), Func) :-
     ( try []
         Result = apply(Func)
-      then
+    then
         impure signal(Future, ok(Result))
-      catch_any Exp ->
+    catch_any Exp ->
         impure signal(Future, 'new exception'(Exp))
     ).
 

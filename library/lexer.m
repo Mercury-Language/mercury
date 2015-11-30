@@ -737,19 +737,19 @@ execute_get_token_action(Stream, Char, Action, ScannedPastWhiteSpace,
             Action = action_slash,
             get_slash(Stream, Token0, HaveToken0, !IO)
         ),
-        ( have_token_with_context(HaveToken0, Context0) ->
+        ( if have_token_with_context(HaveToken0, Context0) then
             Token = Token0,
             Context = Context0
-        ;
+        else
             get_token_2(Stream, scanned_past_whitespace, Token, Context, !IO)
         )
     ;
         Action = action_hash,
         get_source_line_number(Stream, [], Token0, HaveToken0, !IO),
-        ( have_token_with_context(HaveToken0, Context0) ->
+        ( if have_token_with_context(HaveToken0, Context0) then
             Token = Token0,
             Context = Context0
-        ;
+        else
             get_token_2(Stream, not_scanned_past_whitespace, Token, Context,
                 !IO)
         )
@@ -811,10 +811,10 @@ execute_string_get_token_action(String, Len, Posn0, Char, Action,
             Action = action_slash,
             string_get_slash(String, Len, Posn0, Token0, HaveToken0, !Posn)
         ),
-        ( have_token_with_context(HaveToken0, Context0) ->
+        ( if have_token_with_context(HaveToken0, Context0) then
             Token = Token0,
             Context = Context0
-        ;
+        else
             string_get_token_2(String, Len, scanned_past_whitespace,
                 Token, Context, !Posn)
         )
@@ -822,10 +822,10 @@ execute_string_get_token_action(String, Len, Posn0, Char, Action,
         Action = action_hash,
         string_get_source_line_number(String, Len, !.Posn, Token0, HaveToken0,
             !Posn),
-        ( have_token_with_context(HaveToken0, Context0) ->
+        ( if have_token_with_context(HaveToken0, Context0) then
             Token = Token0,
             Context = Context0
-        ;
+        else
             string_get_token_2(String, Len, not_scanned_past_whitespace,
                 Token, Context, !Posn)
         )

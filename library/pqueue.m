@@ -150,10 +150,10 @@ pqueue.peek_value(pqueue(_, _, V, _, _), V).
 %---------------------------------------------------------------------------%
 
 pqueue.det_peek(PQ, K, V) :-
-    ( pqueue.peek(PQ, KPrime, VPrime) ->
+    ( if pqueue.peek(PQ, KPrime, VPrime) then
         K = KPrime,
         V = VPrime
-    ;
+    else
         unexpected($file, $pred, "empty priority queue")
     ).
 
@@ -171,11 +171,11 @@ pqueue.insert(K, V, empty, pqueue(0, K, V, empty, empty)).
 pqueue.insert(K, V, pqueue(D0, K0, V0, L0, R0), PQ) :-
     D = D0 + 1,
     compare(CMP, K, K0),
-    ( CMP = (<) ->
+    ( if CMP = (<) then
         K1 = K,
         V1 = V,
         pqueue.insert_2(K0, V0, L0, R0, L, R)
-    ;
+    else
         K1 = K0,
         V1 = V0,
         pqueue.insert_2(K, V, L0, R0, L, R)
@@ -192,10 +192,10 @@ pqueue.insert_2(K, V, empty, pqueue(D0, K0, V0, L0, R0),
         pqueue(0, K, V, empty, empty), pqueue(D0, K0, V0, L0, R0)).
 pqueue.insert_2(K, V, pqueue(D0, K0, V0, L0, R0),
         pqueue(D1, K1, V1, L1, R1), PQ1, PQ2) :-
-    ( D0 > D1 ->
+    ( if D0 > D1 then
         pqueue.insert(K, V, pqueue(D1, K1, V1, L1, R1), PQ2),
         PQ1 = pqueue(D0, K0, V0, L0, R0)
-    ;
+    else
         pqueue.insert(K, V, pqueue(D0, K0, V0, L0, R0), PQ1),
         PQ2 = pqueue(D1, K1, V1, L1, R1)
     ).
@@ -206,7 +206,7 @@ pqueue.det_remove(K, V, !PQ) :-
     ( if pqueue.remove(K0, V0, !PQ) then
         K = K0,
         V = V0
-      else
+    else
         unexpected($file, $pred, "empty priority queue")
     ).
 
@@ -221,12 +221,12 @@ pqueue.remove_2(empty, pqueue(D, K, V, L, R), pqueue(D, K, V, L, R)).
 pqueue.remove_2(pqueue(D, K, V, L, R), empty, pqueue(D, K, V, L, R)).
 pqueue.remove_2(pqueue(D0, K0, V0, L0, R0), pqueue(D1, K1, V1, L1, R1), PQ) :-
     compare(CMP, K0, K1),
-    ( CMP = (<) ->
+    ( if CMP = (<) then
         D0M1 = D0 - 1,
         int.max(D0M1, D1, D),
         pqueue.remove_2(L0, R0, PQ0),
         PQ = pqueue(D, K0, V0, PQ0, pqueue(D1, K1, V1, L1, R1))
-    ;
+    else
         D1M1 = D0 - 1,
         int.max(D1M1, D1, D),
         pqueue.remove_2(L1, R1, PQ1),
@@ -239,9 +239,9 @@ merge(A, B) = C :-
     merge(A, B, C).
 
 merge(A, B, C) :-
-    ( length(A) =< length(B) ->
+    ( if length(A) =< length(B) then
         do_merge(A, B, C)
-    ;
+    else
         do_merge(B, A, C)
     ).
 
@@ -271,10 +271,10 @@ pqueue.to_assoc_list(PQ) = AL :-
     pqueue.to_assoc_list(PQ, AL).
 
 pqueue.to_assoc_list(Q0, L) :-
-    ( pqueue.remove(K, V, Q0, Q1) ->
+    ( if pqueue.remove(K, V, Q0, Q1) then
         pqueue.to_assoc_list(Q1, L0),
         L = [K - V | L0]
-    ;
+    else
         L = []
     ).
 

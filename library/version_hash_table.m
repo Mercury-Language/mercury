@@ -13,10 +13,10 @@
 % (See the header comments in version_array.m for an explanation of version
 % types.)
 %
-% Version hash tables.  The "latest" version of the hash table provides roughly
-% the same performance as the unique hash table implementation.  "Older"
-% versions of the hash table are still accessible, but will incur a growing
-% performance penalty as more updates are made to the hash table.
+% Version hash tables. The "latest" version of the hash table provides
+% roughly the same performance as the unique hash table implementation.
+% "Older" versions of the hash table are still accessible, but will incur
+% a performance penalty that grows as more updates are made to the hash table.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -88,27 +88,26 @@
 :- pred float_hash(float::in, int::out) is det.
 :- pred generic_hash(T::in, int::out) is det.
 
-    % Returns the number of buckets in a hash table.
+    % Return the number of buckets in a hash table.
     %
 :- func num_buckets(version_hash_table(K, V)) = int.
 
-    % Returns the number of occupants in a hash table.
+    % Return the number of occupants in a hash table.
     %
 :- func num_occupants(version_hash_table(K, V)) = int.
 
     % Copy the hash table explicitly.
     %
     % An explicit copy allows programmers to control the cost of copying
-    % the table.  For more information see the comments at the top of the
+    % the table. For more information see the comments at the top of the
     % version_array module.
     %
-    % This is not a deep copy, it copies only the structure.
+    % This is not a deep copy: it copies only the structure.
     %
 :- func copy(version_hash_table(K, V)) = version_hash_table(K, V).
 
-    % Insert key-value binding into a hash table; if one is
-    % already there then the previous value is overwritten.
-    % A predicate version is also provided.
+    % Insert key-value binding into a hash table. If one is already there,
+    % then the previous value is overwritten.
     %
 :- func set(version_hash_table(K, V), K, V) = version_hash_table(K, V).
 :- pred set(K::in, V::in,
@@ -116,43 +115,38 @@
                 is det.
 
     % Field update for hash tables.
-    % HT ^ elem(K) := V  is equivalent to  set(HT, K, V).
+    % `HT ^ elem(K) := V' is equivalent to `set(HT, K, V)'.
     %
 :- func 'elem :='(K, version_hash_table(K, V), V) = version_hash_table(K, V).
 
-    % Insert a key-value binding into a hash table.  An
-    % exception is thrown if a binding for the key is already
-    % present.  A predicate version is also provided.
+    % Insert a key-value binding into a hash table. An exception is thrown
+    % if a binding for the key is already present.
     %
 :- func det_insert(version_hash_table(K, V), K, V) = version_hash_table(K, V).
 :- pred det_insert(K::in, V::in,
-            version_hash_table(K, V)::in, version_hash_table(K, V)::out)
-                is det.
+    version_hash_table(K, V)::in, version_hash_table(K, V)::out) is det.
 
-    % Change a key-value binding in a hash table.  An
-    % exception is thrown if a binding for the key does not
-    % already exist.  A predicate version is also provided.
+    % Change a key-value binding in a hash table. Throw exception
+    % if a binding for the key does not already exist.
     %
 :- func det_update(version_hash_table(K, V), K, V) = version_hash_table(K, V).
 :- pred det_update(K::in, V::in,
-            version_hash_table(K, V)::in, version_hash_table(K, V)::out)
-                is det.
+    version_hash_table(K, V)::in, version_hash_table(K, V)::out) is det.
 
     % Delete the entry for the given key, leaving the hash table
-    % unchanged if there is no such entry.  A predicate version is also
-    % provided.
+    % unchanged if there is no such entry.
     %
 :- func delete(version_hash_table(K, V), K) = version_hash_table(K, V).
-:- pred delete(K::in, version_hash_table(K, V)::in,
-            version_hash_table(K, V)::out) is det.
+:- pred delete(K::in,
+    version_hash_table(K, V)::in, version_hash_table(K, V)::out) is det.
 
-    % Lookup the value associated with the given key.  An exception
-    % is raised if there is no entry for the key.
+    % Lookup the value associated with the given key. Throw an exception
+    % if there is no entry for the key.
     %
 :- func lookup(version_hash_table(K, V), K) = V.
 
     % Field access for hash tables.
-    % HT ^ elem(K)  is equivalent to  lookup(HT, K).
+    % `HT ^ elem(K)' is equivalent to `lookup(HT, K)'.
     %
 :- func version_hash_table(K, V) ^ elem(K) = V.
 
@@ -167,8 +161,8 @@
 
     % from_assoc_list(HashPred, N, MaxOccupancy, AssocList) = Table:
     %
-    % Convert an association list into a hash table.  The first three
-    % parameters are the same as for init/3 above.
+    % Convert an association list into a hash table. The first three parameters
+    % are the same as for init/3 above.
     %
 :- func from_assoc_list(hash_pred(K)::in(hash_pred), int::in, float::in,
         assoc_list(K, V)::in) =
@@ -196,7 +190,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % Test if two version_hash_tables are equal.  This predicate is used by
+    % Test if two version_hash_tables are equal. This predicate is used by
     % unifications on the version_hash_table type.
     %
 :- pred equal(version_hash_table(K, V)::in, version_hash_table(K, V)::in)
@@ -238,7 +232,7 @@
 :- type buckets(K, V) == version_array(hash_table_alist(K, V)).
 
     % Assuming a decent hash function, there should be few collisions so each
-    % bucket will usually contain an empty list or a singleton.  Including a
+    % bucket will usually contain an empty list or a singleton. Including a
     % singleton constructor therefore reduces memory consumption.
     %
 :- type hash_table_alist(K, V)
@@ -256,25 +250,25 @@ unsafe_init(HashPred, N, MaxOccupancy) = init_2(HashPred, N, MaxOccupancy, no).
     (version_hash_table(K, V)::out) is det.
 
 init_2(HashPred, N, MaxOccupancy, NeedSafety) = HT :-
-    (      if N =< 0 then
-            throw(software_error("version_hash_table.new_hash_table: N =< 0"))
-      else if N >= int.bits_per_int then
-            throw(software_error(
-                "version_hash_table.new: N >= int.bits_per_int"))
-      else if MaxOccupancy =< 0.0 then
-            throw(software_error(
-                "version_hash_table.new: MaxOccupancy =< 0.0"))
-      else
-            NumBuckets = 1 << N,
-            MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
-            (
-                NeedSafety = yes,
-                Buckets = version_array.init(NumBuckets, ht_nil)
-            ;
-                NeedSafety = no,
-                Buckets = version_array.unsafe_init(NumBuckets, ht_nil)
-            ),
-            HT = ht(0, MaxOccupants, HashPred, Buckets)
+    ( if N =< 0 then
+        throw(software_error("version_hash_table.new_hash_table: N =< 0"))
+    else if N >= int.bits_per_int then
+        throw(software_error(
+            "version_hash_table.new: N >= int.bits_per_int"))
+    else if MaxOccupancy =< 0.0 then
+        throw(software_error(
+            "version_hash_table.new: MaxOccupancy =< 0.0"))
+    else
+        NumBuckets = 1 << N,
+        MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
+        (
+            NeedSafety = yes,
+            Buckets = version_array.init(NumBuckets, ht_nil)
+        ;
+            NeedSafety = no,
+            Buckets = version_array.unsafe_init(NumBuckets, ht_nil)
+        ),
+        HT = ht(0, MaxOccupants, HashPred, Buckets)
     ).
 
 %---------------------------------------------------------------------------%
@@ -369,7 +363,7 @@ set(HT0, K, V) = HT :-
         ( if K0 = K then
             AL = ht_single(K0, V),
             MayExpand = no
-          else
+        else
             AL = ht_cons(K, V, AL0),
             MayExpand = yes
         )
@@ -378,7 +372,7 @@ set(HT0, K, V) = HT :-
         ( if alist_replace(AL0, K, V, AL1) then
             AL = AL1,
             MayExpand = no
-          else
+        else
             AL = ht_cons(K, V, AL0),
             MayExpand = yes
         )
@@ -390,9 +384,9 @@ set(HT0, K, V) = HT :-
     ;
         MayExpand = yes,
         NumOccupants = NumOccupants0 + 1,
-        ( NumOccupants > MaxOccupants ->
+        ( if NumOccupants > MaxOccupants then
             HT = expand(NumOccupants, MaxOccupants, HashPred, Buckets)
-        ;
+        else
             HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
         )
     ).
@@ -416,7 +410,7 @@ alist_replace(AL0, K, V, AL) :-
         AL0 = ht_cons(K0, V0, T0),
         ( if K0 = K then
             AL = ht_cons(K0, V, T0)
-          else
+        else
             alist_replace(T0, K, V, T),
             AL = ht_cons(K0, V0, T)
         )
@@ -447,7 +441,7 @@ alist_search(AL, K, V) :-
         AL = ht_cons(HK, HV, T),
         ( if HK = K then
             HV = V
-          else
+        else
             alist_search(T, K, V)
         )
     ).
@@ -471,15 +465,15 @@ det_insert(HT0, K, V) = HT :-
         ( if alist_search(AL0, K, _) then
             throw(software_error(
                 "version_hash_table.det_insert: key already present"))
-          else
+        else
             AL = ht_cons(K, V, AL0)
         )
     ),
     Buckets = Buckets0 ^ elem(H) := AL,
     NumOccupants = NumOccupants0 + 1,
-    ( NumOccupants > MaxOccupants ->
+    ( if NumOccupants > MaxOccupants then
         HT = expand(NumOccupants, MaxOccupants, HashPred, Buckets)
-    ;
+    else
         HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
     ).
 
@@ -495,7 +489,7 @@ det_update(HT0, K, V) = HT :-
     AL0 = Buckets0 ^ elem(H),
     ( if alist_replace(AL0, K, V, AL1) then
         AL = AL1
-      else
+    else
         throw(software_error("version_hash_table.det_update: key not found"))
     ),
     Buckets = Buckets0 ^ elem(H) := AL,
@@ -508,9 +502,10 @@ det_update(K, V, HT, det_update(HT, K, V)).
 %---------------------------------------------------------------------------%
 
 lookup(HT, K) =
-    ( if   V = search(HT, K)
-      then V
-      else func_error("version_hash_table.lookup: key not found")
+    ( if   V = search(HT, K) then
+        V
+    else
+        func_error("version_hash_table.lookup: key not found")
     ).
 
 elem(K, HT) = lookup(HT, K).
@@ -528,7 +523,7 @@ delete(HT0, K) = HT :-
         Buckets = Buckets0 ^ elem(H) := AL,
         NumOccupants = NumOccupants0 - 1,
         HT = ht(NumOccupants, MaxOccupants, HashPred, Buckets)
-      else
+    else
         HT = HT0
     ).
 
@@ -550,7 +545,7 @@ alist_remove(AL0, K, AL) :-
         AL0 = ht_cons(K0, V0, T0),
         ( if K0 = K then
             AL = T0
-          else
+        else
             alist_remove(T0, K, T),
             AL = ht_cons(K0, V0, T)
         )
@@ -608,7 +603,6 @@ from_assoc_list_2([K - V | T], !HT) :-
     %
 :- func expand(int, int, hash_pred(K), buckets(K, V)) =
     version_hash_table(K, V).
-
 :- pragma no_inline(expand/4).
 
 expand(NumOccupants, MaxOccupants0, HashPred0, Buckets0) = HT :-
@@ -627,7 +621,7 @@ expand(NumOccupants, MaxOccupants0, HashPred0, Buckets0) = HT :-
 reinsert_bindings(I, OldBuckets, HashPred, NumBuckets, !Buckets) :-
     ( if I >= size(OldBuckets) then
         true
-      else
+    else
         AL = OldBuckets ^ elem(I),
         reinsert_alist(AL, HashPred, NumBuckets, !Buckets),
         reinsert_bindings(I + 1, OldBuckets, HashPred, NumBuckets, !Buckets)
@@ -724,31 +718,19 @@ char_hash(C, H) :-
 
 %---------------------------------------------------------------------------%
 
-    % This, again, is straight off the top of my head.
-    %
 generic_hash(T, H) :-
-    ( if      dynamic_cast(T, Int) then
-
+    % This, again, is straight off the top of my head.
+    ( if dynamic_cast(T, Int) then
         int_hash(Int, H)
-
-      else if dynamic_cast(T, String) then
-
+    else if dynamic_cast(T, String) then
         string_hash(String, H)
-
-      else if dynamic_cast(T, Float) then
-
+    else if dynamic_cast(T, Float) then
         float_hash(Float, H)
-
-      else if dynamic_cast(T, Char) then
-
+    else if dynamic_cast(T, Char) then
         char_hash(Char, H)
-
-      else if dynamic_cast(T, Univ) then
-
+    else if dynamic_cast(T, Univ) then
         generic_hash(univ_value(Univ), H)
-
-      else if dynamic_cast_to_array(T, Array) then
-
+    else if dynamic_cast_to_array(T, Array) then
         H = array.foldl(
                 ( func(X, HA0) = HA :-
                     generic_hash(X, HX),
@@ -757,9 +739,7 @@ generic_hash(T, H) :-
                 Array,
                 0
             )
-
-      else
-
+    else
         deconstruct(T, canonicalize, FunctorName, Arity, Args),
         string_hash(FunctorName, H0),
         munge(Arity, H0) = H1,
@@ -835,9 +815,9 @@ fold_p(P, List, !A) :-
 %---------------------------------------------------------------------------%
 
 equal(A, B) :-
-    ( private_builtin.pointer_equal(A, B) ->
+    ( if private_builtin.pointer_equal(A, B) then
         true
-    ;
+    else
         % We cannot deconstruct a non-canonical type in this all-solutions
         % context (because the unification and call to fold may fail).
         % Therefore we call num_occupants.

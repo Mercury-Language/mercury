@@ -160,8 +160,8 @@
 
     % relative_path_name_from_components(List) = PathName.
     %
-    % Return the relative pathname from the components in the list.  The
-    % components of the list must not contain directory separators.
+    % Return the relative pathname from the components in the list.
+    % The components of the list must not contain directory separators.
     %
 :- func relative_path_name_from_components(list(string)) = string.
 
@@ -290,7 +290,7 @@ dir.directory_separator(dir.directory_separator).
 
 :- func dir.alt_directory_separator = char.
 
-dir.alt_directory_separator = (io.have_cygwin -> ('\\') ; ('/')).
+dir.alt_directory_separator = (if io.have_cygwin then ('\\') else ('/')).
 
 :- pragma foreign_proc("C#",
     dir.alt_directory_separator = (Sep::out),
@@ -340,16 +340,16 @@ dir.parent_directory(dir.parent_directory).
 %---------------------------------------------------------------------------%
 
 dir.det_basename(FileName) =
-    ( BaseName = dir.basename(FileName) ->
+    ( if BaseName = dir.basename(FileName) then
         BaseName
-    ;
-        func_error("dir.det_basename: given directory is root directory")
+    else
+        unexpected($pred, "given directory is root directory")
     ).
 
 dir.basename(FileName) = BaseName :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
-    \+ dir.is_root_directory(FileNameChars),
-    \+ (
+    not dir.is_root_directory(FileNameChars),
+    not (
         % Current directory on the given drive.
         use_windows_paths,
         FileNameChars = [Drive, (':')],
@@ -359,9 +359,9 @@ dir.basename(FileName) = BaseName :-
     FileNameWithoutSlash = remove_trailing_dir_separator(FileNameChars),
     FileNameWithoutSlash \= string.to_char_list(dir.this_directory),
     FileNameWithoutSlash \= string.to_char_list(dir.parent_directory),
-    ( dir.split_name_2(FileNameChars, _, BaseName0) ->
+    ( if dir.split_name_2(FileNameChars, _, BaseName0) then
         BaseName = BaseName0
-    ;
+    else
         BaseName = FileName
     ).
 
@@ -371,27 +371,27 @@ dir.basename(S, dir.basename(S)).
 
 dir.dirname(FileName) = DirName :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
-    (
+    ( if
         dir.is_root_directory(FileNameChars)
-    ->
+    then
         DirName = string.from_char_list(FileNameChars)
-    ;
+    else if
         % Current directory on the given drive.
         use_windows_paths,
         FileNameChars = [Drive, (':')],
         char.is_alpha(Drive)
-    ->
+    then
         DirName = string.from_char_list(FileNameChars)
-    ;
+    else if
         dir.split_name_2(FileNameChars, DirName0, _)
-    ->
+    then
         DirName = DirName0
-    ;
+    else if
         remove_trailing_dir_separator(FileNameChars) =
             string.to_char_list(dir.parent_directory)
-    ->
+    then
         DirName = dir.parent_directory
-    ;
+    else
         DirName = dir.this_directory
     ).
 
@@ -399,7 +399,7 @@ dir.dirname(S, dir.dirname(S)).
 
 dir.split_name(FileName, DirName, BaseName) :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
-    \+ is_root_directory(FileNameChars),
+    not is_root_directory(FileNameChars),
     dir.split_name_2(FileNameChars, DirName, BaseName).
 
     % Check that the filename is not empty or dir.this_directory,
@@ -416,12 +416,12 @@ dir.split_name_2(FileNameChars0, DirName, BaseName) :-
     FileNameWithoutSlash = remove_trailing_dir_separator(FileNameChars0),
     FileNameWithoutSlash \= string.to_char_list(dir.this_directory),
     FileNameWithoutSlash \= string.to_char_list(dir.parent_directory),
-    ( io.have_dotnet ->
+    ( if io.have_dotnet then
         % System.IO.Path.GetFileName() returns the empty string
         % if the path ends in a separator).
         dir.split_name_dotnet(string.from_char_list(FileNameWithoutSlash),
             DirName, BaseName)
-    ;
+    else
         dir.split_name_3(FileNameChars0, DirName, BaseName)
     ).
 
@@ -430,27 +430,25 @@ dir.split_name_2(FileNameChars0, DirName, BaseName) :-
 dir.split_name_3(FileNameChars, DirName, BaseName) :-
     % Remove any trailing separator.
     RevFileNameChars0 = reverse(FileNameChars),
-    (
+    ( if
         RevFileNameChars0 = [LastChar | RevFileNameChars1],
         dir.is_directory_separator(LastChar)
-    ->
+    then
         RevFileNameChars = RevFileNameChars1
-    ;
+    else
         RevFileNameChars = RevFileNameChars0
     ),
-    (
+    ( if
         list.takewhile(isnt(dir.is_directory_separator_semidet),
             RevFileNameChars, RevBaseName, RevDirName0),
         RevBaseName = [_ | _],
         RevDirName0 = [_ | _]
-    ->
-        %
+    then
         % Strip the trailing separator off the directory name
         % if doing so doesn't change the meaning.
-        %
-        (
+        ( if
             RevDirName0 = [Sep | RevDirName1],
-            \+ (
+            not (
                 dir.is_directory_separator(Sep),
                 (
                     ( use_windows_paths
@@ -462,32 +460,33 @@ dir.split_name_3(FileNameChars, DirName, BaseName) :-
                     RevDirName1 = []
                 )
             )
-        ->
+        then
             RevDirName = RevDirName1
-        ;
+        else
             RevDirName = RevDirName0
         ),
 
         BaseName = string.from_rev_char_list(RevBaseName),
         DirName = string.from_rev_char_list(RevDirName)
-    ;
+    else if
         % Check for relative paths of the form `C:foo'.
         use_windows_paths,
         FileNameChars = [Drive, (':') | BaseNameChars],
         char.is_alpha(Drive),
         BaseNameChars = [BaseNameFirst | _],
-        \+ dir.is_directory_separator(BaseNameFirst)
-    ->
+        not dir.is_directory_separator(BaseNameFirst)
+    then
         BaseName = string.from_char_list(BaseNameChars),
         DirName = string.from_char_list([Drive, (':')])
-    ;
+    else
         fail
     ).
 
 :- pred dir.split_name_dotnet(string::in, string::out, string::out)
     is semidet.
 
-dir.split_name_dotnet(_, "", "") :- semidet_fail.
+dir.split_name_dotnet(_, "", "") :-
+    semidet_fail.
 
 % The .NET CLI provides functions to split directory names in a
 % system-dependent manner.
@@ -516,29 +515,33 @@ dir.split_name_dotnet(_, "", "") :- semidet_fail.
 :- func canonicalize_path_chars(list(char)) = list(char).
 
 canonicalize_path_chars(FileName0) = FileName :-
-    (
+    ( if
         % Windows allows path names of the form "\\server\share".
         % These path names are referred to as UNC path names.
         ( use_windows_paths ; io.have_cygwin ),
         FileName0 = [Char1 | FileName1],
         is_directory_separator(Char1)
-    ->
+    then
         % On Cygwin "//" is different to "\\"
         % ("//" is the Cygwin root directory, "\\" is
         % the root directory of the current drive).
-        CanonicalChar1 = ( io.have_cygwin -> Char1 ; directory_separator ),
+        ( if io.have_cygwin then
+            CanonicalChar1 = Char1
+        else
+            CanonicalChar1 = directory_separator
+        ),
         FileName2 = canonicalize_path_chars_2(FileName1, []),
 
         % "\\" isn't a UNC path name, so it is equivalent to "\".
-        (
+        ( if
             FileName2 = [Char2],
             is_directory_separator(Char2)
-        ->
+        then
             FileName = [CanonicalChar1]
-        ;
+        else
             FileName = [CanonicalChar1 | FileName2]
         )
-    ;
+    else
         FileName = canonicalize_path_chars_2(FileName0, [])
     ).
 
@@ -552,35 +555,35 @@ canonicalize_path_chars_2([C0 | FileName0], RevFileName0) =
     % On Cygwin, "\foo\bar" (relative to root of current drive)
     % is different to "/foo/bar" (relative to Cygwin root directory),
     % so we can't convert separators.
-    (
-        \+ io.have_cygwin,
+    ( if
+        not io.have_cygwin,
         is_directory_separator(C0)
-    ->
+    then
         C = directory_separator
-    ;
+    else
         C = C0
     ),
 
     % Remove repeated directory separators.
-    (
+    ( if
         dir.is_directory_separator(C),
         FileName0 = [C2 | _],
         dir.is_directory_separator(C2)
-    ->
+    then
         RevFileName = RevFileName0
-    ;
+    else
         RevFileName = [C | RevFileName0]
     ).
 
 :- func remove_trailing_dir_separator(list(char)) = list(char).
 
 remove_trailing_dir_separator(Chars) =
-    (
+    ( if
         list.split_last(Chars, Chars1, Sep),
         dir.is_directory_separator(Sep)
-    ->
+    then
         Chars1
-    ;
+    else
         Chars
     ).
 
@@ -588,20 +591,21 @@ dir.path_name_is_root_directory(PathName) :-
     is_root_directory(canonicalize_path_chars(string.to_char_list(PathName))).
 
     % Assumes repeated directory separators have been removed.
+    %
 :- pred is_root_directory(list(char)::in) is semidet.
 
 is_root_directory(FileName) :-
-    (
+    ( if
         have_dotnet
-    ->
+    then
         is_dotnet_root_directory(string.from_char_list(FileName))
-    ;
+    else if
         ( use_windows_paths
         ; io.have_cygwin
         )
-    ->
+    then
         strip_leading_win32_root_directory(FileName, [])
-    ;
+    else
         FileName = [Char],
         dir.is_directory_separator(Char)
     ).
@@ -614,11 +618,11 @@ is_root_directory(FileName) :-
     list(char)::out) is semidet.
 
 strip_leading_win32_root_directory(!FileName) :-
-    ( strip_leading_win32_drive_root_directory(!FileName) ->
+    ( if strip_leading_win32_drive_root_directory(!FileName) then
         true
-    ; strip_leading_win32_unc_root_directory(!FileName) ->
+    else if strip_leading_win32_unc_root_directory(!FileName) then
         true
-    ;
+    else
         strip_leading_win32_current_drive_root_directory(!FileName)
     ).
 
@@ -648,7 +652,7 @@ strip_leading_win32_current_drive_root_directory([Char1 | !.FileName],
         !.FileName = []
     ;
         !.FileName = [Char2 | !:FileName],
-        \+ dir.is_directory_separator(Char2)
+        not dir.is_directory_separator(Char2)
     ).
 
     % Check for `\\server\' or `\\server\share\'.
@@ -688,11 +692,11 @@ is_dotnet_root_directory(FileName) :-
         % For reasons known only to Microsoft,
         % trailing slashes are significant.
         FileNameLen = length(FileName),
-        ( FileNameLen > 0 ->
+        ( if FileNameLen > 0 then
             ends_with_directory_separator(FileName, FileNameLen, PrevIndex),
             string.unsafe_between(FileName, 0, PrevIndex, Prefix),
             is_dotnet_root_directory_2(Prefix)
-        ;
+        else
             fail
         )
     ).
@@ -700,7 +704,7 @@ is_dotnet_root_directory(FileName) :-
 :- pred is_dotnet_root_directory_2(string::in) is semidet.
 
 is_dotnet_root_directory_2(_) :-
-    error("dir.is_dotnet_root_directory called for non-.NET CLI backend").
+    unexpected($pred, "called for non-.NET CLI backend").
 
 :- pragma foreign_proc("C#",
     is_dotnet_root_directory_2(FileName::in),
@@ -717,18 +721,18 @@ is_dotnet_root_directory_2(_) :-
 %---------------------------------------------------------------------------%
 
 dir.path_name_is_absolute(FileName) :-
-    (
+    ( if
         have_dotnet
-    ->
+    then
         dotnet_path_name_is_absolute(FileName)
-    ;
+    else if
         ( use_windows_paths
         ; io.have_cygwin
         )
-    ->
+    then
         strip_leading_win32_root_directory(
             canonicalize_path_chars(string.to_char_list(FileName)), _)
-    ;
+    else
         string.index(FileName, 0, FirstChar),
         dir.is_directory_separator(FirstChar)
     ).
@@ -741,19 +745,19 @@ dir.dotnet_path_name_is_absolute(FileName) :-
     % The .NET CLI function System.IO.Path.IsPathRooted succeeds for
     % paths such as `C:', which specifies a directory relative to the
     % current directory on drive C.
-    \+ (
+    not (
         use_windows_paths,
         FileNameLen = length(FileName),
-        ( FileNameLen >= 2 ->
+        ( if FileNameLen >= 2 then
             char.is_alpha(string.unsafe_index(FileName, 0)),
             string.unsafe_index(FileName, 1) = (':'),
-            ( FileNameLen > 2 ->
-                \+ dir.is_directory_separator(
+            ( if FileNameLen > 2 then
+                not dir.is_directory_separator(
                     string.unsafe_index(FileName, 2))
-            ;
+            else
                 true
             )
-        ;
+        else
             fail
         )
     ).
@@ -761,8 +765,7 @@ dir.dotnet_path_name_is_absolute(FileName) :-
 :- pred dir.dotnet_path_name_is_absolute_2(string::in) is semidet.
 
 dir.dotnet_path_name_is_absolute_2(_) :-
-    error("dir.dotnet_path_name_is_absolute_2 called " ++
-        "for non-.NET CLI backend").
+    unexpected($pred, "called on non-.NET CLI backend").
 
 :- pragma foreign_proc("C#",
     dir.dotnet_path_name_is_absolute_2(FileName::in),
@@ -789,29 +792,29 @@ DirName0/FileName0 = PathName :-
         string.to_char_list(DirName0))),
     FileName = string.from_char_list(canonicalize_path_chars(
         string.to_char_list(FileName0))),
-    (
+    ( if
         dir.path_name_is_absolute(FileName)
-    ->
-        error("dir./: second argument is absolute")
-    ;
+    then
+        unexpected($pred, "second argument is absolute")
+    else if
         % Check that FileName is not a relative path
         % of the form "C:foo".
         use_windows_paths,
         Length = length(FileName),
-        ( Length >= 2 ->
+        ( if Length >= 2 then
             char.is_alpha(string.unsafe_index(FileName, 0)),
             string.unsafe_index(FileName, 1) = (':'),
-            ( Length > 2 ->
-                \+ is_directory_separator(string.unsafe_index(FileName, 2))
-            ;
+            ( if Length > 2 then
+                not is_directory_separator(string.unsafe_index(FileName, 2))
+            else
                 true
             )
-        ;
+        else
             fail
         )
-    ->
-        error("dir./: second argument is a current drive relative path")
-    ;
+    then
+        unexpected($pred, "second argument is a current drive relative path")
+    else if
         DirNameLength = length(DirName),
         (
             % Check for construction of relative paths
@@ -825,16 +828,16 @@ DirName0/FileName0 = PathName :-
             % On Windows \\foo (a UNC server specification) is
             % not equivalent to \foo (the directory X:\foo, where
             % X is the current drive).
-            ( DirNameLength > 0 ->
+            ( if DirNameLength > 0 then
                 ends_with_directory_separator(DirName, DirNameLength, _)
-            ;
+            else
 
                 fail
             )
         )
-    ->
+    then
         PathName = DirName ++ FileName
-    ;
+    else
         % Using string.append_list has a fixed overhead of six words, whereas
         % using two string.appends back to back would have a memory overhead
         % proportional to the size of the string copied twice. We prefer the
@@ -896,7 +899,7 @@ dir.relative_path_name_from_components(Components) = PathName :-
                 &Res);
             break;
         }
-        /* Buffer too small.  Resize and try again. */
+        /* Buffer too small. Resize and try again. */
         size *= 1.5;
     }
 #endif
@@ -947,36 +950,34 @@ dir.relative_path_name_from_components(Components) = PathName :-
 %---------------------------------------------------------------------------%
 
 dir.make_directory(PathName, Result, !IO) :-
-    ( can_implement_make_directory ->
+    ( if can_implement_make_directory then
         DirName = dir.dirname(PathName),
-        ( PathName = DirName ->
+        ( if PathName = DirName then
             % We've been asked to make a root directory -- the mkdir will fail.
             dir.make_single_directory_2(0, PathName, Result, !IO)
-        ;
-            ( DirName = dir.this_directory ->
-                % Just go ahead and attempt to make the directory -- if the
-                % current directory is not accessible, the mkdir will fail.
+        else if DirName = dir.this_directory then
+            % Just go ahead and attempt to make the directory -- if the
+            % current directory is not accessible, the mkdir will fail.
+            dir.make_single_directory_2(0, PathName, Result, !IO)
+        else
+            io.check_file_accessibility(DirName, [],
+                ParentAccessResult, !IO),
+            (
+                ParentAccessResult = ok,
                 dir.make_single_directory_2(0, PathName, Result, !IO)
             ;
-                io.check_file_accessibility(DirName, [],
-                    ParentAccessResult, !IO),
+                ParentAccessResult = error(_),
+                dir.make_directory(DirName, ParentResult, !IO),
                 (
-                    ParentAccessResult = ok,
+                    ParentResult = ok,
                     dir.make_single_directory_2(0, PathName, Result, !IO)
                 ;
-                    ParentAccessResult = error(_),
-                    dir.make_directory(DirName, ParentResult, !IO),
-                    (
-                        ParentResult = ok,
-                        dir.make_single_directory_2(0, PathName, Result, !IO)
-                    ;
-                        ParentResult = error(_),
-                        Result = ParentResult
-                    )
+                    ParentResult = error(_),
+                    Result = ParentResult
                 )
             )
         )
-    ;
+    else
         Result = error(make_io_error(
             "dir.make_directory not implemented on this platform"))
     ).
@@ -1048,7 +1049,8 @@ dir.make_directory(PathName, Result, !IO) :-
 
 :- pred can_implement_make_directory is semidet.
 
-can_implement_make_directory :- semidet_fail.
+can_implement_make_directory :-
+    semidet_fail.
 
 :- pragma foreign_proc("C",
     can_implement_make_directory,
@@ -1257,9 +1259,9 @@ dir.make_mkdir_res_error(Error, error(make_io_error(Msg)), !IO) :-
 
 dir.make_mkdir_res_exists(Error, DirName, Res, !IO) :-
     io.file_type(yes, DirName, TypeResult, !IO),
-    ( TypeResult = ok(directory) ->
+    ( if TypeResult = ok(directory) then
         dir.check_dir_accessibility(DirName, Res, !IO)
-    ;
+    else
         dir.make_mkdir_res_error(Error, Res, !IO)
     ).
 
@@ -1300,9 +1302,9 @@ dir.recursive_foldl2(P, DirName, FollowLinks, T, Res, !IO) :-
 
 fixup_dirname(Dir0) = Dir :-
     DirChars = canonicalize_path_chars(string.to_char_list(Dir0)),
-    ( is_root_directory(DirChars) ->
+    ( if is_root_directory(DirChars) then
         Dir = Dir0
-    ;
+    else
         Dir = string.from_char_list(remove_trailing_dir_separator(DirChars))
     ).
 
@@ -1324,14 +1326,14 @@ dir.foldl2_process_dir2(!Dir, SymLinkParent, P, DirName, ParentIds, FirstEntry,
 
 dir.foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
         FollowLinks, Continue, T0, Result, !IO) :-
-    ( can_implement_dir_foldl ->
-        (
+    ( if can_implement_dir_foldl then
+        ( if
             Recursive = yes,
             FollowLinks = yes
-        ->
+        then
             check_for_symlink_loop(SymLinkParent, DirName,
                 LoopRes, ParentIds0, ParentIds, !IO)
-        ;
+        else
             ParentIds = ParentIds0,
             LoopRes = ok(no)
         ),
@@ -1397,7 +1399,7 @@ dir.foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
             Continue = no,
             Result = error(T0, Error)
         )
-    ;
+    else
         Continue = no,
         Result = error(T0, make_io_error("dir.foldl2 " ++
             "not implemented on this platform"))
@@ -1421,17 +1423,17 @@ dir.foldl2_process_entries(!Dir, SymLinkParent, P, DirName, ok(FileName),
         P(DirName, FileName, Type, Continue1, T0, T1, !IO),
         (
             Continue1 = yes,
-            (
+            ( if
                 Recursive = yes,
                 Type = directory
-            ->
+            then
                 dir.foldl2_process_dir(SymLinkParent, P, PathName, ParentIds,
                     Recursive, FollowLinks, Continue2, T1, Res1, !IO)
-            ;
+            else if
                 Recursive = yes,
                 Type = symbolic_link,
                 FollowLinks = yes
-            ->
+            then
                 io.file_type(yes, PathName, TargetTypeRes, !IO),
                 (
                     TargetTypeRes = ok(TargetType),
@@ -1460,14 +1462,14 @@ dir.foldl2_process_entries(!Dir, SymLinkParent, P, DirName, ok(FileName),
                     Continue2 = no,
                     Res1 = error(T1, TargetTypeError)
                 )
-            ;
+            else
                 Continue2 = yes,
                 Res1 = ok(T1)
             ),
-            (
+            ( if
                 Continue2 = yes,
                 Res1 = ok(T)
-            ->
+            then
                 dir.read_entry(!.Dir, EntryResult0, !IO),
                 (
                     EntryResult0 = ok({!:Dir, FileName1}),
@@ -1482,7 +1484,7 @@ dir.foldl2_process_entries(!Dir, SymLinkParent, P, DirName, ok(FileName),
                 dir.foldl2_process_entries(!Dir, SymLinkParent, P, DirName,
                     EntryResult, ParentIds, Recursive, FollowLinks, Continue,
                     T, Res, !IO)
-            ;
+            else
                 Continue = no,
                 Res = Res1
             )
@@ -1505,16 +1507,16 @@ dir.foldl2_process_entries(!Dir, SymLinkParent, P, DirName, ok(FileName),
     list(file_id)::in, list(file_id)::out, io::di, io::uo) is det.
 
 check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
-    ( io.have_symlinks ->
+    ( if io.have_symlinks then
         io.file_id(DirName, IdRes, !IO),
         (
             IdRes = ok(Id),
-            (
+            ( if
                 SymLinkParent = yes,
                 list.member(Id, !.ParentIds)
-            ->
+            then
                 Loop = yes
-            ;
+            else
                 !:ParentIds = [Id | !.ParentIds],
                 Loop = no
             ),
@@ -1523,7 +1525,7 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
             IdRes = error(Msg),
             LoopRes = error(Msg)
         )
-    ;
+    else
         LoopRes = ok(no)
     ).
 
@@ -1562,7 +1564,8 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
     % A dir.stream should be treated like an io.input_stream,
     % except using dir.read_entry, rather than io.read_char.
     % dir.streams must be closed to avoid resource leaks.
-:- type dir.stream ---> dir.stream.
+:- type dir.stream
+    --->    dir.stream.
 :- pragma foreign_type("C", dir.stream, "ML_DIR_STREAM").
 :- pragma foreign_type("C#", dir.stream, "System.Collections.IEnumerator").
 :- pragma foreign_type("Java", dir.stream, "java.util.Iterator").
@@ -1570,7 +1573,9 @@ check_for_symlink_loop(SymLinkParent, DirName, LoopRes, !ParentIds, !IO) :-
 
 :- pred can_implement_dir_foldl is semidet.
 
-can_implement_dir_foldl :- semidet_fail.
+can_implement_dir_foldl :-
+    semidet_fail.
+
 :- pragma foreign_proc("C",
     can_implement_dir_foldl,
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
@@ -1611,9 +1616,9 @@ can_implement_dir_foldl :- semidet_fail.
     io::di, io::uo) is det.
 
 dir.open(DirName, Res, !IO) :-
-    ( can_implement_dir_foldl ->
+    ( if can_implement_dir_foldl then
         dir.open_2(DirName, Res, !IO)
-    ;
+    else
         Res = error(io.make_io_error("dir.foldl2 not implemented " ++
             "on this platform"))
     ).
@@ -1783,11 +1788,11 @@ dir.read_first_entry(Dir, Result, !IO) :-
     "ML_make_win32_dir_open_result_ok").
 
 make_win32_dir_open_result_ok(Dir, FirstFile0, Result, !IO) :-
-    (
+    ( if
         ( FirstFile0 = dir.this_directory
         ; FirstFile0 = dir.parent_directory
         )
-    ->
+    then
         dir.read_entry(Dir, ReadResult, !IO),
         (
             ReadResult = ok(_),
@@ -1803,7 +1808,7 @@ make_win32_dir_open_result_ok(Dir, FirstFile0, Result, !IO) :-
             dir.close(Dir, _, !IO),
             Result = error(Error)
         )
-    ;
+    else
         Result = ok({Dir, FirstFile0})
     ).
 
@@ -1835,11 +1840,11 @@ make_dir_open_result_error(Error, error(io.make_io_error(Msg)), !IO) :-
 
 dir.close(Dir, Res, !IO) :-
     dir.close_2(Dir, Status, Error, !IO),
-    ( Status = 0 ->
+    ( if Status = 0 then
         io.make_maybe_win32_err_msg(Error,
             "dir.foldl2: closing directory failed: ", Msg, !IO),
         Res = error(io.make_io_error(Msg))
-    ;
+    else
         Res = ok
     ).
 
@@ -1894,23 +1899,23 @@ dir.close(Dir, Res, !IO) :-
 
 dir.read_entry(Dir0, Res, !IO) :-
     dir.read_entry_2(Dir0, Dir, Status, Error, FileName, !IO),
-    (
+    ( if
         Status = 0
-    ->
+    then
         io.make_maybe_win32_err_msg(Error,
             "dir.foldl2: reading directory entry failed: ", Msg, !IO),
         Res = error(io.make_io_error(Msg))
-    ;
+    else if
         Status = -1
-    ->
+    then
         Res = eof
-    ;
+    else if
         ( FileName = dir.this_directory
         ; FileName = dir.parent_directory
         )
-    ->
+    then
         dir.read_entry(Dir0, Res, !IO)
-    ;
+    else
         Res = ok({Dir, FileName})
     ).
 
@@ -2033,14 +2038,14 @@ expand(Chars) = expand_acc(Chars, [[]]).
 
 expand_acc([], Prefixes) = Prefixes.
 expand_acc([Char | Chars], Prefixes0) = Strings :-
-    ( Char = '{' ->
+    ( if Char = '{' then
         find_matching_brace(Chars, Alternatives0, Left),
         AlternativeLists = list.map(expand, Alternatives0),
         Alternatives = list.condense(AlternativeLists),
         PrefixLists = list.map(add_alternatives(Alternatives), Prefixes0),
         Prefixes1 = list.condense(PrefixLists),
         expand_acc(Left, Prefixes1) = Strings
-    ;
+    else
         Prefixes1 = list.map(add_char_at_end(Char), Prefixes0),
         Strings = expand_acc(Chars, Prefixes1)
     ).
@@ -2067,30 +2072,30 @@ find_matching_brace_or_comma([], _, _, _, _, _) :-
     throw("no matching brace").
 find_matching_brace_or_comma([Char | Chars], Alternatives0, CurAlternative,
         BraceLevel, Alternatives, Left) :-
-    ( Char = '}' ->
-        ( BraceLevel = 0 ->
+    ( if Char = '}' then
+        ( if BraceLevel = 0 then
             list.append(Alternatives0, [CurAlternative], Alternatives),
             Left = Chars
-        ;
+        else
             find_matching_brace_or_comma(Chars, Alternatives0,
                 list.append(CurAlternative, [Char]),
                 BraceLevel - 1, Alternatives, Left)
         )
-    ; Char = '{' ->
+    else if Char = '{' then
         find_matching_brace_or_comma(Chars, Alternatives0,
             list.append(CurAlternative, [Char]),
             BraceLevel + 1, Alternatives, Left)
-    ; Char = (',') ->
-        ( BraceLevel = 0 ->
+    else if Char = (',') then
+        ( if BraceLevel = 0 then
             list.append(Alternatives0, [CurAlternative], Alternatives1),
             find_matching_brace_or_comma(Chars, Alternatives1,
                 [], BraceLevel, Alternatives, Left)
-        ;
+        else
             find_matching_brace_or_comma(Chars, Alternatives0,
                 list.append(CurAlternative, [Char]),
                 BraceLevel, Alternatives, Left)
         )
-    ;
+    else
         find_matching_brace_or_comma(Chars, Alternatives0,
             list.append(CurAlternative, [Char]),
             BraceLevel, Alternatives, Left)

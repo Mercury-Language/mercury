@@ -194,9 +194,9 @@ eqvclass.ensure_element(Element, !EqvClass) :-
 
 eqvclass.ensure_element_partition_id(Element, Id, !EqvClass) :-
     ElementMap = !.EqvClass ^ keys,
-    ( map.search(ElementMap, Element, OldId) ->
+    ( if map.search(ElementMap, Element, OldId) then
         Id = OldId
-    ;
+    else
         eqvclass.add_element(Element, Id, !EqvClass)
     ).
 
@@ -205,9 +205,10 @@ eqvclass.new_element(!.EqvClass, X) = !:EqvClass :-
 
 eqvclass.new_element(Element, !EqvClass) :-
     ElementMap0 = !.EqvClass ^ keys,
-    ( map.search(ElementMap0, Element, _OldId) ->
-        error("new element is already in equivalence class")
-    ;
+    ( if map.search(ElementMap0, Element, _OldId) then
+        unexpected($module, $pred,
+            "new element is already in equivalence class")
+    else
         eqvclass.add_element(Element, _, !EqvClass)
     ).
 
@@ -231,9 +232,9 @@ eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
     % eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
     %     eqvclass.ensure_element_2(ElementA, IdA, EqvClass0, EqvClass1),
     %     eqvclass.ensure_element_2(ElementB, IdB, EqvClass1, EqvClass2),
-    %     ( IdA = IdB ->
+    %     ( if IdA = IdB then
     %         EqvClass = EqvClass2
-    %     ;
+    %     else
     %         eqvclass.add_equivalence(IdA, IdB, EqvClass2, EqvClass)
     %     ).
     %
@@ -241,14 +242,14 @@ eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
     % below, because it can create an equivalence class for an element and then
     % just throw that equivalence class away.
     ElementMap0 = EqvClass0 ^ keys,
-    ( map.search(ElementMap0, ElementA, IdA) ->
-        ( map.search(ElementMap0, ElementB, IdB) ->
-            ( IdA = IdB ->
+    ( if map.search(ElementMap0, ElementA, IdA) then
+        ( if map.search(ElementMap0, ElementB, IdB) then
+            ( if IdA = IdB then
                 EqvClass = EqvClass0
-            ;
+            else
                 eqvclass.add_equivalence(IdA, IdB, EqvClass0, EqvClass)
             )
-        ;
+        else
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdA, PartitionA),
             set.insert(ElementB, PartitionA, Partition),
@@ -257,8 +258,8 @@ eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
             NextId0 = EqvClass0 ^ next_id,
             EqvClass = eqvclass(NextId0, PartitionMap, ElementMap)
         )
-    ;
-        ( map.search(ElementMap0, ElementB, IdB) ->
+    else
+        ( if map.search(ElementMap0, ElementB, IdB) then
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdB, PartitionB),
             set.insert(ElementA, PartitionB, Partition),
@@ -266,7 +267,7 @@ eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
             map.det_insert(ElementA, IdB, ElementMap0, ElementMap),
             NextId0 = EqvClass0 ^ next_id,
             EqvClass = eqvclass(NextId0, PartitionMap, ElementMap)
-        ;
+        else
             NextId0 = EqvClass0 ^ next_id,
             counter.allocate(Id, NextId0, NextId),
             map.det_insert(ElementA, Id, ElementMap0, ElementMap1),
@@ -288,14 +289,15 @@ eqvclass.new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
     % exception that we abort if IdA = IdB in EqvClass0.
 
     ElementMap0 = EqvClass0 ^ keys,
-    ( map.search(ElementMap0, ElementA, IdA) ->
-        ( map.search(ElementMap0, ElementB, IdB) ->
-            ( IdA = IdB ->
-                error("two elements are already equivalent")
-            ;
+    ( if map.search(ElementMap0, ElementA, IdA) then
+        ( if map.search(ElementMap0, ElementB, IdB) then
+            ( if IdA = IdB then
+                unexpected($module, $pred,
+                    "the two elements are already equivalent")
+            else
                 eqvclass.add_equivalence(IdA, IdB, EqvClass0, EqvClass)
             )
-        ;
+        else
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdA, PartitionA),
             set.insert(ElementB, PartitionA, Partition),
@@ -304,8 +306,8 @@ eqvclass.new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
             NextId0 = EqvClass0 ^ next_id,
             EqvClass = eqvclass(NextId0, PartitionMap, ElementMap)
         )
-    ;
-        ( map.search(ElementMap0, ElementB, IdB) ->
+    else
+        ( if map.search(ElementMap0, ElementB, IdB) then
             PartitionMap0 = EqvClass0 ^ partitions,
             map.lookup(PartitionMap0, IdB, PartitionB),
             set.insert(ElementA, PartitionB, Partition),
@@ -313,7 +315,7 @@ eqvclass.new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
             map.det_insert(ElementA, IdB, ElementMap0, ElementMap),
             NextId0 = EqvClass0 ^ next_id,
             EqvClass = eqvclass(NextId0, PartitionMap, ElementMap)
-        ;
+        else
             NextId0 = EqvClass0 ^ next_id,
             counter.allocate(Id, NextId0, NextId),
             map.det_insert(ElementA, Id, ElementMap0, ElementMap1),
@@ -327,9 +329,9 @@ eqvclass.new_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
 
 eqvclass.ensure_corresponding_equivalences([], [], !EqvClass).
 eqvclass.ensure_corresponding_equivalences([], [_ | _], !EqvClass) :-
-    error("eqvclass.ensure_corresponding_equivalences: list mismatch").
+    unexpected($module, $pred, "list length mismatch").
 eqvclass.ensure_corresponding_equivalences([_ | _], [], !EqvClass) :-
-    error("eqvclass.ensure_corresponding_equivalences: list mismatch").
+    unexpected($module, $pred, "list length mismatch").
 eqvclass.ensure_corresponding_equivalences([H1 | T1], [H2 | T2], !EqvClass) :-
     eqvclass.ensure_equivalence(H1, H2, !EqvClass),
     eqvclass.ensure_corresponding_equivalences(T1, T2, !EqvClass).
@@ -345,13 +347,13 @@ eqvclass.add_equivalence(IdA, IdB, EqvClass0, EqvClass) :-
     map.lookup(PartitionMap0, IdA, PartitionA),
     map.lookup(PartitionMap0, IdB, PartitionB),
     % We want eqvclass.change_partition to loop over the smaller set.
-    ( set.count(PartitionA) < set.count(PartitionB) ->
+    ( if set.count(PartitionA) < set.count(PartitionB) then
         map.delete(IdA, PartitionMap0, PartitionMap1),
         set.union(PartitionB, PartitionA, Partition),
         map.set(IdB, Partition, PartitionMap1, PartitionMap),
         set.to_sorted_list(PartitionA, ElementsA),
         eqvclass.change_partition(ElementsA, IdB, ElementMap0, ElementMap)
-    ;
+    else
         map.delete(IdB, PartitionMap0, PartitionMap1),
         set.union(PartitionA, PartitionB, Partition),
         map.set(IdA, Partition, PartitionMap1, PartitionMap),
@@ -429,10 +431,11 @@ eqvclass.partition_ids(EqvClass0, Ids) :-
 
 eqvclass.id_to_partition(EqvClass0, Id, Partition) :-
     PartitionMap0 = EqvClass0 ^ partitions,
-    ( map.search(PartitionMap0, Id, PartitionPrime) ->
+    ( if map.search(PartitionMap0, Id, PartitionPrime) then
         Partition = PartitionPrime
-    ;
-        error("partition id not known to equivalence class")
+    else
+        unexpected($module, $pred,
+            "partition id not known to equivalence class")
     ).
 
 eqvclass.partition_set_to_eqvclass(Set) = EqvClass :-
@@ -473,9 +476,9 @@ eqvclass.make_partition([Element | Elements], Id, !ElementMap) :-
     eqvclass.make_partition(Elements, Id, !ElementMap).
 
 eqvclass.get_equivalent_elements(eqvclass(_, PartitionMap, ElementMap), X) =
-    ( Eqv = map.search(PartitionMap, map.search(ElementMap, X)) ->
+    ( if Eqv = map.search(PartitionMap, map.search(ElementMap, X)) then
         Eqv
-    ;
+    else
         set.make_singleton_set(X)
     ).
 
@@ -488,10 +491,10 @@ eqvclass.remove_equivalent_elements(X, !EqvClass) :-
 
 eqvclass.remove_equivalent_elements(eqvclass(Id, P0, E0), X) =
         eqvclass(Id, P, E) :-
-    ( map.search(E0, X, Partition) ->
+    ( if map.search(E0, X, Partition) then
         map.det_remove(Partition, Eq, P0, P),
         map.delete_list(set.to_sorted_list(Eq), E0, E)
-    ;
+    else
         P = P0,
         E = E0
     ).
@@ -512,7 +515,7 @@ divide_equivalence_classes_2(F, Id, ItemSet, !Counter, !Partitions, !Keys) :-
     set.to_sorted_list(ItemSet, ItemList),
     (
         ItemList = [],
-        error("divide_equivalence_classes_2: empty partition")
+        unexpected($module, $pred, "empty partition")
     ;
         ItemList = [Item | Items],
         MainValue = F(Item),
@@ -531,10 +534,10 @@ divide_equivalence_classes_2(F, Id, ItemSet, !Counter, !Partitions, !Keys) :-
 divide_equivalence_classes_3(F, MainId, Item, !Map, !Counter, !Partitions,
         !Keys) :-
     Value = F(Item),
-    ( map.search(!.Map, Value, Id) ->
-        ( Id = MainId ->
+    ( if map.search(!.Map, Value, Id) then
+        ( if Id = MainId then
             true
-        ;
+        else
             map.lookup(!.Partitions, MainId, MainSet0),
             set.delete(Item, MainSet0, MainSet),
             map.det_update(MainId, MainSet, !Partitions),
@@ -545,7 +548,7 @@ divide_equivalence_classes_3(F, MainId, Item, !Map, !Counter, !Partitions,
 
             map.det_update(Item, Id, !Keys)
         )
-    ;
+    else
         counter.allocate(NewId, !Counter),
         map.det_insert(Value, NewId, !Map),
 

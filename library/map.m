@@ -15,16 +15,16 @@
 % of (Key, Data) pairs which allows you to look up any Data item given the
 % Key.
 %
-% The implementation is using balanced binary trees, as provided by
-% tree234.m.  Virtually all the predicates in this file just
-% forward the work to the corresponding predicate in tree234.m.
+% The implementation is using balanced binary trees, as provided by tree234.m.
+% Virtually all the predicates in this file just forward the work
+% to the corresponding predicate in tree234.m.
 %
-% Note: 2-3-4 trees do not have a canonical representation for any given
-% map.  Therefore, two maps with the same set of key-value pairs may have
-% different internal representations.  This means that two maps with the
+% Note: 2-3-4 trees do not have a canonical representation for any given map.
+% Therefore, two maps with the same set of key-value pairs may have
+% different internal representations. This means that two maps with the
 % same set of key-value pairs that may fail to unify and may compare as
 % unequal, for example if items were inserted into one of the maps in a
-% different order.  See equal/2 below which can be used to test if two
+% different order. See equal/2 below which can be used to test if two
 % maps have the same set of key-value pairs.
 %
 %---------------------------------------------------------------------------%
@@ -82,27 +82,27 @@
 :- func lookup(map(K, V), K) = V.
 :- pred lookup(map(K, V)::in, K::in, V::out) is det.
 
-    % Search for a key-value pair using the key.  If there is no entry
+    % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next lower key instead.
     % Fails if there is no key with the given or lower value.
     %
 :- pred lower_bound_search(map(K, V)::in, K::in, K::out, V::out)
     is semidet.
 
-    % Search for a key-value pair using the key.  If there is no entry
+    % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next lower key instead.
     % Aborts if there is no key with the given or lower value.
     %
 :- pred lower_bound_lookup(map(K, V)::in, K::in, K::out, V::out) is det.
 
-    % Search for a key-value pair using the key.  If there is no entry
+    % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next higher key instead.
     % Fails if there is no key with the given or higher value.
     %
 :- pred upper_bound_search(map(K, V)::in, K::in, K::out, V::out)
     is semidet.
 
-    % Search for a key-value pair using the key.  If there is no entry
+    % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next higher key instead.
     % Aborts if there is no key with the given or higher value.
     %
@@ -187,7 +187,7 @@
     map(K, V)::in, map(K, V)::out) is det.
 
     % Update the value at the given key by applying the supplied
-    % transformation to it.  Fails if the key is not found.  This is faster
+    % transformation to it. Fails if the key is not found. This is faster
     % than first searching for the value and then updating it.
     %
 :- pred transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
@@ -834,10 +834,10 @@
 
 % Note to implementors:
 %
-% This is the old version of map.merge/3.  It is buggy in the sense that if the
+% This is the old version of map.merge/3. It is buggy in the sense that if the
 % sets of keys of the input maps are not disjoint it won't throw an exception
 % but will insert the key and the smallest of the two corresponding values into
-% the output map.  Eventually we would like to get rid of this version but some
+% the output map. Eventually we would like to get rid of this version but some
 % of the code in the compiler currently assumes this behaviour and fixing it is
 % non-trivial.
 
@@ -938,9 +938,9 @@ map.lookup(M, K) = V :-
     map.lookup(M, K, V).
 
 map.lookup(Map, K, V) :-
-    ( tree234.search(Map, K, VPrime) ->
+    ( if tree234.search(Map, K, VPrime) then
         V = VPrime
-    ;
+    else
         report_lookup_error("map.lookup: key not found", K, V)
     ).
 
@@ -948,10 +948,10 @@ map.lower_bound_search(Map, SearchK, K, V) :-
     tree234.lower_bound_search(Map, SearchK, K, V).
 
 map.lower_bound_lookup(Map, SearchK, K, V) :-
-    ( tree234.lower_bound_search(Map, SearchK, KPrime, VPrime) ->
+    ( if tree234.lower_bound_search(Map, SearchK, KPrime, VPrime) then
         K = KPrime,
         V = VPrime
-    ;
+    else
         report_lookup_error("map.lower_bound_lookup: key not found",
             SearchK, V)
     ).
@@ -960,10 +960,10 @@ map.upper_bound_search(Map, SearchK, K, V) :-
     tree234.upper_bound_search(Map, SearchK, K, V).
 
 map.upper_bound_lookup(Map, SearchK, K, V) :-
-    ( tree234.upper_bound_search(Map, SearchK, KPrime, VPrime) ->
+    ( if tree234.upper_bound_search(Map, SearchK, KPrime, VPrime) then
         K = KPrime,
         V = VPrime
-    ;
+    else
         report_lookup_error("map.upper_bound_lookup: key not found",
             SearchK, V)
     ).
@@ -971,19 +971,19 @@ map.upper_bound_lookup(Map, SearchK, K, V) :-
 map.max_key(M) = tree234.max_key(M).
 
 map.det_max_key(M) = 
-    ( K = map.max_key(M) ->
+    ( if K = map.max_key(M) then
         K 
-    ;
-        func_error("map.det_max_key: map.max_key failed")
+    else
+        unexpected($module, $pred, "map.max_key failed")
     ).
 
 map.min_key(M) = tree234.min_key(M).
 
 map.det_min_key(M) = 
-    ( K = map.min_key(M) ->
+    ( if K = map.min_key(M) then
         K
-    ;
-        func_error("map.det_min_key: map.min_key failed")
+    else
+        unexpected($module, $pred, "map.min_key failed")
     ).
 
 map.insert(M1, K, V) = M2 :-
@@ -996,9 +996,9 @@ map.det_insert(M1, K, V) = M2 :-
     map.det_insert(K, V, M1, M2).
 
 map.det_insert(K, V, !Map) :-
-    ( tree234.insert(K, V, !.Map, NewMap) ->
+    ( if tree234.insert(K, V, !.Map, NewMap) then
         !:Map = NewMap
-    ;
+    else
         report_lookup_error("map.det_insert: key already present", K, V)
     ).
 
@@ -1007,9 +1007,9 @@ map.det_insert_from_corresponding_lists(M1, Ks, Vs) = M2 :-
 
 map.det_insert_from_corresponding_lists([], [], !Map).
 map.det_insert_from_corresponding_lists([], [_ | _], _, _) :-
-    error("map.det_insert_from_corresponding_lists - lists do not correspond").
+    unexpected($module, $pred, "list length mismatch").
 map.det_insert_from_corresponding_lists([_ | _], [], _, _) :-
-    error("map.det_insert_from_corresponding_lists - lists do not correspond").
+    unexpected($module, $pred, "list length mismatch").
 map.det_insert_from_corresponding_lists([K | Ks], [V | Vs], !Map) :-
     map.det_insert(K, V, !Map),
     map.det_insert_from_corresponding_lists(Ks, Vs, !Map).
@@ -1027,9 +1027,9 @@ map.set_from_corresponding_lists(M1, Ks, Vs) = M2 :-
 
 map.set_from_corresponding_lists([], [], !Map).
 map.set_from_corresponding_lists([], [_ | _], _, _) :-
-    error("map.set_from_corresponding_lists - lists do not correspond").
+    unexpected($module, $pred, "list length mismatch").
 map.set_from_corresponding_lists([_ | _], [], _, _) :-
-    error("map.set_from_corresponding_lists - lists do not correspond").
+    unexpected($module, $pred, "list length mismatch").
 map.set_from_corresponding_lists([K | Ks], [V | Vs], !Map) :-
     map.set(K, V, !Map),
     map.set_from_corresponding_lists(Ks, Vs, !Map).
@@ -1052,9 +1052,9 @@ map.det_update(M0, K, V) = M :-
     map.det_update(K, V, M0, M).
 
 map.det_update(K, V, !Map) :-
-    ( tree234.update(K, V, !.Map, NewMap) ->
+    ( if tree234.update(K, V, !.Map, NewMap) then
         !:Map = NewMap
-    ;
+    else
         report_lookup_error("map.det_update: key not found", K, V)
     ).
 
@@ -1065,9 +1065,9 @@ map.transform_value(P, K, !Map) :-
     tree234.transform_value(P, K, !Map).
 
 map.det_transform_value(P, K, !Map) :-
-    ( map.transform_value(P, K, !.Map, NewMap) ->
+    ( if map.transform_value(P, K, !.Map, NewMap) then
         !:Map = NewMap
-    ;
+    else
         report_lookup_error("map.det_transform_value: key not found", K)
     ).
 
@@ -1154,10 +1154,10 @@ map.delete_sorted_list(M0, Ks) = M :-
 map.delete_sorted_list(DeleteKeys, !Map) :-
     list.length(DeleteKeys, NumDeleteKeys),
     find_min_size_based_on_depth(!.Map, MinSize),
-    ( NumDeleteKeys * 5 < MinSize ->
+    ( if NumDeleteKeys * 5 < MinSize then
         % Use this technique when we delete fewer than 20% of the keys.
         map.delete_list(DeleteKeys, !Map)
-    ;
+    else
         % Use this technique when we delete at least 20% of the keys.
         map.to_assoc_list(!.Map, Pairs0),
         map.delete_sorted_list_loop(DeleteKeys, Pairs0, [], RevPairs,
@@ -1202,10 +1202,10 @@ map.remove(Key, Value, !Map) :-
     tree234.remove(Key, Value, !Map).
 
 map.det_remove(Key, Value, !Map) :-
-    ( tree234.remove(Key, ValuePrime, !.Map, MapPrime) ->
+    ( if tree234.remove(Key, ValuePrime, !.Map, MapPrime) then
         Value = ValuePrime,
         !:Map = MapPrime
-    ;
+    else
         report_lookup_error("map.det_remove: key not found", Key, Value)
     ).
 
@@ -1288,9 +1288,9 @@ map.overlay_large_map(Map0, Map1, Map) :-
 
 map.overlay_large_map_2([], Map, Map).
 map.overlay_large_map_2([K - V | AssocList], Map0, Map) :-
-    ( map.insert(K, V, Map0, Map1) ->
+    ( if map.insert(K, V, Map0, Map1) then
         Map2 = Map1
-    ;
+    else
         Map2 = Map0
     ),
     map.overlay_large_map_2(AssocList, Map2, Map).
@@ -1318,9 +1318,9 @@ map.select_sorted_list(Original, Keys, NewMap) :-
 
 map.select_loop([], _Original, !New).
 map.select_loop([K | Ks], Original, !New) :-
-    ( map.search(Original, K, V) ->
+    ( if map.search(Original, K, V) then
         map.det_insert(K, V, !New)
-    ;
+    else
         true
     ),
     map.select_loop(Ks, Original, !New).
@@ -1479,10 +1479,10 @@ map.intersect_loop(AssocList1, AssocList2, CommonPred, !RevCommonAssocList) :-
     ).
 
 map.det_intersect(CommonPred, Map1, Map2, Common) :-
-    ( map.intersect(CommonPred, Map1, Map2, CommonPrime) ->
+    ( if map.intersect(CommonPred, Map1, Map2, CommonPrime) then
         Common = CommonPrime
-    ;
-        error("map.det_intersect: map.intersect failed")
+    else
+        unexpected($module, $pred, "map.intersect failed")
     ).
 
 %---------------------------------------------------------------------------%
@@ -1512,9 +1512,9 @@ map.common_subset_loop(AssocList1, AssocList2, !RevCommonAssocList) :-
         compare(R, Key1, Key2),
         (
             R = (=),
-            ( Value1 = Value2 ->
+            ( if Value1 = Value2 then
                 !:RevCommonAssocList = [Key1 - Value1 | !.RevCommonAssocList]
-            ;
+            else
                 true
             ),
             map.common_subset_loop(AssocTail1, AssocTail2, !RevCommonAssocList)
@@ -1601,10 +1601,10 @@ map.union_loop(AssocList1, AssocList2, CommonPred, !RevCommonAssocList) :-
     ).
 
 map.det_union(CommonPred, Map1, Map2, Union) :-
-    ( map.union(CommonPred, Map1, Map2, UnionPrime) ->
+    ( if map.union(CommonPred, Map1, Map2, UnionPrime) then
         Union = UnionPrime
-    ;
-        error("map.det_union: map.union failed")
+    else
+        unexpected($module, $pred, "map.union failed")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1616,10 +1616,10 @@ map.reverse_map(Map) = RevMap :-
     map(V, set(K))::in, map(V, set(K))::out) is det.
 
 map.reverse_map_2(Key, Value, !RevMap) :-
-    ( map.search(!.RevMap, Value, Keys0) ->
+    ( if map.search(!.RevMap, Value, Keys0) then
         set.insert(Key, Keys0, Keys),
         map.det_update(Value, Keys, !RevMap)
-    ;
+    else
         map.det_insert(Value, set.make_singleton_set(Key), !RevMap)
     ).
 
