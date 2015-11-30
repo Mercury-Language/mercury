@@ -2126,7 +2126,14 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
         do_not_create_dirs, UsageFileName, !IO),
     io.remove_file(UsageFileName, _, !IO),
 
-    FrontEndErrors = contains_errors(Globals, Specs),
+    globals.lookup_bool_option(Globals, halt_at_warn, HaltAtWarn),
+    (
+        HaltAtWarn = no,
+        FrontEndErrors = contains_errors(Globals, Specs)
+    ;
+        HaltAtWarn = yes,
+        FrontEndErrors = contains_errors_and_or_warnings(Globals, Specs)
+    ),
     module_info_get_num_errors(!.HLDS, NumErrors),
     ( if
         FrontEndErrors = no,
