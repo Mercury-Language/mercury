@@ -30,9 +30,7 @@
 % and tuple types `{}', `{T}', `{T1, T2}', ...
 % and the types `pred', `pred(T)', `pred(T1, T2)', `pred(T1, T2, T3)', ...
 % and `func(T1) = T2', `func(T1, T2) = T3', `func(T1, T2, T3) = T4', ...
-% are builtin and are implemented using special code in the
-% type-checker. (XXX TODO: report an error for attempts to redefine
-% these types.)
+% are builtin and are implemented using special code in the type-checker.
 
     % The type c_pointer can be used by predicates that use the
     % C interface.
