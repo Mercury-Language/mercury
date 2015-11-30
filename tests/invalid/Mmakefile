@@ -60,6 +60,7 @@ SINGLEMODULE= \
 	bind_var_errors \
 	bug10 \
 	bug113 \
+	bug115 \
 	bug117 \
 	bug150 \
 	bug17 \
