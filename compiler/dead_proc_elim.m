@@ -262,7 +262,7 @@ dead_proc_initialize_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
         !Queue, !Needed) :-
     TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName, TypeName,
         Arity, _Status, _HldsDefn, _Unify, _Compare),
-    (
+    ( if
         % XXX: We'd like to do this, but there are problems.
         % status_is_exported(Status, yes)
         %
@@ -278,11 +278,11 @@ dead_proc_initialize_type_ctor_infos([TypeCtorGenInfo | TypeCtorGenInfos],
         % So presently, all type_ctor_infos will be treated as exported,
         % and hence no special preds will be eliminated.
         semidet_succeed
-    ->
+    then
         Entity = entity_type_ctor(ModuleName, TypeName, Arity),
         queue.put(Entity, !Queue),
         map.set(Entity, not_eliminable, !Needed)
-    ;
+    else
         true
     ),
     dead_proc_initialize_type_ctor_infos(TypeCtorGenInfos, !Queue, !Needed).
@@ -340,9 +340,9 @@ get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
 
 dead_proc_examine(!.Queue, !.Examined, AnalyzeWhat, ModuleInfo, !Needed) :-
     % See if the queue is empty.
-    ( queue.get(Entity, !Queue) ->
+    ( if queue.get(Entity, !Queue) then
         % See if the next element has been examined before.
-        ( set_tree234.insert_new(Entity, !Examined) ->
+        ( if set_tree234.insert_new(Entity, !Examined) then
             (
                 Entity = entity_proc(PredId, ProcId),
                 PredProcId = proc(PredId, ProcId),
@@ -369,12 +369,12 @@ dead_proc_examine(!.Queue, !.Examined, AnalyzeWhat, ModuleInfo, !Needed) :-
                         !Queue, !Needed)
                 )
             )
-        ;
+        else
             true
         ),
         dead_proc_examine(!.Queue, !.Examined, AnalyzeWhat,
             ModuleInfo, !Needed)
-    ;
+    else
         true
     ).
 
@@ -387,12 +387,12 @@ dead_proc_examine(!.Queue, !.Examined, AnalyzeWhat, ModuleInfo, !Needed) :-
 dead_proc_examine_type_ctor_info(ModuleName, TypeName, Arity, ModuleInfo,
         !Queue, !Needed) :-
     module_info_get_type_ctor_gen_infos(ModuleInfo, TypeCtorGenInfos),
-    (
+    ( if
         find_type_ctor_info(ModuleName, TypeName, Arity, TypeCtorGenInfos,
             Refs)
-    ->
+    then
         dead_proc_examine_refs(Refs, !Queue, !Needed)
-    ;
+    else
         true
     ).
 
@@ -402,12 +402,12 @@ dead_proc_examine_type_ctor_info(ModuleName, TypeName, Arity, ModuleInfo,
 
 find_type_ctor_info(ModuleName, TypeName, TypeArity,
         [TypeCtorGenInfo | TypeCtorGenInfos], Refs) :-
-    (
+    ( if
         TypeCtorGenInfo = type_ctor_gen_info(_TypeCtor, ModuleName,
             TypeName, TypeArity, _Status, _HldsDefn, Unify, Compare)
-    ->
+    then
         Refs = [Unify, Compare]
-    ;
+    else
         find_type_ctor_info(ModuleName, TypeName, TypeArity, TypeCtorGenInfos,
             Refs)
     ).
@@ -434,11 +434,11 @@ dead_proc_examine_const_struct(ModuleInfo, ConstNum, !Queue, !Needed) :-
     module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
     lookup_const_struct_num(ConstStructDb, ConstNum, ConstStruct),
     ConstStruct = const_struct(ConsId, Args, _, _),
-    ( ConsId = type_ctor_info_const(Module, TypeName, Arity) ->
+    ( if ConsId = type_ctor_info_const(Module, TypeName, Arity) then
         Entity = entity_type_ctor(Module, TypeName, Arity),
         queue.put(Entity, !Queue),
         map.set(Entity, not_eliminable, !Needed)
-    ;
+    else
         true
     ),
     dead_proc_examine_const_struct_args(Args, !Queue, !Needed).
@@ -456,11 +456,11 @@ dead_proc_examine_const_struct_args([Arg | Args], !Queue, !Needed) :-
         map.set(Entity, not_eliminable, !Needed)
     ;
         Arg = csa_constant(ConsId, _),
-        ( ConsId = type_ctor_info_const(Module, TypeName, Arity) ->
+        ( if ConsId = type_ctor_info_const(Module, TypeName, Arity) then
             Entity = entity_type_ctor(Module, TypeName, Arity),
             queue.put(Entity, !Queue),
             map.set(Entity, not_eliminable, !Needed)
-        ;
+        else
             true
         )
     ),
@@ -473,14 +473,14 @@ dead_proc_examine_const_struct_args([Arg | Args], !Queue, !Needed) :-
     is det.
 
 dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo, !Queue, !Needed) :-
-    (
+    ( if
         module_info_get_preds(ModuleInfo, PredTable),
         map.lookup(PredTable, PredId, PredInfo),
         ProcIds = pred_info_non_imported_procids(PredInfo),
         list.member(ProcId, ProcIds),
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo)
-    ->
+    then
         trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
             io.write_string("examining proc ", !IO),
             io.write_int(pred_id_to_int(PredId), !IO),
@@ -508,7 +508,7 @@ dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo, !Queue, !Needed) :-
             TableStructEntity = entity_table_struct(PredId, ProcId),
             map.set(TableStructEntity, not_eliminable, !Needed)
         )
-    ;
+    else
         trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
             io.write_string("not examining proc ", !IO),
             io.write_int(pred_id_to_int(PredId), !IO),
@@ -556,15 +556,15 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
         dead_proc_examine_goal(SubGoal, CurrProc, !Queue, !Needed)
     ;
         GoalExpr = scope(Reason, SubGoal),
-        (
+        ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
             ; FGT = from_ground_term_deconstruct
             )
-        ->
+        then
             % The scope has no references to procedures at all.
             true
-        ;
+        else
             dead_proc_examine_goal(SubGoal, CurrProc, !Queue, !Needed)
         )
     ;
@@ -578,7 +578,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
         GoalExpr = plain_call(PredId, ProcId, _,_,_,_),
         Entity = entity_proc(PredId, ProcId),
         queue.put(Entity, !Queue),
-        ( proc(PredId, ProcId) = CurrProc ->
+        ( if proc(PredId, ProcId) = CurrProc then
             trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
                 io.write_string("plain_call recursive ", !IO),
                 io.write_int(pred_id_to_int(PredId), !IO),
@@ -590,7 +590,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
             % or inline it.
             NewNotation = not_eliminable,
             map.set(Entity, NewNotation, !Needed)
-        ; map.search(!.Needed, Entity, OldNotation) ->
+        else if map.search(!.Needed, Entity, OldNotation) then
             (
                 OldNotation = not_eliminable,
                 NewNotation = not_eliminable,
@@ -613,7 +613,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 )
             ),
             map.det_update(Entity, NewNotation, !Needed)
-        ;
+        else
             trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
                 io.write_string("plain_call init maybe_eliminable ", !IO),
                 io.write_int(pred_id_to_int(PredId), !IO),
@@ -788,19 +788,19 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         Specs0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_status(PredInfo0, PredStatus),
-    (
+    ( if
         % Find out if the predicate is defined in this module.
         % If yes, find out also whether any of its procedures must be kept.
         (
             PredStatus = pred_status(status_local),
             Keep = no,
-            (
+            ( if
                 % Don't warn for unify or comparison preds,
                 % since they may be automatically generated
                 is_unify_or_compare_pred(PredInfo0)
-            ->
+            then
                 WarnForThisPred = no
-            ;
+            else if
                 % Don't warn for procedures introduced from lambda expressions.
                 % The only time those procedures will be unused is if the
                 % procedure containing the lambda expression is unused,
@@ -811,9 +811,9 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
                 ( string.prefix(PredName, "IntroducedFrom__")
                 ; string.prefix(PredName, "TypeSpecOf__")
                 )
-            ->
+            then
                 WarnForThisPred = no
-            ;
+            else
                 WarnForThisPred = yes
             )
         ;
@@ -826,7 +826,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
             Keep = yes(InitProcId),
             WarnForThisPred = no
         )
-    ->
+    then
         ProcIds = pred_info_procids(PredInfo0),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
         list.foldl3(dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred,
@@ -836,7 +836,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         map.det_update(PredId, PredInfo, PredTable0, PredTable),
         !:ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable, Changed,
             Specs)
-    ;
+    else if
         % Don't generate code in the current module for unoptimized
         % opt_imported preds (that is, for opt_imported preds which we have not
         % by this point managed to inline or specialize; this code should be
@@ -844,14 +844,14 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         % and specialization is complete).
         ElimOptImported = elim_opt_imported,
         PredStatus = pred_status(status_opt_imported)
-    ->
+    then
         Changed = yes,
         ProcIds = pred_info_procids(PredInfo0),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
 
         % Reduce memory usage by replacing the goals with "true".
         DestroyGoal =
-            (pred(Id::in, PTable0::in, PTable::out) is det :-
+            ( pred(Id::in, PTable0::in, PTable::out) is det :-
                 map.lookup(ProcTable0, Id, ProcInfo0),
                 proc_info_set_goal(true_goal, ProcInfo0, ProcInfo),
                 map.det_update(Id, ProcInfo, PTable0, PTable)
@@ -877,7 +877,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         ),
         !:ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable, Changed,
             Specs0)
-    ;
+    else
         % This predicate is not defined in this module.
         true
     ).
@@ -892,7 +892,7 @@ dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred, ProcElimInfo,
         ProcId, !ProcTable, !Changed, !Specs) :-
     Needed = ProcElimInfo ^ proc_elim_needed_map,
     ModuleInfo = ProcElimInfo ^ proc_elim_module_info,
-    (
+    ( if
         (
             % Keep the procedure if it is in the needed map.
             map.search(Needed, entity_proc(PredId, ProcId), _)
@@ -900,9 +900,9 @@ dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred, ProcElimInfo,
             % Or if it is to be kept because it is exported.
             Keep = yes(ProcId)
         )
-    ->
+    then
         true
-    ;
+    else
         !:Changed = yes,
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -918,14 +918,14 @@ dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred, ProcElimInfo,
         ),
         map.lookup(!.ProcTable, ProcId, ProcInfo0),
         proc_info_get_has_any_foreign_exports(ProcInfo0, HasForeignExports),
-        (
+        ( if
             WarnForThisPred = yes,
             HasForeignExports = no_foreign_exports
-        ->
+        then
             proc_info_get_context(ProcInfo0, Context),
             Spec = warn_dead_proc(PredId, ProcId, Context, ModuleInfo),
             !:Specs = [Spec | !.Specs]
-        ;
+        else
             true
         ),
         map.delete(ProcId, !ProcTable)
@@ -955,12 +955,12 @@ dead_proc_eliminate_type_ctor_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
         TypeCtorGenInfos1),
     TypeCtorGenInfo0 = type_ctor_gen_info(_TypeCtor, ModuleName,
         TypeName, Arity, _Status, _HldsDefn, _Unify, _Compare),
-    (
+    ( if
         Entity = entity_type_ctor(ModuleName, TypeName, Arity),
         map.search(Needed, Entity, _)
-    ->
+    then
         TypeCtorGenInfos = [TypeCtorGenInfo0 | TypeCtorGenInfos1]
-    ;
+    else
         TypeCtorGenInfos = TypeCtorGenInfos1
     ).
 
@@ -971,9 +971,9 @@ dead_proc_eliminate_const_structs([], _Needed, !ConstStructDb).
 dead_proc_eliminate_const_structs([ConstNum - _ | ConstNumStructs], Needed,
         !ConstStructDb) :-
     Entity = entity_const_struct(ConstNum),
-    ( map.search(Needed, Entity, _) ->
+    ( if map.search(Needed, Entity, _) then
         true
-    ;
+    else
         delete_const_struct(ConstNum, !ConstStructDb)
     ),
     dead_proc_eliminate_const_structs(ConstNumStructs, Needed,
@@ -1035,13 +1035,14 @@ dead_pred_elim(!ModuleInfo) :-
     TypeSpecInfo0 = type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
         SpecMap0, PragmaMap0),
     set_tree234.to_sorted_list(NeededPreds2) = NeededPredList2,
-    list.foldl((pred(NeededPred::in, AllPreds0::in, AllPreds::out) is det :-
-        ( map.search(SpecMap0, NeededPred, NewNeededPreds) ->
-            set_tree234.insert_list(NewNeededPreds, AllPreds0, AllPreds)
-        ;
-            AllPreds = AllPreds0
-        )
-    ), NeededPredList2, NeededPreds2, NeededPreds),
+    list.foldl(
+        ( pred(NeededPred::in, AllPreds0::in, AllPreds::out) is det :-
+            ( if map.search(SpecMap0, NeededPred, NewNeededPreds) then
+                set_tree234.insert_list(NewNeededPreds, AllPreds0, AllPreds)
+            else
+                AllPreds = AllPreds0
+            )
+        ), NeededPredList2, NeededPreds2, NeededPreds),
     % We expect TypeSpecForcePreds0 to have very few elements, and NeededPreds
     % to have many. Therefore doing an individual O(log N) lookup in
     % NeededPreds for each element of TypeSpecForcePreds0 is a better approach
@@ -1079,7 +1080,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
         DeadInfo0 = pred_elim_info(ModuleInfo, !:Queue, Examined, NeededIds,
             !:NeededNames),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        (
+        ( if
             PredModule = pred_info_module(PredInfo),
             PredName = pred_info_name(PredInfo),
             PredArity = pred_info_orig_arity(PredInfo),
@@ -1126,10 +1127,10 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 % Don't eliminate the clauses for promises.
                 pred_info_is_promise(PredInfo, _)
             )
-        ->
+        then
             set_tree234.insert(qualified(PredModule, PredName), !NeededNames),
             queue.put(PredId, !Queue)
-        ;
+        else
             true
         ),
         DeadInfo = pred_elim_info(ModuleInfo, !.Queue, Examined, NeededIds,
@@ -1142,11 +1143,11 @@ dead_pred_elim_analyze(!DeadInfo) :-
     some [!Queue, !Examined, !Needed] (
         !.DeadInfo = pred_elim_info(ModuleInfo, !:Queue, !:Examined,
             !:Needed, NeededNames),
-        ( queue.get(PredId, !Queue) ->
-            ( set_tree234.contains(!.Examined, PredId) ->
+        ( if queue.get(PredId, !Queue) then
+            ( if set_tree234.contains(!.Examined, PredId) then
                 !:DeadInfo = pred_elim_info(ModuleInfo, !.Queue, !.Examined,
                     !.Needed, NeededNames)
-            ;
+            else
                 set_tree234.insert(PredId, !Needed),
                 set_tree234.insert(PredId, !Examined),
                 !:DeadInfo = pred_elim_info(ModuleInfo, !.Queue, !.Examined,
@@ -1159,7 +1160,7 @@ dead_pred_elim_analyze(!DeadInfo) :-
                 list.foldl(dead_pred_elim_process_clause, Clauses, !DeadInfo)
             ),
             dead_pred_elim_analyze(!DeadInfo)
-        ;
+        else
             true
         )
     ).
@@ -1246,9 +1247,9 @@ pre_modecheck_examine_unify_rhs(RHS, !DeadInfo) :-
         RHS = rhs_var(_)
     ;
         RHS = rhs_functor(Functor, _, _),
-        ( Functor = cons(Name, _, _) ->
+        ( if Functor = cons(Name, _, _) then
             dead_pred_info_add_pred_name(Name, !DeadInfo)
-        ;
+        else
             true
         )
     ;
@@ -1263,9 +1264,9 @@ dead_pred_info_add_pred_name(Name, !DeadInfo) :-
     some [!Queue, !NeededNames] (
         !.DeadInfo = pred_elim_info(ModuleInfo, !:Queue, Examined,
             Needed, !:NeededNames),
-        ( set_tree234.contains(!.NeededNames, Name) ->
+        ( if set_tree234.contains(!.NeededNames, Name) then
             true
-        ;
+        else
             module_info_get_predicate_table(ModuleInfo, PredicateTable),
             set_tree234.insert(Name, !NeededNames),
             predicate_table_lookup_sym(PredicateTable,
