@@ -181,14 +181,14 @@ delay_info_check_invariant(DelayInfo) :-
     trace [compiletime(flag("check_delay_info_invariant"))] (
         DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
             WaitingGoalsTable, _PendingGoals, NextSeqNums),
-        (
+        ( if
             stack.depth(DelayedGoalStack, CurrentDepth),
             stack.depth(NextSeqNums, CurrentDepth),
             map.keys(WaitingGoalsTable, WaitingVars),
             waiting_goals_check_invariant(WaitingVars, WaitingGoalsTable)
-        ->
+        then
             true
-        ;
+        else
             unexpected($module, $pred, "invariant violated")
         )
     ).
@@ -340,9 +340,9 @@ delay_info_delay_goal(Error, Goal, DelayInfo0, DelayInfo) :-
 
 add_waiting_vars([], _, _, !WaitingGoalsTable).
 add_waiting_vars([Var | Vars], Goal, AllVars, !WaitingGoalsTable) :-
-    ( map.search(!.WaitingGoalsTable, Var, WaitingGoals0) ->
+    ( if map.search(!.WaitingGoalsTable, Var, WaitingGoals0) then
         WaitingGoals1 = WaitingGoals0
-    ;
+    else
         map.init(WaitingGoals1)
     ),
     map.set(Goal, AllVars, WaitingGoals1, WaitingGoals),
@@ -364,7 +364,7 @@ delay_info_bind_var(Var, !DelayInfo) :-
     delay_info_check_invariant(!.DelayInfo),
     !.DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
         WaitingGoalsTable0, PendingGoals0, NextSeqNums),
-    ( map.search(WaitingGoalsTable0, Var, GoalsWaitingOnVar) ->
+    ( if map.search(WaitingGoalsTable0, Var, GoalsWaitingOnVar) then
         map.keys(GoalsWaitingOnVar, NewlyPendingGoals),
         add_pending_goals(NewlyPendingGoals, GoalsWaitingOnVar,
             PendingGoals0, PendingGoals,
@@ -372,7 +372,7 @@ delay_info_bind_var(Var, !DelayInfo) :-
         !:DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
             WaitingGoalsTable, PendingGoals, NextSeqNums),
         delay_info_check_invariant(!.DelayInfo)
-    ;
+    else
         true
     ).
 
@@ -395,10 +395,10 @@ add_pending_goals([DelayGoalNum | DelayGoalNums], WaitingVarsTable,
     delete_waiting_vars(WaitingVars, GoalNum, !WaitingGoals),
 
     % Add the goal to the pending goals table.
-    ( map.search(!.PendingGoals, Depth, PendingSeqNums0) ->
+    ( if map.search(!.PendingGoals, Depth, PendingSeqNums0) then
         PendingSeqNums = cord.snoc(PendingSeqNums0, SeqNum),
         map.det_update(Depth, PendingSeqNums, !PendingGoals)
-    ;
+    else
         PendingSeqNums = cord.singleton(SeqNum),
         map.det_insert(Depth, PendingSeqNums, !PendingGoals)
     ),
@@ -418,9 +418,9 @@ delete_waiting_vars([], _, !WaitingGoalTables).
 delete_waiting_vars([Var | Vars], GoalNum, !WaitingGoalsTable) :-
     map.lookup(!.WaitingGoalsTable, Var, WaitingGoals0),
     map.delete(GoalNum, WaitingGoals0, WaitingGoals),
-    ( map.is_empty(WaitingGoals) ->
+    ( if map.is_empty(WaitingGoals) then
         map.delete(Var, !WaitingGoalsTable)
-    ;
+    else
         map.det_update(Var, WaitingGoals, !WaitingGoalsTable)
     ),
     delete_waiting_vars(Vars, GoalNum, !WaitingGoalsTable).
@@ -441,7 +441,7 @@ delay_info_wakeup_goals(Goals, !DelayInfo) :-
         PendingGoalsTable0, NextSeqNums),
 
     % Are there pending goals in the current conjunction?
-    ( map.search(PendingGoalsTable0, CurrentDepth, PendingGoals0) ->
+    ( if map.search(PendingGoalsTable0, CurrentDepth, PendingGoals0) then
         % If so, remove them from the pending goals table, and
         % from the delayed goals stack, and return them.
         SeqNums = cord.list(PendingGoals0),
@@ -465,7 +465,7 @@ delay_info_wakeup_goals(Goals, !DelayInfo) :-
             SeqNums = [],
             Goals = []
         )
-    ;
+    else
         Goals = []
     ).
 
