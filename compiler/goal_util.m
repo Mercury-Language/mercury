@@ -142,7 +142,7 @@
     % non-local variables for that goal are polymorphically typed and are
     % constrained by the typeclass constraints for that typeclass-info
     % variable, or if the type-class-info is for an existential constraint,
-    % i.e. a constraint which contains an existentially quantified type
+    % i.e. a constraint which constrains an existentially quantified type
     % variable.
     %
 :- pred extra_nonlocal_typeinfos(rtti_varmaps::in, vartypes::in,
