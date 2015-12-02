@@ -109,6 +109,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module varset.
 
@@ -288,6 +289,11 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
 
     simplify_info_get_has_user_event(Info, HasUserEvent),
     proc_info_set_has_user_event(HasUserEvent, !ProcInfo),
+
+    simplify_info_get_trace_goal_procs(Info, CurTraceGoalProcs),
+    proc_info_get_trace_goal_procs(!.ProcInfo, TraceGoalProcs0),
+    set.union(CurTraceGoalProcs, TraceGoalProcs0, TraceGoalProcs),
+    proc_info_set_trace_goal_procs(TraceGoalProcs, !ProcInfo),
 
     simplify_info_get_module_info(Info, !:ModuleInfo),
     simplify_info_get_error_specs(Info, !:Specs),

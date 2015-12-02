@@ -103,6 +103,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -791,6 +792,7 @@ write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
     proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuse),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_eval_method(ProcInfo, EvalMethod),
+    proc_info_get_trace_goal_procs(ProcInfo, TraceGoalProcSet),
     proc_info_get_is_address_taken(ProcInfo, IsAddressTaken),
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     proc_info_get_has_user_event(ProcInfo, HasUserEvent),
@@ -871,6 +873,17 @@ write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
         write_var_types(VarSet, TVarSet, VarNamePrint, Indent, VarTypes, !IO),
         write_rtti_varmaps(VarSet, TVarSet, VarNamePrint, Indent, RttiVarMaps,
             !IO),
+
+        set.to_sorted_list(TraceGoalProcSet, TraceGoalProcs),
+        (
+            TraceGoalProcs = []
+        ;
+            TraceGoalProcs = [_ | _],
+            io.write_string("% procedures called from deleted trace goals: ",
+                !IO),
+            io.write(TraceGoalProcs, !IO),
+            io.nl(!IO)
+        ),
 
         (
             IsAddressTaken = address_is_taken,

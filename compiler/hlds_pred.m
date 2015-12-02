@@ -2187,6 +2187,8 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     map(prog_var, string)::out) is det.
 :- pred proc_info_get_statevar_warnings(proc_info::in,
     list(error_spec)::out) is det.
+:- pred proc_info_get_trace_goal_procs(proc_info::in,
+    set(pred_proc_id)::out) is det.
 :- pred proc_info_get_is_address_taken(proc_info::in,
     is_address_taken::out) is det.
 :- pred proc_info_get_has_any_foreign_exports(proc_info::in,
@@ -2268,6 +2270,8 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
 :- pred proc_info_set_var_name_remap(map(prog_var, string)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_statevar_warnings(list(error_spec)::in,
+    proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_trace_goal_procs(set(pred_proc_id)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_address_taken(is_address_taken::in,
     proc_info::in, proc_info::out) is det.
@@ -2560,6 +2564,14 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
                 % be caused by the problem being warned about.
                 psi_statevar_warnings           :: list(error_spec),
 
+                % The set of procedures that the body of this procedure
+                % *used* to call from inside trace goal scopes that were
+                % deleted because their compile-time condition turned out
+                % to be false. We record this so that dead procedure analysis
+                % does not generate warnings for these procedures, or the
+                % other procedures reachable from them.
+                psi_trace_goal_procs            :: set(pred_proc_id),
+
                 %-----------------------------------------------------------%
                 % Flags that record simple properties of the procedure.
                 %-----------------------------------------------------------%
@@ -2832,6 +2844,7 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap
     StateVarWarnings = [],
+    set.init(TraceGoalProcs),
     % argument IsAddressTaken
     HasForeignProcExports = no_foreign_exports,
     % argument HasParallelConj
@@ -2864,6 +2877,7 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
+        TraceGoalProcs,
         IsAddressTaken,
         HasForeignProcExports,
         HasParallelConj,
@@ -2954,6 +2968,7 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
     MaybeUntupleInfo = no `with_type` maybe(untuple_proc_info),
     % argument VarNameRemap
     StateVarWarnings = [],
+    set.init(TraceGoalProcs),
     % argument IsAddressTaken
     HasForeignProcExports = no_foreign_exports,
     % argument HasParallelConj
@@ -2986,6 +3001,7 @@ proc_info_create_with_declared_detism(MainContext, VarSet, VarTypes, HeadVars,
         MaybeUntupleInfo,
         VarNameRemap,
         StateVarWarnings,
+        TraceGoalProcs,
         IsAddressTaken,
         HasForeignProcExports,
         HasParallelConj,
@@ -3089,6 +3105,8 @@ proc_info_get_var_name_remap(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_var_name_remap.
 proc_info_get_statevar_warnings(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_statevar_warnings.
+proc_info_get_trace_goal_procs(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_trace_goal_procs.
 proc_info_get_is_address_taken(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_is_address_taken.
 proc_info_get_has_any_foreign_exports(PI, X) :-
@@ -3171,6 +3189,8 @@ proc_info_set_var_name_remap(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_proc_var_name_remap := X.
 proc_info_set_statevar_warnings(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_statevar_warnings := X.
+proc_info_set_trace_goal_procs(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_trace_goal_procs := X.
 proc_info_set_address_taken(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_is_address_taken := X.
 proc_info_set_has_any_foreign_exports(X, !PI) :-

@@ -102,7 +102,7 @@ apply_deep_profiling_transform(!ModuleInfo) :-
     % predicates, which changes what labels they get generated. The
     % call_site_static structures we generate must match the labels created
     % during code generation.
-    dead_proc_elim(elim_opt_imported, !ModuleInfo, _ElimSpecs),
+    dead_proc_elim(elim_opt_imported, !ModuleInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, deep_profile_tail_recursion,
         TailRecursion),

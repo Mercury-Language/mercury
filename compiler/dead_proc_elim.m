@@ -35,20 +35,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type maybe_elim_opt_imported
-    --->    elim_opt_imported
-    ;       do_not_elim_opt_imported.
-
-    % Eliminate dead procedures and/or constant structures.
-    % If the first argument is `elim_opt_imported', also eliminate
-    % any opt_imported procedures.
-    %
-    % The last argument will be a list of warnings about any user-defined
-    % procedures that are dead, but the caller is free to ignore this list.
-    %
-:- pred dead_proc_elim(maybe_elim_opt_imported::in,
-    module_info::in, module_info::out, list(error_spec)::out) is det.
-
 :- type needed_map == map(entity, maybe_needed).
 
 :- type entity
@@ -67,11 +53,33 @@
     %
 :- pred dead_proc_analyze(module_info::in, needed_map::out) is det.
 
+%-----------------------------------------------------------------------------%
+
+:- type maybe_elim_opt_imported
+    --->    elim_opt_imported
+    ;       do_not_elim_opt_imported.
+
+    % Eliminate dead procedures and/or constant structures.
+    % If the first argument is `elim_opt_imported', also eliminate
+    % any opt_imported procedures.
+    %
+:- pred dead_proc_elim(maybe_elim_opt_imported::in,
+    module_info::in, module_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Generate a warning for every user-defined dead procedure in the module.
+    %
+:- pred dead_proc_warn(module_info::in, list(error_spec)::out) is det.
+
+%-----------------------------------------------------------------------------%
+
     % Optimize away any dead predicates. This is performed immediately after
     % building the HLDS to avoid doing semantic checking and optimization
     % on predicates from `.opt' files which are not used in the current module.
-    % This assumes that the clauses_info is still valid, so it cannot be run
-    % after mode analysis.
+    %
+    % This predicate assumes that the clauses_info is still valid, and
+    % therefore it cannot be run after mode analysis.
     %
 :- pred dead_pred_elim(module_info::in, module_info::out) is det.
 
@@ -115,6 +123,29 @@
 
 %-----------------------------------------------------------------------------%
 
+dead_proc_analyze(ModuleInfo, Needed) :-
+    AnalyzeLinks = analyze_links(do_not_analyze_link_trace_goal_procs,
+        do_not_analyze_link_type_ctor, do_not_analyze_link_const_struct),
+    do_dead_proc_analyze(ModuleInfo, AnalyzeLinks, Needed).
+
+%-----------------------------------------------------------------------------%
+
+dead_proc_elim(ElimOptImported, !ModuleInfo) :-
+    AnalyzeLinks = analyze_links(do_not_analyze_link_trace_goal_procs,
+        analyze_link_type_ctor, analyze_link_const_struct),
+    do_dead_proc_analyze(!.ModuleInfo, AnalyzeLinks, Needed),
+    do_dead_proc_eliminate(ElimOptImported, Needed, !ModuleInfo).
+
+%-----------------------------------------------------------------------------%
+
+dead_proc_warn(ModuleInfo, Specs) :-
+    AnalyzeLinks = analyze_links(analyze_link_trace_goal_procs,
+        analyze_link_type_ctor, analyze_link_const_struct),
+    do_dead_proc_analyze(ModuleInfo, AnalyzeLinks, Needed),
+    do_dead_proc_warn(ModuleInfo, Needed, Specs).
+
+%-----------------------------------------------------------------------------%
+
 % We deal with three kinds of entities, procedures, type_ctor_info structures
 % and constant structures.
 %
@@ -142,26 +173,34 @@
 :- type entity_queue    ==  queue(entity).
 :- type examined_set    ==  set_tree234(entity).
 
-dead_proc_analyze(ModuleInfo, !:Needed) :-
-    do_dead_proc_analyze(ModuleInfo, analyze_procs, !:Needed).
-
-dead_proc_elim(ElimOptImported, !ModuleInfo, Specs) :-
-    do_dead_proc_analyze(!.ModuleInfo, analyze_all, Needed),
-    dead_proc_eliminate(ElimOptImported, Needed, !ModuleInfo, Specs).
-
 %-----------------------------------------------------------------------------%
 
-:- type analyze_what
-    --->    analyze_procs
-    ;       analyze_all.
+:- type analyze_links
+    --->    analyze_links(
+                al_trace_goal_procs :: maybe_analyze_link_trace_goal_procs,
+                al_type_ctor        :: maybe_analyze_link_type_ctor,
+                al_const_struct     :: maybe_analyze_link_const_struct
+            ).
 
-:- pred do_dead_proc_analyze(module_info::in,
-    analyze_what::in, needed_map::out) is det.
+:- type maybe_analyze_link_trace_goal_procs
+    --->    do_not_analyze_link_trace_goal_procs
+    ;       analyze_link_trace_goal_procs.
 
-do_dead_proc_analyze(ModuleInfo, AnalyzeWhat, !:Needed) :-
+:- type maybe_analyze_link_type_ctor
+    --->    do_not_analyze_link_type_ctor
+    ;       analyze_link_type_ctor.
+
+:- type maybe_analyze_link_const_struct
+    --->    do_not_analyze_link_const_struct
+    ;       analyze_link_const_struct.
+
+:- pred do_dead_proc_analyze(module_info::in, analyze_links::in,
+    needed_map::out) is det.
+
+do_dead_proc_analyze(ModuleInfo, AnalyzeLinks, !:Needed) :-
     Examined0 = set_tree234.init,
     dead_proc_initialize(ModuleInfo, Queue0, !:Needed),
-    dead_proc_examine(Queue0, Examined0, AnalyzeWhat, ModuleInfo, !Needed).
+    dead_proc_examine(Queue0, Examined0, AnalyzeLinks, ModuleInfo, !Needed).
 
     % Add all exported entities to the queue and map.
     % NOTE: changes here are likely to require changes to dead_pred_elim
@@ -336,9 +375,10 @@ get_class_interface_pred_proc(ClassProc, !Queue, !Needed) :-
 %-----------------------------------------------------------------------------%
 
 :- pred dead_proc_examine(entity_queue::in, examined_set::in,
-    analyze_what::in, module_info::in, needed_map::in, needed_map::out) is det.
+    analyze_links::in, module_info::in, needed_map::in, needed_map::out)
+    is det.
 
-dead_proc_examine(!.Queue, !.Examined, AnalyzeWhat, ModuleInfo, !Needed) :-
+dead_proc_examine(!.Queue, !.Examined, AnalyzeLinks, ModuleInfo, !Needed) :-
     % See if the queue is empty.
     ( if queue.get(Entity, !Queue) then
         % See if the next element has been examined before.
@@ -346,25 +386,29 @@ dead_proc_examine(!.Queue, !.Examined, AnalyzeWhat, ModuleInfo, !Needed) :-
             (
                 Entity = entity_proc(PredId, ProcId),
                 PredProcId = proc(PredId, ProcId),
-                dead_proc_examine_proc(PredProcId, ModuleInfo, !Queue, !Needed)
+                AnalyzeTraceGoalProcs = AnalyzeLinks ^ al_trace_goal_procs,
+                dead_proc_examine_proc(PredProcId, AnalyzeTraceGoalProcs,
+                    ModuleInfo, !Queue, !Needed)
             ;
                 Entity = entity_table_struct(_PredId, _ProcId)
                 % Nothing further to examine.
             ;
                 Entity = entity_type_ctor(Module, Type, Arity),
+                AnalyzeTypeCtor = AnalyzeLinks ^ al_type_ctor,
                 (
-                    AnalyzeWhat = analyze_procs
+                    AnalyzeTypeCtor = do_not_analyze_link_type_ctor
                 ;
-                    AnalyzeWhat = analyze_all,
+                    AnalyzeTypeCtor = analyze_link_type_ctor,
                     dead_proc_examine_type_ctor_info(Module, Type, Arity,
                         ModuleInfo, !Queue, !Needed)
                 )
             ;
                 Entity = entity_const_struct(ConstNum),
+                AnalyzeConstStruct = AnalyzeLinks ^ al_const_struct,
                 (
-                    AnalyzeWhat = analyze_procs
+                    AnalyzeConstStruct = do_not_analyze_link_const_struct
                 ;
-                    AnalyzeWhat = analyze_all,
+                    AnalyzeConstStruct = analyze_link_const_struct,
                     dead_proc_examine_const_struct(ModuleInfo, ConstNum,
                         !Queue, !Needed)
                 )
@@ -372,7 +416,7 @@ dead_proc_examine(!.Queue, !.Examined, AnalyzeWhat, ModuleInfo, !Needed) :-
         else
             true
         ),
-        dead_proc_examine(!.Queue, !.Examined, AnalyzeWhat,
+        dead_proc_examine(!.Queue, !.Examined, AnalyzeLinks,
             ModuleInfo, !Needed)
     else
         true
@@ -468,11 +512,13 @@ dead_proc_examine_const_struct_args([Arg | Args], !Queue, !Needed) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred dead_proc_examine_proc(pred_proc_id::in, module_info::in,
+:- pred dead_proc_examine_proc(pred_proc_id::in,
+    maybe_analyze_link_trace_goal_procs::in, module_info::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
-dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo, !Queue, !Needed) :-
+dead_proc_examine_proc(proc(PredId, ProcId), AnalyzeTraceGoalProcs,
+        ModuleInfo, !Queue, !Needed) :-
     ( if
         module_info_get_preds(ModuleInfo, PredTable),
         map.lookup(PredTable, PredId, PredInfo),
@@ -490,6 +536,13 @@ dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo, !Queue, !Needed) :-
         ),
         proc_info_get_goal(ProcInfo, Goal),
         dead_proc_examine_goal(Goal, proc(PredId, ProcId), !Queue, !Needed),
+        (
+            AnalyzeTraceGoalProcs = do_not_analyze_link_trace_goal_procs
+        ;
+            AnalyzeTraceGoalProcs = analyze_link_trace_goal_procs,
+            proc_info_get_trace_goal_procs(ProcInfo, TraceGoalProcs),
+            set.foldl2(need_trace_goal_proc, TraceGoalProcs, !Queue, !Needed)
+        ),
 
         proc_info_get_eval_method(ProcInfo, EvalMethod),
         HasPerProcTablingPtr =
@@ -517,6 +570,22 @@ dead_proc_examine_proc(proc(PredId, ProcId), ModuleInfo, !Queue, !Needed) :-
             io.nl(!IO)
         )
     ).
+
+:- pred need_trace_goal_proc(pred_proc_id::in,
+    entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
+    is det.
+
+need_trace_goal_proc(TraceGoalProc, !Queue, !Needed) :-
+    TraceGoalProc = proc(PredId, ProcId),
+    Entity = entity_proc(PredId, ProcId),
+    % If we are following links that correspond to eliminated calls,
+    % then aren't actually trying to eliminate procedures, so whether
+    % we record the callee of that eliminated call as eliminable or not
+    % does not matter.
+    map.set(Entity, not_eliminable, !Needed),
+    queue.put(Entity, !Queue).
+
+%-----------------------------------------------------------------------------%
 
 :- pred dead_proc_examine_goals(list(hlds_goal)::in, pred_proc_id::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
@@ -714,6 +783,7 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
     ).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
         % Information used during the procedure elimination phase.
 
@@ -729,28 +799,25 @@ dead_proc_examine_goal(Goal, CurrProc, !Queue, !Needed) :-
                 proc_elim_pred_table    :: pred_table,
 
                 % Has anything changed that could affect dependency_info.
-                proc_elim_changed       :: bool,
-
-                % A list of warning messages.
-                proc_elim_warnings      :: list(error_spec)
+                proc_elim_changed       :: bool
             ).
 
     % Given the information about which entities are needed,
-    % eliminate procedures which are not needed.
+    % eliminate entities which are *not* needed.
     %
-:- pred dead_proc_eliminate(maybe_elim_opt_imported::in, needed_map::in,
-    module_info::in, module_info::out, list(error_spec)::out) is det.
+:- pred do_dead_proc_eliminate(maybe_elim_opt_imported::in, needed_map::in,
+    module_info::in, module_info::out) is det.
 
-dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo, Specs) :-
+do_dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     Changed0 = no,
     ProcElimInfo0 = proc_elim_info(!.Needed, !.ModuleInfo, PredTable0,
-        Changed0, []),
+        Changed0),
     list.foldl(dead_proc_eliminate_pred(ElimOptImported), PredIds,
         ProcElimInfo0, ProcElimInfo),
     ProcElimInfo = proc_elim_info(!:Needed, !:ModuleInfo, PredTable,
-        Changed, Specs),
+        Changed),
     module_info_set_preds(PredTable, !ModuleInfo),
 
     module_info_get_type_ctor_gen_infos(!.ModuleInfo, TypeCtorGenInfos0),
@@ -778,14 +845,53 @@ dead_proc_eliminate(ElimOptImported, !.Needed, !ModuleInfo, Specs) :-
         Changed = no
     ).
 
+%-----------------------------------------------------------------------------%
+
+:- pred dead_proc_eliminate_type_ctor_infos(list(type_ctor_gen_info)::in,
+    needed_map::in, list(type_ctor_gen_info)::out) is det.
+
+dead_proc_eliminate_type_ctor_infos([], _Needed, []).
+dead_proc_eliminate_type_ctor_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
+        Needed, TypeCtorGenInfos) :-
+    dead_proc_eliminate_type_ctor_infos(TypeCtorGenInfos0, Needed,
+        TypeCtorGenInfos1),
+    TypeCtorGenInfo0 = type_ctor_gen_info(_TypeCtor, ModuleName,
+        TypeName, Arity, _Status, _HldsDefn, _Unify, _Compare),
+    ( if
+        Entity = entity_type_ctor(ModuleName, TypeName, Arity),
+        map.search(Needed, Entity, _)
+    then
+        TypeCtorGenInfos = [TypeCtorGenInfo0 | TypeCtorGenInfos1]
+    else
+        TypeCtorGenInfos = TypeCtorGenInfos1
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred dead_proc_eliminate_const_structs(assoc_list(int, const_struct)::in,
+    needed_map::in, const_struct_db::in, const_struct_db::out) is det.
+
+dead_proc_eliminate_const_structs([], _Needed, !ConstStructDb).
+dead_proc_eliminate_const_structs([ConstNum - _ | ConstNumStructs], Needed,
+        !ConstStructDb) :-
+    Entity = entity_const_struct(ConstNum),
+    ( if map.search(Needed, Entity, _) then
+        true
+    else
+        delete_const_struct(ConstNum, !ConstStructDb)
+    ),
+    dead_proc_eliminate_const_structs(ConstNumStructs, Needed,
+        !ConstStructDb).
+
+%-----------------------------------------------------------------------------%
+
     % Eliminate any unused procedures for this pred.
     %
 :- pred dead_proc_eliminate_pred(maybe_elim_opt_imported::in, pred_id::in,
     proc_elim_info::in, proc_elim_info::out) is det.
 
 dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
-    !.ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable0, Changed0,
-        Specs0),
+    !.ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable0, Changed0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_status(PredInfo0, PredStatus),
     ( if
@@ -793,49 +899,23 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         % If yes, find out also whether any of its procedures must be kept.
         (
             PredStatus = pred_status(status_local),
-            Keep = no,
-            ( if
-                % Don't warn for unify or comparison preds,
-                % since they may be automatically generated
-                is_unify_or_compare_pred(PredInfo0)
-            then
-                WarnForThisPred = no
-            else if
-                % Don't warn for procedures introduced from lambda expressions.
-                % The only time those procedures will be unused is if the
-                % procedure containing the lambda expression is unused,
-                % and in that case, we already warn for that containing
-                % procedure if appropriate. Likewise, don't warn for procedures
-                % introduced for type specialization.
-                PredName = pred_info_name(PredInfo0),
-                ( string.prefix(PredName, "IntroducedFrom__")
-                ; string.prefix(PredName, "TypeSpecOf__")
-                )
-            then
-                WarnForThisPred = no
-            else
-                WarnForThisPred = yes
-            )
+            Keep = no
         ;
             PredStatus = pred_status(status_pseudo_imported),
-            Keep = no,
-            WarnForThisPred = no
+            Keep = no
         ;
             PredStatus = pred_status(status_pseudo_exported),
             hlds_pred.in_in_unification_proc_id(InitProcId),
-            Keep = yes(InitProcId),
-            WarnForThisPred = no
+            Keep = yes(InitProcId)
         )
     then
         ProcIds = pred_info_procids(PredInfo0),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
-        list.foldl3(dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred,
-            !.ProcElimInfo),
-            ProcIds, ProcTable0, ProcTable, Changed0, Changed, Specs0, Specs),
+        list.foldl2(dead_proc_eliminate_proc(PredId, Keep, !.ProcElimInfo),
+            ProcIds, ProcTable0, ProcTable, Changed0, Changed),
         pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
         map.det_update(PredId, PredInfo, PredTable0, PredTable),
-        !:ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable, Changed,
-            Specs)
+        !:ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable, Changed)
     else if
         % Don't generate code in the current module for unoptimized
         % opt_imported preds (that is, for opt_imported preds which we have not
@@ -875,8 +955,7 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
         ;
             VeryVerbose = no
         ),
-        !:ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable, Changed,
-            Specs0)
+        !:ProcElimInfo = proc_elim_info(Needed, ModuleInfo, PredTable, Changed)
     else
         % This predicate is not defined in this module.
         true
@@ -884,18 +963,18 @@ dead_proc_eliminate_pred(ElimOptImported, PredId, !ProcElimInfo) :-
 
     % Eliminate a procedure, if unused.
     %
-:- pred dead_proc_eliminate_proc(pred_id::in, maybe(proc_id)::in, bool::in,
+:- pred dead_proc_eliminate_proc(pred_id::in, maybe(proc_id)::in,
     proc_elim_info::in, proc_id::in, proc_table::in, proc_table::out,
-    bool::in, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+    bool::in, bool::out) is det.
 
-dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred, ProcElimInfo,
-        ProcId, !ProcTable, !Changed, !Specs) :-
+dead_proc_eliminate_proc(PredId, Keep, ProcElimInfo, ProcId,
+        !ProcTable, !Changed) :-
     Needed = ProcElimInfo ^ proc_elim_needed_map,
     ModuleInfo = ProcElimInfo ^ proc_elim_module_info,
     ( if
         (
             % Keep the procedure if it is in the needed map.
-            map.search(Needed, entity_proc(PredId, ProcId), _)
+            map.contains(Needed, entity_proc(PredId, ProcId))
         ;
             % Or if it is to be kept because it is exported.
             Keep = yes(ProcId)
@@ -903,7 +982,9 @@ dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred, ProcElimInfo,
     then
         true
     else
+        map.delete(ProcId, !ProcTable),
         !:Changed = yes,
+
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         (
@@ -915,26 +996,95 @@ dead_proc_eliminate_proc(PredId, Keep, WarnForThisPred, ProcElimInfo,
             )
         ;
             VeryVerbose = no
-        ),
-        map.lookup(!.ProcTable, ProcId, ProcInfo0),
-        proc_info_get_has_any_foreign_exports(ProcInfo0, HasForeignExports),
-        ( if
-            WarnForThisPred = yes,
-            HasForeignExports = no_foreign_exports
-        then
-            proc_info_get_context(ProcInfo0, Context),
-            Spec = warn_dead_proc(PredId, ProcId, Context, ModuleInfo),
-            !:Specs = [Spec | !.Specs]
-        else
-            true
-        ),
-        map.delete(ProcId, !ProcTable)
+        )
     ).
 
-:- func warn_dead_proc(pred_id, proc_id, prog_context, module_info)
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+    % Given the information about which entities are needed,
+    % eliminate procedures which are not needed.
+    %
+:- pred do_dead_proc_warn(module_info::in, needed_map::in,
+    list(error_spec)::out) is det.
+
+do_dead_proc_warn(ModuleInfo, Needed, Specs) :-
+    module_info_get_valid_pred_ids(ModuleInfo, PredIds),
+    module_info_get_preds(ModuleInfo, PredTable),
+    list.foldl(dead_proc_warn_pred(ModuleInfo, PredTable, Needed), PredIds,
+        [], Specs).
+
+    % Warn about any unused procedures for this pred.
+    %
+:- pred dead_proc_warn_pred(module_info::in, pred_table::in, needed_map::in,
+    pred_id::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+dead_proc_warn_pred(ModuleInfo, PredTable, Needed, PredId, !Specs) :-
+    map.lookup(PredTable, PredId, PredInfo),
+    pred_info_get_status(PredInfo, PredStatus),
+    ( if
+        % Generate a warning only if the predicate is defined in this module,
+        % and is not exported.
+        PredStatus = pred_status(status_local),
+
+        % Don't warn for unify or comparison preds,
+        % since they may be automatically generated.
+        not is_unify_or_compare_pred(PredInfo),
+
+        % Don't warn for procedures introduced from lambda expressions.
+        % The only time those procedures will be unused is if the
+        % procedure containing the lambda expression is unused,
+        % and in that case, we already warn for that containing
+        % procedure if appropriate.
+        PredName = pred_info_name(PredInfo),
+        not string.prefix(PredName, "IntroducedFrom__"),
+
+        % Likewise, don't warn for procedures introduced for
+        % type specialization.
+        not string.prefix(PredName, "TypeSpecOf__")
+    then
+        ProcIds = pred_info_procids(PredInfo),
+        pred_info_get_proc_table(PredInfo, ProcTable),
+        list.foldl(
+            dead_proc_warn_proc(ModuleInfo, Needed, PredId, ProcTable),
+            ProcIds, !Specs)
+    else
+        true
+    ).
+
+    % Warn about a procedure, if unused.
+    %
+:- pred dead_proc_warn_proc(module_info::in, needed_map::in, pred_id::in,
+    proc_table::in, proc_id::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+dead_proc_warn_proc(ModuleInfo, Needed, PredId, ProcTable, ProcId,
+        !Specs) :-
+    ( if
+        % Don't warn about the procedure being unused
+        % if it is in the needed map.
+        map.contains(Needed, entity_proc(PredId, ProcId))
+    then
+        true
+    else
+        map.lookup(ProcTable, ProcId, ProcInfo),
+        proc_info_get_has_any_foreign_exports(ProcInfo, HasForeignExports),
+        (
+            HasForeignExports = no_foreign_exports,
+            proc_info_get_context(ProcInfo, Context),
+            Spec = warn_dead_proc(ModuleInfo, PredId, ProcId, Context),
+            !:Specs = [Spec | !.Specs]
+        ;
+            HasForeignExports = has_foreign_exports
+            % The procedure is unused by Mercury code, but it may be used
+            % by foreign language code.
+        )
+    ).
+
+:- func warn_dead_proc(module_info, pred_id, proc_id, prog_context)
     = error_spec.
 
-warn_dead_proc(PredId, ProcId, Context, ModuleInfo) = Spec :-
+warn_dead_proc(ModuleInfo, PredId, ProcId, Context) = Spec :-
     ProcPieces = describe_one_proc_name(ModuleInfo,
         should_not_module_qualify, proc(PredId, ProcId)),
     Pieces = [words("Warning:")] ++ ProcPieces ++
@@ -944,40 +1094,6 @@ warn_dead_proc(PredId, ProcId, Context, ModuleInfo) = Spec :-
     Severity = severity_conditional(warn_dead_procs, yes,
         severity_warning, no),
     Spec = error_spec(Severity, phase_dead_code, [Msg]).
-
-:- pred dead_proc_eliminate_type_ctor_infos(list(type_ctor_gen_info)::in,
-    needed_map::in, list(type_ctor_gen_info)::out) is det.
-
-dead_proc_eliminate_type_ctor_infos([], _Needed, []).
-dead_proc_eliminate_type_ctor_infos([TypeCtorGenInfo0 | TypeCtorGenInfos0],
-        Needed, TypeCtorGenInfos) :-
-    dead_proc_eliminate_type_ctor_infos(TypeCtorGenInfos0, Needed,
-        TypeCtorGenInfos1),
-    TypeCtorGenInfo0 = type_ctor_gen_info(_TypeCtor, ModuleName,
-        TypeName, Arity, _Status, _HldsDefn, _Unify, _Compare),
-    ( if
-        Entity = entity_type_ctor(ModuleName, TypeName, Arity),
-        map.search(Needed, Entity, _)
-    then
-        TypeCtorGenInfos = [TypeCtorGenInfo0 | TypeCtorGenInfos1]
-    else
-        TypeCtorGenInfos = TypeCtorGenInfos1
-    ).
-
-:- pred dead_proc_eliminate_const_structs(assoc_list(int, const_struct)::in,
-    needed_map::in, const_struct_db::in, const_struct_db::out) is det.
-
-dead_proc_eliminate_const_structs([], _Needed, !ConstStructDb).
-dead_proc_eliminate_const_structs([ConstNum - _ | ConstNumStructs], Needed,
-        !ConstStructDb) :-
-    Entity = entity_const_struct(ConstNum),
-    ( if map.search(Needed, Entity, _) then
-        true
-    else
-        delete_const_struct(ConstNum, !ConstStructDb)
-    ),
-    dead_proc_eliminate_const_structs(ConstNumStructs, Needed,
-        !ConstStructDb).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -15,7 +15,8 @@ COMPILE_PROGS = \
 	non_term_user_special \
 	pragma_term_conflict \
 	term_indirect_warning \
-	warn_dead_procs
+	warn_dead_procs \
+	warn_dead_procs_trace
 
 ERRORCHECK_PROGS = \
 	ambiguous_overloading \

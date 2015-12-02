@@ -32,6 +32,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -133,6 +134,8 @@
     is det.
 :- pred simplify_info_get_has_user_event(simplify_info::in,
     has_user_event::out) is det.
+:- pred simplify_info_get_trace_goal_procs(simplify_info::in,
+    set(pred_proc_id)::out) is det.
 
 :- pred simplify_info_set_simplify_tasks(simplify_tasks::in,
     simplify_info::in, simplify_info::out) is det.
@@ -160,6 +163,8 @@
 :- pred simplify_info_set_found_contains_trace(bool::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_has_user_event(has_user_event::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_trace_goal_procs(set(pred_proc_id)::in,
     simplify_info::in, simplify_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -258,7 +263,12 @@
                 ssimp_found_contains_trace  :: bool,
 
                 % Have we seen an event call?
-                ssimp_has_user_event        :: has_user_event
+                ssimp_has_user_event        :: has_user_event,
+
+                % The set of predicates that we deleted calls to while
+                % deleting trace goal scopes whose compile time condition
+                % turned out to be false.
+                ssimp_trace_goal_procs      :: set(pred_proc_id)
             ).
 
 simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
@@ -276,9 +286,10 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
     CostDelta = 0,
     HasParallelConj = has_no_parallel_conj,
     HasUserEvent = has_no_user_event,
+    set.init(TraceGoalProcs),
     SubInfo = simplify_sub_info(PredId, ProcId, InstVarSet,
         ElimVars, Specs, ShouldRequantity, ShouldRerunDet, CostDelta,
-        HasParallelConj, no, HasUserEvent),
+        HasParallelConj, no, HasUserEvent, TraceGoalProcs),
     Info = simplify_info(SimplifyTasks, ModuleInfo, VarSet, VarTypes,
         RttiVarMaps, FullyStrict, SubInfo).
 
@@ -367,6 +378,8 @@ simplify_info_get_found_contains_trace(Info, FCT) :-
     FCT = Info ^ simp_sub_info ^ ssimp_found_contains_trace.
 simplify_info_get_has_user_event(Info, HUE) :-
     HUE = Info ^ simp_sub_info ^ ssimp_has_user_event.
+simplify_info_get_trace_goal_procs(Info, TGP) :-
+    TGP = Info ^ simp_sub_info ^ ssimp_trace_goal_procs.
 
 simplify_info_set_simplify_tasks(Tasks, !Info) :-
     !Info ^ simp_simplify_tasks := Tasks.
@@ -395,6 +408,8 @@ simplify_info_set_found_contains_trace(FCT, !Info) :-
     !Info ^ simp_sub_info ^ ssimp_found_contains_trace := FCT.
 simplify_info_set_has_user_event(HUE, !Info) :-
     !Info ^ simp_sub_info ^ ssimp_has_user_event := HUE.
+simplify_info_set_trace_goal_procs(TGP, !Info) :-
+    !Info ^ simp_sub_info ^ ssimp_trace_goal_procs := TGP.
 
 %---------------------------------------------------------------------------%
 

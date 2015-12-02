@@ -714,7 +714,7 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(Verbose, "% Warning about dead procedures...\n",
             !IO),
         maybe_flush_output(Verbose, !IO),
-        dead_proc_elim(do_not_elim_opt_imported, !.HLDS, _HLDS1, Specs),
+        dead_proc_warn(!.HLDS, Specs),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
@@ -1299,7 +1299,7 @@ maybe_impl_dependent_par_conjs(Verbose, Stats, !HLDS, !IO) :-
                 "% Dependent parallel conjunction transformation...\n", !IO),
             maybe_flush_output(Verbose, !IO),
             impl_dep_par_conjs_in_module(!HLDS),
-            dead_proc_elim(do_not_elim_opt_imported, !HLDS, _ElimSpecs),
+            dead_proc_elim(do_not_elim_opt_imported, !HLDS),
             maybe_write_string(Verbose, "% done.\n", !IO),
             maybe_report_stats(Stats, !IO)
         )
@@ -1460,8 +1460,7 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
         Dead = yes,
         maybe_write_string(Verbose, "% Eliminating dead procedures...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        % Ignore any warning messages generated.
-        dead_proc_elim(elim_opt_imported, !HLDS, _ElimSpecs),
+        dead_proc_elim(elim_opt_imported, !HLDS),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
