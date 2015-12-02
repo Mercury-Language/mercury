@@ -66,7 +66,7 @@
     %
 :- pred equal(map(K, V)::in, map(K, V)::in) is semidet.
 
-    % Check whether map contains key
+    % Succeed iff the map contains the given key.
     %
 :- pred contains(map(K, _V)::in, K::in) is semidet.
 
