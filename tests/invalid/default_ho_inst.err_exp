@@ -2,7 +2,12 @@ default_ho_inst.m:026: In clause for `main(di, uo)':
 default_ho_inst.m:026:   in argument 1 of call to predicate
 default_ho_inst.m:026:   `default_ho_inst.callfoo'/3:
 default_ho_inst.m:026:   mode error: variable `V_7' has instantiatedness
-default_ho_inst.m:026:   `unique(default_ho_inst.foo(/* unique */(func((ground
-default_ho_inst.m:026:   >> ground)) = (free >> ground) is semidet)))',
+default_ho_inst.m:026:     unique(
+default_ho_inst.m:026:       foo(
+default_ho_inst.m:026:         /* unique */ (func(
+default_ho_inst.m:026:           in
+default_ho_inst.m:026:         ) = out is semidet)
+default_ho_inst.m:026:       )
+default_ho_inst.m:026:     ),
 default_ho_inst.m:026:   expected instantiatedness was `ground'.
 For more information, recompile with `-E'.
