@@ -471,7 +471,7 @@ class_instances_used_modules(ClassId, InstanceDefns, !UsedModules) :-
     used_modules::in, used_modules::out) is det.
 
 instance_used_modules(ClassId, InstanceDefn, !UsedModules) :-
-    ClassId = class_id(Name, _Arity), 
+    ClassId = class_id(Name, _Arity),
     InstanceDefn = hlds_instance_defn(_InstanceModule, Types, _OriginalTypes,
         InstanceStatus, _Context, Constraints, _Body,
         _MaybePredProcIds, _VarSet, _ProofMap),

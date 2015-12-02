@@ -2079,7 +2079,7 @@ normalize_vector(Var, !.Terms, !.Constant, !:Terms, !:Constant) :-
         !:Terms = map.map_values_only((func(C) = C / DivVal), !.Terms),
         !:Constant = !.Constant / DivVal
     else
-        % In this case the the coefficient of the variable was zero
+        % In this case the coefficient of the variable was zero
         % (implicit in the fact that it is not in the map).
         true
     ).
@@ -2105,7 +2105,7 @@ normalize_constraint(Var, Constraint0, Constraint) :-
         Constant = Constant0 / Coefficient,
         Op = ( if Coefficient < zero then negate_operator(Op0) else Op0 )
     else
-        % In this case the the coefficient of the variable was zero
+        % In this case the coefficient of the variable was zero
         % (implicit in the fact that it is not in the list).
         Terms = Terms0,
         Op = Op0,

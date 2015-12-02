@@ -809,17 +809,17 @@ mode_info_set_in_dupl_for_switch(X, !MI) :-
 
 % :- import_module io.
 % :- pred write_mode_info_stats(io::di, io::uo) is det.
-% 
+%
 % :- pragma foreign_decl("C", local,
 % "
 % #define MR_NUM_MODE_INFO_STATS    26
 % unsigned long MR_stats_same[MR_NUM_MODE_INFO_STATS];
 % unsigned long MR_stats_diff[MR_NUM_MODE_INFO_STATS];
 % ").
-% 
+%
 % :- pred gather_mode_info_stats(int::in, T::in, T::in,
 %     mode_info::in, mode_info::out) is det.
-% 
+%
 % :- pragma foreign_proc("C",
 %     gather_mode_info_stats(N::in, Old::in, New::in, MI0::in, MI::out),
 %     [will_not_call_mercury, promise_pure],
@@ -829,16 +829,16 @@ mode_info_set_in_dupl_for_switch(X, !MI) :-
 %     } else {
 %         ++MR_stats_diff[N];
 %     }
-% 
+%
 %     MI = MI0;
 % ").
-% 
+%
 % :- pragma foreign_proc("C",
 %     write_mode_info_stats(IO0::di, IO::uo),
 %     [will_not_call_mercury, promise_pure],
 % "
 %     FILE *fp;
-% 
+%
 %     fp = fopen(""/tmp/MODE_INFO_STATS"", ""a"");
 %     if (fp != NULL) {
 %         int i;
@@ -847,7 +847,7 @@ mode_info_set_in_dupl_for_switch(X, !MI) :-
 %                 i, MR_stats_same[i], MR_stats_diff[i]);
 %         }
 %     }
-% 
+%
 %     IO = IO0;
 % ").
 

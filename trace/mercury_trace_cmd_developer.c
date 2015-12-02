@@ -1356,7 +1356,7 @@ MR_trace_cmd_trail_details(char **words, int word_count,
 
     saved_regs = event_info->MR_saved_regs;
 
-    fprintf(MR_mdb_out, 
+    fprintf(MR_mdb_out,
         "trail pointer    : %" MR_INTEGER_LENGTH_MODIFIER
         "d (%" MR_INTEGER_LENGTH_MODIFIER "x)\n",
         (MR_Integer) MR_saved_trail_ptr(saved_regs),
@@ -1449,7 +1449,7 @@ MR_find_single_matching_proc(MR_ProcSpec *spec, MR_bool verbose)
             fprintf(MR_mdb_out, "invalid choice\n");
             return NULL;
         } else {
-        
+
             if (line2 != NULL) {
                 MR_free(line2);
             }

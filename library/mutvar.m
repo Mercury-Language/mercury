@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: mutvar.m.
-% 
+%
 % This module is used in the implementation of all-solutions predicates
 % (solutions.m) and stores (store.m).  This module is a private part of the
 % Mercury implementation; user modules should never explicitly import this
 % module.  The interface for this module does not get included in the Mercury
 % library reference manual.
-% 
+%
 % XXX When we move to use submodules in the standard library, we should
 % make this module a private submodule.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -49,7 +49,7 @@ XXX `ui' modes don't work yet
 */
 
     % Destructively modify a reference to refer to a new object.
-    % 
+    %
 :- impure pred set_mutvar(mutvar(T), T) is det.
 :-        mode set_mutvar(in, in) is det.
 /*

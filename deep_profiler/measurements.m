@@ -117,7 +117,7 @@
     %
 :- func proc_cost_get_total(proc_cost_csq) = float.
 
-    % Retrive the number of calls made to this procedure.
+    % Retrieve the number of calls made to this procedure.
     %
 :- func proc_cost_get_calls_total(proc_cost_csq) = int.
 :- func proc_cost_get_calls_nonrec(proc_cost_csq) = int.
@@ -132,7 +132,7 @@
     %
 :- func cs_cost_get_percall(cs_cost_csq) = float.
 
-    % Retrive the number of calls made from this call site.
+    % Retrieve the number of calls made from this call site.
     %
 :- func cs_cost_get_calls(cs_cost_csq) = float.
 
@@ -1046,8 +1046,8 @@ exceeded_desired_parallelism(DesiredParallelism, Parallelism) :-
                 % so it will usually be larger than time_right_seq.
                 pemi_time_right_par         :: float,
 
-                % THe dead time of this conjunct, This is the time that the
-                % contaxt will be blocked on futures. It does not include the
+                % The dead time of this conjunct, This is the time that the
+                % context will be blocked on futures. It does not include the
                 % spark delay because the contact may not exist for most of
                 % that time.
                 pemi_time_right_dead        :: float

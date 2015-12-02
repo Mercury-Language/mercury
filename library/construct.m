@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: construct.m.
 % Main author: zs.
 % Stability: low.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -95,7 +95,7 @@
     % find_functor(Type, FunctorName, Arity, FunctorNumber, ArgTypes).
     %
     % Given a type descriptor, a functor name and arity, finds the functor
-    % number and the types of its arguments. It thus serves as the converse 
+    % number and the types of its arguments. It thus serves as the converse
     % to get_functor/5.
     %
 :- pred find_functor(type_desc::in, string::in, int::in,
@@ -429,7 +429,7 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
             Ordinal = construct_info.functor_info.
                 enum_functor_desc->MR_enum_functor_ordinal;
             break;
-        
+
         case MR_TYPECTOR_REP_FOREIGN_ENUM:
         case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
             Ordinal = construct_info.functor_info.
@@ -527,11 +527,11 @@ get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
     if (Ordinal < 0 || Ordinal >= num_functors
             || !type_ctor_info->MR_type_ctor_functor_number_map)
     {
-        SUCCESS_INDICATOR = MR_FALSE; 
+        SUCCESS_INDICATOR = MR_FALSE;
     } else {
         FunctorNumber =
             type_ctor_info->MR_type_ctor_functor_number_map[Ordinal];
-        SUCCESS_INDICATOR = MR_TRUE; 
+        SUCCESS_INDICATOR = MR_TRUE;
     }
 }").
 
@@ -594,7 +594,7 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
             new_data = construct_info.functor_info.enum_functor_desc->
                 MR_enum_functor_ordinal;
             break;
-        
+
         case MR_TYPECTOR_REP_FOREIGN_ENUM:
         case MR_TYPECTOR_REP_FOREIGN_ENUM_USEREQ:
             new_data = construct_info.functor_info.foreign_enum_functor_desc->

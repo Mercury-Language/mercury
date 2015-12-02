@@ -551,9 +551,9 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
                 /*
                 ** The current clique does overlap with the last old clique,
                 ** and maybe others. Replace all the cliques in the list it
-                ** overlaps with with just one clique. Put this clique
-                ** in the storage of the clique node that was nearest
-                ** to cliques_first.
+                ** overlaps with just one clique. Put this clique in the
+                ** storage of the clique node that was nearest to
+                ** cliques_first.
                 */
 
                 cl = cliques_last;

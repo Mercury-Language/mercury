@@ -156,7 +156,7 @@ add_pragma_foreign_export_enum(FEEInfo, _TypeStatus, Context,
 
 build_export_enum_overrides_map(TypeName, Context, ContextPieces,
         OverridesList0, MaybeOverridesMap, !Specs) :-
-    ( 
+    (
         TypeName = qualified(ModuleName, _)
     ;
         TypeName = unqualified(_),

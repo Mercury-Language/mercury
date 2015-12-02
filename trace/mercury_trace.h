@@ -64,7 +64,7 @@ typedef struct MR_EventInfo_Struct {
 ** MR_trace_real_decl is the version of MR_trace_real we use when gathering
 ** events for the annotated trace.
 **
-** MR_trace_real_decl_implicit_subtree is a specialized version of 
+** MR_trace_real_decl_implicit_subtree is a specialized version of
 ** MR_trace_real_decl for events which are in implicit subtrees.
 */
 
@@ -106,7 +106,7 @@ extern  MR_Code *MR_trace_real_decl_implicit_subtree(const MR_LabelLayout *);
 ** its exit ports is not enough to make its SCC quiescent; for that, one must
 ** wait for its failure. This is why in such cases, MR_trace_retry will ask
 ** for the `retry' command to be executed only after a `fail' command.
-** 
+**
 ** If the fail command reaches an exception port on the selected call instead
 ** of the fail port, then the SCC cannot be made quiescent, and MR_trace_retry
 ** will return MR_RETRY_ERROR, putting a description of the error into
@@ -126,11 +126,11 @@ extern  MR_Code *MR_trace_real_decl_implicit_subtree(const MR_LabelLayout *);
 **   to perform the retry anyway, says yes.
 **
 ** If across_io is set to MR_RETRY_IO_INTERACTIVE then the string pointed to by
-** the retry_interactive_message argument will be used to ask the user 
+** the retry_interactive_message argument will be used to ask the user
 ** whether they want to perform an unsafe retry or not.
 **
 ** If an unsafe retry across IO is performed then the unsafe_retry argument
-** will be set to MR_TRUE, otherwise it will be set to MR_FALSE.  
+** will be set to MR_TRUE, otherwise it will be set to MR_FALSE.
 */
 
 typedef enum {
@@ -236,7 +236,7 @@ typedef void    (*MR_FilterFuncPtr)(MR_Integer, MR_Integer, MR_Integer,
                     MR_Integer, MR_Word, MR_Word *, MR_Char *);
 
 typedef struct {
-    MR_TraceCmdType         MR_trace_cmd;   
+    MR_TraceCmdType         MR_trace_cmd;
                             /*
                             ** The MR_trace_stop_depth field is meaningful
                             ** if MR_trace_cmd is MR_CMD_NEXT or MR_CMD_FINISH.

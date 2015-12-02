@@ -1248,7 +1248,7 @@
             % by the layout_name.
 
     ;       layout_slot_id(layout_slot_id_kind, pred_proc_id).
-            % The slot reserved for the given pred_proc_id in in the array
+            % The slot reserved for the given pred_proc_id in the array
             % identified by the layout_slot_id_kind.
 
 :- type layout_slot_id_kind

@@ -95,7 +95,7 @@
 %       [code]
 %
 % means that in the situation described by [situation],
-% for the the specified [construct] we will generate the specified [code].
+% for the specified [construct] we will generate the specified [code].
 %
 % There is one other important thing which can be considered part of the
 % calling convention for the code that we generate for each goal.
@@ -122,7 +122,7 @@
 %
 % If a model_foo goal occurs in a model_bar context, where foo != bar,
 % then we need to modify the code that we emit for the goal so that
-% it conforms to the calling convenion expected for model_bar.
+% it conforms to the calling convention expected for model_bar.
 %
 %   det goal in semidet context:
 %       <succeeded = Goal>
@@ -157,7 +157,7 @@
 %   model_semi goal:
 %       <succeeded = true>
 %   ===>
-%       succceeded = MR_TRUE;
+%       succeeded = MR_TRUE;
 %
 %   model_non goal
 %       <true && CONT()>

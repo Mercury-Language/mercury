@@ -175,7 +175,7 @@ process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor, TypeDefn,
         % non-pretest parts of such goals.
         BodyGoal = maybe_strip_equality_pretest(BodyGoal0),
 
-        % We cannot just look up the the termination_info because the
+        % We cannot just look up the termination_info because the
         % termination status of compiler generated wrapper predicates for
         % special preds is always set to terminates. Instead, we check if the
         % body of the generated wrapper predicate terminates.

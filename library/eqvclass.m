@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: eqvclass.m.
 % Author: zs.
 % Stability: low.
-% 
+%
 % A module for handling equivalence classes.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -26,7 +26,7 @@
 :- type eqvclass(T).
 :- type partition_id.
 
-    % Create an empty equivalance class.
+    % Create an empty equivalence class.
     %
 :- func init = eqvclass(T).
 :- pred init(eqvclass(T)::out) is det.

@@ -278,7 +278,7 @@ MR_trace_print(MR_Word type_info, MR_Word value, MR_BrowseCallerType caller,
 
     if (format != MR_BROWSE_DEFAULT_FORMAT) {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_print_browser_term_format(browser_term, 
+            ML_BROWSE_print_browser_term_format(browser_term,
                 MR_wrap_output_stream(&mdb_out), caller,
                 (MR_Word) format, MR_trace_browser_persistent_state);
         );
@@ -306,7 +306,7 @@ MR_trace_print_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 
     if (format != MR_BROWSE_DEFAULT_FORMAT) {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_print_browser_term_format(browser_term, 
+            ML_BROWSE_print_browser_term_format(browser_term,
                 MR_wrap_output_stream(&mdb_out), caller,
                 (MR_Word) format, MR_trace_browser_persistent_state);
         );

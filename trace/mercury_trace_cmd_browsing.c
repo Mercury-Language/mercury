@@ -48,7 +48,7 @@ static  const char  *MR_trace_browse_exception(MR_EventInfo *event_info,
 static  const char  *MR_trace_browse_proc_body(MR_EventInfo *event_info,
                         MR_Browser browser, MR_BrowseCallerType caller,
                         MR_BrowseFormat format);
-                        
+
 /* Functions to invoke the user's XML browser on terms or goals */
 static  void        MR_trace_browse_xml(MR_Word type_info, MR_Word value,
                         MR_BrowseCallerType caller, MR_BrowseFormat format);
@@ -285,7 +285,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 fprintf(MR_mdb_out, "There are no I/O actions to print\n");
                 have_next_io_action = MR_FALSE;
             } else {
-                for (action = lo_action; action <= hi_action; action++) { 
+                for (action = lo_action; action <= hi_action; action++) {
                     fprintf(MR_mdb_out,
                         "action %" MR_INTEGER_LENGTH_MODIFIER "u: ", action);
                     problem = MR_trace_browse_action(MR_mdb_out, action,
@@ -384,7 +384,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 return KEEP_INTERACTING;
             }
 
-            for (action = lo_action; action <= hi_action; action++) { 
+            for (action = lo_action; action <= hi_action; action++) {
                 fprintf(MR_mdb_out,
                     "action %" MR_INTEGER_LENGTH_MODIFIER "u: ", action);
                 problem = MR_trace_browse_action(MR_mdb_out, action,
@@ -419,7 +419,7 @@ MR_trace_cmd_print(char **words, int word_count, MR_TraceCmdInfo *cmd,
                 return KEEP_INTERACTING;
             }
 
-            for (action = lo_action; action <= hi_action; action++) { 
+            for (action = lo_action; action <= hi_action; action++) {
                 fprintf(MR_mdb_out,
                     "action %" MR_INTEGER_LENGTH_MODIFIER "u: ", action);
                 problem = MR_trace_browse_action(MR_mdb_out, action,
@@ -1165,18 +1165,18 @@ MR_trace_maybe_close_source_window(MR_bool verbose)
 const char *const    MR_trace_print_cmd_args[] =
     { "-f", "-p", "-v", "--flat", "--pretty", "--verbose",
     "exception", "goal", "*", NULL };
-    
+
 /*
 ** It is better to have a single completion where possible,
 ** so don't include `-d' here.
-*/  
+*/
 
 const char *const    MR_trace_stack_cmd_args[] =
     { "--detailed", NULL };
-    
+
 const char *const    MR_trace_view_cmd_args[] =
     { "-c", "-f", "-n", "-s", "-t", "-v", "-w", "-2",
-    "--close", "--verbose", "--force", "--split-screen", 
+    "--close", "--verbose", "--force", "--split-screen",
     "--window-command", "--server-command", "--server-name",
     "--timeout", NULL };
 

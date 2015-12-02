@@ -177,7 +177,7 @@ split_four(Tin, MidK, MidV, Sub0, Sub1) :-
 %------------------------------------------------------------------------------%
 
 % set is implemented using the simple top-down approach
-% described in eg Sedgwick which splits 4 nodes into two 2 nodes on the
+% described in eg Sedgewick which splits 4 nodes into two 2 nodes on the
 % downward traversal of the tree as we search for the right place to
 % insert the new key-value pair. We know we have the right place if the
 % subtrees of the node are empty (in which case we expand the node - which

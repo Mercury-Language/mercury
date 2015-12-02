@@ -138,7 +138,7 @@
 **	MR_HAVE_SYS_TYPES_H	we have <sys/types.h>
 **	MR_HAVE_SYS_TIMES_H	we have <sys/times.h>
 **	MR_HAVE_DLFCN_H		we have <dlfcn.h>
-**	MR_HAVE_FCNTL_H		we have <fcnt.h>
+**	MR_HAVE_FCNTL_H		we have <fcntl.h>
 **	MR_HAVE_TERMIOS_H	we have <termios.h>
 **	MR_HAVE_SYS_IOCTL_H	we have <sys/ioctl.h>
 **	MR_HAVE_SYS_STROPTS_H	we have <sys/stropts.h>
@@ -286,7 +286,7 @@
 **	MR_HAVE__PUTENV		we have the _putenv() function.
 **	MR_HAVE_POSIX_SPAWN	we have the posix_spawn() function.
 **	MR_HAVE_SCHED_SETAFFINITY we have the sched_setaffinity() function.
-**	MR_HAVE_SCHED_GETAFFINITY we have the sched_gettaffinity() function.
+**	MR_HAVE_SCHED_GETAFFINITY we have the sched_getaffinity() function.
 **	MR_HAVE_SCHED_GETCPU	we have the sched_getcpu() function (glibc specific).
 **	MR_HAVE_SCHED_YIELD	we have the sched_yield() function.
 **	MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED we have the
@@ -476,7 +476,7 @@
 **
 ** MR_BIG_ENDIAN: defined iff the host system is big-endian.
 ** MR_LITTLE_ENDIAN: defined iff the host system is little-endian.
-** (Wierd-endian systems should define neither of these.) 
+** (Weird-endian systems should define neither of these.)
 */
 #undef	MR_BIG_ENDIAN
 #undef	MR_LITTLE_ENDIAN
@@ -546,7 +546,7 @@
 ** MR_DEEP_PROFILER_ENABLED
 **	Enable the deep profiler. This should be defined only if all the
 **	features (header files and system calls) needed by the deep profiler
-**	ara available on this platform.
+**	are available on this platform.
 */
 #undef  MR_DEEP_PROFILER_ENABLED
 

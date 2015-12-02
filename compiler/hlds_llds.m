@@ -79,7 +79,7 @@
 
     % Authoritative information about where variables must be put
     % at the ends of branches of branched control structures.
-    % However, between the follow_vars and and store_alloc passes,
+    % However, between the follow_vars and store_alloc passes,
     % these fields temporarily hold follow_vars information.
     % The final value is not allowed to map any variable to any_reg.
     %

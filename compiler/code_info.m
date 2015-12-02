@@ -755,7 +755,7 @@ set_used_env_vars(X, !CI) :-
 :- func variable_name(code_info, prog_var) = string.
 
     % Create a code address which holds the address of the specified procedure.
-    % The fourth argument should be `no' if the the caller wants the
+    % The fourth argument should be `no' if the caller wants the
     % returned address to be valid from everywhere in the program.
     % If being valid from within the current procedure is enough,
     % this argument should be `yes' wrapped around the value of the

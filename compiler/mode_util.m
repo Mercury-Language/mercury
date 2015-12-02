@@ -1033,7 +1033,7 @@ propagate_ctor_info_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
                 InstResults0 = inst_test_results(GroundNessResult0,
                     ContainsAnyResult, _, _, _, _),
                 % XXX I (zs) don't understand the predicate
-                % propagate_ctor_info_into_bound_functors 
+                % propagate_ctor_info_into_bound_functors
                 % well enough to figure out under what circumstances we could
                 % keep the parts of InstResult0 we are clobbering here.
                 InstResults = inst_test_results(GroundNessResult0,

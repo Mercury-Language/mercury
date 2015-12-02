@@ -127,7 +127,7 @@
 :- func initial_proc_id = proc_id.
 
     % Return an invalid predicate or procedure id. These are intended to be
-    % used to initialize the relevant fields in in call(...) goals before
+    % used to initialize the relevant fields in call(...) goals before
     % we do type- and mode-checks, or when those checks find that there was
     % no predicate matching the call.
     %
@@ -2859,7 +2859,7 @@ proc_info_init(MainContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
 
     ProcSubInfo = proc_sub_info(
         MainContext,
-        CanProcess, 
+        CanProcess,
         DetismDecl,
         MaybeUntupleInfo,
         VarNameRemap,

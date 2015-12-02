@@ -11,7 +11,7 @@
 /*
 ** mercury_threadscope.h - defines Mercury threadscope profiling support.
 **
-** See "Parallel Preformance Tuning for Haskell" - Don Jones Jr, Simon Marlow
+** See "Parallel Performance Tuning for Haskell" - Don Jones Jr, Simon Marlow
 ** and Satnam Singh for information about threadscope.
 */
 
@@ -197,19 +197,19 @@ extern void MR_threadscope_post_start_par_conj(MR_Word* dynamic_id,
 extern void MR_threadscope_post_end_par_conj(MR_Word* dynamic_id);
 
 /*
-** Post this message when a parallel conjunct calls the bariier code.
+** Post this message when a parallel conjunct calls the barrier code.
 */
 extern void MR_threadscope_post_end_par_conjunct(MR_Word* dynamic_id);
 
 /*
-** Post this message when a future is created, this establishes the conjuction
+** Post this message when a future is created, this establishes the conjunction
 ** id to future id mapping.  The conjunction id is inferred by context.
 ** The name of the future within the conjunction is given by 'name'.
 */
 extern void MR_threadscope_post_new_future(MR_Future* future_id, MR_TS_StringId name);
 
 /*
-** Post either of these messages when waiting on a future.  THe first if the
+** Post either of these messages when waiting on a future.  The first if the
 ** context had to be suspended because the future was not available, and the
 ** second when the context did not need to be suspended.
 */

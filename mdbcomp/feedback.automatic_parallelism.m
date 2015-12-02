@@ -115,7 +115,7 @@
     % profitable parallelisation of a particular conjunction.
     %
     % TODO: The type name could be improved to make it distinct from the
-    % algorithm use use to search through the clique graph.
+    % algorithm used to search through the clique graph.
     %
 :- type alg_for_finding_best_par
     --->    affbp_complete_branches(

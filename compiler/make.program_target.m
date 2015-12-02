@@ -2123,7 +2123,7 @@ check_stdlib_is_installed(Globals, Grade, Succeeded, !IO) :-
         MaybeStdLibDir = yes(StdLibDir),
         % We check for the presence mer_std.init in the required grade.
         % Unless the installation is broken this implies the presence
-        % of the the other standard .init files in that grade.
+        % of the other standard .init files in that grade.
         StdLibInitFile = StdLibDir / "modules" / Grade / "mer_std.init",
         io.see(StdLibInitFile, Result, !IO),
         (

@@ -137,7 +137,7 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             % Step 1.
             simplify_do_const_prop(!.Info),
             const_prop.evaluate_call(Globals, VarTypes, InstMap0,
-                ModuleName, PredName, ModeNum, Args, 
+                ModuleName, PredName, ModeNum, Args,
                 EvaluatedGoalExpr, GoalInfo0, EvaluatedGoalInfo)
         then
             GoalExpr = EvaluatedGoalExpr,
@@ -152,7 +152,7 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 MaybeAssignsGoalExpr = yes(GoalExpr),
                 GoalInfo = GoalInfo0
                 % simplify_look_for_duplicate_call (or rather its
-                % subconstractors in common.m) will set the requantify flag 
+                % subconstractors in common.m) will set the requantify flag
                 % if needed.
             ;
                 MaybeAssignsGoalExpr = no,
@@ -181,7 +181,7 @@ simplify_goal_plain_call(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             MaybeAssignsGoalExpr = yes(GoalExpr),
             GoalInfo = GoalInfo0
             % simplify_look_for_duplicate_call (or rather its
-            % subconstractors in common.m) will set the requantify flag 
+            % subconstractors in common.m) will set the requantify flag
             % if needed.
         ;
             MaybeAssignsGoalExpr = no,

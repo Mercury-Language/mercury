@@ -924,7 +924,7 @@ transform_call_and_unifies(CallGoal, CallOutArgs, UnifyGoals, UnifyInputVars,
             % UnifyGoals, but letting quantification and mode analysis do
             % the job lets us avoid duplicating their here.
             %
-            % The other fields of goal_infos are either either ok to copy
+            % The other fields of goal_infos are either ok to copy
             % (such as determinism), or irrelevant (such as goal id).
             % The most complex case is goal features. However, at the moment
             % I (zs) believe that all the possible values of the goal_features
@@ -938,7 +938,7 @@ transform_call_and_unifies(CallGoal, CallOutArgs, UnifyGoals, UnifyInputVars,
             % None need to be deleted from the conjunction or the scope.
             ConjGoalExpr = conj(plain_conj, Goals),
             ConjGoal = hlds_goal(ConjGoalExpr, UpdatedGoalInfo),
-            PromiseGoalExpr = scope(promise_purity(OrigCallPurity), ConjGoal), 
+            PromiseGoalExpr = scope(promise_purity(OrigCallPurity), ConjGoal),
             PromiseGoal = hlds_goal(PromiseGoalExpr, UpdatedGoalInfo),
             MaybeGoals = yes([PromiseGoal])
         ),

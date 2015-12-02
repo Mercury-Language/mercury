@@ -567,10 +567,10 @@ get_format_params(Info, Caller, Format, Params) :-
                 print_all_params        :: caller_params,
                 num_printed_io_actions  :: int,
 
-                % The command to lauch the user's preferred XML browser.
+                % The command to launch the user's preferred XML browser.
                 xml_browser_cmd         :: maybe(string),
 
-                % The file to save XML to before lauching the browser.
+                % The file to save XML to before launching the browser.
                 xml_tmp_filename        :: maybe(string)
             ).
 

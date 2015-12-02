@@ -1431,19 +1431,19 @@
     out, mdi, muo) is det.
 :- mode map3_foldl(pred(in, out, out, out, di, uo) is det, in, out, out,
     out, di, uo) is det.
-:- mode map3_foldl(pred(in, out, out, out, in, out) is semidet, in, out, 
+:- mode map3_foldl(pred(in, out, out, out, in, out) is semidet, in, out,
     out, out, in, out) is semidet.
 :- mode map3_foldl(pred(in, out, out, out, mdi, muo) is semidet, in, out,
     out, out, mdi, muo) is semidet.
-:- mode map3_foldl(pred(in, out, out, out, di, uo) is semidet, in, out, 
+:- mode map3_foldl(pred(in, out, out, out, di, uo) is semidet, in, out,
     out, out, di, uo) is semidet.
-:- mode map3_foldl(pred(in, out, out, out, in, out) is nondet, in, out, 
+:- mode map3_foldl(pred(in, out, out, out, in, out) is nondet, in, out,
     out, out, in, out) is nondet.
 :- mode map3_foldl(pred(in, out, out, out, mdi, muo) is nondet, in, out,
     out, out, mdi, muo) is nondet.
-:- mode map3_foldl(pred(in, out, out, out, in, out) is cc_multi, in, out, 
+:- mode map3_foldl(pred(in, out, out, out, in, out) is cc_multi, in, out,
     out, out, in, out) is cc_multi.
-:- mode map3_foldl(pred(in, out, out, out, di, uo) is cc_multi, in, out, 
+:- mode map3_foldl(pred(in, out, out, out, di, uo) is cc_multi, in, out,
     out, out, di, uo) is cc_multi.
 
     % Same as map_foldl, but with three mapped outputs and two
@@ -1926,7 +1926,7 @@ list.condense_acc([], !Ys).
 list.condense_acc([L | Ls], !Ys) :-
     list.append(L, !Ys),
     list.condense_acc(Ls, !Ys).
-    
+
 %---------------------------------------------------------------------------%
 
 list.same_length([], []).

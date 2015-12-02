@@ -4931,7 +4931,7 @@ foreign_enum_functor_desc(_, _, _) = _ :-
             break;
         }
     }
-"). 
+").
 
 :- func foreign_enum_functor_name(foreign_enum_functor_desc) = string.
 

@@ -570,7 +570,7 @@ MR_pin_thread_no_locking(void)
             ** If MR_thread_pinning becomes false then an error prevented us
             ** from pinning the thread.
             ** When we fail to pin a thread but MR_thread_pinning remains true
-            ** it means that that CPU has already had a thread pinned to it.
+            ** it means that CPU has already had a thread pinned to it.
             */
             fprintf(stderr, "Couldn't pin Mercury engine to processor");
             break;

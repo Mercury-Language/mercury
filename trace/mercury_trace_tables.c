@@ -178,7 +178,7 @@ MR_register_module_layout_real(const MR_ModuleLayout *module)
             MR_bool             found;
             const char          *event_set_name;
             MR_TraceEventSet    *trace_event_set;
-            
+
             event_set_name = module->MR_ml_user_event_set_name;
 
             found = MR_FALSE;
@@ -218,7 +218,7 @@ MR_register_module_layout_real(const MR_ModuleLayout *module)
                     module->MR_ml_num_user_event_specs;
                 trace_event_set->MR_tes_specs =
                     module->MR_ml_user_event_specs;
-                trace_event_set->MR_tes_event_set = 
+                trace_event_set->MR_tes_event_set =
                     MR_read_event_set("no input file",
                         trace_event_set->MR_tes_desc);
 

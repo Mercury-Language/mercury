@@ -272,7 +272,7 @@ MR_find_clique_entry_mdb(MR_EventInfo *event_info,
                 "are recursive with the current procedure.\n");
             return MR_TRUE;
         }
-        
+
         *selected_level_ptr = clique_parent_level;
     } else {
         *selected_level_ptr = clique_entry_level;

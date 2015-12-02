@@ -1898,7 +1898,7 @@ order_avails(Avails, SortedAvails) :-
     SortedAvails = cord.list(SortedAvailCord).
 
 :- type avail_map == map(module_name, import_or_use).
-    
+
 :- pred build_avail_map(list(item_avail)::in, avail_map::in, avail_map::out)
     is det.
 

@@ -113,7 +113,7 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
         /*
         ** readline() allocates with malloc(), and we want to return something
         ** allocated with MR_malloc(), but that's OK, because MR_malloc() and
-        ** malloc() are interchangable.
+        ** malloc() are interchangeable.
         */
 #if 0
         {

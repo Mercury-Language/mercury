@@ -988,7 +988,7 @@ collect_ite_renaming_in_condition_case(IteRenamedRegionProc, Graph, Case,
 
     % This predicate receives a goal path (to some goal) and returns
     % the subpath to the closest condition containing the goal (if any);
-    % if the goal is not in in any condition, the output path is empty.
+    % if the goal is not in any condition, the output path is empty.
     % It also returns the number of conditions that contain the goal.
     % e.g., ( if
     %           ( if

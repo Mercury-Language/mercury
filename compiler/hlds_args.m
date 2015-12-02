@@ -686,7 +686,7 @@ proc_arg_vector_foldl4_corresponding3(P, A, B, C, !Acc1, !Acc2, !Acc3,
     % This ensures that poly_arg_vectors obey the same calling convention
     % w.r.t introduced type_info and typeclass_info arguments that
     % proc_arg_vectors do. For the proc_arg_vectors that are used to represent
-    % poly_arg_vectors, we insist that the the last two fields are
+    % poly_arg_vectors, we insist that the last two fields are
     % the empty list and `no' respectively.
     %
 :- type poly_arg_vector(T) == proc_arg_vector(T).

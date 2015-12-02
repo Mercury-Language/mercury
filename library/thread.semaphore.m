@@ -140,7 +140,7 @@ try_wait(Sem, Res, !IO) :-
 #else
   #ifdef MR_THREAD_SAFE
         MercuryCond cond;
-  #endif 
+  #endif
 #endif
 #ifdef MR_THREAD_SAFE
         MercuryLock lock;

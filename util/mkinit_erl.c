@@ -17,7 +17,7 @@
 ** functions for all the modules in a Mercury program.
 **
 ** Alternatively, if invoked with the -k option, this program produces a
-** list of intialization directives on stdout.  This mode of operation is
+** list of initialization directives on stdout.  This mode of operation is
 ** is used when building .init files for libraries.
 **
 ** NOTE: any changes to this program may need to be reflected in the

@@ -961,7 +961,7 @@ array_to_doc(Depth, A) =
     group("array" ++ parentheses(list_to_doc(Depth - 1, array.to_list(A)))).
 
 %---------------------------------------------------------------------------%
-    
+
     % XXX Ideally we'd just walk the version array.  But that's an optimization
     % for another day.
     %

@@ -1067,7 +1067,7 @@ process_special(Option, Flag, OptionData, OptionOps,
             (
                 Result0 = ok(OptionTable),
                 Result = ok(OptionTable)
-            ;   
+            ;
                 Result0 = error(TrackHandlerMsg),
                 Reason = special_handler_error(TrackHandlerMsg),
                 Error = option_error(Flag, Option, Reason),

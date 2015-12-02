@@ -259,8 +259,8 @@ get_comment_forwards(Comments, Line) = Comment :-
     ).
 
     % Return the string which represents the comment ending at the given line.
-    % The comment extends backwards until the the line above the given
-    % line is not a comment only line.
+    % The comment extends backwards until the line above the given line is not
+    % a comment only line.
     %
 :- func get_comment_backwards(comments, int) = string.
 

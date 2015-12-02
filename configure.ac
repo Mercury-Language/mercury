@@ -278,8 +278,7 @@ DEFAULT_MERCURY_DEBUGGER_DOC=$DEFAULT_MERCURY_DEBUGGER_INIT_DIR/mdb_doc
 AC_SUBST(DEFAULT_MERCURY_DEBUGGER_DOC)
 
 #-----------------------------------------------------------------------------#
-# MMC_INVOKE_CMD is the the command used to invoke mercury_compile in
-# scripts/mmc.
+# MMC_INVOKE_CMD is the command used to invoke mercury_compile in scripts/mmc.
 # On MSYS (MinGW) we cannot use exec, since exec will not find the file because
 # it will expect a path relative to the MSYS home directory and will not work
 # with a full Windows path.  A full Windows path, however must be used for the
@@ -4524,7 +4523,7 @@ case "$mercury_cv_cc_type" in
         #   Notably with the definitions of the types off_t and off64_t on MinGW
         #   systems.
         # * This setting also affects the compilation of user written C code in
-        #   foreign_proc and and foreign code pragmas.
+        #   foreign_proc and foreign code pragmas.
         #
         # NOTE: the --no-ansi option supported by the mgnuc script does more than
         # simply pass the value of CFLAGS_FOR_ANSI to the C compiler.

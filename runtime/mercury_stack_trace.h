@@ -246,7 +246,7 @@ extern  const MR_LabelLayout *MR_find_nth_ancestor(
 ** If a MR_stack_walk_step encounters a problem, it will set problem_ptr
 ** to point to a string representation of the error.
 **
-** Note that for nondetermistic code, this function will only
+** Note that for nondeterministic code, this function will only
 ** traverse the success continuations (via MR_succfr),
 ** not the frames which represent failure continuations
 ** (which would be accessible via MR_redofr).
@@ -314,7 +314,7 @@ extern  MR_MemoryZone   *MR_nondet_stack_trace_bottom_zone;
 
 /*
 ** The different Mercury determinisms are internally represented by integers.
-** This array gives the correspondance with the internal representation and
+** This array gives the correspondence with the internal representation and
 ** the names that are usually used to denote determinisms.
 */
 

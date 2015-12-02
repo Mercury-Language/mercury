@@ -687,7 +687,7 @@ write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
     % write_type_with_bindings writes out a type after applying the
     % type bindings.
     %
-:- pred write_type_with_bindings(tvarset::in, tsubst::in, mer_type::in, 
+:- pred write_type_with_bindings(tvarset::in, tsubst::in, mer_type::in,
     io::di, io::uo) is det.
 
 write_type_with_bindings(TypeVarSet, TypeBindings, Type0, !IO) :-

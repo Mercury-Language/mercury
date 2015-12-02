@@ -276,36 +276,36 @@ const char *const    MR_trace_quit_cmd_args[] =
 /****************************************************************************/
 
 static struct MR_option MR_trace_ignore_opts[] =
-{                       
+{
     { "ignore-errors",  MR_no_argument, NULL,   'i' },
     { NULL,             MR_no_argument, NULL,   0   }
 };
-                        
-static MR_bool          
-MR_trace_options_ignore(MR_bool *ignore_errors, char ***words, int *word_count)
-{                       
-    int c;              
 
-    MR_optind = 0;      
+static MR_bool
+MR_trace_options_ignore(MR_bool *ignore_errors, char ***words, int *word_count)
+{
+    int c;
+
+    MR_optind = 0;
     while ((c = MR_getopt_long(*word_count, *words, "i",
         MR_trace_ignore_opts, NULL)) != EOF)
-    {                   
+    {
         switch (c) {
-                        
+
             case 'i':
-                *ignore_errors = MR_TRUE; 
+                *ignore_errors = MR_TRUE;
                 break;
-                        
+
             default:
                 MR_trace_usage_cur_cmd();
                 return MR_FALSE;
-        }               
-    }                   
+        }
+    }
 
     *words = *words + MR_optind - 1;
     *word_count = *word_count - MR_optind + 1;
-    return MR_TRUE;     
-}                       
+    return MR_TRUE;
+}
 
 
 static MR_bool

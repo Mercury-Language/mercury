@@ -1116,7 +1116,7 @@ det_int0_to_month(Int) =
     ( if int0_to_month(Int, Month) then
         Month
     else
-        unexpected($module, $pred, "invalid month: " ++ int_to_string(Int)) 
+        unexpected($module, $pred, "invalid month: " ++ int_to_string(Int))
     ).
 
 month_to_int0(Month) = Int :-

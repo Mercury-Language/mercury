@@ -94,7 +94,7 @@
 
     % Output an inst in a format where all compiler-defined insts
     % have been expanded out; recursive insts have their self-referential
-    % parts printed out as elipses ("...").
+    % parts printed out as ellipses ("...").
     % (These routines are used for outputting insts in mode errors.)
     % NOTE They *were* used for that, but have been replaced by the code
     % now in error_msg_inst.m.
@@ -1165,7 +1165,7 @@ mercury_uni_mode_to_string(UniMode, InstVarSet) = String :-
 
 mercury_format_uni_mode(UniMode, InstVarSet, !IO) :-
     UniMode = (InstA1 - InstB1 -> InstA2 - InstB2),
-    InstInfo = simple_inst_info(InstVarSet), 
+    InstInfo = simple_inst_info(InstVarSet),
     mercury_format_mode(output_debug, InstInfo, (InstA1 -> InstA2), !IO),
     add_string(" = ", !IO),
     mercury_format_mode(output_debug, InstInfo, (InstB1 -> InstB2), !IO).

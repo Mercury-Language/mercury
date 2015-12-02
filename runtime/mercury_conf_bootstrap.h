@@ -7,7 +7,7 @@
 /*
 ** mercury_conf_bootstrap.h
 **
-** Backwards compatability definitions for auto-configured macros.
+** Backwards compatibility definitions for auto-configured macros.
 ** All of the definitions here will go away eventually, so don't use them!
 */
 
@@ -229,7 +229,7 @@
   #define PIC_REG 1
 #endif
 /*
-** We dont't do this for PIC/MR_PIC because MR_PIC can be defined by
+** We don't do this for PIC/MR_PIC because MR_PIC can be defined by
 ** mercury_goto.h. User code should not be using the PIC macro anyway.
 */
 #ifdef MR_HIGHTAGS

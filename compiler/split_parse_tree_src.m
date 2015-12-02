@@ -718,7 +718,7 @@ split_component_discover_submodules(Component, SectionAncestors,
 
 discover_included_submodules([], _,
         !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs).
-discover_included_submodules([Include | Includes], SectionAncestors, 
+discover_included_submodules([Include | Includes], SectionAncestors,
         !OKIncludesCord, !SplitModuleMap, !SubModulesMap, !Specs) :-
     Include = item_include(InclModuleName, Context, _SeqNum),
     ( if map.search(!.SplitModuleMap, InclModuleName, OldEntry) then

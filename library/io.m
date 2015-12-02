@@ -1879,7 +1879,7 @@
     %
 :- semipure pred io.getenv(string::in, string::out) is semidet.
 
-    % io.setenv(NameString,ValueString):
+    % io.setenv(NameString, ValueString):
     %
     % Sets the named environment variable to the specified value.
     % Fails if the operation does not work.
@@ -7351,7 +7351,7 @@ mercury_close(MercuryFilePtr mf)
     ** that we have not previously closed the file stream here so we
     ** can give the user some idea about what has happened.
     */
-    if (MR_file(*mf) == NULL) { 
+    if (MR_file(*mf) == NULL) {
         mercury_io_error(mf, ""error closing file: invalid file stream"");
     }
 

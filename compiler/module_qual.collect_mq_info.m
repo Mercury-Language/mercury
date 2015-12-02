@@ -156,7 +156,7 @@ collect_mq_info_in_item_include(Permissions, Incl, !Modules) :-
 
 collect_mq_info_in_item_avail(MQSection, _Permissions, Avail,
         !ImportedModules, !UnusedIntModules) :-
-    % Modules imported from the the proper private interface of ancestors of
+    % Modules imported from the proper private interface of ancestors of
     % the current module are treated as if they were directly imported
     % by the current module.
     %

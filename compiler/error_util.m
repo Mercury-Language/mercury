@@ -760,7 +760,7 @@ get_maybe_mode_report_control(phase_code_gen) = no.
 sort_error_specs(Globals, !Specs) :-
     % The purpose of remove_conditionals_in_spec is to remove differences
     % between error_specs that exist only in the structure of the error_specs
-    % themselves, as opposed to the the text that we output for them.
+    % themselves, as opposed to the text that we output for them.
     %
     % For example, prog_io.m can generate two error specs for a bad module
     % name that differ in two things.

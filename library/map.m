@@ -313,7 +313,7 @@
     % overlay(MapA, MapB, Map). However, while overlay takes time
     % proportional to the size of MapB, overlay_large_map takes time
     % proportional to the size of MapA. In other words, it preferable when
-    % MapB is a large 
+    % MapB is a large
     %
 :- func overlay_large_map(map(K, V), map(K, V)) = map(K, V).
 :- pred overlay_large_map(map(K, V)::in, map(K, V)::in, map(K, V)::out)
@@ -970,16 +970,16 @@ map.upper_bound_lookup(Map, SearchK, K, V) :-
 
 map.max_key(M) = tree234.max_key(M).
 
-map.det_max_key(M) = 
+map.det_max_key(M) =
     ( if K = map.max_key(M) then
-        K 
+        K
     else
         unexpected($module, $pred, "map.max_key failed")
     ).
 
 map.min_key(M) = tree234.min_key(M).
 
-map.det_min_key(M) = 
+map.det_min_key(M) =
     ( if K = map.min_key(M) then
         K
     else

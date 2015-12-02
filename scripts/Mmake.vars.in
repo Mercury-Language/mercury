@@ -42,7 +42,7 @@ endif
 # We need to substitute all spaces with colons for the VPATH to work.
 # Getting a space to be recognised as the first argument of the subst
 # function is problematic; hence the `$(nullstring)' hack.
-# As VPATH uses colon as the seperator we also need to convert all the
+# As VPATH uses colon as the separator we also need to convert all the
 # directories into cygwin unix format if they are in windows format.
 # XXX Note that directory names with spaces in them (e.g. under Windows)
 # will cause problems for the VPATH settings below, as well as every
@@ -578,7 +578,7 @@ endif
 
 # This needs to go here so that user Mmake files can add new suffixes.
 
-.SUFFIXES: # reset sufix list to be empty
+.SUFFIXES: # reset suffix list to be empty
 
 #-----------------------------------------------------------------------------#
 

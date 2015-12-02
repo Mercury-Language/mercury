@@ -372,7 +372,7 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
     % Please keep the code recognizing commands in the same order
     % as the definition of the command type.
 
-    % If you add more commands, please update the documention printed
+    % If you add more commands, please update the documentation printed
     % by the help predicate in browse.m.
     ( if
         ( CmdToken = token_name("print")

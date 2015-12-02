@@ -97,7 +97,7 @@
     % Unlike quantification.goal_vars, this predicate returns
     % even the explicitly quantified variables.
     %
-    % Warning: the complexity of this predicate is proportionial to the
+    % Warning: the complexity of this predicate is proportional to the
     % size of the goal. Goals can be pretty big. Whatever you want to do,
     % if you have a way to do it *without* calling the predicate, you will
     % probably want to it that way.
@@ -141,8 +141,8 @@
     % In addition, a typeclass-info may be non-local to a goal if any of the
     % non-local variables for that goal are polymorphically typed and are
     % constrained by the typeclass constraints for that typeclass-info
-    % variable, or if the the type-class-info is for an existential constraint,
-    % i.e. a constraint which contrains an existentially quantified type
+    % variable, or if the type-class-info is for an existential constraint,
+    % i.e. a constraint which contains an existentially quantified type
     % variable.
     %
 :- pred extra_nonlocal_typeinfos(rtti_varmaps::in, vartypes::in,

@@ -586,7 +586,7 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             MaybeGoal = ok1(Goal)
         else
             % "^ field_list := Term" is a DCG field update, which replaces
-            % the named field in the implicit DCG argument. 
+            % the named field in the implicit DCG argument.
             %
             % Such field updates are represented as calls in the parse tree.
             % The field update is implemented by goal_expr_to_goal.m when

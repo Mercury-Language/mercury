@@ -281,7 +281,7 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
     % quantification and/or constraint attributes on them, i.e.
     % the set item_pred_decl and item_mode_decl, is exactly the
     % set of items that may appear in class method specifications.
-    % 
+    %
     % A variant of the commented-out code below for should help implement
     % quantification for these kinds of promise declarations, but enabling it
     % would break the above coincidence, requiring extra checks in

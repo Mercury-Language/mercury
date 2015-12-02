@@ -1303,7 +1303,7 @@ current_and_parent_frame_tracing_levels(CurrentLevel, ParentLevel, !IO) :-
             ParentLevel = Parent ^ sf_tracing_level
         )
     ).
-                
+
 :- pred is_same_int(int::in, int::in, bool::out) is det.
 
 is_same_int(IntA, IntB, IsSame) :-

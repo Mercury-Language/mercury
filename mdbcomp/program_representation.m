@@ -428,7 +428,7 @@
     % state update in the auto-parallelisation feedback tool.
     %
     % This table should exist in any procedure that is named in a oisu pragma.
-    % In other procedures, it may or or may not be there (currently, it isn't).
+    % In other procedures, it may or may not be there (currently, it isn't).
     %
 :- type var_type_table == map(var_rep, type_rep).
 

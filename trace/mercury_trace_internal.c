@@ -1249,7 +1249,7 @@ MR_trace_get_command(const char *prompt, FILE *mdb_in, FILE *mdb_out)
 **
 ** Whether the line is read from the queue or from mdb_in, if this function
 ** returns a non-NULL value, then the memory for the line returned will have
-** been allocated with MR_malloc(), and it is the caller's resposibility
+** been allocated with MR_malloc(), and it is the caller's responsibility
 ** to MR_free() it when appropriate.
 */
 

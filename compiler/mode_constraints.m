@@ -1704,7 +1704,7 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
 
         % XXX This will put constraints on variables that do not occur in
         % the lambda goal. These constraints will be removed at the next
-        % restrict, but it would be more efficient not to put them in in the
+        % restrict, but it would be more efficient not to put them in the
         % first place.
 
         % DEBUGGING CODE

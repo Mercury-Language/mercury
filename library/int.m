@@ -254,7 +254,7 @@
     is semidet.
 :- mode fold_up(pred(in, in, out) is nondet, in, in, in, out)
     is nondet.
-:- mode fold_up(pred(in, mdi, muo) is nondet, in, in, mdi, muo) 
+:- mode fold_up(pred(in, mdi, muo) is nondet, in, in, mdi, muo)
     is nondet.
 :- mode fold_up(pred(in, di, uo) is cc_multi, in, in, di, uo)
     is cc_multi.
@@ -349,7 +349,7 @@
     in, out, in, out) is nondet.
 :- mode fold_down2(pred(in, in, out, mdi, muo) is nondet, in, in,
     in, out, mdi, muo) is nondet.
-    
+
     % fold_up3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
     %   list.foldl3(F, Low .. High, !Acc1, !Acc2, !Acc3)
     %
@@ -376,7 +376,7 @@
     in, in, in, out, in, out, in, out) is nondet.
 :- mode fold_up3(pred(in, in, out, in, out, mdi, muo) is nondet,
     in, in, in, out, in, out, mdi, muo) is nondet.
-    
+
     % fold_up3(F, Low, High, !Acc1, Acc2, !Acc3) <=>
     %   list.foldr3(F, Low .. High, !Acc1, !Acc2, !Acc3)
     %

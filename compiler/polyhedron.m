@@ -103,9 +103,8 @@
 :- pred polyhedron.optimize(lp_varset::in, polyhedron::in, polyhedron::out)
     is det.
 
-    % polyhedron.intersection(A, B, C).
-    % The polyhedron `C' is the intersection of the the
-    % polyhedra `A' and `B'.
+    % intersection(A, B, C):
+    % The polyhedron `C' is the intersection of  the polyhedra `A' and `B'.
     %
 :- func polyhedron.intersection(polyhedron, polyhedron) = polyhedron.
 :- pred polyhedron.intersection(polyhedron::in, polyhedron::in,
@@ -321,7 +320,7 @@ convex_union(Varset, MaybeMaxSize, eqns(ConstraintsA),
     --->    polyhedra_info(
                 % There is one of these for each polyhedron. It maps the
                 % original variables in the constraints to the temporary
-                % variables introduced by the the transformation.
+                % variables introduced by the transformation.
                 % A variable that occurs in more than one polyhedron
                 % is mapped to a separate temporary variable for each one.
                 var_maps        :: var_maps,

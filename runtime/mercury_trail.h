@@ -29,7 +29,7 @@
 /*---------------------------------------------------------------------------*/
 /*
 ** The following macros define how to store and retrieve a 'ticket' -
-** the information that we need to be able to backtrack. 
+** the information that we need to be able to backtrack.
 ** This is the interface with the code generator;
 ** the macros here are used by the generated code.
 **
@@ -60,7 +60,7 @@
 
 /*---------------------------------------------------------------------------*/
 
-/* 
+/*
 ** void MR_mark_ticket_stack(MR_Word &);
 */
 #define MR_mark_ticket_stack(save_ticket_counter)                           \
@@ -101,7 +101,7 @@
             (save_ticket_counter);                                          \
     } while(0)
 
-/* 
+/*
 ** Called when we create a choice point (including semidet choice points).
 */
 
@@ -117,7 +117,7 @@
 /*
 ** Unwind restoration info back to `old'.  `kind' indicates  whether we are
 ** restoring or just discarding the info.
-** 
+**
 ** Note that the commented out calls to save/restore transient registers are
 ** not needed because MR_trail_ptr is never a real register.
 */
@@ -155,7 +155,7 @@ typedef enum {
     ** trail entries are used to restore memory.
     ** Then these trail entries are discarded.
     */
-    MR_undo,       
+    MR_undo,
 
     /*
     ** MR_commit:
@@ -164,7 +164,7 @@ typedef enum {
     ** context, or when a nondet/multi goal has no output variables.
     ** Function trail entries are invoked.
     */
-    MR_commit,     
+    MR_commit,
 
     /*
     ** MR_solve:
@@ -173,7 +173,7 @@ typedef enum {
     ** and in nondet if-the-elses.
     ** Function trail entries are invoked.
     */
-    MR_solve,      
+    MR_solve,
 
     /*
     ** MR_exception:
@@ -181,7 +181,7 @@ typedef enum {
     ** Behaves as MR_undo, except that function trail entries may
     ** choose to behave differently for exceptions than for failure.
     */
-    MR_exception,  
+    MR_exception,
 
     /*
     ** MR_retry:
@@ -189,7 +189,7 @@ typedef enum {
     ** Behaves as MR_undo, except that function trail entries may
     ** choose to behave differently for retries than for failure.
     */
-    MR_retry,  
+    MR_retry,
 
     /*
     ** MR_gc:
@@ -343,7 +343,7 @@ struct MR_TrailEntry_Struct {
 ** we do not use the global variables; instead each engine contains fields
 ** for holding the trail state and we load the fields from the context
 ** into the engine that is running it.
-** 
+**
 ** XXX the implementation for the high-level C backend is a bit of a mess.
 ** It's currently all tied up with that of the low-level backend.
 ** In high-level C grades each POSIX thread has a dummy engine and context
@@ -362,16 +362,16 @@ struct MR_TrailEntry_Struct {
          extern MR_MemoryZones *MR_prev_trail_zones;
     #endif
 
-    /* 
+    /*
     ** A pointer to the current top of the Mercury trail.
-    ** N.B. Use `MR_trail_ptr', defined in mercury_regs.h, 
+    ** N.B. Use `MR_trail_ptr', defined in mercury_regs.h,
     ** not `MR_trail_ptr_var'.
     */
     extern MR_TrailEntry *MR_trail_ptr_var;
 
     /*
     ** An integer variable that holds the current choice point identifier;
-    ** it is allocated a new value whenever we create a choice point 
+    ** it is allocated a new value whenever we create a choice point
     ** (including semidet choice points, e.g. in an if-then-else) and it is
     ** reset whenever a choice point is backtracked over or pruned away.
     **
@@ -397,7 +397,7 @@ struct MR_TrailEntry_Struct {
 /*
 ** The following macros are used to access (parts of) the trail zone in a
 ** grade independent manner.
-** 
+**
 ** MR_TRAIL_ZONE expands to the address of the trail zone for the current
 ** thread.
 **
@@ -412,7 +412,7 @@ struct MR_TrailEntry_Struct {
 #if defined(MR_THREAD_SAFE)
 
     #define MR_TRAIL_ZONE (MR_CONTEXT(MR_ctxt_trail_zone))
-    
+
     #if defined(MR_TRAIL_SEGMENTS)
         #define MR_PREV_TRAIL_ZONES (MR_CONTEXT(MR_ctxt_prev_trail_zones))
     #endif
@@ -421,7 +421,7 @@ struct MR_TrailEntry_Struct {
         ((MR_TrailEntry *) (MR_CONTEXT(MR_ctxt_trail_zone)->MR_zone_min))
 #else
     #define MR_TRAIL_ZONE   MR_trail_zone
-    
+
     #if defined(MR_TRAIL_SEGMENTS)
         #define MR_PREV_TRAIL_ZONES MR_prev_trail_zones
     #endif
@@ -518,11 +518,11 @@ typedef MR_Unsigned MR_ChoicepointId;
 ** created (since choicepoint ids may be reused after backtracking).
 **
 ** If we execute
-** 
+**
 **  oldcp = MR_current_choicepoint_id();
 **  ... and a long time later ...
 **  if (oldcp == MR_current_choicepoint_id()) {A}
-** 
+**
 ** then we can be assured that if the choicepoint current at the time of the
 ** first call to MR_current_choicepoint() has not been backtracked over before
 ** the second call, then code A will be executed if and only if the current

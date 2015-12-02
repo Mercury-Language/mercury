@@ -1919,7 +1919,7 @@ module_name_hash(SymName, Hash) :-
         Hash = string.hash(String)
     ;
         SymName = qualified(_Qual, String),
-        % Hashing the the module qualifier seems to be not worthwhile.
+        % Hashing the module qualifier seems to be not worthwhile.
         Hash = string.hash(String)
     ).
 

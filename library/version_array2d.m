@@ -4,16 +4,16 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% 
+%
 % File: version_array2d.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>.
 % Stability: medium-low.
-% 
+%
 % Two-dimensional rectangular (i.e. not ragged) version arrays.
-% 
+%
 % See the header comments in version_array.m for more details about version
 % structures.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -37,7 +37,7 @@
     % An exception is thrown if the sublists are not all the same length.
     %
 :- func version_array2d(list(list(T))) = version_array2d(T).
-    
+
     % init(M, N, X) = version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]])
     % where each XIJ = X.
     %

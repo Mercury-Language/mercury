@@ -92,7 +92,7 @@
 % SdprocMap:    Maps each label that begins a semidet epilog to the epilog.
 %               This can be the success epilog or the failure epilog.
 % ForkMap:      Maps each label that begins a full semidet epilog (code to
-%               test r1, and to execute the the success or failure epilog
+%               test r1, and to execute the success or failure epilog
 %               depending on the result) to the epilog.
 %
 % BlockMap will not contain the initial block of the procedure unless

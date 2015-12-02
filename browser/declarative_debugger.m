@@ -39,7 +39,7 @@
 %      representation and all the internal events for any call through
 %      which it must track a sub-term. Child interface events however
 %      may be omitted (as long as each CALL which is present has all its
-%      corresponding REDOs, EXIT, FAIL or EXCP event(s) and vica versa).
+%      corresponding REDOs, EXIT, FAIL or EXCP event(s) and vice versa).
 %
 % The backend will only build a portion of the annotated trace at a time
 % (down to a specified depth limit). The front end can request that more
@@ -106,7 +106,7 @@
 
 :- type decl_e_bug
     --->    incorrect_contour(
-                % The head of the clause, in its inital state of instantiation.
+                % The head of the clause, in its initial state of instantiation.
                 init_decl_atom,
 
                 % The head of the clause, in its final state of instantiation.

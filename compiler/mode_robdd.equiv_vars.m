@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: mode_robdd.equiv_vars.m.
 % Main author: dmo
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module mode_robdd.equiv_vars.

@@ -34,7 +34,7 @@
 %-----------------------------------------------------------------------------%
 
     % Create a code address which holds the address of the specified procedure.
-    % The `immed' argument should be `no' if the the caller wants the returned
+    % The `immed' argument should be `no' if the caller wants the returned
     % address to be valid from everywhere in the program. If being valid from
     % within the current procedure is enough, this argument should be `yes'
     % wrapped around the value of the --procs-per-c-function option and the

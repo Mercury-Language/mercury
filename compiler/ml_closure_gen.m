@@ -391,7 +391,7 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !GlobalData) :-
         ; TypeInfo = var_arity_type_info(_, _)
         ),
         % For other types, we need to generate a definition of the type_info
-        % for that type, in the the current module.
+        % for that type, in the current module.
         RttiData = rtti_data_type_info(TypeInfo),
         rtti_data_to_id(RttiData, RttiId),
 

@@ -15,24 +15,24 @@
 % `delay', and `force', which can be used to emulate lazy evaluation.
 %
 % A field within a data structure can be made lazy by wrapping it within a lazy
-% type.  Or a lazy data-structure can be implemented, for example:
-% 
+% type.  Or a lazy data structure can be implemented, for example:
+%
 % :- type lazy_list(T)
 %     --->    lazy_list(
 %                 lazy(list_cell(T))
 %             ).
-% 
+%
 % :- type list_cell(T)
 %     --->    cons(T, lazy_list(T))
 %     ;       nil.
 %
 % Note that this makes every list cell lazy, whereas:
 %
-%   lazy(list(T)) 
+%   lazy(list(T))
 %
 % uses only one thunk for the entire list. And:
 %
-%   list(lazy(T)) 
+%   list(lazy(T))
 %
 % uses one thunk for every element, but the list's structure is not lazy.
 %

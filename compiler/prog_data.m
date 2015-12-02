@@ -425,7 +425,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     %
     % NOTE: the reason that we cannot convert it to the correct form
     % is that we don't have complete information about how many typeinfo
-    % related arguments there are until after the polymoprhism pass.
+    % related arguments there are until after the polymorphism pass.
     %
 :- type arg_size_constr
     --->    le(list(arg_size_term), rat)
@@ -489,7 +489,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     %
 :- type structure_sharing_pair == pair(datastruct).
 
-    % A datastructure is a concept that designates a particular subterm of the
+    % A datastruct is a concept that designates a particular subterm of the
     % term to which a particular variable may be bound. The selector is
     % normalized.
     %
@@ -562,7 +562,7 @@ eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     % some program point, depending on the calling context.
     % This information consists of three parts:
     %   - a list of dead datastructures specifying which memory cells
-    %   might become dead, hence reuseable;
+    %   might become dead, hence reusable;
     %   - a list of live datastructures that specifies which memory cells
     %   are always live at the place where the above dead datastructures might
     %   become dead;
@@ -2073,7 +2073,7 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 :- type inst_result_contains_inst_names
     --->    inst_result_contains_inst_names_known(set(inst_name))
             % All the inst_names inside the inst are given in the set.
-            % This is not guarantee that all the inst_names in the set
+            % This is not a guarantee that all the inst_names in the set
             % appear in the inst, but it is a guarantee that an inst_name
             % that appears in the inst will appear in the set.
     ;       inst_result_contains_inst_names_unknown.
@@ -2081,15 +2081,15 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 :- type inst_result_contains_inst_vars
     --->    inst_result_contains_inst_vars_known(set(inst_var))
             % All the inst_vars inside the inst are given in the set.
-            % This is not guarantee that all the inst_vars in the set
+            % This is not a guarantee that all the inst_vars in the set
             % appear in the inst, but it is a guarantee that an inst_var
             % that appears in the inst will appear in the set.
     ;       inst_result_contains_inst_vars_unknown.
 
 :- type inst_result_contains_types
     --->    inst_result_contains_types_known(set(type_ctor))
-            % All the type_ctors inside typed_inst nodes of the the inst
-            % are given in the set. This is not guarantee that all the
+            % All the type_ctors inside typed_inst nodes of the inst
+            % are given in the set. This is not a guarantee that all the
             % type_ctors in the set appear in the inst, but it is a guarantee
             % that a type_ctor that appears in the inst will appear in the set.
     ;       inst_result_contains_types_unknown.

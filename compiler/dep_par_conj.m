@@ -489,7 +489,7 @@ maybe_sync_dep_par_conj(Conjuncts, GoalInfo, NewGoal, InstMap, !SyncInfo) :-
         SharedVars0),
 
     ( set_of_var.is_empty(SharedVars) ->
-        % Independant parallel conjunctions can somtimes be re-ordered to
+        % Independent parallel conjunctions can sometimes be re-ordered to
         % generate faster code.
         module_info_get_globals(ModuleInfo0, Globals),
         globals.lookup_bool_option(Globals, par_loop_control, ParLoopControl),
@@ -3005,7 +3005,7 @@ should_we_push_signal_in_disj(Var, [FirstGoal | LaterGoals], OrigSignal,
         ; SignalFirst = code_has_no_solutions
         ),
         % We want to push the signal only if it is worth pushing
-        % into one of the the rest of the disjuncts.
+        % into one of the rest of the disjuncts.
         should_we_push_signal_in_disj(Var, LaterGoals, OrigSignal,
             Signal0),
         (
@@ -3052,7 +3052,7 @@ should_we_push_signal_in_cases(Var, [FirstCase | LaterCases], OrigSignal,
         ; SignalFirst = code_has_no_solutions
         ),
         % We want to push the signal only if it is worth pushing
-        % into one of the the rest of the cases.
+        % into one of the rest of the cases.
         should_we_push_signal_in_cases(Var, LaterCases, OrigSignal,
             Signal0),
         (

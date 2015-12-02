@@ -282,7 +282,7 @@ extern  const char  *MR_trace_browse_all_on_level(FILE *out,
                         int ancestor_level, MR_bool print_optionals);
 
 /*
-** If the given variable specification is unambiguous, then set set *type_info
+** If the given variable specification is unambiguous, then set *type_info
 ** to the type of the specified variable, set *value to its value, and set
 ** *name to its name (the storage name points to will remain valid only until
 ** the next call to MR_lookup_unambiguous_var_spec). Return a non-NULL error

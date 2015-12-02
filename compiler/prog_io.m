@@ -37,7 +37,7 @@
 % that a simple list of items. Part of this complexity is that source files,
 % interface files and optimization files have different parse trees,
 % and we accordingly have different predicates for creating those parse trees.
-% The main predicates for reading these three kinds of files are 
+% The main predicates for reading these three kinds of files are
 %
 % - read_parse_tree_src,
 % - read_parse_tree_int, and

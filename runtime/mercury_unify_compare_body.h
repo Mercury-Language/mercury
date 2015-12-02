@@ -596,7 +596,7 @@ start_label:
             /*
             ** The tuple unify and compare predicates are implemented in
             ** Mercury, mainly so that the compiler can perform the deep
-            ** profiler tranformation on them.
+            ** profiler transformation on them.
             */
 #ifdef select_compare_code
     #ifdef include_compare_rep_code

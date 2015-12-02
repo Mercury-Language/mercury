@@ -16,13 +16,13 @@
 
 /*
 ** When in declarative debugging mode, the internal debugger calls
-** MR_trace_decl_debug for each event.  
+** MR_trace_decl_debug for each event.
 */
 
 extern  MR_Code     *MR_trace_decl_debug(MR_EventInfo *event_info);
 
 /*
-** The following functions update the progress indicator when building a 
+** The following functions update the progress indicator when building a
 ** subtree or a supertree.
 */
 
@@ -38,7 +38,7 @@ extern  void        MR_trace_show_progress_supertree(MR_Unsigned event_number);
 
 typedef enum { MR_DECL_NODUMP, MR_DECL_DUMP } MR_DeclMode;
 
-extern  MR_bool     MR_trace_start_decl_debug(MR_DeclMode mode, 
+extern  MR_bool     MR_trace_start_decl_debug(MR_DeclMode mode,
                         const char *outfile, MR_bool new_session,
                         MR_TraceCmdInfo *cmd, MR_EventInfo *event_info,
                         MR_Code **jumpaddr);
@@ -62,7 +62,7 @@ extern  MR_bool     MR_trace_start_decl_debug(MR_DeclMode mode,
 extern  MR_bool     MR_trace_decl_assume_all_io_is_tabled;
 
 /*
-** These functions add(or remove) a module, pred or func to(or from) the set of 
+** These functions add(or remove) a module, pred or func to(or from) the set of
 ** trusted objects in the oracle_state inside the current diagnoser_state.
 ** They will call MR_trace_decl_ensure_init to ensure the diagnoser_state is
 ** initialised first.
@@ -75,7 +75,7 @@ extern  void        MR_decl_trust_standard_library(void);
 extern  MR_bool     MR_decl_remove_trusted(MR_Integer n);
 
 /*
-** MR_trace_decl_set_default_search_mode sets the default search mode for 
+** MR_trace_decl_set_default_search_mode sets the default search mode for
 ** the analyser.
 */
 
@@ -118,11 +118,11 @@ extern MR_DeclSearchMode MR_trace_get_default_search_mode(void);
 
 /*
 ** Prints a list of the trusted objects.  If mdb_command_format is true it
-** prints the list as a series of mdb `trust' commands.  Otherwise it 
+** prints the list as a series of mdb `trust' commands.  Otherwise it
 ** prints the list in a format suitable for display.
 */
 
-extern  void        MR_decl_print_all_trusted(FILE *fp, 
+extern  void        MR_decl_print_all_trusted(FILE *fp,
                         MR_bool mdb_command_format);
 
 /*
@@ -135,7 +135,7 @@ extern  void        MR_decl_print_all_trusted(FILE *fp,
 */
 
 extern	MR_bool	MR_trace_decl_init_suspicion_table(
-			char *pass_trace_counts_file, 
+			char *pass_trace_counts_file,
 			char *fail_trace_counts_file,
 			MR_String *problem);
 
@@ -151,18 +151,18 @@ extern  void        MR_trace_decl_set_testing_flag(MR_bool testing);
 ** the call depth is not guaranteed to be increase by one each time
 ** -- see comments in MR_trace_real in trace/mercury_trace.c.  We use the
 ** following variable to keep track of the EDT depth.  We only keep track of
-** the depth of events in the subtree we are materializing.  
+** the depth of events in the subtree we are materializing.
 ** MR_edt_depth keeps track of the depth of nodes in the EDT by storing the
 ** depth of the next event if it is a final or internal event.  If the next
 ** event is a CALL or REDO it will have a depth of MR_edt_depth + 1.
-** The CALL and final events of the root of the subtree being materialized 
+** The CALL and final events of the root of the subtree being materialized
 ** have depth 0.
 */
 
 extern  MR_Integer      MR_edt_depth;
 
 /*
-** MR_edt_implicit_subtree_depth performs the same role as MR_edt_depth, 
+** MR_edt_implicit_subtree_depth performs the same role as MR_edt_depth,
 ** except that it keeps track of the depth of nodes in implicit subtrees of
 ** the tree being materialized.
 */
@@ -171,7 +171,7 @@ extern  MR_Integer      MR_edt_implicit_subtree_depth;
 
 /*
 ** Events where the value of MR_edt_depth above is greater than the value of
-** MR_edt_max_depth will not be included in tha annotated trace.
+** MR_edt_max_depth will not be included in the annotated trace.
 */
 
 extern  MR_Unsigned     MR_edt_max_depth;
@@ -203,9 +203,9 @@ extern  MR_Unsigned     MR_edt_desired_nodes_in_subtree;
 extern  MR_Unsigned     MR_edt_default_depth_limit;
 
 /*
-** The following variable indicates whether the declarative debugger was 
+** The following variable indicates whether the declarative debugger was
 ** invoked with the --debug option.  It is needed so that the declarative
-** debugger can continue to be debugged after a new portion of the 
+** debugger can continue to be debugged after a new portion of the
 ** annotated trace has been generated.
 */
 
@@ -246,7 +246,7 @@ typedef MR_Word MR_TraceNode;
 #define	MR_TRACE_DECL_MAX_SUSPICION 	100
 
 /*
-** The default desired number of nodes to add to the annotated trace when 
+** The default desired number of nodes to add to the annotated trace when
 ** materializing a new subtree.
 */
 
@@ -265,7 +265,7 @@ typedef MR_Word MR_TraceNode;
 
 /*
 ** How often to update the progress message, expressed in terms of number of
-** events.  We define seperate intervals for when we are materializing 
+** events.  We define separate intervals for when we are materializing
 ** nodes and when we are in an implicit subtree, since execution is much
 ** faster in implicit subtrees.
 */
@@ -293,7 +293,7 @@ typedef MR_Word MR_TraceNode;
 ** How many milliseconds to wait before displaying progress.
 */
 
-#define     MR_DECL_DISPLAY_PROGRESS_DELAY    1000 
+#define     MR_DECL_DISPLAY_PROGRESS_DELAY    1000
 
 /*
 ** The following two macros decide when to display progress.
@@ -302,7 +302,7 @@ typedef MR_Word MR_TraceNode;
 ** implicit subtrees.
 ** In the implicit tree version we don't need to check if the event is the
 ** last event, since the last event will not be in an implicit subtree.
-** This means we can reorder the if-then-elses to be more efficient in 
+** This means we can reorder the if-then-elses to be more efficient in
 ** implicit subtrees.  We also check to see if we should update the progress
 ** less often when in an implicit subtree.
 ** By defining these checks as macros we only incur the cost of a function call

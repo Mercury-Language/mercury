@@ -82,7 +82,7 @@ extern void	MR_prof_output_addr_decl(const char *name,
 
 /*
 ** The following functions are used by mercury_wrapper.c to
-** initiate profiling, at the start of the the program,
+** initiate profiling, at the start of the program,
 ** to finish up profiling (writing the profiling data to files)
 ** at the end of the program, and to close the `Prof.Decl' file at end of
 ** module initialization.

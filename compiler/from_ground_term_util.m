@@ -105,7 +105,7 @@
     %   marked up in the way required by the comment on the definition of the
     %   fgt_marked_goal type). This predicate assumes that this list contains
     %   some violations of the fgt{i,c} invariants (other than the order
-    %   invariant for initial scopes); if it doesn't, then the the WHOLE
+    %   invariant for initial scopes); if it doesn't, then the WHOLE
     %   conjunction can have a fgt{i,c} scope wrapped around it, using code
     %   much simpler than what is in this predicate.
     %

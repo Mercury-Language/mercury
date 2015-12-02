@@ -1196,8 +1196,7 @@ lookup_exception_analysis_result(PPId, ExceptionStatus, !ModuleInfo) :-
 
     % If we the procedure we are calling is imported and we are using
     % intermodule-analysis then we need to look up the exception status in the
-    % analysis registry; otherwise we look it up in the the exception_info
-    % table.
+    % analysis registry; otherwise we look it up in the exception_info table.
 
     UseAnalysisRegistry = IsImported `bool.and` IntermodAnalysis
         `bool.and` ExceptionAnalysis,

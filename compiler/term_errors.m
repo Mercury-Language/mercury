@@ -264,7 +264,7 @@ describe_term_errors(ModuleInfo, Single, [Error | Errors], ErrNum0,
     describe_term_error(ModuleInfo, Single, Error, yes(ErrNum0),
         !Msgs, !Specs),
     describe_term_errors(ModuleInfo, Single, Errors, ErrNum0 + 1,
-        !Msgs, !Specs). 
+        !Msgs, !Specs).
 
 :- pred describe_term_error(module_info::in, maybe(pred_proc_id)::in,
     term_error::in, maybe(int)::in, cord(error_msg)::in, cord(error_msg)::out,

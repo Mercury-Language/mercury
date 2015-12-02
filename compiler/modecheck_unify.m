@@ -944,7 +944,7 @@ ho_inst_info_is_nondefault_mode_func(HoInstInfo, IsBad) :-
             ( if Detism = detism_det then
                 list.det_split_last(ArgModes,
                     ShouldBeInputArgModes, ShouldBeOutputMode),
-                ( if 
+                ( if
                     list.all_true(is_input_mode, ShouldBeInputArgModes),
                     is_output_mode(ShouldBeOutputMode)
                 then

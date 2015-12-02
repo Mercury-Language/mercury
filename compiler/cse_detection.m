@@ -784,7 +784,7 @@ create_new_arg_var(OldArgVar, Context, UnifyContext, !CseInfo, !OldNewVars,
     % goal makes that name visible in the other branches as well, and in
     % THOSE branches, it can be misleading.
     %
-    % This is illustrataed by the merge predicate in tests/debugger/dice.m:
+    % This is illustrated by the merge predicate in tests/debugger/dice.m:
     %
     % merge([], [], []).
     % merge([S | Ss], [], [S | Ss]).

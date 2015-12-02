@@ -628,7 +628,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, ArgWidths, HowToConstruct0,
     ;
         ConsTag = shared_local_tag(Ptag, Sectag),
         assign_const_to_var(Var,
-            mkword(Ptag, unop(mkbody, const(llconst_int(Sectag)))), 
+            mkword(Ptag, unop(mkbody, const(llconst_int(Sectag)))),
             !.CI, !CLD),
         Code = empty
     ;

@@ -1231,7 +1231,7 @@ MR_trace_decl_disj_later(MR_EventInfo *event_info, MR_TraceNode prev)
     const char      *path;
     MR_TraceNode    next;
     MR_TraceNode    first;
-    
+
     path = event_info->MR_event_path;
 
     /*

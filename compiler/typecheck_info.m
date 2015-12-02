@@ -334,7 +334,7 @@ typecheck_info_set_overload_error(X, !Info) :-
 % 11        43         0         0              varset
 % 12    401290         0       124   0.000%     non_overload_errors
 % 13    401218         0       164   0.000%     overload_error
-% 14    188296         0    188132   0.000%     overloaded_symbols 
+% 14    188296         0    188132   0.000%     overloaded_symbols
 % 15       204         0         0              ambiguity_error_limit
 
 % Access statistics from during the change on 2015 jan 9.

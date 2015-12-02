@@ -367,7 +367,7 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
             else
                 true
             ),
-            
+
             (
                 !.Specs = [],
                 list.map(term.coerce_var, ArgVars, InstArgVars),

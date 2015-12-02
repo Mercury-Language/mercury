@@ -51,9 +51,9 @@ static String_List  *init_file_dirs = NULL;
 static String_List  **init_file_dirs_tail = &init_file_dirs;
 
 /* --- adjustable limits --- */
-#define MAXFILENAME 4096    /* maximimum file name length           */
-#define NUMFILES    128     /* intial size of files array           */
-#define FACTOR      2       /* factor to increase files array by    */
+#define MAXFILENAME 4096    /* maximum file name length           */
+#define NUMFILES    128     /* initial size of files array        */
+#define FACTOR      2       /* factor to increase files array by  */
 
 /* --- function prototypes --- */
 
@@ -75,7 +75,7 @@ process_file_list_file(char *filename)
         num_errors++;
         return;
     }
-    /* intialize the files structure, if required */
+    /* initialize the files structure, if required */
     if (files == NULL) {
         num_files = 0;
         size_of_files = NUMFILES;

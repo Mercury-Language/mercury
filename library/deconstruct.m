@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: deconstruct.m.
 % Main author: zs.
 % Stability: low.
-% 
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -142,7 +142,7 @@
     % Don't abort if the type has user-defined equality.
     %
 :- pred functor_number_cc(T::in, functor_number_lex::out,
-    int::out) is cc_nondet. 
+    int::out) is cc_nondet.
 
     % arg(Data, NonCanon, Index, Argument)
     %

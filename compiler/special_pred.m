@@ -201,7 +201,7 @@ special_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
 :- pragma inline(spec_pred_name_append_type_id/0).
 
 % XXX The name demanglers don't yet understand predicate names for special
-% preds that have the type name and and arity appended, and the hand-written
+% preds that have the type name and arity appended, and the hand-written
 % unify/compare predicates for builtin types such as typeinfo have the plain
 % base names. Therefore returning "yes" here is useful only for debugging
 % the compiler.

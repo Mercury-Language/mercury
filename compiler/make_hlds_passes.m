@@ -107,7 +107,7 @@ do_parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
         % Mercury compiler invocations, such as those in a bootcheck.
         % The file should be created empty before the start of the sequence,
         % and should be appended to by one Mercury compiler invocation
-        % at a time. (We don't do any locking, so if more than one invocation 
+        % at a time. (We don't do any locking, so if more than one invocation
         % tries to append to the file at the same time, the resulting output
         % will be malformed.)
         %
@@ -514,8 +514,8 @@ add_item_avail(ItemMercuryStatus, Avail, !ModuleInfo) :-
 
 add_type_defn(SectionItem, !ModuleInfo, !FoundInvalidType, !Specs,
         !SolverAuxPredInfos, !SectionMutableItems) :-
-    SectionItem = sec_item(SectionInfo, ItemTypeDefnInfo), 
-    SectionInfo = sec_info(ItemMercuryStatus, NeedQual), 
+    SectionItem = sec_item(SectionInfo, ItemTypeDefnInfo),
+    SectionInfo = sec_info(ItemMercuryStatus, NeedQual),
     ItemTypeDefnInfo = item_type_defn_info(SymName, TypeParams, TypeDefn,
         TypeVarSet, Context, _SeqNum),
     (
@@ -621,7 +621,7 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
 
     PredName = unqualify_name(PredSymName),
     ( if PredName = "" then
-        Pieces = [words("Error: you cannot declare a"), 
+        Pieces = [words("Error: you cannot declare a"),
             words(pred_or_func_to_full_str(PredOrFunc)),
             words("whose name is a variable."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
@@ -668,7 +668,7 @@ add_mode_decl(StatusItem, !ModuleInfo, !Specs) :-
 
     PredName = unqualify_name(PredSymName),
     ( if PredName = "" then
-        Pieces = [words("Error: you cannot declare a mode"), 
+        Pieces = [words("Error: you cannot declare a mode"),
             words("for a predicate whose name is a variable."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),
         Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
@@ -742,7 +742,7 @@ add_clause(StatusItem, !ModuleInfo, !QualInfo, !Specs) :-
 
     PredName = unqualify_name(PredSymName),
     ( if PredName = "" then
-        Pieces = [words("Error: you cannot define a clause for a"), 
+        Pieces = [words("Error: you cannot define a clause for a"),
             words(pred_or_func_to_full_str(PredOrFunc)),
             words("whose name is a variable."), nl],
         Msg = simple_msg(Context, [always(Pieces)]),

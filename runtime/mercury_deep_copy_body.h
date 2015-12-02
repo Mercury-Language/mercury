@@ -189,7 +189,7 @@ try_again:
                 ** and MR_SECTAG_NONE cases is very similar.  However,
                 ** speed is important here, and we don't want to check
                 ** the secondary tag location multiple times at run-time.
-                ** So we define the code for thest two cases as a macro,
+                ** So we define the code for these two cases as a macro,
                 ** `MR_handle_sectag_remote_or_none(have_sectag)',
                 ** and invoke it twice below, with constant values for the
                 ** `have_sectag' argument.  This ensures that the C
@@ -198,7 +198,7 @@ try_again:
                 **
                 ** Likewise, we are careful to avoid testing
                 ** `exist_info != NULL' multiple times at run-time.
-                ** This requres two copies of the MR_get_first_slot() code,
+                ** This requires two copies of the MR_get_first_slot() code,
                 ** which is why we define that as a macro too.
                 */
 
@@ -844,7 +844,7 @@ try_again:
         MR_fatal_error("Unknown layout type in deep copy");
     }
 
-    MR_fatal_error(MR_STRINGIFY(copy) ": unexpected fallthough");
+    MR_fatal_error(MR_STRINGIFY(copy) ": unexpected fallthrough");
 }
 
 /*

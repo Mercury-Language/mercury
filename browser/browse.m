@@ -1767,7 +1767,7 @@ browser_mode_to_string(unbound) = "Unbound".
 
 %---------------------------------------------------------------------------%
 
-    % These two functions are just like like pprint:to_doc, except their input
+    % These two functions are just like pprint.to_doc, except their input
     % is not a natural term, but a synthetic term defined by a functor, a list
     % of arguments, and if the synthetic term is a function application, then
     % the result of that function application.

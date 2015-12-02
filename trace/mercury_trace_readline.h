@@ -36,14 +36,14 @@ extern  char    *MR_trace_readline_raw(FILE *in);
 
 /*
 ** Read a line from an mdb script.
-** Ocurrences of the strings "$1" to
+** Occurences of the strings "$1" to
 ** "$9" are replaced with the corresponding values in the args array.
 ** If there is no value in the args array, then the "$n" string is replaced
 ** by the empty string.
 ** Lines beginning with '#' and empty lines are ignored.
 ** Return a pointer to a MR_malloc'd buffer holding the new string (without
 ** the final newline).  If EOF occurs on a nonempty line, treat the EOF as a
-** newline; if EOF occurs on an empty line, return NULL.  
+** newline; if EOF occurs on an empty line, return NULL.
 ** Don't use GNU readline.
 */
 

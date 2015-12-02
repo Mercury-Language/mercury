@@ -67,7 +67,7 @@
     % and just passes the rval for it to this routine.
     %
     % This is used by ml_closure_gen.m to generate GC tracing code
-    % for the the local variables in closure wrapper functions.
+    % for the local variables in closure wrapper functions.
     %
 :- pred ml_gen_gc_statement_with_typeinfo(mlds_var_name::in,
     mer_type::in, mlds_rval::in, prog_context::in,

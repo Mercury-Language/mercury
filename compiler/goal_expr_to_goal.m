@@ -585,10 +585,10 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         % It is an error for the left or right hand side of a unification
         % to be !A (although it may be !.A or !:A).
         ( if TermA = functor(atom("!"), [variable(StateVarA, _)], _) then
-            report_svar_unify_error(Context, StateVarA, 
+            report_svar_unify_error(Context, StateVarA,
                 !VarSet, !SVarState, !Specs),
             ( if TermB = functor(atom("!"), [variable(StateVarB, _)], _) then
-                report_svar_unify_error(Context, StateVarB, 
+                report_svar_unify_error(Context, StateVarB,
                     !VarSet, !SVarState, !Specs)
             else
                 true

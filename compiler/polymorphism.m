@@ -1723,7 +1723,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % of the lambda goal.
     lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars,
         MaybeLambdaModesDet),
-    
+
     (
         MaybeLambdaModesDet = ok2(LambdaModes, LambdaDet),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -3937,7 +3937,7 @@ record_constraint_type_info_locns(Constraint, ExtraHeadVar, !Info) :-
     list.length(SuperClasses, NumSuperClasses),
 
     % Find all the type variables in the constraint, and remember what
-    % index they appear in in the typeclass info.
+    % index they appear in the typeclass info.
 
     % The first type_info will be just after the superclass infos.
     First = NumSuperClasses + 1,

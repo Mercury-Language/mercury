@@ -80,7 +80,7 @@
 % the cell could potentially be reused.
 %
 % Note that cells being deconstructed in the different branches of a
-% disjunction can now also be reused after the the disjunction.
+% disjunction can now also be reused after the disjunction.
 %
 % e.g.:
 %   (
@@ -185,7 +185,7 @@ background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
 %
 % (1) extend deconstruction_spec with a field of type may_use_atomic_alloc,
 %     indicating whether the potentially reused cell may be atomic or not, and
-% (2) ensure that we reuse atomically-created cells only for connstructions
+% (2) ensure that we reuse atomically-created cells only for constructions
 %     in which all arguments can be put into atomic cells.
 %
 % These will require applying type_may_use_atomic_alloc to the arguments of

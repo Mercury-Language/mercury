@@ -1301,11 +1301,11 @@ mode_error_final_inst_to_spec(ModeInfo, ArgNum, Var, VarInst, ExpInst, Reason)
         words("Final instantiatedness of"),
         quote(mercury_var_to_name_only(VarSet, Var)), words("was") |
         report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
-            [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)], 
+            [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
             VarInst)] ++
         [words("expected final instantiatedness was") |
         report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
-            [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)], 
+            [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)],
             ExpInst)],
     Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
         [simple_msg(Context, [always(Preamble ++ Pieces)])]).

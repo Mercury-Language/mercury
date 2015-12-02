@@ -571,7 +571,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
     ;
         ClassInterface = class_interface_concrete(_),
         list.foldl5(check_instance_pred(ClassId, Vars, HLDSClassInterface),
-            ClassPredIds, !InstanceDefn, [], RevInstanceMethods, 
+            ClassPredIds, !InstanceDefn, [], RevInstanceMethods,
             !ModuleInfo, !QualInfo, !Specs),
 
         % We need to make sure that the MaybePredProcs field is set to yes(_)
