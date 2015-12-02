@@ -110,8 +110,7 @@ warn_non_term_user_special_preds(ModuleInfo, !:Specs) :-
         module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
         % Index predicates cannot be defined by the user and should always
         % terminate by design.
-        SpecialPredMaps = special_pred_maps(UnifyMap, _IndexMap, CompareMap,
-            InitMap),
+        SpecialPredMaps = special_pred_maps(UnifyMap, _IndexMap, CompareMap),
         map.foldl(
             warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable,
                 spec_pred_unify),
@@ -119,11 +118,7 @@ warn_non_term_user_special_preds(ModuleInfo, !:Specs) :-
         map.foldl(
             warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable,
                 spec_pred_compare),
-            CompareMap, !Specs),
-        map.foldl(
-            warn_non_term_user_special_pred_kind(ModuleInfo, TypeTable,
-                spec_pred_init),
-            InitMap, !Specs)
+            CompareMap, !Specs)
     else
         true
     ).
@@ -199,26 +194,20 @@ process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor, TypeDefn,
 
 special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
     get_type_defn_body(TypeDefn, TypeBody),
+    get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare),
     (
-        % Always check solver type initialisation
-        % predicates since they are always user-defined.
-        SpecialPredId = spec_pred_init
-    ;
-        get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare),
+        UnifyCompare = unify_compare(MaybeUnify, MaybeCompare),
         (
-            UnifyCompare = unify_compare(MaybeUnify, MaybeCompare),
-            (
-                MaybeUnify = yes(_),
-                SpecialPredId = spec_pred_unify
-            ;
-                MaybeCompare = yes(_),
-                SpecialPredId = spec_pred_compare
-            )
+            MaybeUnify = yes(_),
+            SpecialPredId = spec_pred_unify
         ;
-            UnifyCompare = abstract_noncanonical_type(_),
-            unexpected($module, $pred,
-                "type is local and abstract_noncanonical")
+            MaybeCompare = yes(_),
+            SpecialPredId = spec_pred_compare
         )
+    ;
+        UnifyCompare = abstract_noncanonical_type(_),
+        unexpected($module, $pred,
+            "type is local and abstract_noncanonical")
     ).
 
     % Succeeds if the given type has user-defined equality and/or comparison
@@ -254,9 +243,6 @@ generate_non_term_user_special_warning(Context, SpecialPred, TypeCtor,
     ;
         SpecialPred = spec_pred_compare,
         SpecialPredStr = "comparison"
-    ;
-        SpecialPred = spec_pred_init,
-        SpecialPredStr = "initialisation"
     ),
     Pieces = [words("Warning: the user-defined "),
         fixed(SpecialPredStr ++ " predicate"), words("for the type "),

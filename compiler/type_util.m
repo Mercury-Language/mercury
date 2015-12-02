@@ -113,12 +113,6 @@
 :- pred type_body_has_solver_type_details(module_info::in,
     hlds_type_body::in, solver_type_details::out) is semidet.
 
-    % Succeeds if this type is a solver type that has an initialisation
-    % predicate specified by the user in the solver type definition.
-    %
-:- pred type_is_solver_type_with_auto_init(module_info::in, mer_type::in)
-    is semidet.
-
 :- pred type_is_solver_type(module_info::in, mer_type::in) is semidet.
 :- pred type_is_solver_type_from_type_table(type_table::in, mer_type::in)
     is semidet.
@@ -586,28 +580,6 @@ ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
 var_is_or_may_contain_solver_type(ModuleInfo, VarTypes, Var) :-
     lookup_var_type(VarTypes, Var, VarType),
     type_is_or_may_contain_solver_type(ModuleInfo, VarType).
-
-type_is_solver_type_with_auto_init(ModuleInfo, Type) :-
-    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-    (
-        TypeBody = hlds_solver_type(_, _),
-        ActualType = Type
-    ;
-        % XXX The current implementation doesn't provide enough information
-        % to determine whether abstract solver types support automatic
-        % initialisation or not. In the absence of such information we assume
-        % that they do not. Since we don't officially support automatic
-        % initialisation anyway this shouldn't be too much of a problem.
-        % (In the event that we do re-add some form of support for automatic
-        % solver initialisation then we will need to make sure that this
-        % information ends up in interface files somehow.)
-        TypeBody = hlds_abstract_type(abstract_solver_type),
-        fail
-    ;
-        TypeBody = hlds_eqv_type(ActualType)
-    ),
-    type_has_solver_type_details(ModuleInfo, ActualType, SolverTypeDetails),
-    SolverTypeDetails ^ std_init_pred = solver_init_automatic(_).
 
 type_is_or_may_contain_solver_type(ModuleInfo, Type) :-
     (

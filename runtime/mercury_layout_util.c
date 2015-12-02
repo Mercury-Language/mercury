@@ -1027,8 +1027,6 @@ MR_generate_proc_name_from_layout(const MR_ProcLayout *proc_layout,
             *arity_ptr = 3;
         } else if (MR_streq(*proc_name_ptr, "__Index__")) {
             *arity_ptr = 2;
-        } else if (MR_streq(*proc_name_ptr, "__Initialise__")) {
-            *arity_ptr = 1;
         } else {
             MR_fatal_error("MR_generate_proc_name_from_layout: "
                 "bad MR_comp_pred_name");

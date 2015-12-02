@@ -344,11 +344,6 @@
 
 :- pred globals_init_mutables(globals::in, io::di, io::uo) is det.
 
-    % This is semipure because it is called in a context in which the I/O
-    % state is not available.
-    %
-:- semipure pred semipure_get_solver_auto_init_supported(bool::out) is det.
-
     % Return the number of functions symbols at or above which a ground term's
     % superhomogeneous form should be wrapped in a from_ground_term scope.
     %
@@ -911,22 +906,6 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % This mutable is used to control how the parser handles `initialisation'
-    % attributes in solver type definitions. They are not currently part
-    % of the language, so by default if we encounter one it is reported
-    % as a syntax error. If the developer-only option `--solver-type-auto-init'
-    % is given, then we enable support for them.
-    %
-    % Since this information is only needed at one place in the parser,
-    % we use this mutable in preference to passing an extra argument
-    % throughout the parser.
-    %
-    % The default value will be overridden with the value of the relevant
-    % option by globals_init_mutables.
-    %
-:- mutable(solver_auto_init_supported, bool, no, ground,
-    [untrailed, attach_to_io_state, thread_local]).
-
     % This mutable controls how big a ground term has to be before the code
     % in superhomogeneous.m wraps it up in a from_ground_term scope.
 :- mutable(maybe_from_ground_term_threshold, maybe(int), no, ground,
@@ -956,15 +935,9 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
 %-----------------------------------------------------------------------------%
 
 globals_init_mutables(Globals, !IO) :-
-    globals.lookup_bool_option(Globals, solver_type_auto_init,
-        AutoInitSupported),
-    set_solver_auto_init_supported(AutoInitSupported, !IO),
     globals.lookup_int_option(Globals, from_ground_term_threshold,
         FromGroundTermThreshold),
     set_maybe_from_ground_term_threshold(yes(FromGroundTermThreshold), !IO).
-
-semipure_get_solver_auto_init_supported(AutoInitSupported) :-
-    semipure get_solver_auto_init_supported(AutoInitSupported).
 
 get_maybe_from_ground_term_threshold = MaybeThreshold :-
     promise_pure (

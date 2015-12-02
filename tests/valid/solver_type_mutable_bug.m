@@ -15,6 +15,11 @@
 % the deep profiling transformation was clobbering existing variables when it
 % tried to introduce new ones.  The bug eventually showed up as an abort in
 % the code generator.
+%
+% This test is disabled, because automatic initialization of solver variables
+% is no longer supported.
+%
+%---------------------------------------------------------------------------%
 
 :- module solver_type_mutable_bug.
 :- interface.

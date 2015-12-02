@@ -802,8 +802,7 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
         DirectIntItemBlocks, IndirectIntItemBlocks,
         OptItemBlocks, IntForOptItemBlocks),
 
-    SpecialPredMaps =
-        special_pred_maps(map.init, map.init, map.init, map.init),
+    SpecialPredMaps = special_pred_maps(map.init, map.init, map.init),
     map.init(InstanceTable),
 
     set.init(TypeSpecPreds),

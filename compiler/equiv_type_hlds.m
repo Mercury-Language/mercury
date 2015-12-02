@@ -183,11 +183,11 @@ replace_in_type_defn(ModuleName, TypeEqvMap, TypeCtor, !Defn,
         TVarSet = TVarSet0
     ;
         Body0 = hlds_solver_type(SolverTypeDetails0, UserEq),
-        SolverTypeDetails0 = solver_type_details(RepnType0, InitPred,
+        SolverTypeDetails0 = solver_type_details(RepnType0,
             GroundInst, AnyInst, MutableItems),
         equiv_type.replace_in_type(TypeEqvMap, RepnType0, RepnType, _,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
-        SolverTypeDetails = solver_type_details(RepnType, InitPred,
+        SolverTypeDetails = solver_type_details(RepnType,
             GroundInst, AnyInst, MutableItems),
         Body = hlds_solver_type(SolverTypeDetails, UserEq)
     ;

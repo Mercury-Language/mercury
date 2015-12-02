@@ -432,10 +432,7 @@ ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
 		any_call_hoist_bug \
 		any_free_unify \
 		solver_build_call \
-		solver_construction_init_test \
-		solver_default_eq_cmp \
-		solver_disj_inits \
-		solver_ite_inits
+		solver_default_eq_cmp
 else
 	SOLVER_PROGS =
 endif

@@ -134,8 +134,7 @@ decide_what_term2_errors_to_report(ModuleInfo, SCC, Errors,
             not pred_info_is_imported(PredInfo)
         ),
         list.filter(IsNonImported, SCC, NonImportedPPIds),
-        NonImportedPPIds = [_ | _],
-        list.all_false(is_solver_init_wrapper_pred(ModuleInfo), SCC)
+        NonImportedPPIds = [_ | _]
     then
         (
             VerboseErrors = yes,

@@ -155,20 +155,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Construct a call to initialise a free solver type variable.
-    %
-:- pred construct_initialisation_call(prog_var::in, mer_type::in, mer_inst::in,
-    prog_context::in, maybe(call_unify_context)::in,
-    hlds_goal::out, mode_info::in, mode_info::out) is det.
-
-    % Construct a list of initialisation calls.
-    %
-:- pred construct_initialisation_calls(list(prog_var)::in,
-    list(hlds_goal)::out, mode_info::in, mode_info::out) is det.
-
-:- pred prepend_initialisation_call(prog_var::in, mer_type::in, mer_inst::in,
-    hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out) is det.
-
 :- pred mode_context_to_unify_context(mode_info::in, mode_context::in,
     unify_context::out) is det.
 
@@ -807,41 +793,14 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
     then
         % This is the simple case of implied `any' modes, where the declared
         % mode was `any -> ...' and the argument passed was `free'.
-
         Var = Var0,
 
         % If the variable's type is not a solver type (in which case inst `any'
         % means the same as inst `ground') then this is an implied mode that we
         % don't yet know how to handle.
-        %
-        % If the variable's type is a solver type then we need to insert a call
-        % to the solver type's initialisation predicate. (To avoid unnecessary
-        % complications, we avoid doing this if there are any mode errors
-        % recorded at this point.)
-
-        mode_info_get_context(!.ModeInfo, Context),
-        mode_info_get_mode_context(!.ModeInfo, ModeContext),
-        mode_context_to_unify_context(!.ModeInfo, ModeContext, UnifyContext),
-        CallUnifyContext = yes(call_unify_context(Var, rhs_var(Var),
-            UnifyContext)),
-        ( if
-            mode_info_get_errors(!.ModeInfo, ModeErrors),
-            ModeErrors = [],
-            mode_info_may_init_solver_vars(!.ModeInfo),
-            mode_info_solver_init_is_supported(!.ModeInfo),
-            type_is_solver_type_with_auto_init(ModuleInfo0, VarType)
-        then
-            % Create code to initialize the variable to inst `any',
-            % by calling the solver type's initialisation predicate.
-            insert_extra_initialisation_call(Var, VarType, InitialInst,
-                Context, CallUnifyContext, !ExtraGoals, !ModeInfo)
-        else
-            % If the type is a type variable, or isn't a solver type,
-            % then give up.
-            WaitingVars = set_of_var.make_singleton(Var0),
-            ModeError = mode_error_implied_mode(Var0, VarInst0, InitialInst),
-            mode_info_error(WaitingVars, ModeError, !ModeInfo)
-        )
+        WaitingVars = set_of_var.make_singleton(Var0),
+        ModeError = mode_error_implied_mode(Var0, VarInst0, InitialInst),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     else if
         inst_is_bound(ModuleInfo0, InitialInst)
     then
@@ -904,145 +863,6 @@ mode_info_remove_goals_live_vars([Goal | Goals], !ModeInfo) :-
         mode_info_remove_live_vars(NonLocals, !ModeInfo)
     ),
     mode_info_remove_goals_live_vars(Goals, !ModeInfo).
-
-%-----------------------------------------------------------------------------%
-
-:- pred insert_extra_initialisation_call(prog_var::in, mer_type::in,
-    mer_inst::in, prog_context::in, maybe(call_unify_context)::in,
-    extra_goals::in, extra_goals::out, mode_info::in, mode_info::out) is det.
-
-insert_extra_initialisation_call(Var, VarType, Inst, Context, CallUnifyContext,
-        !ExtraGoals, !ModeInfo) :-
-    construct_initialisation_call(Var, VarType, Inst, Context,
-        CallUnifyContext, InitVarGoal, !ModeInfo),
-    NewExtraGoal = extra_goals([InitVarGoal], []),
-    append_extra_goals(!.ExtraGoals, NewExtraGoal, !:ExtraGoals).
-
-construct_initialisation_calls([], [], !ModeInfo).
-construct_initialisation_calls([Var | Vars], [Goal | Goals], !ModeInfo) :-
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
-    lookup_var_type(VarTypes, Var, VarType),
-    InitialInst           = free,
-    Context               = term.context_init,
-    MaybeCallUnifyContext = no,
-    construct_initialisation_call(Var, VarType, InitialInst, Context,
-        MaybeCallUnifyContext, Goal, !ModeInfo),
-    construct_initialisation_calls(Vars, Goals, !ModeInfo).
-
-construct_initialisation_call(Var, VarType, Inst, Context,
-        MaybeCallUnifyContext, InitVarGoal, !ModeInfo) :-
-    ( if
-        type_to_ctor(VarType, TypeCtor),
-        PredName = special_pred_name(spec_pred_init, TypeCtor),
-        (
-            TypeCtor = type_ctor(qualified(ModuleName, _TypeName), _Arity)
-        ;
-            TypeCtor = type_ctor(unqualified(_TypeName), _Arity),
-            mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-            module_info_get_name(ModuleInfo, ModuleName)
-        ),
-        NonLocals = set_of_var.make_singleton(Var),
-        InstMapDeltaAL = [Var - Inst],
-        InstMapDelta = instmap_delta_from_assoc_list(InstMapDeltaAL),
-        build_call(ModuleName, PredName, [Var], [VarType], NonLocals,
-            InstMapDelta, Context, MaybeCallUnifyContext,
-            hlds_goal(GoalExpr, GoalInfo), !ModeInfo)
-    then
-        InitVarGoal = hlds_goal(GoalExpr, GoalInfo),
-        % If Var was ignored, i.e. it occurred in only one atomic goal
-        % and was not in that atomic goal's nonlocals set, then creating
-        % the call to the initialisation predicate and adding it to the
-        % procedure body requires the addition of Var to the original goal's
-        % nonlocals set. This *should* be done by looking at all the places
-        % in the compiler that decide to call construct_initialisation_call
-        % directly or indirectly, and modifying that code to add Var to
-        % the relevant nonlocals set, or possibly by avoiding the call
-        % to construct_initialisation_call altogether (after all, if
-        % a variable is ignored, it should not need initialization).
-        %
-        % However, getting a requantify pass to do it for us is less work.
-        %
-        % An example of code that needs this fix for the correctness of the
-        % HLDS is tests/hard_coded/solver_construction_init_test.m.
-        mode_info_set_need_to_requantify(need_to_requantify, !ModeInfo)
-    else
-        unexpected($module, $pred, "condition failed")
-    ).
-
-:- pred build_call(module_name::in, string::in, list(prog_var)::in,
-    list(mer_type)::in, set_of_progvar::in, instmap_delta::in,
-    prog_context::in, maybe(call_unify_context)::in, hlds_goal::out,
-    mode_info::in, mode_info::out) is semidet.
-
-build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
-        InstMapDelta, Context, MaybeCallUnifyContext, Goal, !ModeInfo) :-
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-
-    % Get the relevant information for the procedure we are transforming
-    % (i.e., the caller).
-    mode_info_get_pred_id(!.ModeInfo, PredId),
-    mode_info_get_proc_id(!.ModeInfo, ProcId),
-    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo0,
-        ProcInfo0),
-    pred_info_get_typevarset(PredInfo0, TVarSet),
-    pred_info_get_exist_quant_tvars(PredInfo0, ExistQTVars),
-    pred_info_get_head_type_params(PredInfo0, HeadTypeParams),
-
-    % Get the pred_info and proc_info for the procedure we are calling.
-    SymName = qualified(CalleeModuleName, CalleePredName),
-    get_pred_id_and_proc_id_by_types(is_fully_qualified, SymName, pf_predicate,
-        TVarSet, ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo0,
-        Context, CalleePredId, CalleeProcId),
-    module_info_pred_proc_info(ModuleInfo0, CalleePredId, CalleeProcId,
-        CalleePredInfo, CalleeProcInfo),
-
-    % Create a poly_info for the caller. We have to set the varset and
-    % vartypes from the mode_info, not the proc_info, because new vars may
-    % have been introduced during mode analysis (e.g., when adding
-    % unifications to handle implied modes).
-    mode_info_get_varset(!.ModeInfo, VarSet0),
-    mode_info_get_var_types(!.ModeInfo, VarTypes0),
-    proc_info_set_varset(VarSet0, ProcInfo0, ProcInfo1),
-    proc_info_set_vartypes(VarTypes0, ProcInfo1, ProcInfo2),
-    polymorphism.create_poly_info(ModuleInfo0, PredInfo0, ProcInfo2,
-        PolyInfo0),
-
-    % Create a goal_info for the call.
-    goal_info_init(GoalInfo0),
-    goal_info_set_context(Context, GoalInfo0, GoalInfo1),
-    goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
-    goal_info_set_instmap_delta(InstMapDelta, GoalInfo2, GoalInfo),
-
-    % Do the transformation for this call goal.
-    SymName = qualified(CalleeModuleName, CalleePredName),
-    polymorphism_process_new_call(CalleePredInfo, CalleeProcInfo,
-        CalleePredId, CalleeProcId, ArgVars, not_builtin,
-        MaybeCallUnifyContext, SymName, GoalInfo, Goal, PolyInfo0, PolyInfo),
-
-    % Update the information in the predicate table.
-    polymorphism.poly_info_extract(PolyInfo, PolySpecs, PredInfo0, PredInfo,
-        ProcInfo2, ProcInfo, ModuleInfo1),
-    expect(unify(PolySpecs, []), $module, $pred,
-        "got errors while making call"),
-    module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
-        ModuleInfo1, ModuleInfo),
-
-    % Update the information in the mode_info.
-    proc_info_get_varset(ProcInfo, VarSet),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    mode_info_set_varset(VarSet, !ModeInfo),
-    mode_info_set_var_types(VarTypes, !ModeInfo),
-    mode_info_set_module_info(ModuleInfo, !ModeInfo).
-
-prepend_initialisation_call(Var, VarType, InitialInst, Goal0, Goal,
-        !ModeInfo) :-
-    Goal0   = hlds_goal(_GoalExpr0, GoalInfo0),
-    Context = goal_info_get_context(GoalInfo0),
-    CallUnifyContext = no,
-    construct_initialisation_call(Var, VarType, InitialInst, Context,
-        CallUnifyContext, InitVarGoal, !ModeInfo),
-    goal_to_conj_list(Goal0, ConjList0),
-    conj_list_to_goal([InitVarGoal | ConjList0], GoalInfo0, Goal).
 
 %-----------------------------------------------------------------------------%
 

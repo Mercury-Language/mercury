@@ -8,16 +8,16 @@
 
 :- import_module list.
 
-:- type myset(T) ---> myset(list(T))
-    where equality is my_set_equals,
-    comparison is my_set_compare.
+:- type myset(T)
+    --->    myset(list(T))
+    where
+        equality   is my_set_equals,
+        comparison is my_set_compare.
 
 :- pred my_set_equals(myset(T)::in, myset(T)::in) is semidet.
 
 :- pred my_set_compare(builtin.comparison_result::uo, myset(T)::in,
     myset(T)::in) is det.
-
-:- solver type foo(T).
 
 :- implementation.
 
@@ -39,19 +39,3 @@ my_set_compare(Res, _, _) :-
     ;
         Res = (=)
     ).
-
-:- solver type foo(T)
-    where   representation is int,
-        initialisation is init_foo,
-        ground         is ground,
-        any            is ground.
-
-:- pragma promise_pure(init_foo/1).
-:- pred init_foo(foo(T)::out(any)) is det.
-init_foo(X) :-
-    ( loop ->
-        Y = 42
-    ;
-        Y = 43
-    ),
-    impure X = 'representation to any foo/1'(Y).

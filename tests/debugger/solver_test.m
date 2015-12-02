@@ -3,6 +3,11 @@
 %---------------------------------------------------------------------------%
 %
 % This is a modified copy of hard_coded/any_free_unify.m.
+%
+% This test is disabled, because automatic initialization of solver variables
+% is no longer supported.
+%
+%---------------------------------------------------------------------------%
 
 :- module solver_test.
 

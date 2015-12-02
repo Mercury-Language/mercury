@@ -2093,11 +2093,9 @@ MR_print_proc_id_internal(FILE *fp, const MR_ProcLayout *entry, MR_bool spec,
                 fprintf(fp, "comp");
             } else if (MR_streq(uci->MR_uci_pred_name, "__Index__")) {
                 fprintf(fp, "indx");
-            } else if (MR_streq(uci->MR_uci_pred_name, "__Initialise__")) {
-                fprintf(fp, "init");
             } else {
                 MR_fatal_error("uci procedure is not "
-                    "unify, compare, index or init");
+                    "unify, compare or index");
             }
 
             if (separate) {

@@ -13,6 +13,11 @@
 %
 % This bug was originally reported by Nick Nethercote.  The code here
 % is a cut-down version of his code.
+%
+% This test is disabled, because automatic initialization of solver variables
+% is no longer supported.
+%
+%---------------------------------------------------------------------------%
 
 :- module zinc2mer_lib.
 :- interface.

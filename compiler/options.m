@@ -576,10 +576,6 @@
     ;       size_region_disj_snapshot
     ;       size_region_commit_entry
 
-    ;       solver_type_auto_init
-            % Insert calls to solver type initialisation predicates when
-            % the inst of solver type variables changes from free to any.
-
     ;       allow_multi_arm_switches
 
     ;       type_check_constraints
@@ -1425,7 +1421,6 @@ option_defaults_2(internal_use_option, [
     size_region_semi_disj_protect       -   int(1),
     size_region_disj_snapshot           -   int(3),
     size_region_commit_entry            -   int(1),
-    solver_type_auto_init               -   bool(no),
     allow_multi_arm_switches            -   bool(yes),
     type_check_constraints              -   bool(no)
 ]).
@@ -2327,7 +2322,6 @@ long_option("size-region-ite-snapshot",         size_region_ite_snapshot).
 long_option("size-region-semi-disj-protect",    size_region_semi_disj_protect).
 long_option("size-region-disj-snapshot",        size_region_disj_snapshot).
 long_option("size-region-commit-entry",         size_region_commit_entry).
-long_option("solver-type-auto-init",    solver_type_auto_init).
 long_option("allow-multi-arm-switches", allow_multi_arm_switches).
 long_option("type-check-constraints",   type_check_constraints).
 
@@ -4749,11 +4743,6 @@ options_help_compilation_model -->
 %       "--size-region-disj-protect"
 %       "--size-region-disj-snapshot"
 %       "--size-region-commit-entry"
-
-        % This is a developer only option.
-%       "--solver-type-auto-init",
-%       "(This option is not for general use.)",
-%       Allow automatic initialisation of solver types.
 
         % This is a developer only option.
 %       "--allow-multi-arm-switches",

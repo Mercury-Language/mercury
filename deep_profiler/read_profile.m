@@ -740,8 +740,6 @@ create_refined_proc_ids(ProcLabel, UnQualName, QualName) :-
             PredName = "CompareRep"
         else if RawPredName = "__Index__" then
             PredName = "Index"
-        else if RawPredName = "__Initialise__" then
-            PredName = "Initialise"
         else
             Msg = "unknown special predicate name " ++ RawPredName,
             error(Msg)

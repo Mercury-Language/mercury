@@ -23,12 +23,6 @@ GRADEFLAGS-agc_unused_in	= --gc accurate
 # The bug that this test looks for exists only in MLDS grades without any gc.
 GRADEFLAGS-bug109		= --grade hlc
 
-# The following test cases check for bugs that can only occur in the
-# presence of automatic solver type intialisation.
-MCFLAGS-fz_conf			= --solver-type-auto-init
-MCFLAGS-solver_type_bug_2	= --solver-type-auto-init
-MCFLAGS-solver_type_mutable_bug	= --solver-type-auto-init
-
 MCFLAGS-ambig_functor		= --type-check-constraints
 MCFLAGS-ambig_stress_test	= --type-check-constraints
 MCFLAGS-builtin_false		= --intermodule-optimization

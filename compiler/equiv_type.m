@@ -810,14 +810,14 @@ replace_in_type_defn(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor,
         TypeDefn = parse_tree_du_type(TypeBody, EqPred, DirectArgFunctors)
     ;
         TypeDefn0 = parse_tree_solver_type(SolverDetails0, MaybeUserEqComp),
-        SolverDetails0 = solver_type_details(RepresentationType0, InitPred,
+        SolverDetails0 = solver_type_details(RepresentationType0,
             GroundInst, AnyInst, MutableInfos0),
         replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap, [TypeCtor],
             RepresentationType0, RepresentationType,
             _, ContainsCirc, !VarSet, !EquivTypeInfo, !UsedModules),
         replace_in_constraint_store(MaybeRecord, TypeEqvMap, InstEqvMap,
             MutableInfos0, MutableInfos, !EquivTypeInfo, !UsedModules),
-        SolverDetails = solver_type_details(RepresentationType, InitPred,
+        SolverDetails = solver_type_details(RepresentationType,
             GroundInst, AnyInst, MutableInfos),
         TypeDefn = parse_tree_solver_type(SolverDetails, MaybeUserEqComp)
     ;

@@ -117,13 +117,6 @@ MCFLAGS-opt_dup_bug	=	-O2 --optimize-dups --optimize-frames
 MCFLAGS-redoip_clobber	=	--no-inlining
 MCFLAGS-rnd		=	-O6
 
-# These tests check that calls to initialisation predicates are correctly
-# added to various constructs.  They only work of automatic initialisation
-# of solver types is enabled.
-MCFLAGS-solver_construction_init_test = --solver-type-auto-init
-MCFLAGS-solver_disj_inits = --solver-type-auto-init
-MCFLAGS-solver_ite_inits  = --solver-type-auto-init
-
 MCFLAGS-switch_detect	=	--halt-at-warn
 # The trace_goal_1 and trace_goal_2 test cases differ only in that
 # we compile the latter without any --trace-flag arguments.

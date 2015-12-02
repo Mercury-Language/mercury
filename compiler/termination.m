@@ -541,14 +541,7 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
             not pred_info_is_imported(PredInfo)
         ),
         list.filter(IsNonImported, SCC, NonImportedPPIds),
-        NonImportedPPIds = [_ | _],
-
-        % Don't emit non-termination warnings for the compiler generated
-        % wrapper predicates for solver type initialisation predicates.
-        % If they don't terminate, there's nothing the user can do about it
-        % anyway; the problem is with the initialisation predicate specified
-        % by the user, not the wrapper.
-        list.all_false(is_solver_init_wrapper_pred(ModuleInfo), SCC)
+        NonImportedPPIds = [_ | _]
     then
         (
             VerboseErrors = yes,
@@ -728,25 +721,14 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
 
 set_generated_terminates([], _, !ProcTable).
 set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
-    (
-        ( SpecialPredId = spec_pred_unify
-        ; SpecialPredId = spec_pred_compare
-        ; SpecialPredId = spec_pred_index
-        ),
-        map.lookup(!.ProcTable, ProcId, ProcInfo0),
-        proc_info_get_headvars(ProcInfo0, HeadVars),
-        special_pred_id_to_termination(SpecialPredId, HeadVars,
-            ArgSize, Termination),
-        proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo1),
-        proc_info_set_maybe_termination_info(yes(Termination),
-            ProcInfo1, ProcInfo),
-        map.det_update(ProcId, ProcInfo, !ProcTable)
-    ;
-        SpecialPredId = spec_pred_init
-        % We don't need to do anything special for solver type initialisation
-        % predicates. Leaving it up to the analyser may result in better
-        % argument size information anyway.
-    ),
+    map.lookup(!.ProcTable, ProcId, ProcInfo0),
+    proc_info_get_headvars(ProcInfo0, HeadVars),
+    special_pred_id_to_termination(SpecialPredId, HeadVars,
+        ArgSize, Termination),
+    proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo1),
+    proc_info_set_maybe_termination_info(yes(Termination),
+        ProcInfo1, ProcInfo),
+    map.det_update(ProcId, ProcInfo, !ProcTable),
     set_generated_terminates(ProcIds, SpecialPredId, !ProcTable).
 
     % XXX The ArgSize argument for unify predicates may not be correct
@@ -772,9 +754,6 @@ special_pred_id_to_termination(SpecialPredId, HeadVars, ArgSize,
         term_util.make_bool_list(HeadVars, [no, no], OutList),
         ArgSize = finite(0, OutList),
         Termination = cannot_loop(unit)
-    ;
-        SpecialPredId = spec_pred_init,
-        unexpected($module, $pred, "initialise")
     ).
 
     % The list of proc_ids must refer to builtin predicates. This predicate

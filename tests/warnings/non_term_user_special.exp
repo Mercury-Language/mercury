@@ -4,6 +4,3 @@ non_term_user_special.m:011:   be proven to terminate.
 non_term_user_special.m:011: Warning: the user-defined equality predicate for
 non_term_user_special.m:011:   the type `non_term_user_special.myset'/1 cannot
 non_term_user_special.m:011:   be proven to terminate.
-non_term_user_special.m:043: Warning: the user-defined initialisation predicate
-non_term_user_special.m:043:   for the type `non_term_user_special.foo'/1
-non_term_user_special.m:043:   cannot be proven to terminate.

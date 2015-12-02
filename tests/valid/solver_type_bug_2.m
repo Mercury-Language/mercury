@@ -1,6 +1,11 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+%
+% This test is disabled, because automatic initialization of solver variables
+% is no longer supported.
+%
+%---------------------------------------------------------------------------%
 
 :- module solver_type_bug_2.
 :- interface.

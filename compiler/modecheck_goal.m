@@ -290,23 +290,14 @@ modecheck_goal_disj(Disjuncts0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % modecheck_clause_disj or the code that calls it.
         Disjuncts0 = [_ | _],
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        modecheck_disj_list(Disjuncts0, Disjuncts1, InstMaps0,
+        modecheck_disj_list(Disjuncts0, Disjuncts1, InstMaps,
             NonLocals, LargeFlatConstructs, !ModeInfo),
-        ( if mode_info_solver_init_is_supported(!.ModeInfo) then
-            mode_info_get_var_types(!.ModeInfo, VarTypes),
-            handle_solver_vars_in_disjs(set_of_var.to_sorted_list(NonLocals),
-                VarTypes, Disjuncts1, Disjuncts2, InstMaps0, InstMaps,
-                !ModeInfo)
-        else
-            InstMaps = InstMaps0,
-            Disjuncts2 = Disjuncts1
-        ),
         merge_disj_branches(NonLocals, LargeFlatConstructs,
-            Disjuncts2, Disjuncts3, InstMaps, !ModeInfo),
+            Disjuncts1, Disjuncts2, InstMaps, !ModeInfo),
         % Since merge_disj_branches depends on each disjunct in Disjuncts2
         % having a corresponding instmap in InstMaps, we can flatten disjuncts
         % only *after* merge_disj_branches has done its job.
-        flatten_disj(Disjuncts3, Disjuncts),
+        flatten_disj(Disjuncts2, Disjuncts),
         disj_list_to_goal(Disjuncts, GoalInfo0, hlds_goal(GoalExpr, _GoalInfo))
     ),
     mode_checkpoint(exit, "disj", !ModeInfo).
@@ -365,22 +356,6 @@ merge_disj_branches(NonLocals, LargeFlatConstructs, Disjuncts0, Disjuncts,
     ),
     make_arm_instmaps_for_goals(Disjuncts, InstMaps, ArmInstMaps),
     instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo).
-
-    % Ensure that any non-local solver var that is initialised in
-    % one disjunct is initialised in all disjuncts.
-    %
-:- pred handle_solver_vars_in_disjs(list(prog_var)::in,
-    vartypes::in, list(hlds_goal)::in, list(hlds_goal)::out,
-    list(instmap)::in, list(instmap)::out, mode_info::in, mode_info::out)
-    is det.
-
-handle_solver_vars_in_disjs(NonLocals, VarTypes, Disjs0, Disjs,
-        InstMaps0, InstMaps, !ModeInfo) :-
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    EnsureInitialised = solver_vars_that_must_be_initialised(NonLocals,
-        VarTypes, ModuleInfo, InstMaps0),
-    add_necessary_disj_init_calls(Disjs0, Disjs, InstMaps0, InstMaps,
-        EnsureInitialised, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 %
@@ -679,22 +654,18 @@ modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0, GoalExpr,
     mode_info_remove_live_vars(ThenVars, !ModeInfo),
     mode_info_unlock_vars(var_lock_if_then_else, NonLocals, !ModeInfo),
     ( if instmap_is_reachable(InstMapCond) then
-        modecheck_goal(Then0, Then1, !ModeInfo),
-        mode_info_get_instmap(!.ModeInfo, InstMapThen1)
+        modecheck_goal(Then0, Then, !ModeInfo),
+        mode_info_get_instmap(!.ModeInfo, InstMapThen)
     else
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
-        Then1 = true_goal,
-        InstMapThen1 = InstMapCond
+        Then = true_goal,
+        InstMapThen = InstMapCond
     ),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    modecheck_goal(Else0, Else1, !ModeInfo),
-    mode_info_get_instmap(!.ModeInfo, InstMapElse1),
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
-    handle_solver_vars_in_ite(set_of_var.to_sorted_list(NonLocals), VarTypes,
-        Then1, Then, Else1, Else,
-        InstMapThen1, InstMapThen, InstMapElse1, InstMapElse, !ModeInfo),
+    modecheck_goal(Else0, Else, !ModeInfo),
+    mode_info_get_instmap(!.ModeInfo, InstMapElse),
     mode_info_set_instmap(InstMap0, !ModeInfo),
     make_arm_instmaps_for_goals([Then, Else], [InstMapThen, InstMapElse],
         ThenElseArgInfos),
@@ -714,31 +685,6 @@ modecheck_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0, GoalExpr,
         InPromisePurityScope = in_promise_purity_scope
     ),
     mode_checkpoint(exit, "if-then-else", !ModeInfo).
-
-:- pred handle_solver_vars_in_ite(list(prog_var)::in, vartypes::in,
-    hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
-    instmap::in, instmap::out, instmap::in, instmap::out, mode_info::in,
-    mode_info::out) is det.
-
-handle_solver_vars_in_ite(NonLocals, VarTypes, Then0, Then, Else0, Else,
-        ThenInstMap0, ThenInstMap, ElseInstMap0, ElseInstMap, !ModeInfo) :-
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    EnsureInitialised = solver_vars_that_must_be_initialised(NonLocals,
-        VarTypes, ModuleInfo, [ThenInstMap0, ElseInstMap0]),
-
-    ThenVarsToInit = solver_vars_to_init(EnsureInitialised, ModuleInfo,
-        ThenInstMap0),
-    construct_initialisation_calls(ThenVarsToInit, ThenInitCalls, !ModeInfo),
-    InitedThenVars = list_to_set(ThenVarsToInit),
-    Then = append_init_calls_to_goal(InitedThenVars, ThenInitCalls, Then0),
-    instmap_set_vars_same(any_inst, ThenVarsToInit, ThenInstMap0, ThenInstMap),
-
-    ElseVarsToInit = solver_vars_to_init(EnsureInitialised, ModuleInfo,
-        ElseInstMap0),
-    construct_initialisation_calls(ElseVarsToInit, ElseInitCalls, !ModeInfo),
-    InitedElseVars = list_to_set(ElseVarsToInit),
-    Else = append_init_calls_to_goal(InitedElseVars, ElseInitCalls, Else0),
-    instmap_set_vars_same(any_inst, ElseVarsToInit, ElseInstMap0, ElseInstMap).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1483,15 +1429,11 @@ modecheck_goal_shorthand(ShortHand0, GoalInfo0, GoalExpr, !ModeInfo) :-
         % inner variables are enforced by these calls anyway.
 
         % mode_info_lock_vars(var_lock_atomic_goal, OuterVars, !ModeInfo),
-        modecheck_orelse_list(AtomicGoalList0, AtomicGoalList1, InstMapList0,
+        modecheck_orelse_list(AtomicGoalList0, AtomicGoalList, InstMapList,
             !ModeInfo),
         mode_info_get_var_types(!.ModeInfo, VarTypes),
         % mode_info_unlock_vars(var_lock_atomic_goal, OuterVars, !ModeInfo),
 
-        % XXX STM: Handling of solver vars
-        handle_solver_vars_in_disjs(set_of_var.to_sorted_list(NonLocals),
-            VarTypes, AtomicGoalList1, AtomicGoalList, InstMapList0,
-            InstMapList, !ModeInfo),
         MainGoal = list.det_head(AtomicGoalList),
         OrElseGoals = list.det_tail(AtomicGoalList),
 
@@ -1594,75 +1536,6 @@ check_no_inst_any_vars(NegCtxtDesc, [NonLocal | NonLocals], InstMap0, InstMap,
         check_no_inst_any_vars(NegCtxtDesc, NonLocals, InstMap0, InstMap,
             !ModeInfo)
     ).
-
-:- func solver_vars_that_must_be_initialised(list(prog_var),
-    vartypes, module_info, list(instmap)) = list(prog_var).
-
-solver_vars_that_must_be_initialised(Vars, VarTypes, ModuleInfo, InstMaps) =
-    list.filter(
-        solver_var_must_be_initialised(VarTypes, ModuleInfo, InstMaps),
-        Vars).
-
-:- pred solver_var_must_be_initialised(vartypes::in, module_info::in,
-    list(instmap)::in, prog_var::in) is semidet.
-
-solver_var_must_be_initialised(VarTypes, ModuleInfo, InstMaps, Var) :-
-    lookup_var_type(VarTypes, Var, VarType),
-    type_is_solver_type_with_auto_init(ModuleInfo, VarType),
-    list.member(InstMap, InstMaps),
-    instmap_lookup_var(InstMap, Var, Inst),
-    not inst_is_free(ModuleInfo, Inst).
-
-:- pred add_necessary_disj_init_calls(list(hlds_goal)::in,
-    list(hlds_goal)::out, list(instmap)::in, list(instmap)::out,
-    list(prog_var)::in, mode_info::in, mode_info::out) is det.
-
-add_necessary_disj_init_calls([], [], [], [], _EnsureInitialised, !ModeInfo).
-add_necessary_disj_init_calls([], _, [_ | _], _, _, _, _) :-
-    unexpected($module, $pred, "mismatched lists").
-add_necessary_disj_init_calls([_ | _], _, [], _, _, _, _) :-
-    unexpected($module, $pred, "mismatched lists").
-add_necessary_disj_init_calls([Goal0 | Goals0], [Goal | Goals],
-        [InstMap0 | InstMaps0], [InstMap | InstMaps],
-        EnsureInitialised, !ModeInfo) :-
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    VarsToInit = solver_vars_to_init(EnsureInitialised, ModuleInfo, InstMap0),
-    construct_initialisation_calls(VarsToInit, InitCalls, !ModeInfo),
-    InitedVars = list_to_set(VarsToInit),
-    Goal = append_init_calls_to_goal(InitedVars, InitCalls, Goal0),
-    instmap_set_vars_same(any_inst, VarsToInit, InstMap0, InstMap),
-    add_necessary_disj_init_calls(Goals0, Goals, InstMaps0, InstMaps,
-        EnsureInitialised, !ModeInfo).
-
-:- func append_init_calls_to_goal(set_of_progvar, list(hlds_goal), hlds_goal) =
-        hlds_goal.
-
-append_init_calls_to_goal(InitedVars, InitCalls, Goal0) = Goal :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
-    set_of_var.union(InitedVars, NonLocals0, NonLocals),
-    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-    ( if GoalExpr0 = disj(Disjs0) then
-        Disjs = list.map(append_init_calls_to_goal(InitedVars, InitCalls),
-            Disjs0),
-        Goal = hlds_goal(disj(Disjs), GoalInfo)
-    else
-        goal_to_conj_list(Goal0, Conjs),
-        conj_list_to_goal(Conjs ++ InitCalls, GoalInfo, Goal)
-    ).
-
-:- func solver_vars_to_init(list(prog_var), module_info, instmap) =
-    list(prog_var).
-
-solver_vars_to_init(Vars, ModuleInfo, InstMap) =
-    list.filter(solver_var_to_init(ModuleInfo, InstMap), Vars).
-
-:- pred solver_var_to_init(module_info::in, instmap::in, prog_var::in)
-    is semidet.
-
-solver_var_to_init(ModuleInfo, InstMap, Var) :-
-    instmap_lookup_var(InstMap, Var, Inst),
-    inst_is_free(ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.modecheck_goal.

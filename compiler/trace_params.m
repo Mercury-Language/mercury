@@ -236,9 +236,6 @@ eff_trace_level(ModuleInfo, PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
             ;
                 SpecialPred = spec_pred_index,
                 EffTraceLevel = none
-            ;
-                SpecialPred = spec_pred_init,
-                EffTraceLevel = TraceLevel
             )
         ;
             Origin = origin_created(PredCreation),

@@ -1626,10 +1626,6 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
             % The index predicate is never called from anywhere
             % except the compare predicate.
             fail
-        ;
-            SpecialPredId = spec_pred_init,
-            % XXX Julien, is this correct?
-            fail
         )
     ).
 

@@ -89,8 +89,7 @@
 :- type special_pred_id
     --->    spec_pred_unify
     ;       spec_pred_index
-    ;       spec_pred_compare
-    ;       spec_pred_init.
+    ;       spec_pred_compare.
 
     % special_pred_name_arity(SpecialPredId, GenericPredName, TargetName,
     %   Arity):
@@ -132,7 +131,6 @@
 special_pred_name_arity(spec_pred_unify, "unify", "__Unify__", 2).
 special_pred_name_arity(spec_pred_index, "index", "__Index__", 2).
 special_pred_name_arity(spec_pred_compare, "compare", "__Compare__", 3).
-special_pred_name_arity(spec_pred_init, "initialise", "__Initialise__", 1).
 
 get_special_pred_id_generic_name(Id) = Name :-
     special_pred_name_arity(Id, Name, _, _).

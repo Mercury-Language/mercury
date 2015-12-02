@@ -1763,7 +1763,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     % The `where' attributes of a solver type definition must begin
     % with
     %   representation is <<representation type>>,
-    %   initialisation is <<init pred name>>,
     %   ground         is <<ground inst>>,
     %   any            is <<any inst>>,
     %   constraint_store is <<mutable(...) or [mutable(...), ...]>>
@@ -1771,7 +1770,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- type solver_type_details
     --->    solver_type_details(
                 std_representation_type :: mer_type,
-                std_init_pred           :: solver_type_init,
                 std_ground_inst         :: mer_inst,
                 std_any_inst            :: mer_inst,
                 std_mutable_items       :: list(item_mutable_info)
@@ -1783,17 +1781,6 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     % variables where necessary.)
     %
 :- type init_pred == sym_name.
-
-    % What sort of initialisation, if any, is required by a solver type?
-    %
-:- type solver_type_init
-    --->    solver_init_explicit
-            % The user will explicitly insert calls to initialise solver
-            % variables of this type in their code.
-
-    ;       solver_init_automatic(init_pred).
-            % The mode analyser should insert calls to `init_pred' in order
-            % to initialise solver variables of this type.
 
     % An equality_pred specifies the name of a user-defined predicate
     % used for equality on a type. See the chapter on them in the

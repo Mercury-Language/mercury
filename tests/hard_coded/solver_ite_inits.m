@@ -10,6 +10,9 @@
 % at the ends of if-then-else branches if necessary to ensure that solver
 % variables have compatible insts at the end of the if-then-else.
 %
+% This test is disabled, because automatic initialization of solver variables
+% is no longer supported.
+%
 %---------------------------------------------------------------------------%
 
 :- module solver_ite_inits.

@@ -171,7 +171,6 @@ SINGLEMODULE= \
 	method_impl \
 	missing_concrete_instance \
 	missing_det_decls \
-	missing_init_pred \
 	missing_interface_import \
 	mixed_up_streams \
 	mode_inf \
@@ -297,8 +296,7 @@ SINGLEMODULE= \
 	where_direct_arg \
 	where_direct_arg2 \
 	with_type \
-	wrong_type_arity \
-	zinc2mer_lib
+	wrong_type_arity
 
 # The following require that num_tag_bits >= 1
 RESERVE_TAG_MODULES = \

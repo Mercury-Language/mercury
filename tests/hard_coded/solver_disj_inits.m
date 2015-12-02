@@ -10,6 +10,9 @@
 % at the ends of disjuncts if necessary to ensure that solver variables
 % have compatible insts at the end of a disjunction.
 %
+% This test is disabled, because automatic initialization of solver variables
+% is no longer supported.
+%
 %---------------------------------------------------------------------------%
 
 :- module solver_disj_inits.

@@ -148,12 +148,6 @@
 :- pred all_args_input_or_zero_size(module_info::in, pred_info::in,
     proc_info::in) is semidet.
 
-    % Succeeds iff the given PPId is a compiler generated wrapper
-    % predicate for a solver type initialisation predicate.
-    %
-:- pred is_solver_init_wrapper_pred(module_info::in, pred_proc_id::in)
-    is semidet.
-
 %---------------------%
 
     % This predicate sets the argument size info of a given a list of
@@ -374,14 +368,6 @@ all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], ModuleInfo) :-
         term_norm.zero_size_type(ModuleInfo, Type),
         all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
     ).
-
-%---------------------------------------------------------------------------%
-
-is_solver_init_wrapper_pred(ModuleInfo, proc(PredId, _)) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_origin(PredInfo, PredOrigin),
-    PredOrigin = origin_special_pred(SpecialPredId, _),
-    SpecialPredId = spec_pred_init.
 
 %---------------------------------------------------------------------------%
 

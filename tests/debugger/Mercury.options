@@ -53,11 +53,6 @@ MCFLAGS-user_event_2 = --event-set-file-name user_event_spec_2
 MCFLAGS-synth_attr = --event-set-file-name synth_attr_spec
 MCFLAGS-synth_attr_impure = --event-set-file-name synth_attr_impure_spec
 
-# The solver_test test case exercises the printing of a procedure name, and
-# that procedure is dead, so we must prevent it being optimized away.
-# The -O2 is to prevent spurious inconsistencies.
-MCFLAGS-solver_test = -O2 --no-optimize-dead-procs --solver-type-auto-init
-
 MCFLAGS-tailrec1 = --trace deep --exec-trace-tail-rec --trace-table-io-all
 
 # We need to use shared libraries for interactive queries to work.

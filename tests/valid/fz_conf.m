@@ -14,6 +14,11 @@
 % fz_conf.m:020:   expected type was `(fz_conf.msat_literal)'.
 %
 % Compile with `mmc -C fz_conf.m' to reproduce.
+%
+% This test is disabled, because automatic initialization of solver variables
+% is no longer supported.
+%
+%---------------------------------------------------------------------------%
 
 :- module fz_conf.
 :- interface.

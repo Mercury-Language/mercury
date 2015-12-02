@@ -34,8 +34,7 @@
     --->    special_pred_maps(
                 spm_unify_map           :: map(type_ctor, pred_id),
                 spm_index_map           :: map(type_ctor, pred_id),
-                spm_compare_map         :: map(type_ctor, pred_id),
-                spm_init_map            :: map(type_ctor, pred_id)
+                spm_compare_map         :: map(type_ctor, pred_id)
             ).
 
 :- pred search_special_pred_maps(special_pred_maps::in,
@@ -48,6 +47,7 @@
 :- pred special_pred_list(list(special_pred_id)::out) is det.
 
 :- pred special_pred_description(special_pred_id::in, string::out) is det.
+
 %-----------------------------------------------------------------------------%
 
     % Return the predicate name we should use for the given special_pred
@@ -169,9 +169,6 @@ select_special_pred_map(SpecMaps, SpecialPredId, SpecMap) :-
     ;
         SpecialPredId = spec_pred_compare,
         SpecMap = SpecMaps ^ spm_compare_map
-    ;
-        SpecialPredId = spec_pred_init,
-        SpecMap = SpecMaps ^ spm_init_map
     ).
 
 %-----------------------------------------------------------------------------%
@@ -181,7 +178,6 @@ special_pred_list([spec_pred_unify, spec_pred_index, spec_pred_compare]).
 special_pred_description(spec_pred_unify,   "unification predicate").
 special_pred_description(spec_pred_compare, "comparison predicate").
 special_pred_description(spec_pred_index,   "indexing predicate").
-special_pred_description(spec_pred_init,    "initialisation predicate").
 
 %-----------------------------------------------------------------------------%
 
@@ -208,7 +204,7 @@ special_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
 spec_pred_name_append_type_id = no.
 
 special_pred_mode_num(_, 0).
-    % mode num for special procs is always 0 (the first mode)
+    % Mode num for special procs is always 0 (the first mode).
 
 %-----------------------------------------------------------------------------%
 
@@ -233,12 +229,6 @@ special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Detism) :-
         uo_mode(Uo),
         ArgModes = [Uo, In, In],
         Detism = detism_det
-    ;
-        SpecialPredId = spec_pred_init,
-        ArgTypes = [Type],
-        InAny = out_any_mode,
-        ArgModes = [InAny],
-        Detism = detism_det
     ).
 
 special_pred_get_type(spec_pred_unify, Types, T) :-
@@ -246,8 +236,6 @@ special_pred_get_type(spec_pred_unify, Types, T) :-
 special_pred_get_type(spec_pred_index, Types, T) :-
     list.reverse(Types, [_, T | _]).
 special_pred_get_type(spec_pred_compare, Types, T) :-
-    list.reverse(Types, [T | _]).
-special_pred_get_type(spec_pred_init, Types, T) :-
     list.reverse(Types, [T | _]).
 
 special_pred_get_type_det(SpecialId, ArgTypes, Type) :-
@@ -311,7 +299,6 @@ special_pred_is_generated_lazily_2(ModuleInfo, TypeBody, TypeStatus) :-
     % private_builtin.nyi_foreign_type_unify.
     % polymorphism.process_generated_pred can't handle calls to polymorphic
     % procedures after the initial polymorphism pass.
-    %
     TypeBody \= hlds_foreign_type(_),
 
     % The special predicates for types with user-defined equality or
@@ -328,16 +315,13 @@ special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, TypeBody) :-
     ;
         SpecialPredId = spec_pred_compare,
         type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody,
-            unify_compare(_, UserCmp)), UserCmp = yes(_)
+            unify_compare(_, UserCmp)),
+        UserCmp = yes(_)
     ;
-        SpecialPredId \= spec_pred_init,
         Ctors = TypeBody ^ du_type_ctors,
         list.member(Ctor, Ctors),
         Ctor = ctor(ExistQTVars, _, _, _, _, _),
         ExistQTVars = [_ | _]
-    ;
-        SpecialPredId = spec_pred_init,
-        type_body_is_solver_type(ModuleInfo, TypeBody)
     ).
 
 can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, TypeBody) :-

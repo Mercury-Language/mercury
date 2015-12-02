@@ -113,12 +113,10 @@ select_subtype(ModuleInfo, Type, ConsId, Choice, SubType) :-
 some_are_special_preds(PPIds, ModuleInfo) :-
     (
         module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
-        SpecialPredMaps = special_pred_maps(UnifyMap, IndexMap, CompareMap,
-            InitMap),
+        SpecialPredMaps = special_pred_maps(UnifyMap, IndexMap, CompareMap),
         ( some_special_preds_are_in_list(UnifyMap, PPIds)
         ; some_special_preds_are_in_list(IndexMap, PPIds)
         ; some_special_preds_are_in_list(CompareMap, PPIds)
-        ; some_special_preds_are_in_list(InitMap, PPIds)
         )
     ;
         list.filter(proc_not_defined_in_module(ModuleInfo), PPIds,

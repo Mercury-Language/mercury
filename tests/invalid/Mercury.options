@@ -134,8 +134,3 @@ MCFLAGS-undef_type              = --verbose-error-messages
 MCFLAGS-unsatisfiable_constraint = --verbose-error-messages
 MCFLAGS-user_eq_dummy           = --verbose-error-messages
 MCFLAGS-vars_in_wrong_places    = --verbose-error-messages
-
-# --verbose-error-messages will mask the problem that zinc2mer_lib checks for.
-MCFLAGS-zinc2mer_lib            = --no-verbose-error-messages \
-                                    --solver-type-auto-init
-MCFLAGS-missing_init_pred       = --solver-type-auto-init

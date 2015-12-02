@@ -551,14 +551,6 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
             else
                 unexpected($module, $pred, "bad compare args")
             )
-        ;
-            SpecialPredId = spec_pred_init,
-            ( if Args = [X] then
-                generate_initialise_proc_body(Type, TypeBody, X,
-                    Context, Clause, !Info)
-            else
-                unexpected($module, $pred, "bad init args")
-            )
         ),
         info_extract(!.Info, VarSet, Types)
     ),
@@ -571,68 +563,6 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
     ClauseInfo = clauses_info(VarSet, Types, TVarNameMap, Types, ArgVec,
         ClausesRep, init_clause_item_numbers_comp_gen,
         RttiVarMaps, HasForeignClauses, HadSyntaxErrors).
-
-:- pred generate_initialise_proc_body(mer_type::in, hlds_type_body::in,
-    prog_var::in, prog_context::in, clause::out,
-    unify_proc_info::in, unify_proc_info::out) is det.
-
-generate_initialise_proc_body(_Type, TypeBody, X, Context, Clause, !Info) :-
-    info_get_module_info(!.Info, ModuleInfo),
-    (
-        % If this is an equivalence type then we just generate a call
-        % to the initialisation pred of the type on the RHS of the equivalence
-        % and cast the result back to the type on the LHS of the equivalence.
-        TypeBody = hlds_eqv_type(EqvType),
-        goal_info_init(Context, GoalInfo),
-        make_fresh_named_var_from_type(EqvType, "PreCast_HeadVar", 1, X0,
-            !Info),
-        type_to_ctor_det(EqvType, TypeCtor),
-        PredName = special_pred_name(spec_pred_init, TypeCtor),
-        module_info_get_name(ModuleInfo, ModuleName),
-        TypeCtor = type_ctor(TypeSymName, _TypeArity),
-        sym_name_get_module_name_default(TypeSymName, ModuleName,
-            TypeModuleName),
-        InitPred = qualified(TypeModuleName, PredName),
-        PredId   = invalid_pred_id,
-        ModeId   = invalid_proc_id,
-        InitCall = plain_call(PredId, ModeId, [X0], not_builtin, no, InitPred),
-        InitGoal = hlds_goal(InitCall, GoalInfo),
-
-        Any = any(shared, none_or_default_func),
-        generate_cast_with_insts(equiv_type_cast, X0, X, Any, Any, Context,
-            CastGoal),
-        Goal = hlds_goal(conj(plain_conj, [InitGoal, CastGoal]), GoalInfo),
-        quantify_clause_body([X], Goal, Context, Clause, !Info)
-    ;
-        TypeBody = hlds_solver_type(SolverTypeDetails, _),
-
-        % Just generate a call to the specified predicate, which is
-        % the user-defined equality pred for this type.
-        % (The pred_id and proc_id will be figured out by type checking
-        % and mode analysis.)
-
-        HowToInit = SolverTypeDetails ^ std_init_pred,
-        (
-            HowToInit = solver_init_automatic(InitPred)
-        ;
-            HowToInit = solver_init_explicit,
-            unexpected($module, $pred, "generating initialise pred. for " ++
-                "solver type that does not have automatic initialisation")
-        ),
-        PredId = invalid_pred_id,
-        ModeId = invalid_proc_id,
-        Call = plain_call(PredId, ModeId, [X], not_builtin, no, InitPred),
-        goal_info_init(Context, GoalInfo),
-        Goal = hlds_goal(Call, GoalInfo),
-        quantify_clause_body([X], Goal, Context, Clause, !Info)
-    ;
-        ( TypeBody = hlds_du_type(_, _, _, _, _, _, _, _, _)
-        ; TypeBody = hlds_foreign_type(_)
-        ; TypeBody = hlds_abstract_type(_)
-        ),
-        unexpected($module, $pred, "trying to create initialisation proc " ++
-            "for type that has no solver_type_details")
-    ).
 
 :- pred generate_unify_proc_body(mer_type::in, hlds_type_body::in,
     prog_var::in, prog_var::in, prog_context::in, clause::out,

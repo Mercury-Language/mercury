@@ -501,7 +501,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
             TypeDefn = parse_tree_solver_type(SolverTypeDetails,
                 _MaybeUnifyComparePredNames),
             SolverTypeDetails = solver_type_details(_RepresentationType,
-                _InitPred, _GroundInst, _AnyInst, MutableItems),
+                _GroundInst, _AnyInst, MutableItems),
             list.foldl(gather_implicit_import_needs_in_mutable, MutableItems,
                 !ImplicitImportNeeds)
         ;

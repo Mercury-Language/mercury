@@ -93,10 +93,6 @@
 
 :- type mode_info.
 
-:- type maybe_have_auto_init_var
-    --->    have_no_auto_init_var
-    ;       have_auto_init_var.
-
 :- type debug_flags
     --->    debug_flags(
                 % The value --debug-modes-verbose.
@@ -114,13 +110,6 @@
 :- pred mode_info_init(module_info::in, pred_id::in, proc_id::in,
     prog_context::in, set_of_progvar::in, head_inst_vars::in, instmap::in,
     how_to_check_goal::in, may_change_called_proc::in, mode_info::out) is det.
-
-    % The mode_info contains a flag indicating whether initialisation calls,
-    % converting a solver variable from `free' to `any', may be inserted
-    % during mode analysis.
-:- type may_init_solver_vars
-    --->    may_init_solver_vars
-    ;       may_not_init_solver_vars.
 
 :- type in_promise_purity_scope
     --->    in_promise_purity_scope
@@ -181,8 +170,6 @@
 :- pred mode_info_get_varset(mode_info::in, prog_varset::out) is det.
 :- pred mode_info_get_instvarset(mode_info::in, inst_varset::out) is det.
 :- pred mode_info_get_var_types(mode_info::in, vartypes::out) is det.
-:- pred mode_info_get_have_auto_init_var(mode_info::in,
-    maybe_have_auto_init_var::out) is det.
 :- pred mode_info_get_delay_info(mode_info::in, delay_info::out) is det.
 :- pred mode_info_get_live_vars(mode_info::in, bag(prog_var)::out) is det.
 :- pred mode_info_get_nondet_live_vars(mode_info::in, bag(prog_var)::out)
@@ -200,8 +187,6 @@
 :- pred mode_info_get_head_inst_vars(mode_info::in, head_inst_vars::out)
     is det.
 :- pred mode_info_get_checking_extra_goals(mode_info::in, bool::out) is det.
-:- pred mode_info_get_may_init_solver_vars(mode_info::in,
-    may_init_solver_vars::out) is det.
 :- pred mode_info_get_in_from_ground_term(mode_info::in,
     in_from_ground_term_scope::out) is det.
 :- pred mode_info_get_had_from_ground_term(mode_info::in,
@@ -264,8 +249,6 @@
 :- pred mode_info_set_may_change_called_proc(may_change_called_proc::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_checking_extra_goals(bool::in,
-    mode_info::in, mode_info::out) is det.
-:- pred mode_info_set_may_init_solver_vars(may_init_solver_vars::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_in_from_ground_term(in_from_ground_term_scope::in,
     mode_info::in, mode_info::out) is det.
@@ -342,16 +325,6 @@
 :- pred mode_info_need_to_requantify(mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%
-
-:- pred mode_info_may_init_solver_vars(mode_info::in) is semidet.
-
-    % Succeeds if automatic initialisation of solver variables is
-    % supported.  This is only the case if the developer-only option
-    % `--solver-type-auto-init' is enabled.
-    %
-:- pred mode_info_solver_init_is_supported(mode_info::in) is semidet.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -381,10 +354,6 @@
 
                 % The types of the variables.
                 msi_vartypes                :: vartypes,
-
-                % Do any of the variables in msi_vartypes have a type
-                % for which type_is_solver_type_with_auto_init succeeds?
-                msi_have_auto_init_var      :: maybe_have_auto_init_var,
 
                 % Is mode debugging of this procedure enabled? If yes,
                 % is verbose mode debugging enabled, is minimal mode debugging
@@ -416,11 +385,6 @@
 
                 % Is mode analysis allowed to change which procedure is called?
                 msi_may_change_called_proc  :: may_change_called_proc,
-
-                % `yes' if calls to the initialisation predicates for solver
-                % vars can be inserted during mode analysis in order to make
-                % goals schedulable.
-                msi_may_init_solver_vars    :: may_init_solver_vars,
 
                 % This field is used by the checkpoint code when debug_modes
                 % is on. It has the instmap that was current at the last mode
@@ -544,8 +508,6 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
     proc_info_get_varset(ProcInfo, VarSet),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    vartypes_types(VarTypes, AllTypes),
-    do_we_have_auto_init_var(ModuleInfo, AllTypes, HaveAutoInitVar),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
 
     bag.from_sorted_list(set_of_var.to_sorted_list(LiveVars), LiveVarsBag),
@@ -556,7 +518,6 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
 
     Changed = no,
     CheckingExtraGoals = no,
-    MayInitSolverVars = may_init_solver_vars,
     NeedToRequantify = do_not_need_to_requantify,
     InPromisePurityScope = not_in_promise_purity_scope,
     InFromGroundTerm = not_in_from_ground_term_scope,
@@ -564,10 +525,9 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
     MakeGroundTermsUnique = do_not_make_ground_terms_unique,
     InDuplForSwitch = not_in_dupl_for_switch,
 
-    ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes,
-        HaveAutoInitVar, Debug,
+    ModeSubInfo = mode_sub_info(PredId, ProcId, VarSet, VarTypes, Debug,
         LockedVars, LiveVarsBag, InstVarSet, ParallelVars, HowToCheck,
-        MayChangeProc, MayInitSolverVars, LastCheckpointInstMap, Changed,
+        MayChangeProc, LastCheckpointInstMap, Changed,
         CheckingExtraGoals, InstMap0, HeadInstVars, WarningList,
         NeedToRequantify, InPromisePurityScope, InFromGroundTerm,
         HadFromGroundTerm, MakeGroundTermsUnique, InDuplForSwitch),
@@ -580,17 +540,6 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, HeadInstVars,
 
     ModeInfo = mode_info(ModuleInfo, InstMap0, DelayInfo, ErrorList,
         ModeContext, Context, NondetLiveVarsBag, ModeSubInfo).
-
-:- pred do_we_have_auto_init_var(module_info::in, list(mer_type)::in,
-    maybe_have_auto_init_var::out) is det.
-
-do_we_have_auto_init_var(_, [], have_no_auto_init_var).
-do_we_have_auto_init_var(ModuleInfo, [Type | Types], HaveAutoInitVar) :-
-    ( if type_is_solver_type_with_auto_init(ModuleInfo, Type) then
-        HaveAutoInitVar = have_auto_init_var
-    else
-        do_we_have_auto_init_var(ModuleInfo, Types, HaveAutoInitVar)
-    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -616,8 +565,6 @@ mode_info_get_varset(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_varset.
 mode_info_get_var_types(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_vartypes.
-mode_info_get_have_auto_init_var(MI, X) :-
-    X = MI ^ mi_sub_info ^ msi_have_auto_init_var.
 mode_info_get_context(MI, X) :-
     X = MI ^ mi_context.
 mode_info_get_mode_context(MI, X) :-
@@ -652,8 +599,6 @@ mode_info_get_how_to_check(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_how_to_check.
 mode_info_get_may_change_called_proc(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_may_change_called_proc.
-mode_info_get_may_init_solver_vars(MI, X) :-
-    X = MI ^ mi_sub_info ^ msi_may_init_solver_vars.
 mode_info_get_initial_instmap(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_initial_instmap.
 mode_info_get_head_inst_vars(MI, X) :-
@@ -744,15 +689,6 @@ mode_info_set_how_to_check(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_how_to_check := X.
 mode_info_set_may_change_called_proc(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_may_change_called_proc := X.
-mode_info_set_may_init_solver_vars(X, !MI) :-
-    ( if
-        private_builtin.pointer_equal(X,
-            !.MI ^ mi_sub_info ^ msi_may_init_solver_vars)
-    then
-        true
-    else
-        !MI ^ mi_sub_info ^ msi_may_init_solver_vars := X
-    ).
 mode_info_set_in_from_ground_term(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_in_from_ground_term := X.
 mode_info_set_had_from_ground_term(X, !MI) :-
@@ -1056,19 +992,6 @@ mode_info_add_warning(ModeWarningInfo, !ModeInfo) :-
 
 mode_info_need_to_requantify(!ModeInfo) :-
     mode_info_set_need_to_requantify(need_to_requantify, !ModeInfo).
-
-%-----------------------------------------------------------------------------%
-
-mode_info_may_init_solver_vars(ModeInfo) :-
-    mode_info_get_may_init_solver_vars(ModeInfo, MayInitSolverVars),
-    MayInitSolverVars = may_init_solver_vars.
-
-%-----------------------------------------------------------------------------%
-
-mode_info_solver_init_is_supported(ModeInfo) :-
-    mode_info_get_module_info(ModeInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, solver_type_auto_init, yes).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.mode_info.

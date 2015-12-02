@@ -872,9 +872,6 @@ parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
         parse_where_attribute(parse_where_is("representation",
                 parse_where_type_is(ModuleName, VarSet)),
             MaybeRepresentationIs, !MaybeTerm),
-        parse_where_attribute(parse_where_initialisation_is(ModuleName,
-                VarSet),
-            MaybeInitialisationIs, !MaybeTerm),
         parse_where_attribute(parse_where_is("ground",
                 parse_where_inst_is(ModuleName)),
             MaybeGroundIs, !MaybeTerm),
@@ -909,7 +906,6 @@ parse_type_decl_where_term(IsSolverType, ModuleName, VarSet, Term0,
         IsSolverType,
         MaybeTypeIsAbstractNoncanonical,
         MaybeRepresentationIs,
-        MaybeInitialisationIs,
         MaybeGroundIs,
         MaybeAnyIs,
         MaybeCStoreIs,
@@ -1051,44 +1047,6 @@ parse_where_type_is_abstract_noncanonical(Term) =
         ok1(no)
     ).
 
-:- func parse_where_initialisation_is(module_name, varset, term) =
-    maybe1(maybe(sym_name)).
-
-parse_where_initialisation_is(ModuleName, VarSet, Term) = Result :-
-    Result0 = parse_where_is("initialisation",
-        parse_where_pred_is(ModuleName, VarSet), Term),
-    ( if
-        Result0 = ok1(no)
-    then
-        Result1 = parse_where_is("initialization",
-            parse_where_pred_is(ModuleName, VarSet), Term)
-    else
-        Result1 = Result0
-    ),
-    promise_pure (
-        (
-            Result1 = ok1(yes(_)),
-            semipure
-                semipure_get_solver_auto_init_supported(AutoInitSupported),
-            (
-                AutoInitSupported = yes,
-                Result = Result1
-            ;
-                AutoInitSupported = no,
-                Pieces = [words("Error: unknown attribute"),
-                    words("in solver type definition."), nl],
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [simple_msg(get_term_context(Term), [always(Pieces)])]),
-                Result = error1([Spec])
-            )
-        ;
-            ( Result1 = ok1(no)
-            ; Result1 = error1(_)
-            ),
-            Result = Result1
-        )
-    ).
-
 :- func parse_where_pred_is(module_name, varset, term) = maybe1(sym_name).
 
 parse_where_pred_is(ModuleName, VarSet, Term) = MaybeSymName :-
@@ -1191,8 +1149,7 @@ parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
     ).
 
 :- func make_maybe_where_details(is_solver_type, maybe1(maybe(unit)),
-    maybe1(maybe(mer_type)), maybe1(maybe(init_pred)),
-    maybe1(maybe(mer_inst)), maybe1(maybe(mer_inst)),
+    maybe1(maybe(mer_type)), maybe1(maybe(mer_inst)), maybe1(maybe(mer_inst)),
     maybe1(maybe(list(item_mutable_info))),
     maybe1(maybe(equality_pred)), maybe1(maybe(comparison_pred)),
     maybe1(maybe(list(sym_name_and_arity))),
@@ -1201,14 +1158,12 @@ parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
         maybe(list(sym_name_and_arity))).
 
 make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
-        MaybeRepresentationIs, MaybeInitialisationIs,
-        MaybeGroundIs, MaybeAnyIs, MaybeCStoreIs,
+        MaybeRepresentationIs, MaybeGroundIs, MaybeAnyIs, MaybeCStoreIs,
         MaybeEqualityIs, MaybeComparisonIs, MaybeDirectArgIs,
         MaybeWhereEnd, WhereTerm) = MaybeWhereDetails :-
     ( if
         MaybeTypeIsAbstractNoncanonical = ok1(TypeIsAbstractNoncanonical),
         MaybeRepresentationIs = ok1(RepresentationIs),
-        MaybeInitialisationIs = ok1(InitialisationIs),
         MaybeGroundIs = ok1(GroundIs),
         MaybeAnyIs = ok1(AnyIs),
         MaybeCStoreIs = ok1(CStoreIs),
@@ -1218,14 +1173,13 @@ make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
         MaybeWhereEnd = ok1(_WhereEnd)
     then
         MaybeWhereDetails = make_maybe_where_details_2(IsSolverType,
-            TypeIsAbstractNoncanonical, RepresentationIs, InitialisationIs,
+            TypeIsAbstractNoncanonical, RepresentationIs,
             GroundIs, AnyIs, CStoreIs, EqualityIs, ComparisonIs, DirectArgIs,
             WhereTerm)
     else
         Specs =
             get_any_errors1(MaybeTypeIsAbstractNoncanonical) ++
             get_any_errors1(MaybeRepresentationIs) ++
-            get_any_errors1(MaybeInitialisationIs) ++
             get_any_errors1(MaybeGroundIs) ++
             get_any_errors1(MaybeAnyIs) ++
             get_any_errors1(MaybeCStoreIs) ++
@@ -1237,7 +1191,7 @@ make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
     ).
 
 :- func make_maybe_where_details_2(is_solver_type, maybe(unit),
-    maybe(mer_type), maybe(init_pred), maybe(mer_inst), maybe(mer_inst),
+    maybe(mer_type), maybe(mer_inst), maybe(mer_inst),
     maybe(list(item_mutable_info)),
     maybe(equality_pred), maybe(comparison_pred),
     maybe(list(sym_name_and_arity)), term)
@@ -1245,7 +1199,7 @@ make_maybe_where_details(IsSolverType, MaybeTypeIsAbstractNoncanonical,
         maybe(list(sym_name_and_arity))).
 
 make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
-        RepresentationIs, InitialisationIs, GroundIs, AnyIs, CStoreIs,
+        RepresentationIs, GroundIs, AnyIs, CStoreIs,
         EqualityIs, ComparisonIs, DirectArgIs, WhereTerm)
         = MaybeWhereDetails :-
     (
@@ -1254,7 +1208,6 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
         % the solver_type_details and type_is_abstract_noncanonical.
         ( if
             RepresentationIs = maybe.no,
-            InitialisationIs = maybe.no,
             GroundIs         = maybe.no,
             AnyIs            = maybe.no,
             EqualityIs       = maybe.no,
@@ -1283,7 +1236,6 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                 MaybeWhereDetails = error3([Spec])
             else if
                 RepresentationIs = yes(RepnType),
-                InitialisationIs = MaybeInitialisation,
                 GroundIs         = MaybeGroundInst,
                 AnyIs            = MaybeAnyInst,
                 EqualityIs       = MaybeEqPred,
@@ -1308,15 +1260,8 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                     MaybeMutableInfos = no,
                     MutableInfos = []
                 ),
-                (
-                    MaybeInitialisation = yes(InitPred),
-                    HowToInit = solver_init_automatic(InitPred)
-                ;
-                    MaybeInitialisation = no,
-                    HowToInit = solver_init_explicit
-                ),
-                SolverTypeDetails = solver_type_details(
-                    RepnType, HowToInit, GroundInst, AnyInst, MutableInfos),
+                SolverTypeDetails = solver_type_details(RepnType,
+                    GroundInst, AnyInst, MutableInfos),
                 MaybeSolverTypeDetails = yes(SolverTypeDetails),
                 ( if
                     MaybeEqPred = no,
@@ -1346,7 +1291,6 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
             IsSolverType = non_solver_type,
             ( if
                 ( RepresentationIs = yes(_)
-                ; InitialisationIs = yes(_)
                 ; GroundIs         = yes(_)
                 ; AnyIs            = yes(_)
                 ; CStoreIs         = yes(_)

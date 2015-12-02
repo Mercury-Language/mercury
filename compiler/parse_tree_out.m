@@ -788,17 +788,10 @@ mercury_output_where_attributes(Info, TypeVarSet,
     solver_type_details::in, io::di, io::uo) is det.
 
 mercury_output_solver_type_details(Info, TypeVarSet, Details, !IO) :-
-    Details = solver_type_details(RepresentationType, HowToInit, GroundInst,
+    Details = solver_type_details(RepresentationType, GroundInst,
         AnyInst, MutableInfos),
     io.write_string("representation is ", !IO),
     mercury_output_type(TypeVarSet, print_name_only, RepresentationType, !IO),
-    (
-        HowToInit = solver_init_explicit
-    ;
-        HowToInit = solver_init_automatic(InitPred),
-        io.write_string(",\n\t\tinitialisation is ", !IO),
-        mercury_output_bracketed_sym_name(InitPred, !IO)
-    ),
     Lang = get_output_lang(Info),
     varset.init(EmptyInstVarSet),
     io.write_string(",\n\t\tground is ", !IO),

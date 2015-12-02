@@ -1344,52 +1344,31 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, GroundMatchesBound,
             true
         else
             !:Changed = yes,
-            ( if
-                % Insert a call to the appropriate solver type initialisation
-                % predicate if:
-                %
-                % (a) this is a solver type with inst `free' that should
-                %     have inst `any'.
-                %
-                % (b) this is a solver type that allows automatic
-                %     initialisation.
-                %
-                % (c) the option `--solver-type-auto-init' is enabled.
-                %
-                inst_is_free(ModuleInfo, VarInst),
-                inst_is_any(ModuleInfo, Inst),
-                type_is_solver_type_with_auto_init(ModuleInfo, Type),
-                mode_info_solver_init_is_supported(!.ModeInfo)
-            then
-                prepend_initialisation_call(Var, Type, VarInst, !Goal,
-                    !ModeInfo)
-            else
-                (
-                    % If we are inferring the mode, then don't report an error,
-                    % just set changed to yes to make sure that we will do
-                    % another fixpoint pass.
-                    InferModes = yes
-                ;
-                    InferModes = no,
-                    % XXX This might need to be reconsidered now we have
-                    % unique modes.
-                    ( if
-                        inst_matches_initial(VarInst, Inst, Type, ModuleInfo)
-                    then
-                        Reason = too_instantiated
-                    else if
-                        inst_matches_initial(Inst, VarInst, Type, ModuleInfo)
-                    then
-                        Reason = not_instantiated_enough
-                    else
-                        % I don't think this can happen. But just in case...
-                        Reason = wrongly_instantiated
-                    ),
-                    set_of_var.init(WaitingVars),
-                    ModeError = mode_error_final_inst(ArgNum, Var, VarInst,
-                        Inst, Reason),
-                    mode_info_error(WaitingVars, ModeError, !ModeInfo)
-                )
+            (
+                % If we are inferring the mode, then don't report an error,
+                % just set changed to yes to make sure that we will do
+                % another fixpoint pass.
+                InferModes = yes
+            ;
+                InferModes = no,
+                % XXX This might need to be reconsidered now we have
+                % unique modes.
+                ( if
+                    inst_matches_initial(VarInst, Inst, Type, ModuleInfo)
+                then
+                    Reason = too_instantiated
+                else if
+                    inst_matches_initial(Inst, VarInst, Type, ModuleInfo)
+                then
+                    Reason = not_instantiated_enough
+                else
+                    % I don't think this can happen. But just in case...
+                    Reason = wrongly_instantiated
+                ),
+                set_of_var.init(WaitingVars),
+                ModeError = mode_error_final_inst(ArgNum, Var, VarInst,
+                    Inst, Reason),
+                mode_info_error(WaitingVars, ModeError, !ModeInfo)
             )
         ),
         check_final_insts(VarsTail, InstsTail, VarInstsTail,

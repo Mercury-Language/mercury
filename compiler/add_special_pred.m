@@ -173,21 +173,9 @@ eagerly_add_special_preds(TVarSet, Type, TypeCtor, TypeBody, Context,
                 add_special_pred_decl(spec_pred_compare, TVarSet, Type,
                     TypeCtor, Context, TypeStatus, !ModuleInfo)
             )
-        ),
-        ( if type_is_solver_type_with_auto_init(!.ModuleInfo, Type) then
-            add_special_pred(spec_pred_init, TVarSet, Type, TypeCtor, TypeBody,
-                Context, TypeStatus, !ModuleInfo)
-        else
-            true
         )
     else
-        ( if type_is_solver_type_with_auto_init(!.ModuleInfo, Type) then
-            SpecialPredIds0 = [spec_pred_init]
-        else
-            SpecialPredIds0 = []
-        ),
-        SpecialPredIds =
-            [spec_pred_unify, spec_pred_compare | SpecialPredIds0],
+        SpecialPredIds = [spec_pred_unify, spec_pred_compare],
         add_special_pred_decl_list(SpecialPredIds, TVarSet, Type,
             TypeCtor, Context, TypeStatus, !ModuleInfo)
     ).
@@ -220,7 +208,7 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
         GenSpecialPreds = no,
         (
             SpecialPredId = spec_pred_unify,
-            % ###
+            % XXX STATUS
             add_special_pred_unify_status(TypeBody, TypeStatus0, TypeStatus),
             do_add_special_pred_for_real(SpecialPredId, TVarSet,
                 Type, TypeCtor, TypeBody, Context, TypeStatus, !ModuleInfo)
@@ -250,16 +238,6 @@ add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
                 ; TypeBody = hlds_solver_type(_, _)
                 ; TypeBody = hlds_abstract_type(_)
                 )
-            )
-        ;
-            SpecialPredId = spec_pred_init,
-            ( if type_is_solver_type_with_auto_init(!.ModuleInfo, Type) then
-                do_add_special_pred_for_real(SpecialPredId, TVarSet, Type,
-                    TypeCtor, TypeBody, Context, TypeStatus0, !ModuleInfo)
-            else
-                unexpected($module, $pred,
-                    "attempt to add initialise pred for non-solver type " ++
-                    "or solver type without automatic initialisation.")
             )
         )
     ).
@@ -373,8 +351,6 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor,
             SpecialPredId = spec_pred_compare
         ;
             SpecialPredId = spec_pred_index
-        ;
-            SpecialPredId = spec_pred_init
         )
     ).
 
@@ -382,20 +358,8 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         Context, TypeStatus, !ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Det),
-    Name = special_pred_name(SpecialPredId, TypeCtor),
-    (
-        SpecialPredId = spec_pred_init,
-        TypeCtor = type_ctor(TypeSymName, _TypeArity),
-        sym_name_get_module_name_default(TypeSymName, ModuleName,
-            TypeModuleName),
-        PredName = qualified(TypeModuleName, Name)
-    ;
-        ( SpecialPredId = spec_pred_unify
-        ; SpecialPredId = spec_pred_index
-        ; SpecialPredId = spec_pred_compare
-        ),
-        PredName = unqualified(Name)
-    ),
+    PredBaseName = special_pred_name(SpecialPredId, TypeCtor),
+    PredName = unqualified(PredBaseName),
     Arity = get_special_pred_id_arity(SpecialPredId),
     % XXX we probably shouldn't hardcode this as predicate but since
     % all current special_preds are predicates at the moment it doesn't
@@ -444,11 +408,6 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         CompareMap0 = SpecialPredMaps0 ^ spm_compare_map,
         map.det_insert(TypeCtor, PredId, CompareMap0, CompareMap),
         SpecialPredMaps = SpecialPredMaps0 ^ spm_compare_map := CompareMap
-    ;
-        SpecialPredId = spec_pred_init,
-        InitMap0 = SpecialPredMaps0 ^ spm_init_map,
-        map.det_insert(TypeCtor, PredId, InitMap0, InitMap),
-        SpecialPredMaps = SpecialPredMaps0 ^ spm_init_map := InitMap
     ),
     module_info_set_special_pred_maps(SpecialPredMaps, !ModuleInfo).
 

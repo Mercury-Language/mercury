@@ -13,24 +13,6 @@
 % This module defines some utility routines for comparing insts that are used
 % by modes.m and det_analysis.m.
 %
-% rafe: XXX The following comment needs revising in the light of
-% the new solver types design.
-%
-% The handling of `any' insts is not complete. (See also inst_util.m).
-% It would be nice to allow `free' to match `any', but right now we only allow
-% a few special cases of that. The reason is that although the mode analysis
-% would be pretty straight-forward, generating the correct code is quite a bit
-% trickier. modes.m would have to be changed to handle the implicit conversions
-% from `free'/`bound'/`ground' to `any' at
-%
-%   (1) procedure calls (this is just an extension of implied modes)
-%       currently we support only the easy cases of this
-%   (2) the end of branched goals
-%   (3) the end of predicates.
-%
-% Since that is not yet done, we currently require the user to insert explicit
-% calls to initialize constraint variables.
-%
 % We do allow `bound' and `ground' to match `any', based on the assumption
 % that `bound' and `ground' are represented in the same way as `any', i.e.
 % that we use the type system rather than the mode system to distinguish

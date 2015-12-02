@@ -65,7 +65,6 @@ NONRETRY_PROGS = \
 	resume_typeinfos		\
 	save				\
 	shell				\
-	solver_test			\
 	switch_on_unbounded		\
 	synth_attr			\
 	synth_attr_impure		\
@@ -571,9 +570,6 @@ shallow.out: shallow shallow.inp
 
 shell.out: shell shell.inp
 	$(MDB_STD) ./shell < shell.inp > shell.out 2>&1
-
-solver_test.out: solver_test solver_test.inp
-	$(MDB_STD) ./solver_test < solver_test.inp > solver_test.out 2>&1
 
 switch_on_unbounded.out: switch_on_unbounded switch_on_unbounded.inp
 	$(MDB_STD) ./switch_on_unbounded < switch_on_unbounded.inp \

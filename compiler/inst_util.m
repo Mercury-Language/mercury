@@ -12,20 +12,7 @@
 %
 % This module defines some utility routines for manipulating insts.
 %
-% The handling of `any' insts is not complete. (See also inst_match.m)
-%
-% The major limitation is that we don't allow `free' to be passed
-% where `any' is expected. To handle that, modes.m would have to be
-% changed to handle the implicit conversions from `free' to `any' at
-%
-%   (1) procedure calls (this is just an extension of implied modes)
-%   (2) the end of branched goals
-%   (3) the end of predicates.
-%
-% Since that is not yet done, we currently require the user to
-% insert explicit calls to initialize constraint variables.
-%
-% Another limitation is that we don't allow any unifications between functors
+% A limitation is that we don't allow any unifications between functors
 % and variables of mode `any'; the reason for that is that I have no
 % idea what code we should generate for them. Currently `any' insts
 % are only used for abstract types, so the type system should prevent

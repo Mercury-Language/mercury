@@ -158,32 +158,9 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
         UnifyGoalInfo0, UnifyGoalExpr, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    instmap_lookup_var(InstMap0, X, InstOfX0),
-    instmap_lookup_var(InstMap0, Y, InstOfY0),
-    % If X and Y are free and have a solver type and we are allowed to
-    % insert initialisation calls at this point, then do so to allow
-    % scheduling of the unification.
-    ( if
-        mode_info_solver_init_is_supported(!.ModeInfo),
-        mode_info_may_init_solver_vars(!.ModeInfo),
-        InstOfX0   = free,
-        InstOfY0   = free,
-        search_var_type(VarTypes, X, VarType),
-        type_is_solver_type_with_auto_init(ModuleInfo0, VarType)
-    then
-        construct_initialisation_call(X, VarType, any_inst,
-            context_init, no, InitXGoal, !ModeInfo),
-        MaybeInitX = yes(InitXGoal),
-        instmap_set_var(X, any_inst, InstMap0, InstMap),
-        InstOfX    = any_inst,
-        InstOfY    = InstOfY0
-    else
-        MaybeInitX = no,
-        InstMap    = InstMap0,
-        InstOfX    = InstOfX0,
-        InstOfY    = InstOfY0
-    ),
+    mode_info_get_instmap(!.ModeInfo, InstMap),
+    instmap_lookup_var(InstMap, X, InstOfX),
+    instmap_lookup_var(InstMap, Y, InstOfY),
     mode_info_var_is_live(!.ModeInfo, X, LiveX),
     mode_info_var_is_live(!.ModeInfo, Y, LiveY),
     ( if
@@ -217,17 +194,7 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
         ModeOfY = (InstOfY -> Inst),
         categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y,
             Det, UnifyContext, UnifyGoalInfo0, VarTypes, Unification0,
-            UnifyGoalExpr0, !ModeInfo),
-        (
-            MaybeInitX = no,
-            UnifyGoalExpr = UnifyGoalExpr0
-        ;
-            MaybeInitX = yes(InitGoal),
-            compute_goal_instmap_delta(InstMap, UnifyGoalExpr0,
-                UnifyGoalInfo0, UnifyGoalInfo, !ModeInfo),
-            UnifySubGoal = hlds_goal(UnifyGoalExpr0, UnifyGoalInfo),
-            UnifyGoalExpr = conj(plain_conj, [InitGoal, UnifySubGoal])
-        )
+            UnifyGoalExpr, !ModeInfo)
     else
         set_of_var.list_to_set([X, Y], WaitingVars),
         ModeError = mode_error_unify_var_var(X, Y, InstOfX, InstOfY),
@@ -680,8 +647,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         Unification0, UnifyContext, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     ensure_exist_constr_is_construction(IsExistConstruction, X0, X,
-        InstOfX, LiveX, ExtraGoals0, !ModeInfo),
-    add_solver_init_calls_if_needed(InstOfX, ArgVars0, ExtraGoals1, !ModeInfo),
+        InstOfX, LiveX, ExtraGoalsExistConstruct, !ModeInfo),
 
     % The calls above may have changed the instmap.
     mode_info_get_instmap(!.ModeInfo, InstMap1),
@@ -751,7 +717,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             X, ConsId, ArgVars0, VarTypes, UnifyContext,
             Unification0, Unification1, !ModeInfo),
         split_complicated_subunifies(Unification1, Unification,
-            ArgVars0, ArgVars, ExtraGoals2, !ModeInfo),
+            ArgVars0, ArgVars, ExtraGoalsSplitSubUnifies, !ModeInfo),
         modecheck_set_var_inst(X, Inst, yes(InstOfY), !ModeInfo),
         bind_args_if_needed(InstOfX, Inst, ArgVars, InstOfXArgs, !ModeInfo),
 
@@ -782,8 +748,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             % not_reached. (If it did in other cases, the code would be wrong
             % since it wouldn't have the correct determinism annotations.)
 
-            append_extra_goals(ExtraGoals0, ExtraGoals1, ExtraGoals01),
-            append_extra_goals(ExtraGoals01, ExtraGoals2, ExtraGoals),
+            append_extra_goals(ExtraGoalsExistConstruct,
+                ExtraGoalsSplitSubUnifies, ExtraGoals),
             ( if
                 HowToCheckGoal = check_unique_modes,
                 ExtraGoals = extra_goals(_, _),
@@ -835,62 +801,6 @@ ensure_exist_constr_is_construction(IsExistConstruction, X0, X, InstOfX, LiveX,
         InstOfX = InstOfX0,
         mode_info_var_is_live(!.ModeInfo, X, LiveX),
         ExtraGoals = no_extra_goals
-    ).
-
-:- pred add_solver_init_calls_if_needed(mer_inst::in, list(prog_var)::in,
-    extra_goals::out, mode_info::in, mode_info::out) is det.
-
-add_solver_init_calls_if_needed(InstOfX, ArgVars0, ExtraGoals, !ModeInfo) :-
-    mode_info_get_how_to_check(!.ModeInfo, HowToCheckGoal),
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    mode_info_get_var_types(!.ModeInfo, VarTypes),
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    ( if
-        % If we are allowed to insert solver type initialisation calls
-        % and InstOfX is free and all ArgVars0 are either non-free or have
-        % solver types, then we know that this is going to be a construction,
-        % so we can insert the necessary initialisation calls.
-        ArgVars0 = [_ | _],
-        HowToCheckGoal = check_modes,
-        inst_is_free(ModuleInfo0, InstOfX),
-        mode_info_may_init_solver_vars(!.ModeInfo),
-        mode_info_solver_init_is_supported(!.ModeInfo),
-        instmap_lookup_vars(InstMap0, ArgVars0, InstArgs0),
-        all_arg_vars_are_non_free_or_solver_vars(ArgVars0, InstArgs0,
-            VarTypes, ModuleInfo0, ArgVarsToInit)
-    then
-        construct_initialisation_calls(ArgVarsToInit, InitGoals, !ModeInfo),
-        (
-            InitGoals = [],
-            ExtraGoals = no_extra_goals
-        ;
-            InitGoals = [_ | _],
-            ExtraGoals = extra_goals(InitGoals, [])
-        )
-    else
-        ExtraGoals = no_extra_goals
-    ).
-
-:- pred all_arg_vars_are_non_free_or_solver_vars(list(prog_var)::in,
-    list(mer_inst)::in, vartypes::in, module_info::in, list(prog_var)::out)
-    is semidet.
-
-all_arg_vars_are_non_free_or_solver_vars([], [], _, _, []).
-all_arg_vars_are_non_free_or_solver_vars([], [_ | _], _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
-all_arg_vars_are_non_free_or_solver_vars([_ | _], [], _, _, _) :-
-    unexpected($module, $pred, "mismatched list lengths").
-all_arg_vars_are_non_free_or_solver_vars([ArgVar | ArgVars], [Inst | Insts],
-        VarTypes, ModuleInfo, ArgVarsToInit) :-
-    ( if inst_is_free(ModuleInfo, Inst) then
-        lookup_var_type(VarTypes, ArgVar, ArgType),
-        type_is_or_may_contain_solver_type(ModuleInfo, ArgType),
-        all_arg_vars_are_non_free_or_solver_vars(ArgVars, Insts,
-            VarTypes, ModuleInfo, ArgVarsToInitTail),
-        ArgVarsToInit = [ArgVar | ArgVarsToInitTail]
-    else
-        all_arg_vars_are_non_free_or_solver_vars(ArgVars, Insts,
-            VarTypes, ModuleInfo, ArgVarsToInit)
     ).
 
 :- pred handle_var_functor_mode_error(prog_var::in, cons_id::in,

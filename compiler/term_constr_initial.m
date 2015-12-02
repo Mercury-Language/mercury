@@ -394,34 +394,23 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
 set_generated_terminates([], _, _, !ProcTable).
 set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
         !ProcTable) :-
-    (
-        ( SpecialPredId = spec_pred_unify
-        ; SpecialPredId = spec_pred_compare
-        ; SpecialPredId = spec_pred_index
-        ),
-        ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
-        proc_info_get_headvars(ProcInfo0, HeadVars),
-        proc_info_get_vartypes(ProcInfo0, VarTypes),
-        special_pred_id_to_termination(SpecialPredId, HeadVars, ModuleInfo,
-            VarTypes, ArgSize, Termination, VarMap, HeadSizeVars),
-        some [!Term2Info] (
-            proc_info_get_termination2_info(ProcInfo0, !:Term2Info),
-            term2_info_set_success_constrs(yes(ArgSize), !Term2Info),
-            TermStatus = yes(Termination),
-            term2_info_set_term_status(TermStatus, !Term2Info),
-            IntermodStatus = yes(not_mutually_recursive),
-            term2_info_set_intermod_status(IntermodStatus, !Term2Info),
-            term2_info_set_size_var_map(VarMap, !Term2Info),
-            term2_info_set_head_vars(HeadSizeVars, !Term2Info),
-            proc_info_set_termination2_info(!.Term2Info, ProcInfo0, ProcInfo)
-        ),
-        map.det_update(ProcId, ProcInfo, !ProcTable)
-    ;
-        SpecialPredId = spec_pred_init
-        % We don't need to do anything special for solver type initialisation
-        % predicates. Leaving it up to the analyser may result in better
-        % argument size information anyway.
+    ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
+    proc_info_get_headvars(ProcInfo0, HeadVars),
+    proc_info_get_vartypes(ProcInfo0, VarTypes),
+    special_pred_id_to_termination(SpecialPredId, HeadVars, ModuleInfo,
+        VarTypes, ArgSize, Termination, VarMap, HeadSizeVars),
+    some [!Term2Info] (
+        proc_info_get_termination2_info(ProcInfo0, !:Term2Info),
+        term2_info_set_success_constrs(yes(ArgSize), !Term2Info),
+        TermStatus = yes(Termination),
+        term2_info_set_term_status(TermStatus, !Term2Info),
+        IntermodStatus = yes(not_mutually_recursive),
+        term2_info_set_intermod_status(IntermodStatus, !Term2Info),
+        term2_info_set_size_var_map(VarMap, !Term2Info),
+        term2_info_set_head_vars(HeadSizeVars, !Term2Info),
+        proc_info_set_termination2_info(!.Term2Info, ProcInfo0, ProcInfo)
     ),
+    map.det_update(ProcId, ProcInfo, !ProcTable),
     set_generated_terminates(ProcIds, SpecialPredId, ModuleInfo, !ProcTable).
 
     % Handle the generation of constraints for special predicates.
@@ -475,8 +464,6 @@ special_pred_id_to_termination(spec_pred_index, HeadProgVars, ModuleInfo,
         unexpected($module, $pred,
             "less than two arguments to builtin index")
     ).
-special_pred_id_to_termination(spec_pred_init, _, _, _, _, _, _, _) :-
-    unexpected($module, $pred, "initialise predicate").
 
     % Sets the termination status and argument size information for
     % those special_preds (compare and index) where the arguments

@@ -6,6 +6,9 @@
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Wed Mar  9 12:24:52 EST 2005
 %
+% This test is disabled, because automatic initialization of solver variables
+% is no longer supported.
+%
 %---------------------------------------------------------------------------%
 
 :- module solver_construction_init_test.
