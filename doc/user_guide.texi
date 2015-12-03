@@ -6652,7 +6652,7 @@ marked as obsolete.
 
 @sp 1
 @item --inform-ite-instead-of-switch
-@findex ---ite-instead-of-switch
+@findex --ite-instead-of-switch
 Generate informational messages for if-then-elses that could be
 replaced by switches.
 
