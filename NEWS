@@ -9,6 +9,60 @@ Changes that may break compatibility:
   exported from that module. This may require the explicit export of e.g.
   some types that previously were not exported.
 
+* `for' is now an operator.
+
+* It is now an error for a program to redefine a builtin type.  The affected
+  type names are:
+
+      int
+      float
+      character
+      string
+      {}
+      =
+      pred
+      func
+      pure
+      semipure
+      impure
+      ''
+
+* It is now an error for a program to redefine a builtin inst.  The affected
+  inst names are:
+
+      =<
+      any
+      bound
+      bound_unique
+      clobbered
+      clobbered_any
+      free
+      ground
+      is
+      mostly_clobbered
+      mostly_unique
+      mostly_unique_any
+      not_reached
+      unique
+      unique_any
+
+* It is now an error for a program to redefine a builtin mode.  The affected
+  mode names are:
+
+      =
+      >>
+      any_func
+      any_pred
+      func
+      is
+      pred
+
+* We have deleted the builtin inst synonyms `old' and `new': their use
+  should be replaced with `any' and `free' respectively.
+
+* We have delete the builtin modes `no' and `oo': their use should be
+  replaced with `oa' and `ia' respectively.
+
 Changes to the Mercury language:
 
 * We have added a new kind of scope to the language: determinism checks
@@ -35,8 +89,6 @@ Changes to the Mercury language:
   Used carefully, it allows the Mercury implementation to avoid boxing values
   of the foreign type when the type appears as the sole argument of a data
   constructor.
-
-* `for' is now an operator.
 
 Changes to the Mercury standard library:
 
@@ -193,6 +245,24 @@ Changes to the Mercury standard library:
 
    - reverse_prepend/2
    - reverse_prepend/3
+
+* The following predicate and function in the builtin module have been
+  deprecated and will be removed in a future release:
+
+   - promise_only_solution/1
+   - promise_only_solution_io/4
+
+  Existing code that uses either of these should be replaced with code that
+  uses a `promise_equivalent_solutions' goal instead.
+
+* The following modes in the builtin module have been deprecated and will
+  be removed in a future release:
+
+   - input/0
+   - output/0
+
+  Existing code that uses these modes should replace their use with `in'
+  or `out' respectively.
 
 Changes to the Mercury compiler:
 

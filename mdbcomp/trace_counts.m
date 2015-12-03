@@ -393,6 +393,8 @@ read_trace_counts(FileName, ReadResult, !IO) :-
     % and having to recreate it again. Unfortunately, we don't have any
     % facilities equivalent to popen in Unix, and I don't know how to
     % write one in a way that is portable to Windows. zs.
+    % XXX ... and we certainly shouldn't be hardcoding the names of the
+    % gzip / gunzip executables.  juliensf.
     ( if string.remove_suffix(FileName, ".gz", BaseName) then
         io.call_system("gunzip " ++ FileName, _UnzipResult, !IO),
         ActualFileName = BaseName,
@@ -410,8 +412,9 @@ read_trace_counts(FileName, ReadResult, !IO) :-
             IdReadResult = ok(FirstLine),
             string.rstrip(FirstLine) = trace_count_file_id
         then
-            promise_only_solution_io(read_trace_counts_from_cur_stream,
-                ReadResult, !IO)
+            promise_equivalent_solutions [ReadResult, !:IO] (
+                read_trace_counts_from_cur_stream(ReadResult, !IO)
+            )
         else
             ReadResult = syntax_error("no trace count file id")
         ),

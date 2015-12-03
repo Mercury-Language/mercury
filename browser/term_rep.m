@@ -77,7 +77,10 @@
 :- pragma terminates(term_rep_equal/2).
 
 term_rep_equal(Rep1, Rep2) :-
-    (=) = promise_only_solution(comp_rep_2(Rep1, Rep2)).
+    promise_equivalent_solutions [Result] (
+        comp_rep_2(Rep1, Rep2, Result)
+    ),
+    Result = (=).
 
 :- pred comp_rep_2(term_rep::in, term_rep::in, builtin.comparison_result::uo)
     is cc_multi.
@@ -90,13 +93,16 @@ comp_rep_2(Rep1, Rep2, Result) :-
 :- pragma terminates(term_rep_compare/3).
 
 term_rep_compare(Result, Rep1, Rep2) :-
-    Result = promise_only_solution(comp_rep_2(Rep1, Rep2)).
+    promise_equivalent_solutions [Result] (
+        comp_rep_2(Rep1, Rep2, Result)
+    ).
 
-univ_to_rep(Univ0, term_rep(Univ)) :- cc_multi_equal(Univ0, Univ).
+univ_to_rep(Univ0, term_rep(Univ)) :-
+    cc_multi_equal(Univ0, Univ).
 
 rep_to_univ(Rep, Univ) :-
-    Univ = promise_only_solution(
-        pred(U::out) is cc_multi :- Rep = term_rep(U)
+    promise_equivalent_solutions [Univ] (
+        Rep = term_rep(Univ)
     ).
 
 deref_path(Term, Path, SubTerm):-

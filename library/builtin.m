@@ -42,40 +42,42 @@
 
 %---------------------------------------------------------------------------%
 %
-% Insts
+% Insts.
 %
 
-% The standard insts `free', `ground', and `bound(...)' are builtin
-% and are implemented using special code in the parser and mode-checker.
+% The standard insts `free', `ground', and `bound(...)' are builtin and are
+% implemented using special code in the parser and mode-checker.
 %
-% So are the standard unique insts `unique', `unique(...)',
-% `mostly_unique', `mostly_unique(...)', and `clobbered'.
+% So are the standard unique insts `unique', `unique(...)', `mostly_unique',
+% `mostly_unique(...)', and `clobbered'.
 %
 % Higher-order predicate insts `pred(<modes>) is <detism>'
-% and higher-order functions insts `func(<modes>) = <mode> is det'
+% and higher-order function insts `func(<modes>) = <mode> is <detism>'
 % are also builtin.
+%
+% The `any' inst used for constraint solver interfaces is builtin and so are
+% its higher-order variants: `any_pred(<modes>) is <detism>' and
+% `any_func(<modes>) = <mode> is <detism>'.
 
     % The name `dead' is allowed as a synonym for `clobbered'.
-    % Similarly `mostly_dead' is a synonym for `mostly_clobbered'.
+    % Similarly, `mostly_dead' is a synonym for `mostly_clobbered'.
     %
 :- inst dead == clobbered.
 :- inst mostly_dead == mostly_clobbered.
 
-    % The `any' inst used for the constraint solver interface is also
-    % builtin. The insts `new' and `old' are allowed as synonyms for
-    % `free' and `any', respectively, since some of the literature uses
-    % this terminology.
-    %
-:- inst old == any.
-:- inst new == free.
-
 %---------------------------------------------------------------------------%
 %
-% Standard modes
+% Standard modes.
 %
 
 :- mode unused == free >> free.
+
+    % This mode is deprecated, use `out' instead.
+    %
 :- mode output == free >> ground.
+
+    % This mode is deprecated, use `in' instead.
+    %
 :- mode input  == ground >> ground.
 
 :- mode in  == ground >> ground.
@@ -88,7 +90,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Unique modes
+% Unique modes.
 %
 
 % XXX These are still not fully implemented.
@@ -107,7 +109,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% "Mostly" unique modes
+% "Mostly" unique modes.
 %
 
 % Unique except that they may be referenced again on backtracking.
@@ -126,7 +128,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Dynamic modes
+% Dynamic modes.
 %
 
     % Solver type modes.
@@ -134,15 +136,9 @@
 :- mode ia == any >> any.
 :- mode oa == free >> any.
 
-    % The modes `no' and `oo' are allowed as synonyms, since some of the
-    % literature uses this terminology.
-    %
-:- mode no == new >> old.
-:- mode oo == old >> old.
-
 %---------------------------------------------------------------------------%
 %
-% Predicates
+% Predicates.
 %
 
     % copy/2 makes a deep copy of a data structure.
@@ -201,9 +197,10 @@
     % assumption is not satisfied, the behaviour is undefined. (If you lie
     % to the compiler, the compiler will get its revenge!)
     %
-    % NOTE: we recommend using the a `promise_equivalent_solutions' goal
-    %       instead of this function.
+    % NOTE: This function is deprecated and will be removed in a future
+    %       release.  Use a `promise_equivalent_solutions' goal instead.
     %
+:- pragma obsolete(promise_only_solution/1).
 :- func promise_only_solution(pred(T)) = T.
 :- mode promise_only_solution(pred(out) is cc_multi) = out is det.
 :- mode promise_only_solution(pred(uo) is cc_multi) = uo is det.
@@ -224,9 +221,10 @@
     % the assumption is not satisfied, the behaviour is undefined. (If you
     % lie to the compiler, the compiler will get its revenge!)
     %
-    % NOTE: we recommend using a `promise_equivalent_solutions' goal
-    %       instead of this predicate.
+    % NOTE: This predicate is deprecated and will be removed in a future
+    %       release.  Use a `promise_equivalent_solutions' goal instead.
     %
+:- pragma obsolete(promise_only_solution_io/4).
 :- pred promise_only_solution_io(
     pred(T, IO, IO)::in(pred(out, di, uo) is cc_multi), T::out,
     IO::di, IO::uo) is det.
