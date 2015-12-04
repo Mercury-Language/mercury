@@ -905,11 +905,11 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
         WriteDataTable0 = no,
         MaybeAllInProc0 = no
     ),
-    ( InferredDetism = inferred(Determinism) ->
+    ( if InferredDetism = inferred(Determinism) then
         proc_info_set_inferred_determinism(Determinism,
             ProcInfo0, ProcInfo),
         map.det_update(ProcID, ProcInfo, !ProcTable)
-    ;
+    else
         true
     ),
     infer_proc_determinism_pass_1(ProcIDs, ModuleInfo, !ProcTable,
@@ -939,9 +939,9 @@ fact_table_mode_type([Mode | Modes], ModuleInfo, ModeType) :-
     else
         ModeType0 = other
     ),
-    ( ModeType0 = other ->
+    ( if ModeType0 = other then
         ModeType = other
-    ;
+    else
         fact_table_mode_type(Modes, ModuleInfo, ModeType1),
         ( if ModeType1 = unknown then
             ModeType = ModeType0
