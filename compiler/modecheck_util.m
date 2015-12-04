@@ -183,22 +183,14 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_goal.
 :- import_module check_hlds.modecheck_unify.
-:- import_module check_hlds.polymorphism.
 :- import_module check_hlds.type_util.
-:- import_module hlds.pred_table.
-:- import_module hlds.special_pred.
 :- import_module hlds.vartypes.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
-:- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module set_tree234.

@@ -32,27 +32,19 @@
 :- import_module check_hlds.delay_info.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_goal.
 :- import_module check_hlds.modecheck_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
-:- import_module hlds.vartypes.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
-:- import_module map.
-:- import_module maybe.
-:- import_module pair.
-:- import_module require.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

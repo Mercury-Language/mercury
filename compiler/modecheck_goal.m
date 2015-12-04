@@ -109,7 +109,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_debug.
 :- import_module check_hlds.mode_errors.
@@ -119,7 +118,6 @@
 :- import_module check_hlds.modecheck_unify.
 :- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.polymorphism.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.

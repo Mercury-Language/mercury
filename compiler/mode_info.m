@@ -329,7 +329,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.

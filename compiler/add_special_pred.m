@@ -65,7 +65,6 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.pred_table.
@@ -81,7 +80,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module require.
 :- import_module string.
 :- import_module varset.
 
