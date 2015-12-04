@@ -811,25 +811,6 @@ simplify_rval_2(Rval0, Rval) :-
         fail
     ).
 
-:- pred simplify_args(list(maybe(rval))::in, list(maybe(rval))::out) is det.
-
-simplify_args([], []).
-simplify_args([MR0 | Ms0], [MR | Ms]) :-
-    simplify_args(Ms0, Ms),
-    simplify_arg(MR0, MR).
-
-:- pred simplify_arg(maybe(rval)::in, maybe(rval)::out) is det.
-
-simplify_arg(MaybeRval0, MaybeRval) :-
-    ( if
-        MaybeRval0 = yes(Rval0),
-        simplify_rval_2(Rval0, Rval)
-    then
-        MaybeRval = yes(Rval)
-    else
-        MaybeRval = MaybeRval0
-    ).
-
 %-----------------------------------------------------------------------------%
 
 rval_addrs(Rval, CodeAddrs, DataIds) :-
@@ -928,25 +909,6 @@ mem_ref_addrs(stackvar_ref(_SlotNum), [], []).
 mem_ref_addrs(framevar_ref(_SlotNum), [], []).
 mem_ref_addrs(heap_ref(Rval, _MaybeTag, _FieldNum), CodeAddrs, DataIds) :-
     rval_addrs(Rval, CodeAddrs, DataIds).
-
-    % Give a list of maybe(rval), return a list of the code and data
-    % addresses that are referenced by that list.
-    %
-:- pred maybe_rval_list_addrs(list(maybe(rval))::in,
-    list(code_addr)::out, list(data_id)::out) is det.
-
-maybe_rval_list_addrs([], [], []).
-maybe_rval_list_addrs([MaybeRval | MaybeRvals], CodeAddrs, DataIds) :-
-    (
-        MaybeRval = yes(Rval),
-        rval_addrs(Rval, HeadCodeAddrs, HeadDataIds),
-        maybe_rval_list_addrs(MaybeRvals, TailCodeAddrs, TailDataIds),
-        CodeAddrs = HeadCodeAddrs ++ TailCodeAddrs,
-        DataIds = HeadDataIds ++ TailDataIds
-    ;
-        MaybeRval = no,
-        maybe_rval_list_addrs(MaybeRvals, CodeAddrs, DataIds)
-    ).
 
 var_lval_to_rval(_Var, Lval) = lval(Lval).
 

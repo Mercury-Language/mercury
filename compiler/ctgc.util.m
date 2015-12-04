@@ -103,14 +103,6 @@ some_preds_requiring_no_analysis(ModuleInfo, PPIds) :-
     list.member(proc(PredId, _), PPIds),
     pred_requires_no_analysis(ModuleInfo, PredId).
 
-:- pred not_defined_in_this_module(module_info::in, pred_proc_id::in)
-    is semidet.
-
-not_defined_in_this_module(ModuleInfo, proc(PredId, _)):-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_status(PredInfo, PredStatus),
-    pred_status_defined_in_this_module(PredStatus) = no.
-
 get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :-
     module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
     proc_info_get_headvars(ProcInfo, FormalVars),

@@ -1337,30 +1337,6 @@ make_fresh_arg_var_subst_svars(Arg0, Var, Vars0, !VarSet, !SVarState,
 
 %-----------------------------------------------------------------------------%
 
-    % make_fresh_arg_vars_no_svar(Args, Vars, !VarSet):
-    %
-    % Does the same job as make_fresh_arg_vars, but assumes that any references
-    % to state variables at the top level of Args have already been expanded.
-    %
-:- pred make_fresh_arg_vars_no_svar(list(prog_term)::in, list(prog_var)::out,
-    prog_varset::in, prog_varset::out) is det.
-
-make_fresh_arg_vars_no_svar(Args, Vars, !VarSet) :-
-    % For efficiency, we construct `Vars' backwards and then reverse it
-    % to get the correct order.
-    make_fresh_arg_vars_no_svar_loop(Args, [], RevVars, !VarSet),
-    list.reverse(RevVars, Vars).
-
-:- pred make_fresh_arg_vars_no_svar_loop(list(prog_term)::in,
-    list(prog_var)::in, list(prog_var)::out,
-    prog_varset::in,prog_varset::out) is det.
-
-make_fresh_arg_vars_no_svar_loop([], !RevVars, !VarSet).
-make_fresh_arg_vars_no_svar_loop([Arg | Args], !RevVars, !VarSet) :-
-    make_fresh_arg_var_no_svar(Arg, Var, !.RevVars, !VarSet),
-    !:RevVars = [Var | !.RevVars],
-    make_fresh_arg_vars_no_svar_loop(Args, !RevVars, !VarSet).
-
 :- pred make_fresh_arg_var_no_svar(prog_term::in, prog_var::out,
     list(prog_var)::in, prog_varset::in, prog_varset::out) is det.
 

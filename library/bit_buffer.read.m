@@ -599,14 +599,6 @@ finalize(ReadBuffer @ read_buffer(Buffer), Buffer ^ stream, Buffer ^ state,
     % We didn't have enough bits to satisfy a request, so move the position
     % to the end of the buffer.
     %
-:- pred set_buffer_error(stream.res(Error)::in,
-    read_buffer(Stream, State, Error)::read_buffer_di,
-    read_buffer(Stream, State, Error)::read_buffer_uo) is det
-    <= stream.bulk_reader(Stream, byte_index, bitmap, State, Error).
-
-set_buffer_error(Error, read_buffer(!.Buffer), read_buffer(!:Buffer)) :-
-    do_set_buffer_error(Error, !Buffer).
-
 :- pred do_set_buffer_error(stream.res(Error)::in,
     bit_buffer(Stream, State, Error)::bit_buffer_di,
     bit_buffer(Stream, State, Error)::bit_buffer_uo) is det.

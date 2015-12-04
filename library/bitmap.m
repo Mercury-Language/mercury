@@ -499,8 +499,8 @@ set_trailing_bits_in_byte(!.BM, Bit, Initializer) = !:BM :-
         ByteIndex = byte_index_for_bit(FirstTrailingBit),
         NumBitsToSet = bits_per_byte - FirstTrailingBitIndex,
         !:BM = !.BM ^ unsafe_byte(ByteIndex) :=
-                set_bits_in_byte(!.BM ^ unsafe_byte(ByteIndex),
-                    FirstTrailingBitIndex, NumBitsToSet, Initializer)
+            set_bits_in_byte(!.BM ^ unsafe_byte(ByteIndex),
+                FirstTrailingBitIndex, NumBitsToSet, Initializer)
     else
         true
     ).
@@ -592,6 +592,7 @@ BM ^ unsafe_bits(FirstBit, NumBits) = Bits :-
         NumBits, BM, 0, Bits).
 
     % Extract the given number of bits starting at the most significant.
+    %
 :- pred extract_bits_from_bytes(byte_index, bit_index_in_byte, num_bits,
     bitmap, word, word).
 %:- mode extract_bits_from_bytes(in, in, in, bitmap_ui, in, out) is det.
@@ -624,7 +625,7 @@ extract_bits_from_bytes(FirstByteIndex, FirstBitIndex, NumBits, BM, !Bits) :-
 extract_bits_from_byte_index(ByteIndex, FirstBitIndex,
         NumBitsThisByte, BM, !Bits) :-
     BitsThisByte = extract_bits_from_byte(BM ^ unsafe_byte(ByteIndex),
-                        FirstBitIndex, NumBitsThisByte),
+        FirstBitIndex, NumBitsThisByte),
     !:Bits = (!.Bits `unchecked_left_shift` NumBitsThisByte) \/ BitsThisByte.
 
 %---------------------------------------------------------------------------%
@@ -643,8 +644,8 @@ extract_bits_from_byte_index(ByteIndex, FirstBitIndex,
         )
     then
         throw_bitmap_error(
-                "bitmap.'bits :=': number of bits must be between " ++
-                "0 and `int.bits_per_int'.")
+            "bitmap.'bits :=': number of bits must be between " ++
+            "0 and `int.bits_per_int'.")
     else
         throw_bounds_error(BM, "bitmap.'bits :='", FirstBit)
     ).
@@ -684,8 +685,8 @@ set_bits_in_byte_index(ByteIndex, LastBitIndex,
         NumBitsThisByte, Bits, !BM) :-
     FirstBitInByte = LastBitIndex - NumBitsThisByte + 1,
     !:BM = !.BM ^ unsafe_byte(ByteIndex) :=
-                set_bits_in_byte(!.BM ^ unsafe_byte(ByteIndex),
-                    FirstBitInByte, NumBitsThisByte, Bits).
+        set_bits_in_byte(!.BM ^ unsafe_byte(ByteIndex),
+            FirstBitInByte, NumBitsThisByte, Bits).
 
 %---------------------------------------------------------------------------%
 
@@ -715,11 +716,11 @@ byte_slice(BM, StartByte, NumBytes) =
     slice(BM, StartByte * bits_per_byte, NumBytes * bits_per_byte).
 
 Slice ^ slice_start_byte_index =
-        quotient_bits_per_byte_with_rem_zero("bitmap.slice_start_byte_index",
-            Slice ^ slice_start_bit_index).
+    quotient_bits_per_byte_with_rem_zero("bitmap.slice_start_byte_index",
+        Slice ^ slice_start_bit_index).
 Slice ^ slice_num_bytes =
-        quotient_bits_per_byte_with_rem_zero("bitmap.slice_num_bytes",
-            Slice ^ slice_num_bits).
+    quotient_bits_per_byte_with_rem_zero("bitmap.slice_num_bytes",
+        Slice ^ slice_num_bits).
 
 :- func quotient_bits_per_byte_with_rem_zero(string, int) = int is det.
 
@@ -973,7 +974,7 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, !.DestBM, DestStartBit,
         % The alternatives below don't handle ranges that don't span
         % a byte boundary.
         !:DestBM = !.DestBM ^ unsafe_bits(DestStartBit, !.NumBits) :=
-                        SrcBM ^ unsafe_bits(SrcStartBit, !.NumBits)
+            SrcBM ^ unsafe_bits(SrcStartBit, !.NumBits)
       else if SrcStartIndex = DestStartIndex then
         % Handle the common case where the bits to be moved have
         % the same offsets in each byte, so we can do a block byte copy.
@@ -990,7 +991,7 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, !.DestBM, DestStartBit,
             DestStartByteIndex =
                 DestStartBit `unchecked_quotient` bits_per_byte,
             !:DestBM = unsafe_copy_bytes(SameBM, SrcBM, SrcStartByteIndex,
-                            !.DestBM, DestStartByteIndex, NumBytes)
+                !.DestBM, DestStartByteIndex, NumBytes)
        else
             % Grab the odd bits at each end of the block to move,
             % leaving a block of aligned bytes to move.
@@ -1025,11 +1026,11 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, !.DestBM, DestStartBit,
             % Do the block copy.
             NumBytes = !.NumBits `unchecked_quotient` bits_per_byte,
             SrcStartByteIndex = (SrcStartBit + NumBitsAtStart)
-                                `unchecked_quotient` bits_per_byte,
+                `unchecked_quotient` bits_per_byte,
             DestStartByteIndex = (DestStartBit + NumBitsAtStart)
-                                `unchecked_quotient` bits_per_byte,
+                `unchecked_quotient` bits_per_byte,
             !:DestBM = unsafe_copy_bytes(SameBM, SrcBM, SrcStartByteIndex,
-                            !.DestBM, DestStartByteIndex, NumBytes),
+                !.DestBM, DestStartByteIndex, NumBytes),
 
             % Fill in the partial bytes at the start and end of the range.
             ( if NumBitsAtStart = 0 then
@@ -1056,7 +1057,7 @@ unsafe_copy_bits(SameBM, SrcBM, SrcStartBit, !.DestBM, DestStartBit,
         )
     else
         !:DestBM = unsafe_copy_unaligned_bits(SameBM, SrcBM, SrcStartBit,
-                        !.DestBM, DestStartBit, !.NumBits)
+            !.DestBM, DestStartBit, !.NumBits)
     ).
 
 copy_bytes(SrcBM, SrcStartByteIndex, DestBM, DestStartByteIndex, NumBytes) =
@@ -1223,9 +1224,9 @@ unsafe_copy_unaligned_bits(SameBM, SrcBM, SrcStartBit,
         SrcStartByteIndex = byte_index_for_bit(NewSrcStartBit),
         DestStartByteIndex = byte_index_for_bit(NewDestStartBit),
         !:DestBM = unsafe_copy_unaligned_bytes_ltor(SrcBM,
-                    SrcStartByteIndex + 1, SrcBitIndex,
-                    SrcBM ^ unsafe_byte(SrcStartByteIndex),
-                    !.DestBM, DestStartByteIndex, NumBytes)
+            SrcStartByteIndex + 1, SrcBitIndex,
+            SrcBM ^ unsafe_byte(SrcStartByteIndex),
+            !.DestBM, DestStartByteIndex, NumBytes)
     ;
         Direction = right_to_left,
         SrcStartByteIndex = byte_index_for_bit(NewSrcStartBit + !.NumBits - 1),
@@ -1290,10 +1291,9 @@ unsafe_copy_unaligned_bytes_ltor(SrcBM, SrcByteIndex, SrcBitIndex,
         % overwritten by previous recursive calls).
 
         SrcByteBits = SrcBM ^ unsafe_byte(SrcByteIndex),
-        DestByteBits =
-            (PrevSrcByteBits `unchecked_left_shift` SrcBitIndex)
-                \/ (SrcByteBits `unchecked_right_shift`
-                            (bits_per_byte - SrcBitIndex)),
+        DestByteBits = (PrevSrcByteBits `unchecked_left_shift` SrcBitIndex)
+            \/ (SrcByteBits `unchecked_right_shift`
+                (bits_per_byte - SrcBitIndex)),
         !:DestBM = !.DestBM ^ unsafe_byte(DestByteIndex) := DestByteBits,
 
         unsafe_copy_unaligned_bytes_ltor(SrcBM, SrcByteIndex + 1, SrcBitIndex,
@@ -1329,10 +1329,9 @@ unsafe_copy_unaligned_bytes_rtol(SrcBM, SrcByteIndex, SrcBitIndex,
         % overwritten by previous recursive calls).
 
         SrcByteBits = SrcBM ^ unsafe_byte(SrcByteIndex),
-        DestByteBits =
-            (SrcByteBits `unchecked_left_shift` SrcBitIndex)
-                \/ (PrevSrcByteBits `unchecked_right_shift`
-                            (bits_per_byte - SrcBitIndex)),
+        DestByteBits = (SrcByteBits `unchecked_left_shift` SrcBitIndex)
+            \/ (PrevSrcByteBits `unchecked_right_shift`
+                (bits_per_byte - SrcBitIndex)),
         !:DestBM = !.DestBM ^ unsafe_byte(DestByteIndex) := DestByteBits,
 
         !:DestBM = unsafe_copy_unaligned_bytes_rtol(SrcBM, SrcByteIndex - 1,
@@ -1353,17 +1352,18 @@ unsafe_copy_unaligned_bytes_rtol(SrcBM, SrcByteIndex, SrcBitIndex,
 :- func choose_copy_direction(int, bit_index, bit_index) = copy_direction.
 
 choose_copy_direction(SameBM, SrcStartBit, DestStartBit) =
-    ( if SameBM = 1, SrcStartBit < DestStartBit
-      then right_to_left
-      else left_to_right
+    ( if SameBM = 1, SrcStartBit < DestStartBit then
+        right_to_left
+    else
+        left_to_right
     ).
 
 %---------------------------------------------------------------------------%
 
+to_string(BM) = Str :-
     % Note: this should be kept in sync with MR_bitmap_to_string in
     % runtime/mercury_bitmap.c.
     %
-to_string(BM) = Str :-
     NumBits = BM ^ num_bits,
     to_string_chars(byte_index_for_bit(NumBits - 1), BM, ['>'], BitChars),
     LenChars = to_char_list(int_to_string(NumBits)),
@@ -1453,11 +1453,10 @@ bitmap_to_byte_strings(BM, NumBits, !.Strs) = !:Strs :-
         else
             BitsThisByte = LastBitIndex + 1,
             ThisByte = ThisByte0 `unchecked_right_shift`
-                            (bits_per_byte - BitsThisByte)
+                (bits_per_byte - BitsThisByte)
         ),
-        ThisByteStr =
-            string.pad_left(string.int_to_base_string(ThisByte, 2),
-                '0', BitsThisByte),
+        ThisByteStr = string.pad_left(string.int_to_base_string(ThisByte, 2),
+            '0', BitsThisByte),
         !:Strs = [ThisByteStr | !.Strs],
         !:Strs = bitmap_to_byte_strings(BM, NumBits - BitsThisByte, !.Strs)
     ).
@@ -1581,8 +1580,8 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
     MR_Integer  res;
     res = MR_bitmap_cmp(BM1, BM2);
     Result = ((res < 0) ? MR_COMPARE_LESS
-                : (res == 0) ? MR_COMPARE_EQUAL
-                : MR_COMPARE_GREATER);
+        : (res == 0) ? MR_COMPARE_EQUAL
+        : MR_COMPARE_GREATER);
 ").
 
 :- pragma foreign_proc("Java",
@@ -1707,7 +1706,8 @@ det_num_bytes(BM) = Bytes :-
 
 %---------------------------------------------------------------------------%
 
-num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
+num_bits(_) = _ :-
+    private_builtin.sorry("bitmap.num_bits").
 
 :- pragma foreign_proc("C",
     num_bits(BM::in) = (NumBits::out),
@@ -1742,7 +1742,8 @@ num_bits(_) = _ :- private_builtin.sorry("bitmap.num_bits").
 :- func 'num_bits :='(bitmap, num_bits) = bitmap.
 :- mode 'num_bits :='(bitmap_di, in) = bitmap_uo is det.
 
-'num_bits :='(_, _) = _ :- private_builtin.sorry("bitmap.'num_bits :='").
+'num_bits :='(_, _) = _
+    :- private_builtin.sorry("bitmap.'num_bits :='").
 
 :- pragma foreign_proc("C",
     'num_bits :='(BM0::bitmap_di, NumBits::in) = (BM::bitmap_uo),
@@ -1957,26 +1958,6 @@ byte_index_for_bit(I) =
 
 %---------------------------------------------------------------------------%
 
-    % Return the bit number in the bitmap of the first bit in the
-    % same byte as the given bit.
-    %
-:- func first_bit_in_same_byte(bit_index) = bit_index.
-
-first_bit_in_same_byte(I) = floor_to_multiple_of_bits_per_byte(I).
-
-:- func floor_to_multiple_of_bits_per_byte(int) = int.
-
-floor_to_multiple_of_bits_per_byte(X) = Floor :-
-    Trunc = unchecked_quotient(X, bits_per_byte),
-    Floor0 = Trunc * bits_per_byte,
-    ( if Floor0 > X then
-        Floor = Floor0 - bits_per_byte
-    else
-        Floor = Floor0
-    ).
-
-%---------------------------------------------------------------------------%
-
 :- type bit_index_in_byte == int.
 
     % Convert a bit index for a bitmap into a bit index into a
@@ -1997,7 +1978,7 @@ bit_index_in_byte(I) = I `unchecked_rem` bits_per_byte.
 :- func bitmask(bit_index_in_byte) = byte.
 
 bitmask(I) = 1 `unchecked_left_shift`
-                    (bits_per_byte - 1 - bit_index_in_byte(I)).
+    (bits_per_byte - 1 - bit_index_in_byte(I)).
 
 %---------------------------------------------------------------------------%
 
@@ -2042,7 +2023,7 @@ set_bits_in_byte(Byte0, FirstBit, NumBits, Bits) = Byte :-
     Mask = n_bit_mask(NumBits),
     BitsToSet = Mask /\ Bits,
     Byte = (Byte0 /\ \ (Mask `unchecked_left_shift` Shift))
-            \/ (BitsToSet `unchecked_left_shift` Shift).
+        \/ (BitsToSet `unchecked_left_shift` Shift).
 
 %---------------------------------------------------------------------------%
 
