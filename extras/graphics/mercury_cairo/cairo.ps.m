@@ -164,27 +164,13 @@ create_surface(FileName, Width, Height, Surface, !IO) :-
     raw_surface = cairo_ps_surface_create(FileName, W, H);
     Status = cairo_surface_status(raw_surface);
     
-    switch (Status) {
-        case CAIRO_STATUS_SUCCESS:
-            Surface = MR_GC_NEW(MCAIRO_surface);
-            Surface->mcairo_raw_surface = raw_surface;
-            MR_GC_register_finalizer(Surface, MCAIRO_finalize_surface, 0);
-            break;
-
-        case CAIRO_STATUS_NULL_POINTER:
-        case CAIRO_STATUS_NO_MEMORY:
-        case CAIRO_STATUS_READ_ERROR:
-        case CAIRO_STATUS_INVALID_CONTENT:
-        case CAIRO_STATUS_INVALID_FORMAT:
-        case CAIRO_STATUS_INVALID_VISUAL:
-            Surface = NULL;
-            break;
-
-        default:
-            MR_external_fatal_error(\"Mercury cairo\",
-                \"unknown PostScript surface status\");
+    if (Status == CAIRO_STATUS_SUCCESS) {
+        Surface = MR_GC_NEW(MCAIRO_surface);
+        Surface->mcairo_raw_surface = raw_surface;
+        MR_GC_register_finalizer(Surface, MCAIRO_finalize_surface, 0);
+    } else {
+        Surface = NULL;
     }
-
 #else
     Supported = MR_NO;
     Status = CAIRO_STATUS_SUCCESS;
