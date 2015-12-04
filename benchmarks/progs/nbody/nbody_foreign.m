@@ -6,14 +6,14 @@
 % http://shootout.alioth.debian.org/
 %
 % Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
-% 
+%
 % A variant of the nbody benchmark in nbody.m that uses mutable data
 % structures defined in whatever the target language is.
 %
-% Compile with: -O5 --intermodule-optimization 
-% 
+% Compile with: -O5 --intermodule-optimization
+%
 % For C (gcc) add: --cflags="-O3 -mfpmath=sse -msse3"
-% 
+%
 % TODO: support Erlang.
 %
 %-----------------------------------------------------------------------------%
@@ -50,7 +50,7 @@ main(!IO) :-
         int.fold_up(advance(0.01, NBodySystem), 1, N, !IO),
         energy(NBodySystem, FinalEnergy, !IO),
         io.format("%.9f\n", [f(FinalEnergy)], !IO)
-      else
+    else
         io.set_exit_status(1, !IO)
     ).
 
@@ -105,7 +105,7 @@ energy_2(Bodies, I, !E, !IO) :-
 
 :- pred energy_3(bodies::array_ui, body_ref::in, int::in,
     float::in, float::out, io::di, io::uo) is det.
-    
+
 energy_3(Bodies, B, J, !E, !IO) :-
     B2 = Bodies ^ unsafe_elem(J),
     get_position(B, Bx, By, Bz, !IO),

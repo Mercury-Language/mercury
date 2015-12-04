@@ -41,7 +41,7 @@ main(!IO) :-
         io.format("%.9f\n", [f(energy(NBodySystem0))], !IO),
         int.fold_up(advance(0.01), 1, N, NBodySystem0, NBodySystem),
         io.format("%.9f\n", [f(energy(NBodySystem))], !IO)
-      else
+    else
         io.set_exit_status(1, !IO)
     ).
 
@@ -49,7 +49,7 @@ main(!IO) :-
 
 :- func new_n_body_system = (bodies::array_uo) is det.
 
-new_n_body_system = 
+new_n_body_system =
     offset_momentum(array([sun, jupiter, saturn, uranus, neptune])).
 
 :- func offset_momentum(bodies::array_di) = (bodies::array_uo) is det.
@@ -71,12 +71,12 @@ offset_momentum_2(Body, !Px, !Py, !Pz) :-
     !:Px = !.Px + Body ^ vx * Body ^ mass,
     !:Py = !.Py + Body ^ vy * Body ^ mass,
     !:Pz = !.Pz + Body ^ vz * Body ^ mass.
- 
+
 %-----------------------------------------------------------------------------%
 
 :- func energy(bodies::array_ui) = (float::out) is det.
 
-energy(Bodies) = Energy :- 
+energy(Bodies) = Energy :-
     int.fold_up(energy_2(Bodies), 0, Bodies ^ max, 0.0, Energy).
 
 :- pred energy_2(bodies::array_ui, int::in, float::in, float::out) is det.
@@ -89,7 +89,7 @@ energy_2(Bodies, I, !E) :-
 
 :- pred energy_3(bodies::array_ui, body::in, int::in,
     float::in, float::out) is det.
-    
+
 energy_3(Bodies, B, J, !E) :-
     B2 = Bodies ^ unsafe_elem(J),
     Dx = B ^ x - B2 ^ x,
@@ -142,7 +142,7 @@ advance_3(Dt, J, !B, !Bodies) :-
 
 update_pos(Dt, I, !Bodies) :-
     some [!Body] (
-        !:Body = !.Bodies ^ unsafe_elem(I), 
+        !:Body = !.Bodies ^ unsafe_elem(I),
         !Body ^ x := !.Body ^ x + Dt * !.Body ^ vx,
         !Body ^ y := !.Body ^ y + Dt * !.Body ^ vy,
         !Body ^ z := !.Body ^ z + Dt * !.Body ^ vz,

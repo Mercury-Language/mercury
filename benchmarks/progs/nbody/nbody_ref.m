@@ -7,7 +7,7 @@
 %
 % Author: Julien Fischer <juliensf@csse.unimelb.edu.au>
 %
-% A variant of the nbody benchmark in nbody.m that uses stores and refernces.
+% A variant of the nbody benchmark in nbody.m that uses stores and references.
 %
 % Compile with: -O5 --intermodule-optimization --ctgc
 %

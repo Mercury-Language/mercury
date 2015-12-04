@@ -46,7 +46,7 @@ main(!IO) :-
         int.fold_up(advance(0.01, NBodySystem), 1, N, !IO),
         energy(NBodySystem, FinalEnergy, !IO),
         io.format("%.9f\n", [f(FinalEnergy)], !IO)
-      else
+    else
         io.set_exit_status(1, !IO)
     ).
 
@@ -75,7 +75,7 @@ offset_momentum_2(Body, !Px, !Py, !Pz, !IO) :-
     !:Px = !.Px + Vx * Body ^ mass,
     !:Py = !.Py + Vy * Body ^ mass,
     !:Pz = !.Pz + Vz * Body ^ mass.
- 
+
 %-----------------------------------------------------------------------------%
 
 :- pred energy(bodies::array_ui, float::out, io::di, io::uo) is det.
@@ -95,7 +95,7 @@ energy_2(Bodies, I, !E, !IO) :-
 
 :- pred energy_3(bodies::array_ui, body::in, int::in,
     float::in, float::out, io::di, io::uo) is det.
-    
+
 energy_3(Bodies, B, J, !E, !IO) :-
     B2 = Bodies ^ unsafe_elem(J),
     get_position(B, Bx, By, Bz, !IO),
@@ -190,7 +190,7 @@ make_body(Body, MutBody, !IO) :-
                 vx   :: F,
                 vy   :: F,
                 vz   :: F,
-                mass :: float   % Mass is a constant. 
+                mass :: float   % Mass is a constant.
             ).
 
 :- pragma inline(get_position/6).
