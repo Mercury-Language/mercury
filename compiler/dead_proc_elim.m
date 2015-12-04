@@ -70,6 +70,39 @@
 
     % Generate a warning for every user-defined dead procedure in the module.
     %
+    % XXX At the moment, there are several situations in which we generate
+    % warnings that (at least arguably) we shouldn't.
+    %
+    % - If a predicate has definitions in both Mercury and a foreign language,
+    %   and we are generating code for a backend that targets that foreign
+    %   language, then we don't use the Mercury clauses for the predicate.
+    %   This causes us to miss calls from those clauses. If such calls
+    %   are the only calls to a predicate, we will wrongly believe that
+    %   predicate to never be called.
+    %
+    %   To fix this, we will need to (a) preserve and semantically check
+    %   any Mercury clauses even for predicates which can be, and are,
+    %   implemented by foreign code on the current backend, and (b)
+    %   record the ids of the procedures called from these Mercury clauses
+    %   in the proc_info in the field that currently holds the ids of
+    %   procedures called from deleted trace goal scopes.
+    %
+    % - Some predicates exist to map between a (finite) enum type and another,
+    %   infinite type such as "string". The intended mode of use of the
+    %   predicate is as a semidet predicate to translate from the infinite type
+    %   to the finite type, but the programmer may add another mode to the
+    %   predicate to translate from the finite type to the infinite type.
+    %   By making this predicate det, the programmer can ensure that all
+    %   values in the finite type are in the range of *some* value of the
+    %   infinite type. This makes this mode of the predicate useful even if
+    %   it is never called.
+    %
+    %   We could fix this by adding an option that would ask this predicate
+    %   to suppress warnings for unused det procedures of predicates which
+    %   do have used semidet procedures, or simply to suppress warnings for
+    %   an unused procedure unless *all* its sibling procedures are unused
+    %   as well.
+    %
 :- pred dead_proc_warn(module_info::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -243,22 +276,41 @@ dead_proc_initialize(ModuleInfo, !:Queue, !:Needed) :-
 dead_proc_initialize_preds([], _PredTable, !Queue, !Needed).
 dead_proc_initialize_preds([PredId | PredIds], PredTable, !Queue, !Needed) :-
     map.lookup(PredTable, PredId, PredInfo),
-    ProcIds = pred_info_exported_procids(PredInfo),
-    dead_proc_initialize_procs(PredId, ProcIds, !Queue, !Needed),
+    ExportedProcIds = pred_info_exported_procids(PredInfo),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.to_assoc_list(ProcTable, Procs),
+    dead_proc_initialize_procs(PredId, Procs, ExportedProcIds,
+        !Queue, !Needed),
     dead_proc_initialize_preds(PredIds, PredTable, !Queue, !Needed).
 
     % Add the listed procedures to the queue and map.
     %
-:- pred dead_proc_initialize_procs(pred_id::in, list(proc_id)::in,
+:- pred dead_proc_initialize_procs(pred_id::in,
+    assoc_list(proc_id, proc_info)::in, list(proc_id)::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
-dead_proc_initialize_procs(_PredId, [], !Queue, !Needed).
-dead_proc_initialize_procs(PredId, [ProcId | ProcIds], !Queue, !Needed) :-
-    Entity = entity_proc(PredId, ProcId),
-    queue.put(Entity, !Queue),
-    map.set(Entity, not_eliminable, !Needed),
-    dead_proc_initialize_procs(PredId, ProcIds, !Queue, !Needed).
+dead_proc_initialize_procs(_PredId, [], _ExportedProcIds, !Queue, !Needed).
+dead_proc_initialize_procs(PredId, [Proc | Procs], ExportedProcIds,
+        !Queue, !Needed) :-
+    Proc = ProcId - ProcInfo,
+    ( if
+        proc_info_is_valid_mode(ProcInfo),
+        (
+            list.member(ProcId, ExportedProcIds)
+        ;
+            proc_info_get_has_any_foreign_exports(ProcInfo,
+                has_foreign_exports)
+        )
+    then
+        Entity = entity_proc(PredId, ProcId),
+        queue.put(Entity, !Queue),
+        map.set(Entity, not_eliminable, !Needed)
+    else
+        true
+    ),
+    dead_proc_initialize_procs(PredId, Procs, ExportedProcIds,
+        !Queue, !Needed).
 
     % Add procedures exported to foreign language by a `:- pragma
     % foreign_export(...)' declaration to the queue and map.
@@ -1068,17 +1120,9 @@ dead_proc_warn_proc(ModuleInfo, Needed, PredId, ProcTable, ProcId,
         true
     else
         map.lookup(ProcTable, ProcId, ProcInfo),
-        proc_info_get_has_any_foreign_exports(ProcInfo, HasForeignExports),
-        (
-            HasForeignExports = no_foreign_exports,
-            proc_info_get_context(ProcInfo, Context),
-            Spec = warn_dead_proc(ModuleInfo, PredId, ProcId, Context),
-            !:Specs = [Spec | !.Specs]
-        ;
-            HasForeignExports = has_foreign_exports
-            % The procedure is unused by Mercury code, but it may be used
-            % by foreign language code.
-        )
+        proc_info_get_context(ProcInfo, Context),
+        Spec = warn_dead_proc(ModuleInfo, PredId, ProcId, Context),
+        !:Specs = [Spec | !.Specs]
     ).
 
 :- func warn_dead_proc(module_info, pred_id, proc_id, prog_context)
