@@ -980,10 +980,16 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 Outer = atomic_interface_vars(OuterDI, OuterUO),
                 Context = goal_info_get_context(GoalInfo),
                 check_outer_var_type(Context, VarTypes, VarSet, OuterDI,
-                    _OuterDIType, OuterDITypeSpecs),
+                    OuterDIType, OuterDITypeSpecs),
                 check_outer_var_type(Context, VarTypes, VarSet, OuterUO,
-                    _OuterUOType, OuterUOTypeSpecs),
-                OuterTypeSpecs = OuterDITypeSpecs ++ OuterUOTypeSpecs,
+                    OuterUOType, OuterUOTypeSpecs),
+                ( if OuterDIType = OuterUOType then
+                    OuterMismatchSpecs = []
+                else
+                    OuterMismatchSpecs = [mismatched_outer_var_types(Context)]
+                ),
+                OuterTypeSpecs = OuterDITypeSpecs ++ OuterUOTypeSpecs ++
+                    OuterMismatchSpecs,
                 (
                     OuterTypeSpecs = [_ | _],
                     list.foldl(purity_info_add_message, OuterTypeSpecs, !Info),
@@ -1502,7 +1508,6 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
     purity_name(ActualPurity, ActualPurityName),
     PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
         PredId),
-
     Pieces1 = [words("In call to")] ++ PredPieces ++ [suffix(":"), nl,
         words("warning: unnecessary"), quote(DeclaredPurityName),
         words("indicator."), nl],
@@ -1517,19 +1522,6 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
             words("is sufficient."), nl]
     ),
     Msg = simple_msg(Context, [always(Pieces1), always(Pieces2)]),
-    Spec = error_spec(severity_warning, phase_purity_check, [Msg]).
-
-:- func warn_redundant_promise_purity(prog_context, purity, purity)
-    = error_spec.
-
-warn_redundant_promise_purity(Context, PromisedPurity, InsidePurity) = Spec :-
-    purity_name(PromisedPurity, PromisedPurityName),
-    DeclName = "promise_" ++ PromisedPurityName,
-    purity_name(InsidePurity, InsidePurityName),
-    Pieces = [words("Warning: unnecessary"), quote(DeclName),
-        words("goal."), nl,
-        words("The purity inside is"), words(InsidePurityName), nl],
-    Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_warning, phase_purity_check, [Msg]).
 
 :- func report_error_closure_purity(prog_context, purity, purity) = error_spec.
