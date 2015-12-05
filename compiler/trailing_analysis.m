@@ -9,11 +9,11 @@
 % File: trailing_analysis.m.
 % Author: juliensf.
 %
-% This module implements trail usage analysis.  It annotates the HLDS with
+% This module implements trail usage analysis. It annotates the HLDS with
 % information about which procedures will not modify the trail.
 %
 % The compiler can use this information to omit redundant trailing operations
-% in trailing grades.  After running the analysis the trailing status of each
+% in trailing grades. After running the analysis the trailing status of each
 % procedure is one of:
 %
 %   (1) trail_will_not_modify
@@ -25,7 +25,7 @@
 %   (1) for all inputs the procedure will not modify the trail.
 %   (2) for some inputs the procedure may modify the trail.
 %   (3) the procedure is polymorphic and whether it may modify the trail
-%       depends upon the instantiation of the type variables.  We need
+%       depends upon the instantiation of the type variables. We need
 %       this because we can define types with user-defined equality or
 %       comparison that modify the trail.
 %
@@ -113,10 +113,10 @@
 % Perform trail usage analysis on a module.
 %
 
-% The analysis is carried out in two passes.  Both passes do a bottom-up
-% traversal of the callgraph, one SCC at a time.  For each SCC the first
-% pass works out the trailing_status for each procedure in the SCC.  The
-% second pass then uses this information to annotate the goals in each
+% The analysis is carried out in two passes. Both passes do a bottom-up
+% traversal of the callgraph, one SCC at a time. For each SCC the first
+% pass works out the trailing_status for each procedure in the SCC.
+% The second pass then uses this information to annotate the goals in each
 % procedure with trail usage information.
 %
 % The second pass is only run if we are going to use the information,
@@ -147,8 +147,8 @@ analyse_trail_usage(!ModuleInfo) :-
         set.insert(pak_trailing, ProcAnalysisKinds0, ProcAnalysisKinds),
         module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo),
 
-        % Record results if making the analysis registry.  We do this in a
-        % separate pass so that we record results for exported `:- external'
+        % Record results if making the analysis registry. We do this in
+        % a separate pass so that we record results for exported `:- external'
         % procedures, which don't get analysed because we don't have clauses
         % for them.
         (
@@ -466,7 +466,7 @@ check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         else
             % If the condition modifies the trail, is model_non or both,
             % then we need to emit trailing ops around the conditoin. If the
-            % if-then-else has status `trail_conditional' then we also need
+            % if-then-else has status `trail_conditional', then we also need
             % to emit the trail ops because we cannot be sure that calls to
             % builtin.{unify,compare} won't call user-defined equality or
             % comparison predicates that modify the trail.
@@ -572,7 +572,7 @@ pred_info_has_known_trail_status(PredInfo, Status) :-
     trail_known_procedure(PredOrFunc, ModuleNameStr, Name, Arity, Status).
 
     % known_procedure/4 is a table of library predicates whose trailing
-    % status is hardcoded into the analyser.  For a few predicates this
+    % status is hardcoded into the analyser. For a few predicates this
     % information can make a big difference (particularly in the absence
     % of any form of intermodule analysis).
     %
@@ -592,7 +592,7 @@ trail_known_procedure(_, "exception", "rethrow", 1, trail_will_not_modify).
 %
 
     % Extract those procedures whose trailing_status has been set to
-    % `conditional'.  Fails if one of the procedures in the set
+    % `conditional'. Fails if one of the procedures in the set
     % is known to modify the trail or if the trailing status is not
     % yet been set for one or more of the procedures.
     %
