@@ -50,10 +50,10 @@
     % surface.mark_dirty_rectangle(Surface, X, Y, Width, Height, !IO):
     %  XXX - rest of documentation.
 :- pred mark_dirty_rectangle(S::in, int::in, int::in, int::in, int::in,
-	io::di, io::uo) is det <= surface(S).
+    io::di, io::uo) is det <= surface(S).
 
     % surface.set_device_offset(Surface, X, Y, !IO):
-    % Sets an offset, X (Y) in divice units in that X (Y) direction, that is
+    % Sets an offset, X (Y) in device units in that X (Y) direction, that is
     % added to the device coordinates determined by the current transformation
     % matrix  when drawing to Surface.
     %
@@ -72,7 +72,7 @@
 :- pred set_fallback_resolution(S::in, float::in, float::in, io::di, io::uo)
     is det <= surface(S).
 
-    % suface.get_fallback_resultion(Surface, X, Y, !IO):
+    % surface.get_fallback_resolution(Surface, X, Y, !IO):
     % Get the current fallback resolution for Surface.
     %
 :- pred get_fallback_resolution(S::in, float::out, float::out, io::di, io::uo)
@@ -110,10 +110,10 @@
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_font_options_t    *raw_font_options;
-    
+
     raw_font_options = cairo_font_options_create();
     cairo_surface_get_font_options(
-	    ((MCAIRO_surface *)Surface)->mcairo_raw_surface,
+        ((MCAIRO_surface *)Surface)->mcairo_raw_surface,
         raw_font_options);
     FntOpts = MR_GC_NEW(MCAIRO_font_options);
     FntOpts->mcairo_raw_font_options = raw_font_options;
@@ -125,7 +125,7 @@
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     Content = cairo_surface_get_content(
-	((MCAIRO_surface *)Surface)->mcairo_raw_surface);
+        ((MCAIRO_surface *)Surface)->mcairo_raw_surface);
 ").
 
 :- pragma foreign_proc("C",
@@ -138,7 +138,7 @@
 
 :- pragma foreign_proc("C",
     mark_dirty_rectangle(Surface::in, X::in, Y::in, Width::in, Height::in,
-	_IO0::di, _IO::uo),
+        _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_surface_mark_dirty_rectangle(
@@ -146,7 +146,7 @@
 ").
 
 :- pragma foreign_proc("C",
-    set_device_offset(Surface::in, X::in, Y::in, _IO0::di, _IO::uo),    
+    set_device_offset(Surface::in, X::in, Y::in, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_surface_set_device_offset(
@@ -154,7 +154,7 @@
 ").
 
 :- pragma foreign_proc("C",
-    get_device_offset(Surface::in, X::out, Y::out, _IO0::di, _IO::uo),    
+    get_device_offset(Surface::in, X::out, Y::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, tabled_for_io],
 "
     cairo_surface_get_device_offset(

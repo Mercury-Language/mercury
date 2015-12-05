@@ -47,7 +47,7 @@
 :- pred get_height(image_surface::in, int::out, io::di, io::uo) is det.
 
     % image.get_stride(Surface, Stride, !IO):
-    % Sride is the stride of Surface (in bytes).
+    % Stride is the stride of Surface (in bytes).
     %
 :- pred get_stride(image_surface::in, int::out, io::di, io::uo) is det.
 

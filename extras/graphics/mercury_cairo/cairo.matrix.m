@@ -8,8 +8,8 @@
 %
 % Author: Julien Fischer <juliensf@csse.unimelb.edu.au.
 %
-% This modle contains predicates that perform various generic matrix
-% operations on cairo transformation matricies.
+% This module contains predicates that perform various generic matrix
+% operations on cairo transformation matrices.
 % 
 %---------------------------------------------------------------------------%
 
