@@ -282,7 +282,7 @@ is_valid_instance_orig_type(ModuleInfo, ClassId, InstanceDefn, Type,
         )
     ;
         ( Type = builtin_type(_)
-        ; Type = higher_order_type(_, _, _, _)
+        ; Type = higher_order_type(_, _, _, _, _)
         ; Type = apply_n_type(_, _, _)
         ; Type = type_variable(_, _)
         ; Type = tuple_type(_, _)
@@ -307,7 +307,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         Type = builtin_type(_)
     ;
         (
-            Type = higher_order_type(_, _, _, _),
+            Type = higher_order_type(_, _, _, _, _),
             EndPieces = [words("is a higher order type.")]
         ;
             Type = apply_n_type(_, _, _),
@@ -383,7 +383,7 @@ each_arg_is_a_type_variable(SeenTypes, [Type | Types], N, Result) :-
     ;
         ( Type = defined_type(_, _, _)
         ; Type = builtin_type(_)
-        ; Type = higher_order_type(_, _, _, _)
+        ; Type = higher_order_type(_, _, _, _, _)
         ; Type = tuple_type(_, _)
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)

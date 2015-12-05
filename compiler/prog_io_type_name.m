@@ -25,15 +25,21 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_parse_type(term::in, mer_type::out) is semidet.
+:- type allow_ho_inst_info
+    --->    allow_ho_inst_info
+    ;       no_allow_ho_inst_info.
 
-:- pred parse_type(term::in, varset::in, cord(format_component)::in,
-    maybe1(mer_type)::out) is det.
+:- pred maybe_parse_type(allow_ho_inst_info::in, term::in, mer_type::out)
+    is semidet.
 
-:- pred maybe_parse_types(list(term)::in, list(mer_type)::out) is semidet.
+:- pred parse_type(allow_ho_inst_info::in, term::in, varset::in,
+    cord(format_component)::in, maybe1(mer_type)::out) is det.
 
-:- pred parse_types(list(term)::in, varset::in, cord(format_component)::in,
-    maybe1(list(mer_type))::out) is det.
+:- pred maybe_parse_types(allow_ho_inst_info::in, list(term)::in,
+    list(mer_type)::out) is semidet.
+
+:- pred parse_types(allow_ho_inst_info::in, list(term)::in, varset::in,
+    cord(format_component)::in, maybe1(list(mer_type))::out) is det.
 
 :- pred is_known_type_name(string::in) is semidet.
 
@@ -42,10 +48,13 @@
 
 :- implementation.
 
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_io_inst_mode_name.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 
 :- import_module bool.
 :- import_module maybe.
@@ -53,14 +62,14 @@
 
 %---------------------------------------------------------------------------%
 
-maybe_parse_type(Term, Type) :-
+maybe_parse_type(AllowHOInstInfo, Term, Type) :-
     % The values of VarSet and ContextPieces do not matter since we succeed
     % only if they aren't used.
     VarSet = varset.init,
     ContextPieces = cord.init,
-    parse_type(Term, VarSet, ContextPieces, ok1(Type)).
+    parse_type(AllowHOInstInfo, Term, VarSet, ContextPieces, ok1(Type)).
 
-parse_type(Term, VarSet, ContextPieces, Result) :-
+parse_type(AllowHOInstInfo, Term, VarSet, ContextPieces, Result) :-
     % XXX kind inference: We currently give all types kind `star'.
     % This will be different when we have a kind system.
     (
@@ -87,8 +96,8 @@ parse_type(Term, VarSet, ContextPieces, Result) :-
                     Result = ok1(Type)
                 ;
                     KnownTypeKind = known_type_compound(CompoundTypeKind),
-                    parse_compound_type(Term, VarSet, ContextPieces,
-                        CompoundTypeKind, Result)
+                    parse_compound_type(AllowHOInstInfo, Term, VarSet,
+                        ContextPieces, CompoundTypeKind, Result)
                 ;
                     KnownTypeKind = known_type_bad_arity,
                     Result = ill_formed_type_result(ContextPieces, VarSet,
@@ -101,8 +110,8 @@ parse_type(Term, VarSet, ContextPieces, Result) :-
                     NameResult),
                 (
                     NameResult = ok2(SymName, SymNameArgTerms),
-                    parse_types(SymNameArgTerms, VarSet, ContextPieces,
-                        SymNameArgsResult),
+                    parse_types(no_allow_ho_inst_info, SymNameArgTerms, VarSet,
+                        ContextPieces, SymNameArgsResult),
                     (
                         SymNameArgsResult = ok1(ArgTypes),
                         Result = ok1(defined_type(SymName, ArgTypes,
@@ -119,13 +128,16 @@ parse_type(Term, VarSet, ContextPieces, Result) :-
         )
     ).
 
-:- pred parse_compound_type(term::in, varset::in, cord(format_component)::in,
-    known_compound_type_kind(term)::in, maybe1(mer_type)::out) is det.
+:- pred parse_compound_type(allow_ho_inst_info::in, term::in, varset::in,
+    cord(format_component)::in, known_compound_type_kind(term)::in,
+    maybe1(mer_type)::out) is det.
 
-parse_compound_type(Term, VarSet, ContextPieces, CompoundTypeKind, Result) :-
+parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
+        CompoundTypeKind, Result) :-
     (
         CompoundTypeKind = kctk_tuple(Args),
-        parse_types(Args, VarSet, ContextPieces, ArgsResult),
+        parse_types(no_allow_ho_inst_info, Args, VarSet, ContextPieces,
+            ArgsResult),
         (
             ArgsResult = ok1(ArgTypes),
             Result = ok1(tuple_type(ArgTypes, kind_star))
@@ -146,10 +158,11 @@ parse_compound_type(Term, VarSet, ContextPieces, CompoundTypeKind, Result) :-
     ;
         CompoundTypeKind = kctk_pure_pred(Args),
         ( if
-            maybe_parse_types(Args, ArgTypes)
+            maybe_parse_types(no_allow_ho_inst_info, Args, ArgTypes)
         then
-            Result = ok1(higher_order_type(ArgTypes, no, purity_pure,
-                lambda_normal))
+            construct_higher_order_pred_type(purity_pure, lambda_normal,
+                ArgTypes, PredType),
+            Result = ok1(PredType)
         else
             Result = ill_formed_type_result(ContextPieces, VarSet, Term)
         )
@@ -157,11 +170,22 @@ parse_compound_type(Term, VarSet, ContextPieces, CompoundTypeKind, Result) :-
         CompoundTypeKind = kctk_pure_func(Arg1, Arg2),
         ( if
             Arg1 = term.functor(term.atom("func"), FuncArgs, _),
-            maybe_parse_types(FuncArgs, ArgTypes),
-            maybe_parse_type(Arg2, RetType)
+            maybe_parse_types(no_allow_ho_inst_info, FuncArgs, ArgTypes),
+            maybe_parse_type(no_allow_ho_inst_info, Arg2, RetType)
         then
-            Result = ok1(higher_order_type(ArgTypes,
-                yes(RetType), purity_pure, lambda_normal))
+            construct_higher_order_func_type(purity_pure, lambda_normal,
+                ArgTypes, RetType, FuncType),
+            Result = ok1(FuncType)
+        else
+            Result = ill_formed_type_result(ContextPieces, VarSet, Term)
+        )
+    ;
+        CompoundTypeKind = kctk_is(Arg1, Arg2),
+        ( if
+            AllowHOInstInfo = allow_ho_inst_info,
+            maybe_parse_ho_type_and_inst(Arg1, Arg2, purity_pure, Type)
+        then
+            Result = ok1(Type)
         else
             Result = ill_formed_type_result(ContextPieces, VarSet, Term)
         )
@@ -173,22 +197,73 @@ parse_compound_type(Term, VarSet, ContextPieces, CompoundTypeKind, Result) :-
                 Name = "=",
                 Args = [Arg1, Arg2],
                 Arg1 = term.functor(term.atom("func"), FuncArgs, _),
-                maybe_parse_types(FuncArgs, ArgTypes),
-                maybe_parse_type(Arg2, RetType),
-                ResultPrime = ok1(higher_order_type(ArgTypes,
-                    yes(RetType), Purity, lambda_normal))
+                maybe_parse_types(no_allow_ho_inst_info, FuncArgs, ArgTypes),
+                maybe_parse_type(no_allow_ho_inst_info, Arg2, RetType),
+                construct_higher_order_func_type(Purity, lambda_normal,
+                    ArgTypes, RetType, Type)
             ;
                 Name = "pred",
-                maybe_parse_types(Args, ArgTypes),
-                ResultPrime = ok1(higher_order_type(ArgTypes, no, Purity,
-                    lambda_normal))
+                maybe_parse_types(no_allow_ho_inst_info, Args, ArgTypes),
+                construct_higher_order_pred_type(Purity, lambda_normal,
+                    ArgTypes, Type)
+            ;
+                Name = "is",
+                AllowHOInstInfo = allow_ho_inst_info,
+                Args = [Arg1, Arg2],
+                maybe_parse_ho_type_and_inst(Arg1, Arg2, Purity, Type)
             )
         then
-            Result = ResultPrime
+            Result = ok1(Type)
         else
             Result = ill_formed_type_result(ContextPieces, VarSet, Term)
         )
     ).
+
+:- pred maybe_parse_ho_type_and_inst(term::in, term::in, purity::in,
+    mer_type::out) is semidet.
+
+maybe_parse_ho_type_and_inst(Arg1, Arg2, Purity, Type) :-
+    Arg2 = term.functor(term.atom(DetString), [], _),
+    standard_det(DetString, Detism),
+    (
+        Arg1 = term.functor(term.atom("="), [FuncTerm, RetTerm], _),
+        FuncTerm = term.functor(term.atom("func"), ArgTerms, _),
+        maybe_parse_types_and_modes(ArgTerms, ArgTypes, ArgModes),
+        maybe_parse_type_and_mode(RetTerm, RetType, RetMode),
+        construct_higher_order_func_type(Purity, lambda_normal, ArgTypes,
+            RetType, ArgModes, RetMode, Detism, Type)
+    ;
+        Arg1 = term.functor(term.atom("pred"), ArgTerms, _),
+        maybe_parse_types_and_modes(ArgTerms, ArgTypes, ArgModes),
+        construct_higher_order_pred_type(Purity, lambda_normal, ArgTypes,
+            ArgModes, Detism, Type)
+    ).
+
+:- pred maybe_parse_types_and_modes(list(term)::in, list(mer_type)::out,
+    list(mer_mode)::out) is semidet.
+
+maybe_parse_types_and_modes(ArgTerms, ArgTypes, ArgModes) :-
+    list.reverse(ArgTerms, RevArgTerms),
+    maybe_parse_types_and_modes_acc(RevArgTerms, [], ArgTypes, [], ArgModes).
+
+:- pred maybe_parse_types_and_modes_acc(list(term)::in,
+    list(mer_type)::in, list(mer_type)::out,
+    list(mer_mode)::in, list(mer_mode)::out) is semidet.
+
+maybe_parse_types_and_modes_acc([], !ArgTypes, !ArgModes).
+maybe_parse_types_and_modes_acc([ArgTerm | ArgTerms], ArgTypes0, ArgTypes,
+        ArgModes0, ArgModes) :-
+    maybe_parse_type_and_mode(ArgTerm, ArgType, ArgMode),
+    maybe_parse_types_and_modes_acc(ArgTerms, [ArgType | ArgTypes0], ArgTypes,
+        [ArgMode | ArgModes0], ArgModes).
+
+:- pred maybe_parse_type_and_mode(term::in, mer_type::out, mer_mode::out)
+    is semidet.
+
+maybe_parse_type_and_mode(Term, Type, Mode) :-
+    Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _),
+    maybe_parse_type(no_allow_ho_inst_info, TypeTerm, Type),
+    convert_mode(no_allow_constrained_inst_var, ModeTerm, Mode).
 
 is_known_type_name(Name) :-
     (
@@ -206,6 +281,7 @@ is_known_type_name(Name) :-
     --->    kctk_tuple(list(T))
     ;       kctk_pure_func(T, T)
     ;       kctk_pure_pred(list(T))
+    ;       kctk_is(T, T)
     ;       kctk_purity(purity, T)
     ;       kctk_apply(list(T)).
 
@@ -275,6 +351,18 @@ is_known_type_name_args(Name, Args, KnownType) :-
         Name = "pred",
         KnownType = known_type_compound(kctk_pure_pred(Args))
     ;
+        Name = "is",
+        (
+            ( Args = []
+            ; Args = [_]
+            ; Args = [_, _, _ | _]
+            ),
+            KnownType = known_type_bad_arity
+        ;
+            Args = [Arg1, Arg2],
+            KnownType = known_type_compound(kctk_is(Arg1, Arg2))
+        )
+    ;
         (
             Name = "pure",
             Purity = purity_pure
@@ -312,15 +400,16 @@ ill_formed_type_result(ContextPieces, VarSet, Term) = Result :-
 
 %---------------------------------------------------------------------------%
 
-maybe_parse_types(Term, Types) :-
+maybe_parse_types(AllowHOInstInfo, Term, Types) :-
     % The values of VarSet and ContextPieces do not matter since we succeed
     % only if they aren't used.
     VarSet = varset.init,
     ContextPieces = cord.init,
-    parse_types(Term, VarSet, ContextPieces, ok1(Types)).
+    parse_types(AllowHOInstInfo, Term, VarSet, ContextPieces, ok1(Types)).
 
-parse_types(Terms, VarSet, ContextPieces, Result) :-
-    parse_types_acc(Terms, VarSet, ContextPieces, [], RevTypes, [], Specs),
+parse_types(AllowHOInstInfo, Terms, VarSet, ContextPieces, Result) :-
+    parse_types_acc(AllowHOInstInfo, Terms, VarSet, ContextPieces,
+        [], RevTypes, [], Specs),
     (
         Specs = [],
         Result = ok1(list.reverse(RevTypes))
@@ -329,14 +418,15 @@ parse_types(Terms, VarSet, ContextPieces, Result) :-
         Result = error1(Specs)
     ).
 
-:- pred parse_types_acc(list(term)::in, varset::in, cord(format_component)::in,
-    list(mer_type)::in, list(mer_type)::out,
+:- pred parse_types_acc(allow_ho_inst_info::in, list(term)::in, varset::in,
+    cord(format_component)::in, list(mer_type)::in, list(mer_type)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-parse_types_acc([], _, _, !RevTypes, !Specs).
-parse_types_acc([Term | Terms], VarSet, ContextPieces, !RevTypes, !Specs) :-
+parse_types_acc(_, [], _, _, !RevTypes, !Specs).
+parse_types_acc(AllowHOInstInfo, [Term | Terms], VarSet, ContextPieces,
+        !RevTypes, !Specs) :-
     % XXX We should pass a ContextPieces updated as the "nth type in ...".
-    parse_type(Term, VarSet, ContextPieces, TermResult),
+    parse_type(AllowHOInstInfo, Term, VarSet, ContextPieces, TermResult),
     (
         TermResult = ok1(Type),
         !:RevTypes = [Type | !.RevTypes]
@@ -344,7 +434,8 @@ parse_types_acc([Term | Terms], VarSet, ContextPieces, !RevTypes, !Specs) :-
         TermResult = error1(TermSpecs),
         !:Specs = TermSpecs ++ !.Specs
     ),
-    parse_types_acc(Terms, VarSet, ContextPieces, !RevTypes, !Specs).
+    parse_types_acc(AllowHOInstInfo, Terms, VarSet, ContextPieces,
+        !RevTypes, !Specs).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_type_name.

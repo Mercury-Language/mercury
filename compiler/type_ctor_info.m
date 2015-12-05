@@ -488,7 +488,7 @@ impl_type_ctor("table_builtin", "ml_subgoal", 0, impl_ctor_subgoal).
     %
 :- func type_ctor_info_rtti_version = int.
 
-type_ctor_info_rtti_version = 15.
+type_ctor_info_rtti_version = 16.
 
 %---------------------------------------------------------------------------%
 
@@ -505,7 +505,13 @@ make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
     ExistTvars = [],
     pseudo_type_info.construct_maybe_pseudo_type_info(ArgType,
         NumUnivTvars, ExistTvars, MaybePseudoTypeInfo),
-    Functor = notag_functor(FunctorName, MaybePseudoTypeInfo, MaybeArgName),
+    ( if ArgType = higher_order_type(_, _, higher_order(_), _, _) then
+        FunctorSubtypeInfo = functor_subtype_exists
+    else
+        FunctorSubtypeInfo = functor_subtype_none
+    ),
+    Functor = notag_functor(FunctorName, MaybePseudoTypeInfo, MaybeArgName,
+        FunctorSubtypeInfo),
     Details = tcd_notag(EqualityAxioms, Functor).
 
 %---------------------------------------------------------------------------%
@@ -765,8 +771,8 @@ make_maybe_res_functors(TypeCtor, [Functor | Functors], NextOrdinal,
     ConsId = cons(SymName, list.length(ConstructorArgs), TypeCtor),
     map.lookup(ConsTagMap, ConsId, ConsTag),
     get_maybe_reserved_rep(ConsTag, ConsRep),
-    list.map(generate_du_arg_info(TypeArity, ExistTvars),
-        ConstructorArgs, ArgInfos),
+    list.map_foldl(generate_du_arg_info(TypeArity, ExistTvars),
+        ConstructorArgs, ArgInfos, functor_subtype_none, FunctorSubtypeInfo),
     (
         ExistTvars = [],
         MaybeExistInfo = no
@@ -779,7 +785,7 @@ make_maybe_res_functors(TypeCtor, [Functor | Functors], NextOrdinal,
     (
         ConsRep = du_rep(DuRep),
         DuFunctor = du_functor(FunctorName, Arity, NextOrdinal, DuRep,
-            ArgInfos, MaybeExistInfo),
+            ArgInfos, MaybeExistInfo, FunctorSubtypeInfo),
         MaybeResFunctor = du_func(DuFunctor)
     ;
         ConsRep = reserved_rep(ResRep),
@@ -842,9 +848,11 @@ get_maybe_reserved_rep(ConsTag, ConsRep) :-
     ).
 
 :- pred generate_du_arg_info(int::in, existq_tvars::in, constructor_arg::in,
-    du_arg_info::out) is det.
+    du_arg_info::out, functor_subtype_info::in, functor_subtype_info::out)
+    is det.
 
-generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo) :-
+generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo,
+        !FunctorSubtypeInfo) :-
     ConstructorArg = ctor_arg(MaybeCtorFieldName, ArgType, ArgWidth, _Ctxt),
     (
         MaybeCtorFieldName = yes(ctor_field_name(SymName, _)),
@@ -865,7 +873,12 @@ generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo) :-
         MaybePseudoTypeInfo = pseudo(PseudoTypeInfo),
         MaybePseudoTypeInfoOrSelf = pseudo(PseudoTypeInfo)
     ),
-    ArgInfo = du_arg_info(MaybeArgName, MaybePseudoTypeInfoOrSelf, ArgWidth).
+    ArgInfo = du_arg_info(MaybeArgName, MaybePseudoTypeInfoOrSelf, ArgWidth),
+    ( if ArgType = higher_order_type(_, _, higher_order(_), _, _) then
+        !:FunctorSubtypeInfo = functor_subtype_exists
+    else
+        true
+    ).
 
     % This function gives the size of the MR_du_functor_arg_type_contains_var
     % field of the C type MR_DuFunctorDesc in bits.

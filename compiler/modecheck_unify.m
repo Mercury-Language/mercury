@@ -1304,12 +1304,12 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
                 PredName = pred_info_name(PredInfo),
                 mode_info_get_var_types(!.ModeInfo, VarTypes),
                 lookup_var_type(VarTypes, X, Type),
-                ( if Type = higher_order_type(_, MaybeReturnType, _, _) then
+                ( if Type = higher_order_type(PorF, _, _, _, _) then
                     (
-                        MaybeReturnType = no,
+                        PorF = pf_predicate,
                         RHSTypeCtor = type_ctor(unqualified("pred"), 0)
                     ;
-                        MaybeReturnType = yes(_),
+                        PorF = pf_function,
                         RHSTypeCtor = type_ctor(unqualified("func"), 0)
                     )
                 else

@@ -181,8 +181,16 @@
 :- pred construct_higher_order_pred_type(purity::in, lambda_eval_method::in,
     list(mer_type)::in, mer_type::out) is det.
 
+:- pred construct_higher_order_pred_type(purity::in, lambda_eval_method::in,
+    list(mer_type)::in, list(mer_mode)::in, determinism::in, mer_type::out)
+    is det.
+
 :- pred construct_higher_order_func_type(purity::in, lambda_eval_method::in,
     list(mer_type)::in, mer_type::in, mer_type::out) is det.
+
+:- pred construct_higher_order_func_type(purity::in, lambda_eval_method::in,
+    list(mer_type)::in, mer_type::in, list(mer_mode)::in, mer_mode::in,
+    determinism::in, mer_type::out) is det.
 
     % Make error messages more readable by removing "builtin."
     % qualifiers.
@@ -434,21 +442,12 @@ type_is_nonvar(Type) :-
     not type_is_var(Type).
 
 type_is_higher_order(Type) :-
-    strip_kind_annotation(Type) = higher_order_type(_, _, _, _).
+    strip_kind_annotation(Type) = higher_order_type(_, _, _, _, _).
 
-type_is_higher_order_details(Type, Purity, PredOrFunc, EvalMethod,
-        PredArgTypes) :-
+type_is_higher_order_details(Type, Purity, PredOrFunc, EvalMethod, ArgTypes) :-
     strip_kind_annotation(Type) =
-        higher_order_type(ArgTypes, MaybeRetType, Purity, EvalMethod),
-    (
-        MaybeRetType = yes(RetType),
-        PredOrFunc = pf_function,
-        PredArgTypes = list.append(ArgTypes, [RetType])
-    ;
-        MaybeRetType = no,
-        PredOrFunc = pf_predicate,
-        PredArgTypes = ArgTypes
-    ).
+        higher_order_type(PredOrFunc, ArgTypes, _HOInstInfo, Purity,
+            EvalMethod).
 
 type_is_higher_order_details_det(Type, !:Purity, !:PredOrFunc, !:EvalMethod,
         !:PredArgTypes) :-
@@ -520,16 +519,15 @@ type_to_ctor_and_args(Type, TypeCtor, Args) :-
         Args = [],
         TypeCtor = type_ctor(SymName, Arity)
     ;
-        Type = higher_order_type(Args0, MaybeRet, Purity, _EvalMethod),
-        Arity = list.length(Args0),
+        Type = higher_order_type(PorF, Args, _HOInstInfo, Purity, _EvalMethod),
         (
-            MaybeRet = yes(Ret),
+            PorF = pf_predicate,
             PorFStr = "func",
-            Args = list.append(Args0, [Ret])
+            Arity = list.length(Args)
         ;
-            MaybeRet = no,
+            PorF = pf_function,
             PorFStr = "pred",
-            Args = Args0
+            Arity = list.length(Args) - 1
         ),
         SymName0 = unqualified(PorFStr),
         (
@@ -629,14 +627,8 @@ type_vars_2(type_variable(Var, _), Vs, [Var | Vs]).
 type_vars_2(defined_type(_, Args, _), !V) :-
     type_vars_list_2(Args, !V).
 type_vars_2(builtin_type(_), !V).
-type_vars_2(higher_order_type(Args, MaybeRet, _, _), !V) :-
-    type_vars_list_2(Args, !V),
-    (
-        MaybeRet = yes(Ret),
-        type_vars_2(Ret, !V)
-    ;
-        MaybeRet = no
-    ).
+type_vars_2(higher_order_type(_, Args, _, _, _), !V) :-
+    type_vars_list_2(Args, !V).
 type_vars_2(tuple_type(Args, _), !V) :-
     type_vars_list_2(Args, !V).
 type_vars_2(apply_n_type(Var, Args, _), !V) :-
@@ -661,10 +653,8 @@ type_vars_list_2([Type | Types], !V) :-
 type_contains_var(type_variable(Var, _), Var).
 type_contains_var(defined_type(_, Args, _), Var) :-
     type_list_contains_var(Args, Var).
-type_contains_var(higher_order_type(Args, _, _, _), Var) :-
+type_contains_var(higher_order_type(_, Args, _, _, _), Var) :-
     type_list_contains_var(Args, Var).
-type_contains_var(higher_order_type(_, yes(Ret), _, _), Var) :-
-    type_contains_var(Ret, Var).
 type_contains_var(tuple_type(Args, _), Var) :-
     type_list_contains_var(Args, Var).
 type_contains_var(apply_n_type(Var, _, _), Var).
@@ -711,11 +701,27 @@ construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes, Type) :-
     ).
 
 construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes, Type) :-
-    Type = higher_order_type(ArgTypes, no, Purity, EvalMethod).
+    Type = higher_order_type(pf_predicate, ArgTypes, none_or_default_func,
+        Purity, EvalMethod).
+
+construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes, ArgModes,
+        Detism, Type) :-
+    PredInstInfo = pred_inst_info(pf_predicate, ArgModes, arg_reg_types_unset,
+        Detism),
+    Type = higher_order_type(pf_predicate, ArgTypes, higher_order(PredInstInfo),
+        Purity, EvalMethod).
 
 construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
         Type) :-
-    Type = higher_order_type(ArgTypes, yes(RetType), Purity, EvalMethod).
+    Type = higher_order_type(pf_function, ArgTypes ++ [RetType],
+        none_or_default_func, Purity, EvalMethod).
+
+construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
+        ArgModes, RetMode, Detism, Type) :-
+    PredInstInfo = pred_inst_info(pf_function, ArgModes ++ [RetMode],
+        arg_reg_types_unset, Detism),
+    Type = higher_order_type(pf_function, ArgTypes ++ [RetType],
+        higher_order(PredInstInfo), Purity, EvalMethod).
 
 strip_builtin_qualifiers_from_type(type_variable(Var, Kind),
         type_variable(Var, Kind)).
@@ -733,17 +739,9 @@ strip_builtin_qualifiers_from_type(defined_type(Name0, Args0, Kind),
 strip_builtin_qualifiers_from_type(builtin_type(BuiltinType),
         builtin_type(BuiltinType)).
 strip_builtin_qualifiers_from_type(
-        higher_order_type(Args0, MaybeRet0, Purity, EvalMethod),
-        higher_order_type(Args, MaybeRet, Purity, EvalMethod)) :-
-    strip_builtin_qualifiers_from_type_list(Args0, Args),
-    (
-        MaybeRet0 = yes(Ret0),
-        strip_builtin_qualifiers_from_type(Ret0, Ret),
-        MaybeRet = yes(Ret)
-    ;
-        MaybeRet0 = no,
-        MaybeRet = no
-    ).
+        higher_order_type(PorF, Args0, HOInstInfo, Purity, EvalMethod),
+        higher_order_type(PorF, Args, HOInstInfo, Purity, EvalMethod)) :-
+    strip_builtin_qualifiers_from_type_list(Args0, Args).
 strip_builtin_qualifiers_from_type(tuple_type(Args0, Kind),
         tuple_type(Args, Kind)) :-
     strip_builtin_qualifiers_from_type_list(Args0, Args).
@@ -1127,14 +1125,9 @@ type_unify_nonvar(TypeX, TypeY, HeadTypeParams, !Bindings) :-
         TypeX = builtin_type(BuiltinType),
         TypeY = builtin_type(BuiltinType)
     ;
-        TypeX = higher_order_type(ArgsX, no, Purity, EvalMethod),
-        TypeY = higher_order_type(ArgsY, no, Purity, EvalMethod),
+        TypeX = higher_order_type(PorF, ArgsX, _, Purity, EvalMethod),
+        TypeY = higher_order_type(PorF, ArgsY, _, Purity, EvalMethod),
         type_unify_list(ArgsX, ArgsY, HeadTypeParams, !Bindings)
-    ;
-        TypeX = higher_order_type(ArgsX, yes(RetX), Purity, EvalMethod),
-        TypeY = higher_order_type(ArgsY, yes(RetY), Purity, EvalMethod),
-        type_unify_list(ArgsX, ArgsY, HeadTypeParams, !Bindings),
-        type_unify(RetX, RetY, HeadTypeParams, !Bindings)
     ;
         TypeX = tuple_type(ArgsX, _),
         TypeY = tuple_type(ArgsY, _),
@@ -1189,7 +1182,7 @@ type_unify_apply(TypeY, VarX, ArgsX0, HeadTypeParams, !Bindings) :-
         ArgsX0 = [],
         type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings)
     ;
-        TypeY = higher_order_type(_, _, _, _),
+        TypeY = higher_order_type(_, _, _, _, _),
         ArgsX0 = [],
         type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings)
     ;
@@ -1275,13 +1268,8 @@ type_occurs(TypeX, Y, Bindings) :-
         TypeX = defined_type(_, Args, _),
         type_occurs_list(Args, Y, Bindings)
     ;
-        TypeX = higher_order_type(Args, MaybeRet, _, _),
-        (
-            type_occurs_list(Args, Y, Bindings)
-        ;
-            MaybeRet = yes(Ret),
-            type_occurs(Ret, Y, Bindings)
-        )
+        TypeX = higher_order_type(_, Args, _, _, _),
+        type_occurs_list(Args, Y, Bindings)
     ;
         TypeX = tuple_type(Args, _),
         type_occurs_list(Args, Y, Bindings)

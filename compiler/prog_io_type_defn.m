@@ -418,7 +418,7 @@ convert_constructor_arg_list(ModuleName, VarSet, [Term | Terms])
 convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
         TypeTerm, Terms) = MaybeArgs :-
     ContextPieces = cord.singleton(words("In type definition:")),
-    parse_type(TypeTerm, VarSet, ContextPieces, MaybeType),
+    parse_type(allow_ho_inst_info, TypeTerm, VarSet, ContextPieces, MaybeType),
     (
         MaybeType = ok1(Type),
         Context = get_term_context(TypeTerm),
@@ -634,7 +634,8 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     parse_type_defn_head(ModuleName, VarSet, HeadTerm, MaybeNameAndParams),
     % XXX Should pass more correct ContextPieces.
     ContextPieces = cord.init,
-    parse_type(BodyTerm, VarSet, ContextPieces, MaybeType),
+    parse_type(no_allow_ho_inst_info, BodyTerm, VarSet, ContextPieces,
+        MaybeType),
     ( if
         SolverSpecs = [],
         MaybeNameAndParams = ok2(Name, ParamTVars),
@@ -1076,7 +1077,7 @@ parse_where_inst_is(_ModuleName, Term) = MaybeInst :-
 parse_where_type_is(_ModuleName, VarSet, Term) = MaybeType :-
     % XXX We should pass meaningful ContextPieces.
     ContextPieces = cord.init,
-    parse_type(Term, VarSet, ContextPieces, MaybeType).
+    parse_type(no_allow_ho_inst_info, Term, VarSet, ContextPieces, MaybeType).
 
 :- func parse_where_mutable_is(module_name, term) =
     maybe1(list(item_mutable_info)).

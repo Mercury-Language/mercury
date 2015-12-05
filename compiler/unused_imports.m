@@ -751,14 +751,9 @@ mer_type_used_modules(Visibility, Type, !UsedModules) :-
                 !UsedModules)
         )
     ;
-        Type = higher_order_type(Args, MaybeReturn, _, _),
+        Type = higher_order_type(_, Args, HOInstInfo, _, _),
         list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules),
-        (
-            MaybeReturn = yes(Return),
-            mer_type_used_modules(Visibility, Return, !UsedModules)
-        ;
-            MaybeReturn = no
-        )
+        ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules)
     ;
         Type = tuple_type(ArgTypes, _),
         list.foldl(mer_type_used_modules(Visibility), ArgTypes, !UsedModules)

@@ -1245,7 +1245,7 @@ ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, ArgType, FieldType, ArgRval,
         ( FieldType = defined_type(_, _, _)
         ; FieldType = builtin_type(_)
         ; FieldType = tuple_type(_, _)
-        ; FieldType = higher_order_type(_, _, _, _)
+        ; FieldType = higher_order_type(_, _, _, _, _)
         ; FieldType = apply_n_type(_, _, _)
         ; FieldType = kinded_type(_, _)
         ),

@@ -888,10 +888,10 @@ simple_find_domain(stconstr(TVarA, TypeA), !DomainMap) :-
         NewTypeA = tuple_type(ArgTypes, Kind),
         restrict_domain(TVarA, NewTypeA, !DomainMap)
     ;
-        TypeA = higher_order_type(ArgTypes0, ReturnType0, Purity, Lambda),
+        TypeA = higher_order_type(PorF, ArgTypes0, HOInstInfo, Purity, Lambda),
         list.map(find_type_of_tvar(!.DomainMap), ArgTypes0, ArgTypes),
-        map_maybe(find_type_of_tvar(!.DomainMap), ReturnType0, ReturnType),
-        NewTypeA = higher_order_type(ArgTypes, ReturnType, Purity, Lambda),
+        NewTypeA = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity,
+            Lambda),
         restrict_domain(TVarA, NewTypeA, !DomainMap)
     ;
         TypeA = apply_n_type(Return, ArgTypes0, Kind),
@@ -1158,21 +1158,11 @@ unify_types(A, B, Type) :-
                 fail
             )
         ;
-            A = higher_order_type(ArgsA, ResultA, Purity, Lambda),
-            B = higher_order_type(ArgsB, ResultB, Purity, Lambda),
+            A = higher_order_type(PorF, ArgsA, HOInstInfo, Purity, Lambda),
+            B = higher_order_type(PorF, ArgsB, HOInstInfo, Purity, Lambda),
             ( if list.same_length(ArgsA, ArgsB) then
                 list.map_corresponding(unify_types, ArgsA, ArgsB, Args),
-                (
-                    ResultA = yes(ResultA1),
-                    ResultB = yes(ResultB1),
-                    unify_types(ResultA1, ResultB1, Result1),
-                    Result = yes(Result1)
-                ;
-                    ResultA = no,
-                    ResultB = no,
-                    Result = no
-                ),
-                Type = higher_order_type(Args, Result, Purity, Lambda)
+                Type = higher_order_type(PorF, Args, HOInstInfo, Purity, Lambda)
             else
                 fail
             )
@@ -1814,17 +1804,9 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     list.map_foldl(get_var_type, Vars, ArgTVars, !TCInfo),
     ArgTypes = list.map(tvar_to_type, ArgTVars),
     (
-        Details = higher_order(CallVar, Purity, Kind, _),
-        (
-            Kind = pf_predicate,
-            HOType = higher_order_type(ArgTypes, no, Purity, lambda_normal)
-        ;
-            Kind = pf_function,
-            varset.new_var(FunctionTVar, !.TCInfo ^ tconstr_tvarset,
-                NewTVarSet),
-            !TCInfo ^ tconstr_tvarset := NewTVarSet,
-            HOType = apply_n_type(FunctionTVar, ArgTypes, kind_star)
-        ),
+        Details = higher_order(CallVar, Purity, PredOrFunc, _),
+        HOType = higher_order_type(PredOrFunc, ArgTypes, none_or_default_func,
+            Purity, lambda_normal),
         variable_assignment_constraint(Context, CallVar, HOType, !TCInfo)
     ;
         % Class methods are handled by looking up the method number in the
@@ -2026,23 +2008,16 @@ ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
         then
             ArgConstraints = list.map_corresponding(create_stconstr,
                 ArgTVars, HOArgTypes),
-            (
-                PredOrFunc = pf_predicate,
-                LHSConstraint = stconstr(LHSTVar, higher_order_type(
-                    LambdaTypes, no, Purity, lambda_normal))
-            ;
+            ( if
                 PredOrFunc = pf_function,
-                list.split_list(list.length(LambdaTypes) - 1, LambdaTypes,
-                    LambdaTypes1, [ReturnType]),
-                (
-                    LambdaTypes1 = [],
-                    LHSConstraint = stconstr(LHSTVar, ReturnType)
-                ;
-                    LambdaTypes1 = [_ | _],
-                    LHSConstraint = stconstr(LHSTVar, higher_order_type(
-                        LambdaTypes1, yes(ReturnType), Purity, lambda_normal))
-                )
+                LambdaTypes = [ReturnType]
+            then
+                Type = ReturnType
+            else
+                Type = higher_order_type(PredOrFunc, LambdaTypes,
+                    none_or_default_func, Purity, lambda_normal)
             ),
+            LHSConstraint = stconstr(LHSTVar, Type),
             Constraints = [LHSConstraint | ArgConstraints]
         else
             fail
@@ -2463,15 +2438,17 @@ type_to_string(TVarSet, Type, Name) :-
         list.map(type_to_string(TVarSet), Subtypes, SubtypeNames),
         Name = "{" ++  string.join_list(", ", SubtypeNames) ++ "}"
     ;
-        Type = higher_order_type(Subtypes, no, _, _),
-        list.map(type_to_string(TVarSet), Subtypes, SubtypeNames),
-        Name = "pred(" ++  string.join_list(", ", SubtypeNames) ++ ")"
-    ;
-        Type = higher_order_type(Subtypes, yes(ReturnType), _, _),
-        list.map(type_to_string(TVarSet), Subtypes, SubtypeNames),
-        type_to_string(TVarSet, ReturnType, ReturnTypeName),
-        Name = "func(" ++  string.join_list(", ", SubtypeNames) ++ ") = "
-            ++ ReturnTypeName
+        Type = higher_order_type(PorF, Types, _, _, _),
+        list.map(type_to_string(TVarSet), Types, TypeNames),
+        (
+            PorF = pf_predicate,
+            Name = "pred(" ++  string.join_list(", ", TypeNames) ++ ")"
+        ;
+            PorF = pf_function,
+            list.det_split_last(TypeNames, ArgTypeNames, ReturnTypeName),
+            Name = "func(" ++  string.join_list(", ", ArgTypeNames) ++ ") = "
+                ++ ReturnTypeName
+        )
     ;
         Type = apply_n_type(_, Subtypes, _),
         list.map(type_to_string(TVarSet), Subtypes, SubtypeNames),

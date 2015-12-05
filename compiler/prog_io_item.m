@@ -1224,12 +1224,12 @@ parse_type_and_mode(InstConstraints, Term, MaybeTypeAndMode) :-
     ( if
         Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _Context)
     then
-        maybe_parse_type(TypeTerm, Type),
+        maybe_parse_type(no_allow_ho_inst_info, TypeTerm, Type),
         convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
         constrain_inst_vars_in_mode_sub(InstConstraints, Mode0, Mode),
         MaybeTypeAndMode = type_and_mode(Type, Mode)
     else
-        maybe_parse_type(Term, Type),
+        maybe_parse_type(no_allow_ho_inst_info, Term, Type),
         MaybeTypeAndMode = type_only(Type)
     ).
 
@@ -1846,7 +1846,8 @@ parse_with_type_suffix(VarSet, Term, BeforeWithTypeTerm, MaybeWithType) :-
         BeforeWithTypeTerm = BeforeWithTypeTermPrime,
         ContextPieces = cord.from_list([words("In"), quote("with_type"),
             words("annotation:")]),
-        parse_type(TypeTerm, VarSet, ContextPieces, MaybeType),
+        parse_type(no_allow_ho_inst_info, TypeTerm, VarSet, ContextPieces,
+            MaybeType),
         (
             MaybeType = ok1(Type),
             MaybeWithType = ok1(yes(Type))

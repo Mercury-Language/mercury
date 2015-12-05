@@ -1,0 +1,7 @@
+functor_ho_inst_bad_2.m:031: In clause for `run(in, di, uo)':
+functor_ho_inst_bad_2.m:031:   in argument 2 (i.e. argument 1 of the called
+functor_ho_inst_bad_2.m:031:   predicate) of higher-order predicate call:
+functor_ho_inst_bad_2.m:031:   mode error: variable `Result' has
+functor_ho_inst_bad_2.m:031:   instantiatedness `free',
+functor_ho_inst_bad_2.m:031:   expected instantiatedness was `ground'.
+For more information, recompile with `-E'.

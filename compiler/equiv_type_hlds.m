@@ -650,23 +650,15 @@ hlds_replace_in_type_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
         hlds_replace_type_ctor(TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
             TypeCtor, TypeArgs, Kind, Type, ArgsChanged, Changed, !VarSet)
     ;
-        Type0 = higher_order_type(ArgTypes0, MaybeRetType0, Purity,
+        Type0 = higher_order_type(PorF, ArgTypes0, HOInstInfo, Purity,
             EvalMethod),
-        (
-            MaybeRetType0 = yes(RetType0),
-            hlds_replace_in_type_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
-                RetType0, RetType, RetChanged, !VarSet),
-            MaybeRetType = yes(RetType)
-        ;
-            MaybeRetType0 = no,
-            MaybeRetType = no,
-            RetChanged = no
-        ),
+        % XXX replace in HOInstInfo
+        HOInstInfoChanged = no,
         hlds_replace_in_type_list_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
-            ArgTypes0, ArgTypes, RetChanged, Changed, !VarSet),
+            ArgTypes0, ArgTypes, HOInstInfoChanged, Changed, !VarSet),
         (
             Changed = yes,
-            Type = higher_order_type(ArgTypes, MaybeRetType, Purity,
+            Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity,
                 EvalMethod)
         ;
             Changed = no,

@@ -59,10 +59,12 @@
 
 :- implementation.
 
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bimap.
@@ -541,8 +543,8 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                         FuncAttrPurity = event_attr_impure_function,
                         FuncPurity = purity_impure
                     ),
-                    FuncAttrType = higher_order_type(ArgTypes, yes(AttrType),
-                        FuncPurity, lambda_normal),
+                    construct_higher_order_func_type(FuncPurity, lambda_normal,
+                        ArgTypes, AttrType, FuncAttrType),
                     ( if
                         map.search(!.AttrTypeMap, FuncAttrName,
                             OldFuncAttrType)
@@ -817,7 +819,7 @@ describe_attr_type(Type) = Desc :-
         Type = builtin_type(BuiltinType),
         builtin_type_to_string(BuiltinType, Desc)
     ;
-        Type = higher_order_type(_, _, _, _),
+        Type = higher_order_type(_, _, _, _, _),
         Desc = "function"
     ;
         ( Type = type_variable(_, _)

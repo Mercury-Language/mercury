@@ -1023,7 +1023,7 @@ ctor_arg_is_dummy_type(TypeDefnMap, Type, CoveredTypes0) = IsDummyType :-
         ( Type = type_variable(_, _)
         ; Type = builtin_type(_)
         ; Type = tuple_type(_, _)
-        ; Type = higher_order_type(_, _, _, _)
+        ; Type = higher_order_type(_, _, _, _, _)
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),
@@ -1356,14 +1356,8 @@ accumulate_modules_from_constraint_arg_type(ArgType, !Modules) :-
         ;
             ArgType = kinded_type(KindedType, _), Args = [KindedType]
         ;
-            ArgType = higher_order_type(Args0, MaybeRetType, _, _),
-            (
-                MaybeRetType = yes(RetType),
-                Args = [RetType  | Args0]
-            ;
-                MaybeRetType = no,
-                Args = Args0
-            )
+            ArgType = higher_order_type(_, Args, _HOInstInfo, _, _)
+            % XXX accumulate modules from ho_inst_info
         ),
         accumulate_modules_from_constraint_arg_types(Args, !Modules)
     ).

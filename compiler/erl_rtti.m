@@ -155,14 +155,14 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
         unexpected($module, $pred, "reserved")
     ;
         CtorDetails = tcd_notag(_, NoTagFunctor),
-        NoTagFunctor = notag_functor(Name, TypeInfo, ArgName),
+        NoTagFunctor = notag_functor(Name, TypeInfo, ArgName, SubtypeInfo),
         OrigArity = 1,
         Ordinal = 0,
         FunctorNum = 0,
         ArgTypeInfo = convert_to_rtti_maybe_pseudo_type_info_or_self(TypeInfo),
         ArgInfos = [du_arg_info(ArgName, ArgTypeInfo, full_word)],
         DUFunctor = erlang_du_functor(Name, OrigArity, Ordinal, FunctorNum,
-            erlang_atom_raw(Name), ArgInfos, no),
+            erlang_atom_raw(Name), ArgInfos, no, SubtypeInfo),
         Details = erlang_du([DUFunctor])
     ;
         CtorDetails = tcd_eqv(Type),
@@ -186,7 +186,7 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
 convert_enum_functor(EnumFunctor, FunctorNum, ErlangFunctor) :-
     EnumFunctor = enum_functor(Name, Ordinal),
     ErlangFunctor = erlang_du_functor(Name, 0, Ordinal, FunctorNum,
-        erlang_atom_raw(Name), [], no).
+        erlang_atom_raw(Name), [], no, functor_subtype_none).
 
     % Convert a du_functor into the equivalent erlang_du_functor
     %
@@ -194,9 +194,9 @@ convert_enum_functor(EnumFunctor, FunctorNum, ErlangFunctor) :-
     is det.
 
 convert_du_functor(Functor, FunctorNum, ErlangFunctor) :-
-    Functor = du_functor(Name, Arity, Ordinal, _, ArgInfos, Exist),
+    Functor = du_functor(Name, Arity, Ordinal, _, ArgInfos, Exist, SubtypeInfo),
     ErlangFunctor = erlang_du_functor(Name, Arity, Ordinal, FunctorNum,
-        erlang_atom_raw(Name), ArgInfos, Exist).
+        erlang_atom_raw(Name), ArgInfos, Exist, SubtypeInfo).
 
 :- func convert_to_rtti_maybe_pseudo_type_info_or_self(
     rtti_maybe_pseudo_type_info) = rtti_maybe_pseudo_type_info_or_self.

@@ -737,7 +737,8 @@ gen_foreign_enum_functor_desc(_ModuleInfo, Lang, RttiTypeCtor,
 
 gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctorDesc,
         !GlobalData) :-
-    NotagFunctorDesc = notag_functor(FunctorName, ArgType, MaybeArgName),
+    NotagFunctorDesc = notag_functor(FunctorName, ArgType, MaybeArgName,
+        FunctorSubtypeInfo),
     ArgTypeRttiData = maybe_pseudo_type_info_to_rtti_data(ArgType),
     gen_pseudo_type_info(ModuleInfo, ArgTypeRttiData, PTIInitializer,
         !GlobalData),
@@ -746,7 +747,8 @@ gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctorDesc,
     Initializer = init_struct(mlds_rtti_type(item_type(RttiId)), [
         gen_init_string(FunctorName),
         PTIInitializer,
-        gen_init_maybe(ml_string_type, gen_init_string, MaybeArgName)
+        gen_init_maybe(ml_string_type, gen_init_string, MaybeArgName),
+        gen_init_functor_subtype_info(FunctorSubtypeInfo)
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
@@ -755,7 +757,7 @@ gen_notag_functor_desc(ModuleInfo, RttiTypeCtor, NotagFunctorDesc,
 
 gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
     DuFunctor = du_functor(FunctorName, Arity, Ordinal, Rep, ArgInfos,
-        MaybeExistInfo),
+        MaybeExistInfo, FunctorSubtypeInfo),
     ArgTypes = list.map(du_arg_info_type, ArgInfos),
     MaybeArgNames = list.map(du_arg_info_name, ArgInfos),
     HaveArgNames = (if list.member(yes(_), MaybeArgNames) then yes else no),
@@ -843,7 +845,8 @@ gen_du_functor_desc(ModuleInfo, RttiTypeCtor, DuFunctor, !GlobalData) :-
         ArgTypeInitializer,
         ArgNameInitializer,
         ArgLocnsInitializer,
-        ExistInfoInitializer
+        ExistInfoInitializer,
+        gen_init_functor_subtype_info(FunctorSubtypeInfo)
     ]),
     rtti_id_and_init_to_defn(RttiId, Initializer, !GlobalData).
 
@@ -1722,9 +1725,9 @@ real_rtti_data(RttiData) :-
 %
 % Conversion functions for builtin enumeration types.
 %
-% This handles sectag_locn and type_ctor_rep. The rvals generated are just
-% named constants in the private_builtin module, which the Mercury runtime
-% is expected to define.
+% This handles sectag_locn, functor_subtype_info and type_ctor_rep. The rvals
+% generated are just named constants in the private_builtin module, which the
+% Mercury runtime is expected to define.
 
 :- func gen_init_pred_or_func(pred_or_func) = mlds_initializer.
 
@@ -1735,6 +1738,12 @@ gen_init_pred_or_func(PredOrFunc) = gen_init_builtin_const(Name) :-
 
 gen_init_sectag_locn(Locn) = gen_init_builtin_const(Name) :-
     rtti.sectag_locn_to_string(Locn, Name).
+
+:- func gen_init_functor_subtype_info(functor_subtype_info) = mlds_initializer.
+
+gen_init_functor_subtype_info(FunctorSubtypeInfo) = Initializer :-
+    rtti.functor_subtype_info_to_string(FunctorSubtypeInfo, Name),
+    Initializer = gen_init_builtin_const(Name).
 
 :- func gen_init_type_ctor_rep(type_ctor_data) = mlds_initializer.
 

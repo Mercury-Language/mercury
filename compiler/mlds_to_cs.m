@@ -3346,6 +3346,9 @@ output_lval(Info, Lval, !IO) :-
             else if string.prefix(NameStr, "MR_SECTAG_") then
                 io.write_string("runtime.Sectag_Locn.", !IO),
                 io.write_string(NameStr, !IO)
+            else if string.prefix(NameStr, "MR_FUNCTOR_SUBTYPE_") then
+                io.write_string("runtime.FunctorSubtypeInfo.", !IO),
+                io.write_string(NameStr, !IO)
             else if NameStr = "MR_PREDICATE" then
                 io.write_string("runtime.Constants.MR_PREDICATE", !IO)
             else if NameStr = "MR_FUNCTION" then

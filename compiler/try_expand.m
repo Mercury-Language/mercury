@@ -829,8 +829,8 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         LambdaParamModes = [out_mode],
         NonLocals = NonLocals0
     ),
-    LambdaType = higher_order_type(LambdaParamTypes, no, purity_pure,
-        lambda_normal),
+    LambdaType = higher_order_type(pf_predicate, LambdaParamTypes,
+        none_or_default_func, purity_pure, lambda_normal),
     proc_info_create_var_from_type(LambdaType, yes("TryLambda"), LambdaVar,
         !ProcInfo),
 

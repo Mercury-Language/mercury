@@ -484,13 +484,13 @@ qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
         ),
         Type = Type0
     ;
-        Type0 = higher_order_type(Args0, MaybeRet0, Purity, EvalMethod),
+        Type0 = higher_order_type(PorF, Args0, HOInstInfo0, Purity, EvalMethod),
         % XXX We could pass a more specific error context.
         qualify_type_list(InInt, ErrorContext, Args0, Args, !Info, !Specs),
         % XXX We could pass a more specific error context.
-        qualify_maybe_type(InInt, ErrorContext, MaybeRet0, MaybeRet,
+        qualify_ho_inst_info(InInt, ErrorContext, HOInstInfo0, HOInstInfo,
             !Info, !Specs),
-        Type = higher_order_type(Args, MaybeRet, Purity, EvalMethod)
+        Type = higher_order_type(PorF, Args, HOInstInfo, Purity, EvalMethod)
     ;
         Type0 = tuple_type(Args0, Kind),
         % XXX We could pass a more specific error context.

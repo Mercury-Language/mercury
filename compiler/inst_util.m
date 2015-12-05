@@ -484,7 +484,8 @@ abstractly_unify_inst_3(Live, InstA, InstB, Real, Inst, Detism, !ModuleInfo) :-
                 InstB = ground(UniqB, _HOInstInfoB),
                 % It is an error to unify higher-order preds,
                 % so if Real \= fake_unify, then we must fail.
-                Real = fake_unify,
+                % XXX but this results in mode errors in unify procs
+                % Real = fake_unify,
                 % In theory we should choose take the union of the information
                 % specified by PredInstA and _HOInstInfoB. However, since
                 % our data representation provides no way of doing that, and
@@ -726,6 +727,7 @@ abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
             Live = is_dead,
             ArgInsts = ArgInstsB
         ),
+        arg_insts_match_ctor_subtypes(ArgInsts, ConsIdB, Type, !.ModuleInfo),
         % XXX A better approximation of InstResults is probably possible.
         Inst = bound(unique, inst_test_no_results,
             [bound_functor(ConsIdB, ArgInsts)]),
@@ -766,12 +768,14 @@ abstractly_unify_inst_functor_2(Live, InstA, ConsIdB, ArgInstsB, ArgLives,
         (
             Live = is_live,
             make_ground_inst_list_lives(ArgInstsB, Live, ArgLives, UniqA, Real,
-                ArgInsts, Detism, !ModuleInfo)
+                ArgInsts0, Detism, !ModuleInfo)
         ;
             Live = is_dead,
             make_ground_inst_list(ArgInstsB, Live, UniqA, Real,
-                ArgInsts, Detism, !ModuleInfo)
+                ArgInsts0, Detism, !ModuleInfo)
         ),
+        propagate_ctor_subtypes_into_arg_insts(ConsIdB, Type,
+            ArgInsts0, ArgInsts, !.ModuleInfo),
         % XXX A better approximation of InstResults is probably possible.
         Inst = bound(UniqA, inst_test_no_results,
             [bound_functor(ConsIdB, ArgInsts)])
@@ -959,6 +963,101 @@ abstractly_unify_constrained_inst_vars(Live, InstVarsA, SubInstA, InstB,
         % We can keep the constrained_inst_vars wrapper.
         Inst = constrained_inst_vars(InstVarsA, Inst0)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred arg_insts_match_ctor_subtypes(list(mer_inst)::in, cons_id::in,
+    mer_type::in, module_info::in) is semidet.
+
+arg_insts_match_ctor_subtypes(ArgInsts, ConsId, Type, ModuleInfo) :-
+    ( if
+        type_to_ctor(Type, TypeCtor),
+        get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+        ConsDefn = hlds_cons_defn(_, _, _, _, ExistQVars, _, ConsArgs, _),
+        % Some builtin types have constructors with arguments that are not
+        % reflected in the constructor definition, and which return an
+        % empty list.
+        ConsArgs = [_ | _],
+        % XXX Handle existentially quantified constructors.
+        ExistQVars = []
+    then
+        arg_insts_match_ctor_subtypes_2(ArgInsts, ConsArgs, ModuleInfo)
+    else
+        true
+    ).
+
+:- pred arg_insts_match_ctor_subtypes_2(list(mer_inst)::in,
+    list(constructor_arg)::in, module_info::in) is semidet.
+
+arg_insts_match_ctor_subtypes_2([], [], _).
+arg_insts_match_ctor_subtypes_2([Inst | Insts], [ConsArg | ConsArgs],
+        ModuleInfo) :-
+    ( if
+        ( Inst = ground(_, HOInstInfo)
+        ; Inst = any(_, HOInstInfo)
+        ),
+        ConsArg ^ arg_type = higher_order_type(_, _, TypeHOInstInfo, _, _),
+        TypeHOInstInfo = higher_order(TypePredInst)
+    then
+        HOInstInfo = higher_order(PredInst),
+        pred_inst_matches(PredInst, TypePredInst, ModuleInfo)
+    else
+        true
+    ),
+    arg_insts_match_ctor_subtypes_2(Insts, ConsArgs, ModuleInfo).
+arg_insts_match_ctor_subtypes_2([], [_ | _], _) :-
+    unexpected($module, $pred, "length mismatch").
+arg_insts_match_ctor_subtypes_2([_ | _], [], _) :-
+    unexpected($module, $pred, "length mismatch").
+
+%---------------------------------------------------------------------------%
+
+:- pred propagate_ctor_subtypes_into_arg_insts(cons_id::in, mer_type::in,
+    list(mer_inst)::in, list(mer_inst)::out, module_info::in) is det.
+
+propagate_ctor_subtypes_into_arg_insts(ConsId, Type, !ArgInsts, ModuleInfo) :-
+    ( if
+        type_to_ctor(Type, TypeCtor),
+        get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+        ConsDefn = hlds_cons_defn(_, _, _, _, ExistQVars, _, ConsArgs, _),
+        % Some builtin types have constructors with arguments that are not
+        % reflected in the constructor definition, and which return an
+        % empty list.
+        ConsArgs = [_ | _],
+        % XXX Handle existentially quantified constructors.
+        ExistQVars = []
+    then
+        propagate_ctor_subtypes_into_arg_insts_2(ConsArgs, !ArgInsts)
+    else
+        true
+    ).
+
+:- pred propagate_ctor_subtypes_into_arg_insts_2(list(constructor_arg)::in,
+    list(mer_inst)::in, list(mer_inst)::out) is det.
+
+propagate_ctor_subtypes_into_arg_insts_2([], [], []).
+propagate_ctor_subtypes_into_arg_insts_2([ConsArg | ConsArgs],
+        [Inst0 | Insts0], [Inst | Insts]) :-
+    ( if
+        ConsArg ^ arg_type = higher_order_type(_, _, TypeHOInstInfo, _, _),
+        TypeHOInstInfo = higher_order(_),
+        (
+            Inst0 = ground(Uniq, _),
+            Inst1 = ground(Uniq, TypeHOInstInfo)
+        ;
+            Inst0 = any(Uniq, _),
+            Inst1 = any(Uniq, TypeHOInstInfo)
+        )
+    then
+        Inst = Inst1
+    else
+        Inst = Inst0
+    ),
+    propagate_ctor_subtypes_into_arg_insts_2(ConsArgs, Insts0, Insts).
+propagate_ctor_subtypes_into_arg_insts_2([], [_ | _], _) :-
+    unexpected($module, $pred, "length mismatch").
+propagate_ctor_subtypes_into_arg_insts_2([_ | _], [], _) :-
+    unexpected($module, $pred, "length mismatch").
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -229,7 +229,8 @@ parse_unit_selector(Term) = UnitSelector :-
             Args = [TypeSelectorTerm]
         then
             ( if
-                maybe_parse_type(term.coerce(TypeSelectorTerm), TypeSelector)
+                maybe_parse_type(no_allow_ho_inst_info,
+                    term.coerce(TypeSelectorTerm), TypeSelector)
             then
                 UnitSelector = typesel(TypeSelector)
             else
@@ -430,7 +431,7 @@ parse_user_annotated_sharing(!.Varset, Term, UserSharing) :-
             [TypesTerm, UserSharingTerm], _),
         (
             TypesTerm = term.functor(term.atom("yes"), ListTypeTerms, _),
-            maybe_parse_types(ListTypeTerms, Types),
+            maybe_parse_types(no_allow_ho_inst_info, ListTypeTerms, Types),
             term.vars_list(ListTypeTerms, TypeVars),
             varset.select(set.list_to_set(TypeVars), !Varset),
             MaybeUserTypes = yes(user_type_info(Types,
@@ -489,7 +490,7 @@ parse_user_annotated_datastruct_term(Term, Datastruct) :-
     VarTerm = term.variable(GenericVar, _),
     term.coerce_var(GenericVar, ProgVar),
     get_list_term_arguments(TypesTerm, TypeTermsList),
-    maybe_parse_types(TypeTermsList, Types),
+    maybe_parse_types(no_allow_ho_inst_info, TypeTermsList, Types),
     list.map(mer_type_to_typesel, Types, Selector),
     Datastruct = selected_cel(ProgVar, Selector).
 

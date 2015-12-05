@@ -87,6 +87,8 @@ SINGLEMODULE= \
 	circ_type2 \
 	circ_type3 \
 	circ_type5 \
+	combined_ho_type_inst \
+	combined_ho_type_inst_2 \
 	comparison \
 	complex_constraint_err \
 	conflicting_fs \
@@ -130,6 +132,9 @@ SINGLEMODULE= \
 	func_class \
 	func_errors \
 	funcs_as_preds \
+	functor_ho_inst_bad \
+	functor_ho_inst_bad_2 \
+	functor_ho_inst_bad_3 \
 	fundeps_coverage \
 	fundeps_unbound_in_ctor \
 	fundeps_vars \

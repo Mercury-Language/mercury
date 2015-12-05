@@ -1639,12 +1639,19 @@ is_exist_pseudo_type_info(_, _) :-
 
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_DU:
             case runtime.TypeCtorRep.MR_TYPECTOR_REP_DU_USEREQ:
-                runtime.DuFunctorDesc[] functor_desc =
+                runtime.DuFunctorDesc[] functor_descs =
                     tc.type_functors.functors_du();
-                if (FunctorNumber >= 0 && FunctorNumber < functor_desc.Length)
+                if (FunctorNumber >= 0 && FunctorNumber < functor_descs.Length)
                 {
-                    new_data = ML_construct_du(tc, functor_desc[FunctorNumber],
-                        ArgList);
+                    runtime.DuFunctorDesc functor_desc =
+                        functor_descs[FunctorNumber];
+                    if (functor_desc.du_functor_subtype_info !=
+                        runtime.FunctorSubtypeInfo.MR_FUNCTOR_SUBTYPE_NONE)
+                    {
+                        runtime.Errors.SORRY(""construction of terms "" +
+                            ""containing subtype constraints"");
+                    }
+                    new_data = ML_construct_du(tc, functor_desc, ArgList);
                 }
                 break;
 
@@ -2018,11 +2025,16 @@ is_exist_pseudo_type_info(_, _) :-
 
             case private_builtin.MR_TYPECTOR_REP_DU:
             case private_builtin.MR_TYPECTOR_REP_DU_USEREQ:
-                DuFunctorDesc[] functor_desc = tc.type_functors.functors_du();
-                if (FunctorNumber >= 0 && FunctorNumber < functor_desc.length)
+                DuFunctorDesc[] functor_descs = tc.type_functors.functors_du();
+                if (FunctorNumber >= 0 && FunctorNumber < functor_descs.length)
                 {
-                    new_data = ML_construct_du(tc, functor_desc[FunctorNumber],
-                        ArgList);
+                    DuFunctorDesc functor_desc = functor_descs[FunctorNumber];
+                    if (functor_desc.du_functor_subtype_info.value !=
+                        private_builtin.MR_FUNCTOR_SUBTYPE_NONE) {
+                        throw new Error(""not yet implemented: construction ""
+                            + ""of terms containing subtype constraints"");
+                    }
+                    new_data = ML_construct_du(tc, functor_desc, ArgList);
                 }
                 break;
 

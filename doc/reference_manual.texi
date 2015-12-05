@@ -2839,8 +2839,8 @@ the standard library modes @samp{in/1} and @samp{out/1}:
 @end example
 
 As for type declarations, a predicate or function can be defined
-to have a given higher-order inst (@pxref{Higher-order modes}) by using
-@code{`with_inst`} in the mode declaration.
+to have a given higher-order inst (@pxref{Higher-order insts and modes})
+by using @code{`with_inst`} in the mode declaration.
 
 For example,
 
@@ -4192,7 +4192,7 @@ higher-order procedures.)
 @menu
 * Creating higher-order terms::
 * Calling higher-order terms::
-* Higher-order modes::
+* Higher-order insts and modes::
 @end menu
 
 @node Creating higher-order terms
@@ -4469,14 +4469,23 @@ See also @samp{unsorted_solutions/2} and @samp{solutions_set/2}, which
 are defined in the standard library module @samp{solutions} and documented
 in the Mercury Library Reference Manual.
 
-@node Higher-order modes
-@section Higher-order modes
+@node Higher-order insts and modes
+@section Higher-order insts and modes
 
 In Mercury, the mode and determinism of a higher-order predicate or function
-term are part of that term's @emph{inst}, not its @emph{type}.
+term are generally part of that term's @emph{inst}, not its @emph{type}.
 This allows a single higher-order predicate to work on argument
 predicates of different modes and determinism, which is particularly
 useful for library predicates such as @samp{list.map} and @samp{list.foldl}.
+
+@menu
+* Builtin higher-order insts and modes::
+* Default insts for functions::
+* Combined higher-order types and insts::
+@end menu
+
+@node Builtin higher-order insts and modes
+@subsection Builtin higher-order insts and modes
 
 The language contains builtin @samp{inst} values
 
@@ -4554,6 +4563,24 @@ unifications; indirect attempts (via polymorphic predicates, for
 example @samp{(list.append([], [P], [Q])} may result in an error at
 run-time rather than at compile-time.
 
+Mercury also provides builtin @samp{inst} values for use with solver types:
+
+@example
+any_pred is @var{Determinism}
+any_pred(@var{Mode}) is @var{Determinism}
+any_pred(@var{Mode1}, @var{Mode2}) is @var{Determinism}
+@dots{}
+any_func = @var{Mode} is @var{Determinism}
+any_func(@var{Mode1}) = @var{Mode} is @var{Determinism}
+any_func(@var{Mode1}, @var{Mode2}) = @var{Mode} is @var{Determinism}
+@dots{}
+@end example
+
+See @ref{Solver types} for more details.
+
+@node Default insts for functions
+@subsection Default insts for functions
+
 In order to call a higher-order term, the compiler must know its higher-order
 inst.  This can cause problems when higher-order terms are placed into a
 polymorphic collection type and then extracted, since the declared mode for the
@@ -4575,20 +4602,79 @@ but note that there is little value in doing so because there is no
 default higher-order inst for predicates
 therefore it will not be possible to call those terms.
 
-Mercury also provides builtin @samp{inst} values for use with solver types:
+@node Combined higher-order types and insts
+@subsection Combined higher-order types and insts
+
+A higher-order type may optionally specify an inst in the following manner:
 
 @example
-any_pred is @var{Determinism}
-any_pred(@var{Mode}) is @var{Determinism}
-any_pred(@var{Mode1}, @var{Mode2}) is @var{Determinism}
+(pred) is @var{Determinism}
+pred(@var{Type}::@var{Mode}) is @var{Determinism}
+pred(@var{Type1}::@var{Mode1}, @var{Type2}::@var{Mode2}) is @var{Determinism}
 @dots{}
-any_func = @var{Mode} is @var{Determinism}
-any_func(@var{Mode1}) = @var{Mode} is @var{Determinism}
-any_func(@var{Mode1}, @var{Mode2}) = @var{Mode} is @var{Determinism}
+(func) = (@var{Type}::@var{Mode}) is @var{Determinism}
+func(@var{Type1}::@var{Mode1}) = (@var{Type}::@var{Mode}) is @var{Determinism}
+func(@var{Type1}::@var{Mode1}, @var{Type2}::@var{Mode2}) = (@var{Type}::@var{Mode}) is @var{Determinism}
 @dots{}
 @end example
 
-See @ref{Solver types} for more details.
+When used as argument types of functors in type declarations,
+types of this form have two effects.
+First, for any unification that constructs a term using such an argument,
+there is an additional mode constraint that
+the argument must be approximated by the inst.
+In other words, to be mode correct a program must not construct any term
+where a functor has an argument that does not have the declared inst,
+if present.
+
+The second effect is that when a unification deconstructs a ground term
+to extract an argument with such a declared inst,
+the extracted argument may then be used as if it had that inst.
+
+For example, given this type declaration:
+
+@example
+:- type job ---> job(pred(int::out, io::di, io::uo) is det).
+@end example
+
+the following goal is correct:
+
+@example
+:- pred run(job::in, io::di, io::uo) is det.
+run(Job, !IO) :-
+    Job = job(Pred),
+    Pred(Result, !IO),          % Pred has the necessary inst
+    write_line(Result, !IO).
+@end example
+
+However, the following would be a mode error:
+
+@example
+:- pred bad(job::out) is det.
+bad(job(p)).                    % Error: p does not have required mode
+
+:- pred p(int::in, io::di, io::out) is det.
+@dots{}
+@end example
+
+As a new feature, combined higher-order types and insts are only permitted
+as direct arguments of functors in discriminated unions.
+So the following examples currently result in errors.
+
+@example
+% Error: use on the RHS of equivalence types.
+:- type p == (pred(io::di, io::uo) is det).
+:- type f == (func(int::in) = (int::out) is semidet).
+
+% Error: use inside a type constructor.
+:- type jobs ---> jobs(list(pred(int::out, io::di, io::uo) is det)).
+
+% Error: use in a pred/func declaration.
+:- pred p((pred(io::di, io::uo) is det)::in, io::di, io::uo) is det.
+:- func f(func(int::in) = (int::out) is semidet, int) = int.
+@end example
+
+Future versions of the language may allow these forms.
 
 @node Modules
 @chapter Modules

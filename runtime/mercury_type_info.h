@@ -76,7 +76,7 @@
 ** compiler/type_ctor_info.m.
 */
 
-#define MR_RTTI_VERSION                     MR_RTTI_VERSION__ARG_WIDTHS
+#define MR_RTTI_VERSION                     MR_RTTI_VERSION__FUNCTOR_SUBTYPE
 #define MR_RTTI_VERSION__INITIAL            2
 #define MR_RTTI_VERSION__USEREQ             3
 #define MR_RTTI_VERSION__CLEAN_LAYOUT       4
@@ -91,6 +91,7 @@
 #define MR_RTTI_VERSION__BITMAP             13
 #define MR_RTTI_VERSION__DIRECT_ARG         14
 #define MR_RTTI_VERSION__ARG_WIDTHS         15
+#define MR_RTTI_VERSION__FUNCTOR_SUBTYPE    16
 
 /*
 ** Check that the RTTI version is in a sensible range.
@@ -880,6 +881,10 @@ typedef struct {
 ** field will be NULL. Otherwise, it points to an array of MR_DuArgLocn
 ** structures, describing the location and packing scheme of each visible
 ** argument.
+**
+** If any argument contains subtype information (for example, higher order
+** mode information) then the subtype_info field will be
+** MR_DU_SUBTYPE_INFO_EXISTS, otherwise it will be MR_DU_SUBTYPE_INFO_NONE.
 */
 
 typedef enum {
@@ -903,6 +908,16 @@ typedef struct {
     */
 } MR_DuArgLocn;
 
+/*
+** This type describes the subtype constraints on the arguments of a functor.
+** Currently, we only record whether any such constraints exist.
+*/
+
+typedef enum {
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_FUNCTOR_SUBTYPE_NONE),
+    MR_DEFINE_BUILTIN_ENUM_CONST(MR_FUNCTOR_SUBTYPE_EXISTS)
+} MR_FunctorSubtype;
+
 typedef struct {
     MR_ConstString          MR_du_functor_name;
     MR_int_least16_t        MR_du_functor_orig_arity;
@@ -915,6 +930,7 @@ typedef struct {
     const MR_ConstString    *MR_du_functor_arg_names;
     const MR_DuArgLocn      *MR_du_functor_arg_locns;
     const MR_DuExistInfo    *MR_du_functor_exist_info;
+    MR_FunctorSubtype       MR_du_functor_subtype;
 } MR_DuFunctorDesc;
 
 typedef const MR_DuFunctorDesc              *MR_DuFunctorDescPtr;
@@ -947,6 +963,10 @@ typedef const MR_DuFunctorDesc              *MR_DuFunctorDescPtr;
 #define MR_some_arg_type_contains_var(functor_desc)                     \
     ((functor_desc)->MR_du_functor_arg_type_contains_var > 0)
 
+#define MR_du_subtype_none(tci, functor_desc)                           \
+    ((tci)->MR_type_ctor_version < MR_RTTI_VERSION__FUNCTOR_SUBTYPE ||  \
+        (functor_desc)->MR_du_functor_subtype == MR_FUNCTOR_SUBTYPE_NONE)
+
 /*---------------------------------------------------------------------------*/
 
 typedef struct {
@@ -972,9 +992,14 @@ typedef struct {
     MR_ConstString      MR_notag_functor_name;
     MR_PseudoTypeInfo   MR_notag_functor_arg_type;
     MR_ConstString      MR_notag_functor_arg_name;
+    MR_FunctorSubtype   MR_notag_functor_subtype;
 } MR_NotagFunctorDesc;
 
 typedef const MR_NotagFunctorDesc           *MR_NotagFunctorDescPtr;
+
+#define MR_notag_subtype_none(tci, functor_desc)                        \
+    ((tci)->MR_type_ctor_version < MR_RTTI_VERSION__FUNCTOR_SUBTYPE ||  \
+        (functor_desc)->MR_notag_functor_subtype == MR_FUNCTOR_SUBTYPE_NONE)
 
 /*---------------------------------------------------------------------------*/
 

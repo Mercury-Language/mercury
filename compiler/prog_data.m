@@ -1849,12 +1849,12 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % Tuple types.
 
     ;       higher_order_type(
-                % A type for higher-order values. If the second argument
-                % is yes(T) then the values are functions returning T,
-                % otherwise they are predicates. The kind is always `star'.
-
+                % A type for higher-order values. The kind is always `star'.
+                % For functions the return type is at the end of the list
+                % of argument types.
+                pred_or_func,
                 list(mer_type),
-                maybe(mer_type),
+                ho_inst_info,
                 purity,
                 lambda_eval_method
             )
@@ -1978,7 +1978,7 @@ get_tvar_kind(Map, TVar, Kind) :-
 get_type_kind(type_variable(_, Kind)) = Kind.
 get_type_kind(defined_type(_, _, Kind)) = Kind.
 get_type_kind(builtin_type(_)) = kind_star.
-get_type_kind(higher_order_type(_, _, _, _)) = kind_star.
+get_type_kind(higher_order_type(_, _, _, _, _)) = kind_star.
 get_type_kind(tuple_type(_, Kind)) = Kind.
 get_type_kind(apply_n_type(_, _, Kind)) = Kind.
 get_type_kind(kinded_type(_, Kind)) = Kind.

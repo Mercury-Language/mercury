@@ -613,6 +613,13 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                 MR_fatal_error(""notag arg list is too long"");
             }
 
+            if (!MR_notag_subtype_none(type_ctor_info,
+                construct_info.functor_info.notag_functor_desc))
+            {
+                MR_fatal_error(""not yet implemented: construction ""
+                    ""of terms containing subtype constraints"");
+            }
+
             new_data = MR_field(MR_UNIV_TAG, MR_list_head(ArgList),
                 MR_UNIV_OFFSET_FOR_DATA);
             break;
@@ -673,6 +680,11 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
                 if (functor_desc->MR_du_functor_exist_info != NULL) {
                     MR_fatal_error(""not yet implemented: construction ""
                         ""of terms containing existential types"");
+                }
+
+                if (!MR_du_subtype_none(type_ctor_info, functor_desc)) {
+                    MR_fatal_error(""not yet implemented: construction ""
+                        ""of terms containing subtype constraints"");
                 }
 
                 arg_list = ArgList;

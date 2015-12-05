@@ -268,7 +268,8 @@
     --->    notag_functor(
                 nt_name             :: string,
                 nt_arg_type         :: rtti_maybe_pseudo_type_info,
-                nt_arg_name         :: maybe(string)
+                nt_arg_name         :: maybe(string),
+                nt_subtype_info     :: functor_subtype_info
             ).
 
     % Descriptor for a functor in a du type. Also used for functors in
@@ -284,7 +285,8 @@
                 du_ordinal          :: int,
                 du_rep              :: du_rep,
                 du_arg_infos        :: list(du_arg_info),
-                du_exist_info       :: maybe(exist_info)
+                du_exist_info       :: maybe(exist_info),
+                du_subtype_info     :: functor_subtype_info
             ).
 
     % Descriptor for a functor represented by a reserved address.
@@ -408,6 +410,12 @@
                 du_arg_type         :: rtti_maybe_pseudo_type_info_or_self,
                 du_arg_width        :: arg_width
             ).
+
+    % Information about subtypes in the arguments of a functor.
+    %
+:- type functor_subtype_info
+    --->    functor_subtype_none
+    ;       functor_subtype_exists.
 
     % An rtti_maybe_pseudo_type_info identifies the type of a function
     % symbol's argument. If the type of the argument is the same as the
@@ -759,6 +767,11 @@
     % Return the C representation of a secondary tag location.
     %
 :- pred sectag_and_locn_to_locn_string(sectag_and_locn::in, string::out)
+    is det.
+
+    % Return the C representation of a functor's subtype info.
+    %
+:- pred functor_subtype_info_to_string(functor_subtype_info::in, string::out)
     is det.
 
     % Return the C representation of the type_ctor_rep value of the given
@@ -1588,6 +1601,15 @@ sectag_and_locn_to_locn_string(SecTag, String) :-
     ;
         SecTag = sectag_locn_remote(_),
         String = "MR_SECTAG_REMOTE"
+    ).
+
+functor_subtype_info_to_string(FunctorSubtypeInfo, String) :-
+    (
+        FunctorSubtypeInfo = functor_subtype_none,
+        String = "MR_FUNCTOR_SUBTYPE_NONE"
+    ;
+        FunctorSubtypeInfo = functor_subtype_exists,
+        String = "MR_FUNCTOR_SUBTYPE_EXISTS"
     ).
 
 type_ctor_rep_to_string(TypeCtorData, RepStr) :-

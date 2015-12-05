@@ -53,6 +53,7 @@
 :- implementation.
 
 :- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.rtti_access.
 :- import_module mdbcomp.sym_name.
 
@@ -347,26 +348,19 @@ add_type_to_table(Type, TypeCode, !StringTable, !TypeTable) :-
         encode_arg_type_codes(ArgTypeCodes, ArgTypeBytesCord),
         TypeBytesCord = cord.singleton(Selector) ++ ArgTypeBytesCord
     ;
-        Type = higher_order_type(ArgTypes, MaybeReturnType,
-            _Purity, _EvalMethod),
+        Type = higher_order_type(PorF, ArgTypes, _HOInstInfo, _Purity,
+            _EvalMethod),
         list.map_foldl2(lookup_type_in_table, ArgTypes, ArgTypeCodes,
             !StringTable, !TypeTable),
         encode_arg_type_codes(ArgTypeCodes, ArgTypeBytesCord),
         (
-            MaybeReturnType = no,
-            Selector = 10,
-            TypeBytesCord = cord.singleton(Selector)
-                ++ ArgTypeBytesCord
+            PorF = pf_predicate,
+            Selector = 10
         ;
-            MaybeReturnType = yes(ReturnType),
-            Selector = 11,
-            lookup_type_in_table(ReturnType, ReturnTypeCode,
-                !StringTable, !TypeTable),
-            encode_num_det(ReturnTypeCode, ReturnTypeBytes),
-            TypeBytesCord = cord.singleton(Selector)
-                ++ ArgTypeBytesCord
-                ++ cord.from_list(ReturnTypeBytes)
-        )
+            PorF = pf_function,
+            Selector = 11
+        ),
+        TypeBytesCord = cord.singleton(Selector) ++ ArgTypeBytesCord
     ;
         Type = apply_n_type(_TVar, _ArgTypes, _Kind),
         unexpected($module, $pred, "apply_n_type")

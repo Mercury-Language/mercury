@@ -91,7 +91,7 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
         ( Type = defined_type(_, _, _)
         ; Type = builtin_type(_)
         ; Type = tuple_type(_, _)
-        ; Type = higher_order_type(_, _, _, _)
+        ; Type = higher_order_type(_, _, _, _, _)
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),

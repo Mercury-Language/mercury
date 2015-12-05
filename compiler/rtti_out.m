@@ -839,7 +839,8 @@ output_foreign_enum_functor_defn(Info, RttiTypeCtor, ForeignEnumFunctor,
     notag_functor::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_notag_functor_defn(Info, RttiTypeCtor, NotagFunctor, !DeclSet, !IO) :-
-    NotagFunctor = notag_functor(FunctorName, ArgType, MaybeArgName),
+    NotagFunctor = notag_functor(FunctorName, ArgType, MaybeArgName,
+        FunctorSubtypeInfo),
     output_maybe_pseudo_type_info_defn(Info, ArgType, !DeclSet, !IO),
     ArgTypeData = maybe_pseudo_type_info_to_rtti_data(ArgType),
     output_record_rtti_data_decls(Info, ArgTypeData, "", "", 0, _,
@@ -871,6 +872,8 @@ output_notag_functor_defn(Info, RttiTypeCtor, NotagFunctor, !DeclSet, !IO) :-
         MaybeArgName = no,
         io.write_string("NULL", !IO)
     ),
+    io.write_string(",\n\t", !IO),
+    output_functor_subtype_info(FunctorSubtypeInfo, !IO),
     io.write_string("\n};\n", !IO).
 
 :- pred output_du_functor_defn(llds_out_info::in, rtti_type_ctor::in,
@@ -878,7 +881,7 @@ output_notag_functor_defn(Info, RttiTypeCtor, NotagFunctor, !DeclSet, !IO) :-
 
 output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
     DuFunctor = du_functor(FunctorName, OrigArity, Ordinal, Rep,
-        ArgInfos, MaybeExistInfo),
+        ArgInfos, MaybeExistInfo, FunctorSubtypeInfo),
     ArgTypes = list.map(du_arg_info_type, ArgInfos),
     MaybeArgNames = list.map(du_arg_info_name, ArgInfos),
     HaveArgNames = (if list.member(yes(_), MaybeArgNames) then yes else no),
@@ -981,7 +984,21 @@ output_du_functor_defn(Info, RttiTypeCtor, DuFunctor, !DeclSet, !IO) :-
         MaybeExistInfo = no,
         io.write_string("NULL", !IO)
     ),
+    io.write_string(",\n\t", !IO),
+    output_functor_subtype_info(FunctorSubtypeInfo, !IO),
     io.write_string("\n};\n", !IO).
+
+:- pred output_functor_subtype_info(functor_subtype_info::in, io::di, io::uo)
+    is det.
+
+output_functor_subtype_info(FunctorSubtypeInfo, !IO) :-
+    (
+        FunctorSubtypeInfo = functor_subtype_none,
+        io.write_string("MR_FUNCTOR_SUBTYPE_NONE", !IO)
+    ;
+        FunctorSubtypeInfo = functor_subtype_exists,
+        io.write_string("MR_FUNCTOR_SUBTYPE_EXISTS", !IO)
+    ).
 
 :- pred output_res_functor_defn(llds_out_info::in, rtti_type_ctor::in,
     reserved_functor::in, decl_set::in, decl_set::out, io::di, io::uo) is det.

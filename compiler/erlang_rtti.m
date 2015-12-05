@@ -121,7 +121,8 @@
                     % in the future maybe name_arity
                 edu_rep             :: erlang_atom_raw,
                 edu_arg_infos       :: list(du_arg_info),
-                edu_exist_info      :: maybe(exist_info)
+                edu_exist_info      :: maybe(exist_info),
+                edu_subtype_info    :: functor_subtype_info
             ).
 
 :- type erlang_atom_raw

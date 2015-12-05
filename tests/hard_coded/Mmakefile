@@ -135,6 +135,10 @@ ORDINARY_PROGS =	\
 	func_and_pred \
 	func_ctor_ambig \
 	func_test \
+	functor_ho_inst \
+	functor_ho_inst_2 \
+	functor_ho_inst_excp \
+	functor_ho_inst_excp_2 \
 	getopt_test \
 	ground_dd \
 	ground_terms \
@@ -772,6 +776,30 @@ final_excp.out: final_excp
 #
 init_excp.out: init_excp
 	if MERCURY_SUPPRESS_STACK_TRACE=yes ./init_excp > $@.tmp 2>&1; then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
+	fi
+
+# functor_ho_inst_excp.out is expected to throw an exception or cause
+# a runtime abort
+functor_ho_inst_excp.out: functor_ho_inst_excp
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./functor_ho_inst_excp \
+			> $@.tmp 2>&1; \
+	then \
+		grep  . $@.tmp; \
+		exit 1; \
+	else \
+		mv $@.tmp $@; \
+	fi
+
+# functor_ho_inst_excp_2.out is expected to throw an exception or cause
+# a runtime abort
+functor_ho_inst_excp_2.out: functor_ho_inst_excp_2
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./functor_ho_inst_excp_2 \
+			> $@.tmp 2>&1; \
+	then \
 		grep  . $@.tmp; \
 		exit 1; \
 	else \

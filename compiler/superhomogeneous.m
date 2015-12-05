@@ -803,8 +803,8 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgs,
             ContextPieces =
                 cord.singleton(words("In explicit type qualification:")),
             varset.coerce(!.VarSet, GenericVarSet),
-            parse_type(DeclType1, GenericVarSet, ContextPieces,
-                DeclTypeResult),
+            parse_type(no_allow_ho_inst_info, DeclType1, GenericVarSet,
+                ContextPieces, DeclTypeResult),
             (
                 DeclTypeResult = ok1(DeclType),
                 varset.coerce(!.VarSet, DeclVarSet),

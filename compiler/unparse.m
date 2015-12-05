@@ -48,7 +48,6 @@
 :- import_module parse_tree.prog_io_util.
 
 :- import_module list.
-:- import_module maybe.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -77,20 +76,31 @@ unparse_type(Type, Term) :-
         builtin_type_to_string(BuiltinType, Name),
         Term = term.functor(term.atom(Name), [], Context)
     ;
-        Type = higher_order_type(Args, MaybeRet, Purity, EvalMethod),
-        unparse_type_list(Args, ArgTerms),
+        Type = higher_order_type(PorF, PredArgTypes, HOInstInfo, Purity,
+            EvalMethod),
+        unparse_type_list(PredArgTypes, PredArgTypeTerms),
         (
-            MaybeRet = yes(Ret),
+            HOInstInfo = higher_order(pred_inst_info(_, PredArgModes, _, _)),
+            unparse_mode_list(PredArgModes, PredArgModeTerms),
+            combine_type_and_mode_terms(PredArgTypeTerms, PredArgModeTerms,
+                PredArgTerms)
+        ;
+            HOInstInfo = none_or_default_func,
+            PredArgTerms = PredArgTypeTerms
+        ),
+        (
+            PorF = pf_predicate,
+            Term0 = term.functor(term.atom("pred"), PredArgTerms, Context),
+            maybe_add_lambda_eval_method(EvalMethod, Term0, Term2)
+        ;
+            PorF = pf_function,
+            list.det_split_last(PredArgTerms, ArgTerms, RetTerm),
             Term0 = term.functor(term.atom("func"), ArgTerms, Context),
             maybe_add_lambda_eval_method(EvalMethod, Term0, Term1),
-            unparse_type(Ret, RetTerm),
             Term2 = term.functor(term.atom("="), [Term1, RetTerm], Context)
-        ;
-            MaybeRet = no,
-            Term0 = term.functor(term.atom("pred"), ArgTerms, Context),
-            maybe_add_lambda_eval_method(EvalMethod, Term0, Term2)
         ),
-        maybe_add_purity_annotation(Purity, Term2, Term)
+        maybe_add_purity_annotation(Purity, Term2, Term3),
+        maybe_add_detism(HOInstInfo, Term3, Term)
     ;
         Type = tuple_type(Args, _),
         unparse_type_list(Args, ArgTerms),
@@ -122,6 +132,18 @@ unparse_qualified_term(qualified(Qualifier, Name), Args, Term) :-
     Term0 = term.functor(term.atom(Name), Args, Context),
     Term = term.functor(term.atom("."), [QualTerm, Term0], Context).
 
+:- pred combine_type_and_mode_terms(list(term)::in, list(term)::in,
+    list(term)::out) is det.
+
+combine_type_and_mode_terms([], [], []).
+combine_type_and_mode_terms([], [_ | _], _) :-
+    unexpected($module, $pred, "argument length mismatch").
+combine_type_and_mode_terms([_ | _], [], _) :-
+    unexpected($module, $pred, "argument length mismatch").
+combine_type_and_mode_terms([Type | Types], [Mode | Modes], [Term | Terms]) :-
+    Term = term.functor(term.atom("::"), [Type, Mode], term.context_init),
+    combine_type_and_mode_terms(Types, Modes, Terms).
+
 :- pred maybe_add_lambda_eval_method(lambda_eval_method::in, term::in,
     term::out) is det.
 
@@ -137,7 +159,24 @@ maybe_add_purity_annotation(purity_impure, Term0, Term) :-
     Context = term.context_init,
     Term = term.functor(term.atom("impure"), [Term0], Context).
 
+:- pred maybe_add_detism(ho_inst_info::in, term::in, term::out) is det.
+
+maybe_add_detism(none_or_default_func, Term, Term).
+maybe_add_detism(higher_order(pred_inst_info(_, _, _, Detism)), Term0, Term) :-
+    Context = term.context_init,
+    DetismTerm0 = det_to_term(Context, Detism),
+    term.coerce(DetismTerm0, DetismTerm),
+    Term = term.functor(term.atom("is"), [Term0, DetismTerm], Context).
+
 %---------------------------------------------------------------------------%
+
+:- pred unparse_mode_list(list(mer_mode)::in, list(term)::out) is det.
+
+unparse_mode_list([], []).
+unparse_mode_list([Mode | Modes], [Term | Terms]) :-
+    Term0 = mode_to_term(output_mercury, Mode),
+    term.coerce(Term0, Term),
+    unparse_mode_list(Modes, Terms).
 
 mode_to_term(Lang, Mode) =
     mode_to_term_with_context(Lang, term.context_init, Mode).

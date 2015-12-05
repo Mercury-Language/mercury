@@ -1220,11 +1220,11 @@ get_functor_with_names(TypeDesc, FunctorNum, Name, Arity, ArgTypeDescs,
         ArgNames) :-
     TypeInfo = type_info_from_type_desc(TypeDesc),
     MaybeResult = get_functor_with_names(TypeInfo, FunctorNum),
-    MaybeResult = yes({Name, Arity, ArgTypeInfos, ArgNames}),
+    MaybeResult = yes({Name, Arity, ArgTypeInfos, ArgNames, _SubtypeInfo}),
     ArgTypeDescs = type_descs_from_type_infos(ArgTypeInfos).
 
 :- func get_functor_with_names(type_info, int) =
-    maybe({string, int, list(type_info), list(string)}).
+    maybe({string, int, list(type_info), list(string), functor_subtype_info}).
 
 get_functor_with_names(TypeInfo, NumFunctor) = Result :-
     TypeCtorInfo = TypeInfo ^ type_ctor_info_evaled,
@@ -1255,7 +1255,8 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
 
             Name = string.from_char_list(FunctorRep ^ edu_name),
             Arity = FunctorRep ^ edu_orig_arity,
-            Result = yes({Name, Arity, ArgTypes, ArgNames})
+            SubtypeInfo = FunctorRep ^ edu_subtype_info,
+            Result = yes({Name, Arity, ArgTypes, ArgNames, SubtypeInfo})
         else
             Result = no
         )
@@ -1265,14 +1266,14 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
         Arity = 0,
         ArgTypes = [],
         ArgNames = [],
-        Result = yes({Name, Arity, ArgTypes, ArgNames})
+        Result = yes({Name, Arity, ArgTypes, ArgNames, functor_subtype_none})
     ;
         TypeCtorRep = etcr_tuple,
         type_ctor_info_and_args(TypeInfo, _TypeCtorInfo, ArgTypes),
         Name = "{}",
         Arity = list.length(ArgTypes),
         ArgNames = list.duplicate(Arity, ""),
-        Result = yes({Name, Arity, ArgTypes, ArgNames})
+        Result = yes({Name, Arity, ArgTypes, ArgNames, functor_subtype_none})
     ;
         TypeCtorRep = etcr_list,
         ( if NumFunctor = 0 then
@@ -1280,14 +1281,16 @@ get_functor_with_names(TypeInfo, NumFunctor) = Result :-
             Arity = 0,
             ArgTypes = [],
             ArgNames = [],
-            Result = yes({Name, Arity, ArgTypes, ArgNames})
+            Result = yes({Name, Arity, ArgTypes, ArgNames,
+                functor_subtype_none})
         else if NumFunctor = 1 then
             ArgTypeInfo = TypeInfo ^ type_info_index(1),
             Name = "[|]",
             Arity = 2,
             ArgTypes = [ArgTypeInfo, TypeInfo],
             ArgNames = ["", ""],
-            Result = yes({Name, Arity, ArgTypes, ArgNames})
+            Result = yes({Name, Arity, ArgTypes, ArgNames,
+                functor_subtype_none})
         else
             Result = no
         )
@@ -1414,9 +1417,17 @@ construct(TypeDesc, Index, Args) = Term :-
     (
         TypeCtorRep = etcr_du,
         Result = get_functor_with_names(TypeInfo, Index),
-        Result = yes({FunctorName, _FunctorArity, ArgTypes, _ArgNames}),
-        check_arg_types(Args, ArgTypes),
-        Term = construct_univ(TypeInfo, FunctorName, Args)
+        Result = yes({FunctorName, _FunctorArity, ArgTypes, _ArgNames,
+            SubtypeInfo}),
+        (
+            SubtypeInfo = functor_subtype_exists,
+            unexpected($module, $pred,
+                "unable to construct term with subtype constraints")
+        ;
+            SubtypeInfo = functor_subtype_none,
+            check_arg_types(Args, ArgTypes),
+            Term = construct_univ(TypeInfo, FunctorName, Args)
+        )
     ;
         TypeCtorRep = etcr_dummy,
         Index = 0,
@@ -2106,7 +2117,8 @@ det_dynamic_cast(Term, Actual) :-
                 edu_lex             :: int,
                 edu_rep             :: erlang_atom,
                 edu_arg_infos       :: list(du_arg_info),
-                edu_exist_info      :: maybe(exist_info)
+                edu_exist_info      :: maybe(exist_info),
+                edu_subtype_info    :: functor_subtype_info
             ).
 
 :- type du_arg_info
@@ -2123,6 +2135,10 @@ det_dynamic_cast(Term, Actual) :-
                 exist_typeclass_constraints :: list(tc_constraint),
                 exist_typeinfo_locns        :: list(exist_typeinfo_locn)
             ).
+
+:- type functor_subtype_info
+    --->    functor_subtype_none
+    ;       functor_subtype_exists.
 
 :- type tc_constraint
     --->    tc_constraint(

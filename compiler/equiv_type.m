@@ -1140,27 +1140,13 @@ replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
         Changed = no,
         Circ = no
     ;
-        Type0 = higher_order_type(Args0, MaybeRet0, Purity, EvalMethod),
+        Type0 = higher_order_type(PorF, Args0, HOInstInfo, Purity, EvalMethod),
         replace_in_type_list_location_circ_2(MaybeRecord, TypeEqvMap,
-            TypeCtorsAlreadyExpanded, Args0, Args, ArgsChanged, no, ArgsCirc,
+            TypeCtorsAlreadyExpanded, Args0, Args, Changed, no, Circ,
             !VarSet, !EquivTypeInfo, !UsedModules),
         (
-            MaybeRet0 = yes(Ret0),
-            replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
-                TypeCtorsAlreadyExpanded, Ret0, Ret, RetChanged, RetCirc,
-                !VarSet, !EquivTypeInfo, !UsedModules),
-            MaybeRet = yes(Ret),
-            Changed = bool.or(ArgsChanged, RetChanged),
-            Circ = bool.or(ArgsCirc, RetCirc)
-        ;
-            MaybeRet0 = no,
-            MaybeRet = no,
-            Changed = ArgsChanged,
-            Circ = ArgsCirc
-        ),
-        (
             Changed = yes,
-            Type = higher_order_type(Args, MaybeRet, Purity, EvalMethod)
+            Type = higher_order_type(PorF, Args, HOInstInfo, Purity, EvalMethod)
         ;
             Changed = no,
             Type = Type0

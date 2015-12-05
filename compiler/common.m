@@ -873,17 +873,9 @@ types_match_exactly(type_variable(TVar, _), type_variable(TVar, _)).
 types_match_exactly(defined_type(Name, As, _), defined_type(Name, Bs, _)) :-
     types_match_exactly_list(As, Bs).
 types_match_exactly(builtin_type(BuiltinType), builtin_type(BuiltinType)).
-types_match_exactly(higher_order_type(As, AR, P, E),
-        higher_order_type(Bs, BR, P, E)) :-
-    types_match_exactly_list(As, Bs),
-    (
-        AR = yes(A),
-        BR = yes(B),
-        types_match_exactly(A, B)
-    ;
-        AR = no,
-        BR = no
-    ).
+types_match_exactly(higher_order_type(PorF, As, H, P, E),
+        higher_order_type(PorF, Bs, H, P, E)) :-
+    types_match_exactly_list(As, Bs).
 types_match_exactly(tuple_type(As, _), tuple_type(Bs, _)) :-
     types_match_exactly_list(As, Bs).
 types_match_exactly(apply_n_type(TVar, As, _), apply_n_type(TVar, Bs, _)) :-

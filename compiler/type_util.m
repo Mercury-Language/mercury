@@ -508,7 +508,7 @@ type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo, Type, !SeenTypes) :-
                 Args, !SeenTypes)
         ;
             ( Type = defined_type(_, _, _)
-            ; Type = higher_order_type(_, _, _, _)
+            ; Type = higher_order_type(_, _, _, _, _)
             ; Type = apply_n_type(_, _, _)
             ; Type = kinded_type(_, _)
             ),

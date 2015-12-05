@@ -460,17 +460,20 @@ mer_type_to_xml(_, builtin_type(builtin_type_float)) = elem("float", [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_string)) = elem("string", [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_char)) =
     elem("character", [], []).
-mer_type_to_xml(TVarset, higher_order_type(Types, MaybeResult, _, _)) = Xml :-
-    XmlTypes = xml_list("higher_order_type_args", mer_type_to_xml(TVarset),
-        Types),
+mer_type_to_xml(TVarset, higher_order_type(PorF, Types, _, _, _)) = Xml :-
     (
-        MaybeResult = yes(ResultType),
+        PorF = pf_predicate,
+        XmlTypes = xml_list("higher_order_type_args", mer_type_to_xml(TVarset),
+            Types),
+        XmlChildren = [XmlTypes]
+    ;
+        PorF = pf_function,
+        list.det_split_last(Types, ArgTypes, ResultType),
+        XmlTypes = xml_list("higher_order_type_args", mer_type_to_xml(TVarset),
+            ArgTypes),
         XmlReturn = elem("return_type", [],
             [mer_type_to_xml(TVarset, ResultType)]),
         XmlChildren = [XmlTypes, XmlReturn]
-    ;
-        MaybeResult = no,
-        XmlChildren = [XmlTypes]
     ),
     Xml = elem("higher_order_type", [], XmlChildren).
 mer_type_to_xml(TVarset, tuple_type(Types, _)) = Xml :-

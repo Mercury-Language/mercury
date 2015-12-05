@@ -178,17 +178,9 @@ apply_variable_renaming_to_type(Renaming, Type0, Type) :-
         Type0 = builtin_type(_),
         Type = Type0
     ;
-        Type0 = higher_order_type(Args0, MaybeReturn0, Purity, EvalMethod),
+        Type0 = higher_order_type(PorF, Args0, HOInstInfo, Purity, EvalMethod),
         apply_variable_renaming_to_type_list(Renaming, Args0, Args),
-        (
-            MaybeReturn0 = yes(Return0),
-            apply_variable_renaming_to_type(Renaming, Return0, Return),
-            MaybeReturn = yes(Return)
-        ;
-            MaybeReturn0 = no,
-            MaybeReturn = no
-        ),
-        Type = higher_order_type(Args, MaybeReturn, Purity, EvalMethod)
+        Type = higher_order_type(PorF, Args, HOInstInfo, Purity, EvalMethod)
     ;
         Type0 = tuple_type(Args0, Kind),
         apply_variable_renaming_to_type_list(Renaming, Args0, Args),
@@ -220,17 +212,9 @@ apply_subst_to_type(Subst, Type0, Type) :-
         Type0 = builtin_type(_),
         Type = Type0
     ;
-        Type0 = higher_order_type(Args0, MaybeReturn0, Purity, EvalMethod),
+        Type0 = higher_order_type(PorF, Args0, HOInstInfo, Purity, EvalMethod),
         apply_subst_to_type_list(Subst, Args0, Args),
-        (
-            MaybeReturn0 = yes(Return0),
-            apply_subst_to_type(Subst, Return0, Return),
-            MaybeReturn = yes(Return)
-        ;
-            MaybeReturn0 = no,
-            MaybeReturn = no
-        ),
-        Type = higher_order_type(Args, MaybeReturn, Purity, EvalMethod)
+        Type = higher_order_type(PorF, Args, HOInstInfo, Purity, EvalMethod)
     ;
         Type0 = tuple_type(Args0, Kind),
         apply_subst_to_type_list(Subst, Args0, Args),
@@ -266,17 +250,9 @@ apply_rec_subst_to_type(Subst, Type0, Type) :-
         Type0 = builtin_type(_),
         Type = Type0
     ;
-        Type0 = higher_order_type(Args0, MaybeReturn0, Purity, EvalMethod),
+        Type0 = higher_order_type(PorF, Args0, HOInstInfo, Purity, EvalMethod),
         apply_rec_subst_to_type_list(Subst, Args0, Args),
-        (
-            MaybeReturn0 = yes(Return0),
-            apply_rec_subst_to_type(Subst, Return0, Return),
-            MaybeReturn = yes(Return)
-        ;
-            MaybeReturn0 = no,
-            MaybeReturn = no
-        ),
-        Type = higher_order_type(Args, MaybeReturn, Purity, EvalMethod)
+        Type = higher_order_type(PorF, Args, HOInstInfo, Purity, EvalMethod)
     ;
         Type0 = tuple_type(Args0, Kind),
         apply_rec_subst_to_type_list(Subst, Args0, Args),
@@ -323,7 +299,7 @@ apply_type_args(Type0, Args, Type) :-
         Type = defined_type(Name, Args0 ++ Args, Kind)
     ;
         ( Type0 = builtin_type(_)
-        ; Type0 = higher_order_type(_, _, _, _)
+        ; Type0 = higher_order_type(_, _, _, _, _)
         ),
         (
             Args = []
