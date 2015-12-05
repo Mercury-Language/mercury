@@ -708,16 +708,6 @@ suspect_in_excluded_subtree(SearchSpace, SuspectId) :-
     lookup_suspect(SearchSpace, SuspectId, Suspect),
     excluded_subtree(Suspect ^ status, yes).
 
-    % Succeeds if we haven't got an answer from the oracle about this suspect,
-    % and haven't been able to infer anything about this suspect from other
-    % oracle answers.
-    %
-:- pred suspect_is_questionable(search_space(T)::in, suspect_id::in)
-    is semidet.
-
-suspect_is_questionable(SearchSpace, SuspectId) :-
-    questionable(get_status(SearchSpace, SuspectId), yes).
-
     % Does the given status mean the suspect is in a subtree that was
     % excluded from the bug search (because it was marked correct or
     % inadmissible or is the descendant of such a suspect)?
@@ -1398,8 +1388,7 @@ recalc_weights_and_get_parents(Store, [SuspectId | SuspectIds], PrevParents,
     lookup_suspect(!.SearchSpace, SuspectId, Suspect),
     calc_suspect_weight(Store, Suspect ^ edt_node, Suspect ^ children,
         Suspect ^ status, !.SearchSpace, Weight, _),
-    set_suspect(SuspectId, Suspect ^ weight := Weight,
-        !SearchSpace),
+    set_suspect(SuspectId, Suspect ^ weight := Weight, !SearchSpace),
     (
         Suspect ^ parent = yes(ParentId),
         NewPrevParents = [ParentId | PrevParents]
@@ -1426,6 +1415,7 @@ calc_num_unknown(SearchSpace) = NumUnknown :-
 
     % Work out the number of suspects with unexplored children.
     % Used for assertion checking.
+    %
 :- func calc_num_unexplored(search_space(T)) = int.
 
 calc_num_unexplored(SearchSpace) = NumUnexplored :-

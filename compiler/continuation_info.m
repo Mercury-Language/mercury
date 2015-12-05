@@ -569,21 +569,6 @@ convert_return_data(LiveInfos, VarInfoSet, TypeInfoMap) :-
         ), TypeInfoMapList, Empty, TypeInfoMap),
     set.list_to_set(VarInfoList, VarInfoSet).
 
-:- pred filter_named_vars(list(liveinfo)::in, list(liveinfo)::out) is det.
-
-filter_named_vars([], []).
-filter_named_vars([LiveInfo | LiveInfos], Filtered) :-
-    filter_named_vars(LiveInfos, Filtered1),
-    ( if
-        LiveInfo = live_lvalue(_, LiveType, _),
-        LiveType = live_value_var(_, Name, _, _),
-        Name \= ""
-    then
-        Filtered = [LiveInfo | Filtered1]
-    else
-        Filtered = Filtered1
-    ).
-
 %-----------------------------------------------------------------------------%
 
 basic_stack_layout_for_proc(PredInfo, Globals, BasicLayout,

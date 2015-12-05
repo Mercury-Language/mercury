@@ -274,6 +274,12 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
     % we generate a call to an out-of-line procedure that contains
     % the user's code.
     %
+    % XXX This predicate is not called from anywhere. The comment above
+    % implies we should used it for C# code when the target language is C#,
+    % but in those cases we cal ml_gen_ordinary_pragma_csharp_java_proc.
+    % The predicate name itself suggests it was originally intended for
+    % target managed C++, which we don't support anymore.
+    %
 :- pred ml_gen_ordinary_pragma_managed_proc(ordinary_pragma_kind::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,

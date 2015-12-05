@@ -278,13 +278,6 @@ ml_gen_maybe_pseudo_type_info_defn(ModuleInfo, MaybePTI,
     ml_gen_maybe_pseudo_type_info(ModuleInfo, MaybePTI, _Rval, _Type,
         !GlobalData).
 
-:- pred ml_gen_pseudo_type_info_defn(module_info::in,
-    rtti_pseudo_type_info::in,
-    ml_global_data::in, ml_global_data::out) is det.
-
-ml_gen_pseudo_type_info_defn(ModuleInfo, PTI, !GlobalData) :-
-    ml_gen_pseudo_type_info(ModuleInfo, PTI, _Rval, _Type, !GlobalData).
-
 :- pred ml_gen_type_info_defn(module_info::in, rtti_type_info::in,
     ml_global_data::in, ml_global_data::out) is det.
 

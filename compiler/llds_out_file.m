@@ -1047,12 +1047,6 @@ output_record_entry_label_decl(_Info, Label, !DeclSet, !IO) :-
     io.write_string(")\n", !IO),
     decl_set_insert(decl_code_addr(code_label(Label)), !DeclSet).
 
-:- pred output_record_stack_layout_decl(llds_out_info::in, data_id::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_record_stack_layout_decl(Info, DataId, !DeclSet, !IO) :-
-    output_record_data_id_decls(Info, DataId, !DeclSet, !IO).
-
 %----------------------------------------------------------------------------%
 
 :- pred output_c_label_inits(llds_out_info::in,
@@ -1692,29 +1686,6 @@ c_data_const_string(Globals, InclCodeAddr) =
     else
         "const "
     ).
-
-%----------------------------------------------------------------------------%
-
-:- pred output_label_defn(label::in, io::di, io::uo) is det.
-
-output_label_defn(entry_label(entry_label_exported, ProcLabel), !IO) :-
-    io.write_string("MR_define_entry(", !IO),
-    output_label(entry_label(entry_label_exported, ProcLabel), !IO),
-    io.write_string(");\n", !IO).
-output_label_defn(entry_label(entry_label_local, ProcLabel), !IO) :-
-    io.write_string("MR_def_static(", !IO),
-    output_proc_label_no_prefix(ProcLabel, !IO),
-    io.write_string(")\n", !IO).
-output_label_defn(entry_label(entry_label_c_local, ProcLabel), !IO) :-
-    io.write_string("MR_def_local(", !IO),
-    output_proc_label_no_prefix(ProcLabel, !IO),
-    io.write_string(")\n", !IO).
-output_label_defn(internal_label(Num, ProcLabel), !IO) :-
-    io.write_string("MR_def_label(", !IO),
-    output_proc_label_no_prefix(ProcLabel, !IO),
-    io.write_string(",", !IO),
-    io.write_int(Num, !IO),
-    io.write_string(")\n", !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.llds_out.llds_out_file.

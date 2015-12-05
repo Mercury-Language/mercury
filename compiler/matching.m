@@ -146,9 +146,6 @@
 
 %-----------------------------------------------------------------------------%
 
-% Uncomment if you want to dump performance information into the .err file.
-% :- pragma promise_pure(find_via_cell_vars/15).
-
 find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
         BeforeFlush, AfterFlush, MatchingParams,
         RealizedBenefitNodes, RealizedCostNodes, ViaCellVars) :-
@@ -209,25 +206,22 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
         RealizedBenefitOpCount * 100 >= RealizedCostOpCount * OpRatio,
         RealizedBenefitNodeCount * 100 >= RealizedCostNodeCount * NodeRatio
     then
-        ViaCellOccurringVars = ViaCellOccurringVars0
-        % Uncomment if you want to dump performance information into
-        % the .err file.
-        % Nullified = no
+        ViaCellOccurringVars = ViaCellOccurringVars0,
+        Nullified = no
     else
-        ViaCellOccurringVars = set_of_var.init
-        % Uncomment if you want to dump performance information into
-        % the .err file.
-        % Nullified = yes
+        ViaCellOccurringVars = set_of_var.init,
+        Nullified = yes
     ),
     ViaCellVars = set_of_var.union(ViaCellOccurringVars,
-        NonOccurringCandidateFieldVars).
-    % Uncomment if you want to dump performance information into
-    % the .err file.
-    % impure unsafe_perform_io(dump_results(CellVar, CandidateFieldVars,
-    %   OccurringCandidateFieldVarList, ViaCellOccurringVars0,
-    %   Nullified, BeforeFlush, NumberedAfterFlush,
-    %   RealizedBenefitNodeList, RealizedBenefitOpList,
-    %   RealizedCostNodeList, RealizedCostOpList)).
+        NonOccurringCandidateFieldVars),
+    % Enable if you want to dump performance information into the .err file.
+    trace [compile_time(flag("debug_matching")), io(!IO)] (
+        dump_results(CellVar, CandidateFieldVars,
+            OccurringCandidateFieldVarList, ViaCellOccurringVars0,
+            Nullified, BeforeFlush, NumberedAfterFlush,
+            RealizedBenefitNodeList, RealizedBenefitOpList,
+            RealizedCostNodeList, RealizedCostOpList, !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 

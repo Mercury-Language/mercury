@@ -1099,20 +1099,6 @@ convert_local_to_field(Defn0) = Defn :-
         Defn = Defn0
     ).
 
-    % Similarly, when converting local statics into global statics, we need to
-    % change `local' access to something else -- we use `private'.
-    %
-:- func convert_local_to_global(mlds_defn) = mlds_defn.
-
-convert_local_to_global(Defn0) = Defn :-
-    Defn0 = mlds_defn(Name, Context, Flags0, Body),
-    ( if access(Flags0) = acc_local then
-        Flags = set_access(Flags0, acc_private),
-        Defn = mlds_defn(Name, Context, Flags, Body)
-    else
-        Defn = Defn0
-    ).
-
     % ml_insert_init_env:
     %
     % If the definition is a nested function definition, and its body makes
@@ -2355,8 +2341,8 @@ defn_contains_matching_defn(Filter, Defn) :-
     %
 :- pred add_unchain_stack_to_maybe_statement(action,
     maybe(statement), maybe(statement), elim_info, elim_info).
-:- mode add_unchain_stack_to_maybe_statement(in(hoist), in, out, in, out)
-    is det.
+% :- mode add_unchain_stack_to_maybe_statement(in(hoist), in, out, in, out)
+%     is det.
 :- mode add_unchain_stack_to_maybe_statement(in(chain), in, out, in, out)
     is det.
 
@@ -2367,7 +2353,7 @@ add_unchain_stack_to_maybe_statement(Action, yes(Statement0), yes(Statement),
 
 :- pred add_unchain_stack_to_statements(action,
     list(statement), list(statement), elim_info, elim_info).
-:- mode add_unchain_stack_to_statements(in(hoist), in, out, in, out) is det.
+% :- mode add_unchain_stack_to_statements(in(hoist), in, out, in, out) is det.
 :- mode add_unchain_stack_to_statements(in(chain), in, out, in, out) is det.
 
 add_unchain_stack_to_statements(_, [], [], !Info).
@@ -2378,7 +2364,7 @@ add_unchain_stack_to_statements(Action, [Statement0 | Statements0],
 
 :- pred add_unchain_stack_to_statement(action, statement, statement,
     elim_info, elim_info).
-:- mode add_unchain_stack_to_statement(in(hoist), in, out, in, out) is det.
+% :- mode add_unchain_stack_to_statement(in(hoist), in, out, in, out) is det.
 :- mode add_unchain_stack_to_statement(in(chain), in, out, in, out) is det.
 
 add_unchain_stack_to_statement(Action, Statement0, Statement, !Info) :-
@@ -2388,7 +2374,7 @@ add_unchain_stack_to_statement(Action, Statement0, Statement, !Info) :-
 
 :- pred add_unchain_stack_to_stmt(action, mlds_context,
     mlds_stmt, mlds_stmt, elim_info, elim_info).
-:- mode add_unchain_stack_to_stmt(in(hoist), in, in, out, in, out) is det.
+% :- mode add_unchain_stack_to_stmt(in(hoist), in, in, out, in, out) is det.
 :- mode add_unchain_stack_to_stmt(in(chain), in, in, out, in, out) is det.
 
 add_unchain_stack_to_stmt(Action, Context, Stmt0, Stmt, !Info) :-
@@ -2464,7 +2450,7 @@ add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt, !Info) :-
 
 :- pred add_unchain_stack_to_cases(action,
     list(mlds_switch_case), list(mlds_switch_case), elim_info, elim_info).
-:- mode add_unchain_stack_to_cases(in(hoist), in, out, in, out) is det.
+% :- mode add_unchain_stack_to_cases(in(hoist), in, out, in, out) is det.
 :- mode add_unchain_stack_to_cases(in(chain), in, out, in, out) is det.
 
 add_unchain_stack_to_cases(_, [], [], !Info).
@@ -2474,7 +2460,7 @@ add_unchain_stack_to_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
 
 :- pred add_unchain_stack_to_case(action,
     mlds_switch_case, mlds_switch_case, elim_info, elim_info).
-:- mode add_unchain_stack_to_case(in(hoist), in, out, in, out) is det.
+% :- mode add_unchain_stack_to_case(in(hoist), in, out, in, out) is det.
 :- mode add_unchain_stack_to_case(in(chain), in, out, in, out) is det.
 
 add_unchain_stack_to_case(Action, Case0, Case, !Info) :-
@@ -2486,7 +2472,7 @@ add_unchain_stack_to_case(Action, Case0, Case, !Info) :-
 
 :- pred add_unchain_stack_to_default(action,
     mlds_switch_default, mlds_switch_default, elim_info, elim_info).
-:- mode add_unchain_stack_to_default(in(hoist), in, out, in, out) is det.
+% :- mode add_unchain_stack_to_default(in(hoist), in, out, in, out) is det.
 :- mode add_unchain_stack_to_default(in(chain), in, out, in, out) is det.
 
 add_unchain_stack_to_default(Action, Default0, Default, !Info) :-
@@ -2509,14 +2495,6 @@ prepend_unchain_frame(Stmt0, Context, ElimInfo) = Stmt :-
     UnchainFrame = ml_gen_unchain_frame(Context, ElimInfo),
     Statement0 = statement(Stmt0, Context),
     Stmt = ml_stmt_block([], [UnchainFrame, Statement0]).
-
-:- func append_unchain_frame(mlds_stmt, mlds_context, elim_info) =
-    mlds_stmt.
-
-append_unchain_frame(Stmt0, Context, ElimInfo) = Stmt :-
-    UnchainFrame = ml_gen_unchain_frame(Context, ElimInfo),
-    Statement0 = statement(Stmt0, Context),
-    Stmt = ml_stmt_block([], [Statement0, UnchainFrame]).
 
 :- func ml_gen_unchain_frame(mlds_context, elim_info) = statement.
 

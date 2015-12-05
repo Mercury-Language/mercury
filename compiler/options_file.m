@@ -631,17 +631,6 @@ parse_options_line(Line0, OptionsFileLine) :-
         OptionsFileLine = define_variable(VarName, Add, VarValue)
     ).
 
-:- pred parse_file_name(file_name::out,
-    list(char)::in, list(char)::out) is det.
-
-parse_file_name(FileName, Chars0, Chars) :-
-    ( if Chars0 = ['"' | Chars1] then
-        parse_string(FileName, Chars1, Chars)
-    else
-        list.takewhile(isnt(char.is_whitespace), Chars0, FileNameChars, Chars),
-        FileName = string.from_char_list(FileNameChars)
-    ).
-
 :- pred parse_variable(options_variable::out,
     list(char)::in, list(char)::out) is det.
 
@@ -679,12 +668,6 @@ parse_variable_2(IsFirst, Var0, Var, [Char | Chars0], Chars) :-
         Var = Var0,
         Chars = [Char | Chars0]
     ).
-
-:- pred parse_string(string::out, list(char)::in, list(char)::out) is det.
-
-parse_string(String, Chars0, Chars) :-
-    parse_string_chars([], StringChars, Chars0, Chars),
-    String = string.from_rev_char_list(StringChars).
 
 :- pred parse_string_chars(list(char)::in, list(char)::out,
     list(char)::in, list(char)::out) is det.

@@ -752,7 +752,9 @@ strip_unnecessary_impl_defns(!IntAvails, !ImpAvails, !IntItems, !ImpItems) :-
         ;
             !.ImpItems = [_ | _],
             standardize_items(!ImpItems)
-        )
+        ),
+        standardize_imports(!IntAvails),
+        standardize_imports(!ImpAvails)
     ).
 
     % See the comment on the one call above.

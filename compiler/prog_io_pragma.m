@@ -1962,15 +1962,6 @@ parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
 
 %-----------------------------------------------------------------------------%
 
-:- pred parse_pragma_keyword(string::in, term::in, string::out,
-    term.context::out) is semidet.
-
-parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
-    Term = term.functor(term.atom(ExpectedKeyword), [Arg], _),
-    Arg = term.functor(term.string(StringArg), [], StartContext).
-
-%-----------------------------------------------------------------------------%
-
 :- type collected_pragma_foreign_proc_attribute
     --->    coll_may_call_mercury(proc_may_call_mercury)
     ;       coll_thread_safe(proc_thread_safe)

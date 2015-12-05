@@ -2199,20 +2199,6 @@ write_atomic_interface_vars(VarSet, VarNamePrint, CompName, CompState, !IO) :-
     mercury_output_var(VarSet, VarNamePrint, Var2, !IO),
     io.write_string(")", !IO).
 
-:- pred write_or_else_list(hlds_out_info::in, module_info::in,
-    prog_varset::in, maybe_vartypes::in,  var_name_print::in, int::in,
-    string::in, list(hlds_goal)::in,io::di, io::uo) is det.
-
-write_or_else_list(_, _, _, _, _, _, _, [], !IO).
-write_or_else_list(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
-        Indent, Follow, [Goal | Goals], !IO) :-
-    write_indent(Indent, !IO),
-    io.write_string("or_else\n", !IO),
-    do_write_goal(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
-        Indent + 1, Follow, Goal, !IO),
-    write_or_else_list(Info, ModuleInfo, VarSet, TypeQual, VarNamePrint,
-        Indent + 1, Follow, Goals, !IO).
-
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_goal.
 %-----------------------------------------------------------------------------%

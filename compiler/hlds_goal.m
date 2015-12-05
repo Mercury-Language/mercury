@@ -3083,31 +3083,33 @@ rename_vars_in_short_reuse_desc(Must, Subn, ShortReuseDesc0, ShortReuseDesc) :-
             FieldNeedUpdates)
     ).
 
-:- pred rename_var_maps(must_rename::in, prog_var_renaming::in,
-    map(prog_var, T)::in, map(prog_var, T)::out) is det.
-
-rename_var_maps(Must, Subn, Map0, Map) :-
-    map.to_assoc_list(Map0, AssocList0),
-    rename_var_maps_2(Must, Subn, AssocList0, AssocList),
-    map.from_assoc_list(AssocList, Map).
-
-:- pred rename_var_maps_2(must_rename::in, map(var(V), var(V))::in,
-    assoc_list(var(V), T)::in, assoc_list(var(V), T)::out) is det.
-
-rename_var_maps_2(_Must, _Subn, [], []).
-rename_var_maps_2(Must, Subn,
-        [Var - Item | VarItems], [NewVar - Item | NewVarItems]) :-
-    rename_var(Must, Subn, Var, NewVar),
-    rename_var_maps_2(Must, Subn, VarItems, NewVarItems).
-
-:- pred rename_var_pair_list(must_rename::in, prog_var_renaming::in,
-    assoc_list(prog_var, T)::in, list(pair(prog_var, T))::out) is det.
-
-rename_var_pair_list(_Must, _Subn, [], []).
-rename_var_pair_list(Must, Subn,
-        [Var - Item | VarItems], [NewVar - Item | NewVarItems]) :-
-    rename_var(Must, Subn, Var, NewVar),
-    rename_var_pair_list(Must, Subn, VarItems, NewVarItems).
+% Not currently needed.
+%
+% :- pred rename_var_maps(must_rename::in, prog_var_renaming::in,
+%     map(prog_var, T)::in, map(prog_var, T)::out) is det.
+% 
+% rename_var_maps(Must, Subn, Map0, Map) :-
+%     map.to_assoc_list(Map0, AssocList0),
+%     rename_var_maps_2(Must, Subn, AssocList0, AssocList),
+%     map.from_assoc_list(AssocList, Map).
+% 
+% :- pred rename_var_maps_2(must_rename::in, map(var(V), var(V))::in,
+%     assoc_list(var(V), T)::in, assoc_list(var(V), T)::out) is det.
+% 
+% rename_var_maps_2(_Must, _Subn, [], []).
+% rename_var_maps_2(Must, Subn,
+%         [Var - Item | VarItems], [NewVar - Item | NewVarItems]) :-
+%     rename_var(Must, Subn, Var, NewVar),
+%     rename_var_maps_2(Must, Subn, VarItems, NewVarItems).
+% 
+% :- pred rename_var_pair_list(must_rename::in, prog_var_renaming::in,
+%     assoc_list(prog_var, T)::in, list(pair(prog_var, T))::out) is det.
+% 
+% rename_var_pair_list(_Must, _Subn, [], []).
+% rename_var_pair_list(Must, Subn,
+%         [Var - Item | VarItems], [NewVar - Item | NewVarItems]) :-
+%     rename_var(Must, Subn, Var, NewVar),
+%     rename_var_pair_list(Must, Subn, VarItems, NewVarItems).
 
 %-----------------------------------------------------------------------------%
 %

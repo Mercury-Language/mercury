@@ -537,7 +537,6 @@ browse_common(Debugger, Object, InputStream, OutputStream, MaybeFormat,
         !.State),
     io.set_input_stream(InputStream, OldInputStream, !IO),
     io.set_output_stream(OutputStream, OldOutputStream, !IO),
-    % startup_message,
     browse_main_loop(Debugger, Info0, Info, !IO),
     io.set_input_stream(OldInputStream, _, !IO),
     io.set_output_stream(OldOutputStream, _, !IO),
@@ -569,12 +568,6 @@ browse_main_loop(Debugger, !Info, !IO) :-
         Quit = no,
         browse_main_loop(Debugger, !Info, !IO)
     ).
-
-:- pred startup_message(debugger::in, io::di, io::uo) is det.
-
-startup_message(Debugger) -->
-    write_string_debugger(Debugger, "-- Simple Mercury Term Browser.\n"),
-    write_string_debugger(Debugger, "-- Type \"help\" for help.\n\n").
 
 :- func prompt = string.
 
@@ -1499,11 +1492,6 @@ deref_subterm_2(Univ, Path, RevPath0, Result) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred get_path(browser_info::in, path::out) is det.
-
-get_path(Info, root_rel(UpDownDirs)) :-
-    UpDownDirs = down_to_up_down_dirs(Info ^ bri_dirs).
-
 :- pred set_path(path::in, browser_info::in, browser_info::out) is det.
 
 set_path(NewPath, !Info) :-
@@ -1522,20 +1510,6 @@ change_dir(PwdDirs, Path, RootRelDirs) :-
         NewDirs = down_to_up_down_dirs(PwdDirs) ++ Dirs
     ),
     simplify_dirs(NewDirs, RootRelDirs).
-
-:- pred set_term(univ::in, browser_info::in, browser_info::out) is det.
-
-set_term(Term, Info0, Info) :-
-    set_browser_term(plain_term(Term), Info0, Info1),
-    % Display from the root term.
-    % This avoid errors due to dereferencing non-existent subterms.
-    set_path(root_rel([]), Info1, Info).
-
-:- pred set_browser_term(browser_term::in, browser_info::in, browser_info::out)
-    is det.
-
-set_browser_term(BrowserTerm, !Info) :-
-    !Info ^ bri_term := BrowserTerm.
 
 %---------------------------------------------------------------------------%
 %
@@ -1622,71 +1596,6 @@ depth_len     = 10.
 size_len      = 10.
 width_len     = 10.
 lines_len     = 10.
-
-:- pred string_to_path(string::in, path::out) is semidet.
-
-string_to_path(Str, Path) :-
-    string.to_char_list(Str, Cs),
-    chars_to_path(Cs, Path).
-
-:- pred chars_to_path(list(char)::in, path::out) is semidet.
-
-chars_to_path([C | Cs], Path) :-
-    ( if C = ('/') then
-        Path = root_rel(Dirs),
-        chars_to_dirs(Cs, Dirs)
-    else
-        Path = dot_rel(Dirs),
-        chars_to_dirs([C | Cs], Dirs)
-    ).
-
-:- pred chars_to_dirs(list(char)::in, list(up_down_dir)::out) is semidet.
-
-chars_to_dirs(Cs, Dirs) :-
-    split_dirs(Cs, Names),
-    names_to_dirs(Names, Dirs).
-
-:- pred names_to_dirs(list(string)::in, list(up_down_dir)::out) is semidet.
-
-names_to_dirs([], []).
-names_to_dirs([Name | Names], Dirs) :-
-    ( if Name = ".." then
-        Dirs = [updown_parent | RestDirs],
-        names_to_dirs(Names, RestDirs)
-    else if Name = "." then
-        names_to_dirs(Names, Dirs)
-    else if string.to_int(Name, Num) then
-        Dirs = [updown_child_num(Num) | RestDirs],
-        names_to_dirs(Names, RestDirs)
-    else
-        Dirs = [updown_child_name(Name) | RestDirs],
-        names_to_dirs(Names, RestDirs)
-    ).
-
-:- pred split_dirs(list(char)::in, list(string)::out) is det.
-
-split_dirs(Cs, Names) :-
-    takewhile(not_slash, Cs, NameCs, Rest),
-    string.from_char_list(NameCs, Name),
-    (
-        NameCs = [],
-        Names = []
-    ;
-        NameCs = [_ | _],
-        (
-            Rest = [],
-            Names = [Name]
-        ;
-            Rest = [_Slash | RestCs],
-            split_dirs(RestCs, RestNames),
-            Names = [Name | RestNames]
-        )
-    ).
-
-:- pred not_slash(char::in) is semidet.
-
-not_slash(C) :-
-    C \= ('/').
 
 simplify_dirs(Dirs, SimpleDirs) :-
     list.reverse(Dirs, RevDirs),

@@ -1174,27 +1174,29 @@ short_circuit_labels_const(InstrMap, RvalConst0, RvalConst) :-
         RvalConst = llconst_code_addr(CodeAddr)
     ).
 
-:- pred short_circuit_labels_maybe_rvals(instrmap::in, list(maybe(rval))::in,
-    list(maybe(rval))::out) is det.
-
-short_circuit_labels_maybe_rvals(_, [], []).
-short_circuit_labels_maybe_rvals(InstrMap, [MaybeRval0 | MaybeRvals0],
-        [MaybeRval | MaybeRvals]) :-
-    short_circuit_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval),
-    short_circuit_labels_maybe_rvals(InstrMap, MaybeRvals0, MaybeRvals).
-
-:- pred short_circuit_labels_maybe_rval(instrmap::in,
-    maybe(rval)::in, maybe(rval)::out) is det.
-
-short_circuit_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval) :-
-    (
-        MaybeRval0 = no,
-        MaybeRval = no
-    ;
-        MaybeRval0 = yes(Rval0),
-        short_circuit_labels_rval(InstrMap, Rval0, Rval),
-        MaybeRval = yes(Rval)
-    ).
+% Not currently needed.
+%
+% :- pred short_circuit_labels_maybe_rvals(instrmap::in, list(maybe(rval))::in,
+%     list(maybe(rval))::out) is det.
+% 
+% short_circuit_labels_maybe_rvals(_, [], []).
+% short_circuit_labels_maybe_rvals(InstrMap, [MaybeRval0 | MaybeRvals0],
+%         [MaybeRval | MaybeRvals]) :-
+%     short_circuit_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval),
+%     short_circuit_labels_maybe_rvals(InstrMap, MaybeRvals0, MaybeRvals).
+% 
+% :- pred short_circuit_labels_maybe_rval(instrmap::in,
+%     maybe(rval)::in, maybe(rval)::out) is det.
+% 
+% short_circuit_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval) :-
+%     (
+%         MaybeRval0 = no,
+%         MaybeRval = no
+%     ;
+%         MaybeRval0 = yes(Rval0),
+%         short_circuit_labels_rval(InstrMap, Rval0, Rval),
+%         MaybeRval = yes(Rval)
+%     ).
 
 :- pred short_circuit_labels_lval(instrmap::in, lval::in, lval::out) is det.
 

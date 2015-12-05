@@ -762,28 +762,6 @@ write_dependency_file(Globals, ModuleAndImports, AllDeps,
         )
     ).
 
-    % submodules(Module, Imports):
-    %
-    % Returns the set of submodules from Imports which are submodules of
-    % Module, if Module is a top level module and not in the std library.
-    % Otherwise it returns the empty list.
-    %
-:- func submodules(module_name, set(module_name)) = set(module_name).
-
-submodules(Module, Modules0) = Modules :-
-    ( if
-        Module = unqualified(Str),
-        not mercury_std_library_module_name(Module)
-    then
-        P = (pred(M::in) is semidet :-
-            Str = outermost_qualifier(M),
-            M \= Module
-        ),
-        set.filter(P, Modules0, Modules)
-    else
-        Modules = set.init
-    ).
-
 %-----------------------------------------------------------------------------%
 
 :- pred write_dependencies_set(globals::in, io.output_stream::in,
@@ -833,24 +811,26 @@ write_compact_dependencies_separator(_DepStream, no, !IO).
 write_compact_dependencies_separator(DepStream, yes(_), !IO) :-
     io.write_string(DepStream, " ", !IO).
 
-:- pred write_dll_dependencies_list(globals::in, io.output_stream::in,
-    string::in, list(module_name)::in, io::di, io::uo) is det.
-
-write_dll_dependencies_list(_Globals, _DepStream, _Prefix, [], !IO).
-write_dll_dependencies_list(Globals, DepStream, Prefix, [Module | Modules],
-        !IO) :-
-    write_dll_dependency(Globals, DepStream, Prefix, Module, !IO),
-    write_dll_dependencies_list(Globals, DepStream, Prefix, Modules, !IO).
-
-:- pred write_dll_dependency(globals::in, io.output_stream::in, string::in,
-    module_name::in, io::di, io::uo) is det.
-
-write_dll_dependency(Globals, DepStream, Prefix, Module, !IO) :-
-    module_name_to_file_name(Globals, Module, ".dll", do_not_create_dirs,
-        FileName, !IO),
-    io.write_string(DepStream, " \\\n\t", !IO),
-    io.write_string(DepStream, Prefix, !IO),
-    io.write_string(DepStream, FileName, !IO).
+% Not currently needed.
+% 
+% :- pred write_dll_dependencies_list(globals::in, io.output_stream::in,
+%     string::in, list(module_name)::in, io::di, io::uo) is det.
+% 
+% write_dll_dependencies_list(_Globals, _DepStream, _Prefix, [], !IO).
+% write_dll_dependencies_list(Globals, DepStream, Prefix, [Module | Modules],
+%         !IO) :-
+%     write_dll_dependency(Globals, DepStream, Prefix, Module, !IO),
+%     write_dll_dependencies_list(Globals, DepStream, Prefix, Modules, !IO).
+% 
+% :- pred write_dll_dependency(globals::in, io.output_stream::in, string::in,
+%     module_name::in, io::di, io::uo) is det.
+% 
+% write_dll_dependency(Globals, DepStream, Prefix, Module, !IO) :-
+%     module_name_to_file_name(Globals, Module, ".dll", do_not_create_dirs,
+%         FileName, !IO),
+%     io.write_string(DepStream, " \\\n\t", !IO),
+%     io.write_string(DepStream, Prefix, !IO),
+%     io.write_string(DepStream, FileName, !IO).
 
 :- pred write_foreign_include_file_dependencies_list(io.output_stream::in,
     file_name::in, list(foreign_include_file_info)::in, io::di, io::uo) is det.
@@ -1507,37 +1487,6 @@ select_ok_modules([Module | Modules0], DepsMap, Modules) :-
     else
         Modules = ModulesTail
     ).
-
-%-----------------------------------------------------------------------------%
-
-    % Find out which modules will generate as external foreign language files.
-    % We return the module names and file extensions.
-    %
-:- func foreign_modules(list(module_name), deps_map)
-    = assoc_list(module_name, string).
-
-foreign_modules(Modules, DepsMap) = ForeignModules :-
-    P = (pred(M::in, FMs::out) is semidet :-
-            module_has_foreign(DepsMap, M, LangList),
-            FMs = list.filter_map((func(L) = (NewM - Ext) is semidet :-
-                NewM = foreign_language_module_name(M, L),
-                Ext = foreign_language_file_extension(L)
-            ), LangList
-        )
-    ),
-    list.filter_map(P, Modules, ForeignModulesList),
-    ForeignModules = list.condense(ForeignModulesList).
-
-    % Succeed iff we need to generate a foreign language output file
-    % for the specified module.
-    %
-:- pred module_has_foreign(deps_map::in, module_name::in,
-    list(foreign_language)::out) is semidet.
-
-module_has_foreign(DepsMap, Module, LangList) :-
-    map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    ModuleImports ^ mai_has_foreign_code = contains_foreign_code(Langs),
-    LangList = set.to_sorted_list(Langs).
 
 %-----------------------------------------------------------------------------%
 

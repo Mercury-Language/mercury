@@ -887,10 +887,6 @@ wrap_tags(StartTag, EndTag, InnerHTML) =
 
 empty_html = cord.empty.
 
-:- func nl_html = html.
-
-nl_html = str_to_html("\n").
-
 :- func str_to_html(string) = html.
 
 str_to_html(Str) = cord.singleton(Str).

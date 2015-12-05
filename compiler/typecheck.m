@@ -1989,36 +1989,6 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
         unexpected($module, $pred, "ArgTypes0 = []")
     ).
 
-:- pred type_assign_var_has_one_of_these_types(type_assign::in,
-    prog_var::in, mer_type::in, mer_type::in, type_assign_set::in,
-    type_assign_set::out) is det.
-
-type_assign_var_has_one_of_these_types(TypeAssign0, Var, TypeA, TypeB,
-        !TypeAssignSet) :-
-    type_assign_get_var_types(TypeAssign0, VarTypes0),
-    ( if search_var_type(VarTypes0, Var, VarType) then
-        ( if
-            type_assign_unify_type(TypeAssign0, VarType, TypeA, TypeAssignA)
-        then
-            !:TypeAssignSet = [TypeAssignA | !.TypeAssignSet]
-        else
-            !:TypeAssignSet = !.TypeAssignSet
-        ),
-        ( if
-            type_assign_unify_type(TypeAssign0, VarType, TypeB, TypeAssignB)
-        then
-            !:TypeAssignSet = [TypeAssignB | !.TypeAssignSet]
-        else
-            !:TypeAssignSet = !.TypeAssignSet
-        )
-    else
-        add_var_type(Var, TypeA, VarTypes0, VarTypesA),
-        type_assign_set_var_types(VarTypesA, TypeAssign0, TypeAssignA),
-        add_var_type(Var, TypeB, VarTypes0, VarTypesB),
-        type_assign_set_var_types(VarTypesB, TypeAssign0, TypeAssignB),
-        !:TypeAssignSet = [TypeAssignA, TypeAssignB | !.TypeAssignSet]
-    ).
-
 %-----------------------------------------------------------------------------%
 
     % Given a list of variables and a list of types, ensure that
@@ -3018,15 +2988,18 @@ get_field_access_constructor(Info, GoalId, FuncName, Arity, AccessType,
     ),
     module_info_get_cons_table(ModuleInfo, Ctors),
     lookup_cons_table_of_type_ctor(Ctors, TypeCtor, ConsId, ConsDefn),
+    OrigExistTVars = ConsDefn ^ cons_exist_tvars,
     (
         AccessType = get,
-        ConsAction = do_not_flip_constraints
+        ConsAction = do_not_flip_constraints,
+        convert_cons_defn(Info, GoalId, ConsAction, ConsDefn,
+            FunctorConsTypeInfo)
     ;
         AccessType = set,
-        ConsAction = flip_constraints_for_field_set
-    ),
-    OrigExistTVars = ConsDefn ^ cons_exist_tvars,
-    convert_cons_defn(Info, GoalId, ConsAction, ConsDefn, FunctorConsTypeInfo).
+        ConsAction = flip_constraints_for_field_set,
+        convert_cons_defn(Info, GoalId, ConsAction, ConsDefn,
+            FunctorConsTypeInfo)
+    ).
 
 :- type maybe_cons_type_info
     --->    ok(cons_type_info)
