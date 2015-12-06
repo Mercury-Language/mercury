@@ -43,10 +43,10 @@
     --->    type_status(old_import_status).
 
 :- type inst_status
-    --->    inst_status(old_import_status, new_instmode_status).
+    --->    inst_status(new_instmode_status).
 
 :- type mode_status
-    --->    mode_status(old_import_status, new_instmode_status).
+    --->    mode_status(new_instmode_status).
 
 :- type pred_status
     --->    pred_status(old_import_status).
@@ -339,26 +339,12 @@ type_status_is_exported(type_status(OldStatus)) =
     old_status_is_exported(OldStatus).
 
 inst_status_is_exported(InstStatus) = IsExported :-
-    InstStatus = inst_status(OldStatus0, NewInstModeStatus),
-    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
-    OldIsExported = old_status_is_exported(OldStatus),
-    NewIsExported = instmode_status_is_exported(NewInstModeStatus),
-    ( if OldIsExported = NewIsExported then
-        IsExported = NewIsExported
-    else
-        unexpected($module, $pred, "mismatch")
-    ).
+    InstStatus = inst_status(InstModeStatus),
+    IsExported = instmode_status_is_exported(InstModeStatus).
 
 mode_status_is_exported(ModeStatus) = IsExported :-
-    ModeStatus = mode_status(OldStatus0, NewInstModeStatus),
-    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
-    OldIsExported = old_status_is_exported(OldStatus),
-    NewIsExported = instmode_status_is_exported(NewInstModeStatus),
-    ( if OldIsExported = NewIsExported then
-        IsExported = NewIsExported
-    else
-        unexpected($module, $pred, "mismatch")
-    ).
+    ModeStatus = mode_status(InstModeStatus),
+    IsExported = instmode_status_is_exported(InstModeStatus).
 
 pred_status_is_exported(pred_status(OldStatus)) =
     old_status_is_exported(OldStatus).
@@ -406,28 +392,12 @@ type_status_is_exported_to_non_submodules(type_status(Status)) =
     old_status_is_exported_to_non_submodules(Status).
 
 inst_status_is_exported_to_non_submodules(InstStatus) = IsExported :-
-    InstStatus = inst_status(OldStatus0, NewInstModeStatus),
-    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
-    OldIsExported = old_status_is_exported_to_non_submodules(OldStatus),
-    NewIsExported =
-        instmode_status_is_exported_to_non_submodules(NewInstModeStatus),
-    ( if OldIsExported = NewIsExported then
-        IsExported = NewIsExported
-    else
-        unexpected($module, $pred, "mismatch")
-    ).
+    InstStatus = inst_status(InstModeStatus),
+    IsExported = instmode_status_is_exported_to_non_submodules(InstModeStatus).
 
 mode_status_is_exported_to_non_submodules(ModeStatus) = IsExported :-
-    ModeStatus = mode_status(OldStatus0, NewInstModeStatus),
-    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
-    OldIsExported = old_status_is_exported_to_non_submodules(OldStatus),
-    NewIsExported =
-        instmode_status_is_exported_to_non_submodules(NewInstModeStatus),
-    ( if OldIsExported = NewIsExported then
-        IsExported = NewIsExported
-    else
-        unexpected($module, $pred, "mismatch")
-    ).
+    ModeStatus = mode_status(InstModeStatus),
+    IsExported = instmode_status_is_exported_to_non_submodules(InstModeStatus).
 
 pred_status_is_exported_to_non_submodules(pred_status(Status)) =
     old_status_is_exported_to_non_submodules(Status).
@@ -475,37 +445,23 @@ type_status_is_imported(type_status(OldStatus)) =
     old_status_is_imported(OldStatus).
 
 inst_status_is_imported(InstStatus) = IsImported :-
-    InstStatus = inst_status(OldStatus0, InstModeStatus),
-    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
-    OldIsImported = old_status_is_imported(OldStatus),
+    InstStatus = inst_status(InstModeStatus),
     (
         InstModeStatus = instmode_defined_in_this_module(_InstModeExport),
-        NewIsImported = no
+        IsImported = no
     ;
         InstModeStatus = instmode_defined_in_other_module(_InstModeImport),
-        NewIsImported = yes
-    ),
-    ( if OldIsImported = NewIsImported then
-        IsImported = NewIsImported
-    else
-        unexpected($module, $pred, "mismatch")
+        IsImported = yes
     ).
 
 mode_status_is_imported(ModeStatus) = IsImported :-
-    ModeStatus = mode_status(OldStatus0, InstModeStatus),
-    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
-    OldIsImported = old_status_is_imported(OldStatus),
+    ModeStatus = mode_status(InstModeStatus),
     (
         InstModeStatus = instmode_defined_in_this_module(_InstModeExport),
-        NewIsImported = no
+        IsImported = no
     ;
         InstModeStatus = instmode_defined_in_other_module(_InstModeImport),
-        NewIsImported = yes
-    ),
-    ( if OldIsImported = NewIsImported then
-        IsImported = NewIsImported
-    else
-        unexpected($module, $pred, "mismatch")
+        IsImported = yes
     ).
 
 pred_status_is_imported(pred_status(OldStatus)) =
@@ -526,37 +482,23 @@ type_status_defined_in_this_module(type_status(OldStatus)) =
     old_status_defined_in_this_module(OldStatus).
 
 inst_status_defined_in_this_module(InstStatus) = IsDefnThisModule :-
-    InstStatus = inst_status(OldStatus0, NewInstModeStatus),
-    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
-    OldIsDefnThisModule = old_status_defined_in_this_module(OldStatus),
+    InstStatus = inst_status(InstModeStatus),
     (
-        NewInstModeStatus = instmode_defined_in_this_module(_InstExport),
-        NewIsDefnThisModule = yes
+        InstModeStatus = instmode_defined_in_this_module(_InstExport),
+        IsDefnThisModule = yes
     ;
-        NewInstModeStatus = instmode_defined_in_other_module(_InstImport),
-        NewIsDefnThisModule = no
-    ),
-    ( if OldIsDefnThisModule = NewIsDefnThisModule then
-        IsDefnThisModule = NewIsDefnThisModule
-    else
-        unexpected($module, $pred, "mismatch")
+        InstModeStatus = instmode_defined_in_other_module(_InstImport),
+        IsDefnThisModule = no
     ).
 
 mode_status_defined_in_this_module(ModeStatus) = IsDefnThisModule :-
-    ModeStatus = mode_status(OldStatus0, NewInstModeStatus),
-    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
-    OldIsDefnThisModule = old_status_defined_in_this_module(OldStatus),
+    ModeStatus = mode_status(InstModeStatus),
     (
-        NewInstModeStatus = instmode_defined_in_this_module(_InstExport),
-        NewIsDefnThisModule = yes
+        InstModeStatus = instmode_defined_in_this_module(_InstExport),
+        IsDefnThisModule = yes
     ;
-        NewInstModeStatus = instmode_defined_in_other_module(_InstImport),
-        NewIsDefnThisModule = no
-    ),
-    ( if OldIsDefnThisModule = NewIsDefnThisModule then
-        IsDefnThisModule = NewIsDefnThisModule
-    else
-        unexpected($module, $pred, "mismatch")
+        InstModeStatus = instmode_defined_in_other_module(_InstImport),
+        IsDefnThisModule = no
     ).
 
 pred_status_defined_in_this_module(pred_status(OldStatus)) =
@@ -586,28 +528,14 @@ type_status_defined_in_impl_section(type_status(OldStatus)) =
     old_status_defined_in_impl_section(OldStatus).
 
 inst_status_defined_in_impl_section(InstStatus) = IsDefnImplSection :-
-    InstStatus = inst_status(OldStatus0, NewInstModeStatus),
-    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
-    OldIsDefnImplSection = old_status_defined_in_impl_section(OldStatus),
-    NewIsDefnImplSection =
-        instmode_status_defined_in_impl_section(NewInstModeStatus),
-    ( if OldIsDefnImplSection = NewIsDefnImplSection then
-        IsDefnImplSection = NewIsDefnImplSection
-    else
-        unexpected($module, $pred, "mismatch")
-    ).
+    InstStatus = inst_status(InstModeStatus),
+    IsDefnImplSection =
+        instmode_status_defined_in_impl_section(InstModeStatus).
 
 mode_status_defined_in_impl_section(ModeStatus) = IsDefnImplSection :-
-    ModeStatus = mode_status(OldStatus0, NewInstModeStatus),
-    valid_old_status_for_inst_or_mode(OldStatus0, OldStatus),
-    OldIsDefnImplSection = old_status_defined_in_impl_section(OldStatus),
-    NewIsDefnImplSection =
-        instmode_status_defined_in_impl_section(NewInstModeStatus),
-    ( if OldIsDefnImplSection = NewIsDefnImplSection then
-        IsDefnImplSection = NewIsDefnImplSection
-    else
-        unexpected($module, $pred, "mismatch")
-    ).
+    ModeStatus = mode_status(InstModeStatus),
+    IsDefnImplSection =
+        instmode_status_defined_in_impl_section(InstModeStatus).
 
 pred_status_defined_in_impl_section(pred_status(OldStatus)) =
     old_status_defined_in_impl_section(OldStatus).
@@ -807,18 +735,12 @@ item_mercury_status_to_type_status(ItemMercuryStatus, TypeStatus) :-
     TypeStatus = type_status(OldImportStatus).
 
 item_mercury_status_to_inst_status(ItemMercuryStatus, InstStatus) :-
-    item_mercury_status_to_old_import_status(ItemMercuryStatus,
-        OldImportStatus0),
-    valid_old_status_for_inst_or_mode(OldImportStatus0, OldImportStatus),
     item_mercury_status_to_instmode_status(ItemMercuryStatus, InstModeStatus),
-    InstStatus = inst_status(OldImportStatus, InstModeStatus).
+    InstStatus = inst_status(InstModeStatus).
 
 item_mercury_status_to_mode_status(ItemMercuryStatus, ModeStatus) :-
-    item_mercury_status_to_old_import_status(ItemMercuryStatus,
-        OldImportStatus0),
-    valid_old_status_for_inst_or_mode(OldImportStatus0, OldImportStatus),
     item_mercury_status_to_instmode_status(ItemMercuryStatus, InstModeStatus),
-    ModeStatus = mode_status(OldImportStatus, InstModeStatus).
+    ModeStatus = mode_status(InstModeStatus).
 
 item_mercury_status_to_typeclass_status(ItemMercuryStatus, TypeClassStatus) :-
     item_mercury_status_to_old_import_status(ItemMercuryStatus,

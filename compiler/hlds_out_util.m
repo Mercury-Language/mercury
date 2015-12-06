@@ -941,12 +941,10 @@ var_mode_to_string(VarSet, InstVarSet, VarNamePrint, Var - Mode) =
 
 type_import_status_to_string(type_status(OldImportStatus)) =
     old_import_status_to_string(OldImportStatus).
-inst_import_status_to_string(inst_status(OldImportStatus, NewInstModeStatus)) =
-    instmode_status_to_string(NewInstModeStatus) ++
-        " (" ++ old_import_status_to_string(OldImportStatus) ++ ")".
-mode_import_status_to_string(mode_status(OldImportStatus, NewInstModeStatus)) =
-    instmode_status_to_string(NewInstModeStatus) ++
-        " (" ++ old_import_status_to_string(OldImportStatus) ++ ")".
+inst_import_status_to_string(inst_status(InstModeStatus)) =
+    instmode_status_to_string(InstModeStatus).
+mode_import_status_to_string(mode_status(InstModeStatus)) =
+    instmode_status_to_string(InstModeStatus).
 typeclass_import_status_to_string(typeclass_status(OldImportStatus)) =
     old_import_status_to_string(OldImportStatus).
 instance_import_status_to_string(instance_status(OldImportStatus)) =

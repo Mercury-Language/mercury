@@ -2927,10 +2927,10 @@ should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
 
 type_status_to_write(type_status(OldStatus)) =
     old_status_to_write(OldStatus).
-inst_status_to_write(inst_status(OldStatus, NewInstModeStatus)) = ToWrite :-
-    ToWrite = instmode_status_to_write(OldStatus, NewInstModeStatus).
-mode_status_to_write(mode_status(OldStatus, NewInstModeStatus)) = ToWrite :-
-    ToWrite = instmode_status_to_write(OldStatus, NewInstModeStatus).
+inst_status_to_write(inst_status(InstModeStatus)) = ToWrite :-
+    ToWrite = instmode_status_to_write(InstModeStatus).
+mode_status_to_write(mode_status(InstModeStatus)) = ToWrite :-
+    ToWrite = instmode_status_to_write(InstModeStatus).
 typeclass_status_to_write(typeclass_status(OldStatus)) =
     old_status_to_write(OldStatus).
 instance_status_to_write(instance_status(OldStatus)) =
@@ -2938,30 +2938,23 @@ instance_status_to_write(instance_status(OldStatus)) =
 pred_status_to_write(pred_status(OldStatus)) =
     old_status_to_write(OldStatus).
 
-:- func instmode_status_to_write(old_import_status, new_instmode_status)
-    = bool.
+:- func instmode_status_to_write(new_instmode_status) = bool.
 
-instmode_status_to_write(OldStatus, NewInstModeStatus) = ToWrite :-
-    OldToWrite = old_status_to_write(OldStatus),
+instmode_status_to_write(InstModeStatus) = ToWrite :-
     (
-        NewInstModeStatus = instmode_defined_in_this_module(InstModeExport),
+        InstModeStatus = instmode_defined_in_this_module(InstModeExport),
         (
             InstModeExport = instmode_export_anywhere,
-            NewToWrite = no
+            ToWrite = no
         ;
             ( InstModeExport = instmode_export_only_submodules
             ; InstModeExport = instmode_export_nowhere
             ),
-            NewToWrite = yes
+            ToWrite = yes
         )
     ;
-        NewInstModeStatus = instmode_defined_in_other_module(_),
-        NewToWrite = no
-    ),
-    ( if OldToWrite = NewToWrite then
-        ToWrite = NewToWrite
-    else
-        unexpected($module, $pred, "mismatch")
+        InstModeStatus = instmode_defined_in_other_module(_),
+        ToWrite = no
     ).
 
 :- func old_status_to_write(old_import_status) = bool.

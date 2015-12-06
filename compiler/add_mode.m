@@ -123,9 +123,8 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
         % If abstract insts are implemented, this will need to change
         % to update the hlds_inst_defn to the non-abstract inst.
 
-        InstStatus = inst_status(OldStatus, NewInstModeStatus),
-        ReportDup =
-            should_report_duplicate_inst_or_mode(OldStatus, NewInstModeStatus),
+        InstStatus = inst_status(InstModeStatus),
+        ReportDup = should_report_duplicate_inst_or_mode(InstModeStatus),
         (
             ReportDup = no
         ;
@@ -168,35 +167,23 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
         )
     ).
 
-:- func should_report_duplicate_inst_or_mode(old_import_status,
-    new_instmode_status) = bool.
+:- func should_report_duplicate_inst_or_mode(new_instmode_status) = bool.
 
-should_report_duplicate_inst_or_mode(OldStatus, NewInstModeStatus)
-        = ReportDup :-
-    ( if OldStatus = status_opt_imported then
-        OldReportDup = no
-    else
-        OldReportDup = yes
-    ),
+should_report_duplicate_inst_or_mode(InstModeStatus) = ReportDup :-
     (
-        NewInstModeStatus = instmode_defined_in_this_module(_),
-        NewReportDup = yes
+        InstModeStatus = instmode_defined_in_this_module(_),
+        ReportDup = yes
     ;
-        NewInstModeStatus = instmode_defined_in_other_module(InstModeImport),
+        InstModeStatus = instmode_defined_in_other_module(InstModeImport),
         (
             ( InstModeImport = instmode_import_plain(_)
             ; InstModeImport = instmode_import_abstract
             ),
-            NewReportDup = yes
+            ReportDup = yes
         ;
             InstModeImport = instmode_import_opt,
-            NewReportDup = no
+            ReportDup = no
         )
-    ),
-    ( if OldReportDup = NewReportDup then
-        ReportDup = NewReportDup
-    else
-        unexpected($module, $pred, "mismatch")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -224,9 +211,8 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), Context, ModeStatus, InvalidMode,
     ( if mode_table_insert(ModeId, ModeDefn, !ModeTable) then
         true
     else
-        ModeStatus = mode_status(OldStatus, NewInstModeStatus),
-        ReportDup =
-            should_report_duplicate_inst_or_mode(OldStatus, NewInstModeStatus),
+        ModeStatus = mode_status(InstModeStatus),
+        ReportDup = should_report_duplicate_inst_or_mode(InstModeStatus),
         (
             ReportDup = no
         ;
