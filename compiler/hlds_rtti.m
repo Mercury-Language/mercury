@@ -872,23 +872,23 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
     TVarMap = RttiVarMaps ^ rv_ti_varmap,
     VarList = set_of_var.to_sorted_list(Vars),
-    get_typeinfo_vars_2(VarList, VarTypes, TVarMap, TypeInfoVarList),
-    TypeInfoVars = set_of_var.list_to_set(TypeInfoVarList).
+    get_typeinfo_vars_acc(VarList, VarTypes, TVarMap,
+        set_of_var.init, TypeInfoVars).
 
     % Auxiliary predicate - traverses variables and builds a list of
     % variables that store typeinfos for these variables.
     %
-:- pred get_typeinfo_vars_2(list(prog_var)::in,
-    vartypes::in, type_info_varmap::in, list(prog_var)::out) is det.
+:- pred get_typeinfo_vars_acc(list(prog_var)::in, vartypes::in,
+    type_info_varmap::in, set_of_progvar::in, set_of_progvar::out) is det.
 
-get_typeinfo_vars_2([], _, _, []).
-get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
+get_typeinfo_vars_acc([], _, _, !TypeInfoVars).
+get_typeinfo_vars_acc([Var | Vars], VarTypes, TVarMap, !TypeInfoVars) :-
     lookup_var_type(VarTypes, Var, Type),
     type_vars(Type, TypeVars),
     (
         TypeVars = [],
         % Optimize common case,
-        get_typeinfo_vars_2(Vars, VarTypes, TVarMap, TypeInfoVars)
+        get_typeinfo_vars_acc(Vars, VarTypes, TVarMap, !TypeInfoVars)
     ;
         TypeVars = [_ | _],
         % XXX It is possible there are some complications with higher order
@@ -903,8 +903,8 @@ get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
         ),
         list.map(LookupVar, TypeVars, TypeInfoVarsHead),
 
-        get_typeinfo_vars_2(Vars, VarTypes, TVarMap, TypeInfoVarsTail),
-        TypeInfoVars = TypeInfoVarsHead ++ TypeInfoVarsTail
+        set_of_var.insert_list(TypeInfoVarsHead, !TypeInfoVars),
+        get_typeinfo_vars_acc(Vars, VarTypes, TVarMap, !TypeInfoVars)
     ).
 
 maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness, VarTypes,
