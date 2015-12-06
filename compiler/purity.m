@@ -1250,14 +1250,14 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
     then
         pred_info_get_typevarset(PredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(PredInfo, ExistQTVars),
-        pred_info_get_head_type_params(PredInfo, HeadTypeParams),
+        pred_info_get_external_type_params(PredInfo, ExternalTypeParams),
         lookup_var_types(VarTypes, Args, ArgTypes0),
         list.append(ArgTypes0, VarArgTypes, PredArgTypes),
         ModuleInfo = Info ^ pi_module_info,
         ( if
             get_pred_id_by_types(calls_are_fully_qualified(CallerMarkers),
                 PName, PredOrFunc, TVarSet, ExistQTVars, PredArgTypes,
-                HeadTypeParams, ModuleInfo, Context, CalleePredId)
+                ExternalTypeParams, ModuleInfo, Context, CalleePredId)
         then
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_get_purity(CalleePredInfo, CalleePurity),

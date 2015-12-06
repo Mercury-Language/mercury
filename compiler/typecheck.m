@@ -521,11 +521,11 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
                     VarTypes),
                 clauses_info_set_vartypes(VarTypes, !ClausesInfo),
                 pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
-                % We also need to set the head_type_params field to indicate
-                % that all the existentially quantified tvars in the head
-                % of this pred are indeed bound by this predicate.
-                type_vars_list(ArgTypes0, HeadVarsIncludingExistentials),
-                pred_info_set_head_type_params(HeadVarsIncludingExistentials,
+                % We also need to set the external_type_params field
+                % to indicate that all the existentially quantified tvars
+                % in the head of this pred are indeed bound by this predicate.
+                type_vars_list(ArgTypes0, HeadVarsInclExistentials),
+                pred_info_set_external_type_params(HeadVarsInclExistentials,
                     !PredInfo),
                 ContainsErrors = no,
                 Specs = []
@@ -559,7 +559,7 @@ typecheck_pred(ModuleInfo, PredId, !PredInfo, Specs,
     list(error_spec)::in, list(error_spec)::out, bool::out) is det.
 
 do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
-    some [!Info, !TypeAssignSet, !ClausesInfo, !HeadTypeParams] (
+    some [!Info, !TypeAssignSet, !ClausesInfo, !ExternalTypeParams] (
         pred_info_get_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0, ItemNumbers),
         clauses_info_get_headvar_list(!.ClausesInfo, HeadVars),
@@ -580,7 +580,7 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
                 write_pred_progress_message("% Inferring type of ",
                     PredId, ModuleInfo, !IO)
             ),
-            !:HeadTypeParams = [],
+            !:ExternalTypeParams = [],
             PredConstraints = constraints([], [])
         else
             Inferring = no,
@@ -588,13 +588,14 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
                 write_pred_progress_message("% Type-checking ", PredId,
                     ModuleInfo, !IO)
             ),
-            type_vars_list(ArgTypes0, !:HeadTypeParams),
+            type_vars_list(ArgTypes0, !:ExternalTypeParams),
             pred_info_get_class_context(!.PredInfo, PredConstraints),
             constraint_list_get_tvars(PredConstraints ^ univ_constraints,
                 UnivTVars),
-            !:HeadTypeParams = UnivTVars ++ !.HeadTypeParams,
-            list.sort_and_remove_dups(!HeadTypeParams),
-            list.delete_elems(!.HeadTypeParams, ExistQVars0, !:HeadTypeParams)
+            !:ExternalTypeParams = UnivTVars ++ !.ExternalTypeParams,
+            list.sort_and_remove_dups(!ExternalTypeParams),
+            list.delete_elems(!.ExternalTypeParams, ExistQVars0,
+                !:ExternalTypeParams)
         ),
 
         module_info_get_class_table(ModuleInfo, ClassTable),
@@ -606,8 +607,8 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
             IsFieldAccessFunction = no
         ),
         pred_info_get_markers(!.PredInfo, PredMarkers),
-        type_assign_set_init(TypeVarSet0, ExplicitVarTypes0, !.HeadTypeParams,
-            Constraints, !:TypeAssignSet),
+        type_assign_set_init(TypeVarSet0, ExplicitVarTypes0,
+            !.ExternalTypeParams, Constraints, !:TypeAssignSet),
         typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
             ClauseVarSet, PredStatus, PredMarkers, !.Specs, !:Info),
         get_clause_list_for_replacement(ClausesRep0, Clauses0),
@@ -620,8 +621,8 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
         typecheck_check_for_ambiguity(Context, whole_pred, HeadVars,
             !.TypeAssignSet, !Info),
         type_assign_set_get_final_info(!.TypeAssignSet,
-            !.HeadTypeParams, ExistQVars0, ExplicitVarTypes0, TypeVarSet,
-            !:HeadTypeParams, InferredVarTypes0, InferredTypeConstraints0,
+            !.ExternalTypeParams, ExistQVars0, ExplicitVarTypes0, TypeVarSet,
+            !:ExternalTypeParams, InferredVarTypes0, InferredTypeConstraints0,
             ConstraintProofMap, ConstraintMap,
             TVarRenaming, ExistTypeRenaming),
         vartypes_optimize(InferredVarTypes0, InferredVarTypes),
@@ -669,10 +670,12 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
             Inferring = yes,
             % We need to infer which of the head variable types must be
             % existentially quantified.
-            infer_existential_types(ArgTypeVars, ExistQVars, !HeadTypeParams),
+            infer_existential_types(ArgTypeVars, ExistQVars,
+                !ExternalTypeParams),
 
             % Now save the information we inferred in the pred_info
-            pred_info_set_head_type_params(!.HeadTypeParams, !PredInfo),
+            pred_info_set_external_type_params(!.ExternalTypeParams,
+                !PredInfo),
             pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
                 !PredInfo),
             pred_info_get_class_context(!.PredInfo, OldTypeConstraints),
@@ -693,7 +696,8 @@ do_typecheck_pred(ModuleInfo, PredId, !PredInfo, !Specs, Changed) :-
             )
         ;
             Inferring = no,
-            pred_info_set_head_type_params(!.HeadTypeParams, !PredInfo),
+            pred_info_set_external_type_params(!.ExternalTypeParams,
+                !PredInfo),
             pred_info_get_origin(!.PredInfo, Origin0),
 
             % Leave the original argtypes etc., but apply any substitutions
@@ -877,31 +881,31 @@ rename_instance_method_constraints(Renaming, Origin0, Origin) :-
     % Infer which of the head variable types must be existentially quantified.
     %
 :- pred infer_existential_types(list(tvar)::in, existq_tvars::out,
-    head_type_params::in, head_type_params::out) is det.
+    external_type_params::in, external_type_params::out) is det.
 
 infer_existential_types(ArgTypeVars, ExistQVars,
-        HeadTypeParams0, HeadTypeParams) :-
+        ExternalTypeParams0, ExternalTypeParams) :-
     % First, infer which of the head variable types must be existentially
-    % quantified: anything that was inserted into the HeadTypeParams0 set must
-    % have been inserted due to an existential type in something we called,
-    % and thus must be existentially quantified. (Note that concrete types
-    % are "more general" than existentially quantified types, so we prefer to
-    % infer a concrete type if we can rather than an existential type.)
+    % quantified: anything that was inserted into the ExternalTypeParams0 set
+    % must have been inserted due to an existential type in something we
+    % called, and thus must be existentially quantified. (Note that concrete
+    % types are "more general" than existentially quantified types, so we
+    % prefer to infer a concrete type if we can rather than an
+    % existential type.)
 
     set.list_to_set(ArgTypeVars, ArgTypeVarsSet),
-    set.list_to_set(HeadTypeParams0, HeadTypeParamsSet),
-    set.intersect(ArgTypeVarsSet, HeadTypeParamsSet, ExistQVarsSet),
+    set.list_to_set(ExternalTypeParams0, ExternalTypeParamsSet),
+    set.intersect(ArgTypeVarsSet, ExternalTypeParamsSet, ExistQVarsSet),
     set.difference(ArgTypeVarsSet, ExistQVarsSet, UnivQVarsSet),
     set.to_sorted_list(ExistQVarsSet, ExistQVars),
     set.to_sorted_list(UnivQVarsSet, UnivQVars),
 
     % Then we need to insert the universally quantified head variable types
-    % into the HeadTypeParams set, which will now contain all the type
+    % into the ExternalTypeParams set, which will now contain all the type
     % variables that are produced either by stuff we call or by our caller.
     % This is needed so that it has the right value when post_typecheck.m
     % uses it to check for unbound type variables.
-
-    list.append(UnivQVars, HeadTypeParams0, HeadTypeParams).
+    ExternalTypeParams = UnivQVars ++ ExternalTypeParams0.
 
     % restrict_to_head_vars(Constraints0, HeadVarTypes, Constraints,
     %       UnprovenConstraints):
@@ -1009,7 +1013,7 @@ identical_up_to_renaming(TypesList1, TypesList2) :-
     % (b) it is the unification or comparison predicate for an existentially
     %     quantified type.
     %
-    % In case (b), we need to typecheck it to fill in the head_type_params
+    % In case (b), we need to typecheck it to fill in the external_type_params
     % field in the pred_info.
     %
 :- pred special_pred_needs_typecheck(pred_info::in, module_info::in)
@@ -1862,9 +1866,10 @@ rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars,
     % Insert the existentially quantified type variables for the called
     % predicate into HeadTypeParams (which holds the set of type
     % variables which the caller is not allowed to bind).
-    type_assign_get_head_type_params(TypeAssign1, HeadTypeParams0),
+    type_assign_get_external_type_params(TypeAssign1, HeadTypeParams0),
     list.append(ParentExistQVars, HeadTypeParams0, HeadTypeParams),
-    type_assign_set_head_type_params(HeadTypeParams, TypeAssign1, TypeAssign),
+    type_assign_set_external_type_params(HeadTypeParams,
+        TypeAssign1, TypeAssign),
 
     % Save the results and recurse.
     NewArgTypeAssign =
@@ -2625,9 +2630,9 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
             ConsExistQVars0, ConsExistQVars),
         apply_variable_renaming_to_constraints(Renaming,
             ClassConstraints0, ConstraintsToAdd),
-        type_assign_get_head_type_params(TypeAssign1, HeadTypeParams0),
+        type_assign_get_external_type_params(TypeAssign1, HeadTypeParams0),
         HeadTypeParams = ConsExistQVars ++ HeadTypeParams0,
-        type_assign_set_head_type_params(HeadTypeParams,
+        type_assign_set_external_type_params(HeadTypeParams,
             TypeAssign1, TypeAssign2),
 
         ConsType = ConsType1,
@@ -2726,7 +2731,7 @@ type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
     type_assign::out) is semidet.
 
 type_assign_unify_type(TypeAssign0, X, Y, TypeAssign) :-
-    type_assign_get_head_type_params(TypeAssign0, HeadTypeParams),
+    type_assign_get_external_type_params(TypeAssign0, HeadTypeParams),
     type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
     type_unify(X, Y, HeadTypeParams, TypeBindings0, TypeBindings),
     type_assign_set_type_bindings(TypeBindings, TypeAssign0, TypeAssign).

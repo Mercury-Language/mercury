@@ -956,7 +956,7 @@ find_mismatched_args(CurArgNum, [Arg - ExpType | ArgExpTypes], TypeAssignSet,
 
 substitute_types_check_match(ExpType, TypeStuff,
         !TypeMismatches, !DoesSomeTypeStuffMatch) :-
-    TypeStuff = type_stuff(ArgType, TVarSet, TypeBindings, HeadTypeParams),
+    TypeStuff = type_stuff(ArgType, TVarSet, TypeBindings, ExternalTypeParams),
     apply_rec_subst_to_type(TypeBindings, ArgType, FullArgType),
     apply_rec_subst_to_type(TypeBindings, ExpType, FullExpType),
     ( if
@@ -978,9 +978,9 @@ substitute_types_check_match(ExpType, TypeStuff,
             ActualSubsumesExpected = actual_does_not_subsume_expected
         ),
         ExpectedPieces = type_to_pieces(add_quotes, FullExpType,
-            TVarSet, HeadTypeParams),
+            TVarSet, ExternalTypeParams),
         ActualPieces = type_to_pieces(add_quotes, FullArgType,
-            TVarSet, HeadTypeParams),
+            TVarSet, ExternalTypeParams),
         TypeMismatch = type_mismatch_exp_act(ExpectedPieces, ActualPieces,
             ActualSubsumesExpected),
         !:TypeMismatches = [TypeMismatch | !.TypeMismatches]
@@ -1654,8 +1654,8 @@ ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet,
     type_assign_get_var_types(TypeAssign2, VarTypes2),
     type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
     type_assign_get_type_bindings(TypeAssign2, TypeBindings2),
-    type_assign_get_head_type_params(TypeAssign1, HeadTypeParams1),
-    type_assign_get_head_type_params(TypeAssign2, HeadTypeParams2),
+    type_assign_get_external_type_params(TypeAssign1, ExternalTypeParams1),
+    type_assign_get_external_type_params(TypeAssign2, ExternalTypeParams2),
     ( if
         search_var_type(VarTypes1, Var, Type1),
         search_var_type(VarTypes2, Var, Type2),
@@ -1667,9 +1667,10 @@ ambiguity_error_possibilities_to_pieces([Var | Vars], VarSet,
         type_assign_get_typevarset(TypeAssign2, TVarSet2),
         HeadPieces =
             [words(mercury_var_to_name_only(VarSet, Var)), suffix(":")] ++
-            type_to_pieces(add_quotes, T1, TVarSet1, HeadTypeParams1) ++
+            type_to_pieces(add_quotes, T1, TVarSet1, ExternalTypeParams1) ++
             [words("or")] ++
-            type_to_pieces(add_quotes, T2, TVarSet2, HeadTypeParams2) ++ [nl]
+            type_to_pieces(add_quotes, T2, TVarSet2, ExternalTypeParams2) ++
+            [nl]
     else
         HeadPieces = []
     ),
@@ -1930,21 +1931,23 @@ args_type_assign_set_msg_to_pieces(ArgTypeAssignSet0, VarSet) = Pieces :-
     = actual_expected_types.
 
 type_stuff_to_actual_expected(Type, VarTypeStuff) = ActualExpected :-
-    VarTypeStuff = type_stuff(VarType, TVarSet, TypeBinding, HeadTypeParams),
-    ActualPieces =
-        bound_type_to_pieces(VarType, TVarSet, TypeBinding, HeadTypeParams),
-    ExpectedPieces =
-        bound_type_to_pieces(Type, TVarSet, TypeBinding, HeadTypeParams),
+    VarTypeStuff = type_stuff(VarType, TVarSet, TypeBinding,
+        ExternalTypeParams),
+    ActualPieces = bound_type_to_pieces(VarType, TVarSet, TypeBinding,
+        ExternalTypeParams),
+    ExpectedPieces = bound_type_to_pieces(Type, TVarSet, TypeBinding,
+        ExternalTypeParams),
     ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces).
 
 :- func arg_type_stuff_to_actual_expected(arg_type_stuff) =
     actual_expected_types.
 
 arg_type_stuff_to_actual_expected(ArgTypeStuff) = ActualExpected :-
-    ArgTypeStuff = arg_type_stuff(Type, VarType, TVarSet, HeadTypeParams),
-    ActualPieces = type_to_pieces(add_quotes, VarType,
-        TVarSet, HeadTypeParams),
-    ExpectedPieces = type_to_pieces(add_quotes, Type, TVarSet, HeadTypeParams),
+    ArgTypeStuff = arg_type_stuff(Type, VarType, TVarSet, ExternalTypeParams),
+    ActualPieces = type_to_pieces(add_quotes, VarType, TVarSet,
+        ExternalTypeParams),
+    ExpectedPieces = type_to_pieces(add_quotes, Type, TVarSet,
+        ExternalTypeParams),
     ActualExpected = actual_expected_types(ActualPieces, ExpectedPieces).
 
 :- func actual_expected_types_list_to_pieces(list(actual_expected_types))
@@ -1974,13 +1977,13 @@ actual_types_to_pieces(ActualExpected) = Pieces :-
     ActualExpected = actual_expected_types(ActualPieces, _ExpectedPieces),
     Pieces = [words("(inferred)") | ActualPieces].
 
-:- func bound_type_to_pieces(mer_type, tvarset, tsubst, head_type_params)
+:- func bound_type_to_pieces(mer_type, tvarset, tsubst, external_type_params)
     = list(format_component).
 
-bound_type_to_pieces(Type0, TypeVarSet, TypeBindings, HeadTypeParams)
+bound_type_to_pieces(Type0, TypeVarSet, TypeBindings, ExternalTypeParams)
         = Pieces :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type),
-    Pieces = type_to_pieces(add_quotes, Type, TypeVarSet, HeadTypeParams).
+    Pieces = type_to_pieces(add_quotes, Type, TypeVarSet, ExternalTypeParams).
 
 %-----------------------------------------------------------------------------%
 
@@ -2249,10 +2252,10 @@ error_right_num_args_to_pieces([Arity | Arities]) = Pieces :-
 
 :- type type_stuff
     --->    type_stuff(
-                type_stuff_base_type        :: mer_type,
-                type_stuff_tvarset          :: tvarset,
-                type_stuff_binding          :: tsubst,
-                type_stuff_head_type_params :: head_type_params
+                type_stuff_base_type            :: mer_type,
+                type_stuff_tvarset              :: tvarset,
+                type_stuff_binding              :: tsubst,
+                type_stuff_external_type_params :: external_type_params
             ).
 
     % Given a type assignment set and a variable, return the list of possible
@@ -2264,7 +2267,7 @@ error_right_num_args_to_pieces([Arity | Arities]) = Pieces :-
 get_type_stuff([], _Var, []).
 get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
     get_type_stuff(TypeAssigns, Var, TailTypeStuffs),
-    type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
+    type_assign_get_external_type_params(TypeAssign, ExternalTypeParams),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_var_types(TypeAssign, VarTypes),
@@ -2275,7 +2278,7 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
         % assigned a type variable fail to have the correct type?
         Type = defined_type(unqualified("<any>"), [], kind_star)
     ),
-    TypeStuff = type_stuff(Type, TVarSet, TypeBindings, HeadTypeParams),
+    TypeStuff = type_stuff(Type, TVarSet, TypeBindings, ExternalTypeParams),
     ( if list.member(TypeStuff, TailTypeStuffs) then
         TypeStuffs = TailTypeStuffs
     else
@@ -2285,21 +2288,22 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
 :- func typestuff_to_typestr(type_stuff) = string.
 
 typestuff_to_typestr(TypeStuff) = TypeStr :-
-    TypeStuff = type_stuff(Type0, TypeVarSet, TypeBindings, HeadTypeParams),
+    TypeStuff = type_stuff(Type0, TypeVarSet, TypeBindings,
+        ExternalTypeParams),
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
     strip_builtin_qualifiers_from_type(Type1, Type),
     unparse_type(Type, Term0),
-    list.map(term.coerce_var, HeadTypeParams, ExistQVars),
+    list.map(term.coerce_var, ExternalTypeParams, ExistQVars),
     maybe_add_existential_quantifier(ExistQVars, Term0, Term),
     varset.coerce(TypeVarSet, VarSet),
     TypeStr = mercury_term_to_string(VarSet, print_name_only, Term).
 
 :- type arg_type_stuff
     --->    arg_type_stuff(
-                arg_type_stuff_arg_type         :: mer_type,
-                arg_type_stuff_var_type         :: mer_type,
-                arg_type_stuff_tvarset          :: tvarset,
-                arg_type_stuff_head_type_params :: head_type_params
+                arg_type_stuff_arg_type             :: mer_type,
+                arg_type_stuff_var_type             :: mer_type,
+                arg_type_stuff_tvarset              :: tvarset,
+                arg_type_stuff_external_type_params :: external_type_params
             ).
 
     % Given an arg type assignment set and a variable id, return the list of
@@ -2312,7 +2316,7 @@ get_arg_type_stuff([], _Var, []).
 get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
     ArgTypeAssign = args_type_assign(TypeAssign, ArgTypes, _),
     get_arg_type_stuff(ArgTypeAssigns, Var, TailArgTypeStuffs),
-    type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
+    type_assign_get_external_type_params(TypeAssign, ExternalTypeParams),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_var_types(TypeAssign, VarTypes),
@@ -2327,7 +2331,8 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
     list.det_index0(ArgTypes, 0, ArgType),
     apply_rec_subst_to_type(TypeBindings, ArgType, ArgType2),
     apply_rec_subst_to_type(TypeBindings, VarType, VarType2),
-    ArgTypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet, HeadTypeParams),
+    ArgTypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet,
+        ExternalTypeParams),
     ( if list.member(ArgTypeStuff, TailArgTypeStuffs) then
         ArgTypeStuffs = TailArgTypeStuffs
     else
@@ -2341,10 +2346,10 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
 :- pred maybe_add_existential_quantifier(list(var)::in, term::in, term::out)
     is det.
 
-maybe_add_existential_quantifier(HeadTypeParams, !Term) :-
+maybe_add_existential_quantifier(ExternalTypeParams, !Term) :-
     term.vars(!.Term, Vars),
     ExistQVars = set.to_sorted_list(set.intersect(
-        set.list_to_set(HeadTypeParams), set.list_to_set(Vars))),
+        set.list_to_set(ExternalTypeParams), set.list_to_set(Vars))),
     (
         ExistQVars = []
     ;
@@ -2369,13 +2374,13 @@ make_list_term([Var | Vars]) =
     --->    do_not_add_quotes
     ;       add_quotes.
 
-:- func type_to_pieces(maybe_add_quotes, mer_type, tvarset, head_type_params)
-    = list(format_component).
+:- func type_to_pieces(maybe_add_quotes, mer_type, tvarset,
+    external_type_params) = list(format_component).
 
-type_to_pieces(MaybeAddQuotes, Type0, TVarSet, HeadTypeParams) = Pieces :-
+type_to_pieces(MaybeAddQuotes, Type0, TVarSet, ExternalTypeParams) = Pieces :-
     strip_builtin_qualifiers_from_type(Type0, Type),
     unparse_type(Type, Term0),
-    list.map(term.coerce_var, HeadTypeParams, ExistQVars),
+    list.map(term.coerce_var, ExternalTypeParams, ExistQVars),
     maybe_add_existential_quantifier(ExistQVars, Term0, Term),
     varset.coerce(TVarSet, VarSet),
     TermPiece = words(mercury_term_to_string(VarSet, print_name_only, Term)),

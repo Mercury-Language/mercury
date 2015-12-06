@@ -127,7 +127,7 @@
     %
 :- pred sharing_as_rename_using_module_info(module_info::in,
     pred_proc_id::in, prog_vars::in, list(mer_type)::in, tvarset::in,
-    head_type_params::in, sharing_as::in, sharing_as::out) is det.
+    external_type_params::in, sharing_as::in, sharing_as::out) is det.
 
     % One of the cornerstone operations of using the program analysis system
     % is to provide a "comb" (combination) operation that combines new
@@ -410,11 +410,11 @@ sharing_as_rename(MapVar, TypeSubst, !SharingAs) :-
     ).
 
 sharing_as_rename_using_module_info(ModuleInfo, PPId, ActualVars, ActualTypes,
-        CallerTypeVarSet, CallerHeadTypeParams,
+        CallerTypeVarSet, CallerExternalTypeParams,
         FormalSharing, ActualSharing) :-
     VarRenaming = get_variable_renaming(ModuleInfo, PPId, ActualVars),
     TypeSubst = get_type_substitution(ModuleInfo, PPId, ActualTypes,
-        CallerTypeVarSet, CallerHeadTypeParams),
+        CallerTypeVarSet, CallerExternalTypeParams),
     sharing_as_rename(VarRenaming, TypeSubst, FormalSharing, ActualSharing).
 
 sharing_as_comb(ModuleInfo, ProcInfo, NewSharing, OldSharing) =
@@ -641,11 +641,11 @@ add_foreign_proc_sharing(ModuleInfo, PredInfo, ProcInfo, ForeignPPId,
     proc_info_get_vartypes(ProcInfo, VarTypes),
     lookup_var_types(VarTypes, ActualVars, ActualTypes),
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
-    pred_info_get_head_type_params(PredInfo, CallerHeadTypeParams),
+    pred_info_get_external_type_params(PredInfo, CallerExternalTypeParams),
 
     sharing_as_rename_using_module_info(ModuleInfo, ForeignPPId,
         ActualVars, ActualTypes, CallerTypeVarSet,
-        CallerHeadTypeParams, ForeignSharing, ActualSharing),
+        CallerExternalTypeParams, ForeignSharing, ActualSharing),
 
     NewSharing = sharing_as_comb(ModuleInfo, ProcInfo, ActualSharing,
         OldSharing).
@@ -858,9 +858,9 @@ lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
     lookup_var_types(VarTypes, ActualVars, ActualTypes),
 
     pred_info_get_typevarset(PredInfo, CallerTypeVarSet),
-    pred_info_get_univ_quant_tvars(PredInfo, CallerHeadTypeParams),
+    pred_info_get_univ_quant_tvars(PredInfo, CallerExternalTypeParams),
     sharing_as_rename_using_module_info(ModuleInfo, PPId,
-        ActualVars, ActualTypes, CallerTypeVarSet, CallerHeadTypeParams,
+        ActualVars, ActualTypes, CallerTypeVarSet, CallerExternalTypeParams,
         FormalSharing, ActualSharing),
 
     !:Sharing = sharing_as_comb(ModuleInfo, ProcInfo,

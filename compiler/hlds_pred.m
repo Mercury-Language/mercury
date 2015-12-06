@@ -568,7 +568,7 @@
     % Various predicates for accessing the information stored in the
     % pred_id and pred_info data structures.
     %
-:- type head_type_params == list(tvar).
+:- type external_type_params == list(tvar).
 
 :- func pred_info_module(pred_info) =  module_name.
 :- func pred_info_name(pred_info) = string.
@@ -618,8 +618,8 @@
     existq_tvars::out) is det.
 :- pred pred_info_get_existq_tvar_binding(pred_info::in,
     tsubst::out) is det.
-:- pred pred_info_get_head_type_params(pred_info::in,
-    head_type_params::out) is det.
+:- pred pred_info_get_external_type_params(pred_info::in,
+    external_type_params::out) is det.
 :- pred pred_info_get_class_context(pred_info::in,
     prog_constraints::out) is det.
 :- pred pred_info_get_constraint_proof_map(pred_info::in,
@@ -669,7 +669,7 @@
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_existq_tvar_binding(tsubst::in,
     pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_head_type_params(head_type_params::in,
+:- pred pred_info_set_external_type_params(external_type_params::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_class_context(prog_constraints::in,
     pred_info::in, pred_info::out) is det.
@@ -931,22 +931,22 @@ calls_are_fully_qualified(Markers) =
 :- type pred_sub_info
     --->    pred_sub_info(
                 % The location (line #) of the :- pred decl.
-                psi_context             :: prog_context,
+                psi_context                     :: prog_context,
 
                 % Whether the goals seen so far, if any, for this predicate
                 % are clauses or foreign_code(...) pragmas.
-                psi_goal_type           :: goal_type,
+                psi_goal_type                   :: goal_type,
 
                 % Various attributes.
-                psi_attributes          :: pred_attributes,
+                psi_attributes                  :: pred_attributes,
 
                 % Kinds of the type vars.
-                psi_tvar_kind_map       :: tvar_kind_map,
+                psi_tvar_kind_map               :: tvar_kind_map,
 
                 % The statically known bindings of existentially quantified
                 % type variables inside this predicate. This field is set
                 % at the end of the polymorphism stage.
-                psi_existq_tvar_binding :: tsubst,
+                psi_existq_tvar_binding         :: tsubst,
 
                 % The set of type variables which the body of the predicate
                 % can't bind, and whose type_infos are produced elsewhere.
@@ -954,43 +954,43 @@ calls_are_fully_qualified(Markers) =
                 % type_infos are passed in) plus existentially quantified types
                 % in preds called from the body (the type_infos are returned
                 % from the called predicates). Computed during type checking.
-                psi_head_type_params    :: head_type_params,
+                psi_external_type_params        :: external_type_params,
 
                 % Explanations of how redundant constraints were eliminated.
                 % These are needed by polymorphism.m to work out where to get
                 % the typeclass_infos from. Computed during type checking.
-                psi_constraint_proof_map :: constraint_proof_map,
+                psi_constraint_proof_map        :: constraint_proof_map,
 
                 % Maps constraint identifiers to the actual constraints.
                 % Computed during type checking.
-                psi_constraint_map      :: constraint_map,
+                psi_constraint_map              :: constraint_map,
 
                 % Unproven class constraints on type variables in the
                 % predicate's body, if any (if this remains non-empty after
                 % type checking has finished, post_typecheck.m will report a
                 % type error).
-                psi_unproven_body_constraints :: list(prog_constraint),
+                psi_unproven_body_constraints   :: list(prog_constraint),
 
                 % The predicate's inst graph, for constraint based
                 % mode analysis.
-                psi_inst_graph_info     :: inst_graph_info,
+                psi_inst_graph_info             :: inst_graph_info,
 
                 % Mode information extracted from constraint based
                 % mode analysis.
-                psi_arg_modes_maps      :: list(arg_modes_map),
+                psi_arg_modes_maps              :: list(arg_modes_map),
 
                 % Renames of some head variables computed by headvar_names.m,
                 % for use by the debugger.
-                psi_var_name_remap      :: map(prog_var, string),
+                psi_var_name_remap              :: map(prog_var, string),
 
                 % List of assertions which mention this predicate.
-                psi_assertions          :: set(assert_id),
+                psi_assertions                  :: set(assert_id),
 
                 % If this predicate is a class method implementation, this
                 % list records the argument types before substituting the type
                 % variables for the instance.
                 % XXX does that make sense?
-                psi_instance_method_arg_types :: list(mer_type)
+                psi_instance_method_arg_types   :: list(mer_type)
             ).
 
 :- type pred_info
@@ -1284,8 +1284,8 @@ pred_info_get_exist_quant_tvars(!.PI, X) :-
     X = !.PI ^ pi_exist_quant_tvars.
 pred_info_get_existq_tvar_binding(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_existq_tvar_binding.
-pred_info_get_head_type_params(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_head_type_params.
+pred_info_get_external_type_params(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_external_type_params.
 pred_info_get_class_context(!.PI, X) :-
     X = !.PI ^ pi_class_context.
 pred_info_get_constraint_proof_map(!.PI, X) :-
@@ -1348,14 +1348,14 @@ pred_info_set_tvar_kind_map(X, !PI) :-
     ).
 pred_info_set_existq_tvar_binding(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_existq_tvar_binding := X.
-pred_info_set_head_type_params(X, !PI) :-
+pred_info_set_external_type_params(X, !PI) :-
     ( if
         private_builtin.pointer_equal(X,
-            !.PI ^ pi_pred_sub_info ^ psi_head_type_params)
+            !.PI ^ pi_pred_sub_info ^ psi_external_type_params)
     then
         true
     else
-        !PI ^ pi_pred_sub_info ^ psi_head_type_params := X
+        !PI ^ pi_pred_sub_info ^ psi_external_type_params := X
     ).
 pred_info_set_class_context(X, !PI) :-
     !PI ^ pi_class_context := X.
@@ -1426,7 +1426,7 @@ pred_info_set_proc_table(X, !PI) :-
 % 12   3820195     85054         0 100.00%    tvar_kind_map
 % 13   1374911         0         0            exist_quant_vars
 % 14     22563         0        80   0.00%    existq_tvar_binding
-% 15    476703    276426    152903  64.39%    head_type_params
+% 15    476703    276426    152903  64.39%    external_type_params
 % 16   7871038         0   2700797   0.00%    class_context
 % 17   2591016    425209      3483  99.19%    constraint_proof_map
 % 18   2752537    404771     23921  94.42%    constraint_map

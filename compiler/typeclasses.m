@@ -75,7 +75,8 @@
     % redundant constraints.
     %
 :- pred reduce_context_by_rule_application(class_table::in, instance_table::in,
-    head_type_params::in, tsubst::in, tsubst::out, tvarset::in, tvarset::out,
+    external_type_params::in,
+    tsubst::in, tsubst::out, tvarset::in, tvarset::out,
     constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out,
     hlds_constraints::in, hlds_constraints::out) is det.
@@ -155,14 +156,14 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
     then
         !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
     else
-        type_assign_get_head_type_params(!.TypeAssign, HeadTypeParams),
+        type_assign_get_external_type_params(!.TypeAssign, ExternalTypeParams),
         type_assign_get_typevarset(!.TypeAssign, TVarSet0),
         type_assign_get_type_bindings(!.TypeAssign, Bindings0),
         type_assign_get_constraint_proof_map(!.TypeAssign, ProofMap0),
         type_assign_get_constraint_map(!.TypeAssign, ConstraintMap0),
 
         reduce_context_by_rule_application(ClassTable, InstanceTable,
-            HeadTypeParams, Bindings0, Bindings, TVarSet0, TVarSet,
+            ExternalTypeParams, Bindings0, Bindings, TVarSet0, TVarSet,
             ProofMap0, ProofMap, ConstraintMap0, ConstraintMap,
             Constraints0, Constraints),
 
@@ -170,7 +171,7 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
             ProofMap, ConstraintMap, !TypeAssign),
 
         Unproven = Constraints ^ hcs_unproven,
-        ( if all_constraints_are_satisfiable(Unproven, HeadTypeParams) then
+        ( if all_constraints_are_satisfiable(Unproven, ExternalTypeParams) then
             !:TypeAssignSet = !.TypeAssignSet ++ [!.TypeAssign]
         else
             % Remember the unsatisfiable type_assign_set so we can produce more
@@ -179,7 +180,7 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
         )
     ).
 
-    % all_constraints_are_satisfiable(Constraints, HeadTypeParams):
+    % all_constraints_are_satisfiable(Constraints, ExternalTypeParams):
     %
     % Check that all of the constraints are satisfiable. Fail if any are
     % definitely not satisfiable.
@@ -208,25 +209,27 @@ reduce_type_assign_context(ClassTable, InstanceTable, !.TypeAssign,
     % type variable that is not in the head type params.
     %
 :- pred all_constraints_are_satisfiable(list(hlds_constraint)::in,
-    head_type_params::in) is semidet.
+    external_type_params::in) is semidet.
 
 all_constraints_are_satisfiable([], _).
-all_constraints_are_satisfiable([Constraint | Constraints], HeadTypeParams) :-
+all_constraints_are_satisfiable([Constraint | Constraints],
+        ExternalTypeParams) :-
     Constraint = hlds_constraint(_Ids, _ClassName, ArgTypes),
     some [TVar] (
         type_list_contains_var(ArgTypes, TVar),
-        not list.member(TVar, HeadTypeParams)
+        not list.member(TVar, ExternalTypeParams)
     ),
-    all_constraints_are_satisfiable(Constraints, HeadTypeParams).
+    all_constraints_are_satisfiable(Constraints, ExternalTypeParams).
 
-reduce_context_by_rule_application(ClassTable, InstanceTable, HeadTypeParams,
-        !Bindings, !TVarSet, !ProofMap, !ConstraintMap, !Constraints) :-
+reduce_context_by_rule_application(ClassTable, InstanceTable,
+        ExternalTypeParams, !Bindings, !TVarSet, !ProofMap,
+        !ConstraintMap, !Constraints) :-
     reduce_context_by_rule_application_2(ClassTable, InstanceTable,
-        HeadTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
+        ExternalTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
         !Constraints, !.Constraints ^ hcs_unproven, _).
 
 :- pred reduce_context_by_rule_application_2(class_table::in,
-    instance_table::in, head_type_params::in,
+    instance_table::in, external_type_params::in,
     tsubst::in, tsubst::out, tvarset::in, tvarset::out,
     constraint_proof_map::in, constraint_proof_map::out,
     constraint_map::in, constraint_map::out,
@@ -234,10 +237,10 @@ reduce_context_by_rule_application(ClassTable, InstanceTable, HeadTypeParams,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
 reduce_context_by_rule_application_2(ClassTable, InstanceTable,
-        HeadTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
+        ExternalTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
         !Constraints, !Seen) :-
     apply_rec_subst_to_constraints(!.Bindings, !Constraints),
-    apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams,
+    apply_improvement_rules(ClassTable, InstanceTable, ExternalTypeParams,
         !.Constraints, !TVarSet, !Bindings, AppliedImprovementRule),
 
     % We want to make sure that any changes to the bindings are reflected
@@ -268,7 +271,7 @@ reduce_context_by_rule_application_2(ClassTable, InstanceTable,
         sort_and_merge_dups(!Constraints)
     else
         reduce_context_by_rule_application_2(ClassTable, InstanceTable,
-            HeadTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
+            ExternalTypeParams, !Bindings, !TVarSet, !ProofMap, !ConstraintMap,
             !Constraints, !Seen)
     ).
 
@@ -316,92 +319,93 @@ merge_constraints(ConstraintA, ConstraintB, Constraint) :-
     Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
 :- pred apply_improvement_rules(class_table::in, instance_table::in,
-    head_type_params::in, hlds_constraints::in, tvarset::in, tvarset::out,
+    external_type_params::in, hlds_constraints::in, tvarset::in, tvarset::out,
     tsubst::in, tsubst::out, bool::out) is det.
 
-apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams, Constraints,
-        !TVarSet, !Bindings, Changed) :-
+apply_improvement_rules(ClassTable, InstanceTable, ExternalTypeParams,
+        Constraints, !TVarSet, !Bindings, Changed) :-
     % XXX Should we sort and merge the constraints here?
-    do_class_improvement(ClassTable, HeadTypeParams, Constraints, !Bindings,
-        Changed1),
+    do_class_improvement(ClassTable, ExternalTypeParams, Constraints,
+        !Bindings, Changed1),
     % XXX Do we really need to modify the varset? See the comment above
     % find_matching_instance_rule.
-    do_instance_improvement(ClassTable, InstanceTable, HeadTypeParams,
+    do_instance_improvement(ClassTable, InstanceTable, ExternalTypeParams,
         Constraints, !TVarSet, !Bindings, Changed2),
     Changed = bool.or(Changed1, Changed2).
 
-:- pred do_class_improvement(class_table::in, head_type_params::in,
+:- pred do_class_improvement(class_table::in, external_type_params::in,
     hlds_constraints::in, tsubst::in, tsubst::out, bool::out) is det.
 
-do_class_improvement(ClassTable, HeadTypeParams, Constraints, !Bindings,
+do_class_improvement(ClassTable, ExternalTypeParams, Constraints, !Bindings,
         Changed) :-
     Redundant = Constraints ^ hcs_redundant,
     map.keys(Redundant, ClassIds),
     list.foldl2(
-        do_class_improvement_2(ClassTable, HeadTypeParams, Redundant),
+        do_class_improvement_2(ClassTable, ExternalTypeParams, Redundant),
         ClassIds, !Bindings, no, Changed).
 
-:- pred do_class_improvement_2(class_table::in, head_type_params::in,
+:- pred do_class_improvement_2(class_table::in, external_type_params::in,
     redundant_constraints::in, class_id::in, tsubst::in, tsubst::out,
     bool::in, bool::out) is det.
 
-do_class_improvement_2(ClassTable, HeadTypeParams, RedundantConstraints,
+do_class_improvement_2(ClassTable, ExternalTypeParams, RedundantConstraints,
         ClassId, !Bindings, !Changed) :-
     map.lookup(ClassTable, ClassId, ClassDefn),
     FunDeps = ClassDefn ^ classdefn_fundeps,
     map.lookup(RedundantConstraints, ClassId, ConstraintSet),
     set.to_sorted_list(ConstraintSet, ConstraintList),
-    do_class_improvement_by_pairs(ConstraintList, FunDeps, HeadTypeParams,
+    do_class_improvement_by_pairs(ConstraintList, FunDeps, ExternalTypeParams,
         !Bindings, !Changed).
 
     % Try to find an opportunity for improvement for each (unordered)
     % pair of constraints from the list.
     %
 :- pred do_class_improvement_by_pairs(list(hlds_constraint)::in,
-    hlds_class_fundeps::in, head_type_params::in, tsubst::in, tsubst::out,
+    hlds_class_fundeps::in, external_type_params::in, tsubst::in, tsubst::out,
     bool::in, bool::out) is det.
 
 do_class_improvement_by_pairs([], _, _, !Bindings, !Changed).
 do_class_improvement_by_pairs([Constraint | Constraints], FunDeps,
-        HeadTypeParams, !Bindings, !Changed) :-
+        ExternalTypeParams, !Bindings, !Changed) :-
     do_class_improvement_by_pairs_2(Constraint, Constraints, FunDeps,
-        HeadTypeParams, !Bindings, !Changed),
-    do_class_improvement_by_pairs(Constraints, FunDeps, HeadTypeParams,
+        ExternalTypeParams, !Bindings, !Changed),
+    do_class_improvement_by_pairs(Constraints, FunDeps, ExternalTypeParams,
         !Bindings, !Changed).
 
 :- pred do_class_improvement_by_pairs_2(hlds_constraint::in,
-    list(hlds_constraint)::in, hlds_class_fundeps::in, head_type_params::in,
-    tsubst::in, tsubst::out, bool::in, bool::out) is det.
+    list(hlds_constraint)::in, hlds_class_fundeps::in,
+    external_type_params::in, tsubst::in, tsubst::out, bool::in, bool::out)
+    is det.
 
 do_class_improvement_by_pairs_2(_, [], _, _, !Bindings, !Changed).
 do_class_improvement_by_pairs_2(Constraint, [HeadConstraint | TailConstraints],
-        FunDeps, HeadTypeParams, !Bindings, !Changed) :-
+        FunDeps, ExternalTypeParams, !Bindings, !Changed) :-
     do_class_improvement_pair(Constraint, HeadConstraint, FunDeps,
-        HeadTypeParams, !Bindings, !Changed),
+        ExternalTypeParams, !Bindings, !Changed),
     do_class_improvement_by_pairs_2(Constraint, TailConstraints, FunDeps,
-        HeadTypeParams, !Bindings, !Changed).
+        ExternalTypeParams, !Bindings, !Changed).
 
     % Try to find an opportunity for improvement for this pair of
     % constraints, using each fundep in turn.
     %
 :- pred do_class_improvement_pair(hlds_constraint::in, hlds_constraint::in,
-    hlds_class_fundeps::in, head_type_params::in, tsubst::in, tsubst::out,
+    hlds_class_fundeps::in, external_type_params::in, tsubst::in, tsubst::out,
     bool::in, bool::out) is det.
 
 do_class_improvement_pair(_, _, [], _, !Bindings, !Changed).
 do_class_improvement_pair(ConstraintA, ConstraintB, [FunDep | FunDeps],
-        HeadTypeParams, !Bindings, !Changed) :-
+        ExternalTypeParams, !Bindings, !Changed) :-
     do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep,
-        HeadTypeParams, !Bindings, !Changed),
+        ExternalTypeParams, !Bindings, !Changed),
     do_class_improvement_pair(ConstraintA, ConstraintB, FunDeps,
-        HeadTypeParams, !Bindings, !Changed).
+        ExternalTypeParams, !Bindings, !Changed).
 
 :- pred do_class_improvement_fundep(hlds_constraint::in, hlds_constraint::in,
-    hlds_class_fundep::in, head_type_params::in, tsubst::in, tsubst::out,
+    hlds_class_fundep::in, external_type_params::in, tsubst::in, tsubst::out,
     bool::in, bool::out) is det.
 
-do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep, HeadTypeParams,
-        !Bindings, !Changed) :-
+do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep,
+        ExternalTypeParams, !Bindings, !Changed) :-
     ConstraintA = hlds_constraint(_IdsA, _ClassNameA, TypesA),
     ConstraintB = hlds_constraint(_IdsB, _ClassNameB, TypesB),
     FunDep = fundep(Domain, Range),
@@ -415,7 +419,7 @@ do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep, HeadTypeParams,
         % would be bound by the improvement rule. This means that the
         % declaration is not as specific as it could be, but that is not
         % a problem for us.
-        unify_on_elements(Range, TypesA, TypesB, HeadTypeParams, !Bindings)
+        unify_on_elements(Range, TypesA, TypesB, ExternalTypeParams, !Bindings)
     then
         !:Changed = yes
     else
@@ -423,24 +427,24 @@ do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep, HeadTypeParams,
     ).
 
 :- pred do_instance_improvement(class_table::in, instance_table::in,
-    head_type_params::in, hlds_constraints::in, tvarset::in, tvarset::out,
+    external_type_params::in, hlds_constraints::in, tvarset::in, tvarset::out,
     tsubst::in, tsubst::out, bool::out) is det.
 
-do_instance_improvement(ClassTable, InstanceTable, HeadTypeParams, Constraints,
-        !TVarSet, !Bindings, Changed) :-
+do_instance_improvement(ClassTable, InstanceTable, ExternalTypeParams,
+        Constraints, !TVarSet, !Bindings, Changed) :-
     RedundantConstraints = Constraints ^ hcs_redundant,
     map.keys(RedundantConstraints, ClassIds),
     list.foldl3(
         do_instance_improvement_2(ClassTable, InstanceTable,
-            HeadTypeParams, RedundantConstraints),
+            ExternalTypeParams, RedundantConstraints),
         ClassIds, !TVarSet, !Bindings, no, Changed).
 
 :- pred do_instance_improvement_2(class_table::in, instance_table::in,
-    head_type_params::in, redundant_constraints::in, class_id::in,
+    external_type_params::in, redundant_constraints::in, class_id::in,
     tvarset::in, tvarset::out, tsubst::in, tsubst::out,
     bool::in, bool::out) is det.
 
-do_instance_improvement_2(ClassTable, InstanceTable, HeadTypeParams,
+do_instance_improvement_2(ClassTable, InstanceTable, ExternalTypeParams,
         RedundantConstraints, ClassId, !TVarSet, !Bindings, !Changed) :-
     map.lookup(ClassTable, ClassId, ClassDefn),
     FunDeps = ClassDefn ^ classdefn_fundeps,
@@ -448,23 +452,23 @@ do_instance_improvement_2(ClassTable, InstanceTable, HeadTypeParams,
     map.lookup(RedundantConstraints, ClassId, ConstraintSet),
     set.to_sorted_list(ConstraintSet, ConstraintList),
     list.foldl3(
-        do_instance_improvement_3(ConstraintList, FunDeps, HeadTypeParams),
+        do_instance_improvement_3(ConstraintList, FunDeps, ExternalTypeParams),
         InstanceDefns, !TVarSet, !Bindings, !Changed).
 
 :- pred do_instance_improvement_3(list(hlds_constraint)::in,
-    hlds_class_fundeps::in, head_type_params::in, hlds_instance_defn::in,
+    hlds_class_fundeps::in, external_type_params::in, hlds_instance_defn::in,
     tvarset::in, tvarset::out, tsubst::in, tsubst::out,
     bool::in, bool::out) is det.
 
-do_instance_improvement_3(Constraints, FunDeps, HeadTypeParams, InstanceDefn,
-        !TVarSet, !Bindings, !Changed) :-
+do_instance_improvement_3(Constraints, FunDeps, ExternalTypeParams,
+        InstanceDefn, !TVarSet, !Bindings, !Changed) :-
     InstanceTVarSet = InstanceDefn ^ instdefn_tvarset,
     InstanceTypes0 = InstanceDefn ^ instdefn_types,
     tvarset_merge_renaming(!.TVarSet, InstanceTVarSet, NewTVarSet, Renaming),
     apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
         InstanceTypes),
     list.foldl2(
-        do_instance_improvement_4(FunDeps, InstanceTypes, HeadTypeParams),
+        do_instance_improvement_4(FunDeps, InstanceTypes, ExternalTypeParams),
         Constraints, !Bindings, no, Changed0),
     (
         Changed0 = yes,
@@ -475,21 +479,21 @@ do_instance_improvement_3(Constraints, FunDeps, HeadTypeParams, InstanceDefn,
     ).
 
 :- pred do_instance_improvement_4(hlds_class_fundeps::in, list(mer_type)::in,
-    head_type_params::in, hlds_constraint::in, tsubst::in, tsubst::out,
+    external_type_params::in, hlds_constraint::in, tsubst::in, tsubst::out,
     bool::in, bool::out) is det.
 
-do_instance_improvement_4(FunDeps, InstanceTypes, HeadTypeParams, Constraint,
-        !Bindings, !Changed) :-
+do_instance_improvement_4(FunDeps, InstanceTypes, ExternalTypeParams,
+        Constraint, !Bindings, !Changed) :-
     list.foldl2(
         do_instance_improvement_fundep(Constraint, InstanceTypes,
-            HeadTypeParams),
+            ExternalTypeParams),
         FunDeps, !Bindings, !Changed).
 
 :- pred do_instance_improvement_fundep(hlds_constraint::in, list(mer_type)::in,
-    head_type_params::in, hlds_class_fundep::in, tsubst::in, tsubst::out,
+    external_type_params::in, hlds_class_fundep::in, tsubst::in, tsubst::out,
     bool::in, bool::out) is det.
 
-do_instance_improvement_fundep(Constraint, InstanceTypes0, HeadTypeParams,
+do_instance_improvement_fundep(Constraint, InstanceTypes0, ExternalTypeParams,
         FunDep, !Bindings, !Changed) :-
     Constraint = hlds_constraint(_Ids, _ClassName, ConstraintTypes),
     FunDep = fundep(Domain, Range),
@@ -509,7 +513,7 @@ do_instance_improvement_fundep(Constraint, InstanceTypes0, HeadTypeParams,
         % declaration is not as specific as it could be, but that is not
         % a problem for us.
         unify_on_elements(Range, InstanceTypes, ConstraintTypes,
-            HeadTypeParams, !Bindings)
+            ExternalTypeParams, !Bindings)
     then
         !:Changed = yes
     else
@@ -531,13 +535,13 @@ lists_match_on_elements(Elements, TypesA, TypesB) :-
     % positions in the lists and add to the current bindings.
     %
 :- pred unify_on_elements(set(hlds_class_argpos)::in, list(mer_type)::in,
-    list(mer_type)::in, head_type_params::in, tsubst::in, tsubst::out)
+    list(mer_type)::in, external_type_params::in, tsubst::in, tsubst::out)
     is semidet.
 
-unify_on_elements(Elements, TypesA, TypesB, HeadTypeParams, !Bindings) :-
+unify_on_elements(Elements, TypesA, TypesB, ExternalTypeParams, !Bindings) :-
     RTypesA = restrict_list_elements(Elements, TypesA),
     RTypesB = restrict_list_elements(Elements, TypesB),
-    type_unify_list(RTypesA, RTypesB, HeadTypeParams, !Bindings).
+    type_unify_list(RTypesA, RTypesB, ExternalTypeParams, !Bindings).
 
     % Analogous to type_list_subsumes except that it only checks those
     % elements of the list specified by the set of indices.

@@ -978,8 +978,8 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
     module_info_pred_info(ModuleInfo, MethodCallPredId, MethodCallPredInfo),
     pred_info_get_arg_types(MethodCallPredInfo, MethodCallTVarSet,
         MethodCallExistQTVars, MethodCallArgTypes),
-    pred_info_get_head_type_params(MethodCallPredInfo,
-        MethodCallHeadTypeParams),
+    pred_info_get_external_type_params(MethodCallPredInfo,
+        MethodCallExternalTypeParams),
     InstanceMethod0 = instance_method(PredOrFunc, MethodName,
         InstanceMethodDefn0, MethodArity, MethodContext),
     (
@@ -988,8 +988,8 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         ( if
             find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
                 MethodArity, MethodCallTVarSet, MethodCallExistQTVars,
-                MethodCallArgTypes, MethodCallHeadTypeParams, MethodContext,
-                MaybePredId, InstanceMethodName)
+                MethodCallArgTypes, MethodCallExternalTypeParams,
+                MethodContext, MaybePredId, InstanceMethodName)
         then
             (
                 MaybePredId = yes(PredId),
@@ -1013,7 +1013,7 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         init_markers(Markers),
         resolve_pred_overloading(ModuleInfo, Markers, MethodCallTVarSet,
             MethodCallExistQTVars, MethodCallArgTypes,
-            MethodCallHeadTypeParams, MethodContext,
+            MethodCallExternalTypeParams, MethodContext,
             InstanceMethodName0, InstanceMethodName, PredId),
         PredIds = [PredId | PredIds0],
         InstanceMethodDefn = instance_proc_def_name(InstanceMethodName)
@@ -1039,12 +1039,12 @@ qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
     %
 :- pred find_func_matching_instance_method(module_info::in, sym_name::in,
     arity::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
-    head_type_params::in, prog_context::in, maybe(pred_id)::out,
+    external_type_params::in, prog_context::in, maybe(pred_id)::out,
     sym_name::out) is semidet.
 
 find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
         MethodArity, MethodCallTVarSet, MethodCallExistQTVars,
-        MethodCallArgTypes, MethodCallHeadTypeParams, MethodContext,
+        MethodCallArgTypes, MethodCallExternalTypeParams, MethodContext,
         MaybePredId, InstanceMethodName) :-
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     ( if
@@ -1081,7 +1081,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
         PredIds = [_ | _],
         find_matching_pred_id(ModuleInfo, PredIds, MethodCallTVarSet,
             MethodCallExistQTVars, MethodCallArgTypes,
-            MethodCallHeadTypeParams, no, MethodContext,
+            MethodCallExternalTypeParams, no, MethodContext,
             PredId, InstanceMethodFuncName)
     then
         TypeCtors = [],
@@ -1282,12 +1282,12 @@ resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
         SpecialPredId),
     module_info_pred_info(ModuleInfo, SpecialPredId, SpecialPredInfo),
     pred_info_get_arg_types(SpecialPredInfo, TVarSet, ExistQVars, ArgTypes),
-    pred_info_get_head_type_params(SpecialPredInfo, HeadTypeParams),
+    pred_info_get_external_type_params(SpecialPredInfo, ExternalTypeParams),
     init_markers(Markers0),
     add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
     pred_info_get_context(SpecialPredInfo, Context),
     resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
-        ArgTypes, HeadTypeParams, Context, Pred0, Pred, UserEqPredId),
+        ArgTypes, ExternalTypeParams, Context, Pred0, Pred, UserEqPredId),
     intermod_add_proc(UserEqPredId, _, !Info).
 
 :- pred should_write_type(module_name::in, type_ctor::in, hlds_type_defn::in)

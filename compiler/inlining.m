@@ -119,13 +119,13 @@
     rtti_varmaps::in, rtti_varmaps::out, hlds_goal::out) is det.
 
     % get_type_substitution(CalleeArgTypes, CallerArgTypes,
-    %   HeadTypeParams, CalleeExistQTVars, TypeSubn):
+    %   ExternalTypeParams, CalleeExistQTVars, TypeSubn):
     %
     % Work out a type substitution to map the callee's argument types
     % into the caller's.
     %
 :- pred get_type_substitution(list(mer_type)::in, list(mer_type)::in,
-    head_type_params::in, list(tvar)::in, map(tvar, mer_type)::out) is det.
+    external_type_params::in, list(tvar)::in, map(tvar, mer_type)::out) is det.
 
     % rename_goal(CalledProcHeadVars, CallArgs,
     %   CallerVarSet0, CalleeVarSet, CallerVarSet,
@@ -638,7 +638,7 @@ inlining_in_goal(Goal0, Goal, !Info) :-
 inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         Context, Sym, GoalExpr, GoalInfo0, GoalInfo, !Info) :-
     !.Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
-        InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
+        InlinedProcs, ModuleInfo, ExternalTypeParams, Markers,
         VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0, _DidInlining0,
         InlinedParallel0, Requantify0, DetChanged0, PurityChanged0),
 
@@ -665,7 +665,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         % XXX Work around bug #142.
         not may_encounter_bug_142(ProcInfo, ArgVars)
     then
-        do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
+        do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
             VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
             RttiVarMaps0, RttiVarMaps, hlds_goal(GoalExpr, GoalInfo)),
 
@@ -709,7 +709,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         DidInlining = yes,
 
         !:Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
-            InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
+            InlinedProcs, ModuleInfo, ExternalTypeParams, Markers,
             VarSet, VarTypes, TypeVarSet, RttiVarMaps, DidInlining,
             InlinedParallel, Requantify, DetChanged, PurityChanged)
     else
@@ -746,7 +746,7 @@ tci_vars_different_constraints(RttiVarMaps, [VarA, VarB | Vars]) :-
 
 %-----------------------------------------------------------------------------%
 
-do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
+do_inline_call(ExternalTypeParams, ArgVars, PredInfo, ProcInfo,
         VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
         RttiVarMaps0, RttiVarMaps, Goal) :-
 
@@ -794,7 +794,7 @@ do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
     lookup_var_types(VarTypes0, ArgVars, ArgTypes),
 
     pred_info_get_exist_quant_tvars(PredInfo, CalleeExistQVars),
-    get_type_substitution(HeadTypes, ArgTypes, HeadTypeParams,
+    get_type_substitution(HeadTypes, ArgTypes, ExternalTypeParams,
         CalleeExistQVars, TypeSubn),
 
     % Handle the common case of non-existentially typed preds specially,
@@ -827,7 +827,7 @@ do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
     rtti_varmaps_overlay(CalleeRttiVarMaps1, RttiVarMaps0, RttiVarMaps).
 
 get_type_substitution(HeadTypes, ArgTypes,
-        HeadTypeParams, CalleeExistQVars, TypeSubn) :-
+        ExternalTypeParams, CalleeExistQVars, TypeSubn) :-
     (
         CalleeExistQVars = [],
         ( if type_list_subsumes(HeadTypes, ArgTypes, TypeSubn0) then
@@ -850,7 +850,7 @@ get_type_substitution(HeadTypes, ArgTypes,
         % type variables in the caller, not just those in the callee.
         ( if
             map.init(TypeSubn0),
-            type_unify_list(HeadTypes, ArgTypes, HeadTypeParams,
+            type_unify_list(HeadTypes, ArgTypes, ExternalTypeParams,
                 TypeSubn0, TypeSubn1)
         then
             TypeSubn = TypeSubn1

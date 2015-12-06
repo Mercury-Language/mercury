@@ -272,12 +272,12 @@ check_pred_type_bindings(ModuleInfo, PredId, !PredInfo, NumBadErrors,
     ),
 
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-    pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
+    pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
     clauses_info_get_varset(ClausesInfo0, VarSet),
     clauses_info_get_vartypes(ClausesInfo0, VarTypesMap0),
     vartypes_to_assoc_list(VarTypesMap0, VarTypesList),
     set.init(BindToVoidTVars0),
-    check_var_type_bindings(VarTypesList, HeadTypeParams,
+    check_var_type_bindings(VarTypesList, ExternalTypeParams,
         [], UnresolvedVarsTypes, BindToVoidTVars0, BindToVoidTVars),
     (
         UnresolvedVarsTypes = []
@@ -306,15 +306,15 @@ check_pred_type_bindings(ModuleInfo, PredId, !PredInfo, NumBadErrors,
     assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
     set(tvar)::in, set(tvar)::out) is det.
 
-check_var_type_bindings(VarTypes, HeadTypeParams, !UnresolvedVarsTypes,
+check_var_type_bindings(VarTypes, ExternalTypeParams, !UnresolvedVarsTypes,
         !BindToVoidTVars) :-
-    check_var_type_bindings_inner(VarTypes, HeadTypeParams, 1000,
+    check_var_type_bindings_inner(VarTypes, ExternalTypeParams, 1000,
         LeftOverVarTypes, !UnresolvedVarsTypes, !BindToVoidTVars),
     (
         LeftOverVarTypes = []
     ;
         LeftOverVarTypes = [_ | _],
-        check_var_type_bindings(LeftOverVarTypes, HeadTypeParams,
+        check_var_type_bindings(LeftOverVarTypes, ExternalTypeParams,
             !UnresolvedVarsTypes, !BindToVoidTVars)
     ).
 
@@ -325,21 +325,21 @@ check_var_type_bindings(VarTypes, HeadTypeParams, !UnresolvedVarsTypes,
 
 check_var_type_bindings_inner([], _, _, [],
         !UnresolvedVarsTypes, !BindToVoidTVars).
-check_var_type_bindings_inner([Var - Type | VarTypes], HeadTypeParams,
+check_var_type_bindings_inner([Var - Type | VarTypes], ExternalTypeParams,
         VarsToDo, LeftOverVarTypes, !UnresolvedVarsTypes, !BindToVoidTVars) :-
     ( if VarsToDo < 0 then
         LeftOverVarTypes = [Var - Type | VarTypes]
     else
         type_vars(Type, TVars),
         set.list_to_set(TVars, TVarsSet0),
-        set.delete_list(HeadTypeParams, TVarsSet0, TVarsSet1),
+        set.delete_list(ExternalTypeParams, TVarsSet0, TVarsSet1),
         ( if set.is_empty(TVarsSet1) then
             true
         else
             !:UnresolvedVarsTypes = [Var - Type | !.UnresolvedVarsTypes],
             set.union(TVarsSet1, !BindToVoidTVars)
         ),
-        check_var_type_bindings_inner(VarTypes, HeadTypeParams,
+        check_var_type_bindings_inner(VarTypes, ExternalTypeParams,
             VarsToDo - 1, LeftOverVarTypes,
             !UnresolvedVarsTypes, !BindToVoidTVars)
     ).
@@ -566,13 +566,13 @@ finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, Context,
         % have the specified name and arity.
         pred_info_get_typevarset(CallerPredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(CallerPredInfo, ExistQVars),
-        pred_info_get_head_type_params(CallerPredInfo, HeadTypeParams),
+        pred_info_get_external_type_params(CallerPredInfo, ExternalTypeParams),
         pred_info_get_markers(CallerPredInfo, Markers),
         pred_info_get_clauses_info(CallerPredInfo, ClausesInfo),
         clauses_info_get_vartypes(ClausesInfo, VarTypes),
         lookup_var_types(VarTypes, Args0, ArgTypes),
         resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
-            ArgTypes, HeadTypeParams, Context, !PredName, !:PredId)
+            ArgTypes, ExternalTypeParams, Context, !PredName, !:PredId)
     else
         !:PredName = get_qualified_pred_name(ModuleInfo, !.PredId)
     ).
@@ -1109,7 +1109,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % and which have universal constraints consistent with what we expect.
         pred_info_get_typevarset(!.PredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(!.PredInfo, ExistQTVars),
-        pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
+        pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
         lookup_var_types(!.VarTypes, ArgVars0, ArgTypes0),
         ArgTypes = ArgTypes0 ++ [TypeOfX],
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
@@ -1118,7 +1118,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
             search_hlds_constraint_list(ConstraintMap, unproven, GoalId),
         Context = goal_info_get_context(GoalInfo0),
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, HeadTypeParams, yes(ConstraintSearch), Context,
+            ArgTypes, ExternalTypeParams, yes(ConstraintSearch), Context,
             PredId, QualifiedFuncName)
     then
         % Convert function calls in unifications into plain calls:
@@ -1148,11 +1148,11 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         AllArgTypes = ArgTypes0 ++ HOArgTypes,
         pred_info_get_typevarset(!.PredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(!.PredInfo, ExistQVars),
-        pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
+        pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
         pred_info_get_markers(!.PredInfo, Markers),
         Context = goal_info_get_context(GoalInfo0),
         get_pred_id_by_types(calls_are_fully_qualified(Markers), Name,
-            PredOrFunc, TVarSet, ExistQVars, AllArgTypes, HeadTypeParams,
+            PredOrFunc, TVarSet, ExistQVars, AllArgTypes, ExternalTypeParams,
             ModuleInfo, Context, PredId)
     then
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -1277,8 +1277,8 @@ find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
     ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgs),
     % XXX is this correct?
     ExistQVars = [],
-    HeadTypeParams = [],
-    arg_type_list_subsumes(TVarSet, ExistQVars, ArgTypes, HeadTypeParams,
+    ExternalTypeParams = [],
+    arg_type_list_subsumes(TVarSet, ExistQVars, ArgTypes, ExternalTypeParams,
         TypeTVarSet, TypeKindMap, ConsExistQVars, ConsArgTypes).
 
 %-----------------------------------------------------------------------------%

@@ -45,13 +45,13 @@
     prog_var_renaming.
 
     % get_type_substitution(ModuleInfo, PPId, ActualTypes,
-    %   CallerTypeVarSet, CallerHeadTypeParams) = TypeSubst
+    %   CallerTypeVarSet, CallerExternalTypeParams) = TypeSubst
     %
     % Work out a type substitution to map the callee's argument types into the
     % caller's.
     %
 :- func get_type_substitution(module_info, pred_proc_id, list(mer_type),
-    tvarset, head_type_params) = tsubst.
+    tvarset, external_type_params) = tsubst.
 
     % var_needs_sharing_analysis(ModuleInfo, ProcInfo, Var).
     %
@@ -109,7 +109,7 @@ get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :-
     map.from_corresponding_lists(FormalVars, ActualArgs, VariableRenaming).
 
 get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
-        CallerHeadTypeParams) = TypeSubst :-
+        CallerExternalTypeParams) = TypeSubst :-
     PPId = proc(PredId, _),
     module_info_pred_info(ModuleInfo, PredId, CalleePredInfo),
     pred_info_get_typevarset(CalleePredInfo, CalleeTypeVarSet),
@@ -140,7 +140,7 @@ get_type_substitution(ModuleInfo, PPId, ActualTypes, CallerTypeVarSet,
         (
             map.init(TypeSubstPrime),
             type_unify_list(CalleeArgTypes, ActualTypes,
-                CallerHeadTypeParams, TypeSubstPrime, TypeSubst0)
+                CallerExternalTypeParams, TypeSubstPrime, TypeSubst0)
         ->
             TypeSubst1 = TypeSubst0
         ;

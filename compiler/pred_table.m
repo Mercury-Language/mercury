@@ -235,8 +235,9 @@
     % Abort if there are multiple matching preds.
     %
 :- pred resolve_pred_overloading(module_info::in, pred_markers::in,
-    tvarset::in, existq_tvars::in, list(mer_type)::in, head_type_params::in,
-    prog_context::in, sym_name::in, sym_name::out, pred_id::out) is det.
+    tvarset::in, existq_tvars::in, list(mer_type)::in,
+    external_type_params::in, prog_context::in,
+    sym_name::in, sym_name::out, pred_id::out) is det.
 
     % Find a predicate or function from the list of pred_ids which matches the
     % given name and argument types. If the constraint_search argument is
@@ -245,7 +246,8 @@
     % multiple matching preds.
     %
 :- pred find_matching_pred_id(module_info::in, list(pred_id)::in,
-    tvarset::in, existq_tvars::in, list(mer_type)::in, head_type_params::in,
+    tvarset::in, existq_tvars::in, list(mer_type)::in,
+    external_type_params::in,
     maybe(constraint_search)::in(maybe(constraint_search)),
     prog_context::in, pred_id::out, sym_name::out) is semidet.
 
@@ -260,7 +262,7 @@
     %
 :- pred get_pred_id_and_proc_id_by_types(is_fully_qualified::in, sym_name::in,
     pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
-    head_type_params::in, module_info::in, prog_context::in,
+    external_type_params::in, module_info::in, prog_context::in,
     pred_id::out, proc_id::out) is det.
 
     % Get the pred_id matching a higher-order term with
@@ -268,7 +270,7 @@
     %
 :- pred get_pred_id_by_types(is_fully_qualified::in, sym_name::in,
     pred_or_func::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
-    head_type_params::in, module_info::in, prog_context::in, pred_id::out)
+    external_type_params::in, module_info::in, prog_context::in, pred_id::out)
     is semidet.
 
     % Given a pred_id, return the single proc_id, aborting
@@ -977,7 +979,7 @@ insert_into_mna_index(Name, Arity, PredId, Module, !MNA_Index) :-
 %-----------------------------------------------------------------------------%
 
 resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
-        ArgTypes, HeadTypeParams, Context, PredName0, PredName, PredId) :-
+        ArgTypes, ExternalTypeParams, Context, PredName0, PredName, PredId) :-
     % Note: calls to preds declared in `.opt' files should always be
     % module qualified, so they should not be considered
     % when resolving overloading.
@@ -991,7 +993,7 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
     % which subsume the actual argument/return types of this function call.
     ( if
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, HeadTypeParams, no, Context, PredId1, PredName1)
+            ArgTypes, ExternalTypeParams, no, Context, PredId1, PredName1)
     then
         PredId = PredId1,
         PredName = PredName1
@@ -1002,20 +1004,19 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
     ).
 
 find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
-        ArgTypes, HeadTypeParams, MaybeConstraintSearch, Context,
+        ArgTypes, ExternalTypeParams, MaybeConstraintSearch, Context,
         ThePredId, PredName) :-
     ( if
         % Lookup the argument types of the candidate predicate
         % (or the argument types + return type of the candidate function).
-        %
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_get_arg_types(PredInfo, PredTVarSet, PredExistQVars0,
             PredArgTypes0),
         pred_info_get_tvar_kind_map(PredInfo, PredKindMap),
 
-        arg_type_list_subsumes(TVarSet, ExistQTVars, ArgTypes, HeadTypeParams,
-            PredTVarSet, PredKindMap, PredExistQVars0, PredArgTypes0),
-
+        arg_type_list_subsumes(TVarSet, ExistQTVars, ArgTypes,
+            ExternalTypeParams, PredTVarSet, PredKindMap, PredExistQVars0,
+            PredArgTypes0),
         (
             MaybeConstraintSearch = no
         ;
@@ -1036,7 +1037,7 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
         PredName = qualified(Module, PName),
         ( if
             find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-                ArgTypes, HeadTypeParams, MaybeConstraintSearch, Context,
+                ArgTypes, ExternalTypeParams, MaybeConstraintSearch, Context,
                 OtherPredId, _OtherPredName)
         then
             module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
@@ -1058,7 +1059,7 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
         )
     else
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, HeadTypeParams, MaybeConstraintSearch, Context,
+            ArgTypes, ExternalTypeParams, MaybeConstraintSearch, Context,
             ThePredId, PredName)
     ).
 
@@ -1084,7 +1085,8 @@ univ_constraints_match([ProvenConstraint | ProvenConstraints],
     univ_constraints_match(ProvenConstraints, CalleeConstraints).
 
 get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
-        ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo, Context, PredId) :-
+        ExistQTVars, ArgTypes, ExternalTypeParams, ModuleInfo, Context,
+        PredId) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     list.length(ArgTypes, Arity),
     predicate_table_lookup_pf_sym_arity(PredicateTable, IsFullyQualified,
@@ -1092,7 +1094,7 @@ get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
     ( if
         % Resolve overloading using the argument types.
         find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, HeadTypeParams, no, Context, PredId0, _PredName)
+            ArgTypes, ExternalTypeParams, no, Context, PredId0, _PredName)
     then
         PredId = PredId0
     else
@@ -1101,11 +1103,11 @@ get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
     ).
 
 get_pred_id_and_proc_id_by_types(IsFullyQualified, SymName, PredOrFunc,
-        TVarSet, ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo, Context,
-        PredId, ProcId) :-
+        TVarSet, ExistQTVars, ArgTypes, ExternalTypeParams, ModuleInfo,
+        Context, PredId, ProcId) :-
     ( if
         get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
-            ExistQTVars, ArgTypes, HeadTypeParams, ModuleInfo, Context,
+            ExistQTVars, ArgTypes, ExternalTypeParams, ModuleInfo, Context,
             PredId0)
     then
         PredId = PredId0

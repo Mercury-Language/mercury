@@ -127,7 +127,7 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
     pred_info_get_constraint_proof_map(PredInfo, ProofMap),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     pred_info_get_purity(PredInfo, Purity),
-    pred_info_get_head_type_params(PredInfo, HeadTypeParams),
+    pred_info_get_external_type_params(PredInfo, ExternalTypeParams),
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'v') then
@@ -194,13 +194,14 @@ write_pred(Info, Lang, ModuleInfo, Indent, PredId, PredInfo, !IO) :-
         ),
 
         (
-            HeadTypeParams = [_ | _],
-            io.write_string("% head_type_params:\n", !IO),
+            ExternalTypeParams = [_ | _],
+            io.write_string("% external_type_params:\n", !IO),
             io.write_string("% ", !IO),
-            mercury_output_vars(TVarSet, VarNamePrint, HeadTypeParams, !IO),
+            mercury_output_vars(TVarSet, VarNamePrint, ExternalTypeParams,
+                !IO),
             io.write_string("\n", !IO)
         ;
-            HeadTypeParams = []
+            ExternalTypeParams = []
         ),
         write_var_types(VarSet, TVarSet, VarNamePrint, Indent, VarTypes, !IO),
 

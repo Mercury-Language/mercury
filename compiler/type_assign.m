@@ -41,7 +41,7 @@
                 ta_type_varset          :: tvarset,
 
                 % Universally quantified type variables.
-                ta_head_type_params     :: head_type_params,
+                ta_external_type_params :: external_type_params,
 
                 % Type bindings.
                 ta_type_bindings        :: tsubst,
@@ -60,8 +60,8 @@
     vartypes::out) is det.
 :- pred type_assign_get_typevarset(type_assign::in,
     tvarset::out) is det.
-:- pred type_assign_get_head_type_params(type_assign::in,
-    head_type_params::out) is det.
+:- pred type_assign_get_external_type_params(type_assign::in,
+    external_type_params::out) is det.
 :- pred type_assign_get_type_bindings(type_assign::in,
     tsubst::out) is det.
 :- pred type_assign_get_typeclass_constraints(type_assign::in,
@@ -75,7 +75,7 @@
     type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_typevarset(tvarset::in,
     type_assign::in, type_assign::out) is det.
-:- pred type_assign_set_head_type_params(head_type_params::in,
+:- pred type_assign_set_external_type_params(external_type_params::in,
     type_assign::in, type_assign::out) is det.
 :- pred type_assign_set_type_bindings(tsubst::in,
     type_assign::in, type_assign::out) is det.
@@ -97,17 +97,19 @@
 
 :- type type_assign_set == list(type_assign).
 
-:- pred type_assign_set_init(tvarset::in, vartypes::in, head_type_params::in,
-    hlds_constraints::in, type_assign_set::out) is det.
+:- pred type_assign_set_init(tvarset::in, vartypes::in,
+    external_type_params::in, hlds_constraints::in, type_assign_set::out)
+    is det.
 
-    % type_assign_set_get_final_info(TypeAssignSet, OldHeadTypeParams,
+    % type_assign_set_get_final_info(TypeAssignSet, OldExternalTypeParams,
     %   OldExistQVars, OldExplicitVarTypes, NewTypeVarSet, New* ...,
     %   TypeRenaming, ExistTypeRenaming):
     %
     % Extracts the final inferred types from TypeAssignSet.
     %
-    % OldHeadTypeParams should be the type variables from the head of the
-    % predicate.
+    % OldExternalTypeParams should be the type variables from the head of the
+    % predicate. XXX How about type variables from existentially quantified
+    % types returned by predicates called in the body?
     % OldExistQVars should be the declared existentially quantified
     % type variables (if any).
     % OldExplicitVarTypes is the vartypes map containing the explicit
@@ -206,8 +208,8 @@ type_assign_get_var_types(TA, X) :-
     X = TA ^ ta_var_types.
 type_assign_get_typevarset(TA, X) :-
     X = TA ^ ta_type_varset.
-type_assign_get_head_type_params(TA, X) :-
-    X = TA ^ ta_head_type_params.
+type_assign_get_external_type_params(TA, X) :-
+    X = TA ^ ta_external_type_params.
 type_assign_get_type_bindings(TA, X) :-
     X = TA ^ ta_type_bindings.
 type_assign_get_typeclass_constraints(TA, X) :-
@@ -221,8 +223,8 @@ type_assign_set_var_types(X, !TA) :-
     !TA ^ ta_var_types := X.
 type_assign_set_typevarset(X, !TA) :-
     !TA ^ ta_type_varset := X.
-type_assign_set_head_type_params(X, !TA) :-
-    !TA ^ ta_head_type_params := X.
+type_assign_set_external_type_params(X, !TA) :-
+    !TA ^ ta_external_type_params := X.
 type_assign_set_type_bindings(X, !TA) :-
     !TA ^ ta_type_bindings := X.
 type_assign_set_typeclass_constraints(X, !TA) :-
@@ -234,23 +236,23 @@ type_assign_set_constraint_map(X, !TA) :-
 
 type_assign_set_reduce_results(TVarSet, Bindings, Constraints, ProofMap,
         ConstraintMap, TypeAssign0, TypeAssign) :-
-    TypeAssign0 = type_assign(VarTypes, _, HeadTypeParams, _, _, _, _),
-    TypeAssign = type_assign(VarTypes, TVarSet, HeadTypeParams, Bindings,
+    TypeAssign0 = type_assign(VarTypes, _, ExternalTypeParams, _, _, _, _),
+    TypeAssign = type_assign(VarTypes, TVarSet, ExternalTypeParams, Bindings,
         Constraints, ProofMap, ConstraintMap).
 
 %-----------------------------------------------------------------------------%
 
-type_assign_set_init(TypeVarSet, VarTypes, HeadTypeParams, Constraints,
+type_assign_set_init(TypeVarSet, VarTypes, ExternalTypeParams, Constraints,
         TypeAssignSet) :-
     map.init(TypeBindings),
     map.init(ProofMap),
     map.init(ConstraintMap),
-    TypeAssignSet = [type_assign(VarTypes, TypeVarSet, HeadTypeParams,
+    TypeAssignSet = [type_assign(VarTypes, TypeVarSet, ExternalTypeParams,
         TypeBindings, Constraints, ProofMap, ConstraintMap)].
 
 type_assign_set_get_final_info(TypeAssignSet,
-        OldHeadTypeParams, OldExistQVars,
-        OldExplicitVarTypes, NewTypeVarSet, NewHeadTypeParams,
+        OldExternalTypeParams, OldExistQVars,
+        OldExplicitVarTypes, NewTypeVarSet, NewExternalTypeParams,
         NewVarTypes, NewTypeConstraints, NewConstraintProofMap,
         NewConstraintMap, TSubst, ExistTypeRenaming) :-
     (
@@ -261,7 +263,7 @@ type_assign_set_get_final_info(TypeAssignSet,
         unexpected($module, $pred, "TypeAssignSet = []")
     ),
 
-    TypeAssign = type_assign(VarTypes0, OldTypeVarSet, HeadTypeParams,
+    TypeAssign = type_assign(VarTypes0, OldTypeVarSet, ExternalTypeParams,
         TypeBindings, HLDSTypeConstraints, ConstraintProofMap0,
         ConstraintMap0),
 
@@ -298,7 +300,7 @@ type_assign_set_get_final_info(TypeAssignSet,
 
     % Figure out how we should rename the existential types
     % in the type declaration (if any).
-    get_existq_tvar_renaming(OldHeadTypeParams, OldExistQVars,
+    get_existq_tvar_renaming(OldExternalTypeParams, OldExistQVars,
         TypeBindings, ExistTypeRenaming),
 
     % We used to just use the OldTypeVarSet that we got from the type
@@ -315,10 +317,10 @@ type_assign_set_get_final_info(TypeAssignSet,
     % explicit type qualifications, and any existentially typed variables
     % that will remain in the declaration.
     %
-    % There may also be some type variables in the HeadTypeParams
+    % There may also be some type variables in the ExternalTypeParams
     % which do not occur in the type of any variable (e.g. this can happen
     % in the case of code containing type errors). We'd better keep those,
-    % too, to avoid errors when we apply the TSubst to the HeadTypeParams.
+    % too, to avoid errors when we apply the TSubst to the ExternalTypeParams.
     % (XXX should we do the same for TypeConstraints and ConstraintProofMap
     % too?)
     vartypes_types(OldExplicitVarTypes, ExplicitTypes),
@@ -326,7 +328,7 @@ type_assign_set_get_final_info(TypeAssignSet,
     map.keys(ExistTypeRenaming, ExistQVarsToBeRenamed),
     list.delete_elems(OldExistQVars, ExistQVarsToBeRenamed,
         ExistQVarsToRemain),
-    list.condense([ExistQVarsToRemain, HeadTypeParams,
+    list.condense([ExistQVarsToRemain, ExternalTypeParams,
         TypeVars1, ExplicitTypeVars0], TypeVars2),
     list.sort_and_remove_dups(TypeVars2, TypeVars),
 
@@ -338,13 +340,13 @@ type_assign_set_get_final_info(TypeAssignSet,
     retrieve_prog_constraints(HLDSTypeConstraints, TypeConstraints),
     ( if map.is_empty(TSubst) then
         NewVarTypes = VarTypes1,
-        NewHeadTypeParams = HeadTypeParams,
+        NewExternalTypeParams = ExternalTypeParams,
         NewTypeConstraints = TypeConstraints,
         NewConstraintProofMap = ConstraintProofMap,
         NewConstraintMap = ConstraintMap
     else
         apply_variable_renaming_to_vartypes(TSubst, VarTypes1, NewVarTypes),
-        map.apply_to_list(HeadTypeParams, TSubst, NewHeadTypeParams),
+        map.apply_to_list(ExternalTypeParams, TSubst, NewExternalTypeParams),
         apply_variable_renaming_to_prog_constraints(TSubst,
             TypeConstraints, NewTypeConstraints),
         apply_variable_renaming_to_constraint_proof_map(TSubst,
@@ -372,19 +374,20 @@ expand_types(TypeSubst, Type0, Type, !TypeVarsSet) :-
 :- pred get_existq_tvar_renaming(list(tvar)::in, existq_tvars::in, tsubst::in,
     tvar_renaming::out) is det.
 
-get_existq_tvar_renaming(OldHeadTypeParams, ExistQVars, TypeBindings,
+get_existq_tvar_renaming(OldExternalTypeParams, ExistQVars, TypeBindings,
         ExistTypeRenaming) :-
-    list.foldl(get_existq_tvar_renaming_2(OldHeadTypeParams, TypeBindings),
+    list.foldl(get_existq_tvar_renaming_2(OldExternalTypeParams, TypeBindings),
         ExistQVars, map.init, ExistTypeRenaming).
 
 :- pred get_existq_tvar_renaming_2(existq_tvars::in, tsubst::in,
     tvar::in, tvar_renaming::in, tvar_renaming::out) is det.
 
-get_existq_tvar_renaming_2(OldHeadTypeParams, TypeBindings, TVar, !Renaming) :-
+get_existq_tvar_renaming_2(OldExternalTypeParams, TypeBindings, TVar,
+        !Renaming) :-
     ( if
         tvar_maps_to_tvar(TypeBindings, TVar, NewTVar),
         NewTVar \= TVar,
-        not list.member(NewTVar, OldHeadTypeParams)
+        not list.member(NewTVar, OldExternalTypeParams)
     then
         map.det_insert(TVar, NewTVar, !Renaming)
     else
@@ -479,18 +482,19 @@ type_assign_to_pieces(TypeAssign, MaybeSeq, VarSet) = Pieces :-
         MaybeSeq = no,
         SeqPieces = []
     ),
-    type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
+    type_assign_get_external_type_params(TypeAssign, ExternalTypeParams),
     type_assign_get_var_types(TypeAssign, VarTypes),
     type_assign_get_typeclass_constraints(TypeAssign, Constraints),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TypeVarSet),
     vartypes_vars(VarTypes, Vars),
     (
-        HeadTypeParams = [],
+        ExternalTypeParams = [],
         HeadPieces = []
     ;
-        HeadTypeParams = [_ | _],
-        VarsStr = mercury_vars_to_string(TypeVarSet, varnums, HeadTypeParams),
+        ExternalTypeParams = [_ | _],
+        VarsStr =
+            mercury_vars_to_string(TypeVarSet, varnums, ExternalTypeParams),
         HeadPieces = [words("some [" ++ VarsStr ++ "]"), nl]
     ),
     TypePieces = type_assign_types_to_pieces(Vars, VarSet, VarTypes,
@@ -635,18 +639,18 @@ write_type_assign_set([TypeAssign | TypeAssigns], VarSet, !IO) :-
     is det.
 
 write_type_assign(TypeAssign, VarSet, !IO) :-
-    type_assign_get_head_type_params(TypeAssign, HeadTypeParams),
+    type_assign_get_external_type_params(TypeAssign, ExternalTypeParams),
     type_assign_get_var_types(TypeAssign, VarTypes),
     type_assign_get_typeclass_constraints(TypeAssign, Constraints),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TypeVarSet),
     vartypes_vars(VarTypes, Vars),
     (
-        HeadTypeParams = []
+        ExternalTypeParams = []
     ;
-        HeadTypeParams = [_ | _],
+        ExternalTypeParams = [_ | _],
         io.write_string("some [", !IO),
-        mercury_output_vars(TypeVarSet, varnums, HeadTypeParams, !IO),
+        mercury_output_vars(TypeVarSet, varnums, ExternalTypeParams, !IO),
         io.write_string("]\n\t", !IO)
     ),
     write_type_assign_types(VarSet, TypeVarSet, VarTypes, TypeBindings,
