@@ -798,8 +798,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             ( if FeedbackFile = "" then
                 NoFeedbackFileSpec =
                     [words("The"), quote("--implicit-parallelism"),
-                    words("option requires the use of"), quote("--feedback-file"),
-                    suffix("."), nl],
+                    words("option requires the use of"),
+                    quote("--feedback-file"), suffix("."), nl],
                 add_error(phase_options, NoFeedbackFileSpec, !Specs)
             else
                 true
@@ -1357,7 +1357,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
                 quote("--arg-pack-bits"),
                 words("to value higher than the value of"),
                 quote("--bits-per-word"), suffix("."),
-                words("Reducing the effective value of"), quote("--arg-pack-bits"),
+                words("Reducing the effective value of"),
+                quote("--arg-pack-bits"),
                 words("to the maximum allowable value, which is"),
                 int_fixed(BitsPerWord), suffix("."), nl],
             add_error(phase_options, ArgPackBitsSpec, !Specs)
@@ -2255,6 +2256,11 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     % generator. They may in fact be harmful if set for the high-level
     % code generator, because sometimes the same option has different
     % meanings and implications in the two backends.
+    % XXX For each such dual-use option, we should add two others,
+    % one for the LLDS and one for the MLDS backend, and make the original
+    % option be a special option that sets the other two. This would leave
+    % the user interface unchanged, but would let us handle the implications
+    % for the two backends separately.
     %
 :- pred postprocess_options_lowlevel(globals::in, globals::out) is det.
 
@@ -2330,7 +2336,6 @@ postprocess_options_lowlevel(!Globals) :-
         StaticCodeAddrs = yes
     ),
     globals.set_option(static_code_addresses, bool(StaticCodeAddrs), !Globals).
-
 
     % option_implies(SourceBoolOption, ImpliedOption, ImpliedOptionValue):
     % If the SourceBoolOption is set to yes, then the ImpliedOption is set
