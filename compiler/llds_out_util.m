@@ -49,7 +49,7 @@
                 lout_alloc_site_map             :: map(alloc_site_id,
                                                     layout_slot_name),
                 lout_auto_comments              :: bool,
-                lout_line_numbers               :: bool,
+                lout_foreign_line_numbers       :: bool,
                 lout_emit_c_loops               :: bool,
                 lout_generate_bytecode          :: bool,
                 lout_local_thread_engine_base   :: bool,
@@ -70,10 +70,10 @@
     map(pred_proc_id, layout_slot_name),
     map(alloc_site_id, layout_slot_name)) = llds_out_info.
 
-:- pred output_set_line_num(llds_out_info::in, prog_context::in,
+:- pred output_set_line_num(bool::in, prog_context::in,
     io::di, io::uo) is det.
 
-:- pred output_reset_line_num(llds_out_info::in, io::di, io::uo) is det.
+:- pred output_reset_line_num(bool::in, io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -126,7 +126,8 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
         AllocSiteMap) = Info :-
     MangledModuleName = sym_name_mangle(ModuleName),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
-    globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
+    globals.lookup_bool_option(Globals, line_numbers_around_foreign_code,
+        ForeignLineNumbers),
     globals.lookup_bool_option(Globals, emit_c_loops, EmitCLoops),
     globals.lookup_bool_option(Globals, generate_bytecode, GenerateBytecode),
     globals.lookup_bool_option(Globals, local_thread_engine_base,
@@ -145,30 +146,28 @@ init_llds_out_info(ModuleName, SourceFileName, Globals,
     Info = llds_out_info(ModuleName, MangledModuleName, SourceFileName,
         InternalLabelToLayoutMap, EntryLabelToLayoutMap, TableIoEntryMap,
         AllocSiteMap,
-        AutoComments, LineNumbers,
+        AutoComments, ForeignLineNumbers,
         EmitCLoops, GenerateBytecode, LocalThreadEngineBase,
         ProfileCalls, ProfileTime, ProfileMemory, ProfileDeep,
         UnboxedFloat, DetStackDwordAligment, StaticGroundFloats,
         UseMacroForRedoFail, TraceLevel, Globals).
 
-output_set_line_num(Info, Context, !IO) :-
-    LineNumbers = Info ^ lout_line_numbers,
+output_set_line_num(OutputLineNumbers, Context, !IO) :-
     (
-        LineNumbers = yes,
+        OutputLineNumbers = yes,
         term.context_file(Context, File),
         term.context_line(Context, Line),
         c_util.always_set_line_num(File, Line, !IO)
     ;
-        LineNumbers = no
+        OutputLineNumbers = no
     ).
 
-output_reset_line_num(Info, !IO) :-
-    LineNumbers = Info ^ lout_line_numbers,
+output_reset_line_num(OutputLineNumbers, !IO) :-
     (
-        LineNumbers = yes,
+        OutputLineNumbers = yes,
         c_util.always_reset_line_num(no, !IO)
     ;
-        LineNumbers= no
+        OutputLineNumbers= no
     ).
 
 %----------------------------------------------------------------------------%

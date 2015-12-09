@@ -263,6 +263,7 @@
     ;       force_disable_ssdebug
     ;       generate_bytecode
     ;       line_numbers
+    ;       line_numbers_around_foreign_code
     ;       line_numbers_for_c_headers
     ;       auto_comments
     ;       frameopt_comments
@@ -1225,7 +1226,8 @@ option_defaults_2(aux_output_option, [
     stack_trace_higher_order            -   bool(no),
     force_disable_ssdebug               -   bool(no),
     generate_bytecode                   -   bool(no),
-    line_numbers                        -   bool(yes),
+    line_numbers                        -   bool(no),
+    line_numbers_around_foreign_code    -   bool(yes),
     line_numbers_for_c_headers          -   bool(no),
     auto_comments                       -   bool(no),
     frameopt_comments                   -   bool(no),
@@ -2122,6 +2124,8 @@ long_option("stack-trace-higher-order", stack_trace_higher_order).
 long_option("force-disable-ssdebug",    force_disable_ssdebug).
 long_option("generate-bytecode",        generate_bytecode).
 long_option("line-numbers",             line_numbers).
+long_option("line-numbers-around-foreign-code",
+                                        line_numbers_around_foreign_code).
 long_option("line-numbers-for-c-headers", line_numbers_for_c_headers).
 long_option("auto-comments",            auto_comments).
 long_option("frameopt-comments",        frameopt_comments).
@@ -3956,10 +3960,13 @@ options_help_aux_output -->
         "--generate-bytecode",
         "\tOutput a bytecode form of the module for use",
         "\tby an experimental debugger.",
-        "-n-, --no-line-numbers",
-        "\tDo not put source line numbers into the generated code.",
+        "-n, --line-numbers",
+        "\tPut source line numbers into the generated code.",
         "\tThe generated code may be in C (the usual case),",
         "\tor in Mercury (with the option --convert-to-mercury).",
+        "--no-line-numbers-around-foreign-code",
+        "\tDo not put source line numbers into the generated code",
+        "\taround inclusions of foreign language code.",
         "--line-numbers-for-c-headers",
         "\tPut source line numbers in the generated C header files.",
         "\tThis can make it easier to track down any problems with",

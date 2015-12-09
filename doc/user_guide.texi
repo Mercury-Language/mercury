@@ -7245,12 +7245,19 @@ The code may be easier to understand if you also use the
 @sp 1
 @item -n-
 @itemx --no-line-numbers
-@findex -n-
+@findex -n
 @findex --no-line-numbers
 @findex --line-numbers
-Do not put source line numbers in the generated code.
+Put source line numbers in the generated code.
 The generated code may be in C (the usual case)
 or in Mercury (with @samp{--convert-to-mercury}).
+
+@sp 1
+@item --no-line-numbers-around-foreign_code
+@findex --no-line-numbers-around-foreign-code
+@findex --line-numbers-around-foreign-code
+Do not put source line numbers into the generated code
+around inclusions of foreign language code.
 
 @sp 1
 @item --line-numbers-for-c-headers

@@ -1837,10 +1837,11 @@ output_foreign_proc_component(Info, Component, !IO) :-
             (
                 MaybeContext = yes(Context),
                 io.write_string("{\n", !IO),
-                output_set_line_num(Info, Context, !IO),
+                output_set_line_num(Info ^ lout_foreign_line_numbers,
+                    Context, !IO),
                 io.write_string(C_Code, !IO),
                 io.write_string(";}\n", !IO),
-                output_reset_line_num(Info, !IO)
+                output_reset_line_num(Info ^ lout_foreign_line_numbers, !IO)
             ;
                 MaybeContext = no,
                 io.write_string("{\n", !IO),

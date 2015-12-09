@@ -932,10 +932,10 @@ output_foreign_header_include_line(Info, Decl, !AlreadyDone, !IO) :-
 output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
         !IO) :-
     AutoComments = Info ^ lout_auto_comments,
-    LineNumbers = Info ^ lout_line_numbers,
+    ForeignLineNumbers = Info ^ lout_foreign_line_numbers,
     ( if
         AutoComments = yes,
-        LineNumbers = yes
+        ForeignLineNumbers = yes
     then
         io.write_string("/* ", !IO),
         prog_out.write_context(Context, !IO),
@@ -949,17 +949,17 @@ output_foreign_decl_or_code(Info, PragmaType, Lang, LiteralOrInclude, Context,
     ),
     (
         LiteralOrInclude = literal(Code),
-        output_set_line_num(Info, Context, !IO),
+        output_set_line_num(ForeignLineNumbers, Context, !IO),
         io.write_string(Code, !IO)
     ;
         LiteralOrInclude = include_file(IncludeFileName),
         SourceFileName = Info ^ lout_source_file_name,
         make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-        output_set_line_num(Info, context(IncludePath, 1), !IO),
+        output_set_line_num(ForeignLineNumbers, context(IncludePath, 1), !IO),
         write_include_file_contents(IncludePath, !IO)
     ),
     io.nl(!IO),
-    output_reset_line_num(Info, !IO).
+    output_reset_line_num(ForeignLineNumbers, !IO).
 
 :- pred output_record_c_label_decls(llds_out_info::in,
     list(label)::in, list(label)::in,
