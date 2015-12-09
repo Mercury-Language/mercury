@@ -286,9 +286,9 @@ output_csharp_foreign_literal_or_include(Info, Indent, LiteralOrInclude,
     = mlds_foreign_code.
 
 mlds_get_csharp_foreign_code(AllForeignCode) = ForeignCode :-
-    ( map.search(AllForeignCode, lang_csharp, ForeignCode0) ->
+    ( if map.search(AllForeignCode, lang_csharp, ForeignCode0) then
         ForeignCode = ForeignCode0
-    ;
+    else
         ForeignCode = mlds_foreign_code([], [], [], [])
     ).
 
@@ -387,9 +387,9 @@ write_export_call(MLDS_Name, Parameters, !IO) :-
 
 write_argument_name(Arg, !IO) :-
     Arg = mlds_argument(Name, Type, _),
-    ( Type = mlds_ptr_type(_) ->
+    ( if Type = mlds_ptr_type(_) then
         io.write_string("out ", !IO)
-    ;
+    else
         true
     ),
     output_name(Name, !IO).
@@ -553,19 +553,21 @@ method_ptrs_in_stmt(CallStmt, !CodeAddrs) :-
     % standard call rather than a function pointer use.
     method_ptrs_in_rvals(Rvals, !CodeAddrs).
 method_ptrs_in_stmt(ml_stmt_atomic(AtomicStatement), !CodeAddrs) :-
-    (
+    ( if
         AtomicStatement = new_object(Lval, _MaybeTag, _Bool,
             _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic,
             _AllocId)
-    ->
+    then
         % We don't need to check "_MemRval" since this just stores
         % the amount of memory needed for the new object.
         method_ptrs_in_lval(Lval, !CodeAddrs),
         method_ptrs_in_rvals(Rvals, !CodeAddrs)
-    ; AtomicStatement = assign(Lval, Rval) ->
+    else if
+        AtomicStatement = assign(Lval, Rval)
+    then
         method_ptrs_in_lval(Lval, !CodeAddrs),
         method_ptrs_in_rval(Rval, !CodeAddrs)
-    ;
+    else
         true
     ).
 
@@ -643,9 +645,9 @@ method_ptrs_in_rval(Rval, !CodeAddrs) :-
         (
             RvalConst = mlconst_code_addr(CodeAddr),
             !.CodeAddrs = code_addr_map(Counter, Map0),
-            ( map.contains(Map0, CodeAddr) ->
+            ( if map.contains(Map0, CodeAddr) then
                 true
-            ;
+            else
                 Name = "MR_method_ptr_" ++ string.from_int(Counter),
                 map.det_insert(CodeAddr, Name, Map0, Map),
                 !:CodeAddrs = code_addr_map(Counter + 1, Map)
@@ -792,9 +794,9 @@ output_src_start(Info, Indent, MercuryModuleName, _Imports, ForeignDecls,
     % Check if this module contains a `main' predicate and if it does insert
     % a `main' method in the resulting source file that calls the `main'
     % predicate.
-    ( defns_contain_main(Defns) ->
+    ( if defns_contain_main(Defns) then
         write_main_driver(Indent + 1, ClassName, !IO)
-    ;
+    else
         true
     ).
 
@@ -933,7 +935,7 @@ output_defns(Info, Indent, OutputAux, Defns, !IO) :-
 output_defn(Info, Indent, OutputAux, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
     indent_line(Indent, !IO),
-    ( DefnBody = mlds_function(_, _, body_external, _, _, _) ->
+    ( if DefnBody = mlds_function(_, _, body_external, _, _, _) then
         % This is just a function declaration, with no body.
         % C# doesn't support separate declarations and definitions,
         % so just output the declaration as a comment.
@@ -944,8 +946,8 @@ output_defn(Info, Indent, OutputAux, Defn, !IO) :-
         output_defn_body(Info, Indent, Name, OutputAux, Context, DefnBody,
             !IO),
         io.write_string("*/\n", !IO)
-    ;
-        (
+    else
+        ( if
             DefnBody = mlds_class(ClassDefn),
             Kind = ClassDefn ^ mcd_kind,
             (
@@ -955,19 +957,19 @@ output_defn(Info, Indent, OutputAux, Defn, !IO) :-
                 % `static' not wanted on classes generated for Mercury types.
                 Kind = mlds_class
             )
-        ->
+        then
             OverrideFlags = set_per_instance(Flags, per_instance),
             io.write_string("[System.Serializable]\n", !IO),
             indent_line(Indent, !IO)
-        ;
+        else if
             % `static' and `sealed' not wanted or allowed on structs.
             DefnBody = mlds_class(ClassDefn),
             Kind = ClassDefn ^ mcd_kind,
             Kind = mlds_struct
-        ->
+        then
             OverrideFlags0 = set_per_instance(Flags, per_instance),
             OverrideFlags = set_overridability(OverrideFlags0, overridable)
-        ;
+        else
             OverrideFlags = Flags
         ),
         output_decl_flags(Info, OverrideFlags, !IO),
@@ -1116,22 +1118,22 @@ output_supers_list(Info, Indent, BaseClasses, Interfaces, !IO) :-
 :- pred interface_to_string(mlds_interface_id::in, string::out) is det.
 
 interface_to_string(Interface, String) :-
-    (
+    ( if
         Interface = mlds_class_type(qual(ModuleQualifier, _QualKind, Name),
             Arity, _)
-    ->
+    then
         SymName = mlds_module_name_to_sym_name(ModuleQualifier),
         mangle_sym_name_for_csharp(SymName, module_qual, ".", ModuleName),
 
         % Check if the interface is one of the ones in the runtime system.
         % If it is, we don't need to output the arity.
-        ( interface_is_special(Name) ->
+        ( if interface_is_special(Name) then
             String = string.format("%s.%s", [s(ModuleName), s(Name)])
-        ;
+        else
             String = string.format("%s.%s%d", [s(ModuleName), s(Name),
                 i(Arity)])
         )
-    ;
+    else
         unexpected($module, $pred, "interface was not a class")
     ).
 
@@ -1178,21 +1180,25 @@ output_enum_constants(Info, Indent, EnumName, EnumConsts, !IO) :-
 
 output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
-    ( DefnBody = mlds_data(_Type, Initializer, _GCStatement) ->
+    ( if DefnBody = mlds_data(_Type, Initializer, _GCStatement) then
         (
             Initializer = init_obj(Rval),
             % The name might require mangling.
             indent_line(Indent, !IO),
             output_name(Name, !IO),
             io.write_string(" = ", !IO),
-            ( Rval = ml_const(mlconst_enum(N, _)) ->
+            ( if
+                Rval = ml_const(mlconst_enum(N, _))
+            then
                 io.write_int(N, !IO)
-            ; Rval = ml_const(mlconst_foreign(lang_csharp, String, Type)) ->
+            else if
+                Rval = ml_const(mlconst_foreign(lang_csharp, String, Type))
+            then
                 io.write_string("(", !IO),
                 output_type(Info, Type, !IO),
                 io.write_string(") ", !IO),
                 io.write_string(String, !IO)
-            ;
+            else
                 unexpected($module, $pred, string(Rval))
             ),
             io.write_string(",", !IO)
@@ -1203,7 +1209,7 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
             ),
             unexpected($module, $pred, string(Initializer))
         )
-    ;
+    else
         unexpected($module, $pred, "definition body was not data")
     ).
 
@@ -1218,7 +1224,7 @@ output_enum_constant(Info, Indent, _EnumName, Defn, !IO) :-
 output_data_decls(_, _, [], !IO).
 output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, Flags, DefnBody),
-    ( DefnBody = mlds_data(Type, _Initializer, _GCStatement) ->
+    ( if DefnBody = mlds_data(Type, _Initializer, _GCStatement) then
         indent_line(Indent, !IO),
         % We can't honour `readonly' here as the variable is assigned
         % separately.
@@ -1226,7 +1232,7 @@ output_data_decls(Info, Indent, [Defn | Defns], !IO) :-
         output_decl_flags(Info, NonReadonlyFlags, !IO),
         output_data_decl(Info, Name, Type, !IO),
         io.write_string(";\n", !IO)
-    ;
+    else
         unexpected($module, $pred, "not data")
     ),
     output_data_decls(Info, Indent, Defns, !IO).
@@ -1255,12 +1261,12 @@ output_init_data_method(Info, Indent, Defns, !IO) :-
 output_init_data_statements(_, _, [], !IO).
 output_init_data_statements(Info, Indent, [Defn | Defns], !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
-    ( DefnBody = mlds_data(Type, Initializer, _GCStatement) ->
+    ( if DefnBody = mlds_data(Type, Initializer, _GCStatement) then
         indent_line(Indent, !IO),
         output_name(Name, !IO),
         output_initializer(Info, none, Type, Initializer, !IO),
         io.write_string(";\n", !IO)
-    ;
+    else
         unexpected($module, $pred, "not mlds_data")
     ),
     output_init_data_statements(Info, Indent, Defns, !IO).
@@ -1290,7 +1296,7 @@ output_scalar_common_data(Info, Indent, ScalarCellGroupMap, !IO) :-
     map.foldl3(output_scalar_defns(Info, Indent), ScalarCellGroupMap,
         digraph.init, Graph, map.init, Map, !IO),
 
-    ( digraph.tsort(Graph, SortedScalars0) ->
+    ( if digraph.tsort(Graph, SortedScalars0) then
         indent_line(Indent, !IO),
         io.write_string("private static void MR_init_scalar_common_data() {\n",
             !IO),
@@ -1299,7 +1305,7 @@ output_scalar_common_data(Info, Indent, ScalarCellGroupMap, !IO) :-
             SortedScalars, !IO),
         indent_line(Indent, !IO),
         io.write_string("}\n", !IO)
-    ;
+    else
         unexpected($module, $pred, "digraph.tsort failed")
     ).
 
@@ -1631,13 +1637,13 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
     ;
         Initializer = init_struct(StructType, FieldInits),
         io.write_string("new ", !IO),
-        (
+        ( if
             StructType = mercury_type(_Type, CtorCat, _),
             type_category_is_array(CtorCat) = is_array
-        ->
+        then
             Size = list.length(FieldInits),
             io.format("object[%d]", [i(Size)], !IO)
-        ;
+        else
             output_type(Info, StructType, !IO),
             io.write_string("()", !IO)
         )
@@ -1650,9 +1656,9 @@ output_initializer_alloc_only(Info, Initializer, MaybeType, !IO) :-
             type_to_string(Info, Type, String, ArrayDims),
             io.write_string(String, !IO),
             % Replace the innermost array dimension by the known size.
-            ( list.split_last(ArrayDims, Heads, 0) ->
+            ( if list.split_last(ArrayDims, Heads, 0) then
                 output_array_dimensions(Heads ++ [Size], !IO)
-            ;
+            else
                 unexpected($module, $pred, "missing array dimension")
             )
         ;
@@ -1841,13 +1847,13 @@ output_func(Info, Indent, Name, OutputAux, Context, Signature, MaybeBody,
 
 output_func_decl(Info, Indent, Name, OutputAux, Signature, !IO) :-
     Signature = mlds_func_params(Parameters, RetTypes),
-    (
+    ( if
         OutputAux = cname(CtorName),
         Name = entity_export("<constructor>")
-    ->
+    then
         output_name(CtorName, !IO),
         OutParams = []
-    ;
+    else
         output_return_types(Info, RetTypes, RestRetTypes, !IO),
         io.write_char(' ', !IO),
         output_name(Name, !IO),
@@ -1897,9 +1903,9 @@ output_params(Info, Indent, Parameters, !IO) :-
 output_param(Info, Indent, Arg, !IO) :-
     Arg = mlds_argument(Name, Type, _GCStatement),
     indent_line(Indent, !IO),
-    ( Type = mlds_ptr_type(_) ->
+    ( if Type = mlds_ptr_type(_) then
         io.write_string("out ", !IO)
-    ;
+    else
         true
     ),
     output_type(Info, Type, !IO),
@@ -1923,9 +1929,9 @@ output_maybe_qualified_name(Info, QualifiedName, !IO) :-
     % of local variables and function parameters, which must not be qualified.
     QualifiedName = qual(ModuleName, _QualKind, Name),
     CurrentModuleName = Info ^ oi_module_name,
-    ( ModuleName = CurrentModuleName ->
+    ( if ModuleName = CurrentModuleName then
         output_name(Name, !IO)
-    ;
+    else
         output_fully_qualified_thing(QualifiedName, output_name, !IO)
     ).
 
@@ -1948,18 +1954,20 @@ qualifier_to_string(MLDS_ModuleName, QualKind, String) :-
 
     % The part of the qualifier that corresponds to a top-level class.
     % Remove the outermost mercury qualifier.
-    ( strip_outermost_qualifier(OuterName, "mercury", StrippedOuterName) ->
+    ( if
+        strip_outermost_qualifier(OuterName, "mercury", StrippedOuterName)
+    then
         mangle_sym_name_for_csharp(StrippedOuterName, module_qual, "__",
             MangledOuterName)
-    ;
+    else
         mangle_sym_name_for_csharp(OuterName, module_qual, "__",
             MangledOuterName)
     ),
 
     % The later parts of the qualifier correspond to nested classes.
-    ( OuterName = InnerName ->
+    ( if OuterName = InnerName then
         MangledSuffix = ""
-    ;
+    else
         remove_sym_name_prefixes(InnerName, OuterName, Suffix),
         mangle_sym_name_for_csharp(Suffix, convert_qual_kind(QualKind), ".",
             MangledSuffix0),
@@ -1974,9 +1982,9 @@ qualifier_to_string(MLDS_ModuleName, QualKind, String) :-
 remove_sym_name_prefixes(SymName0, Prefix, SymName) :-
     (
         SymName0 = qualified(Qual, Name),
-        ( Qual = Prefix ->
+        ( if Qual = Prefix then
             SymName = unqualified(Name)
-        ;
+        else
             remove_sym_name_prefixes(Qual, Prefix, SymName1),
             SymName = qualified(SymName1, Name)
         )
@@ -2011,13 +2019,13 @@ unqual_class_name_to_string(Name, Arity, String) :-
 
 qual_class_name_to_string(QualName, Arity, String) :-
     QualName = qual(MLDS_ModuleName, QualKind, ClassName),
-    (
+    ( if
         SymName = mlds_module_name_to_sym_name(MLDS_ModuleName),
         SymName = csharp_mercury_runtime_package_name
-    ->
+    then
         % Don't mangle runtime class names.
         String = "runtime." ++ ClassName
-    ;
+    else
         qualifier_to_string(MLDS_ModuleName, QualKind, QualString),
         unqual_class_name_to_string(ClassName, Arity, UnqualString),
         String = QualString ++ "." ++ UnqualString
@@ -2037,12 +2045,12 @@ write_identifier_string(String, !IO) :-
     % identifiers to 512 characters.
     % This assumes the identifier contains only ASCII characters.
     Length = string.length(String),
-    ( Length > 511 ->
+    ( if Length > 511 then
         Left = string.left(String, 251),
         Right = string.right(String, 250),
         Hash = string.hash(String) /\ 0xffffffff,
         io.format("%s_%08x_%s", [s(Left), i(Hash), s(Right)], !IO)
-    ;
+    else
         io.write_string(String, !IO)
     ).
 
@@ -2201,38 +2209,38 @@ output_array_dimensions(ArrayDims, !IO) :-
 type_to_string(Info, MLDS_Type, String, ArrayDims) :-
     (
         MLDS_Type = mercury_type(Type, CtorCat, _),
-        (
+        ( if
             % We need to handle type_info (etc.) types specially --
             % they get mapped to types in the runtime rather than
             % in private_builtin.
             hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims0)
-        ->
+        then
             String = SubstituteName,
             ArrayDims = ArrayDims0
-        ;
+        else if
             % io.state and store.store
             CtorCat = ctor_cat_builtin_dummy
-        ->
+        then
             String = "/* builtin_dummy */ object",
             ArrayDims = []
-        ;
+        else if
             Type = c_pointer_type
-        ->
+        then
             % The c_pointer type is used in the c back-end as a generic way
             % to pass foreign types to automatically generated Compare and
             % Unify code. When compiling to C# we must instead use
             % object.
             String = "/* c_pointer */ object",
             ArrayDims = []
-        ;
+        else
             mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims)
         )
     ;
         MLDS_Type = mlds_mercury_array_type(ElementType),
-        ( ElementType = mercury_type(_, ctor_cat_variable, _) ->
+        ( if ElementType = mercury_type(_, ctor_cat_variable, _) then
             String = "System.Array",
             ArrayDims = []
-        ;
+        else
             % For primitive element types we use arrays of the primitive type.
             % For non-primitive element types, we just use
             % `object []'. We used to use more specific types,
@@ -2240,10 +2248,10 @@ type_to_string(Info, MLDS_Type, String, ArrayDims) :-
             % reflection to determine the class of a representative element.
             % That doesn't work if the representative element is of a foreign
             % type, and has the value null.
-            ( csharp_builtin_type(ElementType, _) ->
+            ( if csharp_builtin_type(ElementType, _) then
                 type_to_string(Info, ElementType, String, ArrayDims0),
                 ArrayDims = [0 | ArrayDims0]
-            ;
+            else
                 String = "object",
                 ArrayDims = [0]
             )
@@ -2408,25 +2416,22 @@ mercury_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
     type_ctor_category::in, string::out, list(int)::out) is det.
 
 mercury_user_type_to_string(Info, Type, CtorCat, String, ArrayDims) :-
-    ( type_to_ctor_and_args(Type, TypeCtor, ArgsTypes) ->
-        ml_gen_type_name(TypeCtor, ClassName, ClassArity),
-        ( CtorCat = ctor_cat_enum(_) ->
-            MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
-        ;
-            MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
-        ),
-        type_to_string(Info, MLDS_Type, TypeString, ArrayDims),
-        OutputGenerics = Info ^ oi_output_generics,
-        (
-            OutputGenerics = do_output_generics,
-            generic_args_types_to_string(Info, ArgsTypes, GenericsString),
-            String = TypeString ++ GenericsString
-        ;
-            OutputGenerics = do_not_output_generics,
-            String = TypeString
-        )
+    type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
+    ml_gen_type_name(TypeCtor, ClassName, ClassArity),
+    ( if CtorCat = ctor_cat_enum(_) then
+        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_enum)
+    else
+        MLDS_Type = mlds_class_type(ClassName, ClassArity, mlds_class)
+    ),
+    type_to_string(Info, MLDS_Type, TypeString, ArrayDims),
+    OutputGenerics = Info ^ oi_output_generics,
+    (
+        OutputGenerics = do_output_generics,
+        generic_args_types_to_string(Info, ArgsTypes, GenericsString),
+        String = TypeString ++ GenericsString
     ;
-        unexpected($module, $pred, "not a user type")
+        OutputGenerics = do_not_output_generics,
+        String = TypeString
     ).
 
 :- pred generic_args_types_to_string(csharp_out_info::in, list(mer_type)::in,
@@ -2453,18 +2458,18 @@ generic_args_types_to_string(Info, ArgsTypes, String) :-
 :- func type_is_array(mlds_type) = is_array.
 
 type_is_array(Type) = IsArray :-
-    ( Type = mlds_array_type(_) ->
+    ( if Type = mlds_array_type(_) then
         IsArray = is_array
-    ; Type = mlds_mostly_generic_array_type(_) ->
+    else if Type = mlds_mostly_generic_array_type(_) then
         IsArray = is_array
-    ; Type = mlds_mercury_array_type(_) ->
+    else if Type = mlds_mercury_array_type(_) then
         IsArray = is_array
-    ; Type = mercury_type(_, CtorCat, _) ->
+    else if Type = mercury_type(_, CtorCat, _) then
         IsArray = type_category_is_array(CtorCat)
-    ; Type = mlds_rtti_type(RttiIdMaybeElement) ->
+    else if Type = mlds_rtti_type(RttiIdMaybeElement) then
         rtti_id_maybe_element_csharp_type(RttiIdMaybeElement,
             _TypeName, IsArray)
-    ;
+    else
         IsArray = not_array
     ).
 
@@ -2520,13 +2525,13 @@ hand_defined_type(Type, CtorCat, SubstituteName, ArrayDims) :-
         ArrayDims = [0]
     ;
         CtorCat = ctor_cat_user(cat_user_general),
-        ( Type = type_desc_type ->
+        ( if Type = type_desc_type then
             SubstituteName = "runtime.TypeInfo_Struct"
-        ; Type = pseudo_type_desc_type ->
+        else if Type = pseudo_type_desc_type then
             SubstituteName = "runtime.PseudoTypeInfo"
-        ; Type = type_ctor_desc_type ->
+        else if Type = type_ctor_desc_type then
             SubstituteName = "runtime.TypeCtorInfo_Struct"
-        ;
+        else
             fail
         ),
         ArrayDims = []
@@ -2544,9 +2549,9 @@ boxed_type_to_string(Info, Type, String) :-
 :- pred array_dimension_to_string(int::in, string::out) is det.
 
 array_dimension_to_string(N, String) :-
-    ( N = 0 ->
+    ( if N = 0 then
         String = "[]"
-    ;
+    else
         String = string.format("[%d]", [i(N)])
     ).
 
@@ -2687,18 +2692,18 @@ output_statements(Info, Indent, FuncInfo, [Statement | Statements],
         ExitMethods, !IO) :-
     output_statement(Info, Indent, FuncInfo, Statement,
         StmtExitMethods, !IO),
-    ( set.member(can_fall_through, StmtExitMethods) ->
+    ( if set.member(can_fall_through, StmtExitMethods) then
         output_statements(Info, Indent, FuncInfo, Statements,
             StmtsExitMethods, !IO),
         ExitMethods0 = StmtExitMethods `set.union` StmtsExitMethods,
-        ( set.member(can_fall_through, StmtsExitMethods) ->
+        ( if set.member(can_fall_through, StmtsExitMethods) then
             ExitMethods = ExitMethods0
-        ;
+        else
             % If the last statement could not complete normally
             % the current block can no longer complete normally.
             ExitMethods = ExitMethods0 `set.delete` can_fall_through
         )
-    ;
+    else
         % Don't output any more statements from the current list since
         % the preceeding statement cannot complete.
         ExitMethods = StmtExitMethods
@@ -2741,11 +2746,11 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         % The contained statement is reachable iff the while statement is
         % reachable and the condition expression is not a constant expression
         % whose value is false.
-        ( Cond = ml_const(mlconst_false) ->
+        ( if Cond = ml_const(mlconst_false) then
             indent_line(Info, Context, Indent, !IO),
             io.write_string("{  /* Unreachable code */  }\n", !IO),
             ExitMethods = set.make_singleton_set(can_fall_through)
-        ;
+        else
             output_statement(Info, Indent + 1, FuncInfo, BodyStatement,
                 StmtExitMethods, !IO),
             ExitMethods = while_exit_methods(Cond, StmtExitMethods)
@@ -2766,7 +2771,7 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
         Statement = ml_stmt_if_then_else(Cond, Then0, MaybeElse),
         % We need to take care to avoid problems caused by the dangling else
         % ambiguity.
-        (
+        ( if
             % For examples of the form
             %
             %   if (...)
@@ -2780,9 +2785,9 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
 
             MaybeElse = yes(_),
             Then0 = statement(ml_stmt_if_then_else(_, _, no), ThenContext)
-        ->
+        then
             Then = statement(ml_stmt_block([], [Then0]), ThenContext)
-        ;
+        else
             Then = Then0
         ),
 
@@ -2856,10 +2861,10 @@ output_stmt(Info, Indent, FuncInfo, Statement, Context, ExitMethods, !IO) :-
             io.write_string(" = ", !IO),
             OutArgs = list.map(func(X) = ml_mem_addr(X), Lvals)
         ),
-        ( FuncRval = ml_const(mlconst_code_addr(_)) ->
+        ( if FuncRval = ml_const(mlconst_code_addr(_)) then
             % This is a standard method call.
             CloseBracket = ""
-        ;
+        else
             % This is a call using a method pointer.
             TypeString = method_ptr_type_to_string(Info, ArgTypes, RetTypes),
             io.format("((%s) ", [s(TypeString)], !IO),
@@ -2961,16 +2966,16 @@ while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
     % expression is a constant expression with value true, and it
     % doesn't contain a reachable break statement that exits the
     % while statement.
-    (
+    ( if
         % XXX This is not a sufficient way of testing for a Java
         % "constant expression", though determining these accurately
         % is a little difficult to do here.
         Cond = ml_const(mlconst_true),
         not set.member(can_break, BlockExitMethods)
-    ->
-        % Cannot complete normally
+    then
+        % Cannot complete normally.
         ExitMethods0 = BlockExitMethods `set.delete` can_fall_through
-    ;
+    else
         ExitMethods0 = BlockExitMethods `set.insert` can_fall_through
     ),
     ExitMethods = (ExitMethods0 `set.delete` can_continue)
@@ -3009,10 +3014,10 @@ output_switch_cases(Info, Indent, FuncInfo, Context,
         CaseExitMethods0, !IO),
     output_switch_cases(Info, Indent, FuncInfo, Context, Cases, Default,
         CasesExitMethods, !IO),
-    ( set.member(can_break, CaseExitMethods0) ->
+    ( if set.member(can_break, CaseExitMethods0) then
         CaseExitMethods = (CaseExitMethods0 `set.delete` can_break)
             `set.insert` can_fall_through
-    ;
+    else
         CaseExitMethods = CaseExitMethods0
     ),
     ExitMethods = CaseExitMethods `set.union` CasesExitMethods.
@@ -3027,12 +3032,12 @@ output_switch_case(Info, Indent, FuncInfo, Context, Case, ExitMethods, !IO) :-
     list.foldl(output_case_cond(Info, Indent, Context), LaterConds, !IO),
     output_statement(Info, Indent + 1, FuncInfo, Statement,
         StmtExitMethods, !IO),
-    ( set.member(can_fall_through, StmtExitMethods) ->
+    ( if set.member(can_fall_through, StmtExitMethods) then
         indent_line(Info, Context, Indent + 1, !IO),
         io.write_string("break;\n", !IO),
         ExitMethods = (StmtExitMethods `set.insert` can_break)
             `set.delete` can_fall_through
-    ;
+    else
         % Don't output `break' since it would be unreachable.
         ExitMethods = StmtExitMethods
     ).
@@ -3126,19 +3131,19 @@ output_atomic_stmt(Info, Indent, AtomicStmt, Context, !IO) :-
         output_lval(Info, Target, !IO),
         io.write_string(" = new ", !IO),
         % Generate class constructor name.
-        (
+        ( if
             MaybeCtorName = yes(QualifiedCtorId),
-            \+ (
+            not (
                 Type = mercury_type(MerType, CtorCat, _),
                 hand_defined_type(MerType, CtorCat, _, _)
             )
-        ->
+        then
             output_type(Info, Type, !IO),
             io.write_char('.', !IO),
             QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
             CtorDefn = ctor_id(CtorName, CtorArity),
             output_unqual_class_name(CtorName, CtorArity, !IO)
-        ;
+        else
             output_type(Info, Type, !IO)
         ),
         IsArray = type_is_array(Type),
@@ -3265,13 +3270,13 @@ output_lval(Info, Lval, !IO) :-
         Lval = ml_field(_MaybeTag, PtrRval, FieldId, FieldType, _),
         (
             FieldId = ml_field_offset(OffsetRval),
-            (
+            ( if
                 ( FieldType = mlds_generic_type
                 ; FieldType = mercury_type(type_variable(_, _), _, _)
                 )
-            ->
+            then
                 true
-            ;
+            else
                 % The field type for field(_, _, offset(_), _, _) lvals
                 % must be something that maps to MR_Box.
                 unexpected($module, $pred, "unexpected field type")
@@ -3285,23 +3290,23 @@ output_lval(Info, Lval, !IO) :-
             io.write_string("]", !IO)
         ;
             FieldId = ml_field_named(FieldName, CtorType),
-            (
+            ( if
                 FieldName = qual(_, _, UnqualFieldName),
                 UnqualFieldName = "data_tag"
-            ->
+            then
                 % If the field we are trying to access is just a `data_tag'
                 % then it is a member of the base class.
                 output_bracketed_rval(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
-            ;
+            else if
                 PtrRval = ml_self(_)
-            ->
+            then
                 % Suppress type cast on `this' keyword.  This makes a
                 % difference when assigning to `final' member variables in
                 % constructor functions.
                 output_rval(Info, PtrRval, !IO),
                 io.write_string(".", !IO)
-            ;
+            else
                 % Otherwise the field we are trying to access may be
                 % in a derived class. Objects are manipulated as instances
                 % of their base class, so we need to downcast to the derived
@@ -3328,27 +3333,27 @@ output_lval(Info, Lval, !IO) :-
         % Rewrite references to constants in private_builtin.m to the
         % mercury_dotnet.cs file.
         Name = mlds_var_name(NameStr, _),
-        (
+        ( if
             SymName = mlds_module_name_to_sym_name(ModName),
             strip_outermost_qualifier(SymName, "mercury",
                 mercury_private_builtin_module)
-        ->
-            ( string.prefix(NameStr, "MR_TYPECTOR_REP_") ->
+        then
+            ( if string.prefix(NameStr, "MR_TYPECTOR_REP_") then
                 io.write_string("runtime.TypeCtorRep.", !IO),
                 io.write_string(NameStr, !IO)
-            ; string.prefix(NameStr, "MR_SECTAG_") ->
+            else if string.prefix(NameStr, "MR_SECTAG_") then
                 io.write_string("runtime.Sectag_Locn.", !IO),
                 io.write_string(NameStr, !IO)
-            ; NameStr = "MR_PREDICATE" ->
+            else if NameStr = "MR_PREDICATE" then
                 io.write_string("runtime.Constants.MR_PREDICATE", !IO)
-            ; NameStr = "MR_FUNCTION" ->
+            else if NameStr = "MR_FUNCTION" then
                 io.write_string("runtime.Constants.MR_FUNCTION", !IO)
-            ;
+            else
                 QualName = qual(ModName, QualKind,
                     entity_data(mlds_data_var(Name))),
                 output_maybe_qualified_name(Info, QualName, !IO)
             )
-        ;
+        else
             QualName = qual(ModName, QualKind,
                 entity_data(mlds_data_var(Name))),
             output_maybe_qualified_name(Info, QualName, !IO)
@@ -3366,13 +3371,13 @@ output_valid_mangled_name(Name, !IO) :-
     is det.
 
 output_call_rval(Info, Rval, !IO) :-
-    (
+    ( if
         Rval = ml_const(Const),
         Const = mlconst_code_addr(CodeAddr)
-    ->
+    then
         IsCall = yes,
         mlds_output_code_addr(Info, CodeAddr, IsCall, !IO)
-    ;
+    else
         output_bracketed_rval(Info, Rval, !IO)
     ).
 
@@ -3380,14 +3385,14 @@ output_call_rval(Info, Rval, !IO) :-
     io::di, io::uo) is det.
 
 output_bracketed_rval(Info, Rval, !IO) :-
-    (
+    ( if
         % If it's just a variable name, then we don't need parentheses.
         ( Rval = ml_lval(ml_var(_,_))
         ; Rval = ml_const(mlconst_code_addr(_))
         )
-    ->
+    then
         output_rval(Info, Rval, !IO)
-    ;
+    else
         io.write_char('(', !IO),
         output_rval(Info, Rval, !IO),
         io.write_char(')', !IO)
@@ -3436,11 +3441,11 @@ output_unop(Info, Unop, Expr, !IO) :-
         output_cast_rval(Info, Type, Expr, !IO)
     ;
         Unop = box(Type),
-        ( Type = mercury_type(comparison_result_type, _, _) ->
+        ( if Type = mercury_type(comparison_result_type, _, _) then
             io.write_string("builtin.comparison_result_object[(int) ", !IO),
             output_rval(Info, Expr, !IO),
             io.write_string("]", !IO)
-        ;
+        else
             output_boxed_rval(Info, Type, Expr, !IO)
         )
     ;
@@ -3458,24 +3463,24 @@ output_cast_rval(Info, Type, Expr, !IO) :-
     % rtti_to_mlds.m generates casts from int to runtime.PseudoTypeInfo, but
     % for C# we need to treat these as constructions, not casts.
     % Similarly for conversions from TypeCtorInfo to TypeInfo.
-    (
+    ( if
         Type = mlds_pseudo_type_info_type,
         Expr = ml_const(mlconst_int(N))
-    ->
+    then
         maybe_output_comment(Info, "cast", !IO),
-        ( have_preallocated_pseudo_type_var(N) ->
+        ( if have_preallocated_pseudo_type_var(N) then
             io.write_string("runtime.PseudoTypeInfo.K", !IO),
             io.write_int(N, !IO)
-        ;
+        else
             io.write_string("new runtime.PseudoTypeInfo(", !IO),
             output_rval(Info, Expr, !IO),
             io.write_string(")", !IO)
         )
-    ;
+    else if
         ( Type = mercury_type(_, ctor_cat_system(cat_system_type_info), _)
         ; Type = mlds_type_info_type
         )
-    ->
+    then
         % XXX We really should be able to tell if we are casting a
         % TypeCtorInfo or a TypeInfo. Julien says that's probably going to
         % be rather difficult as the compiler doesn't keep track of where
@@ -3485,12 +3490,12 @@ output_cast_rval(Info, Type, Expr, !IO) :-
             !IO),
         output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
-    ;
+    else if
         csharp_builtin_type(Type, "int")
-    ->
+    then
         io.write_string("(int) ", !IO),
         output_rval(Info, Expr, !IO)
-    ;
+    else
         io.write_string("(", !IO),
         output_type(Info, Type, !IO),
         io.write_string(") ", !IO),
@@ -3511,13 +3516,13 @@ output_boxed_rval(Info, _Type, Expr, !IO) :-
     % C# does implicit boxing.
     output_rval(Info, Expr, !IO).
     /*
-    ( csharp_builtin_type(Type, _JavaName, JavaBoxedName, _) ->
+    ( if csharp_builtin_type(Type, _JavaName, JavaBoxedName, _) then
         % valueOf may return cached instances instead of creating new objects.
         io.write_string(JavaBoxedName, !IO),
         io.write_string(".valueOf(", !IO),
         output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
-    ;
+    else
         io.write_string("((object) (", !IO),
         output_rval(Info, Expr, !IO),
         io.write_string("))", !IO)
@@ -3565,9 +3570,9 @@ csharp_builtin_type(Type, "int") :-
     % `tag', which always returns zero (a tag of zero means there's no tag).
     %
 output_std_unop(Info, UnaryOp, Expr, !IO) :-
-    ( UnaryOp = tag ->
+    ( if UnaryOp = tag then
         io.write_string("/* tag */  0", !IO)
-    ;
+    else
         % XXX C# is not Java
         java_util.java_unary_prefix_op(UnaryOp, UnaryOpString),
         io.write_string(UnaryOpString, !IO),
@@ -3581,19 +3586,19 @@ output_std_unop(Info, UnaryOp, Expr, !IO) :-
 
 output_binop(Info, Op, X, Y, !IO) :-
     % XXX This should be a single complete switch on Op.
-    ( Op = array_index(_Type) ->
+    ( if Op = array_index(_Type) then
         output_bracketed_rval(Info, X, !IO),
         io.write_string("[", !IO),
         output_rval(Info, Y, !IO),
         io.write_string("]", !IO)
     % XXX C# is not Java
-    ; java_util.java_string_compare_op(Op, OpStr) ->
-        ( OpStr = "==" ->
+    else if java_util.java_string_compare_op(Op, OpStr) then
+        ( if OpStr = "==" then
             output_rval(Info, X, !IO),
             io.write_string(".Equals(", !IO),
             output_rval(Info, Y, !IO),
             io.write_string(")", !IO)
-        ;
+        else
             io.write_string("(", !IO),
             output_rval(Info, X, !IO),
             io.write_string(".CompareOrdinal(", !IO),
@@ -3602,19 +3607,19 @@ output_binop(Info, Op, X, Y, !IO) :-
             io.write_string(OpStr, !IO),
             io.write_string(" 0)", !IO)
         )
-    ; Op = str_cmp ->
+    else if Op = str_cmp then
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(".CompareOrdinal(", !IO),
         output_rval(Info, Y, !IO),
         io.write_string("))", !IO)
-    ; Op = pointer_equal_conservative ->
+    else if Op = pointer_equal_conservative then
         io.write_string("System.Object.ReferenceEquals(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(", ", !IO),
         output_rval(Info, Y, !IO),
         io.write_string(")", !IO)
-    ;
+    else
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(" ", !IO),
@@ -3629,13 +3634,13 @@ output_binop(Info, Op, X, Y, !IO) :-
 output_binary_op(Op, !IO) :-
     % XXX why are these separated into three predicates?
     % XXX C# is not Java
-    ( java_util.java_binary_infix_op(Op, OpStr) ->
+    ( if java_util.java_binary_infix_op(Op, OpStr) then
         io.write_string(OpStr, !IO)
-    ; java_util.java_float_compare_op(Op, OpStr) ->
+    else if java_util.java_float_compare_op(Op, OpStr) then
         io.write_string(OpStr, !IO)
-    ; java_util.java_float_op(Op, OpStr) ->
+    else if java_util.java_float_op(Op, OpStr) then
         io.write_string(OpStr, !IO)
-    ;
+    else
         unexpected($module, $pred, "invalid binary operator")
     ).
 
@@ -3702,17 +3707,19 @@ output_rval_const(Info, Const, !IO) :-
 :- pred output_int_const(int::in, io::di, io::uo) is det.
 
 output_int_const(N, !IO) :-
-    ( N < 0 ->
+    ( if
+        N < 0
+    then
         io.write_int(N, !IO)
-    ;
+    else if
         N >> 32 = 0,
         N /\ 0x80000000 = 0x80000000
-    ->
+    then
         % The bit pattern fits in 32 bits, but is too big for a positive
         % integer. The C# compiler will give an error about this, unless we
         % tell it otherwise.
         io.format("unchecked((int) 0x%x)", [i(N /\ 0xffffffff)], !IO)
-    ;
+    else
         io.write_int(N, !IO)
     ).
 
@@ -3780,10 +3787,10 @@ mlds_output_proc_label(Suffix, mlds_proc_label(PredLabel, ProcId), !IO) :-
 mlds_output_data_addr(data_addr(ModuleQualifier, DataName), !IO) :-
     SymName = mlds_module_name_to_sym_name(ModuleQualifier),
     % XXX could use global::mercury. instead of stripping it
-    ( strip_outermost_qualifier(SymName, "mercury", StrippedSymName) ->
+    ( if strip_outermost_qualifier(SymName, "mercury", StrippedSymName) then
         mangle_sym_name_for_csharp(StrippedSymName, module_qual, "__",
             ModuleName)
-    ;
+    else
         mangle_sym_name_for_csharp(SymName, module_qual, "__", ModuleName)
     ),
     io.write_string(ModuleName, !IO),
@@ -3805,12 +3812,12 @@ output_context(Info, Context, !IO) :-
     (
         LineNumbers = yes,
         Context = term.context(File, Line),
-        (
+        ( if
             Line > 0,
             File \= ""
-        ->
+        then
             io.format("#line %d ""%s""\n", [i(Line), s(File)], !IO)
-        ;
+        else
             true
         )
     ;
@@ -3851,9 +3858,9 @@ indent_line(Info, Context, N, !IO) :-
 :- pred indent_line(indent::in, io::di, io::uo) is det.
 
 indent_line(N, !IO) :-
-    ( N =< 0 ->
+    ( if N =< 0 then
         true
-    ;
+    else
         io.write_string("  ", !IO),
         indent_line(N - 1, !IO)
     ).
