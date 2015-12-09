@@ -2859,9 +2859,9 @@ create_csharp_exe_or_lib(Globals, ErrorStream, LinkTargetType, MainModuleName,
 
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
     (
-        % If we output line numbers the mono C# compiler outputs lots of
+        % If we output line numbers, the mono C# compiler outputs lots of
         % spurious warnings about unused variables and unreachable code,
-        % so disable these warnings. It also confuses #pragma warning
+        % so disable these warnings. It also confuses #pragma warning,
         % which is why we make the options global.
         LineNumbers = yes,
         NoWarnLineNumberOpt = "-nowarn:162,219 "
