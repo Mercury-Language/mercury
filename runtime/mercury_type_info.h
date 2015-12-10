@@ -30,16 +30,14 @@
 **      compiler/rtti_out.m
 **      compiler/rtti_to_mlds.m
 **      compiler/mlds_to_gcc.m
-**          (for updating the compiler-generated RTTI
-**          structures)
+**          (for updating the compiler-generated RTTI structures)
 **
 **      library/array.m
 **      library/builtin.m
 **      library/private_builtin.m
 **      library/type_desc.m
 **      runtime/mercury_bootstrap.c
-**          (for updating the hand-written RTTI
-**          structures)
+**          (for updating the hand-written RTTI structures)
 **
 ** Both kinds of changes will of course also require changes to the code
 ** that traverses type_infos and type_ctor_infos:
@@ -99,7 +97,7 @@
 ** Check that the RTTI version is in a sensible range.
 ** The lower bound should be the lowest currently supported version number.
 ** The upper bound is the current version number.
-** If you increase the lower bound you should also increase the binary
+** If you increase the lower bound, you should also increase the binary
 ** compatibility version number in runtime/mercury_grade.h (MR_GRADE_PART_0).
 **
 ** Note that the definition of this macro matters only if it used, and (for
@@ -225,7 +223,7 @@ MR_VAR_ARITY_PSEUDOTYPEINFO_STRUCT(MR_PseudoTypeInfo_Almost_Struct,
 ** (This number should be kept in sync with max_always_declared_arity in
 ** rtti_out.m.) The LLDS back end declares the structures for arities beyond
 ** this as necessary. The MLDS back end doesn't (yet) do so, so this imposes
-** a fixed limit on the arities of types. (If this is exceeded, you'll get
+** a fixed limit on the arities of types. (If this is exceeded, you will get
 ** a parse error in the generated C code, due to an undeclared type.)
 **
 ** Note that the generic code for compare and unify for the MLDS back end
@@ -596,12 +594,11 @@ extern  MR_Word MR_typeclass_ref_error(MR_Word tci, int n, const char *msg);
 ** MR_TypeCtorRep specifies the representation scheme for a particular type
 ** constructor.
 **
-** Any changes in this definition will also require changes in
-** MR_CTOR_REP_NAMES below, in
-** library/rtti_implementation.m (definitely the list of type_ctor_reps,
-** maybe the bodies of predicates), in library/private_builtin.m (in two
-** places), in java/runtime/TypeCtorRep.java, in compiler/mlds_to_gcc.m,
-** and compiler/rtti.m.
+** Any changes in this definition will also require changes in the
+** MR_CTOR_REP_NAMES macro below, in library/rtti_implementation.m
+** (definitely the list of type_ctor_reps, maybe the bodies of predicates),
+** in library/private_builtin.m (in two places), in java/runtime/
+** TypeCtorRep.java, in compiler/mlds_to_gcc.m, and compiler/rtti.m.
 **
 ** Additions to the end of this enum can be handled naturally, but changes
 ** in the meanings of already assigned values require bootstrapping
@@ -746,7 +743,7 @@ extern  MR_ConstString  MR_ctor_rep_name[];
 **
 ** Note that the arity cannot be zero, so we do not have to worry about
 ** zero-size arrays. On the other hand, type classes with more than even two
-** arguments can be expected to be very rare.  We define
+** arguments can be expected to be very rare. We define
 ** MR_TypeClassConstraint_N on demand for all N > 10 in the low-level grades
 ** but not yet in high-level grades.
 **
@@ -799,7 +796,7 @@ typedef struct {
 ** The MR_exist_typeinfos_plain field gives the number of typeinfos
 ** directly inserted at the start of the memory cell of the functor, while
 ** the MR_exist_tcis field gives the number of typeclassinfos
-** inserted AFTER them.  The arguments visible to the programmer start AFTER
+** inserted AFTER them. The arguments visible to the programmer start AFTER
 ** these two blocks, which means that when accessing them, one must add
 ** the sum of MR_exist_typeinfos_plain and MR_exist_tcis to
 ** the visible argument number in order to arrive at an offset in the cell.
@@ -809,7 +806,7 @@ typedef struct {
 ** stored inside the typeclassinfos of the cell.
 **
 ** The MR_exist_typeinfo_locns field points to an array of
-** MR_ExistTypeInfoLocns.  This array has MR_exist_typeinfos_plain +
+** MR_ExistTypeInfoLocns. This array has MR_exist_typeinfos_plain +
 ** MR_exist_typeinfos_in_tci elements, each one of which describes
 ** the location (directly in the cell or indirectly inside a typeclassinfo)
 ** of the typeinfo for an existentially quantified type variable.
@@ -1042,9 +1039,9 @@ typedef MR_EnumFunctorDesc  **MR_EnumTypeLayout;
 ** This type describes the function symbols in a foreign enum type.
 **
 ** An MR_ForeignEnumLayout points to an array of pointers to functor
-** descriptors.  There is one pointer for each of the function symbols, and
+** descriptors. There is one pointer for each of the function symbols, and
 ** thus the size of the array is given by the num_functors field of the
-** type_ctor_info.  The array is ordered by declaration order.
+** type_ctor_info. The array is ordered by declaration order.
 **
 ** NOTE: it is not possible to order this array by the integer value by
 **       which the functor is represented since for foreign enums these
@@ -1213,7 +1210,7 @@ typedef const MR_Integer        *MR_FunctorNumberMap;
     /*
     ** Structs defining the structure of type_ctor_infos.
     ** A type_ctor_info describes the structure of a particular
-    ** type constructor.  One of these is generated for every
+    ** type constructor. One of these is generated for every
     ** `:- type' declaration.
     **
     ** A change in the TypeCtorInfo structure also requires changes in the
