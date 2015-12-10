@@ -314,7 +314,7 @@
 
     % update_goal_attribute(GoalId, Attribute, !Array),
     %
-    % Make Attirubte the new attribute for GoalId in !:Array.
+    % Make Attribute the new attribute for GoalId in !:Array.
     %
 :- pred update_goal_attribute(goal_id::in, T::in,
     goal_attr_array(T)::gaa_di, goal_attr_array(T)::gaa_uo) is det.

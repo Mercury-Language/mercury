@@ -293,12 +293,12 @@ read_trace_counts_source(FileName, Result, !IO) :-
     ;
         ReadTCResult = io_error(IOError),
         ErrMsg = io.error_message(IOError),
-        Result = list_error_message("IO error reading file " ++
+        Result = list_error_message("I/O error reading file " ++
             "`" ++ FileName ++ "': " ++ ErrMsg)
     ;
         ReadTCResult = open_error(IOError),
         ErrMsg = io.error_message(IOError),
-        Result = list_error_message("IO error opening file " ++
+        Result = list_error_message("I/O error opening file " ++
             "`" ++ FileName ++ "': " ++ ErrMsg)
     ;
         ReadTCResult = syntax_error(ErrMsg),

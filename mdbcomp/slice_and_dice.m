@@ -298,10 +298,10 @@ read_dice(PassFile, FailFile, Result, !IO) :-
     ).
 
 :- pred maybe_dice_error_to_problem_string(maybe_error(dice)::in, string::out)
-	is det.
+    is det.
 
 :- pragma foreign_export("C", maybe_dice_error_to_problem_string(in, out),
-	"MR_MDBCOMP_maybe_dice_error_to_problem_string").
+    "MR_MDBCOMP_maybe_dice_error_to_problem_string").
 
 maybe_dice_error_to_problem_string(ok(_), "").
 maybe_dice_error_to_problem_string(error(ErrorStr), ErrorStr).
@@ -309,11 +309,11 @@ maybe_dice_error_to_problem_string(error(ErrorStr), ErrorStr).
 :- pred det_maybe_dice_error_to_dice(maybe_error(dice)::in, dice::out) is det.
 
 :- pragma foreign_export("C", det_maybe_dice_error_to_dice(in, out),
-	"MR_MDBCOMP_det_maybe_dice_error_to_dice").
+    "MR_MDBCOMP_det_maybe_dice_error_to_dice").
 
 det_maybe_dice_error_to_dice(ok(Dice), Dice).
 det_maybe_dice_error_to_dice(error(_), _) :-
-	error("det_maybe_dice_error_to_dice: result is error").
+    error("det_maybe_dice_error_to_dice: result is error").
 
 :- type trace_counts_kind
     --->    pass_slice
@@ -924,22 +924,22 @@ suspicion_ratio_binary(PassCount, FailCount) = R :-
 
 :- pragma foreign_export("C",
     get_suspicion_for_label_layout(in, in) = out,
-	"MR_MDBCOMP_get_suspicion_for_label_layout").
+    "MR_MDBCOMP_get_suspicion_for_label_layout").
 
 get_suspicion_for_label_layout(Dice, LabelLayout) = Suspicion :-
-	ProcLayout = get_proc_layout_from_label_layout(LabelLayout),
-	ProcLabel = get_proc_label_from_layout(ProcLayout),
-	PathPort = get_path_port_from_label_layout(LabelLayout),
-	( if map.search(Dice ^ dice_proc_map, ProcLabel, PathPortMap) then
-		( if map.search(PathPortMap, PathPort, ExecCount) then
-			Suspicion = suspicion_ratio_binary(
-			      ExecCount ^ pass_count, ExecCount ^ fail_count)
-		else
-			Suspicion = 0.0
-		)
-	else
-		Suspicion = 0.0
-	).
+    ProcLayout = get_proc_layout_from_label_layout(LabelLayout),
+    ProcLabel = get_proc_label_from_layout(ProcLayout),
+    PathPort = get_path_port_from_label_layout(LabelLayout),
+    ( if map.search(Dice ^ dice_proc_map, ProcLabel, PathPortMap) then
+        ( if map.search(PathPortMap, PathPort, ExecCount) then
+            Suspicion = suspicion_ratio_binary(
+                  ExecCount ^ pass_count, ExecCount ^ fail_count)
+        else
+            Suspicion = 0.0
+        )
+    else
+        Suspicion = 0.0
+    ).
 
 %-----------------------------------------------------------------------------%
 %
