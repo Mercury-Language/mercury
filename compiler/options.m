@@ -128,6 +128,7 @@
     ;       warn_up_to_date
     ;       warn_stubs
     ;       warn_dead_procs
+    ;       warn_dead_preds
     ;       warn_table_with_inline
     ;       warn_non_term_special_preds
     ;       warn_known_bad_format_calls
@@ -1106,6 +1107,7 @@ option_defaults_2(warning_option, [
     warn_up_to_date                     -   bool(yes),
     warn_stubs                          -   bool(yes),
     warn_dead_procs                     -   bool(no),
+    warn_dead_preds                     -   bool(no),
     warn_table_with_inline              -   bool(yes),
     warn_non_term_special_preds         -   bool(yes),
     warn_known_bad_format_calls         -   bool(yes),
@@ -1981,6 +1983,7 @@ long_option("warn-target-code",         warn_target_code).
 long_option("warn-up-to-date",          warn_up_to_date).
 long_option("warn-stubs",               warn_stubs).
 long_option("warn-dead-procs",          warn_dead_procs).
+long_option("warn-dead-preds",          warn_dead_preds).
 long_option("warn-table-with-inline",   warn_table_with_inline).
 long_option("warn-non-term-special-preds", warn_non_term_special_preds).
 long_option("warn-known-bad-format-calls", warn_known_bad_format_calls).
@@ -2991,6 +2994,7 @@ special_handler(inhibit_warnings, bool(Inhibit), !.OptionTable,
             warn_up_to_date                 -   bool(Enable),
             warn_stubs                      -   bool(Enable),
             warn_dead_procs                 -   bool(Enable),
+            warn_dead_preds                 -   bool(Enable),
             warn_table_with_inline          -   bool(Enable),
             warn_non_term_special_preds     -   bool(Enable),
             warn_insts_without_matching_type -  bool(Enable)
@@ -3550,6 +3554,9 @@ options_help_warning -->
         "\tSemantics Options"" section below) is enabled.",
         "--warn-dead-procs",
         "\tWarn about procedures which are never called.",
+        "--warn-dead-preds",
+        "\tWarn about predicates that have no procedures which are",
+        "\tever called.",
         "--no-warn-target-code",
         "\tDisable warnings from the compiler used to process the",
         "\ttarget code (e.g. gcc).",

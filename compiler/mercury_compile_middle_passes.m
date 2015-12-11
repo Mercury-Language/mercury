@@ -708,36 +708,30 @@ maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO) :-
 
 maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, warn_dead_procs, WarnDead),
-    (
-        WarnDead = yes,
-        maybe_write_string(Verbose, "% Warning about dead procedures...\n",
-            !IO),
+    globals.lookup_bool_option(Globals, warn_dead_procs, WarnDeadProcs),
+    globals.lookup_bool_option(Globals, warn_dead_preds, WarnDeadPreds),
+    ( if
+        ( WarnDeadProcs = yes
+        ; WarnDeadPreds = yes
+        )
+    then
+        (
+            WarnDeadProcs = yes,
+            maybe_write_string(Verbose, "% Warning about dead procedures...\n",
+                !IO)
+        ;
+            WarnDeadProcs = no,
+            maybe_write_string(Verbose, "% Warning about dead predicates...\n",
+                !IO)
+        ),
         maybe_flush_output(Verbose, !IO),
         dead_proc_warn(!.HLDS, Specs),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         write_error_specs(Specs, Globals, 0, _NumWarnings, 0, NumErrors, !IO),
         module_info_incr_num_errors(NumErrors, !HLDS)
-
-%       XXX The warning pass also does all the work of optimizing
-%       away the dead procedures.  If we're optimizing, then
-%       it would be nice if we could keep the HLDS that results.
-%       However, because this pass gets run before type
-%       specialization, dead code elimination at this point
-%       incorrectly optimizes away procedures created for
-%       `pragma type_spec' declarations.  So we can't use the
-%       code below.  Instead we need to keep original HLDS.
-%
-%       %%% globals.lookup_bool_option(Globals, optimize_dead_procs,
-%       %%%     OptimizeDead),
-%       %%% ( if OptimizeDead = yes then
-%       %%%     !:HLDS = HLDS1
-%       %%% else
-%       %%%     true
-%       %%% )
-    ;
-        WarnDead = no
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%

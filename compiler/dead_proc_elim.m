@@ -1063,15 +1063,25 @@ dead_proc_eliminate_proc(PredId, Keep, ProcElimInfo, ProcId,
 do_dead_proc_warn(ModuleInfo, Needed, Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     module_info_get_preds(ModuleInfo, PredTable),
-    list.foldl(dead_proc_warn_pred(ModuleInfo, PredTable, Needed), PredIds,
-        [], Specs).
+    module_info_get_globals(ModuleInfo, Globals),
+    % We get called only if either warn_dead_procs or warn_dead_preds is set.
+    % We warn about procedures of entirely dead predicates if either is set
+    % (or if both are set); the only difference is whether we warn about
+    % procedures with live siblings.
+    globals.lookup_bool_option(Globals, warn_dead_procs, WarnWithLiveSiblings),
+    list.foldl(
+        dead_proc_warn_pred(ModuleInfo, PredTable, WarnWithLiveSiblings,
+            Needed),
+        PredIds, [], Specs).
 
     % Warn about any unused procedures for this pred.
     %
-:- pred dead_proc_warn_pred(module_info::in, pred_table::in, needed_map::in,
-    pred_id::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred dead_proc_warn_pred(module_info::in, pred_table::in, bool::in,
+    needed_map::in, pred_id::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-dead_proc_warn_pred(ModuleInfo, PredTable, Needed, PredId, !Specs) :-
+dead_proc_warn_pred(ModuleInfo, PredTable, WarnWithLiveSiblings, Needed,
+        PredId, !Specs) :-
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
     ( if
@@ -1098,24 +1108,37 @@ dead_proc_warn_pred(ModuleInfo, PredTable, Needed, PredId, !Specs) :-
         ProcIds = pred_info_procids(PredInfo),
         pred_info_get_proc_table(PredInfo, ProcTable),
         list.foldl(
-            dead_proc_warn_proc(ModuleInfo, Needed, PredId, ProcTable),
+            dead_proc_warn_proc(ModuleInfo, Needed, PredId,
+                WarnWithLiveSiblings, ProcIds, ProcTable),
             ProcIds, !Specs)
     else
         true
     ).
 
-    % Warn about a procedure, if unused.
+    % If WarnWithLiveSiblings = yes:
+    %   warn about a procedure if the procedure is unused.
+    % If WarnWithLiveSiblings = no:
+    %   warn about a procedure if the procedure is unused,
+    %   and none of the OTHER procedures in the predicate is used.
     %
 :- pred dead_proc_warn_proc(module_info::in, needed_map::in, pred_id::in,
-    proc_table::in, proc_id::in,
+    bool::in, list(proc_id)::in, proc_table::in, proc_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-dead_proc_warn_proc(ModuleInfo, Needed, PredId, ProcTable, ProcId,
-        !Specs) :-
+dead_proc_warn_proc(ModuleInfo, Needed, PredId, WarnWithLiveSiblings,
+        AllProcsInPred, ProcTable, ProcId, !Specs) :-
     ( if
         % Don't warn about the procedure being unused
         % if it is in the needed map.
         map.contains(Needed, entity_proc(PredId, ProcId))
+    then
+        true
+    else if
+        WarnWithLiveSiblings = no,
+        some [OtherProcId] (
+            list.member(OtherProcId, AllProcsInPred),
+            map.contains(Needed, entity_proc(PredId, OtherProcId))
+        )
     then
         true
     else

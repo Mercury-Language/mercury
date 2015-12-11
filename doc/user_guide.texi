@@ -6610,6 +6610,11 @@ is enabled.
 Warn about procedures which are never called.
 
 @sp 1
+@item --warn-dead-preds
+@findex --warn-dead-preds
+Warn about predicates that have no procedures which are ever called.
+
+@sp 1
 @item --no-warn-table-with-inline
 @findex --no-warn-table-with-inline
 Disable warnings about tabled procedures that also have
