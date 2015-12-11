@@ -112,7 +112,7 @@
 :- implementation.
 
 less_pure(P1, P2) :-
-    \+ ( worst_purity(P1, P2) = P2).
+    worst_purity(P1, P2) \= P2.
 
     % worst_purity/3 could be written more compactly, but this definition
     % guarantees us a determinism error if we add to type `purity'. We also
