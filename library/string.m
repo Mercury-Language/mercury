@@ -1064,7 +1064,7 @@
     % and returns a formatted table, where each field in each column
     % has been aligned and fields are separated with Separator.
     % There will be a newline character between each pair of rows.
-    % Throws an exception If the columns are not all the same length.
+    % Throws an exception if the columns are not all the same length.
     % Lengths are currently measured in terms of code points.
     %
     % For example:
@@ -1079,7 +1079,7 @@
 :- func format_table(list(justified_column), string) = string.
 
     % format_table_max(Columns, Separator) does the same job as format_table,
-    % but allows the caller to associate an maximum width with each column.
+    % but allows the caller to associate a maximum width with each column.
     %
 :- func format_table_max(assoc_list(justified_column, maybe(int)), string)
     = string.
