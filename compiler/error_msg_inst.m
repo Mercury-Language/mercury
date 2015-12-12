@@ -1,13 +1,10 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% File: mode_errors.m.
-% Main author: fjh.
 %
 % This module formats insts for use in error messages, with the objective
 % of making the generated output easily readable by humans. This sometimes
