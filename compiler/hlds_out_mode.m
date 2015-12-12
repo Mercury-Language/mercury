@@ -91,8 +91,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
-:- import_module check_hlds.mode_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.

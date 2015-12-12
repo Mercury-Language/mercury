@@ -1378,29 +1378,6 @@ mlds_output_pragma_export_arg(Opts, ModuleName, Arg, !IO) :-
             !IO)
     ).
 
-    % Generates the signature for det functions in the forward mode.
-    %
-:- func det_func_signature(mlds_func_params) = mlds_func_params.
-
-det_func_signature(mlds_func_params(Args, _RetTypes)) = Params :-
-    list.length(Args, NumArgs),
-    NumFuncArgs = NumArgs - 1,
-    ( if list.split_list(NumFuncArgs, Args, InputArgs0, [ReturnArg0]) then
-        InputArgs = InputArgs0,
-        ReturnArg = ReturnArg0
-    else
-        unexpected($module, $pred, "function missing return value?")
-    ),
-    ( if
-        ReturnArg = mlds_argument(_ReturnArgName,
-            mlds_ptr_type(ReturnArgType0), _GCStatement)
-    then
-        ReturnArgType = ReturnArgType0
-    else
-        unexpected($module, $pred, "function return type!")
-    ),
-    Params = mlds_func_params(InputArgs, [ReturnArgType]).
-
 :- pred mlds_output_export_enums(mlds_to_c_opts::in, indent::in,
     list(mlds_exported_enum)::in, io::di, io::uo) is det.
 
@@ -4193,21 +4170,6 @@ mlds_output_var_name(VarName, !IO) :-
 
 mlds_output_mangled_name(Name, !IO) :-
     io.write_string(name_mangle(Name), !IO).
-
-:- pred mlds_output_bracketed_lval(mlds_to_c_opts::in, mlds_lval::in,
-    io::di, io::uo) is det.
-
-mlds_output_bracketed_lval(Opts, Lval, !IO) :-
-    ( if
-        % If it's just a variable name, then we don't need parentheses.
-        Lval = ml_var(_, _)
-    then
-        mlds_output_lval(Opts, Lval, !IO)
-    else
-        io.write_char('(', !IO),
-        mlds_output_lval(Opts, Lval, !IO),
-        io.write_char(')', !IO)
-    ).
 
 :- pred mlds_output_bracketed_rval(mlds_to_c_opts::in, mlds_rval::in,
     io::di, io::uo) is det.

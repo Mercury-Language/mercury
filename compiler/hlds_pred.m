@@ -3778,10 +3778,6 @@ is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
     list.duplicate(Arity, 0, Args),
     builtin_ops.test_if_builtin(ModuleName, PredName, ProcId, Args).
 
-:- pred prog_varset_init(prog_varset::out) is det.
-
-prog_varset_init(VarSet) :- varset.init(VarSet).
-
 pred_info_is_promise(PredInfo, PromiseType) :-
     pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)).
 

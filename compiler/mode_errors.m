@@ -255,7 +255,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_mode.

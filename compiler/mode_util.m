@@ -662,21 +662,20 @@ propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode) :-
 :- pred propagate_type_into_inst_lazily(module_info::in, tsubst::in,
     mer_type::in, mer_inst::in, mer_inst::out) is det.
 
-%   % XXX We ought to expand things eagerly here, using the commented
-%   % out code below. However, that causes efficiency problems,
-%   % so for the moment it is disabled.
-% propagate_type_into_inst(Type, Subst, ModuleInfo, Inst0, Inst) :-
-%   apply_type_subst(Type0, Subst, Type),
-%   ( if
-%       type_constructors(Type, ModuleInfo, Constructors)
-%   then
-%       propagate_ctor_info(Inst0, Type, Constructors, ModuleInfo, Inst)
-%   else
-%       Inst = Inst0
-%   ).
-
-propagate_type_into_inst(ModuleInfo, Subst, Type, Inst0, Inst) :-
-    propagate_ctor_info_lazily(ModuleInfo, Subst, Type, Inst0, Inst).
+propagate_type_into_inst(ModuleInfo, Subst, Type0, Inst0, Inst) :-
+    ( if semidet_fail then
+        % XXX We ought to expand things eagerly here, using this code.
+        % However, that causes efficiency problems, so for the moment
+        % we always do propagation lazily.
+        apply_type_subst(Type0, Subst, Type),
+        ( if type_constructors(ModuleInfo, Type, Constructors) then
+            propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst)
+        else
+            Inst = Inst0
+        )
+    else
+        propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst)
+    ).
 
 propagate_type_into_inst_lazily(ModuleInfo, Subst, Type, Inst0, Inst) :-
     propagate_ctor_info_lazily(ModuleInfo, Subst, Type, Inst0, Inst).

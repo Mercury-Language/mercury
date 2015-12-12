@@ -292,49 +292,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred valid_old_status_for_inst_or_mode(old_import_status::in,
-    old_import_status::out) is det.
-
-valid_old_status_for_inst_or_mode(OldStatus0, OldStatus) :-
-    (
-        ( OldStatus0 = status_local
-        ; OldStatus0 = status_opt_imported
-        ; OldStatus0 = status_abstract_imported
-        ; OldStatus0 = status_exported
-        ; OldStatus0 = status_exported_to_submodules
-        ),
-        OldStatus = OldStatus0
-    ;
-        OldStatus0 = status_imported(Locn),
-        (
-            ( Locn = import_locn_interface
-            ; Locn = import_locn_implementation
-            ; Locn = import_locn_ancestor_private_interface_proper
-            ),
-            OldStatus = OldStatus0
-        ;
-            Locn = import_locn_import_by_ancestor,
-            unexpected($module, $pred, "import_locn_import_by_ancestor")
-        )
-    ;
-        OldStatus0 = status_pseudo_imported,
-        unexpected($module, $pred, "status_pseudo_imported")
-    ;
-        OldStatus0 = status_pseudo_exported,
-        unexpected($module, $pred, "status_pseudo_exported")
-    ;
-        OldStatus0 = status_opt_exported,
-        unexpected($module, $pred, "status_opt_exported")
-    ;
-        OldStatus0 = status_abstract_exported,
-        unexpected($module, $pred, "status_abstract_exported")
-    ;
-        OldStatus0 = status_external(_),
-        unexpected($module, $pred, "status_external")
-    ).
-
-%-----------------------------------------------------------------------------%
-
 type_status_is_exported(type_status(OldStatus)) =
     old_status_is_exported(OldStatus).
 

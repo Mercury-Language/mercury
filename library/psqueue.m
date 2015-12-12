@@ -223,6 +223,7 @@
 
 :- import_module cord.
 :- import_module int.
+:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -381,6 +382,11 @@ get_tournament_view(Winner) = TournamentView :-
             WinnerB = winner(LoserPrio, LoserKey, SubLTreeR, MaxKey)
         ),
         TournamentView = tournament_between(WinnerA, WinnerB)
+    ),
+    trace [compile_time(flag("debug_psqueue")), io(!IO)] (
+        TournamentStr = dump_tournament(0, TournamentView),
+        io.write_string(TournamentStr, !IO),
+        io.nl(!IO)
     ).
 
     % Play a tournament to combine two priority search queues, PSQA and PSQB.

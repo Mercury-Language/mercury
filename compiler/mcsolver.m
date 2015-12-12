@@ -761,17 +761,7 @@ solve_var(SCs, X, Bs0, Bs) :-
 
 %-----------------------------------------------------------------------------%
 
-    % all_yes(Bs, Xs) succeeds if Bs indicates all Xs are bound to yes
-    %
-:- pred all_yes(mc_bindings::in, mcvars::in) is semidet.
-
-all_yes(_,  []).
-all_yes(Bs, [X | Xs]) :-
-    % XXX
-    Bs ^ elem(X) = yes,
-    all_yes(Bs, Xs).
-
-    % all_no(Bs, Xs) succeeds if Bs indicates all Xs are bound to no
+    % all_no(Bs, Xs) succeeds if Bs indicates all Xs are bound to no.
     %
 :- pred all_no(mc_bindings::in, mcvars::in) is semidet.
 

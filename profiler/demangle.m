@@ -885,10 +885,6 @@ insert_prefix(Prefix, Name0, Name) :-
 insert_prefix_char(Prefix, Name0, Name) :-
     string.first_char(Name, Prefix, Name0).
 
-:- pred dcg_set(T1::in, T2::in, T1::out) is det.
-
-dcg_set(X, _, X).
-
 :- pred format_maybe_module(maybe(string)::in, string::in, string::out) is det.
 
 format_maybe_module(no, Name, QualifiedName) :-
