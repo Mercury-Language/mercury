@@ -42,13 +42,12 @@
                 slice_filename      ::  string,
                 slice_linenumber    ::  int,
 
+                % The number of times the label was executed
+                % in all the test runs.
                 slice_count         :: int,
-                                    % The number of times the label was
-                                    % executed in all the test runs.
 
+                % The number of test runs the label was executed in.
                 slice_tests         :: int
-                                    % The number of test runs the label was
-                                    % executed in.
             ).
 
     % read_slice(File, MaybeSlice, !IO):
@@ -102,21 +101,19 @@
                 dice_filename   ::  string,
                 dice_linenumber ::  int,
 
+                % The number of times the label was executed in all
+                % the passing test runs.
                 pass_count      :: int,
-                                % The number of times the label was executed in
-                                % all the passing test runs.
 
+                % The number of passing test runs the label was executed in.
                 pass_tests      :: int,
-                                % The number of passing test runs the label
-                                % was executed in.
 
+                % The number of times the label was executed in failing
+                % test runs.
                 fail_count      :: int,
-                                % The number of times the label was executed in
-                                % failing test runs.
 
+                % The number of failing test runs the label was executed in.
                 fail_tests      :: int
-                                % The number of failing test runs the label
-                                % was executed in.
             ).
 
     % read_dice(PassFile, FailFile, MaybeDice, !IO):
@@ -611,10 +608,10 @@ format_slice_label_counts(LabelCounts, TotalTests,
     FormattedPathPorts = list.map(format_path_port, PathPorts),
     CountStrs = list.map(string.int_to_string_thousands, Counts),
     AlwaysColumns = [
-        left( ["Procedure"       | FormattedProcLabels]) - MaybeMaxPredColumns,
-        left( ["Path/Port"       | FormattedPathPorts]) - MaybePathColumns,
-        left( ["File:Line"       | FormattedContexts]) - MaybeMaxFileColumns,
-        right(["Count"           | CountStrs]) - no],
+        left( ["Procedure" | FormattedProcLabels]) - MaybeMaxPredColumns,
+        left( ["Path/Port" | FormattedPathPorts])  - MaybePathColumns,
+        left( ["File:Line" | FormattedContexts])   - MaybeMaxFileColumns,
+        right(["Count"     | CountStrs])           - no],
     filter(unify(1), Tests, _OneTests, OtherTests),
     (
         % All events were executed in one test. Don't include the redundant
@@ -627,7 +624,7 @@ format_slice_label_counts(LabelCounts, TotalTests,
         TestsStrs = list.map(bracket_int, Tests),
         TotalTestsStr = "(" ++ int_to_string_thousands(TotalTests) ++ ")",
         Columns = AlwaysColumns ++
-            [right([TotalTestsStr     | TestsStrs]) - no]
+            [right([TotalTestsStr | TestsStrs]) - no]
     ),
     Str = string.format_table_max(Columns, " ") ++ "\n".
 
@@ -639,12 +636,6 @@ deconstruct_slice_label_count(SliceLabelCount, PathPort, ProcLabel,
     SliceLabelCount = slice_label_count(PathPort, ProcLabel, ExecCounts),
     ExecCounts = slice_exec_count(FileName, LineNumber, Count, Tests),
     FormattedContext = format_context(FileName, LineNumber).
-
-:- func format_slice_exec_count(slice_exec_count) = string.
-
-format_slice_exec_count(slice_exec_count(_, _, Count, Tests)) =
-    string.pad_left(int_to_string(Count), ' ', 12)
-    ++ string.pad_left("(" ++ int_to_string(Tests) ++ ")", ' ', 8).
 
 %-----------------------------------------------------------------------------%
 %
@@ -857,11 +848,11 @@ format_dice_label_counts(LabelCounts, TotalPassTests, _TotalFailTests,
     TotalPassTestsStr = "(" ++ int_to_string_thousands(TotalPassTests) ++ ")",
     Columns = [
         left( ["Procedure"       | FormattedProcLabels]) - MaybeMaxPredColumns,
-        left( ["Path/Port"       | FormattedPathPorts]) - MaybeMaxPathColumns,
-        left( ["File:Line"       | FormattedContexts]) - MaybeMaxFileColumns,
-        right(["Pass"            | PassCountStrs]) - no,
-        right([TotalPassTestsStr | PassTestsStrs]) - no,
-        right(["Fail"            | FailCountStrs]) - no,
+        left( ["Path/Port"       | FormattedPathPorts])  - MaybeMaxPathColumns,
+        left( ["File:Line"       | FormattedContexts])   - MaybeMaxFileColumns,
+        right(["Pass"            | PassCountStrs])       - no,
+        right([TotalPassTestsStr | PassTestsStrs])       - no,
+        right(["Fail"            | FailCountStrs])       - no,
         right(["Suspicion"       | FormattedSuspicionIndices]) - no],
     Str = string.format_table_max(Columns, " ") ++ "\n".
 
@@ -876,14 +867,7 @@ deconstruct_dice_label_count(DiceLabelCount, ProcLabel, PathPort,
         FailCount, FailTests),
     FormattedContext = format_context(FileName, LineNumber).
 
-:- func format_dice_exec_count(dice_exec_count) = string.
-
-format_dice_exec_count(dice_exec_count(_, _, PassCount, PassTests,
-        FailCount, FailTests)) =
-    string.pad_left(int_to_string(PassCount), ' ', 12)
-    ++ string.pad_left("(" ++ int_to_string(PassTests) ++ ")", ' ', 8)
-    ++ string.pad_left(int_to_string(FailCount), ' ', 12)
-    ++ string.pad_left("(" ++ int_to_string(FailTests) ++ ")", ' ', 8).
+%-----------------------------------------------------------------------------%
 
 suspicion_ratio(PassCount, FailCount) = R1 :-
     Denominator = PassCount + FailCount,
@@ -944,6 +928,7 @@ get_suspicion_for_label_layout(Dice, LabelLayout) = Suspicion :-
 %-----------------------------------------------------------------------------%
 %
 % Generic predicates useful for both slices and dices.
+%
 
 :- func bracket_int(int) = string.
 
@@ -1006,3 +991,5 @@ format_path_port(port_and_path(Port, Path)) =
 
 format_context(FileName, LineNumber) = Str :-
     Str = FileName ++ ":" ++ int_to_string(LineNumber).
+
+%-----------------------------------------------------------------------------%
