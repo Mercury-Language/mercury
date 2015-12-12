@@ -838,39 +838,40 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(par_loop_control, bool(no), !Globals)
     ),
 
-    % Generating Java implies
-    %   - gc_method `automatic' and no heap reclamation on failure
-    %     Because GC is handled automatically by the Java implementation.
-    %   - high-level code
-    %     Because only the MLDS back-end supports compiling to Java.
-    %   - high-level data
-    %     Because it is more efficient, and better for interoperability.
-    %     (In theory --low-level-data should work too, but there is
-    %     no reason to bother supporting it.)
-    %   - unboxed floats
-    %   - turning off nested functions
-    %     Because Java doesn't support nested functions.
-    %   - using copy-out for both det and nondet output arguments
-    %     Because Java doesn't support pass-by-reference.
-    %   - using no tags
-    %     Because Java doesn't provide any mechanism for tagging pointers.
-    %   - box no-tag types
-    %     We require no-tag types to be boxed since in Java java.lang.Object
-    %     is the only type that all other types can be successfully cast to
-    %     and then cast back from.
-    %   - store nondet environments on the heap
-    %     Because Java has no way of allocating structs on the stack.
-    %   - pretest-equality-cast-pointers
-    %   - no library grade installation check with `mmc --make'.
-    %
-    % C# should be the same as Java, except that:
-    %   - C# supports pass-by-reference, but for reasons explained in
-    %     mlds_to_cs.m, we pretend it doesn't at the MLDS level
-
     (
         ( Target = target_java
         ; Target = target_csharp
         ),
+
+        % Generating Java implies
+        %   - gc_method `automatic' and no heap reclamation on failure
+        %     Because GC is handled automatically by the Java implementation.
+        %   - high-level code
+        %     Because only the MLDS back-end supports compiling to Java.
+        %   - high-level data
+        %     Because it is more efficient, and better for interoperability.
+        %     (In theory --low-level-data should work too, but there is
+        %     no reason to bother supporting it.)
+        %   - unboxed floats
+        %   - turning off nested functions
+        %     Because Java doesn't support nested functions.
+        %   - using copy-out for both det and nondet output arguments
+        %     Because Java doesn't support pass-by-reference.
+        %   - using no tags
+        %     Because Java doesn't provide any mechanism for tagging pointers.
+        %   - box no-tag types
+        %     We require no-tag types to be boxed since in Java,
+        %     java.lang.Object is the only type that all other types
+        %     can be successfully cast to and then cast back from.
+        %   - store nondet environments on the heap
+        %     Because Java has no way of allocating structs on the stack.
+        %   - pretest-equality-cast-pointers
+        %   - no library grade installation check with `mmc --make'.
+        %
+        % C# should be the same as Java, except that:
+        %   - C# supports pass-by-reference, but for reasons explained in
+        %     mlds_to_cs.m, we pretend it doesn't at the MLDS level
+
         globals.set_gc_method(gc_automatic, !Globals),
         globals.set_option(gc, string("automatic"), !Globals),
         globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
@@ -897,25 +898,20 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             Target = target_java
         )
     ;
-        ( Target = target_c
-        ; Target = target_erlang
-        )
-    ),
-
-    % Generating Erlang implies
-    %   - gc_method `automatic' and no heap reclamation on failure
-    %     Because GC is handled automatically by the Erlang implementation.
-    %   - unboxed floats
-    %   - delay-partial-instantiations
-    %   - no-can-compare-constants-as-ints
-    %   - can-compare-compound-values
-    %   - lexically-compare-constructors
-    %   - no library grade installation check with `mmc --make'
-    %   - --no-optimize-tailcalls because Erlang implementations perform
-    %     LCO.
-
-    (
         Target = target_erlang,
+
+        % Generating Erlang implies
+        %   - gc_method `automatic' and no heap reclamation on failure
+        %     Because GC is handled automatically by the Erlang implementation.
+        %   - unboxed floats
+        %   - delay-partial-instantiations
+        %   - no-can-compare-constants-as-ints
+        %   - can-compare-compound-values
+        %   - lexically-compare-constructors
+        %   - no library grade installation check with `mmc --make'
+        %   - --no-optimize-tailcalls because Erlang implementations perform
+        %     LCO.
+
         globals.set_gc_method(gc_automatic, !Globals),
         globals.set_option(gc, string("automatic"), !Globals),
         globals.set_option(unboxed_float, bool(yes), !Globals),
@@ -943,24 +939,13 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(highlevel_code, bool(no), !Globals),
         globals.set_option(highlevel_data, bool(no), !Globals)
     ;
-        ( Target = target_c
-        ; Target = target_java
-        ; Target = target_csharp
-        )
-    ),
-
-    % Generating high-level C code requires putting each commit
-    % in its own function, to avoid problems with setjmp() and
-    % non-volatile local variables.
-    (
         Target = target_c,
+
+        % Generating high-level C code requires putting each commit
+        % in its own function, to avoid problems with setjmp() and
+        % non-volatile local variables.
         option_implies(highlevel_code, put_commit_in_own_func, bool(yes),
             !Globals)
-    ;
-        ( Target = target_java
-        ; Target = target_csharp
-        ; Target = target_erlang
-        )
     ),
 
     % Using trail segments implies the use of the trail.
@@ -975,16 +960,16 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     option_implies(compile_to_shared_lib, mercury_linkage,
         string("shared"), !Globals),
 
-    % --high-level-code disables the use of low-level gcc extensions
+    % --high-level-code disables the use of low-level gcc extensions.
     option_implies(highlevel_code, gcc_non_local_gotos, bool(no), !Globals),
     option_implies(highlevel_code, gcc_global_registers, bool(no), !Globals),
     option_implies(highlevel_code, asm_labels, bool(no), !Globals),
 
-    % --no-gcc-nested-functions implies --no-gcc-local-labels
+    % --no-gcc-nested-functions implies --no-gcc-local-labels.
     option_neg_implies(gcc_nested_functions, gcc_local_labels, bool(no),
         !Globals),
 
-    % --no-mlds-optimize implies --no-optimize-tailcalls
+    % --no-mlds-optimize implies --no-optimize-tailcalls.
     option_neg_implies(optimize, optimize_tailcalls, bool(no), !Globals),
 
     % --rebuild is just like --make but always rebuilds the files
@@ -1098,8 +1083,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         bool(yes), !Globals),
     option_implies(transitive_optimization, intermodule_optimization,
         bool(yes), !Globals),
-    option_implies(use_trans_opt_files, use_opt_files, bool(yes),
-        !Globals),
+    option_implies(use_trans_opt_files, use_opt_files, bool(yes), !Globals),
 
     % If we are doing full inter-module or transitive optimization,
     % we need to build all `.opt' or `.trans_opt' files.
@@ -1125,8 +1109,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     % do not produce a compiled output file or for which smart
     % recompilation will not work.
     %
-    option_implies(generate_source_file_mapping, smart_recompilation,
-        bool(no), !Globals),
+    option_implies(generate_source_file_mapping, smart_recompilation, bool(no),
+        !Globals),
     option_implies(generate_dependencies, smart_recompilation, bool(no),
         !Globals),
     option_implies(generate_dependency_file, smart_recompilation, bool(no),
@@ -1149,10 +1133,8 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         smart_recompilation, bool(no), !Globals),
     option_implies(make_analysis_registry,
         smart_recompilation, bool(no), !Globals),
-    option_implies(errorcheck_only, smart_recompilation, bool(no),
-        !Globals),
-    option_implies(typecheck_only, smart_recompilation, bool(no),
-        !Globals),
+    option_implies(errorcheck_only, smart_recompilation, bool(no), !Globals),
+    option_implies(typecheck_only, smart_recompilation, bool(no), !Globals),
 
     % disable --line-numbers when building the `.int', `.opt', etc. files,
     % since including line numbers in those would cause unnecessary
@@ -1217,8 +1199,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
 
     option_implies(debug_modes_minimal, debug_modes, bool(yes), !Globals),
     option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
-    option_implies(debug_modes_statistics, debug_modes, bool(yes),
-        !Globals),
+    option_implies(debug_modes_statistics, debug_modes, bool(yes), !Globals),
 
     globals.lookup_int_option(!.Globals, debug_liveness, DebugLiveness),
     ( if
@@ -1231,7 +1212,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         % these annotations.
         globals.lookup_string_option(!.Globals, dump_hlds_options,
             DumpOptions0),
-        string.append(DumpOptions0, AllDumpOptions, DumpOptions1),
+        DumpOptions1 = DumpOptions0 ++ AllDumpOptions,
         globals.set_option(dump_hlds_options, string(DumpOptions1), !Globals)
     else
         true
@@ -1282,14 +1263,13 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         % Prevent the dumping of the mode and type tables.
         string.replace_all(DumpOptions2, "M", "", DumpOptions3),
         string.replace_all(DumpOptions3, "T", "", DumpOptions),
-        globals.set_option(dump_hlds_options, string(DumpOptions),
-            !Globals)
+        globals.set_option(dump_hlds_options, string(DumpOptions), !Globals)
     ;
         DumpHLDSPredIds = []
     ),
 
-    option_implies(debug_mode_constraints, prop_mode_constraints,
-        bool(yes), !Globals),
+    option_implies(debug_mode_constraints, prop_mode_constraints, bool(yes),
+        !Globals),
     option_implies(prop_mode_constraints, mode_constraints, bool(yes),
         !Globals),
     option_implies(simple_mode_constraints, mode_constraints, bool(yes),
@@ -1796,7 +1776,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     option_implies(body_typeinfo_liveness, constraint_propagation, bool(no),
         !Globals),
 
-    % XXX if trailing is enabled, middle recursion optimization
+    % XXX If trailing is enabled, middle recursion optimization
     % can generate code which does not allocate a stack frame
     % even though stack slots are used to save and restore the
     % trail, if the code being optimized contains a construct which
@@ -2173,8 +2153,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             !.Globals, !Specs)
     ),
     option_requires(warn_non_tail_recursion, errorcheck_only, bool(no),
-        "--warn-non-tail-recursion is incompatible with " ++
-        "--errorcheck-only",
+        "--warn-non-tail-recursion is incompatible with --errorcheck-only",
         !.Globals, !Specs),
 
     % The backend foreign languages depend on the target.
@@ -2205,8 +2184,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         CurrentBackendForeignLanguage = [_ | _]
     ),
 
-    globals.lookup_int_option(!.Globals, compare_specialization,
-        CompareSpec),
+    globals.lookup_int_option(!.Globals, compare_specialization, CompareSpec),
     ( if CompareSpec < 0 then
         % This indicates that the option was not set by the user;
         % we should set the option to the default value. This value
@@ -2236,11 +2214,9 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         ),
         NumTagBits >= 2
     then
-        globals.set_option(can_compare_constants_as_ints, bool(yes),
-            !Globals)
+        globals.set_option(can_compare_constants_as_ints, bool(yes), !Globals)
     else
-        globals.set_option(can_compare_constants_as_ints, bool(no),
-            !Globals)
+        globals.set_option(can_compare_constants_as_ints, bool(no), !Globals)
     ),
 
     (
