@@ -1156,11 +1156,8 @@ warn_dead_proc(ModuleInfo, PredId, ProcId, Context) = Spec :-
         should_not_module_qualify, proc(PredId, ProcId)),
     Pieces = [words("Warning:")] ++ ProcPieces ++
         [words("is never called."), nl],
-    Msg = simple_msg(Context,
-        [option_is_set(warn_dead_procs, yes, [always(Pieces)])]),
-    Severity = severity_conditional(warn_dead_procs, yes,
-        severity_warning, no),
-    Spec = error_spec(Severity, phase_dead_code, [Msg]).
+    Msg = simple_msg(Context, [always(Pieces)]),
+    Spec = error_spec(severity_warning, phase_dead_code, [Msg]).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
