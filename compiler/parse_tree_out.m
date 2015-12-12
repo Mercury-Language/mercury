@@ -1044,7 +1044,7 @@ mercury_format_mode_defn(Lang, InstVarSet, Name, Args, eqv_mode(Mode), Context,
     construct_qualified_term_with_context(Name, ArgTerms, Context, ModeTerm),
     mercury_format_term(InstVarSet, print_name_only, ModeTerm, !U),
     add_string(") == ", !U),
-    mercury_format_mode(Lang, simple_inst_info(InstVarSet), Mode, !U),
+    mercury_format_mode(Lang, InstVarSet, Mode, !U),
     add_string(".\n", !U).
 
 %---------------------------------------------------------------------------%

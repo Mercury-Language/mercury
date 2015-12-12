@@ -500,7 +500,7 @@ mercury_format_pragma_foreign_proc_vars(Lang, ProgVarSet, InstVarSet,
     Var = pragma_var(_Var, VarName, Mode, _BoxPolicy),
     add_string(VarName, !U),
     add_string(" :: ", !U),
-    mercury_format_mode(Lang, simple_inst_info(InstVarSet), Mode, !U),
+    mercury_format_mode(Lang, InstVarSet, Mode, !U),
     (
         Vars = []
     ;
@@ -783,8 +783,7 @@ mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, !U) :-
     FPEInfo = pragma_info_foreign_proc_export(ForeignLang, PredNameModesPF,
         ExportName),
     PredNameModesPF = pred_name_modes_pf(Name, ModeList, PredOrFunc),
-    varset.init(VarSet), % The varset isn't really used.
-    InstInfo = simple_inst_info(VarSet),
+    varset.init(InstVarSet), % The varset isn't really used.
     add_string(":- pragma foreign_export(", !U),
     mercury_format_foreign_language_string(ForeignLang, !U),
     add_string(", ", !U),
@@ -793,13 +792,13 @@ mercury_format_pragma_foreign_proc_export(Lang, FPEInfo, !U) :-
         PredOrFunc = pf_function,
         pred_args_to_func_args(ModeList, ArgModes, RetMode),
         add_string("(", !U),
-        mercury_format_mode_list(Lang, InstInfo, ArgModes, !U),
+        mercury_format_mode_list(Lang, InstVarSet, ArgModes, !U),
         add_string(") = ", !U),
-        mercury_format_mode(Lang, InstInfo, RetMode, !U)
+        mercury_format_mode(Lang, InstVarSet, RetMode, !U)
     ;
         PredOrFunc = pf_predicate,
         add_string("(", !U),
-        mercury_format_mode_list(Lang, InstInfo, ModeList, !U),
+        mercury_format_mode_list(Lang, InstVarSet, ModeList, !U),
         add_string(")", !U)
     ),
     add_string(", ", !U),

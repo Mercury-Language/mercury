@@ -16,7 +16,6 @@
 :- interface.
 
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
@@ -89,23 +88,6 @@
 :- pred mercury_output_uni_mode_list(list(uni_mode)::in, inst_varset::in,
     io::di, io::uo) is det.
 :- func mercury_uni_mode_list_to_string(list(uni_mode), inst_varset) = string.
-
-%-----------------------------------------------------------------------------%
-
-    % Output an inst in a format where all compiler-defined insts
-    % have been expanded out; recursive insts have their self-referential
-    % parts printed out as ellipses ("...").
-    % (These routines are used for outputting insts in mode errors.)
-    % NOTE They *were* used for that, but have been replaced by the code
-    % now in error_msg_inst.m.
-    %
-:- pred mercury_output_expanded_inst(output_lang::in, module_info::in,
-    inst_varset::in, mer_inst::in, io::di, io::uo) is det.
-:- func mercury_expanded_inst_to_string(output_lang, module_info, inst_varset,
-    mer_inst) = string.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -958,8 +940,8 @@ mercury_format_structured_inst(Suffix, Inst, Indent, Lang, InclAddr,
         add_string(Suffix, !U)
     ;
         Inst = constrained_inst_vars(Vars, ConstrainedInst),
-        mercury_format_constrained_inst_vars(output_debug,
-            simple_inst_info(InstVarSet), Vars, ConstrainedInst, !U),
+        mercury_format_constrained_inst_vars(output_debug, InstVarSet,
+            Vars, ConstrainedInst, !U),
         add_string(Suffix, !U)
     ;
         Inst = abstract_inst(Name, Args),
@@ -1165,58 +1147,9 @@ mercury_uni_mode_to_string(UniMode, InstVarSet) = String :-
 
 mercury_format_uni_mode(UniMode, InstVarSet, !IO) :-
     UniMode = (InstA1 - InstB1 -> InstA2 - InstB2),
-    InstInfo = simple_inst_info(InstVarSet),
-    mercury_format_mode(output_debug, InstInfo, (InstA1 -> InstA2), !IO),
+    mercury_format_mode(output_debug, InstVarSet, (InstA1 -> InstA2), !IO),
     add_string(" = ", !IO),
-    mercury_format_mode(output_debug, InstInfo, (InstB1 -> InstB2), !IO).
-
-%-----------------------------------------------------------------------------%
-
-mercury_output_expanded_inst(Lang, ModuleInfo, InstVarSet, Inst, !IO) :-
-    set.init(Expansions),
-    ExpandedInstInfo = expanded_inst_info(InstVarSet, ModuleInfo, Expansions),
-    mercury_format_inst(Lang, ExpandedInstInfo, Inst, !IO).
-
-mercury_expanded_inst_to_string(Lang, ModuleInfo, InstVarSet, Inst) = String :-
-    set.init(Expansions),
-    ExpandedInstInfo = expanded_inst_info(InstVarSet, ModuleInfo, Expansions),
-    mercury_format_inst(Lang, ExpandedInstInfo, Inst, "", String).
-
-:- pred mercury_format_expanded_defined_inst(output_lang::in,
-    expanded_inst_info::in, inst_name::in, U::di, U::uo) is det <= output(U).
-
-mercury_format_expanded_defined_inst(Lang, ExpandedInstInfo0, InstName, !S) :-
-    ( set.member(InstName, ExpandedInstInfo0 ^ eii_expansions) ->
-        add_string("...", !S)
-    ; InstName = user_inst(_, _) ->
-        % Don't expand user-defined insts, just output them as is
-        % (we do expand any compiler-defined insts that occur
-        % in the arguments of the user-defined inst, however).
-        mercury_format_inst_name(Lang, ExpandedInstInfo0, InstName, !S)
-    ;
-        inst_lookup(ExpandedInstInfo0 ^ eii_module_info, InstName, Inst),
-        Expansions0 = ExpandedInstInfo0 ^ eii_expansions,
-        set.insert(InstName, Expansions0, Expansions),
-        ExpandedInstInfo = ExpandedInstInfo0 ^ eii_expansions := Expansions,
-        mercury_format_inst(Lang, ExpandedInstInfo, Inst, !S)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- instance inst_info(expanded_inst_info) where [
-    func(instvarset/1) is eii_varset,
-    pred(format_defined_inst/5) is mercury_format_expanded_defined_inst
-].
-
-:- type expanded_inst_info
-    --->    expanded_inst_info(
-                eii_varset      :: inst_varset,
-                eii_module_info :: module_info,
-
-                % The set of already-expanded insts; further occurrences
-                % of these will be output as "...".
-                eii_expansions  :: set(inst_name)
-            ).
+    mercury_format_mode(output_debug, InstVarSet, (InstB1 -> InstB2), !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_mode.

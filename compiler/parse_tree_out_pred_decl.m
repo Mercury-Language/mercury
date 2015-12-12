@@ -424,13 +424,13 @@ mercury_pred_mode_subdecl_to_string(Lang, VarSet, PredName, Modes, MaybeDet)
     inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(mer_inst)::in,
     maybe(determinism)::in, U::di, U::uo) is det <= output(U).
 
-mercury_format_pred_or_func_mode_subdecl(Lang, VarSet, PredName, Modes,
+mercury_format_pred_or_func_mode_subdecl(Lang, InstVarSet, PredName, Modes,
         MaybeWithInst, MaybeDet, !U) :-
     (
         Modes = [_ | _],
         mercury_format_sym_name(PredName, !U),
         add_string("(", !U),
-        mercury_format_mode_list(Lang, simple_inst_info(VarSet), Modes, !U),
+        mercury_format_mode_list(Lang, InstVarSet, Modes, !U),
         add_string(")", !U)
     ;
         Modes = [],
@@ -439,7 +439,7 @@ mercury_format_pred_or_func_mode_subdecl(Lang, VarSet, PredName, Modes,
     (
         MaybeWithInst = yes(WithInst),
         add_string(" `with_inst` (", !U),
-        mercury_format_inst(Lang, simple_inst_info(VarSet), WithInst, !U),
+        mercury_format_inst(Lang, InstVarSet, WithInst, !U),
         add_string(")", !U)
     ;
         MaybeWithInst = no
@@ -462,20 +462,20 @@ mercury_func_mode_subdecl_to_string(Lang, VarSet, FuncName, Modes, RetMode,
     sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
     U::di, U::uo) is det <= output(U).
 
-mercury_format_func_mode_subdecl(Lang, VarSet, FuncName, Modes, RetMode,
+mercury_format_func_mode_subdecl(Lang, InstVarSet, FuncName, Modes, RetMode,
         MaybeDet, !U) :-
     (
         Modes = [_ | _],
         mercury_format_sym_name(FuncName, !U),
         add_string("(", !U),
-        mercury_format_mode_list(Lang, simple_inst_info(VarSet), Modes, !U),
+        mercury_format_mode_list(Lang, InstVarSet, Modes, !U),
         add_string(")", !U)
     ;
         Modes = [],
         mercury_format_bracketed_sym_name(FuncName, !U)
     ),
     add_string(" = ", !U),
-    mercury_format_mode(Lang, simple_inst_info(VarSet), RetMode, !U),
+    mercury_format_mode(Lang, InstVarSet, RetMode, !U),
     mercury_format_det_annotation(MaybeDet, !U).
 
 %---------------------------------------------------------------------------%
