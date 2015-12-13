@@ -239,114 +239,7 @@ find_unproven_body_constraints(ModuleInfo, PredId, PredInfo,
         UnprovenConstraints0 = []
     ).
 
-    % Check that the all of the types which have been inferred for the
-    % variables in the predicate do not contain any unbound type variables
-    % other than those that occur in the types of head variables, and that
-    % there are no unsatisfied type class constraints.
-    %
-:- pred find_unresolved_types_in_pred(module_info::in, pred_id::in,
-    pred_info::in, pred_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-:- pragma inline(find_unresolved_types_in_pred/6).
-
-find_unresolved_types_in_pred(ModuleInfo, PredId, !PredInfo,
-        !NoTypeErrorSpecs) :-
-    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-    pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
-    clauses_info_get_varset(ClausesInfo0, VarSet),
-    clauses_info_get_vartypes(ClausesInfo0, VarTypesMap0),
-    vartypes_to_assoc_list(VarTypesMap0, VarTypesList),
-    set.init(BindToVoidTVars0),
-    find_unresolved_types_in_vars(VarTypesList, ExternalTypeParams,
-        [], UnresolvedVarsTypes, BindToVoidTVars0, BindToVoidTVars),
-    (
-        UnresolvedVarsTypes = []
-    ;
-        UnresolvedVarsTypes = [_ | _],
-        report_unresolved_type_warning(ModuleInfo, PredId, !.PredInfo,
-            VarSet, UnresolvedVarsTypes, !NoTypeErrorSpecs),
-
-        % Bind all the type variables in `BindToVoidTVars' to `void' ...
-        pred_info_get_constraint_proof_map(!.PredInfo, ProofMap0),
-        pred_info_get_constraint_map(!.PredInfo, ConstraintMap0),
-        bind_type_vars_to_void(BindToVoidTVars, VarTypesMap0, VarTypesMap,
-            ProofMap0, ProofMap, ConstraintMap0, ConstraintMap),
-        clauses_info_set_vartypes(VarTypesMap, ClausesInfo0, ClausesInfo),
-        pred_info_set_clauses_info(ClausesInfo, !PredInfo),
-        pred_info_set_constraint_proof_map(ProofMap, !PredInfo),
-        pred_info_set_constraint_map(ConstraintMap, !PredInfo)
-    ).
-
-    % The number of variables can be huge here (hundred of thousands for
-    % Doug Auclair's training_cars program). The code below prevents stack
-    % overflows in grades that do not permit tail recursion.
-    %
-:- pred find_unresolved_types_in_vars(assoc_list(prog_var, mer_type)::in,
-    list(tvar)::in,
-    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
-    set(tvar)::in, set(tvar)::out) is det.
-
-find_unresolved_types_in_vars(VarTypes, ExternalTypeParams,
-        !UnresolvedVarsTypes, !BindToVoidTVars) :-
-    find_unresolved_types_in_vars_inner(VarTypes, ExternalTypeParams, 1000,
-        LeftOverVarTypes, !UnresolvedVarsTypes, !BindToVoidTVars),
-    (
-        LeftOverVarTypes = []
-    ;
-        LeftOverVarTypes = [_ | _],
-        find_unresolved_types_in_vars(LeftOverVarTypes, ExternalTypeParams,
-            !UnresolvedVarsTypes, !BindToVoidTVars)
-    ).
-
-:- pred find_unresolved_types_in_vars_inner(assoc_list(prog_var, mer_type)::in,
-    list(tvar)::in, int::in, assoc_list(prog_var, mer_type)::out,
-    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
-    set(tvar)::in, set(tvar)::out) is det.
-
-find_unresolved_types_in_vars_inner([], _, _, [],
-        !UnresolvedVarsTypes, !BindToVoidTVars).
-find_unresolved_types_in_vars_inner([Var - Type | VarTypes],
-        ExternalTypeParams, VarsToDo, LeftOverVarTypes,
-        !UnresolvedVarsTypes, !BindToVoidTVars) :-
-    ( if VarsToDo < 0 then
-        LeftOverVarTypes = [Var - Type | VarTypes]
-    else
-        type_vars(Type, TVars),
-        set.list_to_set(TVars, TVarsSet0),
-        set.delete_list(ExternalTypeParams, TVarsSet0, TVarsSet1),
-        ( if set.is_empty(TVarsSet1) then
-            true
-        else
-            !:UnresolvedVarsTypes = [Var - Type | !.UnresolvedVarsTypes],
-            set.union(TVarsSet1, !BindToVoidTVars)
-        ),
-        find_unresolved_types_in_vars_inner(VarTypes, ExternalTypeParams,
-            VarsToDo - 1, LeftOverVarTypes,
-            !UnresolvedVarsTypes, !BindToVoidTVars)
-    ).
-
-    % Bind all the type variables in `UnboundTypeVarsSet' to the type `void'.
-    %
-:- pred bind_type_vars_to_void(set(tvar)::in, vartypes::in, vartypes::out,
-    constraint_proof_map::in, constraint_proof_map::out,
-    constraint_map::in, constraint_map::out) is det.
-
-bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !ProofMap,
-        !ConstraintMap) :-
-    % Create a substitution that maps all of the unbound type variables
-    % to `void'.
-    MapToVoid =
-        ( pred(TVar::in, Subst0::in, Subst::out) is det :-
-            map.det_insert(TVar, void_type, Subst0, Subst)
-        ),
-    set.fold(MapToVoid, UnboundTypeVarsSet, map.init, VoidSubst),
-
-    % Then apply the substitution we just created to the various maps.
-    apply_subst_to_vartypes(VoidSubst, !VarTypes),
-    apply_subst_to_constraint_proof_map(VoidSubst, !ProofMap),
-    apply_subst_to_constraint_map(VoidSubst, !ConstraintMap).
-
-%---------------------------------------------------------------------------%
+%---------------------%
 
     % Report unsatisfied typeclass constraints.
     %
@@ -487,6 +380,115 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
 
 %---------------------------------------------------------------------------%
 
+    % Check that the all of the types which have been inferred for the
+    % variables in the predicate do not contain any unbound type variables
+    % other than those that occur in the types of head variables, and that
+    % there are no unsatisfied type class constraints.
+    %
+:- pred find_unresolved_types_in_pred(module_info::in, pred_id::in,
+    pred_info::in, pred_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+:- pragma inline(find_unresolved_types_in_pred/6).
+
+find_unresolved_types_in_pred(ModuleInfo, PredId, !PredInfo,
+        !NoTypeErrorSpecs) :-
+    pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
+    pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
+    clauses_info_get_varset(ClausesInfo0, VarSet),
+    clauses_info_get_vartypes(ClausesInfo0, VarTypesMap0),
+    vartypes_to_assoc_list(VarTypesMap0, VarTypesList),
+    set.init(BindToVoidTVars0),
+    find_unresolved_types_in_vars(VarTypesList, ExternalTypeParams,
+        [], UnresolvedVarsTypes, BindToVoidTVars0, BindToVoidTVars),
+    (
+        UnresolvedVarsTypes = []
+    ;
+        UnresolvedVarsTypes = [_ | _],
+        report_unresolved_type_warning(ModuleInfo, PredId, !.PredInfo,
+            VarSet, UnresolvedVarsTypes, !NoTypeErrorSpecs),
+
+        % Bind all the type variables in `BindToVoidTVars' to `void' ...
+        pred_info_get_constraint_proof_map(!.PredInfo, ProofMap0),
+        pred_info_get_constraint_map(!.PredInfo, ConstraintMap0),
+        bind_type_vars_to_void(BindToVoidTVars, VarTypesMap0, VarTypesMap,
+            ProofMap0, ProofMap, ConstraintMap0, ConstraintMap),
+        clauses_info_set_vartypes(VarTypesMap, ClausesInfo0, ClausesInfo),
+        pred_info_set_clauses_info(ClausesInfo, !PredInfo),
+        pred_info_set_constraint_proof_map(ProofMap, !PredInfo),
+        pred_info_set_constraint_map(ConstraintMap, !PredInfo)
+    ).
+
+    % The number of variables can be huge here (hundred of thousands for
+    % Doug Auclair's training_cars program). The code below prevents stack
+    % overflows in grades that do not permit tail recursion.
+    %
+:- pred find_unresolved_types_in_vars(assoc_list(prog_var, mer_type)::in,
+    list(tvar)::in,
+    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
+    set(tvar)::in, set(tvar)::out) is det.
+
+find_unresolved_types_in_vars(VarTypes, ExternalTypeParams,
+        !UnresolvedVarsTypes, !BindToVoidTVars) :-
+    find_unresolved_types_in_vars_inner(VarTypes, ExternalTypeParams, 1000,
+        LeftOverVarTypes, !UnresolvedVarsTypes, !BindToVoidTVars),
+    (
+        LeftOverVarTypes = []
+    ;
+        LeftOverVarTypes = [_ | _],
+        find_unresolved_types_in_vars(LeftOverVarTypes, ExternalTypeParams,
+            !UnresolvedVarsTypes, !BindToVoidTVars)
+    ).
+
+:- pred find_unresolved_types_in_vars_inner(assoc_list(prog_var, mer_type)::in,
+    list(tvar)::in, int::in, assoc_list(prog_var, mer_type)::out,
+    assoc_list(prog_var, mer_type)::in, assoc_list(prog_var, mer_type)::out,
+    set(tvar)::in, set(tvar)::out) is det.
+
+find_unresolved_types_in_vars_inner([], _, _, [],
+        !UnresolvedVarsTypes, !BindToVoidTVars).
+find_unresolved_types_in_vars_inner([Var - Type | VarTypes],
+        ExternalTypeParams, VarsToDo, LeftOverVarTypes,
+        !UnresolvedVarsTypes, !BindToVoidTVars) :-
+    ( if VarsToDo < 0 then
+        LeftOverVarTypes = [Var - Type | VarTypes]
+    else
+        type_vars(Type, TVars),
+        set.list_to_set(TVars, TVarsSet0),
+        set.delete_list(ExternalTypeParams, TVarsSet0, TVarsSet1),
+        ( if set.is_empty(TVarsSet1) then
+            true
+        else
+            !:UnresolvedVarsTypes = [Var - Type | !.UnresolvedVarsTypes],
+            set.union(TVarsSet1, !BindToVoidTVars)
+        ),
+        find_unresolved_types_in_vars_inner(VarTypes, ExternalTypeParams,
+            VarsToDo - 1, LeftOverVarTypes,
+            !UnresolvedVarsTypes, !BindToVoidTVars)
+    ).
+
+    % Bind all the type variables in `UnboundTypeVarsSet' to the type `void'.
+    %
+:- pred bind_type_vars_to_void(set(tvar)::in, vartypes::in, vartypes::out,
+    constraint_proof_map::in, constraint_proof_map::out,
+    constraint_map::in, constraint_map::out) is det.
+
+bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !ProofMap,
+        !ConstraintMap) :-
+    % Create a substitution that maps all of the unbound type variables
+    % to `void'.
+    MapToVoid =
+        ( pred(TVar::in, Subst0::in, Subst::out) is det :-
+            map.det_insert(TVar, void_type, Subst0, Subst)
+        ),
+    set.fold(MapToVoid, UnboundTypeVarsSet, map.init, VoidSubst),
+
+    % Then apply the substitution we just created to the various maps.
+    apply_subst_to_vartypes(VoidSubst, !VarTypes),
+    apply_subst_to_constraint_proof_map(VoidSubst, !ProofMap),
+    apply_subst_to_constraint_map(VoidSubst, !ConstraintMap).
+
+%---------------------%
+
     % Report a warning: uninstantiated type parameter.
     %
 :- pred report_unresolved_type_warning(module_info::in, pred_id::in,
@@ -597,6 +599,8 @@ post_typecheck_finish_promise(PromiseType, PromiseId, !ModuleInfo, !Specs) :-
         true
     ).
 
+%---------------------%
+
     % Store promise declaration, normalise goal and return new module_info
     % and the goal for further processing.
     %
@@ -618,7 +622,7 @@ store_promise(PromiseType, PromiseId, !ModuleInfo, Goal) :-
         ( PromiseType = promise_type_exclusive
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
-        promise_ex_goal(!.ModuleInfo, PromiseId, Goal),
+        get_promise_ex_goal(!.ModuleInfo, PromiseId, Goal),
         predids_from_goal(Goal, PredIds),
         module_info_get_exclusive_table(!.ModuleInfo, Table0),
         list.foldl(exclusive_table_add(PromiseId), PredIds, Table0, Table),
@@ -626,14 +630,15 @@ store_promise(PromiseType, PromiseId, !ModuleInfo, Goal) :-
     ;
         % Case for exhaustiveness -- XXX not yet implemented.
         PromiseType = promise_type_exhaustive,
-        promise_ex_goal(!.ModuleInfo, PromiseId, Goal)
+        get_promise_ex_goal(!.ModuleInfo, PromiseId, Goal)
     ).
 
     % Get the goal from a promise_ex declaration.
     %
-:- pred promise_ex_goal(module_info::in, pred_id::in, hlds_goal::out) is det.
+:- pred get_promise_ex_goal(module_info::in, pred_id::in, hlds_goal::out)
+    is det.
 
-promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
+get_promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
     module_info_pred_info(ModuleInfo, ExclusiveDeclPredId, PredInfo),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
@@ -645,7 +650,7 @@ promise_ex_goal(ModuleInfo, ExclusiveDeclPredId, Goal) :-
         unexpected($module, $pred, "not a single clause")
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
     % Ensure that an assertion which is defined in an interface doesn't
     % refer to any constructors, functions and predicates defined in the
@@ -738,8 +743,6 @@ check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs) :-
         )
     ).
 
-%---------------------------------------------------------------------------%
-
 :- pred check_in_interface_promise_unify_rhs(module_info::in, pred_info::in,
     prog_var::in, unify_rhs::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -771,8 +774,6 @@ check_in_interface_promise_unify_rhs(ModuleInfo, PredInfo, Var, RHS, Context,
         check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal, !Specs)
     ).
 
-%---------------------------------------------------------------------------%
-
 :- pred check_in_interface_promise_goals(module_info::in, pred_info::in,
     list(hlds_goal)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -782,7 +783,7 @@ check_in_interface_promise_goals(ModuleInfo, PredInfo, [Goal0 | Goal0s],
     check_in_interface_promise_goal(ModuleInfo, PredInfo, Goal0, !Specs),
     check_in_interface_promise_goals(ModuleInfo, PredInfo, Goal0s, !Specs).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pred report_assertion_interface_error(module_info::in, prog_context::in,
     list(format_component)::in, list(error_spec)::in, list(error_spec)::out)
@@ -890,6 +891,8 @@ propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
     ),
     propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
         !RevErrorProcIds, !Procs).
+
+%---------------------%
 
 :- pred report_unbound_inst_vars(module_info::in, pred_id::in,
     list(proc_id)::in, pred_info::in, pred_info::out,
