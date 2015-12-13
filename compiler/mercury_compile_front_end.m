@@ -76,6 +76,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.check_typeclass.
+:- import_module check_hlds.check_for_missing_type_defns.
 :- import_module check_hlds.cse_detection.
 :- import_module check_hlds.det_analysis.
 :- import_module check_hlds.implementation_defined_literals.

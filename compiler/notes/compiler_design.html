@@ -908,7 +908,8 @@ so that the compiler does the right thing for options such as
         pred_info. However, typecheck.m doesn't figure out the pred_id
         for function calls or calls to overloaded predicates; that can't
         be done in a single pass of typechecking, and so it is done
-        later on (in post_typecheck.m, for both preds and function calls)
+        later on (in purity.m for overloaded predicate calls, and in
+        resolve_unify_functor.m for function calls)
     <li>
         type_assign.m and typecheck_info.m define
         the main data structures used by typechecking.
@@ -924,12 +925,21 @@ so that the compiler does the right thing for options such as
     <li>
         post_typecheck.m may also be considered to logically be a part
         of typechecking, but it is actually called from purity
-        analysis (see below). It contains the stuff related to
-        type checking that can't be done in the main type checking pass.
-        It also removes assertions from further processing.
-        post_typecheck.m reports errors for unbound type and inst variables,
-        for unsatisfied type class constraints and for indistinguishable
-        predicate or function modes.
+        analysis (see below). (XXX No, it is called from
+        mercury_compile_front_end.)
+        It contains the stuff related to type checking that can't be done
+        in the main type checking pass, because they depend on type analysis
+        being already complete. These include checks for unbound type and
+        inst variables, for unsatisfied type class constraints, and for
+        indistinguishable predicate or function modes.
+    <li>
+        check_promise.m records each promise in the appropriate table
+        (the assertion table or the promise_ex table), and removes them
+        from further processing as predicates.
+    <li>
+        check_for_missing_type_defns.m check for locally defined types
+        that have an abstract definition but no corresponding
+        concrete definition.
     </ul>
     <p>
 

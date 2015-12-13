@@ -17,8 +17,11 @@
 % Type checking.
 %:- module type_analysis.
     :- include_module check_typeclass.
+    :- include_module check_for_missing_type_defns.
+    :- include_module check_promise.
     :- include_module post_typecheck.
     :- include_module purity.
+    :- include_module resolve_unify_functor.
     :- include_module type_constraints.
     :- include_module type_assign.
     :- include_module type_util.

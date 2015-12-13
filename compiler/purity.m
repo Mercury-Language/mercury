@@ -8,7 +8,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: purity.m
-% Main authors: schachte (Peter Schachte, main author and designer of
+% Main authors: schachte (Peter Schachte, main author and designer of the
 % purity system), trd (modifications for impure functions).
 %
 % Purpose: handle `impure' and `promise_pure' declarations; finish off
@@ -19,25 +19,26 @@
 % program is not "purity-correct". This includes treating procedures with
 % different clauses for different modes as impure, unless promised pure.
 %
-% This module also calls post_typecheck.m to perform the final parts of
-% type analysis, including
+% This module also does some tasks that are logically part of type analysis
+% but must be done after type inference is complete:
 %
-% - resolution of predicate and function overloading
+% - resolution of predicate overloading
+% - resolution of function overloading
+%   (we call resolve_unify_functor.m to do this)
 % - checking the types of the outer variables in atomic goals, and insertion
 %   of their conversions to and from the inner variables.
 %
 % (See the comments in typecheck.m and post_typecheck.m.)
 %
-% These actions cannot be done until after type inference is complete,
-% so they need to be a separate "post-typecheck pass"; they are done
-% here in combination with the purity-analysis pass for efficiency reasons.
-%
-% We also do elimination of double-negation in this pass.
+% We also do elimination of double negations in this pass.
 % It needs to be done somewhere after quantification analysis and
 % before mode analysis, and this is a convenient place to do it.
 %
 % This pass also converts calls to `private_builtin.unsafe_type_cast'
 % into `generic_call(unsafe_cast, ...)' goals.
+%
+% To save an extra traversal of the HLDS, this pass also calls check_promise.m
+% to checks promises and store them in the relevant table in the HLDS.
 %
 %-----------------------------------------------------------------------------%
 %
@@ -167,7 +168,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.post_typecheck.
+:- import_module check_hlds.check_promise.
+:- import_module check_hlds.resolve_unify_functor.
 :- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
@@ -249,7 +251,8 @@ check_preds_purity([PredId | PredIds], !ModuleInfo, !Specs) :-
     pred_info_get_goal_type(PredInfo, GoalType),
     (
         GoalType = goal_type_promise(PromiseType),
-        post_typecheck_finish_promise(PromiseType, PredId, !ModuleInfo, !Specs)
+        check_and_store_promise(PredId, PredInfo, PromiseType,
+            !ModuleInfo, !Specs)
     ;
         ( GoalType = goal_type_clause
         ; GoalType = goal_type_foreign
@@ -691,8 +694,8 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
         CallContext = goal_info_get_context(GoalInfo),
         (
             RunPostTypecheck = run_post_typecheck,
-            finally_resolve_pred_overloading(ArgVars, PredInfo, ModuleInfo,
-                CallContext, SymName0, SymName, PredId0, PredId),
+            finally_resolve_pred_overloading(ModuleInfo, PredInfo,
+                PredId0, SymName0, ArgVars, CallContext, PredId, SymName),
             ( if
                 % Convert any calls to private_builtin.unsafe_type_cast
                 % into unsafe_type_cast generic calls.
@@ -780,10 +783,9 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 PredInfo0 = !.Info ^ pi_pred_info,
                 VarTypes0 = !.Info ^ pi_vartypes,
                 VarSet0 = !.Info ^ pi_varset,
-                post_typecheck.resolve_unify_functor(LHSVar, ConsId, Args,
-                    Mode, Unification, UnifyContext, GoalInfo, ModuleInfo,
-                    PredInfo0, PredInfo, VarSet0, VarSet, VarTypes0, VarTypes,
-                    Goal1, IsPlainUnify),
+                resolve_unify_functor(ModuleInfo, LHSVar, ConsId, Args, Mode,
+                    Unification, UnifyContext, GoalInfo, PredInfo0, PredInfo,
+                    VarSet0, VarSet, VarTypes0, VarTypes, Goal1, IsPlainUnify),
                 !Info ^ pi_vartypes := VarTypes,
                 !Info ^ pi_varset := VarSet,
                 !Info ^ pi_pred_info := PredInfo,
@@ -998,8 +1000,7 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
                 ;
                     OuterTypeSpecs = [],
                     AtomicGoalsAndInners = assoc_list.from_corresponding_lists(
-                        [MainGoal0 | OrElseGoals0],
-                        [Inner | OrElseInners]),
+                        [MainGoal0 | OrElseGoals0], [Inner | OrElseInners]),
                     list.map_foldl(wrap_inner_outer_goals(Outer),
                         AtomicGoalsAndInners, AllAtomicGoals1, !Info),
                     (
@@ -1047,6 +1048,37 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
     ).
 
 %-----------------------------------------------------------------------------%
+
+    % Handle any unresolved overloading for a predicate call.
+    %
+:- pred finally_resolve_pred_overloading(module_info::in, pred_info::in,
+    pred_id::in, sym_name::in, list(prog_var)::in, prog_context::in,
+    pred_id::out, sym_name::out) is det.
+
+finally_resolve_pred_overloading(ModuleInfo, CallerPredInfo,
+        PredId0, PredName0, Args0, Context, PredId, PredName) :-
+    % In the case of a call to an overloaded predicate, typecheck.m
+    % does not figure out the correct pred_id. We must do that here.
+
+    ( if PredId0 = invalid_pred_id then
+        pred_info_get_typevarset(CallerPredInfo, TVarSet),
+        pred_info_get_exist_quant_tvars(CallerPredInfo, ExistQVars),
+        pred_info_get_external_type_params(CallerPredInfo, ExternalTypeParams),
+        pred_info_get_markers(CallerPredInfo, Markers),
+        pred_info_get_clauses_info(CallerPredInfo, ClausesInfo),
+        clauses_info_get_vartypes(ClausesInfo, VarTypes),
+        lookup_var_types(VarTypes, Args0, ArgTypes),
+        resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
+            ArgTypes, ExternalTypeParams, Context, PredName0, PredName, PredId)
+    else
+        PredId = PredId0,
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        PredModule = pred_info_module(PredInfo),
+        PredBaseName = pred_info_name(PredInfo),
+        PredName = qualified(PredModule, PredBaseName)
+    ).
+
+%-----------------------------------------------------------------------------%
 %
 % Auxiliary procedures for handling from_ground_term scopes.
 %
@@ -1081,10 +1113,9 @@ compute_goal_purity_in_fgt_ptc([Goal0 | Goals0], !RevMarkedSubGoals,
     PredInfo0 = !.Info ^ pi_pred_info,
     VarTypes0 = !.Info ^ pi_vartypes,
     VarSet0 = !.Info ^ pi_varset,
-    post_typecheck.resolve_unify_functor(XVar, ConsId, YVars, Mode,
-        Unification, UnifyContext, GoalInfo0, ModuleInfo,
-        PredInfo0, PredInfo, VarSet0, VarSet, VarTypes0, VarTypes,
-        Goal1, IsPlainUnify),
+    resolve_unify_functor(ModuleInfo, XVar, ConsId, YVars, Mode,
+        Unification, UnifyContext, GoalInfo0, PredInfo0, PredInfo,
+        VarSet0, VarSet, VarTypes0, VarTypes, Goal1, IsPlainUnify),
     Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     (
         IsPlainUnify = is_plain_unify,
