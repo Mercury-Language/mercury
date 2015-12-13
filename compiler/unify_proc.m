@@ -477,13 +477,13 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
     % so just go on to post_typecheck.
     (
         Item = clauses,
-        post_typecheck_finish_pred_no_io(!.ModuleInfo,
-            ErrorProcs, PredInfo0, PredInfo)
+        PredInfo1 = PredInfo0
     ;
         Item = declaration,
-        post_typecheck_finish_imported_pred_no_io(!.ModuleInfo,
-            ErrorProcs, PredInfo0, PredInfo)
+        setup_vartypes_in_clauses_for_imported_pred(PredInfo0, PredInfo1)
     ),
+    propagate_types_into_modes(!.ModuleInfo,
+        ErrorProcs, PredInfo1, PredInfo),
     expect(unify(ErrorProcs, []), $module, $pred, "ErrorProcs != []"),
 
     % Call polymorphism to introduce type_info arguments
