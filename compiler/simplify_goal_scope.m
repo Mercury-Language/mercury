@@ -65,7 +65,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 
 simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, Common0, Common, !Info) :-
@@ -306,16 +305,11 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
         Context = goal_info_get_context(GoalInfo0),
         Goal = true_goal_with_context(Context),
 
-        simplify_info_get_trace_goal_procs(!.Info, TraceCalledProcs0),
-        % We need the lambda because this is not the only mode of goal_calls/2.
-        GoalCalls =
-            ( pred(PredProcId::out) is nondet :-
-                goal_calls(SubGoal, PredProcId)
-            ),
-        solutions(GoalCalls, SubGoalCalledProcs),
-        set.insert_list(SubGoalCalledProcs,
-            TraceCalledProcs0, TraceCalledProcs),
-        simplify_info_set_trace_goal_procs(TraceCalledProcs, !Info)
+        simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
+        SubGoalCalledProcs = goal_callees(SubGoal),
+        set.union(SubGoalCalledProcs,
+            DeletedCallCallees0, DeletedCallCallees),
+        simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info)
     ;
         KeepGoal = yes,
         MaybeRuntimeExpr = no,

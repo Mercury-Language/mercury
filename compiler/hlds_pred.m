@@ -2183,7 +2183,7 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     map(prog_var, string)::out) is det.
 :- pred proc_info_get_statevar_warnings(proc_info::in,
     list(error_spec)::out) is det.
-:- pred proc_info_get_trace_goal_procs(proc_info::in,
+:- pred proc_info_get_deleted_call_callees(proc_info::in,
     set(pred_proc_id)::out) is det.
 :- pred proc_info_get_is_address_taken(proc_info::in,
     is_address_taken::out) is det.
@@ -2269,7 +2269,7 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_statevar_warnings(list(error_spec)::in,
     proc_info::in, proc_info::out) is det.
-:- pred proc_info_set_trace_goal_procs(set(pred_proc_id)::in,
+:- pred proc_info_set_deleted_call_callees(set(pred_proc_id)::in,
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_address_taken(is_address_taken::in,
     proc_info::in, proc_info::out) is det.
@@ -2565,12 +2565,19 @@ attribute_list_to_attributes(Attributes, AttributeSet) :-
                 psi_statevar_warnings           :: list(error_spec),
 
                 % The set of procedures that the body of this procedure
-                % *used* to call from inside trace goal scopes that were
-                % deleted because their compile-time condition turned out
-                % to be false. We record this so that dead procedure analysis
-                % does not generate warnings for these procedures, or the
-                % other procedures reachable from them.
-                psi_trace_goal_procs            :: set(pred_proc_id),
+                % *used* to call, but doesn't anymore. This can happen
+                % For several reason. These reasons include the call being
+                % - inside a trace goal scope whose compile-time condition
+                %   turned out to be false,
+                % - in the then part of an if-then-else whose condition
+                %   never succeeds,
+                % - in the else part of an if-then-else whose condition
+                %   never fails.
+                % We record the callees of the deleted calls so that
+                % dead procedure analysis does not generate warnings
+                % for these procedures, or the other procedures reachable
+                % from them.
+                psi_deleted_call_callees        :: set(pred_proc_id),
 
                 %-----------------------------------------------------------%
                 % Flags that record simple properties of the procedure.
@@ -3114,8 +3121,8 @@ proc_info_get_var_name_remap(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_proc_var_name_remap.
 proc_info_get_statevar_warnings(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_statevar_warnings.
-proc_info_get_trace_goal_procs(PI, X) :-
-    X = PI ^ proc_sub_info ^ psi_trace_goal_procs.
+proc_info_get_deleted_call_callees(PI, X) :-
+    X = PI ^ proc_sub_info ^ psi_deleted_call_callees.
 proc_info_get_is_address_taken(PI, X) :-
     X = PI ^ proc_sub_info ^ psi_is_address_taken.
 proc_info_get_has_any_foreign_exports(PI, X) :-
@@ -3200,8 +3207,8 @@ proc_info_set_var_name_remap(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_proc_var_name_remap := X.
 proc_info_set_statevar_warnings(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_statevar_warnings := X.
-proc_info_set_trace_goal_procs(X, !PI) :-
-    !PI ^ proc_sub_info ^ psi_trace_goal_procs := X.
+proc_info_set_deleted_call_callees(X, !PI) :-
+    !PI ^ proc_sub_info ^ psi_deleted_call_callees := X.
 proc_info_set_address_taken(X, !PI) :-
     !PI ^ proc_sub_info ^ psi_is_address_taken := X.
 proc_info_set_has_any_foreign_exports(X, !PI) :-

@@ -61,6 +61,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module varset.
 
 simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
@@ -72,7 +73,7 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     %
     % Note however that rerunning determinism analysis, which we do
     % at the end of simplification, may introduce more occurrences of these;
-    % since we don't iterate simplification and determinism anaysis until
+    % since we don't iterate simplification and determinism analysis until
     % a fixpoint is reached, we don't guarantee to eliminate all such
     % if-then-elses. Hence the code generator must be prepared to handle
     % the case when the condition of an if-then-else has determinism
@@ -101,7 +102,13 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             hlds_goal(GoalExpr, GoalInfo), NestedContext0, InstMap0,
             Common0, Common, !Info),
         maybe_warn_about_condition(GoalInfo0, NestedContext0, "cannot fail",
-            !Info)
+            !Info),
+
+        simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
+        SubGoalCalledProcs = goal_callees(Else0),
+        set.union(SubGoalCalledProcs,
+            DeletedCallCallees0, DeletedCallCallees),
+        simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info)
     ;
         CondCanFail0 = can_fail,
         (
@@ -145,7 +152,14 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 hlds_goal(GoalExpr, GoalInfo), NestedContext0, InstMap0,
                 Common0, Common, !Info),
             maybe_warn_about_condition(GoalInfo0, NestedContext0,
-                "cannot succeed", !Info)
+                "cannot succeed", !Info),
+
+            simplify_info_get_deleted_call_callees(!.Info,
+                DeletedCallCallees0),
+            SubGoalCalledProcs = goal_callees(Then0),
+            set.union(SubGoalCalledProcs,
+                DeletedCallCallees0, DeletedCallCallees),
+            simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info)
         ;
             ( CondSolns0 = at_most_one
             ; CondSolns0 = at_most_many

@@ -74,12 +74,17 @@
 
 :- type det_info.
 
-    % Given a list of cases, and a list of the possible cons_ids
-    % that the switch variable could be bound to, select out only
-    % those cases whose cons_id occurs in the list of possible cons_ids.
+    % delete_unreachable_cases(Cases0, ConsIds, ReachableCases,
+    %   UnreachableGoals):
+    %
+    % Given Cases, and a ConsIds, a list of the possible cons_ids that
+    % the switch variable could be bound to, return as ReachableCases
+    % the subset of Cases whose cons_id occurs in ConsIds.
+    %
+    % Return the goals of the unreachable cases in UnreachableGoals.
     %
 :- pred delete_unreachable_cases(list(case)::in, list(cons_id)::in,
-    list(case)::out) is det.
+    list(case)::out, list(hlds_goal)::out) is det.
 
     % Update the current substitution to account for the effects
     % of the given unification.
@@ -140,37 +145,45 @@
 
 %-----------------------------------------------------------------------------%
 
-delete_unreachable_cases(Cases0, PossibleConsIds, Cases) :-
+delete_unreachable_cases(Cases0, PossibleConsIds, ReachableCases,
+        UnreachableGoals) :-
     PossibleConsIdSet = set_tree234.list_to_set(PossibleConsIds),
     % We use a reverse list accumulator because we want to avoid requiring
     % O(n) stack space.
-    delete_unreachable_cases_acc(Cases0, PossibleConsIdSet, [], RevCases),
-    list.reverse(RevCases, Cases).
+    delete_unreachable_cases_acc(Cases0, PossibleConsIdSet,
+        [], RevReachableCases, [], RevUnreachableGoals),
+    list.reverse(RevReachableCases, ReachableCases),
+    list.reverse(RevUnreachableGoals, UnreachableGoals).
 
 :- pred delete_unreachable_cases_acc(list(case)::in, set_tree234(cons_id)::in,
-    list(case)::in, list(case)::out) is det.
+    list(case)::in, list(case)::out,
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
-delete_unreachable_cases_acc([], _PossibleConsIdSet, !RevCases).
-delete_unreachable_cases_acc([Case0 | Cases0], PossibleConsIdSet, !RevCases) :-
+delete_unreachable_cases_acc([], _PossibleConsIdSet,
+        !RevReachableCases, !RevUnreachableGoals).
+delete_unreachable_cases_acc([Case0 | Cases0], PossibleConsIdSet,
+        !RevReachableCases, !RevUnreachableGoals) :-
     Case0 = case(MainConsId0, OtherConsIds0, Goal),
     ( if set_tree234.contains(PossibleConsIdSet, MainConsId0) then
         list.filter(set_tree234.contains(PossibleConsIdSet),
             OtherConsIds0, OtherConsIds),
         Case = case(MainConsId0, OtherConsIds, Goal),
-        !:RevCases = [Case | !.RevCases]
+        !:RevReachableCases = [Case | !.RevReachableCases]
     else
         list.filter(set_tree234.contains(PossibleConsIdSet),
             OtherConsIds0, OtherConsIds1),
         (
-            OtherConsIds1 = []
-            % We don't add Case to !RevCases, effectively deleting it.
+            OtherConsIds1 = [],
+            % We don't add Case to !RevReachableCases, effectively deleting it.
+            !:RevUnreachableGoals = [Goal | !.RevUnreachableGoals]
         ;
             OtherConsIds1 = [MainConsId | OtherConsIds],
             Case = case(MainConsId, OtherConsIds, Goal),
-            !:RevCases = [Case | !.RevCases]
+            !:RevReachableCases = [Case | !.RevReachableCases]
         )
     ),
-    delete_unreachable_cases_acc(Cases0, PossibleConsIdSet, !RevCases).
+    delete_unreachable_cases_acc(Cases0, PossibleConsIdSet,
+        !RevReachableCases, !RevUnreachableGoals).
 
 interpret_unify(X, rhs_var(Y), !Subst) :-
     unify_term(variable(X, context_init), variable(Y, context_init), !Subst).

@@ -62,6 +62,7 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module map.
+:- import_module set.
 :- import_module string.
 :- import_module varset.
 
@@ -172,7 +173,7 @@ simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo,
                 (
                     % This test is here mostly for the sake of completeness.
                     % It rarely finds anything to delete, because
-                    % - we InstMap1 from Goal1's instmap delta,
+                    % - we get InstMap1 mostly from Goal1's instmap delta,
                     % - the delta is created during mode analysis, and
                     % - mode analysis itself deletes the unreachable conjuncts
                     %   after a conjunct whose instmap delta is unreachable.
@@ -183,6 +184,14 @@ simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo,
                     determinism_components(Detism1, _, at_most_zero)
                 )
             then
+                simplify_info_get_deleted_call_callees(!.Info,
+                    DeletedCallCallees0),
+                SubGoalCalledProcs = goals_callees(Goals0),
+                set.union(SubGoalCalledProcs,
+                    DeletedCallCallees0, DeletedCallCallees),
+                simplify_info_set_deleted_call_callees(DeletedCallCallees,
+                    !Info),
+
                 !:PrevGoals = cord.snoc(!.PrevGoals, Goal1),
                 ( if
                     ( Goal1 = hlds_goal(disj([]), _)
@@ -268,7 +277,7 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
         % will NOT visit any part of the procedure body more than once.
         % However, it would have the disadvantage of guaranteeing that
         % the rename WILL visit EVERY part of the procedure body once.
-        % This would be a slowdown in the average case because the average
+        % This would be a slowdown in the average case, because the average
         % number of times that the current code visits a goal in the procedure
         % body is significantly less than one, since most conjunctions
         % do not have excess assigments. (The profiling data I am looking at
@@ -364,7 +373,7 @@ goal_is_excess_assign(Trace, TraceOptimized, VarSet, ConjNonLocals, Goal0,
     map.det_insert(ElimVar, ReplacementVar, !Subn),
 
     % If the module is being compiled with `--trace deep' and
-    % `--no-trace-optimized' don't replace a meaningful variable name
+    % `--no-trace-optimized', don't replace a meaningful variable name
     % with `HeadVar__n' or an anonymous variable.
     not (
         trace_level_needs_meaningful_var_names(Trace) = yes,

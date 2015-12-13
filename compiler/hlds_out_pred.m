@@ -793,7 +793,7 @@ write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
     proc_info_get_structure_reuse(ProcInfo, MaybeStructureReuse),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_get_eval_method(ProcInfo, EvalMethod),
-    proc_info_get_trace_goal_procs(ProcInfo, TraceGoalProcSet),
+    proc_info_get_deleted_call_callees(ProcInfo, DeletedCallCalleeSet),
     proc_info_get_is_address_taken(ProcInfo, IsAddressTaken),
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     proc_info_get_has_user_event(ProcInfo, HasUserEvent),
@@ -875,14 +875,13 @@ write_proc(Info, ModuleInfo, PredId, PredStatus, VarNamePrint, Indent,
         write_rtti_varmaps(VarSet, TVarSet, VarNamePrint, Indent, RttiVarMaps,
             !IO),
 
-        set.to_sorted_list(TraceGoalProcSet, TraceGoalProcs),
+        set.to_sorted_list(DeletedCallCalleeSet, DeletedCallCallees),
         (
-            TraceGoalProcs = []
+            DeletedCallCallees = []
         ;
-            TraceGoalProcs = [_ | _],
-            io.write_string("% procedures called from deleted trace goals: ",
-                !IO),
-            io.write(TraceGoalProcs, !IO),
+            DeletedCallCallees = [_ | _],
+            io.write_string("% procedures called from deleted goals: ", !IO),
+            io.write(DeletedCallCallees, !IO),
             io.nl(!IO)
         ),
 

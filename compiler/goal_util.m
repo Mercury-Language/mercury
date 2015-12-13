@@ -38,6 +38,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module maybe.
+:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -171,6 +172,9 @@
     % Return an indication of the size of the list of clauses.
     %
 :- pred clause_list_size(list(clause)::in, int::out) is det.
+
+:- func goals_callees(list(hlds_goal)) = set(pred_proc_id).
+:- func goal_callees(hlds_goal) = set(pred_proc_id).
 
     % Test whether the goal calls the given procedure.
     %
@@ -458,7 +462,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module solutions.
 :- import_module string.
 :- import_module varset.
@@ -846,7 +849,7 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
     % in the above sense.
 
     solutions.solutions(
-        (pred(Var::out) is nondet :-
+        ( pred(Var::out) is nondet :-
             % Search through all arguments of all constraints
             % that the goal could have used.
             rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints),
@@ -1073,6 +1076,21 @@ goal_expr_size(GoalExpr, Size) :-
             Size = Size1 + Size2 + 1
         )
     ).
+
+%-----------------------------------------------------------------------------%
+
+goals_callees(Goals) = CalleesSet :-
+    CalleeSets = list.map(goal_callees, Goals),
+    CalleesSet = set.union_list(CalleeSets).
+
+goal_callees(Goal) = CalleesSet :-
+    % We need the lambda because this is not the only mode of goal_calls/2.
+    GoalCalls =
+        ( pred(PredProcId::out) is nondet :-
+            goal_calls(Goal, PredProcId)
+        ),
+    solutions(GoalCalls, CalleesList),
+    set.sorted_list_to_set(CalleesList, CalleesSet).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1505,9 +1523,10 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct, !VarSet, !VarTypes,
     else
         unexpected($module, $pred, "get_arg_insts failed")
     ),
-    InstToUniMode = (pred(ArgInst::in, ArgUniMode::out) is det :-
-        ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
-    ),
+    InstToUniMode =
+        ( pred(ArgInst::in, ArgUniMode::out) is det :-
+            ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
+        ),
     list.map(InstToUniMode, ArgInsts, UniModes),
     UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
     UnifyContext = unify_context(umc_explicit, []),
@@ -1870,18 +1889,22 @@ predids_from_goals(Goals, PredIds) :-
 predids_from_goal(Goal, PredIds) :-
     % Explicit lambda expression needed since goal_calls_pred_id
     % has multiple modes.
-    P = (pred(PredId::out) is nondet :- goal_calls_pred_id(Goal, PredId)),
+    P = ( pred(PredId::out) is nondet :-
+            goal_calls_pred_id(Goal, PredId)
+        ),
     solutions.solutions(P, PredIds).
 
 predids_with_args_from_goal(Goal, List) :-
     solutions(
-        (pred({PredId, Args}::out) is nondet :-
+        ( pred({PredId, Args}::out) is nondet :-
             goal_contains_goal(Goal, hlds_goal(SubGoal, _)),
             SubGoal = plain_call(PredId, _, Args, _, _, _)
         ), List).
 
 pred_proc_ids_from_goal(Goal, PredProcIds) :-
-    P = (pred(PredProcId::out) is nondet :- goal_calls(Goal, PredProcId)),
+    P = ( pred(PredProcId::out) is nondet :-
+            goal_calls(Goal, PredProcId)
+        ),
     solutions.solutions(P, PredProcIds).
 
 goal_is_atomic(Goal, GoalIsAtomic) :-
@@ -2378,7 +2401,8 @@ transform_all_goals(TransformP, Goal0, Goal) :-
         GoalExpr = disj(Disjs)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        list.map((pred(Case0::in, Case::out) is det :-
+        list.map(
+            ( pred(Case0::in, Case::out) is det :-
                 GoalI0 = Case0 ^ case_goal,
                 transform_all_goals(TransformP, GoalI0, GoalI),
                 Case = Case0 ^ case_goal := GoalI

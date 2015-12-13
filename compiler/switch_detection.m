@@ -91,6 +91,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module set_tree234.
 :- import_module term.
 :- import_module unit.
@@ -207,21 +208,27 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     % `detect_switches_in_goal'.
     Info = switch_detect_info(ModuleInfo, AllowMulti),
     proc_info_get_vartypes(!.ProcInfo, VarTypes),
-    LocalInfo0 =  local_switch_detect_info(ModuleInfo, AllowMulti, VarTypes,
-        do_not_need_to_requantify),
+    Requant0 = do_not_need_to_requantify,
+    BodyDeletedCallCallees0 = set.init,
+    LocalInfo0 = local_switch_detect_info(ModuleInfo, AllowMulti, VarTypes,
+        Requant0, BodyDeletedCallCallees0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
-    detect_switches_in_goal(InstMap0, Goal0, Goal,
-        LocalInfo0, LocalInfo),
+    detect_switches_in_goal(InstMap0, Goal0, Goal, LocalInfo0, LocalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
-    Requant = LocalInfo ^ lsdi_requant,
+    LocalInfo = local_switch_detect_info(_ModuleInfo, _AllowMulti, _VarTypes,
+        Requant, BodyDeletedCallCallees),
     (
         Requant = need_to_requantify,
         requantify_proc_general(ordinary_nonlocals_maybe_lambda, !ProcInfo)
     ;
         Requant = do_not_need_to_requantify
-    ).
+    ),
+    proc_info_get_deleted_call_callees(!.ProcInfo, DeletedCallCallees0),
+    set.union(BodyDeletedCallCallees,
+        DeletedCallCallees0, DeletedCallCallees),
+    proc_info_set_deleted_call_callees(DeletedCallCallees, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -230,7 +237,8 @@ detect_switches_in_proc(Info, !ProcInfo) :-
                 lsdi_module_info        :: module_info,
                 lsdi_allow_multi_arm    :: allow_multi_arm,
                 lsdi_vartypes           :: vartypes,
-                lsdi_requant            :: need_to_requantify
+                lsdi_requant            :: need_to_requantify,
+                lsdi_deleted_callees    :: set(pred_proc_id)
             ).
 
     % Given a goal, and the instmap on entry to that goal,
@@ -1066,8 +1074,15 @@ cases_to_switch(Var, Cases0, InstMap, GoalExpr, !LocalInfo) :-
     ( if inst_is_bound_to_functors(ModuleInfo, VarInst, Functors) then
         type_to_ctor_det(Type, TypeCtor),
         bound_insts_to_cons_ids(TypeCtor, Functors, ConsIds),
-        delete_unreachable_cases(Cases0, ConsIds, Cases1),
-        CanFail = compute_can_fail(ConsIds, Cases1)
+        delete_unreachable_cases(Cases0, ConsIds, Cases1,
+            UnreachableCaseGoals),
+        CanFail = compute_can_fail(ConsIds, Cases1),
+
+        DeletedCallCallees0 = !.LocalInfo ^ lsdi_deleted_callees,
+        UnreachableCalledProcs = goals_callees(UnreachableCaseGoals),
+        set.union(UnreachableCalledProcs,
+            DeletedCallCallees0, DeletedCallCallees),
+        !LocalInfo ^ lsdi_deleted_callees := DeletedCallCallees
     else
         Cases1 = Cases0,
         ( if switch_type_num_functors(ModuleInfo, Type, NumFunctors) then

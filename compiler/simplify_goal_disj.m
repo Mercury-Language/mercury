@@ -52,6 +52,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.simplify.simplify_goal.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_goal.
 :- import_module libs.
@@ -64,6 +65,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module set.
 :- import_module term.
 :- import_module varset.
 
@@ -300,6 +302,11 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
                 simplify_info_get_fully_strict(!.Info, no)
             )
         then
+            simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
+            SubGoalCalledProcs = goal_callees(Goal),
+            set.union(SubGoalCalledProcs,
+                DeletedCallCallees0, DeletedCallCallees),
+            simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info),
             RevGoals1 = RevGoals0
         else
             RevGoals1 = [Goal | RevGoals0],
@@ -319,7 +326,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
     %
     % We previously converted them all to if-then-elses using the code below,
     % however converting disjs that have output variables but that nevertheless
-    % cannot succeed more than one (e.g. cc_nondet or cc_multi disjs) into
+    % cannot succeed more than once (e.g. cc_nondet or cc_multi disjs) into
     % if-then-elses may cause problems with other parts of the compiler that
     % assume that an if-then-else is mode-correct, i.e. that the condition
     % doesn't bind variables.

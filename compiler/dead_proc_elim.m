@@ -157,14 +157,14 @@
 %-----------------------------------------------------------------------------%
 
 dead_proc_analyze(ModuleInfo, Needed) :-
-    AnalyzeLinks = analyze_links(do_not_analyze_link_trace_goal_procs,
+    AnalyzeLinks = analyze_links(do_not_analyze_link_deleted_calls,
         do_not_analyze_link_type_ctor, do_not_analyze_link_const_struct),
     do_dead_proc_analyze(ModuleInfo, AnalyzeLinks, Needed).
 
 %-----------------------------------------------------------------------------%
 
 dead_proc_elim(ElimOptImported, !ModuleInfo) :-
-    AnalyzeLinks = analyze_links(do_not_analyze_link_trace_goal_procs,
+    AnalyzeLinks = analyze_links(do_not_analyze_link_deleted_calls,
         analyze_link_type_ctor, analyze_link_const_struct),
     do_dead_proc_analyze(!.ModuleInfo, AnalyzeLinks, Needed),
     do_dead_proc_eliminate(ElimOptImported, Needed, !ModuleInfo).
@@ -172,7 +172,7 @@ dead_proc_elim(ElimOptImported, !ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 dead_proc_warn(ModuleInfo, Specs) :-
-    AnalyzeLinks = analyze_links(analyze_link_trace_goal_procs,
+    AnalyzeLinks = analyze_links(analyze_link_deleted_calls,
         analyze_link_type_ctor, analyze_link_const_struct),
     do_dead_proc_analyze(ModuleInfo, AnalyzeLinks, Needed),
     do_dead_proc_warn(ModuleInfo, Needed, Specs).
@@ -210,14 +210,14 @@ dead_proc_warn(ModuleInfo, Specs) :-
 
 :- type analyze_links
     --->    analyze_links(
-                al_trace_goal_procs :: maybe_analyze_link_trace_goal_procs,
+                al_deleted_calls    :: maybe_analyze_link_deleted_calls,
                 al_type_ctor        :: maybe_analyze_link_type_ctor,
                 al_const_struct     :: maybe_analyze_link_const_struct
             ).
 
-:- type maybe_analyze_link_trace_goal_procs
-    --->    do_not_analyze_link_trace_goal_procs
-    ;       analyze_link_trace_goal_procs.
+:- type maybe_analyze_link_deleted_calls
+    --->    do_not_analyze_link_deleted_calls
+    ;       analyze_link_deleted_calls.
 
 :- type maybe_analyze_link_type_ctor
     --->    do_not_analyze_link_type_ctor
@@ -438,7 +438,7 @@ dead_proc_examine(!.Queue, !.Examined, AnalyzeLinks, ModuleInfo, !Needed) :-
             (
                 Entity = entity_proc(PredId, ProcId),
                 PredProcId = proc(PredId, ProcId),
-                AnalyzeTraceGoalProcs = AnalyzeLinks ^ al_trace_goal_procs,
+                AnalyzeTraceGoalProcs = AnalyzeLinks ^ al_deleted_calls,
                 dead_proc_examine_proc(PredProcId, AnalyzeTraceGoalProcs,
                     ModuleInfo, !Queue, !Needed)
             ;
@@ -565,7 +565,7 @@ dead_proc_examine_const_struct_args([Arg | Args], !Queue, !Needed) :-
 %-----------------------------------------------------------------------------%
 
 :- pred dead_proc_examine_proc(pred_proc_id::in,
-    maybe_analyze_link_trace_goal_procs::in, module_info::in,
+    maybe_analyze_link_deleted_calls::in, module_info::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
@@ -589,11 +589,12 @@ dead_proc_examine_proc(proc(PredId, ProcId), AnalyzeTraceGoalProcs,
         proc_info_get_goal(ProcInfo, Goal),
         dead_proc_examine_goal(Goal, proc(PredId, ProcId), !Queue, !Needed),
         (
-            AnalyzeTraceGoalProcs = do_not_analyze_link_trace_goal_procs
+            AnalyzeTraceGoalProcs = do_not_analyze_link_deleted_calls
         ;
-            AnalyzeTraceGoalProcs = analyze_link_trace_goal_procs,
-            proc_info_get_trace_goal_procs(ProcInfo, TraceGoalProcs),
-            set.foldl2(need_trace_goal_proc, TraceGoalProcs, !Queue, !Needed)
+            AnalyzeTraceGoalProcs = analyze_link_deleted_calls,
+            proc_info_get_deleted_call_callees(ProcInfo, DeletedCallCallees),
+            set.foldl2(need_trace_goal_proc, DeletedCallCallees,
+                !Queue, !Needed)
         ),
 
         proc_info_get_eval_method(ProcInfo, EvalMethod),

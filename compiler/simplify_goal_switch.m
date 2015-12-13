@@ -39,6 +39,7 @@
 :- import_module check_hlds.inst_util.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_util.
 :- import_module hlds.make_goal.
 :- import_module hlds.vartypes.
 :- import_module parse_tree.
@@ -55,6 +56,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module varset.
 
 simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
@@ -68,8 +70,15 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         type_to_ctor_det(VarType, VarTypeCtor),
         list.map(bound_inst_to_cons_id(VarTypeCtor), BoundInsts, ConsIds0),
         list.sort(ConsIds0, ConsIds),
-        delete_unreachable_cases(Cases0, ConsIds, Cases1),
-        MaybeInstConsIds = yes(ConsIds)
+        delete_unreachable_cases(Cases0, ConsIds, Cases1,
+            UnreachableCaseGoals),
+        MaybeInstConsIds = yes(ConsIds),
+
+        simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
+        SubGoalCalledProcs = goals_callees(UnreachableCaseGoals),
+        set.union(SubGoalCalledProcs,
+            DeletedCallCallees0, DeletedCallCallees),
+        simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info)
     else
         Cases1 = Cases0,
         MaybeInstConsIds = no
