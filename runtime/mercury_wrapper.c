@@ -506,6 +506,7 @@ int                 MR_num_complexity_procs;
 #endif
 
 static  void    MR_process_args(int argc, char **argv);
+static const char   *MR_make_argv(const char *, char **, char ***, int *);
 static  void    MR_process_environment_options(void);
 static  void    MR_process_options(int argc, char **argv);
 MR_NO_RETURN(static  void    MR_usage(void));

@@ -369,9 +369,6 @@ extern void         MR_register_type_ctor_stat(MR_TypeStat *type_stat,
 
 #endif
 
-/* This is used by compiler/mlds_to_gcc.m. */
-extern const char   *MR_make_argv(const char *, char **, char ***, int *);
-
 extern void         MR_setup_call_intervals(char **more_str_ptr,
                         unsigned long *min_ptr, unsigned long *max_ptr);
 
