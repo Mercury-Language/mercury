@@ -312,6 +312,7 @@ gather_stats_in_item_pragma(ItemPragmaInfo, !ItemStats) :-
         ; PragmaType = pragma_external_proc(_)
         ; PragmaType = pragma_inline(_)
         ; PragmaType = pragma_no_inline(_)
+        ; PragmaType = pragma_consider_used(_)
         ; PragmaType = pragma_unused_args(_)
         ; PragmaType = pragma_obsolete(_)
         ; PragmaType = pragma_no_detism_warning(_)

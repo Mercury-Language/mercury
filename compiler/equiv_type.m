@@ -651,6 +651,7 @@ replace_in_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, _InstEqvMap,
         Pragma = pragma_foreign_proc(FPInfo)
     ;
         ( Pragma0 = pragma_check_termination(_)
+        ; Pragma0 = pragma_consider_used(_)
         ; Pragma0 = pragma_does_not_terminate(_)
         ; Pragma0 = pragma_exceptions(_)
         ; Pragma0 = pragma_external_proc(_)

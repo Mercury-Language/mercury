@@ -413,6 +413,7 @@ separate_items([Item | Items], SectionInfo,
 
             ; PragmaType = pragma_inline(_)
             ; PragmaType = pragma_no_inline(_)
+            ; PragmaType = pragma_consider_used(_)
 
             ; PragmaType = pragma_unused_args(_)
             ; PragmaType = pragma_exceptions(_)

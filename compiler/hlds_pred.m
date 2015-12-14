@@ -277,6 +277,14 @@
             % predicate be inlined. Does not override
             % marker_user_marked_no_inline.
 
+    ;       marker_consider_used
+            % The user has requested that this predicate be considered used
+            % when we consider which procedures are dead, so we can generate
+            % dead procedure warnings for them. If this marker is present
+            % on a predicate, then neither the procedures of this predicate
+            % nor the other procedures they call, directly or indirectly,
+            % should get dead procedure warnings.
+
     ;       marker_class_method
             % Requests that this predicate be transformed into the appropriate
             % call to a class method.

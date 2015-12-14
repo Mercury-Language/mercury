@@ -167,6 +167,11 @@ mercury_output_item_pragma(Info, ItemPragma, !IO) :-
         mercury_output_pragma_decl(Pred, Arity, pf_predicate,
             "no_inline", no, !IO)
     ;
+        Pragma = pragma_consider_used(PredNameArity),
+        PredNameArity = pred_name_arity(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, pf_predicate,
+            "consider_used", no, !IO)
+    ;
         Pragma = pragma_unused_args(UnusedArgsInfo),
         mercury_output_pragma_unused_args(UnusedArgsInfo, !IO)
     ;

@@ -1971,6 +1971,7 @@ should_output_marker(marker_no_detism_warning, no).
 should_output_marker(marker_user_marked_inline, yes).
 should_output_marker(marker_user_marked_no_inline, yes).
 should_output_marker(marker_heuristic_inline, no).
+should_output_marker(marker_consider_used, no).
 should_output_marker(marker_promised_pure, yes).
 should_output_marker(marker_promised_semipure, yes).
 should_output_marker(marker_promised_equivalent_clauses, yes).

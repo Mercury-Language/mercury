@@ -2060,6 +2060,7 @@ keep_marker(marker_no_detism_warning) = no.
 keep_marker(marker_user_marked_inline) = no.
 keep_marker(marker_user_marked_no_inline) = no.
 keep_marker(marker_heuristic_inline) = no.
+keep_marker(marker_consider_used) = no.
 keep_marker(marker_class_method) = no.
 keep_marker(marker_class_instance_method) = no.
 keep_marker(marker_named_class_instance_method) = no.

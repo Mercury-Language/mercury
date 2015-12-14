@@ -29,6 +29,7 @@
     ;       pragma_external_proc(ground)
     ;       pragma_inline(ground)
     ;       pragma_no_inline(ground)
+    ;       pragma_consider_used(ground)
     ;       pragma_unused_args(ground)
     ;       pragma_exceptions(ground)
     ;       pragma_trailing_info(ground)
@@ -240,6 +241,12 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
         add_pred_marker("no_inline", Name, Arity, PredStatus, Context,
             marker_user_marked_no_inline, [marker_user_marked_inline],
             !ModuleInfo, !Specs)
+    ;
+        Pragma = pragma_consider_used(PredNameArity),
+        PredNameArity = pred_name_arity(Name, Arity),
+        item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
+        add_pred_marker("consider_used", Name, Arity, PredStatus, Context,
+            marker_consider_used, [], !ModuleInfo, !Specs)
     ;
         % Used for inter-module unused argument elimination.
         % This can only appear in .opt files.

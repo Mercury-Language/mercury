@@ -175,6 +175,12 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                 Pragma = pragma_no_inline(PredNameArity)
             )
         ;
+            PragmaName = "consider_used",
+            MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
+                PredNameArity = pred_name_arity(Name, Arity),
+                Pragma = pragma_consider_used(PredNameArity)
+            )
+        ;
             PragmaName = "obsolete",
             MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
                 PredNameArity = pred_name_arity(Name, Arity),

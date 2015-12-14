@@ -482,6 +482,9 @@ mq_error_context_to_pieces(ErrorContext, Context,Pieces) :-
             Pragma = pragma_no_inline(_),
             PragmaName = "no_inline"
         ;
+            Pragma = pragma_consider_used(_),
+            PragmaName = "consider_used"
+        ;
             Pragma = pragma_unused_args(_),
             PragmaName = "unused_args"
         ;

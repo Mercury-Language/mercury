@@ -276,11 +276,15 @@ dead_proc_initialize(ModuleInfo, !:Queue, !:Needed) :-
 dead_proc_initialize_preds([], _PredTable, !Queue, !Needed).
 dead_proc_initialize_preds([PredId | PredIds], PredTable, !Queue, !Needed) :-
     map.lookup(PredTable, PredId, PredInfo),
-    ExportedProcIds = pred_info_exported_procids(PredInfo),
+    pred_info_get_markers(PredInfo, PredMarkers),
+    ( if check_marker(PredMarkers, marker_consider_used) then
+        LiveProcIds = pred_info_all_procids(PredInfo)
+    else
+        LiveProcIds = pred_info_exported_procids(PredInfo)
+    ),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, Procs),
-    dead_proc_initialize_procs(PredId, Procs, ExportedProcIds,
-        !Queue, !Needed),
+    dead_proc_initialize_procs(PredId, Procs, LiveProcIds, !Queue, !Needed),
     dead_proc_initialize_preds(PredIds, PredTable, !Queue, !Needed).
 
     % Add the listed procedures to the queue and map.
@@ -290,14 +294,14 @@ dead_proc_initialize_preds([PredId | PredIds], PredTable, !Queue, !Needed) :-
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
     is det.
 
-dead_proc_initialize_procs(_PredId, [], _ExportedProcIds, !Queue, !Needed).
-dead_proc_initialize_procs(PredId, [Proc | Procs], ExportedProcIds,
+dead_proc_initialize_procs(_PredId, [], _LiveProcIds, !Queue, !Needed).
+dead_proc_initialize_procs(PredId, [Proc | Procs], LiveProcIds,
         !Queue, !Needed) :-
     Proc = ProcId - ProcInfo,
     ( if
         proc_info_is_valid_mode(ProcInfo),
         (
-            list.member(ProcId, ExportedProcIds)
+            list.member(ProcId, LiveProcIds)
         ;
             proc_info_get_has_any_foreign_exports(ProcInfo,
                 has_foreign_exports)
@@ -309,8 +313,7 @@ dead_proc_initialize_procs(PredId, [Proc | Procs], ExportedProcIds,
     else
         true
     ),
-    dead_proc_initialize_procs(PredId, Procs, ExportedProcIds,
-        !Queue, !Needed).
+    dead_proc_initialize_procs(PredId, Procs, LiveProcIds, !Queue, !Needed).
 
     % Add procedures exported to foreign language by a `:- pragma
     % foreign_export(...)' declaration to the queue and map.

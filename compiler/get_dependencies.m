@@ -442,6 +442,7 @@ gather_implicit_import_needs_in_items([Item | Items], !ImplicitImportNeeds) :-
             ; Pragma = pragma_type_spec(_)
             ; Pragma = pragma_inline(_)
             ; Pragma = pragma_no_inline(_)
+            ; Pragma = pragma_consider_used(_)
             ; Pragma = pragma_unused_args(_)
             ; Pragma = pragma_exceptions(_)
             ; Pragma = pragma_trailing_info(_)

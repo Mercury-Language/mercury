@@ -786,6 +786,7 @@
     ;       pragma_type_spec(pragma_info_type_spec)
     ;       pragma_inline(pred_name_arity)
     ;       pragma_no_inline(pred_name_arity)
+    ;       pragma_consider_used(pred_name_arity)
     ;       pragma_unused_args(pragma_info_unused_args)
     ;       pragma_exceptions(pragma_info_exceptions)
     ;       pragma_trailing_info(pragma_info_trailing_info)
@@ -1553,6 +1554,7 @@ pragma_allowed_in_interface(Pragma) = Allowed :-
         ; Pragma = pragma_external_proc(_)
         ; Pragma = pragma_inline(_)
         ; Pragma = pragma_no_inline(_)
+        ; Pragma = pragma_consider_used(_)
         ; Pragma = pragma_no_detism_warning(_)
         ; Pragma = pragma_require_tail_recursion(_)
         ; Pragma = pragma_fact_table(_)
@@ -1627,6 +1629,9 @@ pragma_context_pieces(Pragma) = ContextPieces :-
     ;
         Pragma = pragma_no_inline(_),
         ContextPieces = [pragma_decl("no_inline"), words("declaration")]
+    ;
+        Pragma = pragma_consider_used(_),
+        ContextPieces = [pragma_decl("consider_used"), words("declaration")]
     ;
         Pragma = pragma_no_detism_warning(_),
         ContextPieces = [pragma_decl("no_determinism_warning"),
@@ -1948,6 +1953,7 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
         ; Pragma = pragma_mode_check_clauses(_)
         ; Pragma = pragma_no_detism_warning(_)
         ; Pragma = pragma_no_inline(_)
+        ; Pragma = pragma_consider_used(_)
         ; Pragma = pragma_obsolete(_)
         ; Pragma = pragma_promise_eqv_clauses(_)
         ; Pragma = pragma_promise_pure(_)
