@@ -1373,7 +1373,7 @@ dir.foldl2_process_dir(SymLinkParent, P, DirName, ParentIds0, Recursive,
                     )
                 ;
                     ExcpResult = exception(_),
-                    % We are relying on the fact that in the C, IL and Java
+                    % We are relying on the fact that in the C, C# and Java
                     % backends Dir0 = Dir, and in the Erlang backend dir.close
                     % does nothing.
                     dir.close(Dir0, _, !IO),
