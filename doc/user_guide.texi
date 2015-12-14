@@ -1475,7 +1475,7 @@ The @samp{P} or @samp{print *} command will display the values
 of any live variables in scope.
 The @samp{f} or @samp{finish} command can be used if you want
 to skip over a call.
-The @samp{b} or @samp{break} command can be used to set break-points.
+The @samp{b} or @samp{break} command can be used to set breakpoints.
 The @samp{d} or @samp{stack} command will display the call stack.
 The @samp{quit} command will exit the debugger.
 
