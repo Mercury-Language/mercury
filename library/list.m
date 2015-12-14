@@ -3196,19 +3196,6 @@ list.merge_and_remove_dups(ComparePred, [X | Xs], [Y | Ys], XYs) :-
 
 %---------------------------------------------------------------------------%
 
-% These functions are exported so that they can be used instead of the
-% names [|]_2 and []_0. These two names can be difficult to use from
-% C# in the il backend.
-
-:- func empty_list = list(T).
-:- pragma foreign_export("C", empty_list = out, "ML_empty_list").
-
-empty_list = [].
-
-:- pragma foreign_export("C", (list.cons(in, in) = (out)), "ML_cons").
-
-%---------------------------------------------------------------------------%
-
 L1 ++ L2 = list.append(L1, L2).
 
 %---------------------------------------------------------------------------%
