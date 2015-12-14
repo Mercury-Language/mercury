@@ -131,7 +131,7 @@
 %
 :- use_module erlang_rtti_implementation.
 
-% For use by the Java and IL backends.
+% For use by the Java and C# backends.
 %
 :- use_module rtti_implementation.
 

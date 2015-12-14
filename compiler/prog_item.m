@@ -1851,6 +1851,7 @@ get_pragma_foreign_code(Globals, Pragma, !Info) :-
 
     % The code here should match the way that mlds_to_gcc.m decides whether
     % or not to call mlds_to_c.m.
+    % XXX FIXME mlds_to_gcc.m no longer exists.
     (
         Pragma = pragma_foreign_code(FCInfo),
         FCInfo = pragma_info_foreign_code(Lang, LiteralOrInclude),

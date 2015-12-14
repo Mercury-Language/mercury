@@ -28,7 +28,7 @@
 % to C level data structures.
 %
 % At least, that may have been the plan at some point. Currently this module
-% is used for the Java and IL backends only.
+% is used for the Java and C# backends only.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
