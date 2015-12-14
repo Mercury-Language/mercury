@@ -862,7 +862,7 @@ non_cc_call(P::pred(in, in, out, di, uo) is cc_multi, X::in,
     [will_not_call_mercury, thread_safe],
 "
     //
-    // For the IL back-end, we don't do heap reclamation on failure,
+    // For the C# back-end, we don't do heap reclamation on failure,
     // so we don't need to worry about making deep copies here.
     // Shallow copies will suffice.
     //
@@ -886,7 +886,7 @@ non_cc_call(P::pred(in, in, out, di, uo) is cc_multi, X::in,
     [will_not_call_mercury, thread_safe],
 "
     /*
-    ** For the Java back-end, as for the .NET implementation,
+    ** For the Java back-end, as for the C# back-end,
     ** we don't do heap reclamation on failure,
     ** so we don't need to worry about making deep copies here.
     ** Shallow copies will suffice.
@@ -950,7 +950,7 @@ non_cc_call(P::pred(in, in, out, di, uo) is cc_multi, X::in,
     reset_solutions_heap(_SolutionsHeapPtr::in),
     [will_not_call_mercury, thread_safe],
 "
-    // For the IL back-end, we don't have a separate `solutions heap'.
+    // For the C# back-end, we don't have a separate `solutions heap'.
     // Hence this operation is a NOP.
 ").
 
