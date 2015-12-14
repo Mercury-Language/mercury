@@ -29,7 +29,6 @@
 **      compiler/rtti.m
 **      compiler/rtti_out.m
 **      compiler/rtti_to_mlds.m
-**      compiler/mlds_to_gcc.m
 **          (for updating the compiler-generated RTTI structures)
 **
 **      library/array.m
@@ -598,7 +597,7 @@ extern  MR_Word MR_typeclass_ref_error(MR_Word tci, int n, const char *msg);
 ** MR_CTOR_REP_NAMES macro below, in library/rtti_implementation.m
 ** (definitely the list of type_ctor_reps, maybe the bodies of predicates),
 ** in library/private_builtin.m (in two places), in java/runtime/
-** TypeCtorRep.java, in compiler/mlds_to_gcc.m, and compiler/rtti.m.
+** TypeCtorRep.java, and compiler/rtti.m.
 **
 ** Additions to the end of this enum can be handled naturally, but changes
 ** in the meanings of already assigned values require bootstrapping
