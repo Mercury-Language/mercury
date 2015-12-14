@@ -9643,6 +9643,8 @@ pragmas with implementation-dependent semantics
                                 of predicates or functions to be obsolete.
 * No determinism warnings::     Pragmas can be used to suppress warnings
                                 about too loose determinism declarations.
+* No dead predicate warnings::  Pragmas can be used to suppress warnings
+                                about unused predicates.
 * Source file name::            The @samp{source_file} pragma and
                                 @samp{#@var{line}} directives provide support
                                 for preprocessors and other tools that
@@ -9808,6 +9810,27 @@ the procedures that are declared det
 but whose bodies have determinism erroneous
 will get a warning saying their determinism declaration could be tighter,
 unless the programmer specifies this pragma for them.
+
+@node No dead predicate warnings
+@section No dead predicate warnings
+
+A declaration of the form
+
+@example
+:- pragma consider_used(@var{Name}/@var{Arity}).
+@end example
+
+@noindent
+tells the compiler to consider the predicate or function
+with name @var{Name} and arity @var{Arity} to be used,
+and not generate any dead procedure/predicate/function warnings
+either for the named predicate,
+@emph{or} for the other predicates and functions that it calls,
+either directly or indirectly.
+
+@samp{pragma consider_used} declarations are intended for use in situations
+in which the code that was intended to call such a predicate or function
+is not yet written.
 
 @node Source file name
 @section Source file name

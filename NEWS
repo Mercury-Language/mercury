@@ -62,10 +62,10 @@ Changes that may break compatibility:
       is
       pred
 
-* We have deleted the builtin inst synonyms `old' and `new': their use
+* We have deleted the builtin inst synonyms `old' and `new': their uses
   should be replaced with `any' and `free' respectively.
 
-* We have delete the builtin modes `no' and `oo': their use should be
+* We have delete the builtin modes `no' and `oo': their uses should be
   replaced with `oa' and `ia' respectively.
 
 Changes to the Mercury language:
@@ -90,10 +90,16 @@ Changes to the Mercury language:
 * We have added an extension to include external files
   in pragma foreign_decl and pragma foreign_code declarations.
 
-* We have added a foreign type assertion `word_aligned_pointer' that.
-  Used carefully, it allows the Mercury implementation to avoid boxing values
-  of the foreign type when the type appears as the sole argument of a data
-  constructor.
+* We have added a foreign type assertion `word_aligned_pointer' that
+  allows the Mercury implementation to avoid boxing values of the foreign type
+  that the assertion is for when the type appears as the sole argument
+  of a data constructor.
+
+* We have added a new pragma named `consider_used'. This pragma tells
+  the compiler to consider the predicate or function it names to be used,
+  preventing it from generating unused procedure warnings either for
+  any of its procedures, or for any of the procedures they call,
+  directly or indirectly.
 
 Changes to the Mercury standard library:
 
@@ -270,6 +276,12 @@ Changes to the Mercury standard library:
   or `out' respectively.
 
 Changes to the Mercury compiler:
+
+* We have added a new option --warn-dead-preds. While the existing option
+  --warn-dead-procs asks the compiler to generate warnings for every
+  unused procedure of the module being compiled, the new option asks
+  the compiler to generate a warning for an unused procedure only if
+  none of the procedures of a predicate or function is used.
 
 * We have fixed a long-standing bug causing crashes in deep profiling
   grades, related to unify/compare for tuples.  (Bug #3)
