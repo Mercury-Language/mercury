@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: myers.m.
 % Main author: bromage.
-% 
+%
 % TO DO: We should implement the big-snake heuristic (a.k.a.
 %   --speed-large-files).
 %
@@ -18,7 +18,7 @@
 %   retro-fitted onto that algorithm easily enough, we should try
 %   out this algorithm and see how fast it runs.  In theory, we
 %   should be looking at about a 2x speedup.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

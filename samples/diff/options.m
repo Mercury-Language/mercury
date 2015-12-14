@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % Main author: bromage
-% 
+%
 % This module contains all the option handling code for diff.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -47,7 +47,7 @@
     % Output styles
     --->    help
     ;       version
-    ;       context 
+    ;       context
     ;       context_style_output
     ;       unified
     ;       unified_style_output
@@ -300,7 +300,7 @@ special_handler(context_style_output, bool(yes), !.Options, ok(!:Options)) :-
     (
         Context0 = no,
         Context = yes(3)
-    ;   
+    ;
         Context0 = yes(C),
         Context = yes(C)
     ),
@@ -474,7 +474,7 @@ options_help(!IO) :-
         "\t-q, --brief\n",
         "\t\tOutput only whether or not files differ.\n",
         "\t-D <name>, --ifdef <name>\n",
-        "\t\tProduce output in #ifdef <name> format.\n", 
+        "\t\tProduce output in #ifdef <name> format.\n",
         "\t-y, --side-by-side\n",
         "\t\tProduce output in side-by-side format.\n",
         "\t\t-w <num>, --width <num>  Output at most <num> (default 130)\n",

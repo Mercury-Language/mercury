@@ -65,14 +65,14 @@ main_2(CalcInfo0, !IO) :-
         io.write_string("EOF\n", !IO)
     ;
         Res = term(VarSet, Term),
-        (
+        ( if
             Term = term.functor(term.atom("="),
                 [term.variable(Var, _Context), ExprTerm0], _)
-        ->
+        then
             ExprTerm = ExprTerm0,
             varset.lookup_name(VarSet, Var, VarName),
             SetVar = yes(VarName)
-        ;
+        else
             ExprTerm = Term,
             SetVar = no
         ),
@@ -142,23 +142,25 @@ report_eval_error(unexpected_const(Const), !IO) :-
 
 eval_expr(CalcInfo, VarSet, term.variable(Var, _Context)) = Res :-
     varset.lookup_name(VarSet, Var, VarName),
-    ( map.search(CalcInfo, VarName, Res0) ->
+    ( if map.search(CalcInfo, VarName, Res0) then
         Res = Res0
-    ;
+    else
         throw(unknown_variable(VarName))
     ).
 eval_expr(CalcInfo, VarSet, term.functor(term.atom(Op), Args, _)) = Res :-
-    (
-        ( Args = [Arg1],
+    ( if
+        (
+            Args = [Arg1],
             Res0 = eval_unop(Op, eval_expr(CalcInfo, VarSet, Arg1))
-        ; Args = [Arg1, Arg2],
+        ;
+            Args = [Arg1, Arg2],
             Res0 = eval_binop(Op,
                 eval_expr(CalcInfo, VarSet, Arg1),
                 eval_expr(CalcInfo, VarSet, Arg2))
         )
-    ->
+    then
         Res = Res0
-    ;
+    else
         throw(unknown_operator(Op, list.length(Args)))
     ).
 eval_expr(_, _, term.functor(term.integer(Int), _, _)) = Int.

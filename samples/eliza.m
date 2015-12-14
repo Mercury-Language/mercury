@@ -2,14 +2,14 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: eliza.m.
 % Main author: bromage.
-% 
+%
 % This source file is hereby placed in the public domain.  -bromage.
-% 
+%
 % Eliza, the famous psychotherapist.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -58,9 +58,9 @@ eliza.main_loop(Prev, StateIn, !IO) :-
             eliza.main_loop(Prev, StateIn, !IO)
         ;
             Line1 = [_ | _],
-            ( Line1 = Prev ->
+            ( if Line1 = Prev then
                 eliza.generate_repeat(StateIn, StateOut, !IO)
-            ;
+            else
                 eliza.generate_response(Line1, StateIn, StateOut, !IO)
             ),
             eliza.main_loop(Line1, StateOut, !IO)
@@ -127,15 +127,15 @@ eliza.get_response2(_Type, _MsgOut, [], []) :-
 eliza.get_response2(Type, MsgOut,
         [Type2 - Msgs2 | RestIn],
         [Type2 - Msgs3 | RestOut]) :-
-    ( Type = Type2 ->
-        ( Msgs2 = [MsgOut1 | MsgOutRest] ->
+    ( if Type = Type2 then
+        ( if Msgs2 = [MsgOut1 | MsgOutRest] then
             MsgOut = MsgOut1,
             RestOut = RestIn,
             list.append(MsgOutRest, [MsgOut], Msgs3)
-        ;
+        else
             error("Error: Empty response list.\n")
         )
-    ;
+    else
         Msgs2 = Msgs3,
         eliza.get_response2(Type, MsgOut, RestIn, RestOut)
     ).
@@ -153,9 +153,13 @@ eliza.read_line(MaybeLine, !IO) :-
     io.input_stream(Stdin, !IO),
     io.read_line(Stdin, Result, !IO),
     io.write_string("\n", !IO),
-    ( Result = ok(Line1) ->
+    (
+        Result = ok(Line1),
         MaybeLine = yes(Line1)
     ;
+        ( Result = eof
+        ; Result = error(_)
+        ),
         MaybeLine = no
     ).
 
@@ -197,9 +201,9 @@ eliza.parse -->
 
 eliza.strip([], []).
 eliza.strip([X | Xs], Ys) :-
-    ( char.is_whitespace(X) ->
+    ( if char.is_whitespace(X) then
         eliza.strip(Xs, Ys)
-    ;
+    else
         eliza.strip2([X | Xs], Ys)
     ).
 
@@ -207,13 +211,13 @@ eliza.strip([X | Xs], Ys) :-
 
 eliza.strip2([], []).
 eliza.strip2([X | Xs], Ys) :-
-    ( eliza.is_punct(X) ->
+    ( if eliza.is_punct(X) then
         eliza.strip2([' ' | Xs], Ys)
-    ;
+    else
         eliza.strip2(Xs, Ys1),
-        ( char.is_whitespace(X), Ys1 = [] ->
+        ( if char.is_whitespace(X), Ys1 = [] then
             Ys = []
-        ;
+        else
             Ys = [X | Ys1]
         )
     ).
@@ -222,9 +226,9 @@ eliza.strip2([X | Xs], Ys) :-
 
 eliza.form_words([], []).
 eliza.form_words([X | Xs], Ys) :-
-    ( char.is_whitespace(X) ->
+    ( if char.is_whitespace(X) then
         eliza.form_words(Xs, Ys)
-    ;
+    else
         eliza.form_word(Xs, [X], Word, Rest),
         eliza.form_words(Rest, Words),
         Ys = [Word | Words]
@@ -236,9 +240,9 @@ eliza.form_words([X | Xs], Ys) :-
 eliza.form_word([], Word1, Word2, []) :-
     list.reverse(Word1, Word2).
 eliza.form_word([X | Xs], WordIn, WordOut, Rest) :-
-    ( char.is_whitespace(X) ->
+    ( if char.is_whitespace(X) then
         list.reverse(WordIn, WordOut), Rest = Xs
-    ;
+    else
         eliza.form_word(Xs, [X | WordIn], WordOut, Rest)
     ).
 
@@ -279,12 +283,13 @@ eliza.generate_response(Words, !State, !IO) :-
     % resolve conjugates, write that string and then add
     % a trailing punctuation mark.
 
-    ( Maybe = yes(C) ->
+    (
+        Maybe = yes(C),
         eliza.perform_conjugate(Rest, Postfix),
         eliza.write_strings(Postfix, !IO),
         io.write_char(C, !IO)
     ;
-        true
+        Maybe = no
     ),
     io.write_string("\n", !IO).
 
@@ -319,9 +324,9 @@ eliza.find_handle(In, MsgType, Out) :-
 
 eliza.find_handle2(In, no_key_message, In, []).
 eliza.find_handle2(In, Type, Out, [Prefix - Type2 | Handles]) :-
-    ( eliza.find_handle3(In, Prefix, Rest) ->
+    ( if eliza.find_handle3(In, Prefix, Rest) then
         Out = Rest, Type = Type2
-    ;
+    else
         eliza.find_handle2(In, Type, Out, Handles)
     ).
 
@@ -329,9 +334,9 @@ eliza.find_handle2(In, Type, Out, [Prefix - Type2 | Handles]) :-
     list(string)::out) is semidet.
 
 eliza.find_handle3([X | Xs], Prefix, Rest) :-
-    ( eliza.match_prefix(Prefix, [X | Xs], Rest2) ->
+    ( if eliza.match_prefix(Prefix, [X | Xs], Rest2) then
         Rest = Rest2
-    ;
+    else
         eliza.find_handle3(Xs, Prefix, Rest)
     ).
 
@@ -339,14 +344,14 @@ eliza.find_handle3([X | Xs], Prefix, Rest) :-
 
 eliza.perform_conjugate([], []).
 eliza.perform_conjugate([X | Xs], [Y | Ys]) :-
-    ( ( X = "I", Xs = [] ) ->
+    ( if ( X = "I", Xs = [] ) then
         Y = "me", Ys = []
-    ;
+    else
         eliza.conjugate_map(Map),
         string.to_upper(X, Xupp),
-        ( map.search(Map, Xupp, Result) ->
+        ( if map.search(Map, Xupp, Result) then
             Y = Result
-        ;
+        else
             Y = X
         ),
         eliza.perform_conjugate(Xs, Ys)

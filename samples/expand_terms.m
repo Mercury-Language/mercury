@@ -43,14 +43,14 @@
 
 main(!IO) :-
     io.command_line_arguments(Args, !IO),
-    (   
+    (
         Args = [],
         expand_terms(!IO)
     ;
         Args = [_ | _],
         expand_terms_file_list(Args, !IO)
     ).
-        
+
 :- pred expand_terms_file_list(list(string)::in, io::di, io::uo) is det.
 
 expand_terms_file_list([], !IO).
@@ -62,9 +62,11 @@ expand_terms_file_list([File | Files], !IO) :-
 
 expand_terms_file(File, !IO) :-
     io.open_input(File, Result, !IO),
-    ( Result = ok(Stream),
+    (
+        Result = ok(Stream),
         expand_terms_stream(Stream, !IO)
-    ; Result = error(Error),
+    ;
+        Result = error(Error),
         io.progname("expand_terms", Progname, !IO),
         io.error_message(Error, Message),
         io.write_strings([
@@ -110,14 +112,13 @@ expand_terms_2(Result, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred expand_term(term, varset, term, varset).
-:- mode expand_term(in, in, out, out) is det.
+:- pred expand_term(term::in, varset::in, term::out, varset::out) is det.
 
 expand_term(Term0, VarSet0, Term, VarSet) :-
-    ( term_expansion(Term0, VarSet0, Term1, VarSet1) ->
+    ( if term_expansion(Term0, VarSet0, Term1, VarSet1) then
         Term = Term1,
         VarSet = VarSet1
-    ;
+    else
         Term = Term0,
         VarSet = VarSet0
     ).
@@ -128,8 +129,8 @@ expand_term(Term0, VarSet0, Term, VarSet) :-
 % As a trivial example, here is one which replaces
 % `A <=> B' with `A :- B'.
 
-:- pred term_expansion(term, varset, term, varset).
-:- mode term_expansion(in, in, out, out) is semidet.
+:- pred term_expansion(term::in, varset::in, term::out, varset::out)
+    is semidet.
 
 term_expansion(Term0, VarSet, Term, VarSet) :-
     Term0 = term.functor(term.atom("<=>"), [A, B], Context),

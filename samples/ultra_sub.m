@@ -53,13 +53,13 @@ main(!IO) :-
     % I really should add some options for switching whether
     % capitals or backslashed things are variables.
     io.command_line_arguments(Args, !IO),
-    (
+    ( if
         Args = [Pattern0, Template0 | Rest]
-    ->
+    then
         string.to_char_list(Pattern0, Pattern),
         string.to_char_list(Template0, Template),
         process_args(Rest, Pattern, Template, !IO)
-    ;
+    else
         io.write_string(
             "usage: ultra_sub template pattern [strings]\n", !IO)
     ).
@@ -71,63 +71,62 @@ main(!IO) :-
 
 process_args([], _Pattern, _Template, !IO).
 process_args([Str | Strs], Pattern, Template, !IO) :-
-    (
+    ( if
         string.to_char_list(Str, Chars),
         map.init(Match0),
         match(Pattern, Chars, Match0, Match)
-    ->
+    then
         % If the string matches, then apply the substitution.
         sub(Template, Match, ResultChars),
         string.from_char_list(ResultChars, Result),
         io.write_string(Result, !IO),
         io.write_string("\n", !IO)
-    ;
+    else
         true
     ),
     process_args(Strs, Pattern, Template, !IO).
 
 %------------------------------------------------------------------------------%
 
-:- pred match(list(char)::in, list(char)::in, map(char, list(char))::in, 
+:- pred match(list(char)::in, list(char)::in, map(char, list(char))::in,
     map(char, list(char))::out) is semidet.
 
 match([], [], Match, Match).
 match([T | Ts], Chars, !Match) :-
-    (
+    ( if
         char.is_upper(T)
-    ->
+    then
         % Match against a variable.
         match_2(T, Chars, [], Ts, !Match)
-    ;
+    else if
         T = ('\\') % don't you love ISO compliant syntax :-(
-    ->
+    then
         Ts = [T1 | Ts1],
         Chars = [T1 | Chars1],
         match(Ts1, Chars1, !Match)
-    ;
+    else
         Chars = [T | Chars1],
         match(Ts, Chars1, !Match)
     ).
 
-:- pred match_2(char::in, list(char)::in, list(char)::in, list(char)::in, 
+:- pred match_2(char::in, list(char)::in, list(char)::in, list(char)::in,
     map(char, list(char))::in, map(char, list(char))::out) is semidet.
 
 match_2(X, Chars, Tail, Ts, !Match) :-
-    (
-        % Have we bound X? Does it match
-        % an earlier binding?
+    ( if
+        % Have we bound X? Does it match an earlier binding?
         map.search(!.Match, X, Chars)
-    ->
+    then
         true
-    ;
+    else
         map.set(X, Chars, !Match)
     ),
-    (
+    ( if
         % Try and match the remainder of the pattern.
         match(Ts, Tail, !Match)
-    ->
+    then
         true
-    ;
+    else
         % If the match failed, then try binding less of the string to X.
         remove_last(Chars, Chars1, C),
         match_2(X, Chars1, [C | Tail], Ts, !Match)
@@ -153,25 +152,23 @@ remove_last_2(X, [Y | Ys], [X | Zs], W) :-
 
 sub([], _Match, []).
 sub([C | Cs], Match, Result) :-
-    (
+    ( if
         char.is_upper(C),
         map.search(Match, C, Chars)
-    ->
+    then
         sub(Cs, Match, Result0),
         list.append(Chars, Result0, Result)
-    ;
+    else if
         C = ('\\')
-    ->
-        (
-            Cs = [C1 | Cs1]
-        ->
+    then
+        ( if Cs = [C1 | Cs1] then
             sub(Cs1, Match, Result0),
             Result = [C1 | Result0]
-        ;
+        else
             sub(Cs, Match, Result0),
             Result = Result0
         )
-    ;
+    else
         sub(Cs, Match, Result0),
         Result = [C | Result0]
     ).

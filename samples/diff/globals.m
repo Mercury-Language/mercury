@@ -8,12 +8,12 @@
 %
 % File: globals.m.
 % Main author: conway, bromage.
-% 
+%
 % This module exports the `globals' type and associated access predicates.
 % The globals type is used to collect together all the various data
 % that would be global variables in an imperative language.
 % This global data is stored in the I/O state.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -177,8 +177,7 @@ globals.io_get_globals(Globals, !IO) :-
     ).
 
 globals.io_set_globals(Globals, !IO) :-
-    unsafe_promise_unique(Globals, UniqGlobals),
-    type_to_univ(UniqGlobals, UnivGlobals),
+    type_to_univ(Globals, UnivGlobals),
     io.set_globals(UnivGlobals, !IO).
 
 %-----------------------------------------------------------------------------%

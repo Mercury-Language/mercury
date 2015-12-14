@@ -1,24 +1,24 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: interpreter.m.
 % Main author: fjh.
-% 
+%
 % This is an interpreter for definite logic programs
 % (i.e. pure Prolog with no negation or if-then-else.)
 %
 % This is just intended as a demonstration of the use of the
 % meta-programming library modules term, varset, and term_io.
-% 
+%
 % There are many extensions/improvements that could be made;
 % they're left as an exercise for the reader.
-% 
+%
 % For a more efficient version (using backtrackable destructive update),
 % see extras/trailed_update/samples/interpreter.m.
-% 
+%
 % This source file is hereby placed in the public domain.  -fjh (the author).
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -101,7 +101,7 @@ write_solutions_2([VarSet | VarSets], Goal, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred consult_list(list(string)::in, database::in, database::out, 
+:- pred consult_list(list(string)::in, database::in, database::out,
     io::di, io::uo) is det.
 
 consult_list([], !Database, !IO).
@@ -109,7 +109,7 @@ consult_list([File | Files], !Database, !IO) :-
     consult(File, !Database, !IO),
     consult_list(Files, !Database, !IO).
 
-:- pred consult(string::in, database::in, database::out, io::di, io::uo)    
+:- pred consult(string::in, database::in, database::out, io::di, io::uo)
     is det.
 
 consult(File, !Database, !IO) :-
@@ -153,7 +153,7 @@ consult_until_eof_2(term(VarSet, Term), !Database, !IO) :-
 % some new vars, and returns the result.
 
 % Goals are stored just as terms.
-% (It might be more efficient to parse them 
+% (It might be more efficient to parse them
 % before storing them in the database.  Currently we do
 % this parsing work every time we interpret a clause.)
 
@@ -179,7 +179,7 @@ solve(Database, Goal, !VarSet) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred rename_apart(varset::in, list(term)::in, list(term)::out, 
+:- pred rename_apart(varset::in, list(term)::in, list(term)::out,
     varset::in, varset::out) is det.
 
 rename_apart(NewVarSet, Terms0, Terms, VarSet0, VarSet) :-
@@ -195,75 +195,74 @@ rename_apart(NewVarSet, Terms0, Terms, VarSet0, VarSet) :-
 :- pred unify(term::in, term::in, varset::in, varset::out) is semidet.
 
 unify(term.variable(X, _), term.variable(Y, _), !VarSet) :-
-    ( varset.search_var(!.VarSet, X, BindingOfX) ->
-        ( varset.search_var(!.VarSet, Y, BindingOfY) ->
+    ( if varset.search_var(!.VarSet, X, BindingOfX) then
+        ( if varset.search_var(!.VarSet, Y, BindingOfY) then
             % Both X and Y already have bindings - just
             % unify the terms they are bound to.
             unify(BindingOfX, BindingOfY, !VarSet)
-        ;
-            % Y is a variable which hasn't been bound yet
+        else
+            % Y is a variable which hasn't been bound yet.
             apply_rec_substitution(BindingOfX, !.VarSet, SubstBindingOfX),
-            ( SubstBindingOfX = term.variable(Y, _) ->
+            ( if SubstBindingOfX = term.variable(Y, _) then
                 true
-            ;
-                \+ occurs(SubstBindingOfX, Y, !.VarSet),
+            else
+                not occurs(SubstBindingOfX, Y, !.VarSet),
                 varset.bind_var(Y, SubstBindingOfX, !VarSet)
             )
         )
-    ;
-        ( varset.search_var(!.VarSet, Y, BindingOfY2) ->
+    else
+        ( if varset.search_var(!.VarSet, Y, BindingOfY2) then
             % X is a variable which hasn't been bound yet.
             apply_rec_substitution(BindingOfY2, !.VarSet, SubstBindingOfY2),
-            ( SubstBindingOfY2 = term.variable(X, _) ->
+            ( if SubstBindingOfY2 = term.variable(X, _) then
                 true
-            ;
-                \+ occurs(SubstBindingOfY2, X, !.VarSet),
+            else
+                not occurs(SubstBindingOfY2, X, !.VarSet),
                 varset.bind_var(X, SubstBindingOfY2, !VarSet)
             )
-        ;
-            % Both X and Y are unbound variables -
-            % bind one to the other.
-            ( X = Y ->
+        else
+            % Both X and Y are unbound variables - bind one to the other.
+            ( if X = Y then
                 true
-            ;
+            else
                 varset.bind_var(X, term.variable(Y, context_init), !VarSet)
             )
         )
     ).
 
 unify(term.variable(X, _), term.functor(F, As, C), !VarSet) :-
-    ( varset.search_var(!.VarSet, X, BindingOfX) ->
+    ( if varset.search_var(!.VarSet, X, BindingOfX) then
         unify(BindingOfX, term.functor(F, As, C), !VarSet)
-    ;
-        \+ occurs_list(As, X, !.VarSet),
+    else
+        not occurs_list(As, X, !.VarSet),
         varset.bind_var(X, term.functor(F, As, C), !VarSet)
     ).
 
 unify(term.functor(F, As, C), term.variable(X, _), !VarSet) :-
-    ( varset.search_var(!.VarSet, X, BindingOfX) ->
+    ( if varset.search_var(!.VarSet, X, BindingOfX) then
         unify(term.functor(F, As, C), BindingOfX, !VarSet)
-    ;
-        \+ occurs_list(As, X, !.VarSet),
+    else
+        not occurs_list(As, X, !.VarSet),
         varset.bind_var(X, term.functor(F, As, C), !VarSet)
     ).
 
-unify(term.functor(F, AsX, _), term.functor(F, AsY, _)) -->
-    unify_list(AsX, AsY).
+unify(term.functor(F, AsX, _), term.functor(F, AsY, _), !VarSet) :-
+    unify_list(AsX, AsY, !VarSet).
 
 :- pred unify_list(list(term)::in, list(term)::in, varset::in, varset::out)
     is semidet.
 
-unify_list([], [], !IO).
-unify_list([X | Xs], [Y | Ys], !IO) :-
-    unify(X, Y, !IO),
-    unify_list(Xs, Ys, !IO).
+unify_list([], [], !VarSet).
+unify_list([X | Xs], [Y | Ys], !VarSet) :-
+    unify(X, Y, !VarSet),
+    unify_list(Xs, Ys, !VarSet).
 
 %-----------------------------------------------------------------------------%
 
     % occurs(Term, Var, Subst) succeeds if Term contains Var, perhaps
     % indirectly via the substitution.
     % (The variable must not be mapped by the substitution.)
-    % 
+    %
 :- pred occurs(term::in, var::in, varset::in) is semidet.
 
 occurs(term.variable(X, _), Y, VarSet) :-
@@ -294,22 +293,21 @@ occurs_list([Term | Terms], Y, VarSet) :-
 :- pred apply_rec_substitution(term::in, varset::in, term::out) is det.
 
 apply_rec_substitution(V @ term.variable(Var, _), VarSet, Term) :-
-    ( varset.search_var(VarSet, Var, Replacement) ->
+    ( if varset.search_var(VarSet, Var, Replacement) then
         % Recursively apply the substitution to the replacement.
         apply_rec_substitution(Replacement, VarSet, Term)
-    ;
+    else
         Term = V
     ).
 apply_rec_substitution(term.functor(Name, Args0, Context), VarSet,
          term.functor(Name, Args, Context)) :-
     apply_rec_substitution_to_list(Args0, VarSet, Args).
 
-:- pred apply_rec_substitution_to_list(list(term)::in, varset::in, 
+:- pred apply_rec_substitution_to_list(list(term)::in, varset::in,
     list(term)::out) is det.
 
 apply_rec_substitution_to_list([], _VarSet, []).
-apply_rec_substitution_to_list([Term0 | Terms0], VarSet,
-        [Term | Terms]) :-
+apply_rec_substitution_to_list([Term0 | Terms0], VarSet, [Term | Terms]) :-
     apply_rec_substitution(Term0, VarSet, Term),
     apply_rec_substitution_to_list(Terms0, VarSet, Terms).
 
@@ -332,21 +330,21 @@ apply_rec_substitution_to_list([Term0 | Terms0], VarSet,
 
 database_init([]).
 
-:- pred database_assert_clause(database::in, varset::in, term::in, 
+:- pred database_assert_clause(database::in, varset::in, term::in,
     database::out) is det.
 
 database_assert_clause(Database, VarSet, Term, [Clause | Database]) :-
-    ( Term = term.functor(term.atom(":-"), [H, B], _) ->
+    ( if Term = term.functor(term.atom(":-"), [H, B], _) then
         Head = H,
         Body = B
-    ;
+    else
         Head = Term,
         term.context_init(Context),
         Body = term.functor(term.atom("true"), [], Context)
     ),
     Clause = clause(VarSet, Head, Body).
 
-:- pred database_lookup_clause(database::in, term::in, varset::out, 
+:- pred database_lookup_clause(database::in, term::in, varset::out,
     term::out, term::out) is nondet.
 
 database_lookup_clause(Database, _Goal, VarSet, Head, Body) :-

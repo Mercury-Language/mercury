@@ -8,9 +8,9 @@
 
 :- implementation.
 
-	% Nothing from mercury_lib is used in mercury_main.
-	% The import is needed to make sure mmake includes
-	% mercury_lib in the executable.
+    % Nothing from mercury_lib is used in mercury_main.
+    % The import is needed to make sure mmake includes mercury_lib in the
+    % executable.
 :- import_module mercury_lib.
 
 % import the module which defines the Mercury interface to the
@@ -19,6 +19,6 @@
 
 % main just invokes c_main
 main(!IO) :-
-	io.write_string("In Mercury main, about to call c_main...\n", !IO),
-	c_main(!IO),
-	io.write_string("Back in Mercury main.\n", !IO).
+    io.write_string("In Mercury main, about to call c_main...\n", !IO),
+    c_main(!IO),
+    io.write_string("Back in Mercury main.\n", !IO).

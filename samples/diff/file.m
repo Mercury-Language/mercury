@@ -76,7 +76,7 @@
 :- type file
     --->    file(
                 file_name     :: string,
-                file_contents :: array(string) 
+                file_contents :: array(string)
             ).
 
     % Open the stream, read from the stream, then close the stream.

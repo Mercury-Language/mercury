@@ -26,19 +26,19 @@ main(!IO) :-
 
 beer(N, !IO) :-
     io.write_string(beer_stanza(N), !IO),
-    ( N > 0 ->
+    ( if N > 0 then
         io.nl(!IO),
         beer(N - 1, !IO)
-    ;
+    else
         true
     ).
 
 :- func beer_stanza(int) = string.
 
 beer_stanza(N) = Stanza :-
-    ( N = 0 ->
+    ( if N = 0 then
         Stanza = "Go to the store and buy some more!\n"
-    ;
+    else
         NBottles = bottles_line(N),
         N1Bottles = bottles_line(N - 1),
         Stanza =
@@ -51,11 +51,11 @@ beer_stanza(N) = Stanza :-
 :- func bottles_line(int) = string.
 
 bottles_line(N) =
-    ( N = 0 ->
+    ( if N = 0 then
         "No more bottles of beer"
-    ; N = 1 ->
+    else if N = 1 then
         "1 bottle of beer"
-    ;
+    else
         string.format("%d bottles of beer", [i(N)])
     ).
 

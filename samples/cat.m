@@ -36,7 +36,7 @@ main(!IO) :-
         Args = [_ | _],
         cat_file_list(Args, !IO)
     ).
- 
+
 :- pred cat_file_list(list(string)::in, io::di, io::uo) is det.
 
 cat_file_list([], !IO).

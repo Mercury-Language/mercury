@@ -44,7 +44,7 @@ main(!IO) :-
         handle_args(yes(Input), no, !IO),
         sort(!IO)
     ;
-        Args = [Input, Output], 
+        Args = [Input, Output],
         handle_args(yes(Input), yes(Output), !IO),
         sort(!IO)
     ;
@@ -76,7 +76,7 @@ handle_args(InArg, OutArg, !IO) :-
             OutResult = ok
         ;
             OutResult = error(OutError),
-            io.error_message(OutError, OutMsg), 
+            io.error_message(OutError, OutMsg),
             error(OutMsg)
         )
     ;

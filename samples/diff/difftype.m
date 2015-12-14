@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % Main author: bromage
 % Based heavily on lcsstype.m, written by bromage and simplified by
 % Marnix Klooster <marnix@worldonline.nl>
-% 
+%
 % This module contains the type of a diff.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

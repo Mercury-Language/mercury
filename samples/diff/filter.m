@@ -5,22 +5,22 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % Main author: bromage
-% 
+%
 % This module contains code to filter the diff before output, based on
 % the command-line options presented.
-% 
+%
 % At the moment, only one option is handled: --ignore-blank-lines.
 % This causes edits to be dropped if they contain changes which only
 % add, delete or change blank lines.
-% 
+%
 % TO DO: What exactly is a blank line, and does its definition change
 %        if --ignore-space-change or --ignore-all-space have been
 %        specified?  At the moment, we define a blank line to be a line
 %        containing zero or more whitespace characters.  Check if this is
 %        correct or not.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % Main authors: bromage, Marnix Klooster <marnix@worldonline.nl>
-% 
+%
 % Something very similar to the standard diff utility.  Sort of.  :-)
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -45,7 +45,7 @@ main(!IO) :-
     io.command_line_arguments(Args0, !IO),
     options.get_option_ops(OptionOps),
     getopt.process_options(OptionOps, Args0, Args, Result0),
-    postprocess_options(Result0, Result, !IO), 
+    postprocess_options(Result0, Result, !IO),
     (
         Result = yes(Msg),
         usage_error(Msg, !IO)

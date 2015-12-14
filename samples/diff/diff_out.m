@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % Main author: bromage
 % Based on diffs.m, written by bromage and simplified by
 % Marnix Klooster <marnix@worldonline.nl>
-% 
+%
 % This module contains the predicates to display a diff in various
 % output styles, based on the command-line options supplied.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -143,7 +143,7 @@ show_file_2(ExpandTabs, File, Prefix, Low, High, !IO) :-
             error("diff_out_show_file: file ended prematurely")
         )
     ;
-        true    
+        true
     ).
 
 :- pred expand_tabs(list(char)::in, int::in, io::di, io::uo) is det.
@@ -175,7 +175,7 @@ display_diff(File1, File2, Diff, !IO) :-
         Diff = [],
         no_diff_implies_no_output(OutputStyle)
     ->
-        true    
+        true
     ;
         display_diff_2(OutputStyle, File1, File2, Diff, !IO)
     ).
@@ -262,7 +262,7 @@ display_diff_normal_2(File1, File2, [SingDiff | Diff], FromStr, ToStr, !IO) :-
         SingDiff = delete(X1 - X2, Y),
         diff_out.write_command(X1 - X2, 'd', Y - Y, !IO),
         diff_out.show_file(File1, FromStr, X1, X2, !IO)
-    ; 
+    ;
         SingDiff = change(X1 - X2, Y1 - Y2),
         diff_out.write_command(X1 - X2, 'c', Y1 - Y2, !IO),
         diff_out.show_file(File1, FromStr, X1, X2, !IO),
@@ -707,7 +707,7 @@ display_context_diff_2(File1, File2, [Edit | CDiff],
     % changed.
     %
     ( all [AEdit] list.member(AEdit, Diff) => AEdit = add(_, _) ->
-        true 
+        true
     ;
         display_context_diff_left(Xlow, Xhigh, File1, Diff, NoneStr,
             DelStr, ChgStr, !IO)
@@ -717,7 +717,7 @@ display_context_diff_2(File1, File2, [Edit | CDiff],
     % Don't display the "context to" lines if there's nothing added or changed.
     %
     ( all [DEdit] list.member(DEdit, Diff) => DEdit = delete(_, _) ->
-        true 
+        true
     ;
         display_context_diff_right(Ylow, Yhigh, File2, Diff, NoneStr,
             AddStr, ChgStr, !IO)
@@ -796,14 +796,14 @@ display_context_diff_right(Prev, Size2, File2, [Edit | Diff], NoneStr,
                 bool        % Help sdiff
             ).
 
-:- pred display_diff_side_by_side(file::in, file::in, diff::in, io::di, io::uo) 
+:- pred display_diff_side_by_side(file::in, file::in, diff::in, io::di, io::uo)
     is det.
 
 display_diff_side_by_side(File1, File2, Diff, !IO) :-
     globals.io_lookup_int_option(width, Width0, !IO),
 
     % Calculate the half-width and offset stuff.
-        
+
         % XXX If we're expanding tabs, we should
         %     factor this in.
     Off = (Width0 + 4) // 8 * 4,
@@ -837,7 +837,7 @@ display_diff_side_by_side_2(Prev, SBS, File1, _File2, [], !IO) :-
         file.get_numlines(File1, SegEnd),
         show_sbs_same_lines(File1, SBS, Prev - SegEnd, !IO)
     ;
-        Suppress = yes 
+        Suppress = yes
     ).
 display_diff_side_by_side_2(Prev, SBS, File1, File2, [Edit | Diff], !IO) :-
     SBS = side_by_side_info(_, _, _, Suppress, _),
@@ -846,7 +846,7 @@ display_diff_side_by_side_2(Prev, SBS, File1, File2, [Edit | Diff], !IO) :-
         Suppress = no,
         show_sbs_same_lines(File1, SBS, Prev - StartOfEdit, !IO)
     ;
-        Suppress = yes 
+        Suppress = yes
     ),
     (
         Edit = add(X, Seg2),
@@ -894,7 +894,7 @@ show_sbs_changed_lines(File1, File2, SBS, X1, Y1, Size, !IO) :-
             error("show_sbs_changed_lines: file ended prematurely")
         )
     ;
-        true 
+        true
     ).
 
 :- pred show_sbs_same_lines(file::in, side_by_side_info::in, segment::in,
@@ -925,7 +925,7 @@ show_sbs_same_lines(File, SBS, Low - High, !IO) :-
             error("show_sbs_same_lines: file ended prematurely")
         )
     ;
-        true 
+        true
     ).
 
 :- pred show_sbs_added_lines(file::in, side_by_side_info::in,
@@ -945,7 +945,7 @@ show_sbs_added_lines(File, SBS, Low - High, !IO) :-
             error("show_sbs_added_lines: file ended prematurely")
         )
     ;
-        true 
+        true
     ).
 
 :- pred show_sbs_deleted_lines(file::in, side_by_side_info::in,
@@ -964,7 +964,7 @@ show_sbs_deleted_lines(File, SBS, Low - High, !IO) :-
             error("show_sbs_deleted_lines: file ended prematurely")
         )
     ;
-        true 
+        true
     ).
 
 :- func tab_width = int.
@@ -992,13 +992,13 @@ put_spaces(Spaces, !OutPos, !IO) :-
 :- pred tab_to_column(int::in, int::in, io::di, io::uo) is det.
 
 tab_to_column(From, To, !IO) :-
-    AfterTab = From + tab_width - (From rem tab_width), 
+    AfterTab = From + tab_width - (From rem tab_width),
     ( AfterTab > To ->
         ( From < To ->
             io.write_char(' ', !IO),
             tab_to_column(From + 1, To, !IO)
         ;
-            true    
+            true
         )
     ;
         io.write_char('\t', !IO),
@@ -1012,7 +1012,7 @@ tab_to_column(From, To, !IO) :-
     % complication, which is the displaying of tab characters.
     %
     % The important variables are:
-    % 
+    %
     %   InPos: The current column in the input line.
     %   OutPos: The current column in the output line.
     %   OutBound: The column that we must stop at.
@@ -1042,7 +1042,7 @@ print_half_line([C | Cs], SBS, InPos0, OutPos0, OutBound, OutPos, !IO) :-
                 ),
                 put_spaces(TabStop - OutPos0, OutPos0, OutPos1, !IO)
             ;
-                % If we're not exanding tabs, just print it and
+                % If we're not expanding tabs, just print it and
                 % hope everything lines up okay.
                 ExpandTabs = no,
                 io.write_char('\t', !IO),
@@ -1064,7 +1064,7 @@ print_half_line([C | Cs], SBS, InPos0, OutPos0, OutBound, OutPos, !IO) :-
         ( InPos < OutBound ->
             io.write_char(C, !IO)
         ;
-            true    
+            true
         )
     ***********/
     ;

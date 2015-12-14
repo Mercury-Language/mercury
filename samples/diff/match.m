@@ -148,7 +148,6 @@ normalise_line(LastSpace, IgnCase, IgnAllSpc, IgnSpcChg, [C0 | Cs0], Cs) :-
                 LastSpace = no,
                 normalise_line(yes, IgnCase, IgnAllSpc, IgnSpcChg, Cs0, Cs1),
                 CsX = [' ' | Cs1]
-                
             )
         ;
             fail
