@@ -283,53 +283,49 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
         pretest_user_inst_table(!HLDS),
         post_typecheck_finish_preds(!HLDS, NumPostTypeCheckErrors,
             PostTypeCheckAlwaysSpecs, PostTypeCheckNoTypeErrorSpecs),
+        maybe_dump_hlds(!.HLDS, 19, "post_typecheck", !DumpInfo, !IO),
         % If the main part of typecheck detected some errors, then some of
         % the errors we detect during post-typecheck could be avalanche
         % messages. We get post_typecheck to put all such messages into
-        % PostTypeCheckNoTypeErrorSpecs, and we report them only if did not
-        % find any errors during typecheck.
+        % PostTypeCheckNoTypeErrorSpecs, and we report them only if
+        % we did not find any errors during typecheck.
+        !:Specs = !.Specs ++ PostTypeCheckAlwaysSpecs,
         (
             FoundTypeError = no,
-            PostTypeCheckSpecs = PostTypeCheckAlwaysSpecs
-                ++ PostTypeCheckNoTypeErrorSpecs,
-            !:Specs = !.Specs ++ PostTypeCheckSpecs
+            !:Specs = !.Specs ++ PostTypeCheckNoTypeErrorSpecs
         ;
-            FoundTypeError = yes,
-            !:Specs = !.Specs ++ PostTypeCheckAlwaysSpecs
+            FoundTypeError = yes
         ),
+
         ( if
-            ( SomeMissingTypeDefns = yes
+            ( FoundTypeError = yes
+            ; SomeMissingTypeDefns = yes
             ; NumPostTypeCheckErrors > 0
             )
         then
-            PostTypeCheckErrors = yes
+            % XXX It would be nice if we could go on and mode-check the
+            % predicates which didn't have type errors, but we need to run
+            % polymorphism before running mode analysis, and currently
+            % polymorphism may get internal errors if any of the predicates
+            % are not type-correct.
+            !:FoundError = yes
         else
-            PostTypeCheckErrors = no
-        ),
-        maybe_dump_hlds(!.HLDS, 19, "post_typecheck", !DumpInfo, !IO),
+            % We invoke purity check even if --typecheck-only was specified,
+            % because the resolution of predicate and function overloading
+            % is done during the purity pass, and errors in the resolution
+            % of such overloading are type errors. However, the code that
+            % does this resolution depends on the absence of the other type
+            % errors that post_typecheck.m is designed to discover. (See
+            % Mantis bug 113.)
 
-        % Stop here if `--typecheck-only' was specified.
-        globals.lookup_bool_option(Globals, typecheck_only, TypecheckOnly),
-        (
-            TypecheckOnly = yes,
-            !:FoundError = bool.or(!.FoundError, PostTypeCheckErrors)
-        ;
-            TypecheckOnly = no,
-            ( if
-                ( FoundTypeError = yes
-                ; PostTypeCheckErrors = yes
-                )
-            then
-                % XXX It would be nice if we could go on and mode-check the
-                % predicates which didn't have type errors, but we need to run
-                % polymorphism before running mode analysis, and currently
-                % polymorphism may get internal errors if any of the predicates
-                % are not type-correct.
-                !:FoundError = yes
-            else
-                puritycheck(Verbose, Stats, !HLDS, !Specs, !IO),
-                maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
+            puritycheck(Verbose, Stats, !HLDS, !Specs, !IO),
+            maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
 
+            globals.lookup_bool_option(Globals, typecheck_only, TypecheckOnly),
+            (
+                TypecheckOnly = yes
+            ;
+                TypecheckOnly = no,
                 % Substitute implementation-defined literals before clauses are
                 % written out to `.opt' files.
                 subst_implementation_defined_literals(Verbose, Stats, !HLDS,
@@ -361,6 +357,11 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
             )
         )
     ).
+
+:- pred spec_phase_match(error_phase::in, error_spec::in) is semidet.
+
+spec_phase_match(Phase, Spec) :-
+    Spec ^ error_phase = Phase.
 
 %---------------------------------------------------------------------------%
 
