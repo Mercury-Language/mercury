@@ -65,7 +65,7 @@ Changes that may break compatibility:
 * We have deleted the builtin inst synonyms `old' and `new': their uses
   should be replaced with `any' and `free' respectively.
 
-* We have delete the builtin modes `no' and `oo': their uses should be
+* We have deleted the builtin modes `no' and `oo': their uses should be
   replaced with `oa' and `ia' respectively.
 
 Changes to the Mercury language:
