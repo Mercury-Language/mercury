@@ -65,7 +65,7 @@
     % This predicate determines what kind of edit this is, and merges with the
     % adjacent edits if appropriate.
     %
-:- pred difftype.add_edit(segment::in, segment::in, diff::in, diff::out) is det.
+:- pred add_edit(segment::in, segment::in, diff::in, diff::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -85,46 +85,52 @@ last_mentioned_positions(change(_ - X, _ - Y), X, Y).
 %-----------------------------------------------------------------------------%
 
 add_edit(X1 - X2, Y1 - Y2, [], Diff) :-
-    ( X1 = X2 ->
-        ( Y1 = Y2 ->
+    ( if X1 = X2  then
+        ( if Y1 = Y2 then
             Diff = []
-        ;
+        else
             Diff = [add(X1, Y1 - Y2)]
         )
-    ;
-        ( Y1 = Y2 ->
+    else
+        ( if Y1 = Y2 then
             Diff = [delete(X1 - X2, Y1)]
-        ;
+        else
             Diff = [change(X1 - X2, Y1 - Y2)]
         )
     ).
 add_edit(X1 - X2, Y1 - Y2, [Edit0 | Diff0], Diff) :-
-    ( Edit0 = add(X2, Y2 - Y3) ->
-        ( X1 = X2 ->
+    ( if
+         Edit0 = add(X2, Y2 - Y3)
+    then
+        ( if X1 = X2 then
             Diff = [add(X1, Y1 - Y3) | Diff0]
-        ;
+        else
             Diff = [change(X1 - X2, Y1 - Y3) | Diff0]
         )
-    ; Edit0 = delete(X2 - X3, Y2) ->
-        ( Y1 = Y2 ->
+    else if
+        Edit0 = delete(X2 - X3, Y2)
+    then
+        ( if Y1 = Y2 then
             Diff = [delete(X1 - X3, Y1) | Diff0]
-        ;
+        else
             Diff = [change(X1 - X3, Y1 - Y2) | Diff0]
         )
-    ; Edit0 = change(X2 - X3, Y2 - Y3) ->
+    else if
+        Edit0 = change(X2 - X3, Y2 - Y3)
+    then
         Diff = [change(X1 - X3, Y1 - Y3) | Diff0]
-    ;
+    else
         % This is just copied from the base case.  Pretty much.
-        ( X1 = X2 ->
-            ( Y1 = Y2 ->
+        ( if X1 = X2 then
+            ( if Y1 = Y2 then
                 Diff = [Edit0 | Diff0]
-            ;
+            else
                 Diff = [add(X1, Y1 - Y2), Edit0 | Diff0]
             )
-        ;
-            ( Y1 = Y2 ->
+        else
+            ( if Y1 = Y2 then
                 Diff = [delete(X1 - X2, Y1), Edit0 | Diff0]
-            ;
+            else
                 Diff = [change(X1 - X2, Y1 - Y2), Edit0 | Diff0]
             )
         )

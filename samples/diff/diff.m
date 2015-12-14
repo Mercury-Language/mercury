@@ -52,11 +52,11 @@ main(!IO) :-
     ;
         Result = no,
         globals.io_get_output_style(OutputStyle, !IO),
-        ( OutputStyle = help_only ->
+        ( if OutputStyle = help_only then
             usage(!IO)
-        ; OutputStyle = version_only ->
+        else if OutputStyle = version_only then
             version(!IO)
-        ;
+        else
             main_2(Args, !IO)
         )
     ).
@@ -99,29 +99,29 @@ version(!IO) :-
 main_2([], !IO) :-
     usage_error("missing operand", !IO).
 main_2([Fname1 | Rest], !IO)  :-
-    ( 
+    (
         Rest = [Fname2 | _],
-        ( Fname1 = Fname2 ->
+        ( if Fname1 = Fname2 then
             % Not sure why anyone would want to diff two
             % files with the same name, but just in case ...
-            ( Fname1 = "-" ->
+            ( if Fname1 = "-" then
                 file.read_input(Fname1, Contents1, !IO),
                 Contents1 = Contents2
-            ;
+            else
                 file.read_file(Fname1, Contents1, !IO),
                 Contents1 = Contents2
             )
-        ;
+        else
             % If either file is "-", simply use standard input.
             % (Note: Both can't be "-" since that was dealt with
             % in the previous case.)
-            ( Fname1 = "-" ->
+            ( if Fname1 = "-" then
                 file.read_input(Fname1, Contents1, !IO),
                 file.read_file(Fname2, Contents2, !IO)
-            ; Fname2 = "-" ->
+            else if Fname2 = "-" then
                 file.read_file(Fname1, Contents1, !IO),
                 file.read_input(Fname2, Contents2, !IO)
-            ;
+            else
                 % Otherwise read the files normally.
                 file.read_file(Fname1, Contents1, !IO),
                 file.read_file(Fname2, Contents2, !IO)
@@ -153,17 +153,15 @@ main_2([Fname1 | Rest], !IO)  :-
     %
     % At the moment, we're organised into four passes:
     %
-    %   - build_matches determines which lines from the
-    %     input files match (using the appropriate command-
-    %     line options).
-    %   - diff_by_myers takes the matches produced and
-    %     computes a diff between them.
-    %   - filter_diff analyses the diff, filtering out
-    %     any edits which the user said that they didn't
-    %     want to see (using the appropriate command-line
+    %   - build_matches determines which lines from the input files match
+    %    (using the appropriate command- line options).
+    %   - diff_by_myers takes the matches produced and computes a diff between
+    %     them.
+    %   - filter_diff analyses the diff, filtering out any edits which the user
+    %     said that they didn't want to see (using the appropriate command-line
     %     options).
-    %   - display_diff outputs the diff in whatever output
-    %     format the user chose.
+    %   - display_diff outputs the diff in whatever output format the user
+    %     chose.
     %
 :- pred do_diff(file::in, file::in, io::di, io::uo) is det.
 

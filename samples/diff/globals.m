@@ -110,84 +110,82 @@
                 output_style   % Current module name.
             ).
 
-globals.init(Options, globals(Options, OutputType)) :-
+init(Options, globals(Options, OutputType)) :-
     default_output_style(OutputType).
 
-globals.get_options(globals(Options, _), Options).
+get_options(globals(Options, _), Options).
 
-globals.set_options(globals(_, Scanner), Options, globals(Options, Scanner)).
+set_options(globals(_, Scanner), Options, globals(Options, Scanner)).
 
-globals.get_output_style(globals(_, Output), Output).
+get_output_style(globals(_, Output), Output).
 
-globals.set_output_style(globals(A, _), Output, globals(A, Output)).
+set_output_style(globals(A, _), Output, globals(A, Output)).
 
-globals.lookup_option(Globals, Option, OptionData) :-
+lookup_option(Globals, Option, OptionData) :-
     globals.get_options(Globals, OptionTable),
     map.lookup(OptionTable, Option, OptionData).
 
 %-----------------------------------------------------------------------------%
 
-globals.lookup_bool_option(Globals, Option, Value) :-
+lookup_bool_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
-    ( OptionData = bool(Bool) ->
+    ( if OptionData = bool(Bool) then
         Value = Bool
-    ;
+    else
         error("globals.lookup_bool_option: invalid bool option")
     ).
 
-globals.lookup_string_option(Globals, Option, Value) :-
+lookup_string_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
-    ( OptionData = string(String) ->
+    ( if OptionData = string(String) then
         Value = String
-    ;
+    else
         error("globals.lookup_string_option: invalid string option")
     ).
 
-globals.lookup_int_option(Globals, Option, Value) :-
+lookup_int_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
-    ( OptionData = int(Int) ->
+    ( if OptionData = int(Int) then
         Value = Int
-    ;
+    else
         error("globals.lookup_int_option: invalid int option")
     ).
 
-globals.lookup_accumulating_option(Globals, Option, Value) :-
+lookup_accumulating_option(Globals, Option, Value) :-
     globals.lookup_option(Globals, Option, OptionData),
-    ( OptionData = accumulating(Accumulating) ->
+    ( if OptionData = accumulating(Accumulating) then
         Value = Accumulating
-    ;
+    else
         error("globals.lookup_accumulating_option: invalid accumulating option")
     ).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-globals.io_init(Options, !IO) :-
+io_init(Options, !IO) :-
     globals.init(Options, Globals),
     globals.io_set_globals(Globals, !IO).
 
-globals.io_get_globals(Globals, !IO) :-
+io_get_globals(Globals, !IO) :-
     io.get_globals(UnivGlobals, !IO),
-    (
-        univ_to_type(UnivGlobals, Globals0)
-    ->
+    ( if univ_to_type(UnivGlobals, Globals0) then
         Globals = Globals0
-    ;
+    else
         error("globals.io_get_globals: univ_to_type failed")
     ).
 
-globals.io_set_globals(Globals, !IO) :-
+io_set_globals(Globals, !IO) :-
     type_to_univ(Globals, UnivGlobals),
     io.set_globals(UnivGlobals, !IO).
 
 %-----------------------------------------------------------------------------%
 
-globals.io_lookup_option(Option, OptionData, !IO) :-
+io_lookup_option(Option, OptionData, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.get_options(Globals, OptionTable),
     map.lookup(OptionTable, Option, OptionData).
 
-globals.io_set_option(Option, OptionData, !IO) :-
+io_set_option(Option, OptionData, !IO) :-
     globals.io_get_globals(Globals0, !IO),
     globals.get_options(Globals0, OptionTable0),
     map.set(Option, OptionData, OptionTable0, OptionTable),
@@ -196,29 +194,29 @@ globals.io_set_option(Option, OptionData, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-globals.io_lookup_bool_option(Option, Value, !IO) :-
+io_lookup_bool_option(Option, Value, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_bool_option(Globals, Option, Value).
 
-globals.io_lookup_int_option(Option, Value, !IO) :-
+io_lookup_int_option(Option, Value, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_int_option(Globals, Option, Value).
 
-globals.io_lookup_string_option(Option, Value, !IO) :-
+io_lookup_string_option(Option, Value, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_string_option(Globals, Option, Value).
 
-globals.io_lookup_accumulating_option(Option, Value, !IO) :-
+io_lookup_accumulating_option(Option, Value, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.lookup_accumulating_option(Globals, Option, Value).
 
 %-----------------------------------------------------------------------------%
 
-globals.io_get_output_style(Output, !IO) :-
+io_get_output_style(Output, !IO) :-
     globals.io_get_globals(Globals, !IO),
     globals.get_output_style(Globals, Output).
 
-globals.io_set_output_style(Output, !IO) :-
+io_set_output_style(Output, !IO) :-
     globals.io_get_globals(Globals0, !IO),
     globals.set_output_style(Globals0, Output, Globals),
     globals.io_set_globals(Globals, !IO).

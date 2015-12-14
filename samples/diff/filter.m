@@ -72,26 +72,26 @@ filter.blank_lines([Edit | Diff0], File1, File2, Diff) :-
     filter.blank_lines(Diff0, File1, File2, Diff1),
     (
         Edit = add(_, Y1 - Y2),
-        ( range_has_only_blank_lines(Y1, Y2, File2) ->
+        ( if range_has_only_blank_lines(Y1, Y2, File2) then
             Diff = Diff1
-        ;
+        else
             Diff = [Edit | Diff1]
         )
     ;
         Edit = delete(X1 - X2, _),
-        ( range_has_only_blank_lines(X1, X2, File1) ->
+        ( if range_has_only_blank_lines(X1, X2, File1) then
             Diff = Diff1
-        ;
+        else
             Diff = [Edit | Diff1]
         )
     ;
         Edit = change(X1 - X2, Y1 - Y2),
-        (
+        ( if
             range_has_only_blank_lines(X1, X2, File1),
             range_has_only_blank_lines(Y1, Y2, File2)
-        ->
+        then
             Diff = Diff1
-        ;
+        else
             Diff = [Edit | Diff1]
         )
     ).

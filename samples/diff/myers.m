@@ -64,12 +64,10 @@ diff_by_myers(FileX, FileY, Diff, !IO) :-
     SizeMax = SizeX + SizeY + 3,
     DOffset = SizeY + 1,
 
-    % If we don't insist on --minimal, calculate the
-    % approximate square root of the input size for
-    % the "too expensive" heuristic.  The effect of
-    % this is to limit the amount of work to about
-    % O(n ** (1.5 log n)) at the expense of finding a
-    % possibly non-minimal diff.
+    % If we don't insist on --minimal, calculate the approximate square root of
+    % the input size for the "too expensive" heuristic.  The effect of this is
+    % to limit the amount of work to about O(n ** (1.5 log n)) at the expense
+    % of finding a possibly non-minimal diff.
 
     (
         Minimal = yes,
@@ -77,8 +75,7 @@ diff_by_myers(FileX, FileY, Diff, !IO) :-
     ;
         Minimal = no,
         int.log2(SizeMax, SizeLog2),
-        int.max(minimum_too_expensive, 1 << (SizeLog2 // 2),
-                SizeHeuristic),
+        int.max(minimum_too_expensive, 1 << (SizeLog2 // 2), SizeHeuristic),
         Heur = too_expensive(SizeHeuristic)
     ),
 
@@ -106,23 +103,23 @@ myers.bsearch(DOffset, FileX, FileY, Xlow0, Xhigh0, Ylow0, Yhigh0, Heur,
             !Fwd, !Bwd, !Diff) :-
     scan_forward(FileX, FileY, Xhigh0, Yhigh0, Xlow0, Xlow, Ylow0, Ylow),
     scan_backward(FileX, FileY, Xlow, Ylow, Xhigh0, Xhigh, Yhigh0, Yhigh),
-    (
+    ( if
         ( Xlow >= Xhigh
         ; Ylow >= Yhigh
         )
-    ->
+    then
         add_edit(Xlow - Xhigh, Ylow - Yhigh, !Diff)
-    ;
+    else
         find_middle(DOffset, FileX, FileY, Xlow, Xhigh, Ylow, Yhigh, Heur,
             !Fwd, !Bwd, Xmid, Ymid, Cost, LeftHeur - RightHeur),
-        (
+        ( if
             Cost > 0
-        ->
+        then
             myers.bsearch(DOffset, FileX, FileY, Xmid, Xhigh, Ymid, Yhigh,
                 LeftHeur, !Fwd, !Bwd, !Diff),
             myers.bsearch(DOffset, FileX, FileY, Xlow, Xmid, Ylow, Ymid,
                 RightHeur, !Fwd, !Bwd, !Diff)
-        ;
+        else
             error("myers.bsearch")
         )
     ).
@@ -146,33 +143,29 @@ myers.bsearch(DOffset, FileX, FileY, Xlow0, Xhigh0, Ylow0, Yhigh0, Heur,
     --->    too_expensive(int)
     ;       none.
 
-    % The best part about this algorithm is: We don't actually
-    % need to find the middle of the diff.  We only have to find
-    % an estimate to it.  If we don't find the exact middle,
-    % we will have a correct diff, but it won't necessarily be
-    % minimal.
-:- pred myers.find_middle(int, array(int), array(int), pos, pos, pos, pos,
-        heur,
-        array(int), array(int), array(int), array(int),
-        pos, pos, int, pair(heur)).
-:- mode myers.find_middle(in, in, in, in, in, in, in, in,
-        array_di, array_uo, array_di, array_uo,
-        out, out, out, out) is det.
+    % The best part about this algorithm is: We don't actually need to find the
+    % middle of the diff.  We only have to find an estimate to it.  If we don't
+    % find the exact middle, we will have a correct diff, but it won't
+    % necessarily be minimal.
+:- pred find_middle(int::in, array(int)::in, array(int)::in, pos::in, pos::in,
+    pos::in, pos::in, heur::in, array(int)::array_di, array(int)::array_uo,
+    array(int)::array_di, array(int)::array_uo, pos::out, pos::out, int::out,
+    pair(heur)::out) is det.
 
-myers.find_middle(DOffset, FileX, FileY, Xlow, Xhigh, Ylow, Yhigh, Heur,
-        Fwd0, Fwd, Bwd0, Bwd, Xmid, Ymid, Cost, HeurReq) :-
+find_middle(DOffset, FileX, FileY, Xlow, Xhigh, Ylow, Yhigh, Heur, !Fwd,
+        !Bwd, Xmid, Ymid, Cost, HeurReq) :-
 
     Dmin = Xlow - Yhigh,
     Dmax = Xhigh - Ylow,
 
     Fmid = Xlow - Ylow,
-    array.set(Fmid + DOffset, Xlow, Fwd0, Fwd1),
+    array.set(Fmid + DOffset, Xlow, !Fwd),
     Bmid = Xhigh - Yhigh,
-    array.set(Bmid + DOffset, Xhigh, Bwd0, Bwd1),
+    array.set(Bmid + DOffset, Xhigh, !Bwd),
 
-    ( 1 = (Fmid - Bmid) /\ 1 ->
+    ( if 1 = (Fmid - Bmid) /\ 1 then
         DeltaOdd = yes
-    ;
+    else
         DeltaOdd = no
     ),
 
@@ -181,328 +174,292 @@ myers.find_middle(DOffset, FileX, FileY, Xlow, Xhigh, Ylow, Yhigh, Heur,
         Dmin, Dmax, DeltaOdd, Heur
     ),
 
-    myers.find_middle_2(Constants, Fwd1, Fwd, Bwd1, Bwd,
-        Fmid, Fmid, Bmid, Bmid, 1, Cost, Xmid - Ymid, HeurReq).
+    find_middle_2(Constants, !Fwd, !Bwd, Fmid, Fmid, Bmid, Bmid, 1, Cost,
+        Xmid - Ymid, HeurReq).
 
+:- pred find_middle_2(myers_constants::in,
+    array(int)::array_di, array(int)::array_uo,
+    array(int)::array_di, array(int)::array_uo,
+    int::in, int::in, int::in, int::in, int::in,
+    int::out, pair(pos)::out, pair(heur)::out) is det.
 
-:- pred myers.find_middle_2(myers_constants,
-        array(int), array(int), array(int), array(int),
-        int, int, int, int, int, int, pair(pos), pair(heur)).
-:- mode myers.find_middle_2(in, array_di, array_uo, array_di, array_uo,
-        in, in, in, in, in, out, out, out) is det.
-
-myers.find_middle_2(Constants, Fwd0, Fwd, Bwd0, Bwd,
-        Fmin, Fmax, Bmin, Bmax, Cost0, Cost, Mid, HeurReq) :-
+find_middle_2(Constants, !Fwd, !Bwd, Fmin, Fmax, Bmin, Bmax, !Cost,
+        Mid, HeurReq) :-
     Constants = constants(DOffset, _, _, _, _, _, _, Dmin, Dmax, _, _),
-    ( Fmin > Dmin ->
+    ( if Fmin > Dmin then
         Fmin1 = Fmin - 1,
-        array.set(Fmin1 + DOffset - 1, -1, Fwd0, Fwd1)
-    ;
-        Fmin1 = Fmin + 1,
-        Fwd1 = Fwd0
+        array.set(Fmin1 + DOffset - 1, -1, !Fwd)
+    else
+        Fmin1 = Fmin + 1
     ),
-    ( Fmax < Dmax ->
+    ( if Fmax < Dmax then
         Fmax1 = Fmax + 1,
-        array.set(Fmax1 + DOffset + 1, -1, Fwd1, Fwd2)
-    ;
-        Fmax1 = Fmax - 1,
-        Fwd2 = Fwd1
+        array.set(Fmax1 + DOffset + 1, -1, !Fwd)
+    else
+        Fmax1 = Fmax - 1
     ),
-    myers.find_forward_reaching_path(Constants, Fwd2, Fwd, Bwd0, Bwd,
-        Fmin1, Fmax1, Bmin, Bmax, Fmax1, Cost0, Cost, Mid, HeurReq).
+    find_forward_reaching_path(Constants, !Fwd, !Bwd, Fmin1, Fmax1,
+        Bmin, Bmax, Fmax1, !Cost, Mid, HeurReq).
 
+:- pred find_forward_reaching_path(myers_constants::in,
+    array(int)::array_di, array(int)::array_uo,
+    array(int)::array_di, array(int)::array_uo,
+    int::in, int::in, int::in, int::in, int::in, int::in, int::out,
+    pair(pos)::out, pair(heur)::out) is det.
 
-:- pred myers.find_forward_reaching_path(myers_constants,
-        array(int), array(int), array(int), array(int),
-        int, int, int, int, int, int, int, pair(pos), pair(heur)).
-:- mode myers.find_forward_reaching_path(in, array_di, array_uo,
-        array_di, array_uo, in, in, in, in, in, in, out, out, out)
-                is det.
-
-myers.find_forward_reaching_path(Constants, Fwd0, Fwd, Bwd0, Bwd,
-        Fmin, Fmax, Bmin, Bmax, SearchCost, Cost0, Cost, Mid,
-        HeurReq) :-
-    ( SearchCost < Fmin ->
-        Constants = constants(DOffset, _, _, _, _, _, _, Dmin, Dmax, _,
-                    _),
+find_forward_reaching_path(Constants, !Fwd, !Bwd, Fmin, Fmax, Bmin, Bmax,
+        SearchCost, !Cost, Mid, HeurReq) :-
+    ( if SearchCost < Fmin then
+        Constants = constants(DOffset, _, _, _, _, _, _, Dmin, Dmax, _, _),
         int.max_int(MaxInt),
-        ( Bmin > Dmin ->
+        ( if Bmin > Dmin then
             Bmin1 = Bmin - 1,
-            array.set(Bmin1 + DOffset - 1, MaxInt, Bwd0, Bwd1)
-        ;
-            Bmin1 = Bmin + 1,
-            Bwd1 = Bwd0
+            array.set(Bmin1 + DOffset - 1, MaxInt, !Bwd)
+        else
+            Bmin1 = Bmin + 1
         ),
-        ( Bmax < Dmax ->
+        ( if Bmax < Dmax then
             Bmax1 = Bmax + 1,
-            array.set( Bmax1 + DOffset + 1, MaxInt, Bwd1, Bwd2)
-        ;
-            Bmax1 = Bmax - 1,
-            Bwd2 = Bwd1
+            array.set(Bmax1 + DOffset + 1, MaxInt, !Bwd)
+        else
+            Bmax1 = Bmax - 1
         ),
-        myers.find_backward_reaching_path(Constants,
-            Fwd0, Fwd, Bwd2, Bwd, Fmin, Fmax, Bmin1, Bmax1,
-            Bmax1, Cost0, Cost, Mid, HeurReq)
-    ;
+        find_backward_reaching_path(Constants, !Fwd, !Bwd, Fmin, Fmax,
+            Bmin1, Bmax1, Bmax1, !Cost, Mid, HeurReq)
+    else
         Constants = constants(DOffset, _, _, _, _, _, _, _, _, _, _),
-        array.lookup(Fwd0, SearchCost + DOffset - 1, Tlo),
-        array.lookup(Fwd0, SearchCost + DOffset + 1, Thi),
-        ( Tlo >= Thi ->
+        array.lookup(!.Fwd, SearchCost + DOffset - 1, Tlo),
+        array.lookup(!.Fwd, SearchCost + DOffset + 1, Thi),
+        ( if Tlo >= Thi then
             X0 = Tlo + 1
-        ;
+        else
             X0 = Thi
         ),
         Y0 = X0 - SearchCost,
-        Constants = constants(_, FileX, FileY, _, Xhigh, _, Yhigh,
-            _, _, _, _),
-        myers.scan_forward(FileX, FileY, Xhigh, Yhigh, X0, X, Y0, Y),
-        array.set(SearchCost + DOffset, X, Fwd0, Fwd1),
+        Constants = constants(_, FileX, FileY, _, Xhigh, _, Yhigh, _, _, _, _),
+        scan_forward(FileX, FileY, Xhigh, Yhigh, X0, X, Y0, Y),
+        array.set(SearchCost + DOffset, X, !Fwd),
 
         Constants = constants(_, _, _, _, _, _, _, _, _, DeltaOdd, _),
-        (
+        ( if
             DeltaOdd = yes,
             Bmin =< SearchCost,
             SearchCost =< Bmax,
-            array.lookup(Bwd0, SearchCost + DOffset, BB),
+            array.lookup(!.Bwd, SearchCost + DOffset, BB),
             BB =< X
-        ->
+        then
             Mid = X - Y,
-            Cost = 2 * Cost0 + 1,
-            Fwd = Fwd1,
-            Bwd = Bwd0,
+            !:Cost = 2 * !.Cost + 1,
             HeurReq = none - none
-        ;
-            myers.find_forward_reaching_path(Constants,
-                Fwd1, Fwd, Bwd0, Bwd, Fmin, Fmax, Bmin, Bmax,
-                SearchCost - 2, Cost0, Cost, Mid, HeurReq)
+        else
+            find_forward_reaching_path(Constants, !Fwd, !Bwd, Fmin, Fmax,
+                Bmin, Bmax, SearchCost - 2, !Cost, Mid, HeurReq)
         )
     ).
 
+:- pred find_backward_reaching_path(myers_constants::in,
+    array(int)::array_di, array(int)::array_uo,
+    array(int)::array_di, array(int)::array_uo, int::in, int::in, int::in,
+    int::in, int::in, int::in, int::out, pair(pos)::out, pair(heur)::out)
+    is det.
 
-:- pred myers.find_backward_reaching_path(myers_constants,
-        array(int), array(int), array(int), array(int),
-        int, int, int, int, int, int, int, pair(pos), pair(heur)).
-:- mode myers.find_backward_reaching_path(in, array_di, array_uo,
-        array_di, array_uo, in, in, in, in, in, in,
-        out, out, out) is det.
-
-myers.find_backward_reaching_path(Constants, Fwd0, Fwd, Bwd0, Bwd,
-        Fmin, Fmax, Bmin, Bmax, SearchCost, Cost0, Cost, Mid,
-        HeurReq) :-
-    ( SearchCost < Bmin ->
-        myers.try_heuristics(Constants, Fwd0, Fwd, Bwd0, Bwd,
-            Fmin, Fmax, Bmin, Bmax, Cost0, Cost, Mid, HeurReq)
-    ;
+find_backward_reaching_path(Constants, !Fwd, !Bwd, Fmin, Fmax, Bmin, Bmax,
+        SearchCost, !Cost, Mid, HeurReq) :-
+    ( if SearchCost < Bmin then
+        try_heuristics(Constants, !Fwd, !Bwd, Fmin, Fmax, Bmin, Bmax, !Cost,
+            Mid, HeurReq)
+    else
         Constants = constants(DOffset, _, _, _, _, _, _, _, _, _, _),
-        array.lookup(Bwd0, SearchCost + DOffset - 1, Tlo),
-        array.lookup(Bwd0, SearchCost + DOffset + 1, Thi),
-        ( Tlo < Thi ->
+        array.lookup(!.Bwd, SearchCost + DOffset - 1, Tlo),
+        array.lookup(!.Bwd, SearchCost + DOffset + 1, Thi),
+        ( if Tlo < Thi then
             X0 = Tlo
-        ;
+        else
             X0 = Thi - 1
         ),
         Y0 = X0 - SearchCost,
-        Constants = constants(_, FileX, FileY, Xlow, _, Ylow, _,
-            _, _, _, _),
-        myers.scan_backward(FileX, FileY, Xlow, Ylow, X0, X, Y0, Y),
-        array.set(SearchCost + DOffset, X, Bwd0, Bwd1),
+        Constants = constants(_, FileX, FileY, Xlow, _, Ylow, _, _, _, _, _),
+        scan_backward(FileX, FileY, Xlow, Ylow, X0, X, Y0, Y),
+        array.set(SearchCost + DOffset, X, !Bwd),
 
         Constants = constants(_, _, _, _, _, _, _, _, _, DeltaOdd, _),
-        (
+        ( if
             DeltaOdd = no,
             Fmin =< SearchCost,
             SearchCost =< Fmax,
-            array.lookup(Fwd0, SearchCost + DOffset, FF),
+            array.lookup(!.Fwd, SearchCost + DOffset, FF),
             X =< FF
-        ->
+        then
             Mid = X - Y,
-            Cost = 2 * Cost0,
-            Fwd = Fwd0,
-            Bwd = Bwd1,
+            !:Cost = 2 * !.Cost,
             HeurReq = none - none
-        ;
-            myers.find_backward_reaching_path(Constants,
-                Fwd0, Fwd, Bwd1, Bwd, Fmin, Fmax, Bmin, Bmax,
-                SearchCost - 2, Cost0, Cost, Mid, HeurReq)
+        else
+            find_backward_reaching_path(Constants, !Fwd, !Bwd, Fmin, Fmax,
+                Bmin, Bmax, SearchCost - 2, !Cost, Mid, HeurReq)
         )
     ).
 
-
     % Try applying some heuristics to see if we can avoid some work.
-:- pred myers.try_heuristics(myers_constants,
-        array(int), array(int), array(int), array(int),
-        int, int, int, int, int, int, pair(pos), pair(heur)).
-:- mode myers.try_heuristics(in, array_di, array_uo,
-        array_di, array_uo, in, in, in, in, in, out, out, out) is det.
+    %
+:- pred try_heuristics(myers_constants::in,
+    array(int)::array_di, array(int)::array_uo,
+    array(int)::array_di, array(int)::array_uo,
+    int::in, int::in, int::in, int::in, int::in, int::out,
+    pair(pos)::out, pair(heur)::out) is det.
 
-myers.try_heuristics(Constants, Fwd0, Fwd, Bwd0, Bwd,
-        Fmin, Fmax, Bmin, Bmax, Cost0, Cost, Mid, HeurReq) :-
+try_heuristics(Constants, !Fwd, !Bwd, Fmin, Fmax, Bmin, Bmax, !Cost,
+        Mid, HeurReq) :-
     Constants = constants(_, _, _, _, _, _, _, _, _, _, Heur),
-    (
+    ( if
         Heur = too_expensive(Cutoff),
-        Cost0 >= Cutoff
-    ->
-            % If we've done too much work, stop here.
-        Fwd = Fwd0, Bwd = Bwd0,
-        myers.too_expensive_heuristic(Constants, Fwd, Bwd,
-            Fmin, Fmax, Bmin, Bmax, Cost0, Cost, Mid, HeurReq)
-    ;
-        % Can't apply heuristic, so try looking for a diff of size
-        % Cost0 + 1.
-
-        myers.find_middle_2(Constants, Fwd0, Fwd, Bwd0, Bwd,
-            Fmin, Fmax, Bmin, Bmax, Cost0 + 1, Cost, Mid, HeurReq)
+        !.Cost >= Cutoff
+    then
+        % If we've done too much work, stop here.
+        too_expensive_heuristic(Constants, !.Fwd, !.Bwd, Fmin, Fmax,
+            Bmin, Bmax, !Cost, Mid, HeurReq)
+    else
+        % Can't apply heuristic, so try looking for a diff of size Cost0 + 1.
+        !:Cost = !.Cost + 1,
+        find_middle_2(Constants, !Fwd, !Bwd, Fmin, Fmax, Bmin, Bmax, !Cost,
+            Mid, HeurReq)
     ).
 
 %-----------------------------------------------------------------------------%
 
     % We've done too much work, so make our best guess.
-:- pred myers.too_expensive_heuristic(myers_constants, array(int), array(int),
-        int, int, int, int, int, int, pair(pos), pair(heur)).
-:- mode myers.too_expensive_heuristic(in, array_ui, array_ui,
-        in, in, in, in, in, out, out, out) is det.
+:- pred too_expensive_heuristic(myers_constants::in, array(int)::array_ui,
+    array(int)::array_ui, int::in, int::in, int::in, int::in,
+    int::in, int::out, pair(pos)::out, pair(heur)::out) is det.
 
-myers.too_expensive_heuristic(Constants, Fwd, Bwd,
-        Fmin, Fmax, Bmin, Bmax, Cost0, Cost, Mid, HeurReq) :-
-    % Find the best diagonal that we can, take the end of
-    % that diagonal as the "middle".  Do not apply the
-    % heuristic recursively to that best diagonal.
+too_expensive_heuristic(Constants, Fwd, Bwd, Fmin, Fmax, Bmin, Bmax, !Cost,
+        Mid, HeurReq) :-
+    % Find the best diagonal that we can, take the end of that diagonal as the
+    % "middle".  Do not apply the heuristic recursively to that best diagonal.
 
-    Constants = constants(DOffset, _, _, Xlow, Xhigh, Ylow, Yhigh,
-            _, _, _, Heur),
+    Constants = constants(DOffset, _, _, Xlow, Xhigh, Ylow, Yhigh, _, _, _,
+        Heur),
 
-        % Find the best forward diagonal.
-    myers.find_best_forward_diagonal(Fmax, Fmin, Fwd,
-            Xhigh, Yhigh, DOffset, -1, FXYBest, 0, FXBest),
+    % Find the best forward diagonal.
+    find_best_forward_diagonal(Fmax, Fmin, Fwd, Xhigh, Yhigh, DOffset, -1,
+        FXYBest, 0, FXBest),
 
-        % Find the best backward diagonal.
+    % Find the best backward diagonal.
     int.max_int(MaxInt),
-    myers.find_best_backward_diagonal(Bmax, Bmin, Bwd,
-            Xlow, Ylow, DOffset, MaxInt, BXYBest, 0, BXBest),
+    find_best_backward_diagonal(Bmax, Bmin, Bwd, Xlow, Ylow, DOffset, MaxInt,
+        BXYBest, 0, BXBest),
 
         % Choose which of these diagonals is the better one
         % and return that as the "middle" point.
-    (
+    ( if
         FXYBest - (Xhigh + Yhigh) < (Xlow + Ylow) - BXYBest
-    ->
+    then
         Xmid = FXBest,
         Ymid = FXYBest - FXBest,
         HeurReq = none - Heur
-    ;
+    else
         Xmid = BXBest,
         Ymid = BXYBest - BXBest,
         HeurReq = Heur - none
     ),
     Mid = Xmid - Ymid,
-    Cost = 2 * Cost0 - 1.
+    !:Cost = 2 * !.Cost - 1.
 
-:- pred myers.find_best_forward_diagonal(int, int, array(int), int, int, int,
-            int, int, int, int).
-:- mode myers.find_best_forward_diagonal(in, in, array_ui, in, in, in,
-            in, out, in, out) is det.
+:- pred find_best_forward_diagonal(int::in, int::in, array(int)::array_ui,
+    int::in, int::in, int::in, int::in, int::out, int::in, int::out) is det.
 
-myers.find_best_forward_diagonal(D, Fmin, Fwd, Xhigh, Yhigh, DOffset,
-            FXYBest0, FXYBest, FXBest0, FXBest) :-
-    ( D < Fmin ->
-        FXYBest = FXYBest0,
-        FXBest = FXBest0
-    ;
+find_best_forward_diagonal(D, Fmin, Fwd, Xhigh, Yhigh, DOffset,
+        !FXYBest, !FXBest) :-
+    ( if D < Fmin then
+        true
+    else
         array.lookup(Fwd, D + DOffset, X0),
         int.min(Xhigh, X0, X1),
         Y0 = X1 - D,
 
-        ( Yhigh < Y0 ->
+        ( if Yhigh < Y0 then
             X = Yhigh + D,
             Y = Yhigh
-        ;
+        else
             X = X1,
             Y = Y0
         ),
 
         NewFXY = X + Y,
-        ( FXYBest0 < NewFXY ->
-            myers.find_best_forward_diagonal(D - 2, Fmin, Fwd,
-                Xhigh, Yhigh, DOffset, NewFXY, FXYBest,
-                X, FXBest)
-        ;
-            myers.find_best_forward_diagonal(D - 2, Fmin, Fwd,
-                Xhigh, Yhigh, DOffset, FXYBest0, FXYBest,
-                FXBest0, FXBest)
+        ( if !.FXYBest < NewFXY then
+            find_best_forward_diagonal(D - 2, Fmin, Fwd, Xhigh, Yhigh,
+                DOffset, NewFXY, !:FXYBest, X, !:FXBest)
+        else
+            find_best_forward_diagonal(D - 2, Fmin, Fwd, Xhigh, Yhigh,
+                DOffset, !FXYBest, !FXBest)
         )
     ).
 
-:- pred myers.find_best_backward_diagonal(int, int, array(int), int, int, int,
-            int, int, int, int).
-:- mode myers.find_best_backward_diagonal(in, in, array_ui, in, in, in,
-            in, out, in, out) is det.
+:- pred find_best_backward_diagonal(int::in, int::in, array(int)::array_ui,
+    int::in, int::in, int::in, int::in, int::out, int::in, int::out) is det.
 
-myers.find_best_backward_diagonal(D, Bmin, Bwd, Xlow, Ylow, DOffset,
-            BXYBest0, BXYBest, BXBest0, BXBest) :-
-    ( D < Bmin ->
-        BXYBest = BXYBest0,
-        BXBest = BXBest0
-    ;
+find_best_backward_diagonal(D, Bmin, Bwd, Xlow, Ylow, DOffset, !BXYBest,
+        !BXBest) :-
+    ( if D < Bmin then
+        true
+    else
         array.lookup(Bwd, D + DOffset, X0),
         int.max(Xlow, X0, X1),
         Y0 = X1 - D,
 
-        ( Y0 < Ylow ->
+        ( if Y0 < Ylow then
             X = Ylow + D,
             Y = Ylow
-        ;
+        else
             X = X1,
             Y = Y0
         ),
 
         NewBXY = X + Y,
-        ( NewBXY < BXYBest0 ->
-            myers.find_best_backward_diagonal(D - 2, Bmin, Bwd,
-                Xlow, Ylow, DOffset, NewBXY, BXYBest,
-                X, BXBest)
-        ;
-            myers.find_best_backward_diagonal(D - 2, Bmin, Bwd,
-                Xlow, Ylow, DOffset, BXYBest0, BXYBest,
-                BXBest0, BXBest)
+        ( if NewBXY < !.BXYBest then
+            find_best_backward_diagonal(D - 2, Bmin, Bwd, Xlow, Ylow, DOffset,
+                NewBXY, !:BXYBest, X, !:BXBest)
+        else
+            find_best_backward_diagonal(D - 2, Bmin, Bwd, Xlow, Ylow, DOffset,
+                !BXYBest, !BXBest)
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
     % Travel forwards along a snake.
-:- pred myers.scan_forward(array(int), array(int), int, int,
-        int, int, int, int).
-:- mode myers.scan_forward(in, in, in, in, in, out, in, out) is det.
+:- pred scan_forward(array(int)::in, array(int)::in, int::in, int::in,
+    int::in, int::out, int::in, int::out) is det.
 
-myers.scan_forward(FileX, FileY, Xhigh, Yhigh, Xlow0, Xlow, Ylow0, Ylow) :-
-    (
-        Xlow0 < Xhigh,
-        Ylow0 < Yhigh,
-        array.lookup(FileX, Xlow0, Line),
-        array.lookup(FileY, Ylow0, Line)
-    ->
-        myers.scan_forward(FileX, FileY, Xhigh, Yhigh,
-            Xlow0 + 1, Xlow, Ylow0 + 1, Ylow)
-    ;
-        Xlow = Xlow0, Ylow = Ylow0
+scan_forward(FileX, FileY, Xhigh, Yhigh, !Xlow, !Ylow) :-
+    ( if
+        !.Xlow < Xhigh,
+        !.Ylow < Yhigh,
+        array.lookup(FileX, !.Xlow, Line),
+        array.lookup(FileY, !.Ylow, Line)
+    then
+        !:Xlow = !.Xlow + 1,
+        !:Ylow = !.Ylow + 1,
+        scan_forward(FileX, FileY, Xhigh, Yhigh, !Xlow, !Ylow)
+    else
+        true
     ).
 
-
     % Travel backwards along a snake.
-:- pred myers.scan_backward(array(int), array(int), int, int,
-        int, int, int, int).
-:- mode myers.scan_backward(in, in, in, in, in, out, in, out) is det.
+:- pred scan_backward(array(int)::in, array(int)::in, int::in, int::in,
+    int::in, int::out, int::in, int::out) is det.
 
-myers.scan_backward(FileX, FileY, Xlow, Ylow, Xhigh0, Xhigh, Yhigh0, Yhigh) :-
-    (
-        Xhigh0 > Xlow,
-        Yhigh0 > Ylow,
-        array.lookup(FileX, Xhigh0 - 1, Line),
-        array.lookup(FileY, Yhigh0 - 1, Line)
-    ->
-        myers.scan_backward(FileX, FileY, Xlow, Ylow,
-            Xhigh0 - 1, Xhigh, Yhigh0 - 1, Yhigh)
-    ;
-        Xhigh = Xhigh0, Yhigh = Yhigh0
+scan_backward(FileX, FileY, Xlow, Ylow, !Xhigh, !Yhigh) :-
+    ( if
+        !.Xhigh > Xlow,
+        !.Yhigh > Ylow,
+        array.lookup(FileX, !.Xhigh - 1, Line),
+        array.lookup(FileY, !.Yhigh - 1, Line)
+    then
+        !:Xhigh = !.Xhigh - 1,
+        !:Yhigh = !.Yhigh - 1,
+        scan_backward(FileX, FileY, Xlow, Ylow, !Xhigh, !Yhigh)
+    else
+        true
     ).
 
 %-----------------------------------------------------------------------------%

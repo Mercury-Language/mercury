@@ -92,12 +92,12 @@ build_matches(File1, File2, FileX, FileY, !IO) :-
     array(int)::array_di, array(int)::array_uo) is det.
 
 build_matches_for_file(Opts, OrigFile, I, !MatchMap, !ID, !File) :-
-    ( I < 0 ->
+    ( if I < 0 then
         true
-    ;
-        ( file.get_line(OrigFile, I, Line0) ->
+    else
+        ( if file.get_line(OrigFile, I, Line0) then
             Line1 = Line0
-        ;
+        else
             error("build_matches_for_file")
         ),
         Opts = match_options(NoOpts, IgnCase, IgnAllSpc, IgnSpcChg),
@@ -110,9 +110,9 @@ build_matches_for_file(Opts, OrigFile, I, !MatchMap, !ID, !File) :-
             normalise_line(no, IgnCase, IgnAllSpc, IgnSpcChg, Chars0, Chars1),
             string.from_char_list(Chars1, Line)
         ),
-        ( map.search(!.MatchMap, Line, MaybeID) ->
+        ( if map.search(!.MatchMap, Line, MaybeID) then
             array.set(I, MaybeID, !File)
-        ;
+        else
             array.set(I, !.ID, !File),
             map.det_insert(Line, !.ID, !MatchMap),
             !:ID = !.ID + 1
@@ -132,15 +132,15 @@ normalise_line(LastSpace, IgnCase, IgnAllSpc, IgnSpcChg, [C0 | Cs0], Cs) :-
         IgnCase = no,
         C = C0
     ),
-    (
+    ( if
         char.is_whitespace(C),
-        (
+        ( if
             IgnAllSpc = yes
-        ->
+        then
             normalise_line(LastSpace, IgnCase, IgnAllSpc, IgnSpcChg, Cs0, CsX)
-        ;
+        else if
             IgnSpcChg = yes
-        ->
+        then
             (
                 LastSpace = yes,
                 normalise_line(yes, IgnCase, IgnAllSpc, IgnSpcChg, Cs0, CsX)
@@ -149,12 +149,12 @@ normalise_line(LastSpace, IgnCase, IgnAllSpc, IgnSpcChg, [C0 | Cs0], Cs) :-
                 normalise_line(yes, IgnCase, IgnAllSpc, IgnSpcChg, Cs0, Cs1),
                 CsX = [' ' | Cs1]
             )
-        ;
+        else
             fail
         )
-    ->
+    then
         Cs = CsX
-    ;
+    else
         normalise_line(no, IgnCase, IgnAllSpc, IgnSpcChg, Cs0, Cs1),
         Cs = [C | Cs1]
     ).

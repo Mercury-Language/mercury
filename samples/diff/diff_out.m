@@ -42,22 +42,22 @@
 
     % The default output style.
     %
-:- pred diff_out.default_output_style(output_style::out) is det.
+:- pred default_output_style(output_style::out) is det.
 
     % Succeeds if, for this output style, an absence of differences
     % means that no output should be generated.
     %
-:- pred diff_out.no_diff_implies_no_output(output_style::in) is semidet.
+:- pred no_diff_implies_no_output(output_style::in) is semidet.
 
     % Succeeds if the user only wants to know about the presence
     % of any differences, not what they actually are.
     %
-:- pred diff_out.full_diff_not_required(output_style::in) is semidet.
+:- pred full_diff_not_required(output_style::in) is semidet.
 
     % Succeeds if the output style is "robust", that is, the absence of a
     % newline at the end of the file actually matters.
     %
-:- pred diff_out.robust(output_style::in) is semidet.
+:- pred robust(output_style::in) is semidet.
 
     % display_diff takes a diff and displays it in the user's specified output
     % format.
@@ -110,7 +110,7 @@ robust(cvs_merge_conflict).
 
 %-----------------------------------------------------------------------------%
 
-    % diff_out.show_file shows the segment of the file from Low to High, with
+    % show_file shows the segment of the file from Low to High, with
     % each line preceded by the Prefix character and a space.  The diff(1)
     % format specifies that the lines effected in the first file should be
     % flagged by '<' and the lines effected in the second file should be
@@ -127,8 +127,8 @@ show_file(File, Prefix, Low, High, !IO) :-
     io::di, io::uo) is det.
 
 show_file_2(ExpandTabs, File, Prefix, Low, High, !IO) :-
-    ( Low < High ->
-        ( file.get_line(File, Low, Line) ->
+    ( if Low < High then
+        ( if file.get_line(File, Low, Line) then
             io.write_string(Prefix, !IO),
             (
                 ExpandTabs = yes,
@@ -139,10 +139,10 @@ show_file_2(ExpandTabs, File, Prefix, Low, High, !IO) :-
                 io.write_string(Line, !IO)
             ),
             show_file_2(ExpandTabs, File, Prefix, Low + 1, High, !IO)
-        ;
+        else
             error("diff_out_show_file: file ended prematurely")
         )
-    ;
+    else
         true
     ).
 
@@ -150,11 +150,11 @@ show_file_2(ExpandTabs, File, Prefix, Low, High, !IO) :-
 
 expand_tabs([], _, !IO).
 expand_tabs([C | Cs], Pos, !IO) :-
-    ( C = '\t' ->
+    ( if C = '\t' then
         Spaces = tab_width - (Pos rem tab_width),
         put_spaces(Spaces, Pos, NewPos, !IO),
         expand_tabs(Cs, NewPos, !IO)
-    ;
+    else
         io.write_char(C, !IO),
         expand_tabs(Cs, Pos + 1, !IO)
     ).
@@ -171,12 +171,12 @@ expand_tabs([C | Cs], Pos, !IO) :-
     %
 display_diff(File1, File2, Diff, !IO) :-
     globals.io_get_output_style(OutputStyle, !IO),
-    (
+    ( if
         Diff = [],
         no_diff_implies_no_output(OutputStyle)
-    ->
+    then
         true
-    ;
+    else
         display_diff_2(OutputStyle, File1, File2, Diff, !IO)
     ).
 
@@ -283,20 +283,20 @@ display_diff_normal_2(File1, File2, [SingDiff | Diff], FromStr, ToStr, !IO) :-
 
 write_command(X - X2, C, Y - Y2, !IO) :-
     X1 = X + 1,    % Convert from pos to line number.
-    ( X1 >= X2 ->
+    ( if X1 >= X2 then
         % Either empty or singleton segment.
         io.write_int(X2, !IO)
-    ;
+    else
         io.write_int(X1, !IO),
         io.write_char(',', !IO),
         io.write_int(X2, !IO)
     ),
     io.write_char(C, !IO),
     Y1 = Y + 1,    % Convert from pos to line number.
-    ( Y1 >= Y2 ->
+    ( if Y1 >= Y2 then
         % Either empty or singleton segment.
         io.write_int(Y2, !IO)
-    ;
+    else
         io.write_int(Y1, !IO),
         io.write_char(',', !IO),
         io.write_int(Y2, !IO)
@@ -370,10 +370,10 @@ display_diff_ed(File1, File2, [Cmd | Diff], !IO) :-
 
 write_command_ed(X - X2, C, !IO) :-
     X1 = X + 1,        % Convert from pos to line number
-    ( X1 >= X2 ->
+    ( if X1 >= X2 then
         % Either empty or singleton segment.
         io.write_int(X2, !IO)
-    ;
+    else
         io.write_int(X1, !IO),
         io.write_char(',', !IO),
         io.write_int(X2, !IO)
@@ -417,10 +417,10 @@ display_diff_forward_ed(File1, File2, [Cmd | Diff], !IO) :-
 write_command_forward_ed(X - X2, C, !IO) :-
     io.write_char(C, !IO),
     X1 = X + 1,        % Convert from pos to line number
-    ( X1 >= X2 ->
+    ( if X1 >= X2 then
         % Either empty or singleton segment.
         io.write_int(X2, !IO)
-    ;
+    else
         io.write_int(X1, !IO),
         io.write_char(' ', !IO),
         io.write_int(X2, !IO)
@@ -575,14 +575,14 @@ diff_to_context_diff(Xsize, Ysize, Context, [Edit | Diff], CDiff) :-
         CDiff0 =
             [context_edit(XsegLo - XsegHi, YsegLo - YsegHi, DDiff) | CDiff1],
         % Should we merge this edit into the next one?
-        (
+        ( if
             ( XsegLo =< Xlast
             ; YsegLo =< Ylast
             )
-        ->
+        then
             CDiff = [context_edit(Xfirst - XsegHi, Yfirst - YsegHi, [Edit
                 | DDiff]) | CDiff1]
-        ;
+        else
             CDiff = [context_edit(Xfirst - Xlast, Yfirst - Ylast,
                 [Edit]) | CDiff0]
         )
@@ -706,9 +706,11 @@ display_context_diff_2(File1, File2, [Edit | CDiff],
     % Don't display the "context from" lines if there's nothing deleted or
     % changed.
     %
-    ( all [AEdit] list.member(AEdit, Diff) => AEdit = add(_, _) ->
+    ( if
+        all [AEdit] list.member(AEdit, Diff) => AEdit = add(_, _)
+    then
         true
-    ;
+    else
         display_context_diff_left(Xlow, Xhigh, File1, Diff, NoneStr,
             DelStr, ChgStr, !IO)
     ),
@@ -716,9 +718,11 @@ display_context_diff_2(File1, File2, [Edit | CDiff],
 
     % Don't display the "context to" lines if there's nothing added or changed.
     %
-    ( all [DEdit] list.member(DEdit, Diff) => DEdit = delete(_, _) ->
+    ( if
+        all [DEdit] list.member(DEdit, Diff) => DEdit = delete(_, _)
+    then
         true
-    ;
+    else
         display_context_diff_right(Ylow, Yhigh, File2, Diff, NoneStr,
             AddStr, ChgStr, !IO)
     ),
@@ -809,16 +813,16 @@ display_diff_side_by_side(File1, File2, Diff, !IO) :-
     Off = (Width0 + 4) // 8 * 4,
     Max =  Off - 3,
     HalfWidth0 = Width0 - Off + 1,
-    ( HalfWidth0 =< 0 ->
+    ( if HalfWidth0 =< 0 then
         HalfWidth = 0
-    ; HalfWidth0 > Max ->
+    else if HalfWidth0 > Max then
         HalfWidth = Max
-    ;
+    else
         HalfWidth = HalfWidth0
     ),
-    ( HalfWidth > 0 ->
+    ( if HalfWidth > 0 then
         Col2Off = Off
-    ;
+    else
         Col2Off = Width0
     ),
     globals.io_lookup_bool_option(left_column, LeftCol, !IO),
@@ -874,11 +878,11 @@ display_diff_side_by_side_2(Prev, SBS, File1, File2, [Edit | Diff], !IO) :-
     int::in, int::in, int::in, io::di, io::uo) is det.
 
 show_sbs_changed_lines(File1, File2, SBS, X1, Y1, Size, !IO) :-
-    ( Size > 0 ->
-        (
+    ( if Size > 0 then
+        ( if
             file.get_line(File1, X1, Line1),
             file.get_line(File2, Y1, Line2)
-        ->
+        then
             SBS = side_by_side_info(Width, _, _, _, _),
             string.to_char_list(Line1, Chars1),
             print_half_line(Chars1, SBS, 0, 0, Width, OutPos, !IO),
@@ -890,10 +894,10 @@ show_sbs_changed_lines(File1, File2, SBS, X1, Y1, Size, !IO) :-
             io.write_string("\n", !IO),
             show_sbs_changed_lines(File1, File2, SBS, X1 + 1, Y1 + 1,
                 Size - 1, !IO)
-        ;
+        else
             error("show_sbs_changed_lines: file ended prematurely")
         )
-    ;
+    else
         true
     ).
 
@@ -901,8 +905,8 @@ show_sbs_changed_lines(File1, File2, SBS, X1, Y1, Size, !IO) :-
     io::di, io::uo) is det.
 
 show_sbs_same_lines(File, SBS, Low - High, !IO) :-
-    ( Low < High ->
-        ( file.get_line(File, Low, Line) ->
+    ( if Low < High then
+        ( if file.get_line(File, Low, Line) then
             SBS = side_by_side_info(Width, _, LeftCol, _, _),
             string.to_char_list(Line, Chars),
             print_half_line(Chars, SBS, 0, 0, Width, OutPos, !IO),
@@ -921,10 +925,10 @@ show_sbs_same_lines(File, SBS, Low - High, !IO) :-
             ),
             io.write_string("\n", !IO),
             show_sbs_same_lines(File, SBS, (Low + 1) - High, !IO)
-        ;
+        else
             error("show_sbs_same_lines: file ended prematurely")
         )
-    ;
+    else
         true
     ).
 
@@ -932,8 +936,8 @@ show_sbs_same_lines(File, SBS, Low - High, !IO) :-
     segment::in, io::di, io::uo) is det.
 
 show_sbs_added_lines(File, SBS, Low - High, !IO) :-
-    ( Low < High ->
-        ( file.get_line(File, Low, Line) ->
+    ( if Low < High then
+        ( if file.get_line(File, Low, Line) then
             SBS = side_by_side_info(Width, _, _, _, _),
             string.to_char_list(Line, Chars),
             tab_to_column(0, Width, !IO),
@@ -941,10 +945,10 @@ show_sbs_added_lines(File, SBS, Low - High, !IO) :-
             print_half_line(Chars, SBS, 0, 0, Width, _, !IO),
             io.write_string("\n", !IO),
             show_sbs_added_lines(File, SBS, (Low + 1) - High, !IO)
-        ;
+        else
             error("show_sbs_added_lines: file ended prematurely")
         )
-    ;
+    else
         true
     ).
 
@@ -952,18 +956,18 @@ show_sbs_added_lines(File, SBS, Low - High, !IO) :-
     segment::in, io::di, io::uo) is det.
 
 show_sbs_deleted_lines(File, SBS, Low - High, !IO) :-
-    ( Low < High ->
-        ( file.get_line(File, Low, Line) ->
+    ( if Low < High then
+        ( if file.get_line(File, Low, Line) then
             SBS = side_by_side_info(Width, _, _, _, _),
             string.to_char_list(Line, Chars),
             print_half_line(Chars, SBS, 0, 0, Width, OutPos, !IO),
             tab_to_column(OutPos, Width, !IO),
             io.write_string("<\n", !IO),
             show_sbs_deleted_lines(File, SBS, (Low + 1) - High, !IO)
-        ;
+        else
             error("show_sbs_deleted_lines: file ended prematurely")
         )
-    ;
+    else
         true
     ).
 
@@ -977,9 +981,9 @@ tab_width = 8.
 :- pred put_spaces(int::in, int::in, int::out, io::di, io::uo) is det.
 
 put_spaces(Spaces, !OutPos, !IO) :-
-    ( Spaces =< 0 ->
+    ( if Spaces =< 0 then
         true
-    ;
+    else
         io.write_char(' ', !IO),
         !:OutPos = !.OutPos + 1,
         put_spaces(Spaces - 1, !OutPos, !IO)
@@ -993,14 +997,14 @@ put_spaces(Spaces, !OutPos, !IO) :-
 
 tab_to_column(From, To, !IO) :-
     AfterTab = From + tab_width - (From rem tab_width),
-    ( AfterTab > To ->
-        ( From < To ->
+    ( if AfterTab > To then
+        ( if From < To then
             io.write_char(' ', !IO),
             tab_to_column(From + 1, To, !IO)
-        ;
+        else
             true
         )
-    ;
+    else
         io.write_char('\t', !IO),
         tab_to_column(AfterTab, To, !IO)
     ).
@@ -1023,21 +1027,21 @@ tab_to_column(From, To, !IO) :-
 
 print_half_line([], _SBS, _InPos, OutPos, _OutBound, OutPos, !IO).
 print_half_line([C | Cs], SBS, InPos0, OutPos0, OutBound, OutPos, !IO) :-
-    (
+    ( if
         C = '\t'
-    ->
+    then
             % Calculate how many spaces this tab is worth.
         Spaces = tab_width - InPos0 rem tab_width,
-        ( InPos0 = OutPos0 ->
+        ( if InPos0 = OutPos0 then
             globals.io_lookup_bool_option(expand_tabs, ExpandTabs, !IO),
             (
                 ExpandTabs = yes,
                 % If we're expanding tabs, we just pretend that
                 % we had Spaces spaces and write them.
                 TabStop0 = OutPos0 + Spaces,
-                ( TabStop0 > OutBound ->
+                ( if TabStop0 > OutBound then
                     TabStop = OutBound
-                ;
+                else
                     TabStop = TabStop0
                 ),
                 put_spaces(TabStop - OutPos0, OutPos0, OutPos1, !IO)
@@ -1048,32 +1052,34 @@ print_half_line([C | Cs], SBS, InPos0, OutPos0, OutBound, OutPos, !IO) :-
                 io.write_char('\t', !IO),
                 OutPos1 = OutPos0 + Spaces
             )
-        ;
+        else
             OutPos1 = OutPos0
         ),
         InPos = InPos0 + Spaces
-    ;
+    else if
         ( C = '\r' ; C = '\b' ; C = '\n' )
-    ->
+    then
         % XXX What to do?  For the moment, we'll just ignore it.
         InPos = InPos0, OutPos1 = OutPos0
     /***********
         % XXX Binary files aren't really supported.
-    ; \+ char.is_print(C) ->
+    else if
+        not char.is_print(C)
+    then
         InPos = InPos0, OutPos1 = OutPos0
-        ( InPos < OutBound ->
+        ( if InPos < OutBound then
             io.write_char(C, !IO)
-        ;
+        else
             true
         )
     ***********/
-    ;
+    else
         % The default case.  Print and be done with it.
         InPos = InPos0 + 1,
-        ( InPos < OutBound ->
+        ( if InPos < OutBound then
             OutPos1 = InPos,
             io.write_char(C, !IO)
-        ;
+        else
             OutPos1 = OutPos0
         )
     ),
