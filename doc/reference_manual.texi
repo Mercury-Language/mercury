@@ -9879,11 +9879,6 @@ extensions to the Mercury language:
 * Trailing::                    Undoing side-effects on backtracking.
 
 @end menu
-@c XXX The `reserved tag' pragma is not documented because it is intended to
-@c     be used with `any' insts, which are themselves not yet documented.
-@c     Also, it is a quite low-level facility, and very
-@c     implementation-specific...
-@c * Reserved tag::		Support for Herbrand constraint solvers.
 
 @node Fact tables
 @section Fact tables
