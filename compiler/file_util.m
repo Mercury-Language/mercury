@@ -119,7 +119,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % make_install_command(Globals, FileName, InstallDir) = Command:
+    % make_install_file_command(Globals, FileName, InstallDir) = Command:
     % Command is the command required to install file FileName in directory
     % InstallDir.
     %
@@ -432,8 +432,6 @@ make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
     ;
         FileInstallCmd = install_cmd_cp,
         InstallCmd = "cp",
-        % XXX the POSIX option is -R but for some reason the default in
-        % options.m is -r.
         InstallCmdDirOpt = "-R"
     ),
     Command = string.join_list("   ", list.map(quote_arg,
