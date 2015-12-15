@@ -188,8 +188,8 @@
     % Nondeterministically produce all the inst_vars contained in the
     % specified list of modes.
     %
-:- pred mode_list_contains_inst_var(list(mer_mode)::in, module_info::in,
-    inst_var::out) is nondet.
+:- pred mode_list_contains_inst_var(list(mer_mode)::in, inst_var::out)
+    is nondet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1565,12 +1565,6 @@ inst_list_contains_inst_var([Inst | Insts], InstVar) :-
     ;
         inst_list_contains_inst_var(Insts, InstVar)
     ).
-
-mode_list_contains_inst_var(Modes, _ModuleInfo, InstVar) :-
-    mode_list_contains_inst_var(Modes, InstVar).
-
-:- pred mode_list_contains_inst_var(list(mer_mode)::in, inst_var::out)
-    is nondet.
 
 mode_list_contains_inst_var([Mode | Modes], InstVar) :-
     (
