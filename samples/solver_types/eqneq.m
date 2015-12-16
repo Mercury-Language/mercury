@@ -114,9 +114,9 @@ new(EqNeq) :-
     % Create a list of new, free, eqneqs.
     %
 n_new(N, EqNeqs) :-
-    ( if N =< 0 then 
+    ( if N =< 0 then
         EqNeqs = []
-      else
+    else
         new(EqNeq),
         n_new(N - 1, EqNeqs0),
         EqNeqs = [EqNeq | EqNeqs0]
@@ -142,7 +142,7 @@ deref_2(ConstraintStore, EqNeqId0, EqNeqId, EqNeqRep, Depth0, Depth) :-
     ( if EqNeqRep0 = alias(EqNeqId1) then
         deref_2(ConstraintStore, EqNeqId1, EqNeqId, EqNeqRep,
             Depth0 + 1, Depth)
-      else
+    else
         EqNeqId = EqNeqId0,
         EqNeqRep = EqNeqRep0,
         Depth = Depth0
@@ -170,7 +170,7 @@ eq(EqNeqA, EqNeqB) :-
             %
             true
 
-          else
+        else
 
             (
                 % If both are free, then check the neq constraints and
@@ -239,7 +239,6 @@ eq(EqNeqA, EqNeqB) :-
             )
         )
     ).
-
 
 :- func update_neq_set(constraint_store, set(eqneq_id)) = set(eqneq_id).
 

@@ -41,7 +41,7 @@ main(!IO) :-
                 Start = string.words(StartString),
                 ( if solve_sudoku(Start, Solution) then
                     write_solution(9, 1, Solution, !IO)
-                  else
+                else
                     io.write_string("No solution.\n", !IO)
                 )
             ;
@@ -56,7 +56,7 @@ main(!IO) :-
             io.nl(!IO),
             io.set_exit_status(1, !IO)
         )
-      else
+    else
         io.write_string("usage: sudoku <filename>\n", !IO),
         io.set_exit_status(1, !IO)
     ).
@@ -70,8 +70,8 @@ main(!IO) :-
 solve_sudoku(Start, Solution) :-
     % The following if-then-else is used to ensure that the call to
     % label_board/2 occurs after the constraints have been posted.
-    % (In principle the compiler could should reorder the code so that
-    % that label_board/2 occurs before they have been posted.)
+    % (In principle the compiler could reorder the code so that the call
+    % to label_board/2 occurs before the constraints have been posted.)
     ( if
         % Set up the board.
         %
@@ -124,11 +124,11 @@ solve_sudoku(Start, Solution) :-
         eqneq.all_different([X71, X72, X73, X81, X82, X83, X91, X92, X93]),
         eqneq.all_different([X74, X75, X76, X84, X85, X86, X94, X95, X96]),
         eqneq.all_different([X77, X78, X79, X87, X88, X89, X97, X98, X99])
-      then
+    then
         % Assign a digit to each square on the board.
         %
         label_board(Board, Solution)
-      else
+    else
         false
     ).
 
@@ -144,9 +144,9 @@ solve_sudoku(Start, Solution) :-
 init_board([], []).
 init_board([Start | Starts], [EqNeq | EqNeqs]) :-
     eqneq.new(EqNeq),
-    ( if   string.to_int(Start, X)
-      then eqneq.bind(EqNeq, X)
-      else true
+    ( if string.to_int(Start, X)
+    then eqneq.bind(EqNeq, X)
+    else true
     ),
     init_board(Starts, EqNeqs).
 
@@ -158,9 +158,9 @@ init_board([Start | Starts], [EqNeq | EqNeqs]) :-
 
 label_board([], []).
 label_board([EqNeq | EqNeqs], [X | Xs]) :-
-    (   X = 1   ;   X = 2   ;   X = 3
-    ;   X = 4   ;   X = 5   ;   X = 6
-    ;   X = 7   ;   X = 8   ;   X = 9
+    ( X = 1 ; X = 2 ; X = 3
+    ; X = 4 ; X = 5 ; X = 6
+    ; X = 7 ; X = 8 ; X = 9
     ),
     eqneq.bind(EqNeq, X),
     label_board(EqNeqs, Xs).
@@ -177,17 +177,17 @@ write_solution(_, _, [], !IO) :-
 write_solution(N, R, [X | Xs], !IO) :-
     ( if N = 0 then
         io.nl(!IO),
-        ( if   (R mod 3) = 0
-          then io.nl(!IO)
-          else true
+        ( if (R mod 3) = 0
+        then io.nl(!IO)
+        else true
         ),
         write_solution(9, R + 1, [X | Xs], !IO)
-      else
+    else
         io.write_int(X, !IO),
         io.write_char(' ', !IO),
-        ( if   (N mod 3) = 1
-          then io.write_char(' ', !IO)
-          else true
+        ( if (N mod 3) = 1
+        then io.write_char(' ', !IO)
+        else true
         ),
         write_solution(N - 1, R + 1, Xs, !IO)
     ).

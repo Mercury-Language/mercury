@@ -31,10 +31,9 @@
 
 main(!IO) :-
     ( if solve(Solution) then
-        io.print(Solution, !IO),
-        io.nl(!IO)
-      else
-        io.print("No solution.\n", !IO)
+        io.print_line(Solution, !IO)
+    else
+        io.print_line("No solution.", !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -51,9 +50,9 @@ solve(Solution) :-
         neq(X1, X2),
         neq(X1, X3),
         neq(X2, X3)
-     then
+    then
         label(Xs, Solution)
-     else
+    else
         false
     ).
 
