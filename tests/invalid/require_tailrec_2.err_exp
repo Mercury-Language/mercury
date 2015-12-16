@@ -1,0 +1,12 @@
+require_tailrec_2.m:025: In mode number 1 of predicate `qsortapp_1'/2:
+require_tailrec_2.m:025:   warning: recursive call is not tail recursive.
+require_tailrec_2.m:034: In mode number 1 of predicate `qsortapp_2'/2:
+require_tailrec_2.m:034:   warning: recursive call is not tail recursive.
+require_tailrec_2.m:043: In mode number 1 of predicate `qsortapp_3'/2:
+require_tailrec_2.m:043:   warning: recursive call is not tail recursive.
+require_tailrec_2.m:052: In mode number 1 of predicate `qsortapp_4'/2:
+require_tailrec_2.m:052:   error: recursive call is not tail recursive.
+require_tailrec_2.m:061: In mode number 1 of predicate `qsortapp_5'/2:
+require_tailrec_2.m:061:   warning: recursive call is not tail recursive.
+require_tailrec_2.m:070: In mode number 1 of predicate `qsortapp_6'/2:
+require_tailrec_2.m:070:   warning: recursive call is not tail recursive.

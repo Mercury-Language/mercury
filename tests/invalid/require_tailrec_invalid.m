@@ -3,7 +3,7 @@
 % pragma.  It does not test the use of this pragma on a non tail recursive
 % predicate or function, that will be tested separately.
 
-:- module require_tail_recursion.
+:- module require_tailrec_invalid.
 
 :- interface.
 
@@ -17,10 +17,10 @@
 
 :- implementation.
 
-% The pragma used with an non-existant predicate or function.
-:- pragma require_tail_recursion(non_existant_pred/3, [warn]).
-:- pragma require_tail_recursion(non_existant_proc(in, out), [error]).
-:- pragma require_tail_recursion(non_existant_func_proc(in) = out, [error]).
+% The pragma used with an non-existent predicate or function.
+:- pragma require_tail_recursion(non_existent_pred/3, [warn]).
+:- pragma require_tail_recursion(non_existent_proc(in, out), [error]).
+:- pragma require_tail_recursion(non_existent_func_proc(in) = out, [error]).
 
 % or with a non existent mode of a predicate that does exist.
 :- pragma require_tail_recursion(length(out, in), [self_recursion_only]).

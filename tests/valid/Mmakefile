@@ -200,6 +200,8 @@ OTHER_PROGS = \
 	recursive_no_tag_type \
 	reg_bug \
 	require_bug \
+	require_tailrec_1 \
+	require_tailrec_2 \
 	same_length_2 \
 	semidet_disj \
 	shape_type \

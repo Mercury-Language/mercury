@@ -218,7 +218,9 @@ SINGLEMODULE= \
 	repeated_instance_vars_unsat \
 	require_det_in_lambda \
 	require_scopes \
-	require_tail_recursion \
+	require_tailrec_1 \
+	require_tailrec_2 \
+	require_tailrec_invalid \
 	reserved \
 	some \
 	specified \
@@ -482,10 +484,9 @@ illtyped_compare.err: illtyped_compare.m
 	else true; \
 	fi
 
-# For foreign_include_file_missing, the error is only caught when generating
-# target code.
+# For these tests the error is only caught when generating target code.
 .PHONY: missing_file
-foreign_include_file_missing.err: foreign_include_file_missing.m
+require_tailrec_1.err require_tailrec_2.err foreign_include_file_missing.err: %.err : %.m
 	if $(MC) --target-code-only $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) \
 			$* > $*.err 2>&1; \
 	then false; \

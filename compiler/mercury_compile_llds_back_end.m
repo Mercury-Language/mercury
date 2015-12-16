@@ -177,10 +177,8 @@ llds_backend_pass_by_phases(!HLDS, !:LLDS, !GlobalData, !Specs,
     compute_liveness(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 330, "liveness", !DumpInfo, !IO),
 
-    maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO),
+    maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(!.HLDS, 332, "mark_debug_tailrec_calls", !DumpInfo, !IO),
-
-    maybe_warn_non_tail_recursion(Verbose, Stats, !.HLDS, !Specs, !IO),
 
     compute_stack_vars(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 335, "stackvars", !DumpInfo, !IO),
@@ -399,29 +397,15 @@ llds_backend_pass_for_proc(!HLDS, ConstStructMap, PredId, PredInfo,
             !.HLDS, !IO)
     ),
     detect_liveness_proc(!.HLDS, PredProcId, !ProcInfo),
-    globals.lookup_bool_option(Globals, exec_trace_tail_rec, ExecTraceTailRec),
-    globals.lookup_bool_option(Globals, warn_non_tail_recursion,
-        WarnTailCalls),
-    MarkTailCalls = bool.or(ExecTraceTailRec, WarnTailCalls),
-    (
-        MarkTailCalls = yes,
-        trace [io(!IO)] (
-            write_proc_progress_message(
-                "% Marking directly tail recursive calls in ", PredId, ProcId,
-                !.HLDS, !IO)
-        ),
-        mark_tail_calls(feature_debug_tail_rec_call, !.HLDS, PredProcId,
-            PredInfo, !ProcInfo)
-    ;
-        MarkTailCalls = no
+    trace [io(!IO)] (
+        write_proc_progress_message(
+            "% Marking directly tail recursive calls in ", PredId, ProcId,
+            !.HLDS, !IO)
     ),
-    (
-        WarnTailCalls = yes,
-        warn_non_tail_calls_in_proc(PredId, ProcId, PredInfo, !.ProcInfo,
-            !Specs)
-    ;
-        WarnTailCalls = no
-    ),
+    mark_tail_calls_in_proc(!.HLDS, PredProcId, PredInfo, TCallSpecs,
+        _, !ProcInfo),
+    !:Specs = TCallSpecs ++ !.Specs,
+
     trace [io(!IO)] (
         write_proc_progress_message("% Allocating stack slots in ", PredId,
             ProcId, !.HLDS, !IO)
@@ -543,46 +527,18 @@ compute_liveness(Verbose, Stats, !HLDS, !IO) :-
     maybe_report_stats(Stats, !IO).
 
 :- pred maybe_mark_tail_rec_calls(bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, exec_trace_tail_rec, ExecTraceTailRec),
-    globals.lookup_bool_option(Globals, warn_non_tail_recursion,
-        WarnTailCalls),
-    MarkTailCalls = bool.or(ExecTraceTailRec, WarnTailCalls),
-    (
-        MarkTailCalls = yes,
-        maybe_write_string(Verbose,
-            "% Marking directly tail recursive calls...", !IO),
-        maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(
-            update_proc_ids_pred(mark_tail_calls(feature_debug_tail_rec_call)),
-            !HLDS),
-        maybe_write_string(Verbose, " done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
-    ;
-        MarkTailCalls = no
-    ).
-
-:- pred maybe_warn_non_tail_recursion(bool::in, bool::in,
-    module_info::in, list(error_spec)::in, list(error_spec)::out,
-    io::di, io::uo) is det.
-
-maybe_warn_non_tail_recursion(Verbose, Stats, HLDS, !Specs, !IO) :-
-    module_info_get_globals(HLDS, Globals),
-    globals.lookup_bool_option(Globals, warn_non_tail_recursion,
-        WarnTailCalls),
-    (
-        WarnTailCalls = yes,
-        maybe_write_string(Verbose,
-            "% Warning about non-tail recursive calls...\n", !IO),
-        warn_non_tail_calls(HLDS, !Specs),
-        maybe_write_string(Verbose, "% done.\n", !IO),
-        maybe_report_stats(Stats, !IO)
-    ;
-        WarnTailCalls = no
-    ).
+maybe_mark_tail_rec_calls(Verbose, Stats, !HLDS, !Specs, !IO) :-
+    maybe_write_string(Verbose,
+        "% Marking directly tail recursive calls...", !IO),
+    maybe_flush_output(Verbose, !IO),
+    process_all_nonimported_preds_errors(
+        update_pred_error(mark_tail_calls_in_pred),
+        !HLDS, !Specs, !IO),
+    maybe_write_string(Verbose, " done.\n", !IO),
+    maybe_report_stats(Stats, !IO).
 
 :- pred compute_stack_vars(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
