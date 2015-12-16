@@ -9847,11 +9847,6 @@ possible even if an error is detected.
 With @samp{--make}, attempt to perform up to @var{n} jobs
 concurrently for some tasks.
 
-In low-level C grades with parallelism support,
-the number of threads is also limited by
-the @samp{-P} option in the @env{MERCURY_OPTIONS} environment variable
-(see @ref{Environment}).
-
 @sp 1
 @item --track-flags
 @findex -track-flags
