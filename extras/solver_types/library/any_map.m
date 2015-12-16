@@ -47,7 +47,7 @@
 :- func any_map__search(any_map(K, V)::ia, K::in) = (V::oa) is semidet.
 
     % Search map for key, but abort if search fails.
-    %   
+    %
 :- pred any_map__lookup(any_map(K, V)::ia, K::in, V::oa) is det.
 :- func any_map__lookup(any_map(K, V)::ia, K::in) = (V::oa) is det.
 
@@ -153,11 +153,11 @@
 :- func any_map__det_update(any_map(K, V)::ia, K::in, V::ia)
         = (any_map(K, V)::oa) is det.
 
-    % Update the value at the given key by applying the supplied 
+    % Update the value at the given key by applying the supplied
     % transformation to it.  Fails if the key is not found.  This is faster
     % than first searching for the value and then updating it.
     %
-:- pred any_map__transform_value(pred(V, V)::in(pred(ia, oa) is det), K::in, 
+:- pred any_map__transform_value(pred(V, V)::in(pred(ia, oa) is det), K::in,
     any_map(K, V)::ia, any_map(K, V)::oa) is semidet.
 
     % Same as transform_value/4, but aborts instead of failing if the
@@ -429,15 +429,15 @@
 :- mode any_map__map_foldl2(pred(in, ia, oa, in, out, in, out) is det,
         ia, oa, in, out, in, out) is det.
 :- mode any_map__map_foldl2(pred(in, ia, oa, in, out, in, out) is semidet,
-        ia, oa, in, out, in, out) is semidet. 
+        ia, oa, in, out, in, out) is semidet.
 :- mode any_map__map_foldl2(pred(in, ia, oa, ia, oa, in, out) is det,
         ia, oa, ia, oa, in, out) is det.
 :- mode any_map__map_foldl2(pred(in, ia, oa, ia, oa, in, out) is semidet,
-        ia, oa, ia, oa, in, out) is semidet. 
+        ia, oa, ia, oa, in, out) is semidet.
 :- mode any_map__map_foldl2(pred(in, ia, oa, ia, oa, ia, oa) is det,
         ia, oa, ia, oa, ia, oa) is det.
 :- mode any_map__map_foldl2(pred(in, ia, oa, ia, oa, ia, oa) is semidet,
-        ia, oa, ia, oa, ia, oa) is semidet. 
+        ia, oa, ia, oa, ia, oa) is semidet.
 
     % Given two maps M1 and M2, create a third map M3 that has only the
     % keys that occur in both M1 and M2. For keys that occur in both M1
@@ -529,8 +529,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
-:- import_module svmap.
-:- import_module svset.
 
 :- type any_map(K, V)   ==  any_tree234(K, V).
 
@@ -681,7 +679,7 @@ any_map__det_transform_value(P, K, !Map) :-
     ).
 
 any_map__det_transform_value(F, K, Map0) = Map :-
-    any_map__det_transform_value(pred(V0::ia, V::oa) is det :- V = F(V0), K, 
+    any_map__det_transform_value(pred(V0::ia, V::oa) is det :- V = F(V0), K,
         Map0, Map).
 
 any_map__set(Map0, K, V, Map) :-
