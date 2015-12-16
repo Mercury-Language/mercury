@@ -203,16 +203,12 @@ and @file{.trans_opt_date}
 files associated with the module are used as timestamp files;
 they are used when deciding whether the interface files need to be regenerated.
 
-@file{.c_date}, @file{.il_date}, @file{.cs_date},
-@file{.java_date}, @file{.erl_date},
-@file{.s_date} and @file{.pic_s_date} files
-perform a similar function for @file{.c}, @file{.il}, @file{.cs},
-@file{.java}, @file{.erl},
-@file{.s} and @file{.pic_s} files respectively. When smart recompilation
-(@pxref{Auxiliary output options}) works out that a module
-does not need to be recompiled, the timestamp file for the
-target file is updated, and the timestamp of the target file
-is left unchanged.
+@file{.c_date}, @file{.cs_date}, @file{.java_date} and @file{.erl_date} files
+perform a similar function for @file{.c}, @file{.cs}, @file{.java} and
+@file{.erl}, files respectively.
+When smart recompilation (@pxref{Auxiliary output options}) works out that a
+module does not need to be recompiled, the timestamp file for the target file
+is updated, and the timestamp of the target file is left unchanged.
 @findex --smart-recompilation
 
 @file{.used} files contain dependency information for smart recompilation
@@ -236,7 +232,6 @@ contain position-independent code themselves.
 @file{.mh} and @file{.mih} files are C header files generated
 by the Mercury compiler. The non-standard extensions are necessary
 to avoid conflicts with system header files.
-@file{.s} files and @file{.pic_s} files are assembly language.
 @file{.java}, @file{.class} and @file{.jar} files are Java source code,
 Java bytecode and Java archives respectively.
 @file{.cs} files are C# source code.
@@ -584,7 +579,7 @@ to create directories, by default @samp{mkdir -p}.
 Removes the automatically generated files
 that contain the compiled code of the program
 and the error messages produced by the compiler.
-Specifically, this will remove all the @samp{.c}, @samp{.s}, @samp{.o},
+Specifically, this will remove all the @samp{.c}, @samp{.o},
 @samp{.pic_o}, @samp{.prof}, @samp{.no}, @samp{.ql}, @samp{.used},
 @samp{.mih},
 and @samp{.err} files
@@ -6865,26 +6860,26 @@ of the predicate with the given predicate id.
 @item --debug-make
 @findex --debug-make
 @findex --make
-Output detailed debugging traces of the `--make' option.
+Output detailed debugging traces of the @samp{--make} option.
 
 @c XXX This can be uncommented when the documentation for
-@c `--analyse-closures' is uncommented.
+@c @samp{--analyse-closures} is uncommented.
 
 @c @sp 1
 @c @item --debug-closures
 @c @findex --debug-closures
-@c Output detailed debugging traces of the `--analyse-closures' option.
+@c Output detailed debugging traces of the @samp{--analyse-closures} option.
 
 @sp 1
 @item --debug-intermodule-analysis
 @findex --debug-intermodule-analysis
-Output detailed debugging traces of the `--intermodule-analysis' option.
+Output detailed debugging traces of the @samp{--intermodule-analysis} option.
 
 @sp 1
 @item --debug-indirect-reuse
 @findex --debug-indirect-reuse
 Output detailed debugging traces of the indirect reuse pass of
-`--structure-reuse' option.
+@samp{--structure-reuse} option.
 
 @sp 1
 @item --debug-type-rep
@@ -7006,7 +7001,7 @@ from the corresponding @samp{.m} file.
 @item --make-xml-documentation
 @findex --make-xml-documentation
 Output an XML representation of all the declarations in the module
-into the `<module>.xml' file.
+into the file @file{@var{module}.xml}.
 This XML file can then be transformed via a XSL transform into
 another documentation format.
 
@@ -7046,7 +7041,7 @@ Check the module for errors, but do not generate any code.
 @findex -C
 @findex --target-code-only
 Generate target code (i.e.@: C in @file{@var{module}.c},
-IL in @file{@var{module}.il}, C# in @file{@var{module}.cs},
+C# in @file{@var{module}.cs},
 Java in @file{@var{module}.java}
 or Erlang in @file{@var{module}.erl}),
 but not object code.
@@ -7197,7 +7192,7 @@ Do not disable optimizations that can distort deep profiles.
 @item --no-delay-death
 @findex --no-delay-death
 @findex --delay-death
-When the trace level is `deep', the compiler normally
+When the trace level is @samp{deep}, the compiler normally
 preserves the values of variables as long as possible, even
 beyond the point of their last use, in order to make them
 accessible from as many debugger events as possible.
@@ -7206,7 +7201,7 @@ However, it will not do this if this option is given.
 @item --delay-death-max-vars @var{N}
 @findex --delay-death-max-vars
 Delay the deaths of variables only when the number of variables
-in the procedure is no more than N. The default value is 1000.
+in the procedure is no more than @var{N}. The default value is 1000.
 
 @item --stack-trace-higher-order
 @findex --stack-trace-higher-order
@@ -7280,7 +7275,7 @@ changes in the Mercury source file).
 @findex --max-error-line-width
 Set the maximum width of an error message line to @var{N} characters
 (unless a long single word forces the line over this limit).
-Specifying --no-max-error-line-width removes the limit.
+Specifying @samp{--no-max-error-line-width} removes the limit.
 
 @sp 1
 @item --show-definitions
@@ -7291,12 +7286,12 @@ typeclasses and instances defined in the module to @var{module}.defns.
 @sp 1
 @item --show-dependency-graph
 @findex --show-dependency-graph
-Write out the dependency graph to @var{module}.dependency_graph.
+Write out the dependency graph to @file{@var{module}.dependency_graph}.
 
 @sp 1
 @item --imports-graph
 @findex --imports-graph
-Write out the imports graph to @var{module}.imports_graph.
+Write out the imports graph to @file{@var{module}.imports_graph}.
 The imports graph contains the directed graph module A
 imports module B.
 The resulting file can be processed by the graphviz tools.
@@ -7437,7 +7432,7 @@ Ask for the simplified variant of constraint based mode analysis,
 in which there is only one constraint variable per program variable,
 rather than one constraint variable
 per node in the inst graph of a program variable.
-This option is ignored unless --mode-constraints is also given.
+This option is ignored unless @samp{--mode-constraints} is also given.
 
 @sp 1
 @item --benchmark-modes
@@ -7451,7 +7446,7 @@ of the constraint based mode analysis algorithm.
 Specifies the number of times the mode analysis algorithm should run.
 More repetitions may smooth out fluctuations
 due to background load or clock granularity.
-This option is ignored unless --benchmark-modes is also given.
+This option is ignored unless @samp{--benchmark-modes} is also given.
 
 @end table
 
@@ -7690,7 +7685,6 @@ The set of aspects and their alternatives are:
 @c @cindex asm_fast (compilation grade)
 @c @cindex hl (compilation grade)
 @cindex hlc (compilation grade)
-@c @cindex il (compilation grade)
 @cindex csharp (compilation grade)
 @cindex java (compilation grade)
 @cindex erlang (compilation grade)
@@ -7830,9 +7824,6 @@ and grade modifier; they are followed by descriptions of those options.
 
 @c @item @samp{hl}
 @c @code{--target c --high-level-code --high-level-data}.
-
-@c @item @samp{il}
-@c @code{--target il --high-level-code --high-level-data}.
 
 @item @samp{csharp}
 @code{--target csharp --high-level-code --high-level-data}.
@@ -8028,7 +8019,7 @@ This option is not supported by the @samp{--high-level-code} back-ends.
 @cindex MLDS back-end compilation model options
 
 @table @asis
-@c @item @code{-H}, @code{--high-level-code} (grades: hl, hlc, il, csharp, java)
+@c @item @code{-H}, @code{--high-level-code} (grades: hl, hlc, csharp, java)
 @item @code{-H}, @code{--high-level-code} (grades: hlc, csharp, java)
 @findex -H
 @findex --high-level-code
@@ -8036,7 +8027,7 @@ Use an alternative back-end that generates high-level code
 rather than the very low-level code that is generated by our
 original back-end.
 
-@c @item @code{--high-level-data} (grades: hl, il, csharp, java)
+@c @item @code{--high-level-data} (grades: hl, csharp, java)
 @item @code{--high-level-data} (grades: csharp, java)
 @findex --high-level-data
 Use an alternative, higher-level data representation that uses structs
@@ -8080,7 +8071,7 @@ This option is only supported by the low-level C back-end.
 Enable time profiling.  Insert profiling hooks in the
 generated code, and also output some profiling
 information (the static call graph) to the file
-@samp{@var{module}.prof}.  @xref{Profiling}.
+@file{@var{module}.prof}.  @xref{Profiling}.
 This option is only supported by the C back-ends.
 
 @sp 1
@@ -8093,7 +8084,7 @@ This option is only supported by the C back-ends.
 Enable memory profiling.  Insert memory profiling hooks in the
 generated code, and also output some profiling
 information (the static call graph) to the file
-@samp{@var{module}.prof}.
+@file{@var{module}.prof}.
 @xref{Using mprof for profiling memory allocation}.
 @xref{Using mprof for profiling memory retention}.
 This option is only supported by the C back-ends.
@@ -8744,7 +8735,7 @@ slow compilation.
 @findex --loop-invariants
 Optimize loop invariants by moving computations within a loop that are
 the same on every iteration to the outside so they are only calculated
-once.  (This is a separate optimization to @samp{--optimize-rl-invariants}.)
+once.
 
 @sp 1
 @item --no-common-struct
@@ -10012,7 +10003,7 @@ to be searched for @samp{.opt} files.
 @item --no-libgrade-install-check
 @findex --no-libgrade-install-check
 Do not check that libraries have been installed before attempting
-to use them.  (This option is only meaningful with `mmc --make'.)
+to use them.  (This option is only meaningful with @samp{mmc --make}.)
 
 @sp 1
 @item --use-subdirs
@@ -10873,17 +10864,10 @@ This is the default foreign language on all back-ends which compile to C.
 Only available on back-ends that compile to C.
 
 @item @samp{C#}
-Only available on back-ends that compile to IL or C#.
-This is the second preferred foreign language for IL code generation.
+This is the only foreign language for back-ends which compile to C#.
 
 @item @samp{Erlang}
 This is the only foreign language for back-ends which compile to Erlang.
-
-@item @samp{IL}
-IL is the intermediate language of the .NET Common Language
-Runtime (sometimes also known as CIL or MSIL).
-Only available on back-ends that compile to IL.
-This is the preferred foreign language for IL code generation.
 
 @item @samp{Java}
 This is the only foreign language for back-ends which compile to Java.
