@@ -69,7 +69,7 @@
     %
 :- type choicepoint_id.
 
-    % Get the current choicepoint. 
+    % Get the current choicepoint.
     %
 :- impure func current_choicepoint_id = choicepoint_id.
 
@@ -203,7 +203,7 @@ reason_name(untrail_gc,         "gc").
                 break;
 
             case MR_solve:  /* Fall through */
-            case MR_commit: 
+            case MR_commit:
                 break;
 
             default:
