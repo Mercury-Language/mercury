@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: imag.m.
 % Main author: fjh.
 % Stability: medium.
-
+%
 % Imaginary numbers.
 %
 % There are several reasons for supporting a separate type for imaginary
@@ -20,11 +20,11 @@
 %
 % Note that the overloaded versions of the binary operators that provide
 % mixed type arithmetic are defined in different modules.
-
+%
 % See also:
 %   float.m, imag_float.m, float_imag.m,
 %   complex.m, imag_complex.m, complex_imag.m.
-
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -44,12 +44,12 @@
 %-----------------------------------------------------------------------------%
 
     % Addition.
-    % 
+    %
 :- func imag + imag = imag.
 :- mode in   + in   = uo  is det.
 
     % Subtraction.
-    % 
+    %
 :- func imag - imag = imag.
 :- mode in   - in   = uo  is det.
 
@@ -59,7 +59,7 @@
 :- mode in   * in   = uo  is det.
 
     % Division.
-    % 
+    %
 :- func imag / imag = float.
 :- mode in   / in   = uo  is det.
 

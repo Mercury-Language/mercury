@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: float_complex.m.
 % Main author: fjh.
 % Stability: medium.
 %
 % This module provides binary operators on (float, complex).
-
+%
 % See also: complex.m, float.m, complex_float.m.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module complex_numbers.float_complex.
@@ -25,22 +25,22 @@
 %-----------------------------------------------------------------------------%
 
     % Addition.
-    % 
+    %
 :- func float + complex = complex.
 :- mode in   + in   = uo  is det.
 
     % Subtraction.
-    % 
+    %
 :- func float - complex = complex.
 :- mode in   - in   = uo  is det.
 
     % Multiplication.
-    % 
+    %
 :- func float * complex = complex.
 :- mode in   * in   = uo  is det.
 
     % Division.
-    % 
+    %
 :- func float / complex = complex.
 :- mode in   / in   = uo  is det.
 

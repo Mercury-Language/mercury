@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: imag_float.m.
 % Main author: fjh.
 % Stability: medium.
-
+%
 % This module provides binary operators on (imag, float).
 %
 % See also: complex.m, imag.m, float_imag.m.
-
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -38,12 +38,12 @@
 :- mode in   - in   = uo  is det.
 
     % Multiplication.
-    % 
+    %
 :- func imag * float = imag.
 :- mode in   * in   = uo  is det.
 
     % Division.
-    % 
+    %
 :- func imag / float = imag.
 :- mode in   / in   = uo  is det.
 

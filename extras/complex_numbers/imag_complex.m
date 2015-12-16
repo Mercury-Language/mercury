@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: imag_complex.m.
 % Main author: fjh.
 % Stability: medium.
-
+%
 % This module provides binary operators on (imag, complex).
 %
 % See also: complex.m, imag.m, complex_imag.m.
-
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

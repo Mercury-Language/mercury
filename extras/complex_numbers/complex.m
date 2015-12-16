@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: complex.m.
 % Main author: fjh.
 % Stability: medium.
-
+%
 % Complex numbers.
 %
 % Note that the overloaded versions of the binary operators that
@@ -18,7 +18,7 @@
 % See also:
 %   complex_float.m, float_complex.m
 %   imag.m, complex_imag.m, imag_complex.m
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module complex_numbers.complex.
@@ -36,20 +36,20 @@
     --->    cmplx(
                 float,      % real part
                 float       % imag part
-            ). 
+            ).
 
 %-----------------------------------------------------------------------------%
 
     % Convert float to complex.
-    % 
+    %
 :- func complex(float) = complex.
 
     % Extract real part.
-    % 
+    %
 :- func real(complex) = float.
 
     % Extract imaginary part.
-    % 
+    %
 :- func imag(complex) = float.
 
     % Square of absolute value.
@@ -62,51 +62,51 @@
 
     % Argument (a.k.a. phase, or amplitude, or angle).
     % This function returns the principle value:
-    % 
+    %
     %   for all Z, -pi < arg(Z) and arg(Z) =< pi.
     %
 :- func arg(complex) = float.
 
     % Complex conjugate.
-    % 
+    %
 :- func conj(complex) = complex.
 
     % Addition.
-    % 
+    %
 :- func complex + complex = complex.
 :- mode in  + in  = uo  is det.
 
     % Subtraction.
-    % 
+    %
 :- func complex - complex = complex.
 :- mode in  - in  = uo  is det.
 
     % Multiplication.
-    % 
+    %
 :- func complex * complex = complex.
 :- mode in  * in  = uo  is det.
 
     % Division.
-    % 
+    %
 :- func complex / complex = complex.
 :- mode in  / in  = uo  is det.
 
     % Unary plus.
-    % 
+    %
 :- func + complex = complex.
 :- mode + in    = uo  is det.
 
     % Unary minus.
-    % 
+    %
 :- func - complex = complex.
 :- mode - in    = uo  is det.
 
     % sqr(X) = X * X.
-    % 
+    %
 :- func sqr(complex) = complex.
 
     % Square root.
-    % 
+    %
 :- func sqrt(complex) = complex.
 
     % cis(Theta) = cos(Theta) + i * sin(Theta)
