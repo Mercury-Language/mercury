@@ -231,6 +231,8 @@ MR_trace_lookup_trace_count(const MR_LabelLayout *label_layout)
     return &(module_layout->MR_ml_label_exec_count[label_number]);
 }
 
+/**************************************************************************/
+
 #define INIT_MODULE_TABLE_SIZE  10
 
 const MR_ModuleLayout   **MR_module_infos;
@@ -246,9 +248,10 @@ MR_insert_module_info_into_module_table(const MR_ModuleLayout *module)
         INIT_MODULE_TABLE_SIZE, MR_ALLOC_SITE_NONE);
     MR_prepare_insert_into_sorted(MR_module_infos, MR_module_info_next, slot,
         strcmp(MR_module_infos[slot]->MR_ml_name, module->MR_ml_name));
-
     MR_module_infos[slot] = module;
 }
+
+/**************************************************************************/
 
 static  void        MR_trace_write_quoted_atom(FILE *fp, const char *atom);
 static  void        MR_trace_write_string(FILE *fp, const char *atom);
@@ -339,7 +342,7 @@ MR_trace_record_label_exec_counts(void *dummy)
         snprintf(name, name_len, ".%s.%s.%d", MERCURY_TRACE_COUNTS_PREFIX,
             program_name, getpid());
 
-        /* make sure name is an acceptable filename */
+        /* Make sure name is an acceptable filename. */
         for (s = name; *s != '\0'; s++) {
             if (*s == '/') {
                 *s = '_';

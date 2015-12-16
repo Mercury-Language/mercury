@@ -432,14 +432,14 @@ MR_String MR_make_string(MR_AllocSiteInfoPtr alloc_id, const char *fmt, ...);
 
 /*
 ** Advance `*pos' to the beginning of the next code point in `s'.
-** If `*pos' is already at the end of the string then return MR_FALSE
+** If `*pos' is already at the end of the string, return MR_FALSE
 ** without modifying `*pos'.
 */
 extern MR_bool          MR_utf8_next(const MR_String s_, MR_Integer *pos);
 
 /*
 ** Rewind `*pos' to the beginning of the previous code point in `s'.
-** If `*pos' is already at the beginning of the string then return MR_FALSE
+** If `*pos' is already at the beginning of the string, return MR_FALSE
 ** without modifying `*pos'.
 */
 extern MR_bool          MR_utf8_prev(const MR_String s_, MR_Integer *pos);
