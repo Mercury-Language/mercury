@@ -1012,7 +1012,7 @@ method_ptrs_in_lval(ml_global_var_ref(_), !CodeAddrs).
 % methods. This is not currently a problem as they will never be generated
 % by the MLDS back-end.
 %
-% XXX This implementation will not corectly handle the case which occurs where
+% XXX This implementation will not correctly handle the case which occurs where
 % there are two or more overloaded MLDS functions (that we take the address of)
 % with the same name and arity but different argument types, both in the same
 % module. This is due to the fact that the names of the generated wrapper

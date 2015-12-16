@@ -55,7 +55,7 @@
     cons_id::in, int::out, list(prog_var)::in, list(prog_var)::out,
     list(uni_mode)::in, list(uni_mode)::out) is det.
 
-    % This function computes a lower bound on the weight of a fuctor.  If the
+    % This function computes a lower bound on the weight of a functor.  If the
     % lower bound is zero then the weight of that functor is also zero.  If
     % the lower bound is non-zero then there may be no upper bound on the size
     % of the functor.  (And if there were this function wouldn't tell you about

@@ -926,7 +926,7 @@ is_interesting_cons_id(Params, ConsId) = IsInteresting :-
         IsInteresting = no
     ;
         % We need to keep track of int_consts so we can interpret
-        % calls to the buildins superclass_info_from_typeclass_info and
+        % calls to the builtins superclass_info_from_typeclass_info and
         % typeinfo_from_typeclass_info. We do not specialize based on
         % integers alone.
         ( ConsId = int_const(_)

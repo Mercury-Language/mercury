@@ -124,7 +124,7 @@
                 % A report of the type error.
                 error_spec,
 
-                % The actual and expected types involed in the type error,
+                % The actual and expected types involved in the type error,
                 % if both are unambiguously known.
                 maybe(actual_expected_types)
             ).

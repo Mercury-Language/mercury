@@ -428,7 +428,7 @@ generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI, !CLD) :-
         % There are several different ways we can set the size of the first
         % stack frame on the stack of the child context.
         %
-        % We have choosen to implement this by collecting all the stackvar
+        % We have chosen to implement this by collecting all the stackvar
         % references in SpawnedOffCode0, and base the size of the child stack
         % frame on the highest numbered stackvar reference in there.
         %

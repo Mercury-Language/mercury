@@ -141,14 +141,14 @@
 :- pred inst_list_is_free(list(mer_inst)::in, module_info::in) is semidet.
 
     % Given a list of insts, and a corresponding list of livenesses, return
-    % true iff for every element in the list of insts, either the elemement is
+    % true iff for every element in the list of insts, either the element is
     % ground or the corresponding element in the liveness list is dead.
     %
 :- pred inst_list_is_ground_or_dead(list(mer_inst)::in, list(is_live)::in,
     module_info::in) is semidet.
 
     % Given a list of insts, and a corresponding list of livenesses, return
-    % true iff for every element in the list of insts, either the elemement is
+    % true iff for every element in the list of insts, either the element is
     % ground or any, or the corresponding element in the liveness list is
     % dead.
     %

@@ -40,7 +40,7 @@
 % files, .trans_opt files allow much more accurate optimization to occur,
 % but at the cost of an increased number of compilations required. The fact
 % that a .trans_opt file may depend on other .trans_opt files introduces
-% the possibility of circular dependencies occuring. These circular
+% the possibility of circular dependencies occurring. These circular
 % dependencies would occur if the data in A.trans_opt depended on the data
 % in B.trans_opt being correct, and vice versa.
 %
@@ -59,7 +59,7 @@
 % This module writes out the interface for transitive intermodule optimization.
 % The .trans_opt file includes:
 %   :- pragma termination_info declarations for all exported preds
-%   :- pragma exceptions declartions for all exported preds
+%   :- pragma exceptions declarations for all exported preds
 %   :- pragma trailing_info declarations for all exported preds.
 %
 % All these items should be module qualified.
@@ -2066,7 +2066,7 @@ intermod_write_clause(OutInfo, ModuleInfo, PredId, SymName, PredOrFunc,
         % We could standardize the variables in the clause before printing
         % it out, numbering them e.g. in the order of their appearance,
         % so that changes in variable *numbers* don't cause recompilations
-        % either. However, the variable numbers *are* initiallly allocated
+        % either. However, the variable numbers *are* initially allocated
         % in such an order, both by the code that reads in terms and the
         % code that converts parse tree goals into HLDS goals, so this is
         % not likely to be necessary, while its cost may be be non-negligible.

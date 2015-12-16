@@ -315,7 +315,7 @@ generate_proc_list_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
     % A value of this type holds information about a procedure's stack frame.
     % It is generated when generating a procedure's prologue, and is used both
     % when generating the procedure's epilogue, and when massaging its code
-    % to add the slot containining the succip to the sets of lvals live across
+    % to add the slot containing the succip to the sets of lvals live across
     % calls.
     %
 :- type proc_frame_slots
@@ -364,7 +364,7 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
         ProcInfo = ProcInfo1
     ),
 
-    % Find out the approriate context for the predicate's interface events.
+    % Find out the appropriate context for the predicate's interface events.
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     ( if get_first_clause(ClausesInfo ^ cli_rep, FirstClause) then
         ProcContext = FirstClause ^ clause_context

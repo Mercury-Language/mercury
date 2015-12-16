@@ -337,7 +337,7 @@
 :- type name_accessibility
     --->    access(
                 % Is this predicate accessible by its unqualified name?
-                accessible_by_unqualifed_name           :: bool,
+                accessible_by_unqualified_name          :: bool,
 
                 % Is this predicate accessible by any partially qualified
                 % names?
@@ -1021,7 +1021,7 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ExistQTVars,
             MaybeConstraintSearch = no
         ;
             MaybeConstraintSearch = yes(ConstraintSearch),
-            % Lookup the universal constraints on the condidate predicate.
+            % Lookup the universal constraints on the candidate predicate.
             pred_info_get_class_context(PredInfo, ProgConstraints),
             ProgConstraints = constraints(UnivConstraints, _),
             list.length(UnivConstraints, NumConstraints),

@@ -22,7 +22,7 @@
 % The first return value is returned as usual.  The second and later return
 % values are assigned to `out' parameters, which we always place after any
 % input arguments.  That way we don't need to declare delegates with all
-% possible permuations of in/out parameters.
+% possible permutations of in/out parameters.
 %
 %-----------------------------------------------------------------------------%
 

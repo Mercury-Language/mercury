@@ -116,7 +116,7 @@
                 % The universal constraints on the instance declaration.
                 list(prog_constraint),
 
-                % The contraints on the method's type declaration in the
+                % The constraints on the method's type declaration in the
                 % `:- typeclass' declaration.
                 prog_constraints
             ).

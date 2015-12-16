@@ -37,7 +37,7 @@
 :- pred mangle_sym_name_for_java(sym_name::in, csj_qual_kind::in,
     string::in, string::out) is det.
 
-    % If the given name conficts with a reserved Java word we must add a
+    % If the given name conflicts with a reserved Java word we must add a
     % prefix to it to avoid compilation errors.
     %
 :- func valid_java_symbol_name(string) = string.
@@ -57,7 +57,7 @@
 :- pred mangle_sym_name_for_csharp(sym_name::in, csj_qual_kind::in,
     string::in, string::out) is det.
 
-    % If the given name conficts with a reserved C# word we must add a
+    % If the given name conflicts with a reserved C# word we must add a
     % prefix to it to avoid compilation errors.
     %
 :- func valid_csharp_symbol_name(string) = string.
@@ -144,7 +144,7 @@ valid_java_symbol_name(SymName) = ValidSymName :-
         ValidSymName = Prefix ++ SymName
     else if string.append(Prefix, Suffix, SymName) then
         % This name already contains the prefix we are adding to
-        % variables to avoid conficts, so add an additional '_'.
+        % variables to avoid conflicts, so add an additional '_'.
         ValidSymName = Prefix ++ "_" ++ Suffix
     else
         % Normal name; do nothing.
@@ -254,7 +254,7 @@ valid_csharp_symbol_name(SymName) = ValidSymName :-
         ValidSymName = Prefix ++ SymName
     else if string.append(Prefix, Suffix, SymName) then
         % This name already contains the prefix we are adding to
-        % variables to avoid conficts, so add an additional '_'.
+        % variables to avoid conflicts, so add an additional '_'.
         ValidSymName = Prefix ++ "_" ++ Suffix
     else
         % Normal name; do nothing.

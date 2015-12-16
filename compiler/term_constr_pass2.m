@@ -131,7 +131,7 @@ pass2_options_init(MaxSize) = pass2_options(MaxSize).
 
 :- type cycles == list(cycle).
 
-    % A c_cycle, or collapsed cycle, is an elmentary cycle from the call-graph
+    % A c_cycle, or collapsed cycle, is an elementary cycle from the call-graph
     % where we have picked a starting vertex and travelled around the cycle
     % conjoining all the labels (constraints) as we go.
     %

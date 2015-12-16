@@ -8,7 +8,7 @@
 %
 % File: name_mangle.m.
 %
-% This module defines routines for generating and/or outputing identifiers
+% This module defines routines for generating and/or outputting identifiers
 % for modules, predicates/functions, and procedures in forms that are
 % syntactically acceptable in all our target languages, meaning C, Java
 % and MSIL.
@@ -87,7 +87,7 @@
 :- func mercury_var_prefix = string.
 
     % All the C data structures we generate which are either fully static
-    % or static after initialization should have one of these yrefixes,
+    % or static after initialization should have one of these prefixes,
     % to ensure that Mercury global variables don't clash with C symbols.
     %
 :- func mercury_data_prefix = string.
@@ -160,7 +160,7 @@ proc_label_to_c_string(ProcLabel, AddPrefix) = ProcLabelString :-
         string.int_to_string(TypeArity, TypeArityString),
         string.int_to_string(ModeInt, ModeNumString),
 
-        % Mangle all the relevent names.
+        % Mangle all the relevant names.
         MangledModule = sym_name_mangle(Module),
         MangledTypeModule = sym_name_mangle(TypeModule),
         MangledTypeName = name_mangle(TypeName),
