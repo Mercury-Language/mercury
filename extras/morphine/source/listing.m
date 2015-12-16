@@ -24,7 +24,14 @@
 
 :- implementation.
 
-:- import_module string, int, list, term, term_io, varset, std_util, require.
+:- import_module int.
+:- import_module list.
+:- import_module maybe.
+:- import_module require.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
 
 :- type pair_of_lines 
 	--->	pair_of_lines(int, int).

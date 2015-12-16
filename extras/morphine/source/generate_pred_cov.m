@@ -16,9 +16,19 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module term, string, parser, io, term_io, list.
-:- import_module std_util, set, char, int, require.
+
 :- import_module coverage_util.
+
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module pair.
+:- import_module parser.
+:- import_module require.
+:- import_module string.
+:- import_module set.
+:- import_module term.
+:- import_module term_io.
 
 main -->
 	io__command_line_arguments(Args),

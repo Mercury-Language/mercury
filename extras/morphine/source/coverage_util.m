@@ -8,7 +8,12 @@
 
 :- module coverage_util.
 :- interface.
-:- import_module list, string, term, io, std_util.
+
+:- import_module io.
+:- import_module list.
+:- import_module string.
+:- import_module pair.
+:- import_module term.
 
 :- type proc_det == pair(
 	pair(string, string),   % Procedure and module name 
@@ -219,7 +224,7 @@ get_proc_det(Mod, Term, (Mod - ProcName) - Det) :-
 remove_module_qualifier(Module, ProcName0, ProcName) :-
 	%
 	% Extract the module name from the file name
-	ListStr = string__words(is_slash, Module),
+	ListStr = string__words_separator(is_slash, Module),
 	reverse(ListStr, ListStrRev),
 	(
 		ListStrRev = [ModuleName|_],
