@@ -18,7 +18,7 @@ main_target: $(MAIN_TARGET)
 #-----------------------------------------------------------------------------#
 
 # Beware that the order of suffixes is significant.
-.SUFFIXES: .m .nl .no .err \
+.SUFFIXES: .m .err \
 		.int0 .int .int2 .int3 .opt .trans_opt \
 		.dep .depend .dv .doit .ugly \
 		.date0 .date .date3 .optdate .trans_opt_date \

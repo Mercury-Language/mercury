@@ -580,8 +580,7 @@ Removes the automatically generated files
 that contain the compiled code of the program
 and the error messages produced by the compiler.
 Specifically, this will remove all the @samp{.c}, @samp{.o},
-@samp{.pic_o}, @samp{.prof}, @samp{.no}, @samp{.ql}, @samp{.used},
-@samp{.mih},
+@samp{.pic_o}, @samp{.prof}, @samp{.used}, @samp{.mih},
 and @samp{.err} files
 belonging to the named @var{main-module} or its imported modules.
 Use this target whenever you wish to change compilation model
