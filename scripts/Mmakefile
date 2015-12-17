@@ -62,6 +62,9 @@ JAVA_WRAPPER_SCRIPTS = \
 	mercury_compile	\
 	mfilterjavac
 
+CSHARP_WRAPPER_SCRIPTS = \
+	mercury_compile
+
 #-----------------------------------------------------------------------------#
 
 # .SUFFIXES: .in
@@ -130,7 +133,7 @@ install_mmake: Mmake.vars Mmake.rules install_dirs
 
 .PHONY: install_scripts
 install_scripts: $(SCRIPTS) install_dirs
-	# we move the installed `mmake' script before (re)installing it
+	# We move the installed `mmake' script before (re)installing it
 	# to avoid overwriting the script while it is running
 	# (just removing it doesn't work very well on win32, which will
 	# deny you permission to write the file while mmake is running).
@@ -144,6 +147,11 @@ install_scripts: $(SCRIPTS) install_dirs
 ifeq ($(findstring java,$(GRADE)),java)
 	for file in $(JAVA_WRAPPER_SCRIPTS); do \
 		cp $$file.sh-java $(INSTALL_MERC_BIN_DIR)/$$file ;\
+	done
+endif
+ifeq ($(findstring csharp,$(GRADE)),csharp)
+	for file in $(CSHARP_WRAPPER_SCRIPTS); do \
+		cp $$file.sh-csharp $(INSTALL_MERC_BIN_DIR)/$$file ;\
 	done
 endif
 
