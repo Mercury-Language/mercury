@@ -256,6 +256,8 @@ install_dirs:
 #
 ifeq ($(findstring java,$(GRADE)),java)
 INSTALL_PROGRAM=top_level.jar
+else ifeq ($(findstring csharp,$(GRADE)),csharp)
+INSTALL_PROGRAM=top_level.exe
 else
 INSTALL_PROGRAM=mercury_compile$(EXT_FOR_EXE)
 endif
