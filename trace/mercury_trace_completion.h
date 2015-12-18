@@ -58,6 +58,10 @@ typedef MR_CompleterList    *(* MR_MakeCompleter)(const char *word,
 extern  MR_CompleterList    *MR_trace_null_completer(const char *word,
                                 size_t word_len);
 
+/* Complete on either a procedure specification, or filename:linenumber. */
+extern  MR_CompleterList    *MR_trace_break_completer(const char *word,
+                                size_t word_len);
+
 /* Use Readline's filename completer. */
 extern  MR_CompleterList    *MR_trace_filename_completer(const char *word,
                                 size_t word_len);

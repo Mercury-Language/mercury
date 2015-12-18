@@ -306,6 +306,9 @@ Change to the Mercury debugger:
 
 * Interactive queries are now supported on OS X.
 
+* The "break" command can now auto-complete on the filename:linenumber pairs
+  of events, provided the Mercury system can access the readline library.
+
 Changes to the extras distribution:
 
 * We have added support for Unicode and other enhancements to the lex and

@@ -8,7 +8,7 @@ form@_par@ --f@ lines 10
 una@ex@
 b za@
 b func*complet@z@
-b complet@s@1@1
-b complet@s@2@s@
+b complet@s@1@z1
+b complet@s@2@s@z@
 2d@e@l@
 c

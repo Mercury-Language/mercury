@@ -109,10 +109,10 @@ typedef struct {
     int         MR_unambiguous_matching_module;
 
                 /*
-                ** Length of the part of the word to skip when testing for module
-                ** qualified completions in the current module, zero if we
-                ** shouldn't test for module qualified completions in the
-                ** current module.
+                ** Length of the part of the word to skip when testing for
+                ** module qualified completions in the current module,
+                ** zero if we shouldn't test for module qualified completions
+                ** in the current module.
                 */
     int         MR_complete_word_matches_module;
     int         MR_complete_current_module;
@@ -378,7 +378,7 @@ MR_process_line_layouts(const MR_ModuleFileLayout *file_layout, int line,
         }
 
         /*
-        ** ... and the call *all* such labels.
+        ** ... and then do a callback for *all* such labels.
         */
 
         while (k < file_layout->MR_mfl_label_count
@@ -404,7 +404,7 @@ MR_dump_module_tables(FILE *fp, MR_bool separate, MR_bool uci,
     if (module_name != NULL) {
         module = MR_search_module_info_by_unique_name(fp, module_name);
         if (module == NULL) {
-            /* The error message has already been printed */
+            /* The error message has already been printed. */
             return;
         }
     } else {
@@ -449,7 +449,7 @@ MR_dump_module_procs(FILE *fp, const char *name)
 
     module = MR_search_module_info_by_unique_name(fp, name);
     if (module == NULL) {
-        /* The error message has already been printed */
+        /* The error message has already been printed. */
         return;
     }
 
@@ -621,7 +621,8 @@ typedef struct {
     ((functor1).MR_functor_arity - (functor2).MR_functor_arity)
 
 #define MR_functor_compare_type_module(functor1, functor2)              \
-    strcmp((functor1).MR_functor_type_module, (functor2).MR_functor_type_module)
+    strcmp((functor1).MR_functor_type_module,                           \
+        (functor2).MR_functor_type_module)
 
 #define MR_functor_compare_type_name(functor1, functor2)                \
     strcmp((functor1).MR_functor_type_name, (functor2).MR_functor_type_name)
@@ -1471,11 +1472,6 @@ MR_trace_proc_spec_completer(const char *word, size_t word_len)
         data->MR_complete_pf = MR_FUNCTION;
         word += 5;
     } else {
-        /*
-        ** We don't complete on the names of special (unify, index compare,
-        ** or init) predicates.
-        */
-
         data->MR_complete_pf = -1;
     }
 
@@ -1490,7 +1486,7 @@ MR_trace_proc_spec_completer(const char *word, size_t word_len)
 
     /*
     ** Handle the case where the word matches the first part of a module name.
-    ** If the word unambiguously determines the module name we want to return
+    ** If the word unambiguously determines the module name, we want to return
     ** module qualified completions for all the procedures in that module.
     ** Otherwise, we just complete on the names of all of the matching modules
     ** and unqualified procedure names.
@@ -1500,6 +1496,9 @@ MR_trace_proc_spec_completer(const char *word, size_t word_len)
     ** as well as all procedures whose unqualified names begin with `f'.
     ** Given word to complete `foo.' and modules `foo' and `foo.bar' we want to
     ** return `foo.bar.' and all the procedures in module `foo' as completions.
+    **
+    ** We don't complete on the names of special (unify, index or compare)
+    ** predicates.
     */
 
     MR_bsearch(MR_module_info_next, slot, found,
@@ -1546,7 +1545,8 @@ try_completion:
     if (data->MR_complete_current_module == -1 ||
         data->MR_complete_current_proc == -1 ||
         data->MR_complete_current_proc >=
-            MR_module_infos[data->MR_complete_current_module]->MR_ml_proc_count)
+            MR_module_infos[data->MR_complete_current_module]->
+                MR_ml_proc_count)
     {
         /*
         ** Move on to the next module.

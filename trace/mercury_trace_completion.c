@@ -36,20 +36,41 @@
   #endif
 #endif
 
-/*
-** Complete on NULL terminated array of strings.
-** The strings will not be `free'd.
-*/
-static  MR_CompleterList    *MR_trace_string_array_completer(
-                                const char *const *strings);
+static  char                *MR_prepend_string(char *completion,
+                                MR_CompleterData *data);
 
 static  char                *MR_trace_completer_list_next(const char *word,
                                 size_t word_len, MR_CompleterList **list);
 static  void                MR_trace_free_completer_list(
                                 MR_CompleterList *completer_list);
 
-static  char                *MR_prepend_string(char *completion,
+static  char                *MR_trace_sorted_array_completer_next(
+                                const char *word, size_t word_length,
                                 MR_CompleterData *data);
+
+static  MR_CompleterList    *MR_trace_string_array_completer(
+                                const char *const *strings);
+static  char                *MR_trace_string_array_completer_next(
+                                const char *word, size_t word_len,
+                                MR_CompleterData *data);
+
+static  int                 MR_compare_source_file_lines(
+                                const void *ptr1, const void *ptr2);
+static  void                MR_insert_module_into_source_file_line_table(
+                                const MR_ModuleLayout *module);
+
+static  char                *MR_trace_filename_completer_next(const char *word,
+                                size_t word_len, MR_CompleterData *);
+
+static  char                *MR_trace_filter_completer_next(const char *word,
+                                size_t word_len, MR_CompleterData *);
+static  void                MR_trace_free_filter_completer_data(
+                                MR_CompleterData data);
+
+static  char                *MR_trace_map_completer_next(const char *word,
+                                size_t word_len, MR_CompleterData *);
+static  void                MR_trace_free_map_completer_data(
+                                MR_CompleterData data);
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -116,7 +137,7 @@ MR_trace_line_completer(const char *passed_word, int state)
         }
 
         if (command_end == insertion_point) {
-            /* We're completing the command itself. */
+            /* We are completing the command itself. */
             int                 num_digits;
             char                *digits;
             MR_CompleterList    *command_completer;
@@ -149,7 +170,7 @@ MR_trace_line_completer(const char *passed_word, int state)
                     digits, MR_free_func, completer_list);
             }
         } else {
-            /* We're completing an argument of the command. */
+            /* We are completing an argument of the command. */
             #define MR_MAX_COMMAND_NAME_LEN 256
             char                command[MR_MAX_COMMAND_NAME_LEN];
             char                *expanded_command;
@@ -248,7 +269,7 @@ MR_trace_completer_list_next(const char *word, size_t word_len,
 
     while (1) {
         current_completer = *list;
-        if (!current_completer) {
+        if (current_completer == NULL) {
             return NULL;
         }
         result = (current_completer->MR_completer_func)(word, word_len,
@@ -295,9 +316,6 @@ typedef struct {
     int             MR_sorted_array_current_offset;
     int             MR_sorted_array_size;
 } MR_SortedArrayCompleterData;
-
-static  char    *MR_trace_sorted_array_completer_next(const char *word,
-                    size_t word_length, MR_CompleterData *data);
 
 MR_CompleterList *
 MR_trace_sorted_array_completer(const char *word, size_t word_length,
@@ -364,8 +382,10 @@ typedef struct MR_StringArrayCompleterData_struct {
     int     MR_string_array_current_offset;
 } MR_StringArrayCompleterData;
 
-static  char    *MR_trace_string_array_completer_next(const char *word,
-                    size_t word_len, MR_CompleterData *data);
+/*
+** Complete on a NULL terminated array of strings.
+** The strings will not be `free'd.
+*/
 
 static MR_CompleterList *
 MR_trace_string_array_completer(const char *const *strings)
@@ -403,10 +423,170 @@ MR_trace_string_array_completer_next(const char *word, size_t word_len,
 }
 
 /*---------------------------------------------------------------------------*/
-/* Use Readline's filename completer. */
+/*
+** Complete on either a procedure specification, or a filename:linenumber pair.
+**
+** We construct the sorted array of filename:linenumber pairs by first
+** adding all such pairs implied by the module layout structures of the Mercury
+** modules that have debugging information to MR_source_file_lines,
+** and then sorting that array. We cannot use the macros defined in
+** mercury_array_util.h to keep the array sorted *during* the insertion
+** process, because the array can gen very big (more than 150,000 entries
+** for the Mercury compiler itself), and performing O(n) calls to
+** MR_prepare_insert_into_sorted, whose complexity is itself O(n),
+** would yield a quadratic algorithm.' We do the sorting using qsort,
+** whose expected complexity is O(n log n). (I don't expect its worst case
+** O(n^2) performance to ever occur in practice.)
+**
+** Since the MR_source_file_lines array is not sorted while we insert into it,
+** we have no cheap way to search the entirety of the so-far filled in parts
+** of the array to see whether the string we are about to add to it already
+** occurs in it. However, we can stop most duplicates from ever getting into
+** the array by simply checking if the string we are about to add is for
+** the same line number in the same file as the previous string, and we do
+** a final pass over the array after it is sorted, squeezing out the remaining
+** duplicates, which are now guaranteed to be adjacent to each other.
+*/
 
-static  char    *MR_trace_filename_completer_next(const char *word,
-                    size_t word_len, MR_CompleterData *);
+#define INIT_SOURCE_FILE_LINE_TABLE_SIZE         10
+
+static const char   **MR_source_file_lines;
+static unsigned     MR_source_file_line_next = 0;
+static unsigned     MR_source_file_line_max  = 0;
+static MR_bool      MR_source_file_lines_initialized = MR_FALSE;
+
+#define INIT_SOURCE_FILE_LINE_CHARS_SIZE    100
+#define LINE_NUM_MAX_CHARS                  20
+
+static char         *MR_source_file_line_chars;
+static unsigned     MR_source_file_line_char_next = 0;
+static unsigned     MR_source_file_line_char_max  = 0;
+
+static void
+MR_insert_module_into_source_file_line_table(const MR_ModuleLayout *module)
+{
+    int     num_files;
+    int     cur_file;
+
+    num_files = module->MR_ml_filename_count;
+    for (cur_file = 0; cur_file < num_files; cur_file++) {
+        const MR_ModuleFileLayout   *file;
+        MR_ConstString              file_name;
+        int                         file_name_len;
+        int                         num_lines;
+        int                         cur_line;
+
+        file = module->MR_ml_module_file_layout[cur_file];
+        file_name = file->MR_mfl_filename;
+        file_name_len = strlen(file_name);
+
+        MR_ensure_big_enough(file_name_len + LINE_NUM_MAX_CHARS + 2,
+            MR_source_file_line_char, char,
+            INIT_SOURCE_FILE_LINE_CHARS_SIZE);
+        strcpy(MR_source_file_line_chars, file_name);
+        MR_source_file_line_chars[file_name_len] = ':';
+
+        num_lines = file->MR_mfl_label_count;
+        MR_ensure_big_enough(MR_source_file_line_next + num_lines,
+            MR_source_file_line, const char *,
+            INIT_SOURCE_FILE_LINE_TABLE_SIZE);
+        for (cur_line = 0; cur_line < num_lines; cur_line++) {
+            int line_num = file->MR_mfl_label_lineno[cur_line];
+
+            /*
+            ** Almost all duplicates that end up in MR_source_file_lines
+            ** get there from consecutive entries for the same line number
+            ** in the same module file layout structure. Look for this
+            ** relatively common case, and avoid adding the redundant entry
+            ** to the array if we find it.
+            */
+            if (cur_line > 0 &&
+                line_num == file->MR_mfl_label_lineno[cur_line - 1])
+            {
+                /*
+                ** The string we would add would be the same as the string
+                ** for the previous line number.
+                */
+                continue;
+            }
+
+            snprintf(&MR_source_file_line_chars[file_name_len + 1],
+                LINE_NUM_MAX_CHARS, "%d", line_num);
+            MR_source_file_lines[MR_source_file_line_next] =
+                strdup(MR_source_file_line_chars);
+            MR_source_file_line_next++;
+        }
+    }
+}
+
+static int
+MR_compare_source_file_lines(const void *ptr1, const void *ptr2) 
+{
+    char * const    *sptr1 = (char * const *) ptr1;
+    char * const    *sptr2 = (char * const *) ptr2;
+    return strcmp(*sptr1, *sptr2);
+}
+
+MR_CompleterList *
+MR_trace_break_completer(const char *word, size_t word_len)
+{
+    MR_CompleterList    *completer_list;
+    MR_CompleterList    *cur_completer_list;
+
+    completer_list = MR_trace_proc_spec_completer(word, word_len);
+
+    if (MR_strneq(word, "pred*", 5) || MR_strneq(word, "func*", 5)) {
+        /*
+        ** These prefixes say that the breakpoint is on a named procedure,
+        ** not on a filename/linenumber pair.
+        */
+        return completer_list;
+    }
+
+    if (! MR_source_file_lines_initialized) {
+        int module_num;
+        int last;
+        int i;
+
+        for (module_num = 0; module_num < MR_module_info_next; module_num++) {
+            MR_insert_module_into_source_file_line_table(
+                MR_module_infos[module_num]);
+        }
+
+        qsort(MR_source_file_lines, MR_source_file_line_next,
+            sizeof(const char *), MR_compare_source_file_lines);
+
+        /*
+        ** Squeeze out any duplicate entries, which are now guaranteed
+        ** to be adjacent to each other.
+        */
+        last = 0;
+        for (i = 1; i < MR_source_file_line_next; i++) {
+            if (MR_streq(MR_source_file_lines[i], MR_source_file_lines[last])) {
+                free(MR_source_file_lines[i]);
+            } else {
+                ++last;
+                MR_source_file_lines[last] = MR_source_file_lines[i];
+            }
+        }
+        MR_source_file_line_next = last + 1;
+
+        MR_source_file_lines_initialized = MR_TRUE;
+    }
+
+    cur_completer_list = completer_list;
+    while (cur_completer_list->MR_completer_list_next != NULL) {
+        cur_completer_list = cur_completer_list->MR_completer_list_next;
+    }
+
+    cur_completer_list->MR_completer_list_next =
+        MR_trace_string_array_completer(MR_source_file_lines);
+
+    return completer_list;
+}
+
+/*---------------------------------------------------------------------------*/
+/* Use Readline's filename completer. */
 
 MR_CompleterList *
 MR_trace_filename_completer(const char *word, size_t word_len)
@@ -439,10 +619,6 @@ typedef struct {
     MR_FreeCompleterData    MR_filter_free_data;
     MR_CompleterList        *MR_filter_list;
 } MR_Filter_Completer_Data;
-
-static  char    *MR_trace_filter_completer_next(const char *word,
-                    size_t word_len, MR_CompleterData *);
-static  void    MR_trace_free_filter_completer_data(MR_CompleterData data);
 
 MR_CompleterList *
 MR_trace_filter_completer(MR_CompleterFilter filter,
@@ -501,10 +677,6 @@ typedef struct {
     MR_FreeCompleterData    MR_map_free_data;
     MR_CompleterList        *MR_map_list;
 } MR_MapCompleterData;
-
-static  char    *MR_trace_map_completer_next(const char *word,
-                    size_t word_len, MR_CompleterData *);
-static  void    MR_trace_free_map_completer_data(MR_CompleterData data);
 
 MR_CompleterList *
 MR_trace_map_completer(MR_Completer_Map map, MR_CompleterData map_data,

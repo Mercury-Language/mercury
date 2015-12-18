@@ -1556,7 +1556,7 @@ static const MR_TraceCmdTableEntry  MR_trace_command_table[] =
         NULL, MR_trace_null_completer },
 
     { "breakpoint", "break", MR_trace_cmd_break,
-        MR_trace_break_cmd_args, MR_trace_proc_spec_completer },
+        MR_trace_break_cmd_args, MR_trace_break_completer },
     { "breakpoint", "condition", MR_trace_cmd_condition,
         NULL, MR_trace_null_completer },
     { "breakpoint", "ignore", MR_trace_cmd_ignore,

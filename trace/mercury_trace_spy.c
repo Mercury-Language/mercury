@@ -186,14 +186,14 @@ static int
 MR_compare_addr(const void *address1, const void *address2)
 {
     /*
-    ** Note that we can't just compare the pointers, because
-    ** because on a segmented architecture, that might
-    ** only compare the segments, not the offsets (ANSI C
-    ** doesn't require pointer comparisons to work unless
-    ** the pointers point into the same array, which is not
-    ** necessarily going to be the case here).
-    ** So instead we need to cast the pointers to integers
-    ** and compare the integers.
+    ** Note that we can't just compare the pointers, because on a
+    ** segmented architecture, that might only compare the segments,
+    ** not the offsets (ANSI C doesn't require pointer comparisons to work
+    ** unless the pointers point into the same array, which is not necessarily
+    ** going to be the case here).
+    **
+    ** So instead we need to cast the pointers to integers and then
+    ** compare the integers.
     */
     MR_Unsigned num1 = (MR_Unsigned) address1;
     MR_Unsigned num2 = (MR_Unsigned) address2;
@@ -222,7 +222,7 @@ MR_search_spy_table_for_proc(const MR_ProcLayout *entry)
 
 /*
 ** Return the index of the entry in MR_spied_labels whose MR_sl_label field
-** is label, or a negative number if absent.
+** is equal to the label argument, or a negative number if absent.
 */
 
 static int
@@ -242,8 +242,8 @@ MR_search_spy_table_for_label(const MR_LabelLayout *label)
 
 /*
 ** Return the index of the entry in MR_spied_user_events whose
-** MR_sue_user_event_name field is user_event_name, or a negative number
-** if absent.
+** MR_sue_user_event_name field is equal to the user_event_name argument,
+** or a negative number if absent.
 */
 
 static int
@@ -264,8 +264,8 @@ MR_search_spy_table_for_user_event_name(const char *user_event_name)
 
 /*
 ** Return the index of the entry in MR_spied_user_event_sets whose
-** MR_sues_user_event_set field is user_event_set, or a negative number
-** if absent.
+** MR_sues_user_event_set field is equal to the user_event_set argument,
+** or a negative number if absent.
 */
 
 static int
@@ -770,7 +770,7 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
             MR_fatal_error("MR_add_line_spy_point: num_line_matches != 0");
         }
 
-        /* there were no matching labels */
+        /* There were no matching labels. */
 #ifdef  MR_HAVE_A_SNPRINTF
         if (num_file_matches == 0) {
             snprintf(MR_error_msg_buf, MR_ERROR_MSG_BUF_SIZE,
@@ -781,7 +781,7 @@ MR_add_line_spy_point(MR_SpyAction action, MR_SpyIgnore_When ignore_when,
                 linenumber, filename);
         }
 #else
-        /* not absolutely safe, but the risk of overflow is minimal */
+        /* Not absolutely safe, but the risk of overflow is minimal. */
         if (num_file_matches == 0) {
             sprintf(MR_error_msg_buf,
                 "there is no debuggable source file named %s", filename);
@@ -944,12 +944,12 @@ MR_add_spy_point_print_list_start(int point_slot, MR_SpyPrintList print_list)
         return;
     }
 
-    /* find the last node in print_list */
+    /* Find the last node in print_list. */
     while (list->MR_pl_next != NULL) {
         list = list->MR_pl_next;
     }
 
-    /* add the existing spy_print_list at the end of print_list */
+    /* Add the existing spy_print_list at the end of print_list. */
     list->MR_pl_next = MR_spy_points[point_slot]->MR_spy_print_list;
     MR_spy_points[point_slot]->MR_spy_print_list = print_list;
 }
@@ -965,12 +965,12 @@ MR_add_spy_point_print_list_end(int point_slot, MR_SpyPrintList print_list)
         return;
     }
 
-    /* find the last node in print_list */
+    /* Find the last node in print_list. */
     while (list->MR_pl_next != NULL) {
         list = list->MR_pl_next;
     }
 
-    /* add the print_list at the end of the existing spy_print_list */
+    /* Add the print_list at the end of the existing spy_print_list. */
     list->MR_pl_next = print_list;
 }
 
@@ -1046,7 +1046,7 @@ MR_delete_spy_point(int point_table_slot)
     MR_spy_points[point_table_slot]->MR_spy_exists = MR_FALSE;
 
     MR_delete_spy_print_list(point->MR_spy_print_list);
-    /* in case it gets deleted again */
+    /* In case it gets deleted again. */
     point->MR_spy_print_list = NULL;
 
     if (point->MR_spy_cond != NULL) {
@@ -1054,7 +1054,7 @@ MR_delete_spy_point(int point_table_slot)
         MR_free(point->MR_spy_cond->MR_cond_what_string);
         MR_free(point->MR_spy_cond);
 
-        /* in case it gets deleted again */
+        /* In case it gets deleted again. */
         point->MR_spy_cond = NULL;
     }
 
@@ -1080,8 +1080,7 @@ MR_delete_spy_point(int point_table_slot)
         MR_spied_label_next = label_slot;
     } else {
         /*
-        ** Remove the spy point from the spied proc table list
-        ** for its proc.
+        ** Remove the spy point from the spied proc table list for its proc.
         */
 
         proc_table_slot = MR_search_spy_table_for_proc(point->MR_spy_proc);

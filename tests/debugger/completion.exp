@@ -82,17 +82,34 @@ func*completion.z   func*completion.zz
 b func*completion.z
  1: + stop  interface func completion.z/0-0 (det)
 mdb> 
-completion.            completion.sub2.       
-completion.sub1.       completion.sub2.sub3.  
-completion.sub1.       completion.sub2.       completion.sub2.sub3.
-completion.sub1.z1  completion.sub1.zp  
+completion.                completion.sub1.m:15
+completion.m:17            completion.sub1.m:17
+completion.m:18            completion.sub2.
+completion.m:21            completion.sub2.m:15
+completion.m:24            completion.sub2.sub3.
+completion.sub1.           completion.sub2.sub3.m:13
+completion.sub1.           completion.sub2.m:15
+completion.sub1.m:15       completion.sub2.sub3.
+completion.sub1.m:17       completion.sub2.sub3.m:13
+completion.sub2.           
+completion.sub1.m:15  completion.sub1.z1    
+completion.sub1.m:17  completion.sub1.zp    
 b completion.sub1.z1
  2: + stop  interface func completion.sub1.z1/0-0 (det)
 mdb> 
-completion.            completion.sub2.       
-completion.sub1.       completion.sub2.sub3.  
-completion.sub1.       completion.sub2.       completion.sub2.sub3.
-completion.sub2.       completion.sub2.sub3.  
+completion.                completion.sub1.m:15
+completion.m:17            completion.sub1.m:17
+completion.m:18            completion.sub2.
+completion.m:21            completion.sub2.m:15
+completion.m:24            completion.sub2.sub3.
+completion.sub1.           completion.sub2.sub3.m:13
+completion.sub1.           completion.sub2.m:15
+completion.sub1.m:15       completion.sub2.sub3.
+completion.sub1.m:17       completion.sub2.sub3.m:13
+completion.sub2.           
+completion.sub2.           completion.sub2.sub3.
+completion.sub2.m:15       completion.sub2.sub3.m:13
+completion.sub2.sub3.m:13   completion.sub2.sub3.zabc3
 b completion.sub2.sub3.zabc3 
  3: + stop  interface func completion.sub2.sub3.zabc3/0-0 (det)
 mdb> 
