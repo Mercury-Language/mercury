@@ -131,48 +131,29 @@
 %---------------------------------------------------------------------------%
 
 grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
-        MaybeTimestamp, NestedChildren, RawCompUnit0, HaveReadModuleMaps,
+        MaybeTimestamp, NestedChildren, RawCompUnit, HaveReadModuleMaps,
         !:ModuleAndImports, !IO) :-
+    % The predicates grab_imported_modules and grab_unqual_imported_modules
+    % have quite similar tasks. Please keep the corresponding parts of these
+    % two predicates in sync.
+    %
     % XXX ITEM_LIST Why aren't we updating !HaveReadModuleMaps?
-    RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext,
-        RawItemBlocks0),
+    some [!Specs,
+        !IntUsed, !IntImported, !ImpUsed, !ImpImported,
+        !IntIndirectImported, !IntImpIndirectImported,
+        !ImpIndirectImported, !ImpImpIndirectImported]
+    (
+        RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+            RawItemBlocks),
+        get_src_item_blocks_public_children(RawCompUnit, SrcItemBlocks,
+            PublicChildren),
 
-    % Find out which modules this one depends on.
-    get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks0,
-        IntImportedModules0, IntUsedModules0,
-        ImpImportedModules0, ImpUsedModules0),
-
-    set.union(IntImportedModules0, ImpImportedModules0, ImportedModules0),
-    set.union(IntUsedModules0, ImpUsedModules0, UsedModules0),
-
-    some [!Specs] (
+        % Construct the initial module import structure.
         !:Specs = [],
-
-        ( if ModuleNameContext = term.context_init then
-            module_name_to_file_name(Globals, ModuleName, ".m",
-                do_not_create_dirs, FileName, !IO),
-            Context = term.context_init(FileName, 1)
-        else
-            Context = ModuleNameContext
-        ),
-
-        AncestorModules = set.list_to_set(get_ancestors(ModuleName)),
-        warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks0,
-            AncestorModules, ImportedModules0, UsedModules0, !Specs),
-
-        warn_if_duplicate_use_import_decls(ModuleName, Context,
-            IntImportedModules0, IntImportedModules1,
-            IntUsedModules0, IntUsedModules1,
-            ImpImportedModules0, ImpImportedModules,
-            ImpUsedModules0, ImpUsedModules, !Specs),
-
-        get_src_item_blocks_public_children(RawCompUnit0,
-            SrcItemBlocks1, PublicChildren),
-
-        % XXX ITEM_LIST Store the info we now find by these traversals
+        % XXX ITEM_LIST Store the FactDeps and ForeignIncludeFiles
         % in the raw_comp_unit.
-        get_fact_table_dependencies_in_item_blocks(RawItemBlocks0, FactDeps),
-        get_foreign_include_files_in_item_blocks(RawItemBlocks0,
+        get_fact_table_dependencies_in_item_blocks(RawItemBlocks, FactDeps),
+        get_foreign_include_files_in_item_blocks(RawItemBlocks,
             ForeignIncludeFiles),
         (
             MaybeTimestamp = yes(Timestamp),
@@ -182,222 +163,239 @@ grab_imported_modules(Globals, SourceFileName, SourceFileModuleName,
             MaybeTimestamp = no,
             MaybeTimestampMap = no
         ),
-
-        % If this module has any separately-compiled submodules, then
-        % we need to make everything in the implementation of this module
-        % exported_to_submodules. We do that by splitting out the
-        % implementation declarations and putting them in a special
-        % `ams_impl_but_exported_to_submodules' section.
-
         make_module_and_imports(SourceFileName, SourceFileModuleName,
-            ModuleName, ModuleNameContext, SrcItemBlocks1, !.Specs,
-            PublicChildren, NestedChildren, FactDeps,
-            ForeignIncludeFiles, MaybeTimestampMap, !:ModuleAndImports),
+            ModuleName, ModuleNameContext, SrcItemBlocks, !.Specs,
+            PublicChildren, NestedChildren, FactDeps, ForeignIncludeFiles,
+            MaybeTimestampMap, !:ModuleAndImports),
+
+        % Find the modules named in import_module and use_module decls.
+        get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
+            !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed),
+
+        Ancestors = set.list_to_set(get_ancestors(ModuleName)),
+        some [IntOrImpImported, IntOrImpUsed] (
+            set.union(!.IntImported, !.ImpImported, IntOrImpImported),
+            set.union(!.IntUsed, !.ImpUsed, IntOrImpUsed),
+            warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks,
+                Ancestors, IntOrImpImported, IntOrImpUsed, !Specs)
+        ),
+
+        warn_if_duplicate_use_import_decls(ModuleName, ModuleNameContext,
+            !IntImported, !IntUsed, !ImpImported, !ImpUsed, !Specs),
 
         % Add `builtin' and `private_builtin', and any other builtin modules
         % needed by any of the items, to the imported modules.
         % XXX Why are these added to the interface, and not the implementation
         % dependencies?
-        get_implicit_dependencies_in_item_blocks(Globals, SrcItemBlocks1,
-            ImplicitIntImportedModules, ImplicitIntUsedModules),
-        set.union(ImplicitIntImportedModules, IntImportedModules1,
-            IntImportedModules2),
-        set.union(ImplicitIntUsedModules, IntUsedModules1, IntUsedModules2),
+        get_implicit_dependencies_in_item_blocks(Globals, SrcItemBlocks,
+            ImplicitIntImported, ImplicitIntUsed),
+        set.union(ImplicitIntImported, !IntImported),
+        set.union(ImplicitIntUsed, !IntUsed),
 
-        % Process the ancestor modules.
+        % Get the .int0 files of the ancestor modules.
         %
         % Uses of the items declared in ancestor modules do not need
         % module qualifiers. Modules imported by ancestors are considered
         % to be visible in the current module.
+        % XXX grab_unqual_imported_modules treats ParentImported and ParentUsed
+        % slightly differently from !.IntImported and !.IntUsed.
         process_module_private_interfaces(Globals, HaveReadModuleMaps,
-            AncestorModules,
+            Ancestors,
             make_ims_imported(import_locn_interface),
             make_ims_imported(import_locn_ancestor_private_interface_proper),
             module_and_imports_add_direct_int_item_blocks,
-            IntImportedModules2, IntImportedModules,
-            IntUsedModules2, IntUsedModules, !ModuleAndImports, !IO),
+            !IntImported, !IntUsed, !ModuleAndImports, !IO),
 
-        % Process the modules imported using `import_module'.
-        % Uses of these items do not need module qualifiers.
-        set.init(IntIndirectImports0),
-        set.init(IntImpIndirectImports0),
+        % Get the .int files of the modules imported using `import_module'.
+        set.init(!:IntIndirectImported),
+        set.init(!:ImpIndirectImported),
+        set.init(!:IntImpIndirectImported),
+        set.init(!:ImpImpIndirectImported),
         process_module_long_interfaces(Globals, HaveReadModuleMaps,
-            may_be_unqualified, IntImportedModules, ifk_int,
+            may_be_unqualified, !.IntImported, ifk_int,
             make_ims_imported(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            IntIndirectImports0, IntIndirectImports1,
-            IntImpIndirectImports0, IntImpIndirectImports1,
+            !IntIndirectImported, !IntImpIndirectImported,
             !ModuleAndImports, !IO),
-
-        set.init(ImpIndirectImports0),
-        set.init(ImpImpIndirectImports0),
         process_module_long_interfaces(Globals, HaveReadModuleMaps,
-            may_be_unqualified, ImpImportedModules, ifk_int,
+            may_be_unqualified, !.ImpImported, ifk_int,
             make_ims_imported(import_locn_implementation),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            ImpIndirectImports0, ImpIndirectImports1,
-            ImpImpIndirectImports0, ImpImpIndirectImports1,
+            !ImpIndirectImported, !ImpImpIndirectImported,
             !ModuleAndImports, !IO),
 
-        % Process the modules imported using `use_module' .
+        % Get the .int files of the modules imported using `use_module'.
         process_module_long_interfaces(Globals, HaveReadModuleMaps,
-            must_be_qualified, IntUsedModules, ifk_int,
+            must_be_qualified, !.IntUsed, ifk_int,
             make_ims_used(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            IntIndirectImports1, IntIndirectImports,
-            IntImpIndirectImports1, IntImpIndirectImports2,
+            !IntIndirectImported, !IntImpIndirectImported,
             !ModuleAndImports, !IO),
         process_module_long_interfaces(Globals, HaveReadModuleMaps,
-            must_be_qualified, ImpUsedModules, ifk_int,
+            must_be_qualified, !.ImpUsed, ifk_int,
             make_ims_used(import_locn_implementation),
             make_ims_abstract_imported,
             module_and_imports_add_direct_int_item_blocks,
-            ImpIndirectImports1, ImpIndirectImports,
-            ImpImpIndirectImports1, ImpImpIndirectImports2,
+            !ImpIndirectImported, !ImpImpIndirectImported,
             !ModuleAndImports, !IO),
 
+        % Get the .int2 files of the modules imported in .int files.
         process_module_short_interfaces_transitively(Globals,
-            HaveReadModuleMaps, IntIndirectImports, ifk_int2,
+            HaveReadModuleMaps, !.IntIndirectImported, ifk_int2,
             make_ims_used(import_locn_interface),
             make_ims_abstract_imported,
             module_and_imports_add_indirect_int_item_blocks,
-            IntImpIndirectImports2, IntImpIndirectImports,
-            !ModuleAndImports, !IO),
+            !IntImpIndirectImported, !ModuleAndImports, !IO),
         process_module_short_interfaces_transitively(Globals,
-            HaveReadModuleMaps, ImpIndirectImports, ifk_int2,
+            HaveReadModuleMaps, !.ImpIndirectImported, ifk_int2,
             make_ims_used(import_locn_implementation),
             make_ims_abstract_imported,
             module_and_imports_add_indirect_int_item_blocks,
-            ImpImpIndirectImports2, ImpImpIndirectImports,
-            !ModuleAndImports, !IO),
+            !ImpImpIndirectImported, !ModuleAndImports, !IO),
 
+        % Get the .int2 files of the modules indirectly imported
+        % the implementation sections of .int/.int2 files.
+        % XXX Shouldn't these be .int3 files, as implied by the following
+        % old comment?
         % Process the short interfaces for modules imported in the
         % implementation of indirectly imported modules. The items in these
         % modules shouldn't be visible to typechecking -- they are used for
         % fully expanding equivalence types after the semantic checking passes.
         process_module_short_interfaces_and_impls_transitively(Globals,
-            HaveReadModuleMaps, IntImpIndirectImports, ifk_int2,
+            HaveReadModuleMaps, !.IntImpIndirectImported, ifk_int2,
             make_ims_abstract_imported, make_ims_abstract_imported,
             module_and_imports_add_indirect_int_item_blocks,
             !ModuleAndImports, !IO),
         process_module_short_interfaces_and_impls_transitively(Globals,
-            HaveReadModuleMaps, ImpImpIndirectImports, ifk_int2,
+            HaveReadModuleMaps, !.ImpImpIndirectImported, ifk_int2,
             make_ims_abstract_imported, make_ims_abstract_imported,
             module_and_imports_add_indirect_int_item_blocks,
             !ModuleAndImports, !IO),
 
         module_and_imports_get_aug_comp_unit(!.ModuleAndImports, AugCompUnit,
             _, _),
-        check_imports_accessibility(AugCompUnit,
-            set.union_list([IntImportedModules, IntUsedModules,
-                ImpImportedModules, ImpUsedModules]),
-            [], AccessSpecs),
-        module_and_imports_add_specs(AccessSpecs, !ModuleAndImports)
+        AllImportedOrUsed = set.union_list([!.IntImported, !.IntUsed,
+            !.ImpImported, !.ImpUsed]),
+        check_imports_accessibility(AugCompUnit, AllImportedOrUsed, !Specs),
+        module_and_imports_add_specs(!.Specs, !ModuleAndImports)
     ).
 
 grab_unqual_imported_modules(Globals, SourceFileName, SourceFileModuleName,
-        RawCompUnit0, !:ModuleAndImports, !IO) :-
-    RawCompUnit0 = raw_compilation_unit(ModuleName, ModuleNameContext,
-        RawItemBlocks0),
-    % Find out which modules this one depends on.
-    ParentDeps = get_ancestors(ModuleName),
-    get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks0,
-        IntImportDeps0, IntUseDeps0, ImpImportDeps, ImpUseDeps),
+        RawCompUnit, !:ModuleAndImports, !IO) :-
+    % The predicates grab_imported_modules and grab_unqual_imported_modules
+    % have quite similar tasks. Please keep the corresponding parts of these
+    % two predicates in sync.
+    %
+    % XXX ITEM_LIST Why aren't we updating !HaveReadModuleMaps?
+    some [!Specs, !IntUsed, !IntImported, !ImpUsed, !ImpImported,
+        !IntIndirectImported, !ImpIndirectImported]
+    (
+        RawCompUnit = raw_compilation_unit(ModuleName, ModuleNameContext,
+            RawItemBlocks),
+        raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
+        set.init(NoPublicChildren),
 
-    % Construct the initial module import structure.
-    raw_item_blocks_to_src(RawItemBlocks0, SrcItemBlocks),
-    make_module_and_imports(SourceFileName, SourceFileModuleName,
-        ModuleName, ModuleNameContext, SrcItemBlocks, [], set.init, set.init,
-        [], cord.init, no, !:ModuleAndImports),
+        % Construct the initial module import structure.
+        !:Specs = [],
+        set.init(NoNestedChildren),
+        NoFactDeps = [],
+        NoForeignIncludeFiles = cord.init,
+        NoTimeStamp = no,
+        make_module_and_imports(SourceFileName, SourceFileModuleName,
+            ModuleName, ModuleNameContext, SrcItemBlocks, !.Specs,
+            NoPublicChildren, NoNestedChildren, NoFactDeps,
+            NoForeignIncludeFiles, NoTimeStamp, !:ModuleAndImports),
 
-    % Add `builtin' and `private_builtin', and any other builtin modules
-    % needed by any of the items, to the imported modules.
-    % XXX Why are these added to the interface, and not the implementation
-    % dependencies?
-    get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks0,
-        ImplicitIntImportDeps, ImplicitIntUseDeps),
-    set.union(ImplicitIntImportDeps, IntImportDeps0, IntImportDeps),
-    set.union(ImplicitIntUseDeps, IntUseDeps0, IntUseDeps),
+        % Find the modules named in import_module and use_module decls.
+        get_dependencies_int_imp_in_raw_item_blocks(RawItemBlocks,
+            !:IntImported, !:IntUsed, !:ImpImported, !:ImpUsed),
 
-    % Get the .int3s and .int0s that the current module depends on.
-    HaveReadModuleMaps = have_read_module_maps(map.init, map.init, map.init),
+        % Add `builtin' and `private_builtin', and any other builtin modules
+        % needed by any of the items, to the imported modules.
+        % XXX Why are these added to the interface, and not the implementation
+        % dependencies?
+        get_implicit_dependencies_in_item_blocks(Globals, RawItemBlocks,
+            ImplicitIntImported, ImplicitIntUsed),
+        set.union(ImplicitIntImported, !IntImported),
+        set.union(ImplicitIntUsed, !IntUsed),
 
-    % First the .int0s for parent modules.
-    process_module_private_interfaces(Globals, HaveReadModuleMaps,
-        set.list_to_set(ParentDeps),
-        make_ims_imported(import_locn_interface),
-        make_ims_imported(import_locn_ancestor_private_interface_proper),
-        module_and_imports_add_direct_int_item_blocks,
-        set.init, ParentImportDeps, set.init, ParentUseDeps,
-        !ModuleAndImports, !IO),
+        HaveReadModuleMaps =
+            have_read_module_maps(map.init, map.init, map.init),
 
-    % Then the .int3s for `:- import'-ed modules.
-    process_module_long_interfaces(Globals, HaveReadModuleMaps,
-        may_be_unqualified, ParentImportDeps, ifk_int3,
-        make_ims_imported(import_locn_import_by_ancestor),
-        make_ims_abstract_imported,
-        module_and_imports_add_direct_int_item_blocks,
-        set.init, IntIndirectImportDeps0, set.init, _, !ModuleAndImports, !IO),
-    process_module_long_interfaces(Globals, HaveReadModuleMaps,
-        may_be_unqualified, IntImportDeps, ifk_int3,
-        make_ims_imported(import_locn_interface),
-        make_ims_abstract_imported,
-        module_and_imports_add_direct_int_item_blocks,
-        IntIndirectImportDeps0, IntIndirectImportDeps1,
-        set.init, _, !ModuleAndImports, !IO),
-    process_module_long_interfaces(Globals, HaveReadModuleMaps,
-        may_be_unqualified, ImpImportDeps, ifk_int3,
-        make_ims_imported(import_locn_implementation),
-        make_ims_abstract_imported,
-        module_and_imports_add_direct_int_item_blocks,
-        set.init, ImpIndirectImportDeps0, set.init, _,
-        !ModuleAndImports, !IO),
+        % Get the .int0 files of the ancestor modules.
+        Ancestors = set.list_to_set(get_ancestors(ModuleName)),
+        process_module_private_interfaces(Globals, HaveReadModuleMaps,
+            Ancestors,
+            make_ims_imported(import_locn_interface),
+            make_ims_imported(import_locn_ancestor_private_interface_proper),
+            module_and_imports_add_direct_int_item_blocks,
+            set.init, ParentImported, set.init, ParentUsed,
+            !ModuleAndImports, !IO),
 
-    % Then (after appropriate `:- used' decls) the .int3s for `:- use'-ed
-    % modules.
-    process_module_long_interfaces(Globals, HaveReadModuleMaps,
-        may_be_unqualified, ParentUseDeps, ifk_int3,
-        make_ims_imported(import_locn_import_by_ancestor),
-        make_ims_abstract_imported,
-        module_and_imports_add_direct_int_item_blocks,
-        IntIndirectImportDeps1, IntIndirectImportDeps2,
-        set.init, _, !ModuleAndImports, !IO),
-    process_module_long_interfaces(Globals, HaveReadModuleMaps,
-        must_be_qualified, IntUseDeps, ifk_int3,
-        make_ims_used(import_locn_interface), make_ims_abstract_imported,
-        module_and_imports_add_direct_int_item_blocks,
-        IntIndirectImportDeps2, IntIndirectImportDeps,
-        set.init, _, !ModuleAndImports, !IO),
-    process_module_long_interfaces(Globals, HaveReadModuleMaps,
-        must_be_qualified, ImpUseDeps, ifk_int3,
-        make_ims_used(import_locn_implementation), make_ims_abstract_imported,
-        module_and_imports_add_direct_int_item_blocks,
-        ImpIndirectImportDeps0, ImpIndirectImportDeps,
-        set.init, _, !ModuleAndImports, !IO),
+        % Get the .int3 files of the modules imported using `import_module'.
+        set.init(!:IntIndirectImported),
+        set.init(!:ImpIndirectImported),
+        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+            may_be_unqualified, ParentImported, ifk_int3,
+            make_ims_imported(import_locn_import_by_ancestor),
+            make_ims_abstract_imported,
+            module_and_imports_add_direct_int_item_blocks,
+            !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
+        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+            may_be_unqualified, !.IntImported, ifk_int3,
+            make_ims_imported(import_locn_interface),
+            make_ims_abstract_imported,
+            module_and_imports_add_direct_int_item_blocks,
+            !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
+        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+            may_be_unqualified, !.ImpImported, ifk_int3,
+            make_ims_imported(import_locn_implementation),
+            make_ims_abstract_imported,
+            module_and_imports_add_direct_int_item_blocks,
+            !ImpIndirectImported, set.init, _, !ModuleAndImports, !IO),
 
-    % Then (after appropriate `:- used' decl) the .int3s for indirectly
-    % imported modules.
-    process_module_short_interfaces_transitively(Globals, HaveReadModuleMaps,
-        IntIndirectImportDeps, ifk_int3,
-        make_ims_used(import_locn_interface), make_ims_abstract_imported,
-        module_and_imports_add_indirect_int_item_blocks,
-        set.init, _, !ModuleAndImports, !IO),
+        % Get the .int3 files of the modules imported using `use_module'.
+        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+            may_be_unqualified, ParentUsed, ifk_int3,
+            make_ims_imported(import_locn_import_by_ancestor),
+            make_ims_abstract_imported,
+            module_and_imports_add_direct_int_item_blocks,
+            !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
+        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+            must_be_qualified, !.IntUsed, ifk_int3,
+            make_ims_used(import_locn_interface), make_ims_abstract_imported,
+            module_and_imports_add_direct_int_item_blocks,
+            !IntIndirectImported, set.init, _, !ModuleAndImports, !IO),
+        process_module_long_interfaces(Globals, HaveReadModuleMaps,
+            must_be_qualified, !.ImpUsed, ifk_int3,
+            make_ims_used(import_locn_implementation),
+            make_ims_abstract_imported,
+            module_and_imports_add_direct_int_item_blocks,
+            !ImpIndirectImported, set.init, _, !ModuleAndImports, !IO),
 
-    process_module_short_interfaces_transitively(Globals, HaveReadModuleMaps,
-        ImpIndirectImportDeps, ifk_int3,
-        make_ims_used(import_locn_implementation), make_ims_abstract_imported,
-        module_and_imports_add_indirect_int_item_blocks,
-        set.init, _, !ModuleAndImports, !IO),
+        % Get the .int3 files of the modules imported in .int3 files.
+        process_module_short_interfaces_transitively(Globals,
+            HaveReadModuleMaps, !.IntIndirectImported, ifk_int3,
+            make_ims_used(import_locn_interface), make_ims_abstract_imported,
+            module_and_imports_add_indirect_int_item_blocks,
+            set.init, _, !ModuleAndImports, !IO),
+        process_module_short_interfaces_transitively(Globals,
+            HaveReadModuleMaps, !.ImpIndirectImported, ifk_int3,
+            make_ims_used(import_locn_implementation),
+            make_ims_abstract_imported,
+            module_and_imports_add_indirect_int_item_blocks,
+            set.init, _, !ModuleAndImports, !IO),
 
-    module_and_imports_get_aug_comp_unit(!.ModuleAndImports, AugCompUnit,
-        _, _),
-    check_imports_accessibility(AugCompUnit,
-        set.union_list([IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps]),
-        [], AccessSpecs),
-    module_and_imports_add_specs(AccessSpecs, !ModuleAndImports).
+        module_and_imports_get_aug_comp_unit(!.ModuleAndImports, AugCompUnit,
+            _, _),
+        AllImportedOrUsed = set.union_list([!.IntImported, !.IntUsed,
+            !.ImpImported, !.ImpUsed]),
+        check_imports_accessibility(AugCompUnit, AllImportedOrUsed, !Specs),
+        module_and_imports_add_specs(!.Specs, !ModuleAndImports)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -408,6 +406,11 @@ get_src_item_blocks_public_children(RawCompUnit,
         SrcItemBlocks, PublicChildren) :-
     RawCompUnit = raw_compilation_unit(_, _, RawItemBlocks),
     get_included_modules_in_item_blocks(RawItemBlocks, Children),
+    % If this module has any separately-compiled submodules, then we need
+    % to make everything in the implementation of this module exported to
+    % submodules. We do that by splitting out the implementation declarations
+    % and putting them in a special `sms_impl_but_exported_to_submodules'
+    % section.
     ( if set.is_empty(Children) then
         raw_item_blocks_to_src(RawItemBlocks, SrcItemBlocks),
         set.init(PublicChildren)
@@ -529,13 +532,12 @@ split_items_into_clauses_and_decls([Item | Items],
     list(error_spec)::in, list(error_spec)::out) is det.
 
 warn_if_import_for_self_or_ancestor(ModuleName, RawItemBlocks,
-        AncestorModules, ImportedModules, UsedModules, !Specs) :-
-    set.union(ImportedModules, UsedModules, ImportedOrUsedModules),
-    set.intersect(AncestorModules, ImportedOrUsedModules,
-        ImportedOrUsedAncestorModules),
+        Ancestors, Imported, Used, !Specs) :-
+    set.union(Imported, Used, ImportedOrUsed),
+    set.intersect(Ancestors, ImportedOrUsed, ImportedOrUsedAncestors),
     set.fold(find_and_warn_import_for_ancestor(ModuleName, RawItemBlocks),
-        ImportedOrUsedAncestorModules, !Specs),
-    ( if set.member(ModuleName, ImportedOrUsedModules) then
+        ImportedOrUsedAncestors, !Specs),
+    ( if set.member(ModuleName, ImportedOrUsed) then
         find_and_warn_import_for_self(ModuleName, RawItemBlocks, !Specs)
     else
         true
@@ -655,21 +657,13 @@ warn_import_for_ancestor(ModuleName, AncestorName, Context, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 warn_if_duplicate_use_import_decls(ModuleName, Context,
-        IntImportedModules0, IntImportedModules,
-        IntUsedModules0, IntUsedModules,
-        ImpImportedModules0, ImpImportedModules,
-        ImpUsedModules0, ImpUsedModules, !Specs) :-
-
+        !IntImported, !IntUsed, !ImpImported, !ImpUsed, !Specs) :-
     do_warn_if_duplicate_use_import_decls(ModuleName, Context,
-        IntImportedModules0, IntImportedModules1,
-        IntUsedModules0, IntUsedModules, !Specs),
+        !IntImported, !IntUsed, !Specs),
     do_warn_if_duplicate_use_import_decls(ModuleName, Context,
-        IntImportedModules1, IntImportedModules,
-        ImpUsedModules0, ImpUsedModules1, !Specs),
-
+        !IntImported, !ImpUsed, !Specs),
     do_warn_if_duplicate_use_import_decls(ModuleName, Context,
-        ImpImportedModules0, ImpImportedModules,
-        ImpUsedModules1, ImpUsedModules, !Specs).
+        !ImpImported, !ImpUsed, !Specs).
 
     % Report warnings for modules imported using both `:- use_module'
     % and `:- import_module'. Remove the unnecessary `:- use_module'
@@ -682,16 +676,17 @@ warn_if_duplicate_use_import_decls(ModuleName, Context,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
-        !ImportedModules, !UsedModules, !Specs) :-
-    set.intersect(!.ImportedModules, !.UsedModules, BothSet),
-    ( if set.is_empty(BothSet) then
+        !Imported, !Used, !Specs) :-
+    set.intersect(!.Imported, !.Used, ImportedAndUsed),
+    ( if set.is_empty(ImportedAndUsed) then
         true
     else
-        set.to_sorted_list(BothSet, BothList),
+        set.to_sorted_list(ImportedAndUsed, ImportedAndUsedList),
         Pieces = [words("Warning:"),
-            words(choose_number(BothList, "module", "modules"))] ++
-            component_list_to_pieces(list.map(wrap_symname, BothList)) ++
-            [words(choose_number(BothList, "is", "are")),
+            words(choose_number(ImportedAndUsedList, "module", "modules"))] ++
+            component_list_to_pieces(
+                list.map(wrap_symname, ImportedAndUsedList)) ++
+            [words(choose_number(ImportedAndUsedList, "is", "are")),
             words("imported using both"), decl("import_module"),
             words("and"), decl("use_module"), words("declarations."), nl],
         Msg = simple_msg(Context,
@@ -703,7 +698,7 @@ do_warn_if_duplicate_use_import_decls(_ModuleName, Context,
 
         % Treat the modules with both types of import as if they
         % were imported using `:- import_module.'
-        set.difference(!.UsedModules, BothSet, !:UsedModules)
+        set.difference(!.Used, ImportedAndUsed, !:Used)
     ).
 
 :- func wrap_symname(module_name) = format_component.
@@ -864,7 +859,7 @@ process_module_long_interfaces(Globals, HaveReadModuleMaps, NeedQual,
     ( if set.remove_least(FirstImport, Imports, LaterImports) then
         ModuleName = !.ModuleAndImports ^ mai_module_name,
         ( if
-            % Have we already read it?
+            % Have we already processed FirstImport.IntFileKind?
             ( FirstImport = ModuleName
             ; set.member(FirstImport, !.ModuleAndImports ^ mai_parent_deps)
             ; set.member(FirstImport, !.ModuleAndImports ^ mai_int_deps)
@@ -1046,8 +1041,7 @@ process_module_short_interfaces(Globals, HaveReadModuleMaps,
         !ModuleAndImports, !IO) :-
     ( if set.remove_least(FirstImport, Imports, LaterImports) then
         ( if
-            % Check if the imported module has already been imported.
-            % XXX ITEM_LIST These lists should all be sets.
+            % Have we already processed FirstImport.IntFileKind?
             ( FirstImport = !.ModuleAndImports ^ mai_module_name
             ; set.member(FirstImport, !.ModuleAndImports ^ mai_parent_deps)
             ; set.member(FirstImport, !.ModuleAndImports ^ mai_int_deps)
@@ -1147,7 +1141,7 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
     % look for any section markers).
     add_needed_foreign_import_module_items_to_item_blocks(ModuleName,
         sms_interface, SrcItemBlocks0, SrcItemBlocks),
-    set.init(ParentDeps),
+    set.init(Ancestors),
     set.init(IntDeps),
     set.init(ImpDeps),
     set.init(IndirectDeps),
@@ -1156,7 +1150,7 @@ make_module_and_imports(SourceFileName, SourceFileModuleName,
     set.init(Errors),
     Module = module_and_imports(SourceFileName, SourceFileModuleName,
         ModuleName, ModuleNameContext,
-        ParentDeps, IntDeps, ImpDeps, IndirectDeps, IncludeDeps,
+        Ancestors, IntDeps, ImpDeps, IndirectDeps, IncludeDeps,
         PublicChildren, NestedChildren, FactDeps,
         ForeignImports, ForeignIncludeFiles,
         contains_foreign_code_unknown, contains_no_foreign_export,
@@ -1456,11 +1450,6 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
         cord.empty, OptItemBlocksCord, [], OptSpecs, no, OptError, !IO),
     OptItemBlocks = cord.list(OptItemBlocksCord),
 
-    % Append the items to the current item list, using a `opt_imported'
-    % pseudo-declaration to let make_hlds know the opt_imported stuff
-    % is coming.
-    %
-    % XXX Using this mechanism to let make_hlds know this is a bad design.
     module_and_imports_add_opt_item_blocks(OptItemBlocks, !ModuleAndImports),
     module_and_imports_add_specs(OptSpecs, !ModuleAndImports),
 
@@ -1471,7 +1460,7 @@ grab_opt_files(Globals, !ModuleAndImports, FoundError, !IO) :-
     %
     % Similarly for the  :- pragma structure_reuse(...) declarations. With more
     % information available when making the target code than when writing the
-    % `.opt' file, it can turn out that procedure which seemed to have
+    % `.opt' file, it can turn out that a procedure which seemed to have
     % condition reuse actually has none. But we have to maintain the interface
     % for modules that use the conditional reuse information from the `.opt'
     % file.
