@@ -123,12 +123,10 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         true
     ),
     module_info_get_type_table(!.ModuleInfo, TypeTable0),
-    ( if
+    ( if search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn0) then
+        hlds_data.get_type_defn_status(OldDefn0, OldTypeStatus),
         % The type is exported if *any* occurrence is exported,
         % even a previous abstract occurrence.
-        search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn0)
-    then
-        hlds_data.get_type_defn_status(OldDefn0, OldTypeStatus),
         type_combine_status(TypeStatus1, OldTypeStatus, TypeStatus),
         hlds_data.get_type_defn_body(OldDefn0, OldBody0),
         combine_is_solver_type(OldBody0, OldBody, Body0, Body),
@@ -199,21 +197,15 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         hlds_data.get_type_defn_tvarset(OldDefn2, TVarSet2),
         hlds_data.get_type_defn_tparams(OldDefn2, Params2),
         hlds_data.get_type_defn_kind_map(OldDefn2, KindMap2),
-        hlds_data.get_type_defn_body(OldDefn2, Body2),
+        hlds_data.get_type_defn_body(OldDefn2, OldDefnBody2),
         hlds_data.get_type_defn_context(OldDefn2, OrigContext),
         hlds_data.get_type_defn_status(OldDefn2, OrigTypeStatus),
         hlds_data.get_type_defn_in_exported_eqv(OldDefn2, OrigInExportedEqv),
         hlds_data.get_type_defn_need_qualifier(OldDefn2, OrigNeedQual),
-        Body2 \= hlds_abstract_type(_)
+        OldDefnBody2 \= hlds_abstract_type(_)
     then
-        globals.get_target(Globals, Target),
-        globals.lookup_bool_option(Globals, make_optimization_interface,
-            MakeOptInt),
-        % We used to record that we have seen a foreign type, using the call
-        %   module_info_set_contains_foreign_type(!ModuleInfo)
-        % but we deleted the code that used this information some time ago.
         ( if
-            % ... then if this definition was abstract, ignore it
+            % ... then if this definition is abstract, ignore it
             % (but update the status of the old defn if necessary).
             Body = hlds_abstract_type(_)
         then
@@ -221,14 +213,14 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
                 true
             else
                 hlds_data.set_type_defn(TVarSet2, Params2, KindMap2,
-                    Body2, OrigInExportedEqv, TypeStatus, OrigNeedQual,
+                    OldDefnBody2, OrigInExportedEqv, TypeStatus, OrigNeedQual,
                     type_defn_no_prev_errors, OrigContext, TypeDefn3),
                 replace_type_ctor_defn(TypeCtor, TypeDefn3,
                     TypeTable0, TypeTable),
                 module_info_set_type_table(TypeTable, !ModuleInfo)
             )
         else if
-            merge_foreign_type_bodies(Target, MakeOptInt, Body, Body2,
+            merge_maybe_foreign_type_bodies(Globals, OldDefnBody2, Body,
                 NewBody)
         then
             ( if
@@ -506,41 +498,65 @@ check_foreign_type(TypeCtor, ForeignTypeBody, PrevErrors, Context,
     % if we are making the optimization interface so that it gets
     % output in the .opt file.
     %
-:- pred merge_foreign_type_bodies(compilation_target::in, bool::in,
-    hlds_type_body::in, hlds_type_body::in, hlds_type_body::out)
-    is semidet.
+:- pred merge_maybe_foreign_type_bodies(globals::in,
+    hlds_type_body::in, hlds_type_body::in, hlds_type_body::out) is semidet.
 
-merge_foreign_type_bodies(Target, MakeOptInterface,
-        hlds_foreign_type(ForeignTypeBody0), Body1, Body) :-
-    MaybeForeignTypeBody1 = Body1 ^ du_type_is_foreign_type,
+merge_maybe_foreign_type_bodies(Globals, BodyA, BodyB, Body) :-
     (
-        MaybeForeignTypeBody1 = yes(ForeignTypeBody1)
+        BodyA = hlds_foreign_type(ForeignTypeBodyA),
+        BodyB = hlds_du_type(_, _, _, _, _, _, _, _, _),
+        merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, BodyB,
+            Body)
     ;
-        MaybeForeignTypeBody1 = no,
-        ForeignTypeBody1 = foreign_type_body(no, no, no, no)
+        BodyA = hlds_du_type(_, _, _, _, _, _, _, _, _),
+        BodyB = hlds_foreign_type(ForeignTypeBodyB),
+        merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyB, BodyA,
+            Body)
+    ;
+        BodyA = hlds_foreign_type(ForeignTypeBodyA),
+        BodyB = hlds_foreign_type(ForeignTypeBodyB),
+        merge_foreign_type_bodies(ForeignTypeBodyA, ForeignTypeBodyB,
+            ForeignTypeBody),
+        Body = hlds_foreign_type(ForeignTypeBody)
+    ).
+
+:- inst hlds_type_body_du
+    --->    hlds_du_type(ground, ground, ground, ground, ground,
+                ground, ground, ground, ground).
+
+:- pred merge_foreign_and_du_type_bodies(globals::in,
+    foreign_type_body::in, hlds_type_body::in(hlds_type_body_du),
+    hlds_type_body::out) is semidet.
+
+merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, DuTypeBodyB,
+        Body) :-
+    DuTypeBodyB = hlds_du_type(_Ctors, _TagValues, _CheaperTagTest,
+        _DuTypeKind, _UserEq, _DirectArgCtors, _ReservedTag, _ReservedAddr,
+        MaybeForeignTypeBodyB),
+    (
+        MaybeForeignTypeBodyB = yes(ForeignTypeBodyB)
+    ;
+        MaybeForeignTypeBodyB = no,
+        ForeignTypeBodyB = foreign_type_body(no, no, no, no)
     ),
-    merge_foreign_type_bodies_2(ForeignTypeBody0, ForeignTypeBody1,
+    merge_foreign_type_bodies(ForeignTypeBodyA, ForeignTypeBodyB,
         ForeignTypeBody),
+    globals.get_target(Globals, Target),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
+        MakeOptInt),
     ( if
         have_foreign_type_for_backend(Target, ForeignTypeBody, yes),
-        MakeOptInterface = no
+        MakeOptInt = no
     then
         Body = hlds_foreign_type(ForeignTypeBody)
     else
-        Body = Body1 ^ du_type_is_foreign_type := yes(ForeignTypeBody)
+        Body = DuTypeBodyB ^ du_type_is_foreign_type := yes(ForeignTypeBody)
     ).
-merge_foreign_type_bodies(Target, MakeOptInterface,
-        Body0 @ hlds_du_type(_, _, _, _, _, _, _, _, _),
-        Body1 @ hlds_foreign_type(_), Body) :-
-    merge_foreign_type_bodies(Target, MakeOptInterface, Body1, Body0, Body).
-merge_foreign_type_bodies(_, _, hlds_foreign_type(Body0),
-        hlds_foreign_type(Body1), hlds_foreign_type(Body)) :-
-    merge_foreign_type_bodies_2(Body0, Body1, Body).
 
-:- pred merge_foreign_type_bodies_2(foreign_type_body::in,
+:- pred merge_foreign_type_bodies(foreign_type_body::in,
     foreign_type_body::in, foreign_type_body::out) is semidet.
 
-merge_foreign_type_bodies_2(TypeBodyA, TypeBodyB, TypeBody) :-
+merge_foreign_type_bodies(TypeBodyA, TypeBodyB, TypeBody) :-
     TypeBodyA = foreign_type_body(MaybeCA, MaybeJavaA, MaybeCSharpA,
         MaybeErlangA),
     TypeBodyB = foreign_type_body(MaybeCB, MaybeJavaB, MaybeCSharpB,
