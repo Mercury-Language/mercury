@@ -487,7 +487,8 @@ MR_insert_module_into_source_file_line_table(const MR_ModuleLayout *module)
         MR_source_file_line_chars[file_name_len] = ':';
 
         num_lines = file->MR_mfl_label_count;
-        MR_ensure_big_enough(MR_source_file_line_next + num_lines,
+        /* The +1 is for the sentinel. */
+        MR_ensure_big_enough(MR_source_file_line_next + num_lines + 1,
             MR_source_file_line, const char *,
             INIT_SOURCE_FILE_LINE_TABLE_SIZE);
         for (cur_line = 0; cur_line < num_lines; cur_line++) {
@@ -569,8 +570,12 @@ MR_trace_break_completer(const char *word, size_t word_len)
                 MR_source_file_lines[last] = MR_source_file_lines[i];
             }
         }
-        MR_source_file_line_next = last + 1;
 
+        /* Add the NULL entry as the sentinel. */
+        ++last;
+        MR_source_file_lines[last] = NULL;
+
+        MR_source_file_line_next = last + 1;
         MR_source_file_lines_initialized = MR_TRUE;
     }
 
