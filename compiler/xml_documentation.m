@@ -832,6 +832,7 @@ type_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
     ).
 
 :- func inst_visibility_to_xml(inst_status) = xml.
+:- pragma consider_used(inst_visibility_to_xml/1).
 
 inst_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
     ( if inst_status_defined_in_impl_section(Status) = yes then
@@ -841,6 +842,7 @@ inst_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
     ).
 
 :- func mode_visibility_to_xml(mode_status) = xml.
+:- pragma consider_used(mode_visibility_to_xml/1).
 
 mode_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
     ( if mode_status_defined_in_impl_section(Status) = yes then
@@ -864,6 +866,7 @@ typeclass_visibility_to_xml(Status) =
     ).
 
 :- func instance_visibility_to_xml(instance_status) = xml.
+:- pragma consider_used(instance_visibility_to_xml/1).
 
 instance_visibility_to_xml(Status) = tagged_string("visibility", Visibility) :-
     ( if instance_status_defined_in_impl_section(Status) = yes then

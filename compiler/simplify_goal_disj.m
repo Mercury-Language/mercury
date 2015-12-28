@@ -353,9 +353,10 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
     hlds_goal_expr::out,
     simplify_nested_context::in, instmap::in, common_info::in,
     simplify_info::in, simplify_info::out) is det.
+:- pragma consider_used(fixup_disj/8).
 
-fixup_disj(Disjuncts, GoalInfo, Goal, NestedContext0, InstMap0,
-        Common0, !Info) :-
+fixup_disj(Disjuncts, GoalInfo, Goal, NestedContext0, InstMap0, Common0,
+        !Info) :-
     det_disj_to_ite(Disjuncts, GoalInfo, IfThenElse),
     simplify_goal(IfThenElse, Simplified, NestedContext0, InstMap0,
         Common0, _Common, !Info),
@@ -382,6 +383,7 @@ fixup_disj(Disjuncts, GoalInfo, Goal, NestedContext0, InstMap0,
     %
 :- pred det_disj_to_ite(list(hlds_goal)::in, hlds_goal_info::in,
     hlds_goal::out) is det.
+:- pragma consider_used(det_disj_to_ite/3).
 
 det_disj_to_ite([], _GoalInfo, _) :-
     unexpected($module, $pred, "reached base case").
@@ -447,6 +449,7 @@ simplify_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
 :- pred simplify_or_else_goals(list(hlds_goal)::in, list(hlds_goal)::out,
     simplify_nested_context::in, instmap::in, common_info::in,
     simplify_info::in, simplify_info::out) is det.
+:- pragma consider_used(simplify_or_else_goals/7).
 
 simplify_or_else_goals([], [], _NestedContext0, _InstMap0, _Common0, !Info).
 simplify_or_else_goals([Goal0 | Goals0], [Goal | Goals],

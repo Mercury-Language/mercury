@@ -621,26 +621,6 @@ build_linked_target_2(Globals, MainModuleName, FileType, OutputFileName,
         )
     ).
 
-    % join_string_list(Strings, Prefix, Suffix, Serarator, Result)
-    %
-    % Appends the strings in the list `Strings' together into the
-    % string Result. Each string is prefixed by Prefix, suffixed by
-    % Suffix and separated by Separator.
-    %
-:- pred join_string_list(list(string)::in, string::in, string::in,
-    string::in, string::out) is det.
-
-join_string_list([], _Prefix, _Suffix, _Separator, "").
-join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
-    (
-        Strings = [],
-        Result = Prefix ++ String ++ Suffix
-    ;
-        Strings = [_ | _],
-        join_string_list(Strings, Prefix, Suffix, Separator, Result0),
-        Result = Prefix ++ String ++ Suffix ++ Separator ++ Result0
-    ).
-
 :- pred linked_target_cleanup(globals::in, module_name::in,
     linked_target_type::in, file_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -1502,6 +1482,8 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Globals, Grade,
 :- func remove_grade_dependent_targets(dependency_file, dependency_status,
     version_hash_table(dependency_file, dependency_status)) =
     version_hash_table(dependency_file, dependency_status).
+% See the comment above for the reason why we don't use this predicate.
+:- pragma consider_used(remove_grade_dependent_targets/3).
 
 remove_grade_dependent_targets(File, _Status, StatusMap0) = StatusMap :-
     ( if

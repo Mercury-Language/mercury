@@ -174,50 +174,6 @@ type_is_enum(Type) :-
     Type = mercury_type(_, Builtin, _),
     Builtin = ctor_cat_enum(_).
 
-    % Succeeds iff this type is something that the Java backend will represent
-    % as an object i.e. something created using the new operator.
-    %
-:- pred type_is_object(mlds_type::in) is semidet.
-
-type_is_object(Type) :-
-    Type = mercury_type(_, CtorCat, _),
-    type_category_is_object(CtorCat) = yes.
-
-:- func type_category_is_object(type_ctor_category) = bool.
-
-type_category_is_object(CtorCat) = IsObject :-
-    (
-        ( CtorCat = ctor_cat_builtin(_)
-        ; CtorCat = ctor_cat_higher_order
-        ; CtorCat = ctor_cat_tuple
-        ; CtorCat = ctor_cat_void
-        ),
-        IsObject = no
-    ;
-        ( CtorCat = ctor_cat_enum(_)
-        ; CtorCat = ctor_cat_builtin_dummy
-        ; CtorCat = ctor_cat_variable
-        ; CtorCat = ctor_cat_system(_)
-        ; CtorCat = ctor_cat_user(_)
-        ),
-        IsObject = yes
-    ).
-
-    % Given an lval, return its type.
-    %
-:- func mlds_lval_type(mlds_lval) = mlds_type.
-
-mlds_lval_type(ml_var(_, VarType)) = VarType.
-mlds_lval_type(ml_field(_, _, _, FieldType, _)) = FieldType.
-mlds_lval_type(ml_mem_ref(_, PtrType)) =
-    ( if PtrType = mlds_ptr_type(Type) then
-        Type
-    else
-        unexpected($module, $pred, "mem_ref of non-pointer")
-    ).
-mlds_lval_type(ml_global_var_ref(_)) = _ :-
-    sorry($module, $pred, "global_var_ref NYI").
-
     % Succeeds iff the Rval represents an enumeration object in the Java
     % backend. We need to check both Rvals that are variables and Rvals
     % that are casts. We need to know this in order to append the field name
@@ -279,6 +235,7 @@ interface_is_special("MethodPtrN").
     % for all names. At the moment it only affects library modules.
     %
 :- pred enforce_java_names(string::in, string::out) is det.
+:- pragma consider_used(enforce_java_names/2).
 
 enforce_java_names(Name, JavaName) :-
     % If the Name contains one or more dots (`.'), then capitalize
