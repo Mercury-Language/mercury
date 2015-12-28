@@ -85,6 +85,7 @@ syn keyword mercuryKeyword      use_module
 syn keyword mercuryKeyword      where
 
 syn keyword mercuryPragma       check_termination
+syn keyword mercuryPragma       consider_used
 syn keyword mercuryPragma       does_not_terminate
 syn keyword mercuryPragma       fact_table
 syn keyword mercuryPragma       inline
