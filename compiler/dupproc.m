@@ -384,17 +384,6 @@ standardize_maybe_code_addr(MaybeCodeAddr, MaybeStdCodeAddr, DupProcMap) :-
         MaybeStdCodeAddr = yes(StdCodeAddr)
     ).
 
-    % Compute the standard form of a list(code_addr).
-    %
-:- pred standardize_code_addrs(list(code_addr)::in, list(code_addr)::out,
-    map(proc_label, proc_label)::in) is det.
-
-standardize_code_addrs([], [], _DupProcMap).
-standardize_code_addrs([CodeAddr | CodeAddrs], [StdCodeAddr | StdCodeAddrs],
-        DupProcMap) :-
-    standardize_code_addr(CodeAddr, StdCodeAddr, DupProcMap),
-    standardize_code_addrs(CodeAddrs, StdCodeAddrs, DupProcMap).
-
     % Compute the standard form of an rval.
     %
 :- pred standardize_rval(rval::in, rval::out, map(proc_label, proc_label)::in)

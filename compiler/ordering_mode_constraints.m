@@ -612,6 +612,7 @@ minimum_reordering(OCI, Order) :-
     %
 :- pred original_order_constraints(int::in,
     mode_ordering_constraints::out) is det.
+:- pragma consider_used(original_order_constraints/2).
 
 original_order_constraints(N, MOCs) :-
     complete_order_constraints(1 `..` N, MOCs).
@@ -646,6 +647,7 @@ add_complete_order_constraints([Conjunct | Conjuncts], !MOCs) :-
     %
 :- pred constrain_if_possible(mode_ordering_constraints::in,
     ordering_constraints_info::in, ordering_constraints_info::out) is det.
+:- pragma consider_used(constrain_if_possible/3).
 
 constrain_if_possible([], !OCI).
 constrain_if_possible([Constraint | Constraints], !OCI) :-

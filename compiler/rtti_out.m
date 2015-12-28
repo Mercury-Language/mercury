@@ -401,6 +401,7 @@ make_tc_instance_constraint_id(TCName, TCTypes, Ordinal, NumTypes, RttiId) :-
 
 :- pred output_code_addr_in_list(code_addr::in,
     io::di, io::uo) is det.
+:- pragma consider_used(output_code_addr_in_list/3).
 
 output_code_addr_in_list(CodeAddr, !IO) :-
     io.write_string("\t", !IO),
@@ -1445,17 +1446,6 @@ output_res_name_ordered_table_element(RttiTypeCtor, MaybeResFunctor, !IO) :-
 make_code_addr(ProcLabel) =
     make_entry_label_from_rtti(ProcLabel, no).
 
-:- pred output_reserved_address(reserved_address::in, io::di, io::uo) is det.
-
-output_reserved_address(null_pointer, !IO) :-
-    io.write_string("NULL", !IO).
-output_reserved_address(small_pointer(Val), !IO) :-
-    io.write_string("(const void *) ", !IO),
-    io.write_int(Val, !IO).
-output_reserved_address(reserved_object(_, _, _), !IO) :-
-    % These should only be used for the MLDS back-end.
-    unexpected($module, $pred, "reserved_object").
-
 %-----------------------------------------------------------------------------%
 
 :- pred output_functor_number_map(llds_out_info::in, rtti_type_ctor::in,
@@ -1878,15 +1868,6 @@ output_cast_addr_of_rtti_datas(Cast, [RttiData | RttiDatas], !IO) :-
         output_cast_addr_of_rtti_data(Cast), !IO),
     io.write_string("\n", !IO).
 
-:- pred output_addr_of_rtti_datas(list(rtti_data)::in, io::di, io::uo) is det.
-
-output_addr_of_rtti_datas([], !IO).
-output_addr_of_rtti_datas([RttiData | RttiDatas], !IO) :-
-    io.write_string("\t", !IO),
-    io.write_list([RttiData | RttiDatas], ",\n\t", output_addr_of_rtti_data,
-        !IO),
-    io.write_string("\n", !IO).
-
 output_cast_addr_of_rtti_data(Cast, RttiData, !IO) :-
     io.write_string(Cast, !IO),
     output_addr_of_rtti_data(RttiData, !IO).
@@ -1998,6 +1979,7 @@ output_exist_locns(Locns, !IO) :-
 
 :- pred output_maybe_static_code_addr(maybe(code_addr)::in,
     io::di, io::uo) is det.
+:- pragma consider_used(output_maybe_static_code_addr/3).
 
 output_maybe_static_code_addr(yes(CodeAddr), !IO) :-
     output_static_code_addr(CodeAddr, !IO).

@@ -95,13 +95,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_module_target_acc(globals::in, dependency_file::in,
-    bool::in, bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
-
-make_module_target_acc(Globals, TargetFile, !Succeeded, !Info, !IO) :-
-    make_module_target(Globals, TargetFile, TargetSucceeded, !Info, !IO),
-    bool.and(TargetSucceeded, !Succeeded).
-
 make_module_target(Globals, DepFile, Succeeded, !Info, !IO) :-
     make_module_target_extra_options([], Globals, DepFile, Succeeded,
         !Info, !IO).

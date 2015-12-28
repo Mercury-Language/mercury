@@ -539,6 +539,7 @@ ml_gen_tag_member(Name, Context) =
 
 :- func ml_gen_tag_constant(prog_context, type_ctor, cons_tag_values,
     constructor) = list(mlds_defn).
+:- pragma consider_used(ml_gen_tag_constant/4).
 
 ml_gen_tag_constant(Context, TypeCtor, ConsTagValues, Ctor) = Defns :-
     % Check if this constructor uses a secondary tag.

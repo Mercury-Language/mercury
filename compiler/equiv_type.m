@@ -876,16 +876,6 @@ replace_in_prog_constraint_list(MaybeRecord, TypeEqvMap, !Constraints, !VarSet,
         replace_in_prog_constraint_location(MaybeRecord, TypeEqvMap),
         !Constraints, !VarSet, !EquivTypeInfo, !UsedModules).
 
-:- pred replace_in_prog_constraint(type_eqv_map::in,
-    prog_constraint::in, prog_constraint::out, tvarset::in, tvarset::out,
-    eqv_expanded_info::in, eqv_expanded_info::out) is det.
-
-replace_in_prog_constraint(TypeEqvMap, Constraint0, Constraint, !VarSet,
-        !EquivTypeInfo) :-
-    replace_in_prog_constraint_location(dont_record_sym_name_use, TypeEqvMap,
-        Constraint0, Constraint, !VarSet, !EquivTypeInfo,
-        used_modules_init, _).
-
 :- pred replace_in_prog_constraint_location(maybe_record_sym_name_use::in,
     type_eqv_map::in, prog_constraint::in, prog_constraint::out,
     tvarset::in, tvarset::out, eqv_expanded_info::in, eqv_expanded_info::out,

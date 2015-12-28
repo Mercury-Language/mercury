@@ -846,15 +846,11 @@ get_slack_vars(Info, Info ^ lpi_slack_vars).
 get_art_vars(Info, Info ^ lpi_art_vars).
 
 :- pred set_varset(varset::in, lp_info::in, lp_info::out) is det.
-:- pred set_urs_vars(map(var, pair(var))::in, lp_info::in, lp_info::out)
-    is det.
 :- pred set_slack_vars(list(var)::in, lp_info::in, lp_info::out) is det.
 :- pred set_art_vars(list(var)::in, lp_info::in, lp_info::out) is det.
 
 set_varset(VarSet, !Info) :-
     !Info ^ lpi_varset := VarSet.
-set_urs_vars(URSVars, !Info) :-
-    !Info ^ lpi_urs_map := URSVars.
 set_slack_vars(Slack, !Info) :-
     !Info ^ lpi_slack_vars := Slack.
 set_art_vars(Art, !Info) :-
@@ -879,6 +875,7 @@ between(Min, Max, I) :-
 %
 
 :- pred show_tableau(tableau::in, io::di, io::uo) is det.
+:- pragma consider_used(show_tableau/3).
 
 show_tableau(Tableau, !IO) :-
     Tableau = tableau(N, M, _, _, _, _, _),

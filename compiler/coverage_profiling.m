@@ -1371,33 +1371,6 @@ goal_info_get_dp_info(GoalInfo) = DPInfo :-
         unexpected($module, $pred, "MaybeDPInfo = no")
     ).
 
-:- func goal_info_get_maybe_dp_coverage_info(hlds_goal_info) =
-    maybe(dp_coverage_goal_info).
-
-goal_info_get_maybe_dp_coverage_info(GoalInfo) = MaybeCoverageInfo :-
-    MaybeDPInfo = goal_info_get_maybe_dp_info(GoalInfo),
-    (
-        MaybeDPInfo = yes(DPInfo),
-        DPInfo = dp_goal_info(_, MaybeCoverageInfo)
-    ;
-        MaybeDPInfo = no,
-        MaybeCoverageInfo = no
-    ).
-
-:- func goal_get_maybe_dp_port_counts_coverage(hlds_goal) =
-    port_counts_give_coverage_after.
-
-goal_get_maybe_dp_port_counts_coverage(Goal) = PortCountsGiveCoverageAfter :-
-    Goal = hlds_goal(_, GoalInfo),
-    MaybeCoverageInfo = goal_info_get_maybe_dp_coverage_info(GoalInfo),
-    (
-        MaybeCoverageInfo =
-            yes(dp_coverage_goal_info(_, PortCountsGiveCoverageAfter))
-    ;
-        MaybeCoverageInfo = no,
-        PortCountsGiveCoverageAfter = no_port_counts_give_coverage_after
-    ).
-
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.coverage_profiling.
 %-----------------------------------------------------------------------------%

@@ -522,13 +522,6 @@ is_true(gte([], Const)) :- Const =< rat.zero.
 is_true(lte([], Const)) :- Const >= rat.zero.
 is_true(eq([],  Const)) :- Const =  rat.zero.
 
-    % Put each constraint in the list in standard form (see below).
-    %
-:- func standardize_constraints(constraints) = constraints.
-
-standardize_constraints(Constraints) =
-    list.map(standardize_constraint, Constraints).
-
     % Put a constraint into standard form. Every constraint has its terms list
     % in increasing order of variable name and then multiplied so that
     % the absolute value of the leading % coefficient is one.
@@ -938,13 +931,6 @@ negate_constraint(gte(Terms, Const)) = lte(negate_lp_terms(Terms), -Const).
 :- func negate_lp_terms(lp_terms) = lp_terms.
 
 negate_lp_terms(Terms) = assoc_list.map_values_only((func(X) = (-X)), Terms).
-
-:- func add_var(map(lp_var, rat), lp_var, rat) = map(lp_var, rat).
-
-add_var(Map0, Var, Coeff) = Map :-
-    Acc1 = ( if map.search(Map0, Var, Acc0) then Acc0 else zero ),
-    Acc  = Acc1 + Coeff,
-    map.set(Var, Acc, Map0, Map).
 
 %-----------------------------------------------------------------------------%
 
@@ -2293,6 +2279,7 @@ get_vars_from_terms([Var - _ | Coeffs], !SetVar) :-
     % has a coefficient of zero.
     %
 :- pred write_term(lp_varset::in, lp_term::in, io::di, io::uo) is det.
+:- pragma consider_used(write_term/4).
 
 write_term(Varset, Var - Coefficient, !IO) :-
     ( if Coefficient > zero then
@@ -2341,6 +2328,7 @@ operator_to_string(lp_eq )   = "=".
 operator_to_string(lp_gt_eq) = ">=".
 
 :- pred write_vars(varset::in, lp_vars::in, io::di, io::uo) is det.
+:- pragma consider_used(write_vars/4).
 
 write_vars(Varset, Vars, !IO) :-
     io.write_string("[ ", !IO),
@@ -2369,6 +2357,7 @@ var_to_string(Varset, Var) = varset.lookup_name(Varset, Var, "Unnamed").
     %
 :- pred write_matrix(lp_varset::in, bool::in, matrix::in, io::di, io::uo)
     is det.
+:- pragma consider_used(write_matrix/5).
 
 write_matrix(Varset, Labels, Matrix, !IO) :-
     io.write_list(Matrix, "\n", write_vector(Varset, Labels), !IO).

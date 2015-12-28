@@ -101,7 +101,8 @@ ml_generate_tag_switch(TaggedCases, Var, CodeModel, CanFail, Context,
     %
     % For such targets, you would want to employ this code generation scheme,
     % which is not (yet) implemented, if any value in CaseIdPtagsMap is a set
-    % with more than one element.
+    % with more than one element. One could test for that condition with the
+    % (currently unused) find_any_split_cases predicate.
 
     % Generate the switch on the primary tag.
     gen_ptag_cases(PtagCaseList, CodeMap, Var, CanFail, CodeModel,
@@ -147,24 +148,13 @@ statement_contains_label(Statement) :-
     statement_contains_statement(Statement, Label),
     Label = statement(ml_stmt_label(_), _).
 
-:- pred lookup_code_map(code_map::in, case_id::in, code_model::in,
-    statement::out, ml_gen_info::in, ml_gen_info::out) is det.
-
-lookup_code_map(CodeMap, CaseId, CodeModel, Statement, !Info) :-
-    map.lookup(CodeMap, CaseId, MaybeCode),
-    (
-        MaybeCode = immediate(Statement)
-    ;
-        MaybeCode = generate(Goal),
-        ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, !Info)
-    ).
-
 :- type is_a_case_split_between_ptags
     --->    no_case_is_split_between_ptags
     ;       some_case_is_split_between_ptags.
 
 :- pred find_any_split_cases(case_id_ptags_map::in,
     is_a_case_split_between_ptags::out) is det.
+:- pragma consider_used(find_any_split_cases/2).
 
 find_any_split_cases(CaseIdPtagsMap, IsAnyCaseSplit) :-
     map.foldl(find_any_split_cases_2, CaseIdPtagsMap,
@@ -268,6 +258,18 @@ gen_ptag_case(PtagCase, CodeMap, Var, CanFail, CodeModel, PtagCountMap,
 :- func make_ptag_match(tag_bits) = mlds_case_match_cond.
 
 make_ptag_match(Ptag) = match_value(ml_const(mlconst_int(Ptag))).
+
+:- pred lookup_code_map(code_map::in, case_id::in, code_model::in,
+    statement::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+lookup_code_map(CodeMap, CaseId, CodeModel, Statement, !Info) :-
+    map.lookup(CodeMap, CaseId, MaybeCode),
+    (
+        MaybeCode = immediate(Statement)
+    ;
+        MaybeCode = generate(Goal),
+        ml_gen_goal_as_branch_block(CodeModel, Goal, Statement, !Info)
+    ).
 
 %-----------------------------------------------------------------------------%
 

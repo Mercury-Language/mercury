@@ -890,12 +890,6 @@ final(Var) = out(Var).
 
 var_at_goal_id(GoalId, Var) = Var `at` GoalId.
 
-:- func var_at_goal(hlds_goal, prog_var) = rep_var.
-
-var_at_goal(Goal, Var) = Var `at` GoalId :-
-    Goal = hlds_goal(_, GoalInfo),
-    GoalId = goal_info_get_goal_id(GoalInfo).
-
 :- pred true_var((func(prog_var) = rep_var)::in(func(in) = out is det),
     prog_var::in, mode_constraint::in, mode_constraint::out,
     mode_constraint_info::in, mode_constraint_info::out) is det.
@@ -1822,6 +1816,7 @@ generic_call_constrain_var(Var, GoalId, !Constraint, !GCInfo) :-
 :- pred constrict_to_vars(list(prog_var)::in, set_of_progvar::in,
     goal_id::in, mode_constraint::in, mode_constraint::out,
     goal_constraints_info::in, goal_constraints_info::out) is det.
+:- pragma consider_used(constrict_to_vars/7).
 
 constrict_to_vars(NonLocals, GoalVars, GoalId, !Constraint, !GCInfo) :-
     get_forward_goal_path_map(!.GCInfo ^ mc_info, ForwardGoalPathMap),

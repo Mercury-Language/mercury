@@ -1542,14 +1542,6 @@ module_target_to_file_name(Globals, ModuleName, TargetType, MkDir, FileName,
     module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
         MkDir, do_not_search, FileName, !IO).
 
-:- pred module_target_to_search_file_name(globals::in, module_name::in,
-    module_target_type::in, file_name::out, io::di, io::uo) is det.
-
-module_target_to_search_file_name(Globals, ModuleName, TargetType, FileName,
-        !IO) :-
-    module_target_to_file_name_maybe_search(Globals, ModuleName, TargetType,
-        do_not_create_dirs, do_search, FileName, !IO).
-
 :- pred module_target_to_file_name_maybe_search(globals::in, module_name::in,
     module_target_type::in, maybe_create_dirs::in, maybe_search::in,
     file_name::out, io::di, io::uo) is det.

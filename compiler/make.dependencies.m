@@ -1073,16 +1073,6 @@ find_transitive_implementation_imports(Globals, ModuleIndex, Success, Modules,
         ModuleIndex, Success, Modules0, !Info, !IO),
     Modules = insert(Modules0, ModuleIndex).
 
-:- pred find_transitive_interface_imports(globals::in, module_index::in,
-    bool::out, deps_set(module_index)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
-
-find_transitive_interface_imports(Globals, ModuleIndex, Success, Modules,
-        !Info, !IO) :-
-    find_transitive_module_dependencies(Globals, interface_imports, any_module,
-        ModuleIndex, Success, Modules0, !Info, !IO),
-    delete(ModuleIndex, Modules0, Modules).
-
 :- pred find_transitive_module_dependencies(globals::in,
     transitive_dependencies_type::in, module_locn::in, module_index::in,
     bool::out, deps_set(module_index)::out, make_info::in, make_info::out,

@@ -1350,6 +1350,7 @@ constraint_has_no_solutions(DomainMap) :-
     list.member(tdomain(set.init), map.values(DomainMap)).
 
 :- pred constraint_has_one_solution(type_domain_map::in) is semidet.
+:- pragma consider_used(constraint_has_one_solution/1).
 
 constraint_has_one_solution(DomainMap) :-
     list.map(is_singleton_domain, map.values(DomainMap), _).
@@ -2218,6 +2219,7 @@ tvar_to_type(TVar) = type_variable(TVar, kind_star).
 
 :- pred print_guess(tvarset::in, pair(tvar, type_domain)::in, io::di, io::uo)
     is det.
+:- pragma consider_used(print_guess/4).
 
 print_guess(TVarSet, Guess, !IO) :-
     io.print("        Guessing ", !IO),
@@ -2278,6 +2280,7 @@ print_conj_constraint_change(TVarSet, ConjConstraintA, ConjConstraintB, !IO) :-
 
 :- pred print_domain_map_change(tvarset::in, type_domain_map::in,
     pair(tvar, type_domain)::in, io::di, io::uo) is det.
+:- pragma consider_used(print_domain_map_change/5).
 
 print_domain_map_change(TVarSet, OldDomainMap, TVar - NewDomain, !IO) :-
     ( if map.search(OldDomainMap, TVar, OldDomain) then

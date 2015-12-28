@@ -1078,19 +1078,6 @@ write_msg_components([Component | Components], MaybeContext, Indent, Globals,
     write_msg_components(Components, MaybeContext, Indent, Globals,
         !First, !PrintedSome, !AlreadyPrintedVerbose, !IO).
 
-:- pred unsafe_cast_to_io_pred(pred(io, io)::in,
-    pred(io, io)::out(pred(di, uo) is det)) is det.
-
-:- pragma foreign_proc("C",
-    unsafe_cast_to_io_pred(Anything::in, Pred::out(pred(di, uo) is det)),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Pred = Anything;
-").
-
-unsafe_cast_to_io_pred(_, _) :-
-    unexpected($module, $pred, "unsafe_cast_to_io_pred").
-
 %-----------------------------------------------------------------------------%
 
 :- type maybe_first_in_msg

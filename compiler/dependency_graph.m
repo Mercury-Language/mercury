@@ -511,24 +511,25 @@ add_dependency_arcs_in_cons(Caller, ConsId, !DepGraph) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred write_dependency_ordering( list(list(pred_proc_id))::in,
-    module_info::in, int::in, io::di, io::uo) is det.
+:- pred write_dependency_ordering(module_info::in, int::in,
+    list(list(pred_proc_id))::in, io::di, io::uo) is det.
+:- pragma consider_used(write_dependency_ordering/5).
 
-write_dependency_ordering([], _ModuleInfo, _N, !IO) :-
+write_dependency_ordering(_ModuleInfo, _CurSCCNum, [], !IO) :-
     io.write_string("\n", !IO).
-write_dependency_ordering([Clique | Rest], ModuleInfo, N, !IO) :-
-    io.write_string("% Clique ", !IO),
-    io.write_int(N, !IO),
+write_dependency_ordering(ModuleInfo, CurSCCNum, [SCC | SCCs], !IO) :-
+    io.write_string("% SCC ", !IO),
+    io.write_int(CurSCCNum, !IO),
     io.write_string("\n", !IO),
-    write_clique(Clique, ModuleInfo, !IO),
-    N1 = N + 1,
-    write_dependency_ordering(Rest, ModuleInfo, N1, !IO).
+    write_scc(ModuleInfo, SCC, !IO),
+    write_dependency_ordering(ModuleInfo, CurSCCNum + 1, SCCs, !IO).
 
-:- pred write_clique(list(pred_proc_id)::in, module_info::in, io::di, io::uo)
+:- pred write_scc(module_info::in, list(pred_proc_id)::in, io::di, io::uo)
     is det.
 
-write_clique([], _ModuleInfo, !IO).
-write_clique([proc(PredId, ProcId) | Rest], ModuleInfo, !IO) :-
+write_scc(_ModuleInfo, [], !IO).
+write_scc(ModuleInfo, [PredProcId | PredProcIds], !IO) :-
+    PredProcId = proc(PredId, ProcId),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     Name = pred_info_name(PredInfo),
     proc_info_get_declared_determinism(ProcInfo, Det),
@@ -539,7 +540,7 @@ write_clique([proc(PredId, ProcId) | Rest], ModuleInfo, !IO) :-
     mercury_output_pred_mode_subdecl(output_mercury,ModeVarSet,
         unqualified(Name), Modes, Det, !IO),
     io.write_string("\n", !IO),
-    write_clique(Rest, ModuleInfo, !IO).
+    write_scc(ModuleInfo, PredProcIds, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -664,29 +665,19 @@ is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Find the SCCs called from a given SCC.
-    %
-:- pred get_called_scc_ids(scc_id::in, digraph(scc_id)::in, set(scc_id)::out)
-    is det.
-
-get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
-    digraph.lookup_key(SCCRel, SCCid, SCCidKey),
-    digraph.lookup_from(SCCRel, SCCidKey, CalledSCCKeys),
-    set.to_sorted_list(CalledSCCKeys, CalledSCCKeyList),
-    list.map(digraph.lookup_vertex(SCCRel), CalledSCCKeyList, CalledSCCs),
-    set.list_to_set(CalledSCCs, CalledSCCSet).
-
-%-----------------------------------------------------------------------------%
-
 :- type scc_id == int.
 
     % An SCC cannot be merged into its parents if one of its procedures
     % is called as an aggregate query.
     %
+    % XXX This predicate is not called from anywhere. Maybe it should be;
+    % maybe not.
+    %
 :- pred handle_higher_order_args(list(prog_var)::in, bool::in, scc_id::in,
     multi_map(prog_var, pred_proc_id)::in, map(pred_proc_id, scc_id)::in,
     digraph(scc_id)::in, digraph(scc_id)::out,
     set(scc_id)::in, set(scc_id)::out) is det.
+:- pragma consider_used(handle_higher_order_args/9).
 
 handle_higher_order_args([], _, _, _, _, !SCCRel, !NoMerge).
 handle_higher_order_args([Arg | Args], IsAgg, SCCid, Map, PredSCC,

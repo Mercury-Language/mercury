@@ -285,6 +285,7 @@ ml_gen_ordinary_pragma_csharp_java_proc(TargetLang, OrdinaryKind, Attributes,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     prog_context::in, list(mlds_defn)::out, list(statement)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
+:- pragma consider_used(ml_gen_ordinary_pragma_managed_proc/12).
 
 ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
         Args, ExtraArgs, ForeignCode, Context, Decls, Statements, !Info) :-
