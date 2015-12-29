@@ -105,7 +105,7 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             !Info),
 
         simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
-        SubGoalCalledProcs = goal_callees(Else0),
+        SubGoalCalledProcs = goal_proc_refs(Else0),
         set.union(SubGoalCalledProcs,
             DeletedCallCallees0, DeletedCallCallees),
         simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info)
@@ -156,7 +156,7 @@ simplify_goal_ite(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 
             simplify_info_get_deleted_call_callees(!.Info,
                 DeletedCallCallees0),
-            SubGoalCalledProcs = goal_callees(Then0),
+            SubGoalCalledProcs = goal_proc_refs(Then0),
             set.union(SubGoalCalledProcs,
                 DeletedCallCallees0, DeletedCallCallees),
             simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info)

@@ -186,7 +186,7 @@ simplify_conj(!.PrevGoals, [Goal0 | Goals0], Goals, ConjInfo,
             then
                 simplify_info_get_deleted_call_callees(!.Info,
                     DeletedCallCallees0),
-                SubGoalCalledProcs = goals_callees(Goals0),
+                SubGoalCalledProcs = goals_proc_refs(Goals0),
                 set.union(SubGoalCalledProcs,
                     DeletedCallCallees0, DeletedCallCallees),
                 simplify_info_set_deleted_call_callees(DeletedCallCallees,

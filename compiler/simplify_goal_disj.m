@@ -303,7 +303,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
             )
         then
             simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
-            SubGoalCalledProcs = goal_callees(Goal),
+            SubGoalCalledProcs = goal_proc_refs(Goal),
             set.union(SubGoalCalledProcs,
                 DeletedCallCallees0, DeletedCallCallees),
             simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info),

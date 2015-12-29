@@ -1079,7 +1079,7 @@ cases_to_switch(Var, Cases0, InstMap, GoalExpr, !LocalInfo) :-
         CanFail = compute_can_fail(ConsIds, Cases1),
 
         DeletedCallCallees0 = !.LocalInfo ^ lsdi_deleted_callees,
-        UnreachableCalledProcs = goals_callees(UnreachableCaseGoals),
+        UnreachableCalledProcs = goals_proc_refs(UnreachableCaseGoals),
         set.union(UnreachableCalledProcs,
             DeletedCallCallees0, DeletedCallCallees),
         !LocalInfo ^ lsdi_deleted_callees := DeletedCallCallees

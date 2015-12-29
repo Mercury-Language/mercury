@@ -173,8 +173,14 @@
     %
 :- pred clause_list_size(list(clause)::in, int::out) is det.
 
-:- func goals_callees(list(hlds_goal)) = set(pred_proc_id).
-:- func goal_callees(hlds_goal) = set(pred_proc_id).
+    % Return a set of all the procedures referred to by the given goal or
+    % goals. Differs from goal_calls not just in the fact that it returns
+    % a set of pred_proc_ids all at once, but also in that it also returns
+    % procedures which are not CALLED in the given goal or goals but which
+    % are referred to in other ways (e.g. by having their address taken).
+    %
+:- func goals_proc_refs(list(hlds_goal)) = set(pred_proc_id).
+:- func goal_proc_refs(hlds_goal) = set(pred_proc_id).
 
     % Test whether the goal calls the given procedure.
     %
@@ -1079,18 +1085,129 @@ goal_expr_size(GoalExpr, Size) :-
 
 %-----------------------------------------------------------------------------%
 
-goals_callees(Goals) = CalleesSet :-
-    CalleeSets = list.map(goal_callees, Goals),
-    CalleesSet = set.union_list(CalleeSets).
+goals_proc_refs(Goals) = ReferredToProcs :-
+    list.foldl(goal_proc_refs_acc, Goals, set.init, ReferredToProcs).
 
-goal_callees(Goal) = CalleesSet :-
-    % We need the lambda because this is not the only mode of goal_calls/2.
-    GoalCalls =
-        ( pred(PredProcId::out) is nondet :-
-            goal_calls(Goal, PredProcId)
+goal_proc_refs(Goal) = ReferredToProcs :-
+    goal_proc_refs_acc(Goal, set.init, ReferredToProcs).
+
+:- pred goal_proc_refs_acc(hlds_goal::in,
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
+
+goal_proc_refs_acc(Goal, !ReferredToProcs) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
+    (
+        GoalExpr = conj(_ConjType, Conjuncts),
+        list.foldl(goal_proc_refs_acc, Conjuncts, !ReferredToProcs)
+    ;
+        GoalExpr = disj(Disjuncts),
+        list.foldl(goal_proc_refs_acc, Disjuncts, !ReferredToProcs)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        list.foldl(case_proc_refs_acc, Cases, !ReferredToProcs)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        goal_proc_refs_acc(Cond, !ReferredToProcs),
+        goal_proc_refs_acc(Then, !ReferredToProcs),
+        goal_proc_refs_acc(Else, !ReferredToProcs)
+    ;
+        GoalExpr = negation(SubGoal),
+        goal_proc_refs_acc(SubGoal, !ReferredToProcs)
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ( if
+            Reason = from_ground_term(_, FGT),
+            ( FGT = from_ground_term_construct
+            ; FGT = from_ground_term_deconstruct
+            )
+        then
+            % These goals contain only construction and deconstruction
+            % unifications respectively.
+            true
+        else
+            goal_proc_refs_acc(SubGoal, !ReferredToProcs)
+        )
+    ;
+        GoalExpr = shorthand(Shorthand),
+        (
+            Shorthand = bi_implication(SubGoalA, SubGoalB),
+            goal_proc_refs_acc(SubGoalA, !ReferredToProcs),
+            goal_proc_refs_acc(SubGoalB, !ReferredToProcs)
+        ;
+            Shorthand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
+            goal_proc_refs_acc(MainGoal, !ReferredToProcs),
+            list.foldl(goal_proc_refs_acc, OrElseGoals, !ReferredToProcs)
+        ;
+            Shorthand = try_goal(_, _, SubGoal),
+            goal_proc_refs_acc(SubGoal, !ReferredToProcs)
+        )
+    ;
+        ( GoalExpr = plain_call(PredId, ProcId, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, PredId, ProcId, _, _, _, _)
         ),
-    solutions(GoalCalls, CalleesList),
-    set.sorted_list_to_set(CalleesList, CalleesSet).
+        PredProcId = proc(PredId, ProcId),
+        set.insert(PredProcId, !ReferredToProcs)
+    ;
+        GoalExpr = unify(_LHS, RHS, _, Unification, _),
+        (
+            RHS = rhs_var(_)
+        ;
+            RHS = rhs_functor(RHSConsId, _IsExistConstruct, _ArgVars),
+            cons_id_proc_refs_acc(RHSConsId, !ReferredToProcs)
+        ;
+            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _, SubGoal),
+            goal_proc_refs_acc(SubGoal, !ReferredToProcs)
+        ),
+        (
+            Unification = construct(_LHSVar, ConstructConsId, _RHSVars,
+                _ArgModes, _How, _IsUnique, _SubInfo),
+            cons_id_proc_refs_acc(ConstructConsId, !ReferredToProcs)
+        ;
+            ( Unification = deconstruct(_, _, _, _, _, _)
+            ; Unification = assign(_, _)
+            ; Unification = simple_test(_, _)
+            ; Unification = complicated_unify(_, _, _)
+            )
+        )
+    ;
+        GoalExpr = generic_call(_, _, _, _, _)
+    ).
+
+:- pred case_proc_refs_acc(case::in,
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
+
+case_proc_refs_acc(Case, !ReferredToProcs) :-
+    Case = case(_MainConsId, _OtherConsIds, Goal),
+    goal_proc_refs_acc(Goal, !ReferredToProcs).
+
+:- pred cons_id_proc_refs_acc(cons_id::in,
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
+
+cons_id_proc_refs_acc(ConsId, !ReferredToProcs) :-
+    (
+        ( ConsId = cons(_, _, _)
+        ; ConsId = tuple_cons(_)
+        ; ConsId = int_const(_)
+        ; ConsId = float_const(_)
+        ; ConsId = char_const(_)
+        ; ConsId = string_const(_)
+        ; ConsId = impl_defined_const(_)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = type_info_const(_)
+        ; ConsId = typeclass_info_const(_)
+        ; ConsId = ground_term_const(_, _)
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = table_io_entry_desc(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        )
+    ;
+        ConsId = closure_cons(ShroudedPredProcId, _LambdaMethod),
+        PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
+        set.insert(PredProcId, !ReferredToProcs)
+    ).
 
 %-----------------------------------------------------------------------------%
 %

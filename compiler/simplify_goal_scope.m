@@ -306,7 +306,7 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
         Goal = true_goal_with_context(Context),
 
         simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
-        SubGoalCalledProcs = goal_callees(SubGoal),
+        SubGoalCalledProcs = goal_proc_refs(SubGoal),
         set.union(SubGoalCalledProcs,
             DeletedCallCallees0, DeletedCallCallees),
         simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info)

@@ -75,7 +75,7 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         MaybeInstConsIds = yes(ConsIds),
 
         simplify_info_get_deleted_call_callees(!.Info, DeletedCallCallees0),
-        SubGoalCalledProcs = goals_callees(UnreachableCaseGoals),
+        SubGoalCalledProcs = goals_proc_refs(UnreachableCaseGoals),
         set.union(SubGoalCalledProcs,
             DeletedCallCallees0, DeletedCallCallees),
         simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info)
