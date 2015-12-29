@@ -329,7 +329,7 @@ endif
 
 #-----------------------------------------------------------------------------#
 #
-# Some extra rules that we need for the C and asm back-ends
+# Some extra rules that we need for the C back-ends
 #
 ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
 
