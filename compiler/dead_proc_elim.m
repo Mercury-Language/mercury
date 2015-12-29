@@ -41,7 +41,8 @@
     --->    entity_proc(pred_id, proc_id)
     ;       entity_table_struct(pred_id, proc_id)
     ;       entity_type_ctor(module_name, string, int)
-    ;       entity_const_struct(int).
+    ;       entity_const_struct(int)
+    ;       entity_mutable(module_name, string, mutable_pred_kind).
 
 :- type maybe_needed
     --->    not_eliminable
@@ -445,7 +446,9 @@ dead_proc_examine(!.Queue, !.Examined, AnalyzeLinks, ModuleInfo, !Needed) :-
                 dead_proc_examine_proc(PredProcId, AnalyzeTraceGoalProcs,
                     ModuleInfo, !Queue, !Needed)
             ;
-                Entity = entity_table_struct(_PredId, _ProcId)
+                ( Entity = entity_table_struct(_PredId, _ProcId)
+                ; Entity = entity_mutable(_ModuleName, _Name, _PredKind)
+                )
                 % Nothing further to examine.
             ;
                 Entity = entity_type_ctor(Module, Type, Arity),
@@ -616,6 +619,13 @@ dead_proc_examine_proc(proc(PredId, ProcId), AnalyzeTraceGoalProcs,
             ),
             TableStructEntity = entity_table_struct(PredId, ProcId),
             map.set(TableStructEntity, not_eliminable, !Needed)
+        ),
+        pred_info_get_origin(PredInfo, Origin),
+        ( if Origin = origin_mutable(ModuleName, MutableName, PredKind) then
+            MutableEntity = entity_mutable(ModuleName, MutableName, PredKind),
+            map.set(MutableEntity, not_eliminable, !Needed)
+        else
+            true
         )
     else
         trace [io(!IO), compile_time(flag("dead_proc_elim"))] (
@@ -1112,7 +1122,7 @@ dead_proc_warn_pred(ModuleInfo, PredTable, WarnWithLiveSiblings, Needed,
         ProcIds = pred_info_procids(PredInfo),
         pred_info_get_proc_table(PredInfo, ProcTable),
         list.foldl(
-            dead_proc_warn_proc(ModuleInfo, Needed, PredId,
+            dead_proc_maybe_warn_proc(ModuleInfo, Needed, PredId, PredInfo,
                 WarnWithLiveSiblings, ProcIds, ProcTable),
             ProcIds, !Specs)
     else
@@ -1120,28 +1130,47 @@ dead_proc_warn_pred(ModuleInfo, PredTable, WarnWithLiveSiblings, Needed,
     ).
 
     % If WarnWithLiveSiblings = yes:
-    %   warn about a procedure if the procedure is unused.
+    %   warn about a procedure only if the procedure is unused.
     % If WarnWithLiveSiblings = no:
-    %   warn about a procedure if the procedure is unused,
+    %   warn about a procedure only if the procedure is unused,
     %   and none of the OTHER procedures in the predicate is used.
     %
-:- pred dead_proc_warn_proc(module_info::in, needed_map::in, pred_id::in,
-    bool::in, list(proc_id)::in, proc_table::in, proc_id::in,
+    % Regardless of the value of WarnWithLiveSiblings, if the procedure
+    % is an access predicate for a mutable, warn only if the user can do
+    % something to cause the unused access predicate to not be generated,
+    % while getting the access predicates that *are* used to be generated.
+    % This may mean changing the mutable's attributes, or (if the mutable
+    % is not used at all) deleting the mutable. The key consideration is that
+    % we don't want to generate a warning if the user cannot do anything
+    % useful to shut up that warning.
+    %
+:- pred dead_proc_maybe_warn_proc(module_info::in, needed_map::in, pred_id::in,
+    pred_info::in, bool::in, list(proc_id)::in, proc_table::in, proc_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-dead_proc_warn_proc(ModuleInfo, Needed, PredId, WarnWithLiveSiblings,
-        AllProcsInPred, ProcTable, ProcId, !Specs) :-
+dead_proc_maybe_warn_proc(ModuleInfo, Needed, PredId, PredInfo,
+        WarnWithLiveSiblings, AllProcsInPred, ProcTable, ProcId, !Specs) :-
     ( if
-        % Don't warn about the procedure being unused
-        % if it is in the needed map.
-        map.contains(Needed, entity_proc(PredId, ProcId))
-    then
-        true
-    else if
-        WarnWithLiveSiblings = no,
-        some [OtherProcId] (
-            list.member(OtherProcId, AllProcsInPred),
-            map.contains(Needed, entity_proc(PredId, OtherProcId))
+        (
+            % Don't warn about the procedure being unused
+            % if it is in the needed map.
+            map.contains(Needed, entity_proc(PredId, ProcId))
+        ;
+            WarnWithLiveSiblings = no,
+            some [OtherProcId] (
+                list.member(OtherProcId, AllProcsInPred),
+                map.contains(Needed, entity_proc(PredId, OtherProcId))
+            )
+        ;
+            pred_info_get_origin(PredInfo, Origin),
+            Origin = origin_mutable(MutableModuleName, MutableName, PredKind),
+            suppress_unused_mutable_access_pred(PredKind, SuppressPredKinds),
+            some [SuppressPredKind] (
+                list.member(SuppressPredKind, SuppressPredKinds),
+                SuppressMutableEntity = entity_mutable(MutableModuleName,
+                    MutableName, SuppressPredKind),
+                map.contains(Needed, SuppressMutableEntity)
+            )
         )
     then
         true
@@ -1150,6 +1179,79 @@ dead_proc_warn_proc(ModuleInfo, Needed, PredId, WarnWithLiveSiblings,
         proc_info_get_context(ProcInfo, Context),
         Spec = warn_dead_proc(ModuleInfo, PredId, ProcId, Context),
         !:Specs = [Spec | !.Specs]
+    ).
+
+    % Given the id of an unused access predicate for a mutable,
+    % return the set of other access predicates that, if any one of them
+    % *is* used, should suppress the warning for the unused predicate.
+    %
+:- pred suppress_unused_mutable_access_pred(mutable_pred_kind::in,
+    list(mutable_pred_kind)::out) is det.
+
+suppress_unused_mutable_access_pred(Unused, Suppress) :-
+    % Note that having Unused in Suppress is harmless,
+    % and it lets us share the same code for some Unuseds.
+    (
+        Unused = mutable_pred_std_get,
+        % If the mutable is read via the get predicate that uses the I/O state,
+        % then the mutable is needed.
+        Suppress = [mutable_pred_io_get]
+    ;
+        Unused = mutable_pred_std_set,
+        % If the mutable is read, then the mutable is needed. Maybe it does not
+        % need to be writeable, but it *is* needed.
+        Suppress = [mutable_pred_std_get, mutable_pred_io_get]
+    ;
+        Unused = mutable_pred_constant_get,
+        % This is the only user visible access predicate for a constant
+        % mutable. If this is not used, the mutable is not needed.
+        Suppress = []
+    ;
+        Unused = mutable_pred_constant_secret_set,
+        % The secret set is used during initialization of the mutable.
+        % This is needed if the mutable is ever read. If there is a constant
+        % set predicate, the reading can be done only via the constant get
+        % access predicate.
+        Suppress = [mutable_pred_constant_get]
+    ;
+        ( Unused = mutable_pred_io_get
+        ; Unused = mutable_pred_io_set
+        ),
+        % If either of the io get and io set predicates is used, then
+        % the attach_to_io_state attribute is needed, which means that
+        % the *other* predicate of the pair will also be generated.
+        % If neither of the two io state access predicates is used,
+        % then the mutable itself may be needed, but its attachment to
+        % the I/O state is not.
+        Suppress = [mutable_pred_io_get, mutable_pred_io_set]
+    ;
+        ( Unused = mutable_pred_unsafe_get
+        ; Unused = mutable_pred_unsafe_set
+        ),
+        % If the unsafe get and unsafe set predicates exist, then they
+        % were created to implement one of the user-visible access predicates.
+        Suppress =
+            [mutable_pred_std_get, mutable_pred_std_set,
+            mutable_pred_io_get, mutable_pred_io_set,
+            mutable_pred_unsafe_get, mutable_pred_unsafe_set,
+            mutable_pred_constant_get]
+    ;
+        ( Unused = mutable_pred_pre_init
+        ; Unused = mutable_pred_init
+        ; Unused = mutable_pred_lock
+        ; Unused = mutable_pred_unlock
+        ),
+        % The init predicate is needed if any of the user-visible access
+        % predicates are used.
+        %
+        % If any of the other three "infrastructure" predicates is actually
+        % generated (which depends on the target platform), then the same
+        % is true for them.
+        Suppress =
+            [mutable_pred_std_get, mutable_pred_std_set,
+            mutable_pred_io_get, mutable_pred_io_set,
+            mutable_pred_unsafe_get, mutable_pred_unsafe_set,
+            mutable_pred_constant_get]
     ).
 
 :- func warn_dead_proc(module_info, pred_id, proc_id, prog_context)
@@ -1249,12 +1351,18 @@ dead_pred_elim(!ModuleInfo) :-
     queue(pred_id)::out, set_tree234(pred_id)::in, set_tree234(pred_id)::out)
     is det.
 
-dead_pred_elim_add_entity(entity_proc(PredId, _), !Queue, !Preds) :-
-    queue.put(PredId, !Queue),
-    set_tree234.insert(PredId, !Preds).
-dead_pred_elim_add_entity(entity_table_struct(_, _), !Queue, !Preds).
-dead_pred_elim_add_entity(entity_type_ctor(_, _, _), !Queue, !Preds).
-dead_pred_elim_add_entity(entity_const_struct(_), !Queue, !Preds).
+dead_pred_elim_add_entity(Entity, !Queue, !Preds) :-
+    (
+        Entity = entity_proc(PredId, _),
+        queue.put(PredId, !Queue),
+        set_tree234.insert(PredId, !Preds)
+    ;
+        ( Entity = entity_table_struct(_, _)
+        ; Entity = entity_type_ctor(_, _, _)
+        ; Entity = entity_const_struct(_)
+        ; Entity = entity_mutable(_, _, _)
+        )
+    ).
 
 :- pred dead_pred_elim_initialize(pred_id::in,
     pred_elim_info::in, pred_elim_info::out) is det.
