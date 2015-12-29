@@ -355,29 +355,6 @@ runtime:
 	@echo "No Mercury runtime needed for GRADE=$(GRADE)"
 
 else
-ifeq ($(findstring il,$(GRADE)),il)
-
-# We put the runtime and library dlls into a single assembly called `mercury'
-CSCFLAGS=/t:module
-
-# We need to build the following DLLs for the .NET runtime
-DOTNET_DLLS=mercury_il.dll mercury_dotnet.dll
-
-clean_local:
-	rm -f $(DOTNET_DLLS)
-
-runtime: $(DOTNET_DLLS)
-
-mercury_dotnet.dll: mercury_il.dll
-
-# Uncomment the following rule if you want to build Mercury in a form
-# that will work with ROTOR.
-# mercury_il.dll: mercury_il.il
-#	sed '/REMOVE FOR ROTOR/s@^@//@' mercury_il.il > mercury_il.rotor.il
-#	$(ILASM) $(ALL_ILASMFLAGS) /dll /quiet /OUT=mercury_il.dll \
-#			mercury_il.rotor.il
-
-else
 
 .PHONY: runtime
 runtime: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB)
@@ -406,7 +383,6 @@ lib$(RT_LIB_NAME).dylib: $(PIC_OBJS)
 		$(ALL_LD_LIBFLAGS) $(LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
 
-endif
 endif
 
 $(RT_LIB_NAME).init: $(CFILES)
@@ -467,14 +443,14 @@ install_dirs:
 
 ifneq "$(filter csharp% java% erlang%,$(GRADE))" ""
 
-# For these grades, there's nothing to do.
-# (The java version of the Mercury runtime is in mercury/java/runtime,
-# not mercury/runtime, and its build and installation is handled by
-# mercury/library/Mmakefile.)
-# (Runtime support for the Erlang backend is in the library directory.)
-
-.PHONY: install_headers
-install_headers:
+# For non-C grades, the only thing that needs to be done is install the runtime
+# headers (see the comment above the install_headers target for the rationale).
+# The Java version of the Mercury runtime is in ../java/runtime not this
+# directory and it is built and installed by ../library/Mmakefile.
+# The C# version of the Mercury runtime *is* in this directory (in
+# mercury_dotnet.cs.in), but it is included directly in the standard library
+# assembly (mer_std.dll) by ../library/Mmakefile.
+# The Erlang version of the Mercury runtime is in the library directory.
 
 .PHONY: install_init
 install_init:
@@ -483,19 +459,6 @@ install_init:
 install_lib:
 
 else
-
-# mercury_conf.h needs to be in a separate directory so it can be
-# overridden by a different configuration.
-.PHONY: install_headers
-install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) \
-		$(LIB_DLL_H) $(LIB_GLOBALS_H) install_dirs
-	cp `vpath_find $(HDRS) $(BODY_HDRS) $(LIB_DLL_H) $(LIB_GLOBALS_H)` \
-		$(INSTALL_INC_DIR)
-	rm -f $(INSTALL_INC_DIR)/mercury_conf.h
-	cp `vpath_find mercury_conf.h` $(INSTALL_CONF_DIR)
-	-chmod u+w $(INSTALL_CONF_DIR)/mercury_conf.h
-	cp `vpath_find mercury_conf.h.in` $(INSTALL_RECONF_DIR)/runtime
-	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
 .PHONY: install_init
 install_init: $(RT_LIB_NAME).init install_dirs
@@ -510,6 +473,26 @@ install_lib: lib$(RT_LIB_NAME).$A lib$(RT_LIB_NAME).$(EXT_FOR_SHARED_LIB) \
 	$(RANLIB) $(RANLIBFLAGS) $(INSTALL_MERC_LIB_DIR)/lib$(RT_LIB_NAME).$A
 
 endif
+
+# NOTE: we install the header files for the C version of the Mercury runtime
+# even in non-C grades.  The reason for this is that they are *not* installed
+# by the install_lib target used by the install_grades target in ../Mmakefile.
+# If we don't install them as part of the main install target then they won't
+# ever be installed and installations with non-C grade Mercury compilers that
+# also install the library in C grades will be broken.
+
+# mercury_conf.h needs to be in a separate directory so it can be overridden by
+# a different configuration.
+.PHONY: install_headers
+install_headers: $(HDRS) $(BODY_HDRS) $(MACHHDRS) \
+		$(LIB_DLL_H) $(LIB_GLOBALS_H) install_dirs
+	cp `vpath_find $(HDRS) $(BODY_HDRS) $(LIB_DLL_H) $(LIB_GLOBALS_H)` \
+		$(INSTALL_INC_DIR)
+	rm -f $(INSTALL_INC_DIR)/mercury_conf.h
+	cp `vpath_find mercury_conf.h` $(INSTALL_CONF_DIR)
+	-chmod u+w $(INSTALL_CONF_DIR)/mercury_conf.h
+	cp `vpath_find mercury_conf.h.in` $(INSTALL_RECONF_DIR)/runtime
+	cp `vpath_find $(MACHHDRS)` $(INSTALL_INC_DIR)/machdeps
 
 #-----------------------------------------------------------------------------#
 

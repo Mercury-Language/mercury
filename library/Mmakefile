@@ -424,9 +424,7 @@ $(os_subdir)robdd.pic_o \
 
 # In the past we generated liblibrary.* and then linked
 # libmer_std.* to the files.
-# XXX IL We should remove the code cleaning up IL files soon.
 realclean_local:
-	rm -f mercury_dotnet.dll mercury_il.dll
 	rm -f liblibrary.$A liblibrary.so library.init
 	rm -f $($(STD_LIB_NAME).mods:%=%.h)
 	rm -f tags LIB_FLAGS LIB_FLAGS.date

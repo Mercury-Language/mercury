@@ -254,6 +254,13 @@ install_dirs:
 # version of the wrapper script from the scripts directory and leave the
 # one here alone.
 #
+# Similarly, for compilers built in the C# grade we need to install the
+# executable assembly (currently called top_level.exe), but *not* the generated
+# wrapper script 'mercury_compile' from this directory.  As with the Java grade,
+# we use the version of the wrapper script from the scripts directory.
+# XXX This covers Mono but not actual .NET; in the latter case we don't need
+# a wrapper script at all -- probably we should just rename the assembly.
+#
 ifeq ($(findstring java,$(GRADE)),java)
 INSTALL_PROGRAM=top_level.jar
 else ifeq ($(findstring csharp,$(GRADE)),csharp)
