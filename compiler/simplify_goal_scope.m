@@ -312,68 +312,73 @@ simplify_goal_trace_goal(MaybeCompiletimeExpr, MaybeRuntimeExpr, SubGoal,
         simplify_info_set_deleted_call_callees(DeletedCallCallees, !Info)
     ;
         KeepGoal = yes,
-        MaybeRuntimeExpr = no,
-        % We keep the scope as a marker of the existence of the
-        % trace scope.
-        Goal = Goal0
-    ;
-        KeepGoal = yes,
-        MaybeRuntimeExpr = yes(RuntimeExpr),
-        % We want to execute SubGoal if and only if RuntimeExpr turns out
-        % to be true. We could have the code generators treat this kind of
-        % scope as if it were an if-then-else, but that would require
-        % duplicating most of the code required to handle code generation
-        % for if-then-elses. Instead, we transform the scope into an
-        % if-then-else, thus reducing the problem to one that has already
-        % been solved.
-        %
-        % The evaluation of the runtime condition is done as a special kind
-        % of foreign_proc, i.e. one that has yes(RuntimeExpr) as its
-        % foreign_trace_cond field. This kind of foreign_proc also acts
-        % as the marker for the fact that the then-part originated as the goal
-        % of a trace scope.
-        simplify_info_get_module_info(!.Info, ModuleInfo),
-        module_info_get_globals(ModuleInfo, Globals),
-        globals.get_target(Globals, Target),
-        PrivateBuiltin = mercury_private_builtin_module,
-        EvalPredName = "trace_evaluate_runtime_condition",
-        some [!EvalAttributes] (
-            (
-                Target = target_c,
-                !:EvalAttributes = default_attributes(lang_c)
-            ;
-                Target = target_erlang,
-                !:EvalAttributes = default_attributes(lang_erlang)
-            ;
-                Target = target_java,
-                !:EvalAttributes = default_attributes(lang_java)
-            ;
-                Target = target_csharp,
-                !:EvalAttributes = default_attributes(lang_csharp)
+        (
+            MaybeRuntimeExpr = no,
+            % We keep the scope as a marker of the existence of the
+            % trace scope.
+            Goal = Goal0
+        ;
+            KeepGoal = yes,
+            MaybeRuntimeExpr = yes(RuntimeExpr),
+            % We want to execute SubGoal if and only if RuntimeExpr turns out
+            % to be true. We could have the code generators treat this kind of
+            % scope as if it were an if-then-else, but that would require
+            % duplicating most of the code required to handle code generation
+            % for if-then-elses. Instead, we transform the scope into an
+            % if-then-else, thus reducing the problem to one that has already
+            % been solved.
+            %
+            % The evaluation of the runtime condition is done as a special kind
+            % of foreign_proc, i.e. one that has yes(RuntimeExpr) as its
+            % foreign_trace_cond field. This kind of foreign_proc also acts
+            % as the marker for the fact that the then-part originated as
+            % the goal of a trace scope.
+            simplify_info_get_module_info(!.Info, ModuleInfo),
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.get_target(Globals, Target),
+            PrivateBuiltin = mercury_private_builtin_module,
+            EvalPredName = "trace_evaluate_runtime_condition",
+            some [!EvalAttributes] (
+                (
+                    Target = target_c,
+                    !:EvalAttributes = default_attributes(lang_c)
+                ;
+                    Target = target_erlang,
+                    !:EvalAttributes = default_attributes(lang_erlang)
+                ;
+                    Target = target_java,
+                    !:EvalAttributes = default_attributes(lang_java)
+                ;
+                    Target = target_csharp,
+                    !:EvalAttributes = default_attributes(lang_csharp)
+                ),
+                set_may_call_mercury(proc_will_not_call_mercury,
+                    !EvalAttributes),
+                set_thread_safe(proc_thread_safe, !EvalAttributes),
+                set_purity(purity_semipure, !EvalAttributes),
+                set_terminates(proc_terminates, !EvalAttributes),
+                set_may_throw_exception(proc_will_not_throw_exception,
+                    !EvalAttributes),
+                set_may_modify_trail(proc_will_not_modify_trail,
+                    !EvalAttributes),
+                set_may_call_mm_tabled(will_not_call_mm_tabled,
+                    !EvalAttributes),
+                EvalAttributes = !.EvalAttributes
             ),
-            set_may_call_mercury(proc_will_not_call_mercury, !EvalAttributes),
-            set_thread_safe(proc_thread_safe, !EvalAttributes),
-            set_purity(purity_semipure, !EvalAttributes),
-            set_terminates(proc_terminates, !EvalAttributes),
-            set_may_throw_exception(proc_will_not_throw_exception,
-                !EvalAttributes),
-            set_may_modify_trail(proc_will_not_modify_trail, !EvalAttributes),
-            set_may_call_mm_tabled(will_not_call_mm_tabled, !EvalAttributes),
-            EvalAttributes = !.EvalAttributes
-        ),
-        EvalFeatures = [],
-        % The code field of the call_foreign_proc goal is ignored when
-        % its foreign_trace_cond field is set to `yes', as we do here.
-        EvalCode = "",
-        Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
-        Context = goal_info_get_context(GoalInfo0),
-        generate_foreign_proc(PrivateBuiltin, EvalPredName,
-            pf_predicate, only_mode, detism_semi, purity_semipure,
-            EvalAttributes, [], [], yes(RuntimeExpr), EvalCode,
-            EvalFeatures, instmap_delta_bind_no_var, ModuleInfo,
-            Context, CondGoal),
-        GoalExpr = if_then_else([], CondGoal, SubGoal, true_goal),
-        Goal = hlds_goal(GoalExpr, GoalInfo0)
+            EvalFeatures = [],
+            % The code field of the call_foreign_proc goal is ignored when
+            % its foreign_trace_cond field is set to `yes', as we do here.
+            EvalCode = "",
+            Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
+            Context = goal_info_get_context(GoalInfo0),
+            generate_foreign_proc(PrivateBuiltin, EvalPredName,
+                pf_predicate, only_mode, detism_semi, purity_semipure,
+                EvalAttributes, [], [], yes(RuntimeExpr), EvalCode,
+                EvalFeatures, instmap_delta_bind_no_var, ModuleInfo,
+                Context, CondGoal),
+            GoalExpr = if_then_else([], CondGoal, SubGoal, true_goal),
+            Goal = hlds_goal(GoalExpr, GoalInfo0)
+        )
     ).
 
 :- func evaluate_compile_time_condition(trace_expr(trace_compiletime),
