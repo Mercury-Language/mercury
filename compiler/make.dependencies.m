@@ -1330,19 +1330,12 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
             )
         else
             globals.get_op_mode(Globals, OpMode),
-            ( if OpMode = opm_top_make(OpModeMakePrime) then
-                OpModeMake = OpModeMakePrime
-            else
-                unexpected($pred, "OpMode != opm_top_make")
-            ),
-            (
-                OpModeMake = opmm_must_rebuild,
+            ( if OpMode = opm_top_make(opmm_must_rebuild) then
                 % With `--rebuild', a target is always considered to be
                 % out-of-date, regardless of the timestamps of its
                 % dependencies.
                 DepsResult = deps_out_of_date
-            ;
-                OpModeMake = opmm_need_not_rebuild,
+            else
                 ( if newer_timestamp(DepTimestamps, Timestamp) then
                     debug_newer_dependencies(Globals, TargetFileName,
                         MaybeTimestamp, DepFiles, DepTimestamps, !IO),
