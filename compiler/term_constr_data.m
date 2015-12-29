@@ -577,13 +577,6 @@ is_empty_primitive(term_primitive(Poly, _, _)) :-
 
 is_empty_conj(term_conj([], _, _)).
 
-    % We end up with `empty' disjunctions by abstracting disjunctions
-    % that involve variables that have zero size.
-    %
-:- pred is_empty_disj(abstract_goal::in) is semidet.
-
-is_empty_disj(term_disj([], _, _, _)).
-
 %-----------------------------------------------------------------------------%
 %
 % Code for dealing with different types of recursion.

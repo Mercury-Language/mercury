@@ -1277,7 +1277,7 @@ table_trie_step_desc(TVarSet, Step) = Str :-
 
 write_constraint_map(VarSet, VarNamePrint, Indent, ConstraintMap, !IO) :-
     write_indent(Indent, !IO),
-    io.write_string("% Constraint Map:\n", !IO),
+    io.write_string("% Constraint map:\n", !IO),
     map.foldl(write_constraint_map_entry(VarSet, VarNamePrint, Indent),
         ConstraintMap, !IO).
 

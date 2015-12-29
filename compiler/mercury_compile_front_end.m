@@ -363,11 +363,6 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
         )
     ).
 
-:- pred spec_phase_match(error_phase::in, error_spec::in) is semidet.
-
-spec_phase_match(Phase, Spec) :-
-    Spec ^ error_phase = Phase.
-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_write_initial_optfile(bool::in,

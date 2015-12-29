@@ -245,6 +245,7 @@ tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
     dependency_graph::in, list(pred_proc_id)::in,
     module_info::in, module_info::out, counter::in, counter::out,
     transform_map::in, transform_map::out) is det.
+:- pragma consider_used(maybe_tuple_scc_individual_procs/10).
 
 maybe_tuple_scc_individual_procs(_TraceCounts, _TuningParams, _DepGraph,
         [], !ModuleInfo, !Counter, !TransformMap).
@@ -1004,9 +1005,9 @@ count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo,
         % XXX: There is a problem somewhere causing CALL and EXIT
         % events not to show up for some procedures in trace count files.
         % The weighting of the procedure's costs is disabled.
-        % However, if working, it still wouldn't be ideal as we don't
-        % know how many of the calls to the procedure came from within
-        % or without the SCC.
+        % However, if working, it still wouldn't be ideal, as we don't know
+        % how many of the calls to the procedure came from within or without
+        % the SCC.
         % get_proc_calls(ProcCounts, Weight),
         Weight = 1,
         !:Loads = !.Loads + float(Weight) * ProcLoads,
@@ -1947,6 +1948,8 @@ get_proc_counts(TraceCounts, ProcLabelInContext, MaybeProcCounts) :-
     ).
 
 :- pred get_proc_calls(proc_trace_counts::in, int::out) is det.
+:- pragma consider_used(get_proc_calls/2).
+% While the call above is commented out.
 
 get_proc_calls(ProcCounts, Count) :-
     map.lookup(ProcCounts, port_only(port_call), ContextCount),

@@ -697,28 +697,6 @@ call_has_inst_any(ModuleInfo, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type inst_info == {module_info, instmap}.
-
-:- pred arg_is_input(inst_info::in, prog_var::in) is semidet.
-
-arg_is_input(InstInfo, Arg) :-
-    InstInfo = {_ModuleInfo, InstMap},
-    instmap_lookup_var(InstMap, Arg, Inst),
-    inst_is_input(InstInfo, Inst).
-
-%-----------------------------------------------------------------------------%
-
-    % We take an initial inst to be an input if it is fully ground
-    % and not unique.
-    %
-:- pred inst_is_input(inst_info::in, mer_inst::in) is semidet.
-
-inst_is_input({ModuleInfo, _InstMap}, Inst) :-
-    inst_is_ground(ModuleInfo, Inst),
-    inst_is_not_partly_unique(ModuleInfo, Inst).
-
-%-----------------------------------------------------------------------------%
-
 :- pred add_outputs(module_info::in, list(prog_var)::in, hlds_goal::in,
     list(prog_var)::in, list(prog_var)::out) is det.
 
@@ -1337,9 +1315,8 @@ output_arg(ModuleInfo, X, M, X) :-
 rhs_modes(UniModes) =
     list.map(func((_ - Pre) -> (_ - Post)) = (Pre -> Post), UniModes).
 
-%-----------------------------------------------------------------------------%
-
 :- func lhs_modes(list(uni_mode)) = list(mer_mode).
+:- pragma consider_used(lhs_modes/1).
 
 lhs_modes(UniModes) =
     list.map(func((Pre - _) -> (Post - _)) = (Pre -> Post), UniModes).

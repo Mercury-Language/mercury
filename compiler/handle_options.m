@@ -2375,47 +2375,6 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
         globals.set_option(ImpliedOption, ImpliedOptionValue, !Globals)
     ).
 
-    % option_requires(SourceBoolOption, RequiredOption, RequiredOptionValue,
-    %   ErrorMsg, !Specs):
-    %
-    % If the SourceBoolOption is set to yes, and RequiredOption is not set
-    % to RequiredOptionValue, then add the given error message to the list.
-    %
-:- pred option_requires(option::in, option::in, option_data::in, string::in,
-    globals::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-option_requires(SourceOption, RequiredOption, RequiredOptionValue,
-        ErrorMessage, Globals, !Specs) :-
-    globals.lookup_bool_option(Globals, SourceOption, SourceOptionValue),
-    globals.lookup_option(Globals, RequiredOption, OptionValue),
-    ( if
-        SourceOptionValue = yes,
-        OptionValue \= RequiredOptionValue
-    then
-        add_error(phase_options, [words(ErrorMessage)], !Specs)
-    else
-        true
-    ).
-
-    % Smart recompilation does not yet work with all options (in particular
-    % `--intermodule-optimization' and `--no-target-code-only'). Disable smart
-    % recompilation if such an option is set, maybe issuing a warning.
-    %
-:- pred maybe_disable_smart_recompilation(bool::in, option::in, bool::in,
-    string::in, globals::in, globals::out, io::di, io::uo) is det.
-
-maybe_disable_smart_recompilation(Smart, ConflictingOption,
-        ValueToDisableSmart, OptionDescr, !Globals, !IO) :-
-    globals.lookup_bool_option(!.Globals, ConflictingOption, Value),
-    ( if
-        Smart = yes,
-        Value = ValueToDisableSmart
-    then
-        disable_smart_recompilation(OptionDescr, !Globals, !IO)
-    else
-        true
-    ).
-
 :- pred disable_smart_recompilation(string::in, globals::in, globals::out,
     io::di, io::uo) is det.
 

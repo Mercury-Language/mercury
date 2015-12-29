@@ -436,7 +436,7 @@ partition_cycles([], _) = [].
 partition_cycles([Proc | Procs], Cycles0) = CycleSets :-
     list.filter(cycle_contains_proc(Proc), Cycles0, PCycles, Cycles1),
     CycleSets0 = partition_cycles(Procs, Cycles1),
-    PEdges = list.map(collapse_cycle(Proc), PCycles),
+    PEdges = collapse_cycles(Proc, PCycles),
     (
         PEdges = [],
         CycleSets = CycleSets0
@@ -653,28 +653,29 @@ subst_size_var(Map, Old) = (if bimap.search(Map, Old, New) then New else Old).
 % Predicates for printing out debugging traces.
 %
 
-:- pred write_cycles(cycles::in, module_info::in, size_varset::in,
+:- pred write_cycles(module_info::in, size_varset::in, cycles::in,
     io::di, io::uo) is det.
+:- pragma consider_used(write_cycles/5).
 
-write_cycles([], _, _, !IO).
-write_cycles([Cycle | Cycles], ModuleInfo, SizeVarSet, !IO) :-
+write_cycles(_, _, [], !IO).
+write_cycles(ModuleInfo, SizeVarSet, [Cycle | Cycles], !IO) :-
     io.write_string("Cycle in SCC:\n", !IO),
-    write_cycle(Cycle ^ tcgc_nodes, ModuleInfo, !IO),
+    write_cycle(ModuleInfo, Cycle ^ tcgc_nodes, !IO),
     io.write_list(Cycle ^ tcgc_edges, "\n",
         write_edge(ModuleInfo, SizeVarSet), !IO),
     io.nl(!IO),
-    write_cycles(Cycles, ModuleInfo, SizeVarSet, !IO).
+    write_cycles(ModuleInfo, SizeVarSet, Cycles, !IO).
 
-:- pred write_cycle(list(abstract_ppid)::in, module_info::in, io::di, io::uo)
+:- pred write_cycle(module_info::in, list(abstract_ppid)::in, io::di, io::uo)
     is det.
 
-write_cycle([], _, !IO).
-write_cycle([Proc | Procs], ModuleInfo, !IO) :-
+write_cycle(_, [], !IO).
+write_cycle(ModuleInfo, [Proc | Procs], !IO) :-
     io.write_string("\t- ", !IO),
     Proc = real(PredProcId),
     write_pred_proc_id(ModuleInfo, PredProcId, !IO),
     io.nl(!IO),
-    write_cycle(Procs, ModuleInfo, !IO).
+    write_cycle(ModuleInfo, Procs, !IO).
 
 :- pred write_edge(module_info::in, size_varset::in, edge::in,
     io::di, io::uo) is det.

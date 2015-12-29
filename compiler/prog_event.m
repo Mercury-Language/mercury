@@ -846,11 +846,6 @@ event_arg_modes(EventSpecMap, EventName, ArgModes) :-
     event_attributes(EventSpecMap, EventName, Attributes),
     list.filter_map(project_event_arg_mode, Attributes, ArgModes).
 
-:- pred project_event_arg_name(event_attribute::in, string::out) is semidet.
-
-project_event_arg_name(Attribute, Attribute ^ attr_name) :-
-    Attribute ^ attr_maybe_synth_call = no.
-
 :- pred project_event_arg_type(event_attribute::in, mer_type::out) is semidet.
 
 project_event_arg_type(Attribute, Attribute ^ attr_type) :-

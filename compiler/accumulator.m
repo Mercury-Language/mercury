@@ -1917,13 +1917,6 @@ calculate_goal_info(GoalExpr, hlds_goal(GoalExpr, GoalInfo)) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- func reverse_subst(accu_subst) = accu_subst.
-
-reverse_subst(Subst0) = Subst :-
-    map.to_assoc_list(Subst0, List0),
-    assoc_list.reverse_members(List0, List),
-    map.from_assoc_list(List, Subst).
-
 :- func chain_subst(accu_subst, accu_subst) = accu_subst.
 
 chain_subst(AtoB, BtoC) = AtoC :-
