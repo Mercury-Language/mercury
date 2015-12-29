@@ -27,7 +27,7 @@ To add a definition for a new architecture, you need to
 	  at the start of alpha_regs.h).
 	  Other than that, it's up to you.
 
-	- Add a new header file for your architecure in this directory.
+	- Add a new header file for your architecture in this directory.
 	  This header file should define the same set of macros as the
 	  other header files here.  The documentation for what they
 	  should do is in `no_regs.h'.
