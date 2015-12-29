@@ -55,7 +55,7 @@
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_tags.
 :- import_module libs.globals.
-:- import_module libs.options.
+:- import_module libs.op_mode.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -542,11 +542,10 @@ merge_foreign_and_du_type_bodies(Globals, ForeignTypeBodyA, DuTypeBodyB,
     merge_foreign_type_bodies(ForeignTypeBodyA, ForeignTypeBodyB,
         ForeignTypeBody),
     globals.get_target(Globals, Target),
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
+    globals.get_op_mode(Globals, OpMode),
     ( if
         have_foreign_type_for_backend(Target, ForeignTypeBody, yes),
-        MakeOptInt = no
+        OpMode \= opm_top_args(opma_augment(opmau_make_opt_int))
     then
         Body = hlds_foreign_type(ForeignTypeBody)
     else

@@ -41,6 +41,7 @@
 
 :- import_module analysis.
 :- import_module libs.compute_grade.
+:- import_module libs.op_mode.
 :- import_module libs.process_util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
@@ -215,7 +216,8 @@ make_linked_target_2(LinkedTargetFile, Globals, _, Succeeded, !Info, !IO) :-
                         BuildJavaSucceeded = yes,
                         % Disable the `--rebuild' option during this pass,
                         % otherwise all the Java classes will be built again.
-                        globals.set_option(rebuild, bool(no),
+                        globals.set_op_mode(
+                            opm_top_make(opmm_need_not_rebuild),
                             Globals, NoRebuildGlobals),
                         foldl2_maybe_stop_at_error_maybe_parallel(
                             KeepGoing, make_module_target, NoRebuildGlobals,

@@ -585,13 +585,14 @@
 
 :- implementation.
 
-:- import_module libs.options.
+:- import_module libs.op_mode.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module counter.
 :- import_module int.
 :- import_module require.
@@ -886,8 +887,12 @@ module_info_init(AugCompUnit, DumpBaseFileName, Globals, QualifierInfo,
     ComplexityProcInfos = [],
     set.init(ProcAnalysisKinds),
 
-    globals.lookup_bool_option(Globals, make_analysis_registry,
-        MakeAnalysisReg),
+    globals.get_op_mode(Globals, OpMode),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry)) then
+        MakeAnalysisReg = yes
+    else
+        MakeAnalysisReg = no
+    ),
     AnalysisInfo = init_analysis_info(mmc, ModuleName, MakeAnalysisReg),
 
     UserInitPredCNames = [],

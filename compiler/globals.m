@@ -284,6 +284,7 @@
 :- pred set_option(option::in, option_data::in, globals::in, globals::out)
     is det.
 :- pred set_options(option_table::in, globals::in, globals::out) is det.
+:- pred set_op_mode(op_mode::in, globals::in, globals::out) is det.
 :- pred set_gc_method(gc_method::in, globals::in, globals::out) is det.
 :- pred set_tags_method(tags_method::in, globals::in, globals::out) is det.
 :- pred set_trace_level(trace_level::in, globals::in, globals::out) is det.
@@ -731,6 +732,9 @@ set_option(Option, OptionData, !Globals) :-
     get_options(!.Globals, OptionTable0),
     map.set(Option, OptionData, OptionTable0, OptionTable),
     set_options(OptionTable, !Globals).
+
+set_op_mode(OpMode, !Globals) :-
+    !Globals ^ g_op_mode := OpMode.
 
 set_gc_method(GC_Method, !Globals) :-
     !Globals ^ g_gc_method := GC_Method.

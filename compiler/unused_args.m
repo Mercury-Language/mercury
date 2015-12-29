@@ -105,6 +105,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -249,13 +250,13 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
         UnusedArgInfo0, UnusedArgInfo),
 
     map.keys(UnusedArgInfo, PredProcIdsToFix),
-    globals.lookup_bool_option(Globals, make_optimization_interface, MakeOpt),
+    globals.get_op_mode(Globals, OpMode),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
-    % Only write unused argument analysis pragmas to `.opt' files for
-    % `--intermodule-optimization', not `--intermodule-analysis'.
     ( if
-        MakeOpt = yes,
+        OpMode = opm_top_args(opma_augment(opmau_make_opt_int)),
+        % Only write unused argument analysis pragmas to `.opt' files for
+        % `--intermodule-optimization', not `--intermodule-analysis'.
         IntermodAnalysis = no
     then
         DoGather = yes
@@ -265,7 +266,7 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
     globals.lookup_bool_option(Globals, warn_unused_args, DoWarn),
     ( if
         ( DoWarn = yes
-        ; MakeOpt = yes
+        ; OpMode = opm_top_args(opma_augment(opmau_make_opt_int))
         )
     then
         set.init(WarnedPredIds0),
@@ -276,10 +277,9 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
         Specs = [],
         set.init(UnusedArgInfos)
     ),
-    globals.lookup_bool_option(Globals, make_analysis_registry,
-        MakeAnalysisRegistry),
-    (
-        MakeAnalysisRegistry = yes,
+    ( if
+        OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry))
+    then
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
         module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
         list.foldl(
@@ -288,8 +288,8 @@ unused_args_process_module(!ModuleInfo, Specs, UnusedArgInfos) :-
         list.foldl(record_intermod_dependencies(!.ModuleInfo),
             PredProcIds, AnalysisInfo1, AnalysisInfo),
         module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
-    ;
-        MakeAnalysisRegistry = no
+    else
+        true
     ),
     globals.lookup_bool_option(Globals, optimize_unused_args, DoFixup),
     (

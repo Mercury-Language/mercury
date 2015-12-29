@@ -24,6 +24,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.
 :- import_module hlds.passes_aux.
+:- import_module libs.
+:- import_module libs.op_mode.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
 
@@ -31,8 +33,8 @@
 :- import_module io.
 :- import_module list.
 
-:- pred frontend_pass(make_hlds_qual_info::in, bool::in, bool::in,
-    bool::in, bool::out, module_info::in, module_info::out,
+:- pred frontend_pass(op_mode_augment::in, make_hlds_qual_info::in,
+    bool::in, bool::in, bool::in, bool::out, module_info::in, module_info::out,
     dump_info::in, dump_info::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
@@ -102,7 +104,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_statistics.
 :- import_module hlds.make_tags.
-:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -128,7 +129,8 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-frontend_pass(QualInfo0, FoundUndefTypeError, FoundUndefModeError, !FoundError,
+frontend_pass(OpModeAugment, QualInfo0,
+        FoundUndefTypeError, FoundUndefModeError, !FoundError,
         !HLDS, !DumpInfo, !Specs, !IO) :-
     % We can't continue after an undefined type error, since typecheck
     % would get internal errors.
@@ -168,17 +170,19 @@ frontend_pass(QualInfo0, FoundUndefTypeError, FoundUndefModeError, !FoundError,
             !:FoundError = yes
         ;
             TypeClassErrors = no,
-            frontend_pass_after_typeclass_check(FoundUndefModeError,
-                !FoundError, !HLDS, !DumpInfo, !Specs, !IO)
+            frontend_pass_after_typeclass_check(OpModeAugment,
+                FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
+                !Specs, !IO)
         )
     ).
 
-:- pred frontend_pass_after_typeclass_check(bool::in, bool::in, bool::out,
-    module_info::in, module_info::out, dump_info::in, dump_info::out,
+:- pred frontend_pass_after_typeclass_check(op_mode_augment::in, bool::in,
+    bool::in, bool::out, module_info::in, module_info::out,
+    dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
-        !HLDS, !DumpInfo, !Specs, !IO) :-
+frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
+        !FoundError, !HLDS, !DumpInfo, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -186,8 +190,6 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
     globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
     globals.lookup_bool_option(Globals, type_check_constraints,
         TypeCheckConstraints),
     ( if
@@ -195,7 +197,7 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
         ; IntermodAnalysis = yes
         ; UseOptFiles = yes
         ),
-        MakeOptInt = no
+        OpModeAugment \= opmau_make_opt_int
     then
         % Eliminate unnecessary clauses from `.opt' files,
         % to speed up compilation. This must be done after
@@ -321,11 +323,9 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
             puritycheck(Verbose, Stats, !HLDS, !Specs, !IO),
             maybe_dump_hlds(!.HLDS, 20, "puritycheck", !DumpInfo, !IO),
 
-            globals.lookup_bool_option(Globals, typecheck_only, TypecheckOnly),
-            (
-                TypecheckOnly = yes
-            ;
-                TypecheckOnly = no,
+            ( if OpModeAugment = opmau_typecheck_only then
+                true
+            else
                 % Substitute implementation-defined literals before clauses are
                 % written out to `.opt' files.
                 subst_implementation_defined_literals(Verbose, Stats, !HLDS,
@@ -333,6 +333,11 @@ frontend_pass_after_typeclass_check(FoundUndefModeError, !FoundError,
                 maybe_dump_hlds(!.HLDS, 25, "implementation_defined_literals",
                     !DumpInfo, !IO),
 
+                ( if OpModeAugment = opmau_make_opt_int then
+                    MakeOptInt = yes
+                else
+                    MakeOptInt = no
+                ),
                 % Only write out the `.opt' file if there are no errors.
                 ( if
                     !.FoundError = no,
@@ -435,7 +440,7 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         touch_interface_datestamp(Globals, ModuleName, ".optdate", !IO)
     ;
         MakeOptInt = no,
-        % If there is a `.opt' file for this module the import
+        % If there is a `.opt' file for this module, the import
         % status of items in the `.opt' file needs to be updated.
         ( if IntermodOpt = yes then
             UpdateStatus = yes

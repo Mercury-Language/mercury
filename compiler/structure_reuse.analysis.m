@@ -102,6 +102,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -266,10 +267,8 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
 
     % If making a `.analysis' file, record structure reuse results, analysis
     % dependencies, assumed answers and requests in the analysis framework.
-    globals.lookup_bool_option(Globals, make_analysis_registry,
-        MakeAnalysisRegistry),
-    (
-        MakeAnalysisRegistry = yes,
+    globals.get_op_mode(Globals, OpMode),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry)) then
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
             map.foldl(
@@ -281,8 +280,8 @@ perform_structure_reuse_analysis(!ModuleInfo, !IO):-
                 IntermodRequests, !AnalysisInfo),
             module_info_set_analysis_info(!.AnalysisInfo, !ModuleInfo)
         )
-    ;
-        MakeAnalysisRegistry = no
+    else
+        true
     ),
 
     % Delete the reuse versions of procedures which turn out to have no reuse.

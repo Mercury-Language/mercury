@@ -302,6 +302,9 @@ Changes to the Mercury compiler:
 * Class files generated for executables in the Java grade are now automatically
   packaged up into Java archives (JARs).
 
+* The -generate-module-order and --imports-graph options no longer imply
+  --generate-dependencies.
+
 Change to the Mercury debugger:
 
 * Interactive queries are now supported on OS X.

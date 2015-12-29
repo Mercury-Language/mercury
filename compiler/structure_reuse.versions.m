@@ -69,6 +69,7 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -150,15 +151,15 @@ create_reuse_procedures(!ReuseTable, !ModuleInfo) :-
 divide_reuse_procs(ExistingReusePPIdsSet, PPId, ReuseAs_Status,
         !CondPPIds, !UncondPPIds) :-
     ReuseAs_Status = reuse_as_and_status(ReuseAs, _),
-    ( set.contains(ExistingReusePPIdsSet, PPId) ->
+    ( if set.contains(ExistingReusePPIdsSet, PPId) then
         true
-    ; reuse_as_conditional_reuses(ReuseAs) ->
+    else if reuse_as_conditional_reuses(ReuseAs) then
         !:CondPPIds = [PPId | !.CondPPIds]
-    ; reuse_as_all_unconditional_reuses(ReuseAs) ->
+    else if reuse_as_all_unconditional_reuses(ReuseAs) then
         !:UncondPPIds = [PPId | !.UncondPPIds]
-    ; reuse_as_no_reuses(ReuseAs) ->
+    else if reuse_as_no_reuses(ReuseAs) then
         true
-    ;
+    else
         unexpected($module, $pred, "conditions failed")
     ).
 
@@ -168,20 +169,20 @@ divide_reuse_procs(ExistingReusePPIdsSet, PPId, ReuseAs_Status,
 
 maybe_create_full_reuse_proc_copy(PPId, NewPPId, !ModuleInfo, !ReuseTable) :-
     NoClobbers = [],
-    (
+    ( if
         reuse_as_table_search_reuse_version_proc(!.ReuseTable,
             PPId, NoClobbers, _)
-    ->
+    then
         unexpected($module, $pred, "procedure already exists")
-    ;
+    else
         true
     ),
     create_fresh_pred_proc_info_copy(PPId, NoClobbers, NewPPId, !ModuleInfo),
-    ( reuse_as_table_search(!.ReuseTable, PPId, ReuseAs_Status) ->
+    ( if reuse_as_table_search(!.ReuseTable, PPId, ReuseAs_Status) then
         reuse_as_table_set(NewPPId, ReuseAs_Status, !ReuseTable),
         reuse_as_table_insert_reuse_version_proc(PPId, NoClobbers, NewPPId,
             !ReuseTable)
-    ;
+    else
         unexpected($module, $pred, "no reuse information")
     ).
 
@@ -216,9 +217,9 @@ create_fresh_pred_proc_info_copy_2(PredId, PredInfo, ProcInfo, ReusePredName,
     pred_info_get_status(PredInfo, PredStatus0),
     % If the predicate was opt_imported then the specialised copy should be
     % local, otherwise it will be eliminated by dead proc elimination.
-    ( PredStatus0 = pred_status(status_opt_imported) ->
+    ( if PredStatus0 = pred_status(status_opt_imported) then
         PredStatus = pred_status(status_local)
-    ;
+    else
         PredStatus = PredStatus0
     ),
     pred_info_get_markers(PredInfo, PredMarkers),
@@ -264,15 +265,14 @@ check_cond_process_proc(ConvertPotentialReuse, ReuseTable, ReusePPId,
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
-    globals.lookup_bool_option(Globals, make_analysis_registry,
-        MakeAnalysisReg),
-    (
+    globals.get_op_mode(Globals, OpMode),
+    ( if
         IntermodAnalysis = yes,
-        MakeAnalysisReg = no
-    ->
+        OpMode \= opm_top_args(opma_augment(opmau_make_analysis_registry))
+    then
         structure_reuse_answer_harsher_than_in_analysis_registry(!.ModuleInfo,
             ReuseTable, ReusePPId, IsHarsher)
-    ;
+    else
         IsHarsher = no
     ),
     (
@@ -302,10 +302,10 @@ process_proc(ConvertPotentialReuse, ReuseTable, PPId, !ModuleInfo) :-
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo0, !:ProcInfo),
         pred_info_get_status(PredInfo0, PredStatus),
-        ( PredStatus = pred_status(status_imported(_)) ->
+        ( if PredStatus = pred_status(status_imported(_)) then
             % The bodies may contain junk, so don't try to process.
             true
-        ;
+        else
             proc_info_get_goal(!.ProcInfo, Goal0),
             process_goal(ConvertPotentialReuse, ReuseTable, !.ModuleInfo,
                 Goal0, Goal),
@@ -339,7 +339,7 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
         GoalExpr0 = plain_call(CalleePredId, CalleeProcId, Args, BI, UC,
             CalleePredName),
         ReuseDescription0 = goal_info_get_reuse(GoalInfo0),
-        (
+        ( if
             % If the reuse description already says "reuse", then this is
             % a call to a procedure which might have specified conditions, yet
             % whose conditions are always met, hence do not imply conditions on
@@ -347,18 +347,18 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
             % make sure to call the appropriate version of the called
             % procedure.
             ReuseDescription0 = reuse(reuse_call(_CondDescr, NoClobbers))
-        ->
+        then
             determine_reuse_version(ReuseTable, ModuleInfo, CalleePredId,
                 CalleeProcId, CalleePredName, NoClobbers, ReuseCalleePredId,
                 ReuseCalleeProcId, ReuseCalleePredName),
             GoalExpr = plain_call(ReuseCalleePredId, ReuseCalleeProcId,
                 Args, BI, UC, ReuseCalleePredName),
             !:Goal = hlds_goal(GoalExpr, GoalInfo0)
-        ;
+        else if
             ReuseDescription0 = potential_reuse(reuse_call(CondDescr,
                 NoClobbers)),
             ConvertPotentialReuse = convert_potential_reuse
-        ->
+        then
             ConvertPotentialReuse = convert_potential_reuse,
             % Replace the call to the reuse version, and change the
             % potential reuse annotation to a real annotation.
@@ -370,7 +370,7 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
             ReuseDescription = reuse(reuse_call(CondDescr, NoClobbers)),
             goal_info_set_reuse(ReuseDescription, GoalInfo0, GoalInfo),
             !:Goal = hlds_goal(GoalExpr, GoalInfo)
-        ;
+        else
             true
         )
     ;
@@ -417,9 +417,9 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
         GoalExpr0 = negation(_Goal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             true
-        ;
+        else
             process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo,
                 SubGoal0, SubGoal),
             GoalExpr = scope(Reason, SubGoal),
@@ -448,11 +448,11 @@ process_goal(ConvertPotentialReuse, ReuseTable, ModuleInfo, !Goal) :-
     unification::in, unification::out) is det.
 
 unification_set_reuse(ShortReuseDescription, !Unification) :-
-    (
+    ( if
         HowToConstruct0 = !.Unification ^ construct_how,
         ShortReuseDescription = cell_reused(DeadVar, _, PossibleConsIds,
             CellsToUpdate)
-    ->
+    then
         (
             HowToConstruct0 = construct_statically
             % Leave static terms as-is.
@@ -466,7 +466,7 @@ unification_set_reuse(ShortReuseDescription, !Unification) :-
             HowToConstruct = reuse_cell(CellToReuse),
             !Unification ^ construct_how := HowToConstruct
         )
-    ;
+    else
         true
     ).
 
@@ -476,16 +476,16 @@ unification_set_reuse(ShortReuseDescription, !Unification) :-
 
 determine_reuse_version(ReuseTable, ModuleInfo, PredId, ProcId, PredName,
         NoClobbers, ReusePredId, ReuseProcId, ReusePredName) :-
-    (
+    ( if
         reuse_as_table_search_reuse_version_proc(ReuseTable,
             proc(PredId, ProcId), NoClobbers, Result)
-    ->
+    then
         Result = proc(ReusePredId, ReuseProcId),
         module_info_pred_info(ModuleInfo, ReusePredId, ReusePredInfo),
         ModuleName = pred_info_module(ReusePredInfo),
         Name = pred_info_name(ReusePredInfo),
         ReusePredName = qualified(ModuleName, Name)
-    ;
+    else
         ReusePredId = PredId,
         ReuseProcId = ProcId,
         ReusePredName = PredName

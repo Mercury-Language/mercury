@@ -30,11 +30,17 @@
     % with each type and subtype corresponding to one decision point.
     %
 :- type op_mode
-    --->    opm_top_make
+    --->    opm_top_make(op_mode_make)
     ;       opm_top_generate_source_file_mapping
     ;       opm_top_generate_standalone_interface(string)
     ;       opm_top_query(op_mode_query)
     ;       opm_top_args(op_mode_args).
+
+%---------------------%
+
+:- type op_mode_make
+    --->    opmm_need_not_rebuild
+    ;       opmm_must_rebuild.
 
 %---------------------%
 
@@ -149,7 +155,8 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
             InvokedByMMCMake),
         (
             InvokedByMMCMake = yes,
-            set.delete(opm_top_make, !OpModeSet)
+            set.delete(opm_top_make(opmm_need_not_rebuild), !OpModeSet),
+            set.delete(opm_top_make(opmm_must_rebuild), !OpModeSet)
         ;
             InvokedByMMCMake = no
         ),
@@ -174,9 +181,17 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
                 % If this is the case, then this module should just hand off
                 % control to the make package, and let it take things
                 % from there.
-                set.member(opm_top_make, !.OpModeSet)
+                %
+                % --make may be specified with or without --rebuild.
+                % "With" takes precedence.
+                set.member(opm_top_make(opmm_must_rebuild), !.OpModeSet)
             then
-                OpMode = opm_top_make,
+                OpMode = opm_top_make(opmm_must_rebuild),
+                OtherOpModes = []
+            else if
+                set.member(opm_top_make(opmm_need_not_rebuild), !.OpModeSet)
+            then
+                OpMode = opm_top_make(opmm_need_not_rebuild),
                 OtherOpModes = []
             else if
                 % The second reason is that Mercury.options file may specify
@@ -212,7 +227,7 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
 
 may_be_together_with_check_only(OpMode) = MayBeTogether :-
     (
-        ( OpMode = opm_top_make
+        ( OpMode = opm_top_make(_)
         ; OpMode = opm_top_generate_source_file_mapping
         ; OpMode = opm_top_generate_standalone_interface(_)
         ; OpMode = opm_top_query(_)
@@ -267,76 +282,77 @@ gather_bool_op_mode(OptionTable, Option - OpMode, !OpModeSet) :-
 :- func bool_op_modes = assoc_list(option, op_mode).
 
 bool_op_modes = [
-    make -
-        opm_top_make,
-    rebuild -
-        opm_top_make,
-    generate_source_file_mapping -
+    only_opmode_make -
+        opm_top_make(opmm_need_not_rebuild),
+    only_opmode_rebuild -
+        opm_top_make(opmm_must_rebuild),
+
+    only_opmode_generate_source_file_mapping -
         opm_top_generate_source_file_mapping,
 
-    output_cc -
+    only_opmode_output_cc -
         opm_top_query(opmq_output_cc),
-    output_c_compiler_type -
+    only_opmode_output_c_compiler_type -
         opm_top_query(opmq_output_c_compiler_type),
-    output_cflags -
+    only_opmode_output_cflags -
         opm_top_query(opmq_output_cflags),
-    output_c_include_directory_flags -
+    only_opmode_output_c_include_directory_flags -
         opm_top_query(opmq_output_c_include_directory_flags),
-    output_grade_defines -
+    only_opmode_output_grade_defines -
         opm_top_query(opmq_output_grade_defines),
 
-    output_csharp_compiler -
+    only_opmode_output_csharp_compiler -
         opm_top_query(opmq_output_csharp_compiler),
-    output_csharp_compiler_type -
+    only_opmode_output_csharp_compiler_type -
         opm_top_query(opmq_output_csharp_compiler_type),
 
-    output_link_command -
+    only_opmode_output_link_command -
         opm_top_query(opmq_output_link_command),
-    output_shared_lib_link_command -
+    only_opmode_output_shared_lib_link_command -
         opm_top_query(opmq_output_shared_lib_link_command),
-    output_library_link_flags -
+    only_opmode_output_library_link_flags -
         opm_top_query(opmq_output_library_link_flags),
 
-    output_class_dir -
+    only_opmode_output_class_dir -
         opm_top_query(opmq_output_class_dir),
 
-    output_grade_string -
+    only_opmode_output_grade_string -
         opm_top_query(opmq_output_grade_string),
-    output_libgrades -
+    only_opmode_output_libgrades -
         opm_top_query(opmq_output_libgrades),
 
-    output_target_arch -
+    only_opmode_output_target_arch -
         opm_top_query(opmq_output_target_arch),
 
-    generate_dependencies -
+    only_opmode_generate_dependencies -
         opm_top_args(opma_generate_dependencies),
-    generate_dependency_file -
+    only_opmode_generate_dependency_file -
         opm_top_args(opma_generate_dependency_file),
-    make_private_interface -
+    only_opmode_make_private_interface -
         opm_top_args(opma_make_private_interface),
-    make_short_interface -
+    only_opmode_make_short_interface -
         opm_top_args(opma_make_short_interface),
-    make_interface -
+    only_opmode_make_interface -
         opm_top_args(opma_make_interface),
-    convert_to_mercury -
+    only_opmode_convert_to_mercury -
         opm_top_args(opma_convert_to_mercury),
 
-    make_optimization_interface -
+    only_opmode_make_optimization_interface -
         opm_top_args(opma_augment(opmau_make_opt_int)),
-    make_transitive_opt_interface -
+    only_opmode_make_transitive_opt_interface -
         opm_top_args(opma_augment(opmau_make_trans_opt_int)),
-    make_analysis_registry -
+    only_opmode_make_analysis_registry -
         opm_top_args(opma_augment(opmau_make_analysis_registry)),
-    make_xml_documentation -
+    only_opmode_make_xml_documentation -
         opm_top_args(opma_augment(opmau_make_xml_documentation)),
-    typecheck_only -
+    only_opmode_typecheck_only -
         opm_top_args(opma_augment(opmau_typecheck_only)),
-    errorcheck_only -
+    only_opmode_errorcheck_only -
         opm_top_args(opma_augment(opmau_errorcheck_only)),
-    target_code_only -
+    only_opmode_target_code_only -
         opm_top_args(opma_augment(opmau_generate_code(
             opmcg_target_code_only))),
-    compile_only -
+    only_opmode_compile_only -
         opm_top_args(opma_augment(opmau_generate_code(
             opmcg_target_and_object_code_only)))
 ].
@@ -345,8 +361,14 @@ bool_op_modes = [
 
 op_mode_to_option_string(MOP) = Str :-
     (
-        MOP = opm_top_make,
-        Str = "--make"
+        MOP = opm_top_make(MOPM),
+        (
+            MOPM = opmm_need_not_rebuild,
+            Str = "--make"
+        ;
+            MOPM = opmm_must_rebuild,
+            Str = "--rebuild"
+        )
     ;
         MOP = opm_top_generate_source_file_mapping,
         Str = "--generate-source-file-mapping"

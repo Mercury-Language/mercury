@@ -6928,7 +6928,7 @@ Output `Make'-style dependencies for the module to @file{@var{module}.d}'.
 @findex --generate-module-order
 Output the strongly connected components of the module
 dependency graph in top-down order to @file{@var{module}.order}.
-Implies @samp{--generate-dependencies}.
+Effective only if @samp{--generate-dependencies} is also specified.
 
 @sp 1
 @item --generate-standalone-interface @var{basename}
@@ -7294,6 +7294,7 @@ Write out the imports graph to @file{@var{module}.imports_graph}.
 The imports graph contains the directed graph module A
 imports module B.
 The resulting file can be processed by the graphviz tools.
+Effective only if @samp{--generate-dependencies} is also specified.
 
 @c @sp 1
 @c @item -d @var{stage}

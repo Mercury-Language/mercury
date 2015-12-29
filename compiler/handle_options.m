@@ -116,17 +116,16 @@ handle_given_options(Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
         Specs = [_ | _]
         % Do NOT set the exit status. This predicate may be called before all
         % the options are known, so the errors may not be valid.
-        % XXX Some
     ;
         Specs = [],
+        % XXX Why is this not tested for at the same time as the other reasons
+        % for disabling smart recompilation?
         globals.get_op_mode(!.Globals, OpMode),
         globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
         ( if
             Smart = yes,
-            OpMode = opm_top_args(OpModeArgs),
-            OpModeArgs = opma_augment(OpModeAugment),
-            OpModeAugment = opmau_generate_code(OpModeCG),
-            OpModeCG = opmcg_target_object_and_executable
+            OpMode = opm_top_args(opma_augment(
+                opmau_generate_code(opmcg_target_object_and_executable)))
         then
             % XXX Currently smart recompilation doesn't check that all the
             % files needed to link are present and up-to-date, so disable it.
@@ -972,10 +971,6 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     % --no-mlds-optimize implies --no-optimize-tailcalls.
     option_neg_implies(optimize, optimize_tailcalls, bool(no), !Globals),
 
-    % --rebuild is just like --make but always rebuilds the files
-    % without checking timestamps.
-    option_implies(rebuild, make, bool(yes), !Globals),
-
     % If no --lib-linkage option has been specified, default to the
     % set of all possible linkages.
     globals.lookup_accumulating_option(!.Globals, lib_linkages, LibLinkages0),
@@ -990,36 +985,47 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     % This is needed for library installation (the library grades
     % are built using `--use-grade-subdirs', and assume that
     % the interface files were built using `--use-subdirs').
-    option_implies(make, use_subdirs, bool(yes), !Globals),
-    option_implies(invoked_by_mmc_make, use_subdirs, bool(yes), !Globals),
-    option_implies(invoked_by_mmc_make, make, bool(no), !Globals),
+    globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
+        InvokedByMMCMake),
+    ( if
+        ( OpMode = opm_top_make(_)
+        ; InvokedByMMCMake = yes
+        )
+    then
+        globals.set_option(use_subdirs, bool(yes), !Globals)
+    else
+        true
+    ),
 
     % --make handles creation of the module dependencies itself,
     % and they don't need to be recreated when compiling to C.
     option_implies(invoked_by_mmc_make,
         generate_mmc_make_module_dependencies, bool(no), !Globals),
 
-    % --libgrade-install-check only works with --make
-    option_neg_implies(make, libgrade_install_check, bool(no), !Globals),
+    % --libgrade-install-check only works with --make.
+    ( if OpMode = opm_top_make(_) then
+        true
+    else
+        globals.set_option(libgrade_install_check, bool(no), !Globals)
+    ),
 
     % `--transitive-intermodule-optimization' and `--make' are
     % not compatible with each other.
     globals.lookup_bool_option(!.Globals, transitive_optimization, TransOpt),
     (
         TransOpt = yes,
-        globals.lookup_bool_option(!.Globals, make, UsingMMCMake),
-        globals.lookup_bool_option(!.Globals, invoked_by_mmc_make,
-            InvokedByMMCMake),
-        UsingOrInvokedByMMCMake = bool.or(UsingMMCMake, InvokedByMMCMake),
-        (
-            UsingOrInvokedByMMCMake = yes,
+        ( if
+            ( InvokedByMMCMake = yes
+            ; OpMode = opm_top_make(_)
+            )
+        then
             TransOptMakeSpec =
                 [words("The"), quote("--transitive-intermodule-optimization"),
                 words("option is incompatible with the"), quote("--make"),
                 words("option."), nl],
             add_error(phase_options, TransOptMakeSpec, !Specs)
-        ;
-            UsingOrInvokedByMMCMake = no
+        else
+            true
         )
     ;
         TransOpt = no
@@ -1079,8 +1085,11 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     option_implies(check_termination2, termination2, bool(yes), !Globals),
     option_implies(check_termination2, warn_missing_trans_opt_files,
         bool(yes), !Globals),
-    option_implies(make_transitive_opt_interface, transitive_optimization,
-        bool(yes), !Globals),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_trans_opt_int)) then
+        globals.set_option(transitive_optimization, bool(yes), !Globals)
+    else
+        true
+    ),
     option_implies(transitive_optimization, intermodule_optimization,
         bool(yes), !Globals),
     option_implies(use_trans_opt_files, use_opt_files, bool(yes), !Globals),
@@ -1105,62 +1114,45 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     option_implies(find_all_recompilation_reasons, verbose_recompilation,
         bool(yes), !Globals),
 
-    % Disable `--smart-recompilation' for compilation options which either
-    % do not produce a compiled output file or for which smart
-    % recompilation will not work.
-    %
-    option_implies(generate_source_file_mapping, smart_recompilation, bool(no),
-        !Globals),
-    option_implies(generate_dependencies, smart_recompilation, bool(no),
-        !Globals),
-    option_implies(generate_dependency_file, smart_recompilation, bool(no),
-        !Globals),
-    option_implies(convert_to_mercury, smart_recompilation, bool(no),
-        !Globals),
-    option_implies(make_private_interface, smart_recompilation, bool(no),
-        !Globals),
-    option_implies(make_interface, smart_recompilation, bool(no),
-        !Globals),
-    option_implies(make_short_interface, smart_recompilation, bool(no),
-        !Globals),
-    option_implies(make_xml_documentation, smart_recompilation, bool(no),
-        !Globals),
-    option_implies(output_grade_string, smart_recompilation, bool(no),
-        !Globals),
-    option_implies(make_optimization_interface,
-        smart_recompilation, bool(no), !Globals),
-    option_implies(make_transitive_opt_interface,
-        smart_recompilation, bool(no), !Globals),
-    option_implies(make_analysis_registry,
-        smart_recompilation, bool(no), !Globals),
-    option_implies(errorcheck_only, smart_recompilation, bool(no), !Globals),
-    option_implies(typecheck_only, smart_recompilation, bool(no), !Globals),
+    % Disable `--smart-recompilation' unless we are generating target code.
+    ( if OpMode = opm_top_args(opma_augment(opmau_generate_code(_))) then
+        true
+    else
+        globals.set_option(smart_recompilation, bool(no), !Globals)
+    ),
 
-    % disable --line-numbers when building the `.int', `.opt', etc. files,
+    % Disable --line-numbers when building the `.int', `.opt', etc. files,
     % since including line numbers in those would cause unnecessary
-    % recompilation
-    option_implies(make_private_interface,          line_numbers, bool(no),
-        !Globals),
-    option_implies(make_interface,                  line_numbers, bool(no),
-        !Globals),
-    option_implies(make_short_interface,            line_numbers, bool(no),
-        !Globals),
-    option_implies(make_optimization_interface,     line_numbers, bool(no),
-        !Globals),
-    option_implies(make_transitive_opt_interface,   line_numbers, bool(no),
-        !Globals),
+    % recompilation.
+    ( if
+        ( OpMode = opm_top_args(opma_make_private_interface)
+        ; OpMode = opm_top_args(opma_make_short_interface)
+        ; OpMode = opm_top_args(opma_make_interface)
+        ; OpMode = opm_top_args(opma_augment(opmau_make_opt_int))
+        ; OpMode = opm_top_args(opma_augment(opmau_make_trans_opt_int))
+        )
+    then
+        globals.set_option(line_numbers, bool(no), !Globals)
+    else
+        true
+    ),
 
     % We never use version number information in `.int3',
     % `.opt' or `.trans_opt' files.
-    option_implies(make_short_interface, generate_item_version_numbers,
-        bool(no), !Globals),
+    ( if OpMode = opm_top_args(opma_make_short_interface) then
+        globals.set_option(generate_item_version_numbers, bool(no), !Globals)
+    else
+        true
+    ),
 
     % The combination of --make-xml-documentation and
     % --intermodule-optimization can causes spurious warnings about
     % missing .opt files if they haven't been built yet.
-    %
-    option_implies(make_xml_documentation, intermodule_optimization,
-        bool(no), !Globals),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_xml_documentation)) then
+        globals.set_option(intermodule_optimization, bool(no), !Globals)
+    else
+        true
+    ),
 
     % XXX Smart recompilation does not yet work with inter-module
     % optimization, but we still want to generate version numbers
@@ -1168,19 +1160,41 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     % inter-module optimization but not using inter-module
     % optimization themselves.
     globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
-    maybe_disable_smart_recompilation(Smart, intermodule_optimization, yes,
-        "`--intermodule-optimization'", !Globals, !IO),
-    maybe_disable_smart_recompilation(Smart, use_opt_files, yes,
-        "`--use-opt-files'", !Globals, !IO),
-
-    % XXX Smart recompilation does not yet work with
-    % `--no-target-code-only'. With `--no-target-code-only'
-    % it becomes difficult to work out what all the target
-    % files are and check whether they are up-to-date.
-    % By default, mmake always enables `--target-code-only' and
-    % processes the target code file itself, so this isn't a problem.
-    maybe_disable_smart_recompilation(Smart, target_code_only, no,
-        "`--no-target-code-only'", !Globals, !IO),
+    (
+        Smart = no
+    ;
+        Smart = yes,
+        ( if
+            globals.lookup_bool_option(!.Globals, intermodule_optimization,
+                yes)
+        then
+            disable_smart_recompilation("`--intermodule-optimization'",
+                !Globals, !IO)
+        else
+            true
+        ),
+        ( if globals.lookup_bool_option(!.Globals, use_opt_files, yes) then
+            disable_smart_recompilation("`--use-opt-files'", !Globals, !IO)
+        else
+            true
+        ),
+        % XXX Smart recompilation does not yet work with
+        % `--no-target-code-only'. With `--no-target-code-only'
+        % it becomes difficult to work out what all the target files
+        % are and check whether they are up-to-date. By default, mmake always
+        % enables `--target-code-only' and processes the target code file
+        % itself, so this isn't a problem.
+        % XXX I (zs) don't believe that mmake sets --target-code-only anymore.
+        ( if
+            OpMode = opm_top_args(opma_augment(
+                opmau_generate_code(opmcg_target_code_only)))
+        then
+            true
+        else
+            disable_smart_recompilation("`--no-target-code-only'",
+                !Globals, !IO)
+        )
+    ),
 
     option_implies(use_grade_subdirs, use_subdirs, bool(yes), !Globals),
 
@@ -1875,8 +1889,11 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
 
     % Don't do the unused_args optimization when making the
     % optimization interface.
-    option_implies(make_optimization_interface, optimize_unused_args, bool(no),
-        !Globals),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_opt_int)) then
+        globals.set_option(optimize_unused_args, bool(no), !Globals)
+    else
+        true
+    ),
 
     % The results of trail usage analysis assume that trail usage
     % optimization is being done, i.e. that redundant trailing
@@ -1884,19 +1901,12 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     option_implies(analyse_trail_usage, optimize_trail_usage, bool(yes),
         !Globals),
 
-    % The information needed for generating the module ordering
-    % is only available while generating the dependencies.
-    option_implies(generate_module_order, generate_dependencies, bool(yes),
-        !Globals),
-
-    % The information needed for generating the imports graph
-    % is only available while generating the dependencies.
-    option_implies(imports_graph, generate_dependencies, bool(yes), !Globals),
-
-    % We only generate the source file mapping if the module name
-    % doesn't match the file name.
-    option_implies(generate_source_file_mapping, warn_wrong_module_name,
-        bool(no), !Globals),
+    % Without an existing source file mapping, there is no "right" module name.
+    ( if OpMode = opm_top_generate_source_file_mapping then
+        globals.set_option(warn_wrong_module_name, bool(no), !Globals)
+    else
+        true
+    ),
 
     globals.lookup_string_option(!.Globals, target_arch, TargetArch),
 
@@ -2140,21 +2150,40 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
 
     % --warn-non-tail-recursion requires tail call optimization to be enabled.
     % It also doesn't work if you use --errorcheck-only.
+    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion,
+        WarnNonTailRec),
     (
-        HighLevelCode = no,
-        option_requires(warn_non_tail_recursion, pessimize_tailcalls, bool(no),
-            "--warn-non-tail-recursion is incompatible with " ++
-            "--pessimize-tailcalls",
-            !.Globals, !Specs)
+        WarnNonTailRec = no
     ;
-        HighLevelCode = yes,
-        option_requires(warn_non_tail_recursion, optimize_tailcalls, bool(yes),
-            "--warn-non-tail-recursion requires --optimize-tailcalls",
-            !.Globals, !Specs)
+        WarnNonTailRec = yes,
+        globals.lookup_bool_option(!.Globals, pessimize_tailcalls,
+            PessimizeTailCalls),
+        globals.lookup_bool_option(!.Globals, optimize_tailcalls,
+            OptimizeTailCalls),
+        (
+            PessimizeTailCalls = no
+        ;
+            PessimizeTailCalls = yes,
+            PessimizeWords = "--warn-non-tail-recursion is incompatible" ++
+                 " with --pessimize-tailcalls",
+            add_error(phase_options, [words(PessimizeWords)], !Specs)
+        ),
+        (
+            OptimizeTailCalls = yes
+        ;
+            OptimizeTailCalls = no,
+            OptimizeWords =
+                "--warn-non-tail-recursion requires --optimize-tailcalls",
+            add_error(phase_options, [words(OptimizeWords)], !Specs)
+        ),
+        ( if OpMode = opm_top_args(opma_augment(opmau_errorcheck_only)) then
+            ECOWords = "--warn-non-tail-recursion is incompatible"
+                ++ " with --errorcheck-only",
+            add_error(phase_options, [words(ECOWords)], !Specs)
+        else
+            true
+        )
     ),
-    option_requires(warn_non_tail_recursion, errorcheck_only, bool(no),
-        "--warn-non-tail-recursion is incompatible with --errorcheck-only",
-        !.Globals, !Specs),
 
     % The backend foreign languages depend on the target.
     (

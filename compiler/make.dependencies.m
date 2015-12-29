@@ -186,6 +186,7 @@
 
 :- implementation.
 
+:- import_module libs.op_mode.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 
@@ -1309,7 +1310,6 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
             io.write_string(TargetFileName ++ " does not exist.\n"), !IO)
     ;
         MaybeTimestamp = ok(Timestamp),
-        globals.lookup_bool_option(Globals, rebuild, Rebuild),
         ( if error_in_timestamps(DepTimestamps) then
             DepsResult = deps_error,
             WriteMissingDeps =
@@ -1329,14 +1329,20 @@ check_dependency_timestamps(Globals, TargetFileName, MaybeTimestamp,
                 debug_make_msg(Globals, WriteMissingDeps, !IO)
             )
         else
+            globals.get_op_mode(Globals, OpMode),
+            ( if OpMode = opm_top_make(OpModeMakePrime) then
+                OpModeMake = OpModeMakePrime
+            else
+                unexpected($pred, "OpMode != opm_top_make")
+            ),
             (
-                Rebuild = yes,
+                OpModeMake = opmm_must_rebuild,
                 % With `--rebuild', a target is always considered to be
                 % out-of-date, regardless of the timestamps of its
                 % dependencies.
                 DepsResult = deps_out_of_date
             ;
-                Rebuild = no,
+                OpModeMake = opmm_need_not_rebuild,
                 ( if newer_timestamp(DepTimestamps, Timestamp) then
                     debug_newer_dependencies(Globals, TargetFileName,
                         MaybeTimestamp, DepFiles, DepTimestamps, !IO),

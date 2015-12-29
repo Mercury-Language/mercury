@@ -21,6 +21,8 @@
 :- import_module hlds.passes_aux.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module libs.
+:- import_module libs.op_mode.
 :- import_module ll_backend.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
@@ -33,9 +35,9 @@
     global_data::out, list(c_procedure)::out, dump_info::in, dump_info::out,
     io::di, io::uo) is det.
 
-:- pred llds_output_pass(module_info::in, global_data::in,
-    list(c_procedure)::in, module_name::in, bool::out,
-    list(string)::out, io::di, io::uo) is det.
+:- pred llds_output_pass(op_mode_codegen::in, module_info::in, global_data::in,
+    list(c_procedure)::in, module_name::in, bool::out, list(string)::out,
+    io::di, io::uo) is det.
 
 :- pred map_args_to_regs(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
@@ -58,12 +60,10 @@
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.arg_info.
-:- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mark_tail_calls.
-:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -606,8 +606,8 @@ maybe_generate_stack_layouts(HLDS, LLDS, Verbose, Stats, !GlobalData, !IO) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
-        FactTableObjFiles, !IO) :-
+llds_output_pass(OpModeCodeGen, HLDS, GlobalData0, Procs, ModuleName,
+        Succeeded, FactTableObjFiles, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -706,10 +706,12 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
         C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
         export.produce_header_file(HLDS, C_ExportDecls, ModuleName, !IO),
 
-        % Finally we invoke the C compiler to compile it.
-        globals.lookup_bool_option(Globals, target_code_only, TargetCodeOnly),
+        % Finally we invoke the C compiler on the generated C files,
+        % if we were asked to do so.
         (
-            TargetCodeOnly = no,
+            ( OpModeCodeGen = opmcg_target_and_object_code_only
+            ; OpModeCodeGen = opmcg_target_object_and_executable
+            ),
             io.output_stream(OutputStream, !IO),
             llds_c_to_obj(Globals, OutputStream, ModuleName, CompileOK, !IO),
             module_get_fact_table_file_names(HLDS, FactTableBaseFiles),
@@ -719,7 +721,7 @@ llds_output_pass(HLDS, GlobalData0, Procs, ModuleName, Succeeded,
             bool.and_list([CompileOK | FactTableCompileOKs], Succeeded),
             maybe_set_exit_status(Succeeded, !IO)
         ;
-            TargetCodeOnly = yes,
+            OpModeCodeGen = opmcg_target_code_only,
             Succeeded = yes,
             FactTableObjFiles = []
         )

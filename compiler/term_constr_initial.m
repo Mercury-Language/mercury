@@ -59,7 +59,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.lp_rational.
-:- import_module libs.options.
+:- import_module libs.op_mode.
 :- import_module libs.polyhedron.
 :- import_module libs.rat.
 :- import_module mdbcomp.
@@ -259,8 +259,12 @@ create_lp_term(SubstMap, ArgSizeTerm, Var - Coefficient) :-
 process_builtin_preds([], !ModuleInfo).
 process_builtin_preds([PredId | PredIds], !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
+    globals.get_op_mode(Globals, OpMode),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_opt_int)) then
+        MakeOptInt = yes
+    else
+        MakeOptInt = no
+    ),
     some [!PredTable] (
         module_info_get_preds(!.ModuleInfo, !:PredTable),
         PredInfo0 = !.PredTable ^ det_elem(PredId),

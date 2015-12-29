@@ -99,6 +99,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -680,23 +681,26 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
     then
         pred_info_get_status(!.PredInfo, Status),
         module_info_get_globals(ModuleInfo, Globals),
-        globals.lookup_bool_option(Globals, intermodule_optimization,
-            IntermodOpt),
-        globals.lookup_bool_option(Globals, intermodule_analysis,
-            IntermodAnalysis),
-        globals.lookup_bool_option(Globals, make_optimization_interface,
-            MakeOptInt),
         ( if
-            % With intermodule optimization we can read the declarations
-            % for a predicate from the `.int' and `.int0' files, so ignore
-            % the error in those cases.
+            % XXX I (zs) don't understand the reason behind the logic
+            % we use here to decide whether to report the error.
             (
                 pred_status_defined_in_this_module(Status) = yes
             ;
-                IntermodOpt = no,
-                IntermodAnalysis = no
+                % With intermodule optimization, we can read the declarations
+                % for a predicate from the `.int' and `.int0' files, so ignore
+                % the error in those cases.
+                %
+                % XXX We should ignore the error only if we DID read the
+                % predicate declaration from a place for which we shouldn't
+                % report errors. This tests whether we COULD HAVE, which is
+                % not the same thing.
+                globals.lookup_bool_option(Globals, intermodule_optimization,
+                    no),
+                globals.lookup_bool_option(Globals, intermodule_analysis, no)
             ;
-                MakeOptInt = yes
+                globals.get_op_mode(Globals, OpMode),
+                OpMode = opm_top_args(opma_augment(opmau_make_opt_int))
             )
         then
             % XXX We shouldn't ignore the updated ModuleInfo, which may

@@ -74,6 +74,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.liveness.
@@ -381,10 +382,8 @@ sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
     % If making a `.analysis' file, record structure sharing results, analysis
     % dependencies, assumed answers and requests in the analysis framework.
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, make_analysis_registry,
-        MakeAnalysisRegistry),
-    (
-        MakeAnalysisRegistry = yes,
+    globals.get_op_mode(Globals, OpMode),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry)) then
         some [!AnalysisInfo] (
             module_info_get_analysis_info(!.ModuleInfo, !:AnalysisInfo),
             module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
@@ -394,8 +393,8 @@ sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
                 !AnalysisInfo),
             module_info_set_analysis_info(!.AnalysisInfo, !ModuleInfo)
         )
-    ;
-        MakeAnalysisRegistry = no
+    else
+        true
     ).
 
 :- pred save_sharing_in_module_info(pred_proc_id::in,

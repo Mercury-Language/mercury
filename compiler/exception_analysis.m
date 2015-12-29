@@ -127,6 +127,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -162,22 +163,19 @@ analyse_exceptions_in_module(!ModuleInfo) :-
     module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo),
 
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, make_analysis_registry,
-        MakeAnalysisReg),
-
-    % Record results if making the analysis registry. We do this in a
-    % separate pass so that we record results for exported `:- external'
-    % procedures, which don't get analysed because we don't have clauses
-    % for them.
-    (
-        MakeAnalysisReg = yes,
+    globals.get_op_mode(Globals, OpMode),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry)) then
+        % Record results if making the analysis registry. We do this in a
+        % separate pass so that we record results for exported `:- external'
+        % procedures, which don't get analysed because we don't have clauses
+        % for them.
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
         module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-        list.foldl(maybe_record_exception_result(!.ModuleInfo),
-            PredIds, AnalysisInfo0, AnalysisInfo),
+        list.foldl(maybe_record_exception_result(!.ModuleInfo), PredIds,
+            AnalysisInfo0, AnalysisInfo),
         module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
-    ;
-        MakeAnalysisReg = no
+    else
+        true
     ).
 
 %----------------------------------------------------------------------------%

@@ -47,6 +47,7 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -86,11 +87,10 @@ run_post_term_analysis(ModuleInfo, Specs) :-
 
 warn_non_term_user_special_preds(ModuleInfo, !:Specs) :-
     module_info_get_globals(ModuleInfo, Globals),
+    globals.get_op_mode(Globals, OpMode),
     globals.lookup_bool_option(Globals, termination, Termination),
     globals.lookup_bool_option(Globals, warn_non_term_special_preds,
         WarnSpecialPreds),
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
     globals.lookup_bool_option(Globals, transitive_optimization,
         TransIntermodOpt),
     !:Specs = [],
@@ -100,11 +100,13 @@ warn_non_term_user_special_preds(ModuleInfo, !:Specs) :-
 
         % Don't run this pass if we are only building the optimization
         % interface and we are compiling with
-        % `--transitive-intermodule-optimization' enabled because we will get
+        % `--transitive-intermodule-optimization' enabled, because we will get
         % more accurate results when we build the .trans_opt files.
         % Any warnings this time around may be spurious.
-
-        not (MakeOptInt = yes, TransIntermodOpt = yes)
+        not (
+            OpMode = opm_top_args(opma_augment(opmau_make_opt_int)),
+            TransIntermodOpt = yes
+        )
     then
         module_info_get_type_table(ModuleInfo, TypeTable),
         module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),

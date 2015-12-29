@@ -85,6 +85,7 @@
 :- import_module hlds.vartypes.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -129,14 +130,18 @@ analyse_trail_usage(!ModuleInfo) :-
     (
         % Only run the analysis in trailing grades.
         UseTrail = yes,
-        globals.lookup_bool_option(Globals, make_optimization_interface,
-            MakeOptInt),
-        globals.lookup_bool_option(Globals, make_transitive_opt_interface,
-            MakeTransOptInt),
-        globals.lookup_bool_option(Globals, make_analysis_registry,
-            MakeAnalysisReg),
-        Pass1Only = MakeOptInt `bool.or` MakeTransOptInt
-            `bool.or` MakeAnalysisReg,
+        globals.get_op_mode(Globals, OpMode),
+        ( if
+            OpMode = opm_top_args(opma_augment(OpModeAugment)),
+            ( OpModeAugment = opmau_make_opt_int
+            ; OpModeAugment = opmau_make_trans_opt_int
+            ; OpModeAugment = opmau_make_analysis_registry
+            )
+        then
+            Pass1Only = yes
+        else
+            Pass1Only = no
+        ),
         module_info_ensure_dependency_info(!ModuleInfo),
         module_info_dependency_info(!.ModuleInfo, DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
@@ -151,15 +156,16 @@ analyse_trail_usage(!ModuleInfo) :-
         % a separate pass so that we record results for exported `:- external'
         % procedures, which don't get analysed because we don't have clauses
         % for them.
-        (
-            MakeAnalysisReg = yes,
+        ( if
+            OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry))
+        then
             module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
             module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
             list.foldl(maybe_record_trailing_result(!.ModuleInfo),
                 PredIds, AnalysisInfo0, AnalysisInfo),
             module_info_set_analysis_info(AnalysisInfo, !ModuleInfo)
-        ;
-            MakeAnalysisReg = no
+        else
+            true
         )
     ;
         UseTrail = no

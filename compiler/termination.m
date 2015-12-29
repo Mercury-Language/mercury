@@ -57,6 +57,7 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -604,8 +605,12 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
 term_preprocess_preds([], !ModuleInfo).
 term_preprocess_preds([PredId | PredIds], !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
+    globals.get_op_mode(Globals, OpMode),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_opt_int)) then
+        MakeOptInt = yes
+    else
+        MakeOptInt = no
+    ),
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_status(PredInfo0, PredStatus),

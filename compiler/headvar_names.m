@@ -36,7 +36,7 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
-:- import_module libs.options.
+:- import_module libs.op_mode.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_rename.
@@ -51,17 +51,16 @@
 :- import_module varset.
 
 maybe_improve_headvar_names(Globals, !PredInfo) :-
-    globals.lookup_bool_option(Globals, make_optimization_interface, MakeOpt),
-    (
-        % Don't do this when making a `.opt' file.
-        % intermod.m needs to perform a similar transformation
-        % which this transformation would interfere with (intermod.m
-        % places the original argument terms, not just the argument
-        % variables in the clause head, and this pass would make it
-        % difficult to work out what were the original arguments).
-        MakeOpt = yes
-    ;
-        MakeOpt = no,
+    globals.get_op_mode(Globals, OpMode),
+    ( if OpMode = opm_top_args(opma_augment(opmau_make_opt_int)) then
+        % Don't change headvar names when making a `.opt' file, because
+        % intermod.m needs to perform a similar transformation which THIS
+        % transformation would interfere with. (intermod.m places the
+        % original argument terms, not just the argument variables,
+        % in the clause head, and this pass would make it difficult to
+        % work out what were the original arguments).
+        true
+    else
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
         clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
         clauses_info_get_headvars(ClausesInfo0, HeadVars0),

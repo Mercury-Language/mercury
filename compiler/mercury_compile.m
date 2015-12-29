@@ -516,7 +516,7 @@ main_after_setup(Globals, DetectedGradeFlags, OptionVariables, OptionArgs,
 do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
         OptionArgs, Args, !IO) :-
     (
-        OpMode = opm_top_make,
+        OpMode = opm_top_make(_),
         make_process_args(Globals, DetectedGradeFlags, OptionVariables,
             OptionArgs, Args, !IO)
     ;
@@ -1141,22 +1141,19 @@ apply_process_module(ProcessModule, FileName, ModuleName, MaybeTimestamp,
 read_augment_and_process_module(Globals0, OpModeAugment, OptionArgs,
         FileOrModule, MaybeModulesToRecompile, HaveReadModuleMap0,
         ModulesToLink, ExtraObjFiles, !IO) :-
-    globals.lookup_bool_option(Globals0, make_optimization_interface,
-        MakeOptInt),
-    globals.lookup_bool_option(Globals0, make_transitive_opt_interface,
-        MakeTransOptInt),
-    globals.lookup_bool_option(Globals0, make_analysis_registry,
-        MakeAnalysisRegistry),
-    globals.lookup_bool_option(Globals0, make_xml_documentation,
-        MakeXmlDocumentation),
-    bool.or_list([MakeOptInt, MakeTransOptInt,
-        MakeAnalysisRegistry, MakeXmlDocumentation], DirectReport),
     (
-        DirectReport = yes
+        ( OpModeAugment = opmau_make_opt_int
+        ; OpModeAugment = opmau_make_trans_opt_int
+        ; OpModeAugment = opmau_make_analysis_registry
+        ; OpModeAugment = opmau_make_xml_documentation
+        )
     ;
-        DirectReport = no,
-        globals.lookup_bool_option(Globals0,
-            report_cmd_line_args_in_doterr, ReportCmdLineArgsDotErr),
+        ( OpModeAugment = opmau_errorcheck_only
+        ; OpModeAugment = opmau_typecheck_only
+        ; OpModeAugment = opmau_generate_code(_)
+        ),
+        globals.lookup_bool_option(Globals0, report_cmd_line_args_in_doterr,
+            ReportCmdLineArgsDotErr),
         maybe_report_cmd_line(ReportCmdLineArgsDotErr, OptionArgs, [], !IO)
     ),
 
@@ -1526,8 +1523,8 @@ process_augmented_module(Globals, OpModeAugment, ModuleAndImports,
     pre_hlds_pass(Globals, OpModeAugment, WriteDFile, ModuleAndImports, HLDS1,
         QualInfo, MaybeTimestampMap, UndefTypes, UndefModes, Errors1,
         !DumpInfo, !Specs, !IO),
-    frontend_pass(QualInfo, UndefTypes, UndefModes, Errors1, Errors2,
-        HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
+    frontend_pass(OpModeAugment, QualInfo, UndefTypes, UndefModes,
+        Errors1, Errors2, HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
     ( if
         Errors1 = no,
         Errors2 = no,
@@ -1639,8 +1636,8 @@ pre_hlds_pass(Globals, OpModeAugment, WriteDFile0, ModuleAndImports0, HLDS1,
     ),
 
     % Errors in .opt and .trans_opt files result in software errors.
-    maybe_grab_optfiles(Globals, ModuleAndImports0, Verbose, MaybeTransOptDeps,
-        ModuleAndImports1, IntermodError, !IO),
+    maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
+        ModuleAndImports0, ModuleAndImports1, IntermodError, !IO),
 
     % We pay attention to IntermodError instead of _Error. XXX Is this right?
     module_and_imports_get_aug_comp_unit(ModuleAndImports1, AugCompUnit1,
@@ -1872,20 +1869,16 @@ read_dependency_file_get_modules(TransOptDeps, !IO) :-
 
 %---------------------%
 
-:- pred maybe_grab_optfiles(globals::in, module_and_imports::in, bool::in,
-    maybe(list(module_name))::in, module_and_imports::out, bool::out,
+:- pred maybe_grab_optfiles(globals::in, op_mode_augment::in, bool::in,
+    maybe(list(module_name))::in, 
+    module_and_imports::in, module_and_imports::out, bool::out,
     io::di, io::uo) is det.
 
-maybe_grab_optfiles(Globals, Imports0, Verbose, MaybeTransOptDeps,
-        Imports, Error, !IO) :-
-    globals.lookup_bool_option(Globals, intermodule_optimization,
-        IntermodOpt),
+maybe_grab_optfiles(Globals, OpModeAugment, Verbose, MaybeTransOptDeps,
+        Imports0, Imports, Error, !IO) :-
+    globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
     globals.lookup_bool_option(Globals, use_opt_files, UseOptInt),
-    globals.lookup_bool_option(Globals, make_optimization_interface,
-        MakeOptInt),
     globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
-    globals.lookup_bool_option(Globals, make_transitive_opt_interface,
-        MakeTransOptInt),
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
     ( if
@@ -1893,7 +1886,7 @@ maybe_grab_optfiles(Globals, Imports0, Verbose, MaybeTransOptDeps,
         ; IntermodOpt = yes
         ; IntermodAnalysis = yes
         ),
-        MakeOptInt = no
+        OpModeAugment \= opmau_make_opt_int
     then
         maybe_write_string(Verbose, "% Reading .opt files...\n", !IO),
         maybe_flush_output(Verbose, !IO),
@@ -1903,7 +1896,8 @@ maybe_grab_optfiles(Globals, Imports0, Verbose, MaybeTransOptDeps,
         Imports1 = Imports0,
         Error1 = no
     ),
-    ( if MakeTransOptInt = yes then
+    (
+        OpModeAugment = opmau_make_trans_opt_int,
         (
             MaybeTransOptDeps = yes(TransOptDeps),
             % When creating the trans_opt file, only import the
@@ -1932,13 +1926,20 @@ maybe_grab_optfiles(Globals, Imports0, Verbose, MaybeTransOptDeps,
                 WarnNoTransOptDeps = no
             )
         )
-    else if MakeOptInt = yes then
-        % If we're making the `.opt' file, then we can't read any `.trans_opt'
-        % files, since `.opt' files aren't allowed to depend on `.trans_opt'
-        % files.
+    ;
+        OpModeAugment = opmau_make_opt_int,
+        % If we are making the `.opt' file, then we cannot read any
+        % `.trans_opt' files, since `.opt' files aren't allowed to depend on
+        % `.trans_opt' files.
         Imports = Imports1,
         Error2 = no
-    else
+    ;
+        ( OpModeAugment = opmau_make_analysis_registry
+        ; OpModeAugment = opmau_make_xml_documentation
+        ; OpModeAugment = opmau_typecheck_only
+        ; OpModeAugment = opmau_errorcheck_only
+        ; OpModeAugment = opmau_generate_code(_)
+        ),
         (
             TransOpt = yes,
             % If transitive optimization is enabled, but we are not creating
@@ -2217,8 +2218,8 @@ after_front_end_passes(Globals, OpModeCodeGen, NestedSubModules,
                 % to see whether it should generate object code, using the
                 % same logic as the HighLevelCode = yes case above.
                 % XXX Move that logic here, for symmetry.
-                llds_output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
-                    Succeeded, ExtraObjFiles, !IO)
+                llds_output_pass(OpModeCodeGen, !.HLDS, GlobalData, LLDS,
+                    ModuleName, Succeeded, ExtraObjFiles, !IO)
             )
         ;
             Target = target_erlang,

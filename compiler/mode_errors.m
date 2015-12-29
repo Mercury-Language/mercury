@@ -251,6 +251,7 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.mercury_to_mercury.
@@ -934,17 +935,23 @@ mode_error_var_has_inst_to_spec(ModeInfo, Var, VarInst, Inst) = Spec :-
 mode_error_implied_mode_to_spec(ModeInfo, Var, VarInst, Inst) = Spec :-
     % This "error" message is really a "sorry, not implemented" message.
     % We only print the message if we will actually generating code.
-    Preamble = mode_info_context_preamble(ModeInfo),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_op_mode(Globals, OpMode),
     mode_info_get_context(ModeInfo, Context),
-    mode_info_get_varset(ModeInfo, VarSet),
-    Pieces = [words("sorry, implied modes not implemented."), nl,
-        words("Variable"), quote(mercury_var_to_name_only(VarSet, Var)) |
-        has_inst_expected_inst_was(ModeInfo, VarInst, Inst)],
-    Severity = severity_conditional(errorcheck_only, no, severity_error, no),
-    Spec = error_spec(Severity, phase_mode_check(report_in_any_mode),
-        [simple_msg(Context,
-            [option_is_set(errorcheck_only, no,
-                [always(Preamble ++ Pieces)])])]).
+    ( if OpMode = opm_top_args(opma_augment(opmau_generate_code(_))) then
+        Preamble = mode_info_context_preamble(ModeInfo),
+        mode_info_get_varset(ModeInfo, VarSet),
+        Pieces = [words("sorry, implied modes not implemented."), nl,
+            words("Variable"), quote(mercury_var_to_name_only(VarSet, Var)) |
+            has_inst_expected_inst_was(ModeInfo, VarInst, Inst)],
+        Spec = error_spec(severity_error, phase_mode_check(report_in_any_mode),
+            [simple_msg(Context, [always(Preamble ++ Pieces)])])
+    else
+        Spec = error_spec(severity_informational,
+            phase_mode_check(report_in_any_mode),
+            [simple_msg(Context, [])])
+    ).
 
 :- func mode_error_no_mode_decl_to_spec(mode_info) = error_spec.
 

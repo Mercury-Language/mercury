@@ -186,38 +186,38 @@
     ;       debug_type_rep
 
     % Output options
-    ;       make_short_interface
-    ;       make_interface
-    ;       make_private_interface
-    ;       make_optimization_interface
-    ;       make_transitive_opt_interface
-    ;       make_analysis_registry
-    ;       make_xml_documentation
-    ;       generate_source_file_mapping
-    ;       generate_dependency_file
-    ;       generate_dependencies
+    ;       only_opmode_make_short_interface
+    ;       only_opmode_make_interface
+    ;       only_opmode_make_private_interface
+    ;       only_opmode_make_optimization_interface
+    ;       only_opmode_make_transitive_opt_interface
+    ;       only_opmode_make_analysis_registry
+    ;       only_opmode_make_xml_documentation
+    ;       only_opmode_generate_source_file_mapping
+    ;       only_opmode_generate_dependency_file
+    ;       only_opmode_generate_dependencies
     ;       generate_module_order
     ;       generate_standalone_interface
-    ;       convert_to_mercury
-    ;       typecheck_only
-    ;       errorcheck_only
-    ;       target_code_only
-    ;       compile_only
+    ;       only_opmode_convert_to_mercury
+    ;       only_opmode_typecheck_only
+    ;       only_opmode_errorcheck_only
+    ;       only_opmode_target_code_only
+    ;       only_opmode_compile_only
     ;       compile_to_shared_lib
-    ;       output_grade_string
-    ;       output_link_command
-    ;       output_shared_lib_link_command
-    ;       output_libgrades
-    ;       output_cc
-    ;       output_c_compiler_type
-    ;       output_csharp_compiler
-    ;       output_csharp_compiler_type
-    ;       output_cflags
-    ;       output_library_link_flags
-    ;       output_grade_defines
-    ;       output_c_include_directory_flags
-    ;       output_target_arch
-    ;       output_class_dir
+    ;       only_opmode_output_grade_string
+    ;       only_opmode_output_link_command
+    ;       only_opmode_output_shared_lib_link_command
+    ;       only_opmode_output_libgrades
+    ;       only_opmode_output_cc
+    ;       only_opmode_output_c_compiler_type
+    ;       only_opmode_output_csharp_compiler
+    ;       only_opmode_output_csharp_compiler_type
+    ;       only_opmode_output_cflags
+    ;       only_opmode_output_library_link_flags
+    ;       only_opmode_output_grade_defines
+    ;       only_opmode_output_c_include_directory_flags
+    ;       only_opmode_output_target_arch
+    ;       only_opmode_output_class_dir
 
     % Auxiliary output options
     ;       smart_recompilation
@@ -949,9 +949,9 @@
     ;       java_archive_command
 
     % Build system options
-    ;       make
+    ;       only_opmode_make
+    ;       only_opmode_rebuild
     ;       keep_going
-    ;       rebuild
     ;       jobs
     ;       track_flags
     ;       invoked_by_mmc_make
@@ -1171,38 +1171,38 @@ option_defaults_2(verbosity_option, [
 ]).
 option_defaults_2(output_option, [
     % Output Options (mutually exclusive)
-    generate_source_file_mapping        -   bool(no),
-    generate_dependency_file            -   bool(no),
-    generate_dependencies               -   bool(no),
+    only_opmode_generate_source_file_mapping -      bool(no),
+    only_opmode_generate_dependency_file -  bool(no),
+    only_opmode_generate_dependencies   -   bool(no),
     generate_module_order               -   bool(no),
     generate_standalone_interface       -   maybe_string(no),
-    make_short_interface                -   bool(no),
-    make_interface                      -   bool(no),
-    make_private_interface              -   bool(no),
-    make_optimization_interface         -   bool(no),
-    make_transitive_opt_interface       -   bool(no),
-    make_analysis_registry              -   bool(no),
-    make_xml_documentation              -   bool(no),
-    convert_to_mercury                  -   bool(no),
-    typecheck_only                      -   bool(no),
-    errorcheck_only                     -   bool(no),
-    target_code_only                    -   bool(no),
-    compile_only                        -   bool(no),
+    only_opmode_make_short_interface    -   bool(no),
+    only_opmode_make_interface          -   bool(no),
+    only_opmode_make_private_interface  -   bool(no),
+    only_opmode_make_optimization_interface -       bool(no),
+    only_opmode_make_transitive_opt_interface -     bool(no),
+    only_opmode_make_analysis_registry  -   bool(no),
+    only_opmode_make_xml_documentation  -   bool(no),
+    only_opmode_convert_to_mercury      -   bool(no),
+    only_opmode_typecheck_only          -   bool(no),
+    only_opmode_errorcheck_only         -   bool(no),
+    only_opmode_target_code_only        -   bool(no),
+    only_opmode_compile_only            -   bool(no),
     compile_to_shared_lib               -   bool(no),
-    output_grade_string                 -   bool(no),
-    output_link_command                 -   bool(no),
-    output_shared_lib_link_command      -   bool(no),
-    output_libgrades                    -   bool(no),
-    output_cc                           -   bool(no),
-    output_c_compiler_type              -   bool(no),
-    output_csharp_compiler              -   bool(no),
-    output_csharp_compiler_type         -   bool(no),
-    output_cflags                       -   bool(no),
-    output_library_link_flags           -   bool(no),
-    output_grade_defines                -   bool(no),
-    output_c_include_directory_flags    -   bool(no),
-    output_target_arch                  -   bool(no),
-    output_class_dir                    -   bool(no)
+    only_opmode_output_grade_string     -   bool(no),
+    only_opmode_output_link_command     -   bool(no),
+    only_opmode_output_shared_lib_link_command -    bool(no),
+    only_opmode_output_libgrades        -   bool(no),
+    only_opmode_output_cc               -   bool(no),
+    only_opmode_output_c_compiler_type  -   bool(no),
+    only_opmode_output_csharp_compiler  -   bool(no),
+    only_opmode_output_csharp_compiler_type -       bool(no),
+    only_opmode_output_cflags           -   bool(no),
+    only_opmode_output_library_link_flags -   bool(no),
+    only_opmode_output_grade_defines    -   bool(no),
+    only_opmode_output_c_include_directory_flags -  bool(no),
+    only_opmode_output_target_arch      -   bool(no),
+    only_opmode_output_class_dir        -   bool(no)
 ]).
 option_defaults_2(aux_output_option, [
     % Auxiliary Output Options
@@ -1841,9 +1841,9 @@ option_defaults_2(link_option, [
 ]).
 option_defaults_2(build_system_option, [
     % Build System Options
-    make                                -   bool(no),
+    only_opmode_make                    -   bool(no),
+    only_opmode_rebuild                 -   bool(no),
     keep_going                          -   bool(no),
-    rebuild                             -   bool(no),
     jobs                                -   int(1),
     track_flags                         -   bool(no),
     invoked_by_mmc_make                 -   bool(no),
@@ -1908,40 +1908,40 @@ option_defaults_2(miscellaneous_option, [
 ]).
 
     % please keep this in alphabetic order
-short_option('c', compile_only).
-short_option('C', target_code_only).
+short_option('c', only_opmode_compile_only).
+short_option('C', only_opmode_target_code_only).
 short_option('d', dump_hlds).
 short_option('D', dump_hlds_alias).
-short_option('e', errorcheck_only).
+short_option('e', only_opmode_errorcheck_only).
 short_option('E', verbose_errors).
-short_option('f', generate_source_file_mapping).
+short_option('f', only_opmode_generate_source_file_mapping).
 short_option('F', framework_directories).
 short_option('h', help).
 short_option('H', highlevel_code).
-short_option('i', make_interface).
+short_option('i', only_opmode_make_interface).
 short_option('j', jobs).
 short_option('I', search_directories).
 short_option('k', keep_going).
 short_option('l', link_libraries).
 short_option('L', link_library_directories).
-short_option('m', make).
-short_option('M', generate_dependencies).
+short_option('m', only_opmode_make).
+short_option('M', only_opmode_generate_dependencies).
 short_option('n', line_numbers).
 short_option('N', debug_modes).
 short_option('o', output_file_name).
 short_option('O', opt_level).
 short_option('p', profiling).
-short_option('P', convert_to_mercury).
-short_option('r', rebuild).
+short_option('P', only_opmode_convert_to_mercury).
+short_option('r', only_opmode_rebuild).
 short_option('R', runtime_link_library_directories).
 short_option('s', grade).
 short_option('S', statistics).
 short_option('T', debug_types).
-short_option('t', typecheck_only).
+short_option('t', only_opmode_typecheck_only).
 short_option('v', verbose).
 short_option('V', very_verbose).
 short_option('w', inhibit_warnings).
-short_option('x', make_xml_documentation).
+short_option('x', only_opmode_make_xml_documentation).
 short_option('?', help).
 
 % warning options
@@ -2047,55 +2047,63 @@ long_option("debug-indirect-reuse",         debug_indirect_reuse).
 long_option("debug-type-rep",               debug_type_rep).
 
 % output options (mutually exclusive)
-long_option("generate-source-file-mapping", generate_source_file_mapping).
-long_option("generate-dependency-file", generate_dependency_file).
-long_option("generate-dependencies",    generate_dependencies).
+long_option("generate-source-file-mapping",
+    only_opmode_generate_source_file_mapping).
+long_option("generate-dependency-file", only_opmode_generate_dependency_file).
+long_option("generate-dependencies",    only_opmode_generate_dependencies).
 long_option("generate-module-order",    generate_module_order).
 long_option("generate-standalone-interface", generate_standalone_interface).
-long_option("make-short-interface",     make_short_interface).
-long_option("make-short-int",           make_short_interface).
-long_option("make-interface",           make_interface).
-long_option("make-int",                 make_interface).
-long_option("make-private-interface",   make_private_interface).
-long_option("make-priv-int",            make_private_interface).
-long_option("make-optimization-interface", make_optimization_interface).
-long_option("make-optimisation-interface", make_optimization_interface).
-long_option("make-opt-int",             make_optimization_interface).
+long_option("make-short-interface",     only_opmode_make_short_interface).
+long_option("make-short-int",           only_opmode_make_short_interface).
+long_option("make-interface",           only_opmode_make_interface).
+long_option("make-int",                 only_opmode_make_interface).
+long_option("make-private-interface",   only_opmode_make_private_interface).
+long_option("make-priv-int",            only_opmode_make_private_interface).
+long_option("make-optimization-interface",
+    only_opmode_make_optimization_interface).
+long_option("make-optimisation-interface",
+    only_opmode_make_optimization_interface).
+long_option("make-opt-int",
+    only_opmode_make_optimization_interface).
 long_option("make-transitive-optimization-interface",
-                                        make_transitive_opt_interface).
+    only_opmode_make_transitive_opt_interface).
 long_option("make-transitive-optimisation-interface",
-                                        make_transitive_opt_interface).
-long_option("make-trans-opt",           make_transitive_opt_interface).
-long_option("make-analysis-registry",   make_analysis_registry).
-long_option("make-xml-doc",             make_xml_documentation).
-long_option("make-xml-documentation",   make_xml_documentation).
-long_option("convert-to-mercury",       convert_to_mercury).
-long_option("convert-to-Mercury",       convert_to_mercury).
-long_option("pretty-print",             convert_to_mercury).
-long_option("typecheck-only",           typecheck_only).
-long_option("errorcheck-only",          errorcheck_only).
-long_option("target-code-only",         target_code_only).
-long_option("compile-only",             compile_only).
+    only_opmode_make_transitive_opt_interface).
+long_option("make-trans-opt",
+    only_opmode_make_transitive_opt_interface).
+long_option("make-analysis-registry",   only_opmode_make_analysis_registry).
+long_option("make-xml-doc",             only_opmode_make_xml_documentation).
+long_option("make-xml-documentation",   only_opmode_make_xml_documentation).
+long_option("convert-to-mercury",       only_opmode_convert_to_mercury).
+long_option("convert-to-Mercury",       only_opmode_convert_to_mercury).
+long_option("pretty-print",             only_opmode_convert_to_mercury).
+long_option("typecheck-only",           only_opmode_typecheck_only).
+long_option("errorcheck-only",          only_opmode_errorcheck_only).
+long_option("target-code-only",         only_opmode_target_code_only).
+long_option("compile-only",             only_opmode_compile_only).
 long_option("compile-to-shared-lib",    compile_to_shared_lib).
-long_option("output-grade-string",      output_grade_string).
-long_option("output-link-command",      output_link_command).
-long_option("output-shared-lib-link-command", output_shared_lib_link_command).
-long_option("output-libgrades",         output_libgrades).
-long_option("output-cc",                output_cc).
-long_option("output-cc-type",           output_c_compiler_type).
-long_option("output-c-compiler-type",   output_c_compiler_type).
-long_option("output-csharp-compiler",   output_csharp_compiler).
-long_option("output-csharp-compiler-type", output_csharp_compiler_type).
-long_option("output-cflags",            output_cflags).
-long_option("output-library-link-flags",    output_library_link_flags).
-long_option("output-grade-defines",     output_grade_defines).
+long_option("output-grade-string",      only_opmode_output_grade_string).
+long_option("output-link-command",      only_opmode_output_link_command).
+long_option("output-shared-lib-link-command",
+    only_opmode_output_shared_lib_link_command).
+long_option("output-libgrades",         only_opmode_output_libgrades).
+long_option("output-cc",                only_opmode_output_cc).
+long_option("output-cc-type",           only_opmode_output_c_compiler_type).
+long_option("output-c-compiler-type",   only_opmode_output_c_compiler_type).
+long_option("output-csharp-compiler",   only_opmode_output_csharp_compiler).
+long_option("output-csharp-compiler-type",
+    only_opmode_output_csharp_compiler_type).
+long_option("output-cflags",            only_opmode_output_cflags).
+long_option("output-library-link-flags",
+    only_opmode_output_library_link_flags).
+long_option("output-grade-defines",     only_opmode_output_grade_defines).
 long_option("output-c-include-directory-flags",
-    output_c_include_directory_flags).
+    only_opmode_output_c_include_directory_flags).
 long_option("output-c-include-dir-flags",
-    output_c_include_directory_flags).
-long_option("output-target-arch",       output_target_arch).
-long_option("output-class-directory",   output_class_dir).
-long_option("output-class-dir",         output_class_dir).
+    only_opmode_output_c_include_directory_flags).
+long_option("output-target-arch",       only_opmode_output_target_arch).
+long_option("output-class-directory",   only_opmode_output_class_dir).
+long_option("output-class-dir",         only_opmode_output_class_dir).
 
 % aux output options
 long_option("smart-recompilation",      smart_recompilation).
@@ -2198,7 +2206,7 @@ long_option("decl-debug",           decl_debug).
 long_option("ssdb",                 source_to_source_debug).
 long_option("ss-debug",             source_to_source_debug).
 long_option("source-to-source-debug", source_to_source_debug).
-    % (b) profiling
+% (b) profiling
 long_option("profiling",            profiling).
 long_option("time-profiling",       time_profiling).
 long_option("memory-profiling",     memory_profiling).
@@ -2211,34 +2219,33 @@ long_option("use-activation-counts",    use_activation_counts).
 long_option("pre-prof-transforms-simplify", pre_prof_transforms_simplify).
 long_option("pre-implicit-parallelism-simplify",
     pre_implicit_parallelism_simplify).
-long_option("coverage-profiling",
-                    coverage_profiling).
+long_option("coverage-profiling",   coverage_profiling).
 long_option("coverage-profiling-via-calls",
-                    coverage_profiling_via_calls).
+    coverage_profiling_via_calls).
 long_option("coverage-profiling-static",
-                    coverage_profiling_static).
+    coverage_profiling_static).
 long_option("profile-deep-coverage-after-goal",
-                    profile_deep_coverage_after_goal).
+    profile_deep_coverage_after_goal).
 long_option("profile-deep-coverage-branch-ite",
-                    profile_deep_coverage_branch_ite).
+    profile_deep_coverage_branch_ite).
 long_option("profile-deep-coverage-branch-switch",
-                    profile_deep_coverage_branch_switch).
+    profile_deep_coverage_branch_switch).
 long_option("profile-deep-coverage-branch-disj",
-                    profile_deep_coverage_branch_disj).
+    profile_deep_coverage_branch_disj).
 long_option("profile-deep-coverage-use-portcounts",
-                    profile_deep_coverage_use_portcounts).
+    profile_deep_coverage_use_portcounts).
 long_option("profile-deep-coverage-use-trivial",
-                    profile_deep_coverage_use_trivial).
+    profile_deep_coverage_use_trivial).
 long_option("profile-for-implicit-parallelism",
-                    profile_for_feedback).
+    profile_for_feedback).
 long_option("profile-for-feedback",
-                    profile_for_feedback).
+    profile_for_feedback).
 long_option("use-zeroing-for-ho-cycles",
-                    use_zeroing_for_ho_cycles).
+    use_zeroing_for_ho_cycles).
 long_option("use-lots-of-ho-specialization",
-                    use_lots_of_ho_specialization).
+    use_lots_of_ho_specialization).
 long_option("deep-profile-tail-recursion",
-                    deep_profile_tail_recursion).
+    deep_profile_tail_recursion).
 long_option("record-term-sizes-as-words", record_term_sizes_as_words).
 long_option("record-term-sizes-as-cells", record_term_sizes_as_cells).
 long_option("experimental-complexity",  experimental_complexity).
@@ -2802,9 +2809,9 @@ long_option("strip-executable-static-flags", strip_executable_static_flags).
 long_option("java-archive-command", java_archive_command).
 
 % build system options
-long_option("make",                 make).
+long_option("make",                 only_opmode_make).
 long_option("keep-going",           keep_going).
-long_option("rebuild",              rebuild).
+long_option("rebuild",              only_opmode_rebuild).
 long_option("jobs",                 jobs).
 long_option("track-flags",          track_flags).
 long_option("track-options",        track_flags).
@@ -2910,22 +2917,22 @@ special_handler(grade, string(Grade), OptionTable0, Result) :-
     ).
 special_handler(compile_to_c, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("c"), !OptionTable),
-    map.set(target_code_only, bool(yes), !OptionTable).
+    map.set(only_opmode_target_code_only, bool(yes), !OptionTable).
 special_handler(java, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("java"), !OptionTable).
 special_handler(java_only, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("java"), !OptionTable),
-    map.set(target_code_only, bool(yes), !OptionTable).
+    map.set(only_opmode_target_code_only, bool(yes), !OptionTable).
 special_handler(csharp, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("csharp"), !OptionTable).
 special_handler(csharp_only, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("csharp"), !OptionTable),
-    map.set(target_code_only, bool(yes), !OptionTable).
+    map.set(only_opmode_target_code_only, bool(yes), !OptionTable).
 special_handler(erlang, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("erlang"), !OptionTable).
 special_handler(erlang_only, none, !.OptionTable, ok(!:OptionTable)) :-
     map.set(target, string("erlang"), !OptionTable),
-    map.set(target_code_only, bool(yes), !OptionTable).
+    map.set(only_opmode_target_code_only, bool(yes), !OptionTable).
 special_handler(profiling, bool(Value), !.OptionTable, ok(!:OptionTable)) :-
     map.set(profile_time, bool(Value), !OptionTable),
     map.set(profile_calls, bool(Value), !OptionTable),
@@ -3757,7 +3764,7 @@ options_help_output -->
         "--generate-module-order",
         "\tOutput the strongly connected components of the module",
         "\tdependency graph in top-down order to `<module>.order'.",
-        "\tImplies `--generate-dependencies'.",
+        "\tEffective only if --generate-dependencies is also specified.",
         "--generate-standalone-interface <basename>",
         "\tOutput a stand-alone interface.",
         "\t<basename> is used as the basename of any files generated for",
@@ -4004,6 +4011,7 @@ options_help_aux_output -->
         "\tThe imports graph contains the directed graph module A",
         "\timports module B.",
         "\tThe resulting file can be processed by the graphviz tools.",
+        "\tEffective only if --generate-dependencies is also specified.",
 % This option is for developers only.
 %       "--dump-trace-counts <stage number or name>",
 %       "\tIf the compiler was compiled with debugging enabled and is being",
@@ -5678,16 +5686,16 @@ options_help_build_system -->
         % compiler. `mmc --make' passes it as the first argument
         % when compiling a module.
         "-m, --make",
-        "\tTreat the non-option arguments to `mmc' as files to",
-        "\tmake, rather than source files. Create the specified",
-        "\tfiles, if they are not already up-to-date.",
+        "\tTreat the non-option arguments to `mmc' as files to make,",
+        "\trather than source files. Create the specified files,",
+        "\tif they are not already up-to-date.",
         "\tNote that this option also enables `--use-subdirs'.",
         "-r, --rebuild",
         "\tSame as `--make', but always rebuild the target files",
         "\teven if they are up-to-date.",
         "-k, --keep-going",
-        "\tWith `--make', keep going as far as",
-        "\tpossible even if an error is detected.",
+        "\tWith `--make', keep going as far as possible",
+        "\teven if an error is detected.",
         "-j <n>, --jobs <n>",
         "\tWith `--make', attempt to perform up to <n> jobs",
         "\tconcurrently for some tasks.",
