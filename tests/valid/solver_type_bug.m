@@ -44,3 +44,10 @@ p2(X) :-
 q1_1_p_0(_, _) -> void.
 q2_1_p_0(_, _) -> void.
 ").
+
+:- pragma foreign_code("Java", "
+
+    private static void q1_1_p_0(int a1, jmercury.runtime.MethodPtr a2, java.lang.Object a3) {}
+    private static void q2_1_p_0(Foo2_0 a1, jmercury.runtime.MethodPtr a2, java.lang.Object a3) {}
+
+").

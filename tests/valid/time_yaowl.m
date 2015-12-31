@@ -58,3 +58,11 @@ build_time_yaowl_specification(S, WF, !IO) :-
     io::di, io::uo) is det <= (yaowl_static_global_token(S, G, T)).
 
 :- pragma external_pred(build_specification/4).
+
+:- pragma foreign_code("Java", "
+
+    private static time_yaowl.Yaowl_specification_2
+    build_specification_4_p_0(Object []a1, Object a2) {
+        return null;
+    }
+").

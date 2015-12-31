@@ -13,6 +13,7 @@
 
 :- implementation.
 :- pragma foreign_type("C", mytype, "void *").
+:- pragma foreign_type("Java", mytype, "java.lang.Object").
 
 :- interface.
 :- type mytype. % used to lead to an error

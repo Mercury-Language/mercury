@@ -15,7 +15,7 @@
 # beyond those required by $(TESTS_DIR)/Mmake.common.
 #
 # AGC_PROGS:
-#   The test cases testing the accurage gc system.
+#   The test cases testing the accurate gc system.
 # TRAIL_PROGS:
 #   The test cases that only work in trailing grades.
 # TYPECLASS_PROGS:
