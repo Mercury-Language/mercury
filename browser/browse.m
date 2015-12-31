@@ -228,10 +228,12 @@
 %
 
 save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
-    % io.write_string(FileName, !IO),
-    % io.nl(!IO),
-    % io.write(BrowserTerm, !IO),
-    % io.nl(!IO),
+    trace [compile_time(flag("debug_save_term_to_file")), io(!IO)] (
+        io.write_string(FileName, !IO),
+        io.nl(!IO),
+        io.write(BrowserTerm, !IO),
+        io.nl(!IO)
+    ),
     io.tell(FileName, FileStreamRes, !IO),
     (
         FileStreamRes = ok,
@@ -400,9 +402,10 @@ save_term(Indent, Term, !IO) :-
             io.write_string("[]", !IO)
         ;
             List = [_ | _],
-            MakeUniv = (func(Element) = (ElementUniv) :-
-                ElementUniv = univ(Element)
-            ),
+            MakeUniv =
+                ( func(Element) = (ElementUniv) :-
+                    ElementUniv = univ(Element)
+                ),
             Univs = list.map(MakeUniv, List),
             write_indent(Indent, !IO),
             io.write_string("[\n", !IO),
@@ -753,9 +756,9 @@ do_print_memory_addr(Debugger, Info, MaybePath, !IO) :-
     Addr = (MR_Integer) Value;
 ").
 
-% Java doesn't support converting addresses to integers, so we
-% just return zero.  For other backends the debugger doesn't yet
-% work, so it doesn't matter what we return.
+% Java doesn't support converting addresses to integers, so we just
+% return zero. For other backends the debugger doesn't yet work,
+% so it doesn't matter what we return.
 get_value_representation(_Value, X) :-
     cc_multi_equal(0, X).
 
@@ -1516,8 +1519,7 @@ change_dir(PwdDirs, Path, RootRelDirs) :-
 % Display predicates.
 %
 
-:- pred show_settings(debugger::in, browser_info::in,
-    io::di, io::uo) is det.
+:- pred show_settings(debugger::in, browser_info::in, io::di, io::uo) is det.
 
 show_settings(Debugger, Info, !IO) :-
     show_settings_caller(Debugger, Info, browse, "Browser", !IO),
@@ -1528,15 +1530,13 @@ show_settings(Debugger, Info, !IO) :-
     write_down_path(Debugger, Info ^ bri_dirs, !IO),
     nl_debugger(Debugger, !IO),
 
-    write_string_debugger(Debugger,
-        "Number of I/O actions printed is: ", !IO),
+    write_string_debugger(Debugger, "Number of I/O actions printed is: ", !IO),
     write_int_debugger(Debugger,
         get_num_printed_io_actions(Info ^ bri_state), !IO),
     nl_debugger(Debugger, !IO).
 
 :- pred show_settings_caller(debugger::in, browser_info::in,
-    browse_caller_type::in, string::in,
-    io::di, io::uo) is det.
+    browse_caller_type::in, string::in, io::di, io::uo) is det.
 
 show_settings_caller(Debugger, Info, Caller, CallerName, !IO) :-
     browser_info.get_format(Info, Caller, no, Format),
