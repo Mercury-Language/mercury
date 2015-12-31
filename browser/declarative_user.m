@@ -832,14 +832,6 @@ convert_maybe_track_dirs_to_term_path_from_arg(Term, TrackDirs, TrackPath) :-
     convert_dirs_to_term_path(Term, Dirs, TermPath),
     TrackPath = track(HowTrack, ShouldAssertInvalid, TermPath).
 
-    % Reverse the first argument and append the second to it.
-    %
-:- pred reverse_and_append(list(T)::in, list(T)::in, list(T)::out) is det.
-
-reverse_and_append([], Bs, Bs).
-reverse_and_append([A | As], Bs, Cs) :-
-    reverse_and_append(As, [A | Bs], Cs).
-
 %-----------------------------------------------------------------------------%
 
 :- pred user_confirm_bug_help(user_state::in, io::di, io::uo) is det.

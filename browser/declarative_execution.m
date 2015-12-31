@@ -1354,13 +1354,6 @@ c_bool_to_merc_bool(ProgVis) =
         yes
     ).
 
-    % Create a temporary placeholder until the code MR_decl_make_atom
-    % can fill in all the argument slots.
-    %
-:- func dummy_arg_info = trace_atom_arg.
-
-dummy_arg_info = arg_info(no, -1, no).
-
 %-----------------------------------------------------------------------------%
 
     % The most important property of this instance is that it

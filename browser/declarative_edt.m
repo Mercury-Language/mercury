@@ -1400,9 +1400,10 @@ recalc_weights_and_get_parents(Store, [SuspectId | SuspectIds], PrevParents,
         Parents, !SearchSpace).
 
     % Work out the number of unknown suspects in the search space.
-    % Used for assertion checking.
+    % Can be used for assertion checking.
     %
 :- func calc_num_unknown(search_space(T)) = int.
+:- pragma consider_used(calc_num_unknown/1).
 
 calc_num_unknown(SearchSpace) = NumUnknown :-
     Suspects = map.values(SearchSpace ^ store),
@@ -1414,9 +1415,10 @@ calc_num_unknown(SearchSpace) = NumUnknown :-
     NumUnknown = list.length(Questionable).
 
     % Work out the number of suspects with unexplored children.
-    % Used for assertion checking.
+    % Can be used for assertion checking.
     %
 :- func calc_num_unexplored(search_space(T)) = int.
+:- pragma consider_used(calc_num_unexplored/1).
 
 calc_num_unexplored(SearchSpace) = NumUnexplored :-
     Suspects = map.values(SearchSpace ^ store),
@@ -1588,19 +1590,6 @@ add_children_2(Store, Oracle, [EDTChild | EDTChildren], ParentId,
     add_children_2(Store, Oracle, EDTChildren, ParentId,
         Status, Depth, !SearchSpace, !Counter, OtherChildren),
     Children = [NextId | OtherChildren].
-
-:- pred add_child_to_parent(suspect_id::in, suspect(T)::in, suspect(T)::out)
-    is det.
-
-add_child_to_parent(ChildId, !Parent) :-
-    (
-        !.Parent ^ children = no,
-        NewChildren = [ChildId]
-    ;
-        !.Parent ^ children = yes(Children),
-        list.append(Children, [ChildId], NewChildren)
-    ),
-    !Parent ^ children := yes(NewChildren).
 
 :- pred adjust_suspect_status_from_oracle(S::in,
     oracle_state::in, suspect_id::in, search_space(T)::in,
@@ -1942,6 +1931,7 @@ get_children_list(Store, Oracle, [SuspectId | SuspectIds],
     %
 :- pred find_first_implicit_root(S::in, search_space(T)::in,
     list(suspect_id)::in, suspect_id::out) is semidet <= mercury_edt(S, T).
+:- pragma consider_used(find_first_implicit_root/4).
 
 find_first_implicit_root(Store, SearchSpace, [SuspectId | SuspectIds],
         ImplicitRoot) :-
