@@ -1140,6 +1140,8 @@ pseudo_type_desc_to_pseudo_type_info(PseudoTypeDesc) =
 
 :- func type_ctor_info_from_pseudo_type_info(pseudo_type_info) =
     type_ctor_info_evaled.
+:- pragma consider_used(type_ctor_info_from_pseudo_type_info/1).
+% Just in case it is needed later.
 
 type_ctor_info_from_pseudo_type_info(PTI) =
     unsafe_cast(PTI) ^ type_ctor_info_evaled.
