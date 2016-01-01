@@ -29,6 +29,7 @@ main(!IO) :-
 :- pragma no_inline(set_x/1).
 :- pragma foreign_proc("C", set_x(X::in), [will_not_call_mercury], "x=X;" ).
 :- pragma foreign_proc("C#", set_x(X::in), [will_not_call_mercury], "x=X;" ).
+:- pragma foreign_proc("Java", set_x(X::in), [will_not_call_mercury], "x=X;" ).
 :- pragma foreign_proc("Erlang", set_x(X::in), [], "put(x, X)" ).
 
 :- semipure pred get_x(int::out) is det.
@@ -36,6 +37,7 @@ main(!IO) :-
 :- pragma promise_semipure(get_x/1).
 :- pragma foreign_proc("C", get_x(X::out), [will_not_call_mercury], "X=x;").
 :- pragma foreign_proc("C#", get_x(X::out), [will_not_call_mercury], "X=x;").
+:- pragma foreign_proc("Java", get_x(X::out), [will_not_call_mercury], "X=x;").
 :- pragma foreign_proc("Erlang", get_x(X::out), [], "
     X0 = get(x),
     case X0 of
@@ -50,11 +52,13 @@ main(!IO) :-
 :- pragma no_inline(incr_x/0).
 :- pragma foreign_proc("C", incr_x, [will_not_call_mercury], "++x;" ).
 :- pragma foreign_proc("C#", incr_x, [will_not_call_mercury], "++x;" ).
+:- pragma foreign_proc("Java", incr_x, [will_not_call_mercury], "++x;" ).
 :- pragma foreign_proc("Erlang", incr_x, [], "put(x, get(x) + 1)" ).
 
 :- pragma foreign_decl("C", "extern int x;").
 :- pragma foreign_code("C", "int x = 0;").
 :- pragma foreign_code("C#", "static int x = 0;").
+:- pragma foreign_code("Java", "static int x = 0;").
 
 :- pred test1(int::in, list(int)::out) is det.
 

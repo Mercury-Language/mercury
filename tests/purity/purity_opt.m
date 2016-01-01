@@ -46,6 +46,7 @@ test1(X) :-
 :- pragma foreign_code("C", "int counter = 1;").
 
 :- pragma foreign_code("C#", "static int counter = 1;").
+:- pragma foreign_code("Java", "static int counter = 1;").
 
 :- pragma foreign_code("Erlang", "
     get_counter() ->
@@ -72,6 +73,12 @@ test1(X) :-
 "
     counter++; Val = counter;
 ").
+:- pragma foreign_proc("Java",
+    incr(Val::out),
+    [will_not_call_mercury],
+"
+    counter++; Val = counter;
+").
 :- pragma foreign_proc("Erlang",
     incr(Val::out),
     [will_not_call_mercury],
@@ -88,6 +95,12 @@ test1(X) :-
     Val = counter
 ").
 :- pragma foreign_proc("C#",
+    get(Val::out),
+    [will_not_call_mercury, promise_semipure],
+"
+    Val = counter;
+").
+:- pragma foreign_proc("Java",
     get(Val::out),
     [will_not_call_mercury, promise_semipure],
 "

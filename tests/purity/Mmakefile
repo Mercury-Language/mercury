@@ -18,12 +18,7 @@ PURITY_PROGS = \
 	purity \
 	purity_opt
 
-# We currently don't do any testing in grade java on this directory.
-ifneq "$(findstring java,$(GRADE))" ""
-	PROGS =
-else
-	PROGS = $(PURITY_PROGS)
-endif
+PROGS = $(PURITY_PROGS)
 
 TESTS = $(sort $(PROGS))
 include $(TESTS_DIR)/Mmake.common

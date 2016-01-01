@@ -49,6 +49,12 @@ main -->
 "
     x = X;
 ").
+:- pragma foreign_proc("Java",
+    set_x(X::in),
+    [will_not_call_mercury],
+"
+    x = X;
+").
 :- pragma foreign_proc("Erlang",
     set_x(X::in),
     [will_not_call_mercury],
@@ -65,6 +71,12 @@ main -->
     ++x;
 ").
 :- pragma foreign_proc("C#",
+    incr_x,
+    [will_not_call_mercury],
+"
+    ++x;
+").
+:- pragma foreign_proc("Java",
     incr_x,
     [will_not_call_mercury],
 "
@@ -91,6 +103,12 @@ main -->
 "
     X = x;
 ").
+:- pragma foreign_proc("Java",
+    get_x(X::out),
+    [will_not_call_mercury, promise_semipure],
+"
+    X = x;
+").
 :- pragma foreign_proc("Erlang",
     get_x(X::out),
     [will_not_call_mercury, promise_semipure],
@@ -107,6 +125,12 @@ main -->
     x = X;
 ").
 :- pragma foreign_proc("C#",
+    set_x_inline(X::in),
+    [will_not_call_mercury],
+"
+    x = X;
+").
+:- pragma foreign_proc("Java",
     set_x_inline(X::in),
     [will_not_call_mercury],
 "
@@ -133,6 +157,12 @@ main -->
 "
     ++x;
 ").
+:- pragma foreign_proc("Java",
+    incr_x_inline,
+    [will_not_call_mercury],
+"
+    ++x;
+").
 :- pragma foreign_proc("Erlang",
     incr_x_inline,
     [will_not_call_mercury],
@@ -154,6 +184,12 @@ main -->
 "
     X=x;
 ").
+:- pragma foreign_proc("Java",
+    get_x_inline(X::out),
+    [will_not_call_mercury, promise_semipure],
+"
+    X=x;
+").
 :- pragma foreign_proc("Erlang",
     get_x_inline(X::out),
     [will_not_call_mercury, promise_semipure],
@@ -164,6 +200,7 @@ main -->
 :- pragma foreign_decl("C", "extern int x;").
 :- pragma foreign_code("C", "int x = 0;").
 :- pragma foreign_code("C#", "static int x = 0;").
+:- pragma foreign_code("Java", "static int x = 0;").
 
 :- pragma foreign_code("Erlang", "
     get_x() ->
