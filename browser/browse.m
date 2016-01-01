@@ -228,11 +228,11 @@
 %
 
 save_term_to_file(FileName, _Format, BrowserTerm, OutStream, !IO) :-
-    trace [compile_time(flag("debug_save_term_to_file")), io(!IO)] (
-        io.write_string(FileName, !IO),
-        io.nl(!IO),
-        io.write(BrowserTerm, !IO),
-        io.nl(!IO)
+    trace [compile_time(flag("debug_save_term_to_file")), io(!TIO)] (
+        io.write_string(FileName, !TIO),
+        io.nl(!TIO),
+        io.write(BrowserTerm, !TIO),
+        io.nl(!TIO)
     ),
     io.tell(FileName, FileStreamRes, !IO),
     (
