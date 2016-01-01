@@ -9,7 +9,7 @@ MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
-TYPECLASSES_PROGS = \
+ORDINARY_PROGS = \
 	arbitrary_constraint_class \
 	arbitrary_constraint_pred_2 \
 	arbitrary_constraint_pred_1 \
@@ -22,7 +22,6 @@ TYPECLASSES_PROGS = \
 	existential_type_classes \
 	existential_data_types \
 	existential_data_types_regr_test \
-	existential_rtti \
 	existential_type_switch \
 	extra_typeinfo \
 	func_default_mode_bug \
@@ -43,6 +42,7 @@ TYPECLASSES_PROGS = \
 	impure_methods \
 	instance_clauses \
 	instance_unconstrained_tvar \
+	instance_unconstrained_tvar_dup \
 	instance_unconstrained_tvar_type_spec \
 	inference_test \
 	inference_test_2 \
@@ -59,7 +59,6 @@ TYPECLASSES_PROGS = \
 	nondet_class_method \
 	operator_classname \
 	record_syntax \
-	recursive_instance_1 \
 	reordered_existential_constraint \
 	submodule_consistency_test \
 	superclass_bug \
@@ -81,37 +80,20 @@ TYPECLASSES_PROGS = \
 	use_abstract_instance \
 	use_abstract_typeclass
 
-# XXX We currently do only limited testing in grade java on this directory.
-
-JAVA_TYPECLASSES_PROGS = \
-	ground_constraint \
-	implied_instance \
-	implied_instance_poly \
-	impure_methods \
-	intermod_typeclass_bug \
-	lambda_multi_constraint_same_tvar \
-	multi_constraint_diff_tvar \
-	multi_constraint_same_tvar \
-	multi_parameter \
-	multi_parameter_bug \
-	nondet_class_method \
-	reordered_existential_constraint \
-	superclass_bug \
-	superclass_bug2 \
-	superclass_bug3 \
-	superclass_call \
-	test_default_func_mode \
-	typeclass_test_5
-
-# We don't support duplicated type variables in instance declarations yet.
-# When we do, this test case should be enabled.
-#	instance_unconstrained_tvar_dup
-
-ifneq "$(findstring java,$(GRADE))" ""
-	PROGS = $(JAVA_TYPECLASSES_PROGS)
+# The following tests do not (yet) work with the C# and Java back-ends.
+#
+ifeq "$(filter csharp% java%,$(GRADE))" ""
+	C_ONLY_PROGS = \
+		existential_rtti \
+		recursive_instance_1
 else
-	PROGS = $(TYPECLASSES_PROGS)
+	C_ONLY_PROGS = 
 endif
+
+PROGS = \
+	$(ORDINARY_PROGS) \
+	$(C_ONLY_PROGS)
+
 
 TESTS = $(PROGS)
 include $(TESTS_DIR)/Mmake.common

@@ -3,25 +3,25 @@
 %---------------------------------------------------------------------------%
 
 :- module instance_unconstrained_tvar.
-
 :- interface.
 
 :- import_module io.
-:- import_module list.
 
 :- pred main(io::di, io::uo) is det.
 
 :- typeclass p(T) where [
-    pred m(T, io__state, io__state),
+    pred m(T, io, io),
     mode m(in, di, uo) is det
 ].
 
 :- implementation.
 
+:- import_module list.
+
 :- instance p(list(T)) where [
-    pred(m/3) is io__write
+    pred(m/3) is io.write
 ].
 
-main -->
-    m([1, 2, 3]),
-    io__nl.
+main(!IO) :-
+    m([1, 2, 3], !IO),
+    io.nl(!IO).
