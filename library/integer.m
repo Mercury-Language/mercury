@@ -309,18 +309,6 @@ log2base = 14.
 
 basemask = 16383.
 
-:- func highbitmask = int.
-
-highbitmask = basediv2.
-
-:- func lowbitmask = int.
-
-lowbitmask = 1.
-
-:- func evenmask = int.
-
-evenmask = 16382.
-
 '<'(X, Y) :-
     big_cmp(X, Y) = C,
     C = (<).
@@ -1209,10 +1197,6 @@ big_pow_sqmul(A, N) = Result :-
             Result = A * SubResult
         )
     ).
-
-:- func big_sqr(integer) = integer.
-
-big_sqr(A) = A * A.
 
 integer.float(i(_, List)) = float_list(float.float(base), 0.0, List).
 

@@ -806,14 +806,6 @@ raise_leaf_to_level(TargetLevel, LeafNode, TopNode) :-
     raise_leaves_to_interior(LeafNode, [], ParentNode),
     raise_one_interior_to_level(TargetLevel, 1, ParentNode, TopNode).
 
-:- pred raise_leaves_to_level(int::in, leaf_node::in, list(leaf_node)::in,
-    interior_node::out) is det.
-:- pragma inline(raise_leaves_to_level/4).
-
-raise_leaves_to_level(TargetLevel, LeafNode, LeafNodes, TopNode) :-
-    raise_leaves_to_interior(LeafNode, LeafNodes, ParentNode),
-    raise_one_interior_to_level(TargetLevel, 1, ParentNode, TopNode).
-
 :- pred raise_one_interior_to_level(int::in, int::in,
     interior_node::in, interior_node::out) is det.
 
