@@ -498,7 +498,7 @@ add_instance_defn(StatusItem, !ModuleInfo, !Specs) :-
     module_info_get_instance_table(!.ModuleInfo, InstanceTable0),
     list.length(Types, ClassArity),
     ClassId = class_id(ClassName, ClassArity),
-    expand_bang_states_instance_body(InstanceBody0, InstanceBody),
+    expand_bang_state_pairs_in_instance_body(InstanceBody0, InstanceBody),
     ( if map.search(Classes, ClassId, _) then
         MaybeClassInterface = no,
         map.init(ProofMap),
@@ -734,7 +734,7 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             !:Specs = BodyGoalSpecs ++ !.Specs
         ;
             MaybeBodyGoal = ok1(BodyGoal),
-            expand_bang_states(HeadTerms0, HeadTerms),
+            expand_bang_state_pairs_in_terms(HeadTerms0, HeadTerms),
             PredArity = list.length(HeadTerms),
             adjust_func_arity(PredOrFunc, Arity, PredArity),
 

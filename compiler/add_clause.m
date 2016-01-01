@@ -94,7 +94,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, MaybeBodyGoal,
         IllegalSVarResult = no
     ),
     ArityAdjustment = ( if IllegalSVarResult = yes(_) then -1 else 0 ),
-    expand_bang_states(Args0, Args),
+    expand_bang_state_pairs_in_terms(Args0, Args),
 
     % Lookup the pred declaration in the predicate table.
     % (If it's not there, call maybe_undefined_pred_error and insert

@@ -194,8 +194,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         goal_info_init(Context, GoalInfo),
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        Goal = require_switch_arms_detism_expr(Context, Var0, Detism,
-            SubGoal),
+        Goal = require_switch_arms_detism_expr(Context, Var0, Detism, SubGoal),
         rename_var(need_not_rename, Renaming, Var0, Var),
         transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
             HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
@@ -466,7 +465,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
     ;
         Goal = event_expr(Context, EventName, ArgTerms0),
-        expand_bang_states(ArgTerms0, ArgTerms1),
+        expand_bang_state_pairs_in_terms(ArgTerms0, ArgTerms1),
         rename_vars_in_term_list(need_not_rename, Renaming,
             ArgTerms1, ArgTerms),
         make_fresh_arg_vars_subst_svars(ArgTerms, HeadVars, !VarSet,
@@ -485,7 +484,7 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         svar_finish_atomic_goal(LocKind, !SVarState)
     ;
         Goal = call_expr(Context, Name, ArgTerms0, Purity),
-        expand_bang_states(ArgTerms0, ArgTerms1),
+        expand_bang_state_pairs_in_terms(ArgTerms0, ArgTerms1),
         ( if
             Name = unqualified("\\="),
             ArgTerms1 = [LHSTerm, RHSTerm]

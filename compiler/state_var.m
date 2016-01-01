@@ -54,8 +54,9 @@
 
     % Replace !X args with two args !.X, !:X in that order.
     %
-:- pred expand_bang_states(list(prog_term)::in, list(prog_term)::out) is det.
-:- pred expand_bang_states_instance_body(instance_body::in,
+:- pred expand_bang_state_pairs_in_terms(list(prog_term)::in,
+    list(prog_term)::out) is det.
+:- pred expand_bang_state_pairs_in_instance_body(instance_body::in,
     instance_body::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -64,7 +65,7 @@
     % If the head contains any references to !.S or !:S or both,
     % make state variable S known in the body of the clause.
     % (The head should not contain any references to !S; those should
-    % have been expanded out by calling expand_bang_states BEFORE calling
+    % have been expanded out by calling expand_bang_state_pairs BEFORE calling
     % this predicate.)
     %
     % Given the original list of args, we return a version in which state
@@ -210,7 +211,7 @@
 
     % Given a list of argument terms, substitute !.X and !:X with the
     % corresponding state variable mappings. Any !X should already have been
-    % expanded into !.X, !:X via a call to expand_bang_states.
+    % expanded into !.X, !:X via a call to expand_bang_state_pairs.
     %
 :- pred substitute_state_var_mappings(list(prog_term)::in,
     list(prog_term)::out, prog_varset::in, prog_varset::out,
@@ -402,9 +403,9 @@ new_state_var_instance(StateVar, NameSource, Var, !VarSet) :-
 % Expand !S into !.S, !:S pairs.
 %
 
-expand_bang_states([], []).
-expand_bang_states([HeadArg0 | TailArgs0], Args) :-
-    expand_bang_states(TailArgs0, TailArgs),
+expand_bang_state_pairs_in_terms([], []).
+expand_bang_state_pairs_in_terms([HeadArg0 | TailArgs0], Args) :-
+    expand_bang_state_pairs_in_terms(TailArgs0, TailArgs),
     (
         HeadArg0 = variable(_, _),
         Args = [HeadArg0 | TailArgs]
@@ -422,27 +423,27 @@ expand_bang_states([HeadArg0 | TailArgs0], Args) :-
         )
     ).
 
-expand_bang_states_instance_body(InstanceBody0, InstanceBody) :-
+expand_bang_state_pairs_in_instance_body(InstanceBody0, InstanceBody) :-
     (
         InstanceBody0 = instance_body_abstract,
         InstanceBody = instance_body_abstract
     ;
         InstanceBody0 = instance_body_concrete(Methods0),
-        list.map(expand_bang_states_method, Methods0, Methods),
+        list.map(expand_bang_state_pairs_in_method, Methods0, Methods),
         InstanceBody = instance_body_concrete(Methods)
     ).
 
-:- pred expand_bang_states_method(instance_method::in, instance_method::out)
-    is det.
+:- pred expand_bang_state_pairs_in_method(instance_method::in,
+    instance_method::out) is det.
 
-expand_bang_states_method(IM0, IM) :-
+expand_bang_state_pairs_in_method(IM0, IM) :-
     IM0 = instance_method(PredOrFunc, Method, ProcDef0, Arity0, Ctxt),
     (
         ProcDef0 = instance_proc_def_name(_),
         IM = IM0
     ;
         ProcDef0 = instance_proc_def_clauses(ItemClauses0),
-        list.map(expand_bang_states_clause, ItemClauses0, ItemClauses),
+        list.map(expand_bang_state_pairs_in_clause, ItemClauses0, ItemClauses),
         % Note that ItemClauses should never be empty...
         (
             ItemClauses = [ItemClause | _],
@@ -456,13 +457,13 @@ expand_bang_states_method(IM0, IM) :-
         IM  = instance_method(PredOrFunc, Method, ProcDef, Arity, Ctxt)
     ).
 
-:- pred expand_bang_states_clause(item_clause_info::in, item_clause_info::out)
-    is det.
+:- pred expand_bang_state_pairs_in_clause(item_clause_info::in,
+    item_clause_info::out) is det.
 
-expand_bang_states_clause(ItemClause0, ItemClause) :-
+expand_bang_state_pairs_in_clause(ItemClause0, ItemClause) :-
     ItemClause0 = item_clause_info(SymName, PredOrFunc, Args0, Origin, VarSet,
         Body, Context, SeqNum),
-    expand_bang_states(Args0, Args),
+    expand_bang_state_pairs_in_terms(Args0, Args),
     ItemClause = item_clause_info(SymName, PredOrFunc, Args, Origin, VarSet,
         Body, Context, SeqNum).
 
