@@ -7,15 +7,10 @@ SUBDIRS =
 TESTS_DIR = ..
 MAYBE_J1 = -j1
 
-# We currently don't do any testing in grade java on this directory.
-ifneq "$(findstring java,$(GRADE))" ""
-	PROGS =
-else
-	# For this directory, rather than having a separate main
-	# for each test, there is a single Mercury test harness
-	# which invokes all of the different tests.
-	PROGS = run
-endif
+# For this directory, rather than having a separate main
+# for each test, there is a single Mercury test harness
+# which invokes all of the different tests.
+PROGS = run
 
 TESTS = $(sort $(PROGS))
 include $(TESTS_DIR)/Mmake.common

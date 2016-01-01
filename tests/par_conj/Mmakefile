@@ -74,7 +74,7 @@ LLDS_PROGS = \
 	par_ddeath \
 	par_ddeath_2
 
-ifeq "$(filter hl% java% csharp% il% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp% erlang%,$(GRADE))" ""
 	PROGS0 = $(LLDS_PROGS)
 else
 	PROGS0 =

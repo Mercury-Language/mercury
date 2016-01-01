@@ -376,56 +376,6 @@ ORDINARY_PROGS += \
 	trans_intermod_user_equality
 endif
 
-# JAVA_PASS_PROGS lists those tests which will succeed in grade Java.
-
-JAVA_PASS_PROGS = \
-	address_of_builtins \
-	brace \
-	c_write_string \
-	calendar_test \
-	compare_spec \
-	constant_prop_2 \
-	constant_prop_int \
-	contains_char \
-	contains_char_2 \
-	constraint \
-	curry \
-	cut_test \
-	deforest_cc_bug \
-	division_test \
-	dot_separator \
-	dst_test \
-	existential_type_switch_opt \
-	failure_unify \
-	foreign_and_mercury \
-	foreign_type \
-	free_free_mode \
-	func_and_pred \
-	func_test \
-	higher_order_func_test \
-	higher_order_syntax \
-	ho_func_reg \
-	join_list \
-	mapped_module \
-	no_inline_builtins \
-	no_warn_singleton \
-	nondet_ctrl_vn \
-	nondet_copy_out \
-	pragma_inline \
-	qual_basic_test \
-	recursive_main \
-	reorder_di \
-	rev_arith \
-	reverse_arith \
-	solve_quadratic \
-	string_alignment \
-	string_loop \
-	string_suffix_bug \
-	system_sort \
-	target_mlobjs \
-	time_test \
-	value_enum
-
 # Solver types only work in C grades
 ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
 	SOLVER_PROGS = \
@@ -697,7 +647,7 @@ ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
   ifneq "$(findstring solaris,$(FULLARCH))" "solaris"
 	# The `parse' test also links with the debug libraries,
 	# so it only works in LLDS grades.
-	ifeq "$(filter hl% csharp% java% il% erlang%,$(GRADE))" ""
+	ifeq "$(filter hl% csharp% java% erlang%,$(GRADE))" ""
 		STATIC_LINK_PROGS = parse
 	endif
   endif
