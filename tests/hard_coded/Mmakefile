@@ -509,7 +509,7 @@ endif
 # The foreign_type_assertion test is currently meaningful only in C grades.
 # Tests of the C foreign language interface only work in C grades.
 # Runtime options are specific to the C backend.
-ifeq "$(filter il% csharp% java% erlang%,$(GRADE))" ""
+ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
 	C_ONLY_PROGS = \
 		factt \
 		factt_sort_test \
@@ -657,7 +657,7 @@ endif
 # be replaced by a test that exercises functionality enabled by type tables.
 # However, this must wait for the implementation of that functionality.
 
-ifeq "$(filter hl% il% csharp% java% erlang%,$(GRADE))" ""
+ifeq "$(filter hl% csharp% java% erlang%,$(GRADE))" ""
 	ifeq "$(findstring profdeep,$(GRADE))" ""
 		BACKEND_PROGS_2 = \
 			factt_non
@@ -679,7 +679,7 @@ endif
 
 # string_hash tests features of the Mercury C runtime.
 # It requires too much memory to be used in non-GC grades.
-ifeq "$(filter il% csharp% java%,$(GRADE))$(findstring gc,$(GRADE))" "gc"
+ifeq "$(filter csharp% java%,$(GRADE))$(findstring gc,$(GRADE))" "gc"
 	C_AND_GC_ONLY_PROGS = string_hash
 else
 	C_AND_GC_ONLY_PROGS =

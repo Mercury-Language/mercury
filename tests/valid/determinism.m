@@ -10,17 +10,17 @@
 :- interface.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module pair.
 
-:- inst fg = bound(free - ground).
-:- inst gf = bound(ground - free).
-:- inst list(Inst) = bound([] ; [Inst | list(Inst)]).
+:- inst fg == bound(free - ground).
+:- inst gf == bound(ground - free).
+:- inst list(Inst) == bound([] ; [Inst | determinism.list(Inst)]).
 
 :- pred q(list(pair(int))).
-:- mode q(free -> list(fg)) is det.
+:- mode q(free >> determinism.list(fg)) is det.
 
 :- pred r(list(pair(int))).
-:- mode r(free -> list(gf)) is det.
+:- mode r(free >> determinism.list(gf)) is det.
 
 :- pred p is det.
 :- pred p2 is semidet.

@@ -2,15 +2,17 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module assoc_list.
+:- module assoc_list_bug.
 :- interface.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module pair.
 
 :- pred assoc_list_member(pair(K, V), list(pair(K, V))).
-:- mode assoc_list_member(bound(free - ground) -> ground, in) is semidet.
-:- mode assoc_list_member(bound(free - free) -> ground, in) is nondet.
+:- mode assoc_list_member(bound(free - ground) >> ground, in) is semidet.
+:- mode assoc_list_member(bound(free - free) >> ground, in) is nondet.
+
+:- implementation.
 
 assoc_list_member(X, [X | _]).
 assoc_list_member(X, [_ | Xs]) :-

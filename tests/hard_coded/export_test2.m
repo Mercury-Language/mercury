@@ -60,7 +60,7 @@ void foo(MercuryFilePtr, MercuryFilePtr *, int, int *);
 
 ").
 
-:- pragma export(foo(in, out, in, out), "foo").
+:- pragma foreign_export("C", foo(in, out, in, out), "foo").
 
 :- pragma foreign_proc("C",
     bar(S::in, T::out, X::in, Y::out),

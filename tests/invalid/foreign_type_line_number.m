@@ -24,7 +24,7 @@ main -->
 long short int
 ").
 
-:- pragma export(bar(out, di, uo), "bar").
+:- pragma foreign_export("C", bar(out, di, uo), "bar").
 :- pred bar(my_foreign_type::out, io::di, io::uo) is det.
 bar(X) -->
     foo(X).

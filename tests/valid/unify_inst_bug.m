@@ -8,7 +8,7 @@
 :- type t(T) ---> t ; t(t(t(T))).
 :- inst t(T) ---> t ; t(t(t(T))).
 
-:- mode m :: in(t(ground)).
+:- mode m == in(t(ground)).
 
 :- pred p(t(int)::m, t(int)::m) is semidet.
 
