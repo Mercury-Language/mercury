@@ -302,7 +302,7 @@ while test $# -gt 0; do
 
     --target)
         case "$2" in
-        c|asm)  target="$2"; shift ;;
+        c|java)  target="$2"; shift ;;
         *)  echo "unknown target \`$2'" 1>&2; exit 1 ;;
         esac
         ;;
@@ -431,12 +431,25 @@ then
     test_grade="$grade"
 fi
 
+# For the Java grade we must use mmc --make and should disable the namespace
+# cleanliness check.
+#
+if test "$grade" = "java"
+then
+    target=java
+    use_mmc_make=yes
+    use_subdirs=yes
+    check_namespace=false
+fi
+
 case $use_subdirs in
    yes)
         cs_subdir=Mercury/cs/
+        javas_subdir=Mercury/javas/
         ;;
     no)
         cs_subdir=
+        javas_subdir=
         ;;
 esac
 
@@ -444,6 +457,12 @@ case $target in
     c)
         target_ext=c
         target_subdir=$cs_subdir
+        target_opt=
+        ;;
+
+    java)
+        target_ext=java
+        target_subdir=$javas_subdir
         target_opt=
         ;;
 esac
@@ -490,10 +509,7 @@ echo "starting at `date`"
 
 # set -x
 
-root=`/bin/pwd | sed '
-s:/mount/munkora/mercury:/home/mercury:
-s:/mount/munkora/home/mercury:/home/mercury:
-s:/mount/munkora/clp/mercury:/home/mercury:'`
+root=`/bin/pwd`
 root=`$CYGPATH $root`
 PATH=$root/tools:$PATH
 export PATH
@@ -1113,11 +1129,14 @@ then
             /bin/rm -f *.o *.pic_o
         done
 
-        for cleandir in runtime trace library mdbcomp browser ssdb
-        do
-            cd $root/$stage2dir/$cleandir
-            mmake clean_check
-        done
+        if $check_namespace
+        then
+            for cleandir in runtime trace library mdbcomp browser ssdb
+            do
+                cd $root/$stage2dir/$cleandir
+                mmake clean_check
+            done
+        fi
 
         cd $root
     fi
