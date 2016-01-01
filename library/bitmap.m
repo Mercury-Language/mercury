@@ -1132,8 +1132,8 @@ copy_bytes(SameBM, SrcBM, SrcStartByte, DestBM, DestStartByte, NumBytes) =
 
 :- pragma foreign_proc("Java",
     unsafe_copy_bytes(_SameBM::in, SrcBM::in, SrcFirstByteIndex::in,
-        DestBM0::bitmap_di, DestFirstByteIndex::in,
-        NumBytes::in) = (DestBM::bitmap_uo),
+        DestBM0::bitmap_di, DestFirstByteIndex::in, NumBytes::in)
+        = (DestBM::bitmap_uo),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "
     DestBM = DestBM0;

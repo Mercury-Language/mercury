@@ -1012,8 +1012,6 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
     }
 }").
 
-%---------------------------------------------------------------------------%
-
 type_ctor_name_and_arity(TypeCtorDesc, ModuleName, TypeCtorName,
         TypeCtorArity) :-
     ( if erlang_rtti_implementation.is_erlang_backend then
