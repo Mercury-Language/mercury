@@ -2416,7 +2416,7 @@ display_compiler_version(!IO) :-
     io.write_strings([
         "Mercury Compiler, version ", Version, ", on ", Fullarch, "\n",
         "Copyright (C) 1993-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2015 The Mercury team\n"
+        "Copyright (C) 2013-2016 The Mercury team\n"
     ], !IO).
 
 :- mutable(already_printed_usage, bool, no, ground,
@@ -2447,7 +2447,7 @@ long_usage(!IO) :-
         Version, ", on ", Fullarch, "\n"], !IO),
     io.write_string("Copyright: Copyright (C) 1993-2012 " ++
         "The University of Melbourne\n", !IO),
-    io.write_string("           Copyright (C) 2013-2015 " ++
+    io.write_string("           Copyright (C) 2013-2016 " ++
         "The Mercury team\n", !IO),
     io.write_string("Usage: mmc [<options>] <arguments>\n", !IO),
     io.write_string("Arguments:\n", !IO),
