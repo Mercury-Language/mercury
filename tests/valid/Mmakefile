@@ -81,6 +81,7 @@ OTHER_PROGS = \
 	bug318 \
 	bug361 \
 	bug380 \
+	bug402 \
 	bug51 \
 	bug85 \
 	inst_perf_bug_2 \

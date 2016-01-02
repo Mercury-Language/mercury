@@ -1148,6 +1148,12 @@
     --->    quant_ordinary_vars
     ;       quant_state_vars.
 
+:- type plain_or_dot_var
+    --->    podv_plain(prog_var)
+            % V: a plain variable.
+    ;       podv_dot(prog_var).
+            % !.SV: the current state of this state variable.
+
 :- type goal
     % The most frequent kinds of goals.
     --->    unify_expr(prog_context, prog_term, prog_term, purity)
@@ -1224,12 +1230,12 @@
             )
     ;       require_complete_switch_expr(
                 prog_context,
-                prog_var,
+                plain_or_dot_var,
                 goal
             )
     ;       require_switch_arms_detism_expr(
                 prog_context,
-                prog_var,
+                plain_or_dot_var,
                 determinism,
                 goal
             )

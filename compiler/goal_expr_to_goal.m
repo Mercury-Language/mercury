@@ -185,8 +185,9 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         goal_info_init(Context, GoalInfo),
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        Goal = require_complete_switch_expr(Context, Var0, SubGoal),
-        rename_var(need_not_rename, Renaming, Var0, Var),
+        Goal = require_complete_switch_expr(Context, PODVar0, SubGoal),
+        rename_and_maybe_expand_dot_var(Context, need_not_rename, Renaming,
+            PODVar0, Var, !SVarState, !VarSet, !Specs),
         transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
             HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
@@ -194,8 +195,10 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         goal_info_init(Context, GoalInfo),
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
     ;
-        Goal = require_switch_arms_detism_expr(Context, Var0, Detism, SubGoal),
-        rename_var(need_not_rename, Renaming, Var0, Var),
+        Goal = require_switch_arms_detism_expr(Context, PODVar0, Detism,
+            SubGoal),
+        rename_and_maybe_expand_dot_var(Context, need_not_rename, Renaming,
+            PODVar0, Var, !SVarState, !VarSet, !Specs),
         transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
             HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
@@ -603,6 +606,23 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
                 !ModuleInfo, !QualInfo, !Specs),
             svar_finish_atomic_goal(LocKind, !SVarState)
         )
+    ).
+
+:- pred rename_and_maybe_expand_dot_var(prog_context::in,
+    must_rename::in, prog_var_renaming::in,
+    plain_or_dot_var::in, prog_var::out,
+    svar_state::in, svar_state::out, prog_varset::in, prog_varset::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+rename_and_maybe_expand_dot_var(Context, MustRename, Renaming, PODVar0, Var,
+        !SVarState, !VarSet, !Specs) :-
+    (
+        PODVar0 = podv_plain(Var0),
+        rename_var(MustRename, Renaming, Var0, Var)
+    ;
+        PODVar0 = podv_dot(DotVar0),
+        rename_var(MustRename, Renaming, DotVar0, DotVar),
+        lookup_dot_state_var(Context, DotVar, Var, !VarSet, !SVarState, !Specs)
     ).
 
 :- pred extract_trace_mutable_var(prog_context::in, prog_varset::in,

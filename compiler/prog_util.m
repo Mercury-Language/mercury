@@ -354,13 +354,13 @@ rename_in_goal(OldVar, NewVar, Goal0, Goal) :-
         Goal = require_detism_expr(Context, Detism, SubGoal)
     ;
         Goal0 = require_complete_switch_expr(Context, Var0, SubGoal0),
-        rename_in_var(OldVar, NewVar, Var0, Var),
+        rename_in_plain_or_dot_var(OldVar, NewVar, Var0, Var),
         rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
         Goal = require_complete_switch_expr(Context, Var, SubGoal)
     ;
         Goal0 = require_switch_arms_detism_expr(Context,
             Var0, Detism, SubGoal0),
-        rename_in_var(OldVar, NewVar, Var0, Var),
+        rename_in_plain_or_dot_var(OldVar, NewVar, Var0, Var),
         rename_in_goal(OldVar, NewVar, SubGoal0, SubGoal),
         Goal = require_switch_arms_detism_expr(Context,
             Var, Detism, SubGoal)
@@ -481,6 +481,20 @@ rename_in_trace_mutable_var(OldVar, NewVar, TMV0, TMV) :-
     TMV0 = trace_mutable_var(MutableName, StateVar0),
     rename_in_var(OldVar, NewVar, StateVar0, StateVar),
     TMV = trace_mutable_var(MutableName, StateVar).
+
+:- pred rename_in_plain_or_dot_var(prog_var::in, prog_var::in,
+    plain_or_dot_var::in, plain_or_dot_var::out) is det.
+
+rename_in_plain_or_dot_var(OldVar, NewVar, PODVar0, PODVar) :-
+    (
+        PODVar0 = podv_plain(Var0),
+        rename_in_var(OldVar, NewVar, Var0, Var),
+        PODVar = podv_plain(Var)
+    ;
+        PODVar0 = podv_dot(DotVar0),
+        rename_in_var(OldVar, NewVar, DotVar0, DotVar),
+        PODVar = podv_dot(DotVar)
+    ).
 
 :- pred rename_in_vars(prog_var::in, prog_var::in,
     list(prog_var)::in, list(prog_var)::out) is det.

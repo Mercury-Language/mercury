@@ -293,7 +293,7 @@ mercury_output_goal(VarSet, Indent, Goal, !IO) :-
     ;
         Goal = require_complete_switch_expr(_, Var, SubGoal),
         io.write_string("require_complete_switch [", !IO),
-        mercury_output_var(VarSet, print_name_only, Var, !IO),
+        mercury_output_plain_or_dot_var(VarSet, print_name_only, Var, !IO),
         io.write_string("] (", !IO),
         Indent1 = Indent + 1,
         mercury_output_newline(Indent1, !IO),
@@ -328,7 +328,7 @@ mercury_output_goal(VarSet, Indent, Goal, !IO) :-
             io.write_string("require_switch_arms_failure", !IO)
         ),
         io.write_string(" [", !IO),
-        mercury_output_var(VarSet, print_name_only, Var, !IO),
+        mercury_output_plain_or_dot_var(VarSet, print_name_only, Var, !IO),
         io.write_string("] (", !IO),
         Indent1 = Indent + 1,
         mercury_output_newline(Indent1, !IO),
@@ -561,6 +561,21 @@ mercury_output_connected_goal(VarSet, Indent, Goal, !IO) :-
         mercury_output_goal(VarSet, Indent1, Goal, !IO),
         mercury_output_newline(Indent, !IO),
         io.write_string(")", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred mercury_output_plain_or_dot_var(prog_varset::in, var_name_print::in,
+    plain_or_dot_var::in, io::di, io::uo) is det.
+
+mercury_output_plain_or_dot_var(VarSet, VarNamePrint, PODVar, !IO) :-
+    (
+        PODVar = podv_plain(Var),
+        mercury_output_var(VarSet, VarNamePrint, Var, !IO)
+    ;
+        PODVar = podv_dot(Var),
+        io.write_string("!.", !IO),
+        mercury_output_var(VarSet, VarNamePrint, Var, !IO)
     ).
 
 %---------------------------------------------------------------------------%

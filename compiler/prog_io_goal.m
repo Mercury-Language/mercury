@@ -136,6 +136,7 @@
 :- import_module pair.
 :- import_module solutions.
 :- import_module string.
+:- import_module unit.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -753,7 +754,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 MaybeVars),
             parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
             ( if
-                MaybeVars = ok4(Vars0, StateVars0, DotSVars0, ColonSVars0),
+                MaybeVars = ok1(plain_state_dot_colon_vars(Vars0,
+                    StateVars0, DotSVars0, ColonSVars0)),
                 MaybeSubGoal = ok1(SubGoal)
             then
                 list.map(term.coerce_var, Vars0, Vars),
@@ -772,7 +774,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                     MaybeGoal = ok1(Goal)
                 )
             else
-                Specs = get_any_errors4(MaybeVars) ++
+                Specs = get_any_errors1(MaybeVars) ++
                     get_any_errors1(MaybeSubGoal),
                 MaybeGoal = error1(Specs)
             )
@@ -789,7 +791,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 MaybeVars),
             parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
             ( if
-                MaybeVars = ok4(Vars0, StateVars0, DotSVars0, ColonSVars0),
+                MaybeVars = ok1(plain_state_dot_colon_vars(Vars0,
+                    StateVars0, DotSVars0, ColonSVars0)),
                 MaybeSubGoal = ok1(SubGoal)
             then
                 list.map(term.coerce_var, Vars0, Vars),
@@ -800,7 +803,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                     Vars, StateVars, DotSVars, ColonSVars, SubGoal),
                 MaybeGoal = ok1(Goal)
             else
-                Specs = get_any_errors4(MaybeVars) ++
+                Specs = get_any_errors1(MaybeVars) ++
                     get_any_errors1(MaybeSubGoal),
                 MaybeGoal = error1(Specs)
             )
@@ -853,25 +856,27 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
     ;
         Functor = "require_complete_switch",
         ( if Args = [VarsTerm, SubGoalTerm] then
-            varset.coerce(!.VarSet, GenericVarSet),
-            parse_vars(VarsTerm, GenericVarSet, ContextPieces, MaybeVars),
+            term.coerce(VarsTerm, ProgVarsTerm),
+            parse_vars_and_state_vars(ProgVarsTerm, !.VarSet, ContextPieces,
+                MaybePSDCVars),
             parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
             ( if
-                MaybeVars = ok1(Vars0),
+                MaybePSDCVars = ok1(PSDCVars0),
                 MaybeSubGoal = ok1(SubGoal)
             then
-                parse_one_var_list(Vars0, SubGoal, ContextPieces, Functor,
-                    MaybeVar),
+                parse_one_plain_or_dot_var(PSDCVars0, SubGoal,
+                    ContextPieces, Functor, MaybePODVar),
                 (
-                    MaybeVar = ok1(Var),
-                    Goal = require_complete_switch_expr(Context, Var, SubGoal),
+                    MaybePODVar = ok1(PODVar),
+                    Goal = require_complete_switch_expr(Context, PODVar,
+                        SubGoal),
                     MaybeGoal = ok1(Goal)
                 ;
-                    MaybeVar = error1(RCSSpecs),
+                    MaybePODVar = error1(RCSSpecs),
                     MaybeGoal = error1(RCSSpecs)
                 )
             else
-                Specs = get_any_errors1(MaybeVars) ++
+                Specs = get_any_errors1(MaybePSDCVars) ++
                     get_any_errors1(MaybeSubGoal),
                 MaybeGoal = error1(Specs)
             )
@@ -907,26 +912,27 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             Detism = detism_failure
         ),
         ( if Args = [VarsTerm, SubGoalTerm] then
-            varset.coerce(!.VarSet, GenericVarSet),
-            parse_vars(VarsTerm, GenericVarSet, ContextPieces, MaybeVars),
+            term.coerce(VarsTerm, ProgVarsTerm),
+            parse_vars_and_state_vars(ProgVarsTerm, !.VarSet, ContextPieces,
+                MaybePSDCVars),
             parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
             ( if
-                MaybeVars = ok1(Vars0),
+                MaybePSDCVars = ok1(PSDCVars0),
                 MaybeSubGoal = ok1(SubGoal)
             then
-                parse_one_var_list(Vars0, SubGoal, ContextPieces, Functor,
-                    MaybeVar),
+                parse_one_plain_or_dot_var(PSDCVars0, SubGoal,
+                    ContextPieces, Functor, MaybePODVar),
                 (
-                    MaybeVar = ok1(Var),
-                    Goal = require_switch_arms_detism_expr(Context, Var,
+                    MaybePODVar = ok1(PODVar),
+                    Goal = require_switch_arms_detism_expr(Context, PODVar,
                         Detism, SubGoal),
                     MaybeGoal = ok1(Goal)
                 ;
-                    MaybeVar = error1(RCSSpecs),
+                    MaybePODVar = error1(RCSSpecs),
                     MaybeGoal = error1(RCSSpecs)
                 )
             else
-                Specs = get_any_errors1(MaybeVars) ++
+                Specs = get_any_errors1(MaybePSDCVars) ++
                     get_any_errors1(MaybeSubGoal),
                 MaybeGoal = error1(Specs)
             )
@@ -1162,32 +1168,115 @@ bad_purity_goal(GoalTerm0, Context, Purity) = Goal :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred parse_one_var_list(list(var(T))::in, goal::in,
-    cord(format_component)::in, string::in, maybe1(prog_var)::out) is det.
+:- pred parse_one_plain_or_dot_var(
+    plain_state_dot_colon_vars(prog_var_type)::in, goal::in,
+    cord(format_component)::in, string::in, maybe1(plain_or_dot_var)::out)
+    is det.
 
-parse_one_var_list(Vars0, Goal, ContextPieces, ConstructName, MaybeVar) :-
+parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
+        MaybePODVar) :-
+    PSDCVars = plain_state_dot_colon_vars(PlainVars, StateVars,
+        DotVars, ColonVars),
+    Context = goal_get_context(Goal),
     (
-        Vars0 = [],
-        Context = goal_get_context(Goal),
-        Pieces = cord.list(ContextPieces) ++
-            [words("Error: the first argument of"), words(ConstructName),
-            words("must contain a variable."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
-        MaybeVar = error1([Spec])
+        StateVars = [],
+        MaybeStateVars = ok1(unit)
     ;
-        Vars0 = [Var0],
-        term.coerce_var(Var0, Var),
-        MaybeVar = ok1(Var)
-    ;
-        Vars0 = [_, _ | _],
-        Context = goal_get_context(Goal),
-        Pieces = cord.list(ContextPieces) ++
+        StateVars = [_ | _],
+        StatePieces = cord.list(ContextPieces) ++
             [words("Error: the first argument of"), words(ConstructName),
-            words("cannot contain more than one variable."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
-        MaybeVar = error1([Spec])
+            words("may not contain a state variable pair."), nl],
+        StateSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(StatePieces)])]),
+        MaybeStateVars = error1([StateSpec])
+    ),
+    (
+        ColonVars = [],
+        MaybeColonVars = ok1(unit)
+    ;
+        ColonVars = [_ | _],
+        ColonPieces = cord.list(ContextPieces) ++
+            [words("Error: the first argument of"), words(ConstructName),
+            words("may not contain a reference to the next value"),
+            words("of a state variable."), nl],
+        ColonSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(ColonPieces)])]),
+        MaybeColonVars = error1([ColonSpec])
+    ),
+    (
+        (
+            PlainVars = [],
+            MaybeMaybePlainVar = ok1(no)
+        ;
+            PlainVars = [PlainVar0],
+            MaybeMaybePlainVar = ok1(yes(PlainVar0))
+        )
+    ;
+        PlainVars = [_, _ | _],
+        PlainPieces = cord.list(ContextPieces) ++
+            [words("Error: the first argument of"), words(ConstructName),
+            words("may not contain more than one variable."), nl],
+        PlainSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(PlainPieces)])]),
+        MaybeMaybePlainVar = error1([PlainSpec])
+    ),
+    (
+        (
+            DotVars = [],
+            MaybeMaybeDotVar = ok1(no)
+        ;
+            DotVars = [DotVar0],
+            MaybeMaybeDotVar = ok1(yes(DotVar0))
+        )
+    ;
+        DotVars = [_, _ | _],
+        DotPieces = cord.list(ContextPieces) ++
+            [words("Error: the first argument of"), words(ConstructName),
+            words("may not contain more than one variable."), nl],
+        DotSpec = error_spec(severity_error, phase_term_to_parse_tree,
+            [simple_msg(Context, [always(DotPieces)])]),
+        MaybeMaybeDotVar = error1([DotSpec])
+    ),
+    ( if
+        MaybeStateVars = ok1(_),
+        MaybeColonVars = ok1(_),
+        MaybeMaybePlainVar = ok1(MaybePlainVar),
+        MaybeMaybeDotVar = ok1(MaybeDotVar)
+    then
+        (
+            MaybePlainVar = no,
+            MaybeDotVar = no,
+            Pieces = cord.list(ContextPieces) ++
+                [words("Error: the first argument of"), words(ConstructName),
+                words("must contain a variable."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            MaybePODVar = error1([Spec])
+        ;
+            MaybePlainVar = yes(PlainVar),
+            MaybeDotVar = no,
+            MaybePODVar = ok1(podv_plain(PlainVar))
+        ;
+            MaybePlainVar = no,
+            MaybeDotVar = yes(DotVar),
+            MaybePODVar = ok1(podv_dot(DotVar))
+        ;
+            MaybePlainVar = yes(_),
+            MaybeDotVar = yes(_),
+            Pieces = cord.list(ContextPieces) ++
+                [words("Error: the first argument of"), words(ConstructName),
+                words("may not contain more than one variable."), nl],
+            Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(Context, [always(Pieces)])]),
+            MaybePODVar = error1([Spec])
+        )
+    else
+        Specs =
+            get_any_errors1(MaybeStateVars) ++
+            get_any_errors1(MaybeColonVars) ++
+            get_any_errors1(MaybeMaybePlainVar) ++
+            get_any_errors1(MaybeMaybeDotVar),
+        MaybePODVar = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------%

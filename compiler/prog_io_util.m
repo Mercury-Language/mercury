@@ -77,14 +77,19 @@
     cord(format_component)::in, maybe2(list(var(T)), list(var(T)))::out)
     is det.
 
+:- type plain_state_dot_colon_vars(T)
+    --->    plain_state_dot_colon_vars(
+                list(var(T)),   % plain variables
+                list(var(T)),   % !V state variables
+                list(var(T)),   % !.V state variables
+                list(var(T))    % !:V state variables
+            ).
+
     % Similar to parse_vars, but also allow state variables to appear
-    % in the list. The outputs separate the parsed variables into ordinary
-    % variables, state variables listed as !.X, and state variables
-    % listed as !:X.
+    % in the list.
     %
 :- pred parse_vars_and_state_vars(term(T)::in, varset(T)::in,
-    cord(format_component)::in,
-    maybe4(list(var(T)), list(var(T)), list(var(T)), list(var(T)))::out)
+    cord(format_component)::in, maybe1(plain_state_dot_colon_vars(T))::out)
     is det.
 
 :- pred parse_name_and_arity(module_name::in, term(T)::in,
@@ -1387,7 +1392,7 @@ parse_quantifier_vars(Term, VarSet, ContextPieces, MaybeVars) :-
 
 parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
     ( if Term = functor(atom("[]"), [], _) then
-        MaybeVars = ok4([], [], [], [])
+        MaybeVars = ok1(plain_state_dot_colon_vars([], [], [], []))
     else if Term = functor(atom("[|]"), [HeadTerm, Tail], _) then
         ( if
             (
@@ -1410,23 +1415,22 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 "a variable or state variable", HeadTerm, HeadSpec),
             MaybeHeadVar = error1([HeadSpec])
         ),
-        parse_vars_and_state_vars(Tail, VarSet, ContextPieces,
-            MaybeTailVars),
+        parse_vars_and_state_vars(Tail, VarSet, ContextPieces, MaybeTailVars),
         ( if
             MaybeHeadVar = ok1(VarKind),
-            MaybeTailVars = ok4(TailVars, TailStateVars,
-                TailDotVars, TailColonVars)
+            MaybeTailVars = ok1(plain_state_dot_colon_vars(TailVars,
+                TailStateVars, TailDotVars, TailColonVars))
         then
             (
                 VarKind = osdc_ordinary_var(V),
                 ( if list.member(V, TailVars) then
                     generate_repeated_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
-                    MaybeVars = error4([Spec])
+                    MaybeVars = error1([Spec])
                 else
                     Vars = [V | TailVars],
-                    MaybeVars = ok4(Vars, TailStateVars,
-                        TailDotVars, TailColonVars)
+                    MaybeVars = ok1(plain_state_dot_colon_vars(Vars,
+                        TailStateVars, TailDotVars, TailColonVars))
                 )
             ;
                 VarKind = osdc_state_var(SV),
@@ -1438,11 +1442,11 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 then
                     generate_repeated_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
-                    MaybeVars = error4([Spec])
+                    MaybeVars = error1([Spec])
                 else
                     StateVars = [SV | TailStateVars],
-                    MaybeVars = ok4(TailVars, StateVars,
-                        TailDotVars, TailColonVars)
+                    MaybeVars = ok1(plain_state_dot_colon_vars(TailVars,
+                        StateVars, TailDotVars, TailColonVars))
                 )
             ;
                 VarKind = osdc_dot_var(SV),
@@ -1454,11 +1458,11 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 then
                     generate_repeated_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
-                    MaybeVars = error4([Spec])
+                    MaybeVars = error1([Spec])
                 else
                     DotVars = [SV | TailDotVars],
-                    MaybeVars = ok4(TailVars, TailStateVars,
-                        DotVars, TailColonVars)
+                    MaybeVars = ok1(plain_state_dot_colon_vars(TailVars,
+                        TailStateVars, DotVars, TailColonVars))
                 )
             ;
                 VarKind = osdc_colon_var(SV),
@@ -1470,22 +1474,22 @@ parse_vars_and_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
                 then
                     generate_repeated_var_msg(ContextPieces, VarSet,
                         HeadTerm, Spec),
-                    MaybeVars = error4([Spec])
+                    MaybeVars = error1([Spec])
                 else
                     ColonVars = [SV | TailColonVars],
-                    MaybeVars = ok4(TailVars, TailStateVars,
-                        TailDotVars, ColonVars)
+                    MaybeVars = ok1(plain_state_dot_colon_vars(TailVars,
+                        TailStateVars, TailDotVars, ColonVars))
                 )
             )
         else
             HeadSpecs = get_any_errors1(MaybeHeadVar),
-            TailSpecs = get_any_errors4(MaybeTailVars),
-            MaybeVars = error4(HeadSpecs ++ TailSpecs)
+            TailSpecs = get_any_errors1(MaybeTailVars),
+            MaybeVars = error1(HeadSpecs ++ TailSpecs)
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
             "a list of variables and/or state variables", Term, Spec),
-        MaybeVars = error4([Spec])
+        MaybeVars = error1([Spec])
     ).
 
 :- pred generate_repeated_var_msg(cord(format_component)::in,
