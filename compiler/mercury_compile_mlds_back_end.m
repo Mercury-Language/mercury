@@ -148,7 +148,7 @@ mlds_backend(!HLDS, !:MLDS, Specs, !DumpInfo, !IO) :-
     (
         OptimizeTailCalls = yes,
         maybe_write_string(Verbose, "% Detecting tail calls...\n", !IO),
-        ml_mark_tailcalls(Globals, Specs, !MLDS),
+        ml_mark_tailcalls(Globals, !.HLDS, Specs, !MLDS),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         OptimizeTailCalls = no,

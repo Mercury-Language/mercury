@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 %
 % File: ml_tailcall.m
-% Main author: fjh
+% Authors: fjh, pbone
 %
 % This module is an MLDS-to-MLDS transformation that marks function calls
 % as tail calls whenever it is safe to do so, based on the assumptions
@@ -53,6 +53,8 @@
 :- module ml_backend.ml_tailcall.
 :- interface.
 
+:- import_module hlds.
+:- import_module hlds.hlds_module.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.error_util.
@@ -67,7 +69,7 @@
     %
     % If enabled, warn for calls that "look like" tail calls, but aren't.
     %
-:- pred ml_mark_tailcalls(globals::in, list(error_spec)::out,
+:- pred ml_mark_tailcalls(globals::in, module_info::in, list(error_spec)::out,
     mlds::in, mlds::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -75,7 +77,6 @@
 
 :- implementation.
 
-:- import_module hlds.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
@@ -92,7 +93,7 @@
 
 %-----------------------------------------------------------------------------%
 
-ml_mark_tailcalls(Globals, Specs, !MLDS) :-
+ml_mark_tailcalls(Globals, ModuleInfo, Specs, !MLDS) :-
     Defns0 = !.MLDS ^ mlds_defns,
     ModuleName = mercury_module_name_to_mlds(!.MLDS ^ mlds_name),
     globals.lookup_bool_option(Globals, warn_non_tail_recursion,
@@ -104,7 +105,7 @@ ml_mark_tailcalls(Globals, Specs, !MLDS) :-
         WarnTailCallsBool = no,
         WarnTailCalls = do_not_warn_tail_calls
     ),
-    mark_tailcalls_in_defns(ModuleName, WarnTailCalls, Specs,
+    mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls, Specs,
         Defns0, Defns),
     !MLDS ^ mlds_defns := Defns.
 
@@ -147,12 +148,18 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
     --->    local_params(mlds_arguments)
     ;       local_defns(list(mlds_defn)).
 
+:- type found_recursive_call
+    --->    found_recursive_call
+    ;       not_found_recursive_call.
+
 %-----------------------------------------------------------------------------%
 
 :- type tailcall_info
     --->    tailcall_info(
+                tci_module_info             :: module_info,
                 tci_module_name             :: mlds_module_name,
                 tci_function_name           :: mlds_entity_name,
+                tci_maybe_pred_info         :: maybe(pred_info),
                 tci_locals                  :: locals,
                 tci_warn_tail_calls         :: warn_tail_calls,
                 tci_maybe_require_tailrec   :: maybe(require_tail_recursion)
@@ -184,23 +191,25 @@ not_at_tail(not_at_tail_have_not_seen_reccall,
 %   The `Locals' argument contains the local definitions which are in scope
 %   at the current point.
 
-:- pred mark_tailcalls_in_defns(mlds_module_name::in,
+:- pred mark_tailcalls_in_defns(module_info::in, mlds_module_name::in,
     warn_tail_calls::in, list(error_spec)::out,
     list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
-mark_tailcalls_in_defns(ModuleName, WarnTailCalls, condense(Warnings),
-        Defns0, Defns) :-
-    list.map2(mark_tailcalls_in_defn(ModuleName, WarnTailCalls),
+mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
+        condense(Warnings), Defns0, Defns) :-
+    list.map2(mark_tailcalls_in_defn(ModuleInfo, ModuleName, WarnTailCalls),
         Defns0, Defns, Warnings).
 
-:- pred mark_tailcalls_in_defn(mlds_module_name::in, warn_tail_calls::in,
-    mlds_defn::in, mlds_defn::out, list(error_spec)::out) is det.
+:- pred mark_tailcalls_in_defn(module_info::in, mlds_module_name::in,
+    warn_tail_calls::in, mlds_defn::in, mlds_defn::out,
+    list(error_spec)::out) is det.
 
-mark_tailcalls_in_defn(ModuleName, WarnTailCalls, Defn0, Defn, Warnings) :-
+mark_tailcalls_in_defn(ModuleInfo, ModuleName, WarnTailCalls, Defn0, Defn,
+        Warnings) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes,
-            EnvVarNames, MaybeRequireTailrecInfo),
+        DefnBody0 = mlds_function(MaybePredProcId, Params, FuncBody0,
+            Attributes, EnvVarNames, MaybeRequireTailrecInfo),
         % Compute the initial values of the `Locals' and `AtTail' arguments.
         Params = mlds_func_params(Args, RetTypes),
         Locals = [local_params(Args)],
@@ -211,12 +220,20 @@ mark_tailcalls_in_defn(ModuleName, WarnTailCalls, Defn0, Defn, Warnings) :-
             RetTypes = [_ | _],
             AtTail = not_at_tail_have_not_seen_reccall
         ),
-        TCallInfo = tailcall_info(ModuleName, Name, Locals,
-            WarnTailCalls, MaybeRequireTailrecInfo),
+        (
+            MaybePredProcId = yes(proc(PredId, _)),
+            module_info_pred_info(ModuleInfo, PredId, PredInfo),
+            MaybePredInfo = yes(PredInfo)
+        ;
+            MaybePredProcId = no,
+            MaybePredInfo = no
+        ),
+        TCallInfo = tailcall_info(ModuleInfo, ModuleName, Name,
+            MaybePredInfo, Locals, WarnTailCalls, MaybeRequireTailrecInfo),
         mark_tailcalls_in_function_body(TCallInfo, AtTail, Warnings,
             FuncBody0, FuncBody),
-        DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes,
-            EnvVarNames, MaybeRequireTailrecInfo),
+        DefnBody = mlds_function(MaybePredProcId, Params, FuncBody,
+            Attributes, EnvVarNames, MaybeRequireTailrecInfo),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ;
         DefnBody0 = mlds_data(_, _, _),
@@ -226,10 +243,10 @@ mark_tailcalls_in_defn(ModuleName, WarnTailCalls, Defn0, Defn, Warnings) :-
         DefnBody0 = mlds_class(ClassDefn0),
         ClassDefn0 = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
             TypeParams, CtorDefns0, MemberDefns0),
-        mark_tailcalls_in_defns(ModuleName, WarnTailCalls, CtorWarnings,
-            CtorDefns0, CtorDefns),
-        mark_tailcalls_in_defns(ModuleName, WarnTailCalls, MemberWarnings,
-            MemberDefns0, MemberDefns),
+        mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
+            CtorWarnings, CtorDefns0, CtorDefns),
+        mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
+            MemberWarnings, MemberDefns0, MemberDefns),
         Warnings = CtorWarnings ++ MemberWarnings,
         ClassDefn = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
             TypeParams, CtorDefns, MemberDefns),
@@ -248,47 +265,96 @@ mark_tailcalls_in_function_body(TCallInfo, AtTail, Warnings, Body0, Body) :-
         Body = body_external
     ;
         Body0 = body_defined_here(Statement0),
-        mark_tailcalls_in_statement(TCallInfo, Warnings,
+        mark_tailcalls_in_statement(TCallInfo, FoundRecCall, Warnings0,
             AtTail, _, Statement0, Statement),
-        Body = body_defined_here(Statement)
+        Body = body_defined_here(Statement),
+        (
+            FoundRecCall = found_recursive_call,
+            Warnings = Warnings0
+        ;
+            FoundRecCall = not_found_recursive_call,
+            MaybeRequireTailrecInfo = TCallInfo ^ tci_maybe_require_tailrec,
+            (
+                MaybeRequireTailrecInfo = yes(RequireTailrecInfo),
+                ( RequireTailrecInfo = suppress_tailrec_warnings(Context)
+                ; RequireTailrecInfo = enable_tailrec_warnings(_, _, Context)
+                ),
+                MaybePredInfo = TCallInfo ^ tci_maybe_pred_info,
+                (
+                    MaybePredInfo = yes(PredInfo),
+                    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+                    pred_info_get_name(PredInfo, Name),
+                    pred_info_get_orig_arity(PredInfo, Arity),
+                    SimpleCallId = simple_call_id(PredOrFunc,
+                        unqualified(Name), Arity),
+                    Pieces =
+                        [words("In:"), pragma_decl("require_tail_recursion"),
+                        words("for"), simple_call(SimpleCallId),
+                        suffix(":"), nl,
+                        words("warning: code is not recursive."), nl],
+                    Msg = simple_msg(Context, [always(Pieces)]),
+                    NonRecursiveSpec = error_spec(severity_warning,
+                        phase_code_gen, [Msg]),
+                    Warnings = [NonRecursiveSpec | Warnings0]
+                ;
+                    % If this function wasn't generated from a Mercury
+                    % predicate then don't create this warning.  This cannot
+                    % happen anyway because the require tail recursion
+                    % pragma cannot be attached to predicates that don't
+                    % exist.
+                    MaybePredInfo = no,
+                    Warnings = []
+                )
+            ;
+                MaybeRequireTailrecInfo = no,
+                Warnings = Warnings0
+            )
+        )
     ).
 
 :- pred mark_tailcalls_in_maybe_statement(tailcall_info::in,
-    list(error_spec)::out, at_tail::in, at_tail::out,
+    found_recursive_call::out, list(error_spec)::out,
+    at_tail::in, at_tail::out,
     maybe(statement)::in, maybe(statement)::out) is det.
 
-mark_tailcalls_in_maybe_statement(_, [], !AtTail, no, no).
-mark_tailcalls_in_maybe_statement(TCallInfo, Warnings, !AtTail,
-        yes(Statement0), yes(Statement)) :-
-    mark_tailcalls_in_statement(TCallInfo, Warnings,
+mark_tailcalls_in_maybe_statement(_, not_found_recursive_call, [], !AtTail,
+        no, no).
+mark_tailcalls_in_maybe_statement(TCallInfo, FoundRecCall, Warnings,
+        !AtTail, yes(Statement0), yes(Statement)) :-
+    mark_tailcalls_in_statement(TCallInfo, FoundRecCall, Warnings,
         !AtTail, Statement0, Statement).
 
 :- pred mark_tailcalls_in_statements(tailcall_info::in,
-    list(error_spec)::out, at_tail::in, at_tail::out,
-    list(statement)::in, list(statement)::out) is det.
+    found_recursive_call::out, list(error_spec)::out,
+    at_tail::in, at_tail::out, list(statement)::in, list(statement)::out)
+    is det.
 
-mark_tailcalls_in_statements(_, [], !AtTail, [], []).
-mark_tailcalls_in_statements(TCallInfo, FirstWarnings ++ RestWarnings,
-        !AtTail, [First0 | Rest0], [First | Rest]) :-
-    mark_tailcalls_in_statements(TCallInfo, RestWarnings, !AtTail,
-        Rest0, Rest),
-    mark_tailcalls_in_statement(TCallInfo, FirstWarnings, !AtTail,
-        First0, First).
+mark_tailcalls_in_statements(_, not_found_recursive_call, [], !AtTail, [], []).
+mark_tailcalls_in_statements(TCallInfo, FoundRecCall, FirstWarnings ++
+        RestWarnings, !AtTail, [First0 | Rest0], [First | Rest]) :-
+    mark_tailcalls_in_statements(TCallInfo, FoundRecCallRest, RestWarnings,
+        !AtTail, Rest0, Rest),
+    mark_tailcalls_in_statement(TCallInfo, FoundRecCallFirst, FirstWarnings,
+        !AtTail, First0, First),
+    FoundRecCall = found_recursive_call_combine(FoundRecCallFirst,
+        FoundRecCallRest).
 
-:- pred mark_tailcalls_in_statement(tailcall_info::in,
+:- pred mark_tailcalls_in_statement(tailcall_info::in, found_recursive_call::out,
     list(error_spec)::out,
     at_tail::in, at_tail::out, statement::in, statement::out) is det.
 
-mark_tailcalls_in_statement(TCallInfo, Warnings, !AtTail, !Statement) :-
+mark_tailcalls_in_statement(TCallInfo, FoundRecCall, Warnings, !AtTail,
+        !Statement) :-
     !.Statement = statement(Stmt0, Context),
-    mark_tailcalls_in_stmt(TCallInfo, Context, Warnings, !AtTail, Stmt0, Stmt),
+    mark_tailcalls_in_stmt(TCallInfo, Context, FoundRecCall, Warnings,
+        !AtTail, Stmt0, Stmt),
     !:Statement = statement(Stmt, Context).
 
 :- pred mark_tailcalls_in_stmt(tailcall_info::in, mlds_context::in,
-    list(error_spec)::out, at_tail::in, at_tail::out,
+    found_recursive_call::out, list(error_spec)::out, at_tail::in, at_tail::out,
     mlds_stmt::in, mlds_stmt::out) is det.
 
-mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
+mark_tailcalls_in_stmt(TCallInfo, Context, FoundRecCall, Warnings,
         AtTailAfter0, AtTailBefore, Stmt0, Stmt) :-
     (
         Stmt0 = ml_stmt_block(Defns0, Statements0),
@@ -298,13 +364,16 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
         % of currently visible local declarations before processing the
         % statements in that block. The statement list will be in a tail
         % position iff the block is in a tail position.
+        ModuleInfo = TCallInfo ^ tci_module_info,
         ModuleName = TCallInfo ^ tci_module_name,
-        mark_tailcalls_in_defns(ModuleName, TCallInfo ^ tci_warn_tail_calls,
+        WarnTailCalls = TCallInfo ^ tci_warn_tail_calls,
+        mark_tailcalls_in_defns(ModuleInfo, ModuleName, WarnTailCalls,
             DefnsWarnings, Defns0, Defns),
         Locals = TCallInfo ^ tci_locals,
         NewTCallInfo = TCallInfo ^ tci_locals := [local_defns(Defns) | Locals],
-        mark_tailcalls_in_statements(NewTCallInfo, StatementsWarnings,
-            AtTailAfter0, AtTailBefore, Statements0, Statements),
+        mark_tailcalls_in_statements(NewTCallInfo, FoundRecCall,
+            StatementsWarnings, AtTailAfter0, AtTailBefore,
+            Statements0, Statements),
         Warnings = DefnsWarnings ++ StatementsWarnings,
         Stmt = ml_stmt_block(Defns, Statements)
     ;
@@ -312,7 +381,7 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
         % The statement in the body of a while loop is never in a tail
         % position.
         not_at_tail(AtTailAfter0, AtTailAfter),
-        mark_tailcalls_in_statement(TCallInfo, Warnings,
+        mark_tailcalls_in_statement(TCallInfo, FoundRecCall, Warnings,
             AtTailAfter, AtTailBefore0, Statement0, Statement),
         % Neither is any statement before the loop.
         not_at_tail(AtTailBefore0, AtTailBefore),
@@ -321,11 +390,14 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
         Stmt0 = ml_stmt_if_then_else(Cond, Then0, MaybeElse0),
         % Both the `then' and the `else' parts of an if-then-else are in a
         % tail position iff the if-then-else is in a tail position.
-        mark_tailcalls_in_statement(TCallInfo, ThenWarnings,
-            AtTailAfter0, AtTailBeforeThen, Then0, Then),
-        mark_tailcalls_in_maybe_statement(TCallInfo, ElseWarnings,
-            AtTailAfter0, AtTailBeforeElse, MaybeElse0, MaybeElse),
+        mark_tailcalls_in_statement(TCallInfo, FoundRecCallThen,
+            ThenWarnings, AtTailAfter0, AtTailBeforeThen, Then0, Then),
+        mark_tailcalls_in_maybe_statement(TCallInfo, FoundRecCallElse,
+            ElseWarnings, AtTailAfter0, AtTailBeforeElse, MaybeElse0,
+            MaybeElse),
         Warnings = ThenWarnings ++ ElseWarnings,
+        FoundRecCall = found_recursive_call_combine(FoundRecCallThen,
+            FoundRecCallElse),
         ( if
             ( AtTailBeforeThen = not_at_tail_seen_reccall
             ; AtTailBeforeElse = not_at_tail_seen_reccall
@@ -340,11 +412,14 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
         Stmt0 = ml_stmt_switch(Type, Val, Range, Cases0, Default0),
         % All of the cases of a switch (including the default) are in a
         % tail position iff the switch is in a tail position.
-        mark_tailcalls_in_cases(TCallInfo, CasesWarnings,
+        mark_tailcalls_in_cases(TCallInfo, FoundRecCallCases, CasesWarnings,
             AtTailAfter0, AtTailBeforeCases, Cases0, Cases),
-        mark_tailcalls_in_default(TCallInfo, DefaultWarnings,
-            AtTailAfter0, AtTailBeforeDefault, Default0, Default),
+        mark_tailcalls_in_default(TCallInfo, FoundRecCallDefault,
+            DefaultWarnings, AtTailAfter0, AtTailBeforeDefault,
+            Default0, Default),
         Warnings = CasesWarnings ++ DefaultWarnings,
+        FoundRecCall = found_recursive_call_combine(FoundRecCallCases,
+            FoundRecCallDefault),
         ( if
             % Have we seen a tailcall, in either a case or in the default?
             (
@@ -361,18 +436,20 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default)
     ;
         Stmt0 = ml_stmt_call(_, _, _, _, _, _),
-        mark_tailcalls_in_stmt_call(TCallInfo, Context, Warnings,
-            AtTailAfter0, AtTailBefore, Stmt0, Stmt)
+        mark_tailcalls_in_stmt_call(TCallInfo, Context, FoundRecCall,
+            Warnings, AtTailAfter0, AtTailBefore, Stmt0, Stmt)
     ;
         Stmt0 = ml_stmt_try_commit(Ref, Statement0, Handler0),
         % Both the statement inside a `try_commit' and the handler are in
         % tail call position iff the `try_commit' statement is in a tail call
         % position.
-        mark_tailcalls_in_statement(TCallInfo, TryWarnings,
+        mark_tailcalls_in_statement(TCallInfo, FoundRecCallTry, TryWarnings,
             AtTailAfter0, _, Statement0, Statement),
-        mark_tailcalls_in_statement(TCallInfo, HandlerWarnings,
-            AtTailAfter0, _, Handler0, Handler),
+        mark_tailcalls_in_statement(TCallInfo, FoundRecCallHandle,
+            HandlerWarnings, AtTailAfter0, _, Handler0, Handler),
         Warnings = TryWarnings ++ HandlerWarnings,
+        FoundRecCall = found_recursive_call_combine(FoundRecCallTry,
+            FoundRecCallHandle),
         AtTailBefore = not_at_tail_have_not_seen_reccall,
         Stmt = ml_stmt_try_commit(Ref, Statement, Handler)
     ;
@@ -381,18 +458,21 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
         ; Stmt0 = ml_stmt_do_commit(_Ref)
         ; Stmt0 = ml_stmt_atomic(_)
         ),
+        FoundRecCall = not_found_recursive_call,
         Warnings = [],
         not_at_tail(AtTailAfter0, AtTailBefore),
         Stmt = Stmt0
     ;
         Stmt0 = ml_stmt_label(_),
+        FoundRecCall = not_found_recursive_call,
         Warnings = [],
         AtTailBefore = AtTailAfter0,
         Stmt = Stmt0
     ;
         Stmt0 = ml_stmt_return(ReturnVals),
-        % The statement before a return statement is in a tail position.
+        FoundRecCall = not_found_recursive_call,
         Warnings = [],
+        % The statement before a return statement is in a tail position.
         AtTailBefore = at_tail(ReturnVals),
         Stmt = Stmt0
     ).
@@ -401,10 +481,11 @@ mark_tailcalls_in_stmt(TCallInfo, Context, Warnings,
     --->    ml_stmt_call(ground, ground, ground, ground, ground, ground).
 
 :- pred mark_tailcalls_in_stmt_call(tailcall_info::in, mlds_context::in,
-    list(error_spec)::out, at_tail::in, at_tail::out,
+    found_recursive_call::out, list(error_spec)::out,
+    at_tail::in, at_tail::out,
     mlds_stmt::in(ml_stmt_call), mlds_stmt::out) is det.
 
-mark_tailcalls_in_stmt_call(TCallInfo, Context, Warnings,
+mark_tailcalls_in_stmt_call(TCallInfo, Context, FoundRecCall, Warnings,
         AtTailAfter, AtTailBefore, Stmt0, Stmt) :-
     Stmt0 = ml_stmt_call(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
     ModuleName = TCallInfo ^ tci_module_name,
@@ -455,57 +536,74 @@ mark_tailcalls_in_stmt_call(TCallInfo, Context, Warnings,
             ),
             Stmt = Stmt0,
             AtTailBefore = not_at_tail_seen_reccall
-        )
+        ),
+        FoundRecCall = found_recursive_call
     else
         % Leave this call unchanged.
         Stmt = Stmt0,
+        FoundRecCall = not_found_recursive_call,
         Warnings = [],
         not_at_tail(AtTailAfter, AtTailBefore)
     ).
 
-:- pred mark_tailcalls_in_cases(tailcall_info::in, list(error_spec)::out,
-    at_tail::in, list(at_tail)::out,
+:- pred mark_tailcalls_in_cases(tailcall_info::in, found_recursive_call::out,
+    list(error_spec)::out, at_tail::in, list(at_tail)::out,
     list(mlds_switch_case)::in, list(mlds_switch_case)::out) is det.
 
-mark_tailcalls_in_cases(_, [], _, [], [], []).
-mark_tailcalls_in_cases(TCallInfo, CaseWarnings ++ CasesWarnings,
+mark_tailcalls_in_cases(_, not_found_recursive_call, [], _, [], [], []).
+mark_tailcalls_in_cases(TCallInfo, FoundRecCall, CaseWarnings ++ CasesWarnings,
         AtTailAfter, [AtTailBefore | AtTailBefores],
         [Case0 | Cases0], [Case | Cases]) :-
-    mark_tailcalls_in_case(TCallInfo, CaseWarnings,
+    mark_tailcalls_in_case(TCallInfo, FoundRecCallCase, CaseWarnings,
         AtTailAfter, AtTailBefore, Case0, Case),
-    mark_tailcalls_in_cases(TCallInfo, CasesWarnings,
-        AtTailAfter, AtTailBefores, Cases0, Cases).
+    mark_tailcalls_in_cases(TCallInfo, FoundRecCallCases, CasesWarnings,
+        AtTailAfter, AtTailBefores, Cases0, Cases),
+    FoundRecCall = found_recursive_call_combine(FoundRecCallCase,
+        FoundRecCallCases).
 
-:- pred mark_tailcalls_in_case(tailcall_info::in, list(error_spec)::out,
-    at_tail::in, at_tail::out, mlds_switch_case::in, mlds_switch_case::out)
-    is det.
+:- pred mark_tailcalls_in_case(tailcall_info::in, found_recursive_call::out,
+    list(error_spec)::out, at_tail::in, at_tail::out,
+    mlds_switch_case::in, mlds_switch_case::out) is det.
 
-mark_tailcalls_in_case(TCallInfo, Warnings, AtTailAfter, AtTailBefore,
-        Case0, Case) :-
+mark_tailcalls_in_case(TCallInfo, FoundRecCall, Warnings,
+        AtTailAfter, AtTailBefore, Case0, Case) :-
     Case0 = mlds_switch_case(FirstCond, LaterConds, Statement0),
-    mark_tailcalls_in_statement(TCallInfo, Warnings, AtTailAfter, AtTailBefore,
-        Statement0, Statement),
+    mark_tailcalls_in_statement(TCallInfo, FoundRecCall, Warnings,
+        AtTailAfter, AtTailBefore, Statement0, Statement),
     Case = mlds_switch_case(FirstCond, LaterConds, Statement).
 
-:- pred mark_tailcalls_in_default(tailcall_info::in,
+:- pred mark_tailcalls_in_default(tailcall_info::in, found_recursive_call::out,
     list(error_spec)::out, at_tail::in, at_tail::out,
     mlds_switch_default::in, mlds_switch_default::out) is det.
 
-mark_tailcalls_in_default(TCallInfo, Warnings, AtTailAfter, AtTailBefore,
-        Default0, Default) :-
+mark_tailcalls_in_default(TCallInfo, FoundRecCall, Warnings, AtTailAfter,
+        AtTailBefore, Default0, Default) :-
     (
         ( Default0 = default_is_unreachable
         ; Default0 = default_do_nothing
         ),
+        FoundRecCall = not_found_recursive_call,
         Warnings = [],
         AtTailBefore = AtTailAfter,
         Default = Default0
     ;
         Default0 = default_case(Statement0),
-        mark_tailcalls_in_statement(TCallInfo, Warnings,
+        mark_tailcalls_in_statement(TCallInfo, FoundRecCall, Warnings,
             AtTailAfter, AtTailBefore, Statement0, Statement),
         Default = default_case(Statement)
     ).
+
+%-----------------------------------------------------------------------------%
+
+:- func found_recursive_call_combine(found_recursive_call,
+        found_recursive_call) = found_recursive_call.
+
+found_recursive_call_combine(found_recursive_call, _) = found_recursive_call.
+found_recursive_call_combine(not_found_recursive_call, found_recursive_call) =
+    found_recursive_call.
+found_recursive_call_combine(not_found_recursive_call,
+        not_found_recursive_call) =
+    not_found_recursive_call.
 
 %-----------------------------------------------------------------------------%
 

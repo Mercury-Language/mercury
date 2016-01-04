@@ -219,15 +219,38 @@ do_mark_tail_calls_in_proc(AddGoalFeature, WarnNonTailRecursion,
     Info = mark_tail_calls_info(AddGoalFeature, ModuleInfo, PredInfo,
         PredId, ProcId, VarTypes, WarnNonTailRecursion,
         MaybeRequireTailRecursion),
-    mark_tail_calls_in_goal(Info, FoundTailCalls, Errors, Goal0, Goal,
+    mark_tail_calls_in_goal(Info, FoundTailCalls, Errors0, Goal0, Goal,
         at_tail(Outputs), _),
     proc_info_set_goal(Goal, !ProcInfo),
     (
         FoundTailCalls = found_tail_calls,
-        TailCallEvents = has_tail_call_event
+        TailCallEvents = has_tail_call_event,
+        Errors = Errors0
     ;
         FoundTailCalls = not_found_tail_calls,
-        TailCallEvents = has_no_tail_call_event
+        TailCallEvents = has_no_tail_call_event,
+        (
+            MaybeRequireTailRecursion = yes(RequireTailrecInfo),
+            ( RequireTailrecInfo = suppress_tailrec_warnings(Context)
+            ; RequireTailrecInfo = enable_tailrec_warnings(_, _, Context)
+            ),
+            PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+            pred_info_get_name(PredInfo, Name),
+            pred_info_get_orig_arity(PredInfo, Arity),
+            SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name),
+                Arity),
+            Pieces =
+                [words("In:"), pragma_decl("require_tail_recursion"),
+                words("for"), simple_call(SimpleCallId), suffix(":"), nl,
+                words("warning: code is not recursive."), nl],
+            Msg = simple_msg(Context, [always(Pieces)]),
+            NonRecursiveSpec = error_spec(severity_warning, phase_code_gen,
+                [Msg]),
+            Errors = [NonRecursiveSpec | Errors0]
+        ;
+            MaybeRequireTailRecursion = no,
+            Errors = Errors0
+        )
     ),
     proc_info_set_has_tail_call_event(TailCallEvents, !ProcInfo).
 

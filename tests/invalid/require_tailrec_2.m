@@ -14,6 +14,8 @@
 :- pred qsortapp_5(list(int)::in, list(int)::out) is det.
 :- pred qsortapp_6(list(int)::in, list(int)::out) is det.
 
+:- func cons(X, list(X)) = list(X).
+
 :- implementation.
 
 :- pragma require_tail_recursion(qsortapp_1/2).
@@ -69,6 +71,13 @@ qsortapp_6([Pivot | T], List) :-
     qsortapp_6(Left0, Left),
     qsortapp_6(Right0, Right),
     append(Left, [Pivot | Right], List).
+
+%-----------------------------------------------------------------------%
+
+% Adding a tail recursion pragma to something that is not recursive is an
+% error.
+:- pragma require_tail_recursion(cons/2).
+cons(X, Xs) = [X | Xs].
 
 %-----------------------------------------------------------------------%
 
