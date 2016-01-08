@@ -127,7 +127,7 @@ However, if you want to give it a try, the required steps are:
 (1) Ensure that you have an existing working Mercury compiler in your PATH
 and a clean version of the Mercury source tree.
 
-(2) Run aclocal -I m4; autoconf; ./configure as normal.
+(2) Run ./prepare.sh; ./configure as normal.
 
 (3) Add the line:
 
@@ -143,6 +143,10 @@ The Java version of the compiler MUST be built using mmake's --use-mmc-make
 option; the build will not work otherwise.  Setting the variable GRADE in the
 invocation of mmake is currently necessary in order to avoid some variable
 definition ordering problems in Mmake.workspace.
+
+(5) To install the Java version of the compiler, do:
+
+   $ mmake --use-mmc-make install GRADE=java
 
 -----------------------------------------------------------------------------
 
