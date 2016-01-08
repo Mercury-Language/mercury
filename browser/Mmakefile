@@ -88,8 +88,13 @@ MCFLAGS      += --flags MDB_FLAGS $(CONFIG_OVERRIDE)
 # linker, so we disable the mmc option which causes the -install_name option
 # to be passed in the .dep files.
 
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+MCFLAGS += --ld-libflags \
+	"-install_name $(FINAL_INSTALL_MERC_LIB_DIR)/lib$(BROWSER_LIB_NAME).dylib"
+else
 LD_LIBFLAGS-libmer_browser.dylib = -install_name \
-	$(FINAL_INSTALL_MERC_LIB_DIR)/libmer_browser.dylib
+	$(FINAL_INSTALL_MERC_LIB_DIR)/lib$(BROWSER_LIB_NAME).dylib
+endif
 
 #-----------------------------------------------------------------------------#
 
