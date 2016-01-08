@@ -59,9 +59,17 @@
     %
 :- func list(cord(T)) = list(T).
 
+    % A synonym for the list/1.
+    %
+:- func to_list(cord(T)) = list(T).
+
     % rev_list(Cord) = list.reverse(list(Cord).
     %
 :- func rev_list(cord(T)) = list(T).
+
+    % A synonym for rev_list/1.
+    %
+:- func to_rev_list(cord(T)) = list(T).
 
     % Succeed iff the given cord is empty.
     %
@@ -304,6 +312,9 @@ list_2([N | Ns], L0) = L :-
         L = list_2([B, A | Ns], L0)
     ).
 
+to_list(C) =
+    list(C).
+
 rev_list(empty_cord) = [].
 rev_list(nonempty_cord(N)) = rev_list_2([N], []).
 
@@ -335,6 +346,9 @@ rev_list_2([N | Ns], L0) = L :-
 list_reverse_2([], L) = L.
 list_reverse_2([X | Xs], L0) =
     list_reverse_2(Xs, [X | L0]).
+
+to_rev_list(C) =
+    rev_list(C).
 
 %---------------------------------------------------------------------------%
 
