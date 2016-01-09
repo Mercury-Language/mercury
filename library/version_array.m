@@ -46,10 +46,10 @@
 %
 % Version arrays are zero based.
 %
-% XXX This implementation is not yet guaranteed to work with the agc (accurate
-% garbage collection) grades. Specifically, MR_deep_copy and MR_agc_deep_copy
-% currently do not recognise version arrays.
-%
+% NOTE_TO_IMPLEMENTORS XXX This implementation is not yet guaranteed to work
+% NOTE_TO_IMPLEMENTORS with the agc (accurate garbage collection) grades.
+% NOTE_TO_IMPLEMENTORS Specifically, MR_deep_copy and MR_agc_deep_copy
+% NOTE_TO_IMPLEMENTORS currently do not recognise version arrays.
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
