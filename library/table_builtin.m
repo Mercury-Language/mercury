@@ -96,10 +96,10 @@
 % this causes the predicates to become impure. The predicates with the semipure
 % directive only examine the tabling structures, but do not modify them.
 %
-% At the moment, tabling is supported only by the LLDS and MLDS C backends,
-% so in the next three type definitions, only the C definition is useful.
-% The Mercury and IL definitions are placeholders only, required to make
-% this module compile cleanly on the Java and .NET backends respectively.
+% At the moment, tabling is supported only by the LLDS and MLDS C backends, so
+% in the next three type definitions, only the C definition is useful.  The
+% Mercury definitions are placeholders only, required to make this module
+% compile cleanly on the non-C backends respectively.
 
     % This type represents the interior pointers of both call
     % tables and answer tables.
