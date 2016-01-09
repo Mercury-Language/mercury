@@ -92,9 +92,7 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
         TypeClassStatus1 = TypeClassStatus0
     ),
     HLDSFunDeps = list.map(make_hlds_fundep(ClassParamVars), FunDeps),
-    ( if
-        map.search(Classes0, ClassId, OldDefn)
-    then
+    ( if map.search(Classes0, ClassId, OldDefn) then
         OldDefn = hlds_class_defn(OldTypeClassStatus, OldConstraints,
             OldFunDeps, _OldAncestors, OldClassParamVars, _OldKinds,
             OldInterface, OldMethods, OldVarSet, OldContext),
@@ -112,7 +110,7 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
             ClassInterface = Interface
         ),
         ( if
-            % Check that the superclass constraints are identical
+            % Check that the superclass constraints are identical.
             not constraints_are_identical(OldClassParamVars, OldVarSet,
                 OldConstraints, ClassParamVars, VarSet, Constraints)
         then
@@ -161,11 +159,12 @@ add_typeclass_defn(SectionItem, !ModuleInfo, !Specs) :-
             module_add_class_interface(ClassName, ClassParamVars,
                 TypeClassStatus, NeedQual, Methods, PredProcIds0,
                 !ModuleInfo, !Specs),
-            % Get rid of the `no's from the list of maybes
+            % Get rid of the `no's from the list of maybes, and convert
+            % from pairs to hlds_class_procs.
             IsYes =
                 ( pred(Maybe::in, PredProcId::out) is semidet :-
-                    Maybe = yes(Pred - Proc),
-                    PredProcId = hlds_class_proc(Pred, Proc)
+                    Maybe = yes(PredId - ProcId),
+                    PredProcId = hlds_class_proc(PredId, ProcId)
                 ),
             list.filter_map(IsYes, PredProcIds0, PredProcIds1),
 
@@ -247,10 +246,10 @@ constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
 
 class_fundeps_are_identical(OldFunDeps0, FunDeps0) :-
     % Allow for the functional dependencies to be in a different order.
-    % we rely on the fact that sets (ordered lists) have a canonical
-    % representation.
     sort_and_remove_dups(OldFunDeps0, OldFunDeps),
     sort_and_remove_dups(FunDeps0, FunDeps),
+    % The list elements we are comparing are sets; we rely on the fact that
+    % sets have a canonical representation.
     OldFunDeps = FunDeps.
 
 :- pred module_add_class_interface(sym_name::in, list(tvar)::in,
