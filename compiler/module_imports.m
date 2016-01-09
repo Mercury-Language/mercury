@@ -9,8 +9,9 @@
 % File: module_imports.m.
 % Main author: fjh.
 %
-% This module contains the data structure for recording module imports
-% and its access predicates.
+% This module contains the main data structure we use while augmenting
+% a raw compilation unit. It records all the things that are imported,
+% directly or indirectly, by the original raw compilation unit.
 %
 %-----------------------------------------------------------------------------%
 

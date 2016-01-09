@@ -259,9 +259,8 @@ class_fundeps_are_identical(OldFunDeps0, FunDeps0) :-
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_class_interface(ClassName, ClassParamVars,
-        TypeClassStatus, NeedQual, Methods, PredProcIds,
-        !ModuleInfo, !Specs) :-
+module_add_class_interface(ClassName, ClassParamVars, TypeClassStatus,
+        NeedQual, Methods, PredProcIds, !ModuleInfo, !Specs) :-
     list.filter(is_class_method_mode_item, Methods, ModeMethods,
         PredOrFuncMethods),
     some [!PPIds] (

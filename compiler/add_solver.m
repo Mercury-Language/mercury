@@ -88,8 +88,8 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
 
     % XXX kind inference:
-    % We set the kinds to `star'.  This will be different when we have a
-    % kind system.
+    % We set the kinds to `star'. This will be different when we have
+    % a kind system.
     prog_type.var_list_to_type_list(map.init, TypeParams, Args),
     SolverType        = defined_type(TypeSymName, Args, kind_star),
     Arity             = length(TypeParams),
