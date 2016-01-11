@@ -171,8 +171,10 @@ section_name_src(sms_implementation) = "src_impl".
 section_name_src(sms_impl_but_exported_to_submodules) = "src_impl_sub".
 
 :- func section_name_int(int_module_section) = string.
-section_name_int(ims_imported(_, _, _)) = "int_imported".
-section_name_int(ims_used(_, _, _)) = "int_used".
+section_name_int(ims_imported_or_used(_, _, _, iou_imported)) = "int_imported".
+section_name_int(ims_imported_or_used(_, _, _, iou_used)) = "int_used".
+section_name_int(ims_imported_or_used(_, _, _, iou_used_and_imported)) =
+    "int_used_and_imported".
 section_name_int(ims_abstract_imported(_, _)) = "int_abstract_imported".
 
 :- func section_name_opt(opt_module_section) = string.

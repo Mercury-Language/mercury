@@ -40,4 +40,6 @@ errors.m:092: In clause for predicate `errors.pred_with_singleton_vars'/1:
 errors.m:092:   warning: variable `X' occurs only once in this scope.
 errors.m:101: In definition of type `errors.needs_qualification'/0:
 errors.m:101:   error: undefined type `state'/0.
+errors.m:101:   (Only fully module qualified names may refer to the entities
+errors.m:101:   defined in the module `io'.)
 For more information, recompile with `-E'.

@@ -14,6 +14,9 @@ Changes that may break compatibility:
   exported from that module. This may require the explicit export of e.g.
   some types that previously were not exported.
 
+* References to everything imported via `:- use_module' declarations
+  must now be fully module qualified.
+
 * `for' is now an operator.
 
 * It is now an error for a program to redefine a builtin type.  The affected

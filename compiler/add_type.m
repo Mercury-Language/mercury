@@ -201,7 +201,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, Context,
         hlds_data.get_type_defn_context(OldDefn2, OrigContext),
         hlds_data.get_type_defn_status(OldDefn2, OrigTypeStatus),
         hlds_data.get_type_defn_in_exported_eqv(OldDefn2, OrigInExportedEqv),
-        hlds_data.get_type_defn_need_qualifier(OldDefn2, OrigNeedQual),
+        hlds_data.get_type_defn_ctors_need_qualifier(OldDefn2, OrigNeedQual),
         OldDefnBody2 \= hlds_abstract_type(_)
     then
         ( if
@@ -370,7 +370,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundInvalidType, !ModuleInfo,
     get_type_defn_kind_map(TypeDefn, KindMap),
     get_type_defn_body(TypeDefn, Body),
     get_type_defn_status(TypeDefn, Status),
-    get_type_defn_need_qualifier(TypeDefn, NeedQual),
+    get_type_defn_ctors_need_qualifier(TypeDefn, NeedQual),
     module_info_get_globals(!.ModuleInfo, Globals),
     (
         Body = hlds_du_type(ConsList, _, _, _, UserEqCmp, _DirectArgCtors,
@@ -665,7 +665,8 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
 
     ConsDefn = hlds_cons_defn(TypeCtor, TVarSet, TypeParams, KindMap,
         ExistQVars, Constraints, Args, Context),
-    get_partial_qualifiers(TypeCtorModuleName, PQInfo, PartialQuals),
+    get_partial_qualifiers(mq_not_used_in_interface, TypeCtorModuleName,
+        PQInfo, PartialQuals),
 
     % Check that there is at most one definition of a given cons_id
     % in each type.

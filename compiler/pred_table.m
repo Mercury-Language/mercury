@@ -948,7 +948,8 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
 
         % Insert partially module-qualified versions of the name into the
         % module.name/arity index.
-        get_partial_qualifiers(Module, QualInfo, PartialQuals),
+        get_partial_qualifiers(mq_not_used_in_interface, Module, QualInfo,
+            PartialQuals),
         list.foldl(insert_into_mna_index(Name, Arity, PredId), PartialQuals,
             !MNA_Index),
 

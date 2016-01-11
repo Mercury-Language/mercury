@@ -64,7 +64,44 @@
 :- type sec_item(T)
     --->    sec_item(sec_info, T).
 :- type sec_info
-    --->    sec_info(item_mercury_status, need_qualifier).
+    --->    sec_info(
+                % The status of the items defined in the section.
+                item_mercury_status,
+
+                % Whether you need to fully module qualify the items
+                % that are defined in this section, directly or indirectly.
+                %
+                % There is one item that defines something directly
+                % to which this is relevant: predicate items.
+                % For them, this controls whether a reference to the predicate
+                % (or function) has to be fully qualified or not.
+                %
+                % For typeclass items, this controls whether references
+                % to the method predicates and/or functions has to be
+                % fully qualified or not.
+                %
+                % For mutable items, this controls whether references
+                % to the access predicates have to be fully qualified or not.
+                %
+                % For type defn items for solver types, this controls whether
+                % references to the solver type's auxiliary predicates
+                % (initialization, representation change, etc) have to be
+                % fully qualified or not.
+                %
+                % For type defn items for du types, this controls whether
+                % references to the type's function symbols have to be
+                % fully qualified or not.
+                %
+                % As it happens, ALL these references can occur only in
+                % the implementation section of a Mercury module.
+                % This means that in cases where an imported module's
+                % qualification needs are different in the interface and in the
+                % implementation (due to it being imported via `use_module'
+                % in the interface and `import_module' in the implementation),
+                % this field should be set to the value appropriate for the
+                % implementation section.
+                need_qualifier
+            ).
 
 :- inst ims_item(I)             % XXX for ims_item/1
     --->    ims_item(ground, I).

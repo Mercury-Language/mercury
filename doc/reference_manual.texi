@@ -4647,7 +4647,7 @@ and (sub-)modules can be explicitly module qualified using the @samp{.}
 operator, e.g.@: @samp{module.name} or @samp{module.submodule.name}.
 This is useful both for readability and for resolving name conflicts.
 Uses of entities imported using @code{use_module} declarations
-@emph{must} be explicitly module qualified.
+@emph{must} be explicitly fully module qualified.
 
 Currently we also support @samp{__} as an alternative module qualifier,
 so you can write @code{module__name} instead of @code{module.name}.

@@ -236,14 +236,23 @@
             % that contains submodules; such items need to be exported
             % to the submodules.
 
+:- type imported_or_used
+    --->    iou_imported
+    ;       iou_used
+    ;       iou_used_and_imported.
+
 :- type int_module_section
-    --->    ims_imported(module_name, int_file_kind, import_locn)
-    ;       ims_used(module_name, int_file_kind, import_locn)
+    --->    ims_imported_or_used(module_name, int_file_kind, import_locn,
+                imported_or_used)
             % These are used internally by the compiler, to identify
             % declarations which originally came from some other module
             % imported with a `:- import_module' or `:- use_module'
             % declaration. They record the name of the imported module,
             % and in which section the module was imported or used.
+            % An iou_used_and_imported means that the module was the subject
+            % of a `:- use_module' declaration in the interface and of an
+            % `:- import_module' declaration in the implementation; its
+            % import_locn will be the one in the implementation.
 
     ;       ims_abstract_imported(module_name, int_file_kind).
             % This is used internally by the compiler, to identify items which
@@ -275,6 +284,7 @@
 
     ;       import_locn_import_by_ancestor
             % The item is from a module imported by an ancestor.
+            % XXX Did the ancestor do the import in its interface, or not?
 
     ;       import_locn_ancestor_private_interface_proper.
             % The item is from the _actual_ private interface of an ancestor
@@ -285,6 +295,8 @@
 :- func make_ims_imported(import_locn, module_name, int_file_kind) =
     int_module_section.
 :- func make_ims_used(import_locn, module_name, int_file_kind) =
+    int_module_section.
+:- func make_ims_used_and_imported(import_locn, module_name, int_file_kind) =
     int_module_section.
 :- func make_ims_abstract_imported(module_name, int_file_kind) =
     int_module_section.
@@ -1326,9 +1338,12 @@
 %-----------------------------------------------------------------------------%
 
 make_ims_imported(ImportLocn, ModuleName, IntFileKind) =
-    ims_imported(ModuleName, IntFileKind, ImportLocn).
+    ims_imported_or_used(ModuleName, IntFileKind, ImportLocn, iou_imported).
 make_ims_used(ImportLocn, ModuleName, IntFileKind) =
-    ims_used(ModuleName, IntFileKind, ImportLocn).
+    ims_imported_or_used(ModuleName, IntFileKind, ImportLocn, iou_used).
+make_ims_used_and_imported(ImportLocn, ModuleName, IntFileKind) =
+    ims_imported_or_used(ModuleName, IntFileKind, ImportLocn,
+        iou_used_and_imported).
 make_ims_abstract_imported(ModuleName, IntFileKind) =
     ims_abstract_imported(ModuleName, IntFileKind).
 

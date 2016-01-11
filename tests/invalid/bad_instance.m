@@ -6,7 +6,7 @@
 :- interface.
 
 :- typeclass foo(A, B) where [].
-:- instance foo(bar(T), U).
+:- instance foo(bad_instance.bar(T), U).
 
 :- implementation.
 

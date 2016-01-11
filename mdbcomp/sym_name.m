@@ -127,10 +127,19 @@
 
     % partial_sym_name_matches_full(PartialSymName, CompleteSymName):
     %
-    % Succeeds iff there is some sequence of module qualifiers
-    % which when prefixed to PartialSymName gives CompleteSymName.
+    % Succeeds iff there is some sequence of module qualifiers that
+    % can be added to PartialSymName as a prefix to give CompleteSymName.
     %
 :- pred partial_sym_name_matches_full(sym_name::in, sym_name::in) is semidet.
+
+    % partial_sym_name_is_part_of_full(PartialSymName, CompleteSymName):
+    %
+    % Succeeds iff there is some sequence of module qualifiers that
+    % can be added to PartialSymName, possibly but not necessarily as a prefix,
+    % to give CompleteSymName.
+    %
+:- pred partial_sym_name_is_part_of_full(sym_name::in, sym_name::in)
+    is semidet.
 
     % remove_sym_name_prefix(SymName0, Prefix, SymName)
     % succeeds iff
@@ -303,6 +312,14 @@ partial_sym_name_matches_full(Partial, Full) :-
             Full = qualified(_, Name)
         )
     ).
+
+partial_sym_name_is_part_of_full(PartialSymName, FullSymName) :-
+    sym_name_to_qualifier_list_and_name(PartialSymName,
+        PartialQualifiers, PartialBaseName),
+    sym_name_to_qualifier_list_and_name(FullSymName,
+        FullQualifiers, FullBaseName),
+    PartialBaseName = FullBaseName,
+    list.sublist(PartialQualifiers, FullQualifiers).
 
 remove_sym_name_prefix(SymName0, Prefix, SymName) :-
     (

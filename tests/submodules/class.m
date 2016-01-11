@@ -66,7 +66,7 @@ hello -->
 :- type t2 == char.foo.
 :- type t3 == foo.
 :- type t4 == class.int.foo.
-:- type t5 == int.foo.
+:- type t5 == class.int.foo.    % was int.foo, but that is not fully qualified
 
 main -->
     class.char.hello,

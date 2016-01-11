@@ -195,15 +195,19 @@ src_module_section_status(SrcSection, SectionInfo) :-
 
 int_module_section_status(IntSection, SectionInfo) :-
     (
-        IntSection = ims_imported(_ModuleName, _IntFileKind, Section),
+        IntSection = ims_imported_or_used(_ModuleName, _IntFileKind,
+            ImportLocn, ImportedOrUsed),
         Status =
-            item_defined_in_other_module(item_import_int_concrete(Section)),
-        NeedQual = may_be_unqualified
-    ;
-        IntSection = ims_used(_ModuleName, _IntFileKind, Section),
-        Status =
-            item_defined_in_other_module(item_import_int_concrete(Section)),
-        NeedQual = must_be_qualified
+            item_defined_in_other_module(item_import_int_concrete(ImportLocn)),
+        (
+            ( ImportedOrUsed = iou_imported
+            ; ImportedOrUsed = iou_used_and_imported
+            ),
+            NeedQual = may_be_unqualified
+        ;
+            ImportedOrUsed = iou_used,
+            NeedQual = must_be_qualified
+        )
     ;
         IntSection = ims_abstract_imported(_ModuleName, _IntFileKind),
         Status = item_defined_in_other_module(item_import_int_abstract),
@@ -329,7 +333,7 @@ separate_items([Item | Items], SectionInfo,
         !RevItemPragmas2, !RevItemPragmas3, !RevItemClauses) :-
     (
         Item = item_clause(ItemClauseInfo),
-        SectionInfo = sec_info(ItemMercuryStatus, _),
+        SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
         ClauseStatusItem = ims_item(ItemMercuryStatus, ItemClauseInfo),
         !:RevItemClauses = [ClauseStatusItem |  !.RevItemClauses]
     ;

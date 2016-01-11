@@ -38,29 +38,38 @@
 % We record two kinds of permissions for each entity:
 %
 % - whether it may be used in the interface, and
-% - whether it may be used without module qualification.
+% - whether it may be used without full module qualification.
 %
 % An entity may be used in the interface if it is defined in the current
 % module or one of its ancestors, or if it is defined in a module that is
 % imported (or used) in the interface.
 %
-% An entity may be used without module qualification if it is defined
+% An entity may be used without full module qualification if it is defined
 % in the current module, in one of its ancestors, or in a module that is
-% the subject of an explicit import_module declaration in the current module.
-% It may not be used without qualification if it is made available by
-% a use_module declaration, or if it is defined in a `.opt' and `.trans_opt'
+% the subject of an explicit `import_module' declaration in the current module.
+% It may not be used without full qualification if it is made available by
+% a `use_module' declaration, or if it is defined in a `.opt' and `.trans_opt'
 % file.
+%
+% The two are not independent: an entity may be usable in the interface
+% only if fully qualified (if it is defined in a module that has a
+% `use_module' declaration for it in the interface), while it may be
+% usable in the implementation even if not fully qualified (if that defining
+% module has an `import_module' declaration in the implementation.)
 %
 
 :- type module_permissions
     --->    module_permissions(
-                use_in_interface,
-                need_qualifier
+                mp_in_int               :: perm_in_int,
+                mp_in_imp               :: perm_in_imp
             ).
 
-:- type use_in_interface
-    --->    may_not_use_in_interface
-    ;       may_use_in_interface.
+:- type perm_in_int
+    --->    may_not_use_in_int
+    ;       may_use_in_int(need_qualifier).
+
+:- type perm_in_imp
+    --->    may_use_in_imp(need_qualifier).
 
 %---------------------------------------------------------------------------%
 %
@@ -111,8 +120,8 @@
     % Check whether the parent module was imported, given the name of a
     % child (or grandchild, etc.) module occurring in that parent module.
     %
-:- pred parent_module_is_imported(module_name::in, module_name::in,
-    module_id_set::in) is semidet.
+:- pred parent_module_is_imported(mq_in_interface::in,
+    module_name::in, module_name::in, module_id_set::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -171,36 +180,55 @@ id_set_insert(Permissions, MQId, !IdSet) :-
 
 insert_into_permissions_map(NewPermissions, ModuleName, !PermissionsMap) :-
     ( if map.search(!.PermissionsMap, ModuleName, OldPermissions) then
-        OldPermissions = module_permissions(OldMayUseInInterface, OldNeedQual),
-        NewPermissions = module_permissions(NewMayUseInInterface, NewNeedQual),
         % Grant the permissions granted by either OldPermissions or
         % NewPermissions.
+        OldPermissions = module_permissions(OldPermInt, OldPermImp),
+        NewPermissions = module_permissions(NewPermInt, NewPermImp),
         (
-            OldMayUseInInterface = may_use_in_interface,
-            MayUseInInterface = OldMayUseInInterface
+            OldPermInt = may_not_use_in_int,
+            PermInt = NewPermInt
         ;
-            OldMayUseInInterface = may_not_use_in_interface,
-            MayUseInInterface = NewMayUseInInterface
+            OldPermInt = may_use_in_int(OldIntNeedQual),
+            (
+                NewPermInt = may_not_use_in_int,
+                PermInt = OldPermInt
+            ;
+                NewPermInt = may_use_in_int(NewIntNeedQual),
+                need_qual_only_if_both(OldIntNeedQual, NewIntNeedQual,
+                    IntNeedQual),
+                PermInt = may_use_in_int(IntNeedQual)
+            )
         ),
-        (
-            OldNeedQual = may_be_unqualified,
-            NeedQual = OldNeedQual
-        ;
-            OldNeedQual = must_be_qualified,
-            NeedQual = NewNeedQual
-        ),
+        OldPermImp = may_use_in_imp(OldImpNeedQual),
+        NewPermImp = may_use_in_imp(NewImpNeedQual),
+        need_qual_only_if_both(OldImpNeedQual, NewImpNeedQual, ImpNeedQual),
+        PermImp = may_use_in_imp(ImpNeedQual),
+
         % Update the entry only if it changed.
         ( if
-            MayUseInInterface = OldMayUseInInterface,
-            NeedQual = OldNeedQual
+            PermInt = OldPermInt,
+            PermImp = OldPermImp
         then
             true
         else
-            Permissions = module_permissions(MayUseInInterface, NeedQual),
+            Permissions = module_permissions(PermInt, PermImp),
             map.det_update(ModuleName, Permissions, !PermissionsMap)
         )
     else
         map.det_insert(ModuleName, NewPermissions, !PermissionsMap)
+    ).
+
+:- pred need_qual_only_if_both(need_qualifier::in, need_qualifier::in,
+    need_qualifier::out) is det.
+
+need_qual_only_if_both(NeedQualA, NeedQualB, NeedQual) :-
+    ( if
+        NeedQualA = must_be_qualified,
+        NeedQualB = must_be_qualified
+    then
+        NeedQual = must_be_qualified
+    else
+        NeedQual = may_be_unqualified
     ).
 
 %---------------------------------------------------------------------------%
@@ -209,96 +237,42 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         !Info, !Specs) :-
     % Find all IDs which match the current id.
     Id0 = mq_id(SymName0, Arity),
-    mq_info_get_modules(!.Info, Modules),
-    id_set_search_sym_arity(IdSet, Modules, SymName0, Arity,
-        ModuleNamesPermissions),
+    BaseName = unqualify_name(SymName0),
+    id_set_search_sym_arity(InInt, IdSet, SymName0, BaseName, Arity,
+        Matches, IntMismatches, QualMismatches),
     (
-        ModuleNamesPermissions = [],
+        Matches = [],
         % No matches for this id.
         MaybeUniqModuleName = no,
         mq_info_get_should_report_errors(!.Info, ReportErrors),
         (
             ReportErrors = should_report_errors,
-            id_set_search_sym(IdSet, Modules, SymName0, PossibleArities),
+            mq_info_record_undef_mq_id(IdType, !Info),
+
+            mq_info_get_this_module(!.Info, ThisModuleName),
+            id_set_search_sym(IdSet, SymName0, PossibleArities),
             report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
-                [], PossibleArities, !Specs),
-            mq_info_record_undef_mq_id(IdType, !Info)
+                ThisModuleName, IntMismatches, QualMismatches,
+                PossibleArities, !Specs)
         ;
             ReportErrors = should_not_report_errors
         )
     ;
-        ModuleNamesPermissions = [ModuleName - ModulePermissions],
+        Matches = [ModuleName],
         % A unique match for this ID.
-        ModulePermissions = module_permissions(MayUseInInterface, _),
-        ( if
-            InInt = mq_used_in_interface,
-            MayUseInInterface = may_not_use_in_interface
-        then
-            MaybeUniqModuleName = no,
-            mq_info_get_should_report_errors(!.Info, ReportErrors),
-            (
-                ReportErrors = should_report_errors,
-                BadBaseName = unqualify_name(SymName0),
-                BadSymName = qualified(ModuleName, BadBaseName),
-                mq_info_get_this_module(!.Info, ThisModuleName),
-                ( if ModuleName = ThisModuleName then
-                    report_may_not_use_in_interface(ErrorContext, IdType,
-                        BadSymName, Arity, !Specs)
-                else
-                    id_set_search_sym(IdSet, Modules, SymName0,
-                        PossibleArities),
-                    report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
-                        [ModuleName], PossibleArities, !Specs)
-                ),
-                mq_info_record_undef_mq_id(IdType, !Info)
-            ;
-                ReportErrors = should_not_report_errors
-            )
-        else
-            MaybeUniqModuleName = yes(ModuleName)
-        )
+        MaybeUniqModuleName = yes(ModuleName)
     ;
-        ModuleNamesPermissions = [_, _ | _],
+        Matches = [_, _ | _],
+        MaybeUniqModuleName = no,
+        mq_info_get_should_report_errors(!.Info, ReportErrors),
         (
-            InInt = mq_used_in_interface,
-            which_modules_may_be_used_in_interface(ModuleNamesPermissions,
-                UsableModuleNamesPermissions, NonUsableModuleNames)
+            ReportErrors = should_report_errors,
+            mq_info_record_undef_mq_id(IdType, !Info),
+            NonUsableModuleNames = IntMismatches ++ QualMismatches,
+            report_ambiguous_match(ErrorContext, Id0, IdType,
+                Matches, NonUsableModuleNames, !Specs)
         ;
-            InInt = mq_not_used_in_interface,
-            UsableModuleNamesPermissions = ModuleNamesPermissions,
-            NonUsableModuleNames = []
-        ),
-        (
-            UsableModuleNamesPermissions = [],
-            % There are several matches, but none is usable from the interface.
-            MaybeUniqModuleName = no,
-            mq_info_get_should_report_errors(!.Info, ReportErrors),
-            (
-                ReportErrors = should_report_errors,
-                id_set_search_sym(IdSet, Modules, SymName0, PossibleArities),
-                report_undefined_mq_id(!.Info, ErrorContext, Id0, IdType,
-                    NonUsableModuleNames, PossibleArities, !Specs),
-                mq_info_record_undef_mq_id(IdType, !Info)
-            ;
-                ReportErrors = should_not_report_errors
-            )
-        ;
-            UsableModuleNamesPermissions = [ModuleName - _Permissions],
-            MaybeUniqModuleName = yes(ModuleName)
-        ;
-            UsableModuleNamesPermissions = [_, _ | _],
-            MaybeUniqModuleName = no,
-            mq_info_get_should_report_errors(!.Info, ReportErrors),
-            (
-                ReportErrors = should_report_errors,
-                assoc_list.keys(UsableModuleNamesPermissions,
-                    UsableModuleNames),
-                report_ambiguous_match(ErrorContext, Id0, IdType,
-                    UsableModuleNames, NonUsableModuleNames, !Specs),
-                mq_info_record_undef_mq_id(IdType, !Info)
-            ;
-                ReportErrors = should_not_report_errors
-            )
+            ReportErrors = should_not_report_errors
         )
     ),
     (
@@ -307,7 +281,6 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         Id0 = mq_id(SymName, _)
     ;
         MaybeUniqModuleName = yes(UniqModuleName),
-        BaseName = unqualify_name(SymName0),
         SymName = qualified(UniqModuleName, BaseName),
         mq_info_set_module_used(InInt, UniqModuleName, !Info),
         ItemType = convert_simple_item_type(IdType),
@@ -316,27 +289,6 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         update_recompilation_info(
             recompilation.record_used_item(ItemType, ItemName0, ItemName),
             !Info)
-    ).
-
-:- pred which_modules_may_be_used_in_interface(
-    assoc_list(module_name, module_permissions)::in,
-    assoc_list(module_name, module_permissions)::out,
-    list(module_name)::out) is det.
-
-which_modules_may_be_used_in_interface([], [], []).
-which_modules_may_be_used_in_interface([Pair | Pairs],
-        MayUsePairs, MayNotUseNames) :-
-    which_modules_may_be_used_in_interface(Pairs,
-        MayUsePairsTail, MayNotUseNamesTail),
-    Pair = ModuleName - module_permissions(MayUseInInterface, _),
-    (
-        MayUseInInterface = may_use_in_interface,
-        MayUsePairs = [Pair | MayUsePairsTail],
-        MayNotUseNames = MayNotUseNamesTail
-    ;
-        MayUseInInterface = may_not_use_in_interface,
-        MayUsePairs = MayUsePairsTail,
-        MayNotUseNames = [ModuleName | MayNotUseNamesTail]
     ).
 
 :- func convert_simple_item_type(id_type) = item_type.
@@ -348,127 +300,155 @@ convert_simple_item_type(class_id) = typeclass_item.
 
 %---------------------------------------------------------------------------%
 
-:- pred id_set_search_sym_arity(id_set::in, module_id_set::in,
-    sym_name::in, int::in, assoc_list(module_name, module_permissions)::out)
-    is det.
+:- pred id_set_search_sym_arity(mq_in_interface::in, id_set::in,
+    sym_name::in, string::in, int::in, list(module_name)::out,
+    list(module_name)::out, list(module_name)::out) is det.
 
-id_set_search_sym_arity(IdSet, ModuleIdSet, SymName, Arity,
-        MatchingModuleNamesPermissions) :-
-    UnqualName = unqualify_name(SymName),
+id_set_search_sym_arity(InInt, IdSet, SymName, UnqualName, Arity,
+        Matches, IntMismatches, QualMismatches) :-
     ( if
         map.search(IdSet, UnqualName, SubMap),
         map.search(SubMap, Arity, PermissionsMap)
     then
-        find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
-            MatchingModuleNamesPermissions)
+        find_matches_in_permissions_map(InInt, SymName, PermissionsMap,
+            Matches, IntMismatches, QualMismatches)
     else
-        MatchingModuleNamesPermissions = []
+        Matches = [],
+        IntMismatches = [],
+        QualMismatches = []
     ).
 
-:- pred find_matches_in_permissions_map(sym_name::in, module_id_set::in,
-    permissions_map::in,
-    assoc_list(module_name, module_permissions)::out) is det.
+:- pred find_matches_in_permissions_map(mq_in_interface::in, sym_name::in,
+    permissions_map::in, list(module_name)::out,
+    list(module_name)::out, list(module_name)::out) is det.
 
-find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
-        MatchingModuleNamesPermissions) :-
+find_matches_in_permissions_map(InInt, SymName, PermissionsMap,
+        Matches, IntMismatches, QualMismatches) :-
+    map.foldr3(add_matching_and_nearmiss_modules(InInt, SymName),
+        PermissionsMap, [], Matches, [], IntMismatches, [], QualMismatches).
+
+:- pred add_matching_and_nearmiss_modules(mq_in_interface::in, sym_name::in,
+    module_name::in, module_permissions::in,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out) is det.
+
+add_matching_and_nearmiss_modules(InInt, SymName, ModuleName, Permissions,
+        !Matches, !IntMismatches, !QualMismatches) :-
     (
         SymName = unqualified(_),
-        map.foldr(add_may_be_unqualified_modules, PermissionsMap,
-            [], MatchingModuleNamesPermissions)
+        FullyModuleQualified = no,
+        add_matching_and_nearmiss_modules_int(InInt, FullyModuleQualified,
+            ModuleName, Permissions,
+            !Matches, !IntMismatches, !QualMismatches)
     ;
-        SymName = qualified(ModuleName, _),
-
-        % Compute the set of modules that this module specifier
-        % could possibly refer to.
-        %
-        % Do a recursive search to find nested modules that match
-        % the specified module name.
-        ModuleArity = 0,
-        id_set_search_sym_arity(ModuleIdSet, ModuleIdSet,
-            ModuleName, ModuleArity, MatchingParentModuleNamesPermissions),
-        ModuleBaseName = unqualify_name(ModuleName),
-        AppendModuleBaseName = (pred(X::in, Y::out) is det :-
-            Y = qualified(X, ModuleBaseName)
-        ),
-        assoc_list.keys(MatchingParentModuleNamesPermissions,
-            MatchingParentModuleNames),
-        list.map(AppendModuleBaseName,
-            MatchingParentModuleNames, MatchingNestedModuleNames),
-
-        % Add the specified module name itself, in case it refers to
-        % a top-level (unnested) module name, since top-level modules
-        % don't get inserted into the module_id_set.
-        set.list_to_set([ModuleName | MatchingNestedModuleNames],
-            MatchingModuleNamesSet),
-
-        map.foldr(add_modules_in_set(MatchingModuleNamesSet), PermissionsMap,
-            [], MatchingModuleNamesPermissions)
+        SymName = qualified(QualModuleName, _),
+        ( if
+            partial_sym_name_matches_full(QualModuleName, ModuleName)
+        then
+            ( if QualModuleName = ModuleName then
+                FullyModuleQualified = yes
+            else
+                FullyModuleQualified = no
+            ),
+            add_matching_and_nearmiss_modules_int(InInt, FullyModuleQualified,
+                ModuleName, Permissions,
+                !Matches, !IntMismatches, !QualMismatches)
+        else if
+            ModuleNameComponents = sym_name_to_list(ModuleName),
+            QualModuleNameComponents = sym_name_to_list(QualModuleName),
+            list.sublist(QualModuleNameComponents, ModuleNameComponents)
+        then
+            % The missing module name components are not all at the start.
+            % XXX *Should* this be a problem?
+            !:QualMismatches = [ModuleName | !.QualMismatches]
+        else
+            true
+        )
     ).
 
-:- pred add_may_be_unqualified_modules(module_name::in, module_permissions::in,
-    assoc_list(module_name, module_permissions)::in,
-    assoc_list(module_name, module_permissions)::out) is det.
-
-add_may_be_unqualified_modules(ModuleName, Permissions, !NamesPermissions) :-
-    Permissions = module_permissions(_, NeedQual),
-    (
-        NeedQual = may_be_unqualified,
-        !:NamesPermissions = [ModuleName - Permissions | !.NamesPermissions]
-    ;
-        NeedQual = must_be_qualified
-    ).
-
-:- pred add_modules_in_set(set(module_name)::in,
+:- pred add_matching_and_nearmiss_modules_int(mq_in_interface::in, bool::in,
     module_name::in, module_permissions::in,
-    assoc_list(module_name, module_permissions)::in,
-    assoc_list(module_name, module_permissions)::out) is det.
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out) is det.
 
-add_modules_in_set(MatchingModuleNames, ModuleName, Permissions,
-        !NamesPermissions) :-
-    ( if set.member(ModuleName, MatchingModuleNames) then
-        !:NamesPermissions = [ModuleName - Permissions | !.NamesPermissions]
+add_matching_and_nearmiss_modules_int(InInt, FullyModuleQualified,
+        ModuleName, Permissions, !Matches, !IntMismatches, !QualMismatches) :-
+    Permissions = module_permissions(PermInInt, PermInImp),
+    (
+        InInt = mq_used_in_interface,
+        (
+            PermInInt = may_not_use_in_int,
+            !:IntMismatches = [ModuleName | !.IntMismatches]
+        ;
+            PermInInt = may_use_in_int(NeedQual),
+            add_matching_and_nearmiss_modules_qual(FullyModuleQualified,
+                NeedQual, ModuleName, !Matches, !QualMismatches)
+        )
+    ;
+        InInt = mq_not_used_in_interface,
+        PermInImp = may_use_in_imp(NeedQual),
+        add_matching_and_nearmiss_modules_qual(FullyModuleQualified,
+            NeedQual, ModuleName, !Matches, !QualMismatches)
+    ).
+
+:- pred add_matching_and_nearmiss_modules_qual(bool::in, need_qualifier::in,
+    module_name::in,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out) is det.
+
+add_matching_and_nearmiss_modules_qual(FullyModuleQualified, NeedQual,
+        ModuleName, !Matches, !QualMismatches) :-
+    ( if
+        ( FullyModuleQualified = yes
+        ; NeedQual = may_be_unqualified
+        )
+    then
+        !:Matches = [ModuleName | !.Matches]
     else
-        true
+        !:QualMismatches = [ModuleName | !.QualMismatches]
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred id_set_search_sym(id_set::in, module_id_set::in, sym_name::in,
-    set(int)::out) is det.
+:- pred id_set_search_sym(id_set::in, sym_name::in, set(int)::out) is det.
 
-id_set_search_sym(IdSet, ModuleIdSet, SymName, PossibleArities) :-
+id_set_search_sym(IdSet, SymName, PossibleArities) :-
     UnqualName = unqualify_name(SymName),
     ( if
         map.search(IdSet, UnqualName, SubMap)
     then
         map.to_assoc_list(SubMap, SubMapPairs),
-        find_matching_arities(SymName, ModuleIdSet, SubMapPairs,
-            set.init, PossibleArities)
+        find_matching_arities(SymName, SubMapPairs, set.init, PossibleArities)
     else
         set.init(PossibleArities)
     ).
 
-:- pred find_matching_arities(sym_name::in, module_id_set::in,
+:- pred find_matching_arities(sym_name::in,
     assoc_list(int, permissions_map)::in, set(int)::in, set(int)::out) is det.
 
-find_matching_arities(_SymName, _ModuleIdSet, [], !PossibleArities).
-find_matching_arities(SymName, ModuleIdSet, [Pair | Pairs],
-        !PossibleArities) :-
+find_matching_arities(_SymName, [], !PossibleArities).
+find_matching_arities(SymName, [Pair | Pairs], !PossibleArities) :-
     Pair = Arity - PermissionsMap,
-    find_matches_in_permissions_map(SymName, ModuleIdSet, PermissionsMap,
-        MatchingModuleNamesPermissions),
-    (
-        MatchingModuleNamesPermissions = []
-    ;
-        MatchingModuleNamesPermissions = [_ | _],
+    find_matches_in_permissions_map(mq_not_used_in_interface, SymName,
+        PermissionsMap, Matches, IntMismatches, QualMismatches),
+    ( if
+        ( Matches = [_ | _]
+        ; IntMismatches = [_ | _]
+        ; QualMismatches = [_ | _]
+        )
+    then
         set.insert(Arity, !PossibleArities)
+    else
+        true
     ),
-    find_matching_arities(SymName, ModuleIdSet, Pairs, !PossibleArities).
+    find_matching_arities(SymName, Pairs, !PossibleArities).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-parent_module_is_imported(ParentModule, ChildModule, ModuleIdSet) :-
+parent_module_is_imported(InInt, ParentModule, ChildModule, ModuleIdSet) :-
     % Find the module name at the start of the ChildModule;
     % this submodule will be a direct sub-module of ParentModule.
     DirectSubModuleName = get_first_module_name(ChildModule),
@@ -481,7 +461,14 @@ parent_module_is_imported(ParentModule, ChildModule, ModuleIdSet) :-
     map.search(ModuleIdSet, DirectSubModuleName, SubMap),
     map.search(SubMap, Arity, PermissionsMap),
     map.search(PermissionsMap, ParentModule, ParentModulePermissions),
-    ParentModulePermissions = module_permissions(_, may_be_unqualified).
+    ParentModulePermissions = module_permissions(PermInInt, PermInImp),
+    (
+        InInt = mq_used_in_interface,
+        PermInInt = may_use_in_int(may_be_unqualified)
+    ;
+        InInt = mq_not_used_in_interface,
+        PermInImp = may_use_in_imp(may_be_unqualified)
+    ).
 
     % Given a module name, possibly module-qualified, return the name
     % of the first module in the qualifier list. For example, given

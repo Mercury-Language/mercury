@@ -211,8 +211,8 @@
     % Note that the caller will still need to handle the fully-qualified
     % and fully-unqualified versions separately.
     %
-:- pred get_partial_qualifiers(module_name::in, partial_qualifier_info::in,
-    list(module_name)::out) is det.
+:- pred get_partial_qualifiers(mq_in_interface::in, module_name::in,
+    partial_qualifier_info::in, list(module_name)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -380,27 +380,30 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
     mq_info_get_modules(MQInfo, ModuleIdSet),
     QualifierInfo = partial_qualifier_info(ModuleIdSet).
 
-get_partial_qualifiers(ModuleName, PartialQualInfo, PartialQualifiers) :-
+get_partial_qualifiers(InInt, ModuleName, PartialQualInfo,
+        PartialQualifiers) :-
     PartialQualInfo = partial_qualifier_info(ModuleIdSet),
     (
         ModuleName = unqualified(_),
         PartialQualifiers = []
     ;
         ModuleName = qualified(Parent, Child),
-        get_partial_qualifiers_acc(Parent, unqualified(Child),
+        get_partial_qualifiers_acc(InInt, Parent, unqualified(Child),
             ModuleIdSet, [], PartialQualifiers)
     ).
 
-:- pred get_partial_qualifiers_acc(module_name::in, module_name::in,
-    module_id_set::in, list(module_name)::in, list(module_name)::out) is det.
+:- pred get_partial_qualifiers_acc(mq_in_interface::in,
+    module_name::in, module_name::in, module_id_set::in,
+    list(module_name)::in, list(module_name)::out) is det.
 
-get_partial_qualifiers_acc(ImplicitPart, ExplicitPart, ModuleIdSet,
+get_partial_qualifiers_acc(InInt, ImplicitPart, ExplicitPart, ModuleIdSet,
         !Qualifiers) :-
     % If the ImplicitPart module was imported, rather than just being used,
     % then insert the ExplicitPart module into the list of valid partial
     % qualifiers.
     ( if
-        parent_module_is_imported(ImplicitPart, ExplicitPart, ModuleIdSet)
+        parent_module_is_imported(InInt, ImplicitPart,
+            ExplicitPart, ModuleIdSet)
     then
         !:Qualifiers = [ExplicitPart | !.Qualifiers]
     else
@@ -411,7 +414,7 @@ get_partial_qualifiers_acc(ImplicitPart, ExplicitPart, ModuleIdSet,
         ImplicitPart = qualified(Parent, Child),
         NextImplicitPart = Parent,
         NextExplicitPart = add_outermost_qualifier(Child, ExplicitPart),
-        get_partial_qualifiers_acc(NextImplicitPart, NextExplicitPart,
+        get_partial_qualifiers_acc(InInt, NextImplicitPart, NextExplicitPart,
             ModuleIdSet, !Qualifiers)
     ;
         ImplicitPart = unqualified(_)

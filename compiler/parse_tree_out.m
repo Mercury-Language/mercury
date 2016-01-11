@@ -442,16 +442,19 @@ mercury_output_src_section_marker(SrcSection, !IO) :-
 
 mercury_output_int_section_marker(IntSection, !IO) :-
     (
-        IntSection = ims_imported(ModuleName, IntFileKind, ImportLocn),
-        io.write_string(":- ims_imported(", !IO),
-        io.write_string(sym_name_to_string(ModuleName), !IO),
-        io.write_string(int_file_kind_to_extension(IntFileKind), !IO),
-        io.write_string(", ", !IO),
-        io.write(ImportLocn, !IO),
-        io.write_string(").\n", !IO)
-    ;
-        IntSection = ims_used(ModuleName, IntFileKind, ImportLocn),
-        io.write_string(":- ims_used(", !IO),
+        IntSection = ims_imported_or_used(ModuleName, IntFileKind,
+            ImportLocn, ImportedOrUsed),
+        (
+            ImportedOrUsed = iou_imported,
+            io.write_string(":- ims_imported", !IO)
+        ;
+            ImportedOrUsed = iou_used,
+            io.write_string(":- ims_used", !IO)
+        ;
+            ImportedOrUsed = iou_used_and_imported,
+            io.write_string(":- ims_used_and_imported", !IO)
+        ),
+        io.write_string("(", !IO),
         io.write_string(sym_name_to_string(ModuleName), !IO),
         io.write_string(int_file_kind_to_extension(IntFileKind), !IO),
         io.write_string(", ", !IO),

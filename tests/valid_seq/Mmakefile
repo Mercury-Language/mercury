@@ -51,6 +51,7 @@ OTHER_PROGS = \
 	exported_foreign_type \
 	foreign_du_field \
 	func_int_bug_main \
+	int_impl_imports \
 	intermod_bug_nested \
 	intermod_char \
 	intermod_dcg_bug \

@@ -457,8 +457,8 @@ cons_table_optimize(!ConsTable) :-
 :- pred get_type_defn_body(hlds_type_defn::in, hlds_type_body::out) is det.
 :- pred get_type_defn_status(hlds_type_defn::in, type_status::out) is det.
 :- pred get_type_defn_in_exported_eqv(hlds_type_defn::in, bool::out) is det.
-:- pred get_type_defn_need_qualifier(hlds_type_defn::in, need_qualifier::out)
-    is det.
+:- pred get_type_defn_ctors_need_qualifier(hlds_type_defn::in,
+    need_qualifier::out) is det.
 :- pred get_type_defn_prev_errors(hlds_type_defn::in,
     type_defn_prev_errors::out) is det.
 :- pred get_type_defn_context(hlds_type_defn::in, prog_context::out) is det.
@@ -1022,9 +1022,8 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 % is it exported.
                 type_defn_status            :: type_status,
 
-                % Do uses of the type and its constructors need to be
-                % qualified.
-                type_defn_need_qualifier    :: need_qualifier,
+                % Do uses of the type's constructors need to be qualified?
+                type_defn_ctors_need_qualifier :: need_qualifier,
 
                 % Have we reported an error for this type definition yet?
                 % If yes, then don't emit any more errors for it, since they
@@ -1054,8 +1053,8 @@ get_type_defn_status(Defn, X) :-
     X = Defn ^ type_defn_status.
 get_type_defn_in_exported_eqv(Defn, X) :-
     X = Defn ^ type_defn_in_exported_eqv.
-get_type_defn_need_qualifier(Defn, X) :-
-    X = Defn ^ type_defn_need_qualifier.
+get_type_defn_ctors_need_qualifier(Defn, X) :-
+    X = Defn ^ type_defn_ctors_need_qualifier.
 get_type_defn_prev_errors(Defn, X) :-
     X = Defn ^ type_defn_prev_errors.
 get_type_defn_context(Defn, X) :-

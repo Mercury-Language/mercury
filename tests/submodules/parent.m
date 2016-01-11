@@ -24,7 +24,7 @@
 :- type t2 == child.foo.
 :- type t3 == foo.
 :- type t4 == parent.child2.foo.
-:- type t5 == child2.foo.
+:- type t5 == parent.child2.foo.
 
 main -->
     parent.child.hello,

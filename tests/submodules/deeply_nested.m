@@ -34,12 +34,13 @@
   :- use_module    deeply_nested.a.b.c.d.e.
 
   :- type t0 == deeply_nested.a.b.c.d.e.f.
-  :- type t1 == a.b.c.d.e.f.
-  :- type t2 == b.c.d.e.f.
-  :- type t3 == c.d.e.f.
-%  :- type t4 == d.e.f.     % error, "d" must be referred to as "c.d"
-  :- type t5 == e.f.
-%  :- type t6 == f.     % error, "f" must be referred to as "e.f"
+% These were allowed until 2016 january.
+%   :- type t1 == a.b.c.d.e.f.
+%   :- type t2 == b.c.d.e.f.
+%   :- type t3 == c.d.e.f.
+% %  :- type t4 == d.e.f.     % error, "d" must be referred to as "c.d"
+%   :- type t5 == e.f.
+% %  :- type t6 == f.     % error, "f" must be referred to as "e.f"
 
 main -->
     print(deeply_nested.a.b.c.d.e.f), nl,

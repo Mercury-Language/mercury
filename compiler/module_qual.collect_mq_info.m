@@ -52,51 +52,82 @@ src_section_mq_info(SrcSection, MQSection, Permissions) :-
     (
         SrcSection = sms_interface,
         MQSection = mq_section_exported,
-        Permissions =
-            module_permissions(may_use_in_interface, may_be_unqualified)
+        PermInInt = may_use_in_int(may_be_unqualified)
     ;
         ( SrcSection = sms_implementation
         ; SrcSection = sms_impl_but_exported_to_submodules
         ),
         MQSection = mq_section_local,
-        Permissions =
-            module_permissions(may_not_use_in_interface, may_be_unqualified)
-    ).
+        PermInInt = may_not_use_in_int
+    ),
+    PermInImp = may_use_in_imp(may_be_unqualified),
+    Permissions = module_permissions(PermInInt, PermInImp).
 
 int_section_mq_info(IntSection, MQSection, Permissions) :-
     (
-        (
-            IntSection = ims_imported(_ModuleName, _IntFileKind, Locn),
-            NeedQual = may_be_unqualified
-        ;
-            IntSection = ims_used(_ModuleName, _IntFileKind, Locn),
-            NeedQual = must_be_qualified
-        ),
-        (
-            ( Locn = import_locn_interface
-            ; Locn = import_locn_import_by_ancestor
-            ; Locn = import_locn_ancestor_private_interface_proper
-            ),
-            MayUseInInterface = may_use_in_interface
-        ;
-            Locn = import_locn_implementation,
-            MayUseInInterface = may_not_use_in_interface
-        ),
+        IntSection = ims_imported_or_used(_ModuleName, _IntFileKind,
+            Locn, ImportOrUse),
         MQSection = mq_section_imported(Locn),
-        Permissions = module_permissions(MayUseInInterface, NeedQual)
+        (
+            (
+                ImportOrUse = iou_imported,
+                NeedQual = may_be_unqualified
+            ;
+                ImportOrUse = iou_used,
+                NeedQual = must_be_qualified
+            ),
+            (
+                % XXX Whether this module's interface can use an mq_id
+                % that was imported by an ancestor should depend on whether
+                % the ancestor imported that mq_id in its INTERFACE or not.
+                % Since we don't know where that import was, this is a
+                % conservative approximation.
+                ( Locn = import_locn_interface
+                ; Locn = import_locn_import_by_ancestor
+                ; Locn = import_locn_ancestor_private_interface_proper
+                ),
+                PermInInt = may_use_in_int(NeedQual)
+            ;
+                Locn = import_locn_implementation,
+                PermInInt = may_not_use_in_int
+            ),
+            PermInImp = may_use_in_imp(NeedQual)
+        ;
+            ImportOrUse = iou_used_and_imported,
+            PermInInt = may_use_in_int(must_be_qualified),
+            PermInImp = may_use_in_imp(may_be_unqualified)
+        )
     ;
         IntSection = ims_abstract_imported(_ModuleName, _IntFileKind),
         MQSection = mq_section_abstract_imported,
-        Permissions =
-            module_permissions(may_not_use_in_interface, must_be_qualified)
-    ).
+        PermInInt = may_not_use_in_int,
+        PermInImp = may_use_in_imp(must_be_qualified)
+    ),
+    Permissions = module_permissions(PermInInt, PermInImp).
 
 %---------------------------------------------------------------------------%
 
 collect_mq_info_in_item_blocks(_, [], !Info).
 collect_mq_info_in_item_blocks(SectionInfo, [ItemBlock | ItemBlocks], !Info) :-
-    ItemBlock = item_block(Section, _Context, Incls, Avails, Items),
+    ItemBlock = item_block(Section, Context, Incls, Avails, Items),
     SectionInfo(Section, MQSection, Permissions),
+
+    trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
+        io.write_string("collect_mq_info_in_item_block:\n", !IO),
+        io.write_string("    ", !IO),
+        io.write(Section, !IO),
+        io.nl(!IO),
+        io.write_string("    ", !IO),
+        io.write(Context, !IO),
+        io.nl(!IO),
+        io.write_string("    ", !IO),
+        io.write(MQSection, !IO),
+        io.nl(!IO),
+        io.write_string("    ", !IO),
+        io.write(Permissions, !IO),
+        io.nl(!IO),
+        io.nl(!IO)
+    ),
 
     % The usual case is Incls = []; optimize for it.
     (
