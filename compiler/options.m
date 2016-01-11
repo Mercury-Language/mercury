@@ -4261,8 +4261,6 @@ options_help_compilation_model -->
 %  hl_nest     These two rely on GCC nested functions extension.
 %
 %  hl          Not useful.
-%  il          Currently broken.
-%  ilc         Deprecated.
 %
         "\tor one of those with one or more of the grade modifiers",
         "\t`.gc', `.prof', `.memprof', `.profdeep', `.tr',",
