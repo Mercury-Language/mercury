@@ -930,12 +930,6 @@ calls_are_fully_qualified(Markers) =
 
     % The information specific to a predicate, as opposed to a procedure.
     % (Functions count as predicates.)
-    %
-    % Note that it is an invariant that any type_info-related
-    % variables in the arguments of a predicate must precede any
-    % polymorphically-typed arguments whose type depends on the
-    % values of those type_info-related variables;
-    % accurate GC for the MLDS back-end relies on this.
 :- type pred_sub_info
     --->    pred_sub_info(
                 % The location (line #) of the :- pred decl.
@@ -1009,14 +1003,15 @@ calls_are_fully_qualified(Markers) =
                 % Predicate name.
 /*  2 */        pi_name                 :: string,
 
-                % The arity of the pred (*not* counting any inserted type_info
-                % arguments).
+                % The original arity of the pred, i.e. its arity *not* counting
+                % any type_info and/or typeclass_info arguments inserted
+                % automatically by the compiler.
 /*  3 */        pi_orig_arity           :: arity,
 
-                % Whether this "predicate" is really a predicate or a function.
+                % Is this "predicate" really a predicate or a function?
 /*  4 */        pi_is_pred_or_func      :: pred_or_func,
 
-                % Where did the predicate come from.
+                % Where did the predicate come from?
 /*  5 */        pi_pred_origin          :: pred_origin,
 
 /*  6 */        pi_status               :: pred_status,
@@ -1025,6 +1020,12 @@ calls_are_fully_qualified(Markers) =
 /*  7 */        pi_markers              :: pred_markers,
 
                 % Argument types.
+                % Note that it is an invariant that any type_info- and/or
+                % typeclass_info-related variables in the arguments of a
+                % predicate must precede any polymorphically-typed arguments
+                % whose type depends on the values of those type_info- and/or
+                % typeclass_info-related variables; accurate GC for the MLDS
+                % back-end relies on this.
 /*  8 */        pi_arg_types            :: list(mer_type),
 
                 % Names of type vars in the predicate's type declaration.
