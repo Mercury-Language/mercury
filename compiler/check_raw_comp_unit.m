@@ -20,7 +20,6 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_item.
 
-:- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -31,7 +30,7 @@
     % report a warning.
     %
 :- pred check_for_no_exports(globals::in, raw_compilation_unit::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
     % Given a raw compilation unit, which will be a module's interface,
     % check whether that interface exports anything. If it doesn't, and
@@ -41,8 +40,8 @@
     % our caller has already done the task of computing the module's
     % interface, and given it to us.
     %
-:- pred check_int_for_no_exports(globals::in, raw_compilation_unit::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred check_int_for_no_exports(raw_compilation_unit::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -63,25 +62,24 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-check_for_no_exports(Globals, RawCompUnit, !Specs, !IO) :-
+check_for_no_exports(Globals, RawCompUnit, !Specs) :-
     globals.lookup_bool_option(Globals, warn_nothing_exported, ExportWarning),
     (
         ExportWarning = no
     ;
         ExportWarning = yes,
         get_interface(dont_include_impl_types, RawCompUnit, IntRawCompUnit),
-        check_int_for_no_exports(Globals, IntRawCompUnit, !Specs, !IO)
+        check_int_for_no_exports(IntRawCompUnit, !Specs)
     ).
 
-check_int_for_no_exports(Globals, IntRawCompUnit, !Specs, !IO) :-
+check_int_for_no_exports(IntRawCompUnit, !Specs) :-
     IntRawCompUnit = raw_compilation_unit(ModuleName, Context, RawItemBlocks),
     do_ms_interface_item_blocks_export_anything(RawItemBlocks, ExportAnything),
     (
         ExportAnything = yes
     ;
         ExportAnything = no,
-        generate_no_exports_warning(Globals, ModuleName, Context, WarnSpec,
-            !IO),
+        generate_no_exports_warning(ModuleName, Context, WarnSpec),
         !:Specs = [WarnSpec | !.Specs]
     ).
 
@@ -119,22 +117,10 @@ do_ms_interface_items_export_anything([Item | Items], ExportAnything) :-
         ExportAnything = yes
     ).
 
-:- pred generate_no_exports_warning(globals::in, module_name::in,
-    prog_context::in, error_spec::out, io::di, io::uo) is det.
+:- pred generate_no_exports_warning(module_name::in,
+    prog_context::in, error_spec::out) is det.
 
-generate_no_exports_warning(Globals, ModuleName, Context0, Spec, !IO) :-
-    % XXX ITEM_LIST We should *always* be able to use the module's recorded
-    % declaration context, even if a missing `:- module' declaration requires
-    % it be faked when the declaration is first missed. The filename should
-    % definitely be available there; we shouldn't have to compute it again.
-    % We could then avoid passing the I/O state down here.
-    ( if Context0 = term.context_init then
-        module_name_to_file_name(Globals, ModuleName, ".m", do_not_create_dirs,
-            FileName, !IO),
-        Context = term.context_init(FileName, 1)
-    else
-        Context = Context0
-    ),
+generate_no_exports_warning(ModuleName, Context, Spec) :-
     Severity = severity_conditional(warn_nothing_exported, yes,
         severity_warning, no),
     Component = option_is_set(warn_nothing_exported, yes,

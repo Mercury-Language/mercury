@@ -1465,7 +1465,7 @@ augment_and_process_module(Globals, OpModeAugment,
         SourceFileName, SourceFileModuleName, MaybeTimestamp,
         NestedSubModules0, HaveReadModuleMaps, FindTimestampFiles,
         RawCompUnit, ExtraObjFiles, !Specs, !IO) :-
-    check_for_no_exports(Globals, RawCompUnit, !Specs, !IO),
+    check_for_no_exports(Globals, RawCompUnit, !Specs),
     RawCompUnit = raw_compilation_unit(ModuleName, _, _),
     ( if ModuleName = SourceFileModuleName then
         NestedSubModules = NestedSubModules0
