@@ -220,6 +220,7 @@
 :- pred is(T, T) is det.
 :- mode is(uo, di) is det.
 :- mode is(out, in) is det.
+:- pragma obsolete(is/2).
 
     % max_int is the maximum value of an int on this machine.
     %
