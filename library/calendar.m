@@ -96,7 +96,7 @@
     % int_to_month(Int, Month):
     % Int is the number of Month where months are numbered from 0-11.
     %
-:- pred int0_to_month(int, month) is semidet.
+:- pred int0_to_month(int, month).
 :- mode int0_to_month(in, out) is semidet.
 :- mode int0_to_month(out, in) is det.
 

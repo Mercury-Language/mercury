@@ -37,7 +37,7 @@ makerow([], [], []).
 makerow([[X | Xs] | Ys], [X | Xs1], [Xs | Zs]) :-
     makerow(Ys, Xs1, Zs).
 
-:- pred nullrows(list(list(T))) is semidet.
+:- pred nullrows(list(list(T))).
 :- mode nullrows(in) is semidet.
 :- mode nullrows(in(list9)) is semidet.
 

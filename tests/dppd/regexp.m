@@ -45,8 +45,7 @@ generate3(S) :-
         cat(or(char(a), char(b)), cat(or(char(a), char(b)),
         cat(or(char(a), char(b)), or(char(a), char(b)))))))), S, []).
 
-:- pred generate(regexp, list(char), list(char)) is nondet.
-:- mode generate(in, in, out) is nondet.
+:- pred generate(regexp::in, list(char)::in, list(char)::out) is nondet.
 
 generate(empty, T, T).
 generate(char(X), [X | T], T).

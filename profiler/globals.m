@@ -39,7 +39,7 @@
     ;       user_time
     ;       real_time.
 
-:- pred what_to_profile(string, what_to_profile) is semidet.
+:- pred what_to_profile(string, what_to_profile).
 :- mode what_to_profile(in, out) is semidet.
 :- mode what_to_profile(out, in) is det.
 

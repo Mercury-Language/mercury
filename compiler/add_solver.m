@@ -122,7 +122,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     module_add_pred_or_func(ToGroundOrigin, TVarSet, InstVarSet, ExistQTVars,
         pf_function, ToGroundRepnSymName, ToGroundRepnArgTypes,
         yes(detism_det), purity_impure, constraints([], []), NoMarkers,
-        Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs),
+        Context, PredStatus, no, NeedQual, _, !ModuleInfo, !Specs),
 
     % The `:- impure
     %   func 'representation of any st'(st::in(ai)) =
@@ -137,7 +137,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     module_add_pred_or_func(ToAnyOrigin, TVarSet, InstVarSet, ExistQTVars,
         pf_function, ToAnyRepnSymName, ToAnyRepnArgTypes,
         yes(detism_det), purity_impure, constraints([], []), NoMarkers,
-        Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs),
+        Context, PredStatus, no, NeedQual, _, !ModuleInfo, !Specs),
 
     % The `:- impure
     %   func 'representation to ground st'(rt::in(gi)) =
@@ -152,7 +152,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     module_add_pred_or_func(FromGroundOrigin, TVarSet, InstVarSet, ExistQTVars,
         pf_function, FromGroundRepnSymName, FromGroundRepnArgTypes,
         yes(detism_det), purity_impure, constraints([], []), NoMarkers,
-        Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs),
+        Context, PredStatus, no, NeedQual, _, !ModuleInfo, !Specs),
 
     % The `:- impure
     %   func 'representation to any st'(rt::in(ai)) =
@@ -167,7 +167,7 @@ add_solver_type_aux_pred_decls(SolverAuxPredInfo, !ModuleInfo, !Specs) :-
     module_add_pred_or_func(FromAnyOrigin, TVarSet, InstVarSet, ExistQTVars,
         pf_function, FromAnyRepnSymName, FromAnyRepnArgTypes,
         yes(detism_det), purity_impure, constraints([], []), NoMarkers,
-        Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs).
+        Context, PredStatus, no, NeedQual, _, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 

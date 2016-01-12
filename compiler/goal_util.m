@@ -121,7 +121,7 @@
     % except possibly in from_ground_term scopes.
     %
 :- pred attach_features_to_all_goals(list(goal_feature),
-    attach_in_from_ground_term, hlds_goal, hlds_goal) is det.
+    attach_in_from_ground_term, hlds_goal, hlds_goal).
 :- mode attach_features_to_all_goals(in,
     in(bound(attach_in_from_ground_term)),
     in, out) is det.
@@ -718,7 +718,7 @@ attach_features_to_all_goals(Features, InFromGroundTerm, Goal0, Goal) :-
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred attach_features_to_goals(list(goal_feature),
-    attach_in_from_ground_term, list(hlds_goal), list(hlds_goal)) is det.
+    attach_in_from_ground_term, list(hlds_goal), list(hlds_goal)).
 :- mode attach_features_to_goals(in,
     in(bound(attach_in_from_ground_term)), in, out) is det.
 :- mode attach_features_to_goals(in,
@@ -731,7 +731,7 @@ attach_features_to_goals(Features, InFromGroundTerm,
     attach_features_to_goals(Features, InFromGroundTerm, Goals0, Goals).
 
 :- pred attach_features_to_cases(list(goal_feature),
-    attach_in_from_ground_term, list(case), list(case)) is det.
+    attach_in_from_ground_term, list(case), list(case)).
 :- mode attach_features_to_cases(in,
     in(bound(attach_in_from_ground_term)), in, out) is det.
 :- mode attach_features_to_cases(in,
@@ -746,7 +746,7 @@ attach_features_to_cases(Features, InFromGroundTerm,
     attach_features_to_cases(Features, InFromGroundTerm, Cases0, Cases).
 
 :- pred attach_features_to_goal_expr(list(goal_feature),
-    attach_in_from_ground_term, hlds_goal_expr, hlds_goal_expr) is det.
+    attach_in_from_ground_term, hlds_goal_expr, hlds_goal_expr).
 :- mode attach_features_to_goal_expr(in,
     in(bound(attach_in_from_ground_term)), in, out) is det.
 :- mode attach_features_to_goal_expr(in,

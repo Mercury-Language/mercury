@@ -115,7 +115,7 @@
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 
-:- pred write(Stream, deconstruct.noncanon_handling, T, State, State) is det
+:- pred write(Stream, deconstruct.noncanon_handling, T, State, State)
     <= (stream.writer(Stream, string, State),
     stream.writer(Stream, char, State)).
 :- mode write(in, in(do_not_allow), in, di, uo) is det.

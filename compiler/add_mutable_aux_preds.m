@@ -620,7 +620,7 @@ add_mutable_aux_pred_decl(ModuleName, MutableName, Kind, PredName,
     marker_list_to_markers([marker_mutable_access_pred], Markers),
     module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
         pf_predicate, PredName, ArgTypesAndModes, yes(detism_det),
-        Purity, Constraints, Markers, Context, PredStatus, NeedQual, _,
+        Purity, Constraints, Markers, Context, PredStatus, no, NeedQual, _,
         !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
@@ -652,7 +652,7 @@ add_pred_decl_info_for_mutable_aux_pred(ItemPredDecl, ModuleName, MutableName,
     marker_list_to_markers([marker_mutable_access_pred], Markers),
     module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
         PredOrFunc, PredName, TypesAndModes, MaybeDetism, Purity, Constraints,
-        Markers, Context, PredStatus, NeedQual, _, !ModuleInfo, !Specs).
+        Markers, Context, PredStatus, no, NeedQual, _, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

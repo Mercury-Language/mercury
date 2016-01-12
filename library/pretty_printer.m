@@ -519,8 +519,7 @@ output_current_group(Stream, LineWidth, Indents, OpenGroups,
     % !R tracks the remaining line width after accounting for expansion.
     %
 :- pred expand_docs(noncanon_handling, formatter_map, docs, docs, int,
-    formatting_limit, formatting_limit, ops.priority, ops.priority,
-    int, int) is cc_multi.
+    formatting_limit, formatting_limit, ops.priority, ops.priority, int, int).
 :- mode expand_docs(in(canonicalize), in, in, out, in, in, out,
     in, out, in, out) is det.
 :- mode expand_docs(in(include_details_cc), in, in, out, in, in, out,

@@ -129,12 +129,10 @@ get_int_and_impl(IncludeImplTypes, RawCompUnit,
 :- mode gather_noifile_items == in(bound(gather_noifile_items)).
 :- mode dont_gather_noifile_items == in(bound(dont_gather_noifile_items)).
 
-    % XXX ITEM_LIST Mode specialize for each case: gather/dont_gather.
-    %
 :- pred get_ifile_and_noifile_in_raw_item_blocks_acc(maybe_include_impl_types,
     maybe_gather_noifile_items, list(raw_item_block),
     cord(raw_item_block), cord(raw_item_block),
-    cord(raw_item_block), cord(raw_item_block)) is det.
+    cord(raw_item_block), cord(raw_item_block)).
 :- mode get_ifile_and_noifile_in_raw_item_blocks_acc(in,
     dont_gather_noifile_items, in, in, out, in, out) is det.
 :- mode get_ifile_and_noifile_in_raw_item_blocks_acc(in,

@@ -1,0 +1,4 @@
+typeclass_bad_method_mode.m:010: Error: predicate `p'/1 has its predicate
+typeclass_bad_method_mode.m:010:   declaration combined with a mode
+typeclass_bad_method_mode.m:010:   declaration, so it may not have a separate
+typeclass_bad_method_mode.m:010:   mode declaration.

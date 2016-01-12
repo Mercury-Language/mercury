@@ -236,7 +236,7 @@ implicitly_quantify_goal_general(NonLocalsToRecompute, OutsideVars, Warnings,
 :- pred implicitly_quantify_goal_2(nonlocals_to_recompute,
     set_of_progvar, list(quant_warning),
     hlds_goal, hlds_goal, prog_varset, prog_varset,
-    vartypes, vartypes, rtti_varmaps, rtti_varmaps) is det.
+    vartypes, vartypes, rtti_varmaps, rtti_varmaps).
 :- mode implicitly_quantify_goal_2(in(ordinary_nonlocals_maybe_lambda),
     in, out, in, out, in, out, in, out, in, out) is det.
 :- mode implicitly_quantify_goal_2(in(ordinary_nonlocals_no_lambda),

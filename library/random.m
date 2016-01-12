@@ -182,7 +182,7 @@ random.permutation(List0, List, !RS) :-
     perform_sampling(Len, Samples, [], List, !RS).
 
 :- pred perform_sampling(int, array(T), list(T), list(T),
-    random.supply, random.supply) is det.
+    random.supply, random.supply).
 :- mode perform_sampling(in, array_di, in, out, mdi, muo) is det.
 :- mode perform_sampling(in, array_di, in, out, in, out) is det.
 

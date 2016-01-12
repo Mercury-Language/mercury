@@ -40,7 +40,7 @@
 
     % Get the value currently referred to by a reference.
     %
-:- impure pred get_mutvar(mutvar(T), T) is det.
+:- impure pred get_mutvar(mutvar(T), T).
 :-        mode get_mutvar(in, uo) is det.   % XXX this is a work-around
 /*
 XXX `ui' modes don't work yet
@@ -50,7 +50,7 @@ XXX `ui' modes don't work yet
 
     % Destructively modify a reference to refer to a new object.
     %
-:- impure pred set_mutvar(mutvar(T), T) is det.
+:- impure pred set_mutvar(mutvar(T), T).
 :-        mode set_mutvar(in, in) is det.
 /*
 XXX `ui' modes don't work yet
@@ -59,7 +59,7 @@ XXX `ui' modes don't work yet
 
     % Destructively clear a reference to avoid retaining the value.
     %
-:- impure pred clear_mutvar(mutvar(T)) is det.
+:- impure pred clear_mutvar(mutvar(T)).
 :-        mode clear_mutvar(in) is det.
 /*
 XXX `ui' modes don't work yet

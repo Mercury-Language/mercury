@@ -461,7 +461,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
     init_markers(Markers),
     module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
         pf_predicate, StatsPredSymName, TypeAndModeArgs, yes(detism_det),
-        purity_pure, Constraints, Markers, Context, PredStatus,
+        purity_pure, Constraints, Markers, Context, PredStatus, no,
         may_be_unqualified, _, !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (
@@ -541,7 +541,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
     init_markers(Markers),
     module_add_pred_or_func(Origin, TypeVarSet, InstVarSet, ExistQVars,
         pf_predicate, ResetPredSymName, TypeAndModeArgs, yes(detism_det),
-        purity_pure, Constraints, Markers, Context, PredStatus,
+        purity_pure, Constraints, Markers, Context, PredStatus, no,
         may_be_unqualified, _, !ModuleInfo, !Specs),
 
     some [!Attrs, !VarSet] (

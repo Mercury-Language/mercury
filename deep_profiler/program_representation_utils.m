@@ -954,11 +954,12 @@ label_goal(ContainingGoal, !Goal, !Counter, !Map) :-
     ),
     !:Goal = goal_rep(GoalExpr, Detism, GoalId).
 
-:- pred label_goal_wrapper(func(int) = goal_path_step, goal_id,
-    goal_rep(T), goal_rep(goal_id), int, int, counter, counter,
-    map(goal_id, containing_goal), map(goal_id, containing_goal)) is det.
-:- mode label_goal_wrapper(func(in) = out is det, in,
-    in, out, in, out, in, out, in, out) is det.
+:- pred label_goal_wrapper(
+    (func(int) = goal_path_step)::in(func(in) = out is det), goal_id::in,
+    goal_rep(T)::in, goal_rep(goal_id)::out, int::in, int::out,
+    counter::in, counter::out,
+    map(goal_id, containing_goal)::in, map(goal_id, containing_goal)::out)
+    is det.
 
 label_goal_wrapper(MakePathStep, ParentGoalId, !Goal, !GoalNum, !Counter,
         !Map) :-

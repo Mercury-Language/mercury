@@ -47,6 +47,7 @@ SINGLEMODULE= \
 	arg_permutation \
 	assert_in_interface \
 	bad_consider_used \
+	bad_detism \
 	bad_end_module \
 	bad_finalise_decl \
 	bad_initialise_decl \
@@ -174,6 +175,7 @@ SINGLEMODULE= \
 	missing_det_decls \
 	missing_interface_import \
 	mixed_up_streams \
+	mode_decl_in_wrong_section \
 	mode_inf \
 	modes_erroneous \
 	mostly_uniq1 \
@@ -245,6 +247,7 @@ SINGLEMODULE= \
 	type_mismatch \
 	type_vars \
 	type_with_no_defn \
+	typeclass_bad_method_mode \
 	typeclass_bogus_method \
 	typeclass_constraint_extra_var \
 	typeclass_missing_det \

@@ -43,7 +43,7 @@ main -->
     ),
     io__nl.
 
-:- pred p(list(list(T)), int, list(list(T))) is semidet.
+:- pred p(list(list(T)), int, list(list(T))).
 :- mode p(in, out, out) is semidet.
 :- mode p(in, in, out) is semidet.
 

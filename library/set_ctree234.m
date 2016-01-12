@@ -244,7 +244,7 @@
 :- mode fold(pred(in, di, uo) is semidet, in, di, uo) is semidet.
 
 :- pred fold2(pred(T1, T2, T2, T3, T3), set_ctree234(T1),
-    T2, T2, T3, T3) is det.
+    T2, T2, T3, T3).
 :- mode fold2(pred(in, in, out, in, out) is det,
     in, in, out, in, out) is det.
 :- mode fold2(pred(in, in, out, mdi, muo) is det,

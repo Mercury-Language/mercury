@@ -36,8 +36,7 @@ map = ((map__init
         ^ elem(2) := foo2)
         ^ elem(3) := foo3.
 
-:- pred write_func(t, io, io) is det.
-:- mode write_func(func(in) = out is det, di, uo) is det.
+:- pred write_func(t::in(func(in) = out is det), io::di, io::uo) is det.
 
 write_func(F) -->
     io__write_int(F(1)),

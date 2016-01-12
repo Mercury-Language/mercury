@@ -524,8 +524,24 @@
     --->    need_to_requantify
     ;       do_not_need_to_requantify.
 
+    % This type is isomorphic to the module_section type, but defining it here
+    % allows us not to depend on parse_tree.prog_item.m.
+:- type decl_section
+    --->    decl_interface
+    ;       decl_implementation.
+
+:- type maybe_predmode_decl
+    --->    no_predmode_decl
+    ;       predmode_decl.
+
+:- type cur_user_decl_info
+    --->    cur_user_decl_info(
+                decl_section,
+                maybe_predmode_decl
+            ).
+
     % pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context,
-    %   Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet,
+    %   Origin, Status, CurUserDecl, GoalType, Markers, ArgTypes, TypeVarSet,
     %   ExistQVars, ClassContext, ClassProofs, ClassConstraintMap,
     %   User, ClausesInfo, VarNameRemap, PredInfo)
     %
@@ -534,10 +550,10 @@
     %
 :- pred pred_info_init(module_name::in, sym_name::in, arity::in,
     pred_or_func::in, prog_context::in, pred_origin::in, pred_status::in,
-    goal_type::in, pred_markers::in, list(mer_type)::in, tvarset::in,
-    existq_tvars::in, prog_constraints::in, constraint_proof_map::in,
-    constraint_map::in, clauses_info::in, map(prog_var, string)::in,
-    pred_info::out) is det.
+    maybe(cur_user_decl_info)::in, goal_type::in, pred_markers::in,
+    list(mer_type)::in, tvarset::in, existq_tvars::in,
+    prog_constraints::in, constraint_proof_map::in, constraint_map::in,
+    clauses_info::in, map(prog_var, string)::in, pred_info::out) is det.
 
     % pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin,
     %   Status, Markers, ArgTypes, TypeVarSet, ExistQVars,
@@ -606,6 +622,8 @@
     pred_or_func::out) is det.
 :- pred pred_info_get_context(pred_info::in,
     prog_context::out) is det.
+:- pred pred_info_get_cur_user_decl_info(pred_info::in,
+    maybe(cur_user_decl_info)::out) is det.
 :- pred pred_info_get_origin(pred_info::in,
     pred_origin::out) is det.
 :- pred pred_info_get_status(pred_info::in,
@@ -652,9 +670,9 @@
     proc_table::out) is det.
 
     % Setting the name of a pred_info after its creation won't remove its name
-    % from the indexes under its old name or insert into the indexes under its
-    % new name. If is therefore safe to do this only after all the passes that
-    % look up predicates by name.
+    % from the indexes under its old name or insert it into the indexes
+    % under its new name. If is therefore safe to do this only after *all*
+    % the passes that look up predicates by name.
     %
 :- pred pred_info_set_name(string::in,
     pred_info::in, pred_info::out) is det.
@@ -935,6 +953,12 @@ calls_are_fully_qualified(Markers) =
                 % The location (line #) of the :- pred decl.
                 psi_context                     :: prog_context,
 
+                % If the predicate is defined (a) in the current module, and
+                % (b) explicitly by the user, as opposed to by the compiler,
+                % then this records what section the predicate declaration
+                % is in, and whether it is a predmode declaration.
+                psi_cur_user_decl                :: maybe(cur_user_decl_info),
+
                 % Whether the goals seen so far, if any, for this predicate
                 % are clauses or foreign_code(...) pragmas.
                 psi_goal_type                   :: goal_type,
@@ -1057,9 +1081,9 @@ calls_are_fully_qualified(Markers) =
             ).
 
 pred_info_init(ModuleName, PredSymName, Arity, PredOrFunc, Context,
-        Origin, Status, GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars,
-        ClassContext, ClassProofs, ClassConstraintMap, ClausesInfo,
-        VarNameRemap, PredInfo) :-
+        Origin, Status, CurUserDecl, GoalType, Markers,
+        ArgTypes, TypeVarSet, ExistQVars, ClassContext, ClassProofs,
+        ClassConstraintMap, ClausesInfo, VarNameRemap, PredInfo) :-
     % argument Context
     % argument GoalType
     init_attributes(Attributes),
@@ -1077,8 +1101,9 @@ pred_info_init(ModuleName, PredSymName, Arity, PredOrFunc, Context,
     % argument VarNameRemap
     set.init(Assertions),
     InstanceMethodArgTypes = [],
-    PredSubInfo = pred_sub_info(Context, GoalType, Attributes, Kinds,
-        ExistQVarBindings, HeadTypeParams, ClassProofs, ClassConstraintMap,
+    PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
+        Attributes, Kinds, ExistQVarBindings, HeadTypeParams,
+        ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, InstanceMethodArgTypes),
 
@@ -1103,6 +1128,7 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
         Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
         Assertions, VarNameRemap, ProcInfo, ProcId, PredInfo) :-
     % argument Context
+    CurUserDecl = maybe.no,
     GoalType = goal_type_clause,
     init_attributes(Attributes),
     map.init(Kinds),
@@ -1120,8 +1146,9 @@ pred_info_create(ModuleName, PredSymName, PredOrFunc, Context, Origin, Status,
     % argument Assertions
     InstanceMethodArgTypes = [],
 
-    PredSubInfo = pred_sub_info(Context, GoalType, Attributes, Kinds,
-        ExistQVarBindings, HeadTypeParams, ClassProofs, ClassConstraintMap,
+    PredSubInfo = pred_sub_info(Context, CurUserDecl, GoalType,
+        Attributes, Kinds, ExistQVarBindings, HeadTypeParams,
+        ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, InstGraphInfo, ArgModesMaps,
         VarNameRemap, Assertions, InstanceMethodArgTypes),
 
@@ -1273,6 +1300,8 @@ pred_info_get_is_pred_or_func(!.PI, X) :-
 
 pred_info_get_context(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_context.
+pred_info_get_cur_user_decl_info(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_cur_user_decl.
 pred_info_get_origin(!.PI, X) :-
     X = !.PI ^ pi_pred_origin.
 pred_info_get_status(!.PI, X) :-

@@ -37,8 +37,7 @@ main -->
     ),
     io__nl.
 
-:- pred q(list(list(T)), int, list(list(T)), int) is semidet.
-:- mode q(in, in, out, out) is semidet.
+:- pred q(list(list(T))::in, int::in, list(list(T))::out, int::out) is semidet.
 
 q([], _, [], 10).
 q([H | T], Length, DroppedList, OutInt) :-

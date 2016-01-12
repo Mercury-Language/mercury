@@ -801,10 +801,11 @@ non_cc_call(P::pred(in, in, out, di, uo) is cc_multi, X::in,
 ").
 
     % partial_deep_copy(SolutionsHeapPtr, OldVal, NewVal):
-    %   Make a copy of all of the parts of OldVar that occur between
-    %   SolutionsHeapPtr and the top of the current solutions heap.
     %
-:- impure pred partial_deep_copy(heap_ptr, T, T) is det.
+    % Make a copy of all of the parts of OldVar that occur between
+    % SolutionsHeapPtr and the top of the current solutions heap.
+    %
+:- impure pred partial_deep_copy(heap_ptr, T, T).
 :-        mode partial_deep_copy(in, di, uo) is det.
 :-        mode partial_deep_copy(in, mdi, muo) is det.
 :-        mode partial_deep_copy(in, in, out) is det.

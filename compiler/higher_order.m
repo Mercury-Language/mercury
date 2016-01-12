@@ -2818,10 +2818,11 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         EmptyVarTypes, EmptyHeadVars, ClausesRep, ItemNumbers,
         EmptyRttiVarMaps, HasForeignClauses, HadSyntaxError),
     Origin = origin_transformed(Transform, OrigOrigin, CallerPredId),
+    CurUserDecl = maybe.no,
     pred_info_init(PredModule, SymName, Arity, PredOrFunc, Context, Origin,
-        PredStatus, GoalType, MarkerList, Types, ArgTVarSet, ExistQVars,
-        ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,
-        VarNameRemap, NewPredInfo0),
+        PredStatus, CurUserDecl, GoalType, MarkerList, Types,
+        ArgTVarSet, ExistQVars, ClassContext, EmptyProofs, EmptyConstraintMap,
+        ClausesInfo, VarNameRemap, NewPredInfo0),
     pred_info_set_typevarset(TypeVarSet, NewPredInfo0, NewPredInfo1),
 
     module_info_get_predicate_table(ModuleInfo0, PredTable0),
@@ -2834,17 +2835,17 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         SymName, HOArgs, CallArgs, ExtraTypeInfoTVars, ArgTypes,
         TypeInfoLiveness, CallerTVarSet, IsUserTypeSpec),
 
-    add_new_pred(CalledPredProc, NewPred, !Info),
+    higher_order_add_new_pred(CalledPredProc, NewPred, !Info),
 
     create_new_proc(NewPred, ProcInfo0, NewPredInfo1, NewPredInfo, !Info),
     ModuleInfo2 = !.Info ^ hogi_module_info,
     module_info_set_pred_info(NewPredId, NewPredInfo, ModuleInfo2, ModuleInfo),
     !Info ^ hogi_module_info := ModuleInfo.
 
-:- pred add_new_pred(pred_proc_id::in, new_pred::in,
+:- pred higher_order_add_new_pred(pred_proc_id::in, new_pred::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-add_new_pred(CalledPredProcId, NewPred, !Info) :-
+higher_order_add_new_pred(CalledPredProcId, NewPred, !Info) :-
     NewPredMap0 = !.Info ^ hogi_new_pred_map,
     ( if map.search(NewPredMap0, CalledPredProcId, SpecVersions0) then
         set.insert(NewPred, SpecVersions0, SpecVersions),

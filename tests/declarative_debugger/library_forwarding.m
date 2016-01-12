@@ -18,10 +18,10 @@
 
 :- func int mod int = int.
 
-:- pred int =< int is semidet.
+:- pred int =< int.
 :- mode in =< in is semidet.
 
-:- pred int > int is semidet.
+:- pred int > int.
 :- mode in > in is semidet.
 
 :- pred semidet_succeed is semidet.

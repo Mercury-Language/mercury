@@ -10,11 +10,10 @@
 :- interface.
 
 :- pred c_int_unify(int, int).
-
-:- implementation.
-
 :- mode c_int_unify(in, out) is det.
 :- mode c_int_unify(out, in) is det.
+
+:- implementation.
 
 :- pragma promise_pure(c_int_unify/2).
 

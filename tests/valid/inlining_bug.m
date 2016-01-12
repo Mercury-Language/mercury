@@ -35,7 +35,7 @@ calling_pred(_) :-
     X = pair(2, 2),
     Ys = [pair(3, 3), pair(4, 4)].
 
-:- pred called_pred(pred(T, U), list(T), list(U)) is det.
+:- pred called_pred(pred(T, U), list(T), list(U)).
 :- mode called_pred(pred(in, out) is det, in, out) is semidet.
 :- pragma inline(called_pred/3).
 

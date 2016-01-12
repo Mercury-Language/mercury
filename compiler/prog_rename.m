@@ -41,31 +41,31 @@
 :- mode rename_vars_in_term(in, in, in, out) is det.
 
 :- pred rename_vars_in_term_list(must_rename, map(var(V), var(V)),
-    list(term(V)), list(term(V))) is det.
+    list(term(V)), list(term(V))).
 :- mode rename_vars_in_term_list(in(must_rename), in, in, out) is det.
 :- mode rename_vars_in_term_list(in(need_not_rename), in, in, out) is det.
 :- mode rename_vars_in_term_list(in, in, in, out) is det.
 
 :- pred rename_vars_in_var_set(must_rename, map(var(V), var(V)),
-    set(var(V)), set(var(V))) is det.
+    set(var(V)), set(var(V))).
 :- mode rename_vars_in_var_set(in(must_rename), in, in, out) is det.
 :- mode rename_vars_in_var_set(in(need_not_rename), in, in, out) is det.
 :- mode rename_vars_in_var_set(in, in, in, out) is det.
 
 :- pred rename_vars_in_set_of_var(must_rename, map(var(V), var(V)),
-    set_of_var(V), set_of_var(V)) is det.
+    set_of_var(V), set_of_var(V)).
 :- mode rename_vars_in_set_of_var(in(must_rename), in, in, out) is det.
 :- mode rename_vars_in_set_of_var(in(need_not_rename), in, in, out) is det.
 :- mode rename_vars_in_set_of_var(in, in, in, out) is det.
 
 :- pred rename_var_list(must_rename, map(var(V), var(V)),
-    list(var(V)), list(var(V))) is det.
+    list(var(V)), list(var(V))).
 :- mode rename_var_list(in(must_rename), in, in, out) is det.
 :- mode rename_var_list(in(need_not_rename), in, in, out) is det.
 :- mode rename_var_list(in, in, in, out) is det.
 
 :- pred rename_var(must_rename, map(var(V), var(V)),
-    var(V), var(V)) is det.
+    var(V), var(V)).
 :- mode rename_var(in(must_rename), in, in, out) is det.
 :- mode rename_var(in(need_not_rename), in, in, out) is det.
 :- mode rename_var(in, in, in, out) is det.

@@ -6,5 +6,7 @@ func_errors.m:012: Error: function arguments have modes, but function result
 func_errors.m:012:   does not.
 func_errors.m:013: Error: function result has mode, but function arguments do
 func_errors.m:013:   not.
+func_errors.m:017: Error: predicate `p'/2 declares a determinism without
+func_errors.m:017:   declaring the modes of its arguments.
 func_errors.m:019: Error: some but not all arguments have modes.
 func_errors.m:019:   The arguments without modes are the second and third.

@@ -651,8 +651,8 @@ add_pred_decl(SectionItem, !ModuleInfo, !Specs) :-
         PredOrigin = origin_user(PredSymName),
         module_add_pred_or_func(PredOrigin, TypeVarSet, InstVarSet, ExistQVars,
             PredOrFunc, PredSymName, TypesAndModes, MaybeDetism, Purity,
-            ClassContext, Markers, Context, PredStatus, NeedQual, _,
-            !ModuleInfo, !Specs)
+            ClassContext, Markers, Context, PredStatus, yes(ItemMercuryStatus),
+            NeedQual, _, !ModuleInfo, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -677,9 +677,9 @@ add_mode_decl(StatusItem, !ModuleInfo, !Specs) :-
         (
             MaybePredOrFunc = yes(PredOrFunc),
             item_mercury_status_to_pred_status(ItemMercuryStatus, ModeStatus),
-            module_add_mode(VarSet, PredSymName, Modes, MaybeDet, ModeStatus,
-                Context, PredOrFunc, is_not_a_class_method, _,
-                !ModuleInfo, !Specs)
+            module_add_mode(VarSet, PredSymName, Modes, MaybeDet,
+                ModeStatus, yes(ItemMercuryStatus), Context, PredOrFunc,
+                is_not_a_class_method, _, !ModuleInfo, !Specs)
         ;
             MaybePredOrFunc = no,
             % equiv_type.m should have either set the pred_or_func

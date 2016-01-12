@@ -8,7 +8,7 @@
 
 :- import_module list.
 
-:- pred applast(list(T), T, T) is semidet.
+:- pred applast(list(T), T, T).
 :- mode applast(in, in, in) is semidet.
 :- mode applast(in, in, out) is semidet.
 % :- mode applast(in, out, in) is semidet.

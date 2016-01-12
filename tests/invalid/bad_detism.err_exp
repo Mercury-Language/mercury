@@ -1,0 +1,2 @@
+bad_detism.m:011: Error: predicate `p'/1 declares a determinism without
+bad_detism.m:011:   declaring the modes of its arguments.

@@ -1,0 +1,6 @@
+mode_decl_in_wrong_section.m:015: Error: mode declaration in the interface
+mode_decl_in_wrong_section.m:015:   section for function `f'/2, whose function
+mode_decl_in_wrong_section.m:015:   declaration is in the implementation.
+mode_decl_in_wrong_section.m:021: Error: mode declaration in the implementation
+mode_decl_in_wrong_section.m:021:   section for predicate `p'/2, whose
+mode_decl_in_wrong_section.m:021:   predicate declaration is in the interface.

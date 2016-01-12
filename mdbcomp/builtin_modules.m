@@ -120,6 +120,10 @@
     %
 :- func mercury_string_parse_util_module = sym_name.
 
+    % Returns the name of the int module.
+    %
+:- func mercury_int_module = sym_name.
+
     % Returns the name of the I/O module.
     %
 :- func mercury_io_module = sym_name.
@@ -195,6 +199,7 @@ mercury_string_module = unqualified("string").
 mercury_string_format_module = qualified(unqualified("string"), "format").
 mercury_string_parse_util_module =
     qualified(unqualified("string"), "parse_util").
+mercury_int_module = unqualified("int").
 mercury_io_module = unqualified("io").
 mercury_stream_module = unqualified("stream").
 

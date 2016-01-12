@@ -2338,10 +2338,11 @@ make_new_spec_parallel_pred_info(FutureArgs, PredStatus, PPId, !PredInfo) :-
     map.init(EmptyConstraintMap),
     Origin = origin_transformed(transform_dependent_parallel_conjunction,
         OrigOrigin, PredId),
+    CurUserDecl = maybe.no,
     pred_info_init(PredModule, Name, Arity, PredOrFunc, Context, Origin,
-        PredStatus, GoalType, Markers, ArgTypes, Tvars, ExistQVars,
-        ClassContext, EmptyProofs, EmptyConstraintMap, ClausesInfo,
-        VarNameRemap, !:PredInfo),
+        PredStatus, CurUserDecl, GoalType, Markers, ArgTypes,
+        Tvars, ExistQVars, ClassContext, EmptyProofs, EmptyConstraintMap,
+        ClausesInfo, VarNameRemap, !:PredInfo),
     pred_info_set_typevarset(TypeVars, !PredInfo).
 
 :- pred futurise_argtypes(arg_pos::in, list(arg_pos)::in, list(mer_type)::in,
