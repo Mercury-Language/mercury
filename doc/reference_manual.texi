@@ -2813,8 +2813,8 @@ For example, given the mode names defined by
 @end example
 
 @noindent
-the (type and) mode declarations of the function length and predicate append
-are as follows:
+the (type and) mode declarations of the function @samp{length} and predicate
+@samp{append} are as follows:
 
 @example
 :- func length(list(T)) = int.
@@ -2873,11 +2873,25 @@ declaration can be combined:
 :- pred p `with_type` foldl_pred(T, U) `with_inst` foldl_pred.
 @end example
 
+It is an error for a predicate or function whose @samp{pred} and @samp{mode}
+declarations are so combined to have any other separate @samp{mode}
+declarations.
+
 If there is no mode declaration for a function, the compiler assumes a default
 mode for the function in which all the arguments have mode @code{in} and the
 result of the function has mode @code{out}.
 (However, there is no requirement that a function have such a mode; if there is
 any explicit mode declaration, it overrides the default.)
+
+If a predicate or function type declaration occurs in the interface section of
+a module, then all mode declarations for that predicate or function must occur
+in the interface section of the @emph{same} module.
+Likewise, if a predicate or function type declaration occurs in the
+implementation section of a module, then all mode declarations for that
+predicate or function must occur in the implementation section of the
+@emph{same} module.
+Therefore, is an error for a predicate or function to have mode declarations in
+both the interface and implementation sections of a module.
 
 A function or predicate mode declaration is an assertion by the programmer
 that for all possible argument terms and (if applicable) result term
@@ -2895,7 +2909,7 @@ These assertions are checked by the compiler,
 which rejects programs if it cannot prove
 that their mode declaration constraints are satisfied.
 
-Note that with the usual definition of append, the mode
+Note that with the usual definition of @samp{append}, the mode
 
 @example
 :- mode append(in_listskel, in_listskel, out_listskel).
@@ -4907,7 +4921,7 @@ limitations.
 @item
 The compiler sometimes reports spurious errors if you
 define an equivalence type in a sub-module and export it
-as abstract type.
+as an abstract type.
 @item
 Using @samp{mmake} to do parallel makes (e.g.@: @samp{mmake --jobs 2})
 doesn't always work correctly if you're using nested sub-modules.
