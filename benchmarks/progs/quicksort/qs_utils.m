@@ -15,7 +15,7 @@
 :- mode list_skel_di == list_skel_unique >> dead.
 :- mode list_skel_uo == free >> list_skel_unique.
 
-:- pred partition(string, list(string), list(string), list(string)) is det.
+:- pred partition(string, list(string), list(string), list(string)).
 :- mode partition(in, in, out, out) is det.
 :- mode partition(in, list_skel_di, list_skel_uo, list_skel_uo) is det.
 

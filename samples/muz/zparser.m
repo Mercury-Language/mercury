@@ -693,7 +693,7 @@ log_pred2(P) --> c(C), parse_left(x(zOR), log_pred3, lbpred(C, disjunction), P).
 log_pred3(P) -->
 	c(C), parse_left(x(zAND), basic_pred, lbpred(C, conjunction), P).
 
-:- pred lbpred(zcontext, lconn, zpred, zpred, zpred) is det.
+:- pred lbpred(zcontext, lconn, zpred, zpred, zpred).
 :- mode lbpred(in, in, in, in, out) is det.
 lbpred(C, T, P0, P1, lbpred(T, P0, P1)-C).
 

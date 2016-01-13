@@ -616,8 +616,7 @@ filter(Parser) -->
     return(Xs)
     ).
 
-:- pred filter1(list(opt(T)), list(T)) is det.
-:- mode filter1(in, out) is det.
+:- pred filter1(list(opt(T))::in, list(T)::out) is det.
 
 filter1([], []).
 filter1([X0|Xs0], Xs) :-

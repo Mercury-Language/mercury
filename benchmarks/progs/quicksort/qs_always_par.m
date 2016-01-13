@@ -21,7 +21,7 @@ main(!IO) :-
     quicksort(Input, Sorted),
     sink_output(Sorted, !IO).
 
-:- pred quicksort(list(string), list(string)) is det.
+:- pred quicksort(list(string), list(string)).
 :- mode quicksort(in, out) is det.
 :- mode quicksort(list_skel_di, list_skel_uo) is det.
 

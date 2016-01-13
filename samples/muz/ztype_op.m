@@ -27,7 +27,7 @@
 
 :- type powerResult ---> yes ; no(ztype).
 
-:- pred powerType(expr, ztype, ztype, powerResult, subst, subst) is det.
+:- pred powerType(expr, ztype, ztype, powerResult, subst, subst).
 :- mode powerType(in, in, out, out, in, out) is det.
 
 :- pred powerType(ztype::in, ztype::out, maybe0::out) is det.
@@ -90,7 +90,7 @@
 
 :- type unify ---> unified ; failed(subst).
 
-:- pred ztunify(ztype, ztype, ztype, unify, subst, subst) is det.
+:- pred ztunify(ztype, ztype, ztype, unify, subst, subst).
 :- mode ztunify(in, in, out, out, in, out) is det.
 
 % :- pred ztunify(ztype, ztype, ztype, subst, subst) is semidet.

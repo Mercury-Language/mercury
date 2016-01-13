@@ -300,8 +300,7 @@ nonterminals(action(_), []).
 
 %------------------------------------------------------------------------------%
 
-:- pred id(nonterminal, name, arity) is det.
-:- mode id(in, out, out) is det.
+:- pred id(nonterminal::in, name::out, arity::out) is det.
 
 id(Name/Arity, Name, Arity).
 id(start, _, _) :-

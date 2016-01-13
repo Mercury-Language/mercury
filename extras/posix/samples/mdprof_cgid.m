@@ -206,7 +206,7 @@ wait_input_fd(Fd @ fd(MaxFd), Result, !IO) :-
 
 handle_conn(Data, ConnFd, !IO) :-
     TextSize = 1024,
-    Text0 = bitmap.new(TextSize * bits_per_int),
+    Text0 = bitmap.init(TextSize * bits_per_int),
     read(ConnFd, TextSize, ReadResult, Text0, Text, !IO),
     (
         ReadResult = ok(Length),
