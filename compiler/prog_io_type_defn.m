@@ -4,13 +4,13 @@
 % Copyright (C) 2008-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prog_io_type_defn.m.
 %
 % This module parses type definitions.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_type_defn.
 
@@ -66,16 +66,19 @@
 :- pred parse_where_unify_compare(module_name::in, varset::in, term::in,
     maybe1(maybe(unify_compare))::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_io_inst_mode_name.
 :- import_module parse_tree.prog_io_mutable.
 :- import_module parse_tree.prog_io_sym_name.
+:- import_module parse_tree.prog_io_type_name.
 :- import_module parse_tree.prog_io_typeclass.
 :- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_io_vars.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
@@ -142,7 +145,7 @@ parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code dealing with definitions of discriminated union types.
 %
@@ -606,7 +609,7 @@ find_constructor([Ctor | Ctors], SymName, Arity, NamedCtor) :-
         find_constructor(Ctors, SymName, Arity, NamedCtor)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % parse_eqv_type_defn parses the definition of an equivalence type.
     %
@@ -657,7 +660,7 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeIOM = error1(Specs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Parse a type definition which consists only of a `where' block.
     % This is either an abstract enumeration type, or a solver type.
@@ -788,7 +791,7 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
         MaybeIOM = error1(Specs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Parse an abstract type definition.
 %
@@ -820,7 +823,7 @@ parse_abstract_type_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
         MaybeIOM = ok1(iom_item(Item))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Parse ... where ... clauses in type definitions. These clauses can specify
 % type-specific unify and/or compare predicates for discriminated union types
@@ -1331,7 +1334,7 @@ maybe_unify_compare(MaybeEqPred, MaybeCmpPred) =
         yes(unify_compare(MaybeEqPred, MaybeCmpPred))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates useful for parsing several kinds of type definitions.
 %

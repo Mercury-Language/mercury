@@ -116,6 +116,7 @@
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_dcg.
 :- import_module parse_tree.prog_io_goal.
+:- import_module parse_tree.prog_io_type_name.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.

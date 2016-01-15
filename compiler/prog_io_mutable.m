@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prog_io_mutable.m.
 %
@@ -50,8 +50,10 @@
 
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_io_inst_mode_name.
 :- import_module parse_tree.prog_io_pragma.
 :- import_module parse_tree.prog_io_sym_name.
+:- import_module parse_tree.prog_io_type_name.
 :- import_module parse_tree.prog_io_util.
 
 :- import_module cord.
@@ -108,7 +110,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MaybeIOM) :-
@@ -156,7 +158,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_mutable_item(ModuleName, VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
     parse_mutable_decl_info(ModuleName, VarSet, ArgTerms, Context, SeqNum,
@@ -169,7 +171,7 @@ parse_mutable_item(ModuleName, VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
         MaybeIOM = error1(Specs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_mutable_decl_info(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MutableLocn, MaybeItemMutableInfo) :-
@@ -418,6 +420,6 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
         MutAttrResult = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_mutable.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

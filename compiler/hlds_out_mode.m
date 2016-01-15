@@ -97,7 +97,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_io_type_name.
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.

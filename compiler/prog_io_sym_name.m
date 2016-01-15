@@ -4,7 +4,7 @@
 % Copyright (C) 2008-2009, 2011-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Many of the predicates below exist in two or three forms.
 %
@@ -18,6 +18,8 @@
 % - The third form exists in cases where our caller imposes further
 %   restrictions on the form of the thing being looked for, such as a list
 %   of arguments being empty.
+%
+%-----------------------------------------------------------------------------e
 
 :- module parse_tree.prog_io_sym_name.
 :- interface.
@@ -26,12 +28,14 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io_util.
 
 :- import_module cord.
 :- import_module list.
 :- import_module term.
 :- import_module varset.
+
+:- type maybe_functor    ==  maybe_functor(generic).
+:- type maybe_functor(T) ==  maybe2(sym_name, list(term(T))).
 
     % A SymNameAndArgs is one of
     %   Name(Args)

@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2001, 2003-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prog_io_dcg.m.
 % Main authors: fjh, zs.
@@ -18,7 +18,7 @@
 % roughly     Head --> G1, G2, {G3}, G4.
 % becomes     Head(!DCG) :- G1(!DCG), G2(!DCG), G3, G4(!DCG).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_dcg.
 :- interface.
@@ -34,7 +34,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_dcg_clause(module_name::in, varset::in, term::in, term::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
@@ -54,13 +54,14 @@
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_io_vars.
 :- import_module parse_tree.prog_util.
 
 :- import_module counter.
 :- import_module list.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, Context, SeqNum,
         MaybeIOM) :-
@@ -90,7 +91,7 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, Context, SeqNum,
         MaybeIOM = error1(Specs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_dcg_pred_goal(GoalTerm, ContextPieces, MaybeGoal,
         DCGVar0, DCGVar, !VarSet) :-
@@ -98,7 +99,7 @@ parse_dcg_pred_goal(GoalTerm, ContextPieces, MaybeGoal,
     parse_dcg_goal(GoalTerm, ContextPieces, MaybeGoal, !VarSet,
         Counter0, _Counter, DCGVar0, DCGVar).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Expand a DCG goal.
     %
@@ -755,11 +756,11 @@ parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm, ElseGoalTerm,
         Var = Var0              % Dummy; the value shouldn't matter.
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Utility predicates.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Used to allocate fresh variables needed for the DCG expansion.
     %
@@ -804,6 +805,6 @@ term_list_append_term(List0, Term, List) :-
         List = term.functor(term.atom("[|]"), [Head, Tail], Context)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_dcg.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prog_io_goal.m.
 % Main authors: fjh, zs.
 %
 % This module defines the predicates that parse goals.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_goal.
 :- interface.
@@ -25,7 +25,7 @@
 :- import_module list.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Convert a single term into a goal.
     %
@@ -118,15 +118,16 @@
 :- func should_have_one_x_one_goal_prefix(cord(format_component),
     term.context, string, string) = error_spec.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_io_inst_mode_name.
 :- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_io_vars.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 
@@ -139,7 +140,7 @@
 :- import_module unit.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
     % We could do some error-checking here, but all errors are picked up
@@ -172,7 +173,7 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
         MaybeGoal = ok1(Goal)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_non_call_goal(string::in, list(term)::in, term.context::in,
     cord(format_component)::in, maybe1(goal)::out,
@@ -1037,7 +1038,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func should_have_no_args(cord(format_component),
     term.context, string) = error_spec.
@@ -1092,7 +1093,7 @@ should_have_one_call_prefix(ContextPieces, Context, Functor) = Spec :-
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(Context, [always(Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 apply_purity_marker_to_maybe_goal(GoalTerm, Purity, MaybeGoal0, MaybeGoal) :-
     (
@@ -1166,7 +1167,7 @@ bad_purity_goal(GoalTerm0, Context, Purity) = Goal :-
     Goal = call_expr(Context, unqualified(PurityString), [GoalTerm],
         purity_pure).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_one_plain_or_dot_var(
     plain_state_dot_colon_vars(prog_var_type)::in, goal::in,
@@ -1279,7 +1280,7 @@ parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
         MaybePODVar = error1(Specs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
     % We parse existentially quantified goals in non-DCG contexts here,
@@ -1314,7 +1315,7 @@ parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
         MaybeVarsAndGoal = error3(Specs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type trace_component
     --->    trace_component_compiletime(trace_expr(trace_compiletime))
@@ -1801,7 +1802,7 @@ convert_trace_params_2([Component - Context | ComponentsContexts],
     convert_trace_params_2(ComponentsContexts, !.MaybeCompileTime,
         !.MaybeRunTime, !.MaybeIO, !.MutableVars, !.Specs, MaybeParams).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_catch_any_term(term::in, term.context::in,
     cord(format_component)::in, maybe1(catch_any_expr)::out,
@@ -2130,7 +2131,7 @@ convert_try_params_2([Component - Context | ComponentsContexts],
     ),
     convert_try_params_2(ComponentsContexts, !.MaybeIO, !.Specs, MaybeParams).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type atomic_component
     --->    atomic_component_inner(atomic_component_state)
@@ -2456,7 +2457,7 @@ parse_atomic_subgoals_as_list(Term, MaybeGoals, !VarSet) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_lambda_arg(term::in, prog_term::out, mer_mode::out) is semidet.
 
@@ -2466,7 +2467,7 @@ parse_lambda_arg(Term, ArgTerm, Mode) :-
     convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
     constrain_inst_vars_in_mode(Mode0, Mode).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for parsing pred/func expressions.
 %
@@ -2584,6 +2585,6 @@ parse_dcg_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
     parse_lambda_arg(Term, Arg, Mode),
     parse_dcg_pred_expr_args(Terms, Args, Modes).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_goal.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

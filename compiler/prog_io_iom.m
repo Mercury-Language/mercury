@@ -4,12 +4,12 @@
 % Copyright (C) 2015 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This module defines a type used by several modules that parse items
 % and/or markers.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_iom.
 
@@ -53,6 +53,6 @@
             % The arguments give the section's kind, and the context
             % and sequence number of the declaration.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_iom.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

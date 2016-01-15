@@ -4,11 +4,11 @@
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This module defines predicates that find Mercury modules.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_find.
 :- interface.
@@ -21,7 +21,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % search_for_module_source(Globals, Dirs, InterfaceDirs, ModuleName,
     %   FoundSourceFileName, !IO):
@@ -41,8 +41,8 @@
 :- pred find_module_name(globals::in, file_name::in, maybe(module_name)::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -53,7 +53,7 @@
 :- import_module dir.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 search_for_module_source(Globals, Dirs, InterfaceDirs, ModuleName,
         MaybeFileName, !IO) :-
@@ -143,7 +143,7 @@ search_for_module_source_qualifier_loop(Globals, Dirs, ModuleName,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func drop_one_qualifier(module_name) = module_name is semidet.
 
@@ -163,7 +163,7 @@ drop_one_qualifier_2(ParentQual, ChildName) =  PartialQual :-
         PartialQual = qualified(PartialGrandParentQual, ChildName)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func find_source_error(module_name, list(dir_name), maybe(file_name))
     = string.
@@ -183,7 +183,7 @@ find_source_error(ModuleName, Dirs, MaybeBetterMatch) = Msg :-
             " in interface search path"
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
     io.open_input(FileName, OpenRes, !IO),
@@ -222,6 +222,6 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
         MaybeModuleName = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_find.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

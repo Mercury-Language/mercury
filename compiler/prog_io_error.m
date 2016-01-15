@@ -4,7 +4,7 @@
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_error.
 :- interface.
@@ -89,7 +89,7 @@
     %
 :- func fatal_read_module_errors = set(read_module_error).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -119,6 +119,6 @@ fatal_read_module_errors = FatalErrors :-
     FatalErrors = set.list_to_set([rme_could_not_open_file,
         rme_bad_submodule_start, rme_bad_module_end]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_error.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

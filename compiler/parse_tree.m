@@ -30,15 +30,18 @@
    :- include_module prog_io_error.
    :- include_module prog_io_find.
    :- include_module prog_io_goal.
+   :- include_module prog_io_inst_mode_defn.
+   :- include_module prog_io_inst_mode_name.
    :- include_module prog_io_iom.
    :- include_module prog_io_item.
-   :- include_module prog_io_mode_defn.
    :- include_module prog_io_mutable.
    :- include_module prog_io_pragma.
    :- include_module prog_io_sym_name.
    :- include_module prog_io_type_defn.
+   :- include_module prog_io_type_name.
    :- include_module prog_io_typeclass.
    :- include_module prog_io_util.
+   :- include_module prog_io_vars.
 
 % Parser/pretty-printer/utility routines for the ctgc related types.
 :- include_module prog_ctgc.

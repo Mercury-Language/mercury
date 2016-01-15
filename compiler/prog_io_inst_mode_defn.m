@@ -4,15 +4,15 @@
 % Copyright (C) 2008-2009, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prog_io_type_defn.m.
 %
 % This module parses inst and mode definitions.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_mode_defn.
+:- module parse_tree.prog_io_inst_mode_defn.
 
 :- interface.
 
@@ -41,6 +41,7 @@
 
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_io_inst_mode_name.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_item.
@@ -210,7 +211,7 @@ parse_abstract_inst_defn(ModuleName, VarSet, HeadTerm, Context, SeqNum,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type processed_mode_body
     --->    processed_mode_body(
@@ -387,5 +388,5 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
     ).
 
 %-----------------------------------------------------------------------------e
-:- end_module parse_tree.prog_io_mode_defn.
+:- end_module parse_tree.prog_io_inst_mode_defn.
 %-----------------------------------------------------------------------------e

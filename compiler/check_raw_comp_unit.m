@@ -52,7 +52,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.comp_unit_interface.
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.

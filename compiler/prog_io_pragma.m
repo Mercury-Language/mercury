@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 expandtab
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: prog_io_pragma.m.
 % Main authors: fjh, dgj, zs.
 %
 % This module handles the parsing of pragma directives.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_pragma.
 :- interface.
@@ -28,7 +28,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Parse the pragma declaration. What it returns is not necessarily
     % a pragma item, and it may not even be an item.
@@ -40,8 +40,8 @@
     %
 :- pred parse_foreign_language(term::in, foreign_language::out) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -51,8 +51,10 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_ctgc.
+:- import_module parse_tree.prog_io_inst_mode_name.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_type_defn.
+:- import_module parse_tree.prog_io_type_name.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_mode.
@@ -69,7 +71,7 @@
 :- import_module string.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
     % XXX ITEM_LIST We should do this ONLY if the top level functor
@@ -107,7 +109,7 @@ report_unrecogized_pragma(Context) = Spec :-
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(Context, [always(Pieces)])]).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_type(module_name::in, varset::in, term::in,
     string::in, list(term)::in, prog_context::in, int::in,
@@ -334,7 +336,7 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         )
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_source_file(list(term)::in, prog_context::in,
     maybe1(item_or_marker)::out) is det.
@@ -360,7 +362,7 @@ parse_pragma_source_file(PragmaTerms, Context, MaybeIOM) :-
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % XXX The predicates in the rest of this module ought to be clustered together
 % into groups of related predicates, grouping both parse_pragma_xxx predicates
@@ -495,7 +497,7 @@ parse_foreign_type_assertion(Term, Assertion) :-
         Assertion = foreign_type_word_aligned_pointer
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for parsing foreign_export_enum pragmas.
 %
@@ -722,7 +724,7 @@ parse_export_enum_attr(VarSet, Term, MaybeAttribute) :-
         MaybeAttribute = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for parsing foreign_enum pragmas.
 %
@@ -778,7 +780,7 @@ parse_pragma_foreign_enum(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for parsing foreign_export pragmas.
 %
@@ -838,7 +840,7 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_foreign_import_module(term::in, list(term)::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
@@ -875,7 +877,7 @@ parse_pragma_foreign_import_module(ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_external_proc(module_name::in, varset::in, term::in,
     string::in, list(term)::in, prog_context::in, int::in,
@@ -986,7 +988,7 @@ parse_pragma_external_options(VarSet, MaybeOptionsTerm, ContextPieces,
         )
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_require_tail_recursion(module_name::in, list(term)::in,
     term::in, varset::in, prog_context::in, int::in,
@@ -1216,7 +1218,7 @@ pragma_require_tailrec_unknown_term_error(Term, Context) = ErrorSpec :-
     ErrorSpec = error_spec(severity_error,
         phase_term_to_parse_tree, [Message]).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_unused_args(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, int::in,
@@ -1255,7 +1257,7 @@ parse_pragma_unused_args(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_type_spec(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, int::in,
@@ -1333,7 +1335,7 @@ parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_fact_table(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, int::in,
@@ -1375,7 +1377,7 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_termination_info(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, int::in,
@@ -1435,7 +1437,7 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_termination2_info(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, int::in,
@@ -1483,7 +1485,7 @@ parse_pragma_termination2_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_structure_sharing(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, int::in,
@@ -1539,7 +1541,7 @@ parse_pragma_structure_sharing(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_structure_reuse(module_name::in, varset::in, term::in,
     list(term)::in, prog_context::in, int::in,
@@ -1595,7 +1597,7 @@ parse_pragma_structure_reuse(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_exceptions(module_name::in, term::in, list(term)::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
@@ -1652,7 +1654,7 @@ parse_pragma_exceptions(ModuleName, ErrorTerm, PragmaTerms, Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_trailing_info(module_name::in, term::in, list(term)::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
@@ -1697,7 +1699,7 @@ parse_pragma_trailing_info(ModuleName, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_mm_tabling_info(module_name::in, term::in, list(term)::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
@@ -1742,7 +1744,7 @@ parse_pragma_mm_tabling_info(ModuleName, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_pragma_require_feature_set(varset::in, term::in, list(term)::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
@@ -1799,7 +1801,7 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_foreign_decl_is_local(term::in, foreign_decl_is_local::out)
     is semidet.
@@ -2201,7 +2203,7 @@ parse_simple_name_and_arity(ModuleName, PragmaName, NameKind,
         MaybeNameAndArity = error2([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type collected_pragma_foreign_proc_attribute
     --->    coll_may_call_mercury(proc_may_call_mercury)
@@ -3417,7 +3419,7 @@ convert_type_spec_pair(Term, TypeSpec) :-
     maybe_parse_type(SpecTypeTerm0, SpecType),
     TypeSpec = TypeVar - SpecType.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Parsing termination2_info pragmas.
 %
@@ -3476,7 +3478,7 @@ parse_rational(Term, Rational) :-
     DenomTerm = term.functor(term.integer(Denom), [], _),
     Rational = rat.rat(Numer, Denom).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_required_feature(term::in,
     maybe1(required_feature)::out) is semidet.
@@ -3498,7 +3500,7 @@ string_to_required_feature("trailing",          reqf_trailing).
 string_to_required_feature("strict_sequential", reqf_strict_sequential).
 string_to_required_feature("conservative_gc",   reqf_conservative_gc).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_predicate_or_function(term::in, pred_or_func::out) is semidet.
 
@@ -3512,6 +3514,6 @@ parse_predicate_or_function(PredOrFuncTerm, PredOrFunc) :-
         PredOrFunc = pf_function
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_pragma.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

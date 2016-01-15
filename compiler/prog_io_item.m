@@ -4,11 +4,11 @@
 % Copyright (C) 2014 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This module handles the top level parsing of items.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_item.
 
@@ -55,8 +55,8 @@
 :- pred parse_class_method_decl(module_name::in, varset::in, term::in,
     maybe1(class_method)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -67,13 +67,16 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_dcg.
 :- import_module parse_tree.prog_io_goal.
-:- import_module parse_tree.prog_io_mode_defn.
+:- import_module parse_tree.prog_io_inst_mode_defn.
+:- import_module parse_tree.prog_io_inst_mode_name.
 :- import_module parse_tree.prog_io_mutable.
 :- import_module parse_tree.prog_io_pragma.
 :- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_io_type_defn.
+:- import_module parse_tree.prog_io_type_name.
 :- import_module parse_tree.prog_io_typeclass.
 :- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_io_vars.
 :- import_module parse_tree.prog_mode.
 :- import_module recompilation.
 :- import_module recompilation.version.
@@ -85,7 +88,7 @@
 :- import_module maybe.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 parse_item_or_marker(ModuleName, VarSet, Term, SeqNum, MaybeIOM) :-
     ( if
@@ -153,7 +156,7 @@ decl_functor_is_not_valid(Term, Functor) = Spec :-
     Spec = error_spec(severity_error, phase_term_to_parse_tree,
         [simple_msg(Context, [always(Pieces)])]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_decl_item_or_marker(module_name::in, varset::in,
     string::in, list(term)::in, prog_context::in, int::in,
@@ -482,7 +485,7 @@ parse_attributed_decl(ModuleName, VarSet, Term, _Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_module_marker(list(term)::in, prog_context::in, int::in,
     maybe1(item_or_marker)::out) is det.
@@ -522,7 +525,7 @@ parse_end_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_section_marker(string::in, list(term)::in,
     prog_context::in, int::in, module_section::in,
@@ -542,7 +545,7 @@ parse_section_marker(Functor, ArgTerms, Context, SeqNum, Section, MaybeIOM) :-
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type incl_imp_use
     --->    iiu_include_module
@@ -634,7 +637,7 @@ make_item_avail_use(Context, SeqNum, ModuleName, Avail) :-
     AvailUseInfo = avail_use_info(ModuleName, Context, SeqNum),
     Avail = avail_use(AvailUseInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type maybe_allow_mode_defn
     --->    allow_mode_decl_and_defn
@@ -673,7 +676,7 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_external_item(module_name::in, varset::in,
     list(term)::in, prog_context::in, int::in,
@@ -735,7 +738,7 @@ parse_external_item(ModuleName, VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_version_numbers_marker(module_name::in,
     string::in, list(term)::in, prog_context::in, int::in,
@@ -802,8 +805,8 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_clause(module_name::in, varset::in, term::in, term::in,
     term.context::in, int::in, maybe1(item_or_marker)::out) is det.
@@ -853,7 +856,7 @@ parse_clause(ModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
         MaybeIOM = error1(Specs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Parsing ":- pred" and ":- func" declarations.
 %
@@ -1303,7 +1306,7 @@ classify_type_and_mode_list(ArgNum, [Head | Tail],
 
 wrap_nth(N, nth_fixed(N)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Parsing mode declarations for predicates and functions.
 %
@@ -1529,7 +1532,7 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, FuncMode, RetModeTerm,
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_purity_from_attrs(prog_context::in, list(purity_attr)::in,
     maybe1(purity)::out) is det.
@@ -1549,7 +1552,7 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
         MaybePurity = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We could perhaps get rid of some code duplication between here and
     % prog_io_typeclass.m?
@@ -1704,7 +1707,7 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
         !UnivClassConstraints, !UnivInstConstraints,
         !ExistClassConstraints, !ExistInstConstraints).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_promise_item(varset::in, list(term)::in,
     prog_context::in, int::in, maybe1(item_or_marker)::out) is det.
@@ -1744,7 +1747,7 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_promise_ex_item(varset::in, string::in, list(term)::in,
     prog_context::in, int::in, promise_type::in, list(term)::in,
@@ -1789,7 +1792,7 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
         MaybeIOM = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % parse_determinism_suffix(VarSet, BodyTerm, BeforeDetismTerm,
     %   MaybeMaybeDetism):
@@ -1883,7 +1886,7 @@ parse_with_inst_suffix(Term, BeforeWithInstTerm, MaybeWithInst) :-
         MaybeWithInst = ok1(no)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Perform one of the following field-access syntax rewrites if possible:
     %
@@ -1909,7 +1912,7 @@ desugar_field_access(Term) = DesugaredTerm :-
         DesugaredTerm = Term
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A ModuleName is just an sym_name.
     %
@@ -1943,7 +1946,7 @@ parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
             Term, MaybeModule)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func pred_or_func_decl_pieces(pred_or_func) = list(format_component).
 
@@ -1952,7 +1955,7 @@ pred_or_func_decl_pieces(pf_function) =
 pred_or_func_decl_pieces(pf_predicate) =
     [decl("pred"), words("declaration")].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Create a dummy term with the specified context.
     % Used for error messages that are associated with some specific context,
@@ -1964,7 +1967,7 @@ pred_or_func_decl_pieces(pf_predicate) =
 dummy_term_with_context(Context, Term) :-
     Term = term.functor(term.atom(""), [], Context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % You can uncomment this section for debugging.
 %
@@ -1999,6 +2002,6 @@ dummy_term_with_context(Context, Term) :-
 %         Result = error(_)
 %     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_item.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

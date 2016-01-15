@@ -117,7 +117,7 @@
 :- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.prog_io_inst_mode_name.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
