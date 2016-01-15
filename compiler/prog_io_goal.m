@@ -332,11 +332,11 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             varset.coerce(!.VarSet, GenericVarSet),
             VarsContextPieces = ContextPieces ++
                 cord.from_list(VarsTailPieces),
-            parse_quantifier_vars(QVarsTerm, GenericVarSet,
-                VarsContextPieces, MaybeStateVarsAndVars),
+            parse_vars_state_vars(QVarsTerm, GenericVarSet, VarsContextPieces,
+                MaybeVars),
             parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
             ( if
-                MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
+                MaybeVars = ok1(plain_state_vars(Vars0, StateVars0)),
                 MaybeSubGoal = ok1(SubGoal)
             then
                 list.map(term.coerce_var, Vars0, Vars),
@@ -359,7 +359,7 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 ),
                 MaybeGoal = ok1(Goal)
             else
-                Specs = get_any_errors2(MaybeStateVarsAndVars) ++
+                Specs = get_any_errors1(MaybeVars) ++
                     get_any_errors1(MaybeSubGoal),
                 MaybeGoal = error1(Specs)
             )
@@ -751,8 +751,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         ),
         ( if Args = [VarsTerm, SubGoalTerm] then
             varset.coerce(!.VarSet, GenericVarSet),
-            parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
-                MaybeVars),
+            parse_vars_state_dot_colon_vars(VarsTerm, GenericVarSet,
+                ContextPieces, MaybeVars),
             parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
             ( if
                 MaybeVars = ok1(plain_state_dot_colon_vars(Vars0,
@@ -788,8 +788,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         Functor = "arbitrary",
         ( if Args = [VarsTerm, SubGoalTerm] then
             varset.coerce(!.VarSet, GenericVarSet),
-            parse_vars_and_state_vars(VarsTerm, GenericVarSet, ContextPieces,
-                MaybeVars),
+            parse_vars_state_dot_colon_vars(VarsTerm, GenericVarSet,
+                ContextPieces, MaybeVars),
             parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
             ( if
                 MaybeVars = ok1(plain_state_dot_colon_vars(Vars0,
@@ -858,8 +858,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         Functor = "require_complete_switch",
         ( if Args = [VarsTerm, SubGoalTerm] then
             term.coerce(VarsTerm, ProgVarsTerm),
-            parse_vars_and_state_vars(ProgVarsTerm, !.VarSet, ContextPieces,
-                MaybePSDCVars),
+            parse_vars_state_dot_colon_vars(ProgVarsTerm, !.VarSet,
+                ContextPieces, MaybePSDCVars),
             parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
             ( if
                 MaybePSDCVars = ok1(PSDCVars0),
@@ -914,8 +914,8 @@ parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         ),
         ( if Args = [VarsTerm, SubGoalTerm] then
             term.coerce(VarsTerm, ProgVarsTerm),
-            parse_vars_and_state_vars(ProgVarsTerm, !.VarSet, ContextPieces,
-                MaybePSDCVars),
+            parse_vars_state_dot_colon_vars(ProgVarsTerm, !.VarSet,
+                ContextPieces, MaybePSDCVars),
             parse_goal(SubGoalTerm, ContextPieces, MaybeSubGoal, !VarSet),
             ( if
                 MaybePSDCVars = ok1(PSDCVars0),
@@ -1294,23 +1294,23 @@ parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
         VarsTailPieces = [lower_case_next_if_not_first,
             words("In first argument of"), quote("some"), suffix(":")],
         VarsContextPieces = ContextPieces ++ cord.from_list(VarsTailPieces),
-        parse_quantifier_vars(VarsTerm, GenericVarSet, VarsContextPieces,
+        parse_vars_state_vars(VarsTerm, GenericVarSet, VarsContextPieces,
             MaybeVars),
         GoalTerm = SubGoalTerm
     else
-        MaybeVars = ok2([], []),
+        MaybeVars = ok1(plain_state_vars([], [])),
         GoalTerm = Term
     ),
     parse_goal(GoalTerm, ContextPieces, MaybeGoal, !VarSet),
     ( if
-        MaybeVars = ok2(Vars0, StateVars0),
+        MaybeVars = ok1(plain_state_vars(Vars0, StateVars0)),
         MaybeGoal = ok1(Goal)
     then
         list.map(term.coerce_var, Vars0, Vars),
         list.map(term.coerce_var, StateVars0, StateVars),
         MaybeVarsAndGoal = ok3(Vars, StateVars, Goal)
     else
-        Specs = get_any_errors2(MaybeVars) ++
+        Specs = get_any_errors1(MaybeVars) ++
             get_any_errors1(MaybeGoal),
         MaybeVarsAndGoal = error3(Specs)
     ).
@@ -2238,7 +2238,8 @@ parse_atomic_component(ErrorTerm, Term, VarSet, MaybeComponentContext) :-
                 ( if SubTerms = [SubTerm] then
                     ContextPieces = cord.from_list([words("In"), quote("vars"),
                         words("specifier of atomic scope:")]),
-                    parse_vars(SubTerm, VarSet, ContextPieces, MaybeVars),
+                    parse_possibly_repeated_vars(SubTerm, VarSet,
+                        ContextPieces, MaybeVars),
                     (
                         MaybeVars = ok1(Vars),
                         list.map(term.coerce_var, Vars, ProgVars),

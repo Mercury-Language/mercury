@@ -1663,7 +1663,8 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
                 quote("all"), suffix(":")]
         ),
         VarsContextPieces = ContextPieces ++ cord.from_list(TailContextPieces),
-        parse_list_of_vars(VarSet, VarsContextPieces, VarsTerm, MaybeVars),
+        parse_possibly_repeated_vars(VarsTerm, VarSet, VarsContextPieces,
+            MaybeVars),
         (
             MaybeVars = error1(VarsSpecs),
             !:Specs = VarsSpecs ++ !.Specs

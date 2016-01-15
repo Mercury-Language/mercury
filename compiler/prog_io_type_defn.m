@@ -297,7 +297,8 @@ parse_maybe_exist_quant_constructor(ModuleName, VarSet, Term,
     ( if Term = term.functor(term.atom("some"), [VarsTerm, SubTerm], _) then
         ContextPieces = cord.from_list([words("in first argument of"),
             quote("some"), suffix(":")]),
-        parse_list_of_vars(VarSet, ContextPieces, VarsTerm, MaybeExistQVars),
+        parse_possibly_repeated_vars(VarsTerm, VarSet, ContextPieces,
+            MaybeExistQVars),
         (
             MaybeExistQVars = ok1(ExistQVars),
             list.map(term.coerce_var, ExistQVars, ExistQTVars),

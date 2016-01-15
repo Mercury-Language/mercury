@@ -268,12 +268,12 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
             varset.coerce(!.VarSet, GenericVarSet),
             VarsContextPieces = ContextPieces ++
                 cord.from_list(VarsTailPieces),
-            parse_quantifier_vars(QVarsTerm, GenericVarSet,
-                VarsContextPieces, MaybeStateVarsAndVars),
+            parse_vars_state_vars(QVarsTerm, GenericVarSet,
+                VarsContextPieces, MaybeVars),
             parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeSubGoal,
                 !VarSet, !Counter, !DCGVar),
             ( if
-                MaybeStateVarsAndVars = ok2(Vars0, StateVars0),
+                MaybeVars = ok1(plain_state_vars(Vars0, StateVars0)),
                 MaybeSubGoal = ok1(SubGoal)
             then
                 list.map(term.coerce_var, StateVars0, StateVars),
@@ -296,7 +296,7 @@ parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
                 ),
                 MaybeGoal = ok1(Goal)
             else
-                Specs = get_any_errors2(MaybeStateVarsAndVars) ++
+                Specs = get_any_errors1(MaybeVars) ++
                     get_any_errors1(MaybeSubGoal),
                 MaybeGoal = error1(Specs)
             )
@@ -619,25 +619,24 @@ parse_some_vars_dcg_goal(Term, ContextPieces, MaybeVarsGoal,
         VarsTailPieces = [lower_case_next_if_not_first,
             words("In first argument of"), quote("some"), suffix(":")],
         VarsContextPieces = ContextPieces ++ cord.from_list(VarsTailPieces),
-        parse_quantifier_vars(VarsTerm, GenericVarSet, VarsContextPieces,
+        parse_vars_state_vars(VarsTerm, GenericVarSet, VarsContextPieces,
             MaybeVars),
         GoalTerm = SubGoalTerm
     else
-        MaybeVars = ok2([], []),
+        MaybeVars = ok1(plain_state_vars([], [])),
         GoalTerm = Term
     ),
     parse_dcg_goal(GoalTerm, ContextPieces, MaybeGoal, !VarSet, !Counter,
         !DCGVar),
     ( if
-        MaybeVars = ok2(Vars0, StateVars0),
+        MaybeVars = ok1(plain_state_vars(Vars0, StateVars0)),
         MaybeGoal = ok1(Goal)
     then
         list.map(term.coerce_var, Vars0, Vars),
         list.map(term.coerce_var, StateVars0, StateVars),
         MaybeVarsGoal = ok3(Vars, StateVars, Goal)
     else
-        Specs = get_any_errors2(MaybeVars) ++
-            get_any_errors1(MaybeGoal),
+        Specs = get_any_errors1(MaybeVars) ++ get_any_errors1(MaybeGoal),
         MaybeVarsGoal = error3(Specs)
     ).
 
