@@ -3760,7 +3760,7 @@ so the inferred determinism for the body of @code{q/2} is @code{det}.
 The small amount of up-front work that Mercury requires
 is paid back in reduced debugging time.)
 Mercury's mode analysis knows that
-computations with determinism erroneous can never succeed,
+computations with determinism @code{erroneous} can never succeed,
 which is why it does not require the ``else'' part to generate
 a value for @code{B}.
 The introduction of the new variable @code{B0} is necessary
@@ -6795,7 +6795,7 @@ See @ref{Termination analysis} for more details.
 This attribute promises that the given predicate or function will not 
 make calls back to Mercury that may result in an exception being thrown.
 It is an error to apply this attribute to procedures that have determinism
-erroneous.  This attribute is ignored for code that is declared as not
+@code{erroneous}.  This attribute is ignored for code that is declared as not
 making calls back to Mercury via the @samp{will_not_call_mercury} attribute.
 Note: predicates or functions that have polymorphic arguments but
 do not explicitly throw an exception, via a call to @samp{exception.throw/1}
@@ -9818,10 +9818,10 @@ due to some outside requirement.
 One such situation is when a set of procedures are all possible values
 of the same higher-order variable,
 which requires them to have the same argument types, modes, and determinisms.
-If (say) most of the procedures are det
-but some are erroneous (that is, they always throws an exception),
-the procedures that are declared det
-but whose bodies have determinism erroneous
+If (say) most of the procedures are @code{det}
+but some are @code{erroneous} (that is, they always throws an exception),
+the procedures that are declared @code{det}
+but whose bodies have determinism @code{erroneous}
 will get a warning saying their determinism declaration could be tighter,
 unless the programmer specifies this pragma for them.
 
