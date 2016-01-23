@@ -579,7 +579,7 @@ type_name(Type) = TypeName :-
     % If formatting a function type, we close the parentheses around
     % the function's input parameters, e.g.
     %   ["TypeName1", ",", "TypeName2", ") = ", "ReturnTypeName"]
-    % It is the caller's reponsibility to add matching parentheses.
+    % It is the caller's responsibility to add matching parentheses.
     %
 :- pred type_arg_names(list(type_desc)::in, bool::in, list(string)::out)
     is det.

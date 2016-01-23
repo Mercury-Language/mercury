@@ -1249,7 +1249,7 @@ make_empty_array = A :-
     // do that. This could be done by examining the RTTI of the array
     // type and then using System.Type.GetType(""<mercury type>"") to
     // determine it. However constructing the <mercury type> string is
-    // a non-trival amount of work.
+    // a non-trivial amount of work.
     Array = null;
 ").
 

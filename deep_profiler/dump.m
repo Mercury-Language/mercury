@@ -86,8 +86,8 @@
     % dump_array_options will take a list of strings for the accumulating
     % dump options and produce a set if possible.
     %
-    % A deterministic version is avalible that will throw an exception if
-    % a string cannot be converted to a option.
+    % A deterministic version is available that will throw an exception if
+    % a string cannot be converted to an option.
     %
 :- pred dump_array_options(list(string)::in, set(dumpable_array)::out)
     is semidet.

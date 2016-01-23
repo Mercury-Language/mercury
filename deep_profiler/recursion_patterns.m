@@ -435,7 +435,7 @@ disj_recursion_data(Info, RevGoalPath, DisjNum, [Disj | Disjs],
             DisjSuccessProb),
         DisjFailureProb = not_probability(DisjSuccessProb),
 
-        % The code can branch here, either it tries the next disjuct, which we
+        % The code can branch here, either it tries the next disjunct, which we
         % represent as DisjsRecursionData, ...
         disj_recursion_data(Info, RevGoalPath, DisjNum + 1, Disjs,
             DisjsRecursionData0),
