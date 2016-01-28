@@ -277,15 +277,15 @@ install_cgi_progs: mdprof_cgi mdprof_dump mdprof_test \
 	# with the deep profiler, so we install them as well.
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mdprof_cgi$(EXT_FOR_EXE)` \
-		$(INSTALL_MERC_BIN_DIR)/mdprof_cgi
+		$(INSTALL_MERC_BIN_DIR)/mdprof_cgi$(EXT_FOR_EXE)
 	cp `vpath_find mdprof_test$(EXT_FOR_EXE)` \
-		$(INSTALL_MERC_BIN_DIR)/mdprof_test
+		$(INSTALL_MERC_BIN_DIR)/mdprof_test$(EXT_FOR_EXE)
 	cp `vpath_find mdprof_dump$(EXT_FOR_EXE)` \
-		$(INSTALL_MERC_BIN_DIR)/mdprof_dump
+		$(INSTALL_MERC_BIN_DIR)/mdprof_dump$(EXT_FOR_EXE)
 	cp `vpath_find mdprof_create_feedback$(EXT_FOR_EXE)` \
-		$(INSTALL_MERC_BIN_DIR)/mdprof_create_feedback
+		$(INSTALL_MERC_BIN_DIR)/mdprof_create_feedback$(EXT_FOR_EXE)
 	cp `vpath_find mdprof_report_feedback$(EXT_FOR_EXE)` \
-		$(INSTALL_MERC_BIN_DIR)/mdprof_report_feedback
+		$(INSTALL_MERC_BIN_DIR)/mdprof_report_feedback$(EXT_FOR_EXE)
 ifeq ($(findstring java,$(GRADE)),java)
 	cp `vpath_find mdprof_cgi.jar` $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mdprof_create_feedback.jar` $(INSTALL_MERC_BIN_DIR)
@@ -295,6 +295,9 @@ ifeq ($(findstring java,$(GRADE)),java)
 	cp `vpath_find mdprof_test.jar` $(INSTALL_MERC_BIN_DIR)
 endif
 
+#-----------------------------------------------------------------------------#
+
+.PHONY: uninstall
 uninstall:
 	# We try to uninstall mdprof_cgi, but failure to do so is not an
 	# error for two reasons: because we may simply lack permission to
@@ -303,6 +306,12 @@ uninstall:
 	# value of $(ENABLE_DEEP_PROFILER) to check for the latter wouldn't
 	# necessarily do any good, since its setting may have changed since
 	# the original install.)
-	-rm -f $(INSTALL_CGI_DIR)/mdprof_cgi
+	-rm -f $(INSTALL_CGI_DIR)/mdprof_cgi$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mdprof_cgi$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mdprof_test$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mdprof_dump$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mdprof_create_feedback$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mdprof_report_feedback$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mdprof_procrep$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#

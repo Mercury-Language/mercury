@@ -43,7 +43,7 @@ all:	mercury_profile $(TAGS_FILE_EXISTS)
 # Add some additional dependencies, so that Mmake knows to remake the
 # profiler if one of the libraries changes.
 
-ifeq ("$(filter il% csharp% java% erlang%,$(GRADE))","")
+ifeq ("$(filter csharp% java% erlang%,$(GRADE))","")
 mercury_profile: $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 mercury_profile: $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 # XXX Should also depend on $(BOEHM_GC_DIR)/libgc(_prof).$A, but only
@@ -117,5 +117,11 @@ install_profiler: mercury_profile
 ifeq ($(findstring java,$(GRADE)),java)
 	cp `vpath_find mercury_profile.jar` $(INSTALL_MERC_BIN_DIR)
 endif
+
+#-----------------------------------------------------------------------------#
+
+.PHONY: uninstall
+uninstall:
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mercury_profile$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#

@@ -362,7 +362,8 @@ install_mdb_doc: $(MDB_DOC) install_dirs
 # are removed by the top-level uninstall rule.
 .PHONY: uninstall
 uninstall:
-	-cd $(INSTALL_INFO_DIR); rm mercury*.info*
+	-cd $(INSTALL_INFO_DIR); rm -f mercury*.info*
+	-cd $(INSTALL_MAN_DIR)/man1; rm -f $(MANPAGE_PROGS:%=%.1)
 
 #-----------------------------------------------------------------------------#
 

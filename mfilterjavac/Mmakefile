@@ -149,3 +149,9 @@ install: mfilterjavac
 	cp `vpath_find $(INSTALL_PROGRAM)` $(INSTALL_MERC_BIN_DIR)/$(INSTALL_PROGRAM)
 
 #-----------------------------------------------------------------------------#
+
+.PHONY: uninstall
+uninstall:
+	-rm -f $(INSTALL_MERC_BIN_DIR)/$(INSTALL_PROGRAM)
+
+#-----------------------------------------------------------------------------#

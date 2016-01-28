@@ -274,3 +274,9 @@ install_compiler: mercury_compile install_dirs
 	cp `vpath_find $(INSTALL_PROGRAM)` $(INSTALL_MERC_BIN_DIR)
 
 #-----------------------------------------------------------------------------#
+
+.PHONY: uninstall
+uninstall:
+	-rm -f $(INSTALL_MERC_BIN_DIR)/$(INSTALL_PROGRAM)
+
+#-----------------------------------------------------------------------------#

@@ -781,10 +781,14 @@ touch_files:
 
 .PHONY: uninstall
 uninstall:
-	+cd scripts; $(SUBDIR_MMAKE) uninstall
+	+cd compiler; $(SUBDIR_MMAKE) uninstall
 	+cd deep_profiler; $(SUBDIR_MMAKE) uninstall
-	+cd util; $(SUBDIR_MMAKE) uninstall
 	+cd doc; $(SUBDIR_MMAKE) uninstall
+	+cd mfilterjavac; $(SUBDIR_MMAKE) uninstall
+	+cd profiler; $(SUBDIR_MMAKE) uninstall
+	+cd scripts; $(SUBDIR_MMAKE) uninstall
+	+cd slice; $(SUBDIR_MMAKE) uninstall
+	+cd util; $(SUBDIR_MMAKE) uninstall
 	-rm -r $(INSTALL_LIBDIR)
 
 #-----------------------------------------------------------------------------#

@@ -221,3 +221,13 @@ ifeq ($(findstring java,$(GRADE)),java)
 endif
 
 #-----------------------------------------------------------------------------#
+
+.PHONY: uninstall
+uninstall:
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mslice$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mdice$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mtc_union$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mcov$(EXT_FOR_EXE)
+	-rm -f $(INSTALL_MERC_BIN_DIR)/mtc_diff$(EXT_FOR_EXE)
+
+#-----------------------------------------------------------------------------#
