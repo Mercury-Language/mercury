@@ -82,7 +82,6 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.hlds_out_goal.
-:- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_rtti.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
@@ -95,6 +94,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.unparse.
 
 :- import_module assoc_list.
 :- import_module bool.

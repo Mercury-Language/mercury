@@ -56,6 +56,7 @@
 :- include_module parse_tree_out_term.
 :- include_module parse_tree_out_info.
 :- include_module prog_out.
+:- include_module unparse.
 
 % Utility data structures.
 :- include_module set_of_var.

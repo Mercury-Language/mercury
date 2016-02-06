@@ -152,7 +152,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.prog_io_type_name.
+:- import_module parse_tree.unparse.
 
 :- import_module bool.
 :- import_module char.

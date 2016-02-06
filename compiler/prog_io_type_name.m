@@ -37,8 +37,6 @@
 
 :- pred is_known_type_name(string::in) is semidet.
 
-:- pred unparse_type(mer_type::in, term::out) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -347,83 +345,6 @@ parse_types_acc([Term | Terms], VarSet, ContextPieces, !RevTypes, !Specs) :-
         !:Specs = TermSpecs ++ !.Specs
     ),
     parse_types_acc(Terms, VarSet, ContextPieces, !RevTypes, !Specs).
-
-%---------------------------------------------------------------------------%
-
-unparse_type(Type, Term) :-
-    Context = term.context_init,
-    (
-        Type = type_variable(TVar, _),
-        Var = term.coerce_var(TVar),
-        Term = term.variable(Var, Context)
-    ;
-        Type = defined_type(SymName, Args, _),
-        unparse_type_list(Args, ArgTerms),
-        unparse_qualified_term(SymName, ArgTerms, Term)
-    ;
-        Type = builtin_type(BuiltinType),
-        builtin_type_to_string(BuiltinType, Name),
-        Term = term.functor(term.atom(Name), [], Context)
-    ;
-        Type = higher_order_type(Args, MaybeRet, Purity, EvalMethod),
-        unparse_type_list(Args, ArgTerms),
-        (
-            MaybeRet = yes(Ret),
-            Term0 = term.functor(term.atom("func"), ArgTerms, Context),
-            maybe_add_lambda_eval_method(EvalMethod, Term0, Term1),
-            unparse_type(Ret, RetTerm),
-            Term2 = term.functor(term.atom("="), [Term1, RetTerm], Context)
-        ;
-            MaybeRet = no,
-            Term0 = term.functor(term.atom("pred"), ArgTerms, Context),
-            maybe_add_lambda_eval_method(EvalMethod, Term0, Term2)
-        ),
-        maybe_add_purity_annotation(Purity, Term2, Term)
-    ;
-        Type = tuple_type(Args, _),
-        unparse_type_list(Args, ArgTerms),
-        Term = term.functor(term.atom("{}"), ArgTerms, Context)
-    ;
-        Type = apply_n_type(TVar, Args, _),
-        Var = term.coerce_var(TVar),
-        unparse_type_list(Args, ArgTerms),
-        Term = term.functor(term.atom(""),
-            [term.variable(Var, Context) | ArgTerms], Context)
-    ;
-        Type = kinded_type(_, _),
-        unexpected($module, $pred, "kind annotation")
-    ).
-
-:- pred unparse_type_list(list(mer_type)::in, list(term)::out) is det.
-
-unparse_type_list(Types, Terms) :-
-    list.map(unparse_type, Types, Terms).
-
-:- pred unparse_qualified_term(sym_name::in, list(term)::in, term::out) is det.
-
-unparse_qualified_term(unqualified(Name), Args, Term) :-
-    Context = term.context_init,
-    Term = term.functor(term.atom(Name), Args, Context).
-unparse_qualified_term(qualified(Qualifier, Name), Args, Term) :-
-    Context = term.context_init,
-    unparse_qualified_term(Qualifier, [], QualTerm),
-    Term0 = term.functor(term.atom(Name), Args, Context),
-    Term = term.functor(term.atom("."), [QualTerm, Term0], Context).
-
-:- pred maybe_add_lambda_eval_method(lambda_eval_method::in, term::in,
-    term::out) is det.
-
-maybe_add_lambda_eval_method(lambda_normal, Term, Term).
-
-:- pred maybe_add_purity_annotation(purity::in, term::in, term::out) is det.
-
-maybe_add_purity_annotation(purity_pure, Term, Term).
-maybe_add_purity_annotation(purity_semipure, Term0, Term) :-
-    Context = term.context_init,
-    Term = term.functor(term.atom("semipure"), [Term0], Context).
-maybe_add_purity_annotation(purity_impure, Term0, Term) :-
-    Context = term.context_init,
-    Term = term.functor(term.atom("impure"), [Term0], Context).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_io_type_name.
