@@ -165,7 +165,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
     ;       io_query(imports)
             % To type interactive queries that perform io.
 
-    ;       mmc_options(options)
+    ;       mmc_options(options_string)
             % Options to compile queries with.
 
     ;       browse(string)
@@ -600,7 +600,7 @@ get_list_modules_to_import(DebuggerRequest, ListLength, ModulesList) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred get_mmc_options(debugger_request::in, options::out) is det.
+:- pred get_mmc_options(debugger_request::in, options_string::out) is det.
 :- pragma foreign_export("C", get_mmc_options(in, out),
     "ML_DI_get_mmc_options").
 

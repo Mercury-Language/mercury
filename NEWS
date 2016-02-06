@@ -320,6 +320,14 @@ Change to the Mercury debugger:
 * The "break" command can now auto-complete on the filename:linenumber pairs
   of events, provided the Mercury system can access the readline library.
 
+Changes to the Mercury debugger:
+
+* Interactive queries have been improved:
+    - Queries can use variable bindings from the current environment.
+    - Exceptions thrown from queries are properly handled.
+    - Non-canonical output bindings are now printed in solutions.
+    - Underscore variables are no longer printed in solutions.
+
 Changes to the extras distribution:
 
 * We have added support for Unicode and other enhancements to the lex and

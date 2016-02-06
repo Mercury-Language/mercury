@@ -1207,6 +1207,39 @@ MR_compare_slots_on_headvar_num(const void *p1, const void *p2)
 }
 
 void
+MR_trace_return_bindings(MR_Word *names_ptr, MR_Word *values_ptr)
+{
+    MR_Word                 names;
+    MR_Word                 values;
+    const MR_ValueDetails   *details;
+    MR_ConstString          name;
+    MR_Word                 value;
+    int                     i;
+
+    MR_TRACE_USE_HP(
+        names = MR_list_empty();
+        values = MR_list_empty();
+
+        if (MR_point.MR_point_problem == NULL) {
+            for (i = 0; i < MR_point.MR_point_var_count; i++) {
+                details = &MR_point.MR_point_vars[i];
+                if (details->MR_value_kind == MR_VALUE_PROG_VAR) {
+                    MR_make_aligned_string(name,
+                        details->MR_value_var.MR_var_fullname);
+                    MR_new_univ_on_hp(value, details->MR_value_type,
+                        details->MR_value_value);
+                    names = MR_string_list_cons(name, names);
+                    values = MR_univ_list_cons(value, values);
+                }
+            }
+        }
+    );
+
+    *names_ptr = names;
+    *values_ptr = values;
+}
+
+void
 MR_convert_goal_to_synthetic_term(const char **functor_ptr,
     MR_Word *arg_list_ptr,
     MR_bool *is_func_ptr)

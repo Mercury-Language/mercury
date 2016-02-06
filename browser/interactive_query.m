@@ -26,17 +26,29 @@
 
 :- import_module io.
 :- import_module list.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 
-:- pred query(query_type::in, imports::in, options::in,
-    io.input_stream::in, io.output_stream::in, io::di, io::uo) is det.
+    % query(QueryType, Imports, Options, Names, Values, MdbStdin, MdbStdout)
+    %
+    % Start the query loop for the given query type. Imports is the list of
+    % modules to import, Options is the string of additional options to pass
+    % to mmc for compiling the generated code, Names and Values are the
+    % corresponding lists of variable names and values in the current
+    % environment, and MdbStdin and MdbStdout are the input and output
+    % streams to use.
+    %
+:- pred query(query_type::in, imports::in, options_string::in,
+    list(string)::in, list(univ)::in,
+    io.input_stream::in, io.output_stream::in, io::di, io::uo) is cc_multi.
 
-    % query_external/7 is the same as query/7 but for the use
+    % query_external/9 is the same as query/9 but for the use
     % of the external debugger.
     %
-:- pred query_external(query_type::in, imports::in, options::in,
-    io.input_stream::in, io.output_stream::in, io::di, io::uo) is det.
+:- pred query_external(query_type::in, imports::in, options_string::in,
+    list(string)::in, list(univ)::in,
+    io.input_stream::in, io.output_stream::in, io::di, io::uo) is cc_multi.
 
 :- type query_type
     --->    normal_query
@@ -44,7 +56,7 @@
     ;       io_query.
 
 :- type imports == list(string).
-:- type options == string.
+:- type options_string == string.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -56,83 +68,103 @@
 :- import_module mdb.util.
 
 :- import_module bool.
+:- import_module exception.
+:- import_module map.
 :- import_module maybe.
 :- import_module parser.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
+:- import_module type_desc.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
-:- pragma foreign_export("C", query(in, in, in, in, in, di, uo), "ML_query").
+:- type query_env
+    --->    query_env(
+                qe_query_type       :: query_type,
+                qe_imports          :: imports,
+                qe_options          :: options_string,
+                qe_bindings         :: bindings,
+                qe_in               :: io.input_stream,
+                qe_out              :: io.output_stream
+            ).
 
-:- type prog
-    --->    prog(query_type, imports, term, varset).
+:- type bindings == map(string, univ).
 
-query(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, !IO) :-
+:- pragma foreign_export("C", query(in, in, in, in, in, in, in, di, uo),
+    "ML_query").
+
+query(QueryType, Imports, Options, Names, Values, MdbStdin, MdbStdout, !IO) :-
     % write_import_list(Imports),
-    util.trace_getline(query_prompt(QueryType), Result, MDB_Stdin, MDB_Stdout,
-        !IO),
+    map.from_corresponding_lists(Names, Values, Bindings),
+    Env = query_env(QueryType, Imports, Options, Bindings,
+        MdbStdin, MdbStdout),
+    query_2(Env, !IO).
+
+:- pred query_2(query_env::in, io::di, io::uo) is cc_multi.
+
+query_2(Env, !IO) :-
+    Prompt = query_prompt(Env ^ qe_query_type),
+    util.trace_getline(Prompt, Result, Env ^ qe_in, Env ^ qe_out, !IO),
     (
         Result = eof,
-        io.nl(MDB_Stdout, !IO)
+        io.nl(Env ^ qe_out, !IO)
     ;
         Result = error(Error),
         io.error_message(Error, Msg),
-        io.write_string(MDB_Stdout, Msg, !IO),
-        io.nl(MDB_Stdout, !IO),
-        query(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, !IO)
+        io.write_string(Env ^ qe_out, Msg, !IO),
+        io.nl(Env ^ qe_out, !IO),
+        query_2(Env, !IO)
     ;
         Result = ok(Line),
         parser.read_term_from_string("", Line, _, ReadTerm),
-        query_2(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout,
-            ReadTerm, !IO)
+        query_3(Env, ReadTerm, !IO)
     ).
 
-:- pred query_2(query_type::in, imports::in, options::in,
-    io.input_stream::in, io.output_stream::in, read_term(generic)::in,
-    io::di, io::uo) is det.
+:- pred query_3(query_env::in, read_term(generic)::in, io::di, io::uo)
+    is cc_multi.
 
-query_2(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, ReadTerm, !IO) :-
+query_3(Env, ReadTerm, !IO) :-
     (
         ReadTerm = eof,
-        io.nl(MDB_Stdout, !IO)
+        io.nl(Env ^ qe_out, !IO)
     ;
         ReadTerm = error(Msg, _Line),
-        io.write_string(MDB_Stdout, Msg, !IO),
-        io.nl(MDB_Stdout, !IO),
-        query(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, !IO)
+        io.write_string(Env ^ qe_out, Msg, !IO),
+        io.nl(Env ^ qe_out, !IO),
+        query_2(Env, !IO)
     ;
-        ReadTerm = term(VarSet, Term),
+        ReadTerm = term(Varset, Term),
         % io.write_string("Read term: "),
-        % term_io.write_term(Term, VarSet),
+        % term_io.write_term(Term, Varset),
         % io.write_string("\n"),
-        ( if
-            Term = term.functor(term.atom("quit"), [], _)
-        then
-            io.nl(MDB_Stdout, !IO)
-        else if
-            Term = term.functor(term.atom("options"),
-                [term.functor(term.string(NewOptions), [], _)], _)
-        then
-            io.format(MDB_Stdout, "Compilation options: %s\n",
-                [s(NewOptions)], !IO),
-            query(QueryType, Imports, NewOptions, MDB_Stdin, MDB_Stdout, !IO)
-        else if
-            term_to_list(Term, ModuleList)
-        then
-            list.append(Imports, ModuleList, NewImports),
-            write_import_list(MDB_Stdout, NewImports, !IO),
-            query(QueryType, NewImports, Options, MDB_Stdin, MDB_Stdout, !IO)
-        else
+        parse_query_command(Term, Cmd),
+        (
+            Cmd = qc_quit,
+            io.nl(Env ^ qe_out, !IO)
+        ;
+            Cmd = qc_options(NewOptions),
+            print(Env ^ qe_out, "Compilation options: ", !IO),
+            print(Env ^ qe_out, NewOptions, !IO),
+            io.nl(Env ^ qe_out, !IO),
+            Env1 = Env ^ qe_options := NewOptions,
+            query_2(Env1, !IO)
+        ;
+            Cmd = qc_imports(AddedImports),
+            Imports = (Env ^ qe_imports) ++ AddedImports,
+            Env1 = Env ^ qe_imports := Imports,
+            write_import_list(Env ^ qe_out, Imports, !IO),
+            query_2(Env1, !IO)
+        ;
+            Cmd = qc_goal,
             % The flush ensures that all output generated by the debugger
             % up to this point appears in the output stream before any messages
             % generated by the compilation of the query, which is done
             % by another process.
-            io.flush_output(MDB_Stdout, !IO),
-            run_query(Options, prog(QueryType, Imports, Term, VarSet), !IO),
-            query(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, !IO)
+            io.flush_output(Env ^ qe_out, !IO),
+            run_query(Env, Term, Varset, !IO),
+            query_2(Env, !IO)
         )
     ).
 
@@ -148,45 +180,51 @@ query_2(QueryType, Imports, Options, MDB_Stdin, MDB_Stdout, ReadTerm, !IO) :-
     ;       iq_error(string).
 
 :- pragma foreign_export("C",
-    query_external(in, in, in, in, in, di, uo),
+    query_external(in, in, in, in, in, in, in, di, uo),
     "ML_query_external").
 
-query_external(QueryType, Imports, Options, SocketIn, SocketOut, !IO) :-
-    io.set_input_stream(SocketIn, OldStdin, !IO),
+query_external(QueryType, Imports, Options, Names, Values, SocketIn, SocketOut,
+        !IO) :-
+    map.from_corresponding_lists(Names, Values, Bindings),
+    Env = query_env(QueryType, Imports, Options, Bindings,
+        SocketIn, SocketOut),
+    query_external_2(Env, !IO).
+
+:- pred query_external_2(query_env::in, io::di, io::uo) is cc_multi.
+
+query_external_2(Env, !IO) :-
+    io.set_input_stream(Env ^ qe_in, OldInputStream, !IO),
     term_io.read_term(Result, !IO),
-    io.set_input_stream(OldStdin, _, !IO),
+    io.set_input_stream(OldInputStream, _, !IO),
     (
         Result = eof,
-        send_term_to_socket(iq_eof, SocketOut, !IO)
+        send_term_to_socket(iq_eof, Env ^ qe_out, !IO)
     ;
         Result = error(ErrorMsg, _Line),
-        send_term_to_socket(iq_error(ErrorMsg), SocketOut, !IO),
-        query_external(QueryType, Imports, Options, SocketIn, SocketOut, !IO)
+        send_term_to_socket(iq_error(ErrorMsg), Env ^ qe_out, !IO),
+        query_external_2(Env, !IO)
     ;
-        Result = term(VarSet, Term),
-        ( if
-            Term = term.functor(term.atom("quit"), [], _)
-        then
-            send_term_to_socket(iq_quit, SocketOut, !IO)
-        else if
-            Term = term.functor(term.atom("options"),
-                [term.functor(term.string(NewOptions), [], _)], _)
-        then
-            send_term_to_socket(iq_ok, SocketOut, !IO),
-            query_external(QueryType, Imports, NewOptions, SocketIn, SocketOut,
-                !IO)
-        else if
-            term_to_list(Term, ModuleList)
-        then
-            list.append(Imports, ModuleList, NewImports),
-            send_term_to_socket(iq_imported(NewImports), SocketOut, !IO),
-            query_external(QueryType, NewImports, Options, SocketIn, SocketOut,
-                !IO)
-        else
-            run_query(Options, prog(QueryType, Imports, Term, VarSet), !IO),
-            send_term_to_socket(iq_ok, SocketOut, !IO),
-            query_external(QueryType, Imports, Options, SocketIn, SocketOut,
-                !IO)
+        Result = term(Varset, Term),
+        parse_query_command(Term, Cmd),
+        (
+            Cmd = qc_quit,
+            send_term_to_socket(iq_quit, Env ^ qe_out, !IO)
+        ;
+            Cmd = qc_options(NewOptions),
+            send_term_to_socket(iq_ok, Env ^ qe_out, !IO),
+            Env1 = Env ^ qe_options := NewOptions,
+            query_external_2(Env1, !IO)
+        ;
+            Cmd = qc_imports(AddedImports),
+            Imports = (Env ^ qe_imports) ++ AddedImports,
+            Env1 = Env ^ qe_imports := Imports,
+            send_term_to_socket(iq_imported(Imports), Env ^ qe_out, !IO),
+            query_external_2(Env1, !IO)
+        ;
+            Cmd = qc_goal,
+            run_query(Env, Term, Varset, !IO),
+            send_term_to_socket(iq_ok, Env ^ qe_out, !IO),
+            query_external_2(Env, !IO)
         )
     ).
 
@@ -204,6 +242,32 @@ query_prompt(normal_query) = "?- ".
 query_prompt(cc_query) = "?- ".
 query_prompt(io_query) = "run <-- ".
 
+:- type query_command
+    --->    qc_quit
+    ;       qc_options(string)
+    ;       qc_imports(imports)
+    ;       qc_goal.
+
+:- pred parse_query_command(term::in, query_command::out) is det.
+
+parse_query_command(Term, Cmd) :-
+    ( if
+        Term = term.functor(term.atom("quit"), [], _)
+    then
+        Cmd = qc_quit
+    else if
+        Term = term.functor(term.atom("options"), [Subterm], _),
+        Subterm = term.functor(term.string(Options), [], _)
+    then
+        Cmd = qc_options(Options)
+    else if
+        term_to_list(Term, Imports)
+    then
+        Cmd = qc_imports(Imports)
+    else
+        Cmd = qc_goal
+    ).
+
 :- pred term_to_list(term::in, list(string)::out) is semidet.
 
 term_to_list(term.functor(term.atom("[]"), [], _), []).
@@ -212,23 +276,25 @@ term_to_list(term.functor(term.atom("[|]"),
         [Module | Modules]) :-
     term_to_list(Rest, Modules).
 
-:- pred run_query(options::in, prog::in, io::di, io::uo) is det.
+:- pred run_query(query_env::in, term::in, varset::in, io::di, io::uo)
+    is cc_multi.
 
-run_query(Options, Program, !IO) :-
+run_query(Env, Goal, Varset, !IO) :-
     SourceFile = query_module_name ++ ".m",
     io.get_environment_var("MERCURY_OPTIONS", MaybeMercuryOptions, !IO),
     (
         MaybeMercuryOptions = yes(MercuryOptions),
         io.set_environment_var("MERCURY_OPTIONS", "", !IO),
+        make_program(Env, Goal, Varset, Program),
         write_prog_to_file(Program, SourceFile, !IO),
-        compile_file(Options, Succeeded, !IO),
+        compile_file(Env ^ qe_options, Succeeded, !IO),
         (
             Succeeded = yes,
-            dynamically_load_and_run(!IO)
+            dynamically_load_and_run(Program, !IO)
         ;
             Succeeded = no
         ),
-        cleanup_query(Options, !IO),
+        cleanup_query(Env ^ qe_options, !IO),
         io.set_environment_var("MERCURY_OPTIONS", MercuryOptions, !IO)
     ;
         MaybeMercuryOptions = no,
@@ -240,6 +306,87 @@ run_query(Options, Program, !IO) :-
 %
 % Print the program to a file.
 %
+% For normal queries we generate programs as follows, assuming input variables
+% A:int and B:float and output variables X, Y and Z. (The types of the latter
+% will be inferred.)
+%
+%   :- module mdb_query.
+%   :- interface.
+%
+%   :- import_module bool.
+%   :- import_module map.
+%   :- import_module univ.
+%
+%   :- pred run(map(string, univ)::in, map(string, univ)::out, bool::out)
+%       is nondet.
+%
+%   :- implementation.
+%
+%   run(!Bindings, Loaded) :-
+%       ( if
+%           univ.univ_to_type(!.Bindings ^ elem("A"), A),
+%           univ.univ_to_type(!.Bindings ^ elem("B"), B),
+%           true
+%       then
+%           mdb_query.query(inputs(A, B), X, Y, Z),
+%           map.set("X", univ.univ(X), !Bindings),
+%           map.set("Y", univ.univ(Y), !Bindings),
+%           map.set("Z", univ.univ(Z), !Bindings),
+%           Loaded = yes
+%       else
+%           Loaded = no
+%       ).
+%
+%   :- type inputs ---> inputs(int, float).
+%
+%   :- pragma source_file("<<stdin>>").
+%   #1
+%   ... user imports ...
+%   #1
+%   :- mode query(in, out, out, out) is nondet.
+%   #1
+%   query(inputs(A, B), X, Y, Z) :-
+%   #1
+%       ( ... user query term ... ).
+%
+% For cc queries we do the same, except that run and query have determinism
+% cc_nondet instead of nondet.
+%
+% For io queries, the io state is threaded through run and query, and the
+% latter is defined using a DCG-rule. The determinism is cc_multi.
+%
+
+:- type prog
+    --->    prog(
+                prog_query_type     :: query_type,
+                prog_imports        :: imports,
+                prog_bindings       :: bindings,
+                prog_inputs         :: list(string),
+                prog_outputs        :: list(string),
+                prog_goal           :: term,
+                prog_varset         :: varset
+            ).
+
+:- pred make_program(query_env::in, term::in, varset::in, prog::out) is det.
+
+make_program(Env, Goal, Varset, Program) :-
+    QueryType = Env ^ qe_query_type,
+    term.vars(Goal, Vars0),
+    list.remove_dups(Vars0, Vars1),
+    list.filter_map(varset.search_name(Varset), Vars1, Vars),
+    list.filter(map.contains(Env ^ qe_bindings), Vars, Inputs, Outputs0),
+    (
+        ( QueryType = normal_query
+        ; QueryType = cc_query
+        ),
+        list.filter((pred(S::in) is semidet :- not string.index(S, 0, '_')),
+            Outputs0, Outputs)
+    ;
+        QueryType = io_query,
+        Outputs = []
+    ),
+    Program = prog(QueryType, Env ^ qe_imports, Env ^ qe_bindings,
+        Inputs, Outputs, Goal, Varset).
 
 :- pred write_prog_to_file(prog::in, string::in, io::di, io::uo) is det.
 
@@ -275,136 +422,122 @@ open_output_file(File, Stream, !IO) :-
 
 :- pred write_prog_to_stream(prog::in, io::di, io::uo) is det.
 
-write_prog_to_stream(prog(QueryType, Imports, Term, VarSet), !IO) :-
-    io.write_string("
-        :- module mdb_query.
-        :- interface.
-        :- import_module io.
-        :- pred run(io.state::di, io.state::uo) is cc_multi.
-        :- implementation.
-        ", !IO),
+write_prog_to_stream(Prog, !IO) :-
+    Prog = prog(QueryType, Imports, Bindings, Inputs, Outputs, Goal, Varset),
+    io.write_strings([
+        ":- module mdb_query.\n",
+        ":- interface.\n",
+        "\n",
+        ":- import_module bool.\n",
+        query_type_extra_imports(QueryType),
+        ":- import_module map.\n",
+        ":- import_module univ.\n",
+        "\n",
+        ":- pred run(map(string, univ)::in, map(string, univ)::out,\n",
+        "   bool::out", query_type_extra_decls(QueryType),
+        ") is ", query_type_detism(QueryType), ".\n",
+        "\n",
+        ":- implementation.\n",
+        "\n",
+        "run(!Bindings, Loaded", query_type_extra_args(QueryType), ") :-\n",
+        "   ( if\n"
+    ], !IO),
+    list.foldl(write_cast_goal, Inputs, !IO),
+    io.write_strings([
+        "       true\n",
+        "   then\n",
+        "       ", query_module_name, ".query(inputs"
+    ], !IO),
+    write_args(Inputs, !IO),
+    list.foldl(write_comma_var, Outputs, !IO),
+    io.write_strings([query_type_extra_args(QueryType), "),\n"], !IO),
+    list.foldl(write_set_goal, Outputs, !IO),
+    io.write_strings([
+        "       Loaded = yes\n",
+        "   else\n",
+        "       Loaded = no\n",
+        "   ).\n",
+        "\n",
+        ":- type inputs ---> inputs"
+    ], !IO),
+    write_arg_types(Bindings, Inputs, !IO),
+    io.write_strings([".\n",
+        "\n",
+        ":- pragma source_file(""<stdin>"").\n",
+        "#1\n"
+    ], !IO),
     io.output_stream(Out, !IO),
-    write_import_list(Out, ["solutions" | Imports], !IO),
-    io.write_string("
-            :- pragma source_file(""<stdin>"").
-            run -->
-    ", !IO),
-    (
-        QueryType = normal_query,
-        term.vars(Term, Vars0),
-        list.remove_dups(Vars0, Vars),
+    write_import_list(Out, Imports, !IO),
+    io.write_strings([
+        "#1\n",
+        ":- mode query(in"
+    ], !IO),
+    list.foldl((pred(_::in, di, uo) is det --> io.write_string(", out")),
+        Outputs, !IO),
+    io.write_strings([
+        query_type_extra_modes(QueryType),
+        ") is ", query_type_detism(QueryType), ".\n",
+        "#1\n",
+        "query(inputs"
+    ], !IO),
+    write_args(Inputs, !IO),
+    list.foldl(write_comma_var, Outputs, !IO),
+    io.write_strings([") ", query_type_rule(QueryType)], !IO),
+    write_line_directive(!IO),
+    io.write_string("   ( ", !IO),
+    term_io.write_term(Varset, Goal, !IO),
+    io.write_string(" ).\n", !IO).
 
-%   For a normal query, we generate code that looks like this:
-%
-%       run -->
-%           unsorted_aggregate(
-%               (pred(res(A,B,C)::out) is nondet :-
-%                   query(A,B,C)),
-%               (pred(res(A,B,C)::in, di, uo) is cc_multi -->
-%                   print("A = "), print_cc(A), print(","),
-%                   print("B = "), print_cc(B), print(","),
-%                   print("C = "), print_cc(C), print(","),
-%                   print("true ;\n"))
-%           ),
-%           print(""fail.\n""),
-%           print(""No (more) solutions.\n"").
-%
-%       :- type res(A, B, C) ---> res(A, B, C).
-%
-%       % :- mode query(out, out, out) is nondet.
-%       query(res(A, B, C)) :-
-%               ...
+:- func query_type_detism(query_type) = string.
 
-        io.write_string("
-            unsorted_aggregate(
-                (pred(res", !IO),
-        write_args(Vars, VarSet, !IO),
-        io.write_string("::out) is nondet :-
-            query", !IO),
-        write_args(Vars, VarSet, !IO),
-        io.write_string("),", !IO),
-        io.write_string("(pred(res", !IO),
-        write_args(Vars, VarSet, !IO),
-        io.write_string("::in, di, uo) is cc_multi -->
-            ", !IO),
-        list.foldl(write_code_to_print_one_var(VarSet), Vars, !IO),
-        io.write_string("
-                    io.write_string(""true ;\n""))
-                ),
-                io.write_string(""fail.\n""),
-                io.write_string(""No (more) solutions.\n"").
+query_type_detism(normal_query)         = "nondet".
+query_type_detism(cc_query)             = "cc_nondet".
+query_type_detism(io_query)             = "cc_multi".
 
-            :- type res", !IO),
-        write_args(Vars, VarSet, !IO),
-        io.write_string(" ---> res", !IO),
-        write_args(Vars, VarSet, !IO),
-        io.write_string(".\n", !IO),
+:- func query_type_extra_imports(query_type) = string.
 
-%       io.write_string("
-%           :- mode query"),
-%       ( if Vars \= [] then
-%           list.length(Vars, NumVars),
-%           list.duplicate(NumVars, "out", Modes),
-%           io.write_string("(", !IO),
-%           io.write_list(Modes, ", ", io.write_string, !IO),
-%           io.write_string(")", !IO)
-%       else
-%           true
-%       ),
-%       io.write_string(" is nondet.", !IO),
+query_type_extra_imports(normal_query)  = "".
+query_type_extra_imports(cc_query)      = "".
+query_type_extra_imports(io_query)      = ":- import_module io.\n".
 
-        io.write_string("
-            query", !IO),
-        write_args(Vars, VarSet, !IO),
-        io.write_string(" :- ", !IO),
-        write_line_directive(!IO),
-        term_io.write_term(VarSet, Term, !IO),
-        io.write_string(" .\n", !IO)
-    ;
-        QueryType = cc_query,
-        %
-        % For a cc_query, we generate code that looks like this:
-        %
-        %   run --> if { query(A, B, C) } then
-        %           print("A = "), print(A), print(", "),
-        %           print("B = "), print(B), print(", "),
-        %           print("C = "), print(C), print(", "),
-        %           print("Yes.\n"))
-        %       else
-        %           print("No solution.\n").
-        %
-        %   query(A, B, C) :- ...
-        %
+:- func query_type_extra_decls(query_type) = string.
 
-        term.vars(Term, Vars0),
-        list.remove_dups(Vars0, Vars),
-        io.write_string("(if { query", !IO),
-        write_args(Vars, VarSet, !IO),
-        io.write_string(" } then\n", !IO),
-        list.foldl(write_code_to_print_one_var(VarSet), Vars, !IO),
-        io.write_string("
-                    io.write_string(""true.\\n"")
-                else
-                    io.write_string(""No solution.\\n"")
-                ).
-        ", !IO),
-        io.write_string("query", !IO),
-        write_args(Vars, VarSet, !IO),
-        io.write_string(" :-\n", !IO),
-        write_line_directive(!IO),
-        term_io.write_term(VarSet, Term, !IO),
-        io.write_string(" .\n", !IO)
-    ;
-        QueryType = io_query,
-        %
-        % For an io_query, we just spit the code straight out:
-        %
-        %   run --> ...
-        %
-        write_line_directive(!IO),
-        term_io.write_term(VarSet, Term, !IO),
-        io.write_string(" .\n", !IO)
-    ).
+query_type_extra_decls(normal_query)    = "".
+query_type_extra_decls(cc_query)        = "".
+query_type_extra_decls(io_query)        = ", io::di, io::uo".
+
+:- func query_type_extra_modes(query_type) = string.
+
+query_type_extra_modes(normal_query)    = "".
+query_type_extra_modes(cc_query)        = "".
+query_type_extra_modes(io_query)        = ", di, uo".
+
+:- func query_type_extra_args(query_type) = string.
+
+query_type_extra_args(normal_query)     = "".
+query_type_extra_args(cc_query)         = "".
+query_type_extra_args(io_query)         = ", !IO".
+
+:- func query_type_rule(query_type) = string.
+
+query_type_rule(normal_query)           = ":-".
+query_type_rule(cc_query)               = ":-".
+query_type_rule(io_query)               = "-->".
+
+:- pred write_cast_goal(string::in, io::di, io::uo) is det.
+
+write_cast_goal(Var, !IO) :-
+    io.write_strings([
+        "       univ.univ_to_type(!.Bindings ^ elem(""", Var, """), ",
+        Var, "),\n"
+    ], !IO).
+
+:- pred write_set_goal(string::in, io::di, io::uo) is det.
+
+write_set_goal(Var, !IO) :-
+    io.write_strings([
+        "       map.set(""", Var, """, univ.univ(", Var, "), !Bindings),\n"
+    ], !IO).
 
 :- pred write_line_directive(io::di, io::uo) is det.
 
@@ -414,46 +547,61 @@ write_line_directive(!IO) :-
     io.write_int(LineNum, !IO),
     io.nl(!IO).
 
-:- pred write_code_to_print_one_var(varset::in, var::in,
-    io::di, io::uo) is det.
+:- pred write_arg_types(bindings::in, list(string)::in, io::di, io::uo) is det.
 
-write_code_to_print_one_var(VarSet, Var, !IO) :-
-    io.write_string("io.write_string(""", !IO),
-    term_io.write_variable(Var, VarSet, !IO),
-    io.write_string(" = ""), io.write_cc(", !IO),
-    term_io.write_variable(Var, VarSet, !IO),
-    io.write_string("), io.write_string("", ""), ", !IO).
-
-:- pred write_args(list(var)::in, varset::in, io::di, io::uo) is det.
-
-write_args(Vars, VarSet, !IO) :-
+write_arg_types(Bindings, Vars, !IO) :-
     (
         Vars = [_ | _],
         io.write_string("(", !IO),
-        io.write_list(Vars, ", ", write_one_var(VarSet), !IO),
+        io.write_list(Vars, ", ", write_var_type(Bindings), !IO),
         io.write_string(")", !IO)
     ;
         Vars = []
     ).
 
-:- pred write_one_var(varset::in, var::in, io::di, io::uo) is det.
+:- pred write_var_type(bindings::in, string::in, io::di, io::uo)
+    is det.
 
-write_one_var(VarSet, Var, !IO) :-
-    term_io.write_variable(Var, VarSet, !IO).
+write_var_type(Bindings, Var, !IO) :-
+    map.lookup(Bindings, Var, Univ),
+    io.write_string(type_name(type_of(univ_value(Univ))), !IO).
+
+:- pred write_args(list(string)::in, io::di, io::uo) is det.
+
+write_args(Vars, !IO) :-
+    (
+        Vars = [_ | _],
+        io.write_string("(", !IO),
+        io.write_list(Vars, ", ", io.write_string, !IO),
+        io.write_string(")", !IO)
+    ;
+        Vars = []
+    ).
+
+:- pred write_comma_var(string::in, io::di, io::uo) is det.
+
+write_comma_var(Var, !IO) :-
+    io.write_string(", ", !IO),
+    io.write_string(Var, !IO).
 
 :- pred write_import_list(io.output_stream::in, imports::in,
     io::di, io::uo) is det.
 
 write_import_list(Out, Imports, !IO) :-
-    io.write_string(Out, ":- import_module ", !IO),
-    io.write_list(Out, Imports, ", ", term_io.quote_atom, !IO),
-    io.write_string(Out, ".\n", !IO).
+    (
+        Imports = []
+    ;
+        Imports = [_ | _],
+        io.write_string(Out, ":- import_module ", !IO),
+        io.write_list(Out, Imports, ", ", term_io.quote_atom, !IO),
+        io.write_string(Out, ".\n", !IO)
+    ).
 
 %-----------------------------------------------------------------------------%
 
     % Invoke the Mercury compile to compile the file to a shared object.
     %
-:- pred compile_file(options::in, bool::out, io::di, io::uo) is det.
+:- pred compile_file(options_string::in, bool::out, io::di, io::uo) is det.
 
 compile_file(Options, Succeeded, !IO) :-
     % We use the following options:
@@ -489,20 +637,27 @@ compile_file(Options, Succeeded, !IO) :-
         Command),
     invoke_system_command(Command, Succeeded, !IO).
 
-:- pred cleanup_query(options::in, io::di, io::uo) is det.
+:- pred cleanup_query(string::in, io::di, io::uo) is det.
 
 cleanup_query(_Options) -->
-    io.remove_file(query_module_name ++ ".m", _),
-    io.remove_file(query_module_name ++ ".d", _),
-    io.remove_file("Mercury/ds/" ++ query_module_name ++ ".d", _),
-    io.remove_file(query_module_name ++ ".c", _),
-    io.remove_file("Mercury/cs/" ++ query_module_name ++ ".c", _),
-    io.remove_file(query_module_name ++ ".c_date", _),
-    io.remove_file("Mercury/c_dates/" ++ query_module_name ++ ".c_date", _),
-    % XXX on some systems the object file extension won't be .o.
-    io.remove_file(query_module_name ++ ".o", _),
-    io.remove_file("Mercury/os/" ++ query_module_name ++ ".o", _),
-    io.remove_file("lib" ++ query_module_name ++ shlib_extension, _).
+    cleanup_file("", ".m"),
+    cleanup_file("", ".mh"),
+    cleanup_file("", ".d"),
+    cleanup_file("Mercury/ds/", ".d"),
+    cleanup_file("", ".c"),
+    cleanup_file("Mercury/cs/", ".c"),
+    cleanup_file("", ".c_date"),
+    cleanup_file("Mercury/c_dates/", ".c_date"),
+    cleanup_file("", ".o"),
+    cleanup_file("Mercury/os/", ".o"),
+    cleanup_file("", ".pic_o"),
+    cleanup_file("Mercury/os/", ".pic_o"),
+    cleanup_file("lib", ".so").
+
+:- pred cleanup_file(string::in, string::in, io::di, io::uo) is det.
+
+cleanup_file(Prefix, Suffix, !IO) :-
+    io.remove_file(Prefix ++ query_module_name ++ Suffix, _, !IO).
 
     % `grade_option' returns MR_GRADE_OPT, which is defined in
     % runtime/mercury_grade.h. This is a string containing the grade
@@ -566,36 +721,31 @@ query_module_name = "mdb_query".
 
     % Dynamically load the shared object and execute the query.
     %
-:- pred dynamically_load_and_run(io::di, io::uo) is det.
+:- pred dynamically_load_and_run(prog::in, io::di, io::uo) is cc_multi.
 
-dynamically_load_and_run(!IO) :-
+dynamically_load_and_run(Program, !IO) :-
     % Load in the object code for the module `query' from
     % the file `libmdb_query.{so,dylib}'.
-    dl.open("./lib" ++ query_module_name ++ shlib_extension, lazy, local,
-        MaybeHandle, !IO),
+    Filename = "./lib" ++ query_module_name ++ shlib_extension,
+    dl.open(Filename, lazy, local, MaybeHandle, !IO),
     (
         MaybeHandle = dl_error(Msg),
         io.format("dlopen failed: %s\n", [s(Msg)], !IO)
     ;
         MaybeHandle = dl_ok(Handle),
-        % Look up the address of the first mode (mode number 0)
-        % of the predicate run/2 in the module query.
-        QueryProc = mercury_proc(predicate, unqualified(query_module_name),
-            "run", 2, 0),
-        dl.mercury_sym(Handle, QueryProc, MaybeQuery, !IO),
+        QueryType = Program ^ prog_query_type,
+        Bindings = Program ^ prog_bindings,
+        Outputs = Program ^ prog_outputs,
         (
-            MaybeQuery = dl_error(Msg),
-            io.format("dlsym failed: %s\n", [s(Msg)], !IO)
+            QueryType = normal_query,
+            link_and_run_normal(Bindings, Outputs, Handle, !IO)
         ;
-            MaybeQuery = dl_ok(QueryPred0),
-            % Cast the higher-order term that we obtained to the correct
-            % higher-order inst.
-            QueryPred = inst_cast(QueryPred0),
-
-            % Call the procedure whose address we just obtained.
-            QueryPred(!IO)
+            QueryType = cc_query,
+            link_and_run_cc(Bindings, Outputs, Handle, !IO)
+        ;
+            QueryType = io_query,
+            link_and_run_io(Bindings, Outputs, Handle, !IO)
         ),
-
         % Unload the object code in the libmdb_query.{so,dylib} file.
         dl.close(Handle, Result, !IO),
         (
@@ -606,28 +756,212 @@ dynamically_load_and_run(!IO) :-
         )
     ).
 
+:- pred link_and_run_normal(bindings::in, list(string)::in, handle::in,
+    io::di, io::uo) is cc_multi.
+
+link_and_run_normal(Bindings, Outputs, Handle, !IO) :-
+    get_query_closure(3, Handle, MaybeQuery, !IO),
+    (
+        MaybeQuery = dl_error(Msg),
+        io.write_strings(["dlsym failed: ", Msg, "\n"], !IO)
+    ;
+        MaybeQuery = dl_ok(QueryPred),
+        exception.try_all(call_run_normal(QueryPred, Bindings),
+            MaybeExcp, Solutions),
+        list.foldl(write_solution(Outputs, "true ;"), Solutions, !IO),
+        (
+            MaybeExcp = yes(Excp),
+            report_exception(univ_value(Excp), !IO)
+        ;
+            MaybeExcp = no,
+            io.write_string("fail.\n", !IO)
+        ),
+        io.write_string("No (more) solutions.\n", !IO)
+    ).
+
+:- type run_normal_pred == pred(bindings, bindings, bool).
+:- inst run_normal_pred == (pred(in, out, out) is nondet).
+
+:- pred call_run_normal(run_normal_pred::in, bindings::in, solution::out)
+    is nondet.
+
+call_run_normal(QueryPred0, Bindings0, Solution) :-
+    QueryPred = inst_cast_normal(QueryPred0),
+    QueryPred(Bindings0, Bindings, Loaded),
+    (
+        Loaded = no,
+        Solution = load_failure
+    ;
+        Loaded = yes,
+        Solution = solution(Bindings)
+    ).
+
+:- pred link_and_run_cc(bindings::in, list(string)::in, handle::in,
+    io::di, io::uo) is cc_multi.
+
+link_and_run_cc(Bindings, Outputs, Handle, !IO) :-
+    get_query_closure(3, Handle, MaybeQuery, !IO),
+    (
+        MaybeQuery = dl_error(Msg),
+        io.write_strings(["dlsym failed: ", Msg, "\n"], !IO)
+    ;
+        MaybeQuery = dl_ok(QueryPred),
+        exception.try(call_run_cc(QueryPred, Bindings), Result),
+        (
+            Result = succeeded(Solution),
+            write_solution(Outputs, "true.", Solution, !IO)
+        ;
+            Result = failed,
+            io.write_string("No solution.\n", !IO)
+        ;
+            Result = exception(Excp),
+            report_exception(univ_value(Excp), !IO)
+        )
+    ).
+
+:- type run_cc_pred == pred(bindings, bindings, bool).
+:- inst run_cc_pred == (pred(in, out, out) is cc_nondet).
+
+:- pred call_run_cc(run_cc_pred::in, bindings::in, solution::out) is cc_nondet.
+
+call_run_cc(QueryPred0, Bindings0, Solution) :-
+    QueryPred = inst_cast_cc(QueryPred0),
+    QueryPred(Bindings0, Bindings, Loaded),
+    (
+        Loaded = no,
+        Solution = load_failure
+    ;
+        Loaded = yes,
+        Solution = solution(Bindings)
+    ).
+
+:- pred link_and_run_io(bindings::in, list(string)::in, handle::in,
+    io::di, io::uo) is cc_multi.
+
+link_and_run_io(Bindings, _Outputs, Handle, !IO) :-
+    get_query_closure(5, Handle, MaybeQuery, !IO),
+    (
+        MaybeQuery = dl_error(Msg),
+        io.write_strings(["dlsym failed: ", Msg, "\n"], !IO)
+    ;
+        MaybeQuery = dl_ok(QueryPred),
+        exception.try_io(call_run_io(QueryPred, Bindings), Result, !IO),
+        (
+            Result = succeeded(_)
+        ;
+            Result = exception(Excp),
+            report_exception(univ_value(Excp), !IO)
+        )
+    ).
+
+:- type run_io_pred == pred(bindings, bindings, bool, io, io).
+:- inst run_io_pred == (pred(in, out, out, di, uo) is cc_multi).
+
+:- pred call_run_io(run_io_pred::in, bindings::in, solution::out,
+    io::di, io::uo) is cc_multi.
+
+call_run_io(QueryPred0, Bindings0, Solution, !IO) :-
+    QueryPred = inst_cast_io(QueryPred0),
+    QueryPred(Bindings0, Bindings, Loaded, !IO),
+    (
+        Loaded = no,
+        Solution = load_failure
+    ;
+        Loaded = yes,
+        Solution = solution(Bindings)
+    ).
+
+:- pred get_query_closure(int::in, handle::in, dl_result(T)::out,
+    io::di, io::uo) is det.
+
+get_query_closure(Arity, Handle, Result, !IO) :-
+    %
+    % Look up the address of the first mode (mode number 0)
+    % of the predicate run with the given arity in the mdb_query module.
+    %
+    QueryProc = mercury_proc(predicate, unqualified(query_module_name),
+        "run", Arity, 0),
+    dl.mercury_sym(Handle, QueryProc, Result, !IO).
+
+:- type solution
+    --->    load_failure
+    ;       solution(bindings).
+
+:- pred write_solution(list(string)::in, string::in, solution::in,
+    io::di, io::uo) is cc_multi.
+
+write_solution(Outputs, End, Solution, !IO) :-
+    (
+        Solution = load_failure,
+        io.write_string("Error loading some variables.\n", !IO)
+    ;
+        Solution = solution(Bindings),
+        list.foldl(write_binding(Bindings), Outputs, !IO),
+        io.write_string(End, !IO),
+        io.write_string("\n", !IO)
+    ).
+
+:- pred write_binding(bindings::in, string::in, io::di, io::uo) is cc_multi.
+
+write_binding(Bindings, Output, !IO) :-
+    map.lookup(Bindings, Output, Univ),
+    io.write_string(Output, !IO),
+    io.write_string(" = ", !IO),
+    io.write_cc(univ_value(Univ), !IO),
+    io.write_string(", ", !IO).
+
+:- pred report_exception(T::in, io::di, io::uo) is cc_multi.
+
+report_exception(Excp, !IO) :-
+    io.write_string("*** caught exception: ", !IO),
+    io.write_cc(Excp, !IO),
+    io.nl(!IO).
+
+%-----------------------------------------------------------------------------%
 %
-% dl.mercury_sym returns a higher-order term with inst `ground'.
-% We need to cast it to the right higher-order inst, namely
-% `pred(di, uo) is det' before we can actually call it.
-% The function inst_cast/1 defined below does that.
+% dl.mercury_sym returns a higher-order term with inst `ground'.  We need to
+% cast it to the right higher-order inst before we can actually call it.  The
+% functions inst_cast_*/1 defined below do that.
 %
 
-:- type io_pred == pred(io, io).
-:- inst io_pred == (pred(di, uo) is det).
-
-:- func inst_cast(io_pred) = io_pred.
-:- mode inst_cast(in) = out(io_pred) is det.
+:- func inst_cast_normal(run_normal_pred) = run_normal_pred.
+:- mode inst_cast_normal(in) = out(run_normal_pred) is det.
 
 :- pragma foreign_proc("C",
-    inst_cast(X::in) = (Y::out(io_pred)),
+    inst_cast_normal(X::in) = (Y::out(run_normal_pred)),
     [promise_pure, will_not_call_mercury, thread_safe],
 "
     Y = X
 ").
 
-inst_cast(_) = _ :-
-    private_builtin.sorry("inst_cast").
+inst_cast_normal(_) = _ :-
+    private_builtin.sorry("inst_cast_normal").
+
+:- func inst_cast_cc(run_cc_pred) = run_cc_pred.
+:- mode inst_cast_cc(in) = out(run_cc_pred) is det.
+
+:- pragma foreign_proc("C",
+    inst_cast_cc(X::in) = (Y::out(run_cc_pred)),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Y = X
+").
+
+inst_cast_cc(_) = _ :-
+    private_builtin.sorry("inst_cast_cc").
+
+:- func inst_cast_io(run_io_pred) = run_io_pred.
+:- mode inst_cast_io(in) = out(run_io_pred) is det.
+
+:- pragma foreign_proc("C",
+    inst_cast_io(X::in) = (Y::out(run_io_pred)),
+    [promise_pure, will_not_call_mercury, thread_safe],
+"
+    Y = X
+").
+
+inst_cast_io(_) = _ :-
+    private_builtin.sorry("inst_cast_io").
 
 %-----------------------------------------------------------------------------%
 

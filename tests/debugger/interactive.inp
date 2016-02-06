@@ -1,3 +1,4 @@
+step 4
 query interactive list
 append(X, Y, ['a', 'b', 'c']).
 qperm([1,2,3], List).
@@ -5,12 +6,16 @@ qperm([1,2,3], List), List = [2 | _].
 qperm([1,2,3], List), List = [4 | _].
 qperm([1,2,"foo"], List).
 qperm(List, [1]).
+queen(Data, Solution).
+det_take(10, Data, Start).
 quit.
 cc_query interactive list
 append(X, Y, ['a', 'b', 'c']).
 qperm([1,2,3], List).
 qperm([1,2,3], List), List = [2 | _].
 qperm([1,2,3], List), List = [4 | _].
+queen(Data, Solution).
+det_take(10, Data, Start).
 quit.
 io_query interactive list
 main.
@@ -18,5 +23,7 @@ if { append(X, Y, ['a', 'b', 'c']) } then print("X = "), print(X), print(", Y = 
 if { qperm([1,2,3], List) } then print(List), nl else [].
 if { qperm([1,2,3], List), List = [2 | _] } then print(List), nl else { true }.
 if { qperm([1,2,3], List), List = [4 | _] } then print(List), nl else print("No solution, as expected."), io__nl.
+if { queen(Data, Solution) } then print(Solution), nl else { true }.
+{ det_take(10, Data, Start) }, print(Start), nl.
 quit.
 continue -n -S

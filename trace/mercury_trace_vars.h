@@ -347,6 +347,13 @@ extern  void        MR_convert_goal_to_synthetic_term(const char **functor_ptr,
                         MR_Word *arg_list_ptr, MR_bool *is_func_ptr);
 
 /*
+** Return lists of names and univ values in the current environment.
+*/
+
+extern  void        MR_trace_return_bindings(MR_Word *names_ptr,
+                        MR_Word *values_ptr);
+
+/*
 ** A Readline completer for variable names.
 */
 

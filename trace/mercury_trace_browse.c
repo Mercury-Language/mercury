@@ -366,6 +366,8 @@ MR_trace_query(MR_QueryType type, const char *options, int num_imports,
 {
     MR_ConstString  options_on_heap;
     MR_Word         imports_list;
+    MR_Word         names_list;
+    MR_Word         values_list;
     MercuryFile     mdb_in;
     MercuryFile     mdb_out;
     int             i;
@@ -389,9 +391,11 @@ MR_trace_query(MR_QueryType type, const char *options, int num_imports,
         }
     );
 
+    MR_trace_return_bindings(&names_list, &values_list);
+
     MR_TRACE_CALL_MERCURY(
         ML_query(type, imports_list, (MR_String) options_on_heap,
-            MR_wrap_input_stream(&mdb_in),
+            names_list, values_list, MR_wrap_input_stream(&mdb_in),
             MR_wrap_output_stream(&mdb_out));
     );
 }
@@ -402,8 +406,13 @@ void
 MR_trace_query_external(MR_QueryType type, MR_String options, int num_imports,
     MR_Word imports_list)
 {
+    MR_Word         names_list;
+    MR_Word         values_list;
+
+    MR_trace_return_bindings(&names_list, &values_list);
+
     MR_TRACE_CALL_MERCURY(
-        ML_query_external(type, imports_list, options,
+        ML_query_external(type, imports_list, options, names_list, values_list,
             MR_wrap_input_stream(&MR_debugger_socket_in),
             MR_wrap_output_stream(&MR_debugger_socket_out));
     );

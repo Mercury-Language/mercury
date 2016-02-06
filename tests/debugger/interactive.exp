@@ -1,11 +1,12 @@
-       1:      1  1 CALL pred interactive.main/2-0 (cc_multi) interactive.m:23
+       1:      1  1 CALL pred interactive.main/2-0 (cc_multi) interactive.m:27
 mdb> echo on
 Command echo enabled.
+mdb> step 4
+       5:      3  2 CALL pred interactive.queen/2-0 (nondet) interactive.m:48 (interactive.m:28)
 mdb> query interactive list
 ?- append(X, Y, ['a', 'b', 'c']).
-<stdin>:026: Inferred :- pred query(list.list(character),
-<stdin>:026:   list.list(character)).
-<stdin>:026: Inferred :- mode query(out, out) is multi.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(character),
+<stdin>:001:   list.list(character)).
 X = [], Y = ['a', 'b', 'c'], true ;
 X = ['a'], Y = ['b', 'c'], true ;
 X = ['a', 'b'], Y = ['c'], true ;
@@ -13,8 +14,7 @@ X = ['a', 'b', 'c'], Y = [], true ;
 fail.
 No (more) solutions.
 ?- qperm([1,2,3], List).
-<stdin>:026: Inferred :- pred query(list.list(int)).
-<stdin>:026: Inferred :- mode query(out) is nondet.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
 List = [1, 2, 3], true ;
 List = [1, 3, 2], true ;
 List = [2, 1, 3], true ;
@@ -24,39 +24,17 @@ List = [3, 2, 1], true ;
 fail.
 No (more) solutions.
 ?- qperm([1,2,3], List), List = [2 | _].
-<stdin>:001: In clause for predicate `mdb_query.query'/2:
-<stdin>:001:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:013: In clause for predicate `mdb_query.run'/2:
-<stdin>:013:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:014: In clause for predicate `mdb_query.run'/2:
-<stdin>:014:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:015: In clause for predicate `mdb_query.run'/2:
-<stdin>:015:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:026: In clause for predicate `mdb_query.query'/2:
-<stdin>:026:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:026: Inferred :- pred query(list.list(int), list.list(int)).
-<stdin>:026: Inferred :- mode query(out, out) is nondet.
-List = [2, 1, 3], _2 = [1, 3], true ;
-List = [2, 3, 1], _2 = [3, 1], true ;
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
+List = [2, 1, 3], true ;
+List = [2, 3, 1], true ;
 fail.
 No (more) solutions.
 ?- qperm([1,2,3], List), List = [4 | _].
-<stdin>:001: In clause for predicate `mdb_query.query'/2:
-<stdin>:001:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:013: In clause for predicate `mdb_query.run'/2:
-<stdin>:013:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:014: In clause for predicate `mdb_query.run'/2:
-<stdin>:014:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:015: In clause for predicate `mdb_query.run'/2:
-<stdin>:015:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:026: In clause for predicate `mdb_query.query'/2:
-<stdin>:026:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:026: Inferred :- pred query(list.list(int), list.list(int)).
-<stdin>:026: Inferred :- mode query(out, out) is nondet.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
 fail.
 No (more) solutions.
 ?- qperm([1,2,"foo"], List).
-<stdin>:001: In clause for predicate `query'/1:
+<stdin>:001: In clause for predicate `query'/2:
 <stdin>:001:   in argument 1 of call to predicate `qperm'/2:
 <stdin>:001:   in list element #2:
 <stdin>:001:   type error in unification of argument
@@ -66,68 +44,76 @@ No (more) solutions.
 For more information, recompile with `-E'.
 Compilation error(s) occurred.
 ?- qperm(List, [1]).
-<stdin>:014: In clause for `run(di, uo)':
-<stdin>:014:   in call to predicate `mdb_query.query'/1:
-<stdin>:014:   mode error: argument `List' has the following inst:
-<stdin>:014:     free
-<stdin>:014:   which does not match any of the valid modes for the callee,
-<stdin>:014:   because of the following error.
-<stdin>:026: In clause for `query(out(not_reached))':
-<stdin>:026:   in argument 1 of call to predicate `interactive.qperm'/2:
-<stdin>:026:   mode error: variable `HeadVar__2' has instantiatedness `free',
-<stdin>:026:   expected instantiatedness was `ground'.
-<stdin>:026: Inferred :- pred query(list.list(int)).
-For more information, recompile with `-E'.
+<stdin>:001: In clause for `query(in, out)':
+<stdin>:001:   in argument 1 of call to predicate `interactive.qperm'/2:
+<stdin>:001:   mode error: variable `List' has instantiatedness `free',
+<stdin>:001:   expected instantiatedness was `ground'.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
 Compilation error(s) occurred.
+?- queen(Data, Solution).
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
+Solution = [1, 3, 5, 2, 4], true ;
+Solution = [1, 4, 2, 5, 3], true ;
+Solution = [2, 4, 1, 3, 5], true ;
+Solution = [2, 5, 3, 1, 4], true ;
+Solution = [3, 1, 4, 2, 5], true ;
+Solution = [3, 5, 2, 4, 1], true ;
+Solution = [4, 1, 3, 5, 2], true ;
+Solution = [4, 2, 5, 3, 1], true ;
+Solution = [5, 2, 4, 1, 3], true ;
+Solution = [5, 3, 1, 4, 2], true ;
+fail.
+No (more) solutions.
+?- det_take(10, Data, Start).
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
+*** caught exception: software_error("list.m: predicate `list.det_take\'/3: Unexpected: not enough elements")
+No (more) solutions.
 ?- quit.
 
 mdb> cc_query interactive list
 ?- append(X, Y, ['a', 'b', 'c']).
-<stdin>:017: Inferred :- pred query(list.list(character),
-<stdin>:017:   list.list(character)).
-<stdin>:017: Inferred :- mode query(out, out) is multi.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(character),
+<stdin>:001:   list.list(character)).
 X = [], Y = ['a', 'b', 'c'], true.
 ?- qperm([1,2,3], List).
-<stdin>:017: Inferred :- pred query(list.list(int)).
-<stdin>:017: Inferred :- mode query(out) is nondet.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
 List = [1, 2, 3], true.
 ?- qperm([1,2,3], List), List = [2 | _].
-<stdin>:001: In clause for predicate `mdb_query.query'/2:
-<stdin>:001:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:011: In clause for predicate `mdb_query.run'/2:
-<stdin>:011:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:012: In clause for predicate `mdb_query.run'/2:
-<stdin>:012:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:017: In clause for predicate `mdb_query.query'/2:
-<stdin>:017:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:017: Inferred :- pred query(list.list(int), list.list(int)).
-<stdin>:017: Inferred :- mode query(out, out) is nondet.
-List = [2, 1, 3], _2 = [1, 3], true.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
+List = [2, 1, 3], true.
 ?- qperm([1,2,3], List), List = [4 | _].
-<stdin>:001: In clause for predicate `mdb_query.query'/2:
-<stdin>:001:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:011: In clause for predicate `mdb_query.run'/2:
-<stdin>:011:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:012: In clause for predicate `mdb_query.run'/2:
-<stdin>:012:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:017: In clause for predicate `mdb_query.query'/2:
-<stdin>:017:   warning: variable `_2' occurs more than once in this scope.
-<stdin>:017: Inferred :- pred query(list.list(int), list.list(int)).
-<stdin>:017: Inferred :- mode query(out, out) is nondet.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
 No solution.
+?- queen(Data, Solution).
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
+Solution = [1, 3, 5, 2, 4], true.
+?- det_take(10, Data, Start).
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, list.list(int)).
+*** caught exception: software_error("list.m: predicate `list.det_take\'/3: Unexpected: not enough elements")
 ?- quit.
 
 mdb> io_query interactive list
 run <-- main.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, io.state, io.state).
 [1, 3, 5, 2, 4]
 run <-- if { append(X, Y, ['a', 'b', 'c']) } then print("X = "), print(X), print(", Y = "), print(Y), nl else print("No solution\n").
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, io.state, io.state).
 X = [], Y = ['a', 'b', 'c']
 run <-- if { qperm([1,2,3], List) } then print(List), nl else [].
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, io.state, io.state).
 [1, 2, 3]
 run <-- if { qperm([1,2,3], List), List = [2 | _] } then print(List), nl else { true }.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, io.state, io.state).
 [2, 1, 3]
 run <-- if { qperm([1,2,3], List), List = [4 | _] } then print(List), nl else print("No solution, as expected."), io__nl.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, io.state, io.state).
 No solution, as expected.
+run <-- if { queen(Data, Solution) } then print(Solution), nl else { true }.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, io.state, io.state).
+[1, 3, 5, 2, 4]
+run <-- { det_take(10, Data, Start) }, print(Start), nl.
+<stdin>:001: Inferred :- pred query(mdb_query.inputs, io.state, io.state).
+*** caught exception: software_error("list.m: predicate `list.det_take\'/3: Unexpected: not enough elements")
 run <-- quit.
 
 mdb> continue -n -S

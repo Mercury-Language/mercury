@@ -13,6 +13,10 @@
 :- mode main(di, uo) is cc_multi.
 
     % exported for use with interactive queries in the debugger
+:- pred queen(list(int), list(int)).
+:- mode queen(in, out) is nondet.
+
+    % exported for use with interactive queries in the debugger
 :- pred qperm(list(T), list(T)).
 :- mode qperm(in, out) is nondet.
 
@@ -29,9 +33,6 @@ main -->
 
 :- pred data(list(int)).
 :- mode data(out) is det.
-
-:- pred queen(list(int), list(int)).
-:- mode queen(in, out) is nondet.
 
 :- pred qdelete(T, list(T), list(T)).
 :- mode qdelete(out, in, out) is nondet.

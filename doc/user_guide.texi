@@ -2581,9 +2581,13 @@ this finds only one solution to the specified goal.
 For all other goals, you can use plain @samp{query}, which
 finds all the solutions to the goal.
 @sp 1
+Goals can refer to variables in the current environment,
+which will be treated as inputs to the query.
+Any variables in the goal that do not exist in the current environment,
+and that do not start with an underscore, will be treated as outputs.
 For @samp{query} and @samp{cc_query}, the debugger will print
-out all the variables in the goal using @samp{io.write}.
-The goal must bind all of its variables to ground terms,
+the bindings of output variables in the goal using @samp{io.write_cc}.
+The goal must bind all of its output variables to ground terms,
 otherwise you will get a mode error.
 @sp 1
 The current implementation works by compiling the queries on-the-fly
