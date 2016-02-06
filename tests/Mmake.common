@@ -103,7 +103,7 @@ $(TESTS_DIR)/Mmake.params: ;
 # For some test cases, there is more than one valid output.
 # We try matching the output with the `.exp' file, and if that doesn't succeed,
 # and there are `.exp2', `.exp3', `.exp4' or `.exp5' files, then we try
-# matching against those too. If none succeed, we putthe shortest of the diffs
+# matching against those too. If none succeed, we put the shortest of the diffs
 # into the `.res' file.
 
 %.res: %.exp %.out
