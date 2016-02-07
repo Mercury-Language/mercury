@@ -63,7 +63,6 @@
 
 % MLDS->Java back-end
 :- include_module mlds_to_java.
-:- include_module java_util.
 
 % MLDS->C# back-end.
 :- include_module mlds_to_cs.

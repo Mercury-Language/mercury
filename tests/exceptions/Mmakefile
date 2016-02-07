@@ -59,13 +59,15 @@ include Mercury.options
 # test_uncaught_exception is *supposed* to return an error exit status.
 # We also need to pipe the output through sed to avoid hard-coding
 # dependencies on particular line numbers in the standard library source code.
+# We also filter out the stack trace in the java grade in order to avoid
+# hard-coding dependencies on the Java runtime / generated code.
 test_uncaught_exception.out: test_uncaught_exception
 	if ./$< > $@.tmp 2>&1; then \
 		grep . $@.tmp; \
 		exit 1; \
 	else \
 		sed -e '/pred exception/s/exception.m:[0-9]*/exception.m:NNNN/g' \
-			< $@.tmp > $@ ; \
+			< $@.tmp | grep -v "jmercury\." > $@ ; \
 		rm -f $@.tmp; \
 	fi
 

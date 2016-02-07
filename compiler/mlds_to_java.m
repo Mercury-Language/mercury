@@ -98,7 +98,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module ml_backend.java_util.
 :- import_module ml_backend.ml_code_util.  % for ml_gen_local_var_decl_flags.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
@@ -4906,11 +4905,25 @@ java_builtin_type(Type, "int", "java.lang.Integer", "intValue") :-
     % means there's no tag).
     %
 output_std_unop(Info, UnaryOp, Expr, !IO) :-
-    ( if UnaryOp = tag then
+    (
+        UnaryOp = tag,
         io.write_string("/* tag */  0", !IO)
-    else
-        java_unary_prefix_op(UnaryOp, UnaryOpString),
-        io.write_string(UnaryOpString, !IO),
+    ;
+        ( UnaryOp = mktag,     UnaryOpStr = "/* mktag */ "
+        ; UnaryOp = unmktag,   UnaryOpStr = "/* unmktag */ "
+        ; UnaryOp = strip_tag, UnaryOpStr = "/* strip_tag */ "
+        ; UnaryOp = mkbody,    UnaryOpStr = "/* mkbody */ "
+        ; UnaryOp = unmkbody,   UnaryOpStr = "/* unmkbody */ "
+        ; UnaryOp = bitwise_complement, UnaryOpStr = "~"
+        ; UnaryOp = logical_not, UnaryOpStr = "!"
+        ; UnaryOp = hash_string,  UnaryOpStr = "mercury.String.hash_1_f_0"
+        ; UnaryOp = hash_string2, UnaryOpStr = "mercury.String.hash2_1_f_0"
+        ; UnaryOp = hash_string3, UnaryOpStr = "mercury.String.hash3_1_f_0"
+        ; UnaryOp = hash_string4, UnaryOpStr = "mercury.String.hash4_1_f_0"
+        ; UnaryOp = hash_string5, UnaryOpStr = "mercury.String.hash5_1_f_0"
+        ; UnaryOp = hash_string6, UnaryOpStr = "mercury.String.hash6_1_f_0"
+        ),
+        io.write_string(UnaryOpStr, !IO),
         io.write_string("(", !IO),
         output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
@@ -4920,55 +4933,102 @@ output_std_unop(Info, UnaryOp, Expr, !IO) :-
     mlds_rval::in, io::di, io::uo) is det.
 
 output_binop(Info, Op, X, Y, !IO) :-
-    % XXX This should be a single complete switch on Op.
-    ( if Op = array_index(_Type) then
+    (
+        Op = array_index(_Type),
         output_bracketed_rval(Info, X, !IO),
         io.write_string("[", !IO),
         output_rval(Info, Y, !IO),
         io.write_string("]", !IO)
-    else if java_string_compare_op(Op, OpStr) then
-        ( if OpStr = "==" then
-            output_rval(Info, X, !IO),
-            io.write_string(".equals(", !IO),
-            output_rval(Info, Y, !IO),
-            io.write_string(")", !IO)
-        else
-            io.write_string("(", !IO),
-            output_rval(Info, X, !IO),
-            io.write_string(".compareTo(", !IO),
-            output_rval(Info, Y, !IO),
-            io.write_string(") ", !IO),
-            io.write_string(OpStr, !IO),
-            io.write_string(" 0)", !IO)
-        )
-    else if Op = str_cmp then
+    ;
+        Op = str_eq,
+        output_rval(Info, X, !IO),
+        io.write_string(".equals(", !IO),
+        output_rval(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        ( Op = str_ne, OpStr = "!="
+        ; Op = str_lt, OpStr = "<"
+        ; Op = str_gt, OpStr = ">"
+        ; Op = str_le, OpStr = "<="
+        ; Op = str_ge, OpStr = ">="
+        ),
+        io.write_string("(", !IO),
+        output_rval(Info, X, !IO),
+        io.write_string(".compareTo(", !IO),
+        output_rval(Info, Y, !IO),
+        io.write_string(") ", !IO),
+        io.write_string(OpStr, !IO),
+        io.write_string(" 0)", !IO)
+    ;
+        Op = str_cmp,
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(".compareTo(", !IO),
         output_rval(Info, Y, !IO),
         io.write_string(")) ", !IO)
-    else if Op = pointer_equal_conservative then
+    ;
+        Op = pointer_equal_conservative,
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(" == ", !IO),
         output_rval(Info, Y, !IO),
         io.write_string(") ", !IO)
-    else if rval_is_enum_object(X) then
-        io.write_string("(", !IO),
-        output_rval(Info, X, !IO),
-        io.write_string(".MR_value ", !IO),
-        output_binary_op(Op, !IO),
-        io.write_string(" ", !IO),
-        output_rval(Info, Y, !IO),
-        io.write_string(".MR_value)", !IO)
-    else
-        io.write_string("(", !IO),
-        output_rval(Info, X, !IO),
-        io.write_string(" ", !IO),
-        output_binary_op(Op, !IO),
-        io.write_string(" ", !IO),
-        output_rval(Info, Y, !IO),
-        io.write_string(")", !IO)
+    ;
+        % XXX Should we abort for some of these?
+        ( Op = int_add
+        ; Op = int_sub
+        ; Op = int_mul
+        ; Op = int_div
+        ; Op = int_mod
+        ; Op = unchecked_left_shift
+        ; Op = unchecked_right_shift
+        ; Op = bitwise_and
+        ; Op = bitwise_or
+        ; Op = bitwise_xor
+        ; Op = logical_and
+        ; Op = logical_or
+        ; Op = eq
+        ; Op = ne
+        ; Op = body
+        ; Op = string_unsafe_index_code_unit
+        ; Op = offset_str_eq(_)
+        ; Op = int_lt
+        ; Op = int_gt
+        ; Op = int_le
+        ; Op = int_ge
+        ; Op = unsigned_le
+        ; Op = float_plus
+        ; Op = float_minus
+        ; Op = float_times
+        ; Op = float_divide
+        ; Op = float_eq
+        ; Op = float_ne
+        ; Op = float_lt
+        ; Op = float_gt
+        ; Op = float_le
+        ; Op = float_ge
+        ; Op = float_word_bits
+        ; Op = float_from_dword
+        ; Op = compound_eq
+        ; Op = compound_lt
+        ),
+        ( if rval_is_enum_object(X) then
+            io.write_string("(", !IO),
+            output_rval(Info, X, !IO),
+            io.write_string(".MR_value ", !IO),
+            output_binary_op(Op, !IO),
+            io.write_string(" ", !IO),
+            output_rval(Info, Y, !IO),
+            io.write_string(".MR_value)", !IO)
+        else
+            io.write_string("(", !IO),
+            output_rval(Info, X, !IO),
+            io.write_string(" ", !IO),
+            output_binary_op(Op, !IO),
+            io.write_string(" ", !IO),
+            output_rval(Info, Y, !IO),
+            io.write_string(")", !IO)
+        )
     ).
 
     % Output an Rval and if the Rval is an enumeration object append the string
@@ -4996,14 +5056,59 @@ output_rval_maybe_with_enum(Info, Rval, !IO) :-
 :- pred output_binary_op(binary_op::in, io::di, io::uo) is det.
 
 output_binary_op(Op, !IO) :-
-    % XXX why are these separated into three predicates?
-    ( if java_binary_infix_op(Op, OpStr) then
+    (
+        ( Op = int_add, OpStr = "+"
+        ; Op = int_sub, OpStr = "-"
+        ; Op = int_mul, OpStr = "*"
+        ; Op = int_div, OpStr = "/"
+        ; Op = int_mod, OpStr = "%"
+        ; Op = unchecked_left_shift, OpStr = "<<"
+        ; Op = unchecked_right_shift, OpStr = ">>"
+        ; Op = bitwise_and, OpStr = "&"
+        ; Op = bitwise_or, OpStr = "|"
+        ; Op = bitwise_xor, OpStr = "^"
+        ; Op = logical_and, OpStr = "&&"
+        ; Op = logical_or, OpStr = "||"
+        ; Op = eq, OpStr = "=="
+        ; Op = ne, OpStr = "!="
+        ; Op = int_lt, OpStr = "<"
+        ; Op = int_gt, OpStr = ">"
+        ; Op = int_le, OpStr = "<="
+        ; Op = int_ge, OpStr = ">="
+
+
+        ; Op = float_eq, OpStr = "=="
+        ; Op = float_ne, OpStr = "!="
+        ; Op = float_le, OpStr = "<="
+        ; Op = float_ge, OpStr = ">="
+        ; Op = float_lt, OpStr = "<"
+        ; Op = float_gt, OpStr = ">"
+
+        ; Op = float_plus, OpStr = "+"
+        ; Op = float_minus, OpStr = "-"
+        ; Op = float_times, OpStr = "*"
+        ; Op = float_divide, OpStr = "/"
+        ),
         io.write_string(OpStr, !IO)
-    else if java_float_compare_op(Op, OpStr) then
-        io.write_string(OpStr, !IO)
-    else if java_float_op(Op, OpStr) then
-        io.write_string(OpStr, !IO)
-    else
+    ;
+        ( Op = array_index(_)
+        ; Op = body
+        ; Op = float_from_dword
+        ; Op = float_word_bits
+        ; Op = offset_str_eq(_)
+        ; Op = str_cmp
+        ; Op = str_eq
+        ; Op = str_ge
+        ; Op = str_gt
+        ; Op = str_le
+        ; Op = str_lt
+        ; Op = str_ne
+        ; Op = string_unsafe_index_code_unit
+        ; Op = pointer_equal_conservative
+        ; Op = unsigned_le
+        ; Op = compound_eq
+        ; Op = compound_lt
+        ),
         unexpected($module, $pred, "invalid binary operator")
     ).
 
@@ -5321,7 +5426,7 @@ init_java_out_info(ModuleInfo, SourceFileName, AddrOfMap) = Info :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, auto_comments, AutoComments),
     globals.lookup_bool_option(Globals, line_numbers, LineNumbers),
-    globals.lookup_bool_option(Globals, line_numbers_around_foreign_code,   
+    globals.lookup_bool_option(Globals, line_numbers_around_foreign_code,
         ForeignLineNumbers),
     module_info_get_name(ModuleInfo, ModuleName),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),

@@ -21,12 +21,40 @@
     ;
 ").
 
+:- pragma foreign_proc("Java",
+    imp,
+    [will_not_call_mercury],
+"
+    ;
+").
+
+:- pragma foreign_proc("C#",
+    imp,
+    [will_not_call_mercury],
+"
+    ;
+").
+
 :- semipure pred semi is semidet.
 :- pragma foreign_proc("C",
     semi,
     [promise_semipure, will_not_call_mercury],
 "
     SUCCESS_INDICATOR = 0;
+").
+
+:- pragma foreign_proc("Java",
+    semi,
+    [promise_semipure, will_not_call_mercury],
+"
+    SUCCESS_INDICATOR = false;
+").
+
+:- pragma foreign_proc("C#",
+    semi,
+    [promise_semipure, will_not_call_mercury],
+"
+    SUCCESS_INDICATOR = false;
 ").
 
 :- pred in(foo).
@@ -42,6 +70,22 @@ in(a).
     SUCCESS_INDICATOR = 0;
 ").
 
+:- pragma foreign_proc("Java",
+    semi(X::in),
+    [will_not_call_mercury, promise_semipure],
+"
+    /* X */
+    SUCCESS_INDICATOR = false;
+").
+
+:- pragma foreign_proc("C#",
+    semi(X::in),
+    [will_not_call_mercury, promise_semipure],
+"
+    /* X */
+    SUCCESS_INDICATOR = false;
+").
+
 :- impure pred imp1(foo).
 :- mode imp1(in) is semidet.
 :- pragma foreign_proc("C",
@@ -49,6 +93,20 @@ in(a).
     [will_not_call_mercury],
 "
     SUCCESS_INDICATOR = 0;
+").
+
+:- pragma foreign_proc("Java",
+    imp1(_X::in),
+    [will_not_call_mercury],
+"
+    SUCCESS_INDICATOR = false;
+").
+
+:- pragma foreign_proc("C#",
+    imp1(_X::in),
+    [will_not_call_mercury],
+"
+    SUCCESS_INDICATOR = false;
 ").
 
 %----------------------------------------------------------------

@@ -64,13 +64,10 @@ endif
 #     warn_return  (Erlang doesn't have return statements).
 #
 ifeq "$(filter erlang%,$(GRADE))" ""
-    NON_ERLANG_PROGS = \
-	warn_return
-else
-    NON_ERLANG_PROGS =
+    ERRORCHECK_PROGS += warn_return
 endif
 
-PROGS = $(COMPILE_PROGS) $(ERRORCHECK_PROGS) $(NON_ERLANG_PROGS) up_to_date
+PROGS = $(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
 
 TESTS = $(sort $(PROGS))
 include $(TESTS_DIR)/Mmake.common

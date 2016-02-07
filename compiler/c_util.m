@@ -13,8 +13,6 @@
 % emitting C code.  Some of these routines are also useful with other languages
 % whose syntax is similar to C.
 %
-% NOTE: changes to this module may require changes to be made to java_util.m.
-%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.c_util.

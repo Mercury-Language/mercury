@@ -62,7 +62,6 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- use_module ml_backend.java_util.
 :- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
@@ -2707,7 +2706,7 @@ output_statements(Info, Indent, FuncInfo, [Statement | Statements],
         )
     else
         % Don't output any more statements from the current list since
-        % the preceeding statement cannot complete.
+        % the preceding statement cannot complete.
         ExitMethods = StmtExitMethods
     ).
 
@@ -3573,12 +3572,25 @@ csharp_builtin_type(Type, "int") :-
     % `tag', which always returns zero (a tag of zero means there's no tag).
     %
 output_std_unop(Info, UnaryOp, Expr, !IO) :-
-    ( if UnaryOp = tag then
+    (
+        UnaryOp = tag ,
         io.write_string("/* tag */  0", !IO)
-    else
-        % XXX C# is not Java
-        java_util.java_unary_prefix_op(UnaryOp, UnaryOpString),
-        io.write_string(UnaryOpString, !IO),
+    ;
+        ( UnaryOp = mktag,     UnaryOpStr = "/* mktag */ "
+        ; UnaryOp = unmktag,   UnaryOpStr = "/* unmktag */ "
+        ; UnaryOp = strip_tag, UnaryOpStr = "/* strip_tag */ "
+        ; UnaryOp = mkbody,    UnaryOpStr = "/* mkbody */ "
+        ; UnaryOp = unmkbody,   UnaryOpStr = "/* unmkbody */ "
+        ; UnaryOp = bitwise_complement, UnaryOpStr = "~"
+        ; UnaryOp = logical_not, UnaryOpStr = "!"
+        ; UnaryOp = hash_string,  UnaryOpStr = "mercury.String.hash_1_f_0"
+        ; UnaryOp = hash_string2, UnaryOpStr = "mercury.String.hash2_1_f_0"
+        ; UnaryOp = hash_string3, UnaryOpStr = "mercury.String.hash3_1_f_0"
+        ; UnaryOp = hash_string4, UnaryOpStr = "mercury.String.hash4_1_f_0"
+        ; UnaryOp = hash_string5, UnaryOpStr = "mercury.String.hash5_1_f_0"
+        ; UnaryOp = hash_string6, UnaryOpStr = "mercury.String.hash6_1_f_0"
+        ),
+        io.write_string(UnaryOpStr, !IO),
         io.write_string("(", !IO),
         output_rval(Info, Expr, !IO),
         io.write_string(")", !IO)
@@ -3588,41 +3600,85 @@ output_std_unop(Info, UnaryOp, Expr, !IO) :-
     mlds_rval::in, io::di, io::uo) is det.
 
 output_binop(Info, Op, X, Y, !IO) :-
-    % XXX This should be a single complete switch on Op.
-    ( if Op = array_index(_Type) then
+    (
+        Op = array_index(_Type),
         output_bracketed_rval(Info, X, !IO),
         io.write_string("[", !IO),
         output_rval(Info, Y, !IO),
         io.write_string("]", !IO)
-    % XXX C# is not Java
-    else if java_util.java_string_compare_op(Op, OpStr) then
-        ( if OpStr = "==" then
-            output_rval(Info, X, !IO),
-            io.write_string(".Equals(", !IO),
-            output_rval(Info, Y, !IO),
-            io.write_string(")", !IO)
-        else
-            io.write_string("(", !IO),
-            output_rval(Info, X, !IO),
-            io.write_string(".CompareOrdinal(", !IO),
-            output_rval(Info, Y, !IO),
-            io.write_string(") ", !IO),
-            io.write_string(OpStr, !IO),
-            io.write_string(" 0)", !IO)
-        )
-    else if Op = str_cmp then
+    ;
+        Op = str_eq,
+        output_rval(Info, X, !IO),
+        io.write_string(".Equals(", !IO),
+        output_rval(Info, Y, !IO),
+        io.write_string(")", !IO)
+    ;
+        ( Op = str_ne, OpStr = "!="
+        ; Op = str_lt, OpStr = "<"
+        ; Op = str_gt, OpStr = ">"
+        ; Op = str_le, OpStr = "<="
+        ; Op = str_ge, OpStr = ">="
+        ),
+        io.write_string("(", !IO),
+        output_rval(Info, X, !IO),
+        io.write_string(".CompareOrdinal(", !IO),
+        output_rval(Info, Y, !IO),
+        io.write_string(") ", !IO),
+        io.write_string(OpStr, !IO),
+        io.write_string(" 0)", !IO)
+    ;
+        Op = str_cmp,
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(".CompareOrdinal(", !IO),
         output_rval(Info, Y, !IO),
         io.write_string("))", !IO)
-    else if Op = pointer_equal_conservative then
+    ;
+        Op = pointer_equal_conservative,
         io.write_string("System.Object.ReferenceEquals(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(", ", !IO),
         output_rval(Info, Y, !IO),
         io.write_string(")", !IO)
-    else
+    ;
+        % XXX Should we abort for some of these?
+        ( Op = int_add
+        ; Op = int_sub
+        ; Op = int_mul
+        ; Op = int_div
+        ; Op = int_mod
+        ; Op = unchecked_left_shift
+        ; Op = unchecked_right_shift
+        ; Op = bitwise_and
+        ; Op = bitwise_or
+        ; Op = bitwise_xor
+        ; Op = logical_and
+        ; Op = logical_or
+        ; Op = eq
+        ; Op = ne
+        ; Op = body
+        ; Op = string_unsafe_index_code_unit
+        ; Op = offset_str_eq(_)
+        ; Op = int_lt
+        ; Op = int_gt
+        ; Op = int_le
+        ; Op = int_ge
+        ; Op = unsigned_le
+        ; Op = float_plus
+        ; Op = float_minus
+        ; Op = float_times
+        ; Op = float_divide
+        ; Op = float_eq
+        ; Op = float_ne
+        ; Op = float_lt
+        ; Op = float_gt
+        ; Op = float_le
+        ; Op = float_ge
+        ; Op = float_word_bits
+        ; Op = float_from_dword
+        ; Op = compound_eq
+        ; Op = compound_lt
+        ),
         io.write_string("(", !IO),
         output_rval(Info, X, !IO),
         io.write_string(" ", !IO),
@@ -3635,15 +3691,59 @@ output_binop(Info, Op, X, Y, !IO) :-
 :- pred output_binary_op(binary_op::in, io::di, io::uo) is det.
 
 output_binary_op(Op, !IO) :-
-    % XXX why are these separated into three predicates?
-    % XXX C# is not Java
-    ( if java_util.java_binary_infix_op(Op, OpStr) then
+    (
+        ( Op = int_add, OpStr = "+"
+        ; Op = int_sub, OpStr = "-"
+        ; Op = int_mul, OpStr = "*"
+        ; Op = int_div, OpStr = "/"
+        ; Op = int_mod, OpStr = "%"
+        ; Op = unchecked_left_shift, OpStr = "<<"
+        ; Op = unchecked_right_shift, OpStr = ">>"
+        ; Op = bitwise_and, OpStr = "&"
+        ; Op = bitwise_or, OpStr = "|"
+        ; Op = bitwise_xor, OpStr = "^"
+        ; Op = logical_and, OpStr = "&&"
+        ; Op = logical_or, OpStr = "||"
+        ; Op = eq, OpStr = "=="
+        ; Op = ne, OpStr = "!="
+        ; Op = int_lt, OpStr = "<"
+        ; Op = int_gt, OpStr = ">"
+        ; Op = int_le, OpStr = "<="
+        ; Op = int_ge, OpStr = ">="
+
+
+        ; Op = float_eq, OpStr = "=="
+        ; Op = float_ne, OpStr = "!="
+        ; Op = float_le, OpStr = "<="
+        ; Op = float_ge, OpStr = ">="
+        ; Op = float_lt, OpStr = "<"
+        ; Op = float_gt, OpStr = ">"
+
+        ; Op = float_plus, OpStr = "+"
+        ; Op = float_minus, OpStr = "-"
+        ; Op = float_times, OpStr = "*"
+        ; Op = float_divide, OpStr = "/"
+        ),
         io.write_string(OpStr, !IO)
-    else if java_util.java_float_compare_op(Op, OpStr) then
-        io.write_string(OpStr, !IO)
-    else if java_util.java_float_op(Op, OpStr) then
-        io.write_string(OpStr, !IO)
-    else
+    ;
+        ( Op = array_index(_)
+        ; Op = body
+        ; Op = float_from_dword
+        ; Op = float_word_bits
+        ; Op = offset_str_eq(_)
+        ; Op = str_cmp
+        ; Op = str_eq
+        ; Op = str_ge
+        ; Op = str_gt
+        ; Op = str_le
+        ; Op = str_lt
+        ; Op = str_ne
+        ; Op = string_unsafe_index_code_unit
+        ; Op = pointer_equal_conservative
+        ; Op = unsigned_le
+        ; Op = compound_eq
+        ; Op = compound_lt
+        ),
         unexpected($module, $pred, "invalid binary operator")
     ).
 
