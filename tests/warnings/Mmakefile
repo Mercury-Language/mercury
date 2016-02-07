@@ -48,19 +48,29 @@ ERRORCHECK_PROGS = \
 	warn_non_contiguous \
 	warn_non_contiguous_foreign \
 	warn_non_contiguous_foreign_group \
-	warn_return \
 	warn_self_import \
 	warn_succ_ind \
 	warn_stubs
 
 # We don't yet pass (or even have a .exp file for) this test.
 #	trace_goal_dupl_defn
-
+#
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 ERRORCHECK_PROGS += unused_args_analysis
 endif
 
-PROGS = $(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
+# We don't run these tests in the erlang grade:
+#
+#     warn_return  (Erlang doesn't have return statements).
+#
+ifeq "$(filter erlang%,$(GRADE))" ""
+    NON_ERLANG_PROGS = \
+	warn_return
+else
+    NON_ERLANG_PROGS =
+endif
+
+PROGS = $(COMPILE_PROGS) $(ERRORCHECK_PROGS) $(NON_ERLANG_PROGS) up_to_date
 
 TESTS = $(sort $(PROGS))
 include $(TESTS_DIR)/Mmake.common
