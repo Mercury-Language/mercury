@@ -27,7 +27,6 @@ ORDINARY_PROGS = \
 	double_error			\
 	double_error2			\
 	duplicate_label			\
-	environment			\
 	fail_detism			\
 	float_roundtrip			\
 	float_test			\
@@ -82,6 +81,7 @@ ORDINARY_PROGS = \
 	unsafe_uniqueness
 
 EXCEPTION_PROGS = \
+	environment			\
 	map_corresponding 		\
 	unused_arg_determinism
 

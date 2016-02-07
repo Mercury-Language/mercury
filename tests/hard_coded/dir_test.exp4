@@ -122,7 +122,7 @@ dir__path_name_is_root_directory("foo/bar") failed
 "C:\"/"foo" = "C:\/foo".
 "C:"/"C:" = "C:/C:".
 "C:"/"C:\foo" = "C:/C:\foo".
-"."/"/foo" threw exception: software_error("dir./: second argument is absolute")
+"."/"/foo" threw exception: software_error("function `dir./\'/2: Unexpected: second argument is absolute")
 "."/"\foo" = "./\foo".
 "foo"/"bar/baz" = "foo/bar/baz".
 "foo/"/"bar/baz" = "foo/bar/baz".

@@ -2,16 +2,22 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Short series of tests for io__get_environment_var and
-% io__set_environment_var.
+% Short series of tests for io.get_environment_var and
+% io.set_environment_var.
 %
 % Author: bromage
+%
+%---------------------------------------------------------------------------%
 
 :- module environment.
-
 :- interface.
+
 :- import_module io.
-:- pred main(io__state :: di, io__state :: uo) is det.
+
+:- pred main(io::di, io::uo) is cc_multi.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -20,39 +26,54 @@
 :- import_module maybe.
 :- import_module string.
 
-:- pred environment__test(string, bool, bool, io__state, io__state).
-:- mode environment__test(in, in, in, di, uo) is det.
-
-environment__test(Var, ShouldBeSet, ShouldBePrinted) -->
-    io__get_environment_var(Var, MaybeValue),
-    io__write_strings(["Variable \"", Var, "\" is set "]),
-    ( { MaybeValue = yes(Value) } ->
-        ( { ShouldBePrinted = yes } ->
-            io__write_strings(["to \"", Value, "\" "])
-        ;
-            []
-        ),
-        { Ok = ShouldBeSet }
-    ;
-        io__write_string("not set "),
-        { bool__not(ShouldBeSet, Ok) }
-    ),
-    ( { Ok = yes } ->
-        io__write_string("(passed)\n")
-    ;
-        io__write_string("(failed)\n")
-    ).
-
-main -->
+main(!IO) :-
     % PATH should be set on all Unix systems but may differ
     % on the different machines that generate .exp and .out files
-    environment__test("PATH", yes, no),
+    test("PATH", yes, no, !IO),
 
     % This one probably isn't. :-)
-    environment__test("SHOULD_NOT_BE_SET", no, yes),
+    test("SHOULD_NOT_BE_SET", no, yes, !IO),
 
-    % So set it...
-    io__set_environment_var("SHOULD_NOT_BE_SET", "Hello World!"),
+    ( try [io(!IO)] (
+        % So set it...
+        io.set_environment_var("SHOULD_NOT_BE_SET", "Hello World!", !IO)
+    )
+    then
+        % Did that work?
+        environment.test("SHOULD_NOT_BE_SET", yes, yes, !IO)
+    catch_any E ->
+        io.write_string("Cannot modify environment on this platform:\n", !IO),
+        io.write_line(E, !IO)
+    ).
 
-    % Did that work?
-    environment__test("SHOULD_NOT_BE_SET", yes, yes).
+:- pred environment.test(string::in, bool::in, bool::in,
+    io::di, io::uo) is det.
+
+test(Var, ShouldBeSet, ShouldBePrinted, !IO) :-
+    io.get_environment_var(Var, MaybeValue, !IO),
+    io.write_strings(["Variable \"", Var, "\" is set "], !IO),
+    (
+        MaybeValue = yes(Value),
+        (
+            ShouldBePrinted = yes,
+            io.write_strings(["to \"", Value, "\" "], !IO)
+        ;
+            ShouldBePrinted = no
+        ),
+        Ok = ShouldBeSet
+    ;
+        MaybeValue = no,
+        io.write_string("not set ", !IO),
+        bool.not(ShouldBeSet, Ok)
+    ),
+    (
+        Ok = yes,
+        io.write_string("(passed)\n", !IO)
+    ;
+        Ok = no,
+        io.write_string("(failed)\n", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+:- end_module environment.
+%---------------------------------------------------------------------------%
