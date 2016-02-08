@@ -1270,10 +1270,10 @@
     io::di, io::uo) is det.
 
     % First argument is the name of the environment variable, second argument
-    % is the value to be assigned to that variable. Will throw an exception
-    % if the system runs out of environment space.
-    %
-    % Note: this predicate is not supported on Java.
+    % is the value to be assigned to that variable.
+    % Throws a software_error/1 exception if the system runs out of environment
+    % space or if the environment cannot be modified.
+    % Note that the environment cannot be modified on Java.
     %
 :- pred set_environment_var(string::in, string::in, io::di, io::uo) is det.
 
@@ -5760,7 +5760,7 @@ int             ML_fprintf(MercuryFilePtr mf, const char *format, ...);
     ** but not character encoding/decoding or buffering.
     ** Binary stdin and stdout are a special case. They are opened via
     ** FileInput/OutputStreams and seeking is controlled through use of
-    ** FileChannels (requring Java versions >= 1.4).
+    ** FileChannels (requiring Java versions >= 1.4).
     **
     ** The use of the methods in this implementation is not very flexible.
     ** You may not perform text mode operations on a binary file or vice
