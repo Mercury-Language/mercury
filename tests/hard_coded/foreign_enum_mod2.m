@@ -39,13 +39,13 @@ my_instrument = piano.
 ]).
 
     % As should this.
-    %
-:- pragma foreign_enum("Java", ingredient/0, [
-    eggs  - "Ingredient.EGGS",
-    sugar - "Ingredient.SUGAR",
-    flour - "Ingredient.FLOUR",
-    milk  - "Ingredient.MILK"
-]).
+    % XXX not currently supported in Java grade.
+%:- pragma foreign_enum("Java", ingredient/0, [
+%    eggs  - "Ingredient.EGGS",
+%    sugar - "Ingredient.SUGAR",
+%    flour - "Ingredient.FLOUR",
+%    milk  - "Ingredient.MILK"
+%]).
 
     % This shouldn't since the type is not exported.
     %

@@ -106,7 +106,6 @@ ORDINARY_PROGS =	\
 	existential_types_test \
 	expand \
 	export_test \
-	exported_foreign_enum \
 	failure_unify \
 	field_syntax \
 	finalise_decl \
@@ -120,8 +119,6 @@ ORDINARY_PROGS =	\
 	follow_code_bug \
 	follow_code_bug_2 \
 	foreign_and_mercury \
-	foreign_enum_dummy \
-	foreign_enum_mod1 \
 	foreign_enum_rtti \
 	foreign_enum_switch \
 	foreign_import_module \
@@ -389,6 +386,16 @@ ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
 		solver_default_eq_cmp
 else
 	SOLVER_PROGS =
+endif
+
+# Foreign enum pragmas only (currently) work in the C and C# grades.
+ifeq "$(filter java% erlang%,$(GRADE))" ""
+	FOREIGN_ENUM_PROGS = \
+		exported_foreign_enum \
+		foreign_enum_dummy \
+		foreign_enum_mod1
+else
+	FOREIGN_ENUM_PROGS =
 endif
 
 # Some tests only link in trailing grades.
@@ -682,6 +689,7 @@ PROGS = \
 	$(C_ONLY_PROGS) \
 	$(JAVA_PROGS) \
 	$(SOLVER_PROGS) \
+	$(FOREIGN_ENUM_PROGS) \
 	$(TRAILED_PROGS) \
 	$(STACK_SEGMENT_PROGS) \
 	$(MUTABLE_PROGS) \
