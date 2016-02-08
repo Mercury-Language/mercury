@@ -19,7 +19,7 @@
     --->    c(int, int).
 
 :- type coord.
-:- pragma foreign_type(c, coord, "coord *").
+:- pragma foreign_type("C", coord, "coord *").
 :- pragma foreign_type("C#", coord, "Coord").
 :- pragma foreign_type("Java", coord, "Coord").
 :- pragma foreign_type("Erlang", coord, "").
@@ -36,8 +36,8 @@ class Coord {
 }
 ").
 
-:- pragma foreign_decl("Java", "
-class Coord {
+:- pragma foreign_code("Java", "
+public static class Coord {
     public int x, y;
 }
 ").
