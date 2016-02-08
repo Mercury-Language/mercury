@@ -320,8 +320,6 @@ Change to the Mercury debugger:
 * The "break" command can now auto-complete on the filename:linenumber pairs
   of events, provided the Mercury system can access the readline library.
 
-Changes to the Mercury debugger:
-
 * Interactive queries have been improved:
     - Queries can use variable bindings from the current environment.
     - Exceptions thrown from queries are properly handled.
