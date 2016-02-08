@@ -85,12 +85,10 @@
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.unparse.
-:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.
 :- import_module pair.
-:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.

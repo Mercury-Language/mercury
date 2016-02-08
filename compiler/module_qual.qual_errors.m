@@ -282,11 +282,6 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].
 
-:- func make_sna_piece(string, int, module_name) = format_component.
-
-make_sna_piece(BaseName, Arity, ModuleName) =
-    sym_name_and_arity(qualified(ModuleName, BaseName) / Arity).
-
 :- func module_name_matches_some(module_name, list(module_name)) = bool.
 
 module_name_matches_some(_SearchModuleName, []) = no.

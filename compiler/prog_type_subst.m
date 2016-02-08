@@ -111,7 +111,6 @@
 :- implementation.
 
 :- import_module map.
-:- import_module maybe.
 :- import_module require.
 
 %-----------------------------------------------------------------------------%

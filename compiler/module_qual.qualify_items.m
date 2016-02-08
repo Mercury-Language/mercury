@@ -438,15 +438,6 @@ qualify_type_list(InInt, ErrorContext, [Type0 | Types0], [Type | Types],
     qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
     qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs).
 
-:- pred qualify_maybe_type(mq_in_interface::in, mq_error_context::in,
-    maybe(mer_type)::in, maybe(mer_type)::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-qualify_maybe_type(_InInt, _ErrorContext, no, no, !Info, !Specs).
-qualify_maybe_type(InInt, ErrorContext, yes(Type0), yes(Type),
-        !Info, !Specs) :-
-    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs).
-
 qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
     (
         Type0 = type_variable(_Var, _Kind),

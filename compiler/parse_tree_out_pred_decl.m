@@ -132,7 +132,6 @@
 :- import_module char.
 :- import_module ops.
 :- import_module string.
-:- import_module term.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%

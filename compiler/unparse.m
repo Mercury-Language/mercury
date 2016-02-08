@@ -45,7 +45,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.prog_io_util.
 
 :- import_module list.
 :- import_module require.

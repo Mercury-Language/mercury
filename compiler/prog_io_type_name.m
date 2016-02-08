@@ -48,17 +48,12 @@
 
 :- implementation.
 
-:- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_io_inst_mode_name.
 :- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
-:- import_module maybe.
-:- import_module require.
 
 %---------------------------------------------------------------------------%
 

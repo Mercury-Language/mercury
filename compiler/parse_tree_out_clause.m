@@ -44,9 +44,6 @@
 :- pred mercury_output_trace_runtime(trace_runtime::in,
     io::di, io::uo) is det.
 
-:- pred mercury_output_trace_mutable_var(prog_varset::in, var_name_print::in,
-    trace_mutable_var::in, io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -822,6 +819,11 @@ mercury_output_trace_runtime(trace_envvar(EnvVarName), !IO) :-
     io.write_string("env(", !IO),
     term_io.quote_string(EnvVarName, !IO),
     io.write_string(")", !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred mercury_output_trace_mutable_var(prog_varset::in, var_name_print::in,
+    trace_mutable_var::in, io::di, io::uo) is det.
 
 mercury_output_trace_mutable_var(VarSet, VarNamePrint, MutableVar, !IO) :-
     MutableVar = trace_mutable_var(MutableName, StateVar),

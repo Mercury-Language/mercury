@@ -90,20 +90,6 @@
     list(mer_mode)::in, U::di, U::uo) is det <= output(U).
 
 %-----------------------------------------------------------------------------%
-
-% ZZZ
-% :- typeclass inst_info(InstInfo) where [
-%     (func instvarset(InstInfo) = inst_varset),
-%     (pred format_defined_inst(output_lang::in, InstInfo::in, inst_name::in,
-%         U::di, U::uo) is det <= output(U))
-% ].
-
-% :- type simple_inst_info
-%     --->    simple_inst_info(sii_varset :: inst_varset).
-
-% :- instance inst_info(simple_inst_info).
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -119,14 +105,6 @@
 :- import_module require.
 :- import_module string.
 :- import_module varset.
-
-%-----------------------------------------------------------------------------%
-
-% ZZZ
-% :- instance inst_info(simple_inst_info) where [
-%     func(instvarset/1) is sii_varset,
-%     pred(format_defined_inst/5) is mercury_format_inst_name
-% ].
 
 %-----------------------------------------------------------------------------%
 
