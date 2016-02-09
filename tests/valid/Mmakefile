@@ -257,8 +257,6 @@ DEEP_PROF_CAPABLE_PROGS = \
 	impure_detism
 
 LLDS_PROGS = \
-	bug50 \
-	bug50_full \
 	exists_cast_bug \
 	fzn_debug_abort \
 	liveness_disagree \
@@ -291,6 +289,13 @@ RESERVE_TAG_PROGS = \
 CONSTRAINT_TYPECHECK_PROGS = \
 	ambig_functor \
 	ambiguity_stress_test
+
+# bug50 and bug50_full are compiled with --trace deep and that
+# is not compatible with --decl-debug.
+#
+NON_DECLDEBUG_PROGS = \
+	bug50 \
+	bug50_full
 
 # XXX The mode system can't handle the following test cases yet:
 #	assoc_list_bug

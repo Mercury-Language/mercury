@@ -46,6 +46,8 @@ CONSTRAINT_TYPECHECK_PROGS = \
 	ambig_high_level \
 	ambig_pred
 
+NON_DECLDEBUG_PROGS =
+
 OTHER_PROGS = \
 	bug100 \
 	exported_foreign_type \

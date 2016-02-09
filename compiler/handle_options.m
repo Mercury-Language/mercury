@@ -334,9 +334,9 @@ check_option_values(!OptionTable, Target, GC_Method, TagsMethod,
                 MaybeTraceLevel = no,
                 TraceLevel = trace_level_none,  % dummy
                 InconsistentTraceLevelSpec =
-                    [words("The specified trace level"), words(Trace),
+                    [words("The specified trace level"), quote(Trace),
                     words("is not compatible with the value of the"),
-                    quote("--decl_debug"), words("option."), nl],
+                    quote("--decl-debug"), words("option."), nl],
                 add_error(phase_options, InconsistentTraceLevelSpec, !Specs)
             )
         else

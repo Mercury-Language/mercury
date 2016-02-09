@@ -46,6 +46,8 @@
 # CONSTRAINT_TYPECHECK_PROGS::
 #   Tests that use constraint based type checking.
 #   XXX These are never enabled.
+# NON_DECLDEBUG_PROGS::
+#   Test that do not work in .decldebug grades
 # OTHER_PROGS:
 #   All the other test cases.
 
@@ -111,10 +113,16 @@ else
 	PROGS6 = $(PROGS5)
 endif
 
-ifeq "$(filter java% csharp% il% erlang%,$(GRADE))" ""
-	OBJ_PROGS = $(PROGS6) $(RESERVE_TAG_PROGS)
+ifeq "$(findstring decldebug,$(GRADE))" ""
+	PROGS7 = $(PROGS6) $(NON_DECLDEBUG_PROGS)
 else
-	OBJ_PROGS = $(PROGS6)
+	PROGS7 = $(PROGS6)
+endif
+
+ifeq "$(filter java% csharp% erlang%,$(GRADE))" ""
+	OBJ_PROGS = $(PROGS7) $(RESERVE_TAG_PROGS)
+else
+	OBJ_PROGS = $(PROGS7)
 endif
 
 ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
