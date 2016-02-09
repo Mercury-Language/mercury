@@ -14,6 +14,6 @@
 
 % main just invokes java_main
 main(!IO) :-
-	io.write_string("In Mercury main, about to call java_main...\n", !IO),
-	java_main(!IO),
-	io.write_string("Back in Mercury main.\n", !IO).
+    io.write_string("In Mercury main, about to call java_main...\n", !IO),
+    java_main(!IO),
+    io.write_string("Back in Mercury main.\n", !IO).

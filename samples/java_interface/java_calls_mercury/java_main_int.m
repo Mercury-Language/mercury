@@ -9,24 +9,24 @@
 :- import_module io.
 
 % Since the java_main() function has side effects, we declare the corresponding
-% Mercury predicate as one that takes an io__state pair.  If we didn't do
+% Mercury predicate as one that takes an io.state pair.  If we didn't do
 % this, the Mercury compiler might optimize away calls to it!
 
 :- pred java_main(io::di, io::uo) is det.
 
 :- implementation.
 
-	% Import the Java class containing the method java_main.
-	% As usual for Java, this is not necessary; you may also
-	% fully qualify the method at the call site.
+    % Import the Java class containing the method java_main.
+    % As usual for Java, this is not necessary; you may also fully qualify the
+    % method at the call site.
 :- pragma foreign_decl("Java", "import my_package.JavaMain;").
 
-	% Define the Mercury predicate java_main to call the Java method
-	% java_main.
+    % Define the Mercury predicate java_main to call the Java method java_main.
+    %
 :- pragma foreign_proc("Java",
-	java_main(IO0::di, IO::uo),
-	[may_call_mercury, promise_pure],
+    java_main(IO0::di, IO::uo),
+    [may_call_mercury, promise_pure],
 "
-	JavaMain.java_main();
-	IO = IO0;
+    JavaMain.java_main();
+    IO = IO0;
 ").

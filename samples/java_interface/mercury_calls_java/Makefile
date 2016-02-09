@@ -8,7 +8,7 @@
 all: mercury_main
 
 mercury_main: mercury_main.m my_package/JavaMain.class
-	mmc --java --make mercury_main --java-classpath .
+	mmc --grade java --make mercury_main --java-classpath .
 
 my_package/JavaMain.class: JavaMain.java
 	javac JavaMain.java -d .
