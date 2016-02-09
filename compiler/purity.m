@@ -109,9 +109,9 @@
 %
 %   It might be nice to allow
 %       X = impure some_impure_fuc(Arg1, Arg2, ...)
-%   syntax aswell. But there are advantages to having the impure or semipure
+%   syntax as well. But there are advantages to having the impure or semipure
 %   annotation in a regular position (on the left hand side of a goal) too.
-%   If this is implemented it should probably be handled in prog_io, and
+%   If this is implemented, it should probably be handled in the parser, and
 %   turned into an impure unify item.
 %
 %   It may also be nice to allow semipure function calls to occur inline

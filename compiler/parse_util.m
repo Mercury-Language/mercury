@@ -7,12 +7,12 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: prog_io_util.m.
+% File: parse_util.m.
 % Main author: fjh.
 %
-% This module defines the types used by prog_io and its subcontractors
+% This module defines the types used by parse_module.m and its subcontractors
 % to return the results of parsing, and some utility predicates needed
-% by several of prog_io's submodules.
+% by several of the parser modules.
 %
 % Most parsing predicates must check for errors. They return either the
 % item(s) they were looking for, or an error indication.
@@ -25,7 +25,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_util.
+:- module parse_tree.parse_util.
 :- interface.
 
 :- import_module mdbcomp.
@@ -123,7 +123,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.prog_io_sym_name.
+:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
@@ -341,5 +341,5 @@ map_parser(Parser, [Head | Tail], Result) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_util.
+:- end_module parse_tree.parse_util.
 %---------------------------------------------------------------------------%

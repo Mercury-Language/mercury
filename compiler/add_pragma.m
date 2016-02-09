@@ -1197,7 +1197,7 @@ add_fact_table_proc(ProcId, PrimaryProcId, ProcTable, SymName,
         marker_user_marked_no_inline, [], !ModuleInfo, !Specs).
 
     % Create a list(pragma_var) that looks like the ones that are created
-    % for foreign_proc in prog_io.m.
+    % for foreign_procs in the parser.
     % This is required by module_add_pragma_c_code to add the C code for
     % the procedure to the HLDS.
     %

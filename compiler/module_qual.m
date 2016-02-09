@@ -16,7 +16,7 @@
 %
 % - It module qualifies types, typeclasses, insts and modes within declaration
 %   items in the source code of the compilation unit. The heads of all
-%   declarations should be module qualified as they are read in by prog_io.m;
+%   declarations should be module qualified as they are read in by the parser;
 %   this module qualifies the bodies of those declarations.
 %
 %   Note that we don't qualify the parts of the augmented compilation unit

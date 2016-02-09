@@ -74,7 +74,7 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.module_imports.
-:- import_module parse_tree.prog_io_error.
+:- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.split_parse_tree_src.

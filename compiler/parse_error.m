@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_error.
+:- module parse_tree.parse_error.
 :- interface.
 
 :- import_module set.
@@ -120,5 +120,5 @@ fatal_read_module_errors = FatalErrors :-
         rme_bad_submodule_start, rme_bad_module_end]).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_error.
+:- end_module parse_tree.parse_error.
 %---------------------------------------------------------------------------%

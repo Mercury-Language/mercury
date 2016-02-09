@@ -117,9 +117,9 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
+:- import_module parse_tree.parse_error.
+:- import_module parse_tree.parse_module.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_io_error.
 
 :- import_module cord.
 :- import_module dir.

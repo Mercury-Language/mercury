@@ -6,20 +6,20 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: prog_io_type_defn.m.
+% File: parse_type_defn.m.
 %
 % This module parses type definitions.
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_type_defn.
+:- module parse_tree.parse_type_defn.
 
 :- interface.
 
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io_iom.
 
 :- import_module list.
 :- import_module maybe.
@@ -71,14 +71,14 @@
 :- implementation.
 
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.parse_class.
+:- import_module parse_tree.parse_inst_mode_name.
+:- import_module parse_tree.parse_mutable.
+:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_io_inst_mode_name.
-:- import_module parse_tree.prog_io_mutable.
-:- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_type_name.
-:- import_module parse_tree.prog_io_typeclass.
-:- import_module parse_tree.prog_io_util.
-:- import_module parse_tree.prog_io_vars.
+:- import_module parse_tree.parse_type_name.
+:- import_module parse_tree.parse_util.
+:- import_module parse_tree.parse_vars.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
@@ -1448,5 +1448,5 @@ check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
     ).
 
 %-----------------------------------------------------------------------------e
-:- end_module parse_tree.prog_io_type_defn.
+:- end_module parse_tree.parse_type_defn.
 %-----------------------------------------------------------------------------e

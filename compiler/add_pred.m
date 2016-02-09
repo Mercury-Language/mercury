@@ -212,7 +212,7 @@ add_new_pred(Origin, TVarSet, ExistQVars, PredName, Types, Purity, Constraints,
         module_info_incr_errors(!ModuleInfo),
         unqualified_pred_error(PredName, Arity, Context, !Specs)
         % All predicate names passed into this predicate should have
-        % been qualified by prog_io.m, when they were first read.
+        % been qualified by the parser when they were first read.
     ;
         PredName = qualified(MNameOfPred, PName),
         ( if
@@ -666,7 +666,7 @@ unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !Specs) :-
 unqualified_pred_error(PredName, Arity, Context, !Specs) :-
     Pieces = [words("Internal error: the unqualified predicate name"),
         sym_name_and_arity(PredName / Arity),
-        words("should have been qualified by prog_io.m.")],
+        words("should have been qualified by the parser.")],
     Msg = simple_msg(Context, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_parse_tree_to_hlds, [Msg]),
     !:Specs = [Spec | !.Specs].

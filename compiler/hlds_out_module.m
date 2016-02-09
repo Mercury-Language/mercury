@@ -58,9 +58,9 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.
-:- import_module parse_tree.unparse.
 
 :- import_module assoc_list.
 :- import_module bool.

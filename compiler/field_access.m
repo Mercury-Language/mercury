@@ -106,8 +106,8 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_io_sym_name.
 
 :- import_module int.
 :- import_module require.

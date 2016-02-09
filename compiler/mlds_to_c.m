@@ -4150,7 +4150,7 @@ mlds_output_lval(Opts, Lval, !IO) :-
 
 :- func global_var_name(global_var_ref) = string.
 
-% The calls to env_var_is_acceptable_char in prog_io_goal.m  ensure that
+% The calls to env_var_is_acceptable_char in parse_goal.m ensure that
 % EnvVarName is acceptable as part of a C identifier.
 % The prefix must be identical to envvar_prefix in util/mkinit.c
 % and c_global_var_name in llds_out.m.

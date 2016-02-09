@@ -11,7 +11,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_type_name.
+:- module parse_tree.parse_type_name.
 :- interface.
 
 :- import_module parse_tree.error_util.
@@ -48,9 +48,9 @@
 
 :- implementation.
 
+:- import_module parse_tree.parse_inst_mode_name.
+:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_io_inst_mode_name.
-:- import_module parse_tree.prog_io_sym_name.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.
@@ -433,5 +433,5 @@ parse_types_acc(AllowHOInstInfo, [Term | Terms], VarSet, ContextPieces,
         !RevTypes, !Specs).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_type_name.
+:- end_module parse_tree.parse_type_name.
 %---------------------------------------------------------------------------%

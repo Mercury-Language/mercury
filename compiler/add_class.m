@@ -437,7 +437,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !Specs) :-
         ;
             QualPredOrFuncName = unqualified(_),
             % The class interface should be fully module qualified
-            % by prog_io.m at the time it is read in.
+            % by the parser at the time it is read in.
             unexpected($module, $pred, "unqualified func")
         ),
         list.length(TypesAndModes, PredArity),

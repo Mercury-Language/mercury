@@ -697,7 +697,7 @@ mercury_output_promise_eqv_solutions_goal(VarSet, Indent,
         DotSVars = [],
         ColonSVars = []
     then
-        % This should have been caught be prog_io_goal when reading in
+        % This should have been caught be parse_goal when reading in
         % the term, but there is no point in aborting here.
         mercury_output_goal(VarSet, Indent, Goal, !IO)
     else

@@ -84,7 +84,7 @@
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.unparse.
+:- import_module parse_tree.parse_tree_to_term.
 
 :- import_module bool.
 :- import_module int.

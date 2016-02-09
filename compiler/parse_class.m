@@ -6,21 +6,21 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: prog_io_typeclass.m.
+% File: parse_class.m.
 % Main authors: dgj.
 %
 % This module handles the parsing of typeclass declarations.
-% Perhaps some of this should go into prog_io_util.m?
+% Perhaps some of this should go into parse_util.m?
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_typeclass.
+:- module parse_tree.parse_class.
 :- interface.
 
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io_iom.
 
 :- import_module list.
 :- import_module term.
@@ -60,12 +60,12 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.parse_inst_mode_name.
+:- import_module parse_tree.parse_item.
+:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_io_inst_mode_name.
-:- import_module parse_tree.prog_io_item.
-:- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_type_name.
-:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.parse_type_name.
+:- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -972,5 +972,5 @@ is_in_list(List, Element) :-
     list.member(Element, List).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_typeclass.
+:- end_module parse_tree.parse_class.
 %---------------------------------------------------------------------------%

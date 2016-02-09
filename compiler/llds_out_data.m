@@ -638,7 +638,7 @@ max_virtual_f_reg = 1024.
 output_reg(RegType, N, !IO) :-
     io.write_string(reg_to_string(RegType, N), !IO).
 
-% The calls to env_var_is_acceptable_char in prog_io_goal.m ensure that
+% The calls to env_var_is_acceptable_char in parse_goal.m ensure that
 % EnvVarName is acceptable as part of a C identifier.
 % The prefix must be identical to envvar_prefix in util/mkinit.c and
 % global_var_name in mlds_to_c.m.

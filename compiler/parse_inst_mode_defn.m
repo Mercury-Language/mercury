@@ -6,20 +6,20 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: prog_io_type_defn.m.
+% File: parse_inst_mode_defn.m.
 %
 % This module parses inst and mode definitions.
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_inst_mode_defn.
+:- module parse_tree.parse_inst_mode_defn.
 
 :- interface.
 
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io_iom.
 
 :- import_module list.
 :- import_module term.
@@ -40,10 +40,10 @@
 :- implementation.
 
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.parse_inst_mode_name.
+:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_io_inst_mode_name.
-:- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
 
 :- import_module bag.
@@ -388,5 +388,5 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
     ).
 
 %-----------------------------------------------------------------------------e
-:- end_module parse_tree.prog_io_inst_mode_defn.
+:- end_module parse_tree.parse_inst_mode_defn.
 %-----------------------------------------------------------------------------e

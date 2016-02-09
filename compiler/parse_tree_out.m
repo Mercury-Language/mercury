@@ -112,12 +112,12 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_tree_out_clause.
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_io_inst_mode_name.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
@@ -1396,8 +1396,8 @@ mercury_output_item_mutable(Info, ItemMutable, !IO) :-
     mercury_output_type(varset.init, print_name_only, Type, !IO),
     io.write_string(", ", !IO),
 
-    % See the comments for prog_io.read_mutable_decl for the reason we
-    % _must_ use MutVarSet here.
+    % See the comments for read_mutable_decl for the reason we _must_ use
+    % MutVarSet here.
     mercury_output_term(MutVarSet, print_name_only, InitTerm, !IO),
     io.write_string(", ", !IO),
     Lang = get_output_lang(Info),

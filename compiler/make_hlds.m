@@ -10,7 +10,8 @@
 % Main author: fjh.
 %
 % This module converts from the parse tree structure which is read in by
-% prog_io.m, into the simplified high level data structure defined in hlds.m.
+% parse_module.m, into the high level data structure defined in hlds.m.
+%
 % In the parse tree, the program is represented as a structure containing
 % several lists of items; we insert each item into the appropriate table,
 % and report any duplicate definition errors. We also transform clause bodies

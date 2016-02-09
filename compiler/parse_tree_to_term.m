@@ -12,7 +12,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.unparse.
+:- module parse_tree.parse_tree_to_term.
 :- interface.
 
 :- import_module parse_tree.parse_tree_out_info.
@@ -748,5 +748,5 @@ det_to_string(detism_multi) = "multi".
 det_to_string(detism_non) = "nondet".
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.unparse.
+:- end_module parse_tree.parse_tree_to_term.
 %---------------------------------------------------------------------------%

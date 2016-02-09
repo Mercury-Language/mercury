@@ -77,10 +77,10 @@
 :- import_module parse_tree.module_imports.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.modules.
+:- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_event.
-:- import_module parse_tree.prog_io_error.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.source_file_map.

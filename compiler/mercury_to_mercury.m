@@ -152,7 +152,7 @@
 
 :- implementation.
 
-:- import_module parse_tree.unparse.
+:- import_module parse_tree.parse_tree_to_term.
 
 :- import_module bool.
 :- import_module char.

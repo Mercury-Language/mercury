@@ -283,8 +283,8 @@ mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
     % to give a determinism annotation in the pred declaration for is/2,
     % e.g. `:- pred is(int, int_expr) is det.' (Yes, this made me puke too.)
     %
-    % The alternative is a term traversal in compiler/prog_io.m
-    % get_determinism/3. The alternative is nicer, but less efficient.
+    % The alternative is a term traversal in parse_determinism_suffix in
+    % parse_item.m. That alternative is nicer, but it is less efficient.
     ( if
         PredOrFunc = pf_predicate,
         MaybeDet = no,

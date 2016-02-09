@@ -440,7 +440,7 @@ cons_table_optimize(!ConsTable) :-
 
     % This is how type, modes and constructors are represented. The parts that
     % are not defined here (i.e. type_param, constructor, type, inst and mode)
-    % are represented in the same way as in prog_io.m, and are defined there.
+    % are represented in the same way as in parse tree, and are defined there.
     %
     % An hlds_type_defn holds the information about a type definition.
 :- type hlds_type_defn.

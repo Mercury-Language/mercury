@@ -46,7 +46,7 @@
 :- implementation.
 
 :- import_module parse_tree.module_qual.id_set.
-:- import_module parse_tree.prog_io_sym_name.
+:- import_module parse_tree.parse_sym_name.
 
 src_section_mq_info(SrcSection, MQSection, Permissions) :-
     (

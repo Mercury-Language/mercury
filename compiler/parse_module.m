@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: prog_io.m.
+% File: parse_module.m.
 % Main author of original version: fjh.
 % Main author of current version: zs.
 %
@@ -76,7 +76,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io.
+:- module parse_tree.parse_module.
 :- interface.
 
 :- import_module libs.
@@ -87,8 +87,8 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
+:- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_io_error.
 
 :- import_module io.
 :- import_module list.
@@ -189,10 +189,10 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_item.
+:- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io_iom.
-:- import_module parse_tree.prog_io_item.
-:- import_module parse_tree.prog_io_sym_name.
 :- import_module recompilation.
 
 :- import_module bool.
@@ -1717,5 +1717,5 @@ report_unexpected_term_at_end(FileKind, Term, !Specs, !Errors) :-
     set.insert(Error, !Errors).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io.
+:- end_module parse_tree.parse_module.
 %---------------------------------------------------------------------------%

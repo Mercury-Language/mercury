@@ -10,14 +10,14 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_item.
+:- module parse_tree.parse_item.
 
 :- interface.
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.prog_io_iom.
+:- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_item.
 
 :- import_module term.
@@ -49,7 +49,7 @@
     % Qualify appropriate parts of the item, with ModuleName as the module
     % name. Use SeqNum as the item's sequence number.
     %
-    % Exported for use by prog_io_typeclass.m, for parsing type class method
+    % Exported for use by parse_class.m, for parsing type class method
     % declarations.
     %
 :- pred parse_class_method_decl(module_name::in, varset::in, term::in,
@@ -63,20 +63,20 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.parse_class.
+:- import_module parse_tree.parse_dcg_goal.
+:- import_module parse_tree.parse_goal.
+:- import_module parse_tree.parse_inst_mode_defn.
+:- import_module parse_tree.parse_inst_mode_name.
+:- import_module parse_tree.parse_mutable.
+:- import_module parse_tree.parse_pragma.
+:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_type_defn.
+:- import_module parse_tree.parse_type_name.
+:- import_module parse_tree.parse_util.
+:- import_module parse_tree.parse_vars.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io_dcg.
-:- import_module parse_tree.prog_io_goal.
-:- import_module parse_tree.prog_io_inst_mode_defn.
-:- import_module parse_tree.prog_io_inst_mode_name.
-:- import_module parse_tree.prog_io_mutable.
-:- import_module parse_tree.prog_io_pragma.
-:- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_type_defn.
-:- import_module parse_tree.prog_io_type_name.
-:- import_module parse_tree.prog_io_typeclass.
-:- import_module parse_tree.prog_io_util.
-:- import_module parse_tree.prog_io_vars.
 :- import_module parse_tree.prog_mode.
 :- import_module recompilation.
 :- import_module recompilation.version.
@@ -1555,7 +1555,7 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
 %---------------------------------------------------------------------------%
 
     % We could perhaps get rid of some code duplication between here and
-    % prog_io_typeclass.m?
+    % parse_class.m?
 
     % XXX This documentation is out of date.
     % get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
@@ -2005,5 +2005,5 @@ dummy_term_with_context(Context, Term) :-
 %     ).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_item.
+:- end_module parse_tree.parse_item.
 %---------------------------------------------------------------------------%

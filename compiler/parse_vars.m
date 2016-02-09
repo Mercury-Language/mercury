@@ -11,7 +11,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_vars.
+:- module parse_tree.parse_vars.
 :- interface.
 
 :- import_module parse_tree.error_util.
@@ -359,5 +359,5 @@ generate_unexpected_term_message(ContextPieces, VarSet, Expected, Term,
         [simple_msg(get_term_context(Term), [always(Pieces)])]).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_vars.
+:- end_module parse_tree.parse_vars.
 %---------------------------------------------------------------------------%

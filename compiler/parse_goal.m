@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: prog_io_goal.m.
+% File: parse_goal.m.
 % Main authors: fjh, zs.
 %
 % This module defines the predicates that parse goals.
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_goal.
+:- module parse_tree.parse_goal.
 :- interface.
 
 :- import_module parse_tree.error_util.
@@ -105,7 +105,7 @@
 :- pred apply_purity_marker_to_maybe_goal(term::in, purity::in,
     maybe1(goal)::in, maybe1(goal)::out) is det.
 
-    % Functions to construct error messages. Exported to prog_io_dcg.m,
+    % Functions to construct error messages. Exported to parse_dcg_goal.m,
     % to allow DCG and non-DCG clauses to generate identical error messages
     % in analogous situations.
     %
@@ -124,10 +124,10 @@
 :- implementation.
 
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_inst_mode_name.
+:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.prog_io_inst_mode_name.
-:- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_vars.
+:- import_module parse_tree.parse_vars.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 
@@ -182,7 +182,7 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
 parse_non_call_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         !VarSet) :-
     % We parse goals in non-DCG contexts here, while we parse goals
-    % in DCG contexts in parse_non_call_dcg_goal in prog_io_dcg.m.
+    % in DCG contexts in parse_non_call_dcg_goal in parse_dcg_goal.m.
     %
     % Since many kinds of goals can occur in both kinds of contexts,
     % the code handling those kinds of goals should be kept as identical
@@ -1285,7 +1285,7 @@ parse_one_plain_or_dot_var(PSDCVars, Goal, ContextPieces, ConstructName,
 parse_some_vars_goal(Term, ContextPieces, MaybeVarsAndGoal, !VarSet) :-
     % We parse existentially quantified goals in non-DCG contexts here,
     % while we parse them in DCG contexts in parse_some_vars_dcg_goal
-    % in prog_io_dcg.m.
+    % in parse_dcg_goal.m.
     ( if
         Term = term.functor(term.atom("some"), [VarsTerm, SubGoalTerm],
             _Context)
@@ -2587,5 +2587,5 @@ parse_dcg_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
     parse_dcg_pred_expr_args(Terms, Args, Modes).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_goal.
+:- end_module parse_tree.parse_goal.
 %---------------------------------------------------------------------------%

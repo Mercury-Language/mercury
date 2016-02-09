@@ -388,8 +388,8 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.builtin_lib_types.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.
@@ -950,7 +950,7 @@ substitute_type_args(TypeParams, TypeArgs, Constructors0, Constructors) :-
 
 substitute_type_args_2(_, [], []).
 substitute_type_args_2(Subst, [Ctor0 | Ctors0], [Ctor | Ctors]) :-
-    % Note: prog_io.m ensures that the existentially quantified variables,
+    % Note: the parser ensures that the existentially quantified variables,
     % if any, are distinct from the parameters, and that the (existential)
     % constraints can only contain existentially quantified variables,
     % so there's no need to worry about applying the substitution to ExistQVars

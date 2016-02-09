@@ -21,7 +21,7 @@
 %
 %-----------------------------------------------------------------------------e
 
-:- module parse_tree.prog_io_sym_name.
+:- module parse_tree.parse_sym_name.
 :- interface.
 
 :- import_module mdbcomp.sym_name.
@@ -436,5 +436,5 @@ parse_implicitly_qualified_symbol_name_specifier(DefaultModule, VarSet, Term,
 root_module_name = unqualified("").
 
 %-----------------------------------------------------------------------------e
-:- end_module parse_tree.prog_io_sym_name.
+:- end_module parse_tree.parse_sym_name.
 %-----------------------------------------------------------------------------e

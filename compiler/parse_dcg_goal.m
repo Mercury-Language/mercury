@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: prog_io_dcg.m.
+% File: parse_dcg_goal.m.
 % Main authors: fjh, zs.
 %
 % This module handles the parsing of clauses in Definite Clause Grammar
@@ -20,14 +20,14 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_dcg.
+:- module parse_tree.parse_dcg_goal.
 :- interface.
 
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io_iom.
 :- import_module parse_tree.prog_item.
 
 :- import_module cord.
@@ -51,10 +51,10 @@
 :- implementation.
 
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_io_goal.
-:- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_util.
-:- import_module parse_tree.prog_io_vars.
+:- import_module parse_tree.parse_goal.
+:- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_util.
+:- import_module parse_tree.parse_vars.
 :- import_module parse_tree.prog_util.
 
 :- import_module counter.
@@ -170,7 +170,7 @@ make_dcg_call(SymName, Args0, Context, Goal, !VarSet, !Counter, !DCGVar) :-
 parse_non_call_dcg_goal(Functor, Args, Context, ContextPieces, MaybeGoal,
         !VarSet, !Counter, !DCGVar) :-
     % We parse goals in DCG contexts here, while we parse goals in non-DCG
-    % contexts in parse_non_call_goal in prog_io_goal.m.
+    % contexts in parse_non_call_goal in parse_goal.m.
     %
     % Since many kinds of goals can occur in both kinds of contexts,
     % the code handling those kinds of goals should be kept as identical
@@ -610,7 +610,7 @@ parse_some_vars_dcg_goal(Term, ContextPieces, MaybeVarsGoal,
         !VarSet, !Counter, !DCGVar) :-
     % We parse existentially quantified goals in DCG contexts here,
     % while we parse them in non-DCG contexts in parse_some_vars_goal
-    % in prog_io_goal.m.
+    % in parse_goal.m.
     ( if
         Term = term.functor(term.atom("some"), [VarsTerm, SubGoalTerm],
             _Context)
@@ -805,5 +805,5 @@ term_list_append_term(List0, Term, List) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_dcg.
+:- end_module parse_tree.parse_dcg_goal.
 %---------------------------------------------------------------------------%

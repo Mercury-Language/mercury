@@ -302,8 +302,8 @@
     % Fails if the constant is not an atom.
     %
     % This really ought to take a name and an arity -
-    % use of integers/floats/strings as type names should
-    % be rejected by the parser in prog_io.m, not in module_qual.m.
+    % use of integers/floats/strings as type names should be rejected
+    % by the parser, not by module_qual.m.
     %
 :- pred make_type_ctor(const::in, int::in, type_ctor::out) is semidet.
 

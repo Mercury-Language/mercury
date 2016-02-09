@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: prog_io_pragma.m.
+% File: parse_pragma.m.
 % Main authors: fjh, dgj, zs.
 %
 % This module handles the parsing of pragma directives.
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_pragma.
+:- module parse_tree.parse_pragma.
 :- interface.
 
 :- import_module libs.
@@ -21,8 +21,8 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_types.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_io_iom.
 
 :- import_module list.
 :- import_module term.
@@ -49,13 +49,13 @@
 :- import_module libs.rat.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.parse_inst_mode_name.
+:- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_type_defn.
+:- import_module parse_tree.parse_type_name.
+:- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_ctgc.
-:- import_module parse_tree.prog_io_inst_mode_name.
-:- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_type_defn.
-:- import_module parse_tree.prog_io_type_name.
-:- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
@@ -3515,5 +3515,5 @@ parse_predicate_or_function(PredOrFuncTerm, PredOrFunc) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_pragma.
+:- end_module parse_tree.parse_pragma.
 %---------------------------------------------------------------------------%

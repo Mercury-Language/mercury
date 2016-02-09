@@ -11,7 +11,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_iom.
+:- module parse_tree.parse_types.
 
 :- interface.
 
@@ -54,5 +54,5 @@
             % and sequence number of the declaration.
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_iom.
+:- end_module parse_tree.parse_types.
 %---------------------------------------------------------------------------%

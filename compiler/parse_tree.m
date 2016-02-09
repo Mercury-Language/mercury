@@ -25,23 +25,24 @@
 :- include_module file_kind.
 
 % The parser.
-:- include_module prog_io.
-   :- include_module prog_io_dcg.
-   :- include_module prog_io_error.
-   :- include_module prog_io_find.
-   :- include_module prog_io_goal.
-   :- include_module prog_io_inst_mode_defn.
-   :- include_module prog_io_inst_mode_name.
-   :- include_module prog_io_iom.
-   :- include_module prog_io_item.
-   :- include_module prog_io_mutable.
-   :- include_module prog_io_pragma.
-   :- include_module prog_io_sym_name.
-   :- include_module prog_io_type_defn.
-   :- include_module prog_io_type_name.
-   :- include_module prog_io_typeclass.
-   :- include_module prog_io_util.
-   :- include_module prog_io_vars.
+:- include_module parse_module.
+   :- include_module parse_dcg_goal.
+   :- include_module parse_error.
+   :- include_module parse_goal.
+   :- include_module parse_inst_mode_defn.
+   :- include_module parse_inst_mode_name.
+   :- include_module parse_item.
+   :- include_module parse_mutable.
+   :- include_module parse_pragma.
+   :- include_module parse_sym_name.
+   :- include_module parse_type_defn.
+   :- include_module parse_type_name.
+   :- include_module parse_class.
+   :- include_module parse_vars.
+
+   :- include_module find_module.
+   :- include_module parse_types.
+   :- include_module parse_util.
 
 % Parser/pretty-printer/utility routines for the ctgc related types.
 :- include_module prog_ctgc.
@@ -56,7 +57,7 @@
 :- include_module parse_tree_out_term.
 :- include_module parse_tree_out_info.
 :- include_module prog_out.
-:- include_module unparse.
+:- include_module parse_tree_to_term.
 
 % Utility data structures.
 :- include_module set_of_var.

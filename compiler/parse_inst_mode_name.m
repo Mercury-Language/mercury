@@ -12,7 +12,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_inst_mode_name.
+:- module parse_tree.parse_inst_mode_name.
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -59,8 +59,8 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
@@ -569,5 +569,5 @@ standard_det("erroneous", detism_erroneous).
 standard_det("failure",   detism_failure).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_inst_mode_name.
+:- end_module parse_tree.parse_inst_mode_name.
 %---------------------------------------------------------------------------%

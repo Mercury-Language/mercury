@@ -10,10 +10,7 @@
 % Main author: fjh.
 %
 % This module defines some predicates which output various parts
-% of the parse tree created by prog_io.
-%
-% WARNING - this module is mostly junk at the moment!
-% Only the first hundred lines or so are meaningful.
+% of the parse tree created by the parser.
 %
 %-----------------------------------------------------------------------------%
 
@@ -28,9 +25,8 @@
 :- import_module list.
 :- import_module maybe.
 
-    % Write out the information in term context (at the moment, just
-    % the line number) in a form suitable for the beginning of an
-    % error message.
+    % Write out the information in term context (at the moment, just the
+    % line number) in a form suitable for the beginning of an error message.
     %
 :- pred write_context(prog_context::in, io::di, io::uo) is det.
 
@@ -40,10 +36,9 @@
     %
 :- pred context_to_string(prog_context::in, string::out) is det.
 
-    % Write out a symbol name, with special characters escaped,
-    % but without any quotes.  This is suitable for use in
-    % error messages, where the caller should print out an
-    % enclosing forward/backward-quote pair (`...').
+    % Write out a symbol name, with special characters escaped, but without
+    % any quotes. This is suitable for use in error messages, where the
+    % caller should print out an enclosing forward/backward-quote pair (`...').
     %
 :- pred write_sym_name(sym_name::in, io::di, io::uo) is det.
 :- func sym_name_to_escaped_string(sym_name) = string.

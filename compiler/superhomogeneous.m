@@ -19,8 +19,8 @@
 :- interface.
 
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.state_var.
 :- import_module mdbcomp.
@@ -113,11 +113,11 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_qual.
-:- import_module parse_tree.prog_io_sym_name.
-:- import_module parse_tree.prog_io_dcg.
-:- import_module parse_tree.prog_io_goal.
-:- import_module parse_tree.prog_io_type_name.
-:- import_module parse_tree.prog_io_util.
+:- import_module parse_tree.parse_dcg_goal.
+:- import_module parse_tree.parse_goal.
+:- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_type_name.
+:- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 

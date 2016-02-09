@@ -762,7 +762,7 @@ sort_error_specs(Globals, !Specs) :-
     % between error_specs that exist only in the structure of the error_specs
     % themselves, as opposed to the text that we output for them.
     %
-    % For example, prog_io.m can generate two error specs for a bad module
+    % For example, the parser can generate two error specs for a bad module
     % name that differ in two things.
     %
     % - The first difference is that one has "severity_error", while the other

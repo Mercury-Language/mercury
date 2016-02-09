@@ -2696,7 +2696,7 @@ maybe_write_pragma_termination2_for_proc(OrderPredInfo, _ProcId, ProcInfo,
         SizeVarMap = term2_info_get_size_var_map(Term2Info),
         HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
 
-        % NOTE: If this predicate is changed, then prog_io_pragma.m must also
+        % NOTE: If this predicate is changed, then parse_pragma.m must also
         % be changed, so that it can parse the resulting pragmas.
         % XXX Should construct a pragma, then call parse_tree_out_pragma.m.
 

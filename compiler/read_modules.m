@@ -23,8 +23,8 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_imports.
+:- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_io_error.
 
 :- import_module io.
 :- import_module list.
@@ -222,8 +222,8 @@
 :- implementation.
 
 :- import_module libs.options.
-:- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_io_find.
+:- import_module parse_tree.parse_module.
+:- import_module parse_tree.find_module.
 
 :- import_module bool.
 :- import_module cord.

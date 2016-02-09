@@ -10,7 +10,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.prog_io_find.
+:- module parse_tree.find_module.
 :- interface.
 
 :- import_module libs.file_util.
@@ -48,7 +48,7 @@
 
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.prog_io.        % for peek_at_file
+:- import_module parse_tree.parse_module.        % for peek_at_file
 
 :- import_module dir.
 :- import_module string.
@@ -223,5 +223,5 @@ find_module_name(Globals, FileName, MaybeModuleName, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.prog_io_find.
+:- end_module parse_tree.find_module.
 %---------------------------------------------------------------------------%

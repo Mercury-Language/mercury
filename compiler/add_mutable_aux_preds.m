@@ -1489,8 +1489,8 @@ define_init_pred(ItemMutable, MaybeCallPreInitExpr, InitSetPredName,
         InitPredExpr = conj_expr(Context, CallPreInitExpr, UnifyCallSetExpr)
     ),
     InitPredName = mutable_init_pred_sym_name(ModuleName, MutableName),
-    % See the comments for prog_io.parse_mutable_decl for the reason
-    % why we _must_ pass VarSetMutableX here.
+    % See the comments for parse_mutable_decl for the reason why we _must_ pass
+    % VarSetMutableX here.
     module_add_clause(VarSetMutableX, pf_predicate, InitPredName, [],
         ok1(InitPredExpr), PredStatus, Context, no, goal_type_none,
         !ModuleInfo, !QualInfo, !Specs),
