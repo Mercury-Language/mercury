@@ -1,0 +1,40 @@
+TESTING DISCRIMINATED UNIONS
+one
+two
+three
+apple([9, 5, 1])
+banana([three, one, two])
+zop(3.3, 2.03)
+zip(3, 2)
+zap(3, -2.111)
+wombat
+foo
+
+TESTING POLYMORPHISM
+poly_one([2399.3])
+poly_two(3)
+poly_three(3.33, 4, poly_one(9.11))
+
+TESTING BUILTINS
+""
+"Hello, world\n"
+"Foo%sFoo"
+"\""
+'a'
+'&'
+3.14159
+1.128324983E-21
+2.23954899E23
+-65
+4
+univ_cons(["hi! I\'m a univ!"])
+'<<predicate>>'
+'<<predicate>>'
+
+TESTING OTHER TYPES
+var(1)
+var_supply(0)
+var_supply(1)
+empty
+qwerty(4)
+
