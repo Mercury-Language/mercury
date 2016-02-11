@@ -8,18 +8,22 @@
 :- import_module grade_spec.
 
 :- import_module list.
+:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
 :- pred setup_solver_vars(solver_var_map::out, list(solver_var_name)::out)
     is det.
 
-:- pred set_value_to_false(not_possible_why::in, solver_var_value_name::in,
-    list(solver_var_value)::in, list(solver_var_value)::out) is semidet.
+%---------------------------------------------------------------------------%
 
-:- pred set_value_to_true(not_possible_why::in, solver_var_value_name::in,
-    int::in, int::out,
-    list(solver_var_value)::in, list(solver_var_value)::out) is semidet.
+:- type solver_var_set_to
+    --->    set_to_false
+    ;       set_to_true.
+
+:- pred set_solver_var(string::in, string::in, solver_var_set_to::in,
+    not_possible_why::in, maybe_error::out,
+    solver_var_map::in, solver_var_map::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -32,9 +36,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module list.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -73,33 +75,113 @@ init_solver_var_values(CurNumValues, NumValues,
 
 %---------------------------------------------------------------------------%
 
-set_value_to_false(WhyNot, SetName, [HeadValue0 | TailValues0], Values) :-
-    HeadValue0 = solver_var_value(Name, Possible0),
-    ( if SetName = Name then
-        % Fail if this value was set to not_possible even before this.
-        Possible0 = is_possible,
-        Possible = not_possible(WhyNot),
-        HeadValue = solver_var_value(Name, Possible),
-        Values = [HeadValue | TailValues0]
+set_solver_var(VarStr, ValueStr, SetTo, WhyNot, MaybeError, !SolverVarMap) :-
+    VarName = sv_name(VarStr),
+    ValueName = svv_name(ValueStr),
+    ( if map.search(!.SolverVarMap, VarName, SolverVar0) then
+        SolverVar0 = solver_var(CntAll, CntPoss0, Values0),
+        (
+            SetTo = set_to_true,
+            set_value_to_true(ValueName, WhyNot, [], OldPossibles,
+                Values0, Values)
+        ;
+            SetTo = set_to_false,
+            set_value_to_false(ValueName, WhyNot, [], OldPossibles,
+                Values0, Values)
+        ),
+        (
+            OldPossibles = [],
+            string.format("solver variable %s has no value named %s\n",
+                [s(VarStr), s(ValueStr)], Msg),
+            MaybeError = error(Msg)
+        ;
+            OldPossibles = [OldPossible],
+            (
+                SetTo = set_to_true,
+                (
+                    OldPossible = is_possible,
+                    % This is the expected case. VarName may still be
+                    % ValueName, but now it cannot be any other value.
+                    MaybeError = ok,
+                    CntPoss = 1,
+                    SolverVar = solver_var(CntAll, CntPoss, Values),
+                    map.det_update(VarName, SolverVar, !SolverVarMap)
+                ;
+                    OldPossible = not_possible(_),
+                    % Other parameter settings have already ruled out
+                    % VarName = ValueName, so this is an inconsistency
+                    % between those earlier settings and this one.
+                    string.format(
+                        "inconsistent settings for solver variable %s\n",
+                        [s(VarStr)], Msg),
+                    MaybeError = error(Msg)
+                )
+            ;
+                SetTo = set_to_false,
+                (
+                    OldPossible = is_possible,
+                    % If the variable was set to true before, that is expected.
+                    MaybeError = ok,
+                    CntPoss = CntPoss0 - 1,
+                    SolverVar = solver_var(CntAll, CntPoss, Values),
+                    map.det_update(VarName, SolverVar, !SolverVarMap)
+                ;
+                    OldPossible = not_possible(_),
+                    % If the variable was set to false before, our setting it
+                    % to false is redundant, but ok.
+                    MaybeError = ok
+                )
+            )
+        ;
+            OldPossibles = [_, _ | _],
+            string.format(
+                "solver var %s has more than one copy of value %s\n",
+                [s(VarStr), s(ValueStr)], Msg),
+            % This should have caught during setup.
+            unexpected($pred, Msg)
+        )
     else
-        set_value_to_false(WhyNot, SetName, TailValues0, TailValues),
-        Values = [HeadValue0 | TailValues]
+        string.format("there is no solver variable named %s\n",
+            [s(VarStr)], Msg),
+        MaybeError = error(Msg)
     ).
 
-set_value_to_true(_WhyNot, _SetName, !Matches, [], []).
-set_value_to_true(WhyNot, SetName, !Matches,
+:- pred set_value_to_false(solver_var_value_name::in, not_possible_why::in,
+    list(solver_var_value_possible)::in, list(solver_var_value_possible)::out,
+    list(solver_var_value)::in, list(solver_var_value)::out) is det.
+
+set_value_to_false(_SetName, _WhyNot, !OldPossibles, [], []).
+set_value_to_false(SetName, WhyNot, !OldPossibles,
         [HeadValue0 | TailValues0], [HeadValue | TailValues]) :-
     HeadValue0 = solver_var_value(Name, Possible0),
     ( if SetName = Name then
-        !:Matches = !.Matches + 1,
-        % Fail if this value was set to not_possible previously.
-        Possible0 = is_possible,
+        !:OldPossibles = [Possible0 | !.OldPossibles],
+        Possible = not_possible(WhyNot),
+        HeadValue = solver_var_value(Name, Possible)
+    else
         HeadValue = HeadValue0
+    ),
+    set_value_to_false(SetName, WhyNot, !OldPossibles,
+        TailValues0, TailValues).
+
+:- pred set_value_to_true(solver_var_value_name::in, not_possible_why::in,
+    list(solver_var_value_possible)::in, list(solver_var_value_possible)::out,
+    list(solver_var_value)::in, list(solver_var_value)::out) is det.
+
+set_value_to_true(_SetName, _WhyNot, !OldPossibles, [], []).
+set_value_to_true(SetName, WhyNot, !OldPossibles,
+        [HeadValue0 | TailValues0], [HeadValue | TailValues]) :-
+    HeadValue0 = solver_var_value(Name, Possible0),
+    ( if SetName = Name then
+        !:OldPossibles = [Possible0 | !.OldPossibles],
+        Possible = is_possible,
+        HeadValue = solver_var_value(Name, Possible)
     else
         Possible = not_possible(WhyNot),
         HeadValue = solver_var_value(Name, Possible)
     ),
-    set_value_to_true(WhyNot, SetName, !Matches, TailValues0, TailValues).
+    set_value_to_true(SetName, WhyNot, !OldPossibles,
+        TailValues0, TailValues).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

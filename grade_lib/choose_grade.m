@@ -17,23 +17,20 @@
 :- import_module grade_solver.
 :- import_module grade_spec.
 
-:- import_module assoc_list.
 :- import_module bool.
-:- import_module int.
+:- import_module cord.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
-:- import_module require.
-:- import_module set.
-:- import_module std_util.
 :- import_module string.
 
 main(!IO) :-
     setup_solver_vars(SolverVarMap0, PrioSolverVarNames),
     setup_requirements(SolverVarMap0, Requirements),
     io.command_line_arguments(Args, !IO),
-    process_arguments(Args, BadArgLines, SolverVarMap0, SolverVarMap1),
+    process_arguments(Args, cord.init, BadArgLinesCord,
+        SolverVarMap0, SolverVarMap1),
+    BadArgLines = cord.list(BadArgLinesCord),
     (
         BadArgLines = [_ | _],
         io.write_string("unrecognized arguments:\n", !IO),
@@ -50,11 +47,12 @@ main(!IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred process_arguments(list(string)::in, list(string)::out,
+:- pred process_arguments(list(string)::in,
+    cord(string)::in, cord(string)::out,
     solver_var_map::in, solver_var_map::out) is det.
 
-process_arguments([], [], !SolverVarMap).
-process_arguments([Arg | Args], BadArgLines, !SolverVarMap) :-
+process_arguments([], !BadArgLines, !SolverVarMap).
+process_arguments([Arg | Args], !BadArgLines, !SolverVarMap) :-
     ( if string.remove_prefix("CONFIG", Arg, ArgSuffixPrime) then
         WhyNot = npw_config,
         ArgSuffix = ArgSuffixPrime
@@ -63,71 +61,30 @@ process_arguments([Arg | Args], BadArgLines, !SolverVarMap) :-
         ArgSuffix = Arg
     ),
     ( if
-        NeqComponents = string.split_at_string("!=", ArgSuffix),
-        NeqComponents = [VarStr, ValueStr]
-    then
-        VarName = sv_name(VarStr),
-        ValueName = svv_name(ValueStr),
-        ( if
-            map.search(!.SolverVarMap, VarName, SolverVar0),
-            SolverVar0 = solver_var(CntAll, CntPoss0, Values0),
-            set_value_to_false(WhyNot, ValueName, Values0, Values)
-        then
-            IsBad = no,
-            CntPoss = CntPoss0 - 1,
-            SolverVar = solver_var(CntAll, CntPoss, Values),
-            map.det_update(VarName, SolverVar, !SolverVarMap)
-        else
-            IsBad = yes
-        )
-    else if
         EqComponents = string.split_at_string("=", ArgSuffix),
         EqComponents = [VarStr, ValueStr]
     then
-        VarName = sv_name(VarStr),
-        ValueName = svv_name(ValueStr),
-        ( if
-            map.search(!.SolverVarMap, VarName, SolverVar0),
-            SolverVar0 = solver_var(CntAll, _CntPoss0, Values0),
-            set_value_to_true(WhyNot, ValueName, 0, Matches, Values0, Values),
-            Matches = 1
-        then
-            IsBad = no,
-            CntPoss = 1,
-            SolverVar = solver_var(CntAll, CntPoss, Values),
-            map.det_update(VarName, SolverVar, !SolverVarMap)
-        else
-            IsBad = yes
-        )
+        SetTo = set_to_true,
+        set_solver_var(VarStr, ValueStr, SetTo, WhyNot, MaybeError,
+            !SolverVarMap)
+    else if
+        NeqComponents = string.split_at_string("!=", ArgSuffix),
+        NeqComponents = [VarStr, ValueStr]
+    then
+        SetTo = set_to_false,
+        set_solver_var(VarStr, ValueStr, SetTo, WhyNot, MaybeError,
+            !SolverVarMap)
     else
-        IsBad = yes
+        string.format("unrecognized setting %s\n", [s(Arg)], ArgMsg),
+        MaybeError = error(ArgMsg)
     ),
-    process_arguments(Args, BadArgLinesTail, !SolverVarMap),
     (
-        IsBad = no,
-        BadArgLines = BadArgLinesTail
+        MaybeError = ok
     ;
-        IsBad = yes,
-        BadArgLines = [Arg ++ "\n" | BadArgLinesTail]
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- func soln_to_str(solution) = string.
-
-soln_to_str(soln_failure) = "FAILURE\n".
-soln_to_str(soln_success(SuccessValues)) = Str :-
-    SuccessStr = "SUCCESS\n",
-    SuccessValueStrs = list.map(success_value_to_str, SuccessValues),
-    Str = SuccessStr ++ string.append_list(SuccessValueStrs).
-
-:- func success_value_to_str(pair(solver_var_name, solver_var_value_name))
-    = string.
-
-success_value_to_str(VarName - ValueName) = Str :-
-    VarName = sv_name(VarNameStr),
-    ValueName = svv_name(ValueNameStr),
-    string.format("%s = %s\n", [s(VarNameStr), s(ValueNameStr)], Str).
+        MaybeError = error(Msg),
+        !:BadArgLines = cord.snoc(!.BadArgLines, Msg)
+    ),
+    process_arguments(Args, !BadArgLines, !SolverVarMap).
 
 %---------------------------------------------------------------------------%
 :- end_module choose_grade.

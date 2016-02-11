@@ -23,6 +23,8 @@
 
 :- func solver_var_map_to_str(solver_var_map) = string.
 
+:- func soln_to_str(solution) = string.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -33,8 +35,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
-:- import_module std_util.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -390,6 +390,22 @@ count_possible_values([SolverVarValue | SolverVarValues]) = N :-
         Possible = not_possible(_),
         N = NTail
     ).
+
+%---------------------------------------------------------------------------%
+
+soln_to_str(soln_failure) = "FAILURE\n".
+soln_to_str(soln_success(SuccessValues)) = Str :-
+    SuccessStr = "SUCCESS\n",
+    SuccessValueStrs = list.map(success_value_to_str, SuccessValues),
+    Str = SuccessStr ++ string.append_list(SuccessValueStrs).
+
+:- func success_value_to_str(pair(solver_var_name, solver_var_value_name))
+    = string.
+
+success_value_to_str(VarName - ValueName) = Str :-
+    VarName = sv_name(VarNameStr),
+    ValueName = svv_name(ValueNameStr),
+    string.format("%s = %s\n", [s(VarNameStr), s(ValueNameStr)], Str).
 
 %---------------------------------------------------------------------------%
 :- end_module grade_solver.
