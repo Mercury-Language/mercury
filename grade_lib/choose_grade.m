@@ -20,16 +20,14 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module string.
 
 main(!IO) :-
-    setup_solver_vars(SolverVarMap0, PrioSolverVarNames),
-    setup_requirements(SolverVarMap0, Requirements),
+    setup_solver_info(SolverInfo0),
     io.command_line_arguments(Args, !IO),
     process_arguments(Args, cord.init, BadArgLinesCord,
-        SolverVarMap0, SolverVarMap1),
+        SolverInfo0, SolverInfo1),
     BadArgLines = cord.list(BadArgLinesCord),
     (
         BadArgLines = [_ | _],
@@ -39,20 +37,21 @@ main(!IO) :-
         BadArgLines = [],
         trace [compile_time(flag("debug_choose_grade")), io(!TIO)] (
             io.write_string("AFTER SETUP\n", !TIO),
-            io.write_string(solver_var_map_to_str(SolverVarMap1), !TIO)
+            SolverVarMap1 = SolverInfo1 ^ si_solver_var_map,
+            io.write_string(solver_var_map_to_str("    ", SolverVarMap1), !TIO)
         ),
-        solve(Requirements, PrioSolverVarNames, SolverVarMap1, 1, Soln),
-        io.write_string(soln_to_str(Soln), !IO)
+        solve(SolverInfo1, Soln),
+        io.write_string(soln_to_str("", Soln), !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred process_arguments(list(string)::in,
     cord(string)::in, cord(string)::out,
-    solver_var_map::in, solver_var_map::out) is det.
+    solver_info::in, solver_info::out) is det.
 
-process_arguments([], !BadArgLines, !SolverVarMap).
-process_arguments([Arg | Args], !BadArgLines, !SolverVarMap) :-
+process_arguments([], !BadArgLines, !SolverInfo).
+process_arguments([Arg | Args], !BadArgLines, !SolverInfo) :-
     ( if string.remove_prefix("CONFIG", Arg, ArgSuffixPrime) then
         WhyNot = npw_config,
         ArgSuffix = ArgSuffixPrime
@@ -62,18 +61,16 @@ process_arguments([Arg | Args], !BadArgLines, !SolverVarMap) :-
     ),
     ( if
         EqComponents = string.split_at_string("=", ArgSuffix),
-        EqComponents = [VarStr, ValueStr]
+        EqComponents = [Var, Value]
     then
         SetTo = set_to_true,
-        set_solver_var(VarStr, ValueStr, SetTo, WhyNot, MaybeError,
-            !SolverVarMap)
+        set_solver_var(Var, Value, SetTo, WhyNot, MaybeError, !SolverInfo)
     else if
         NeqComponents = string.split_at_string("!=", ArgSuffix),
-        NeqComponents = [VarStr, ValueStr]
+        NeqComponents = [Var, Value]
     then
         SetTo = set_to_false,
-        set_solver_var(VarStr, ValueStr, SetTo, WhyNot, MaybeError,
-            !SolverVarMap)
+        set_solver_var(Var, Value, SetTo, WhyNot, MaybeError, !SolverInfo)
     else
         string.format("unrecognized setting %s\n", [s(Arg)], ArgMsg),
         MaybeError = error(ArgMsg)
@@ -84,7 +81,7 @@ process_arguments([Arg | Args], !BadArgLines, !SolverVarMap) :-
         MaybeError = error(Msg),
         !:BadArgLines = cord.snoc(!.BadArgLines, Msg)
     ),
-    process_arguments(Args, !BadArgLines, !SolverVarMap).
+    process_arguments(Args, !BadArgLines, !SolverInfo).
 
 %---------------------------------------------------------------------------%
 :- end_module choose_grade.

@@ -6,10 +6,8 @@
 :- interface.
 
 :- import_module assoc_list.
-:- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -149,7 +147,7 @@ init_solver_vars = [
         solver_var_value(svv_name("trseg"), is_possible)
     ]),
     sv_name("minimal_model") - solver_var(0, 0, [
-        solver_var_value(svv_name("none"), is_possible),
+        solver_var_value(svv_name("no_mm"), is_possible),
         solver_var_value(svv_name("mm_stack_copy"), is_possible)
         % The debug version of mm_stack_copy is not for general use.
         % The mm_own_stack implementation of minimal model tabling
@@ -164,7 +162,7 @@ init_solver_vars = [
         solver_var_value(svv_name("target_native"), is_possible),
         solver_var_value(svv_name("accurate"), is_possible),
         solver_var_value(svv_name("bdw_debug"), is_possible),
-        solver_var_value(svv_name("none"), is_possible),
+        solver_var_value(svv_name("no_gc"), is_possible),
         solver_var_value(svv_name("history"), is_possible)
     ]),
     sv_name("deep_prof") - solver_var(0, 0, [
@@ -197,14 +195,14 @@ init_solver_vars = [
         solver_var_value(svv_name("term_size_prof_words"), is_possible)
     ]),
     sv_name("debug") - solver_var(0, 0, [
-        solver_var_value(svv_name("none"), is_possible),
+        solver_var_value(svv_name("nodebug"), is_possible),
         solver_var_value(svv_name("debug"), is_possible),
         solver_var_value(svv_name("decldebug"), is_possible)
         % The source-to-source debugger is not yet mature enough
         % to be generally useful. When it IS mature enough,
         % it could be added here as an alternative to debug and decldebug,
         % or it could be implemented as a solver variable of its own
-        % that requires debug=none. (Giving the user TWO debuggers to
+        % that requires debug=nodebug. (Giving the user TWO debuggers to
         % interact with at the same time is not a good idea.)
     ]),
     sv_name("single_prec_float") - solver_var(0, 0, [
@@ -367,7 +365,7 @@ init_requirements = [
     requirement(requirement_id(0),
         "trailing interferes with minimal model tabling",
         sv_name("trail"), svv_name("trail"),
-        sv_name("minimal_model"), [svv_name("none")]
+        sv_name("minimal_model"), [svv_name("no_mm")]
     ),
 
 % Requirements of settings of the trail_segments solver var.

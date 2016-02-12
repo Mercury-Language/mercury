@@ -6,15 +6,17 @@
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-MERCURY_DIR=..
-include $(MERCURY_DIR)/Mmake.common
+# MERCURY_DIR=..
+# include $(MERCURY_DIR)/Mmake.common
 
 # Module-specific options should go in Mercury.options so they can be found
 # by `mmc --make'.
 -include Mercury.options
 
-MAIN_TARGET=all
-MERCURY_MAIN_MODULES=choose_grade
+-include ../Mmake.params
+
+MAIN_TARGET = all
+MERCURY_MAIN_MODULES = choose_grade test_grades
 
 .PHONY: all
 all:	$(MERCURY_MAIN_MODULES)

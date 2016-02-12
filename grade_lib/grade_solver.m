@@ -5,10 +5,10 @@
 :- module grade_solver.
 :- interface.
 
+:- import_module grade_setup.
 :- import_module grade_spec.
 
 :- import_module assoc_list.
-:- import_module list.
 
 :- type solution
     --->    soln_failure
@@ -16,14 +16,30 @@
                 assoc_list(solver_var_name, solver_var_value_name)
             ).
 
-:- pred solve(list(requirement)::in, list(solver_var_name)::in,
-    solver_var_map::in, int::in, solution::out) is det.
+:- pred solve(solver_info::in, solution::out) is det.
 
 %---------------------------------------------------------------------------%
 
-:- func solver_var_map_to_str(solver_var_map) = string.
+    % solver_var_map_to_str(Prefix, SolverVarMap):
+    %
+    % Print the contents of the given solver map to a string.
+    % For each solver variable, and each potential value of that variable,
+    % print whether the value is still possible, and if not, why not.
+    % Add the given string as a prefix before every line.
+    %
+    % Abort if we detect an invariant of the solver map data structure
+    % that does not hold.
+    %
+:- func solver_var_map_to_str(string, solver_var_map) = string.
 
-:- func soln_to_str(solution) = string.
+    % solver_var_map_to_str(Prefix, Soln):
+    %
+    % Print whether the solution is a success or a failure. If a success,
+    % print the selected values of the solver variables as a sequence of lines
+    % of the form SolverVar = SolverVarValue.
+    % Add the given string as a prefix before every line.
+    %
+:- func soln_to_str(string, solution) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -31,6 +47,7 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -39,7 +56,14 @@
 
 %---------------------------------------------------------------------------%
 
-solve(Requirements, PrioSolverVarNames, !.SolverVarMap, !.Pass, Soln) :-
+solve(SolverInfo, Soln) :-
+    SolverInfo = solver_info(Requirements, PrioSolverVarNames, SolverVarMap0),
+    solve_loop(Requirements, PrioSolverVarNames, SolverVarMap0, 1, Soln).
+
+:- pred solve_loop(list(requirement)::in, list(solver_var_name)::in,
+    solver_var_map::in, int::in, solution::out) is det.
+
+solve_loop(Requirements, PrioSolverVarNames, !.SolverVarMap, !.Pass, Soln) :-
     propagate_to_fixpoint(Requirements, !SolverVarMap, !Pass),
     at_solution(PrioSolverVarNames, !.SolverVarMap, MaybeSoln),
     (
@@ -47,7 +71,8 @@ solve(Requirements, PrioSolverVarNames, !.SolverVarMap, !.Pass, Soln) :-
     ;
         MaybeSoln = no,
         label_step(PrioSolverVarNames, !SolverVarMap),
-        solve(Requirements, PrioSolverVarNames, !.SolverVarMap, !.Pass, Soln)
+        solve_loop(Requirements, PrioSolverVarNames, !.SolverVarMap,
+            !.Pass, Soln)
     ).
 
 %---------------------------------------------------------------------------%
@@ -63,7 +88,7 @@ propagate_to_fixpoint(Requirements, !SolverVarMap, !Pass) :-
     propagate_pass(Requirements, !SolverVarMap, not_changed, Changed),
     trace [compile_time(flag("debug_choose_grade")), io(!IO)] (
         io.format("AFTER PROPAGATE PASS %d\n", [i(!.Pass)], !IO),
-        io.write_string(solver_var_map_to_str(!.SolverVarMap), !IO)
+        io.write_string(solver_var_map_to_str("    ", !.SolverVarMap), !IO)
     ),
     !:Pass = !.Pass + 1,
     (
@@ -325,16 +350,17 @@ get_poss_values([SolverVarValue | SolverVarValues], PossValueNames) :-
 
 %---------------------------------------------------------------------------%
 
-solver_var_map_to_str(SolverVarMap) = Str :-
+solver_var_map_to_str(Prefix, SolverVarMap) = Str :-
     map.to_sorted_assoc_list(SolverVarMap, SolverAssocList),
-    SolverVarStrs = list.map(solver_var_pair_to_str, SolverAssocList),
+    SolverVarStrs = list.map(solver_var_pair_to_str(Prefix), SolverAssocList),
     Str = string.append_list(SolverVarStrs).
 
-:- func solver_var_pair_to_str(pair(solver_var_name, solver_var)) = string.
+:- func solver_var_pair_to_str(string, pair(solver_var_name, solver_var))
+    = string.
 
-solver_var_pair_to_str(SolverVarName - SolverVar) = Str :-
+solver_var_pair_to_str(Prefix, SolverVarName - SolverVar) = Str :-
     SolverVar = solver_var(_CntAll, _CntPoss, _Values),
-    Str = solver_var_to_str(SolverVarName, SolverVar).
+    Str = Prefix ++ solver_var_to_str(SolverVarName, SolverVar).
 
 :- func solver_var_to_str(solver_var_name, solver_var) = string.
 
@@ -393,19 +419,20 @@ count_possible_values([SolverVarValue | SolverVarValues]) = N :-
 
 %---------------------------------------------------------------------------%
 
-soln_to_str(soln_failure) = "FAILURE\n".
-soln_to_str(soln_success(SuccessValues)) = Str :-
-    SuccessStr = "SUCCESS\n",
-    SuccessValueStrs = list.map(success_value_to_str, SuccessValues),
+soln_to_str(Prefix, soln_failure) = Prefix ++ "FAILURE\n".
+soln_to_str(Prefix, soln_success(SuccessValues)) = Str :-
+    SuccessStr = Prefix ++ "SUCCESS\n",
+    SuccessValueStrs = list.map(success_value_to_str(Prefix), SuccessValues),
     Str = SuccessStr ++ string.append_list(SuccessValueStrs).
 
-:- func success_value_to_str(pair(solver_var_name, solver_var_value_name))
-    = string.
+:- func success_value_to_str(string,
+    pair(solver_var_name, solver_var_value_name)) = string.
 
-success_value_to_str(VarName - ValueName) = Str :-
+success_value_to_str(Prefix, VarName - ValueName) = Str :-
     VarName = sv_name(VarNameStr),
     ValueName = svv_name(ValueNameStr),
-    string.format("%s = %s\n", [s(VarNameStr), s(ValueNameStr)], Str).
+    string.format("%s%s = %s\n", [s(Prefix), s(VarNameStr), s(ValueNameStr)],
+        Str).
 
 %---------------------------------------------------------------------------%
 :- end_module grade_solver.

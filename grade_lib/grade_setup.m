@@ -10,10 +10,14 @@
 :- import_module list.
 :- import_module maybe.
 
-%---------------------------------------------------------------------------%
+:- type solver_info
+    --->    solver_info(
+                si_reqs                 :: list(requirement),
+                si_vars_priority        :: list(solver_var_name),
+                si_solver_var_map       :: solver_var_map
+            ).
 
-:- pred setup_solver_vars(solver_var_map::out, list(solver_var_name)::out)
-    is det.
+:- pred setup_solver_info(solver_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -23,11 +27,7 @@
 
 :- pred set_solver_var(string::in, string::in, solver_var_set_to::in,
     not_possible_why::in, maybe_error::out,
-    solver_var_map::in, solver_var_map::out) is det.
-
-%---------------------------------------------------------------------------%
-
-:- pred setup_requirements(solver_var_map::in, list(requirement)::out) is det.
+    solver_info::in, solver_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -43,7 +43,15 @@
 :- import_module std_util.
 :- import_module string.
 
+setup_solver_info(SolverInfo) :-
+    setup_solver_vars(SolverVarMap, PrioSolverVarNames),
+    setup_requirements(SolverVarMap, Requirements),
+    SolverInfo = solver_info(Requirements, PrioSolverVarNames, SolverVarMap).
+
 %---------------------------------------------------------------------------%
+
+:- pred setup_solver_vars(solver_var_map::out, list(solver_var_name)::out)
+    is det.
 
 setup_solver_vars(SolverVarMap, PrioSolverVarNames) :-
     SolverVars0 = init_solver_vars,
@@ -75,10 +83,11 @@ init_solver_var_values(CurNumValues, NumValues,
 
 %---------------------------------------------------------------------------%
 
-set_solver_var(VarStr, ValueStr, SetTo, WhyNot, MaybeError, !SolverVarMap) :-
+set_solver_var(VarStr, ValueStr, SetTo, WhyNot, MaybeError, !SolverInfo) :-
+    SolverVarMap0 = !.SolverInfo ^ si_solver_var_map,
     VarName = sv_name(VarStr),
     ValueName = svv_name(ValueStr),
-    ( if map.search(!.SolverVarMap, VarName, SolverVar0) then
+    ( if map.search(SolverVarMap0, VarName, SolverVar0) then
         SolverVar0 = solver_var(CntAll, CntPoss0, Values0),
         (
             SetTo = set_to_true,
@@ -105,7 +114,9 @@ set_solver_var(VarStr, ValueStr, SetTo, WhyNot, MaybeError, !SolverVarMap) :-
                     MaybeError = ok,
                     CntPoss = 1,
                     SolverVar = solver_var(CntAll, CntPoss, Values),
-                    map.det_update(VarName, SolverVar, !SolverVarMap)
+                    map.det_update(VarName, SolverVar,
+                        SolverVarMap0, SolverVarMap),
+                    !SolverInfo ^ si_solver_var_map := SolverVarMap
                 ;
                     OldPossible = not_possible(_),
                     % Other parameter settings have already ruled out
@@ -124,7 +135,9 @@ set_solver_var(VarStr, ValueStr, SetTo, WhyNot, MaybeError, !SolverVarMap) :-
                     MaybeError = ok,
                     CntPoss = CntPoss0 - 1,
                     SolverVar = solver_var(CntAll, CntPoss, Values),
-                    map.det_update(VarName, SolverVar, !SolverVarMap)
+                    map.det_update(VarName, SolverVar,
+                        SolverVarMap0, SolverVarMap),
+                    !SolverInfo ^ si_solver_var_map := SolverVarMap
                 ;
                     OldPossible = not_possible(_),
                     % If the variable was set to false before, our setting it
@@ -185,6 +198,8 @@ set_value_to_true(SetName, WhyNot, !OldPossibles,
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
+:- pred setup_requirements(solver_var_map::in, list(requirement)::out) is det.
 
 setup_requirements(SolverVarMap, Requirements) :-
     Requirements0 = init_requirements,
