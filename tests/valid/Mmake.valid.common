@@ -113,7 +113,7 @@ else
 	PROGS6 = $(PROGS5)
 endif
 
-ifeq "$(findstring decldebug,$(GRADE))" ""
+ifeq "$(filter hl% java% csharp% erlang%,$(GRADE))$(findstring decldebug,$(GRADE))" ""
 	PROGS7 = $(PROGS6) $(NON_DECLDEBUG_PROGS)
 else
 	PROGS7 = $(PROGS6)
