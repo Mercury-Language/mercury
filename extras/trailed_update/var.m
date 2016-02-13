@@ -1046,7 +1046,7 @@ debug_freeze(Msg, X, Pred, Y) :-
     ).
 
 :- /* impure */
-   pred debug_pred(string, pred(T), T) is semidet.
+   pred debug_pred(string, pred(T), T).
 :- mode debug_pred(in, pred(in) is semidet, in) is semidet.
 
     % XXX the `pragma promise_pure' here is a lie,
@@ -1080,7 +1080,7 @@ debug_pred(Msg, Pred, Var) :-
     ).
 
 :- /* impure */
-   pred debug_pred2(string, pred(T1, T2), T1, T2) is semidet.
+   pred debug_pred2(string, pred(T1, T2), T1, T2).
 :- mode debug_pred2(in, pred(in, out) is semidet, in, out) is semidet.
 
     % XXX the `pragma promise_pure' here is a lie,
