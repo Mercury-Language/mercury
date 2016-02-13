@@ -15,7 +15,7 @@
 
 :- import_module grade_setup.
 :- import_module grade_solver.
-:- import_module grade_spec.
+:- import_module grade_state.
 
 :- import_module bool.
 :- import_module cord.
@@ -61,12 +61,12 @@ broad_test_set_spec = [
 :- func llds_test_set_spec = test_set_spec.
 
 llds_test_set_spec = [
-    test_set_component("avail_gcc_regs",
+    test_set_component("gcc_regs_avail",
         ["gcc_regs_not_avail", "gcc_regs_avail"]),
-    test_set_component("avail_gcc_nonlocal_gotos",
-        ["gcc_nonlocal_gotos_not_avail", "gcc_nonlocal_gotos_avail"]),
-    test_set_component("avail_gcc_asm_labels",
-        ["gcc_asm_labels_not_avail", "gcc_asm_labels_avail"]),
+    test_set_component("gcc_gotos_avail",
+        ["gcc_gotos_not_avail", "gcc_gotos_avail"]),
+    test_set_component("gcc_labels_avail",
+        ["gcc_labels_not_avail", "gcc_labels_avail"]),
     test_set_component("stack_segments", ["stseg", "stfix"]),
     test_set_component("thread_safe", ["not_thread_safe", "thread_safe"]),
     test_set_component("minimal_model", ["no_mm", "mm_stack_copy"]),

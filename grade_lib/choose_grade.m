@@ -15,7 +15,7 @@
 
 :- import_module grade_setup.
 :- import_module grade_solver.
-:- import_module grade_spec.
+:- import_module grade_state.
 
 :- import_module bool.
 :- import_module cord.
