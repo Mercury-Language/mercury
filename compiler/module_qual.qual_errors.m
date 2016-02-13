@@ -302,7 +302,7 @@ report_ambiguous_match(ErrorContext, Id, IdType,
         words("ambiguity error: multiple possible matches for"),
         fixed(IdTypeStr), wrap_id(Id), suffix("."), nl,
         words("The possible matches are in modules")] ++
-        UsableModuleSymNames ++ [suffix("."), nl],
+        component_list_to_pieces(UsableModuleSymNames) ++ [suffix("."), nl],
     (
         UnusableModuleNames = [],
         UnusablePieces = []
