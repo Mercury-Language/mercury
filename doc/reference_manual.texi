@@ -4774,11 +4774,13 @@ or
 @noindent
 (or any declaration equivalent to one of the two above).
 
-Mercury has a standard library which includes modules for
+Mercury has a standard library which includes over 100 modules,
+including modules for
 lists, stacks, queues, priority queues, sets, bags (multi-sets),
-maps (dictionaries), random number generation, input/output
-and filename and directory handling. 
-See the Mercury Library Reference Manual for details.
+maps (dictionaries), random number generation, input/output,
+and filename and directory handling.
+See the Mercury Library Reference Manual for a list of the available modules,
+and for the documentation of each module.
 
 @node An example module
 @section An example module.
