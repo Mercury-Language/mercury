@@ -632,12 +632,12 @@ init_requirement_specs = [
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "mprof time profiling requires the LLDS backend",
+        "mprof time profiling requires targeting C",
         (svar_mprof_time `being` svalue_mprof_time_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "mprof time profiling requires the LLDS backend",
+        "mprof time profiling requires mprof call profiling",
         % XXX runtime/mercury_grade.h allows MR_MPROF_PROFILE_TIME without
         % MR_MPROF_PROFILE_CALLS, but calls the combination "useless".
         (svar_mprof_time `being` svalue_mprof_time_yes) `implies_that`
@@ -651,13 +651,13 @@ init_requirement_specs = [
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "mprof memory profiling requires the LLDS backend",
+        "mprof memory profiling requires targeting C",
         % XXX is this correct?
         (svar_mprof_memory `being` svalue_mprof_memory_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "mprof memory profiling requires the LLDS backend",
+        "mprof memory profiling requires mprof call profiling",
         (svar_mprof_memory `being` svalue_mprof_memory_yes) `implies_that`
         (svar_mprof_call `is_one_of` [svalue_mprof_call_yes])
     ),

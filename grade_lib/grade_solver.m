@@ -8,13 +8,13 @@
 :- import_module grade_spec.
 :- import_module grade_state.
 
-:- import_module assoc_list.
+:- import_module map.
+
+:- type success_soln_map == map(solver_var_id, solver_var_value_id).
 
 :- type solution
     --->    soln_failure
-    ;       soln_success(
-                assoc_list(solver_var_id, solver_var_value_id)
-            ).
+    ;       soln_success(success_soln_map).
 
 :- pred solve(solver_info::in, solution::out) is det.
 
@@ -48,7 +48,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
@@ -300,8 +299,8 @@ at_solution(SolverVarPriorities, SolverVarMap, MaybeSoln) :-
     ( if NumZero > 0 then
         MaybeSoln = yes(soln_failure)
     else if NumMore = 0 then
-        list.map(project_to_one_poss_value(SolverVarMap),
-            SolverVarPriorities, SuccessSoln),
+        list.foldl(project_to_one_poss_value(SolverVarMap),
+            SolverVarPriorities, map.init, SuccessSoln),
         MaybeSoln = yes(soln_success(SuccessSoln))
     else
         MaybeSoln = no
@@ -321,14 +320,14 @@ cnt_poss_classes(SolverVar, !NumZero, !NumMore) :-
     ).
 
 :- pred project_to_one_poss_value(solver_var_map::in, solver_var_id::in,
-    pair(solver_var_id, solver_var_value_id)::out) is det.
+    success_soln_map::in, success_soln_map::out) is det.
 
-project_to_one_poss_value(SolverVarMap, VarId, VarId - ValueId) :-
+project_to_one_poss_value(SolverVarMap, VarId, !SolnMap) :-
     map.lookup(SolverVarMap, VarId, SolverVar),
     SolverVar = solver_var(_CntAll, _CntPoss, Values),
     get_poss_values(Values, PossValueIds),
-    ( if PossValueIds = [ValueIdPrime] then
-        ValueId = ValueIdPrime
+    ( if PossValueIds = [ValueId] then
+        map.det_insert(VarId, ValueId, !SolnMap)
     else
         unexpected($pred, "number of possible values is not one")
     ).
@@ -420,7 +419,8 @@ count_possible_values([SolverVarValue | SolverVarValues]) = N :-
 %---------------------------------------------------------------------------%
 
 soln_to_str(Prefix, soln_failure) = Prefix ++ "FAILURE\n".
-soln_to_str(Prefix, soln_success(SuccessValues)) = Str :-
+soln_to_str(Prefix, soln_success(SuccMap)) = Str :-
+    map.to_assoc_list(SuccMap, SuccessValues),
     SuccessStr = Prefix ++ "SUCCESS\n",
     SuccessValueStrs = list.map(success_value_to_str(Prefix), SuccessValues),
     Str = SuccessStr ++ string.append_list(SuccessValueStrs).

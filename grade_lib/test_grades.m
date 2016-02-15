@@ -16,6 +16,7 @@
 :- import_module grade_setup.
 :- import_module grade_solver.
 :- import_module grade_state.
+:- import_module grade_string.
 
 :- import_module bool.
 :- import_module cord.
@@ -97,9 +98,18 @@ run_test_set(SolverInfo0, TestSetSpec, TestSpecSoFar0, !Seq, !IO) :-
         solve(SolverInfo0, Soln),
         SpecStr = test_spec_to_string("", !.Seq, TestSpecSoFar0),
         SolnStr = soln_to_str("    ", Soln),
+        (
+            Soln = soln_failure,
+            GradeStr = ""
+        ;
+            Soln = soln_success(SuccMap),
+            GradeStr =
+                "GRADE " ++ success_soln_to_grade_string(SuccMap) ++ "\n"
+        ),
         io.nl(!IO),
         io.write_string(SpecStr, !IO),
-        io.write_string(SolnStr, !IO)
+        io.write_string(SolnStr, !IO),
+        io.write_string(GradeStr, !IO)
     ;
         TestSetSpec = [TestSetSpecHead | TestSetSpecTail],
         TestSetSpecHead = test_set_component(SolverVar, SolverValues),
