@@ -6,19 +6,9 @@
 :- interface.
 
 :- import_module grade_solver.
-
-:- func success_soln_to_grade_string(success_soln_map) = string.
-
-%---------------------------------------------------------------------------%
-
-:- implementation.
-
 :- import_module grade_spec.
 
-:- import_module cord.
 :- import_module map.
-:- import_module require.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -144,6 +134,86 @@
 
 :- func collect_solution_components(map(solver_var_id, solver_var_value_id))
     = solution_components.
+
+%---------------------------------------------------------------------------%
+
+:- type grade
+    --->    grade_llds(
+                gcc_features_used,
+                llds_gc,
+                llds_thread_safe,
+                llds_perf_prof,
+                soln_term_size_prof,
+                soln_minimal_model,
+                soln_debug,
+                soln_single_prec_float
+            )
+    ;       grade_mlds(
+                mlds_target
+            )
+    ;       grade_elds(
+                int
+            ).
+
+:- type gcc_features_used                 % labels, gotos,  regs
+    --->    gcc_features_used_none        % no      no      no
+    ;       gcc_features_used_reg         % no      no      yes
+    ;       gcc_features_used_jump        % no      yes     no
+    ;       gcc_features_used_fast        % no      yes     yes
+    ;       gcc_features_used_asm_jump    % yes     yes     no
+    ;       gcc_features_used_asm_fast.   % yes     yes     yes
+
+:- type llds_gc
+    --->    llds_gc_none
+    ;       llds_gc_bdw
+    ;       llds_gc_bdw_debug
+    ;       llds_gc_history.
+
+:- type llds_thread_safe
+    --->    llds_thread_safe_no
+    ;       llds_thread_safe_yes(
+                soln_tscope_prof
+            ).
+
+:- type llds_perf_prof
+    --->    llds_perf_prof_none
+    ;       llds_perf_prof_deep
+    ;       llds_perf_prof_mprof(
+                soln_mprof_time,
+                soln_mprof_memory
+            ).
+
+:- type mlds_target
+    --->    mlds_target_c(
+                soln_data_level,
+                soln_nested_funcs,
+                mlds_c_gc,
+                soln_thread_safe,
+                soln_single_prec_float
+            )
+    ;       mlds_target_csharp
+    ;       mlds_target_java.
+
+:- type mlds_c_gc
+    --->    mlds_c_gc_none
+    ;       mlds_c_gc_bdw
+    ;       mlds_c_gc_bdw_debug
+    ;       mlds_c_gc_accurate
+    ;       mlds_c_gc_history.
+
+%---------------------------------------------------------------------------%
+
+:- func success_soln_to_grade_string(success_soln_map) = string.
+
+%---------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module cord.
+:- import_module require.
+:- import_module string.
+
+%---------------------------------------------------------------------------%
 
 collect_solution_components(!.SolnMap) = SolutionComponents :-
     map.det_remove(svar_backend, Backend, !SolnMap),
@@ -386,37 +456,86 @@ success_soln_to_grade_string(SolnMap) = GradeStr :-
         (
             Backend = soln_backend_mlds,
             (
-                DataLevel = soln_data_level_hld,
-                !:GradeComponents = cord.snoc(!.GradeComponents, "hl")
+                Target = soln_target_c,
+                (
+                    DataLevel = soln_data_level_hld,
+                    !:GradeComponents = cord.snoc(!.GradeComponents, "hl")
+                ;
+                    DataLevel = soln_data_level_lld,
+                    !:GradeComponents = cord.snoc(!.GradeComponents, "hlc")
+                ),
+                (
+                    NestedFuncs = soln_nested_funcs_yes,
+                    !:GradeComponents = cord.snoc(!.GradeComponents, "_nest")
+                ;
+                    NestedFuncs = soln_nested_funcs_no
+                ),
+                (
+                    ThreadSafe = soln_thread_safe_yes,
+                    !:GradeComponents = cord.snoc(!.GradeComponents, ".par")
+                ;
+                    ThreadSafe = soln_thread_safe_no
+                ),
+                (
+                    Gc = soln_gc_none
+                ;
+                    Gc = soln_gc_target_native,
+                    unexpected($pred,
+                        "Backend = mlds, Target = c, Gc = target_native")
+                ;
+                    Gc = soln_gc_bdw,
+                    !:GradeComponents = cord.snoc(!.GradeComponents, ".gc")
+                ;
+                    Gc = soln_gc_bdw_debug,
+                    !:GradeComponents = cord.snoc(!.GradeComponents, ".gcd")
+                ;
+                    Gc = soln_gc_accurate,
+                    !:GradeComponents = cord.snoc(!.GradeComponents, ".agc")
+                ;
+                    Gc = soln_gc_history,
+                    !:GradeComponents = cord.snoc(!.GradeComponents, ".hgc")
+                )
             ;
-                DataLevel = soln_data_level_lld,
-                !:GradeComponents = cord.snoc(!.GradeComponents, "hlc")
-            ),
-            (
-                NestedFuncs = soln_nested_funcs_yes,
-                !:GradeComponents = cord.snoc(!.GradeComponents, "_nest")
+                Target = soln_target_csharp,
+                !:GradeComponents = cord.snoc(!.GradeComponents, "csharp"),
+                expect(unify(DataLevel, soln_data_level_hld), $pred,
+                    "DataLevel != soln_data_level_hld"),
+                expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
+                    "NestedFuncs != soln_nested_funcs_no"),
+                expect(unify(Gc, soln_gc_target_native), $pred,
+                    "Gc != soln_gc_target_native")
+                % XXX ThreadSafe?
             ;
-                NestedFuncs = soln_nested_funcs_no
+                Target = soln_target_java,
+                !:GradeComponents = cord.snoc(!.GradeComponents, "java"),
+                expect(unify(DataLevel, soln_data_level_hld), $pred,
+                    "DataLevel != soln_data_level_hld"),
+                expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
+                    "NestedFuncs != soln_nested_funcs_no"),
+                expect(unify(Gc, soln_gc_target_native), $pred,
+                    "Gc != soln_gc_target_native")
+                % XXX ThreadSafe?
+            ;
+                Target = soln_target_erlang,
+                unexpected($pred, "Backend = mlds but Target = erlang")
             ),
             expect(unify(GccRegsUse, soln_gcc_regs_use_no), $pred,
                 "GccRegsUse != soln_gcc_regs_use_no"),
             expect(unify(GccGotosUse, soln_gcc_gotos_use_no), $pred,
                 "GccGotosUse != soln_gcc_gotos_use_no"),
             expect(unify(GccLabelsUse, soln_gcc_labels_use_no), $pred,
-                "GccLabelsUse != soln_gcc_labels_use_no"),
-            (
-                ThreadSafe = soln_thread_safe_yes,
-                !:GradeComponents = cord.snoc(!.GradeComponents, ".par")
-            ;
-                ThreadSafe = soln_thread_safe_no
-            )
+                "GccLabelsUse != soln_gcc_labels_use_no")
         ;
             Backend = soln_backend_elds,
             !:GradeComponents = cord.snoc(!.GradeComponents, "erlang"),
+            expect(unify(Target, soln_target_erlang), $pred,
+                "Target != soln_target_erlang"),
             expect(unify(DataLevel, soln_data_level_lld), $pred,
                 "DataLevel != soln_data_level_lld"),
             expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
                 "NestedFuncs != soln_nested_funcs_no"),
+            expect(unify(Gc, soln_gc_target_native), $pred,
+                "Gc != soln_gc_target_native"),
             expect(unify(GccRegsUse, soln_gcc_regs_use_no), $pred,
                 "GccRegsUse != soln_gcc_regs_use_no"),
             expect(unify(GccGotosUse, soln_gcc_gotos_use_no), $pred,
@@ -426,6 +545,8 @@ success_soln_to_grade_string(SolnMap) = GradeStr :-
             % XXX ThreadSafe?
         ;
             Backend = soln_backend_llds,
+            expect(unify(Target, soln_target_c), $pred,
+                "Target != soln_target_c"),
             expect(unify(DataLevel, soln_data_level_lld), $pred,
                 "DataLevel != soln_data_level_lld"),
             expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
@@ -462,25 +583,25 @@ success_soln_to_grade_string(SolnMap) = GradeStr :-
                 !:GradeComponents = cord.snoc(!.GradeComponents, ".par")
             ;
                 ThreadSafe = soln_thread_safe_no
+            ),
+            (
+                Gc = soln_gc_none
+            ;
+                Gc = soln_gc_target_native,
+                unexpected($pred, "Backend = llds, Gc = target_native")
+            ;
+                Gc = soln_gc_bdw,
+                !:GradeComponents = cord.snoc(!.GradeComponents, ".gc")
+            ;
+                Gc = soln_gc_bdw_debug,
+                !:GradeComponents = cord.snoc(!.GradeComponents, ".gcd")
+            ;
+                Gc = soln_gc_accurate,
+                unexpected($pred, "Backend = llds, Gc = accurate")
+            ;
+                Gc = soln_gc_history,
+                !:GradeComponents = cord.snoc(!.GradeComponents, ".hgc")
             )
-        ),
-
-        (
-            ( Gc = soln_gc_none
-            ; Gc = soln_gc_target_native    % implicit in target
-            )
-        ;
-            Gc = soln_gc_bdw,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".gc")
-        ;
-            Gc = soln_gc_bdw_debug,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".gcd")
-        ;
-            Gc = soln_gc_accurate,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".agc")
-        ;
-            Gc = soln_gc_history,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".hgc")
         ),
 
         (
@@ -549,12 +670,12 @@ success_soln_to_grade_string(SolnMap) = GradeStr :-
             !:GradeComponents = cord.snoc(!.GradeComponents, ".mmsc")
         ),
 
-        % XXX tag bits: high/low/none, 2/3
         % XXX mercuryfile struct
+        % XXX tag bits: high/low/none, 2/3
         % XXX unboxed float
-        % XXX pregen
         % XXX regparm
         % XXX picreg
+        % XXX pregen
         % XXX ssdebug
         % XXX lldebug
         % XXX exts
