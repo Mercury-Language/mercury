@@ -6,9 +6,6 @@
 :- interface.
 
 :- import_module grade_solver.
-:- import_module grade_spec.
-
-:- import_module map.
 
 %---------------------------------------------------------------------------%
 
@@ -132,14 +129,15 @@
 
 %---------------------------------------------------------------------------%
 
-:- func collect_solution_components(map(solver_var_id, solver_var_value_id))
-    = solution_components.
+:- func collect_solution_components(success_soln_map) = solution_components.
 
 %---------------------------------------------------------------------------%
 
 :- type grade
     --->    grade_llds(
-                gcc_features_used,
+                llds_gcc_features_used,
+                soln_stack_segments,
+                llds_trail,
                 llds_gc,
                 llds_thread_safe,
                 llds_perf_prof,
@@ -151,17 +149,21 @@
     ;       grade_mlds(
                 mlds_target
             )
-    ;       grade_elds(
-                int
-            ).
+    ;       grade_elds.
 
-:- type gcc_features_used                 % labels, gotos,  regs
-    --->    gcc_features_used_none        % no      no      no
-    ;       gcc_features_used_reg         % no      no      yes
-    ;       gcc_features_used_jump        % no      yes     no
-    ;       gcc_features_used_fast        % no      yes     yes
-    ;       gcc_features_used_asm_jump    % yes     yes     no
-    ;       gcc_features_used_asm_fast.   % yes     yes     yes
+:- type llds_gcc_features_used                % labels, gotos,  regs
+    --->    llds_gcc_features_used_none       % no      no      no
+    ;       llds_gcc_features_used_reg        % no      no      yes
+    ;       llds_gcc_features_used_jump       % no      yes     no
+    ;       llds_gcc_features_used_fast       % no      yes     yes
+    ;       llds_gcc_features_used_asm_jump   % yes     yes     no
+    ;       llds_gcc_features_used_asm_fast.  % yes     yes     yes
+
+:- type llds_trail
+    --->    llds_trail_no
+    ;       llds_trail_yes(
+                soln_trail_segments
+            ).
 
 :- type llds_gc
     --->    llds_gc_none
@@ -188,6 +190,7 @@
                 soln_data_level,
                 soln_nested_funcs,
                 mlds_c_gc,
+                soln_trail,                 % XXX trail segments?
                 soln_thread_safe,
                 soln_single_prec_float
             )
@@ -201,6 +204,8 @@
     ;       mlds_c_gc_accurate
     ;       mlds_c_gc_history.
 
+:- func success_soln_to_grade(success_soln_map) = grade.
+
 %---------------------------------------------------------------------------%
 
 :- func success_soln_to_grade_string(success_soln_map) = string.
@@ -209,7 +214,10 @@
 
 :- implementation.
 
+:- import_module grade_spec.
+
 :- import_module cord.
+:- import_module map.
 :- import_module require.
 :- import_module string.
 
@@ -442,14 +450,288 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
 
 %---------------------------------------------------------------------------%
 
+success_soln_to_grade(SuccMap) = Grade :-
+    SolutionComponents = collect_solution_components(SuccMap),
+
+    % We pick up the values of the other arguments in separate deconstructions
+    % in each arm of the switch on Backend, to give us a singleton variable
+    % warning if don't handle a solution component in an arm.
+    %
+    % Unfortunately, I don't see how to repeat the trick for the switch
+    % on Target in the mlds case: having two deconstructs that each pick up
+    % *some* arguments is vulnerable to not picking up some arguments
+    % in *either*.
+    SolutionComponents = solution_components(Backend,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+
+    % XXX Verify that every solution component is used on every path,
+    % for one of these three things: (a) to make a decision, (c) to check
+    % that it has the expected value, or (c) to record its value in the grade.
+    (
+        Backend = soln_backend_llds,
+
+        SolutionComponents = solution_components(_Backend, DataLevel,
+            Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
+            StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
+            DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
+            TermSizeProf, Debug, SinglePrecFloat),
+
+        expect(unify(Target, soln_target_c), $pred,
+            "Target != soln_target_c"),
+        expect(unify(DataLevel, soln_data_level_lld), $pred,
+            "DataLevel != soln_data_level_lld"),
+        expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
+            "NestedFuncs != soln_nested_funcs_no"),
+        (
+            GccLabelsUse = soln_gcc_labels_use_no,
+            (
+                GccGotosUse = soln_gcc_gotos_use_no,
+                (
+                    GccRegsUse = soln_gcc_regs_use_no,
+                    LLDSGccFeaturesUsed = llds_gcc_features_used_none
+                ;
+                    GccRegsUse = soln_gcc_regs_use_yes,
+                    LLDSGccFeaturesUsed = llds_gcc_features_used_reg
+                )
+            ;
+                GccGotosUse = soln_gcc_gotos_use_yes,
+                (
+                    GccRegsUse = soln_gcc_regs_use_no,
+                    LLDSGccFeaturesUsed = llds_gcc_features_used_jump
+                ;
+                    GccRegsUse = soln_gcc_regs_use_yes,
+                    LLDSGccFeaturesUsed = llds_gcc_features_used_fast
+                )
+            )
+        ;
+            GccLabelsUse = soln_gcc_labels_use_yes,
+            (
+                GccGotosUse = soln_gcc_gotos_use_no,
+                unexpected($pred, "GccUseLabels = yes, GccUseGotos = no")
+            ;
+                GccGotosUse = soln_gcc_gotos_use_yes,
+                (
+                    GccRegsUse = soln_gcc_regs_use_no,
+                    LLDSGccFeaturesUsed = llds_gcc_features_used_asm_jump
+                ;
+                    GccRegsUse = soln_gcc_regs_use_yes,
+                    LLDSGccFeaturesUsed = llds_gcc_features_used_asm_fast
+                )
+            )
+        ),
+        (
+            Trail = soln_trail_no,
+            LLDSTrail = llds_trail_no
+        ;
+            Trail = soln_trail_yes,
+            LLDSTrail = llds_trail_yes(TrailSegments)
+        ),
+        (
+            Gc = soln_gc_none,
+            LLDSGc = llds_gc_none
+        ;
+            Gc = soln_gc_target_native,
+            unexpected($pred, "Target = c, Gc = target_native")
+        ;
+            Gc = soln_gc_bdw,
+            LLDSGc = llds_gc_bdw
+        ;
+            Gc = soln_gc_bdw_debug,
+            LLDSGc = llds_gc_bdw_debug
+        ;
+            Gc = soln_gc_accurate,
+            unexpected($pred, "Backend = llds, Gc = accurate")
+        ;
+            Gc = soln_gc_history,
+            % XXX Is this supported?
+            LLDSGc = llds_gc_history
+        ),
+        (
+            ThreadSafe = soln_thread_safe_no,
+            expect(unify(TScopeProf, soln_tscope_prof_no), $pred,
+                "TScopeProf != soln_tscope_prof_no"),
+            LLDSThreadSafe = llds_thread_safe_no
+        ;
+            ThreadSafe = soln_thread_safe_yes,
+            LLDSThreadSafe = llds_thread_safe_yes(TScopeProf)
+        ),
+        (
+            DeepProf = soln_deep_prof_no,
+            (
+                MprofCall = soln_mprof_call_no,
+                expect(unify(MprofTime, soln_mprof_time_no), $pred,
+                    "MprofTime != soln_mprof_time_no"),
+                expect(unify(MprofMemory, soln_mprof_memory_no), $pred,
+                    "MprofMemory != soln_mprof_memory_no"),
+                LLDSPerfProf = llds_perf_prof_none
+            ;
+                MprofCall = soln_mprof_call_yes,
+                LLDSPerfProf = llds_perf_prof_mprof(MprofTime, MprofMemory)
+            )
+        ;
+            DeepProf = soln_deep_prof_yes,
+            expect(unify(MprofCall, soln_mprof_call_no), $pred,
+                "MprofCall != soln_mprof_call_no"),
+            expect(unify(MprofTime, soln_mprof_time_no), $pred,
+                "MprofTime != soln_mprof_time_no"),
+            expect(unify(MprofMemory, soln_mprof_memory_no), $pred,
+                "MprofMemory != soln_mprof_memory_no"),
+            LLDSPerfProf = llds_perf_prof_deep
+        ),
+        Grade = grade_llds(LLDSGccFeaturesUsed, StackSegments, LLDSTrail,
+            LLDSGc, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
+            MinimalModel, Debug, SinglePrecFloat)
+    ;
+        Backend = soln_backend_mlds,
+
+        SolutionComponents = solution_components(_Backend, DataLevel,
+            Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
+            StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
+            DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
+            TermSizeProf, Debug, SinglePrecFloat),
+
+        expect(unify(GccRegsUse, soln_gcc_regs_use_no), $pred,
+            "GccRegsUse != soln_gcc_regs_use_no"),
+        expect(unify(GccGotosUse, soln_gcc_gotos_use_no), $pred,
+            "GccGotosUse != soln_gcc_gotos_use_no"),
+        expect(unify(GccLabelsUse, soln_gcc_labels_use_no), $pred,
+            "GccLabelsUse != soln_gcc_labels_use_no"),
+        expect(unify(StackSegments, soln_stack_segments_no), $pred,
+            "StackSegments != soln_stack_segments_no"),
+        expect(unify(TrailSegments, soln_trail_segments_no), $pred,
+            "TrailSegments != soln_trail_segments_no"),
+        expect(unify(MinimalModel, soln_minimal_model_no), $pred,
+            "MinimalModel != soln_minimal_model_no"),
+        expect(unify(DeepProf, soln_deep_prof_no), $pred,
+            "DeepProf != soln_deep_prof_no"),
+        expect(unify(MprofCall, soln_mprof_call_no), $pred,
+            "MprofCall != soln_mprof_call_no"),
+        expect(unify(MprofTime, soln_mprof_time_no), $pred,
+            "MprofTime != soln_mprof_time_no"),
+        expect(unify(MprofMemory, soln_mprof_memory_no), $pred,
+            "MprofMemory != soln_mprof_memory_no"),
+        expect(unify(TScopeProf, soln_tscope_prof_yes), $pred,
+            "TScopeProf != soln_tscope_prof_no"),
+        expect(unify(TermSizeProf, soln_term_size_prof_no), $pred,
+            "TermSizeProf != soln_term_size_prof_no"),
+        expect(unify(Debug, soln_debug_none), $pred,
+            "Debug != soln_debug_none"),
+        (
+            Target = soln_target_c,
+            (
+                Gc = soln_gc_none,
+                MLDSGc = mlds_c_gc_none
+            ;
+                Gc = soln_gc_target_native,
+                unexpected($pred, "Target = c, Gc = target_native")
+            ;
+                Gc = soln_gc_bdw,
+                MLDSGc = mlds_c_gc_bdw
+            ;
+                Gc = soln_gc_bdw_debug,
+                MLDSGc = mlds_c_gc_bdw_debug
+            ;
+                Gc = soln_gc_accurate,
+                MLDSGc = mlds_c_gc_accurate
+            ;
+                Gc = soln_gc_history,
+                % XXX Is this supported?
+                MLDSGc = mlds_c_gc_history
+            ),
+            Grade = grade_mlds(mlds_target_c(DataLevel, NestedFuncs,
+                MLDSGc, Trail, ThreadSafe, SinglePrecFloat))
+        ;
+            (
+                Target = soln_target_csharp,
+                MLDSTarget = mlds_target_csharp
+            ;
+                Target = soln_target_java,
+                MLDSTarget = mlds_target_java
+            ),
+            expect(unify(DataLevel, soln_data_level_lld), $pred,
+                "DataLevel != soln_data_level_lld"),
+            expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
+                "NestedFuncs != soln_nested_funcs_no"),
+            expect(unify(Gc, soln_gc_target_native), $pred,
+                "Gc != soln_gc_target_native"),
+            % XXX Trail?
+            expect(unify(Trail, soln_trail_no), $pred,
+                "Trail != soln_trail_no"),
+            % XXX ThreadSafe?
+            expect(unify(ThreadSafe, soln_thread_safe_no), $pred,
+                "ThreadSafe != soln_thread_safe_no"),
+            % XXX SinglePrecFloat?
+            expect(unify(SinglePrecFloat, soln_single_prec_float_no), $pred,
+                "SinglePrecFloat != soln_single_prec_float_no"),
+            Grade = grade_mlds(MLDSTarget)
+        ;
+            Target = soln_target_erlang,
+            unexpected($pred, "Backend = mlds but Target = erlang")
+        )
+    ;
+        Backend = soln_backend_elds,
+
+        SolutionComponents = solution_components(_Backend, DataLevel,
+            Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
+            StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
+            DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
+            TermSizeProf, Debug, SinglePrecFloat),
+
+        expect(unify(DataLevel, soln_data_level_lld), $pred,
+            "DataLevel != soln_data_level_lld"),
+        expect(unify(Target, soln_target_erlang), $pred,
+            "Target != soln_target_erlang"),
+        expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
+            "NestedFuncs != soln_nested_funcs_no"),
+        expect(unify(GccRegsUse, soln_gcc_regs_use_no), $pred,
+            "GccRegsUse != soln_gcc_regs_use_no"),
+        expect(unify(GccGotosUse, soln_gcc_gotos_use_no), $pred,
+            "GccGotosUse != soln_gcc_gotos_use_no"),
+        expect(unify(GccLabelsUse, soln_gcc_labels_use_no), $pred,
+            "GccLabelsUse != soln_gcc_labels_use_no"),
+        expect(unify(StackSegments, soln_stack_segments_no), $pred,
+            "StackSegments != soln_stack_segments_no"),
+        % XXX Trail?
+        expect(unify(Trail, soln_trail_no), $pred,
+            "Trail != soln_trail_no"),
+        expect(unify(TrailSegments, soln_trail_segments_no), $pred,
+            "TrailSegments != soln_trail_segments_no"),
+        expect(unify(MinimalModel, soln_minimal_model_no), $pred,
+            "MinimalModel != soln_minimal_model_no"),
+        % XXX ThreadSafe?
+        expect(unify(ThreadSafe, soln_thread_safe_no), $pred,
+            "ThreadSafe != soln_thread_safe_no"),
+        expect(unify(Gc, soln_gc_target_native), $pred,
+            "Gc != soln_gc_target_native"),
+        expect(unify(DeepProf, soln_deep_prof_no), $pred,
+            "DeepProf != soln_deep_prof_no"),
+        expect(unify(MprofCall, soln_mprof_call_no), $pred,
+            "MprofCall != soln_mprof_call_no"),
+        expect(unify(MprofTime, soln_mprof_time_no), $pred,
+            "MprofTime != soln_mprof_time_no"),
+        expect(unify(MprofMemory, soln_mprof_memory_no), $pred,
+            "MprofMemory != soln_mprof_memory_no"),
+        expect(unify(TScopeProf, soln_tscope_prof_yes), $pred,
+            "TScopeProf != soln_tscope_prof_no"),
+        expect(unify(TermSizeProf, soln_term_size_prof_no), $pred,
+            "TermSizeProf != soln_term_size_prof_no"),
+        expect(unify(Debug, soln_debug_none), $pred,
+            "Debug != soln_debug_none"),
+        expect(unify(SinglePrecFloat, soln_single_prec_float_no), $pred,
+            "SinglePrecFloat != soln_single_prec_float_no"),
+        % XXX incomplete
+        Grade = grade_elds
+    ).
+
+%---------------------------------------------------------------------------%
+
 success_soln_to_grade_string(SolnMap) = GradeStr :-
     SolutionComponents = collect_solution_components(SolnMap),
     SolutionComponents = solution_components(Backend, DataLevel,
         Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
         StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
         DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf, TermSizeProf,
-        Debug, SinglePrecFloat
-    ),
+        Debug, SinglePrecFloat),
 
     some [!GradeComponents] (
         !:GradeComponents = cord.init,
