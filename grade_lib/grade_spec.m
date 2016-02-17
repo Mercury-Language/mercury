@@ -336,7 +336,7 @@ init_solver_var_specs = [
     solver_var_spec(svar_backend,
         [svalue_backend_mlds, svalue_backend_llds, svalue_backend_elds]),
     solver_var_spec(svar_data_level,
-        [svalue_data_level_hld, svalue_data_level_lld]),
+        [svalue_data_level_lld, svalue_data_level_hld]),
     solver_var_spec(svar_target,
         [svalue_target_c, svalue_target_csharp,
         svalue_target_java, svalue_target_erlang]),
