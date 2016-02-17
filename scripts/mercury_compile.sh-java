@@ -10,7 +10,7 @@ case $WINDIR in
    *)  SEP=';' ;;
 esac
 JARDIR="$DIR/../lib/mercury/lib/java"
-CLASSPATH="$DIR/top_level.jar"${SEP}$CLASSPATH${SEP}$JARDIR/mer_rt.jar${SEP}$JARDIR/mer_std.jar${SEP}$JARDIR/mer_browser.jar${SEP}$JARDIR/mer_mdbcomp.jar
+CLASSPATH="$DIR/mercury_compile.jar"${SEP}$CLASSPATH${SEP}$JARDIR/mer_rt.jar${SEP}$JARDIR/mer_std.jar${SEP}$JARDIR/mer_browser.jar${SEP}$JARDIR/mer_mdbcomp.jar
 export CLASSPATH
 JAVA=${JAVA:-java}
-exec "$JAVA" -Xss32M jmercury.top_level "$@"
+exec "$JAVA" -Xss32M jmercury.mercury_compile "$@"

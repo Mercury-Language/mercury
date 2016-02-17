@@ -136,9 +136,9 @@ ssdb/$(deps_subdir)$(SSDB_LIB_NAME).dep:
 	+cd ssdb && $(SUBDIR_MMAKE) $(SSDB_LIB_NAME).depend
 
 .PHONY: dep_compiler
-dep_compiler: compiler/$(deps_subdir)top_level.dep
+dep_compiler: compiler/$(deps_subdir)mercury_compile.dep
 
-compiler/$(deps_subdir)top_level.dep: library/$(deps_subdir)$(STD_LIB_NAME).dep
+compiler/$(deps_subdir)mercury_compile.dep: library/$(deps_subdir)$(STD_LIB_NAME).dep
 	+cd compiler && $(SUBDIR_MMAKE) depend
 
 .PHONY: dep_slice

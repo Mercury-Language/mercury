@@ -76,8 +76,8 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
-:- import_module top_level.                 % XXX unwanted dependency
-:- import_module top_level.mercury_compile. % XXX unwanted dependency
+:- import_module top_level.                      % XXX unwanted dependency
+:- import_module top_level.mercury_compile_main. % XXX unwanted dependency
 
 :- import_module assoc_list.
 :- import_module bool.

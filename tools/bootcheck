@@ -1402,7 +1402,7 @@ then
 
     for dir in library mdbcomp browser ssdb compiler; do
         # `mmake cs' in the compiler directory doesn't build
-        # `top_level_init.c', so we only compare the `.c'
+        # `mercury_compile_init.c', so we only compare the `.c'
         # files present in the stage 3 directory.
         for file in $stage3dir/$dir/${target_subdir}*.${target_ext}; do
             diff -u $stage2dir/$dir/${cs_subdir}`basename $file` $file \

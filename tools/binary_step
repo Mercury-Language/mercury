@@ -221,9 +221,9 @@ touch stage2/compiler/*.o
 
 # Rebuild the stage2 library and compiler from the components already there.
 
-/bin/rm -f stage2/library/lib$STD_LIB_NAME.{a,so}
-/bin/rm -f stage2/mdbcomp/lib$MDBCOMP_LIB_NAME.{a,so}
-/bin/rm -f stage2/compiler/{top_level,mercury_compile}
+/bin/rm -f stage2/library/lib$STD_LIB_NAME.{a,so,dylib}
+/bin/rm -f stage2/mdbcomp/lib$MDBCOMP_LIB_NAME.{a,so,dylib}
+/bin/rm -f stage2/compiler/{mercury_compile}
 
 set -x
 
@@ -353,7 +353,7 @@ then
         for dir in library mdbcomp compiler
         do
             # `mmake cs' in the compiler directory doesn't build
-            # `top_level_init.c', so we only compare the `.c'
+            # `mercury_compile_init.c', so we only compare the `.c'
             # files present in the stage3 directory.
             for stage3file in stage3/$dir/*.c
             do

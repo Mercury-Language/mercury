@@ -542,8 +542,8 @@ EOF
         # distribution which includes the pre-generated .C files.
         # So do a quick check now to ensure that we fail early with a
         # reasonable error message if they are not present.
-        if  test -f compiler/top_level.c ||
-            test -f compiler/Mercury/cs/top_level.c
+        if  test -f compiler/mercury_compile.c ||
+            test -f compiler/Mercury/cs/mercury_compile.c
         then
             true
         elif
@@ -579,13 +579,13 @@ then
     # any other pre-generated .c files as part of the call to
     # mercury_check_c_files() later on.
     #
-    if test -f compiler/top_level.c
+    if test -f compiler/mercury_compile.c
     then
-        highlevel_code=`grep "HIGHLEVEL_CODE=.*" compiler/top_level.c`
+        highlevel_code=`grep "HIGHLEVEL_CODE=.*" compiler/mercury_compile.c`
     else
-        if test -f compiler/Mercury/cs/top_level.c
+        if test -f compiler/Mercury/cs/mercury_compile.c
         then
-            highlevel_code=`grep "HIGHLEVEL_CODE=.*" compiler/Mercury/cs/top_level.c`
+            highlevel_code=`grep "HIGHLEVEL_CODE=.*" compiler/Mercury/cs/mercury_compile.c`
         else
             # If we are going to attempt to bootstrap from a compiler in
             # $PREFIX/bin (see the above section), then it is ok if we do not

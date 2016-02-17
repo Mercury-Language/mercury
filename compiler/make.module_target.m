@@ -622,7 +622,7 @@ get_object_extension(Globals, PIC) = Ext :-
 call_mercury_compile_main(Globals, Args, Succeeded, !IO) :-
     io.get_exit_status(Status0, !IO),
     io.set_exit_status(0, !IO),
-    mercury_compile.main_for_make(Globals, Args, !IO),
+    mercury_compile_main.main_for_make(Globals, Args, !IO),
     io.get_exit_status(Status, !IO),
     Succeeded = ( if Status = 0 then yes else no ),
     io.set_exit_status(Status0, !IO).

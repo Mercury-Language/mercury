@@ -27,13 +27,13 @@ library, runtime, etc.) fit together.
 
 The main job of the compiler is to translate Mercury into C, although it
 can also translate (subsets of) Mercury to some other languages:
-Mercury bytecode (for a planned bytecode interpreter), MSIL (for the
-Microsoft .NET platform), C#, Java and Erlang.
+Mercury bytecode (for a planned bytecode interpreter), C#, Java and Erlang.
 
 <p>
 
-The top-level of the compiler is in the file mercury_compile.m,
-which is a sub-module of the top_level.m package.
+The top-level of the compiler is in the file mercury_compiler.m.
+This forwards all of the work to the file mercury_compiler_main.m which is a
+sub-module of the top_level.m package.
 The basic design is that compilation is broken into the following
 stages:
 

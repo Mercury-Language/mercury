@@ -31,7 +31,7 @@ include Mercury.options
 
 MAIN_TARGET=all
 
-MERCURY_MAIN_MODULES = top_level
+MERCURY_MAIN_MODULES = mercury_compile
 
 PDBS = $(patsubst %,%.pdb,$(MERCURY_MAIN_MODULES))
 
@@ -96,7 +96,7 @@ endif
 # targets
 
 # specify the name of the top-level module to build
-MC_PROG = top_level
+MC_PROG = mercury_compile
 
 # mercury_compile
 
@@ -117,22 +117,6 @@ all:		mercury $(TAGS_FILE_EXISTS)
 
 .PHONY: mercury
 mercury:	mercury_compile
-
-# The executable was previous known as `mercury_compile',
-# but now we generate it as `top_level'.  For compatibility with
-# various existing code, we make links to the old names.
-
-LN = ln
-
-ifneq ("$(EXT_FOR_EXE)","")
-.PHONY: mercury_compile
-mercury_compile: mercury_compile$(EXT_FOR_EXE)
-endif
-
-mercury_compile$(EXT_FOR_EXE): $(MC_PROG)$(EXT_FOR_EXE)
-	rm -f mercury_compile$(EXT_FOR_EXE)
-	$(LN) $(MC_PROG)$(EXT_FOR_EXE) mercury_compile$(EXT_FOR_EXE) || \
-		cp $(MC_PROG)$(EXT_FOR_EXE) mercury_compile$(EXT_FOR_EXE)
 
 #-----------------------------------------------------------------------------#
 
@@ -206,7 +190,7 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-# Note that the cs and os targets don't build top_level_init.{c,o}
+# Note that the cs and os targets don't build mercury_compile_init.{c,o}
 .PHONY: os cs opts
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 os: $($(MC_PROG).os)
@@ -247,7 +231,7 @@ install_dirs:
 	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
 
 # If the compiler is built in the Java grade then we need to install Java
-# archive containing its class files (currently called top_level.jar), but
+# archive containing its class files, 'mercury_compiler.jar', but
 # *not* the generated wrapper script 'mercury_compile' from this directory.
 # The latter will set the CLASSPATH variable relative to this directory and
 # won't work when moved to the installation directory.  Instead we use the
@@ -255,16 +239,16 @@ install_dirs:
 # one here alone.
 #
 # Similarly, for compilers built in the C# grade we need to install the
-# executable assembly (currently called top_level.exe), but *not* the generated
+# executable assembly, 'mercury_compile.exe', but *not* the generated
 # wrapper script 'mercury_compile' from this directory.  As with the Java grade,
 # we use the version of the wrapper script from the scripts directory.
 # XXX This covers Mono but not actual .NET; in the latter case we don't need
-# a wrapper script at all -- probably we should just rename the assembly.
+# a wrapper script at all.
 #
 ifeq ($(findstring java,$(GRADE)),java)
-INSTALL_PROGRAM=top_level.jar
+INSTALL_PROGRAM=mercury_compile.jar
 else ifeq ($(findstring csharp,$(GRADE)),csharp)
-INSTALL_PROGRAM=top_level.exe
+INSTALL_PROGRAM=mercury_compile.exe
 else
 INSTALL_PROGRAM=mercury_compile$(EXT_FOR_EXE)
 endif
