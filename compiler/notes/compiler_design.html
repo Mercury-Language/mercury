@@ -148,7 +148,7 @@ Taking all this into account, the structure looks like this:
                 5b. MLDS transformations (MLDS -&gt; MLDS)
             <li>
                 6b. output code
-                (MLDS -&gt; C or MLDS -&gt; MSIL or MLDS -&gt; Java, etc.)
+                (MLDS -&gt; C or MLDS -&gt; C# or MLDS -&gt; Java, etc.)
             </ul>
         <li>
             c. bytecode back-end
@@ -1337,9 +1337,9 @@ Expansion of equivalence types (equiv_type_hlds.m)
 <ul>
 <li>
     This pass expands equivalences which are not meant to be visible
-    to the user of imported modules. This is necessary for the IL back-end
-    and in some cases for `:- pragma export' involving foreign types on
-    the C back-end.
+    to the user of imported modules. This is necessary for the Java 
+    and C# back-ends and in some cases for `:- pragma foreign_export'
+    involving foreign types on the C back-end.
 
     <p>
 
@@ -2090,9 +2090,8 @@ Thus we have a pass which transforms the HLDS to handle trailing:
 <h4> 6b. MLDS output </h4>
 
 <p>
-There are currently four backends that generate code from MLDS:
+There are currently three backends that generate code from MLDS:
 one generates C/C++ code,
-one generates Microsoft's Intermediate Language (MSIL or IL),
 one generates Java,
 and one generates C#.
 
@@ -2283,7 +2282,7 @@ The following modules are part of the backend_libs.m package.
 
 <dt> compile_target_code.m
 <dd>
-    Invoke C, C#, IL, Java, etc. compilers and linkers to compile
+    Invoke C, C#, Java, etc. compilers and linkers to compile
     and link the generated code.
 
 <dt> string_encoding.m:
