@@ -66,28 +66,28 @@
 solve(SolverInfo, SolveCounts, Soln) :-
     SolverInfo = solver_info(Requirements, SolverVarPriorities, SolverVarMap0),
     SolveCounts0 = solve_counts(0, 0),
-    solve_loop(Requirements, SolverVarPriorities, SolverVarMap0,
-        SolveCounts0, SolveCounts, Soln).
+    solve_loop(Requirements, SolverVarPriorities, SolverVarPriorities,
+        SolverVarMap0, SolveCounts0, SolveCounts, Soln).
 
 :- pred solve_loop(list(requirement)::in, list(solver_var_id)::in,
-    solver_var_map::in, solve_counts::in, solve_counts::out,
-    solution::out) is det.
+    list(solver_var_id)::in, solver_var_map::in,
+    solve_counts::in, solve_counts::out, solution::out) is det.
 
-solve_loop(Requirements, SolverVarPriorities, !.SolverVarMap,
-        !SolveCounts, Soln) :-
+solve_loop(Requirements, AllSolverVarIds,
+        !.SolverVarPriorities, !.SolverVarMap, !SolveCounts, Soln) :-
     NumPasses0 = !.SolveCounts ^ sc_num_passes,
     propagate_to_fixpoint(Requirements, !SolverVarMap, NumPasses0, NumPasses),
     !SolveCounts ^ sc_num_passes := NumPasses,
-    at_solution(SolverVarPriorities, !.SolverVarMap, MaybeSoln),
+    at_solution(AllSolverVarIds, !.SolverVarMap, MaybeSoln),
     (
         MaybeSoln = yes(Soln)
     ;
         MaybeSoln = no,
         NumLabelSteps0 = !.SolveCounts ^ sc_num_label_steps,
         !SolveCounts ^ sc_num_label_steps := NumLabelSteps0 + 1,
-        label_step(SolverVarPriorities, !SolverVarMap),
-        solve_loop(Requirements, SolverVarPriorities, !.SolverVarMap,
-            !SolveCounts, Soln)
+        label_step(!SolverVarPriorities, !SolverVarMap),
+        solve_loop(Requirements, AllSolverVarIds,
+            !.SolverVarPriorities, !.SolverVarMap, !SolveCounts, Soln)
     ).
 
 %---------------------------------------------------------------------------%
@@ -235,34 +235,36 @@ restrict_possibilities_to(!.SetValueIds, ReqId, !CntPoss,
 
 %---------------------------------------------------------------------------%
 
-:- pred label_step(list(solver_var_id)::in,
+:- pred label_step(list(solver_var_id)::in, list(solver_var_id)::out,
     solver_var_map::in, solver_var_map::out) is det.
 
-label_step(SolverVarPriorities, SolverMap0, SolverMap) :-
-    find_first_undetermined_var(SolverVarPriorities, SolverMap0,
+label_step(!SolverVarPriorities, !SolverMap) :-
+    find_first_undetermined_var(!SolverVarPriorities, !.SolverMap,
         FirstVarId, FirstVar0),
     FirstVar0 = solver_var(_CntAll, _CntPoss, FirstValues0),
     find_first_possible_value_and_commit(FirstVarId,
         FirstValues0, FirstValues),
     FirstVar1 = FirstVar0 ^ sv_cnt_possible := 1,
     FirstVar = FirstVar1 ^ sv_values := FirstValues,
-    map.det_update(FirstVarId, FirstVar, SolverMap0, SolverMap).
+    map.det_update(FirstVarId, FirstVar, !SolverMap).
 
-:- pred find_first_undetermined_var(list(solver_var_id)::in,
+:- pred find_first_undetermined_var(
+    list(solver_var_id)::in, list(solver_var_id)::out,
     solver_var_map::in, solver_var_id::out, solver_var::out) is det.
 
-find_first_undetermined_var([], _, _, _) :-
+find_first_undetermined_var([], _, _, _, _) :-
     unexpected($pred, "no undetermined var").
-find_first_undetermined_var([SolverVarId | SolverVarIds], SolverMap,
-        FirstVarId, FirstVar) :-
+find_first_undetermined_var([SolverVarId | SolverVarIds], LaterSolverVarIds,
+        SolverMap, FirstVarId, FirstVar) :-
     map.lookup(SolverMap, SolverVarId, SolverVar),
     SolverVar = solver_var(_CntAll, CntPoss, _Values),
     ( if CntPoss > 1 then
         FirstVarId = SolverVarId,
-        FirstVar = SolverVar
+        FirstVar = SolverVar,
+        LaterSolverVarIds = SolverVarIds
     else
-        find_first_undetermined_var(SolverVarIds, SolverMap,
-            FirstVarId, FirstVar)
+        find_first_undetermined_var(SolverVarIds, LaterSolverVarIds,
+            SolverMap, FirstVarId, FirstVar)
     ).
 
 :- pred find_first_possible_value_and_commit(solver_var_id::in,
