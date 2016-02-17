@@ -20,7 +20,7 @@
     ;       svar_gcc_gotos_use
     ;       svar_gcc_labels_avail
     ;       svar_gcc_labels_use
-    ;       svar_stack_segments
+    ;       svar_stack_len
     ;       svar_trail
     ;       svar_trail_segments
     ;       svar_minimal_model
@@ -78,8 +78,9 @@
     ;       svalue_gcc_labels_use_no
     ;       svalue_gcc_labels_use_yes
 
-    ;       svalue_stack_segments_no
-    ;       svalue_stack_segments_yes
+    ;       svalue_stack_len_std
+    ;       svalue_stack_len_segments
+    ;       svalue_stack_len_extend
 
     ;       svalue_trail_no
     ;       svalue_trail_yes
@@ -199,7 +200,7 @@ solver_var_name("gcc_gotos_avail",                  svar_gcc_gotos_avail).
 solver_var_name("gcc_gotos_use",                    svar_gcc_gotos_use).
 solver_var_name("gcc_labels_avail",                 svar_gcc_labels_avail).
 solver_var_name("gcc_labels_use",                   svar_gcc_labels_use).
-solver_var_name("stack_segments",                   svar_stack_segments).
+solver_var_name("stack_len",                        svar_stack_len).
 solver_var_name("trail",                            svar_trail).
 solver_var_name("trail_segments",                   svar_trail_segments).
 solver_var_name("minimal_model",                    svar_minimal_model).
@@ -251,8 +252,9 @@ solver_var_value_name("gcc_labels_avail",       svalue_gcc_labels_avail_yes).
 solver_var_value_name("dont_use_gcc_labels",        svalue_gcc_labels_use_no).
 solver_var_value_name("use_gcc_labels",             svalue_gcc_labels_use_yes).
 
-solver_var_value_name("stfix",                      svalue_stack_segments_no).
-solver_var_value_name("stseg",                      svalue_stack_segments_yes).
+solver_var_value_name("stfix",                      svalue_stack_len_std).
+solver_var_value_name("stseg",                      svalue_stack_len_segments).
+solver_var_value_name("exts",                       svalue_stack_len_extend).
 
 solver_var_value_name("no_trail",                   svalue_trail_no).
 solver_var_value_name("trail",                      svalue_trail_yes).
@@ -354,8 +356,9 @@ init_solver_var_specs = [
     solver_var_spec(svar_gcc_labels_use,
         [svalue_gcc_labels_use_yes, svalue_gcc_labels_use_no]),
 
-    solver_var_spec(svar_stack_segments,
-        [svalue_stack_segments_yes, svalue_stack_segments_no]),
+    solver_var_spec(svar_stack_len,
+        [svalue_stack_len_segments, svalue_stack_len_std,
+        svalue_stack_len_extend]),
     solver_var_spec(svar_trail,
         [svalue_trail_no, svalue_trail_yes]),
     solver_var_spec(svar_trail_segments,
@@ -583,7 +586,12 @@ init_requirement_specs = [
 % Requirements of values of svar_stack_segments.
     requirement_spec(
         "stack segments require the LLDS backend",
-        (svar_stack_segments `being` svalue_stack_segments_yes) `implies_that`
+        (svar_stack_len `being` svalue_stack_len_segments) `implies_that`
+        (svar_backend `is_one_of` [svalue_backend_llds])
+    ),
+    requirement_spec(
+        "stack extension requires the LLDS backend",
+        (svar_stack_len `being` svalue_stack_len_extend) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 

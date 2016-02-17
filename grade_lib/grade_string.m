@@ -18,7 +18,7 @@
                 soln_gcc_regs,
                 soln_gcc_gotos,
                 soln_gcc_labels,
-                soln_stack_segments,
+                soln_stack_len,
                 soln_trail,
                 soln_trail_segments,
                 soln_minimal_model,
@@ -69,9 +69,10 @@
     --->    soln_gcc_labels_use_no
     ;       soln_gcc_labels_use_yes.
 
-:- type soln_stack_segments
-    --->    soln_stack_segments_no
-    ;       soln_stack_segments_yes.
+:- type soln_stack_len
+    --->    soln_stack_len_std
+    ;       soln_stack_len_segments
+    ;       soln_stack_len_extend.
 
 :- type soln_trail
     --->    soln_trail_no
@@ -156,7 +157,7 @@
 :- type grade
     --->    grade_llds(
                 llds_gcc_conf,
-                soln_stack_segments,
+                soln_stack_len,
                 llds_trail,
                 llds_gc,
                 llds_thread_safe,
@@ -269,7 +270,7 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
     map.det_remove(svar_gcc_gotos_use, GccGotosUse, !SolnMap),
     map.det_remove(svar_gcc_labels_avail, _GccLabelsAvail, !SolnMap),
     map.det_remove(svar_gcc_labels_use, GccLabelsUse, !SolnMap),
-    map.det_remove(svar_stack_segments, StackSegments, !SolnMap),
+    map.det_remove(svar_stack_len, StackLen, !SolnMap),
     map.det_remove(svar_trail, Trail, !SolnMap),
     map.det_remove(svar_trail_segments, TrailSegments, !SolnMap),
     map.det_remove(svar_minimal_model, MinimalModel, !SolnMap),
@@ -351,12 +352,14 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
         unexpected($pred, "unexpected value of GccLabelsUse")
     ),
 
-    ( if StackSegments = svalue_stack_segments_no then
-        ComponentStackSegments = soln_stack_segments_no
-    else if StackSegments = svalue_stack_segments_yes then
-        ComponentStackSegments = soln_stack_segments_yes
+    ( if StackLen = svalue_stack_len_std then
+        ComponentStackLen = soln_stack_len_std
+    else if StackLen = svalue_stack_len_segments then
+        ComponentStackLen = soln_stack_len_segments
+    else if StackLen = svalue_stack_len_extend then
+        ComponentStackLen = soln_stack_len_extend
     else
-        unexpected($pred, "unexpected value of StackSegments")
+        unexpected($pred, "unexpected value of StackLen")
     ),
 
     ( if Trail = svalue_trail_no then
@@ -511,7 +514,7 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
         ComponentBackend, ComponentDataLevel,
         ComponentTarget, ComponentNestedFuncs,
         ComponentGccRegsUse, ComponentGccGotosUse, ComponentGccLabelsUse,
-        ComponentStackSegments, ComponentTrail, ComponentTrailSegments,
+        ComponentStackLen, ComponentTrail, ComponentTrailSegments,
         ComponentMinimalModel, ComponentThreadSafe, ComponentGc,
         ComponentDeepProf,
         ComponentMprofCall, ComponentMprofTime, ComponentMprofMemory,
@@ -546,7 +549,7 @@ success_soln_to_grade(SuccMap) = Grade :-
 
         SolutionComponents = solution_components(_Backend, DataLevel,
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
-            StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
+            StackLen, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, LLDebug, RBMM, RBMMDebug, RBMMProf,
             SinglePrecFloat),
@@ -664,7 +667,7 @@ success_soln_to_grade(SuccMap) = Grade :-
             RBMM = soln_rbmm_yes,
             LLDSRBMM = llds_rbmm_yes(RBMMDebug, RBMMProf)
         ),
-        Grade = grade_llds(LLDSGccConf, StackSegments, LLDSTrail,
+        Grade = grade_llds(LLDSGccConf, StackLen, LLDSTrail,
             LLDSGc, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
             MinimalModel, Debug, LLDebug, LLDSRBMM, SinglePrecFloat)
     ;
@@ -672,7 +675,7 @@ success_soln_to_grade(SuccMap) = Grade :-
 
         SolutionComponents = solution_components(_Backend, DataLevel,
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
-            StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
+            StackLen, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, LLDebug, RBMM, RBMMDebug, RBMMProf,
             SinglePrecFloat),
@@ -683,8 +686,8 @@ success_soln_to_grade(SuccMap) = Grade :-
             "GccGotosUse != soln_gcc_gotos_use_no"),
         expect(unify(GccLabelsUse, soln_gcc_labels_use_no), $pred,
             "GccLabelsUse != soln_gcc_labels_use_no"),
-        expect(unify(StackSegments, soln_stack_segments_no), $pred,
-            "StackSegments != soln_stack_segments_no"),
+        expect(unify(StackLen, soln_stack_len_std), $pred,
+            "StackLen != soln_stack_len_std"),
         expect(unify(TrailSegments, soln_trail_segments_no), $pred,
             "TrailSegments != soln_trail_segments_no"),
         expect(unify(MinimalModel, soln_minimal_model_no), $pred,
@@ -766,7 +769,7 @@ success_soln_to_grade(SuccMap) = Grade :-
 
         SolutionComponents = solution_components(_Backend, DataLevel,
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
-            StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
+            StackLen, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, LLDebug, RBMM, RBMMDebug, RBMMProf,
             SinglePrecFloat),
@@ -783,8 +786,8 @@ success_soln_to_grade(SuccMap) = Grade :-
             "GccGotosUse != soln_gcc_gotos_use_no"),
         expect(unify(GccLabelsUse, soln_gcc_labels_use_no), $pred,
             "GccLabelsUse != soln_gcc_labels_use_no"),
-        expect(unify(StackSegments, soln_stack_segments_no), $pred,
-            "StackSegments != soln_stack_segments_no"),
+        expect(unify(StackLen, soln_stack_len_std), $pred,
+            "StackLen != soln_stack_len_std"),
         expect(unify(Trail, soln_trail_no), $pred,
             "Trail != soln_trail_no"),
         expect(unify(TrailSegments, soln_trail_segments_no), $pred,
@@ -833,10 +836,9 @@ success_soln_to_grade_string(SuccMap) = GradeStr :-
     % XXX picreg
     % XXX pregen
     % XXX ssdebug
-    % XXX exts
 
     (
-        Grade = grade_llds(GccConf, StackSegments, LLDSTrail,
+        Grade = grade_llds(GccConf, StackLen, LLDSTrail,
             LLDSGc, LLDSThreadSafe, LLDSPerfProf, TermSizeProf, MinimalModel,
             Debug, LLDebug, LLDSRBMM, SinglePrecFloat),
 
@@ -927,8 +929,9 @@ success_soln_to_grade_string(SuccMap) = GradeStr :-
         ( LLDebug = soln_lldebug_no,                LLDebugStr = ""
         ; LLDebug = soln_lldebug_yes,               LLDebugStr = ".ll_debug"
         ),
-        ( StackSegments = soln_stack_segments_no,   StackSegmentsStr = ""
-        ; StackSegments = soln_stack_segments_yes,  StackSegmentsStr = ".stseg"
+        ( StackLen = soln_stack_len_std,            StackLenStr = ""
+        ; StackLen = soln_stack_len_segments,       StackLenStr = ".stseg"
+        ; StackLen = soln_stack_len_extend,         StackLenStr = ".exts"
         ),
         (
             LLDSRBMM = llds_rbmm_no,
@@ -956,7 +959,7 @@ success_soln_to_grade_string(SuccMap) = GradeStr :-
         GradeStr = string.append_list([GccConfStr, ThreadSafeStr, GcStr,
             LLDSPerfProfStr, TermSizeProfStr, TrailStr, MinimalModelStr,
             SinglePrecFloatStr, DebugStr, LLDebugStr,
-            StackSegmentsStr, RBMMStr, TScopeProfStr])
+            StackLenStr, RBMMStr, TScopeProfStr])
     ;
         Grade = grade_mlds(MLDSTarget),
         (
