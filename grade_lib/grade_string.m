@@ -135,7 +135,7 @@
 
 :- type grade
     --->    grade_llds(
-                llds_gcc_features_used,
+                llds_gcc_conf,
                 soln_stack_segments,
                 llds_trail,
                 llds_gc,
@@ -149,15 +149,17 @@
     ;       grade_mlds(
                 mlds_target
             )
-    ;       grade_elds.
+    ;       grade_elds(
+                soln_thread_safe
+            ).
 
-:- type llds_gcc_features_used                % labels, gotos,  regs
-    --->    llds_gcc_features_used_none       % no      no      no
-    ;       llds_gcc_features_used_reg        % no      no      yes
-    ;       llds_gcc_features_used_jump       % no      yes     no
-    ;       llds_gcc_features_used_fast       % no      yes     yes
-    ;       llds_gcc_features_used_asm_jump   % yes     yes     no
-    ;       llds_gcc_features_used_asm_fast.  % yes     yes     yes
+:- type llds_gcc_conf                 % labels, gotos,  regs
+    --->    llds_gcc_conf_none        % no      no      no
+    ;       llds_gcc_conf_reg         % no      no      yes
+    ;       llds_gcc_conf_jump        % no      yes     no
+    ;       llds_gcc_conf_fast        % no      yes     yes
+    ;       llds_gcc_conf_asm_jump    % yes     yes     no
+    ;       llds_gcc_conf_asm_fast.   % yes     yes     yes
 
 :- type llds_trail
     --->    llds_trail_no
@@ -194,8 +196,12 @@
                 soln_thread_safe,
                 soln_single_prec_float
             )
-    ;       mlds_target_csharp
-    ;       mlds_target_java.
+    ;       mlds_target_csharp(
+                soln_thread_safe
+            )
+    ;       mlds_target_java(
+                soln_thread_safe
+            ).
 
 :- type mlds_c_gc
     --->    mlds_c_gc_none
@@ -216,7 +222,7 @@
 
 :- import_module grade_spec.
 
-:- import_module cord.
+:- import_module list.
 :- import_module map.
 :- import_module require.
 :- import_module string.
@@ -453,20 +459,21 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
 success_soln_to_grade(SuccMap) = Grade :-
     SolutionComponents = collect_solution_components(SuccMap),
 
+    % XXX We want to verify that every solution component is used on every
+    % path, for one of these three things: (a) to make a decision, (c) to check
+    % that it has the expected value, or (c) to record its value in the grade.
+    %
     % We pick up the values of the other arguments in separate deconstructions
     % in each arm of the switch on Backend, to give us a singleton variable
     % warning if don't handle a solution component in an arm.
     %
-    % Unfortunately, I don't see how to repeat the trick for the switch
+    % Unfortunately, I (zs) don't see how to repeat the trick for the switch
     % on Target in the mlds case: having two deconstructs that each pick up
     % *some* arguments is vulnerable to not picking up some arguments
     % in *either*.
     SolutionComponents = solution_components(Backend,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
 
-    % XXX Verify that every solution component is used on every path,
-    % for one of these three things: (a) to make a decision, (c) to check
-    % that it has the expected value, or (c) to record its value in the grade.
     (
         Backend = soln_backend_llds,
 
@@ -488,19 +495,19 @@ success_soln_to_grade(SuccMap) = Grade :-
                 GccGotosUse = soln_gcc_gotos_use_no,
                 (
                     GccRegsUse = soln_gcc_regs_use_no,
-                    LLDSGccFeaturesUsed = llds_gcc_features_used_none
+                    LLDSGccConf = llds_gcc_conf_none
                 ;
                     GccRegsUse = soln_gcc_regs_use_yes,
-                    LLDSGccFeaturesUsed = llds_gcc_features_used_reg
+                    LLDSGccConf = llds_gcc_conf_reg
                 )
             ;
                 GccGotosUse = soln_gcc_gotos_use_yes,
                 (
                     GccRegsUse = soln_gcc_regs_use_no,
-                    LLDSGccFeaturesUsed = llds_gcc_features_used_jump
+                    LLDSGccConf = llds_gcc_conf_jump
                 ;
                     GccRegsUse = soln_gcc_regs_use_yes,
-                    LLDSGccFeaturesUsed = llds_gcc_features_used_fast
+                    LLDSGccConf = llds_gcc_conf_fast
                 )
             )
         ;
@@ -512,10 +519,10 @@ success_soln_to_grade(SuccMap) = Grade :-
                 GccGotosUse = soln_gcc_gotos_use_yes,
                 (
                     GccRegsUse = soln_gcc_regs_use_no,
-                    LLDSGccFeaturesUsed = llds_gcc_features_used_asm_jump
+                    LLDSGccConf = llds_gcc_conf_asm_jump
                 ;
                     GccRegsUse = soln_gcc_regs_use_yes,
-                    LLDSGccFeaturesUsed = llds_gcc_features_used_asm_fast
+                    LLDSGccConf = llds_gcc_conf_asm_fast
                 )
             )
         ),
@@ -578,7 +585,7 @@ success_soln_to_grade(SuccMap) = Grade :-
                 "MprofMemory != soln_mprof_memory_no"),
             LLDSPerfProf = llds_perf_prof_deep
         ),
-        Grade = grade_llds(LLDSGccFeaturesUsed, StackSegments, LLDSTrail,
+        Grade = grade_llds(LLDSGccConf, StackSegments, LLDSTrail,
             LLDSGc, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
             MinimalModel, Debug, SinglePrecFloat)
     ;
@@ -610,7 +617,7 @@ success_soln_to_grade(SuccMap) = Grade :-
             "MprofTime != soln_mprof_time_no"),
         expect(unify(MprofMemory, soln_mprof_memory_no), $pred,
             "MprofMemory != soln_mprof_memory_no"),
-        expect(unify(TScopeProf, soln_tscope_prof_yes), $pred,
+        expect(unify(TScopeProf, soln_tscope_prof_no), $pred,
             "TScopeProf != soln_tscope_prof_no"),
         expect(unify(TermSizeProf, soln_term_size_prof_no), $pred,
             "TermSizeProf != soln_term_size_prof_no"),
@@ -641,28 +648,29 @@ success_soln_to_grade(SuccMap) = Grade :-
             Grade = grade_mlds(mlds_target_c(DataLevel, NestedFuncs,
                 MLDSGc, Trail, ThreadSafe, SinglePrecFloat))
         ;
-            (
-                Target = soln_target_csharp,
-                MLDSTarget = mlds_target_csharp
-            ;
-                Target = soln_target_java,
-                MLDSTarget = mlds_target_java
+            ( Target = soln_target_csharp
+            ; Target = soln_target_java
             ),
-            expect(unify(DataLevel, soln_data_level_lld), $pred,
-                "DataLevel != soln_data_level_lld"),
+            expect(unify(DataLevel, soln_data_level_hld), $pred,
+                "DataLevel != soln_data_level_hld"),
             expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
                 "NestedFuncs != soln_nested_funcs_no"),
             expect(unify(Gc, soln_gc_target_native), $pred,
                 "Gc != soln_gc_target_native"),
-            % XXX Trail?
             expect(unify(Trail, soln_trail_no), $pred,
                 "Trail != soln_trail_no"),
             % XXX ThreadSafe?
-            expect(unify(ThreadSafe, soln_thread_safe_no), $pred,
-                "ThreadSafe != soln_thread_safe_no"),
-            % XXX SinglePrecFloat?
+            % expect(unify(ThreadSafe, soln_thread_safe_no), $pred,
+            %     "ThreadSafe != soln_thread_safe_no"),
             expect(unify(SinglePrecFloat, soln_single_prec_float_no), $pred,
                 "SinglePrecFloat != soln_single_prec_float_no"),
+            (
+                Target = soln_target_csharp,
+                MLDSTarget = mlds_target_csharp(ThreadSafe)
+            ;
+                Target = soln_target_java,
+                MLDSTarget = mlds_target_java(ThreadSafe)
+            ),
             Grade = grade_mlds(MLDSTarget)
         ;
             Target = soln_target_erlang,
@@ -691,16 +699,12 @@ success_soln_to_grade(SuccMap) = Grade :-
             "GccLabelsUse != soln_gcc_labels_use_no"),
         expect(unify(StackSegments, soln_stack_segments_no), $pred,
             "StackSegments != soln_stack_segments_no"),
-        % XXX Trail?
         expect(unify(Trail, soln_trail_no), $pred,
             "Trail != soln_trail_no"),
         expect(unify(TrailSegments, soln_trail_segments_no), $pred,
             "TrailSegments != soln_trail_segments_no"),
         expect(unify(MinimalModel, soln_minimal_model_no), $pred,
             "MinimalModel != soln_minimal_model_no"),
-        % XXX ThreadSafe?
-        expect(unify(ThreadSafe, soln_thread_safe_no), $pred,
-            "ThreadSafe != soln_thread_safe_no"),
         expect(unify(Gc, soln_gc_target_native), $pred,
             "Gc != soln_gc_target_native"),
         expect(unify(DeepProf, soln_deep_prof_no), $pred,
@@ -711,7 +715,7 @@ success_soln_to_grade(SuccMap) = Grade :-
             "MprofTime != soln_mprof_time_no"),
         expect(unify(MprofMemory, soln_mprof_memory_no), $pred,
             "MprofMemory != soln_mprof_memory_no"),
-        expect(unify(TScopeProf, soln_tscope_prof_yes), $pred,
+        expect(unify(TScopeProf, soln_tscope_prof_no), $pred,
             "TScopeProf != soln_tscope_prof_no"),
         expect(unify(TermSizeProf, soln_term_size_prof_no), $pred,
             "TermSizeProf != soln_term_size_prof_no"),
@@ -720,283 +724,171 @@ success_soln_to_grade(SuccMap) = Grade :-
         expect(unify(SinglePrecFloat, soln_single_prec_float_no), $pred,
             "SinglePrecFloat != soln_single_prec_float_no"),
         % XXX incomplete
-        Grade = grade_elds
+        Grade = grade_elds(ThreadSafe)
     ).
 
 %---------------------------------------------------------------------------%
 
-success_soln_to_grade_string(SolnMap) = GradeStr :-
-    SolutionComponents = collect_solution_components(SolnMap),
-    SolutionComponents = solution_components(Backend, DataLevel,
-        Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
-        StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
-        DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf, TermSizeProf,
-        Debug, SinglePrecFloat),
+success_soln_to_grade_string(SuccMap) = GradeStr :-
+    Grade = success_soln_to_grade(SuccMap),
 
-    some [!GradeComponents] (
-        !:GradeComponents = cord.init,
+    % XXX mercuryfile struct
+    % XXX tag bits: high/low/none, 2/3
+    % XXX unboxed float
+    % XXX regparm
+    % XXX picreg
+    % XXX pregen
+    % XXX ssdebug
+    % XXX lldebug
+    % XXX exts
+    % XXX rbmm
+
+    (
+        Grade = grade_llds(GccConf, StackSegments, LLDSTrail,
+            LLDSGc, LLDSThreadSafe, LLDSPerfProf, TermSizeProf, MinimalModel,
+            Debug, SinglePrecFloat),
+
+        ( GccConf = llds_gcc_conf_none,             GccConfStr = "none"
+        ; GccConf = llds_gcc_conf_reg,              GccConfStr = "reg"
+        ; GccConf = llds_gcc_conf_jump,             GccConfStr = "jump"
+        ; GccConf = llds_gcc_conf_fast,             GccConfStr = "fast"
+        ; GccConf = llds_gcc_conf_asm_jump,         GccConfStr = "asm_jump"
+        ; GccConf = llds_gcc_conf_asm_fast,         GccConfStr = "asm_fast"
+        ),
         (
-            Backend = soln_backend_mlds,
-            (
-                Target = soln_target_c,
-                (
-                    DataLevel = soln_data_level_hld,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, "hl")
-                ;
-                    DataLevel = soln_data_level_lld,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, "hlc")
-                ),
-                (
-                    NestedFuncs = soln_nested_funcs_yes,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, "_nest")
-                ;
-                    NestedFuncs = soln_nested_funcs_no
-                ),
-                (
-                    ThreadSafe = soln_thread_safe_yes,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, ".par")
-                ;
-                    ThreadSafe = soln_thread_safe_no
-                ),
-                (
-                    Gc = soln_gc_none
-                ;
-                    Gc = soln_gc_target_native,
-                    unexpected($pred,
-                        "Backend = mlds, Target = c, Gc = target_native")
-                ;
-                    Gc = soln_gc_bdw,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, ".gc")
-                ;
-                    Gc = soln_gc_bdw_debug,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, ".gcd")
-                ;
-                    Gc = soln_gc_accurate,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, ".agc")
-                ;
-                    Gc = soln_gc_history,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, ".hgc")
-                )
-            ;
-                Target = soln_target_csharp,
-                !:GradeComponents = cord.snoc(!.GradeComponents, "csharp"),
-                expect(unify(DataLevel, soln_data_level_hld), $pred,
-                    "DataLevel != soln_data_level_hld"),
-                expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
-                    "NestedFuncs != soln_nested_funcs_no"),
-                expect(unify(Gc, soln_gc_target_native), $pred,
-                    "Gc != soln_gc_target_native")
-                % XXX ThreadSafe?
-            ;
-                Target = soln_target_java,
-                !:GradeComponents = cord.snoc(!.GradeComponents, "java"),
-                expect(unify(DataLevel, soln_data_level_hld), $pred,
-                    "DataLevel != soln_data_level_hld"),
-                expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
-                    "NestedFuncs != soln_nested_funcs_no"),
-                expect(unify(Gc, soln_gc_target_native), $pred,
-                    "Gc != soln_gc_target_native")
-                % XXX ThreadSafe?
-            ;
-                Target = soln_target_erlang,
-                unexpected($pred, "Backend = mlds but Target = erlang")
-            ),
-            expect(unify(GccRegsUse, soln_gcc_regs_use_no), $pred,
-                "GccRegsUse != soln_gcc_regs_use_no"),
-            expect(unify(GccGotosUse, soln_gcc_gotos_use_no), $pred,
-                "GccGotosUse != soln_gcc_gotos_use_no"),
-            expect(unify(GccLabelsUse, soln_gcc_labels_use_no), $pred,
-                "GccLabelsUse != soln_gcc_labels_use_no")
+            LLDSThreadSafe = llds_thread_safe_no,
+            ThreadSafeStr = "",
+            TScopeProfStr = ""
         ;
-            Backend = soln_backend_elds,
-            !:GradeComponents = cord.snoc(!.GradeComponents, "erlang"),
-            expect(unify(Target, soln_target_erlang), $pred,
-                "Target != soln_target_erlang"),
-            expect(unify(DataLevel, soln_data_level_lld), $pred,
-                "DataLevel != soln_data_level_lld"),
-            expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
-                "NestedFuncs != soln_nested_funcs_no"),
-            expect(unify(Gc, soln_gc_target_native), $pred,
-                "Gc != soln_gc_target_native"),
-            expect(unify(GccRegsUse, soln_gcc_regs_use_no), $pred,
-                "GccRegsUse != soln_gcc_regs_use_no"),
-            expect(unify(GccGotosUse, soln_gcc_gotos_use_no), $pred,
-                "GccGotosUse != soln_gcc_gotos_use_no"),
-            expect(unify(GccLabelsUse, soln_gcc_labels_use_no), $pred,
-                "GccLabelsUse != soln_gcc_labels_use_no")
-            % XXX ThreadSafe?
-        ;
-            Backend = soln_backend_llds,
-            expect(unify(Target, soln_target_c), $pred,
-                "Target != soln_target_c"),
-            expect(unify(DataLevel, soln_data_level_lld), $pred,
-                "DataLevel != soln_data_level_lld"),
-            expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
-                "NestedFuncs != soln_nested_funcs_no"),
+            LLDSThreadSafe = llds_thread_safe_yes(TScopeProf),
+            ThreadSafeStr = ".par",
             (
-                GccGotosUse = soln_gcc_gotos_use_yes,
-                (
-                    GccLabelsUse = soln_gcc_labels_use_no
-                ;
-                    GccLabelsUse = soln_gcc_labels_use_yes,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, "asm_")
-                ),
-                (
-                    GccRegsUse = soln_gcc_regs_use_no,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, "fast")
-                ;
-                    GccRegsUse = soln_gcc_regs_use_yes,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, "jump")
-                )
+                TScopeProf = soln_tscope_prof_no,
+                TScopeProfStr = ""
             ;
-                GccGotosUse = soln_gcc_gotos_use_no,
-                expect(unify(GccLabelsUse, soln_gcc_labels_use_no), $pred,
-                    "GccLabelsUse != soln_gcc_labels_use_no"),
-                (
-                    GccRegsUse = soln_gcc_regs_use_no,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, "reg")
-                ;
-                    GccRegsUse = soln_gcc_regs_use_yes,
-                    !:GradeComponents = cord.snoc(!.GradeComponents, "none")
-                )
-            ),
-            (
-                ThreadSafe = soln_thread_safe_yes,
-                !:GradeComponents = cord.snoc(!.GradeComponents, ".par")
-            ;
-                ThreadSafe = soln_thread_safe_no
-            ),
-            (
-                Gc = soln_gc_none
-            ;
-                Gc = soln_gc_target_native,
-                unexpected($pred, "Backend = llds, Gc = target_native")
-            ;
-                Gc = soln_gc_bdw,
-                !:GradeComponents = cord.snoc(!.GradeComponents, ".gc")
-            ;
-                Gc = soln_gc_bdw_debug,
-                !:GradeComponents = cord.snoc(!.GradeComponents, ".gcd")
-            ;
-                Gc = soln_gc_accurate,
-                unexpected($pred, "Backend = llds, Gc = accurate")
-            ;
-                Gc = soln_gc_history,
-                !:GradeComponents = cord.snoc(!.GradeComponents, ".hgc")
+                TScopeProf = soln_tscope_prof_yes,
+                TScopeProfStr = ".threadscope"
             )
         ),
-
-        (
-            DeepProf = soln_deep_prof_no
-        ;
-            DeepProf = soln_deep_prof_yes,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".profdeep")
+        ( LLDSGc = llds_gc_none,                    GcStr = ""
+        ; LLDSGc = llds_gc_bdw,                     GcStr = ".gc"
+        ; LLDSGc = llds_gc_bdw_debug,               GcStr = ".gcd"
+        ; LLDSGc = llds_gc_history,                 GcStr = ".hgc"
         ),
-
         (
-            MprofCall = soln_mprof_call_no
+            LLDSPerfProf = llds_perf_prof_none,
+            LLDSPerfProfStr = ""
         ;
-            MprofCall = soln_mprof_call_yes,
+            LLDSPerfProf = llds_perf_prof_deep,
+            LLDSPerfProfStr = ".profdeep"
+        ;
+            LLDSPerfProf = llds_perf_prof_mprof(MprofTime, MprofMemory),
             (
                 MprofTime = soln_mprof_time_no,
-                (
-                    MprofMemory = soln_mprof_memory_no,
-                    !:GradeComponents =
-                        cord.snoc(!.GradeComponents, ".profcalls")
-                ;
-                    MprofMemory = soln_mprof_memory_yes,
-                    !:GradeComponents =
-                        cord.snoc(!.GradeComponents, ".memprof")
-                )
+                MprofMemory = soln_mprof_memory_no,
+                LLDSPerfProfStr = ".profcalls"
+            ;
+                MprofTime = soln_mprof_time_no,
+                MprofMemory = soln_mprof_memory_yes,
+                LLDSPerfProfStr = ".memprof"
             ;
                 MprofTime = soln_mprof_time_yes,
-                (
-                    MprofMemory = soln_mprof_memory_no,
-                    !:GradeComponents =
-                        cord.snoc(!.GradeComponents, ".prof")
-                ;
-                    MprofMemory = soln_mprof_memory_yes,
-                    !:GradeComponents =
-                        cord.snoc(!.GradeComponents, ".profall")
-                )
-            )
-        ),
-
-        (
-            TermSizeProf = soln_term_size_prof_no
-        ;
-            TermSizeProf = soln_term_size_prof_cells,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".tsc")
-        ;
-            TermSizeProf = soln_term_size_prof_words,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".tsw")
-        ),
-
-        (
-            Trail = soln_trail_no
-        ;
-            Trail = soln_trail_yes,
-            (
-                TrailSegments = soln_trail_segments_no,
-                !:GradeComponents = cord.snoc(!.GradeComponents, ".tr")
+                MprofMemory = soln_mprof_memory_no,
+                LLDSPerfProfStr = ".prof"
             ;
-                TrailSegments = soln_trail_segments_yes,
-                !:GradeComponents = cord.snoc(!.GradeComponents, ".trseg")
+                MprofTime = soln_mprof_time_yes,
+                MprofMemory = soln_mprof_memory_yes,
+                LLDSPerfProfStr = ".profall"
             )
         ),
-
+        ( TermSizeProf = soln_term_size_prof_no,    TermSizeProfStr = ""
+        ; TermSizeProf = soln_term_size_prof_cells, TermSizeProfStr = ".tsc"
+        ; TermSizeProf = soln_term_size_prof_words, TermSizeProfStr = ".tsw"
+        ),
         (
-            MinimalModel = soln_minimal_model_no
+            LLDSTrail = llds_trail_no ,
+            TrailStr = ""
+        ;
+            LLDSTrail = llds_trail_yes(TrailSegments),
+            ( TrailSegments = soln_trail_segments_no,   TrailStr = ".tr"
+            ; TrailSegments = soln_trail_segments_yes,  TrailStr = ".trseg"
+            )
+        ),
+        (
+            MinimalModel = soln_minimal_model_no,
+            MinimalModelStr = ""
         ;
             MinimalModel = soln_minimal_model_yes_stack_copy,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".mmsc")
+            MinimalModelStr = ".mmsc"
         ),
-
-        % XXX mercuryfile struct
-        % XXX tag bits: high/low/none, 2/3
-        % XXX unboxed float
-        % XXX regparm
-        % XXX picreg
-        % XXX pregen
-        % XXX ssdebug
-        % XXX lldebug
-        % XXX exts
-        % XXX rbmm
-
         (
-            SinglePrecFloat = soln_single_prec_float_no
+            SinglePrecFloat = soln_single_prec_float_no,
+            SinglePrecFloatStr = ""
         ;
             SinglePrecFloat = soln_single_prec_float_yes,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".spf")
+            SinglePrecFloatStr = ".spf"
         ),
-
+        ( Debug = soln_debug_none,                  DebugStr = ""
+        ; Debug = soln_debug_debug,                 DebugStr = ".debug"
+        ; Debug = soln_debug_decldebug,             DebugStr = ".decldebug"
+        ),
+        ( StackSegments = soln_stack_segments_no,   StackSegmentsStr = ""
+        ; StackSegments = soln_stack_segments_yes,  StackSegmentsStr = ".stseg"
+        ),
+        GradeStr = string.append_list([GccConfStr, ThreadSafeStr, GcStr,
+            LLDSPerfProfStr, TermSizeProfStr, TrailStr, MinimalModelStr,
+            SinglePrecFloatStr, DebugStr, StackSegmentsStr, TScopeProfStr])
+    ;
+        Grade = grade_mlds(MLDSTarget),
         (
-            Debug = soln_debug_none
+            MLDSTarget = mlds_target_c(DataLevel, NestedFuncs, MLDSCGc,
+                Trail, ThreadSafe, SinglePrecFloat),
+            ( DataLevel = soln_data_level_hld,      DataLevelStr = "hl"
+            ; DataLevel = soln_data_level_lld,      DataLevelStr = "hlc"
+            ),
+            ( NestedFuncs = soln_nested_funcs_no,   NestedFuncsStr = ""
+            ; NestedFuncs = soln_nested_funcs_yes,  NestedFuncsStr = "_nest"
+            ),
+            ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
+            ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
+            ),
+            ( MLDSCGc = mlds_c_gc_none,             GcStr = ""
+            ; MLDSCGc = mlds_c_gc_bdw,              GcStr = ".gc"
+            ; MLDSCGc = mlds_c_gc_bdw_debug,        GcStr = ".gcd"
+            ; MLDSCGc = mlds_c_gc_accurate,         GcStr = ".agc"
+            ; MLDSCGc = mlds_c_gc_history,          GcStr = ".hgc"
+            ),
+            ( Trail = soln_trail_no,                TrailStr = ""
+            ; Trail = soln_trail_yes,               TrailStr = ".tr"
+            ),
+            (
+                SinglePrecFloat = soln_single_prec_float_no,
+                SinglePrecFloatStr = ""
+            ;
+                SinglePrecFloat = soln_single_prec_float_yes,
+                SinglePrecFloatStr = ".spf"
+            ),
+            GradeStr = string.append_list([DataLevelStr, NestedFuncsStr,
+                ThreadSafeStr, GcStr, TrailStr, SinglePrecFloatStr])
         ;
-            Debug = soln_debug_debug,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".debug")
+            MLDSTarget = mlds_target_csharp(ThreadSafe),
+            ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
+            ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
+            ),
+            GradeStr = string.append_list(["csharp", ThreadSafeStr])
         ;
-            Debug = soln_debug_decldebug,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".decldebug")
+            MLDSTarget = mlds_target_java(ThreadSafe),
+            ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
+            ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
+            ),
+            GradeStr = string.append_list(["java", ThreadSafeStr])
+        )
+    ;
+        Grade = grade_elds(ThreadSafe),
+        ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
+        ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
         ),
-
-        (
-            StackSegments = soln_stack_segments_no
-            % XXX not yet
-            % !:GradeComponents = cord.snoc(!.GradeComponents, ".stfix")
-        ;
-            StackSegments = soln_stack_segments_yes,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".stseg")
-        ),
-
-        (
-            TScopeProf = soln_tscope_prof_no
-        ;
-            TScopeProf = soln_tscope_prof_yes,
-            !:GradeComponents = cord.snoc(!.GradeComponents, ".threadscope")
-        ),
-
-        GradeStr = string.append_list(cord.to_list(!.GradeComponents))
+        GradeStr = string.append_list(["erlang", ThreadSafeStr])
     ).
 
 %---------------------------------------------------------------------------%
