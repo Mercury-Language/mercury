@@ -40,7 +40,7 @@ main(!IO) :-
             SolverVarMap1 = SolverInfo1 ^ si_solver_var_map,
             io.write_string(solver_var_map_to_str("    ", SolverVarMap1), !TIO)
         ),
-        solve(SolverInfo1, Soln),
+        solve(SolverInfo1, _SolveCounts, Soln),
         io.write_string(soln_to_str("", Soln), !IO)
     ).
 

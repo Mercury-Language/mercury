@@ -10,13 +10,21 @@
 
 :- import_module map.
 
+:- type solve_counts
+    --->    solve_counts(
+                sc_num_label_steps      :: int,
+                sc_num_passes           :: int
+            ).
+
 :- type success_soln_map == map(solver_var_id, solver_var_value_id).
 
 :- type solution
     --->    soln_failure
-    ;       soln_success(success_soln_map).
+    ;       soln_success(
+                success_soln_map
+            ).
 
-:- pred solve(solver_info::in, solution::out) is det.
+:- pred solve(solver_info::in, solve_counts::out, solution::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -55,23 +63,31 @@
 
 %---------------------------------------------------------------------------%
 
-solve(SolverInfo, Soln) :-
+solve(SolverInfo, SolveCounts, Soln) :-
     SolverInfo = solver_info(Requirements, SolverVarPriorities, SolverVarMap0),
-    solve_loop(Requirements, SolverVarPriorities, SolverVarMap0, 1, Soln).
+    SolveCounts0 = solve_counts(0, 0),
+    solve_loop(Requirements, SolverVarPriorities, SolverVarMap0,
+        SolveCounts0, SolveCounts, Soln).
 
 :- pred solve_loop(list(requirement)::in, list(solver_var_id)::in,
-    solver_var_map::in, int::in, solution::out) is det.
+    solver_var_map::in, solve_counts::in, solve_counts::out,
+    solution::out) is det.
 
-solve_loop(Requirements, SolverVarPriorities, !.SolverVarMap, !.Pass, Soln) :-
-    propagate_to_fixpoint(Requirements, !SolverVarMap, !Pass),
+solve_loop(Requirements, SolverVarPriorities, !.SolverVarMap,
+        !SolveCounts, Soln) :-
+    NumPasses0 = !.SolveCounts ^ sc_num_passes,
+    propagate_to_fixpoint(Requirements, !SolverVarMap, NumPasses0, NumPasses),
+    !SolveCounts ^ sc_num_passes := NumPasses,
     at_solution(SolverVarPriorities, !.SolverVarMap, MaybeSoln),
     (
         MaybeSoln = yes(Soln)
     ;
         MaybeSoln = no,
+        NumLabelSteps0 = !.SolveCounts ^ sc_num_label_steps,
+        !SolveCounts ^ sc_num_label_steps := NumLabelSteps0 + 1,
         label_step(SolverVarPriorities, !SolverVarMap),
         solve_loop(Requirements, SolverVarPriorities, !.SolverVarMap,
-            !.Pass, Soln)
+            !SolveCounts, Soln)
     ).
 
 %---------------------------------------------------------------------------%
@@ -83,18 +99,18 @@ solve_loop(Requirements, SolverVarPriorities, !.SolverVarMap, !.Pass, Soln) :-
 :- pred propagate_to_fixpoint(list(requirement)::in,
     solver_var_map::in, solver_var_map::out, int::in, int::out) is det.
 
-propagate_to_fixpoint(Requirements, !SolverVarMap, !Pass) :-
+propagate_to_fixpoint(Requirements, !SolverVarMap, !NumPasses) :-
+    !:NumPasses = !.NumPasses + 1,
     propagate_pass(Requirements, !SolverVarMap, not_changed, Changed),
     trace [compile_time(flag("debug_choose_grade")), io(!IO)] (
-        io.format("AFTER PROPAGATE PASS %d\n", [i(!.Pass)], !IO),
+        io.format("AFTER PROPAGATE PASS %d\n", [i(!.NumPasses)], !IO),
         io.write_string(solver_var_map_to_str("    ", !.SolverVarMap), !IO)
     ),
-    !:Pass = !.Pass + 1,
     (
         Changed = not_changed
     ;
         Changed = changed,
-        propagate_to_fixpoint(Requirements, !SolverVarMap, !Pass)
+        propagate_to_fixpoint(Requirements, !SolverVarMap, !NumPasses)
     ).
 
 :- pred propagate_pass(list(requirement)::in,
