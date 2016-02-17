@@ -1760,21 +1760,41 @@ represent_spec(ModuleInfo, Spec, MaybeResultVar, ResultVar, Goals, Context,
         Spec = compiler_spec_string(Context, Flags,
             MaybeWidth, MaybePrec, ValueVar),
         set_of_var.insert(ValueVar, !ValueVars),
-        make_result_var_if_needed(MaybeResultVar, ResultVar,
-            !VarSet, !VarTypes),
-        build_flags_arg(Flags, FlagsVar, FlagsGoals, !VarSet, !VarTypes),
-        maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars, WidthGoals,
-            !VarSet, !VarTypes),
-        maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
-            !VarSet, !VarTypes),
-        generate_simple_call(mercury_string_format_module,
-            "format_string_component" ++ WidthSuffix ++ PrecSuffix,
-            pf_predicate, only_mode, detism_det, purity_pure,
-            [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar], [],
-            instmap_delta_from_assoc_list(
-                [ResultVar - ground(unique, none_or_default_func)]),
-            ModuleInfo, Context, CallGoal),
-        Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
+        ( if
+            % Optimize a common case, "%s", which can be handled *without*
+            % invoking the component formatter on the string value at all.
+            Flags = string_format_flags(flag_hash_clear, flag_space_clear,
+                flag_zero_clear, flag_minus_clear, flag_plus_clear),
+            MaybeWidth = compiler_no_specified_width,
+            MaybePrec = compiler_no_specified_prec
+        then
+            (
+                MaybeResultVar = no,
+                ResultVar = ValueVar,
+                Goals = []
+            ;
+                MaybeResultVar = yes(ResultVar),
+                make_simple_assign(ResultVar, ValueVar,
+                    umc_implicit("represent_spec"), [], AssignGoal),
+                Goals = [AssignGoal]
+            )
+        else
+            make_result_var_if_needed(MaybeResultVar, ResultVar,
+                !VarSet, !VarTypes),
+            build_flags_arg(Flags, FlagsVar, FlagsGoals, !VarSet, !VarTypes),
+            maybe_build_width_arg(MaybeWidth, WidthSuffix, WidthVars,
+                WidthGoals, !VarSet, !VarTypes),
+            maybe_build_prec_arg(MaybePrec, PrecSuffix, PrecVars, PrecGoals,
+                !VarSet, !VarTypes),
+            generate_simple_call(mercury_string_format_module,
+                "format_string_component" ++ WidthSuffix ++ PrecSuffix,
+                pf_predicate, only_mode, detism_det, purity_pure,
+                [FlagsVar] ++ WidthVars ++ PrecVars ++ [ValueVar, ResultVar],
+                [], instmap_delta_from_assoc_list(
+                    [ResultVar - ground(unique, none_or_default_func)]),
+                ModuleInfo, Context, CallGoal),
+            Goals = FlagsGoals ++ WidthGoals ++ PrecGoals ++ [CallGoal]
+        )
     ;
         Spec = compiler_spec_signed_int(Context, Flags,
             MaybeWidth, MaybePrec, ValueVar),
