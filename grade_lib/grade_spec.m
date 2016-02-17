@@ -431,6 +431,38 @@ init_requirement_specs = [
         (svar_gc `is_one_of` [svalue_gc_target_native])
     ),
 
+    requirement_spec(
+        "targeting C# is incompatible with trailing",
+        (svar_target `being` svalue_target_csharp) `implies_that`
+        (svar_trail `is_one_of` [svalue_trail_no])
+    ),
+    requirement_spec(
+        "targeting Java is incompatible with trailing",
+        (svar_target `being` svalue_target_java) `implies_that`
+        (svar_trail `is_one_of` [svalue_trail_no])
+    ),
+    requirement_spec(
+        "targeting Erlang is incompatible with trailing",
+        (svar_target `being` svalue_target_erlang) `implies_that`
+        (svar_trail `is_one_of` [svalue_trail_no])
+    ),
+
+    requirement_spec(
+        "targeting C# is incompatible with single-precision floats",
+        (svar_target `being` svalue_target_csharp) `implies_that`
+        (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
+    ),
+    requirement_spec(
+        "targeting Java is incompatible with single-precision floats",
+        (svar_target `being` svalue_target_java) `implies_that`
+        (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
+    ),
+    requirement_spec(
+        "targeting Erlang is incompatible with single-precision floats",
+        (svar_target `being` svalue_target_erlang) `implies_that`
+        (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
+    ),
+
 % Requirements of values of svar_nested_funcs.
     requirement_spec(
         "using gcc nested functions requires the MLDS backend",
