@@ -53,6 +53,7 @@
 
 :- implementation.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module list.
@@ -312,13 +313,14 @@ set_values_not_possible_labeling([Value0 | Values0], [Value | Values]) :-
 :- pred at_solution(list(solver_var_id)::in, solver_var_map::in,
     maybe(solution)::out) is det.
 
-at_solution(SolverVarPriorities, SolverVarMap, MaybeSoln) :-
+at_solution(_SolverVarPriorities, SolverVarMap, MaybeSoln) :-
     map.foldl2_values(cnt_poss_classes, SolverVarMap, 0, NumZero, 0, NumMore),
     ( if NumZero > 0 then
         MaybeSoln = yes(soln_failure)
     else if NumMore = 0 then
-        list.foldl(project_to_one_poss_value(SolverVarMap),
-            SolverVarPriorities, map.init, SuccessSoln),
+        map.foldl(accumulate_the_one_poss_value, SolverVarMap,
+            [], OnePossValues),
+        map.from_rev_sorted_assoc_list(OnePossValues, SuccessSoln),
         MaybeSoln = yes(soln_success(SuccessSoln))
     else
         MaybeSoln = no
@@ -337,15 +339,15 @@ cnt_poss_classes(SolverVar, !NumZero, !NumMore) :-
         !:NumMore = !.NumMore + 1
     ).
 
-:- pred project_to_one_poss_value(solver_var_map::in, solver_var_id::in,
-    success_soln_map::in, success_soln_map::out) is det.
+:- pred accumulate_the_one_poss_value(solver_var_id::in, solver_var::in,
+    assoc_list(solver_var_id, solver_var_value_id)::in,
+    assoc_list(solver_var_id, solver_var_value_id)::out) is det.
 
-project_to_one_poss_value(SolverVarMap, VarId, !SolnMap) :-
-    map.lookup(SolverVarMap, VarId, SolverVar),
+accumulate_the_one_poss_value(VarId, SolverVar, !OnePossValues) :-
     SolverVar = solver_var(_CntAll, _CntPoss, Values),
     get_poss_values(Values, PossValueIds),
     ( if PossValueIds = [ValueId] then
-        map.det_insert(VarId, ValueId, !SolnMap)
+        !:OnePossValues = [VarId - ValueId | !.OnePossValues]
     else
         unexpected($pred, "number of possible values is not one")
     ).
