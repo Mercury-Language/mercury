@@ -67,19 +67,19 @@
 solve(SolverInfo, SolveCounts, Soln) :-
     SolverInfo = solver_info(Requirements, SolverVarPriorities, SolverVarMap0),
     SolveCounts0 = solve_counts(0, 0),
-    solve_loop(Requirements, SolverVarPriorities, SolverVarPriorities,
+    solve_loop(Requirements, _FinalRequirements, SolverVarPriorities,
         SolverVarMap0, SolveCounts0, SolveCounts, Soln).
 
-:- pred solve_loop(list(requirement)::in, list(solver_var_id)::in,
+:- pred solve_loop(list(requirement)::in, list(requirement)::out,
     list(solver_var_id)::in, solver_var_map::in,
     solve_counts::in, solve_counts::out, solution::out) is det.
 
-solve_loop(Requirements, AllSolverVarIds,
-        !.SolverVarPriorities, !.SolverVarMap, !SolveCounts, Soln) :-
+solve_loop(!Requirements, !.SolverVarPriorities, !.SolverVarMap,
+        !SolveCounts, Soln) :-
     NumPasses0 = !.SolveCounts ^ sc_num_passes,
-    propagate_to_fixpoint(Requirements, !SolverVarMap, NumPasses0, NumPasses),
+    propagate_to_fixpoint(!Requirements, !SolverVarMap, NumPasses0, NumPasses),
     !SolveCounts ^ sc_num_passes := NumPasses,
-    at_solution(AllSolverVarIds, !.SolverVarMap, MaybeSoln),
+    at_solution(!.SolverVarMap, MaybeSoln),
     (
         MaybeSoln = yes(Soln)
     ;
@@ -87,8 +87,8 @@ solve_loop(Requirements, AllSolverVarIds,
         NumLabelSteps0 = !.SolveCounts ^ sc_num_label_steps,
         !SolveCounts ^ sc_num_label_steps := NumLabelSteps0 + 1,
         label_step(!SolverVarPriorities, !SolverVarMap),
-        solve_loop(Requirements, AllSolverVarIds,
-            !.SolverVarPriorities, !.SolverVarMap, !SolveCounts, Soln)
+        solve_loop(!Requirements, !.SolverVarPriorities, !.SolverVarMap,
+            !SolveCounts, Soln)
     ).
 
 %---------------------------------------------------------------------------%
@@ -97,77 +97,135 @@ solve_loop(Requirements, AllSolverVarIds,
     --->    not_changed
     ;       changed.
 
-:- pred propagate_to_fixpoint(list(requirement)::in,
+:- pred propagate_to_fixpoint(list(requirement)::in, list(requirement)::out,
     solver_var_map::in, solver_var_map::out, int::in, int::out) is det.
 
-propagate_to_fixpoint(Requirements, !SolverVarMap, !NumPasses) :-
+propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
+        !NumPasses) :-
     !:NumPasses = !.NumPasses + 1,
-    propagate_pass(Requirements, !SolverVarMap, not_changed, Changed),
-    trace [compile_time(flag("debug_choose_grade")), io(!IO)] (
-        io.format("AFTER PROPAGATE PASS %d\n", [i(!.NumPasses)], !IO),
+    propagate_pass(Requirements0, [], RevRequirements1, !SolverVarMap,
+        not_changed, Changed),
+    list.reverse(RevRequirements1, Requirements1),
+    trace [compile_time(flag("debug_solver")), io(!IO)] (
+        io.format("\nAFTER PROPAGATE PASS %d\n", [i(!.NumPasses)], !IO),
         io.write_string(solver_var_map_to_str("    ", !.SolverVarMap), !IO)
     ),
     (
-        Changed = not_changed
+        Changed = not_changed,
+        Requirements = Requirements1
     ;
         Changed = changed,
-        propagate_to_fixpoint(Requirements, !SolverVarMap, !NumPasses)
+        propagate_to_fixpoint(Requirements1, Requirements, !SolverVarMap,
+            !NumPasses)
     ).
 
 :- pred propagate_pass(list(requirement)::in,
+    list(requirement)::in, list(requirement)::out,
     solver_var_map::in, solver_var_map::out,
     maybe_changed::in, maybe_changed::out) is det.
 
-propagate_pass([], !SolverVarMap, !Changed).
-propagate_pass([Requirement | Requirements], !SolverVarMap, !Changed) :-
-    Requirement = requirement(ReqId, _Desc,
+propagate_pass([], !RevRequirements, !SolverVarMap, !Changed).
+propagate_pass([Requirement | Requirements], !RevRequirements,
+        !SolverVarMap, !Changed) :-
+    Requirement = requirement(ReqId, ReqDesc,
         IfVarId, IfValueId, ThenVarId, ReqThenValueIds),
+    trace [compile_time(flag("debug_solver")), io(!IO)] (
+        ReqId = requirement_id(ReqIdNum0),
+        io.format("Considering Req %d (%s)\n",
+            [i(ReqIdNum0), s(ReqDesc)], !IO)
+    ),
+
     % The requirement represents the implication:
     %
     %   (IfVarId = IfValueId) -> (ThenVarId in ReqThenValueIds)
     %
     map.lookup(!.SolverVarMap, IfVarId, IfVar0),
-    IfVar0 = solver_var(_IfCntAll, IfCntPoss0, IfValues0),
+    IfVar0 = solver_var(IfCntAll, IfCntPoss0, IfValues0),
     ( if is_value_possible(IfValues0, IfValueId, is_possible) then
         map.lookup(!.SolverVarMap, ThenVarId, ThenVar0),
-        ThenVar0 = solver_var(_ThenCntAll, ThenCntPoss0, ThenValues0),
+        ThenVar0 = solver_var(ThenCntAll, ThenCntPoss0, ThenValues0),
         ( if some_value_is_possible(ThenValues0, ReqThenValueIds) then
             ( if IfCntPoss0 = 1 then
                 % We know that (IfVarId = IfValueId). We can therefore
-                % impose (ThenVarId in ReqThenValueIds).
+                % impose (ThenVarId in ReqThenValueIds). This won't need
+                % to be imposed again.
                 %
+                KeepReq = no,
                 restrict_possibilities_to(ReqThenValueIds, ReqId,
                     0, ThenCntPoss, ThenValues0, ThenValues),
                 ( if ThenCntPoss < ThenCntPoss0 then
-                    ThenVar1 = ThenVar0 ^ sv_cnt_possible := ThenCntPoss,
-                    ThenVar = ThenVar1 ^ sv_values := ThenValues,
+                    trace [compile_time(flag("debug_solver")), io(!IO)] (
+                        ReqId = requirement_id(ReqIdNum),
+                        ThenVarName = string.string(ThenVarId),
+                        ThenValueNames0 = list_poss_values(ThenValues0),
+                        ThenValueNames = list_poss_values(ThenValues),
+                        io.format("Req %d (%s) updates then_var %s\n",
+                            [i(ReqIdNum), s(ReqDesc), s(ThenVarName)], !IO),
+                        io.format("  %s -> %s\n\n",
+                            [s(ThenValueNames0), s(ThenValueNames)], !IO)
+                    ),
+                    ThenVar = solver_var(ThenCntAll, ThenCntPoss, ThenValues),
                     map.det_update(ThenVarId, ThenVar, !SolverVarMap),
                     !:Changed = changed
                 else
                     % The condition (ThenVarId in ReqThenValueIds)
                     % already held, so nothing has changed.
-                    true
+
+                    trace [compile_time(flag("debug_solver")), io(!IO)] (
+                        ReqId = requirement_id(ReqIdNum),
+                        ThenVarName = string.string(ThenVarId),
+                        ThenValueNames0 = list_poss_values(ThenValues0),
+                        ThenValueNames = list_poss_values(ThenValues),
+                        io.format("Req %d (%s) pre-holds for then_var %s\n",
+                            [i(ReqIdNum), s(ReqDesc), s(ThenVarName)], !IO),
+                        io.format("  %s -> %s\n\n",
+                            [s(ThenValueNames0), s(ThenValueNames)], !IO)
+                    )
                 )
             else
-                true
+                KeepReq = yes
             )
         else
             % Since (ThenVarId in ReqThenValueIds) is false,
             % we can impose (IfVarId = IfValueId) being false as well.
+            % This won't need to be imposed again.
             %
+            KeepReq = no,
             IfCntPoss = IfCntPoss0 - 1,
             set_value_to_not_possible(IfValueId, ReqId, IfValues0, IfValues),
-            IfVar1 = IfVar0 ^ sv_cnt_possible := IfCntPoss,
-            IfVar = IfVar1 ^ sv_values := IfValues,
+            trace [compile_time(flag("debug_solver")), io(!IO)] (
+                ReqId = requirement_id(ReqIdNum),
+                IfVarName = string.string(IfVarId),
+                IfValueNames0 = list_poss_values(IfValues0),
+                IfValueNames = list_poss_values(IfValues),
+                io.format("Req %d (%s) updates if_var %s\n",
+                    [i(ReqIdNum), s(ReqDesc), s(IfVarName)], !IO),
+                io.format("  %s -> %s\n\n",
+                    [s(IfValueNames0), s(IfValueNames)], !IO)
+            ),
+            IfVar = solver_var(IfCntAll, IfCntPoss, IfValues),
             map.det_update(IfVarId, IfVar, !SolverVarMap),
             !:Changed = changed
         )
     else
         % We already know that (IfVarId = IfValueId) is false.
         % Since false implies anything, the requirement is already met.
-        true
+        trace [compile_time(flag("debug_solver")), io(!IO)] (
+            ReqId = requirement_id(ReqIdNum),
+            IfVarName = string.string(IfVarId),
+            IfValueName = string.string(IfValueId),
+            io.format("Deleting Req %d (%s): %s is not %s\n\n",
+                [i(ReqIdNum), s(ReqDesc), s(IfVarName), s(IfValueName)], !IO)
+        ),
+        KeepReq = no
     ),
-    propagate_pass(Requirements, !SolverVarMap, !Changed).
+    (
+        KeepReq = no
+    ;
+        KeepReq = yes,
+        !:RevRequirements = [Requirement | !.RevRequirements]
+    ),
+    propagate_pass(Requirements, !RevRequirements, !SolverVarMap, !Changed).
 
 :- pred some_value_is_possible(list(solver_var_value)::in,
     list(solver_var_value_id)::in) is semidet.
@@ -236,6 +294,30 @@ restrict_possibilities_to(!.SetValueIds, ReqId, !CntPoss,
 
 %---------------------------------------------------------------------------%
 
+:- func list_poss_values(list(solver_var_value)) = string.
+
+list_poss_values(SolverVarValues) = Str :-
+    accumulate_poss_value_strings(SolverVarValues, [], RevPossStrs),
+    list.reverse(RevPossStrs, PossStrs),
+    Str = "[" ++ string.join_list(", ", PossStrs) ++ "]".
+
+:- pred accumulate_poss_value_strings(list(solver_var_value)::in,
+    list(string)::in, list(string)::out) is det.
+
+accumulate_poss_value_strings([], !RevPossStrs).
+accumulate_poss_value_strings([SolverVarValue | SolverVarValues],
+        !RevPossStrs) :-
+    SolverVarValue = solver_var_value(ValueId, Possible),
+    (
+        Possible = is_possible,
+        !:RevPossStrs = [string.string(ValueId) | !.RevPossStrs]
+    ;
+        Possible = not_possible(_)
+    ),
+    accumulate_poss_value_strings(SolverVarValues, !RevPossStrs).
+
+%---------------------------------------------------------------------------%
+
 :- pred label_step(list(solver_var_id)::in, list(solver_var_id)::out,
     solver_var_map::in, solver_var_map::out) is det.
 
@@ -278,10 +360,10 @@ find_first_possible_value_and_commit(VarId, [Value0 | Values0],
     Value0 = solver_var_value(ValueId, Possible0),
     (
         Possible0 = is_possible,
-        trace [compile_time(flag("debug_choose_grade")), io(!TIO)] (
+        trace [compile_time(flag("debug_solver")), io(!TIO)] (
             solver_var_name(VarName, VarId),
             solver_var_value_name(ValueName, ValueId),
-            io.format("LABELING sets %s to %s\n",
+            io.format("\nLABELING sets %s to %s\n",
                 [s(VarName), s(ValueName)], !TIO)
         ),
         Value = Value0,
@@ -310,10 +392,9 @@ set_values_not_possible_labeling([Value0 | Values0], [Value | Values]) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred at_solution(list(solver_var_id)::in, solver_var_map::in,
-    maybe(solution)::out) is det.
+:- pred at_solution(solver_var_map::in, maybe(solution)::out) is det.
 
-at_solution(_SolverVarPriorities, SolverVarMap, MaybeSoln) :-
+at_solution(SolverVarMap, MaybeSoln) :-
     map.foldl2_values(cnt_poss_classes, SolverVarMap, 0, NumZero, 0, NumMore),
     ( if NumZero > 0 then
         MaybeSoln = yes(soln_failure)
