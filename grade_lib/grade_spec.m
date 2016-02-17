@@ -38,6 +38,10 @@
             % intuition.
     ;       svar_term_size_prof
     ;       svar_debug
+    ;       svar_lldebug
+    ;       svar_rbmm
+    ;       svar_rbmm_debug
+    ;       svar_rbmm_prof
     ;       svar_single_prec_float.
 
 :- type solver_var_value_id
@@ -127,6 +131,18 @@
             % that requires debug=nodebug. (Giving the user TWO debuggers to
             % interact with at the same time is not a good idea.)
 
+    ;       svalue_lldebug_no
+    ;       svalue_lldebug_yes
+
+    ;       svalue_rbmm_no
+    ;       svalue_rbmm_yes
+
+    ;       svalue_rbmm_debug_no
+    ;       svalue_rbmm_debug_yes
+
+    ;       svalue_rbmm_prof_no
+    ;       svalue_rbmm_prof_yes
+
     ;       svalue_single_prec_float_no
     ;       svalue_single_prec_float_yes.
 
@@ -196,6 +212,10 @@ solver_var_name("mprof_memory",                     svar_mprof_memory).
 solver_var_name("tscope_prof",                      svar_tscope_prof).
 solver_var_name("term_size_prof",                   svar_term_size_prof).
 solver_var_name("debug",                            svar_debug).
+solver_var_name("lldebug",                          svar_lldebug).
+solver_var_name("rbmm",                             svar_rbmm).
+solver_var_name("rbmm_debug",                       svar_rbmm_debug).
+solver_var_name("rbmm_prof",                        svar_rbmm_prof).
 solver_var_name("single_prec_float",                svar_single_prec_float).
 
 solver_var_value_name("mlds",                       svalue_backend_mlds).
@@ -269,15 +289,27 @@ solver_var_value_name("no_tscope_prof",             svalue_tscope_prof_no).
 solver_var_value_name("tscope_prof",                svalue_tscope_prof_yes).
 
 solver_var_value_name("no_term_size_prof",          svalue_term_size_prof_no).
-solver_var_value_name("term_size_prof_cells",       svalue_term_size_prof_cells).
-solver_var_value_name("term_size_prof_words",       svalue_term_size_prof_words).
+solver_var_value_name("term_size_prof_cells",   svalue_term_size_prof_cells).
+solver_var_value_name("term_size_prof_words",   svalue_term_size_prof_words).
 
 solver_var_value_name("nodebug",                    svalue_debug_none).
 solver_var_value_name("debug",                      svalue_debug_debug).
 solver_var_value_name("decldebug",                  svalue_debug_decldebug).
 
-solver_var_value_name("no_spf",                     svalue_single_prec_float_no).
-solver_var_value_name("spf",                        svalue_single_prec_float_yes).
+solver_var_value_name("no_lldebug",                 svalue_lldebug_no).
+solver_var_value_name("lldebug",                    svalue_lldebug_yes).
+
+solver_var_value_name("no_rbmm",                    svalue_rbmm_no).
+solver_var_value_name("rbmm",                       svalue_rbmm_yes).
+
+solver_var_value_name("no_rbmm_debug",              svalue_rbmm_debug_no).
+solver_var_value_name("rbmm_debug",                 svalue_rbmm_debug_yes).
+
+solver_var_value_name("no_rbmm_prof",               svalue_rbmm_prof_no).
+solver_var_value_name("rbmm_prof",                  svalue_rbmm_prof_yes).
+
+solver_var_value_name("no_spf",                 svalue_single_prec_float_no).
+solver_var_value_name("spf",                    svalue_single_prec_float_yes).
 
 %---------------------------------------------------------------------------%
 
@@ -350,6 +382,14 @@ init_solver_var_specs = [
         svalue_term_size_prof_cells, svalue_term_size_prof_words]),
     solver_var_spec(svar_debug,
         [svalue_debug_none, svalue_debug_debug, svalue_debug_decldebug]),
+    solver_var_spec(svar_lldebug,
+        [svalue_lldebug_no, svalue_lldebug_yes]),
+    solver_var_spec(svar_rbmm,
+        [svalue_rbmm_no, svalue_rbmm_yes]),
+    solver_var_spec(svar_rbmm_debug,
+        [svalue_rbmm_debug_no, svalue_rbmm_debug_yes]),
+    solver_var_spec(svar_rbmm_prof,
+        [svalue_rbmm_prof_no, svalue_rbmm_prof_yes]),
     solver_var_spec(svar_single_prec_float,
         [svalue_single_prec_float_no, svalue_single_prec_float_yes])
 ].
@@ -727,6 +767,20 @@ init_requirement_specs = [
     requirement_spec(
         "declarative debugging requires the LLDS backend",
         (svar_debug `being` svalue_debug_decldebug) `implies_that`
+        (svar_backend `is_one_of` [svalue_backend_llds])
+    ),
+
+% Requirements of values of svar_lldebug.
+    requirement_spec(
+        "low level debugging requires the LLDS backend",
+        (svar_lldebug `being` svalue_lldebug_yes) `implies_that`
+        (svar_backend `is_one_of` [svalue_backend_llds])
+    ),
+
+% Requirements of values of svar_rbmm.
+    requirement_spec(
+        "region based memory management requires the LLDS backend",
+        (svar_rbmm `being` svalue_rbmm_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 

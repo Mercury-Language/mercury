@@ -31,6 +31,10 @@
                 soln_tscope_prof,
                 soln_term_size_prof,
                 soln_debug,
+                soln_lldebug,
+                soln_rbmm,
+                soln_rbmm_debug,
+                soln_rbmm_prof,
                 soln_single_prec_float
             ).
 
@@ -123,6 +127,22 @@
     ;       soln_debug_debug
     ;       soln_debug_decldebug.
 
+:- type soln_lldebug
+    --->    soln_lldebug_no
+    ;       soln_lldebug_yes.
+
+:- type soln_rbmm
+    --->    soln_rbmm_no
+    ;       soln_rbmm_yes.
+
+:- type soln_rbmm_debug
+    --->    soln_rbmm_debug_no
+    ;       soln_rbmm_debug_yes.
+
+:- type soln_rbmm_prof
+    --->    soln_rbmm_prof_no
+    ;       soln_rbmm_prof_yes.
+
 :- type soln_single_prec_float
     --->    soln_single_prec_float_no
     ;       soln_single_prec_float_yes.
@@ -144,6 +164,8 @@
                 soln_term_size_prof,
                 soln_minimal_model,
                 soln_debug,
+                soln_lldebug,
+                llds_rbmm,
                 soln_single_prec_float
             )
     ;       grade_mlds(
@@ -185,6 +207,13 @@
     ;       llds_perf_prof_mprof(
                 soln_mprof_time,
                 soln_mprof_memory
+            ).
+
+:- type llds_rbmm
+    --->    llds_rbmm_no
+    ;       llds_rbmm_yes(
+                soln_rbmm_debug,
+                soln_rbmm_prof
             ).
 
 :- type mlds_target
@@ -253,6 +282,10 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
     map.det_remove(svar_tscope_prof, TScopeProf, !SolnMap),
     map.det_remove(svar_term_size_prof, TermSizeProf, !SolnMap),
     map.det_remove(svar_debug, Debug, !SolnMap),
+    map.det_remove(svar_lldebug, LLDebug, !SolnMap),
+    map.det_remove(svar_rbmm, RBMM, !SolnMap),
+    map.det_remove(svar_rbmm_debug, RBMMDebug, !SolnMap),
+    map.det_remove(svar_rbmm_prof, RBMMProf, !SolnMap),
     map.det_remove(svar_single_prec_float, SinglePrecFloat, !SolnMap),
     expect(map.is_empty(!.SolnMap), $pred, "unexpected entries in SolnMap"),
 
@@ -434,6 +467,38 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
         unexpected($pred, "unexpected value of Debug")
     ),
 
+    ( if LLDebug = svalue_lldebug_no then
+        ComponentLLDebug = soln_lldebug_no
+    else if LLDebug = svalue_lldebug_yes then
+        ComponentLLDebug = soln_lldebug_yes
+    else
+        unexpected($pred, "unexpected value of LLDebug")
+    ),
+
+    ( if RBMM = svalue_rbmm_no then
+        ComponentRBMM = soln_rbmm_no
+    else if RBMM = svalue_rbmm_yes then
+        ComponentRBMM = soln_rbmm_yes
+    else
+        unexpected($pred, "unexpected value of RBMM")
+    ),
+
+    ( if RBMMDebug = svalue_rbmm_debug_no then
+        ComponentRBMMDebug = soln_rbmm_debug_no
+    else if RBMMDebug = svalue_rbmm_debug_yes then
+        ComponentRBMMDebug = soln_rbmm_debug_yes
+    else
+        unexpected($pred, "unexpected value of RBMMDebug")
+    ),
+
+    ( if RBMMProf = svalue_rbmm_prof_no then
+        ComponentRBMMProf = soln_rbmm_prof_no
+    else if RBMMProf = svalue_rbmm_prof_yes then
+        ComponentRBMMProf = soln_rbmm_prof_yes
+    else
+        unexpected($pred, "unexpected value of RBMMProf")
+    ),
+
     ( if SinglePrecFloat = svalue_single_prec_float_no then
         ComponentSinglePrecFloat = soln_single_prec_float_no
     else if SinglePrecFloat = svalue_single_prec_float_yes then
@@ -450,7 +515,9 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
         ComponentMinimalModel, ComponentThreadSafe, ComponentGc,
         ComponentDeepProf,
         ComponentMprofCall, ComponentMprofTime, ComponentMprofMemory,
-        ComponentTScopeProf, ComponentTermSizeProf, ComponentDebug,
+        ComponentTScopeProf, ComponentTermSizeProf,
+        ComponentDebug, ComponentLLDebug,
+        ComponentRBMM, ComponentRBMMDebug, ComponentRBMMProf,
         ComponentSinglePrecFloat
     ).
 
@@ -471,8 +538,8 @@ success_soln_to_grade(SuccMap) = Grade :-
     % on Target in the mlds case: having two deconstructs that each pick up
     % *some* arguments is vulnerable to not picking up some arguments
     % in *either*.
-    SolutionComponents = solution_components(Backend,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+    SolutionComponents = solution_components(Backend, _, _, _, _, _, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
 
     (
         Backend = soln_backend_llds,
@@ -481,7 +548,8 @@ success_soln_to_grade(SuccMap) = Grade :-
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
             StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
-            TermSizeProf, Debug, SinglePrecFloat),
+            TermSizeProf, Debug, LLDebug, RBMM, RBMMDebug, RBMMProf,
+            SinglePrecFloat),
 
         expect(unify(Target, soln_target_c), $pred,
             "Target != soln_target_c"),
@@ -585,9 +653,20 @@ success_soln_to_grade(SuccMap) = Grade :-
                 "MprofMemory != soln_mprof_memory_no"),
             LLDSPerfProf = llds_perf_prof_deep
         ),
+        (
+            RBMM = soln_rbmm_no,
+            expect(unify(RBMMDebug, soln_rbmm_debug_no), $pred,
+                "RBMMDebug != soln_rbmm_debug_no"),
+            expect(unify(RBMMProf, soln_rbmm_prof_no), $pred,
+                "RBMMProf != soln_rbmm_prof_no"),
+            LLDSRBMM = llds_rbmm_no
+        ;
+            RBMM = soln_rbmm_yes,
+            LLDSRBMM = llds_rbmm_yes(RBMMDebug, RBMMProf)
+        ),
         Grade = grade_llds(LLDSGccConf, StackSegments, LLDSTrail,
             LLDSGc, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
-            MinimalModel, Debug, SinglePrecFloat)
+            MinimalModel, Debug, LLDebug, LLDSRBMM, SinglePrecFloat)
     ;
         Backend = soln_backend_mlds,
 
@@ -595,7 +674,8 @@ success_soln_to_grade(SuccMap) = Grade :-
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
             StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
-            TermSizeProf, Debug, SinglePrecFloat),
+            TermSizeProf, Debug, LLDebug, RBMM, RBMMDebug, RBMMProf,
+            SinglePrecFloat),
 
         expect(unify(GccRegsUse, soln_gcc_regs_use_no), $pred,
             "GccRegsUse != soln_gcc_regs_use_no"),
@@ -623,6 +703,14 @@ success_soln_to_grade(SuccMap) = Grade :-
             "TermSizeProf != soln_term_size_prof_no"),
         expect(unify(Debug, soln_debug_none), $pred,
             "Debug != soln_debug_none"),
+        expect(unify(LLDebug, soln_lldebug_no), $pred,
+            "LLDebug != soln_lldebug_no"),
+        expect(unify(RBMM, soln_rbmm_no), $pred,
+            "RBMM != soln_rbmm_no"),
+        expect(unify(RBMMDebug, soln_rbmm_debug_no), $pred,
+            "RBMMDebug != soln_rbmm_debug_no"),
+        expect(unify(RBMMProf, soln_rbmm_prof_no), $pred,
+            "RBMMProf != soln_rbmm_prof_no"),
         (
             Target = soln_target_c,
             (
@@ -659,9 +747,6 @@ success_soln_to_grade(SuccMap) = Grade :-
                 "Gc != soln_gc_target_native"),
             expect(unify(Trail, soln_trail_no), $pred,
                 "Trail != soln_trail_no"),
-            % XXX ThreadSafe?
-            % expect(unify(ThreadSafe, soln_thread_safe_no), $pred,
-            %     "ThreadSafe != soln_thread_safe_no"),
             expect(unify(SinglePrecFloat, soln_single_prec_float_no), $pred,
                 "SinglePrecFloat != soln_single_prec_float_no"),
             (
@@ -683,7 +768,8 @@ success_soln_to_grade(SuccMap) = Grade :-
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
             StackSegments, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
-            TermSizeProf, Debug, SinglePrecFloat),
+            TermSizeProf, Debug, LLDebug, RBMM, RBMMDebug, RBMMProf,
+            SinglePrecFloat),
 
         expect(unify(DataLevel, soln_data_level_lld), $pred,
             "DataLevel != soln_data_level_lld"),
@@ -721,6 +807,14 @@ success_soln_to_grade(SuccMap) = Grade :-
             "TermSizeProf != soln_term_size_prof_no"),
         expect(unify(Debug, soln_debug_none), $pred,
             "Debug != soln_debug_none"),
+        expect(unify(LLDebug, soln_lldebug_no), $pred,
+            "LLDebug != soln_lldebug_no"),
+        expect(unify(RBMM, soln_rbmm_no), $pred,
+            "RBMM != soln_rbmm_no"),
+        expect(unify(RBMMDebug, soln_rbmm_debug_no), $pred,
+            "RBMMDebug != soln_rbmm_debug_no"),
+        expect(unify(RBMMProf, soln_rbmm_prof_no), $pred,
+            "RBMMProf != soln_rbmm_prof_no"),
         expect(unify(SinglePrecFloat, soln_single_prec_float_no), $pred,
             "SinglePrecFloat != soln_single_prec_float_no"),
         % XXX incomplete
@@ -739,14 +833,12 @@ success_soln_to_grade_string(SuccMap) = GradeStr :-
     % XXX picreg
     % XXX pregen
     % XXX ssdebug
-    % XXX lldebug
     % XXX exts
-    % XXX rbmm
 
     (
         Grade = grade_llds(GccConf, StackSegments, LLDSTrail,
             LLDSGc, LLDSThreadSafe, LLDSPerfProf, TermSizeProf, MinimalModel,
-            Debug, SinglePrecFloat),
+            Debug, LLDebug, LLDSRBMM, SinglePrecFloat),
 
         ( GccConf = llds_gcc_conf_none,             GccConfStr = "none"
         ; GccConf = llds_gcc_conf_reg,              GccConfStr = "reg"
@@ -832,12 +924,39 @@ success_soln_to_grade_string(SuccMap) = GradeStr :-
         ; Debug = soln_debug_debug,                 DebugStr = ".debug"
         ; Debug = soln_debug_decldebug,             DebugStr = ".decldebug"
         ),
+        ( LLDebug = soln_lldebug_no,                LLDebugStr = ""
+        ; LLDebug = soln_lldebug_yes,               LLDebugStr = ".ll_debug"
+        ),
         ( StackSegments = soln_stack_segments_no,   StackSegmentsStr = ""
         ; StackSegments = soln_stack_segments_yes,  StackSegmentsStr = ".stseg"
         ),
+        (
+            LLDSRBMM = llds_rbmm_no,
+            RBMMStr = ""
+        ;
+            LLDSRBMM = llds_rbmm_yes(RBMMDebug, RBMMProf),
+            (
+                RBMMDebug = soln_rbmm_debug_no,
+                RBMMProf = soln_rbmm_prof_no,
+                RBMMStr = ".rbmm"
+            ;
+                RBMMDebug = soln_rbmm_debug_no,
+                RBMMProf = soln_rbmm_prof_yes,
+                RBMMStr = ".rbmmp"
+            ;
+                RBMMDebug = soln_rbmm_debug_yes,
+                RBMMProf = soln_rbmm_prof_no,
+                RBMMStr = ".rbmmd"
+            ;
+                RBMMDebug = soln_rbmm_debug_yes,
+                RBMMProf = soln_rbmm_prof_yes,
+                RBMMStr = ".rbmmdp"
+            )
+        ),
         GradeStr = string.append_list([GccConfStr, ThreadSafeStr, GcStr,
             LLDSPerfProfStr, TermSizeProfStr, TrailStr, MinimalModelStr,
-            SinglePrecFloatStr, DebugStr, StackSegmentsStr, TScopeProfStr])
+            SinglePrecFloatStr, DebugStr, LLDebugStr,
+            StackSegmentsStr, RBMMStr, TScopeProfStr])
     ;
         Grade = grade_mlds(MLDSTarget),
         (
