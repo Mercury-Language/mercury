@@ -75,11 +75,15 @@
 % conjunction as the call itself, so the typical number of conjunctions
 % that has to be searched will in fact be one.
 %
-% Note that if the value of e.g. a format string is an input to the procedure
-% or is computed by a call rather than a unification, we won't be able
-% to check whether the values match the format string. Whether we give
-% a warning in such cases is controlled by a separate option, which is
-% consulted in det_report.m.
+% Note that if the value of e.g. a format string is an input to the procedure,
+% we won't be able to check whether the values match the format string.
+% Whether we give a warning in such cases is controlled by a separate option,
+% which is consulted in det_report.m.
+%
+% Likewise, we cannot do our checks if the value of a format string
+% is computed by a call to an unknown procedure rather than a unification
+% or one of a small number of known procedures (such as string.append).
+% The same option governs whether we give a warning in this case as well.
 %
 % The second job (optimizing the calls) starts by processing the information
 % gathered by the first pass through the code. For each call site, we
