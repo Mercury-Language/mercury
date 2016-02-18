@@ -215,6 +215,7 @@ A. The following language features are not supported and will not be:
 
         Mercury-level debugging
         Mercury-level profiling
+        backjumping
 
    The following standard library modules are completely unimplemented:
 

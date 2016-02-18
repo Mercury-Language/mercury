@@ -184,6 +184,7 @@ A. The following implementation features are not supported:
 	Mercury-level profiling
 	trailing
 	tabling
+	backjumping
 
    In addition, the following individual procedures are incompletely
    implemented:

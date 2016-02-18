@@ -12,10 +12,6 @@ library are not yet implemented (for a full list see the FAQ below).
 
 The port is currently targeted at C# 2.0 or higher.
 
-NOTE: a previous backend also targetted the .NET runtime, by generating IL
-(Intermediate Language), rather than going via C#.  That backend is
-out-of-date and may be removed in the future.
-
 PREREQUISITES
 
 In order to try this system you will need
@@ -195,6 +191,7 @@ A. The following implementation features are not supported:
 	Mercury-level profiling
 	trailing
 	tabling
+	backjumping
 
    In addition, the following individual procedures are incompletely
    implemented:
