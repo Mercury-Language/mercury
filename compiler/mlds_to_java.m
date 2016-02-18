@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2011 The University of Melbourne.
+% Copyright (C) 2013-2016 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -2042,6 +2043,8 @@ write_main_driver(Indent, ClassName, !IO) :-
         "    }",
         "};",
         "jmercury.runtime.JavaInternal.runMain(run_main);",
+        "io.flush_output_3_p_0(io.stdout_stream_0_f_0());",
+        "io.flush_output_3_p_0(io.stderr_stream_0_f_0());",
         "java.lang.System.exit(jmercury.runtime.JavaInternal.exit_status);"
     ],
     list.foldl(write_indented_line(Indent + 1), Body, !IO),
