@@ -36,10 +36,19 @@
 :- type not_possible_why
     --->    npw_config
     ;       npw_user
-    ;       npw_requirement(
-                npwr_req_id             :: requirement_id
-            )
+    ;       npw_requirement(requirement_application)
     ;       npw_labeling.
+
+:- type requirement_application
+    --->    requirement_application(
+                ra_req_id               :: requirement_id,
+                ra_req_desc             :: string,
+                ra_dir                  :: req_dir
+            ).
+
+:- type req_dir
+    --->    narrow_then_values
+    ;       delete_if_value.
 
 %---------------------------------------------------------------------------%
 

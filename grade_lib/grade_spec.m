@@ -490,21 +490,22 @@ init_requirement_specs = [
         (svar_trail `is_one_of` [svalue_trail_no])
     ),
 
-    requirement_spec(
-        "targeting C# is incompatible with single-precision floats",
-        (svar_target `being` svalue_target_csharp) `implies_that`
-        (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
-    ),
-    requirement_spec(
-        "targeting Java is incompatible with single-precision floats",
-        (svar_target `being` svalue_target_java) `implies_that`
-        (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
-    ),
-    requirement_spec(
-        "targeting Erlang is incompatible with single-precision floats",
-        (svar_target `being` svalue_target_erlang) `implies_that`
-        (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
-    ),
+% These are covered by a single requirement from spf back to target.
+%   requirement_spec(
+%       "targeting C# is incompatible with single-precision floats",
+%       (svar_target `being` svalue_target_csharp) `implies_that`
+%       (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
+%   ),
+%   requirement_spec(
+%       "targeting Java is incompatible with single-precision floats",
+%       (svar_target `being` svalue_target_java) `implies_that`
+%       (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
+%   ),
+%   requirement_spec(
+%       "targeting Erlang is incompatible with single-precision floats",
+%       (svar_target `being` svalue_target_erlang) `implies_that`
+%       (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
+%   ),
 
 % Requirements of values of svar_nested_funcs.
     requirement_spec(
@@ -628,7 +629,7 @@ init_requirement_specs = [
         (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug])
     ),
     requirement_spec(
-        "minimal model tabling does not work with thread-safe code",
+        "minimal model tabling does not respect thread safety",
         (svar_minimal_model `being` svalue_minimal_model_yes_stack_copy)
             `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_no])

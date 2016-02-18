@@ -126,7 +126,7 @@ run_test_set(SolverInfo0, TestSetSpec, TestSpecSoFar0, !SolveCountStats, !IO) :-
             [i(NumLabelSteps), i(NumPasses)], CountStr),
         SolnStr = soln_to_str("    ", Soln),
         (
-            Soln = soln_failure,
+            Soln = soln_failure(_),
             GradeStr = ""
         ;
             Soln = soln_success(SuccMap),
