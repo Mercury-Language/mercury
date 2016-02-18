@@ -568,14 +568,25 @@ CLOSURE_LAYOUT_PROGS = \
 # backjump_test fails because deep profiler cannot yet handle backjumps.
 # tl_backjump_test fails because the deep profiler cannot yet handle
 # backjumps and threads.
-
+#
+# Additionally, The programs listed in NON_PROFDEEP_PROGS_2 don't
+# work in non-C grades, either because they contain C code or
+# they use backjumping, which is NI for the non-C grades.
+#
 ifeq "$(findstring profdeep,$(GRADE))" ""
+	ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
+		NON_PROFDEEP_PROGS_2 = \
+			backend_external \
+			backend_external_func \
+			backend_external_pred \
+			backjump_test \
+			tl_backjump_test
+	else
+		NON_PROFDEEP_PROGS_2 =
+	endif
 	NON_PROFDEEP_PROGS = \
+		$(NON_PROFDEEP_PROGS_2) \
 		allow_stubs \
-		backend_external \
-		backend_external_func \
-		backend_external_pred \
-		backjump_test \
 		bitmap_empty \
 		bitmap_test \
 		bit_buffer_test \
@@ -588,7 +599,6 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		null_char \
 		test_array2d \
 		test_injection \
-		tl_backjump_test \
 		try_syntax_1 \
 		try_syntax_2 \
 		try_syntax_3 \
@@ -665,7 +675,7 @@ ifneq "$(findstring apple-darwin,$(FULLARCH))" "apple-darwin"
 endif
 
 # Concurrency tests are only supported in C grades with a "par" grade
-# componenet or java or csharp grades.
+# component or java or csharp grades.
 ifeq "$(findstring par,$(GRADE))" "par"
 	CONC_PROGS = thread_barrier_test
 else
@@ -891,7 +901,7 @@ tl_backjump_test.out: tl_backjump_test
 		exit 1; \
 	fi
 
-# weak_ptr's output is extreamly volatile, it depends on Boehm GC's behavour
+# weak_ptr's output is extremely volatile, it depends on Boehm GC's behaviour
 # which can vary depending on many different things. All we can hope to do
 # is check that it doesn't crash.
 
