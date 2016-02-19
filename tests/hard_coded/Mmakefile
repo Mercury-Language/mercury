@@ -769,6 +769,9 @@ trace_goal_env_2.out:	trace_goal_env_2
 # no_fully_strict is expected to fail (it calls error/1).
 # We also need to pipe the output through sed to avoid hard-coding
 # dependencies on particular line numbers in the standard library source code.
+# We filter lines matching "at mercury" in order to avoid the stack trace
+# caused by the uncaught exception in the C# grade (on Mono).  Ditto for lines
+# containing "jmercury" in the Java grade.
 no_fully_strict.out: no_fully_strict
 	if ./no_fully_strict > $@.tmp 2>&1; then \
 		grep . $@.tmp; \
@@ -776,7 +779,8 @@ no_fully_strict.out: no_fully_strict
 	else \
 		sed	-e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
 			-e 's/require.m:[0-9]*/require.m:NNNN/g' \
-			< $@.tmp > $@; \
+			-e '/at\ mercury/d' \
+			-e '/jmercury/d' < $@.tmp > $@; \
 		rm -f $@.tmp; \
 	fi
 
