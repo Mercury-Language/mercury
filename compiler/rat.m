@@ -144,9 +144,9 @@ X / Y = X * rat.reciprocal(Y).
 :- func rat.reciprocal(rat) = rat.
 
 reciprocal(r(Num, Den)) =
-    ( Num = 0  ->
+    ( if Num = 0 then
         unexpected($module, $pred, "division by zero")
-    ;
+    else
         r(signum(Num) * Den, int.abs(Num))
     ).
 
@@ -159,11 +159,11 @@ rat.abs(r(Num, Den)) = r(int.abs(Num), Den).
 :- func rat_norm(int, int) = rat.
 
 rat_norm(Num, Den) = Rat :-
-    ( Den = 0 ->
+    ( if Den = 0 then
         unexpected($module, $pred, "division by zero")
-    ; Num = 0 ->
+    else if Num = 0 then
         Rat = r(0, 1)
-    ;
+    else
         G = gcd(Num, Den),
         Num2 = Num * signum(Den),
         Den2 = int.abs(Den),
@@ -176,22 +176,22 @@ gcd(A, B) = gcd_2(int.abs(A), int.abs(B)).
 
 :- func gcd_2(int, int) = int.
 
-gcd_2(A, B) = ( B = 0 -> A ; gcd_2(B, A rem B) ).
+gcd_2(A, B) = ( if B = 0 then A else gcd_2(B, A rem B) ).
 
 :- func lcm(int, int) = int.
 
 lcm(A, B) =
-    ( A = 0 ->
+    ( if A = 0 then
         0
-    ; B = 0 ->
+    else if B = 0 then
         0
-    ;
+    else
         int.abs((A // gcd(A, B)) * B)
     ).
 
 :- func signum(int) = int.
 
-signum(N) = ( N = 0 -> 0 ; N < 0 -> -1 ; 1 ).
+signum(N) = ( if N = 0 then 0 else if N < 0 then -1 else 1 ).
 
     % Builtin comparison does not give a natural ordering on rats.
     %
@@ -199,11 +199,11 @@ signum(N) = ( N = 0 -> 0 ; N < 0 -> -1 ; 1 ).
 
 cmp(X, Y) = Cmp :-
     Diff = X - Y,
-    ( is_zero(Diff) ->
+    ( if is_zero(Diff) then
         Cmp = (=)
-    ; is_negative(Diff) ->
+    else if is_negative(Diff) then
         Cmp = (<)
-    ;
+    else
         Cmp = (>)
     ).
 
@@ -216,13 +216,13 @@ is_zero(r(0, _)).
 is_negative(r(Num, _)) :- Num < 0.
 
 rat.to_string(r(Num, Denom)) =
-    ( Num = 0  ->
+    ( if Num = 0 then
         "0"
-    ;
+    else
         "(" ++ string.int_to_string(Num) ++
-            ( Denom = 1 ->
+            ( if Denom = 1 then
                 ""
-            ;
+            else
                 "/" ++ string.int_to_string(Denom)
             )
         ++ ")"

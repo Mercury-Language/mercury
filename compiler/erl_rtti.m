@@ -91,9 +91,9 @@ erlang_rtti_data(_, rtti_data_type_class_instance(TCInstance)) =
 :- func maybe_get_special_predicate(univ) = maybe(rtti_proc_label).
 
 maybe_get_special_predicate(Univ) =
-    ( univ_to_type(Univ, ProcLabel) ->
+    ( if univ_to_type(Univ, ProcLabel) then
         yes(ProcLabel)
-    ;
+    else
         no
     ).
 
@@ -105,19 +105,19 @@ maybe_get_special_predicate(Univ) =
     int, type_ctor_details) = erlang_type_ctor_details.
 
 erlang_type_ctor_details(ModuleName, TypeName, Arity, Details) = D :-
-    (
+    ( if
         ModuleName = unqualified("list"),
         TypeName = "list",
         Arity = 1
-    ->
+    then
         D = erlang_list
-    ;
+    else if
         ModuleName = unqualified("array"),
         TypeName = "array",
         Arity = 1
-    ->
+    then
         D = erlang_array
-    ;
+    else
         D = erlang_type_ctor_details_2(Details)
     ).
 
@@ -129,9 +129,9 @@ erlang_type_ctor_details_2(CtorDetails) = Details :-
         CtorDetails = tcd_enum(_, Functors, _, _, IsDummy, FunctorNums),
         (
             IsDummy = yes,
-            ( Functors = [F] ->
+            ( if Functors = [F] then
                 Details = erlang_dummy(F ^ enum_name)
-            ;
+            else
                 unexpected($module, $pred,
                     "dummy type with more than one functor")
             )
@@ -771,17 +771,17 @@ erlang_type_ctor_details(ModuleInfo, Details, Term, Defns) :-
     prog_varset::in, prog_varset::out) is det.
 
 reduce_list_term_complexity(Expr0, Expr, !RevAssignments, !VarSet) :-
-    (
+    ( if
         Expr0 = elds_term(elds_tuple([Functor, Head, Tail0])),
         Functor = elds_term(elds_atom(SymName)),
         unqualify_name(SymName) = "[|]"
-    ->
+    then
         reduce_list_term_complexity(Tail0, Tail, !RevAssignments, !VarSet),
         varset.new_var(V, !VarSet),
         Assign = elds_eq(expr_from_var(V), Tail),
         Expr = elds_term(elds_tuple([Functor, Head, expr_from_var(V)])),
         list.cons(Assign, !RevAssignments)
-    ;
+    else
         Expr = Expr0
     ).
 
@@ -803,35 +803,35 @@ reduce_list_term_complexity(Expr0, Expr, !RevAssignments, !VarSet) :-
     list(elds_rtti_defn)::in, list(elds_rtti_defn)::out) is det.
 
 rtti_to_elds_expr(MI, Term, ELDS, !Defns) :-
-    ( dynamic_cast(Term, Int) ->
+    ( if dynamic_cast(Term, Int) then
         ELDS = elds_term(elds_int(Int))
-    ; dynamic_cast(Term, Char) ->
+    else if dynamic_cast(Term, Char) then
         ELDS = elds_term(elds_char(Char))
-    ; dynamic_cast(Term, String) ->
+    else if dynamic_cast(Term, String) then
         ELDS = elds_term(elds_list_of_ints(String))
-    ; dynamic_cast(Term, Float) ->
+    else if dynamic_cast(Term, Float) then
         ELDS = elds_term(elds_float(Float))
 
     % The RTTI types which have to be handled specially.
-    ; dynamic_cast(Term, Atom) ->
+    else if dynamic_cast(Term, Atom) then
         Atom = erlang_atom_raw(S),
         ELDS = elds_term(elds_atom_raw(S))
-    ; dynamic_cast(Term, MaybePseudoTypeInfo) ->
+    else if dynamic_cast(Term, MaybePseudoTypeInfo) then
         convert_maybe_pseudo_type_info_to_elds(MI,
             MaybePseudoTypeInfo, ELDS, !Defns)
-    ; dynamic_cast(Term, MaybePseudoTypeInfoOrSelf) ->
+    else if dynamic_cast(Term, MaybePseudoTypeInfoOrSelf) then
         convert_maybe_pseudo_type_info_or_self_to_elds(MI,
             MaybePseudoTypeInfoOrSelf, ELDS, !Defns)
 
-    ;
+    else
         functor(Term, do_not_allow, Functor, Arity),
 
         list.map_foldl(convert_arg_to_elds_expr(MI, Term),
             0 .. (Arity - 1), Exprs, !Defns),
 
-        ( Functor = "{}" ->
+        ( if Functor = "{}" then
             ELDS = elds_term(elds_tuple(Exprs))
-        ;
+        else
             FunctorTerm = elds_term(elds_atom(unqualified(Functor))),
             ELDS = elds_term(elds_tuple([FunctorTerm | Exprs]))
         )
@@ -842,9 +842,9 @@ rtti_to_elds_expr(MI, Term, ELDS, !Defns) :-
     is det.
 
 convert_arg_to_elds_expr(MI, Term, Index, ELDS, !Defns) :-
-    ( arg(Term, do_not_allow, Index, Arg) ->
+    ( if arg(Term, do_not_allow, Index, Arg) then
         rtti_to_elds_expr(MI, Arg, ELDS, !Defns)
-    ;
+    else
         unexpected($module, $pred, "arg failed")
     ).
 

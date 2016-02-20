@@ -120,22 +120,22 @@ ml_gen_gc_statement(VarName, Type, Context, GCStatement, !Info) :-
 ml_gen_gc_statement_poly(VarName, DeclType, ActualType, Context,
         GCStatement, !Info) :-
     ml_gen_info_get_gc(!.Info, GC),
-    ( GC = gc_accurate ->
+    ( if GC = gc_accurate then
         HowToGetTypeInfo = construct_from_type(ActualType),
         ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
             GCStatement, !Info)
-    ;
+    else
         GCStatement = gc_no_stmt
     ).
 
 ml_gen_gc_statement_with_typeinfo(VarName, DeclType, TypeInfoRval, Context,
         GCStatement, !Info) :-
     ml_gen_info_get_gc(!.Info, GC),
-    ( GC = gc_accurate ->
+    ( if GC = gc_accurate then
         HowToGetTypeInfo = already_provided(TypeInfoRval),
         ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
             GCStatement, !Info)
-    ;
+    else
         GCStatement = gc_no_stmt
     ).
 
@@ -149,22 +149,22 @@ ml_gen_gc_statement_with_typeinfo(VarName, DeclType, TypeInfoRval, Context,
 
 ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
         GCStatement, !Info) :-
-    (
+    ( if
         ml_gen_info_get_module_info(!.Info, ModuleInfo),
         MLDS_DeclType = mercury_type_to_mlds_type(ModuleInfo, DeclType),
         ml_type_might_contain_pointers_for_gc(MLDS_DeclType) = yes,
         % Don't generate GC tracing code in no_type_info_builtins.
         ml_gen_info_get_pred_id(!.Info, PredId),
         predicate_id(ModuleInfo, PredId, PredModule, PredName, PredArity),
-        \+ no_type_info_builtin(PredModule, PredName, PredArity)
-    ->
+        not no_type_info_builtin(PredModule, PredName, PredArity)
+    then
         (
             HowToGetTypeInfo = construct_from_type(ActualType0),
             % We need to handle type_info/1 and typeclass_info/1
             % types specially, to avoid infinite recursion here...
-            ( trace_type_info_type(ActualType0, ActualType1) ->
+            ( if trace_type_info_type(ActualType0, ActualType1) then
                 ActualType = ActualType1
-            ;
+            else
                 ActualType = ActualType0
             ),
             ml_gen_gc_trace_code(VarName, DeclType, ActualType,
@@ -175,7 +175,7 @@ ml_do_gen_gc_statement(VarName, DeclType, HowToGetTypeInfo, Context,
                 Context, GC_TraceCode)
         ),
         GCStatement = gc_trace_code(GC_TraceCode)
-    ;
+    else
         GCStatement = gc_no_stmt
     ).
 
@@ -209,9 +209,9 @@ ml_type_might_contain_pointers_for_gc(Type) = MightContainPointers :-
             ml_type_category_might_contain_pointers(TypeCategory)
     ;
         Type = mlds_class_type(_, _, Category),
-        ( Category = mlds_enum ->
+        ( if Category = mlds_enum then
             MightContainPointers = no
-        ;
+        else
             MightContainPointers = yes
         )
     ;
@@ -551,11 +551,11 @@ fixup_newobj_in_default(default_case(Statement0), default_case(Statement),
     mlds_stmt::out, fixup_newobj_info::in, fixup_newobj_info::out) is det.
 
 fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
-    (
+    ( if
         AtomicStatement0 = new_object(Lval, MaybeTag, _ExplicitSecTag,
             PointerType, _MaybeSizeInWordsRval, _MaybeCtorName,
             ArgRvals, _ArgTypes, _MayUseAtomic, _AllocId)
-    ->
+    then
         % Generate the declaration of the new local variable.
         %
         % XXX Using array(generic_type) is wrong for --high-level-data.
@@ -602,7 +602,7 @@ fixup_newobj_in_atomic_statement(AtomicStatement0, Stmt, !Fixup) :-
         AssignStmt = ml_stmt_atomic(assign(Lval, TaggedPtrRval)),
         AssignStatement = statement(AssignStmt, Context),
         Stmt = ml_stmt_block([], ArgInitStatements ++ [AssignStatement])
-    ;
+    else
         Stmt = ml_stmt_atomic(AtomicStatement0)
     ).
 

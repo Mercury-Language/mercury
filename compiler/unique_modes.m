@@ -119,17 +119,17 @@ unique_modes_check_goal(Goal0, Goal, !ModeInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Context = goal_info_get_context(GoalInfo0),
     term.context_init(EmptyContext),
-    ( Context = EmptyContext ->
+    ( if Context = EmptyContext then
         true
-    ;
+    else
         mode_info_set_context(Context, !ModeInfo)
     ),
-    ( goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) ->
+    ( if goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) then
         mode_info_get_in_dupl_for_switch(!.ModeInfo, InDuplForSwitch),
         mode_info_set_in_dupl_for_switch(in_dupl_for_switch, !ModeInfo),
         unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo),
         mode_info_set_in_dupl_for_switch(InDuplForSwitch, !ModeInfo)
-    ;
+    else
         unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo)
     ).
 
@@ -146,9 +146,9 @@ unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo) :-
     % If the goal is not nondet, then nothing is nondet-live, so reset the bag
     % of nondet-live vars to be empty.
     Detism = goal_info_get_determinism(GoalInfo0),
-    ( determinism_components(Detism, _, at_most_many) ->
+    ( if determinism_components(Detism, _, at_most_many) then
         true
-    ;
+    else
         mode_info_set_nondet_live_vars(bag.init, !ModeInfo)
     ),
 
@@ -164,11 +164,11 @@ unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo) :-
 
 make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
     mode_info_get_instmap(ModeInfo0, FullInstMap0),
-    ( instmap_is_reachable(FullInstMap0) ->
+    ( if instmap_is_reachable(FullInstMap0) then
         instmap_vars_list(FullInstMap0, AllVars),
         select_nondet_live_vars(AllVars, ModeInfo0, NondetLiveVars),
         make_var_list_mostly_uniq(NondetLiveVars, ModeInfo0, ModeInfo)
-    ;
+    else
         ModeInfo = ModeInfo0
     ).
 
@@ -177,10 +177,10 @@ make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
 
 select_live_vars([], _, []).
 select_live_vars([Var|Vars], ModeInfo, LiveVars) :-
-    ( mode_info_var_is_live(ModeInfo, Var, is_live) ->
+    ( if mode_info_var_is_live(ModeInfo, Var, is_live) then
         select_live_vars(Vars, ModeInfo, LiveVars1),
         LiveVars = [Var | LiveVars1]
-    ;
+    else
         select_live_vars(Vars, ModeInfo, LiveVars)
     ).
 
@@ -189,10 +189,10 @@ select_live_vars([Var|Vars], ModeInfo, LiveVars) :-
 
 select_nondet_live_vars([], _, []).
 select_nondet_live_vars([Var|Vars], ModeInfo, NondetLiveVars) :-
-    ( mode_info_var_is_nondet_live(ModeInfo, Var, is_live) ->
+    ( if mode_info_var_is_nondet_live(ModeInfo, Var, is_live) then
         select_nondet_live_vars(Vars, ModeInfo, NondetLiveVars1),
         NondetLiveVars = [Var | NondetLiveVars1]
-    ;
+    else
         select_nondet_live_vars(Vars, ModeInfo, NondetLiveVars)
     ).
 

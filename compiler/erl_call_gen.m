@@ -344,10 +344,10 @@ erl_gen_class_method_call(GenericCall, ArgVars, Modes, Detism,
 
 erl_gen_cast(_Context, ArgVars, MaybeSuccessExpr, Statement, !Info) :-
     erl_variable_types(!.Info, ArgVars, ArgTypes),
-    (
+    ( if
         ArgVars = [SrcVar, DestVar],
         ArgTypes = [_SrcType, DestType]
-    ->
+    then
         erl_gen_info_get_module_info(!.Info, ModuleInfo),
         IsDummy = check_dummy_type(ModuleInfo, DestType),
         (
@@ -360,20 +360,20 @@ erl_gen_cast(_Context, ArgVars, MaybeSuccessExpr, Statement, !Info) :-
             Assign = elds_eq(expr_from_var(DestVar), SrcVarExpr),
             Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
         )
-    ;
+    else
         unexpected($module, $pred, "wrong number of args for cast")
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Code for builtins
+% Code for builtins.
 %
 
-    % XXX many of the "standard" builtins in builtin_ops.m do not apply to the
-    % Erlang back-end.
-    %
 erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
         MaybeSuccessExpr, Statement, !Info) :-
+    % XXX many of the "standard" builtins in builtin_ops.m do not apply to the
+    % Erlang back-end.
+
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     erl_gen_info_get_var_types(!.Info, VarTypes),
     ModuleName = predicate_module(ModuleInfo, PredId),
@@ -384,14 +384,14 @@ erl_gen_builtin(PredId, ProcId, ArgVars, CodeModel, _Context,
         CodeModel = model_det,
         (
             SimpleCode = assign(Lval, SimpleExpr),
-            (
+            ( if
                 % We need to avoid generating assignments to dummy variables
                 % introduced for types such as io.state.
                 lookup_var_type(VarTypes, Lval, LvalType),
                 check_dummy_type(ModuleInfo, LvalType) = is_dummy_type
-            ->
+            then
                 Statement = expr_or_void(MaybeSuccessExpr)
-            ;
+            else
                 Rval = erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr),
                 Assign = elds.elds_eq(elds.expr_from_var(Lval), Rval),
                 Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
@@ -448,23 +448,23 @@ erl_gen_simple_expr(ModuleInfo, VarTypes, SimpleExpr) = Expr :-
         Expr = elds_term(elds_float(Float))
     ;
         SimpleExpr = unary(StdOp, Expr0),
-        ( std_unop_to_elds(StdOp, Op) ->
+        ( if std_unop_to_elds(StdOp, Op) then
             SimpleExpr1 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr0),
             Expr = elds_unop(Op, SimpleExpr1)
-        ;
+        else
             sorry($module, $pred,
                 "unary builtin not supported on erlang target")
         )
     ;
         SimpleExpr = binary(StdOp, Expr1, Expr2),
-        ( std_binop_to_elds(StdOp, Op) ->
+        ( if std_binop_to_elds(StdOp, Op) then
             SimpleExpr1 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr1),
             SimpleExpr2 = erl_gen_simple_expr(ModuleInfo, VarTypes, Expr2),
             Expr = elds_binop(Op, SimpleExpr1, SimpleExpr2)
-        ; StdOp = pointer_equal_conservative ->
+        else if StdOp = pointer_equal_conservative then
             % This is as conservative as possible.
             Expr = elds_term(elds_false)
-        ;
+        else
             sorry($module, $pred,
                 "binary builtin not supported on erlang target")
         )

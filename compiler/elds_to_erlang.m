@@ -564,7 +564,7 @@ output_clause(ModuleInfo, VarSet, Indent, Clause, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% Code to output expressions
+% Code to output expressions.
 %
 
 :- pred output_exprs_with_nl(module_info::in, prog_varset::in,

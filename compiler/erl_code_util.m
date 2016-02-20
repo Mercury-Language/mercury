@@ -337,31 +337,31 @@ erl_gen_arg_list(ModuleInfo, OptDummyArgs, VarNames, ArgTypes, Modes,
 
 erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
         VarNames, ArgTypes, ArgModes, Inputs, Outputs) :-
-    (
+    ( if
         VarNames = [],
         ArgTypes = [],
         ArgModes = []
-    ->
+    then
         Inputs = [],
         Outputs = []
-    ;
+    else if
         VarNames = [VarName | VarNames1],
         ArgTypes = [ArgType | ArgTypes1],
         ArgModes = [ArgMode | ArgModes1]
-    ->
+    then
         erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
             VarNames1, ArgTypes1, ArgModes1, Inputs1, Outputs1),
-        (
+        ( if
             OptDummyArgs = opt_dummy_args,
             % Exclude arguments of type io.state etc.
             % Also exclude those with arg_mode `top_unused'.
             ( check_dummy_type(ModuleInfo, ArgType) = is_dummy_type
             ; ArgMode = top_unused
             )
-        ->
+        then
             Inputs = Inputs1,
             Outputs = Outputs1
-        ;
+        else
             (
                 ArgMode = top_in,
                 % It's an input argument.
@@ -376,7 +376,7 @@ erl_gen_arg_list_arg_modes(ModuleInfo, OptDummyArgs,
                 Outputs = [VarName | Outputs1]
             )
         )
-    ;
+    else
         unexpected($module, $pred, "length mismatch")
     ).
 
@@ -462,9 +462,9 @@ erl_bind_unbound_vars(Info, VarsToBind, Goal, InstMap,
     %   end
     %
 maybe_simplify_nested_cases(Expr0, Expr) :-
-    ( maybe_simplify_nested_cases_2(Expr0, Expr1) ->
+    ( if maybe_simplify_nested_cases_2(Expr0, Expr1) then
         Expr = Expr1
-    ;
+    else
         Expr = Expr0
     ).
 
@@ -527,7 +527,7 @@ non_variable_term(Term) :-
 %-----------------------------------------------------------------------------%
 
 erl_var_or_dummy_replacement(ModuleInfo, VarTypes, DummyVarReplacement, Var) =
-    (if
+    ( if
         search_var_type(VarTypes, Var, Type),
         check_dummy_type(ModuleInfo, Type) = is_dummy_type
     then
@@ -547,9 +547,9 @@ erl_create_renaming(Vars, Subst, !Info) :-
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
 erl_create_renaming_2(OldVar, !VarSet, !Subst) :-
-    ( varset.search_name(!.VarSet, OldVar, Name) ->
+    ( if varset.search_name(!.VarSet, OldVar, Name) then
         varset.new_named_var(Name, NewVar, !VarSet)
-    ;
+    else
         varset.new_var(NewVar, !VarSet)
     ),
     map.det_insert(OldVar, NewVar, !Subst).
@@ -666,7 +666,7 @@ erl_rename_vars_in_term(Subn, Term0, Term) :-
         Term = elds_tuple(Exprs)
     ;
         Term0 = elds_var(Var0),
-        Var = (if map.search(Subn, Var0, Var1) then Var1 else Var0),
+        Var = ( if map.search(Subn, Var0, Var1) then Var1 else Var0 ),
         Term = elds_var(Var)
     ).
 

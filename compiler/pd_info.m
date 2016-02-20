@@ -492,13 +492,13 @@ pd_info.search_version(PDInfo, Goal, MaybeVersion) :-
     pd_info_get_proc_info(PDInfo, ProcInfo),
     pd_info_get_instmap(PDInfo, InstMap),
     proc_info_get_vartypes(ProcInfo, VarTypes),
-    (
+    ( if
         map.search(GoalVersionIndex, CalledPreds, VersionIds),
         pd_info.get_matching_version(ModuleInfo, Goal, InstMap,
             VarTypes, VersionIds, Versions, MaybeVersion0)
-    ->
+    then
         MaybeVersion = MaybeVersion0
-    ;
+    else
         MaybeVersion = no_version
     ),
     trace [io(!IO)] (
@@ -517,11 +517,11 @@ pd_info.get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
     map.lookup(Versions, VersionId, Version),
     Version = version_info(OldGoal, _, OldArgs, OldArgTypes,
         OldInstMap, _, _, _, _),
-    (
+    ( if
         pd_info.goal_is_more_general(ModuleInfo, OldGoal, OldInstMap, OldArgs,
             OldArgTypes, ThisGoal, ThisInstMap, VarTypes, VersionId, Version,
             MaybeVersion1)
-    ->
+    then
         (
             MaybeVersion1 = no_version,
             pd_info.get_matching_version(ModuleInfo, ThisGoal, ThisInstMap,
@@ -538,7 +538,7 @@ pd_info.get_matching_version(ModuleInfo, ThisGoal, ThisInstMap, VarTypes,
             pd_info.pick_version(ModuleInfo, PredProcId, Renaming,
                 TypeSubn, MoreGeneralVersion, MaybeVersion2, MaybeVersion)
         )
-    ;
+    else
         pd_info.get_matching_version(ModuleInfo, ThisGoal, ThisInstMap,
             VarTypes, VersionIds, Versions, MaybeVersion)
     ).
@@ -562,10 +562,10 @@ pd_info.pick_version(_ModuleInfo, PredProcId1, Renaming1, TSubn1, Version1,
     Version1 = version_info(_, _, _, _, _, _, CostDelta1, _, _),
     Version2 = version_info(_, _, _, _, _, _, CostDelta2, _, _),
     % Select the version with the biggest decrease in cost.
-    ( CostDelta1 > CostDelta2 ->
+    ( if CostDelta1 > CostDelta2 then
         MaybeVersion = version(more_general, PredProcId1,
             Version1, Renaming1, TSubn1)
-    ;
+    else
         MaybeVersion = version(more_general, PredProcId2,
             Version2, Renaming2, TSubn2)
     ).
@@ -629,9 +629,11 @@ pd_info.check_insts(ModuleInfo, [OldVar | Vars], VarRenaming, OldInstMap,
         % Does inst_matches_initial(Inst1, Inst2, M) and
         % inst_matches_initial(Inst2, Inst1, M) imply that Inst1
         % and Inst2 are interchangable?
-        ( inst_matches_initial(OldVarInst, NewVarInst, Type, ModuleInfo) ->
+        ( if
+            inst_matches_initial(OldVarInst, NewVarInst, Type, ModuleInfo)
+        then
             !:ExactSoFar = exact
-        ;
+        else
             !:ExactSoFar = more_general
         )
     ;
@@ -686,10 +688,10 @@ pd_info.register_version(PredProcId, Version, !PDInfo) :-
     pd_info_get_goal_version_index(!.PDInfo, GoalVersionIndex0),
     Goal = Version ^ version_orig_goal,
     pd_util.goal_get_calls(Goal, Calls),
-    ( map.search(GoalVersionIndex0, Calls, VersionList0) ->
+    ( if map.search(GoalVersionIndex0, Calls, VersionList0) then
         VersionList = [PredProcId | VersionList0],
         map.det_update(Calls, VersionList, GoalVersionIndex0, GoalVersionIndex)
-    ;
+    else
         VersionList = [PredProcId],
         map.det_insert(Calls, VersionList, GoalVersionIndex0, GoalVersionIndex)
     ),
@@ -708,16 +710,16 @@ pd_info.invalidate_version(PredProcId, !PDInfo) :-
     map.lookup(Versions0, PredProcId, Version),
     Goal = Version ^ version_orig_goal,
     pd_util.goal_get_calls(Goal, Calls),
-    (
+    ( if
         Calls = [FirstCall | _],
         list.last(Calls, LastCall)
-    ->
+    then
         % Make sure we never create another version to deforest
         % this pair of calls.
         pd_info_get_useless_versions(!.PDInfo, Useless0),
         set.insert(FirstCall - LastCall, Useless0, Useless),
         pd_info_set_useless_versions(Useless, !PDInfo)
-    ;
+    else
         true
     ),
     pd_info.remove_version(PredProcId, !PDInfo).
@@ -731,11 +733,11 @@ pd_info.remove_version(PredProcId, !PDInfo) :-
     pd_info_set_versions(Versions, !PDInfo),
 
     pd_info_get_goal_version_index(!.PDInfo, GoalIndex0),
-    ( map.search(GoalIndex0, Calls, GoalVersions0) ->
+    ( if map.search(GoalIndex0, Calls, GoalVersions0) then
         list.delete_all(GoalVersions0, PredProcId, GoalVersions),
         map.det_update(Calls, GoalVersions, GoalIndex0, GoalIndex),
         pd_info_set_goal_version_index(GoalIndex, !PDInfo)
-    ;
+    else
         true
     ),
 

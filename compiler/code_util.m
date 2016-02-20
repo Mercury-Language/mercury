@@ -169,7 +169,7 @@ make_local_entry_label_from_rtti(RttiProcLabel, Immed) = Label :-
 
 choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
         PredId, ProcId, ProcLabel) = Label :-
-    (
+    ( if
         % If we want to branch to the label now, we prefer a form that is
         % usable only within the current C module, since it is likely to be
         % faster.
@@ -179,9 +179,9 @@ choose_local_label_type(ProcsPerFunc, CurPredId, CurProcId,
             PredId = CurPredId,
             ProcId = CurProcId
         )
-    ->
+    then
         EntryType = entry_label_c_local
-    ;
+    else
         EntryType = entry_label_local
     ),
     Label = entry_label(EntryType, ProcLabel).
@@ -193,11 +193,11 @@ make_internal_label(ModuleInfo, PredId, ProcId, LabelNum) = Label :-
     Label = internal_label(LabelNum, ProcLabel).
 
 extract_proc_label_from_code_addr(CodeAddr) = ProcLabel :-
-    ( CodeAddr = code_label(Label) ->
+    ( if CodeAddr = code_label(Label) then
         ProcLabel = get_proc_label(Label)
-    ; CodeAddr = code_imported_proc(ProcLabelPrime) ->
+    else if CodeAddr = code_imported_proc(ProcLabelPrime) then
         ProcLabel = ProcLabelPrime
-    ;
+    else
         unexpected($module, $pred, "failed")
     ).
 
@@ -215,7 +215,7 @@ max_mentioned_regs(Lvals, MaxRegR, MaxRegF) :-
 
 max_mentioned_reg_2([], !MaxRegR, !MaxRegF).
 max_mentioned_reg_2([Lval | Lvals], !MaxRegR, !MaxRegF) :-
-    ( Lval = reg(RegType, N) ->
+    ( if Lval = reg(RegType, N) then
         (
             RegType = reg_r,
             int.max(N, !MaxRegR)
@@ -223,7 +223,7 @@ max_mentioned_reg_2([Lval | Lvals], !MaxRegR, !MaxRegF) :-
             RegType = reg_f,
             int.max(N, !MaxRegF)
         )
-    ;
+    else
         true
     ),
     max_mentioned_reg_2(Lvals, !MaxRegR, !MaxRegF).
@@ -236,7 +236,7 @@ max_mentioned_abs_regs(Lvals, MaxRegR, MaxRegF) :-
 
 max_mentioned_abs_reg_2([], !MaxRegR, !MaxRegF).
 max_mentioned_abs_reg_2([Lval | Lvals], !MaxRegR, !MaxRegF) :-
-    ( Lval = abs_reg(RegType, N) ->
+    ( if Lval = abs_reg(RegType, N) then
         (
             RegType = reg_r,
             int.max(N, !MaxRegR)
@@ -244,7 +244,7 @@ max_mentioned_abs_reg_2([Lval | Lvals], !MaxRegR, !MaxRegF) :-
             RegType = reg_f,
             int.max(N, !MaxRegF)
         )
-    ;
+    else
         true
     ),
     max_mentioned_abs_reg_2(Lvals, !MaxRegR, !MaxRegF).
@@ -296,11 +296,11 @@ goal_expr_may_alloc_temp_frame(GoalExpr, May) :-
         cases_may_alloc_temp_frame(Cases, May)
     ;
         GoalExpr = if_then_else(_Vars, C, T, E),
-        ( goal_may_alloc_temp_frame(C, yes) ->
+        ( if goal_may_alloc_temp_frame(C, yes) then
             May = yes
-        ; goal_may_alloc_temp_frame(T, yes) ->
+        else if goal_may_alloc_temp_frame(T, yes) then
             May = yes
-        ;
+        else
             goal_may_alloc_temp_frame(E, May)
         )
     ;
@@ -313,9 +313,9 @@ goal_expr_may_alloc_temp_frame(GoalExpr, May) :-
 
 goal_list_may_alloc_temp_frame([], no).
 goal_list_may_alloc_temp_frame([Goal | Goals], May) :-
-    ( goal_may_alloc_temp_frame(Goal, yes) ->
+    ( if goal_may_alloc_temp_frame(Goal, yes) then
         May = yes
-    ;
+    else
         goal_list_may_alloc_temp_frame(Goals, May)
     ).
 
@@ -323,18 +323,18 @@ goal_list_may_alloc_temp_frame([Goal | Goals], May) :-
 
 cases_may_alloc_temp_frame([], no).
 cases_may_alloc_temp_frame([case(_, _, Goal) | Cases], May) :-
-    ( goal_may_alloc_temp_frame(Goal, yes) ->
+    ( if goal_may_alloc_temp_frame(Goal, yes) then
         May = yes
-    ;
+    else
         cases_may_alloc_temp_frame(Cases, May)
     ).
 
 %-----------------------------------------------------------------------------%
 
 neg_rval(Rval, NegRval) :-
-    ( natural_neg_rval(Rval, NegRval0) ->
+    ( if natural_neg_rval(Rval, NegRval0) then
         NegRval = NegRval0
-    ;
+    else
         NegRval = unop(logical_not, Rval)
     ).
 
@@ -376,10 +376,10 @@ neg_op(float_ge, float_lt).
 negate_the_test([], _) :-
     unexpected($module, $pred, "empty list").
 negate_the_test([Instr0 | Instrs0], Instrs) :-
-    ( Instr0 = llds_instr(if_val(Test, Target), Comment) ->
+    ( if Instr0 = llds_instr(if_val(Test, Target), Comment) then
         neg_rval(Test, NewTest),
         Instrs = [llds_instr(if_val(NewTest, Target), Comment)]
-    ;
+    else
         negate_the_test(Instrs0, Instrs1),
         Instrs = [Instr0 | Instrs1]
     ).

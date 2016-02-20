@@ -133,7 +133,7 @@ build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
     Build(Succeeded0, !Info, !IO),
     restore_signal_handlers(MaybeSigIntHandler, !IO),
     check_for_signal(Signalled, Signal, !IO),
-    ( Signalled = 1 ->
+    ( if Signalled = 1 then
         Succeeded = no,
         (
             VeryVerbose = yes,
@@ -148,7 +148,7 @@ build_with_check_for_interrupt(VeryVerbose, Build, Cleanup, Succeeded,
         % The signal handler has been restored to the default,
         % so this should kill us.
         raise_signal(Signal, !IO)
-    ;
+    else
         Succeeded = Succeeded0
     ).
 
@@ -328,18 +328,18 @@ call_in_forked_process(P, Success, !IO) :-
     call_in_forked_process_with_backup(P, P, Success, !IO).
 
 call_in_forked_process_with_backup(P, AltP, Success, !IO) :-
-    ( can_fork ->
+    ( if can_fork then
         start_in_forked_process(P, MaybePid, !IO),
         (
             MaybePid = yes(Pid),
             do_wait(Pid, _, CallStatus, !IO),
             Status = decode_system_command_exit_code(CallStatus),
-            Success = (Status = ok(exited(0)) -> yes ; no)
+            Success = ( if Status = ok(exited(0)) then yes else no )
         ;
             MaybePid = no,
             Success = no
         )
-    ;
+    else
         AltP(Success, !IO)
     ).
 
@@ -367,9 +367,9 @@ can_fork :- semidet_fail.
 
 start_in_forked_process(P, MaybePid, !IO) :-
     start_in_forked_process_2(P, Pid, !IO),
-    ( Pid = 0 ->
+    ( if Pid = 0 then
         MaybePid = no
-    ;
+    else
         MaybePid = yes(Pid)
     ).
 

@@ -423,27 +423,27 @@ exprs_from_fixed_vars(Names) =
     list.map(func(X) = elds_term(elds_fixed_name_var(X)), Names).
 
 expr_to_term(Expr) = Term :-
-    ( Expr = elds_term(Term0) ->
+    ( if Expr = elds_term(Term0) then
         Term = Term0
-    ;
+    else
         unexpected($module, $pred, "unable to convert elds_expr to elds_term")
     ).
 
 join_exprs(ExprA, ExprB) = Expr :-
-    ( ExprA = elds_block(As0) ->
+    ( if ExprA = elds_block(As0) then
         As = As0
-    ;
+    else
         As = [ExprA]
     ),
-    ( ExprB = elds_block(Bs0) ->
+    ( if ExprB = elds_block(Bs0) then
         Bs = Bs0
-    ;
+    else
         Bs = [ExprB]
     ),
     AsBs = As ++ Bs,
-    ( AsBs = [SingleExpr] ->
+    ( if AsBs = [SingleExpr] then
         Expr = SingleExpr
-    ;
+    else
         Expr = elds_block(AsBs)
     ).
 
@@ -466,9 +466,9 @@ elds_body_arity(body_external(Arity)) = Arity.
 elds_clause_arity(elds_clause(Args, _Expr)) = list.length(Args).
 
 tuple_or_single_expr(List) =
-    ( List = [SingleExpr] ->
+    ( if List = [SingleExpr] then
         SingleExpr
-    ;
+    else
         elds_term(elds_tuple(List))
     ).
 
