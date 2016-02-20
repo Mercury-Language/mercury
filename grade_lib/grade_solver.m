@@ -83,6 +83,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -579,7 +580,7 @@ solver_var_value_to_str(CntPoss, SolverVarValue) = Str :-
         ;
             WhyNot = npw_requirement(ReqAppl),
             ReqAppl = requirement_application(ReqId, _ReqDesc, ReqDir),
-            ReqId = requirement_id(ReqIdNum), 
+            ReqId = requirement_id(ReqIdNum),
             ( ReqDir = narrow_then_values, ReqDirStr = "narrow_then_values"
             ; ReqDir = delete_if_value, ReqDirStr = "delete_if_value"
             ),
@@ -648,9 +649,14 @@ failure_tree_to_string(CurIndentStr, EachIndentStr, FailureTree) = Str :-
         (
             TailWhyNots = [],
             HeadWhyNot = why_var_is_not_value(_ValueId, _ReqId, ReqDesc,
-                _SubTree),
+                SubTrees),
             % solver_var_value_name(ValueName, ValueId),
-            Str = CurIndentStr ++ ReqDesc ++ "\n"
+            SubTreeStrs = list.map(
+                failure_tree_to_string(CurIndentStr ++ EachIndentStr,
+                    EachIndentStr),
+                SubTrees),
+            Str = CurIndentStr ++ ReqDesc ++ "\n" ++
+                string.append_list(SubTreeStrs)
         ;
             TailWhyNots = [_ | _],
             HeadStr = failure_tree_why_not_to_string(CurIndentStr,
@@ -666,28 +672,16 @@ failure_tree_to_string(CurIndentStr, EachIndentStr, FailureTree) = Str :-
 :- func failure_tree_why_not_to_string(string, string, solver_var_id,
     string, why_var_is_not_value) = string.
 
-failure_tree_why_not_to_string(CurIndentStr, _EachIndentStr, _VarId, VarName,
+failure_tree_why_not_to_string(CurIndentStr, EachIndentStr, _VarId, VarName,
         WhyNot) = Str :-
-    WhyNot = why_var_is_not_value(ValueId, _ReqId, ReqDesc, _SubTree),
+    WhyNot = why_var_is_not_value(ValueId, _ReqId, ReqDesc, SubTrees),
     solver_var_value_name(ValueName, ValueId),
     string.format("%s%s may not be %s because %s\n",
-        [s(CurIndentStr), s(VarName), s(ValueName), s(ReqDesc)], Str).
-
-/*
-:- type failure_tree
-    --->    failure_tree(
-                solver_var_id,
-                list(why_var_is_not_value)
-            ).
-
-:- type why_var_is_not_value
-    --->    why_var_is_not_value(
-                solver_var_value_id,
-                requirement_id,
-                string,
-                failure_tree
-            ).
-*/
+        [s(CurIndentStr), s(VarName), s(ValueName), s(ReqDesc)], WhyNotStr),
+    SubTreeStrs = list.map(
+        failure_tree_to_string(CurIndentStr ++ EachIndentStr, EachIndentStr),
+        SubTrees),
+    Str = WhyNotStr ++ string.append_list(SubTreeStrs).
 
 :- func success_value_to_str(string,
     pair(solver_var_id, solver_var_value_id)) = string.
@@ -727,11 +721,31 @@ zero_count_var_to_failure_tree(FailureInfo, ZeroCntVarId, FailureTree) :-
     list.reverse(RevWhyNots, WhyNots),
     FailureTree = failure_tree(ZeroCntVarId, WhyNots).
 
+:- pred var_not_values_to_failure_tree(failure_info::in,
+    solver_var_id::in, set(solver_var_value_id)::in, failure_tree::out) is det.
+
+var_not_values_to_failure_tree(FailureInfo, VarId, ValueIds, FailureTree) :-
+    FailureInfo = failure_info(_Requirements, SolverVarMap, _ZeroCntVarIds),
+    map.lookup(SolverVarMap, VarId, SolverVar),
+    SolverVar = solver_var(_CntAll, _CntPoss, Values),
+    list.filter(solver_var_value_in_set(ValueIds), Values, ValuesInSet),
+    list.foldl(accumulate_why_var_is_not_values(FailureInfo, VarId),
+        ValuesInSet, [], RevWhyNots),
+    list.reverse(RevWhyNots, WhyNots),
+    FailureTree = failure_tree(VarId, WhyNots).
+
+:- pred solver_var_value_in_set(set(solver_var_value_id)::in,
+    solver_var_value::in) is semidet.
+
+solver_var_value_in_set(ValueIds, VarValue) :-
+    VarValue = solver_var_value(ValueId, _Possible),
+    set.contains(ValueIds, ValueId).
+
 :- pred accumulate_why_var_is_not_values(failure_info::in,
     solver_var_id::in, solver_var_value::in,
     list(why_var_is_not_value)::in, list(why_var_is_not_value)::out) is det.
 
-accumulate_why_var_is_not_values(_FailureInfo, _VarId, VarValue,
+accumulate_why_var_is_not_values(FailureInfo, _VarId, VarValue,
         !RevWhyNots) :-
     VarValue = solver_var_value(ValueId, Possible),
     (
@@ -748,16 +762,48 @@ accumulate_why_var_is_not_values(_FailureInfo, _VarId, VarValue,
             % XXX Should we report this, and if yes, how?
         ;
             NotPossibleWhy = npw_labeling,
-            % We should get here only if labelling has converted 
+            % We should get here only if labelling has converted
             % a solvable problem into an unsolvable one.
             unexpected($pred, "npw_labeling")
         ;
             NotPossibleWhy = npw_requirement(ReqAppl),
-            ReqAppl = requirement_application(ReqId, ReqDesc, _ReqDir),
-            SubTrees = [],
+            ReqAppl = requirement_application(ReqId, ReqDesc, ReqDir),
+            FailureInfo = failure_info(Requirements, _, _),
+            find_requirement_by_id(Requirements, ReqId, AppliedRequirement),
+            AppliedRequirement = requirement(_AppReqId, _AppReqDesc,
+                IfVarId, IfValueId, ThenVarId, ThenValueIds),
+            (
+                ReqDir = delete_if_value,
+                var_not_values_to_failure_tree(FailureInfo,
+                    ThenVarId, set.list_to_set(ThenValueIds), SubTree)
+            ;
+                ReqDir = narrow_then_values,
+                var_not_values_to_failure_tree(FailureInfo,
+                    IfVarId, set.make_singleton_set(IfValueId), SubTree)
+            ),
+            SubTree = failure_tree(_, SubWhyNots),
+            (
+                SubWhyNots = [],
+                SubTrees = []
+            ;
+                SubWhyNots = [_ | _],
+                SubTrees = [SubTree]
+            ),
             WhyNot = why_var_is_not_value(ValueId, ReqId, ReqDesc, SubTrees),
             !:RevWhyNots = [WhyNot | !.RevWhyNots]
         )
+    ).
+
+:- pred find_requirement_by_id(list(requirement)::in, requirement_id::in,
+    requirement::out) is det.
+
+find_requirement_by_id([], _, _) :-
+    unexpected($pred, "id not in list").
+find_requirement_by_id([Requirement | Requirements], ReqId, IdRequirement) :-
+    ( if Requirement ^ req_id = ReqId then
+        IdRequirement = Requirement
+    else
+        find_requirement_by_id(Requirements, ReqId, IdRequirement)
     ).
 
 %---------------------------------------------------------------------------%

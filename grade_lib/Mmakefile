@@ -17,6 +17,7 @@
 
 MAIN_TARGET = all
 MERCURY_MAIN_MODULES = choose_grade test_grades
+# EXTRA_MCFLAGS = --trace-flag debug_solver
 
 .PHONY: all
 all:	$(MERCURY_MAIN_MODULES)
@@ -26,6 +27,9 @@ depend:	$(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
 
 .PHONY: ints
 ints:	$(patsubst %,%.int,$(MERCURY_MAIN_MODULES))
+
+tags:	$(wildcard *.m)
+	mtags $(wildcard *.m)
 
 #-----------------------------------------------------------------------------#
 

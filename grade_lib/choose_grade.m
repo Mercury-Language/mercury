@@ -16,6 +16,7 @@
 :- import_module grade_setup.
 :- import_module grade_solver.
 :- import_module grade_state.
+:- import_module grade_string.
 
 :- import_module bool.
 :- import_module cord.
@@ -41,7 +42,14 @@ main(!IO) :-
             io.write_string(solver_var_map_to_str("    ", SolverVarMap1), !TIO)
         ),
         solve(SolverInfo1, _SolveCounts, Soln),
-        io.write_string(soln_to_str("", Soln), !IO)
+        io.write_string(soln_to_str("", Soln), !IO),
+        (
+            Soln = soln_failure(_)
+        ;
+            Soln = soln_success(SuccMap),
+            GradeStr = success_soln_to_grade_string(SuccMap),
+            io.format("GRADE %s\n", [s(GradeStr)], !IO)
+        )
     ).
 
 %---------------------------------------------------------------------------%

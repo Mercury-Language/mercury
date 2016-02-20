@@ -459,6 +459,12 @@ init_requirement_specs = [
     ),
 
     requirement_spec(
+        "C does not have a native garbage collector",
+        (svar_target `being` svalue_target_c) `implies_that`
+        (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug,
+            svalue_gc_accurate, svalue_gc_history, svalue_gc_none])
+    ),
+    requirement_spec(
         "targeting C# requires target native gc",
         (svar_target `being` svalue_target_csharp) `implies_that`
         (svar_gc `is_one_of` [svalue_gc_target_native])
