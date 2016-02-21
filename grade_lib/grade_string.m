@@ -31,6 +31,7 @@
                 soln_tscope_prof,
                 soln_term_size_prof,
                 soln_debug,
+                soln_ssdebug,
                 soln_lldebug,
                 soln_rbmm,
                 soln_rbmm_debug,
@@ -128,6 +129,10 @@
     ;       soln_debug_debug
     ;       soln_debug_decldebug.
 
+:- type soln_ssdebug
+    --->    soln_ssdebug_no
+    ;       soln_ssdebug_yes.
+
 :- type soln_lldebug
     --->    soln_lldebug_no
     ;       soln_lldebug_yes.
@@ -170,10 +175,12 @@
                 soln_single_prec_float
             )
     ;       grade_mlds(
-                mlds_target
+                mlds_target,
+                soln_ssdebug
             )
     ;       grade_elds(
-                soln_thread_safe
+                soln_thread_safe,
+                soln_ssdebug
             ).
 
 :- type llds_gcc_conf                 % labels, gotos,  regs
@@ -218,6 +225,9 @@
             ).
 
 :- type mlds_target
+    % XXX Does thread safety mean the same thing for all three targets?
+    % If yes, then thread safety should be pulled from all three function
+    % symbols here and put into grade_mlds(...) instead.
     --->    mlds_target_c(
                 soln_data_level,
                 soln_nested_funcs,
@@ -283,6 +293,7 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
     map.det_remove(svar_tscope_prof, TScopeProf, !SolnMap),
     map.det_remove(svar_term_size_prof, TermSizeProf, !SolnMap),
     map.det_remove(svar_debug, Debug, !SolnMap),
+    map.det_remove(svar_ssdebug, SSDebug, !SolnMap),
     map.det_remove(svar_lldebug, LLDebug, !SolnMap),
     map.det_remove(svar_rbmm, RBMM, !SolnMap),
     map.det_remove(svar_rbmm_debug, RBMMDebug, !SolnMap),
@@ -470,6 +481,14 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
         unexpected($pred, "unexpected value of Debug")
     ),
 
+    ( if SSDebug = svalue_ssdebug_no then
+        ComponentSSDebug = soln_ssdebug_no
+    else if SSDebug = svalue_ssdebug_yes then
+        ComponentSSDebug = soln_ssdebug_yes
+    else
+        unexpected($pred, "unexpected value of SSDebug")
+    ),
+
     ( if LLDebug = svalue_lldebug_no then
         ComponentLLDebug = soln_lldebug_no
     else if LLDebug = svalue_lldebug_yes then
@@ -519,7 +538,7 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
         ComponentDeepProf,
         ComponentMprofCall, ComponentMprofTime, ComponentMprofMemory,
         ComponentTScopeProf, ComponentTermSizeProf,
-        ComponentDebug, ComponentLLDebug,
+        ComponentDebug, ComponentSSDebug, ComponentLLDebug,
         ComponentRBMM, ComponentRBMMDebug, ComponentRBMMProf,
         ComponentSinglePrecFloat
     ).
@@ -542,7 +561,7 @@ success_soln_to_grade(SuccMap) = Grade :-
     % *some* arguments is vulnerable to not picking up some arguments
     % in *either*.
     SolutionComponents = solution_components(Backend, _, _, _, _, _, _, _,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
 
     (
         Backend = soln_backend_llds,
@@ -551,7 +570,7 @@ success_soln_to_grade(SuccMap) = Grade :-
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
             StackLen, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
-            TermSizeProf, Debug, LLDebug, RBMM, RBMMDebug, RBMMProf,
+            TermSizeProf, Debug, SSDebug, LLDebug, RBMM, RBMMDebug, RBMMProf,
             SinglePrecFloat),
 
         expect(unify(Target, soln_target_c), $pred,
@@ -560,6 +579,8 @@ success_soln_to_grade(SuccMap) = Grade :-
             "DataLevel != soln_data_level_lld"),
         expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
             "NestedFuncs != soln_nested_funcs_no"),
+        expect(unify(SSDebug, soln_ssdebug_no), $pred,
+            "SSDebug != soln_ssdebug_no"),
         (
             GccLabelsUse = soln_gcc_labels_use_no,
             (
@@ -677,7 +698,7 @@ success_soln_to_grade(SuccMap) = Grade :-
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
             StackLen, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
-            TermSizeProf, Debug, LLDebug, RBMM, RBMMDebug, RBMMProf,
+            TermSizeProf, Debug, SSDebug, LLDebug, RBMM, RBMMDebug, RBMMProf,
             SinglePrecFloat),
 
         expect(unify(GccRegsUse, soln_gcc_regs_use_no), $pred,
@@ -737,7 +758,7 @@ success_soln_to_grade(SuccMap) = Grade :-
                 MLDSGc = mlds_c_gc_history
             ),
             Grade = grade_mlds(mlds_target_c(DataLevel, NestedFuncs,
-                MLDSGc, Trail, ThreadSafe, SinglePrecFloat))
+                MLDSGc, Trail, ThreadSafe, SinglePrecFloat), SSDebug)
         ;
             ( Target = soln_target_csharp
             ; Target = soln_target_java
@@ -759,7 +780,7 @@ success_soln_to_grade(SuccMap) = Grade :-
                 Target = soln_target_java,
                 MLDSTarget = mlds_target_java(ThreadSafe)
             ),
-            Grade = grade_mlds(MLDSTarget)
+            Grade = grade_mlds(MLDSTarget, SSDebug)
         ;
             Target = soln_target_erlang,
             unexpected($pred, "Backend = mlds but Target = erlang")
@@ -771,7 +792,7 @@ success_soln_to_grade(SuccMap) = Grade :-
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
             StackLen, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
-            TermSizeProf, Debug, LLDebug, RBMM, RBMMDebug, RBMMProf,
+            TermSizeProf, Debug, SSDebug, LLDebug, RBMM, RBMMDebug, RBMMProf,
             SinglePrecFloat),
 
         expect(unify(DataLevel, soln_data_level_lld), $pred,
@@ -821,7 +842,7 @@ success_soln_to_grade(SuccMap) = Grade :-
         expect(unify(SinglePrecFloat, soln_single_prec_float_no), $pred,
             "SinglePrecFloat != soln_single_prec_float_no"),
         % XXX incomplete
-        Grade = grade_elds(ThreadSafe)
+        Grade = grade_elds(ThreadSafe, SSDebug)
     ).
 
 %---------------------------------------------------------------------------%
@@ -835,7 +856,6 @@ success_soln_to_grade_string(SuccMap) = GradeStr :-
     % XXX regparm
     % XXX picreg
     % XXX pregen
-    % XXX ssdebug
 
     (
         Grade = grade_llds(GccConf, StackLen, LLDSTrail,
@@ -961,7 +981,10 @@ success_soln_to_grade_string(SuccMap) = GradeStr :-
             SinglePrecFloatStr, DebugStr, LLDebugStr,
             StackLenStr, RBMMStr, TScopeProfStr])
     ;
-        Grade = grade_mlds(MLDSTarget),
+        Grade = grade_mlds(MLDSTarget, SSDebug),
+        ( SSDebug = soln_ssdebug_no,            SSDebugStr = ""
+        ; SSDebug = soln_ssdebug_yes,           SSDebugStr = ".ssdebug"
+        ),
         (
             MLDSTarget = mlds_target_c(DataLevel, NestedFuncs, MLDSCGc,
                 Trail, ThreadSafe, SinglePrecFloat),
@@ -991,26 +1014,30 @@ success_soln_to_grade_string(SuccMap) = GradeStr :-
                 SinglePrecFloatStr = ".spf"
             ),
             GradeStr = string.append_list([DataLevelStr, NestedFuncsStr,
-                ThreadSafeStr, GcStr, TrailStr, SinglePrecFloatStr])
+                ThreadSafeStr, SSDebugStr, GcStr, TrailStr,
+                SinglePrecFloatStr])
         ;
             MLDSTarget = mlds_target_csharp(ThreadSafe),
             ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
             ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
             ),
-            GradeStr = string.append_list(["csharp", ThreadSafeStr])
+            GradeStr = string.append_list(["csharp", ThreadSafeStr, SSDebugStr])
         ;
             MLDSTarget = mlds_target_java(ThreadSafe),
             ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
             ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
             ),
-            GradeStr = string.append_list(["java", ThreadSafeStr])
+            GradeStr = string.append_list(["java", ThreadSafeStr, SSDebugStr])
         )
     ;
-        Grade = grade_elds(ThreadSafe),
+        Grade = grade_elds(ThreadSafe, SSDebug),
         ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
         ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
         ),
-        GradeStr = string.append_list(["erlang", ThreadSafeStr])
+        ( SSDebug = soln_ssdebug_no,            SSDebugStr = ""
+        ; SSDebug = soln_ssdebug_yes,           SSDebugStr = ".ssdebug"
+        ),
+        GradeStr = string.append_list(["erlang", ThreadSafeStr, SSDebugStr])
     ).
 
 %---------------------------------------------------------------------------%

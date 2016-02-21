@@ -38,6 +38,7 @@
             % intuition.
     ;       svar_term_size_prof
     ;       svar_debug
+    ;       svar_ssdebug
     ;       svar_lldebug
     ;       svar_rbmm
     ;       svar_rbmm_debug
@@ -125,12 +126,9 @@
     ;       svalue_debug_none
     ;       svalue_debug_debug
     ;       svalue_debug_decldebug
-            % The source-to-source debugger is not yet mature enough
-            % to be generally useful. When it IS mature enough,
-            % it could be added here as an alternative to debug and decldebug,
-            % or it could be implemented as a solver variable of its own
-            % that requires debug=nodebug. (Giving the user TWO debuggers to
-            % interact with at the same time is not a good idea.)
+
+    ;       svalue_ssdebug_no
+    ;       svalue_ssdebug_yes
 
     ;       svalue_lldebug_no
     ;       svalue_lldebug_yes
@@ -213,6 +211,7 @@ solver_var_name("mprof_memory",                     svar_mprof_memory).
 solver_var_name("tscope_prof",                      svar_tscope_prof).
 solver_var_name("term_size_prof",                   svar_term_size_prof).
 solver_var_name("debug",                            svar_debug).
+solver_var_name("ssdebug",                          svar_ssdebug).
 solver_var_name("lldebug",                          svar_lldebug).
 solver_var_name("rbmm",                             svar_rbmm).
 solver_var_name("rbmm_debug",                       svar_rbmm_debug).
@@ -297,6 +296,9 @@ solver_var_value_name("term_size_prof_words",   svalue_term_size_prof_words).
 solver_var_value_name("nodebug",                    svalue_debug_none).
 solver_var_value_name("debug",                      svalue_debug_debug).
 solver_var_value_name("decldebug",                  svalue_debug_decldebug).
+
+solver_var_value_name("no_ssdebug",                 svalue_ssdebug_no).
+solver_var_value_name("ssdebug",                    svalue_ssdebug_yes).
 
 solver_var_value_name("no_lldebug",                 svalue_lldebug_no).
 solver_var_value_name("lldebug",                    svalue_lldebug_yes).
@@ -385,6 +387,8 @@ init_solver_var_specs = [
         svalue_term_size_prof_cells, svalue_term_size_prof_words]),
     solver_var_spec(svar_debug,
         [svalue_debug_none, svalue_debug_debug, svalue_debug_decldebug]),
+    solver_var_spec(svar_ssdebug,
+        [svalue_ssdebug_no, svalue_ssdebug_yes]),
     solver_var_spec(svar_lldebug,
         [svalue_lldebug_no, svalue_lldebug_yes]),
     solver_var_spec(svar_rbmm,
@@ -783,6 +787,13 @@ init_requirement_specs = [
         "declarative debugging requires the LLDS backend",
         (svar_debug `being` svalue_debug_decldebug) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
+    ),
+
+% Requirements of values of svar_lldebug.
+    requirement_spec(
+        "source-to-source debugging does not make sense for the LLDS backend",
+        (svar_ssdebug `being` svalue_ssdebug_yes) `implies_that`
+        (svar_backend `is_one_of` [svalue_backend_mlds, svalue_backend_elds])
     ),
 
 % Requirements of values of svar_lldebug.

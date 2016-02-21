@@ -73,6 +73,7 @@ broad_test_set_spec = [
     test_set_component("target", ["c", "csharp", "java", "erlang"]),
     test_set_component("trail", ["no_trail", "trail"]),
     test_set_component("thread_safe", ["not_thread_safe", "thread_safe"]),
+    test_set_component("ssdebug", ["no_ssdebug", "ssdebug"]),
     test_set_component("single_prec_float", ["no_spf", "spf"])
 ].
 
