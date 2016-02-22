@@ -680,7 +680,7 @@
     %
 :- func words(string) = list(string).
 
-    % split_at_separator(SepP, String) returns the list of
+    % split_at_separator(SepP, String) returns the list of (possibly empty)
     % substrings of String (in first to last order) that are delimited
     % by characters (code points) matched by SepP. For example,
     %
@@ -1344,7 +1344,6 @@
 :- import_module int.
 :- import_module pair.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.format.
 :- import_module string.to_string.
 
@@ -4319,7 +4318,7 @@ string.unsafe_substring(Str, Start, Count, SubString) :-
 %---------------------%
 
 string.words_separator(SepP, String) = Words :-
-    next_boundary(SepP, String, 0, WordStart),
+    skip_to_next_word_start(SepP, String, 0, WordStart),
     words_loop(SepP, String, WordStart, Words).
 
 string.words(String) = string.words_separator(char.is_whitespace, String).
@@ -4327,66 +4326,89 @@ string.words(String) = string.words_separator(char.is_whitespace, String).
 :- pred words_loop(pred(char)::in(pred(in) is semidet), string::in, int::in,
     list(string)::out) is det.
 
-words_loop(SepP, String, WordStart, Words) :-
-    next_boundary(isnt(SepP), String, WordStart, WordEnd),
-    ( if WordEnd = WordStart then
+words_loop(SepP, String, WordStartPos, Words) :-
+    skip_to_word_end(SepP, String, WordStartPos, PastWordEndPos),
+    ( if PastWordEndPos = WordStartPos then
         Words = []
     else
-        string.unsafe_between(String, WordStart, WordEnd, Word),
-        next_boundary(SepP, String, WordEnd, NextWordStart),
-        ( if WordEnd = NextWordStart then
-            Words = [Word]
+        string.unsafe_between(String, WordStartPos, PastWordEndPos, HeadWord),
+        skip_to_next_word_start(SepP, String, PastWordEndPos,
+            NextWordStartPos),
+        ( if PastWordEndPos = NextWordStartPos then
+            Words = [HeadWord]
         else
-            words_loop(SepP, String, NextWordStart, Words0),
-            Words = [Word | Words0]
+            words_loop(SepP, String, NextWordStartPos, TailWords),
+            Words = [HeadWord | TailWords]
         )
     ).
 
-    % Return the smallest I >= I0 such that `not P(String[I])'.
+    % Return the smallest NextWordStartPos >= CurPos such that
+    % `not SepP(String[NextWordStartPos])'.
     %
-:- pred next_boundary(pred(char)::in(pred(in) is semidet), string::in,
-    int::in, int::out) is det.
+:- pred skip_to_next_word_start(pred(char)::in(pred(in) is semidet),
+    string::in, int::in, int::out) is det.
 
-next_boundary(P, String, Cur, NextWordStart) :-
+skip_to_next_word_start(SepP, String, CurPos, NextWordStartPos) :-
     ( if
-        string.unsafe_index_next(String, Cur, Next, Char),
-        P(Char)
+        string.unsafe_index_next(String, CurPos, NextPos, Char),
+        SepP(Char)
     then
-        next_boundary(P, String, Next, NextWordStart)
+        skip_to_next_word_start(SepP, String, NextPos, NextWordStartPos)
     else
-        NextWordStart = Cur
+        NextWordStartPos = CurPos
+    ).
+
+    % Return the smallest NextWordStartPos >= CurPos such that
+    % `SepP(String[NextWordStartPos])'.
+    %
+:- pred skip_to_word_end(pred(char)::in(pred(in) is semidet),
+    string::in, int::in, int::out) is det.
+
+skip_to_word_end(SepP, String, CurPos, PastWordEndPos) :-
+    ( if
+        string.unsafe_index_next(String, CurPos, NextPos, Char)
+    then
+        ( if SepP(Char) then
+            PastWordEndPos = CurPos
+        else
+            skip_to_word_end(SepP, String, NextPos, PastWordEndPos)
+        )
+    else
+        PastWordEndPos = CurPos
     ).
 
 %---------------------%
 
-string.split_at_separator(DelimP, String) = Substrings :-
-    Len = string.length(String),
-    split_at_separator_loop(DelimP, String, Len, Len, [], Substrings).
+string.split_at_separator(DelimP, Str) = Segments :-
+    Len = string.length(Str),
+    split_at_separator_loop(DelimP, Str, Len, Len, [], Segments).
 
 :- pred split_at_separator_loop(pred(char)::in(pred(in) is semidet),
     string::in, int::in, int::in, list(string)::in, list(string)::out) is det.
 
-split_at_separator_loop(DelimP, Str, I, SegEnd, Acc0, Acc) :-
-    % Walk Str backwards extending the accumulated list of chunks as code
-    % points matching DelimP are found.
+split_at_separator_loop(DelimP, Str, CurPos, PastSegEnd, !Segments) :-
+    % We walk Str backwards, extending the accumulated list of segments
+    % as we find code points matching DelimP.
     %
-    % Invariant: 0 =< I =< length(Str)
-    % SegEnd is one past the last index of the current segment.
+    % Invariant: 0 =< CurPos =< length(Str).
+    % PastSegEnd is one past the last index of the current segment.
     %
-    ( if string.unsafe_prev_index(Str, I, J, C) then
-        ( if DelimP(C) then
+    ( if string.unsafe_prev_index(Str, CurPos, PrevPos, Char) then
+        ( if DelimP(Char) then
             % Chop here.
-            SegStart = I,
-            Seg = string.unsafe_between(Str, SegStart, SegEnd),
-            split_at_separator_loop(DelimP, Str, J, J, [Seg | Acc0], Acc)
+            SegStart = CurPos,
+            Segment = string.unsafe_between(Str, SegStart, PastSegEnd),
+            !:Segments = [Segment | !.Segments],
+            split_at_separator_loop(DelimP, Str, PrevPos, PrevPos, !Segments)
         else
             % Extend current segment.
-            split_at_separator_loop(DelimP, Str, J, SegEnd, Acc0, Acc)
+            split_at_separator_loop(DelimP, Str, PrevPos, PastSegEnd,
+                !Segments)
         )
     else
         % We have reached the beginning of the string.
-        Seg = string.unsafe_between(Str, 0, SegEnd),
-        Acc = [Seg | Acc0]
+        Segment = string.unsafe_between(Str, 0, PastSegEnd),
+        !:Segments = [Segment | !.Segments]
     ).
 
 %---------------------%
