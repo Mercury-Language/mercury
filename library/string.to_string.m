@@ -47,7 +47,6 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
-:- import_module std_util.
 :- import_module type_desc.
 :- import_module univ.
 :- import_module version_array.
