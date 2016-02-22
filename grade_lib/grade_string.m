@@ -8,6 +8,8 @@
 :- import_module grade_components.
 :- import_module grade_solver.
 
+:- import_module maybe.
+
 %---------------------------------------------------------------------------%
 
 :- type grade
@@ -109,12 +111,18 @@
 
 %---------------------------------------------------------------------------%
 
+:- func grade_string_to_succ_soln(string) =
+    maybe_errors(success_soln_map, string).
+
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module grade_spec.
 
 :- import_module list.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
 :- import_module string.
 
@@ -612,6 +620,282 @@ grade_to_grade_string(Grade) = GradeStr :-
         ; SSDebug = soln_ssdebug_yes,           SSDebugStr = ".ssdebug"
         ),
         GradeStr = string.append_list(["erlang", ThreadSafeStr, SSDebugStr])
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type grade_components_map == map(solver_var_id, grade_components_entry).
+
+:- type grade_components_entry
+    --->    grade_components_entry(
+                % The specified value of the solver var.
+                solver_var_value_id,
+
+                % The grade string component that specified that value.
+                string
+            ).
+
+grade_string_to_succ_soln(GradeStr) = MaybSuccMap :-
+    GradeComponentStrs = string.split_at_char('.', GradeStr),
+    accumulate_grade_component_map_loop(GradeComponentStrs,
+        map.init, ComponentsMap, [], RevErrorMsgs),
+    list.reverse(RevErrorMsgs, ErrorMsgs),
+    (
+        ErrorMsgs = [],
+        map.map_values_only(project_value_only, ComponentsMap, SuccMap),
+        MaybSuccMap = ok(SuccMap)
+    ;
+        ErrorMsgs = [HeadErrorMsg | TailErrorMsgs],
+        MaybSuccMap = error(HeadErrorMsg, TailErrorMsgs)
+    ).
+
+:- pred project_value_only(grade_components_entry::in,
+    solver_var_value_id::out) is det.
+
+project_value_only(grade_components_entry(ValueId, _), ValueId).
+
+:- pred accumulate_grade_component_map_loop(list(string)::in,
+    grade_components_map::in, grade_components_map::out,
+    list(string)::in, list(string)::out) is det.
+
+accumulate_grade_component_map_loop([], !ComponentMap, !RevErrorMsgs).
+accumulate_grade_component_map_loop([ComponentStr | ComponentStrs],
+        !ComponentMap, !RevErrorMsgs) :-
+    ( if
+        translate_grade_component(ComponentStr, HeadSetting, TailSettings)
+    then
+        apply_setting(ComponentStr, HeadSetting, 
+            !ComponentMap, !RevErrorMsgs),
+        list.foldl2(apply_setting(ComponentStr), TailSettings, 
+            !ComponentMap, !RevErrorMsgs)
+    else
+        string.format("unknown grade component %s",
+            [s(ComponentStr)], ErrorMsg),
+        !:RevErrorMsgs = [ErrorMsg | !.RevErrorMsgs]
+    ),
+    accumulate_grade_component_map_loop(ComponentStrs,
+        !ComponentMap, !RevErrorMsgs).
+
+:- pred apply_setting(string::in, pair(solver_var_id, solver_var_value_id)::in,
+    grade_components_map::in, grade_components_map::out,
+    list(string)::in, list(string)::out) is det.
+
+apply_setting(ComponentStr, VarId - ValueId, !ComponentMap, !RevErrorMsgs) :-
+    ( if map.search(!.ComponentMap, VarId, OldEntry) then
+        OldEntry = grade_components_entry(OldValueId, OldComponentStr),
+        ( if OldValueId = ValueId then
+            true
+        else
+            string.format("grade components %s and %s are incompatible",
+                [s(OldComponentStr), s(ComponentStr)], ErrorMsg),
+            !:RevErrorMsgs = [ErrorMsg | !.RevErrorMsgs]
+        )
+    else
+        Entry = grade_components_entry(ValueId, ComponentStr),
+        map.det_insert(VarId, Entry, !ComponentMap)
+    ).
+
+:- pred translate_grade_component(string::in,
+    pair(solver_var_id, solver_var_value_id)::out,
+    list(pair(solver_var_id, solver_var_value_id))::out) is semidet.
+
+translate_grade_component(ComponentStr, Setting, Settings) :-
+    (
+        ComponentStr = "none",
+        Setting = svar_backend - svalue_backend_llds,
+        Settings =
+            [svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
+            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+    ;
+        ComponentStr = "reg",
+        Setting = svar_backend - svalue_backend_llds,
+        Settings =
+            [svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
+            svar_gcc_regs_use - svalue_gcc_regs_use_yes]
+    ;
+        ComponentStr = "jump",
+        Setting = svar_backend - svalue_backend_llds,
+        Settings =
+            [svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
+            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+    ;
+        ComponentStr = "fast",
+        Setting = svar_backend - svalue_backend_llds,
+        Settings =
+            [svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
+            svar_gcc_regs_use - svalue_gcc_regs_use_yes]
+    ;
+        ComponentStr = "asm_jump",
+        Setting = svar_backend - svalue_backend_llds,
+        Settings =
+            [svar_gcc_labels_use - svalue_gcc_labels_use_yes,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
+            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+    ;
+        ComponentStr = "asm_fast",
+        Setting = svar_backend - svalue_backend_llds,
+        Settings =
+            [svar_gcc_labels_use - svalue_gcc_labels_use_yes,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
+            svar_gcc_regs_use - svalue_gcc_regs_use_yes]
+    ;
+        ComponentStr = "hl",
+        Setting = svar_backend - svalue_backend_mlds,
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_data_level - svalue_data_level_hld,
+            svar_nested_funcs - svalue_nested_funcs_no]
+    ;
+        ComponentStr = "hlc",
+        Setting = svar_backend - svalue_backend_mlds,
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_data_level - svalue_data_level_lld,
+            svar_nested_funcs - svalue_nested_funcs_no]
+    ;
+        ComponentStr = "hl_nest",
+        Setting = svar_backend - svalue_backend_mlds,
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_data_level - svalue_data_level_hld,
+            svar_nested_funcs - svalue_nested_funcs_yes]
+    ;
+        ComponentStr = "hlc_nest",
+        Setting = svar_backend - svalue_backend_mlds,
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_data_level - svalue_data_level_lld,
+            svar_nested_funcs - svalue_nested_funcs_yes]
+    ;
+        ComponentStr = "csharp",
+        Setting = svar_target - svalue_target_csharp,
+        Settings = []
+    ;
+        ComponentStr = "java",
+        Setting = svar_target - svalue_target_java,
+        Settings = []
+    ;
+        ComponentStr = "erlang",
+        Setting = svar_target - svalue_target_erlang,
+        Settings = []
+    ;
+        ComponentStr = "gc",
+        Setting = svar_gc - svalue_gc_bdw,
+        Settings = []
+    ;
+        ComponentStr = "gcd",
+        Setting = svar_gc - svalue_gc_bdw_debug,
+        Settings = []
+    ;
+        ComponentStr = "agc",
+        Setting = svar_gc - svalue_gc_accurate,
+        Settings = []
+    ;
+        ComponentStr = "hgc",
+        Setting = svar_gc - svalue_gc_history,
+        Settings = []
+    ;
+        ComponentStr = "par",
+        Setting = svar_thread_safe - svalue_thread_safe_yes,
+        Settings = []
+    ;
+        ComponentStr = "threadscope",
+        Setting = svar_tscope_prof - svalue_tscope_prof_yes,
+        Settings = []
+    ;
+        ComponentStr = "profdeep",
+        Setting = svar_deep_prof - svalue_deep_prof_yes,
+        Settings = []
+    ;
+        ComponentStr = "profcalls",
+        Setting = svar_mprof_call - svalue_mprof_call_yes,
+        Settings =
+            [svar_mprof_time - svalue_mprof_time_no,
+            svar_mprof_memory - svalue_mprof_memory_no]
+    ;
+        ComponentStr = "memprof",
+        Setting = svar_mprof_call - svalue_mprof_call_yes,
+        Settings =
+            [svar_mprof_time - svalue_mprof_time_no,
+            svar_mprof_memory - svalue_mprof_memory_yes]
+    ;
+        ComponentStr = "prof",
+        Setting = svar_mprof_call - svalue_mprof_call_yes,
+        Settings =
+            [svar_mprof_time - svalue_mprof_time_yes,
+            svar_mprof_memory - svalue_mprof_memory_no]
+    ;
+        ComponentStr = "profall",
+        Setting = svar_mprof_call - svalue_mprof_call_yes,
+        Settings =
+            [svar_mprof_time - svalue_mprof_time_yes,
+            svar_mprof_memory - svalue_mprof_memory_yes]
+    ;
+        ComponentStr = "tsc",
+        Setting = svar_term_size_prof - svalue_term_size_prof_cells,
+        Settings = []
+    ;
+        ComponentStr = "tsw",
+        Setting = svar_term_size_prof - svalue_term_size_prof_words,
+        Settings = []
+    ;
+        ComponentStr = "tr",
+        Setting = svar_trail - svalue_trail_yes,
+        Settings = [svar_trail_segments - svalue_trail_segments_no]
+    ;
+        ComponentStr = "trseg",
+        Setting = svar_trail - svalue_trail_yes,
+        Settings = [svar_trail_segments - svalue_trail_segments_yes]
+    ;
+        ( ComponentStr = "mm"
+        ; ComponentStr = "mmsc"
+        ),
+        Setting = svar_minimal_model - svalue_minimal_model_yes_stack_copy,
+        Settings = []
+    ;
+        ComponentStr = "spf",
+        Setting = svar_single_prec_float - svalue_single_prec_float_yes,
+        Settings = []
+    ;
+        ComponentStr = "debug",
+        Setting = svar_debug - svalue_debug_debug,
+        Settings = []
+    ;
+        ComponentStr = "decldebug",
+        Setting = svar_debug - svalue_debug_decldebug,
+        Settings = []
+    ;
+        ComponentStr = "rbmm",
+        Setting = svar_rbmm - svalue_rbmm_yes,
+        Settings =
+            [svar_rbmm_debug - svalue_rbmm_debug_no,
+            svar_rbmm_prof - svalue_rbmm_prof_no]
+    ;
+        ComponentStr = "rbmmp",
+        Setting = svar_rbmm - svalue_rbmm_yes,
+        Settings =
+            [svar_rbmm_debug - svalue_rbmm_debug_no,
+            svar_rbmm_prof - svalue_rbmm_prof_yes]
+    ;
+        ComponentStr = "rbmmd",
+        Setting = svar_rbmm - svalue_rbmm_yes,
+        Settings =
+            [svar_rbmm_debug - svalue_rbmm_debug_yes,
+            svar_rbmm_prof - svalue_rbmm_prof_no]
+    ;
+        ComponentStr = "rbmmdp",
+        Setting = svar_rbmm - svalue_rbmm_yes,
+        Settings =
+            [svar_rbmm_debug - svalue_rbmm_debug_yes,
+            svar_rbmm_prof - svalue_rbmm_prof_yes]
+    ;
+        ComponentStr = "ssdebug",
+        Setting = svar_ssdebug - svalue_ssdebug_yes,
+        Settings = []
     ).
 
 %---------------------------------------------------------------------------%
