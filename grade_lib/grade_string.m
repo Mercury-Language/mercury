@@ -105,7 +105,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- func success_soln_to_grade_string(success_soln_map) = string.
+:- func grade_to_grade_string(grade) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -422,8 +422,7 @@ success_soln_to_grade(SuccMap) = Grade :-
 
 %---------------------------------------------------------------------------%
 
-success_soln_to_grade_string(SuccMap) = GradeStr :-
-    Grade = success_soln_to_grade(SuccMap),
+grade_to_grade_string(Grade) = GradeStr :-
 
     % XXX mercuryfile struct
     % XXX tag bits: high/low/none, 2/3

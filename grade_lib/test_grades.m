@@ -128,17 +128,18 @@ run_test_set(SolverInfo0, TestSetSpec, TestSpecSoFar0, !SolveCountStats, !IO) :-
         SolnStr = soln_to_str("    ", Soln),
         (
             Soln = soln_failure(_),
-            GradeStr = ""
+            SolnGradeStr = ""
         ;
             Soln = soln_success(SuccMap),
-            GradeStr =
-                "    GRADE " ++ success_soln_to_grade_string(SuccMap) ++ "\n"
+            Grade = success_soln_to_grade(SuccMap),
+            GradeStr = grade_to_grade_string(Grade),
+            SolnGradeStr = "    GRADE " ++ GradeStr ++ "\n"
         ),
         io.nl(!IO),
         io.write_string(SpecStr, !IO),
         io.write_string(CountStr, !IO),
         io.write_string(SolnStr, !IO),
-        io.write_string(GradeStr, !IO)
+        io.write_string(SolnGradeStr, !IO)
     ;
         TestSetSpec = [TestSetSpecHead | TestSetSpecTail],
         TestSetSpecHead = test_set_component(SolverVar, SolverValues),
