@@ -222,9 +222,8 @@ export_procs_to_c(ModuleInfo, Preds,
     %   MR_save_regs_to_mem(c_regs);
     %
     %       /*
-    %       ** start a new Mercury engine inside this POSIX
-    %       ** thread, if necessary (the C code may be
-    %       ** multi-threaded itself).
+    %       ** Start a new Mercury engine inside this POSIX thread,
+    %       ** if necessary (the C code may be multi-threaded itself).
     %       */
     %
     % #if MR_THREAD_SAFE
@@ -236,25 +235,23 @@ export_procs_to_c(ModuleInfo, Preds,
     %   MR_setup_callback(MR_ENTRY(<label of called proc>));
     % #endif
     %       /*
-    %       ** restore Mercury's registers that were saved as
-    %       ** we entered C from Mercury.  For single threaded
-    %       ** programs the process must always start in Mercury
-    %       ** so that we can MR_init_engine() etc.  For
-    %       ** multi-threaded MR_init_thread (above) takes care
-    %       ** of making a new engine if required.
+    %       ** Restore Mercury's registers that were saved as we entered C
+    %       ** from Mercury. For single threaded programs, the process must
+    %       ** always start in Mercury, so that we can MR_init_engine() etc.
+    %       ** For multi-threaded MR_init_thread (above) takes care of
+    %       ** making a new engine if required.
     %       */
     %   MR_restore_registers();
     %   <copy input arguments from Mercury__Arguments into registers>
-    %       /* save the registers which may be clobbered      */
+    %       /* Save the registers which may be clobbered      */
     %       /* by the C function call MR_call_engine().       */
     %   MR_save_transient_registers();
     %
     %   (void) MR_call_engine(MR_ENTRY(<label of called proc>),
     %           MR_FALSE);
     %
-    %       /* restore the registers which may have been      */
-    %       /* clobbered by the return from the C function    */
-    %       /* MR_call_engine()               */
+    %       /* Restore the registers which may have been clobbered */
+    %       /* by the return from the C function MR_call_engine(). */
     %   MR_restore_transient_registers();
     % #if MR_DEEP_PROFILING
     %   MR_current_call_site_dynamic = saved_csd;
@@ -319,31 +316,31 @@ export_proc_to_c(ModuleInfo, Preds, ExportedProc, ExportDefn) :-
         "#if MR_THREAD_SAFE\n",
         "\tMR_bool must_finalize_engine;\n",
         "#endif\n",
-    "#if MR_DEEP_PROFILING\n",
-    "\tMR_CallSiteDynList **saved_cur_callback;\n",
-    "\tMR_CallSiteDynamic *saved_cur_csd;\n",
-    "#endif\n",
+        "#if MR_DEEP_PROFILING\n",
+        "\tMR_CallSiteDynList **saved_cur_callback;\n",
+        "\tMR_CallSiteDynamic *saved_cur_csd;\n",
+        "#endif\n",
         MaybeDeclareRetval,
         "\n",
         "\tMR_save_regs_to_mem(c_regs);\n",
         "#if MR_THREAD_SAFE\n",
         "\tmust_finalize_engine = MR_init_thread(MR_use_now);\n",
         "#endif\n",
-    "#if MR_DEEP_PROFILING\n",
-    "\tsaved_cur_callback = MR_current_callback_site;\n",
-    "\tsaved_cur_csd = MR_current_call_site_dynamic;\n",
-    "\tMR_setup_callback(MR_ENTRY(", ProcLabelString, "));\n",
-    "#endif\n",
+        "#if MR_DEEP_PROFILING\n",
+        "\tsaved_cur_callback = MR_current_callback_site;\n",
+        "\tsaved_cur_csd = MR_current_call_site_dynamic;\n",
+        "\tMR_setup_callback(MR_ENTRY(", ProcLabelString, "));\n",
+        "#endif\n",
         "\tMR_restore_registers();\n",
         PassInputArgs,
         "\tMR_save_transient_registers();\n",
         "\t(void) MR_call_engine(MR_ENTRY(",
             ProcLabelString, "), MR_FALSE);\n",
         "\tMR_restore_transient_registers();\n",
-    "#if MR_DEEP_PROFILING\n",
-    "\tMR_current_call_site_dynamic = saved_cur_csd;\n",
-    "\tMR_current_callback_site = saved_cur_callback;\n",
-    "#endif\n",
+        "#if MR_DEEP_PROFILING\n",
+        "\tMR_current_call_site_dynamic = saved_cur_csd;\n",
+        "\tMR_current_callback_site = saved_cur_callback;\n",
+        "#endif\n",
         MaybeFail,
         RetrieveOutputArgs,
         "#if MR_THREAD_SAFE\n",
@@ -363,10 +360,10 @@ export_proc_to_c(ModuleInfo, Preds, ExportedProc, ExportDefn) :-
     %
     % For a given procedure, figure out the information about that procedure
     % that is needed to export it:
-    % - how to declare the procedure's entry label,
+    % - how to declare the procedure's entry label;
     % - the C return type, and the C declaration for the variable
-    %   holding the return value (if any),
-    % - the actions on success and failure, and
+    %   holding the return value (if any);
+    % - the actions on success and failure; and
     % - the argument locations/modes/types.
     %
 :- pred get_export_info_for_lang_c(module_info::in, pred_table::in,
@@ -554,7 +551,7 @@ pass_input_args(ModuleInfo, LastArgNum, [AT | ATs], PassInputArgs) :-
         convert_type_to_mercury(ArgName0, Type, ArgLoc, ArgName),
         ExportType = foreign.to_exported_type(ModuleInfo, Type),
         % We need to box non-word-sized foreign types
-        % before passing them to Mercury code
+        % before passing them to Mercury code.
         ExportTypeIsForeign = foreign.is_foreign_type(ExportType),
         (
             ExportTypeIsForeign = yes(_),
