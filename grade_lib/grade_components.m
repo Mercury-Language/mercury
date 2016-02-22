@@ -21,7 +21,7 @@
                 soln_stack_len,
                 soln_trail,
                 soln_trail_segments,
-                soln_minimal_model,
+                soln_minmodel,
                 soln_thread_safe,
                 soln_gc,
                 soln_deep_prof,
@@ -83,9 +83,12 @@
     --->    soln_trail_segments_no
     ;       soln_trail_segments_yes.
 
-:- type soln_minimal_model
-    --->    soln_minimal_model_no
-    ;       soln_minimal_model_yes_stack_copy.
+:- type soln_minmodel
+    --->    soln_minmodel_no
+    ;       soln_minmodel_stack_copy
+    ;       soln_minmodel_stack_copy_debug
+    ;       soln_minmodel_own_stack
+    ;       soln_minmodel_own_stack_debug.
 
 :- type soln_thread_safe
     --->    soln_thread_safe_no
@@ -200,7 +203,7 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
     map.det_remove(svar_stack_len, StackLen, !SolnMap),
     map.det_remove(svar_trail, Trail, !SolnMap),
     map.det_remove(svar_trail_segments, TrailSegments, !SolnMap),
-    map.det_remove(svar_minimal_model, MinimalModel, !SolnMap),
+    map.det_remove(svar_minmodel, MinimalModel, !SolnMap),
     map.det_remove(svar_thread_safe, ThreadSafe, !SolnMap),
     map.det_remove(svar_gc, Gc, !SolnMap),
     map.det_remove(svar_deep_prof, DeepProf, !SolnMap),
@@ -306,10 +309,16 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
         unexpected($pred, "unexpected value of TrailSegments")
     ),
 
-    ( if MinimalModel = svalue_minimal_model_no then
-        ComponentMinimalModel = soln_minimal_model_no
-    else if MinimalModel = svalue_minimal_model_yes_stack_copy then
-        ComponentMinimalModel = soln_minimal_model_yes_stack_copy
+    ( if MinimalModel = svalue_minmodel_no then
+        ComponentMinimalModel = soln_minmodel_no
+    else if MinimalModel = svalue_minmodel_stack_copy then
+        ComponentMinimalModel = soln_minmodel_stack_copy
+    else if MinimalModel = svalue_minmodel_stack_copy_debug then
+        ComponentMinimalModel = soln_minmodel_stack_copy_debug
+    else if MinimalModel = svalue_minmodel_own_stack then
+        ComponentMinimalModel = soln_minmodel_own_stack
+    else if MinimalModel = svalue_minmodel_own_stack_debug then
+        ComponentMinimalModel = soln_minmodel_own_stack_debug
     else
         unexpected($pred, "unexpected value of MinimalModel")
     ),

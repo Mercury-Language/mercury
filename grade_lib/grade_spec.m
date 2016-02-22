@@ -23,7 +23,7 @@
     ;       svar_stack_len
     ;       svar_trail
     ;       svar_trail_segments
-    ;       svar_minimal_model
+    ;       svar_minmodel
     ;       svar_thread_safe
     ;       svar_gc
     ;       svar_deep_prof
@@ -89,10 +89,11 @@
     ;       svalue_trail_segments_no
     ;       svalue_trail_segments_yes
 
-    ;       svalue_minimal_model_no
-    ;       svalue_minimal_model_yes_stack_copy
-    % ;     svalue_minimal_model_yes_stack_copy_debug   % not for general use
-    % ;     svalue_minimal_model_yes_own_stack          % not finished yet
+    ;       svalue_minmodel_no
+    ;       svalue_minmodel_stack_copy
+    ;       svalue_minmodel_stack_copy_debug
+    ;       svalue_minmodel_own_stack
+    ;       svalue_minmodel_own_stack_debug
 
     ;       svalue_thread_safe_no
     ;       svalue_thread_safe_yes
@@ -201,7 +202,7 @@ solver_var_name("gcc_labels_use",                   svar_gcc_labels_use).
 solver_var_name("stack_len",                        svar_stack_len).
 solver_var_name("trail",                            svar_trail).
 solver_var_name("trail_segments",                   svar_trail_segments).
-solver_var_name("minimal_model",                    svar_minimal_model).
+solver_var_name("minmodel",                         svar_minmodel).
 solver_var_name("thread_safe",                      svar_thread_safe).
 solver_var_name("gc",                               svar_gc).
 solver_var_name("deep_prof",                        svar_deep_prof).
@@ -261,8 +262,15 @@ solver_var_value_name("trail",                      svalue_trail_yes).
 solver_var_value_name("trfix",                      svalue_trail_segments_no).
 solver_var_value_name("trseg",                      svalue_trail_segments_yes).
 
-solver_var_value_name("no_mm",                      svalue_minimal_model_no).
-solver_var_value_name("mm_stack_copy",  svalue_minimal_model_yes_stack_copy).
+solver_var_value_name("no_mm",                      svalue_minmodel_no).
+solver_var_value_name("mm_stack_copy",      
+                                    svalue_minmodel_stack_copy).
+solver_var_value_name("mm_stack_copy_debug",
+                                    svalue_minmodel_stack_copy_debug).
+solver_var_value_name("mm_own_stack",
+                                    svalue_minmodel_own_stack).
+solver_var_value_name("mm_own_stack_debug",
+                                    svalue_minmodel_own_stack_debug).
 
 solver_var_value_name("not_thread_safe",            svalue_thread_safe_no).
 solver_var_value_name("thread_safe",                svalue_thread_safe_yes).
@@ -365,8 +373,10 @@ init_solver_var_specs = [
         [svalue_trail_no, svalue_trail_yes]),
     solver_var_spec(svar_trail_segments,
         [svalue_trail_segments_yes, svalue_trail_segments_no]),
-    solver_var_spec(svar_minimal_model,
-        [svalue_minimal_model_no, svalue_minimal_model_yes_stack_copy]),
+    solver_var_spec(svar_minmodel,
+        [svalue_minmodel_no,
+        svalue_minmodel_stack_copy, svalue_minmodel_stack_copy_debug,
+        svalue_minmodel_own_stack, svalue_minmodel_own_stack_debug]),
     solver_var_spec(svar_thread_safe,
         [svalue_thread_safe_no, svalue_thread_safe_yes]),
     solver_var_spec(svar_gc,
@@ -610,7 +620,7 @@ init_requirement_specs = [
     requirement_spec(
         "trailing interferes with minimal model tabling",
         (svar_trail `being` svalue_trail_yes) `implies_that`
-        (svar_minimal_model `is_one_of` [svalue_minimal_model_no])
+        (svar_minmodel `is_one_of` [svalue_minmodel_no])
     ),
 
 % Requirements of values of svar_trail_segments.
@@ -625,25 +635,69 @@ init_requirement_specs = [
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
-% Requirements of values of svar_minimal_model.
+% Requirements of values of svar_minmodel.
     requirement_spec(
         "minimal model tabling requires the LLDS backend",
-        (svar_minimal_model `being` svalue_minimal_model_yes_stack_copy)
+        (svar_minmodel `being` svalue_minmodel_stack_copy)
+            `implies_that`
+        (svar_backend `is_one_of` [svalue_backend_llds])
+    ),
+    requirement_spec(
+        "minimal model tabling requires the LLDS backend",
+        (svar_minmodel `being` svalue_minmodel_stack_copy_debug)
+            `implies_that`
+        (svar_backend `is_one_of` [svalue_backend_llds])
+    ),
+    requirement_spec(
+        "minimal model tabling requires the LLDS backend",
+        (svar_minmodel `being` svalue_minmodel_own_stack)
+            `implies_that`
+        (svar_backend `is_one_of` [svalue_backend_llds])
+    ),
+    requirement_spec(
+        "minimal model tabling requires the LLDS backend",
+        (svar_minmodel `being` svalue_minmodel_own_stack_debug)
             `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
         "minimal model tabling requires boehm-demers-weiser gc",
-        (svar_minimal_model `being` svalue_minimal_model_yes_stack_copy)
+        (svar_minmodel `being` svalue_minmodel_stack_copy)
+            `implies_that`
+        (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug])
+    ),
+    requirement_spec(
+        "minimal model tabling requires boehm-demers-weiser gc",
+        (svar_minmodel `being` svalue_minmodel_stack_copy_debug)
+            `implies_that`
+        (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug])
+    ),
+    requirement_spec(
+        "minimal model tabling requires boehm-demers-weiser gc",
+        (svar_minmodel `being` svalue_minmodel_own_stack)
+            `implies_that`
+        (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug])
+    ),
+    requirement_spec(
+        "minimal model tabling requires boehm-demers-weiser gc",
+        (svar_minmodel `being` svalue_minmodel_own_stack_debug)
             `implies_that`
         (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug])
     ),
     requirement_spec(
         "minimal model tabling does not respect thread safety",
-        (svar_minimal_model `being` svalue_minimal_model_yes_stack_copy)
+        (svar_minmodel `being` svalue_minmodel_stack_copy)
             `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
     ),
+    requirement_spec(
+        "minimal model tabling does not respect thread safety",
+        (svar_minmodel `being` svalue_minmodel_stack_copy_debug)
+            `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
+    ),
+    % XXX Do svalue_minimal_model_own_stack{,_debug} imply
+    % svalue_thread_safe_no?
 
 % Requirements of values of svar_thread_safe.
     % None.

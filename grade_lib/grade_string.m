@@ -21,7 +21,7 @@
                 llds_thread_safe,
                 llds_perf_prof,
                 soln_term_size_prof,
-                soln_minimal_model,
+                soln_minmodel,
                 soln_debug,
                 soln_lldebug,
                 llds_rbmm,
@@ -294,8 +294,8 @@ success_soln_to_grade(SuccMap) = Grade :-
             "StackLen != soln_stack_len_std"),
         expect(unify(TrailSegments, soln_trail_segments_no), $pred,
             "TrailSegments != soln_trail_segments_no"),
-        expect(unify(MinimalModel, soln_minimal_model_no), $pred,
-            "MinimalModel != soln_minimal_model_no"),
+        expect(unify(MinimalModel, soln_minmodel_no), $pred,
+            "MinimalModel != soln_minmodel_no"),
         expect(unify(DeepProf, soln_deep_prof_no), $pred,
             "DeepProf != soln_deep_prof_no"),
         expect(unify(MprofCall, soln_mprof_call_no), $pred,
@@ -396,8 +396,8 @@ success_soln_to_grade(SuccMap) = Grade :-
             "Trail != soln_trail_no"),
         expect(unify(TrailSegments, soln_trail_segments_no), $pred,
             "TrailSegments != soln_trail_segments_no"),
-        expect(unify(MinimalModel, soln_minimal_model_no), $pred,
-            "MinimalModel != soln_minimal_model_no"),
+        expect(unify(MinimalModel, soln_minmodel_no), $pred,
+            "MinimalModel != soln_minmodel_no"),
         expect(unify(Gc, soln_gc_target_native), $pred,
             "Gc != soln_gc_target_native"),
         expect(unify(DeepProf, soln_deep_prof_no), $pred,
@@ -511,11 +511,20 @@ grade_to_grade_string(Grade) = GradeStr :-
             )
         ),
         (
-            MinimalModel = soln_minimal_model_no,
+            MinimalModel = soln_minmodel_no,
             MinimalModelStr = ""
         ;
-            MinimalModel = soln_minimal_model_yes_stack_copy,
+            MinimalModel = soln_minmodel_stack_copy,
             MinimalModelStr = ".mmsc"
+        ;
+            MinimalModel = soln_minmodel_stack_copy_debug,
+            MinimalModelStr = ".dmmsc"
+        ;
+            MinimalModel = soln_minmodel_own_stack,
+            MinimalModelStr = ".mmos"
+        ;
+            MinimalModel = soln_minmodel_own_stack_debug,
+            MinimalModelStr = ".dmmos"
         ),
         (
             SinglePrecFloat = soln_single_prec_float_no,
@@ -854,7 +863,21 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         ( ComponentStr = "mm"
         ; ComponentStr = "mmsc"
         ),
-        Setting = svar_minimal_model - svalue_minimal_model_yes_stack_copy,
+        Setting = svar_minmodel - svalue_minmodel_stack_copy,
+        Settings = []
+    ;
+        ( ComponentStr = "dmm"
+        ; ComponentStr = "dmmsc"
+        ),
+        Setting = svar_minmodel - svalue_minmodel_stack_copy_debug,
+        Settings = []
+    ;
+        ComponentStr = "mmos",
+        Setting = svar_minmodel - svalue_minmodel_own_stack,
+        Settings = []
+    ;
+        ComponentStr = "dmmos",
+        Setting = svar_minmodel - svalue_minmodel_own_stack_debug,
         Settings = []
     ;
         ComponentStr = "spf",
