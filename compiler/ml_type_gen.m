@@ -144,29 +144,31 @@ ml_gen_types(ModuleInfo, Defns) :-
         HighLevelData = yes,
         module_info_get_type_table(ModuleInfo, TypeTable),
         get_all_type_ctor_defns(TypeTable, TypeCtorDefns),
-        list.foldl(ml_gen_type_defn(ModuleInfo), TypeCtorDefns, [], Defns)
+        list.foldl(ml_gen_type_defn_if_local(ModuleInfo), TypeCtorDefns,
+            [], Defns)
     ;
         HighLevelData = no,
         Defns = []
     ).
 
-:- pred ml_gen_type_defn(module_info::in, pair(type_ctor, hlds_type_defn)::in,
+:- pred ml_gen_type_defn_if_local(module_info::in,
+    pair(type_ctor, hlds_type_defn)::in,
     list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
-ml_gen_type_defn(ModuleInfo, TypeCtor - TypeDefn, !Defns) :-
+ml_gen_type_defn_if_local(ModuleInfo, TypeCtor - TypeDefn, !Defns) :-
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     DefinedThisModule = type_status_defined_in_this_module(TypeStatus),
     (
         DefinedThisModule = yes,
-        ml_gen_type_defn_2(ModuleInfo, TypeCtor, TypeDefn, !Defns)
+        ml_gen_type_defn(ModuleInfo, TypeCtor, TypeDefn, !Defns)
     ;
         DefinedThisModule = no
     ).
 
-:- pred ml_gen_type_defn_2(module_info::in, type_ctor::in, hlds_type_defn::in,
+:- pred ml_gen_type_defn(module_info::in, type_ctor::in, hlds_type_defn::in,
     list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
-ml_gen_type_defn_2(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
+ml_gen_type_defn(ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
         TypeBody = hlds_abstract_type(_)
