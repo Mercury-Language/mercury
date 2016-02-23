@@ -1091,8 +1091,8 @@ ml_type_as_field(ModuleInfo, HighLevelData, FieldType, FieldWidth,
         ;
             HighLevelData = yes,
             % With the high-level data representation, we don't box everything,
-            % but for the MLDS->C and MLDS->asm back-ends we still need to box
-            % floating point fields if they are wider than a word.
+            % but for the MLDS->C backend, we still need to box floating point
+            % fields if they are wider than a word.
             ml_must_box_field_type(ModuleInfo, FieldType, FieldWidth)
         )
     then
@@ -1132,7 +1132,7 @@ constructor_arg_types(ModuleInfo, ConsId, ArgTypes, Type,
         ConsArgTypes, ConsArgWidths) :-
     ( if
         ConsId = cons(_, _, _),
-        \+ is_introduced_type_info_type(Type)
+        not is_introduced_type_info_type(Type)
     then
         % Determine the type_ctor, and then look up the data constructor.
         type_to_ctor_det(Type, TypeCtor),
@@ -1141,7 +1141,7 @@ constructor_arg_types(ModuleInfo, ConsId, ArgTypes, Type,
         then
             ConsArgDefns = ConsDefn ^ cons_args,
             list.map2(
-                (pred(C::in, CType::out, CWidth::out) is det :-
+                ( pred(C::in, CType::out, CWidth::out) is det :-
                     C = ctor_arg(_, CType, CWidth, _)
                 ),
                 ConsArgDefns, ConsArgTypes0, ConsArgWidths0),
@@ -2335,7 +2335,7 @@ ml_gen_hl_tag_field_id(ModuleInfo, Type) = FieldId :-
             ),
             some [Ctor] (
                 list.member(Ctor, Ctors),
-                \+ ml_uses_secondary_tag(TypeCtor, TagValues, Ctor, _)
+                not ml_uses_secondary_tag(TypeCtor, TagValues, Ctor, _)
             )
         then
             ClassQualifier = mlds_append_class_qualifier(Target, MLDS_Module,
@@ -2621,7 +2621,7 @@ ml_gen_ground_term_conjunct_compound(ModuleInfo, Target, HighLevelData,
     lookup_var_types(VarTypes, Args, ArgTypes),
     ( if
         ConsId = cons(_, _, _),
-        \+ is_introduced_type_info_type(VarType)
+        not is_introduced_type_info_type(VarType)
     then
         % Determine the type_ctor, and then look up the data constructor.
         type_to_ctor_det(VarType, TypeCtor),
@@ -2931,7 +2931,7 @@ ml_gen_const_static_compound(Info, ConstNum, Type, MLDS_Type, ConsId, ConsTag,
     ModuleInfo = Info ^ mcsi_module_info,
     ( if
         ConsId = cons(_, _, _),
-        \+ is_introduced_type_info_type(Type)
+        not is_introduced_type_info_type(Type)
     then
         % Determine the type_ctor, and then look up the data constructor.
         type_to_ctor_det(Type, TypeCtor),
