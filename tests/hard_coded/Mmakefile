@@ -425,19 +425,26 @@ TRACE_GOAL_ENV_PROGS = \
 
 # Compile-time garbage collection is currently incompatible with debugging
 # grades.
+# The programs listed in CTGC_PROGS_2 do not currently work in non-C grades.
+#
 ifeq "$(findstring debug,$(GRADE))" ""
+	ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
+		CTGC_PROGS_2 = \
+			bad_direct_reuse \
+			bad_indirect_reuse2 \
+			pack_args_reuse \
+			reuse_array \
+			reuse_double \
+			reuse_ho \
+			uncond_reuse
+	else
+		CTGC_PROGS_2 =
+	endif
 	CTGC_PROGS = \
-		bad_direct_reuse \
-		bad_indirect_reuse \
-		bad_indirect_reuse2 \
+		$(CTGC_PROGS_2) \
 		bad_indirect_reuse2b \
 		bad_indirect_reuse3 \
-		pack_args_reuse \
-		reuse_array \
-		reuse_double \
-		reuse_ho \
 		sharing_comb \
-		uncond_reuse \
 		uncond_reuse_bad
 else
 	CTGC_PROGS =
