@@ -13,21 +13,21 @@
 % It handles Erlang code generation for unifications.
 %
 % TODO
-%   type t
-%       --->    f(int, string)
-%       ;       some [T] f(T).
+% type t
+%     --->    f(int, string)
+%     ;       some [T] f(T).
 %
-%   will generate for the first alternative
-%       {f, Int, String}
-%   and for the second alternative
-%       {f, TypeInfo_for_t, T}
+% will generate for the first alternative
+%     {f, Int, String}
+% and for the second alternative
+%     {f, TypeInfo_for_t, T}
 %
-%   which means that the RTTI routines will not be able to distinguish
-%   between the two alternatives.
-%   The suggested fix is to place the arity on all functors for types
-%   for which at least one functor is existentially quantified.
-%   Once this fix is done, update the comment on
-%   erlang_rtti_implementation.matches_du_functor
+% which means that the RTTI routines will not be able to distinguish
+% between the two alternatives.
+% The suggested fix is to place the arity on all functors for types
+% for which at least one functor is existentially quantified.
+% Once this fix is done, update the comment on
+% erlang_rtti_implementation.matches_du_functor.
 %
 %-----------------------------------------------------------------------------%
 
@@ -52,7 +52,7 @@
     maybe(elds_expr)::in, elds_expr::out, erl_gen_info::in, erl_gen_info::out)
     is det.
 
-    % Convert a cons id to the ELDS equivalent term, if any.  That is, any term
+    % Convert a cons id to the ELDS equivalent term, if any. That is, any term
     % returned by this predicate must be useable as part of a pattern matching
     % operation.
     %
@@ -97,87 +97,90 @@
 
 %-----------------------------------------------------------------------------%
 
-erl_gen_unification(Unification, _CodeModel, _Context, MaybeSuccessExpr,
-        Statement, !Info) :-
-    Unification = assign(TargetVar, SourceVar),
-    erl_gen_info_get_module_info(!.Info, ModuleInfo),
-    erl_variable_type(!.Info, TargetVar, VarType),
-    IsDummy = check_dummy_type(ModuleInfo, VarType),
-    (
-        IsDummy = is_dummy_type,
-        Statement = expr_or_void(MaybeSuccessExpr)
-    ;
-        IsDummy = is_not_dummy_type,
-        Assign = elds_eq(expr_from_var(TargetVar), expr_from_var(SourceVar)),
-        Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
-    ).
-erl_gen_unification(Unification, CodeModel, _Context, MaybeSuccessExpr,
-        Statement, !Info) :-
-    Unification = simple_test(Var1, Var2),
-    expect(unify(CodeModel, model_semi), $module, $pred,
-        "simple_test not semidet"),
-    erl_gen_info_get_module_info(!.Info, ModuleInfo),
-    erl_variable_type(!.Info, Var1, VarType),
-    IsDummy = check_dummy_type(ModuleInfo, VarType),
-    (
-        IsDummy = is_dummy_type,
-        Statement = expr_or_void(MaybeSuccessExpr)
-    ;
-        IsDummy = is_not_dummy_type,
-        %
-        % case Var1 =:= Var2 of
-        %   true  -> MaybeSuccessExpr ;
-        %   false -> fail
-        % end
-        %
-        Statement = elds_case_expr(Test, [TrueCase, FalseCase]),
-        Test      = elds_binop((=:=),
-                        expr_from_var(Var1), expr_from_var(Var2)),
-        TrueCase  = elds_case(elds_true, expr_or_void(MaybeSuccessExpr)),
-        FalseCase = elds_case(elds_false, elds_term(elds_fail))
-    ).
 erl_gen_unification(Unification, CodeModel, Context, MaybeSuccessExpr,
         Statement, !Info) :-
-    Unification = construct(Var, ConsId, Args, ArgModes, _HowToConstruct,
-        _CellIsUnique, SubInfo),
-    expect(unify(CodeModel, model_det), $module, $pred, "construct not det"),
     (
-        SubInfo = no_construct_sub_info
+        Unification = assign(TargetVar, SourceVar),
+        erl_gen_info_get_module_info(!.Info, ModuleInfo),
+        erl_variable_type(!.Info, TargetVar, VarType),
+        IsDummy = check_dummy_type(ModuleInfo, VarType),
+        (
+            IsDummy = is_dummy_type,
+            Statement = expr_or_void(MaybeSuccessExpr)
+        ;
+            IsDummy = is_not_dummy_type,
+            Assign =
+                elds_eq(expr_from_var(TargetVar), expr_from_var(SourceVar)),
+            Statement = maybe_join_exprs(Assign, MaybeSuccessExpr)
+        )
     ;
-        SubInfo = construct_sub_info(_MaybeTakeAddr, MaybeSizeProfInfo),
-        expect(unify(MaybeSizeProfInfo, no), $module, $pred,
-            "term size profiling not yet supported")
-    ),
-    erl_gen_info_get_module_info(!.Info, ModuleInfo),
-    erl_variable_type(!.Info, Var, VarType),
-    IsDummy = check_dummy_type(ModuleInfo, VarType),
-    (
-        IsDummy = is_dummy_type,
-        Statement = expr_or_void(MaybeSuccessExpr)
+        Unification = simple_test(Var1, Var2),
+        expect(unify(CodeModel, model_semi), $module, $pred,
+            "simple_test not semidet"),
+        erl_gen_info_get_module_info(!.Info, ModuleInfo),
+        erl_variable_type(!.Info, Var1, VarType),
+        IsDummy = check_dummy_type(ModuleInfo, VarType),
+        (
+            IsDummy = is_dummy_type,
+            Statement = expr_or_void(MaybeSuccessExpr)
+        ;
+            IsDummy = is_not_dummy_type,
+            %
+            % case Var1 =:= Var2 of
+            %   true  -> MaybeSuccessExpr ;
+            %   false -> fail
+            % end
+            %
+            Test      = elds_binop((=:=),
+                            expr_from_var(Var1), expr_from_var(Var2)),
+            TrueCase  = elds_case(elds_true, expr_or_void(MaybeSuccessExpr)),
+            FalseCase = elds_case(elds_false, elds_term(elds_fail)),
+            Statement = elds_case_expr(Test, [TrueCase, FalseCase])
+        )
     ;
-        IsDummy = is_not_dummy_type,
-        erl_variable_types(!.Info, Args, ArgTypes),
-        erl_gen_construct(Var, ConsId, Args, ArgTypes, ArgModes, Context,
-            Construct, !Info),
-        Statement = maybe_join_exprs(Construct, MaybeSuccessExpr)
+        Unification = construct(Var, ConsId, Args, ArgModes, _HowToConstruct,
+            _CellIsUnique, SubInfo),
+        expect(unify(CodeModel, model_det), $module, $pred,
+            "construct not det"),
+        (
+            SubInfo = no_construct_sub_info
+        ;
+            SubInfo = construct_sub_info(_MaybeTakeAddr, MaybeSizeProfInfo),
+            expect(unify(MaybeSizeProfInfo, no), $module, $pred,
+                "term size profiling not yet supported")
+        ),
+        erl_gen_info_get_module_info(!.Info, ModuleInfo),
+        erl_variable_type(!.Info, Var, VarType),
+        IsDummy = check_dummy_type(ModuleInfo, VarType),
+        (
+            IsDummy = is_dummy_type,
+            Statement = expr_or_void(MaybeSuccessExpr)
+        ;
+            IsDummy = is_not_dummy_type,
+            erl_variable_types(!.Info, Args, ArgTypes),
+            erl_gen_construct(Var, ConsId, Args, ArgTypes, ArgModes, Context,
+                Construct, !Info),
+            Statement = maybe_join_exprs(Construct, MaybeSuccessExpr)
+        )
+    ;
+        Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail,
+            _CanCGC),
+        (
+            CanFail = can_fail,
+            SuccessExpr = det_expr(MaybeSuccessExpr),
+            erl_gen_semidet_deconstruct(Var, ConsId, Args, ArgModes, Context,
+                SuccessExpr, Statement, !Info)
+        ;
+            CanFail = cannot_fail,
+            erl_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
+                Statement0, !Info),
+            Statement = maybe_join_exprs(Statement0, MaybeSuccessExpr)
+        )
+    ;
+        Unification = complicated_unify(_, _, _),
+        % Simplify.m should have converted these into procedure calls.
+        unexpected($module, $pred, "complicated unify")
     ).
-erl_gen_unification(Unification, _CodeModel, Context, MaybeSuccessExpr,
-        Statement, !Info) :-
-    Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail, _CanCGC),
-    (
-        CanFail = can_fail,
-        SuccessExpr = det_expr(MaybeSuccessExpr),
-        erl_gen_semidet_deconstruct(Var, ConsId, Args, ArgModes, Context,
-            SuccessExpr, Statement, !Info)
-    ;
-        CanFail = cannot_fail,
-        erl_gen_det_deconstruct(Var, ConsId, Args, ArgModes, Context,
-            Statement0, !Info),
-        Statement = maybe_join_exprs(Statement0, MaybeSuccessExpr)
-    ).
-erl_gen_unification(complicated_unify(_, _, _), _, _, _, _, !Info) :-
-    % Simplify.m should have converted these into procedure calls.
-    unexpected($module, $pred, "complicated unify").
 
 %-----------------------------------------------------------------------------%
 
@@ -191,7 +194,8 @@ erl_gen_construct(Var, ConsId, Args, ArgTypes, UniModes, _Context, Statement,
     Construct = elds_eq(expr_from_var(Var), RHS),
 
     % If there are any free variables in Args, assign them to false first.
-    % i.e. we are constructing a partially instantiated data structure.
+    % This can happen if we are constructing a partially instantiated
+    % data structure.
     erl_gen_info_get_module_info(!.Info, ModuleInfo),
     AssignFreeVars = list.filter_map_corresponding3(
         assign_free_var(ModuleInfo), Args, ArgTypes, UniModes),
@@ -232,9 +236,9 @@ erl_gen_det_deconstruct(Var, ConsId, Args, _Modes, _Context, Statement,
 
 erl_gen_semidet_deconstruct(Var, ConsId, Args, _Modes, _Context,
         SuccessExpr, Statement, !Info) :-
-    ( cons_id_to_term(ConsId, Args, elds_anon_var, Pattern0, !Info) ->
+    ( if cons_id_to_term(ConsId, Args, elds_anon_var, Pattern0, !Info) then
         Pattern = Pattern0
-    ;
+    else
         unexpected($module, $pred, "undeconstructable object")
     ),
     %
@@ -243,9 +247,9 @@ erl_gen_semidet_deconstruct(Var, ConsId, Args, _Modes, _Context,
     %   _       -> fail
     % end
     %
-    Statement   = elds_case_expr(expr_from_var(Var), [SucceedCase, FailCase]),
     SucceedCase = elds_case(Pattern, SuccessExpr),
-    FailCase    = elds_case(elds_anon_var, elds_term(elds_fail)).
+    FailCase    = elds_case(elds_anon_var, elds_term(elds_fail)),
+    Statement   = elds_case_expr(expr_from_var(Var), [SucceedCase, FailCase]).
 
 %-----------------------------------------------------------------------------%
 
@@ -309,9 +313,9 @@ cons_id_to_expr(ConsId, Args, DummyVarReplacement, Expr, !Info) :-
     ;
         ConsId = base_typeclass_info_const(InstanceModule,
             class_id(ClassName, Arity), _Instance, InstanceStr),
-        ( sym_name_get_module_name(ClassName, ClassModuleName0) ->
+        ( if sym_name_get_module_name(ClassName, ClassModuleName0) then
             ClassModuleName = ClassModuleName0
-        ;
+        else
             unexpected($module, $pred, "class has no module name")
         ),
         ClassNameStr = unqualify_name(ClassName),
@@ -360,9 +364,9 @@ pred_const_to_closure(ShroudedPredProcId, CurriedArgs, FunExpr, !Info) :-
     erl_gen_info_new_vars(NumExtraVars, AllExtraVars, !Info),
 
     % Separate the argument lists into inputs and outputs twice: once ignore
-    % dummy and unused arguments, and once keeping them.  Dummy arguments must
+    % dummy and unused arguments, and once keeping them. Dummy arguments must
     % not be dropped in the closure's function signature, and dummy outputs
-    % must be present in the return value.  However, the underlying procedure
+    % must be present in the return value. However, the underlying procedure
     % won't accept dummy arguments and won't return dummy values.
 
     CurriedAndExtraArgs = CurriedArgs ++ AllExtraVars,
