@@ -12,31 +12,31 @@ single_modulelist="typecheck.m"
 # done | sed -e 's/\(.*\) \(.*\)/\2 \1/' | sort -nr | head -n 20
 # This sorts them by the number of lines of code excluding comment lines.
 
-# As of 29 Sep 2015, these are the ten largest modules of the compiler.
+# As of 23 Feb 2016, these are the ten largest modules of the compiler.
 short_modulelist="
     options.m
+    polymorphism.m
     mlds_to_java.m
     mlds_to_c.m
-    polymorphism.m
-    mlds_to_cs.m
-    code_loc_dep.m
-    hlds_pred.m
-    compile_target_code.m
     table_gen.m
+    hlds_pred.m
+    dep_par_conj.m
     typecheck.m
+    code_loc_dep.m
+    parse_pragma.m
 "
-# As of 29 Sep 2015, these are the ten next largest modules of the compiler.
+# As of 23 Feb 2016, these are the ten next largest modules of the compiler.
 long_modulelist="$short_modulelist
     higher_order.m
-    dep_par_conj.m
-    layout_out.m
+    mlds_to_cs.m
     ml_unify_gen.m
-    fact_table.m
-    handle_options.m
-    prog_io_pragma.m
     intermod.m
-    module_qual.m
+    compile_target_code.m
     hlds_goal.m
+    layout_out.m
+    fact_table.m
+    stm_expand.m
+    var_locn.m
 "
 cmd=""
 debug=false
