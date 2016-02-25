@@ -1,0 +1,355 @@
+<html>
+<head>
+<title>
+The grade library
+</title>
+</head>
+
+<body bgcolor="#ffffff" text="#000000">
+
+<hr>
+<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+
+This documents work in progress.
+
+<h2> What grades are </h2>
+
+<p>
+This section is for users and novice implementors,
+as well as background for the next section.
+
+<p>
+Compiler options affect what code the compiler generates
+for the modules it is asked to generate code for.
+For some compiler options (such as --inlining),
+it is ok for the component modules of a program
+to be compiled with different values of the option
+(e.g. some modules compiled with inlining and some without inlining).
+However, for some other options, such combinations do not work.
+This is typically because the option governs some aspect of the contract
+between a predicate A on the one hand and another predicate B that it calls.
+Some of these aspects are obvious:
+compiling the predicates to different target languages (e.g. Java and Erlang)
+makes linking them together effectively impossible.
+Some other aspects are not obvious:
+if predicate A expects B to use the trail to record the bindings it makes,
+but B does not do so,
+that fact sets up a time bomb that will go off sometime later,
+after a backtrack that should have undone those bindings,
+but does not (due those bindings not having entries in the trail).
+If the user is lucky, the resulting data corruption will crash the program;
+if the user is unlucky, there will be no crash,
+and the program will just generate output that is effectively random.
+
+<p>
+To prevent such problems, the Mercury compiler requires
+that all modules in a program (including the ones embedded in libraries)
+be compiled with consistent values of all the compiler options
+that affect how the compiled codes of the modules communicate with each other.
+(We call these options the <em>compilation model</em> options.)
+A <em>grade</em> is a specification of a value
+for each and every one of these options.
+The above requirement can thus be restated both as
+<em>all modules in a program must be compiled
+with the same compilation model</em>
+and as <em>all modules in a program must be compiled in the same grade</em>.
+
+<hr>
+<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+
+<h2> The different representations of grades </h2>
+
+<p>
+This section is for implementors,
+though some parts may be useful for users as well.
+
+<p>
+Traditionally, the Mercury compiler had two representations of grades:
+(a) grade strings, and (b) the values of the compilation model options.
+
+<p>
+Most compilation model options are boolean options (such as use_trail),
+some integer options (such as num_tag_bits),
+and some are string options (such as target).
+The compiler looks up the boolean compilation model options
+in the option table part of the globals structure (in compiler/globals.m),
+but it converts the compilation model options that are integers or strings
+into enums of purpose-specific types,
+which it stores separately from the option table,
+in other parts of the globals structure.
+This is so that the sanity checking that is required
+to accept e.g. --target=java but reject e.g. --target=xyzzy
+can be done once, when the globals structure is set up,
+instead of having to be repeated in every part of the in the compiler
+that needs to know the identity of the target language.
+
+<p>
+A grade string is the only representation of grades
+that most Mercury users ever see.
+
+<p>
+A grade string consists of a sequence of grade components separated by dots;
+for example, "hlc.gc.tr" consists of the components "hlc", "gc" and "tr".
+Each grade component specifies either
+the value of one compiler option
+(for example, "tr" specifies use_trail=yes),
+or the values of two or more compiler options
+(for example, "hlc" specifies target=c,
+highlevel_data=no and gcc_nested_functions=no).
+
+<p>
+A typical grade string does <em>not</em> specify a value
+for <em>every</em> compilation model option.
+For example, "hlc.gc.tr" does not <em>explicitly</em> specify
+a value for the thread_safe option.
+The values of such options are then set to a default value.
+That default may depend on the values of the compilation model options
+that <em>are</em> specified.
+
+<p>
+The different components of a grade string can be inconsistent.
+This can happen by having two grade components
+directly assign different values to the same compilation model option,
+as with the grade "hlc.java".
+It can also happen indirectly,
+because even if two or more grade components assign values
+to disjoint sets of compilation model options,
+the resulting assignments may not be compatible.
+For example, "hlc.debug" is inconsistent,
+because "hlc" selects the use of the MLDS backend,
+but "debug" is implemented only for the LLDS backend.
+A grade is valid only if satisfies a set of constraints,
+of which "debug is implemented only for the LLDS backend" is only one.
+These constraints arise because not all combinations of options make sense,
+and of the combinations that do make sense,
+not all have been implemented, or are even worth implementing.
+
+<p>
+compiler/handle_options.m has traditionally been the place
+where we tried to implement these constraints.
+The constraints are of the form
+if compilation model option A has value Ai,
+then compilation model option B must have one of the values Bjs.
+If Bjs is a singleton set, then this constraint is effectively an implication.
+Such implications can be used in either direction:
+if we know that A=Ai, then we can set B=Bj,
+while if we know that B is not in Bjs, then we can rule out A=Ai.
+
+<p>
+The code in compiler/handle_options.m has several problems:
+
+<ul>
+<li>
+The code that does this is totally ad-hoc.
+It is far from understandable,
+and effectively impossible to check for completeness.
+<li>
+When looking at the initial values of the compilation model options,
+it does not actually know
+which options were explicitly specified, and which have their default values.
+In the process of checking these options and handling their implications
+(such as target=java implying gc=gc_automatic),
+it overrides the old values of some compilation model options,
+after which it does not know
+which options were explicitly specified, which have their default values,
+and which were set earlier by its own code.
+This can lead to misleading error messages,
+which attribute to the user a setting of a compilation model option
+that was actually set by handle_options.m itself.
+<li>
+Because of this problem of being unable to distinguish
+between an option value specified by a user
+and the default value of that option,
+it cannot implement feature requests.
+Some parts of the grade, such as the identity of the target language,
+had to be explicitly specified by the user,
+and couldn't be inferred from the values of other
+explicitly-given compilation model options
+or grade string components.
+</ul>
+
+<p>
+The grade library is intended to fix this situation.
+It should allow users to specify what features they want
+(e.g. trailing and debugging)
+and have the grade library select
+the best grade that has all the requested features,
+either from the global space of all possible grades,
+or from the much, much more restricted set
+of all the grades currently installed on the system.
+(In this context, "best" means fastest,
+which typically means that the best grade will have
+no features except the features that were explicitly requested,
+and the features that are implied by them either directly or indirectly.)
+
+<p>
+The grade library works with four representations of grades:
+
+<p>
+<ul>
+<li> grade strings
+<li> grade structure (discussed last)
+<li> grade variables
+<li> solver variables
+</ul>
+
+<p>
+The grade strings have the same form as before:
+a list of components separated by dots,
+with each component specifying
+the values of one or more compilation model options.
+The meaning can be subtly different:
+if a user-specified grade implicitly implies some other grade components
+that the user-specified grade does not contain,
+then the grade library will always implicitly add it to the grade,
+while the old grade-handling code in compiler/compute_grade.m
+added it to the grade only <em>sometimes</em>.
+For example, since target=java implies thread_safe=yes,
+the grade library canonicalizes grade "java" to "java.par";
+before the grade library, we did not do that.
+
+<p>
+The grade var representation of a grade
+is very similar to the old representation of compilation model options,
+with the only difference being that it represents
+that value of every compilation model option using a grade variable,
+with each grade variable being of a separate, purpose-specific enum type.
+This means that e.g. we replace the bool option named use_trail
+with a grade variable whose value is
+either grade_var_trail_no or grade_var_trail_yes.
+There is one grade variable for each compilation model option,
+and the grade_vars structure collects all the grade variables in one structure.
+The whole setup looks like this:
+
+<p>
+<pre>
+:- type grade_var_trail
+    --->    grade_var_trail_no
+    ;       grade_var_trail_yes.
+
+:- type grade_var_thread_safe
+    --->    grade_var_thread_safe_no
+    ;       grade_var_thread_safe_yes.
+
+:- type grade_vars
+    --->    grade_vars(
+                ...
+                grade_var_trail,
+                ...
+                grade_var_thread_safe,
+                ...
+            ).
+</pre>
+
+XXX Do some three-valued grade vars represent the values of TWO bool options?
+
+<p>
+The grade var representation of a grade
+allows the parts of the compiler
+that need to make simple decisions
+(such as "should the generated high level C code use nested functions?")
+make them a bit more safely,
+since mixing up two purpose-specific enums will generate a compiler error
+while mixing up two booleans will not.
+However, the main reason
+for using this representation instead of compiler options
+is to allow the grade library to be usable
+by programs other than the compiler.
+
+<p>
+While having each grade variable being of a different type
+is good for type safety in code that deals with only a few grade variables,
+it does not allow the processing of all grade variables using generic code.
+The only sensible way to implement a solver
+for the constraints we have on grade variables is using such generic code.
+We therefore have a representation of grades that uses just two types:
+one (solver_var_id) to represent the identities of all the grade variables,
+and another type (solver_var_value_id) 
+to represent all their possible values.
+Like this:
+
+<p>
+<pre>
+:- type solver_var_id
+    --->    ...
+    ;       svar_trail
+    ;       ...
+    ;       svar_thread_safe
+    ;       ...
+
+:- type solver_var_value_id
+    --->    ...
+    ;       svalue_trail_no
+    ;       svalue_trail_yes
+    ;       ...
+    ;       svalue_thread_safe_no
+    ;       svalue_thread_safe_yes
+    ;       ...
+
+</pre>
+
+<p>
+The solver works with a data structure (the solver_var_map)
+that maps each grade var
+(represented by the corresponding value of the solver_var_id type)
+to the set of its possible values
+(each represented by a value of the solver_var_value_id type)
+For each grade var,
+the set of its possible values
+starts out as the set of solver_var_value_id values
+that correspond to the values of the grade var
+(so that for svar_trail,
+the initial set will be {svalue_trail_no, svalue_trail_yes}).
+As the constraint solver processes constraints,
+it rules out some values in the range of some variables.
+If the map ever maps a grade variable to the empty set of possible values,
+then the solver fails, which means that
+the initially posed set of constraints must have been inconsistent.
+On the other hand, a successful solution
+maps each grade variable to just a single value.
+Such a successful solution can be converted into a grade vars structure.
+
+<p>
+The fourth and last representation of grades in the grade library
+is the grade structure (the type name is "grade_structure").
+The purpose of the grade structure is to make it impossible to express grades
+that violate any of the constraints that we require grades to meet.
+
+XXX This is not yet achieved completely, e.g. thread_safe and minmodel
+
+While the grade var representation can represent a grade
+which has both grade_var_target=grade_var_target_java and
+grade_var_deep_prof=grade_var_deep_prof_yes,
+the grade structure cannot,
+because it can record "the grade supports deep profiling"
+only in an argument of the grade_llds function symbol,
+while it can record "the target language is Java"
+only in an argument of the grade_mlds function symbol,
+and a variable of type grade_structure cannot be bound
+to both function symbols at the same time.
+
+<p>
+The grade structure has two main uses.
+
+<p>
+<ul>
+<li>
+Converting a solver solution to a grade string
+starts by converting that solution to a set of grade vars,
+but converting that set to the grade string
+is easier to do via the grade structure,
+because the grade structure makes it much easier to figure out
+which grade string components can be left out
+as being implied by the values of previous grade string components.
+<li>
+The grade structure type is effectively a template
+that can be instantiated to any valid grade, and to no invalid grade.
+This should make useful in documenting the set of valid grades
+in the user manual.
+</ul>
+
+<hr>
+<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+
+</body>
+</html>
