@@ -115,16 +115,6 @@ typedef MR_Bool			Bool;
 /*
 ** bool, TRUE and FALSE used to appear in the generated code.
 */
-#ifdef IN_GCC
-  /*
-  ** We need to make sure that we pick up GCC's definition of bool,
-  ** to ensure that we don't define `bool' below.  Otherwise we get
-  ** conflicts because some declarations use the <stdbool.h> definition
-  ** of bool (an enum), and some use our definition (a #define for char)
-  */
-  #include "config.h"
-  #include "system.h"
-#endif
 
 #ifndef bool
 #define bool			char
