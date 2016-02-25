@@ -77,6 +77,8 @@
 
 :- implementation.
 
+:- import_module var_value_names.
+
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.

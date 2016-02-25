@@ -17,6 +17,9 @@
 :- import_module grade_solver.
 :- import_module grade_state.
 :- import_module grade_string.
+:- import_module grade_structure.
+:- import_module grade_vars.
+:- import_module var_value_names.
 
 :- import_module bool.
 :- import_module cord.
@@ -25,7 +28,10 @@
 :- import_module string.
 
 main(!IO) :-
-    setup_solver_info(SolverInfo0),
+    AutoconfResults = autoconf_results(autoconf_gcc_regs_avail_yes,
+        autoconf_gcc_gotos_avail_yes, autoconf_gcc_labels_avail_yes,
+        autoconf_low_tag_bits_avail_3, autoconf_merc_file_no),
+    setup_solver_info(AutoconfResults, SolverInfo0),
     io.command_line_arguments(Args, !IO),
     process_arguments(Args, cord.init, BadArgLinesCord,
         SolverInfo0, SolverInfo1),
@@ -47,8 +53,10 @@ main(!IO) :-
             Soln = soln_failure(_)
         ;
             Soln = soln_success(SuccMap),
-            Grade = success_soln_to_grade(SuccMap),
-            GradeStr = grade_to_grade_string(grade_string_link_check, Grade),
+            GradeVars = success_map_to_grade_vars(SuccMap),
+            GradeStructure = grade_vars_to_grade_structure(GradeVars),
+            GradeStr = grade_structure_to_grade_string(
+                grade_string_link_check, GradeStructure),
             io.format("GRADE %s\n", [s(GradeStr)], !IO)
         )
     ).
@@ -69,19 +77,52 @@ process_arguments([Arg | Args], !BadArgLines, !SolverInfo) :-
         ArgSuffix = Arg
     ),
     ( if
-        EqComponents = string.split_at_string("=", ArgSuffix),
-        EqComponents = [Var, Value]
+        ( if
+            NeqComponents = string.split_at_string("!=", ArgSuffix),
+            NeqComponents = [VarNamePrime, ValueNamePrime]
+        then
+            SetTo = set_to_false,
+            VarName = VarNamePrime,
+            ValueName = ValueNamePrime
+        else if
+            EqComponents = string.split_at_string("=", ArgSuffix),
+            EqComponents = [VarNamePrime, ValueNamePrime]
+        then
+            SetTo = set_to_true,
+            VarName = VarNamePrime,
+            ValueName = ValueNamePrime
+        else
+            fail
+        )
     then
-        SetTo = set_to_true,
-        set_solver_var(Var, Value, SetTo, WhyNot, MaybeError, !SolverInfo)
-    else if
-        NeqComponents = string.split_at_string("!=", ArgSuffix),
-        NeqComponents = [Var, Value]
-    then
-        SetTo = set_to_false,
-        set_solver_var(Var, Value, SetTo, WhyNot, MaybeError, !SolverInfo)
+        ( if solver_var_name(VarName, VarId0) then
+            MaybeVarId = yes(VarId0),
+            VarErrorMsg = ""
+        else
+            MaybeVarId = no,
+            string.format("there is no solver variable named %s\n",
+                [s(VarName)], VarErrorMsg)
+        ),
+        ( if solver_var_value_name(ValueName, ValueId0) then
+            MaybeValueId = yes(ValueId0),
+            ValueErrorMsg = ""
+        else
+            MaybeValueId = no,
+            string.format("there is no solver var value named %s\n",
+                [s(ValueName)], ValueErrorMsg)
+        ),
+        ( if
+            MaybeVarId = yes(VarId),
+            MaybeValueId = yes(ValueId)
+        then
+            set_solver_var(VarName, ValueName, VarId, ValueId, SetTo, WhyNot,
+                MaybeError, !SolverInfo)
+        else
+            MaybeError = error(VarErrorMsg ++ ValueErrorMsg)
+        )
     else
-        string.format("unrecognized setting %s\n", [s(Arg)], ArgMsg),
+        string.format("`%s' is neither an equation nor a disequation\n",
+            [s(Arg)], ArgMsg),
         MaybeError = error(ArgMsg)
     ),
     (

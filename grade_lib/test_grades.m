@@ -15,8 +15,12 @@
 
 :- import_module grade_setup.
 :- import_module grade_solver.
+:- import_module grade_spec.
 :- import_module grade_state.
 :- import_module grade_string.
+:- import_module grade_structure.
+:- import_module grade_vars.
+:- import_module var_value_names.
 
 :- import_module bool.
 :- import_module cord.
@@ -35,7 +39,10 @@
             ).
 
 main(!IO) :-
-    setup_solver_info(SolverInfo0),
+    AutoconfResults = autoconf_results(autoconf_gcc_regs_avail_yes,
+        autoconf_gcc_gotos_avail_yes, autoconf_gcc_labels_avail_yes,
+        autoconf_low_tag_bits_avail_3, autoconf_merc_file_no),
+    setup_solver_info(AutoconfResults, SolverInfo0),
     TestSetSpecs = [broad_test_set_spec, llds_test_set_spec],
     SolveCountStats0 = solve_count_stats(0, 0, 0),
     run_test_sets(SolverInfo0, TestSetSpecs,
@@ -52,14 +59,14 @@ main(!IO) :-
 
 :- type test_set_component
     --->    test_set_component(
-                tsc_solver_var_name         :: string,
-                tsc_solver_var_value_names  :: list(string)
+                tsc_solver_var_id           :: solver_var_id,
+                tsc_solver_var_value_ids    :: list(solver_var_value_id)
             ).
 
 :- type test_component
     --->    test_component(
-                tc_solver_var_name          :: string,
-                tc_solver_var_value_name    :: string
+                tc_solver_var_id            :: solver_var_id,
+                tc_solver_var_value_id      :: solver_var_value_id
             ).
 
 :- type test_set_spec == list(test_set_component).
@@ -70,30 +77,34 @@ main(!IO) :-
 :- func broad_test_set_spec = test_set_spec.
 
 broad_test_set_spec = [
-    test_set_component("low_tag_bits_avail", ["low_tag_bits_avail_3"]),
-    test_set_component("target", ["c", "csharp", "java", "erlang"]),
-    test_set_component("trail", ["no_trail", "trail"]),
-    test_set_component("thread_safe", ["not_thread_safe", "thread_safe"]),
-    test_set_component("ssdebug", ["no_ssdebug", "ssdebug"]),
-    test_set_component("single_prec_float", ["no_spf", "spf"])
+    test_set_component(svar_target,
+        [svalue_target_c, svalue_target_csharp,
+        svalue_target_java, svalue_target_erlang]),
+    test_set_component(svar_trail,
+        [svalue_trail_no, svalue_trail_yes]),
+    test_set_component(svar_thread_safe,
+        [svalue_thread_safe_no, svalue_thread_safe_yes]),
+    test_set_component(svar_ssdebug,
+        [svalue_ssdebug_no, svalue_ssdebug_yes]),
+    test_set_component(svar_single_prec_float,
+        [svalue_single_prec_float_no, svalue_single_prec_float_yes])
 ].
 
 :- func llds_test_set_spec = test_set_spec.
 
 llds_test_set_spec = [
-    test_set_component("low_tag_bits_avail", ["low_tag_bits_avail_3"]),
-    test_set_component("gcc_regs_avail",
-        ["gcc_regs_not_avail", "gcc_regs_avail"]),
-    test_set_component("gcc_gotos_avail",
-        ["gcc_gotos_not_avail", "gcc_gotos_avail"]),
-    test_set_component("gcc_labels_avail",
-        ["gcc_labels_not_avail", "gcc_labels_avail"]),
-    test_set_component("stack_len", ["stseg", "stfix"]),
-    test_set_component("thread_safe", ["not_thread_safe", "thread_safe"]),
-    test_set_component("minmodel", ["no_mm", "mm_stack_copy"]),
-    test_set_component("deep_prof", ["no_deep_prof", "deep_prof"]),
-    test_set_component("debug", ["nodebug", "debug", "decldebug"]),
-    test_set_component("single_prec_float", ["no_spf", "spf"])
+    test_set_component(svar_stack_len,
+        [svalue_stack_len_segments, svalue_stack_len_std]),
+    test_set_component(svar_thread_safe,
+        [svalue_thread_safe_no, svalue_thread_safe_yes]),
+    test_set_component(svar_minmodel,
+        [svalue_minmodel_no, svalue_minmodel_stack_copy]),
+    test_set_component(svar_deep_prof,
+        [svalue_deep_prof_no, svalue_deep_prof_yes]),
+    test_set_component(svar_debug,
+        [svalue_debug_none, svalue_debug_debug, svalue_debug_decldebug]),
+    test_set_component(svar_single_prec_float,
+        [svalue_single_prec_float_no, svalue_single_prec_float_yes])
 ].
 
 %---------------------------------------------------------------------------%
@@ -133,8 +144,10 @@ run_test_set(SolverInfo0, TestSetSpec, TestSpecSoFar0, !SolveCountStats, !IO) :-
             SolnGradeStr = ""
         ;
             Soln = soln_success(SuccMap),
-            Grade = success_soln_to_grade(SuccMap),
-            GradeStr = grade_to_grade_string(grade_string_link_check, Grade),
+            GradeVars = success_map_to_grade_vars(SuccMap),
+            GradeStructure = grade_vars_to_grade_structure(GradeVars),
+            GradeStr = grade_structure_to_grade_string(
+                grade_string_link_check, GradeStructure),
             SolnGradeStr = "    GRADE " ++ GradeStr ++ "\n"
         ),
         io.nl(!IO),
@@ -144,33 +157,36 @@ run_test_set(SolverInfo0, TestSetSpec, TestSpecSoFar0, !SolveCountStats, !IO) :-
         io.write_string(SolnGradeStr, !IO)
     ;
         TestSetSpec = [TestSetSpecHead | TestSetSpecTail],
-        TestSetSpecHead = test_set_component(SolverVar, SolverValues),
-        run_alternatives_for_var(SolverInfo0, SolverVar, SolverValues,
+        TestSetSpecHead = test_set_component(VarId, ValueIds),
+        run_alternatives_for_var(SolverInfo0, VarId, ValueIds,
             TestSetSpecTail, TestSpecSoFar0, !SolveCountStats, !IO)
     ).
 
-:- pred run_alternatives_for_var(solver_info::in, string::in, list(string)::in,
+:- pred run_alternatives_for_var(solver_info::in,
+    solver_var_id::in, list(solver_var_value_id)::in,
     test_set_spec::in, test_spec::in,
     solve_count_stats::in, solve_count_stats::out, io::di, io::uo) is det.
 
-run_alternatives_for_var(_SolverInfo0, _SolverVar, [],
+run_alternatives_for_var(_SolverInfo0, _VarId, [],
         _TestSetSpecTail, _TestSpecSoFar0, !SolveCountStats, !IO).
-run_alternatives_for_var(SolverInfo0, SolverVar, [SolverValue | SolverValues],
+run_alternatives_for_var(SolverInfo0, VarId, [ValueId | ValueIds],
         TestSetSpecTail, TestSpecSoFar0, !SolveCountStats, !IO) :-
-    set_solver_var(SolverVar, SolverValue, set_to_true, npw_user, MaybeError,
-        SolverInfo0, SolverInfoForThisAlternative),
+    solver_var_name(VarName, VarId),
+    solver_var_value_name(ValueName, ValueId),
+    set_solver_var(VarName, ValueName, VarId, ValueId, set_to_true, npw_user,
+        MaybeError, SolverInfo0, SolverInfoForThisAlternative),
     (
         MaybeError = ok
     ;
         MaybeError = error(ErrorMsg),
         unexpected($pred, ErrorMsg)
     ),
-    ThisTestComponent = test_component(SolverVar, SolverValue),
+    ThisTestComponent = test_component(VarId, ValueId),
     TestSpecSoFarForThisAlternative =
         cord.snoc(TestSpecSoFar0, ThisTestComponent),
     run_test_set(SolverInfoForThisAlternative, TestSetSpecTail,
         TestSpecSoFarForThisAlternative, !SolveCountStats, !IO),
-    run_alternatives_for_var(SolverInfo0, SolverVar, SolverValues,
+    run_alternatives_for_var(SolverInfo0, VarId, ValueIds,
         TestSetSpecTail, TestSpecSoFar0, !SolveCountStats, !IO).
 
 %---------------------------------------------------------------------------%
@@ -187,9 +203,10 @@ test_spec_to_string(Prefix, Seq, TestSpec) = Str :-
 :- func test_component_to_string(string, test_component) = string.
 
 test_component_to_string(Prefix, TestComponent) = Str :-
-    TestComponent = test_component(SolverVar, SolverValue),
-    string.format("%s%s = %s\n",
-        [s(Prefix), s(SolverVar), s(SolverValue)], Str).
+    TestComponent = test_component(VarId, ValueId),
+    solver_var_name(VarName, VarId),
+    solver_var_value_name(ValueName, ValueId),
+    string.format("%s%s = %s\n", [s(Prefix), s(VarName), s(ValueName)], Str).
 
 %---------------------------------------------------------------------------%
 :- end_module test_grades.

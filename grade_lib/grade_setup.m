@@ -5,11 +5,44 @@
 :- module grade_setup.
 :- interface.
 
+:- import_module grade_spec.
 :- import_module grade_state.
 
 :- import_module maybe.
 
-:- pred setup_solver_info(solver_info::out) is det.
+%---------------------------------------------------------------------------%
+
+:- type autoconf_results
+    --->    autoconf_results(
+                autoconf_gcc_regs_avail,
+                autoconf_gcc_gotos_avail,
+                autoconf_gcc_labels_avail,
+                autoconf_low_tag_bits_avail,
+                autoconf_merc_file
+            ).
+
+:- type autoconf_gcc_regs_avail
+    --->    autoconf_gcc_regs_avail_no
+    ;       autoconf_gcc_regs_avail_yes.
+
+:- type autoconf_gcc_gotos_avail
+    --->    autoconf_gcc_gotos_avail_no
+    ;       autoconf_gcc_gotos_avail_yes.
+
+:- type autoconf_gcc_labels_avail
+    --->    autoconf_gcc_labels_avail_no
+    ;       autoconf_gcc_labels_avail_yes.
+
+:- type autoconf_low_tag_bits_avail
+    --->    autoconf_low_tag_bits_avail_0
+    ;       autoconf_low_tag_bits_avail_2
+    ;       autoconf_low_tag_bits_avail_3.
+
+:- type autoconf_merc_file
+    --->    autoconf_merc_file_no
+    ;       autoconf_merc_file_yes.
+
+:- pred setup_solver_info(autoconf_results::in, solver_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -17,15 +50,16 @@
     --->    set_to_false
     ;       set_to_true.
 
-:- pred set_solver_var(string::in, string::in, solver_var_set_to::in,
-    not_possible_why::in, maybe_error::out,
+:- pred set_solver_var(string::in, string::in,
+    solver_var_id::in, solver_var_value_id::in,
+    solver_var_set_to::in, not_possible_why::in, maybe_error::out,
     solver_info::in, solver_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module grade_spec.
+:- import_module var_value_names.
 
 :- import_module bool.
 :- import_module cord.
@@ -37,10 +71,74 @@
 :- import_module std_util.
 :- import_module string.
 
-setup_solver_info(SolverInfo) :-
+%---------------------------------------------------------------------------%
+
+setup_solver_info(AutoconfResults, !:SolverInfo) :-
     setup_solver_vars(SolverVarMap, SolverVarPriority),
     setup_requirements(SolverVarMap, Requirements),
-    SolverInfo = solver_info(Requirements, SolverVarPriority, SolverVarMap).
+    !:SolverInfo = solver_info(Requirements, SolverVarPriority, SolverVarMap),
+
+    AutoconfResults = autoconf_results(GccRegsAvail, GccGotosAvail,
+        GccLabelsAvail, LowTagBitsAvail, MercFile),
+    (
+        GccRegsAvail = autoconf_gcc_regs_avail_no,
+        GccRegsAvailValue = svalue_gcc_regs_avail_no
+    ;
+        GccRegsAvail = autoconf_gcc_regs_avail_yes,
+        GccRegsAvailValue = svalue_gcc_regs_avail_yes
+    ),
+    (
+        GccGotosAvail = autoconf_gcc_gotos_avail_no,
+        GccGotosAvailValue = svalue_gcc_gotos_avail_no
+    ;
+        GccGotosAvail = autoconf_gcc_gotos_avail_yes,
+        GccGotosAvailValue = svalue_gcc_gotos_avail_yes
+    ),
+    (
+        GccLabelsAvail = autoconf_gcc_labels_avail_no,
+        GccLabelsAvailValue = svalue_gcc_labels_avail_no
+    ;
+        GccLabelsAvail = autoconf_gcc_labels_avail_yes,
+        GccLabelsAvailValue = svalue_gcc_labels_avail_yes
+    ),
+    (
+        LowTagBitsAvail = autoconf_low_tag_bits_avail_0,
+        LowTagBitsAvailValue = svalue_low_tag_bits_avail_0
+    ;
+        LowTagBitsAvail = autoconf_low_tag_bits_avail_2,
+        LowTagBitsAvailValue = svalue_low_tag_bits_avail_2
+    ;
+        LowTagBitsAvail = autoconf_low_tag_bits_avail_3,
+        LowTagBitsAvailValue = svalue_low_tag_bits_avail_3
+    ),
+    (
+        MercFile = autoconf_merc_file_no,
+        MercFileValue = svalue_merc_file_no
+    ;
+        MercFile = autoconf_merc_file_yes,
+        MercFileValue = svalue_merc_file_yes
+    ),
+    set_autoconf_var(svar_gcc_regs_avail, GccRegsAvailValue, !SolverInfo),
+    set_autoconf_var(svar_gcc_gotos_avail, GccGotosAvailValue, !SolverInfo),
+    set_autoconf_var(svar_gcc_labels_avail, GccLabelsAvailValue, !SolverInfo),
+    set_autoconf_var(svar_low_tag_bits_avail, LowTagBitsAvailValue,
+        !SolverInfo),
+    set_autoconf_var(svar_merc_file, MercFileValue, !SolverInfo).
+
+:- pred set_autoconf_var(solver_var_id::in, solver_var_value_id::in,
+    solver_info::in, solver_info::out) is det.
+
+set_autoconf_var(VarId, ValueId, !SolverInfo) :-
+    solver_var_name(VarName, VarId),
+    solver_var_value_name(ValueName, ValueId),
+    set_solver_var(VarName, ValueName, VarId, ValueId, set_to_true, npw_config,
+        MaybeError, !SolverInfo),
+    (
+        MaybeError = ok
+    ;
+        MaybeError = error(Msg),
+        unexpected($pred, Msg)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -78,98 +176,72 @@ init_solver_var_values(CurNumValues, NumValues,
 
 %---------------------------------------------------------------------------%
 
-set_solver_var(VarStr, ValueStr, SetTo, WhyNot, MaybeError, !SolverInfo) :-
-    ( if solver_var_name(VarStr, VarId0) then
-        MaybeVarId = yes(VarId0),
-        VarErrorMsg = ""
-    else
-        MaybeVarId = no,
-        string.format("there is no solver variable named %s\n",
-            [s(VarStr)], VarErrorMsg)
+set_solver_var(VarName, ValueName, VarId, ValueId, SetTo, WhyNot, MaybeError,
+        !SolverInfo) :-
+    SolverVarMap0 = !.SolverInfo ^ si_solver_var_map,
+    map.lookup(SolverVarMap0, VarId, SolverVar0),
+    SolverVar0 = solver_var(CntAll, CntPoss0, Values0),
+    (
+        SetTo = set_to_true,
+        set_value_to_true(ValueId, WhyNot, [], OldPossibles, Values0, Values)
+    ;
+        SetTo = set_to_false,
+        set_value_to_false(ValueId, WhyNot, [], OldPossibles, Values0, Values)
     ),
-    ( if solver_var_value_name(ValueStr, ValueId0) then
-        MaybeValueId = yes(ValueId0),
-        ValueErrorMsg = ""
-    else
-        MaybeValueId = no,
-        string.format("there is no solver var value named %s\n",
-            [s(ValueStr)], ValueErrorMsg)
-    ),
-    ( if
-        MaybeVarId = yes(VarId),
-        MaybeValueId = yes(ValueId)
-    then
-
-        SolverVarMap0 = !.SolverInfo ^ si_solver_var_map,
-        map.lookup(SolverVarMap0, VarId, SolverVar0),
-        SolverVar0 = solver_var(CntAll, CntPoss0, Values0),
+    (
+        OldPossibles = [],
+        string.format("solver variable %s has no value named %s\n",
+            [s(VarName), s(ValueName)], Msg),
+        MaybeError = error(Msg)
+    ;
+        OldPossibles = [OldPossible],
         (
             SetTo = set_to_true,
-            set_value_to_true(ValueId, WhyNot, [], OldPossibles,
-                Values0, Values)
-        ;
-            SetTo = set_to_false,
-            set_value_to_false(ValueId, WhyNot, [], OldPossibles,
-                Values0, Values)
-        ),
-        (
-            OldPossibles = [],
-            string.format("solver variable %s has no value named %s\n",
-                [s(VarStr), s(ValueStr)], Msg),
-            MaybeError = error(Msg)
-        ;
-            OldPossibles = [OldPossible],
             (
-                SetTo = set_to_true,
-                (
-                    OldPossible = is_possible,
-                    % This is the expected case. VarId may still be
-                    % ValueId, but now it cannot be any other value.
-                    MaybeError = ok,
-                    CntPoss = 1,
-                    SolverVar = solver_var(CntAll, CntPoss, Values),
-                    map.det_update(VarId, SolverVar,
-                        SolverVarMap0, SolverVarMap),
-                    !SolverInfo ^ si_solver_var_map := SolverVarMap
-                ;
-                    OldPossible = not_possible(_),
-                    % Other parameter settings have already ruled out
-                    % VarId = ValueId, so this is an inconsistency
-                    % between those earlier settings and this one.
-                    string.format(
-                        "inconsistent settings for solver variable %s\n",
-                        [s(VarStr)], Msg),
-                    MaybeError = error(Msg)
-                )
+                OldPossible = is_possible,
+                % This is the expected case. VarId may still be
+                % ValueId, but now it cannot be any other value.
+                MaybeError = ok,
+                CntPoss = 1,
+                SolverVar = solver_var(CntAll, CntPoss, Values),
+                map.det_update(VarId, SolverVar,
+                    SolverVarMap0, SolverVarMap),
+                !SolverInfo ^ si_solver_var_map := SolverVarMap
             ;
-                SetTo = set_to_false,
-                (
-                    OldPossible = is_possible,
-                    % If the variable was set to true before, that is expected.
-                    MaybeError = ok,
-                    CntPoss = CntPoss0 - 1,
-                    SolverVar = solver_var(CntAll, CntPoss, Values),
-                    map.det_update(VarId, SolverVar,
-                        SolverVarMap0, SolverVarMap),
-                    !SolverInfo ^ si_solver_var_map := SolverVarMap
-                ;
-                    OldPossible = not_possible(_),
-                    % If the variable was set to false before, our setting it
-                    % to false is redundant, but ok.
-                    MaybeError = ok
-                )
+                OldPossible = not_possible(_),
+                % Other parameter settings have already ruled out
+                % VarId = ValueId, so this is an inconsistency
+                % between those earlier settings and this one.
+                string.format(
+                    "inconsistent settings for solver variable %s\n",
+                    [s(VarName)], Msg),
+                MaybeError = error(Msg)
             )
         ;
-            OldPossibles = [_, _ | _],
-            string.format(
-                "solver var %s has more than one copy of value %s\n",
-                [s(VarStr), s(ValueStr)], Msg),
-            % This should have caught during setup.
-            unexpected($pred, Msg)
+            SetTo = set_to_false,
+            (
+                OldPossible = is_possible,
+                % If the variable was set to true before, that is expected.
+                MaybeError = ok,
+                CntPoss = CntPoss0 - 1,
+                SolverVar = solver_var(CntAll, CntPoss, Values),
+                map.det_update(VarId, SolverVar,
+                    SolverVarMap0, SolverVarMap),
+                !SolverInfo ^ si_solver_var_map := SolverVarMap
+            ;
+                OldPossible = not_possible(_),
+                % If the variable was set to false before, our setting it
+                % to false is redundant, but ok.
+                MaybeError = ok
+            )
         )
-    else
-        Msg = VarErrorMsg ++ ValueErrorMsg,
-        MaybeError = error(Msg)
+    ;
+        OldPossibles = [_, _ | _],
+        string.format(
+            "solver var %s has more than one copy of value %s\n",
+            [s(VarName), s(ValueName)], Msg),
+        % This should have caught during setup.
+        unexpected($pred, Msg)
     ).
 
 :- pred set_value_to_false(solver_var_value_id::in, not_possible_why::in,
