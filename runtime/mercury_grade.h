@@ -351,6 +351,23 @@
 ** Part 12 (i.e. MR_NEW_MERCURYFILE_STRUCT) can't be set
 ** by the `--grade' option; it is intended to be set by the configure script
 ** at configuration time. So we don't include it in the grade option string.
+**
+** Part 13 used to record the absence/presence of the .regparm grade component
+** with MR_HIGHLEVEL_CODE, and the absence/presence of the .picreg grade
+** component for !MR_HIGHLEVEL_CODE and MR_USE_GCC_GLOBAL_REGISTERS.
+** Neither is in use anymore.
+**
+** The .regparm part specified an optimized calling convention of 32-bit x86
+** machines, which turns out to be a pessimizing calling convention on x86/64.
+**
+** Once upon a time, on x86 machines with MR_USE_GCC_GLOBAL_REGISTERS,
+** we reserved three global registers if we could, but had to be content
+** with two if we were generating position independent code, since PIC needed
+** a register for itself. However, the difference caused problems in linking
+** object files compiled with different numbers of global registers reserved,
+** and gcc bugs kept generating crashes with three reserved registers,
+** so we now always reserve only two global registers. Therefore the
+** distinction that .picreg used to record has vanished.
 */
 
 #if MR_TAGBITS == 0
@@ -388,17 +405,8 @@
 #endif
 #define MR_GRADE_OPT_PART_12    MR_GRADE_OPT_PART_11
 
-#if defined(MR_USE_REGPARM) && defined(MR_HIGHLEVEL_CODE) && defined(__i386__)
-  #define MR_GRADE_PART_13      MR_PASTE2(MR_GRADE_PART_12, _regparm)
-  #define MR_GRADE_OPT_PART_13  MR_GRADE_OPT_PART_12 ".regparm"
-#elif defined(MR_PIC_REG) && defined(MR_USE_GCC_GLOBAL_REGISTERS) && \
-                                        defined(__i386__)
-  #define MR_GRADE_PART_13      MR_PASTE2(MR_GRADE_PART_12, _picreg)
-  #define MR_GRADE_OPT_PART_13  MR_GRADE_OPT_PART_12 ".picreg"
-#else
-  #define MR_GRADE_PART_13      MR_GRADE_PART_12
-  #define MR_GRADE_OPT_PART_13  MR_GRADE_OPT_PART_12
-#endif
+#define MR_GRADE_PART_13      MR_GRADE_PART_12
+#define MR_GRADE_OPT_PART_13  MR_GRADE_OPT_PART_12
 
 #if defined(MR_DECL_DEBUG)
   #define MR_GRADE_PART_14              MR_PASTE3(MR_GRADE_PART_13, _decldebug, MR_GRADE_EXEC_TRACE_VERSION_NO)

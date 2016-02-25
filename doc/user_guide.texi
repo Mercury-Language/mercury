@@ -7988,25 +7988,6 @@ Specify whether or not to use GNU C's asm extensions
 for inline assembler labels.
 This option is ignored if the @samp{--high-level-code} option is enabled.
 
-@ignore
-
-   This option is not useful for non-developers.
-
-@sp 1
-@item @code{--pic-reg} (grades: any grade containing `.pic_reg')
-@findex --pic-reg
-@findex -fpic
-@cindex Position independent code
-@cindex PIC (position independent code)
-@cindex Shared libraries
-[For Unix with intel x86 architecture only.]
-Select a register usage convention that is compatible
-with position-independent code (gcc's `-fpic' option).
-This is necessary when using shared libraries on Intel x86 systems
-running Unix.  On other systems it has no effect.
-This option is also ignored if the @samp{--high-level-code} option is enabled.
-@end ignore
-
 @sp 1
 @item @code{--stack-segments} (grades: any grade containing `.stseg')
 @findex --stack-segments

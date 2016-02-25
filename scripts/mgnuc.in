@@ -426,11 +426,6 @@ case $pregenerated_dist,$single_prec_float in
     false,false)    PREGEN_SPF_OPTS="" ;;
 esac
 
-case $pic_reg in
-    true)           PICREG_OPTS="-DMR_PIC_REG" ;;
-    false)          PICREG_OPTS="" ;;
-esac
-
 case $debug in
     true)           TRACE_OPTS="-DMR_EXEC_TRACE" ;;
     false)          TRACE_OPTS="" ;;
@@ -655,7 +650,6 @@ ALL_CC_OPTS="$MERC_ALL_C_INCL_DIRS\
     $THREAD_OPTS\
     $THREADSCOPE_OPTS\
     $REGION_OPTS\
-    $PICREG_OPTS\
     $ARCH_OPTS\
     $ARG_OPTS\
     $FN_ALIGN_OPTS\

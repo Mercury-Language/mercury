@@ -12,20 +12,16 @@
 ** The first MR_NUM_REAL_REGS of these are real machine registers.
 ** The others are just slots in a global array.
 **
-** At the moment we're only using the callee-save registers
-** (ebx, esi, edi).  If we're using position-independent code (PIC),
-** i.e. if this code is being compiled with `-fpic' or `-fPIC',
-** then ebx is reserved, so we use only esi and edi.
-** We also avoid using ebx if compiled with -DMR_PIC_REG;
-** compiling with -DMR_PIC_REG but not -fpic allows one to
-** preserve link-compatibility with PIC code while generating
-** non-PIC code.
+** At the moment we're only using the callee-save registers esi and edi.
+** If we are using position-independent code (PIC), then ebx is reserved.
+** We avoid using it even in non-PIC code, both to simplify linking
+** PIC and non-PIC code, and because gcc bugs tend to bite if we use ebx.
 **
 ** For the 386, if `ebp' is not used as a global register variable,
 ** then the code *must not* be compiled with `-fomit-frame-pointer'.
 ** If it is, gcc may generate code which saves `ebp' in the function
 ** prologue, uses `ebp' to hold a local variable in the middle of the
-** function, and restores `ebp' in the function epilogue.  This causes
+** function, and restores `ebp' in the function epilogue. This causes
 ** problems if we jump into and out of the middle of functions, because
 ** `ebp' will get clobbered.
 **
@@ -35,7 +31,7 @@
 ** and gcc's use of `ebp' will conflict with our use of it.
 ** Unfortunately, even `-fomit-frame-pointer' is not enough, since
 ** there are some functions for which gcc cannot avoid the use of
-** the frame pointer.  (E.g. the one containing io__init_state/2.)
+** the frame pointer. (E.g. the one containing io.init_state/2.)
 */
 
 #define MR_NUM_REAL_REGS 2

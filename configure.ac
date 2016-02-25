@@ -4263,11 +4263,6 @@ SHLIB_INSTALL_NAME_FLAG="-install_name "
 
 CFLAGS_FOR_PIC="-fpic -DMR_PIC"
 EXT_FOR_PIC_OBJECTS=pic_o
-# Object files with extension $EXT_FOR_LINK_WITH_PIC_OBJECTS are used
-# in executables which are linked with shared Mercury libraries.
-# EXT_FOR_LINK_WITH_PIC_OBJECTS should be `lpic_o' if `-DMR_PIC_REG'
-# has any effect (currently nowhere.)
-EXT_FOR_LINK_WITH_PIC_OBJECTS=lpic_o
 EXT_FOR_SHARED_LIB=$LIB_SUFFIX
 USE_DLLS=no
 # The following variables specify options to $LINK_SHARED_OBJ to
@@ -4325,8 +4320,6 @@ case "$host" in
                 ;;
         esac
 
-        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
-
         # On x86_64 machines we use -fPIC rather than -fpic
         # in order to avoid limits on the size of the global
         # offset table implied by the latter.
@@ -4339,13 +4332,11 @@ case "$host" in
     m68*-linux|m68*-linux-gnu)
         AC_MSG_RESULT(yes)
         EXT_FOR_SHARED_LIB=so
-        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
         ;;
     *-freebsd*)
         # Tested on FreeBSD 10.1 i386/amd64.
         AC_MSG_RESULT(yes)
         EXT_FOR_SHARED_LIB=so
-        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
         ;;
     i*86-*-solaris2.*)
         AC_MSG_RESULT(yes)
@@ -4388,7 +4379,6 @@ case "$host" in
         SHLIB_RPATH_SEP=" -R"
         CFLAGS_FOR_PIC="-fpic -DMR_PIC" # used only for libgc.{a,so}
         EXT_FOR_PIC_OBJECTS=o
-        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
 
         # Note that despite the above definition of CFLAGS_FOR_PIC,
         # we don't use `-fpic' for shared libraries on Solaris
@@ -4396,10 +4386,9 @@ case "$host" in
         # CFLAGS_FOR_PIC will be used only for building libgc.a
         # and libgc.so.)
         #
-        # The reason for this is that shared libraries work without
-        # it (well, at least they are shared on disk -- although the
-        # code is not shared at runtime), and using `-fpic' would
-        # reduce efficiency.
+        # The reason for this is that shared libraries work without it
+        # (well, at least they are shared on disk -- although the code is
+        # not shared at runtime), and using `-fpic' would reduce efficiency.
         #
         # It works because the Solaris dynamic linker will
         # actually do the fixups at runtime for non-PIC code.
@@ -4415,9 +4404,7 @@ case "$host" in
         #
         # See runtime/mercury_goto.h for the code that handles PIC
         # on SPARCs.
-        # Note that mixing PIC and non-PIC code is fine on SPARCs
-        # (though it doesn't work on x86s, due to the use of `ebx'
-        # in runtime/machdeps/i386_regs.h).
+        # Note that mixing PIC and non-PIC code is fine on SPARCs.
 
         EXT_FOR_SHARED_LIB=so
         ;;
@@ -4430,7 +4417,6 @@ case "$host" in
 
         CFLAGS_FOR_PIC=
         EXT_FOR_PIC_OBJECTS=o
-        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
         DEFAULT_LINKAGE=static
         ;;
     *mingw*)
@@ -4442,7 +4428,6 @@ case "$host" in
 
         CFLAGS_FOR_PIC=
         EXT_FOR_PIC_OBJECTS=o
-        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
         DEFAULT_LINKAGE=static
         ;;
     *apple*darwin*)
@@ -4454,7 +4439,6 @@ case "$host" in
                 SHLIB_USE_INSTALL_NAME="--shlib-linker-use-install-name"
                 SHLIB_INSTALL_NAME_FLAG="-install_name "
                 EXT_FOR_SHARED_LIB=dylib
-                EXT_FOR_LINK_WITH_PIC_OBJECTS=o
                 CFLAGS_FOR_PIC="-fPIC -DMR_PIC"
                 ERROR_UNDEFINED="-undefined error"
                 # The MACOSX_DEPLOYMENT_TARGET environment variable needs to be
@@ -4473,7 +4457,6 @@ case "$host" in
             *)
                 CFLAGS_FOR_PIC=
                 EXT_FOR_PIC_OBJECTS=o
-                EXT_FOR_LINK_WITH_PIC_OBJECTS=o
                 DEFAULT_LINKAGE=static
                 AC_MSG_RESULT(no)
             ;;
@@ -4482,19 +4465,17 @@ case "$host" in
     arm*-linux|arm*-linux-gnu)
         AC_MSG_RESULT(yes)
         EXT_FOR_SHARED_LIB=so
-        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
         # One can build gcc with a default PIC register other than sl
         # so let's force it. If you change this,
         # update MR_ARM_PIC_REG in runtime/mercury_goto.h as well.
         CFLAGS_FOR_PIC="-mpic-register=sl $CFLAGS_FOR_PIC"
         ;;
     *)
-        # CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating
-        # libgc.a.  If the system doesn't support shared libraries,
+        # CFLAGS_FOR_PIC is used by boehm_gc/Makefile when creating libgc.a.
+        # If the system doesn't support shared libraries,
         # then we should set it to empty, not `-fpic'.
         CFLAGS_FOR_PIC=
         EXT_FOR_PIC_OBJECTS=o
-        EXT_FOR_LINK_WITH_PIC_OBJECTS=o
         DEFAULT_LINKAGE=static
         AC_MSG_RESULT(no)
         ;;
@@ -4708,7 +4689,6 @@ AC_SUBST(SHLIB_USE_INSTALL_NAME)
 AC_SUBST(SHLIB_INSTALL_NAME_FLAG)
 AC_SUBST(CFLAGS_FOR_PIC)
 AC_SUBST(EXT_FOR_PIC_OBJECTS)
-AC_SUBST(EXT_FOR_LINK_WITH_PIC_OBJECTS)
 AC_SUBST(EXT_FOR_SHARED_LIB)
 AC_SUBST(EXT_FOR_EXE)
 AC_SUBST(HOST_ENV_TYPE)

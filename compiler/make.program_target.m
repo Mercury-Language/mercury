@@ -1507,8 +1507,7 @@ install_library_grade_2(Globals, LinkSucceeded0, ModuleName, AllModules,
         LibSucceeded, Info0, Info1, !IO),
     (
         LibSucceeded = yes,
-        % `GradeDir' differs from `Grade' in that it is in canonical form,
-        % and it does not include any `.picreg' component.
+        % `GradeDir' differs from `Grade' in that it is in canonical form.
         grade_directory_component(Globals, GradeDir),
         install_library_grade_files(Globals, LinkSucceeded0, GradeDir,
             ModuleName, AllModules, Succeeded, Info1, Info2, !IO),
@@ -1941,13 +1940,10 @@ remove_init_files(Globals, Verbose, ModuleName, !Info, !IO) :-
     globals.lookup_string_option(Globals, object_file_extension, ObjExt),
     globals.lookup_string_option(Globals, pic_object_file_extension,
         PicObjExt),
-    globals.lookup_string_option(Globals, link_with_pic_object_file_extension,
-        LinkWithPicObjExt),
     globals.lookup_string_option(Globals, erlang_object_file_extension,
         BeamExt),
     list.foldl2(make_remove_module_file(Globals, Verbose, ModuleName),
-        ["_init.c", "_init" ++ ObjExt,
-            "_init" ++ PicObjExt, "_init" ++ LinkWithPicObjExt,
+        ["_init.c", "_init" ++ ObjExt, "_init" ++ PicObjExt,
             "_init.erl", "_init" ++ BeamExt],
         !Info, !IO).
 
@@ -1998,8 +1994,6 @@ make_module_clean(Globals, ModuleName, !Info, !IO) :-
         module_target_c_code, !Info, !IO),
 
     remove_object_and_assembler_files(Globals, ModuleName, pic,
-        FactTableFiles, !Info, !IO),
-    remove_object_and_assembler_files(Globals, ModuleName, link_with_pic,
         FactTableFiles, !Info, !IO),
     remove_object_and_assembler_files(Globals, ModuleName, non_pic,
         FactTableFiles, !Info, !IO).

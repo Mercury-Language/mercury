@@ -437,6 +437,9 @@
     ;       gcc_global_registers
     ;       asm_labels
     ;       pic_reg
+            % XXX PICREG
+            % Obsolete code; delete after bootstrapping the removal
+            % of MR_PIC_REG from the runtime.
     ;       use_float_registers
 
     % MLDS back-end compilation model options
@@ -833,6 +836,9 @@
     ;       object_file_extension
     ;       pic_object_file_extension
     ;       link_with_pic_object_file_extension
+            % XXX PICREG
+            % Obsolete code; delete after bootstrapping the removal
+            % of MR_PIC_REG from the runtime.
     ;       c_compiler_type
     ;       csharp_compiler_type
 
@@ -1342,6 +1348,9 @@ option_defaults_2(compilation_model_option, [
 
     % Data representation compilation model options
     pic_reg                             -   bool(no),
+    % XXX PICREG
+    % Obsolete code; delete after bootstrapping the removal
+    % of MR_PIC_REG from the runtime.
     tags                                -   string("low"),
     num_tag_bits                        -   int(-1),
                                         % -1 is a special value which means
@@ -1713,6 +1722,9 @@ option_defaults_2(target_code_compilation_option, [
     object_file_extension               -   string(".o"),
     pic_object_file_extension           -   string(".o"),
     link_with_pic_object_file_extension -   string(".o"),
+    % XXX PICREG
+    % Obsolete code; delete after bootstrapping the removal
+    % of MR_PIC_REG from the runtime.
     c_compiler_type                     -   string("gcc"),
     csharp_compiler_type                -   string("mono"),
                                         % The `mmc' script will override the
@@ -2272,6 +2284,9 @@ long_option("pregenerated-dist",    pregenerated_dist).
 long_option("single-prec-float",    single_prec_float).
 long_option("single-precision-float",   single_prec_float).
 long_option("pic-reg",              pic_reg).
+% XXX PICREG
+% Obsolete code; delete after bootstrapping the removal
+% of MR_PIC_REG from the runtime.
 long_option("tags",                 tags).
 long_option("num-tag-bits",         num_tag_bits).
 long_option("num-reserved-addresses",   num_reserved_addresses).
@@ -2685,6 +2700,9 @@ long_option("object-file-extension",    object_file_extension).
 long_option("pic-object-file-extension", pic_object_file_extension).
 long_option("link-with-pic-object-file-extension",
                     link_with_pic_object_file_extension).
+% XXX PICREG
+% Obsolete code; delete after bootstrapping the removal
+% of MR_PIC_REG from the runtime.
 long_option("c-compiler-type",      c_compiler_type).
 long_option("csharp-compiler-type", csharp_compiler_type).
 
@@ -4523,13 +4541,6 @@ options_help_compilation_model -->
         "\tasm extensions for inline assembler labels.",
         "\tThis option is ignored if the `--high-level-code' option is",
         "\tenabled.",
-        % This option is a developer only option.
-        %"--pic-reg\t\t\t(grade modifier: `.pic_reg')",
-        %"[For Unix with intel x86 architecture only]",
-        %"\tSelect a register usage convention that is compatible,",
-        %"\twith position-independent code (gcc's `-fpic' option).",
-        %"\tThis is necessary when using shared libraries on Intel x86",
-        %"\tsystems running Unix. On other systems it has no effect.",
         "--stack-segments\t\t(grade modifier: `.stseg')",
         "\tSpecify whether to use dynamically sized stacks that are",
         "\tcomposed of small segments. This can help to avoid stack",
@@ -5444,8 +5455,7 @@ options_help_target_code_compilation -->
         % --cflags-for-threads, --cflags-for-pic,
         % --cflags-for-warnings, --cflags-for-ansi,
         % --cflags-for-optimization, --c-flag-to-name-object-file,
-        % --object-file-extension, --pic-object-file-extension
-        % and --link-with-pic-object-file-extension
+        % --object-file-extension and --pic-object-file-extension
         % options are reserved for use by the `mmc' script;
         % they are deliberately not documented.
 

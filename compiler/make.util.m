@@ -2008,8 +2008,8 @@ module_target_type_to_nonce(Type) = X :-
 :- func pic_to_nonce(pic) = int.
 
 pic_to_nonce(pic) = 1.
-pic_to_nonce(link_with_pic) = 2.
 pic_to_nonce(non_pic) = 3.
+% For compatibility; we used to have pic_to_nonce(link_with_pic) = 2.
 
 :- func mix(int, int) = int.
 

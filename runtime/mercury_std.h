@@ -240,28 +240,17 @@ typedef	char		MR_small_bool;
 ** is required to tell the C compiler to use a different
 ** calling convention.
 **
-** If MR_USE_REGPARM is defined, and we're using gcc on x86,
-** then we use a non-standard but more efficient calling
+** If MR_USE_REGPARM was defined, and we were using gcc on x86,
+** then we USED to use a non-standard but more efficient calling
 ** convention that passes parameters in registers.
-** Otherwise we just use the default C calling convention.
+** Otherwise we just used the default C calling convention.
 **
-** Any changes here (e.g. adding additional calling conventions,
-** or adding support for other C compilers or other processors)
-** should be reflected in the mangled grade name produced by
-** runtime/mercury_grade.h.
-**
-** It might be slightly more efficient to use __regparm__(3) rather than
-** __regparm__(2), but GCC won't do tail-call optimization for calls via
-** function pointers if we use __regparm__(3), since there may be no spare
-** caller-save registers to hold the function pointer.  Tail call
-** optimization is more likely to be important than squeezing the last 1%
-** in performance.
+** However, since 32-bit x86s are rare these days, and this non-standard
+** calling convention is *slower* on x86/64 platforms than the standard one,
+** we don't do this anymore.
 */
-#if defined(MR_USE_REGPARM) && defined(MR_GNUC) && defined(__i386__)
-  #define MR_CALL __attribute__((__stdcall__, __regparm__(2)))
-#else
-  #define MR_CALL
-#endif
+
+#define MR_CALL
 
 /*---------------------------------------------------------------------------*/
 

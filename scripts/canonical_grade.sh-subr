@@ -152,13 +152,6 @@ case $pregenerated_dist,$single_prec_float in
 			;;
 esac
 
-# We ignore the value of $picreg in computing the name of the grade
-# that we will use as a directory name in the Mercury linker.
-# case $picreg in
-# 	true)	GRADE="$GRADE.picreg" ;;
-# 	false)	;;
-# esac
-
 case $debug,$decl_debug,$ss_debug in
 	true,true,false)	GRADE="$GRADE.decldebug" ;;
 	true,false,false)	GRADE="$GRADE.debug" ;;

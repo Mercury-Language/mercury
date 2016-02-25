@@ -735,6 +735,9 @@ grade_component_table("spf", comp_pregen_spf,
 
     % Pic reg components.
 grade_component_table("picreg", comp_pic, [pic_reg - bool(yes)], no, yes).
+    % XXX PICREG
+    % Obsolete code; delete after bootstrapping the removal of MR_PIC_REG
+    % from the runtime.
 
     % Debugging/Tracing components.
 grade_component_table("decldebug", comp_trace,
@@ -806,6 +809,9 @@ grade_start_values(minimal_model_debug - bool(no)).
 grade_start_values(pregenerated_dist - bool(no)).
 grade_start_values(single_prec_float - bool(no)).
 grade_start_values(pic_reg - bool(no)).
+% XXX PICREG
+% Obsolete code; delete after bootstrapping the removal of MR_PIC_REG
+% from the runtime.
 grade_start_values(exec_trace - bool(no)).
 grade_start_values(decl_debug - bool(no)).
 grade_start_values(source_to_source_debug - bool(no)).

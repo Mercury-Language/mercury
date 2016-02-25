@@ -177,7 +177,6 @@
 ** MR_STACK_SEGMENTS
 ** MR_TRAIL_SEGMENTS
 ** MR_INLINE_ALLOC
-** MR_PIC_REG
 ** MR_HIGHTAGS
 ** MR_TAGBITS
 ** MR_USE_REGIONS
@@ -215,13 +214,6 @@
 ** MR_PIC
 ** The generated object code must be position independent.
 ** See runtime/mercury_goto.h.
-**
-** MR_USE_REGPARM
-** For the MLDS back-end (i.e. MR_HIGHLEVEL_CODE),
-** on x86, use a different (more efficient) calling convention.
-** This requires the use a version of gcc more recent than gcc 2.95.2.
-** For details, see the definition of the MR_CALL macro in
-** runtime/mercury_std.h.
 **
 ** MR_THREAD_SAFE
 ** Enable support for parallelism.
@@ -747,13 +739,14 @@
 ** Windows DLLs do not use the GOT register. So don't do this if
 ** __CYGWIN__ or _WIN32 is defined, even if -DMR_PIC_REG was passed
 ** on the command line.
+**
+** #if defined(MR_PIC)
+**   #define MR_PIC_REG 1
+** #endif
+** #if defined(__CYGWIN__) || defined(_WIN32)
+**   #undef MR_PIC_REG
+** #endif
 */
-#if defined(MR_PIC)
-  #define MR_PIC_REG 1
-#endif
-#if defined(__CYGWIN__) || defined(_WIN32)
-  #undef MR_PIC_REG
-#endif
 
 /* MR_LOWLEVEL_DEBUG implies MR_DEBUG_GOTOS and MR_CHECK_FOR_OVERFLOW */
 #ifdef MR_LOWLEVEL_DEBUG

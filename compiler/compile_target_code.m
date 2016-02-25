@@ -37,7 +37,6 @@
     %
 :- type pic
     --->    pic
-    ;       link_with_pic
     ;       non_pic.
 
     % compile_c_file(Globals, ErrorStream, PIC, ModuleName, Succeeded, !IO)
@@ -372,7 +371,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
 
     gather_c_include_dir_flags(Globals, InclOpt),
     get_framework_directories(Globals, FrameworkInclOpt),
-    gather_grade_defines(Globals, PIC, GradeDefinesOpts),
+    gather_grade_defines(Globals, GradeDefinesOpts),
 
     globals.lookup_bool_option(Globals, gcc_global_registers, GCC_Regs),
     (
@@ -405,9 +404,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         PIC = pic,
         globals.lookup_string_option(Globals, cflags_for_pic, CFLAGS_FOR_PIC)
     ;
-        ( PIC = link_with_pic
-        ; PIC = non_pic
-        ),
+        PIC = non_pic,
         CFLAGS_FOR_PIC = ""
     ),
     globals.lookup_bool_option(Globals, target_debug, Target_Debug),
@@ -558,9 +555,9 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gather_grade_defines(globals::in, pic::in, string::out) is det.
+:- pred gather_grade_defines(globals::in, string::out) is det.
 
-gather_grade_defines(Globals, PIC, GradeDefines) :-
+gather_grade_defines(Globals, GradeDefines) :-
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     (
         HighLevelCode = yes,
@@ -702,25 +699,6 @@ gather_grade_defines(Globals, PIC, GradeDefines) :-
         RecordTermSizesAsWords = no,
         RecordTermSizesAsCells = no,
         RecordTermSizesOpt = ""
-    ),
-    (
-        PIC = pic,
-        PIC_Reg = yes
-    ;
-        PIC = link_with_pic,
-        PIC_Reg = yes
-    ;
-        PIC = non_pic,
-        globals.lookup_bool_option(Globals, pic_reg, PIC_Reg)
-    ),
-    (
-        PIC_Reg = yes,
-        % This will be ignored for architectures/grades where use of position
-        % independent code does not reserve a register.
-        PIC_Reg_Opt = "-DMR_PIC_REG "
-    ;
-        PIC_Reg = no,
-        PIC_Reg_Opt = ""
     ),
 
     globals.get_tags_method(Globals, Tags_Method),
@@ -897,7 +875,6 @@ gather_grade_defines(Globals, PIC, GradeDefines) :-
         ProfileCallsOpt, ProfileTimeOpt,
         ProfileMemoryOpt, ProfileDeepOpt,
         RecordTermSizesOpt,
-        PIC_Reg_Opt,
         TagsOpt, NumTagBitsOpt,
         ExtendOpt,
         LL_DebugOpt, DeclDebugOpt,
@@ -2511,21 +2488,15 @@ filter_object_files(Globals, Files, ObjectFiles, NonObjectFiles) :-
     globals.lookup_string_option(Globals, object_file_extension, ObjExt),
     globals.lookup_string_option(Globals, pic_object_file_extension,
         PicObjExt),
-    globals.lookup_string_option(Globals, link_with_pic_object_file_extension,
-        LinkWithPicObjExt),
-    list.filter(has_object_file_extension(ObjExt, PicObjExt,
-        LinkWithPicObjExt), Files, ObjectFiles, NonObjectFiles).
+    list.filter(has_object_file_extension(ObjExt, PicObjExt), Files,
+        ObjectFiles, NonObjectFiles).
 
-:- pred has_object_file_extension(string::in, string::in, string::in,
-    string::in) is semidet.
+:- pred has_object_file_extension(string::in, string::in, string::in)
+    is semidet.
 
-has_object_file_extension(ObjExt, PicObjExt, LinkWithPicObjExt, FileName) :-
-    (
-        string.suffix(FileName, ObjExt)
-    ;
-        string.suffix(FileName, PicObjExt)
-    ;
-        string.suffix(FileName, LinkWithPicObjExt)
+has_object_file_extension(ObjExt, PicObjExt, FileName) :-
+    ( string.suffix(FileName, ObjExt)
+    ; string.suffix(FileName, PicObjExt)
     ).
 
 post_link_make_symlink_or_copy(Globals, ErrorStream, LinkTargetType,
@@ -3170,17 +3141,9 @@ copy_erlang_archive_files(Globals, ErrorStream, ErlangArchiveFileName,
 %-----------------------------------------------------------------------------%
 
 get_object_code_type(Globals, FileType, ObjectCodeType) :-
-    globals.lookup_string_option(Globals, pic_object_file_extension,
-        PicObjExt),
-    globals.lookup_string_option(Globals, link_with_pic_object_file_extension,
-        LinkWithPicObjExt),
-    globals.lookup_string_option(Globals, object_file_extension, ObjExt),
-    globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
-    globals.lookup_bool_option(Globals, gcc_global_registers, GCCGlobals),
-    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    globals.get_target(Globals, Target),
     (
-        ( FileType = static_library
+        ( FileType = executable
+        ; FileType = static_library
         ; FileType = csharp_executable
         ; FileType = csharp_library
         ; FileType = java_executable
@@ -3191,34 +3154,10 @@ get_object_code_type(Globals, FileType, ObjectCodeType) :-
         ObjectCodeType = non_pic
     ;
         FileType = shared_library,
+        globals.lookup_string_option(Globals, pic_object_file_extension,
+            PicObjExt),
+        globals.lookup_string_option(Globals, object_file_extension, ObjExt),
         ObjectCodeType = ( if PicObjExt = ObjExt then non_pic else pic )
-    ;
-        FileType = executable,
-        ( if MercuryLinkage = "shared" then
-            ( if
-                % We only need to create `.lpic' files if `-DMR_PIC_REG'
-                % has an effect, which is currently nowhere.
-                ( LinkWithPicObjExt = ObjExt
-                ; HighLevelCode = yes
-                ; GCCGlobals = no
-                ; Target \= target_c
-                )
-            then
-                ObjectCodeType = non_pic
-            else if
-                LinkWithPicObjExt = PicObjExt
-            then
-                ObjectCodeType = pic
-            else
-                ObjectCodeType = link_with_pic
-            )
-        else if MercuryLinkage = "static" then
-            ObjectCodeType = non_pic
-        else
-            % The linkage string is checked by options.m.
-            unexpected($module, $pred,
-                "unknown linkage " ++ MercuryLinkage)
-        )
     ).
 
 get_linked_target_type(Globals, LinkedTargetType) :-
@@ -3309,10 +3248,6 @@ maybe_pic_object_file_extension(Globals::in, PIC::in, Ext::out) :-
     ;
         PIC = pic,
         globals.lookup_string_option(Globals, pic_object_file_extension, Ext)
-    ;
-        PIC = link_with_pic,
-        globals.lookup_string_option(Globals,
-            link_with_pic_object_file_extension, Ext)
     ).
 maybe_pic_object_file_extension(Globals::in, PIC::out, Ext::in) :-
     ( if
@@ -3326,18 +3261,13 @@ maybe_pic_object_file_extension(Globals::in, PIC::out, Ext::in) :-
         globals.lookup_string_option(Globals, pic_object_file_extension, Ext)
     then
         PIC = pic
-    else if
-        globals.lookup_string_option(Globals,
-            link_with_pic_object_file_extension, Ext)
-    then
-        PIC = link_with_pic
     else
         fail
     ).
 
 %-----------------------------------------------------------------------------%
 %
-% Standalone interfaces
+% Standalone interfaces.
 %
 
 % NOTE: the following code is similar to that of make_init_obj/7.
@@ -3618,8 +3548,8 @@ output_c_compiler_flags(Globals, Stream, !IO) :-
 %
 
 output_grade_defines(Globals, Stream, !IO) :-
-    get_object_code_type(Globals, executable, PIC),
-    gather_grade_defines(Globals, PIC, GradeDefines),
+    get_object_code_type(Globals, executable, _PIC),
+    gather_grade_defines(Globals, GradeDefines),
     io.write_string(Stream, GradeDefines, !IO),
     io.nl(Stream, !IO).
 

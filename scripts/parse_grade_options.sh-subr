@@ -183,10 +183,13 @@
     --no-single-prec-float)
         single_prec_float=false ;;
 
+    # XXX PICREG
+    # Obsolete code; delete after bootstrapping the removal of MR_PIC_REG
+    # from the runtime.
     --pic-reg)
-        pic_reg=true ;;
+        ;;
     --no-pic-reg)
-        pic_reg=false ;;
+        ;;
 
     --debug)
         debug=true ;;
@@ -265,7 +268,6 @@
         minimal_model_debug=false
         pregenerated_dist=false
         single_prec_float=false
-        pic_reg=false
         debug=false
         decl_debug=false
         ss_debug=false
@@ -531,8 +533,10 @@
                     single_prec_float=true
                     ;;
 
+                # XXX PICREG
+                # Obsolete code; delete after bootstrapping the removal of
+                # MR_PIC_REG from the runtime.
                 picreg)
-                    pic_reg=true
                     ;;
 
                 debug)

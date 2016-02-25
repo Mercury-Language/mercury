@@ -832,21 +832,13 @@ compilation_task(_, module_target_erlang_code) =
 compilation_task(_, module_target_erlang_beam_code) =
         target_code_to_object_code(non_pic) - [].
 compilation_task(_, module_target_object_code(PIC)) =
-    target_code_to_object_code(PIC) - get_pic_flags(PIC).
+    target_code_to_object_code(PIC) - [].
 compilation_task(_, module_target_foreign_object(PIC, Lang)) =
-    foreign_code_to_object_code(PIC, Lang) - get_pic_flags(PIC).
+    foreign_code_to_object_code(PIC, Lang) - [].
 compilation_task(_, module_target_fact_table_object(PIC, FactTable)) =
-    fact_table_code_to_object_code(PIC, FactTable) - get_pic_flags(PIC).
+    fact_table_code_to_object_code(PIC, FactTable) - [].
 compilation_task(_, module_target_xml_doc) =
     process_module(task_make_xml_doc) - ["--make-xml-doc"].
-
-:- func get_pic_flags(pic) = list(string).
-
-% `--pic-reg' is harmless for architectures and grades where it is not needed
-% (it's only needed for grades using GCC global register variables on x86).
-get_pic_flags(pic) = ["--pic-reg"].
-get_pic_flags(link_with_pic) = ["--pic-reg"].
-get_pic_flags(non_pic) = [].
 
     % Find the files which could be touched by a compilation task.
     %

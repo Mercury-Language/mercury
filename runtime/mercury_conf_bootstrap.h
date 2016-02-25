@@ -225,9 +225,6 @@
 #ifdef MR_INLINE_ALLOC
   #define INLINE_ALLOC 1
 #endif
-#ifdef MR_PIC_REG
-  #define PIC_REG 1
-#endif
 /*
 ** We don't do this for PIC/MR_PIC because MR_PIC can be defined by
 ** mercury_goto.h. User code should not be using the PIC macro anyway.
