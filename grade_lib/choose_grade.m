@@ -48,7 +48,7 @@ main(!IO) :-
         ;
             Soln = soln_success(SuccMap),
             Grade = success_soln_to_grade(SuccMap),
-            GradeStr = grade_to_grade_string(Grade),
+            GradeStr = grade_to_grade_string(grade_string_link_check, Grade),
             io.format("GRADE %s\n", [s(GradeStr)], !IO)
         )
     ).

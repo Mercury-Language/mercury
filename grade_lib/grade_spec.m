@@ -10,16 +10,19 @@
 %---------------------------------------------------------------------------%
 
 :- type solver_var_id
-    --->    svar_backend
+    --->    svar_gcc_regs_avail
+    ;       svar_gcc_gotos_avail
+    ;       svar_gcc_labels_avail
+    ;       svar_low_tag_bits_avail
+
+    ;       svar_backend
     ;       svar_data_level
     ;       svar_target
     ;       svar_nested_funcs
-    ;       svar_gcc_regs_avail
     ;       svar_gcc_regs_use
-    ;       svar_gcc_gotos_avail
     ;       svar_gcc_gotos_use
-    ;       svar_gcc_labels_avail
     ;       svar_gcc_labels_use
+    ;       svar_low_tag_bits_use
     ;       svar_stack_len
     ;       svar_trail
     ;       svar_trail_segments
@@ -43,6 +46,8 @@
     ;       svar_rbmm
     ;       svar_rbmm_debug
     ;       svar_rbmm_prof
+    ;       svar_merc_file
+    ;       svar_pregen
     ;       svar_single_prec_float.
 
 :- type solver_var_value_id
@@ -52,6 +57,9 @@
 
     ;       svalue_data_level_hld
     ;       svalue_data_level_lld
+            % XXX At the moment, targeting Erlang implies lowlevel_data,
+            % but the Erlang does NOT use the same data representation as
+            % C does with lowlevel_data.
 
     ;       svalue_target_c
     ;       svalue_target_csharp
@@ -78,6 +86,27 @@
 
     ;       svalue_gcc_labels_use_no
     ;       svalue_gcc_labels_use_yes
+
+    ;       svalue_low_tag_bits_avail_0
+    ;       svalue_low_tag_bits_avail_2
+    ;       svalue_low_tag_bits_avail_3
+            % Autoconf can detect that 4 low tag bits are available.
+            % However, since we never use 4 low tag bits, this is functionally
+            % indistinguishable from 3 low tag bits being available,
+            % so we require the code setting up the grade settings to be solved
+            % to map 4 avail tag bits to 3.
+
+    ;       svalue_low_tag_bits_use_0
+            % If we are using 0 low primary tag bits, then the data
+            % representation may use no primary tag at all (which is what
+            % svalue_low_tag_bits_use_0 is intended to mean here), or
+            % it may use (an almost arbitrary number of) high primary tag bits.
+            % Since we haven't used high ptag bits in ages, I (zs) see no need
+            % to handle them here. If that changes, we would need a new solver
+            % variable named (say) svar_high_tag_bits_use, whose value
+            % being any nonzero value would imply svalue_low_tag_bits_use_0.
+    ;       svalue_low_tag_bits_use_2
+    ;       svalue_low_tag_bits_use_3
 
     ;       svalue_stack_len_std
     ;       svalue_stack_len_segments
@@ -143,6 +172,12 @@
     ;       svalue_rbmm_prof_no
     ;       svalue_rbmm_prof_yes
 
+    ;       svalue_merc_file_no
+    ;       svalue_merc_file_yes
+
+    ;       svalue_pregen_no
+    ;       svalue_pregen_yes
+
     ;       svalue_single_prec_float_no
     ;       svalue_single_prec_float_yes.
 
@@ -189,16 +224,19 @@
 
 %---------------------------------------------------------------------------%
 
+solver_var_name("gcc_regs_avail",                   svar_gcc_regs_avail).
+solver_var_name("gcc_gotos_avail",                  svar_gcc_gotos_avail).
+solver_var_name("gcc_labels_avail",                 svar_gcc_labels_avail).
+solver_var_name("low_tag_bits_avail",               svar_low_tag_bits_avail).
+
 solver_var_name("backend",                          svar_backend).
 solver_var_name("data_level",                       svar_data_level).
 solver_var_name("target",                           svar_target).
 solver_var_name("nested_funcs",                     svar_nested_funcs).
-solver_var_name("gcc_regs_avail",                   svar_gcc_regs_avail).
 solver_var_name("gcc_regs_use",                     svar_gcc_regs_use).
-solver_var_name("gcc_gotos_avail",                  svar_gcc_gotos_avail).
 solver_var_name("gcc_gotos_use",                    svar_gcc_gotos_use).
-solver_var_name("gcc_labels_avail",                 svar_gcc_labels_avail).
 solver_var_name("gcc_labels_use",                   svar_gcc_labels_use).
+solver_var_name("low_tag_bits_use",                 svar_low_tag_bits_use).
 solver_var_name("stack_len",                        svar_stack_len).
 solver_var_name("trail",                            svar_trail).
 solver_var_name("trail_segments",                   svar_trail_segments).
@@ -217,7 +255,22 @@ solver_var_name("lldebug",                          svar_lldebug).
 solver_var_name("rbmm",                             svar_rbmm).
 solver_var_name("rbmm_debug",                       svar_rbmm_debug).
 solver_var_name("rbmm_prof",                        svar_rbmm_prof).
+solver_var_name("pregen",                           svar_pregen).
+solver_var_name("mercuryfile",                      svar_merc_file).
 solver_var_name("single_prec_float",                svar_single_prec_float).
+
+solver_var_value_name("gcc_regs_not_avail",         svalue_gcc_regs_avail_no).
+solver_var_value_name("gcc_regs_avail",             svalue_gcc_regs_avail_yes).
+
+solver_var_value_name("gcc_gotos_not_avail",        svalue_gcc_gotos_avail_no).
+solver_var_value_name("gcc_gotos_avail",            svalue_gcc_gotos_avail_yes).
+
+solver_var_value_name("gcc_labels_not_avail",       svalue_gcc_labels_avail_no).
+solver_var_value_name("gcc_labels_avail",       svalue_gcc_labels_avail_yes).
+
+solver_var_value_name("low_tag_bits_avail_0",   svalue_low_tag_bits_avail_0).
+solver_var_value_name("low_tag_bits_avail_2",   svalue_low_tag_bits_avail_2).
+solver_var_value_name("low_tag_bits_avail_3",   svalue_low_tag_bits_avail_3).
 
 solver_var_value_name("mlds",                       svalue_backend_mlds).
 solver_var_value_name("llds",                       svalue_backend_llds).
@@ -234,23 +287,18 @@ solver_var_value_name("erlang",                     svalue_target_erlang).
 solver_var_value_name("no_nest",                    svalue_nested_funcs_no).
 solver_var_value_name("nest",                       svalue_nested_funcs_yes).
 
-solver_var_value_name("gcc_regs_not_avail",         svalue_gcc_regs_avail_no).
-solver_var_value_name("gcc_regs_avail",             svalue_gcc_regs_avail_yes).
-
 solver_var_value_name("dont_use_gcc_regs",          svalue_gcc_regs_use_no).
 solver_var_value_name("use_gcc_regs",               svalue_gcc_regs_use_yes).
-
-solver_var_value_name("gcc_gotos_not_avail",        svalue_gcc_gotos_avail_no).
-solver_var_value_name("gcc_gotos_avail",            svalue_gcc_gotos_avail_yes).
 
 solver_var_value_name("dont_use_gcc_gotos",         svalue_gcc_gotos_use_no).
 solver_var_value_name("use_gcc_gotos",              svalue_gcc_gotos_use_yes).
 
-solver_var_value_name("gcc_labels_not_avail",       svalue_gcc_labels_avail_no).
-solver_var_value_name("gcc_labels_avail",       svalue_gcc_labels_avail_yes).
-
 solver_var_value_name("dont_use_gcc_labels",        svalue_gcc_labels_use_no).
 solver_var_value_name("use_gcc_labels",             svalue_gcc_labels_use_yes).
+
+solver_var_value_name("low_tag_bits_use_0",     svalue_low_tag_bits_use_0).
+solver_var_value_name("low_tag_bits_use_2",     svalue_low_tag_bits_use_2).
+solver_var_value_name("low_tag_bits_use_3",     svalue_low_tag_bits_use_3).
 
 solver_var_value_name("stfix",                      svalue_stack_len_std).
 solver_var_value_name("stseg",                      svalue_stack_len_segments).
@@ -320,6 +368,12 @@ solver_var_value_name("rbmm_debug",                 svalue_rbmm_debug_yes).
 solver_var_value_name("no_rbmm_prof",               svalue_rbmm_prof_no).
 solver_var_value_name("rbmm_prof",                  svalue_rbmm_prof_yes).
 
+solver_var_value_name("no_mercuryfile",             svalue_merc_file_no).
+solver_var_value_name("mercuryfile",                svalue_merc_file_yes).
+
+solver_var_value_name("no_pregen",                  svalue_pregen_no).
+solver_var_value_name("pregen",                     svalue_pregen_yes).
+
 solver_var_value_name("no_spf",                 svalue_single_prec_float_no).
 solver_var_value_name("spf",                    svalue_single_prec_float_yes).
 
@@ -331,17 +385,24 @@ init_solver_var_specs = [
     %
     % The order of values within each solver variables is the order of
     % preference: labeling will always choose to set the chosen solver variable
-    % to the first of its values that has not previously been rules out.
+    % to the first of its values that has not previously been ruled out.
     %
-    % Some of the value names are grade components. Many are not, and will
-    % need tranlation (e.g. via a lookup table) into a grade component.
-    % This is inevitable if we don't want a lot of value names to be "".
-    %
-    % The first two fields of the solver_var structures, representing the
-    % total number of values and the number of still possible values,
-    % are just placeholders here; the real values will be filled in
-    % by setup_solver_vars, which will count the entries in the lists of
-    % solver_var_values.
+    % The first group of variables are set to autoconfigured values
+    % before constraint solving starts. By putting them at the start,
+    % the very first labeling step will skip over them; later labelling steps
+    % won't have to look at them.
+
+    solver_var_spec(svar_gcc_regs_avail,
+        [svalue_gcc_regs_avail_no, svalue_gcc_regs_avail_yes]),
+    solver_var_spec(svar_gcc_gotos_avail,
+        [svalue_gcc_gotos_avail_no, svalue_gcc_gotos_avail_yes]),
+    solver_var_spec(svar_gcc_labels_avail,
+        [svalue_gcc_labels_avail_no, svalue_gcc_labels_avail_yes]),
+    solver_var_spec(svar_low_tag_bits_avail,
+        [svalue_low_tag_bits_avail_0, svalue_low_tag_bits_avail_2,
+        svalue_low_tag_bits_avail_3]),
+    solver_var_spec(svar_merc_file,
+        [svalue_merc_file_no, svalue_merc_file_yes]),
 
     solver_var_spec(svar_backend,
         [svalue_backend_mlds, svalue_backend_llds, svalue_backend_elds]),
@@ -353,18 +414,18 @@ init_solver_var_specs = [
     solver_var_spec(svar_nested_funcs,
         [svalue_nested_funcs_no, svalue_nested_funcs_yes]),
 
-    solver_var_spec(svar_gcc_regs_avail,
-        [svalue_gcc_regs_avail_no, svalue_gcc_regs_avail_yes]),
     solver_var_spec(svar_gcc_regs_use,
         [svalue_gcc_regs_use_yes, svalue_gcc_regs_use_no]),
-    solver_var_spec(svar_gcc_gotos_avail,
-        [svalue_gcc_gotos_avail_no, svalue_gcc_gotos_avail_yes]),
     solver_var_spec(svar_gcc_gotos_use,
         [svalue_gcc_gotos_use_yes, svalue_gcc_gotos_use_no]),
-    solver_var_spec(svar_gcc_labels_avail,
-        [svalue_gcc_labels_avail_no, svalue_gcc_labels_avail_yes]),
     solver_var_spec(svar_gcc_labels_use,
         [svalue_gcc_labels_use_yes, svalue_gcc_labels_use_no]),
+
+    solver_var_spec(svar_pregen,
+        [svalue_pregen_no, svalue_pregen_yes]),
+    solver_var_spec(svar_low_tag_bits_use,
+        [svalue_low_tag_bits_use_3, svalue_low_tag_bits_use_2,
+        svalue_low_tag_bits_use_0]),
 
     solver_var_spec(svar_stack_len,
         [svalue_stack_len_segments, svalue_stack_len_std,
@@ -373,15 +434,19 @@ init_solver_var_specs = [
         [svalue_trail_no, svalue_trail_yes]),
     solver_var_spec(svar_trail_segments,
         [svalue_trail_segments_yes, svalue_trail_segments_no]),
+
     solver_var_spec(svar_minmodel,
         [svalue_minmodel_no,
         svalue_minmodel_stack_copy, svalue_minmodel_stack_copy_debug,
         svalue_minmodel_own_stack, svalue_minmodel_own_stack_debug]),
+
     solver_var_spec(svar_thread_safe,
         [svalue_thread_safe_no, svalue_thread_safe_yes]),
+
     solver_var_spec(svar_gc,
         [svalue_gc_bdw, svalue_gc_target_native, svalue_gc_accurate,
         svalue_gc_bdw_debug, svalue_gc_none, svalue_gc_history]),
+
     solver_var_spec(svar_deep_prof,
         [svalue_deep_prof_no, svalue_deep_prof_yes]),
     solver_var_spec(svar_mprof_call,
@@ -395,18 +460,21 @@ init_solver_var_specs = [
     solver_var_spec(svar_term_size_prof,
         [svalue_term_size_prof_no,
         svalue_term_size_prof_cells, svalue_term_size_prof_words]),
+
     solver_var_spec(svar_debug,
         [svalue_debug_none, svalue_debug_debug, svalue_debug_decldebug]),
     solver_var_spec(svar_ssdebug,
         [svalue_ssdebug_no, svalue_ssdebug_yes]),
     solver_var_spec(svar_lldebug,
         [svalue_lldebug_no, svalue_lldebug_yes]),
+
     solver_var_spec(svar_rbmm,
         [svalue_rbmm_no, svalue_rbmm_yes]),
     solver_var_spec(svar_rbmm_debug,
         [svalue_rbmm_debug_no, svalue_rbmm_debug_yes]),
     solver_var_spec(svar_rbmm_prof,
         [svalue_rbmm_prof_no, svalue_rbmm_prof_yes]),
+
     solver_var_spec(svar_single_prec_float,
         [svalue_single_prec_float_no, svalue_single_prec_float_yes])
 ].
@@ -414,6 +482,21 @@ init_solver_var_specs = [
 %---------------------------------------------------------------------------%
 
 init_requirement_specs = [
+% Requirements of values of svar_gcc_regs_avail.
+    % None. The value is set by configure.
+
+% Requirements of values of svar_gcc_gotos_avail.
+    % None. The value is set by configure.
+
+% Requirements of values of svar_gcc_labels_avail.
+    % None. The value is set by configure.
+
+% Requirements of values of svar_low_tag_bits_avail.
+    % None. The value is set by configure.
+
+% Requirements of values of svar_merc_file.
+    % None. The value is set by configure.
+
 % Requirements of values of svar_backend.
     requirement_spec(
         "MLDS backend requires targeting C, C# or Java",
@@ -495,6 +578,25 @@ init_requirement_specs = [
     ),
 
     requirement_spec(
+        "generated C# is always thread safe",
+        (svar_target `being` svalue_target_csharp) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_yes])
+    ),
+    requirement_spec(
+        "generated Java is always thread safe",
+        (svar_target `being` svalue_target_java) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_yes])
+    ),
+    % Generated Erlang is also always thread safe, but library/thread.m
+    % does not (yet) have Erlang implementations of its foreign_procs,
+    % so the program cannot create new threads.
+    requirement_spec(
+        "targeting Erlang does not allow new threads to be created",
+        (svar_target `being` svalue_target_erlang) `implies_that`
+        (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
+    ),
+
+    requirement_spec(
         "targeting C# is incompatible with trailing",
         (svar_target `being` svalue_target_csharp) `implies_that`
         (svar_trail `is_one_of` [svalue_trail_no])
@@ -539,9 +641,6 @@ init_requirement_specs = [
         (svar_target `is_one_of` [svalue_target_c])
     ),
 
-% Requirements of values of svar_gcc_regs_avail.
-    % None. The value is set by configure.
-
 % Requirements of values of svar_gcc_regs_use.
     requirement_spec(
         "using gcc regs requires them to be available",
@@ -559,9 +658,6 @@ init_requirement_specs = [
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
-% Requirements of values of svar_gcc_gotos_avail.
-    % None. The value is set by configure.
-
 % Requirements of values of svar_gcc_gotos_use.
     requirement_spec(
         "using gcc nonlocal gotos requires them to be available",
@@ -578,9 +674,6 @@ init_requirement_specs = [
         (svar_gcc_gotos_use `being` svalue_gcc_gotos_use_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
-
-% Requirements of values of svar_gcc_labels_avail.
-    % None. The value is set by configure.
 
 % Requirements of values of svar_gcc_labels_use.
     requirement_spec(
@@ -602,6 +695,36 @@ init_requirement_specs = [
         "using gcc asm labels requires the LLDS backend",
         (svar_gcc_labels_use `being` svalue_gcc_labels_use_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
+    ),
+
+% Requirements of values of svar_pregen.
+    requirement_spec(
+        "pregenerated code always targets C",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_target `is_one_of` [svalue_target_c])
+    ),
+    requirement_spec(
+        "pregenerated code uses 2 low tag bits",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_low_tag_bits_use `is_one_of` [svalue_low_tag_bits_use_2])
+    ),
+    requirement_spec(
+        "pregenerated code is incompatible with single precision floats",
+        (svar_pregen `being` svalue_pregen_yes) `implies_that`
+        (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
+    ),
+
+% Requirements of values of svar_low_tag_bits_use.
+    requirement_spec(
+        "using 2 low tag bits needs at least 2 low tag bits to be available",
+        (svar_low_tag_bits_use `being` svalue_low_tag_bits_use_2) `implies_that`
+        (svar_low_tag_bits_avail `is_one_of`
+            [svalue_low_tag_bits_avail_2, svalue_low_tag_bits_avail_3])
+    ),
+    requirement_spec(
+        "using 3 low tag bits needs at least 3 low tag bits to be available",
+        (svar_low_tag_bits_use `being` svalue_low_tag_bits_use_3) `implies_that`
+        (svar_low_tag_bits_avail `is_one_of` [svalue_low_tag_bits_avail_3])
     ),
 
 % Requirements of values of svar_stack_segments.
@@ -628,11 +751,6 @@ init_requirement_specs = [
         "trail segments require trailing",
         (svar_trail_segments `being` svalue_trail_segments_yes) `implies_that`
         (svar_trail `is_one_of` [svalue_trail_yes])
-    ),
-    requirement_spec(
-        "trail segments require the LLDS backend",
-        (svar_trail_segments `being` svalue_trail_segments_yes) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
 % Requirements of values of svar_minmodel.
@@ -737,45 +855,44 @@ init_requirement_specs = [
 
 % Requirements of values of svar_deep_prof.
     requirement_spec(
-        "deep_profiling requires the LLDS backend",
+        "deep profiling requires the LLDS backend",
         (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "deep_profiling is incompatible with mprof call profiling",
+        "deep profiling interferes with minimal model tabling",
+        (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
+        (svar_minmodel `is_one_of` [svalue_minmodel_no])
+    ),
+    requirement_spec(
+        "deep profiling is incompatible with mprof call profiling",
         (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
         (svar_mprof_call `is_one_of` [svalue_mprof_call_no])
     ),
     requirement_spec(
-        "deep_profiling is incompatible with mprof time profiling",
+        "deep profiling is incompatible with mprof time profiling",
         (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
         (svar_mprof_time `is_one_of` [svalue_mprof_time_no])
     ),
     requirement_spec(
-        "deep_profiling is incompatible with mprof memory profiling",
+        "deep profiling is incompatible with mprof memory profiling",
         (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
         (svar_mprof_memory `is_one_of` [svalue_mprof_memory_no])
     ),
 
 % Requirements of values of svar_mprof_call.
     requirement_spec(
-        "mprof call profiling requires the LLDS backend",
-        (svar_mprof_call `being` svalue_mprof_call_yes) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_llds])
-    ),
-    requirement_spec(
-        "mprof call profiling requires the LLDS backend",
-        % XXX is this correct?
+        "mprof call profiling requires targeting C",
         (svar_mprof_call `being` svalue_mprof_call_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
+    requirement_spec(
+        "mprof call profiling interferes with minimal model tabling",
+        (svar_mprof_call `being` svalue_mprof_call_yes) `implies_that`
+        (svar_minmodel `is_one_of` [svalue_minmodel_no])
+    ),
 
 % Requirements of values of svar_mprof_time.
-    requirement_spec(
-        "mprof time profiling requires the LLDS backend",
-        (svar_mprof_time `being` svalue_mprof_time_yes) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_llds])
-    ),
     requirement_spec(
         "mprof time profiling requires targeting C",
         (svar_mprof_time `being` svalue_mprof_time_yes) `implies_that`
@@ -791,13 +908,7 @@ init_requirement_specs = [
 
 % Requirements of values of svar_mprof_memory.
     requirement_spec(
-        "mprof memory profiling requires the LLDS backend",
-        (svar_mprof_memory `being` svalue_mprof_memory_yes) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_llds])
-    ),
-    requirement_spec(
         "mprof memory profiling requires targeting C",
-        % XXX is this correct?
         (svar_mprof_memory `being` svalue_mprof_memory_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
@@ -852,7 +963,7 @@ init_requirement_specs = [
 
 % Requirements of values of svar_lldebug.
     requirement_spec(
-        "low level debugging requires the LLDS backend",
+        "low level debugging applies only to the LLDS backend",
         (svar_lldebug `being` svalue_lldebug_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
@@ -866,7 +977,7 @@ init_requirement_specs = [
 
 % Requirements of values of svar_single_prec_float.
     requirement_spec(
-        "single precision floats requires targeting C",
+        "single precision floats are available only when targeting C",
         (svar_single_prec_float `being` svalue_single_prec_float_yes)
             `implies_that`
         (svar_target `is_one_of` [svalue_target_c])

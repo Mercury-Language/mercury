@@ -9,8 +9,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- type solution_components
-    --->    solution_components(
+:- type grade_components
+    --->    grade_components(
                 soln_backend,
                 soln_data_level,
                 soln_target,
@@ -18,6 +18,7 @@
                 soln_gcc_regs,
                 soln_gcc_gotos,
                 soln_gcc_labels,
+                soln_low_tag_bits_use,
                 soln_stack_len,
                 soln_trail,
                 soln_trail_segments,
@@ -36,6 +37,8 @@
                 soln_rbmm,
                 soln_rbmm_debug,
                 soln_rbmm_prof,
+                soln_merc_file,
+                soln_pregen,
                 soln_single_prec_float
             ).
 
@@ -69,6 +72,11 @@
 :- type soln_gcc_labels
     --->    soln_gcc_labels_use_no
     ;       soln_gcc_labels_use_yes.
+
+:- type soln_low_tag_bits_use
+    --->    soln_low_tag_bits_use_0
+    ;       soln_low_tag_bits_use_2
+    ;       soln_low_tag_bits_use_3.
 
 :- type soln_stack_len
     --->    soln_stack_len_std
@@ -152,6 +160,14 @@
     --->    soln_rbmm_prof_no
     ;       soln_rbmm_prof_yes.
 
+:- type soln_merc_file
+    --->    soln_merc_file_no
+    ;       soln_merc_file_yes.
+
+:- type soln_pregen
+    --->    soln_pregen_no
+    ;       soln_pregen_yes.
+
 :- type soln_single_prec_float
     --->    soln_single_prec_float_no
     ;       soln_single_prec_float_yes.
@@ -175,7 +191,7 @@
     % in the data it is given, causes a violation of the invariant, this
     % function will throw an exception.)
     %
-:- func collect_solution_components(success_soln_map) = solution_components.
+:- func collect_grade_components(success_soln_map) = grade_components.
 
 %---------------------------------------------------------------------------%
 
@@ -189,7 +205,7 @@
 
 %---------------------------------------------------------------------------%
 
-collect_solution_components(!.SolnMap) = SolutionComponents :-
+collect_grade_components(!.SolnMap) = GradeComponents :-
     map.det_remove(svar_backend, Backend, !SolnMap),
     map.det_remove(svar_data_level, DataLevel, !SolnMap),
     map.det_remove(svar_target, Target, !SolnMap),
@@ -200,6 +216,8 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
     map.det_remove(svar_gcc_gotos_use, GccGotosUse, !SolnMap),
     map.det_remove(svar_gcc_labels_avail, _GccLabelsAvail, !SolnMap),
     map.det_remove(svar_gcc_labels_use, GccLabelsUse, !SolnMap),
+    map.det_remove(svar_low_tag_bits_avail, _LowTagBitsAvail, !SolnMap),
+    map.det_remove(svar_low_tag_bits_use, LowTagBitsUse, !SolnMap),
     map.det_remove(svar_stack_len, StackLen, !SolnMap),
     map.det_remove(svar_trail, Trail, !SolnMap),
     map.det_remove(svar_trail_segments, TrailSegments, !SolnMap),
@@ -218,6 +236,8 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
     map.det_remove(svar_rbmm, RBMM, !SolnMap),
     map.det_remove(svar_rbmm_debug, RBMMDebug, !SolnMap),
     map.det_remove(svar_rbmm_prof, RBMMProf, !SolnMap),
+    map.det_remove(svar_merc_file, MercFile, !SolnMap),
+    map.det_remove(svar_pregen, Pregen, !SolnMap),
     map.det_remove(svar_single_prec_float, SinglePrecFloat, !SolnMap),
     expect(map.is_empty(!.SolnMap), $pred, "unexpected entries in SolnMap"),
 
@@ -281,6 +301,16 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
         ComponentGccLabelsUse = soln_gcc_labels_use_yes
     else
         unexpected($pred, "unexpected value of GccLabelsUse")
+    ),
+
+    ( if LowTagBitsUse = svalue_low_tag_bits_use_0 then
+        ComponentLowTagBitsUse = soln_low_tag_bits_use_0
+    else if LowTagBitsUse = svalue_low_tag_bits_use_2 then
+        ComponentLowTagBitsUse = soln_low_tag_bits_use_2
+    else if LowTagBitsUse = svalue_low_tag_bits_use_3 then
+        ComponentLowTagBitsUse = soln_low_tag_bits_use_3
+    else
+        unexpected($pred, "unexpected value of LowTagBitsUse")
     ),
 
     ( if StackLen = svalue_stack_len_std then
@@ -447,6 +477,22 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
         unexpected($pred, "unexpected value of RBMMProf")
     ),
 
+    ( if MercFile = svalue_merc_file_no then
+        ComponentMercFile = soln_merc_file_no
+    else if MercFile = svalue_merc_file_yes then
+        ComponentMercFile = soln_merc_file_yes
+    else
+        unexpected($pred, "unexpected value of MercFile")
+    ),
+
+    ( if Pregen = svalue_pregen_no then
+        ComponentPregen = soln_pregen_no
+    else if Pregen = svalue_pregen_yes then
+        ComponentPregen = soln_pregen_yes
+    else
+        unexpected($pred, "unexpected value of Pregen")
+    ),
+
     ( if SinglePrecFloat = svalue_single_prec_float_no then
         ComponentSinglePrecFloat = soln_single_prec_float_no
     else if SinglePrecFloat = svalue_single_prec_float_yes then
@@ -455,18 +501,19 @@ collect_solution_components(!.SolnMap) = SolutionComponents :-
         unexpected($pred, "unexpected value of SinglePrecFloat")
     ),
 
-    SolutionComponents = solution_components(
+    GradeComponents = grade_components(
         ComponentBackend, ComponentDataLevel,
         ComponentTarget, ComponentNestedFuncs,
         ComponentGccRegsUse, ComponentGccGotosUse, ComponentGccLabelsUse,
-        ComponentStackLen, ComponentTrail, ComponentTrailSegments,
+        ComponentLowTagBitsUse, ComponentStackLen,
+        ComponentTrail, ComponentTrailSegments,
         ComponentMinimalModel, ComponentThreadSafe, ComponentGc,
         ComponentDeepProf,
         ComponentMprofCall, ComponentMprofTime, ComponentMprofMemory,
         ComponentTScopeProf, ComponentTermSizeProf,
         ComponentDebug, ComponentSSDebug, ComponentLLDebug,
         ComponentRBMM, ComponentRBMMDebug, ComponentRBMMProf,
-        ComponentSinglePrecFloat
+        ComponentMercFile, ComponentPregen, ComponentSinglePrecFloat
     ).
 
 %---------------------------------------------------------------------------%

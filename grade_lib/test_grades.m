@@ -70,6 +70,7 @@ main(!IO) :-
 :- func broad_test_set_spec = test_set_spec.
 
 broad_test_set_spec = [
+    test_set_component("low_tag_bits_avail", ["low_tag_bits_avail_3"]),
     test_set_component("target", ["c", "csharp", "java", "erlang"]),
     test_set_component("trail", ["no_trail", "trail"]),
     test_set_component("thread_safe", ["not_thread_safe", "thread_safe"]),
@@ -80,6 +81,7 @@ broad_test_set_spec = [
 :- func llds_test_set_spec = test_set_spec.
 
 llds_test_set_spec = [
+    test_set_component("low_tag_bits_avail", ["low_tag_bits_avail_3"]),
     test_set_component("gcc_regs_avail",
         ["gcc_regs_not_avail", "gcc_regs_avail"]),
     test_set_component("gcc_gotos_avail",
@@ -88,7 +90,7 @@ llds_test_set_spec = [
         ["gcc_labels_not_avail", "gcc_labels_avail"]),
     test_set_component("stack_len", ["stseg", "stfix"]),
     test_set_component("thread_safe", ["not_thread_safe", "thread_safe"]),
-    test_set_component("minimal_model", ["no_mm", "mm_stack_copy"]),
+    test_set_component("minmodel", ["no_mm", "mm_stack_copy"]),
     test_set_component("deep_prof", ["no_deep_prof", "deep_prof"]),
     test_set_component("debug", ["nodebug", "debug", "decldebug"]),
     test_set_component("single_prec_float", ["no_spf", "spf"])
@@ -132,7 +134,7 @@ run_test_set(SolverInfo0, TestSetSpec, TestSpecSoFar0, !SolveCountStats, !IO) :-
         ;
             Soln = soln_success(SuccMap),
             Grade = success_soln_to_grade(SuccMap),
-            GradeStr = grade_to_grade_string(Grade),
+            GradeStr = grade_to_grade_string(grade_string_link_check, Grade),
             SolnGradeStr = "    GRADE " ++ GradeStr ++ "\n"
         ),
         io.nl(!IO),

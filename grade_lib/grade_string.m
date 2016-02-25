@@ -15,9 +15,10 @@
 :- type grade
     --->    grade_llds(
                 llds_gcc_conf,
+                soln_low_tag_bits_use,
                 soln_stack_len,
-                llds_trail,
                 llds_gc,
+                c_trail,
                 llds_thread_safe,
                 llds_perf_prof,
                 soln_term_size_prof,
@@ -25,6 +26,8 @@
                 soln_debug,
                 soln_lldebug,
                 llds_rbmm,
+                soln_merc_file,
+                soln_pregen,
                 soln_single_prec_float
             )
     ;       grade_mlds(
@@ -32,7 +35,6 @@
                 soln_ssdebug
             )
     ;       grade_elds(
-                soln_thread_safe,
                 soln_ssdebug
             ).
 
@@ -44,9 +46,9 @@
     ;       llds_gcc_conf_asm_jump    % yes     yes     no
     ;       llds_gcc_conf_asm_fast.   % yes     yes     yes
 
-:- type llds_trail
-    --->    llds_trail_no
-    ;       llds_trail_yes(
+:- type c_trail
+    --->    c_trail_no
+    ;       c_trail_yes(
                 soln_trail_segments
             ).
 
@@ -78,23 +80,20 @@
             ).
 
 :- type mlds_target
-    % XXX Does thread safety mean the same thing for all three targets?
-    % If yes, then thread safety should be pulled from all three function
-    % symbols here and put into grade_mlds(...) instead.
     --->    mlds_target_c(
                 soln_data_level,
                 soln_nested_funcs,
-                mlds_c_gc,
-                soln_trail,                 % XXX trail segments?
+                soln_low_tag_bits_use,
                 soln_thread_safe,
+                mlds_c_gc,
+                c_trail,
+                mlds_c_perf_prof,
+                soln_merc_file,
+                soln_pregen,
                 soln_single_prec_float
             )
-    ;       mlds_target_csharp(
-                soln_thread_safe
-            )
-    ;       mlds_target_java(
-                soln_thread_safe
-            ).
+    ;       mlds_target_csharp
+    ;       mlds_target_java.
 
 :- type mlds_c_gc
     --->    mlds_c_gc_none
@@ -103,11 +102,22 @@
     ;       mlds_c_gc_accurate
     ;       mlds_c_gc_history.
 
+:- type mlds_c_perf_prof
+    --->    mlds_c_perf_prof_none
+    ;       mlds_c_perf_prof_mprof(
+                soln_mprof_time,
+                soln_mprof_memory
+            ).
+
 :- func success_soln_to_grade(success_soln_map) = grade.
 
 %---------------------------------------------------------------------------%
 
-:- func grade_to_grade_string(grade) = string.
+:- type which_grade_string
+    --->    grade_string_user
+    ;       grade_string_link_check.
+
+:- func grade_to_grade_string(which_grade_string, grade) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -129,7 +139,7 @@
 %---------------------------------------------------------------------------%
 
 success_soln_to_grade(SuccMap) = Grade :-
-    SolutionComponents = collect_solution_components(SuccMap),
+    GradeComponents = collect_grade_components(SuccMap),
 
     % XXX We want to verify that every solution component is used on every
     % path, for one of these three things: (a) to make a decision, (c) to check
@@ -143,23 +153,28 @@ success_soln_to_grade(SuccMap) = Grade :-
     % on Target in the mlds case: having two deconstructs that each pick up
     % *some* arguments is vulnerable to not picking up some arguments
     % in *either*.
-    SolutionComponents = solution_components(Backend, _, _, _, _, _, _, _,
-        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
+    GradeComponents = grade_components(Backend, _, _, _, _, _, _, _,
+        _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
 
+    % XXX The order of the grade components we generate may as yet differ
+    % from the order in runtime/mercury_grade.h, or the canonical order
+    % when targeting non-C languages.
+    % XXX We should consider rationalizing the standard order.
     (
         Backend = soln_backend_llds,
 
-        SolutionComponents = solution_components(_Backend, DataLevel,
+        GradeComponents = grade_components(_Backend, DataLevel,
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
-            StackLen, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
+            LowTagBitsUse, StackLen, Trail, TrailSegments,
+            MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, SSDebug, LLDebug, RBMM, RBMMDebug, RBMMProf,
-            SinglePrecFloat),
+            MercFile, Pregen, SinglePrecFloat),
 
-        expect(unify(Target, soln_target_c), $pred,
-            "Target != soln_target_c"),
         expect(unify(DataLevel, soln_data_level_lld), $pred,
             "DataLevel != soln_data_level_lld"),
+        expect(unify(Target, soln_target_c), $pred,
+            "Target != soln_target_c"),
         expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
             "NestedFuncs != soln_nested_funcs_no"),
         expect(unify(SSDebug, soln_ssdebug_no), $pred,
@@ -203,10 +218,10 @@ success_soln_to_grade(SuccMap) = Grade :-
         ),
         (
             Trail = soln_trail_no,
-            LLDSTrail = llds_trail_no
+            CTrail = c_trail_no
         ;
             Trail = soln_trail_yes,
-            LLDSTrail = llds_trail_yes(TrailSegments)
+            CTrail = c_trail_yes(TrailSegments)
         ),
         (
             Gc = soln_gc_none,
@@ -271,18 +286,20 @@ success_soln_to_grade(SuccMap) = Grade :-
             RBMM = soln_rbmm_yes,
             LLDSRBMM = llds_rbmm_yes(RBMMDebug, RBMMProf)
         ),
-        Grade = grade_llds(LLDSGccConf, StackLen, LLDSTrail,
-            LLDSGc, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
-            MinimalModel, Debug, LLDebug, LLDSRBMM, SinglePrecFloat)
+        Grade = grade_llds(LLDSGccConf, LowTagBitsUse, StackLen, LLDSGc,
+            CTrail, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
+            MinimalModel, Debug, LLDebug, LLDSRBMM,
+            MercFile, Pregen, SinglePrecFloat)
     ;
         Backend = soln_backend_mlds,
 
-        SolutionComponents = solution_components(_Backend, DataLevel,
+        GradeComponents = grade_components(_Backend, DataLevel,
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
-            StackLen, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
+            LowTagBitsUse, StackLen, Trail, TrailSegments,
+            MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, SSDebug, LLDebug, RBMM, RBMMDebug, RBMMProf,
-            SinglePrecFloat),
+            MercFile, Pregen, SinglePrecFloat),
 
         expect(unify(GccRegsUse, soln_gcc_regs_use_no), $pred,
             "GccRegsUse != soln_gcc_regs_use_no"),
@@ -292,18 +309,10 @@ success_soln_to_grade(SuccMap) = Grade :-
             "GccLabelsUse != soln_gcc_labels_use_no"),
         expect(unify(StackLen, soln_stack_len_std), $pred,
             "StackLen != soln_stack_len_std"),
-        expect(unify(TrailSegments, soln_trail_segments_no), $pred,
-            "TrailSegments != soln_trail_segments_no"),
         expect(unify(MinimalModel, soln_minmodel_no), $pred,
             "MinimalModel != soln_minmodel_no"),
         expect(unify(DeepProf, soln_deep_prof_no), $pred,
             "DeepProf != soln_deep_prof_no"),
-        expect(unify(MprofCall, soln_mprof_call_no), $pred,
-            "MprofCall != soln_mprof_call_no"),
-        expect(unify(MprofTime, soln_mprof_time_no), $pred,
-            "MprofTime != soln_mprof_time_no"),
-        expect(unify(MprofMemory, soln_mprof_memory_no), $pred,
-            "MprofMemory != soln_mprof_memory_no"),
         expect(unify(TScopeProf, soln_tscope_prof_no), $pred,
             "TScopeProf != soln_tscope_prof_no"),
         expect(unify(TermSizeProf, soln_term_size_prof_no), $pred,
@@ -320,6 +329,11 @@ success_soln_to_grade(SuccMap) = Grade :-
             "RBMMProf != soln_rbmm_prof_no"),
         (
             Target = soln_target_c,
+            % XXX We should switch on Pregen, and if it is soln_pregen_yes,
+            % then we should return grade_pregen, not grade_mlds(...).
+            % If we cannot do that, because soln_pregen_yes does not COMPLETELY
+            % determine the value of ALL the other solver variables, then
+            % we should include Pregen as a field of mlds_target_c.
             (
                 Gc = soln_gc_none,
                 MLDSGc = mlds_c_gc_none
@@ -340,28 +354,67 @@ success_soln_to_grade(SuccMap) = Grade :-
                 % XXX Is this supported?
                 MLDSGc = mlds_c_gc_history
             ),
-            Grade = grade_mlds(mlds_target_c(DataLevel, NestedFuncs,
-                MLDSGc, Trail, ThreadSafe, SinglePrecFloat), SSDebug)
+            (
+                Trail = soln_trail_no,
+                CTrail = c_trail_no
+            ;
+                Trail = soln_trail_yes,
+                CTrail = c_trail_yes(TrailSegments)
+            ),
+            (
+                MprofCall = soln_mprof_call_no,
+                expect(unify(MprofTime, soln_mprof_time_no), $pred,
+                    "MprofTime != soln_mprof_time_no"),
+                expect(unify(MprofMemory, soln_mprof_memory_no), $pred,
+                    "MprofMemory != soln_mprof_memory_no"),
+                MLDSPerfProf = mlds_c_perf_prof_none
+            ;
+                MprofCall = soln_mprof_call_yes,
+                MLDSPerfProf = mlds_c_perf_prof_mprof(MprofTime, MprofMemory)
+            ),
+            TargetC = mlds_target_c(DataLevel, NestedFuncs, LowTagBitsUse,
+                ThreadSafe, MLDSGc, CTrail, MLDSPerfProf,
+                MercFile, Pregen, SinglePrecFloat),
+            Grade = grade_mlds(TargetC, SSDebug)
         ;
             ( Target = soln_target_csharp
             ; Target = soln_target_java
             ),
+            expect(unify(Pregen, soln_pregen_no), $pred,
+                "Pregen != soln_pregen_no"),
             expect(unify(DataLevel, soln_data_level_hld), $pred,
                 "DataLevel != soln_data_level_hld"),
             expect(unify(NestedFuncs, soln_nested_funcs_no), $pred,
                 "NestedFuncs != soln_nested_funcs_no"),
+            expect(unify(ThreadSafe, soln_thread_safe_yes), $pred,
+                "ThreadSafe != soln_thread_safe_yes"),
             expect(unify(Gc, soln_gc_target_native), $pred,
                 "Gc != soln_gc_target_native"),
             expect(unify(Trail, soln_trail_no), $pred,
                 "Trail != soln_trail_no"),
+            expect(unify(TrailSegments, soln_trail_segments_no), $pred,
+                "TrailSegments != soln_trail_segments_no"),
+            expect(unify(MprofCall, soln_mprof_call_no), $pred,
+                "MprofCall != soln_mprof_call_no"),
+            expect(unify(MprofTime, soln_mprof_time_no), $pred,
+                "MprofTime != soln_mprof_time_no"),
+            expect(unify(MprofMemory, soln_mprof_memory_no), $pred,
+                "MprofMemory != soln_mprof_memory_no"),
+            % The definition of MR_NEW_MERCURYFILE_STRUCT applies only
+            % to grades that target C. When targeting other languages,
+            % we don't insist on MercFile = soln_merc_file_no. 
+            expect(unify(Pregen, soln_pregen_no), $pred,
+                "Pregen != soln_pregen_no"),
             expect(unify(SinglePrecFloat, soln_single_prec_float_no), $pred,
                 "SinglePrecFloat != soln_single_prec_float_no"),
+            % We repeat this here in case we later add some function symbols
+            % to one or both of mlds_target_csharp/mlds_target_java.
             (
                 Target = soln_target_csharp,
-                MLDSTarget = mlds_target_csharp(ThreadSafe)
+                MLDSTarget = mlds_target_csharp
             ;
                 Target = soln_target_java,
-                MLDSTarget = mlds_target_java(ThreadSafe)
+                MLDSTarget = mlds_target_java
             ),
             Grade = grade_mlds(MLDSTarget, SSDebug)
         ;
@@ -371,13 +424,17 @@ success_soln_to_grade(SuccMap) = Grade :-
     ;
         Backend = soln_backend_elds,
 
-        SolutionComponents = solution_components(_Backend, DataLevel,
+        GradeComponents = grade_components(_Backend, DataLevel,
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
-            StackLen, Trail, TrailSegments, MinimalModel, ThreadSafe, Gc,
+            _LowTagBitsUse, StackLen, Trail, TrailSegments,
+            MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, SSDebug, LLDebug, RBMM, RBMMDebug, RBMMProf,
-            SinglePrecFloat),
+            _MercFile, Pregen, SinglePrecFloat),
 
+        % XXX The ELDS backend's data representation is NOT the same
+        % as the LLDS backends'. If it were, we couldn't ignore the value of
+        % _LowTagBitsUse.
         expect(unify(DataLevel, soln_data_level_lld), $pred,
             "DataLevel != soln_data_level_lld"),
         expect(unify(Target, soln_target_erlang), $pred,
@@ -398,6 +455,8 @@ success_soln_to_grade(SuccMap) = Grade :-
             "TrailSegments != soln_trail_segments_no"),
         expect(unify(MinimalModel, soln_minmodel_no), $pred,
             "MinimalModel != soln_minmodel_no"),
+        expect(unify(ThreadSafe, soln_thread_safe_no), $pred,
+            "ThreadSafe != soln_thread_safe_no"),
         expect(unify(Gc, soln_gc_target_native), $pred,
             "Gc != soln_gc_target_native"),
         expect(unify(DeepProf, soln_deep_prof_no), $pred,
@@ -422,27 +481,25 @@ success_soln_to_grade(SuccMap) = Grade :-
             "RBMMDebug != soln_rbmm_debug_no"),
         expect(unify(RBMMProf, soln_rbmm_prof_no), $pred,
             "RBMMProf != soln_rbmm_prof_no"),
+        % The definition of MR_NEW_MERCURYFILE_STRUCT applies only
+        % to grades that target C. When targeting other languages,
+        % we don't insist on MercFile = soln_merc_file_no. 
+        expect(unify(Pregen, soln_pregen_no), $pred,
+            "Pregen != soln_pregen_no"),
         expect(unify(SinglePrecFloat, soln_single_prec_float_no), $pred,
             "SinglePrecFloat != soln_single_prec_float_no"),
-        % XXX incomplete
-        Grade = grade_elds(ThreadSafe, SSDebug)
+        % XXX probably incomplete
+        Grade = grade_elds(SSDebug)
     ).
 
 %---------------------------------------------------------------------------%
 
-grade_to_grade_string(Grade) = GradeStr :-
-
-    % XXX mercuryfile struct
-    % XXX tag bits: high/low/none, 2/3
-    % XXX unboxed float
-    % XXX regparm
-    % XXX picreg
-    % XXX pregen
-
+grade_to_grade_string(WhichGradeString, Grade) = GradeStr :-
+    % XXX unboxed floats
     (
-        Grade = grade_llds(GccConf, StackLen, LLDSTrail,
-            LLDSGc, LLDSThreadSafe, LLDSPerfProf, TermSizeProf, MinimalModel,
-            Debug, LLDebug, LLDSRBMM, SinglePrecFloat),
+        Grade = grade_llds(GccConf, LowTagBitsUse, StackLen, LLDSGc,
+            CTrail, LLDSThreadSafe, LLDSPerfProf, TermSizeProf, MinimalModel,
+            Debug, LLDebug, LLDSRBMM, MercFile, Pregen, SinglePrecFloat),
 
         ( GccConf = llds_gcc_conf_none,             GccConfStr = "none"
         ; GccConf = llds_gcc_conf_reg,              GccConfStr = "reg"
@@ -451,13 +508,15 @@ grade_to_grade_string(Grade) = GradeStr :-
         ; GccConf = llds_gcc_conf_asm_jump,         GccConfStr = "asm_jump"
         ; GccConf = llds_gcc_conf_asm_fast,         GccConfStr = "asm_fast"
         ),
+        LowTagBitsUseStr =
+            low_tag_bits_use_to_str(WhichGradeString, LowTagBitsUse),
         (
             LLDSThreadSafe = llds_thread_safe_no,
-            ThreadSafeStr = "",
+            ThreadSafeStr = thread_safe_to_str(soln_thread_safe_no),
             TScopeProfStr = ""
         ;
             LLDSThreadSafe = llds_thread_safe_yes(TScopeProf),
-            ThreadSafeStr = ".par",
+            ThreadSafeStr = thread_safe_to_str(soln_thread_safe_yes),
             (
                 TScopeProf = soln_tscope_prof_no,
                 TScopeProfStr = ""
@@ -466,11 +525,12 @@ grade_to_grade_string(Grade) = GradeStr :-
                 TScopeProfStr = ".threadscope"
             )
         ),
-        ( LLDSGc = llds_gc_none,                    GcStr = ""
-        ; LLDSGc = llds_gc_bdw,                     GcStr = ".gc"
-        ; LLDSGc = llds_gc_bdw_debug,               GcStr = ".gcd"
-        ; LLDSGc = llds_gc_history,                 GcStr = ".hgc"
+        ( LLDSGc = llds_gc_none,             Gc = soln_gc_none
+        ; LLDSGc = llds_gc_bdw,              Gc = soln_gc_bdw
+        ; LLDSGc = llds_gc_bdw_debug,        Gc = soln_gc_bdw_debug
+        ; LLDSGc = llds_gc_history,          Gc = soln_gc_history
         ),
+        GcStr = gc_to_str(Gc),
         (
             LLDSPerfProf = llds_perf_prof_none,
             LLDSPerfProfStr = ""
@@ -479,37 +539,13 @@ grade_to_grade_string(Grade) = GradeStr :-
             LLDSPerfProfStr = ".profdeep"
         ;
             LLDSPerfProf = llds_perf_prof_mprof(MprofTime, MprofMemory),
-            (
-                MprofTime = soln_mprof_time_no,
-                MprofMemory = soln_mprof_memory_no,
-                LLDSPerfProfStr = ".profcalls"
-            ;
-                MprofTime = soln_mprof_time_no,
-                MprofMemory = soln_mprof_memory_yes,
-                LLDSPerfProfStr = ".memprof"
-            ;
-                MprofTime = soln_mprof_time_yes,
-                MprofMemory = soln_mprof_memory_no,
-                LLDSPerfProfStr = ".prof"
-            ;
-                MprofTime = soln_mprof_time_yes,
-                MprofMemory = soln_mprof_memory_yes,
-                LLDSPerfProfStr = ".profall"
-            )
+            LLDSPerfProfStr = mprof_to_string(MprofTime, MprofMemory)
         ),
         ( TermSizeProf = soln_term_size_prof_no,    TermSizeProfStr = ""
         ; TermSizeProf = soln_term_size_prof_cells, TermSizeProfStr = ".tsc"
         ; TermSizeProf = soln_term_size_prof_words, TermSizeProfStr = ".tsw"
         ),
-        (
-            LLDSTrail = llds_trail_no ,
-            TrailStr = ""
-        ;
-            LLDSTrail = llds_trail_yes(TrailSegments),
-            ( TrailSegments = soln_trail_segments_no,   TrailStr = ".tr"
-            ; TrailSegments = soln_trail_segments_yes,  TrailStr = ".trseg"
-            )
-        ),
+        TrailStr = c_trail_to_str(CTrail),
         (
             MinimalModel = soln_minmodel_no,
             MinimalModelStr = ""
@@ -526,13 +562,8 @@ grade_to_grade_string(Grade) = GradeStr :-
             MinimalModel = soln_minmodel_own_stack_debug,
             MinimalModelStr = ".dmmos"
         ),
-        (
-            SinglePrecFloat = soln_single_prec_float_no,
-            SinglePrecFloatStr = ""
-        ;
-            SinglePrecFloat = soln_single_prec_float_yes,
-            SinglePrecFloatStr = ".spf"
-        ),
+        PregenStr = pregen_to_str(Pregen),
+        SinglePrecFloatStr = single_prec_float_to_str(SinglePrecFloat),
         ( Debug = soln_debug_none,                  DebugStr = ""
         ; Debug = soln_debug_debug,                 DebugStr = ".debug"
         ; Debug = soln_debug_decldebug,             DebugStr = ".decldebug"
@@ -567,69 +598,121 @@ grade_to_grade_string(Grade) = GradeStr :-
                 RBMMStr = ".rbmmdp"
             )
         ),
-        GradeStr = string.append_list([GccConfStr, ThreadSafeStr, GcStr,
-            LLDSPerfProfStr, TermSizeProfStr, TrailStr, MinimalModelStr,
-            SinglePrecFloatStr, DebugStr, LLDebugStr,
+        MercFileStr = merc_file_to_str(WhichGradeString, MercFile),
+        GradeStr = string.append_list([GccConfStr, LowTagBitsUseStr,
+            ThreadSafeStr, GcStr, LLDSPerfProfStr, TermSizeProfStr,
+            TrailStr, MinimalModelStr, MercFileStr,
+            PregenStr, SinglePrecFloatStr, DebugStr, LLDebugStr,
             StackLenStr, RBMMStr, TScopeProfStr])
     ;
         Grade = grade_mlds(MLDSTarget, SSDebug),
-        ( SSDebug = soln_ssdebug_no,            SSDebugStr = ""
-        ; SSDebug = soln_ssdebug_yes,           SSDebugStr = ".ssdebug"
-        ),
+        SSDebugStr = ssdebug_to_str(SSDebug),
         (
-            MLDSTarget = mlds_target_c(DataLevel, NestedFuncs, MLDSCGc,
-                Trail, ThreadSafe, SinglePrecFloat),
+            MLDSTarget = mlds_target_c(DataLevel, NestedFuncs, LowTagBitsUse,
+                ThreadSafe, MLDSCGc, CTrail, MLDSPerfProf,
+                MercFile, Pregen, SinglePrecFloat),
             ( DataLevel = soln_data_level_hld,      DataLevelStr = "hl"
             ; DataLevel = soln_data_level_lld,      DataLevelStr = "hlc"
             ),
             ( NestedFuncs = soln_nested_funcs_no,   NestedFuncsStr = ""
             ; NestedFuncs = soln_nested_funcs_yes,  NestedFuncsStr = "_nest"
             ),
-            ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
-            ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
+            LowTagBitsUseStr =
+                low_tag_bits_use_to_str(WhichGradeString, LowTagBitsUse),
+            ( MLDSCGc = mlds_c_gc_none,             Gc = soln_gc_none
+            ; MLDSCGc = mlds_c_gc_bdw,              Gc = soln_gc_bdw
+            ; MLDSCGc = mlds_c_gc_bdw_debug,        Gc = soln_gc_bdw_debug
+            ; MLDSCGc = mlds_c_gc_accurate,         Gc = soln_gc_accurate
+            ; MLDSCGc = mlds_c_gc_history,          Gc = soln_gc_history
             ),
-            ( MLDSCGc = mlds_c_gc_none,             GcStr = ""
-            ; MLDSCGc = mlds_c_gc_bdw,              GcStr = ".gc"
-            ; MLDSCGc = mlds_c_gc_bdw_debug,        GcStr = ".gcd"
-            ; MLDSCGc = mlds_c_gc_accurate,         GcStr = ".agc"
-            ; MLDSCGc = mlds_c_gc_history,          GcStr = ".hgc"
-            ),
-            ( Trail = soln_trail_no,                TrailStr = ""
-            ; Trail = soln_trail_yes,               TrailStr = ".tr"
-            ),
+            ThreadSafeStr = thread_safe_to_str(ThreadSafe),
+            GcStr = gc_to_str(Gc),
+            TrailStr = c_trail_to_str(CTrail),
             (
-                SinglePrecFloat = soln_single_prec_float_no,
-                SinglePrecFloatStr = ""
+                MLDSPerfProf = mlds_c_perf_prof_none,
+                MLDSPerfProfStr = ""
             ;
-                SinglePrecFloat = soln_single_prec_float_yes,
-                SinglePrecFloatStr = ".spf"
+                MLDSPerfProf = mlds_c_perf_prof_mprof(MprofTime, MprofMemory),
+                MLDSPerfProfStr = mprof_to_string(MprofTime, MprofMemory)
             ),
+            MercFileStr = merc_file_to_str(WhichGradeString, MercFile),
+            PregenStr = pregen_to_str(Pregen),
+            SinglePrecFloatStr = single_prec_float_to_str(SinglePrecFloat),
             GradeStr = string.append_list([DataLevelStr, NestedFuncsStr,
-                ThreadSafeStr, SSDebugStr, GcStr, TrailStr,
-                SinglePrecFloatStr])
+                LowTagBitsUseStr, ThreadSafeStr, SSDebugStr, GcStr, TrailStr,
+                MLDSPerfProfStr, MercFileStr, PregenStr, SinglePrecFloatStr])
         ;
-            MLDSTarget = mlds_target_csharp(ThreadSafe),
-            ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
-            ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
-            ),
-            GradeStr = string.append_list(["csharp", ThreadSafeStr, SSDebugStr])
+            MLDSTarget = mlds_target_csharp,
+            GradeStr = string.append_list(["csharp", SSDebugStr])
         ;
-            MLDSTarget = mlds_target_java(ThreadSafe),
-            ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
-            ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
-            ),
-            GradeStr = string.append_list(["java", ThreadSafeStr, SSDebugStr])
+            MLDSTarget = mlds_target_java,
+            GradeStr = string.append_list(["java", SSDebugStr])
         )
     ;
-        Grade = grade_elds(ThreadSafe, SSDebug),
-        ( ThreadSafe = soln_thread_safe_no,     ThreadSafeStr = ""
-        ; ThreadSafe = soln_thread_safe_yes,    ThreadSafeStr = ".par"
-        ),
-        ( SSDebug = soln_ssdebug_no,            SSDebugStr = ""
-        ; SSDebug = soln_ssdebug_yes,           SSDebugStr = ".ssdebug"
-        ),
-        GradeStr = string.append_list(["erlang", ThreadSafeStr, SSDebugStr])
+        Grade = grade_elds(SSDebug),
+        SSDebugStr = ssdebug_to_str(SSDebug),
+        GradeStr = string.append_list(["erlang", SSDebugStr])
     ).
+
+:- func gc_to_str(soln_gc) = string.
+
+gc_to_str(soln_gc_none) = "".
+gc_to_str(soln_gc_target_native) = _ :-
+    unexpected($pred, "soln_gc_target_native").
+gc_to_str(soln_gc_bdw) = ".gc".
+gc_to_str(soln_gc_bdw_debug) = ".gcd".
+gc_to_str(soln_gc_accurate) = ".agc".
+gc_to_str(soln_gc_history) = ".hgc".
+
+:- func c_trail_to_str(c_trail) = string.
+
+c_trail_to_str(c_trail_no) = "".
+c_trail_to_str(c_trail_yes(soln_trail_segments_no)) = ".tr".
+c_trail_to_str(c_trail_yes(soln_trail_segments_yes)) = ".trseg".
+
+:- func thread_safe_to_str(soln_thread_safe) = string.
+
+thread_safe_to_str(soln_thread_safe_no) = "".
+thread_safe_to_str(soln_thread_safe_yes) = ".par".
+
+:- func ssdebug_to_str(soln_ssdebug) = string.
+
+ssdebug_to_str(soln_ssdebug_no) = "".
+ssdebug_to_str(soln_ssdebug_yes) = ".ssdebug".
+
+:- func mprof_to_string(soln_mprof_time, soln_mprof_memory) = string.
+
+mprof_to_string(soln_mprof_time_no, soln_mprof_memory_no) = ".profcalls".
+mprof_to_string(soln_mprof_time_no, soln_mprof_memory_yes) = ".memprof".
+mprof_to_string(soln_mprof_time_yes, soln_mprof_memory_no) =".prof".
+mprof_to_string(soln_mprof_time_yes, soln_mprof_memory_yes) = ".profall".
+
+:- func pregen_to_str(soln_pregen) = string.
+
+pregen_to_str(soln_pregen_no) = "".
+pregen_to_str(soln_pregen_yes) = ".pregen".
+
+:- func merc_file_to_str(which_grade_string, soln_merc_file) = string.
+
+merc_file_to_str(grade_string_user, _) = "".
+merc_file_to_str(grade_string_link_check, soln_merc_file_no) = "".
+merc_file_to_str(grade_string_link_check, soln_merc_file_yes) = ".file".
+
+:- func low_tag_bits_use_to_str(which_grade_string, soln_low_tag_bits_use)
+    = string.
+
+low_tag_bits_use_to_str(grade_string_user, _) = "".
+low_tag_bits_use_to_str(grade_string_link_check, soln_low_tag_bits_use_0)
+    = ".tags0".
+low_tag_bits_use_to_str(grade_string_link_check, soln_low_tag_bits_use_2)
+    = ".tags2".
+low_tag_bits_use_to_str(grade_string_link_check, soln_low_tag_bits_use_3)
+    = ".tags3".
+
+:- func single_prec_float_to_str(soln_single_prec_float) = string.
+
+single_prec_float_to_str(soln_single_prec_float_no) = "".
+single_prec_float_to_str(soln_single_prec_float_yes) = ".spf".
 
 %---------------------------------------------------------------------------%
 
