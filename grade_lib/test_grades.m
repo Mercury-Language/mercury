@@ -35,7 +35,8 @@
     --->    solve_count_stats(
                 scs_total_num_label_steps   :: int,
                 scs_total_num_passes        :: int,
-                scs_total_count             :: int
+                scs_total_num_req_tests     :: int,
+                scs_num_tests               :: int
             ).
 
 main(!IO) :-
@@ -44,16 +45,18 @@ main(!IO) :-
         autoconf_low_tag_bits_avail_3, autoconf_merc_file_no),
     setup_solver_info(AutoconfResults, SolverInfo0),
     TestSetSpecs = [broad_test_set_spec, llds_test_set_spec],
-    SolveCountStats0 = solve_count_stats(0, 0, 0),
+    SolveCountStats0 = solve_count_stats(0, 0, 0, 0),
     run_test_sets(SolverInfo0, TestSetSpecs,
         SolveCountStats0, SolveCountStats, !IO),
     SolveCountStats = solve_count_stats(TotalNumLabelSteps, TotalNumPasses,
-        Count),
+        TotalNumReqTests, NumTests),
     io.nl(!IO),
-    io.format("Average number of label steps: %5.2f\n",
-        [f(float(TotalNumLabelSteps) / float(Count))], !IO),
-    io.format("Average number of passes:      %5.2f\n",
-        [f(float(TotalNumPasses) / float(Count))], !IO).
+    io.format("Average number of label steps:     %7.2f\n",
+        [f(float(TotalNumLabelSteps) / float(NumTests))], !IO),
+    io.format("Average number of passes:          %7.2f\n",
+        [f(float(TotalNumPasses) / float(NumTests))], !IO),
+    io.format("Average number of requiment tests: %7.2f\n",
+        [f(float(TotalNumReqTests) / float(NumTests))], !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -126,16 +129,17 @@ run_test_set(SolverInfo0, TestSetSpec, TestSpecSoFar0, !SolveCountStats, !IO) :-
     (
         TestSetSpec = [],
         !.SolveCountStats = solve_count_stats(TotalNumLabelSteps0,
-            TotalNumPasses0, Seq0),
+            TotalNumPasses0, TotalNumReqTests0, NumTests0),
         solve(SolverInfo0, SolveCounts, Soln),
-        SolveCounts = solve_counts(NumLabelSteps, NumPasses),
+        SolveCounts = solve_counts(NumLabelSteps, NumPasses, NumReqTests),
         TotalNumLabelSteps = TotalNumLabelSteps0 + NumLabelSteps,
         TotalNumPasses = TotalNumPasses0 + NumPasses,
-        Seq = Seq0 + 1,
+        TotalNumReqTests = TotalNumReqTests0 + NumReqTests,
+        NumTests = NumTests0 + 1,
         !:SolveCountStats = solve_count_stats(TotalNumLabelSteps,
-            TotalNumPasses, Seq),
+            TotalNumPasses, TotalNumReqTests, NumTests),
 
-        SpecStr = test_spec_to_string("", Seq, TestSpecSoFar0),
+        SpecStr = test_spec_to_string("", NumTests, TestSpecSoFar0),
         string.format("PERF: %2d label steps, %2d passes\n",
             [i(NumLabelSteps), i(NumPasses)], CountStr),
         SolnStr = soln_to_str("    ", Soln),

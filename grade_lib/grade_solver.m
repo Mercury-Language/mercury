@@ -14,7 +14,8 @@
 :- type solve_counts
     --->    solve_counts(
                 sc_num_label_steps      :: int,
-                sc_num_passes           :: int
+                sc_num_passes           :: int,
+                sc_num_req_tests        :: int
             ).
 
 :- type failure_info.
@@ -92,7 +93,7 @@
 
 solve(SolverInfo, SolveCounts, Soln) :-
     SolverInfo = solver_info(Requirements, SolverVarPriorities, SolverVarMap0),
-    SolveCounts0 = solve_counts(0, 0),
+    SolveCounts0 = solve_counts(0, 0, 0),
     solve_loop(Requirements, Requirements, _FinalRequirements,
         SolverVarPriorities, SolverVarMap0, SolveCounts0, SolveCounts, Soln).
 
@@ -103,10 +104,7 @@ solve(SolverInfo, SolveCounts, Soln) :-
 
 solve_loop(AllRequirements, !CurRequirements, !.SolverVarPriorities,
         !.SolverVarMap, !SolveCounts, Soln) :-
-    NumPasses0 = !.SolveCounts ^ sc_num_passes,
-    propagate_to_fixpoint(!CurRequirements, !SolverVarMap,
-        NumPasses0, NumPasses),
-    !SolveCounts ^ sc_num_passes := NumPasses,
+    propagate_to_fixpoint(!CurRequirements, !SolverVarMap, !SolveCounts),
     at_solution(AllRequirements, !.SolverVarMap, MaybeSoln),
     (
         MaybeSoln = yes(Soln)
@@ -130,11 +128,18 @@ solve_loop(AllRequirements, !CurRequirements, !.SolverVarPriorities,
     ;       found_failure.
 
 :- pred propagate_to_fixpoint(list(requirement)::in, list(requirement)::out,
-    solver_var_map::in, solver_var_map::out, int::in, int::out) is det.
+    solver_var_map::in, solver_var_map::out,
+    solve_counts::in, solve_counts::out) is det.
 
 propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
-        !NumPasses) :-
-    !:NumPasses = !.NumPasses + 1,
+        !SolveCounts) :-
+    NumPasses0 = !.SolveCounts ^ sc_num_passes,
+    NumReqTests0 = !.SolveCounts ^ sc_num_req_tests,
+    NumPasses = NumPasses0 + 1,
+    NumReqTests = NumReqTests0 + list.length(Requirements0),
+    !SolveCounts ^ sc_num_passes := NumPasses,
+    !SolveCounts ^ sc_num_req_tests := NumReqTests,
+
     propagate_pass(Requirements0, [], RevRequirements1, !SolverVarMap,
         not_changed, Changed, havent_found_failure, FoundFailure),
     list.reverse(RevRequirements1, Requirements1),
@@ -147,7 +152,7 @@ propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
             FoundFailureSuffix = " (found failure)"
         ),
         io.format("\nAFTER PROPAGATE PASS %d%s\n",
-            [i(!.NumPasses), s(FoundFailureSuffix)], !IO),
+            [i(NumPasses0), s(FoundFailureSuffix)], !IO),
         io.write_string(solver_var_map_to_str("    ", !.SolverVarMap), !IO),
         io.nl(!IO)
     ),
@@ -175,7 +180,7 @@ propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
         ;
             Changed = changed,
             propagate_to_fixpoint(Requirements1, Requirements, !SolverVarMap,
-                !NumPasses)
+                !SolveCounts)
         )
     ).
 

@@ -520,39 +520,42 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Setting = svar_deep_prof - svalue_deep_prof_yes,
         Settings =
             [svar_target - svalue_target_c,
-            svar_backend - svalue_backend_llds]
+            svar_backend - svalue_backend_llds,
+            svar_mprof_call - svalue_mprof_call_no,
+            svar_mprof_time - svalue_mprof_time_no,
+            svar_mprof_memory - svalue_mprof_memory_no]
     ;
         ComponentStr = "profcalls",
         Setting = svar_mprof_call - svalue_mprof_call_yes,
         Settings =
             [svar_mprof_time - svalue_mprof_time_no,
             svar_mprof_memory - svalue_mprof_memory_no,
-            svar_target - svalue_target_c,
-            svar_backend - svalue_backend_llds]
+            svar_deep_prof - svalue_deep_prof_no,
+            svar_target - svalue_target_c]
     ;
         ComponentStr = "memprof",
         Setting = svar_mprof_call - svalue_mprof_call_yes,
         Settings =
             [svar_mprof_time - svalue_mprof_time_no,
             svar_mprof_memory - svalue_mprof_memory_yes,
-            svar_target - svalue_target_c,
-            svar_backend - svalue_backend_llds]
+            svar_deep_prof - svalue_deep_prof_no,
+            svar_target - svalue_target_c]
     ;
         ComponentStr = "prof",
         Setting = svar_mprof_call - svalue_mprof_call_yes,
         Settings =
             [svar_mprof_time - svalue_mprof_time_yes,
             svar_mprof_memory - svalue_mprof_memory_no,
-            svar_target - svalue_target_c,
-            svar_backend - svalue_backend_llds]
+            svar_deep_prof - svalue_deep_prof_no,
+            svar_target - svalue_target_c]
     ;
         ComponentStr = "profall",
         Setting = svar_mprof_call - svalue_mprof_call_yes,
         Settings =
             [svar_mprof_time - svalue_mprof_time_yes,
             svar_mprof_memory - svalue_mprof_memory_yes,
-            svar_target - svalue_target_c,
-            svar_backend - svalue_backend_llds]
+            svar_deep_prof - svalue_deep_prof_no,
+            svar_target - svalue_target_c]
     ;
         ComponentStr = "tsc",
         Setting = svar_term_size_prof - svalue_term_size_prof_cells,
