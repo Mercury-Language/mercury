@@ -51,11 +51,11 @@ main(!IO) :-
     SolveCountStats = solve_count_stats(TotalNumLabelSteps, TotalNumPasses,
         TotalNumReqTests, NumTests),
     io.nl(!IO),
-    io.format("Average number of label steps:     %7.2f\n",
+    io.format("Average number of label steps:       %7.2f\n",
         [f(float(TotalNumLabelSteps) / float(NumTests))], !IO),
-    io.format("Average number of passes:          %7.2f\n",
+    io.format("Average number of passes:            %7.2f\n",
         [f(float(TotalNumPasses) / float(NumTests))], !IO),
-    io.format("Average number of requiment tests: %7.2f\n",
+    io.format("Average number of requirement tests: %7.2f\n",
         [f(float(TotalNumReqTests) / float(NumTests))], !IO).
 
 %---------------------------------------------------------------------------%
