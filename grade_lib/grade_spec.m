@@ -437,22 +437,6 @@ init_requirement_specs = [
         (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
     ),
 
-    requirement_spec(
-        "targeting C# is incompatible with trailing",
-        (svar_target `being` svalue_target_csharp) `implies_that`
-        (svar_trail `is_one_of` [svalue_trail_no])
-    ),
-    requirement_spec(
-        "targeting Java is incompatible with trailing",
-        (svar_target `being` svalue_target_java) `implies_that`
-        (svar_trail `is_one_of` [svalue_trail_no])
-    ),
-    requirement_spec(
-        "targeting Erlang is incompatible with trailing",
-        (svar_target `being` svalue_target_erlang) `implies_that`
-        (svar_trail `is_one_of` [svalue_trail_no])
-    ),
-
 % These are covered by a single requirement from spf back to target.
 %   requirement_spec(
 %       "targeting C# is incompatible with single-precision floats",
@@ -581,6 +565,11 @@ init_requirement_specs = [
     ),
 
 % Requirements of values of svar_trail.
+    requirement_spec(
+        "trailing requires targeting C",
+        (svar_trail `being` svalue_trail_yes) `implies_that`
+        (svar_target `is_one_of` [svalue_target_c])
+    ),
     requirement_spec(
         "trailing interferes with minimal model tabling",
         (svar_trail `being` svalue_trail_yes) `implies_that`
