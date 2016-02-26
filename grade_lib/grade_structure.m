@@ -88,7 +88,7 @@
 
 :- type mlds_target
     --->    mlds_target_c(
-                grade_var_data_level,
+                mlds_c_dararep,
                 grade_var_nested_funcs,
                 grade_var_low_tag_bits_use,
                 grade_var_thread_safe,
@@ -101,6 +101,10 @@
             )
     ;       mlds_target_csharp
     ;       mlds_target_java.
+
+:- type mlds_c_dararep
+    --->    mlds_c_datarep_heap_cells
+    ;       mlds_c_datarep_classes.
 
 :- type mlds_c_gc
     --->    mlds_c_gc_none
@@ -151,7 +155,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
     (
         Backend = grade_var_backend_llds,
 
-        GradeVars = grade_vars(_Backend, DataLevel,
+        GradeVars = grade_vars(_Backend, DataRep,
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
             LowTagBitsUse, StackLen, Trail, TrailSegments,
             MinimalModel, ThreadSafe, Gc,
@@ -159,8 +163,8 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             TermSizeProf, Debug, SSDebug, LLDebug, RBMM, RBMMDebug, RBMMProf,
             MercFile, Pregen, SinglePrecFloat),
 
-        expect(unify(DataLevel, grade_var_data_level_lld), $pred,
-            "DataLevel != grade_var_data_level_lld"),
+        expect(unify(DataRep, grade_var_datarep_heap_cells), $pred,
+            "DataRep != grade_var_datarep_heap_cells"),
         expect(unify(Target, grade_var_target_c), $pred,
             "Target != grade_var_target_c"),
         expect(unify(NestedFuncs, grade_var_nested_funcs_no), $pred,
@@ -280,7 +284,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
     ;
         Backend = grade_var_backend_mlds,
 
-        GradeVars = grade_vars(_Backend, DataLevel,
+        GradeVars = grade_vars(_Backend, DataRep,
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
             LowTagBitsUse, StackLen, Trail, TrailSegments,
             MinimalModel, ThreadSafe, Gc,
@@ -316,6 +320,16 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             "RBMMProf != grade_var_rbmm_prof_no"),
         (
             Target = grade_var_target_c,
+            (
+                DataRep = grade_var_datarep_heap_cells,
+                MLDSCDataRep = mlds_c_datarep_heap_cells
+            ;
+                DataRep = grade_var_datarep_classes,
+                MLDSCDataRep = mlds_c_datarep_classes
+            ;
+                DataRep = grade_var_datarep_erlang,
+                unexpected($pred, "Target = c, DataRep = erlang")
+            ),
             (
                 Gc = grade_var_gc_none,
                 MLDSGc = mlds_c_gc_none
@@ -354,7 +368,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 MprofCall = grade_var_mprof_call_yes,
                 MLDSPerfProf = mlds_c_perf_prof_mprof(MprofTime, MprofMemory)
             ),
-            TargetC = mlds_target_c(DataLevel, NestedFuncs, LowTagBitsUse,
+            TargetC = mlds_target_c(MLDSCDataRep, NestedFuncs, LowTagBitsUse,
                 ThreadSafe, MLDSGc, CTrail, MLDSPerfProf,
                 MercFile, Pregen, SinglePrecFloat),
             GradeStructure = grade_mlds(TargetC, SSDebug)
@@ -364,8 +378,8 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             ),
             expect(unify(Pregen, grade_var_pregen_no), $pred,
                 "Pregen != grade_var_pregen_no"),
-            expect(unify(DataLevel, grade_var_data_level_hld), $pred,
-                "DataLevel != grade_var_data_level_hld"),
+            expect(unify(DataRep, grade_var_datarep_classes), $pred,
+                "DataRep != grade_var_datarep_classes"),
             expect(unify(NestedFuncs, grade_var_nested_funcs_no), $pred,
                 "NestedFuncs != grade_var_nested_funcs_no"),
             expect(unify(ThreadSafe, grade_var_thread_safe_yes), $pred,
@@ -406,7 +420,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
     ;
         Backend = grade_var_backend_elds,
 
-        GradeVars = grade_vars(_Backend, DataLevel,
+        GradeVars = grade_vars(_Backend, DataRep,
             Target, NestedFuncs, GccRegsUse, GccGotosUse, GccLabelsUse,
             _LowTagBitsUse, StackLen, Trail, TrailSegments,
             MinimalModel, ThreadSafe, Gc,
@@ -417,8 +431,8 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
         % XXX The ELDS backend's data representation is NOT the same
         % as the LLDS backends'. If it were, we couldn't ignore the value of
         % _LowTagBitsUse.
-        expect(unify(DataLevel, grade_var_data_level_lld), $pred,
-            "DataLevel != grade_var_data_level_lld"),
+        expect(unify(DataRep, grade_var_datarep_erlang), $pred,
+            "DataRep != grade_var_datarep_erlang"),
         expect(unify(Target, grade_var_target_erlang), $pred,
             "Target != grade_var_target_erlang"),
         expect(unify(NestedFuncs, grade_var_nested_funcs_no), $pred,

@@ -159,11 +159,15 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         GradeStructure = grade_mlds(MLDSTarget, SSDebug),
         SSDebugStr = ssdebug_to_str(SSDebug),
         (
-            MLDSTarget = mlds_target_c(DataLevel, NestedFuncs, LowTagBitsUse,
+            MLDSTarget = mlds_target_c(DataRep, NestedFuncs, LowTagBitsUse,
                 ThreadSafe, MLDSCGc, CTrail, MLDSPerfProf,
                 MercFile, Pregen, SinglePrecFloat),
-            ( DataLevel = grade_var_data_level_hld,      DataLevelStr = "hl"
-            ; DataLevel = grade_var_data_level_lld,      DataLevelStr = "hlc"
+            (
+                DataRep = mlds_c_datarep_heap_cells,
+                DataRepStr = "hlc"
+            ;
+                DataRep = mlds_c_datarep_classes,
+                DataRepStr = "hl"
             ),
             (
                 NestedFuncs = grade_var_nested_funcs_no,
@@ -193,7 +197,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             MercFileStr = merc_file_to_str(WhichGradeString, MercFile),
             PregenStr = pregen_to_str(Pregen),
             SinglePrecFloatStr = single_prec_float_to_str(SinglePrecFloat),
-            GradeStr = string.append_list([DataLevelStr, NestedFuncsStr,
+            GradeStr = string.append_list([DataRepStr, NestedFuncsStr,
                 LowTagBitsUseStr, ThreadSafeStr, SSDebugStr, GcStr, TrailStr,
                 MLDSPerfProfStr, MercFileStr, PregenStr, SinglePrecFloatStr])
         ;
@@ -350,104 +354,159 @@ apply_setting(ComponentStr, VarId - ValueId, !ComponentMap, !RevErrorMsgs) :-
     list(pair(solver_var_id, solver_var_value_id))::out) is semidet.
 
 translate_grade_component(ComponentStr, Setting, Settings) :-
+    % Some of the settings we return are an expression of the inherent
+    % meaning of the grade component, while others are their required
+    % implications. The solver would *handle* the implications itself,
+    % but including them here will give it less work to do and thus
+    % make it faster.
+    %
+    % Including the implications is therefore nice, but not required.
     (
         ComponentStr = "none",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
-            [svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            [svar_target - svalue_target_c,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
             svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+            svar_gcc_regs_use - svalue_gcc_regs_use_no,
+            svar_datarep - svalue_datarep_heap_cells,
+            svar_nested_funcs - svalue_nested_funcs_no]
     ;
         ComponentStr = "reg",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
-            [svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            [svar_target - svalue_target_c,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
             svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
-            svar_gcc_regs_use - svalue_gcc_regs_use_yes]
+            svar_gcc_regs_use - svalue_gcc_regs_use_yes,
+            svar_datarep - svalue_datarep_heap_cells,
+            svar_nested_funcs - svalue_nested_funcs_no]
     ;
         ComponentStr = "jump",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
-            [svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            [svar_target - svalue_target_c,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
             svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+            svar_gcc_regs_use - svalue_gcc_regs_use_no,
+            svar_datarep - svalue_datarep_heap_cells,
+            svar_nested_funcs - svalue_nested_funcs_no]
     ;
         ComponentStr = "fast",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
-            [svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            [svar_target - svalue_target_c,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
             svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
-            svar_gcc_regs_use - svalue_gcc_regs_use_yes]
+            svar_gcc_regs_use - svalue_gcc_regs_use_yes,
+            svar_datarep - svalue_datarep_heap_cells,
+            svar_nested_funcs - svalue_nested_funcs_no]
     ;
         ComponentStr = "asm_jump",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
-            [svar_gcc_labels_use - svalue_gcc_labels_use_yes,
+            [svar_target - svalue_target_c,
+            svar_gcc_labels_use - svalue_gcc_labels_use_yes,
             svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
-            svar_gcc_regs_use - svalue_gcc_regs_use_no]
+            svar_gcc_regs_use - svalue_gcc_regs_use_no,
+            svar_datarep - svalue_datarep_heap_cells,
+            svar_nested_funcs - svalue_nested_funcs_no]
     ;
         ComponentStr = "asm_fast",
         Setting = svar_backend - svalue_backend_llds,
         Settings =
-            [svar_gcc_labels_use - svalue_gcc_labels_use_yes,
+            [svar_target - svalue_target_c,
+            svar_gcc_labels_use - svalue_gcc_labels_use_yes,
             svar_gcc_gotos_use - svalue_gcc_gotos_use_yes,
-            svar_gcc_regs_use - svalue_gcc_regs_use_yes]
+            svar_gcc_regs_use - svalue_gcc_regs_use_yes,
+            svar_datarep - svalue_datarep_heap_cells,
+            svar_nested_funcs - svalue_nested_funcs_no]
     ;
         ComponentStr = "hl",
-        Setting = svar_backend - svalue_backend_mlds,
+        Setting = svar_target - svalue_target_c,
         Settings =
-            [svar_target - svalue_target_c,
-            svar_data_level - svalue_data_level_hld,
-            svar_nested_funcs - svalue_nested_funcs_no]
+            [svar_backend - svalue_backend_mlds,
+            svar_datarep - svalue_datarep_classes,
+            svar_nested_funcs - svalue_nested_funcs_no,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
+            svar_gcc_regs_use - svalue_gcc_regs_use_no]
     ;
         ComponentStr = "hlc",
-        Setting = svar_backend - svalue_backend_mlds,
+        Setting = svar_target - svalue_target_c,
         Settings =
-            [svar_target - svalue_target_c,
-            svar_data_level - svalue_data_level_lld,
-            svar_nested_funcs - svalue_nested_funcs_no]
+            [svar_backend - svalue_backend_mlds,
+            svar_datarep - svalue_datarep_heap_cells,
+            svar_nested_funcs - svalue_nested_funcs_no,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
+            svar_gcc_regs_use - svalue_gcc_regs_use_no]
     ;
         ComponentStr = "hl_nest",
-        Setting = svar_backend - svalue_backend_mlds,
+        Setting = svar_target - svalue_target_c,
         Settings =
-            [svar_target - svalue_target_c,
-            svar_data_level - svalue_data_level_hld,
-            svar_nested_funcs - svalue_nested_funcs_yes]
+            [svar_backend - svalue_backend_mlds,
+            svar_datarep - svalue_datarep_classes,
+            svar_nested_funcs - svalue_nested_funcs_yes,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
+            svar_gcc_regs_use - svalue_gcc_regs_use_no]
     ;
         ComponentStr = "hlc_nest",
-        Setting = svar_backend - svalue_backend_mlds,
+        Setting = svar_target - svalue_target_c,
         Settings =
-            [svar_target - svalue_target_c,
-            svar_data_level - svalue_data_level_lld,
-            svar_nested_funcs - svalue_nested_funcs_yes]
+            [svar_backend - svalue_backend_mlds,
+            svar_datarep - svalue_datarep_heap_cells,
+            svar_nested_funcs - svalue_nested_funcs_yes,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
+            svar_gcc_regs_use - svalue_gcc_regs_use_no]
     ;
         ComponentStr = "csharp",
         Setting = svar_target - svalue_target_csharp,
-        Settings = []
+        Settings =
+            [svar_backend - svalue_backend_mlds,
+            svar_datarep - svalue_datarep_classes,
+            svar_nested_funcs - svalue_nested_funcs_no,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
+            svar_gcc_regs_use - svalue_gcc_regs_use_no]
     ;
         ComponentStr = "java",
         Setting = svar_target - svalue_target_java,
-        Settings = []
+        Settings =
+            [svar_backend - svalue_backend_mlds,
+            svar_datarep - svalue_datarep_classes,
+            svar_nested_funcs - svalue_nested_funcs_no,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
+            svar_gcc_regs_use - svalue_gcc_regs_use_no]
     ;
         ComponentStr = "erlang",
         Setting = svar_target - svalue_target_erlang,
-        Settings = []
+        Settings =
+            [svar_backend - svalue_backend_elds,
+            svar_datarep - svalue_datarep_erlang,
+            svar_nested_funcs - svalue_nested_funcs_no,
+            svar_gcc_labels_use - svalue_gcc_labels_use_no,
+            svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
+            svar_gcc_regs_use - svalue_gcc_regs_use_no]
     ;
         ComponentStr = "gc",
         Setting = svar_gc - svalue_gc_bdw,
-        Settings = []
+        Settings = [svar_target - svalue_target_c]
     ;
         ComponentStr = "gcd",
         Setting = svar_gc - svalue_gc_bdw_debug,
-        Settings = []
+        Settings = [svar_target - svalue_target_c]
     ;
         ComponentStr = "agc",
         Setting = svar_gc - svalue_gc_accurate,
-        Settings = []
+        Settings = [svar_target - svalue_target_c]
     ;
         ComponentStr = "hgc",
         Setting = svar_gc - svalue_gc_history,
-        Settings = []
+        Settings = [svar_target - svalue_target_c]
     ;
         ComponentStr = "par",
         Setting = svar_thread_safe - svalue_thread_safe_yes,
@@ -459,31 +518,41 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
     ;
         ComponentStr = "profdeep",
         Setting = svar_deep_prof - svalue_deep_prof_yes,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "profcalls",
         Setting = svar_mprof_call - svalue_mprof_call_yes,
         Settings =
             [svar_mprof_time - svalue_mprof_time_no,
-            svar_mprof_memory - svalue_mprof_memory_no]
+            svar_mprof_memory - svalue_mprof_memory_no,
+            svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "memprof",
         Setting = svar_mprof_call - svalue_mprof_call_yes,
         Settings =
             [svar_mprof_time - svalue_mprof_time_no,
-            svar_mprof_memory - svalue_mprof_memory_yes]
+            svar_mprof_memory - svalue_mprof_memory_yes,
+            svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "prof",
         Setting = svar_mprof_call - svalue_mprof_call_yes,
         Settings =
             [svar_mprof_time - svalue_mprof_time_yes,
-            svar_mprof_memory - svalue_mprof_memory_no]
+            svar_mprof_memory - svalue_mprof_memory_no,
+            svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "profall",
         Setting = svar_mprof_call - svalue_mprof_call_yes,
         Settings =
             [svar_mprof_time - svalue_mprof_time_yes,
-            svar_mprof_memory - svalue_mprof_memory_yes]
+            svar_mprof_memory - svalue_mprof_memory_yes,
+            svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "tsc",
         Setting = svar_term_size_prof - svalue_term_size_prof_cells,
@@ -505,57 +574,78 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         ; ComponentStr = "mmsc"
         ),
         Setting = svar_minmodel - svalue_minmodel_stack_copy,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ( ComponentStr = "dmm"
         ; ComponentStr = "dmmsc"
         ),
         Setting = svar_minmodel - svalue_minmodel_stack_copy_debug,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "mmos",
         Setting = svar_minmodel - svalue_minmodel_own_stack,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "dmmos",
         Setting = svar_minmodel - svalue_minmodel_own_stack_debug,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "spf",
         Setting = svar_single_prec_float - svalue_single_prec_float_yes,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c]
     ;
         ComponentStr = "debug",
         Setting = svar_debug - svalue_debug_debug,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "decldebug",
         Setting = svar_debug - svalue_debug_decldebug,
-        Settings = []
+        Settings =
+            [svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "rbmm",
         Setting = svar_rbmm - svalue_rbmm_yes,
         Settings =
             [svar_rbmm_debug - svalue_rbmm_debug_no,
-            svar_rbmm_prof - svalue_rbmm_prof_no]
+            svar_rbmm_prof - svalue_rbmm_prof_no,
+            svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "rbmmp",
         Setting = svar_rbmm - svalue_rbmm_yes,
         Settings =
             [svar_rbmm_debug - svalue_rbmm_debug_no,
-            svar_rbmm_prof - svalue_rbmm_prof_yes]
+            svar_rbmm_prof - svalue_rbmm_prof_yes,
+            svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "rbmmd",
         Setting = svar_rbmm - svalue_rbmm_yes,
         Settings =
             [svar_rbmm_debug - svalue_rbmm_debug_yes,
-            svar_rbmm_prof - svalue_rbmm_prof_no]
+            svar_rbmm_prof - svalue_rbmm_prof_no,
+            svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "rbmmdp",
         Setting = svar_rbmm - svalue_rbmm_yes,
         Settings =
             [svar_rbmm_debug - svalue_rbmm_debug_yes,
-            svar_rbmm_prof - svalue_rbmm_prof_yes]
+            svar_rbmm_prof - svalue_rbmm_prof_yes,
+            svar_target - svalue_target_c,
+            svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "ssdebug",
         Setting = svar_ssdebug - svalue_ssdebug_yes,

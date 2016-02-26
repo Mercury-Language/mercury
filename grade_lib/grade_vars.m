@@ -12,7 +12,7 @@
 :- type grade_vars
     --->    grade_vars(
                 grade_var_backend,
-                grade_var_data_level,
+                grade_var_datarep,
                 grade_var_target,
                 grade_var_nested_funcs,
                 grade_var_gcc_regs,
@@ -47,9 +47,10 @@
     ;       grade_var_backend_llds
     ;       grade_var_backend_elds.
 
-:- type grade_var_data_level
-    --->    grade_var_data_level_hld
-    ;       grade_var_data_level_lld.
+:- type grade_var_datarep
+    --->    grade_var_datarep_heap_cells
+    ;       grade_var_datarep_classes
+    ;       grade_var_datarep_erlang.
 
 :- type grade_var_target
     --->    grade_var_target_c
@@ -212,7 +213,7 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     map.det_remove(svar_low_tag_bits_avail, _LowTagBitsAvail, !SuccMap),
 
     map.det_remove(svar_backend, Backend, !SuccMap),
-    map.det_remove(svar_data_level, DataLevel, !SuccMap),
+    map.det_remove(svar_datarep, DataRep, !SuccMap),
     map.det_remove(svar_target, Target, !SuccMap),
     map.det_remove(svar_nested_funcs, NestedFuncs, !SuccMap),
     map.det_remove(svar_gcc_regs_use, GccRegsUse, !SuccMap),
@@ -252,12 +253,14 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         unexpected($pred, "unexpected value of Backend")
     ),
 
-    ( if DataLevel = svalue_data_level_hld then
-        GradeVarDataLevel = grade_var_data_level_hld
-    else if DataLevel = svalue_data_level_lld then
-        GradeVarDataLevel = grade_var_data_level_lld
+    ( if DataRep = svalue_datarep_heap_cells then
+        GradeVarDataRep = grade_var_datarep_heap_cells
+    else if DataRep = svalue_datarep_classes then
+        GradeVarDataRep = grade_var_datarep_classes
+    else if DataRep = svalue_datarep_erlang then
+        GradeVarDataRep = grade_var_datarep_erlang
     else
-        unexpected($pred, "unexpected value of DataLevel")
+        unexpected($pred, "unexpected value of DataRep")
     ),
 
     ( if Target = svalue_target_c then
@@ -503,7 +506,7 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     ),
 
     GradeVars = grade_vars(
-        GradeVarBackend, GradeVarDataLevel,
+        GradeVarBackend, GradeVarDataRep,
         GradeVarTarget, GradeVarNestedFuncs,
         GradeVarGccRegsUse, GradeVarGccGotosUse, GradeVarGccLabelsUse,
         GradeVarLowTagBitsUse, GradeVarStackLen,

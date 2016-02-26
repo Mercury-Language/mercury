@@ -17,7 +17,7 @@
     ;       svar_merc_file
 
     ;       svar_backend
-    ;       svar_data_level
+    ;       svar_datarep
     ;       svar_target
     ;       svar_nested_funcs
     ;       svar_gcc_regs_use
@@ -76,11 +76,9 @@
     ;       svalue_backend_llds
     ;       svalue_backend_elds
 
-    ;       svalue_data_level_hld
-    ;       svalue_data_level_lld
-            % XXX At the moment, targeting Erlang implies lowlevel_data,
-            % but the Erlang does NOT use the same data representation as
-            % C does with lowlevel_data.
+    ;       svalue_datarep_heap_cells
+    ;       svalue_datarep_classes
+    ;       svalue_datarep_erlang
 
     ;       svalue_target_c
     ;       svalue_target_csharp
@@ -243,8 +241,9 @@ init_solver_var_specs = [
 
     solver_var_spec(svar_backend,
         [svalue_backend_mlds, svalue_backend_llds, svalue_backend_elds]),
-    solver_var_spec(svar_data_level,
-        [svalue_data_level_lld, svalue_data_level_hld]),
+    solver_var_spec(svar_datarep,
+        [svalue_datarep_heap_cells, svalue_datarep_classes,
+        svalue_datarep_erlang]),
     solver_var_spec(svar_target,
         [svalue_target_c, svalue_target_csharp,
         svalue_target_java, svalue_target_erlang]),
@@ -347,15 +346,20 @@ init_requirement_specs = [
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
+        "LLDS backend requires storing data in heap cells",
+        (svar_backend `being` svalue_backend_llds) `implies_that`
+        (svar_datarep `is_one_of` [svalue_datarep_heap_cells])
+    ),
+    requirement_spec(
         "ELDS backend requires targeting Erlang",
         (svar_backend `being` svalue_backend_elds) `implies_that`
         (svar_target `is_one_of` [svalue_target_erlang])
     ),
 
-% Requirements of values of svar_data_level.
+% Requirements of values of svar_datarep.
     requirement_spec(
-        "high level data requires high level code",
-        (svar_data_level `being` svalue_data_level_hld) `implies_that`
+        "representing data using classes data requires the MLDS backend",
+        (svar_datarep `being` svalue_datarep_classes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_mlds])
     ),
 
@@ -377,19 +381,19 @@ init_requirement_specs = [
     ),
 
     requirement_spec(
-        "targeting C# requires high level data",
+        "targeting C# requires representing data using classes",
         (svar_target `being` svalue_target_csharp) `implies_that`
-        (svar_data_level `is_one_of` [svalue_data_level_hld])
+        (svar_datarep `is_one_of` [svalue_datarep_classes])
     ),
     requirement_spec(
-        "targeting Java requires high level data",
+        "targeting Java requires representing data using classes",
         (svar_target `being` svalue_target_java) `implies_that`
-        (svar_data_level `is_one_of` [svalue_data_level_hld])
+        (svar_datarep `is_one_of` [svalue_datarep_classes])
     ),
     requirement_spec(
-        "targeting Erlang requires low level data",
+        "targeting Erlang requires using Erlang terms",
         (svar_target `being` svalue_target_erlang) `implies_that`
-        (svar_data_level `is_one_of` [svalue_data_level_lld])
+        (svar_datarep `is_one_of` [svalue_datarep_erlang])
     ),
 
     requirement_spec(

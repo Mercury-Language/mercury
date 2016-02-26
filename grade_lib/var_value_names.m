@@ -30,7 +30,7 @@ solver_var_name("low_tag_bits_avail",               svar_low_tag_bits_avail).
 solver_var_name("mercuryfile",                      svar_merc_file).
 
 solver_var_name("backend",                          svar_backend).
-solver_var_name("data_level",                       svar_data_level).
+solver_var_name("datarep",                          svar_datarep).
 solver_var_name("target",                           svar_target).
 solver_var_name("nested_funcs",                     svar_nested_funcs).
 solver_var_name("gcc_regs_use",                     svar_gcc_regs_use).
@@ -78,8 +78,9 @@ solver_var_value_name("mlds",                       svalue_backend_mlds).
 solver_var_value_name("llds",                       svalue_backend_llds).
 solver_var_value_name("elds",                       svalue_backend_elds).
 
-solver_var_value_name("hld",                        svalue_data_level_hld).
-solver_var_value_name("lld",                        svalue_data_level_lld).
+solver_var_value_name("heap_cells",                 svalue_datarep_heap_cells).
+solver_var_value_name("classes",                    svalue_datarep_classes).
+solver_var_value_name("erlangdata",                 svalue_datarep_erlang).
 
 solver_var_value_name("c",                          svalue_target_c).
 solver_var_value_name("csharp",                     svalue_target_csharp).
