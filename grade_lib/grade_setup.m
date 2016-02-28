@@ -221,7 +221,8 @@ set_solver_var(VarName, ValueName, VarId, ValueId, SetTo, WhyNot, MaybeError,
             SetTo = set_to_false,
             (
                 OldPossible = is_possible,
-                % If the variable was set to true before, that is expected.
+                % If the variable could have had this value before,
+                % that is expected.
                 MaybeError = ok,
                 CntPoss = CntPoss0 - 1,
                 SolverVar = solver_var(CntAll, CntPoss, Values),
@@ -230,8 +231,8 @@ set_solver_var(VarName, ValueName, VarId, ValueId, SetTo, WhyNot, MaybeError,
                 !SolverInfo ^ si_solver_var_map := SolverVarMap
             ;
                 OldPossible = not_possible(_),
-                % If the variable was set to false before, our setting it
-                % to false is redundant, but ok.
+                % If the variable having this value had been rules out before,
+                % our setting it to not possible is redundant, but ok.
                 MaybeError = ok
             )
         )

@@ -30,7 +30,33 @@
                 success_soln_map
             ).
 
-:- pred solve(solver_info::in, solve_counts::out, solution::out) is det.
+:- pred solve_absolute(solver_info::in, solve_counts::out, solution::out)
+    is det.
+
+%---------------------------------------------------------------------------%
+
+:- type installed_grade
+    --->    installed_grade(
+                string,
+                success_soln_map
+            ).
+
+:- type should_commit
+    --->    should_commit
+    ;       should_not_commit.
+
+:- type installed_grade_solution
+    --->    installed_grade_spec_is_inconsistent(
+                failure_info
+            )
+    ;       installed_grade_success(
+                installed_grade
+            )
+    ;       no_such_installed_grade.
+
+:- pred solve_best_installed_grade(solver_info::in, should_commit::in,
+    list(installed_grade)::in,
+    solve_counts::out, installed_grade_solution::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -91,19 +117,223 @@
 
 %---------------------------------------------------------------------------%
 
-solve(SolverInfo, SolveCounts, Soln) :-
+solve_best_installed_grade(SolverInfo, Commit, InstalledGrades0, SolveCounts,
+        InstalledGradeSoln) :-
     SolverInfo = solver_info(Requirements, SolverVarPriorities, SolverVarMap0),
     SolveCounts0 = solve_counts(0, 0, 0),
-    solve_loop(Requirements, Requirements, _FinalRequirements,
-        SolverVarPriorities, SolverVarMap0, SolveCounts0, SolveCounts, Soln).
+    propagate_to_fixpoint(Requirements, _Requirements,
+        SolverVarMap0, SolverVarMap, SolveCounts0, SolveCounts),
+    at_solution(Requirements, SolverVarMap, MaybeSoln),
 
-:- pred solve_loop(list(requirement)::in,
+    list.sort_and_remove_dups(InstalledGrades0, InstalledGrades),
+    (
+        MaybeSoln = yes(Soln),
+        (
+            Soln = soln_failure(FailureInfo),
+            InstalledGradeSoln =
+                installed_grade_spec_is_inconsistent(FailureInfo)
+        ;
+            Soln = soln_success(SuccMap),
+            map.to_sorted_assoc_list(SuccMap, SuccPairs),
+            list.filter(match_success_map(SuccPairs), InstalledGrades,
+                MatchingInstalledGrades),
+            (
+                MatchingInstalledGrades = [],
+                InstalledGradeSoln = no_such_installed_grade
+            ;
+                MatchingInstalledGrades = [MatchingInstalledGrade],
+                InstalledGradeSoln =
+                    installed_grade_success(MatchingInstalledGrade)
+            ;
+                MatchingInstalledGrades = [_, _ | _],
+                % The same grade cannot occur in InstalledGrades twice.
+                unexpected($pred, "MatchingInstalledGrades = [_, _ | _]")
+            )
+        )
+    ;
+        MaybeSoln = no,
+        list.filter(
+            is_installed_grade_viable(SolverVarMap, SolverVarPriorities),
+            InstalledGrades, ViableInstalledGrades),
+        (
+            ViableInstalledGrades = [],
+            InstalledGradeSoln = no_such_installed_grade
+        ;
+            ViableInstalledGrades =
+                [HeadViableInstalledGrade | TailViableInstalledGrades],
+            pick_best_viable_grade(SolverVarMap,
+                SolverVarPriorities, Commit,
+                HeadViableInstalledGrade, TailViableInstalledGrades,
+                MaybeBestInstalledGrade),
+            (
+                MaybeBestInstalledGrade = yes(BestInstalledGrade),
+                InstalledGradeSoln = installed_grade_success(BestInstalledGrade)
+            ;
+                MaybeBestInstalledGrade = no,
+                % XXX This shouldn't happen with should_not_commit,
+                % but may (or may not) happen with should_commit. Let's see.
+                InstalledGradeSoln = no_such_installed_grade
+            )
+        )
+    ).
+
+:- pred match_success_map(assoc_list(solver_var_id, solver_var_value_id)::in,
+    installed_grade::in) is semidet.
+
+match_success_map(SuccPairs, InstalledGrade) :-
+    InstalledGrade = installed_grade(_GradeName, GradeSuccMap),
+    map.to_sorted_assoc_list(GradeSuccMap, GradeSuccPairs),
+    SuccPairs = GradeSuccPairs.
+
+:- pred is_installed_grade_viable(solver_var_map::in,
+    list(solver_var_id)::in, installed_grade::in) is semidet.
+
+is_installed_grade_viable(_SolverVarMap, [], _InstalledGrade).
+is_installed_grade_viable(SolverVarMap, [VarId | VarIds], InstalledGrade) :-
+    InstalledGrade = installed_grade(_GradeName, GradeSuccMap),
+    map.lookup(SolverVarMap, VarId, SolverVar),
+    map.lookup(GradeSuccMap, VarId, GradeValueId),
+    SolverVar = solver_var(_CntAll, _CntPoss, Values),
+    is_value_possible(GradeValueId, Values),
+    is_installed_grade_viable(SolverVarMap, VarIds, InstalledGrade).
+
+:- pred is_value_possible(solver_var_value_id::in,
+    list(solver_var_value)::in) is semidet.
+
+is_value_possible(GradeValueId, [Value | Values]) :-
+    Value = solver_var_value(ValueId, Possible),
+    ( if GradeValueId = ValueId then
+        Possible = is_possible
+    else
+        is_value_possible(GradeValueId, Values)
+    ).
+
+:- pred pick_best_viable_grade(solver_var_map::in,
+    list(solver_var_id)::in, should_commit::in,
+    installed_grade::in, list(installed_grade)::in,
+    maybe(installed_grade)::out) is det.
+
+pick_best_viable_grade(SolverVarMap0, SolverVarPriorities, Commit,
+        HeadViableInstalledGrade, TailViableInstalledGrades,
+        MaybeBestInstalledGrade) :-
+    (
+        TailViableInstalledGrades = [],
+        MaybeBestInstalledGrade = yes(HeadViableInstalledGrade)
+    ;
+        TailViableInstalledGrades = [_ | _],
+        InstalledGrades =
+            [HeadViableInstalledGrade | TailViableInstalledGrades],
+        pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap0,
+            SolverVarPriorities, SelectedVarId, SelectedVarViableValueIds,
+            LaterVarIds),
+        map.lookup(SolverVarMap0, SelectedVarId, SolverVar0),
+        SolverVar0 = solver_var(CntAll, _CntPoss0, Values0),
+        SelectedVarViableValueIds =
+            one_or_more(FirstViableValueId, _LaterViableValueIds),
+        label_set_value_to_true(FirstViableValueId, Values0, Values1),
+        SolverVar1 = solver_var(CntAll, 1, Values1),
+        map.det_update(SelectedVarId, SolverVar1,
+            SolverVarMap0, SolverVarMap1),
+        list.filter(
+            is_installed_grade_viable(SolverVarMap1, SolverVarPriorities),
+            InstalledGrades, FirstValueInstalledGrades),
+        (
+            FirstValueInstalledGrades =
+                [HeadFirstInstalledGrade | TailFirstInstalledGrades],
+            pick_best_viable_grade(SolverVarMap1, LaterVarIds, Commit,
+                HeadFirstInstalledGrade, TailFirstInstalledGrades,
+                MaybeBestInstalledGrade)
+            % XXX Commit
+        ;
+            FirstValueInstalledGrades = [],
+            unexpected($pred, "FirstValueInstalledGrades = []")
+        )
+    ).
+
+:- pred label_set_value_to_true(solver_var_value_id::in,
+    list(solver_var_value)::in, list(solver_var_value)::out) is det.
+
+label_set_value_to_true(_SetId, [], []).
+label_set_value_to_true(SetId,
+        [HeadValue0 | TailValues0], [HeadValue | TailValues]) :-
+    HeadValue0 = solver_var_value(Id, Possible0),
+    ( if SetId = Id then
+        expect(unify(Possible0, is_possible), $pred,
+            "Possible0 != is_possible"),
+        HeadValue = HeadValue0
+    else
+        Possible = not_possible(npw_labeling),
+        HeadValue = solver_var_value(Id, Possible)
+    ),
+    label_set_value_to_true(SetId, TailValues0, TailValues).
+
+:- pred pick_first_var_with_viable_choice(list(installed_grade)::in,
+    solver_var_map::in, list(solver_var_id)::in,
+    solver_var_id::out, one_or_more(solver_var_value_id)::out,
+    list(solver_var_id)::out) is det.
+
+pick_first_var_with_viable_choice(_InstalledGrades, _SolverVarMap, [],
+        _, _, _) :-
+    unexpected($pred, "none of the viable installed grades are viable").
+pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap,
+        [VarId | VarIds], SelectedVarId, SelectedVarViableValueIds,
+        LaterVarIds) :-
+    map.lookup(SolverVarMap, VarId, SolverVar),
+    SolverVar = solver_var(_CntAll, CntPoss, Values),
+    ( if
+        CntPoss > 1,
+        list.filter_map(is_value_possible_and_available(InstalledGrades, VarId),
+            Values, ViableValueIds),
+        ViableValueIds = [HeadViableValueId | TailViableValueIds]
+    then
+        SelectedVarId = VarId,
+        SelectedVarViableValueIds =
+            one_or_more(HeadViableValueId, TailViableValueIds),
+        LaterVarIds = VarIds
+    else
+        pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap,
+            VarIds, SelectedVarId, SelectedVarViableValueIds, LaterVarIds)
+    ).
+
+:- pred is_value_possible_and_available(list(installed_grade)::in,
+    solver_var_id::in, solver_var_value::in, solver_var_value_id::out)
+    is semidet.
+
+is_value_possible_and_available(InstalledGrades, VarId, Value, ValueId) :-
+    Value = solver_var_value(ValueId, Possible),
+    Possible = is_possible,
+    is_value_available(InstalledGrades, VarId, ValueId).
+
+:- pred is_value_available(list(installed_grade)::in,
+    solver_var_id::in, solver_var_value_id::in) is semidet.
+
+is_value_available([InstalledGrade | InstalledGrades], VarId, ValueId) :-
+    InstalledGrade = installed_grade(_GradeName, GradeSuccMap),
+    map.lookup(GradeSuccMap, VarId, GradeValueId),
+    ( if ValueId = GradeValueId then
+        true
+    else
+        is_value_available(InstalledGrades, VarId, ValueId)
+    ).
+
+%---------------------------------------------------------------------------%
+
+solve_absolute(SolverInfo, SolveCounts, Soln) :-
+    SolverInfo = solver_info(Requirements, SolverVarPriorities, SolverVarMap0),
+    SolveCounts0 = solve_counts(0, 0, 0),
+    solve_absolute_loop(Requirements, Requirements, _FinalRequirements,
+        SolverVarPriorities, SolverVarMap0,
+        SolveCounts0, SolveCounts, Soln).
+
+%---------------------------------------------------------------------------%
+
+:- pred solve_absolute_loop(list(requirement)::in,
     list(requirement)::in, list(requirement)::out,
     list(solver_var_id)::in, solver_var_map::in,
     solve_counts::in, solve_counts::out, solution::out) is det.
 
-solve_loop(AllRequirements, !CurRequirements, !.SolverVarPriorities,
-        !.SolverVarMap, !SolveCounts, Soln) :-
+solve_absolute_loop(AllRequirements, !CurRequirements,
+        !.SolverVarPriorities, !.SolverVarMap, !SolveCounts, Soln) :-
     propagate_to_fixpoint(!CurRequirements, !SolverVarMap, !SolveCounts),
     at_solution(AllRequirements, !.SolverVarMap, MaybeSoln),
     (
@@ -113,8 +343,8 @@ solve_loop(AllRequirements, !CurRequirements, !.SolverVarPriorities,
         NumLabelSteps0 = !.SolveCounts ^ sc_num_label_steps,
         !SolveCounts ^ sc_num_label_steps := NumLabelSteps0 + 1,
         label_step(!SolverVarPriorities, !SolverVarMap),
-        solve_loop(AllRequirements, !CurRequirements, !.SolverVarPriorities,
-            !.SolverVarMap, !SolveCounts, Soln)
+        solve_absolute_loop(AllRequirements, !CurRequirements,
+            !.SolverVarPriorities, !.SolverVarMap, !SolveCounts, Soln)
     ).
 
 %---------------------------------------------------------------------------%
@@ -538,6 +768,7 @@ get_poss_values([SolverVarValue | SolverVarValues], PossValueIds) :-
         PossValueIds = PossValueIdsTail
     ).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 solver_var_map_to_str(Prefix, SolverVarMap) = Str :-

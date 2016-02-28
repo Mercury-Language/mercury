@@ -130,7 +130,7 @@ run_test_set(SolverInfo0, TestSetSpec, TestSpecSoFar0, !SolveCountStats, !IO) :-
         TestSetSpec = [],
         !.SolveCountStats = solve_count_stats(TotalNumLabelSteps0,
             TotalNumPasses0, TotalNumReqTests0, NumTests0),
-        solve(SolverInfo0, SolveCounts, Soln),
+        solve_absolute(SolverInfo0, SolveCounts, Soln),
         SolveCounts = solve_counts(NumLabelSteps, NumPasses, NumReqTests),
         TotalNumLabelSteps = TotalNumLabelSteps0 + NumLabelSteps,
         TotalNumPasses = TotalNumPasses0 + NumPasses,
