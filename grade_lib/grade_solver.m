@@ -104,6 +104,7 @@
 
 :- implementation.
 
+:- import_module grade_setup.
 :- import_module var_value_names.
 
 :- import_module assoc_list.
@@ -167,7 +168,8 @@ solve_best_installed_grade(SolverInfo, Commit, InstalledGrades0, SolveCounts,
                 MaybeBestInstalledGrade),
             (
                 MaybeBestInstalledGrade = yes(BestInstalledGrade),
-                InstalledGradeSoln = installed_grade_success(BestInstalledGrade)
+                InstalledGradeSoln =
+                    installed_grade_success(BestInstalledGrade)
             ;
                 MaybeBestInstalledGrade = no,
                 % XXX This shouldn't happen with should_not_commit,
@@ -242,11 +244,7 @@ pick_best_viable_grade(SolverVarMap0, SolverVarPriorities, Commit,
 pick_first_viable_value(SolverVarMap0, SolverVarPriorities, Commit,
         InstalledGrades, SelectedVarId, LaterVarIds,
         FirstViableValueId, LaterViableValueIds, MaybeBestInstalledGrade) :-
-    map.lookup(SolverVarMap0, SelectedVarId, SolverVar0),
-    SolverVar0 = solver_var(CntAll, _CntPoss0, Values0),
-    label_set_value_to_true(FirstViableValueId, Values0, Values1),
-    SolverVar1 = solver_var(CntAll, 1, Values1),
-    map.det_update(SelectedVarId, SolverVar1,
+    assign_var_in_map(npw_labeling, SelectedVarId, FirstViableValueId,
         SolverVarMap0, SolverVarMap1),
     list.filter(
         is_installed_grade_viable(SolverVarMap1, SolverVarPriorities),
@@ -262,7 +260,7 @@ pick_first_viable_value(SolverVarMap0, SolverVarPriorities, Commit,
         HeadFirstInstalledGrade, TailFirstInstalledGrades,
         FirstMaybeBestInstalledGrade),
     (
-        FirstMaybeBestInstalledGrade = yes(BestInstalledGrade),
+        FirstMaybeBestInstalledGrade = yes(_),
         MaybeBestInstalledGrade = FirstMaybeBestInstalledGrade
     ;
         FirstMaybeBestInstalledGrade = no,
@@ -285,23 +283,6 @@ pick_first_viable_value(SolverVarMap0, SolverVarPriorities, Commit,
         )
     ).
 
-:- pred label_set_value_to_true(solver_var_value_id::in,
-    list(solver_var_value)::in, list(solver_var_value)::out) is det.
-
-label_set_value_to_true(_SetId, [], []).
-label_set_value_to_true(SetId,
-        [HeadValue0 | TailValues0], [HeadValue | TailValues]) :-
-    HeadValue0 = solver_var_value(Id, Possible0),
-    ( if SetId = Id then
-        expect(unify(Possible0, is_possible), $pred,
-            "Possible0 != is_possible"),
-        HeadValue = HeadValue0
-    else
-        Possible = not_possible(npw_labeling),
-        HeadValue = solver_var_value(Id, Possible)
-    ),
-    label_set_value_to_true(SetId, TailValues0, TailValues).
-
 :- pred pick_first_var_with_viable_choice(list(installed_grade)::in,
     solver_var_map::in, list(solver_var_id)::in,
     solver_var_id::out, one_or_more(solver_var_value_id)::out,
@@ -309,7 +290,7 @@ label_set_value_to_true(SetId,
 
 pick_first_var_with_viable_choice(_InstalledGrades, _SolverVarMap, [],
         _, _, _) :-
-    unexpected($pred, "none of the viable installed grades are viable").
+    unexpected($pred, "none of the viable installed grades are really viable").
 pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap,
         [VarId | VarIds], SelectedVarId, SelectedVarViableValueIds,
         LaterVarIds) :-
@@ -317,7 +298,8 @@ pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap,
     SolverVar = solver_var(_CntAll, CntPoss, Values),
     ( if
         CntPoss > 1,
-        list.filter_map(is_value_possible_and_available(InstalledGrades, VarId),
+        list.filter_map(
+            is_value_possible_and_available(InstalledGrades, VarId),
             Values, ViableValueIds),
         ViableValueIds = [HeadViableValueId | TailViableValueIds]
     then

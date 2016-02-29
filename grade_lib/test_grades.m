@@ -27,6 +27,7 @@
 :- import_module float.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
@@ -44,13 +45,49 @@ main(!IO) :-
         autoconf_gcc_gotos_avail_yes, autoconf_gcc_labels_avail_yes,
         autoconf_low_tag_bits_avail_3, autoconf_merc_file_no),
     setup_solver_info(AutoconfResults, SolverInfo0),
+
     TestSetSpecs = [broad_test_set_spec, llds_test_set_spec],
-    SolveCountStats0 = solve_count_stats(0, 0, 0, 0),
+    AbsSolveCountStats0 = solve_count_stats(0, 0, 0, 0),
     run_test_sets(SolverInfo0, TestSetSpecs,
-        SolveCountStats0, SolveCountStats, !IO),
+        AbsSolveCountStats0, AbsSolveCountStats, !IO),
+    print_solve_count_stats("", AbsSolveCountStats, !IO).
+
+:- pred parse_installed_grade(solver_info::in, string::in,
+    installed_grade::out) is det.
+
+parse_installed_grade(SolverInfo0, GradeStr, InstalledGrade) :-
+    MaybeSpecSuccMap = grade_string_to_succ_soln(GradeStr),
+    (
+        MaybeSpecSuccMap = ok(SpecSuccMap)
+    ;
+        MaybeSpecSuccMap = error(HeadErrorMsg, TailErrorMsgs),
+        string.append_list([HeadErrorMsg | TailErrorMsgs], CombinedErrorMsg),
+        unexpected($pred, CombinedErrorMsg)
+    ),
+    SolverVarMap0 = SolverInfo0 ^ si_solver_var_map,
+    map.foldl(assign_var_in_map(npw_config), SpecSuccMap, 
+        SolverVarMap0, SolverVarMap),
+    SolverInfo = SolverInfo0 ^ si_solver_var_map := SolverVarMap,
+    solve_absolute(SolverInfo, _SolveCounts, Soln),
+    (
+        Soln = soln_failure(_),
+        unexpected($pred, "cannot solve installed grade string " ++ GradeStr)
+    ;
+        Soln = soln_success(StdSuccMap)
+    ),
+    StdGradeVars = success_map_to_grade_vars(StdSuccMap),
+    StdGradeStructure = grade_vars_to_grade_structure(StdGradeVars),
+    StdGradeStr = grade_structure_to_grade_string(grade_string_user,
+        StdGradeStructure),
+    InstalledGrade = installed_grade(StdGradeStr, StdSuccMap).
+
+:- pred print_solve_count_stats(string::in, solve_count_stats::in,
+    io::di, io::uo) is det.
+
+print_solve_count_stats(Msg, SolveCountStats, !IO) :-
     SolveCountStats = solve_count_stats(TotalNumLabelSteps, TotalNumPasses,
         TotalNumReqTests, NumTests),
-    io.nl(!IO),
+    io.format("%s\n", [s(Msg)], !IO),
     io.format("Average number of label steps:       %7.2f\n",
         [f(float(TotalNumLabelSteps) / float(NumTests))], !IO),
     io.format("Average number of passes:            %7.2f\n",

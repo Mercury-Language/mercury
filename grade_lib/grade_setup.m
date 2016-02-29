@@ -57,6 +57,12 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred assign_var_in_map(not_possible_why::in,
+    solver_var_id::in, solver_var_value_id::in,
+    solver_var_map::in, solver_var_map::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module var_value_names.
@@ -118,21 +124,27 @@ setup_solver_info(AutoconfResults, !:SolverInfo) :-
         MercFile = autoconf_merc_file_yes,
         MercFileValue = svalue_merc_file_yes
     ),
-    set_autoconf_var(svar_gcc_regs_avail, GccRegsAvailValue, !SolverInfo),
-    set_autoconf_var(svar_gcc_gotos_avail, GccGotosAvailValue, !SolverInfo),
-    set_autoconf_var(svar_gcc_labels_avail, GccLabelsAvailValue, !SolverInfo),
-    set_autoconf_var(svar_low_tag_bits_avail, LowTagBitsAvailValue,
+    assign_autoconf_var(svar_gcc_regs_avail, GccRegsAvailValue, !SolverInfo),
+    assign_autoconf_var(svar_gcc_gotos_avail, GccGotosAvailValue, !SolverInfo),
+    assign_autoconf_var(svar_gcc_labels_avail, GccLabelsAvailValue,
         !SolverInfo),
-    set_autoconf_var(svar_merc_file, MercFileValue, !SolverInfo).
+    assign_autoconf_var(svar_low_tag_bits_avail, LowTagBitsAvailValue,
+        !SolverInfo),
+    assign_autoconf_var(svar_merc_file, MercFileValue, !SolverInfo).
 
-:- pred set_autoconf_var(solver_var_id::in, solver_var_value_id::in,
+:- pred assign_autoconf_var(solver_var_id::in, solver_var_value_id::in,
     solver_info::in, solver_info::out) is det.
 
-set_autoconf_var(VarId, ValueId, !SolverInfo) :-
+assign_autoconf_var(VarId, ValueId, !SolverInfo) :-
+    SolverVarMap0 = !.SolverInfo ^ si_solver_var_map,
+    assign_var_in_map(npw_config, VarId, ValueId, SolverVarMap0, SolverVarMap),
+    !SolverInfo ^ si_solver_var_map := SolverVarMap.
+
+assign_var_in_map(WhyNot, VarId, ValueId, !SolverMap) :-
     solver_var_name(VarName, VarId),
     solver_var_value_name(ValueName, ValueId),
-    set_solver_var(VarName, ValueName, VarId, ValueId, set_to_true, npw_config,
-        MaybeError, !SolverInfo),
+    set_solver_var_in_map(VarName, ValueName, VarId, ValueId, set_to_true,
+        WhyNot, MaybeError, !SolverMap),
     (
         MaybeError = ok
     ;
@@ -176,10 +188,21 @@ init_solver_var_values(CurNumValues, NumValues,
 
 %---------------------------------------------------------------------------%
 
-set_solver_var(VarName, ValueName, VarId, ValueId, SetTo, WhyNot, MaybeError,
-        !SolverInfo) :-
+set_solver_var(VarName, ValueName, VarId, ValueId, SetTo, WhyNot,
+        MaybeError, !SolverInfo) :-
     SolverVarMap0 = !.SolverInfo ^ si_solver_var_map,
-    map.lookup(SolverVarMap0, VarId, SolverVar0),
+    set_solver_var_in_map(VarName, ValueName, VarId, ValueId, SetTo, WhyNot,
+        MaybeError, SolverVarMap0, SolverVarMap),
+    !SolverInfo ^ si_solver_var_map := SolverVarMap.
+
+:- pred set_solver_var_in_map(string::in, string::in,
+    solver_var_id::in, solver_var_value_id::in,
+    solver_var_set_to::in, not_possible_why::in, maybe_error::out,
+    solver_var_map::in, solver_var_map::out) is det.
+
+set_solver_var_in_map(VarName, ValueName, VarId, ValueId, SetTo, WhyNot,
+        MaybeError, !SolverVarMap) :-
+    map.lookup(!.SolverVarMap, VarId, SolverVar0),
     SolverVar0 = solver_var(CntAll, CntPoss0, Values0),
     (
         SetTo = set_to_true,
@@ -204,9 +227,7 @@ set_solver_var(VarName, ValueName, VarId, ValueId, SetTo, WhyNot, MaybeError,
                 MaybeError = ok,
                 CntPoss = 1,
                 SolverVar = solver_var(CntAll, CntPoss, Values),
-                map.det_update(VarId, SolverVar,
-                    SolverVarMap0, SolverVarMap),
-                !SolverInfo ^ si_solver_var_map := SolverVarMap
+                map.det_update(VarId, SolverVar, !SolverVarMap)
             ;
                 OldPossible = not_possible(_),
                 % Other parameter settings have already ruled out
@@ -226,9 +247,7 @@ set_solver_var(VarName, ValueName, VarId, ValueId, SetTo, WhyNot, MaybeError,
                 MaybeError = ok,
                 CntPoss = CntPoss0 - 1,
                 SolverVar = solver_var(CntAll, CntPoss, Values),
-                map.det_update(VarId, SolverVar,
-                    SolverVarMap0, SolverVarMap),
-                !SolverInfo ^ si_solver_var_map := SolverVarMap
+                map.det_update(VarId, SolverVar, !SolverVarMap)
             ;
                 OldPossible = not_possible(_),
                 % If the variable having this value had been rules out before,
