@@ -226,27 +226,62 @@ pick_best_viable_grade(SolverVarMap0, SolverVarPriorities, Commit,
         pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap0,
             SolverVarPriorities, SelectedVarId, SelectedVarViableValueIds,
             LaterVarIds),
-        map.lookup(SolverVarMap0, SelectedVarId, SolverVar0),
-        SolverVar0 = solver_var(CntAll, _CntPoss0, Values0),
         SelectedVarViableValueIds =
-            one_or_more(FirstViableValueId, _LaterViableValueIds),
-        label_set_value_to_true(FirstViableValueId, Values0, Values1),
-        SolverVar1 = solver_var(CntAll, 1, Values1),
-        map.det_update(SelectedVarId, SolverVar1,
-            SolverVarMap0, SolverVarMap1),
-        list.filter(
-            is_installed_grade_viable(SolverVarMap1, SolverVarPriorities),
-            InstalledGrades, FirstValueInstalledGrades),
+            one_or_more(FirstViableValueId, LaterViableValueIds),
+        pick_first_viable_value(SolverVarMap0, SolverVarPriorities, Commit,
+            InstalledGrades, SelectedVarId, LaterVarIds,
+            FirstViableValueId, LaterViableValueIds, MaybeBestInstalledGrade)
+    ).
+
+:- pred pick_first_viable_value(solver_var_map::in,
+    list(solver_var_id)::in, should_commit::in, list(installed_grade)::in,
+    solver_var_id::in, list(solver_var_id)::in,
+    solver_var_value_id::in, list(solver_var_value_id)::in,
+    maybe(installed_grade)::out) is det.
+
+pick_first_viable_value(SolverVarMap0, SolverVarPriorities, Commit,
+        InstalledGrades, SelectedVarId, LaterVarIds,
+        FirstViableValueId, LaterViableValueIds, MaybeBestInstalledGrade) :-
+    map.lookup(SolverVarMap0, SelectedVarId, SolverVar0),
+    SolverVar0 = solver_var(CntAll, _CntPoss0, Values0),
+    label_set_value_to_true(FirstViableValueId, Values0, Values1),
+    SolverVar1 = solver_var(CntAll, 1, Values1),
+    map.det_update(SelectedVarId, SolverVar1,
+        SolverVarMap0, SolverVarMap1),
+    list.filter(
+        is_installed_grade_viable(SolverVarMap1, SolverVarPriorities),
+        InstalledGrades, FirstValueInstalledGrades),
+    (
+        FirstValueInstalledGrades =
+            [HeadFirstInstalledGrade | TailFirstInstalledGrades]
+    ;
+        FirstValueInstalledGrades = [],
+        unexpected($pred, "FirstValueInstalledGrades = []")
+    ),
+    pick_best_viable_grade(SolverVarMap1, LaterVarIds, Commit,
+        HeadFirstInstalledGrade, TailFirstInstalledGrades,
+        FirstMaybeBestInstalledGrade),
+    (
+        FirstMaybeBestInstalledGrade = yes(BestInstalledGrade),
+        MaybeBestInstalledGrade = FirstMaybeBestInstalledGrade
+    ;
+        FirstMaybeBestInstalledGrade = no,
         (
-            FirstValueInstalledGrades =
-                [HeadFirstInstalledGrade | TailFirstInstalledGrades],
-            pick_best_viable_grade(SolverVarMap1, LaterVarIds, Commit,
-                HeadFirstInstalledGrade, TailFirstInstalledGrades,
-                MaybeBestInstalledGrade)
-            % XXX Commit
+            Commit = should_commit,
+            MaybeBestInstalledGrade = FirstMaybeBestInstalledGrade
         ;
-            FirstValueInstalledGrades = [],
-            unexpected($pred, "FirstValueInstalledGrades = []")
+            Commit = should_not_commit,
+            (
+                LaterViableValueIds = [],
+                MaybeBestInstalledGrade = FirstMaybeBestInstalledGrade
+            ;
+                LaterViableValueIds =
+                    [FirstLaterViableValueId | LaterLaterViableValueIds],
+                pick_first_viable_value(SolverVarMap0, SolverVarPriorities,
+                    Commit, InstalledGrades, SelectedVarId, LaterVarIds,
+                    FirstLaterViableValueId, LaterLaterViableValueIds,
+                    MaybeBestInstalledGrade)
+            )
         )
     ).
 
