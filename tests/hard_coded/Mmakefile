@@ -378,12 +378,23 @@ ORDINARY_PROGS += \
 endif
 
 # Solver types only work in C grades
+#
+# Additionally, solver_default_eq_cmp does not yet work in deep profiling
+# grades because deep profiling cannot yet handle exceptions being caught and
+# this test does that.
+#
 ifeq "$(filter csharp% java% erlang%,$(GRADE))" ""
+	ifeq "$(findstring profdeep,$(GRADE))" ""
+		SOLVER_PROGS_2 = \
+			solver_default_eq_cmp
+	else
+		SOLVER_PROGS_2 =
+	endif
 	SOLVER_PROGS = \
+		$(SOLVER_PROGS_2) \
 		any_call_hoist_bug \
 		any_free_unify \
-		solver_build_call \
-		solver_default_eq_cmp
+		solver_build_call
 else
 	SOLVER_PROGS =
 endif
