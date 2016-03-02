@@ -41,6 +41,9 @@
     % Module qualify the items in an interface file.
     % (See the XXX near the calls to this predicate.)
     %
+    % NOTE: Please update Mercury.options if this predicate is moved to another
+    % module. It must be compiled with --optimize-constructor-last-call.
+    %
 :- pred module_qualify_items_loop(mq_in_interface::in,
     list(item)::in, list(item)::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.

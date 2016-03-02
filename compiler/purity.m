@@ -612,6 +612,9 @@ update_purity_ct_in_goal_info(Purity, ContainsTrace, !GoalInfo) :-
     % disjunction is computed the same way as the purity of a conjunction,
     % we use the same code for both
     %
+    % NOTE: Please update Mercury.options if this predicate is moved to another
+    % module. It must be compiled with --optimize-constructor-last-call.
+    %
 :- pred compute_goals_purity(list(hlds_goal)::in, list(hlds_goal)::out,
     purity::in, purity::out, contains_trace_goal::in, contains_trace_goal::out,
     purity_info::in, purity_info::out) is det.

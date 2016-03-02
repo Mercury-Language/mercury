@@ -344,6 +344,9 @@ typecheck_report_max_iterations_exceeded(MaxIterations) = Spec :-
 
     % Iterate over the list of pred_ids in a module.
     %
+    % NOTE: Please update Mercury.options if this predicate is moved to another
+    % module. It must be compiled with --optimize-constructor-last-call.
+    %
 :- pred typecheck_module_one_iteration(module_info::in,
     set_tree234(pred_id)::in,
     assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
