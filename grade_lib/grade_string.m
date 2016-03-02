@@ -492,6 +492,14 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             svar_gcc_gotos_use - svalue_gcc_gotos_use_no,
             svar_gcc_regs_use - svalue_gcc_regs_use_no]
     ;
+        ComponentStr = "par",
+        Setting = svar_thread_safe - svalue_thread_safe_yes,
+        Settings = []
+    ;
+        ComponentStr = "threadscope",
+        Setting = svar_tscope_prof - svalue_tscope_prof_yes,
+        Settings = []
+    ;
         ComponentStr = "gc",
         Setting = svar_gc - svalue_gc_bdw,
         Settings = [svar_target - svalue_target_c]
@@ -507,14 +515,6 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         ComponentStr = "hgc",
         Setting = svar_gc - svalue_gc_history,
         Settings = [svar_target - svalue_target_c]
-    ;
-        ComponentStr = "par",
-        Setting = svar_thread_safe - svalue_thread_safe_yes,
-        Settings = []
-    ;
-        ComponentStr = "threadscope",
-        Setting = svar_tscope_prof - svalue_tscope_prof_yes,
-        Settings = []
     ;
         ComponentStr = "profdeep",
         Setting = svar_deep_prof - svalue_deep_prof_yes,
@@ -601,11 +601,6 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             [svar_target - svalue_target_c,
             svar_backend - svalue_backend_llds]
     ;
-        ComponentStr = "spf",
-        Setting = svar_single_prec_float - svalue_single_prec_float_yes,
-        Settings =
-            [svar_target - svalue_target_c]
-    ;
         ComponentStr = "debug",
         Setting = svar_debug - svalue_debug_debug,
         Settings =
@@ -617,6 +612,18 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         Settings =
             [svar_target - svalue_target_c,
             svar_backend - svalue_backend_llds]
+    ;
+        ComponentStr = "ll_debug",
+        Setting = svar_lldebug - svalue_lldebug_yes,
+        Settings = []
+    ;
+        ComponentStr = "stseg",
+        Setting = svar_stack_len - svalue_stack_len_segments,
+        Settings = []
+    ;
+        ComponentStr = "exts",
+        Setting = svar_stack_len - svalue_stack_len_extend,
+        Settings = []
     ;
         ComponentStr = "rbmm",
         Setting = svar_rbmm - svalue_rbmm_yes,
@@ -649,6 +656,11 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             svar_rbmm_prof - svalue_rbmm_prof_yes,
             svar_target - svalue_target_c,
             svar_backend - svalue_backend_llds]
+    ;
+        ComponentStr = "spf",
+        Setting = svar_single_prec_float - svalue_single_prec_float_yes,
+        Settings =
+            [svar_target - svalue_target_c]
     ;
         ComponentStr = "ssdebug",
         Setting = svar_ssdebug - svalue_ssdebug_yes,

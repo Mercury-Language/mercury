@@ -32,6 +32,12 @@
 :- import_module require.
 :- import_module string.
 
+:- type installed_grade_set
+    --->    installed_grade_set(
+                igs_name                    :: string,
+                igs_grades                  :: list(installed_grade)
+            ).
+
 :- type solve_count_stats
     --->    solve_count_stats(
                 scs_total_num_label_steps   :: int,
@@ -46,11 +52,76 @@ main(!IO) :-
         autoconf_low_tag_bits_avail_3, autoconf_merc_file_no),
     setup_solver_info(AutoconfResults, SolverInfo0),
 
+    parse_installed_grade(SolverInfo0,
+        "asm_fast.gc",                  AsmFastGc),
+    parse_installed_grade(SolverInfo0,
+        "asm_fast.gc.stseg",            AsmFastGcStseg),
+    parse_installed_grade(SolverInfo0,
+        "asm_fast.gc.stseg.tr",         AsmFastGcStsegTr),
+    parse_installed_grade(SolverInfo0,
+        "asm_fast.gc.debug.stseg",      AsmFastGcDebugStseg),
+    parse_installed_grade(SolverInfo0,
+        "asm_fast.gc.decldebug.stseg",  AsmFastGcDecldebugStseg),
+    parse_installed_grade(SolverInfo0,
+        "asm_fast.gc.profdeep.stseg",   AsmFastGcProfDeepStseg),
+    parse_installed_grade(SolverInfo0,
+        "asm_fast.gc.profall.stseg",    AsmFastGcProfAllStseg),
+    parse_installed_grade(SolverInfo0,
+        "none.gc.profall.stseg",        NoneGcProfAllStseg),
+    parse_installed_grade(SolverInfo0,
+        "hlc.gc",                       HlcGc),
+    parse_installed_grade(SolverInfo0,
+        "hlc.gc.tr",                    HlcGcTr),
+    parse_installed_grade(SolverInfo0,
+        "hlc.gc.par",                   HlcGcPar),
+    parse_installed_grade(SolverInfo0,
+        "csharp",                       Csharp),
+    parse_installed_grade(SolverInfo0,
+        "java",                         Java),
+    parse_installed_grade(SolverInfo0,
+        "erlang",                       Erlang),
+
+    GradesAll = [AsmFastGc, AsmFastGcStseg, AsmFastGcStsegTr,
+        AsmFastGcDebugStseg, AsmFastGcDecldebugStseg,
+        AsmFastGcProfDeepStseg, AsmFastGcProfAllStseg, NoneGcProfAllStseg,
+        HlcGc, HlcGcTr, HlcGcPar, Csharp, Java, Erlang],
+    SetAll = installed_grade_set("grades_all", GradesAll),
+
+    GradesLLDSAll = [AsmFastGc, AsmFastGcStseg, AsmFastGcStsegTr,
+        AsmFastGcDebugStseg, AsmFastGcDecldebugStseg, AsmFastGcProfDeepStseg,
+        AsmFastGcProfAllStseg, NoneGcProfAllStseg],
+    SetLLDSAll = installed_grade_set("grades_llds_all", GradesLLDSAll),
+
+    GradesLLDSDebug = [AsmFastGc, AsmFastGcStseg, AsmFastGcStsegTr,
+        AsmFastGcDebugStseg, AsmFastGcDecldebugStseg, AsmFastGcProfDeepStseg],
+    SetLLDSDebug = installed_grade_set("grades_llds_debug", GradesLLDSDebug),
+
+    GradesLLDSProf = [AsmFastGc, AsmFastGcStseg, AsmFastGcStsegTr,
+        AsmFastGcProfAllStseg, NoneGcProfAllStseg],
+    SetLLDSProf = installed_grade_set("grades_llds_prof", GradesLLDSProf),
+
+    GradesEMLDS = [HlcGc, HlcGcTr, HlcGcPar, Csharp, Java, Erlang],
+    SetEMLDS = installed_grade_set("grades_emlds", GradesEMLDS),
+
+    GradesTrOnlyLLDS = [AsmFastGc, AsmFastGcStseg, HlcGc, AsmFastGcStsegTr],
+    SetTrOnlyLLDS = installed_grade_set("grades_tr_llds", GradesTrOnlyLLDS),
+
+    GradesTrOnlyMLDS = [AsmFastGc, AsmFastGcStseg, HlcGc, HlcGcTr],
+    SetTrOnlyMLDS = installed_grade_set("grades_tr_mlds", GradesTrOnlyMLDS),
+
+    InstalledSets = [SetAll, SetLLDSAll, SetLLDSDebug, SetLLDSProf,
+        SetEMLDS, SetTrOnlyLLDS, SetTrOnlyMLDS],
+
     TestSetSpecs = [broad_test_set_spec, llds_test_set_spec],
     AbsSolveCountStats0 = solve_count_stats(0, 0, 0, 0),
-    run_test_sets(SolverInfo0, TestSetSpecs,
-        AbsSolveCountStats0, AbsSolveCountStats, !IO),
-    print_solve_count_stats("", AbsSolveCountStats, !IO).
+    RelSolveCountStats0 = solve_count_stats(0, 0, 0, 0),
+    run_test_sets(SolverInfo0, InstalledSets, TestSetSpecs,
+        AbsSolveCountStats0, AbsSolveCountStats,
+        RelSolveCountStats0, RelSolveCountStats, !IO),
+    print_solve_count_stats("\nAbsolute solve counts:\n",
+        AbsSolveCountStats, !IO),
+    print_solve_count_stats("\nRelative solve counts:\n",
+        RelSolveCountStats, !IO).
 
 :- pred parse_installed_grade(solver_info::in, string::in,
     installed_grade::out) is det.
@@ -88,12 +159,18 @@ print_solve_count_stats(Msg, SolveCountStats, !IO) :-
     SolveCountStats = solve_count_stats(TotalNumLabelSteps, TotalNumPasses,
         TotalNumReqTests, NumTests),
     io.format("%s\n", [s(Msg)], !IO),
-    io.format("Average number of label steps:       %7.2f\n",
-        [f(float(TotalNumLabelSteps) / float(NumTests))], !IO),
-    io.format("Average number of passes:            %7.2f\n",
-        [f(float(TotalNumPasses) / float(NumTests))], !IO),
-    io.format("Average number of requirement tests: %7.2f\n",
-        [f(float(TotalNumReqTests) / float(NumTests))], !IO).
+    io.format("Number of tests:                     %4d\n",
+        [i(NumTests)], !IO),
+    ( if NumTests > 0 then
+        io.format("Average number of label steps:       %7.2f\n",
+            [f(float(TotalNumLabelSteps) / float(NumTests))], !IO),
+        io.format("Average number of passes:            %7.2f\n",
+            [f(float(TotalNumPasses) / float(NumTests))], !IO),
+        io.format("Average number of requirement tests: %7.2f\n",
+            [f(float(TotalNumReqTests) / float(NumTests))], !IO)
+    else
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -149,69 +226,55 @@ llds_test_set_spec = [
 
 %---------------------------------------------------------------------------%
 
-:- pred run_test_sets(solver_info::in, list(test_set_spec)::in,
+:- pred run_test_sets(solver_info::in, list(installed_grade_set)::in,
+    list(test_set_spec)::in,
+    solve_count_stats::in, solve_count_stats::out,
     solve_count_stats::in, solve_count_stats::out, io::di, io::uo) is det.
 
-run_test_sets(_SolverInfo0, [], !SolveCountStats, !IO).
-run_test_sets(SolverInfo0, [TestSpec | TestSpecs], !SolveCountStats, !IO) :-
-    run_test_set(SolverInfo0, TestSpec, cord.init, !SolveCountStats, !IO),
-    run_test_sets(SolverInfo0, TestSpecs, !SolveCountStats, !IO).
+run_test_sets(_SolverInfo0, _InstalledSets, [],
+        !AbsSolveCountStats, !RelSolveCountStats, !IO).
+run_test_sets(SolverInfo0, InstalledSets, [TestSpec | TestSpecs],
+        !AbsSolveCountStats, !RelSolveCountStats, !IO) :-
+    run_test_set(SolverInfo0, InstalledSets, TestSpec, cord.init,
+        !AbsSolveCountStats, !RelSolveCountStats, !IO),
+    run_test_sets(SolverInfo0, InstalledSets, TestSpecs,
+        !AbsSolveCountStats, !RelSolveCountStats, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred run_test_set(solver_info::in, test_set_spec::in, test_spec::in,
+:- pred run_test_set(solver_info::in, list(installed_grade_set)::in,
+    test_set_spec::in, test_spec::in,
+    solve_count_stats::in, solve_count_stats::out,
     solve_count_stats::in, solve_count_stats::out, io::di, io::uo) is det.
 
-run_test_set(SolverInfo0, TestSetSpec, TestSpecSoFar0, !SolveCountStats, !IO) :-
+run_test_set(SolverInfo0, InstalledSets, TestSetSpec, TestSpecSoFar0,
+        !AbsSolveCountStats, !RelSolveCountStats, !IO) :-
     (
         TestSetSpec = [],
-        !.SolveCountStats = solve_count_stats(TotalNumLabelSteps0,
-            TotalNumPasses0, TotalNumReqTests0, NumTests0),
-        solve_absolute(SolverInfo0, SolveCounts, Soln),
-        SolveCounts = solve_counts(NumLabelSteps, NumPasses, NumReqTests),
-        TotalNumLabelSteps = TotalNumLabelSteps0 + NumLabelSteps,
-        TotalNumPasses = TotalNumPasses0 + NumPasses,
-        TotalNumReqTests = TotalNumReqTests0 + NumReqTests,
-        NumTests = NumTests0 + 1,
-        !:SolveCountStats = solve_count_stats(TotalNumLabelSteps,
-            TotalNumPasses, TotalNumReqTests, NumTests),
-
-        SpecStr = test_spec_to_string("", NumTests, TestSpecSoFar0),
-        string.format("PERF: %2d label steps, %2d passes\n",
-            [i(NumLabelSteps), i(NumPasses)], CountStr),
-        SolnStr = soln_to_str("    ", Soln),
-        (
-            Soln = soln_failure(_),
-            SolnGradeStr = ""
-        ;
-            Soln = soln_success(SuccMap),
-            GradeVars = success_map_to_grade_vars(SuccMap),
-            GradeStructure = grade_vars_to_grade_structure(GradeVars),
-            GradeStr = grade_structure_to_grade_string(
-                grade_string_link_check, GradeStructure),
-            SolnGradeStr = "    GRADE " ++ GradeStr ++ "\n"
-        ),
-        io.nl(!IO),
-        io.write_string(SpecStr, !IO),
-        io.write_string(CountStr, !IO),
-        io.write_string(SolnStr, !IO),
-        io.write_string(SolnGradeStr, !IO)
+        run_test(SolverInfo0, InstalledSets, TestSpecSoFar0,
+            !AbsSolveCountStats, !RelSolveCountStats, !IO)
     ;
         TestSetSpec = [TestSetSpecHead | TestSetSpecTail],
         TestSetSpecHead = test_set_component(VarId, ValueIds),
-        run_alternatives_for_var(SolverInfo0, VarId, ValueIds,
-            TestSetSpecTail, TestSpecSoFar0, !SolveCountStats, !IO)
+        run_alternatives_for_var(SolverInfo0, InstalledSets, VarId, ValueIds,
+            TestSetSpecTail, TestSpecSoFar0,
+            !AbsSolveCountStats, !RelSolveCountStats, !IO)
     ).
 
 :- pred run_alternatives_for_var(solver_info::in,
+    list(installed_grade_set)::in,
     solver_var_id::in, list(solver_var_value_id)::in,
     test_set_spec::in, test_spec::in,
+    solve_count_stats::in, solve_count_stats::out,
     solve_count_stats::in, solve_count_stats::out, io::di, io::uo) is det.
 
-run_alternatives_for_var(_SolverInfo0, _VarId, [],
-        _TestSetSpecTail, _TestSpecSoFar0, !SolveCountStats, !IO).
-run_alternatives_for_var(SolverInfo0, VarId, [ValueId | ValueIds],
-        TestSetSpecTail, TestSpecSoFar0, !SolveCountStats, !IO) :-
+run_alternatives_for_var(_SolverInfo0, _InstalledSets, _VarId, [],
+        _TestSetSpecTail, _TestSpecSoFar0,
+        !AbsSolveCountStats, !RelSolveCountStats, !IO).
+run_alternatives_for_var(SolverInfo0, InstalledSets,
+        VarId, [ValueId | ValueIds],
+        TestSetSpecTail, TestSpecSoFar0,
+        !AbsSolveCountStats, !RelSolveCountStats, !IO) :-
     solver_var_name(VarName, VarId),
     solver_var_value_name(ValueName, ValueId),
     set_solver_var(VarName, ValueName, VarId, ValueId, set_to_true, npw_user,
@@ -225,10 +288,90 @@ run_alternatives_for_var(SolverInfo0, VarId, [ValueId | ValueIds],
     ThisTestComponent = test_component(VarId, ValueId),
     TestSpecSoFarForThisAlternative =
         cord.snoc(TestSpecSoFar0, ThisTestComponent),
-    run_test_set(SolverInfoForThisAlternative, TestSetSpecTail,
-        TestSpecSoFarForThisAlternative, !SolveCountStats, !IO),
-    run_alternatives_for_var(SolverInfo0, VarId, ValueIds,
-        TestSetSpecTail, TestSpecSoFar0, !SolveCountStats, !IO).
+    run_test_set(SolverInfoForThisAlternative, InstalledSets, TestSetSpecTail,
+        TestSpecSoFarForThisAlternative,
+        !AbsSolveCountStats, !RelSolveCountStats, !IO),
+    run_alternatives_for_var(SolverInfo0, InstalledSets, VarId, ValueIds,
+        TestSetSpecTail, TestSpecSoFar0,
+        !AbsSolveCountStats, !RelSolveCountStats, !IO).
+
+:- pred run_test(solver_info::in, list(installed_grade_set)::in,
+    test_spec::in,
+    solve_count_stats::in, solve_count_stats::out,
+    solve_count_stats::in, solve_count_stats::out, io::di, io::uo) is det.
+
+run_test(SolverInfo0, InstalledSets, TestSpec,
+        !AbsSolveCountStats, !RelSolveCountStats, !IO) :-
+    solve_absolute(SolverInfo0, SolveCounts, Soln),
+    accumulate_solve_count_stats(SolveCounts, !AbsSolveCountStats),
+
+    !.AbsSolveCountStats = solve_count_stats(_, _, _, NumTests),
+    SolveCounts = solve_counts(NumLabelSteps, NumPasses, NumReqTests),
+
+    io.nl(!IO),
+    io.write_string(test_spec_to_string("", NumTests, TestSpec), !IO),
+    io.format(
+        "ABS PERF: %2d label steps, %2d passes, %3d requirement tests\n",
+        [i(NumLabelSteps), i(NumPasses), i(NumReqTests)], !IO),
+    io.write_string(soln_to_str("    ", Soln), !IO),
+    (
+        Soln = soln_failure(_)
+        % soln_to_str has already printed FAILURE
+    ;
+        Soln = soln_success(SuccMap),
+        GradeVars = success_map_to_grade_vars(SuccMap),
+        GradeStructure = grade_vars_to_grade_structure(GradeVars),
+        GradeStr = grade_structure_to_grade_string(grade_string_link_check,
+            GradeStructure),
+        io.format("    ABS GRADE %s\n", [s(GradeStr)], !IO),
+
+        list.foldl2(run_installed_grade_set_test(SolverInfo0), InstalledSets, 
+            !RelSolveCountStats, !IO)
+    ).
+
+:- pred run_installed_grade_set_test(solver_info::in, installed_grade_set::in,
+    solve_count_stats::in, solve_count_stats::out, io::di, io::uo) is det.
+
+run_installed_grade_set_test(SolverInfo, InstalledSet, 
+        !RelSolveCountStats, !IO) :-
+    InstalledSet = installed_grade_set(SetName, InstalledGrades),
+    solve_best_installed_grade(SolverInfo, should_commit, InstalledGrades,
+        CommitSolveCounts, CommitInstalledGradeSoln),
+    solve_best_installed_grade(SolverInfo, should_not_commit, InstalledGrades,
+        _NonCommitSolveCounts, NonCommitInstalledGradeSoln),
+    accumulate_solve_count_stats(CommitSolveCounts, !RelSolveCountStats),
+    io.format("    installed grade set %-20s ", [s(SetName)], !IO),
+    (
+        CommitInstalledGradeSoln = no_such_installed_grade,
+        io.write_string("-\n", !IO)
+    ;
+        CommitInstalledGradeSoln = installed_grade_spec_is_inconsistent(_),
+        io.write_string("INCONSISTENT\n", !IO)
+    ;
+        CommitInstalledGradeSoln =
+            installed_grade_success(ChosenInstalledGrade),
+        ChosenInstalledGrade = installed_grade(ChosenInstalledGradeName, _),
+        io.format("%s\n", [s(ChosenInstalledGradeName)], !IO)
+    ),
+    ( if CommitInstalledGradeSoln = NonCommitInstalledGradeSoln then
+        true
+    else
+        io.write_string("NONCOMMIT IS DIFFERENT%s\n", !IO)
+    ).
+
+:- pred accumulate_solve_count_stats(solve_counts::in,
+    solve_count_stats::in, solve_count_stats::out) is det.
+
+accumulate_solve_count_stats(SolveCounts, !SolveCountStats) :-
+    !.SolveCountStats = solve_count_stats(TotalNumLabelSteps0,
+        TotalNumPasses0, TotalNumReqTests0, NumTests0),
+    SolveCounts = solve_counts(NumLabelSteps, NumPasses, NumReqTests),
+    TotalNumLabelSteps = TotalNumLabelSteps0 + NumLabelSteps,
+    TotalNumPasses = TotalNumPasses0 + NumPasses,
+    TotalNumReqTests = TotalNumReqTests0 + NumReqTests,
+    NumTests = NumTests0 + 1,
+    !:SolveCountStats = solve_count_stats(TotalNumLabelSteps,
+        TotalNumPasses, TotalNumReqTests, NumTests).
 
 %---------------------------------------------------------------------------%
 
