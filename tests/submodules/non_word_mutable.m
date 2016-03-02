@@ -24,7 +24,7 @@
 :- type coord.
 :- pragma foreign_type(c, coord, "coord *").
 :- pragma foreign_type("C#", coord, "coord").
-:- pragma foreign_type("Java", coord, "coord").
+:- pragma foreign_type("Java", coord, "non_word_mutable.coord").
 :- pragma foreign_type("Erlang", coord, "").
 
 :- pragma foreign_decl(c, "
@@ -39,8 +39,8 @@ public class coord {
 }
 ").
 
-:- pragma foreign_decl("Java", "
-class coord {
+:- pragma foreign_code("Java", "
+public static class coord {
     public int x, y;
 }
 ").
@@ -99,7 +99,7 @@ class coord {
     new_coord(X::in, Y::in) = (C::out),
     [will_not_call_mercury, promise_pure],
 "
-    C = new coord();
+    C = new non_word_mutable.coord();
     C.x = X;
     C.y = Y;
 ").
