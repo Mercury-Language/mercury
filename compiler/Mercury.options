@@ -25,7 +25,7 @@ MCFLAGS-check_hlds.typecheck = --unneeded-code --optimize-constructor-last-call
 MCFLAGS-check_hlds.purity = --optimize-constructor-last-call
 
 # module_qualify_items_loop should be tail recursive.
-MCFLAGS-parse_tree.module_qual = --optimize-constructor-last-call
+MCFLAGS-parse_tree.module_qual.qualify_items = --optimize-constructor-last-call
 
 # In these files, some imports are needed only in some grades.
 # Until unused_imports.m can avoid generating messages about these,
