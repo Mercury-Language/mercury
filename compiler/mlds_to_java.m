@@ -2036,6 +2036,7 @@ write_main_driver(Indent, ClassName, !IO) :-
         "jmercury.runtime.JavaInternal.progname = """ ++ ClassName ++ """;",
         "jmercury.runtime.JavaInternal.args = args;",
         "jmercury.runtime.JavaInternal.exit_status = 0;",
+        "library.ML_std_library_init();",
         "benchmarking.ML_initialise();",
         "Runnable run_main = new Runnable() {",
         "    public void run() {",

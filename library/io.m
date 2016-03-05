@@ -1888,22 +1888,12 @@
 
 %---------------------------------------------------------------------------%
 %
-% Initialization
+% Initialization.
 %
 
 io.init_state(!IO) :-
     init_std_streams(!IO),
-    %
-    % In C grades the "current" streams are thread-local values, so can only be
-    % set after the MR_Context has been initialised for the initial thread.
-    %
-    io.set_input_stream(io.stdin_stream, _, !IO),
-    io.set_output_stream(io.stdout_stream, _, !IO),
-    io.stdin_binary_stream(StdinBinary, !IO),
-    io.stdout_binary_stream(StdoutBinary, !IO),
-    io.set_binary_input_stream(StdinBinary, _, !IO),
-    io.set_binary_output_stream(StdoutBinary, _, !IO),
-
+    init_current_streams(!IO),
     io.gc_init(type_of(StreamDb), type_of(Globals), !IO),
     map.init(StreamDb),
     type_to_univ("<globals>", Globals),
@@ -1945,6 +1935,30 @@ init_std_streams(!IO).
     % the new process's process dictionary.
     StdStreams = {Stdin, Stdout, Stderr, StdinBinary, StdoutBinary},
     'ML_erlang_global_server' ! {init_std_streams, StdStreams}
+").
+
+:- pred init_current_streams(io::di, io::uo) is det.
+
+init_current_streams(!IO) :-
+    %
+    % In C grades the "current" streams are thread-local values, so can only be
+    % set after the MR_Context has been initialised for the initial thread.
+    %
+    io.set_input_stream(io.stdin_stream, _, !IO),
+    io.set_output_stream(io.stdout_stream, _, !IO),
+    io.stdin_binary_stream(StdinBinary, !IO),
+    io.stdout_binary_stream(StdoutBinary, !IO),
+    io.set_binary_input_stream(StdinBinary, _, !IO),
+    io.set_binary_output_stream(StdoutBinary, _, !IO).
+
+    % XXX Ditto for C#?
+    %
+:- pragma foreign_proc("Java",
+    init_current_streams(_IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    // Do nothing in the Java grade -- setting the current streams is handled
+    // during class initialization.
 ").
 
     % Currently no finalization needed...
