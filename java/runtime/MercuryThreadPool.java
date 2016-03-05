@@ -125,7 +125,7 @@ public class MercuryThreadPool
         threads_lock = new ReentrantLock();
 
         /*
-         * The task queue is for times longer than the number of threads.
+         * The task queue is four times longer than the number of threads.
          * This decision is arbitrary and should be revised after doing some
          * benchmarking.  This capacity is just the initial size.  The
          * ArrayDeque task will grow as needed.
@@ -355,7 +355,7 @@ public class MercuryThreadPool
             /*
              * There may be more than one thread waiting on this condition
              * such as when more than one thread calls waitForShutdown().
-             * I can't imagine this happening, bit it is allowed.
+             * I can't imagine this happening, but it is allowed.
              */
             main_loop_condition.signalAll();
         } finally {
