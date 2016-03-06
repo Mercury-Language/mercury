@@ -182,7 +182,7 @@
     % merge_renaming(VarSet0, NewVarSet, VarSet, Subst) is true
     % iff VarSet is the varset that results from joining a suitably renamed
     % version of NewVarSet to VarSet0. (Any bindings in NewVarSet are ignored.)
-    % Renaming map the variables in NewVarSet into the corresponding
+    % Renaming will map each variable in NewVarSet to the corresponding
     % fresh variable in VarSet.
     %
 :- pred merge_renaming(varset(T)::in, varset(T)::in, varset(T)::out,

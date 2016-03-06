@@ -35,6 +35,10 @@
 % e.g. term(type_a) is a different type from e.g. term(type_b), this should
 % prevent terms of different kinds from being accidentally mixed up.
 %
+% For the predicates that operate on more than one term, such as unify_term,
+% all the terms must use variables from the same varset.
+% (You can use varset.merge_renaming to combine two different varsets.)
+%
 
 :- type term(T)
     --->    functor(
