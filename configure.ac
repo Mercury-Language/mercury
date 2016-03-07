@@ -1275,6 +1275,17 @@ mercury_check_for_functions () {
     done
 }
 
+mercury_check_for_stdio_functions () {
+    for mercury_cv_stdio_func in "$@"
+    do
+        mercury_cv_stdio_func_define="MR_HAVE_`echo $mercury_cv_stdio_func | \
+            tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`"
+        AC_CHECK_DECL($mercury_cv_stdio_func, [
+            AC_DEFINE_UNQUOTED($mercury_cv_stdio_func_define)
+        ], , [#include <stdio.h>])
+    done
+}
+
 # Don't try to use mprotect() on gnu-win32, since it is broken
 # (at least for version b18, anyway) and trying it can crash Win95.
 case "$host" in
@@ -1299,7 +1310,6 @@ mercury_check_for_functions \
         sysconf getpagesize gethostname \
         mmap mprotect memalign posix_memalign sbrk memmove \
         sigaction siginterrupt setitimer \
-        snprintf _snprintf vsnprintf _vsnprintf \
         strerror strerror_r strerror_s \
         open close dup dup2 fdopen fileno fstat stat lstat isatty \
         getpid setpgid fork execlp wait kill \
@@ -1308,6 +1318,9 @@ mercury_check_for_functions \
         gettimeofday setenv putenv _putenv posix_spawn sched_setaffinity \
         sched_getaffinity sched_getcpu sched_yield mkstemp setrlimit \
         fma
+
+mercury_check_for_stdio_functions \
+        snprintf _snprintf vsnprintf _vsnprintf
 
 #-----------------------------------------------------------------------------#
 
