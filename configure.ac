@@ -1282,7 +1282,7 @@ mercury_check_for_stdio_functions () {
             tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ`"
         AC_CHECK_DECL($mercury_cv_stdio_func, [
             AC_DEFINE_UNQUOTED($mercury_cv_stdio_func_define)
-        ], , [#include <stdio.h>])
+        ], [], [#include <stdio.h>])
     done
 }
 
