@@ -585,9 +585,6 @@ file_is_arch_or_grade_dependent_3(Globals, Ext) :-
     ;
         globals.lookup_string_option(Globals,
             pic_object_file_extension, ObjExt)
-    ;
-        globals.lookup_string_option(Globals,
-            link_with_pic_object_file_extension, ObjExt)
     ),
     (
         Ext = ObjExt

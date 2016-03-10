@@ -410,8 +410,6 @@ grade_string_to_comp_strings(GradeString, MaybeGrade, !Specs) :-
                                 % pregenerated C source distribution;
                                 % and whether or not to use single precision
                                 % floating point values.
-    ;       comp_pic            % Do we need to reserve a register for
-                                % PIC (position independent code)?
     ;       comp_lowlevel       % what to do to target code
     ;       comp_trace          % tracing/debugging options
     ;       comp_stack_extend   % automatic stack extension
@@ -453,18 +451,9 @@ add_option_list(CompOpts, Opts0, Opts) :-
         ), CompOpts, Opts0, Opts).
 
 grade_directory_component(Globals, Grade) :-
-    compute_grade(Globals, Grade0),
-    % Strip out the `.picreg' part of the grade -- `.picreg' is implied
-    % by the file names (.pic_o vs .o, `.a' vs `.so').
-    ( if
-        string.sub_string_search(Grade0, ".picreg", PicRegIndex),
-        string.split(Grade0, PicRegIndex, LeftPart, RightPart0),
-        string.append(".picreg", RightPart, RightPart0)
-    then
-        Grade = LeftPart ++ RightPart
-    else
-        Grade = Grade0
-    ).
+    compute_grade(Globals, Grade).
+    % We used to strip out the `.picreg' part of the grade,
+    % while we still had it.
 
 compute_grade(Globals, Grade) :-
     globals.get_options(Globals, Options),
@@ -532,9 +521,6 @@ compute_grade_components(Options, GradeComponents) :-
     % `IncludeGradeStr' is `yes' if the component should be included
     % in the grade string. It is `no' for those components that are
     % just synonyms for other comments, as .mm is for .mmsc.
-    %
-    % NOTE: .picreg components are handled separately.
-    % (see compute_grade_components/3).
     %
 :- pred grade_component_table(string, grade_component,
     list(pair(option, option_data)), maybe(list(option_data)), bool).
@@ -733,12 +719,6 @@ grade_component_table("spf", comp_pregen_spf,
     [single_prec_float - bool(yes),
     unboxed_float - bool(yes)], no, yes).
 
-    % Pic reg components.
-grade_component_table("picreg", comp_pic, [pic_reg - bool(yes)], no, yes).
-    % XXX PICREG
-    % Obsolete code; delete after bootstrapping the removal of MR_PIC_REG
-    % from the runtime.
-
     % Debugging/Tracing components.
 grade_component_table("decldebug", comp_trace,
     [exec_trace - bool(yes), decl_debug - bool(yes)], no, yes).
@@ -808,10 +788,6 @@ grade_start_values(use_minimal_model_own_stacks - bool(no)).
 grade_start_values(minimal_model_debug - bool(no)).
 grade_start_values(pregenerated_dist - bool(no)).
 grade_start_values(single_prec_float - bool(no)).
-grade_start_values(pic_reg - bool(no)).
-% XXX PICREG
-% Obsolete code; delete after bootstrapping the removal of MR_PIC_REG
-% from the runtime.
 grade_start_values(exec_trace - bool(no)).
 grade_start_values(decl_debug - bool(no)).
 grade_start_values(source_to_source_debug - bool(no)).

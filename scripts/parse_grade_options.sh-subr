@@ -183,14 +183,6 @@
     --no-single-prec-float)
         single_prec_float=false ;;
 
-    # XXX PICREG
-    # Obsolete code; delete after bootstrapping the removal of MR_PIC_REG
-    # from the runtime.
-    --pic-reg)
-        ;;
-    --no-pic-reg)
-        ;;
-
     --debug)
         debug=true ;;
     --no-debug)
@@ -531,12 +523,6 @@
 
                 spf)
                     single_prec_float=true
-                    ;;
-
-                # XXX PICREG
-                # Obsolete code; delete after bootstrapping the removal of
-                # MR_PIC_REG from the runtime.
-                picreg)
                     ;;
 
                 debug)
