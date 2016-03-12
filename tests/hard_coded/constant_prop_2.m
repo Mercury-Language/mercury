@@ -65,4 +65,4 @@ main -->
     % We should be able to optimize away all calls to this procedure
     % at compile time, so we should not even emit a reference to it.
 :- pred link_error(io::di, io::uo) is det.
-:- external(link_error/2).
+:- pragma external_pred(link_error/2).

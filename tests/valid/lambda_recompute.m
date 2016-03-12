@@ -99,17 +99,17 @@ pos(X, Y) = pos(X, Y).
 :- pred get_monst(int, int, io, io).
 :- mode get_monst(in, out, di, uo) is det.
 
-:- external(get_monst/4).
+:- pragma external_pred(get_monst/4).
 
 :- pred for(int, int, pred(int, T, T), T, T).
 :- mode for(in, in, pred(in, in, out) is det, in, out) is det.
 :- mode for(in, in, pred(in, in, out) is semidet, in, out) is semidet.
 :- mode for(in, in, pred(in, di, uo) is det, di, uo) is det.
 
-for(Min, Max, Pred, Acc0, Acc) :-
-    ( Min =< Max ->
-        call(Pred, Min, Acc0, Acc1),
-        for(Min+1, Max, Pred, Acc1, Acc)
-    ;
-        Acc = Acc0
+for(Min, Max, Pred, !Acc) :-
+    ( if Min =< Max then
+        call(Pred, Min, !Acc),
+        for(Min+1, Max, Pred, !Acc)
+    else
+        true
     ).

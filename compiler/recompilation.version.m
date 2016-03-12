@@ -678,9 +678,8 @@ is_pred_pragma(PragmaType, MaybePredOrFuncId) :-
         MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
     ;
         PragmaType = pragma_external_proc(ExternalInfo),
-        ExternalInfo = pragma_info_external_proc(Name, Arity,
-            MaybePredOrFunc, _),
-        MaybePredOrFuncId = yes(MaybePredOrFunc - Name / Arity)
+        ExternalInfo = pragma_info_external_proc(Name, Arity, PredOrFunc, _),
+        MaybePredOrFuncId = yes(yes(PredOrFunc) - Name / Arity)
     ;
         (
             PragmaType = pragma_foreign_proc_export(FPEInfo),

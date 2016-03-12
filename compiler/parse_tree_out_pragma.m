@@ -907,43 +907,24 @@ mercury_format_sym_name_string_pair(SymName - String, !U) :-
     U::di, U::uo) is det <= output(U).
 
 mercury_format_pragma_external_proc(ExternalInfo, !U) :-
-    ExternalInfo = pragma_info_external_proc(PredName, Arity, MaybePorF,
+    ExternalInfo = pragma_info_external_proc(PredName, Arity, PorF,
         MaybeBackend),
-    % The old `:- external' syntax CANNOT specify pred vs func, while the new
-    % `:- pragma external_{pred,func}' syntax MUST specify pred vs func.
+    PorFStr = pred_or_func_to_str(PorF),
+    add_string(":- pragma external_", !U),
+    add_string(PorFStr, !U),
+    add_string("(", !U),
+    mercury_format_sym_name(PredName, !U),
+    add_string("/", !U),
+    add_int(Arity, !U),
     (
-        MaybePorF = no,
-        add_string(":- external(", !U),
-        (
-            MaybeBackend = no
-        ;
-            MaybeBackend = yes(Backend),
-            add_string(backend_to_string(Backend), !U),
-            add_string(", ", !U)
-        ),
-        mercury_format_sym_name(PredName, !U),
-        add_string("/", !U),
-        add_int(Arity, !U),
-        add_string(").\n", !U)
+        MaybeBackend = no
     ;
-        MaybePorF = yes(PorF),
-        PorFStr = pred_or_func_to_str(PorF),
-        add_string(":- pragma external_", !U),
-        add_string(PorFStr, !U),
-        add_string("(", !U),
-        mercury_format_sym_name(PredName, !U),
-        add_string("/", !U),
-        add_int(Arity, !U),
-        (
-            MaybeBackend = no
-        ;
-            MaybeBackend = yes(Backend),
-            add_string(", [", !U),
-            add_string(backend_to_string(Backend), !U),
-            add_string("]", !U)
-        ),
-        add_string(").\n", !U)
-    ).
+        MaybeBackend = yes(Backend),
+        add_string(", [", !U),
+        add_string(backend_to_string(Backend), !U),
+        add_string("]", !U)
+    ),
+    add_string(").\n", !U).
 
 :- func backend_to_string(backend) = string.
 

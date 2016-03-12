@@ -11,9 +11,9 @@
 :- implementation.
 
 :- pred q(int::in) is semidet.
-:- external(q/1).
+:- pragma external_pred(q/1).
 :- pred r(int::in) is semidet.
-:- external(r/1).
+:- pragma external_pred(r/1).
 
 p(X) :-
     ( q(X)

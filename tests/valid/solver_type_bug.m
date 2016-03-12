@@ -34,11 +34,11 @@ p2(X) :-
 
 :- pred q1(foo1).
 :- mode q1(in(any)) is nondet.
-:- external(q1/1).
+:- pragma external_pred(q1/1).
 
 :- pred q2(foo2).
 :- mode q2(in(any)) is nondet.
-:- external(q2/1).
+:- pragma external_pred(q2/1).
 
 :- pragma foreign_code("Erlang", "
 q1_1_p_0(_, _) -> void.

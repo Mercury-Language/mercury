@@ -15,12 +15,12 @@
 
 :- implementation.
 
-:- external(q/2).
-:- external(r/2).
-:- external(s/2).
-:- external(q/0).
-:- external(r/0).
-:- external(s/0).
+:- pragma external_pred(q/2).
+:- pragma external_pred(r/2).
+:- pragma external_pred(s/2).
+:- pragma external_pred(q/0).
+:- pragma external_pred(r/0).
+:- pragma external_pred(s/0).
 
 :- pred p(int::in, int::out) is nondet.
 

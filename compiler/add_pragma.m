@@ -185,7 +185,7 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
     ;
         Pragma = pragma_external_proc(ExternalInfo),
         % XXX STATUS Check ItemMercuryStatus
-        ExternalInfo = pragma_info_external_proc(PredName, Arity, MaybePorF,
+        ExternalInfo = pragma_info_external_proc(PredName, Arity, PorF,
             MaybeBackend),
         module_info_get_globals(!.ModuleInfo, Globals),
         CurrentBackend = lookup_current_backend(Globals),
@@ -201,17 +201,12 @@ add_pass_2_pragma(SectionItem, !ModuleInfo, !Specs) :-
             % in this module, since everything else is already external.
             module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
             (
-                MaybePorF = no,
-                predicate_table_lookup_sym_arity(PredicateTable0,
-                    is_fully_qualified, PredName, Arity, PredIds),
-                MissingPieces = [decl("external"), words("declaration")]
-            ;
-                MaybePorF = yes(pf_predicate),
+                PorF = pf_predicate,
                 predicate_table_lookup_pred_sym_arity(PredicateTable0,
                     is_fully_qualified, PredName, Arity, PredIds),
                 MissingPieces = [decl("external_pred"), words("pragma")]
             ;
-                MaybePorF = yes(pf_function),
+                PorF = pf_function,
                 predicate_table_lookup_func_sym_arity(PredicateTable0,
                     is_fully_qualified, PredName, Arity, PredIds),
                 MissingPieces = [decl("external_func"), words("pragma")]

@@ -9,7 +9,7 @@
 :- import_module list.
 
 :- pred type_spec1(list(T)::in) is semidet.
-:- external(type_spec1/1).
+:- pragma external_pred(type_spec1/1).
 
 :- pragma type_spec(type_spec1/1, U = int).
 :- pragma type_spec(type_spec1(out), T = int).
@@ -23,7 +23,7 @@
 
 :- type the_type(T, U).
 :- some [U] pred type_spec2(the_type(T, U)::in) is semidet => fooable(U).
-:- external(type_spec2/1).
+:- pragma external_pred(type_spec2/1).
 
 :- pragma type_spec(type_spec2/1, U = int).
 

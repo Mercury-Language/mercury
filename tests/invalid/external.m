@@ -13,4 +13,4 @@
 
 :- implementation.
 
-:- external(p).
+:- pragma external_pred(p).

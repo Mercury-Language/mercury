@@ -59,5 +59,4 @@ p(MustHaveOwnSlot, EverOnStack, OutputVars, OptInfo) :-
         VarsMap0, SuccMap0).
 
 :- pred q(set(var)::out, set(var)::out, set(var)::out) is det.
-
-:- external(q/3).
+:- pragma external_pred(q/3).

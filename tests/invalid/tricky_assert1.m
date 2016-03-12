@@ -7,8 +7,8 @@
 
 :- module tricky_assert1.
 :- interface.
-:- promise tricky_assert1__local.
+:- promise tricky_assert1.local.
 
 :- implementation.
-:- pred tricky_assert1__local is semidet.
-:- external(tricky_assert1__local/0).
+:- pred tricky_assert1.local is semidet.
+:- pragma external_pred(tricky_assert1.local/0).

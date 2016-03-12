@@ -903,7 +903,7 @@
                 % or if there isn't a named backend, then for all backends.
                 external_pred_name      :: sym_name,
                 external_pred_arity     :: arity,
-                external_p_or_f         :: maybe(pred_or_func),
+                external_p_or_f         :: pred_or_func,
                 external_maybe_backend  :: maybe(backend)
             ).
 
@@ -1631,16 +1631,13 @@ pragma_context_pieces(Pragma) = ContextPieces :-
         ContextPieces = [pragma_decl("foreign_proc"), words("declaration")]
     ;
         Pragma = pragma_external_proc(External),
-        External = pragma_info_external_proc(_, _, MaybePorF, _),
+        External = pragma_info_external_proc(_, _, PorF, _),
         (
-            MaybePorF = no,
-            ContextPieces = [decl("external"), words("declaration")]
-        ;
-            MaybePorF = yes(pf_predicate),
+            PorF = pf_predicate,
             ContextPieces = [pragma_decl("external_pred"),
                 words("declaration")]
         ;
-            MaybePorF = yes(pf_function),
+            PorF = pf_function,
             ContextPieces = [pragma_decl("external_func"),
                 words("declaration")]
         )

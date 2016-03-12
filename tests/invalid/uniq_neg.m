@@ -25,8 +25,8 @@
 :- pred occurs(var(S), list(term(S)), store(S), store(S)).
 :- mode occurs(in, in, di, uo) is semidet.
 
-:- external(occurs/4).
+:- pragma external_pred(occurs/4).
 
-unify(T1, free, _T2, functor(Name2, Arity2, Args2)) -->
-    \+ occurs(T1, Args2),
-    store__set_mutvar(T1, functor(Name2, Arity2, Args2)).
+unify(T1, free, _T2, functor(Name2, Arity2, Args2), !Store) :-
+    not occurs(T1, Args2, !.Store, _),
+    store.set_mutvar(T1, functor(Name2, Arity2, Args2), !Store).

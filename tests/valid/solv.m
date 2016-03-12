@@ -16,8 +16,7 @@
 :- import_module io.
 :- import_module list.
 
-% :- type fd_var.       % For Mercury versions < rotd-25-07-03
-:- solver type fd_var.  % For Mercury versions > rotd-25-07-03
+:- solver type fd_var.
 
     % initialize an unconstrained fd_var
 :- pred init_any(fd_var).
@@ -128,11 +127,11 @@ label(V) :-
 %---------------------------------------------------------------------------%
 
 % Implementing the following is left as an exercise for the reader...
-:- external(init_any/1).
-:- external(solver_min_domain/2).
-:- external(solver_max_domain/2).
-:- external((==)/2).
-:- external((>)/2).
-:- external((<)/2).
+:- pragma external_pred(init_any/1).
+:- pragma external_pred(solver_min_domain/2).
+:- pragma external_pred(solver_max_domain/2).
+:- pragma external_pred((==)/2).
+:- pragma external_pred((>)/2).
+:- pragma external_pred((<)/2).
 
 %---------------------------------------------------------------------------%

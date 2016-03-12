@@ -896,25 +896,38 @@ parse_pragma_external_proc(ModuleName, VarSet, ErrorTerm,
     then
         ContextPieces1 = cord.from_list([words("first argument of"),
             pragma_decl(PragmaName), words("declaration")]),
-        parse_name_arity(PredTerm, ContextPieces1, MaybeNameArity),
+        parse_symname_arity(VarSet, PredTerm, ContextPieces1,
+            MaybeSymNameArity),
         ContextPieces2 = cord.from_list([words("second argument of"),
             pragma_decl(PragmaName), words("declaration")]),
         parse_pragma_external_options(VarSet, MaybeOptionsTerm, ContextPieces2,
             MaybeMaybeBackend),
         ( if
-            MaybeNameArity = ok2(Name, Arity),
+            MaybeSymNameArity = ok2(SymName, Arity),
             MaybeMaybeBackend = ok1(MaybeBackend)
         then
-            SymName = qualified(ModuleName, Name),
-            ExternalInfo = pragma_info_external_proc(SymName, Arity,
-                yes(PorF), MaybeBackend),
-            Pragma = pragma_external_proc(ExternalInfo),
-            PragmaInfo = item_pragma_info(Pragma, item_origin_user,
-                Context, SeqNum),
-            Item = item_pragma(PragmaInfo),
-            MaybeIOM = ok1(iom_item(Item))
+            BaseName = unqualify_name(SymName),
+            FullSymName = qualified(ModuleName, BaseName),
+            ( if partial_sym_name_is_part_of_full(SymName, FullSymName) then
+                ExternalInfo = pragma_info_external_proc(FullSymName, Arity,
+                    PorF, MaybeBackend),
+                Pragma = pragma_external_proc(ExternalInfo),
+                PragmaInfo = item_pragma_info(Pragma, item_origin_user,
+                    Context, SeqNum),
+                Item = item_pragma(PragmaInfo),
+                MaybeIOM = ok1(iom_item(Item))
+            else
+                Pieces = [words("Error: the predicate name in the")] ++
+                    cord.list(ContextPieces1) ++
+                    [words("is not for the expected module, which is"),
+                    sym_name(ModuleName), suffix("."), nl],
+                Spec = error_spec(severity_error, phase_term_to_parse_tree,
+                    [simple_msg(get_term_context(ErrorTerm),
+                        [always(Pieces)])]),
+                MaybeIOM = error1([Spec])
+            )
         else
-            Specs = get_any_errors2(MaybeNameArity)
+            Specs = get_any_errors2(MaybeSymNameArity)
                 ++ get_any_errors1(MaybeMaybeBackend),
             MaybeIOM = error1(Specs)
         )
@@ -927,22 +940,38 @@ parse_pragma_external_proc(ModuleName, VarSet, ErrorTerm,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_name_arity(term::in, cord(format_component)::in,
-    maybe2(string, arity)::out) is det.
+:- pred parse_symname_arity(varset::in, term::in, cord(format_component)::in,
+    maybe2(sym_name, arity)::out) is det.
 
-parse_name_arity(PredTerm, ContextPieces, MaybeNameArity) :-
-    ( if
-        PredTerm = term.functor(term.atom("/"), [NameTerm, ArityTerm], _),
-        NameTerm = term.functor(term.atom(Name), [], _),
-        ArityTerm = term.functor(term.integer(Arity), [], _)
-    then
-        MaybeNameArity = ok2(Name, Arity)
+parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
+    ( if PredTerm = term.functor(term.atom("/"), [NameTerm, ArityTerm], _) then
+        parse_symbol_name(VarSet, NameTerm, MaybeSymName),
+        ( if ArityTerm = term.functor(term.integer(ArityPrime), [], _) then
+            MaybeArity = ok1(ArityPrime)
+        else
+            ArityPieces = [words("Error: in")] ++ cord.list(ContextPieces) ++
+                [suffix(":"), words("the arity must be an integer."), nl],
+            AritySpec = error_spec(severity_error, phase_term_to_parse_tree,
+                [simple_msg(get_term_context(ArityTerm),
+                    [always(ArityPieces)])]),
+            MaybeArity = error1([AritySpec])
+        ),
+        ( if
+            MaybeSymName = ok1(SymName),
+            MaybeArity = ok1(Arity)
+        then
+            MaybeSymNameArity = ok2(SymName, Arity)
+        else
+            Specs = get_any_errors1(MaybeSymName)
+                ++ get_any_errors1(MaybeArity),
+            MaybeSymNameArity = error2(Specs)
+        )
     else
         Pieces = [words("Error:") | cord.list(ContextPieces)] ++
             [words("should be Name/Arity."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(get_term_context(PredTerm), [always(Pieces)])]),
-        MaybeNameArity = error2([Spec])
+        MaybeSymNameArity = error2([Spec])
     ).
 
 :- pred parse_pragma_external_options(varset::in, maybe(term)::in,

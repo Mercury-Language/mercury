@@ -21,12 +21,12 @@ main(!IO) :-
     % in llds grades: external
     % in mlds grades: foreign_proc 
 :- pred p(int::in, io::di, io::uo) is det.
-:- external(low_level_backend, p/3).
+:- pragma external_pred(p/3, [low_level_backend]).
 
     % in llds grades: foreign_proc
     % in mlds grades: external 
 :- pred q(int::in, io::di, io::uo) is det.
-:- external(high_level_backend, q/3).
+:- pragma external_pred(q/3, [high_level_backend]).
 
 %---------------------------------------------------------------------------%
 

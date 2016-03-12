@@ -229,10 +229,6 @@ parse_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms,
             Context, SeqNum, Purity, cord.init, cord.init, MaybeIOM)
     ;
-        Functor = "external",
-        parse_external_item(ModuleName, VarSet, ArgTerms,
-            Context, SeqNum, MaybeIOM)
-    ;
         Functor = "promise",
         parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM)
     ;
@@ -671,68 +667,6 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             words("which should be either the definition of a mode,"),
             words("or the declaration of one mode"),
             words("of a predicate or function."), nl],
-        Spec = error_spec(severity_error, phase_term_to_parse_tree,
-            [simple_msg(Context, [always(Pieces)])]),
-        MaybeIOM = error1([Spec])
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred parse_external_item(module_name::in, varset::in,
-    list(term)::in, prog_context::in, int::in,
-    maybe1(item_or_marker)::out) is det.
-
-parse_external_item(ModuleName, VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
-    ( if
-        (
-            ArgTerms = [PredSpecTerm],
-            MaybeBackEnd = no
-        ;
-            ArgTerms = [BackEndArgTerm, PredSpecTerm],
-            BackEndArgTerm = term.functor(term.atom(BackEndFunctor), [], _),
-            (
-                BackEndFunctor = "high_level_backend",
-                BackEnd = high_level_backend
-            ;
-                BackEndFunctor = "low_level_backend",
-                BackEnd = low_level_backend
-            ),
-            MaybeBackEnd = yes(BackEnd)
-        )
-    then
-        parse_implicitly_qualified_symbol_name_specifier(ModuleName, VarSet,
-            PredSpecTerm, MaybeSymSpec),
-        (
-            MaybeSymSpec = error1(Specs),
-            MaybeIOM = error1(Specs)
-        ;
-            MaybeSymSpec = ok1(SymSpec),
-            (
-                SymSpec = name(_Name),
-                Pieces = [words("Error:"), quote("external"),
-                    words("declaration requires arity."), nl],
-                Msg = simple_msg(Context, [always(Pieces)]),
-                Spec = error_spec(severity_error, phase_term_to_parse_tree,
-                    [Msg]),
-                MaybeIOM = error1([Spec])
-            ;
-                SymSpec = name_arity(Name, Arity),
-                MaybePorF = no,
-                ExternalInfo = pragma_info_external_proc(Name, Arity,
-                    MaybePorF, MaybeBackEnd),
-                Pragma = pragma_external_proc(ExternalInfo),
-                ItemPragma = item_pragma_info(Pragma, item_origin_user,
-                    Context, SeqNum),
-                Item = item_pragma(ItemPragma),
-                MaybeIOM = ok1(iom_item(Item))
-            )
-        )
-    else
-        Pieces = [words("Error: an"), decl("external"), words("declaration"),
-            words("should have just one argument specifying a procedure,"),
-            words("optionally preceded by either"),
-            quote("high_level_backend"), words("or"),
-            quote("low_level_backend"), suffix("."), nl],
         Spec = error_spec(severity_error, phase_term_to_parse_tree,
             [simple_msg(Context, [always(Pieces)])]),
         MaybeIOM = error1([Spec])

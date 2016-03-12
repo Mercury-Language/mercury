@@ -1,4 +1,5 @@
-type_spec.m:012: Error: `:- external' declaration in module interface.
+type_spec.m:012: Error: `:- pragma external_pred' declaration in module
+type_spec.m:012:   interface.
 type_spec.m:014: In `:- pragma type_spec' declaration for predicate
 type_spec.m:014:   `type_spec.type_spec1'/1:
 type_spec.m:014:   error: variable `U' does not occur in the `:- pred'
@@ -8,7 +9,8 @@ type_spec.m:015:   `type_spec.type_spec1'/1 specifies non-existent mode.
 type_spec.m:017: Error: `:- pragma type_spec' declaration for
 type_spec.m:017:   `type_spec.type_spec1'/2 without corresponding `:- pred' or
 type_spec.m:017:   `:- func' declaration.
-type_spec.m:026: Error: `:- external' declaration in module interface.
+type_spec.m:026: Error: `:- pragma external_pred' declaration in module
+type_spec.m:026:   interface.
 type_spec.m:028: In `:- pragma type_spec' declaration for predicate
 type_spec.m:028:   `type_spec.type_spec2'/1:
 type_spec.m:028:   error: the substitution includes the existentially
