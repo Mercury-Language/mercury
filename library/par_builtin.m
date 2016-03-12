@@ -89,20 +89,17 @@
     % For documentation, see MR_lc_try_get_free_slot in mercury_par_builtin.h
     % This call fails if there is no free slot available.
     %
-:- impure pred lc_free_slot(loop_control::in, int::out)
-    is semidet.
+:- impure pred lc_free_slot(loop_control::in, int::out) is semidet.
 
     % Allocate a free slot from the loop control structure and return it.
     % This call blocks the context until a free slot is available.
     %
-:- impure pred lc_wait_free_slot(loop_control::in, int::out)
-    is det.
+:- impure pred lc_wait_free_slot(loop_control::in, int::out) is det.
 
     % Finish one iteration of the loop. This call does not return.
     % For documentation, see MR_lc_join_and_terminate in mercury_par_builtin.h.
     %
-:- impure pred lc_join_and_terminate(loop_control::in, int::in)
-    is det.
+:- impure pred lc_join_and_terminate(loop_control::in, int::in) is det.
 
     % Get the default number of contexts to use for loop control.
     %
@@ -292,7 +289,6 @@ INIT mercury_sys_init_par_builtin_modules
 % program_representation.m. The debugger needs to know what predicates
 % are defined externally, so that it knows not to expect events for those
 % predicates.
-
 :- pragma external_pred(lc_finish/1).
 :- pragma external_pred(lc_wait_free_slot/2).
 

@@ -1522,9 +1522,8 @@ import jmercury.runtime.MercuryBitmap;
 :- pragma foreign_type("Erlang", bitmap, "")
     where equality is bitmap_equal, comparison is bitmap_compare.
 
+:- pred bitmap_equal(bitmap::in, bitmap::in) is semidet.
 :- pragma terminates(bitmap_equal/2).
-:- pred bitmap_equal(bitmap, bitmap).
-:- mode bitmap_equal(in, in) is semidet.
 
 :- pragma foreign_proc("C",
     bitmap_equal(BM1::in, BM2::in),
@@ -1558,8 +1557,8 @@ bitmap_equal(BM1, BM2) :-
     BM1 ^ num_bits = (BM2 ^ num_bits) @ NumBits,
     bytes_equal(0, byte_index_for_bit(NumBits), BM1, BM2).
 
-:- pred bytes_equal(byte_index, byte_index, bitmap, bitmap).
-:- mode bytes_equal(in, in, in, in) is semidet.
+:- pred bytes_equal(byte_index::in, byte_index::in,
+    bitmap::in, bitmap::in) is semidet.
 
 bytes_equal(Index, MaxIndex, BM1, BM2) :-
     ( if Index =< MaxIndex then
@@ -1569,9 +1568,8 @@ bytes_equal(Index, MaxIndex, BM1, BM2) :-
         true
     ).
 
+:- pred bitmap_compare(comparison_result::uo, bitmap::in, bitmap::in) is det.
 :- pragma terminates(bitmap_compare/3).
-:- pred bitmap_compare(comparison_result, bitmap, bitmap).
-:- mode bitmap_compare(uo, in, in) is det.
 
 :- pragma foreign_proc("C",
     bitmap_compare(Result::uo, BM1::in, BM2::in),

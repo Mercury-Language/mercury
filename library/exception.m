@@ -668,10 +668,8 @@ throw_impl(Univ::in) :-
 catch_impl(Pred, Handler, T) :-
     builtin_catch(Pred, Handler, T).
 
-% builtin_throw and builtin_catch are implemented below using
-% hand-coded low-level C code.
-:- pragma terminates(builtin_throw/1).
 :- pred builtin_throw(univ::in) is erroneous.
+:- pragma terminates(builtin_throw/1).
 
 :- /* impure */
    pred builtin_catch(pred(T), handler(T), T).
@@ -682,12 +680,14 @@ catch_impl(Pred, Handler, T) :-
 :- mode builtin_catch(pred(out) is multi, in(handler), out) is multi.
 :- mode builtin_catch(pred(out) is nondet, in(handler), out) is nondet.
 
+% builtin_throw and builtin_catch are implemented below using
+% hand-coded low-level C code.
+%
 % IMPORTANT: any changes or additions to external predicates should be
 % reflected in the definition of pred_is_external in
 % mdbcomp/program_representation.m. The debugger needs to know what predicates
 % are defined externally, so that it knows not to expect events for those
 % predicates.
-
 :- pragma external_pred(builtin_throw/1).
 :- pragma external_pred(builtin_catch/3).
 

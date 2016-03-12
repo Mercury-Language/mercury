@@ -96,21 +96,20 @@ backjump(Id) :-
 
 %---------------------------------------------------------------------------%
 
+:- impure pred builtin_choice_id(choice_id::out) is nondet.
+:- pragma terminates(builtin_choice_id/1).
+
+:- impure pred builtin_backjump(choice_id::in) is erroneous.
+:- pragma terminates(builtin_backjump/1).
+
 % builtin_choice_id and builtin_backjump are implemented below using
 % hand-coded low-level C code.
 %
-:- pragma terminates(builtin_choice_id/1).
-:- impure pred builtin_choice_id(choice_id::out) is nondet.
-
-:- pragma terminates(builtin_backjump/1).
-:- impure pred builtin_backjump(choice_id::in) is erroneous.
-
 % IMPORTANT: any changes or additions to external predicates should be
 % reflected in the definition of pred_is_external in
 % mdbcomp/program_representation.m. The debugger needs to know what predicates
 % are defined externally, so that it knows not to expect events for those
 % predicates.
-
 :- pragma external_pred(builtin_choice_id/1).
 :- pragma external_pred(builtin_backjump/1).
 

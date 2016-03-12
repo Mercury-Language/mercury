@@ -527,9 +527,9 @@ unsafe_rewind(VA, unsafe_rewind(VA)).
 :- type version_array(T)
     --->    version_array(T).
 
-:- pragma terminates(eq_version_array/2).
 :- pred eq_version_array(version_array(T)::in, version_array(T)::in)
     is semidet.
+:- pragma terminates(eq_version_array/2).
 
 eq_version_array(VAa, VAb) :-
     N = max(VAa),
@@ -547,9 +547,9 @@ eq_version_array_2(I, VAa, VAb) :-
         true
     ).
 
-:- pragma terminates(cmp_version_array/3).
 :- pred cmp_version_array(comparison_result::uo,
     version_array(T)::in, version_array(T)::in) is det.
+:- pragma terminates(cmp_version_array/3).
 
 cmp_version_array(R, VAa, VAb) :-
     SizeA = VAa ^ size,
