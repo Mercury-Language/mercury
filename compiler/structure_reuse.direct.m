@@ -100,9 +100,9 @@ direct_reuse_process_pred(SharingTable, PredId, !ModuleInfo, !ReuseTable) :-
         pred_info_get_status(PredInfo0, PredStatus),
         PredStatus = pred_status(status_external(_))
     ->
-        % We can't analyse `:- external' predicates but add an extry to the
-        % reuse table so something will be written out to optimisation
-        % interface files.
+        % We can't analyse `:- pragma external_{pred/func}' procedures,
+        % but we add an extry to the reuse table so something will be written
+        % out to optimisation interface files.
         list.foldl(
             set_external_pred_reuse_as(PredId, reuse_as_init, optimal),
             pred_info_procids(PredInfo0), !ReuseTable)

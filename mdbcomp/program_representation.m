@@ -1934,7 +1934,7 @@ no_type_info_builtin_2(rtti_implementation_builtin, "result_call_7", 7).
 no_type_info_builtin_2(rtti_implementation_builtin, "result_call_8", 8).
 no_type_info_builtin_2(rtti_implementation_builtin, "result_call_9", 9).
 
-    % True iff the given predicate is defined with an :- external declaration.
+    % True iff the given predicate has a `:- pragma external_pred' declaration.
     % Note that the arity includes the hidden type info arguments for
     % polymorphic predicates.
     %

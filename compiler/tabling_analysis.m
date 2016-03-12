@@ -143,9 +143,9 @@ analyse_mm_tabling_in_module(!ModuleInfo) :-
         module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo),
 
         % Record results if making the analysis registry.  We do this in a
-        % separate pass so that we record results for exported `:- external'
-        % procedures, which don't get analysed because we don't have clauses
-        % for them.
+        % separate pass so that we record results for exported procedures
+        % that have a `:- pragma external_{pred/func}', which don't analyse
+        % because we don't have clauses for them.
         ( if
             OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry))
         then
@@ -945,7 +945,7 @@ lookup_proc_mm_tabling_info(ModuleInfo, PPId, Status, ResultStatus) :-
         )
     ;
         MaybeProcTablingInfo = no,
-        % Probably an exported `:- external' procedure.
+        % Probably an exported `:- pragma external_{pred/func}' procedure.
         Status = mm_tabled_may_call,
         ResultStatus = optimal
     ).

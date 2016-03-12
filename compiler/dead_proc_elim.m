@@ -1407,7 +1407,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 PredStatus \= pred_status(status_opt_imported)
             ;
                 % Don't eliminate predicates declared in this module with a
-                % `:- external' declaration.
+                % `:- pragma external_{pred/func}'.
                 module_info_get_name(ModuleInfo, PredModule)
             ;
                 % Don't eliminate <foo>_init_any/1 predicates; modes.m may

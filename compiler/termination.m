@@ -629,8 +629,8 @@ term_preprocess_preds([PredId | PredIds], !ModuleInfo) :-
     else if
         pred_status_defined_in_this_module(PredStatus) = yes
     then
-        % Since we cannot see the definition we consider procedures
-        % defined using `:- external' to be imported.
+        % Since we cannot see their definition, we consider procedures
+        % which have a `:- pragma external_{pred/func}' to be imported.
         ( if check_marker(Markers, marker_terminates) then
             change_procs_termination_info(ProcIds, yes, cannot_loop(unit),
                 ProcTable0, ProcTable2)

@@ -274,7 +274,7 @@
     % 3 - react appropriately if the calls happen to be to
     %     * either compiler generated predicates
     %     * or predicates from builtin.m and private_builtin.m
-    %     * :- external predicates
+    %     * `:- pragma external_{pred/func}' procedures
     %
 :- pred lookup_sharing_or_predict(module_info::in, sharing_as_table::in,
     pred_proc_id::in, sharing_as::out, analysis_status::out, bool::out) is det.

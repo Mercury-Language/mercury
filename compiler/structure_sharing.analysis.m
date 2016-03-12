@@ -1102,7 +1102,7 @@ maybe_record_sharing_analysis_result_2(ModuleInfo, SharingAsTable, PredId,
             Sharing = to_structure_sharing_domain(SharingAsPrime),
             Status0 = StatusPrime
         else if
-            % Probably an exported `:- external' procedure.
+            % Probably an exported `:- pragma external_{pred/func}' procedure.
             bottom_sharing_is_safe_approximation(ModuleInfo, PredInfo,
                 ProcInfo)
         then

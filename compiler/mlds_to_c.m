@@ -3122,7 +3122,8 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody,
         ),
         Name \= entity_type(_, _),
         % Don't output "static" for functions that don't have a body.
-        % This can happen for Mercury procedures declared `:- external'
+        % This can happen for Mercury procedures that have
+        % a `:- pragma external_{pred/func}'
         DefnBody \= mlds_function(_, _, body_external, _, _, _)
     then
         io.write_string("static ", !IO)

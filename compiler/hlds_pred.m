@@ -799,7 +799,7 @@
     is semidet.
 
     % Set the pred_status of the predicate to `imported'.
-    % This is used for `:- external(foo/2).' declarations.
+    % This is used for `:- pragma external_{pred/func}(foo/2).'.
     %
 :- pred pred_info_mark_as_external(pred_info::in, pred_info::out) is det.
 

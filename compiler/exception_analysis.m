@@ -166,9 +166,9 @@ analyse_exceptions_in_module(!ModuleInfo) :-
     globals.get_op_mode(Globals, OpMode),
     ( if OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry)) then
         % Record results if making the analysis registry. We do this in a
-        % separate pass so that we record results for exported `:- external'
-        % procedures, which don't get analysed because we don't have clauses
-        % for them.
+        % separate pass so that we record results for exported
+        % `:- pragma external_{pred/func}' procedures, which don't get
+        % analysed because we don't have clauses for them.
         module_info_get_analysis_info(!.ModuleInfo, AnalysisInfo0),
         module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
         list.foldl(maybe_record_exception_result(!.ModuleInfo), PredIds,
@@ -1166,7 +1166,7 @@ lookup_proc_exception_info(ModuleName, PPId, Status, ResultStatus) :-
         )
     ;
         MaybeExceptionInfo = no,
-        % Probably an exported `:- external' procedure.
+        % Probably an exported `:- pragma external_{pred/func}' procedure.
         Status = may_throw(user_exception),
         ResultStatus = optimal
     ).

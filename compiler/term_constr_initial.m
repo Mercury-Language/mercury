@@ -295,8 +295,8 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
         then
             true
         else if
-            % Since we cannot see the definition we consider procedures
-            % defined using `:- external' to be imported.
+            % Since we cannot see their definition, we consider procedures
+            % which have a `:- pragma external_{pred/func}' to be imported.
             pred_status_defined_in_this_module(PredStatus) = yes
         then
             % XXX At the moment if a procedure has a pragma terminates

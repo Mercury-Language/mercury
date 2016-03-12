@@ -397,13 +397,12 @@ ml_gen_proc(!ModuleInfo, ConstStructMap, PredId, ProcId,
             PredId, ProcId, ProcInfo, !.GlobalData),
 
         ( if PredStatus = pred_status(status_external(_)) then
-            % For Mercury procedures declared `:- external', we generate an
-            % MLDS definition for them with no function body. The MLDS ->
-            % target code pass can treat this accordingly, e.g. for C
-            % it outputs a function declaration with no corresponding
-            % definition, making sure that the function is declared as `extern'
-            % rather than `static'.
-            %
+            % For Mercury procedures declared `:- pragma external_{pred/func}',
+            % we generate an MLDS definition with no function body.
+            % The MLDS -> target code pass can treat this accordingly.
+            % For example, for C it outputs a function declaration with no
+            % corresponding definition, making sure that the function is
+            % declared as `extern' rather than `static'.
             FunctionBody = body_external,
             ExtraDefns = [],
             ml_gen_proc_params(PredId, ProcId, MLDS_Params, !.Info, _Info)

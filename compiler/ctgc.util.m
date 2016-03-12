@@ -92,8 +92,8 @@
 pred_requires_no_analysis(ModuleInfo, PredId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
-    % We handle `:- external' predicates later. In that sense,
-    % they do *not* require that we don't analyse them.
+    % We handle `:- pragma external_{pred/func}' predicates and functions
+    % later. In that sense, they do *not* require that we don't analyse them.
     PredStatus = pred_status(status_imported(_)).
 
 pred_requires_analysis(ModuleInfo, PredId) :-

@@ -153,9 +153,9 @@ analyse_trail_usage(!ModuleInfo) :-
         module_info_set_proc_analysis_kinds(ProcAnalysisKinds, !ModuleInfo),
 
         % Record results if making the analysis registry. We do this in
-        % a separate pass so that we record results for exported `:- external'
-        % procedures, which don't get analysed because we don't have clauses
-        % for them.
+        % a separate pass so that we record results for exported procedures
+        % which have a `:- pragma external_{pred/func}', which don't analyse
+        % because we don't have clauses for them.
         ( if
             OpMode = opm_top_args(opma_augment(opmau_make_analysis_registry))
         then
@@ -1174,8 +1174,8 @@ lookup_proc_trailing_info(ModuleInfo, PPId, Status, ResultStatus) :-
         )
     ;
         MaybeProcTrailingInfo = no,
-        % Probably an exported `:- external' procedure wouldn't have been
-        % analysed.
+        % Probably an exported `:- pragma external_{pred/func}' procedure,
+        % which wouldn't have been analysed.
         Status = trail_may_modify,
         ResultStatus = optimal
     ).

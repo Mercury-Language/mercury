@@ -616,9 +616,9 @@
     ;       gc_initialiser(statement)
     ;       gc_no_stmt.
 
-    % It is possible for the function to be defined externally
-    % (i.e. the original Mercury procedure was declared `:- external').
-    % (If you want to generate an abstract body consider adding another
+    % It is possible for the function to be defined externally,
+    % if the Mercury procedure has a `:- pragma external_{pred/func}'.
+    % (If you want to generate an abstract body, consider adding another
     % alternative here).
     %
 :- type mlds_function_body

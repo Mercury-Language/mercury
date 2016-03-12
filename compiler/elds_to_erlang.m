@@ -1036,7 +1036,8 @@ erlang_proc_name(ModuleInfo, PredProcId, MaybeExtModule, ProcNameStr) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
     ( if PredStatus = pred_status(status_external(_)) then
-        % pred_info_is_imported returns `yes' for :- external predicates.
+        % pred_info_is_imported returns `yes' for
+        % `:- pragma % external_{pred/func}' predicates.
         PredIsImported = no
     else
         PredIsImported = PredIsImported0
