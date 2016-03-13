@@ -59,6 +59,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 
 :- import_module io.
 :- import_module list.

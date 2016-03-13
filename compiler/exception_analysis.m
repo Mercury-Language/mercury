@@ -85,7 +85,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 
 %----------------------------------------------------------------------------%
 
@@ -133,6 +133,8 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
 :- import_module transform_hlds.intermod.
 :- import_module transform_hlds.dependency_graph.

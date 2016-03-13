@@ -109,6 +109,7 @@
 
 :- implementation.
 
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 
 :- import_module bool.

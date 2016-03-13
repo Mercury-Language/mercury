@@ -117,7 +117,7 @@
 :- import_module parse_tree.find_module.        % XXX undesirable dependency
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_error.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_out.

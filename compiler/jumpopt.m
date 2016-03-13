@@ -67,7 +67,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.opt_util.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 
 :- import_module map.
 :- import_module maybe.

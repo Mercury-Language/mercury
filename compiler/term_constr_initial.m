@@ -68,6 +68,7 @@
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.
 :- import_module transform_hlds.term_constr_main_types.

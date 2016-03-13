@@ -89,6 +89,7 @@
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
+:- import_module parse_tree.prog_data_foreign.
 
 :- import_module assoc_list.
 :- import_module enum.

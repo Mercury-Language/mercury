@@ -39,6 +39,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
 
 :- import_module list.

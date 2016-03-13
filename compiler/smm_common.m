@@ -25,6 +25,7 @@
 :- import_module mdbcomp.goal_path.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 
 :- import_module io.
 :- import_module list.

@@ -56,6 +56,8 @@
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_ctgc.
+:- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.

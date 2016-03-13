@@ -26,6 +26,7 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
 

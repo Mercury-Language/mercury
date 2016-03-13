@@ -38,6 +38,12 @@
 
 :- type globals.
 
+    % XXX The erlang backend does not fit into the low vs high dichotomy.
+    % The grade_lib classifies the backends as llds/elds/mlds.
+:- type backend
+    --->    high_level_backend
+    ;       low_level_backend.
+
 :- type compilation_target
     --->    target_c        % Generate C code (including GNU C).
     ;       target_csharp   % Generate C#.
@@ -314,6 +320,8 @@
 %
 % More complex options.
 %
+
+:- func lookup_current_backend(globals) = backend.
 
     % Check if we should include variable information in the layout
     % structures of call return sites.
@@ -811,6 +819,16 @@ lookup_accumulating_option(Globals, Option, Value) :-
     ).
 
 %-----------------------------------------------------------------------------%
+
+lookup_current_backend(Globals) = CurrentBackend :-
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevel),
+    (
+        HighLevel = yes,
+        CurrentBackend = high_level_backend
+    ;
+        HighLevel= no,
+        CurrentBackend = low_level_backend
+    ).
 
 want_return_var_layouts(Globals, WantReturnLayouts) :-
     % We need to generate layout info for call return labels

@@ -89,7 +89,7 @@
 :- import_module ll_backend.livemap.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.opt_util.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 
 :- import_module int.
 :- import_module map.

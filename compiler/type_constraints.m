@@ -48,6 +48,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
@@ -189,11 +190,11 @@
     %
 :- type tconstr_environment
     --->    tconstr_environment(
-                event_env   :: event_env,
-                class_env   :: class_env,
-                func_env    :: func_env,
-                pred_env    :: pred_env
-                % type_env  :: type_env,
+                tce_event_env   :: event_env,
+                tce_class_env   :: class_env,
+                tce_func_env    :: func_env,
+                tce_pred_env    :: pred_env
+                % tce_type_env  :: type_env,
             ).
 
 :- type event_env == event_spec_map.
@@ -230,7 +231,7 @@ typecheck_constraints(!HLDS, Specs) :-
     error_specs::in, error_specs::out) is det.
 
 typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
-    predicate_table_get_preds(!.Environment ^ pred_env, Preds0),
+    predicate_table_get_preds(!.Environment ^ tce_pred_env, Preds0),
     map.lookup(Preds0, PredId, PredInfo),
     ( if
         % Compiler-generated predicates are created already type-correct,
@@ -253,10 +254,10 @@ typecheck_one_predicate_if_needed(PredId, !Environment, !HLDS, !Specs) :-
             IsEmpty = yes,
             pred_info_mark_as_external(PredInfo, PredInfo1),
             map.det_update(PredId, PredInfo1, Preds0, Preds),
-            PredEnv0 = !.Environment ^ pred_env,
+            PredEnv0 = !.Environment ^ tce_pred_env,
             predicate_table_set_preds(Preds, PredEnv0, PredEnv),
             module_info_set_predicate_table(PredEnv, !HLDS),
-            !Environment ^ pred_env := PredEnv
+            !Environment ^ tce_pred_env := PredEnv
         ;
             IsEmpty = no
         )
@@ -274,7 +275,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         !TCInfo, !Vartypes]
     (
         % Find the clause list in the predicate definition.
-        !:PredEnv = !.Environment ^ pred_env,
+        !:PredEnv = !.Environment ^ tce_pred_env,
         predicate_table_get_preds(!.PredEnv, !:Preds),
         map.lookup(!.Preds, PredId, !:PredInfo),
         pred_info_get_typevarset(!.PredInfo, TVarSet),
@@ -345,7 +346,7 @@ typecheck_one_predicate(PredId, !Environment, !HLDS, !Specs) :-
         map.det_update(PredId, !.PredInfo, !Preds),
         predicate_table_set_preds(!.Preds, !PredEnv),
         module_info_set_predicate_table(!.PredEnv, !HLDS),
-        !Environment ^ pred_env := !.PredEnv,
+        !Environment ^ tce_pred_env := !.PredEnv,
         !:Specs = !.TCInfo ^ tconstr_error_specs ++ !.Specs
     ).
 
@@ -1780,7 +1781,7 @@ foreign_proc_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     Context = goal_info_get_context(GoalInfo),
     ArgVars = list.map(foreign_arg_var, ForeignArgs),
     ArgTypes0 = list.map(foreign_arg_type, ForeignArgs),
-    predicate_table_get_preds(Environment ^ pred_env, Preds),
+    predicate_table_get_preds(Environment ^ tce_pred_env, Preds),
     ( if map.search(Preds, PredId, PredInfo) then
         pred_info_get_typevarset(PredInfo, PredTVarSet),
         prog_data.tvarset_merge_renaming(!.TCInfo ^ tconstr_tvarset,
@@ -1813,13 +1814,13 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
         % class' method list.
         Details = class_method(_, MethodNum, ClassId, _),
         ClassId = class_id(Name, Arity),
-        ( if map.search(Environment ^ class_env, ClassId, ClassDefn) then
+        ( if map.search(Environment ^ tce_class_env, ClassId, ClassDefn) then
             ( if
                 list.index0(ClassDefn ^ classdefn_hlds_interface, MethodNum,
                     Method)
             then
                 Method = hlds_class_proc(PredId, _),
-                predicate_table_get_preds(Environment ^ pred_env, Preds),
+                predicate_table_get_preds(Environment ^ tce_pred_env, Preds),
                 ( if pred_has_arity(Preds, list.length(Vars), PredId) then
                     pred_call_constraint(Preds, GoalInfo, ArgTVars, PredId,
                         Constraint, PredTVars, !TCInfo),
@@ -1849,7 +1850,7 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
         )
     ;
         Details = event_call(Name),
-        ( if event_arg_types(Environment ^ event_env, Name, _ArgTypes0) then
+        ( if event_arg_types(Environment ^ tce_event_env, Name, _ArgTypes) then
             Pieces = [words("Event calls are not yet supported"),
                 words("by constraint-based typechecking."), nl],
             ErrMsg = simple_msg(Context, [always(Pieces)]),

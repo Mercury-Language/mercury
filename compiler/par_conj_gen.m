@@ -145,6 +145,7 @@
 :- import_module ll_backend.llds_out.llds_out_data.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.

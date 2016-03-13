@@ -95,6 +95,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.

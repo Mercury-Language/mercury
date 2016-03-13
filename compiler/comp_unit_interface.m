@@ -79,7 +79,7 @@
 :- implementation.
 
 :- import_module parse_tree.item_util.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 
 :- import_module cord.
 :- import_module maybe.

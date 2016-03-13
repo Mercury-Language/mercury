@@ -58,6 +58,7 @@
 :- import_module ll_backend.switch_gen.
 :- import_module ll_backend.unify_gen.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.

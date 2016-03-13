@@ -44,6 +44,7 @@
 :- import_module hlds.goal_util.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module transform_hlds.term_errors.
 :- import_module transform_hlds.term_traversal.
 

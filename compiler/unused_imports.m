@@ -57,6 +57,7 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
 
 :- import_module assoc_list.
@@ -86,7 +87,7 @@ warn_about_unused_imports(ModuleInfo, Specs) :-
         AvailInterfaceModules),
 
     UsedInInterface = UsedModules ^ int_used_modules,
-    UsedInImplementation = UsedModules ^ impl_used_modules,
+    UsedInImplementation = UsedModules ^ imp_used_modules,
     UsedAnywhere = set.union(UsedInInterface, UsedInImplementation),
 
     % The unused imports is simply the set of all imports minus all the

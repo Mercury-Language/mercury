@@ -34,6 +34,8 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_pragma.
 
 :- import_module assoc_list.
 :- import_module bool.

@@ -66,6 +66,8 @@
 
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.module_qual.qual_errors.
+:- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_pragma.
 
 :- import_module int.
 :- import_module pair.

@@ -163,6 +163,8 @@
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.complexity.

@@ -165,6 +165,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_error_util.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module transform_hlds.term_util.
 
 :- import_module cord.

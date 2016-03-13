@@ -58,6 +58,7 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.set_of_var.
 :- import_module transform_hlds.
 :- import_module transform_hlds.rbmm.

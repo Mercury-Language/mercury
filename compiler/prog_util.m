@@ -9,8 +9,7 @@
 % File: prog_util.
 % Main author: fjh.
 %
-% Various utility predicates acting on the parse tree data structure defined
-% in prog_data.m and prog_item.m
+% Various utility predicates acting on the parse tree data structure.
 %
 %-----------------------------------------------------------------------------%
 
@@ -20,6 +19,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
 
 :- import_module integer.

@@ -92,6 +92,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.prog_ctgc.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.

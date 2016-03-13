@@ -82,6 +82,7 @@
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.goal_path.
+:- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.set_of_var.
 

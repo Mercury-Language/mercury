@@ -69,6 +69,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 
 :- import_module assoc_list.
 :- import_module bool.

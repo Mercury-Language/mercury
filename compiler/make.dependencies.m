@@ -188,7 +188,7 @@
 
 :- import_module libs.op_mode.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 
 :- import_module assoc_list.
 :- import_module cord.

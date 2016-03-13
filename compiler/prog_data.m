@@ -10,1451 +10,30 @@
 % File: prog_data.m.
 % Main author: fjh.
 %
-% This module, together with prog_item, defines a data structure for
-% representing Mercury programs.
+% This module defines the types that represent the most frequently used parts
+% of the parse trees of Mercury programs.
 %
-% This data structure specifies basically the same information as is contained
-% in the source code, but in a parse tree rather than a flat file. This
-% module defines the parts of the parse tree that are needed by the various
-% compiler backends; parts of the parse tree that are not needed by the
-% backends are contained in prog_item.m.
+% The other prog_data_*.m modules define the other parts of the parse tree
+% that are needed after the creation of the HLDS. prog_item.m defines
+% the parts of the tree that are needed *only until* the creation of the HLDS.
 %
 %---------------------------------------------------------------------------%
 
 :- module parse_tree.prog_data.
 :- interface.
 
-:- import_module libs.
-:- import_module libs.compiler_util.
-:- import_module libs.globals.
-:- import_module libs.rat.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.set_of_var.
 
-:- import_module assoc_list.
 :- import_module char.
-:- import_module cord.
-:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module pair.
 :- import_module set.
 :- import_module term.
-:- import_module unit.
 :- import_module varset.
-
-:- implementation.
-
-:- import_module mdbcomp.builtin_modules.
-
-:- import_module libs.options.
-:- import_module require.
-
-%---------------------------------------------------------------------------%
-%
-% Miscellaneous stuff.
-%
-
-:- interface.
-
-    % Indicates the type of information the compiler should get from the
-    % promise declaration's clause.
-    %
-:- type promise_type
-            % promise ex declarations
-    --->    promise_type_exclusive
-            % Each disjunct is mutually exclusive.
-
-    ;       promise_type_exhaustive
-            % Disjunction cannot fail.
-
-    ;       promise_type_exclusive_exhaustive
-            % Both of the above assertions
-
-    ;       promise_type_true.
-            % Promise goal is true.
-
-:- type type_and_mode
-    --->    type_only(mer_type)
-    ;       type_and_mode(mer_type, mer_mode).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff about purity.
-%
-
-:- interface.
-
-    % Purity indicates whether a goal can have side effects or can depend on
-    % global state. See purity.m and the "Purity" section of the Mercury
-    % language reference manual.
-:- type purity
-    --->    purity_pure
-    ;       purity_semipure
-    ;       purity_impure.
-
-    % Compare two purities.
-    %
-:- pred less_pure(purity::in, purity::in) is semidet.
-
-    % Sort of a "maximum" for impurity.
-    %
-:- func worst_purity(purity, purity) = purity.
-
-    % Sort of a "minimum" for impurity.
-    %
-:- func best_purity(purity, purity) = purity.
-
-:- implementation.
-
-less_pure(P1, P2) :-
-    worst_purity(P1, P2) \= P2.
-
-    % worst_purity/3 could be written more compactly, but this definition
-    % guarantees us a determinism error if we add to type `purity'. We also
-    % define less_pure/2 in terms of worst_purity/3 rather than the other way
-    % around for the same reason.
-    %
-worst_purity(purity_pure, purity_pure) = purity_pure.
-worst_purity(purity_pure, purity_semipure) = purity_semipure.
-worst_purity(purity_pure, purity_impure) = purity_impure.
-worst_purity(purity_semipure, purity_pure) = purity_semipure.
-worst_purity(purity_semipure, purity_semipure) = purity_semipure.
-worst_purity(purity_semipure, purity_impure) = purity_impure.
-worst_purity(purity_impure, purity_pure) = purity_impure.
-worst_purity(purity_impure, purity_semipure) = purity_impure.
-worst_purity(purity_impure, purity_impure) = purity_impure.
-
-    % best_purity/3 is written as a switch for the same reason as
-    % worst_purity/3.
-    %
-best_purity(purity_pure, purity_pure) = purity_pure.
-best_purity(purity_pure, purity_semipure) = purity_pure.
-best_purity(purity_pure, purity_impure) = purity_pure.
-best_purity(purity_semipure, purity_pure) = purity_pure.
-best_purity(purity_semipure, purity_semipure) = purity_semipure.
-best_purity(purity_semipure, purity_impure) = purity_semipure.
-best_purity(purity_impure, purity_pure) = purity_pure.
-best_purity(purity_impure, purity_semipure) = purity_semipure.
-best_purity(purity_impure, purity_impure) = purity_impure.
-
-%---------------------------------------------------------------------------%
-%
-% Stuff about determinism.
-%
-
-:- interface.
-
-    % The `determinism' type specifies how many solutions a given procedure
-    % may have.
-    %
-:- type determinism
-    --->    detism_det
-    ;       detism_semi
-    ;       detism_multi
-    ;       detism_non
-    ;       detism_cc_multi
-    ;       detism_cc_non
-    ;       detism_erroneous
-    ;       detism_failure.
-
-:- type can_fail
-    --->    can_fail
-    ;       cannot_fail.
-
-:- type soln_count
-    --->    at_most_zero
-    ;       at_most_one
-    ;       at_most_many_cc
-            % "_cc" means "committed-choice": there is more than one logical
-            % solution, but the pred or goal is being used in a context where
-            % we are only looking for the first solution.
-    ;       at_most_many.
-
-:- pred determinism_components(determinism, can_fail, soln_count).
-:- mode determinism_components(in, out, out) is det.
-:- mode determinism_components(out, in, in) is det.
-
-:- implementation.
-
-determinism_components(detism_det,       cannot_fail, at_most_one).
-determinism_components(detism_semi,      can_fail,    at_most_one).
-determinism_components(detism_multi,     cannot_fail, at_most_many).
-determinism_components(detism_non,       can_fail,    at_most_many).
-determinism_components(detism_cc_multi,  cannot_fail, at_most_many_cc).
-determinism_components(detism_cc_non,    can_fail,    at_most_many_cc).
-determinism_components(detism_erroneous, cannot_fail, at_most_zero).
-determinism_components(detism_failure,   can_fail,    at_most_zero).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the foreign language interface pragmas.
-%
-
-:- interface.
-
-    % Is the foreign code declarations local to this module or
-    % exported?
-    %
-:- type foreign_decl_is_local
-    --->    foreign_decl_is_local
-    ;       foreign_decl_is_exported.
-
-:- type foreign_literal_or_include
-    --->    literal(string)
-    ;       include_file(
-                string      % The file name written in the source code.
-            ).
-
-    % A foreign_language_type represents a type that is defined in a
-    % foreign language and accessed in Mercury (most likely through
-    % pragma foreign_type).
-    %
-:- type foreign_language_type
-    --->    c(c_foreign_type)
-    ;       java(java_foreign_type)
-    ;       csharp(csharp_foreign_type)
-    ;       erlang(erlang_foreign_type).
-
-:- type c_foreign_type
-    --->    c_type(
-                string      % The C type name
-            ).
-
-:- type java_foreign_type
-    --->    java_type(
-                string      % The Java type name
-            ).
-
-:- type csharp_foreign_type
-    --->    csharp_type(
-                string      % The C# type name
-            ).
-
-:- type erlang_foreign_type
-    --->    erlang_type.    % Erlang is untyped.
-
-:- type ref_or_val
-    --->    reference
-    ;       value.
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for tabling pragmas.
-%
-
-:- type eval_minimal_method
-    --->    stack_copy
-            % Each minimal model procedure saves and restores stack segments
-            % as necessary. See the paper "Tabling in Mercury" by Zoltan
-            % Somogyi and Konstantinos Sagonas.
-
-    ;       own_stacks_consumer
-    ;       own_stacks_generator.
-            % Each minimal model procedure is split into two: the consumer
-            % and the generator. Each generator runs in its own context,
-            % and thus has its own stacks.
-
-    % The evaluation method that should be used for a procedure.
-    %
-:- type eval_method
-    --->    eval_normal                 % normal mercury evaluation
-    ;       eval_loop_check             % loop check only
-    ;       eval_memo                   % memoing + loop check
-    ;       eval_table_io(              % memoing I/O actions for debugging
-                table_io_entry_kind,
-                table_io_is_unitize
-            )
-    ;       eval_minimal(eval_minimal_method).
-                                        % minimal model evaluation
-
-:- type table_attributes
-    --->    table_attributes(
-                table_attr_strictness   :: call_table_strictness,
-                table_attr_size_limit   :: maybe(int),
-                table_attr_statistics   :: table_attr_statistics,
-                table_attr_allow_reset  :: table_attr_allow_reset
-            ).
-
-:- func default_memo_table_attributes = table_attributes.
-
-:- type table_attr_statistics
-    --->    table_gather_statistics
-    ;       table_dont_gather_statistics.
-
-:- type table_attr_allow_reset
-    --->    table_allow_reset
-    ;       table_dont_allow_reset.
-
-:- type call_table_strictness
-    --->    all_strict
-    ;       all_fast_loose
-    ;       specified(
-                list(maybe(arg_tabling_method)),
-                % This list contains one element for each user-visible
-                % argument of the predicate. Elements that correspond
-                % to output arguments should be "no". Elements that
-                % correspond to input arguments should be "yes",
-                % specifying how to look up that argument in the call table.
-
-                hidden_arg_tabling_method
-                % This specifies the tabling method for hidden arguments
-                % introduced by the compiler.
-            ).
-
-:- type arg_tabling_method
-    --->    arg_value
-    ;       arg_addr
-    ;       arg_promise_implied.
-
-:- type hidden_arg_tabling_method
-    --->    hidden_arg_value
-    ;       hidden_arg_addr.
-
-:- type table_io_entry_kind
-    --->    entry_stores_outputs
-            % Each entry in the I/O table stores only the outputs of the
-            % action. The I/O action will be idempotent across retries
-            % in mdb, but attempts to print out the action will cause
-            % a core dump. This option is intended only for implementors
-            % measuring the overheads of the two alternatives just below.
-
-    ;       entry_stores_procid_outputs
-            % Each entry in the I/O table starts with a pointer to the
-            % MR_TableIoEntry structure of the procedure that performed
-            % the action, and also contains the outputs of the action.
-            % This makes the I/O action idempotent across retries and
-            % allows the *name* of the I/O predicate to be printed
-            % by mdb's "print action N" command, but not the values
-            % of the arguments. Not even the output arguments can be printed,
-            % since doing so requires knowing their types, and in general
-            % that requires access to input type_info arguments.
-
-    ;       entry_stores_procid_inputs_outputs.
-            % Each entry in the I/O table starts with a pointer to the
-            % MR_TableIoEntry structure of the procedure that performed
-            % the action, and also contains both the inputs and outputs
-            % of the action.
-            %
-            % This makes the I/O action idempotent across retries and
-            % allows both the name and all the arguments of the I/O predicate
-            % to be printed by mdb's "print action N" command. It also
-            % allows the declarative debugger to consider the action to
-            % be part of the effect of a call to its ancestors.
-
-:- type table_io_is_unitize
-    --->    table_io_unitize    % The procedure is tabled for I/O
-                                % together with its Mercury descendants.
-
-    ;       table_io_alone.     % The procedure is tabled for I/O by itself;
-                                % it can have no Mercury descendants.
-
-:- func eval_method_to_table_type(eval_method) = string.
-
-:- implementation.
-
-default_memo_table_attributes =
-    table_attributes(all_strict, no, table_dont_gather_statistics,
-        table_dont_allow_reset).
-
-eval_method_to_table_type(EvalMethod) = TableTypeStr :-
-    (
-        EvalMethod = eval_normal,
-        unexpected($module, $pred, "eval_normal")
-    ;
-        EvalMethod = eval_table_io(_, _),
-        unexpected($module, $pred, "eval_table_io")
-    ;
-        EvalMethod = eval_loop_check,
-        TableTypeStr = "MR_TABLE_TYPE_LOOPCHECK"
-    ;
-        EvalMethod = eval_memo,
-        TableTypeStr = "MR_TABLE_TYPE_MEMO"
-    ;
-        EvalMethod = eval_minimal(stack_copy),
-        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY"
-    ;
-        EvalMethod = eval_minimal(own_stacks_consumer),
-        unexpected($module, $pred, "own_stacks_consumer")
-    ;
-        EvalMethod = eval_minimal(own_stacks_generator),
-        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS"
-    ).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the `termination_info' pragma.
-% See term_util.m.
-%
-
-:- interface.
-
-:- type generic_arg_size_info(ErrorInfo)
-    --->    finite(int, list(bool))
-            % The termination constant is a finite integer. The list of bool
-            % has a 1:1 correspondence with the input arguments of the
-            % procedure. It stores whether the argument contributes to the
-            % size of the output arguments.
-
-    ;       infinite(ErrorInfo).
-            % There is no finite integer for which the above equation is true.
-
-:- type generic_termination_info(TermInfo, ErrorInfo)
-    --->    cannot_loop(TermInfo)   % This procedure definitely terminates
-                                    % for all possible inputs.
-    ;       can_loop(ErrorInfo).
-                                    % This procedure might not terminate.
-
-:- type pragma_arg_size_info    == generic_arg_size_info(unit).
-:- type pragma_termination_info == generic_termination_info(unit, unit).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the `termination2_info' pragma.
-%
-
-:- interface.
-
-    % This is the form in which termination information from other
-    % modules (imported via `.opt' or `.trans_opt' files) comes.
-    % We convert this to an intermediate form and let the termination
-    % analyser convert it to the correct form.
-    %
-    % NOTE: the reason that we cannot convert it to the correct form
-    % is that we don't have complete information about how many typeinfo
-    % related arguments there are until after the polymorphism pass.
-    %
-:- type arg_size_constr
-    --->    le(list(arg_size_term), rat)
-    ;       eq(list(arg_size_term), rat).
-
-:- type arg_size_term
-    --->    arg_size_term(
-                as_term_var   :: int,
-                as_term_coeff :: rat
-            ).
-
-:- type pragma_constr_arg_size_info == list(arg_size_constr).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the `structure_sharing_info' pragma.
-%
-
-:- interface.
-
-    % Whenever structure sharing analysis is unable to determine a good
-    % approximation of the set of structure sharing pairs that might exist
-    % during the execution of a program, it must use "top" as the only safe
-    % approximation.
-    %
-    % We divide the reasons for approximating by `top' into two cases:
-    %
-    % - the procedure calls some imported procedure for which we don't have an
-    %   answer (yet). The result might be improved if we did have that
-    %   information.
-    %
-    % - the procedure calls some imported procedure for which we managed to
-    %   look up the answer, and that answer was `top'.
-    %
-    % - the procedure contains a call to foreign or generic code.
-    %   Reanalysis will not improve the result.
-    %
-:- type top_feedback
-    --->    top_failed_lookup(shrouded_pred_proc_id)
-    ;       top_from_lookup(shrouded_pred_proc_id)
-    ;       top_cannot_improve(string).
-
-    % Elements of the structure sharing domain lattice are either bottom
-    % (no structure sharing), top (any kind of structure sharing), or
-    % a list of structure sharing pairs.
-    %
-    % This is the public representation of the type "sharing_as".
-    %
-:- type structure_sharing_domain
-    --->    structure_sharing_bottom
-    ;       structure_sharing_real(structure_sharing)
-    ;       structure_sharing_top(set(top_feedback)).
-
-    % Public representation of structure sharing.
-    %
-:- type structure_sharing == list(structure_sharing_pair).
-
-    % A structure sharing pair represents the information that two
-    % data structures might be represented by the same memoryspace, hence
-    % its representation as a pair of datastructs.
-    %
-:- type structure_sharing_pair == pair(datastruct).
-
-    % A datastruct is a concept that designates a particular subterm of the
-    % term to which a particular variable may be bound. The selector is
-    % normalized.
-    %
-:- type datastruct
-    --->    selected_cel(
-                sc_var      :: prog_var,
-                sc_selector :: selector
-            ).
-
-    % A selector describes a path in a type-tree.
-    %
-:- type selector == list(unit_selector).
-
-    % Unit-selectors are either term selectors or type selectors.
-    % - A term selector selects a subterm f/n of a term, where f is a functor
-    %   (identified by the cons_id), and n an integer.
-    % - A type selector designates any subterm that has that specific type.
-    %
-:- type unit_selector
-    --->    termsel(cons_id, int)       % term selector
-    ;       typesel(mer_type).          % type selector
-
-    % Type to represent the sharing information that is manually added
-    % to procedures implemented as foreign_procs.
-    %
-:- type user_annotated_sharing
-    --->    no_user_annotated_sharing
-    ;       user_sharing(
-                sharing     ::  structure_sharing_domain,
-                maybe_types ::  maybe(user_sharing_type_information)
-            ).
-
-    % The user may have declared the sharing in terms of type variables. In
-    % that case, we record the types, and the type variable set.
-    %
-:- type user_sharing_type_information
-    --->    user_type_info(
-                types       ::  list(mer_type),
-                typevarset  ::  tvarset
-            ).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the `structure_reuse_info' pragma.
-%
-
-:- interface.
-
-:- type dead_var == prog_var.
-:- type dead_vars == list(dead_var).
-:- type dead_datastruct == datastruct.
-:- type dead_datastructs == set(dead_datastruct).
-:- type live_var == prog_var.
-:- type live_vars == list(prog_var).
-:- type set_of_live_var == set_of_progvar.
-:- type live_datastruct == datastruct.
-:- type live_datastructs == list(live_datastruct).
-
-    % This is the public representation of the type "reuse_as".
-    %
-:- type structure_reuse_domain
-    --->    has_no_reuse
-    ;       has_only_unconditional_reuse
-    ;       has_conditional_reuse(structure_reuse_conditions).
-
-:- type structure_reuse_conditions == list(structure_reuse_condition).
-
-    % A structure reuse condition specifies all the information needed to
-    % verify whether some memory cells can safely be considered as dead at
-    % some program point, depending on the calling context.
-    % This information consists of three parts:
-    %   - a list of dead datastructures specifying which memory cells
-    %   might become dead, hence reusable;
-    %   - a list of live datastructures that specifies which memory cells
-    %   are always live at the place where the above dead datastructures might
-    %   become dead;
-    %   - a description of the structure sharing existing at the place
-    %   where these datastructures might become dead.
-    %
-:- type structure_reuse_condition
-    --->    structure_reuse_condition(
-                dead_nodes          :: dead_datastructs,
-                local_use_nodes     :: live_datastructs,
-                local_sharing       :: structure_sharing_domain
-            ).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the `unused_args' pragma.
-%
-
-:- interface.
-
-    % This `mode_num' type is only used for mode numbers written out in
-    % automatically-generated `pragma unused_args' pragmas in `.opt' files.
-    % The mode_num gets converted to an HLDS proc_id by make_hlds.m.
-    % We don't want to use the `proc_id' type here since the parse tree
-    % (prog_data.m and prog_item.m) should not depend on the HLDS.
-    %
-:- type mode_num == int.
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the `exceptions' pragma.
-%
-
-:- interface.
-
-:- type exception_status
-    --->    will_not_throw
-            % This procedure will not throw an exception.
-
-    ;       may_throw(exception_type)
-            % This procedure may throw an exception. The exception is
-            % classified by the `exception_type' type.
-
-    ;       throw_conditional.
-            % Whether the procedure will not throw an exception depends upon
-            % the value of one or more polymorphic arguments. XXX This needs
-            % to be extended for ho preds. (See exception_analysis.m for
-            % more details).
-
-:- type exception_type
-    --->    user_exception
-            % The exception that might be thrown is of a result of some code
-            % calling exception.throw/1.
-
-    ;       type_exception.
-            % The exception is a result of a compiler introduced
-            % unification/comparison maybe throwing an exception
-            % (in the case of user-defined equality or comparison) or
-            % propagating an exception from them.
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the trailing analysis.
-%
-
-:- interface.
-
-:- type trailing_status
-    --->    trail_may_modify
-    ;       trail_will_not_modify
-    ;       trail_conditional.
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for minimal model tabling analysis.
-%
-
-:- interface.
-
-:- type mm_tabling_status
-    --->    mm_tabled_may_call
-    ;       mm_tabled_will_not_call
-    ;       mm_tabled_conditional.
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the `type_spec' pragma.
-%
-
-:- interface.
-
-    % The type substitution for a `pragma type_spec' declaration.
-    % Elsewhere in the compiler we generally use the `tsubst' type
-    % which is a map rather than an assoc_list.
-    %
-:- type type_subst == assoc_list(tvar, mer_type).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for `foreign_proc' pragma.
-%
-
-:- interface.
-
-    % This type holds information about the implementation details
-    % of procedures defined via `pragma foreign_proc'.
-    %
-    % All the strings in this type may be accompanied by the context of their
-    % appearance in the source code. These contexts are used to tell the
-    % foreign language compiler where the included code comes from, to allow it
-    % to generate error messages that refer to the original appearance of the
-    % code in the Mercury program. The context is missing if the foreign code
-    % was constructed by the compiler.
-    %
-:- type pragma_foreign_proc_impl
-    --->    fp_impl_ordinary(
-                % This is a foreign language definition of a model_det or
-                % model_semi procedure. (We used to allow model_non, but
-                % do not any more.)
-
-                string,             % The code of the procedure.
-                maybe(prog_context)
-            ).
-
-    % The use of this type is explained in the comment at the top of
-    % pragma_c_gen.m.
-    %
-:- type foreign_proc_shared_code_treatment
-    --->    shared_code_duplicate
-    ;       shared_code_share
-    ;       shared_code_automatic.
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for `foreign_import_module' pragma.
-%
-
-:- interface.
-
-    % For each foreign language, we store the set of modules we need to import
-    % in that language.
-    %
-    % C++ is commented out while lang_cplusplus is commented out
-    % in the foreign_language type.
-:- type foreign_import_modules
-    --->    foreign_import_modules(
-                fim_c           :: set(module_name),
-                % fim_cplusplus :: set(module_name),
-                fim_csharp      :: set(module_name),
-                fim_java        :: set(module_name),
-                fim_erlang      :: set(module_name)
-            ).
-
-:- type foreign_import_module_info
-    --->    foreign_import_module_info(
-                foreign_language,
-                module_name
-            ).
-
-:- func init_foreign_import_modules = foreign_import_modules.
-
-:- pred add_foreign_import_module(foreign_language::in, module_name::in,
-    foreign_import_modules::in, foreign_import_modules::out) is det.
-
-:- pred add_foreign_import_module_info(foreign_import_module_info::in,
-    foreign_import_modules::in, foreign_import_modules::out) is det.
-
-:- func get_all_foreign_import_module_infos(foreign_import_modules) =
-    set(foreign_import_module_info).
-
-:- func get_all_foreign_import_modules(foreign_import_modules) =
-    set(module_name).
-
-:- func get_lang_foreign_import_module_infos(foreign_import_modules,
-    foreign_language) = set(foreign_import_module_info).
-
-:- func get_lang_foreign_import_modules(foreign_import_modules,
-    foreign_language) = set(module_name).
-
-:- implementation.
-
-init_foreign_import_modules =
-    foreign_import_modules(set.init, set.init, set.init, set.init).
-
-add_foreign_import_module(Lang, ModuleName, !FIM) :-
-    (
-        Lang = lang_c,
-        ModuleNames0 = !.FIM ^ fim_c,
-        ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
-            !FIM ^ fim_c := ModuleNames
-        else
-            true
-        )
-    ;
-        Lang = lang_csharp,
-        ModuleNames0 = !.FIM ^ fim_csharp,
-        ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
-            !FIM ^ fim_csharp := ModuleNames
-        else
-            true
-        )
-    ;
-        Lang = lang_java,
-        ModuleNames0 = !.FIM ^ fim_java,
-        ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
-            !FIM ^ fim_java := ModuleNames
-        else
-            true
-        )
-    ;
-        Lang = lang_erlang,
-        ModuleNames0 = !.FIM ^ fim_erlang,
-        ( if set.insert_new(ModuleName, ModuleNames0, ModuleNames) then
-            !FIM ^ fim_erlang := ModuleNames
-        else
-            true
-        )
-    ).
-
-add_foreign_import_module_info(FIMI, !FIM) :-
-    FIMI = foreign_import_module_info(Lang, ModuleName),
-    add_foreign_import_module(Lang, ModuleName, !FIM).
-
-get_all_foreign_import_module_infos(FIM) = ImportInfos :-
-    FIM = foreign_import_modules(ModuleNamesC, ModuleNamesCSharp,
-        ModuleNamesJava, ModuleNamesErlang),
-    ImportInfos = set.union_list([
-        set.map(make_foreign_import_module_info(lang_c),
-            ModuleNamesC),
-        set.map(make_foreign_import_module_info(lang_csharp),
-            ModuleNamesCSharp),
-        set.map(make_foreign_import_module_info(lang_java),
-            ModuleNamesJava),
-        set.map(make_foreign_import_module_info(lang_erlang),
-            ModuleNamesErlang)
-        ]).
-
-get_all_foreign_import_modules(FIM) = ModuleNames :-
-    FIM = foreign_import_modules(ModuleNamesC, ModuleNamesCSharp,
-        ModuleNamesJava, ModuleNamesErlang),
-    ModuleNames = set.union_list([ModuleNamesC, ModuleNamesCSharp,
-        ModuleNamesJava, ModuleNamesErlang]).
-
-get_lang_foreign_import_module_infos(FIM, Lang) = ImportInfos :-
-    ModuleNames = get_lang_foreign_import_modules(FIM, Lang),
-    ImportInfos = set.map(make_foreign_import_module_info(Lang), ModuleNames).
-
-get_lang_foreign_import_modules(FIM, Lang) = ModuleNames :-
-    (
-        Lang = lang_c,
-        ModuleNames = FIM ^ fim_c
-    ;
-        Lang = lang_csharp,
-        ModuleNames = FIM ^ fim_csharp
-    ;
-        Lang = lang_java,
-        ModuleNames = FIM ^ fim_java
-    ;
-        Lang = lang_erlang,
-        ModuleNames = FIM ^ fim_erlang
-    ).
-
-:- func make_foreign_import_module_info(foreign_language, module_name)
-    = foreign_import_module_info.
-
-make_foreign_import_module_info(Lang, ModuleName) =
-    foreign_import_module_info(Lang, ModuleName).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the `foreign_decl' and `foreign_code' pragmas.
-%
-
-:- interface.
-
-:- type foreign_include_file_infos == cord(foreign_include_file_info).
-
-:- type foreign_include_file_info
-    --->    foreign_include_file_info(
-                fifi_lang       :: foreign_language,
-                fifi_filename   :: string
-            ).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the `foreign_export_enum' pragma.
-%
-
-:- interface.
-
-:- type uppercase_export_enum
-    --->    uppercase_export_enum
-    ;       do_not_uppercase_export_enum.
-
-:- type export_enum_attributes
-    --->    export_enum_attributes(
-                ee_attr_prefix :: maybe(string),
-                ee_attr_upper  :: uppercase_export_enum
-            ).
-
-:- func default_export_enum_attributes = export_enum_attributes.
-
-:- implementation.
-
-default_export_enum_attributes =
-    export_enum_attributes(no, do_not_uppercase_export_enum).
-
-%---------------------------------------------------------------------------%
-%
-% Stuff for the `require_feature_set' pragma.
-%
-
-:- interface.
-
-:- type required_feature
-    --->    reqf_concurrency
-    ;       reqf_single_prec_float
-    ;       reqf_double_prec_float
-    ;       reqf_memo
-    ;       reqf_parallel_conj
-    ;       reqf_trailing
-    ;       reqf_strict_sequential
-    ;       reqf_conservative_gc.
-
-%---------------------------------------------------------------------------%
-%
-% Require tail recursion pragma.
-%
-
-:- type require_tail_recursion
-    --->    suppress_tailrec_warnings(
-                rtrs_context            :: prog_context
-            )
-    ;       enable_tailrec_warnings(
-                rtre_warn_or_error      :: warning_or_error,
-                rtre_recursion_type     :: require_tail_recursion_type,
-                rtre_context            :: prog_context
-            ).
-
-:- type require_tail_recursion_type
-    --->    require_direct_tail_recursion
-    ;       require_any_tail_recursion.
-
-:- pred require_tailrec_type_string(require_tail_recursion_type, string).
-:- mode require_tailrec_type_string(in, out) is det.
-:- mode require_tailrec_type_string(out, in) is semidet.
-
-:- implementation.
-
-require_tailrec_type_string(require_direct_tail_recursion,
-    "self_recursion_only").
-require_tailrec_type_string(require_any_tail_recursion,
-    "self_or_mutual_recursion").
-
-%---------------------------------------------------------------------------%
-%
-% Type classes.
-%
-
-:- interface.
-
-    % A class constraint represents a constraint that a given list of types
-    % is a member of the specified type class. It is an invariant of this data
-    % structure that the types in a class constraint do not contain any
-    % information in their prog_context fields. This invariant is needed
-    % to ensure that we can do unifications, map.lookups, etc., and get the
-    % expected semantics. (This invariant now applies to all types, but is
-    % especially important here.)
-    %
-    % Values of type prog_constraint are used as keys in several maps;
-    % currently (december 2014) these are represented by the types
-    % ancestor_constraints, constraint_proof_map and typeclass_info_varmap.
-    % We cannot store the context of each constraint in here, since after
-    % we have put a constraint into one of these maps with one context,
-    % we wouldn't find it if searching for it with another context, which
-    % would thus defeat the purpose of those maps (to find common uses
-    % of the same constraint).
-    %
-:- type prog_constraint
-    --->    constraint(
-                constraint_class        :: class_name,
-                constraint_arg_types    :: list(mer_type)
-            ).
-
-:- type prog_constraints
-    --->    constraints(
-                univ_constraints    :: list(prog_constraint),
-                                    % Universally quantified constraints.
-                exist_constraints   :: list(prog_constraint)
-                                    % Existentially quantified constraints.
-            ).
-
-    % A functional dependency on the variables in the head of a class
-    % declaration. This asserts that, given the complete set of instances
-    % of this class, the binding of the range variables can be uniquely
-    % determined from the binding of the domain variables.
-    %
-    % XXX Both lists should be one_or_more(tvar).
-    %
-:- type prog_fundep
-    --->    fundep(
-                domain          :: list(tvar),
-                range           :: list(tvar)
-            ).
-
-:- type class_name == sym_name.
-:- type class_id
-    --->    class_id(class_name, arity).
-
-:- type class_interface
-    --->    class_interface_abstract
-    ;       class_interface_concrete(list(class_method)).
-
-:- type instance_method
-    --->    instance_method(
-                instance_method_p_or_f          :: pred_or_func,
-                instance_method_name            :: sym_name,
-                instance_method_proc_def        :: instance_proc_def,
-                instance_method_arity           :: arity,
-
-                % The context of the instance declaration.
-                instance_method_decl_context    :: prog_context
-            ).
-
-:- type instance_proc_def
-    --->    instance_proc_def_name(
-                % defined using the `pred(...) is <Name>' syntax
-                sym_name
-            )
-    ;       instance_proc_def_clauses(
-                % defined using clauses
-                list(item_clause_info)
-            ).
-
-:- type instance_body
-    --->    instance_body_abstract
-    ;       instance_body_concrete(list(instance_method)).
-
-:- func prog_constraint_get_class(prog_constraint) = class_name.
-:- func prog_constraint_get_arg_types(prog_constraint) = list(mer_type).
-
-:- type maybe_class_method
-    --->    is_not_a_class_method
-    ;       is_a_class_method.
-
-:- implementation.
-
-prog_constraint_get_class(Constraint) = Constraint ^ constraint_class.
-prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
-
-%---------------------------------------------------------------------------%
-%
-% Some more stuff for the foreign language interface.
-%
-
-:- interface.
-
-    % An abstract type for representing a set of
-    % `pragma_foreign_proc_attribute's.
-    %
-:- type pragma_foreign_proc_attributes.
-
-:- func default_attributes(foreign_language) = pragma_foreign_proc_attributes.
-:- func get_may_call_mercury(pragma_foreign_proc_attributes) =
-    proc_may_call_mercury.
-:- func get_thread_safe(pragma_foreign_proc_attributes) = proc_thread_safe.
-:- func get_purity(pragma_foreign_proc_attributes) = purity.
-:- func get_terminates(pragma_foreign_proc_attributes) = proc_terminates.
-:- func get_user_annotated_sharing(pragma_foreign_proc_attributes) =
-    user_annotated_sharing.
-:- func get_foreign_language(pragma_foreign_proc_attributes) =
-    foreign_language.
-:- func get_tabled_for_io(pragma_foreign_proc_attributes) =
-    proc_tabled_for_io.
-:- func get_may_throw_exception(pragma_foreign_proc_attributes) =
-    proc_may_throw_exception.
-:- func get_ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
-:- func get_may_modify_trail(pragma_foreign_proc_attributes) =
-    proc_may_modify_trail.
-:- func get_may_call_mm_tabled(pragma_foreign_proc_attributes) =
-    may_call_mm_tabled.
-:- func get_box_policy(pragma_foreign_proc_attributes) = box_policy.
-:- func get_affects_liveness(pragma_foreign_proc_attributes) =
-    proc_affects_liveness.
-:- func get_allocates_memory(pragma_foreign_proc_attributes) =
-    proc_allocates_memory.
-:- func get_registers_roots(pragma_foreign_proc_attributes) =
-    proc_registers_roots.
-:- func get_may_duplicate(pragma_foreign_proc_attributes) =
-    maybe(proc_may_duplicate).
-:- func get_extra_attributes(pragma_foreign_proc_attributes)
-    = pragma_foreign_proc_extra_attributes.
-
-:- pred set_may_call_mercury(proc_may_call_mercury::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_thread_safe(proc_thread_safe::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_foreign_language(foreign_language::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_tabled_for_io(proc_tabled_for_io::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_purity(purity::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_terminates(proc_terminates::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_user_annotated_sharing(user_annotated_sharing::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_may_throw_exception(proc_may_throw_exception::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_ordinary_despite_detism(bool::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_may_modify_trail(proc_may_modify_trail::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_may_call_mm_tabled(may_call_mm_tabled::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_box_policy(box_policy::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_affects_liveness(proc_affects_liveness::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_allocates_memory(proc_allocates_memory::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_registers_roots(proc_registers_roots::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred set_may_duplicate(maybe(proc_may_duplicate)::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-:- pred add_extra_attribute(pragma_foreign_proc_extra_attribute::in,
-    pragma_foreign_proc_attributes::in,
-    pragma_foreign_proc_attributes::out) is det.
-
-    % For foreign_procs, there are two different calling conventions,
-    % one for foreign code that may recursively call Mercury code, and another
-    % more efficient one for the case when we know that the foreign code will
-    % not recursively invoke Mercury code.
-:- type proc_may_call_mercury
-    --->    proc_may_call_mercury
-    ;       proc_will_not_call_mercury.
-
-    % If thread_safe execution is enabled, then we need to put a mutex
-    % around the foreign code for each foreign_proc, unless it is declared
-    % to be thread_safe. If a piece of foreign code is declared to be
-    % maybe_thread_safe whether we put the mutex around the foreign code
-    % depends upon the `--maybe-thread-safe' compiler flag.
-    %
-:- type proc_thread_safe
-    --->    proc_not_thread_safe
-    ;       proc_thread_safe
-    ;       proc_maybe_thread_safe.
-
-:- type proc_tabled_for_io
-    --->    proc_not_tabled_for_io
-    ;       proc_tabled_for_io
-    ;       proc_tabled_for_io_unitize
-    ;       proc_tabled_for_descendant_io.
-
-:- type proc_may_modify_trail
-    --->    proc_may_modify_trail
-    ;       proc_will_not_modify_trail.
-
-:- type may_call_mm_tabled
-    --->    may_call_mm_tabled
-            % The foreign code may make callbacks to minimal model tabled
-            % procedures.
-
-    ;       will_not_call_mm_tabled
-            % The foreign code may make callbacks to Mercury, but they will
-            % not be to minimal model tabled code.
-
-    ;       default_calls_mm_tabled.
-            % If either of the above are not specified:
-            %   - for `will_not_call_mercury' set `will_not_call_mm_tabled'
-            %   - for `may_call_mercury' set `may_call_mm_tabled'
-
-:- type pragma_var
-    --->    pragma_var(prog_var, string, mer_mode, box_policy).
-            % variable, name, mode
-            % We explicitly store the name because we need the real
-            % name in code_gen.
-
-    % box_policy only makes sense in high-level C grades using low-level data.
-    %
-:- type box_policy
-    --->    native_if_possible
-    ;       always_boxed.
-
-    % Extract the modes from the list of pragma_vars.
-    %
-:- pred pragma_get_modes(list(pragma_var)::in, list(mer_mode)::out) is det.
-
-    % Extract the vars from the list of pragma_vars.
-    %
-:- pred pragma_get_vars(list(pragma_var)::in, list(prog_var)::out) is det.
-
-    % Extract the names from the list of pragma_vars.
-    %
-:- pred pragma_get_var_infos(list(pragma_var)::in,
-    list(pair(maybe(pair(string, mer_mode)), box_policy))::out) is det.
-
-:- type proc_affects_liveness
-    --->    proc_affects_liveness
-    ;       proc_does_not_affect_liveness
-    ;       proc_default_affects_liveness.
-
-:- type proc_allocates_memory
-    --->    proc_does_not_allocate_memory
-    ;       proc_allocates_bounded_memory
-    ;       proc_allocates_unbounded_memory
-    ;       proc_default_allocates_memory.
-
-:- type proc_registers_roots
-    --->    proc_registers_roots
-    ;       proc_does_not_register_roots
-    ;       proc_does_not_have_roots
-    ;       proc_default_registers_roots.
-
-:- type proc_may_duplicate
-    --->    proc_may_duplicate
-    ;       proc_may_not_duplicate.
-
-    % This type specifies the termination property of a procedure
-    % defined using pragma foreign_proc.
-    %
-:- type proc_terminates
-    --->    proc_terminates
-            % The foreign code will terminate for all input assuming
-            % that any input streams are finite.
-
-    ;       proc_does_not_terminate
-            % The foreign code will not necessarily terminate for some
-            % (possibly all) input.
-
-    ;       depends_on_mercury_calls.
-            % The termination of the foreign code depends on whether the code
-            % makes calls back to Mercury (See termination.m for details).
-
-:- type proc_may_throw_exception
-    --->    proc_will_not_throw_exception
-            % The foreign code will not result in an exception being thrown.
-
-    ;       default_exception_behaviour.
-            % If the foreign_proc is erroneous then mark it as throwing an
-            % exception. Otherwise mark it as throwing an exception if it
-            % makes calls back to Mercury and not throwing an exception
-            % otherwise.
-
-:- type pragma_foreign_proc_extra_attribute
-    --->    refers_to_llds_stack
-    ;       backend(backend)
-    ;       needs_call_standard_output_registers.
-            % On the LLDS backend, this foreign_proc needs to put its outputs
-            % into the same registers as if it were a call. This is useful
-            % if the code of the foreign procedure being invoked can suspend
-            % for a while, resume at a label in the runtime system, and then
-            % return from code at that label. The code that places the outputs
-            % must put them where calls expect them, but without this
-            % attribute, the LLDS code generator could try to put the output
-            % somewhere else.
-
-:- type pragma_foreign_proc_extra_attributes ==
-    list(pragma_foreign_proc_extra_attribute).
-
-:- implementation.
-
-    % If you add an attribute you may need to modify
-    % `foreign_proc_attributes_to_strings'.
-    %
-:- type pragma_foreign_proc_attributes
-    --->    attributes(
-                attr_foreign_language           :: foreign_language,
-                attr_may_call_mercury           :: proc_may_call_mercury,
-                attr_thread_safe                :: proc_thread_safe,
-                attr_tabled_for_io              :: proc_tabled_for_io,
-                attr_purity                     :: purity,
-                attr_terminates                 :: proc_terminates,
-                attr_user_annotated_sharing     :: user_annotated_sharing,
-                attr_may_throw_exception        :: proc_may_throw_exception,
-                attr_ordinary_despite_detism    :: bool,
-                attr_may_modify_trail           :: proc_may_modify_trail,
-                attr_may_call_mm_tabled         :: may_call_mm_tabled,
-                attr_box_policy                 :: box_policy,
-                attr_affects_liveness           :: proc_affects_liveness,
-                attr_allocates_memory           :: proc_allocates_memory,
-                attr_registers_roots            :: proc_registers_roots,
-                attr_may_duplicate              :: maybe(proc_may_duplicate),
-                attr_extra_attributes ::
-                    list(pragma_foreign_proc_extra_attribute)
-            ).
-
-default_attributes(Language) =
-    attributes(Language, proc_may_call_mercury, proc_not_thread_safe,
-        proc_not_tabled_for_io, purity_impure, depends_on_mercury_calls,
-        no_user_annotated_sharing, default_exception_behaviour,
-        no, proc_may_modify_trail, default_calls_mm_tabled,
-        native_if_possible, proc_default_affects_liveness,
-        proc_default_allocates_memory, proc_default_registers_roots,
-        no, []).
-
-get_may_call_mercury(Attrs) = Attrs ^ attr_may_call_mercury.
-get_thread_safe(Attrs) = Attrs ^ attr_thread_safe.
-get_foreign_language(Attrs) = Attrs ^ attr_foreign_language.
-get_tabled_for_io(Attrs) = Attrs ^ attr_tabled_for_io.
-get_purity(Attrs) = Attrs ^ attr_purity.
-get_terminates(Attrs) = Attrs ^ attr_terminates.
-get_user_annotated_sharing(Attrs) = Attrs ^ attr_user_annotated_sharing.
-get_may_throw_exception(Attrs) = Attrs ^ attr_may_throw_exception.
-get_ordinary_despite_detism(Attrs) = Attrs ^ attr_ordinary_despite_detism.
-get_may_modify_trail(Attrs) = Attrs ^ attr_may_modify_trail.
-get_may_call_mm_tabled(Attrs) = Attrs ^ attr_may_call_mm_tabled.
-get_box_policy(Attrs) = Attrs ^ attr_box_policy.
-get_affects_liveness(Attrs) = Attrs ^ attr_affects_liveness.
-get_allocates_memory(Attrs) = Attrs ^ attr_allocates_memory.
-get_registers_roots(Attrs) = Attrs ^ attr_registers_roots.
-get_may_duplicate(Attrs) = Attrs ^ attr_may_duplicate.
-get_extra_attributes(Attrs) = Attrs ^ attr_extra_attributes.
-
-set_may_call_mercury(MayCallMercury, !Attrs) :-
-    !Attrs ^ attr_may_call_mercury := MayCallMercury.
-set_thread_safe(ThreadSafe, !Attrs) :-
-    !Attrs ^ attr_thread_safe := ThreadSafe.
-set_foreign_language(ForeignLanguage, !Attrs) :-
-    !Attrs ^ attr_foreign_language := ForeignLanguage.
-set_tabled_for_io(TabledForIo, !Attrs) :-
-    !Attrs ^ attr_tabled_for_io := TabledForIo.
-set_purity(Purity, !Attrs) :-
-    !Attrs ^ attr_purity := Purity.
-set_terminates(Terminates, !Attrs) :-
-    !Attrs ^ attr_terminates := Terminates.
-set_user_annotated_sharing(UserSharing, !Attrs) :-
-    !Attrs ^ attr_user_annotated_sharing := UserSharing.
-set_may_throw_exception(MayThrowException, !Attrs) :-
-    !Attrs ^ attr_may_throw_exception := MayThrowException.
-set_ordinary_despite_detism(OrdinaryDespiteDetism, !Attrs) :-
-    !Attrs ^ attr_ordinary_despite_detism := OrdinaryDespiteDetism.
-set_may_modify_trail(MayModifyTrail, !Attrs) :-
-    !Attrs ^ attr_may_modify_trail := MayModifyTrail.
-set_may_call_mm_tabled(MayCallMM_Tabled, !Attrs) :-
-    !Attrs ^ attr_may_call_mm_tabled := MayCallMM_Tabled.
-set_box_policy(BoxPolicyStr, !Attrs) :-
-    !Attrs ^ attr_box_policy := BoxPolicyStr.
-set_affects_liveness(AffectsLiveness, !Attrs) :-
-    !Attrs ^ attr_affects_liveness := AffectsLiveness.
-set_allocates_memory(AllocatesMemory, !Attrs) :-
-    !Attrs ^ attr_allocates_memory := AllocatesMemory.
-set_registers_roots(RegistersRoots, !Attrs) :-
-    !Attrs ^ attr_registers_roots := RegistersRoots.
-set_may_duplicate(MayDuplicate, !Attrs) :-
-    !Attrs ^ attr_may_duplicate := MayDuplicate.
-
-add_extra_attribute(NewAttribute, !Attrs) :-
-    !Attrs ^ attr_extra_attributes :=
-        [NewAttribute | !.Attrs ^ attr_extra_attributes].
-
-pragma_get_modes([], []).
-pragma_get_modes([PragmaVar | PragmaVars], [Mode | Modes]) :-
-    PragmaVar = pragma_var(_Var, _Name, Mode, _BoxPolicy),
-    pragma_get_modes(PragmaVars, Modes).
-
-pragma_get_vars([], []).
-pragma_get_vars([PragmaVar | PragmaVars], [Var | Vars]) :-
-    PragmaVar = pragma_var(Var, _Name, _Mode, _BoxPolicy),
-    pragma_get_vars(PragmaVars, Vars).
-
-pragma_get_var_infos([], []).
-pragma_get_var_infos([PragmaVar | PragmaVars], [Info | Infos]) :-
-    PragmaVar = pragma_var(_Var, Name, Mode, BoxPolicy),
-    Info = yes(Name - Mode) - BoxPolicy,
-    pragma_get_var_infos(PragmaVars, Infos).
-
-%---------------------------------------------------------------------------%
-%
-% Goals.
-%
-
-% NOTE: the representation of goals in the parse tree is defined in
-% prog_item.m.
-
-:- interface.
-
-:- type trace_expr(Base)
-    --->    trace_base(Base)
-    ;       trace_not(trace_expr(Base))
-    ;       trace_op(trace_op, trace_expr(Base), trace_expr(Base)).
-
-:- type trace_op
-    --->    trace_or
-    ;       trace_and.
-
-:- type trace_compiletime
-    --->    trace_flag(string)
-    ;       trace_grade(trace_grade)
-    ;       trace_trace_level(trace_trace_level).
-
-:- type trace_grade
-    --->    trace_grade_debug
-    ;       trace_grade_ssdebug
-    ;       trace_grade_prof
-    ;       trace_grade_profdeep
-    ;       trace_grade_par
-    ;       trace_grade_trail
-    ;       trace_grade_rbmm
-    ;       trace_grade_llds
-    ;       trace_grade_mlds
-    ;       trace_grade_c
-    ;       trace_grade_csharp
-    ;       trace_grade_java
-    ;       trace_grade_erlang.
-
-:- type trace_trace_level
-    --->    trace_level_shallow
-    ;       trace_level_deep.
-
-:- type trace_runtime
-    --->    trace_envvar(string).
-
-:- type trace_mutable_var
-    --->    trace_mutable_var(
-                trace_mutable_name      :: string,
-                trace_state_var         :: prog_var
-            ).
-
-:- type atomic_component_state
-    --->    atomic_state_var(prog_var)
-    ;       atomic_var_pair(prog_var, prog_var).
-
-    % These type equivalences are for the type of program variables
-    % and associated structures.
-    %
-:- type prog_var_type
-    --->    prog_var_type.
-:- type prog_var    == var(prog_var_type).
-:- type prog_varset == varset(prog_var_type).
-:- type prog_substitution == substitution(prog_var_type).
-:- type prog_var_renaming == map(prog_var, prog_var).
-:- type prog_term   == term(prog_var_type).
-:- type prog_vars   == list(prog_var).
-
-    % What to print when printing variable names.
-    % You can get the effect of printing variable numbers only
-    % by passing an empty varset, which effectively makes *all* variables
-    % unnamed., but having an explicit option for this is more readable.
-:- type var_name_print
-    --->    print_name_only
-    ;       print_name_and_num
-    ;       print_num_only.
-
-    % A prog_context is just a term.context.
-    %
-:- type prog_context == term.context.
-
-:- pred parse_trace_grade_name(string, trace_grade).
-:- mode parse_trace_grade_name(in, out) is semidet.
-:- mode parse_trace_grade_name(out, in) is det.
-:- mode parse_trace_grade_name(out, out) is multi.
-
-:- pred valid_trace_grade_name(string::out) is multi.
-
-:- implementation.
-
-% If you update this, you also need to update the corresponding section
-% of doc/reference_manual.texi.
-parse_trace_grade_name("debug", trace_grade_debug).
-parse_trace_grade_name("ssdebug", trace_grade_ssdebug).
-parse_trace_grade_name("prof", trace_grade_prof).
-parse_trace_grade_name("profdeep", trace_grade_profdeep).
-parse_trace_grade_name("par", trace_grade_par).
-parse_trace_grade_name("trail", trace_grade_trail).
-parse_trace_grade_name("rbmm", trace_grade_rbmm).
-parse_trace_grade_name("llds", trace_grade_llds).
-parse_trace_grade_name("mlds", trace_grade_mlds).
-parse_trace_grade_name("c", trace_grade_c).
-parse_trace_grade_name("csharp", trace_grade_csharp).
-parse_trace_grade_name("java", trace_grade_java).
-parse_trace_grade_name("erlang", trace_grade_erlang).
-
-valid_trace_grade_name(GradeName) :-
-    parse_trace_grade_name(GradeName, _).
 
 %---------------------------------------------------------------------------%
 %
@@ -1539,13 +118,19 @@ valid_trace_grade_name(GradeName) :-
                 int             % Its arity.
             )
     ;       base_typeclass_info_const(
-                module_name,    % Module name of instance declaration
-                                % (not filled in so that link errors result
-                                % from overlapping instances).
-                class_id,       % Class name and arity.
-                int,            % Class instance.
-                string          % Encodes the type names and arities of the
-                                % arguments of the instance declaration.
+                module_name,
+                % Module name of instance declaration (not filled in
+                % so that link errors result from overlapping instances).
+
+                class_id,
+                % Class name and arity.
+
+                int,
+                % Class instance.
+
+                string
+                % Encodes the type names and arities of the arguments
+                % of the instance declaration.
             )
 
     ;       type_info_cell_constructor(type_ctor)
@@ -1659,11 +244,11 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
 :- interface.
 
-% This is how types are represented.
-
-% One day we might allow types to take value parameters as well as
-% type parameters.
-
+    % This is how types are represented.
+    %
+    % One day we might allow types to take value parameters, as well as
+    % type parameters.
+    %
 :- type type_defn
     --->    parse_tree_du_type(
                 du_ctors            :: list(constructor),
@@ -1704,8 +289,35 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 
     ;       solver_type.
             % The inst `any' is not always `bound' for this type
-            % (i.e. the type was declared with
-            % `:- solver type ...').
+            % (i.e. the type was declared with `:- solver type ...').
+
+    % A foreign_language_type represents a type that is defined in a
+    % foreign language and accessed in Mercury (most likely through
+    % `pragma foreign_type').
+    %
+:- type foreign_language_type
+    --->    c(c_foreign_type)
+    ;       java(java_foreign_type)
+    ;       csharp(csharp_foreign_type)
+    ;       erlang(erlang_foreign_type).
+
+:- type c_foreign_type
+    --->    c_type(
+                string      % The C type name
+            ).
+
+:- type java_foreign_type
+    --->    java_type(
+                string      % The Java type name
+            ).
+
+:- type csharp_foreign_type
+    --->    csharp_type(
+                string      % The C# type name
+            ).
+
+:- type erlang_foreign_type
+    --->    erlang_type.    % Erlang is untyped.
 
 :- type foreign_type_assertions
     --->    foreign_type_assertions(set(foreign_type_assertion)).
@@ -1718,19 +330,19 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 :- type constructor
     --->    ctor(
                 cons_exist          :: existq_tvars,
-                % existential constraints
                 cons_constraints    :: list(prog_constraint),
+                % Existential constraints.
 
+                cons_name           :: sym_name,
                 % The cons_id should be cons(SymName, Arity, TypeCtor)
                 % for user-defined types, and tuple_cons(Arity) for the
                 % system-defined tuple types.
-                cons_name           :: sym_name,
 
                 cons_args           :: list(constructor_arg),
 
+                cons_num_args       :: int,
                 % We precompute the number of arguments once, to save having
                 % to recompute it many times later.
-                cons_num_args       :: int,
 
                 cons_context        :: prog_context
             ).
@@ -1985,6 +597,102 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 
 %---------------------------------------------------------------------------%
 %
+% Type classes.
+%
+
+:- interface.
+
+    % A class constraint represents a constraint that a given list of types
+    % is a member of the specified type class. It is an invariant of this data
+    % structure that the types in a class constraint do not contain any
+    % information in their prog_context fields. This invariant is needed
+    % to ensure that we can do unifications, map.lookups, etc., and get the
+    % expected semantics. (This invariant now applies to all types, but is
+    % especially important here.)
+    %
+    % Values of type prog_constraint are used as keys in several maps;
+    % currently (december 2014) these are represented by the types
+    % ancestor_constraints, constraint_proof_map and typeclass_info_varmap.
+    % We cannot store the context of each constraint in here, since after
+    % we have put a constraint into one of these maps with one context,
+    % we wouldn't find it if searching for it with another context, which
+    % would thus defeat the purpose of those maps (to find common uses
+    % of the same constraint).
+    %
+:- type prog_constraint
+    --->    constraint(
+                constraint_class        :: class_name,
+                constraint_arg_types    :: list(mer_type)
+            ).
+
+:- type prog_constraints
+    --->    constraints(
+                univ_constraints    :: list(prog_constraint),
+                                    % Universally quantified constraints.
+                exist_constraints   :: list(prog_constraint)
+                                    % Existentially quantified constraints.
+            ).
+
+    % A functional dependency on the variables in the head of a class
+    % declaration. This asserts that, given the complete set of instances
+    % of this class, the binding of the range variables can be uniquely
+    % determined from the binding of the domain variables.
+    %
+    % XXX Both lists should be one_or_more(tvar).
+    %
+:- type prog_fundep
+    --->    fundep(
+                domain          :: list(tvar),
+                range           :: list(tvar)
+            ).
+
+:- type class_name == sym_name.
+:- type class_id
+    --->    class_id(class_name, arity).
+
+:- type class_interface
+    --->    class_interface_abstract
+    ;       class_interface_concrete(list(class_method)).
+
+:- type instance_method
+    --->    instance_method(
+                instance_method_p_or_f          :: pred_or_func,
+                instance_method_name            :: sym_name,
+                instance_method_proc_def        :: instance_proc_def,
+                instance_method_arity           :: arity,
+
+                instance_method_decl_context    :: prog_context
+                % The context of the instance declaration.
+            ).
+
+:- type instance_proc_def
+    --->    instance_proc_def_name(
+                % defined using the `pred(...) is <Name>' syntax
+                sym_name
+            )
+    ;       instance_proc_def_clauses(
+                % defined using clauses
+                list(item_clause_info)
+            ).
+
+:- type instance_body
+    --->    instance_body_abstract
+    ;       instance_body_concrete(list(instance_method)).
+
+:- func prog_constraint_get_class(prog_constraint) = class_name.
+:- func prog_constraint_get_arg_types(prog_constraint) = list(mer_type).
+
+:- type maybe_class_method
+    --->    is_not_a_class_method
+    ;       is_a_class_method.
+
+:- implementation.
+
+prog_constraint_get_class(Constraint) = Constraint ^ constraint_class.
+prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
+
+%---------------------------------------------------------------------------%
+%
 % Insts and modes.
 %
 
@@ -2126,17 +834,25 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
             % in which the argument types are not available.)
 
 :- type uniqueness
-    --->        shared              % There might be other references.
-    ;           unique              % There is only one reference.
-    ;           mostly_unique       % There is only one reference,
-                                    % but there might be more on backtracking.
-    ;           clobbered           % This was the only reference, but
-                                    % the data has already been reused.
-    ;           mostly_clobbered.   % This was the only reference, but
-                                    % the data has already been reused;
-                                    % however, there may be more references
-                                    % on backtracking, so we will need to
-                                    % restore the old value on backtracking.
+    --->        shared
+                % There might be other references.
+
+    ;           unique
+                % There is only one reference.
+
+    ;           mostly_unique
+                % There is only one reference, but there might be more
+                % on backtracking.
+
+    ;           clobbered
+                % This was the only reference, but the data has
+                % already been reused.
+
+    ;           mostly_clobbered.
+                % This was the only reference, but the data has already
+                % been reused; however, there may be more references
+                % on backtracking, so we will need to restore the old value
+                % on backtracking.
 
     % Was the lambda goal created with pred/func or any_pred/any_func?
     %
@@ -2296,14 +1012,274 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 
 %---------------------------------------------------------------------------%
 %
-% Module system.
+% Determinism.
 %
 
 :- interface.
 
-:- type backend
-    --->    high_level_backend
-    ;       low_level_backend.
+    % The `determinism' type specifies how many solutions a given procedure
+    % may have.
+    %
+:- type determinism
+    --->    detism_det
+    ;       detism_semi
+    ;       detism_multi
+    ;       detism_non
+    ;       detism_cc_multi
+    ;       detism_cc_non
+    ;       detism_erroneous
+    ;       detism_failure.
+
+:- type can_fail
+    --->    can_fail
+    ;       cannot_fail.
+
+:- type soln_count
+    --->    at_most_zero
+    ;       at_most_one
+    ;       at_most_many_cc
+            % "_cc" means "committed-choice": there is more than one logical
+            % solution, but the pred or goal is being used in a context where
+            % we are only looking for the first solution.
+    ;       at_most_many.
+
+:- pred determinism_components(determinism, can_fail, soln_count).
+:- mode determinism_components(in, out, out) is det.
+:- mode determinism_components(out, in, in) is det.
+
+:- implementation.
+
+determinism_components(detism_det,       cannot_fail, at_most_one).
+determinism_components(detism_semi,      can_fail,    at_most_one).
+determinism_components(detism_multi,     cannot_fail, at_most_many).
+determinism_components(detism_non,       can_fail,    at_most_many).
+determinism_components(detism_cc_multi,  cannot_fail, at_most_many_cc).
+determinism_components(detism_cc_non,    can_fail,    at_most_many_cc).
+determinism_components(detism_erroneous, cannot_fail, at_most_zero).
+determinism_components(detism_failure,   can_fail,    at_most_zero).
+
+%---------------------------------------------------------------------------%
+%
+% Purity.
+%
+
+:- interface.
+
+    % Purity indicates whether a goal can have side effects or can depend on
+    % global state. See purity.m and the "Purity" section of the Mercury
+    % language reference manual.
+:- type purity
+    --->    purity_pure
+    ;       purity_semipure
+    ;       purity_impure.
+
+    % Compare two purities.
+    %
+:- pred less_pure(purity::in, purity::in) is semidet.
+
+    % Sort of a "maximum" for impurity.
+    %
+:- func worst_purity(purity, purity) = purity.
+
+    % Sort of a "minimum" for impurity.
+    %
+:- func best_purity(purity, purity) = purity.
+
+:- implementation.
+
+less_pure(P1, P2) :-
+    worst_purity(P1, P2) \= P2.
+
+    % worst_purity/3 could be written more compactly, but this definition
+    % guarantees us a determinism error if we add to type `purity'. We also
+    % define less_pure/2 in terms of worst_purity/3 rather than the other way
+    % around for the same reason.
+    %
+worst_purity(purity_pure, purity_pure) = purity_pure.
+worst_purity(purity_pure, purity_semipure) = purity_semipure.
+worst_purity(purity_pure, purity_impure) = purity_impure.
+worst_purity(purity_semipure, purity_pure) = purity_semipure.
+worst_purity(purity_semipure, purity_semipure) = purity_semipure.
+worst_purity(purity_semipure, purity_impure) = purity_impure.
+worst_purity(purity_impure, purity_pure) = purity_impure.
+worst_purity(purity_impure, purity_semipure) = purity_impure.
+worst_purity(purity_impure, purity_impure) = purity_impure.
+
+    % best_purity/3 is written as a switch for the same reason as
+    % worst_purity/3.
+    %
+best_purity(purity_pure, purity_pure) = purity_pure.
+best_purity(purity_pure, purity_semipure) = purity_pure.
+best_purity(purity_pure, purity_impure) = purity_pure.
+best_purity(purity_semipure, purity_pure) = purity_pure.
+best_purity(purity_semipure, purity_semipure) = purity_semipure.
+best_purity(purity_semipure, purity_impure) = purity_semipure.
+best_purity(purity_impure, purity_pure) = purity_pure.
+best_purity(purity_impure, purity_semipure) = purity_semipure.
+best_purity(purity_impure, purity_impure) = purity_impure.
+
+%---------------------------------------------------------------------------%
+%
+% Goals.
+%
+%
+% NOTE The representation of goals in the parse tree is defined in
+% prog_item.m, because goals in the parse tree don't *themselves* survive
+% being translated into HLDS. However, some of their *components* do survive.
+% The following types define these components.
+%
+
+:- interface.
+
+    % These type equivalences are for the types of program variables
+    % and associated structures.
+    %
+:- type prog_var_type
+    --->    prog_var_type.
+:- type prog_var    == var(prog_var_type).
+:- type prog_varset == varset(prog_var_type).
+:- type prog_substitution == substitution(prog_var_type).
+:- type prog_var_renaming == map(prog_var, prog_var).
+:- type prog_term   == term(prog_var_type).
+:- type prog_vars   == list(prog_var).
+
+    % What to print when printing variable names.
+    % You can get the effect of printing variable numbers only
+    % by passing an empty varset, which effectively makes *all* variables
+    % unnamed, but having an explicit option for this is more readable.
+:- type var_name_print
+    --->    print_name_only
+    ;       print_name_and_num
+    ;       print_num_only.
+
+:- type prog_context == term.context.
+
+:- type trace_expr(Base)
+    --->    trace_base(Base)
+    ;       trace_not(trace_expr(Base))
+    ;       trace_op(trace_op, trace_expr(Base), trace_expr(Base)).
+
+:- type trace_op
+    --->    trace_or
+    ;       trace_and.
+
+:- type trace_compiletime
+    --->    trace_flag(string)
+    ;       trace_grade(trace_grade)
+    ;       trace_trace_level(trace_trace_level).
+
+:- type trace_grade
+    --->    trace_grade_debug
+    ;       trace_grade_ssdebug
+    ;       trace_grade_prof
+    ;       trace_grade_profdeep
+    ;       trace_grade_par
+    ;       trace_grade_trail
+    ;       trace_grade_rbmm
+    ;       trace_grade_llds
+    ;       trace_grade_mlds
+    ;       trace_grade_c
+    ;       trace_grade_csharp
+    ;       trace_grade_java
+    ;       trace_grade_erlang.
+
+:- type trace_trace_level
+    --->    trace_level_shallow
+    ;       trace_level_deep.
+
+:- type trace_runtime
+    --->    trace_envvar(string).
+
+:- type trace_mutable_var
+    --->    trace_mutable_var(
+                trace_mutable_name      :: string,
+                trace_state_var         :: prog_var
+            ).
+
+:- type atomic_component_state
+    --->    atomic_state_var(prog_var)
+    ;       atomic_var_pair(prog_var, prog_var).
+
+:- pred parse_trace_grade_name(string, trace_grade).
+:- mode parse_trace_grade_name(in, out) is semidet.
+:- mode parse_trace_grade_name(out, in) is det.
+:- mode parse_trace_grade_name(out, out) is multi.
+
+:- pred valid_trace_grade_name(string::out) is multi.
+
+:- implementation.
+
+% If you update this, you also need to update the corresponding section
+% of doc/reference_manual.texi.
+parse_trace_grade_name("debug", trace_grade_debug).
+parse_trace_grade_name("ssdebug", trace_grade_ssdebug).
+parse_trace_grade_name("prof", trace_grade_prof).
+parse_trace_grade_name("profdeep", trace_grade_profdeep).
+parse_trace_grade_name("par", trace_grade_par).
+parse_trace_grade_name("trail", trace_grade_trail).
+parse_trace_grade_name("rbmm", trace_grade_rbmm).
+parse_trace_grade_name("llds", trace_grade_llds).
+parse_trace_grade_name("mlds", trace_grade_mlds).
+parse_trace_grade_name("c", trace_grade_c).
+parse_trace_grade_name("csharp", trace_grade_csharp).
+parse_trace_grade_name("java", trace_grade_java).
+parse_trace_grade_name("erlang", trace_grade_erlang).
+
+valid_trace_grade_name(GradeName) :-
+    parse_trace_grade_name(GradeName, _).
+
+%---------------------------------------------------------------------------%
+%
+% Trailing and minimal model tabling analysis.
+%
+
+:- interface.
+
+:- type trailing_status
+    --->    trail_may_modify
+    ;       trail_will_not_modify
+    ;       trail_conditional.
+
+:- type mm_tabling_status
+    --->    mm_tabled_may_call
+    ;       mm_tabled_will_not_call
+    ;       mm_tabled_conditional.
+
+%---------------------------------------------------------------------------%
+%
+% Parts of items that are needed beyond the construction of the HLDS.
+%
+
+:- interface.
+
+    % What kind of promise does a promise item contain?
+    %
+:- type promise_type
+            % promise ex declarations
+    --->    promise_type_exclusive
+            % Each disjunct is mutually exclusive.
+
+    ;       promise_type_exhaustive
+            % Disjunction cannot fail.
+
+    ;       promise_type_exclusive_exhaustive
+            % Both of the above assertions
+
+    ;       promise_type_true.
+            % Promise goal is true.
+
+    % A predicate or function declaration may either give (a) only the types
+    % of the arguments, or (b) both their types and modes.
+:- type type_and_mode
+    --->    type_only(mer_type)
+    ;       type_and_mode(mer_type, mer_mode).
+
+%---------------------------------------------------------------------------%
+%
+% Module system.
+%
+
+:- interface.
 
 :- type sym_name_specifier
     --->    name(sym_name)
@@ -2329,144 +1305,6 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
 :- type has_main
     --->    has_main
     ;       no_main.
-
-:- type item_visibility
-    --->    visibility_public
-    ;       visibility_private.
-
-:- type used_modules
-    --->    used_modules(
-                % The modules used in the interface and implementation.
-                int_used_modules    :: set(module_name),
-                impl_used_modules   :: set(module_name)
-            ).
-
-    % Initialize the used_modules structure.
-    %
-:- func used_modules_init = used_modules.
-
-    % Given a sym_name, call record_module_and_ancestors_as_used on the module
-    % part of the name.
-    %
-:- pred record_sym_name_module_as_used(item_visibility::in, sym_name::in,
-    used_modules::in, used_modules::out) is det.
-
-    % Given a module name, add the module and all of its parent modules
-    % to the used_modules.
-    %
-:- pred record_module_and_ancestors_as_used(item_visibility::in, sym_name::in,
-    used_modules::in, used_modules::out) is det.
-
-:- pred record_format_modules_as_used(used_modules::in, used_modules::out)
-    is det.
-
-:- func lookup_current_backend(globals) = backend.
-
-:- implementation.
-
-used_modules_init = used_modules(set.init, set.init).
-
-record_sym_name_module_as_used(Visibility, SymName, !UsedModules) :-
-    (
-        SymName = unqualified(_)
-    ;
-        SymName = qualified(ModuleName, _),
-        record_module_and_ancestors_as_used(Visibility, ModuleName,
-            !UsedModules)
-    ).
-
-record_module_and_ancestors_as_used(Visibility, ModuleName, !UsedModules) :-
-    (
-        ModuleName = unqualified(_),
-        record_module_as_used(Visibility, ModuleName, !UsedModules)
-    ;
-        ModuleName = qualified(ParentModuleName, _),
-        record_module_as_used(Visibility, ModuleName, !UsedModules),
-        record_module_and_ancestors_as_used(Visibility, ParentModuleName,
-            !UsedModules)
-    ).
-
-:- pred record_module_as_used(item_visibility::in, module_name::in,
-    used_modules::in, used_modules::out) is det.
-
-record_module_as_used(Visibility, ModuleName, !UsedModules) :-
-    (
-        Visibility = visibility_public,
-        IntUsedModules0 = !.UsedModules ^ int_used_modules,
-        set.insert(ModuleName, IntUsedModules0, IntUsedModules),
-        !UsedModules ^ int_used_modules := IntUsedModules
-    ;
-        Visibility = visibility_private,
-        ImplUsedModules0 = !.UsedModules ^ impl_used_modules,
-        set.insert(ModuleName, ImplUsedModules0, ImplUsedModules),
-        !UsedModules ^ impl_used_modules := ImplUsedModules
-    ).
-
-record_format_modules_as_used(!UsedModules) :-
-    ImplUsedModules0 = !.UsedModules ^ impl_used_modules,
-    FormatModules = [mercury_string_format_module,
-        mercury_string_parse_util_module, mercury_stream_module],
-    set.insert_list(FormatModules, ImplUsedModules0, ImplUsedModules),
-    !UsedModules ^ impl_used_modules := ImplUsedModules.
-
-lookup_current_backend(Globals) = CurrentBackend :-
-    globals.lookup_bool_option(Globals, highlevel_code, HighLevel),
-    (
-        HighLevel = yes,
-        CurrentBackend = high_level_backend
-    ;
-        HighLevel= no,
-        CurrentBackend = low_level_backend
-    ).
-
-%---------------------------------------------------------------------------%
-%
-% Event specifications.
-%
-
-:- interface.
-
-:- type event_attribute
-    --->    event_attribute(
-                attr_num                    :: int,
-                attr_name                   :: string,
-                attr_type                   :: mer_type,
-                attr_mode                   :: mer_mode,
-                attr_maybe_synth_call       :: maybe(event_attr_synth_call)
-            ).
-
-:- type event_attr_synth_call
-    --->    event_attr_synth_call(
-                synth_func_attr_name_num    :: pair(string, int),
-                synth_arg_attr_name_nums    :: assoc_list(string, int),
-                synth_eval_order            :: list(int)
-            ).
-
-:- type event_spec
-    --->    event_spec(
-                event_spec_num              :: int,
-                event_spec_name             :: string,
-                event_spec_linenum          :: int,
-                event_spec_attrs            :: list(event_attribute),
-                event_spec_synth_order      :: list(int)
-            ).
-
-    % This type maps the name of an event to the event's specification.
-:- type event_spec_map == map(string, event_spec).
-
-:- type event_set
-    --->    event_set(
-                event_set_name              :: string,
-                event_set_spec_map          :: event_spec_map
-            ).
-
-:- type event_set_data
-    --->    event_set_data(
-                event_set_data_name         :: string,
-                event_set_data_description  :: string,
-                event_set_data_specs        :: list(event_spec),
-                event_set_data_max_num_attr :: int
-            ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_data.

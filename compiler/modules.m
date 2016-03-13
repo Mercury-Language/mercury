@@ -120,6 +120,7 @@
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_module.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 
 :- import_module cord.
 :- import_module dir.

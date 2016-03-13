@@ -109,6 +109,7 @@
 :- import_module parse_tree.file_names.    % for mercury_std_library_name.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.

@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 
 :- import_module bool.
 :- import_module io.

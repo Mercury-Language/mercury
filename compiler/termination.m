@@ -63,6 +63,8 @@
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module transform_hlds.dependency_graph.
 :- import_module transform_hlds.post_term_analysis.
 :- import_module transform_hlds.term_errors.

@@ -80,6 +80,8 @@
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_event.
+:- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.

@@ -95,6 +95,7 @@
 :- import_module hlds.vartypes.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
 
 :- import_module bag.

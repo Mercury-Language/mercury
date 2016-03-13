@@ -41,7 +41,7 @@
 :- implementation.
 
 :- import_module ll_backend.opt_util.
-:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
 
 :- import_module bool.
 :- import_module int.
