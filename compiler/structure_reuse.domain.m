@@ -346,9 +346,9 @@ reuse_condition_init(ModuleInfo, ProcInfo, DeadVar, LFU, LBU, Sharing)
     %   obtained datastructures are kept as the nodes for our condition.
 
     TopCell = ctgc.datastruct.datastruct_init(DeadVar),
-    ( list.member(DeadVar, HeadVars) ->
+    ( if list.member(DeadVar, HeadVars) then
         Nodes = [TopCell]
-    ;
+    else
         SharedDatastructs = extend_datastruct(ModuleInfo, ProcInfo,
             Sharing, TopCell),
         Nodes = datastructs_project(HeadVars, SharedDatastructs)
@@ -446,9 +446,9 @@ reuse_condition_rename(MapVar, TypeSubst, Condition, RenamedCondition):-
 
 reuse_as_init = no_reuse.
 reuse_as_init_with_one_condition(ReuseCondition) = ReuseAs :-
-    ( reuse_condition_is_conditional(ReuseCondition) ->
+    ( if reuse_condition_is_conditional(ReuseCondition) then
         ReuseAs = conditional([ReuseCondition])
-    ;
+    else
         ReuseAs = unconditional
     ).
 
@@ -517,9 +517,9 @@ reuse_as_rename(MapVar, TypeSubst, ReuseAs, RenamedReuseAs) :-
 reuse_as_add_condition(ModuleInfo, ProcInfo, Condition, !ReuseAs) :-
     (
         Condition = always,
-        ( !.ReuseAs = no_reuse ->
+        ( if !.ReuseAs = no_reuse then
             !:ReuseAs = unconditional
-        ;
+        else
             true
         )
     ;
@@ -552,12 +552,12 @@ reuse_as_add_unconditional(!ReuseAs) :-
     reuse_condition::in, reuse_conditions::in, reuse_conditions::out) is det.
 
 reuse_conditions_add_condition(ModuleInfo, ProcInfo, Condition, !Conds):-
-    (
+    ( if
         reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo,
             Condition, !.Conds)
-    ->
+    then
         true
-    ;
+    else
         !:Conds = [Condition | !.Conds]
     ).
 
@@ -579,9 +579,9 @@ reuse_as_least_upper_bound(ModuleInfo, ProcInfo, NewReuseAs, !ReuseAs) :-
         NewReuseAs = no_reuse
     ;
         NewReuseAs = unconditional,
-        ( !.ReuseAs = no_reuse ->
+        ( if !.ReuseAs = no_reuse then
             !:ReuseAs = unconditional
-        ;
+        else
             true
         )
     ;
@@ -937,11 +937,8 @@ reuse_as_table_search_reuse_version_proc(Table, PPId, NoClobbers, NewPPId) :-
 
 reuse_as_table_reverse_search_reuse_version_proc(Table, NewPPId,
         OrigPPId, NoClobbers) :-
-    ( bimap.reverse_search(Table ^ reuse_version_map, Key, NewPPId) ->
-        Key = ppid_no_clobbers(OrigPPId, NoClobbers)
-    ;
-        unexpected($module, $pred, "reverse search failed")
-    ).
+    bimap.reverse_lookup(Table ^ reuse_version_map, Key, NewPPId),
+    Key = ppid_no_clobbers(OrigPPId, NoClobbers).
 
 reuse_as_table_set(PPId, ReuseAs_Status, !Table) :-
     T0 = !.Table ^ reuse_info_map,
@@ -966,9 +963,9 @@ reuse_as_table_maybe_dump(DoDump, ModuleInfo, Table, !IO) :-
 
 reuse_as_table_dump(ModuleInfo, Table, !IO) :-
     ReuseInfoMap = Table ^ reuse_info_map,
-    ( map.is_empty(ReuseInfoMap) ->
+    ( if map.is_empty(ReuseInfoMap) then
         io.write_string("% ReuseTable: Empty\n", !IO)
-    ;
+    else
         io.write_string("% ReuseTable: PPId --> Reuse\n", !IO),
         map.foldl(dump_entries(ModuleInfo), ReuseInfoMap, !IO)
     ).

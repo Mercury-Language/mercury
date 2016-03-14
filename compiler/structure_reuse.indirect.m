@@ -139,9 +139,9 @@ indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, DepProcs,
 
 indirect_reuse_analyse_scc(SharingTable, SCC, !ModuleInfo, !ReuseTable,
         !DepProcs, !Requests, !IntermodRequests) :-
-    ( some_preds_requiring_no_analysis(!.ModuleInfo, SCC) ->
+    ( if some_preds_requiring_no_analysis(!.ModuleInfo, SCC) then
         true
-    ;
+    else
         FixpointTable0 = sr_fixpoint_table_init(SCC, !.ReuseTable),
         indirect_reuse_analyse_scc_until_fixpoint(SharingTable,
             SCC, !.ReuseTable, !ModuleInfo, FixpointTable0, FixpointTable,
@@ -175,9 +175,9 @@ indirect_reuse_rerun(SharingTable, !ModuleInfo, !ReuseTable,
 
 indirect_reuse_rerun_analyse_scc(SharingTable, SCC, !ModuleInfo,
         !ReuseTable, !DepProcs, !Requests, !IntermodRequests) :-
-    ( some_preds_requiring_no_analysis(!.ModuleInfo, SCC) ->
+    ( if some_preds_requiring_no_analysis(!.ModuleInfo, SCC) then
         true
-    ;
+    else
         % Also analyse reuse versions of any procedures in the SCC at the same
         % time.
         extend_scc_with_reuse_procs(!.ReuseTable, SCC, ExtendedSCC),
@@ -218,9 +218,9 @@ indirect_reuse_analyse_scc_until_fixpoint(SharingTable, SCC,
     list.foldl5(indirect_reuse_analyse_pred_proc(SharingTable, ReuseTable),
         SCC, !ModuleInfo, !FixpointTable, !DepProcs, !Requests,
         !IntermodRequests),
-    ( sr_fixpoint_table_stable(!.FixpointTable) ->
+    ( if sr_fixpoint_table_stable(!.FixpointTable) then
         true
-    ;
+    else
         sr_fixpoint_table_new_run(!FixpointTable),
         indirect_reuse_analyse_scc_until_fixpoint(SharingTable, SCC,
             ReuseTable, !ModuleInfo, !FixpointTable, !DepProcs, !Requests,
@@ -242,10 +242,10 @@ indirect_reuse_analyse_pred_proc(SharingTable, ReuseTable, PPId,
     PPId = proc(PredId, _),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_origin(PredInfo, Origin),
-    ( Origin = origin_special_pred(_, _) ->
+    ( if Origin = origin_special_pred(_, _) then
         % We can't analyse compiler generated special predicates.
         true
-    ;
+    else
         indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
             !ModuleInfo, !FixpointTable, !DepProcs, !Requests,
             !IntermodRequests)
@@ -269,11 +269,11 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
 
     % Some feedback..
     Run = sr_fixpoint_table_which_run(!.FixpointTable),
-    (
+    ( if
         ( VeryVerbose = yes
         ; DebugIndirect = yes
         )
-    ->
+    then
         trace [io(!IO)] (
             io.write_string("% Indirect reuse analysis (run ", !IO),
             io.write_int(Run, !IO),
@@ -281,7 +281,7 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
             write_pred_proc_id_pair(!.ModuleInfo, PredId, ProcId, !IO),
             io.nl(!IO)
         )
-    ;
+    else
         true
     ),
 
@@ -300,11 +300,11 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
         !:Requests, !:IntermodRequests),
 
     % Some feedback.
-    (
+    ( if
         ( VeryVerbose = yes
         ; DebugIndirect = yes
         )
-    ->
+    then
         trace [io(!IO)] (
             io.write_string("% FPT: ", !IO),
             io.write_string(
@@ -318,7 +318,7 @@ indirect_reuse_analyse_pred_proc_2(SharingTable, ReuseTable, PPId,
             io.write_int(NumConditions, !IO),
             io.nl(!IO)
         )
-    ;
+    else
         true
     ),
 
@@ -619,9 +619,11 @@ indirect_reuse_analyse_plain_call(BaseInfo, !Goal, !IrInfo) :-
         % If there are too many conditions already, don't make any more
         % calls to reuse procedures which have conditions on them.
         MaxConditions = BaseInfo ^ max_conditions,
-        ( reuse_as_count_conditions(!.IrInfo ^ reuse_as) >= MaxConditions ->
+        ( if
+            reuse_as_count_conditions(!.IrInfo ^ reuse_as) >= MaxConditions
+        then
             CondReuseHandling = ignore_conditional_reuse
-        ;
+        else
             CondReuseHandling = allow_conditional_reuse
         ),
         NoClobbers = [],
@@ -651,12 +653,12 @@ indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs, Modes,
         ),
         proc_info_get_vartypes(ProcInfo, CallerVarTypes),
         lookup_var_types(CallerVarTypes, CallArgs, ActualTypes),
-        (
+        ( if
             bottom_sharing_is_safe_approximation_by_args(ModuleInfo, Modes,
                 ActualTypes)
-        ->
+        then
             SetToTop = no
-        ;
+        else
             SetToTop = yes
         )
     ;
@@ -715,12 +717,12 @@ update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo) :-
     (
         DebugIndirect = yes,
         trace [io(!IO)] (
-            (
+            ( if
                 sharing_as_is_top(NewSharing),
                 not sharing_as_is_top(OldSharing)
-            ->
+            then
                 io.write_string("\tsharing is now top\n", !IO)
-            ;
+            else
                 true
             )
         )
@@ -760,10 +762,10 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
     % XXX if we can't find an exact match for NoClobbers, we could try
     % procedures which have no-clobber sets which are supersets of NoClobbers.
     lookup_reuse_as(BaseInfo, CalleePPId, NoClobbers, !IrInfo, FormalReuseAs),
-    (
+    ( if
         % If there is no reuse, then nothing can be done.
         reuse_as_no_reuses(FormalReuseAs)
-    ->
+    then
         Reason = callee_has_no_reuses,
         % Setting `no_possible_reuse' here would have adverse effects because
         % the reuse_as from `lookup_reuse_as' is not definitive.  It may
@@ -772,9 +774,9 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
             maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
                 NoClobbers, !.GoalInfo, Reason, !IO)
         )
-    ;
+    else if
         reuse_as_all_unconditional_reuses(FormalReuseAs)
-    ->
+    then
         % With unconditional reuse, we need to mark that the call is always
         % a reuse call.
         reuse_as_add_unconditional(!.IrInfo ^ reuse_as, NewReuseAs),
@@ -786,32 +788,36 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
                 NoClobbers, !.GoalInfo, callee_has_only_unconditional_reuse,
                 !IO)
         )
-    ;
-        CondReuseHandling = allow_conditional_reuse,
-        % With a conditional reuse, we need to check the conditions. If they
-        % are satisfied, these conditions need to be translated to the callers
-        % environment. This translation can result in the reuse being
-        % unconditional (this is the case if the reused data structures are
-        % local to the procedure in which the call appears), or conditional.
+    else
         (
-            % If the current sharing is top, then there is no use in
-            % verifying reuse explicitly, as we don't have any information
-            % anymore about existing (and therefore non-existing) sharing
-            % pairs. In this case, reuse is not allowed.
-            sharing_as_is_top(!.IrInfo ^ sharing_as)
-        ->
-            goal_info_set_reuse(no_possible_reuse, !GoalInfo),
-            trace [io(!IO)] (
-                maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
-                    NoClobbers, !.GoalInfo, current_sharing_is_top, !IO)
+            CondReuseHandling = allow_conditional_reuse,
+            % With a conditional reuse, we need to check the conditions.
+            % If they are satisfied, these conditions need to be translated
+            % to the callers environment. This translation can result in
+            % the reuse being unconditional (this is the case if the reused
+            % data structures are local to the procedure in which the call
+            % appears), or conditional.
+            ( if
+                % If the current sharing is top, then there is no use in
+                % verifying reuse explicitly, as we don't have any information
+                % anymore about existing (and therefore non-existing) sharing
+                % pairs. In this case, reuse is not allowed.
+                sharing_as_is_top(!.IrInfo ^ sharing_as)
+            then
+                goal_info_set_reuse(no_possible_reuse, !GoalInfo),
+                trace [io(!IO)] (
+                    maybe_write_verify_indirect_reuse_reason(BaseInfo,
+                        CalleePPId, NoClobbers, !.GoalInfo,
+                        current_sharing_is_top, !IO)
+                )
+            else
+                verify_indirect_reuse_conditional(BaseInfo, CalleePPId,
+                    NoClobbers, CalleeArgs, FormalReuseAs, !GoalInfo, !IrInfo)
             )
         ;
-            verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers,
-                CalleeArgs, FormalReuseAs, !GoalInfo, !IrInfo)
+            CondReuseHandling = ignore_conditional_reuse,
+            goal_info_set_reuse(no_possible_reuse, !GoalInfo)
         )
-    ;
-        CondReuseHandling = ignore_conditional_reuse,
-        goal_info_set_reuse(no_possible_reuse, !GoalInfo)
     ).
 
 :- pred verify_indirect_reuse_conditional(ir_background_info::in,
@@ -823,32 +829,30 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
         FormalReuseAs, !GoalInfo, !IrInfo) :-
     verify_indirect_reuse_for_call(BaseInfo, !.IrInfo, !.GoalInfo, CalleePPId,
         CalleeArgs, FormalReuseAs, NewAndRenamedReuseAs, NotDeadVars),
-    (
-        reuse_as_no_reuses(NewAndRenamedReuseAs)
-    ->
+    ( if reuse_as_no_reuses(NewAndRenamedReuseAs) then
         get_var_indices(NotDeadVars, CalleeArgs, 1, NotDeadArgNums0),
         NotDeadArgNums = list.sort_and_remove_dups(NotDeadArgNums0
             ++ NoClobbers),
-        (
+        ( if
             NotDeadArgNums = NoClobbers
-        ->
+        then
             % Don't do anything.  Don't even request a new version.
             goal_info_set_reuse(no_possible_reuse, !GoalInfo),
             trace [io(!IO)] (
                 maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
                     NoClobbers, !.GoalInfo, reuse_is_unsafe(NotDeadVars), !IO)
             )
-        ;
+        else if
             % If there is already an entry for the callee procedure with the
             % same set of no-clobber arguments we don't need to make a request.
             % XXX might we look up the result for the procedures we're
             % currently analysing, and would that be a problem?
             reuse_as_table_search_reuse_version_proc(BaseInfo ^ reuse_table,
                 CalleePPId, NotDeadArgNums, _ReusePPId)
-        ->
+        then
             verify_indirect_reuse(BaseInfo, CalleePPId, NotDeadArgNums,
                 CalleeArgs, allow_conditional_reuse, !GoalInfo, !IrInfo)
-        ;
+        else
             % Request another version of the procedure.
             add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule,
                 !IrInfo),
@@ -864,9 +868,7 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
                     NoClobbers, !.GoalInfo, reuse_is_unsafe(NotDeadVars), !IO)
             )
         )
-    ;
-        reuse_as_all_unconditional_reuses(NewAndRenamedReuseAs)
-    ->
+    else if reuse_as_all_unconditional_reuses(NewAndRenamedReuseAs) then
         % Update reuse information and goal_info:
         reuse_as_add_unconditional(!.IrInfo ^ reuse_as, NewReuseAs),
         !IrInfo ^ reuse_as := NewReuseAs,
@@ -876,9 +878,7 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
             maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
                 NoClobbers, !.GoalInfo, reuse_is_unconditional, !IO)
         )
-    ;
-        reuse_as_conditional_reuses(NewAndRenamedReuseAs)
-    ->
+    else if reuse_as_conditional_reuses(NewAndRenamedReuseAs) then
         % Update reuse information and goal_info:
         reuse_as_least_upper_bound(BaseInfo ^ module_info,
             BaseInfo ^ proc_info, !.IrInfo ^ reuse_as, NewAndRenamedReuseAs,
@@ -891,7 +891,7 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
             maybe_write_verify_indirect_reuse_reason(BaseInfo, CalleePPId,
                 NoClobbers, !.GoalInfo, reuse_is_conditional, !IO)
         )
-    ;
+    else
         unexpected($module, $pred, "unknown NewReuseAs")
     ).
 
@@ -958,18 +958,18 @@ verify_indirect_reuse_for_call(BaseInfo, IrInfo, GoalInfo, CalleePPId,
     reuse_as::out) is det.
 
 lookup_reuse_as(BaseInfo, OrigPPId, NoClobbers, !IrInfo, ReuseAs) :-
-    (
+    ( if
         reuse_as_table_search_reuse_version_proc(BaseInfo ^ reuse_table,
             OrigPPId, NoClobbers, PPId)
-    ->
+    then
         lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo,
             ReuseAs)
-    ;
+    else if
         NoClobbers = []
-    ->
+    then
         lookup_reuse_as_2(BaseInfo, OrigPPId, OrigPPId, NoClobbers, !IrInfo,
             ReuseAs)
-    ;
+    else
         unexpected($module, $pred, "conditions failed")
     ).
 
@@ -978,14 +978,14 @@ lookup_reuse_as(BaseInfo, OrigPPId, NoClobbers, !IrInfo, ReuseAs) :-
     ir_analysis_info::out, reuse_as::out) is det.
 
 lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo, ReuseAs) :-
-    (
+    ( if
         % Check in the fixpoint table
         sr_fixpoint_table_get_as(PPId, ReuseAs_Status0, !.IrInfo ^ fptable,
             NewFixpointTable)
-    ->
+    then
         ReuseAs_Status = ReuseAs_Status0,
         !IrInfo ^ fptable := NewFixpointTable
-    ;
+    else
         % Or check in the reuse table
         ReuseAs_Status = get_reuse_as(BaseInfo ^ reuse_table, PPId)
     ),
@@ -998,16 +998,16 @@ lookup_reuse_as_2(BaseInfo, OrigPPId, PPId, NoClobbers, !IrInfo, ReuseAs) :-
 
     % If the called procedure was imported (not opt_imported) then remember
     % that this module depends on the results for that procedure.
-    (
-        OrigPPId = proc(CalleePredId, _),
-        module_info_pred_info(BaseInfo ^ module_info, CalleePredId,
-            CalleePredInfo),
+    OrigPPId = proc(CalleePredId, _),
+    module_info_pred_info(BaseInfo ^ module_info, CalleePredId,
+        CalleePredInfo),
+    ( if
         pred_info_is_imported_not_external(CalleePredInfo),
-        \+ is_unify_or_compare_pred(CalleePredInfo)
-    ->
+        not is_unify_or_compare_pred(CalleePredInfo)
+    then
         Dep = ppid_no_clobbers(OrigPPId, NoClobbers),
         !IrInfo ^ dep_procs := set.insert(!.IrInfo ^ dep_procs, Dep)
-    ;
+    else
         true
     ).
 
@@ -1066,9 +1066,9 @@ write_verify_indirect_reuse_reason(Reason, VarSet, !IO) :-
 get_var_indices(_, [], _, []).
 get_var_indices(List, [Var | Vars], Index, Indices) :-
     get_var_indices(List, Vars, Index + 1, Indices0),
-    ( list.member(Var, List) ->
+    ( if list.member(Var, List) then
         Indices = [Index | Indices0]
-    ;
+    else
         Indices = Indices0
     ).
 
@@ -1082,15 +1082,15 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
     ModuleInfo = BaseInfo ^ module_info,
     module_info_pred_info(ModuleInfo, CalleePredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
-    (
+    ( if
         ( pred_status_defined_in_this_module(PredStatus) = yes
         ; PredStatus = pred_status(status_opt_imported)
         )
-    ->
+    then
         IntraModule = yes,
         Request = sr_request(CalleePPId, NotDeadArgNums),
         !IrInfo ^ requests := set.insert(!.IrInfo ^ requests, Request)
-    ;
+    else
         IntraModule = no,
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, intermodule_analysis,
@@ -1181,9 +1181,9 @@ add_request(BaseInfo, CalleePPId, NotDeadArgNums, IntraModule, !IrInfo) :-
 :- func get_reuse_as(reuse_as_table, pred_proc_id) = reuse_as_and_status.
 
 get_reuse_as(ReuseTable, PPId) = ReuseAs :-
-    ( reuse_as_table_search(ReuseTable, PPId, ReuseAs0) ->
+    ( if reuse_as_table_search(ReuseTable, PPId, ReuseAs0) then
         ReuseAs = ReuseAs0
-    ;
+    else
         % We assume an unknown answer is `optimal' otherwise we would not be
         % able to get mutually recursive procedures out of the `suboptimal'
         % state.
@@ -1212,17 +1212,17 @@ sr_fixpoint_table_get_as(PPId, ReuseAs, !Table) :-
     get_from_fixpoint_table(PPId, ReuseAs, !Table).
 
 sr_fixpoint_table_get_short_description(PPId, Table) = Descr :-
-    ( fixpoint_table.is_recursive(Table) ->
+    ( if fixpoint_table.is_recursive(Table) then
         Rec = "(rec)"
-    ;
+    else
         Rec = "(non-rec)"
     ),
-    (
+    ( if
         sr_fixpoint_table_get_final_as_semidet(PPId, Table,
             reuse_as_and_status(ReuseAs, _))
-    ->
+    then
         Descr0 = reuse_as_short_description(ReuseAs)
-    ;
+    else
         Descr0 = "-"
     ),
     Descr = Descr0 ++ " " ++ Rec.

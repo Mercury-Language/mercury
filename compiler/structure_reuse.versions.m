@@ -24,16 +24,16 @@
 
 %-----------------------------------------------------------------------------%
 
-
     % For each of the entries in the reuse table:
+    %
     % * if the listed reuse is conditional, then duplicate the
-    % pred-info/proc-info of the original procedure, changing all potential
-    % reuse annotation to real reuses;
+    %   pred-info/proc-info of the original procedure, changing all potential
+    %   reuse annotation to real reuses;
     % * if the listed reuse is unconditional, then no duplication is needed,
-    % yet the goal needs to be traversed to correctly replace all
-    % procedure calls to calls to reuse versions whenever needed.
+    %   yet the goal needs to be traversed to correctly replace all
+    %   procedure calls to calls to reuse versions whenever needed.
     % * if the listed reuse is "no reuse", then obviously, nothing needs to
-    % be done.
+    %   be done.
     %
     % This process updates the module information by adding the new predicates,
     % and recording the pred-proc-id to the reuse pred-proc-id mappings in
@@ -103,13 +103,13 @@ generate_reuse_name(ModuleInfo, PPId, NoClobbers) = ReuseName :-
 
 %-----------------------------------------------------------------------------%
 
+create_reuse_procedures(!ReuseTable, !ModuleInfo) :-
     % This process can be split into separate steps:
     % - determine all the pred-proc-ids of procedure with conditional reuse;
     % - create duplicates of these procedures;
     % - traverse all these procedures + the procedures with unconditional reuse
     %   to correctly update the reuse annotations.
-    %
-create_reuse_procedures(!ReuseTable, !ModuleInfo) :-
+
     % Get the list of conditional reuse procedures already created.
     ExistingReusePPIds = bimap.coordinates(!.ReuseTable ^ reuse_version_map),
     ExistingReusePPIdsSet = set.from_list(ExistingReusePPIds),

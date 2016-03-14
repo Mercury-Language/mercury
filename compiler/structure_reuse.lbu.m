@@ -89,7 +89,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
     ;
         !.Expr = plain_call(_,_, _, _, _, _),
         Det = goal_info_get_determinism(Info0),
-        ( detism_allows_multiple_solns(Det) ->
+        ( if detism_allows_multiple_solns(Det) then
             % Implementation of Instantiation 2 from Nancy's PhD.
             % In this instantation, a non-deterministic procedure
             % call only adds its LFU-variables to the current set
@@ -101,7 +101,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
                 remove_typeinfo_vars_from_set_of_var(VarTypes, PreBirths),
                 remove_typeinfo_vars_from_set_of_var(VarTypes, PostBirths),
                 !.LBU])
-        ;
+        else
             true
         )
     ;
@@ -134,9 +134,9 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
         !:Expr = negation(SubGoal)
     ;
         !.Expr = scope(Reason, SubGoal0),
-        ( Reason = from_ground_term(_, from_ground_term_construct) ->
+        ( if Reason = from_ground_term(_, from_ground_term_construct) then
             SubGoal = SubGoal0
-        ;
+        else
             % XXX We could treat from_ground_term_deconstruct specially
             % as well.
             backward_use_in_goal(VarTypes, SubGoal0, SubGoal, !LBU)

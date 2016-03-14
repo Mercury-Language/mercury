@@ -90,23 +90,23 @@ direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable) :-
 
 direct_reuse_process_pred(SharingTable, PredId, !ModuleInfo, !ReuseTable) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    (
+    ( if
         pred_info_get_origin(PredInfo0, Origin),
         Origin = origin_special_pred(_, _)
-    ->
+    then
         % We can't analyse compiler generated special predicates.
         true
-    ;
+    else if
         pred_info_get_status(PredInfo0, PredStatus),
         PredStatus = pred_status(status_external(_))
-    ->
+    then
         % We can't analyse `:- pragma external_{pred/func}' procedures,
         % but we add an extry to the reuse table so something will be written
         % out to optimisation interface files.
         list.foldl(
             set_external_pred_reuse_as(PredId, reuse_as_init, optimal),
             pred_info_procids(PredInfo0), !ReuseTable)
-    ;
+    else
         ProcIds = pred_info_non_imported_procids(PredInfo0),
         list.foldl2(direct_reuse_process_proc(SharingTable, PredId),
             ProcIds, !ModuleInfo, !ReuseTable)
@@ -258,9 +258,9 @@ dead_cell_table_remove_conditionals(!Table) :-
     reuse_condition::in, dead_cell_table::in, dead_cell_table::out) is det.
 
 dead_cell_table_add_unconditional(PP, C, !Table) :-
-    ( reuse_condition_is_conditional(C) ->
+    ( if reuse_condition_is_conditional(C) then
         true
-    ;
+    else
         dead_cell_table_set(PP, C, !Table)
     ).
 
@@ -283,9 +283,9 @@ dead_cell_table_maybe_dump(MaybeDump, Table, !IO) :-
     io::di, io::uo) is det.
 
 dead_cell_entry_dump(PP, Cond, !IO) :-
-    ( reuse_condition_is_conditional(Cond) ->
+    ( if reuse_condition_is_conditional(Cond) then
         io.write_string("\t\t|  cond  |\t", !IO)
-    ;
+    else
         io.write_string("\t\t| always |\t", !IO)
     ),
     dump_program_point(PP, !IO),
