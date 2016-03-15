@@ -15,11 +15,10 @@
                 grade_var_low_tag_bits_use,
                 grade_var_stack_len,
                 llds_gc,
-                c_trail,
+                llds_trail_minmodel,
                 llds_thread_safe,
                 llds_perf_prof,
                 grade_var_term_size_prof,
-                grade_var_minmodel,
                 grade_var_debug,
                 grade_var_lldebug,
                 llds_rbmm,
@@ -53,11 +52,20 @@
     ;       llds_gcc_conf_asm_jump    % yes     yes     no
     ;       llds_gcc_conf_asm_fast.   % yes     yes     yes
 
-:- type c_trail
-    --->    c_trail_no
-    ;       c_trail_yes(
+:- type llds_trail_minmodel
+    --->    ltm_none
+    ;       ltm_trail(
                 grade_var_trail_segments
+            )
+    ;       ltm_minmodel(
+                llds_minmodel    
             ).
+
+:- type llds_minmodel
+    --->    lm_stack_copy
+    ;       lm_stack_copy_debug
+    ;       lm_own_stack
+    ;       lm_own_stack_debug.
 
 :- type llds_gc
     --->    llds_gc_none
@@ -93,7 +101,7 @@
                 grade_var_low_tag_bits_use,
                 grade_var_thread_safe,
                 mlds_c_gc,
-                c_trail,
+                mlds_c_trail,
                 mlds_c_perf_prof,
                 grade_var_merc_file,
                 grade_var_pregen,
@@ -112,6 +120,12 @@
     ;       mlds_c_gc_bdw_debug
     ;       mlds_c_gc_accurate
     ;       mlds_c_gc_history.
+
+:- type mlds_c_trail
+    --->    mlds_c_trail_no
+    ;       mlds_c_trail_yes(
+                grade_var_trail_segments
+            ).
 
 :- type mlds_c_perf_prof
     --->    mlds_c_perf_prof_none
@@ -210,10 +224,27 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
         ),
         (
             Trail = grade_var_trail_no,
-            CTrail = c_trail_no
+            (
+                MinimalModel = grade_var_minmodel_no,
+                LLDSTrailMinModel = ltm_none
+            ;
+                MinimalModel = grade_var_minmodel_stack_copy,
+                LLDSTrailMinModel = ltm_minmodel(lm_stack_copy)
+            ;
+                MinimalModel = grade_var_minmodel_stack_copy_debug,
+                LLDSTrailMinModel = ltm_minmodel(lm_stack_copy_debug)
+            ;
+                MinimalModel = grade_var_minmodel_own_stack,
+                LLDSTrailMinModel = ltm_minmodel(lm_own_stack)
+            ;
+                MinimalModel = grade_var_minmodel_own_stack_debug,
+                LLDSTrailMinModel = ltm_minmodel(lm_own_stack_debug)
+            )
         ;
             Trail = grade_var_trail_yes,
-            CTrail = c_trail_yes(TrailSegments)
+            expect(unify(MinimalModel, grade_var_minmodel_no), $pred,
+                "MinimalModel != grade_var_minmodel_no"),
+            LLDSTrailMinModel = ltm_trail(TrailSegments)
         ),
         (
             Gc = grade_var_gc_none,
@@ -278,8 +309,8 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             LLDSRBMM = llds_rbmm_yes(RBMMDebug, RBMMProf)
         ),
         GradeStructure = grade_llds(LLDSGccConf, LowTagBitsUse, StackLen,
-            LLDSGc, CTrail, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
-            MinimalModel, Debug, LLDebug, LLDSRBMM,
+            LLDSGc, LLDSTrailMinModel, LLDSThreadSafe,
+            LLDSPerfProf, TermSizeProf, Debug, LLDebug, LLDSRBMM,
             MercFile, Pregen, SinglePrecFloat)
     ;
         Backend = grade_var_backend_mlds,
@@ -352,10 +383,10 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             ),
             (
                 Trail = grade_var_trail_no,
-                CTrail = c_trail_no
+                MLDSCTrail = mlds_c_trail_no
             ;
                 Trail = grade_var_trail_yes,
-                CTrail = c_trail_yes(TrailSegments)
+                MLDSCTrail = mlds_c_trail_yes(TrailSegments)
             ),
             (
                 MprofCall = grade_var_mprof_call_no,
@@ -369,7 +400,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 MLDSPerfProf = mlds_c_perf_prof_mprof(MprofTime, MprofMemory)
             ),
             TargetC = mlds_target_c(MLDSCDataRep, NestedFuncs, LowTagBitsUse,
-                ThreadSafe, MLDSGc, CTrail, MLDSPerfProf,
+                ThreadSafe, MLDSGc, MLDSCTrail, MLDSPerfProf,
                 MercFile, Pregen, SinglePrecFloat),
             GradeStructure = grade_mlds(TargetC, SSDebug)
         ;

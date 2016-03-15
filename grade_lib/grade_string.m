@@ -43,7 +43,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
     % XXX unboxed floats
     (
         GradeStructure = grade_llds(GccConf, LowTagBitsUse, StackLen, LLDSGc,
-            CTrail, LLDSThreadSafe, LLDSPerfProf, TermSizeProf, MinimalModel,
+            LLDSTrailMinModel, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
             Debug, LLDebug, LLDSRBMM, MercFile, Pregen, SinglePrecFloat),
 
         ( GccConf = llds_gcc_conf_none,             GccConfStr = "none"
@@ -96,22 +96,30 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             TermSizeProf = grade_var_term_size_prof_words,
             TermSizeProfStr = ".tsw"
         ),
-        TrailStr = c_trail_to_str(CTrail),
         (
-            MinimalModel = grade_var_minmodel_no,
+            LLDSTrailMinModel = ltm_none,
+            TrailStr = "",
             MinimalModelStr = ""
         ;
-            MinimalModel = grade_var_minmodel_stack_copy,
-            MinimalModelStr = ".mmsc"
+            LLDSTrailMinModel = ltm_trail(TrailSegments),
+            TrailStr = trail_segments_to_str(TrailSegments),
+            MinimalModelStr = ""
         ;
-            MinimalModel = grade_var_minmodel_stack_copy_debug,
-            MinimalModelStr = ".dmmsc"
-        ;
-            MinimalModel = grade_var_minmodel_own_stack,
-            MinimalModelStr = ".mmos"
-        ;
-            MinimalModel = grade_var_minmodel_own_stack_debug,
-            MinimalModelStr = ".dmmos"
+            LLDSTrailMinModel = ltm_minmodel(LLDSMinimalModel),
+            TrailStr = "",
+            (
+                LLDSMinimalModel = lm_stack_copy,
+                MinimalModelStr = ".mmsc"
+            ;
+                LLDSMinimalModel = lm_stack_copy_debug,
+                MinimalModelStr = ".dmmsc"
+            ;
+                LLDSMinimalModel = lm_own_stack,
+                MinimalModelStr = ".mmos"
+            ;
+                LLDSMinimalModel = lm_own_stack_debug,
+                MinimalModelStr = ".dmmos"
+            )
         ),
         PregenStr = pregen_to_str(Pregen),
         SinglePrecFloatStr = single_prec_float_to_str(SinglePrecFloat),
@@ -160,7 +168,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         SSDebugStr = ssdebug_to_str(SSDebug),
         (
             MLDSTarget = mlds_target_c(DataRep, NestedFuncs, LowTagBitsUse,
-                ThreadSafe, MLDSCGc, CTrail, MLDSPerfProf,
+                ThreadSafe, MLDSCGc, MLDSCTrail, MLDSPerfProf,
                 MercFile, Pregen, SinglePrecFloat),
             (
                 DataRep = mlds_c_datarep_heap_cells,
@@ -186,7 +194,13 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             ),
             ThreadSafeStr = thread_safe_to_str(ThreadSafe),
             GcStr = gc_to_str(Gc),
-            TrailStr = c_trail_to_str(CTrail),
+            (
+                MLDSCTrail = mlds_c_trail_no,
+                TrailStr = ""
+            ;
+                MLDSCTrail = mlds_c_trail_yes(TrailSegments),
+                TrailStr = trail_segments_to_str(TrailSegments)
+            ),
             (
                 MLDSPerfProf = mlds_c_perf_prof_none,
                 MLDSPerfProfStr = ""
@@ -223,11 +237,10 @@ gc_to_str(grade_var_gc_bdw_debug) = ".gcd".
 gc_to_str(grade_var_gc_accurate) = ".agc".
 gc_to_str(grade_var_gc_history) = ".hgc".
 
-:- func c_trail_to_str(c_trail) = string.
+:- func trail_segments_to_str(grade_var_trail_segments) = string.
 
-c_trail_to_str(c_trail_no) = "".
-c_trail_to_str(c_trail_yes(grade_var_trail_segments_no)) = ".tr".
-c_trail_to_str(c_trail_yes(grade_var_trail_segments_yes)) = ".trseg".
+trail_segments_to_str(grade_var_trail_segments_no) = ".tr".
+trail_segments_to_str(grade_var_trail_segments_yes) = ".trseg".
 
 :- func thread_safe_to_str(grade_var_thread_safe) = string.
 
