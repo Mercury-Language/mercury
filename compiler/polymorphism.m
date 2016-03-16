@@ -4105,83 +4105,91 @@ expand_class_method_body(hlds_class_proc(PredId, ProcId), !ProcNum,
     module_info_get_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
-    map.lookup(ProcTable0, ProcId, ProcInfo0),
 
-    % Find which of the constraints on the pred is the one introduced
-    % because it is a class method.
-    pred_info_get_class_context(PredInfo0, ClassContext),
-    ( if ClassContext = constraints([Head | _], _) then
-        InstanceConstraint = Head
+    % XXX Looking up the proc_info for ProcId can fail here because
+    % post_typecheck.m deletes proc_ids corresponding to indistinguishable
+    % modes from the proc_table but does *not* delete any references to those
+    % proc_ids from the class table.
+    %
+    ( if map.search(ProcTable0, ProcId, ProcInfo0) then
+
+        % Find which of the constraints on the pred is the one introduced
+        % because it is a class method.
+        pred_info_get_class_context(PredInfo0, ClassContext),
+        ( if ClassContext = constraints([Head | _], _) then
+            InstanceConstraint = Head
+        else
+            unexpected($module, $pred, "class method is not constrained")
+        ),
+
+        proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
+        rtti_lookup_typeclass_info_var(RttiVarMaps, InstanceConstraint,
+            TypeClassInfoVar),
+
+        proc_info_get_headvars(ProcInfo0, HeadVars0),
+        proc_info_get_argmodes(ProcInfo0, Modes0),
+        proc_info_get_declared_determinism(ProcInfo0, MaybeDetism0),
+        (
+            MaybeDetism0 = yes(Detism)
+        ;
+            MaybeDetism0 = no,
+            % Omitting the determinism for a method is not allowed. But make_hlds
+            % will have already detected and reported the error. So here we can
+            % just pick some value at random; hopefully something that won't cause
+            % flow-on errors. We also mark the predicate as invalid, also to avoid
+            % flow-on errors.
+            Detism = detism_non,
+            module_info_make_pred_id_invalid(PredId, !ModuleInfo)
+        ),
+
+        % Work out which argument corresponds to the constraint which is introduced
+        % because this is a class method, then delete it from the list of args to
+        % the class_method_call. That variable becomes the "dictionary" variable
+        % for the class_method_call. (cf. the closure for a higher order call).
+        ( if
+            list.index1_of_first_occurrence(HeadVars0, TypeClassInfoVar, N),
+            delete_nth(HeadVars0, N, HeadVarsPrime),
+            delete_nth(Modes0, N, ModesPrime)
+        then
+            HeadVars = HeadVarsPrime,
+            Modes = ModesPrime
+        else
+            unexpected($module, $pred, "typeclass_info var not found")
+        ),
+
+        InstanceConstraint = constraint(ClassName, InstanceArgs),
+        list.length(InstanceArgs, InstanceArity),
+        pred_info_get_call_id(PredInfo0, CallId),
+        BodyGoalExpr = generic_call(
+            class_method(TypeClassInfoVar, !.ProcNum,
+                class_id(ClassName, InstanceArity), CallId),
+            HeadVars, Modes, arg_reg_types_unset, Detism),
+
+        % Make the goal info for the call.
+        set_of_var.list_to_set(HeadVars0, NonLocals),
+        instmap_delta_from_mode_list(HeadVars0, Modes0, !.ModuleInfo,
+            InstmapDelta),
+        pred_info_get_purity(PredInfo0, Purity),
+        pred_info_get_context(PredInfo0, Context),
+        goal_info_init(NonLocals, InstmapDelta, Detism, Purity, Context, GoalInfo),
+        BodyGoal = hlds_goal(BodyGoalExpr, GoalInfo),
+
+        proc_info_set_goal(BodyGoal, ProcInfo0, ProcInfo),
+        map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
+        pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
+        % XXX STATUS
+        ( if pred_info_is_imported(PredInfo1) then
+            pred_info_set_status(pred_status(status_opt_imported),
+                PredInfo1, PredInfo)
+        else
+            PredInfo = PredInfo1
+        ),
+
+        map.det_update(PredId, PredInfo, PredTable0, PredTable),
+        module_info_set_preds(PredTable, !ModuleInfo)
     else
-        unexpected($module, $pred, "class method is not constrained")
+        true
     ),
-
-    proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
-    rtti_lookup_typeclass_info_var(RttiVarMaps, InstanceConstraint,
-        TypeClassInfoVar),
-
-    proc_info_get_headvars(ProcInfo0, HeadVars0),
-    proc_info_get_argmodes(ProcInfo0, Modes0),
-    proc_info_get_declared_determinism(ProcInfo0, MaybeDetism0),
-    (
-        MaybeDetism0 = yes(Detism)
-    ;
-        MaybeDetism0 = no,
-        % Omitting the determinism for a method is not allowed. But make_hlds
-        % will have already detected and reported the error. So here we can
-        % just pick some value at random; hopefully something that won't cause
-        % flow-on errors. We also mark the predicate as invalid, also to avoid
-        % flow-on errors.
-        Detism = detism_non,
-        module_info_make_pred_id_invalid(PredId, !ModuleInfo)
-    ),
-
-    % Work out which argument corresponds to the constraint which is introduced
-    % because this is a class method, then delete it from the list of args to
-    % the class_method_call. That variable becomes the "dictionary" variable
-    % for the class_method_call. (cf. the closure for a higher order call).
-    ( if
-        list.index1_of_first_occurrence(HeadVars0, TypeClassInfoVar, N),
-        delete_nth(HeadVars0, N, HeadVarsPrime),
-        delete_nth(Modes0, N, ModesPrime)
-    then
-        HeadVars = HeadVarsPrime,
-        Modes = ModesPrime
-    else
-        unexpected($module, $pred, "typeclass_info var not found")
-    ),
-
-    InstanceConstraint = constraint(ClassName, InstanceArgs),
-    list.length(InstanceArgs, InstanceArity),
-    pred_info_get_call_id(PredInfo0, CallId),
-    BodyGoalExpr = generic_call(
-        class_method(TypeClassInfoVar, !.ProcNum,
-            class_id(ClassName, InstanceArity), CallId),
-        HeadVars, Modes, arg_reg_types_unset, Detism),
-
-    % Make the goal info for the call.
-    set_of_var.list_to_set(HeadVars0, NonLocals),
-    instmap_delta_from_mode_list(HeadVars0, Modes0, !.ModuleInfo,
-        InstmapDelta),
-    pred_info_get_purity(PredInfo0, Purity),
-    pred_info_get_context(PredInfo0, Context),
-    goal_info_init(NonLocals, InstmapDelta, Detism, Purity, Context, GoalInfo),
-    BodyGoal = hlds_goal(BodyGoalExpr, GoalInfo),
-
-    proc_info_set_goal(BodyGoal, ProcInfo0, ProcInfo),
-    map.det_update(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo1),
-    % XXX STATUS
-    ( if pred_info_is_imported(PredInfo1) then
-        pred_info_set_status(pred_status(status_opt_imported),
-            PredInfo1, PredInfo)
-    else
-        PredInfo = PredInfo1
-    ),
-
-    map.det_update(PredId, PredInfo, PredTable0, PredTable),
-    module_info_set_preds(PredTable, !ModuleInfo),
-
     !:ProcNum = !.ProcNum + 1.
 
 :- pred delete_nth(list(T)::in, int::in, list(T)::out) is semidet.

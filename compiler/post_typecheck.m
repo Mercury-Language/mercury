@@ -711,6 +711,11 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
         else
             true
         ),
+        % XXX doing this leaves dangling references the deleted proc_id in the
+        % method definitions in the class table if the predicate being
+        % processed is one of those introduced for type class methods.
+        % See also: the comment above expand_class_method_body/5 in
+        % polymorphism.m.
         pred_info_remove_procid(ProcId1, !PredInfo),
         Removed = yes
     else
