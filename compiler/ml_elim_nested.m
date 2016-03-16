@@ -11,11 +11,12 @@
 %
 % This module is an MLDS-to-MLDS transformation that has two functions:
 %
-% - eliminating nested functions
-% - putting local variables that might contain pointers into structs, and
+% 1 Eliminating nested functions.
+%
+% 2 Putting local variables that might contain pointers into structs, and
 %   chaining these structs together, for use with accurate garbage collection.
 %
-% The two transformations are quite similar, so they're both handled by
+% The two transformations are quite similar, so they are both handled by
 % the same code; a flag is passed to say which transformation should be done.
 %
 % The word "environment" (as in "environment struct" or "environment pointer")
@@ -288,7 +289,7 @@
 % need to be thread-local rather than global. This approach would probably
 % work best if the variable is a GNU C global register variable, which would
 % make it both efficient and thread-safe.
-% XXX Currently, for simplicity, we're using a global variable.
+% XXX Currently, for simplicity, we are using a global variable.
 %
 % At each allocation, we do a call to MR_GC_check(), which checks for heap
 % exhaustion, and if necessary calls MR_garbage_collect() in
@@ -421,9 +422,11 @@
 %-----------------------------------------------------------------------------%
 
 :- type action
-    --->    hoist_nested_funcs      % Eliminate nested functions
-    ;       chain_gc_stack_frames.  % Add shadow stack for supporting
-                                    % accurate GC.
+    --->    hoist_nested_funcs
+            % Eliminate nested functions
+
+    ;       chain_gc_stack_frames.
+            % Add shadow stack for supporting accurate GC.
 
 :- inst hoist
     --->    hoist_nested_funcs.
@@ -450,6 +453,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_code_util.
+:- import_module ml_backend.ml_global_data.
 :- import_module ml_backend.ml_util.
 
 :- import_module bool.
@@ -464,10 +468,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- import_module ml_backend.ml_global_data.
-
-    % Perform the specified action on the whole MLDS.
-    %
 ml_elim_nested(Action, Globals, MLDS0, MLDS) :-
     MLDS0 = mlds(ModuleName, ForeignCode, Imports, GlobalData0, Defns0,
         InitPreds, FinalPreds, ExportedEnums),
@@ -569,7 +569,6 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0, Defns) :-
             % the environment pointers for both the containing function
             % and the nested functions. Also generate the GC tracing function,
             % if Action = chain_gc_stack_frames.
-            %
             ml_create_env(Action, EnvName, EnvTypeName, Locals, Context,
                 ModuleName, Name, Globals, EnvTypeDefn, EnvDecls, InitEnv,
                 GCTraceFuncDefns),
@@ -753,7 +752,7 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, ClassType,
     mlds_type.
 
 ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
-    % If we're allocating it on the heap, then we need to use a class type
+    % If we are allocating it on the heap, then we need to use a class type
     % rather than a struct (value type). This is needed for verifiable code
     % on the IL back-end.
     globals.lookup_bool_option(Globals, put_nondet_env_on_heap, OnHeap),
@@ -794,8 +793,7 @@ ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
 :- pred ml_create_env(action::in, mlds_class_name::in, mlds_type::in,
     list(mlds_defn)::in, mlds_context::in, mlds_module_name::in,
     mlds_entity_name::in, globals::in, mlds_defn::out,
-    list(mlds_defn)::out, list(statement)::out,
-    list(mlds_defn)::out) is det.
+    list(mlds_defn)::out, list(statement)::out, list(mlds_defn)::out) is det.
 
 ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
         ModuleName, FuncName, Globals, EnvTypeDefn, EnvDecls, InitEnv,
@@ -811,7 +809,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     %       <LocalVars>
     %   };
     %
-    % If we're allocating it on the heap, then we need to use a class type
+    % If we are allocating it on the heap, then we need to use a class type
     % rather than a struct (value type). This is needed for verifiable code
     % on the IL back-end.
     globals.lookup_bool_option(Globals, put_nondet_env_on_heap, OnHeap),
@@ -1122,11 +1120,10 @@ convert_local_to_field(Defn0) = Defn :-
     % otherwise leave it unchanged.
     %
 :- pred ml_insert_init_env(action::in, mlds_type::in, mlds_module_name::in,
-    globals::in, mlds_defn::in, mlds_defn::out, bool::in, bool::out)
-    is det.
+    globals::in, mlds_defn::in, mlds_defn::out, bool::in, bool::out) is det.
 
 ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
-        Init0, Init) :-
+        !InsertedEnv) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     ( if
         DefnBody0 = mlds_function(PredProcId, Params,
@@ -1152,10 +1149,9 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
             body_defined_here(FuncBody), Attributes, EnvVarNames,
             MaybeRequiretailrecInfo),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
-        Init = yes
+        !:InsertedEnv = yes
     else
-        Defn = Defn0,
-        Init = Init0
+        Defn = Defn0
     ).
 
 :- func ml_make_env_ptr_type(globals, mlds_type) = mlds_type.
@@ -1525,22 +1521,24 @@ flatten_default(Action, Default0, Default, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-    % add code to save/restore the stack chain pointer:
-    % convert
+    % Add code to save/restore the stack chain pointer. This means converting
+    %
     %   try {
     %       Statement
     %   } commit {
     %       Handler
     %   }
+    %
     % into
+    %
     %   {
     %       void *saved_stack_chain;
     %       try {
-    %       saved_stack_chain = stack_chain;
-    %       Statement
+    %           saved_stack_chain = stack_chain;
+    %           Statement
     %       } commit {
-    %       stack_chain = saved_stack_chain;
-    %       Handler
+    %           stack_chain = saved_stack_chain;
+    %           Handler
     %       }
     %   }
     %
@@ -1613,9 +1611,9 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
         % Recursively flatten the nested function.
         flatten_function_body(Action, FuncBody0, FuncBody, !Info),
 
-        % Mark the function as private / one_copy,
-        % rather than as local / per_instance,
-        % if we're about to hoist it out to the top level.
+        % Mark the function as private / one_copy, rather than as
+        % local / per_instance, if we are about to hoist it out to the
+        % top level.
         (
             Action = hoist_nested_funcs,
             Flags1 = set_access(Flags0, acc_private),
@@ -1631,7 +1629,7 @@ flatten_nested_defn(Action, Defn0, FollowingDefns, FollowingStatements,
             Action = hoist_nested_funcs,
             % Note that we assume that we can safely hoist stuff inside nested
             % functions into the containing function. If that wasn't the case,
-            % we'd need code something like this:
+            % we would need code something like this:
             % LocalVars = elim_info_get_local_data(ElimInfo),
             % OuterVars0 = elim_info_get_outer_vars(ElimInfo),
             % OuterVars = [LocalVars | OuterVars0],
@@ -2509,14 +2507,14 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
     %
     %   stack_chain = stack_chain->prev;
     %
-    % Actually, it is not quite as simple as that.  The global
-    % `stack_chain' has type `void *', rather than `MR_StackChain *', and
-    % the MLDS has no way of representing the `struct MR_StackChain' type
-    % (which we'd need to cast it to) or of accessing an unqualified
-    % field name like `prev' (rather than `modulename__prev').
+    % Actually, it is not quite as simple as that.  The global `stack_chain'
+    % has type `void *', rather than `MR_StackChain *', and the MLDS has
+    % no way of representing the `struct MR_StackChain' type (which we would
+    % need to cast it to) or of accessing an unqualified field name
+    % like `prev' (rather than `modulename__prev').
     %
-    % So we do this in a slightly lower-level fashion, using
-    % a field offset rather than a field name:
+    % So we do this in a slightly lower-level fashion, using a field offset
+    % rather than a field name:
     %
     %   stack_chain = MR_hl_field(stack_chain, 0);
 
