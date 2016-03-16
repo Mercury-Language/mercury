@@ -37,7 +37,6 @@
                                         /* that use the type in io.m, whose */
                                         /* foreign_type is MercuryFilePtr XXX */
 #include "mercury_ho_call.h"            /* for the `MR_Closure' type */
-#include "mercury_bootstrap.h"
 #include "mercury_memory.h"             /* for memory allocation routines */
 #include "mercury_type_tables.h"        /* for MR_register_type_ctor_info */
 #include "mercury_misc.h"               /* for MR_fatal_error() */

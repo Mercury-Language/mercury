@@ -30,7 +30,6 @@ HDRS		=	\
 			mercury_atomic_ops.h	\
 			mercury_backjump.h	\
 			mercury_bitmap.h	\
-			mercury_bootstrap.h	\
 			mercury_builtin_types.h	\
 			mercury_builtin_types_proc_layouts.h	\
 			mercury_calls.h		\
@@ -160,7 +159,6 @@ CFILES		= 	\
 			mercury_atomic_ops.c	\
 			mercury_backjump.c	\
 			mercury_bitmap.c	\
-			mercury_bootstrap.c	\
 			mercury_builtin_types.c	\
 			mercury_construct.c	\
 			mercury_context.c	\

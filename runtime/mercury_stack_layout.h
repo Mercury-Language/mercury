@@ -40,7 +40,6 @@
 #include "mercury_proc_id.h"            /* for MR_ProcId */
 #include "mercury_goto.h"               /* for MR_PROC_LAYOUT etc */
 #include "mercury_tabling.h"            /* for MR_TableTrieStep etc */
-#include "mercury_bootstrap.h"          /* for MR_Table_Trie_Step */
 
 /*-------------------------------------------------------------------------*/
 /*
