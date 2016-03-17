@@ -10,11 +10,12 @@
 %---------------------------------------------------------------------------%
 
 :- type solver_var_id
-    --->    svar_gcc_regs_avail
-    ;       svar_gcc_gotos_avail
-    ;       svar_gcc_labels_avail
-    ;       svar_low_tag_bits_avail
-    ;       svar_merc_file
+    --->    svar_ac_gcc_regs_avail
+    ;       svar_ac_gcc_gotos_avail
+    ;       svar_ac_gcc_labels_avail
+    ;       svar_ac_low_tag_bits_avail
+    ;       svar_ac_size_of_double
+    ;       svar_ac_merc_file
 
     ;       svar_backend
     ;       svar_datarep
@@ -48,29 +49,33 @@
     ;       svar_rbmm_debug
     ;       svar_rbmm_prof
     ;       svar_pregen
-    ;       svar_single_prec_float.
+    ;       svar_request_single_prec_float
+    ;       svar_merc_float.
 
 :- type solver_var_value_id
-    --->    svalue_gcc_regs_avail_no
-    ;       svalue_gcc_regs_avail_yes
+    --->    svalue_ac_gcc_regs_avail_no
+    ;       svalue_ac_gcc_regs_avail_yes
 
-    ;       svalue_gcc_gotos_avail_no
-    ;       svalue_gcc_gotos_avail_yes
+    ;       svalue_ac_gcc_gotos_avail_no
+    ;       svalue_ac_gcc_gotos_avail_yes
 
-    ;       svalue_gcc_labels_avail_no
-    ;       svalue_gcc_labels_avail_yes
+    ;       svalue_ac_gcc_labels_avail_no
+    ;       svalue_ac_gcc_labels_avail_yes
 
-    ;       svalue_low_tag_bits_avail_0
-    ;       svalue_low_tag_bits_avail_2
-    ;       svalue_low_tag_bits_avail_3
+    ;       svalue_ac_low_tag_bits_avail_0
+    ;       svalue_ac_low_tag_bits_avail_2
+    ;       svalue_ac_low_tag_bits_avail_3
             % Autoconf can detect that 4 low tag bits are available.
             % However, since we never use 4 low tag bits, this is functionally
             % indistinguishable from 3 low tag bits being available,
             % so we require the code setting up the grade settings to be solved
             % to map 4 avail tag bits to 3.
 
-    ;       svalue_merc_file_no
-    ;       svalue_merc_file_yes
+    ;       svalue_ac_size_of_double_eq_ptr
+    ;       svalue_ac_size_of_double_ne_ptr
+
+    ;       svalue_ac_merc_file_no
+    ;       svalue_ac_merc_file_yes
 
     ;       svalue_backend_mlds
     ;       svalue_backend_llds
@@ -176,8 +181,12 @@
     ;       svalue_pregen_no
     ;       svalue_pregen_yes
 
-    ;       svalue_single_prec_float_no
-    ;       svalue_single_prec_float_yes.
+    ;       svalue_request_single_prec_float_no
+    ;       svalue_request_single_prec_float_yes
+
+    ;       svalue_merc_float_is_boxed_c_double
+    ;       svalue_merc_float_is_unboxed_c_double
+    ;       svalue_merc_float_is_unboxed_c_float.
 
 %---------------------------------------------------------------------------%
 
@@ -227,17 +236,24 @@ init_solver_var_specs = [
     % the very first labeling step will skip over them; later labelling steps
     % won't have to look at them.
 
-    solver_var_spec(svar_gcc_regs_avail,
-        [svalue_gcc_regs_avail_no, svalue_gcc_regs_avail_yes]),
-    solver_var_spec(svar_gcc_gotos_avail,
-        [svalue_gcc_gotos_avail_no, svalue_gcc_gotos_avail_yes]),
-    solver_var_spec(svar_gcc_labels_avail,
-        [svalue_gcc_labels_avail_no, svalue_gcc_labels_avail_yes]),
-    solver_var_spec(svar_low_tag_bits_avail,
-        [svalue_low_tag_bits_avail_0, svalue_low_tag_bits_avail_2,
-        svalue_low_tag_bits_avail_3]),
-    solver_var_spec(svar_merc_file,
-        [svalue_merc_file_no, svalue_merc_file_yes]),
+    solver_var_spec(svar_ac_gcc_regs_avail,
+        [svalue_ac_gcc_regs_avail_no,
+        svalue_ac_gcc_regs_avail_yes]),
+    solver_var_spec(svar_ac_gcc_gotos_avail,
+        [svalue_ac_gcc_gotos_avail_no,
+        svalue_ac_gcc_gotos_avail_yes]),
+    solver_var_spec(svar_ac_gcc_labels_avail,
+        [svalue_ac_gcc_labels_avail_no,
+        svalue_ac_gcc_labels_avail_yes]),
+    solver_var_spec(svar_ac_low_tag_bits_avail,
+        [svalue_ac_low_tag_bits_avail_0,
+        svalue_ac_low_tag_bits_avail_2,
+        svalue_ac_low_tag_bits_avail_3]),
+    solver_var_spec(svar_ac_size_of_double,
+        [svalue_ac_size_of_double_eq_ptr,
+        svalue_ac_size_of_double_ne_ptr]),
+    solver_var_spec(svar_ac_merc_file,
+        [svalue_ac_merc_file_no, svalue_ac_merc_file_yes]),
 
     solver_var_spec(svar_backend,
         [svalue_backend_mlds, svalue_backend_llds, svalue_backend_elds]),
@@ -311,26 +327,35 @@ init_solver_var_specs = [
     solver_var_spec(svar_rbmm_prof,
         [svalue_rbmm_prof_no, svalue_rbmm_prof_yes]),
 
-    solver_var_spec(svar_single_prec_float,
-        [svalue_single_prec_float_no, svalue_single_prec_float_yes])
+    solver_var_spec(svar_request_single_prec_float,
+        [svalue_request_single_prec_float_no,
+        svalue_request_single_prec_float_yes]),
+
+    solver_var_spec(svar_merc_float,
+        [svalue_merc_float_is_unboxed_c_double,
+        svalue_merc_float_is_boxed_c_double,
+        svalue_merc_float_is_unboxed_c_float])
 ].
 
 %---------------------------------------------------------------------------%
 
 init_requirement_specs = [
-% Requirements of values of svar_gcc_regs_avail.
+% Requirements of values of svar_ac_gcc_regs_avail.
     % None. The value is set by configure.
 
-% Requirements of values of svar_gcc_gotos_avail.
+% Requirements of values of svar_ac_gcc_gotos_avail.
     % None. The value is set by configure.
 
-% Requirements of values of svar_gcc_labels_avail.
+% Requirements of values of svar_ac_gcc_labels_avail.
     % None. The value is set by configure.
 
-% Requirements of values of svar_low_tag_bits_avail.
+% Requirements of values of svar_ac_low_tag_bits_avail.
     % None. The value is set by configure.
 
-% Requirements of values of svar_merc_file.
+% Requirements of values of svar_ac_size_of_double.
+    % None. The value is set by configure.
+
+% Requirements of values of svar_ac_merc_file.
     % None. The value is set by configure.
 
 % Requirements of values of svar_backend.
@@ -470,7 +495,7 @@ init_requirement_specs = [
     requirement_spec(
         "using gcc regs requires them to be available",
         (svar_gcc_regs_use `being` svalue_gcc_regs_use_yes) `implies_that`
-        (svar_gcc_regs_avail `is_one_of` [svalue_gcc_regs_avail_yes])
+        (svar_ac_gcc_regs_avail `is_one_of` [svalue_ac_gcc_regs_avail_yes])
     ),
     requirement_spec(
         "using gcc regs requires targeting C",
@@ -487,7 +512,7 @@ init_requirement_specs = [
     requirement_spec(
         "using gcc nonlocal gotos requires them to be available",
         (svar_gcc_gotos_use `being` svalue_gcc_gotos_use_yes) `implies_that`
-        (svar_gcc_gotos_avail `is_one_of` [svalue_gcc_gotos_avail_yes])
+        (svar_ac_gcc_gotos_avail `is_one_of` [svalue_ac_gcc_gotos_avail_yes])
     ),
     requirement_spec(
         "using gcc nonlocal gotos requires targeting C",
@@ -504,7 +529,7 @@ init_requirement_specs = [
     requirement_spec(
         "using gcc asm labels requires them to be available",
         (svar_gcc_labels_use `being` svalue_gcc_labels_use_yes) `implies_that`
-        (svar_gcc_labels_avail `is_one_of` [svalue_gcc_labels_avail_yes])
+        (svar_ac_gcc_labels_avail `is_one_of` [svalue_ac_gcc_labels_avail_yes])
     ),
     requirement_spec(
         "using gcc asm labels requires using gcc nonlocal gotos",
@@ -536,20 +561,24 @@ init_requirement_specs = [
     requirement_spec(
         "pregenerated code is incompatible with single precision floats",
         (svar_pregen `being` svalue_pregen_yes) `implies_that`
-        (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
+        (svar_request_single_prec_float `is_one_of`
+            [svalue_request_single_prec_float_no])
     ),
 
 % Requirements of values of svar_low_tag_bits_use.
     requirement_spec(
         "using 2 low tag bits needs at least 2 low tag bits to be available",
-        (svar_low_tag_bits_use `being` svalue_low_tag_bits_use_2) `implies_that`
-        (svar_low_tag_bits_avail `is_one_of`
-            [svalue_low_tag_bits_avail_2, svalue_low_tag_bits_avail_3])
+        (svar_low_tag_bits_use `being` svalue_low_tag_bits_use_2)
+            `implies_that`
+        (svar_ac_low_tag_bits_avail `is_one_of`
+            [svalue_ac_low_tag_bits_avail_2, svalue_ac_low_tag_bits_avail_3])
     ),
     requirement_spec(
         "using 3 low tag bits needs at least 3 low tag bits to be available",
-        (svar_low_tag_bits_use `being` svalue_low_tag_bits_use_3) `implies_that`
-        (svar_low_tag_bits_avail `is_one_of` [svalue_low_tag_bits_avail_3])
+        (svar_low_tag_bits_use `being` svalue_low_tag_bits_use_3)
+            `implies_that`
+        (svar_ac_low_tag_bits_avail `is_one_of`
+            [svalue_ac_low_tag_bits_avail_3])
     ),
 
 % Requirements of values of svar_stack_segments.
@@ -805,12 +834,30 @@ init_requirement_specs = [
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
-% Requirements of values of svar_single_prec_float.
+% Requirements of values of svar_request_single_prec_float.
     requirement_spec(
         "single precision floats are available only when targeting C",
-        (svar_single_prec_float `being` svalue_single_prec_float_yes)
+        (svar_request_single_prec_float `being`
+            svalue_request_single_prec_float_yes)
             `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
+    ),
+    requirement_spec(
+        "single precision floats are available when requested",
+        % Since nothing forbids svalue_merc_float_is_unboxed_c_float,
+        % this implication should always succeed.
+        (svar_request_single_prec_float `being`
+            svalue_request_single_prec_float_yes)
+            `implies_that`
+        (svar_merc_float `is_one_of` [svalue_merc_float_is_unboxed_c_float])
+    ),
+
+% Requirements of values of svar_merc_float.
+    requirement_spec(
+        "unboxed double precision floats require pointer-sized doubles",
+        (svar_merc_float `being` svalue_merc_float_is_unboxed_c_double)
+            `implies_that`
+        (svar_ac_size_of_double `is_one_of` [svalue_ac_size_of_double_eq_ptr])
     )
 ].
 

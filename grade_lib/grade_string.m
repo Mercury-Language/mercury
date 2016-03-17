@@ -44,7 +44,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
     (
         GradeStructure = grade_llds(GccConf, LowTagBitsUse, StackLen, LLDSGc,
             LLDSTrailMinModel, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
-            Debug, LLDebug, LLDSRBMM, MercFile, Pregen, SinglePrecFloat),
+            Debug, LLDebug, LLDSRBMM, MercFile, Pregen, MercFloat),
 
         ( GccConf = llds_gcc_conf_none,             GccConfStr = "none"
         ; GccConf = llds_gcc_conf_reg,              GccConfStr = "reg"
@@ -122,7 +122,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             )
         ),
         PregenStr = pregen_to_str(Pregen),
-        SinglePrecFloatStr = single_prec_float_to_str(SinglePrecFloat),
+        MercFloatStr = merc_float_to_str(WhichGradeString, MercFloat),
         ( Debug = grade_var_debug_none,              DebugStr = ""
         ; Debug = grade_var_debug_debug,             DebugStr = ".debug"
         ; Debug = grade_var_debug_decldebug,         DebugStr = ".decldebug"
@@ -161,7 +161,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         GradeStr = string.append_list([GccConfStr, LowTagBitsUseStr,
             ThreadSafeStr, GcStr, LLDSPerfProfStr, TermSizeProfStr,
             TrailStr, MinimalModelStr, MercFileStr,
-            PregenStr, SinglePrecFloatStr, DebugStr, LLDebugStr,
+            PregenStr, MercFloatStr, DebugStr, LLDebugStr,
             StackLenStr, RBMMStr, TScopeProfStr])
     ;
         GradeStructure = grade_mlds(MLDSTarget, SSDebug),
@@ -169,7 +169,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         (
             MLDSTarget = mlds_target_c(DataRep, NestedFuncs, LowTagBitsUse,
                 ThreadSafe, MLDSCGc, MLDSCTrail, MLDSPerfProf,
-                MercFile, Pregen, SinglePrecFloat),
+                MercFile, Pregen, MercFloat),
             (
                 DataRep = mlds_c_datarep_heap_cells,
                 DataRepStr = "hlc"
@@ -210,10 +210,10 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             ),
             MercFileStr = merc_file_to_str(WhichGradeString, MercFile),
             PregenStr = pregen_to_str(Pregen),
-            SinglePrecFloatStr = single_prec_float_to_str(SinglePrecFloat),
+            MercFloatStr = merc_float_to_str(WhichGradeString, MercFloat),
             GradeStr = string.append_list([DataRepStr, NestedFuncsStr,
                 LowTagBitsUseStr, ThreadSafeStr, SSDebugStr, GcStr, TrailStr,
-                MLDSPerfProfStr, MercFileStr, PregenStr, SinglePrecFloatStr])
+                MLDSPerfProfStr, MercFileStr, PregenStr, MercFloatStr])
         ;
             MLDSTarget = mlds_target_csharp,
             GradeStr = string.append_list(["csharp", SSDebugStr])
@@ -276,18 +276,43 @@ merc_file_to_str(grade_string_link_check, grade_var_merc_file_yes) = ".file".
 :- func low_tag_bits_use_to_str(which_grade_string, grade_var_low_tag_bits_use)
     = string.
 
-low_tag_bits_use_to_str(grade_string_user, _) = "".
-low_tag_bits_use_to_str(grade_string_link_check, grade_var_low_tag_bits_use_0)
-    = ".tags0".
-low_tag_bits_use_to_str(grade_string_link_check, grade_var_low_tag_bits_use_2)
-    = ".tags2".
-low_tag_bits_use_to_str(grade_string_link_check, grade_var_low_tag_bits_use_3)
-    = ".tags3".
+low_tag_bits_use_to_str(WhichGradeString, LowTagBits) = Str :-
+    (
+        WhichGradeString = grade_string_user,
+        Str = ""
+    ;
+        WhichGradeString = grade_string_link_check,
+        (
+            LowTagBits = grade_var_low_tag_bits_use_0,
+            Str = ".notags"
+        ;
+            LowTagBits = grade_var_low_tag_bits_use_2,
+            Str = ".tags2"
+        ;
+            LowTagBits = grade_var_low_tag_bits_use_3,
+            Str = ".tags3"
+        )
+    ).
 
-:- func single_prec_float_to_str(grade_var_single_prec_float) = string.
+:- func merc_float_to_str(which_grade_string, grade_var_merc_float) = string.
 
-single_prec_float_to_str(grade_var_single_prec_float_no) = "".
-single_prec_float_to_str(grade_var_single_prec_float_yes) = ".spf".
+merc_float_to_str(WhichGradeString, MercFloat) = Str :-
+    (
+        MercFloat = grade_var_merc_float_is_boxed_c_double,
+        Str = ""
+    ;
+        MercFloat = grade_var_merc_float_is_unboxed_c_double,
+        (
+            WhichGradeString = grade_string_user,
+            Str = ""
+        ;
+            WhichGradeString = grade_string_link_check,
+            Str = ".ubf"
+        )
+    ;
+        MercFloat = grade_var_merc_float_is_unboxed_c_float,
+        Str = ".spf"
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -671,7 +696,8 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             svar_backend - svalue_backend_llds]
     ;
         ComponentStr = "spf",
-        Setting = svar_single_prec_float - svalue_single_prec_float_yes,
+        Setting = svar_request_single_prec_float -
+            svalue_request_single_prec_float_yes,
         Settings =
             [svar_target - svalue_target_c]
     ;

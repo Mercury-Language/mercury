@@ -30,7 +30,8 @@
 main(!IO) :-
     AutoconfResults = autoconf_results(autoconf_gcc_regs_avail_yes,
         autoconf_gcc_gotos_avail_yes, autoconf_gcc_labels_avail_yes,
-        autoconf_low_tag_bits_avail_3, autoconf_merc_file_no),
+        autoconf_low_tag_bits_avail_3, autoconf_size_of_double_eq_ptr,
+        autoconf_merc_file_no),
     setup_solver_info(AutoconfResults, SolverInfo0),
     io.command_line_arguments(Args, !IO),
     process_arguments(Args, cord.init, BadArgLinesCord,

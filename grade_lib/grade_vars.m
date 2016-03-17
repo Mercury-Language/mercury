@@ -39,7 +39,7 @@
                 grade_var_rbmm_prof,
                 grade_var_merc_file,
                 grade_var_pregen,
-                grade_var_single_prec_float
+                grade_var_merc_float
             ).
 
 :- type grade_var_backend
@@ -169,9 +169,10 @@
     --->    grade_var_pregen_no
     ;       grade_var_pregen_yes.
 
-:- type grade_var_single_prec_float
-    --->    grade_var_single_prec_float_no
-    ;       grade_var_single_prec_float_yes.
+:- type grade_var_merc_float
+    --->    grade_var_merc_float_is_boxed_c_double
+    ;       grade_var_merc_float_is_unboxed_c_double
+    ;       grade_var_merc_float_is_unboxed_c_float.
 
 %---------------------------------------------------------------------------%
 
@@ -207,11 +208,13 @@
 %---------------------------------------------------------------------------%
 
 success_map_to_grade_vars(!.SuccMap) = GradeVars :-
-    map.det_remove(svar_gcc_regs_avail, _GccRegsAvail, !SuccMap),
-    map.det_remove(svar_gcc_gotos_avail, _GccGotosAvail, !SuccMap),
-    map.det_remove(svar_gcc_labels_avail, _GccLabelsAvail, !SuccMap),
-    map.det_remove(svar_low_tag_bits_avail, _LowTagBitsAvail, !SuccMap),
+    map.det_remove(svar_ac_gcc_regs_avail, _GccRegsAvail, !SuccMap),
+    map.det_remove(svar_ac_gcc_gotos_avail, _GccGotosAvail, !SuccMap),
+    map.det_remove(svar_ac_gcc_labels_avail, _GccLabelsAvail, !SuccMap),
+    map.det_remove(svar_ac_low_tag_bits_avail, _LowTagBitsAvail, !SuccMap),
+    map.det_remove(svar_ac_size_of_double, _SizeOfDouble, !SuccMap),
 
+    map.det_remove(svar_ac_merc_file, MercFile, !SuccMap),
     map.det_remove(svar_backend, Backend, !SuccMap),
     map.det_remove(svar_datarep, DataRep, !SuccMap),
     map.det_remove(svar_target, Target, !SuccMap),
@@ -238,9 +241,10 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     map.det_remove(svar_rbmm, RBMM, !SuccMap),
     map.det_remove(svar_rbmm_debug, RBMMDebug, !SuccMap),
     map.det_remove(svar_rbmm_prof, RBMMProf, !SuccMap),
-    map.det_remove(svar_merc_file, MercFile, !SuccMap),
     map.det_remove(svar_pregen, Pregen, !SuccMap),
-    map.det_remove(svar_single_prec_float, SinglePrecFloat, !SuccMap),
+    map.det_remove(svar_request_single_prec_float, _ReqSinglePrecFloat,
+        !SuccMap),
+    map.det_remove(svar_merc_float, MercFloat, !SuccMap),
     expect(map.is_empty(!.SuccMap), $pred, "unexpected entries in SuccMap"),
 
     ( if Backend = svalue_backend_mlds then
@@ -481,9 +485,9 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         unexpected($pred, "unexpected value of RBMMProf")
     ),
 
-    ( if MercFile = svalue_merc_file_no then
+    ( if MercFile = svalue_ac_merc_file_no then
         GradeVarMercFile = grade_var_merc_file_no
-    else if MercFile = svalue_merc_file_yes then
+    else if MercFile = svalue_ac_merc_file_yes then
         GradeVarMercFile = grade_var_merc_file_yes
     else
         unexpected($pred, "unexpected value of MercFile")
@@ -497,12 +501,14 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         unexpected($pred, "unexpected value of Pregen")
     ),
 
-    ( if SinglePrecFloat = svalue_single_prec_float_no then
-        GradeVarSinglePrecFloat = grade_var_single_prec_float_no
-    else if SinglePrecFloat = svalue_single_prec_float_yes then
-        GradeVarSinglePrecFloat = grade_var_single_prec_float_yes
+    ( if MercFloat = svalue_merc_float_is_boxed_c_double then
+        GradeVarMercFloat = grade_var_merc_float_is_boxed_c_double
+    else if MercFloat = svalue_merc_float_is_unboxed_c_double then
+        GradeVarMercFloat = grade_var_merc_float_is_unboxed_c_double
+    else if MercFloat = svalue_merc_float_is_unboxed_c_float then
+        GradeVarMercFloat = grade_var_merc_float_is_unboxed_c_float
     else
-        unexpected($pred, "unexpected value of SinglePrecFloat")
+        unexpected($pred, "unexpected value of MercFloat")
     ),
 
     GradeVars = grade_vars(
@@ -517,7 +523,7 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
         GradeVarTScopeProf, GradeVarTermSizeProf,
         GradeVarDebug, GradeVarSSDebug, GradeVarLLDebug,
         GradeVarRBMM, GradeVarRBMMDebug, GradeVarRBMMProf,
-        GradeVarMercFile, GradeVarPregen, GradeVarSinglePrecFloat
+        GradeVarMercFile, GradeVarPregen, GradeVarMercFloat
     ).
 
 %---------------------------------------------------------------------------%

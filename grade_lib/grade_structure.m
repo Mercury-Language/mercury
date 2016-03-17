@@ -24,7 +24,7 @@
                 llds_rbmm,
                 grade_var_merc_file,
                 grade_var_pregen,
-                grade_var_single_prec_float
+                grade_var_merc_float
             )
     ;       grade_mlds(
                 mlds_target,
@@ -105,7 +105,7 @@
                 mlds_c_perf_prof,
                 grade_var_merc_file,
                 grade_var_pregen,
-                grade_var_single_prec_float
+                grade_var_merc_float
             )
     ;       mlds_target_csharp
     ;       mlds_target_java.
@@ -175,7 +175,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, SSDebug, LLDebug, RBMM, RBMMDebug, RBMMProf,
-            MercFile, Pregen, SinglePrecFloat),
+            MercFile, Pregen, MercFloat),
 
         expect(unify(DataRep, grade_var_datarep_heap_cells), $pred,
             "DataRep != grade_var_datarep_heap_cells"),
@@ -311,7 +311,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
         GradeStructure = grade_llds(LLDSGccConf, LowTagBitsUse, StackLen,
             LLDSGc, LLDSTrailMinModel, LLDSThreadSafe,
             LLDSPerfProf, TermSizeProf, Debug, LLDebug, LLDSRBMM,
-            MercFile, Pregen, SinglePrecFloat)
+            MercFile, Pregen, MercFloat)
     ;
         Backend = grade_var_backend_mlds,
 
@@ -321,7 +321,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, SSDebug, LLDebug, RBMM, RBMMDebug, RBMMProf,
-            MercFile, Pregen, SinglePrecFloat),
+            MercFile, Pregen, MercFloat),
 
         expect(unify(GccRegsUse, grade_var_gcc_regs_use_no), $pred,
             "GccRegsUse != grade_var_gcc_regs_use_no"),
@@ -401,7 +401,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             ),
             TargetC = mlds_target_c(MLDSCDataRep, NestedFuncs, LowTagBitsUse,
                 ThreadSafe, MLDSGc, MLDSCTrail, MLDSPerfProf,
-                MercFile, Pregen, SinglePrecFloat),
+                MercFile, Pregen, MercFloat),
             GradeStructure = grade_mlds(TargetC, SSDebug)
         ;
             ( Target = grade_var_target_csharp
@@ -432,8 +432,16 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             % we don't insist on MercFile = grade_var_merc_file_no. 
             expect(unify(Pregen, grade_var_pregen_no), $pred,
                 "Pregen != grade_var_pregen_no"),
-            expect(unify(SinglePrecFloat, grade_var_single_prec_float_no),
-                $pred, "SinglePrecFloat != grade_var_single_prec_float_no"),
+            (
+                ( MercFloat = grade_var_merc_float_is_boxed_c_double
+                ; MercFloat = grade_var_merc_float_is_unboxed_c_double
+                )
+                % We don't care which one. XXX Should we, on either backend?
+            ;
+                MercFloat = grade_var_merc_float_is_unboxed_c_float,
+                unexpected($pred,
+                    "MercFloat = grade_var_merc_float_is_unboxed_c_float")
+            ),
             % We repeat this here in case we later add some function symbols
             % to one or both of mlds_target_csharp/mlds_target_java.
             (
@@ -457,7 +465,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             MinimalModel, ThreadSafe, Gc,
             DeepProf, MprofCall, MprofTime, MprofMemory, TScopeProf,
             TermSizeProf, Debug, SSDebug, LLDebug, RBMM, RBMMDebug, RBMMProf,
-            _MercFile, Pregen, SinglePrecFloat),
+            _MercFile, Pregen, MercFloat),
 
         % XXX The ELDS backend's data representation is NOT the same
         % as the LLDS backends'. If it were, we couldn't ignore the value of
@@ -513,8 +521,16 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
         % we don't insist on MercFile = grade_var_merc_file_no. 
         expect(unify(Pregen, grade_var_pregen_no), $pred,
             "Pregen != grade_var_pregen_no"),
-        expect(unify(SinglePrecFloat, grade_var_single_prec_float_no), $pred,
-            "SinglePrecFloat != grade_var_single_prec_float_no"),
+        (
+            ( MercFloat = grade_var_merc_float_is_boxed_c_double
+            ; MercFloat = grade_var_merc_float_is_unboxed_c_double
+            )
+            % We don't care which one. XXX Should we, on either backend?
+        ;
+            MercFloat = grade_var_merc_float_is_unboxed_c_float,
+            unexpected($pred,
+                "MercFloat = grade_var_merc_float_is_unboxed_c_float")
+        ),
         % XXX probably incomplete
         GradeStructure = grade_elds(SSDebug)
     ).

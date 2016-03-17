@@ -49,7 +49,8 @@
 main(!IO) :-
     AutoconfResults = autoconf_results(autoconf_gcc_regs_avail_yes,
         autoconf_gcc_gotos_avail_yes, autoconf_gcc_labels_avail_yes,
-        autoconf_low_tag_bits_avail_3, autoconf_merc_file_no),
+        autoconf_low_tag_bits_avail_3, autoconf_size_of_double_eq_ptr,
+        autoconf_merc_file_no),
     setup_solver_info(AutoconfResults, SolverInfo0),
 
     parse_installed_grade(SolverInfo0,
@@ -203,8 +204,9 @@ broad_test_set_spec = [
         [svalue_thread_safe_no, svalue_thread_safe_yes]),
     test_set_component(svar_ssdebug,
         [svalue_ssdebug_no, svalue_ssdebug_yes]),
-    test_set_component(svar_single_prec_float,
-        [svalue_single_prec_float_no, svalue_single_prec_float_yes])
+    test_set_component(svar_request_single_prec_float,
+        [svalue_request_single_prec_float_no,
+        svalue_request_single_prec_float_yes])
 ].
 
 :- func llds_test_set_spec = test_set_spec.
@@ -220,8 +222,9 @@ llds_test_set_spec = [
         [svalue_deep_prof_no, svalue_deep_prof_yes]),
     test_set_component(svar_debug,
         [svalue_debug_none, svalue_debug_debug, svalue_debug_decldebug]),
-    test_set_component(svar_single_prec_float,
-        [svalue_single_prec_float_no, svalue_single_prec_float_yes])
+    test_set_component(svar_request_single_prec_float,
+        [svalue_request_single_prec_float_no,
+        svalue_request_single_prec_float_yes])
 ].
 
 %---------------------------------------------------------------------------%

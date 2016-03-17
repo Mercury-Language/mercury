@@ -18,6 +18,7 @@
                 autoconf_gcc_gotos_avail,
                 autoconf_gcc_labels_avail,
                 autoconf_low_tag_bits_avail,
+                autoconf_size_of_double,
                 autoconf_merc_file
             ).
 
@@ -37,6 +38,10 @@
     --->    autoconf_low_tag_bits_avail_0
     ;       autoconf_low_tag_bits_avail_2
     ;       autoconf_low_tag_bits_avail_3.
+
+:- type autoconf_size_of_double
+    --->    autoconf_size_of_double_eq_ptr
+    ;       autoconf_size_of_double_ne_ptr.
 
 :- type autoconf_merc_file
     --->    autoconf_merc_file_no
@@ -85,52 +90,63 @@ setup_solver_info(AutoconfResults, !:SolverInfo) :-
     !:SolverInfo = solver_info(Requirements, SolverVarPriority, SolverVarMap),
 
     AutoconfResults = autoconf_results(GccRegsAvail, GccGotosAvail,
-        GccLabelsAvail, LowTagBitsAvail, MercFile),
+        GccLabelsAvail, LowTagBitsAvail, SizeOfDouble, MercFile),
     (
         GccRegsAvail = autoconf_gcc_regs_avail_no,
-        GccRegsAvailValue = svalue_gcc_regs_avail_no
+        GccRegsAvailValue = svalue_ac_gcc_regs_avail_no
     ;
         GccRegsAvail = autoconf_gcc_regs_avail_yes,
-        GccRegsAvailValue = svalue_gcc_regs_avail_yes
+        GccRegsAvailValue = svalue_ac_gcc_regs_avail_yes
     ),
     (
         GccGotosAvail = autoconf_gcc_gotos_avail_no,
-        GccGotosAvailValue = svalue_gcc_gotos_avail_no
+        GccGotosAvailValue = svalue_ac_gcc_gotos_avail_no
     ;
         GccGotosAvail = autoconf_gcc_gotos_avail_yes,
-        GccGotosAvailValue = svalue_gcc_gotos_avail_yes
+        GccGotosAvailValue = svalue_ac_gcc_gotos_avail_yes
     ),
     (
         GccLabelsAvail = autoconf_gcc_labels_avail_no,
-        GccLabelsAvailValue = svalue_gcc_labels_avail_no
+        GccLabelsAvailValue = svalue_ac_gcc_labels_avail_no
     ;
         GccLabelsAvail = autoconf_gcc_labels_avail_yes,
-        GccLabelsAvailValue = svalue_gcc_labels_avail_yes
+        GccLabelsAvailValue = svalue_ac_gcc_labels_avail_yes
     ),
     (
         LowTagBitsAvail = autoconf_low_tag_bits_avail_0,
-        LowTagBitsAvailValue = svalue_low_tag_bits_avail_0
+        LowTagBitsAvailValue = svalue_ac_low_tag_bits_avail_0
     ;
         LowTagBitsAvail = autoconf_low_tag_bits_avail_2,
-        LowTagBitsAvailValue = svalue_low_tag_bits_avail_2
+        LowTagBitsAvailValue = svalue_ac_low_tag_bits_avail_2
     ;
         LowTagBitsAvail = autoconf_low_tag_bits_avail_3,
-        LowTagBitsAvailValue = svalue_low_tag_bits_avail_3
+        LowTagBitsAvailValue = svalue_ac_low_tag_bits_avail_3
+    ),
+    (
+        SizeOfDouble = autoconf_size_of_double_eq_ptr,
+        SizeOfDoubleValue = svalue_ac_size_of_double_eq_ptr
+    ;
+        SizeOfDouble = autoconf_size_of_double_ne_ptr,
+        SizeOfDoubleValue = svalue_ac_size_of_double_ne_ptr
     ),
     (
         MercFile = autoconf_merc_file_no,
-        MercFileValue = svalue_merc_file_no
+        MercFileValue = svalue_ac_merc_file_no
     ;
         MercFile = autoconf_merc_file_yes,
-        MercFileValue = svalue_merc_file_yes
+        MercFileValue = svalue_ac_merc_file_yes
     ),
-    assign_autoconf_var(svar_gcc_regs_avail, GccRegsAvailValue, !SolverInfo),
-    assign_autoconf_var(svar_gcc_gotos_avail, GccGotosAvailValue, !SolverInfo),
-    assign_autoconf_var(svar_gcc_labels_avail, GccLabelsAvailValue,
+    assign_autoconf_var(svar_ac_gcc_regs_avail, GccRegsAvailValue,
         !SolverInfo),
-    assign_autoconf_var(svar_low_tag_bits_avail, LowTagBitsAvailValue,
+    assign_autoconf_var(svar_ac_gcc_gotos_avail, GccGotosAvailValue,
         !SolverInfo),
-    assign_autoconf_var(svar_merc_file, MercFileValue, !SolverInfo).
+    assign_autoconf_var(svar_ac_gcc_labels_avail, GccLabelsAvailValue,
+        !SolverInfo),
+    assign_autoconf_var(svar_ac_low_tag_bits_avail, LowTagBitsAvailValue,
+        !SolverInfo),
+    assign_autoconf_var(svar_ac_size_of_double, SizeOfDoubleValue,
+        !SolverInfo),
+    assign_autoconf_var(svar_ac_merc_file, MercFileValue, !SolverInfo).
 
 :- pred assign_autoconf_var(solver_var_id::in, solver_var_value_id::in,
     solver_info::in, solver_info::out) is det.
