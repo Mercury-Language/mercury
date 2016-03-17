@@ -35,7 +35,6 @@ HDRS		=	\
 			mercury_calls.h		\
 			mercury_complexity.h	\
 			mercury_conf.h		\
-			mercury_conf_bootstrap.h \
 			mercury_conf_param.h	\
 			mercury_construct.h	\
 			mercury_context.h	\
