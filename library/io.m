@@ -4874,7 +4874,13 @@ io.write_list(Stream, List, Separator, OutputPred, !IO) :-
 
 write_array(Array, Separator, OutputPred, !IO) :-
     array.bounds(Array, Lo, Hi),
-    do_write_array(Array, Separator, OutputPred, Lo, Hi, !IO).
+    ( if Lo =< Hi then
+        array.unsafe_lookup(Array, Lo, E),
+        OutputPred(E, !IO),
+        do_write_array(Array, Separator, OutputPred, Lo + 1, Hi, !IO)
+    else
+        true
+    ).
 
 :- pred do_write_array(array(T), string, pred(T, io, io), int, int, io, io).
 :- mode do_write_array(in, in, pred(in, di, uo) is det, in, in, di, uo)
@@ -4884,12 +4890,9 @@ write_array(Array, Separator, OutputPred, !IO) :-
 
 do_write_array(Array, Separator, OutputPred, I, Hi, !IO) :-
     ( if I =< Hi then
+        io.write_string(Separator, !IO),
         array.unsafe_lookup(Array, I, E),
         OutputPred(E, !IO),
-        ( if I < Hi
-        then io.write_string(Separator, !IO)
-        else true
-        ),
         do_write_array(Array, Separator, OutputPred, I + 1, Hi, !IO)
     else
         true
