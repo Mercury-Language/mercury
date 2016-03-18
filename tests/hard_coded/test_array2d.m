@@ -46,6 +46,23 @@ main(!IO) :-
     write_array2d_elem("Two", Two, 1, 1, !IO),
     io.nl(!IO),
 
+    ( if array2d.is_empty(Empty) then
+        io.write_string("Empty is empty\n", !IO)
+    else
+        io.write_string("Empty is not empty\n", !IO)
+    ),
+    ( if array2d.is_empty(One) then
+        io.write_string("One is empty\n", !IO)
+    else
+        io.write_string("One is not empty\n", !IO)
+    ),
+    ( if array2d.is_empty(Two) then
+        io.write_string("Two is empty\n", !IO)
+    else
+        io.write_string("Two is not empty\n", !IO)
+    ),
+    io.nl(!IO),
+
     Two_a = Two ^ elem(0, 1) := 3,
     write_array2d("Two_a", Two_a, !IO),
     io.nl(!IO),

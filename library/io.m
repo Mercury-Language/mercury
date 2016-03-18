@@ -32,6 +32,7 @@
 :- module io.
 :- interface.
 
+:- import_module array.
 :- import_module bitmap.
 :- import_module bool.
 :- import_module char.
@@ -577,6 +578,26 @@
 :- mode write_list(in, in, in, pred(in, di, uo) is det, di, uo) is det.
 :- mode write_list(in, in, in, pred(in, di, uo) is cc_multi, di, uo)
     is cc_multi.
+
+    % write_array(Array, Separator, OutputPred, !IO):
+    % Applies OutputPred to each element of Array, printing Separator
+    % between each element. Outputs to the current output stream.
+    %
+:- pred write_array(array(T), string, pred(T, io, io), io, io).
+:- mode write_array(in, in, pred(in, di, uo) is det, di, uo) is det.
+%:- mode write_array(array_ui, in, pred(in, di, uo) is det, di uo) is det.
+:- mode write_array(in, in, pred(in, di, uo) is cc_multi, di, uo) is cc_multi.
+%:- mode write_array(array_ui, in, pred(in, di, uo) is cc_multi, di uo) is cc_multi.
+
+    % write_array(Stream, Array, Separator, OutputPred, !IO):
+    % Applies OutputPred to each element of Array, printing Separator
+    % between each element. Outputs to Stream.
+    %
+:- pred write_array(text_output_stream, array(T), string, pred(T, io, io), io, io).
+:- mode write_array(in, in, in, pred(in, di, uo) is det, di, uo) is det.
+%:- mode write_array(in, array_ui, in, pred(in, di, uo) is det, di uo) is det.
+:- mode write_array(in, in, in, pred(in, di, uo) is cc_multi, di, uo) is cc_multi.
+%:- mode write_array(in, array_ui, in, pred(in, di, uo) is cc_multi, di uo) is cc_multi.
 
     % Flush the output buffer of the current output stream.
     %
@@ -4848,6 +4869,36 @@ io.write_list(Stream, List, Separator, OutputPred, !IO) :-
     io.set_output_stream(Stream, OrigStream, !IO),
     io.write_list(List, Separator, OutputPred, !IO),
     io.set_output_stream(OrigStream, _Stream, !IO).
+
+%---------------------------------------------------------------------------%
+
+write_array(Array, Separator, OutputPred, !IO) :-
+    array.bounds(Array, Lo, Hi),
+    do_write_array(Array, Separator, OutputPred, Lo, Hi, !IO).
+
+:- pred do_write_array(array(T), string, pred(T, io, io), int, int, io, io).
+:- mode do_write_array(in, in, pred(in, di, uo) is det, in, in, di, uo)
+    is det.
+:- mode do_write_array(in, in, pred(in, di, uo) is cc_multi, in, in, di, uo)
+    is cc_multi.
+
+do_write_array(Array, Separator, OutputPred, I, Hi, !IO) :-
+    ( if I =< Hi then
+        array.unsafe_lookup(Array, I, E),
+        OutputPred(E, !IO),
+        ( if I < Hi
+        then io.write_string(Separator, !IO)
+        else true
+        ),
+        do_write_array(Array, Separator, OutputPred, I + 1, Hi, !IO)
+    else
+        true
+    ).
+
+write_array(Stream, Array, Separator, OutputPred, !IO) :-
+    io.set_output_stream(Stream, OrigStream, !IO),
+    io.write_array(Array, Separator, OutputPred, !IO),
+    io.set_output_stream(OrigStream, _, !IO).
 
 %---------------------------------------------------------------------------%
 

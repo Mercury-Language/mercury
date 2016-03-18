@@ -13,6 +13,10 @@ Two ^ elem(0, 1) = 0
 Two ^ elem(1, 0) = 0
 Two ^ elem(1, 1) = 2
 
+Empty is empty
+One is not empty
+Two is not empty
+
 Two_a =
 [[1, 3]
  [0, 2]]

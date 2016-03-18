@@ -115,6 +115,11 @@ Changes to the Mercury standard library:
   io module.  These behave like the print and write predicates, but also
   write a terminating newline.
 
+* We have added the predicates write_array/5 and write_array/6 to the io
+  module; these predicates write arrays using a user-specified procedure
+  to write the elements and separating the elements with a user-specified
+  separator string.
+
 * io.print and string_writer.print now print arbitrary precision integers
   in their decimal form instead of printing their underlying representation.
 
@@ -282,6 +287,10 @@ Changes to the Mercury standard library:
 
    - to_list/1     (synonym for the existing list/1 function)
    - to_rev_list/1 (synonym for the existing rev_list/1 function)
+
+* The following function has been added to the array2d module
+
+   - is_empty/1
 
 Changes to the Mercury compiler:
 

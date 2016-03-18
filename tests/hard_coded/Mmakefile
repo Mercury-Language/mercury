@@ -365,6 +365,7 @@ ORDINARY_PROGS =	\
 	word_aligned_pointer \
 	words_separator \
 	write \
+	write_array \
 	write_float_special \
 	write_reg1 \
 	write_reg2 \

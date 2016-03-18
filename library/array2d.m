@@ -54,6 +54,13 @@
 :- func array2d(list(list(T))) = array2d(T).
 :- mode array2d(in) = array2d_uo is det.
 
+    % is_empty(Array):
+    % True iff Array contains zero elements.
+    %
+:- pred is_empty(array2d(T)).
+%:- mode is_empty(array2d_ui) is semidet.
+:- mode is_empty(in) is semidet.
+
     % A synonym for the above.
     %
 :- func from_lists(list(list(T))) = array2d(T).
@@ -162,6 +169,9 @@ array2d(Xss @ [Xs | _]) = T :-
           then  array2d(M, N, A)
           else  func_error("array2d.array2d/1: non-rectangular list of lists")
         ).
+
+is_empty(array2d(_, _, A)) :-
+    array.is_empty(A).
 
 from_lists(Xss) = array2d(Xss).
 
