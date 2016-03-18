@@ -587,17 +587,21 @@
 :- mode write_array(in, in, pred(in, di, uo) is det, di, uo) is det.
 %:- mode write_array(array_ui, in, pred(in, di, uo) is det, di uo) is det.
 :- mode write_array(in, in, pred(in, di, uo) is cc_multi, di, uo) is cc_multi.
-%:- mode write_array(array_ui, in, pred(in, di, uo) is cc_multi, di uo) is cc_multi.
+%:- mode write_array(array_ui, in, pred(in, di, uo) is cc_multi, di uo)
+% is cc_multi.
 
     % write_array(Stream, Array, Separator, OutputPred, !IO):
     % Applies OutputPred to each element of Array, printing Separator
     % between each element. Outputs to Stream.
     %
-:- pred write_array(text_output_stream, array(T), string, pred(T, io, io), io, io).
+:- pred write_array(text_output_stream, array(T), string, pred(T, io, io),
+    io, io).
 :- mode write_array(in, in, in, pred(in, di, uo) is det, di, uo) is det.
 %:- mode write_array(in, array_ui, in, pred(in, di, uo) is det, di uo) is det.
-:- mode write_array(in, in, in, pred(in, di, uo) is cc_multi, di, uo) is cc_multi.
-%:- mode write_array(in, array_ui, in, pred(in, di, uo) is cc_multi, di uo) is cc_multi.
+:- mode write_array(in, in, in, pred(in, di, uo) is cc_multi, di, uo)
+    is cc_multi.
+%:- mode write_array(in, array_ui, in, pred(in, di, uo) is cc_multi, di uo)
+% is cc_multi.
 
     % Flush the output buffer of the current output stream.
     %
@@ -4855,15 +4859,29 @@ io.write_line_cc(X, !IO) :-
 %---------------------------------------------------------------------------%
 
 io.write_list([], _Separator, _OutputPred, !IO).
-io.write_list([E | Es], Separator, OutputPred, !IO) :-
-    OutputPred(E, !IO),
+io.write_list([Head | Tail], Separator, OutputPred, !IO) :-
+    OutputPred(Head, !IO),
     (
-        Es = []
+        Tail = []
     ;
-        Es = [_ | _],
-        io.write_string(Separator, !IO)
-    ),
-    io.write_list(Es, Separator, OutputPred, !IO).
+        Tail = [TailHead | TailTail],
+        io.write_list_lag(TailHead, TailTail, Separator, OutputPred, !IO)
+    ).
+
+:- pred write_list_lag(T, list(T), string, pred(T, io, io), io, io).
+:- mode write_list_lag(in, in, in, pred(in, di, uo) is det, di, uo) is det.
+:- mode write_list_lag(in, in, in, pred(in, di, uo) is cc_multi, di, uo)
+    is cc_multi.
+
+io.write_list_lag(Head, Tail, Separator, OutputPred, !IO) :-
+    io.write_string(Separator, !IO),
+    OutputPred(Head, !IO),
+    (
+        Tail = []
+    ;
+        Tail = [TailHead | TailTail],
+        io.write_list_lag(TailHead, TailTail, Separator, OutputPred, !IO)
+    ).
 
 io.write_list(Stream, List, Separator, OutputPred, !IO) :-
     io.set_output_stream(Stream, OrigStream, !IO),
@@ -6397,8 +6415,8 @@ mercury_init_io(void)
     mercury_current_binary_input_index = MR_new_thread_local_mutable_index();
     mercury_current_binary_output_index = MR_new_thread_local_mutable_index();
 
-#if defined(MR_HAVE_FDOPEN) && (defined(MR_HAVE_FILENO) || defined(fileno)) && \
-        defined(MR_HAVE_DUP)
+#if defined(MR_HAVE_FDOPEN) && (defined(MR_HAVE_FILENO) || defined(fileno)) \
+        && defined(MR_HAVE_DUP)
     MR_file(mercury_stdin_binary) = fdopen(dup(fileno(stdin)), ""rb"");
     if (MR_file(mercury_stdin_binary) != NULL) {
         mercury_set_binary_mode(MR_file(mercury_stdin_binary));
@@ -8604,8 +8622,8 @@ io.stdout_stream = output_stream(io.stdout_stream_2).
 :- func io.stdout_stream_2 = io.stream.
 :- pragma foreign_proc("C",
     io.stdout_stream_2 = (Stream::out),
-    [will_not_call_mercury, promise_pure, thread_safe, does_not_affect_liveness,
-        no_sharing],
+    [will_not_call_mercury, promise_pure, thread_safe,
+        does_not_affect_liveness, no_sharing],
     % no_sharing is okay as io.stream is a foreign type so can't be reused.
 "
     Stream = &mercury_stdout;
@@ -9858,7 +9876,8 @@ io.progname(DefaultProgName::in, ProgName::out, IO::di, IO::uo) :-
     ProgName = DefaultProgName.
 
 decode_system_command_exit_code(Code0) = Status :-
-    decode_system_command_exit_code(Code0, Exited, ExitCode, Signalled, Signal),
+    decode_system_command_exit_code(Code0, Exited, ExitCode, Signalled,
+        Signal),
     (
         Exited = yes,
         Status = ok(exited(ExitCode))
@@ -9884,8 +9903,8 @@ decode_system_command_exit_code(Status, yes, Status, no, 0).
 :- pragma foreign_proc("C",
     decode_system_command_exit_code(Status0::in, Exited::out, Status::out,
         Signalled::out, Signal::out),
-    [will_not_call_mercury, thread_safe, promise_pure, does_not_affect_liveness,
-        no_sharing],
+    [will_not_call_mercury, thread_safe, promise_pure,
+        does_not_affect_liveness, no_sharing],
 "
     #if defined (WIFEXITED) && defined (WEXITSTATUS) && \
             defined (WIFSIGNALED) && defined (WTERMSIG)
@@ -10180,7 +10199,8 @@ command_line_argument(_, "") :-
 
 :- pragma foreign_proc("Java",
     io.getenv(Var::in, Value::out),
-    [promise_semipure, will_not_call_mercury, tabled_for_io, may_not_duplicate],
+    [promise_semipure, will_not_call_mercury, tabled_for_io,
+        may_not_duplicate],
 "
     Value = System.getenv(Var);
     SUCCESS_INDICATOR = (Value != null);
@@ -10678,8 +10698,10 @@ io.make_temp(Dir, Prefix, Name, !IO) :-
 
 #else /* !MR_WIN32 */
 
-#define ML_maybe_make_win32_err_msg(was_error, error, msg, alloc_id, error_msg) \\
-    MR_fatal_error(""ML_maybe_make_win32_err_msg called on non-Windows platform"")
+#define ML_maybe_make_win32_err_msg(was_error, error, msg, alloc_id,        \\
+        error_msg)                                                          \\
+    MR_fatal_error(                                                         \\
+        ""ML_maybe_make_win32_err_msg called on non-Windows platform"")
 
 #endif /* !MR_WIN32 */
 
