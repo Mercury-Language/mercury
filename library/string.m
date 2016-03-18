@@ -88,7 +88,7 @@
 %
 % While each module that associates semantics with strings could define
 % its own wrapper types, the notions of lines and text files are so common
-% that it is simpler to defined them just once, and this is the logical
+% that it is simpler to define them just once, and this is the logical
 % place to do that.
 %
 
