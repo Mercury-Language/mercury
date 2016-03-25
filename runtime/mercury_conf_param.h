@@ -270,7 +270,7 @@
 ** MR_INCLUDE_SWITCH_DEFAULTS
 ** When performing switches over enum types defined in the runtime,
 ** include a default case even if the switch is complete, to guard against
-** e.g. memory corruption of the switched-ondata item taking it outside
+** e.g. memory corruption of the switched-on data item taking it outside
 ** the legal range of that enum.
 */
 
