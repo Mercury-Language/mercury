@@ -38,14 +38,42 @@
 :- import_module string.
 
 %---------------------------------------------------------------------------%
+%
+% You should increment the general binary version compatibility number
+% any time you make a change that breaks binary backwards compatibility.
+% Note that the binary compatibility version number has no direct relationship
+% with the source release number (which is in ../VERSION).
+%
+% It is a good idea to inspect all code for RTTI version number checks
+% and remove them when increasing the binary compatibility version number.
+% Searching for MR_RTTI_VERSION__ should find all code related to the
+% RTTI version number.
+%
+% The exec_trace, deep_prof and llc_par version numbers should be incremented
+% when a change breaks binary backwards compatibility only in debugging,
+% deep profiling, and low-level C parallel grades respectively.
+%
 
-grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
-    % XXX unboxed floats
+:- func link_grade_str_general_binary_compat_version = string.
+:- func link_grade_str_exec_trace_version = string.
+:- func link_grade_str_deep_prof_version = string.
+:- func link_grade_str_llc_par_version = string.
+
+link_grade_str_general_binary_compat_version = "v18_".
+link_grade_str_exec_trace_version = "12".
+link_grade_str_deep_prof_version = "4".
+link_grade_str_llc_par_version = "1".
+
+%---------------------------------------------------------------------------%
+
+grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
+        PostProcessedGradeStr :-
     (
         GradeStructure = grade_llds(GccConf, LowTagBitsUse, StackLen, LLDSGc,
             LLDSTrailMinModel, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
             Debug, LLDebug, LLDSRBMM, MercFile, Pregen, MercFloat),
 
+        BinaryCompatStr = binary_compat_version_to_string(WhichGradeString),
         ( GccConf = llds_gcc_conf_none,             GccConfStr = "none"
         ; GccConf = llds_gcc_conf_reg,              GccConfStr = "reg"
         ; GccConf = llds_gcc_conf_jump,             GccConfStr = "jump"
@@ -61,7 +89,9 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             TScopeProfStr = ""
         ;
             LLDSThreadSafe = llds_thread_safe_yes(TScopeProf),
-            ThreadSafeStr = thread_safe_to_str(grade_var_thread_safe_yes),
+            ThreadSafeStr =
+                thread_safe_to_str(grade_var_thread_safe_yes) ++
+                llc_par_version_to_string(WhichGradeString),
             (
                 TScopeProf = grade_var_tscope_prof_no,
                 TScopeProfStr = ""
@@ -81,7 +111,9 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             LLDSPerfProfStr = ""
         ;
             LLDSPerfProf = llds_perf_prof_deep,
-            LLDSPerfProfStr = ".profdeep"
+            LLDSPerfProfStr =
+                ".profdeep" ++
+                deep_prof_version_to_string(WhichGradeString)
         ;
             LLDSPerfProf = llds_perf_prof_mprof(MprofTime, MprofMemory),
             LLDSPerfProfStr = mprof_to_string(MprofTime, MprofMemory)
@@ -123,9 +155,19 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         ),
         PregenStr = pregen_to_str(Pregen),
         MercFloatStr = merc_float_to_str(WhichGradeString, MercFloat),
-        ( Debug = grade_var_debug_none,              DebugStr = ""
-        ; Debug = grade_var_debug_debug,             DebugStr = ".debug"
-        ; Debug = grade_var_debug_decldebug,         DebugStr = ".decldebug"
+        (
+            Debug = grade_var_debug_none,
+            DebugStr = ""
+        ;
+            Debug = grade_var_debug_debug,
+            DebugStr =
+                ".debug" ++
+                exec_trace_version_to_string(WhichGradeString)
+        ;
+            Debug = grade_var_debug_decldebug,
+            DebugStr =
+                ".decldebug" ++
+                exec_trace_version_to_string(WhichGradeString)
         ),
         ( LLDebug = grade_var_lldebug_no,            LLDebugStr = ""
         ; LLDebug = grade_var_lldebug_yes,           LLDebugStr = ".ll_debug"
@@ -158,18 +200,21 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             )
         ),
         MercFileStr = merc_file_to_str(WhichGradeString, MercFile),
-        GradeStr = string.append_list([GccConfStr, LowTagBitsUseStr,
-            ThreadSafeStr, GcStr, LLDSPerfProfStr, TermSizeProfStr,
+        GradeStr = string.append_list([BinaryCompatStr,
+            GccConfStr, LowTagBitsUseStr, ThreadSafeStr, GcStr,
+            LLDSPerfProfStr, TermSizeProfStr,
             TrailStr, MinimalModelStr, MercFileStr,
             PregenStr, MercFloatStr, DebugStr, LLDebugStr,
             StackLenStr, RBMMStr, TScopeProfStr])
     ;
         GradeStructure = grade_mlds(MLDSTarget, SSDebug),
-        SSDebugStr = ssdebug_to_str(SSDebug),
+        SSDebugStr = ssdebug_to_str(WhichGradeString, SSDebug),
         (
             MLDSTarget = mlds_target_c(DataRep, NestedFuncs, LowTagBitsUse,
                 ThreadSafe, MLDSCGc, MLDSCTrail, MLDSPerfProf,
                 MercFile, Pregen, MercFloat),
+            BinaryCompatStr =
+                binary_compat_version_to_string(WhichGradeString),
             (
                 DataRep = mlds_c_datarep_heap_cells,
                 DataRepStr = "hlc"
@@ -186,11 +231,11 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             ),
             LowTagBitsUseStr =
                 low_tag_bits_use_to_str(WhichGradeString, LowTagBitsUse),
-            ( MLDSCGc = mlds_c_gc_none,             Gc = grade_var_gc_none
-            ; MLDSCGc = mlds_c_gc_bdw,              Gc = grade_var_gc_bdw
-            ; MLDSCGc = mlds_c_gc_bdw_debug,        Gc = grade_var_gc_bdw_debug
-            ; MLDSCGc = mlds_c_gc_accurate,         Gc = grade_var_gc_accurate
-            ; MLDSCGc = mlds_c_gc_history,          Gc = grade_var_gc_history
+            ( MLDSCGc = mlds_c_gc_none,         Gc = grade_var_gc_none
+            ; MLDSCGc = mlds_c_gc_bdw,          Gc = grade_var_gc_bdw
+            ; MLDSCGc = mlds_c_gc_bdw_debug,    Gc = grade_var_gc_bdw_debug
+            ; MLDSCGc = mlds_c_gc_accurate,     Gc = grade_var_gc_accurate
+            ; MLDSCGc = mlds_c_gc_history,      Gc = grade_var_gc_history
             ),
             ThreadSafeStr = thread_safe_to_str(ThreadSafe),
             GcStr = gc_to_str(Gc),
@@ -211,7 +256,8 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             MercFileStr = merc_file_to_str(WhichGradeString, MercFile),
             PregenStr = pregen_to_str(Pregen),
             MercFloatStr = merc_float_to_str(WhichGradeString, MercFloat),
-            GradeStr = string.append_list([DataRepStr, NestedFuncsStr,
+            GradeStr = string.append_list([BinaryCompatStr,
+                DataRepStr, NestedFuncsStr,
                 LowTagBitsUseStr, ThreadSafeStr, SSDebugStr, GcStr, TrailStr,
                 MLDSPerfProfStr, MercFileStr, PregenStr, MercFloatStr])
         ;
@@ -223,9 +269,40 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         )
     ;
         GradeStructure = grade_elds(SSDebug),
-        SSDebugStr = ssdebug_to_str(SSDebug),
+        SSDebugStr = ssdebug_to_str(WhichGradeString, SSDebug),
         GradeStr = string.append_list(["erlang", SSDebugStr])
+    ),
+    (
+        WhichGradeString = grade_string_user,
+        PostProcessedGradeStr = GradeStr
+    ;
+        WhichGradeString = grade_string_link_check,
+        string.replace_all(GradeStr, ".", "_", PostProcessedGradeStr)
     ).
+
+:- func binary_compat_version_to_string(which_grade_string) = string.
+
+binary_compat_version_to_string(grade_string_user) = "".
+binary_compat_version_to_string(grade_string_link_check) =
+    link_grade_str_general_binary_compat_version.
+
+:- func exec_trace_version_to_string(which_grade_string) = string.
+
+exec_trace_version_to_string(grade_string_user) = "".
+exec_trace_version_to_string(grade_string_link_check) =
+    link_grade_str_exec_trace_version.
+
+:- func deep_prof_version_to_string(which_grade_string) = string.
+
+deep_prof_version_to_string(grade_string_user) = "".
+deep_prof_version_to_string(grade_string_link_check) =
+    link_grade_str_deep_prof_version.
+
+:- func llc_par_version_to_string(which_grade_string) = string.
+
+llc_par_version_to_string(grade_string_user) = "".
+llc_par_version_to_string(grade_string_link_check) =
+    link_grade_str_llc_par_version.
 
 :- func gc_to_str(grade_var_gc) = string.
 
@@ -247,10 +324,11 @@ trail_segments_to_str(grade_var_trail_segments_yes) = ".trseg".
 thread_safe_to_str(grade_var_thread_safe_no) = "".
 thread_safe_to_str(grade_var_thread_safe_yes) = ".par".
 
-:- func ssdebug_to_str(grade_var_ssdebug) = string.
+:- func ssdebug_to_str(which_grade_string, grade_var_ssdebug) = string.
 
-ssdebug_to_str(grade_var_ssdebug_no) = "".
-ssdebug_to_str(grade_var_ssdebug_yes) = ".ssdebug".
+ssdebug_to_str(_, grade_var_ssdebug_no) = "".
+ssdebug_to_str(WhichGradeStr, grade_var_ssdebug_yes) =
+    ".ssdebug" ++ exec_trace_version_to_string(WhichGradeStr).
 
 :- func mprof_to_string(grade_var_mprof_time, grade_var_mprof_memory) = string.
 
@@ -395,8 +473,8 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
     % Some of the settings we return are an expression of the inherent
     % meaning of the grade component, while others are their required
     % implications. The solver would *handle* the implications itself,
-    % but including them here will give it less work to do and thus
-    % make it faster.
+    % but including them here will give it less work to do, and will
+    % therefore make the solver do its work *faster*.
     %
     % Including the implications is therefore nice, but not required.
     (
@@ -698,8 +776,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
         ComponentStr = "spf",
         Setting = svar_request_single_prec_float -
             svalue_request_single_prec_float_yes,
-        Settings =
-            [svar_target - svalue_target_c]
+        Settings = [svar_target - svalue_target_c]
     ;
         ComponentStr = "ssdebug",
         Setting = svar_ssdebug - svalue_ssdebug_yes,
