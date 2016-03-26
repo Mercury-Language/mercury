@@ -7,12 +7,20 @@ ENDINIT
 */
 /*
 ** Copyright (C) 1995-2007, 2009-2011 The University of Melbourne.
-** Copyright (C) 2014 The Mercury team.
+** Copyright (C) 2014, 2016 The Mercury team.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
 
 /* mercury_context.c - handles multithreading stuff. */
+
+#ifndef _GNU_SOURCE
+  /*
+  ** This must be defined prior to including <sched.h> for sched_setaffinity,
+  ** etc.
+  */
+  #define _GNU_SOURCE
+#endif
 
 #include "mercury_imp.h"
 
@@ -36,7 +44,7 @@ ENDINIT
 #endif
 
 #ifdef MR_HAVE_SCHED_H
-#include <sched.h>
+  #include <sched.h>
 #endif
 
 #ifdef MR_MINGW
