@@ -519,15 +519,14 @@ do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
         OptionArgs, Args, !IO) :-
     (
         OpMode = opm_top_make(_),
-        make_process_args(Globals, DetectedGradeFlags, OptionVariables,
-            OptionArgs, Args, !IO)
+        make_process_compiler_args(Globals, DetectedGradeFlags,
+            OptionVariables, OptionArgs, Args, !IO)
     ;
         OpMode = opm_top_generate_source_file_mapping,
         source_file_map.write_source_file_map(Globals, Args, !IO)
     ;
         OpMode = opm_top_generate_standalone_interface(StandaloneIntBasename),
-        do_op_mode_standalone_interface(Globals,
-            StandaloneIntBasename, !IO)
+        do_op_mode_standalone_interface(Globals, StandaloneIntBasename, !IO)
     ;
         OpMode = opm_top_query(OpModeQuery),
         do_op_mode_query(Globals, OpModeQuery, !IO)
@@ -540,8 +539,7 @@ do_op_mode(Globals, OpMode, DetectedGradeFlags, OptionVariables,
 :- pred do_op_mode_standalone_interface(globals::in, string::in,
     io::di, io::uo) is det.
 
-do_op_mode_standalone_interface(Globals, StandaloneIntBasename,
-        !IO) :-
+do_op_mode_standalone_interface(Globals, StandaloneIntBasename, !IO) :-
     globals.get_target(Globals, Target),
     (
         ( Target = target_csharp
@@ -675,14 +673,14 @@ do_op_mode_args(Globals, OpModeArgs, DetectedGradeFlags,
     else
         (
             FileNamesFromStdin = yes,
-            process_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
-                OptionVariables, OptionArgs,
+            process_compiler_stdin_args(Globals, OpModeArgs,
+                DetectedGradeFlags, OptionVariables, OptionArgs,
                 cord.empty, ModulesToLinkCord,
                 cord.empty, ExtraObjFilesCord, !IO)
         ;
             FileNamesFromStdin = no,
-            process_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
-                OptionVariables, OptionArgs, Args,
+            process_compiler_cmd_line_args(Globals, OpModeArgs,
+                DetectedGradeFlags, OptionVariables, OptionArgs, Args,
                 cord.empty, ModulesToLinkCord,
                 cord.empty, ExtraObjFilesCord, !IO)
         ),
@@ -790,12 +788,12 @@ compile_with_module_options(Globals, ModuleName, DetectedGradeFlags,
 
 %---------------------------------------------------------------------------%
 
-:- pred process_stdin_args(globals::in, op_mode_args::in,
+:- pred process_compiler_stdin_args(globals::in, op_mode_args::in,
     list(string)::in, options_variables::in, list(string)::in,
     cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out, io::di, io::uo) is det.
 
-process_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
+process_compiler_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
         OptionVariables, OptionArgs, !Modules, !ExtraObjFiles, !IO) :-
     ( if is_empty(!.Modules) then
         true
@@ -806,11 +804,12 @@ process_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
     (
         FileResult = ok(Line),
         Arg = string.rstrip(Line),
-        process_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
-            OptionArgs, Arg, ArgModules, ArgExtraObjFiles, !IO),
+        process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
+            OptionVariables, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
+            !IO),
         !:Modules = !.Modules ++ cord.from_list(ArgModules),
         !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
-        process_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
+        process_compiler_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
             OptionVariables, OptionArgs, !Modules, !ExtraObjFiles, !IO)
     ;
         FileResult = eof
@@ -822,16 +821,18 @@ process_stdin_args(Globals, OpModeArgs, DetectedGradeFlags,
         io.set_exit_status(1, !IO)
     ).
 
-:- pred process_cmd_line_args(globals::in, op_mode_args::in,
+:- pred process_compiler_cmd_line_args(globals::in, op_mode_args::in,
     list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out, io::di, io::uo) is det.
 
-process_cmd_line_args(_, _, _, _, _, [], !Modules, !ExtraObjFiles, !IO).
-process_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
-        OptionArgs, [Arg | Args], !Modules, !ExtraObjFiles, !IO) :-
-    process_arg(Globals, OpModeArgs, DetectedGradeFlags,
+process_compiler_cmd_line_args(_, _, _, _, _, [],
+        !Modules, !ExtraObjFiles, !IO).
+process_compiler_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
+        OptionVariables, OptionArgs, [Arg | Args],
+        !Modules, !ExtraObjFiles, !IO) :-
+    process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags,
         OptionVariables, OptionArgs, Arg, ArgModules, ArgExtraObjFiles, !IO),
     (
         Args = [_ | _],
@@ -841,31 +842,44 @@ process_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
     ),
     !:Modules = !.Modules ++ cord.from_list(ArgModules),
     !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
-    process_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
+    process_compiler_cmd_line_args(Globals, OpModeArgs, DetectedGradeFlags,
         OptionVariables, OptionArgs, Args, !Modules, !ExtraObjFiles, !IO).
 
-    % Figure out whether the argument is a module name or a file name.
+    % Figure out whether the compiler argument is a module name or a file name.
     % Open the specified file or module, and process it.
-    % Return the list of modules (including sub-modules,
+    % Return the list of modules (including submodules,
     % if they were compiled to separate object files)
     % that should be linked into the final executable.
     %
-:- pred process_arg(globals::in, op_mode_args::in,
+    % The actual work is done by do_process_compiler_arg.
+    % XXX The job of this predicate is apparently to ensure that
+    % we go through the machinery of mmc --make, represented here by
+    % build_with_module_options_args, even if we were NOT invoked with --make.
+    % This seems strange to me. -zs
+    %
+:- pred process_compiler_arg(globals::in, op_mode_args::in,
     list(string)::in, options_variables::in,
     list(string)::in, string::in, list(string)::out, list(string)::out,
     io::di, io::uo) is det.
 
-process_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
+process_compiler_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
         OptionArgs, Arg, ModulesToLink, ExtraObjFiles, !IO) :-
     FileOrModule = string_to_file_or_module(Arg),
     globals.lookup_bool_option(Globals, invoked_by_mmc_make, InvokedByMake),
     (
         InvokedByMake = no,
+        ExtraOptions = [],
+        DummyInput = unit,
         build_with_module_options_args(Globals,
             file_or_module_to_module_name(FileOrModule),
-            DetectedGradeFlags, OptionVariables, OptionArgs, [],
-            process_arg_build(OpModeArgs, FileOrModule, OptionArgs),
-            _, [], MaybeTuple, !IO),
+            DetectedGradeFlags, OptionVariables, OptionArgs, ExtraOptions,
+            process_compiler_arg_build(OpModeArgs, FileOrModule, OptionArgs),
+            _Succeeded, DummyInput, MaybeTuple, !IO),
+        % XXX Why do we ignore _Succeeded? We know it is set to `yes'
+        % by process_compiler_arg_build, but this could be overridden by
+        % build_with_module_options_args if it finds *other* kinds of problems.
+        % However, enabling the following line did not yield any aborts.
+        % expect(unify(Succeeded, yes), $pred, "Succeeded != yes"),
         (
             MaybeTuple = yes(Tuple),
             Tuple = {ModulesToLink, ExtraObjFiles}
@@ -877,30 +891,31 @@ process_arg(Globals, OpModeArgs, DetectedGradeFlags, OptionVariables,
     ;
         InvokedByMake = yes,
         % `mmc --make' has already set up the options.
-        process_arg_2(Globals, OpModeArgs, OptionArgs, FileOrModule,
+        do_process_compiler_arg(Globals, OpModeArgs, OptionArgs, FileOrModule,
             ModulesToLink, ExtraObjFiles, !IO)
     ).
 
-:- pred process_arg_build(op_mode_args::in, file_or_module::in,
+:- pred process_compiler_arg_build(op_mode_args::in, file_or_module::in,
     list(string)::in, globals::in, list(string)::in, bool::out,
-    list(string)::in, {list(string), list(string)}::out,
+    unit::in, {list(string), list(string)}::out,
     io::di, io::uo) is det.
 
-process_arg_build(OpModeArgs, FileOrModule, OptionArgs, Globals, _, yes, _,
-        {Modules, ExtraObjFiles}, !IO) :-
-    process_arg_2(Globals, OpModeArgs, OptionArgs, FileOrModule,
-        Modules, ExtraObjFiles, !IO).
+process_compiler_arg_build(OpModeArgs, FileOrModule, OptionArgs, Globals, _,
+        Succeeded, _DummyInput, {Modules, ExtraObjFiles}, !IO) :-
+    do_process_compiler_arg(Globals, OpModeArgs, OptionArgs, FileOrModule,
+        Modules, ExtraObjFiles, !IO),
+    Succeeded = yes.
 
 :- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
 
 version_numbers_return_timestamp(no) = dont_return_timestamp.
 version_numbers_return_timestamp(yes) = do_return_timestamp.
 
-:- pred process_arg_2(globals::in, op_mode_args::in,
+:- pred do_process_compiler_arg(globals::in, op_mode_args::in,
     list(string)::in, file_or_module::in, list(string)::out, list(string)::out,
     io::di, io::uo) is det.
 
-process_arg_2(Globals0, OpModeArgs, OptionArgs, FileOrModule,
+do_process_compiler_arg(Globals0, OpModeArgs, OptionArgs, FileOrModule,
         ModulesToLink, ExtraObjFiles, !IO) :-
     (
         OpModeArgs = opma_generate_dependencies,
@@ -1062,8 +1077,7 @@ find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
     string::in, module_name::in, list(file_name)::out,
     io::di, io::uo) is det.
 
-usual_find_target_files(Globals, TargetSuffix, ModuleName, TargetFiles,
-        !IO) :-
+usual_find_target_files(Globals, TargetSuffix, ModuleName, TargetFiles, !IO) :-
     % XXX Should we check the generated header files?
     module_name_to_file_name(Globals, ModuleName, TargetSuffix,
         do_create_dirs, FileName, !IO),

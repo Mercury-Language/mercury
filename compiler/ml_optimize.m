@@ -1136,7 +1136,6 @@ find_initial_val_in_statements(VarName, Rval, [Statement0 | Statements0],
 
 find_initial_val_in_statement(Var, Rval, Statement0, Statement) :-
     Statement0 = statement(Stmt0, Context),
-    Statement = statement(Stmt, Context),
     ( if Stmt0 = ml_stmt_atomic(assign(ml_var(Var, _Type), Rval0)) then
         Rval = Rval0,
         % Delete the assignment, by replacing it with an empty block.
@@ -1150,7 +1149,8 @@ find_initial_val_in_statement(Var, Rval, Statement0, Statement) :-
         Stmt = ml_stmt_block(Defns0, SubStatements)
     else
         fail
-    ).
+    ),
+    Statement = statement(Stmt, Context).
 
     % Replace uses of this variable with the variable's value in the specified
     % definitions and statements. This will return a count of how many
@@ -1326,10 +1326,10 @@ eliminate_var_in_lval(Lval0, Lval, !VarElimInfo) :-
     ;
         Lval0 = ml_var(VarName, _Type),
         ( if VarName = !.VarElimInfo ^ var_name then
-            % We found an lvalue occurrence of the variable -- if the variable
-            % that we are trying to eliminate has its address is taken,
-            % or is assigned to, or in general if it is used as an lvalue,
-            % then it's not safe to eliminate it
+            % We found an lvalue occurrence of the variable.
+            % If the variable that we are trying to eliminate has its
+            % address is taken, or is assigned to, or in general if it is
+            % used as an lvalue, then it is NOT safe to eliminate it.
             !VarElimInfo ^ invalidated := yes
         else
             true
