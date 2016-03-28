@@ -1537,13 +1537,13 @@ process_augmented_module(Globals, OpModeAugment, ModuleAndImports,
         WriteDFile = write_d_file
     ),
     pre_hlds_pass(Globals, OpModeAugment, WriteDFile, ModuleAndImports, HLDS1,
-        QualInfo, MaybeTimestampMap, UndefTypes, UndefModes, Errors1,
+        QualInfo, MaybeTimestampMap, UndefTypes, UndefModes, PreHLDSErrors,
         !DumpInfo, !Specs, !IO),
     frontend_pass(OpModeAugment, QualInfo, UndefTypes, UndefModes,
-        Errors1, Errors2, HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
+        PreHLDSErrors, FrontEndErrors, HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
     ( if
-        Errors1 = no,
-        Errors2 = no,
+        PreHLDSErrors = no,
+        FrontEndErrors = no,
         contains_errors(Globals, !.Specs) = no
     then
         globals.lookup_bool_option(Globals, verbose, Verbose),

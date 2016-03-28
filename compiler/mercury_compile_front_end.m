@@ -326,8 +326,8 @@ frontend_pass_after_typeclass_check(OpModeAugment, FoundUndefModeError,
             ( if OpModeAugment = opmau_typecheck_only then
                 true
             else
-                % Substitute implementation-defined literals before clauses are
-                % written out to `.opt' files.
+                % Substitute implementation-defined literals before
+                % clauses are written out to `.opt' files.
                 subst_implementation_defined_literals(Verbose, Stats, !HLDS,
                     !Specs, !IO),
                 maybe_dump_hlds(!.HLDS, 25, "implementation_defined_literals",
@@ -397,7 +397,7 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
 
         % The following passes are only run with `--intermodule-optimisation'
         % to append their results to the `.opt.tmp' file. For
-        % `--intermodule-analysis', analyses results should be recorded
+        % `--intermodule-analysis', analysis results should be recorded
         % using the intermodule analysis framework instead.
         %
         % If intermod_unused_args is being performed, run polymorphism,
@@ -416,13 +416,12 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
             )
         then
             % XXX OPTFILE This should have been done by one of our ancestors.
-            frontend_pass_by_phases(!HLDS, FoundModeError, !DumpInfo,
-                !Specs, !IO),
+            frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !Specs, !IO),
             (
-                FoundModeError = no,
+                FoundError = no,
                 middle_pass_for_opt_file(!HLDS, !IO)
             ;
-                FoundModeError = yes,
+                FoundError = yes,
                 io.set_exit_status(1, !IO)
             )
         else
@@ -435,31 +434,37 @@ maybe_write_initial_optfile(MakeOptInt, !HLDS, !DumpInfo, !Specs, !IO) :-
         touch_interface_datestamp(Globals, ModuleName, ".optdate", !IO)
     ;
         MakeOptInt = no,
-        % If there is a `.opt' file for this module, the import
-        % status of items in the `.opt' file needs to be updated.
-        ( if IntermodOpt = yes then
+        % If there is a `.opt' file for this module, the import status
+        % of items in the `.opt' file needs to be updated.
+        ( if
+            ( IntermodOpt = yes
+            ; IntermodAnalysis = yes
+            )
+        then
             UpdateStatus = yes
-        else if IntermodAnalysis = yes then
-            UpdateStatus = yes
-        else if UseOptFiles = yes then
-            module_info_get_name(!.HLDS, ModuleName),
-            module_name_to_search_file_name(Globals, ModuleName, ".opt",
-                OptName, !IO),
-            search_for_file_returning_dir(do_not_open_file, IntermodDirs,
-                OptName, Found, !IO),
+        else
             (
-                Found = ok(_),
-                UpdateStatus = yes
+                UseOptFiles = yes,
+                module_info_get_name(!.HLDS, ModuleName),
+                module_name_to_search_file_name(Globals, ModuleName, ".opt",
+                    OptName, !IO),
+                search_for_file_returning_dir(do_not_open_file, IntermodDirs,
+                    OptName, Found, !IO),
+                (
+                    Found = ok(_),
+                    UpdateStatus = yes
+                ;
+                    Found = error(_),
+                    UpdateStatus = no
+                )
             ;
-                Found = error(_),
+                UseOptFiles = no,
                 UpdateStatus = no
             )
-        else
-            UpdateStatus = no
         ),
         (
             UpdateStatus = yes,
-            intermod.adjust_pred_status_for_opt_export(!HLDS)
+            intermod.maybe_opt_export_entities(!HLDS)
         ;
             UpdateStatus = no
         )

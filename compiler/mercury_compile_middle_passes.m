@@ -127,10 +127,10 @@ middle_pass(!HLDS, !DumpInfo, !IO) :-
     tabling(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 105, "tabling", !DumpInfo, !IO),
 
-    process_lambdas(Verbose, Stats, !HLDS, !IO),
+    expand_lambdas(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 110, "lambda", !DumpInfo, !IO),
 
-    process_stms(Verbose, Stats, !HLDS, !IO),
+    expand_stm_goals(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 113, "stm", !DumpInfo, !IO),
 
     expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO),
@@ -298,88 +298,35 @@ middle_pass_for_opt_file(!HLDS, !IO) :-
     % this predicate.
 
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, intermod_unused_args, IntermodArgs),
-    globals.lookup_bool_option(Globals, termination, Termination),
-    globals.lookup_bool_option(Globals, termination2, Termination2),
-    globals.lookup_bool_option(Globals, structure_sharing_analysis,
-        SharingAnalysis),
-    globals.lookup_bool_option(Globals, structure_reuse_analysis,
-        ReuseAnalysis),
-    globals.lookup_bool_option(Globals, analyse_exceptions,
-        ExceptionAnalysis),
-    globals.lookup_bool_option(Globals, analyse_closures,
-        ClosureAnalysis),
-    globals.lookup_bool_option(Globals, analyse_trail_usage,
-        TrailingAnalysis),
-    globals.lookup_bool_option(Globals, analyse_mm_tabling,
-        TablingAnalysis),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
+    globals.lookup_bool_option(Globals, analyse_closures, ClosureAnalysis),
+    globals.lookup_bool_option(Globals, structure_sharing_analysis,
+        SharingAnalysis),
     ( if
-        % Closure analysis assumes that lambda expressions have
-        % been converted into separate predicates.
+        % Closure analysis assumes that lambda expressions have been converted
+        % into separate predicates.
         % Structure sharing/reuse analysis results can be affected
-        % by process_lambdas.
+        % by expand_lambdas.
         ( ClosureAnalysis = yes
         ; SharingAnalysis = yes
         )
     then
-        process_lambdas(Verbose, Stats, !HLDS, !IO),
-        process_stms(Verbose, Stats, !HLDS, !IO),
-        maybe_closure_analysis(Verbose, Stats, !HLDS, !IO)
+        expand_lambdas(Verbose, Stats, !HLDS, !IO),
+        expand_stm_goals(Verbose, Stats, !HLDS, !IO)
     else
         true
     ),
-    (
-        ExceptionAnalysis = yes,
-        maybe_exception_analysis(Verbose, Stats, !HLDS, !IO)
-    ;
-        ExceptionAnalysis = no
-    ),
-    (
-        IntermodArgs = yes,
-        maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !IO)
-    ;
-        IntermodArgs = no,
-        set.init(UnusedArgsInfos)
-    ),
-    (
-        Termination = yes,
-        maybe_termination(Verbose, Stats, !HLDS, !IO)
-    ;
-        Termination = no
-    ),
-    (
-        Termination2 = yes,
-        maybe_termination2(Verbose, Stats, !HLDS, !IO)
-    ;
-        Termination2 = no
-    ),
-    (
-        SharingAnalysis = yes,
-        maybe_structure_sharing_analysis(Verbose, Stats,
-            !HLDS, !IO)
-    ;
-        SharingAnalysis = no
-    ),
-    (
-        ReuseAnalysis = yes,
-        maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO)
-    ;
-        ReuseAnalysis = no
-    ),
-    (
-        TrailingAnalysis = yes,
-        maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO)
-    ;
-        TrailingAnalysis = no
-    ),
-    (
-        TablingAnalysis = yes,
-        maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO)
-    ;
-        TablingAnalysis = no
-    ),
+    maybe_closure_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_unused_args(Verbose, Stats, UnusedArgsInfos, !HLDS, !IO),
+    maybe_termination(Verbose, Stats, !HLDS, !IO),
+    maybe_termination2(Verbose, Stats, !HLDS, !IO),
+    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
+    maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
+
     append_analysis_pragmas_to_opt_file(!.HLDS, UnusedArgsInfos, !IO).
 
 %---------------------------------------------------------------------------%
@@ -399,7 +346,7 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
         ; SharingAnalysis = yes
         )
     then
-        process_lambdas(Verbose, Stats, !HLDS, !IO)
+        expand_lambdas(Verbose, Stats, !HLDS, !IO)
     else
         true
     ),
@@ -454,7 +401,7 @@ output_analysis_file(!.HLDS, !DumpInfo, !IO) :-
         ; SharingAnalysis = yes
         )
     then
-        process_lambdas(Verbose, Stats, !HLDS, !IO)
+        expand_lambdas(Verbose, Stats, !HLDS, !IO)
     else
         true
     ),
@@ -571,10 +518,10 @@ tabling(Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred process_lambdas(bool::in, bool::in,
+:- pred expand_lambdas(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-process_lambdas(Verbose, Stats, !HLDS, !IO) :-
+expand_lambdas(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Transforming lambda expressions...", !IO),
     maybe_flush_output(Verbose, !IO),
     expand_lambdas_in_module(!HLDS),
@@ -583,10 +530,10 @@ process_lambdas(Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred process_stms(bool::in, bool::in,
+:- pred expand_stm_goals(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-process_stms(Verbose, Stats, !HLDS, !IO) :-
+expand_stm_goals(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Transforming stm expressions...", !IO),
     maybe_flush_output(Verbose, !IO),
     stm_process_module(!HLDS),
