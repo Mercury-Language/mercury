@@ -12,7 +12,6 @@
 :- type grade_structure
     --->    grade_llds(
                 llds_gcc_conf,
-                grade_var_low_tag_bits_use,
                 grade_var_stack_len,
                 llds_gc,
                 llds_trail_minmodel,
@@ -23,8 +22,7 @@
                 grade_var_lldebug,
                 llds_rbmm,
                 grade_var_merc_file,
-                grade_var_pregen,
-                grade_var_merc_float
+                low_tags_floats
             )
     ;       grade_mlds(
                 mlds_target,
@@ -94,18 +92,25 @@
                 grade_var_rbmm_prof
             ).
 
+:- type low_tags_floats
+    --->    low_tags_floats_pregen_no(
+                grade_var_low_tag_bits_use,
+                grade_var_merc_float
+            )
+    ;       low_tags_floats_pregen_yes.
+            % implies grade_var_low_tag_bits_use_2
+            % implies grade_var_merc_float_is_boxed_c_double
+
 :- type mlds_target
     --->    mlds_target_c(
                 mlds_c_dararep,
                 grade_var_nested_funcs,
-                grade_var_low_tag_bits_use,
                 grade_var_thread_safe,
                 mlds_c_gc,
                 mlds_c_trail,
                 mlds_c_perf_prof,
                 grade_var_merc_file,
-                grade_var_pregen,
-                grade_var_merc_float
+                low_tags_floats
             )
     ;       mlds_target_csharp
     ;       mlds_target_java.
@@ -308,10 +313,12 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             RBMM = grade_var_rbmm_yes,
             LLDSRBMM = llds_rbmm_yes(RBMMDebug, RBMMProf)
         ),
-        GradeStructure = grade_llds(LLDSGccConf, LowTagBitsUse, StackLen,
+        LowTagsFloats =
+            encode_low_tags_floats(Pregen, LowTagBitsUse, MercFloat),
+        GradeStructure = grade_llds(LLDSGccConf, StackLen,
             LLDSGc, LLDSTrailMinModel, LLDSThreadSafe,
             LLDSPerfProf, TermSizeProf, Debug, LLDebug, LLDSRBMM,
-            MercFile, Pregen, MercFloat)
+            MercFile, LowTagsFloats)
     ;
         Backend = grade_var_backend_mlds,
 
@@ -399,9 +406,11 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 MprofCall = grade_var_mprof_call_yes,
                 MLDSPerfProf = mlds_c_perf_prof_mprof(MprofTime, MprofMemory)
             ),
-            TargetC = mlds_target_c(MLDSCDataRep, NestedFuncs, LowTagBitsUse,
+            LowTagsFloats =
+                encode_low_tags_floats(Pregen, LowTagBitsUse, MercFloat),
+            TargetC = mlds_target_c(MLDSCDataRep, NestedFuncs,
                 ThreadSafe, MLDSGc, MLDSCTrail, MLDSPerfProf,
-                MercFile, Pregen, MercFloat),
+                MercFile, LowTagsFloats),
             GradeStructure = grade_mlds(TargetC, SSDebug)
         ;
             ( Target = grade_var_target_csharp
@@ -533,6 +542,22 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
         ),
         % XXX probably incomplete
         GradeStructure = grade_elds(SSDebug)
+    ).
+
+:- func encode_low_tags_floats(grade_var_pregen, grade_var_low_tag_bits_use,
+    grade_var_merc_float) = low_tags_floats.
+
+encode_low_tags_floats(Pregen, LowTagBitsUse, MercFloat) = LowTagsFloats :-
+    (
+        Pregen = grade_var_pregen_no,
+        LowTagsFloats = low_tags_floats_pregen_no(LowTagBitsUse, MercFloat)
+    ;
+        Pregen = grade_var_pregen_yes,
+        expect(unify(LowTagBitsUse, grade_var_low_tag_bits_use_2),
+            $pred, "pregen but LowTagBitsUse != 2"),
+        expect(unify(MercFloat, grade_var_merc_float_is_boxed_c_double),
+            $pred, "pregen but MercFloat != boxed double"),
+        LowTagsFloats = low_tags_floats_pregen_yes
     ).
 
 %---------------------------------------------------------------------------%

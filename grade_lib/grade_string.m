@@ -69,9 +69,9 @@ link_grade_str_llc_par_version = "1".
 grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
         PostProcessedGradeStr :-
     (
-        GradeStructure = grade_llds(GccConf, LowTagBitsUse, StackLen, LLDSGc,
+        GradeStructure = grade_llds(GccConf, StackLen, LLDSGc,
             LLDSTrailMinModel, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
-            Debug, LLDebug, LLDSRBMM, MercFile, Pregen, MercFloat),
+            Debug, LLDebug, LLDSRBMM, MercFile, LowTagsFloats),
 
         BinaryCompatStr = binary_compat_version_to_string(WhichGradeString),
         ( GccConf = llds_gcc_conf_none,             GccConfStr = "none"
@@ -81,8 +81,8 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
         ; GccConf = llds_gcc_conf_asm_jump,         GccConfStr = "asm_jump"
         ; GccConf = llds_gcc_conf_asm_fast,         GccConfStr = "asm_fast"
         ),
-        LowTagBitsUseStr =
-            low_tag_bits_use_to_str(WhichGradeString, LowTagBitsUse),
+        LowTagsFloatsStr =
+            low_tags_floats_to_str(WhichGradeString, LowTagsFloats),
         (
             LLDSThreadSafe = llds_thread_safe_no,
             ThreadSafeStr = thread_safe_to_str(grade_var_thread_safe_no),
@@ -153,8 +153,6 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
                 MinimalModelStr = ".dmmos"
             )
         ),
-        PregenStr = pregen_to_str(Pregen),
-        MercFloatStr = merc_float_to_str(WhichGradeString, MercFloat),
         (
             Debug = grade_var_debug_none,
             DebugStr = ""
@@ -201,18 +199,18 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
         ),
         MercFileStr = merc_file_to_str(WhichGradeString, MercFile),
         GradeStr = string.append_list([BinaryCompatStr,
-            GccConfStr, LowTagBitsUseStr, ThreadSafeStr, GcStr,
+            GccConfStr, LowTagsFloatsStr, ThreadSafeStr, GcStr,
             LLDSPerfProfStr, TermSizeProfStr,
             TrailStr, MinimalModelStr, MercFileStr,
-            PregenStr, MercFloatStr, DebugStr, LLDebugStr,
+            DebugStr, LLDebugStr,
             StackLenStr, RBMMStr, TScopeProfStr])
     ;
         GradeStructure = grade_mlds(MLDSTarget, SSDebug),
         SSDebugStr = ssdebug_to_str(WhichGradeString, SSDebug),
         (
-            MLDSTarget = mlds_target_c(DataRep, NestedFuncs, LowTagBitsUse,
+            MLDSTarget = mlds_target_c(DataRep, NestedFuncs,
                 ThreadSafe, MLDSCGc, MLDSCTrail, MLDSPerfProf,
-                MercFile, Pregen, MercFloat),
+                MercFile, LowTagsFloats),
             BinaryCompatStr =
                 binary_compat_version_to_string(WhichGradeString),
             (
@@ -229,8 +227,8 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
                 NestedFuncs = grade_var_nested_funcs_yes,
                 NestedFuncsStr = "_nest"
             ),
-            LowTagBitsUseStr =
-                low_tag_bits_use_to_str(WhichGradeString, LowTagBitsUse),
+            LowTagsFloatsStr =
+                low_tags_floats_to_str(WhichGradeString, LowTagsFloats),
             ( MLDSCGc = mlds_c_gc_none,         Gc = grade_var_gc_none
             ; MLDSCGc = mlds_c_gc_bdw,          Gc = grade_var_gc_bdw
             ; MLDSCGc = mlds_c_gc_bdw_debug,    Gc = grade_var_gc_bdw_debug
@@ -254,12 +252,10 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
                 MLDSPerfProfStr = mprof_to_string(MprofTime, MprofMemory)
             ),
             MercFileStr = merc_file_to_str(WhichGradeString, MercFile),
-            PregenStr = pregen_to_str(Pregen),
-            MercFloatStr = merc_float_to_str(WhichGradeString, MercFloat),
             GradeStr = string.append_list([BinaryCompatStr,
                 DataRepStr, NestedFuncsStr,
-                LowTagBitsUseStr, ThreadSafeStr, SSDebugStr, GcStr, TrailStr,
-                MLDSPerfProfStr, MercFileStr, PregenStr, MercFloatStr])
+                LowTagsFloatsStr, ThreadSafeStr, SSDebugStr, GcStr, TrailStr,
+                MLDSPerfProfStr, MercFileStr])
         ;
             MLDSTarget = mlds_target_csharp,
             GradeStr = string.append_list(["csharp", SSDebugStr])
@@ -340,56 +336,53 @@ mprof_to_string(grade_var_mprof_time_yes, grade_var_mprof_memory_no) =".prof".
 mprof_to_string(grade_var_mprof_time_yes, grade_var_mprof_memory_yes) =
     ".profall".
 
-:- func pregen_to_str(grade_var_pregen) = string.
-
-pregen_to_str(grade_var_pregen_no) = "".
-pregen_to_str(grade_var_pregen_yes) = ".pregen".
-
 :- func merc_file_to_str(which_grade_string, grade_var_merc_file) = string.
 
 merc_file_to_str(grade_string_user, _) = "".
 merc_file_to_str(grade_string_link_check, grade_var_merc_file_no) = "".
 merc_file_to_str(grade_string_link_check, grade_var_merc_file_yes) = ".file".
 
-:- func low_tag_bits_use_to_str(which_grade_string, grade_var_low_tag_bits_use)
-    = string.
+:- func low_tags_floats_to_str(which_grade_string, low_tags_floats) = string.
 
-low_tag_bits_use_to_str(WhichGradeString, LowTagBits) = Str :-
+low_tags_floats_to_str(WhichGradeString, LowTagsFloats) = Str :-
     (
-        WhichGradeString = grade_string_user,
-        Str = ""
-    ;
-        WhichGradeString = grade_string_link_check,
-        (
-            LowTagBits = grade_var_low_tag_bits_use_0,
-            Str = ".notags"
-        ;
-            LowTagBits = grade_var_low_tag_bits_use_2,
-            Str = ".tags2"
-        ;
-            LowTagBits = grade_var_low_tag_bits_use_3,
-            Str = ".tags3"
-        )
-    ).
-
-:- func merc_float_to_str(which_grade_string, grade_var_merc_float) = string.
-
-merc_float_to_str(WhichGradeString, MercFloat) = Str :-
-    (
-        MercFloat = grade_var_merc_float_is_boxed_c_double,
-        Str = ""
-    ;
-        MercFloat = grade_var_merc_float_is_unboxed_c_double,
+        LowTagsFloats = low_tags_floats_pregen_no(LowTagBits, MercFloat),
         (
             WhichGradeString = grade_string_user,
-            Str = ""
+            TagsStr = ""
         ;
             WhichGradeString = grade_string_link_check,
-            Str = ".ubf"
-        )
+            (
+                LowTagBits = grade_var_low_tag_bits_use_0,
+                TagsStr = ".notags"
+            ;
+                LowTagBits = grade_var_low_tag_bits_use_2,
+                TagsStr = ".tags2"
+            ;
+                LowTagBits = grade_var_low_tag_bits_use_3,
+                TagsStr = ".tags3"
+            )
+        ),
+        (
+            MercFloat = grade_var_merc_float_is_boxed_c_double,
+            FloatStr = ""
+        ;
+            MercFloat = grade_var_merc_float_is_unboxed_c_double,
+            (
+                WhichGradeString = grade_string_user,
+                FloatStr = ""
+            ;
+                WhichGradeString = grade_string_link_check,
+                FloatStr = ".ubf"
+            )
+        ;
+            MercFloat = grade_var_merc_float_is_unboxed_c_float,
+            FloatStr = ".spf"
+        ),
+        Str = TagsStr ++ FloatStr
     ;
-        MercFloat = grade_var_merc_float_is_unboxed_c_float,
-        Str = ".spf"
+        LowTagsFloats = low_tags_floats_pregen_yes,
+        Str = ".tags2.pregen"
     ).
 
 %---------------------------------------------------------------------------%
