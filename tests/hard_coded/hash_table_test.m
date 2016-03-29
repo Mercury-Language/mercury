@@ -41,18 +41,16 @@ main(!IO) :-
         !:HT = hash_table.init(int_hash, 1, MaxOccupancy),
 
         io.write_string("Inserting elements\n", !IO),
-        int.fold_up(do_insert, 0, Max - 1, !HT),
+        inst_preserving_fold_up(do_insert, 0, Max - 1, !HT),
         trace [runtime(env("HASH_TABLE_STATS"))] (
             impure report_stats
         ),
 
         io.write_string("Looking up elements\n", !IO),
-        int.fold_up(do_lookup, 0, Max - 1, !HT),
+        inst_preserving_fold_up(do_lookup, 0, Max - 1, !HT),
         trace [runtime(env("HASH_TABLE_STATS"))] (
             impure report_stats
         ),
-
-        unsafe_hash_table_cast(!HT),
 
         NumOccupants0 = hash_table.num_occupants(!.HT),
         ( NumOccupants0 = Max ->
@@ -63,12 +61,10 @@ main(!IO) :-
 
         Half = Max / 2,
         io.write_string("Deleting some elements\n", !IO),
-        int.fold_up(do_delete, 0, Half - 1, !HT),
+        inst_preserving_fold_up(do_delete, 0, Half - 1, !HT),
         trace [runtime(env("HASH_TABLE_STATS"))] (
             impure report_stats
         ),
-
-        unsafe_hash_table_cast(!HT),
 
         NumOccupants = hash_table.num_occupants(!.HT),
         ( NumOccupants = Max - Half ->
@@ -85,18 +81,31 @@ main(!IO) :-
         ),
 
         io.write_string("Replacing elements\n", !IO),
-        int.fold_up(do_replace_neg, 0, Max - 1, !HT),
+        inst_preserving_fold_up(do_replace_neg, 0, Max - 1, !HT),
         trace [runtime(env("HASH_TABLE_STATS"))] (
             impure report_stats
         ),
 
         io.write_string("Looking up elements\n", !IO),
-        int.fold_up(do_lookup_neg, 0, Max - 1, !HT),
+        inst_preserving_fold_up(do_lookup_neg, 0, Max - 1, !HT),
         trace [runtime(env("HASH_TABLE_STATS"))] (
             impure report_stats
         ),
 
         _ = !.HT
+    ).
+
+    % Or simply hash_table_di, hash_table_uo.
+:- pred inst_preserving_fold_up(pred(int, T, T), int, int, T, T).
+:- mode inst_preserving_fold_up(pred(in, di(I), out(I)) is det,
+    in, in, di(I), out(I)) is det.
+
+inst_preserving_fold_up(P, Lo, Hi, !A) :-
+    ( if Lo =< Hi then
+        P(Lo, !A),
+        inst_preserving_fold_up(P, Lo + 1, Hi, !A)
+    else
+        true
     ).
 
 :- pred do_insert(int::in, hash_table(int, int)::hash_table_di,
@@ -138,27 +147,3 @@ do_delete(I, !HT) :-
 
 do_replace_neg(I, !HT) :-
     hash_table.set(I, -I, !HT).
-
-:- pred unsafe_hash_table_cast(hash_table(T, T)::in,
-    hash_table(T, T)::out(hash_table)) is det.
-
-:- pragma foreign_proc("C",
-    unsafe_hash_table_cast(HT0::in, HT::out(hash_table)),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    HT = HT0;
-").
-
-:- pragma foreign_proc("C#",
-    unsafe_hash_table_cast(HT0::in, HT::out(hash_table)),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    HT = HT0;
-").
-
-:- pragma foreign_proc("Java",
-    unsafe_hash_table_cast(HT0::in, HT::out(hash_table)),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    HT = HT0;
-").
