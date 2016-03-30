@@ -1009,15 +1009,9 @@ time.ctime(Time) = asctime(localtime(Time)).
 
 %---------------------------------------------------------------------------%
 
-% XXX This needs to be in the interface because pragma export doesn't work yet
-% on the .NET backend and io.m needs to access this.
-:- interface.
-
-:- type time_t_rep.
-
+    % For io.m
+    %
 :- func construct_time_t(time_t_rep) = time_t.
-
-:- implementation.
 
 :- pragma foreign_export("C", construct_time_t(in) = out,
     "ML_construct_time_t").
