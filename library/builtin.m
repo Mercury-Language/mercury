@@ -418,10 +418,12 @@
     % that there is only one solution. However, they can only be used in
     % impure code.
     %
+:- pragma obsolete(get_one_solution/1).
 :- impure func get_one_solution(pred(T)) = T.
 :-        mode get_one_solution(pred(out) is cc_multi) = out is det.
 :-        mode get_one_solution(pred(out) is cc_nondet) = out is semidet.
 
+:- pragma obsolete(get_one_solution_io/4).
 :- impure pred get_one_solution_io(pred(T, IO, IO), T, IO, IO).
 :-        mode get_one_solution_io(pred(out, di, uo) is cc_multi,
         out, di, uo) is det.
