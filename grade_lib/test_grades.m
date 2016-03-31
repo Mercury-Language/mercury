@@ -1,6 +1,10 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% Copyright (C) 2016 The Mercury team.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 
 :- module test_grades.
 :- interface.
@@ -13,13 +17,14 @@
 
 :- implementation.
 
-:- import_module grade_setup.
-:- import_module grade_solver.
-:- import_module grade_spec.
-:- import_module grade_state.
-:- import_module grade_string.
-:- import_module grade_structure.
-:- import_module grade_vars.
+:- import_module grade_lib.
+:- import_module grade_lib.grade_setup.
+:- import_module grade_lib.grade_solver.
+:- import_module grade_lib.grade_spec.
+:- import_module grade_lib.grade_state.
+:- import_module grade_lib.grade_string.
+:- import_module grade_lib.grade_structure.
+:- import_module grade_lib.grade_vars.
 :- import_module var_value_names.
 
 :- import_module bool.

@@ -1,12 +1,16 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% Copyright (C) 2016 The Mercury team.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 
-:- module grade_string.
+:- module grade_lib.grade_string.
 :- interface.
 
-:- import_module grade_solver.
-:- import_module grade_structure.
+:- import_module grade_lib.grade_solver.
+:- import_module grade_lib.grade_structure.
 
 :- import_module maybe.
 
@@ -28,8 +32,8 @@
 
 :- implementation.
 
-:- import_module grade_spec.
-:- import_module grade_vars.
+:- import_module grade_lib.grade_spec.
+:- import_module grade_lib.grade_vars.
 
 :- import_module list.
 :- import_module map.
@@ -788,5 +792,5 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module grade_string.
+:- end_module grade_lib.grade_string.
 %---------------------------------------------------------------------------%

@@ -1,8 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% Copyright (C) 2016 The Mercury team.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 
-:- module grade_spec.
+:- module grade_lib.grade_spec.
 :- interface.
 
 :- import_module list.
@@ -881,5 +885,5 @@ init_requirement_specs = [
 ].
 
 %---------------------------------------------------------------------------%
-:- end_module grade_spec.
+:- end_module grade_lib.grade_spec.
 %---------------------------------------------------------------------------%

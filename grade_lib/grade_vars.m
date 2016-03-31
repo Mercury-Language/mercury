@@ -1,11 +1,15 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% Copyright (C) 2016 The Mercury team.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 
-:- module grade_vars.
+:- module grade_lib.grade_vars.
 :- interface.
 
-:- import_module grade_solver.
+:- import_module grade_lib.grade_solver.
 
 %---------------------------------------------------------------------------%
 
@@ -199,7 +203,7 @@
 
 :- implementation.
 
-:- import_module grade_spec.
+:- import_module grade_lib.grade_spec.
 
 :- import_module map.
 :- import_module require.
@@ -527,5 +531,5 @@ success_map_to_grade_vars(!.SuccMap) = GradeVars :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module grade_vars.
+:- end_module grade_lib.grade_vars.
 %---------------------------------------------------------------------------%

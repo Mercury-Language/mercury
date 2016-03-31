@@ -1,6 +1,10 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% Copyright (C) 2016 The Mercury team.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 
 :- module try_all_grade_structs.
 :- interface.
@@ -13,13 +17,14 @@
 
 :- implementation.
 
-:- import_module grade_setup.
-:- import_module grade_solver.
-:- import_module grade_spec.
-:- import_module grade_state.
-:- import_module grade_string.
-:- import_module grade_structure.
-:- import_module grade_vars.
+:- import_module grade_lib.
+:- import_module grade_lib.grade_setup.
+:- import_module grade_lib.grade_solver.
+:- import_module grade_lib.grade_spec.
+:- import_module grade_lib.grade_state.
+:- import_module grade_lib.grade_string.
+:- import_module grade_lib.grade_structure.
+:- import_module grade_lib.grade_vars.
 
 :- import_module bool.
 :- import_module int.
@@ -55,7 +60,7 @@ generate_all_tests(GradeStructure) :-
 
 %---------------------%
 
-:- pred generate_llds_tests(grade_structure_test::out) is multi.
+:- pred generate_llds_tests(grade_structure::out) is multi.
 
 generate_llds_tests(GradeStructure) :-
     ( GccConf = llds_gcc_conf_none
@@ -138,7 +143,7 @@ generate_llds_tests(GradeStructure) :-
 
 %---------------------%
 
-:- pred generate_mlds_tests(grade_structure_test::out) is multi.
+:- pred generate_mlds_tests(grade_structure::out) is multi.
 
 generate_mlds_tests(GradeStructure) :-
     ( generate_mlds_c_target(MLDSTarget)
@@ -186,7 +191,7 @@ generate_mlds_c_target(MLDSCTarget) :-
 
 %---------------------%
 
-:- pred generate_elds_tests(grade_structure_test::out) is multi.
+:- pred generate_elds_tests(grade_structure::out) is multi.
 
 generate_elds_tests(GradeStructure) :-
     generate_grade_var_ssdebug(SSDebug),
@@ -227,7 +232,7 @@ generate_low_tags_floats(LowTagsFloats) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred check_grade_struct(solver_info::in, grade_structure_test::in,
+:- pred check_grade_struct(solver_info::in, grade_structure::in,
     int::in, int::out, io::di, io::uo) is det.
 
 check_grade_struct(SolverInfo0, GradeStructure, !N, !IO) :-

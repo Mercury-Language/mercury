@@ -1,11 +1,15 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% Copyright (C) 2016 The Mercury team.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 
-:- module grade_state.
+:- module grade_lib.grade_state.
 :- interface.
 
-:- import_module grade_spec.
+:- import_module grade_lib.grade_spec.
 
 :- import_module list.
 :- import_module map.
@@ -75,5 +79,5 @@
             ).
 
 %---------------------------------------------------------------------------%
-:- end_module grade_state.
+:- end_module grade_lib.grade_state.
 %---------------------------------------------------------------------------%

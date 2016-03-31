@@ -1,12 +1,16 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% Copyright (C) 2016 The Mercury team.
+% This file may only be copied under the terms of the GNU Library General
+% Public License - see the file COPYING.LIB in the Mercury distribution.
+%---------------------------------------------------------------------------%
 
-:- module grade_setup.
+:- module grade_lib.grade_setup.
 :- interface.
 
-:- import_module grade_spec.
-:- import_module grade_state.
+:- import_module grade_lib.grade_spec.
+:- import_module grade_lib.grade_state.
 
 :- import_module maybe.
 
@@ -388,5 +392,5 @@ known_var_values(SolverVarMap, SearchVarId, SearchValueId) :-
 solver_var_value_project_id(SolverVarValue) = SolverVarValue ^ svv_id.
 
 %---------------------------------------------------------------------------%
-:- end_module grade_setup.
+:- end_module grade_lib.grade_setup.
 %---------------------------------------------------------------------------%
