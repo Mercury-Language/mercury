@@ -322,6 +322,9 @@ Changes to the Mercury compiler:
 * The -generate-module-order and --imports-graph options no longer imply
   --generate-dependencies.
 
+* The compiler does not set the runtime search path when
+  --mercury-linkage=static is used.
+
 Change to the Mercury debugger:
 
 * Interactive queries are now supported on OS X.
