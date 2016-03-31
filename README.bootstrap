@@ -48,8 +48,7 @@ distribution by issuing the following command sequence:
 
 ----
 make realclean
-aclocal -I m4
-autoconf
+./prepare.sh
 ./configure
 make
 sudo make install

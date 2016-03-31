@@ -9,9 +9,7 @@
 #
 # You also need autoconf (version 2.58 or later) (and hence GNU m4) installed.
 #
-# Step 0.  aclocal -I m4
-#
-# Step 1.  autoconf
+# Step 1.  ./prepare.sh
 #
 # Step 2.  ./configure
 #
@@ -44,8 +42,7 @@
 
 parallel=-j3
 
-aclocal -I m4 &&
-autoconf &&
+./prepare.sh &&
 ./configure &&
 touch Mmake.params &&
 touch Mercury.options &&
