@@ -13,10 +13,7 @@
     --->    grade_llds(
                 llds_gcc_conf,
                 grade_var_stack_len,
-                llds_gc,
-                llds_trail_minmodel,
-                llds_thread_safe,
-                llds_perf_prof,
+                llds_minmodel,
                 grade_var_term_size_prof,
                 grade_var_debug,
                 grade_var_lldebug,
@@ -31,6 +28,33 @@
     ;       grade_elds(
                 grade_var_ssdebug
             ).
+
+:- type llds_minmodel
+    --->    llds_minmodel_no(
+                llds_gc,
+                c_trail,
+                llds_thread_safe,
+                llds_perf_prof
+            )
+    ;       llds_minmodel_yes(
+                llds_minmodel_kind,
+                llds_minmodel_gc
+                % c_trail_no
+                % llds_thread_safe_no
+                % llds_perf_prof_none
+            ).
+
+:- type c_trail
+    --->    c_trail_no
+    ;       c_trail_yes(
+                grade_var_trail_segments
+            ).
+
+:- type llds_minmodel_kind
+    --->    lmk_stack_copy
+    ;       lmk_stack_copy_debug
+    ;       lmk_own_stack
+    ;       lmk_own_stack_debug.
 
     % We could record whether we use gcc registers and gcc gotos independently.
     % (We use gcc labels only if we use gcc gots, so our choices on those
@@ -50,26 +74,16 @@
     ;       llds_gcc_conf_asm_jump    % yes     yes     no
     ;       llds_gcc_conf_asm_fast.   % yes     yes     yes
 
-:- type llds_trail_minmodel
-    --->    ltm_none
-    ;       ltm_trail(
-                grade_var_trail_segments
-            )
-    ;       ltm_minmodel(
-                llds_minmodel    
-            ).
-
-:- type llds_minmodel
-    --->    lm_stack_copy
-    ;       lm_stack_copy_debug
-    ;       lm_own_stack
-    ;       lm_own_stack_debug.
-
 :- type llds_gc
     --->    llds_gc_none
     ;       llds_gc_bdw
     ;       llds_gc_bdw_debug
     ;       llds_gc_history.
+
+:- type llds_minmodel_gc
+    --->    llds_mm_gc_none
+    ;       llds_mm_gc_bdw
+    ;       llds_mm_gc_bdw_debug.
 
 :- type llds_thread_safe
     --->    llds_thread_safe_no
@@ -107,7 +121,7 @@
                 grade_var_nested_funcs,
                 grade_var_thread_safe,
                 mlds_c_gc,
-                mlds_c_trail,
+                c_trail,
                 mlds_c_perf_prof,
                 grade_var_merc_file,
                 low_tags_floats
@@ -125,12 +139,6 @@
     ;       mlds_c_gc_bdw_debug
     ;       mlds_c_gc_accurate
     ;       mlds_c_gc_history.
-
-:- type mlds_c_trail
-    --->    mlds_c_trail_no
-    ;       mlds_c_trail_yes(
-                grade_var_trail_segments
-            ).
 
 :- type mlds_c_perf_prof
     --->    mlds_c_perf_prof_none
@@ -228,79 +236,109 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             )
         ),
         (
-            Trail = grade_var_trail_no,
+            MinimalModel = grade_var_minmodel_no,
             (
-                MinimalModel = grade_var_minmodel_no,
-                LLDSTrailMinModel = ltm_none
+                Gc = grade_var_gc_none,
+                LLDSGc = llds_gc_none
             ;
-                MinimalModel = grade_var_minmodel_stack_copy,
-                LLDSTrailMinModel = ltm_minmodel(lm_stack_copy)
+                Gc = grade_var_gc_target_native,
+                unexpected($pred, "Target = c, Gc = target_native")
             ;
-                MinimalModel = grade_var_minmodel_stack_copy_debug,
-                LLDSTrailMinModel = ltm_minmodel(lm_stack_copy_debug)
+                Gc = grade_var_gc_bdw,
+                LLDSGc = llds_gc_bdw
             ;
-                MinimalModel = grade_var_minmodel_own_stack,
-                LLDSTrailMinModel = ltm_minmodel(lm_own_stack)
+                Gc = grade_var_gc_bdw_debug,
+                LLDSGc = llds_gc_bdw_debug
             ;
-                MinimalModel = grade_var_minmodel_own_stack_debug,
-                LLDSTrailMinModel = ltm_minmodel(lm_own_stack_debug)
-            )
-        ;
-            Trail = grade_var_trail_yes,
-            expect(unify(MinimalModel, grade_var_minmodel_no), $pred,
-                "MinimalModel != grade_var_minmodel_no"),
-            LLDSTrailMinModel = ltm_trail(TrailSegments)
-        ),
-        (
-            Gc = grade_var_gc_none,
-            LLDSGc = llds_gc_none
-        ;
-            Gc = grade_var_gc_target_native,
-            unexpected($pred, "Target = c, Gc = target_native")
-        ;
-            Gc = grade_var_gc_bdw,
-            LLDSGc = llds_gc_bdw
-        ;
-            Gc = grade_var_gc_bdw_debug,
-            LLDSGc = llds_gc_bdw_debug
-        ;
-            Gc = grade_var_gc_accurate,
-            unexpected($pred, "Backend = llds, Gc = accurate")
-        ;
-            Gc = grade_var_gc_history,
-            LLDSGc = llds_gc_history
-        ),
-        (
-            ThreadSafe = grade_var_thread_safe_no,
-            expect(unify(TScopeProf, grade_var_tscope_prof_no), $pred,
-                "TScopeProf != grade_var_tscope_prof_no"),
-            LLDSThreadSafe = llds_thread_safe_no
-        ;
-            ThreadSafe = grade_var_thread_safe_yes,
-            LLDSThreadSafe = llds_thread_safe_yes(TScopeProf)
-        ),
-        (
-            DeepProf = grade_var_deep_prof_no,
+                Gc = grade_var_gc_accurate,
+                unexpected($pred, "Backend = llds, Gc = accurate")
+            ;
+                Gc = grade_var_gc_history,
+                LLDSGc = llds_gc_history
+            ),
             (
-                MprofCall = grade_var_mprof_call_no,
+                Trail = grade_var_trail_no,
+                CTrail = c_trail_no
+            ;
+                Trail = grade_var_trail_yes,
+                CTrail = c_trail_yes(TrailSegments)
+            ),
+            (
+                ThreadSafe = grade_var_thread_safe_no,
+                expect(unify(TScopeProf, grade_var_tscope_prof_no), $pred,
+                    "TScopeProf != grade_var_tscope_prof_no"),
+                LLDSThreadSafe = llds_thread_safe_no
+            ;
+                ThreadSafe = grade_var_thread_safe_yes,
+                LLDSThreadSafe = llds_thread_safe_yes(TScopeProf)
+            ),
+            (
+                DeepProf = grade_var_deep_prof_no,
+                (
+                    MprofCall = grade_var_mprof_call_no,
+                    expect(unify(MprofTime, grade_var_mprof_time_no), $pred,
+                        "MprofTime != grade_var_mprof_time_no"),
+                    expect(unify(MprofMemory, grade_var_mprof_memory_no), $pred,
+                        "MprofMemory != grade_var_mprof_memory_no"),
+                    LLDSPerfProf = llds_perf_prof_none
+                ;
+                    MprofCall = grade_var_mprof_call_yes,
+                    LLDSPerfProf = llds_perf_prof_mprof(MprofTime, MprofMemory)
+                )
+            ;
+                DeepProf = grade_var_deep_prof_yes,
+                expect(unify(MprofCall, grade_var_mprof_call_no), $pred,
+                    "MprofCall != grade_var_mprof_call_no"),
                 expect(unify(MprofTime, grade_var_mprof_time_no), $pred,
                     "MprofTime != grade_var_mprof_time_no"),
                 expect(unify(MprofMemory, grade_var_mprof_memory_no), $pred,
                     "MprofMemory != grade_var_mprof_memory_no"),
-                LLDSPerfProf = llds_perf_prof_none
-            ;
-                MprofCall = grade_var_mprof_call_yes,
-                LLDSPerfProf = llds_perf_prof_mprof(MprofTime, MprofMemory)
-            )
+                LLDSPerfProf = llds_perf_prof_deep
+            ),
+            MinModel = llds_minmodel_no(LLDSGc, CTrail, LLDSThreadSafe,
+                LLDSPerfProf)
         ;
-            DeepProf = grade_var_deep_prof_yes,
+            (
+                MinimalModel = grade_var_minmodel_stack_copy,
+                MinimalModelKind = lmk_stack_copy
+            ;
+                MinimalModel = grade_var_minmodel_stack_copy_debug,
+                MinimalModelKind = lmk_stack_copy_debug
+            ;
+                MinimalModel = grade_var_minmodel_own_stack,
+                MinimalModelKind = lmk_own_stack
+            ;
+                MinimalModel = grade_var_minmodel_own_stack_debug,
+                MinimalModelKind = lmk_own_stack_debug
+            ),
+            (
+                Gc = grade_var_gc_none,
+                MinModelGc = llds_mm_gc_none
+            ;
+                Gc = grade_var_gc_target_native,
+                unexpected($pred, "Target = c, Gc = target_native")
+            ;
+                Gc = grade_var_gc_bdw,
+                MinModelGc = llds_mm_gc_bdw
+            ;
+                Gc = grade_var_gc_bdw_debug,
+                MinModelGc = llds_mm_gc_bdw_debug
+            ;
+                Gc = grade_var_gc_accurate,
+                unexpected($pred, "Backend = llds, Gc = accurate")
+            ;
+                Gc = grade_var_gc_history,
+                unexpected($pred, "minimal model, Gc = history")
+            ),
+            expect(unify(Trail, grade_var_trail_no), $pred,
+                "Trail != grade_var_trail_no"),
+            expect(unify(ThreadSafe, grade_var_thread_safe_no), $pred,
+                "ThreadSafe != grade_var_thread_safe_no"),
+            expect(unify(DeepProf, grade_var_deep_prof_no), $pred,
+                "DeepProf != grade_var_deep_prof_no"),
             expect(unify(MprofCall, grade_var_mprof_call_no), $pred,
                 "MprofCall != grade_var_mprof_call_no"),
-            expect(unify(MprofTime, grade_var_mprof_time_no), $pred,
-                "MprofTime != grade_var_mprof_time_no"),
-            expect(unify(MprofMemory, grade_var_mprof_memory_no), $pred,
-                "MprofMemory != grade_var_mprof_memory_no"),
-            LLDSPerfProf = llds_perf_prof_deep
+            MinModel = llds_minmodel_yes(MinimalModelKind, MinModelGc)
         ),
         (
             RBMM = grade_var_rbmm_no,
@@ -315,9 +353,8 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
         ),
         LowTagsFloats =
             encode_low_tags_floats(Pregen, LowTagBitsUse, MercFloat),
-        GradeStructure = grade_llds(LLDSGccConf, StackLen,
-            LLDSGc, LLDSTrailMinModel, LLDSThreadSafe,
-            LLDSPerfProf, TermSizeProf, Debug, LLDebug, LLDSRBMM,
+        GradeStructure = grade_llds(LLDSGccConf, StackLen, MinModel,
+            TermSizeProf, Debug, LLDebug, LLDSRBMM,
             MercFile, LowTagsFloats)
     ;
         Backend = grade_var_backend_mlds,
@@ -390,10 +427,10 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             ),
             (
                 Trail = grade_var_trail_no,
-                MLDSCTrail = mlds_c_trail_no
+                CTrail = c_trail_no
             ;
                 Trail = grade_var_trail_yes,
-                MLDSCTrail = mlds_c_trail_yes(TrailSegments)
+                CTrail = c_trail_yes(TrailSegments)
             ),
             (
                 MprofCall = grade_var_mprof_call_no,
@@ -409,7 +446,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             LowTagsFloats =
                 encode_low_tags_floats(Pregen, LowTagBitsUse, MercFloat),
             TargetC = mlds_target_c(MLDSCDataRep, NestedFuncs,
-                ThreadSafe, MLDSGc, MLDSCTrail, MLDSPerfProf,
+                ThreadSafe, MLDSGc, CTrail, MLDSPerfProf,
                 MercFile, LowTagsFloats),
             GradeStructure = grade_mlds(TargetC, SSDebug)
         ;
@@ -438,7 +475,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 "MprofMemory != grade_var_mprof_memory_no"),
             % The definition of MR_NEW_MERCURYFILE_STRUCT applies only
             % to grades that target C. When targeting other languages,
-            % we don't insist on MercFile = grade_var_merc_file_no. 
+            % we don't insist on MercFile = grade_var_merc_file_no.
             expect(unify(Pregen, grade_var_pregen_no), $pred,
                 "Pregen != grade_var_pregen_no"),
             (
@@ -527,7 +564,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             "RBMMProf != grade_var_rbmm_prof_no"),
         % The definition of MR_NEW_MERCURYFILE_STRUCT applies only
         % to grades that target C. When targeting other languages,
-        % we don't insist on MercFile = grade_var_merc_file_no. 
+        % we don't insist on MercFile = grade_var_merc_file_no.
         expect(unify(Pregen, grade_var_pregen_no), $pred,
             "Pregen != grade_var_pregen_no"),
         (

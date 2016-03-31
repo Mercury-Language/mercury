@@ -190,13 +190,17 @@
 
 %---------------------------------------------------------------------------%
 
+:- type specs_version
+    --->    specs_version_0
+    ;       specs_version_1.
+
 :- type solver_var_spec
     --->    solver_var_spec(
                 svs_var                     :: solver_var_id,
                 svs_values                  :: list(solver_var_value_id)
             ).
 
-:- func init_solver_var_specs = list(solver_var_spec).
+:- func init_solver_var_specs(specs_version) = list(solver_var_spec).
 
 %---------------------------------------------------------------------------%
 
@@ -223,7 +227,25 @@
 
 %---------------------------------------------------------------------------%
 
-init_solver_var_specs = [
+init_solver_var_specs(SpecsVersion) = Specs :-
+    (
+        SpecsVersion = specs_version_0,
+        StackLenPrefOrder =
+            [svalue_stack_len_std, svalue_stack_len_segments,
+            svalue_stack_len_extend],
+        GcPrefOrder = 
+            [svalue_gc_none, svalue_gc_bdw, svalue_gc_target_native,
+            svalue_gc_accurate, svalue_gc_bdw_debug, svalue_gc_history]
+    ;
+        SpecsVersion = specs_version_1,
+        StackLenPrefOrder =
+            [svalue_stack_len_segments, svalue_stack_len_std,
+            svalue_stack_len_extend],
+        GcPrefOrder = 
+            [svalue_gc_bdw, svalue_gc_target_native, svalue_gc_accurate,
+            svalue_gc_bdw_debug, svalue_gc_none, svalue_gc_history]
+    ),
+
     % The order of solver variables here is the order in which labeling
     % will try to choose a variable to bind.
     %
@@ -235,107 +257,105 @@ init_solver_var_specs = [
     % before constraint solving starts. By putting them at the start,
     % the very first labeling step will skip over them; later labelling steps
     % won't have to look at them.
+    Specs = [
+        solver_var_spec(svar_ac_gcc_regs_avail,
+            [svalue_ac_gcc_regs_avail_no,
+            svalue_ac_gcc_regs_avail_yes]),
+        solver_var_spec(svar_ac_gcc_gotos_avail,
+            [svalue_ac_gcc_gotos_avail_no,
+            svalue_ac_gcc_gotos_avail_yes]),
+        solver_var_spec(svar_ac_gcc_labels_avail,
+            [svalue_ac_gcc_labels_avail_no,
+            svalue_ac_gcc_labels_avail_yes]),
+        solver_var_spec(svar_ac_low_tag_bits_avail,
+            [svalue_ac_low_tag_bits_avail_0,
+            svalue_ac_low_tag_bits_avail_2,
+            svalue_ac_low_tag_bits_avail_3]),
+        solver_var_spec(svar_ac_size_of_double,
+            [svalue_ac_size_of_double_eq_ptr,
+            svalue_ac_size_of_double_ne_ptr]),
+        solver_var_spec(svar_ac_merc_file,
+            [svalue_ac_merc_file_no, svalue_ac_merc_file_yes]),
 
-    solver_var_spec(svar_ac_gcc_regs_avail,
-        [svalue_ac_gcc_regs_avail_no,
-        svalue_ac_gcc_regs_avail_yes]),
-    solver_var_spec(svar_ac_gcc_gotos_avail,
-        [svalue_ac_gcc_gotos_avail_no,
-        svalue_ac_gcc_gotos_avail_yes]),
-    solver_var_spec(svar_ac_gcc_labels_avail,
-        [svalue_ac_gcc_labels_avail_no,
-        svalue_ac_gcc_labels_avail_yes]),
-    solver_var_spec(svar_ac_low_tag_bits_avail,
-        [svalue_ac_low_tag_bits_avail_0,
-        svalue_ac_low_tag_bits_avail_2,
-        svalue_ac_low_tag_bits_avail_3]),
-    solver_var_spec(svar_ac_size_of_double,
-        [svalue_ac_size_of_double_eq_ptr,
-        svalue_ac_size_of_double_ne_ptr]),
-    solver_var_spec(svar_ac_merc_file,
-        [svalue_ac_merc_file_no, svalue_ac_merc_file_yes]),
+        solver_var_spec(svar_backend,
+            [svalue_backend_mlds, svalue_backend_llds, svalue_backend_elds]),
+        solver_var_spec(svar_datarep,
+            [svalue_datarep_heap_cells, svalue_datarep_classes,
+            svalue_datarep_erlang]),
+        solver_var_spec(svar_target,
+            [svalue_target_c, svalue_target_csharp,
+            svalue_target_java, svalue_target_erlang]),
+        solver_var_spec(svar_nested_funcs,
+            [svalue_nested_funcs_no, svalue_nested_funcs_yes]),
 
-    solver_var_spec(svar_backend,
-        [svalue_backend_mlds, svalue_backend_llds, svalue_backend_elds]),
-    solver_var_spec(svar_datarep,
-        [svalue_datarep_heap_cells, svalue_datarep_classes,
-        svalue_datarep_erlang]),
-    solver_var_spec(svar_target,
-        [svalue_target_c, svalue_target_csharp,
-        svalue_target_java, svalue_target_erlang]),
-    solver_var_spec(svar_nested_funcs,
-        [svalue_nested_funcs_no, svalue_nested_funcs_yes]),
+        solver_var_spec(svar_gcc_regs_use,
+            [svalue_gcc_regs_use_yes, svalue_gcc_regs_use_no]),
+        solver_var_spec(svar_gcc_gotos_use,
+            [svalue_gcc_gotos_use_yes, svalue_gcc_gotos_use_no]),
+        solver_var_spec(svar_gcc_labels_use,
+            [svalue_gcc_labels_use_yes, svalue_gcc_labels_use_no]),
 
-    solver_var_spec(svar_gcc_regs_use,
-        [svalue_gcc_regs_use_yes, svalue_gcc_regs_use_no]),
-    solver_var_spec(svar_gcc_gotos_use,
-        [svalue_gcc_gotos_use_yes, svalue_gcc_gotos_use_no]),
-    solver_var_spec(svar_gcc_labels_use,
-        [svalue_gcc_labels_use_yes, svalue_gcc_labels_use_no]),
+        solver_var_spec(svar_pregen,
+            [svalue_pregen_no, svalue_pregen_yes]),
+        solver_var_spec(svar_low_tag_bits_use,
+            [svalue_low_tag_bits_use_3, svalue_low_tag_bits_use_2,
+            svalue_low_tag_bits_use_0]),
 
-    solver_var_spec(svar_pregen,
-        [svalue_pregen_no, svalue_pregen_yes]),
-    solver_var_spec(svar_low_tag_bits_use,
-        [svalue_low_tag_bits_use_3, svalue_low_tag_bits_use_2,
-        svalue_low_tag_bits_use_0]),
+        solver_var_spec(svar_stack_len,
+            StackLenPrefOrder),
+        solver_var_spec(svar_trail,
+            [svalue_trail_no, svalue_trail_yes]),
+        solver_var_spec(svar_trail_segments,
+            [svalue_trail_segments_yes, svalue_trail_segments_no]),
 
-    solver_var_spec(svar_stack_len,
-        [svalue_stack_len_segments, svalue_stack_len_std,
-        svalue_stack_len_extend]),
-    solver_var_spec(svar_trail,
-        [svalue_trail_no, svalue_trail_yes]),
-    solver_var_spec(svar_trail_segments,
-        [svalue_trail_segments_yes, svalue_trail_segments_no]),
+        solver_var_spec(svar_minmodel,
+            [svalue_minmodel_no,
+            svalue_minmodel_stack_copy, svalue_minmodel_stack_copy_debug,
+            svalue_minmodel_own_stack, svalue_minmodel_own_stack_debug]),
 
-    solver_var_spec(svar_minmodel,
-        [svalue_minmodel_no,
-        svalue_minmodel_stack_copy, svalue_minmodel_stack_copy_debug,
-        svalue_minmodel_own_stack, svalue_minmodel_own_stack_debug]),
+        solver_var_spec(svar_thread_safe,
+            [svalue_thread_safe_no, svalue_thread_safe_yes]),
 
-    solver_var_spec(svar_thread_safe,
-        [svalue_thread_safe_no, svalue_thread_safe_yes]),
+        solver_var_spec(svar_gc,
+            GcPrefOrder),
 
-    solver_var_spec(svar_gc,
-        [svalue_gc_bdw, svalue_gc_target_native, svalue_gc_accurate,
-        svalue_gc_bdw_debug, svalue_gc_none, svalue_gc_history]),
+        solver_var_spec(svar_deep_prof,
+            [svalue_deep_prof_no, svalue_deep_prof_yes]),
+        solver_var_spec(svar_mprof_call,
+            [svalue_mprof_call_no, svalue_mprof_call_yes]),
+        solver_var_spec(svar_mprof_time,
+            [svalue_mprof_time_no, svalue_mprof_time_yes]),
+        solver_var_spec(svar_mprof_memory,
+            [svalue_mprof_memory_no, svalue_mprof_memory_yes]),
+        solver_var_spec(svar_tscope_prof,
+            [svalue_tscope_prof_no, svalue_tscope_prof_yes]),
+        solver_var_spec(svar_term_size_prof,
+            [svalue_term_size_prof_no,
+            svalue_term_size_prof_cells, svalue_term_size_prof_words]),
 
-    solver_var_spec(svar_deep_prof,
-        [svalue_deep_prof_no, svalue_deep_prof_yes]),
-    solver_var_spec(svar_mprof_call,
-        [svalue_mprof_call_no, svalue_mprof_call_yes]),
-    solver_var_spec(svar_mprof_time,
-        [svalue_mprof_time_no, svalue_mprof_time_yes]),
-    solver_var_spec(svar_mprof_memory,
-        [svalue_mprof_memory_no, svalue_mprof_memory_yes]),
-    solver_var_spec(svar_tscope_prof,
-        [svalue_tscope_prof_no, svalue_tscope_prof_yes]),
-    solver_var_spec(svar_term_size_prof,
-        [svalue_term_size_prof_no,
-        svalue_term_size_prof_cells, svalue_term_size_prof_words]),
+        solver_var_spec(svar_debug,
+            [svalue_debug_none, svalue_debug_debug, svalue_debug_decldebug]),
+        solver_var_spec(svar_ssdebug,
+            [svalue_ssdebug_no, svalue_ssdebug_yes]),
+        solver_var_spec(svar_lldebug,
+            [svalue_lldebug_no, svalue_lldebug_yes]),
 
-    solver_var_spec(svar_debug,
-        [svalue_debug_none, svalue_debug_debug, svalue_debug_decldebug]),
-    solver_var_spec(svar_ssdebug,
-        [svalue_ssdebug_no, svalue_ssdebug_yes]),
-    solver_var_spec(svar_lldebug,
-        [svalue_lldebug_no, svalue_lldebug_yes]),
+        solver_var_spec(svar_rbmm,
+            [svalue_rbmm_no, svalue_rbmm_yes]),
+        solver_var_spec(svar_rbmm_debug,
+            [svalue_rbmm_debug_no, svalue_rbmm_debug_yes]),
+        solver_var_spec(svar_rbmm_prof,
+            [svalue_rbmm_prof_no, svalue_rbmm_prof_yes]),
 
-    solver_var_spec(svar_rbmm,
-        [svalue_rbmm_no, svalue_rbmm_yes]),
-    solver_var_spec(svar_rbmm_debug,
-        [svalue_rbmm_debug_no, svalue_rbmm_debug_yes]),
-    solver_var_spec(svar_rbmm_prof,
-        [svalue_rbmm_prof_no, svalue_rbmm_prof_yes]),
+        solver_var_spec(svar_request_single_prec_float,
+            [svalue_request_single_prec_float_no,
+            svalue_request_single_prec_float_yes]),
 
-    solver_var_spec(svar_request_single_prec_float,
-        [svalue_request_single_prec_float_no,
-        svalue_request_single_prec_float_yes]),
-
-    solver_var_spec(svar_merc_float,
-        [svalue_merc_float_is_unboxed_c_double,
-        svalue_merc_float_is_boxed_c_double,
-        svalue_merc_float_is_unboxed_c_float])
-].
+        solver_var_spec(svar_merc_float,
+            [svalue_merc_float_is_unboxed_c_double,
+            svalue_merc_float_is_boxed_c_double,
+            svalue_merc_float_is_unboxed_c_float])
+    ].
 
 %---------------------------------------------------------------------------%
 
@@ -641,25 +661,29 @@ init_requirement_specs = [
         "minimal model tabling requires boehm-demers-weiser gc",
         (svar_minmodel `being` svalue_minmodel_stack_copy)
             `implies_that`
-        (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug])
+        (svar_gc `is_one_of`
+            [svalue_gc_none, svalue_gc_bdw, svalue_gc_bdw_debug])
     ),
     requirement_spec(
         "minimal model tabling requires boehm-demers-weiser gc",
         (svar_minmodel `being` svalue_minmodel_stack_copy_debug)
             `implies_that`
-        (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug])
+        (svar_gc `is_one_of`
+            [svalue_gc_none, svalue_gc_bdw, svalue_gc_bdw_debug])
     ),
     requirement_spec(
         "minimal model tabling requires boehm-demers-weiser gc",
         (svar_minmodel `being` svalue_minmodel_own_stack)
             `implies_that`
-        (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug])
+        (svar_gc `is_one_of`
+            [svalue_gc_none, svalue_gc_bdw, svalue_gc_bdw_debug])
     ),
     requirement_spec(
         "minimal model tabling requires boehm-demers-weiser gc",
         (svar_minmodel `being` svalue_minmodel_own_stack_debug)
             `implies_that`
-        (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug])
+        (svar_gc `is_one_of`
+            [svalue_gc_none, svalue_gc_bdw, svalue_gc_bdw_debug])
     ),
     requirement_spec(
         "minimal model tabling does not respect thread safety",
@@ -673,7 +697,7 @@ init_requirement_specs = [
             `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
     ),
-    % XXX Do svalue_minimal_model_own_stack{,_debug} imply
+    % XXX Do svalue_minmodel_own_stack{,_debug} imply
     % svalue_thread_safe_no?
 
 % Requirements of values of svar_thread_safe.
@@ -705,11 +729,6 @@ init_requirement_specs = [
         "history gc requires targeting C",
         (svar_gc `being` svalue_gc_history) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
-    ),
-    requirement_spec(
-        "history gc requires the MLDS backend",
-        (svar_gc `being` svalue_gc_history) `implies_that`
-        (svar_backend `is_one_of` [svalue_backend_mlds])
     ),
 
 % Requirements of values of svar_deep_prof.

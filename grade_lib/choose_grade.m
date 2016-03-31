@@ -15,6 +15,7 @@
 
 :- import_module grade_setup.
 :- import_module grade_solver.
+:- import_module grade_spec.
 :- import_module grade_state.
 :- import_module grade_string.
 :- import_module grade_structure.
@@ -28,11 +29,12 @@
 :- import_module string.
 
 main(!IO) :-
+    SpecsVersion = specs_version_1,
     AutoconfResults = autoconf_results(autoconf_gcc_regs_avail_yes,
         autoconf_gcc_gotos_avail_yes, autoconf_gcc_labels_avail_yes,
         autoconf_low_tag_bits_avail_3, autoconf_size_of_double_eq_ptr,
         autoconf_merc_file_no),
-    setup_solver_info(AutoconfResults, SolverInfo0),
+    setup_solver_info(SpecsVersion, AutoconfResults, SolverInfo0),
     io.command_line_arguments(Args, !IO),
     process_arguments(Args, cord.init, BadArgLinesCord,
         SolverInfo0, SolverInfo1),

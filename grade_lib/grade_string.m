@@ -69,8 +69,7 @@ link_grade_str_llc_par_version = "1".
 grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
         PostProcessedGradeStr :-
     (
-        GradeStructure = grade_llds(GccConf, StackLen, LLDSGc,
-            LLDSTrailMinModel, LLDSThreadSafe, LLDSPerfProf, TermSizeProf,
+        GradeStructure = grade_llds(GccConf, StackLen, MinModel, TermSizeProf,
             Debug, LLDebug, LLDSRBMM, MercFile, LowTagsFloats),
 
         BinaryCompatStr = binary_compat_version_to_string(WhichGradeString),
@@ -84,39 +83,69 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
         LowTagsFloatsStr =
             low_tags_floats_to_str(WhichGradeString, LowTagsFloats),
         (
-            LLDSThreadSafe = llds_thread_safe_no,
-            ThreadSafeStr = thread_safe_to_str(grade_var_thread_safe_no),
-            TScopeProfStr = ""
-        ;
-            LLDSThreadSafe = llds_thread_safe_yes(TScopeProf),
-            ThreadSafeStr =
-                thread_safe_to_str(grade_var_thread_safe_yes) ++
-                llc_par_version_to_string(WhichGradeString),
+            MinModel = llds_minmodel_no(LLDSGc, CTrail, LLDSThreadSafe,
+                LLDSPerfProf),
+            MinimalModelStr = "",
+            ( LLDSGc = llds_gc_none,             Gc = grade_var_gc_none
+            ; LLDSGc = llds_gc_bdw,              Gc = grade_var_gc_bdw
+            ; LLDSGc = llds_gc_bdw_debug,        Gc = grade_var_gc_bdw_debug
+            ; LLDSGc = llds_gc_history,          Gc = grade_var_gc_history
+            ),
+            GcStr = gc_to_str(Gc),
+            TrailStr = c_trail_to_str(CTrail),
             (
-                TScopeProf = grade_var_tscope_prof_no,
+                LLDSThreadSafe = llds_thread_safe_no,
+                ThreadSafeStr = thread_safe_to_str(grade_var_thread_safe_no),
                 TScopeProfStr = ""
             ;
-                TScopeProf = grade_var_tscope_prof_yes,
-                TScopeProfStr = ".threadscope"
+                LLDSThreadSafe = llds_thread_safe_yes(TScopeProf),
+                ThreadSafeStr =
+                    thread_safe_to_str(grade_var_thread_safe_yes) ++
+                    llc_par_version_to_string(WhichGradeString),
+                (
+                    TScopeProf = grade_var_tscope_prof_no,
+                    TScopeProfStr = ""
+                ;
+                    TScopeProf = grade_var_tscope_prof_yes,
+                    TScopeProfStr = ".threadscope"
+                )
+            ),
+            (
+                LLDSPerfProf = llds_perf_prof_none,
+                LLDSPerfProfStr = ""
+            ;
+                LLDSPerfProf = llds_perf_prof_deep,
+                LLDSPerfProfStr =
+                    ".profdeep" ++
+                    deep_prof_version_to_string(WhichGradeString)
+            ;
+                LLDSPerfProf = llds_perf_prof_mprof(MprofTime, MprofMemory),
+                LLDSPerfProfStr = mprof_to_string(MprofTime, MprofMemory)
             )
-        ),
-        ( LLDSGc = llds_gc_none,             Gc = grade_var_gc_none
-        ; LLDSGc = llds_gc_bdw,              Gc = grade_var_gc_bdw
-        ; LLDSGc = llds_gc_bdw_debug,        Gc = grade_var_gc_bdw_debug
-        ; LLDSGc = llds_gc_history,          Gc = grade_var_gc_history
-        ),
-        GcStr = gc_to_str(Gc),
-        (
-            LLDSPerfProf = llds_perf_prof_none,
+        ;
+            MinModel = llds_minmodel_yes(MinModelKind, LLDSMMGc),
+            ( LLDSMMGc = llds_mm_gc_none,       Gc = grade_var_gc_none
+            ; LLDSMMGc = llds_mm_gc_bdw,        Gc = grade_var_gc_bdw
+            ; LLDSMMGc = llds_mm_gc_bdw_debug,  Gc = grade_var_gc_bdw_debug
+            ),
+            GcStr = gc_to_str(Gc),
+            (
+                MinModelKind = lmk_stack_copy,
+                MinimalModelStr = ".mmsc"
+            ;
+                MinModelKind = lmk_stack_copy_debug,
+                MinimalModelStr = ".dmmsc"
+            ;
+                MinModelKind = lmk_own_stack,
+                MinimalModelStr = ".mmos"
+            ;
+                MinModelKind = lmk_own_stack_debug,
+                MinimalModelStr = ".dmmos"
+            ),
+            TrailStr = "",
+            ThreadSafeStr = "",
+            TScopeProfStr = "",
             LLDSPerfProfStr = ""
-        ;
-            LLDSPerfProf = llds_perf_prof_deep,
-            LLDSPerfProfStr =
-                ".profdeep" ++
-                deep_prof_version_to_string(WhichGradeString)
-        ;
-            LLDSPerfProf = llds_perf_prof_mprof(MprofTime, MprofMemory),
-            LLDSPerfProfStr = mprof_to_string(MprofTime, MprofMemory)
         ),
         (
             TermSizeProf = grade_var_term_size_prof_no,
@@ -127,31 +156,6 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
         ;
             TermSizeProf = grade_var_term_size_prof_words,
             TermSizeProfStr = ".tsw"
-        ),
-        (
-            LLDSTrailMinModel = ltm_none,
-            TrailStr = "",
-            MinimalModelStr = ""
-        ;
-            LLDSTrailMinModel = ltm_trail(TrailSegments),
-            TrailStr = trail_segments_to_str(TrailSegments),
-            MinimalModelStr = ""
-        ;
-            LLDSTrailMinModel = ltm_minmodel(LLDSMinimalModel),
-            TrailStr = "",
-            (
-                LLDSMinimalModel = lm_stack_copy,
-                MinimalModelStr = ".mmsc"
-            ;
-                LLDSMinimalModel = lm_stack_copy_debug,
-                MinimalModelStr = ".dmmsc"
-            ;
-                LLDSMinimalModel = lm_own_stack,
-                MinimalModelStr = ".mmos"
-            ;
-                LLDSMinimalModel = lm_own_stack_debug,
-                MinimalModelStr = ".dmmos"
-            )
         ),
         (
             Debug = grade_var_debug_none,
@@ -209,7 +213,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
         SSDebugStr = ssdebug_to_str(WhichGradeString, SSDebug),
         (
             MLDSTarget = mlds_target_c(DataRep, NestedFuncs,
-                ThreadSafe, MLDSCGc, MLDSCTrail, MLDSPerfProf,
+                ThreadSafe, MLDSCGc, CTrail, MLDSPerfProf,
                 MercFile, LowTagsFloats),
             BinaryCompatStr =
                 binary_compat_version_to_string(WhichGradeString),
@@ -237,13 +241,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) =
             ),
             ThreadSafeStr = thread_safe_to_str(ThreadSafe),
             GcStr = gc_to_str(Gc),
-            (
-                MLDSCTrail = mlds_c_trail_no,
-                TrailStr = ""
-            ;
-                MLDSCTrail = mlds_c_trail_yes(TrailSegments),
-                TrailStr = trail_segments_to_str(TrailSegments)
-            ),
+            TrailStr = c_trail_to_str(CTrail),
             (
                 MLDSPerfProf = mlds_c_perf_prof_none,
                 MLDSPerfProfStr = ""
@@ -310,10 +308,11 @@ gc_to_str(grade_var_gc_bdw_debug) = ".gcd".
 gc_to_str(grade_var_gc_accurate) = ".agc".
 gc_to_str(grade_var_gc_history) = ".hgc".
 
-:- func trail_segments_to_str(grade_var_trail_segments) = string.
+:- func c_trail_to_str(c_trail) = string.
 
-trail_segments_to_str(grade_var_trail_segments_no) = ".tr".
-trail_segments_to_str(grade_var_trail_segments_yes) = ".trseg".
+c_trail_to_str(c_trail_no) = "".
+c_trail_to_str(c_trail_yes(grade_var_trail_segments_no)) = ".tr".
+c_trail_to_str(c_trail_yes(grade_var_trail_segments_yes)) = ".trseg".
 
 :- func thread_safe_to_str(grade_var_thread_safe) = string.
 
@@ -382,7 +381,13 @@ low_tags_floats_to_str(WhichGradeString, LowTagsFloats) = Str :-
         Str = TagsStr ++ FloatStr
     ;
         LowTagsFloats = low_tags_floats_pregen_yes,
-        Str = ".tags2.pregen"
+        (
+            WhichGradeString = grade_string_user,
+            Str = ".pregen"
+        ;
+            WhichGradeString = grade_string_link_check,
+            Str = ".tags2.pregen"
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -765,6 +770,12 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             svar_rbmm_prof - svalue_rbmm_prof_yes,
             svar_target - svalue_target_c,
             svar_backend - svalue_backend_llds]
+    ;
+        ComponentStr = "pregen",
+        Setting = svar_pregen - svalue_pregen_yes,
+        Settings =
+            [svar_low_tag_bits_use - svalue_low_tag_bits_use_2,
+            svar_merc_float - svalue_merc_float_is_boxed_c_double]
     ;
         ComponentStr = "spf",
         Setting = svar_request_single_prec_float -

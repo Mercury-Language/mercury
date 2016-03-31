@@ -47,7 +47,8 @@
     --->    autoconf_merc_file_no
     ;       autoconf_merc_file_yes.
 
-:- pred setup_solver_info(autoconf_results::in, solver_info::out) is det.
+:- pred setup_solver_info(specs_version::in, autoconf_results::in,
+    solver_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -84,8 +85,8 @@
 
 %---------------------------------------------------------------------------%
 
-setup_solver_info(AutoconfResults, !:SolverInfo) :-
-    setup_solver_vars(SolverVarMap, SolverVarPriority),
+setup_solver_info(SpecsVersion, AutoconfResults, !:SolverInfo) :-
+    setup_solver_vars(SpecsVersion, SolverVarMap, SolverVarPriority),
     setup_requirements(SolverVarMap, Requirements),
     !:SolverInfo = solver_info(Requirements, SolverVarPriority, SolverVarMap),
 
@@ -170,11 +171,11 @@ assign_var_in_map(WhyNot, VarId, ValueId, !SolverMap) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred setup_solver_vars(solver_var_map::out, list(solver_var_id)::out)
-    is det.
+:- pred setup_solver_vars(specs_version::in,
+    solver_var_map::out, list(solver_var_id)::out) is det.
 
-setup_solver_vars(SolverVarMap, SolverVarPriority) :-
-    SolverVarSpecs = init_solver_var_specs,
+setup_solver_vars(SpecsVersion, SolverVarMap, SolverVarPriority) :-
+    SolverVarSpecs = init_solver_var_specs(SpecsVersion),
     init_solver_vars(SolverVarSpecs, map.init, SolverVarMap,
         cord.init, SolverVarPriorityCord),
     SolverVarPriority = cord.to_list(SolverVarPriorityCord).

@@ -16,7 +16,7 @@
 -include ../Mmake.params
 
 MAIN_TARGET = all
-MERCURY_MAIN_MODULES = choose_grade test_grades
+MERCURY_MAIN_MODULES = choose_grade test_grades try_all_grade_structs
 # EXTRA_MCFLAGS = --trace-flag debug_solver
 
 .PHONY: all
