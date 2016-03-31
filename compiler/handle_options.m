@@ -1596,8 +1596,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
             use_lots_of_ho_specialization, LotsOfHOSpec),
         (
             LotsOfHOSpec = yes,
-            True = bool(yes),
-            globals.set_option(optimize_higher_order, True, !Globals),
+            globals.set_option(optimize_higher_order, bool(yes), !Globals),
             globals.set_option(higher_order_size_limit, int(999999), !Globals)
         ;
             LotsOfHOSpec = no
@@ -1748,7 +1747,7 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
 
     % ml_gen_params_base and ml_declare_env_ptr_arg, in ml_code_util.m,
     % both assume (for accurate GC) that continuation environments
-    % are always allocated on the stack, which means that things won't
+    % are always allocated on the stack, which means that things won't work
     % if --gc accurate and --put-nondet-env-on-heap are both enabled.
     globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
         PutNondetEnvOnHeap),
@@ -1800,9 +1799,9 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
 
     % The cut-down stack frames used by middle recursion optimization
     % don't include return addresses. Since stack extension arranges for
-    % the return to the old stack segments by overriding the return
-    % address, stack extension via stack segments and middle recursion
-    % optimization are incompatible.
+    % the return to the old stack segments by overriding the return address,
+    % stack extension via stack segments and middle recursion optimization
+    % are incompatible.
     option_implies(stack_segments, middle_rec, bool(no), !Globals),
 
     % Stack copy minimal model tabling needs to be able to rewrite all
