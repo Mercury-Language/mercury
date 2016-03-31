@@ -116,7 +116,7 @@ However, if you want to give it a try, the required steps are:
 (1) Ensure that you have an existing working Mercury compiler in your PATH
 and a clean version of the Mercury source tree.
 
-(2) Run aclocal -I m4; autoconf; ./configure as normal.
+(2) Run ./prepare.sh; ./configure as normal.
 
 (3) Add the line:
 
