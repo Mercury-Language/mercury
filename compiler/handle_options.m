@@ -1908,7 +1908,16 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
     ),
 
     globals.lookup_string_option(!.Globals, target_arch, TargetArch),
+
     globals.lookup_string_option(!.Globals, mercury_linkage, MercuryLinkage),
+    ( if MercuryLinkage = "static" then
+        DefaultRuntimeLibraryDirs = no,
+        globals.set_option(default_runtime_library_directory, bool(no),
+            !Globals)
+    else
+        globals.lookup_bool_option(!.Globals,
+            default_runtime_library_directory, DefaultRuntimeLibraryDirs)
+    ),
 
     % Add the standard library directory.
     globals.lookup_maybe_string_option(!.Globals,
@@ -1926,13 +1935,14 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(link_library_directories,
             accumulating([StdLibDir/"lib" | LinkLibDirs0]), !Globals),
 
-        ( if MercuryLinkage = "shared" then
+        (
+            DefaultRuntimeLibraryDirs = yes,
             globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath0),
             globals.set_option(runtime_link_library_directories,
                 accumulating([StdLibDir/"lib" | Rpath0]), !Globals)
-        else
-            true
+        ;
+            DefaultRuntimeLibraryDirs = no
         )
     ;
         MaybeStdLibDir = no
@@ -1986,13 +1996,14 @@ convert_options_to_globals(OptionTable0, OpMode, Target,
         globals.set_option(link_library_directories,
             accumulating(LinkLibDirs1 ++ ExtraLinkLibDirs), !Globals),
 
-        ( if MercuryLinkage = "shared" then
+        (
+            DefaultRuntimeLibraryDirs = yes,
             globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath),
             globals.set_option(runtime_link_library_directories,
                 accumulating(Rpath ++ ExtraLinkLibDirs), !Globals)
-        else
-            true
+        ;
+            DefaultRuntimeLibraryDirs = no
         ),
 
         ExtraIncludeDirs = list.map(

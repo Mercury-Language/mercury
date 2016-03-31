@@ -325,6 +325,10 @@ Changes to the Mercury compiler:
 * The compiler does not set the runtime search path when
   --mercury-linkage=static is used.
 
+* We have added an option --no-default-runtime-library-directory to
+  prevent the compiler adding any directories to the runtime search path
+  automatically.
+
 Change to the Mercury debugger:
 
 * Interactive queries are now supported on OS X.

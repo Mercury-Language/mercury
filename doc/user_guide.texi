@@ -9568,6 +9568,11 @@ Append @var{directory} to the list of directories in which
 to search for shared libraries at runtime.
 
 @sp 1
+@item --no-default-runtime-library-directory
+@findex --no-default-runtime-library-directory
+Do not add any directories to the runtime search path automatically.
+
+@sp 1
 @item --shlib-linker-install-name-path @var{directory}
 @findex --shlib-linker-install-name-path
 @cindex Mac OS X, Darwin, Install name

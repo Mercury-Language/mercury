@@ -866,6 +866,7 @@
     ;       quoted_ld_libflag
     ;       link_library_directories
     ;       runtime_link_library_directories
+    ;       default_runtime_library_directory
     ;       link_libraries
     ;       link_objects
     ;       mercury_library_directories
@@ -1751,6 +1752,7 @@ option_defaults_2(link_option, [
     quoted_ld_libflag                   -   string_special,
     link_library_directories            -   accumulating([]),
     runtime_link_library_directories    -   accumulating([]),
+    default_runtime_library_directory   -   bool(yes),
     link_libraries                      -   accumulating([]),
     link_objects                        -   accumulating([]),
     mercury_library_directory_special   -   string_special,
@@ -2717,6 +2719,8 @@ long_option("ld-libflags",          ld_libflags).
 long_option("ld-libflag",           quoted_ld_libflag).
 long_option("library-directory",    link_library_directories).
 long_option("runtime-library-directory", runtime_link_library_directories).
+long_option("default-runtime-library-directory",
+                                    default_runtime_library_directory).
 long_option("library",              link_libraries).
 long_option("link-object",          link_objects).
 long_option("mercury-library",      mercury_library_special).
@@ -5520,6 +5524,9 @@ options_help_link -->
         "-R <directory>, --runtime-library-directory <directory>",
         "\tAppend <directory> to the list of directories in which",
         "\tto search for shared libraries at runtime.",
+        "--no-default-runtime-library-directory",
+        "\tDo not add any directories to the runtime search path",
+        "\tautomatically.",
         "--shlib-linker-install-name-path <directory>",
         "\tSpecify the path where a shared library will be installed.",
         "\tThis option is useful on systems where the runtime search",
