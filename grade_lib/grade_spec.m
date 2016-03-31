@@ -384,96 +384,96 @@ init_requirement_specs = [
 
 % Requirements of values of svar_backend.
     requirement_spec(
-        "MLDS backend requires targeting C, C# or Java",
+        "Using the MLDS backend requires targeting C, C# or Java.",
         (svar_backend `being` svalue_backend_mlds) `implies_that`
         (svar_target `is_one_of` 
             [svalue_target_c, svalue_target_csharp, svalue_target_java])
     ),
     requirement_spec(
-        "LLDS backend requires targeting C",
+        "Using the LLDS backend requires targeting C.",
         (svar_backend `being` svalue_backend_llds) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "LLDS backend requires storing data in heap cells",
+        "Using the LLDS backend requires storing data in heap cells.",
         (svar_backend `being` svalue_backend_llds) `implies_that`
         (svar_datarep `is_one_of` [svalue_datarep_heap_cells])
     ),
     requirement_spec(
-        "ELDS backend requires targeting Erlang",
+        "Using the ELDS backend requires targeting Erlang.",
         (svar_backend `being` svalue_backend_elds) `implies_that`
         (svar_target `is_one_of` [svalue_target_erlang])
     ),
 
 % Requirements of values of svar_datarep.
     requirement_spec(
-        "representing data using classes data requires the MLDS backend",
+        "Representing data using classes data requires the MLDS backend.",
         (svar_datarep `being` svalue_datarep_classes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_mlds])
     ),
 
 % Requirements of values of svar_target.
     requirement_spec(
-        "targeting C# requires the MLDS backend",
+        "Targeting C# requires the MLDS backend.",
         (svar_target `being` svalue_target_csharp) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_mlds])
     ),
     requirement_spec(
-        "targeting Java requires the MLDS backend",
+        "Targeting Java requires the MLDS backend.",
         (svar_target `being` svalue_target_java) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_mlds])
     ),
     requirement_spec(
-        "targeting Erlang requires the ELDS backend",
+        "Targeting Erlang requires the ELDS backend.",
         (svar_target `being` svalue_target_erlang) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_elds])
     ),
 
     requirement_spec(
-        "targeting C# requires representing data using classes",
+        "Targeting C# requires representing data using classes.",
         (svar_target `being` svalue_target_csharp) `implies_that`
         (svar_datarep `is_one_of` [svalue_datarep_classes])
     ),
     requirement_spec(
-        "targeting Java requires representing data using classes",
+        "Targeting Java requires representing data using classes.",
         (svar_target `being` svalue_target_java) `implies_that`
         (svar_datarep `is_one_of` [svalue_datarep_classes])
     ),
     requirement_spec(
-        "targeting Erlang requires using Erlang terms",
+        "Targeting Erlang requires using Erlang terms.",
         (svar_target `being` svalue_target_erlang) `implies_that`
         (svar_datarep `is_one_of` [svalue_datarep_erlang])
     ),
 
     requirement_spec(
-        "C does not have a native garbage collector",
+        "C does not have a native garbage collector.",
         (svar_target `being` svalue_target_c) `implies_that`
         (svar_gc `is_one_of` [svalue_gc_bdw, svalue_gc_bdw_debug,
             svalue_gc_accurate, svalue_gc_history, svalue_gc_none])
     ),
     requirement_spec(
-        "targeting C# requires target native gc",
+        "Targeting C# requires target native gc.",
         (svar_target `being` svalue_target_csharp) `implies_that`
         (svar_gc `is_one_of` [svalue_gc_target_native])
     ),
     requirement_spec(
-        "targeting Java requires target native gc",
+        "Targeting Java requires target native gc.",
         (svar_target `being` svalue_target_java) `implies_that`
         (svar_gc `is_one_of` [svalue_gc_target_native])
     ),
     requirement_spec(
-        "targeting Erlang requires target native gc",
+        "Targeting Erlang requires target native gc.",
         (svar_target `being` svalue_target_erlang) `implies_that`
         (svar_gc `is_one_of` [svalue_gc_target_native])
     ),
 
     requirement_spec(
-        "generated C# is always thread safe",
+        "Generated C# is always thread safe.",
         (svar_target `being` svalue_target_csharp) `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_yes])
     ),
     requirement_spec(
-        "generated Java is always thread safe",
+        "Generated Java is always thread safe.",
         (svar_target `being` svalue_target_java) `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_yes])
     ),
@@ -481,109 +481,109 @@ init_requirement_specs = [
     % does not (yet) have Erlang implementations of its foreign_procs,
     % so the program cannot create new threads.
     requirement_spec(
-        "targeting Erlang does not allow new threads to be created",
+        "Targeting Erlang does not (yet) allow new threads to be created.",
         (svar_target `being` svalue_target_erlang) `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
     ),
 
 % These are covered by a single requirement from spf back to target.
 %   requirement_spec(
-%       "targeting C# is incompatible with single-precision floats",
+%       "Targeting C# is incompatible with single-precision floats.",
 %       (svar_target `being` svalue_target_csharp) `implies_that`
 %       (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
 %   ),
 %   requirement_spec(
-%       "targeting Java is incompatible with single-precision floats",
+%       "Targeting Java is incompatible with single-precision floats.",
 %       (svar_target `being` svalue_target_java) `implies_that`
 %       (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
 %   ),
 %   requirement_spec(
-%       "targeting Erlang is incompatible with single-precision floats",
+%       "Targeting Erlang is incompatible with single-precision floats.",
 %       (svar_target `being` svalue_target_erlang) `implies_that`
 %       (svar_single_prec_float `is_one_of` [svalue_single_prec_float_no])
 %   ),
 
 % Requirements of values of svar_nested_funcs.
     requirement_spec(
-        "using gcc nested functions requires the MLDS backend",
+        "Using gcc nested functions requires the MLDS backend.",
         (svar_nested_funcs `being` svalue_nested_funcs_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_mlds])
     ),
     requirement_spec(
-        "using gcc nested functions requires targeting C",
+        "Using gcc nested functions requires targeting C.",
         (svar_nested_funcs `being` svalue_nested_funcs_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
 
 % Requirements of values of svar_gcc_regs_use.
     requirement_spec(
-        "using gcc regs requires them to be available",
+        "Using gcc register extensions requires them to be available.",
         (svar_gcc_regs_use `being` svalue_gcc_regs_use_yes) `implies_that`
         (svar_ac_gcc_regs_avail `is_one_of` [svalue_ac_gcc_regs_avail_yes])
     ),
     requirement_spec(
-        "using gcc regs requires targeting C",
+        "Using gcc register extensions requires targeting C.",
         (svar_gcc_regs_use `being` svalue_gcc_regs_use_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "using gcc regs requires the LLDS backend",
+        "Using gcc register extensions requires the LLDS backend.",
         (svar_gcc_regs_use `being` svalue_gcc_regs_use_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
 % Requirements of values of svar_gcc_gotos_use.
     requirement_spec(
-        "using gcc nonlocal gotos requires them to be available",
+        "Using gcc nonlocal gotos requires them to be available.",
         (svar_gcc_gotos_use `being` svalue_gcc_gotos_use_yes) `implies_that`
         (svar_ac_gcc_gotos_avail `is_one_of` [svalue_ac_gcc_gotos_avail_yes])
     ),
     requirement_spec(
-        "using gcc nonlocal gotos requires targeting C",
+        "Using gcc nonlocal gotos requires targeting C.",
         (svar_gcc_gotos_use `being` svalue_gcc_gotos_use_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "using gcc nonlocal gotos requires the LLDS backend",
+        "Using gcc nonlocal gotos requires the LLDS backend.",
         (svar_gcc_gotos_use `being` svalue_gcc_gotos_use_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
 % Requirements of values of svar_gcc_labels_use.
     requirement_spec(
-        "using gcc asm labels requires them to be available",
+        "Using gcc asm labels requires them to be available.",
         (svar_gcc_labels_use `being` svalue_gcc_labels_use_yes) `implies_that`
         (svar_ac_gcc_labels_avail `is_one_of` [svalue_ac_gcc_labels_avail_yes])
     ),
     requirement_spec(
-        "using gcc asm labels requires using gcc nonlocal gotos",
+        "Using gcc asm labels requires using gcc nonlocal gotos.",
         (svar_gcc_labels_use `being` svalue_gcc_labels_use_yes) `implies_that`
         (svar_gcc_gotos_use `is_one_of` [svalue_gcc_gotos_use_yes])
     ),
     requirement_spec(
-        "using gcc asm labels requires targeting C",
+        "Using gcc asm labels requires targeting C.",
         (svar_gcc_labels_use `being` svalue_gcc_labels_use_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "using gcc asm labels requires the LLDS backend",
+        "Using gcc asm labels requires the LLDS backend.",
         (svar_gcc_labels_use `being` svalue_gcc_labels_use_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
 % Requirements of values of svar_pregen.
     requirement_spec(
-        "pregenerated code always targets C",
+        "Pregenerated code always targets C.",
         (svar_pregen `being` svalue_pregen_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "pregenerated code uses 2 low tag bits",
+        "Pregenerated code uses 2 low tag bits.",
         (svar_pregen `being` svalue_pregen_yes) `implies_that`
         (svar_low_tag_bits_use `is_one_of` [svalue_low_tag_bits_use_2])
     ),
     requirement_spec(
-        "pregenerated code is incompatible with single precision floats",
+        "Pregenerated code is incompatible with single precision floats.",
         (svar_pregen `being` svalue_pregen_yes) `implies_that`
         (svar_request_single_prec_float `is_one_of`
             [svalue_request_single_prec_float_no])
@@ -591,14 +591,14 @@ init_requirement_specs = [
 
 % Requirements of values of svar_low_tag_bits_use.
     requirement_spec(
-        "using 2 low tag bits needs at least 2 low tag bits to be available",
+        "Using 2 low tag bits needs at least 2 low tag bits to be available.",
         (svar_low_tag_bits_use `being` svalue_low_tag_bits_use_2)
             `implies_that`
         (svar_ac_low_tag_bits_avail `is_one_of`
             [svalue_ac_low_tag_bits_avail_2, svalue_ac_low_tag_bits_avail_3])
     ),
     requirement_spec(
-        "using 3 low tag bits needs at least 3 low tag bits to be available",
+        "Using 3 low tag bits needs at least 3 low tag bits to be available.",
         (svar_low_tag_bits_use `being` svalue_low_tag_bits_use_3)
             `implies_that`
         (svar_ac_low_tag_bits_avail `is_one_of`
@@ -607,96 +607,96 @@ init_requirement_specs = [
 
 % Requirements of values of svar_stack_segments.
     requirement_spec(
-        "stack segments require the LLDS backend",
+        "Stack segments require the LLDS backend.",
         (svar_stack_len `being` svalue_stack_len_segments) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "stack extension requires the LLDS backend",
+        "Stack extension requires the LLDS backend.",
         (svar_stack_len `being` svalue_stack_len_extend) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
 % Requirements of values of svar_trail.
     requirement_spec(
-        "trailing requires targeting C",
+        "Trailing requires targeting C.",
         (svar_trail `being` svalue_trail_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "trailing interferes with minimal model tabling",
+        "Trailing interferes with minimal model tabling.",
         (svar_trail `being` svalue_trail_yes) `implies_that`
         (svar_minmodel `is_one_of` [svalue_minmodel_no])
     ),
 
 % Requirements of values of svar_trail_segments.
     requirement_spec(
-        "trail segments require trailing",
+        "Trail segments require trailing.",
         (svar_trail_segments `being` svalue_trail_segments_yes) `implies_that`
         (svar_trail `is_one_of` [svalue_trail_yes])
     ),
 
 % Requirements of values of svar_minmodel.
     requirement_spec(
-        "minimal model tabling requires the LLDS backend",
+        "Minimal model tabling requires the LLDS backend.",
         (svar_minmodel `being` svalue_minmodel_stack_copy)
             `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "minimal model tabling requires the LLDS backend",
+        "Minimal model tabling requires the LLDS backend.",
         (svar_minmodel `being` svalue_minmodel_stack_copy_debug)
             `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "minimal model tabling requires the LLDS backend",
+        "Minimal model tabling requires the LLDS backend.",
         (svar_minmodel `being` svalue_minmodel_own_stack)
             `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "minimal model tabling requires the LLDS backend",
+        "Minimal model tabling requires the LLDS backend.",
         (svar_minmodel `being` svalue_minmodel_own_stack_debug)
             `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "minimal model tabling requires boehm-demers-weiser gc",
+        "Minimal model tabling requires Boehm-Demers-Weiser gc.",
         (svar_minmodel `being` svalue_minmodel_stack_copy)
             `implies_that`
         (svar_gc `is_one_of`
             [svalue_gc_none, svalue_gc_bdw, svalue_gc_bdw_debug])
     ),
     requirement_spec(
-        "minimal model tabling requires boehm-demers-weiser gc",
+        "Minimal model tabling requires Boehm-Demers-Weiser gc.",
         (svar_minmodel `being` svalue_minmodel_stack_copy_debug)
             `implies_that`
         (svar_gc `is_one_of`
             [svalue_gc_none, svalue_gc_bdw, svalue_gc_bdw_debug])
     ),
     requirement_spec(
-        "minimal model tabling requires boehm-demers-weiser gc",
+        "Minimal model tabling requires Boehm-Demers-Weiser gc.",
         (svar_minmodel `being` svalue_minmodel_own_stack)
             `implies_that`
         (svar_gc `is_one_of`
             [svalue_gc_none, svalue_gc_bdw, svalue_gc_bdw_debug])
     ),
     requirement_spec(
-        "minimal model tabling requires boehm-demers-weiser gc",
+        "Minimal model tabling requires Boehm-Demers-Weiser gc.",
         (svar_minmodel `being` svalue_minmodel_own_stack_debug)
             `implies_that`
         (svar_gc `is_one_of`
             [svalue_gc_none, svalue_gc_bdw, svalue_gc_bdw_debug])
     ),
     requirement_spec(
-        "minimal model tabling does not respect thread safety",
+        "Minimal model tabling does not respect thread safety.",
         (svar_minmodel `being` svalue_minmodel_stack_copy)
             `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
     ),
     requirement_spec(
-        "minimal model tabling does not respect thread safety",
+        "Minimal model tabling does not respect thread safety.",
         (svar_minmodel `being` svalue_minmodel_stack_copy_debug)
             `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
@@ -710,78 +710,78 @@ init_requirement_specs = [
 
 % Requirements of values of svar_gc.
     requirement_spec(
-        "boehm-demers-weiser gc requires targeting C",
+        "Boehm-Demers-Weiser gc requires targeting C.",
         (svar_gc `being` svalue_gc_bdw) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "boehm-demers-weiser debug gc requires targeting C",
+        "Boehm-Demers-Weiser debug gc requires targeting C.",
         (svar_gc `being` svalue_gc_bdw_debug) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "accurate gc requires targeting C",
+        "Accurate gc requires targeting C.",
         (svar_gc `being` svalue_gc_accurate) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "accurate gc requires the MLDS backend",
+        "Accurate gc requires the MLDS backend.",
         (svar_gc `being` svalue_gc_accurate) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_mlds])
     ),
     requirement_spec(
-        "history gc requires targeting C",
+        "History gc requires targeting C.",
         (svar_gc `being` svalue_gc_history) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
 
 % Requirements of values of svar_deep_prof.
     requirement_spec(
-        "deep profiling requires the LLDS backend",
+        "Deep profiling requires the LLDS backend.",
         (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "deep profiling interferes with minimal model tabling",
+        "Deep profiling interferes with minimal model tabling.",
         (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
         (svar_minmodel `is_one_of` [svalue_minmodel_no])
     ),
     requirement_spec(
-        "deep profiling is incompatible with mprof call profiling",
+        "Deep profiling is incompatible with mprof call profiling.",
         (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
         (svar_mprof_call `is_one_of` [svalue_mprof_call_no])
     ),
     requirement_spec(
-        "deep profiling is incompatible with mprof time profiling",
+        "Deep profiling is incompatible with mprof time profiling.",
         (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
         (svar_mprof_time `is_one_of` [svalue_mprof_time_no])
     ),
     requirement_spec(
-        "deep profiling is incompatible with mprof memory profiling",
+        "Deep profiling is incompatible with mprof memory profiling.",
         (svar_deep_prof `being` svalue_deep_prof_yes) `implies_that`
         (svar_mprof_memory `is_one_of` [svalue_mprof_memory_no])
     ),
 
 % Requirements of values of svar_mprof_call.
     requirement_spec(
-        "mprof call profiling requires targeting C",
+        "Mprof call profiling requires targeting C.",
         (svar_mprof_call `being` svalue_mprof_call_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "mprof call profiling interferes with minimal model tabling",
+        "Mprof call profiling interferes with minimal model tabling.",
         (svar_mprof_call `being` svalue_mprof_call_yes) `implies_that`
         (svar_minmodel `is_one_of` [svalue_minmodel_no])
     ),
 
 % Requirements of values of svar_mprof_time.
     requirement_spec(
-        "mprof time profiling requires targeting C",
+        "Mprof time profiling requires targeting C.",
         (svar_mprof_time `being` svalue_mprof_time_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "mprof time profiling requires mprof call profiling",
+        "Mprof time profiling requires mprof call profiling.",
         % XXX runtime/mercury_grade.h allows MR_MPROF_PROFILE_TIME without
         % MR_MPROF_PROFILE_CALLS, but calls the combination "useless".
         (svar_mprof_time `being` svalue_mprof_time_yes) `implies_that`
@@ -790,83 +790,83 @@ init_requirement_specs = [
 
 % Requirements of values of svar_mprof_memory.
     requirement_spec(
-        "mprof memory profiling requires targeting C",
+        "Mprof memory profiling requires targeting C.",
         (svar_mprof_memory `being` svalue_mprof_memory_yes) `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "mprof memory profiling requires mprof call profiling",
+        "Mprof memory profiling requires mprof call profiling.",
         (svar_mprof_memory `being` svalue_mprof_memory_yes) `implies_that`
         (svar_mprof_call `is_one_of` [svalue_mprof_call_yes])
     ),
 
 % Requirements of values of svar_tscope_prof.
     requirement_spec(
-        "threadscope style profiling requires the LLDS backend",
+        "Threadscope style profiling requires the LLDS backend.",
         (svar_tscope_prof `being` svalue_tscope_prof_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "threadscope style profiling requires thread safe code",
+        "Threadscope style profiling requires thread safe code.",
         (svar_tscope_prof `being` svalue_tscope_prof_yes) `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_yes])
     ),
 
 % Requirements of values of svar_term_size_prof.
     requirement_spec(
-        "term size profiling requires the LLDS backend",
+        "Term size profiling requires the LLDS backend.",
         (svar_term_size_prof `being` svalue_term_size_prof_cells) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "term size profiling requires the LLDS backend",
+        "Term size profiling requires the LLDS backend.",
         (svar_term_size_prof `being` svalue_term_size_prof_words) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
 % Requirements of values of svar_debug.
     requirement_spec(
-        "debugging requires the LLDS backend",
+        "Debugging requires the LLDS backend.",
         (svar_debug `being` svalue_debug_debug) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
     requirement_spec(
-        "declarative debugging requires the LLDS backend",
+        "Declarative debugging requires the LLDS backend.",
         (svar_debug `being` svalue_debug_decldebug) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
 % Requirements of values of svar_lldebug.
     requirement_spec(
-        "source-to-source debugging does not make sense for the LLDS backend",
+        "Source-to-source debugging does not make sense for the LLDS backend.",
         (svar_ssdebug `being` svalue_ssdebug_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_mlds, svalue_backend_elds])
     ),
 
 % Requirements of values of svar_lldebug.
     requirement_spec(
-        "low level debugging applies only to the LLDS backend",
+        "Low level debugging applies only to the LLDS backend.",
         (svar_lldebug `being` svalue_lldebug_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
 % Requirements of values of svar_rbmm.
     requirement_spec(
-        "region based memory management requires the LLDS backend",
+        "Region based memory management requires the LLDS backend.",
         (svar_rbmm `being` svalue_rbmm_yes) `implies_that`
         (svar_backend `is_one_of` [svalue_backend_llds])
     ),
 
 % Requirements of values of svar_request_single_prec_float.
     requirement_spec(
-        "single precision floats are available only when targeting C",
+        "Single precision floats are available only when targeting C.",
         (svar_request_single_prec_float `being`
             svalue_request_single_prec_float_yes)
             `implies_that`
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "single precision floats are available when requested",
+        "Single precision floats are available when requested.",
         % Since nothing forbids svalue_merc_float_is_unboxed_c_float,
         % this implication should always succeed.
         (svar_request_single_prec_float `being`
@@ -877,7 +877,7 @@ init_requirement_specs = [
 
 % Requirements of values of svar_merc_float.
     requirement_spec(
-        "unboxed double precision floats require pointer-sized doubles",
+        "Unboxed double precision floats require pointer-sized doubles.",
         (svar_merc_float `being` svalue_merc_float_is_unboxed_c_double)
             `implies_that`
         (svar_ac_size_of_double `is_one_of` [svalue_ac_size_of_double_eq_ptr])
