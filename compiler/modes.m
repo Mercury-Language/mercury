@@ -1358,7 +1358,22 @@ check_final_insts(Vars, Insts, VarInsts, InferModes, GroundMatchesBound,
                 then
                     Reason = too_instantiated
                 else if
-                    inst_matches_initial(Inst, VarInst, Type, ModuleInfo)
+                    % The only reason why VarInst is not good enough
+                    % if the expected Inst is simply `ground' is that
+                    % it is not instantiated enough. Unfortunately,
+                    % we need to test separately for this, because the call
+                    % to inst_matches_initial below can fail, even if
+                    % Inst is `ground', because VarInst contains parts
+                    % that are too unique, or because it does not cover
+                    % all the function symbols in Type.
+                    % This is a side effect of having an inst representation
+                    % that entangles uniqueness information and which-functor
+                    % information with information about how bound a variable
+                    % is. In the extremely common case that Inst is `ground',
+                    % we need only the latter, but we can't get it by itself.
+                    ( Inst = ground(shared, none_or_default_func)
+                    ; inst_matches_initial(Inst, VarInst, Type, ModuleInfo)
+                    )
                 then
                     Reason = not_instantiated_enough
                 else
