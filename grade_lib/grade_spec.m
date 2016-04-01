@@ -5,6 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% This module defines the "terrain" on which the grade solver operates,
+% by defining the list of solver variables, the values they may have,
+% and the constraints that assignments of values to solver variables
+% must satisfy to be a valid solution.
+%
+% To keep this module easy to read and thus to check, it contains only
+% specification-level information; it intentionally leaves out the data
+% structures needed during constraint solving that are irrelevant to
+% the specification of the problem. Those will be added by the code of
+% setup_solver_info in grade_setup.m.
+%
 
 :- module grade_lib.grade_spec.
 :- interface.
@@ -12,6 +24,13 @@
 :- import_module list.
 
 %---------------------------------------------------------------------------%
+%
+% The solver_var_id and solver_var_value_id types embody one of the four
+% representations of grades described in compiler/notes/grade_library.html.
+% This is the representation used by the solver, because it allows
+% the solver to use generic code to implement propagation on *all*
+% requirements, regardless of what solver variables and values they involve.
+%
 
 :- type solver_var_id
     --->    svar_ac_gcc_regs_avail
@@ -194,19 +213,61 @@
 
 %---------------------------------------------------------------------------%
 
+    % See the documentation of init_solver_var_specs below.
 :- type specs_version
     --->    specs_version_0
     ;       specs_version_1.
 
+    % solvar_var_spec(VarId, [ValueId1, ValueId2, ... ValueIdN]) means that
+    % the value of VarId must be one of {ValueId1, ValueId2, ValueIdN}.
+    %
 :- type solver_var_spec
     --->    solver_var_spec(
                 svs_var                     :: solver_var_id,
                 svs_values                  :: list(solver_var_value_id)
             ).
 
+    % Return the list of solver variables in a grade specification problem,
+    % and the list of possible values of each of those solver variables.
+    %
+    % The order of solver variables in the returned list is the order
+    % in which labeling will try to choose a variable to bind.
+    %
+    % The order of values within each solver variable is the order of
+    % preference: labeling will always choose to set the chosen solver variable
+    % to the first of its values that has not previously been ruled out.
+    %
+    % For a few solver variables, the order of "preference" we currently use
+    % is not the one we *want* to use. If a grade string does not explicily
+    % specify the use of a specific gc algorithm, we currently assume that this
+    % implicitly specifies NOT using any garbage collector, and we likewise
+    % assume that the absence of a grade component (.stseg or .exts) that
+    % asks for a dynamically sized stack means that the user wants a fixed
+    % size stack. This is "version 0" of the preferences, and hence of
+    % the solver var specs. However, we want to change the defaults
+    % to the use of the Boehm collector and stack segments respectively,
+    % which is what version 1 of the preferences calls for.
+    %
 :- func init_solver_var_specs(specs_version) = list(solver_var_spec).
 
 %---------------------------------------------------------------------------%
+%
+% A requirement is a named implication of the form
+%
+%   (IfVar `being` IfValue)
+%       `implies_that`
+%   (ThenVar `is_one_of` [ThenValue1, ..., ThenValueN])
+%
+% The solver can use the implication to do propagation in both directions.
+%
+% Forward direction: if the solver knows that IfVar = IfValue, it will
+% mark all values of ThenVar that are not among ThenValue1 .. ThenValueN
+% as not possible.
+%
+% Reverse direction: if the solver knows that ThenVar cannot be
+% any of the values in ThenValue1 .. ThenValueN, then it will record that
+% IfVar = IfValue is not possible either.
+%
 
 :- type if_spec
     --->    being(solver_var_id, solver_var_value_id).
@@ -223,6 +284,10 @@
                 rs_implication              :: implication_spec
             ).
 
+    % Return the list of requirements that represent the dependencies
+    % and incompatibilities between grade components, as represented
+    % by their solver vars.
+    %
 :- func init_requirement_specs = list(requirement_spec).
 
 %---------------------------------------------------------------------------%
@@ -237,7 +302,7 @@ init_solver_var_specs(SpecsVersion) = Specs :-
         StackLenPrefOrder =
             [svalue_stack_len_std, svalue_stack_len_segments,
             svalue_stack_len_extend],
-        GcPrefOrder = 
+        GcPrefOrder =
             [svalue_gc_none, svalue_gc_bdw, svalue_gc_target_native,
             svalue_gc_accurate, svalue_gc_bdw_debug, svalue_gc_history]
     ;
@@ -245,23 +310,16 @@ init_solver_var_specs(SpecsVersion) = Specs :-
         StackLenPrefOrder =
             [svalue_stack_len_segments, svalue_stack_len_std,
             svalue_stack_len_extend],
-        GcPrefOrder = 
+        GcPrefOrder =
             [svalue_gc_bdw, svalue_gc_target_native, svalue_gc_accurate,
             svalue_gc_bdw_debug, svalue_gc_none, svalue_gc_history]
     ),
 
-    % The order of solver variables here is the order in which labeling
-    % will try to choose a variable to bind.
-    %
-    % The order of values within each solver variables is the order of
-    % preference: labeling will always choose to set the chosen solver variable
-    % to the first of its values that has not previously been ruled out.
-    %
-    % The first group of variables are set to autoconfigured values
-    % before constraint solving starts. By putting them at the start,
-    % the very first labeling step will skip over them; later labelling steps
-    % won't have to look at them.
     Specs = [
+        % This first group of variables are set (by setup_solver_info)
+        % to autoconfigured values before constraint solving starts.
+        % By putting them at the start, the very first labeling step will
+        % skip over them; later labelling steps won't have to look at them.
         solver_var_spec(svar_ac_gcc_regs_avail,
             [svalue_ac_gcc_regs_avail_no,
             svalue_ac_gcc_regs_avail_yes]),
@@ -386,7 +444,7 @@ init_requirement_specs = [
     requirement_spec(
         "Using the MLDS backend requires targeting C, C# or Java.",
         (svar_backend `being` svalue_backend_mlds) `implies_that`
-        (svar_target `is_one_of` 
+        (svar_target `is_one_of`
             [svalue_target_c, svalue_target_csharp, svalue_target_java])
     ),
     requirement_spec(
@@ -701,12 +759,15 @@ init_requirement_specs = [
             `implies_that`
         (svar_thread_safe `is_one_of` [svalue_thread_safe_no])
     ),
-    % XXX Do svalue_minmodel_own_stack{,_debug} imply
-    % svalue_thread_safe_no?
+    % XXX Do svalue_minmodel_own_stack{,_debug} imply svalue_thread_safe_no?
+    % For now, since the implementation of own stack minimal model
+    % is not yet complete, we need not include its requirements in the list,
+    % and not including them should make constraint solving a tiny bit faster.
 
 % Requirements of values of svar_thread_safe.
-    % None.
-    % XXX This is probably wrong; there ought to be some.
+    % None. There are some settings of other solver variables
+    % that are incompatible with thread safety, but those incompatibilities
+    % are expressed by requirements listed under the *other* solver variable.
 
 % Requirements of values of svar_gc.
     requirement_spec(

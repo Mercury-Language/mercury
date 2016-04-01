@@ -5,6 +5,22 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% This is a program for testing the grade library. It is intended to be used
+% with command lines like this:
+%
+% $ ./choose_grade target=erlang stack_len!=stseg 
+%
+% Each argument is either an equation (with the form var=value) or
+% a disequation (with the form var!=value). The variable and value names
+% are those in var_value_names.m.
+%
+% The arguments set up a grade problem to be solved, and this program attempts
+% to solve them. If it succeeds, it prints the settings of all the solver
+% variables (most of which are typically set by the solver, not by the user),
+% and the grade string. If it does not succeed, it prints the reason for the
+% failure.
+%
 
 :- module choose_grade.
 :- interface.

@@ -5,6 +5,24 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% A test program that checks whether all the possible values of the grade
+% structure type are valid. It does this by generating all those values,
+% and then checking, for each value, whether
+%
+% - converting it to a grade string,
+% - converting the grade string to a partial grade specification,
+% - solving that specification, and
+% - converting the solution back to a grade structure
+%
+% (a) succeeds, and (b) yields the exact same grade structure that
+% we started with.
+%
+% Besides testing whether the grade structure type is "tight" in the sense
+% of being unable to express any invalid grades, this round-trip test also
+% stress-tests all the parts of the grade library except those that explain
+% the inconsistencies in invalid grade specifications.
+%
 
 :- module try_all_grade_structs.
 :- interface.

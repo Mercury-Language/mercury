@@ -5,6 +5,22 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% Test the solver by giving it a set of grade problems to solve,
+% both in the absolute space of all possible grades and relative to
+% several possible sets of installed grades, and print the results,
+% together with operation counts.
+%
+% The intention is that
+%
+% - the absence of ERROR messages in the printed results can be checked
+%   simply by grepping for ERROR,
+% - the printout can be checked visually for correctness, both in terms of
+%   whether successful solutions are correct and whether failures are diagnosed
+%   correctly and with useful error messages, and
+% - the operation counts can be used to see the effects of any attempted
+%   speedups.
+%
 
 :- module test_grades.
 :- interface.

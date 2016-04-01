@@ -5,6 +5,23 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% This module provides predicates that set up a grade problem to be solved.
+%
+% The state of the solver consists of set of solver variables, each with
+% a set of possible values. A grade problem narrows the set of possible
+% values of some of the solver variables. A solver variable can be set
+% to be equal to some value, which sets all the other previously-possible
+% values of that solver variable to not possible. Or a solver variable
+% can be set to not-equal some value, which sets only that value of the
+% variable to not possible.
+%
+% Some of the solver variables are intended to always start out with known
+% values; these are the solver variables that record the results of
+% autoconfiguration (by the configure script). The setup_solver_info predicate,
+% which creates the initial solver_info, takes these results in the form
+% of a value of the autoconf_results type.
+%
 
 :- module grade_lib.grade_setup.
 :- interface.
@@ -15,6 +32,11 @@
 :- import_module maybe.
 
 %---------------------------------------------------------------------------%
+%
+% The autoconf_results type and its components record the results
+% of the autoconfiguration tests that are relevant to either the user-visible
+% or to the link-check grades.
+%
 
 :- type autoconf_results
     --->    autoconf_results(
@@ -51,6 +73,14 @@
     --->    autoconf_merc_file_no
     ;       autoconf_merc_file_yes.
 
+    % setup_solver_info(SpecsVersion, AutoconfResults, SolverInfo):
+    %
+    % Create a blank solver_info that records the results of autoconfiguration
+    % as given by AutoconfResults, but constrains no other solver variables.
+    %
+    % SpecsVersion controls which version of the grade implications we put
+    % into SolverInfo. (See grade_spec.m for the meanings of the versions.)
+    %
 :- pred setup_solver_info(specs_version::in, autoconf_results::in,
     solver_info::out) is det.
 
@@ -60,6 +90,24 @@
     --->    set_to_false
     ;       set_to_true.
 
+    % set_solver_var(VarName, ValueName, VarId, ValueId, SetTo, WhyNot,
+    %   MaybeError, !SolverInfo):
+    %
+    % If SetTo = set_to_true, then impose the constraint VarId = ValueId
+    % on !:SolverInfo, and record WhyNot as the reason why VarId cannot have
+    % any value other than ValueId.
+    % If SetTo = set_to_false, then impose the constraint VarId != ValueId
+    % on !:SolverInfo, and record WhyNot as the reason why VarId cannot have
+    % ValueId as its value.
+    %
+    % Return MaybeError = ok if adding the constraint worked.
+    % If it did not work, either because ValueId was never a possible value
+    % for VarId, or because the constraint this call is trying to impose
+    % is inconsistent with one that we have imposed earlier on !.SolverInfo,
+    % then return MaybeError = error(Msg), where Msg describes the problem.
+    % Use VarName and ValueName as the names of the variable and the value
+    % respectively in Msg.
+    %
 :- pred set_solver_var(string::in, string::in,
     solver_var_id::in, solver_var_value_id::in,
     solver_var_set_to::in, not_possible_why::in, maybe_error::out,
@@ -67,6 +115,16 @@
 
 %---------------------------------------------------------------------------%
 
+    % assign_var_in_map(WhyNot, VarId, ValueId, !SolverVarMap):
+    %
+    % Impose the constraint VarId = ValueId on !:SolverVarMap.
+    % Record WhyNot as the reason why VarId cannot have any value
+    % other than ValueId.
+    %
+    % Abort if ValueId was never a possible value of VarId, or if the
+    % constraint this call is trying to impose is inconsistent with
+    % a constraint that was imposed earlier, on !.SolverVarMap.
+    %
 :- pred assign_var_in_map(not_possible_why::in,
     solver_var_id::in, solver_var_value_id::in,
     solver_var_map::in, solver_var_map::out) is det.
@@ -243,8 +301,8 @@ set_solver_var_in_map(VarName, ValueName, VarId, ValueId, SetTo, WhyNot,
             SetTo = set_to_true,
             (
                 OldPossible = is_possible,
-                % This is the expected case. VarId may still be
-                % ValueId, but now it cannot be any other value.
+                % This is the expected case. VarId may still be ValueId,
+                % but now it cannot be any other value.
                 MaybeError = ok,
                 CntPoss = 1,
                 SolverVar = solver_var(CntAll, CntPoss, Values),
@@ -271,8 +329,9 @@ set_solver_var_in_map(VarName, ValueName, VarId, ValueId, SetTo, WhyNot,
                 map.det_update(VarId, SolverVar, !SolverVarMap)
             ;
                 OldPossible = not_possible(_),
-                % If the variable having this value had been rules out before,
-                % our setting it to not possible is redundant, but ok.
+                % If the variable having this value had been ruled out before,
+                % our caller asking us to set it to not possible is redundant,
+                % but ok.
                 MaybeError = ok
             )
         )
@@ -365,7 +424,7 @@ convert_and_check_requirements(CurId, SolverVarMap,
         %
         %   (IfVar = IfValue) -> (ThenVar in ThenValues)
         %
-        % If ThenValues = [], then the requirement is unsatisfiable.
+        % If ThenValues = [], then the requirement is *never* satisfiable.
         ThenValues = [_ | _]
     then
         OkRequirements = [Requirement | OkRequirementsTail],

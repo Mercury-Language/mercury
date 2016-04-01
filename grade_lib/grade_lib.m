@@ -11,12 +11,13 @@
 %
 % - several representations of grades (you can see their descriptions
 %   in compiler/notes/grade_library.html),
-% - ways to specify grades,
-% - algorithms for turning those specifications into grades themselves,
-% - ways to turn representations of grades into strings, and vice versa.
+% - ways to turn representations of grades into strings, and vice versa,
+% - ways to create partial specifications of grades (i.e. grade problems),
+% - algorithms for solving those grade problems by checking their consistency
+%   and extending them into full specifications.
 %
-% This library is intended to be linked only into the compiler, and into
-% the standalone programs in this directory.
+% This library is intended to be linked into only (a) the compiler, and
+% (b) the standalone programs in this directory.
 %
 % The modules in this library should import and use, besides each other,
 % only modules of the Mercury standard library.
@@ -25,7 +26,7 @@
 
 :- interface.
 
-:- pred grade_lib.version(string::out) is det.
+:- pred grade_lib_version(string::out) is det.
 
 :- include_module grade_setup.
 :- include_module grade_solver.
@@ -37,7 +38,7 @@
 
 :- implementation.
 
-grade_lib.version("v0").
+grade_lib_version("v1").
 
 %---------------------------------------------------------------------------%
 :- end_module grade_lib.

@@ -217,8 +217,11 @@ with each grade variable being of a separate, purpose-specific enum type.
 This means that e.g. we replace the bool option named use_trail
 with a grade variable whose value is
 either grade_var_trail_no or grade_var_trail_yes.
-There is one grade variable for each compilation model option,
-and the grade_vars structure collects all the grade variables in one structure.
+There is one grade variable for most compilation model options,
+though a few grade variables, such as grade_var_merc_float below,
+encode the values of two compilation model options
+(unboxed_float and single_prec_float).
+The grade_vars structure collects all the grade variables in one structure.
 The whole setup looks like this:
 
 <p>
@@ -227,21 +230,20 @@ The whole setup looks like this:
     --->    grade_var_trail_no
     ;       grade_var_trail_yes.
 
-:- type grade_var_thread_safe
-    --->    grade_var_thread_safe_no
-    ;       grade_var_thread_safe_yes.
+:- type grade_var_merc_float
+    --->    grade_var_merc_float_is_boxed_c_double
+    ;       grade_var_merc_float_is_unboxed_c_double
+    ;       grade_var_merc_float_is_unboxed_c_float.
 
 :- type grade_vars
     --->    grade_vars(
                 ...
                 grade_var_trail,
                 ...
-                grade_var_thread_safe,
+                grade_var_merc_float,
                 ...
             ).
 </pre>
-
-XXX Do some three-valued grade vars represent the values of TWO bool options?
 
 <p>
 The grade var representation of a grade
@@ -274,7 +276,7 @@ Like this:
     --->    ...
     ;       svar_trail
     ;       ...
-    ;       svar_thread_safe
+    ;       svar_merc_float
     ;       ...
 
 :- type solver_var_value_id
@@ -282,8 +284,10 @@ Like this:
     ;       svalue_trail_no
     ;       svalue_trail_yes
     ;       ...
-    ;       svalue_thread_safe_no
-    ;       svalue_thread_safe_yes
+    ;       svalue_merc_float_is_boxed_c_double
+    ;       svalue_merc_float_is_unboxed_c_double
+    ;       svalue_merc_float_is_unboxed_c_float
+
     ;       ...
 
 </pre>
@@ -315,8 +319,6 @@ is the grade structure (the type name is "grade_structure").
 The purpose of the grade structure is to make it impossible to express grades
 that violate any of the constraints that we require grades to meet.
 
-XXX This is not yet achieved completely, e.g. thread_safe and minmodel
-
 While the grade var representation can represent a grade
 which has both grade_var_target=grade_var_target_java and
 grade_var_deep_prof=grade_var_deep_prof_yes,
@@ -340,7 +342,7 @@ but converting that set to the grade string
 is easier to do via the grade structure,
 because the grade structure makes it much easier to figure out
 which grade string components can be left out
-as being implied by the values of previous grade string components.
+as being implied by the values of other grade string components.
 <li>
 The grade structure type is effectively a template
 that can be instantiated to any valid grade, and to no invalid grade.

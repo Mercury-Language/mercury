@@ -5,11 +5,43 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% This module defines grade_vars, a representation for grades that allows
+% the compiler to answer simple questions such as "should the generated high
+% level C code use nested functions?" in a type safe manner. It provides
+% a mechanism to convert solutions from the solver, which uses a different
+% representation, to this representation.
+%
+% See compiler/notes/grade_library.html for documentation of the
+% relationship between these representations, and their uses.
+%
 
 :- module grade_lib.grade_vars.
 :- interface.
 
 :- import_module grade_lib.grade_solver.
+
+%---------------------------------------------------------------------------%
+
+    % This function translates the representation of a grade from a form
+    % which has just one type (solver_var_id) for all solver variables and
+    % just one type (solver_var_valud_id) for all solver variable values,
+    % and translates it into a representation which has a separate type
+    % (grade_var_<varname>) for each solver variable, whose function symbols
+    % include only the values appropriate for that variable.
+    %
+    % The solver needs the first, uniform representation, since without it,
+    % one cannot write generic code that can handle all the requirements.
+    % However, this representation cannot express the fact that each solver
+    % variable has only a restricted set of valid values. The code that deals
+    % with grade strings is much easier to write if one can assume that
+    % the invariant expressing this fact holds. The return value of this
+    % function guarantees that invariant.
+    %
+    % If some bug in the solver, or in the data it is given, causes
+    % a violation of the invariant, this function will throw an exception.
+    %
+:- func success_map_to_grade_vars(success_soln_map) = grade_vars.
 
 %---------------------------------------------------------------------------%
 
@@ -177,27 +209,6 @@
     --->    grade_var_merc_float_is_boxed_c_double
     ;       grade_var_merc_float_is_unboxed_c_double
     ;       grade_var_merc_float_is_unboxed_c_float.
-
-%---------------------------------------------------------------------------%
-
-    % This function translates the representation of a grade from a form
-    % which has one type (solver_var_id) for all solver variables and
-    % just one type (solver_var_valud_id) for all solver variable values,
-    % and translates it into a representation which has a separate type
-    % (soln_<var>) for each solver variable, whose function symbols include
-    % only the values appropriate for that variable.
-    %
-    % The solver needs the first, uniform representation, since without it,
-    % one cannot write generic code that can handle all the requirements.
-    % However, this representation cannot express the fact that each solver
-    % variable has only a restricted set of valid values. The code that deals
-    % with grade strings is much easier to write if one can assume that
-    % the invariant expressing this fact holds. The return value of this
-    % function guarantees that invariant. (If some bug in the solver, or
-    % in the data it is given, causes a violation of the invariant, this
-    % function will throw an exception.)
-    %
-:- func success_map_to_grade_vars(success_soln_map) = grade_vars.
 
 %---------------------------------------------------------------------------%
 

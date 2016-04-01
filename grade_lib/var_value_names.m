@@ -5,6 +5,15 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% Maps the solver_var_ids and solver_var_value_ids to strings and vice versa.
+% These names are used by choose_grade.m to specify what grade problem
+% the user wishes to set up, and by error messages during the solver setup
+% process.
+%
+% XXX The compiler will use a mechanism for specifying grade problems
+% to be solved using a mechanism ENTIRELY SEPARATE from this one.
+%
 
 :- module var_value_names.
 :- interface.

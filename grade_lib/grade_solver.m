@@ -5,6 +5,52 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% This module implements the solver for grade problems.
+%
+% The state of the solver consists of set of solver variables, each with
+% a set of possible values. A grade problem narrows the set of possible
+% values of some of the solver variables. Solving a grade problem
+% consists of finding an assigment of a single possible value to each
+% solver variable that simultaneously satisfies all the requirements
+% imposed by the Mercury grade system. (Two example requirements are
+% "Boehm-Demers-Weiser gc requires targeting C" and "Trail segments require
+% trailing.") The propagation part of the solver uses these requirements
+% to continually narrow the set of possible values of solver variables
+% until no more such narrowing is possible.
+%
+% Most grade problems are underspecified. For example, the solutions of
+% the grade problem that asks for (a) declarative debugging and (b) trailing
+% include none.decldebug.tr, asm_fast.decldebug.tr, none.decldebug.tr.rbmm,
+% none.decldebug.tr.profall, and many, many more.
+%
+% For grade problems that have more than one solution, we want to return
+% the solution that is "best" in some sense. We have two ways to make such
+% choices: we can choose in the absolute space of all possible valid grades,
+% or relative to a specified set of grades.
+%
+% When we are looking for absolute solutions, we use labeling. A labeling
+% step looks for solver variables with two or more values that are still
+% possible, picks the highest priority such variable, and binds it to the
+% most preferred value of that variable. (The priority list and the notion
+% of preference among values are encoded in the solver state, which is
+% initialized by grade_setup.m based on the solver var specs and requirement
+% specs in grade_spec.m.) It then invokes propagation again to process
+% the implications of that choice. If propagation still does not arrive
+% either at failure (some solver variable has no possible values) or success
+% (all solver variables have exactly one possible value), it invoked labelling
+% again. This continues as long as needed. (Since both labelling and
+% propagation monotonically remove possible values from solver variables,
+% the process is guaranteed to terminate, and to do so reasonably quickly.)
+%
+% When we are looking for the best match relative to a specified set of grades,
+% intended to be the set of already installed grades, we don't do labelling.
+% Instead, after discard the installed grades that don't match the results of
+% propagation, we repeatedly find the highest priority solver variable that has
+% two or more matches in the remaining set of installed grades, and discard
+% the installed grades in the set that map that variable to any value
+% but the most preferred still-possible value of that variable. We stop
+% when the set has been whittled down a single installed grade.
 
 :- module grade_lib.grade_solver.
 :- interface.
@@ -22,18 +68,31 @@
                 sc_num_req_tests        :: int
             ).
 
+    % An abstract piece of information from which failure trees can be
+    % extracted by failure_info_to_failure_trees.
+    %
 :- type failure_info.
 
+    % Maps every solver variable to its assigned value.
+    %
 :- type success_soln_map == map(solver_var_id, solver_var_value_id).
 
 :- type solution
     --->    soln_failure(
+                % The grade problem we were asked to solve is inconsistent.
+                % The failure_info encodes the cause of the inconsistencies;
+                % it can be decoded with failure_info_to_failure_trees.
                 failure_info
             )
     ;       soln_success(
+                % The grade problem we were asked to solve is consistent;
+                % this is the "best" solution.
                 success_soln_map
             ).
 
+    % See the description of absolute solutions in the comment at the top
+    % of the module.
+    %
 :- pred solve_absolute(solver_info::in, solve_counts::out, solution::out)
     is det.
 
@@ -41,23 +100,44 @@
 
 :- type installed_grade
     --->    installed_grade(
+                % The name of the installed grade.
                 string,
+
+                % The setting of every solver variable in the installed grade.
                 success_soln_map
             ).
 
+    % In the search for the best installed grade, when we make a choice,
+    % should we commit to that choice, or should we be prepared to backtrack
+    % if the initial choice turns out not to lead to a solution?
+    % XXX This should not be needed; should_not_commit does NOT lead
+    % to any solutions that should_commit does not lead to. However,
+    % I (zs) could not be 100% sure of that without implementing
+    % should_not_commit, and trying it out.
 :- type should_commit
     --->    should_commit
     ;       should_not_commit.
 
 :- type installed_grade_solution
     --->    installed_grade_spec_is_inconsistent(
+                % The grade problem we were asked to solve is inconsistent.
+                % The failure_info encodes the cause of the inconsistencies;
+                % it can be decoded with failure_info_to_failure_trees.
                 failure_info
             )
     ;       installed_grade_success(
+                % The grade problem we were asked to solve is consistent;
+                % this is the "best" solution among the installed grades.
                 installed_grade
             )
     ;       no_such_installed_grade.
+            % The grade problem we were asked to solve is consistent,
+            % but the set of installed grades we were given does not include
+            % *any* of its solutions.
 
+    % See the description of relative solutions in the comment at the top
+    % of the module.
+    %
 :- pred solve_best_installed_grade(solver_info::in, should_commit::in,
     list(installed_grade)::in,
     solve_counts::out, installed_grade_solution::out) is det.
@@ -71,8 +151,8 @@
     % print whether the value is still possible, and if not, why not.
     % Add the given string as a prefix before every line.
     %
-    % Abort if we detect an invariant of the solver map data structure
-    % that does not hold.
+    % Abort if we detect that a supposed invariant of the solver map
+    % data structure does not actually hold.
     %
 :- func solver_var_map_to_str(string, solver_var_map) = string.
 
@@ -89,16 +169,41 @@
 
 :- type failure_tree
     --->    failure_tree(
+                % The solving process fails when we find that a
+                % solver variable has no possible values.
+
                 solver_var_id,
+                % This is the solver variable.
+
                 list(why_var_is_not_value)
+                % For each of the values that this variable may ordinarily
+                % have, and which was not ruled out by autoconfiguration
+                % or directly by the user, this says why that value
+                % has been ruled out. (This means we have an entry in this list
+                % only for values that were ruled out by propagation.)
             ).
 
 :- type why_var_is_not_value
     --->    why_var_is_not_value(
                 solver_var_value_id,
+                % The value that was ruled out.
+
                 requirement_id,
                 string,
+                % The id and the description of the requirement that ruled out
+                % the solver var having this value.
+
                 list(failure_tree)
+                % We can apply a requirement (in either direction) only if
+                % the *other* variable involved in the requirement had some
+                % of *its* values ruled out. (If all solver variables had
+                % all their values marked as possible, no propagation
+                % could ever take place.)
+                %
+                % If some of values of the other variable were also ruled out
+                % by propagation, this field will be a singleton list
+                % containing the reason why those values were ruled out.
+                % Otherwise, it will be the empty list.
             ).
 
 :- func failure_info_to_failure_trees(failure_info)
@@ -119,223 +224,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
-
-%---------------------------------------------------------------------------%
-
-solve_best_installed_grade(SolverInfo, Commit, InstalledGrades0, SolveCounts,
-        InstalledGradeSoln) :-
-    SolverInfo = solver_info(Requirements, SolverVarPriorities, SolverVarMap0),
-    SolveCounts0 = solve_counts(0, 0, 0),
-    propagate_to_fixpoint(Requirements, _Requirements,
-        SolverVarMap0, SolverVarMap, SolveCounts0, SolveCounts),
-    at_solution(Requirements, SolverVarMap, MaybeSoln),
-
-    list.sort_and_remove_dups(InstalledGrades0, InstalledGrades),
-    (
-        MaybeSoln = yes(Soln),
-        (
-            Soln = soln_failure(FailureInfo),
-            InstalledGradeSoln =
-                installed_grade_spec_is_inconsistent(FailureInfo)
-        ;
-            Soln = soln_success(SuccMap),
-            map.to_sorted_assoc_list(SuccMap, SuccPairs),
-            list.filter(match_success_map(SuccPairs), InstalledGrades,
-                MatchingInstalledGrades),
-            (
-                MatchingInstalledGrades = [],
-                InstalledGradeSoln = no_such_installed_grade
-            ;
-                MatchingInstalledGrades = [MatchingInstalledGrade],
-                InstalledGradeSoln =
-                    installed_grade_success(MatchingInstalledGrade)
-            ;
-                MatchingInstalledGrades = [_, _ | _],
-                % The same grade cannot occur in InstalledGrades twice.
-                unexpected($pred, "MatchingInstalledGrades = [_, _ | _]")
-            )
-        )
-    ;
-        MaybeSoln = no,
-        list.filter(
-            is_installed_grade_viable(SolverVarMap, SolverVarPriorities),
-            InstalledGrades, ViableInstalledGrades),
-        (
-            ViableInstalledGrades = [],
-            InstalledGradeSoln = no_such_installed_grade
-        ;
-            ViableInstalledGrades =
-                [HeadViableInstalledGrade | TailViableInstalledGrades],
-            pick_best_viable_grade(SolverVarMap,
-                SolverVarPriorities, Commit,
-                HeadViableInstalledGrade, TailViableInstalledGrades,
-                MaybeBestInstalledGrade),
-            (
-                MaybeBestInstalledGrade = yes(BestInstalledGrade),
-                InstalledGradeSoln =
-                    installed_grade_success(BestInstalledGrade)
-            ;
-                MaybeBestInstalledGrade = no,
-                % XXX This shouldn't happen with should_not_commit,
-                % but may (or may not) happen with should_commit. Let's see.
-                InstalledGradeSoln = no_such_installed_grade
-            )
-        )
-    ).
-
-:- pred match_success_map(assoc_list(solver_var_id, solver_var_value_id)::in,
-    installed_grade::in) is semidet.
-
-match_success_map(SuccPairs, InstalledGrade) :-
-    InstalledGrade = installed_grade(_GradeName, GradeSuccMap),
-    map.to_sorted_assoc_list(GradeSuccMap, GradeSuccPairs),
-    SuccPairs = GradeSuccPairs.
-
-:- pred is_installed_grade_viable(solver_var_map::in,
-    list(solver_var_id)::in, installed_grade::in) is semidet.
-
-is_installed_grade_viable(_SolverVarMap, [], _InstalledGrade).
-is_installed_grade_viable(SolverVarMap, [VarId | VarIds], InstalledGrade) :-
-    InstalledGrade = installed_grade(_GradeName, GradeSuccMap),
-    map.lookup(SolverVarMap, VarId, SolverVar),
-    map.lookup(GradeSuccMap, VarId, GradeValueId),
-    SolverVar = solver_var(_CntAll, _CntPoss, Values),
-    is_value_possible(GradeValueId, Values),
-    is_installed_grade_viable(SolverVarMap, VarIds, InstalledGrade).
-
-:- pred is_value_possible(solver_var_value_id::in,
-    list(solver_var_value)::in) is semidet.
-
-is_value_possible(GradeValueId, [Value | Values]) :-
-    Value = solver_var_value(ValueId, Possible),
-    ( if GradeValueId = ValueId then
-        Possible = is_possible
-    else
-        is_value_possible(GradeValueId, Values)
-    ).
-
-:- pred pick_best_viable_grade(solver_var_map::in,
-    list(solver_var_id)::in, should_commit::in,
-    installed_grade::in, list(installed_grade)::in,
-    maybe(installed_grade)::out) is det.
-
-pick_best_viable_grade(SolverVarMap0, SolverVarPriorities, Commit,
-        HeadViableInstalledGrade, TailViableInstalledGrades,
-        MaybeBestInstalledGrade) :-
-    (
-        TailViableInstalledGrades = [],
-        MaybeBestInstalledGrade = yes(HeadViableInstalledGrade)
-    ;
-        TailViableInstalledGrades = [_ | _],
-        InstalledGrades =
-            [HeadViableInstalledGrade | TailViableInstalledGrades],
-        pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap0,
-            SolverVarPriorities, SelectedVarId, SelectedVarViableValueIds,
-            LaterVarIds),
-        SelectedVarViableValueIds =
-            one_or_more(FirstViableValueId, LaterViableValueIds),
-        pick_first_viable_value(SolverVarMap0, SolverVarPriorities, Commit,
-            InstalledGrades, SelectedVarId, LaterVarIds,
-            FirstViableValueId, LaterViableValueIds, MaybeBestInstalledGrade)
-    ).
-
-:- pred pick_first_viable_value(solver_var_map::in,
-    list(solver_var_id)::in, should_commit::in, list(installed_grade)::in,
-    solver_var_id::in, list(solver_var_id)::in,
-    solver_var_value_id::in, list(solver_var_value_id)::in,
-    maybe(installed_grade)::out) is det.
-
-pick_first_viable_value(SolverVarMap0, SolverVarPriorities, Commit,
-        InstalledGrades, SelectedVarId, LaterVarIds,
-        FirstViableValueId, LaterViableValueIds, MaybeBestInstalledGrade) :-
-    assign_var_in_map(npw_labeling, SelectedVarId, FirstViableValueId,
-        SolverVarMap0, SolverVarMap1),
-    list.filter(
-        is_installed_grade_viable(SolverVarMap1, SolverVarPriorities),
-        InstalledGrades, FirstValueInstalledGrades),
-    (
-        FirstValueInstalledGrades =
-            [HeadFirstInstalledGrade | TailFirstInstalledGrades]
-    ;
-        FirstValueInstalledGrades = [],
-        unexpected($pred, "FirstValueInstalledGrades = []")
-    ),
-    pick_best_viable_grade(SolverVarMap1, LaterVarIds, Commit,
-        HeadFirstInstalledGrade, TailFirstInstalledGrades,
-        FirstMaybeBestInstalledGrade),
-    (
-        FirstMaybeBestInstalledGrade = yes(_),
-        MaybeBestInstalledGrade = FirstMaybeBestInstalledGrade
-    ;
-        FirstMaybeBestInstalledGrade = no,
-        (
-            Commit = should_commit,
-            MaybeBestInstalledGrade = FirstMaybeBestInstalledGrade
-        ;
-            Commit = should_not_commit,
-            (
-                LaterViableValueIds = [],
-                MaybeBestInstalledGrade = FirstMaybeBestInstalledGrade
-            ;
-                LaterViableValueIds =
-                    [FirstLaterViableValueId | LaterLaterViableValueIds],
-                pick_first_viable_value(SolverVarMap0, SolverVarPriorities,
-                    Commit, InstalledGrades, SelectedVarId, LaterVarIds,
-                    FirstLaterViableValueId, LaterLaterViableValueIds,
-                    MaybeBestInstalledGrade)
-            )
-        )
-    ).
-
-:- pred pick_first_var_with_viable_choice(list(installed_grade)::in,
-    solver_var_map::in, list(solver_var_id)::in,
-    solver_var_id::out, one_or_more(solver_var_value_id)::out,
-    list(solver_var_id)::out) is det.
-
-pick_first_var_with_viable_choice(_InstalledGrades, _SolverVarMap, [],
-        _, _, _) :-
-    unexpected($pred, "none of the viable installed grades are really viable").
-pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap,
-        [VarId | VarIds], SelectedVarId, SelectedVarViableValueIds,
-        LaterVarIds) :-
-    map.lookup(SolverVarMap, VarId, SolverVar),
-    SolverVar = solver_var(_CntAll, CntPoss, Values),
-    ( if
-        CntPoss > 1,
-        list.filter_map(
-            is_value_possible_and_available(InstalledGrades, VarId),
-            Values, ViableValueIds),
-        ViableValueIds = [HeadViableValueId | TailViableValueIds]
-    then
-        SelectedVarId = VarId,
-        SelectedVarViableValueIds =
-            one_or_more(HeadViableValueId, TailViableValueIds),
-        LaterVarIds = VarIds
-    else
-        pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap,
-            VarIds, SelectedVarId, SelectedVarViableValueIds, LaterVarIds)
-    ).
-
-:- pred is_value_possible_and_available(list(installed_grade)::in,
-    solver_var_id::in, solver_var_value::in, solver_var_value_id::out)
-    is semidet.
-
-is_value_possible_and_available(InstalledGrades, VarId, Value, ValueId) :-
-    Value = solver_var_value(ValueId, Possible),
-    Possible = is_possible,
-    is_value_available(InstalledGrades, VarId, ValueId).
-
-:- pred is_value_available(list(installed_grade)::in,
-    solver_var_id::in, solver_var_value_id::in) is semidet.
-
-is_value_available([InstalledGrade | InstalledGrades], VarId, ValueId) :-
-    InstalledGrade = installed_grade(_GradeName, GradeSuccMap),
-    map.lookup(GradeSuccMap, VarId, GradeValueId),
-    ( if ValueId = GradeValueId then
-        true
-    else
-        is_value_available(InstalledGrades, VarId, ValueId)
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -790,6 +678,223 @@ get_poss_values([SolverVarValue | SolverVarValues], PossValueIds) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+solve_best_installed_grade(SolverInfo, Commit, InstalledGrades0, SolveCounts,
+        InstalledGradeSoln) :-
+    SolverInfo = solver_info(Requirements, SolverVarPriorities, SolverVarMap0),
+    SolveCounts0 = solve_counts(0, 0, 0),
+    propagate_to_fixpoint(Requirements, _Requirements,
+        SolverVarMap0, SolverVarMap, SolveCounts0, SolveCounts),
+    at_solution(Requirements, SolverVarMap, MaybeSoln),
+
+    list.sort_and_remove_dups(InstalledGrades0, InstalledGrades),
+    (
+        MaybeSoln = yes(Soln),
+        (
+            Soln = soln_failure(FailureInfo),
+            InstalledGradeSoln =
+                installed_grade_spec_is_inconsistent(FailureInfo)
+        ;
+            Soln = soln_success(SuccMap),
+            map.to_sorted_assoc_list(SuccMap, SuccPairs),
+            list.filter(match_success_map(SuccPairs), InstalledGrades,
+                MatchingInstalledGrades),
+            (
+                MatchingInstalledGrades = [],
+                InstalledGradeSoln = no_such_installed_grade
+            ;
+                MatchingInstalledGrades = [MatchingInstalledGrade],
+                InstalledGradeSoln =
+                    installed_grade_success(MatchingInstalledGrade)
+            ;
+                MatchingInstalledGrades = [_, _ | _],
+                % The same grade cannot occur in InstalledGrades twice.
+                unexpected($pred, "MatchingInstalledGrades = [_, _ | _]")
+            )
+        )
+    ;
+        MaybeSoln = no,
+        list.filter(
+            is_installed_grade_viable(SolverVarMap, SolverVarPriorities),
+            InstalledGrades, ViableInstalledGrades),
+        (
+            ViableInstalledGrades = [],
+            InstalledGradeSoln = no_such_installed_grade
+        ;
+            ViableInstalledGrades =
+                [HeadViableInstalledGrade | TailViableInstalledGrades],
+            pick_best_viable_grade(SolverVarMap,
+                SolverVarPriorities, Commit,
+                HeadViableInstalledGrade, TailViableInstalledGrades,
+                MaybeBestInstalledGrade),
+            (
+                MaybeBestInstalledGrade = yes(BestInstalledGrade),
+                InstalledGradeSoln =
+                    installed_grade_success(BestInstalledGrade)
+            ;
+                MaybeBestInstalledGrade = no,
+                % XXX This shouldn't happen with should_not_commit,
+                % but may (or may not) happen with should_commit. Let's see.
+                InstalledGradeSoln = no_such_installed_grade
+            )
+        )
+    ).
+
+:- pred match_success_map(assoc_list(solver_var_id, solver_var_value_id)::in,
+    installed_grade::in) is semidet.
+
+match_success_map(SuccPairs, InstalledGrade) :-
+    InstalledGrade = installed_grade(_GradeName, GradeSuccMap),
+    map.to_sorted_assoc_list(GradeSuccMap, GradeSuccPairs),
+    SuccPairs = GradeSuccPairs.
+
+:- pred is_installed_grade_viable(solver_var_map::in,
+    list(solver_var_id)::in, installed_grade::in) is semidet.
+
+is_installed_grade_viable(_SolverVarMap, [], _InstalledGrade).
+is_installed_grade_viable(SolverVarMap, [VarId | VarIds], InstalledGrade) :-
+    InstalledGrade = installed_grade(_GradeName, GradeSuccMap),
+    map.lookup(SolverVarMap, VarId, SolverVar),
+    map.lookup(GradeSuccMap, VarId, GradeValueId),
+    SolverVar = solver_var(_CntAll, _CntPoss, Values),
+    is_value_possible(GradeValueId, Values),
+    is_installed_grade_viable(SolverVarMap, VarIds, InstalledGrade).
+
+:- pred is_value_possible(solver_var_value_id::in,
+    list(solver_var_value)::in) is semidet.
+
+is_value_possible(GradeValueId, [Value | Values]) :-
+    Value = solver_var_value(ValueId, Possible),
+    ( if GradeValueId = ValueId then
+        Possible = is_possible
+    else
+        is_value_possible(GradeValueId, Values)
+    ).
+
+:- pred pick_best_viable_grade(solver_var_map::in,
+    list(solver_var_id)::in, should_commit::in,
+    installed_grade::in, list(installed_grade)::in,
+    maybe(installed_grade)::out) is det.
+
+pick_best_viable_grade(SolverVarMap0, SolverVarPriorities, Commit,
+        HeadViableInstalledGrade, TailViableInstalledGrades,
+        MaybeBestInstalledGrade) :-
+    (
+        TailViableInstalledGrades = [],
+        MaybeBestInstalledGrade = yes(HeadViableInstalledGrade)
+    ;
+        TailViableInstalledGrades = [_ | _],
+        InstalledGrades =
+            [HeadViableInstalledGrade | TailViableInstalledGrades],
+        pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap0,
+            SolverVarPriorities, SelectedVarId, SelectedVarViableValueIds,
+            LaterVarIds),
+        SelectedVarViableValueIds =
+            one_or_more(FirstViableValueId, LaterViableValueIds),
+        pick_first_viable_value(SolverVarMap0, SolverVarPriorities, Commit,
+            InstalledGrades, SelectedVarId, LaterVarIds,
+            FirstViableValueId, LaterViableValueIds, MaybeBestInstalledGrade)
+    ).
+
+:- pred pick_first_viable_value(solver_var_map::in,
+    list(solver_var_id)::in, should_commit::in, list(installed_grade)::in,
+    solver_var_id::in, list(solver_var_id)::in,
+    solver_var_value_id::in, list(solver_var_value_id)::in,
+    maybe(installed_grade)::out) is det.
+
+pick_first_viable_value(SolverVarMap0, SolverVarPriorities, Commit,
+        InstalledGrades, SelectedVarId, LaterVarIds,
+        FirstViableValueId, LaterViableValueIds, MaybeBestInstalledGrade) :-
+    assign_var_in_map(npw_labeling, SelectedVarId, FirstViableValueId,
+        SolverVarMap0, SolverVarMap1),
+    list.filter(
+        is_installed_grade_viable(SolverVarMap1, SolverVarPriorities),
+        InstalledGrades, FirstValueInstalledGrades),
+    (
+        FirstValueInstalledGrades =
+            [HeadFirstInstalledGrade | TailFirstInstalledGrades]
+    ;
+        FirstValueInstalledGrades = [],
+        unexpected($pred, "FirstValueInstalledGrades = []")
+    ),
+    pick_best_viable_grade(SolverVarMap1, LaterVarIds, Commit,
+        HeadFirstInstalledGrade, TailFirstInstalledGrades,
+        FirstMaybeBestInstalledGrade),
+    (
+        FirstMaybeBestInstalledGrade = yes(_),
+        MaybeBestInstalledGrade = FirstMaybeBestInstalledGrade
+    ;
+        FirstMaybeBestInstalledGrade = no,
+        (
+            Commit = should_commit,
+            MaybeBestInstalledGrade = FirstMaybeBestInstalledGrade
+        ;
+            Commit = should_not_commit,
+            (
+                LaterViableValueIds = [],
+                MaybeBestInstalledGrade = FirstMaybeBestInstalledGrade
+            ;
+                LaterViableValueIds =
+                    [FirstLaterViableValueId | LaterLaterViableValueIds],
+                pick_first_viable_value(SolverVarMap0, SolverVarPriorities,
+                    Commit, InstalledGrades, SelectedVarId, LaterVarIds,
+                    FirstLaterViableValueId, LaterLaterViableValueIds,
+                    MaybeBestInstalledGrade)
+            )
+        )
+    ).
+
+:- pred pick_first_var_with_viable_choice(list(installed_grade)::in,
+    solver_var_map::in, list(solver_var_id)::in,
+    solver_var_id::out, one_or_more(solver_var_value_id)::out,
+    list(solver_var_id)::out) is det.
+
+pick_first_var_with_viable_choice(_InstalledGrades, _SolverVarMap, [],
+        _, _, _) :-
+    unexpected($pred, "none of the viable installed grades are really viable").
+pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap,
+        [VarId | VarIds], SelectedVarId, SelectedVarViableValueIds,
+        LaterVarIds) :-
+    map.lookup(SolverVarMap, VarId, SolverVar),
+    SolverVar = solver_var(_CntAll, CntPoss, Values),
+    ( if
+        CntPoss > 1,
+        list.filter_map(
+            is_value_possible_and_available(InstalledGrades, VarId),
+            Values, ViableValueIds),
+        ViableValueIds = [HeadViableValueId | TailViableValueIds]
+    then
+        SelectedVarId = VarId,
+        SelectedVarViableValueIds =
+            one_or_more(HeadViableValueId, TailViableValueIds),
+        LaterVarIds = VarIds
+    else
+        pick_first_var_with_viable_choice(InstalledGrades, SolverVarMap,
+            VarIds, SelectedVarId, SelectedVarViableValueIds, LaterVarIds)
+    ).
+
+:- pred is_value_possible_and_available(list(installed_grade)::in,
+    solver_var_id::in, solver_var_value::in, solver_var_value_id::out)
+    is semidet.
+
+is_value_possible_and_available(InstalledGrades, VarId, Value, ValueId) :-
+    Value = solver_var_value(ValueId, Possible),
+    Possible = is_possible,
+    is_value_available(InstalledGrades, VarId, ValueId).
+
+:- pred is_value_available(list(installed_grade)::in,
+    solver_var_id::in, solver_var_value_id::in) is semidet.
+
+is_value_available([InstalledGrade | InstalledGrades], VarId, ValueId) :-
+    InstalledGrade = installed_grade(_GradeName, GradeSuccMap),
+    map.lookup(GradeSuccMap, VarId, GradeValueId),
+    ( if ValueId = GradeValueId then
+        true
+    else
+        is_value_available(InstalledGrades, VarId, ValueId)
+    ).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 solver_var_map_to_str(Prefix, SolverVarMap) = Str :-
@@ -955,8 +1060,15 @@ success_value_to_str(Prefix, VarId - ValueId) = Str :-
 :- type failure_info
     --->    failure_info(
                 list(requirement),
+                % The full, unmodified list of requirements involved in
+                % the solution process. We use this to map requirement_ids
+                % to the requirements themselves.
+
                 solver_var_map,
+                % The solver var map when we discovered the inconsistency.
+
                 one_or_more(solver_var_id)
+                % The solver variables that have no possible values.
             ).
 
 failure_info_to_failure_trees(FailureInfo) = FailureTrees :-

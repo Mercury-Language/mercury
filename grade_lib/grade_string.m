@@ -5,6 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% This module provides the means to convert grade structures to strings,
+% and to parse grade strings into the settings of the (explicitly specified)
+% grade variables.
+%
 
 :- module grade_lib.grade_string.
 :- interface.
@@ -20,11 +25,33 @@
     --->    grade_string_user
     ;       grade_string_link_check.
 
+    % Given a grade structure, convert it to a grade string. If the first
+    % argument is grade_string_user, make this the kind of grade string
+    % that users see: a '.'-separated list of user-visible grade components.
+    % If it is grade_string_link_check, make it the string we use on the C
+    % backend to check, at link time, that all modules are compiled in the
+    % same grade. These link check grade strings separate the grade components
+    % with '_'s, they include autoconfigured grade components such as tags2,
+    % and (where relevant) they include version numbers.
+    %
 :- func grade_structure_to_grade_string(which_grade_string, grade_structure)
     = string.
 
 %---------------------------------------------------------------------------%
 
+    % Given a string representation of user-visible grade ('.'-separated,
+    % no version numbers, no autoconf-generated grade components such as
+    % .tags2), return a map that maps the grade variables whose values are
+    % specified by the given grade components to the specified values.
+    % The contents of this success_soln_map can be used to set up a
+    % solver_var_map, and then the solver can be used to propagate through
+    % the implications of the selected grade components.
+    %
+    % If the string is not a '.'-separated sequence of valid grade components,
+    % and/or if the grade components specify inconsistent values for
+    % one or more grade variables, return a list of error messages
+    % describing the problem(s).
+    %
 :- func grade_string_to_succ_soln(string) =
     maybe_errors(success_soln_map, string).
 
@@ -205,7 +232,7 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             )
         ),
         MercFileStrs = merc_file_to_strs(WhichGradeString, MercFile),
-            % XXX The order here should be revisited.
+        % XXX The order here should be revisited.
         GradeComponents = BinaryCompatStrs ++ [BaseStr]
             ++ LowTagsFloatsStrs ++ ThreadSafeStrs ++ GcStrs
             ++ LLDSPerfProfStrs ++ TermSizeProfStrs
@@ -216,9 +243,8 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         GradeStructure = grade_mlds(MLDSTarget, SSDebug),
         SSDebugStrs = ssdebug_to_strs(WhichGradeString, SSDebug),
         (
-            MLDSTarget = mlds_target_c(DataRep, NestedFuncs,
-                ThreadSafe, MLDSCGc, CTrail, MLDSPerfProf,
-                MercFile, LowTagsFloats),
+            MLDSTarget = mlds_target_c(DataRep, NestedFuncs, ThreadSafe,
+                MLDSCGc, CTrail, MLDSPerfProf, MercFile, LowTagsFloats),
             BinaryCompatStrs =
                 binary_compat_version_to_strs(WhichGradeString),
             (
@@ -234,7 +260,11 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             ;
                 NestedFuncs = grade_var_nested_funcs_yes,
                 % XXX We should NOT use '_' in individual grade component
-                % names.
+                % names, since it makes impossible to break a '_'-separated
+                % grade name (the grade names we use for link checks)
+                % into its components. The only reason why this hasn't been
+                % a problem so far is that we only break user visible grade
+                % names into components, and those are '.'-separated.
                 NestedFuncsStr = "_nest"
             ),
             BaseStr = DataRepStr ++ NestedFuncsStr,
@@ -322,20 +352,18 @@ thread_safe_to_strs(Backend, grade_var_thread_safe_yes) = [Str] :-
 :- func ssdebug_to_strs(which_grade_string, grade_var_ssdebug) = list(string).
 
 ssdebug_to_strs(_, grade_var_ssdebug_no) = [].
-ssdebug_to_strs(WhichGradeStr, grade_var_ssdebug_yes) =
+ssdebug_to_strs(grade_string_user, grade_var_ssdebug_yes) =
+    ["ssdebug"].
+ssdebug_to_strs(grade_string_link_check, grade_var_ssdebug_yes) =
     % XXX Why use a version string intented for the LLDS debugger?
-    ["ssdebug" ++ exec_trace_version_to_string(WhichGradeStr)].
+    ["ssdebug" ++ link_grade_str_exec_trace_version].
 
 :- func mprof_to_str(grade_var_mprof_time, grade_var_mprof_memory) = string.
 
-mprof_to_str(grade_var_mprof_time_no, grade_var_mprof_memory_no) =
-    "profcalls".
-mprof_to_str(grade_var_mprof_time_no, grade_var_mprof_memory_yes) =
-    "memprof".
-mprof_to_str(grade_var_mprof_time_yes, grade_var_mprof_memory_no) =
-    "prof".
-mprof_to_str(grade_var_mprof_time_yes, grade_var_mprof_memory_yes) =
-    "profall".
+mprof_to_str(grade_var_mprof_time_no, grade_var_mprof_memory_no) = "profcalls".
+mprof_to_str(grade_var_mprof_time_no, grade_var_mprof_memory_yes) = "memprof".
+mprof_to_str(grade_var_mprof_time_yes, grade_var_mprof_memory_no) = "prof".
+mprof_to_str(grade_var_mprof_time_yes, grade_var_mprof_memory_yes) = "profall".
 
 :- func merc_file_to_strs(which_grade_string, grade_var_merc_file)
     = list(string).
@@ -424,6 +452,8 @@ deep_prof_version_to_string(grade_string_link_check) =
                 solver_var_value_id,
 
                 % The grade string component that specified that value.
+                % We record this so that we can generate meaningful error
+                % messages for conflicts between grade components.
                 string
             ).
 
@@ -461,7 +491,7 @@ accumulate_grade_component_map_loop([ComponentStr | ComponentStrs],
         list.foldl2(apply_setting(ComponentStr), TailSettings, 
             !ComponentMap, !RevErrorMsgs)
     else
-        string.format("unknown grade component <%s>",
+        string.format("unknown grade component %s",
             [s(ComponentStr)], ErrorMsg),
         !:RevErrorMsgs = [ErrorMsg | !.RevErrorMsgs]
     ),
@@ -636,7 +666,7 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
     ;
         ComponentStr = "threadscope",
         Setting = svar_tscope_prof - svalue_tscope_prof_yes,
-        Settings = []
+        Settings = [svar_thread_safe - svalue_thread_safe_yes]
     ;
         ComponentStr = "gc",
         Setting = svar_gc - svalue_gc_bdw,

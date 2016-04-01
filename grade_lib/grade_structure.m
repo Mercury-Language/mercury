@@ -5,6 +5,21 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
+%
+% The grade structure is intended to be the tightest possible type
+% for representing grades. The intention is that
+%
+% - the grade structure should be able to represent ALL valid grades, and
+% - the grade structure should be able to represent NO invalid grades.
+%
+% The idea is that if a grade_vars term represents a valid grade,
+% then it should be possible to convert it to a grade structure by calling
+% grade_vars_to_grade_structure, but if it represents an invalid grade,
+% the conversion will fail. Since we create grade_vars structures by
+% solving partial grade specifications, and this solving process is supposed
+% to generate representations of only valid grades, the failure of the
+% conversion will cause grade_vars_to_grade_structure to throw an exception.
+%
 
 :- module grade_lib.grade_structure.
 :- interface.
@@ -12,6 +27,12 @@
 :- import_module grade_lib.grade_vars.
 
 %---------------------------------------------------------------------------%
+%
+% XXX We should put the fields here into a more logical order.
+% The question is: *which* logical order? The order used by
+% runtime/mercury_grade.h, which is also used by other parts of the system,
+% such as scripts/canonical_grade, is a historical accident, and NOT logical.
+%
 
 :- type grade_structure
     --->    grade_llds(
@@ -43,9 +64,9 @@
     ;       llds_minmodel_yes(
                 llds_minmodel_kind,
                 llds_minmodel_gc
-                % c_trail_no
-                % llds_thread_safe_no
-                % llds_perf_prof_none
+                % implicitly c_trail_no
+                % implicitly llds_thread_safe_no
+                % implicitly llds_perf_prof_none
             ).
 
 :- type c_trail
@@ -151,6 +172,8 @@
                 grade_var_mprof_memory
             ).
 
+    % See the main comment at the top of the module.
+    %
 :- func grade_vars_to_grade_structure(grade_vars) = grade_structure.
 
 %---------------------------------------------------------------------------%
@@ -163,7 +186,7 @@
 %---------------------------------------------------------------------------%
 
 grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
-    % XXX We want to verify that grade variable is used on every path,
+    % XXX We want to verify that every grade variable is used on every path,
     % for one of these three things: (a) to make a decision, (c) to check
     % that it has the expected value, or (c) to record its value in the
     % structured grade.
