@@ -1,7 +1,7 @@
-lambda_syntax_error.m:016: In clause for function `baz'/1:
+lambda_syntax_error.m:016: In clause for function `baz1'/1:
 lambda_syntax_error.m:016:   in function result term of clause head:
 lambda_syntax_error.m:016:   syntax error in lambda expression (`:-').
-lambda_syntax_error.m:016: In clause for function `baz'/1:
+lambda_syntax_error.m:016: In clause for function `baz1'/1:
 lambda_syntax_error.m:016:   in function result term of clause head:
 lambda_syntax_error.m:016:   in argument 1 of functor `:-/2':
 lambda_syntax_error.m:016:   error: undefined symbol `pred'/1.
