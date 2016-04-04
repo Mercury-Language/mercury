@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: typecheck.m.
 % Main author: fjh.
@@ -20,15 +20,12 @@
 % - Predicates that unify two things with respect to a single type assignment,
 %   as opposed to a type assignment set are called type_assign_*.
 %
-%   Access predicates for the typecheck_info data structure are called
-%   typecheck_info_*.
-%
 % There are four sorts of types:
 %
 % 1 discriminated unions:
 %   :- type tree(T) ---> nil ; t(tree(T), T, tree(T)).
 %
-% 2 equivalent types (treated identically, ie, same name. Any number of types
+% 2 equivalence types (treated identically, ie, same name. Any number of types
 %   can be equivalent; the *canonical* one is the one which is not defined
 %   using ==):
 %   :- type real == float.
@@ -52,7 +49,7 @@
 % types of the arguments for that predicate. For predicates that are
 % local to a module, we infer the types.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Known Bugs:
 %
@@ -68,7 +65,7 @@
 %
 % - We should handle equivalence types here.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.typecheck.
 :- interface.
@@ -92,8 +89,8 @@
 :- pred typecheck_module(module_info::in, module_info::out,
     list(error_spec)::out, bool::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -151,7 +148,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 typecheck_module(!ModuleInfo, Specs, ExceededIterationLimit) :-
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -342,7 +339,7 @@ typecheck_report_max_iterations_exceeded(MaxIterations) = Spec :-
     Msg = error_msg(no, do_not_treat_as_first, 0, [always(Pieces)]),
     Spec = error_spec(severity_error, phase_type_check, [Msg]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Iterate over the list of pred_ids in a module.
     %
@@ -1041,7 +1038,7 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
     hlds_data.get_type_defn_body(TypeDefn, Body),
     special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % For a field access function for which the user has supplied
     % a declaration but no clauses, add a clause
@@ -1091,7 +1088,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Iterate over the list of clauses for a predicate.
     %
@@ -1108,7 +1105,7 @@ typecheck_clause_list(HeadVars, ArgTypes, [Clause0 | Clauses0],
     typecheck_clause_list(HeadVars, ArgTypes, Clauses0, Clauses,
         !TypeAssignSet, !Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Type-check a single clause.
     %
@@ -1160,7 +1157,7 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
         !.TypeAssignSet, !Info).
     % We should perhaps do manual garbage collection here.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type stuff_to_check
     --->    clause_only
@@ -1238,7 +1235,7 @@ typecheck_check_for_ambiguity(Context, StuffToCheck, HeadVars,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred typecheck_goal(hlds_goal::in, hlds_goal::out, prog_context::in,
     type_assign_set::in, type_assign_set::out,
@@ -1540,7 +1537,7 @@ atomic_interface_list_to_var_list([]) = [].
 atomic_interface_list_to_var_list([atomic_interface_vars(I, O) | Interfaces]) =
     [I, O | atomic_interface_list_to_var_list(Interfaces)].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred typecheck_goal_list(list(hlds_goal)::in, list(hlds_goal)::out,
     prog_context::in, type_assign_set::in, type_assign_set::out,
@@ -1552,7 +1549,7 @@ typecheck_goal_list([Goal0 | Goals0], [Goal | Goals], Context,
     typecheck_goal(Goal0, Goal, Context, !TypeAssignSet, !Info),
     typecheck_goal_list(Goals0, Goals, Context, !TypeAssignSet, !Info).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Ensure that each variable in Vars has been assigned a type.
     %
@@ -1604,7 +1601,7 @@ ensure_vars_have_a_single_type(VarVectorKind, Context, Vars,
             !TypeAssignSet, !Info)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred typecheck_higher_order_call(generic_call_id::in, prog_context::in,
     prog_var::in, purity::in, list(prog_var)::in,
@@ -1666,7 +1663,7 @@ higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
     construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
         FuncType).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred typecheck_event_call(prog_context::in, string::in, list(prog_var)::in,
     type_assign_set::in, type_assign_set::out,
@@ -1693,7 +1690,7 @@ typecheck_event_call(Context, EventName, Args, !TypeAssignSet, !Info) :-
         typecheck_info_add_error(Spec, !Info)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred typecheck_call_pred_name(simple_call_id::in, prog_context::in,
     goal_id::in, list(prog_var)::in, pred_id::out,
@@ -1829,7 +1826,7 @@ get_overloaded_pred_arg_types([PredId | PredIds], Preds, ClassTable, GoalId,
     get_overloaded_pred_arg_types(PredIds, Preds, ClassTable, GoalId,
         TypeAssignSet0, !ArgsTypeAssignSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Rename apart the type variables in called predicate's arg types
     % separately for each type assignment, resulting in an "arg type
@@ -1895,7 +1892,7 @@ type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
         ParentArgTypes),
     type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred typecheck_var_has_arg_type_list(var_vector_kind::in, int::in,
     prog_context::in, list(prog_var)::in,
@@ -1927,7 +1924,8 @@ typecheck_var_has_arg_type(GoalContext, Context, Var,
         ArgTypeAssignSet1 = [],
         ArgTypeAssignSet0 = [_ | _]
     then
-        skip_arg(ArgTypeAssignSet0, ArgTypeAssignSet),
+        delete_first_arg_in_each_arg_type_assign(ArgTypeAssignSet0,
+            ArgTypeAssignSet),
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
         Spec = report_error_arg_var(ClauseContext, GoalContext, Context,
             Var, ArgTypeAssignSet0),
@@ -1936,10 +1934,11 @@ typecheck_var_has_arg_type(GoalContext, Context, Var,
         ArgTypeAssignSet = ArgTypeAssignSet1
     ).
 
-:- pred skip_arg(args_type_assign_set::in, args_type_assign_set::out) is det.
+:- pred delete_first_arg_in_each_arg_type_assign(args_type_assign_set::in,
+    args_type_assign_set::out) is det.
 
-skip_arg([], []).
-skip_arg([ArgTypeAssign0 | ArgTypeAssigns0],
+delete_first_arg_in_each_arg_type_assign([], []).
+delete_first_arg_in_each_arg_type_assign([ArgTypeAssign0 | ArgTypeAssigns0],
         [ArgTypeAssign | ArgTypeAssigns]) :-
     ArgTypeAssign0 = args_type_assign(TypeAssign, Args0, Constraints),
     (
@@ -1950,7 +1949,7 @@ skip_arg([ArgTypeAssign0 | ArgTypeAssigns0],
         unexpected($module, $pred, "skip_arg")
     ),
     ArgTypeAssign = args_type_assign(TypeAssign, Args, Constraints),
-    skip_arg(ArgTypeAssigns0, ArgTypeAssigns).
+    delete_first_arg_in_each_arg_type_assign(ArgTypeAssigns0, ArgTypeAssigns).
 
 :- pred typecheck_var_has_arg_type_2(args_type_assign_set::in, prog_var::in,
     args_type_assign_set::in, args_type_assign_set::out) is det.
@@ -1978,8 +1977,8 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
         (
             MaybeOldVarType = yes(OldVarType),
             ( if
-                type_assign_unify_type(TypeAssign0, OldVarType, Type,
-                    TypeAssign1)
+                type_assign_unify_type(OldVarType, Type,
+                    TypeAssign0, TypeAssign1)
             then
                 NewTypeAssign =
                     args_type_assign(TypeAssign1, ArgTypes, ClassContext),
@@ -1999,7 +1998,7 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
         unexpected($module, $pred, "ArgTypes0 = []")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a list of variables and a list of types, ensure that
     % each variable has the corresponding type.
@@ -2143,7 +2142,7 @@ type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
     (
         MaybeOldVarType = yes(OldVarType),
         ( if
-            type_assign_unify_type(TypeAssign0, OldVarType, Type, TypeAssign1)
+            type_assign_unify_type(OldVarType, Type, TypeAssign0, TypeAssign1)
         then
             !:TypeAssignSet = [TypeAssign1 | !.TypeAssignSet]
         else
@@ -2155,49 +2154,7 @@ type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
         !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
     ).
 
-%-----------------------------------------------------------------------------%
-
-    % type_assign_var_has_type_list(Vars, Types, TypeAssign, Info,
-    %       TypeAssignSet0, TypeAssignSet):
-    % Let TAs = { TA | TA is an extension of TypeAssign
-    %       for which the types of the Vars unify with
-    %       their respective Types },
-    % list.append(TAs, TypeAssignSet0, TypeAssignSet).
-    %
-:- pred type_assign_var_has_type_list(list(prog_var)::in, list(mer_type)::in,
-    type_assign::in, typecheck_info::in,
-    type_assign_set::in, type_assign_set::out) is det.
-
-type_assign_var_has_type_list([], [_ | _], _, _, _, _) :-
-    unexpected($module, $pred, "length mismatch").
-type_assign_var_has_type_list([_ | _], [], _, _, _, _) :-
-    unexpected($module, $pred, "length mismatch").
-type_assign_var_has_type_list([], [], TypeAssign, _,
-        TypeAssignSet, [TypeAssign | TypeAssignSet]).
-type_assign_var_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
-        Info, TypeAssignSet0, TypeAssignSet) :-
-    type_assign_var_has_type(TypeAssign0, Arg, Type, [], TypeAssignSet1),
-    type_assign_list_var_has_type_list(TypeAssignSet1,
-        Args, Types, Info, TypeAssignSet0, TypeAssignSet).
-
-    % type_assign_list_var_has_type_list(TAs, Terms, Types,
-    %       Info, TypeAssignSet0, TypeAssignSet):
-    % Let TAs2 = { TA | TA is an extension of a member of TAs
-    %       for which the types of the Terms unify with
-    %       their respective Types },
-    % list.append(TAs, TypeAssignSet0, TypeAssignSet).
-    %
-:- pred type_assign_list_var_has_type_list(type_assign_set::in,
-    list(prog_var)::in, list(mer_type)::in, typecheck_info::in,
-    type_assign_set::in, type_assign_set::out) is det.
-
-type_assign_list_var_has_type_list([], _, _, _, !TypeAssignSet).
-type_assign_list_var_has_type_list([TA | TAs], Args, Types, Info,
-        !TypeAssignSet) :-
-    type_assign_var_has_type_list(Args, Types, TA, Info, !TypeAssignSet),
-    type_assign_list_var_has_type_list(TAs, Args, Types, Info, !TypeAssignSet).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Type check a unification.
     % Get the type assignment set from the type info, and then just iterate
@@ -2238,7 +2195,7 @@ typecheck_unification(UnifyContext, Context, GoalId, X, RHS0, RHS,
 
 typecheck_unify_var_var(UnifyContext, Context, X, Y,
         TypeAssignSet0, TypeAssignSet, !Info) :-
-    typecheck_unify_var_var_2(TypeAssignSet0, X, Y, [], TypeAssignSet1),
+    type_assigns_unify_var_var(TypeAssignSet0, X, Y, [], TypeAssignSet1),
     ( if
         TypeAssignSet1 = [],
         TypeAssignSet0 = [_ | _]
@@ -2276,8 +2233,8 @@ cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) :-
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, Args, GoalId,
-        TypeAssignSet0, TypeAssignSet, !Info) :-
+typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
+        GoalId, TypeAssignSet0, TypeAssignSet, !Info) :-
     typecheck_info_get_error_clause_context(!.Info, ClauseContext),
     ( if cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) then
         list.foldl(
@@ -2310,7 +2267,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, Args, GoalId,
     else
         % Get the list of possible constructors that match this functor/arity.
         % If there aren't any, report an undefined constructor error.
-        list.length(Args, Arity),
+        list.length(ArgVars, Arity),
         typecheck_info_get_ctor_list(!.Info, ConsId, Arity, GoalId,
             ConsDefns, ConsErrors),
         (
@@ -2331,9 +2288,9 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, Args, GoalId,
             ),
 
             % Produce the ConsTypeAssignSet, which is essentially the
-            % cross-product of the TypeAssignSet0 and the ConsDefnList.
-            typecheck_unify_var_functor_get_ctors(TypeAssignSet0,
-                !.Info, ConsDefns, [], ConsTypeAssignSet),
+            % cross-product of the ConsDefns and the TypeAssignSet0.
+            get_cons_type_assigns_for_cons_defns(ConsDefns, TypeAssignSet0,
+                [], ConsTypeAssignSet),
             ( if
                 ConsTypeAssignSet = [],
                 TypeAssignSet0 = [_ | _]
@@ -2347,7 +2304,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, Args, GoalId,
 
             % Check that the type of the functor matches the type of the
             % variable.
-            typecheck_functor_type(ConsTypeAssignSet, Var,
+            typecheck_var_functor_types(Var, ConsTypeAssignSet,
                 [], ArgsTypeAssignSet),
             ( if
                 ArgsTypeAssignSet = [],
@@ -2363,7 +2320,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, Args, GoalId,
 
             % Check that the type of the arguments of the functor matches
             % their expected type for this functor.
-            typecheck_functor_arg_types(ArgsTypeAssignSet, Args, !.Info,
+            typecheck_functor_arg_types(!.Info, ArgVars, ArgsTypeAssignSet,
                 [], TypeAssignSet1),
             (
                 TypeAssignSet1 = [_ | _],
@@ -2380,7 +2337,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, Args, GoalId,
                 ;
                     ArgsTypeAssignSet = [_ | _],
                     ArgSpec = report_error_functor_arg_types(ClauseContext,
-                        UnifyContext, Context, Var, ConsDefns, ConsId, Args,
+                        UnifyContext, Context, Var, ConsDefns, ConsId, ArgVars,
                         ArgsTypeAssignSet),
                     typecheck_info_add_error(ArgSpec, !Info)
                 )
@@ -2388,12 +2345,15 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, Args, GoalId,
         )
     ).
 
-:- type cons_type
-    --->    cons_type(mer_type, list(mer_type)).
+%---------------------%
 
-:- type cons_type_assign_set == list(pair(type_assign, cons_type)).
+:- type cons_type_assign
+    --->    cons_type_assign(type_assign, mer_type, list(mer_type)).
 
-    % typecheck_unify_var_functor_get_ctors(TypeAssignSet, Info, ConsDefns):
+:- type cons_type_assign_set == list(cons_type_assign).
+
+    % typecheck_unify_var_functor_get_ctors_for_type_assigns(TypeAssignSet,
+    %   ConsDefns, !ConsTypeAssignSet):
     %
     % Iterate over all the different possible type assignments and
     % constructor definitions.
@@ -2406,213 +2366,42 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, Args, GoalId,
     % for the constructor in `ConsDefns', and where `TypeAssign' is the type
     % assignment renamed apart from the types of the constructors.
     %
-:- pred typecheck_unify_var_functor_get_ctors(type_assign_set::in,
-    typecheck_info::in, list(cons_type_info)::in,
+    % This predicate iterates over the type assign sets;
+    % typecheck_unify_var_functor_get_ctors iterates over the cons defns.
+    %
+:- pred get_cons_type_assigns_for_cons_defns(list(cons_type_info)::in,
+    type_assign_set::in,
     cons_type_assign_set::in, cons_type_assign_set::out) is det.
 
-    % Iterate over the type assign sets.
-    %
-typecheck_unify_var_functor_get_ctors([], _, _, !ConsTypeAssignSet).
-typecheck_unify_var_functor_get_ctors([TypeAssign | TypeAssigns], Info,
-        ConsDefns, !ConsTypeAssignSet) :-
-    typecheck_unify_var_functor_get_ctors_2(ConsDefns, Info, TypeAssign,
+get_cons_type_assigns_for_cons_defns([], _, !ConsTypeAssignSet).
+get_cons_type_assigns_for_cons_defns([ConsDefn | ConsDefns], TypeAssigns,
+        !ConsTypeAssignSet) :-
+    get_cons_type_assigns_for_cons_defn(ConsDefn, TypeAssigns,
         !ConsTypeAssignSet),
-    typecheck_unify_var_functor_get_ctors(TypeAssigns, Info, ConsDefns,
+    get_cons_type_assigns_for_cons_defns(ConsDefns, TypeAssigns,
         !ConsTypeAssignSet).
 
-    % Iterate over all the different cons defns.
-    %
-:- pred typecheck_unify_var_functor_get_ctors_2(list(cons_type_info)::in,
-    typecheck_info::in, type_assign::in,
+:- pred get_cons_type_assigns_for_cons_defn(cons_type_info::in,
+    type_assign_set::in,
     cons_type_assign_set::in, cons_type_assign_set::out) is det.
 
-typecheck_unify_var_functor_get_ctors_2([], _, _, !ConsTypeAssignSet).
-typecheck_unify_var_functor_get_ctors_2([ConsDefn | ConsDefns], Info,
-        TypeAssign0, !ConsTypeAssignSet) :-
-    get_cons_stuff(ConsDefn, TypeAssign0, Info, ConsType, ArgTypes,
-        TypeAssign1),
-    ConsTypeAssign = TypeAssign1 - cons_type(ConsType, ArgTypes),
+get_cons_type_assigns_for_cons_defn(_, [], !ConsTypeAssignSet).
+get_cons_type_assigns_for_cons_defn(ConsDefn, [TypeAssign | TypeAssigns],
+        !ConsTypeAssignSet) :-
+    get_cons_type_assign(ConsDefn, TypeAssign, ConsTypeAssign),
     !:ConsTypeAssignSet = [ConsTypeAssign | !.ConsTypeAssignSet],
-    typecheck_unify_var_functor_get_ctors_2(ConsDefns, Info, TypeAssign0,
+    get_cons_type_assigns_for_cons_defn(ConsDefn, TypeAssigns,
         !ConsTypeAssignSet).
-
-    % typecheck_functor_type(ConsTypeAssignSet, Var):
-    %
-    % For each possible cons type assignment in `ConsTypeAssignSet',
-    % for each possible constructor type,
-    % check that the type of `Var' matches this type.
-    %
-:- pred typecheck_functor_type(cons_type_assign_set::in, prog_var::in,
-    args_type_assign_set::in, args_type_assign_set::out) is det.
-
-typecheck_functor_type([], _, !ArgsTypeAssignSet).
-typecheck_functor_type([TypeAssign - ConsType | ConsTypeAssigns], Var,
-        !ArgsTypeAssignSet) :-
-    ConsType = cons_type(Type, ArgTypes),
-    type_assign_check_functor_type(Type, ArgTypes, Var, TypeAssign,
-        !ArgsTypeAssignSet),
-    typecheck_functor_type(ConsTypeAssigns, Var, !ArgsTypeAssignSet).
-
-    % typecheck_functor_arg_types(ConsTypeAssignSet, Var, Args, ...):
-    %
-    % For each possible cons type assignment in `ConsTypeAssignSet',
-    % for each possible constructor argument types,
-    % check that the types of `Args' matches these types.
-    %
-:- pred typecheck_functor_arg_types(args_type_assign_set::in,
-    list(prog_var)::in, typecheck_info::in,
-    type_assign_set::in, type_assign_set::out) is det.
-
-typecheck_functor_arg_types([], _, _, !TypeAssignSet).
-typecheck_functor_arg_types([ConsTypeAssign | ConsTypeAssigns], Args, Info,
-        !TypeAssignSet) :-
-    ConsTypeAssign = args_type_assign(TypeAssign, ArgTypes, _),
-    type_assign_var_has_type_list(Args, ArgTypes, TypeAssign, Info,
-        !TypeAssignSet),
-    typecheck_functor_arg_types(ConsTypeAssigns, Args, Info, !TypeAssignSet).
-
-    % Iterate over all the possible type assignments.
-    %
-:- pred typecheck_unify_var_var_2(type_assign_set::in,
-    prog_var::in, prog_var::in,
-    type_assign_set::in, type_assign_set::out) is det.
-
-typecheck_unify_var_var_2([], _, _, !TypeAssignSet).
-typecheck_unify_var_var_2([TypeAssign0 | TypeAssigns0], X, Y,
-        !TypeAssignSet) :-
-    type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet),
-    typecheck_unify_var_var_2(TypeAssigns0, X, Y, !TypeAssignSet).
-
-%-----------------------------------------------------------------------------%
-
-    % Type-check the unification of two variables,
-    % and update the type assignment.
-    % TypeAssign0 is the type assignment we are updating,
-    % TypeAssignSet0 is an accumulator for the list of possible
-    % type assignments so far, and TypeAssignSet is TypeAssignSet plus
-    % any type assignment(s) resulting from TypeAssign0 and this
-    % unification.
-    %
-:- pred type_assign_unify_var_var(prog_var::in, prog_var::in, type_assign::in,
-    type_assign_set::in, type_assign_set::out) is det.
-
-type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
-    type_assign_get_var_types(TypeAssign0, VarTypes0),
-    ( if search_var_type(VarTypes0, X, TypeX) then
-        search_insert_var_type(Y, TypeX, MaybeTypeY, VarTypes0, VarTypes),
-        (
-            MaybeTypeY = yes(TypeY),
-            % Both X and Y already have types - just unify their types.
-            ( if
-                type_assign_unify_type(TypeAssign0, TypeX, TypeY, TypeAssign3)
-            then
-                !:TypeAssignSet = [TypeAssign3 | !.TypeAssignSet]
-            else
-                !:TypeAssignSet = !.TypeAssignSet
-            )
-        ;
-            MaybeTypeY = no,
-            type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
-            !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
-        )
-    else
-        ( if search_var_type(VarTypes0, Y, TypeY) then
-            % X is a fresh variable which hasn't been assigned a type yet.
-            add_var_type(X, TypeY, VarTypes0, VarTypes),
-            type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
-            !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
-        else
-            % Both X and Y are fresh variables - introduce a fresh type
-            % variable with kind `star' to represent their type.
-            type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
-            varset.new_var(TypeVar, TypeVarSet0, TypeVarSet),
-            type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign1),
-            Type = type_variable(TypeVar, kind_star),
-            add_var_type(X, Type, VarTypes0, VarTypes1),
-            ( if X = Y then
-                VarTypes = VarTypes1
-            else
-                add_var_type(Y, Type, VarTypes1, VarTypes)
-            ),
-            type_assign_set_var_types(VarTypes, TypeAssign1, TypeAssign),
-            !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
-        )
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred type_assign_check_functor_type(mer_type::in, list(mer_type)::in,
-    prog_var::in, type_assign::in,
-    args_type_assign_set::in, args_type_assign_set::out) is det.
-
-type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign0,
-        !ArgsTypeAssignSet) :-
-    % Unify the type of Var with the type of the constructor.
-    type_assign_get_var_types(TypeAssign0, VarTypes0),
-    search_insert_var_type(Y, ConsType, MaybeTypeY, VarTypes0, VarTypes),
-    (
-        MaybeTypeY = yes(TypeY),
-        ( if
-            type_assign_unify_type(TypeAssign0, ConsType, TypeY, TypeAssign)
-        then
-            % The constraints are empty here because none are added by
-            % unification with a functor.
-            empty_hlds_constraints(EmptyConstraints),
-            ArgsTypeAssign =
-                args_type_assign(TypeAssign, ArgTypes, EmptyConstraints),
-            !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
-        else
-            true
-        )
-    ;
-        MaybeTypeY = no,
-        % The constraints are empty here because none are added by
-        % unification with a functor.
-        type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
-        empty_hlds_constraints(EmptyConstraints),
-        ArgsTypeAssign =
-            args_type_assign(TypeAssign, ArgTypes, EmptyConstraints),
-        !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
-    ).
-
-:- pred type_assign_check_functor_type_builtin(mer_type::in,
-    prog_var::in, type_assign::in,
-    type_assign_set::in, type_assign_set::out) is det.
-
-type_assign_check_functor_type_builtin(ConsType, Y, TypeAssign0,
-        !TypeAssignSet) :-
-    % Unify the type of Var with the type of the constructor.
-    type_assign_get_var_types(TypeAssign0, VarTypes0),
-    search_insert_var_type(Y, ConsType, MaybeTypeY, VarTypes0, VarTypes),
-    (
-        MaybeTypeY = yes(TypeY),
-        ( if
-            type_assign_unify_type(TypeAssign0, ConsType, TypeY, TypeAssign)
-        then
-            % The constraints are empty here because none are added by
-            % unification with a functor.
-            !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
-        else
-            true
-        )
-    ;
-        MaybeTypeY = no,
-        % The constraints are empty here because none are added by
-        % unification with a functor.
-        type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
-        !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
-    ).
-
-%-----------------------------------------------------------------------------%
 
     % Given an cons_type_info, construct a type for the constructor
-    % and a list of types of the arguments, suitable renamed apart
-    % from the current type_assign's typevarset.
+    % and a list of types of the arguments, suitably renamed apart
+    % from the current type_assign's typevarset. Return them in a
+    % cons_type_assign with the updated-for-the-renaming type_assign.
     %
-:- pred get_cons_stuff(cons_type_info::in, type_assign::in, typecheck_info::in,
-    mer_type::out, list(mer_type)::out, type_assign::out) is det.
+:- pred get_cons_type_assign(cons_type_info::in, type_assign::in,
+    cons_type_assign::out) is det.
 
-get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
+get_cons_type_assign(ConsDefn, TypeAssign0, ConsTypeAssign) :-
     ConsDefn = cons_type_info(ConsTypeVarSet, ConsExistQVars0,
         ConsType0, ArgTypes0, ClassConstraints0, _Source),
 
@@ -2656,10 +2445,220 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
 
     type_assign_get_typeclass_constraints(TypeAssign2, OldConstraints),
     merge_hlds_constraints(ConstraintsToAdd, OldConstraints, ClassConstraints),
-    type_assign_set_typeclass_constraints(ClassConstraints, TypeAssign2,
-        TypeAssign).
+    type_assign_set_typeclass_constraints(ClassConstraints,
+        TypeAssign2, TypeAssign),
+    ConsTypeAssign = cons_type_assign(TypeAssign, ConsType, ArgTypes).
 
-%-----------------------------------------------------------------------------%
+%---------------------%
+
+    % typecheck_functor_arg_types(ConsTypeAssignSet, Var, Args, ...):
+    %
+    % For each possible cons type assignment in `ConsTypeAssignSet',
+    % for each possible constructor argument types,
+    % check that the types of `Args' matches these types.
+    %
+:- pred typecheck_functor_arg_types(typecheck_info::in, list(prog_var)::in,
+    args_type_assign_set::in,
+    type_assign_set::in, type_assign_set::out) is det.
+
+typecheck_functor_arg_types(_, _, [], !TypeAssignSet).
+typecheck_functor_arg_types(Info, ArgVars, [ConsTypeAssign | ConsTypeAssigns],
+        !TypeAssignSet) :-
+    ConsTypeAssign = args_type_assign(TypeAssign, ArgTypes, _),
+    type_assign_vars_have_types(Info, TypeAssign, ArgVars, ArgTypes,
+        !TypeAssignSet),
+    typecheck_functor_arg_types(Info, ArgVars, ConsTypeAssigns,
+        !TypeAssignSet).
+
+    % type_assign_vars_have_types(Info, TypeAssign, ArgVars, Types,
+    %   TypeAssignSet0, TypeAssignSet):
+    % Let TAs = { TA | TA is an extension of TypeAssign for which
+    %   the types of the ArgVars unify with their respective Types },
+    % list.append(TAs, TypeAssignSet0, TypeAssignSet).
+    %
+:- pred type_assign_vars_have_types(typecheck_info::in, type_assign::in,
+    list(prog_var)::in, list(mer_type)::in,
+    type_assign_set::in, type_assign_set::out) is det.
+
+type_assign_vars_have_types(_, _, [], [_ | _], _, _) :-
+    unexpected($module, $pred, "length mismatch").
+type_assign_vars_have_types(_, _, [_ | _], [], _, _) :-
+    unexpected($module, $pred, "length mismatch").
+type_assign_vars_have_types(_, TypeAssign, [], [],
+        TypeAssignSet, [TypeAssign | TypeAssignSet]).
+type_assign_vars_have_types(Info, TypeAssign0,
+        [ArgVar | ArgVars], [Type | Types], TypeAssignSet0, TypeAssignSet) :-
+    type_assign_var_has_type(TypeAssign0, ArgVar, Type, [], TypeAssignSet1),
+    type_assigns_vars_have_types(Info, TypeAssignSet1,
+        ArgVars, Types, TypeAssignSet0, TypeAssignSet).
+
+    % type_assigns_vars_have_types(Info, TypeAssigns, ArgVars, Types,
+    %       TypeAssignSet0, TypeAssignSet):
+    % Let TAs = { TA | TA is an extension of a member of TypeAssigns for which
+    %   the types of the ArgVars unify with their respective Types },
+    % list.append(TAs, TypeAssignSet0, TypeAssignSet).
+    %
+:- pred type_assigns_vars_have_types(typecheck_info::in,
+    type_assign_set::in, list(prog_var)::in, list(mer_type)::in,
+    type_assign_set::in, type_assign_set::out) is det.
+
+type_assigns_vars_have_types(_, [], _, _, !TypeAssignSet).
+type_assigns_vars_have_types(Info, [TypeAssign | TypeAssigns],
+        ArgVars, Types, !TypeAssignSet) :-
+    type_assign_vars_have_types(Info, TypeAssign, ArgVars, Types,
+        !TypeAssignSet),
+    type_assigns_vars_have_types(Info, TypeAssigns, ArgVars, Types,
+        !TypeAssignSet).
+
+%---------------------------------------------------------------------------%
+
+    % Iterate type_assign_unify_var_var over all the given type assignments.
+    %
+:- pred type_assigns_unify_var_var(type_assign_set::in,
+    prog_var::in, prog_var::in,
+    type_assign_set::in, type_assign_set::out) is det.
+
+type_assigns_unify_var_var([], _, _, !TypeAssignSet).
+type_assigns_unify_var_var([TypeAssign | TypeAssigns], X, Y, !TypeAssignSet) :-
+    type_assign_unify_var_var(TypeAssign, X, Y, !TypeAssignSet),
+    type_assigns_unify_var_var(TypeAssigns, X, Y, !TypeAssignSet).
+
+    % Typecheck the unification of two variables,
+    % and update the type assignment.
+    % TypeAssign0 is the type assignment we are updating,
+    % TypeAssignSet0 is an accumulator for the list of possible
+    % type assignments so far, and TypeAssignSet is TypeAssignSet plus
+    % any type assignment(s) resulting from TypeAssign0 and this unification.
+    %
+:- pred type_assign_unify_var_var(type_assign::in, prog_var::in, prog_var::in,
+    type_assign_set::in, type_assign_set::out) is det.
+
+type_assign_unify_var_var(TypeAssign0, X, Y, !TypeAssignSet) :-
+    type_assign_get_var_types(TypeAssign0, VarTypes0),
+    ( if search_var_type(VarTypes0, X, TypeX) then
+        search_insert_var_type(Y, TypeX, MaybeTypeY, VarTypes0, VarTypes),
+        (
+            MaybeTypeY = yes(TypeY),
+            % Both X and Y already have types - just unify their types.
+            ( if
+                type_assign_unify_type(TypeX, TypeY, TypeAssign0, TypeAssign3)
+            then
+                !:TypeAssignSet = [TypeAssign3 | !.TypeAssignSet]
+            else
+                !:TypeAssignSet = !.TypeAssignSet
+            )
+        ;
+            MaybeTypeY = no,
+            type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
+            !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
+        )
+    else
+        ( if search_var_type(VarTypes0, Y, TypeY) then
+            % X is a fresh variable which hasn't been assigned a type yet.
+            add_var_type(X, TypeY, VarTypes0, VarTypes),
+            type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
+            !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
+        else
+            % Both X and Y are fresh variables - introduce a fresh type
+            % variable with kind `star' to represent their type.
+            type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
+            varset.new_var(TypeVar, TypeVarSet0, TypeVarSet),
+            type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign1),
+            Type = type_variable(TypeVar, kind_star),
+            add_var_type(X, Type, VarTypes0, VarTypes1),
+            ( if X = Y then
+                VarTypes = VarTypes1
+            else
+                add_var_type(Y, Type, VarTypes1, VarTypes)
+            ),
+            type_assign_set_var_types(VarTypes, TypeAssign1, TypeAssign),
+            !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % typecheck_var_functor_type(Var, ConsTypeAssignSet, !ArgsTypeAssignSet):
+    %
+    % For each possible cons type assignment in `ConsTypeAssignSet',
+    % for each possible constructor type,
+    % check that the type of `Var' matches this type.
+    % If it does, add the type binding to !ArgsTypeAssignSet.
+    %
+:- pred typecheck_var_functor_types(prog_var::in, cons_type_assign_set::in,
+    args_type_assign_set::in, args_type_assign_set::out) is det.
+
+typecheck_var_functor_types(_, [], !ArgsTypeAssignSet).
+typecheck_var_functor_types(Var, [ConsTypeAssign | ConsTypeAssigns],
+        !ArgsTypeAssignSet) :-
+    typecheck_var_functor_type(Var, ConsTypeAssign, !ArgsTypeAssignSet),
+    typecheck_var_functor_types(Var, ConsTypeAssigns, !ArgsTypeAssignSet).
+
+:- pred typecheck_var_functor_type(prog_var::in, cons_type_assign::in,
+    args_type_assign_set::in, args_type_assign_set::out) is det.
+
+typecheck_var_functor_type(Var, ConsTypeAssign0, !ArgsTypeAssignSet) :-
+    ConsTypeAssign0 = cons_type_assign(TypeAssign0, ConsType, ConsArgTypes),
+
+    % Unify the type of Var with the type of the constructor.
+    type_assign_get_var_types(TypeAssign0, VarTypes0),
+    search_insert_var_type(Var, ConsType, MaybeTypeVar, VarTypes0, VarTypes),
+    (
+        MaybeTypeVar = yes(TypeVar),
+        % VarTypes wasn't updated, so don't need to update its containing
+        % type assign either.
+        ( if
+            type_assign_unify_type(ConsType, TypeVar, TypeAssign0, TypeAssign)
+        then
+            % The constraints are empty here because none are added by
+            % unification with a functor.
+            empty_hlds_constraints(EmptyConstraints),
+            ArgsTypeAssign =
+                args_type_assign(TypeAssign, ConsArgTypes, EmptyConstraints),
+            !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
+        else
+            true
+        )
+    ;
+        MaybeTypeVar = no,
+        type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
+        % The constraints are empty here because none are added by
+        % unification with a functor.
+        empty_hlds_constraints(EmptyConstraints),
+        ArgsTypeAssign =
+            args_type_assign(TypeAssign, ConsArgTypes, EmptyConstraints),
+        !:ArgsTypeAssignSet = [ArgsTypeAssign | !.ArgsTypeAssignSet]
+    ).
+
+:- pred type_assign_check_functor_type_builtin(mer_type::in,
+    prog_var::in, type_assign::in,
+    type_assign_set::in, type_assign_set::out) is det.
+
+type_assign_check_functor_type_builtin(ConsType, Y, TypeAssign0,
+        !TypeAssignSet) :-
+    % Unify the type of Var with the type of the constructor.
+    type_assign_get_var_types(TypeAssign0, VarTypes0),
+    search_insert_var_type(Y, ConsType, MaybeTypeY, VarTypes0, VarTypes),
+    (
+        MaybeTypeY = yes(TypeY),
+        ( if
+            type_assign_unify_type(ConsType, TypeY, TypeAssign0, TypeAssign)
+        then
+            % The constraints are empty here because none are added by
+            % unification with a functor.
+            !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
+        else
+            true
+        )
+    ;
+        MaybeTypeY = no,
+        % The constraints are empty here because none are added by
+        % unification with a functor.
+        type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
+        !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
+    ).
+
+%---------------------------------------------------------------------------%
 
     % typecheck_lambda_var_has_type(..., Var, ArgVars, !Info)
     %
@@ -2727,22 +2726,22 @@ type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
     % Recursively process the rest of the variables.
     type_assign_get_types_of_vars(Vars, Types, !TypeAssign).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Unify (with occurs check) two types in a type assignment
     % and update the type bindings.
     %
-:- pred type_assign_unify_type(type_assign::in, mer_type::in, mer_type::in,
-    type_assign::out) is semidet.
+:- pred type_assign_unify_type(mer_type::in, mer_type::in,
+    type_assign::in, type_assign::out) is semidet.
 
-type_assign_unify_type(TypeAssign0, X, Y, TypeAssign) :-
+type_assign_unify_type(X, Y, TypeAssign0, TypeAssign) :-
     type_assign_get_external_type_params(TypeAssign0, HeadTypeParams),
     type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
     type_unify(X, Y, HeadTypeParams, TypeBindings0, TypeBindings),
     type_assign_set_type_bindings(TypeBindings, TypeAssign0, TypeAssign).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % builtin_atomic_type(Const, TypeName):
     %
@@ -2800,30 +2799,31 @@ builtin_pred_type(Info, ConsId, Arity, GoalId, ConsTypeInfos) :-
     (
         PredIds = [_ | _],
         predicate_table_get_preds(PredicateTable, Preds),
-        make_pred_cons_info_list(Info, PredIds, Preds, Arity, GoalId,
-            [], ConsTypeInfos)
+        accumulate_cons_type_infos_for_pred_ids(Info, Preds, GoalId,
+            PredIds, Arity, [], ConsTypeInfos)
     ;
         PredIds = [],
         ConsTypeInfos = []
     ).
 
-:- pred make_pred_cons_info_list(typecheck_info::in, list(pred_id)::in,
-    pred_table::in, int::in, goal_id::in,
+:- pred accumulate_cons_type_infos_for_pred_ids(typecheck_info::in,
+    pred_table::in, goal_id::in, list(pred_id)::in, int::in,
     list(cons_type_info)::in, list(cons_type_info)::out) is det.
 
-make_pred_cons_info_list(_, [], _, _, _, !ConsTypeInfos).
-make_pred_cons_info_list(Info, [PredId | PredIds], PredTable, Arity,
-        GoalId, !ConsTypeInfos) :-
-    make_pred_cons_info(Info, PredId, PredTable, Arity,
-        GoalId, !ConsTypeInfos),
-    make_pred_cons_info_list(Info, PredIds, PredTable, Arity,
-        GoalId, !ConsTypeInfos).
+accumulate_cons_type_infos_for_pred_ids(_, _, _, [], _, !ConsTypeInfos).
+accumulate_cons_type_infos_for_pred_ids(Info, PredTable, GoalId,
+        [PredId | PredIds], Arity, !ConsTypeInfos) :-
+    accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
+        PredId, Arity, !ConsTypeInfos),
+    accumulate_cons_type_infos_for_pred_ids(Info, PredTable, GoalId,
+        PredIds, Arity, !ConsTypeInfos).
 
-:- pred make_pred_cons_info(typecheck_info::in, pred_id::in, pred_table::in,
-    int::in, goal_id::in,
+:- pred accumulate_cons_type_infos_for_pred_id(typecheck_info::in,
+    pred_table::in, goal_id::in, pred_id::in, int::in,
     list(cons_type_info)::in, list(cons_type_info)::out) is det.
 
-make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalId, !ConsInfos) :-
+accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
+        PredId, FuncArity, !ConsTypeInfos) :-
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
     map.lookup(PredTable, PredId, PredInfo),
@@ -2846,9 +2846,9 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalId, !ConsInfos) :-
             PredTypeParams, PredType),
         make_body_hlds_constraints(ClassTable, PredTypeVarSet,
             GoalId, PredClassContext, PredConstraints),
-        ConsInfo = cons_type_info(PredTypeVarSet, PredExistQVars,
+        ConsTypeInfo = cons_type_info(PredTypeVarSet, PredExistQVars,
             PredType, ArgTypes, PredConstraints, source_pred(PredId)),
-        !:ConsInfos = [ConsInfo | !.ConsInfos]
+        !:ConsTypeInfos = [ConsTypeInfo | !.ConsTypeInfos]
     else if
         IsPredOrFunc = pf_function,
         PredAsFuncArity = PredArity - 1,
@@ -2874,10 +2874,10 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalId, !ConsInfos) :-
         ),
         make_body_hlds_constraints(ClassTable, PredTypeVarSet,
             GoalId, PredClassContext, PredConstraints),
-        ConsInfo = cons_type_info(PredTypeVarSet,
+        ConsTypeInfo = cons_type_info(PredTypeVarSet,
             PredExistQVars, FuncType, FuncArgTypes, PredConstraints,
             source_pred(PredId)),
-        !:ConsInfos = [ConsInfo | !.ConsInfos]
+        !:ConsTypeInfos = [ConsTypeInfo | !.ConsTypeInfos]
     else
         true
     ).
@@ -3187,8 +3187,8 @@ rename_constraint(TVarRenaming, Constraint0, Constraint) :-
     apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes0, ArgTypes),
     Constraint = hlds_constraint(Ids, ClassName, ArgTypes).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Note: changes here may require changes to
     % post_typecheck.resolve_unify_functor,
@@ -3379,7 +3379,7 @@ split_cons_errors([MaybeConsInfo | MaybeConsInfos], Infos, Errors) :-
         Errors = [ConsError | ErrorsTail]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type cons_constraints_action
     --->    flip_constraints_for_new
@@ -3498,6 +3498,6 @@ convert_cons_defn(Info, GoalId, Action, HLDS_ConsDefn, ConsTypeInfo) :-
             ConsType, ArgTypes, Constraints, source_type(TypeCtor)))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
