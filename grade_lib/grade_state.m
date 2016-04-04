@@ -41,7 +41,7 @@
                 sv_cnt_possible         :: int,
 
                 % A list of the values that this variable may ever have,
-                % specifying for each of those valaues whether it is still
+                % specifying for each of those values whether it is still
                 % possible or not, and if not, why not.
                 sv_values               :: list(solver_var_value)
             ).
@@ -60,7 +60,7 @@
 
 :- type not_possible_why
     --->    npw_config
-            % The variable cannot have this value, because auconfiguration
+            % The variable cannot have this value, because autoconfiguration
             % has selected another value.
 
     ;       npw_user

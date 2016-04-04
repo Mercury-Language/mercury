@@ -11,7 +11,7 @@
 % The state of the solver consists of set of solver variables, each with
 % a set of possible values. A grade problem narrows the set of possible
 % values of some of the solver variables. Solving a grade problem
-% consists of finding an assigment of a single possible value to each
+% consists of finding an assignment of a single possible value to each
 % solver variable that simultaneously satisfies all the requirements
 % imposed by the Mercury grade system. (Two example requirements are
 % "Boehm-Demers-Weiser gc requires targeting C" and "Trail segments require

@@ -25,7 +25,7 @@
 
     % This function translates the representation of a grade from a form
     % which has just one type (solver_var_id) for all solver variables and
-    % just one type (solver_var_valud_id) for all solver variable values,
+    % just one type (solver_var_value_id) for all solver variable values,
     % and translates it into a representation which has a separate type
     % (grade_var_<varname>) for each solver variable, whose function symbols
     % include only the values appropriate for that variable.

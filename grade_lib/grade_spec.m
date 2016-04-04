@@ -238,7 +238,7 @@
     % to the first of its values that has not previously been ruled out.
     %
     % For a few solver variables, the order of "preference" we currently use
-    % is not the one we *want* to use. If a grade string does not explicily
+    % is not the one we *want* to use. If a grade string does not explicitly
     % specify the use of a specific gc algorithm, we currently assume that this
     % implicitly specifies NOT using any garbage collector, and we likewise
     % assume that the absence of a grade component (.stseg or .exts) that
