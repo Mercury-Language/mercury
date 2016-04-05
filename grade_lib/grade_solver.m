@@ -1040,7 +1040,7 @@ failure_tree_why_not_to_string(CurIndentStr, EachIndentStr, _VarId, VarName,
         WhyNot) = Str :-
     WhyNot = why_var_is_not_value(ValueId, _ReqId, ReqDesc, SubTrees),
     solver_var_value_name(ValueName, ValueId),
-    string.format("%s%s may not be %s because %s\n",
+    string.format("%sThe variable %s may not be %s because: %s\n",
         [s(CurIndentStr), s(VarName), s(ValueName), s(ReqDesc)], WhyNotStr),
     SubTreeStrs = list.map(
         failure_tree_to_string(CurIndentStr ++ EachIndentStr, EachIndentStr),
@@ -1120,8 +1120,7 @@ accumulate_why_var_is_not_values(FailureInfo, _VarId, VarValue,
         !RevWhyNots) :-
     VarValue = solver_var_value(ValueId, Possible),
     (
-        Possible = is_possible,
-        unexpected($pred, "is_possible")
+        Possible = is_possible
     ;
         Possible = not_possible(NotPossibleWhy),
         (
