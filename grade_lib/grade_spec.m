@@ -641,10 +641,9 @@ init_requirement_specs = [
         (svar_low_tag_bits_use `is_one_of` [svalue_low_tag_bits_use_2])
     ),
     requirement_spec(
-        "Pregenerated code is incompatible with single precision floats.",
+        "Pregenerated code uses boxed double-precision floats.",
         (svar_pregen `being` svalue_pregen_yes) `implies_that`
-        (svar_request_single_prec_float `is_one_of`
-            [svalue_request_single_prec_float_no])
+        (svar_merc_float `is_one_of` [svalue_merc_float_is_boxed_c_double])
     ),
 
 % Requirements of values of svar_low_tag_bits_use.
