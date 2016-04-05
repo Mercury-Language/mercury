@@ -339,7 +339,7 @@ static void
 MR_dump_long_value(MR_LongLval locn, MR_MemoryZone *heap_zone,
     MR_Word *stack_pointer, MR_Word *current_frame, MR_bool do_regs)
 {
-    intw    locn_num;
+    int     locn_num;
     MR_Word value;
     int     difference;
     MR_bool have_value;
