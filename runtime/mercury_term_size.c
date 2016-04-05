@@ -14,6 +14,7 @@
 */
 
 #include "mercury_imp.h"
+#include "mercury_runtime_util.h" /* For MR_STRERROR_BUF_SIZE. */
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
