@@ -583,6 +583,7 @@ traverse_det_stack(const MR_LabelLayout *label_layout,
     do {
         const MR_ProcLayout             *proc_layout;
         MR_StackWalkStepResult          result;
+        MR_Unsigned                     reused_frames;
         const char                      *problem;
 
         /*
@@ -600,7 +601,7 @@ traverse_det_stack(const MR_LabelLayout *label_layout,
         ** Get the next stack frame
         */
         result = MR_stack_walk_step(proc_layout, &label_layout,
-            &stack_pointer, &current_frame, &problem);
+            &stack_pointer, &current_frame, &reused_frames, &problem);
         if (result == MR_STEP_ERROR_BEFORE || result == MR_STEP_ERROR_AFTER) {
             MR_fatal_error(problem);
         } 

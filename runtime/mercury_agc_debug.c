@@ -68,8 +68,8 @@ MR_agc_dump_roots(MR_RootList roots)
             MR_copy_regs_to_saved_regs(MR_MAX_FAKE_REG - 1, saved_regs,
                 MR_MAX_VIRTUAL_F_REG - 1, saved_f_regs);
 
-            MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
-            MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
+            MR_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
+            MR_virtual_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
 #endif /* !MR_HIGHLEVEL_CODE */
 
             fflush(NULL);
@@ -78,7 +78,8 @@ MR_agc_dump_roots(MR_RootList roots)
             fprintf(stderr, "\n");
 
 #ifndef MR_HIGHLEVEL_CODE
-            MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG - 1, saved_regs);
+            MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG - 1, saved_regs,
+                MR_MAX_VIRTUAL_F_REG, saved_f_regs);
             MR_save_registers();
 #endif /* !MR_HIGHLEVEL_CODE */
             roots = roots->next;
@@ -95,7 +96,7 @@ MR_agc_dump_nondet_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
     int         frame_size;
     MR_bool     registers_valid;
 
-    while (max_frame > MR_nondet_stack_trace_bottom) {
+    while (max_frame > MR_nondet_stack_trace_bottom_fr) {
         registers_valid = (max_frame == current_frame);
 
         frame_size = max_frame - MR_prevfr_slot(max_frame);
@@ -197,7 +198,7 @@ MR_agc_dump_stack_frames(MR_Internal *label, MR_MemoryZone *heap_zone,
             fprintf(stderr, "    label: %p\n", label->MR_internal_addr);
         }
 
-        if (success_ip == MR_stack_trace_bottom) {
+        if (success_ip == MR_stack_trace_bottom_ip) {
             break;
         }
 
@@ -246,6 +247,7 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
     MR_Word             saved_regs[MR_MAX_FAKE_REG];
     MR_Float            saved_f_regs[MR_MAX_VIRTUAL_F_REG];
     MR_Word             *current_regs;
+    MR_Float            *current_f_regs;
 
     long_var_count = MR_long_desc_var_count(label_layout);
     short_var_count = MR_short_desc_var_count(label_layout);
@@ -262,8 +264,10 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
         MR_MAX_VIRTUAL_F_REG - 1, saved_f_regs);
     if (top_frame) {
         current_regs = saved_regs;
+        current_f_regs = saved_f_regs;
     } else {
         current_regs = NULL;
+        current_f_regs = NULL;
     }
     type_params = MR_materialize_type_params_base(label_layout,
         current_regs, stack_pointer, current_frame);
@@ -274,7 +278,7 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
             MR_print_proc_id(stderr, label_layout->MR_sll_entry);
         }
 
-        dump_long_value(MR_long_desc_var_locn(label_layout, i),
+        MR_dump_long_value(MR_long_desc_var_locn(label_layout, i),
             heap_zone, stack_pointer, current_frame, top_frame);
         fprintf(stderr, "\n");
         fflush(NULL);
@@ -284,12 +288,12 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
             ** Call Mercury but use the debugging heap.
             */
 
-            MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
-            MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
+            MR_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
+            MR_virtual_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
 
             if (MR_get_type_and_value_base(label_layout, i,
-                    current_regs, stack_pointer, current_frame, type_params,
-                    &type_info, &value)) {
+                    current_regs, stack_pointer, current_frame, current_f_regs,
+                    type_params, &type_info, &value)) {
                 printf("\t");
                 MR_write_variable(type_info, value);
                 printf("\n");
@@ -305,7 +309,7 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
             MR_print_proc_id(stderr, label_layout->MR_sll_entry);
         }
 
-        dump_short_value(MR_short_desc_var_locn(label_layout, i),
+        MR_dump_short_value(MR_short_desc_var_locn(label_layout, i),
             heap_zone, stack_pointer, current_frame, top_frame);
         fprintf(stderr, "\n");
         fflush(NULL);
@@ -315,12 +319,12 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
             ** Call Mercury but use the debugging heap.
             */
 
-            MR_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
-            MR_virtual_hp = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
+            MR_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
+            MR_virtual_hp_word = MR_ENGINE(MR_eng_debug_heap_zone->MR_zone_min);
 
             if (MR_get_type_and_value_base(label_layout, i,
-                    current_regs, stack_pointer, current_frame, type_params,
-                    &type_info, &value)) {
+                    current_regs, stack_pointer, current_frame, current_f_regs,
+                    type_params, &type_info, &value)) {
                 printf("\t");
                 MR_write_variable(type_info, value);
                 printf("\n");
@@ -330,7 +334,8 @@ MR_dump_live_variables(const MR_LabelLayout *label_layout,
         }
     }
 
-    MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG - 1, saved_regs);
+    MR_copy_saved_regs_to_regs(MR_MAX_FAKE_REG - 1, saved_regs,
+        MR_MAX_VIRTUAL_F_REG - 1, saved_f_regs);
     MR_save_registers();
     MR_free(type_params);
 }
