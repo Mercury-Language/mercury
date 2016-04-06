@@ -320,7 +320,7 @@ if !exists("mercury_no_highlight_foreign") || !mercury_no_highlight_foreign
   syn keyword mercuryCLikeKeyword contained do break continue return
   syn keyword mercuryCLikeType contained const static volatile extern typedef
   syn keyword mercuryCLikeKeyword contained default
-  syn keyword mercuryCLikeType contained void int char long byte unsigned signed
+  syn keyword mercuryCLikeType contained void int char long short byte unsigned signed
   syn keyword mercuryCLikeType contained struct float double enum
   syn match mercuryCLikeDelimiter ";\|," contained
   syn match mercuryCLikeOperator "\v[-!+=*/><~?:%]" contained
